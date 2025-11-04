@@ -122,7 +122,6 @@ FIGMA_ACCESS_TOKEN=your-personal-token
 ### Optional
 ```bash
 GITHUB_PERSONAL_ACCESS_TOKEN=your-token
-POSTGRES_CONNECTION_STRING=postgresql://localhost/db
 CHROME_EXECUTABLE_PATH=/path/to/chrome
 CODEX_API_KEY=your-codex-key
 ```

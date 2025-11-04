@@ -28,12 +28,5 @@
     "env": {
       "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN}"
     }
-  },
-  "database": {
-    "command": "npx",
-    "args": ["-y", "@modelcontextprotocol/server-postgres"],
-    "env": {
-      "POSTGRES_CONNECTION_STRING": "${POSTGRES_CONNECTION_STRING}"
-    }
   }
 }

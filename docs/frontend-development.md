@@ -613,7 +613,6 @@ Smart interactive MCP server configuration.
 - `apidog` - API documentation and testing
 - `figma` - Figma design integration
 - `github` - GitHub API integration
-- `database` - PostgreSQL connections
 
 **What it does:**
 1. Checks if already configured
@@ -755,19 +754,6 @@ Access GitHub repositories and issues.
 
 ---
 
-#### Database Tools
-PostgreSQL database connections.
-
-**Required:**
-- `POSTGRES_CONNECTION_STRING` - In `.env` (private)
-
-**Setup:**
-```bash
-/configure-mcp database
-```
-
----
-
 ## Installation
 
 ### Prerequisites
@@ -813,7 +799,6 @@ FIGMA_ACCESS_TOKEN=your-personal-token
 
 # Optional
 GITHUB_PERSONAL_ACCESS_TOKEN=your-token
-POSTGRES_CONNECTION_STRING=postgresql://localhost/db
 CHROME_EXECUTABLE_PATH=/Applications/Google Chrome.app/Contents/MacOS/Google Chrome
 CODEX_API_KEY=your-codex-key
 ```

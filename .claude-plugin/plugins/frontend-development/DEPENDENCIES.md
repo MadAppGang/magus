@@ -139,22 +139,6 @@ echo $GITHUB_PERSONAL_ACCESS_TOKEN
 curl -H "Authorization: token $GITHUB_PERSONAL_ACCESS_TOKEN" https://api.github.com/user
 ```
 
-#### 4. Database MCP Server (Optional)
-
-**Variable:** `POSTGRES_CONNECTION_STRING`
-**Purpose:** PostgreSQL database connection
-**Format:** `postgresql://user:password@host:port/database`
-
-```bash
-export POSTGRES_CONNECTION_STRING="postgresql://localhost/mydb"
-```
-
-**Verify:**
-```bash
-echo $POSTGRES_CONNECTION_STRING
-psql $POSTGRES_CONNECTION_STRING -c "SELECT version();"
-```
-
 ### Optional Environment Variables
 
 #### Chrome DevTools Configuration
@@ -234,7 +218,6 @@ These go in `.claude/settings.json` (committed to git):
 | @modelcontextprotocol/server-figma | /import-figma | `npx -y @modelcontextprotocol/server-figma` | FIGMA_ACCESS_TOKEN |
 | @modelcontextprotocol/server-chrome-devtools | ui-manual-tester, browser-debugger | `npx -y @modelcontextprotocol/server-chrome-devtools` | None |
 | @modelcontextprotocol/server-github | Optional - for GitHub operations | `npx -y @modelcontextprotocol/server-github` | GITHUB_PERSONAL_ACCESS_TOKEN |
-| @modelcontextprotocol/server-postgres | Optional - for database tools | `npx -y @modelcontextprotocol/server-postgres` | POSTGRES_CONNECTION_STRING |
 
 **Note:** MCP servers are installed on-demand by `npx` when first used. No pre-installation required.
 
@@ -385,7 +368,6 @@ echo $FIGMA_ACCESS_TOKEN      # Should show your token
 
 # Check optional vars
 echo $GITHUB_PERSONAL_ACCESS_TOKEN  # If using GitHub
-echo $POSTGRES_CONNECTION_STRING    # If using database
 ```
 
 ### MCP Server Connectivity
@@ -496,10 +478,6 @@ FIGMA_ACCESS_TOKEN=your-personal-figma-token-here
 # Get from: https://github.com/settings/tokens
 GITHUB_PERSONAL_ACCESS_TOKEN=ghp_your-github-token-here
 
-# Optional: Database MCP server
-# Format: postgresql://user:password@host:port/database
-POSTGRES_CONNECTION_STRING=postgresql://localhost/mydb
-
 # Optional: Custom Chrome path (usually auto-detected)
 # CHROME_EXECUTABLE_PATH=/Applications/Google Chrome.app/Contents/MacOS/Google Chrome
 
@@ -537,6 +515,5 @@ Ensure these are in your `.gitignore`:
 **Optional but Recommended:**
 - Codex CLI (for codex-powered code review)
 - `GITHUB_PERSONAL_ACCESS_TOKEN` (for GitHub operations)
-- `POSTGRES_CONNECTION_STRING` (for database tools)
 
 **Time to set up:** 10-15 minutes for new developers ✅

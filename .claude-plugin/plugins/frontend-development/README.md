@@ -59,7 +59,7 @@ Professional frontend development toolkit for Claude Code with TypeScript, React
 - `/api-docs` - Analyze and integrate API documentation
 
 **Configuration:**
-- `/configure-mcp` - Configure MCP servers (Apidog, Figma, GitHub, PostgreSQL)
+- `/configure-mcp` - Configure MCP servers (Apidog, Figma, GitHub)
 
 **Maintenance:**
 - `/cleanup-artifacts` - Clean temporary files, build artifacts, and caches
@@ -72,13 +72,12 @@ Professional frontend development toolkit for Claude Code with TypeScript, React
 **API Analysis:**
 - `api-spec-analyzer` - OpenAPI/Swagger specification analysis
 
-### MCP Servers (4)
+### MCP Servers (3)
 
 **Integrated Services:**
 - **Apidog** - API documentation and testing platform
 - **Figma** - Design file access and component extraction
 - **GitHub** - Repository integration and PR management
-- **PostgreSQL** - Database query and schema inspection
 
 ## Environment Variables
 
@@ -97,9 +96,6 @@ FIGMA_ACCESS_TOKEN=your-personal-token
 ```bash
 # GitHub integration
 GITHUB_PERSONAL_ACCESS_TOKEN=your-token
-
-# PostgreSQL database
-POSTGRES_CONNECTION_STRING=postgresql://localhost/db
 
 # Chrome for UI testing (auto-detected)
 CHROME_EXECUTABLE_PATH=/path/to/chrome

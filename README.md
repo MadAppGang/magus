@@ -39,7 +39,7 @@ Professional toolkit for TypeScript/React development with orchestrated workflow
 - **8 Specialized Agents** - From architecture planning to code review
 - **5 Slash Commands** - Including `/implement` for full-cycle orchestration
 - **2 Skills** - Browser testing and API analysis
-- **4 MCP Servers** - Apidog, Figma, GitHub, PostgreSQL
+- **3 MCP Servers** - Apidog, Figma, GitHub
 
 **The `/implement` Workflow:**
 
@@ -356,18 +356,18 @@ your-plugin-name/
 
 ```json
 {
-  "database-tools": {
-    "command": "npx",
-    "args": ["-y", "@modelcontextprotocol/server-postgres"],
-    "env": {
-      "POSTGRES_CONNECTION_STRING": "postgresql://user:password@localhost/db"
-    }
-  },
   "custom-server": {
     "command": "${CLAUDE_PLUGIN_ROOT}/bin/custom-mcp-server",
     "args": ["--config", "${CLAUDE_PLUGIN_ROOT}/config/server.json"],
     "env": {
       "CUSTOM_API_KEY": "${CUSTOM_API_KEY}"
+    }
+  },
+  "external-api": {
+    "command": "npx",
+    "args": ["-y", "@your-org/custom-mcp-server"],
+    "env": {
+      "API_TOKEN": "${API_TOKEN}"
     }
   }
 }
@@ -384,7 +384,6 @@ your-plugin-name/
 
 **Common MCP Server Use Cases:**
 
-- **Database Access**: PostgreSQL, MySQL, MongoDB, Redis connections
 - **API Integration**: Custom API clients, third-party service integrations
 - **File System Operations**: Advanced file operations, project scaffolding
 - **Development Tools**: Linters, formatters, code generators
@@ -558,16 +557,16 @@ You can also reference an external MCP configuration file:
 
 ```json
 {
-  "database-server": {
-    "command": "npx",
-    "args": ["-y", "@modelcontextprotocol/server-postgres"],
-    "env": {
-      "POSTGRES_CONNECTION_STRING": "${POSTGRES_CONNECTION_STRING}"
-    }
-  },
   "custom-tools": {
     "command": "${CLAUDE_PLUGIN_ROOT}/bin/custom-mcp",
     "args": ["--plugin-root", "${CLAUDE_PLUGIN_ROOT}"]
+  },
+  "external-service": {
+    "command": "npx",
+    "args": ["-y", "@your-org/custom-mcp-server"],
+    "env": {
+      "SERVICE_API_KEY": "${SERVICE_API_KEY}"
+    }
   }
 }
 ```
