@@ -108,9 +108,9 @@ Create or edit `.claude/settings.json` in your project root:
       }
     }
   },
-  "enabledPlugins": [
-    "frontend-development@mag-claude-plugins"
-  ]
+  "enabledPlugins": {
+    "frontend-development@mag-claude-plugins": true
+  }
 }
 ```
 
@@ -577,7 +577,9 @@ Add to your project's `.claude/settings.json` and commit to git:
       }
     }
   },
-  "enabledPlugins": ["frontend-development@mag-claude-plugins"]
+  "enabledPlugins": {
+    "frontend-development@mag-claude-plugins": true
+  }
 }
 ```
 

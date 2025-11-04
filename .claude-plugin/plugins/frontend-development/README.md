@@ -168,13 +168,13 @@ Add to your project's `.claude/settings.json`:
     "mag-claude-plugins": {
       "source": {
         "source": "github",
-        "repo": "madappgang/claude-plugins"
+        "repo": "MadAppGang/claude-code"
       }
     }
   },
-  "enabledPlugins": [
-    "frontend-development@mag-claude-plugins"
-  ],
+  "enabledPlugins": {
+    "frontend-development@mag-claude-plugins": true
+  },
   "env": {
     "APIDOG_PROJECT_ID": "your-project-id",
     "APIDOG_API_TOKEN": "${APIDOG_API_TOKEN}"

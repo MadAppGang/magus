@@ -789,13 +789,13 @@ Add to `.claude/settings.json`:
     "mag-claude-plugins": {
       "source": {
         "source": "github",
-        "repo": "madappgang/claude-plugins"
+        "repo": "MadAppGang/claude-code"
       }
     }
   },
-  "enabledPlugins": [
-    "frontend-development@mag-claude-plugins"
-  ]
+  "enabledPlugins": {
+    "frontend-development@mag-claude-plugins": true
+  }
 }
 ```
 

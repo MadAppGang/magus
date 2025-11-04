@@ -166,7 +166,9 @@ Add to project's `.claude/settings.json`:
       "source": {"source": "github", "repo": "MadAppGang/claude-code"}
     }
   },
-  "enabledPlugins": ["frontend-development@mag-claude-plugins"]
+  "enabledPlugins": {
+    "frontend-development@mag-claude-plugins": true
+  }
 }
 ```
 

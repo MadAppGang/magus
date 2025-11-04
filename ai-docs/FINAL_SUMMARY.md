@@ -227,7 +227,9 @@ Add to project's `.claude/settings.json`:
       }
     }
   },
-  "enabledPlugins": ["frontend-development@mag-claude-plugins"]
+  "enabledPlugins": {
+    "frontend-development@mag-claude-plugins": true
+  }
 }
 ```
 
