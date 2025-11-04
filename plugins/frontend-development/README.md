@@ -124,9 +124,14 @@ CODEX_API_KEY=your-codex-key
 ```bash
 /import-figma
 
-# Provide Figma URL when prompted
-# Claude extracts components and generates React code
+# Imports components from Figma Dev Mode
+# See: docs/figma-integration-guide.md for URL setup
 ```
+
+**Need help getting Figma URLs?** See the [Figma Integration Guide](../../docs/figma-integration-guide.md) for:
+- How to get Figma Make URLs from Dev Mode
+- Setting up CLAUDE.md with Figma links
+- Troubleshooting common issues
 
 ### API Documentation Workflow
 

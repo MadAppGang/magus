@@ -701,6 +701,7 @@ Have a plugin idea? [Open an issue](https://github.com/MadAppGang/claude-code/is
 ### User Documentation
 
 - **[Frontend Development Plugin Guide](./docs/frontend-development.md)** - Complete user guide with `/implement` workflow deep-dive
+- **[Figma Integration Guide](./docs/figma-integration-guide.md)** - How to get Figma URLs and set up design imports
 
 ### Technical Documentation
 

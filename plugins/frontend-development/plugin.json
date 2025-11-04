@@ -1,7 +1,7 @@
 {
 	"name": "frontend-development",
-	"version": "1.1.0",
-	"description": "Comprehensive frontend development toolkit with TypeScript, React, Vite, TanStack Router & Query support. Includes specialized agents for architecture planning, implementation, code review, testing, and UI validation.",
+	"version": "1.2.0",
+	"description": "Comprehensive frontend development toolkit with TypeScript, React, Vite, TanStack Router & Query support. Includes specialized agents for architecture planning, implementation, code review, testing, and UI validation. Now with Figma Make integration for importing working prototypes.",
 	"author": {
 		"name": "Jack Rudenko",
 		"email": "i@madappgang.com",

@@ -7,15 +7,15 @@
 	},
 	"metadata": {
 		"description": "MAG team's curated collection of Claude Code plugins for modern frontend development",
-		"version": "1.1.0",
+		"version": "1.2.0",
 		"pluginRoot": "./plugins"
 	},
 	"plugins": [
 		{
 			"name": "frontend-development",
 			"source": "./plugins/frontend-development",
-			"description": "Comprehensive frontend development toolkit with TypeScript, React, Vite, TanStack Router & Query support. Includes specialized agents for architecture planning, implementation, code review, testing, and UI validation.",
-			"version": "1.1.0",
+			"description": "Comprehensive frontend development toolkit with TypeScript, React, Vite, TanStack Router & Query support. Includes specialized agents for architecture planning, implementation, code review, testing, and UI validation. Now with Figma Make integration for importing working prototypes.",
+			"version": "1.2.0",
 			"author": {
 				"name": "Jack Rudenko",
 				"email": "i@madappgang.com",
@@ -30,7 +30,31 @@
 				"tanstack",
 				"testing",
 				"architecture",
-				"ui-testing"
+				"ui-testing",
+				"figma-make"
+			],
+			"strict": true
+		},
+		{
+			"name": "code-analysis",
+			"source": "./plugins/code-analysis",
+			"description": "Deep code investigation and analysis toolkit. Features the codebase-detective agent for understanding code patterns, relationships, and architecture across complex codebases.",
+			"version": "1.0.0",
+			"author": {
+				"name": "Jack Rudenko",
+				"email": "i@madappgang.com",
+				"company": "MadAppGang"
+			},
+			"category": "development",
+			"keywords": [
+				"code-analysis",
+				"codebase",
+				"investigation",
+				"detective",
+				"architecture",
+				"patterns",
+				"debugging",
+				"code-navigation"
 			],
 			"strict": true
 		}

@@ -3,31 +3,69 @@ description: Intelligently clean up temporary artifacts and development files fr
 allowed-tools: Task, TodoWrite, Read, Write, Edit, Glob, Bash, AskUserQuestion, mcp__figma__get_design_context
 ---
 
-# Import Figma Component
+# Import Figma Make Component
 
-Automates importing UI components from Figma into the React project with validation and iterative fixing.
+Automates importing UI components from **Figma Make** projects into your React project with validation and iterative fixing.
+
+**Important:** This command works with **Figma Make** projects (URLs with `/make/` path), not regular Figma design files. Make projects contain actual working React/TypeScript code that can be imported directly.
 
 ## Prerequisites
 
-- Figma URL must be in CLAUDE.md under "Design Resources"
-- Component must exist in the Figma file
+- **Figma Make project URL** must be in CLAUDE.md under "Design Resources"
+- Component must exist in your Make project
 - Development server should be running: `pnpm dev`
-- Figma MCP server must be authenticated (run `/mcp` if needed)
+- Figma MCP server must be authenticated (run `/configure-mcp` if needed)
+- **MCP Resources support** must be available (required for fetching Make files)
+
+## Getting the Figma Make URL
+
+**Need help getting Figma Make URLs?** See the complete guide: [docs/figma-integration-guide.md](../../../docs/figma-integration-guide.md)
+
+### Quick Instructions
+
+1. **Create or open a Make project** in Figma (figma.com/make)
+2. **Select the component** you want to export in your Make project
+3. **Copy the URL** from the browser address bar
+4. **Ensure the URL includes `/make/` in the path**
+
+Expected URL format:
+```
+https://www.figma.com/make/{projectId}/{projectName}?node-id={nodeId}
+```
+
+**Real Example:**
+```
+https://www.figma.com/make/DfMjRj4FzWcDHHIGRsypcM/Implement-Screen-in-Shadcn?node-id=0-1&t=GZmiQgdDkZ6PjFRG-1
+```
+
+Add this URL to your `CLAUDE.md` under the "Design Resources" section:
+
+```markdown
+## Design Resources
+
+**Figma Make Project**: https://www.figma.com/make/DfMjRj4FzWcDHHIGRsypcM/Implement-Screen-in-Shadcn?node-id=0-1&t=GZmiQgdDkZ6PjFRG-1
+```
+
+**Important:** The URL must contain `/make/` not `/file/` or `/design/` - only Make projects have importable code.
 
 ## Workflow Overview
 
 This command will:
-1. Read CLAUDE.md and extract Figma URL
-2. Fetch component from Figma using MCP
-3. Analyze and adapt component code for our project structure
-4. Check for name collisions and prompt user if needed
-5. Install any missing dependencies via pnpm
-6. Create component file in appropriate location
-7. Create test route at /playground/{component-name}
-8. Invoke ui-manual-tester agent for validation
-9. Apply fixes if validation fails (up to 5 iterations)
-10. Update CLAUDE.md with component mapping
-11. Present comprehensive summary
+1. Read CLAUDE.md and extract Figma Make project URL
+2. Fetch component files from Make using **MCP Resources**
+3. List available files from Make project
+4. Select component code to import
+5. Analyze and adapt component code for your project structure
+6. Check for name collisions and prompt user if needed
+7. Install any missing dependencies via pnpm
+8. Create component file in appropriate location
+9. Create test route at /playground/{component-name}
+10. Invoke ui-manual-tester agent for validation
+11. Apply fixes if validation fails (up to 5 iterations)
+12. Update CLAUDE.md with component mapping
+13. Present comprehensive summary
+
+**What makes this different:** Unlike traditional Figma design imports, Make projects contain real working code. The MCP Resources integration fetches actual React/TypeScript implementations with styles, interactions, and behaviors already defined.
 
 ## Implementation Instructions
 
