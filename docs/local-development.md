@@ -102,9 +102,9 @@ Add local marketplace to a specific test project:
       }
     }
   },
-  "enabledPlugins": [
-    "frontend@mag-claude-plugins"
-  ]
+  "enabledPlugins": {
+    "frontend@mag-claude-plugins": true
+  }
 }
 ```
 
@@ -456,9 +456,9 @@ cat > .claude/settings.json << 'EOF'
       }
     }
   },
-  "enabledPlugins": [
-    "frontend@mag-claude-plugins"
-  ]
+  "enabledPlugins": {
+    "frontend@mag-claude-plugins": true
+  }
 }
 EOF
 

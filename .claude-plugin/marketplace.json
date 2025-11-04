@@ -7,7 +7,7 @@
 	},
 	"metadata": {
 		"description": "MAG team's curated collection of Claude Code plugins for modern frontend development",
-		"version": "2.0.0",
+		"version": "2.0.1",
 		"pluginRoot": "./plugins"
 	},
 	"plugins": [
@@ -15,7 +15,7 @@
 			"name": "frontend",
 			"source": "./plugins/frontend",
 			"description": "Comprehensive frontend development toolkit with TypeScript, React, Vite, TanStack Router & Query support. Role-based agents for architecture, development, code review, testing, and UI validation. Includes Figma Make integration for importing working prototypes.",
-			"version": "2.0.0",
+			"version": "2.0.1",
 			"author": {
 				"name": "Jack Rudenko",
 				"email": "i@madappgang.com",

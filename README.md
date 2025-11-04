@@ -22,9 +22,9 @@ Then add to your project's `.claude/settings.json`:
 
 ```json
 {
-  "enabledPlugins": [
-    "frontend@mag-claude-plugins"
-  ]
+  "enabledPlugins": {
+    "frontend@mag-claude-plugins": true
+  }
 }
 ```
 
@@ -72,6 +72,19 @@ The star feature is the `/implement` command—a complete 7-stage orchestration 
 
 ### Prerequisites
 
+**Claude Code Requirements:**
+- Claude Code version with plugin system support
+- Plugin manifest location: `.claude-plugin/plugin.json` (required)
+- Settings format: `enabledPlugins` must be object with boolean values:
+  ```json
+  {
+    "enabledPlugins": {
+      "plugin-name@marketplace-name": true
+    }
+  }
+  ```
+
+**System Requirements:**
 - Claude Code installed and configured
 - Git access to GitHub
 
@@ -95,9 +108,9 @@ Add or edit `.claude/settings.json` in your project root:
 
 ```json
 {
-  "enabledPlugins": [
-    "frontend@mag-claude-plugins"
-  ]
+  "enabledPlugins": {
+    "frontend@mag-claude-plugins": true
+  }
 }
 ```
 
@@ -130,15 +143,15 @@ When team members who have added the marketplace (Step 1) pull your project, Cla
 
 #### Multiple Plugins
 
-Need more than one plugin? Just add to the array:
+Need more than one plugin? Just add more entries:
 
 ```json
 {
-  "enabledPlugins": [
-    "frontend@mag-claude-plugins",
-    "code-quality@mag-claude-plugins",
-    "api-tools@mag-claude-plugins"
-  ]
+  "enabledPlugins": {
+    "frontend@mag-claude-plugins": true,
+    "code-quality@mag-claude-plugins": true,
+    "api-tools@mag-claude-plugins": true
+  }
 }
 ```
 
@@ -622,9 +635,9 @@ If you don't want to add the marketplace globally, you can include it in project
       }
     }
   },
-  "enabledPlugins": [
-    "frontend@mag-claude-plugins"
-  ]
+  "enabledPlugins": {
+    "frontend@mag-claude-plugins": true
+  }
 }
 ```
 
@@ -697,15 +710,15 @@ Have a plugin idea? [Open an issue](https://github.com/MadAppGang/claude-code/is
 
 **Settings format:**
 ```json
-// ✅ CORRECT - Array format (recommended)
-"enabledPlugins": [
-  "frontend@mag-claude-plugins"
-]
-
-// ✅ ALSO CORRECT - Object format (legacy, still works)
+// ✅ CORRECT - Object format (required)
 "enabledPlugins": {
   "frontend@mag-claude-plugins": true
 }
+
+// ❌ INCORRECT - Array format (will cause validation error)
+"enabledPlugins": [
+  "frontend@mag-claude-plugins"
+]
 ```
 
 **Plugin not loading:**

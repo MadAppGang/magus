@@ -12,7 +12,7 @@
 A complete Claude Code plugin marketplace with enterprise-level architecture:
 
 - **Plugin Marketplace** (`mag-claude-plugins`)
-- **Frontend Development Plugin** (v1.0.0)
+- **Frontend Development Plugin** (v2.0.1)
   - 8 Specialized Agents
   - 5 Slash Commands
   - 2 Skills
@@ -130,6 +130,23 @@ CHROME_EXECUTABLE_PATH=/path/to/chrome
 CODEX_API_KEY=your-codex-key
 ```
 
+## Claude Code Plugin Requirements
+
+**Plugin System Format:**
+- Plugin manifest: `.claude-plugin/plugin.json` (must be in this location)
+- Settings format: `enabledPlugins` must be object with boolean values
+- Component directories: `agents/`, `commands/`, `skills/`, `mcp-servers/` at plugin root
+- Environment variables: Use `${CLAUDE_PLUGIN_ROOT}` for plugin-relative paths
+
+**Example Settings:**
+```json
+{
+  "enabledPlugins": {
+    "plugin-name@marketplace-name": true
+  }
+}
+```
+
 ## Dependencies
 
 **System:**
@@ -154,9 +171,9 @@ CODEX_API_KEY=your-codex-key
 Add to `.claude/settings.json`:
 ```json
 {
-  "enabledPlugins": [
-    "frontend@mag-claude-plugins"
-  ]
+  "enabledPlugins": {
+    "frontend@mag-claude-plugins": true
+  }
 }
 ```
 
@@ -188,9 +205,9 @@ Include marketplace in project settings (requires folder trust):
       "source": {"source": "github", "repo": "MadAppGang/claude-code"}
     }
   },
-  "enabledPlugins": [
-    "frontend@mag-claude-plugins"
-  ]
+  "enabledPlugins": {
+    "frontend@mag-claude-plugins": true
+  }
 }
 ```
 
@@ -216,3 +233,4 @@ Include marketplace in project settings (requires folder trust):
 
 **Maintained by:** Jack Rudenko @ MadAppGang
 **Last Updated:** November 4, 2024
+**Version:** 2.0.1
