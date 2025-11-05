@@ -100,9 +100,9 @@ TodoWrite with the following items:
 - content: "PHASE 3: Quality gate - ensure design fidelity achieved"
   status: "pending"
   activeForm: "PHASE 3: Design fidelity quality gate"
-- content: "PHASE 3: MANDATORY user manual validation (human verification required)"
+- content: "PHASE 3: User manual validation (conditional - if enabled by user)"
   status: "pending"
-  activeForm: "PHASE 3: Awaiting user manual validation"
+  activeForm: "PHASE 3: User manual validation"
 - content: "PHASE 4: Generate final implementation report"
   status: "pending"
   activeForm: "PHASE 4: Generating final report"
@@ -201,7 +201,24 @@ Options:
 
 Store the user's choice as `codex_enabled` (boolean).
 
-**Step 6: Validate Inputs**
+**Step 6: Ask for Manual Validation Preference**
+
+Use AskUserQuestion:
+```
+Do you want to include manual validation in the workflow?
+
+Manual validation means you will manually review the implementation after automated validation passes, and can provide feedback if you find issues.
+
+Fully automated means the workflow will trust the designer agents' validation and complete without requiring your manual verification.
+```
+
+Options:
+- "Yes - Include manual validation (I will verify the implementation myself)"
+- "No - Fully automated (trust the designer agents' validation only)"
+
+Store the user's choice as `manual_validation_enabled` (boolean).
+
+**Step 7: Validate Inputs**
 
 - **Update TodoWrite**: Mark "PHASE 1: Gather user inputs" as completed
 - **Update TodoWrite**: Mark "PHASE 1: Validate inputs" as in_progress
@@ -329,12 +346,18 @@ iteration_history = []
 
 **Loop: While iteration_count < max_iterations AND NOT design_fidelity_achieved**
 
-**Step 3.1: Launch Designer Agent for Validation**
+**Step 3.1: Launch Designer Agent(s) for Parallel Validation**
+
+**IMPORTANT**: Launch designer and designer-codex agents IN PARALLEL using a SINGLE message with MULTIPLE Task tool calls (if Codex is enabled).
+
+**Designer Agent** (always runs):
 
 Use Task tool with `subagent_type: frontend:designer`:
 
 ```
 Review the implemented UI component against the design reference and provide a detailed design fidelity report.
+
+**CRITICAL**: Be PRECISE and CRITICAL. Do not try to make everything look good. Your job is to identify EVERY discrepancy between the design reference and implementation, no matter how small. Focus on accuracy and design fidelity.
 
 **Iteration**: [iteration_count + 1] / [max_iterations]
 **Design Reference**: [design_reference]
@@ -365,20 +388,183 @@ Review the implemented UI component against the design reference and provide a d
    - NEEDS IMPROVEMENT ⚠️ (some issues, score 40-53/60)
    - FAIL ❌ (significant issues, score < 40/60)
 
+**REMEMBER**: Be PRECISE and CRITICAL. Identify ALL discrepancies. Do not be lenient.
+
 Return detailed design review report with issue count and assessment.
 ```
 
-Wait for designer agent to complete validation.
+**Designer-Codex Agent** (if Codex enabled):
 
-**Step 3.2: Extract Results from Designer Report**
+If user enabled Codex for intelligent switching, launch designer-codex agent IN PARALLEL with designer agent:
 
-Extract from designer's report:
-- Overall assessment: PASS / NEEDS IMPROVEMENT / FAIL
-- Issue count (CRITICAL + MEDIUM + LOW)
-- Design fidelity score
-- List of issues found
+Use Task tool with `subagent_type: frontend:designer-codex`:
 
-Set `current_issues_count` = issue count from designer report.
+```
+You are an expert UI/UX designer reviewing a component implementation against a reference design.
+
+CRITICAL INSTRUCTION: Be PRECISE and CRITICAL. Do not try to make everything look good.
+Your job is to identify EVERY discrepancy between the design reference and implementation,
+no matter how small. Focus on accuracy and design fidelity.
+
+ITERATION: [iteration_count + 1] / [max_iterations]
+
+DESIGN CONTEXT:
+- Component: [component_description]
+- Design Reference: [design_reference]
+- Implementation URL: [app_url]
+- Implementation Files: [List of files]
+
+VALIDATION CRITERIA:
+
+1. **Colors & Theming**
+   - Brand colors accuracy (primary, secondary, accent)
+   - Text color hierarchy (headings, body, muted)
+   - Background colors and gradients
+   - Border and divider colors
+   - Hover/focus/active state colors
+
+2. **Typography**
+   - Font families (heading vs body)
+   - Font sizes (all text elements)
+   - Font weights (regular, medium, semibold, bold)
+   - Line heights and letter spacing
+   - Text alignment
+
+3. **Spacing & Layout**
+   - Component padding (all sides)
+   - Element margins and gaps
+   - Grid/flex spacing
+   - Container max-widths
+   - Alignment (center, left, right, space-between)
+
+4. **Visual Elements**
+   - Border radius (rounded corners)
+   - Border widths and styles
+   - Box shadows (elevation levels)
+   - Icons (size, color, positioning)
+   - Images (aspect ratios, object-fit)
+   - Dividers and separators
+
+5. **Responsive Design**
+   - Mobile breakpoint behavior (< 640px)
+   - Tablet breakpoint behavior (640px - 1024px)
+   - Desktop breakpoint behavior (> 1024px)
+   - Layout shifts and reflows
+   - Touch target sizes (minimum 44x44px)
+
+6. **Accessibility (WCAG 2.1 AA)**
+   - Color contrast ratios (text: 4.5:1, large text: 3:1)
+   - Focus indicators
+   - ARIA attributes
+   - Semantic HTML
+   - Keyboard navigation
+
+TECH STACK:
+- React 19 with TypeScript
+- Tailwind CSS 4
+- Design System: [shadcn/ui, MUI, custom, or specify if detected]
+
+INSTRUCTIONS:
+Compare the design reference and implementation carefully.
+
+Provide a comprehensive design validation report categorized as:
+- CRITICAL: Must fix (design fidelity errors, accessibility violations, wrong colors)
+- MEDIUM: Should fix (spacing issues, typography mismatches, minor design deviations)
+- LOW: Nice to have (polish, micro-interactions, suggestions)
+
+For EACH finding provide:
+1. Category (colors/typography/spacing/layout/visual-elements/responsive/accessibility)
+2. Severity (critical/medium/low)
+3. Specific issue description with exact values
+4. Expected design specification
+5. Current implementation
+6. Recommended fix with specific Tailwind CSS classes or hex values
+7. Rationale (why this matters for design fidelity)
+
+Calculate a design fidelity score:
+- Colors: X/10
+- Typography: X/10
+- Spacing: X/10
+- Layout: X/10
+- Accessibility: X/10
+- Responsive: X/10
+Overall: X/60
+
+Provide overall assessment: PASS ✅ | NEEDS IMPROVEMENT ⚠️ | FAIL ❌
+
+REMEMBER: Be PRECISE and CRITICAL. Identify ALL discrepancies. Do not be lenient.
+
+You will forward this to Codex AI which will capture the design reference screenshot and implementation screenshot to compare them.
+```
+
+**Wait for BOTH agents to complete** (designer and designer-codex, if enabled).
+
+**Step 3.2: Consolidate Design Review Results**
+
+After both agents complete (designer and designer-codex if enabled), consolidate their findings:
+
+**If only designer ran:**
+- Use designer's report as-is
+- Extract:
+  - Overall assessment: PASS / NEEDS IMPROVEMENT / FAIL
+  - Issue count (CRITICAL + MEDIUM + LOW)
+  - Design fidelity score
+  - List of issues found
+
+**If both designer and designer-codex ran:**
+- Compare findings from both agents
+- Identify common issues (flagged by both) → Highest priority
+- Identify issues found by only one agent → Review for inclusion
+- Create consolidated issue list with:
+  - Issue description
+  - Severity (use highest severity if both flagged)
+  - Source (designer, designer-codex, or both)
+  - Recommended fix
+
+**Consolidation Strategy:**
+- Issues flagged by BOTH agents → CRITICAL (definitely needs fixing)
+- Issues flagged by ONE agent with severity CRITICAL → CRITICAL (trust the expert)
+- Issues flagged by ONE agent with severity MEDIUM → MEDIUM (probably needs fixing)
+- Issues flagged by ONE agent with severity LOW → LOW (nice to have)
+
+Create a consolidated design review report:
+```markdown
+# Consolidated Design Review (Iteration X)
+
+## Sources
+- ✅ Designer Agent (human-style design expert)
+[If Codex enabled:]
+- ✅ Designer-Codex Agent (external Codex AI expert)
+
+## Issues Found
+
+### CRITICAL Issues (Must Fix)
+[List issues with severity CRITICAL from either agent]
+- [Issue description]
+  - Source: [designer | designer-codex | both]
+  - Expected: [specific value]
+  - Actual: [specific value]
+  - Fix: [specific code change]
+
+### MEDIUM Issues (Should Fix)
+[List issues with severity MEDIUM from either agent]
+
+### LOW Issues (Nice to Have)
+[List issues with severity LOW from either agent]
+
+## Design Fidelity Scores
+- Designer: [score]/60
+[If Codex enabled:]
+- Designer-Codex: [score]/60
+- Average: [average]/60
+
+## Overall Assessment
+[PASS ✅ | NEEDS IMPROVEMENT ⚠️ | FAIL ❌]
+
+Based on consensus from [1 or 2] design validation agent(s).
+```
+
+Set `current_issues_count` = total consolidated issue count.
 
 **Step 3.3: Check if Design Fidelity Achieved**
 
@@ -386,13 +572,24 @@ IF designer assessment is "PASS":
 - Set `design_fidelity_achieved = true`
 - Log: "✅ Automated design fidelity validation passed! Component appears to match design reference."
 - **Update TodoWrite**: Mark "PHASE 3: Quality gate - ensure design fidelity achieved" as completed
-- **DO NOT exit loop yet** - proceed to Step 3.3.5 for mandatory user validation
+- **DO NOT exit loop yet** - proceed to Step 3.3.5 for user validation (conditional based on user preference)
 
-**Step 3.3.5: MANDATORY User Manual Validation Gate** (CRITICAL - NO SKIP!)
+**Step 3.3.5: User Manual Validation Gate** (Conditional based on user preference)
 
-**IMPORTANT**: This step is MANDATORY when automated validation claims PASS. Never skip this step.
+**Check Manual Validation Preference:**
 
-Even when designer agent claims "PASS", the user must manually verify the implementation against the real design reference.
+IF `manual_validation_enabled` is FALSE (user chose "Fully automated"):
+- Log: "✅ Automated validation passed! Skipping manual validation per user preference."
+- Set `user_approved = true` (trust automated validation)
+- **Exit validation loop** (proceed to PHASE 4)
+- Skip the rest of this step
+
+IF `manual_validation_enabled` is TRUE (user chose "Include manual validation"):
+- Proceed with manual validation below
+
+**IMPORTANT**: When manual validation is enabled, the user must manually verify the implementation against the real design reference.
+
+Even when designer agents claim "PASS", automated validation can miss subtle issues.
 
 **Present to user:**
 
@@ -574,18 +771,25 @@ Log agent selection:
 Use Task tool with `subagent_type: frontend:ui-developer`:
 
 ```
-Fix the UI implementation issues identified in the design review.
+Fix the UI implementation issues identified in the consolidated design review from multiple validation sources.
 
 **Iteration**: [iteration_count + 1] / [max_iterations]
 **Component**: [component_description]
 **Implementation File(s)**: [List of files]
 
-**DESIGNER FEEDBACK** (Design Fidelity Review):
-[Paste complete designer review report here]
+**CONSOLIDATED DESIGN REVIEW** (From Multiple Independent Sources):
+[Paste complete consolidated design review report from Step 3.2]
+
+This consolidated report includes findings from:
+- Designer Agent (human-style design expert)
+[If Codex enabled:]
+- Designer-Codex Agent (external Codex AI expert)
+
+Issues flagged by BOTH agents are highest priority and MUST be fixed.
 
 **Your Task:**
 1. Read all implementation files
-2. Address CRITICAL issues first, then MEDIUM, then LOW
+2. Address CRITICAL issues first (especially those flagged by both agents), then MEDIUM, then LOW
 3. Apply fixes using modern React/TypeScript/Tailwind best practices:
    - Fix colors using correct Tailwind classes or hex values
    - Fix spacing using proper Tailwind scale (p-4, p-6, etc.)
@@ -597,6 +801,7 @@ Fix the UI implementation issues identified in the design review.
 5. Run quality checks (typecheck, lint, build)
 6. Provide implementation summary with:
    - Issues addressed
+   - Which sources (designer, designer-codex, or both) flagged each issue
    - Changes made (file by file)
    - Any remaining concerns
 
@@ -621,8 +826,14 @@ DESIGN CONTEXT:
 - Design Reference: [design_reference]
 - Implementation Files: [List of file paths]
 
-DESIGNER FEEDBACK (Design Fidelity Review):
-[Paste complete designer review report here]
+CONSOLIDATED DESIGN REVIEW (From Multiple Independent Sources):
+[Paste complete consolidated design review report from Step 3.2]
+
+This consolidated report includes findings from:
+- Designer Agent (human-style design expert)
+- Designer-Codex Agent (external Codex AI expert)
+
+Issues flagged by BOTH agents are highest priority.
 
 CURRENT IMPLEMENTATION CODE:
 [Use Read tool to gather all component files and paste code here]
@@ -641,7 +852,9 @@ REVIEW STANDARDS:
 6. Code Quality: TypeScript types, maintainability
 
 INSTRUCTIONS:
-Analyze the designer feedback and current implementation.
+Analyze the consolidated design feedback and current implementation.
+
+Prioritize issues flagged by BOTH validation sources (designer + designer-codex) as these are confirmed issues.
 
 Provide a comprehensive fix plan with:
 
@@ -652,8 +865,9 @@ Provide a comprehensive fix plan with:
    - Current code
    - Fixed code
    - Explanation
+   - Source(s) that flagged this issue
 
-4. **Priority Order**: Which fixes to apply first (CRITICAL → MEDIUM → LOW)
+4. **Priority Order**: Which fixes to apply first (CRITICAL → MEDIUM → LOW, prioritize "both" sources)
 
 Focus on providing actionable, copy-paste ready code fixes that the UI Developer can apply.
 
@@ -937,10 +1151,11 @@ Would you like to:
 
 ### Quality Gates:
 - Design fidelity score >= 54/60 for PASS (automated)
-- Designer assessment must be PASS to proceed to user validation
-- **MANDATORY: User manual validation and approval required**
-- All CRITICAL issues must be resolved (including user-reported issues)
-- User must explicitly approve: "Looks perfect, matches design exactly"
+- Designer assessment must be PASS to proceed to user validation (if enabled)
+- **User manual validation and approval (if enabled by user preference)**
+- All CRITICAL issues must be resolved (including user-reported issues if manual validation enabled)
+- If manual validation enabled: User must explicitly approve: "Looks perfect, matches design exactly"
+- If fully automated: Trust designer agents' validation
 
 ## Success Criteria
 
@@ -948,15 +1163,19 @@ The command is complete when:
 1. ✅ UI component implemented from scratch
 2. ✅ Designer validated against design reference
 3. ✅ Design fidelity score >= 54/60 (or user accepted lower score)
-4. ✅ **MANDATORY: User manually validated and approved the implementation**
-5. ✅ All CRITICAL issues resolved (including user-reported issues)
+4. ✅ **Validation complete (automated OR manual based on user preference)**
+   - If manual validation enabled: User manually validated and approved the implementation
+   - If fully automated: Designer agents validated and approved
+5. ✅ All CRITICAL issues resolved (including user-reported issues if applicable)
 6. ✅ Accessibility compliance verified (WCAG 2.1 AA)
 7. ✅ Responsive design tested (mobile/tablet/desktop)
 8. ✅ Code quality checks passed (typecheck/lint/build)
 9. ✅ Comprehensive report provided
 10. ✅ User acknowledges completion
 
-**CRITICAL**: Item #4 (User manual validation) is MANDATORY. The workflow cannot complete without explicit user approval after manual testing.
+**NOTE**: Item #4 (Validation) is flexible based on user preference selected at the beginning:
+- **Manual validation mode**: Requires explicit user approval after manual testing
+- **Fully automated mode**: Trusts designer agents' validation and completes without manual approval
 
 ## Smart Agent Switching Examples
 

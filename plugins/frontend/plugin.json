@@ -1,7 +1,7 @@
 {
 	"name": "frontend",
-	"version": "2.3.0",
-	"description": "Comprehensive frontend development toolkit with TypeScript, React, Vite, TanStack Router & Query support. Role-based agents for architecture, development, code review, testing, and pixel-perfect UI implementation with design fidelity validation. Includes specialized Designer and UI Developer agents with Tailwind CSS 4 best practices (2025).",
+	"version": "2.4.0",
+	"description": "Comprehensive frontend development toolkit with TypeScript, React, Vite, TanStack Router & Query support. Role-based agents for architecture, development, code review, testing, and pixel-perfect UI implementation with parallel design validation (designer + designer-codex). Includes specialized Designer and UI Developer agents with Tailwind CSS 4 best practices (2025).",
 	"author": {
 		"name": "Jack Rudenko",
 		"email": "i@madappgang.com",
@@ -29,6 +29,7 @@
 		"./agents/reviewer.md",
 		"./agents/codex-reviewer.md",
 		"./agents/designer.md",
+		"./agents/designer-codex.md",
 		"./agents/ui-developer.md",
 		"./agents/ui-developer-codex.md"
 	],

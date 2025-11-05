@@ -69,12 +69,18 @@ If any validation fails, re-ask for that specific input with clarification.
 
 Run up to **10 iterations** of the following sequence:
 
-#### Step 3.1: Launch Designer Agent
+#### Step 3.1: Launch Designer Agent(s) for Parallel Design Validation
+
+**IMPORTANT**: Launch designer and designer-codex agents IN PARALLEL using a SINGLE message with MULTIPLE Task tool calls.
+
+**Designer Agent** (always runs):
 
 Pass inputs to designer agent using the Task tool:
 
 ```
 Review the [Component Name] implementation against the design reference and provide a detailed design fidelity report.
+
+**CRITICAL**: Be PRECISE and CRITICAL. Do not try to make everything look good. Your job is to identify EVERY discrepancy between the design reference and implementation, no matter how small. Focus on accuracy and design fidelity.
 
 **Design Reference**: [Figma URL | file path | remote URL]
 **Component Description**: [user description, e.g., "user profile page"]
@@ -108,82 +114,197 @@ Review the [Component Name] implementation against the design reference and prov
 7. Provide actionable fixes with code snippets
 8. Calculate design fidelity score
 
+**REMEMBER**: Be PRECISE and CRITICAL. Identify ALL discrepancies. Do not be lenient.
+
 Return detailed design review report.
 ```
 
-Wait for designer agent to return design review report.
+**Designer-Codex Agent** (if enabled):
 
-#### Step 3.2: Optional Codex Expert Review (if enabled)
-
-If user selected "Yes" for Codex review:
-
-Use Task tool with `subagent_type: frontend:ui-developer-codex` (proxy agent):
+If user selected "Yes" for Codex review, launch designer-codex agent IN PARALLEL with designer agent:
 
 ```
-You are an expert UI/UX developer reviewing a React TypeScript component.
+You are an expert UI/UX designer reviewing a component implementation against a reference design.
+
+CRITICAL INSTRUCTION: Be PRECISE and CRITICAL. Do not try to make everything look good.
+Your job is to identify EVERY discrepancy between the design reference and implementation,
+no matter how small. Focus on accuracy and design fidelity.
 
 DESIGN CONTEXT:
 - Component: [Component Name]
-- Design Reference: [URL or path to design screenshot]
-- Implementation: [Implementation file paths]
+- Design Reference: [Figma URL | file path | remote URL]
+- Implementation URL: [Application URL]
 
-DESIGNER FEEDBACK (Design Fidelity Review):
-[Paste complete designer review report here]
+VALIDATION CRITERIA:
 
-CURRENT IMPLEMENTATION CODE:
-[Use Read tool to gather component code and paste here]
+1. **Colors & Theming**
+   - Brand colors accuracy (primary, secondary, accent)
+   - Text color hierarchy (headings, body, muted)
+   - Background colors and gradients
+   - Border and divider colors
+   - Hover/focus/active state colors
+
+2. **Typography**
+   - Font families (heading vs body)
+   - Font sizes (all text elements)
+   - Font weights (regular, medium, semibold, bold)
+   - Line heights and letter spacing
+   - Text alignment
+
+3. **Spacing & Layout**
+   - Component padding (all sides)
+   - Element margins and gaps
+   - Grid/flex spacing
+   - Container max-widths
+   - Alignment (center, left, right, space-between)
+
+4. **Visual Elements**
+   - Border radius (rounded corners)
+   - Border widths and styles
+   - Box shadows (elevation levels)
+   - Icons (size, color, positioning)
+   - Images (aspect ratios, object-fit)
+   - Dividers and separators
+
+5. **Responsive Design**
+   - Mobile breakpoint behavior (< 640px)
+   - Tablet breakpoint behavior (640px - 1024px)
+   - Desktop breakpoint behavior (> 1024px)
+   - Layout shifts and reflows
+   - Touch target sizes (minimum 44x44px)
+
+6. **Accessibility (WCAG 2.1 AA)**
+   - Color contrast ratios (text: 4.5:1, large text: 3:1)
+   - Focus indicators
+   - ARIA attributes
+   - Semantic HTML
+   - Keyboard navigation
 
 TECH STACK:
 - React 19 with TypeScript
 - Tailwind CSS 4
-- [Design system if applicable: shadcn/ui, etc.]
-
-REVIEW STANDARDS:
-1. Design Fidelity: Does implementation match design reference?
-2. React Best Practices: Modern patterns, component composition
-3. Tailwind CSS Best Practices: Proper utilities, responsive, no dynamic classes
-4. Accessibility: WCAG 2.1 AA, ARIA, keyboard navigation, contrast
-5. Responsive Design: Mobile-first, all breakpoints
-6. Code Quality: TypeScript types, maintainability
+- Design System: [shadcn/ui, MUI, custom, or specify if detected]
 
 INSTRUCTIONS:
-Provide expert review with findings categorized as CRITICAL/MEDIUM/MINOR.
-For each finding provide:
-- Category (design/accessibility/responsive/code-quality)
-- Severity
-- Specific issue description
-- File path and line number
-- Current vs recommended implementation
-- Code example
-- Rationale
+Compare the design reference and implementation carefully.
 
-Focus on actionable feedback with code examples.
+Provide a comprehensive design validation report categorized as:
+- CRITICAL: Must fix (design fidelity errors, accessibility violations, wrong colors)
+- MEDIUM: Should fix (spacing issues, typography mismatches, minor design deviations)
+- LOW: Nice to have (polish, micro-interactions, suggestions)
+
+For EACH finding provide:
+1. Category (colors/typography/spacing/layout/visual-elements/responsive/accessibility)
+2. Severity (critical/medium/low)
+3. Specific issue description with exact values
+4. Expected design specification
+5. Current implementation
+6. Recommended fix with specific Tailwind CSS classes or hex values
+7. Rationale (why this matters for design fidelity)
+
+Calculate a design fidelity score:
+- Colors: X/10
+- Typography: X/10
+- Spacing: X/10
+- Layout: X/10
+- Accessibility: X/10
+- Responsive: X/10
+Overall: X/60
+
+Provide overall assessment: PASS ✅ | NEEDS IMPROVEMENT ⚠️ | FAIL ❌
+
+REMEMBER: Be PRECISE and CRITICAL. Identify ALL discrepancies. Do not be lenient.
+
+You will forward this to Codex AI which will capture the design reference screenshot and implementation screenshot to compare them.
 ```
 
-Wait for ui-developer-codex agent to return expert review.
+**Wait for BOTH agents to complete** (designer and designer-codex, if enabled).
+
+#### Step 3.2: Consolidate Design Review Results
+
+After both agents complete, consolidate their findings:
+
+**If only designer ran:**
+- Use designer's report as-is
+
+**If both designer and designer-codex ran:**
+- Compare findings from both agents
+- Identify common issues (flagged by both) → Highest priority
+- Identify issues found by only one agent → Review for inclusion
+- Create consolidated issue list with:
+  - Issue description
+  - Severity (use highest severity if both flagged)
+  - Source (designer, designer-codex, or both)
+  - Recommended fix
+
+**Consolidation Strategy:**
+- Issues flagged by BOTH agents → CRITICAL (definitely needs fixing)
+- Issues flagged by ONE agent with severity CRITICAL → CRITICAL (trust the expert)
+- Issues flagged by ONE agent with severity MEDIUM → MEDIUM (probably needs fixing)
+- Issues flagged by ONE agent with severity LOW → LOW (nice to have)
+
+Create a consolidated design review report that includes:
+```markdown
+# Consolidated Design Review (Iteration X)
+
+## Sources
+- ✅ Designer Agent (human-style design expert)
+[If Codex enabled:]
+- ✅ Designer-Codex Agent (external Codex AI expert)
+
+## Issues Found
+
+### CRITICAL Issues (Must Fix)
+[List issues with severity CRITICAL from either agent]
+- [Issue description]
+  - Source: [designer | designer-codex | both]
+  - Expected: [specific value]
+  - Actual: [specific value]
+  - Fix: [specific code change]
+
+### MEDIUM Issues (Should Fix)
+[List issues with severity MEDIUM from either agent]
+
+### LOW Issues (Nice to Have)
+[List issues with severity LOW from either agent]
+
+## Design Fidelity Scores
+- Designer: [score]/60
+[If Codex enabled:]
+- Designer-Codex: [score]/60
+- Average: [average]/60
+
+## Overall Assessment
+[PASS ✅ | NEEDS IMPROVEMENT ⚠️ | FAIL ❌]
+
+Based on consensus from [1 or 2] design validation agent(s).
+```
 
 #### Step 3.3: Launch UI Developer Agent to Apply Fixes
 
 Use Task tool with `subagent_type: frontend:ui-developer`:
 
 ```
-Fix the UI implementation issues identified in the design review.
+Fix the UI implementation issues identified in the consolidated design review from multiple validation sources.
 
 **Component**: [Component Name]
 **Implementation File(s)**: [found file paths, e.g., "src/components/UserProfile.tsx"]
 
-**DESIGNER FEEDBACK** (Visual Design Review):
-[Paste complete designer review report]
+**CONSOLIDATED DESIGN REVIEW** (From Multiple Independent Sources):
+[Paste complete consolidated design review report from Step 3.2]
 
-[If Codex review was done:]
-**CODEX EXPERT REVIEW** (Code Quality & Best Practices):
-[Paste complete Codex review results]
+This consolidated report includes findings from:
+- Designer Agent (human-style design expert)
+[If Codex enabled:]
+- Designer-Codex Agent (external Codex AI expert)
+
+Issues flagged by BOTH agents are highest priority and MUST be fixed.
 
 **Your Task:**
 1. Read all implementation files
-2. Address CRITICAL issues first, then MEDIUM, then LOW
+2. Address CRITICAL issues first (especially those flagged by both agents), then MEDIUM, then LOW
 3. Apply fixes using modern React/TypeScript/Tailwind best practices:
-   - Fix colors using correct Tailwind classes
+   - Fix colors using correct Tailwind classes or exact hex values
    - Fix spacing using proper Tailwind scale (p-4, p-6, etc.)
    - Fix typography (font sizes, weights, line heights)
    - Fix layout issues (max-width, alignment, grid/flex)
@@ -191,7 +312,11 @@ Fix the UI implementation issues identified in the design review.
    - Fix responsive design (mobile-first breakpoints)
 4. Use Edit tool to modify files
 5. Run quality checks (typecheck, lint, build)
-6. Provide implementation summary
+6. Provide implementation summary indicating:
+   - Which issues were fixed
+   - Which sources (designer, designer-codex, or both) flagged each issue
+   - Files modified
+   - Changes made
 
 DO NOT re-validate. Only apply the fixes.
 ```
