@@ -6,8 +6,8 @@
 		"company": "MadAppGang"
 	},
 	"metadata": {
-		"description": "MAG team's curated collection of Claude Code plugins for modern frontend development",
-		"version": "2.4.1",
+		"description": "MAG team's curated collection of Claude Code plugins for modern full-stack development",
+		"version": "2.5.0",
 		"pluginRoot": "./plugins"
 	},
 	"plugins": [
@@ -55,6 +55,31 @@
 				"patterns",
 				"debugging",
 				"code-navigation"
+			],
+			"strict": true
+		},
+		{
+			"name": "bun",
+			"source": "./plugins/bun",
+			"description": "Production-ready TypeScript backend development with Bun runtime. Includes specialized agents for backend development, API design, and DevOps. Features comprehensive best practices, tools integration (Biome, Prisma, Hono, Docker), testing workflows, and AWS ECS deployment guidance (2025).",
+			"version": "1.0.0",
+			"author": {
+				"name": "Jack Rudenko",
+				"email": "i@madappgang.com",
+				"company": "MadAppGang"
+			},
+			"category": "development",
+			"keywords": [
+				"bun",
+				"typescript",
+				"backend",
+				"hono",
+				"prisma",
+				"biome",
+				"docker",
+				"aws-ecs",
+				"api",
+				"testing"
 			],
 			"strict": true
 		}
