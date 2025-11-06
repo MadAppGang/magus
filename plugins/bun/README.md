@@ -451,7 +451,7 @@ MIT License - See LICENSE file in repository
 ---
 
 **Last Updated:** November 2025
-**Plugin Version:** 1.1.0
+**Plugin Version:** 1.2.0
 **Bun Version:** 1.x
 **Tool Versions:** TypeScript 5.7, Prisma 6.2, Hono 4.6, Biome 2.3
 
