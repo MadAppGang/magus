@@ -90,7 +90,8 @@ Then add to your project's `.claude/settings.json`:
 {
   "enabledPlugins": {
     "frontend@mag-claude-plugins": true,
-    "code-analysis@mag-claude-plugins": true
+    "code-analysis@mag-claude-plugins": true,
+    "bun@mag-claude-plugins": true
   }
 }
 ```
@@ -154,6 +155,34 @@ Deep code investigation and analysis toolkit for understanding complex codebases
 - **Bug investigation** - Tracks down issues across the codebase
 
 **Perfect for:** Code exploration, bug investigation, understanding legacy code, architectural analysis, large codebase navigation
+
+---
+
+#### ⚡ Bun Backend Development
+
+**Version:** 1.2.0 | **Category:** Development | **Model:** Sonnet
+
+Production-ready TypeScript backend development with Bun runtime, featuring comprehensive camelCase naming conventions, API documentation synchronization, and clean architecture patterns.
+
+**Highlights:**
+- **3 Specialized Agents** - Backend developer, API architect, Apidog synchronization specialist
+- **3 Slash Commands** - `/implement-api` (full-cycle), `/setup-project` (initialize), `/apidog` (sync API docs)
+- **1 Comprehensive Skill** - Best practices (2025) with camelCase conventions
+- **MCP Servers** - Apidog integration
+- **camelCase Conventions** - End-to-end naming consistency (database → API → frontend)
+- **Clean Architecture** - Layered design (routes → controllers → services → repositories)
+- **Apidog Integration** - Automatic API documentation synchronization with schema reuse
+- **Security First** - Authentication, authorization, validation, error handling built-in
+
+**The Stack:**
+- **Bun 1.x** - Native TypeScript execution, lightning-fast performance
+- **Hono 4.6** - Ultra-fast web framework, TypeScript-first
+- **Prisma 6.2** - Type-safe ORM with camelCase schema support
+- **Zod** - Runtime validation
+- **Biome 2.3** - Formatting + linting
+- **PostgreSQL/MongoDB** - Database flexibility
+
+**Perfect for:** TypeScript backend APIs, Bun projects, REST API development, microservices, API-first architectures, teams requiring naming consistency, Prisma ORM users, production-ready backends
 
 ---
 
@@ -359,9 +388,9 @@ For architecture and implementation details, see the **[ai-docs](./ai-docs/)** d
 
 ### Current Focus
 
-- ✅ Frontend Development plugin (v2.6.1 - complete with CSS-aware validation & CVA best practices)
+- ✅ Frontend Development plugin (v2.7.0 - complete with CSS-aware validation & CVA best practices)
 - ✅ Code Analysis plugin (v1.1.0 - complete with semantic search)
-- 🚧 Backend Development plugin (Bun/Node.js - in development)
+- ✅ Backend Development plugin (v1.2.0 - complete with Bun, camelCase conventions, Apidog integration)
 - 🚧 API Development plugin (planned)
 
 ### Future Plugins

@@ -11,9 +11,17 @@
 
 ## 📦 Complete Plugin Inventory
 
-### Frontend Development Plugin v2.6.1
+**3 Production Plugins:**
+- Frontend Development (v2.7.0) - 13 agents, 6 commands, 3 skills
+- Code Analysis (v1.1.0) - 1 agent, 1 command, 2 skills
+- Bun Backend Development (v1.2.0) - 3 agents, 3 commands, 1 skill
+
+### Frontend Development Plugin v2.7.0
 
 **Total Artifacts:** 22 files
+
+**What's New in v2.7.0:**
+- Chrome DevTools MCP debugging methodology for responsive layout issues
 
 **What's New in v2.6.1:**
 - CVA (class-variance-authority) best practices for shadcn/ui
@@ -88,7 +96,63 @@
 | deep-analysis | Automatic code investigation | skills/deep-analysis/ |
 | semantic-code-search | Expert guidance on claude-context MCP usage | skills/semantic-code-search/ |
 
+---
+
+### Bun Backend Development Plugin v1.2.0
+
+**Total Artifacts:** 10 files
+
+**What's New in v1.2.0:**
+- Comprehensive camelCase naming conventions for API and database
+- Database naming standards documentation
+- Apidog integration for API documentation synchronization
+
+**What's New in v1.1.0:**
+- Apidog agent for API documentation management
+- /apidog command for quick API spec synchronization
+- Apidog MCP server configuration
+
+#### 3 Specialized Agents
+
+| Agent | Purpose | File |
+|-------|---------|------|
+| backend-developer | Expert TypeScript backend implementation with Bun | agents/backend-developer.md |
+| api-architect | Backend API architecture planning | agents/api-architect.md |
+| apidog | API documentation synchronization specialist | agents/apidog.md |
+
+#### 3 Slash Commands
+
+| Command | Purpose | File |
+|---------|---------|------|
+| /implement-api | Full-cycle API implementation with orchestration | commands/implement-api.md |
+| /setup-project | Initialize new Bun + TypeScript backend project | commands/setup-project.md |
+| /apidog | Synchronize API specifications with Apidog | commands/apidog.md |
+
+#### 1 Skill
+
+| Skill | Purpose | Directory |
+|-------|---------|-----------|
+| best-practices | Comprehensive TypeScript backend best practices (2025) | skills/best-practices.md |
+
+**Best Practices Includes:**
+- ✅ camelCase naming conventions (API + database)
+- ✅ Clean architecture patterns (routes → controllers → services → repositories)
+- ✅ Security best practices (JWT, bcrypt, validation)
+- ✅ Prisma ORM patterns with camelCase schemas
+- ✅ Testing strategies with Bun
+- ✅ Docker & AWS ECS deployment
+
 #### MCP Servers
+
+| Server | Configuration | Purpose |
+|--------|---------------|---------|
+| Apidog | Dynamic project ID via env vars | API documentation & spec synchronization |
+
+**Configuration File:** `mcp-servers/mcp-config.json`
+
+---
+
+## 🎯 MCP Servers Configuration
 
 | Server | Configuration | Purpose |
 |--------|---------------|---------|

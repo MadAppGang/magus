@@ -27,6 +27,15 @@ A complete Claude Code plugin marketplace with enterprise-level architecture:
   - 2 Skills (deep-analysis + semantic-code-search)
   - Pattern discovery and bug investigation
   - Semantic code search with claude-context MCP
+- **Bun Backend Plugin** (v1.2.0) - Production-ready TypeScript backend with Bun
+  - 3 Specialized Agents (backend-developer + api-architect + apidog)
+  - 3 Slash Commands (/implement-api + /setup-project + /apidog)
+  - 1 Skill (best-practices with camelCase conventions)
+  - MCP Servers (Apidog)
+  - **Comprehensive camelCase naming conventions** for API and database
+  - Apidog integration for API documentation synchronization
+  - Clean architecture (routes → controllers → services → repositories)
+  - Full-stack TypeScript consistency
 
 ## Key Architecture Decisions
 
@@ -82,11 +91,18 @@ claude-code/
     │   ├── commands/                 (6 commands)
     │   ├── skills/                   (3 skills)
     │   └── mcp-servers/
-    └── code-analysis/                # Code analysis plugin
+    ├── code-analysis/                # Code analysis plugin
+    │   ├── plugin.json
+    │   ├── agents/                   (1 agent)
+    │   ├── commands/                 (1 command)
+    │   └── skills/                   (2 skills)
+    └── bun/                          # Backend plugin
         ├── plugin.json
-        ├── agents/                   (1 agent)
-        ├── commands/                 (1 command)
-        └── skills/                   (2 skills)
+        ├── README.md
+        ├── agents/                   (3 agents)
+        ├── commands/                 (3 commands)
+        ├── skills/                   (1 skill)
+        └── mcp-servers/
 ```
 
 ## Important Files
@@ -147,6 +163,26 @@ claude-code/
 **Skills:**
 - `deep-analysis` - Automatic code investigation and analysis
 - `semantic-code-search` - Expert guidance on claude-context MCP usage
+
+### Bun Backend Plugin
+
+**Agents:**
+- `backend-developer` - TypeScript backend implementation with Bun (Sonnet)
+- `api-architect` - Backend API architecture planning (Sonnet)
+- `apidog` - API documentation synchronization specialist (Sonnet)
+
+**Commands:**
+- `/implement-api` - Full-cycle API implementation with multi-agent orchestration
+- `/setup-project` - Initialize new Bun + TypeScript backend project
+- `/apidog` - Synchronize API specifications with Apidog
+
+**Skills:**
+- `best-practices` - Comprehensive TypeScript backend best practices with Bun (2025)
+  - camelCase naming conventions for API and database
+  - Clean architecture patterns
+  - Security best practices
+  - Prisma ORM patterns
+  - Testing strategies
 
 ## MCP Error Handling
 
