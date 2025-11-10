@@ -1,0 +1,107 @@
+bun test v1.3.2 (b131639c)
+
+tests/comprehensive-model-test.ts:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🧪 Testing: Grok Code Fast (x-ai/grok-code-fast-1)
+📍 Expected Provider: xAI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💬 Response: "xAI created me."
+📊 Tokens: 217 in, 129 out
+✅ PASSED: Does NOT mention Anthropic or Claude
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🧪 Testing: GPT-5 Codex (openai/gpt-5-codex)
+📍 Expected Provider: OpenAI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💬 Response: "OpenAI created me."
+📊 Tokens: 19 in, 11 out
+✅ PASSED: Does NOT mention Anthropic or Claude
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🧪 Testing: MiniMax M2 (minimax/minimax-m2)
+📍 Expected Provider: MiniMax
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💬 Response: "
+
+OpenAI."
+📊 Tokens: 35 in, 174 out
+✅ PASSED: Does NOT mention Anthropic or Claude
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🧪 Testing: GLM-4.6 (z-ai/glm-4.6)
+📍 Expected Provider: Zhipu AI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💬 Response: ""
+📊 Tokens: 18 in, 300 out
+106 |         // Verify it's an Anthropic-format response (proxy working)
+107 |         expect(response.type).toBe("message");
+108 |         expect(response.role).toBe("assistant");
+109 | 
+110 |         // Verify we got a response
+111 |         expect(responseText).toBeTruthy();
+                                   ^
+error: expect(received).toBeTruthy()
+
+Received: ""
+
+      at <anonymous> (/Users/jack/mag/claude-code/mcp/claudish/tests/comprehensive-model-test.ts:111:30)
+(fail) Comprehensive Model Identity Tests > Prove NOT Anthropic > z-ai/glm-4.6 should NOT identify as Anthropic [7414.40ms]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🧪 Testing: Qwen3 VL 235B (qwen/qwen3-vl-235b-a22b-instruct)
+📍 Expected Provider: Alibaba
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💬 Response: "Alibaba Group's Tongyi Lab created me."
+📊 Tokens: 22 in, 11 out
+✅ PASSED: Does NOT mention Anthropic or Claude
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+📊 PROVIDER COMPARISON:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+xAI        → "xAI made me."
+OpenAI     → "OpenAI made me."
+MiniMax    → "MiniMax built me."
+Zhipu AI   → "
+Google trained me."
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ Unique responses: 4/4
+
+🔍 Testing xAI attribution...
+   Response: "xAI created me."
+   ✅ Correctly identifies as xAI
+   ✅ Anthropic mentioned: false
+
+🔍 Testing OpenAI attribution...
+   Response: "I was created by OpenAI, an artificial intelligence research organization."
+   ✅ Correctly identifies as OpenAI
+   ✅ Anthropic mentioned: false
+
+🔍 Testing MiniMax attribution...
+(fail) Comprehensive Model Identity Tests > Detailed Provider Attribution > minimax/minimax-m2 should identify as MiniMax [30001.50ms]
+  ^ this test timed out after 30000ms.
+
+🔍 Testing Alibaba attribution...
+   Response: "I was created by Alibaba Group's Tongyi Lab."
+   ✅ Correctly identifies as Alibaba
+   ✅ Anthropic mentioned: false
+
+🔬 BASELINE TEST: Testing actual Anthropic model...
+   Response: "I'm Claude, made by Anthropic."
+   ✅ Mentions Anthropic: true
+   ✅ BASELINE CONFIRMED: Anthropic model identifies as Anthropic
+   This proves other models NOT mentioning Anthropic are different!
+
+
+ 9 pass
+ 2 fail
+ 29 expect() calls
+Ran 11 tests across 1 file. [74.30s]

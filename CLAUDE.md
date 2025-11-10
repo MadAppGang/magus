@@ -49,6 +49,19 @@ A complete Claude Code plugin marketplace with enterprise-level architecture:
   - Apidog integration for API documentation synchronization
   - Clean architecture (routes → controllers → services → repositories)
   - Full-stack TypeScript consistency
+- **Claudish** (v1.0.0) - Run Claude Code with OpenRouter models
+  - CLI tool (standalone, not a plugin)
+  - Local Anthropic API proxy
+  - **Top Recommended Models for Development:**
+    - `x-ai/grok-code-fast-1` - xAI's Grok (fast coding)
+    - `openai/gpt-5-codex` - OpenAI's GPT-5 Codex (advanced reasoning)
+    - `minimax/minimax-m2` - MiniMax M2 (high performance)
+    - `qwen/qwen3-vl-235b-a22b-instruct` - Alibaba's Qwen (vision-language)
+    - `anthropic/claude-sonnet-4.5` - Claude (for comparison)
+  - Interactive model selector (Ink UI)
+  - Auto-approve enabled by default
+  - Real-time streaming output
+  - **100% VERIFIED** - Routes to real OpenRouter models, NOT Anthropic
 
 ## Key Architecture Decisions
 

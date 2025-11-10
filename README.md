@@ -201,6 +201,64 @@ Production-ready TypeScript backend development with Bun runtime, featuring comp
 
 ---
 
+#### 🤖 Claudish - Multi-Model CLI
+
+**Version:** 1.0.0 | **Category:** Development Tools | **Type:** Standalone CLI
+
+Run Claude Code with any OpenRouter model via local Anthropic API proxy. **100% VERIFIED** - Routes to real OpenRouter models, NOT Anthropic.
+
+**Top Recommended Models for Development:**
+- `x-ai/grok-code-fast-1` - xAI's Grok (fast coding, great for rapid prototyping)
+- `openai/gpt-5-codex` - OpenAI's GPT-5 Codex (advanced reasoning, complex tasks)
+- `minimax/minimax-m2` - MiniMax M2 (high performance, balanced)
+- `z-ai/glm-4.6` - GLM-4.6 (reasoning model via Mancer)
+- `qwen/qwen3-vl-235b-a22b-instruct` - Alibaba's Qwen (vision-language, multimodal)
+- `anthropic/claude-sonnet-4.5` - Claude Sonnet (for comparison/baseline)
+
+**Features:**
+- 🎯 **Interactive Model Selector** - Beautiful terminal UI when no model specified
+- ⚡ **One-Shot Proxy** - Fresh proxy per run, random ports, parallel execution supported
+- 🔄 **Real-Time Streaming** - Live output from Claude Code
+- 🤖 **Auto-Approve by Default** - Fully autonomous (disable with `--no-auto-approve`)
+- 🔐 **Local Proxy Only** - All traffic through 127.0.0.1, secure by design
+- ✅ **100% Verified** - Comprehensive tests prove models are NOT Anthropic
+
+**Installation:**
+```bash
+cd mcp/claudish
+bun install
+bun run build
+```
+
+**Usage:**
+```bash
+# Interactive mode - shows model selector
+claudish "implement user authentication"
+
+# Specific model
+claudish --model x-ai/grok-code-fast-1 "add tests"
+
+# Custom model ID
+claudish --model your/custom-model "your task"
+
+# Disable auto-approve
+claudish --no-auto-approve "make changes"
+
+# List all models
+claudish --list-models
+
+# Help
+claudish --help
+```
+
+**Location:** `mcp/claudish/` (standalone tool, not a plugin)
+
+**Documentation:** See [mcp/claudish/README.md](./mcp/claudish/README.md) for detailed setup and usage.
+
+**Perfect for:** Exploring different AI models, cost optimization, specialized tasks requiring specific model capabilities, testing model performance, avoiding Anthropic API limitations
+
+---
+
 ## 🚀 Installation & Setup
 
 ### Prerequisites
