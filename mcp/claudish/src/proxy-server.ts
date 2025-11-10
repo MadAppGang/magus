@@ -241,7 +241,7 @@ export async function createProxyServer(
         model,
         messages,
         temperature: claudeRequest.temperature !== undefined ? claudeRequest.temperature : 1,
-        stream: true, // ALWAYS use streaming - it's more reliable than non-streaming
+        stream: claudeRequest.stream !== false, // Respect stream parameter (default true)
       };
 
       // Add max_tokens

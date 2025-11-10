@@ -267,6 +267,7 @@ Do not include any other text or explanation.`;
         ],
         max_tokens: 50,
         temperature: 0.5,
+        stream: false,
       };
 
       const response = await fetch(`${proxy.url}/v1/messages`, {
