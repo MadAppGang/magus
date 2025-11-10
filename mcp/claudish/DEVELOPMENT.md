@@ -84,6 +84,18 @@ bun run dev -- --port 3000 "test"
 
 # Test specific model
 bun run dev -- --model z-ai/glm-4.6 "test"
+
+# Test quiet mode (default in single-shot)
+bun run dev -- "what is 2+2?"
+
+# Test verbose mode
+bun run dev -- --verbose "what is 2+2?"
+
+# Test JSON output
+bun run dev -- --json "list 3 colors"
+
+# Test JSON with jq
+bun run dev -- --json "what is 5+7?" | jq '.result'
 ```
 
 ### 4. Debug Built Version
@@ -165,6 +177,47 @@ bun run build
 bun run install
 ```
 
+## 🎨 Output Modes Testing
+
+Claudish supports three output modes. Test them all during development:
+
+### Quiet Mode (Default in Single-Shot)
+```bash
+# Clean output - no [claudish] logs
+bun run dev -- "what is 2+2?"
+# Output: 2 + 2 equals 4.
+
+# Perfect for piping
+bun run dev -- "list 3 colors" | grep -i red
+```
+
+### Verbose Mode
+```bash
+# Show all [claudish] logs
+bun run dev -- --verbose "what is 2+2?"
+# Output:
+# [claudish] Starting Claude Code with...
+# [claudish] Proxy URL: ...
+# 2 + 2 equals 4.
+# [claudish] Done
+
+# Interactive mode is verbose by default
+bun run dev:interactive
+```
+
+### JSON Output Mode
+```bash
+# Structured JSON output
+bun run dev -- --json "list 3 colors"
+# Output: {"type":"result","result":"...","total_cost_usd":0.068,...}
+
+# Extract with jq
+bun run dev -- --json "what is 5+7?" | jq -r '.result'
+
+# Test cost tracking
+bun run dev -- --json "test" | jq '{cost: .total_cost_usd, tokens: .usage.input_tokens}'
+```
+
 ## 💡 Tips
 
 1. **No Build Required for Dev**: `bun run dev:*` scripts run TypeScript directly
@@ -172,6 +225,8 @@ bun run install
 3. **Use Specific Model Scripts**: `dev:grok`, `dev:gpt5` etc. for quick model testing
 4. **Watch Mode**: `bun run test:watch` for TDD workflow
 5. **Clean Start**: `bun run reset` if things get weird
+6. **Test All Modes**: Always test quiet, verbose, and JSON output modes
+7. **Use jq for JSON**: Install jq for easy JSON testing: `brew install jq`
 
 ## 📚 Script Categories
 

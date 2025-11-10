@@ -1,5 +1,55 @@
 # Changelog
 
+## [1.0.9] - 2024-11-10
+
+### Added
+- ✅ **Headless Mode (Print Mode)** - Automatic `-p` flag in single-shot mode
+  - Ensures claudish exits immediately after task completion
+  - No UI hanging, perfect for automation
+  - Works seamlessly in background scripts and CI/CD
+
+- ✅ **Quiet Mode (Default in Single-Shot)** - Clean output without log pollution
+  - Single-shot mode: quiet by default (no `[claudish]` logs)
+  - Interactive mode: verbose by default (shows all logs)
+  - Override with `--quiet` or `--verbose` flags
+  - Perfect for piping output to other tools
+  - Redirect to files without log contamination
+
+- ✅ **JSON Output Mode** - Structured data for tool integration
+  - New `--json` flag enables Claude Code's JSON output
+  - Always runs in quiet mode (no log pollution)
+  - Returns structured data: result, cost, tokens, duration, metadata
+  - Perfect for automation, scripting, and cost tracking
+  - Easy parsing with `jq` or other JSON tools
+
+### Changed
+- Build size: ~46 KB (minified)
+- Enhanced CLI with new flags: `--quiet`, `--verbose`, `--json`
+- Updated help documentation with output mode examples
+
+### Examples
+```bash
+# Quiet mode (default) - clean output
+claudish "what is 3+4?"
+
+# Verbose mode - show logs
+claudish --verbose "analyze code"
+
+# JSON output - structured data
+claudish --json "list 3 colors" | jq '.result'
+
+# Track costs
+claudish --json "task" | jq '{result, cost: .total_cost_usd}'
+```
+
+### Use Cases
+- CI/CD pipelines
+- Automated scripts
+- Tool integration
+- Cost tracking
+- Clean output for pipes
+- Background processing
+
 ## [1.0.8] - 2024-11-10
 
 ### Fixed

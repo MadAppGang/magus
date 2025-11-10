@@ -6,7 +6,9 @@
 
 ## Features
 
-- ✅ **One-shot execution** - Fresh proxy for each run
+- ✅ **Headless mode** - Automatic print mode for non-interactive execution
+- ✅ **Quiet mode** - Clean output by default (no log pollution)
+- ✅ **JSON output** - Structured data for tool integration
 - ✅ **Real-time streaming** - See Claude Code output as it happens
 - ✅ **Parallel runs** - Each instance gets isolated proxy
 - ✅ **Autonomous mode** - Bypass all prompts with flags
@@ -72,9 +74,14 @@ claudish [OPTIONS] <claude-args...>
 
 | Flag | Description | Default |
 |------|-------------|---------|
+| `-i, --interactive` | Run in interactive mode (persistent session) | Single-shot mode |
 | `-m, --model <model>` | OpenRouter model to use | `x-ai/grok-code-fast-1` |
 | `-p, --port <port>` | Proxy server port | Random (3000-9000) |
-| `--no-auto-approve` | Disable auto-approve (require prompts) | Auto-approve is **enabled** by default |
+| `-q, --quiet` | Suppress [claudish] log messages | **Quiet in single-shot** |
+| `-v, --verbose` | Show [claudish] log messages | Verbose in interactive |
+| `--json` | Output in JSON format (implies --quiet) | `false` |
+| `-d, --debug` | Enable debug logging to file | `false` |
+| `--no-auto-approve` | Disable auto-approve (require prompts) | Auto-approve **enabled** |
 | `--dangerous` | Pass `--dangerouslyDisableSandbox` | `false` |
 | `--list-models` | List available models | - |
 | `-h, --help` | Show help message | - |
@@ -240,6 +247,80 @@ claudish "analyze code" --cwd /path/to/project
 # Multiple flags
 claudish --model openai/gpt-5-codex "task" --verbose --debug
 ```
+
+### Output Modes
+
+Claudish supports three output modes for different use cases:
+
+#### 1. Quiet Mode (Default in Single-Shot)
+
+Clean output with no `[claudish]` logs - perfect for piping to other tools:
+
+```bash
+# Quiet by default in single-shot
+claudish "what is 2+2?"
+# Output: 2 + 2 equals 4.
+
+# Use in pipelines
+claudish "list 3 colors" | grep -i blue
+
+# Redirect to file
+claudish "analyze code" > analysis.txt
+```
+
+#### 2. Verbose Mode
+
+Show all `[claudish]` log messages for debugging:
+
+```bash
+# Verbose mode
+claudish --verbose "what is 2+2?"
+# Output:
+# [claudish] Starting Claude Code with openai/gpt-4o
+# [claudish] Proxy URL: http://127.0.0.1:8797
+# [claudish] Status line: dir • openai/gpt-4o • $cost • ctx%
+# ...
+# 2 + 2 equals 4.
+# [claudish] Shutting down proxy server...
+# [claudish] Done
+
+# Interactive mode is verbose by default
+claudish --interactive
+```
+
+#### 3. JSON Output Mode
+
+Structured output perfect for automation and tool integration:
+
+```bash
+# JSON output (always quiet)
+claudish --json "what is 2+2?"
+# Output: {"type":"result","result":"2 + 2 equals 4.","total_cost_usd":0.068,"usage":{...}}
+
+# Extract just the result with jq
+claudish --json "list 3 colors" | jq -r '.result'
+
+# Get cost and token usage
+claudish --json "analyze code" | jq '{result, cost: .total_cost_usd, tokens: .usage.input_tokens}'
+
+# Use in scripts
+RESULT=$(claudish --json "check if tests pass" | jq -r '.result')
+echo "AI says: $RESULT"
+
+# Track costs across multiple runs
+for task in task1 task2 task3; do
+  claudish --json "$task" | jq -r '"\(.total_cost_usd)"'
+done | awk '{sum+=$1} END {print "Total: $"sum}'
+```
+
+**JSON Output Fields:**
+- `result` - The AI's response text
+- `total_cost_usd` - Total cost in USD
+- `usage.input_tokens` - Input tokens used
+- `usage.output_tokens` - Output tokens used
+- `duration_ms` - Total duration in milliseconds
+- `num_turns` - Number of conversation turns
+- `modelUsage` - Per-model usage breakdown
 
 ## How It Works
 
