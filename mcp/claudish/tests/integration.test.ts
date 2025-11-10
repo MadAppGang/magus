@@ -25,7 +25,7 @@ const TEST_MODELS: OpenRouterModel[] = [
   "x-ai/grok-code-fast-1",
   "openai/gpt-5-codex",
   "minimax/minimax-m2",
-  "zhipu-ai/glm-4.6",
+  "z-ai/glm-4.6", // Correct OpenRouter ID (not zhipu-ai)
   "qwen/qwen3-vl-235b-a22b-instruct",
 ];
 
