@@ -1,15 +1,22 @@
 {
-  "name": "@madappgang/claudish",
-  "version": "1.0.10",
+  "name": "claudish",
+  "version": "1.1.2",
   "description": "CLI tool to run Claude Code with any OpenRouter model (Grok, GPT-5, MiniMax, etc.) via local Anthropic API-compatible proxy",
   "type": "module",
   "main": "./dist/index.js",
-  "bin": "./dist/index.js",
+  "bin": {
+    "claudish": "dist/index.js"
+  },
   "scripts": {
     "dev": "bun run src/index.ts",
-    "dev:grok": "bun run src/index.ts --interactive --debug --log-level info --model x-ai/grok-code-fast-1",
-    "dev:info": "bun run src/index.ts --interactive --debug --log-level info --monitor",
+    "dev:grok": "bun run src/index.ts --interactive --model x-ai/grok-code-fast-1",
+    "dev:grok:debug": "bun run src/index.ts --interactive --debug --log-level info --model x-ai/grok-code-fast-1",
+    "dev:info": "bun run src/index.ts --interactive --monitor",
     "build": "bun build src/index.ts --outdir dist --target bun --minify --external react --external ink --external react-devtools-core && chmod +x dist/index.js",
+    "link": "npm link",
+    "unlink": "npm unlink -g claudish",
+    "install-global": "bun run build && npm link",
+    "kill-all": "pkill -f 'bun.*claudish' || pkill -f 'claude.*claudish-settings' || echo 'No claudish processes found'",
     "test": "bun test ./tests/comprehensive-model-test.ts",
     "typecheck": "tsc --noEmit",
     "lint": "biome check .",
@@ -27,11 +34,20 @@
     "@types/react": "^19.2.2",
     "typescript": "^5.7.0"
   },
-  "files": ["dist/"],
+  "files": [
+    "dist/"
+  ],
   "engines": {
     "node": ">=18.0.0"
   },
-  "keywords": ["claude", "claude-code", "openrouter", "proxy", "cli", "ai"],
+  "keywords": [
+    "claude",
+    "claude-code",
+    "openrouter",
+    "proxy",
+    "cli",
+    "ai"
+  ],
   "author": "Jack Rudenko <i@madappgang.com>",
   "license": "MIT"
 }

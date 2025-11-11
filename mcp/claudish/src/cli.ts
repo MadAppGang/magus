@@ -96,6 +96,9 @@ export function parseArgs(args: string[]): ClaudishConfig {
     } else if (arg === "--reset-costs") {
       // Reset accumulated cost statistics
       config.resetCosts = true;
+    } else if (arg === "--version") {
+      printVersion();
+      process.exit(0);
     } else if (arg === "--help" || arg === "-h") {
       printHelp();
       process.exit(0);
@@ -153,13 +156,9 @@ export function parseArgs(args: string[]): ClaudishConfig {
     }
   }
 
-  // Validate we have some arguments for claude (unless in interactive mode)
-  if (!config.interactive && (!config.claudeArgs || config.claudeArgs.length === 0)) {
-    console.error("Error: No arguments provided for Claude Code");
-    console.error("Usage: claudish [options] <claude-args...>");
-    console.error("Or use: claudish --interactive");
-    console.error("Try: claudish --help");
-    process.exit(1);
+  // If no prompt provided and not explicitly interactive, default to interactive mode
+  if (!config.claudeArgs || config.claudeArgs.length === 0) {
+    config.interactive = true;
   }
 
   // Set default for quiet mode if not explicitly set
@@ -177,6 +176,13 @@ export function parseArgs(args: string[]): ClaudishConfig {
 }
 
 /**
+ * Print version information
+ */
+function printVersion(): void {
+  console.log("claudish version 1.1.2");
+}
+
+/**
  * Print help message
  */
 function printHelp(): void {
@@ -184,12 +190,12 @@ function printHelp(): void {
 claudish - Run Claude Code with OpenRouter models
 
 USAGE:
-  claudish [OPTIONS] <claude-args...>
-  claudish --interactive [OPTIONS]
+  claudish                                # Interactive mode (default, shows model selector)
+  claudish [OPTIONS] <claude-args...>     # Single-shot mode (requires --model)
 
 OPTIONS:
-  -i, --interactive        Run Claude Code in interactive mode (persistent session)
-  -m, --model <model>      OpenRouter model to use (shows interactive selector if not provided)
+  -i, --interactive        Run in interactive mode (default when no prompt given)
+  -m, --model <model>      OpenRouter model to use (required for single-shot mode)
   -p, --port <port>        Proxy server port (default: random)
   -d, --debug              Enable debug logging to file (logs/claudish_*.log)
   --log-level <level>      Log verbosity: debug (full), info (truncated), minimal (labels only)
@@ -204,16 +210,17 @@ OPTIONS:
   --audit-costs            Show cost analysis report
   --reset-costs            Reset accumulated cost statistics
   --list-models            List available OpenRouter models
+  --version                Show version information
   -h, --help               Show this help message
 
 MODES:
-  • Single-shot mode (default): Runs one task in headless mode and exits (uses -p flag)
-  • Interactive mode (--interactive): Starts persistent session, you interact with Claude directly
+  • Interactive mode (default): Shows model selector, starts persistent session
+  • Single-shot mode: Runs one task in headless mode and exits (requires --model)
 
 NOTES:
   • Permission prompts are SKIPPED by default (--dangerously-skip-permissions)
   • Use --no-auto-approve to enable permission prompts
-  • If no model is specified, an interactive selector will appear
+  • Model selector appears ONLY in interactive mode when --model not specified
   • Use --dangerous to disable sandbox (use with extreme caution!)
 
 ENVIRONMENT VARIABLES:
@@ -223,13 +230,16 @@ ENVIRONMENT VARIABLES:
   CLAUDISH_ACTIVE_MODEL_NAME      Auto-set by claudish (read-only) - shows active model in status line
 
 EXAMPLES:
-  # Interactive mode - persistent session (recommended for development)
+  # Interactive mode (default) - shows model selector
+  claudish
   claudish --interactive
-  claudish -i --model x-ai/grok-code-fast-1
 
-  # Single-shot mode - one task and exit
-  claudish "implement user authentication"
-  claudish --model openai/gpt-5-codex "add tests for login"
+  # Interactive mode with pre-selected model
+  claudish --model x-ai/grok-code-fast-1
+
+  # Single-shot mode - one task and exit (requires --model or CLAUDISH_MODEL env var)
+  claudish --model openai/gpt-5-codex "implement user authentication"
+  claudish --model x-ai/grok-code-fast-1 "add tests for login"
 
   # Use stdin for large prompts (e.g., git diffs, code review)
   echo "Review this code..." | claudish --stdin --model x-ai/grok-code-fast-1

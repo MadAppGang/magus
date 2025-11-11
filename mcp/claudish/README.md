@@ -28,6 +28,14 @@
 
 ### Install Claudish
 
+**Option 1: Install from npm (recommended)**
+
+```bash
+npm install -g claudish
+```
+
+**Option 2: Install from source**
+
 ```bash
 cd mcp/claudish
 bun install
@@ -35,7 +43,7 @@ bun run build
 bun link
 ```
 
-This makes `claudish` globally available in your terminal.
+Both methods make `claudish` globally available in your terminal.
 
 ## Quick Start
 
@@ -440,7 +448,7 @@ claudish --model minimax/minimax-m2 "task C"
 
 ## Extended Thinking Support
 
-**NEW in v1.1.0+**: Claudish now fully supports models with extended thinking/reasoning capabilities (Grok, o1, etc.)
+**NEW in v1.1.0**: Claudish now fully supports models with extended thinking/reasoning capabilities (Grok, o1, etc.) with complete Anthropic Messages API protocol compliance.
 
 ### What is Extended Thinking?
 
@@ -471,18 +479,23 @@ Claudish implements the Anthropic Messages API's `interleaved-thinking` protocol
 
 ### Technical Details
 
-**Streaming Protocol:**
+**Streaming Protocol (V2 - Protocol Compliant):**
 ```
 1. message_start
-2. ping
-3. content_block_start (thinking, index=0)  ← Reasoning
-4. thinking_delta events × N
-5. content_block_stop (index=0)
-6. content_block_start (text, index=1)      ← Response
-7. text_delta events × M
-8. content_block_stop (index=1)
-9. message_delta + message_stop
+2. content_block_start (text, index=0)      ← IMMEDIATE! (required)
+3. ping
+4. [If reasoning arrives]
+   - content_block_stop (index=0)           ← Close initial empty block
+   - content_block_start (thinking, index=1) ← Reasoning
+   - thinking_delta events × N
+   - content_block_stop (index=1)
+5. content_block_start (text, index=2)      ← Response
+6. text_delta events × M
+7. content_block_stop (index=2)
+8. message_delta + message_stop
 ```
+
+**Critical:** `content_block_start` must be sent immediately after `message_start`, before `ping`. This is required by the Anthropic Messages API protocol for proper UI initialization.
 
 **Key Features:**
 - ✅ Separate thinking and text blocks (proper indices)
@@ -493,23 +506,27 @@ Claudish implements the Anthropic Messages API's `interleaved-thinking` protocol
 
 ### UX Benefits
 
-**Before (Broken):**
+**Before (v1.0.0 - No Thinking Support):**
 - Reasoning visible as regular text
 - Confusing output with internal thoughts
 - No progress indicators
 - "All at once" message updates
 
-**After (Fixed):**
-- Reasoning hidden/collapsed
-- Clean, professional output
-- "Claude is thinking..." shown
-- Smooth incremental streaming
+**After (v1.1.0 - Full Protocol Support):**
+- ✅ Reasoning hidden/collapsed
+- ✅ Clean, professional output
+- ✅ "Claude is thinking..." indicator shown
+- ✅ Smooth incremental streaming
+- ✅ Message headers/structure visible
+- ✅ Protocol compliant with Anthropic Messages API
 
 ### Documentation
 
 For complete protocol documentation, see:
 - [STREAMING_PROTOCOL.md](./STREAMING_PROTOCOL.md) - Complete SSE protocol spec
+- [PROTOCOL_FIX_V2.md](./PROTOCOL_FIX_V2.md) - Critical V2 protocol fix (event ordering)
 - [COMPREHENSIVE_UX_ISSUE_ANALYSIS.md](./COMPREHENSIVE_UX_ISSUE_ANALYSIS.md) - Technical analysis
+- [THINKING_BLOCKS_IMPLEMENTATION.md](./THINKING_BLOCKS_IMPLEMENTATION.md) - Implementation summary
 
 ## Development
 

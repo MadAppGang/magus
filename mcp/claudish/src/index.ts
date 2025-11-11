@@ -44,11 +44,19 @@ async function main() {
       process.exit(1);
     }
 
-    // If model not specified and not in monitor mode, show interactive selector
-    if (!config.monitor && !config.model) {
+    // Show interactive model selector ONLY in interactive mode when model not specified
+    if (config.interactive && !config.monitor && !config.model) {
       console.log(""); // Empty line for better UI
       config.model = await selectModelInteractively();
       console.log(""); // Empty line after selection
+    }
+
+    // In non-interactive mode, model must be specified (via --model flag or CLAUDISH_MODEL env var)
+    if (!config.interactive && !config.monitor && !config.model) {
+      console.error("Error: Model must be specified in non-interactive mode");
+      console.error("Use --model <model> flag or set CLAUDISH_MODEL environment variable");
+      console.error("Try: claudish --list-models");
+      process.exit(1);
     }
 
     // Read prompt from stdin if --stdin flag is set

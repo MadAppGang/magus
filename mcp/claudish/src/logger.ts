@@ -1,8 +1,53 @@
-import { writeFileSync, appendFileSync, existsSync, mkdirSync } from "fs";
+import { writeFileSync, appendFile, existsSync, mkdirSync } from "fs";
 import { join } from "path";
 
 let logFilePath: string | null = null;
 let logLevel: "debug" | "info" | "minimal" = "info"; // Default to structured logging
+let logBuffer: string[] = []; // Buffer for async writes
+let flushTimer: NodeJS.Timeout | null = null;
+const FLUSH_INTERVAL_MS = 100; // Flush every 100ms
+const MAX_BUFFER_SIZE = 50; // Flush if buffer exceeds 50 messages
+
+/**
+ * Flush log buffer to file (async)
+ */
+function flushLogBuffer(): void {
+  if (!logFilePath || logBuffer.length === 0) return;
+
+  const toWrite = logBuffer.join("");
+  logBuffer = [];
+
+  // Async write (non-blocking)
+  appendFile(logFilePath, toWrite, (err) => {
+    if (err) {
+      console.error(`[claudish] Warning: Failed to write to log file: ${err.message}`);
+    }
+  });
+}
+
+/**
+ * Schedule periodic buffer flush
+ */
+function scheduleFlush(): void {
+  if (flushTimer) return; // Already scheduled
+
+  flushTimer = setInterval(() => {
+    flushLogBuffer();
+  }, FLUSH_INTERVAL_MS);
+
+  // Cleanup on process exit
+  process.on("exit", () => {
+    if (flushTimer) {
+      clearInterval(flushTimer);
+      flushTimer = null;
+    }
+    // Final flush (must be sync on exit)
+    if (logFilePath && logBuffer.length > 0) {
+      writeFileSync(logFilePath, logBuffer.join(""), { flag: "a" });
+      logBuffer = [];
+    }
+  });
+}
 
 /**
  * Initialize file logging for this session
@@ -10,6 +55,11 @@ let logLevel: "debug" | "info" | "minimal" = "info"; // Default to structured lo
 export function initLogger(debugMode: boolean, level: "debug" | "info" | "minimal" = "info"): void {
   if (!debugMode) {
     logFilePath = null;
+    // Clear any existing timer
+    if (flushTimer) {
+      clearInterval(flushTimer);
+      flushTimer = null;
+    }
     return;
   }
 
@@ -26,26 +76,32 @@ export function initLogger(debugMode: boolean, level: "debug" | "info" | "minima
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-").split("T").join("_").slice(0, -5);
   logFilePath = join(logsDir, `claudish_${timestamp}.log`);
 
-  // Write header
+  // Write header (sync on init is fine)
   writeFileSync(
     logFilePath,
     `Claudish Debug Log - ${new Date().toISOString()}\nLog Level: ${level}\n${"=".repeat(80)}\n\n`
   );
+
+  // Start periodic flush timer
+  scheduleFlush();
 }
 
 /**
  * Log a message (to file only in debug mode, silent otherwise)
+ * Uses async buffered writes to avoid blocking event loop
  */
 export function log(message: string, forceConsole = false): void {
   const timestamp = new Date().toISOString();
   const logLine = `[${timestamp}] ${message}\n`;
 
   if (logFilePath) {
-    // Debug mode - write to file
-    appendFileSync(logFilePath, logLine);
-  } else {
-    // No debug mode - silent (no console spam)
-    // Do nothing
+    // Add to buffer (non-blocking)
+    logBuffer.push(logLine);
+
+    // Flush immediately if buffer is getting large
+    if (logBuffer.length >= MAX_BUFFER_SIZE) {
+      flushLogBuffer();
+    }
   }
 
   // Force console output (for critical messages even when not in debug mode)
