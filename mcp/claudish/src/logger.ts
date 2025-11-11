@@ -27,8 +27,6 @@ export function initLogger(debugMode: boolean): void {
     logFilePath,
     `Claudish Debug Log - ${new Date().toISOString()}\n${"=".repeat(80)}\n\n`
   );
-
-  console.log(`[claudish] Debug mode enabled - logging to: ${logFilePath}`);
 }
 
 /**

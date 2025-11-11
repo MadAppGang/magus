@@ -135,19 +135,9 @@ export async function runClaudeWithProxy(
   };
 
   if (config.interactive) {
-    log(`\n[claudish] Starting Claude Code in INTERACTIVE mode`);
-    log(`[claudish] Model: ${modelId}`);
-    log(`[claudish] Proxy URL: ${proxyUrl}`);
-    log(`[claudish] Status line: dir • ${modelId} • $cost • ctx% (live)`);
-    log(`[claudish] Tracking: Real-time cost + context window usage`);
-    log(`[claudish] Thinking mode: Optimized ultra-compact layout`);
-    log(`[claudish] Supports: ANY OpenRouter model (not just shortlist)`);
-    log(`[claudish] You can now interact with Claude Code directly`);
-    log(`[claudish] Press Ctrl+C or type 'exit' to quit\n`);
+    log(`\n[claudish] Model: ${modelId}\n`);
   } else {
-    log(`\n[claudish] Starting Claude Code with ${modelId}`);
-    log(`[claudish] Proxy URL: ${proxyUrl}`);
-    log(`[claudish] Status line: dir • ${modelId} • $cost • ctx% (live)`);
+    log(`\n[claudish] Model: ${modelId}`);
     log(`[claudish] Arguments: ${claudeArgs.join(" ")}\n`);
   }
 

@@ -16,6 +16,14 @@ async function main() {
     // Initialize logger if debug mode
     initLogger(config.debug);
 
+    // Show debug log location if enabled
+    if (config.debug && !config.quiet) {
+      const logFile = getLogFilePath();
+      if (logFile) {
+        console.log(`[claudish] Debug log: ${logFile}`);
+      }
+    }
+
     // Check if Claude Code is installed
     if (!(await checkClaudeInstalled())) {
       console.error("Error: Claude Code CLI is not installed");
@@ -56,17 +64,7 @@ async function main() {
     }
 
     if (!config.quiet) {
-      console.log("[claudish] Done");
-    }
-
-    // Show log file location if debug mode
-    if (config.debug && !config.quiet) {
-      const logFile = getLogFilePath();
-      if (logFile) {
-        console.log(`[claudish] Debug log saved to: ${logFile}\n`);
-      }
-    } else if (!config.quiet) {
-      console.log("");
+      console.log("[claudish] Done\n");
     }
 
     process.exit(exitCode);
