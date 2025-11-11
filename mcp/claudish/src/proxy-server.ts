@@ -599,6 +599,9 @@ export async function createProxyServer(
             let textBlockIndex = -1;
             let textBlockStarted = false;
 
+            // Track last content activity for adaptive ping
+            let lastContentDeltaTime = Date.now();
+
             // Track tool calls - map from tool index to tool state
             const toolCalls = new Map<number, { id: string; name: string; args: string; blockIndex: number; started: boolean; closed: boolean }>();
 
@@ -648,14 +651,21 @@ export async function createProxyServer(
               type: "ping",
             });
 
-            // Send ping every 15 seconds to keep connection alive
+            // Adaptive ping: check every second, send ping if quiet for >1 second
+            // This keeps UI responsive during encrypted reasoning or other quiet periods
             const pingInterval = setInterval(() => {
               if (!isClosed) {
-                sendSSE("ping", {
-                  type: "ping",
-                });
+                const timeSinceLastContent = Date.now() - lastContentDeltaTime;
+
+                // If no content activity for >1 second, send keep-alive ping
+                if (timeSinceLastContent > 1000) {
+                  sendSSE("ping", {
+                    type: "ping",
+                  });
+                  log(`[Proxy] Adaptive ping (${Math.round(timeSinceLastContent / 1000)}s since last content)`);
+                }
               }
-            }, 15000);
+            }, 1000);  // Check every second
 
             try {
               const reader = openrouterResponse.body?.getReader();
@@ -781,16 +791,31 @@ export async function createProxyServer(
                     // Send content deltas (text block already started in initial events)
                     // Support both regular content and reasoning field (Grok, o1, etc.)
                     const textContent = delta?.content || delta?.reasoning || "";
-                    if (textContent) {
-                      log(`[Proxy] Sending content delta: ${textContent}${delta?.reasoning ? ' (reasoning)' : ''}`);
-                      sendSSE("content_block_delta", {
-                        type: "content_block_delta",
-                        index: textBlockIndex,
-                        delta: {
-                          type: "text_delta",
-                          text: textContent,
-                        },
-                      });
+
+                    // Detect encrypted reasoning (Grok sends reasoning in reasoning_details when reasoning field is null)
+                    const hasEncryptedReasoning = delta?.reasoning_details?.some(
+                      (detail: any) => detail.type === "reasoning.encrypted"
+                    );
+
+                    // Update activity timestamp if there's any content or reasoning activity
+                    if (textContent || hasEncryptedReasoning) {
+                      lastContentDeltaTime = Date.now();
+
+                      if (textContent) {
+                        // Send visible content/reasoning
+                        log(`[Proxy] Sending content delta: ${textContent}${delta?.reasoning ? ' (reasoning)' : ''}`);
+                        sendSSE("content_block_delta", {
+                          type: "content_block_delta",
+                          index: textBlockIndex,
+                          delta: {
+                            type: "text_delta",
+                            text: textContent,
+                          },
+                        });
+                      } else if (hasEncryptedReasoning) {
+                        // Encrypted reasoning detected - update activity but don't send visible text
+                        log(`[Proxy] Encrypted reasoning detected (keeping connection alive)`);
+                      }
                     }
 
                     // Handle tool calls in streaming (OpenAI → Claude format)
