@@ -3,6 +3,7 @@ import { cors } from "hono/cors";
 import { transformOpenAIToClaude, removeUriFormat } from "./transform.js";
 import { log } from "./logger.js";
 import type { ProxyServer } from "./types.js";
+import { AdapterManager } from "./adapters/adapter-manager.js";
 
 /**
  * Create and start a Hono-based proxy server
@@ -646,6 +647,12 @@ export async function createProxyServer(
             // Track tool calls - map from tool index to tool state
             const toolCalls = new Map<number, { id: string; name: string; args: string; blockIndex: number; started: boolean; closed: boolean }>();
 
+            // Model adapter for handling model-specific formats (e.g., Grok XML)
+            const adapterManager = new AdapterManager(model || "");
+            const adapter = adapterManager.getAdapter();
+            let accumulatedText = "";
+            log(`[Proxy] Using adapter: ${adapter.getName()}`);
+
             // Detect if this is first turn (no tool results in messages)
             // First turn: cache creation, subsequent: cache read
             const hasToolResults = claudeRequest.messages?.some((msg: any) =>
@@ -843,16 +850,69 @@ export async function createProxyServer(
                       lastContentDeltaTime = Date.now();
 
                       if (textContent) {
-                        // Send visible content/reasoning
-                        log(`[Proxy] Sending content delta: ${textContent}${delta?.reasoning ? ' (reasoning)' : ''}`);
-                        sendSSE("content_block_delta", {
-                          type: "content_block_delta",
-                          index: textBlockIndex,
-                          delta: {
-                            type: "text_delta",
-                            text: textContent,
-                          },
-                        });
+                        // Process text through model adapter (handles Grok XML, etc.)
+                        accumulatedText += textContent;
+                        const adapterResult = adapter.processTextContent(textContent, accumulatedText);
+
+                        // Handle extracted tool calls from special formats (e.g., Grok XML)
+                        if (adapterResult.extractedToolCalls.length > 0) {
+                          log(`[Proxy] Adapter extracted ${adapterResult.extractedToolCalls.length} tool calls from special format`);
+
+                          // Close text block if it was started
+                          if (textBlockStarted) {
+                            sendSSE("content_block_stop", {
+                              type: "content_block_stop",
+                              index: textBlockIndex,
+                            });
+                            textBlockStarted = false;
+                          }
+
+                          // Send each extracted tool call as a proper tool_use block
+                          for (const toolCall of adapterResult.extractedToolCalls) {
+                            const toolBlockIndex = currentBlockIndex++;
+                            log(`[Proxy] Sending extracted tool call: ${toolCall.name} at block index ${toolBlockIndex}`);
+
+                            // Send content_block_start
+                            sendSSE("content_block_start", {
+                              type: "content_block_start",
+                              index: toolBlockIndex,
+                              content_block: {
+                                type: "tool_use",
+                                id: toolCall.id,
+                                name: toolCall.name,
+                              },
+                            });
+
+                            // Send input_json_delta with complete arguments
+                            sendSSE("content_block_delta", {
+                              type: "content_block_delta",
+                              index: toolBlockIndex,
+                              delta: {
+                                type: "input_json_delta",
+                                partial_json: JSON.stringify(toolCall.arguments),
+                              },
+                            });
+
+                            // Close the tool block
+                            sendSSE("content_block_stop", {
+                              type: "content_block_stop",
+                              index: toolBlockIndex,
+                            });
+                          }
+                        }
+
+                        // Send cleaned text (with special format removed)
+                        if (adapterResult.cleanedText) {
+                          log(`[Proxy] Sending content delta: ${adapterResult.cleanedText}${delta?.reasoning ? ' (reasoning)' : ''}${adapterResult.wasTransformed ? ' (transformed)' : ''}`);
+                          sendSSE("content_block_delta", {
+                            type: "content_block_delta",
+                            index: textBlockIndex,
+                            delta: {
+                              type: "text_delta",
+                              text: adapterResult.cleanedText,
+                            },
+                          });
+                        }
                       } else if (hasEncryptedReasoning) {
                         // Encrypted reasoning detected - update activity but don't send visible text
                         log(`[Proxy] Encrypted reasoning detected (keeping connection alive)`);
