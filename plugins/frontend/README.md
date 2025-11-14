@@ -1,412 +1,168 @@
-# Frontend Development Plugin
+# Shared Resources
 
-Professional frontend development toolkit for Claude Code with TypeScript, React, Vite, TanStack Router & Query support. Features intelligent workflow detection (API/UI/Mixed), CSS-aware design validation, CVA best practices for shadcn/ui, and modern UI development workflows.
+This directory contains resources shared across all Claude Code plugins.
 
-**Version:** 2.8.0
+## Purpose
 
-## Quick Start
-
-### Installation
-
-```bash
-# Add marketplace
-/plugin marketplace add MadAppGang/claude-code
-
-# Install plugin
-/plugin install frontend@mag-claude-plugins
-```
-
-### Setup
-
-1. **Configure environment variables** (required for MCP servers):
-   ```bash
-   # Copy example
-   cp .env.example .env
-
-   # Edit with your tokens
-   APIDOG_API_TOKEN=your-token
-   FIGMA_ACCESS_TOKEN=your-token
-   ```
-
-   MCP servers (Apidog, Figma) are automatically configured when the plugin is enabled.
-
-## Available Tools
-
-### Agents (13)
-
-**Development:**
-- `developer` - TypeScript/React implementation with best practices
-- `architect` - Architecture planning and system design
-- `test-architect` - Testing strategy and implementation
-
-**UI Development & Design:**
-- `ui-developer` - Senior UI/UX developer specializing in pixel-perfect implementation (React 19, Tailwind CSS 4, WCAG 2.1 AA)
-- `ui-developer-codex` - Expert UI review proxy via external Codex AI
-- `designer` - Senior UX/UI design review specialist with CSS-aware validation (DOM inspection, computed CSS analysis)
-- `designer-codex` - Expert design validation proxy via external Codex AI
-- `css-developer` - CSS architecture specialist maintaining CSS knowledge files (.ai-docs/css-knowledge/), preventing breaking changes, enforcing modern CSS + Tailwind CSS 4 best practices
-
-**Quality Assurance:**
-- `tester` - Browser-based UI testing and validation
-- `reviewer` - Manual code review
-- `codex-reviewer` - AI-powered code review with Codex
-
-**Analysis:**
-- `api-analyst` - API docs analysis and integration
-
-**Utilities:**
-- `cleaner` - Cleanup temporary files and artifacts
-
-### Commands (6)
-
-**Development Workflows:**
-- `/implement` - **NEW in v2.8.0**: Full-cycle feature implementation with intelligent workflow detection and adaptive execution (8 phases)
-  - Automatically detects API-focused, UI-focused, or Mixed workflows
-  - API workflows: Skips design validation, runs 2 code reviewers, focuses on API testing
-  - UI workflows: Full design validation, runs 3 reviewers (code + codex + UI tester)
-  - Mixed workflows: Both workflows combined with appropriate focus
-- `/implement-ui` - Implement UI components from scratch with task decomposition and intelligent agent switching
-- `/import-figma` - Import Figma designs as React components
-- `/api-docs` - Analyze and integrate API documentation
-
-**UI Validation:**
-- `/validate-ui` - UI validation workflow with designer & ui-developer agents
-
-**Maintenance:**
-- `/cleanup-artifacts` - Clean temporary files, build artifacts, and caches
-
-### Skills (3)
-
-**Browser Integration:**
-- `browser-debugger` - Interactive UI testing and debugging in Chrome
-
-**API Analysis:**
-- `api-spec-analyzer` - OpenAPI/Swagger specification analysis
-
-**UI Implementation:**
-- `ui-implementer` - Proactive UI implementation from design references (automatically triggers on Figma links)
-
-### MCP Servers (4)
-
-**Integrated Services (Auto-configured):**
-- **Apidog** - API documentation and testing platform
-- **Figma** - Design file access and component extraction
-- **Chrome DevTools** - Browser debugging and UI inspection
-- **Claudish** - External AI models via OpenRouter (Codex, Grok, GPT-5, etc.)
-
-## Key Features
-
-### Intelligent Workflow Detection (v2.8.0+)
-
-**Automatically adapts implementation workflow based on task type:**
-
-#### API-Focused Workflows
-For tasks like "Integrate tenant management API" or "Add error handling to API calls":
-- **PHASE 2.5 (Design Validation)**: Completely skipped - no UI changes to validate
-- **PHASE 3 (Code Review)**: Runs 2 reviewers in parallel (code + codex)
-  - Focus: API patterns, type safety, error handling, HTTP security
-  - UI tester skipped - no UI to test
-- **PHASE 4 (Testing)**: API-focused tests
-  - Unit tests for services, integration tests, mock responses, error scenarios
-  - Skips UI component tests
-
-**Benefits**: Faster implementation, focused reviews, no time wasted on irrelevant UI validation
-
-#### UI-Focused Workflows
-For tasks like "Implement UserProfile component" or "Style the Dashboard screen":
-- **PHASE 2.5 (Design Validation)**: Full design fidelity validation (if Figma present)
-  - Designer agent validates visual accuracy
-  - UI Developer fixes discrepancies
-- **PHASE 3 (Code Review)**: Runs 3 reviewers in parallel (code + codex + UI tester)
-  - Focus: Component quality, accessibility, responsive design, visual consistency
-- **PHASE 4 (Testing)**: UI-focused tests
-  - Component tests, interaction tests, accessibility tests
-
-**Benefits**: Pixel-perfect UI, comprehensive validation, high design fidelity
-
-#### Mixed Workflows
-For tasks with both API and UI work:
-- **PHASE 2.5**: Design validation for UI components only
-- **PHASE 3**: All 3 reviewers with appropriate focus areas
-- **PHASE 4**: Both API and UI test coverage
-
-**How It Works:**
-1. Analyzes your feature request for indicators (keywords, patterns)
-2. Classifies as API_FOCUSED, UI_FOCUSED, or MIXED
-3. If unclear, asks you to confirm
-4. Adapts all subsequent phases based on workflow type
-5. Logs workflow type in final summary for transparency
-
-### CSS-Aware Design Validation (v2.6.0+)
-- **DOM Inspection** - Designers inspect actual rendered elements via Chrome DevTools MCP
-- **Computed CSS Analysis** - Get real browser-computed styles (actual values, not just class names)
-- **Pattern Awareness** - Consult CSS Developer to understand existing CSS patterns before suggesting fixes
-- **Safe Fix Recommendations** - Impact assessment (LOCAL/GLOBAL) for each suggested change
-- **Benefits:** No more guessing why UI looks different, understand which CSS rules apply, prevent breaking changes
-
-### CVA Best Practices for shadcn/ui (v2.6.1+)
-- **Comprehensive CVA Guidance** in CSS Developer and UI Developer agents
-- **Type-Safe Component Variants** with IDE autocomplete
-- **Decision Trees** for when to use className vs variant props
-- **Troubleshooting Guide** for common CVA issues
-- **No Anti-Patterns** - Prevents !important usage and CSS class conflicts
-- **Benefits:** Centralized style management, reusable patterns, consistent with shadcn/ui best practices
-
-### Task Decomposition (v2.5.0+)
-- **PHASE 1.5** in `/implement-ui` - Architect analyzes design and splits into independent tasks
-- **Parallel Execution** - Tasks with no dependencies run simultaneously
-- **Per-Task Validation** - Each task gets focused validation loop (max 5 iterations)
-- **Isolated Changes** - Changes to Task A can't break Task B
-- **Benefits:** Faster implementation, clearer progress tracking, no cascade failures
-
-### CSS Knowledge Management (v2.5.0+)
-- **Automatic Documentation** - CSS Developer maintains `.ai-docs/css-knowledge/` directory
-- **7 Knowledge Files** - design-tokens, component-patterns, utility-patterns, element-rules, global-styles, change-log
-- **Change Impact Assessment** - HIGH/MEDIUM/LOW risk levels for CSS modifications
-- **Pattern Tracking** - Knows what CSS patterns exist and where they're used
-- **Benefits:** Prevents breaking changes, maintains consistent CSS architecture, enforces modern patterns
-
-### Modern Best Practices (2025)
-- **Tailwind CSS 4** - CSS-first configuration with @theme, container queries, :has() pseudo-class
-- **React 19** - Functional components, modern hooks, Server Components
-- **Accessibility** - WCAG 2.1 AA compliance, color contrast, keyboard navigation
-- **Performance** - 5x faster full builds, 100x faster incremental (Tailwind CSS 4)
-
-## Environment Variables
-
-### Required
-
-```bash
-# Apidog (API documentation)
-APIDOG_API_TOKEN=your-personal-token
-
-# Figma (design imports)
-FIGMA_ACCESS_TOKEN=your-personal-token
-```
-
-### Optional
-
-```bash
-# GitHub integration
-GITHUB_PERSONAL_ACCESS_TOKEN=your-token
-
-# Chrome for UI testing (auto-detected)
-CHROME_EXECUTABLE_PATH=/path/to/chrome
-
-# Codex code review
-CODEX_API_KEY=your-codex-key
-```
-
-## Usage Examples
-
-### Full Feature Implementation
-
-```bash
-/implement
-
-# Claude will:
-# 1. Plan architecture with architect
-# 2. Implement with developer
-# 2.5. Validate design fidelity with designer (if Figma links present)
-# 3. Write tests with test-architect
-# 4. Review code with reviewer
-# 5. Validate UI with tester
-# 6. Clean up artifacts
-# 7. Deliver production-ready code
-```
-
-### UI Implementation from Design
-
-```bash
-/implement-ui
-
-# Claude will:
-# 1. Analyze design reference (Figma URL, screenshot, mockup)
-# 1.5. Decompose into independent tasks with dependencies
-# 2. Implement each task with ui-developer
-# 3. Validate with designer (CSS-aware validation)
-# 4. Auto-switch to ui-developer-codex if needed (after 2 consecutive failures)
-# 5. Iterate until design fidelity >= 54/60 (max 10 iterations)
-# 6. Complete all tasks with comprehensive metrics
-```
-
-### Design Validation Workflow
-
-```bash
-/validate-ui
-
-# Claude will:
-# 1. Capture screenshot of current implementation
-# 2. Inspect DOM elements and get computed CSS
-# 3. Consult css-developer for pattern analysis
-# 4. Compare design vs implementation with CSS awareness
-# 5. Generate CSS-aware report with safe fix recommendations
-# 6. Optionally use designer-codex for expert validation
-```
-
-### Import Figma Design
-
-```bash
-/import-figma
-
-# Imports components from Figma Dev Mode
-# See: docs/figma-integration-guide.md for URL setup
-```
-
-**Need help getting Figma URLs?** See the [Figma Integration Guide](../../docs/figma-integration-guide.md) for:
-- How to get Figma Make URLs from Dev Mode
-- Setting up CLAUDE.md with Figma links
-- Troubleshooting common issues
-
-### API Documentation Workflow
-
-```bash
-/api-docs
-
-# Options:
-# - Fetch from Apidog
-# - Analyze OpenAPI spec
-# - Generate TypeScript types
-# - Create API client code
-```
-
-## Team Setup
-
-### Project Configuration
-
-Add to your project's `.claude/settings.json`:
-
-```json
-{
-  "extraKnownMarketplaces": {
-    "mag-claude-plugins": {
-      "source": {
-        "source": "github",
-        "repo": "MadAppGang/claude-code"
-      }
-    }
-  },
-  "enabledPlugins": {
-    "frontend@mag-claude-plugins": true
-  },
-  "env": {
-    "APIDOG_PROJECT_ID": "your-project-id",
-    "APIDOG_API_TOKEN": "${APIDOG_API_TOKEN}"
-  }
-}
-```
-
-### Environment Variables (.env)
-
-Each developer creates their own `.env`:
-
-```bash
-# .env (gitignored, per-developer)
-APIDOG_API_TOKEN=personal-token
-FIGMA_ACCESS_TOKEN=personal-token
-GITHUB_PERSONAL_ACCESS_TOKEN=personal-token
-```
-
-## Dependencies
-
-### System Requirements
-
-- **Node.js** v18+ (with npm/npx)
-- **Chrome** browser (for UI testing)
-- **Git** (for version control)
-
-### Optional
-
-- **Codex CLI** (for AI code review)
+Centralized management of common resources to ensure consistency and reduce duplication.
 
 ## Architecture
 
-### Stack Support
+```
+shared/                          ← SOURCE OF TRUTH (edit here)
+└── recommended-models.md        ← Model recommendations
 
-**Frontend:**
-- TypeScript
-- React 18+
-- Vite
-- TanStack Router
-- TanStack Query
-- Tailwind CSS
+scripts/
+└── sync-shared.ts               ← Distribution script
 
-**Testing:**
-- Vitest
-- Testing Library
-- Playwright (via browser-debugger)
+plugins/
+├── frontend/
+│   └── recommended-models.md    ← AUTO-COPIED
+├── bun/
+│   └── recommended-models.md    ← AUTO-COPIED
+└── code-analysis/
+    └── recommended-models.md    ← AUTO-COPIED
+```
 
-**Code Quality:**
-- ESLint
-- Prettier
-- TypeScript strict mode
+## How It Works
+
+### 1. Edit Source Files
+
+All shared resources are stored in `shared/` directory. This is the **ONLY** place you should edit these files.
+
+**Example:**
+```bash
+# Edit the source
+vim shared/recommended-models.md
+```
+
+### 2. Sync to Plugins
+
+Run the sync script to copy resources to all plugins:
+
+```bash
+# Sync all shared resources
+bun run sync-shared
+
+# Or use the short alias
+bun run sync
+```
+
+### 3. Automatic Distribution
+
+The sync script copies each file from `shared/` to all plugin directories:
+
+- `shared/recommended-models.md` → `plugins/frontend/recommended-models.md`
+- `shared/recommended-models.md` → `plugins/bun/recommended-models.md`
+- `shared/recommended-models.md` → `plugins/code-analysis/recommended-models.md`
+
+### 4. Plugin Usage
+
+Commands and agents read the synced files using plugin-relative paths:
+
+```markdown
+Read file: ${CLAUDE_PLUGIN_ROOT}/recommended-models.md
+```
+
+This ensures each plugin always has access to the latest recommendations.
+
+## Maintaining Shared Resources
+
+### Adding New Shared Files
+
+1. Create the file in `shared/` directory
+2. Run `bun run sync-shared`
+3. File is automatically copied to all plugins
+4. Update plugin commands/agents to use the new file
+
+### Updating Existing Files
+
+1. Edit the file in `shared/` directory (NOT in plugin directories)
+2. Run `bun run sync-shared`
+3. Updates are automatically distributed to all plugins
+
+### Adding New Plugins
+
+1. Add plugin name to `PLUGIN_NAMES` array in `scripts/sync-shared.ts`
+2. Run `bun run sync-shared`
+3. All shared resources are copied to the new plugin
+
+## File Format Standards
+
+### Markdown Files
+
+Shared markdown files should be:
+- AI-native (no JSON parsing required)
+- Human-readable
+- Well-structured with clear headings
+- Include rich context and explanations
+- Use consistent formatting
+
+**Example: Model Recommendations**
+```markdown
+### Model Name (⭐ RECOMMENDED)
+- **Provider:** provider-name
+- **OpenRouter ID:** `provider/model-id`
+- **Best For:** use cases
+- **Trade-offs:** considerations
+```
+
+## Best Practices
+
+### DO:
+✅ Edit files in `shared/` directory only
+✅ Run sync script after every change
+✅ Use descriptive file names
+✅ Include version and last-updated metadata in files
+✅ Add comments explaining the purpose of each file
+
+### DON'T:
+❌ Edit files in plugin directories directly (changes will be overwritten)
+❌ Commit plugin copies to git (they're auto-generated)
+❌ Skip running sync script after changes
+❌ Use complex file formats that require parsing
+
+## Future Extensibility
+
+This pattern can be extended to other shared resources:
+
+- **API Schema Templates** - Standard OpenAPI schemas
+- **Best Practices Snippets** - Common code patterns
+- **Configuration Templates** - Standard configs (tsconfig, biome, etc.)
+- **Testing Patterns** - Standard test structures
+- **Documentation Templates** - Standard doc formats
+
+To add a new shared resource:
+1. Create file in `shared/`
+2. Run `bun run sync-shared`
+3. Update plugin files to reference it
+4. Document in this README
 
 ## Troubleshooting
 
-### MCP Servers Not Available
+### Sync Script Fails
 
-```bash
-# Check configuration
-cat .claude/settings.json
+**Problem:** `❌ Shared directory not found`
+**Solution:** Ensure you're running from repository root
 
-# Verify environment variables
-echo $APIDOG_API_TOKEN
+**Problem:** `✗ Failed to copy to plugin`
+**Solution:** Check plugin directory exists and is writable
 
-# Reconfigure
-/configure-mcp
-```
+### Plugin Files Out of Sync
 
-### UI Testing Not Working
+**Problem:** Plugin has old version of shared file
+**Solution:** Run `bun run sync-shared` to update
 
-```bash
-# Check Chrome installation
-which google-chrome-stable
+### Changes Not Appearing
 
-# Set explicit path
-export CHROME_EXECUTABLE_PATH=/usr/bin/google-chrome
-```
+**Problem:** Edited plugin file directly
+**Solution:** Edit `shared/` file instead, then run sync
 
-### Codex Review Not Working
+## Questions?
 
-```bash
-# Install Codex CLI
-npm install -g @codexdata/cli
+See main documentation:
+- [CLAUDE.md](../CLAUDE.md) - Project overview
+- [README.md](../README.md) - User documentation
+- [RELEASE_PROCESS.md](../RELEASE_PROCESS.md) - Release workflow
 
-# Verify installation
-codex --version
-
-# Set API key
-export CODEX_API_KEY=your-key
-```
-
-## Documentation
-
-**Plugin Documentation:**
-- [Team Configuration Architecture](../../ai-docs/TEAM_CONFIG_ARCHITECTURE.md)
-- [Dynamic MCP Guide](../../ai-docs/DYNAMIC_MCP_GUIDE.md)
-- [Complete Plugin Summary](../../ai-docs/COMPLETE_PLUGIN_SUMMARY.md)
-
-**External Resources:**
-- [Claude Code Documentation](https://docs.claude.com/en/docs/claude-code)
-- [MCP Protocol](https://modelcontextprotocol.io)
-- [Plugin Development Guide](https://docs.claude.com/en/docs/claude-code/plugins)
-
-## License
-
-MIT License - see [LICENSE](../../LICENSE) for details
-
-## Author
-
-**Jack Rudenko**
-Email: i@madappgang.com
-Company: MadAppGang
-
-## Support
-
-- **Issues**: [GitHub Issues](https://github.com/madappgang/claude-plugins/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/madappgang/claude-plugins/discussions)
-
----
-
-**Version**: 2.6.1
-**Last Updated**: November 6, 2025
+Contact: Jack Rudenko (i@madappgang.com)

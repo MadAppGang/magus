@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  AI Model Recommendations - Structured Data
+  Version: 1.1.1
+  Last Updated: 2025-11-14
+  Purpose: Machine-readable model metadata for AI agents
+
+  Usage: AI agents should parse this file to extract model recommendations
+  instead of parsing the markdown file. This format is optimized for
+  programmatic access and includes all essential metadata.
+-->
+
+<models version="1.1.1" updated="2025-11-14">
+
+  <!-- Fast Coding Models - Optimized for speed and quick iterations -->
+  <category name="coding" icon="⚡" description="Fast code generation and review">
+
+    <model rank="1">
+      <slug>x-ai/grok-code-fast-1</slug>
+      <provider>xAI</provider>
+      <name>Grok Code Fast 1</name>
+      <context_window>256000</context_window>
+      <pricing>
+        <input>0.20</input>
+        <output>1.50</output>
+        <average>0.85</average>
+        <currency>USD</currency>
+        <unit>per_million_tokens</unit>
+      </pricing>
+      <performance>
+        <speed>ultra_fast</speed>
+        <response_time>2</response_time>
+        <response_unit>seconds</response_unit>
+      </performance>
+      <best_for>
+        <use_case>Ultra-fast code reviews</use_case>
+        <use_case>Quick syntax and logic checks</use_case>
+        <use_case>Rapid prototyping</use_case>
+        <use_case>Budget-conscious fast coding</use_case>
+      </best_for>
+      <avoid_for>
+        <scenario>Complex architectural decisions</scenario>
+        <scenario>Security-critical code review</scenario>
+      </avoid_for>
+      <recommended>true</recommended>
+    </model>
+
+    <model rank="3">
+      <slug>google/gemini-2.5-flash</slug>
+      <provider>Google</provider>
+      <name>Gemini 2.5 Flash</name>
+      <context_window>1049000</context_window>
+      <pricing>
+        <input>0.075</input>
+        <output>0.30</output>
+        <average>0.19</average>
+        <currency>USD</currency>
+        <unit>per_million_tokens</unit>
+      </pricing>
+      <performance>
+        <speed>very_fast</speed>
+        <response_time>2</response_time>
+        <response_unit>seconds</response_unit>
+      </performance>
+      <best_for>
+        <use_case>Ultra-cheap massive context</use_case>
+        <use_case>High-volume simple tasks</use_case>
+        <use_case>Large codebase scanning</use_case>
+      </best_for>
+      <avoid_for>
+        <scenario>Critical code paths</scenario>
+        <scenario>Complex architecture</scenario>
+      </avoid_for>
+      <recommended>true</recommended>
+    </model>
+
+    <model rank="10">
+      <slug>deepseek/deepseek-v3-0324</slug>
+      <provider>DeepSeek</provider>
+      <name>DeepSeek V3 0324</name>
+      <context_window>64000</context_window>
+      <pricing>
+        <input>0.14</input>
+        <output>0.28</output>
+        <average>0.21</average>
+        <currency>USD</currency>
+        <unit>per_million_tokens</unit>
+      </pricing>
+      <performance>
+        <speed>fast</speed>
+        <response_time>3</response_time>
+        <response_unit>seconds</response_unit>
+      </performance>
+      <best_for>
+        <use_case>Fast affordable coding</use_case>
+        <use_case>Quick iterations</use_case>
+        <use_case>Budget-conscious development</use_case>
+      </best_for>
+      <avoid_for>
+        <scenario>Very large files (64K limit)</scenario>
+      </avoid_for>
+      <recommended>true</recommended>
+    </model>
+
+  </category>
+
+  <!-- Advanced Reasoning Models - For architecture and complex planning -->
+  <category name="reasoning" icon="🧠" description="Architecture planning and complex problem-solving">
+
+    <model rank="11">
+      <slug>z-ai/glm-4.6</slug>
+      <provider>Zhipu AI</provider>
+      <name>GLM 4.6</name>
+      <context_window>128000</context_window>
+      <pricing>
+        <input>0.50</input>
+        <output>1.00</output>
+        <average>0.75</average>
+        <currency>USD</currency>
+        <unit>per_million_tokens</unit>
+      </pricing>
+      <performance>
+        <speed>moderate</speed>
+        <response_time>5</response_time>
+        <response_unit>seconds</response_unit>
+      </performance>
+      <best_for>
+        <use_case>Architectural planning</use_case>
+        <use_case>Complex problem-solving</use_case>
+        <use_case>System design decisions</use_case>
+      </best_for>
+      <avoid_for>
+        <scenario>Simple CRUD operations</scenario>
+        <scenario>Quick syntax fixes</scenario>
+      </avoid_for>
+      <recommended>true</recommended>
+    </model>
+
+  </category>
+
+  <!-- Vision Models - For UI analysis and multimodal tasks -->
+  <category name="vision" icon="👁️" description="UI analysis and multimodal understanding">
+
+    <model rank="12">
+      <slug>qwen/qwen3-vl-235b</slug>
+      <provider>Qwen</provider>
+      <name>Qwen3 VL 235B</name>
+      <context_window>32000</context_window>
+      <pricing>
+        <input>3.00</input>
+        <output>7.00</output>
+        <average>5.00</average>
+        <currency>USD</currency>
+        <unit>per_million_tokens</unit>
+      </pricing>
+      <performance>
+        <speed>moderate</speed>
+        <response_time>5</response_time>
+        <response_unit>seconds</response_unit>
+      </performance>
+      <capabilities>
+        <vision>true</vision>
+        <multimodal>true</multimodal>
+      </capabilities>
+      <best_for>
+        <use_case>UI/UX design review</use_case>
+        <use_case>Screenshot analysis</use_case>
+        <use_case>Vision-language tasks</use_case>
+      </best_for>
+      <avoid_for>
+        <scenario>Pure code review (use coding models)</scenario>
+        <scenario>Budget projects (vision is expensive)</scenario>
+      </avoid_for>
+      <recommended>true</recommended>
+    </model>
+
+  </category>
+
+  <!-- Budget Models - For cost-effective high-volume tasks -->
+  <category name="budget" icon="💰" description="Cost-effective options for high-volume tasks">
+
+    <model rank="6">
+      <slug>minimax/minimax-m2</slug>
+      <provider>MiniMax</provider>
+      <name>MiniMax M2</name>
+      <context_window>128000</context_window>
+      <pricing>
+        <input>0.00</input>
+        <output>0.00</output>
+        <average>0.00</average>
+        <currency>USD</currency>
+        <unit>per_million_tokens</unit>
+        <free>true</free>
+      </pricing>
+      <performance>
+        <speed>fast</speed>
+        <response_time>3</response_time>
+        <response_unit>seconds</response_unit>
+      </performance>
+      <best_for>
+        <use_case>Free coding tasks</use_case>
+        <use_case>Learning and experimentation</use_case>
+        <use_case>High-volume simple tasks</use_case>
+      </best_for>
+      <avoid_for>
+        <scenario>Production-critical tasks (no SLA)</scenario>
+        <scenario>Time-sensitive workflows (potential rate limits)</scenario>
+      </avoid_for>
+      <recommended>true</recommended>
+    </model>
+
+  </category>
+
+</models>
