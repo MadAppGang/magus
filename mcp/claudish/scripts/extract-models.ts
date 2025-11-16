@@ -35,10 +35,10 @@ function extractModels(markdownContent: string): ExtractedModels {
 	const lines = quickRef.split("\n");
 
 	for (const line of lines) {
-		// Match pattern: - `model-id` - Description (may contain commas), $price/1M, contextK/M [⭐]
-		// Use non-greedy match and look for $ to find the price section
+		// Match pattern: - `model-id` - Description (may contain commas), $price/1M or FREE, contextK/M [⭐]
+		// Use non-greedy match and look for $ or FREE to find the price section
 		const match = line.match(
-			/^- `([^`]+)` - (.+?), (\$[\d.]+\/1M), ([\dKM]+)(?: ⭐)?$/,
+			/^- `([^`]+)` - (.+?), (?:\$[\d.]+\/1M|FREE), ([\dKM]+)(?: ⭐)?$/,
 		);
 		if (match) {
 			const [, modelId, description] = match;
@@ -52,6 +52,8 @@ function extractModels(markdownContent: string): ExtractedModels {
 			else if (modelId.startsWith("google/")) provider = "Google";
 			else if (modelId.startsWith("qwen/")) provider = "Alibaba";
 			else if (modelId.startsWith("deepseek/")) provider = "DeepSeek";
+			else if (modelId.startsWith("tngtech/")) provider = "TNG Tech";
+			else if (modelId.startsWith("openrouter/")) provider = "OpenRouter";
 			else if (modelId.startsWith("anthropic/")) provider = "Anthropic";
 
 			// Extract short name from description

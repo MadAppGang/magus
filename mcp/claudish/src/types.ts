@@ -4,16 +4,13 @@
 // OpenRouter Models - Top Recommended for Development (Priority Order)
 export const OPENROUTER_MODELS = [
   "x-ai/grok-code-fast-1",
+  "google/gemini-2.5-flash",
+  "qwen/qwen3-235b-a22b-2507",
   "minimax/minimax-m2",
   "z-ai/glm-4.6",
-  "openai/gpt-5.1-codex",
-  "google/gemini-2.5-flash",
-  "google/gemini-2.5-pro",
-  "qwen/qwen3-vl-235b-a22b-instruct",
-  "google/gemini-2.0-flash-001",
-  "google/gemini-2.5-flash-lite",
-  "deepseek/deepseek-chat-v3-0324",
   "openai/gpt-4o-mini",
+  "tngtech/deepseek-r1t2-chimera:free",
+  "openrouter/polaris-alpha",
   "custom",
 ] as const;
 
