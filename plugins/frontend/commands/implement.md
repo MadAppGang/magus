@@ -56,15 +56,20 @@ If you find yourself about to use Write or Edit tools, STOP and delegate to the 
 - `x-ai/grok-code-fast-1` - xAI's Grok (fast coding analysis)
 - `openai/gpt-5-codex` - OpenAI's GPT-5 Codex (advanced code analysis)
 
-**You can use ANY OpenRouter model ID!**
+**Recommended Models:**
+For the latest curated model list, see:
+- **Documentation:** `shared/recommended-models.md` (maintained model list with pricing)
+- **Dynamic Query:** `claudish --list-models --json` (programmatic access)
+- **Integration Pattern:** `skills/claudish-integration/SKILL.md` (how to query Claudish)
 
-Popular coding models from OpenRouter (as of 2025):
-- `x-ai/grok-code-fast-1` - xAI Grok (fast)
-- `openai/gpt-5-codex` - OpenAI GPT-5 Codex (advanced reasoning)
-- `deepseek/deepseek-chat` - DeepSeek (reasoning specialist)
-- `anthropic/claude-opus-4` - Claude Opus 4 (if you want another Claude perspective)
-- `google/gemini-2.0-flash-thinking-exp` - Google Gemini 2.0 (thinking mode)
-- `qwen/qwq-32b-preview` - Alibaba QwQ (reasoning)
+**Quick Reference (Current as of 2025-11-19):**
+- Fast Coding: `x-ai/grok-code-fast-1`, `minimax/minimax-m2`
+- Advanced Reasoning: `google/gemini-2.5-flash`, `openai/gpt-5`, `openai/gpt-5.1-codex`
+- Vision & Multimodal: `qwen/qwen3-vl-235b-a22b-instruct`
+- Budget-Friendly: `openrouter/polaris-alpha` (FREE)
+
+**Note:** Model recommendations are updated regularly in `shared/recommended-models.md`.
+Use `claudish --list-models --json` for programmatic access to the latest list.
 
 See full list at: https://openrouter.ai/models
 
