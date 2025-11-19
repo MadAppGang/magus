@@ -259,9 +259,6 @@ async function updateModelsFromOpenRouter(): Promise<void> {
     // Filter and categorize models
     const trendingModels = openrouterData.data
       .filter((m: any) => {
-        // Exclude Anthropic models (Claude available natively)
-        if (m.id.startsWith("anthropic/")) return false;
-
         // Only include generally available models with pricing
         if (!m.pricing) return false;
 
@@ -271,7 +268,7 @@ async function updateModelsFromOpenRouter(): Promise<void> {
         // Sort by context window descending (prefer larger context)
         return (b.context_length || 0) - (a.context_length || 0);
       })
-      .slice(0, 30); // Get top 30 models
+      .slice(0, 50); // Get top 50 models for better selection
 
     // Categorize and select recommendations
     const recommendations: any[] = [];
@@ -301,10 +298,11 @@ async function updateModelsFromOpenRouter(): Promise<void> {
         category = "budget";
       }
 
-      // Balance: max 2 per provider, min 1 per category
-      const providerCount = Array.from(providers).filter(p => p === provider).length;
-      if (providerCount >= 2 && categories[category as keyof typeof categories] >= 1) {
-        continue;
+      // Provider diversity: max 1 per provider (except Anthropic - keep all)
+      // Anthropic models are internally available in Claude Code, not external
+      const isAnthropic = provider.toLowerCase() === "anthropic";
+      if (!isAnthropic && providers.has(provider)) {
+        continue; // Skip if we already have a model from this provider
       }
 
       // Calculate pricing
@@ -313,6 +311,11 @@ async function updateModelsFromOpenRouter(): Promise<void> {
       const avgPrice = model.pricing.prompt && model.pricing.completion
         ? `$${((parseFloat(model.pricing.prompt) + parseFloat(model.pricing.completion)) / 2 * 1000000).toFixed(2)}/1M`
         : "N/A";
+
+      // Extract useful metadata for decision-making
+      const architecture = model.architecture || {};
+      const topProvider = model.top_provider || {};
+      const supportedParams = model.supported_parameters || [];
 
       recommendations.push({
         id,
@@ -327,21 +330,31 @@ async function updateModelsFromOpenRouter(): Promise<void> {
           average: avgPrice === "N/A" && category === "budget" ? "FREE" : avgPrice
         },
         context: model.context_length ? `${Math.floor(model.context_length / 1000)}K` : "N/A",
+        maxOutputTokens: topProvider.max_completion_tokens || null,
+        modality: architecture.modality || "text->text",
+        supportsTools: supportedParams.includes("tools") || supportedParams.includes("tool_choice"),
+        supportsReasoning: supportedParams.includes("reasoning") || supportedParams.includes("include_reasoning"),
+        supportsVision: (architecture.input_modalities || []).includes("image") ||
+                       (architecture.input_modalities || []).includes("video"),
+        isModerated: topProvider.is_moderated || false,
         recommended: true
       });
 
       categories[category as keyof typeof categories]++;
-      providers.add(provider);
+      if (!isAnthropic) {
+        providers.add(provider); // Only track non-Anthropic providers for diversity
+      }
 
-      // Stop when we have 7-10 models with good balance
-      if (recommendations.length >= 7 &&
-          categories.coding >= 1 &&
-          categories.reasoning >= 1 &&
+      // Stop when we have 10-15 models with good balance
+      // (allowing more to accommodate multiple Anthropic models)
+      if (recommendations.length >= 10 &&
+          categories.coding >= 2 &&
+          categories.reasoning >= 2 &&
           categories.vision >= 1) {
         break;
       }
 
-      if (recommendations.length >= 10) {
+      if (recommendations.length >= 15) {
         break;
       }
     }

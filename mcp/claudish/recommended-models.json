@@ -16,6 +16,12 @@
         "average": "$0.35/1M"
       },
       "context": "2000K",
+      "maxOutputTokens": 30000,
+      "modality": "text+image->text",
+      "supportsTools": true,
+      "supportsReasoning": true,
+      "supportsVision": true,
+      "isModerated": false,
       "recommended": true
     },
     {
@@ -31,36 +37,12 @@
         "average": "$-1000000.00/1M"
       },
       "context": "2000K",
-      "recommended": true
-    },
-    {
-      "id": "openrouter/sherlock-dash-alpha",
-      "name": "Sherlock Dash Alpha",
-      "description": "This is a cloaked model provided to the community to gather feedback. A frontier non-reasoning model that excels at tool calling, with a 1.8M context window and multimodal support.\n\n**Note:** All prompts and completions for this model are logged by the provider and may be used to improve the model.",
-      "provider": "Openrouter",
-      "category": "vision",
-      "priority": 3,
-      "pricing": {
-        "input": "$0.00/1M",
-        "output": "$0.00/1M",
-        "average": "$0.00/1M"
-      },
-      "context": "1840K",
-      "recommended": true
-    },
-    {
-      "id": "openrouter/sherlock-think-alpha",
-      "name": "Sherlock Think Alpha",
-      "description": "This is a cloaked model provided to the community to gather feedback. A frontier reasoning model that excels at tool calling, with a 1.8M context window and multimodal support.\n\n**Note:** All prompts and completions for this model are logged by the provider and may be used to improve the model.",
-      "provider": "Openrouter",
-      "category": "vision",
-      "priority": 4,
-      "pricing": {
-        "input": "$0.00/1M",
-        "output": "$0.00/1M",
-        "average": "$0.00/1M"
-      },
-      "context": "1840K",
+      "maxOutputTokens": null,
+      "modality": "text->text",
+      "supportsTools": false,
+      "supportsReasoning": false,
+      "supportsVision": false,
+      "isModerated": false,
       "recommended": true
     },
     {
@@ -69,13 +51,19 @@
       "description": "Gemini 3 Pro is Google’s flagship frontier model for high-precision multimodal reasoning, combining strong performance across text, image, video, audio, and code with a 1M-token context window. Reasoning Details must be preserved when using multi-turn tool calling, see our docs here: https://openrouter.ai/docs/use-cases/reasoning-tokens#preserving-reasoning-blocks. It delivers state-of-the-art benchmark results in general reasoning, STEM problem solving, factual QA, and multimodal understanding, including leading scores on LMArena, GPQA Diamond, MathArena Apex, MMMU-Pro, and Video-MMMU. Interactions emphasize depth and interpretability: the model is designed to infer intent with minimal prompting and produce direct, insight-focused responses.\n\nBuilt for advanced development and agentic workflows, Gemini 3 Pro provides robust tool-calling, long-horizon planning stability, and strong zero-shot generation for complex UI, visualization, and coding tasks. It excels at agentic coding (SWE-Bench Verified, Terminal-Bench 2.0), multimodal analysis, and structured long-form tasks such as research synthesis, planning, and interactive learning experiences. Suitable applications include autonomous agents, coding assistants, multimodal analytics, scientific reasoning, and high-context information processing.",
       "provider": "Google",
       "category": "coding",
-      "priority": 5,
+      "priority": 3,
       "pricing": {
         "input": "$2.00/1M",
         "output": "$12.00/1M",
         "average": "$7.00/1M"
       },
       "context": "1048K",
+      "maxOutputTokens": 65536,
+      "modality": "text+image->text",
+      "supportsTools": true,
+      "supportsReasoning": true,
+      "supportsVision": true,
+      "isModerated": false,
       "recommended": true
     },
     {
@@ -84,28 +72,145 @@
       "description": "Kimi Linear is a hybrid linear attention architecture that outperforms traditional full attention methods across various contexts, including short, long, and reinforcement learning (RL) scaling regimes. At its core is Kimi Delta Attention (KDA)—a refined version of Gated DeltaNet that introduces a more efficient gating mechanism to optimize the use of finite-state RNN memory.\n\nKimi Linear achieves superior performance and hardware efficiency, especially for long-context tasks. It reduces the need for large KV caches by up to 75% and boosts decoding throughput by up to 6x for contexts as long as 1M tokens.",
       "provider": "Moonshotai",
       "category": "coding",
-      "priority": 6,
+      "priority": 4,
       "pricing": {
         "input": "$0.50/1M",
         "output": "$0.60/1M",
         "average": "$0.55/1M"
       },
       "context": "1048K",
+      "maxOutputTokens": 1048576,
+      "modality": "text->text",
+      "supportsTools": false,
+      "supportsReasoning": false,
+      "supportsVision": false,
+      "isModerated": false,
       "recommended": true
     },
     {
-      "id": "google/gemini-2.5-flash-preview-09-2025",
-      "name": "Google: Gemini 2.5 Flash Preview 09-2025",
-      "description": "Gemini 2.5 Flash Preview September 2025 Checkpoint is Google's state-of-the-art workhorse model, specifically designed for advanced reasoning, coding, mathematics, and scientific tasks. It includes built-in \"thinking\" capabilities, enabling it to provide responses with greater accuracy and nuanced context handling. \n\nAdditionally, Gemini 2.5 Flash is configurable through the \"max tokens for reasoning\" parameter, as described in the documentation (https://openrouter.ai/docs/use-cases/reasoning-tokens#max-tokens-for-reasoning).",
-      "provider": "Google",
+      "id": "meta-llama/llama-4-maverick",
+      "name": "Meta: Llama 4 Maverick",
+      "description": "Llama 4 Maverick 17B Instruct (128E) is a high-capacity multimodal language model from Meta, built on a mixture-of-experts (MoE) architecture with 128 experts and 17 billion active parameters per forward pass (400B total). It supports multilingual text and image input, and produces multilingual text and code output across 12 supported languages. Optimized for vision-language tasks, Maverick is instruction-tuned for assistant-like behavior, image reasoning, and general-purpose multimodal interaction.\n\nMaverick features early fusion for native multimodality and a 1 million token context window. It was trained on a curated mixture of public, licensed, and Meta-platform data, covering ~22 trillion tokens, with a knowledge cutoff in August 2024. Released on April 5, 2025 under the Llama 4 Community License, Maverick is suited for research and commercial applications requiring advanced multimodal understanding and high model throughput.",
+      "provider": "Meta-llama",
       "category": "coding",
-      "priority": 7,
+      "priority": 5,
       "pricing": {
-        "input": "$0.30/1M",
-        "output": "$2.50/1M",
-        "average": "$1.40/1M"
+        "input": "$0.15/1M",
+        "output": "$0.60/1M",
+        "average": "$0.38/1M"
       },
       "context": "1048K",
+      "maxOutputTokens": 16384,
+      "modality": "text+image->text",
+      "supportsTools": true,
+      "supportsReasoning": false,
+      "supportsVision": true,
+      "isModerated": false,
+      "recommended": true
+    },
+    {
+      "id": "openai/gpt-4.1",
+      "name": "OpenAI: GPT-4.1",
+      "description": "GPT-4.1 is a flagship large language model optimized for advanced instruction following, real-world software engineering, and long-context reasoning. It supports a 1 million token context window and outperforms GPT-4o and GPT-4.5 across coding (54.6% SWE-bench Verified), instruction compliance (87.4% IFEval), and multimodal understanding benchmarks. It is tuned for precise code diffs, agent reliability, and high recall in large document contexts, making it ideal for agents, IDE tooling, and enterprise knowledge retrieval.",
+      "provider": "Openai",
+      "category": "coding",
+      "priority": 6,
+      "pricing": {
+        "input": "$2.00/1M",
+        "output": "$8.00/1M",
+        "average": "$5.00/1M"
+      },
+      "context": "1047K",
+      "maxOutputTokens": 32768,
+      "modality": "text+image->text",
+      "supportsTools": true,
+      "supportsReasoning": false,
+      "supportsVision": true,
+      "isModerated": true,
+      "recommended": true
+    },
+    {
+      "id": "minimax/minimax-01",
+      "name": "MiniMax: MiniMax-01",
+      "description": "MiniMax-01 is a combines MiniMax-Text-01 for text generation and MiniMax-VL-01 for image understanding. It has 456 billion parameters, with 45.9 billion parameters activated per inference, and can handle a context of up to 4 million tokens.\n\nThe text model adopts a hybrid architecture that combines Lightning Attention, Softmax Attention, and Mixture-of-Experts (MoE). The image model adopts the “ViT-MLP-LLM” framework and is trained on top of the text model.\n\nTo read more about the release, see: https://www.minimaxi.com/en/news/minimax-01-series-2",
+      "provider": "Minimax",
+      "category": "vision",
+      "priority": 7,
+      "pricing": {
+        "input": "$0.20/1M",
+        "output": "$1.10/1M",
+        "average": "$0.65/1M"
+      },
+      "context": "1000K",
+      "maxOutputTokens": 1000192,
+      "modality": "text+image->text",
+      "supportsTools": false,
+      "supportsReasoning": false,
+      "supportsVision": true,
+      "isModerated": false,
+      "recommended": true
+    },
+    {
+      "id": "amazon/nova-premier-v1",
+      "name": "Amazon: Nova Premier 1.0",
+      "description": "Amazon Nova Premier is the most capable of Amazon’s multimodal models for complex reasoning tasks and for use as the best teacher for distilling custom models.",
+      "provider": "Amazon",
+      "category": "vision",
+      "priority": 8,
+      "pricing": {
+        "input": "$2.50/1M",
+        "output": "$12.50/1M",
+        "average": "$7.50/1M"
+      },
+      "context": "1000K",
+      "maxOutputTokens": 32000,
+      "modality": "text+image->text",
+      "supportsTools": true,
+      "supportsReasoning": false,
+      "supportsVision": true,
+      "isModerated": true,
+      "recommended": true
+    },
+    {
+      "id": "anthropic/claude-sonnet-4.5",
+      "name": "Anthropic: Claude Sonnet 4.5",
+      "description": "Claude Sonnet 4.5 is Anthropic’s most advanced Sonnet model to date, optimized for real-world agents and coding workflows. It delivers state-of-the-art performance on coding benchmarks such as SWE-bench Verified, with improvements across system design, code security, and specification adherence. The model is designed for extended autonomous operation, maintaining task continuity across sessions and providing fact-based progress tracking.\n\nSonnet 4.5 also introduces stronger agentic capabilities, including improved tool orchestration, speculative parallel execution, and more efficient context and memory management. With enhanced context tracking and awareness of token usage across tool calls, it is particularly well-suited for multi-context and long-running workflows. Use cases span software engineering, cybersecurity, financial analysis, research agents, and other domains requiring sustained reasoning and tool use.",
+      "provider": "Anthropic",
+      "category": "coding",
+      "priority": 9,
+      "pricing": {
+        "input": "$3.00/1M",
+        "output": "$15.00/1M",
+        "average": "$9.00/1M"
+      },
+      "context": "1000K",
+      "maxOutputTokens": 64000,
+      "modality": "text+image->text",
+      "supportsTools": true,
+      "supportsReasoning": true,
+      "supportsVision": true,
+      "isModerated": false,
+      "recommended": true
+    },
+    {
+      "id": "qwen/qwen-plus-2025-07-28",
+      "name": "Qwen: Qwen Plus 0728",
+      "description": "Qwen Plus 0728, based on the Qwen3 foundation model, is a 1 million context hybrid reasoning model with a balanced performance, speed, and cost combination.",
+      "provider": "Qwen",
+      "category": "reasoning",
+      "priority": 10,
+      "pricing": {
+        "input": "$0.40/1M",
+        "output": "$1.20/1M",
+        "average": "$0.80/1M"
+      },
+      "context": "1000K",
+      "maxOutputTokens": 32768,
+      "modality": "text->text",
+      "supportsTools": true,
+      "supportsReasoning": false,
+      "supportsVision": false,
+      "isModerated": false,
       "recommended": true
     }
   ]
