@@ -172,33 +172,12 @@
       "recommended": true
     },
     {
-      "id": "anthropic/claude-sonnet-4.5",
-      "name": "Anthropic: Claude Sonnet 4.5",
-      "description": "Claude Sonnet 4.5 is Anthropic’s most advanced Sonnet model to date, optimized for real-world agents and coding workflows. It delivers state-of-the-art performance on coding benchmarks such as SWE-bench Verified, with improvements across system design, code security, and specification adherence. The model is designed for extended autonomous operation, maintaining task continuity across sessions and providing fact-based progress tracking.\n\nSonnet 4.5 also introduces stronger agentic capabilities, including improved tool orchestration, speculative parallel execution, and more efficient context and memory management. With enhanced context tracking and awareness of token usage across tool calls, it is particularly well-suited for multi-context and long-running workflows. Use cases span software engineering, cybersecurity, financial analysis, research agents, and other domains requiring sustained reasoning and tool use.",
-      "provider": "Anthropic",
-      "category": "coding",
-      "priority": 9,
-      "pricing": {
-        "input": "$3.00/1M",
-        "output": "$15.00/1M",
-        "average": "$9.00/1M"
-      },
-      "context": "1000K",
-      "maxOutputTokens": 64000,
-      "modality": "text+image->text",
-      "supportsTools": true,
-      "supportsReasoning": true,
-      "supportsVision": true,
-      "isModerated": false,
-      "recommended": true
-    },
-    {
       "id": "qwen/qwen-plus-2025-07-28",
       "name": "Qwen: Qwen Plus 0728",
       "description": "Qwen Plus 0728, based on the Qwen3 foundation model, is a 1 million context hybrid reasoning model with a balanced performance, speed, and cost combination.",
       "provider": "Qwen",
       "category": "reasoning",
-      "priority": 10,
+      "priority": 9,
       "pricing": {
         "input": "$0.40/1M",
         "output": "$1.20/1M",

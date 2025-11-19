@@ -259,6 +259,9 @@ async function updateModelsFromOpenRouter(): Promise<void> {
     // Filter and categorize models
     const trendingModels = openrouterData.data
       .filter((m: any) => {
+        // Exclude Anthropic models (Claude available natively in Claude Code)
+        if (m.id.startsWith("anthropic/")) return false;
+
         // Only include generally available models with pricing
         if (!m.pricing) return false;
 
@@ -298,10 +301,8 @@ async function updateModelsFromOpenRouter(): Promise<void> {
         category = "budget";
       }
 
-      // Provider diversity: max 1 per provider (except Anthropic - keep all)
-      // Anthropic models are internally available in Claude Code, not external
-      const isAnthropic = provider.toLowerCase() === "anthropic";
-      if (!isAnthropic && providers.has(provider)) {
+      // Provider diversity: max 1 per provider
+      if (providers.has(provider)) {
         continue; // Skip if we already have a model from this provider
       }
 
@@ -341,12 +342,9 @@ async function updateModelsFromOpenRouter(): Promise<void> {
       });
 
       categories[category as keyof typeof categories]++;
-      if (!isAnthropic) {
-        providers.add(provider); // Only track non-Anthropic providers for diversity
-      }
+      providers.add(provider);
 
-      // Stop when we have 10-15 models with good balance
-      // (allowing more to accommodate multiple Anthropic models)
+      // Stop when we have 10-12 models with good balance
       if (recommendations.length >= 10 &&
           categories.coding >= 2 &&
           categories.reasoning >= 2 &&
@@ -354,7 +352,7 @@ async function updateModelsFromOpenRouter(): Promise<void> {
         break;
       }
 
-      if (recommendations.length >= 15) {
+      if (recommendations.length >= 12) {
         break;
       }
     }
@@ -552,8 +550,8 @@ function printAvailableModels(): void {
   console.log(`\nAvailable OpenRouter Models (last updated: ${lastUpdated}):\n`);
 
   // Table header
-  console.log("  Model                          Provider    Pricing         Context  Capabilities");
-  console.log("  " + "─".repeat(90));
+  console.log("  Model                          Provider    Pricing     Context  Capabilities");
+  console.log("  " + "─".repeat(86));
 
   // Table rows
   for (const model of models) {
@@ -565,9 +563,17 @@ function printAvailableModels(): void {
     const provider = model.provider.length > 10 ? model.provider.substring(0, 7) + "..." : model.provider;
     const providerPadded = provider.padEnd(10);
 
-    // Format pricing (average)
-    const pricing = model.pricing?.average || "N/A";
-    const pricingPadded = pricing.padEnd(14);
+    // Format pricing (average) - handle special cases
+    let pricing = model.pricing?.average || "N/A";
+
+    // Handle special pricing cases
+    if (pricing.includes("-1000000")) {
+      pricing = "varies"; // Auto-router pricing varies by routed model
+    } else if (pricing === "$0.00/1M" || pricing === "FREE") {
+      pricing = "FREE";
+    }
+
+    const pricingPadded = pricing.padEnd(10);
 
     // Format context
     const context = model.context || "N/A";
