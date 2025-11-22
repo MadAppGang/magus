@@ -7,7 +7,7 @@
 	},
 	"metadata": {
 		"description": "MAG team's curated collection of Claude Code plugins for modern full-stack development",
-		"version": "3.7.0",
+		"version": "4.0.0",
 		"pluginRoot": "./plugins"
 	},
 	"plugins": [
@@ -80,6 +80,34 @@
 				"aws-ecs",
 				"api",
 				"testing"
+			],
+			"strict": true
+		},
+		{
+			"name": "orchestration",
+			"source": "./plugins/orchestration",
+			"description": "Shared multi-agent coordination and workflow orchestration patterns for complex Claude Code workflows. Skills-only plugin providing proven patterns for parallel execution (3-5x speedup), multi-model validation (Grok/Gemini/GPT-5), quality gates, TDD loops, TodoWrite phase tracking, and comprehensive error recovery. Battle-tested patterns from 100+ days production use.",
+			"version": "0.1.0",
+			"author": {
+				"name": "Jack Rudenko",
+				"email": "i@madappgang.com",
+				"company": "MadAppGang"
+			},
+			"category": "development",
+			"keywords": [
+				"orchestration",
+				"multi-agent",
+				"workflow",
+				"claudish",
+				"quality-gates",
+				"parallel-execution",
+				"coordination",
+				"grok",
+				"gemini",
+				"consensus",
+				"error-recovery",
+				"tdd",
+				"skills"
 			],
 			"strict": true
 		}
