@@ -1,0 +1,43 @@
+{
+  "name": "orchestration",
+  "version": "0.1.0",
+  "description": "Shared multi-agent coordination and workflow orchestration patterns for complex Claude Code workflows. Provides proven patterns for parallel execution, multi-model validation, quality gates, and phase-based orchestration.",
+  "author": "MadAppGang",
+  "license": "MIT",
+  "homepage": "https://github.com/MadAppGang/claude-code",
+
+  "tags": [
+    "orchestration",
+    "multi-agent",
+    "workflow",
+    "claudish",
+    "quality-gates",
+    "parallel-execution",
+    "coordination",
+    "grok",
+    "gemini",
+    "consensus",
+    "error-recovery"
+  ],
+
+  "skills": [
+    "multi-agent-coordination",
+    "multi-model-validation",
+    "quality-gates",
+    "todowrite-orchestration",
+    "error-recovery"
+  ],
+
+  "skillBundles": {
+    "core": ["multi-agent-coordination", "quality-gates"],
+    "advanced": ["multi-model-validation", "error-recovery"],
+    "testing": ["quality-gates", "error-recovery", "todowrite-orchestration"],
+    "complete": ["multi-agent-coordination", "multi-model-validation", "quality-gates", "todowrite-orchestration", "error-recovery"]
+  },
+
+  "dependencies": [],
+
+  "compatibility": {
+    "claudeCode": ">=0.1.0"
+  }
+}
