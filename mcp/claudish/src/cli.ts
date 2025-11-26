@@ -15,6 +15,13 @@ const packageJson = JSON.parse(
 const VERSION = packageJson.version;
 
 /**
+ * Get current version
+ */
+export function getVersion(): string {
+  return VERSION;
+}
+
+/**
  * Parse CLI arguments and environment variables
  */
 export async function parseArgs(args: string[]): Promise<ClaudishConfig> {

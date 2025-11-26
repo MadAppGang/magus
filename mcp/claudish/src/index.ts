@@ -20,12 +20,13 @@ if (isMcpMode) {
  */
 async function runCli() {
   const { checkClaudeInstalled, runClaudeWithProxy } = await import("./claude-runner.js");
-  const { parseArgs } = await import("./cli.js");
+  const { parseArgs, getVersion } = await import("./cli.js");
   const { DEFAULT_PORT_RANGE } = await import("./config.js");
   const { selectModelInteractively, promptForApiKey } = await import("./simple-selector.js");
   const { initLogger, getLogFilePath } = await import("./logger.js");
   const { findAvailablePort } = await import("./port-manager.js");
   const { createProxyServer } = await import("./proxy-server.js");
+  const { checkForUpdates } = await import("./update-checker.js");
 
   /**
    * Read content from stdin
@@ -50,6 +51,17 @@ async function runCli() {
       const logFile = getLogFilePath();
       if (logFile) {
         console.log(`[claudish] Debug log: ${logFile}`);
+      }
+    }
+
+    // Check for updates (only in interactive mode, skip in JSON output mode)
+    if (cliConfig.interactive && !cliConfig.jsonOutput) {
+      const shouldExit = await checkForUpdates(getVersion(), {
+        quiet: cliConfig.quiet,
+        skipPrompt: false,
+      });
+      if (shouldExit) {
+        process.exit(0);
       }
     }
 
