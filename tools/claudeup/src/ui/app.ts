@@ -56,7 +56,7 @@ export function createApp(): AppState {
 
   // Quick navigation keys - disabled during search or in sub-screens
   const isTopLevelScreen = (screen: Screen): boolean => {
-    return ['plugins', 'marketplace', 'mcp', 'statusline'].includes(screen);
+    return ['plugins', 'marketplace', 'mcp', 'statusline', 'cli-tools'].includes(screen);
   };
 
   screen.key(['1'], () => {
@@ -74,6 +74,10 @@ export function createApp(): AppState {
   screen.key(['4'], () => {
     if (state.isSearching || !isTopLevelScreen(state.currentScreen)) return;
     navigateTo(state, 'statusline');
+  });
+  screen.key(['5'], () => {
+    if (state.isSearching || !isTopLevelScreen(state.currentScreen)) return;
+    navigateTo(state, 'cli-tools');
   });
 
   return state;
@@ -136,6 +140,10 @@ export async function navigateTo(state: AppState, screen: Screen): Promise<void>
     case 'statusline':
       await createStatusLineScreen(state);
       break;
+    case 'cli-tools':
+      const { createCliToolsScreen } = await import('./screens/cli-tools.js');
+      await createCliToolsScreen(state);
+      break;
   }
 
   state.screen.render();
@@ -158,7 +166,7 @@ export function showHelp(state: AppState): void {
   {cyan-fg}?{/cyan-fg}              This help
 
 {bold}Quick Navigation{/bold}
-  {cyan-fg}1{/cyan-fg}  Plugins       {cyan-fg}3{/cyan-fg}  MCP Servers
+  {cyan-fg}1{/cyan-fg}  Plugins       {cyan-fg}3{/cyan-fg}  MCP Servers  {cyan-fg}5{/cyan-fg}  CLI Tools
   {cyan-fg}2{/cyan-fg}  Marketplaces  {cyan-fg}4{/cyan-fg}  Status Line
 
 {bold}Plugin Actions{/bold}
@@ -167,7 +175,7 @@ export function showHelp(state: AppState): void {
 
 {bold}MCP Servers{/bold}
   {cyan-fg}/{/cyan-fg}  Search local + remote
-  {cyan-fg}r{/cyan-fg}  Browse PulseMCP registry
+  {cyan-fg}r{/cyan-fg}  Browse MCP registry
     `.trim(),
     tags: true,
     border: {
@@ -424,6 +432,7 @@ export function createHeader(state: AppState, _title: string): blessed.BoxElemen
     { key: '2', label: 'Marketplaces', screen: 'marketplace' as Screen },
     { key: '3', label: 'MCP', screen: 'mcp' as Screen },
     { key: '4', label: 'Status', screen: 'statusline' as Screen },
+    { key: '5', label: 'Tools', screen: 'cli-tools' as Screen },
   ];
 
   const tabContent = tabs

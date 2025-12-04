@@ -80,7 +80,7 @@ export interface ClaudeLocalSettings extends ClaudeSettings {
   allowMcp?: boolean;
 }
 
-export type Screen = 'main' | 'mcp' | 'mcp-registry' | 'marketplace' | 'plugins' | 'statusline';
+export type Screen = 'main' | 'mcp' | 'mcp-registry' | 'marketplace' | 'plugins' | 'statusline' | 'cli-tools';
 
 // MCP Registry Types (registry.modelcontextprotocol.io)
 export interface McpRegistryServer {
