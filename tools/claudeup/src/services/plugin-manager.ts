@@ -27,18 +27,17 @@ export interface MarketplacePlugin {
   description: string;
 }
 
-// Cache for fetched marketplace data
-const marketplaceCache = new Map<string, { plugins: MarketplacePlugin[]; fetchedAt: number }>();
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+// Session-level cache for fetched marketplace data (no TTL - persists until explicit refresh)
+const marketplaceCache = new Map<string, MarketplacePlugin[]>();
 
 export async function fetchMarketplacePlugins(
   marketplaceName: string,
   repo: string
 ): Promise<MarketplacePlugin[]> {
-  // Check cache first
+  // Check cache first - session-level, no TTL
   const cached = marketplaceCache.get(marketplaceName);
-  if (cached && Date.now() - cached.fetchedAt < CACHE_TTL) {
-    return cached.plugins;
+  if (cached) {
+    return cached;
   }
 
   try {
@@ -64,8 +63,8 @@ export async function fetchMarketplacePlugins(
       }
     }
 
-    // Cache the result
-    marketplaceCache.set(marketplaceName, { plugins, fetchedAt: Date.now() });
+    // Cache the result (session-level)
+    marketplaceCache.set(marketplaceName, plugins);
 
     return plugins;
   } catch (error) {

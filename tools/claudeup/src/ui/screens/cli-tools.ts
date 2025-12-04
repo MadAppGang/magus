@@ -16,6 +16,15 @@ interface ToolStatus {
   checking: boolean;
 }
 
+// Session-level cache for tool statuses (persists until explicit refresh)
+let cachedToolStatuses: ToolStatus[] | null = null;
+let cacheInitialized = false;
+
+export function clearCliToolsCache(): void {
+  cachedToolStatuses = null;
+  cacheInitialized = false;
+}
+
 function parseVersion(versionOutput: string): string | undefined {
   // Extract version number from various formats like "v1.2.3", "1.2.3", "aider 0.82.0"
   const match = versionOutput.match(/v?(\d+\.\d+\.\d+(?:-[\w.]+)?)/);
@@ -77,13 +86,18 @@ function compareVersions(v1: string, v2: string): number {
 export async function createCliToolsScreen(state: AppState): Promise<void> {
   createHeader(state, 'CLI Tools');
 
-  // Initialize tool statuses - all checking initially
-  const toolStatuses: ToolStatus[] = cliTools.map((tool) => ({
+  // Use cached tool statuses if available, otherwise initialize
+  const toolStatuses: ToolStatus[] = cachedToolStatuses || cliTools.map((tool) => ({
     tool,
     installed: false,
     installedVersion: undefined,
     checking: true,
   }));
+
+  // Store reference for caching
+  if (!cachedToolStatuses) {
+    cachedToolStatuses = toolStatuses;
+  }
 
   // Build list items
   const buildListItems = (): string[] => {
@@ -255,8 +269,11 @@ ${actionText}
     await Promise.all([...installedChecks, ...latestChecks]);
   };
 
-  // Start async version fetching immediately
-  fetchVersionInfo();
+  // Start async version fetching only if not already cached
+  if (!cacheInitialized) {
+    cacheInitialized = true;
+    fetchVersionInfo();
+  }
 
   // Install/Update on Enter
   list.on('select', async (_item: unknown, index: number) => {
@@ -295,7 +312,8 @@ ${actionText}
       );
     }
 
-    // Refresh screen
+    // Clear cache and refresh screen to detect new version
+    clearCliToolsCache();
     createCliToolsScreen(state);
   });
 
@@ -311,8 +329,9 @@ ${actionText}
     state.screen.render();
   });
 
-  // Refresh
+  // Refresh - clear cache and reload
   list.key(['r'], () => {
+    clearCliToolsCache();
     createCliToolsScreen(state);
   });
 
@@ -344,6 +363,7 @@ ${actionText}
     }
 
     await showMessage(state, 'Done', `Updated ${updatable.length} tool(s).`, 'success');
+    clearCliToolsCache();
     createCliToolsScreen(state);
   });
 

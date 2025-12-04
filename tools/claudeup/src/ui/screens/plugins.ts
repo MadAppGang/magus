@@ -286,7 +286,6 @@ ${actions}
           } else {
             await removeMarketplace(mp.name, state.projectPath);
           }
-          clearMarketplaceCache();
           await showMessage(state, 'Removed', `${mp.displayName} removed.`, 'success');
           createPluginsScreen(state);
         }
@@ -297,7 +296,6 @@ ${actions}
         } else {
           await addMarketplace(mp, state.projectPath);
         }
-        clearMarketplaceCache();
         await showMessage(
           state,
           'Added',
@@ -317,7 +315,6 @@ ${actions}
         } else {
           await enablePlugin(plugin.id, newState, state.projectPath);
         }
-        clearMarketplaceCache();
         await showMessage(
           state,
           newState ? 'Enabled' : 'Disabled',
@@ -334,7 +331,6 @@ ${actions}
           await enablePlugin(plugin.id, true, state.projectPath);
           await saveInstalledPluginVersion(plugin.id, plugin.version, state.projectPath);
         }
-        clearMarketplaceCache();
         await showMessage(
           state,
           'Installed',
@@ -346,11 +342,10 @@ ${actions}
     }
   });
 
-  // Toggle scope (g key)
+  // Toggle scope (g key) - don't clear cache, just switch view
   state.screen.key(['g'], async () => {
     if (state.isSearching) return;
     currentScope = currentScope === 'project' ? 'global' : 'project';
-    clearMarketplaceCache();
     createPluginsScreen(state);
   });
 
@@ -379,7 +374,6 @@ ${actions}
       } else {
         await saveInstalledPluginVersion(plugin.id, plugin.version, state.projectPath);
       }
-      clearMarketplaceCache();
       await showMessage(state, 'Updated', `${plugin.name} updated.\nRestart Claude Code to apply.`, 'success');
       createPluginsScreen(state);
     }
@@ -407,7 +401,6 @@ ${actions}
         await enablePlugin(plugin.id, false, state.projectPath);
         await removeInstalledPluginVersion(plugin.id, state.projectPath);
       }
-      clearMarketplaceCache();
       await showMessage(state, 'Uninstalled', `${plugin.name} removed.\nRestart Claude Code to apply.`, 'success');
       createPluginsScreen(state);
     }
@@ -439,7 +432,6 @@ ${actions}
           await saveInstalledPluginVersion(plugin.id, plugin.version, state.projectPath);
         }
       }
-      clearMarketplaceCache();
       await showMessage(state, 'Updated', `Updated ${updatable.length} plugin(s).\nRestart Claude Code to apply.`, 'success');
       createPluginsScreen(state);
     }
