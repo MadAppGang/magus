@@ -95,12 +95,12 @@ export async function createMcpSearchScreen(state: AppState, query: string): Pro
     parent: state.screen,
     top: 3,
     left: 2,
-    width: '50%-2',
+    width: '50%-3',
     height: 3,
     tags: true,
     border: { type: 'line' },
     style: { border: { fg: 'green' } },
-    label: ' 🔍 Search Results ',
+    label: ' Search Results ',
     content: `{white-fg}${query}{/white-fg} {gray-fg}(${searchInfo}){/gray-fg}`,
   });
 
@@ -137,7 +137,7 @@ export async function createMcpSearchScreen(state: AppState, query: string): Pro
     parent: state.screen,
     top: 6,
     left: 2,
-    width: '50%-2',
+    width: '50%-3',
     height: '100%-9',
     items: listLabels,
     keys: true,
@@ -155,7 +155,7 @@ export async function createMcpSearchScreen(state: AppState, query: string): Pro
   const detailBox = blessed.box({
     parent: state.screen,
     top: 3,
-    right: 2,
+    left: '50%',
     width: '50%-2',
     height: '100%-5',
     tags: true,
@@ -222,7 +222,7 @@ ${isInstalled
 
   // New search
   list.key(['/'], async () => {
-    const newQuery = await showInput(state, '🔍 Search', 'Search MCP servers:', query);
+    const newQuery = await showInput(state, 'Search', 'Search MCP servers:', query);
     if (newQuery !== null && newQuery.trim()) {
       createMcpSearchScreen(state, newQuery);
     }
@@ -247,12 +247,12 @@ export async function createMcpScreen(state: AppState): Promise<void> {
     parent: state.screen,
     top: 3,
     left: 2,
-    width: '50%-2',
+    width: '50%-3',
     height: 3,
     tags: true,
     border: { type: 'line' },
     style: { border: { fg: 'cyan' } },
-    label: ' 🔍 Search ',
+    label: ' Search ',
     content: '{gray-fg}Press / to search...{/gray-fg}',
   });
 
@@ -293,7 +293,7 @@ export async function createMcpScreen(state: AppState): Promise<void> {
     parent: state.screen,
     top: 6,
     left: 2,
-    width: '50%-2',
+    width: '50%-3',
     height: '100%-9',
     items: listItems.map((item) => item.label),
     keys: true,
@@ -312,7 +312,7 @@ export async function createMcpScreen(state: AppState): Promise<void> {
   const detailBox = blessed.box({
     parent: state.screen,
     top: 3,
-    right: 2,
+    left: '50%',
     width: '50%-2',
     height: '100%-5',
     content: '',
@@ -430,7 +430,7 @@ ${isInstalled
 
   // Search with / key - opens search screen
   list.key(['/'], async () => {
-    const query = await showInput(state, '🔍 Search', 'Search MCP servers:');
+    const query = await showInput(state, 'Search', 'Search MCP servers:');
     if (query !== null && query.trim()) {
       createMcpSearchScreen(state, query);
     }

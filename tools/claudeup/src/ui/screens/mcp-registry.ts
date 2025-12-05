@@ -39,7 +39,7 @@ export async function createMcpRegistryScreen(
     parent: state.screen,
     top: 3,
     left: 2,
-    width: '50%-2',
+    width: '50%-3',
     height: 3,
     tags: true,
     border: {
@@ -50,7 +50,7 @@ export async function createMcpRegistryScreen(
         fg: 'cyan',
       },
     },
-    label: ' 🌐 MCP Registry ',
+    label: ' MCP Registry ',
   });
 
   const updateSearchBox = (): void => {
@@ -90,7 +90,7 @@ export async function createMcpRegistryScreen(
     parent: state.screen,
     top: 6,
     left: 2,
-    width: '50%-2',
+    width: '50%-3',
     height: '100%-9',
     items: buildListItems(),
     keys: true,
@@ -122,7 +122,7 @@ export async function createMcpRegistryScreen(
   const detailBox = blessed.box({
     parent: state.screen,
     top: 3,
-    right: 2,
+    left: '50%',
     width: '50%-2',
     height: '100%-5',
     content: '',
@@ -255,7 +255,7 @@ ${server.source_code_url ? `\n{bold}Source:{/bold}\n{gray-fg}${server.source_cod
     parent: state.screen,
     top: 3,
     left: 2,
-    width: '50%-2',
+    width: '50%-3',
     height: 3,
     hidden: true,
     input: true,

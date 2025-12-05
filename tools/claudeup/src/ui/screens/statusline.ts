@@ -140,7 +140,7 @@ export async function createStatusLineScreen(state: AppState, initialScope: Scop
         bg: 'gray',
       },
     },
-    label: ' 🎨 Themes ',
+    label: ' Themes ',
   });
 
   // Preview box - positioned at the bottom

@@ -404,13 +404,13 @@ export const categoryOrder = [
 
 export function getCategoryDisplayName(category: string): string {
   const names: Record<string, string> = {
-    browser: '🌐 Browser & Automation',
-    ai: '🤖 AI & Search',
-    design: '🎨 Design & Creative',
-    'dev-tools': '🛠️  Developer Tools',
-    cloud: '☁️  Cloud & Infrastructure',
-    database: '🗄️  Database',
-    productivity: '📋 Productivity',
+    browser: 'Browser & Automation',
+    ai: 'AI & Search',
+    design: 'Design & Creative',
+    'dev-tools': 'Developer Tools',
+    cloud: 'Cloud & Infrastructure',
+    database: 'Database',
+    productivity: 'Productivity',
   };
   return names[category] || category;
 }
