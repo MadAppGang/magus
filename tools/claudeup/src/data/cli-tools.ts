@@ -110,4 +110,15 @@ export const cliTools: CliTool[] = [
     packageManager: 'pip',
     packageName: 'aider-chat',
   },
+  {
+    name: 'crush',
+    displayName: 'Crush',
+    description: 'AI coding assistant from Charm with terminal-native UX',
+    installCommand: 'npm install -g @charmland/crush',
+    checkCommand: 'crush --version',
+    website: 'https://github.com/charmbracelet/crush',
+    category: 'ai-coding',
+    packageManager: 'npm',
+    packageName: '@charmland/crush',
+  },
 ];
