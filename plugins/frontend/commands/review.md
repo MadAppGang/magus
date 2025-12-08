@@ -100,9 +100,9 @@ allowed-tools: Task, AskUserQuestion, Bash, Read, TodoWrite, Glob, Grep
   </critical_constraints>
 
   <workflow>
-    <step number="0">Initialize TodoWrite with 10 workflow tasks before starting</step>
+    <step number="0">Initialize session and TodoWrite with workflow tasks</step>
     <step number="1">PHASE 1: Determine review target and gather context</step>
-    <step number="2">PHASE 2: Select AI models and show cost estimate</step>
+    <step number="2">PHASE 2: Load saved model preferences and select AI models</step>
     <step number="3">PHASE 3: Execute ALL reviews in parallel</step>
     <step number="4">PHASE 4: Consolidate reviews with consensus analysis</step>
     <step number="5">PHASE 5: Present consolidated results</step>
@@ -110,6 +110,28 @@ allowed-tools: Task, AskUserQuestion, Bash, Read, TodoWrite, Glob, Grep
 </instructions>
 
 <orchestration>
+  <session_management>
+    <initialization>
+      BEFORE starting any phase, initialize a unique session for artifact isolation:
+
+      1. Generate session ID: review-YYYYMMDD-HHMMSS-XXXX (with random suffix)
+      2. Create session directory: ai-docs/sessions/{SESSION_ID}/
+      3. Create subdirectories: reviews/
+      4. Optional: Ask for session descriptor (if enabled in settings)
+      5. Write session-meta.json with metadata
+      6. Store SESSION_PATH variable for all artifact paths
+      7. Fallback to legacy mode (SESSION_PATH="ai-docs") if creation fails
+    </initialization>
+
+    <file_paths>
+      All artifacts MUST use ${SESSION_PATH} prefix:
+      - Context: ${SESSION_PATH}/code-review-context.md
+      - Embedded review: ${SESSION_PATH}/reviews/claude-review.md
+      - External reviews: ${SESSION_PATH}/reviews/{model}-review.md
+      - Consolidated: ${SESSION_PATH}/reviews/consolidated.md
+    </file_paths>
+  </session_management>
+
   <allowed_tools>
     - Task (delegate to senior-code-reviewer agent)
     - Bash (git commands, Claudish availability checks)
@@ -138,6 +160,284 @@ allowed-tools: Task, AskUserQuestion, Bash, Read, TodoWrite, Glob, Grep
   </delegation_rules>
 
   <phases>
+    <phase number="0" name="Session Initialization">
+      <objective>
+        Create unique session for artifact isolation and enable session tracking
+      </objective>
+
+      <steps>
+        <step>Clean up old sessions (optional, prevents accumulation):
+          ```bash
+          cleanup_old_sessions() {
+            local max_days="${1:-90}"
+            local max_sessions="${2:-100}"
+            local sessions_dir="ai-docs/sessions"
+
+            # Skip if sessions directory doesn't exist
+            [[ -d "$sessions_dir" ]] || return 0
+
+            # Age-based cleanup
+            if [[ $max_days -gt 0 ]]; then
+              find "$sessions_dir" -maxdepth 1 -type d -mtime "+${max_days}" | while read dir; do
+                # Skip if session is active
+                local status=$(jq -r '.status // "unknown"' "$dir/session-meta.json" 2>/dev/null)
+                if [[ "$status" != "implementing" && "$status" != "initializing" ]]; then
+                  rm -rf "$dir" 2>/dev/null && echo "Cleaned: $(basename $dir) (age)"
+                fi
+              done
+            fi
+
+            # Count-based cleanup
+            if [[ $max_sessions -gt 0 ]]; then
+              local count=$(ls -1d "$sessions_dir"/*/ 2>/dev/null | wc -l)
+              if [[ $count -gt $max_sessions ]]; then
+                local to_remove=$((count - max_sessions))
+                # Keep at least 3 most recent (safety buffer)
+                to_remove=$((to_remove > count - 3 ? count - 3 : to_remove))
+
+                if [[ $to_remove -gt 0 ]]; then
+                  ls -1td "$sessions_dir"/*/ | tail -n "$to_remove" | while read dir; do
+                    local status=$(jq -r '.status // "unknown"' "$dir/session-meta.json" 2>/dev/null)
+                    if [[ "$status" != "implementing" && "$status" != "initializing" ]]; then
+                      rm -rf "$dir" 2>/dev/null && echo "Cleaned: $(basename $dir) (count)"
+                    fi
+                  done
+                fi
+              fi
+            fi
+          }
+
+          # Run cleanup with defaults (90 days, 100 sessions max)
+          cleanup_old_sessions 90 100
+          ```
+        </step>
+
+        <step>Generate unique session ID with collision prevention:
+          ```bash
+          SESSION_DATE=$(date -u +%Y%m%d)
+          SESSION_TIME=$(date -u +%H%M%S)
+          SESSION_RAND=$(head -c 2 /dev/urandom | xxd -p)
+          SESSION_BASE="review-${SESSION_DATE}-${SESSION_TIME}-${SESSION_RAND}"
+          SESSION_PATH="ai-docs/sessions/${SESSION_BASE}"
+
+          # Atomic directory creation with collision handling
+          MAX_RETRIES=10
+          RETRY_COUNT=0
+
+          while ! mkdir -p "${SESSION_PATH}" 2>/dev/null || [[ -f "${SESSION_PATH}/session-meta.json" ]]; do
+            ((RETRY_COUNT++))
+            if [[ $RETRY_COUNT -ge $MAX_RETRIES ]]; then
+              echo "ERROR: Could not create unique session after ${MAX_RETRIES} attempts."
+              echo "Falling back to legacy mode."
+              SESSION_PATH="ai-docs"
+              LEGACY_MODE=true
+              break
+            fi
+            SESSION_RAND=$(head -c 2 /dev/urandom | xxd -p)
+            SESSION_BASE="review-${SESSION_DATE}-${SESSION_TIME}-${SESSION_RAND}"
+            SESSION_PATH="ai-docs/sessions/${SESSION_BASE}"
+          done
+
+          # Create subdirectories (only if not legacy mode)
+          if [[ "$LEGACY_MODE" != "true" ]]; then
+            mkdir -p "${SESSION_PATH}/reviews"
+          fi
+
+          # Set SESSION_ID for later use
+          SESSION_ID="$SESSION_BASE"
+          ```
+        </step>
+
+        <step>Load settings for session descriptor preference:
+          ```bash
+          # Read settings file with error handling
+          if [[ -f ".claude/settings.json" ]]; then
+            SETTINGS=$(cat .claude/settings.json 2>/dev/null)
+
+            # Validate JSON
+            if ! echo "$SETTINGS" | jq . > /dev/null 2>&1; then
+              echo "WARNING: Settings file contains invalid JSON."
+              echo "Using default settings. Your other settings are preserved."
+              SETTINGS="{}"
+              SETTINGS_CORRUPTED=true
+            fi
+          else
+            SETTINGS="{}"
+          fi
+
+          # Extract includeDescriptor setting (default: true)
+          INCLUDE_DESCRIPTOR=$(echo "$SETTINGS" | jq -r '.pluginSettings.frontend.sessionSettings.includeDescriptor // true')
+          ```
+        </step>
+
+        <step>Optional: Ask for session descriptor (if enabled):
+          IF `INCLUDE_DESCRIPTOR` is true AND not in `LEGACY_MODE`:
+
+          Use AskUserQuestion:
+          ```
+          Would you like to add a brief description to this review session?
+
+          This helps identify the session later (e.g., "auth-changes", "api-refactor").
+
+          Options:
+          - "Yes - Add description"
+          - "No - Use timestamp only"
+          ```
+
+          IF user chooses "Yes":
+          - Ask: "Enter a brief session description (max 30 chars, letters/numbers/hyphens only):"
+          - Sanitize input using this function:
+
+          ```bash
+          sanitize_descriptor() {
+            local input="$1"
+            local sanitized
+
+            # Convert to lowercase
+            sanitized=$(echo "$input" | tr '[:upper:]' '[:lower:]')
+
+            # Replace invalid characters with hyphens (allow only a-z, 0-9, -)
+            sanitized=$(echo "$sanitized" | sed 's/[^a-z0-9-]/-/g')
+
+            # Collapse multiple hyphens
+            sanitized=$(echo "$sanitized" | sed 's/--*/-/g')
+
+            # Trim leading/trailing hyphens
+            sanitized=$(echo "$sanitized" | sed 's/^-//;s/-$//')
+
+            # Enforce max length of 30 characters
+            sanitized=$(echo "$sanitized" | cut -c1-30)
+
+            # Trim trailing hyphen again after cut (in case cut created one)
+            sanitized=$(echo "$sanitized" | sed 's/-$//')
+
+            echo "$sanitized"
+          }
+
+          # Read user input
+          USER_DESCRIPTOR=$(AskUserQuestion response)
+
+          # Sanitize it
+          descriptor=$(sanitize_descriptor "$USER_DESCRIPTOR")
+
+          # Validate minimum length
+          if [[ ${#descriptor} -lt 3 ]]; then
+            echo "WARNING: Description too short (min 3 chars). Using timestamp only."
+          else
+            SESSION_ID="${SESSION_BASE}-${descriptor}"
+            mv "${SESSION_PATH}" "ai-docs/sessions/${SESSION_ID}"
+            SESSION_PATH="ai-docs/sessions/${SESSION_ID}"
+          fi
+          ```
+        </step>
+
+        <step>Initialize session metadata (skip if LEGACY_MODE):
+          ```bash
+          if [[ "$LEGACY_MODE" != "true" ]]; then
+            ISO_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+            jq -n \
+              --arg sid "$SESSION_ID" \
+              --arg ts "$ISO_TIMESTAMP" \
+              '{
+                schemaVersion: "1.1.0",
+                sessionId: $sid,
+                command: "review",
+                createdAt: $ts,
+                updatedAt: $ts,
+                status: "initializing",
+                reviewTarget: null,
+                models: {codeReview: []},
+                checkpoint: {lastCompletedPhase: null, nextPhase: "phase1", resumable: true, resumeContext: {}},
+                phases: {},
+                artifacts: {}
+              }' > "${SESSION_PATH}/session-meta.json"
+          fi
+          ```
+        </step>
+
+        <step>Log session start:
+          ```markdown
+          Session initialized: ${SESSION_ID}
+
+          All review artifacts will be saved to:
+            ${SESSION_PATH}/
+
+          This session will contain:
+            - Code review context
+            - Individual model reviews
+            - Consolidated review analysis
+
+          Proceeding to review target selection...
+          ```
+        </step>
+
+        <step>Initialize TodoWrite with 10 workflow tasks (detailed in todowrite_requirement)</step>
+      </steps>
+
+      <quality_gate>
+        Session initialized (or legacy mode enabled), SESSION_PATH variable set
+      </quality_gate>
+    </phase>
+
+    <helper_function name="update_session_phase">
+      **Call this function at each phase transition** to update session metadata atomically:
+
+      ```bash
+      update_session_phase() {
+        local phase="$1"
+        local status="$2"
+        local notes="${3:-}"
+
+        # Skip if in legacy mode
+        if [[ "$LEGACY_MODE" == "true" ]]; then
+          return 0
+        fi
+
+        local now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+        # Determine next phase for checkpoint
+        local next_phase=""
+        case "$phase" in
+          "phase1") next_phase="phase2" ;;
+          "phase2") next_phase="phase3" ;;
+          "phase3") next_phase="phase4" ;;
+          "phase4") next_phase="phase5" ;;
+          "phase5") next_phase="completed" ;;
+        esac
+
+        # Atomic update
+        jq --arg phase "$phase" \
+           --arg status "$status" \
+           --arg notes "$notes" \
+           --arg now "$now" \
+           --arg next "$next_phase" \
+           '.updatedAt = $now |
+            .phases[$phase] = {
+              "status": $status,
+              "completedAt": (if $status == "completed" then $now else null end),
+              "notes": (if $notes != "" then $notes else null end)
+            } |
+            .checkpoint.lastCompletedPhase = (if $status == "completed" then $phase else .checkpoint.lastCompletedPhase end) |
+            .checkpoint.nextPhase = (if $status == "completed" then $next else .checkpoint.nextPhase end)' \
+           "${SESSION_PATH}/session-meta.json" > "${SESSION_PATH}/session-meta.json.tmp" && \
+        mv "${SESSION_PATH}/session-meta.json.tmp" "${SESSION_PATH}/session-meta.json"
+      }
+      ```
+
+      **Usage Examples:**
+      ```bash
+      # Starting a phase
+      update_session_phase "phase1" "in_progress"
+
+      # Completing a phase
+      update_session_phase "phase1" "completed"
+
+      # Completing with notes
+      update_session_phase "phase2" "completed" "Selected 3 external models: Grok, Gemini, DeepSeek"
+      ```
+    </helper_function>
+
     <phase number="1" name="Review Target Selection">
       <objective>
         Determine what code to review (unstaged/files/commits) and gather review context
@@ -152,7 +452,7 @@ allowed-tools: Task, AskUserQuestion, Bash, Read, TodoWrite, Glob, Grep
           - Option 3: Run git diff for commit range
         </step>
         <step>Summarize changes and get user confirmation</step>
-        <step>Write review context to ai-docs/code-review-context.md including:
+        <step>Write review context to ${SESSION_PATH}/code-review-context.md including:
           - Review target type
           - Files under review with line counts
           - Summary of changes
@@ -175,11 +475,28 @@ allowed-tools: Task, AskUserQuestion, Bash, Read, TodoWrite, Glob, Grep
 
     <phase number="2" name="Model Selection and Cost Approval">
       <objective>
-        Select AI models for review and show estimated costs with input/output breakdown
+        Load saved preferences, select AI models for review, and show estimated costs with input/output breakdown
       </objective>
 
       <steps>
-        <step>Check Claudish CLI availability: npx claudish --version</step>
+        <step>Load saved model preferences from .claude/settings.json:
+          ```bash
+          # SETTINGS and SETTINGS_CORRUPTED should already be loaded from PHASE 0
+          # Extract model preferences with defaults
+          CODE_REVIEW_MODELS=$(echo "$SETTINGS" | jq -r '.pluginSettings.frontend.modelPreferences.codeReview.models // []')
+          CODE_REVIEW_AUTO=$(echo "$SETTINGS" | jq -r '.pluginSettings.frontend.modelPreferences.codeReview.autoUse // false')
+          ```
+        </step>
+
+        <step>Handle autoUse mode:
+          IF `CODE_REVIEW_AUTO` is `true` AND `CODE_REVIEW_MODELS` is not empty:
+          - Log: "Using saved model preferences: ${CODE_REVIEW_MODELS}"
+          - Skip selection UI
+          - Store models in `code_review_models` array
+          - Proceed to cost calculation step
+        </step>
+
+        <step>Check Claudish CLI availability (if not using autoUse): npx claudish --version</step>
         <step>If Claudish available, check OPENROUTER_API_KEY environment variable</step>
         <step>Query available models dynamically from Claudish:
           - Run: npx claudish --list-models --json
@@ -195,7 +512,81 @@ allowed-tools: Task, AskUserQuestion, Bash, Read, TodoWrite, Glob, Grep
           - Custom model ID option
           - Claude Sonnet 4.5 embedded (always available, FREE)
         </step>
-        <step>Present model selection with up to 9 external + 1 embedded using dynamic data</step>
+
+        <step>Present selection with saved preferences as defaults (if not using autoUse):
+          IF saved preferences exist (`CODE_REVIEW_MODELS` is not empty):
+
+          Use AskUserQuestion with "Use same as last time" option:
+          ```
+          Model Selection for Code Review
+
+          You have saved model preferences from a previous run:
+          ${CODE_REVIEW_MODELS}
+
+          Options:
+          - "Use same models as last time"
+          - "Choose different models"
+          ```
+
+          IF user chooses "Use same models", store saved models and skip to cost calculation
+          IF user chooses "Choose different models", show full selection UI below
+        </step>
+
+        <step>Present model selection with up to 9 external + 1 embedded using dynamic data (if no saved preferences OR user chose different models)</step>
+
+        <step>Save new model selections to .claude/settings.json:
+          IF user selected different models than saved (or no saved preferences existed):
+
+          ```bash
+          # Only save if settings are not corrupted
+          if [[ "$SETTINGS_CORRUPTED" != "true" ]]; then
+            # Convert code_review_models array to JSON format
+            MODELS_JSON=$(printf '%s\n' "${code_review_models[@]}" | jq -R . | jq -s .)
+            ISO_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+            # Atomic update using temp file pattern
+            jq --argjson models "$MODELS_JSON" \
+               --arg timestamp "$ISO_TIMESTAMP" \
+               '.pluginSettings.frontend.modelPreferences.codeReview = {
+                  "models": $models,
+                  "lastUsed": $timestamp,
+                  "autoUse": false
+                }' .claude/settings.json > .claude/settings.json.tmp && \
+            mv .claude/settings.json.tmp .claude/settings.json
+
+            if [[ $? -ne 0 ]]; then
+              echo "WARNING: Could not save model preferences. Continuing anyway."
+            fi
+          else
+            echo "NOTE: Skipping preference save due to corrupted settings file."
+          fi
+          ```
+        </step>
+
+        <step>Ask about auto-use for future:
+          After user makes selection, ask:
+          ```
+          Would you like to use these models automatically in future code reviews?
+
+          This will skip the model selection step next time.
+
+          Options:
+          - "Yes - Always use these models (skip selection next time)"
+          - "No - Ask me each time (show these as defaults)"
+          ```
+
+          IF user chooses "Yes":
+          - Set `autoUse: true` in settings:
+
+          ```bash
+          if [[ "$SETTINGS_CORRUPTED" != "true" ]]; then
+            jq '.pluginSettings.frontend.modelPreferences.codeReview.autoUse = true' \
+               .claude/settings.json > .claude/settings.json.tmp && \
+            mv .claude/settings.json.tmp .claude/settings.json
+          fi
+          ```
+        </step>
+
         <step>If external models selected, calculate and display estimated costs:
           - INPUT tokens: code lines × 1.5 (context + instructions)
           - OUTPUT tokens: 2000-4000 (varies by review complexity)
@@ -229,16 +620,16 @@ allowed-tools: Task, AskUserQuestion, Bash, Read, TodoWrite, Glob, Grep
       <steps>
         <step>If embedded selected, launch embedded review:
           - Use Task tool to delegate to senior-code-reviewer (NO PROXY_MODE)
-          - Input file: ai-docs/code-review-context.md
-          - Output file: ai-docs/code-review-local.md
+          - Input file: ${SESSION_PATH}/code-review-context.md
+          - Output file: ${SESSION_PATH}/reviews/claude-review.md
         </step>
         <step>Mark embedded review task as completed when done</step>
         <step>If external models selected, launch ALL in PARALLEL:
           - Construct SINGLE message with multiple Task invocations
           - Use separator "---" between Task blocks
           - Each Task: senior-code-reviewer with PROXY_MODE: {model_id}
-          - Each Task: unique output file (ai-docs/code-review-{model}.md)
-          - All Tasks: same input file (ai-docs/code-review-context.md)
+          - Each Task: unique output file (${SESSION_PATH}/reviews/{model}-review.md)
+          - All Tasks: same input file (${SESSION_PATH}/code-review-context.md)
           - CRITICAL: All tasks execute simultaneously (not sequentially)
         </step>
         <step>Track progress with real-time updates showing which reviews are complete:
@@ -279,7 +670,7 @@ allowed-tools: Task, AskUserQuestion, Bash, Read, TodoWrite, Glob, Grep
       </objective>
 
       <steps>
-        <step>Read all review files using Read tool (ai-docs/code-review-*.md)</step>
+        <step>Read all review files using Read tool (${SESSION_PATH}/reviews/*.md)</step>
         <step>Mark read task as completed in TodoWrite</step>
         <step>Parse issues from each review (critical/medium/low severity)</step>
         <step>Normalize issue descriptions for comparison:
@@ -304,7 +695,7 @@ allowed-tools: Task, AskUserQuestion, Bash, Read, TodoWrite, Glob, Grep
         </step>
         <step>Create model agreement matrix showing which models flagged which issues</step>
         <step>Generate actionable recommendations prioritized by consensus level</step>
-        <step>Write consolidated report to ai-docs/code-review-consolidated.md including:
+        <step>Write consolidated report to ${SESSION_PATH}/reviews/consolidated.md including:
           - Executive summary with overall verdict
           - Unanimous issues (100% agreement) - MUST FIX
           - Strong consensus issues (67-99%) - RECOMMENDED TO FIX
@@ -382,10 +773,10 @@ PROXY_MODE: x-ai/grok-code-fast-1
 Review the code changes via Grok model.
 
 INPUT FILE (read yourself):
-- ai-docs/code-review-context.md
+- ${SESSION_PATH}/code-review-context.md
 
 OUTPUT FILE (write review here):
-- ai-docs/code-review-grok.md
+- ${SESSION_PATH}/reviews/grok-review.md
 
 RETURN: Brief verdict only.
 
@@ -398,10 +789,10 @@ PROXY_MODE: google/gemini-2.5-flash
 Review the code changes via Gemini Flash model.
 
 INPUT FILE (read yourself):
-- ai-docs/code-review-context.md
+- ${SESSION_PATH}/code-review-context.md
 
 OUTPUT FILE (write review here):
-- ai-docs/code-review-gemini-flash.md
+- ${SESSION_PATH}/reviews/gemini-flash-review.md
 
 RETURN: Brief verdict only.
 
@@ -414,10 +805,10 @@ PROXY_MODE: deepseek/deepseek-chat
 Review the code changes via DeepSeek model.
 
 INPUT FILE (read yourself):
-- ai-docs/code-review-context.md
+- ${SESSION_PATH}/code-review-context.md
 
 OUTPUT FILE (write review here):
-- ai-docs/code-review-deepseek.md
+- ${SESSION_PATH}/reviews/deepseek-review.md
 
 RETURN: Brief verdict only.
 ```
@@ -605,16 +996,26 @@ for each issue:
     <user_request>/review</user_request>
 
     <execution>
+      **PHASE 0: Session Initialization**
+      - Generate session ID: review-20251208-143022-a3f2
+      - Create directory: ai-docs/sessions/review-20251208-143022-a3f2/
+      - Ask for descriptor → User: "No"
+      - Write session-meta.json
+      - Set SESSION_PATH="ai-docs/sessions/review-20251208-143022-a3f2"
+
       **PHASE 1: Review Target Selection**
       - Ask: "What to review?" → User: "1" (unstaged changes)
       - Run: git status, git diff
       - Summarize: 5 files changed, +160 -38 lines
       - Ask: "Proceed?" → User: "Yes"
-      - Write: ai-docs/code-review-context.md
+      - Write: ${SESSION_PATH}/code-review-context.md
 
       **PHASE 2: Model Selection and Cost Approval**
+      - Load preferences: No saved preferences
       - Check: Claudish available ✅, API key set ✅
       - Ask: "Select models" → User: "1,2,4,8" (Grok, Gemini Flash, DeepSeek, Embedded)
+      - Save preferences to .claude/settings.json
+      - Ask about auto-use → User: "No"
       - Calculate costs:
         * Input tokens: 160 lines × 1.5 = 240 tokens × 3 models
         * Output tokens: 2000-4000 per model
@@ -635,7 +1036,7 @@ for each issue:
       - Track: ✅✅✅✅ All complete (~5 min for parallel vs 15 min sequential)
 
       **PHASE 4: Consolidate Reviews**
-      - Read: 4 review files (embedded + 3 external)
+      - Read: 4 review files from ${SESSION_PATH}/reviews/ (embedded + 3 external)
       - Parse: Issues from each review
       - Normalize: Extract categories, locations, keywords
       - Group similar issues: Use keyword-based algorithm with confidence
@@ -645,14 +1046,14 @@ for each issue:
         * 4 issues: Majority (50% - 2 of 4 reviewers)
         * 5 issues: Divergent (25% - 1 reviewer only)
       - Create model agreement matrix
-      - Write: ai-docs/code-review-consolidated.md
+      - Write: ${SESSION_PATH}/reviews/consolidated.md
 
       **PHASE 5: Present Results**
       - Generate summary with top 5 issues (prioritized by consensus)
       - Show: 2 unanimous critical issues → MUST FIX
       - Show: 3 strong consensus issues → RECOMMENDED TO FIX
-      - Link: Detailed consolidated report
-      - Link: Individual review files
+      - Link: Session folder ${SESSION_PATH}
+      - Link: Consolidated report and individual review files
       - Recommend: Fix 2 unanimous issues first, then re-run review
     </execution>
 
@@ -671,31 +1072,37 @@ for each issue:
     <user_request>/review</user_request>
 
     <execution>
+      **PHASE 0: Session Initialization**
+      - Generate session ID: review-20251208-150530-b7e1
+      - Create directory and set SESSION_PATH
+
       **PHASE 1: Review Target Selection**
       - User specifies: "Review src/services/*.ts"
       - Glob: Find matching files (5 files)
       - Read: File contents
-      - Write: ai-docs/code-review-context.md
+      - Write: ${SESSION_PATH}/code-review-context.md
 
       **PHASE 2: Model Selection and Cost Approval**
+      - Load preferences: No saved preferences
       - Check: Claudish not available ❌
       - Show: "Claudish not found. Options: Install / Embedded Only / Cancel"
       - User: "Embedded Only"
       - Selected: Embedded reviewer only (no cost)
+      - Skip saving preferences (no models selected)
 
       **PHASE 3: Parallel Multi-Model Review**
       - Launch embedded review → Task: senior-code-reviewer
       - Complete: ✅
 
       **PHASE 4: Consolidate Reviews**
-      - Read: 1 review file (embedded only)
+      - Read: 1 review file from ${SESSION_PATH}/reviews/ (embedded only)
       - Note: "Single reviewer (embedded only). Consensus analysis N/A."
-      - Write: ai-docs/code-review-consolidated.md (simpler format, no consensus)
+      - Write: ${SESSION_PATH}/reviews/consolidated.md (simpler format, no consensus)
 
       **PHASE 5: Present Results**
       - Present: Issues from embedded review (no consensus levels)
       - Note: "Single reviewer. For multi-model validation, install Claudish and retry."
-      - Link: Embedded review file
+      - Link: Session folder and review file
       - Recommend: Address critical issues found by embedded reviewer
     </execution>
 
@@ -714,6 +1121,9 @@ for each issue:
     <user_request>/review</user_request>
 
     <execution>
+      **PHASE 0: Session Initialization**
+      - Generate session ID and set SESSION_PATH
+
       **PHASE 1: Review Target Selection**
       - Ask: "What to review?" → User: "1" (unstaged)
       - Run: git status → No changes found
@@ -723,7 +1133,7 @@ for each issue:
       - Run: git diff HEAD~3..HEAD
       - Summarize: 8 files changed across 3 commits
       - Ask: "Proceed?" → User: "Yes"
-      - Write: ai-docs/code-review-context.md
+      - Write: ${SESSION_PATH}/code-review-context.md
 
       [... PHASE 2-5 continue normally with commits as review target ...]
     </execution>
@@ -736,6 +1146,30 @@ for each issue:
 </examples>
 
 <error_recovery>
+  <strategy scenario="Session creation fails">
+    <recovery>
+      Fall back to legacy mode (SESSION_PATH="ai-docs") with clear messaging:
+      - Log: "WARNING: Could not create session directory. Using legacy mode."
+      - Log: "Artifacts will be saved to: ai-docs/"
+      - Set LEGACY_MODE=true to skip session-specific operations
+      - Continue with workflow using direct ai-docs/ paths
+      - Skip session metadata operations
+      - All features still work, just without session isolation
+    </recovery>
+  </strategy>
+
+  <strategy scenario="Settings file corrupted">
+    <recovery>
+      Preserve file, warn user, use defaults:
+      - Log: "WARNING: Settings file contains invalid JSON."
+      - Log: "Your settings file has been preserved (not modified)."
+      - Log: "Using default settings for this session..."
+      - Set SETTINGS_CORRUPTED=true to skip preference saving
+      - Continue with full model selection UI
+      - Show warning once at start, don't repeat
+    </recovery>
+  </strategy>
+
   <strategy scenario="No changes found">
     <recovery>
       Offer alternatives (review commits/files) or exit gracefully. Don't fail.
@@ -815,16 +1249,19 @@ for each issue:
   </communication_style>
 
   <deliverables>
-    <file name="ai-docs/code-review-context.md">
+    <file name="${SESSION_PATH}/session-meta.json">
+      Session metadata with workflow status and model selections
+    </file>
+    <file name="${SESSION_PATH}/code-review-context.md">
       Review context with diff/files and instructions for reviewers
     </file>
-    <file name="ai-docs/code-review-local.md">
+    <file name="${SESSION_PATH}/reviews/claude-review.md">
       Embedded Claude Sonnet review (if embedded selected)
     </file>
-    <file name="ai-docs/code-review-{model}.md">
+    <file name="${SESSION_PATH}/reviews/{model}-review.md">
       External model review (one file per external model, sanitized filename)
     </file>
-    <file name="ai-docs/code-review-consolidated.md">
+    <file name="${SESSION_PATH}/reviews/consolidated.md">
       Consolidated report with consensus analysis, priorities, and recommendations
     </file>
   </deliverables>

@@ -133,7 +133,191 @@ architecture planning to investigate existing patterns and find the best integra
 
 ---
 
-### STEP 0: Initialize Global Workflow Todo List (MANDATORY FIRST STEP)
+### STEP 0: Initialize Implementation Session (MANDATORY FIRST STEP)
+
+**BEFORE anything else, create a unique session for this implementation run.**
+
+#### 1. Generate Session ID with Collision Prevention
+
+Create a unique session identifier using atomic directory creation:
+
+```bash
+SESSION_DATE=$(date -u +%Y%m%d)
+SESSION_TIME=$(date -u +%H%M%S)
+SESSION_RAND=$(head -c 2 /dev/urandom | xxd -p)
+SESSION_BASE="impl-${SESSION_DATE}-${SESSION_TIME}-${SESSION_RAND}"
+SESSION_PATH="ai-docs/sessions/${SESSION_BASE}"
+
+# Atomic directory creation with collision handling
+MAX_RETRIES=10
+RETRY_COUNT=0
+
+while ! mkdir -p "${SESSION_PATH}" 2>/dev/null || [[ -f "${SESSION_PATH}/session-meta.json" ]]; do
+  ((RETRY_COUNT++))
+  if [[ $RETRY_COUNT -ge $MAX_RETRIES ]]; then
+    echo "ERROR: Could not create unique session after ${MAX_RETRIES} attempts."
+    echo "Falling back to legacy mode."
+    SESSION_PATH="ai-docs"
+    LEGACY_MODE=true
+    break
+  fi
+  SESSION_RAND=$(head -c 2 /dev/urandom | xxd -p)
+  SESSION_BASE="impl-${SESSION_DATE}-${SESSION_TIME}-${SESSION_RAND}"
+  SESSION_PATH="ai-docs/sessions/${SESSION_BASE}"
+done
+
+# Create subdirectories (only if not legacy mode)
+if [[ "$LEGACY_MODE" != "true" ]]; then
+  mkdir -p "${SESSION_PATH}/reviews/plan-review"
+  mkdir -p "${SESSION_PATH}/reviews/code-review"
+fi
+
+# Set SESSION_ID for later use
+SESSION_ID="$SESSION_BASE"
+```
+
+#### 2. Ask for Session Descriptor (Optional)
+
+Check if session descriptors are enabled in settings:
+
+```bash
+# Load settings with error handling
+if [[ -f ".claude/settings.json" ]]; then
+  SETTINGS=$(cat .claude/settings.json 2>/dev/null)
+
+  # Validate JSON
+  if ! echo "$SETTINGS" | jq . > /dev/null 2>&1; then
+    echo "WARNING: Settings file contains invalid JSON."
+    echo "Using default settings. Your other settings are preserved."
+    SETTINGS="{}"
+    SETTINGS_CORRUPTED=true
+  fi
+else
+  SETTINGS="{}"
+fi
+
+# Extract includeDescriptor setting (default: true)
+INCLUDE_DESCRIPTOR=$(echo "$SETTINGS" | jq -r '.pluginSettings.frontend.sessionSettings.includeDescriptor // true')
+```
+
+IF `INCLUDE_DESCRIPTOR` is true AND not in `LEGACY_MODE`:
+
+Use AskUserQuestion:
+```
+Would you like to add a brief description to this implementation session?
+
+This helps identify the session later (e.g., "user-profile", "auth-flow").
+
+Options:
+- "Yes - Add description"
+- "No - Use timestamp only"
+```
+
+IF user chooses "Yes":
+- Ask: "Enter a brief session description (max 30 chars, letters/numbers/hyphens only):"
+- Sanitize input using this function:
+
+```bash
+sanitize_descriptor() {
+  local input="$1"
+  local sanitized
+
+  # Convert to lowercase
+  sanitized=$(echo "$input" | tr '[:upper:]' '[:lower:]')
+
+  # Replace invalid characters with hyphens (allow only a-z, 0-9, -)
+  sanitized=$(echo "$sanitized" | sed 's/[^a-z0-9-]/-/g')
+
+  # Collapse multiple hyphens
+  sanitized=$(echo "$sanitized" | sed 's/--*/-/g')
+
+  # Trim leading/trailing hyphens
+  sanitized=$(echo "$sanitized" | sed 's/^-//;s/-$//')
+
+  # Enforce max length of 30 characters
+  sanitized=$(echo "$sanitized" | cut -c1-30)
+
+  # Trim trailing hyphen again after cut
+  sanitized=$(echo "$sanitized" | sed 's/-$//')
+
+  # Validate minimum length (3 chars) if not empty
+  if [[ -n "$sanitized" && ${#sanitized} -lt 3 ]]; then
+    echo ""  # Reject too-short descriptors
+    return 1
+  fi
+
+  echo "$sanitized"
+}
+
+# Apply sanitization
+DESCRIPTOR=$(sanitize_descriptor "$USER_INPUT")
+
+if [[ -n "$DESCRIPTOR" ]]; then
+  # Update SESSION_ID with descriptor
+  SESSION_ID="${SESSION_BASE}-${DESCRIPTOR}"
+
+  # Rename directory (only if not legacy mode)
+  if [[ "$LEGACY_MODE" != "true" ]]; then
+    mv "${SESSION_PATH}" "ai-docs/sessions/${SESSION_ID}"
+    SESSION_PATH="ai-docs/sessions/${SESSION_ID}"
+  fi
+fi
+```
+
+#### 3. Initialize Session Metadata
+
+Write initial `session-meta.json` using jq for proper JSON escaping (skip if `LEGACY_MODE` is true):
+
+```bash
+if [[ "$LEGACY_MODE" != "true" ]]; then
+  FEATURE_REQUEST="$ARGUMENTS"
+  ISO_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+  jq -n \
+    --arg sid "$SESSION_ID" \
+    --arg req "$FEATURE_REQUEST" \
+    --arg ts "$ISO_TIMESTAMP" \
+    '{
+      schemaVersion: "1.1.0",
+      sessionId: $sid,
+      command: "implement",
+      createdAt: $ts,
+      updatedAt: $ts,
+      status: "initializing",
+      featureRequest: $req,
+      workflowType: null,
+      models: {planReview: [], codeReview: []},
+      checkpoint: {lastCompletedPhase: null, nextPhase: "phase1", resumable: true, resumeContext: {}},
+      phases: {},
+      artifacts: {},
+      metrics: {}
+    }' > "${SESSION_PATH}/session-meta.json"
+fi
+```
+
+#### 4. Log Session Start
+
+Present to user:
+
+```markdown
+Session initialized: ${SESSION_ID}
+
+All implementation artifacts will be saved to:
+  ${SESSION_PATH}/
+
+This session will contain:
+  - Architecture plan
+  - Plan reviews
+  - Code reviews
+  - Testing instructions
+  - Final summary
+
+Proceeding to workflow initialization...
+```
+
+---
+
+### STEP 0.1: Initialize Global Workflow Todo List (MANDATORY SECOND STEP)
 
 **BEFORE** starting any phase, you MUST create a global workflow todo list using TodoWrite to track the entire implementation lifecycle:
 
@@ -229,7 +413,7 @@ And mark PHASE 4 testing todos as "Skipped - API workflow completed testing in P
 
 ---
 
-### STEP 0.5: Detect Workflow Type (MANDATORY BEFORE PHASE 1)
+### STEP 0.2: Detect Workflow Type (MANDATORY BEFORE PHASE 1)
 
 **CRITICAL**: Before starting implementation, you MUST detect whether this is a UI-focused, API-focused, or mixed workflow. Different workflows require different agents, review processes, and validation steps.
 
@@ -394,6 +578,92 @@ These will be referenced in subsequent phases to route execution correctly.
 
 ---
 
+### HELPER FUNCTION: Update Session Metadata
+
+**Call this function at each phase transition** to update session metadata atomically:
+
+```bash
+update_session_phase() {
+  local phase="$1"
+  local status="$2"
+  local notes="${3:-}"
+
+  # Skip if in legacy mode
+  if [[ "$LEGACY_MODE" == "true" ]]; then
+    return 0
+  fi
+
+  local now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+  # Determine next phase for checkpoint
+  local next_phase=""
+  case "$phase" in
+    "phase1") next_phase="phase1_5" ;;
+    "phase1_5") next_phase="phase1_6" ;;
+    "phase1_6") next_phase="phase2" ;;
+    "phase2") next_phase="phase2_5" ;;
+    "phase2_5") next_phase="phase3" ;;
+    "phase3") next_phase="phase4" ;;
+    "phase4") next_phase="phase5" ;;
+    "phase5") next_phase="phase6" ;;
+    "phase6") next_phase="completed" ;;
+  esac
+
+  # Atomic update
+  jq --arg phase "$phase" \
+     --arg status "$status" \
+     --arg notes "$notes" \
+     --arg now "$now" \
+     --arg next "$next_phase" \
+     '.updatedAt = $now |
+      .phases[$phase] = {
+        "status": $status,
+        "completedAt": (if $status == "completed" then $now else null end),
+        "notes": (if $notes != "" then $notes else null end)
+      } |
+      .checkpoint.lastCompletedPhase = (if $status == "completed" then $phase else .checkpoint.lastCompletedPhase end) |
+      .checkpoint.nextPhase = (if $status == "completed" then $next else .checkpoint.nextPhase end)' \
+     "${SESSION_PATH}/session-meta.json" > "${SESSION_PATH}/session-meta.json.tmp" && \
+  mv "${SESSION_PATH}/session-meta.json.tmp" "${SESSION_PATH}/session-meta.json"
+}
+
+# Example usage:
+# update_session_phase "phase1" "completed"
+# update_session_phase "phase1_5" "skipped" "User chose to skip plan review"
+```
+
+**When to call `update_session_phase`:**
+
+Call this function at these phase transitions:
+
+1. **After PHASE 1 completes** (when user approves plan):
+   - IF user chose "Yes, proceed to implementation": `update_session_phase "phase1" "completed"`
+   - IF user chose "Get AI review first": `update_session_phase "phase1" "completed"` (proceed to 1.5)
+
+2. **After PHASE 1.5 completes or skips**:
+   - IF user ran plan review: `update_session_phase "phase1_5" "completed"`
+   - IF user skipped (chose direct implementation in PHASE 1): `update_session_phase "phase1_5" "skipped" "User chose direct implementation"`
+
+3. **After PHASE 1.6 completes**: `update_session_phase "phase1_6" "completed"`
+
+4. **After PHASE 2 completes**: `update_session_phase "phase2" "completed"`
+
+5. **After PHASE 2.5 completes or skips**:
+   - IF design validation ran: `update_session_phase "phase2_5" "completed"`
+   - IF skipped (no Figma or API-focused): `update_session_phase "phase2_5" "skipped" "No Figma links or API-focused workflow"`
+
+6. **After PHASE 3 completes**: `update_session_phase "phase3" "completed"`
+
+7. **After PHASE 4 completes**: `update_session_phase "phase4" "completed"`
+
+8. **After PHASE 5 completes**: `update_session_phase "phase5" "completed"`
+
+9. **After PHASE 6 completes**: `update_session_phase "phase6" "completed"`
+
+**Note**: These calls happen AFTER the TodoWrite updates and BEFORE moving to the next phase.
+
+---
+
 ### PHASE 1: Architecture Planning (architect)
 
 1. **Launch Planning Agent**:
@@ -417,8 +687,8 @@ These will be referenced in subsequent phases to route execution correctly.
    - Any other user-provided documentation files
 
    OUTPUT FILES TO WRITE (use Write tool):
-   - AI-DOCS/implementation-plan.md (comprehensive detailed plan)
-   - AI-DOCS/quick-reference.md (quick checklist)
+   - ${SESSION_PATH}/implementation-plan.md (comprehensive detailed plan)
+   - ${SESSION_PATH}/quick-reference.md (quick checklist)
 
    REQUIREMENTS:
    - Perform gap analysis and ask clarifying questions first
@@ -436,21 +706,21 @@ These will be referenced in subsequent phases to route execution correctly.
    ```
 
    - Agent will perform gap analysis and ask clarifying questions
-   - Agent will create comprehensive plan in AI-DOCS/implementation-plan.md
+   - Agent will create comprehensive plan in ${SESSION_PATH}/implementation-plan.md
    - Agent will return brief status summary ONLY (not full plan)
    - **Update TodoWrite**: Mark "PHASE 1: Launch architect" as completed
 
 2. **Present Plan to User**:
    - Show the brief status summary from agent
-   - **DO NOT read AI-DOCS/implementation-plan.md yourself**
+   - **DO NOT read ${SESSION_PATH}/implementation-plan.md yourself**
    - Show user where to find the detailed plan:
    ```markdown
    ✅ PHASE 1 Complete: Architecture Plan Created
 
    [Show brief status from agent here - it will include top breaking changes and estimate]
 
-   📄 **Detailed Plan**: AI-DOCS/implementation-plan.md
-   📄 **Quick Reference**: AI-DOCS/quick-reference.md
+   📄 **Detailed Plan**: ${SESSION_PATH}/implementation-plan.md
+   📄 **Quick Reference**: ${SESSION_PATH}/quick-reference.md
 
    Please review the implementation plan before proceeding.
    ```
@@ -491,13 +761,41 @@ These will be referenced in subsequent phases to route execution correctly.
 
 ---
 
-#### Step 1: Select AI Models for Review (Multi-Select)
+#### Step 1: Load and Present Model Preferences
 
 **IMPORTANT**: This step is only reached if user selected "Get AI review first" in PHASE 1 approval gate.
 
 **Update TodoWrite**: Mark "PHASE 1.5: Ask user about plan review preference" as completed (already decided in PHASE 1)
 
 **Update TodoWrite**: Mark "PHASE 1.5: Run multi-model plan review" as in_progress
+
+**1. Load saved preferences from `.claude/settings.json`:**
+
+```bash
+# Read settings file with error handling (already loaded in STEP 0)
+# SETTINGS and SETTINGS_CORRUPTED variables should be available from STEP 0
+
+# Extract model preferences with defaults
+PLAN_REVIEW_MODELS=$(echo "$SETTINGS" | jq -r '.pluginSettings.frontend.modelPreferences.planReview.models // []')
+PLAN_REVIEW_AUTO=$(echo "$SETTINGS" | jq -r '.pluginSettings.frontend.modelPreferences.planReview.autoUse // false')
+```
+
+**2. Handle corrupted settings:**
+
+IF `SETTINGS_CORRUPTED` is true:
+- DO NOT reset the entire file (preserves other settings)
+- Only write to the specific path needed
+- User was already warned in STEP 0
+
+**3. Handle autoUse mode:**
+
+IF `PLAN_REVIEW_AUTO` is `true` AND `PLAN_REVIEW_MODELS` is not empty:
+- Log: "Using saved model preferences: ${PLAN_REVIEW_MODELS}"
+- Skip selection UI
+- Store models in `plan_review_models` array
+- Proceed to Step 2 (launch reviewers)
+
+**4. Present selection with defaults (if autoUse is false):**
 
 Present the multi-model plan review introduction to the user:
 
@@ -521,6 +819,25 @@ You've chosen to get external AI perspectives on the architecture plan before im
 
 **Requirements**: Claudish CLI + OPENROUTER_API_KEY environment variable
 ```
+
+**IF saved preferences exist**, present "Use same as last time" option first:
+
+Use **AskUserQuestion**:
+```
+Model Selection for Plan Review
+
+You have saved model preferences from a previous run:
+${PLAN_REVIEW_MODELS}
+
+Options:
+- "Use same models as last time"
+- "Choose different models"
+```
+
+IF user chooses "Choose different models", proceed with selection below.
+IF user chooses "Use same models as last time", skip to Step 2 with saved models.
+
+**Model Selection UI** (if no saved preferences OR user chose "Choose different models"):
 
 Use **AskUserQuestion** with **multiSelect: true**:
 
@@ -564,13 +881,70 @@ Use **AskUserQuestion** with **multiSelect: true**:
 
 ---
 
+#### Step 2: Save Model Preferences
+
+**Save new selections to `.claude/settings.json`:**
+
+IF user selected different models than saved (or no saved preferences existed):
+
+```bash
+# Only save if settings are not corrupted
+if [[ "$SETTINGS_CORRUPTED" != "true" ]]; then
+  # Convert plan_review_models array to JSON format
+  MODELS_JSON=$(printf '%s\n' "${plan_review_models[@]}" | jq -R . | jq -s .)
+  ISO_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+  # Atomic update using temp file pattern
+  jq --argjson models "$MODELS_JSON" \
+     --arg timestamp "$ISO_TIMESTAMP" \
+     '.pluginSettings.frontend.modelPreferences.planReview = {
+        "models": $models,
+        "lastUsed": $timestamp,
+        "autoUse": false
+      }' .claude/settings.json > .claude/settings.json.tmp && \
+  mv .claude/settings.json.tmp .claude/settings.json
+
+  if [[ $? -ne 0 ]]; then
+    echo "WARNING: Could not save model preferences. Continuing anyway."
+  fi
+else
+  echo "NOTE: Skipping preference save due to corrupted settings file."
+fi
+```
+
+**Ask about auto-use for future:**
+
+After user makes selection, ask:
+```
+Would you like to use these models automatically in future plan reviews?
+
+This will skip the model selection step next time.
+
+Options:
+- "Yes - Always use these models (skip selection next time)"
+- "No - Ask me each time (show these as defaults)"
+```
+
+IF user chooses "Yes":
+- Set `autoUse: true` in settings:
+
+```bash
+if [[ "$SETTINGS_CORRUPTED" != "true" ]]; then
+  jq '.pluginSettings.frontend.modelPreferences.planReview.autoUse = true' \
+     .claude/settings.json > .claude/settings.json.tmp && \
+  mv .claude/settings.json.tmp .claude/settings.json
+fi
+```
+
+---
+
 #### Step 3: Launch Plan Reviewers in Parallel
 
 **CRITICAL**: Launch ALL selected models in parallel using a **single message** with **multiple Task tool calls**.
 
-**Find architecture plan file** from AI-DOCS/ folder:
-   - Use Glob to find: `AI-DOCS/*implementation-plan.md` or `AI-DOCS/*.md`
-   - Store the file path (e.g., `AI-DOCS/implementation-plan.md`)
+**Find architecture plan file** from session folder:
+   - Use the file path: `${SESSION_PATH}/implementation-plan.md`
+   - Store this path for review
    - **DO NOT read the file** - reviewers will read it themselves
 
 For EACH model in `plan_review_models`:
@@ -589,11 +963,11 @@ ${ARGUMENTS}
 WORKFLOW TYPE: ${workflow_type}
 
 INPUT FILE (read this yourself using Read tool):
-- AI-DOCS/implementation-plan.md
+- ${SESSION_PATH}/implementation-plan.md
 
 OUTPUT FILE (write detailed review here using Write tool):
-- AI-DOCS/{model-id}-review.md
-  (e.g., AI-DOCS/grok-review.md, AI-DOCS/codex-review.md)
+- ${SESSION_PATH}/reviews/plan-review/{model-id}-review.md
+  (e.g., ${SESSION_PATH}/reviews/plan-review/grok-review.md, ${SESSION_PATH}/reviews/plan-review/codex-review.md)
 
 REVIEW CRITERIA:
 - Architectural issues (design flaws, scalability, maintainability)
@@ -607,7 +981,7 @@ INSTRUCTIONS:
 - Prioritize by severity (CRITICAL / MEDIUM / LOW)
 - Provide actionable recommendations with code examples
 - If plan is solid, say so clearly (don't invent issues)
-- Write detailed review to AI-DOCS/{model-id}-review.md
+- Write detailed review to ${SESSION_PATH}/reviews/plan-review/{model-id}-review.md
 - Follow review format from agent instructions
 
 RETURN FORMAT (use template from agent instructions):
@@ -624,10 +998,10 @@ Return ONLY:
 Send a single message with 2 Task calls:
 
 Task 1: frontend:plan-reviewer with PROXY_MODE: x-ai/grok-code-fast-1
-  Output: AI-DOCS/grok-review.md
+  Output: ${SESSION_PATH}/reviews/plan-review/grok-review.md
 
 Task 2: frontend:plan-reviewer with PROXY_MODE: openai/gpt-5-codex
-  Output: AI-DOCS/codex-review.md
+  Output: ${SESSION_PATH}/reviews/plan-review/codex-review.md
 
 Both run in parallel.
 Both return brief verdicts (~20 lines each).
@@ -656,13 +1030,13 @@ Consolidate multiple architecture plan reviews into a single report.
 MODE: CONSOLIDATION
 
 INPUT FILES (read all of these yourself using Read tool):
-${plan_review_models.map(model => `- AI-DOCS/${model.id}-review.md`).join('\n')}
+${plan_review_models.map(model => `- ${SESSION_PATH}/reviews/plan-review/${model.id}-review.md`).join('\n')}
 
 MODELS REVIEWED:
 ${plan_review_models.map(model => `- ${model.name} (${model.id})`).join('\n')}
 
 OUTPUT FILE (write consolidated report here using Write tool):
-- AI-DOCS/review-consolidated.md
+- ${SESSION_PATH}/reviews/plan-review/consolidated.md
 
 CONSOLIDATION REQUIREMENTS:
 1. Identify cross-model consensus (issues flagged by 2+ models = HIGH CONFIDENCE)
@@ -688,7 +1062,7 @@ Return ONLY:
 
 **Wait for consolidation agent to complete**.
 
-The agent will return a brief summary (~25 lines). **DO NOT read AI-DOCS/review-consolidated.md yourself** - you'll present the brief summary to the user.
+The agent will return a brief summary (~25 lines). **DO NOT read ${SESSION_PATH}/reviews/plan-review/consolidated.md yourself** - you'll present the brief summary to the user.
 
 ---
 
@@ -706,9 +1080,9 @@ Present the following simple format showing the brief summary from the consolida
 - High-confidence issues
 - Recommendation
 
-📄 **Consolidated Report**: AI-DOCS/review-consolidated.md
+📄 **Consolidated Report**: ${SESSION_PATH}/reviews/plan-review/consolidated.md
 📄 **Individual Reviews**:
-${plan_review_models.map(model => `   - AI-DOCS/${model.id}-review.md (${model.name})`).join('\n')}
+${plan_review_models.map(model => `   - ${SESSION_PATH}/reviews/plan-review/${model.id}-review.md (${model.name})`).join('\n')}
 
 Please review the consolidated report to see detailed findings and recommendations.
 ```
@@ -759,13 +1133,13 @@ Options:
    ${ARGUMENTS}
 
    INPUT FILES (read these yourself using Read tool):
-   - AI-DOCS/implementation-plan.md (your original plan)
-   - AI-DOCS/review-consolidated.md (consolidated feedback from ${plan_review_models.length} AI models)
-   - AI-DOCS/*-review.md (individual reviews if you need more details)
+   - ${SESSION_PATH}/implementation-plan.md (your original plan)
+   - ${SESSION_PATH}/reviews/plan-review/consolidated.md (consolidated feedback from ${plan_review_models.length} AI models)
+   - ${SESSION_PATH}/reviews/plan-review/*-review.md (individual reviews if you need more details)
 
    OUTPUT FILES (write these using Write tool):
-   - AI-DOCS/implementation-plan.md (OVERWRITE with revised version)
-   - AI-DOCS/revision-summary.md (NEW - document what changed and why)
+   - ${SESSION_PATH}/implementation-plan.md (OVERWRITE with revised version)
+   - ${SESSION_PATH}/revision-summary.md (NEW - document what changed and why)
 
    REVISION REQUIREMENTS:
    - Address ALL critical issues from reviews
@@ -795,8 +1169,8 @@ Options:
 
    [Show brief summary from architect here]
 
-   📄 **Revised Plan**: AI-DOCS/implementation-plan.md
-   📄 **Change Summary**: AI-DOCS/revision-summary.md
+   📄 **Revised Plan**: ${SESSION_PATH}/implementation-plan.md
+   📄 **Change Summary**: ${SESSION_PATH}/revision-summary.md
 
    Please review the changes before proceeding.
    ```
@@ -913,9 +1287,45 @@ Similar to code review models in PHASE 3, support configuration in `.claude/sett
 
 ---
 
-#### Step 1: Ask User About External Code Reviewers
+#### Step 1: Load Code Review Preferences and Present Selection
 
 **Update TodoWrite**: Mark "PHASE 1.6: Configure external code reviewers" as in_progress
+
+**1. Load saved preferences from `.claude/settings.json`:**
+
+```bash
+# Extract code review model preferences with defaults
+CODE_REVIEW_MODELS=$(echo "$SETTINGS" | jq -r '.pluginSettings.frontend.modelPreferences.codeReview.models // []')
+CODE_REVIEW_AUTO=$(echo "$SETTINGS" | jq -r '.pluginSettings.frontend.modelPreferences.codeReview.autoUse // false')
+```
+
+**2. Handle autoUse mode:**
+
+IF `CODE_REVIEW_AUTO` is `true` AND `CODE_REVIEW_MODELS` is not empty:
+- Log: "Using saved code review model preferences: ${CODE_REVIEW_MODELS}"
+- Skip selection UI
+- Store models in `code_review_models` array
+- Proceed to Step 3 (update TODO list)
+
+**3. Present "Use same as last time" option (if saved preferences exist):**
+
+IF saved preferences exist AND `CODE_REVIEW_AUTO` is `false`:
+
+Use **AskUserQuestion**:
+```
+Code Review Model Selection
+
+You have saved model preferences from a previous run:
+${CODE_REVIEW_MODELS}
+
+Options:
+- "Use same models as last time"
+- "Choose different models"
+```
+
+IF user chooses "Use same models as last time", skip to Step 2 with saved models.
+
+**4. Present model selection introduction:**
 
 Present the external code reviewer selection introduction:
 
@@ -992,7 +1402,64 @@ Use **AskUserQuestion** with **multiSelect: true**:
 
 ---
 
-#### Step 2: Update TODO List for PHASE 3
+#### Step 2: Save Code Review Preferences
+
+**Save new selections to `.claude/settings.json`:**
+
+IF user selected different models than saved (or no saved preferences existed):
+
+```bash
+# Only save if settings are not corrupted
+if [[ "$SETTINGS_CORRUPTED" != "true" ]]; then
+  # Convert code_review_models array to JSON format
+  MODELS_JSON=$(printf '%s\n' "${code_review_models[@]}" | jq -R . | jq -s .)
+  ISO_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+  # Atomic update using temp file pattern
+  jq --argjson models "$MODELS_JSON" \
+     --arg timestamp "$ISO_TIMESTAMP" \
+     '.pluginSettings.frontend.modelPreferences.codeReview = {
+        "models": $models,
+        "lastUsed": $timestamp,
+        "autoUse": false
+      }' .claude/settings.json > .claude/settings.json.tmp && \
+  mv .claude/settings.json.tmp .claude/settings.json
+
+  if [[ $? -ne 0 ]]; then
+    echo "WARNING: Could not save code review model preferences. Continuing anyway."
+  fi
+else
+  echo "NOTE: Skipping preference save due to corrupted settings file."
+fi
+```
+
+**Ask about auto-use for future:**
+
+After user makes selection, ask:
+```
+Would you like to use these models automatically in future implementations?
+
+This will skip the code review model selection step next time.
+
+Options:
+- "Yes - Always use these models (skip selection next time)"
+- "No - Ask me each time (show these as defaults)"
+```
+
+IF user chooses "Yes":
+- Set `autoUse: true` in settings:
+
+```bash
+if [[ "$SETTINGS_CORRUPTED" != "true" ]]; then
+  jq '.pluginSettings.frontend.modelPreferences.codeReview.autoUse = true' \
+     .claude/settings.json > .claude/settings.json.tmp && \
+  mv .claude/settings.json.tmp .claude/settings.json
+fi
+```
+
+---
+
+#### Step 3: Update TODO List for PHASE 3
 
 Based on user selection and workflow type, update the PHASE 3 todos:
 
@@ -1032,7 +1499,7 @@ These reviewers will analyze your implementation in PHASE 3 after the developer 
    - **Update TodoWrite**: Mark "PHASE 2: Launch developer" as in_progress
    - Use Task tool with `subagent_type: frontend:developer`
    - Provide:
-     * Path to approved plan documentation in AI-DOCS/
+     * Path to approved plan documentation in ${SESSION_PATH}/
      * Clear instruction to follow the plan step-by-step
      * Guidance to write proper documentation
      * Instruction to ask for advice if obstacles are encountered
@@ -1101,7 +1568,7 @@ This phase runs ONLY if Figma design links are detected in the feature request o
    - **Update TodoWrite**: Mark "PHASE 2.5: Detect Figma design links" as in_progress
    - Use Grep to search for Figma URLs in:
      * Original feature request (`$ARGUMENTS`)
-     * Architecture plan files (AI-DOCS/*.md)
+     * Architecture plan files (${SESSION_PATH}/*.md)
    - Figma URL pattern: `https://(?:www\.)?figma\.com/(?:file|design)/[a-zA-Z0-9]+/[^\s?]+(?:\?[^\s]*)?(?:node-id=[0-9-]+)?`
    - **Update TodoWrite**: Mark "PHASE 2.5: Detect Figma design links" as completed
 
@@ -1667,7 +2134,7 @@ Options:
   Context:
   - Feature: [brief description]
   - Implementation location: [files changed]
-  - Architecture plan: [path to AI-DOCS plan]
+  - Architecture plan: [path to ${SESSION_PATH} plan]
   - Focus: API integration, data fetching, business logic, error handling
 
   Requirements:
@@ -1846,7 +2313,7 @@ e. **Loop Until Tests Pass**:
      * If UI_FOCUSED or MIXED: Update todo text to "Launch X reviewers in parallel (Claude + {external_review_models.length} external models + UI tester)"
    - Run `git status` to identify all unstaged changes
    - Run `git diff` to capture the COMPLETE implementation changes
-   - Read planning documentation from AI-DOCS folder to get 2-3 sentence summary
+   - Read planning documentation from ${SESSION_PATH} folder to get 2-3 sentence summary
    - IF workflow is UI_FOCUSED or MIXED: Retrieve the manual testing instructions from Step 3 of Phase 2
    - Prepare this context for reviewers
 
@@ -1887,7 +2354,7 @@ e. **Loop Until Tests Pass**:
      * **DO NOT include PROXY_MODE directive** - this runs with normal Claude Sonnet
      * Provide context:
        - "Review all unstaged git changes from the current implementation"
-       - Path to the original plan for reference (AI-DOCS/...)
+       - Path to the original plan for reference (${SESSION_PATH}/...)
        - Workflow type: [API_FOCUSED | UI_FOCUSED | MIXED]
        - Request comprehensive review against:
          * Simplicity principles
@@ -1942,7 +2409,7 @@ e. **Loop Until Tests Pass**:
        - **Manual testing instructions** from Phase 2 Step 3 (the structured guide from developer)
        - Application URL (e.g., http://localhost:5173 or staging URL)
        - Feature being tested (e.g., "User Management Feature")
-       - Planning context from AI-DOCS for understanding expected behavior
+       - Planning context from ${SESSION_PATH} for understanding expected behavior
      * The agent will:
        - Follow the step-by-step testing instructions provided
        - Use specific UI selectors (aria-labels, data-testid) mentioned in instructions
@@ -1991,7 +2458,7 @@ e. **Loop Until Tests Pass**:
      * **Update TodoWrite**: Add "PHASE 3 - Iteration X: Fix issues and re-run reviewers" task
      * **CRITICAL**: Do NOT fix issues yourself - delegate to developer agent
      * **Launch developer agent** using Task tool with:
-       - Original plan reference (path to AI-DOCS)
+       - Original plan reference (path to ${SESSION_PATH})
        - Combined feedback from ALL reviewers:
          * Code review feedback (logic, security, quality issues)
          * Automated analysis feedback (patterns, best practices)
