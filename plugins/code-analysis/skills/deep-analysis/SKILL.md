@@ -62,7 +62,7 @@ Use Task tool with:
 ## Investigation Steps
 
 1. **Initial Search**:
-   - Use semantic search (claude-context MCP) if available
+   - Use semantic search (claudemem CLI) if available
    - Otherwise use grep/ripgrep/find for patterns
    - Search for: [specific terms, patterns, file names]
 
@@ -117,12 +117,12 @@ Provide a comprehensive report including:
 
 ## Search Strategy
 
-**With MCP Claude-Context Available**:
-- Index the codebase if not already indexed
-- Use semantic queries for concepts (e.g., "authentication logic")
-- Use natural language to find functionality
+**With claudemem CLI Available**:
+- Index the codebase if not already indexed: `claudemem index`
+- Use semantic queries for concepts: `claudemem search "authentication logic"`
+- Use natural language to find functionality by meaning
 
-**Fallback (No MCP)**:
+**Fallback (No claudemem)**:
 - Use ripgrep (rg) or grep for pattern matching
 - Search file names with find
 - Trace imports manually
@@ -262,7 +262,7 @@ The Skill is successful when:
 
 This Skill works well with:
 
-- **MCP claude-context**: For semantic code search
+- **claudemem CLI**: For local semantic code search with Tree-sitter parsing
 - **MCP gopls**: For Go-specific analysis
 - **Standard CLI tools**: grep, ripgrep, find, git
 - **Project-specific tools**: Use project's search/navigation tools
@@ -270,8 +270,11 @@ This Skill works well with:
 ## Notes
 
 - The codebase-detective agent uses extended thinking for complex analysis
-- Semantic search (MCP) is preferred but not required
+- Semantic search (claudemem) is preferred but not required
 - Agent automatically falls back to grep/find if needed
+- claudemem requires OpenRouter API key (https://openrouter.ai)
+- Default model: `voyage/voyage-code-3` (best code understanding)
+- Run `claudemem --models` to see all options and pricing
 - Results are actionable and navigable
 - Great for onboarding to new codebases
 - Helps prevent incorrect assumptions about code

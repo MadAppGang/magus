@@ -23,6 +23,17 @@ export const cliTools: CliTool[] = [
     packageName: 'claudeup',
   },
   {
+    name: 'claudemem',
+    displayName: 'Claudemem',
+    description: 'Local semantic code search for Claude Code with vector embeddings',
+    installCommand: 'npm install -g claude-codemem',
+    checkCommand: 'claudemem --version',
+    website: 'https://github.com/MadAppGang/claudemem',
+    category: 'ai-coding',
+    packageManager: 'npm',
+    packageName: 'claude-codemem',
+  },
+  {
     name: 'claude',
     displayName: 'Claude Code',
     description: 'Anthropic official agentic coding tool',

@@ -38,8 +38,8 @@
 		{
 			"name": "code-analysis",
 			"source": "./plugins/code-analysis",
-			"description": "Deep code investigation and analysis toolkit. Features the codebase-detective agent with claude-context MCP validation (NEW v1.4.0), semantic search preference, and setup guidance for large codebase investigation.",
-			"version": "1.4.0",
+			"description": "Deep code investigation and analysis toolkit. Features codebase-detective agent with claudemem CLI for local semantic search (NEW v1.5.0). Uses Tree-sitter parsing, OpenRouter embeddings, and LanceDB for efficient code discovery.",
+			"version": "1.5.0",
 			"author": {
 				"name": "Jack Rudenko",
 				"email": "i@madappgang.com",
@@ -54,7 +54,9 @@
 				"architecture",
 				"patterns",
 				"debugging",
-				"code-navigation"
+				"code-navigation",
+				"semantic-search",
+				"claudemem"
 			],
 			"strict": true
 		},

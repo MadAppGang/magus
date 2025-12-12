@@ -38,11 +38,11 @@ A complete Claude Code plugin marketplace with enterprise-level architecture:
   - CSS architecture management with knowledge files
   - Pixel-perfect UI implementation with parallel design validation
   - Task decomposition for isolated, parallel implementation
-- **Code Analysis Plugin** (v1.3.3) - Deep codebase investigation
+- **Code Analysis Plugin** (v1.5.0) - Deep codebase investigation
   - 1 Specialized Agent (codebase-detective)
-  - 2 Skills (deep-analysis + semantic-code-search)
+  - 2 Skills (deep-analysis + claudemem-search)
   - Pattern discovery and bug investigation
-  - Semantic code search with claude-context MCP
+  - Local semantic code search with claudemem CLI (Tree-sitter + OpenRouter + LanceDB)
 - **Bun Backend Plugin** (v1.5.2) - Production-ready TypeScript backend with Bun
   - 3 Specialized Agents (backend-developer + api-architect + apidog)
   - **Opus 4.5 Architecture** (NEW in v1.5.0) - API Architect now uses Opus 4.5 for superior system design
@@ -229,7 +229,7 @@ claude-code/
 
 **Skills:**
 - `deep-analysis` - Automatic code investigation and analysis
-- `semantic-code-search` - Expert guidance on claude-context MCP usage
+- `claudemem-search` - Expert guidance on claudemem CLI for local semantic search
 
 ### Bun Backend Plugin
 
@@ -299,78 +299,60 @@ skills: orchestration:multi-model-validation, orchestration:quality-gates
 **How to Use:**
 Skills auto-load when commands/agents reference them in frontmatter. Plugins that depend on orchestration get automatic access to all orchestration skills.
 
-## MCP Error Handling
+## Claudemem Semantic Search
 
-### Claude-Context "Not Indexed" Error
+The code-analysis plugin uses **claudemem** CLI for local semantic code search.
 
-**CRITICAL**: When using `mcp__claude-context__search_code` and receiving an error "Codebase 'X' is not indexed", follow this **ERROR-TRIGGERED INDEXING** pattern:
+### Installation
 
-```
-# ❌ WRONG - Don't index proactively every time
-mcp__claude-context__index_codebase(path: "/path")
-mcp__claude-context__search_code(path: "/path", query: "...")
+```bash
+# npm (recommended)
+npm install -g claude-codemem
 
-# ✅ CORRECT - Only index when error occurs
-1. Try search FIRST:
-   mcp__claude-context__search_code(path: "/path", query: "...")
-
-2. IF error contains "not indexed":
-   - Log: "Codebase not indexed. Indexing now..."
-   - Run: mcp__claude-context__index_codebase(path: "/path", splitter: "ast")
-   - Wait for indexing to complete
-   - Retry: mcp__claude-context__search_code(path: "/path", query: "...")
-
-3. IF error is different (e.g., invalid path):
-   - Report error to user
-   - Ask for correct path
+# Homebrew (macOS)
+brew tap MadAppGang/claude-mem && brew install --cask claudemem
 ```
 
-**Key Principles:**
-- ✅ **Always try search first** - Don't assume codebase isn't indexed
-- ✅ **Only index on error** - Check if "not indexed" is in error message
-- ✅ **Use AST splitter by default** - Best for code search
-- ✅ **Retry search after indexing** - Complete the original operation
-- ❌ **Never index proactively** - Wastes time if already indexed
-- ❌ **Never re-index unnecessarily** - Check status first if unsure
+### Configuration
 
-**Example Error Handling:**
+```bash
+# Initialize with OpenRouter API key
+claudemem init
 
-```typescript
-// User asks: "Find authentication logic"
+# Get API key at: https://openrouter.ai/keys
 
-// Step 1: Try search first
-result = mcp__claude-context__search_code({
-  path: "/path/to/project",
-  query: "user authentication login flow"
-})
-
-// Step 2: Handle error if not indexed
-if (result.error && result.error.includes("not indexed")) {
-  console.log("Codebase not indexed. Indexing now (first time setup)...")
-
-  // Index the codebase
-  mcp__claude-context__index_codebase({
-    path: "/path/to/project",
-    splitter: "ast",
-    force: false  // Don't overwrite existing index
-  })
-
-  // Retry the search
-  result = mcp__claude-context__search_code({
-    path: "/path/to/project",
-    query: "user authentication login flow"
-  })
-}
-
-// Step 3: Use search results
-// ... process results ...
+# See available embedding models
+claudemem --models
 ```
 
-**This Pattern Ensures:**
-- Fast searches when codebase is already indexed (99% of cases)
-- Automatic indexing only when needed (first time or after clear)
-- No wasted time re-indexing already-indexed codebases
-- Seamless user experience (error is handled transparently)
+### Embedding Models
+
+| Model | Best For | Price |
+|-------|----------|-------|
+| `voyage/voyage-code-3` | **Best Quality** (default) | $0.180/1M |
+| `qwen/qwen3-embedding-8b` | Best Balanced | $0.010/1M |
+| `qwen/qwen3-embedding-0.6b` | Best Value | $0.002/1M |
+
+### Usage
+
+```bash
+# Index current project
+claudemem index
+
+# Semantic search
+claudemem search "user authentication flow"
+
+# Check status
+claudemem status
+```
+
+### Key Features
+
+- **Tree-sitter parsing** - Preserves function/class boundaries
+- **OpenRouter embeddings** - Uses voyage/voyage-code-3 by default (best code understanding)
+- **Local storage** - LanceDB in `.claudemem/` directory (add to .gitignore)
+- **Hybrid search** - BM25 keyword + dense vector similarity
+- **MCP server mode** - Run with `claudemem --mcp`
 
 ## Environment Variables
 
@@ -749,7 +731,7 @@ Include marketplace in project settings (requires folder trust):
 **Current Versions:**
 - Orchestration Plugin: **v0.3.0** (2025-12-12)
 - Frontend Plugin: **v3.11.0** (2025-12-09)
-- Code Analysis Plugin: **v1.4.0** (2025-12-12)
+- Code Analysis Plugin: **v1.5.0** (2025-12-12)
 - Bun Backend Plugin: **v1.5.2** (2025-11-26)
 - Agent Development Plugin: **v1.1.0** (2025-12-09)
 - Claudish CLI: See https://github.com/MadAppGang/claudish (separate repository)
@@ -761,10 +743,10 @@ Include marketplace in project settings (requires folder trust):
 - ✅ **Free Model Support**: Recommended free models (qwen3-coder, devstral-2512, qwen3-235b)
 - ✅ **Pattern 0**: Session setup and model discovery workflow
 - ✅ **Pattern 8**: Data-driven model selection based on historical performance
-- ✅ **Detective Claude-Context Validation**: Checks if MCP is installed, guides setup
+- ✅ **Detective Claudemem Integration**: Local semantic search with claudemem CLI
 - ✅ **Updated Plugins**:
   - Orchestration v0.3.0 - multi-model-validation skill v3.0
-  - Code Analysis v1.4.0 - detective agent with claude-context validation
+  - Code Analysis v1.5.0 - detective agent with claudemem CLI integration
 
 **Previous Changes (LLM Performance Tracking v0.2.0):**
 - ✅ **NEW**: LLM Performance Tracking across all multi-model plugins
@@ -810,7 +792,7 @@ Include marketplace in project settings (requires folder trust):
 - Orchestration: `plugins/orchestration/v0.3.0`
 - Frontend: `plugins/frontend/v3.11.0`
 - Bun: `plugins/bun/v1.5.2`
-- Code Analysis: `plugins/code-analysis/v1.4.0`
+- Code Analysis: `plugins/code-analysis/v1.5.0`
 - Agent Development: `plugins/agentdev/v1.1.0`
 - Use correct tag format when releasing: `plugins/{plugin-name}/vX.Y.Z`
 
@@ -818,5 +800,5 @@ Include marketplace in project settings (requires folder trust):
 
 **Maintained by:** Jack Rudenko @ MadAppGang
 **Last Updated:** December 12, 2025
-**Version:** 5 plugins (Orchestration v0.3.0, Frontend v3.11.0, Code Analysis v1.4.0, Bun Backend v1.5.2, Agent Development v1.1.0)
+**Version:** 5 plugins (Orchestration v0.3.0, Frontend v3.11.0, Code Analysis v1.5.0, Bun Backend v1.5.2, Agent Development v1.1.0)
 - do not use hardcoded path in code, docs, comments or any other files

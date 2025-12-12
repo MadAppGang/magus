@@ -26,7 +26,7 @@ Use `/analyze` when you need to:
 
 This command launches the **codebase-detective** agent, which:
 
-1. Uses semantic code search (MCP claude-context) when available
+1. Uses semantic code search (claudemem CLI) when available
 2. Falls back to standard grep/find/rg tools when needed
 3. Traces imports and dependencies across files
 4. Analyzes code structure and patterns
@@ -65,7 +65,7 @@ Task(
     4. Related files and dependencies
     5. Code flow/architecture diagram if complex
 
-    Use semantic search (claude-context MCP) if available, otherwise
+    Use semantic search (claudemem CLI) if available, otherwise
     use grep/ripgrep/find for pattern matching.
   `
 )
@@ -187,7 +187,9 @@ The command is successful when:
 ## Notes
 
 - The codebase-detective agent is optimized for speed and accuracy
-- It will use the best available tools (MCP search or grep/ripgrep)
+- It will use the best available tools (claudemem search or grep/ripgrep)
 - Results include actionable next steps
 - Can handle complex, multi-file investigations
 - Excellent for onboarding to new codebases
+- claudemem requires OpenRouter API key (https://openrouter.ai)
+- Run `claudemem --models` to see embedding model options and pricing
