@@ -800,13 +800,21 @@ Include marketplace in project settings (requires folder trust):
 - Orchestration: `plugins/orchestration/v0.3.0`
 - Frontend: `plugins/frontend/v3.11.0`
 - Bun: `plugins/bun/v1.5.2`
-- Code Analysis: `plugins/code-analysis/v1.5.0`
+- Code Analysis: `plugins/code-analysis/v2.0.0`
 - Agent Development: `plugins/agentdev/v1.1.0`
 - Use correct tag format when releasing: `plugins/{plugin-name}/vX.Y.Z`
+
+**⚠️ RELEASE CHECKLIST (ALL 3 REQUIRED):**
+When releasing a plugin, you MUST update ALL THREE of these:
+1. **Plugin version** - `plugins/{name}/plugin.json` → `"version": "X.Y.Z"`
+2. **Marketplace version** - `.claude-plugin/marketplace.json` → plugin entry `"version": "X.Y.Z"`
+3. **Git tag** - `git tag -a plugins/{name}/vX.Y.Z -m "Release message"` → push with `--tags`
+
+Missing any of these will cause claudeup to not see the update!
 
 ---
 
 **Maintained by:** Jack Rudenko @ MadAppGang
-**Last Updated:** December 12, 2025
-**Version:** 5 plugins (Orchestration v0.3.0, Frontend v3.11.0, Code Analysis v1.5.0, Bun Backend v1.5.2, Agent Development v1.1.0)
+**Last Updated:** December 13, 2025
+**Version:** 5 plugins (Orchestration v0.3.0, Frontend v3.11.0, Code Analysis v2.0.0, Bun Backend v1.5.2, Agent Development v1.1.0)
 - do not use hardcoded path in code, docs, comments or any other files
