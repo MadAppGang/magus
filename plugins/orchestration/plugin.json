@@ -1,7 +1,7 @@
 {
   "name": "orchestration",
-  "version": "0.3.0",
-  "description": "Shared multi-agent coordination and workflow orchestration patterns for complex Claude Code workflows. Provides proven patterns for parallel execution, multi-model validation with dynamic model discovery (NEW v0.3.0), session-based workspaces, free model support, quality gates, and phase-based orchestration. Pattern 0 adds session setup, Pattern 8 adds data-driven model selection.",
+  "version": "0.4.0",
+  "description": "Shared multi-agent coordination and workflow orchestration patterns for complex Claude Code workflows. Provides proven patterns for parallel execution, multi-model validation with dynamic model discovery, session-based workspaces, free model support, quality gates, and phase-based orchestration. NEW in v0.4.0: SessionStart hook for claudish status, /setup command for CLAUDE.md injection, 4-Message Pattern enforcement.",
   "author": "MadAppGang",
   "license": "MIT",
   "homepage": "https://github.com/MadAppGang/claude-code",
@@ -30,8 +30,22 @@
     "error-recovery"
   ],
 
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/session-start.sh"
+          }
+        ]
+      }
+    ]
+  },
+
   "commands": [
-    "./commands/help.md"
+    "./commands/help.md",
+    "./commands/setup.md"
   ],
 
   "skillBundles": {

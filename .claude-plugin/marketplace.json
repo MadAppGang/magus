@@ -88,8 +88,8 @@
 		{
 			"name": "orchestration",
 			"source": "./plugins/orchestration",
-			"description": "Shared multi-agent coordination and workflow orchestration patterns for complex Claude Code workflows. Skills-only plugin providing proven patterns for parallel execution (3-5x speedup), dynamic model discovery (claudish --top-models/--free), session-based workspaces, interactive model selection (AskUserQuestion), LLM performance tracking, quality gates, TDD loops, and comprehensive error recovery. Battle-tested patterns from 100+ days production use.",
-			"version": "0.3.0",
+			"description": "Shared multi-agent coordination and workflow orchestration patterns for complex Claude Code workflows. Skills-only plugin providing proven patterns for parallel execution (3-5x speedup), dynamic model discovery (claudish --top-models/--free), session-based workspaces, interactive model selection, LLM performance tracking, quality gates, TDD loops, and comprehensive error recovery. NEW in v0.4.0: SessionStart hook for claudish status, /setup command for CLAUDE.md injection, 4-Message Pattern enforcement.",
+			"version": "0.4.0",
 			"author": {
 				"name": "Jack Rudenko",
 				"email": "i@madappgang.com",
