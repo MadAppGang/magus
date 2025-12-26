@@ -1,132 +1,117 @@
-# Consolidated Plan Review: Claudemem v0.4.0 Integration
+# SEO Plugin Design - Consolidated Review
 
-**Date:** December 23, 2025
-**Models Used:** 4 (Grok, Gemini Flash, Gemini Pro, DeepSeek)
-**Parallel Execution Time:** 344s
-**Estimated Sequential:** 1376s
-**Speedup:** ~4x
+**Date:** 2025-12-26
+**Models Used:** 9 (minimax-m2.1, glm-4.7, gemini-3-flash, mistral-small, gpt-5.2, gpt-5.1-codex, deepseek-v3.2, qwen3-coder, claude-embedded)
+**Execution:** Parallel (all 9 simultaneous)
 
 ---
 
-## Consensus Analysis
+## Overall Assessment
 
-### UNANIMOUS ISSUES (All 4 Models Agree)
+| Model | Verdict | Critical | High | Medium |
+|-------|---------|----------|------|--------|
+| minimax-m2.1 | CONDITIONAL | 3 | 7 | 5 |
+| glm-4.7 | PASS | 0 | 3 | 5 |
+| gemini-3-flash | PASS | 0 | 0 | 3 |
+| mistral-small | CONDITIONAL | 0 | 4 | 5 |
+| gpt-5.2 | CONDITIONAL | 2 | 4 | 3 |
+| gpt-5.1-codex | CONDITIONAL | 3 | 4 | 3 |
+| deepseek-v3.2 | PASS | 0 | 4 | 3 |
+| qwen3-coder | CONDITIONAL | 5 | 8 | - |
+| claude-embedded | CONDITIONAL | 3 | 8 | 12 |
 
-| Issue | Severity | Description |
-|-------|----------|-------------|
-| **Version Compatibility** | CRITICAL | No fallback strategy for claudemem <0.4.0 installations |
-| **Core Architecture** | APPROVED | Design follows established patterns, sound foundation |
-| **Error Handling** | HIGH | No handling for empty results or command failures |
-
-### STRONG CONSENSUS (3+ Models)
-
-| Issue | Severity | Models Agreeing |
-|-------|----------|-----------------|
-| Session lifecycle management | HIGH | Grok, Gemini Flash, Gemini Pro |
-| Cross-plugin coupling | MEDIUM | Gemini Flash, Gemini Pro, DeepSeek |
-| Static analysis limitations | MEDIUM | Gemini Flash, Gemini Pro, DeepSeek |
-| Version gating in session-start.sh | HIGH | All 4 |
-
-### DIVERGENT OPINIONS
-
-| Topic | Opinion A | Opinion B |
-|-------|-----------|-----------|
-| Release strategy | Single v2.6.0 (Grok, Gemini) | Phased v2.5.1→v2.6.0 (DeepSeek) |
-| Orchestration skill | New skill (Grok) | Reference existing (Gemini Flash) |
-| Implementation scope | Full implementation (Gemini Pro) | Minimal viable first (Grok) |
+**Consensus:** 3 PASS, 6 CONDITIONAL PASS, 0 FAIL
+**Recommendation:** Proceed with targeted fixes
 
 ---
 
-## Critical Issues to Address
+## Critical Issues (Must Fix Before Implementation)
 
-### 1. Version Compatibility (UNANIMOUS - CRITICAL)
+### 1. Missing SESSION_PATH Definition (5/9 flagged)
+**Models:** minimax, gpt-5.2, codex, qwen, claude
+**Issue:** Commands reference `${SESSION_PATH}` but never define it
+**Fix:** Add session initialization pattern from orchestration plugin
 
-**Problem:** Plan assumes claudemem v0.4.0 exists without version checking.
+### 2. Incomplete Skill Files (4/9 flagged)
+**Models:** gpt-5.2, codex, qwen, claude
+**Issue:** 2-3 skills have placeholder content ("content similar to...")
+**Fix:** Complete full markdown bodies for all 7 skills
 
-**Resolution:** Add version detection in `session-start.sh`:
-```bash
-CLAUDEMEM_VERSION=$(claudemem --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
-if [[ "$CLAUDEMEM_VERSION" < "0.4.0" ]]; then
-  echo "WARNING: claudemem v0.4.0+ required for dead-code, test-gaps, impact commands"
-fi
-```
-
-### 2. Error Handling (UNANIMOUS - HIGH)
-
-**Problem:** No documentation on handling empty results or command failures.
-
-**Resolution:** Add to each workflow template:
-```bash
-# After running command
-if [ -z "$(cat $SESSION_DIR/results.md)" ]; then
-  echo "No results found - codebase is clean!"
-fi
-```
-
-### 3. Session Lifecycle (STRONG CONSENSUS - HIGH)
-
-**Problem:** Session cleanup is documented but not enforced.
-
-**Resolution:** Add TTL-based cleanup in session-start.sh:
-```bash
-find /tmp -name "plan-review-*" -mtime +1 -exec rm -rf {} + 2>/dev/null
-```
-
-### 4. Static Analysis Limitations (STRONG CONSENSUS - MEDIUM)
-
-**Problem:** No handling for dynamic imports, reflection, external callers.
-
-**Resolution:** Add documentation for edge cases:
-- Dynamic imports → "Potentially Dead - Manual Review"
-- External API callers → "Externally Called - Manual Review Required"
+### 3. Proxy Mode Incomplete (3/9 flagged)
+**Models:** codex, qwen, claude
+**Issue:** Claudish syntax errors, missing error handling
+**Fix:** Add complete proxy mode implementation with timeouts
 
 ---
 
-## Recommended Changes to Design
+## High Priority Issues (Strongly Recommended)
 
-### Priority 1 (Before Implementation)
+### 4. Model Selection: Researcher (3/9 suggested change)
+**Models:** mistral, qwen, claude
+**Issue:** Haiku may be underpowered for semantic clustering
+**Options:** Keep Haiku (speed) OR upgrade to Sonnet (quality)
 
-1. **Add version detection** to `session-start.sh` hook
-2. **Add empty result handling** to all workflow templates
-3. **Document static analysis limitations** in claudemem-search skill
+### 5. Missing Error Recovery (4/9 flagged)
+**Models:** mistral, gpt-5.2, qwen, claude
+**Issue:** No handling for WebSearch/WebFetch failures
+**Fix:** Add error recovery patterns from orchestration plugin
 
-### Priority 2 (During Implementation)
+### 6. Missing Data Handoff Schema (2/9 flagged)
+**Models:** minimax, gpt-5.2
+**Issue:** No structured contract between agents in pipeline
+**Fix:** Define artifact format (YAML frontmatter headers)
 
-4. **Reduce orchestration coupling** - reference orchestration:multi-model-validation instead of duplicating
-5. **Add session cleanup** with TTL mechanism
+### 7. E-E-A-T Scoring Too Subjective (2/9 flagged)
+**Models:** qwen, claude
+**Issue:** No concrete rubric for quality scoring
+**Fix:** Add quantified checklist
 
-### Priority 3 (Future Enhancement)
-
-6. **Consider phased rollout** (v2.5.1 experimental → v2.6.0 stable)
-7. **Add Performance Investigation template** (missing from current 5)
-
----
-
-## Verdict Summary
-
-| Model | Verdict | Confidence |
-|-------|---------|------------|
-| Grok | APPROVED with modifications | 85% |
-| Gemini Flash | CONDITIONAL PASS | 80% |
-| Gemini Pro | CONDITIONAL PASS | 85% |
-| DeepSeek | APPROVED with phased rollout | 75% |
-
-**Overall:** CONDITIONAL APPROVAL - Address version compatibility and error handling before implementation.
+### 8. Chrome DevTools MCP Integration Vague (2/9 flagged)
+**Models:** minimax, claude
+**Issue:** Core Web Vitals methodology unclear when MCP unavailable
+**Fix:** Add fallback methodology
 
 ---
 
-## Model Performance (This Session)
+## Unanimous Strengths (All 9 Models)
 
-| Model | Time | Issues Found | Quality |
-|-------|------|--------------|---------|
-| x-ai/grok-code-fast-1 | ~86s | 6 | 88% |
-| google/gemini-2.5-flash | ~86s | 8 | 82% |
-| google/gemini-2.5-pro | ~86s | 6 | 90% |
-| deepseek/deepseek-chat | ~86s | 5 | 78% |
-
-**Note:** Times are estimated based on parallel execution (344s / 4 models).
+1. Four-agent architecture - Analyst→Researcher→Writer→Editor is excellent
+2. Model selection rationale - Haiku/Sonnet/Opus choices well-justified
+3. Comprehensive SEO coverage - SERP, keywords, content, technical, E-E-A-T
+4. Quality gate framework - PASS/CONDITIONAL/FAIL is appropriate
+5. Skill modularity - 7 focused skills vs monolithic approach
+6. Documentation quality - Detailed examples and workflows
 
 ---
 
-*Generated by: Orchestration Command*
-*Session: plan-review-20251223-171356*
+## Recommended Fix Plan
+
+### Phase 1: Critical Fixes (1-2 hours)
+1. Add SESSION_PATH initialization to all commands
+2. Complete all 7 skill files with full content
+3. Fix proxy mode implementation (Claudish syntax)
+
+### Phase 2: High Priority Fixes (2-3 hours)
+4. Add error recovery patterns (reference orchestration plugin)
+5. Define artifact handoff schema (YAML frontmatter)
+6. Add E-E-A-T scoring rubric
+7. Clarify Chrome DevTools fallback
+
+### Phase 3: Optional Enhancements
+8. Consider Researcher model upgrade (Haiku → Sonnet)
+9. Add multi-model validation option to commands
+10. Add session cleanup policy
+
+---
+
+## Individual Review Files
+
+1. ai-docs/plan-review-minimax-m2.md
+2. ai-docs/plan-review-glm.md
+3. ai-docs/plan-review-gemini-flash.md
+4. ai-docs/plan-review-mistral.md
+5. ai-docs/plan-review-gpt52.md
+6. ai-docs/plan-review-codex.md
+7. ai-docs/plan-review-deepseek.md
+8. ai-docs/plan-review-qwen.md
+9. ai-docs/plan-review-claude.md

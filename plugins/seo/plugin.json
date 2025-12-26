@@ -1,0 +1,44 @@
+{
+  "name": "seo",
+  "version": "1.0.0",
+  "description": "Comprehensive SEO toolkit with keyword research, content optimization, technical audits, and multi-agent content workflows. Features SERP analysis, intent classification, semantic clustering, content brief generation, and E-E-A-T compliance validation.",
+  "author": {
+    "name": "Jack Rudenko",
+    "email": "i@madappgang.com",
+    "company": "MadAppGang"
+  },
+  "license": "MIT",
+  "keywords": [
+    "seo",
+    "content-optimization",
+    "keyword-research",
+    "serp-analysis",
+    "technical-seo",
+    "content-strategy"
+  ],
+  "category": "content",
+  "dependencies": {
+    "orchestration@mag-claude-plugins": "^0.5.0"
+  },
+  "agents": [
+    "./agents/analyst.md",
+    "./agents/researcher.md",
+    "./agents/writer.md",
+    "./agents/editor.md"
+  ],
+  "commands": [
+    "./commands/research.md",
+    "./commands/optimize.md",
+    "./commands/brief.md",
+    "./commands/audit.md"
+  ],
+  "skills": [
+    "./skills/keyword-cluster-builder",
+    "./skills/content-optimizer",
+    "./skills/content-brief",
+    "./skills/technical-audit",
+    "./skills/serp-analysis",
+    "./skills/schema-markup",
+    "./skills/link-strategy"
+  ]
+}
