@@ -7,7 +7,7 @@ skills: orchestration:multi-model-validation
 
 # Claudemem Multi-Agent Orchestration
 
-**Version:** 1.0.0
+**Version:** 1.1.0
 **Purpose:** Coordinate multiple agents using shared claudemem output
 
 ## Overview
@@ -89,6 +89,120 @@ Task: ultrathink-detective
            Create unified report with prioritized action items.
            Write to $SESSION_DIR/consolidated-analysis.md"
 ```
+
+### Pattern 4: Consolidated Feedback Reporting (v0.8.0+)
+
+When multiple agents perform searches, consolidate feedback for efficiency.
+
+**Why Consolidate?**
+
+- Avoid duplicate feedback submissions
+- Single point of failure handling
+- Cleaner session cleanup
+
+**Shared Feedback Collection:**
+
+Each agent writes feedback to a shared file in the session directory:
+
+```bash
+# Agent writes feedback entry (atomic with flock)
+report_agent_feedback() {
+  local query="$1"
+  local helpful="$2"
+  local unhelpful="$3"
+
+  # Use file locking to prevent race conditions
+  (
+    flock -x 200
+    printf '%s|%s|%s\n' "$query" "$helpful" "$unhelpful" >> "$SESSION_DIR/feedback.log"
+  ) 200>"$SESSION_DIR/feedback.lock"
+}
+
+# Usage in agent
+report_agent_feedback "$SEARCH_QUERY" "$HELPFUL_IDS" "$UNHELPFUL_IDS"
+```
+
+**Orchestrator Consolidation:**
+
+After all agents complete, the orchestrator submits all feedback:
+
+```bash
+consolidate_feedback() {
+  local session_dir="$1"
+  local feedback_log="$session_dir/feedback.log"
+
+  # Skip if no feedback collected
+  [ -f "$feedback_log" ] || return 0
+
+  # Check if feedback command available (v0.8.0+)
+  if ! claudemem feedback --help 2>&1 | grep -qi "feedback"; then
+    echo "Note: Search feedback requires claudemem v0.8.0+"
+    return 0
+  fi
+
+  local success=0
+  local failed=0
+
+  while IFS='|' read -r query helpful unhelpful; do
+    # Skip empty lines
+    [ -n "$query" ] || continue
+
+    if timeout 5 claudemem feedback \
+      --query "$query" \
+      --helpful "$helpful" \
+      --unhelpful "$unhelpful" 2>/dev/null; then
+      ((success++))
+    else
+      ((failed++))
+    fi
+  done < "$feedback_log"
+
+  echo "Feedback: $success submitted, $failed failed"
+
+  # Cleanup
+  rm -f "$feedback_log" "$session_dir/feedback.lock"
+}
+
+# Call after consolidation
+consolidate_feedback "$SESSION_DIR"
+```
+
+**Multi-Agent Workflow Integration:**
+
+```
+Phase 1: Session Setup
+  └── Create SESSION_DIR with feedback.log
+
+Phase 2: Parallel Agent Execution
+  └── Agent 1: Search → Track → Write feedback entry
+  └── Agent 2: Search → Track → Write feedback entry
+  └── Agent 3: Search → Track → Write feedback entry
+
+Phase 3: Results Consolidation
+  └── Consolidate agent outputs
+
+Phase 4: Feedback Consolidation (NEW)
+  └── Read all feedback entries from log
+  └── Submit each to claudemem
+  └── Report success/failure counts
+
+Phase 5: Cleanup
+  └── Remove SESSION_DIR (includes feedback files)
+```
+
+**Best Practices Update:**
+
+**Do:**
+- Use file locking for concurrent writes (`flock -x`)
+- Consolidate feedback AFTER agent completion
+- Report success/failure counts
+- Clean up feedback files after submission
+
+**Don't:**
+- Submit feedback from each agent individually
+- Skip the version check
+- Block on feedback submission failures
+- Track feedback for non-search commands (map, symbol, callers, etc.)
 
 ## Role-Based Command Mapping
 
@@ -214,5 +328,5 @@ fi
 ---
 
 **Maintained by:** MadAppGang
-**Plugin:** code-analysis v2.6.0
-**Last Updated:** December 2025
+**Plugin:** code-analysis v2.8.0
+**Last Updated:** December 2025 (v1.1.0 - Search feedback protocol support)

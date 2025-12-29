@@ -1,7 +1,7 @@
 {
 	"name": "code-analysis",
-	"version": "2.7.0",
-	"description": "Deep code investigation with ENFORCED claudemem v0.7.0. AST structural analysis with PageRank, callers/callees dependency tracing, full call chain context. NEW: Framework documentation fetching (Context7, llms.txt, DevDocs). Unified search across code AND library docs. PreToolUse hooks intercept Grep/Bash/Glob/Read.",
+	"version": "2.8.0",
+	"description": "Deep code investigation with claudemem v0.8.0. AST structural analysis with PageRank, callers/callees dependency tracing, full call chain context. NEW: Search feedback protocol - report helpful/unhelpful results for per-project learning. Framework documentation fetching. PreToolUse hooks intercept Grep/Bash/Glob/Read.",
 	"author": {
 		"name": "Jack Rudenko",
 		"email": "i@madappgang.com",

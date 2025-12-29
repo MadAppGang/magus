@@ -412,6 +412,56 @@ AskUserQuestion({
 | Skip `map` command | Miss architecture | ALWAYS start with `map` |
 | Ignore PageRank | Miss core abstractions | High PageRank = important |
 
+---
+
+## Feedback Reporting (v0.8.0+)
+
+After completing investigation, report search feedback to improve future results.
+
+### When to Report
+
+Report feedback ONLY if you used the `search` command during investigation:
+
+| Result Type | Mark As | Reason |
+|-------------|---------|--------|
+| Read and used | Helpful | Contributed to investigation |
+| Read but irrelevant | Unhelpful | False positive |
+| Skipped after preview | Unhelpful | Not relevant to query |
+| Never read | (Don't track) | Can't evaluate |
+
+### Feedback Pattern
+
+```bash
+# Track during investigation
+SEARCH_QUERY="your original query"
+HELPFUL_IDS=""
+UNHELPFUL_IDS=""
+
+# When reading a helpful result
+HELPFUL_IDS="$HELPFUL_IDS,$result_id"
+
+# When reading an unhelpful result
+UNHELPFUL_IDS="$UNHELPFUL_IDS,$result_id"
+
+# Report at end of investigation (v0.8.0+ only)
+if claudemem feedback --help 2>&1 | grep -qi "feedback"; then
+  timeout 5 claudemem feedback \
+    --query "$SEARCH_QUERY" \
+    --helpful "${HELPFUL_IDS#,}" \
+    --unhelpful "${UNHELPFUL_IDS#,}" 2>/dev/null || true
+fi
+```
+
+### Output Update
+
+Include in investigation report:
+
+```
+Search Feedback: [X helpful, Y unhelpful] - Submitted (v0.8.0+)
+```
+
+---
+
 ## Notes
 
 - **`map` is your primary tool** - It shows architecture through PageRank

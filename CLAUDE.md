@@ -193,24 +193,24 @@ CODEX_API_KEY=your-codex-key
 **Current Versions:**
 - Orchestration Plugin: **v0.6.0** (2025-12-14)
 - Frontend Plugin: **v3.13.0** (2025-12-14)
-- Code Analysis Plugin: **v2.7.0** (2025-12-27)
+- Code Analysis Plugin: **v2.8.0** (2025-12-29)
 - Bun Backend Plugin: **v1.5.2** (2025-11-26)
 - Agent Development Plugin: **v1.1.0** (2025-12-09)
 - Claudish CLI: See https://github.com/MadAppGang/claudish (separate repository)
 
-**Latest Changes (Code Analysis v2.7.0 - Claudemem v0.7.0 Framework Documentation):**
-- ✅ **Framework Documentation Fetching**: Auto-fetch docs for project dependencies
-- ✅ **3 Documentation Providers**: Context7 (6000+ libs), llms.txt (free), DevDocs (free fallback)
-- ✅ **Unified Search**: Search across BOTH codebase AND library documentation
-- ✅ **Dependency Detection**: Auto-detect from package.json, requirements.txt, go.mod, Cargo.toml
-- ✅ **New Commands**: `claudemem docs status/fetch/providers/refresh/clear`
-- ✅ **claudemem-search Skill v0.6.0**: Complete framework documentation section added
+**Latest Changes (Code Analysis v2.8.0 - Claudemem v0.8.0 Search Feedback Protocol):**
+- ✅ **Search Feedback Protocol**: Report helpful/unhelpful results after investigations
+- ✅ **Per-Project Learning Loop**: Helpful IDs boost +10%, unhelpful demote -10%
+- ✅ **All Detective Skills Updated**: developer, architect, tester, debugger, ultrathink
+- ✅ **Orchestration Integration**: Consolidated feedback in multi-agent workflows
+- ✅ **POSIX-Compatible Patterns**: Works on macOS/Linux without bash 4.0+
+- ✅ **Version Guards**: Graceful degradation for claudemem <0.8.0
 
 **Git Tags:**
 - Orchestration: `plugins/orchestration/v0.6.0`
 - Frontend: `plugins/frontend/v3.13.0`
 - Bun: `plugins/bun/v1.5.2`
-- Code Analysis: `plugins/code-analysis/v2.7.0`
+- Code Analysis: `plugins/code-analysis/v2.8.0`
 - Agent Development: `plugins/agentdev/v1.1.0`
 - SEO: `plugins/seo/v1.2.0`
 - Use correct tag format when releasing: `plugins/{plugin-name}/vX.Y.Z`
@@ -226,6 +226,6 @@ Missing any of these will cause claudeup to not see the update!
 ---
 
 **Maintained by:** Jack Rudenko @ MadAppGang
-**Last Updated:** December 27, 2025
-**Version:** 6 plugins (Orchestration v0.6.0, Frontend v3.13.0, Code Analysis v2.7.0, Bun Backend v1.5.2, Agent Development v1.1.0, SEO v1.2.0)
+**Last Updated:** December 29, 2025
+**Version:** 6 plugins (Orchestration v0.6.0, Frontend v3.13.0, Code Analysis v2.8.0, Bun Backend v1.5.2, Agent Development v1.1.0, SEO v1.2.0)
 - do not use hardcoded path in code, docs, comments or any other files

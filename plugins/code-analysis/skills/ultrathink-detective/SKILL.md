@@ -274,6 +274,36 @@ claudemem --nologo map "async await promise parallel" --raw
 claudemem --nologo map "cache memoize store" --raw
 ```
 
+### Dimension 6: Performance Feedback Tracking (v0.8.0+)
+
+Ultrathink uses `search` in the Performance dimension. Track feedback for these searches:
+
+```bash
+# Dimension 6: Performance (semantic search)
+PERF_QUERY="query database batch"
+PERF_RESULTS=$(claudemem --nologo search "$PERF_QUERY" --raw)
+
+# Initialize tracking strings (POSIX-compatible)
+PERF_HELPFUL=""
+PERF_UNHELPFUL=""
+
+# During analysis, track results:
+# When you read a result and it's useful for performance analysis:
+PERF_HELPFUL="$PERF_HELPFUL,abc123"
+
+# When you read a result and it's not relevant:
+PERF_UNHELPFUL="$PERF_UNHELPFUL,def456"
+
+# At end of investigation, report (v0.8.0+ only):
+if claudemem feedback --help 2>&1 | grep -qi "feedback"; then
+  timeout 5 claudemem feedback \
+    --query "$PERF_QUERY" \
+    --helpful "${PERF_HELPFUL#,}" \
+    --unhelpful "${PERF_UNHELPFUL#,}" \
+    2>/dev/null || true
+fi
+```
+
 ### Dimension 7: Code Health (v0.4.0+ Required)
 
 ```bash
@@ -413,6 +443,11 @@ claudemem --nologo callers unusedFunction --raw
 │  └── Code Health:     🟡 MODERATE  (6/10) [dead-code + impact]  │
 │                                                                  │
 │  Critical: 3 | Major: 7 | Minor: 15                             │
+│                                                                  │
+│  Search Feedback:                                                │
+│  └── Performance queries: 2 submitted                           │
+│  └── Helpful results: 5                                         │
+│  └── Unhelpful results: 3                                       │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -736,6 +771,54 @@ claudemem --nologo search "query" --raw   # Semantic
 
 ---
 
+## Feedback Reporting (v0.8.0+)
+
+After completing investigation, report search feedback to improve future results.
+
+### When to Report
+
+Report feedback ONLY if you used the `search` command during investigation:
+
+| Result Type | Mark As | Reason |
+|-------------|---------|--------|
+| Read and used | Helpful | Contributed to investigation |
+| Read but irrelevant | Unhelpful | False positive |
+| Skipped after preview | Unhelpful | Not relevant to query |
+| Never read | (Don't track) | Can't evaluate |
+
+### Feedback Pattern
+
+```bash
+# Track during investigation
+SEARCH_QUERY="your original query"
+HELPFUL_IDS=""
+UNHELPFUL_IDS=""
+
+# When reading a helpful result
+HELPFUL_IDS="$HELPFUL_IDS,$result_id"
+
+# When reading an unhelpful result
+UNHELPFUL_IDS="$UNHELPFUL_IDS,$result_id"
+
+# Report at end of investigation (v0.8.0+ only)
+if claudemem feedback --help 2>&1 | grep -qi "feedback"; then
+  timeout 5 claudemem feedback \
+    --query "$SEARCH_QUERY" \
+    --helpful "${HELPFUL_IDS#,}" \
+    --unhelpful "${UNHELPFUL_IDS#,}" 2>/dev/null || true
+fi
+```
+
+### Output Update
+
+Include in investigation report:
+
+```
+Search Feedback: [X helpful, Y unhelpful] - Submitted (v0.8.0+)
+```
+
+---
+
 ## Cross-Plugin Integration
 
 This skill should be used by ANY agent that needs deep analysis:
@@ -769,12 +852,15 @@ skills: code-analysis:ultrathink-detective
 ║   3. claudemem --nologo callers <name> --raw ← Impact analysis              ║
 ║   4. claudemem --nologo callees <name> --raw ← Dependencies                 ║
 ║   5. claudemem --nologo context <name> --raw ← Full call chain              ║
-║   6. Read specific file:line (NOT whole files)                              ║
+║   6. claudemem --nologo search <query> --raw ← Semantic search              ║
+║   7. Read specific file:line (NOT whole files)                              ║
+║   8. claudemem feedback ... ← Report helpful/unhelpful (if search used)    ║
 ║                                                                              ║
 ║   ❌ grep, find, rg, Glob, Grep tool                                        ║
 ║                                                                              ║
 ║   PageRank > 0.05 = Architectural pillar = Analyze FIRST                    ║
 ║   High PageRank + 0 test callers = CRITICAL coverage gap                    ║
+║   Performance dimension uses search → Track feedback for Dimension 6        ║
 ║                                                                              ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 ```
@@ -783,4 +869,4 @@ skills: code-analysis:ultrathink-detective
 
 **Maintained by:** MadAppGang
 **Plugin:** code-analysis v2.7.0
-**Last Updated:** December 2025 (v3.3.0 - Cross-platform compatibility, inline templates, improved validation)
+**Last Updated:** December 2025 (v3.4.0 - Search feedback protocol support)

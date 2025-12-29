@@ -394,6 +394,7 @@ claudemem --nologo callees SymbolName --raw
 ║   3. claudemem --nologo symbol <name> --raw                                 ║
 ║   4. claudemem --nologo callers <name> --raw ← BEFORE MODIFYING             ║
 ║   5. Read specific file:line (NOT whole files)                              ║
+║   6. claudemem feedback ... ← REPORT HELPFUL/UNHELPFUL (if search used)    ║
 ║                                                                              ║
 ║   NEVER: grep, find, Glob, search before map                                ║
 ║                                                                              ║
@@ -403,3 +404,89 @@ claudemem --nologo callees SymbolName --raw
 ```
 
 **Violation of these rules means degraded results and poor user experience.**
+
+---
+
+## Phase 6: Feedback Reporting (Optional but Recommended)
+
+After completing the investigation, report search feedback to improve future results.
+
+### When to Report Feedback
+
+Report feedback when you used the `search` command during investigation:
+
+```bash
+# If you performed searches during investigation:
+if [ ${#SEARCH_FEEDBACK[@]} -gt 0 ]; then
+  # Check if feedback is available (v0.8.0+)
+  if claudemem feedback --help 2>&1 | grep -qi "feedback"; then
+    # Report for each search query
+    # SEARCH_FEEDBACK is associative array: ["query"]="helpful:id1,id2|unhelpful:id3"
+    for query in "${!SEARCH_FEEDBACK[@]}"; do
+      IFS='|' read -r helpful_part unhelpful_part <<< "${SEARCH_FEEDBACK[$query]}"
+      HELPFUL=$(echo "$helpful_part" | cut -d: -f2)
+      UNHELPFUL=$(echo "$unhelpful_part" | cut -d: -f2)
+
+      timeout 5 claudemem feedback \
+        --query "$query" \
+        --helpful "$HELPFUL" \
+        --unhelpful "$UNHELPFUL" \
+        2>/dev/null || true
+    done
+  else
+    echo "Note: Search feedback requires claudemem v0.8.0+"
+  fi
+fi
+```
+
+### What to Report
+
+| Result Type | Mark As | Reason |
+|-------------|---------|--------|
+| Read and used | Helpful | Contributed to investigation |
+| Read but irrelevant | Unhelpful | False positive |
+| Skipped after preview | Unhelpful | Not relevant to query |
+| Never read | (Don't track) | Can't evaluate |
+
+### Feedback Tracking Pattern
+
+```bash
+# During investigation, track search results:
+SEARCH_QUERY="authentication flow"
+SEARCH_RESULTS=$(claudemem --nologo search "$SEARCH_QUERY" -n 10 --raw)
+
+# Parse result IDs
+SEARCH_IDS=$(echo "$SEARCH_RESULTS" | grep "^id:" | awk '{print $2}' | tr '\n' ',' | sed 's/,$//')
+
+# Track as you read:
+HELPFUL_IDS="abc123,def456"  # Results you actually used
+UNHELPFUL_IDS="ghi789"       # Results that were irrelevant
+
+# At end, report:
+if claudemem feedback --help 2>&1 | grep -qi "feedback"; then
+  timeout 5 claudemem feedback \
+    --query "$SEARCH_QUERY" \
+    --helpful "$HELPFUL_IDS" \
+    --unhelpful "$UNHELPFUL_IDS" 2>/dev/null || true
+else
+  echo "Note: Search feedback requires claudemem v0.8.0+"
+fi
+```
+
+### Output Format Update
+
+Include in investigation report:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    INVESTIGATION COMPLETE                        │
+├─────────────────────────────────────────────────────────────────┤
+│  [Standard investigation results...]                            │
+│                                                                  │
+│  📊 Search Feedback Reported:                                   │
+│  └── Query: "authentication flow"                               │
+│      └── Helpful: 3 results                                     │
+│      └── Unhelpful: 2 results                                   │
+│      └── Status: ✓ Submitted (optional)                         │
+└─────────────────────────────────────────────────────────────────┘
+```

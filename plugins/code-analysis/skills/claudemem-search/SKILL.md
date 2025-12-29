@@ -1325,6 +1325,138 @@ claudemem --version
 
 ---
 
+## Search Feedback Protocol (v0.8.0+) ⭐NEW
+
+Claudemem learns from your search patterns. After completing a task, report which search results were helpful to improve future searches.
+
+### Why Feedback Matters
+
+| Feedback Type | Effect | Over Time |
+|---------------|--------|-----------|
+| Helpful | +10% boost | Files you consistently use rank higher |
+| Unhelpful | -10% demotion | Irrelevant results rank lower |
+| Document Type | Type weighting | Helpful types (e.g., symbol_summary) get priority |
+
+### CLI Interface
+
+```bash
+# After using search results, report feedback
+claudemem feedback --query "your original query" \
+  --helpful id1,id2 \
+  --unhelpful id3,id4
+
+# Result IDs are shown in search output:
+claudemem search "authentication" --nologo --raw
+# Output includes:
+# id: abc123
+# file: src/auth/middleware.ts
+# ...
+```
+
+### MCP Interface
+
+```json
+{
+  "tool": "report_search_feedback",
+  "arguments": {
+    "query": "authentication flow",
+    "allResultIds": ["id1", "id2", "id3"],
+    "helpfulIds": ["id1"],
+    "unhelpfulIds": ["id3"]
+  }
+}
+```
+
+### When to Track as Helpful
+
+A result should be marked as **helpful** when:
+- The file was read and contained relevant information
+- The code was used to understand the problem
+- The symbol was part of the call chain being traced
+- The file contributed to the final answer
+
+### When to Track as Unhelpful
+
+A result should be marked as **unhelpful** when:
+- The file was read but contained irrelevant information
+- The result was a false positive (matched query but wrong context)
+- The file was skipped after reading initial content
+- The symbol was not related to the investigation
+
+### When NOT to Track
+
+Do not track feedback for:
+- Results from `map` command (structural overview, not semantic search)
+- Results from `symbol` command (exact lookup, not search)
+- Results from `callers`/`callees` commands (call graph, not search)
+- Only `search` command results should have feedback
+
+### Integration with Workflow Templates
+
+Add feedback reporting to the end of each workflow template:
+
+```bash
+# Template 1: Bug Investigation (add at end)
+# Step 7: Report feedback
+if [ -n "$SEARCH_QUERY" ] && [ -n "$HELPFUL_IDS" ]; then
+  # Check if feedback is available (v0.8.0+)
+  if claudemem feedback --help 2>&1 | grep -qi "feedback"; then
+    timeout 5 claudemem feedback --query "$SEARCH_QUERY" \
+      --helpful "${HELPFUL_IDS}" \
+      --unhelpful "${UNHELPFUL_IDS}" 2>/dev/null || true
+  else
+    echo "Note: Search feedback requires claudemem v0.8.0+"
+  fi
+fi
+```
+
+### Feedback Workflow Example
+
+```bash
+# Full investigation with feedback tracking
+
+# 0. Check if feedback is available (v0.8.0+)
+FEEDBACK_AVAILABLE=false
+if claudemem feedback --help 2>&1 | grep -qi "feedback"; then
+  FEEDBACK_AVAILABLE=true
+else
+  echo "Note: Search feedback requires claudemem v0.8.0+"
+fi
+
+# 1. Search and capture IDs
+RESULTS=$(claudemem --nologo search "payment processing" -n 10 --raw)
+ALL_IDS=$(echo "$RESULTS" | grep "^id:" | awk '{print $2}')
+SEARCH_QUERY="payment processing"
+
+# 2. Initialize tracking arrays
+HELPFUL=()
+UNHELPFUL=()
+
+# 3. Process results (during investigation)
+# When you read a result and it's useful:
+HELPFUL+=("abc123")
+# When you read a result and it's not relevant:
+UNHELPFUL+=("def456")
+
+# 4. Report feedback (at end of investigation)
+if [ "$FEEDBACK_AVAILABLE" = true ] && ([ ${#HELPFUL[@]} -gt 0 ] || [ ${#UNHELPFUL[@]} -gt 0 ]); then
+  timeout 5 claudemem feedback \
+    --query "$SEARCH_QUERY" \
+    --helpful "$(IFS=,; echo "${HELPFUL[*]}")" \
+    --unhelpful "$(IFS=,; echo "${UNHELPFUL[*]}")" \
+    2>/dev/null || echo "Note: Feedback not sent (optional)"
+fi
+```
+
+### Quality Checklist Update
+
+Add to the existing Quality Checklist:
+
+- [ ] **Tracked result IDs during search** (if using `search` command)
+- [ ] **Reported feedback at end of investigation** (if applicable)
+
+---
+
 ## Index Freshness Check (v0.5.0)
 
 Before proceeding with investigation, verify the index is current:
@@ -1501,6 +1633,7 @@ Before completing a claudemem workflow, ensure:
 - [ ] Focused on high-PageRank symbols first
 - [ ] Read only specific file:line ranges (not whole files)
 - [ ] **Never silently switched to grep** ⭐NEW in v0.5.0
+- [ ] **Reported search feedback** if `search` command was used ⭐NEW in v0.8.0
 
 ---
 
@@ -1527,4 +1660,4 @@ Before completing a claudemem workflow, ensure:
 
 **Maintained by:** Jack Rudenko @ MadAppGang
 **Plugin:** code-analysis v2.8.0
-**Last Updated:** December 2025 (v0.6.0 - Framework documentation support)
+**Last Updated:** December 2025 (v0.8.0 - Search feedback protocol)
