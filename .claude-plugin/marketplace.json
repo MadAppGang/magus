@@ -38,8 +38,8 @@
 		{
 			"name": "code-analysis",
 			"source": "./plugins/code-analysis",
-			"description": "Deep code investigation with claudemem v0.8.0. NEW: Auto-reindex on file changes (background, debounced). Search feedback protocol for per-project learning. AST analysis with PageRank, callers/callees tracing.",
-			"version": "2.8.1",
+			"description": "Deep code investigation with claudemem v0.8.0. NEW: Unified TypeScript hook handler (replaces 6 bash scripts). Auto-reindex on file changes. Search feedback protocol. AST analysis with PageRank, callers/callees tracing.",
+			"version": "2.9.0",
 			"author": {
 				"name": "Jack Rudenko",
 				"email": "i@madappgang.com",
@@ -158,6 +158,31 @@
 				"search-console",
 				"se-ranking",
 				"performance-analysis"
+			],
+			"strict": true
+		},
+		{
+			"name": "video-editing",
+			"source": "./plugins/video-editing",
+			"description": "Professional video editing toolkit with FFmpeg operations, Whisper transcription, and Apple Final Cut Pro project generation. Features intelligent video analysis, automated transcription with timing sync, FCPXML timeline creation with markers, multi-format export, and comprehensive validation.",
+			"version": "1.0.0",
+			"author": {
+				"name": "Jack Rudenko",
+				"email": "i@madappgang.com",
+				"company": "MadAppGang"
+			},
+			"category": "media",
+			"keywords": [
+				"video",
+				"ffmpeg",
+				"transcription",
+				"whisper",
+				"final-cut-pro",
+				"fcpxml",
+				"timeline",
+				"audio",
+				"editing",
+				"subtitles"
 			],
 			"strict": true
 		}

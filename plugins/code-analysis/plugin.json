@@ -1,7 +1,7 @@
 {
 	"name": "code-analysis",
-	"version": "2.8.1",
-	"description": "Deep code investigation with claudemem v0.8.0. AST structural analysis with PageRank, callers/callees dependency tracing. NEW: Auto-reindex on file changes (background, debounced). Search feedback protocol for per-project learning. Framework documentation fetching. Hooks intercept Grep/Bash/Glob/Read.",
+	"version": "2.9.0",
+	"description": "Deep code investigation with claudemem v0.8.0. AST structural analysis with PageRank, callers/callees dependency tracing. NEW: Unified TypeScript hook handler (replaces bash scripts). Auto-reindex on file changes. Search feedback protocol. Framework documentation fetching.",
 	"author": {
 		"name": "Jack Rudenko",
 		"email": "i@madappgang.com",
@@ -30,7 +30,18 @@
 				"hooks": [
 					{
 						"type": "command",
-						"command": "${CLAUDE_PLUGIN_ROOT}/hooks/session-start.sh"
+						"command": "bun \"${CLAUDE_PLUGIN_ROOT}/hooks/handler.ts\""
+					}
+				]
+			}
+		],
+		"PreToolUse": [
+			{
+				"matcher": "Grep|Bash|Glob|Read",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "bun \"${CLAUDE_PLUGIN_ROOT}/hooks/handler.ts\""
 					}
 				]
 			}
@@ -41,45 +52,7 @@
 				"hooks": [
 					{
 						"type": "command",
-						"command": "${CLAUDE_PLUGIN_ROOT}/hooks/auto-reindex.sh"
-					}
-				]
-			}
-		],
-		"PreToolUse": [
-			{
-				"matcher": "Grep",
-				"hooks": [
-					{
-						"type": "command",
-						"command": "${CLAUDE_PLUGIN_ROOT}/hooks/intercept-grep.sh"
-					}
-				]
-			},
-			{
-				"matcher": "Bash",
-				"hooks": [
-					{
-						"type": "command",
-						"command": "${CLAUDE_PLUGIN_ROOT}/hooks/intercept-bash.sh"
-					}
-				]
-			},
-			{
-				"matcher": "Glob",
-				"hooks": [
-					{
-						"type": "command",
-						"command": "${CLAUDE_PLUGIN_ROOT}/hooks/intercept-glob.sh"
-					}
-				]
-			},
-			{
-				"matcher": "Read",
-				"hooks": [
-					{
-						"type": "command",
-						"command": "${CLAUDE_PLUGIN_ROOT}/hooks/intercept-read.sh"
+						"command": "bun \"${CLAUDE_PLUGIN_ROOT}/hooks/handler.ts\""
 					}
 				]
 			}
