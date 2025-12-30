@@ -46,17 +46,17 @@ v0.3.0 adds **AST tree navigation** with symbol graph analysis:
 ## Quick Reference
 
 ```bash
-# Always run with --nologo for clean output
-claudemem --nologo <command>
+# For agentic use, always use --agent flag for clean output
+claudemem --agent <command>
 
 # Core commands for agents
-claudemem map [query]              # Get structural overview (repo map)
-claudemem symbol <name>            # Find symbol definition
-claudemem callers <name>           # What calls this symbol?
-claudemem callees <name>           # What does this symbol call?
-claudemem context <name>           # Full context (symbol + dependencies)
-claudemem search <query>           # Semantic search with --raw for parsing
-claudemem search <query> --map     # Search + include repo map context
+claudemem --agent map [query]              # Get structural overview (repo map)
+claudemem --agent symbol <name>            # Find symbol definition
+claudemem --agent callers <name>           # What calls this symbol?
+claudemem --agent callees <name>           # What does this symbol call?
+claudemem --agent context <name>           # Full context (symbol + dependencies)
+claudemem --agent search <query>           # Semantic search (clean output)
+claudemem --agent search <query> --map     # Search + include repo map context
 ```
 
 ---
@@ -93,10 +93,7 @@ VERSION=$(claudemem --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | 
 # Check if v0.4.0+ features available
 if [ -n "$VERSION" ] && printf '%s\n' "0.4.0" "$VERSION" | sort -V -C; then
   # v0.4.0+ available
-  claudemem --nologo dead-code --raw
-  claudemem --nologo test-gaps --raw
-  claudemem --nologo impact SymbolName --raw
-else
+  claudemem --agent dead-code  claudemem --agent test-gaps  claudemem --agent impact SymbolNameelse
   echo "Code analysis commands require claudemem v0.4.0+"
   echo "Current version: $VERSION"
   echo "Fallback to v0.3.0 commands (map, symbol, callers, callees)"
@@ -109,13 +106,12 @@ When using v0.4.0+ commands, always provide fallback:
 
 ```bash
 # Try impact analysis (v0.4.0+), fallback to callers (v0.3.0)
-IMPACT=$(claudemem --nologo impact SymbolName --raw 2>/dev/null)
+IMPACT=$(claudemem --agent impact SymbolName  2>/dev/null)
 if [ -n "$IMPACT" ] && [ "$IMPACT" != "command not found" ]; then
   echo "$IMPACT"
 else
   echo "Using fallback (direct callers only):"
-  claudemem --nologo callers SymbolName --raw
-fi
+  claudemem --agent callers SymbolNamefi
 ```
 
 **Why This Matters:**
@@ -133,8 +129,7 @@ Before reading any code files, get the structural overview:
 
 ```bash
 # For a specific task, get focused repo map
-claudemem --nologo map "authentication flow" --raw
-
+claudemem --agent map "authentication flow"
 # Output shows relevant symbols ranked by importance (PageRank):
 # file: src/auth/AuthService.ts
 # line: 15-89
@@ -158,8 +153,7 @@ Once you know what to look for:
 
 ```bash
 # Find exact location of a symbol
-claudemem --nologo symbol AuthService --raw
-
+claudemem --agent symbol AuthService
 # Output:
 # file: src/auth/AuthService.ts
 # line: 15-89
@@ -177,8 +171,7 @@ Before modifying code, understand what depends on it:
 
 ```bash
 # What calls AuthService? (impact of changes)
-claudemem --nologo callers AuthService --raw
-
+claudemem --agent callers AuthService
 # Output:
 # caller: LoginController.authenticate
 # file: src/controllers/login.ts
@@ -193,8 +186,7 @@ claudemem --nologo callers AuthService --raw
 
 ```bash
 # What does AuthService call? (its dependencies)
-claudemem --nologo callees AuthService --raw
-
+claudemem --agent callees AuthService
 # Output:
 # callee: Database.query
 # file: src/db/database.ts
@@ -212,8 +204,7 @@ claudemem --nologo callees AuthService --raw
 For complex modifications, get everything at once:
 
 ```bash
-claudemem --nologo context AuthService --raw
-
+claudemem --agent context AuthService
 # Output includes:
 # [symbol]
 # file: src/auth/AuthService.ts
@@ -235,17 +226,15 @@ When you need actual code snippets:
 
 ```bash
 # Semantic search
-claudemem --nologo search "password hashing" --raw
-
+claudemem --agent search "password hashing"
 # Search with repo map context (recommended for complex tasks)
-claudemem --nologo search "password hashing" --map --raw
-```
+claudemem --agent search "password hashing" --map```
 
 ---
 
 ## Output Format
 
-All commands support `--raw` flag for machine-readable output:
+When using `--agent` flag, commands output machine-readable format:
 
 ```
 # Raw output format (line-based, easy to parse)
@@ -276,14 +265,11 @@ Get structural overview of the codebase. Optionally focused on a query.
 
 ```bash
 # Full repo map (top symbols by PageRank)
-claudemem --nologo map --raw
-
+claudemem --agent map
 # Focused on specific task
-claudemem --nologo map "authentication" --raw
-
+claudemem --agent map "authentication"
 # Limit tokens
-claudemem --nologo map "auth" --tokens 500 --raw
-```
+claudemem --agent map "auth" --tokens 500```
 
 **Output fields**: file, line, kind, name, signature, pagerank, exported
 
@@ -294,8 +280,7 @@ claudemem --nologo map "auth" --tokens 500 --raw
 Find a symbol by name. Disambiguates using PageRank and export status.
 
 ```bash
-claudemem --nologo symbol Indexer --raw
-claudemem --nologo symbol "search" --file retriever --raw  # hint which file
+claudemem --agent symbol Indexerclaudemem --agent symbol "search" --file retriever   # hint which file
 ```
 
 **Output fields**: file, line, kind, name, signature, pagerank, exported, docstring
@@ -307,8 +292,7 @@ claudemem --nologo symbol "search" --file retriever --raw  # hint which file
 Find all symbols that call/reference the given symbol.
 
 ```bash
-claudemem --nologo callers AuthService --raw
-```
+claudemem --agent callers AuthService```
 
 **Output fields**: caller (name), file, line, kind (call/import/extends/etc)
 
@@ -319,8 +303,7 @@ claudemem --nologo callers AuthService --raw
 Find all symbols that the given symbol calls/references.
 
 ```bash
-claudemem --nologo callees AuthService --raw
-```
+claudemem --agent callees AuthService```
 
 **Output fields**: callee (name), file, line, kind
 
@@ -331,9 +314,7 @@ claudemem --nologo callees AuthService --raw
 Get full context: the symbol plus its callers and callees.
 
 ```bash
-claudemem --nologo context Indexer --raw
-claudemem --nologo context Indexer --callers 10 --callees 20 --raw
-```
+claudemem --agent context Indexerclaudemem --agent context Indexer --callers 10 --callees 20```
 
 **Output sections**: [symbol], [callers], [callees]
 
@@ -344,9 +325,8 @@ claudemem --nologo context Indexer --callers 10 --callees 20 --raw
 Semantic search across the codebase.
 
 ```bash
-claudemem --nologo search "error handling" --raw
-claudemem --nologo search "error handling" --map --raw  # include repo map
-claudemem --nologo search "auth" -n 5 --raw  # limit results
+claudemem --agent search "error handling"claudemem --agent search "error handling" --map   # include repo map
+claudemem --agent search "auth" -n 5   # limit results
 ```
 
 **Output fields**: file, line, kind, name, score, content (truncated)
@@ -363,14 +343,11 @@ Find unused symbols in the codebase.
 
 ```bash
 # Find all unused symbols
-claudemem --nologo dead-code --raw
-
+claudemem --agent dead-code
 # Stricter threshold (only very low PageRank)
-claudemem --nologo dead-code --max-pagerank 0.005 --raw
-
+claudemem --agent dead-code --max-pagerank 0.005
 # Include exported symbols (usually excluded)
-claudemem --nologo dead-code --include-exported --raw
-```
+claudemem --agent dead-code --include-exported```
 
 **Algorithm:**
 - Zero callers (nothing references the symbol)
@@ -383,7 +360,7 @@ claudemem --nologo dead-code --include-exported --raw
 
 **Empty Result Handling:**
 ```bash
-RESULT=$(claudemem --nologo dead-code --raw)
+RESULT=$(claudemem --agent dead-code )
 if [ -z "$RESULT" ] || [ "$RESULT" = "No dead code found" ]; then
   echo "Codebase is clean - no dead code detected!"
   echo "This indicates good code hygiene."
@@ -404,11 +381,9 @@ Find high-importance code without test coverage.
 
 ```bash
 # Find all test coverage gaps
-claudemem --nologo test-gaps --raw
-
+claudemem --agent test-gaps
 # Only critical gaps (high PageRank)
-claudemem --nologo test-gaps --min-pagerank 0.05 --raw
-```
+claudemem --agent test-gaps --min-pagerank 0.05```
 
 **Algorithm:**
 - High PageRank (> 0.01 default) - Important code
@@ -420,7 +395,7 @@ claudemem --nologo test-gaps --min-pagerank 0.05 --raw
 
 **Empty Result Handling:**
 ```bash
-RESULT=$(claudemem --nologo test-gaps --raw)
+RESULT=$(claudemem --agent test-gaps )
 if [ -z "$RESULT" ] || [ "$RESULT" = "No test gaps found" ]; then
   echo "Excellent! All high-importance code has test coverage."
   echo "Consider lowering --min-pagerank threshold for additional coverage."
@@ -440,11 +415,9 @@ Analyze the impact of changing a symbol using BFS traversal.
 
 ```bash
 # Get all transitive callers
-claudemem --nologo impact UserService --raw
-
+claudemem --agent impact UserService
 # Limit depth for large codebases
-claudemem --nologo impact UserService --max-depth 5 --raw
-```
+claudemem --agent impact UserService --max-depth 5```
 
 **Algorithm:**
 - BFS traversal from symbol to all transitive callers
@@ -457,10 +430,10 @@ claudemem --nologo impact UserService --max-depth 5 --raw
 
 **Empty Result Handling:**
 ```bash
-RESULT=$(claudemem --nologo impact FunctionName --raw)
+RESULT=$(claudemem --agent impact FunctionName )
 if [ -z "$RESULT" ] || echo "$RESULT" | grep -q "No callers found"; then
   echo "No callers found - this symbol appears unused or is an entry point."
-  echo "If unused, consider running: claudemem --nologo dead-code --raw"
+  echo "If unused, consider running: claudemem --agent dead-code "
   echo "If entry point (API handler, main), this is expected."
 else
   echo "$RESULT"
@@ -495,11 +468,9 @@ For agent-optimized search with document type weighting:
 
 ```bash
 # Navigation-focused search (prioritizes summaries)
-claudemem --nologo search "authentication" --use-case navigation --raw
-
+claudemem --agent search "authentication" --use-case navigation
 # Default search (balanced)
-claudemem --nologo search "authentication" --raw
-```
+claudemem --agent search "authentication"```
 
 **Navigation mode search weights:**
 - `symbol_summary`: 1.5x (higher priority)
@@ -550,19 +521,16 @@ dependencies:
 
 ```bash
 # Find function behavior without reading code
-claudemem --nologo search "processPayment behavior" --use-case navigation --raw
-
+claudemem --agent search "processPayment behavior" --use-case navigation
 # Output includes symbol_summary:
 # symbol: PaymentService.processPayment
 # behavior: "Charges customer card via Stripe and saves transaction"
 # side_effects: ["Updates balance", "Sends receipt email", "Logs to audit"]
 
 # Find file purposes for architecture understanding
-claudemem --nologo search "file:services purpose" --use-case navigation --raw
-
+claudemem --agent search "file:services purpose" --use-case navigation
 # Find anti-patterns to avoid
-claudemem --nologo search "anti_pattern SQL" --raw
-```
+claudemem --agent search "anti_pattern SQL"```
 
 ### Regenerating Enrichments
 
@@ -588,25 +556,23 @@ Standardized investigation patterns for common scenarios. All templates include 
 
 ```bash
 # Step 1: Locate the symptom
-SYMBOL=$(claudemem --nologo symbol FunctionFromStackTrace --raw)
+SYMBOL=$(claudemem --agent symbol FunctionFromStackTrace )
 if [ -z "$SYMBOL" ]; then
-  echo "Symbol not found - check spelling or run: claudemem --nologo map 'related keywords' --raw"
+  echo "Symbol not found - check spelling or run: claudemem --agent map 'related keywords' "
   exit 1
 fi
 
 # Step 2: Get full context (callers + callees)
-claudemem --nologo context FunctionFromStackTrace --raw
-
+claudemem --agent context FunctionFromStackTrace
 # Step 3: Trace backwards to find root cause
-claudemem --nologo callers suspectedSource --raw
-
+claudemem --agent callers suspectedSource
 # Step 4: Check full impact of the bug (v0.4.0+)
-IMPACT=$(claudemem --nologo impact BuggyFunction --raw 2>/dev/null)
+IMPACT=$(claudemem --agent impact BuggyFunction  2>/dev/null)
 if [ -n "$IMPACT" ]; then
   echo "$IMPACT"
 else
   echo "Impact analysis requires claudemem v0.4.0+ or no callers found"
-  echo "Fallback: claudemem --nologo callers BuggyFunction --raw"
+  echo "Fallback: claudemem --agent callers BuggyFunction "
 fi
 
 # Step 5: Read identified file:line ranges
@@ -634,24 +600,21 @@ fi
 
 ```bash
 # Step 1: Map the feature area
-MAP=$(claudemem --nologo map "feature area keywords" --raw)
+MAP=$(claudemem --agent map "feature area keywords" )
 if [ -z "$MAP" ]; then
   echo "No matches found - try broader keywords"
 fi
 
 # Step 2: Identify extension points
-claudemem --nologo callees ExistingFeature --raw
-
+claudemem --agent callees ExistingFeature
 # Step 3: Get full context for modification point
-claudemem --nologo context ModificationPoint --raw
-
+claudemem --agent context ModificationPoint
 # Step 4: Check existing patterns to follow
-claudemem --nologo search "similar pattern" --use-case navigation --raw
-
+claudemem --agent search "similar pattern" --use-case navigation
 # Step 5: Implement following existing patterns
 
 # Step 6: Check test coverage gaps (v0.4.0+)
-GAPS=$(claudemem --nologo test-gaps --raw 2>/dev/null)
+GAPS=$(claudemem --agent test-gaps  2>/dev/null)
 if [ -n "$GAPS" ]; then
   echo "Test gaps to address:"
   echo "$GAPS"
@@ -678,29 +641,27 @@ fi
 
 ```bash
 # Step 1: Find the symbol to refactor
-SYMBOL=$(claudemem --nologo symbol SymbolToRename --raw)
+SYMBOL=$(claudemem --agent symbol SymbolToRename )
 if [ -z "$SYMBOL" ]; then
   echo "Symbol not found - check exact name"
   exit 1
 fi
 
 # Step 2: Get FULL impact (all transitive callers) (v0.4.0+)
-IMPACT=$(claudemem --nologo impact SymbolToRename --raw 2>/dev/null)
+IMPACT=$(claudemem --agent impact SymbolToRename  2>/dev/null)
 if [ -n "$IMPACT" ]; then
   echo "$IMPACT"
   # (impact output includes grouped_by_file)
 else
   echo "Using fallback (direct callers only):"
-  claudemem --nologo callers SymbolToRename --raw
-fi
+  claudemem --agent callers SymbolToRenamefi
 
 # Step 3: Group by file for systematic updates
 
 # Step 4: Update each caller location systematically
 
 # Step 5: Verify all callers updated
-claudemem --nologo callers NewSymbolName --raw
-
+claudemem --agent callers NewSymbolName
 # Step 6: Run affected tests
 ```
 
@@ -723,7 +684,7 @@ claudemem --nologo callers NewSymbolName --raw
 
 ```bash
 # Step 1: Get full structural map
-MAP=$(claudemem --nologo map --raw)
+MAP=$(claudemem --agent map )
 if [ -z "$MAP" ]; then
   echo "Index may be empty - run: claudemem index"
   exit 1
@@ -734,13 +695,11 @@ echo "$MAP"
 # Document top 5 by PageRank
 
 # Step 3: For each pillar, get full context
-claudemem --nologo context PillarSymbol --raw
-
+claudemem --agent context PillarSymbol
 # Step 4: Trace major flows via callees
-claudemem --nologo callees EntryPoint --raw
-
+claudemem --agent callees EntryPoint
 # Step 5: Identify dead code (cleanup opportunities) (v0.4.0+)
-DEAD=$(claudemem --nologo dead-code --raw 2>/dev/null)
+DEAD=$(claudemem --agent dead-code  2>/dev/null)
 if [ -n "$DEAD" ]; then
   echo "Dead code found:"
   echo "$DEAD"
@@ -749,7 +708,7 @@ else
 fi
 
 # Step 6: Identify test gaps (risk areas) (v0.4.0+)
-GAPS=$(claudemem --nologo test-gaps --raw 2>/dev/null)
+GAPS=$(claudemem --agent test-gaps  2>/dev/null)
 if [ -n "$GAPS" ]; then
   echo "Test gaps:"
   echo "$GAPS"
@@ -793,26 +752,21 @@ fi
 
 ```bash
 # Step 1: Map security-related code
-claudemem --nologo map "auth permission security token" --raw
-
+claudemem --agent map "auth permission security token"
 # Step 2: Find authentication entry points
-SYMBOL=$(claudemem --nologo symbol authenticate --raw)
+SYMBOL=$(claudemem --agent symbol authenticate )
 if [ -z "$SYMBOL" ]; then
   echo "No 'authenticate' symbol - try: login, verify, validate"
 fi
-claudemem --nologo callers authenticate --raw
-
+claudemem --agent callers authenticate
 # Step 3: Trace authentication flow
-claudemem --nologo callees authenticate --raw
-
+claudemem --agent callees authenticate
 # Step 4: Check authorization patterns
-claudemem --nologo map "authorize permission check guard" --raw
-
+claudemem --agent map "authorize permission check guard"
 # Step 5: Find sensitive data handlers
-claudemem --nologo map "password hash token secret key" --raw
-
+claudemem --agent map "password hash token secret key"
 # Step 6: Check for test coverage on security code (v0.4.0+)
-GAPS=$(claudemem --nologo test-gaps --min-pagerank 0.01 --raw 2>/dev/null)
+GAPS=$(claudemem --agent test-gaps --min-pagerank 0.01  2>/dev/null)
 if [ -n "$GAPS" ]; then
   # Filter for security-related symbols
   echo "$GAPS" | grep -E "(auth|login|password|token|permission|secret)"
@@ -905,14 +859,11 @@ container.register(IService, ServiceImpl);
 
 ```bash
 # Step 1: Get overview of auth-related code
-claudemem --nologo map "authentication null pointer" --raw
-
+claudemem --agent map "authentication null pointer"
 # Step 2: Locate the specific symbol mentioned in error
-claudemem --nologo symbol authenticate --raw
-
+claudemem --agent symbol authenticate
 # Step 3: Check what calls it (to understand how it's used)
-claudemem --nologo callers authenticate --raw
-
+claudemem --agent callers authenticate
 # Step 4: Read the actual code at the identified location
 # Now you know exactly which file:line to read
 ```
@@ -923,20 +874,15 @@ claudemem --nologo callers authenticate --raw
 
 ```bash
 # Step 1: Understand API structure
-claudemem --nologo map "API endpoints rate" --raw
-
+claudemem --agent map "API endpoints rate"
 # Step 2: Find the main API handler
-claudemem --nologo symbol APIController --raw
-
+claudemem --agent symbol APIController
 # Step 3: See what the API controller depends on
-claudemem --nologo callees APIController --raw
-
+claudemem --agent callees APIController
 # Step 4: Check if rate limiting already exists somewhere
-claudemem --nologo search "rate limit" --raw
-
+claudemem --agent search "rate limit"
 # Step 5: Get full context for the modification point
-claudemem --nologo context APIController --raw
-```
+claudemem --agent context APIController```
 
 ### Scenario 3: Refactoring
 
@@ -944,11 +890,9 @@ claudemem --nologo context APIController --raw
 
 ```bash
 # Step 1: Find the symbol
-claudemem --nologo symbol DatabaseConnection --raw
-
+claudemem --agent symbol DatabaseConnection
 # Step 2: Find ALL callers (these all need updating)
-claudemem --nologo callers DatabaseConnection --raw
-
+claudemem --agent callers DatabaseConnection
 # Step 3: The output shows every file:line that references it
 # Update each location systematically
 ```
@@ -959,18 +903,13 @@ claudemem --nologo callers DatabaseConnection --raw
 
 ```bash
 # Step 1: Get high-level structure
-claudemem --nologo map "indexing pipeline" --raw
-
+claudemem --agent map "indexing pipeline"
 # Step 2: Find the main entry point (highest PageRank)
-claudemem --nologo symbol Indexer --raw
-
+claudemem --agent symbol Indexer
 # Step 3: Trace the flow - what does Indexer call?
-claudemem --nologo callees Indexer --raw
-
+claudemem --agent callees Indexer
 # Step 4: For each major callee, get its callees
-claudemem --nologo callees VectorStore --raw
-claudemem --nologo callees FileTracker --raw
-
+claudemem --agent callees VectorStoreclaudemem --agent callees FileTracker
 # Now you have the full pipeline traced
 ```
 
@@ -1001,16 +940,14 @@ For maximum efficiency, follow this pattern:
 ```
 1. RECEIVE TASK
    ↓
-2. claudemem --nologo map "<task keywords>" --raw
-   → Understand structure, identify key symbols
+2. claudemem --agent map "<task keywords>"   → Understand structure, identify key symbols
    ↓
-3. claudemem --nologo symbol <high-pagerank-symbol> --raw
-   → Get exact location
+3. claudemem --agent symbol <high-pagerank-symbol>   → Get exact location
    ↓
-4. claudemem --nologo callers <symbol> --raw  (if modifying)
+4. claudemem --agent callers <symbol>   (if modifying)
    → Know the impact radius
    ↓
-5. claudemem --nologo callees <symbol> --raw  (if needed)
+5. claudemem --agent callees <symbol>   (if needed)
    → Understand dependencies
    ↓
 6. READ specific file:line ranges (not whole files)
@@ -1049,22 +986,22 @@ PageRank measures how "central" a symbol is in the codebase:
 ║                                                                              ║
 ║  ❌ Anti-Pattern 1: Blind File Reading                                       ║
 ║     → BAD: cat src/core/*.ts | head -1000                                   ║
-║     → GOOD: claudemem --nologo map "your task" --raw                        ║
+║     → GOOD: claudemem --agent map "your task"                         ║
 ║     → WHY: Wastes tokens on irrelevant code, misses important files         ║
 ║                                                                              ║
 ║  ❌ Anti-Pattern 2: Grep Without Context                                     ║
 ║     → BAD: grep -r "Database" src/                                          ║
-║     → GOOD: claudemem --nologo symbol Database --raw                        ║
+║     → GOOD: claudemem --agent symbol Database                         ║
 ║     → WHY: Grep returns string matches, not semantic relationships          ║
 ║                                                                              ║
 ║  ❌ Anti-Pattern 3: Modifying Without Impact Analysis                        ║
 ║     → BAD: Edit src/auth/tokens.ts without knowing callers                  ║
-║     → GOOD: claudemem --nologo callers generateToken --raw FIRST            ║
+║     → GOOD: claudemem --agent callers generateToken  FIRST            ║
 ║     → WHY: Changes may break callers you don't know about                   ║
 ║                                                                              ║
 ║  ❌ Anti-Pattern 4: Searching Before Mapping                                 ║
-║     → BAD: claudemem search "fix the bug" --raw                             ║
-║     → GOOD: claudemem --nologo map "feature" --raw THEN search              ║
+║     → BAD: claudemem search "fix the bug"                              ║
+║     → GOOD: claudemem --agent map "feature"  THEN search              ║
 ║     → WHY: Search results lack context without structural understanding     ║
 ║                                                                              ║
 ║  ❌ Anti-Pattern 5: Ignoring PageRank                                        ║
@@ -1072,9 +1009,9 @@ PageRank measures how "central" a symbol is in the codebase:
 ║     → GOOD: Focus on high-PageRank symbols first                            ║
 ║     → WHY: Low-PageRank = utilities, High-PageRank = core abstractions      ║
 ║                                                                              ║
-║  ❌ Anti-Pattern 6: Not Using --nologo                                       ║
+║  ❌ Anti-Pattern 6: Not Using --agent                                       ║
 ║     → BAD: claudemem search "query" (includes ASCII art)                    ║
-║     → GOOD: claudemem --nologo search "query" --raw                         ║
+║     → GOOD: claudemem --agent search "query"                          ║
 ║     → WHY: Logo and decorations make parsing unreliable                     ║
 ║                                                                              ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
@@ -1085,7 +1022,7 @@ PageRank measures how "central" a symbol is in the codebase:
 | Anti-Pattern | Why It's Wrong | Correct Pattern |
 |--------------|----------------|-----------------|
 | Read files blindly | No ranking, token waste | `map` first, then read specific lines |
-| `grep -r "auth"` | No semantic understanding | `claudemem --nologo symbol auth --raw` |
+| `grep -r "auth"` | No semantic understanding | `claudemem --agent symbol auth` |
 | Modify without callers | Breaking changes | `callers` before any modification |
 | Search immediately | No structural context | `map` → `symbol` → `callers` → search |
 | Treat all symbols equal | Miss core abstractions | Focus on high-PageRank first |
@@ -1099,16 +1036,16 @@ PageRank measures how "central" a symbol is in the codebase:
 │                 CORRECT INVESTIGATION FLOW (v0.3.0)              │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
-│  1. claudemem --nologo map "task" --raw                         │
+│  1. claudemem --agent map "task"                          │
 │     → Understand structure, find high-PageRank symbols          │
 │                                                                  │
-│  2. claudemem --nologo symbol <name> --raw                      │
+│  2. claudemem --agent symbol <name>                       │
 │     → Get exact file:line location                              │
 │                                                                  │
-│  3. claudemem --nologo callers <name> --raw                     │
+│  3. claudemem --agent callers <name>                      │
 │     → Know impact radius BEFORE modifying                       │
 │                                                                  │
-│  4. claudemem --nologo callees <name> --raw                     │
+│  4. claudemem --agent callees <name>                      │
 │     → Understand dependencies                                    │
 │                                                                  │
 │  5. Read specific file:line ranges (NOT whole files)            │
@@ -1255,8 +1192,7 @@ claudemem docs refresh
 After indexing documentation, `claudemem search` returns results from **both** your codebase **and** framework documentation:
 
 ```bash
-claudemem --nologo search "how to use React hooks" --raw
-
+claudemem --agent search "how to use React hooks"
 # Output includes:
 # --- Your Code ---
 # file: src/components/UserProfile.tsx
@@ -1301,15 +1237,12 @@ Add documentation fetch to your investigation workflow:
 claudemem docs status || claudemem docs fetch
 
 # Step 1: Map architecture (now includes library patterns)
-claudemem --nologo map "authentication" --raw
-
+claudemem --agent map "authentication"
 # Step 2: Search both code AND framework docs
-claudemem --nologo search "JWT token validation" --raw
-# Returns: your auth code + library docs on JWT handling
+claudemem --agent search "JWT token validation"# Returns: your auth code + library docs on JWT handling
 
 # Step 3: Understand how the library recommends usage
-claudemem --nologo search "react best practices hooks" --raw
-# Returns: your patterns + React official guidance
+claudemem --agent search "react best practices hooks"# Returns: your patterns + React official guidance
 ```
 
 ### Version Information
@@ -1346,8 +1279,7 @@ claudemem feedback --query "your original query" \
   --unhelpful id3,id4
 
 # Result IDs are shown in search output:
-claudemem search "authentication" --nologo --raw
-# Output includes:
+claudemem search "authentication" --agent# Output includes:
 # id: abc123
 # file: src/auth/middleware.ts
 # ...
@@ -1424,7 +1356,7 @@ else
 fi
 
 # 1. Search and capture IDs
-RESULTS=$(claudemem --nologo search "payment processing" -n 10 --raw)
+RESULTS=$(claudemem --agent search "payment processing" -n 10 )
 ALL_IDS=$(echo "$RESULTS" | grep "^id:" | awk '{print $2}')
 SEARCH_QUERY="payment processing"
 
@@ -1521,7 +1453,7 @@ AskUserQuestion({
 
 ```bash
 # map validation
-RESULTS=$(claudemem --nologo map "authentication" --raw)
+RESULTS=$(claudemem --agent map "authentication" )
 EXIT_CODE=$?
 
 if [ "$EXIT_CODE" -ne 0 ]; then
@@ -1542,14 +1474,14 @@ if ! echo "$RESULTS" | grep -qi "auth\|login\|user\|session"; then
 fi
 
 # symbol validation
-RESULTS=$(claudemem --nologo symbol UserService --raw)
+RESULTS=$(claudemem --agent symbol UserService )
 if ! echo "$RESULTS" | grep -q "name: UserService"; then
   echo "WARNING: UserService not found - check spelling or reindex"
   # Use AskUserQuestion
 fi
 
 # search validation
-RESULTS=$(claudemem --nologo search "error handling" --raw)
+RESULTS=$(claudemem --agent search "error handling" )
 MATCH_COUNT=0
 for kw in error handling catch try; do
   if echo "$RESULTS" | grep -qi "$kw"; then
@@ -1627,7 +1559,7 @@ Before completing a claudemem workflow, ensure:
 - [ ] Codebase is indexed (check with `claudemem status`)
 - [ ] **Checked index freshness** before starting ⭐NEW in v0.5.0
 - [ ] **Started with `map`** to understand structure ⭐CRITICAL
-- [ ] Used `--nologo --raw` for all commands
+- [ ] Used `--agent` for all commands
 - [ ] **Validated results after every command** ⭐NEW in v0.5.0
 - [ ] Checked `callers` before modifying any symbol
 - [ ] Focused on high-PageRank symbols first
@@ -1648,7 +1580,7 @@ Before completing a claudemem workflow, ensure:
 - Initial indexing takes ~1-2 minutes for typical projects
 - **NEW in v0.3.0**: `map`, `symbol`, `callers`, `callees`, `context` commands
 - **NEW in v0.3.0**: PageRank ranking for symbol importance
-- **NEW in v0.3.0**: `--raw` output format for machine parsing
+- **NEW in v0.3.0**: `--agent` flag for clean, parseable output
 - **NEW in v0.4.0**: `dead-code`, `test-gaps`, `impact` commands for code analysis
 - **NEW in v0.4.0**: BFS traversal for transitive caller analysis
 - **NEW in v0.7.0**: `docs` command for framework documentation fetching

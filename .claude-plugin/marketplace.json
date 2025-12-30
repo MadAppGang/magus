@@ -38,8 +38,8 @@
 		{
 			"name": "code-analysis",
 			"source": "./plugins/code-analysis",
-			"description": "Deep code investigation with claudemem v0.8.0. NEW: Unified TypeScript hook handler (replaces 6 bash scripts). Auto-reindex on file changes. Search feedback protocol. AST analysis with PageRank, callers/callees tracing.",
-			"version": "2.9.0",
+			"description": "Deep code investigation with claudemem v0.9.0. NEW: Unified --agent flag (replaces --nologo --raw --plain). AST analysis with PageRank, callers/callees tracing. TypeScript hook handler. Auto-reindex.",
+			"version": "2.10.0",
 			"author": {
 				"name": "Jack Rudenko",
 				"email": "i@madappgang.com",

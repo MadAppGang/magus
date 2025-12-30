@@ -215,7 +215,7 @@ claudemem index
 
   // If pattern looks like a symbol name, try symbol lookup first
   if (/^[A-Z][a-zA-Z0-9]*$|^[a-z][a-zA-Z0-9]*$|^[a-z_]+$/.test(pattern)) {
-    results = runCommand("claudemem", ["--nologo", "symbol", pattern, "--raw"], input.cwd);
+    results = runCommand("claudemem", ["--agent", "symbol", pattern], input.cwd);
     if (results && results !== "No results found") {
       commandUsed = "symbol";
     } else {
@@ -225,7 +225,7 @@ claudemem index
 
   // Fallback to map
   if (!results) {
-    results = runCommand("claudemem", ["--nologo", "map", pattern, "--raw"], input.cwd) || "No results found";
+    results = runCommand("claudemem", ["--agent", "map", pattern], input.cwd) || "No results found";
     commandUsed = "map";
   }
 
@@ -233,18 +233,17 @@ claudemem index
     additionalContext: `🔍 **CLAUDEMEM AST ANALYSIS** (Grep intercepted)
 
 **Query:** "${pattern}"
-**Command:** claudemem --nologo ${commandUsed} "${pattern}" --raw
-
+**Command:** claudemem --agent ${commandUsed} "${pattern}"
 ${results}
 
 ---
 ✅ AST structural analysis complete.
 
 **v0.3.0 Commands:**
-- \`claudemem --nologo symbol <name> --raw\` → Exact location
-- \`claudemem --nologo callers <name> --raw\` → What calls this?
-- \`claudemem --nologo callees <name> --raw\` → What does this call?
-- \`claudemem --nologo context <name> --raw\` → Full call chain`,
+- \`claudemem --agent symbol <name>\` → Exact location
+- \`claudemem --agent callers <name>\` → What calls this?
+- \`claudemem --agent callees <name>\` → What does this call?
+- \`claudemem --agent context <name>\` → Full call chain`,
     hookSpecificOutput: {
       hookEventName: "PreToolUse",
       permissionDecision: "deny",
@@ -296,21 +295,19 @@ Allowing command as fallback.`,
     return {
       additionalContext: `⚠️ **Search command detected** - Consider using claudemem instead:
 \`\`\`bash
-claudemem --nologo map "your query" --raw
-\`\`\``,
+claudemem --agent map "your query"\`\`\``,
     };
   }
 
   // Run claudemem instead
-  const results = runCommand("claudemem", ["--nologo", "map", pattern, "--raw"], input.cwd) || "No results found";
+  const results = runCommand("claudemem", ["--agent", "map", pattern], input.cwd) || "No results found";
 
   return {
     additionalContext: `🔍 **CLAUDEMEM AST ANALYSIS** (Bash search intercepted)
 
 **Original command:** \`${command}\`
 **Pattern extracted:** "${pattern}"
-**Replaced with:** claudemem --nologo map "${pattern}" --raw
-
+**Replaced with:** claudemem --agent map "${pattern}"
 ${results}
 
 ---
@@ -338,8 +335,7 @@ async function handleGlobIntercept(input: HookInput): Promise<HookOutput | null>
       additionalContext: `💡 **Glob used** - Consider claudemem for semantic search:
 \`\`\`bash
 claudemem index  # First time only
-claudemem --nologo map "your query" --raw
-\`\`\``,
+claudemem --agent map "your query"\`\`\``,
     };
   }
 
@@ -347,8 +343,8 @@ claudemem --nologo map "your query" --raw
   return {
     additionalContext: `💡 **Tip:** For semantic code search, use claudemem:
 \`\`\`bash
-claudemem --nologo map "component" --raw   # Find by concept
-claudemem --nologo symbol "Button" --raw   # Find by name
+claudemem --agent map "component"   # Find by concept
+claudemem --agent symbol "Button"   # Find by name
 \`\`\``,
   };
 }

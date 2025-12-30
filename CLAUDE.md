@@ -193,24 +193,24 @@ CODEX_API_KEY=your-codex-key
 **Current Versions:**
 - Orchestration Plugin: **v0.6.0** (2025-12-14)
 - Frontend Plugin: **v3.13.0** (2025-12-14)
-- Code Analysis Plugin: **v2.9.0** (2025-12-29)
+- Code Analysis Plugin: **v2.10.0** (2025-12-30)
 - Bun Backend Plugin: **v1.5.2** (2025-11-26)
 - Agent Development Plugin: **v1.1.0** (2025-12-09)
 - Video Editing Plugin: **v1.0.0** (2025-12-29)
 - Claudish CLI: See https://github.com/MadAppGang/claudish (separate repository)
 
-**Latest Changes (Code Analysis v2.9.0 - Unified TypeScript Hook Handler):**
-- ✅ **TypeScript Hook Handler**: Single `handler.ts` replaces 6 bash scripts
-- ✅ **Bun Runtime**: Native TypeScript execution, no bash/jq dependencies
-- ✅ **Cross-Platform**: No POSIX compatibility issues (flock, bash 3.2 vs 4.0)
-- ✅ **Type Safety**: Full TypeScript interfaces for hook input/output
-- ✅ **Unified Dispatch**: SessionStart, PreToolUse, PostToolUse in one file
+**Latest Changes (Code Analysis v2.10.0 - Unified --agent Flag):**
+- ✅ **Unified --agent Flag**: Replaces `--nologo --raw --plain` with single flag
+- ✅ **Auto-detection**: Enabled in CI environments (CLAUDE_CODE_ENTRYPOINT, CI=true, NO_COLOR)
+- ✅ **Clean Output**: No ASCII logo, compact file:line format, no emojis/ANSI
+- ✅ **All Skills Updated**: 7 detective skills migrated to new flag pattern
+- ✅ **Hooks Updated**: TypeScript handler and bash scripts use --agent
 
 **Git Tags:**
 - Orchestration: `plugins/orchestration/v0.6.0`
 - Frontend: `plugins/frontend/v3.13.0`
 - Bun: `plugins/bun/v1.5.2`
-- Code Analysis: `plugins/code-analysis/v2.9.0`
+- Code Analysis: `plugins/code-analysis/v2.10.0`
 - Agent Development: `plugins/agentdev/v1.1.0`
 - SEO: `plugins/seo/v1.2.0`
 - Video Editing: `plugins/video-editing/v1.0.0`
@@ -227,6 +227,6 @@ Missing any of these will cause claudeup to not see the update!
 ---
 
 **Maintained by:** Jack Rudenko @ MadAppGang
-**Last Updated:** December 29, 2025
-**Version:** 7 plugins (Orchestration v0.6.0, Frontend v3.13.0, Code Analysis v2.9.0, Bun Backend v1.5.2, Agent Development v1.1.0, SEO v1.2.0, Video Editing v1.0.0)
+**Last Updated:** December 30, 2025
+**Version:** 7 plugins (Orchestration v0.6.0, Frontend v3.13.0, Code Analysis v2.10.0, Bun Backend v1.5.2, Agent Development v1.1.0, SEO v1.2.0, Video Editing v1.0.0)
 - do not use hardcoded path in code, docs, comments or any other files

@@ -113,7 +113,7 @@ All claudemem-using components need to implement this pattern:
 │                                                                  │
 │  PHASE 1: Search with ID capture                                │
 │  ─────────────────────────────────────────────────              │
-│  RESULTS=$(claudemem --nologo search "query" -n 10 --raw)       │
+│  RESULTS=$(claudemem --agent search "query" -n 10)       │
 │  # Parse result IDs from output                                  │
 │  ALL_RESULT_IDS=$(echo "$RESULTS" | grep "^id:" | cut -d: -f2)  │
 │  ORIGINAL_QUERY="query"                                          │
@@ -196,8 +196,7 @@ claudemem feedback --query "your original query" \
   --unhelpful id3,id4
 
 # Result IDs are shown in search output:
-claudemem search "authentication" --nologo --raw
-# Output includes:
+claudemem --agent search "authentication"  # Output includes:
 # id: abc123
 # file: src/auth/middleware.ts
 # ...
@@ -237,7 +236,7 @@ fi
 # Full investigation with feedback tracking
 
 # 1. Search and capture IDs
-RESULTS=$(claudemem --nologo search "payment processing" -n 10 --raw)
+RESULTS=$(claudemem --agent search "payment processing" -n 10)
 ALL_IDS=$(echo "$RESULTS" | grep "^id:" | cut -d' ' -f2)
 ORIGINAL_QUERY="payment processing"
 
@@ -353,7 +352,7 @@ Ultrathink performs multi-dimensional analysis. Track feedback for dimensions th
 
 ```bash
 # Dimension 6: Performance (semantic search)
-PERF_RESULTS=$(claudemem --nologo search "query database batch" --raw)
+PERF_RESULTS=$(claudemem --agent search "query database batch")
 PERF_IDS=$(echo "$PERF_RESULTS" | grep "^id:" | cut -d' ' -f2)
 PERF_QUERY="query database batch"
 
@@ -460,9 +459,9 @@ fi
 ║   EVERY INVESTIGATION:                                                       ║
 ║                                                                              ║
 ║   1. which claudemem                                                         ║
-║   2. claudemem --nologo map "task" --raw   ← STRUCTURE FIRST                ║
-║   3. claudemem --nologo symbol <name> --raw                                 ║
-║   4. claudemem --nologo callers <name> --raw ← BEFORE MODIFYING             ║
+║   2. claudemem --agent map "task"   ← STRUCTURE FIRST                ║
+║   3. claudemem --agent symbol <name>                                 ║
+║   4. claudemem --agent callers <name> ← BEFORE MODIFYING             ║
 ║   5. Read specific file:line (NOT whole files)                              ║
 ║   6. claudemem feedback ... ← REPORT HELPFUL/UNHELPFUL (if search used)    ║
 ║                                                                              ║

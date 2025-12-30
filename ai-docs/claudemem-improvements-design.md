@@ -439,7 +439,7 @@ After EVERY claudemem command that returns results:
 │                                                                             │
 │  Step 1: Execute Command                                                    │
 │  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │  RESULTS=$(claudemem --nologo map "authentication" --raw)           │   │
+│  │  RESULTS=$(claudemem --agent map "authentication")           │   │
 │  │  EXIT_CODE=$?                                                        │   │
 │  └─────────────────────────────────────────────────────────────────────┘   │
 │                              ↓                                              │
@@ -476,7 +476,7 @@ After EVERY claudemem command that returns results:
 ```bash
 # Query
 QUERY="install opencode"
-RESULTS=$(claudemem --nologo map "$QUERY" --raw)
+RESULTS=$(claudemem --agent map "$QUERY")
 
 # Results (irrelevant)
 # file: src/types/chunk.ts
@@ -622,7 +622,7 @@ After EVERY claudemem command, validate results:
 
 ```bash
 # Execute command
-RESULTS=$(claudemem --nologo [command] [args] --raw)
+RESULTS=$(claudemem --agent [command] [args])
 EXIT_CODE=$?
 
 # Check for failure
@@ -693,7 +693,7 @@ Each dimension MUST validate its claudemem results:
 
 **Dimension 1: Architecture (map)**
 ```bash
-RESULTS=$(claudemem --nologo map --raw)
+RESULTS=$(claudemem --agent map)
 if [ -z "$RESULTS" ]; then
   # Empty index - ask user about indexing
 fi
@@ -705,7 +705,7 @@ fi
 
 **Dimension 3: Test Coverage (callers)**
 ```bash
-RESULTS=$(claudemem --nologo callers $FUNCTION --raw)
+RESULTS=$(claudemem --agent callers $FUNCTION)
 # Even 0 callers is valid - but validate it's not an error
 if echo "$RESULTS" | grep -qi "error\|not found"; then
   # Actual error vs no callers
@@ -723,7 +723,7 @@ Add to Architecture Discovery section:
 After `map` commands, validate architectural symbols were found:
 
 ```bash
-RESULTS=$(claudemem --nologo map "service layer business logic" --raw)
+RESULTS=$(claudemem --agent map "service layer business logic")
 
 # Check for high-PageRank symbols (> 0.01)
 HIGH_PR=$(echo "$RESULTS" | grep "pagerank:" | awk -F': ' '{if ($2 > 0.01) print}' | wc -l)
@@ -746,14 +746,14 @@ When tracing implementation:
 
 ```bash
 # Find symbol
-SYMBOL=$(claudemem --nologo symbol PaymentService --raw)
+SYMBOL=$(claudemem --agent symbol PaymentService)
 if [ -z "$SYMBOL" ] || echo "$SYMBOL" | grep -qi "not found"; then
   # Symbol doesn't exist or typo
   # -> AskUserQuestion with suggestions
 fi
 
 # Check callers
-CALLERS=$(claudemem --nologo callers PaymentService --raw)
+CALLERS=$(claudemem --agent callers PaymentService)
 # 0 callers is valid (entry point or unused)
 # But error message is not
 ```
@@ -769,7 +769,7 @@ Add to Test Coverage Analysis section:
 When checking test coverage:
 
 ```bash
-CALLERS=$(claudemem --nologo callers processPayment --raw)
+CALLERS=$(claudemem --agent callers processPayment)
 
 # Validate we got callers, not an error
 if echo "$CALLERS" | grep -qi "error\|failed"; then
@@ -794,7 +794,7 @@ Add to Bug Investigation section:
 When tracing call chains:
 
 ```bash
-CONTEXT=$(claudemem --nologo context failingFunction --raw)
+CONTEXT=$(claudemem --agent context failingFunction)
 
 # Validate all sections present
 if ! echo "$CONTEXT" | grep -q "\[symbol\]"; then
@@ -829,19 +829,19 @@ Add new section after Quality Checklist:
 
 ```bash
 # map validation
-RESULTS=$(claudemem --nologo map "authentication" --raw)
+RESULTS=$(claudemem --agent map "authentication")
 if ! echo "$RESULTS" | grep -qi "auth\|login\|user\|session"; then
   echo "WARNING: Results may not be relevant to authentication query"
 fi
 
 # symbol validation
-RESULTS=$(claudemem --nologo symbol UserService --raw)
+RESULTS=$(claudemem --agent symbol UserService)
 if ! echo "$RESULTS" | grep -q "name: UserService"; then
   echo "WARNING: UserService not found - check spelling"
 fi
 
 # search validation
-RESULTS=$(claudemem --nologo search "error handling" --raw)
+RESULTS=$(claudemem --agent search "error handling")
 MATCH_COUNT=0
 for kw in error handling catch try; do
   if echo "$RESULTS" | grep -qi "$kw"; then
@@ -1175,7 +1175,7 @@ test_irrelevant_results_trigger_prompt() {
   claudemem index
 
   # Query for something that won't match
-  RESULTS=$(claudemem --nologo map "xyznonexistent" --raw)
+  RESULTS=$(claudemem --agent map "xyznonexistent")
   VALIDATION=$(validate_claudemem_results "xyznonexistent" "$RESULTS")
 
   # Should trigger irrelevant/empty prompt
@@ -1217,7 +1217,7 @@ test_large_stale_count() {
 
 test_special_characters_in_query() {
   # Query with special chars
-  RESULTS=$(claudemem --nologo map "user.name" --raw)
+  RESULTS=$(claudemem --agent map "user.name")
   VALIDATION=$(validate_claudemem_results "user.name" "$RESULTS")
   # Should not break validation
 }
@@ -1234,7 +1234,7 @@ docstring: Translates messages with unicode support"
 
 test_very_long_results() {
   # Results with 1000+ lines
-  RESULTS=$(claudemem --nologo map --raw)
+  RESULTS=$(claudemem --agent map)
   # Validation should handle without timeout
   VALIDATION=$(timeout 5s validate_claudemem_results "code" "$RESULTS")
   assert_not_empty "$VALIDATION"

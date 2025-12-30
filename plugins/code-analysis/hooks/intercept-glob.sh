@@ -43,7 +43,7 @@ PATTERN_ESCAPED=$(echo "$PATTERN" | jq -Rs .)
 
 cat << EOF >&3
 {
-  "additionalContext": "💡 **Broad glob pattern detected:** ${PATTERN_ESCAPED}\n\nIf you're exploring code structure, use AST analysis:\n\`\`\`bash\nclaudemem --nologo map --raw                  # Full structure with PageRank\nclaudemem --nologo map \"controllers\" --raw   # Focused on area\n\`\`\`\n\nHigh PageRank = architectural pillars. Understand these first.\n\nGlob allowed for file listing. Use claudemem for structural understanding."
+  "additionalContext": "💡 **Broad glob pattern detected:** ${PATTERN_ESCAPED}\n\nIf you're exploring code structure, use AST analysis:\n\`\`\`bash\nclaudemem --agent map                  # Full structure with PageRank\nclaudemem --agent map \"controllers\"   # Focused on area\n\`\`\`\n\nHigh PageRank = architectural pillars. Understand these first.\n\nGlob allowed for file listing. Use claudemem for structural understanding."
 }
 EOF
 

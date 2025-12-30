@@ -117,9 +117,9 @@ Successfully integrated comprehensive claudemem features into the code-analysis 
 ### Code Analysis Commands (v0.4.0+)
 
 ```bash
-claudemem --nologo dead-code --raw          # Find unused symbols
-claudemem --nologo test-gaps --raw          # Find untested code
-claudemem --nologo impact <name> --raw      # Impact analysis
+claudemem --agent dead-code          # Find unused symbols
+claudemem --agent test-gaps          # Find untested code
+claudemem --agent impact <name>      # Impact analysis
 ```
 
 ### Multi-Agent Orchestration

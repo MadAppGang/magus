@@ -15,9 +15,9 @@ allowed-tools: Bash, Task, Read, AskUserQuestion
 ║   ❌ FIND IS FORBIDDEN                                                       ║
 ║   ❌ GLOB IS FORBIDDEN                                                       ║
 ║                                                                              ║
-║   ✅ claudemem --nologo context <name> --raw FOR FULL CALL CHAIN            ║
-║   ✅ claudemem --nologo callers <name> --raw TO TRACE BACK TO SOURCE        ║
-║   ✅ claudemem --nologo callees <name> --raw TO TRACE FORWARD               ║
+║   ✅ claudemem --agent context <name> FOR FULL CALL CHAIN            ║
+║   ✅ claudemem --agent callers <name> TO TRACE BACK TO SOURCE        ║
+║   ✅ claudemem --agent callees <name> TO TRACE FORWARD               ║
 ║                                                                              ║
 ║   ⭐ v0.3.0: context shows full call chain for root cause analysis          ║
 ║                                                                              ║
@@ -53,38 +53,31 @@ The `context` command shows you:
 
 ```bash
 # Find the function mentioned in error
-claudemem --nologo symbol authenticate --raw
-
+claudemem --agent symbol authenticate
 # Get full context (callers + callees)
-claudemem --nologo context authenticate --raw
-```
+claudemem --agent context authenticate```
 
 ### Trace Back to Source (callers)
 
 ```bash
 # Who called this function? (trace backwards)
-claudemem --nologo callers authenticate --raw
-
+claudemem --agent callers authenticate
 # Follow the chain backwards
-claudemem --nologo callers LoginController --raw
-claudemem --nologo callers handleRequest --raw
-```
+claudemem --agent callers LoginControllerclaudemem --agent callers handleRequest```
 
 ### Trace Forward to Effect (callees)
 
 ```bash
 # What does this function call? (trace forward)
-claudemem --nologo callees authenticate --raw
-
+claudemem --agent callees authenticate
 # Find where state changes happen
-claudemem --nologo callees updateSession --raw
-```
+claudemem --agent callees updateSession```
 
 ### Blast Radius Analysis (v0.4.0+ Required)
 
 ```bash
 # After finding the bug, check what else is affected
-IMPACT=$(claudemem --nologo impact buggyFunction --raw)
+IMPACT=$(claudemem --agent impact buggyFunction)
 
 if [ -z "$IMPACT" ] || echo "$IMPACT" | grep -q "No callers"; then
   echo "No static callers - bug is isolated (or dynamically called)"
@@ -110,27 +103,21 @@ Event-driven/callback architectures may have callers not visible to static analy
 
 ```bash
 # Map error handling code
-claudemem --nologo map "throw error exception" --raw
-
+claudemem --agent map "throw error exception"
 # Find specific error types
-claudemem --nologo symbol AuthenticationError --raw
-
+claudemem --agent symbol AuthenticationError
 # Who throws this error?
-claudemem --nologo callers AuthenticationError --raw
-```
+claudemem --agent callers AuthenticationError```
 
 ### State Mutation Tracking
 
 ```bash
 # Find where state changes
-claudemem --nologo map "set state update mutate" --raw
-
+claudemem --agent map "set state update mutate"
 # Find the mutation function
-claudemem --nologo symbol updateUserState --raw
-
+claudemem --agent symbol updateUserState
 # Who calls this mutation?
-claudemem --nologo callers updateUserState --raw
-```
+claudemem --agent callers updateUserState```
 
 ## PHASE 0: MANDATORY SETUP
 
@@ -200,26 +187,21 @@ claudemem index
 
 ```bash
 # Find where the error appears
-claudemem --nologo map "error message keywords" --raw
-
+claudemem --agent map "error message keywords"
 # Or find the specific function
-claudemem --nologo symbol failingFunction --raw
-```
+claudemem --agent symbol failingFunction```
 
 ### Phase 2: Get Full Context
 
 ```bash
 # Get callers + callees in one command
-claudemem --nologo context failingFunction --raw
-```
+claudemem --agent context failingFunction```
 
 ### Phase 3: Trace Backwards (Find Root Cause)
 
 ```bash
 # For each caller, check if it's the source
-claudemem --nologo callers caller1 --raw
-claudemem --nologo callers caller2 --raw
-
+claudemem --agent callers caller1claudemem --agent callers caller2
 # Keep tracing until you find the root
 ```
 
@@ -227,8 +209,7 @@ claudemem --nologo callers caller2 --raw
 
 ```bash
 # Once you suspect a root cause, verify the path
-claudemem --nologo callees suspectedRoot --raw
-
+claudemem --agent callees suspectedRoot
 # Does it lead to the symptom?
 ```
 
@@ -236,8 +217,7 @@ claudemem --nologo callees suspectedRoot --raw
 
 ```bash
 # What else calls the buggy code?
-claudemem --nologo callers buggyFunction --raw
-
+claudemem --agent callers buggyFunction
 # These are all potentially affected
 ```
 
@@ -296,7 +276,7 @@ Evidence:
 ```
 ⚠️ OTHER AFFECTED CODE:
 
-claudemem --nologo callers userMapper --raw shows:
+claudemem --agent callers userMapper shows:
   - useUser hook (main app)
   - useAdmin hook (admin panel)
   - tests/user.test.ts
@@ -310,46 +290,35 @@ All 3 locations may have the same bug!
 
 ```bash
 # Step 1: Find where undefined is used
-claudemem --nologo map "undefined null" --raw
-
+claudemem --agent map "undefined null"
 # Step 2: Get context of the failing function
-claudemem --nologo context renderProfile --raw
-
+claudemem --agent context renderProfile
 # Step 3: Trace backwards through callers
-claudemem --nologo callers getUserData --raw
-
+claudemem --agent callers getUserData
 # Step 4: Find where null was introduced
-claudemem --nologo callees fetchUser --raw
-```
+claudemem --agent callees fetchUser```
 
 ### Scenario: Race Condition
 
 ```bash
 # Step 1: Find async operations
-claudemem --nologo map "async await promise" --raw
-
+claudemem --agent map "async await promise"
 # Step 2: Find shared state
-claudemem --nologo symbol sharedState --raw
-
+claudemem --agent symbol sharedState
 # Step 3: Who reads it?
-claudemem --nologo callers sharedState --raw
-
+claudemem --agent callers sharedState
 # Step 4: Who writes it?
-claudemem --nologo callees updateState --raw
-```
+claudemem --agent callees updateState```
 
 ### Scenario: Incorrect Behavior
 
 ```bash
 # Step 1: Find the function with wrong behavior
-claudemem --nologo symbol calculateTotal --raw
-
+claudemem --agent symbol calculateTotal
 # Step 2: What does it depend on?
-claudemem --nologo callees calculateTotal --raw
-
+claudemem --agent callees calculateTotal
 # Step 3: Who provides input?
-claudemem --nologo callers calculateTotal --raw
-```
+claudemem --agent callers calculateTotal```
 
 ## Result Validation Pattern
 
@@ -360,7 +329,7 @@ After EVERY claudemem command, validate results:
 When tracing call chains:
 
 ```bash
-CONTEXT=$(claudemem --nologo context failingFunction --raw)
+CONTEXT=$(claudemem --agent context failingFunction)
 EXIT_CODE=$?
 
 # Check for failure
@@ -389,7 +358,7 @@ fi
 ### Empty Results Handling
 
 ```bash
-CALLERS=$(claudemem --nologo callers suspectedBug --raw)
+CALLERS=$(claudemem --agent callers suspectedBug)
 
 # 0 callers could mean:
 # 1. Entry point (main, API handler) - expected
@@ -440,7 +409,7 @@ AskUserQuestion({
 
 | Anti-Pattern | Why Wrong | Correct Approach |
 |--------------|-----------|------------------|
-| `grep "error"` | No call relationships | `claudemem --nologo context func --raw` |
+| `grep "error"` | No call relationships | `claudemem --agent context func` |
 | Read random files | No direction | Trace callers/callees systematically |
 | Fix symptom only | Bug returns | Trace to root cause with `callers` |
 | Skip impact check | Miss related bugs | ALWAYS check all `callers` |

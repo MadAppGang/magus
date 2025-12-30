@@ -15,9 +15,9 @@ allowed-tools: Bash, Task, Read, AskUserQuestion
 ║   ❌ FIND IS FORBIDDEN                                                       ║
 ║   ❌ GLOB IS FORBIDDEN                                                       ║
 ║                                                                              ║
-║   ✅ claudemem --nologo callers <name> --raw FOR USAGE ANALYSIS             ║
-║   ✅ claudemem --nologo callees <name> --raw FOR DEPENDENCY TRACING         ║
-║   ✅ claudemem --nologo context <name> --raw FOR FULL UNDERSTANDING         ║
+║   ✅ claudemem --agent callers <name> FOR USAGE ANALYSIS             ║
+║   ✅ claudemem --agent callees <name> FOR DEPENDENCY TRACING         ║
+║   ✅ claudemem --agent context <name> FOR FULL UNDERSTANDING         ║
 ║                                                                              ║
 ║   ⭐ v0.3.0: callers/callees show exact data flow and dependencies          ║
 ║                                                                              ║
@@ -53,29 +53,23 @@ The `callers` and `callees` commands show you:
 
 ```bash
 # Find where a function is defined
-claudemem --nologo symbol processPayment --raw
-
+claudemem --agent symbol processPayment
 # Get full context with callers and callees
-claudemem --nologo context processPayment --raw
-```
+claudemem --agent context processPayment```
 
 ### Trace Data Flow
 
 ```bash
 # What does this function call? (data flows OUT)
-claudemem --nologo callees processPayment --raw
-
+claudemem --agent callees processPayment
 # Follow the chain
-claudemem --nologo callees validateCard --raw
-claudemem --nologo callees chargeStripe --raw
-```
+claudemem --agent callees validateCardclaudemem --agent callees chargeStripe```
 
 ### Find All Usages
 
 ```bash
 # Who calls this function? (usage patterns)
-claudemem --nologo callers processPayment --raw
-
+claudemem --agent callers processPayment
 # This shows EVERY place that uses this code
 ```
 
@@ -83,8 +77,7 @@ claudemem --nologo callers processPayment --raw
 
 ```bash
 # Before modifying ANY code, check full impact
-claudemem --nologo impact functionToChange --raw
-
+claudemem --agent impact functionToChange
 # Output shows ALL transitive callers:
 # direct_callers:
 #   - LoginController.authenticate:34
@@ -101,7 +94,7 @@ claudemem --nologo impact functionToChange --raw
 
 **Handling Empty Results:**
 ```bash
-IMPACT=$(claudemem --nologo impact functionToChange --raw)
+IMPACT=$(claudemem --agent impact functionToChange)
 if echo "$IMPACT" | grep -q "No callers"; then
   echo "No callers found. This is either:"
   echo "  1. An entry point (API handler, main function) - expected"
@@ -114,10 +107,9 @@ fi
 
 ```bash
 # Quick check - direct callers only (v0.3.0)
-claudemem --nologo callers functionToChange --raw
-
+claudemem --agent callers functionToChange
 # Deep check - ALL transitive callers (v0.4.0+ Required)
-IMPACT=$(claudemem --nologo impact functionToChange --raw)
+IMPACT=$(claudemem --agent impact functionToChange)
 
 # Handle results
 if [ -z "$IMPACT" ] || echo "$IMPACT" | grep -q "No callers"; then
@@ -136,8 +128,7 @@ fi
 
 ```bash
 # Get full picture: definition + callers + callees
-claudemem --nologo context complexFunction --raw
-```
+claudemem --agent context complexFunction```
 
 ## PHASE 0: MANDATORY SETUP
 
@@ -207,34 +198,27 @@ claudemem index
 
 ```bash
 # Get overview of the feature area
-claudemem --nologo map "payment processing" --raw
-```
+claudemem --agent map "payment processing"```
 
 ### Phase 2: Find the Entry Point
 
 ```bash
 # Locate the main function (highest PageRank in area)
-claudemem --nologo symbol PaymentService --raw
-```
+claudemem --agent symbol PaymentService```
 
 ### Phase 3: Trace the Flow
 
 ```bash
 # What does PaymentService call?
-claudemem --nologo callees PaymentService --raw
-
+claudemem --agent callees PaymentService
 # For each major callee, trace further
-claudemem --nologo callees validatePayment --raw
-claudemem --nologo callees processCharge --raw
-claudemem --nologo callees saveTransaction --raw
-```
+claudemem --agent callees validatePaymentclaudemem --agent callees processChargeclaudemem --agent callees saveTransaction```
 
 ### Phase 4: Understand Usage
 
 ```bash
 # Who uses PaymentService?
-claudemem --nologo callers PaymentService --raw
-
+claudemem --agent callers PaymentService
 # This shows the entry points
 ```
 
@@ -298,14 +282,11 @@ processPayment is called by:
 
 ```bash
 # Step 1: Find X
-claudemem --nologo symbol X --raw
-
+claudemem --agent symbol X
 # Step 2: See what X does
-claudemem --nologo callees X --raw
-
+claudemem --agent callees X
 # Step 3: See how X is used
-claudemem --nologo callers X --raw
-
+claudemem --agent callers X
 # Step 4: Read the specific code
 # Use Read tool on exact file:line from results
 ```
@@ -314,8 +295,7 @@ claudemem --nologo callers X --raw
 
 ```bash
 # Step 1: Find ALL usages (callers)
-claudemem --nologo callers oldFunction --raw
-
+claudemem --agent callers oldFunction
 # Step 2: Document each caller location
 # Step 3: Update each caller systematically
 ```
@@ -324,14 +304,11 @@ claudemem --nologo callers oldFunction --raw
 
 ```bash
 # Step 1: Find where to add
-claudemem --nologo symbol targetModule --raw
-
+claudemem --agent symbol targetModule
 # Step 2: Understand dependencies
-claudemem --nologo callees targetModule --raw
-
+claudemem --agent callees targetModule
 # Step 3: Check existing patterns
-claudemem --nologo callers targetModule --raw
-```
+claudemem --agent callers targetModule```
 
 ## Result Validation Pattern
 
@@ -343,7 +320,7 @@ When tracing implementation:
 
 ```bash
 # Find symbol
-SYMBOL=$(claudemem --nologo symbol PaymentService --raw)
+SYMBOL=$(claudemem --agent symbol PaymentService)
 EXIT_CODE=$?
 
 if [ "$EXIT_CODE" -ne 0 ] || [ -z "$SYMBOL" ] || echo "$SYMBOL" | grep -qi "not found\|error"; then
@@ -355,7 +332,7 @@ if [ "$EXIT_CODE" -ne 0 ] || [ -z "$SYMBOL" ] || echo "$SYMBOL" | grep -qi "not 
 fi
 
 # Check callers
-CALLERS=$(claudemem --nologo callers PaymentService --raw)
+CALLERS=$(claudemem --agent callers PaymentService)
 # 0 callers is valid (entry point or unused)
 # But error message is not
 if echo "$CALLERS" | grep -qi "error\|failed"; then
@@ -366,7 +343,7 @@ fi
 ### Empty/Irrelevant Results
 
 ```bash
-RESULTS=$(claudemem --nologo callees FunctionName --raw)
+RESULTS=$(claudemem --agent callees FunctionName)
 
 # Validate relevance
 # Extract keywords from the user's investigation query
@@ -423,7 +400,7 @@ AskUserQuestion({
 
 | Anti-Pattern | Why Wrong | Correct Approach |
 |--------------|-----------|------------------|
-| `grep -r "function"` | No call relationships | `claudemem --nologo callees func --raw` |
+| `grep -r "function"` | No call relationships | `claudemem --agent callees func` |
 | Modify without callers | Breaking changes | ALWAYS check `callers` first |
 | Read whole files | Token waste | Read specific file:line from results |
 | Guess dependencies | Miss connections | Use `callees` for exact deps |

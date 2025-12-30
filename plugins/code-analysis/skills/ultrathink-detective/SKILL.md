@@ -16,12 +16,12 @@ model: opus
 ║   ❌ FIND IS FORBIDDEN                                                       ║
 ║   ❌ GLOB IS FORBIDDEN                                                       ║
 ║                                                                              ║
-║   ✅ claudemem --nologo map "query" --raw FOR ARCHITECTURE                   ║
-║   ✅ claudemem --nologo symbol <name> --raw FOR EXACT LOCATIONS              ║
-║   ✅ claudemem --nologo callers <name> --raw FOR IMPACT ANALYSIS             ║
-║   ✅ claudemem --nologo callees <name> --raw FOR DEPENDENCY TRACING          ║
-║   ✅ claudemem --nologo context <name> --raw FOR FULL CALL CHAIN             ║
-║   ✅ claudemem --nologo search "query" --raw FOR SEMANTIC SEARCH             ║
+║   ✅ claudemem --agent map "query" FOR ARCHITECTURE                   ║
+║   ✅ claudemem --agent symbol <name> FOR EXACT LOCATIONS              ║
+║   ✅ claudemem --agent callers <name> FOR IMPACT ANALYSIS             ║
+║   ✅ claudemem --agent callees <name> FOR DEPENDENCY TRACING          ║
+║   ✅ claudemem --agent context <name> FOR FULL CALL CHAIN             ║
+║   ✅ claudemem --agent search "query" FOR SEMANTIC SEARCH             ║
 ║                                                                              ║
 ║   ⭐ v0.3.0: ALL commands used for comprehensive multi-dimensional analysis ║
 ║                                                                              ║
@@ -187,92 +187,68 @@ claudemem index
 
 ```bash
 # Get overall structure with PageRank
-claudemem --nologo map --raw
-
+claudemem --agent map
 # Focus on high-PageRank symbols (> 0.05) - these ARE the architecture
 
 # Layer identification
-claudemem --nologo map "controller handler endpoint" --raw   # Presentation
-claudemem --nologo map "service business logic" --raw        # Business
-claudemem --nologo map "repository database query" --raw     # Data
+claudemem --agent map "controller handler endpoint"   # Presentation
+claudemem --agent map "service business logic"        # Business
+claudemem --agent map "repository database query"     # Data
 
 # Pattern detection
-claudemem --nologo map "factory create builder" --raw
-claudemem --nologo map "interface abstract contract" --raw
-claudemem --nologo map "event emit subscribe" --raw
-```
+claudemem --agent map "factory create builder"claudemem --agent map "interface abstract contract"claudemem --agent map "event emit subscribe"```
 
 ### Dimension 2: Implementation (callers/callees)
 
 ```bash
 # For high-PageRank symbols, trace dependencies
-claudemem --nologo callees PaymentService --raw
-
+claudemem --agent callees PaymentService
 # What calls critical code?
-claudemem --nologo callers processPayment --raw
-
+claudemem --agent callers processPayment
 # Full dependency chain
-claudemem --nologo context OrderController --raw
-```
+claudemem --agent context OrderController```
 
 ### Dimension 3: Test Coverage (callers analysis)
 
 ```bash
 # Find tests for critical functions
-claudemem --nologo callers authenticateUser --raw
-# Look for callers from *.test.ts or *.spec.ts
+claudemem --agent callers authenticateUser# Look for callers from *.test.ts or *.spec.ts
 
 # Map test infrastructure
-claudemem --nologo map "test spec describe it" --raw
-claudemem --nologo map "mock stub spy helper" --raw
-
+claudemem --agent map "test spec describe it"claudemem --agent map "mock stub spy helper"
 # Coverage gaps = functions with 0 test callers
-claudemem --nologo callers criticalFunction --raw
-# If no test file callers → coverage gap
+claudemem --agent callers criticalFunction# If no test file callers → coverage gap
 ```
 
 ### Dimension 4: Reliability (context command)
 
 ```bash
 # Error handling chains
-claudemem --nologo context handleError --raw
-
+claudemem --agent context handleError
 # Exception flow
-claudemem --nologo map "throw error exception" --raw
-claudemem --nologo callers CustomError --raw
-
+claudemem --agent map "throw error exception"claudemem --agent callers CustomError
 # Recovery patterns
-claudemem --nologo map "retry fallback circuit" --raw
-```
+claudemem --agent map "retry fallback circuit"```
 
 ### Dimension 5: Security (symbol + callers)
 
 ```bash
 # Authentication
-claudemem --nologo symbol authenticate --raw
-claudemem --nologo callees authenticate --raw
-claudemem --nologo callers authenticate --raw
-
+claudemem --agent symbol authenticateclaudemem --agent callees authenticateclaudemem --agent callers authenticate
 # Authorization
-claudemem --nologo map "permission role check guard" --raw
-
+claudemem --agent map "permission role check guard"
 # Sensitive data
-claudemem --nologo map "password hash token secret" --raw
-claudemem --nologo callers encrypt --raw
-```
+claudemem --agent map "password hash token secret"claudemem --agent callers encrypt```
 
 ### Dimension 6: Performance (semantic search)
 
 ```bash
 # Database patterns
-claudemem --nologo search "query database batch" --raw
-
+claudemem --agent search "query database batch"
 # Async patterns
-claudemem --nologo map "async await promise parallel" --raw
-
+claudemem --agent map "async await promise parallel"
 # Caching
-claudemem --nologo map "cache memoize store" --raw
-```
+claudemem --agent map "cache memoize store"```
 
 ### Dimension 6: Performance Feedback Tracking (v0.8.0+)
 
@@ -281,7 +257,7 @@ Ultrathink uses `search` in the Performance dimension. Track feedback for these 
 ```bash
 # Dimension 6: Performance (semantic search)
 PERF_QUERY="query database batch"
-PERF_RESULTS=$(claudemem --nologo search "$PERF_QUERY" --raw)
+PERF_RESULTS=$(claudemem --agent search "$PERF_QUERY")
 
 # Initialize tracking strings (POSIX-compatible)
 PERF_HELPFUL=""
@@ -308,7 +284,7 @@ fi
 
 ```bash
 # Dead code detection
-DEAD=$(claudemem --nologo dead-code --raw)
+DEAD=$(claudemem --agent dead-code)
 
 if [ -n "$DEAD" ]; then
   # Categorize:
@@ -321,7 +297,7 @@ else
 fi
 
 # Test coverage gaps
-GAPS=$(claudemem --nologo test-gaps --raw)
+GAPS=$(claudemem --agent test-gaps)
 
 if [ -n "$GAPS" ]; then
   # Impact analysis for high-PageRank gaps
@@ -331,8 +307,7 @@ if [ -n "$GAPS" ]; then
   # For critical gaps, show full impact
   for symbol in $(echo "$GAPS" | grep "pagerank: 0.0[5-9]" | awk '{print $4}'); do
     echo "Impact for critical untested: $symbol"
-    claudemem --nologo impact "$symbol" --raw
-  done
+    claudemem --agent impact "$symbol"  done
 else
   echo "No test gaps found - excellent coverage!"
 fi
@@ -346,16 +321,12 @@ fi
 
 ```bash
 # Get structural overview with PageRank
-claudemem --nologo map --raw
-
+claudemem --agent map
 # Document high-PageRank symbols (> 0.05)
 # These are architectural pillars - understand first
 
 # Map each layer
-claudemem --nologo map "controller route endpoint" --raw
-claudemem --nologo map "service business domain" --raw
-claudemem --nologo map "repository data persist" --raw
-```
+claudemem --agent map "controller route endpoint"claudemem --agent map "service business domain"claudemem --agent map "repository data persist"```
 
 ### Phase 2: Critical Path Analysis (15 min)
 
@@ -363,26 +334,19 @@ claudemem --nologo map "repository data persist" --raw
 # For each high-PageRank symbol:
 
 # 1. Get exact location
-claudemem --nologo symbol PaymentService --raw
-
+claudemem --agent symbol PaymentService
 # 2. Trace dependencies (what it needs)
-claudemem --nologo callees PaymentService --raw
-
+claudemem --agent callees PaymentService
 # 3. Trace usage (what depends on it)
-claudemem --nologo callers PaymentService --raw
-
+claudemem --agent callers PaymentService
 # 4. Full context for complex ones
-claudemem --nologo context PaymentService --raw
-```
+claudemem --agent context PaymentService```
 
 ### Phase 3: Test Coverage Assessment (10 min)
 
 ```bash
 # For each critical function, check callers
-claudemem --nologo callers processPayment --raw
-claudemem --nologo callers authenticateUser --raw
-claudemem --nologo callers updateProfile --raw
-
+claudemem --agent callers processPaymentclaudemem --agent callers authenticateUserclaudemem --agent callers updateProfile
 # Count:
 # - Test callers (from *.test.ts, *.spec.ts)
 # - Production callers
@@ -394,31 +358,22 @@ claudemem --nologo callers updateProfile --raw
 
 ```bash
 # Security symbols
-claudemem --nologo map "auth session token" --raw
-claudemem --nologo callers validateToken --raw
-
+claudemem --agent map "auth session token"claudemem --agent callers validateToken
 # Error handling
-claudemem --nologo map "error exception throw" --raw
-claudemem --nologo context handleFailure --raw
-
+claudemem --agent map "error exception throw"claudemem --agent context handleFailure
 # External integrations
-claudemem --nologo map "API external webhook" --raw
-claudemem --nologo callers stripeClient --raw
-```
+claudemem --agent map "API external webhook"claudemem --agent callers stripeClient```
 
 ### Phase 5: Technical Debt Inventory (10 min)
 
 ```bash
 # Deprecated patterns
-claudemem --nologo search "TODO FIXME deprecated" --raw
-
+claudemem --agent search "TODO FIXME deprecated"
 # Complexity indicators (high PageRank but many callees)
-claudemem --nologo callees LargeService --raw
-# > 20 callees = potential god class
+claudemem --agent callees LargeService# > 20 callees = potential god class
 
 # Orphaned code (low PageRank, 0 callers)
-claudemem --nologo callers unusedFunction --raw
-```
+claudemem --agent callers unusedFunction```
 
 ---
 
@@ -606,7 +561,7 @@ Each dimension MUST validate its claudemem results before proceeding:
 **Dimension 1: Architecture (map)**
 
 ```bash
-RESULTS=$(claudemem --nologo map --raw)
+RESULTS=$(claudemem --agent map)
 EXIT_CODE=$?
 
 # Check for command failure
@@ -632,7 +587,7 @@ fi
 **Dimension 2-6: All Other Commands**
 
 ```bash
-RESULTS=$(claudemem --nologo [command] [args] --raw)
+RESULTS=$(claudemem --agent [command] [args])
 EXIT_CODE=$?
 
 # Check exit code
@@ -662,7 +617,7 @@ fi
 **Dimension 3: Test Coverage (callers)**
 
 ```bash
-RESULTS=$(claudemem --nologo callers $FUNCTION --raw)
+RESULTS=$(claudemem --agent callers $FUNCTION)
 
 # Even 0 callers is valid - but validate it's not an error
 if echo "$RESULTS" | grep -qi "error\|not found"; then
@@ -761,12 +716,12 @@ Grep({ pattern: "function" })
 
 ```bash
 # ✅ claudemem v0.3.0 AST Commands
-claudemem --nologo map "query" --raw      # Architecture
-claudemem --nologo symbol <name> --raw    # Location
-claudemem --nologo callers <name> --raw   # Impact
-claudemem --nologo callees <name> --raw   # Dependencies
-claudemem --nologo context <name> --raw   # Full chain
-claudemem --nologo search "query" --raw   # Semantic
+claudemem --agent map "query"      # Architecture
+claudemem --agent symbol <name>    # Location
+claudemem --agent callers <name>   # Impact
+claudemem --agent callees <name>   # Dependencies
+claudemem --agent context <name>   # Full chain
+claudemem --agent search "query"   # Semantic
 ```
 
 ---
@@ -847,12 +802,12 @@ skills: code-analysis:ultrathink-detective
 ║   ULTRATHINK = ALL claudemem v0.3.0 AST COMMANDS                            ║
 ║                                                                              ║
 ║   WORKFLOW:                                                                  ║
-║   1. claudemem --nologo map --raw           ← Architecture (PageRank)       ║
-║   2. claudemem --nologo symbol <name> --raw ← Exact locations               ║
-║   3. claudemem --nologo callers <name> --raw ← Impact analysis              ║
-║   4. claudemem --nologo callees <name> --raw ← Dependencies                 ║
-║   5. claudemem --nologo context <name> --raw ← Full call chain              ║
-║   6. claudemem --nologo search <query> --raw ← Semantic search              ║
+║   1. claudemem --agent map           ← Architecture (PageRank)       ║
+║   2. claudemem --agent symbol <name> ← Exact locations               ║
+║   3. claudemem --agent callers <name> ← Impact analysis              ║
+║   4. claudemem --agent callees <name> ← Dependencies                 ║
+║   5. claudemem --agent context <name> ← Full call chain              ║
+║   6. claudemem --agent search <query> ← Semantic search              ║
 ║   7. Read specific file:line (NOT whole files)                              ║
 ║   8. claudemem feedback ... ← Report helpful/unhelpful (if search used)    ║
 ║                                                                              ║

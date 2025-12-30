@@ -1,7 +1,7 @@
 {
 	"name": "code-analysis",
-	"version": "2.9.0",
-	"description": "Deep code investigation with claudemem v0.8.0. AST structural analysis with PageRank, callers/callees dependency tracing. NEW: Unified TypeScript hook handler (replaces bash scripts). Auto-reindex on file changes. Search feedback protocol. Framework documentation fetching.",
+	"version": "2.10.0",
+	"description": "Deep code investigation with claudemem v0.9.0. NEW: Unified --agent flag (replaces --nologo --raw --plain). AST structural analysis with PageRank, callers/callees dependency tracing. TypeScript hook handler. Auto-reindex on file changes.",
 	"author": {
 		"name": "Jack Rudenko",
 		"email": "i@madappgang.com",

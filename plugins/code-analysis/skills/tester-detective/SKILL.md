@@ -15,8 +15,8 @@ allowed-tools: Bash, Task, Read, AskUserQuestion
 ║   ❌ FIND IS FORBIDDEN                                                       ║
 ║   ❌ GLOB IS FORBIDDEN                                                       ║
 ║                                                                              ║
-║   ✅ claudemem --nologo callers <name> --raw TO FIND TESTS                  ║
-║   ✅ claudemem --nologo map "test spec" --raw TO MAP TEST INFRASTRUCTURE    ║
+║   ✅ claudemem --agent callers <name> TO FIND TESTS                  ║
+║   ✅ claudemem --agent map "test spec" TO MAP TEST INFRASTRUCTURE    ║
 ║                                                                              ║
 ║   ⭐ v0.3.0: callers shows which tests call each function                   ║
 ║                                                                              ║
@@ -52,8 +52,7 @@ The `callers` command shows you:
 
 ```bash
 # Who calls this function? (tests will appear as callers)
-claudemem --nologo callers processPayment --raw
-
+claudemem --agent callers processPayment
 # Filter: callers from test files are your tests
 # src/services/payment.test.ts:45 → This is a test!
 ```
@@ -62,21 +61,17 @@ claudemem --nologo callers processPayment --raw
 
 ```bash
 # Find all test files
-claudemem --nologo map "test spec describe it" --raw
-
+claudemem --agent map "test spec describe it"
 # Find test utilities
-claudemem --nologo map "test helper mock stub" --raw
-
+claudemem --agent map "test helper mock stub"
 # Find fixtures
-claudemem --nologo map "fixture factory builder" --raw
-```
+claudemem --agent map "fixture factory builder"```
 
 ### Test Coverage Gaps (v0.4.0+ Required)
 
 ```bash
 # Find high-importance untested code automatically
-claudemem --nologo test-gaps --raw
-
+claudemem --agent test-gaps
 # Output:
 # file: src/services/payment.ts
 # line: 45-89
@@ -95,12 +90,12 @@ claudemem --nologo test-gaps --raw
 
 **Handling Empty Results:**
 ```bash
-GAPS=$(claudemem --nologo test-gaps --raw)
+GAPS=$(claudemem --agent test-gaps)
 if [ -z "$GAPS" ] || echo "$GAPS" | grep -q "No test gaps"; then
   echo "Excellent test coverage! All high-importance code has tests."
   echo ""
   echo "Optional: Check lower-importance code:"
-  echo "  claudemem --nologo test-gaps --min-pagerank 0.005 --raw"
+  echo "  claudemem --agent test-gaps --min-pagerank 0.005"
 else
   echo "Test Coverage Gaps Found:"
   echo "$GAPS"
@@ -119,7 +114,7 @@ Test detection relies on file naming patterns:
 
 ```bash
 # Let claudemem find all gaps automatically
-GAPS=$(claudemem --nologo test-gaps --raw)
+GAPS=$(claudemem --agent test-gaps)
 
 if [ -z "$GAPS" ]; then
   echo "No high-importance untested code found!"
@@ -128,15 +123,13 @@ else
 fi
 
 # Focus on critical gaps only
-claudemem --nologo test-gaps --min-pagerank 0.05 --raw
-```
+claudemem --agent test-gaps --min-pagerank 0.05```
 
 **Method 2: Manual (for specific functions, v0.3.0 compatible)**
 
 ```bash
 # Get callers for a function
-claudemem --nologo callers importantFunction --raw
-
+claudemem --agent callers importantFunction
 # If NO callers from *.test.ts or *.spec.ts files:
 # This function has NO tests!
 ```
@@ -145,10 +138,7 @@ claudemem --nologo callers importantFunction --raw
 
 ```bash
 # For each critical function, check callers
-claudemem --nologo callers authenticateUser --raw
-claudemem --nologo callers processPayment --raw
-claudemem --nologo callers saveToDatabase --raw
-
+claudemem --agent callers authenticateUserclaudemem --agent callers processPaymentclaudemem --agent callers saveToDatabase
 # Note which have test callers and which don't
 ```
 
@@ -220,13 +210,12 @@ claudemem index
 
 ```bash
 # Run test-gaps FIRST - it does the work for you
-GAPS=$(claudemem --nologo test-gaps --raw)
+GAPS=$(claudemem --agent test-gaps)
 
 if [ -z "$GAPS" ]; then
   echo "No gaps found at default threshold"
   echo "Optionally check with lower threshold:"
-  claudemem --nologo test-gaps --min-pagerank 0.005 --raw
-else
+  claudemem --agent test-gaps --min-pagerank 0.005else
   # This gives you a prioritized list of:
   # - High-PageRank symbols
   # - With 0 test callers
@@ -239,18 +228,15 @@ fi
 
 ```bash
 # Find test configuration
-claudemem --nologo map "jest vitest mocha config" --raw
-
+claudemem --agent map "jest vitest mocha config"
 # Find test utilities and mocks
-claudemem --nologo map "mock stub spy helper" --raw
-```
+claudemem --agent map "mock stub spy helper"```
 
 ### Phase 2: Identify Critical Functions
 
 ```bash
 # Map the feature area
-claudemem --nologo map "payment processing" --raw
-
+claudemem --agent map "payment processing"
 # High-PageRank functions are most critical to test
 ```
 
@@ -258,8 +244,7 @@ claudemem --nologo map "payment processing" --raw
 
 ```bash
 # For each critical function, check callers
-claudemem --nologo callers PaymentService --raw
-
+claudemem --agent callers PaymentService
 # Look for callers from test files:
 # src/services/payment.test.ts:23 ← TEST CALLER
 # src/controllers/checkout.ts:45 ← NOT A TEST
@@ -341,13 +326,9 @@ claudemem --nologo callers PaymentService --raw
 
 ```bash
 # Step 1: Map the feature
-claudemem --nologo map "payment" --raw
-
+claudemem --agent map "payment"
 # Step 2: For each function, check callers
-claudemem --nologo callers processPayment --raw
-claudemem --nologo callers validateCard --raw
-claudemem --nologo callers chargeCustomer --raw
-
+claudemem --agent callers processPaymentclaudemem --agent callers validateCardclaudemem --agent callers chargeCustomer
 # Step 3: Count test callers vs production callers
 ```
 
@@ -355,12 +336,9 @@ claudemem --nologo callers chargeCustomer --raw
 
 ```bash
 # Step 1: Find high-PageRank (important) functions
-claudemem --nologo map --raw
-
+claudemem --agent map
 # Step 2: Check callers for each
-claudemem --nologo callers importantFunc1 --raw
-claudemem --nologo callers importantFunc2 --raw
-
+claudemem --agent callers importantFunc1claudemem --agent callers importantFunc2
 # Step 3: Functions with 0 test callers = gap
 ```
 
@@ -368,8 +346,7 @@ claudemem --nologo callers importantFunc2 --raw
 
 ```bash
 # Step 1: Find test callers
-claudemem --nologo callers targetFunction --raw
-
+claudemem --agent callers targetFunction
 # Step 2: Read each test file at the caller line
 # Step 3: Check: Does test cover edge cases? Errors?
 ```
@@ -383,7 +360,7 @@ After EVERY claudemem command, validate results:
 When checking test coverage:
 
 ```bash
-CALLERS=$(claudemem --nologo callers processPayment --raw)
+CALLERS=$(claudemem --agent callers processPayment)
 EXIT_CODE=$?
 
 # Check for command failure
@@ -411,7 +388,7 @@ fi
 ### Empty Results Validation
 
 ```bash
-RESULTS=$(claudemem --nologo map "test spec describe" --raw)
+RESULTS=$(claudemem --agent map "test spec describe")
 
 if [ -z "$RESULTS" ]; then
   echo "WARNING: No test infrastructure found"
@@ -461,7 +438,7 @@ AskUserQuestion({
 
 | Anti-Pattern | Why Wrong | Correct Approach |
 |--------------|-----------|------------------|
-| `grep "test"` | No caller relationships | `claudemem --nologo callers func --raw` |
+| `grep "test"` | No caller relationships | `claudemem --agent callers func` |
 | Assume tests exist | Miss coverage gaps | Verify with callers analysis |
 | Count test files | Doesn't show what's tested | Check callers per function |
 | Skip PageRank | Miss critical gaps | Focus on high-PageRank untested |

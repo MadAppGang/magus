@@ -6,6 +6,19 @@
 
 ---
 
+## Naming Clarification
+
+To avoid confusion, claudemem uses distinct command names:
+
+| Command | Purpose | Example |
+|---------|---------|---------|
+| `claudemem hook` | Handle Claude Code hook events (stdin JSON) | `claudemem hook < input.json` |
+| `claudemem githook` | Manage git pre-commit hooks | `claudemem githook install` |
+
+**Note:** In claudemem v0.9.0, the git hooks command was renamed from `hooks` to `githook` to prevent confusion with the new `hook` command for Claude Code integration.
+
+---
+
 ## Problem
 
 Currently the code-analysis plugin has 6 separate bash scripts for hooks:
@@ -161,7 +174,7 @@ async function handleGrepIntercept(input: HookInput): Promise<HookOutput | null>
   }
 
   // Run AST analysis
-  const results = await runClaudemem(input.cwd, ["map", pattern, "--raw"]);
+  const results = await runClaudemem(input.cwd, ["--agent", "map", pattern]);
 
   return {
     additionalContext: `🔍 **CLAUDEMEM AST ANALYSIS**\n\n${results}`,

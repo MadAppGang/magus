@@ -55,7 +55,7 @@ if [ "$READ_COUNT" -ge 3 ]; then
 
   cat << EOF >&3
 {
-  "additionalContext": "⚠️ **Bulk Read Warning** ($READ_COUNT files from $UNIQUE_DIRS dirs)\n\nDirs: \`$DIR_LIST\`\n\n**Recommended workflow (v0.3.0):**\n1. \`claudemem --nologo map --raw\` → Get structure with PageRank\n2. \`claudemem --nologo symbol <name> --raw\` → Find specific symbol\n3. \`claudemem --nologo callers <name> --raw\` → Check impact before changes\n4. Read specific file:line from results (NOT whole files)\n\nAST analysis is 80% more token-efficient than bulk file reads."
+  "additionalContext": "⚠️ **Bulk Read Warning** ($READ_COUNT files from $UNIQUE_DIRS dirs)\n\nDirs: \`$DIR_LIST\`\n\n**Recommended workflow (v0.3.0):**\n1. \`claudemem --agent map\` → Get structure with PageRank\n2. \`claudemem --agent symbol <name>\` → Find specific symbol\n3. \`claudemem --agent callers <name>\` → Check impact before changes\n4. Read specific file:line from results (NOT whole files)\n\nAST analysis is 80% more token-efficient than bulk file reads."
 }
 EOF
 fi

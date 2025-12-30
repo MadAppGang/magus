@@ -228,7 +228,7 @@ When v0.4.0 commands are unavailable, detective skills should:
 | `anti_pattern` | What NOT to do | Prevention |
 | `project_doc` | Project-level documentation | Context |
 
-**Navigation Mode:** `claudemem --nologo search "query" --use-case navigation --raw`
+**Navigation Mode:** `claudemem --agent search "query" --use-case navigation`
 
 **Current Gap:** Document types and `--use-case` flag not documented in claudemem-search skill.
 
@@ -262,14 +262,11 @@ Find unused symbols in the codebase.
 
 ```bash
 # Find all unused symbols
-claudemem --nologo dead-code --raw
-
+claudemem --agent dead-code
 # Stricter threshold (only very low PageRank)
-claudemem --nologo dead-code --max-pagerank 0.005 --raw
-
+claudemem --agent dead-code --max-pagerank 0.005
 # Include exported symbols (usually excluded)
-claudemem --nologo dead-code --include-exported --raw
-```
+claudemem --agent dead-code --include-exported```
 
 **Algorithm:**
 - Zero callers (nothing references the symbol)
@@ -282,7 +279,7 @@ claudemem --nologo dead-code --include-exported --raw
 
 **Empty Result Handling:** [REVISED]
 ```bash
-RESULT=$(claudemem --nologo dead-code --raw)
+RESULT=$(claudemem --agent dead-code)
 if [ -z "$RESULT" ] || [ "$RESULT" = "No dead code found" ]; then
   echo "Codebase is clean - no dead code detected!"
   echo "This indicates good code hygiene."
@@ -303,11 +300,9 @@ Find high-importance code without test coverage.
 
 ```bash
 # Find all test coverage gaps
-claudemem --nologo test-gaps --raw
-
+claudemem --agent test-gaps
 # Only critical gaps (high PageRank)
-claudemem --nologo test-gaps --min-pagerank 0.05 --raw
-```
+claudemem --agent test-gaps --min-pagerank 0.05```
 
 **Algorithm:**
 - High PageRank (> 0.01 default) - Important code
@@ -319,7 +314,7 @@ claudemem --nologo test-gaps --min-pagerank 0.05 --raw
 
 **Empty Result Handling:** [REVISED]
 ```bash
-RESULT=$(claudemem --nologo test-gaps --raw)
+RESULT=$(claudemem --agent test-gaps)
 if [ -z "$RESULT" ] || [ "$RESULT" = "No test gaps found" ]; then
   echo "Excellent! All high-importance code has test coverage."
   echo "Consider lowering --min-pagerank threshold for additional coverage."
@@ -339,11 +334,9 @@ Analyze the impact of changing a symbol using BFS traversal.
 
 ```bash
 # Get all transitive callers
-claudemem --nologo impact UserService --raw
-
+claudemem --agent impact UserService
 # Limit depth for large codebases
-claudemem --nologo impact UserService --max-depth 5 --raw
-```
+claudemem --agent impact UserService --max-depth 5```
 
 **Algorithm:**
 - BFS traversal from symbol to all transitive callers
@@ -356,10 +349,10 @@ claudemem --nologo impact UserService --max-depth 5 --raw
 
 **Empty Result Handling:** [REVISED]
 ```bash
-RESULT=$(claudemem --nologo impact FunctionName --raw)
+RESULT=$(claudemem --agent impact FunctionName)
 if [ -z "$RESULT" ] || echo "$RESULT" | grep -q "No callers found"; then
   echo "No callers found - this symbol appears unused or is an entry point."
-  echo "If unused, consider running: claudemem --nologo dead-code --raw"
+  echo "If unused, consider running: claudemem --agent dead-code"
   echo "If entry point (API handler, main), this is expected."
 else
   echo "$RESULT"
@@ -385,11 +378,9 @@ Add to "Architect-Focused Commands (v0.3.0)" section:
 
 ```bash
 # Find unused symbols for cleanup
-claudemem --nologo dead-code --raw
-
+claudemem --agent dead-code
 # Only truly dead code (very low PageRank)
-claudemem --nologo dead-code --max-pagerank 0.005 --raw
-```
+claudemem --agent dead-code --max-pagerank 0.005```
 
 **Architectural insight**: Dead code indicates:
 - Failed features that were never removed
@@ -401,7 +392,7 @@ Low PageRank + dead = Safe to remove
 
 **Handling Results:** [REVISED]
 ```bash
-DEAD_CODE=$(claudemem --nologo dead-code --raw)
+DEAD_CODE=$(claudemem --agent dead-code)
 if [ -z "$DEAD_CODE" ]; then
   echo "No dead code found - architecture is well-maintained"
 else
@@ -435,7 +426,7 @@ Add to "Workflow: Architecture Analysis (v0.3.0)" after Phase 4:
 
 ```bash
 # Find dead code
-DEAD_CODE=$(claudemem --nologo dead-code --raw)
+DEAD_CODE=$(claudemem --agent dead-code)
 
 if [ -z "$DEAD_CODE" ]; then
   echo "No cleanup needed - codebase is well-maintained"
@@ -461,8 +452,7 @@ Add to "Developer-Focused Commands (v0.3.0)" section:
 
 ```bash
 # Before modifying ANY code, check full impact
-claudemem --nologo impact functionToChange --raw
-
+claudemem --agent impact functionToChange
 # Output shows ALL transitive callers:
 # direct_callers:
 #   - LoginController.authenticate:34
@@ -479,7 +469,7 @@ claudemem --nologo impact functionToChange --raw
 
 **Handling Empty Results:** [REVISED]
 ```bash
-IMPACT=$(claudemem --nologo impact functionToChange --raw)
+IMPACT=$(claudemem --agent impact functionToChange)
 if echo "$IMPACT" | grep -q "No callers"; then
   echo "No callers found. This is either:"
   echo "  1. An entry point (API handler, main function) - expected"
@@ -496,10 +486,9 @@ Update "Impact Analysis (BEFORE Modifying)" section:
 
 ```bash
 # Quick check - direct callers only (v0.3.0)
-claudemem --nologo callers functionToChange --raw
-
+claudemem --agent callers functionToChange
 # Deep check - ALL transitive callers (v0.4.0+ Required)
-IMPACT=$(claudemem --nologo impact functionToChange --raw)
+IMPACT=$(claudemem --agent impact functionToChange)
 
 # Handle results
 if [ -z "$IMPACT" ] || echo "$IMPACT" | grep -q "No callers"; then
@@ -524,8 +513,7 @@ Add to "Tester-Focused Commands (v0.3.0)" section:
 
 ```bash
 # Find high-importance untested code automatically
-claudemem --nologo test-gaps --raw
-
+claudemem --agent test-gaps
 # Output:
 # file: src/services/payment.ts
 # line: 45-89
@@ -544,12 +532,12 @@ claudemem --nologo test-gaps --raw
 
 **Handling Empty Results:** [REVISED]
 ```bash
-GAPS=$(claudemem --nologo test-gaps --raw)
+GAPS=$(claudemem --agent test-gaps)
 if [ -z "$GAPS" ] || echo "$GAPS" | grep -q "No test gaps"; then
   echo "Excellent test coverage! All high-importance code has tests."
   echo ""
   echo "Optional: Check lower-importance code:"
-  echo "  claudemem --nologo test-gaps --min-pagerank 0.005 --raw"
+  echo "  claudemem --agent test-gaps --min-pagerank 0.005"
 else
   echo "Test Coverage Gaps Found:"
   echo "$GAPS"
@@ -572,7 +560,7 @@ Replace "Find Untested Code" section:
 
 ```bash
 # Let claudemem find all gaps automatically
-GAPS=$(claudemem --nologo test-gaps --raw)
+GAPS=$(claudemem --agent test-gaps)
 
 if [ -z "$GAPS" ]; then
   echo "No high-importance untested code found!"
@@ -581,15 +569,13 @@ else
 fi
 
 # Focus on critical gaps only
-claudemem --nologo test-gaps --min-pagerank 0.05 --raw
-```
+claudemem --agent test-gaps --min-pagerank 0.05```
 
 **Method 2: Manual (for specific functions, v0.3.0 compatible)**
 
 ```bash
 # Get callers for a function
-claudemem --nologo callers importantFunction --raw
-
+claudemem --agent callers importantFunction
 # If NO callers from *.test.ts or *.spec.ts files:
 # This function has NO tests!
 ```
@@ -602,13 +588,12 @@ Update "Workflow: Test Coverage Analysis" to add Phase 0:
 
 ```bash
 # Run test-gaps FIRST - it does the work for you
-GAPS=$(claudemem --nologo test-gaps --raw)
+GAPS=$(claudemem --agent test-gaps)
 
 if [ -z "$GAPS" ]; then
   echo "No gaps found at default threshold"
   echo "Optionally check with lower threshold:"
-  claudemem --nologo test-gaps --min-pagerank 0.005 --raw
-else
+  claudemem --agent test-gaps --min-pagerank 0.005else
   # This gives you a prioritized list of:
   # - High-PageRank symbols
   # - With 0 test callers
@@ -627,7 +612,7 @@ Add to "Debugger-Focused Commands (v0.3.0)" section:
 
 ```bash
 # After finding the bug, check what else is affected
-IMPACT=$(claudemem --nologo impact buggyFunction --raw)
+IMPACT=$(claudemem --agent impact buggyFunction)
 
 if [ -z "$IMPACT" ] || echo "$IMPACT" | grep -q "No callers"; then
   echo "No static callers - bug is isolated (or dynamically called)"
@@ -659,7 +644,7 @@ Add new section after "Dimension 6: Performance":
 
 ```bash
 # Dead code detection
-DEAD=$(claudemem --nologo dead-code --raw)
+DEAD=$(claudemem --agent dead-code)
 
 if [ -n "$DEAD" ]; then
   # Categorize:
@@ -672,7 +657,7 @@ else
 fi
 
 # Test coverage gaps
-GAPS=$(claudemem --nologo test-gaps --raw)
+GAPS=$(claudemem --agent test-gaps)
 
 if [ -n "$GAPS" ]; then
   # Impact analysis for high-PageRank gaps
@@ -682,8 +667,7 @@ if [ -n "$GAPS" ]; then
   # For critical gaps, show full impact
   for symbol in $(echo "$GAPS" | grep "pagerank: 0.0[5-9]" | awk '{print $4}'); do
     echo "Impact for critical untested: $symbol"
-    claudemem --nologo impact "$symbol" --raw
-  done
+    claudemem --agent impact "$symbol"  done
 else
   echo "No test gaps found - excellent coverage!"
 fi
@@ -756,9 +740,9 @@ SESSION_DIR="/tmp/${SESSION_ID}"
 mkdir -p "$SESSION_DIR"
 
 # Run claudemem ONCE, write to shared files
-claudemem --nologo map "feature area" --raw > "$SESSION_DIR/structure-map.md"
-claudemem --nologo test-gaps --raw > "$SESSION_DIR/test-gaps.md" 2>&1 || echo "No gaps found" > "$SESSION_DIR/test-gaps.md"
-claudemem --nologo dead-code --raw > "$SESSION_DIR/dead-code.md" 2>&1 || echo "No dead code" > "$SESSION_DIR/dead-code.md"
+claudemem --agent map "feature area" > "$SESSION_DIR/structure-map.md"
+claudemem --agent test-gaps > "$SESSION_DIR/test-gaps.md" 2>&1 || echo "No gaps found" > "$SESSION_DIR/test-gaps.md"
+claudemem --agent dead-code > "$SESSION_DIR/dead-code.md" 2>&1 || echo "No dead code" > "$SESSION_DIR/dead-code.md"
 
 # Export session info
 echo "$SESSION_ID" > "$SESSION_DIR/session-id.txt"
@@ -822,21 +806,17 @@ For complex bugs or features requiring ordered investigation:
 
 ```
 Phase 1: Architecture Understanding
-  claudemem --nologo map "problem area" --raw
-  Identify high-PageRank symbols (> 0.05)
+  claudemem --agent map "problem area"  Identify high-PageRank symbols (> 0.05)
 
 Phase 2: Symbol Deep Dive
   For each high-PageRank symbol:
-    claudemem --nologo context <symbol> --raw
-    Document dependencies and callers
+    claudemem --agent context <symbol>    Document dependencies and callers
 
 Phase 3: Impact Assessment (v0.4.0+)
-  claudemem --nologo impact <primary-symbol> --raw
-  Document full blast radius
+  claudemem --agent impact <primary-symbol>  Document full blast radius
 
 Phase 4: Gap Analysis (v0.4.0+)
-  claudemem --nologo test-gaps --min-pagerank 0.01 --raw
-  Identify coverage holes in affected code
+  claudemem --agent test-gaps --min-pagerank 0.01  Identify coverage holes in affected code
 
 Phase 5: Action Planning
   Prioritize by: PageRank * impact_depth * test_coverage
@@ -975,11 +955,9 @@ For agent-optimized search with document type weighting:
 
 ```bash
 # Navigation-focused search (prioritizes summaries)
-claudemem --nologo search "authentication" --use-case navigation --raw
-
+claudemem --agent search "authentication" --use-case navigation
 # Default search (balanced)
-claudemem --nologo search "authentication" --raw
-```
+claudemem --agent search "authentication"```
 
 **Navigation mode search weights:**
 - `symbol_summary`: 1.5x (higher priority)
@@ -1030,19 +1008,16 @@ dependencies:
 
 ```bash
 # Find function behavior without reading code
-claudemem --nologo search "processPayment behavior" --use-case navigation --raw
-
+claudemem --agent search "processPayment behavior" --use-case navigation
 # Output includes symbol_summary:
 # symbol: PaymentService.processPayment
 # behavior: "Charges customer card via Stripe and saves transaction"
 # side_effects: ["Updates balance", "Sends receipt email", "Logs to audit"]
 
 # Find file purposes for architecture understanding
-claudemem --nologo search "file:services purpose" --use-case navigation --raw
-
+claudemem --agent search "file:services purpose" --use-case navigation
 # Find anti-patterns to avoid
-claudemem --nologo search "anti_pattern SQL" --raw
-```
+claudemem --agent search "anti_pattern SQL"```
 
 ### Regenerating Enrichments
 
@@ -1080,25 +1055,23 @@ Standardized investigation patterns for common scenarios. All templates include 
 
 ```bash
 # Step 1: Locate the symptom
-SYMBOL=$(claudemem --nologo symbol FunctionFromStackTrace --raw)
+SYMBOL=$(claudemem --agent symbol FunctionFromStackTrace)
 if [ -z "$SYMBOL" ]; then
-  echo "Symbol not found - check spelling or run: claudemem --nologo map 'related keywords' --raw"
+  echo "Symbol not found - check spelling or run: claudemem --agent map 'related keywords'"
   exit 1
 fi
 
 # Step 2: Get full context (callers + callees)
-claudemem --nologo context FunctionFromStackTrace --raw
-
+claudemem --agent context FunctionFromStackTrace
 # Step 3: Trace backwards to find root cause
-claudemem --nologo callers suspectedSource --raw
-
+claudemem --agent callers suspectedSource
 # Step 4: Check full impact of the bug (v0.4.0+)
-IMPACT=$(claudemem --nologo impact BuggyFunction --raw 2>/dev/null)
+IMPACT=$(claudemem --agent impact BuggyFunction 2>/dev/null)
 if [ -n "$IMPACT" ]; then
   echo "$IMPACT"
 else
   echo "Impact analysis requires claudemem v0.4.0+ or no callers found"
-  echo "Fallback: claudemem --nologo callers BuggyFunction --raw"
+  echo "Fallback: claudemem --agent callers BuggyFunction"
 fi
 
 # Step 5: Read identified file:line ranges
@@ -1126,24 +1099,21 @@ fi
 
 ```bash
 # Step 1: Map the feature area
-MAP=$(claudemem --nologo map "feature area keywords" --raw)
+MAP=$(claudemem --agent map "feature area keywords")
 if [ -z "$MAP" ]; then
   echo "No matches found - try broader keywords"
 fi
 
 # Step 2: Identify extension points
-claudemem --nologo callees ExistingFeature --raw
-
+claudemem --agent callees ExistingFeature
 # Step 3: Get full context for modification point
-claudemem --nologo context ModificationPoint --raw
-
+claudemem --agent context ModificationPoint
 # Step 4: Check existing patterns to follow
-claudemem --nologo search "similar pattern" --use-case navigation --raw
-
+claudemem --agent search "similar pattern" --use-case navigation
 # Step 5: Implement following existing patterns
 
 # Step 6: Check test coverage gaps (v0.4.0+)
-GAPS=$(claudemem --nologo test-gaps --raw 2>/dev/null)
+GAPS=$(claudemem --agent test-gaps 2>/dev/null)
 if [ -n "$GAPS" ]; then
   echo "Test gaps to address:"
   echo "$GAPS"
@@ -1170,29 +1140,27 @@ fi
 
 ```bash
 # Step 1: Find the symbol to refactor
-SYMBOL=$(claudemem --nologo symbol SymbolToRename --raw)
+SYMBOL=$(claudemem --agent symbol SymbolToRename)
 if [ -z "$SYMBOL" ]; then
   echo "Symbol not found - check exact name"
   exit 1
 fi
 
 # Step 2: Get FULL impact (all transitive callers) (v0.4.0+)
-IMPACT=$(claudemem --nologo impact SymbolToRename --raw 2>/dev/null)
+IMPACT=$(claudemem --agent impact SymbolToRename 2>/dev/null)
 if [ -n "$IMPACT" ]; then
   echo "$IMPACT"
   # (impact output includes grouped_by_file)
 else
   echo "Using fallback (direct callers only):"
-  claudemem --nologo callers SymbolToRename --raw
-fi
+  claudemem --agent callers SymbolToRenamefi
 
 # Step 3: Group by file for systematic updates
 
 # Step 4: Update each caller location systematically
 
 # Step 5: Verify all callers updated
-claudemem --nologo callers NewSymbolName --raw
-
+claudemem --agent callers NewSymbolName
 # Step 6: Run affected tests
 ```
 
@@ -1215,7 +1183,7 @@ claudemem --nologo callers NewSymbolName --raw
 
 ```bash
 # Step 1: Get full structural map
-MAP=$(claudemem --nologo map --raw)
+MAP=$(claudemem --agent map)
 if [ -z "$MAP" ]; then
   echo "Index may be empty - run: claudemem index"
   exit 1
@@ -1226,13 +1194,11 @@ echo "$MAP"
 # Document top 5 by PageRank
 
 # Step 3: For each pillar, get full context
-claudemem --nologo context PillarSymbol --raw
-
+claudemem --agent context PillarSymbol
 # Step 4: Trace major flows via callees
-claudemem --nologo callees EntryPoint --raw
-
+claudemem --agent callees EntryPoint
 # Step 5: Identify dead code (cleanup opportunities) (v0.4.0+)
-DEAD=$(claudemem --nologo dead-code --raw 2>/dev/null)
+DEAD=$(claudemem --agent dead-code 2>/dev/null)
 if [ -n "$DEAD" ]; then
   echo "Dead code found:"
   echo "$DEAD"
@@ -1241,7 +1207,7 @@ else
 fi
 
 # Step 6: Identify test gaps (risk areas) (v0.4.0+)
-GAPS=$(claudemem --nologo test-gaps --raw 2>/dev/null)
+GAPS=$(claudemem --agent test-gaps 2>/dev/null)
 if [ -n "$GAPS" ]; then
   echo "Test gaps:"
   echo "$GAPS"
@@ -1285,26 +1251,21 @@ fi
 
 ```bash
 # Step 1: Map security-related code
-claudemem --nologo map "auth permission security token" --raw
-
+claudemem --agent map "auth permission security token"
 # Step 2: Find authentication entry points
-SYMBOL=$(claudemem --nologo symbol authenticate --raw)
+SYMBOL=$(claudemem --agent symbol authenticate)
 if [ -z "$SYMBOL" ]; then
   echo "No 'authenticate' symbol - try: login, verify, validate"
 fi
-claudemem --nologo callers authenticate --raw
-
+claudemem --agent callers authenticate
 # Step 3: Trace authentication flow
-claudemem --nologo callees authenticate --raw
-
+claudemem --agent callees authenticate
 # Step 4: Check authorization patterns
-claudemem --nologo map "authorize permission check guard" --raw
-
+claudemem --agent map "authorize permission check guard"
 # Step 5: Find sensitive data handlers
-claudemem --nologo map "password hash token secret key" --raw
-
+claudemem --agent map "password hash token secret key"
 # Step 6: Check for test coverage on security code (v0.4.0+)
-GAPS=$(claudemem --nologo test-gaps --min-pagerank 0.01 --raw 2>/dev/null)
+GAPS=$(claudemem --agent test-gaps --min-pagerank 0.01 2>/dev/null)
 if [ -n "$GAPS" ]; then
   # Filter for security-related symbols
   echo "$GAPS" | grep -E "(auth|login|password|token|permission|secret)"
@@ -1517,7 +1478,7 @@ ls /tmp/analysis-20231201-000000-test  # Should not exist
 SESSION_DIR=$(mktemp -d)
 
 # Run claudemem once
-claudemem --nologo map --raw > $SESSION_DIR/structure.md
+claudemem --agent map > $SESSION_DIR/structure.md
 
 # Simulate parallel agent reads
 # (manual verification of file sharing)
@@ -1558,7 +1519,7 @@ claudemem --nologo map --raw > $SESSION_DIR/structure.md
 |------|------------|--------|------------|
 | Inconsistent formatting | MEDIUM | LOW | Use existing skill as template |
 | Missing edge cases | MEDIUM | MEDIUM | Include empty result handling throughout |
-| Outdated examples | LOW | MEDIUM | Use --raw flag consistently |
+| Outdated examples | LOW | MEDIUM | Use flag consistently |
 
 ### 10.3 Integration Risks
 
@@ -1712,43 +1673,29 @@ container.register(IService, ServiceImpl);
 
 ```bash
 # Dead code detection
-claudemem --nologo dead-code --raw
-claudemem --nologo dead-code --max-pagerank 0.005 --raw
-claudemem --nologo dead-code --include-exported --raw
-
+claudemem --agent dead-codeclaudemem --agent dead-code --max-pagerank 0.005claudemem --agent dead-code --include-exported
 # Test coverage gaps
-claudemem --nologo test-gaps --raw
-claudemem --nologo test-gaps --min-pagerank 0.05 --raw
-
+claudemem --agent test-gapsclaudemem --agent test-gaps --min-pagerank 0.05
 # Impact analysis (BFS traversal)
-claudemem --nologo impact UserService --raw
-claudemem --nologo impact UserService --max-depth 5 --raw
-
+claudemem --agent impact UserServiceclaudemem --agent impact UserService --max-depth 5
 # Navigation-optimized search
-claudemem --nologo search "query" --use-case navigation --raw
-```
+claudemem --agent search "query" --use-case navigation```
 
 ### Existing Commands (v0.3.0)
 
 ```bash
 # Structural overview
-claudemem --nologo map "query" --raw
-
+claudemem --agent map "query"
 # Symbol location
-claudemem --nologo symbol SymbolName --raw
-
+claudemem --agent symbol SymbolName
 # Direct callers
-claudemem --nologo callers SymbolName --raw
-
+claudemem --agent callers SymbolName
 # Direct callees
-claudemem --nologo callees SymbolName --raw
-
+claudemem --agent callees SymbolName
 # Full context
-claudemem --nologo context SymbolName --raw
-
+claudemem --agent context SymbolName
 # Semantic search
-claudemem --nologo search "query" --raw
-```
+claudemem --agent search "query"```
 
 ### Version Check
 

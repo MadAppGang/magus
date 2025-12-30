@@ -40,9 +40,9 @@ SESSION_DIR="/tmp/${SESSION_ID}"
 mkdir -p "$SESSION_DIR"
 
 # Run claudemem ONCE, write to shared files
-claudemem --nologo map "feature area" --raw > "$SESSION_DIR/structure-map.md"
-claudemem --nologo test-gaps --raw > "$SESSION_DIR/test-gaps.md" 2>&1 || echo "No gaps found" > "$SESSION_DIR/test-gaps.md"
-claudemem --nologo dead-code --raw > "$SESSION_DIR/dead-code.md" 2>&1 || echo "No dead code" > "$SESSION_DIR/dead-code.md"
+claudemem --agent map "feature area" > "$SESSION_DIR/structure-map.md"
+claudemem --agent test-gaps > "$SESSION_DIR/test-gaps.md" 2>&1 || echo "No gaps found" > "$SESSION_DIR/test-gaps.md"
+claudemem --agent dead-code > "$SESSION_DIR/dead-code.md" 2>&1 || echo "No dead code" > "$SESSION_DIR/dead-code.md"
 
 # Export session info
 echo "$SESSION_ID" > "$SESSION_DIR/session-id.txt"
@@ -220,21 +220,17 @@ For complex bugs or features requiring ordered investigation:
 
 ```
 Phase 1: Architecture Understanding
-  claudemem --nologo map "problem area" --raw
-  Identify high-PageRank symbols (> 0.05)
+  claudemem --agent map "problem area"  Identify high-PageRank symbols (> 0.05)
 
 Phase 2: Symbol Deep Dive
   For each high-PageRank symbol:
-    claudemem --nologo context <symbol> --raw
-    Document dependencies and callers
+    claudemem --agent context <symbol>    Document dependencies and callers
 
 Phase 3: Impact Assessment (v0.4.0+)
-  claudemem --nologo impact <primary-symbol> --raw
-  Document full blast radius
+  claudemem --agent impact <primary-symbol>  Document full blast radius
 
 Phase 4: Gap Analysis (v0.4.0+)
-  claudemem --nologo test-gaps --min-pagerank 0.01 --raw
-  Identify coverage holes in affected code
+  claudemem --agent test-gaps --min-pagerank 0.01  Identify coverage holes in affected code
 
 Phase 5: Action Planning
   Prioritize by: PageRank * impact_depth * test_coverage
@@ -299,7 +295,7 @@ For robust orchestration, handle common claudemem errors. See `claudemem-search`
 
 ### Empty Results
 ```bash
-RESULT=$(claudemem --nologo map "query" --raw 2>/dev/null)
+RESULT=$(claudemem --agent map "query" 2>/dev/null)
 if [ -z "$RESULT" ] || echo "$RESULT" | grep -q "No results found"; then
   echo "No results - try broader keywords or check index status"
 fi
@@ -308,7 +304,7 @@ fi
 ### Version Compatibility
 ```bash
 # Check if command is available (v0.4.0+ commands)
-if claudemem --nologo dead-code --raw 2>&1 | grep -q "unknown command"; then
+if claudemem --agent dead-code 2>&1 | grep -q "unknown command"; then
   echo "dead-code requires claudemem v0.4.0+"
   echo "Fallback: Use map command instead"
 fi

@@ -74,7 +74,7 @@ COMMAND_USED=""
 # Check if pattern looks like a specific symbol name
 if echo "$PATTERN" | grep -qE '^[A-Z][a-zA-Z0-9]*$|^[a-z][a-zA-Z0-9]*$|^[a-z_]+$'; then
   # Pattern looks like a symbol name - try symbol lookup first
-  SYMBOL_RESULT=$(claudemem --nologo symbol "$PATTERN" --raw 2>/dev/null || echo "")
+  SYMBOL_RESULT=$(claudemem --agent symbol "$PATTERN" 2>/dev/null || echo "")
 
   if [ -n "$SYMBOL_RESULT" ] && [ "$SYMBOL_RESULT" != "No results found" ]; then
     RESULTS="$SYMBOL_RESULT"
@@ -84,7 +84,7 @@ fi
 
 # Fallback to map if symbol didn't find anything
 if [ -z "$RESULTS" ]; then
-  RESULTS=$(claudemem --nologo map "$PATTERN" --raw 2>/dev/null || echo "No results found")
+  RESULTS=$(claudemem --agent map "$PATTERN" 2>/dev/null || echo "No results found")
   COMMAND_USED="map"
 fi
 
@@ -96,7 +96,7 @@ PATTERN_ESCAPED=$(echo "$PATTERN" | jq -Rs .)
 # Return results and block
 cat << EOF >&3
 {
-  "additionalContext": "🔍 **CLAUDEMEM AST ANALYSIS** (Bash search intercepted)\n\n**Blocked command:** ${COMMAND_ESCAPED}\n**Extracted query:** ${PATTERN_ESCAPED}\n**Command:** claudemem --nologo ${COMMAND_USED} \"$PATTERN\" --raw\n\n${RESULTS_ESCAPED}\n\n---\n✅ AST structural analysis complete.\n\n**v0.3.0 Commands (Available Now):**\n- \`claudemem --nologo symbol <name> --raw\` → Exact location\n- \`claudemem --nologo callers <name> --raw\` → What calls this?\n- \`claudemem --nologo callees <name> --raw\` → What does this call?\n- \`claudemem --nologo context <name> --raw\` → Full call chain\n\n**v0.4.0+ Commands (Check Version):**\n- \`claudemem --nologo dead-code --raw\` → Find unused symbols\n- \`claudemem --nologo test-gaps --raw\` → Find untested code\n- \`claudemem --nologo impact <name> --raw\` → Full impact analysis\n\n**Check version:** \`claudemem --version\`",
+  "additionalContext": "🔍 **CLAUDEMEM AST ANALYSIS** (Bash search intercepted)\n\n**Blocked command:** ${COMMAND_ESCAPED}\n**Extracted query:** ${PATTERN_ESCAPED}\n**Command:** claudemem --agent ${COMMAND_USED} \"$PATTERN\"\n\n${RESULTS_ESCAPED}\n\n---\n✅ AST structural analysis complete.\n\n**v0.3.0 Commands (Available Now):**\n- \`claudemem --agent symbol <name>\` → Exact location\n- \`claudemem --agent callers <name>\` → What calls this?\n- \`claudemem --agent callees <name>\` → What does this call?\n- \`claudemem --agent context <name>\` → Full call chain\n\n**v0.4.0+ Commands (Check Version):**\n- \`claudemem --agent dead-code\` → Find unused symbols\n- \`claudemem --agent test-gaps\` → Find untested code\n- \`claudemem --agent impact <name>\` → Full impact analysis\n\n**Check version:** \`claudemem --version\`",
   "hookSpecificOutput": {
     "hookEventName": "PreToolUse",
     "permissionDecision": "deny",

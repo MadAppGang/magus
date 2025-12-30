@@ -15,8 +15,8 @@ allowed-tools: Bash, Task, Read, AskUserQuestion
 ║   ❌ FIND IS FORBIDDEN                                                       ║
 ║   ❌ GLOB IS FORBIDDEN                                                       ║
 ║                                                                              ║
-║   ✅ claudemem --nologo map "query" --raw IS THE PRIMARY COMMAND             ║
-║   ✅ claudemem --nologo symbol <name> --raw FOR EXACT LOCATIONS              ║
+║   ✅ claudemem --agent map "query" IS THE PRIMARY COMMAND             ║
+║   ✅ claudemem --agent symbol <name> FOR EXACT LOCATIONS              ║
 ║                                                                              ║
 ║   ⭐ v0.3.0: PageRank shows which symbols are architectural pillars         ║
 ║                                                                              ║
@@ -52,66 +52,50 @@ The `map` command with PageRank shows you:
 
 ```bash
 # Get high-level architecture overview
-claudemem --nologo map "architecture layers" --raw
-
+claudemem --agent map "architecture layers"
 # Find core abstractions (highest PageRank)
-claudemem --nologo map --raw  # Full map, sorted by importance
+claudemem --agent map  # Full map, sorted by importance
 
 # Map specific architectural concerns
-claudemem --nologo map "service layer business logic" --raw
-claudemem --nologo map "repository data access" --raw
-claudemem --nologo map "controller API endpoints" --raw
-claudemem --nologo map "middleware request handling" --raw
-```
+claudemem --agent map "service layer business logic"claudemem --agent map "repository data access"claudemem --agent map "controller API endpoints"claudemem --agent map "middleware request handling"```
 
 ### Layer Boundary Discovery
 
 ```bash
 # Find interfaces/contracts (architectural boundaries)
-claudemem --nologo map "interface contract abstract" --raw
-
+claudemem --agent map "interface contract abstract"
 # Find dependency injection points
-claudemem --nologo map "inject provider module" --raw
-
+claudemem --agent map "inject provider module"
 # Find configuration/bootstrap
-claudemem --nologo map "config bootstrap initialize" --raw
-```
+claudemem --agent map "config bootstrap initialize"```
 
 ### Pattern Discovery
 
 ```bash
 # Find factory patterns
-claudemem --nologo map "factory create builder" --raw
-
+claudemem --agent map "factory create builder"
 # Find repository patterns
-claudemem --nologo map "repository persist query" --raw
-
+claudemem --agent map "repository persist query"
 # Find event-driven patterns
-claudemem --nologo map "event emit subscribe handler" --raw
-```
+claudemem --agent map "event emit subscribe handler"```
 
 ### Dependency Analysis
 
 ```bash
 # For a core abstraction, see what depends on it
-claudemem --nologo callers CoreService --raw
-
+claudemem --agent callers CoreService
 # See what the abstraction depends on
-claudemem --nologo callees CoreService --raw
-
+claudemem --agent callees CoreService
 # Get full dependency context
-claudemem --nologo context CoreService --raw
-```
+claudemem --agent context CoreService```
 
 ### Dead Code Detection (v0.4.0+ Required)
 
 ```bash
 # Find unused symbols for cleanup
-claudemem --nologo dead-code --raw
-
+claudemem --agent dead-code
 # Only truly dead code (very low PageRank)
-claudemem --nologo dead-code --max-pagerank 0.005 --raw
-```
+claudemem --agent dead-code --max-pagerank 0.005```
 
 **Architectural insight**: Dead code indicates:
 - Failed features that were never removed
@@ -123,7 +107,7 @@ Low PageRank + dead = Safe to remove
 
 **Handling Results:**
 ```bash
-DEAD_CODE=$(claudemem --nologo dead-code --raw)
+DEAD_CODE=$(claudemem --agent dead-code)
 if [ -z "$DEAD_CODE" ]; then
   echo "No dead code found - architecture is well-maintained"
 else
@@ -217,8 +201,7 @@ claudemem index
 
 ```bash
 # Get structural overview with PageRank
-claudemem --nologo map --raw
-
+claudemem --agent map
 # Focus on high-PageRank symbols (> 0.01) - these are architectural pillars
 ```
 
@@ -226,35 +209,32 @@ claudemem --nologo map --raw
 
 ```bash
 # Map each layer
-claudemem --nologo map "controller handler endpoint" --raw  # Presentation
-claudemem --nologo map "service business logic" --raw       # Business
-claudemem --nologo map "repository database query" --raw    # Data
+claudemem --agent map "controller handler endpoint"  # Presentation
+claudemem --agent map "service business logic"       # Business
+claudemem --agent map "repository database query"    # Data
 ```
 
 ### Phase 3: Trace Dependencies
 
 ```bash
 # For each high-PageRank symbol, understand its role
-claudemem --nologo symbol UserService --raw
-claudemem --nologo callers UserService --raw  # Who depends on it?
-claudemem --nologo callees UserService --raw  # What does it depend on?
+claudemem --agent symbol UserServiceclaudemem --agent callers UserService  # Who depends on it?
+claudemem --agent callees UserService  # What does it depend on?
 ```
 
 ### Phase 4: Identify Boundaries
 
 ```bash
 # Find interfaces (architectural contracts)
-claudemem --nologo map "interface abstract" --raw
-
+claudemem --agent map "interface abstract"
 # Check how implementations connect
-claudemem --nologo callers IUserRepository --raw
-```
+claudemem --agent callers IUserRepository```
 
 ### Phase 5: Cleanup Opportunities (v0.4.0+ Required)
 
 ```bash
 # Find dead code
-DEAD_CODE=$(claudemem --nologo dead-code --raw)
+DEAD_CODE=$(claudemem --agent dead-code)
 
 if [ -z "$DEAD_CODE" ]; then
   echo "No cleanup needed - codebase is well-maintained"
@@ -334,7 +314,7 @@ After EVERY claudemem command, validate results:
 After `map` commands, validate architectural symbols were found:
 
 ```bash
-RESULTS=$(claudemem --nologo map "service layer business logic" --raw)
+RESULTS=$(claudemem --agent map "service layer business logic")
 EXIT_CODE=$?
 
 # Check for failure
@@ -361,7 +341,7 @@ fi
 ### Symbol Validation
 
 ```bash
-SYMBOL=$(claudemem --nologo symbol ArchitecturalComponent --raw)
+SYMBOL=$(claudemem --agent symbol ArchitecturalComponent)
 
 if [ -z "$SYMBOL" ] || echo "$SYMBOL" | grep -qi "not found\|error"; then
   # Component doesn't exist or index issue
@@ -407,7 +387,7 @@ AskUserQuestion({
 
 | Anti-Pattern | Why Wrong | Correct Approach |
 |--------------|-----------|------------------|
-| `grep -r "class"` | No ranking, no structure | `claudemem --nologo map --raw` |
+| `grep -r "class"` | No ranking, no structure | `claudemem --agent map` |
 | Read all files | Token waste | Focus on high-PageRank symbols |
 | Skip `map` command | Miss architecture | ALWAYS start with `map` |
 | Ignore PageRank | Miss core abstractions | High PageRank = important |

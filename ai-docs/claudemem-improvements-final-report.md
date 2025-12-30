@@ -105,7 +105,7 @@ fi
 
 **Implementation:**
 ```bash
-RESULTS=$(claudemem --nologo [command] [args] --raw)
+RESULTS=$(claudemem --agent [command] [args])
 EXIT_CODE=$?
 
 # Check exit code
