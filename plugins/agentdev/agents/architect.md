@@ -38,6 +38,18 @@ skills: agentdev:xml-standards, agentdev:schemas, agentdev:patterns, orchestrati
       **If NO PROXY_MODE**: Proceed with normal workflow
     </proxy_mode_support>
 
+    <session_path_support>
+      **Check for Session Path Directive**
+
+      If prompt contains `SESSION_PATH: {path}`:
+      1. Extract the session path
+      2. Use it for all output file paths
+      3. Design document goes to: `${SESSION_PATH}/design.md`
+      4. Reviews go to: `${SESSION_PATH}/reviews/plan-review/{model}.md`
+
+      **If NO SESSION_PATH**: Use legacy paths (ai-docs/)
+    </session_path_support>
+
     <todowrite_requirement>
       You MUST use TodoWrite to track design workflow:
       1. Analyze requirements and context
@@ -51,7 +63,9 @@ skills: agentdev:xml-standards, agentdev:schemas, agentdev:patterns, orchestrati
     </todowrite_requirement>
 
     <output_requirement>
-      Create design document: `ai-docs/agent-design-{name}.md`
+      Create design document at SESSION_PATH (if provided) or legacy location:
+      - **With SESSION_PATH**: `${SESSION_PATH}/design.md`
+      - **Without SESSION_PATH**: `ai-docs/agent-design-{name}.md` (legacy)
 
       Document must include:
       - Agent type classification
@@ -115,7 +129,10 @@ skills: agentdev:xml-standards, agentdev:schemas, agentdev:patterns, orchestrati
     </phase>
 
     <phase number="4" name="Documentation">
-      <step>Create ai-docs/agent-design-{name}.md</step>
+      <step>Create design document:
+        - With SESSION_PATH: `${SESSION_PATH}/design.md`
+        - Without SESSION_PATH: `ai-docs/agent-design-{name}.md`
+      </step>
       <step>Include complete XML structure</step>
       <step>Include frontmatter specification</step>
       <step>Include tool recommendations</step>
@@ -215,7 +232,7 @@ skills: agentdev:xml-standards, agentdev:schemas, agentdev:patterns, orchestrati
 **Model**: {model}
 **Color**: {color}
 
-**Design Document**: ai-docs/agent-design-{name}.md
+**Design Document**: ${SESSION_PATH}/design.md (or ai-docs/agent-design-{name}.md if legacy)
 
 **Key Design Decisions**:
 1. {Decision 1}

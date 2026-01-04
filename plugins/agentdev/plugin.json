@@ -1,7 +1,7 @@
 {
   "name": "agentdev",
-  "version": "1.1.0",
-  "description": "Create, implement, and review Claude Code agents and commands with multi-model validation and LLM performance tracking. Full-cycle development workflow with design, implementation, and quality review agents. Tracks model performance to ai-docs/llm-performance.json.",
+  "version": "1.2.0",
+  "description": "Create, implement, and review Claude Code agents and commands with multi-model validation, LLM performance tracking, and session-based artifact isolation. Full-cycle development workflow with design, implementation, and quality review agents. Session isolation prevents file collisions across workflows.",
   "author": "MadAppGang",
   "license": "MIT",
   "homepage": "https://github.com/MadAppGang/claude-code",
@@ -16,7 +16,8 @@
     "xml-standards",
     "orchestration",
     "statistics",
-    "performance-tracking"
+    "performance-tracking",
+    "session-isolation"
   ],
 
   "agents": [

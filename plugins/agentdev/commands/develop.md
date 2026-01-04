@@ -51,12 +51,43 @@ skills: orchestration:multi-model-validation, orchestration:quality-gates, orche
 <orchestration>
   <phases>
     <phase number="0" name="Init">
-      <objective>Setup workflow and validate prerequisites</objective>
+      <objective>Setup workflow, validate prerequisites, and initialize session</objective>
       <steps>
         <step>Create TodoWrite with all phases</step>
         <step>Check Claudish: `npx claudish --version`</step>
         <step>If unavailable, notify user (will skip external reviews)</step>
+        <step>
+          **Session Initialization** (for artifact isolation):
+          ```bash
+          # Extract target name from user request for folder naming
+          AGENT_SLUG=$(echo "${TARGET_NAME:-agent}" | tr '[:upper:] ' '[:lower:]-' | sed 's/[^a-z0-9-]//g' | head -c20)
+          SESSION_BASE="agentdev-${AGENT_SLUG}-$(date +%Y%m%d-%H%M%S)-$(head -c4 /dev/urandom | xxd -p | head -c4)"
+          SESSION_PATH="ai-docs/sessions/${SESSION_BASE}"
+
+          # Create directory structure
+          mkdir -p "${SESSION_PATH}/reviews/plan-review" \
+                   "${SESSION_PATH}/reviews/impl-review" || {
+            echo "Warning: Cannot create session directory, using legacy mode"
+            SESSION_PATH="ai-docs"
+          }
+
+          # Create session metadata (if not legacy mode)
+          if [[ "$SESSION_PATH" != "ai-docs" ]]; then
+            cat > "${SESSION_PATH}/session-meta.json" << EOF
+          {
+            "session_id": "${SESSION_BASE}",
+            "type": "agentdev",
+            "target": "${USER_REQUEST}",
+            "started_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "status": "in_progress"
+          }
+          EOF
+          fi
+          ```
+          Store SESSION_PATH for all subsequent phases.
+        </step>
       </steps>
+      <quality_gate>Session initialized (SESSION_PATH set), Claudish checked</quality_gate>
     </phase>
 
     <phase number="1" name="Design">
@@ -64,11 +95,20 @@ skills: orchestration:multi-model-validation, orchestration:quality-gates, orche
       <steps>
         <step>Mark PHASE 1 in_progress</step>
         <step>Gather context (existing agents, patterns)</step>
-        <step>Launch `agentdev:architect` with user requirements</step>
-        <step>Verify design document created in ai-docs/</step>
+        <step>
+          Launch `agentdev:architect` with SESSION_PATH:
+          ```
+          SESSION_PATH: ${SESSION_PATH}
+
+          {user_requirements}
+
+          Save design to: ${SESSION_PATH}/design.md
+          ```
+        </step>
+        <step>Verify design document created at ${SESSION_PATH}/design.md</step>
         <step>Mark PHASE 1 completed</step>
       </steps>
-      <quality_gate>Design document exists with all sections</quality_gate>
+      <quality_gate>Design document exists at ${SESSION_PATH}/design.md</quality_gate>
     </phase>
 
     <phase number="1.5" name="Plan Review">
@@ -102,8 +142,9 @@ skills: orchestration:multi-model-validation, orchestration:quality-gates, orche
             description: "Grok plan review",
             run_in_background: true,
             prompt: `PROXY_MODE: x-ai/grok-code-fast-1
+SESSION_PATH: ${SESSION_PATH}
 
-Review the design plan at ai-docs/agent-design-{name}.md
+Review the design plan at ${SESSION_PATH}/design.md
 
 Evaluate:
 1. Design completeness
@@ -112,7 +153,7 @@ Evaluate:
 4. Proxy mode support
 5. Example quality
 
-Save findings to: ai-docs/plan-review-grok.md`
+Save findings to: ${SESSION_PATH}/reviews/plan-review/grok.md`
           })
           ```
 
@@ -137,7 +178,7 @@ Save findings to: ai-docs/plan-review-grok.md`
           ```
           See orchestration:multi-model-validation Pattern 7 for implementation.
         </step>
-        <step>Consolidate feedback → ai-docs/plan-review-consolidated.md</step>
+        <step>Consolidate feedback → ${SESSION_PATH}/reviews/plan-review/consolidated.md</step>
         <step>Mark PHASE 1.5 completed</step>
       </steps>
       <quality_gate>Reviews completed OR user skipped. Performance tracked to ai-docs/llm-performance.json.</quality_gate>
@@ -153,7 +194,15 @@ Save findings to: ai-docs/plan-review-grok.md`
           2. Proceed as-is
           3. Manual review
         </step>
-        <step>If revise: Launch `agentdev:architect` with consolidated feedback</step>
+        <step>
+          If revise: Launch `agentdev:architect` with consolidated feedback:
+          ```
+          SESSION_PATH: ${SESSION_PATH}
+
+          Revise design based on feedback in ${SESSION_PATH}/reviews/plan-review/consolidated.md
+          Update design at: ${SESSION_PATH}/design.md
+          ```
+        </step>
         <step>Mark PHASE 1.6 completed</step>
       </steps>
       <quality_gate>Plan revised OR user approved proceeding</quality_gate>
@@ -170,7 +219,15 @@ Save findings to: ai-docs/plan-review-grok.md`
           - plugins/{name}/agents/
           - plugins/{name}/commands/
         </step>
-        <step>Launch `agentdev:developer` with design plan and target path</step>
+        <step>
+          Launch `agentdev:developer` with SESSION_PATH:
+          ```
+          SESSION_PATH: ${SESSION_PATH}
+
+          Implement agent from design at: ${SESSION_PATH}/design.md
+          Target path: {target_path}
+          ```
+        </step>
         <step>Verify file created</step>
         <step>Mark PHASE 2 completed</step>
       </steps>
@@ -191,7 +248,13 @@ Save findings to: ai-docs/plan-review-grok.md`
           Display avg time, success rate, quality. Recommend top performers.
         </step>
         <step>
-          **Review 1: Local** - Launch `agentdev:reviewer`
+          **Review 1: Local** - Launch `agentdev:reviewer` with SESSION_PATH:
+          ```
+          SESSION_PATH: ${SESSION_PATH}
+
+          Review agent at {file_path}
+          Save to: ${SESSION_PATH}/reviews/impl-review/internal.md
+          ```
           Track: `LOCAL_START=$(date +%s)` before, calculate duration after.
         </step>
         <step>
@@ -199,9 +262,10 @@ Save findings to: ai-docs/plan-review-grok.md`
           For each model, launch `agentdev:reviewer` with:
           ```
           PROXY_MODE: {model_id}
+          SESSION_PATH: ${SESSION_PATH}
 
           Review agent at {file_path}
-          Save to: ai-docs/implementation-review-{model-sanitized}.md
+          Save to: ${SESSION_PATH}/reviews/impl-review/{model-sanitized}.md
           ```
         </step>
         <step>
@@ -216,7 +280,7 @@ Save findings to: ai-docs/plan-review-grok.md`
           record_session_stats $TOTAL_MODELS $SUCCESSFUL $FAILED $PARALLEL_TIME $SEQUENTIAL_TIME $SPEEDUP
           ```
         </step>
-        <step>Consolidate → ai-docs/implementation-review-consolidated.md</step>
+        <step>Consolidate → ${SESSION_PATH}/reviews/impl-review/consolidated.md</step>
         <step>
           **Approval Logic**:
           - PASS: 0 CRITICAL, <3 HIGH
@@ -238,7 +302,15 @@ Save findings to: ai-docs/plan-review-grok.md`
           2. Fix critical only
           3. Accept as-is
         </step>
-        <step>If fixing: Launch `agentdev:developer` with consolidated feedback</step>
+        <step>
+          If fixing: Launch `agentdev:developer` with consolidated feedback:
+          ```
+          SESSION_PATH: ${SESSION_PATH}
+
+          Fix issues from ${SESSION_PATH}/reviews/impl-review/consolidated.md
+          Target file: {agent_file_path}
+          ```
+        </step>
         <step>Optional: Re-review (max 2 iterations)</step>
         <step>Mark PHASE 4 completed</step>
       </steps>
@@ -249,7 +321,17 @@ Save findings to: ai-docs/plan-review-grok.md`
       <objective>Generate report with performance statistics and complete handoff</objective>
       <steps>
         <step>Mark PHASE 5 in_progress</step>
-        <step>Create ai-docs/agent-development-report-{name}.md</step>
+        <step>Create ${SESSION_PATH}/report.md</step>
+        <step>
+          Update session metadata:
+          ```bash
+          if [[ -f "${SESSION_PATH}/session-meta.json" ]]; then
+            jq '.status = "completed" | .completed_at = (now | strftime("%Y-%m-%dT%H:%M:%SZ"))' \
+              "${SESSION_PATH}/session-meta.json" > "${SESSION_PATH}/session-meta.json.tmp" && \
+            mv "${SESSION_PATH}/session-meta.json.tmp" "${SESSION_PATH}/session-meta.json"
+          fi
+          ```
+        </step>
         <step>Show git status</step>
         <step>
           **Display Model Performance Statistics** (from ai-docs/llm-performance.json):
@@ -363,6 +445,7 @@ Save findings to: ai-docs/plan-review-grok.md`
 **Agent**: {name}
 **Location**: {path}
 **Type**: {type}
+**Session**: ${SESSION_PATH}
 
 **Validation**:
 - Plan review: {count} models (parallel)
@@ -382,13 +465,18 @@ Save findings to: ai-docs/plan-review-grok.md`
 - Parallel Speedup: {speedup}x
 - Performance logged to: ai-docs/llm-performance.json
 
-**Report**: ai-docs/agent-development-report-{name}.md
+**Artifacts**:
+- Design: ${SESSION_PATH}/design.md
+- Plan Reviews: ${SESSION_PATH}/reviews/plan-review/
+- Impl Reviews: ${SESSION_PATH}/reviews/impl-review/
+- Report: ${SESSION_PATH}/report.md
 
 Ready to use!
   </final_message>
 </communication>
 
 <success_criteria>
+  - **Session initialized** (${SESSION_PATH} set)
   - Design plan created and approved
   - Multi-model plan review completed
   - Agent/command implemented

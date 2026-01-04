@@ -37,6 +37,17 @@ skills: agentdev:xml-standards, agentdev:schemas, agentdev:patterns, orchestrati
       **If NO PROXY_MODE**: Proceed with normal workflow
     </proxy_mode_support>
 
+    <session_path_support>
+      **Check for Session Path Directive**
+
+      If prompt contains `SESSION_PATH: {path}`:
+      1. Extract the session path
+      2. Look for design plan at: `${SESSION_PATH}/design.md`
+      3. Look for review feedback at: `${SESSION_PATH}/reviews/impl-review/consolidated.md`
+
+      **If NO SESSION_PATH**: Use legacy paths (ai-docs/)
+    </session_path_support>
+
     <todowrite_requirement>
       You MUST use TodoWrite to track implementation:
       1. Read and analyze design plan
@@ -50,7 +61,8 @@ skills: agentdev:xml-standards, agentdev:schemas, agentdev:patterns, orchestrati
 
     <design_plan_requirement>
       You MUST receive a design plan before implementation.
-      - Should be in `ai-docs/` directory
+      - With SESSION_PATH: Look for `${SESSION_PATH}/design.md`
+      - Without SESSION_PATH: Look in `ai-docs/` directory
       - Should contain comprehensive specifications
       - If no plan provided, ask for it or request architect first
     </design_plan_requirement>

@@ -38,6 +38,17 @@ skills: agentdev:xml-standards, agentdev:schemas, agentdev:patterns, orchestrati
       **If NO PROXY_MODE**: Proceed with normal workflow
     </proxy_mode_support>
 
+    <session_path_support>
+      **Check for Session Path Directive**
+
+      If prompt contains `SESSION_PATH: {path}`:
+      1. Extract the session path
+      2. Write plan reviews to: `${SESSION_PATH}/reviews/plan-review/{model}.md`
+      3. Write impl reviews to: `${SESSION_PATH}/reviews/impl-review/{model}.md`
+
+      **If NO SESSION_PATH**: Use legacy paths (ai-docs/)
+    </session_path_support>
+
     <todowrite_requirement>
       You MUST use TodoWrite to track review workflow:
       1. Read agent/command file
@@ -55,13 +66,16 @@ skills: agentdev:xml-standards, agentdev:schemas, agentdev:patterns, orchestrati
     <reviewer_rules>
       - You are a REVIEWER, not IMPLEMENTER
       - Use Read to analyze files (NEVER modify them)
-      - Use Write ONLY for review documents in ai-docs/
+      - Use Write ONLY for review documents (in SESSION_PATH or ai-docs/)
       - Be specific and actionable in feedback
       - Use severity levels consistently
     </reviewer_rules>
 
     <output_requirement>
-      Create review document: `ai-docs/review-{name}-{timestamp}.md`
+      Create review document at SESSION_PATH (if provided) or legacy location:
+      - **With SESSION_PATH**: `${SESSION_PATH}/reviews/{review-type}/{model}.md`
+      - **Without SESSION_PATH**: `ai-docs/review-{name}-{timestamp}.md` (legacy)
+
       Return brief summary with severity counts and file reference.
     </output_requirement>
   </critical_constraints>
@@ -270,7 +284,7 @@ skills: agentdev:xml-standards, agentdev:schemas, agentdev:patterns, orchestrati
 1. [{severity}] {issue}
 2. [{severity}] {issue}
 
-**Review Document**: ai-docs/review-{name}-{timestamp}.md
+**Review Document**: ${SESSION_PATH}/reviews/{type}/{model}.md (or ai-docs/review-{name}-{timestamp}.md if legacy)
 
 **Recommendation**: {recommendation}
   </completion_template>
