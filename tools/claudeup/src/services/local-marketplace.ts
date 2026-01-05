@@ -141,6 +141,9 @@ export async function scanLocalMarketplaces(): Promise<Map<string, LocalMarketpl
         const gitRepo = getGitRemote(marketplacePath);
 
         const plugins: LocalMarketplacePlugin[] = [];
+        const validManifestPlugins: typeof manifest.plugins = [];
+        let manifestModified = false;
+
         if (manifest.plugins && Array.isArray(manifest.plugins)) {
           for (const plugin of manifest.plugins) {
             // Try to scan plugin directory for component counts
@@ -151,6 +154,13 @@ export async function scanLocalMarketplaces(): Promise<Map<string, LocalMarketpl
 
             if (plugin.source) {
               const pluginPath = path.join(marketplacePath, plugin.source.replace('./', ''));
+
+              // Remove plugins whose source directory doesn't exist
+              if (!(await fs.pathExists(pluginPath))) {
+                manifestModified = true;
+                continue;
+              }
+
               try {
                 // Scan for agents
                 const agentsDir = path.join(pluginPath, 'agents');
@@ -181,6 +191,7 @@ export async function scanLocalMarketplaces(): Promise<Map<string, LocalMarketpl
               }
             }
 
+            validManifestPlugins.push(plugin);
             plugins.push({
               name: plugin.name,
               version: plugin.version || '0.0.0',
@@ -196,6 +207,12 @@ export async function scanLocalMarketplaces(): Promise<Map<string, LocalMarketpl
               mcpServers,
             });
           }
+        }
+
+        // Update marketplace.json if we removed invalid plugins
+        if (manifestModified) {
+          manifest.plugins = validManifestPlugins;
+          await fs.writeJson(manifestPath, manifest, { spaces: 2 });
         }
 
         marketplaces.set(entry.name, {
