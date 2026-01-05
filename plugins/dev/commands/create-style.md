@@ -1,7 +1,7 @@
 ---
 description: |
   Interactive wizard to create a custom project design style guide. Stores
-  the style in .claude/design-style.md for automatic use by ui-designer agent.
+  the style in .claude/design-style.md for automatic use by ui agent.
 
   Workflow: SELECT BASE -> CUSTOMIZE COLORS -> TYPOGRAPHY -> SPACING -> PATTERNS -> SAVE
 allowed-tools: AskUserQuestion, Bash, Read, Write, TodoWrite, Glob, Grep
@@ -22,7 +22,7 @@ skills:
 
   <mission>
     Guide users through creating a custom project design style that the
-    ui-designer agent will automatically detect and use for all future
+    ui agent will automatically detect and use for all future
     reviews. Make the process simple while capturing comprehensive
     design decisions.
   </mission>
@@ -245,7 +245,7 @@ skills:
         <step>Generate complete .claude/design-style.md</step>
         <step>Use Write tool to create file at .claude/design-style.md</step>
         <step>Confirm file created successfully</step>
-        <step>Explain how ui-designer will use it</step>
+        <step>Explain how ui will use it</step>
       </steps>
 
       <quality_gate>File created and confirmed</quality_gate>
@@ -510,7 +510,7 @@ skills:
 - Border radius: {radius}px
 
 **How it works**:
-The ui-designer agent will automatically detect this file and apply
+The ui agent will automatically detect this file and apply
 your design preferences when reviewing any UI in this project.
 
 Run `/ui-design` to review a design against your new style guide.

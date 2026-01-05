@@ -37,7 +37,7 @@ skills: orchestration:ui-design-review, orchestration:multi-model-validation
       You are an ORCHESTRATOR, not an IMPLEMENTER or REVIEWER.
 
       **You MUST:**
-      - Use Task tool to delegate ALL design reviews to ui-designer agent
+      - Use Task tool to delegate ALL design reviews to ui agent
       - Use Bash to check API keys and run Claudish
       - Use Read/Glob to find design references
       - Use TodoWrite to track workflow progress
@@ -46,7 +46,7 @@ skills: orchestration:ui-design-review, orchestration:multi-model-validation
       **You MUST NOT:**
       - Write or edit ANY files directly
       - Perform design reviews yourself
-      - Write review files yourself (delegate to ui-designer)
+      - Write review files yourself (delegate to ui)
     </orchestrator_role>
 
     <todowrite_requirement>
@@ -112,7 +112,7 @@ skills: orchestration:ui-design-review, orchestration:multi-model-validation
   </session_management>
 
   <allowed_tools>
-    - Task (delegate to ui-designer agent)
+    - Task (delegate to ui agent)
     - Bash (API key checks, Claudish commands)
     - Read (read design files, documentation)
     - Glob (find design references)
@@ -275,12 +275,12 @@ skills: orchestration:ui-design-review, orchestration:multi-model-validation
     </phase>
 
     <phase number="4" name="Execute Analysis">
-      <objective>Run design analysis through ui-designer agent</objective>
+      <objective>Run design analysis through ui agent</objective>
 
       <steps>
         <step>Construct task prompt based on configuration:
           ```
-          Task: ui-designer
+          Task: ui
 
           SESSION_PATH: ${SESSION_PATH}
 
@@ -296,7 +296,7 @@ skills: orchestration:ui-design-review, orchestration:multi-model-validation
           ```
         </step>
 
-        <step>Launch ui-designer agent with Task tool</step>
+        <step>Launch ui agent with Task tool</step>
 
         <step>Wait for completion and capture summary</step>
 
@@ -395,7 +395,7 @@ skills: orchestration:ui-design-review, orchestration:multi-model-validation
       **PHASE 1**: User provides screenshots/dashboard.png
       **PHASE 2**: GEMINI_API_KEY found, use g/gemini-3-pro-preview
       **PHASE 3**: User selects "Quick usability check"
-      **PHASE 4**: Launch ui-designer agent
+      **PHASE 4**: Launch ui agent
       **PHASE 5**: Present top 3 issues, link to full report
     </execution>
   </example>
@@ -407,7 +407,7 @@ skills: orchestration:ui-design-review, orchestration:multi-model-validation
       **PHASE 1**: User provides forms/login.png
       **PHASE 2**: OPENROUTER_API_KEY found, use or/google/gemini-3-pro-preview
       **PHASE 3**: Auto-select "Accessibility audit" from request
-      **PHASE 4**: Launch ui-designer with WCAG focus
+      **PHASE 4**: Launch ui with WCAG focus
       **PHASE 5**: Present WCAG compliance summary with pass/fail
     </execution>
   </example>

@@ -11,7 +11,7 @@ description: |
 
 ## Overview
 
-This skill provides predefined design system references that the ui-designer agent can use when reviewing designs. Each reference includes design principles, color guidelines, typography rules, spacing patterns, and component patterns.
+This skill provides predefined design system references that the ui agent can use when reviewing designs. Each reference includes design principles, color guidelines, typography rules, spacing patterns, and component patterns.
 
 ## Available Design Systems
 
@@ -391,7 +391,7 @@ This skill provides predefined design system references that the ui-designer age
 
 ### Selecting a Design Reference
 
-The ui-designer agent will check for style in this order:
+The ui agent will check for style in this order:
 
 1. **Project Style** (`.claude/design-style.md`) - Highest priority
 2. **Predefined Reference** (via `Design Reference:` directive or user selection)
@@ -401,7 +401,7 @@ The ui-designer agent will check for style in this order:
 ### Review with Specific Reference
 
 ```
-Task: ui-designer
+Task: ui
 
 Review this dashboard screenshot against Material Design 3 guidelines.
 
@@ -415,7 +415,7 @@ Write review to: ${SESSION_PATH}/reviews/design-review/gemini.md
 ### Combining Project Style + Reference
 
 ```
-Task: ui-designer
+Task: ui
 
 Review using:
 - Project Style: .claude/design-style.md (brand colors, custom tokens)

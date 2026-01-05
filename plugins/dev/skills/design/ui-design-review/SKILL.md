@@ -259,10 +259,10 @@ Deep analysis including:
 
 ## Integration with Multi-Model Validation
 
-The ui-designer agent supports PROXY_MODE for multi-model design reviews:
+The ui agent supports PROXY_MODE for multi-model design reviews:
 
 ```
-Task: ui-designer PROXY_MODE: or/google/gemini-3-pro-preview
+Task: ui PROXY_MODE: or/google/gemini-3-pro-preview
 
 Review the dashboard screenshot at screenshots/dashboard.png
 
