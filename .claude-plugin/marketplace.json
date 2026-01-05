@@ -207,6 +207,31 @@
 				"google-ai"
 			],
 			"strict": true
+		},
+		{
+			"name": "conductor",
+			"source": "./plugins/conductor",
+			"description": "Context-Driven Development workflow inspired by Gemini Conductor. Full-featured implementation with TDD workflow (Red/Green/Refactor), Phase Completion Protocol with verification reports, Git Notes audit trail, comprehensive styleguides (general, TypeScript, JavaScript, HTML/CSS), emergency procedures, and deployment workflow. Features: setup, new-track, implement, status, revert, help skills.",
+			"version": "1.1.0",
+			"author": {
+				"name": "Jack Rudenko",
+				"email": "i@madappgang.com",
+				"company": "MadAppGang"
+			},
+			"category": "workflow",
+			"keywords": [
+				"conductor",
+				"workflow",
+				"context-driven",
+				"tdd",
+				"planning",
+				"task-tracking",
+				"git-aware",
+				"project-management",
+				"phase-protocol",
+				"gemini-conductor"
+			],
+			"strict": true
 		}
 	]
 }
