@@ -1,8 +1,6 @@
 ---
 name: data-extraction-patterns
-description: |
-  Common patterns for extracting and combining analytics data from GA4 and GSC.
-  Includes API patterns, rate limiting, caching, and error handling.
+description: Common patterns for extracting analytics data from GA4 and GSC with API handling
 ---
 
 # Data Extraction Patterns

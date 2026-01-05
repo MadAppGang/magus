@@ -1,8 +1,5 @@
 ---
-description: |
-  Content performance analysis combining GA4 and GSC data.
-  Workflow: SESSION INIT -> PARALLEL DATA FETCH -> CORRELATE -> ANALYZE -> RECOMMEND
-  Provides data-driven content optimization recommendations with multi-source insights.
+description: Content performance analysis combining GA4 and GSC data for optimization recommendations
 allowed-tools: Task, AskUserQuestion, Bash, Read, Write, TodoWrite, WebFetch
 skills: seo:analytics-interpretation, seo:performance-correlation, seo:data-extraction-patterns, orchestration:multi-agent-coordination
 ---

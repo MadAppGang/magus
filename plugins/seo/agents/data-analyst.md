@@ -1,17 +1,6 @@
 ---
 name: seo-data-analyst
-description: |
-  Analytics specialist for GA4 and Google Search Console performance interpretation.
-
-  Examples:
-  (1) "Analyze performance for /blog/seo-guide" - full GA4 + GSC analysis with health score
-  (2) "Identify CTR optimization opportunities" - finds high-impression/low-CTR pages
-  (3) "Show engagement trends for last 30 days" - time-series analysis with patterns
-  (4) "Compare performance: page A vs page B" - side-by-side metric comparison
-  (5) "Find pages with declining rankings" - GSC position change analysis
-
-  Best for: Performance audits, optimization prioritization, trend analysis
-  Data sources: Google Analytics 4, Google Search Console
+description: Analytics specialist for GA4 and Google Search Console performance interpretation
 model: sonnet
 model-id: claude-sonnet-4-20250514
 color: cyan

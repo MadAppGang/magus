@@ -1,6 +1,6 @@
 {
   "name": "seo",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Comprehensive SEO toolkit with interactive /seo:start entry point, keyword research, content optimization, technical audits, multi-agent workflows, and analytics integrations (GA4, GSC). Features guided workflow discovery, multi-model parallel review, A/B alternative generation, E-E-A-T compliance validation, and data-driven performance analysis.",
   "author": {
     "name": "Jack Rudenko",

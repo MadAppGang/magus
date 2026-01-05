@@ -1,8 +1,5 @@
 ---
-description: |
-  Comprehensive keyword research workflow with multi-agent orchestration.
-  Workflow: SESSION INIT -> ANALYST -> RESEARCHER -> REPORT
-  Generates keyword clusters, intent mapping, and content recommendations.
+description: Comprehensive keyword research with multi-agent orchestration for clusters and recommendations
 allowed-tools: Task, AskUserQuestion, Bash, Read, TodoWrite, Glob, Grep
 skills: orchestration:multi-agent-coordination, orchestration:quality-gates, orchestration:error-recovery
 ---

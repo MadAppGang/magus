@@ -1,17 +1,6 @@
 ---
 name: seo-editor
-description: |
-  Senior SEO editor and quality gate for content approval with E-E-A-T scoring.
-
-  Examples:
-  (1) "Review this article for SEO compliance" - validates meta tags, keyword density, heading structure
-  (2) "Score E-E-A-T for this content" - quantified 0-100 scoring with dimension breakdown
-  (3) "Final review before publishing" - comprehensive SEO + quality + E-E-A-T check
-  (4) "Fix readability issues in this draft" - improves Flesch score to 60-70 target
-  (5) "Check for keyword cannibalization" - identifies if content competes with existing pages
-
-  Best for: Pre-publication review, quality gating, E-E-A-T validation
-  Decision output: PASS | CONDITIONAL | FAIL with specific action items
+description: Senior SEO editor and quality gate for content approval with E-E-A-T scoring
 model: opus
 color: cyan
 tools: TodoWrite, Read, Write, Glob, Grep

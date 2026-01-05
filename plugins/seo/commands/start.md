@@ -1,8 +1,5 @@
 ---
-description: |
-  Interactive SEO workflow entry point.
-  Understands user goals and routes to appropriate commands or agents.
-  Workflow: GOAL DISCOVERY -> ROUTING -> EXECUTION -> FOLLOW-UP
+description: Interactive SEO workflow entry point that routes to appropriate commands or agents
 allowed-tools: Task, AskUserQuestion, Bash, Read, TodoWrite
 skills: orchestration:todowrite-orchestration
 ---

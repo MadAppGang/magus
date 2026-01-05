@@ -1,8 +1,5 @@
 ---
-description: |
-  Generate comprehensive content brief from keyword.
-  Workflow: SESSION INIT -> RESEARCH -> ANALYZE -> COMPILE -> REVIEW
-  Creates actionable brief for content writers.
+description: Generate comprehensive content brief from keyword with multi-agent orchestration
 allowed-tools: Task, AskUserQuestion, Bash, Read, Write, TodoWrite, Glob, Grep
 skills: orchestration:multi-agent-coordination, seo:content-brief
 ---

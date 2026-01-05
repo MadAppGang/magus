@@ -1,16 +1,6 @@
 ---
 name: seo-analyst
-description: |
-  SERP analysis expert for search intent, competitive intelligence, and ranking opportunities.
-
-  Examples:
-  (1) "Analyze SERP for 'best project management tools'" - extracts intent, features, competitor patterns
-  (2) "What's the search intent for 'how to improve SEO'" - classifies as informational/commercial/transactional
-  (3) "Find featured snippet opportunities for 'email marketing'" - identifies snippet format and gaps
-  (4) "Competitive analysis for 'CRM software'" - maps competitor content strategies and differentiators
-  (5) "Analyze People Also Ask for 'content marketing'" - extracts related questions for content planning
-
-  Best for: Pre-content research, competitive positioning, SERP feature targeting
+description: SERP analysis expert for search intent, competitive intelligence, and ranking opportunities
 model: sonnet
 color: purple
 tools: TodoWrite, Read, Write, Bash, WebSearch, WebFetch, Glob, Grep

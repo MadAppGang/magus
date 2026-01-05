@@ -1,9 +1,5 @@
 ---
-description: |
-  Optimize existing content for target keywords.
-  Workflow: SESSION INIT -> ANALYZE -> RECOMMEND -> APPLY -> VERIFY
-  Improves keyword density, meta tags, headings, and readability.
-  Supports optional multi-model validation for critical content.
+description: Optimize existing content for SEO with keyword density, meta tags, headings, and optional multi-model validation
 allowed-tools: Task, AskUserQuestion, Bash, Read, Write, TodoWrite, Glob, Grep
 skills: orchestration:quality-gates, orchestration:multi-model-validation, seo:content-optimizer
 ---

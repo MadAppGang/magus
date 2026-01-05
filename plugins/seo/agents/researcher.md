@@ -1,16 +1,6 @@
 ---
 name: seo-researcher
-description: |
-  Keyword research specialist for expansion, clustering, and content gap analysis.
-
-  Examples:
-  (1) "Expand 'content marketing' to 50+ keywords" - generates related terms with intent classification
-  (2) "Find content gaps in our SEO blog" - compares existing content to keyword universe
-  (3) "Cluster keywords for 'project management'" - groups 100 keywords into 8-12 topic clusters
-  (4) "Map keywords to funnel stages" - assigns awareness/consideration/decision stages
-  (5) "Research statistics for 'remote work trends'" - gathers data points for content support
-
-  Best for: Content strategy planning, topic modeling, keyword universe building
+description: Keyword research specialist for expansion, clustering, and content gap analysis
 model: sonnet
 color: blue
 tools: TodoWrite, Read, Write, WebSearch, WebFetch, Glob, Grep

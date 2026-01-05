@@ -1,8 +1,6 @@
 ---
 name: performance-correlation
-description: |
-  Correlate content attributes with performance metrics across GA4 and GSC.
-  Identify what drives performance and build optimization hypotheses.
+description: Correlate content attributes with GA4 and GSC metrics to identify performance drivers
 ---
 
 # Performance Correlation

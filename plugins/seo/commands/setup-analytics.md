@@ -1,9 +1,5 @@
 ---
-description: |
-  Interactive setup wizard for SEO analytics integrations.
-  Configures Google Analytics 4 and Google Search Console.
-  Supports claudeup for easy MCP server installation.
-  Validates credentials and tests API connections before saving.
+description: Interactive setup wizard for GA4 and Google Search Console integrations
 allowed-tools: Bash, AskUserQuestion, Read, Write
 ---
 

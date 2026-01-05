@@ -1,17 +1,6 @@
 ---
 name: seo-writer
-description: |
-  SEO content writer that creates optimized articles from briefs with E-E-A-T focus.
-
-  Examples:
-  (1) "Write a 2000-word article for 'content marketing for startups'" - creates full article from brief
-  (2) "Generate meta tags for our SEO guide" - creates title (60 chars), description (160 chars), slug
-  (3) "Expand this outline to full content" - develops each H2/H3 into complete sections
-  (4) "Optimize introduction for featured snippet" - rewrites first 100 words for snippet targeting
-  (5) "Add internal links to this article" - weaves 3-5 contextual links to related content
-
-  Best for: Content creation, meta tag optimization, featured snippet targeting
-  Requires: Content brief (from /brief command or seo-researcher)
+description: SEO content writer that creates optimized articles from briefs with E-E-A-T focus
 model: sonnet
 color: green
 tools: TodoWrite, Read, Write, Glob, Grep
