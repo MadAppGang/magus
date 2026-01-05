@@ -12,7 +12,7 @@
 | Plugin | Version | Purpose |
 |--------|---------|---------|
 | **Frontend** | v3.13.0 | React/TypeScript dev with 11 agents, multi-model review |
-| **Code Analysis** | v2.11.0 | Codebase investigation with claudemem, multi-backend routing docs |
+| **Code Analysis** | v2.12.0 | Codebase investigation with claudemem, anti-pattern warnings |
 | **Bun Backend** | v1.5.2 | TypeScript backend with Bun, Apidog integration |
 | **Orchestration** | v0.8.0 | Multi-agent coordination patterns (6 skills) |
 | **Agent Development** | v1.3.0 | Create Claude Code agents, PROXY_MODE error handling |
@@ -195,7 +195,7 @@ CODEX_API_KEY=your-codex-key
 **Current Versions:**
 - Orchestration Plugin: **v0.8.0** (2026-01-05)
 - Frontend Plugin: **v3.13.0** (2025-12-14)
-- Code Analysis Plugin: **v2.11.0** (2026-01-05)
+- Code Analysis Plugin: **v2.12.0** (2026-01-05)
 - Bun Backend Plugin: **v1.5.2** (2025-11-26)
 - Agent Development Plugin: **v1.3.0** (2026-01-05)
 - SEO Plugin: **v1.4.0** (2026-01-05)
@@ -203,18 +203,17 @@ CODEX_API_KEY=your-codex-key
 - Nanobanana Plugin: **v2.2.1** (2026-01-05)
 - Claudish CLI: See https://github.com/MadAppGang/claudish (separate repository)
 
-**Latest Changes (Multi-Backend Routing Docs v2.11.0/v0.8.0/v1.3.0):**
-- ✅ **Multi-Backend Routing**: Claudish routes to OpenRouter, Gemini Direct, OpenAI Direct, Ollama
-- ✅ **Prefix Collision Warnings**: google/, openai/ prefixes route to direct APIs, not OpenRouter
-- ✅ **Safe Model IDs**: x-ai/, anthropic/, deepseek/, minimax/, qwen/ don't collide
-- ✅ **No Silent Fallback**: Agentdev agents report PROXY_MODE failures, never substitute models
-- ✅ **or/ Prefix Fix**: Use `or/google/gemini-*` for OpenRouter routing
+**Latest Changes (Code Analysis v2.12.0):**
+- ✅ **Anti-Pattern Warnings**: Prevent claudemem output truncation (head/tail/awk/sed)
+- ✅ **Built-in Alternatives**: Document --tokens, --page-size, --page, -n, --max-depth
+- ✅ **7 Files Updated**: All detective skills and codebase-detective agent
+- ✅ **Multi-Model Validated**: 9 external models reviewed implementation
 
 **Git Tags:**
 - Orchestration: `plugins/orchestration/v0.8.0`
 - Frontend: `plugins/frontend/v3.13.0`
 - Bun: `plugins/bun/v1.5.2`
-- Code Analysis: `plugins/code-analysis/v2.11.0`
+- Code Analysis: `plugins/code-analysis/v2.12.0`
 - Agent Development: `plugins/agentdev/v1.3.0`
 - SEO: `plugins/seo/v1.4.0`
 - Video Editing: `plugins/video-editing/v1.0.0`
