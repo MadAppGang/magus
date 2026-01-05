@@ -193,12 +193,12 @@ CODEX_API_KEY=your-codex-key
 **Detailed Release Notes:** See [RELEASES.md](./RELEASES.md) for comprehensive release documentation
 
 **Current Versions:**
-- Orchestration Plugin: **v0.6.0** (2025-12-14)
+- Orchestration Plugin: **v0.7.0** (2026-01-05)
 - Frontend Plugin: **v3.13.0** (2025-12-14)
 - Code Analysis Plugin: **v2.10.0** (2025-12-30)
 - Bun Backend Plugin: **v1.5.2** (2025-11-26)
-- Agent Development Plugin: **v1.1.0** (2025-12-09)
-- SEO Plugin: **v1.2.2** (2025-12-20)
+- Agent Development Plugin: **v1.2.0** (2026-01-05)
+- SEO Plugin: **v1.3.0** (2026-01-05)
 - Video Editing Plugin: **v1.0.0** (2025-12-29)
 - Nanobanana Plugin: **v2.2.1** (2026-01-05)
 - Claudish CLI: See https://github.com/MadAppGang/claudish (separate repository)
@@ -211,12 +211,12 @@ CODEX_API_KEY=your-codex-key
 - ✅ **Hooks Updated**: TypeScript handler and bash scripts use --agent
 
 **Git Tags:**
-- Orchestration: `plugins/orchestration/v0.6.0`
+- Orchestration: `plugins/orchestration/v0.7.0`
 - Frontend: `plugins/frontend/v3.13.0`
 - Bun: `plugins/bun/v1.5.2`
 - Code Analysis: `plugins/code-analysis/v2.10.0`
-- Agent Development: `plugins/agentdev/v1.1.0`
-- SEO: `plugins/seo/v1.2.2`
+- Agent Development: `plugins/agentdev/v1.2.0`
+- SEO: `plugins/seo/v1.3.0`
 - Video Editing: `plugins/video-editing/v1.0.0`
 - Nanobanana: `plugins/nanobanana/v2.2.1`
 - Use correct tag format when releasing: `plugins/{plugin-name}/vX.Y.Z`
@@ -232,6 +232,6 @@ Missing any of these will cause claudeup to not see the update!
 ---
 
 **Maintained by:** Jack Rudenko @ MadAppGang
-**Last Updated:** January 4, 2026
-**Version:** 8 plugins (Orchestration v0.6.0, Frontend v3.13.0, Code Analysis v2.10.0, Bun Backend v1.5.2, Agent Development v1.1.0, SEO v1.2.2, Video Editing v1.0.0, Nanobanana v2.2.1)
+**Last Updated:** January 5, 2026
+**Version:** 8 plugins (Orchestration v0.7.0, Frontend v3.13.0, Code Analysis v2.10.0, Bun Backend v1.5.2, Agent Development v1.2.0, SEO v1.3.0, Video Editing v1.0.0, Nanobanana v2.2.1)
 - do not use hardcoded path in code, docs, comments or any other files
