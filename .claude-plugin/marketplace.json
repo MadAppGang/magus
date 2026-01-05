@@ -232,6 +232,36 @@
 				"gemini-conductor"
 			],
 			"strict": true
+		},
+		{
+			"name": "dev",
+			"source": "./plugins/dev",
+			"description": "Universal development assistant with context-aware skill auto-loading. Adapts to any technology stack (React, Go, Bun, Python, Rust, Vue) by detecting project type and loading appropriate framework-specific skills. Features UI design review with Gemini multimodal analysis, 5 predefined design systems, /create-style wizard, and multi-model validation support.",
+			"version": "1.2.0",
+			"author": {
+				"name": "Jack Rudenko",
+				"email": "i@madappgang.com",
+				"company": "MadAppGang"
+			},
+			"category": "development",
+			"keywords": [
+				"development",
+				"universal",
+				"language-agnostic",
+				"auto-detection",
+				"multi-stack",
+				"react",
+				"typescript",
+				"golang",
+				"bun",
+				"python",
+				"rust",
+				"ui-design",
+				"design-review",
+				"gemini",
+				"multimodal"
+			],
+			"strict": true
 		}
 	]
 }
