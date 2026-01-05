@@ -229,6 +229,21 @@ When releasing a plugin, you MUST update ALL THREE of these:
 
 Missing any of these will cause claudeup to not see the update!
 
+**⚠️ CLAUDEUP RELEASE PROCESS:**
+Claudeup (the TUI tool) has its own release process:
+1. **Update version** - `tools/claudeup/package.json` → `"version": "X.Y.Z"`
+2. **Commit changes** - `git commit -m "feat(claudeup): vX.Y.Z - Description"`
+3. **Create tag** - `git tag -a tools/claudeup/vX.Y.Z -m "Release message"`
+4. **Push** - `git push origin main --tags`
+
+The workflow `.github/workflows/claudeup-release.yml` triggers on `tools/claudeup/v*` tags and:
+- Builds with pnpm
+- Publishes to npm via OIDC (no tokens needed - Trusted Publisher configured)
+- Creates GitHub release
+
+**Current claudeup version:** v1.3.0
+**Install:** `bun install -g claudeup@latest`
+
 ---
 
 **Maintained by:** Jack Rudenko @ MadAppGang
