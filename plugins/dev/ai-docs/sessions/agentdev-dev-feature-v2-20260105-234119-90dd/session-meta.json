@@ -1,0 +1,21 @@
+{
+  "session_id": "agentdev-dev-feature-v2-20260105-234119-90dd",
+  "type": "agentdev",
+  "target": "Enhanced /dev:feature command v2.0",
+  "started_at": "2026-01-05T12:41:19Z",
+  "completed_at": "2026-01-06T00:35:00Z",
+  "status": "complete",
+  "deliverables": [
+    "plugins/dev/commands/feature.md",
+    "plugins/dev/agents/test-architect.md"
+  ],
+  "review_models": [
+    "internal",
+    "minimax/minimax-m2.1",
+    "qwen/qwen3-vl-235b-a22b-thinking",
+    "openai/gpt-5.2",
+    "moonshotai/kimi-k2-thinking",
+    "google/gemini-3-pro-preview",
+    "z-ai/glm-4.7"
+  ]
+}

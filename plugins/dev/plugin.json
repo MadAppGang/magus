@@ -52,7 +52,7 @@
     "./commands/debug.md",
     "./commands/feature.md",
     "./commands/architect.md",
-    "./commands/ui-design.md",
+    "./commands/ui.md",
     "./commands/create-style.md",
     "./commands/interview.md"
   ],
