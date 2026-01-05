@@ -12,11 +12,11 @@
 | Plugin | Version | Purpose |
 |--------|---------|---------|
 | **Frontend** | v3.13.0 | React/TypeScript dev with 11 agents, multi-model review |
-| **Code Analysis** | v2.10.0 | Codebase investigation with claudemem, unified --agent flag |
+| **Code Analysis** | v2.11.0 | Codebase investigation with claudemem, multi-backend routing docs |
 | **Bun Backend** | v1.5.2 | TypeScript backend with Bun, Apidog integration |
-| **Orchestration** | v0.6.0 | Multi-agent coordination patterns (5 skills) |
-| **Agent Development** | v1.1.0 | Create Claude Code agents |
-| **SEO** | v1.2.2 | SEO analysis and optimization |
+| **Orchestration** | v0.8.0 | Multi-agent coordination patterns (6 skills) |
+| **Agent Development** | v1.3.0 | Create Claude Code agents, PROXY_MODE error handling |
+| **SEO** | v1.4.0 | SEO analysis and optimization |
 | **Video Editing** | v1.0.0 | FFmpeg, Whisper, Final Cut Pro integration |
 | **Nanobanana** | v2.2.1 | AI image generation with Gemini 3 Pro Image |
 
@@ -193,29 +193,29 @@ CODEX_API_KEY=your-codex-key
 **Detailed Release Notes:** See [RELEASES.md](./RELEASES.md) for comprehensive release documentation
 
 **Current Versions:**
-- Orchestration Plugin: **v0.7.0** (2026-01-05)
+- Orchestration Plugin: **v0.8.0** (2026-01-05)
 - Frontend Plugin: **v3.13.0** (2025-12-14)
-- Code Analysis Plugin: **v2.10.0** (2025-12-30)
+- Code Analysis Plugin: **v2.11.0** (2026-01-05)
 - Bun Backend Plugin: **v1.5.2** (2025-11-26)
-- Agent Development Plugin: **v1.2.0** (2026-01-05)
+- Agent Development Plugin: **v1.3.0** (2026-01-05)
 - SEO Plugin: **v1.4.0** (2026-01-05)
 - Video Editing Plugin: **v1.0.0** (2025-12-29)
 - Nanobanana Plugin: **v2.2.1** (2026-01-05)
 - Claudish CLI: See https://github.com/MadAppGang/claudish (separate repository)
 
-**Latest Changes (Code Analysis v2.10.0 - Unified --agent Flag):**
-- ✅ **Unified --agent Flag**: Replaces `--nologo --raw --plain` with single flag
-- ✅ **Auto-detection**: Enabled in CI environments (CLAUDE_CODE_ENTRYPOINT, CI=true, NO_COLOR)
-- ✅ **Clean Output**: No ASCII logo, compact file:line format, no emojis/ANSI
-- ✅ **All Skills Updated**: 7 detective skills migrated to new flag pattern
-- ✅ **Hooks Updated**: TypeScript handler and bash scripts use --agent
+**Latest Changes (Multi-Backend Routing Docs v2.11.0/v0.8.0/v1.3.0):**
+- ✅ **Multi-Backend Routing**: Claudish routes to OpenRouter, Gemini Direct, OpenAI Direct, Ollama
+- ✅ **Prefix Collision Warnings**: google/, openai/ prefixes route to direct APIs, not OpenRouter
+- ✅ **Safe Model IDs**: x-ai/, anthropic/, deepseek/, minimax/, qwen/ don't collide
+- ✅ **No Silent Fallback**: Agentdev agents report PROXY_MODE failures, never substitute models
+- ✅ **or/ Prefix Fix**: Use `or/google/gemini-*` for OpenRouter routing
 
 **Git Tags:**
-- Orchestration: `plugins/orchestration/v0.7.0`
+- Orchestration: `plugins/orchestration/v0.8.0`
 - Frontend: `plugins/frontend/v3.13.0`
 - Bun: `plugins/bun/v1.5.2`
-- Code Analysis: `plugins/code-analysis/v2.10.0`
-- Agent Development: `plugins/agentdev/v1.2.0`
+- Code Analysis: `plugins/code-analysis/v2.11.0`
+- Agent Development: `plugins/agentdev/v1.3.0`
 - SEO: `plugins/seo/v1.4.0`
 - Video Editing: `plugins/video-editing/v1.0.0`
 - Nanobanana: `plugins/nanobanana/v2.2.1`
@@ -248,5 +248,5 @@ The workflow `.github/workflows/claudeup-release.yml` triggers on `tools/claudeu
 
 **Maintained by:** Jack Rudenko @ MadAppGang
 **Last Updated:** January 5, 2026
-**Version:** 8 plugins (Orchestration v0.7.0, Frontend v3.13.0, Code Analysis v2.10.0, Bun Backend v1.5.2, Agent Development v1.2.0, SEO v1.4.0, Video Editing v1.0.0, Nanobanana v2.2.1)
+**Version:** 8 plugins (Orchestration v0.8.0, Frontend v3.13.0, Code Analysis v2.11.0, Bun Backend v1.5.2, Agent Development v1.3.0, SEO v1.4.0, Video Editing v1.0.0, Nanobanana v2.2.1)
 - do not use hardcoded path in code, docs, comments or any other files
