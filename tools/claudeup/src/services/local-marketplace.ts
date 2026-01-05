@@ -260,13 +260,78 @@ export interface RefreshResult {
 }
 
 /**
+ * Get the GitHub repo for a marketplace from known_marketplaces.json or defaults
+ */
+async function getMarketplaceRepo(name: string): Promise<string | undefined> {
+  // Check known_marketplaces.json first
+  const known = await readKnownMarketplaces();
+  if (known[name]?.source?.repo) {
+    return known[name].source.repo;
+  }
+
+  // Fallback to hardcoded defaults
+  const defaults: Record<string, string> = {
+    'claude-plugins-official': 'anthropics/claude-plugins-official',
+    'claude-code-plugins': 'anthropics/claude-code',
+    'mag-claude-plugins': 'MadAppGang/claude-code',
+  };
+
+  return defaults[name];
+}
+
+/**
+ * Re-clone a corrupted marketplace (missing .git folder)
+ */
+async function recloneCorruptedMarketplace(
+  marketplacePath: string,
+  _name: string,
+  repo: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Remove corrupted directory
+    await fs.remove(marketplacePath);
+
+    // Re-clone
+    const cloneUrl = `https://github.com/${repo}.git`;
+    await execAsync(`git clone --depth 1 "${cloneUrl}" "${marketplacePath}" >/dev/null 2>&1`, {
+      timeout: 60000, // 60s timeout for clone
+      shell: '/bin/bash',
+    });
+
+    // Verify clone succeeded
+    const gitDir = path.join(marketplacePath, '.git');
+    if (!fs.existsSync(gitDir)) {
+      return { success: false, error: 'Re-clone failed: .git folder not created' };
+    }
+
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Re-clone failed',
+    };
+  }
+}
+
+/**
  * Refresh a single local marketplace by running git pull (async, non-blocking)
+ * Auto-repairs corrupted marketplaces (missing .git folder) by re-cloning
  */
 async function refreshSingleMarketplace(marketplacePath: string, name: string): Promise<RefreshResult> {
   try {
     const gitDir = path.join(marketplacePath, '.git');
     if (!fs.existsSync(gitDir)) {
-      return { name, success: false, updated: false, error: 'Not a git repository' };
+      // Corrupted marketplace - attempt auto-repair by re-cloning
+      const repo = await getMarketplaceRepo(name);
+      if (!repo) {
+        return { name, success: false, updated: false, error: 'Corrupted (missing .git) - unknown repo, cannot auto-repair' };
+      }
+
+      const recloneResult = await recloneCorruptedMarketplace(marketplacePath, name, repo);
+      if (recloneResult.success) {
+        return { name, success: true, updated: true, error: 'Auto-repaired: re-cloned corrupted marketplace' };
+      }
+      return { name, success: false, updated: false, error: `Auto-repair failed: ${recloneResult.error}` };
     }
 
     // Get current HEAD before pull (async)
