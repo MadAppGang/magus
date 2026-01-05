@@ -7,7 +7,7 @@
 	},
 	"metadata": {
 		"description": "MAG team's curated collection of Claude Code plugins for modern full-stack development with LLM performance tracking",
-		"version": "5.7.0",
+		"version": "5.8.0",
 		"pluginRoot": "./plugins"
 	},
 	"plugins": [
@@ -236,8 +236,8 @@
 		{
 			"name": "dev",
 			"source": "./plugins/dev",
-			"description": "Universal development assistant with DevOps infrastructure guidance. v1.9.0: NEW DevOps agent with extended thinking (ultrathink) for complex infrastructure decisions, web search for current best practices, multi-cloud support (AWS, GCP, Azure, Firebase, Kubernetes), copy-paste ready CLI commands, IaC alternatives (Terraform, Pulumi, CDK), and cost estimation. Enhanced /interview with LLMREI research techniques. 27+ skills covering frontend, backend, infrastructure, and design review.",
-			"version": "1.9.0",
+			"description": "Universal development assistant with deep research, interviews, and DevOps guidance. v1.10.0: NEW /dev:research command - scientifically-grounded deep research with parallel agents, convergence-based finalization (k=3 stability), model fallback (Gemini→OpenRouter→Haiku), based on arXiv 2025 research. v1.9.0: DevOps agent with ultrathink, multi-cloud support. 27+ skills covering frontend, backend, infrastructure, and design review.",
+			"version": "1.10.0",
 			"author": {
 				"name": "Jack Rudenko",
 				"email": "i@madappgang.com",
@@ -247,6 +247,9 @@
 			"keywords": [
 				"development",
 				"universal",
+				"deep-research",
+				"research",
+				"convergence",
 				"devops",
 				"infrastructure",
 				"kubernetes",
