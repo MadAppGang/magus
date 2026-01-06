@@ -1,0 +1,169 @@
+# Agent Development Session Report
+
+**Session ID**: agentdev-ui-figma-rename-20260105-235645-ac1f
+**Date**: 2026-01-06
+**Duration**: Multi-turn session
+**Status**: ✅ COMPLETE
+
+---
+
+## Summary
+
+Enhanced the `dev` plugin's UI design review agent with Figma MCP integration and renamed it from `ui-designer` to `ui` to better reflect its expanded scope (design review + implementation assistance).
+
+---
+
+## Changes Made
+
+### Agent Renamed
+- **Old**: `plugins/dev/agents/ui-designer.md`
+- **New**: `plugins/dev/agents/ui.md`
+
+### Figma MCP Integration Added
+The `ui` agent now detects Figma URLs and uses Figma MCP when available:
+
+```
+Design Source Priority:
+1. Figma MCP (if URL + MCP available)
+2. Gemini Direct API (if GEMINI_API_KEY set)
+3. OpenRouter Gemini (if OPENROUTER_API_KEY set)
+4. Error with setup instructions
+```
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `plugins/dev/agents/ui.md` | NEW - renamed from ui-designer.md with Figma MCP enhancements |
+| `plugins/dev/plugin.json` | Updated agent reference |
+| `plugins/dev/commands/ui-design.md` | Updated all references from ui-designer to ui |
+| `plugins/dev/commands/create-style.md` | Updated references |
+| `plugins/dev/skills/design/ui-design-review/SKILL.md` | Updated references |
+| `plugins/dev/skills/design/design-references/SKILL.md` | Updated references |
+
+---
+
+## Review Summary
+
+### Plan Review (4 Models Attempted)
+
+| Model | Status | Score |
+|-------|--------|-------|
+| x-ai/grok-code-fast-1 | PASS | 9.5/10 |
+| google/gemini-2.5-flash | FAILED (prefix collision) | - |
+| google/gemini-2.5-pro | FAILED (prefix collision) | - |
+| deepseek/deepseek-chat | FAILED (no tool support) | - |
+| Claude (internal fallback) | CONDITIONAL | 8.5/10 |
+
+**Outcome**: Design approved for implementation
+
+### Implementation Review (2 Models)
+
+| Model | Status | Score | Issues (C/H/M/L) |
+|-------|--------|-------|------------------|
+| claude-opus-4-5 (internal) | PASS | 9.5/10 | 0/0/2/3 |
+| x-ai/grok-code-fast-1 | PASS | 9.2/10 | 0/1/3/2 |
+
+**Outcome**: Implementation approved
+
+---
+
+## Key Features Added
+
+### 1. Figma URL Detection
+```regex
+https://(?:www\.)?figma\.com/(?:design|file)/([a-zA-Z0-9]+)/([^?]+)(?:\?.*node-id=([0-9:-]+))?
+```
+
+Extracts:
+- `fileKey`: Figma file identifier
+- `fileName`: Human-readable name
+- `nodeId`: Optional specific component/frame
+
+### 2. Figma MCP Tool Usage
+
+| Tool | Purpose |
+|------|---------|
+| `mcp__figma__get_file` | Get file structure and metadata |
+| `mcp__figma__get_file_nodes` | Get specific component data |
+| `mcp__figma__get_images` | Export screenshots |
+
+### 3. Design Token Extraction
+When using Figma MCP, the agent extracts:
+- Colors (fill/stroke styles)
+- Typography (font family, size, weight, line height)
+- Spacing (padding, gaps, margins from auto-layout)
+- Effects (shadows, blur)
+
+### 4. Graceful Fallback
+When Figma MCP is unavailable:
+- Notifies user: "Figma MCP not available, using screenshot analysis"
+- Falls back to Gemini vision analysis
+- Maintains full functionality with image input
+
+---
+
+## Issues Fixed During Review
+
+1. **TodoWrite Phase Numbering**: Aligned requirement phases with actual workflow (8 → 7 phases)
+
+---
+
+## Artifacts
+
+```
+ai-docs/sessions/agentdev-ui-figma-rename-20260105-235645-ac1f/
+├── design.md                           # Architecture design document
+├── REPORT.md                           # This file
+└── reviews/
+    ├── plan-review/
+    │   ├── grok.md                     # Grok plan review (9.5/10)
+    │   ├── gemini-flash.md             # Internal fallback review
+    │   └── consolidated.md             # Plan review summary
+    └── impl-review/
+        ├── internal.md                 # Internal review (9.5/10)
+        ├── grok.md                     # Grok review (9.2/10)
+        └── consolidated.md             # Implementation review summary
+```
+
+---
+
+## Release Readiness
+
+**Plugin**: dev
+**Current Version**: 1.2.0
+**New Version**: 1.3.0
+
+### Changelog Entry
+
+```markdown
+## [1.3.0] - 2026-01-06
+
+### Added
+- **Figma MCP Integration**: ui agent now detects Figma URLs and uses Figma MCP server when available
+- **Design Token Extraction**: Automatically extracts colors, typography, and spacing from Figma designs
+- **Graceful Fallback**: Falls back to Gemini vision analysis when Figma MCP is unavailable
+
+### Changed
+- **Agent Renamed**: `ui-designer` → `ui` to reflect expanded scope (review + implementation)
+- **Expanded Role**: Agent now provides both design review AND implementation assistance
+- **6 Usage Examples**: Description updated with comprehensive examples
+
+### Fixed
+- TodoWrite phase numbering aligned with actual workflow phases
+```
+
+---
+
+## Next Steps
+
+1. Update `plugins/dev/plugin.json` version to 1.3.0
+2. Update `.claude-plugin/marketplace.json` version
+3. Commit changes
+4. Create git tag: `plugins/dev/v1.3.0`
+5. Push with tags
+
+---
+
+*Generated by agentdev:develop orchestrator*
+*Session completed successfully*

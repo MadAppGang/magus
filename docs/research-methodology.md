@@ -1,6 +1,6 @@
 # Deep Research Methodology
 
-The `/dev:research` command implements a scientifically-grounded approach to AI-assisted research, based on peer-reviewed findings from autonomous research agent studies.
+The `/dev:deep-research` command implements a scientifically-grounded approach to AI-assisted research, based on peer-reviewed findings from autonomous research agent studies.
 
 ## Overview
 
@@ -224,11 +224,11 @@ At limits, the user is prompted to:
 
 ## Implementation
 
-The `/dev:research` command implements this methodology:
+The `/dev:deep-research` command implements this methodology:
 
 ```bash
 # Example usage
-/dev:research Best practices for rate limiting in Go APIs
+/dev:deep-research Best practices for rate limiting in Go APIs
 
 # Creates session at:
 # ai-docs/sessions/dev-research-rate-limiting-go-{timestamp}/
@@ -277,5 +277,5 @@ session/
 ---
 
 *Based on peer-reviewed research from arXiv (2025)*
-*Implemented in `/dev:research` command*
+*Implemented in `/dev:deep-research` command*
 *Plugin: dev v1.9.0+*

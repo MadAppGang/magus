@@ -1,0 +1,125 @@
+# Review: Interview Command
+
+**Status**: PASS
+**Reviewer**: zhipu-ai/glm-4.7
+**File**: /Users/jack/mag/claude-code/plugins/dev/commands/interview.md
+
+## Summary
+- CRITICAL: 0
+- HIGH: 0
+- MEDIUM: 2
+- LOW: 3
+
+## Issues
+
+### CRITICAL
+None.
+
+### HIGH
+None.
+
+### MEDIUM
+
+#### M1: Missing Agent Definitions
+- **Category**: Completeness
+- **Description**: The command references agents `scribe`, `stack-detector`, and `spec-writer` that must exist in the dev plugin for this command to function.
+- **Impact**: Command will fail if these agents are not implemented.
+- **Fix**: Verify agents exist or document dependencies explicitly in the command frontmatter.
+- **Location**: Phases 0-5, multiple Task delegations
+
+#### M2: No Explicit Input Sanitization Documentation
+- **Category**: Security
+- **Description**: While the session ID generation uses `tr` and `sed` for implicit sanitization, there is no explicit documentation of input validation for user-provided feature names.
+- **Impact**: Unclear security posture; potential edge cases with unusual input.
+- **Fix**: Add a note in Phase 0 about input sanitization or add explicit validation step.
+- **Location**: Phase 0, lines 139-140
+
+### LOW
+
+#### L1: Hardcoded Iteration Limits
+- **Category**: Flexibility
+- **Description**: Maximum interview rounds (10) and questions per round (3-5) are hardcoded in the constraints.
+- **Impact**: Less flexible for different project types.
+- **Fix**: Consider adding optional flags like `--max-rounds N` to override defaults.
+- **Location**: Lines 103-109
+
+#### L2: Coverage Threshold Hardcoded
+- **Category**: Flexibility
+- **Description**: The 70% coverage threshold for category completion is hardcoded.
+- **Impact**: May be too strict or too lenient for different contexts.
+- **Fix**: Consider making this configurable or documenting rationale.
+- **Location**: Lines 831-848
+
+#### L3: Completion Message Template Variables
+- **Category**: Formatting
+- **Description**: Some template variables use inconsistent syntax (e.g., `{%}` vs `${SESSION_PATH}`).
+- **Impact**: Minor confusion when reading template.
+- **Fix**: Standardize variable syntax throughout template.
+- **Location**: Lines 1135-1180
+
+## Scores
+
+| Area | Score | Notes |
+|------|-------|-------|
+| YAML Frontmatter | 10/10 | Valid syntax, all required fields, comprehensive description |
+| XML Structure | 10/10 | All tags properly nested and closed, correct escaping |
+| Workflow Completeness | 10/10 | 6 phases with clear objectives, steps, and quality gates |
+| Interview Design | 10/10 | 7 categories, 5 Whys technique, 7 proactive triggers |
+| Examples | 9/10 | 3 concrete examples covering common scenarios |
+| TodoWrite Integration | 10/10 | Explicit requirement, all phases listed, continuous update |
+| Supporting Features | 10/10 | Resume, SESSION_PATH, error recovery all present |
+| Security | 9/10 | Safe patterns, no credentials, minor documentation gap |
+| **Total** | **9.6/10** | Excellent implementation |
+
+## Detailed Analysis
+
+### Strengths
+
+1. **Comprehensive Interview Framework**
+   - 7 question categories with prioritization
+   - Non-obvious and counter-intuitive question patterns
+   - 5 Whys technique with clear application guidelines
+
+2. **Robust Session Management**
+   - Unique session IDs with timestamp and random suffix
+   - Resume capability with checkpoint restoration
+   - Clear artifact organization in session directory
+
+3. **Proactive Asset Collection**
+   - Keyword-based trigger detection with thresholds
+   - Integration with existing dev plugin skills
+   - Ultrathink for tech stack recommendations
+
+4. **Error Recovery**
+   - 7 recovery strategies covering common scenarios
+   - Graceful handling of pause/resume
+   - Clear escalation paths
+
+5. **Quality Gates**
+   - Each phase has explicit exit criteria
+   - Coverage-based completion with user override option
+   - Iteration limits with extension options
+
+### Minor Improvements Suggested
+
+1. Add explicit dependency documentation for required agents
+2. Document input sanitization approach
+3. Consider configurable iteration/coverage thresholds
+4. Standardize template variable syntax
+
+## Recommendation
+
+**APPROVE** - This is a well-implemented interview command with comprehensive coverage of requirements elicitation techniques. The 6-phase workflow is well-structured, question categories are thoughtful and non-obvious, and supporting features (resume, SESSION_PATH, TodoWrite, error recovery) are all properly implemented.
+
+The command demonstrates excellent understanding of:
+- Deep requirements gathering vs superficial questioning
+- Progressive deepening from breadth to depth
+- Context-aware follow-up questions
+- Proactive asset collection based on conversation triggers
+
+No blocking issues. The medium and low severity items are improvement suggestions rather than problems.
+
+---
+
+*Review generated by: zhipu-ai/glm-4.7*
+*Review date: 2026-01-06*
