@@ -1,12 +1,6 @@
 ---
 name: timeline-builder
-description: |
-  Use this agent when you need to create Final Cut Pro projects and timelines. Examples:
-  (1) "Create an FCP project from these video clips" - generates FCPXML with clips
-  (2) "Build a timeline with cuts at these timecodes" - creates sequence with markers
-  (3) "Import transcript as markers in FCP" - converts SRT to chapter markers
-  (4) "Generate multicam sequence from 3 camera angles" - creates multicam FCPXML
-  (5) "Create rough cut timeline from edit list" - assembles clips per EDL
+description: Create Final Cut Pro projects, timelines, and multicam sequences
 model: sonnet
 color: green
 tools: TodoWrite, Read, Write, Edit, Bash, Glob, Grep

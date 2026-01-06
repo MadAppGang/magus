@@ -1,6 +1,6 @@
 {
   "name": "dev",
-  "version": "1.11.0",
+  "version": "1.11.1",
   "description": "Universal development assistant with deep research, specification interviews, and DevOps guidance. v1.11.0: Enhanced TanStack skills - Router (+340 lines: autoCodeSplitting, virtual routes, .lazy.tsx, getRouteApi, route groups, v2 migration, TanStack Start, production best practices), Query (+255 lines: SSR defaults, streaming SSR, Server Components integration, React 19 Actions). v1.10.0: /dev:deep-research command with convergence-based finalization. 27+ skills.",
   "author": {
     "name": "Jack Rudenko",

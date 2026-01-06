@@ -1,12 +1,6 @@
 ---
 name: video-processor
-description: |
-  Use this agent when you need to process video/audio files using FFmpeg. Examples:
-  (1) "Trim this video from 1:30 to 2:45" - executes precise trimming with ffmpeg
-  (2) "Concatenate these three clips into one video" - creates file list and merges
-  (3) "Convert to ProRes for Final Cut Pro" - transcodes with proper codec settings
-  (4) "Extract audio from video.mp4" - extracts audio track in specified format
-  (5) "Scale video to 1080p and add fade effects" - applies filters and scaling
+description: Process video/audio files using FFmpeg (trim, concat, convert, extract)
 model: sonnet
 color: green
 tools: TodoWrite, Read, Write, Edit, Bash, Glob, Grep

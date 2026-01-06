@@ -1,8 +1,5 @@
 ---
-description: |
-  Enhanced feature development orchestrator with 7-phase workflow.
-  Workflow: REQUIREMENTS -> RESEARCH -> PLANNING -> IMPLEMENTATION -> REVIEW -> TESTING -> COMPLETION
-  Features: Multi-model validation, black box testing, parallel execution, iteration limits.
+description: 7-phase feature development with multi-model validation and testing
 allowed-tools: Task, AskUserQuestion, Bash, Read, TodoWrite, Glob, Grep
 skills: dev:context-detection, dev:universal-patterns, orchestration:multi-model-validation, orchestration:quality-gates, orchestration:model-tracking-protocol
 ---

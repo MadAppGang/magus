@@ -1,12 +1,5 @@
 ---
-description: |
-  Generate images from text prompts.
-  Usage: /nb-generate "prompt" [--style name] [--aspect ratio]
-  Examples:
-    /nb-generate "A minimal 3D cube"
-    /nb-generate "cube" "sphere" "pyramid" --style glass
-    /nb-generate "landscape" --aspect 16:9
-  Workflow: VALIDATE -> SANITIZE -> GENERATE -> PRESENT
+description: Generate images from text prompts with optional styles and aspect ratios
 allowed-tools: Task, AskUserQuestion, Bash, Read, TodoWrite, Glob, Grep
 skills: nanobanana:gemini-api
 ---

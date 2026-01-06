@@ -1,11 +1,6 @@
 ---
 name: revert
-description: |
-  Git-aware logical undo for Conductor tracks. Revert at Track, Phase, or
-  Task level - not just commit-by-commit. Reconciles against history,
-  validates state after revert, and includes confirmation gates.
-  Use when: (1) Undoing a completed task (2) Rolling back a phase
-  (3) Abandoning a track
+description: Git-aware logical undo at track, phase, or task level with confirmation gates
 version: 1.0.0
 tags: [conductor, revert, undo, git, rollback]
 keywords: [revert, undo, rollback, git, track, phase, task]

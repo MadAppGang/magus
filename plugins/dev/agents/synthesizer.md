@@ -1,11 +1,6 @@
 ---
 name: synthesizer
-description: |
-  Research synthesis agent for consolidating multi-source findings with consensus detection and quality validation.
-  Examples:
-  (1) "Synthesize findings on authentication" - combines multiple explorer outputs with consensus analysis
-  (2) "Generate research report" - produces comprehensive documentation with evidence quality assessment
-  (3) "Identify knowledge gaps" - highlights unexplored areas requiring additional research
+description: Research synthesis for consolidating multi-source findings with consensus detection
 model: sonnet
 color: cyan
 tools: TodoWrite, Read, Write, Glob, Grep

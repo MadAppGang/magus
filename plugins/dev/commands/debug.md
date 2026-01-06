@@ -1,8 +1,5 @@
 ---
-description: |
-  Universal debugging command that adapts to any technology stack.
-  Workflow: DETECT STACK -> ANALYZE ERROR -> TRACE ISSUE -> FIX -> VALIDATE
-  Supports error logs, stack traces, runtime issues across all languages.
+description: Universal debugging command that adapts to any technology stack
 allowed-tools: Task, AskUserQuestion, Bash, Read, TodoWrite, Glob, Grep
 skills: dev:context-detection, dev:debugging-strategies, orchestration:error-recovery
 ---

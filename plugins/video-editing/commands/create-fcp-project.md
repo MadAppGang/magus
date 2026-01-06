@@ -1,8 +1,5 @@
 ---
-description: |
-  Final Cut Pro project generation orchestrator.
-  Workflow: ANALYZE CLIPS -> CONFIGURE PROJECT -> BUILD FCPXML -> VALIDATE
-  Creates FCPXML files with timelines, markers, and optional transcripts.
+description: Create Final Cut Pro FCPXML projects with timelines and markers
 allowed-tools: Task, AskUserQuestion, Bash, Read, TodoWrite, Glob, Grep
 skills: video-editing:final-cut-pro, video-editing:ffmpeg-core
 ---

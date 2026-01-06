@@ -1,10 +1,6 @@
 ---
 name: status
-description: |
-  Show Conductor status - active tracks, progress, current task, blockers.
-  Parses tracks.md and all plan.md files to provide comprehensive overview.
-  Use when: (1) Checking overall progress (2) Finding next task
-  (3) Reviewing track status (4) Identifying blockers
+description: Show active tracks, progress, current tasks, and blockers
 version: 1.0.0
 tags: [conductor, status, progress, overview]
 keywords: [status, progress, tracks, overview, blockers, current]

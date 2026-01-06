@@ -1,8 +1,5 @@
 ---
-description: |
-  Show Conductor status - active tracks, progress, current task, blockers.
-  Read-only command that parses tracks.md and all plan.md files.
-  Provides actionable "Next Action" recommendation.
+description: Show active tracks, progress, current tasks, and blockers
 allowed-tools: Bash, Read, Glob, Grep
 ---
 

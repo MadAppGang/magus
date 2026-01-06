@@ -1,11 +1,6 @@
 ---
 name: stack-detector
-description: |
-  Analyzes project to detect technology stack and recommend skills.
-  Examples:
-  (1) "Detect this project's stack" - returns technologies and versions
-  (2) "What skills should I use?" - returns skill recommendations with paths
-  (3) "Is this a React project?" - confirms stack detection
+description: Analyzes project to detect technology stack and recommend skills
 model: sonnet
 color: blue
 tools: TodoWrite, Read, Write, Glob, Grep, Bash

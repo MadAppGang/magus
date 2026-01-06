@@ -1,12 +1,6 @@
 ---
 name: transcriber
-description: |
-  Use this agent when you need to transcribe audio or video content. Examples:
-  (1) "Transcribe this interview video" - extracts audio and runs Whisper
-  (2) "Generate SRT subtitles for video.mp4" - creates timed subtitle file
-  (3) "Transcribe with word-level timestamps" - produces detailed JSON output
-  (4) "Create VTT captions for web video" - generates WebVTT format
-  (5) "Transcribe podcast and identify speakers" - runs diarization if available
+description: Transcribe audio/video with Whisper to SRT, VTT, JSON, or TXT
 model: sonnet
 color: orange
 tools: TodoWrite, Read, Write, Edit, Bash, Glob, Grep

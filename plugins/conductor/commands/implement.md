@@ -1,9 +1,5 @@
 ---
-description: |
-  Execute tasks from a track's plan.md with TDD workflow.
-  Workflow: VALIDATE -> SELECT TASK -> TDD (RED/GREEN/REFACTOR) -> QUALITY & COMMIT -> PHASE CHECK
-  Updates task status: [ ] pending -> [~] in progress -> [x] complete.
-  Creates git commits linked to track/phase/task with git notes.
+description: Execute tasks from track plan with TDD workflow and git commits
 allowed-tools: AskUserQuestion, Bash, Read, Write, Edit, TodoWrite, Glob, Grep
 ---
 

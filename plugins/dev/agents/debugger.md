@@ -1,11 +1,6 @@
 ---
 name: debugger
-description: |
-  Language-agnostic debugging agent for error analysis and root cause investigation.
-  Examples:
-  (1) "Analyze this error" - parses error and identifies causes
-  (2) "Trace null pointer" - investigates nil/null dereference
-  (3) "Debug API failure" - traces request/response flow
+description: Language-agnostic debugging for error analysis and root cause investigation
 model: sonnet
 color: orange
 tools: TodoWrite, Read, Glob, Grep, Bash

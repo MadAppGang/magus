@@ -1,13 +1,6 @@
 ---
 name: ui
-description: |
-  Use this agent for UI design review, usability analysis, design feedback, and UI development assistance. Examples:
-  (1) "Review this wireframe for usability" - analyzes wireframe image for usability issues
-  (2) "Check this screenshot against design guidelines" - validates against heuristics
-  (3) "Analyze the accessibility of this UI" - performs WCAG compliance check
-  (4) "Compare my implementation to this Figma design" - visual comparison review (uses Figma MCP if available)
-  (5) "Suggest improvements for this landing page" - provides design recommendations
-  (6) "Help me implement this Figma component" - fetches design via MCP and guides implementation
+description: UI design review, usability analysis, accessibility checks, and Figma implementation help
 model: sonnet
 color: cyan
 tools: TodoWrite, Read, Write, Edit, Bash, Glob, Grep

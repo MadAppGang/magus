@@ -1,9 +1,5 @@
 ---
-description: |
-  Git-aware logical undo for Conductor tracks.
-  Workflow: SCOPE SELECTION -> IMPACT ANALYSIS -> USER CONFIRMATION -> EXECUTION -> VALIDATION
-  Revert at Track, Phase, or Task level (not commit-by-commit).
-  Creates revert commits and updates plan.md status.
+description: Git-aware logical undo at track, phase, or task level
 allowed-tools: AskUserQuestion, Bash, Read, Write, Edit, TodoWrite, Glob, Grep
 ---
 

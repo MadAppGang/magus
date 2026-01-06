@@ -1,15 +1,5 @@
 ---
-description: |
-  Manage image generation style templates.
-  Usage: /nb-style <action> [name]
-  Actions: create, list, show, delete, update
-  Examples:
-    /nb-style create watercolor
-    /nb-style list
-    /nb-style show glass
-    /nb-style delete minimalist (with confirmation)
-    /nb-style update glass
-  Workflow: PARSE -> VALIDATE -> CONFIRM (if destructive) -> EXECUTE -> REPORT
+description: Manage image generation style templates (create, list, show, delete, update)
 allowed-tools: Task, AskUserQuestion, Bash, Read, TodoWrite, Glob, Grep
 skills: nanobanana:style-format
 ---

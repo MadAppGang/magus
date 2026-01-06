@@ -1,11 +1,6 @@
 ---
 name: setup
-description: |
-  Initialize Conductor for your project. Creates the conductor/ directory structure
-  with product.md, tech-stack.md, and workflow.md through interactive Q&A.
-  Supports Greenfield (new) and Brownfield (existing) projects.
-  Use when: (1) Starting Conductor on a new project
-  (2) Resuming an interrupted setup (3) Re-initializing project context
+description: Initialize Conductor with product.md, tech-stack.md, and workflow.md
 version: 1.1.0
 tags: [conductor, setup, initialization, context, project]
 keywords: [conductor setup, initialize, project context, greenfield, brownfield]

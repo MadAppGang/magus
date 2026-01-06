@@ -1,12 +1,6 @@
 ---
 name: test-architect
-description: |
-  Black box test architect that creates tests from requirements only.
-  NO access to implementation details. Tests are authoritative.
-  Examples:
-  (1) "Write tests for user auth" - creates tests from API contracts
-  (2) "Design test strategy" - creates comprehensive test plan
-  (3) "Analyze test failure" - determines if test or implementation issue
+description: Black box test architect that creates tests from requirements only
 model: sonnet
 color: orange
 tools: TodoWrite, Read, Write, Edit, Bash, Glob, Grep

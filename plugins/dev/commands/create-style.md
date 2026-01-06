@@ -1,9 +1,5 @@
 ---
-description: |
-  Interactive wizard to create a custom project design style guide. Stores
-  the style in .claude/design-style.md for automatic use by ui agent.
-
-  Workflow: SELECT BASE -> CUSTOMIZE COLORS -> TYPOGRAPHY -> SPACING -> PATTERNS -> SAVE
+description: Interactive wizard to create custom design style guide for UI reviews
 allowed-tools: AskUserQuestion, Bash, Read, Write, TodoWrite, Glob, Grep
 skills:
   - dev:design-references

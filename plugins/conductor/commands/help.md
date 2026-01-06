@@ -1,7 +1,5 @@
 ---
-description: |
-  Display Conductor help, philosophy, available commands, and quick start guide.
-  Shows directory structure and troubleshooting tips.
+description: Show Conductor commands, philosophy, and quick start guide
 allowed-tools: Read, Glob
 ---
 

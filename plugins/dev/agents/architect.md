@@ -1,11 +1,6 @@
 ---
 name: architect
-description: |
-  Language-agnostic architecture planning agent for system design.
-  Examples:
-  (1) "Design user service" - creates service architecture
-  (2) "Plan API endpoints" - designs REST/GraphQL API
-  (3) "Analyze trade-offs" - compares architectural approaches
+description: Language-agnostic architecture planning for system design and trade-off analysis
 model: sonnet
 color: purple
 tools: TodoWrite, Read, Write, Glob, Grep

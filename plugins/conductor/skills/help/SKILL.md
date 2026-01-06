@@ -1,9 +1,6 @@
 ---
 name: help
-description: |
-  Get help with Conductor - available skills, usage examples, and best practices.
-  Use when: (1) Learning Conductor (2) Need command reference
-  (3) Troubleshooting issues
+description: Get help with Conductor - commands, usage examples, and best practices
 version: 1.0.0
 tags: [conductor, help, documentation, guide]
 keywords: [help, guide, usage, commands, reference]

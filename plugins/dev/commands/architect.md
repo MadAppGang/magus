@@ -1,8 +1,5 @@
 ---
-description: |
-  Universal architecture planning command for any technology stack.
-  Creates comprehensive design documents with trade-off analysis.
-  Workflow: DETECT -> ANALYZE -> DESIGN -> DOCUMENT -> VALIDATE
+description: Universal architecture planning for any stack with trade-off analysis
 allowed-tools: Task, AskUserQuestion, Bash, Read, TodoWrite, Glob, Grep
 skills: dev:context-detection, dev:universal-patterns, orchestration:quality-gates
 ---

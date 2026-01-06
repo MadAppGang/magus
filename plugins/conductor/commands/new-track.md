@@ -1,8 +1,5 @@
 ---
-description: |
-  Create a new development track with spec and plan.
-  Workflow: VALIDATE CONDUCTOR -> LOAD CONTEXT -> DETERMINE TYPE -> GENERATE SPEC -> GENERATE PLAN -> FINALIZE
-  Supports Feature, Bugfix, Refactor, and Task types with hierarchical plans (phases -> tasks -> subtasks).
+description: Create development track with spec and hierarchical task plan
 allowed-tools: AskUserQuestion, Bash, Read, Write, TodoWrite, Glob, Grep
 ---
 

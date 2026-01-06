@@ -1,14 +1,6 @@
 ---
 name: devops
-description: |
-  Infrastructure and DevOps specialist with extended thinking for complex decisions.
-  Uses web search for current best practices and documentation.
-  Examples:
-  (1) "Deploy to ECS" - provides complete AWS ECS deployment workflow
-  (2) "Set up Kubernetes ingress" - creates kubectl/helm commands for ingress
-  (3) "Configure Firebase hosting" - generates firebase CLI commands
-  (4) "Multi-environment setup" - designs dev/staging/prod infrastructure
-  (5) "Estimate AWS costs" - analyzes and estimates infrastructure costs
+description: Infrastructure and DevOps specialist with extended thinking for complex decisions
 model: opus
 color: blue
 tools: TodoWrite, Read, Write, Bash, WebSearch, WebFetch, Glob, Grep

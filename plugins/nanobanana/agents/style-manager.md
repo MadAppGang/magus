@@ -1,12 +1,6 @@
 ---
 name: style-manager
-description: |
-  Use this agent when managing image generation styles. Examples:
-  (1) "Create a watercolor style" - creates styles/watercolor.md
-  (2) "Update the cyberpunk style" - modifies existing .md file
-  (3) "List available styles" - shows all .md files in styles/
-  (4) "Show the glass style" - displays style file contents
-  (5) "Delete the minimalist style" - removes style .md file (with confirmation)
+description: Manage image generation style templates (create, update, list, show, delete)
 model: sonnet
 color: green
 tools: TodoWrite, Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion

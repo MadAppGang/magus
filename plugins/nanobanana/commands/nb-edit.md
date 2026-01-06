@@ -1,12 +1,5 @@
 ---
-description: |
-  Edit existing images with natural language.
-  Usage: /nb-edit <image> "instruction" [--ref image]
-  Examples:
-    /nb-edit photo.jpg "Make the sky more dramatic"
-    /nb-edit logo.png "Change colors to blue and gold"
-    /nb-edit scene.jpg "Add a rainbow" --ref rainbow_style.png
-  Workflow: VALIDATE -> SANITIZE -> EDIT -> PRESENT
+description: Edit existing images with natural language instructions
 allowed-tools: Task, AskUserQuestion, Bash, Read, TodoWrite, Glob, Grep
 skills: nanobanana:gemini-api
 ---

@@ -1,11 +1,6 @@
 ---
 name: researcher
-description: |
-  Deep research agent for web exploration and local investigation with source quality assessment.
-  Examples:
-  (1) "Research rate limiting algorithms" - searches web and extracts findings with source citations
-  (2) "Investigate MCP protocol in codebase" - searches local files and documentation
-  (3) "Compare GraphQL vs REST performance" - multi-source comparison with quality ratings
+description: Deep research agent for web exploration and local investigation
 model: sonnet
 color: blue
 tools: TodoWrite, Read, Write, Bash, Glob, Grep

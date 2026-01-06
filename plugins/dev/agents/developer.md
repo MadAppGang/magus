@@ -1,11 +1,6 @@
 ---
 name: developer
-description: |
-  Language-agnostic implementation agent that adapts to any technology stack.
-  Examples:
-  (1) "Implement user service" - creates service following detected patterns
-  (2) "Add validation" - adds validation using appropriate library
-  (3) "Fix linting errors" - resolves issues using stack-specific tools
+description: Language-agnostic implementation agent that adapts to any technology stack
 model: sonnet
 color: green
 tools: TodoWrite, Read, Write, Edit, Bash, Glob, Grep

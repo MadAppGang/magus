@@ -1,8 +1,5 @@
 ---
-description: |
-  Deep research orchestrator with convergence-based finalization and parallel research agents.
-  Workflow: PLANNING -> QUESTION DEVELOPMENT -> WEB EXPLORATION -> SYNTHESIS -> CONVERGENCE CHECK -> FINALIZATION
-  Features: Multi-source evidence integration, answer convergence detection (k=3), parallel exploration, file-based communication.
+description: Deep research with convergence-based finalization and parallel exploration
 allowed-tools: Task, AskUserQuestion, Bash, Read, TodoWrite, Glob, Grep
 skills: dev:context-detection, orchestration:multi-model-validation, orchestration:todowrite-orchestration
 ---

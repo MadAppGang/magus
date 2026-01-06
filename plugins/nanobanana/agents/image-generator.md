@@ -1,12 +1,6 @@
 ---
 name: image-generator
-description: |
-  Use this agent when generating or editing images. Examples:
-  (1) "Generate a 3D cube" - runs main.py with prompt
-  (2) "Create icons for cube, sphere, pyramid" - batch generation
-  (3) "Edit this photo to add sunset" - image editing with --edit
-  (4) "Generate using the glass style" - applies style template
-  (5) "Make it look like this reference" - uses --ref flag
+description: Generate or edit images using Gemini with style templates and reference images
 model: sonnet
 color: green
 tools: TodoWrite, Read, Write, Edit, Bash, Glob, Grep

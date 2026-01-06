@@ -1,12 +1,5 @@
 ---
-description: |
-  Comprehensive specification interview orchestrator with intelligent questioning.
-  Enhanced with LLMREI research techniques for optimal requirements elicitation.
-  Workflow: INIT -> CONTEXT -> INTERVIEW LOOP -> ASSETS -> SYNTHESIS -> TASKS
-  Features: 5 Whys technique, context-aware questions, ultrathink tech suggestions,
-  proactive asset collection (API specs, Figma, design refs), task breakdown.
-  Interview modes: --focused (structured) or --exploratory (adaptive).
-  Supports session resume with --resume SESSION_ID flag.
+description: Comprehensive specification interview with intelligent requirements elicitation
 allowed-tools: Task, AskUserQuestion, Bash, Read, TodoWrite, Glob, Grep
 skills: dev:context-detection, dev:universal-patterns, dev:api-design, dev:design-references, orchestration:quality-gates, orchestration:todowrite-orchestration
 ---

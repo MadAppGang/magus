@@ -1,12 +1,6 @@
 ---
 name: implement
-description: |
-  Execute tasks from a track's plan.md. Updates task status as you work:
-  [ ] pending -> [~] in progress -> [x] complete. Creates git commits
-  linked to track/phase/task. Follows workflow.md procedures including
-  TDD (Red/Green/Refactor) and Phase Completion Protocol.
-  Use when: (1) Working on a track (2) Resuming implementation
-  (3) Completing tasks systematically
+description: Execute tasks from track plan with TDD workflow and git commit integration
 version: 1.1.0
 tags: [conductor, implement, execute, tasks, git, tdd]
 keywords: [implement, execute, task, commit, progress, workflow, tdd, phase]

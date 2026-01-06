@@ -1,8 +1,5 @@
 ---
-description: |
-  Transcription workflow orchestrator for audio/video files.
-  Workflow: VALIDATE -> EXTRACT AUDIO -> TRANSCRIBE -> FORMAT OUTPUT
-  Supports multiple output formats (SRT, VTT, JSON, TXT).
+description: Transcribe audio/video to SRT, VTT, JSON, or TXT formats
 allowed-tools: Task, AskUserQuestion, Bash, Read, TodoWrite, Glob, Grep
 skills: video-editing:transcription
 ---

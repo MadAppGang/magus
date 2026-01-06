@@ -1,9 +1,5 @@
 ---
-description: |
-  Initialize Conductor for your project through interactive Q&A.
-  Workflow: VALIDATE -> PROJECT TYPE -> PRODUCT CONTEXT -> TECH CONTEXT -> GUIDELINES -> FINALIZE
-  Creates conductor/ directory with product.md, tech-stack.md, workflow.md, and styleguides.
-  Supports resume capability and both Greenfield/Brownfield projects.
+description: Initialize Conductor with interactive Q&A to create project context files
 allowed-tools: AskUserQuestion, Bash, Read, Write, TodoWrite, Glob, Grep
 ---
 

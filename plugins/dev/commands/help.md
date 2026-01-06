@@ -1,7 +1,5 @@
 ---
-description: |
-  Display dev plugin help, detected project stack, and available commands.
-  Shows recommended skills for the current project context.
+description: Show dev plugin help, detected stack, and available commands
 allowed-tools: Task, TodoWrite, Bash, Read, Glob, Grep
 skills: dev:context-detection
 ---

@@ -1,8 +1,5 @@
 ---
-description: |
-  Universal implementation command that adapts to any technology stack.
-  Workflow: DETECT STACK -> LOAD SKILLS -> PLAN -> IMPLEMENT -> VALIDATE
-  Supports: React, Vue, Go, Bun, Python, Rust, and more.
+description: Universal implementation command that adapts to any technology stack
 allowed-tools: Task, AskUserQuestion, Bash, Read, TodoWrite, Glob, Grep
 skills: dev:context-detection, dev:universal-patterns, orchestration:todowrite-orchestration
 ---

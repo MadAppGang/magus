@@ -1,8 +1,5 @@
 ---
-description: |
-  Main video editing orchestrator with multi-agent coordination.
-  Workflow: ANALYZE -> PROCESS -> TRANSCRIBE (optional) -> BUILD FCP (optional)
-  Supports intelligent workflow detection and graceful degradation.
+description: Main video editing orchestrator with multi-agent coordination
 allowed-tools: Task, AskUserQuestion, Bash, Read, TodoWrite, Glob, Grep
 skills: video-editing:ffmpeg-core, video-editing:transcription, video-editing:final-cut-pro
 ---

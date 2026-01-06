@@ -1,10 +1,5 @@
 ---
-description: |
-  Interactive UI design review orchestrator. Analyzes screenshots, wireframes, and
-  Figma exports for usability, accessibility, and design consistency using Gemini 3 Pro
-  multimodal capabilities.
-
-  Workflow: INPUT -> MODEL SETUP -> GEMINI ANALYSIS -> REPORT -> RESULTS
+description: UI design review using Gemini multimodal analysis for usability and accessibility
 allowed-tools: Task, AskUserQuestion, Bash, Read, TodoWrite, Glob, Grep
 skills: orchestration:ui-design-review, orchestration:multi-model-validation
 ---

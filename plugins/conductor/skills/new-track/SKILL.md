@@ -1,11 +1,6 @@
 ---
 name: new-track
-description: |
-  Create a new development track with spec and plan. Guides you through
-  spec generation with interactive questions, then creates a hierarchical
-  plan (phases -> tasks -> subtasks). Track ID format: shortname_YYYYMMDD.
-  Use when: (1) Starting a new feature (2) Planning a bugfix
-  (3) Scoping any development work
+description: Create development track with spec and hierarchical plan through interactive Q&A
 version: 1.0.0
 tags: [conductor, track, planning, spec, phases]
 keywords: [new track, feature, bugfix, plan, spec, phases, tasks]
