@@ -204,6 +204,61 @@ skills: seo:serp-analysis, seo:keyword-cluster-builder
         - Note: "Competitor analysis limited - {N} of {M} URLs failed to fetch"
       </retry_strategy>
     </error_recovery>
+
+    <self_correction skill="seo:quality-gate">
+      **Autonomous Quality Gate: SERP Analysis**
+
+      After completing analysis, evaluate against AUTO GATE thresholds:
+
+      <quality_thresholds>
+        - Intent confidence: ≥80%
+        - Competitors analyzed: ≥5
+        - SERP features documented: true
+        - PAA questions captured: ≥3
+      </quality_thresholds>
+
+      <auto_gate_evaluation>
+        ```yaml
+        serp_analysis_gate:
+          check: intent_confidence >= 80 AND competitors >= 5 AND serp_features_documented
+          on_pass: Return analysis to orchestrator for AUTO progression
+          on_fail: Execute self-correction (max 3 attempts)
+        ```
+      </auto_gate_evaluation>
+
+      <retry_protocol max_attempts="3">
+        **Attempt 1**: Retry with simplified/alternative query
+          - Remove modifiers (year, "best", etc.)
+          - Try core keyword only
+          - Re-analyze SERP for clearer intent signals
+
+        **Attempt 2**: Expand to related keywords
+          - Try 2-3 keyword variations
+          - Cross-reference intent across variations
+          - Increase competitor sample if possible
+
+        **Attempt 3**: Use fallback classification
+          - Apply heuristic intent rules based on keyword structure
+          - Use pattern-based competitor analysis
+          - Document reduced confidence with explanation
+
+        **Escalation**: After 3 failures
+          - Report: "AUTO GATE failed after 3 attempts"
+          - Include: All attempt results with failure reasons
+          - Request: USER GATE for manual review and direction
+      </retry_protocol>
+
+      <self_assessment>
+        Before returning results, run this checklist:
+        - [ ] Intent classified with confidence percentage
+        - [ ] At least 5 competitor URLs analyzed
+        - [ ] SERP features list complete (snippets, PAA, images, etc.)
+        - [ ] Opportunity/gap identified
+        - [ ] Actionable recommendation provided
+
+        If any item fails, increment retry counter and apply correction.
+      </self_assessment>
+    </self_correction>
   </critical_constraints>
 
   <core_principles>

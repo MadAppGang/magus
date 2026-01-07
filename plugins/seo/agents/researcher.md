@@ -195,6 +195,73 @@ skills: seo:keyword-cluster-builder, seo:content-brief
         - Note: "WebSearch retried {M} times before falling back to patterns"
       </retry_strategy>
     </error_recovery>
+
+    <self_correction skill="seo:quality-gate">
+      **Autonomous Quality Gate: Keyword Expansion**
+
+      After completing research, evaluate against AUTO GATE thresholds:
+
+      <quality_thresholds>
+        - Total keywords: ≥50 (target: 75+)
+        - Topic clusters: ≥3 (target: 5+)
+        - Intent coverage: All 4 types present
+        - Funnel stages mapped: true
+        - Long-tail ratio: ≥40%
+      </quality_thresholds>
+
+      <auto_gate_evaluation>
+        ```yaml
+        keyword_expansion_gate:
+          check: keywords >= 50 AND clusters >= 3 AND all_intents_covered AND funnel_mapped
+          on_pass: Return research to orchestrator for AUTO progression
+          on_fail: Execute self-correction (max 3 attempts)
+        ```
+      </auto_gate_evaluation>
+
+      <retry_protocol max_attempts="3">
+        **Attempt 1**: Add more expansion patterns
+          - Add question modifiers: how, what, why, when, where, who
+          - Add comparison variants: vs, alternatives, comparison
+          - Add commercial variants: best, top, review, pricing
+          - Target: +20-30 keywords
+
+        **Attempt 2**: Include audience and industry variants
+          - Add audience segments: for beginners, for enterprise, for startups
+          - Add industry variants: for SaaS, for e-commerce, for B2B
+          - Add use-case variants: for marketing, for sales, for support
+          - Target: +15-25 keywords
+
+        **Attempt 3**: Expand to adjacent topics
+          - Identify related parent/sibling topics
+          - Include competitor brand keywords
+          - Add seasonal/trending variations
+          - Target: +10-20 keywords
+
+        **Escalation**: After 3 failures (still < 50 keywords)
+          - Report: "AUTO GATE failed - insufficient keyword volume"
+          - Include: Current count, patterns tried, blockers identified
+          - Request: USER GATE for topic expansion guidance
+      </retry_protocol>
+
+      <cluster_correction>
+        If clusters < 3:
+        1. Re-analyze semantic relationships
+        2. Try broader grouping (merge small clusters)
+        3. Try narrower grouping (split large clusters)
+        4. Apply topic modeling heuristics
+      </cluster_correction>
+
+      <self_assessment>
+        Before returning results, run this checklist:
+        - [ ] At least 50 keywords discovered
+        - [ ] At least 3 topic clusters identified
+        - [ ] All 4 intent types represented (informational, commercial, transactional, navigational)
+        - [ ] Funnel stages mapped (awareness, consideration, decision)
+        - [ ] Priority recommendations included
+
+        If any item fails, increment retry counter and apply correction.
+      </self_assessment>
+    </self_correction>
   </critical_constraints>
 
   <core_principles>

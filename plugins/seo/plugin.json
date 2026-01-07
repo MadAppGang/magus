@@ -1,7 +1,7 @@
 {
   "name": "seo",
-  "version": "1.4.1",
-  "description": "Comprehensive SEO toolkit with interactive /seo:start entry point, keyword research, content optimization, technical audits, multi-agent workflows, and analytics integrations (GA4, GSC). Features guided workflow discovery, multi-model parallel review, A/B alternative generation, E-E-A-T compliance validation, and data-driven performance analysis.",
+  "version": "1.5.0",
+  "description": "Highly autonomous SEO toolkit (~80% autonomy) with AUTO GATEs, self-correction loops, and multi-model validation. Features autonomous keyword research, quality-gate progression, E-E-A-T self-assessment, and data-driven performance analysis. Includes interactive /seo:start entry point, content optimization, technical audits, and analytics integrations (GA4, GSC).",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",
@@ -51,7 +51,9 @@
     "./skills/link-strategy",
     "./skills/analytics-interpretation",
     "./skills/performance-correlation",
-    "./skills/data-extraction-patterns"
+    "./skills/data-extraction-patterns",
+    "./skills/quality-gate.md",
+    "./skills/autonomous-keyword-research.md"
   ],
   "hooks": {
     "SessionStart": [

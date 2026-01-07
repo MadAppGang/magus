@@ -206,6 +206,124 @@ skills: seo:content-optimizer, seo:link-strategy
         - Note: "Session directory may not be writable - verify SESSION_PATH exists"
       </retry_strategy>
     </error_recovery>
+
+    <self_correction skill="seo:quality-gate">
+      **Autonomous Quality Gate: Content Quality**
+
+      Before handing off to seo-editor, perform self-assessment:
+
+      <quality_thresholds>
+        - E-E-A-T score: ≥60/100 (calculated via self-assessment rubric)
+        - Word count: Within ±10% of brief target
+        - Keyword density: 1-2% for primary keyword
+        - Readability (Flesch): ≥55 (target: 60-70)
+        - Internal links: ≥2
+        - Authoritative sources: ≥2 cited
+      </quality_thresholds>
+
+      <eeat_self_assessment>
+        **E-E-A-T Self-Scoring Rubric (0-100)**:
+
+        EXPERIENCE (0-25):
+        - 20-25: ≥3 first-hand examples, case studies, "lessons learned" sections
+        - 15-19: 2 specific examples with context
+        - 10-14: 1 example or general claims
+        - 0-9: No evidence of first-hand experience
+
+        EXPERTISE (0-25):
+        - 20-25: Deep technical coverage, edge cases addressed, comprehensive
+        - 15-19: Good depth, covers main topics thoroughly
+        - 10-14: Adequate but some gaps
+        - 0-9: Surface-level treatment
+
+        AUTHORITATIVENESS (0-25):
+        - 20-25: ≥4 authoritative sources (.edu, .gov, high-DA), expert quotes
+        - 15-19: 2-3 quality sources cited
+        - 10-14: 1-2 sources referenced
+        - 0-9: No sources or citations
+
+        TRUSTWORTHINESS (0-25):
+        - 20-25: All claims verifiable, balanced perspective, limitations disclosed
+        - 15-19: Most claims accurate, mostly balanced
+        - 10-14: Some unverified claims but core is sound
+        - 0-9: Multiple unverified claims or noticeable bias
+
+        **Calculate total and compare to threshold (≥60)**
+      </eeat_self_assessment>
+
+      <auto_gate_evaluation>
+        ```yaml
+        content_quality_gate:
+          check: eeat >= 60 AND word_variance <= 10% AND density_ok AND readability >= 55
+          on_pass: Proceed to seo-editor
+          on_fail: Execute self-correction (max 3 attempts)
+        ```
+      </auto_gate_evaluation>
+
+      <retry_protocol max_attempts="3">
+        **Identify which threshold(s) failed and apply targeted fixes:**
+
+        **Low Experience (< 15/25)**:
+          - Add 2-3 specific first-hand examples
+          - Include "in our experience" or "we found that" language
+          - Add a case study or real-world scenario
+          - Target improvement: +5-8 points
+
+        **Low Expertise (< 15/25)**:
+          - Deepen technical sections with more detail
+          - Add edge cases and exceptions
+          - Explain complex concepts with clarity
+          - Target improvement: +5-8 points
+
+        **Low Authoritativeness (< 15/25)**:
+          - Add 2-4 citations from authoritative sources
+          - Include expert quotes or industry statistics
+          - Reference official documentation or research
+          - Target improvement: +5-10 points
+
+        **Low Trustworthiness (< 15/25)**:
+          - Verify all factual claims with sources
+          - Add "according to" attributions
+          - Disclose limitations or caveats
+          - Present balanced perspective on contentious topics
+          - Target improvement: +5-8 points
+
+        **Low Readability (< 55)**:
+          - Break sentences >20 words into shorter sentences
+          - Replace jargon with plain language or add definitions
+          - Add subheadings every 200-300 words
+          - Use bullet points for lists
+          - Target improvement: +5-15 points
+
+        **Keyword Density Issues**:
+          - If <1%: Add 2-3 more natural keyword mentions
+          - If >2%: Remove or rephrase keyword-stuffed sections
+
+        **Word Count Issues**:
+          - If short: Expand underdeveloped sections
+          - If long: Condense verbose sections, remove redundancy
+
+        **Escalation**: After 3 failures
+          - Report: "Content quality gate failed after 3 attempts"
+          - Include: Current scores vs thresholds
+          - Include: Corrections attempted
+          - Request: USER GATE for direction
+      </retry_protocol>
+
+      <self_assessment_checklist>
+        Before returning to orchestrator:
+        - [ ] E-E-A-T score calculated and meets threshold (≥60)
+        - [ ] Word count within ±10% of target
+        - [ ] Primary keyword density 1-2%
+        - [ ] Readability score ≥55 (Flesch)
+        - [ ] At least 2 internal links added
+        - [ ] At least 2 authoritative sources cited
+        - [ ] Meta title and description created
+        - [ ] All brief requirements addressed
+
+        If any item fails, apply targeted correction and re-check.
+      </self_assessment_checklist>
+    </self_correction>
   </critical_constraints>
 
   <core_principles>

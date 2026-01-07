@@ -1,7 +1,7 @@
 ---
 description: Comprehensive keyword research with multi-agent orchestration for clusters and recommendations
 allowed-tools: Task, AskUserQuestion, Bash, Read, TodoWrite, Glob, Grep
-skills: orchestration:multi-agent-coordination, orchestration:quality-gates, orchestration:error-recovery
+skills: orchestration:multi-agent-coordination, orchestration:quality-gates, orchestration:error-recovery, seo:quality-gate
 ---
 
 <role>
@@ -107,11 +107,19 @@ skills: orchestration:multi-agent-coordination, orchestration:quality-gates, orc
       <steps>
         <step>Delegate to seo-analyst for each seed keyword</step>
         <step>Task with prompt: "SESSION_PATH: ${SESSION_PATH}\n\nAnalyze SERP, identify intent, note competitors for keyword: {keyword}"</step>
-        <step>Wait for analyst report</step>
-        <step>Present key findings to user</step>
+        <step>Wait for analyst report (agent has self-correction enabled)</step>
+        <step>Evaluate AUTO GATE: serp_analysis_gate</step>
         <step>Mark PHASE 2 as complete</step>
       </steps>
-      <quality_gate>SERP analysis file(s) created in $SESSION_PATH/</quality_gate>
+      <quality_gate type="AUTO">
+        **serp_analysis_gate** (seo:quality-gate skill):
+        - Intent confidence: ≥80%
+        - Competitors analyzed: ≥5
+        - SERP features documented: true
+
+        ON PASS: Proceed to Phase 3 automatically
+        ON FAIL: Agent retries (up to 3x), then escalates to USER GATE
+      </quality_gate>
     </phase>
 
     <phase number="3" name="Keyword Expansion">
@@ -119,22 +127,38 @@ skills: orchestration:multi-agent-coordination, orchestration:quality-gates, orc
       <steps>
         <step>Delegate to seo-researcher with analyst findings</step>
         <step>Task with prompt: "SESSION_PATH: ${SESSION_PATH}\n\nExpand to 50-100 keywords, cluster by topic, classify intent and funnel stage. Analyst findings: {findings}"</step>
-        <step>Wait for researcher report</step>
+        <step>Wait for researcher report (agent has self-correction enabled)</step>
+        <step>Evaluate AUTO GATE: keyword_expansion_gate</step>
         <step>Mark PHASE 3 as complete</step>
       </steps>
-      <quality_gate>Keyword clusters created with 50+ terms</quality_gate>
+      <quality_gate type="AUTO">
+        **keyword_expansion_gate** (seo:quality-gate skill):
+        - Keywords discovered: ≥50
+        - Topic clusters: ≥3
+        - Intent coverage: All 4 types present
+        - Funnel stages mapped: true
+
+        ON PASS: Proceed to Phase 4 automatically
+        ON FAIL: Agent retries (up to 3x), then escalates to USER GATE
+      </quality_gate>
     </phase>
 
-    <phase number="4" name="User Review">
-      <objective>Get user feedback on research findings</objective>
+    <phase number="4" name="Quality Checkpoint">
+      <objective>Validate research quality before final report</objective>
       <steps>
-        <step>Present keyword cluster summary</step>
-        <step>Highlight top opportunities</step>
-        <step>Ask if user wants to refine or proceed</step>
-        <step>If refine: Return to Phase 2 or 3 with new parameters</step>
+        <step>Verify SERP analysis meets quality thresholds</step>
+        <step>Verify keyword expansion meets quality thresholds</step>
+        <step>If both AUTO GATEs passed: Proceed to Phase 5</step>
+        <step>If escalation occurred: Present findings and ask user for direction</step>
         <step>Mark PHASE 4 as complete</step>
       </steps>
-      <quality_gate>User approves research direction</quality_gate>
+      <quality_gate type="CONDITIONAL">
+        **Escalation Check**:
+        - If no escalations: AUTO progression to Phase 5
+        - If analyst escalated: USER GATE for SERP analysis refinement
+        - If researcher escalated: USER GATE for keyword expansion guidance
+        - User can approve current results OR request refinement
+      </quality_gate>
     </phase>
 
     <phase number="5" name="Final Report">
