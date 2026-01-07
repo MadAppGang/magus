@@ -360,6 +360,142 @@ async function handleReadIntercept(input: HookInput): Promise<HookOutput | null>
 }
 
 // =============================================================================
+// TASK INTERCEPT HANDLER (Explore Agent Replacement)
+// =============================================================================
+
+async function handleTaskIntercept(input: HookInput): Promise<HookOutput | null> {
+  // Type guard check
+  if (!input.tool_input || typeof input.tool_input !== 'object') return null;
+
+  const toolInput = input.tool_input as {
+    subagent_type?: string;
+    prompt?: string;
+    description?: string;
+  };
+
+  const subagentType = toolInput.subagent_type;
+
+  // Only intercept the built-in Explore agent
+  // Case-insensitive check with trim to handle potential variations
+  if (!subagentType || subagentType.trim().toLowerCase() !== "explore") {
+    return null; // Allow all other Task calls to proceed
+  }
+
+  // Check if claudemem is indexed for this project
+  const status = isIndexed(input.cwd);
+
+  if (!status.indexed) {
+    // If not indexed, allow Explore but suggest indexing
+    return {
+      additionalContext: `⚠️ **Explore agent bypassing AST analysis** - claudemem not indexed.
+
+For structural code navigation with PageRank ranking, run:
+\`\`\`bash
+claudemem index
+\`\`\`
+
+Then use \`code-analysis:detective\` agent instead of Explore.`,
+      hookSpecificOutput: {
+        hookEventName: "PreToolUse",
+        permissionDecision: "allow",
+        permissionDecisionReason: "claudemem not indexed - Explore allowed as fallback",
+      },
+    };
+  }
+
+  // Extract the search intent from the prompt
+  const prompt = toolInput.prompt || "";
+  const description = toolInput.description || "";
+  const searchContext = prompt || description;
+
+  // Run claudemem map to provide structural overview (with short timeout)
+  let mapResults: string | null = null;
+  if (searchContext) {
+    // Extract potential keywords from the prompt
+    const keywords = extractSearchKeywords(searchContext);
+    if (keywords) {
+      try {
+        // Use shorter timeout (3s) for preview
+        mapResults = runCommand("claudemem", ["--agent", "map", keywords], input.cwd);
+      } catch {
+        mapResults = "(claudemem preview unavailable - try 'claudemem index' to rebuild)";
+      }
+    }
+  }
+
+  // Build helpful context for the redirect
+  const structuralOverview = mapResults
+    ? `\n**Structural Overview** (from claudemem map):\n${mapResults}\n`
+    : "";
+
+  return {
+    additionalContext: `🔍 **Explore agent intercepted** - Use \`code-analysis:detective\` instead.
+
+The code-analysis plugin provides AST-based structural analysis with PageRank ranking,
+which is more effective than the built-in Explore agent's grep/find approach.
+${structuralOverview}
+**How to use code-analysis:detective:**
+
+\`\`\`typescript
+Task({
+  subagent_type: "code-analysis:detective",
+  prompt: "${escapeForTemplate(searchContext || "your search query")}",
+  description: "Investigate codebase structure"
+})
+\`\`\`
+
+**What detective provides:**
+- AST structural analysis (not just text matching)
+- PageRank symbol importance ranking
+- Caller/callee dependency tracing
+- Semantic code navigation
+
+**claudemem commands available:**
+- \`claudemem --agent map "query"\` - Structural overview
+- \`claudemem --agent symbol <name>\` - Find definition
+- \`claudemem --agent callers <name>\` - Impact analysis
+- \`claudemem --agent callees <name>\` - Dependency analysis`,
+    hookSpecificOutput: {
+      hookEventName: "PreToolUse",
+      permissionDecision: "deny",
+      permissionDecisionReason: "Explore agent replaced with code-analysis:detective for AST structural analysis. See context above for how to use detective.",
+    },
+  };
+}
+
+// Helper: Extract search keywords from natural language prompt
+function extractSearchKeywords(text: string): string | null {
+  if (!text) return null;
+
+  // Remove common question words and filler
+  const cleaned = text
+    .toLowerCase()
+    .replace(/\b(find|search|look|locate|where|what|how|is|are|the|a|an|in|for|all|any)\b/g, " ")
+    .replace(/[?!.,;:'"]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  // Return if we have meaningful keywords
+  if (cleaned.length > 2) {
+    return cleaned;
+  }
+
+  // Fall back to first 5 words of original
+  const words = text.split(/\s+/).slice(0, 5).join(" ");
+  return words.length > 2 ? words : null;
+}
+
+// Helper: Escape string for template literal display
+function escapeForTemplate(str: string): string {
+  return str
+    .replace(/\\/g, "\\\\")
+    .replace(/`/g, "\\`")
+    .replace(/\$/g, "\\$")
+    .replace(/"/g, '\\"')
+    .substring(0, 200); // Limit length for display
+}
+
+// =============================================================================
 // AUTO-REINDEX HANDLER
 // =============================================================================
 
@@ -480,6 +616,9 @@ async function main() {
             break;
           case "Read":
             output = await handleReadIntercept(input);
+            break;
+          case "Task":
+            output = await handleTaskIntercept(input);
             break;
         }
         break;

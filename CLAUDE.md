@@ -12,7 +12,7 @@
 | Plugin | Version | Purpose |
 |--------|---------|---------|
 | **Frontend** | v3.13.0 | React/TypeScript dev with 11 agents, multi-model review |
-| **Code Analysis** | v2.12.0 | Codebase investigation with claudemem, anti-pattern warnings |
+| **Code Analysis** | v2.13.0 | Codebase investigation with claudemem, Explore agent hook |
 | **Bun Backend** | v1.5.2 | TypeScript backend with Bun, Apidog integration |
 | **Orchestration** | v0.8.0 | Multi-agent coordination patterns (6 skills) |
 | **Agent Development** | v1.3.0 | Create Claude Code agents, PROXY_MODE error handling |
@@ -196,7 +196,7 @@ CODEX_API_KEY=your-codex-key
 **Current Versions:**
 - Orchestration Plugin: **v0.8.1** (2026-01-07)
 - Frontend Plugin: **v3.13.0** (2025-12-14)
-- Code Analysis Plugin: **v2.12.0** (2026-01-05)
+- Code Analysis Plugin: **v2.13.0** (2026-01-08)
 - Bun Backend Plugin: **v1.5.2** (2025-11-26)
 - Agent Development Plugin: **v1.3.0** (2026-01-05)
 - SEO Plugin: **v1.5.0** (2026-01-07)
@@ -216,7 +216,7 @@ CODEX_API_KEY=your-codex-key
 - Orchestration: `plugins/orchestration/v0.8.1`
 - Frontend: `plugins/frontend/v3.13.0`
 - Bun: `plugins/bun/v1.5.2`
-- Code Analysis: `plugins/code-analysis/v2.12.0`
+- Code Analysis: `plugins/code-analysis/v2.13.0`
 - Agent Development: `plugins/agentdev/v1.3.0`
 - SEO: `plugins/seo/v1.5.0`
 - Video Editing: `plugins/video-editing/v1.0.1`
@@ -251,6 +251,6 @@ The workflow `.github/workflows/claudeup-release.yml` triggers on `tools/claudeu
 ---
 
 **Maintained by:** Jack Rudenko @ MadAppGang
-**Last Updated:** January 7, 2026
-**Version:** 10 plugins (Orchestration v0.8.1, Frontend v3.13.0, Code Analysis v2.12.0, Bun Backend v1.5.2, Agent Development v1.3.0, SEO v1.5.0, Video Editing v1.0.1, Nanobanana v2.2.2, Conductor v2.0.1, Dev v1.12.0)
+**Last Updated:** January 8, 2026
+**Version:** 10 plugins (Orchestration v0.8.1, Frontend v3.13.0, Code Analysis v2.13.0, Bun Backend v1.5.2, Agent Development v1.3.0, SEO v1.5.0, Video Editing v1.0.1, Nanobanana v2.2.2, Conductor v2.0.1, Dev v1.12.0)
 - do not use hardcoded path in code, docs, comments or any other files

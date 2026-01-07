@@ -38,8 +38,8 @@
 		{
 			"name": "code-analysis",
 			"source": "./plugins/code-analysis",
-			"description": "Deep code investigation with claudemem v0.9.0. NEW: Anti-pattern warnings prevent output truncation (head/tail/awk/sed). Built-in alternatives (--tokens, --page-size, --max-depth). AST analysis with PageRank, callers/callees tracing.",
-			"version": "2.12.0",
+			"description": "Deep code investigation with claudemem v0.9.0. NEW: Explore agent hook - automatically redirects to detective for AST analysis. Anti-pattern warnings, built-in alternatives (--tokens, --page-size, --max-depth). PageRank structural analysis, callers/callees tracing.",
+			"version": "2.13.0",
 			"author": {
 				"name": "Jack Rudenko",
 				"email": "i@madappgang.com",
