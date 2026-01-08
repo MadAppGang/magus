@@ -88,8 +88,8 @@
 		{
 			"name": "orchestration",
 			"source": "./plugins/orchestration",
-			"description": "Shared multi-agent coordination and workflow orchestration patterns for complex Claude Code workflows. v0.8.2: Fixed hooks configuration - moved from inline plugin.json to hooks/hooks.json. Skills-only plugin with parallel execution (3-5x speedup), dynamic model discovery, session-based artifact isolation, LLM performance tracking.",
-			"version": "0.8.2",
+			"description": "Shared multi-agent coordination and workflow orchestration patterns for complex Claude Code workflows. v0.9.0: Task+PROXY_MODE quick-reference skill, expanded routing (MiniMax, Kimi, GLM direct APIs). Skills-only plugin with parallel execution (3-5x speedup), dynamic model discovery, session-based artifact isolation, LLM performance tracking.",
+			"version": "0.9.0",
 			"author": {
 				"name": "Jack Rudenko",
 				"email": "i@madappgang.com",
