@@ -95,7 +95,7 @@ skills: nanobanana:gemini-api
 
 <examples>
   <example name="Simple Edit">
-    <input>/nb-edit photo.jpg "Add sunset colors to the sky"</input>
+    <input>/nanobanana:edit photo.jpg "Add sunset colors to the sky"</input>
     <flow>
       1. Parse: source=photo.jpg, instruction="Add sunset colors to the sky"
       2. Validate: instruction non-empty, sanitize
@@ -106,7 +106,7 @@ skills: nanobanana:gemini-api
   </example>
 
   <example name="With Reference">
-    <input>/nb-edit logo.png "Make it look like this style" --ref style.png</input>
+    <input>/nanobanana:edit logo.png "Make it look like this style" --ref style.png</input>
     <flow>
       1. Parse: source=logo.png, instruction, ref=style.png
       2. Verify both files exist

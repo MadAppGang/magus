@@ -165,7 +165,7 @@ skills: nanobanana:style-format
 
 <examples>
   <example name="Create">
-    <input>/nb-style create glass</input>
+    <input>/nanobanana:style create glass</input>
     <flow>
       1. Parse: action=create, name=glass
       2. Check styles/glass.md doesn't exist
@@ -177,7 +177,7 @@ skills: nanobanana:style-format
   </example>
 
   <example name="Delete (with confirmation)">
-    <input>/nb-style delete minimalist</input>
+    <input>/nanobanana:style delete minimalist</input>
     <flow>
       1. Parse: action=delete, name=minimalist
       2. Verify styles/minimalist.md exists
@@ -193,7 +193,7 @@ skills: nanobanana:style-format
   </example>
 
   <example name="Delete (cancelled)">
-    <input>/nb-style delete watercolor</input>
+    <input>/nanobanana:style delete watercolor</input>
     <flow>
       1. Parse: action=delete, name=watercolor
       2. Verify exists, display contents
@@ -204,7 +204,7 @@ skills: nanobanana:style-format
   </example>
 
   <example name="List">
-    <input>/nb-style list</input>
+    <input>/nanobanana:style list</input>
     <flow>
       1. Parse: action=list
       2. Task style-manager: List styles

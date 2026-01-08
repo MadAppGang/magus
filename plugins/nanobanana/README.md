@@ -50,81 +50,81 @@ AI image generation and editing using Google Gemini 3 Pro Image API.
 ### Generate an Image
 
 ```bash
-/nb-generate "A minimal 3D cube on black background"
+/nanobanana:generate "A minimal 3D cube on black background"
 ```
 
 ### Create and Use a Style
 
 ```bash
 # Create a style
-/nb-style create glass
+/nanobanana:style create glass
 # Describe: "3D glass material with blue tint, reflections, black background"
 
 # Generate with style
-/nb-generate "gear icon" --style glass
+/nanobanana:generate "gear icon" --style glass
 ```
 
 ### Batch Generation
 
 ```bash
-/nb-generate "cube" "sphere" "pyramid" --style glass
+/nanobanana:generate "cube" "sphere" "pyramid" --style glass
 # Creates: generated/cube_001.png, generated/cube_002.png, generated/cube_003.png
 ```
 
 ### Edit an Image
 
 ```bash
-/nb-edit photo.jpg "Make the sky more dramatic"
+/nanobanana:edit photo.jpg "Make the sky more dramatic"
 ```
 
 ### With Reference Image
 
 ```bash
-/nb-generate "Same style but with a sphere" --ref previous_output.png
+/nanobanana:generate "Same style but with a sphere" --ref previous_output.png
 ```
 
 ## Commands
 
-### `/nb-generate`
+### `/nanobanana:generate`
 
 Generate images from text prompts.
 
 **Usage:**
 ```
-/nb-generate "prompt" [--style name] [--aspect ratio] [--ref image]
+/nanobanana:generate "prompt" [--style name] [--aspect ratio] [--ref image]
 ```
 
 **Examples:**
 ```bash
-/nb-generate "A serene mountain lake at sunset"
-/nb-generate "gear icon" --style glass
-/nb-generate "cube" "sphere" "pyramid" --style glass --aspect 1:1
-/nb-generate "landscape" --aspect 16:9
+/nanobanana:generate "A serene mountain lake at sunset"
+/nanobanana:generate "gear icon" --style glass
+/nanobanana:generate "cube" "sphere" "pyramid" --style glass --aspect 1:1
+/nanobanana:generate "landscape" --aspect 16:9
 ```
 
-### `/nb-edit`
+### `/nanobanana:edit`
 
 Edit existing images with natural language instructions.
 
 **Usage:**
 ```
-/nb-edit <image> "instruction" [--ref image]
+/nanobanana:edit <image> "instruction" [--ref image]
 ```
 
 **Examples:**
 ```bash
-/nb-edit photo.jpg "Add dramatic sunset colors to the sky"
-/nb-edit logo.png "Change colors to blue and gold"
-/nb-edit scene.jpg "Add a rainbow" --ref rainbow_style.png
+/nanobanana:edit photo.jpg "Add dramatic sunset colors to the sky"
+/nanobanana:edit logo.png "Change colors to blue and gold"
+/nanobanana:edit scene.jpg "Add a rainbow" --ref rainbow_style.png
 ```
 
-### `/nb-style`
+### `/nanobanana:style`
 
 Manage style templates.
 
 **Usage:**
 ```
-/nb-style <action> [name]
+/nanobanana:style <action> [name]
 ```
 
 **Actions:**
@@ -136,10 +136,10 @@ Manage style templates.
 
 **Examples:**
 ```bash
-/nb-style create watercolor
-/nb-style list
-/nb-style show glass
-/nb-style delete minimalist
+/nanobanana:style create watercolor
+/nanobanana:style list
+/nanobanana:style show glass
+/nanobanana:style delete minimalist
 ```
 
 ## Aspect Ratios
@@ -223,39 +223,39 @@ echo 'export GEMINI_API_KEY="your-key"' >> ~/.zshrc
 
 ```bash
 # 1. Create style
-/nb-style create glass
+/nanobanana:style create glass
 # Describe: "3D glass material with blue tint"
 
 # 2. Generate first icon
-/nb-generate "home icon" --style glass
+/nanobanana:generate "home icon" --style glass
 
 # 3. Use as reference for consistency
-/nb-generate "settings icon" --style glass --ref generated/home_icon.png
-/nb-generate "user icon" --style glass --ref generated/home_icon.png
+/nanobanana:generate "settings icon" --style glass --ref generated/home_icon.png
+/nanobanana:generate "user icon" --style glass --ref generated/home_icon.png
 ```
 
 ### Workflow 2: Photo Enhancement
 
 ```bash
 # 1. Edit photo
-/nb-edit landscape.jpg "Add dramatic sunset sky"
+/nanobanana:edit landscape.jpg "Add dramatic sunset sky"
 
 # 2. Further refinement
-/nb-edit landscape_edited.png "Add birds flying in the distance"
+/nanobanana:edit landscape_edited.png "Add birds flying in the distance"
 
 # 3. Apply artistic style
-/nb-edit landscape_edited.png "Make it look painted" --ref painting_style.jpg
+/nanobanana:edit landscape_edited.png "Make it look painted" --ref painting_style.jpg
 ```
 
 ### Workflow 3: YouTube Thumbnails
 
 ```bash
 # Create style for consistent branding
-/nb-style create youtube_thumb
+/nanobanana:style create youtube_thumb
 # Describe: "Bold text overlay, dramatic lighting, vibrant colors"
 
 # Generate thumbnails at 16:9
-/nb-generate "Tech review" "Gaming" "Tutorial" --style youtube_thumb --aspect 16:9
+/nanobanana:generate "Tech review" "Gaming" "Tutorial" --style youtube_thumb --aspect 16:9
 ```
 
 ## Error Handling
@@ -287,7 +287,7 @@ export GEMINI_API_KEY="your-key"
 
 List available styles:
 ```bash
-/nb-style list
+/nanobanana:style list
 ```
 
 ### Rate Limit Errors
