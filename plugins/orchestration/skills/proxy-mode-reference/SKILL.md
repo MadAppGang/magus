@@ -82,9 +82,32 @@ PROXY_MODE: x-ai/grok-code-fast-1
 Review the architecture plan at ai-docs/plan.md
 ```
 
-## Supported Agents
+## Approach Selection
 
-**Total: 18 PROXY_MODE-enabled agents across 3 plugins**
+**Preference Order:**
+1. ✅ **First**: Use PROXY_MODE if agent supports it (see Supported Agents below)
+2. ✅ **Fallback**: Use Bash + CLI if agent lacks PROXY_MODE support
+
+## Alternative: Bash + CLI (Works with ANY Agent)
+
+Use the CLI directly when an agent doesn't support PROXY_MODE:
+
+```bash
+# Pattern
+echo "{PROMPT}" | npx claudish --agent {PLUGIN}:{AGENT} --model {MODEL_ID} --stdin --quiet --auto-approve
+
+# Examples
+echo "Research React hooks" | npx claudish --agent dev:researcher --model x-ai/grok-code-fast-1 --stdin --quiet --auto-approve
+echo "Debug this error" | npx claudish --agent dev:debugger --model google/gemini-3-pro-preview --stdin --quiet --auto-approve
+```
+
+This approach works with **ALL agents**, not just PROXY_MODE-enabled ones.
+
+---
+
+## Supported Agents (for PROXY_MODE Directive)
+
+**Total: 25+ PROXY_MODE-enabled agents across 4 plugins**
 
 ### agentdev plugin (3 agents)
 
@@ -117,12 +140,24 @@ Review the architecture plan at ai-docs/plan.md
 | researcher | `seo:researcher` | Research & data gathering |
 | data-analyst | `seo:data-analyst` | Data analysis & insights |
 
+### dev plugin (7 agents)
+
+| Agent | subagent_type | Best For |
+|-------|---------------|----------|
+| researcher | `dev:researcher` | Research and exploration |
+| developer | `dev:developer` | Implementation tasks |
+| debugger | `dev:debugger` | Error analysis and debugging |
+| devops | `dev:devops` | Infrastructure and DevOps |
+| architect | `dev:architect` | Architecture design |
+| test-architect | `dev:test-architect` | Test strategy and design |
+| ui | `dev:ui` | UI/UX design reviews |
+
 ## Common Mistakes
 
 ### Mistake 1: Using general-purpose
 
 ```typescript
-// ❌ WRONG
+// ❌ WRONG for Task + PROXY_MODE approach
 Task({
   subagent_type: "general-purpose",
   prompt: "PROXY_MODE: grok..."
@@ -130,6 +165,11 @@ Task({
 ```
 
 `general-purpose` doesn't have `<proxy_mode_support>` so it won't recognize the directive.
+
+**Fix:** Either use a PROXY_MODE-enabled agent, or use the Bash + CLI approach:
+```bash
+echo "Your task" | npx claudish --agent dev:researcher --model x-ai/grok-code-fast-1 --stdin --quiet --auto-approve
+```
 
 ### Mistake 2: Instructing agent to run claudish
 
