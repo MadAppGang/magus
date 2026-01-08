@@ -194,7 +194,7 @@ CODEX_API_KEY=your-codex-key
 **Detailed Release Notes:** See [RELEASES.md](./RELEASES.md) for comprehensive release documentation
 
 **Current Versions:**
-- Orchestration Plugin: **v0.9.0** (2026-01-08)
+- Orchestration Plugin: **v0.10.0** (2026-01-09)
 - Frontend Plugin: **v3.13.0** (2025-12-14)
 - Code Analysis Plugin: **v2.13.1** (2026-01-08)
 - Bun Backend Plugin: **v1.5.2** (2025-11-26)
@@ -203,17 +203,17 @@ CODEX_API_KEY=your-codex-key
 - Video Editing Plugin: **v1.0.1** (2026-01-06)
 - Nanobanana Plugin: **v2.2.3** (2026-01-08)
 - Conductor Plugin: **v2.0.1** (2026-01-06)
-- Dev Plugin: **v1.13.0** (2026-01-08)
+- Dev Plugin: **v1.14.0** (2026-01-09)
 - Claudish CLI: See https://github.com/MadAppGang/claudish (separate repository)
 
-**Latest Changes (Dev v1.13.0):**
-- ✅ **UI Style System**: Reference image capture, keyword-based matching, comparative Gemini analysis
-- ✅ **Enhanced create-style**: Phases 9-13 for image management (capture, add/remove reference, list)
-- ✅ **NEW ui-style-format skill**: Design style file format specification with reference images
+**Latest Changes (Dev v1.14.0, Orchestration v0.10.0):**
+- ✅ **PROXY_MODE Support**: architect and test-architect agents now support multi-model validation
+- ✅ **Preference Order**: Use PROXY_MODE if available, otherwise Bash+CLI with --agent flag
+- ✅ **Dev Plugin Agents**: 7 agents added to orchestration's supported agents list
 - ✅ **29+ Technology Skills**: Frontend, backend, design, and infrastructure skills
 
 **Git Tags:**
-- Orchestration: `plugins/orchestration/v0.9.0`
+- Orchestration: `plugins/orchestration/v0.10.0`
 - Frontend: `plugins/frontend/v3.13.0`
 - Bun: `plugins/bun/v1.5.2`
 - Code Analysis: `plugins/code-analysis/v2.13.1`
@@ -222,7 +222,7 @@ CODEX_API_KEY=your-codex-key
 - Video Editing: `plugins/video-editing/v1.0.1`
 - Nanobanana: `plugins/nanobanana/v2.2.3`
 - Conductor: `plugins/conductor/v2.0.1`
-- Dev: `plugins/dev/v1.13.0`
+- Dev: `plugins/dev/v1.14.0`
 - Use correct tag format when releasing: `plugins/{plugin-name}/vX.Y.Z`
 
 **⚠️ RELEASE CHECKLIST (ALL 3 REQUIRED):**
@@ -251,6 +251,6 @@ The workflow `.github/workflows/claudeup-release.yml` triggers on `tools/claudeu
 ---
 
 **Maintained by:** Jack Rudenko @ MadAppGang
-**Last Updated:** January 8, 2026
-**Version:** 10 plugins (Orchestration v0.9.0, Frontend v3.13.0, Code Analysis v2.13.1, Bun Backend v1.5.2, Agent Development v1.3.0, SEO v1.5.1, Video Editing v1.0.1, Nanobanana v2.2.3, Conductor v2.0.1, Dev v1.13.0)
+**Last Updated:** January 9, 2026
+**Version:** 10 plugins (Orchestration v0.10.0, Frontend v3.13.0, Code Analysis v2.13.1, Bun Backend v1.5.2, Agent Development v1.3.0, SEO v1.5.1, Video Editing v1.0.1, Nanobanana v2.2.3, Conductor v2.0.1, Dev v1.14.0)
 - do not use hardcoded path in code, docs, comments or any other files

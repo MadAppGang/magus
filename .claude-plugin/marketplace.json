@@ -88,8 +88,8 @@
 		{
 			"name": "orchestration",
 			"source": "./plugins/orchestration",
-			"description": "Shared multi-agent coordination and workflow orchestration patterns for complex Claude Code workflows. v0.9.0: Task+PROXY_MODE quick-reference skill, expanded routing (MiniMax, Kimi, GLM direct APIs). Skills-only plugin with parallel execution (3-5x speedup), dynamic model discovery, session-based artifact isolation, LLM performance tracking.",
-			"version": "0.9.0",
+			"description": "Shared multi-agent coordination and workflow orchestration patterns for complex Claude Code workflows. v0.10.0: Preference order (PROXY_MODE first, Bash+CLI fallback), dev plugin agents added. Skills-only plugin with parallel execution (3-5x speedup), dynamic model discovery, session-based artifact isolation.",
+			"version": "0.10.0",
 			"author": {
 				"name": "Jack Rudenko",
 				"email": "i@madappgang.com",
@@ -236,8 +236,8 @@
 		{
 			"name": "dev",
 			"source": "./plugins/dev",
-			"description": "Universal development assistant with deep research, interviews, and DevOps guidance. v1.13.0: UI Style System - reference image capture, keyword matching, comparative Gemini analysis. Enhanced create-style (phases 9-13), ui-style-format skill. 29+ skills.",
-			"version": "1.13.0",
+			"description": "Universal development assistant with deep research, interviews, and DevOps guidance. v1.14.0: PROXY_MODE support for architect and test-architect agents - enables multi-model validation workflows. 29+ skills.",
+			"version": "1.14.0",
 			"author": {
 				"name": "Jack Rudenko",
 				"email": "i@madappgang.com",

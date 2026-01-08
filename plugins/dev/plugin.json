@@ -1,7 +1,7 @@
 {
   "name": "dev",
-  "version": "1.13.0",
-  "description": "Universal development assistant with deep research, specification interviews, and DevOps guidance. v1.13.0: UI Style System - reference image capture, keyword-based matching, comparative Gemini analysis for design reviews. Enhanced create-style command (phases 9-13), ui-style-format skill. 29+ skills.",
+  "version": "1.14.0",
+  "description": "Universal development assistant with deep research, specification interviews, and DevOps guidance. v1.14.0: PROXY_MODE support for architect and test-architect agents - enables multi-model validation workflows. 29+ skills.",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",
