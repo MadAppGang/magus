@@ -26,10 +26,26 @@ async function main(): Promise<void> {
 
   // Handle "claudeup update" - self-update command
   if (args[0] === 'update') {
-    console.log('Updating claudeup...');
-    const proc = spawn('npm', ['install', '-g', 'claudeup@latest'], {
+    // Detect how claudeup was installed by checking the executable path
+    const { execSync } = await import('node:child_process');
+    let usesBun = false;
+    try {
+      const claudeupPath = execSync('which claudeup', { encoding: 'utf-8' }).trim();
+      usesBun = claudeupPath.includes('.bun') || claudeupPath.includes('bun/bin');
+    } catch {
+      // If which fails, default to npm
+    }
+
+    const pkgManager = usesBun ? 'bun' : 'npm';
+    console.log(`Updating claudeup using ${pkgManager}...`);
+
+    const installArgs = usesBun
+      ? ['install', '-g', 'claudeup@latest']
+      : ['install', '-g', 'claudeup@latest'];
+
+    const proc = spawn(pkgManager, installArgs, {
       stdio: 'inherit',
-      shell: true,
+      shell: false, // Avoid shell for security (fixes DEP0190 warning)
     });
     proc.on('exit', (code) => process.exit(code || 0));
     return;
