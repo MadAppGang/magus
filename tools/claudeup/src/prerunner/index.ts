@@ -24,38 +24,40 @@ export async function prerunClaude(claudeArgs: string[]): Promise<number> {
 
       // STEP 4: Get updated plugin info (to detect versions)
       const plugins = await getAvailablePlugins();
-      const enabledPlugins = plugins.filter(p => p.enabled);
 
-      // STEP 5: Build summary
-      const updated: string[] = [];
+      // STEP 5: Build summary - show all updated plugins (not just enabled)
+      const updatedMarketplaces: string[] = [];
+      const updatedPlugins: string[] = [];
       const failed: string[] = [];
 
       for (const result of refreshResults) {
         if (result.success && result.updated) {
-          // Find plugin info for this marketplace
-          const mpPlugins = enabledPlugins.filter(p =>
-            p.marketplace === result.name
-          );
+          updatedMarketplaces.push(result.name);
+          // Find ALL plugins from this marketplace (regardless of enabled state)
+          const mpPlugins = plugins.filter(p => p.marketplace === result.name);
           if (mpPlugins.length > 0) {
-            updated.push(...mpPlugins.map(p => `${p.name}@${p.marketplace} v${p.version}`));
+            updatedPlugins.push(...mpPlugins.map(p => `${p.name} v${p.version}`));
           }
         } else if (!result.success) {
-          failed.push(result.name);
+          failed.push(`${result.name}${result.error ? ` (${result.error})` : ''}`);
         }
       }
 
       // STEP 6: Save cache
       await cache.saveCheck({
         lastUpdateCheck: new Date().toISOString(),
-        lastUpdateResult: { updated, failed },
+        lastUpdateResult: { updated: updatedPlugins, failed },
       });
 
-      // STEP 7: Display summary (only if updates happened)
-      if (updated.length > 0) {
-        console.log(`Updated ${updated.length} plugin(s): ${updated.join(', ')}`);
+      // STEP 7: Display summary (marketplace-level and plugin-level)
+      if (updatedMarketplaces.length > 0) {
+        console.log(`✓ Updated marketplace(s): ${updatedMarketplaces.join(', ')}`);
+        if (updatedPlugins.length > 0) {
+          console.log(`  Plugins: ${updatedPlugins.join(', ')}`);
+        }
       }
       if (failed.length > 0) {
-        console.warn(`Warning: Failed to update: ${failed.join(', ')}`);
+        console.warn(`⚠ Failed to update: ${failed.join(', ')}`);
       }
     }
     // If !shouldUpdate → silent (no output)
