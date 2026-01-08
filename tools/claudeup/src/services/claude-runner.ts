@@ -19,7 +19,7 @@ export async function runClaude(args: string[]): Promise<number> {
   return new Promise((resolve) => {
     const proc = spawn('claude', args, {
       stdio: 'inherit', // Pass through stdin, stdout, stderr
-      shell: false,
+      shell: true, // Required to find 'claude' in PATH on all systems
     });
 
     proc.on('exit', (code) => resolve(code || 0));
