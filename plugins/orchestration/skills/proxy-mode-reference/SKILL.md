@@ -1,7 +1,7 @@
 ---
 name: proxy-mode-reference
-version: 1.0.0
-description: Reference guide for using PROXY_MODE with external AI models. Use when running multi-model reviews, understanding which agents support PROXY_MODE, or debugging external model integration issues.
+version: 1.1.0
+description: Reference guide for using PROXY_MODE with external AI models. Use when running multi-model reviews, understanding which agents support PROXY_MODE, or debugging external model integration issues. Includes routing prefixes for MiniMax, Kimi, GLM direct APIs.
 ---
 
 # PROXY_MODE Reference Guide
@@ -24,9 +24,12 @@ Claudish routes to different backends based on model ID prefix:
 
 | Prefix | Backend | Required Key | Example |
 |--------|---------|--------------|---------|
-| (none) | OpenRouter | `OPENROUTER_API_KEY` | `x-ai/grok-code-fast-1` |
+| (none) | OpenRouter | `OPENROUTER_API_KEY` | `openai/gpt-5.2` |
 | `g/` `gemini/` | Google Gemini API | `GEMINI_API_KEY` | `g/gemini-2.0-flash` |
-| `oai/` `openai/` | OpenAI API | `OPENAI_API_KEY` | `oai/gpt-4o` |
+| `oai/` | OpenAI Direct API | `OPENAI_API_KEY` | `oai/gpt-4o` |
+| `mmax/` `mm/` | MiniMax Direct API | `MINIMAX_API_KEY` | `mmax/MiniMax-M2.1` |
+| `kimi/` `moonshot/` | Kimi Direct API | `KIMI_API_KEY` | `kimi/kimi-k2-thinking-turbo` |
+| `glm/` `zhipu/` | GLM Direct API | `GLM_API_KEY` | `glm/glm-4.7` |
 | `ollama/` | Ollama (local) | None | `ollama/llama3.2` |
 | `lmstudio/` | LM Studio (local) | None | `lmstudio/qwen` |
 | `vllm/` | vLLM (local) | None | `vllm/model` |
@@ -40,21 +43,28 @@ OpenRouter model IDs may collide with routing prefixes. Check the prefix table a
 **Collision-free models (safe for OpenRouter):**
 - `x-ai/grok-*` ✅
 - `deepseek/*` ✅
-- `minimax/*` ✅
+- `minimax/*` ✅ (use `mmax/` for MiniMax Direct)
 - `qwen/*` ✅
 - `mistralai/*` ✅
-- `moonshotai/*` ✅
+- `moonshotai/*` ✅ (use `kimi/` for Kimi Direct)
 - `anthropic/*` ✅
-- `z-ai/*` ✅
-- `google/*` ✅ (only `g/` and `gemini/` route to Gemini Direct)
+- `z-ai/*` ✅ (use `glm/` for GLM Direct)
+- `google/*` ✅ (use `g/` for Gemini Direct)
+- `openai/*` ✅ (use `oai/` for OpenAI Direct)
 
-**Models with prefix collisions:**
-- `openai/gpt-*` ❌ → Routes to OpenAI Direct (use `oai/` or set `OPENAI_API_KEY`)
+**Direct API prefixes for cost savings:**
+| OpenRouter Model | Direct API Prefix | Notes |
+|------------------|-------------------|-------|
+| `openai/gpt-*` | `oai/gpt-*` | OpenAI Direct API |
+| `google/gemini-*` | `g/gemini-*` | Gemini Direct API |
+| `minimax/*` | `mmax/*` or `mm/*` | MiniMax Direct API |
+| `moonshotai/*` | `kimi/*` or `moonshot/` | Kimi Direct API |
+| `z-ai/glm-*` | `glm/*` or `zhipu/*` | GLM Direct API |
 
 **Workaround for collisions:**
-1. Use collision-free models (recommended)
-2. Set up direct API key (`GEMINI_API_KEY`, `OPENAI_API_KEY`)
-3. Use the short prefix form (`g/`, `oai/`) for direct API access
+1. Use collision-free OpenRouter models (recommended for simplicity)
+2. Use direct API prefix for cost savings (e.g., `oai/gpt-4o` instead of `openai/gpt-4o`)
+3. Set up the corresponding API key for direct access
 
 ## The PROXY_MODE Directive
 

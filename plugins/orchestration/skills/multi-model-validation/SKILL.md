@@ -1,14 +1,14 @@
 ---
 name: multi-model-validation
-description: Run multiple AI models in parallel for 3-5x speedup with ENFORCED performance statistics tracking. Use when validating with Grok, Gemini, GPT-5, DeepSeek, or Claudish proxy for code review, consensus analysis, or multi-expert validation. NEW in v3.1.0 - SubagentStop hook enforces statistics collection, MANDATORY checklist prevents incomplete reviews, timing instrumentation examples. Includes dynamic model discovery via `claudish --top-models` and `claudish --free`, session-based workspaces, and Pattern 7-8 for tracking model performance. Trigger keywords - "grok", "gemini", "gpt-5", "deepseek", "claudish", "multiple models", "parallel review", "external AI", "consensus", "multi-model", "model performance", "statistics", "free models".
-version: 3.1.0
-tags: [orchestration, claudish, parallel, consensus, multi-model, grok, gemini, external-ai, statistics, performance, free-models, enforcement]
-keywords: [grok, gemini, gpt-5, deepseek, claudish, parallel, consensus, multi-model, external-ai, proxy, openrouter, statistics, performance, quality-score, execution-time, free-models, top-models, enforcement, mandatory, checklist]
+description: Run multiple AI models in parallel for 3-5x speedup with ENFORCED performance statistics tracking. Use when validating with Grok, Gemini, GPT-5, DeepSeek, MiniMax, Kimi, GLM, or Claudish proxy for code review, consensus analysis, or multi-expert validation. NEW in v3.2.0 - Direct API prefixes (mmax/, kimi/, glm/) for cost savings. Includes dynamic model discovery via `claudish --top-models` and `claudish --free`, session-based workspaces, and Pattern 7-8 for tracking model performance. Trigger keywords - "grok", "gemini", "gpt-5", "deepseek", "minimax", "kimi", "glm", "claudish", "multiple models", "parallel review", "external AI", "consensus", "multi-model", "model performance", "statistics", "free models".
+version: 3.2.0
+tags: [orchestration, claudish, parallel, consensus, multi-model, grok, gemini, external-ai, statistics, performance, free-models, minimax, kimi, glm]
+keywords: [grok, gemini, gpt-5, deepseek, claudish, parallel, consensus, multi-model, external-ai, proxy, openrouter, statistics, performance, quality-score, execution-time, free-models, top-models, minimax, kimi, glm, mmax, zhipu]
 ---
 
 # Multi-Model Validation
 
-**Version:** 3.1.0
+**Version:** 3.2.0
 **Purpose:** Patterns for running multiple AI models in parallel via Claudish proxy with dynamic model discovery, session-based workspaces, and performance statistics
 **Status:** Production Ready
 
@@ -180,7 +180,10 @@ Claudish routes to different backends based on model ID prefix:
 |--------|---------|--------------|
 | (none) | OpenRouter | `OPENROUTER_API_KEY` |
 | `g/` `gemini/` | Google Gemini API | `GEMINI_API_KEY` |
-| `oai/` `openai/` | OpenAI API | `OPENAI_API_KEY` |
+| `oai/` | OpenAI Direct API | `OPENAI_API_KEY` |
+| `mmax/` `mm/` | MiniMax Direct API | `MINIMAX_API_KEY` |
+| `kimi/` `moonshot/` | Kimi Direct API | `KIMI_API_KEY` |
+| `glm/` `zhipu/` | GLM Direct API | `GLM_API_KEY` |
 | `ollama/` | Ollama (local) | None |
 | `lmstudio/` | LM Studio (local) | None |
 | `vllm/` | vLLM (local) | None |
@@ -188,25 +191,26 @@ Claudish routes to different backends based on model ID prefix:
 
 **Collision-Free Models (safe for OpenRouter):**
 - `x-ai/grok-code-fast-1` ✅
-- `google/gemini-2.5-flash` ✅ (only `g/` and `gemini/` prefixes route to Gemini)
-- `google/gemini-3-pro-preview` ✅
+- `google/gemini-*` ✅ (use `g/` for Gemini Direct)
 - `deepseek/deepseek-chat` ✅
-- `minimax/minimax-m2` ✅
+- `minimax/*` ✅ (use `mmax/` for MiniMax Direct)
 - `qwen/qwen3-coder:free` ✅
 - `mistralai/devstral-2512:free` ✅
-- `moonshotai/kimi-k2-thinking` ✅
-- `z-ai/glm-4.7` ✅
+- `moonshotai/*` ✅ (use `kimi/` for Kimi Direct)
+- `z-ai/glm-*` ✅ (use `glm/` for GLM Direct)
+- `openai/*` ✅ (use `oai/` for OpenAI Direct)
 - `anthropic/claude-*` ✅
 
-**Models with Prefix Collisions:**
-- `openai/gpt-*` ❌ → Routes to OpenAI Direct API (requires `OPENAI_API_KEY`)
+**Direct API prefixes for cost savings:**
+| OpenRouter Model | Direct API Prefix | API Key Required |
+|------------------|-------------------|------------------|
+| `openai/gpt-*` | `oai/gpt-*` | `OPENAI_API_KEY` |
+| `google/gemini-*` | `g/gemini-*` | `GEMINI_API_KEY` |
+| `minimax/*` | `mmax/*` | `MINIMAX_API_KEY` |
+| `moonshotai/*` | `kimi/*` | `KIMI_API_KEY` |
+| `z-ai/glm-*` | `glm/*` | `GLM_API_KEY` |
 
-**Workarounds for `openai/*` collision:**
-1. Use alternative models (grok, deepseek, qwen - recommended)
-2. Set `OPENAI_API_KEY` and use `oai/gpt-4o` for OpenAI Direct
-3. Note: OpenRouter's `openai/gpt-5.2` collides with `openai/` prefix
-
-**Rule:** Prefer collision-free model IDs. If using `openai/*` models, set up OpenAI Direct API.
+**Rule:** OpenRouter models work without prefix. Use direct API prefixes for cost savings when you have the corresponding API key.
 
 **Interactive Model Selection (AskUserQuestion with multiSelect):**
 
