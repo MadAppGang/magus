@@ -38,8 +38,8 @@
 		{
 			"name": "code-analysis",
 			"source": "./plugins/code-analysis",
-			"description": "Deep code investigation with claudemem v0.9.0. v2.13.1: Fixed hooks configuration - moved from inline plugin.json to hooks/hooks.json for proper Claude Code recognition. Explore agent hook, anti-pattern warnings, PageRank structural analysis.",
-			"version": "2.13.1",
+			"description": "Deep code investigation with claudemem. v2.14.0: Imperative hook blocking with evasion detection - blocks Grep, code-search Glob patterns, and bulk Read (5+ files). Chained blocking prevents workarounds. PageRank structural analysis.",
+			"version": "2.14.0",
 			"author": {
 				"name": "Jack Rudenko",
 				"email": "i@madappgang.com",
