@@ -196,7 +196,7 @@ CODEX_API_KEY=your-codex-key
 **Current Versions:**
 - Orchestration Plugin: **v0.10.0** (2026-01-09)
 - Frontend Plugin: **v3.13.0** (2025-12-14)
-- Code Analysis Plugin: **v2.13.1** (2026-01-08)
+- Code Analysis Plugin: **v2.14.0** (2026-01-10)
 - Bun Backend Plugin: **v1.5.2** (2025-11-26)
 - Agent Development Plugin: **v1.3.0** (2026-01-05)
 - SEO Plugin: **v1.5.1** (2026-01-08)
@@ -206,17 +206,18 @@ CODEX_API_KEY=your-codex-key
 - Dev Plugin: **v1.15.0** (2026-01-10)
 - Claudish CLI: See https://github.com/MadAppGang/claudish (separate repository)
 
-**Latest Changes (Dev v1.15.0):**
-- ✅ **/dev:doc Command**: New documentation orchestrator with GENERATE/ANALYZE/FIX/VALIDATE actions
-- ✅ **3 New Agents**: doc-writer, doc-analyzer (42-point checklist), doc-fixer
-- ✅ **Documentation Standards Skill**: 1,031-line knowledge base with 7 ready-to-use templates
-- ✅ **30+ Skills**: Added documentation-standards to existing skill set
+**Latest Changes (Code Analysis v2.14.0):**
+- ✅ **Imperative Hook Blocking**: "You MUST invoke" instead of soft "replaced with" messages
+- ✅ **Evasion Detection**: Grep blocked -> Glob attempted -> also blocked (chained blocking)
+- ✅ **Bulk Read Tracking**: Warns at 3 files, blocks at 5+ sequential reads
+- ✅ **Code-Search Glob Patterns**: Blocks `**/*.ts`, monorepo patterns, test file patterns
+- ✅ **State Management**: Session-isolated evasion tracking with 30-minute TTL
 
 **Git Tags:**
 - Orchestration: `plugins/orchestration/v0.10.0`
 - Frontend: `plugins/frontend/v3.13.0`
 - Bun: `plugins/bun/v1.5.2`
-- Code Analysis: `plugins/code-analysis/v2.13.1`
+- Code Analysis: `plugins/code-analysis/v2.14.0`
 - Agent Development: `plugins/agentdev/v1.3.0`
 - SEO: `plugins/seo/v1.5.1`
 - Video Editing: `plugins/video-editing/v1.0.1`
