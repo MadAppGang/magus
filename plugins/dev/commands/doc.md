@@ -1,21 +1,7 @@
 ---
-name: doc
-description: |
-  Main documentation command for generating, analyzing, and fixing documentation.
-  Supports: generate (README, API, tutorial), analyze (quality score, anti-patterns),
-  fix (automatic improvements), validate (best practices check).
-  Use when: "document my code", "create README", "check doc quality", "fix documentation"
-allowed-tools:
-  - Task
-  - AskUserQuestion
-  - Bash
-  - Read
-  - TodoWrite
-  - Glob
-  - Grep
-skills:
-  - dev:documentation-standards
-  - orchestration:quality-gates
+description: Documentation command - generate, analyze, fix, or validate docs. Use for README, API docs, tutorials, changelogs.
+allowed-tools: Task, AskUserQuestion, Bash, Read, TodoWrite, Glob, Grep
+skills: dev:documentation-standards, orchestration:quality-gates
 ---
 
 <role>
