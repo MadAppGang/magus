@@ -191,7 +191,7 @@ skills: orchestration:ui-design-review, orchestration:multi-model-validation
           ```bash
           if [[ -n "$OPENROUTER_API_KEY" ]]; then
             echo "OPENROUTER_AVAILABLE=true"
-            echo "MODEL=or/google/gemini-3-pro-preview"
+            echo "MODEL=google/gemini-3-pro-preview"
           else
             echo "OPENROUTER_AVAILABLE=false"
           fi
@@ -400,7 +400,7 @@ skills: orchestration:ui-design-review, orchestration:multi-model-validation
     <execution>
       **PHASE 0**: Create session
       **PHASE 1**: User provides forms/login.png
-      **PHASE 2**: OPENROUTER_API_KEY found, use or/google/gemini-3-pro-preview
+      **PHASE 2**: OPENROUTER_API_KEY found, use google/gemini-3-pro-preview
       **PHASE 3**: Auto-select "Accessibility audit" from request
       **PHASE 4**: Launch ui with WCAG focus
       **PHASE 5**: Present WCAG compliance summary with pass/fail

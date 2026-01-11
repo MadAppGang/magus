@@ -97,7 +97,7 @@ skills: dev:context-detection, orchestration:multi-model-validation, orchestrati
 
       2. **Secondary: OpenRouter Gemini**
          - Check: OPENROUTER_API_KEY set and claudish available
-         - Model ID: or/google/gemini-3-pro-preview (via claudish)
+         - Model ID: google/gemini-3-pro-preview (via claudish)
          - Why: Fallback if no GOOGLE_API_KEY (uses correct OpenRouter prefix)
 
       3. **Fallback: Haiku**
@@ -113,17 +113,18 @@ skills: dev:context-detection, orchestration:multi-model-validation, orchestrati
         AGENT_MODEL="sonnet"  # Agents use sonnet, call Gemini for web
       elif command -v claudish &> /dev/null && [[ -n "$OPENROUTER_API_KEY" ]]; then
         MODEL_STRATEGY="openrouter"
-        PROXY_MODEL="or/google/gemini-3-pro-preview"  # Fixed with or/ prefix
+        PROXY_MODEL="google/gemini-3-pro-preview"  # No prefix = OpenRouter
       else
         MODEL_STRATEGY="native"
         AGENT_MODEL="haiku"
       fi
       ```
 
-      **CRITICAL: OpenRouter Model Prefix**
-      Always use `or/` prefix for OpenRouter models to avoid routing to direct API:
-      - CORRECT: `or/google/gemini-3-pro-preview`
-      - WRONG: `google/gemini-3-pro-preview` (routes to Gemini Direct API)
+      **CRITICAL: Claudish Model Routing**
+      - NO prefix = OpenRouter (default): `google/gemini-3-pro-preview`
+      - `g/` or `gemini/` prefix = Gemini Direct API: `g/gemini-2.0-flash`
+      - `mm/` prefix = MiniMax Direct API: `mm/minimax-m2.1`
+      - `glm/` prefix = GLM Direct API: `glm/glm-4.7`
     </model_fallback_strategy>
 
     <iteration_limits>
@@ -182,8 +183,8 @@ skills: dev:context-detection, orchestration:multi-model-validation, orchestrati
           # Check OpenRouter
           elif command -v claudish &> /dev/null && [[ -n "$OPENROUTER_API_KEY" ]]; then
             echo "MODEL_STRATEGY=openrouter" > "${SESSION_PATH}/config.env"
-            echo "PROXY_MODEL=or/google/gemini-3-pro-preview" >> "${SESSION_PATH}/config.env"
-            echo "Secondary model: Gemini via OpenRouter (with or/ prefix)"
+            echo "PROXY_MODEL=google/gemini-3-pro-preview" >> "${SESSION_PATH}/config.env"
+            echo "Secondary model: Gemini via OpenRouter"
           else
             echo "MODEL_STRATEGY=native" > "${SESSION_PATH}/config.env"
             echo "AGENT_MODEL=haiku" >> "${SESSION_PATH}/config.env"
@@ -665,7 +666,7 @@ skills: dev:context-detection, orchestration:multi-model-validation, orchestrati
     - Requires: researcher agent with web search capability
 
     **OpenRouter Strategy:**
-    - Agents use PROXY_MODE with or/google/gemini-3-pro-preview
+    - Agents use PROXY_MODE with google/gemini-3-pro-preview
     - Web search via claudish proxy
     - Requires: OPENROUTER_API_KEY
     - CRITICAL: Always use or/ prefix to avoid Gemini Direct routing
@@ -868,7 +869,7 @@ skills: dev:context-detection, orchestration:multi-model-validation, orchestrati
   <strategy scenario="Web search unavailable">
     <recovery>
       1. Check model strategy configuration
-      2. If gemini-direct fails: Try openrouter fallback (with or/ prefix)
+      2. If gemini-direct fails: Try openrouter fallback
       3. If all external fails: Switch to native strategy
       4. Notify user: "Degraded to local sources only"
       5. Continue with available sources

@@ -30,7 +30,7 @@ determine_gemini_model() {
   if [[ -n "$GEMINI_API_KEY" ]]; then
     echo "g/gemini-3-pro-preview"  # Direct Gemini API
   elif [[ -n "$OPENROUTER_API_KEY" ]]; then
-    echo "or/google/gemini-3-pro-preview"  # OpenRouter
+    echo "google/gemini-3-pro-preview"  # OpenRouter
   else
     echo "ERROR: No API key available (need GEMINI_API_KEY or OPENROUTER_API_KEY)"
     return 1
@@ -47,7 +47,7 @@ The model ID `google/gemini-3-pro-preview` collides with Claudish's automatic ro
 | Model ID | Routes To | Requires |
 |----------|-----------|----------|
 | `google/gemini-*` | Gemini Direct | GEMINI_API_KEY |
-| `or/google/gemini-*` | OpenRouter | OPENROUTER_API_KEY |
+| `google/gemini-*` | OpenRouter | OPENROUTER_API_KEY |
 | `g/gemini-*` | Gemini Direct (explicit) | GEMINI_API_KEY |
 
 **Rule**: Always use `or/` prefix when routing Google models through OpenRouter.
@@ -262,7 +262,7 @@ Deep analysis including:
 The ui agent supports PROXY_MODE for multi-model design reviews:
 
 ```
-Task: ui PROXY_MODE: or/google/gemini-3-pro-preview
+Task: ui PROXY_MODE: google/gemini-3-pro-preview
 
 Review the dashboard screenshot at screenshots/dashboard.png
 

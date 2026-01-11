@@ -391,7 +391,7 @@ Message 2: Parallel Execution (ONLY Task calls - single message)
              Write detailed review to $SESSION_DIR/qwen-coder-review.md
              Return only brief summary."
   ---
-  Task: codex-code-reviewer PROXY_MODE: or/openai/gpt-5.1-codex
+  Task: codex-code-reviewer PROXY_MODE: openai/gpt-5.1-codex
     Prompt: "Review $SESSION_DIR/code-context.md for security issues.
              Write detailed review to $SESSION_DIR/gpt5-review.md
              Return only brief summary."
@@ -428,7 +428,7 @@ Message 4: Present Results + Update Statistics
   track_model_performance "claude-embedded" "success" 32 8 95
   track_model_performance "x-ai/grok-code-fast-1" "success" 45 6 87
   track_model_performance "qwen/qwen3-coder:free" "success" 52 5 82
-  track_model_performance "or/openai/gpt-5.1-codex" "success" 68 7 89
+  track_model_performance "openai/gpt-5.1-codex" "success" 68 7 89
   track_model_performance "mistralai/devstral-2512:free" "success" 48 5 84
 
   # Record session summary
@@ -450,7 +450,7 @@ Message 4: Present Results + Update Statistics
    | claude-embedded                | 32s  | 8      | 95%     | FREE   |
    | x-ai/grok-code-fast-1          | 45s  | 6      | 87%     | $0.002 |
    | qwen/qwen3-coder:free          | 52s  | 5      | 82%     | FREE   |
-   | or/openai/gpt-5.1-codex        | 68s  | 7      | 89%     | $0.015 |
+   | openai/gpt-5.1-codex        | 68s  | 7      | 89%     | $0.015 |
    | mistralai/devstral-2512:free   | 48s  | 5      | 84%     | FREE   |
 
    Parallel Speedup: 3.6x (245s sequential → 68s parallel)
@@ -1218,7 +1218,7 @@ Speedup: 235 / 120 = 1.96x
 | claude-embedded           | 32s    | 8      | 95%     | ✓         |
 | x-ai/grok-code-fast-1     | 45s    | 6      | 85%     | ✓         |
 | google/gemini-2.5-flash   | 38s    | 5      | 90%     | ✓         |
-| or/openai/gpt-5.1-codex   | 120s   | 9      | 88%     | ✓ (slow)  |
+| openai/gpt-5.1-codex   | 120s   | 9      | 88%     | ✓ (slow)  |
 | deepseek/deepseek-chat    | TIMEOUT| 0      | -       | ✗         |
 
 **Session Summary:**
@@ -1342,7 +1342,7 @@ track_model_performance() {
 # Usage examples:
 # Paid models
 track_model_performance "x-ai/grok-code-fast-1" "success" 45 6 87 0.002 false
-track_model_performance "or/openai/gpt-5.1-codex" "success" 68 7 89 0.015 false
+track_model_performance "openai/gpt-5.1-codex" "success" 68 7 89 0.015 false
 
 # Free models (cost=0, is_free=true)
 track_model_performance "qwen/qwen3-coder:free" "success" 52 5 82 0 true
@@ -1554,7 +1554,7 @@ If there are models to avoid, show a brief warning before the selection:
 
 ```
 ⚠️ Models excluded from selection (poor historical performance):
-- or/openai/gpt-5.1-codex: Slow (2.1x avg)
+- openai/gpt-5.1-codex: Slow (2.1x avg)
 - some-model: 60% success rate
 ```
 

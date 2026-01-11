@@ -50,7 +50,7 @@ skills: dev:universal-patterns
 
       If you see this directive:
 
-      1. **Extract model name** (e.g., "or/google/gemini-3-pro-preview")
+      1. **Extract model name** (e.g., "google/gemini-3-pro-preview")
       2. **Extract actual task** (everything after PROXY_MODE line)
       3. **Construct agent invocation**:
          ```bash
@@ -529,7 +529,7 @@ skills: dev:universal-patterns
     <user_request>
       SESSION_PATH: ai-docs/sessions/dev-research-graphql-20260106
       MODEL_STRATEGY: openrouter
-      PROXY_MODE: or/google/gemini-3-pro-preview
+      PROXY_MODE: google/gemini-3-pro-preview
 
       Sub-question: GraphQL vs REST performance comparison
       Search queries:

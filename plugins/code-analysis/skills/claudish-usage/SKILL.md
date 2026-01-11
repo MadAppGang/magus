@@ -180,7 +180,7 @@ Claudish (Claude-ish) is a proxy tool that:
 | Prefix | Backend | Required API Key | Example Model ID |
 |--------|---------|------------------|------------------|
 | (none) | OpenRouter | `OPENROUTER_API_KEY` | `anthropic/claude-3.5-sonnet` |
-| `or/` | OpenRouter (explicit) | `OPENROUTER_API_KEY` | `or/google/gemini-3-pro-preview` |
+| `or/` | OpenRouter (explicit) | `OPENROUTER_API_KEY` | `google/gemini-3-pro-preview` |
 | `g/` `gemini/` `google/` | Google Gemini Direct | `GEMINI_API_KEY` | `g/gemini-2.0-flash` |
 | `oai/` `openai/` | OpenAI Direct | `OPENAI_API_KEY` | `oai/gpt-4o` |
 | `ollama/` `ollama:` | Ollama (local) | None | `ollama/llama3.2` |
@@ -195,10 +195,10 @@ Claudish (Claude-ish) is a proxy tool that:
 
 | Model ID | Claudish Routes To | Problem | Fix |
 |----------|-------------------|---------|-----|
-| `google/gemini-3-pro-preview` | Google Gemini Direct | Needs `GEMINI_API_KEY`, different API | Use `or/google/gemini-3-pro-preview` |
-| `google/gemini-2.5-flash` | Google Gemini Direct | Needs `GEMINI_API_KEY`, different API | Use `or/google/gemini-2.5-flash` |
-| `openai/gpt-5.1-codex` | OpenAI Direct | Needs `OPENAI_API_KEY`, different API | Use `or/openai/gpt-5.1-codex` |
-| `openai/gpt-5` | OpenAI Direct | Needs `OPENAI_API_KEY`, different API | Use `or/openai/gpt-5` |
+| `google/gemini-3-pro-preview` | Google Gemini Direct | Needs `GEMINI_API_KEY`, different API | Use `google/gemini-3-pro-preview` |
+| `google/gemini-2.5-flash` | Google Gemini Direct | Needs `GEMINI_API_KEY`, different API | Use `google/gemini-2.5-flash` |
+| `openai/gpt-5.1-codex` | OpenAI Direct | Needs `OPENAI_API_KEY`, different API | Use `openai/gpt-5.1-codex` |
+| `openai/gpt-5` | OpenAI Direct | Needs `OPENAI_API_KEY`, different API | Use `openai/gpt-5` |
 
 ### Safe Model IDs (No Collision)
 
@@ -225,7 +225,7 @@ These OpenRouter model IDs are SAFE to use without the `or/` prefix:
 claudish --model google/gemini-3-pro-preview
 
 # CORRECT - Routes to OpenRouter (needs OPENROUTER_API_KEY)
-claudish --model or/google/gemini-3-pro-preview
+claudish --model google/gemini-3-pro-preview
 
 # SAFE - No collision (x-ai/ is not a routing prefix)
 claudish --model x-ai/grok-code-fast-1

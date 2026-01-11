@@ -39,7 +39,7 @@
 			"name": "code-analysis",
 			"source": "./plugins/code-analysis",
 			"description": "Deep code investigation with claudemem. v2.15.0: Hybrid 2+3 hook approach - results-first format with 'Task complete' language reduces retry behavior by 71%. Hooks provide claudemem results directly instead of blocking with banners.",
-			"version": "2.15.0",
+			"version": "2.15.1",
 			"author": {
 				"name": "Jack Rudenko",
 				"email": "i@madappgang.com",
@@ -89,7 +89,7 @@
 			"name": "orchestration",
 			"source": "./plugins/orchestration",
 			"description": "Shared multi-agent coordination and workflow orchestration patterns for complex Claude Code workflows. v0.10.0: Preference order (PROXY_MODE first, Bash+CLI fallback), dev plugin agents added. Skills-only plugin with parallel execution (3-5x speedup), dynamic model discovery, session-based artifact isolation.",
-			"version": "0.10.0",
+			"version": "0.10.1",
 			"author": {
 				"name": "Jack Rudenko",
 				"email": "i@madappgang.com",
@@ -239,7 +239,7 @@
 			"name": "dev",
 			"source": "./plugins/dev",
 			"description": "Universal development assistant with documentation, deep research, interviews, and DevOps guidance. v1.15.0: /dev:doc command with doc-writer, doc-analyzer, doc-fixer agents for comprehensive documentation management. 30+ skills.",
-			"version": "1.15.0",
+			"version": "1.15.1",
 			"author": {
 				"name": "Jack Rudenko",
 				"email": "i@madappgang.com",
