@@ -48,6 +48,7 @@ extension_mappings:
   ".tsx": ["react-typescript", "testing-frontend"]
   ".vue": ["vue-typescript", "testing-frontend"]
   ".go": ["golang", "testing-strategies"]
+  ".dingo": ["dingo", "golang", "testing-strategies"]
   ".rs": ["rust", "testing-strategies"]
   ".py": ["python", "testing-strategies"]
 ```
@@ -77,6 +78,12 @@ config_file_patterns:
     check: "file exists"
     skills: ["golang", "api-design", "database-patterns"]
     mode: "backend"
+
+  go.mod + *.dingo:
+    check: "go.mod exists AND any .dingo files present"
+    skills: ["dingo", "golang", "api-design", "database-patterns"]
+    mode: "backend"
+    note: "Dingo projects always include golang skill since Dingo transpiles to Go"
 
   Cargo.toml:
     check: "file exists"
@@ -151,6 +158,12 @@ find_all_configs() {
   [ -f "pyproject.toml" ] && configs+=("pyproject.toml")
   [ -f "bun.lockb" ] && configs+=("bun.lockb")
 
+  # Check for Dingo files (go.mod must also exist)
+  # Note: "dingo" is a detection indicator, not an actual config file name
+  if [ -f "go.mod" ] && find . -name "*.dingo" -type f ! -path "./.git/*" ! -path "./node_modules/*" ! -path "./vendor/*" -print -quit | grep -q .; then
+    configs+=("dingo")
+  fi
+
   echo "${configs[@]}"
 }
 
@@ -167,9 +180,16 @@ analyze_all_configs() {
     fi
   fi
 
-  # Check go.mod
+  # Check go.mod (and optionally Dingo)
   if [ -f "go.mod" ]; then
-    detected_stacks+=("golang")
+    # Check if this is a Dingo project
+    if find . -name "*.dingo" -type f ! -path "./.git/*" ! -path "./node_modules/*" ! -path "./vendor/*" -print -quit | grep -q .; then
+      detected_stacks+=("dingo")
+      # Dingo always co-loads golang
+      detected_stacks+=("golang")
+    else
+      detected_stacks+=("golang")
+    fi
   fi
 
   # Check Cargo.toml
@@ -201,7 +221,7 @@ determine_mode() {
       react-typescript|vue-typescript)
         has_frontend=true
         ;;
-      golang|rust|python|bunjs)
+      golang|rust|python|bunjs|dingo)
         has_backend=true
         ;;
     esac
@@ -238,6 +258,9 @@ map_stacks_to_skills() {
         ;;
       golang)
         skills+=("golang" "api-design" "database-patterns")
+        ;;
+      dingo)
+        skills+=("dingo" "golang" "api-design" "database-patterns")
         ;;
       rust)
         skills+=("rust" "api-design")
@@ -458,6 +481,18 @@ golang:
   - command: "go test ./..."
     purpose: "Run tests"
 
+dingo:
+  - command: "dingo fmt"
+    purpose: "Format Dingo source files"
+  - command: "dingo go"
+    purpose: "Transpile Dingo to Go"
+  - command: "go vet ./.dingo/..."
+    purpose: "Static analysis on generated Go"
+  - command: "golangci-lint run ./.dingo/..."
+    purpose: "Comprehensive linting on generated Go"
+  - command: "go test ./.dingo/..."
+    purpose: "Run tests on generated Go"
+
 rust:
   - command: "cargo fmt --check"
     purpose: "Check formatting"
@@ -543,6 +578,14 @@ generate_skill_paths() {
         ;;
       golang)
         skill_paths+=(
+          '${PLUGIN_ROOT}/skills/backend/golang/SKILL.md'
+          '${PLUGIN_ROOT}/skills/backend/api-design/SKILL.md'
+          '${PLUGIN_ROOT}/skills/backend/database-patterns/SKILL.md'
+        )
+        ;;
+      dingo)
+        skill_paths+=(
+          '${PLUGIN_ROOT}/skills/backend/dingo/SKILL.md'
           '${PLUGIN_ROOT}/skills/backend/golang/SKILL.md'
           '${PLUGIN_ROOT}/skills/backend/api-design/SKILL.md'
           '${PLUGIN_ROOT}/skills/backend/database-patterns/SKILL.md'
@@ -705,6 +748,49 @@ project/
   "quality_checks": {
     "frontend": ["cd frontend && bun run format", "..."],
     "backend": ["go fmt ./...", "..."]
+  }
+}
+```
+
+### Example 4: Dingo Backend
+
+**Project Structure:**
+```
+project/
+├── go.mod
+├── cmd/
+│   └── api/
+│       └── main.dingo
+├── internal/
+│   ├── handlers/
+│   │   └── user.dingo
+│   └── services/
+│       └── user.dingo
+└── .dingo/                  # Generated .go files (gitignored)
+```
+
+**Detection Result:**
+```json
+{
+  "detected_stack": "dingo + golang",
+  "mode": "backend",
+  "stacks": ["dingo", "golang"],
+  "skill_paths": [
+    "${PLUGIN_ROOT}/skills/core/universal-patterns/SKILL.md",
+    "${PLUGIN_ROOT}/skills/core/testing-strategies/SKILL.md",
+    "${PLUGIN_ROOT}/skills/backend/dingo/SKILL.md",
+    "${PLUGIN_ROOT}/skills/backend/golang/SKILL.md",
+    "${PLUGIN_ROOT}/skills/backend/api-design/SKILL.md",
+    "${PLUGIN_ROOT}/skills/backend/database-patterns/SKILL.md"
+  ],
+  "quality_checks": {
+    "backend": [
+      "dingo fmt",
+      "dingo go",
+      "go vet ./.dingo/...",
+      "golangci-lint run ./.dingo/...",
+      "go test ./.dingo/..."
+    ]
   }
 }
 ```

@@ -146,6 +146,7 @@ tools: TodoWrite, Read, Write, Glob, Grep, Bash
           - .tsx files → React + TypeScript
           - .vue files → Vue
           - .go files → Go
+          - .dingo files → Dingo (Go meta-language)
           - .rs files → Rust
           - .py files → Python
         </step>
@@ -172,6 +173,12 @@ tools: TodoWrite, Read, Write, Glob, Grep, Bash
 
           For Go:
           - golang
+          - api-design
+          - database-patterns
+
+          For Dingo (when go.mod exists AND .dingo files found):
+          - dingo
+          - golang (always co-loaded)
           - api-design
           - database-patterns
 
@@ -268,6 +275,14 @@ tools: TodoWrite, Read, Write, Glob, Grep, Bash
       <quality_checks>go fmt ./..., go vet ./..., golangci-lint run, go test ./...</quality_checks>
     </pattern>
 
+    <pattern name="Dingo Backend">
+      <file>go.mod + *.dingo</file>
+      <check>go.mod exists AND any .dingo files in project</check>
+      <skills>dingo, golang, api-design, database-patterns</skills>
+      <quality_checks>dingo fmt, dingo go, go vet ./.dingo/..., golangci-lint run ./.dingo/..., go test ./.dingo/...</quality_checks>
+      <note>Dingo always co-loads golang skill since it transpiles to Go</note>
+    </pattern>
+
     <pattern name="Rust Backend">
       <file>Cargo.toml</file>
       <check>File exists</check>
@@ -337,6 +352,7 @@ tools: TodoWrite, Read, Write, Glob, Grep, Bash
 
     Language-specific:
     - ${PLUGIN_ROOT}/skills/backend/golang/SKILL.md
+    - ${PLUGIN_ROOT}/skills/backend/dingo/SKILL.md
     - ${PLUGIN_ROOT}/skills/backend/bunjs/SKILL.md
     - ${PLUGIN_ROOT}/skills/backend/python/SKILL.md
     - ${PLUGIN_ROOT}/skills/backend/rust/SKILL.md
@@ -391,6 +407,40 @@ tools: TodoWrite, Read, Write, Glob, Grep, Bash
         ],
         "quality_checks": {
           "backend": ["go fmt ./...", "go vet ./...", "golangci-lint run", "go test ./..."]
+        }
+      }
+    </detection_result>
+  </example>
+
+  <example name="Dingo Backend Project">
+    <scenario>
+      Project has:
+      - go.mod with go 1.21
+      - cmd/api/main.dingo entry point
+      - internal/ directory with .dingo files
+      - .dingo/ directory (generated, gitignored)
+    </scenario>
+    <detection_result>
+      {
+        "detected_stack": "dingo + golang",
+        "mode": "backend",
+        "stacks": ["dingo", "golang"],
+        "skill_paths": [
+          "${PLUGIN_ROOT}/skills/core/universal-patterns/SKILL.md",
+          "${PLUGIN_ROOT}/skills/core/testing-strategies/SKILL.md",
+          "${PLUGIN_ROOT}/skills/backend/dingo/SKILL.md",
+          "${PLUGIN_ROOT}/skills/backend/golang/SKILL.md",
+          "${PLUGIN_ROOT}/skills/backend/api-design/SKILL.md",
+          "${PLUGIN_ROOT}/skills/backend/database-patterns/SKILL.md"
+        ],
+        "quality_checks": {
+          "backend": [
+            "dingo fmt",
+            "dingo go",
+            "go vet ./.dingo/...",
+            "golangci-lint run ./.dingo/...",
+            "go test ./.dingo/..."
+          ]
         }
       }
     </detection_result>
