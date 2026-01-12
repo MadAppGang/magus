@@ -1,0 +1,34 @@
+{
+  "name": "multimodel",
+  "version": "1.0.0",
+  "description": "Multi-model collaboration and blind voting. Run tasks across multiple AI models in parallel, collect independent votes, and present aggregated results. Supports model preference memory, agent recommendations, and performance tracking.",
+  "author": "MadAppGang",
+  "license": "MIT",
+  "homepage": "https://github.com/MadAppGang/claude-code",
+
+  "tags": [
+    "multimodel",
+    "voting",
+    "parallel",
+    "consensus",
+    "claudish",
+    "grok",
+    "gemini",
+    "gpt",
+    "minimax",
+    "glm",
+    "collaboration"
+  ],
+
+  "commands": [
+    "./commands/team.md"
+  ],
+
+  "dependencies": {
+    "orchestration@mag-claude-plugins": "^0.10.0"
+  },
+
+  "compatibility": {
+    "claudeCode": ">=0.1.0"
+  }
+}
