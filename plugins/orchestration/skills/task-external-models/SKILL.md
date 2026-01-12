@@ -30,18 +30,14 @@ There are **TWO ways** to run any agent with external AI models:
 
 ```bash
 # Pattern
-echo "{PROMPT}" | npx claudish --agent {PLUGIN}:{AGENT} --model {MODEL_ID} --stdin --quiet --auto-approve
-
+echo "{PROMPT}" | npx claudish --agent {PLUGIN}:{AGENT} --model {MODEL_ID} --stdin --quiet
 # Examples
 # dev plugin agents
-echo "Research React hooks best practices" | npx claudish --agent dev:researcher --model x-ai/grok-code-fast-1 --stdin --quiet --auto-approve
-
-echo "Debug this error: TypeError undefined" | npx claudish --agent dev:debugger --model google/gemini-3-pro-preview --stdin --quiet --auto-approve
-
-echo "Design a microservices architecture" | npx claudish --agent dev:architect --model openai/gpt-5.2 --stdin --quiet --auto-approve
-
+echo "Research React hooks best practices" | npx claudish --agent dev:researcher --model x-ai/grok-code-fast-1 --stdin --quiet
+echo "Debug this error: TypeError undefined" | npx claudish --agent dev:debugger --model google/gemini-3-pro-preview --stdin --quiet
+echo "Design a microservices architecture" | npx claudish --agent dev:architect --model openai/gpt-5.2 --stdin --quiet
 # Any agent from any plugin
-echo "Review the code at src/utils.ts" | npx claudish --agent frontend:reviewer --model deepseek/deepseek-chat --stdin --quiet --auto-approve
+echo "Review the code at src/utils.ts" | npx claudish --agent frontend:reviewer --model deepseek/deepseek-chat --stdin --quiet
 ```
 
 **CLI Reference:**
@@ -52,16 +48,16 @@ claudish [options]
 --model <id>         AI model to use (e.g., x-ai/grok-code-fast-1)
 --stdin              Read prompt from stdin
 --quiet              Minimal output
---auto-approve       Skip confirmation prompts
+--no-auto-approve    Disable auto-approve (prompts enabled) - rarely needed
 ```
 
 **Parallel Execution via Bash:**
 
 ```bash
-# Run multiple agents/models in parallel
-echo "Review plan.md" | npx claudish --agent dev:architect --model x-ai/grok-code-fast-1 --stdin --quiet --auto-approve > /tmp/grok-review.md &
-echo "Review plan.md" | npx claudish --agent dev:architect --model google/gemini-3-pro-preview --stdin --quiet --auto-approve > /tmp/gemini-review.md &
-echo "Review plan.md" | npx claudish --agent dev:architect --model openai/gpt-5.2 --stdin --quiet --auto-approve > /tmp/gpt5-review.md &
+# Run multiple agents/models in parallel (auto-approve is default, no flag needed)
+echo "Review plan.md" | npx claudish --agent dev:architect --model x-ai/grok-code-fast-1 --stdin --quiet > /tmp/grok-review.md &
+echo "Review plan.md" | npx claudish --agent dev:architect --model google/gemini-3-pro-preview --stdin --quiet > /tmp/gemini-review.md &
+echo "Review plan.md" | npx claudish --agent dev:architect --model openai/gpt-5.2 --stdin --quiet > /tmp/gpt5-review.md &
 wait
 
 # All 3 run in parallel!
@@ -198,7 +194,7 @@ Review /path/to/plan.md`
 **If agent doesn't support PROXY_MODE (or you want simpler approach):**
 
 ```bash
-echo "Your task" | npx claudish --agent {plugin}:{agent} --model {model-id} --stdin --quiet --auto-approve
+echo "Your task" | npx claudish --agent {plugin}:{agent} --model {model-id} --stdin --quiet
 ```
 
 **If using Task tool within orchestration:**

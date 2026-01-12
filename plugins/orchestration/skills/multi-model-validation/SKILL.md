@@ -584,7 +584,7 @@ When an agent sees PROXY_MODE, it:
 2. Extracts model name (e.g., "x-ai/grok-code-fast-1")
 3. Extracts actual task (everything after PROXY_MODE line)
 4. Constructs claudish command:
-   printf '%s' "AGENT_PROMPT" | claudish --model x-ai/grok-code-fast-1 --stdin --quiet --auto-approve
+   printf '%s' "AGENT_PROMPT" | claudish --model x-ai/grok-code-fast-1 --stdin --quiet
 5. Executes SYNCHRONOUSLY (blocking, waits for full response)
 6. Captures full output
 7. Writes detailed results to file (ai-docs/grok-review.md)
@@ -597,12 +597,12 @@ External model calls MUST be **synchronous (blocking)** so the agent waits for c
 
 ```
 ✅ CORRECT - Blocking (Synchronous):
-  RESULT=$(printf '%s' "$PROMPT" | claudish --model grok --stdin --quiet --auto-approve)
+  RESULT=$(printf '%s' "$PROMPT" | claudish --model grok --stdin --quiet)
   echo "$RESULT" > ai-docs/grok-review.md
   echo "Grok review complete. See ai-docs/grok-review.md"
 
 ❌ WRONG - Background (Asynchronous):
-  printf '%s' "$PROMPT" | claudish --model grok --stdin --quiet --auto-approve &
+  printf '%s' "$PROMPT" | claudish --model grok --stdin --quiet &
   echo "Grok review started..."  # Agent returns immediately, review not done!
 ```
 
@@ -638,17 +638,17 @@ Brief Summary (returned to orchestrator):
 - Full review is in file for consolidation agent
 - Keeps orchestrator context clean (context efficiency)
 
-**Auto-Approve Flag:**
+**Auto-Approve Behavior:**
 
-Use `--auto-approve` flag to prevent interactive prompts:
+Claudish auto-approves by default (non-interactive mode for scripting). Use `--no-auto-approve` only if you need interactive confirmation:
 
 ```
-✅ CORRECT - Auto-Approve:
-  claudish --model grok --stdin --quiet --auto-approve
-
-❌ WRONG - Interactive (blocks waiting for user input):
+✅ CORRECT - Auto-approve is default, no flag needed:
   claudish --model grok --stdin --quiet
-  # Waits for user to approve costs... but this is inside an agent!
+
+⚠️ Interactive mode (requires user input, avoid in agents):
+  claudish --model grok --stdin --quiet --no-auto-approve
+  # Prompts user for approval - don't use inside agents!
 ```
 
 ### PROXY_MODE-Enabled Agents Reference

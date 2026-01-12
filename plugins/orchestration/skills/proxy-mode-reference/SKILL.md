@@ -94,11 +94,11 @@ Use the CLI directly when an agent doesn't support PROXY_MODE:
 
 ```bash
 # Pattern
-echo "{PROMPT}" | npx claudish --agent {PLUGIN}:{AGENT} --model {MODEL_ID} --stdin --quiet --auto-approve
+echo "{PROMPT}" | npx claudish --agent {PLUGIN}:{AGENT} --model {MODEL_ID} --stdin --quiet
 
 # Examples
-echo "Research React hooks" | npx claudish --agent dev:researcher --model x-ai/grok-code-fast-1 --stdin --quiet --auto-approve
-echo "Debug this error" | npx claudish --agent dev:debugger --model google/gemini-3-pro-preview --stdin --quiet --auto-approve
+echo "Research React hooks" | npx claudish --agent dev:researcher --model x-ai/grok-code-fast-1 --stdin --quiet
+echo "Debug this error" | npx claudish --agent dev:debugger --model google/gemini-3-pro-preview --stdin --quiet
 ```
 
 This approach works with **ALL agents**, not just PROXY_MODE-enabled ones.
@@ -168,7 +168,7 @@ Task({
 
 **Fix:** Either use a PROXY_MODE-enabled agent, or use the Bash + CLI approach:
 ```bash
-echo "Your task" | npx claudish --agent dev:researcher --model x-ai/grok-code-fast-1 --stdin --quiet --auto-approve
+echo "Your task" | npx claudish --agent dev:researcher --model x-ai/grok-code-fast-1 --stdin --quiet
 ```
 
 ### Mistake 2: Instructing agent to run claudish
