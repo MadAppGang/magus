@@ -1,0 +1,23 @@
+{
+  "$schema": "https://tauri.app/v2/schemas/capability.json",
+  "identifier": "default",
+  "description": "Default capability for claudeup-gui",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:window:default",
+    "core:window:allow-close",
+    "core:window:allow-minimize",
+    "core:window:allow-maximize",
+    "core:window:allow-show",
+    "core:window:allow-hide",
+    "dialog:default",
+    "dialog:allow-open",
+    "dialog:allow-save",
+    "dialog:allow-message",
+    "dialog:allow-ask",
+    "updater:default",
+    "updater:allow-check",
+    "updater:allow-download-and-install"
+  ]
+}

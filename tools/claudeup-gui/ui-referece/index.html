@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Claude Plugin Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'system-ui', 'sans-serif'],
+              mono: ['JetBrains Mono', 'monospace'],
+            },
+            colors: {
+              // Exact matches for the matte charcoal look
+              bgBase: '#111215',    // Main center canvas (Darker)
+              bgSidebar: '#19191d', // Sidebars (Slightly lighter, warm charcoal)
+              bgSurface: '#242529', // Inputs, Cards
+              bgSurfaceHover: '#2e2f34',
+              
+              // Borders - using alpha for better blending
+              borderSubtle: 'rgba(255, 255, 255, 0.06)',
+              borderFocus: 'rgba(255, 255, 255, 0.1)',
+              
+              // Typography
+              textMain: '#ececed',
+              textMuted: '#949499',
+              textFaint: '#5f5f66',
+              
+              // Accents
+              accent: '#d07d61', // The specific muted rust orange
+              accentHover: '#e38e72',
+              accentSurface: 'rgba(208, 125, 97, 0.15)',
+            },
+            boxShadow: {
+              'glow': '0 0 15px -3px rgba(208, 125, 97, 0.2)',
+              'float': '0 12px 40px -8px rgba(0, 0, 0, 0.6)',
+              'inner-light': 'inset 0 1px 0 rgba(255, 255, 255, 0.05)',
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+      body {
+        font-family: 'Inter', sans-serif;
+        background-color: #19191d;
+      }
+
+      /* Custom scrollbar - darker and thinner */
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent; 
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #2e2f34; 
+        border-radius: 3px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #3e3f44; 
+      }
+      
+      .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+      }
+
+      /* Refined Grid Pattern - extremely subtle */
+      .bg-grid-pattern {
+        background-size: 40px 40px;
+        background-image: 
+          linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px);
+      }
+      
+      /* Input autofill fix for dark mode */
+      input:-webkit-autofill,
+      input:-webkit-autofill:hover, 
+      input:-webkit-autofill:focus, 
+      input:-webkit-autofill:active{
+          -webkit-box-shadow: 0 0 0 30px #242529 inset !important;
+          -webkit-text-fill-color: #ececed !important;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body class="bg-bgSidebar text-textMain antialiased h-screen overflow-hidden selection:bg-accent/30 selection:text-white">
+    <div id="root" class="h-full"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>

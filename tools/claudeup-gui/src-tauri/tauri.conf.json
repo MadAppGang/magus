@@ -1,0 +1,46 @@
+{
+  "productName": "claudeup-gui",
+  "version": "0.1.0",
+  "identifier": "com.madappgang.claudeup-gui",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
+    "devUrl": "http://localhost:1420",
+    "frontendDist": "../dist"
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png"
+    ],
+    "resources": [],
+    "externalBin": ["binaries/claudeup-sidecar"],
+    "copyright": "",
+    "shortDescription": "GUI for claudeup plugin manager",
+    "longDescription": "Cross-platform desktop application for managing Claude Code plugins, MCP servers, and configuration.",
+    "windows": {
+      "certificateThumbprint": null,
+      "digestAlgorithm": "sha256",
+      "timestampUrl": ""
+    }
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "claudeup GUI",
+        "width": 1200,
+        "height": 800,
+        "resizable": true,
+        "fullscreen": false,
+        "decorations": true,
+        "transparent": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  }
+}

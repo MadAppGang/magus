@@ -1,0 +1,5 @@
+{
+  "name": "Claude Plugin Manager",
+  "description": "A modern interface for managing Claude Code plugins across Global, User, and Project scopes.",
+  "requestFramePermissions": []
+}

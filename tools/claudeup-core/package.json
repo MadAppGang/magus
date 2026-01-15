@@ -1,0 +1,51 @@
+{
+  "name": "claudeup-core",
+  "version": "1.0.0",
+  "description": "Shared service layer for claudeup TUI and GUI",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "keywords": [
+    "claude",
+    "claude-code",
+    "mcp",
+    "plugins"
+  ],
+  "author": "Jack Rudenko <i@madappgang.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MadAppGang/claude-code"
+  },
+  "dependencies": {
+    "fs-extra": "^11.2.0",
+    "semver": "^7.6.3"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.1",
+    "typescript": "^5.6.3",
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^22.9.0",
+    "@types/semver": "^7.5.8",
+    "vitest": "^2.1.8"
+  },
+  "files": [
+    "dist"
+  ]
+}
