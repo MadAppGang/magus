@@ -91,8 +91,8 @@ impl SidecarManager {
             Self::read_stdout(stdout, pending_requests, app_handle_clone).await;
         });
 
-        // Wait for "SIDECAR_READY" on stderr
-        self.wait_for_ready(stderr).await?;
+        // Wait for "SIDECAR_READY" on stderr, then continue draining stderr in background
+        self.wait_for_ready_and_drain_stderr(stderr).await?;
 
         // Store child process after successful startup
         *self.child.lock().await = Some(child);
@@ -102,7 +102,7 @@ impl SidecarManager {
         Ok(())
     }
 
-    async fn wait_for_ready(&self, stderr: ChildStderr) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn wait_for_ready_and_drain_stderr(&self, stderr: ChildStderr) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let mut reader = TokioBufReader::new(stderr).lines();
 
         // Retry with exponential backoff (max 10 attempts)
@@ -113,6 +113,26 @@ impl SidecarManager {
             match tokio::time::timeout(Duration::from_secs(5), reader.next_line()).await {
                 Ok(Ok(Some(line))) if line.contains("SIDECAR_READY") => {
                     println!("Sidecar ready after {} attempts", attempt + 1);
+
+                    // Spawn background task to keep draining stderr (prevents sidecar from blocking)
+                    tokio::spawn(async move {
+                        loop {
+                            match reader.next_line().await {
+                                Ok(Some(line)) => {
+                                    println!("Sidecar stderr: {}", line);
+                                }
+                                Ok(None) => {
+                                    println!("Sidecar stderr closed");
+                                    break;
+                                }
+                                Err(e) => {
+                                    println!("Error reading sidecar stderr: {}", e);
+                                    break;
+                                }
+                            }
+                        }
+                    });
+
                     return Ok(());
                 }
                 Ok(Ok(Some(line))) => {
@@ -140,32 +160,87 @@ impl SidecarManager {
         pending_requests: Arc<Mutex<HashMap<u64, oneshot::Sender<Value>>>>,
         app_handle: AppHandle,
     ) {
-        let mut lines = TokioBufReader::new(stdout).lines();
+        println!("Sidecar stdout reader task started");
+        // Use 2MB buffer to handle large JSON responses (plugin list can be 100KB+)
+        let mut reader = TokioBufReader::with_capacity(2 * 1024 * 1024, stdout);
+        // Pre-allocate buffer for reading lines - use Vec to accumulate bytes
+        let mut line_buf: Vec<u8> = Vec::with_capacity(512 * 1024);
 
-        while let Ok(Some(line)) = lines.next_line().await {
-            if let Ok(response) = serde_json::from_str::<Value>(&line) {
-                // Check if it's a notification (no 'id')
-                if response.get("id").is_none() {
-                    // Handle progress event
-                    if let Some(method) = response.get("method").and_then(|m| m.as_str()) {
-                        if method == "progress" {
-                            let _ = app_handle.emit("sidecar-progress", response.get("params"));
-                        }
+        println!("Waiting for sidecar stdout...");
+        loop {
+            line_buf.clear();
+
+            // Use read_until to properly handle lines larger than pipe buffer (64KB on macOS)
+            match tokio::time::timeout(
+                Duration::from_secs(30), // Longer timeout for large responses
+                reader.read_until(b'\n', &mut line_buf)
+            ).await {
+                Ok(Ok(0)) => {
+                    println!("Sidecar stdout EOF");
+                    break;
+                }
+                Ok(Ok(bytes_read)) => {
+                    // Remove trailing newline if present
+                    if line_buf.last() == Some(&b'\n') {
+                        line_buf.pop();
                     }
-                } else {
-                    // Response with ID - match to pending request
-                    if let Some(id) = response.get("id").and_then(|i| i.as_u64()) {
-                        let mut requests = pending_requests.lock().await;
-                        if let Some(tx) = requests.remove(&id) {
-                            let _ = tx.send(response);
+
+                    // Convert to string
+                    let line = match String::from_utf8(line_buf.clone()) {
+                        Ok(s) => s,
+                        Err(e) => {
+                            println!("Invalid UTF-8 from sidecar: {}", e);
+                            continue;
+                        }
+                    };
+
+                    println!("Got line from sidecar (len={}, bytes_read={})", line.len(), bytes_read);
+
+                    match serde_json::from_str::<Value>(&line) {
+                        Ok(response) => {
+                            // Check if it's a notification (no 'id')
+                            if response.get("id").is_none() {
+                                // Handle progress event
+                                if let Some(method) = response.get("method").and_then(|m| m.as_str()) {
+                                    if method == "progress" {
+                                        let _ = app_handle.emit("sidecar-progress", response.get("params"));
+                                    }
+                                }
+                            } else {
+                                // Response with ID - match to pending request
+                                if let Some(id) = response.get("id").and_then(|i| i.as_u64()) {
+                                    let mut requests = pending_requests.lock().await;
+                                    if let Some(tx) = requests.remove(&id) {
+                                        let _ = tx.send(response);
+                                    }
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            println!("Failed to parse sidecar output: error={}, line_len={}", e, line.len());
+                            println!("First 200 chars: {}", line.chars().take(200).collect::<String>());
+                            // Debug: show bytes around 64KB boundary
+                            if line.len() > 65536 {
+                                let start = 65530;
+                                let end = std::cmp::min(65550, line.len());
+                                println!("Bytes around 64KB ({}..{}): {:?}",
+                                    start, end,
+                                    &line.as_bytes()[start..end]);
+                                println!("As string: {:?}", &line[start..end]);
+                            }
                         }
                     }
                 }
-            } else {
-                println!("Failed to parse sidecar output: {}", line);
+                Ok(Err(e)) => {
+                    println!("Error reading sidecar stdout: {}", e);
+                    break;
+                }
+                Err(_) => {
+                    // Timeout is normal when sidecar is idle
+                    continue;
+                }
             }
         }
-
         println!("Sidecar stdout closed");
     }
 
@@ -191,11 +266,14 @@ impl SidecarManager {
 
         // Write to stdin with newline (scope the lock)
         {
+            println!("Sending RPC request: method={}, id={}", method, id);
             let mut stdin_guard = self.stdin.lock().await;
             let stdin = stdin_guard.as_mut().ok_or("Sidecar stdin not available")?;
             let request_str = serde_json::to_string(&request).map_err(|e| e.to_string())?;
+            println!("Request string length: {}", request_str.len());
             stdin.write_all(format!("{}\n", request_str).as_bytes()).await.map_err(|e| e.to_string())?;
             stdin.flush().await.map_err(|e| e.to_string())?;
+            println!("Request sent and flushed");
         } // Lock released here
 
         // Method-specific timeouts
@@ -242,7 +320,7 @@ impl SidecarManager {
 fn get_timeout_for_method(method: &str) -> Duration {
     match method {
         "plugin.install" | "plugin.refreshMarketplaces" => Duration::from_secs(300), // 5 minutes
-        "mcp.add" | "tools.install" => Duration::from_secs(180), // 3 minutes
+        "mcp.add" | "tools.install" | "marketplace.add" => Duration::from_secs(180), // 3 minutes (clone can take time)
         _ => Duration::from_secs(60), // 1 minute default
     }
 }

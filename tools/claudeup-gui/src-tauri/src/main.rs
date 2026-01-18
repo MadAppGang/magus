@@ -46,6 +46,10 @@ fn main() {
             commands::refresh_marketplaces,
             commands::get_settings,
             commands::set_settings,
+            // Marketplace commands
+            commands::list_marketplaces,
+            commands::add_marketplace,
+            commands::remove_marketplace,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

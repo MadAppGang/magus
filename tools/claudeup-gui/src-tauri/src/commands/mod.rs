@@ -163,3 +163,41 @@ pub async fn set_settings(
         .call_rpc("settings.write", params)
         .await
         }
+
+// Marketplace commands
+#[tauri::command]
+pub async fn list_marketplaces(
+    sidecar: State<'_, Arc<SidecarManager>>,
+) -> Result<Value, String> {
+    sidecar
+        .call_rpc("marketplace.list", json!({}))
+        .await
+        }
+
+#[tauri::command]
+pub async fn add_marketplace(
+    url: String,
+    sidecar: State<'_, Arc<SidecarManager>>,
+) -> Result<Value, String> {
+    let params = json!({
+        "url": url,
+    });
+
+    sidecar
+        .call_rpc("marketplace.add", params)
+        .await
+        }
+
+#[tauri::command]
+pub async fn remove_marketplace(
+    name: String,
+    sidecar: State<'_, Arc<SidecarManager>>,
+) -> Result<Value, String> {
+    let params = json!({
+        "name": name,
+    });
+
+    sidecar
+        .call_rpc("marketplace.remove", params)
+        .await
+        }

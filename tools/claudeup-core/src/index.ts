@@ -34,8 +34,21 @@ export {
   type RefreshAndRepairResult,
 } from './services/plugin-manager.js';
 
-// Re-export progress types from local-marketplace
-export type { ProgressCallback, RefreshResult, RepairMarketplaceResult } from './services/local-marketplace.js';
+// Re-export types and functions from local-marketplace
+export type { ProgressCallback, RefreshResult, RepairMarketplaceResult, ComponentMeta } from './services/local-marketplace.js';
+
+// Services - Local Marketplace Management
+export {
+  // Marketplace operations
+  cloneMarketplace,
+  deleteMarketplace,
+  addToKnownMarketplaces,
+  removeFromKnownMarketplaces,
+  scanLocalMarketplaces,
+  refreshLocalMarketplaces,
+  getLocalMarketplace,
+  hasLocalMarketplace,
+} from './services/local-marketplace.js';
 
 // Services - Settings Management
 export {

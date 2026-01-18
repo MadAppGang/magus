@@ -1,76 +1,112 @@
+import { invoke } from "@tauri-apps/api/core";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
+/**
+ * Marketplace source information
+ */
+export interface MarketplaceSource {
+  source: 'github' | 'gitlab' | 'directory';
+  repo?: string;
+  url?: string;
+}
+
+/**
+ * Marketplace information returned from backend
+ */
 export interface Marketplace {
   id: string;
   name: string;
-  url?: string;
-  path?: string;
   count: string;
   icon: string;
-  lastUpdated?: string;
+  isDefault?: boolean;
+  source?: MarketplaceSource;
 }
 
-// Default marketplaces - in a real implementation, these would come from settings
-const DEFAULT_MARKETPLACES: Marketplace[] = [
-  {
-    id: 'claude-plugins-official',
-    name: 'Claude Official',
-    url: 'https://github.com/anthropics/claude-plugins-official',
-    count: '40+ plugins',
-    icon: 'package',
-  },
-  {
-    id: 'mag-claude-plugins',
-    name: 'MAG Claude Plugins',
-    url: 'https://github.com/MadAppGang/claude-code',
-    count: '8 plugins',
-    icon: 'package',
-  },
-  {
-    id: 'local',
-    name: 'Local Plugins',
-    path: '~/.claude/plugins',
-    count: '0 plugins',
-    icon: 'folder',
-  },
-];
+/**
+ * Response from marketplace.list RPC call
+ */
+interface MarketplaceListResponse {
+  marketplaces: Marketplace[];
+}
 
+/**
+ * Response from marketplace.add RPC call
+ */
+interface AddMarketplaceResponse {
+  success: boolean;
+  name: string;
+  displayName?: string;
+}
+
+/**
+ * Response from marketplace.remove RPC call
+ */
+interface RemoveMarketplaceResponse {
+  success: boolean;
+  name: string;
+}
+
+/**
+ * Hook to fetch all marketplaces
+ */
 export function useMarketplaces() {
-  // For now, return static marketplaces
-  // TODO: Load from settings when backend supports it
-  return useQuery<Marketplace[]>({
+  return useQuery<Marketplace[], Error>({
     queryKey: ["marketplaces"],
-    queryFn: async () => DEFAULT_MARKETPLACES,
-    staleTime: Infinity, // Static data, never stale
+    queryFn: async () => {
+      try {
+        const response = await invoke<MarketplaceListResponse>("list_marketplaces");
+        return response.marketplaces;
+      } catch (error) {
+        console.error("Failed to fetch marketplaces:", error);
+        // Return empty array on error to prevent crash
+        return [];
+      }
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: true,
   });
 }
 
+/**
+ * Hook to add a custom marketplace
+ */
 export function useAddMarketplace() {
   const queryClient = useQueryClient();
 
-  return useMutation<{ success: boolean }, Error, { url: string; name?: string }>({
-    mutationFn: async (_params) => {
-      // TODO: Implement when backend supports it
-      console.warn('Add marketplace not implemented yet');
-      return { success: false };
+  return useMutation<AddMarketplaceResponse, Error, { url: string }>({
+    mutationFn: async (params) => {
+      const response = await invoke<AddMarketplaceResponse>("add_marketplace", {
+        url: params.url,
+      });
+      return response;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      // Small delay to ensure sidecar has finished writing files
+      await new Promise(resolve => setTimeout(resolve, 100));
+      // Invalidate queries to refresh data
       queryClient.invalidateQueries({ queryKey: ["marketplaces"] });
       queryClient.invalidateQueries({ queryKey: ["plugins"] });
     },
   });
 }
 
+/**
+ * Hook to remove a custom marketplace
+ */
 export function useRemoveMarketplace() {
   const queryClient = useQueryClient();
 
-  return useMutation<{ success: boolean }, Error, { id: string }>({
-    mutationFn: async (_params) => {
-      // TODO: Implement when backend supports it
-      console.warn('Remove marketplace not implemented yet');
-      return { success: false };
+  return useMutation<RemoveMarketplaceResponse, Error, { name: string }>({
+    mutationFn: async (params) => {
+      const response = await invoke<RemoveMarketplaceResponse>("remove_marketplace", {
+        name: params.name,
+      });
+      return response;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      // Small delay to ensure sidecar has finished writing files
+      await new Promise(resolve => setTimeout(resolve, 100));
+      // Invalidate queries to refresh data
       queryClient.invalidateQueries({ queryKey: ["marketplaces"] });
       queryClient.invalidateQueries({ queryKey: ["plugins"] });
     },

@@ -10,15 +10,32 @@
  */
 
 import { createInterface } from 'readline';
+import { writeFileSync } from 'fs';
 import { handleRpcRequest } from './rpc-handler.js';
 import { JSON_RPC_ERRORS } from './types.js';
 
-// Create readline interface for stdin/stdout
+// Create readline interface for stdin only (we handle stdout separately)
 const rl = createInterface({
   input: process.stdin,
-  output: process.stdout,
   terminal: false,
 });
+
+// Write to stdout in chunks to handle large responses
+// macOS pipe buffer is 64KB, so write in smaller chunks to avoid issues
+function writeOutput(data: string): void {
+  const output = data + '\n';
+  const CHUNK_SIZE = 16 * 1024; // 16KB chunks (well under 64KB pipe buffer)
+
+  try {
+    for (let i = 0; i < output.length; i += CHUNK_SIZE) {
+      const chunk = output.slice(i, i + CHUNK_SIZE);
+      writeFileSync(1, chunk);
+    }
+  } catch (error) {
+    process.stderr.write(`SIDECAR_WRITE_ERROR: ${error}\n`);
+    process.stderr.write(`Output length was: ${output.length}\n`);
+  }
+}
 
 // Process each line as a JSON-RPC request
 rl.on('line', async (line: string) => {
@@ -27,7 +44,7 @@ rl.on('line', async (line: string) => {
     const response = await handleRpcRequest(request);
 
     // Write response to stdout with newline
-    console.log(JSON.stringify(response));
+    writeOutput(JSON.stringify(response));
   } catch (error) {
     // Parse error - respond with JSON-RPC error
     const errorResponse = {
@@ -41,7 +58,7 @@ rl.on('line', async (line: string) => {
       },
       id: null,
     };
-    console.log(JSON.stringify(errorResponse));
+    writeOutput(JSON.stringify(errorResponse));
   }
 });
 
