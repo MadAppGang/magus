@@ -4,7 +4,7 @@
   "identifier": "com.madappgang.claudeup-gui",
   "build": {
     "beforeDevCommand": "npm run dev",
-    "beforeBuildCommand": "npm run build",
+    "beforeBuildCommand": "",
     "devUrl": "http://localhost:1420",
     "frontendDist": "../dist"
   },
