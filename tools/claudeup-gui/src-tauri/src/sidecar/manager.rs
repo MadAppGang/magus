@@ -44,30 +44,41 @@ impl SidecarManager {
             format!("{}-unknown-linux-gnu", std::env::consts::ARCH)
         };
 
-        let sidecar_name = format!("claudeup-sidecar-{}", target_triple);
+        let sidecar_name_with_triple = format!("claudeup-sidecar-{}", target_triple);
+        let sidecar_name_base = "claudeup-sidecar";
 
-        // Try resource path first (for bundled app)
-        let sidecar_path = app_handle
-            .path()
-            .resolve(format!("binaries/{}", sidecar_name), tauri::path::BaseDirectory::Resource)
+        // Try bundled app location first (MacOS folder, without target triple)
+        let sidecar_path = std::env::current_exe()
             .ok()
+            .and_then(|exe| {
+                // Bundled app: Contents/MacOS/claudeup -> Contents/MacOS/claudeup-sidecar
+                exe.parent().map(|p| p.join(sidecar_name_base))
+            })
             .filter(|p| p.exists())
+            // Try resource path (for dev mode with binaries in Resources)
+            .or_else(|| {
+                app_handle
+                    .path()
+                    .resolve(format!("binaries/{}", sidecar_name_with_triple), tauri::path::BaseDirectory::Resource)
+                    .ok()
+                    .filter(|p| p.exists())
+            })
             // Try relative to executable (for dev mode)
             .or_else(|| {
                 std::env::current_exe().ok().and_then(|exe| {
-                    // In dev mode: target/debug/claudeup-gui -> src-tauri/binaries/
+                    // In dev mode: target/debug/claudeup -> src-tauri/binaries/
                     exe.parent()? // target/debug
                         .parent()? // target
                         .parent()? // src-tauri
                         .join("binaries")
-                        .join(&sidecar_name)
+                        .join(&sidecar_name_with_triple)
                         .canonicalize()
                         .ok()
                 })
             })
             // Try SIDECAR_PATH env var as last resort
             .or_else(|| std::env::var("SIDECAR_PATH").ok().map(std::path::PathBuf::from))
-            .ok_or_else(|| format!("Could not find sidecar binary: {}", sidecar_name))?;
+            .ok_or_else(|| format!("Could not find sidecar binary: {} or {}", sidecar_name_base, sidecar_name_with_triple))?;
 
         // Spawn sidecar process using tokio::process::Command
         let mut child = Command::new(&sidecar_path)
