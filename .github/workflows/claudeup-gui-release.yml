@@ -130,19 +130,14 @@ jobs:
           releaseName: 'claudeup v__VERSION__'
           tauriScript: npx @tauri-apps/cli
           releaseBody: |
-            ## claudeup v__VERSION__
-
             Cross-platform GUI for managing Claude Code plugins, MCP servers, and configuration.
 
-            ### Download
+            ### Available Platforms
+            - **macOS** (Apple Silicon & Intel)
+            - **Windows** (x64)
+            - **Linux** (deb & rpm)
 
-            | Platform | Download |
-            |----------|----------|
-            | **macOS (Apple Silicon)** | [Download DMG](https://github.com/MadAppGang/claude-code/releases/download/${{ github.ref_name }}/claudeup___VERSION___aarch64.dmg) |
-            | **macOS (Intel)** | [Download DMG](https://github.com/MadAppGang/claude-code/releases/download/${{ github.ref_name }}/claudeup___VERSION___x64.dmg) |
-            | **Windows** | [Download Installer](https://github.com/MadAppGang/claude-code/releases/download/${{ github.ref_name }}/claudeup___VERSION___x64-setup.exe) |
-            | **Linux (deb)** | [Download DEB](https://github.com/MadAppGang/claude-code/releases/download/${{ github.ref_name }}/claudeup___VERSION___amd64.deb) |
-            | **Linux (rpm)** | [Download RPM](https://github.com/MadAppGang/claude-code/releases/download/${{ github.ref_name }}/claudeup-__VERSION__-1.x86_64.rpm) |
+            Download the appropriate installer for your platform from the assets below.
 
             ### Auto-Updates
             This app supports automatic updates. Once installed, you'll receive updates automatically.
