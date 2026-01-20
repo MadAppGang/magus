@@ -1,7 +1,7 @@
 {
   "name": "dev",
-  "version": "1.18.0",
-  "description": "Universal development assistant with self-improving learning, documentation, deep research, specification interviews, and DevOps guidance. v1.18.0: Added 4 discipline skills with Iron Law enforcement pattern + CSO audit of 104 skills across all plugins. v1.17.0: Dingo skill auto-detection. 34 skills.",
+  "version": "1.19.0",
+  "description": "Universal development assistant with self-improving learning, documentation, deep research, specification interviews, and DevOps guidance. v1.19.0: Avant-Garde UI Engineer agent for Awwwards-quality React components with framer-motion and anti-AI design rules. v1.18.0: 4 discipline skills. 35 skills.",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",
@@ -46,6 +46,7 @@
     "./agents/debugger.md",
     "./agents/architect.md",
     "./agents/ui.md",
+    "./agents/ui-engineer.md",
     "./agents/scribe.md",
     "./agents/spec-writer.md",
     "./agents/devops.md",
