@@ -188,8 +188,8 @@
 		{
 			"name": "dev",
 			"source": "./plugins/dev",
-			"description": "Universal development assistant with documentation, deep research, interviews, and DevOps guidance. v1.17.0: Dingo skill auto-detection - agents auto-load dingo+golang skills for .dingo files. 30+ skills.",
-			"version": "1.17.0",
+			"description": "Universal development assistant with documentation, deep research, interviews, and DevOps guidance. v1.18.0: 4 discipline skills with Iron Law enforcement + CSO audit of 104 skills. 34 skills.",
+			"version": "1.18.0",
 			"author": {
 				"name": "Jack Rudenko",
 				"email": "i@madappgang.com",

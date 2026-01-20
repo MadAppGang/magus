@@ -1,7 +1,7 @@
 {
   "name": "dev",
-  "version": "1.17.0",
-  "description": "Universal development assistant with self-improving learning, documentation, deep research, specification interviews, and DevOps guidance. v1.17.0: Dingo skill auto-detection - agents now auto-load dingo+golang skills when .dingo files detected. v1.16.0: Added /dev:learn command for session-based learning. 30+ skills.",
+  "version": "1.18.0",
+  "description": "Universal development assistant with self-improving learning, documentation, deep research, specification interviews, and DevOps guidance. v1.18.0: Added 4 discipline skills with Iron Law enforcement pattern + CSO audit of 104 skills across all plugins. v1.17.0: Dingo skill auto-detection. 34 skills.",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",
