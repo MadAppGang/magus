@@ -16,12 +16,18 @@
 import fs from "fs-extra";
 import path from "node:path";
 import os from "node:os";
+import { spawn } from "node:child_process";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { withFileLock } from "../utils/file-locking.js";
 import { validateProjectPath } from "../utils/validators.js";
 import type {
   ClaudeSettings,
   ClaudeLocalSettings,
   McpServerConfig,
+  McpTestResult,
+  McpTestStep,
+  McpServerStatus,
   Marketplace,
   MarketplaceSource,
   DiscoveredMarketplace,
@@ -29,6 +35,8 @@ import type {
   InstalledPluginEntry,
 } from "../types/index.js";
 import { parsePluginId } from "../utils/string-utils.js";
+
+const execFileAsync = promisify(execFile);
 
 // Constants
 const CLAUDE_DIR = ".claude";
@@ -220,7 +228,7 @@ export async function addMcpServer(
   mcpConfig.mcpServers[name] = configWithoutEnv;
   await writeMcpConfig(mcpConfig, projectPath);
 
-  // Enable in settings.local.json and add env vars
+  // Enable in settings.local.json and add server-scoped env vars
   const localSettings = await readLocalSettings(projectPath);
   const enabledServers = localSettings.enabledMcpjsonServers || [];
   if (!enabledServers.includes(name)) {
@@ -229,13 +237,15 @@ export async function addMcpServer(
   localSettings.enabledMcpjsonServers = enabledServers;
   localSettings.enableAllProjectMcpServers = true;
 
-  // Add env vars to settings.local.json
+  // Store env vars per-server (NEW)
   if (Object.keys(envVars).length > 0) {
-    localSettings.env = localSettings.env || {};
+    localSettings.mcpServerEnv = localSettings.mcpServerEnv || {};
+    localSettings.mcpServerEnv[name] = {};
+
     for (const [key, value] of Object.entries(envVars)) {
-      // Only add non-reference values
+      // Skip reference values (${VAR_NAME})
       if (!value.startsWith("${") || !value.endsWith("}")) {
-        localSettings.env[key] = value;
+        localSettings.mcpServerEnv[name][key] = value;
       }
     }
   }
@@ -282,9 +292,27 @@ export async function toggleMcpServer(
 ): Promise<void> {
   validateProjectPath(projectPath);
 
-  // Toggle is now a remove operation since .mcp.json doesn't have enabled/disabled state
-  if (!enabled) {
-    await removeMcpServer(name, projectPath, logger);
+  const localSettings = await readLocalSettings(projectPath);
+
+  if (enabled) {
+    // Enable: Add to enabledMcpjsonServers list
+    const enabledServers = localSettings.enabledMcpjsonServers || [];
+    if (!enabledServers.includes(name)) {
+      enabledServers.push(name);
+    }
+    localSettings.enabledMcpjsonServers = enabledServers;
+  } else {
+    // Disable: Remove from enabledMcpjsonServers list (keep config in .mcp.json)
+    if (localSettings.enabledMcpjsonServers) {
+      localSettings.enabledMcpjsonServers =
+        localSettings.enabledMcpjsonServers.filter((s) => s !== name);
+    }
+  }
+
+  await writeLocalSettings(localSettings, projectPath);
+
+  if (logger) {
+    logger(`MCP server '${name}' ${enabled ? 'enabled' : 'disabled'}`);
   }
 }
 
@@ -305,9 +333,7 @@ export async function addMarketplace(
 
   const settings = await readSettings(projectPath);
   settings.extraKnownMarketplaces = settings.extraKnownMarketplaces || {};
-  settings.extraKnownMarketplaces[marketplace.name] = {
-    source: marketplace.source,
-  };
+  settings.extraKnownMarketplaces[marketplace.name] = marketplace.source;
   await writeSettings(settings, projectPath);
 
   if (logger) {
@@ -450,7 +476,7 @@ export async function getStatusLine(
 ): Promise<string | undefined> {
   validateProjectPath(projectPath);
   const settings = await readSettings(projectPath);
-  return settings.statusLine;
+  return settings.statusLine as string | undefined;
 }
 
 export async function setGlobalStatusLine(template: string): Promise<void> {
@@ -461,7 +487,7 @@ export async function setGlobalStatusLine(template: string): Promise<void> {
 
 export async function getGlobalStatusLine(): Promise<string | undefined> {
   const settings = await readGlobalSettings();
-  return settings.statusLine;
+  return settings.statusLine as string | undefined;
 }
 
 export async function getEffectiveStatusLine(projectPath: string): Promise<{
@@ -498,7 +524,7 @@ export async function getInstalledMcpServers(
   return mcpConfig.mcpServers || {};
 }
 
-// Get env vars for MCP servers
+// Get env vars for MCP servers (DEPRECATED - use getMcpServerEnvVars)
 export async function getMcpEnvVars(
   projectPath: string,
 ): Promise<Record<string, string>> {
@@ -507,7 +533,7 @@ export async function getMcpEnvVars(
   return localSettings.env || {};
 }
 
-// Set an env var for MCP servers
+// Set an env var for MCP servers (DEPRECATED - use setMcpServerEnvVar)
 export async function setMcpEnvVar(
   name: string,
   value: string,
@@ -521,7 +547,7 @@ export async function setMcpEnvVar(
   await writeLocalSettings(localSettings, projectPath);
 }
 
-// Remove an env var
+// Remove an env var (DEPRECATED - use removeMcpServerEnvVar)
 export async function removeMcpEnvVar(
   name: string,
   projectPath: string,
@@ -531,6 +557,51 @@ export async function removeMcpEnvVar(
   const localSettings = await readLocalSettings(projectPath);
   if (localSettings.env) {
     delete localSettings.env[name];
+    await writeLocalSettings(localSettings, projectPath);
+  }
+}
+
+// Server-scoped env var functions (NEW)
+export async function getMcpServerEnvVars(
+  serverName: string,
+  projectPath: string,
+): Promise<Record<string, string>> {
+  validateProjectPath(projectPath);
+  const localSettings = await readLocalSettings(projectPath);
+  return localSettings.mcpServerEnv?.[serverName] || {};
+}
+
+export async function setMcpServerEnvVar(
+  serverName: string,
+  key: string,
+  value: string,
+  projectPath: string,
+): Promise<void> {
+  validateProjectPath(projectPath);
+
+  const localSettings = await readLocalSettings(projectPath);
+  localSettings.mcpServerEnv = localSettings.mcpServerEnv || {};
+  localSettings.mcpServerEnv[serverName] = localSettings.mcpServerEnv[serverName] || {};
+  localSettings.mcpServerEnv[serverName][key] = value;
+  await writeLocalSettings(localSettings, projectPath);
+}
+
+export async function removeMcpServerEnvVar(
+  serverName: string,
+  key: string,
+  projectPath: string,
+): Promise<void> {
+  validateProjectPath(projectPath);
+
+  const localSettings = await readLocalSettings(projectPath);
+  if (localSettings.mcpServerEnv?.[serverName]) {
+    delete localSettings.mcpServerEnv[serverName][key];
+
+    // Clean up empty server entry
+    if (Object.keys(localSettings.mcpServerEnv[serverName]).length === 0) {
+      delete localSettings.mcpServerEnv[serverName];
+    }
+
     await writeLocalSettings(localSettings, projectPath);
   }
 }
@@ -566,9 +637,7 @@ export async function addGlobalMarketplace(
 ): Promise<void> {
   const settings = await readGlobalSettings();
   settings.extraKnownMarketplaces = settings.extraKnownMarketplaces || {};
-  settings.extraKnownMarketplaces[marketplace.name] = {
-    source: marketplace.source,
-  };
+  settings.extraKnownMarketplaces[marketplace.name] = marketplace.source;
   await writeGlobalSettings(settings);
 
   if (logger) {
@@ -664,7 +733,7 @@ function discoverMarketplacesFromSettings(
   for (const [name, config] of Object.entries(
     settings.extraKnownMarketplaces || {},
   )) {
-    discovered.set(name, { name, source: "configured", config });
+    discovered.set(name, { name, source: "configured" as const, config });
   }
 
   // From enabledPlugins
@@ -673,7 +742,7 @@ function discoverMarketplacesFromSettings(
     if (parsed && !discovered.has(parsed.marketplace)) {
       discovered.set(parsed.marketplace, {
         name: parsed.marketplace,
-        source: "inferred",
+        source: "inferred" as const,
       });
     }
   }
@@ -684,7 +753,7 @@ function discoverMarketplacesFromSettings(
     if (parsed && !discovered.has(parsed.marketplace)) {
       discovered.set(parsed.marketplace, {
         name: parsed.marketplace,
-        source: "inferred",
+        source: "inferred" as const,
       });
     }
   }
@@ -724,6 +793,415 @@ export async function discoverAllGlobalMarketplaces(
     }
     return [];
   }
+}
+
+// MCP server testing and status
+export async function testMcpConnection(
+  config: McpServerConfig,
+  _logger?: (message: string) => void,
+): Promise<McpTestResult> {
+  const steps: McpTestStep[] = [];
+
+  // Determine if this is an HTTP-based or command-based server
+  const isHttpServer = config.url && !config.command;
+
+  // Step 1: Validate config
+  if (!config.command && !config.url) {
+    steps.push({
+      step: "Validate config",
+      passed: false,
+      error: "Either command or url is required",
+    });
+    return {
+      success: false,
+      error: "Either command or url is required",
+      steps,
+    };
+  }
+  steps.push({
+    step: "Validate config",
+    passed: true,
+  });
+
+  // HTTP-based server testing
+  if (isHttpServer) {
+    // Step 2: Validate URL format
+    let url: URL;
+    try {
+      url = new URL(config.url!);
+      steps.push({
+        step: "URL format valid",
+        passed: true,
+      });
+    } catch {
+      steps.push({
+        step: "URL format valid",
+        passed: false,
+        error: `Invalid URL format: ${config.url}`,
+      });
+      return {
+        success: false,
+        error: `Invalid URL format: ${config.url}`,
+        steps,
+      };
+    }
+
+    // Step 3: Test HTTP connection with MCP protocol request
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
+
+      // Send an MCP initialize request to properly test the connection
+      const mcpRequest = {
+        jsonrpc: "2.0",
+        id: 1,
+        method: "initialize",
+        params: {
+          protocolVersion: "2024-11-05",
+          capabilities: {},
+          clientInfo: {
+            name: "claudeup-test",
+            version: "1.0.0",
+          },
+        },
+      };
+
+      const response = await fetch(url.toString(), {
+        method: "POST",
+        signal: controller.signal,
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
+        body: JSON.stringify(mcpRequest),
+      });
+      clearTimeout(timeout);
+
+      // Check authentication status
+      if (response.status === 401 || response.status === 403) {
+        steps.push({
+          step: "Server reachable",
+          passed: true,
+        });
+        steps.push({
+          step: "Authentication",
+          passed: false,
+          error: "Server requires authentication - configure the required API key/token",
+        });
+        return {
+          success: false,
+          error: "Authentication failed - configure the required environment variables",
+          steps,
+        };
+      }
+
+      // Server responded - check if it's a valid MCP response
+      steps.push({
+        step: "Server reachable",
+        passed: true,
+      });
+
+      if (response.ok) {
+        try {
+          const data = await response.json() as { result?: unknown; error?: { message?: string } };
+          if (data.result || data.error) {
+            // Valid MCP JSON-RPC response
+            if (data.error) {
+              steps.push({
+                step: "MCP handshake",
+                passed: false,
+                error: data.error.message || "Server returned an error",
+              });
+              return {
+                success: false,
+                error: data.error.message || "MCP handshake failed",
+                steps,
+              };
+            }
+            steps.push({
+              step: "MCP handshake",
+              passed: true,
+            });
+            return {
+              success: true,
+              steps,
+            };
+          }
+        } catch {
+          // Response wasn't JSON
+        }
+      }
+
+      // Non-200 response or invalid response
+      steps.push({
+        step: "MCP handshake",
+        passed: false,
+        error: `Server returned status ${response.status}`,
+      });
+      return {
+        success: false,
+        error: `Server returned unexpected status: ${response.status}`,
+        steps,
+      };
+    } catch (error) {
+      steps.push({
+        step: "HTTP connection",
+        passed: false,
+        error: error instanceof Error ? error.message : "Failed to connect to server",
+      });
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to connect to server",
+        steps,
+      };
+    }
+  }
+
+  // Command-based server testing
+  // Step 2: Check if command exists
+  try {
+    const isWindows = process.platform === "win32";
+    const checkCommand = isWindows ? "where" : "which";
+    await execFileAsync(checkCommand, [config.command!]);
+    steps.push({
+      step: "Command exists",
+      passed: true,
+    });
+  } catch {
+    steps.push({
+      step: "Command exists",
+      passed: false,
+      error: `Command '${config.command}' not found in PATH`,
+    });
+    return {
+      success: false,
+      error: `Command '${config.command}' not found in PATH`,
+      steps,
+    };
+  }
+
+  // Step 3: Try to spawn the process
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const proc = spawn(config.command!, config.args || [], {
+        env: {
+          PATH: process.env.PATH,
+          HOME: process.env.HOME,
+          ...config.env,
+        },
+        stdio: ["pipe", "pipe", "pipe"],
+      });
+
+      const timeout = setTimeout(() => {
+        proc.kill();
+        reject(new Error("Process spawn timeout after 5 seconds"));
+      }, 5000);
+
+      proc.on("error", (error) => {
+        clearTimeout(timeout);
+        reject(error);
+      });
+
+      proc.on("spawn", () => {
+        clearTimeout(timeout);
+        proc.kill();
+        resolve();
+      });
+    });
+
+    steps.push({
+      step: "Process spawn",
+      passed: true,
+    });
+
+    return {
+      success: true,
+      steps,
+    };
+  } catch (error) {
+    steps.push({
+      step: "Process spawn",
+      passed: false,
+      error: error instanceof Error ? error.message : "Failed to spawn process",
+    });
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to spawn process",
+      steps,
+    };
+  }
+}
+
+export async function getMcpServerStatus(
+  serverName: string,
+  projectPath: string,
+): Promise<McpServerStatus> {
+  try {
+    validateProjectPath(projectPath);
+
+    // Check if server config exists
+    const servers = await getInstalledMcpServers(projectPath);
+    const serverConfig = servers[serverName];
+    if (!serverConfig) {
+      return {
+        state: "error",
+        error: `Server '${serverName}' not found`,
+      };
+    }
+
+    // Check if enabled
+    const localSettings = await readLocalSettings(projectPath);
+    const isEnabled = localSettings.enabledMcpjsonServers?.includes(serverName);
+
+    if (!isEnabled) {
+      return {
+        state: "stopped",
+      };
+    }
+
+    // For HTTP-based servers, check if URL is reachable
+    const isHttpServer = serverConfig.url && !serverConfig.command;
+    if (isHttpServer && serverConfig.url) {
+      const serverUrl = serverConfig.url;
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+        const response = await fetch(serverUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            method: "initialize",
+            params: {
+              protocolVersion: "2024-11-05",
+              capabilities: {},
+              clientInfo: { name: "claudeup-status", version: "1.0.0" },
+            },
+          }),
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        if (response.status === 401 || response.status === 403) {
+          return {
+            state: "error",
+            error: "Authentication required - check environment variables",
+          };
+        }
+
+        if (response.ok) {
+          return {
+            state: "running",
+          };
+        }
+
+        return {
+          state: "error",
+          error: `Server returned ${response.status}`,
+        };
+      } catch (fetchError) {
+        if (fetchError instanceof Error && fetchError.name === "AbortError") {
+          return {
+            state: "error",
+            error: "Connection timeout",
+          };
+        }
+        return {
+          state: "error",
+          error: "Server unreachable",
+        };
+      }
+    }
+
+    // For command-based servers, return unknown (we don't track running processes)
+    return {
+      state: "unknown",
+    };
+  } catch (error) {
+    return {
+      state: "error",
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}
+
+// Input validation functions
+export function validateMcpServerName(name: string): { valid: boolean; error?: string } {
+  if (!name || typeof name !== "string") {
+    return { valid: false, error: "Server name is required" };
+  }
+
+  if (!name.match(/^[a-z0-9-_]+$/)) {
+    return {
+      valid: false,
+      error: "Server name must contain only lowercase letters, numbers, hyphens, and underscores",
+    };
+  }
+
+  if (name.length > 64) {
+    return { valid: false, error: "Server name must be 64 characters or less" };
+  }
+
+  if (name.startsWith("-") || name.startsWith("_")) {
+    return { valid: false, error: "Server name cannot start with hyphen or underscore" };
+  }
+
+  return { valid: true };
+}
+
+export function validateMcpServerConfig(config: McpServerConfig): { valid: boolean; errors: string[] } {
+  const errors: string[] = [];
+
+  if (!config || typeof config !== "object") {
+    errors.push("Server configuration is required");
+    return { valid: false, errors };
+  }
+
+  if (!config.command || typeof config.command !== "string") {
+    errors.push("Server command is required");
+  } else {
+    // Security: Block command injection via shell metacharacters
+    const DANGEROUS_CHARS = /[;&|`$()><\n\r]/;
+    if (DANGEROUS_CHARS.test(config.command)) {
+      errors.push("Command contains forbidden shell metacharacters (;, &, |, `, $, (, ), <, >, newlines)");
+    }
+  }
+
+  // Validate args
+  if (config.args && !Array.isArray(config.args)) {
+    errors.push("Args must be an array");
+  } else if (config.args) {
+    for (const arg of config.args) {
+      if (typeof arg !== "string") {
+        errors.push("All args must be strings");
+        break;
+      }
+    }
+  }
+
+  // Validate env vars
+  if (config.env) {
+    if (typeof config.env !== "object" || Array.isArray(config.env)) {
+      errors.push("Env must be an object");
+    } else {
+      for (const [key, value] of Object.entries(config.env)) {
+        if (typeof key !== "string" || typeof value !== "string") {
+          errors.push("Env vars must be string key-value pairs");
+          break;
+        }
+
+        // Validate env var name format
+        if (!key.match(/^[A-Z_][A-Z0-9_]*$/)) {
+          errors.push(`Invalid env var name: ${key} (must be UPPER_CASE)`);
+        }
+      }
+    }
+  }
+
+  return { valid: errors.length === 0, errors };
 }
 
 // Installed plugins registry

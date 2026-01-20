@@ -86,6 +86,7 @@ export interface PluginInfo {
   author?: { name: string; email?: string };
   homepage?: string;
   tags?: string[];
+  source?: string | { source: string; url?: string };
   agents?: ComponentMeta[];
   commands?: ComponentMeta[];
   skills?: ComponentMeta[];
@@ -308,6 +309,7 @@ export async function getAvailablePlugins(
         homepage: plugin.homepage,
         tags: plugin.tags,
         // Merge detailed info from local marketplace clone if available
+        source: localPlugin?.source,
         agents: localPlugin?.agents,
         commands: localPlugin?.commands,
         skills: localPlugin?.skills,
@@ -348,6 +350,7 @@ export async function getAvailablePlugins(
         ...scopeStatus,
         category: localPlugin.category,
         author: localPlugin.author,
+        source: localPlugin.source,
         agents: localPlugin.agents,
         commands: localPlugin.commands,
         skills: localPlugin.skills,
@@ -506,6 +509,7 @@ export async function getGlobalAvailablePlugins(
         homepage: plugin.homepage,
         tags: plugin.tags,
         // Merge detailed info from local marketplace clone if available
+        source: localPlugin?.source,
         agents: localPlugin?.agents,
         commands: localPlugin?.commands,
         skills: localPlugin?.skills,
@@ -545,6 +549,7 @@ export async function getGlobalAvailablePlugins(
         ...scopeStatus,
         category: localPlugin.category,
         author: localPlugin.author,
+        source: localPlugin.source,
         agents: localPlugin.agents,
         commands: localPlugin.commands,
         skills: localPlugin.skills,

@@ -1,5 +1,5 @@
 import { useTauriQuery, useTauriCommand } from "./useTauriCommand";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { invoke } from "@tauri-apps/api/core";
 
 export interface Plugin {
@@ -46,17 +46,31 @@ export function usePlugins(scope?: "global" | "project", projectPath?: string) {
     ? { scope }
     : undefined;
 
-  return useTauriQuery<Plugin[]>(
-    ["plugins", scope || "all", projectPath || ""],
+  const queryKey = ["plugins", scope || "all", projectPath || ""];
+  const enabled = scope !== 'project' || !!projectPath;
+
+  console.log('[usePlugins] Query config:', { queryKey, params, enabled, scope, projectPath });
+
+  const result = useTauriQuery<Plugin[]>(
+    queryKey,
     "list_plugins",
     params,
     {
       staleTime: 5 * 60 * 1000, // 5 minutes
       refetchOnWindowFocus: true,
-      // Only enable project query if we have a projectPath
-      enabled: scope !== 'project' || !!projectPath,
+      enabled,
     }
   );
+
+  console.log('[usePlugins] Query result:', {
+    isLoading: result.isLoading,
+    isFetching: result.isFetching,
+    isError: result.isError,
+    error: result.error,
+    dataLength: result.data?.length
+  });
+
+  return result;
 }
 
 export function useInstallPlugin() {
@@ -187,36 +201,12 @@ export function useUpdatePlugin() {
   return useTauriCommand<{ success: boolean }, UpdatePluginParams>(
     "update_plugin",
     {
-      onSuccess: async (_data, variables) => {
-        try {
-          // Find the active plugins query to get the projectPath
-          const queries = queryClient.getQueryCache().findAll({ queryKey: ["plugins"] });
-
-          // Get projectPath from the first active query or from variables
-          let projectPath = variables.projectPath;
-          for (const query of queries) {
-            const key = query.queryKey as string[];
-            if (key[2] && key[2] !== "") {
-              projectPath = key[2];
-              break;
-            }
-          }
-
-          if (!projectPath) {
-            console.error('[useUpdatePlugin] No projectPath found, cannot refetch');
-            return;
-          }
-
-          // Manually fetch fresh data from backend
-          const params = { scope: 'project' as const, projectPath };
-          const freshData = await invoke<Plugin[]>("list_plugins", params);
-
-          // Update the cache with fresh data
-          const queryKey = ["plugins", "project", projectPath];
-          queryClient.setQueryData(queryKey, freshData);
-        } catch (error) {
-          console.error('[useUpdatePlugin] Error fetching fresh data:', error);
-        }
+      onSuccess: () => {
+        console.log('[useUpdatePlugin] Update successful, invalidating all plugin queries');
+        // Invalidate ALL plugin queries to force refetch (don't await - let it happen in background)
+        queryClient.invalidateQueries({ queryKey: ["plugins"] });
+        // Also invalidate plugin details cache
+        queryClient.invalidateQueries({ queryKey: ["plugin-details"] });
       },
     }
   );
@@ -261,4 +251,45 @@ export function useUninstallPlugin() {
       },
     }
   );
+}
+
+// Plugin details for URL-based plugins
+export interface PluginDetails {
+  name: string;
+  version: string;
+  description: string;
+  author?: { name: string; email?: string };
+  agents: Array<{ name: string; description?: string }>;
+  commands: Array<{ name: string; description?: string }>;
+  skills: Array<{ name: string; description?: string }>;
+  mcpServers: string[];
+  cached: boolean;
+}
+
+export interface FetchPluginDetailsParams {
+  name: string;
+  sourceUrl: string;
+}
+
+/**
+ * Hook to fetch plugin details for URL-based plugins
+ * Clones the plugin repo to cache and scans for components
+ */
+export function useFetchPluginDetails(name: string | undefined, sourceUrl: string | undefined) {
+  return useQuery<PluginDetails>({
+    queryKey: ["plugin-details", name, sourceUrl],
+    queryFn: async () => {
+      if (!name || !sourceUrl) {
+        throw new Error("name and sourceUrl are required");
+      }
+      const result = await invoke<PluginDetails>("fetch_plugin_details", {
+        name,
+        sourceUrl,
+      });
+      return result;
+    },
+    enabled: !!name && !!sourceUrl,
+    staleTime: 30 * 60 * 1000, // 30 minutes - cached repos don't change often
+    retry: 1,
+  });
 }

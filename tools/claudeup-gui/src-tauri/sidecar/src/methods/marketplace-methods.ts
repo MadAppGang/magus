@@ -80,32 +80,70 @@ function createLogger(operationId: string): LoggerCallback {
 }
 
 /**
- * Validate Git URL format
+ * Create a simple logger for functions that expect (message: string) => void
  */
-function validateGitUrl(url: string): { valid: boolean; error?: string } {
+function createSimpleLogger(operationId: string): (message: string) => void {
+  return (message: string) => {
+    emitProgress(operationId, -1, message, false);
+  };
+}
+
+/**
+ * Normalize Git URL - converts shorthand formats to full URLs
+ * Supports:
+ * - owner/repo -> https://github.com/owner/repo
+ * - github.com/owner/repo -> https://github.com/owner/repo
+ * - Full URLs (unchanged)
+ */
+function normalizeGitUrl(url: string): string {
   const cleaned = url.trim();
 
+  // Already a full URL - return as-is
+  if (cleaned.startsWith('https://') || cleaned.startsWith('git@')) {
+    return cleaned;
+  }
+
+  // Format: github.com/owner/repo or gitlab.com/owner/repo (no protocol)
+  if (/^(github|gitlab)\.com\/[\w-]+\/[\w.-]+/.test(cleaned)) {
+    return `https://${cleaned}`;
+  }
+
+  // Format: owner/repo (shorthand for GitHub)
+  if (/^[\w-]+\/[\w.-]+$/.test(cleaned)) {
+    return `https://github.com/${cleaned}`;
+  }
+
+  // Return as-is, validation will catch invalid formats
+  return cleaned;
+}
+
+/**
+ * Validate Git URL format
+ */
+function validateGitUrl(url: string): { valid: boolean; normalizedUrl: string; error?: string } {
+  const normalizedUrl = normalizeGitUrl(url);
+
   // Allow GitHub HTTPS
-  if (/^https:\/\/github\.com\/[\w-]+\/[\w.-]+/.test(cleaned)) {
-    return { valid: true };
+  if (/^https:\/\/github\.com\/[\w-]+\/[\w.-]+/.test(normalizedUrl)) {
+    return { valid: true, normalizedUrl };
   }
 
   // Allow GitLab HTTPS
-  if (/^https:\/\/gitlab\.com\/[\w-]+\/[\w.-]+/.test(cleaned)) {
-    return { valid: true };
+  if (/^https:\/\/gitlab\.com\/[\w-]+\/[\w.-]+/.test(normalizedUrl)) {
+    return { valid: true, normalizedUrl };
   }
 
   // Allow GitHub SSH
-  if (/^git@github\.com:[\w-]+\/[\w.-]+\.git$/.test(cleaned)) {
-    return { valid: true };
+  if (/^git@github\.com:[\w-]+\/[\w.-]+\.git$/.test(normalizedUrl)) {
+    return { valid: true, normalizedUrl };
   }
 
   // Allow GitLab SSH
-  if (/^git@gitlab\.com:[\w-]+\/[\w.-]+\.git$/.test(cleaned)) {
-    return { valid: true };
+  if (/^git@gitlab\.com:[\w-]+\/[\w.-]+\.git$/.test(normalizedUrl)) {
+    return { valid: true, normalizedUrl };
   }
 
-  return { valid: false, error: 'Invalid Git URL format. Use https://github.com/owner/repo or git@github.com:owner/repo.git' };
+  return { valid: false, normalizedUrl, error: 'Invalid format. Use owner/repo, github.com/owner/repo, or full URL' };
 }
 
 /**
@@ -215,7 +253,7 @@ export const marketplaceMethods: Record<string, RpcMethodHandler> = {
       };
     }
 
-    // Validate URL format
+    // Validate and normalize URL format
     const validation = validateGitUrl(url);
     if (!validation.valid) {
       throw {
@@ -223,6 +261,9 @@ export const marketplaceMethods: Record<string, RpcMethodHandler> = {
         message: validation.error || 'Invalid Git URL',
       };
     }
+
+    // Use the normalized URL (converts owner/repo to full GitHub URL)
+    const normalizedUrl = validation.normalizedUrl;
 
     const opId = operationId || `add-marketplace-${Date.now()}`;
     const logger = createLogger(opId);
@@ -237,7 +278,7 @@ export const marketplaceMethods: Record<string, RpcMethodHandler> = {
 
       const cloneResult = await cloneMarketplace(
         MARKETPLACES_DIR,
-        url,
+        normalizedUrl,
         (stage: string) => {
           emitProgress(opId, 50, `Cloning: ${stage}`, true);
         }
@@ -274,14 +315,14 @@ export const marketplaceMethods: Record<string, RpcMethodHandler> = {
 
       const marketplace: Marketplace = {
         name: clonedName!,
-        displayName: cloneResult.displayName || clonedName!,
+        displayName: clonedName!,
         source: {
-          source: url.includes('github.com') ? 'github' : 'directory',
-          repo: cloneResult.repo || url,
+          source: normalizedUrl.includes('github.com') ? 'github' : 'directory',
+          repo: normalizedUrl,
         },
       };
 
-      await addGlobalMarketplace(marketplace, logger);
+      await addGlobalMarketplace(marketplace, createSimpleLogger(opId));
 
       // Add to known marketplaces
       emitProgress(opId, 90, 'Registering marketplace...', true);
@@ -290,7 +331,7 @@ export const marketplaceMethods: Record<string, RpcMethodHandler> = {
         KNOWN_MARKETPLACES_FILE,
         MARKETPLACES_DIR,
         clonedName!,
-        cloneResult.repo || url
+        normalizedUrl
       );
 
       emitProgress(opId, 100, 'Marketplace added successfully', false);
@@ -298,7 +339,7 @@ export const marketplaceMethods: Record<string, RpcMethodHandler> = {
       return {
         success: true,
         name: clonedName,
-        displayName: cloneResult.displayName || clonedName,
+        displayName: clonedName,
       };
     } catch (error: unknown) {
       // Cleanup on error: delete cloned directory if it exists
@@ -351,13 +392,11 @@ export const marketplaceMethods: Record<string, RpcMethodHandler> = {
       };
     }
 
-    const logger = (level: 'info' | 'warn' | 'error', message: string): void => {
-      console.error(`[${level}] ${message}`);
-    };
+    const opId = `remove-marketplace-${Date.now()}`;
 
     try {
       // Remove from global settings
-      await removeGlobalMarketplace(name, logger);
+      await removeGlobalMarketplace(name, createSimpleLogger(opId));
 
       // Delete local cache
       await deleteMarketplace(MARKETPLACES_DIR, name);
@@ -384,8 +423,9 @@ export const marketplaceMethods: Record<string, RpcMethodHandler> = {
    * List all marketplaces (global only)
    */
   'marketplace.list': async () => {
-    const logger = (level: 'info' | 'warn' | 'error', message: string): void => {
-      process.stderr.write(`[marketplace.list][${level}] ${message}\n`);
+    // Create simple logger matching LogCallback type: (message: string) => void
+    const logger = (message: string): void => {
+      process.stderr.write(`[marketplace.list] ${message}\n`);
     };
 
     try {

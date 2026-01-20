@@ -1,5 +1,4 @@
 import { readFile, writeFile } from "fs/promises";
-import { join } from "path";
 import { parseJsonSafe } from "../utils/string-utils.js";
 
 export interface McpServerConfig {

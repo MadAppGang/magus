@@ -22,9 +22,31 @@ export type PluginScope = 'global' | 'project';
 
 // MCP server configuration
 export interface McpServerConfig {
-  command: string;
+  // For stdio-based servers
+  command?: string;
   args?: string[];
   env?: Record<string, string>;
+  // For HTTP-based servers
+  url?: string;
+}
+
+// MCP test result types
+export interface McpTestStep {
+  step: string;
+  passed: boolean;
+  error?: string;
+}
+
+export interface McpTestResult {
+  success: boolean;
+  error?: string;
+  steps: McpTestStep[];
+}
+
+// MCP server status
+export interface McpServerStatus {
+  state: 'running' | 'stopped' | 'error' | 'unknown';
+  error?: string;
 }
 
 // Claude settings structure
@@ -40,6 +62,10 @@ export interface ClaudeSettings {
 export interface ClaudeLocalSettings {
   enabledPlugins?: Record<string, boolean>;
   installedPluginVersions?: Record<string, string>;
+  enabledMcpjsonServers?: string[];
+  enableAllProjectMcpServers?: boolean;
+  env?: Record<string, string>;
+  mcpServerEnv?: Record<string, Record<string, string>>; // serverName -> envKey -> envValue
   [key: string]: unknown;
 }
 
@@ -60,8 +86,9 @@ export interface Marketplace {
 
 export interface DiscoveredMarketplace {
   name: string;
-  displayName: string;
-  source: MarketplaceSource;
+  displayName?: string;
+  source: 'configured' | 'inferred';
+  config?: MarketplaceSource;
 }
 
 // Installed plugins registry

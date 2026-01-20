@@ -13,6 +13,7 @@ import {
   removeInstalledPluginVersion,
   // Marketplace operations
   refreshAllMarketplaces,
+  fetchPluginDetails,
   // Settings management
   enablePlugin,
   enableGlobalPlugin,
@@ -26,6 +27,11 @@ import {
   type LoggerCallback,
   type ProgressCallback,
 } from '../../../../../claudeup-core/dist/index.js';
+import os from 'node:os';
+import path from 'node:path';
+
+// Cache directory for fetched plugin details
+const PLUGIN_CACHE_DIR = path.join(os.homedir(), '.claude', 'plugins', 'cache');
 
 type Scope = 'global' | 'project' | 'local';
 
@@ -69,10 +75,26 @@ function createLogger(operationId: string): LoggerCallback {
 }
 
 /**
+ * Create a simple logger for functions that expect (message: string) => void
+ */
+function createSimpleLogger(operationId: string): (message: string) => void {
+  return (message: string) => {
+    emitProgress(operationId, -1, message, false);
+  };
+}
+
+/**
  * Map core errors to JSON-RPC errors
  */
 function mapCoreErrorToRpc(error: unknown): { code: number; message: string; data?: unknown } {
-  const errorMessage = error instanceof Error ? error.message : String(error);
+  let errorMessage: string;
+  if (error instanceof Error) {
+    errorMessage = error.message;
+  } else if (typeof error === 'object' && error !== null) {
+    errorMessage = JSON.stringify(error);
+  } else {
+    errorMessage = String(error);
+  }
 
   // Validation errors
   if (errorMessage.includes('Invalid plugin ID')) {
@@ -178,20 +200,6 @@ export const pluginMethods: Record<string, RpcMethodHandler> = {
         plugins = await getAvailablePlugins(projectPath);
       }
 
-      // Debug: log a sample plugin to see if it has agents/commands/skills
-      const samplePlugin = plugins.find(p => p.name === 'dev' || p.name === 'code-analysis');
-      if (samplePlugin) {
-        console.error('[plugin.list DEBUG] Sample plugin:', JSON.stringify({
-          name: samplePlugin.name,
-          hasAgents: !!samplePlugin.agents?.length,
-          agentCount: samplePlugin.agents?.length,
-          hasCommands: !!samplePlugin.commands?.length,
-          commandCount: samplePlugin.commands?.length,
-          hasSkills: !!samplePlugin.skills?.length,
-          skillCount: samplePlugin.skills?.length,
-        }));
-      }
-
       return {
         plugins,
         scope,
@@ -262,7 +270,7 @@ export const pluginMethods: Record<string, RpcMethodHandler> = {
       emitProgress(opId, 50, 'Saving plugin version...');
 
       if (scope === 'global') {
-        await saveGlobalInstalledPluginVersion(name, pluginInfo.version, logger);
+        await saveGlobalInstalledPluginVersion(name, pluginInfo.version, createSimpleLogger(opId));
         emitProgress(opId, 75, 'Enabling plugin...');
         await enableGlobalPlugin(name, true);
       } else if (scope === 'project') {
@@ -270,7 +278,7 @@ export const pluginMethods: Record<string, RpcMethodHandler> = {
         emitProgress(opId, 75, 'Enabling plugin...');
         await enablePlugin(name, true, projectPath!);
       } else if (scope === 'local') {
-        await saveLocalInstalledPluginVersion(name, pluginInfo.version, projectPath!, logger);
+        await saveLocalInstalledPluginVersion(name, pluginInfo.version, projectPath!, createSimpleLogger(opId));
         emitProgress(opId, 75, 'Enabling plugin...');
         await enableLocalPlugin(name, true, projectPath!);
       }
@@ -359,11 +367,11 @@ export const pluginMethods: Record<string, RpcMethodHandler> = {
       emitProgress(opId, 50, 'Updating plugin...');
 
       if (scope === 'global') {
-        await saveGlobalInstalledPluginVersion(name, pluginInfo.version!, logger);
+        await saveGlobalInstalledPluginVersion(name, pluginInfo.version!, createSimpleLogger(opId));
       } else if (scope === 'project') {
         await saveInstalledPluginVersion(name, pluginInfo.version!, projectPath);
       } else if (scope === 'local') {
-        await saveLocalInstalledPluginVersion(name, pluginInfo.version!, projectPath!, logger);
+        await saveLocalInstalledPluginVersion(name, pluginInfo.version!, projectPath!, createSimpleLogger(opId));
       }
 
       emitProgress(opId, 100, 'Update complete');
@@ -522,9 +530,10 @@ export const pluginMethods: Record<string, RpcMethodHandler> = {
     try {
       emitProgress(opId, 0, 'Starting marketplace refresh...', true);
 
-      // Create progress adapter for core's callback
-      const onProgress: ProgressCallback = (percent: number, status: string) => {
-        emitProgress(opId, percent, status, true);
+      // Create progress callback matching ProgressCallback type: (progress: { current, total, name }) => void
+      const onProgress = (progress: { current: number; total: number; name: string }) => {
+        const percent = Math.round((progress.current / progress.total) * 100);
+        emitProgress(opId, percent, `Refreshing ${progress.name}...`, true);
       };
 
       const results = await refreshAllMarketplaces(onProgress);
@@ -543,6 +552,66 @@ export const pluginMethods: Record<string, RpcMethodHandler> = {
 
       const rpcError = mapCoreErrorToRpc(error);
       emitProgress(opId, 0, `Refresh failed: ${rpcError.message}`);
+      throw rpcError;
+    }
+  },
+
+  /**
+   * Fetch detailed plugin info by cloning from URL
+   * Used for URL-based plugins that aren't installed locally
+   * @param params.name - Plugin name
+   * @param params.sourceUrl - Git URL to clone
+   * @param params.operationId - Optional operation ID for progress tracking
+   */
+  'plugin.fetchDetails': async (params: unknown) => {
+    const { name, sourceUrl, operationId } = (params || {}) as {
+      name?: string;
+      sourceUrl?: string;
+      operationId?: string;
+    };
+
+    if (!name || typeof name !== 'string') {
+      throw {
+        code: JSON_RPC_ERRORS.INVALID_PARAMS,
+        message: 'Plugin name is required',
+      };
+    }
+
+    if (!sourceUrl || typeof sourceUrl !== 'string') {
+      throw {
+        code: JSON_RPC_ERRORS.INVALID_PARAMS,
+        message: 'sourceUrl is required for fetching plugin details',
+      };
+    }
+
+    const opId = operationId || `fetch-details-${name}-${Date.now()}`;
+
+    try {
+      emitProgress(opId, 0, 'Fetching plugin details...', true);
+
+      const details = await fetchPluginDetails(
+        PLUGIN_CACHE_DIR,
+        name,
+        sourceUrl,
+        (stage: string) => {
+          emitProgress(opId, 50, stage, true);
+        }
+      );
+
+      emitProgress(opId, 100, 'Details fetched');
+
+      return {
+        success: true,
+        ...details,
+      };
+    } catch (error: unknown) {
+      if (error && typeof error === 'object' && 'code' in error) {
+        emitProgress(opId, 0, `Fetch failed: ${(error as { message?: string }).message || 'Unknown error'}`);
+        throw error;
+      }
+
+      const rpcError = mapCoreErrorToRpc(error);
+      emitProgress(opId, 0, `Fetch failed: ${rpcError.message}`);
       throw rpcError;
     }
   },

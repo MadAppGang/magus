@@ -12,11 +12,11 @@
 
 import fs from 'fs-extra';
 import path from 'node:path';
-import { execSync, exec as execCb } from 'node:child_process';
+import { execSync, execFile as execFileCb } from 'node:child_process';
 import { promisify } from 'node:util';
 import { validateFilePath } from '../utils/validators.js';
 
-const execAsync = promisify(execCb);
+const execFileAsync = promisify(execFileCb);
 
 /**
  * Metadata extracted from component markdown frontmatter
@@ -253,9 +253,15 @@ async function scanSingleMarketplace(
         let skills: ComponentMeta[] = [];
         let mcpServers: string[] = [];
 
+        // Handle different source types:
+        // - String: local path like "./plugins/my-plugin"
+        // - Object with url: external git URL like { source: "url", url: "https://..." }
+        // - Object with source: "directory": local directory reference
         const sourceStr = typeof plugin.source === 'string' ? plugin.source : null;
+        const sourceUrl = typeof plugin.source === 'object' && plugin.source?.url ? plugin.source.url : null;
 
         if (sourceStr) {
+          // Local plugin directory
           const pluginPath = path.join(marketplacePath, sourceStr.replace('./', ''));
 
           if (!(await fs.pathExists(pluginPath))) {
@@ -311,13 +317,14 @@ async function scanSingleMarketplace(
             // Ignore scan errors
           }
         }
+        // For URL-based plugins, we can't scan local directories but we include them with metadata from manifest
 
         validManifestPlugins.push(plugin);
         plugins.push({
           name: plugin.name,
           version: plugin.version || '0.0.0',
           description: plugin.description || '',
-          source: plugin.source,
+          source: sourceUrl || sourceStr || plugin.source,
           category: plugin.category,
           author: plugin.author,
           strict: plugin.strict,
@@ -469,9 +476,8 @@ async function recloneCorruptedMarketplace(
 
     onProgress?.('Cloning repository');
     const cloneUrl = `https://github.com/${repo}.git`;
-    await execAsync(`git clone --depth 1 "${cloneUrl}" "${marketplacePath}" >/dev/null 2>&1`, {
+    await execFileAsync('git', ['clone', '--depth', '1', cloneUrl, marketplacePath], {
       timeout: 60000,
-      shell: '/bin/bash',
     });
 
     const gitDir = path.join(marketplacePath, '.git');
@@ -531,19 +537,18 @@ async function refreshSingleMarketplace(
     }
 
     onProgress?.('Checking current state');
-    const { stdout: beforeHead } = await execAsync('git rev-parse HEAD', {
+    const { stdout: beforeHead } = await execFileAsync('git', ['rev-parse', 'HEAD'], {
       cwd: marketplacePath,
       timeout: 5000,
     });
 
     onProgress?.('Pulling updates');
-    await execAsync('git pull --ff-only >/dev/null 2>&1', {
+    await execFileAsync('git', ['pull', '--ff-only'], {
       cwd: marketplacePath,
       timeout: 30000,
-      shell: '/bin/bash',
     });
 
-    const { stdout: afterHead } = await execAsync('git rev-parse HEAD', {
+    const { stdout: afterHead } = await execFileAsync('git', ['rev-parse', 'HEAD'], {
       cwd: marketplacePath,
       timeout: 5000,
     });
@@ -701,9 +706,8 @@ export async function cloneMarketplace(
   try {
     onProgress?.('Cloning repository');
     const cloneUrl = `https://github.com/${normalizedRepo}.git`;
-    await execAsync(`git clone --depth 1 "${cloneUrl}" "${marketplacePath}" >/dev/null 2>&1`, {
+    await execFileAsync('git', ['clone', '--depth', '1', cloneUrl, marketplacePath], {
       timeout: 60000,
-      shell: '/bin/bash',
     });
 
     onProgress?.('Validating marketplace');
@@ -914,4 +918,166 @@ export async function repairAllMarketplaces(
   }
 
   return results;
+}
+
+/**
+ * Plugin details fetched from remote repo
+ */
+export interface FetchedPluginDetails {
+  name: string;
+  version: string;
+  description: string;
+  author?: { name: string; email?: string };
+  agents: ComponentMeta[];
+  commands: ComponentMeta[];
+  skills: ComponentMeta[];
+  mcpServers: string[];
+  cached: boolean;
+}
+
+/**
+ * Fetch plugin details by cloning the repo to cache
+ * This is used for URL-based plugins that aren't installed locally
+ */
+export async function fetchPluginDetails(
+  cacheDir: string,
+  pluginName: string,
+  sourceUrl: string,
+  onProgress?: (stage: string) => void,
+): Promise<FetchedPluginDetails> {
+  // Normalize the URL
+  let normalizedUrl = sourceUrl.trim();
+  if (!normalizedUrl.startsWith('https://') && !normalizedUrl.startsWith('git@')) {
+    // Handle shorthand formats
+    if (normalizedUrl.includes('github.com')) {
+      normalizedUrl = `https://${normalizedUrl}`;
+    } else if (/^[\w-]+\/[\w.-]+$/.test(normalizedUrl)) {
+      normalizedUrl = `https://github.com/${normalizedUrl}`;
+    }
+  }
+
+  // Extract repo name for cache path
+  const repoMatch = normalizedUrl.match(/[/:]([^/]+\/[^/\s.]+?)(?:\.git)?$/);
+  const repoName = repoMatch ? repoMatch[1].replace('/', '-') : pluginName;
+  const cachePath = path.join(cacheDir, repoName);
+
+  await fs.ensureDir(cacheDir);
+
+  let cached = false;
+
+  // Check if already cached
+  if (await fs.pathExists(cachePath)) {
+    cached = true;
+    onProgress?.('Using cached version');
+  } else {
+    // Clone the repo
+    onProgress?.('Cloning repository...');
+    try {
+      await execFileAsync('git', ['clone', '--depth', '1', normalizedUrl, cachePath], {
+        timeout: 60000,
+      });
+    } catch (error) {
+      throw new Error(`Failed to clone plugin: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  // Scan plugin contents
+  onProgress?.('Scanning plugin contents...');
+
+  const result: FetchedPluginDetails = {
+    name: pluginName,
+    version: '0.0.0',
+    description: '',
+    agents: [],
+    commands: [],
+    skills: [],
+    mcpServers: [],
+    cached,
+  };
+
+  // Try to read plugin.json for metadata
+  const pluginJsonPath = path.join(cachePath, '.claude-plugin', 'plugin.json');
+  if (await fs.pathExists(pluginJsonPath)) {
+    try {
+      const pluginJson = await fs.readJson(pluginJsonPath);
+      result.version = pluginJson.version || '0.0.0';
+      result.description = pluginJson.description || '';
+      result.author = pluginJson.author;
+    } catch {
+      // Ignore parse errors
+    }
+  }
+
+  // Scan for agents
+  const agentsDir = path.join(cachePath, 'agents');
+  if (await fs.pathExists(agentsDir)) {
+    try {
+      const files = await fs.readdir(agentsDir);
+      const mdFiles = files.filter((f) => f.endsWith('.md'));
+      result.agents = await Promise.all(
+        mdFiles.map((f) => extractComponentMeta(path.join(agentsDir, f), f.replace('.md', '')))
+      );
+    } catch {
+      // Ignore scan errors
+    }
+  }
+
+  // Scan for commands
+  const commandsDir = path.join(cachePath, 'commands');
+  if (await fs.pathExists(commandsDir)) {
+    try {
+      const files = await fs.readdir(commandsDir);
+      const mdFiles = files.filter((f) => f.endsWith('.md'));
+      result.commands = await Promise.all(
+        mdFiles.map((f) => extractComponentMeta(path.join(commandsDir, f), f.replace('.md', '')))
+      );
+    } catch {
+      // Ignore scan errors
+    }
+  }
+
+  // Scan for skills
+  const skillsDir = path.join(cachePath, 'skills');
+  if (await fs.pathExists(skillsDir)) {
+    try {
+      const entries = await fs.readdir(skillsDir, { withFileTypes: true });
+      const skillItems = entries.filter((e) => e.name.endsWith('.md') || e.isDirectory());
+      result.skills = await Promise.all(
+        skillItems.map(async (e) => {
+          const skillPath = e.isDirectory()
+            ? path.join(skillsDir, e.name, 'SKILL.md')
+            : path.join(skillsDir, e.name);
+          const name = e.name.replace('.md', '');
+          if (await fs.pathExists(skillPath)) {
+            return extractComponentMeta(skillPath, name);
+          }
+          return { name };
+        })
+      );
+    } catch {
+      // Ignore scan errors
+    }
+  }
+
+  // Scan for MCP servers
+  const mcpDir = path.join(cachePath, 'mcp-servers');
+  if (await fs.pathExists(mcpDir)) {
+    try {
+      const files = await fs.readdir(mcpDir);
+      result.mcpServers = files.filter((f) => f.endsWith('.json')).map((f) => f.replace('.json', ''));
+    } catch {
+      // Ignore scan errors
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Clear the plugin cache directory
+ */
+export async function clearPluginCache(cacheDir: string): Promise<void> {
+  if (await fs.pathExists(cacheDir)) {
+    await fs.remove(cacheDir);
+  }
 }

@@ -18,6 +18,7 @@
     "dialog:allow-ask",
     "updater:default",
     "updater:allow-check",
-    "updater:allow-download-and-install"
+    "updater:allow-download-and-install",
+    "shell:allow-open"
   ]
 }

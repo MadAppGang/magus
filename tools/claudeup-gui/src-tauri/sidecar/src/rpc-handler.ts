@@ -14,6 +14,7 @@ import {
 import { pluginMethods } from './methods/plugin-methods.js';
 import { settingsMethods } from './methods/settings-methods.js';
 import { marketplaceMethods } from './methods/marketplace-methods.js';
+import { mcpMethods } from './methods/mcp-methods.js';
 
 /**
  * Map of all RPC method handlers
@@ -22,6 +23,7 @@ const METHOD_MAP: Record<string, RpcMethodHandler> = {
   ...pluginMethods,
   ...settingsMethods,
   ...marketplaceMethods,
+  ...mcpMethods,
 };
 
 /**

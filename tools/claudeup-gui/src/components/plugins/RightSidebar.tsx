@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   ChevronDown, ChevronUp, Share2, Globe,
   Box, Trash2, RefreshCw, HardDrive, Terminal, Zap, Shield, Link,
-  Download, Server
+  Download, Server, Loader2
 } from 'lucide-react';
 import { Plugin, Capability } from '../../types';
-import { useInstallPlugin, useUpdatePlugin, useUninstallPlugin } from '../../hooks/usePlugins';
+import { useInstallPlugin, useUpdatePlugin, useUninstallPlugin, useFetchPluginDetails } from '../../hooks/usePlugins';
 import { useToast } from '../Toast';
 
 interface RightSidebarProps {
@@ -13,8 +13,6 @@ interface RightSidebarProps {
   onUpdatePlugin: (updated: Plugin) => void;
   projectPath?: string;
 }
-
-const getInitials = (name: string) => name.substring(0, 2).toUpperCase();
 
 const Section: React.FC<{ title: string; count?: number; children: React.ReactNode; defaultOpen?: boolean }> = ({ title, count, children, defaultOpen = true }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -137,12 +135,56 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
   const uninstallMutation = useUninstallPlugin();
   const toast = useToast();
 
+  // Check if this is a URL-based plugin that needs details fetched
+  // URL-based plugins have a URL source and no local components
+  const { isUrlBasedPlugin, sourceUrl } = useMemo(() => {
+    if (!plugin) return { isUrlBasedPlugin: false, sourceUrl: undefined };
+
+    const hasNoComponents = !plugin.agents?.length && !plugin.commands?.length && !plugin.skills?.length;
+
+    // Extract URL from source - can be string or object { source: "url", url: "..." }
+    let url: string | undefined;
+    if (typeof plugin.source === 'string') {
+      if (plugin.source.startsWith('http') || plugin.source.includes('github.com')) {
+        url = plugin.source;
+      }
+    } else if (plugin.source && typeof plugin.source === 'object' && plugin.source.url) {
+      url = plugin.source.url;
+    }
+
+    return {
+      isUrlBasedPlugin: hasNoComponents && !!url,
+      sourceUrl: url,
+    };
+  }, [plugin]);
+  const { data: fetchedDetails, isLoading: isFetchingDetails } = useFetchPluginDetails(
+    plugin?.name,
+    sourceUrl
+  );
+
+  // Merge fetched details with plugin data
+  const mergedPlugin = useMemo(() => {
+    if (!plugin) return undefined;
+    if (!fetchedDetails) return plugin;
+
+    return {
+      ...plugin,
+      agents: fetchedDetails.agents?.length ? fetchedDetails.agents : plugin.agents,
+      commands: fetchedDetails.commands?.length ? fetchedDetails.commands : plugin.commands,
+      skills: fetchedDetails.skills?.length ? fetchedDetails.skills : plugin.skills,
+      mcpServers: fetchedDetails.mcpServers?.length ? fetchedDetails.mcpServers : plugin.mcpServers,
+    };
+  }, [plugin, fetchedDetails]);
+
   if (!plugin) return (
     <div className="h-full flex flex-col items-center justify-center text-textFaint">
       <Box size={48} className="mb-4 opacity-20" />
       <p>Select a plugin to view details</p>
     </div>
   );
+
+  // Use merged plugin for display
+  const displayPlugin = mergedPlugin || plugin;
 
   const handleInstall = async (scopeName: 'userScope' | 'projectScope' | 'localScope') => {
     const scopeMap = { userScope: 'global', projectScope: 'project', localScope: 'local' } as const;
@@ -283,9 +325,7 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
 
         <div className="relative z-10">
           <div className="flex items-start justify-between mb-6">
-            <div className="w-[64px] h-[64px] rounded-xl bg-bgSurface border border-borderSubtle flex items-center justify-center text-2xl text-textMuted font-medium shadow-lg">
-              {getInitials(plugin.name)}
-            </div>
+            <h1 className="text-2xl font-bold text-textMain">{plugin.name}</h1>
             <div className="flex gap-2">
               {plugin.homepage && (
                 <a href="#" className="p-2 rounded-full bg-bgSurface border border-borderSubtle text-textMuted hover:text-textMain hover:bg-white/5 transition-colors">
@@ -298,16 +338,18 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
             </div>
           </div>
 
-          <h1 className="text-2xl font-bold text-textMain mb-2">{plugin.name}</h1>
-
           <div className="flex items-center gap-4 text-[13px] text-textMuted">
             <span className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-white/5 border border-white/5">
               v{plugin.version}
             </span>
-            <span className="text-textFaint">by</span>
-            <span className="text-textMain font-medium hover:underline cursor-pointer">
-              {plugin.author?.name}
-            </span>
+            {plugin.author?.name && (
+              <>
+                <span className="text-textFaint">by</span>
+                <span className="text-textMain font-medium hover:underline cursor-pointer">
+                  {plugin.author.name}
+                </span>
+              </>
+            )}
             {plugin.author?.company && (
               <>
                 <span className="text-textFaint">•</span>
@@ -357,40 +399,50 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
 
       {/* CAPABILITIES */}
       <div className="shrink-0">
-        {(plugin.agents?.length || 0) > 0 && (
-          <Section title="AI Agents" count={plugin.agents?.length}>
+        {/* Loading indicator for URL-based plugins */}
+        {isUrlBasedPlugin && isFetchingDetails && (
+          <div className="px-6 py-4 border-b border-borderSubtle">
+            <div className="flex items-center gap-2 text-textMuted">
+              <Loader2 size={14} className="animate-spin" />
+              <span className="text-[12px]">Fetching plugin details...</span>
+            </div>
+          </div>
+        )}
+
+        {(displayPlugin.agents?.length || 0) > 0 && (
+          <Section title="AI Agents" count={displayPlugin.agents?.length}>
             <div className="flex flex-wrap gap-2">
-              {plugin.agents?.map(agent => (
+              {displayPlugin.agents?.map(agent => (
                 <CapabilityBadge key={agent.name} capability={agent} icon={Box} colorClass="text-blue-400" />
               ))}
             </div>
           </Section>
         )}
 
-        {(plugin.commands?.length || 0) > 0 && (
-          <Section title="Slash Commands" count={plugin.commands?.length}>
+        {(displayPlugin.commands?.length || 0) > 0 && (
+          <Section title="Slash Commands" count={displayPlugin.commands?.length}>
             <div className="flex flex-wrap gap-2">
-              {plugin.commands?.map(cmd => (
+              {displayPlugin.commands?.map(cmd => (
                 <CapabilityBadge key={cmd.name} capability={cmd} icon={Terminal} colorClass="text-emerald-400" />
               ))}
             </div>
           </Section>
         )}
 
-        {(plugin.skills?.length || 0) > 0 && (
-          <Section title="Skills & Tools" count={plugin.skills?.length}>
+        {(displayPlugin.skills?.length || 0) > 0 && (
+          <Section title="Skills & Tools" count={displayPlugin.skills?.length}>
             <div className="flex flex-wrap gap-2">
-              {plugin.skills?.map(skill => (
+              {displayPlugin.skills?.map(skill => (
                 <CapabilityBadge key={skill.name} capability={skill} icon={Zap} colorClass="text-amber-400" />
               ))}
             </div>
           </Section>
         )}
 
-        {(plugin.mcpServers?.length || 0) > 0 && (
-          <Section title="MCP Servers" count={plugin.mcpServers?.length}>
+        {(displayPlugin.mcpServers?.length || 0) > 0 && (
+          <Section title="MCP Servers" count={displayPlugin.mcpServers?.length}>
             <div className="flex flex-wrap gap-2">
-              {plugin.mcpServers?.map(server => (
+              {displayPlugin.mcpServers?.map(server => (
                 <span key={server} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded bg-bgSurface/40 border border-borderSubtle text-[12px] font-medium text-textMain/90">
                   <Server size={12} className="text-purple-400" />
                   {server}
@@ -407,7 +459,7 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
               <span className="text-textMain">{plugin.license || 'Proprietary'}</span>
             </div>
             <div className="flex justify-between">
-              <span>Registry ID</span>
+              <span>Marketplace ID</span>
               <span className="font-mono text-[11px] bg-bgSurface px-1.5 rounded">{plugin.id}</span>
             </div>
             <div className="flex justify-between">

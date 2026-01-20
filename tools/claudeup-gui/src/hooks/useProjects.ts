@@ -30,12 +30,15 @@ export function useAddProject() {
       console.log('[useAddProject] Project added:', project);
       return project;
     },
-    onSuccess: (_project) => {
+    onSuccess: async (_project) => {
       console.log('[useAddProject] onSuccess, refetching queries...');
-      // Force immediate refetch (not just invalidate)
-      queryClient.refetchQueries({ queryKey: ["current-project"] });
-      queryClient.refetchQueries({ queryKey: ["projects"] });
-      queryClient.invalidateQueries({ queryKey: ["plugins"] });
+      // Force immediate refetch and wait for completion
+      await queryClient.refetchQueries({ queryKey: ["current-project"] });
+      await queryClient.refetchQueries({ queryKey: ["projects"] });
+      // Remove old plugins queries - new queries will be created automatically
+      queryClient.removeQueries({ queryKey: ["plugins"] });
+      queryClient.removeQueries({ queryKey: ["plugin-details"] });
+      console.log('[useAddProject] All queries refetched, plugins cleared for fresh fetch');
     },
   });
 }
@@ -48,10 +51,23 @@ export function useSwitchProject() {
     mutationFn: async ({ projectId }) => {
       ProjectStorage.setCurrentProject(projectId);
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      console.log('[useSwitchProject] onSuccess - starting cache updates');
+      // Clear plugin detail caches (they're project-independent but we want fresh data)
+      queryClient.removeQueries({ queryKey: ["plugin-details"] });
+
+      // IMPORTANT: Wait for current-project to refetch FIRST
+      // This ensures the component re-renders with the new project path
+      // before any plugins queries are affected
+      await queryClient.invalidateQueries({ queryKey: ["current-project"] });
+      console.log('[useSwitchProject] current-project refetched');
+
       queryClient.invalidateQueries({ queryKey: ["projects"] });
-      queryClient.invalidateQueries({ queryKey: ["current-project"] });
-      queryClient.invalidateQueries({ queryKey: ["plugins"] });
+
+      // Remove old plugins queries - new queries will be created automatically
+      // when the component re-renders with the new project path
+      queryClient.removeQueries({ queryKey: ["plugins"] });
+      console.log('[useSwitchProject] plugins queries cleared, new queries will be created on re-render');
     },
   });
 }

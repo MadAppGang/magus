@@ -201,3 +201,164 @@ pub async fn remove_marketplace(
         .call_rpc("marketplace.remove", params)
         .await
         }
+
+#[tauri::command]
+pub async fn fetch_plugin_details(
+    name: String,
+    source_url: String,
+    sidecar: State<'_, Arc<SidecarManager>>,
+) -> Result<Value, String> {
+    let params = json!({
+        "name": name,
+        "sourceUrl": source_url,
+    });
+
+    sidecar
+        .call_rpc("plugin.fetchDetails", params)
+        .await
+        }
+
+// MCP Server commands
+#[tauri::command]
+pub async fn list_mcp_servers(
+    project_path: String,
+    sidecar: State<'_, Arc<SidecarManager>>,
+) -> Result<Value, String> {
+    let params = json!({
+        "projectPath": project_path,
+    });
+    sidecar.call_rpc("mcp.list", params).await
+}
+
+#[tauri::command]
+pub async fn add_mcp_server(
+    name: String,
+    config: Value,
+    project_path: String,
+    sidecar: State<'_, Arc<SidecarManager>>,
+) -> Result<Value, String> {
+    let params = json!({
+        "name": name,
+        "config": config,
+        "projectPath": project_path,
+    });
+    sidecar.call_rpc("mcp.add", params).await
+}
+
+#[tauri::command]
+pub async fn remove_mcp_server(
+    name: String,
+    project_path: String,
+    sidecar: State<'_, Arc<SidecarManager>>,
+) -> Result<Value, String> {
+    let params = json!({
+        "name": name,
+        "projectPath": project_path,
+    });
+    sidecar.call_rpc("mcp.remove", params).await
+}
+
+#[tauri::command]
+pub async fn toggle_mcp_server(
+    name: String,
+    enabled: bool,
+    project_path: String,
+    sidecar: State<'_, Arc<SidecarManager>>,
+) -> Result<Value, String> {
+    let params = json!({
+        "name": name,
+        "enabled": enabled,
+        "projectPath": project_path,
+    });
+    sidecar.call_rpc("mcp.toggle", params).await
+}
+
+#[tauri::command]
+pub async fn test_mcp_connection(
+    config: Value,
+    sidecar: State<'_, Arc<SidecarManager>>,
+) -> Result<Value, String> {
+    let params = json!({
+        "config": config,
+    });
+    sidecar.call_rpc("mcp.testConnection", params).await
+}
+
+#[tauri::command]
+pub async fn get_mcp_server_status(
+    server_name: String,
+    project_path: String,
+    sidecar: State<'_, Arc<SidecarManager>>,
+) -> Result<Value, String> {
+    let params = json!({
+        "serverName": server_name,
+        "projectPath": project_path,
+    });
+    sidecar.call_rpc("mcp.getStatus", params).await
+}
+
+#[tauri::command]
+pub async fn get_mcp_env_vars(
+    server_name: String,
+    project_path: String,
+    sidecar: State<'_, Arc<SidecarManager>>,
+) -> Result<Value, String> {
+    let params = json!({
+        "serverName": server_name,
+        "projectPath": project_path,
+    });
+    sidecar.call_rpc("mcp.getEnvVars", params).await
+}
+
+#[tauri::command]
+pub async fn set_mcp_env_var(
+    server_name: String,
+    key: String,
+    value: String,
+    project_path: String,
+    sidecar: State<'_, Arc<SidecarManager>>,
+) -> Result<Value, String> {
+    let params = json!({
+        "serverName": server_name,
+        "key": key,
+        "value": value,
+        "projectPath": project_path,
+    });
+    sidecar.call_rpc("mcp.setEnvVar", params).await
+}
+
+#[tauri::command]
+pub async fn remove_mcp_env_var(
+    server_name: String,
+    key: String,
+    project_path: String,
+    sidecar: State<'_, Arc<SidecarManager>>,
+) -> Result<Value, String> {
+    let params = json!({
+        "serverName": server_name,
+        "key": key,
+        "projectPath": project_path,
+    });
+    sidecar.call_rpc("mcp.removeEnvVar", params).await
+}
+
+#[tauri::command]
+pub async fn get_curated_mcp_servers(
+    sidecar: State<'_, Arc<SidecarManager>>,
+) -> Result<Value, String> {
+    sidecar.call_rpc("mcp.getCurated", json!({})).await
+}
+
+#[tauri::command]
+pub async fn search_mcp_registry(
+    sidecar: State<'_, Arc<SidecarManager>>,
+    query: Option<String>,
+    limit: Option<u32>,
+    cursor: Option<String>,
+) -> Result<Value, String> {
+    sidecar.call_rpc("mcp.searchRegistry", json!({
+        "query": query.unwrap_or_default(),
+        "limit": limit.unwrap_or(20),
+        "cursor": cursor,
+    })).await
+}

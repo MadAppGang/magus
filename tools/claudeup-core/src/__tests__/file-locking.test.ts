@@ -132,8 +132,6 @@ describe('file-locking', () => {
   describe('forceRemoveLock', () => {
     it('should remove lock file', async () => {
       // Create lock by starting operation but not finishing
-      const lockPath = `${testFile}.lock`;
-
       await withFileLock(testFile, async () => {
         // Lock is held here
         expect(isFileLocked(testFile)).toBe(true);

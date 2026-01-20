@@ -9,7 +9,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { id: "plugins", label: "Plugins", icon: "🔌" },
   { id: "mcp", label: "MCP Servers", icon: "🛠️" },
-  { id: "registry", label: "MCP Registry", icon: "📦" },
+  { id: "marketplace", label: "MCP Marketplace", icon: "📦" },
   { id: "statusline", label: "Status Line", icon: "📊" },
   { id: "envvars", label: "Environment Vars", icon: "🔐" },
   { id: "cli-tools", label: "CLI Tools", icon: "⚙️" },

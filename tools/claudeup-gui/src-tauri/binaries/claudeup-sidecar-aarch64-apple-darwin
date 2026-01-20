@@ -3,6 +3,31 @@
 # This avoids macOS code signing issues with Bun-compiled binaries
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-SIDECAR_DIR="$SCRIPT_DIR/../sidecar/dist"
 
-exec node "$SIDECAR_DIR/server.js"
+# In bundled app: Contents/MacOS/claudeup-sidecar -> Contents/Resources/sidecar/dist/server.js
+# In dev mode: target/debug/claudeup-sidecar -> src-tauri/sidecar/dist/server.js
+
+# Try bundled app path first (Contents/MacOS -> Contents/Resources)
+BUNDLED_PATH="$SCRIPT_DIR/../Resources/sidecar/dist/server.js"
+if [ -f "$BUNDLED_PATH" ]; then
+    exec node "$BUNDLED_PATH"
+fi
+
+# Dev mode: find project root by looking for src-tauri
+DEV_PATH="$SCRIPT_DIR/../../sidecar/dist/server.js"
+if [ -f "$DEV_PATH" ]; then
+    exec node "$DEV_PATH"
+fi
+
+# Fallback: try relative from binaries folder (original behavior)
+FALLBACK_PATH="$SCRIPT_DIR/../sidecar/dist/server.js"
+if [ -f "$FALLBACK_PATH" ]; then
+    exec node "$FALLBACK_PATH"
+fi
+
+echo "Error: Could not find sidecar server.js" >&2
+echo "Tried paths:" >&2
+echo "  $BUNDLED_PATH" >&2
+echo "  $DEV_PATH" >&2
+echo "  $FALLBACK_PATH" >&2
+exit 1

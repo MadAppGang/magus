@@ -11,6 +11,7 @@ use sidecar::SidecarManager;
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_shell::init())
         // .plugin(tauri_plugin_updater::Builder::new().build()) // Disabled for dev
         .setup(|app| {
             let app_handle = app.handle().clone();
@@ -44,12 +45,25 @@ fn main() {
             commands::enable_plugin,
             commands::disable_plugin,
             commands::refresh_marketplaces,
+            commands::fetch_plugin_details,
             commands::get_settings,
             commands::set_settings,
             // Marketplace commands
             commands::list_marketplaces,
             commands::add_marketplace,
             commands::remove_marketplace,
+            // MCP Server commands
+            commands::list_mcp_servers,
+            commands::add_mcp_server,
+            commands::remove_mcp_server,
+            commands::toggle_mcp_server,
+            commands::test_mcp_connection,
+            commands::get_mcp_server_status,
+            commands::get_mcp_env_vars,
+            commands::set_mcp_env_var,
+            commands::remove_mcp_env_var,
+            commands::get_curated_mcp_servers,
+            commands::search_mcp_registry,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

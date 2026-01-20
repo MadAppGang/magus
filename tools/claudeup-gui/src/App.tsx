@@ -2,12 +2,14 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Search, Package, Globe, Activity, Layout, Store,
-  HelpCircle, ChevronDown, FolderOpen, Plus, Trash2, Folder, History, Check
+  HelpCircle, ChevronDown, FolderOpen, Plus, Trash2, Folder, History, Check, X, Server
 } from 'lucide-react';
 import { Plugin, AppState } from './types';
 import PluginRow from './components/plugins/PluginRow';
 import RightSidebar from './components/plugins/RightSidebar';
+import McpPage from './components/mcp/McpPage';
 import { usePlugins } from './hooks/usePlugins';
+import { usePrefetchPluginDetails } from './hooks/usePrefetchPluginDetails';
 import { adaptPluginsFromBackend } from './utils/pluginAdapter';
 import { useMarketplaces, useAddMarketplace, useRemoveMarketplace, Marketplace } from './hooks/useMarketplaces';
 import { useProjects, useCurrentProject, useSwitchProject, useAddProject, useRemoveProject, Project } from './hooks/useProjects';
@@ -40,6 +42,7 @@ const AppContent: React.FC = () => {
 
   // Transform backend data - no merging needed, just use project plugins
   const backendPlugins = useMemo(() => {
+    console.log('[App] projectPlugins raw:', projectPlugins);
     // Safely extract arrays from potentially wrapped responses
     const toArray = <T,>(data: T[] | { plugins?: T[]; data?: T[] } | undefined | null): T[] => {
       if (!data) return [];
@@ -51,7 +54,9 @@ const AppContent: React.FC = () => {
       return [];
     };
 
-    return toArray(projectPlugins);
+    const result = toArray(projectPlugins);
+    console.log('[App] backendPlugins extracted:', result.length, 'plugins');
+    return result;
   }, [projectPlugins]);
 
   const pluginsLoading = projectLoading;
@@ -70,19 +75,30 @@ const AppContent: React.FC = () => {
   const { selectProjectFolder } = useProjectDialog();
 
   // Transform backend data to frontend format
-  const plugins = useMemo(() => {
+  const transformedPlugins = useMemo(() => {
     if (!backendPlugins || backendPlugins.length === 0) {
+      console.log('[App] transformedPlugins: empty (no backendPlugins)');
       return [];
     }
-    return adaptPluginsFromBackend(backendPlugins);
+    const result = adaptPluginsFromBackend(backendPlugins);
+    console.log('[App] transformedPlugins:', result.length, 'plugins');
+    return result;
   }, [backendPlugins]);
+
+  // Prefetch details for URL-based plugins in background
+  const { enrichedPlugins: plugins } = usePrefetchPluginDetails(transformedPlugins);
+  console.log('[App] enrichedPlugins:', plugins.length, 'plugins');
 
   const marketplaces: Marketplace[] = Array.isArray(marketplacesData) ? marketplacesData : [];
   const projects: Project[] = Array.isArray(projectsData) ? projectsData : [];
 
   // --- State ---
+  const [currentScreen, setCurrentScreen] = useState<'plugins' | 'mcp'>('plugins');
   const [isProjectMenuOpen, setIsProjectMenuOpen] = useState(false);
   const projectMenuRef = useRef<HTMLDivElement>(null);
+  const [showAddMarketplaceModal, setShowAddMarketplaceModal] = useState(false);
+  const [marketplaceUrl, setMarketplaceUrl] = useState('');
+  const [isAddingMarketplace, setIsAddingMarketplace] = useState(false);
 
   const [state, setState] = useState<AppState>({
     activeMarketplace: marketplaces[0]?.id || '',
@@ -134,18 +150,27 @@ const AppContent: React.FC = () => {
 
   // Marketplace Management
   const handleAddMarketplace = async () => {
-    const url = window.prompt("Enter Marketplace URL or local path:");
-    if (!url) return;
+    if (!marketplaceUrl.trim()) return;
 
+    setIsAddingMarketplace(true);
     try {
-      await addMarketplaceMutation.mutateAsync({ url });
+      await addMarketplaceMutation.mutateAsync({ url: marketplaceUrl.trim() });
       toast.addToast('Marketplace added successfully', 'success');
+      setShowAddMarketplaceModal(false);
+      setMarketplaceUrl('');
     } catch (error) {
       toast.addToast(
         `Failed to add marketplace: ${error instanceof Error ? error.message : String(error)}`,
         'error'
       );
+    } finally {
+      setIsAddingMarketplace(false);
     }
+  };
+
+  const openAddMarketplaceModal = () => {
+    setMarketplaceUrl('');
+    setShowAddMarketplaceModal(true);
   };
 
   const handleRemoveMarketplace = async (e: React.MouseEvent, mp: { id: string; name: string }) => {
@@ -252,11 +277,13 @@ const AppContent: React.FC = () => {
     return `${count} plugin${count !== 1 ? 's' : ''}`;
   };
 
-  // Loading state
-  const isLoading = pluginsLoading || marketplacesLoading || projectsLoading || currentProjectLoading;
-  console.log('[App] Loading states:', { pluginsLoading, marketplacesLoading, projectsLoading, currentProjectLoading, isLoading });
+  // Loading state - only show spinner on initial load, not during project switches
+  const isInitialLoading = (currentProjectLoading && !currentProject) ||
+                           (marketplacesLoading && !marketplacesData) ||
+                           (projectsLoading && !projectsData);
+  console.log('[App] Loading states:', { pluginsLoading, marketplacesLoading, projectsLoading, currentProjectLoading, isInitialLoading });
   console.log('[App] Data:', { currentProject, projectPlugins: projectPlugins?.length, marketplacesData: marketplacesData?.length, projectsData: projectsData?.length });
-  if (isLoading) {
+  if (isInitialLoading) {
     return <LoadingSpinner message="Loading data..." />;
   }
 
@@ -398,10 +425,39 @@ const AppContent: React.FC = () => {
           )}
         </div>
 
+        {/* Screen Toggle - above Marketplaces */}
+        <div className="px-2 py-2 border-b border-borderSubtle">
+          <div className="flex rounded-lg bg-bgSurface p-1">
+            <button
+              onClick={() => setCurrentScreen('plugins')}
+              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md text-[12px] font-medium transition-all ${
+                currentScreen === 'plugins'
+                  ? 'bg-accent text-white'
+                  : 'text-textMuted hover:text-textMain hover:bg-white/5'
+              }`}
+            >
+              <Package size={14} />
+              Plugins
+            </button>
+            <button
+              onClick={() => setCurrentScreen('mcp')}
+              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md text-[12px] font-medium transition-all ${
+                currentScreen === 'mcp'
+                  ? 'bg-accent text-white'
+                  : 'text-textMuted hover:text-textMain hover:bg-white/5'
+              }`}
+            >
+              <Server size={14} />
+              MCP
+            </button>
+          </div>
+        </div>
+
         {/* Marketplace List */}
+        {currentScreen === 'plugins' && (
         <div className="flex-1 py-2 overflow-y-auto">
           <div className="px-4 py-2 text-[10px] font-semibold text-textFaint uppercase tracking-wider flex items-center justify-between">
-            <span>Registries</span>
+            <span>Marketplaces</span>
           </div>
 
           {marketplaces.map(mp => {
@@ -437,7 +493,7 @@ const AppContent: React.FC = () => {
                 <div
                    onClick={(e) => handleRemoveMarketplace(e, mp)}
                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded hover:bg-red-500/20 text-textFaint hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all z-10"
-                   title="Remove Registry"
+                   title="Remove Marketplace"
                 >
                    <Trash2 size={12} />
                 </div>
@@ -445,20 +501,25 @@ const AppContent: React.FC = () => {
             );
           })}
         </div>
+        )}
 
         {/* Add Marketplace Footer */}
+        {currentScreen === 'plugins' && (
         <div className="p-3 border-t border-borderSubtle mt-auto">
           <button
-             onClick={handleAddMarketplace}
+             onClick={openAddMarketplaceModal}
              className="w-full flex items-center justify-center gap-2 py-2 rounded border border-dashed border-borderSubtle text-textMuted hover:text-textMain hover:bg-white/5 hover:border-textFaint transition-all text-[12px]"
           >
             <Plus size={14} />
-            <span>Add Registry</span>
+            <span>Add Marketplace</span>
           </button>
         </div>
+        )}
 
       </aside>
 
+      {currentScreen === 'plugins' ? (
+      <>
       {/* 2. MIDDLE COLUMN - PLUGIN LIST */}
       <div className="w-[380px] flex flex-col bg-bgBase border-r border-borderSubtle shrink-0">
 
@@ -515,6 +576,78 @@ const AppContent: React.FC = () => {
           </button>
         </div>
       </main>
+      </>
+      ) : (
+      <McpPage projectPath={currentProject?.path || ''} />
+      )}
+
+      {/* Add Marketplace Modal */}
+      {showAddMarketplaceModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 animate-in fade-in duration-150">
+          <div className="bg-bgSurface border border-borderSubtle rounded-xl shadow-float w-[420px] animate-in zoom-in-95 duration-150">
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-borderSubtle">
+              <h2 className="text-[15px] font-semibold text-textMain">Add Marketplace</h2>
+              <button
+                onClick={() => setShowAddMarketplaceModal(false)}
+                className="p-1.5 rounded-md hover:bg-white/10 text-textFaint hover:text-textMain transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-5">
+              <label className="block text-[12px] font-medium text-textMuted mb-2">
+                Marketplace URL or Path
+              </label>
+              <input
+                type="text"
+                value={marketplaceUrl}
+                onChange={(e) => setMarketplaceUrl(e.target.value)}
+                placeholder="owner/repo"
+                className="w-full bg-bgBase border border-borderSubtle rounded-lg px-4 py-2.5 text-[13px] text-textMain placeholder:text-textFaint focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition-all"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && marketplaceUrl.trim()) {
+                    handleAddMarketplace();
+                  } else if (e.key === 'Escape') {
+                    setShowAddMarketplaceModal(false);
+                  }
+                }}
+              />
+              <p className="mt-2.5 text-[11px] text-textFaint leading-relaxed">
+                Supported formats:<br />
+                <span className="text-textMuted font-mono">owner/repo</span> · <span className="text-textMuted font-mono">github.com/owner/repo</span> · <span className="text-textMuted font-mono">/local/path</span>
+              </p>
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-borderSubtle">
+              <button
+                onClick={() => setShowAddMarketplaceModal(false)}
+                className="px-4 py-2 rounded-lg text-[13px] font-medium text-textMuted hover:text-textMain hover:bg-white/5 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddMarketplace}
+                disabled={!marketplaceUrl.trim() || isAddingMarketplace}
+                className="px-4 py-2 rounded-lg text-[13px] font-medium bg-accent text-white hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+              >
+                {isAddingMarketplace ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Adding...
+                  </>
+                ) : (
+                  'Add Marketplace'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

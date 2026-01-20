@@ -8,6 +8,21 @@
 
 // Core types
 export * from './types/index.js';
+export type { McpTestResult, McpTestStep, McpServerStatus } from './types/index.js';
+
+// MCP server data
+export { MCP_SERVERS, type McpServer } from './data/mcp-servers.js';
+
+// MCP Registry API (online search)
+export {
+  searchMcpRegistry,
+  getPopularMcpServers,
+  formatRelativeDate,
+  type McpRegistryServer,
+  type McpRegistryResponse,
+  type McpEnvironmentVariable,
+  type SearchOptions as McpSearchOptions,
+} from './services/mcp-registry-api.js';
 
 // Utilities
 export * from './utils/validators.js';
@@ -35,7 +50,7 @@ export {
 } from './services/plugin-manager.js';
 
 // Re-export types and functions from local-marketplace
-export type { ProgressCallback, RefreshResult, RepairMarketplaceResult, ComponentMeta } from './services/local-marketplace.js';
+export type { ProgressCallback, RefreshResult, RepairMarketplaceResult, ComponentMeta, FetchedPluginDetails } from './services/local-marketplace.js';
 
 // Services - Local Marketplace Management
 export {
@@ -48,6 +63,9 @@ export {
   refreshLocalMarketplaces,
   getLocalMarketplace,
   hasLocalMarketplace,
+  // Plugin details fetching
+  fetchPluginDetails,
+  clearPluginCache,
 } from './services/local-marketplace.js';
 
 // Services - Settings Management
@@ -89,6 +107,16 @@ export {
   getMcpEnvVars,
   setMcpEnvVar,
   removeMcpEnvVar,
+  // MCP server-scoped env vars (NEW)
+  getMcpServerEnvVars,
+  setMcpServerEnvVar,
+  removeMcpServerEnvVar,
+  // MCP server testing and status (NEW)
+  testMcpConnection,
+  getMcpServerStatus,
+  // MCP validation (NEW)
+  validateMcpServerName,
+  validateMcpServerConfig,
   // Status line
   setStatusLine,
   getStatusLine,

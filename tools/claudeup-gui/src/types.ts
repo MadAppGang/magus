@@ -60,6 +60,9 @@ export interface Plugin {
   skills?: Capability[];             // Skill names and descriptions
   mcpServers?: string[];         // MCP server names
   hooks?: string;                // Hooks config path
+
+  // Source (for URL-based plugins)
+  source?: string | { source: string; url?: string };
 }
 
 export interface Project {

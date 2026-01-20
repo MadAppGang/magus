@@ -7,7 +7,7 @@ import { Plugin as FrontendPlugin } from '../types';
 export function getMarketplaceName(id: string): string {
   const knownMarketplaces: Record<string, string> = {
     'mag-claude-plugins': 'MAG Claude Plugins',
-    'community': 'Community Registry',
+    'community': 'Community Marketplace',
     'official': 'Official Plugins',
   };
   return knownMarketplaces[id] || id;
@@ -86,6 +86,9 @@ export function adaptPluginFromBackend(
     skills: mapToCapabilities((backendPlugin as any).skills),
     mcpServers: (backendPlugin as any).mcpServers || [],
     hooks: undefined,
+
+    // Source URL for URL-based plugins (needed for on-demand details fetching)
+    source: (backendPlugin as any).source,
   };
 }
 
