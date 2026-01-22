@@ -188,8 +188,8 @@
 		{
 			"name": "dev",
 			"source": "./plugins/dev",
-			"description": "Universal development assistant with documentation, deep research, interviews, and DevOps guidance. v1.19.0: Avant-Garde UI Engineer for Awwwards-quality React components. v1.18.0: 4 discipline skills. 35 skills.",
-			"version": "1.19.0",
+			"description": "Universal development assistant with documentation, deep research, interviews, and DevOps guidance. v1.20.0: /dev:ui implementation mode - review AND implement UI improvements. v1.19.0: Avant-Garde UI Engineer. 35 skills.",
+			"version": "1.20.0",
 			"author": {
 				"name": "Jack Rudenko",
 				"email": "i@madappgang.com",

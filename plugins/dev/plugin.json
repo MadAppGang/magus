@@ -1,7 +1,7 @@
 {
   "name": "dev",
-  "version": "1.19.0",
-  "description": "Universal development assistant with self-improving learning, documentation, deep research, specification interviews, and DevOps guidance. v1.19.0: Avant-Garde UI Engineer agent for Awwwards-quality React components with framer-motion and anti-AI design rules. v1.18.0: 4 discipline skills. 35 skills.",
+  "version": "1.20.0",
+  "description": "Universal development assistant with self-improving learning, documentation, deep research, specification interviews, and DevOps guidance. v1.20.0: /dev:ui implementation mode - review AND implement UI improvements via ui-engineer delegation. v1.19.0: Avant-Garde UI Engineer agent. 35 skills.",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",
