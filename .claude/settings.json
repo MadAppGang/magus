@@ -34,7 +34,7 @@
     "plugin-dev@claude-code-plugins": "0.1.0",
     "ralph-wiggum@claude-code-plugins": "1.0.0",
     "feature-dev@claude-code-plugins": "1.0.0",
-    "dev@mag-claude-plugins": "1.17.0",
+    "dev@mag-claude-plugins": "1.21.0",
     "multimodel@mag-claude-plugins": "1.0.0"
   }
 }
