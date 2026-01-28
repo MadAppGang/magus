@@ -39,7 +39,8 @@
     "xml-standards",
     "patterns",
     "schemas",
-    "debug-mode"
+    "debug-mode",
+    "yaml-agent-format"
   ],
 
   "hooks": {
@@ -58,7 +59,7 @@
   },
 
   "dependencies": {
-    "orchestration@mag-claude-plugins": "^0.2.0"
+    "multimodel@mag-claude-plugins": "^2.0.0"
   },
 
   "compatibility": {

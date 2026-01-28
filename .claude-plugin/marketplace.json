@@ -7,7 +7,7 @@
 	},
 	"metadata": {
 		"description": "MAG team's curated collection of Claude Code plugins for modern full-stack development with LLM performance tracking",
-		"version": "5.9.0",
+		"version": "6.0.0",
 		"pluginRoot": "./plugins"
 	},
 	"plugins": [
@@ -191,8 +191,8 @@
 		{
 			"name": "dev",
 			"source": "./plugins/dev",
-			"description": "Universal development assistant with documentation, deep research, interviews, and DevOps guidance. v1.21.0: UI vision - ui-engineer uses Gemini 3 Pro Preview for visual analysis, new dev:ui-analyse and dev:ui-implement skills. 36 skills.",
-			"version": "1.21.0",
+			"description": "Universal development assistant with documentation, deep research, interviews, and DevOps guidance. v1.22.0: Added 6 new skills from claude-flow research - plugin-sdk-patterns, audit, optimize, test-coverage, mcp-standards, adr-documentation. 42 skills.",
+			"version": "1.22.0",
 			"author": {
 				"name": "Jack Rudenko",
 				"email": "i@madappgang.com",

@@ -1,7 +1,7 @@
 {
   "name": "dev",
-  "version": "1.21.0",
-  "description": "Universal development assistant with self-improving learning, documentation, deep research, specification interviews, and DevOps guidance. v1.21.0: UI vision - ui-engineer uses Gemini 3 Pro Preview for visual analysis, new dev:ui-analyse and dev:ui-implement skills. 36 skills.",
+  "version": "1.22.0",
+  "description": "Universal development assistant with self-improving learning, documentation, deep research, specification interviews, and DevOps guidance. v1.22.0: Added 6 new skills from claude-flow research - plugin-sdk-patterns, audit, optimize, test-coverage, mcp-standards, adr-documentation. 42 skills.",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",
@@ -110,10 +110,16 @@
     "./skills/discipline/verification-before-completion",
     "./skills/discipline/test-driven-development",
     "./skills/discipline/systematic-debugging",
-    "./skills/discipline/agent-coordination-discipline"
+    "./skills/discipline/agent-coordination-discipline",
+    "./skills/plugin-sdk-patterns",
+    "./skills/audit",
+    "./skills/optimize",
+    "./skills/test-coverage",
+    "./skills/mcp-standards",
+    "./skills/adr-documentation"
   ],
   "dependencies": {
-    "orchestration@mag-claude-plugins": "^0.8.0"
+    "multimodel@mag-claude-plugins": "^2.0.0"
   },
   "compatibility": {
     "claudeCode": ">=0.1.0"
