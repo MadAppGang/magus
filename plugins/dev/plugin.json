@@ -41,6 +41,7 @@
     "vision"
   ],
   "category": "development",
+  "mcpServers": "./.mcp.json",
   "agents": [
     "./agents/stack-detector.md",
     "./agents/developer.md",

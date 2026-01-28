@@ -25,6 +25,7 @@
 	],
 	"category": "development",
 	"hooks": "./hooks/hooks.json",
+	"mcpServers": "./.mcp.json",
 	"agents": [
 		"./agents/codebase-detective.md"
 	],
