@@ -40,8 +40,8 @@
 		{
 			"name": "multimodel",
 			"source": "./plugins/multimodel",
-			"description": "Multi-model collaboration and blind voting. Run tasks across multiple AI models in parallel, collect independent votes (APPROVE/REJECT/ABSTAIN), and present aggregated verdicts. Features model preference memory, agent recommendations, and performance tracking.",
-			"version": "1.0.0",
+			"description": "Multi-model collaboration, orchestration, and workflow patterns. v2.0.0: Merged orchestration plugin - now includes 14 skills for multi-agent coordination, hooks, routing, performance tracking, and quality gates. Run tasks across AI models in parallel, collect votes, aggregate results.",
+			"version": "2.0.0",
 			"author": {
 				"name": "Jack Rudenko",
 				"email": "i@madappgang.com",
@@ -57,9 +57,12 @@
 				"grok",
 				"gemini",
 				"gpt",
-				"minimax",
-				"glm",
-				"collaboration"
+				"orchestration",
+				"multi-agent",
+				"workflow",
+				"hooks",
+				"routing",
+				"quality-gates"
 			],
 			"strict": true
 		},

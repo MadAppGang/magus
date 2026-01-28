@@ -9,7 +9,12 @@
     "ralph-wiggum@claude-code-plugins": true,
     "feature-dev@claude-code-plugins": true,
     "dev@mag-claude-plugins": true,
-    "multimodel@mag-claude-plugins": true
+    "multimodel@mag-claude-plugins": true,
+    "learning-output-style@claude-plugins-official": false,
+    "explanatory-output-style@claude-plugins-official": true,
+    "ralph-loop@claude-plugins-official": true,
+    "claude-md-management@claude-plugins-official": true,
+    "claude-code-setup@claude-plugins-official": true
   },
   "enableAllProjectMcpServers": true,
   "extraKnownMarketplaces": {
@@ -35,6 +40,10 @@
     "ralph-wiggum@claude-code-plugins": "1.0.0",
     "feature-dev@claude-code-plugins": "1.0.0",
     "dev@mag-claude-plugins": "1.21.0",
-    "multimodel@mag-claude-plugins": "1.0.0"
+    "multimodel@mag-claude-plugins": "1.0.0",
+    "explanatory-output-style@claude-plugins-official": "0.0.0",
+    "ralph-loop@claude-plugins-official": "0.0.0",
+    "claude-md-management@claude-plugins-official": "0.0.0",
+    "claude-code-setup@claude-plugins-official": "0.0.0"
   }
 }
