@@ -6,8 +6,8 @@
 		"company": "MadAppGang"
 	},
 	"metadata": {
-		"description": "MAG team's curated collection of Claude Code plugins for modern full-stack development with LLM performance tracking",
-		"version": "6.0.0",
+		"description": "MAG team's curated collection of Claude Code plugins for modern full-stack development with LLM performance tracking and E2E skill testing",
+		"version": "6.1.0",
 		"pluginRoot": "./plugins"
 	},
 	"plugins": [
