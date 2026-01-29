@@ -9,7 +9,11 @@
     "test:integration": "bun test integration/",
     "test:skills": "bun test integration/skills/",
     "test:multimodel": "bun test integration/skills/multimodel.test.ts",
-    "test:dev": "bun test integration/skills/dev.test.ts"
+    "test:dev": "bun test integration/skills/dev.test.ts",
+    "test:e2e": "bun test e2e/",
+    "test:e2e:watch": "bun test --watch e2e/",
+    "test:e2e:dev": "bun test e2e/ --match 'Dev Plugin'",
+    "test:e2e:multimodel": "bun test e2e/ --match 'Multimodel Plugin'"
   },
   "devDependencies": {
     "@types/bun": "latest",

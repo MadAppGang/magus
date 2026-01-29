@@ -1,0 +1,134 @@
+scenarios:
+  - name: "TDD Skill Activation"
+    description: "Validates TDD skill activates on test-first prompts"
+    plugin: "dev"
+    prompt: |
+      I need to implement a user validation function in TypeScript. Write tests first following TDD.
+      The function should validate email format and password strength (min 8 chars, 1 uppercase, 1 number).
+
+    expectations:
+      skills:
+        required:
+          - "test-driven-development"
+        optional:
+          - "testing-strategies"
+        forbidden:
+          - "code-review"
+
+      quality:
+        criteria:
+          - name: "follows_red_green_refactor"
+            weight: 0.4
+            description: "Response follows RED-GREEN-REFACTOR cycle"
+          - name: "test_before_implementation"
+            weight: 0.3
+            description: "Test code appears before implementation code"
+          - name: "uses_tdd_terminology"
+            weight: 0.2
+            description: "Uses TDD language (failing test, make it pass, refactor)"
+          - name: "code_examples_present"
+            weight: 0.1
+            description: "Includes concrete code examples"
+
+        models:
+          - "claude"
+
+        thresholds:
+          min_score: 7.0
+          min_consensus: 0.7
+
+    timeout: 120000
+
+  - name: "Code Audit Skill"
+    description: "Tests code audit skill activation for code review requests"
+    plugin: "dev"
+    prompt: |
+      Review this TypeScript function for security issues and best practices:
+
+      ```typescript
+      function processUser(data: any) {
+        const user = JSON.parse(data);
+        eval(user.script);
+        return user;
+      }
+      ```
+
+    expectations:
+      skills:
+        required:
+          - "audit"
+        optional:
+          - "security"
+
+      quality:
+        criteria:
+          - name: "identifies_eval_vulnerability"
+            weight: 0.4
+            description: "Identifies eval() as a critical security vulnerability"
+          - name: "identifies_type_safety"
+            weight: 0.3
+            description: "Mentions 'any' type is too permissive"
+          - name: "provides_recommendations"
+            weight: 0.2
+            description: "Provides specific fixes or improvements"
+          - name: "severity_assessment"
+            weight: 0.1
+            description: "Assesses severity of issues found"
+
+        models:
+          - "claude"
+
+        thresholds:
+          min_score: 7.0
+          min_consensus: 0.7
+
+    timeout: 60000
+
+  - name: "Performance Optimization Skill"
+    description: "Tests performance optimization skill for inefficient code"
+    plugin: "dev"
+    prompt: |
+      Optimize this slow function:
+
+      ```typescript
+      function findDuplicates(arr: number[]): number[] {
+        const duplicates = [];
+        for (let i = 0; i < arr.length; i++) {
+          for (let j = i + 1; j < arr.length; j++) {
+            if (arr[i] === arr[j] && !duplicates.includes(arr[i])) {
+              duplicates.push(arr[i]);
+            }
+          }
+        }
+        return duplicates;
+      }
+      ```
+
+    expectations:
+      skills:
+        required:
+          - "optimize"
+
+      quality:
+        criteria:
+          - name: "identifies_nested_loops"
+            weight: 0.3
+            description: "Identifies O(n²) nested loop inefficiency"
+          - name: "suggests_set_or_map"
+            weight: 0.3
+            description: "Suggests using Set or Map for O(n) solution"
+          - name: "provides_optimized_code"
+            weight: 0.3
+            description: "Provides actual optimized implementation"
+          - name: "explains_complexity"
+            weight: 0.1
+            description: "Explains time/space complexity improvements"
+
+        models:
+          - "claude"
+
+        thresholds:
+          min_score: 6.5
+          min_consensus: 0.7
+
+    timeout: 60000

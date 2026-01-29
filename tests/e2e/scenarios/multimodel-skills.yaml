@@ -1,0 +1,76 @@
+scenarios:
+  - name: "Hooks System Skill"
+    description: "Tests hooks-system skill for tool blocking scenarios"
+    plugin: "multimodel"
+    prompt: |
+      I want to intercept Read tool calls and redirect them to a custom handler.
+      How can I use the hooks system to accomplish this?
+
+    expectations:
+      skills:
+        required:
+          - "hooks-system"
+        optional:
+          - "tool-coordination"
+
+      quality:
+        criteria:
+          - name: "mentions_hook_types"
+            weight: 0.3
+            description: "Mentions beforeTool, afterTool, or onToolDeny hooks"
+          - name: "explains_tool_blocking"
+            weight: 0.3
+            description: "Explains how to block/deny tool execution"
+          - name: "provides_example_code"
+            weight: 0.25
+            description: "Provides code example of hook implementation"
+          - name: "mentions_denial_reason"
+            weight: 0.15
+            description: "Mentions setting denial.reason field"
+
+        models:
+          - "claude"
+
+        thresholds:
+          min_score: 6.5
+          min_consensus: 0.7
+
+    timeout: 60000
+
+  - name: "Task Complexity Router"
+    description: "Tests task-complexity-router skill for breaking down complex tasks"
+    plugin: "multimodel"
+    prompt: |
+      I need to build a full-stack application with authentication, database, and API.
+      This seems complex - can you help me organize this?
+
+    expectations:
+      skills:
+        required:
+          - "task-complexity-router"
+        optional:
+          - "architect-agent"
+
+      quality:
+        criteria:
+          - name: "breaks_into_phases"
+            weight: 0.35
+            description: "Breaks task into clear phases or steps"
+          - name: "suggests_subtasks"
+            weight: 0.3
+            description: "Identifies specific subtasks (auth, db, API)"
+          - name: "prioritizes_order"
+            weight: 0.2
+            description: "Suggests logical order of implementation"
+          - name: "mentions_dependencies"
+            weight: 0.15
+            description: "Identifies task dependencies"
+
+        models:
+          - "claude"
+
+        thresholds:
+          min_score: 6.5
+          min_consensus: 0.7
+
+    timeout: 60000
