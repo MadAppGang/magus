@@ -201,12 +201,12 @@ CODEX_API_KEY=your-codex-key
 - Frontend Plugin: **v3.13.0** (2025-12-14)
 - Code Analysis Plugin: **v2.15.0** (2026-01-11)
 - Bun Backend Plugin: **v1.5.2** (2025-11-26)
-- Agent Development Plugin: **v1.3.0** (2026-01-05)
+- Agent Development Plugin: **v1.4.0** (2026-01-05)
 - SEO Plugin: **v1.5.1** (2026-01-08)
 - Video Editing Plugin: **v1.0.1** (2026-01-06)
 - Nanobanana Plugin: **v2.2.3** (2026-01-08)
 - Conductor Plugin: **v2.0.1** (2026-01-06)
-- Dev Plugin: **v1.21.0** (2026-01-23)
+- Dev Plugin: **v1.22.0** (2026-01-23)
 - Claudish CLI: See https://github.com/MadAppGang/claudish (separate repository)
 
 **Latest Changes (Code Analysis v2.15.0):**
@@ -226,7 +226,7 @@ CODEX_API_KEY=your-codex-key
 - Video Editing: `plugins/video-editing/v1.0.1`
 - Nanobanana: `plugins/nanobanana/v2.2.3`
 - Conductor: `plugins/conductor/v2.0.1`
-- Dev: `plugins/dev/v1.21.0`
+- Dev: `plugins/dev/v1.22.0`
 - Use correct tag format when releasing: `plugins/{plugin-name}/vX.Y.Z`
 
 **⚠️ RELEASE CHECKLIST (ALL 3 REQUIRED):**
@@ -256,5 +256,5 @@ The workflow `.github/workflows/claudeup-release.yml` triggers on `tools/claudeu
 
 **Maintained by:** Jack Rudenko @ MadAppGang
 **Last Updated:** January 23, 2026
-**Version:** 10 plugins (Multimodel v2.0.0, Frontend v3.13.0, Code Analysis v2.15.0, Bun Backend v1.5.2, Agent Development v1.3.0, SEO v1.5.1, Video Editing v1.0.1, Nanobanana v2.2.3, Conductor v2.0.1, Dev v1.21.0)
+**Version:** 10 plugins (Multimodel v2.0.0, Frontend v3.13.0, Code Analysis v2.15.0, Bun Backend v1.5.2, Agent Development v1.4.0, SEO v1.5.1, Video Editing v1.0.1, Nanobanana v2.2.3, Conductor v2.0.1, Dev v1.22.0)
 - do not use hardcoded path in code, docs, comments or any other files
