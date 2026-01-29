@@ -1,0 +1,18 @@
+{
+  "name": "claude-plugins-tests",
+  "version": "1.0.0",
+  "description": "Integration tests for MAG Claude Plugins",
+  "type": "module",
+  "scripts": {
+    "test": "bun test",
+    "test:watch": "bun test --watch",
+    "test:integration": "bun test integration/",
+    "test:skills": "bun test integration/skills/",
+    "test:multimodel": "bun test integration/skills/multimodel.test.ts",
+    "test:dev": "bun test integration/skills/dev.test.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "yaml": "^2.3.4"
+  }
+}
