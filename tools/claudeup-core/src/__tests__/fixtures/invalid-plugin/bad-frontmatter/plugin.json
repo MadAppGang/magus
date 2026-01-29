@@ -1,0 +1,8 @@
+{
+	"name": "bad-frontmatter-plugin",
+	"version": "1.0.0",
+	"description": "A plugin with malformed frontmatter in components",
+	"skills": [
+		"./skills/bad-skill"
+	]
+}

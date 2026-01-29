@@ -1,0 +1,13 @@
+{
+	"test-server": {
+		"command": "npx",
+		"args": ["-y", "@test/mcp-server"],
+		"env": {
+			"TEST_API_KEY": "${TEST_API_KEY}",
+			"TEST_PROJECT_ID": "${TEST_PROJECT_ID}"
+		}
+	},
+	"http-server": {
+		"url": "http://localhost:3000/mcp"
+	}
+}

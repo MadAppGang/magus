@@ -1,0 +1,28 @@
+{
+	"name": "test-plugin",
+	"version": "1.0.0",
+	"description": "A complete test plugin fixture for validation testing",
+	"author": {
+		"name": "Test Author",
+		"email": "test@example.com",
+		"company": "Test Company"
+	},
+	"license": "MIT",
+	"keywords": [
+		"test",
+		"fixture",
+		"validation"
+	],
+	"category": "development",
+	"agents": [
+		"./agents/test-agent.md"
+	],
+	"commands": [
+		"./commands/test-command.md"
+	],
+	"skills": [
+		"./skills/test-skill"
+	],
+	"hooks": "./hooks/hooks.json",
+	"mcpServers": "./mcp-servers/mcp-config.json"
+}

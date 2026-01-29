@@ -1,0 +1,40 @@
+{
+	"description": "Test plugin hooks for validation testing",
+	"hooks": {
+		"SessionStart": [
+			{
+				"hooks": [
+					{
+						"type": "command",
+						"command": "echo \"Session started\"",
+						"timeout": 5
+					}
+				]
+			}
+		],
+		"PreToolUse": [
+			{
+				"matcher": "Grep|Glob",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "echo \"Pre-tool hook triggered\"",
+						"timeout": 10
+					}
+				]
+			}
+		],
+		"PostToolUse": [
+			{
+				"matcher": "Write|Edit",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "echo \"Post-tool hook triggered\"",
+						"timeout": 10
+					}
+				]
+			}
+		]
+	}
+}

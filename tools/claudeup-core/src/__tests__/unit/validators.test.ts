@@ -20,7 +20,7 @@ import {
   validateToolName,
   validatePackageManager,
   ALLOWED_PACKAGE_MANAGERS,
-} from '../utils/validators';
+} from '../../utils/validators.js';
 
 describe('validators', () => {
   describe('validateProjectPath', () => {

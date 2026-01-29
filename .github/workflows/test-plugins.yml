@@ -1,0 +1,116 @@
+name: Test Plugins
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/claudeup-core/**'
+      - 'plugins/**'
+      - '.claude-plugin/**'
+      - '.github/workflows/test-plugins.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'tools/claudeup-core/**'
+      - 'plugins/**'
+      - '.claude-plugin/**'
+      - '.github/workflows/test-plugins.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [20, 22]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        working-directory: tools/claudeup-core
+        run: pnpm install
+
+      - name: Run type check
+        working-directory: tools/claudeup-core
+        run: pnpm typecheck
+
+      - name: Run unit tests
+        working-directory: tools/claudeup-core
+        run: pnpm test:unit
+
+      - name: Run integration tests
+        working-directory: tools/claudeup-core
+        run: pnpm test:integration
+
+      - name: Run all tests with coverage
+        working-directory: tools/claudeup-core
+        run: pnpm test:coverage
+        if: matrix.node-version == 22
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: matrix.node-version == 22
+        with:
+          name: coverage-report
+          path: tools/claudeup-core/coverage/
+          retention-days: 7
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-node-${{ matrix.node-version }}
+          path: tools/claudeup-core/test-results/
+          retention-days: 7
+
+  marketplace-sync:
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install dependencies
+        working-directory: tools/claudeup-core
+        run: pnpm install
+
+      - name: Verify marketplace sync
+        working-directory: tools/claudeup-core
+        run: |
+          echo "Running marketplace sync verification..."
+          pnpm vitest run src/__tests__/integration/marketplace-sync.test.ts

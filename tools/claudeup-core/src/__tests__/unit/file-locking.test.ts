@@ -17,7 +17,7 @@ import {
   isFileLocked,
   forceRemoveLock,
   getLockInfo,
-} from '../utils/file-locking';
+} from '../../utils/file-locking.js';
 
 describe('file-locking', () => {
   let testDir: string;

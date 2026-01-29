@@ -1,0 +1,9 @@
+{
+	"name": "invalid-agents-plugin",
+	"version": "1.0.0",
+	"description": "A plugin with invalid agent references",
+	"agents": [
+		"./agents/broken-agent.md",
+		"./agents/missing-name-agent.md"
+	]
+}

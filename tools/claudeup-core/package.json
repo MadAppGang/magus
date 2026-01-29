@@ -1,6 +1,6 @@
 {
   "name": "claudeup-core",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Shared service layer for claudeup TUI and GUI",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -19,7 +19,11 @@
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:unit": "vitest run src/__tests__/unit",
+    "test:integration": "vitest run src/__tests__/integration",
+    "test:coverage": "vitest run --coverage",
+    "test:ci": "vitest run --reporter=junit --outputFile=./test-results/junit.xml"
   },
   "keywords": [
     "claude",
@@ -38,11 +42,12 @@
     "semver": "^7.6.3"
   },
   "devDependencies": {
-    "tsup": "^8.0.1",
-    "typescript": "^5.6.3",
     "@types/fs-extra": "^11.0.4",
     "@types/node": "^22.9.0",
     "@types/semver": "^7.5.8",
+    "@vitest/coverage-v8": "^2.1.8",
+    "tsup": "^8.0.1",
+    "typescript": "^5.6.3",
     "vitest": "^2.1.8"
   },
   "files": [
