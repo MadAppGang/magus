@@ -191,8 +191,8 @@
 		{
 			"name": "dev",
 			"source": "./plugins/dev",
-			"description": "Universal development assistant with documentation, deep research, interviews, and DevOps guidance. v1.23.0: Added brainstorming skill v2.0 - multi-model planning with resilient fallback chains, consensus scoring, and confidence-based validation. 43 skills.",
-			"version": "1.23.0",
+			"description": "Universal development assistant with documentation, deep research, interviews, and DevOps guidance. v1.24.0: Added /dev:brainstorm command for multi-model planning with resilient fallback chains, consensus scoring, and confidence-based validation. 44 skills.",
+			"version": "1.24.0",
 			"author": {
 				"name": "Jack Rudenko",
 				"email": "i@madappgang.com",
