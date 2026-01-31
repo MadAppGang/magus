@@ -6,6 +6,7 @@ import {
 	saveInstalledPluginVersion,
 } from "../services/plugin-manager.js";
 import { runClaude } from "../services/claude-runner.js";
+import { recoverMarketplaceSettings } from "../services/claude-settings.js";
 
 export interface PrerunOptions {
 	force?: boolean; // Bypass cache and force update check
@@ -29,6 +30,15 @@ export async function prerunClaude(claudeArgs: string[], options: PrerunOptions 
 		}
 
 		if (shouldUpdate) {
+			// STEP 1.5: Recover marketplace settings (enable autoUpdate, remove stale entries)
+			const recovery = await recoverMarketplaceSettings();
+			if (recovery.enabledAutoUpdate.length > 0) {
+				console.log(`✓ Enabled auto-update for: ${recovery.enabledAutoUpdate.join(", ")}`);
+			}
+			if (recovery.removed.length > 0) {
+				console.log(`✓ Removed stale marketplaces: ${recovery.removed.join(", ")}`);
+			}
+
 			// STEP 2: Refresh all marketplaces (git pull)
 			const refreshResults = await refreshLocalMarketplaces();
 

@@ -657,6 +657,49 @@ export async function getMarketplaceAutoUpdate(
 	return known[marketplaceName]?.autoUpdate;
 }
 
+export interface MarketplaceRecoveryResult {
+	enabledAutoUpdate: string[];
+	removed: string[];
+}
+
+/**
+ * Recover/sync marketplace settings:
+ * - Enable autoUpdate for marketplaces that don't have it set
+ * - Remove entries for marketplaces whose installLocation no longer exists
+ */
+export async function recoverMarketplaceSettings(): Promise<MarketplaceRecoveryResult> {
+	const known = await readKnownMarketplaces();
+	const result: MarketplaceRecoveryResult = {
+		enabledAutoUpdate: [],
+		removed: [],
+	};
+
+	const updatedKnown: KnownMarketplaces = {};
+
+	for (const [name, entry] of Object.entries(known)) {
+		// Check if install location still exists
+		if (entry.installLocation && !(await fs.pathExists(entry.installLocation))) {
+			result.removed.push(name);
+			continue;
+		}
+
+		// Enable autoUpdate if not set
+		if (entry.autoUpdate === undefined) {
+			entry.autoUpdate = true;
+			result.enabledAutoUpdate.push(name);
+		}
+
+		updatedKnown[name] = entry;
+	}
+
+	// Write back if any changes were made
+	if (result.enabledAutoUpdate.length > 0 || result.removed.length > 0) {
+		await writeKnownMarketplaces(updatedKnown);
+	}
+
+	return result;
+}
+
 /**
  * Read known_marketplaces.json to get marketplace source info
  */
