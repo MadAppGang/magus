@@ -22,10 +22,10 @@ jobs:
           node-version: '22'
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          version: 9
+          bun-version: latest
 
       - name: Get version from tag
         id: version
@@ -36,11 +36,11 @@ jobs:
 
       - name: Install dependencies
         working-directory: tools/claudeup
-        run: pnpm install
+        run: bun install
 
       - name: Build
         working-directory: tools/claudeup
-        run: pnpm exec tsc
+        run: bun run tsc
 
       - name: Verify version matches
         working-directory: tools/claudeup
