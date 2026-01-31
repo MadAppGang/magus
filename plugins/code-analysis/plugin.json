@@ -1,51 +1,52 @@
 {
-	"name": "code-analysis",
-	"version": "3.0.0",
-	"description": "Deep code investigation with claudemem. v3.0.0: ENRICHMENT MODE - hooks now enhance native tools with AST context instead of blocking. Grep/Glob/Bash searches receive claudemem results as additional context while still running normally.",
-	"author": {
-		"name": "Jack Rudenko",
-		"email": "i@madappgang.com",
-		"company": "MadAppGang"
-	},
-	"license": "MIT",
-	"keywords": [
-		"code-analysis",
-		"codebase",
-		"investigation",
-		"detective",
-		"architecture",
-		"patterns",
-		"debugging",
-		"code-navigation",
-		"semantic-search",
-		"claudemem",
-		"hooks",
-		"enrichment",
-		"context-enhancement"
-	],
-	"category": "development",
-	"hooks": "./hooks/hooks.json",
-	"mcpServers": "./.mcp.json",
-	"agents": [
-		"./agents/codebase-detective.md"
-	],
-	"commands": [
-		"./commands/analyze.md",
-		"./commands/help.md",
-		"./commands/setup.md"
-	],
-	"skills": [
-		"./skills/deep-analysis",
-		"./skills/claudemem-search",
-		"./skills/claudemem-orchestration",
-		"./skills/claudish-usage",
-		"./skills/code-search-selector",
-		"./skills/search-interceptor",
-		"./skills/architect-detective",
-		"./skills/developer-detective",
-		"./skills/tester-detective",
-		"./skills/debugger-detective",
-		"./skills/ultrathink-detective",
-		"./skills/cross-plugin-detective"
-	]
+  "name": "code-analysis",
+  "version": "3.1.1",
+  "description": "Deep code investigation with claudemem. v3.1.0: Added investigate skill for keyword-based routing and enhanced documentation. v3.0.0: ENRICHMENT MODE - hooks now enhance native tools with AST context instead of blocking.",
+  "author": {
+    "name": "Jack Rudenko",
+    "email": "i@madappgang.com",
+    "company": "MadAppGang"
+  },
+  "license": "MIT",
+  "keywords": [
+    "code-analysis",
+    "codebase",
+    "investigation",
+    "detective",
+    "architecture",
+    "patterns",
+    "debugging",
+    "code-navigation",
+    "semantic-search",
+    "claudemem",
+    "hooks",
+    "enrichment",
+    "context-enhancement"
+  ],
+  "category": "development",
+  "hooks": "./hooks/hooks.json",
+  "mcpServers": "./.mcp.json",
+  "agents": [
+    "./agents/codebase-detective.md"
+  ],
+  "commands": [
+    "./commands/analyze.md",
+    "./commands/help.md",
+    "./commands/setup.md"
+  ],
+  "skills": [
+    "./skills/deep-analysis",
+    "./skills/claudemem-search",
+    "./skills/claudemem-orchestration",
+    "./skills/claudish-usage",
+    "./skills/code-search-selector",
+    "./skills/search-interceptor",
+    "./skills/investigate",
+    "./skills/architect-detective",
+    "./skills/developer-detective",
+    "./skills/tester-detective",
+    "./skills/debugger-detective",
+    "./skills/ultrathink-detective",
+    "./skills/cross-plugin-detective"
+  ]
 }

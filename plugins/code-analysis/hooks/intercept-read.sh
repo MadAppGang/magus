@@ -11,6 +11,15 @@
 
 set -euo pipefail
 
+# Helper: Output to FD3 if available, otherwise stdout
+output_json() {
+  if { true >&3; } 2>/dev/null; then
+    cat >&3
+  else
+    cat
+  fi
+}
+
 # Read tool input from stdin
 TOOL_INPUT=$(cat)
 FILE_PATH=$(echo "$TOOL_INPUT" | jq -r '.file_path // empty')
@@ -53,7 +62,7 @@ if [ "$READ_COUNT" -ge 3 ]; then
   # Get the directories being read
   DIR_LIST=$(cat "$TRACKER" | xargs -I{} dirname {} 2>/dev/null | sort -u | head -3 | tr '\n' ', ' | sed 's/,$//')
 
-  cat << EOF >&3
+  output_json << EOF
 {
   "additionalContext": "⚠️ **Bulk Read Warning** ($READ_COUNT files from $UNIQUE_DIRS dirs)\n\nDirs: \`$DIR_LIST\`\n\n**Recommended workflow (v0.3.0):**\n1. \`claudemem --agent map\` → Get structure with PageRank\n2. \`claudemem --agent symbol <name>\` → Find specific symbol\n3. \`claudemem --agent callers <name>\` → Check impact before changes\n4. Read specific file:line from results (NOT whole files)\n\nAST analysis is 80% more token-efficient than bulk file reads."
 }

@@ -11,6 +11,15 @@
 
 set -euo pipefail
 
+# Helper: Output to FD3 if available, otherwise stdout
+output_json() {
+  if { true >&3; } 2>/dev/null; then
+    cat >&3
+  else
+    cat
+  fi
+}
+
 # Read tool input from stdin
 TOOL_INPUT=$(cat)
 PATTERN=$(echo "$TOOL_INPUT" | jq -r '.pattern // empty')
@@ -30,7 +39,7 @@ fi
 STATUS_OUTPUT=$(claudemem status 2>/dev/null || echo "")
 if ! echo "$STATUS_OUTPUT" | grep -qE "[0-9]+ (chunks|symbols)"; then
   # Not indexed - allow grep with warning
-  cat << 'EOF' >&3
+  output_json << 'EOF'
 {
   "additionalContext": "⚠️ **claudemem not indexed** - Grep allowed as fallback.\n\nFor AST structural analysis, run:\n```bash\nclaudemem index\n```"
 }
@@ -69,7 +78,7 @@ RESULTS_ESCAPED=$(echo "$RESULTS" | jq -Rs .)
 PATTERN_ESCAPED=$(echo "$PATTERN" | jq -Rs .)
 
 # Return results and block grep
-cat << EOF >&3
+output_json << EOF
 {
   "additionalContext": "🔍 **CLAUDEMEM AST ANALYSIS** (Grep intercepted)\n\n**Query:** ${PATTERN_ESCAPED}\n**Command:** claudemem --agent ${COMMAND_USED} \"$PATTERN\"\n\n${RESULTS_ESCAPED}\n\n---\n✅ AST structural analysis complete.\n\n**v0.3.0 Commands (Available Now):**\n- \`claudemem --agent symbol <name>\` → Exact location\n- \`claudemem --agent callers <name>\` → What calls this?\n- \`claudemem --agent callees <name>\` → What does this call?\n- \`claudemem --agent context <name>\` → Full call chain\n\n**v0.4.0+ Commands (Check Version):**\n- \`claudemem --agent dead-code\` → Find unused symbols\n- \`claudemem --agent test-gaps\` → Find untested code\n- \`claudemem --agent impact <name>\` → Full impact analysis\n\n**Check version:** \`claudemem --version\`",
   "hookSpecificOutput": {

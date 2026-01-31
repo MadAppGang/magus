@@ -1,235 +1,235 @@
 {
-	"name": "mag-claude-plugins",
-	"owner": {
-		"name": "Jack Rudenko",
-		"email": "i@madappgang.com",
-		"company": "MadAppGang"
-	},
-	"metadata": {
-		"description": "MAG team's curated collection of Claude Code plugins for modern full-stack development with LLM performance tracking and E2E skill testing",
-		"version": "6.1.0",
-		"pluginRoot": "./plugins"
-	},
-	"plugins": [
-		{
-			"name": "code-analysis",
-			"source": "./plugins/code-analysis",
-			"description": "Deep code investigation with claudemem. v3.0.0: ENRICHMENT MODE - hooks enhance native tools with AST context instead of blocking. Grep/Glob/Bash searches receive claudemem results while running normally.",
-			"version": "3.0.0",
-			"author": {
-				"name": "Jack Rudenko",
-				"email": "i@madappgang.com",
-				"company": "MadAppGang"
-			},
-			"category": "development",
-			"keywords": [
-				"code-analysis",
-				"codebase",
-				"investigation",
-				"detective",
-				"architecture",
-				"patterns",
-				"debugging",
-				"code-navigation",
-				"semantic-search",
-				"claudemem",
-				"enrichment"
-			],
-			"strict": true
-		},
-		{
-			"name": "multimodel",
-			"source": "./plugins/multimodel",
-			"description": "Multi-model collaboration, orchestration, and workflow patterns. v2.2.0: Migrated to Tasks system - renamed todowrite-orchestration to task-orchestration with new patterns for dependencies, ownership, and cross-session persistence.",
-			"version": "2.2.0",
-			"author": {
-				"name": "Jack Rudenko",
-				"email": "i@madappgang.com",
-				"company": "MadAppGang"
-			},
-			"category": "development",
-			"keywords": [
-				"multimodel",
-				"voting",
-				"parallel",
-				"consensus",
-				"claudish",
-				"grok",
-				"gemini",
-				"gpt",
-				"orchestration",
-				"multi-agent",
-				"workflow",
-				"hooks",
-				"routing",
-				"quality-gates"
-			],
-			"strict": true
-		},
-		{
-			"name": "agentdev",
-			"source": "./plugins/agentdev",
-			"description": "Create, implement, and review Claude Code agents and commands with multi-model validation, LLM performance tracking, and session-based artifact isolation. v1.4.0: Debug mode - record all tool invocations, skill activations, and agent delegations to JSONL for analysis. Per-project config via /agentdev:debug-enable. Full-cycle workflow: design → review → implement → iterate.",
-			"version": "1.4.0",
-			"author": {
-				"name": "Jack Rudenko",
-				"email": "i@madappgang.com",
-				"company": "MadAppGang"
-			},
-			"category": "development",
-			"keywords": [
-				"agents",
-				"commands",
-				"development",
-				"multi-model",
-				"claudish",
-				"quality-review",
-				"xml-standards",
-				"orchestration",
-				"debug-mode",
-				"session-recording"
-			],
-			"strict": true
-		},
-		{
-			"name": "seo",
-			"source": "./plugins/seo",
-			"description": "Highly autonomous SEO toolkit (~80% autonomy) with AUTO GATEs, self-correction loops, and multi-model validation. v1.5.1: Fixed hooks configuration - moved from inline plugin.json to hooks/hooks.json. Features E-E-A-T self-assessment, interactive /seo:start entry point, keyword research, content optimization, technical audits, and analytics integrations (GA4, GSC).",
-			"version": "1.5.1",
-			"author": {
-				"name": "Jack Rudenko",
-				"email": "i@madappgang.com",
-				"company": "MadAppGang"
-			},
-			"category": "content",
-			"keywords": [
-				"seo",
-				"content-optimization",
-				"keyword-research",
-				"serp-analysis",
-				"technical-seo",
-				"content-strategy",
-				"google-analytics",
-				"search-console",
-				"performance-analysis"
-			],
-			"strict": true
-		},
-		{
-			"name": "video-editing",
-			"source": "./plugins/video-editing",
-			"description": "Professional video editing toolkit with FFmpeg operations, Whisper transcription, and Apple Final Cut Pro project generation. Features intelligent video analysis, automated transcription with timing sync, FCPXML timeline creation with markers, multi-format export, and comprehensive validation.",
-			"version": "1.0.1",
-			"author": {
-				"name": "Jack Rudenko",
-				"email": "i@madappgang.com",
-				"company": "MadAppGang"
-			},
-			"category": "media",
-			"keywords": [
-				"video",
-				"ffmpeg",
-				"transcription",
-				"whisper",
-				"final-cut-pro",
-				"fcpxml",
-				"timeline",
-				"audio",
-				"editing",
-				"subtitles"
-			],
-			"strict": true
-		},
-		{
-			"name": "nanobanana",
-			"source": "./plugins/nanobanana",
-			"description": "AI image generation and editing using Google Gemini 3 Pro Image API (Nano Banana Pro). Simple Node.js CLI with markdown styles, batch generation, reference image support, and comprehensive error handling with retry logic.",
-			"version": "2.2.3",
-			"author": {
-				"name": "Jack Rudenko",
-				"email": "i@madappgang.com",
-				"company": "MadAppGang"
-			},
-			"category": "media",
-			"keywords": [
-				"image-generation",
-				"ai-art",
-				"gemini",
-				"text-to-image",
-				"image-editing",
-				"style-transfer",
-				"nano-banana",
-				"google-ai"
-			],
-			"strict": true
-		},
-		{
-			"name": "conductor",
-			"source": "./plugins/conductor",
-			"description": "Context-Driven Development workflow inspired by Gemini Conductor. Full-featured implementation with TDD workflow (Red/Green/Refactor), Phase Completion Protocol with verification reports, Git Notes audit trail, comprehensive styleguides (general, TypeScript, JavaScript, HTML/CSS), emergency procedures, and deployment workflow. v2.0.1: Fixed command descriptions for autocomplete display.",
-			"version": "2.0.1",
-			"author": {
-				"name": "Jack Rudenko",
-				"email": "i@madappgang.com",
-				"company": "MadAppGang"
-			},
-			"category": "workflow",
-			"keywords": [
-				"conductor",
-				"workflow",
-				"context-driven",
-				"tdd",
-				"planning",
-				"task-tracking",
-				"git-aware",
-				"project-management",
-				"phase-protocol",
-				"gemini-conductor"
-			],
-			"strict": true
-		},
-		{
-			"name": "dev",
-			"source": "./plugins/dev",
-			"description": "Universal development assistant with documentation, deep research, interviews, and DevOps guidance. v1.24.0: Added /dev:brainstorm command for multi-model planning with resilient fallback chains, consensus scoring, and confidence-based validation. 44 skills.",
-			"version": "1.24.0",
-			"author": {
-				"name": "Jack Rudenko",
-				"email": "i@madappgang.com",
-				"company": "MadAppGang"
-			},
-			"category": "development",
-			"keywords": [
-				"development",
-				"universal",
-				"deep-research",
-				"research",
-				"convergence",
-				"devops",
-				"infrastructure",
-				"kubernetes",
-				"aws",
-				"gcp",
-				"azure",
-				"firebase",
-				"terraform",
-				"interview",
-				"react",
-				"typescript",
-				"tanstack",
-				"tanstack-router",
-				"tanstack-query",
-				"golang",
-				"dingo",
-				"bun",
-				"python",
-				"rust",
-				"ui-design",
-				"ui-engineer",
-				"framer-motion",
-				"awwwards"
-			],
-			"strict": true
-		}
-	]
+  "name": "mag-claude-plugins",
+  "owner": {
+    "name": "Jack Rudenko",
+    "email": "i@madappgang.com",
+    "company": "MadAppGang"
+  },
+  "metadata": {
+    "description": "MAG team's curated collection of Claude Code plugins for modern full-stack development with LLM performance tracking and E2E skill testing",
+    "version": "6.1.0",
+    "pluginRoot": "./plugins"
+  },
+  "plugins": [
+    {
+      "name": "code-analysis",
+      "source": "./plugins/code-analysis",
+      "description": "Deep code investigation with claudemem. v3.0.0: ENRICHMENT MODE - hooks enhance native tools with AST context instead of blocking. Grep/Glob/Bash searches receive claudemem results while running normally.",
+      "version": "3.1.1",
+      "author": {
+        "name": "Jack Rudenko",
+        "email": "i@madappgang.com",
+        "company": "MadAppGang"
+      },
+      "category": "development",
+      "keywords": [
+        "code-analysis",
+        "codebase",
+        "investigation",
+        "detective",
+        "architecture",
+        "patterns",
+        "debugging",
+        "code-navigation",
+        "semantic-search",
+        "claudemem",
+        "enrichment"
+      ],
+      "strict": true
+    },
+    {
+      "name": "multimodel",
+      "source": "./plugins/multimodel",
+      "description": "Multi-model collaboration, orchestration, and workflow patterns. v2.2.0: Migrated to Tasks system - renamed todowrite-orchestration to task-orchestration with new patterns for dependencies, ownership, and cross-session persistence.",
+      "version": "2.2.0",
+      "author": {
+        "name": "Jack Rudenko",
+        "email": "i@madappgang.com",
+        "company": "MadAppGang"
+      },
+      "category": "development",
+      "keywords": [
+        "multimodel",
+        "voting",
+        "parallel",
+        "consensus",
+        "claudish",
+        "grok",
+        "gemini",
+        "gpt",
+        "orchestration",
+        "multi-agent",
+        "workflow",
+        "hooks",
+        "routing",
+        "quality-gates"
+      ],
+      "strict": true
+    },
+    {
+      "name": "agentdev",
+      "source": "./plugins/agentdev",
+      "description": "Create, implement, and review Claude Code agents and commands with multi-model validation, LLM performance tracking, and session-based artifact isolation. v1.4.0: Debug mode - record all tool invocations, skill activations, and agent delegations to JSONL for analysis. Per-project config via /agentdev:debug-enable. Full-cycle workflow: design → review → implement → iterate.",
+      "version": "1.4.0",
+      "author": {
+        "name": "Jack Rudenko",
+        "email": "i@madappgang.com",
+        "company": "MadAppGang"
+      },
+      "category": "development",
+      "keywords": [
+        "agents",
+        "commands",
+        "development",
+        "multi-model",
+        "claudish",
+        "quality-review",
+        "xml-standards",
+        "orchestration",
+        "debug-mode",
+        "session-recording"
+      ],
+      "strict": true
+    },
+    {
+      "name": "seo",
+      "source": "./plugins/seo",
+      "description": "Highly autonomous SEO toolkit (~80% autonomy) with AUTO GATEs, self-correction loops, and multi-model validation. v1.5.1: Fixed hooks configuration - moved from inline plugin.json to hooks/hooks.json. Features E-E-A-T self-assessment, interactive /seo:start entry point, keyword research, content optimization, technical audits, and analytics integrations (GA4, GSC).",
+      "version": "1.5.2",
+      "author": {
+        "name": "Jack Rudenko",
+        "email": "i@madappgang.com",
+        "company": "MadAppGang"
+      },
+      "category": "content",
+      "keywords": [
+        "seo",
+        "content-optimization",
+        "keyword-research",
+        "serp-analysis",
+        "technical-seo",
+        "content-strategy",
+        "google-analytics",
+        "search-console",
+        "performance-analysis"
+      ],
+      "strict": true
+    },
+    {
+      "name": "video-editing",
+      "source": "./plugins/video-editing",
+      "description": "Professional video editing toolkit with FFmpeg operations, Whisper transcription, and Apple Final Cut Pro project generation. Features intelligent video analysis, automated transcription with timing sync, FCPXML timeline creation with markers, multi-format export, and comprehensive validation.",
+      "version": "1.0.1",
+      "author": {
+        "name": "Jack Rudenko",
+        "email": "i@madappgang.com",
+        "company": "MadAppGang"
+      },
+      "category": "media",
+      "keywords": [
+        "video",
+        "ffmpeg",
+        "transcription",
+        "whisper",
+        "final-cut-pro",
+        "fcpxml",
+        "timeline",
+        "audio",
+        "editing",
+        "subtitles"
+      ],
+      "strict": true
+    },
+    {
+      "name": "nanobanana",
+      "source": "./plugins/nanobanana",
+      "description": "AI image generation and editing using Google Gemini 3 Pro Image API (Nano Banana Pro). Simple Node.js CLI with markdown styles, batch generation, reference image support, and comprehensive error handling with retry logic.",
+      "version": "2.2.3",
+      "author": {
+        "name": "Jack Rudenko",
+        "email": "i@madappgang.com",
+        "company": "MadAppGang"
+      },
+      "category": "media",
+      "keywords": [
+        "image-generation",
+        "ai-art",
+        "gemini",
+        "text-to-image",
+        "image-editing",
+        "style-transfer",
+        "nano-banana",
+        "google-ai"
+      ],
+      "strict": true
+    },
+    {
+      "name": "conductor",
+      "source": "./plugins/conductor",
+      "description": "Context-Driven Development workflow inspired by Gemini Conductor. Full-featured implementation with TDD workflow (Red/Green/Refactor), Phase Completion Protocol with verification reports, Git Notes audit trail, comprehensive styleguides (general, TypeScript, JavaScript, HTML/CSS), emergency procedures, and deployment workflow. v2.0.1: Fixed command descriptions for autocomplete display.",
+      "version": "2.0.1",
+      "author": {
+        "name": "Jack Rudenko",
+        "email": "i@madappgang.com",
+        "company": "MadAppGang"
+      },
+      "category": "workflow",
+      "keywords": [
+        "conductor",
+        "workflow",
+        "context-driven",
+        "tdd",
+        "planning",
+        "task-tracking",
+        "git-aware",
+        "project-management",
+        "phase-protocol",
+        "gemini-conductor"
+      ],
+      "strict": true
+    },
+    {
+      "name": "dev",
+      "source": "./plugins/dev",
+      "description": "Universal development assistant with documentation, deep research, interviews, and DevOps guidance. v1.24.0: Added /dev:brainstorm command for multi-model planning with resilient fallback chains, consensus scoring, and confidence-based validation. 44 skills.",
+      "version": "1.24.0",
+      "author": {
+        "name": "Jack Rudenko",
+        "email": "i@madappgang.com",
+        "company": "MadAppGang"
+      },
+      "category": "development",
+      "keywords": [
+        "development",
+        "universal",
+        "deep-research",
+        "research",
+        "convergence",
+        "devops",
+        "infrastructure",
+        "kubernetes",
+        "aws",
+        "gcp",
+        "azure",
+        "firebase",
+        "terraform",
+        "interview",
+        "react",
+        "typescript",
+        "tanstack",
+        "tanstack-router",
+        "tanstack-query",
+        "golang",
+        "dingo",
+        "bun",
+        "python",
+        "rust",
+        "ui-design",
+        "ui-engineer",
+        "framer-motion",
+        "awwwards"
+      ],
+      "strict": true
+    }
+  ]
 }

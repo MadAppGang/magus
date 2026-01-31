@@ -11,6 +11,15 @@
 
 set -euo pipefail
 
+# Helper: Output to FD3 if available, otherwise stdout
+output_json() {
+  if { true >&3; } 2>/dev/null; then
+    cat >&3
+  else
+    cat
+  fi
+}
+
 # Read tool input from stdin
 TOOL_INPUT=$(cat)
 PATTERN=$(echo "$TOOL_INPUT" | jq -r '.pattern // empty')
@@ -41,7 +50,7 @@ fi
 
 PATTERN_ESCAPED=$(echo "$PATTERN" | jq -Rs .)
 
-cat << EOF >&3
+output_json << EOF
 {
   "additionalContext": "💡 **Broad glob pattern detected:** ${PATTERN_ESCAPED}\n\nIf you're exploring code structure, use AST analysis:\n\`\`\`bash\nclaudemem --agent map                  # Full structure with PageRank\nclaudemem --agent map \"controllers\"   # Focused on area\n\`\`\`\n\nHigh PageRank = architectural pillars. Understand these first.\n\nGlob allowed for file listing. Use claudemem for structural understanding."
 }

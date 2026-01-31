@@ -11,6 +11,17 @@
 set -euo pipefail
 
 # =============================================================================
+# HELPER: Output to FD3 if available, otherwise stdout
+# =============================================================================
+output_json() {
+  if { true >&3; } 2>/dev/null; then
+    cat >&3
+  else
+    cat
+  fi
+}
+
+# =============================================================================
 # SECTION 1: SESSION CLEANUP (TTL-based)
 # =============================================================================
 
@@ -33,7 +44,7 @@ CLEANED=$(find /tmp -maxdepth 1 -name "*-202*" -type d -mtime +1 2>/dev/null | w
 
 # Check if claudemem is installed
 if ! command -v claudemem &>/dev/null; then
-  cat << 'EOF' >&3
+  output_json << 'EOF'
 {
   "additionalContext": "⚠️ **claudemem not installed**\n\nThe code-analysis plugin uses AST structural analysis (v0.4.0). Install with:\n```bash\nnpm install -g claude-codemem\nclaudemem init       # Configure API key\nclaudemem index      # Build AST index\n```\n\nUntil indexed, Grep/Glob will work normally."
 }
@@ -45,7 +56,7 @@ fi
 CLAUDEMEM_VERSION=$(claudemem --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
 
 if [ -z "$CLAUDEMEM_VERSION" ]; then
-  cat << 'EOF' >&3
+  output_json << 'EOF'
 {
   "additionalContext": "⚠️ **claudemem version detection failed**\n\nCannot determine claudemem version. Reinstall:\n```bash\nnpm install -g claude-codemem@latest\n```"
 }
@@ -87,7 +98,7 @@ version_gte() {
 
 # Check version
 if ! version_gte "$CLAUDEMEM_VERSION" "0.3.0"; then
-  cat << EOF >&3
+  output_json << EOF
 {
   "additionalContext": "⚠️ **claudemem update required**\n\nCurrent: v$CLAUDEMEM_VERSION\nRequired: v0.3.0+\n\nUpdate with:\n\`\`\`bash\nnpm install -g claude-codemem@latest\nclaudemem index  # Rebuild index for AST features\n\`\`\`"
 }
@@ -113,7 +124,7 @@ STATUS_OUTPUT=$(claudemem status 2>/dev/null || echo "")
 
 # Check if indexed
 if ! echo "$STATUS_OUTPUT" | grep -qE "[0-9]+ (chunks|symbols)"; then
-  cat << EOF >&3
+  output_json << EOF
 {
   "additionalContext": "$FEATURE_MESSAGE\n\n⚠️ **Not indexed for this project**\n\nRun \`claudemem index\` to enable AST analysis."
 }
@@ -135,7 +146,7 @@ if [ "$CLEANED" -gt 0 ]; then
 fi
 
 # Indexed and ready
-cat << EOF >&3
+output_json << EOF
 {
   "additionalContext": "$FEATURE_MESSAGE\n\nAST index: $SYMBOL_COUNT$CLEANUP_MSG\n\nGrep/rg/find intercepted and replaced with AST analysis."
 }

@@ -50,10 +50,19 @@ else
 fi
 
 # Output JSON for Claude Code hook system
-cat << EOF >&3
+# Use FD3 if available (Claude Code hook context), otherwise stdout
+if { true >&3; } 2>/dev/null; then
+  cat << EOF >&3
 {
   "additionalContext": "${STATUS_MSG}"
 }
 EOF
+else
+  cat << EOF
+{
+  "additionalContext": "${STATUS_MSG}"
+}
+EOF
+fi
 
 exit 0
