@@ -14,7 +14,7 @@
     {
       "name": "code-analysis",
       "source": "./plugins/code-analysis",
-      "description": "Deep code investigation with claudemem. v3.0.0: ENRICHMENT MODE - hooks enhance native tools with AST context instead of blocking. Grep/Glob/Bash searches receive claudemem results while running normally.",
+      "description": "Deep code investigation with claudemem. v3.1.0: Added investigate skill for keyword-based routing and enhanced documentation. v3.0.0: ENRICHMENT MODE - hooks enhance native tools with AST context instead of blocking.",
       "version": "3.1.1",
       "author": {
         "name": "Jack Rudenko",
