@@ -1,7 +1,7 @@
 {
   "name": "multimodel",
-  "version": "2.1.0",
-  "description": "Multi-model collaboration, orchestration, and workflow patterns. v2.1.0: Context-aware model preferences - learns and reuses your model choices per task type (debug/research/coding/review). Run tasks across multiple AI models in parallel, collect votes, and aggregate results.",
+  "version": "2.2.0",
+  "description": "Multi-model collaboration, orchestration, and workflow patterns. v2.2.0: Migrated to Tasks system (TaskCreate/TaskUpdate/TaskList/TaskGet) - renamed task-orchestration to task-orchestration with new patterns for dependencies, ownership, and cross-session persistence.",
   "author": "MadAppGang",
   "license": "MIT",
   "homepage": "https://github.com/MadAppGang/claude-code",
@@ -32,7 +32,7 @@
     "multi-agent-coordination",
     "multi-model-validation",
     "quality-gates",
-    "todowrite-orchestration",
+    "task-orchestration",
     "error-recovery",
     "model-tracking-protocol",
     "proxy-mode-reference",
@@ -54,7 +54,7 @@
     "advanced": ["multi-model-validation", "error-recovery", "hierarchical-coordinator"],
     "optimization": ["task-complexity-router", "performance-tracking", "batching-patterns"],
     "hooks": ["hooks-system"],
-    "complete": ["multi-agent-coordination", "multi-model-validation", "quality-gates", "todowrite-orchestration", "error-recovery", "hooks-system", "task-complexity-router", "hierarchical-coordinator", "batching-patterns", "performance-tracking"]
+    "complete": ["multi-agent-coordination", "multi-model-validation", "quality-gates", "task-orchestration", "error-recovery", "hooks-system", "task-complexity-router", "hierarchical-coordinator", "batching-patterns", "performance-tracking"]
   },
 
   "dependencies": {},

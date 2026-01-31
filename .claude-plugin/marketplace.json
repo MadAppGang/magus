@@ -40,8 +40,8 @@
 		{
 			"name": "multimodel",
 			"source": "./plugins/multimodel",
-			"description": "Multi-model collaboration, orchestration, and workflow patterns. v2.1.0: Context-aware model preferences - learns and reuses your model choices per task type (debug/research/coding/review). Run tasks across AI models in parallel, collect votes, aggregate results.",
-			"version": "2.1.0",
+			"description": "Multi-model collaboration, orchestration, and workflow patterns. v2.2.0: Migrated to Tasks system - renamed todowrite-orchestration to task-orchestration with new patterns for dependencies, ownership, and cross-session persistence.",
+			"version": "2.2.0",
 			"author": {
 				"name": "Jack Rudenko",
 				"email": "i@madappgang.com",
