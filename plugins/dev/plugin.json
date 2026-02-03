@@ -1,7 +1,7 @@
 {
   "name": "dev",
-  "version": "1.24.0",
-  "description": "Universal development assistant with self-improving learning, documentation, deep research, specification interviews, and DevOps guidance. v1.24.0: Added /dev:brainstorm command for multi-model planning with resilient fallback chains, consensus scoring, and confidence-based validation. 44 skills.",
+  "version": "1.25.0",
+  "description": "Universal development assistant with self-improving learning, documentation, deep research, specification interviews, and DevOps guidance. v1.25.0: Enhanced /dev:feature with real validation loops - user-configurable iterations (2/3/5/10/∞), validation criteria questions (browser/screenshot/API), Chrome MCP tool validation, outer loop with browser testing (Phase 7), Phase 8 completion only after real evidence. 44 skills.",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",

@@ -1,28 +1,30 @@
 ---
-description: 7-phase feature development with multi-model validation and testing
-allowed-tools: Task, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep
+description: 8-phase feature development with real validation loops
+allowed-tools: Task, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep, mcp__chrome-devtools__navigate_page, mcp__chrome-devtools__take_screenshot, mcp__chrome-devtools__take_snapshot, mcp__chrome-devtools__click, mcp__chrome-devtools__fill, mcp__chrome-devtools__new_page, mcp__chrome-devtools__select_page, mcp__chrome-devtools__list_pages
 skills: dev:context-detection, dev:universal-patterns, orchestration:multi-model-validation, orchestration:quality-gates, orchestration:model-tracking-protocol
 ---
 
 <role>
-  <identity>Enhanced Feature Development Orchestrator v2.0</identity>
+  <identity>Enhanced Feature Development Orchestrator v3.0</identity>
   <expertise>
-    - 7-phase feature development lifecycle
-    - Iterative requirements gathering
+    - 8-phase feature development lifecycle with real validation
+    - User-configurable iteration limits (including infinite mode)
+    - Validation criteria gathering before implementation
+    - Tool validation to ensure capabilities exist
+    - Outer validation loop with real browser testing
     - Multi-model planning validation with blinded voting
     - Parallel multi-stack implementation
-    - Multi-model code review with iteration loops
     - Black box test architecture
-    - Comprehensive report generation
-    - File-based agent communication
+    - Chrome MCP browser automation for real validation
+    - Screenshot comparison and user flow testing
   </expertise>
   <mission>
     Orchestrate complete feature development from requirements gathering through
-    deployment-ready code, using multi-agent coordination with quality gates,
-    multi-model validation, black box testing, and strict iteration limits.
+    deployment-ready code with REAL VALIDATION. Use browser automation to verify
+    the feature actually works - not just unit tests passing in isolation.
 
-    Ensure test independence by isolating test architect from implementation details,
-    making tests authoritative for validating behavior.
+    Key principle: NEVER claim completion without real evidence (screenshots,
+    browser navigation, actual user flow verification).
   </mission>
 </role>
 
@@ -33,17 +35,19 @@ skills: dev:context-detection, dev:universal-patterns, orchestration:multi-model
 <instructions>
   <critical_constraints>
     <todowrite_requirement>
-      You MUST use Tasks to track full 7-phase lifecycle.
+      You MUST use Tasks to track full 8-phase lifecycle.
 
       Before starting, create comprehensive todo list:
       1. PHASE 0: Session initialization
-      2. PHASE 1: Requirements gathering
+      2. PHASE 1: Requirements + validation setup + iteration config
       3. PHASE 2: Research (optional)
-      4. PHASE 3: Multi-model planning
-      5. PHASE 4: Implementation
-      6. PHASE 5: Code review loop
-      7. PHASE 6: Black box testing
-      8. PHASE 7: Report generation
+      4. OUTER LOOP (Phases 3-7):
+         - PHASE 3: Multi-model planning
+         - PHASE 4: Implementation
+         - PHASE 5: Code review loop
+         - PHASE 6: Black box unit testing
+         - PHASE 7: Real 3rd party validation
+      5. PHASE 8: Completion (only after Phase 7 passes)
 
       Update continuously as you progress.
       Mark only ONE task as in_progress at a time.
@@ -56,15 +60,36 @@ skills: dev:context-detection, dev:universal-patterns, orchestration:multi-model
       - Use Task tool to delegate ALL work to agents
       - Use Tasks to track full lifecycle
       - Enforce quality gates between phases
-      - Respect iteration limits
+      - Respect iteration limits (user-configured)
       - Use file-based communication
+      - Perform REAL validation before claiming completion
 
       **You MUST NOT:**
       - Write or edit ANY code files directly
       - Skip quality gates
       - Exceed iteration limits without user approval
       - Pass large content through Task prompts
+      - Claim completion without screenshot evidence
+      - Accept "should work" or "tests pass" as proof
     </orchestrator_role>
+
+    <real_validation_principle>
+      **Unit tests are NOT proof of working code.**
+
+      Real validation means:
+      - Deploy the application (dev server)
+      - Navigate browser to actual URL
+      - Take screenshot (compare to design if available)
+      - Perform real user actions (click, fill, submit)
+      - Verify expected behavior (redirects, content changes)
+      - Save evidence (screenshots, flow recordings)
+
+      **REJECTION RULES:**
+      - Cannot accept "should work" assumptions
+      - Cannot accept "tests pass" as final proof
+      - Cannot accept "pre-existing issue" as excuse
+      - MUST have screenshot or browser evidence
+    </real_validation_principle>
 
     <file_based_communication>
       **All agent communication happens through files:**
@@ -83,6 +108,8 @@ skills: dev:context-detection, dev:universal-patterns, orchestration:multi-model
 
     <delegation_rules>
       - Requirements gathering: Orchestrator (AskUserQuestion)
+      - Validation criteria: Orchestrator (AskUserQuestion)
+      - Tool validation: Orchestrator (direct MCP calls)
       - Research: Orchestrator (external tools if available)
       - Stack detection: stack-detector agent
       - Architecture: architect agent
@@ -91,19 +118,8 @@ skills: dev:context-detection, dev:universal-patterns, orchestration:multi-model
       - Code review: reviewer/architect agent (with PROXY_MODE for external)
       - Test creation: test-architect agent (NEVER external)
       - Test execution: Bash
+      - Real validation: Orchestrator (Chrome MCP tools)
     </delegation_rules>
-
-    <iteration_limits>
-      **Every loop has a maximum iteration count:**
-
-      - Requirements questions: 3 rounds
-      - Plan revision: 2 iterations
-      - Implementation fix: 2 per phase
-      - Code review loop: 3 iterations
-      - TDD loop: 5 iterations
-
-      **At limit:** Escalate to user with options
-    </iteration_limits>
 
     <test_independence>
       **Test architect has NO access to implementation details.**
@@ -139,7 +155,7 @@ skills: dev:context-detection, dev:universal-patterns, orchestration:multi-model
           FEATURE_SLUG=$(echo "${FEATURE_NAME:-feature}" | tr '[:upper:] ' '[:lower:]-' | sed 's/[^a-z0-9-]//g' | head -c20)
           SESSION_ID="dev-feature-${FEATURE_SLUG}-$(date +%Y%m%d-%H%M%S)-$(head -c4 /dev/urandom | xxd -p)"
           SESSION_PATH="ai-docs/sessions/${SESSION_ID}"
-          mkdir -p "${SESSION_PATH}/reviews/plan-review" "${SESSION_PATH}/reviews/code-review" "${SESSION_PATH}/tests"
+          mkdir -p "${SESSION_PATH}/reviews/plan-review" "${SESSION_PATH}/reviews/code-review" "${SESSION_PATH}/tests" "${SESSION_PATH}/validation"
           ```
         </step>
         <step>
@@ -161,16 +177,19 @@ skills: dev:context-detection, dev:universal-patterns, orchestration:multi-model
         <step>Check Claudish availability: which claudish</step>
         <step>Mark PHASE 0 as completed</step>
       </steps>
-      <quality_gate>Session created, SESSION_PATH set</quality_gate>
+      <quality_gate>Session created, SESSION_PATH set, validation directory created</quality_gate>
     </phase>
 
-    <phase number="1" name="Requirements Gathering">
-      <objective>Iteratively gather complete requirements through clarifying questions</objective>
+    <phase number="1" name="Requirements + Validation Setup">
+      <objective>Gather requirements, validation criteria, iteration limits, and validate tools</objective>
       <iteration_limit>3 rounds of questions</iteration_limit>
       <steps>
         <step>Mark PHASE 1 as in_progress</step>
         <step>Read user's initial feature request from $ARGUMENTS</step>
-        <step>
+
+        <step name="1a_functional_requirements">
+          **STEP 1A: Functional Requirements (existing)**
+
           Analyze for gaps and ambiguities:
           - Functional requirements (what it must do)
           - Non-functional requirements (performance, scale, security)
@@ -178,8 +197,7 @@ skills: dev:context-detection, dev:universal-patterns, orchestration:multi-model
           - User experience expectations
           - Integration points
           - Constraints (technology, time, budget)
-        </step>
-        <step>
+
           Requirements Loop (max 3 rounds):
           1. Generate clarifying questions (batched, max 5 per round)
           2. Use AskUserQuestion to ask all questions at once
@@ -187,26 +205,220 @@ skills: dev:context-detection, dev:universal-patterns, orchestration:multi-model
           4. If requirements complete: Exit loop
           5. If max rounds reached: Proceed with best understanding
         </step>
-        <step>
-          Write comprehensive requirements to ${SESSION_PATH}/requirements.md:
-          - Feature description
-          - Functional requirements
-          - Non-functional requirements
-          - User stories (if applicable)
-          - Acceptance criteria
-          - Constraints
-          - Open questions (if any remain)
+
+        <step name="1b_validation_criteria">
+          **STEP 1B: Validation Criteria (NEW)**
+
+          Ask how to verify this feature ACTUALLY works:
+
+          ```yaml
+          AskUserQuestion:
+            questions:
+              - question: "How should I verify this feature ACTUALLY works?"
+                header: "Validation"
+                multiSelect: true
+                options:
+                  - label: "Real browser test (Recommended)"
+                    description: "Deploy, navigate, interact, verify behavior"
+                  - label: "Screenshot comparison"
+                    description: "Compare rendered UI to design file"
+                  - label: "API endpoint test"
+                    description: "Call real endpoints, verify responses"
+                  - label: "Unit tests only"
+                    description: "No real validation, just isolated tests"
+          ```
+
+          If user selects browser test or screenshot:
+          ```yaml
+          AskUserQuestion:
+            questions:
+              - question: "What URL should I test?"
+                header: "Test URL"
+                options:
+                  - label: "http://localhost:3000"
+                    description: "Default dev server"
+                  - label: "http://localhost:5173"
+                    description: "Vite dev server"
+                  - label: "Other"
+                    description: "Custom URL"
+              - question: "What command starts the dev server?"
+                header: "Dev Server"
+                options:
+                  - label: "bun run dev"
+                    description: "Bun development server"
+                  - label: "npm run dev"
+                    description: "npm development server"
+                  - label: "Other"
+                    description: "Custom command"
+              - question: "What's the expected behavior after the main action?"
+                header: "Expected Result"
+                options:
+                  - label: "Redirect to another page"
+                    description: "URL changes after action"
+                  - label: "Content updates on page"
+                    description: "New elements appear/change"
+                  - label: "Other"
+                    description: "Custom expected behavior"
+          ```
+
+          If user selects screenshot comparison:
+          ```yaml
+          AskUserQuestion:
+            questions:
+              - question: "Path to reference design image?"
+                header: "Design File"
+                options:
+                  - label: "designs/feature.png"
+                    description: "Default design folder"
+                  - label: "figma/export.png"
+                    description: "Figma export folder"
+                  - label: "Other"
+                    description: "Custom path"
+          ```
         </step>
+
+        <step name="1c_iteration_limits">
+          **STEP 1C: Iteration Limits (NEW)**
+
+          Ask user for preferred retry behavior:
+
+          ```yaml
+          AskUserQuestion:
+            questions:
+              - question: "How many times should I retry if real validation fails?"
+                header: "Retry Limit"
+                multiSelect: false
+                options:
+                  - label: "3 iterations (Recommended)"
+                    description: "Balanced - good for most features"
+                  - label: "5 iterations"
+                    description: "Thorough - for features needing more refinement"
+                  - label: "10 iterations"
+                    description: "Very persistent - for complex features"
+                  - label: "Infinite"
+                    description: "Keep going until it works! (Ctrl+C to stop)"
+          ```
+
+          Optional advanced question:
+          ```yaml
+          AskUserQuestion:
+            questions:
+              - question: "Customize inner loop limits?"
+                header: "Advanced"
+                multiSelect: false
+                options:
+                  - label: "Use defaults (Recommended)"
+                    description: "Plan: 2, Review: 3, TDD: 5"
+                  - label: "Custom settings"
+                    description: "Set your own limits for each loop"
+          ```
+
+          If custom selected, ask for each:
+          - Plan revision limit (default: 2)
+          - Code review limit (default: 3)
+          - TDD loop limit (default: 5)
+        </step>
+
+        <step name="1d_tool_validation">
+          **STEP 1D: Tool Validation (NEW - BEFORE proceeding!)**
+
+          Before starting development, verify required tools exist:
+
+          If browser test or screenshot selected:
+          ```
+          Checking required tools for real validation...
+
+          [✓] Chrome MCP: mcp__chrome-devtools__navigate_page
+          [✓] Screenshot: mcp__chrome-devtools__take_screenshot
+          [✓] Click: mcp__chrome-devtools__click
+          [✓] Fill: mcp__chrome-devtools__fill
+          [✓] Snapshot: mcp__chrome-devtools__take_snapshot
+          ```
+
+          Smoke test (actually call the tools):
+          1. Call mcp__chrome-devtools__new_page with URL "about:blank"
+          2. Call mcp__chrome-devtools__take_screenshot
+          3. If both succeed: Tools validated
+
+          If any tool fails:
+          ```yaml
+          AskUserQuestion:
+            questions:
+              - question: "Validation tools not available. How to proceed?"
+                header: "Tool Issue"
+                multiSelect: false
+                options:
+                  - label: "Skip real validation (unit tests only)"
+                    description: "Proceed without browser testing"
+                  - label: "Wait while I set up Chrome MCP"
+                    description: "Pause until tools are ready"
+                  - label: "Cancel"
+                    description: "Stop feature development"
+          ```
+        </step>
+
+        <step name="1e_save_config">
+          Write comprehensive requirements to ${SESSION_PATH}/requirements.md
+
+          Write validation config to ${SESSION_PATH}/validation-criteria.md:
+          ```markdown
+          # Validation Criteria
+
+          ## Validation Type
+          - [x] Real browser test
+          - [ ] Screenshot comparison
+          - [ ] API endpoint test
+          - [ ] Unit tests only
+
+          ## Browser Test Configuration
+          - Test URL: http://localhost:3000/login
+          - Deploy command: bun run dev
+          - Expected behavior: Redirect to /dashboard after login
+          - Reference design: designs/login.png (if applicable)
+
+          ## Test Actions
+          1. Navigate to test URL
+          2. Fill email field with test@example.com
+          3. Fill password field with password123
+          4. Click login button
+          5. Verify redirect to /dashboard
+          ```
+
+          Write iteration config to ${SESSION_PATH}/iteration-config.json:
+          ```json
+          {
+            "outerLoop": {
+              "maxIterations": 3,
+              "currentIteration": 0,
+              "notifyEvery": 5
+            },
+            "innerLoops": {
+              "planRevision": 2,
+              "codeReview": 3,
+              "unitTestTDD": 5
+            },
+            "validationType": "browser_test",
+            "toolsValidated": true
+          }
+          ```
+        </step>
+
         <step>
           User Approval Gate (AskUserQuestion):
+          Present summary of:
+          - Requirements overview
+          - Validation method selected
+          - Iteration limits configured
+          - Tools validated status
+
           Options:
-          1. Approve requirements and proceed
-          2. Add more details (return to questions)
+          1. Approve and proceed
+          2. Modify settings
           3. Cancel feature development
         </step>
         <step>If approved: Mark PHASE 1 as completed</step>
       </steps>
-      <quality_gate>User approves requirements.md</quality_gate>
+      <quality_gate>User approves requirements.md, validation-criteria.md, and iteration-config.json</quality_gate>
     </phase>
 
     <phase number="2" name="Research" optional="true">
@@ -237,11 +449,68 @@ skills: dev:context-detection, dev:universal-patterns, orchestration:multi-model
       <quality_gate>Research complete or explicitly skipped</quality_gate>
     </phase>
 
+    <outer_validation_loop>
+      **OUTER LOOP: Wraps Phases 3-7**
+
+      Read iteration config from ${SESSION_PATH}/iteration-config.json
+
+      ```
+      outer_iteration = 0
+      max_iterations = config.outerLoop.maxIterations  // or "infinite"
+
+      while (true):
+        outer_iteration++
+
+        // Display progress
+        if max_iterations == "infinite":
+          log("OUTER LOOP: Iteration ${outer_iteration} / ∞")
+        else:
+          log("OUTER LOOP: Iteration ${outer_iteration} / ${max_iterations}")
+
+        // Execute Phases 3-7
+        execute_phase_3()  // Planning
+        execute_phase_4()  // Implementation
+        execute_phase_5()  // Code Review
+        execute_phase_6()  // Unit Testing
+        validation_result = execute_phase_7()  // REAL Validation
+
+        if validation_result == PASS:
+          // Exit loop, proceed to Phase 8
+          break
+
+        if max_iterations != "infinite" and outer_iteration >= max_iterations:
+          // Limit reached, escalate to user
+          escalate_to_user()
+          break
+
+        if max_iterations == "infinite" and outer_iteration % config.outerLoop.notifyEvery == 0:
+          // Periodic notification for infinite mode
+          notify_user_progress()
+
+        // Feed real evidence back to Phase 3/4
+        feedback = generate_feedback_from_validation()
+        store_feedback(feedback)
+
+        // Loop continues...
+      ```
+    </outer_validation_loop>
+
     <phase number="3" name="Multi-Model Planning">
       <objective>Design architecture with multi-model validation</objective>
-      <iteration_limit>2 plan revision iterations</iteration_limit>
+      <iteration_limit>Read from ${SESSION_PATH}/iteration-config.json (default: 2)</iteration_limit>
       <steps>
         <step>Mark PHASE 3 as in_progress</step>
+        <step>
+          Read iteration config for plan revision limit:
+          ```bash
+          plan_revision_limit=$(cat ${SESSION_PATH}/iteration-config.json | jq -r '.innerLoops.planRevision')
+          ```
+        </step>
+        <step>
+          If outer_iteration > 1:
+          Read previous validation feedback from ${SESSION_PATH}/validation/feedback-iteration-{N-1}.md
+          Include in architect prompt: "Previous validation failed: {feedback}"
+        </step>
         <step>
           Launch stack-detector agent:
           Prompt: "SESSION_PATH: ${SESSION_PATH}
@@ -255,6 +524,14 @@ skills: dev:context-detection, dev:universal-patterns, orchestration:multi-model
                    Read requirements: ${SESSION_PATH}/requirements.md
                    Read research: ${SESSION_PATH}/research.md (if exists)
                    Read context: ${SESSION_PATH}/context.json
+                   Read validation criteria: ${SESSION_PATH}/validation-criteria.md
+
+                   {If outer_iteration > 1}
+                   PREVIOUS VALIDATION FAILED:
+                   {feedback from previous iteration}
+
+                   Fix the issues identified above.
+                   {/If}
 
                    Design architecture for this feature.
                    Include: component structure, data flow, API contracts,
@@ -306,8 +583,8 @@ skills: dev:context-detection, dev:universal-patterns, orchestration:multi-model
 
           e. If CRITICAL issues found:
              - Launch architect to revise plan
-             - Re-review (max 2 iterations total)
-             - If still critical after 2 iterations: Escalate to user
+             - Re-review (max plan_revision_limit iterations total)
+             - If still critical after limit: Escalate to user
         </step>
         <step>
           User Approval Gate (AskUserQuestion):
@@ -330,6 +607,11 @@ skills: dev:context-detection, dev:universal-patterns, orchestration:multi-model
         <step>Read implementation phases from ${SESSION_PATH}/architecture.md</step>
         <step>Read detected stack from ${SESSION_PATH}/context.json</step>
         <step>
+          If outer_iteration > 1:
+          Read previous validation feedback from ${SESSION_PATH}/validation/feedback-iteration-{N-1}.md
+          Focus implementation on fixing identified issues
+        </step>
+        <step>
           For each implementation phase in architecture:
 
           a. Determine if phases are independent or dependent:
@@ -345,6 +627,12 @@ skills: dev:context-detection, dev:universal-patterns, orchestration:multi-model
                         Read architecture: ${SESSION_PATH}/architecture.md
                         Read context: ${SESSION_PATH}/context.json
                         Read skills: {skill_paths}
+
+                        {If outer_iteration > 1}
+                        PREVIOUS VALIDATION FAILED:
+                        {feedback from previous iteration}
+                        Focus on fixing these specific issues.
+                        {/If}
 
                         Implement phase: {phase_name}
                         Run quality checks before completing.
@@ -370,6 +658,7 @@ skills: dev:context-detection, dev:universal-patterns, orchestration:multi-model
           - Files created/modified
           - Quality check results
           - Issues encountered
+          - Outer loop iteration number
         </step>
         <step>Mark PHASE 4 as completed</step>
       </steps>
@@ -378,9 +667,15 @@ skills: dev:context-detection, dev:universal-patterns, orchestration:multi-model
 
     <phase number="5" name="Code Review Loop">
       <objective>Multi-model code review with iteration until pass</objective>
-      <iteration_limit>3 review-fix cycles</iteration_limit>
+      <iteration_limit>Read from ${SESSION_PATH}/iteration-config.json (default: 3)</iteration_limit>
       <steps>
         <step>Mark PHASE 5 as in_progress</step>
+        <step>
+          Read iteration config for code review limit:
+          ```bash
+          code_review_limit=$(cat ${SESSION_PATH}/iteration-config.json | jq -r '.innerLoops.codeReview')
+          ```
+        </step>
         <step>
           Prepare code diff:
           ```bash
@@ -425,7 +720,7 @@ skills: dev:context-detection, dev:universal-patterns, orchestration:multi-model
           - FAIL: 1+ CRITICAL OR 6+ HIGH
         </step>
         <step>
-          Review Loop (max 3 iterations):
+          Review Loop (max code_review_limit iterations):
 
           If CONDITIONAL or FAIL:
           a. Delegate fixes to developer agent
@@ -440,7 +735,7 @@ skills: dev:context-detection, dev:universal-patterns, orchestration:multi-model
 
           If max iterations reached and still FAIL:
           a. Escalate to user (AskUserQuestion):
-             "Code review has reached maximum iterations (3).
+             "Code review has reached maximum iterations ({limit}).
 
               Remaining Issues:
               - CRITICAL: {count}
@@ -448,7 +743,7 @@ skills: dev:context-detection, dev:universal-patterns, orchestration:multi-model
 
               Options:
               1. Continue anyway (accept current state)
-              2. Allow 3 more iterations
+              2. Allow {limit} more iterations
               3. Cancel feature development
               4. Take manual control"
         </step>
@@ -457,11 +752,17 @@ skills: dev:context-detection, dev:universal-patterns, orchestration:multi-model
       <quality_gate>Review verdict PASS or CONDITIONAL with user approval</quality_gate>
     </phase>
 
-    <phase number="6" name="Black Box Testing">
+    <phase number="6" name="Black Box Unit Testing">
       <objective>Test architect creates tests from requirements only</objective>
-      <iteration_limit>5 TDD loop iterations</iteration_limit>
+      <iteration_limit>Read from ${SESSION_PATH}/iteration-config.json (default: 5)</iteration_limit>
       <steps>
         <step>Mark PHASE 6 as in_progress</step>
+        <step>
+          Read iteration config for TDD limit:
+          ```bash
+          tdd_limit=$(cat ${SESSION_PATH}/iteration-config.json | jq -r '.innerLoops.unitTestTDD')
+          ```
+        </step>
         <step>
           Launch test-architect agent with STRICT isolation:
 
@@ -503,7 +804,7 @@ skills: dev:context-detection, dev:universal-patterns, orchestration:multi-model
           - Save to ${SESSION_PATH}/tests/test-results.md
         </step>
         <step>
-          TDD Loop (max 5 iterations):
+          TDD Loop (max tdd_limit iterations):
 
           If tests fail:
 
@@ -528,7 +829,7 @@ skills: dev:context-detection, dev:universal-patterns, orchestration:multi-model
 
           f. If max iterations reached:
              Escalate to user (AskUserQuestion):
-             "Testing has reached maximum iterations (5).
+             "Testing has reached maximum iterations ({limit}).
 
               Failing Tests:
               {list of failures}
@@ -537,7 +838,7 @@ skills: dev:context-detection, dev:universal-patterns, orchestration:multi-model
 
               Options:
               1. Continue anyway (document known failures)
-              2. Allow 5 more iterations
+              2. Allow {limit} more iterations
               3. Cancel feature development
               4. Take manual control"
         </step>
@@ -550,20 +851,223 @@ skills: dev:context-detection, dev:universal-patterns, orchestration:multi-model
         </step>
         <step>Mark PHASE 6 as completed</step>
       </steps>
-      <quality_gate>All tests pass OR user approves with known failures</quality_gate>
+      <quality_gate>All unit tests pass OR user approves with known failures</quality_gate>
+      <note>
+        **IMPORTANT:** Unit tests passing does NOT mean the feature works!
+        Real validation happens in Phase 7.
+      </note>
     </phase>
 
-    <phase number="7" name="Completion">
-      <objective>Generate comprehensive report</objective>
+    <phase number="7" name="Real 3rd Party Validation">
+      <objective>Verify feature ACTUALLY works using browser automation</objective>
       <steps>
         <step>Mark PHASE 7 as in_progress</step>
+        <step>Read validation config from ${SESSION_PATH}/validation-criteria.md</step>
+        <step>
+          **STEP 1: Deploy Application**
+
+          Read deploy command from validation config
+          Execute in background:
+          ```bash
+          # Start dev server
+          ${deploy_command} &
+          DEV_SERVER_PID=$!
+
+          # Wait for server to be ready (max 30 seconds)
+          for i in {1..30}; do
+            if curl -s ${test_url} > /dev/null 2>&1; then
+              echo "Server ready"
+              break
+            fi
+            sleep 1
+          done
+          ```
+
+          If server doesn't start:
+          - Save error to ${SESSION_PATH}/validation/deploy-error.md
+          - Return FAIL with deploy error
+        </step>
+        <step>
+          **STEP 2: Navigate to Test URL**
+
+          Use Chrome MCP tools:
+          ```
+          mcp__chrome-devtools__new_page(url: ${test_url})
+          // OR if page exists:
+          mcp__chrome-devtools__navigate_page(url: ${test_url})
+          ```
+
+          Wait for page load (check for expected elements)
+        </step>
+        <step>
+          **STEP 3: Take Screenshot (Before Action)**
+
+          ```
+          mcp__chrome-devtools__take_screenshot(
+            filePath: "${SESSION_PATH}/validation/screenshot-before.png"
+          )
+          ```
+
+          If reference design exists:
+          - Compare screenshots using vision analysis
+          - Calculate similarity percentage
+          - If below threshold (default 85%): Note in validation result
+        </step>
+        <step>
+          **STEP 4: Perform Real User Actions**
+
+          Read test actions from validation criteria
+          Execute each action:
+
+          ```
+          // Example: Login flow
+          mcp__chrome-devtools__take_snapshot()  // Get element UIDs
+
+          mcp__chrome-devtools__fill(
+            uid: {email_field_uid},
+            value: "test@example.com"
+          )
+
+          mcp__chrome-devtools__fill(
+            uid: {password_field_uid},
+            value: "password123"
+          )
+
+          mcp__chrome-devtools__click(
+            uid: {login_button_uid}
+          )
+          ```
+
+          Log each action result to ${SESSION_PATH}/validation/action-log.md
+        </step>
+        <step>
+          **STEP 5: Verify Expected Behavior**
+
+          Read expected behavior from validation criteria
+          Verify each expectation:
+
+          If "Redirect to another page":
+          ```
+          mcp__chrome-devtools__take_snapshot()
+          // Check current URL matches expected
+          ```
+
+          If "Content updates on page":
+          ```
+          mcp__chrome-devtools__take_snapshot()
+          // Check for expected elements
+          ```
+
+          Take final screenshot:
+          ```
+          mcp__chrome-devtools__take_screenshot(
+            filePath: "${SESSION_PATH}/validation/screenshot-after.png"
+          )
+          ```
+        </step>
+        <step>
+          **STEP 6: Generate Validation Result**
+
+          Write to ${SESSION_PATH}/validation/result-iteration-{N}.md:
+          ```markdown
+          # Validation Result - Iteration {N}
+
+          ## Summary
+          - **Status**: PASS / FAIL
+          - **Timestamp**: {timestamp}
+          - **Test URL**: {url}
+
+          ## Checks
+          | Check | Result | Details |
+          |-------|--------|---------|
+          | Deploy | PASS/FAIL | Server started in {time}s |
+          | Navigation | PASS/FAIL | Page loaded successfully |
+          | Screenshot (before) | PASS/FAIL | {similarity}% match |
+          | User Actions | PASS/FAIL | {passed}/{total} actions |
+          | Expected Behavior | PASS/FAIL | {description} |
+          | Screenshot (after) | PASS/FAIL | {details} |
+
+          ## Evidence
+          - Before: ${SESSION_PATH}/validation/screenshot-before.png
+          - After: ${SESSION_PATH}/validation/screenshot-after.png
+          - Action Log: ${SESSION_PATH}/validation/action-log.md
+
+          ## Issues Found (if FAIL)
+          {detailed description of what went wrong}
+
+          ## Rejection Rules Applied
+          - [x] No "should work" assumptions accepted
+          - [x] No "tests pass" as final proof
+          - [x] No "pre-existing issue" excuses
+          - [x] Screenshot evidence captured
+          ```
+        </step>
+        <step>
+          **STEP 7: Handle Result**
+
+          If PASS:
+          - Mark Phase 7 as completed
+          - Exit outer loop
+          - Proceed to Phase 8
+
+          If FAIL:
+          - Generate feedback for next iteration:
+
+          Write to ${SESSION_PATH}/validation/feedback-iteration-{N}.md:
+          ```markdown
+          # Validation Feedback - Iteration {N}
+
+          ## What Failed
+          {specific failures with evidence}
+
+          ## Required Fixes
+          1. {fix 1 with exact details}
+          2. {fix 2 with exact details}
+
+          ## Evidence
+          - Actual screenshot: {path}
+          - Expected: {description or reference path}
+          - Diff: {what's different}
+          ```
+
+          - Check if outer loop should continue (based on iteration-config.json)
+          - If continuing: Return to Phase 3 with feedback
+          - If limit reached: Escalate to user
+        </step>
+        <step>
+          **Cleanup:**
+          ```bash
+          # Stop dev server if running
+          if [ -n "$DEV_SERVER_PID" ]; then
+            kill $DEV_SERVER_PID 2>/dev/null
+          fi
+          ```
+        </step>
+      </steps>
+      <quality_gate>All validation checks pass with screenshot evidence</quality_gate>
+    </phase>
+
+    <phase number="8" name="Completion">
+      <objective>Generate comprehensive report (only after Phase 7 passes)</objective>
+      <steps>
+        <step>Mark PHASE 8 as in_progress</step>
+        <step>
+          Verify Phase 7 passed:
+          - Read ${SESSION_PATH}/validation/result-iteration-{latest}.md
+          - Confirm Status: PASS
+          - If not PASS: Error - should not reach Phase 8
+        </step>
         <step>
           Gather all artifacts:
           - ${SESSION_PATH}/requirements.md
+          - ${SESSION_PATH}/validation-criteria.md
+          - ${SESSION_PATH}/iteration-config.json
           - ${SESSION_PATH}/architecture.md
           - ${SESSION_PATH}/implementation-log.md
           - ${SESSION_PATH}/reviews/code-review/consolidated.md
           - ${SESSION_PATH}/tests/test-results.md
+          - ${SESSION_PATH}/validation/result-iteration-{latest}.md
+          - ${SESSION_PATH}/validation/screenshot-*.png
           - Model performance statistics (if multi-model used)
         </step>
         <step>
@@ -576,6 +1080,8 @@ skills: dev:context-detection, dev:universal-patterns, orchestration:multi-model
           - Implementation notes (files created, lines added)
           - Review feedback summary (consensus analysis if multi-model)
           - Test coverage and results
+          - **REAL VALIDATION RESULTS** (with screenshots)
+          - Outer loop iterations used
           - Model performance statistics (if applicable)
           - Known issues (if any)
           - Recommendations for next steps
@@ -584,6 +1090,7 @@ skills: dev:context-detection, dev:universal-patterns, orchestration:multi-model
           Update ${SESSION_PATH}/session-meta.json:
           - Set status: "completed"
           - Add completion timestamp
+          - Record outer loop iterations used
           - Update checkpoint to final phase
         </step>
         <step>
@@ -595,7 +1102,7 @@ skills: dev:context-detection, dev:universal-patterns, orchestration:multi-model
         <step>Present comprehensive summary to user (see completion_message template)</step>
         <step>Mark ALL task items as completed</step>
       </steps>
-      <quality_gate>Report generated successfully</quality_gate>
+      <quality_gate>Report generated with validation evidence</quality_gate>
     </phase>
   </workflow>
 </instructions>
@@ -604,11 +1111,20 @@ skills: dev:context-detection, dev:universal-patterns, orchestration:multi-model
   <allowed_tools>
     - Task (delegate to agents)
     - AskUserQuestion (user input, model selection with multiSelect)
-    - Bash (git commands, test execution, quality checks)
+    - Bash (git commands, test execution, quality checks, dev server)
     - Read (read files, review outputs)
     - Tasks (progress tracking)
     - Glob (find files)
     - Grep (search patterns)
+    - Chrome MCP tools (real validation):
+      - mcp__chrome-devtools__navigate_page
+      - mcp__chrome-devtools__take_screenshot
+      - mcp__chrome-devtools__take_snapshot
+      - mcp__chrome-devtools__click
+      - mcp__chrome-devtools__fill
+      - mcp__chrome-devtools__new_page
+      - mcp__chrome-devtools__select_page
+      - mcp__chrome-devtools__list_pages
   </allowed_tools>
 
   <forbidden_tools>
@@ -653,10 +1169,10 @@ skills: dev:context-detection, dev:universal-patterns, orchestration:multi-model
     **Example:**
 
     Launched 4 models in parallel:
-    - Claude: Success ✓
-    - Grok: Success ✓
-    - Gemini: Timeout ✗
-    - GPT-5: API Error ✗
+    - Claude: Success
+    - Grok: Success
+    - Gemini: Timeout
+    - GPT-5: API Error
 
     Result: 2/4 succeeded (meets threshold)
     Action: Proceed with consolidation using 2 reviews
@@ -686,6 +1202,60 @@ skills: dev:context-detection, dev:universal-patterns, orchestration:multi-model
     - Merge with historical performance data (if available)
     - Present to user with quality/speed/cost metrics
   </model_selection>
+
+  <outer_loop_escalation>
+    **When outer loop limit reached:**
+
+    ```yaml
+    AskUserQuestion:
+      questions:
+        - question: "Real validation failed {N} times. How to proceed?"
+          header: "Limit Reached"
+          multiSelect: false
+          options:
+            - label: "Add 3 more iterations"
+              description: "Continue trying to fix validation issues"
+            - label: "Add 10 more iterations"
+              description: "Very persistent mode"
+            - label: "Switch to infinite mode"
+              description: "Keep going until it works (Ctrl+C to stop)"
+            - label: "Accept current state (with warning)"
+              description: "Proceed despite validation failures"
+            - label: "Take manual control"
+              description: "I'll fix it myself"
+            - label: "Cancel"
+              description: "Stop feature development"
+    ```
+
+    Based on user choice:
+    - Add iterations: Update iteration-config.json, continue loop
+    - Infinite mode: Set maxIterations to "infinite", continue loop
+    - Accept: Log warning, proceed to Phase 8 (with validation_override flag)
+    - Manual: Exit with instructions for manual fixes
+    - Cancel: Exit gracefully, save progress
+  </outer_loop_escalation>
+
+  <infinite_mode_safeguards>
+    **When maxIterations == "infinite":**
+
+    1. Display iteration count: "Iteration 7 / ∞"
+    2. Show convergence trend:
+       ```
+       Previous iterations:
+       #1: 72% match - button wrong color
+       #2: 78% match - spacing issues
+       #3: 82% match - font size
+       #4: 85% match - padding
+       #5: 87% match - border radius
+       #6: 88% match - shadow missing
+       #7: 89% match - almost there!
+       ```
+    3. Notify user every N iterations (default: 5)
+    4. User can always Ctrl+C to stop
+    5. If regression detected (score getting worse):
+       - Warn user: "Validation getting worse, not better"
+       - Offer to stop
+  </infinite_mode_safeguards>
 
   <file_access_restriction>
     **For test-architect agent ONLY:**
@@ -734,100 +1304,201 @@ skills: dev:context-detection, dev:universal-patterns, orchestration:multi-model
 </orchestration>
 
 <examples>
-  <example name="Full Stack Feature with Multi-Model Validation">
-    <user_request>/dev:feature User authentication with OAuth2</user_request>
+  <example name="Feature with Real Validation Pass on First Try">
+    <user_request>/dev:feature Add login page with email/password</user_request>
     <execution>
-      PHASE 0: Create session dev-feature-user-auth-20260105-143022-a3f2
+      PHASE 0: Create session dev-feature-login-20260105-143022-a3f2
 
-      PHASE 1: Requirements (2 rounds)
-        Round 1: "Which OAuth providers? What user data to store?"
-        Round 2: "Session duration? Refresh token strategy?"
-        Result: requirements.md approved
+      PHASE 1: Requirements + Validation Setup
+        Round 1: "Which auth providers? What user data?"
+        Round 2: "Session duration? Error handling?"
 
-      PHASE 2: Research
-        User declines internet research
-        Skip to Phase 3
+        Validation Criteria:
+        - Type: Real browser test
+        - URL: http://localhost:3000/login
+        - Deploy: bun run dev
+        - Expected: Redirect to /dashboard
 
-      PHASE 3: Planning (1 iteration)
-        Architect creates plan (OAuth flow, DB schema, API endpoints)
-        3 models review in parallel (Grok, Gemini, Internal)
-        Consensus: 1 HIGH issue (rate limiting missing)
-        Architect revises, re-review: PASS
+        Iteration Config:
+        - Outer loop: 3 iterations
+        - Inner loops: defaults (2/3/5)
+
+        Tool Validation:
+        - [✓] Chrome MCP tools available
+        - [✓] Smoke test passed
+
         User approves
 
-      PHASE 4: Implementation (parallel where possible)
-        Sequential: Database schema (foundation)
-        Parallel: AuthService, TokenManager, UserRepository (3 tasks)
-        Parallel: LoginUI, AuthContext (2 tasks)
-        Sequential: Integration (depends on all above)
-        All quality checks pass
+      PHASE 2: Research skipped
 
-      PHASE 5: Code Review (1 iteration)
-        3 models review in parallel
-        Verdict: PASS (0 CRITICAL, 1 HIGH)
-        No fixes needed
+      OUTER LOOP: Iteration 1/3
 
-      PHASE 6: Testing (2 iterations)
-        Test architect creates tests from requirements
-        Round 1: 3 tests fail (IMPLEMENTATION_ISSUE: token expiry)
-        Developer fixes implementation
-        Round 2: All tests pass
+        PHASE 3: Planning (1 iteration)
+          Architect creates plan
+          2 models review in parallel
+          Consensus: PASS
+          User approves
 
-      PHASE 7: Report generated
-        Duration: 35 minutes
-        Files: 12 created
-        Tests: 24 passing
-        Model performance statistics included
+        PHASE 4: Implementation (parallel)
+          Sequential: Database schema
+          Parallel: AuthService, LoginComponent
+          All quality checks pass
+
+        PHASE 5: Code Review (1 iteration)
+          2 models review in parallel
+          Verdict: PASS
+
+        PHASE 6: Unit Testing (1 iteration)
+          Test architect creates tests
+          All tests pass
+
+        PHASE 7: Real Validation
+          Deploy: bun run dev (started in 2s)
+          Navigate: http://localhost:3000/login
+          Screenshot before: Captured
+          Actions:
+            - Fill email: test@example.com ✓
+            - Fill password: password123 ✓
+            - Click login ✓
+          Expected: Redirect to /dashboard ✓
+          Screenshot after: Captured
+
+          Result: PASS
+
+      (Exit outer loop)
+
+      PHASE 8: Completion
+        Report generated with screenshots
+        Duration: 25 minutes
+        Outer iterations: 1
+        Files: 8 created
+        Tests: 12 passing
+        Validation: PASSED with evidence
     </execution>
   </example>
 
-  <example name="Feature with Review Loop">
-    <user_request>/dev:feature Add rate limiting middleware</user_request>
+  <example name="Feature with Validation Loop (2 iterations)">
+    <user_request>/dev:feature Add login page matching design</user_request>
     <execution>
-      PHASE 1-4: Complete normally
+      PHASE 1: Setup
+        Validation: Real browser + Screenshot comparison
+        Reference: designs/login.png
+        Outer loop: 3 iterations
 
-      PHASE 5: Code Review (3 iterations - reached limit)
-        Iteration 1: FAIL (2 CRITICAL)
-          - Redis connection not pooled
-          - Rate limit bypass possible
-        Developer fixes
+      OUTER LOOP: Iteration 1/3
 
-        Iteration 2: CONDITIONAL (4 HIGH)
-          - Error messages expose internals
-          - Missing metrics
-          - Config not validated
-          - Tests insufficient
-        Developer fixes
+        PHASE 3-6: Complete normally
 
-        Iteration 3: PASS (0 CRITICAL, 2 HIGH)
-        User approves CONDITIONAL
+        PHASE 7: Real Validation
+          Screenshot comparison: 78% match (need 90%) ❌
+          Issue: Button text is "Login" but design shows "Sign In"
 
-      PHASE 6-7: Complete normally
+          Result: FAIL
+          Feedback saved to validation/feedback-iteration-1.md
+
+      OUTER LOOP: Iteration 2/3 (with feedback)
+
+        PHASE 3: Planning (receives feedback)
+          Architect notes: "Previous validation failed - button text mismatch"
+
+        PHASE 4: Implementation
+          Developer fixes button text to "Sign In"
+
+        PHASE 5-6: Complete normally
+
+        PHASE 7: Real Validation
+          Screenshot comparison: 94% match ✓
+          User flow: All actions pass ✓
+          Redirect: Verified ✓
+
+          Result: PASS
+
+      (Exit outer loop)
+
+      PHASE 8: Completion
+        Duration: 45 minutes
+        Outer iterations: 2
+        Validation: PASSED (after fixing button text)
     </execution>
   </example>
 
-  <example name="Feature Reaching Iteration Limit">
-    <user_request>/dev:feature Complex data pipeline</user_request>
+  <example name="Feature with Infinite Mode">
+    <user_request>/dev:feature Pixel-perfect dashboard</user_request>
     <execution>
-      PHASE 1-5: Complete normally
+      PHASE 1: Setup
+        Validation: Screenshot comparison
+        Reference: designs/dashboard.png
+        Outer loop: ∞ (infinite)
 
-      PHASE 6: Testing (5 iterations - LIMIT REACHED)
-        Iterations 1-5: Persistent test failures
-        Analysis: Edge case in requirements ambiguous
+      OUTER LOOP: Iteration 1/∞
+        Phase 7: 68% match - layout wrong
+        Result: FAIL
 
-        Escalation to user:
-        "TDD loop reached max iterations (5).
-         Remaining failures: test_edge_case_1, test_edge_case_2
+      OUTER LOOP: Iteration 2/∞
+        Phase 7: 75% match - colors wrong
+        Result: FAIL
+
+      OUTER LOOP: Iteration 3/∞
+        Phase 7: 82% match - spacing issues
+        Result: FAIL
+
+      OUTER LOOP: Iteration 4/∞
+        Phase 7: 86% match - font weights
+        Result: FAIL
+
+      OUTER LOOP: Iteration 5/∞ (Notification)
+        "Iteration 5 of ∞ - Progress: 68% → 86%"
+        User: "Keep going"
+
+        Phase 7: 89% match - border radius
+        Result: FAIL
+
+      OUTER LOOP: Iteration 6/∞
+        Phase 7: 91% match ✓
+        Result: PASS
+
+      PHASE 8: Completion
+        Outer iterations: 6
+        Convergence: 68% → 91% over 6 iterations
+        Validation: PASSED
+    </execution>
+  </example>
+
+  <example name="Limit Reached - User Extends">
+    <user_request>/dev:feature Complex data table</user_request>
+    <execution>
+      PHASE 1: Setup
+        Outer loop: 3 iterations
+
+      OUTER LOOP: Iterations 1-3 all FAIL
+        #1: 65% - major layout issues
+        #2: 72% - sorting broken
+        #3: 78% - pagination wrong
+
+      Limit reached, escalate to user:
+        "Real validation failed 3 times.
+
+         Progress: 65% → 78% (improving)
 
          Options:
-         1. Continue anyway (document known failures)
-         2. Allow 5 more iterations
-         3. Cancel
-         4. Take manual control"
+         1. Add 3 more iterations
+         2. Add 10 more iterations
+         3. Switch to infinite mode
+         ..."
 
-        User chooses: Option 1 (continue with documented failures)
+      User selects: "Add 3 more iterations"
 
-      PHASE 7: Report includes known test failures section
+      OUTER LOOP: Iteration 4/6
+        Phase 7: 85% match
+        Result: FAIL
+
+      OUTER LOOP: Iteration 5/6
+        Phase 7: 92% match ✓
+        Result: PASS
+
+      PHASE 8: Completion
+        Total iterations: 5
+        User extended limit once
     </execution>
   </example>
 </examples>
@@ -861,25 +1532,70 @@ skills: dev:context-detection, dev:universal-patterns, orchestration:multi-model
     </recovery>
   </strategy>
 
+  <strategy scenario="Dev server won't start">
+    <recovery>
+      1. Log error details
+      2. Try alternative start command if available
+      3. If still fails: Escalate to user
+      4. Options:
+         - "Server failed to start. Please start manually and retry"
+         - "Skip real validation (unit tests only)"
+         - "Cancel"
+    </recovery>
+  </strategy>
+
+  <strategy scenario="Chrome MCP tools fail during validation">
+    <recovery>
+      1. Log specific failure
+      2. Retry operation once
+      3. If still fails:
+         - Save partial evidence
+         - Escalate to user: "Browser automation failed at {step}"
+         - Options: Retry / Skip / Manual
+    </recovery>
+  </strategy>
+
   <strategy scenario="Iteration limit reached">
     <recovery>
       Present to user (AskUserQuestion):
       "Maximum iterations ({N}) reached for {phase}.
 
        Current Status: {status_summary}
+       Progress Trend: {trend}
        Remaining Issues: {issue_list}
 
        Options:
-       1. Continue anyway (accept current state)
-       2. Allow {N} more iterations
-       3. Cancel feature development
-       4. Take manual control"
+       1. Add {N} more iterations
+       2. Switch to infinite mode
+       3. Accept current state (with warning)
+       4. Take manual control
+       5. Cancel"
 
       Based on user choice:
-      - Option 1: Log warning, proceed to next phase
-      - Option 2: Reset counter, continue loop
-      - Option 3: Exit gracefully, save progress
-      - Option 4: Exit with manual takeover instructions
+      - Add iterations: Update config, continue loop
+      - Infinite: Set to infinite, continue loop
+      - Accept: Log warning, proceed with validation_override
+      - Manual: Exit with instructions
+      - Cancel: Exit gracefully, save progress
+    </recovery>
+  </strategy>
+
+  <strategy scenario="Validation keeps failing (regression)">
+    <recovery>
+      If validation score is getting WORSE (not better):
+      1. Detect regression: Current < Previous
+      2. Warn user immediately:
+         "Validation is getting worse, not better.
+          Previous: {prev_score}%
+          Current: {curr_score}%
+
+          This might indicate:
+          - Conflicting requirements
+          - Over-correction
+          - Fundamental design issue
+
+          Recommend: Stop and review manually"
+      3. Strongly suggest stopping
     </recovery>
   </strategy>
 
@@ -889,16 +1605,6 @@ skills: dev:context-detection, dev:universal-patterns, orchestration:multi-model
       2. Present specific failure to user
       3. Options: Fix manually / Skip check / Cancel
       4. If skip: Log warning in report
-    </recovery>
-  </strategy>
-
-  <strategy scenario="Tests keep failing">
-    <recovery>
-      1. Analyze which tests keep failing
-      2. Determine: TEST_ISSUE or IMPLEMENTATION_ISSUE
-      3. If unclear: Present analysis to user
-      4. Options: Accept failures / Continue loop / Cancel
-      5. If accept: Document known failures in report
     </recovery>
   </strategy>
 
@@ -915,7 +1621,7 @@ skills: dev:context-detection, dev:universal-patterns, orchestration:multi-model
     <recovery>
       1. Save current progress to session
       2. Update session-meta.json with checkpoint
-      3. Log: "Development cancelled at Phase {N}"
+      3. Log: "Development cancelled at Phase {N}, Iteration {M}"
       4. Provide instructions to resume:
          "To resume, run: /dev:feature --resume {SESSION_ID}"
     </recovery>
@@ -924,13 +1630,16 @@ skills: dev:context-detection, dev:universal-patterns, orchestration:multi-model
 
 <formatting>
   <communication_style>
-    - Show clear progress through 7 phases
-    - Display iteration counts: "Review iteration 2/3"
-    - Highlight quality gate results
+    - Show clear progress through 8 phases
+    - Display outer loop progress: "OUTER LOOP: Iteration 2/3"
+    - Display inner loop counts: "Review iteration 2/3"
+    - Show validation convergence: "78% → 85% → 91%"
+    - Highlight real validation results with evidence
     - Present multi-model consensus when available
     - Keep phase summaries brief (max 50 lines)
     - Link to detailed files in session directory
-    - Celebrate milestones (approval gates, quality gates)
+    - Celebrate milestones (validation pass, quality gates)
+    - For infinite mode: Show iteration count and trend
   </communication_style>
 
   <completion_message>
@@ -941,44 +1650,57 @@ skills: dev:context-detection, dev:universal-patterns, orchestration:multi-model
 **Duration**: {total_time}
 **Session**: ${SESSION_PATH}
 
+**Outer Loop Iterations**: {outer_iterations}/{max_iterations}
+
 **Phases Completed**:
-- [x] Requirements ({rounds} rounds, {questions} questions)
+- [x] Requirements + Validation Setup
 - [x] Research ({status})
 - [x] Planning ({model_count} models, {iterations} iterations)
 - [x] Implementation ({phase_count} phases)
 - [x] Code Review ({verdict}, {iterations} iterations)
-- [x] Testing ({test_count} tests, {iterations} iterations)
+- [x] Unit Testing ({test_count} tests, {iterations} iterations)
+- [x] **Real Validation** ({validation_status})
 - [x] Report generated
+
+**Real Validation Results**:
+| Check | Result |
+|-------|--------|
+| Deploy | {status} ({time}s) |
+| Navigation | {status} |
+| Screenshot Match | {percentage}% |
+| User Actions | {passed}/{total} |
+| Expected Behavior | {status} |
+
+**Evidence**:
+- Before: ${SESSION_PATH}/validation/screenshot-before.png
+- After: ${SESSION_PATH}/validation/screenshot-after.png
 
 **Quality Summary**:
 - Implementation: All checks pass
 - Review: {verdict} (CRITICAL: {count}, HIGH: {count})
-- Tests: {passing}/{total} passing
+- Unit Tests: {passing}/{total} passing
+- **Real Validation: PASSED**
 
 **Model Performance** (if multi-model):
 | Model | Time | Issues | Quality | Status |
 |-------|------|--------|---------|--------|
 | {model} | {time}s | {count} | {quality}% | {status} |
 
-**Consensus Analysis** (if multi-model):
-- UNANIMOUS issues: {count}
-- STRONG consensus: {count}
-- MAJORITY: {count}
-
 **Artifacts**:
 - Requirements: ${SESSION_PATH}/requirements.md
+- Validation Config: ${SESSION_PATH}/validation-criteria.md
 - Architecture: ${SESSION_PATH}/architecture.md
 - Implementation Log: ${SESSION_PATH}/implementation-log.md
 - Reviews: ${SESSION_PATH}/reviews/
 - Tests: ${SESSION_PATH}/tests/
+- **Validation Evidence**: ${SESSION_PATH}/validation/
 - Report: ${SESSION_PATH}/report.md
 
 **Next Steps**:
-1. Review report for known issues (if any)
-2. Run tests locally to verify
-3. Deploy to staging environment
-4. Monitor for issues
+1. Review validation screenshots
+2. Deploy to staging environment
+3. Monitor for issues
 
-Ready for deployment!
+**This feature has been VERIFIED to work with real browser testing!**
   </completion_message>
 </formatting>
