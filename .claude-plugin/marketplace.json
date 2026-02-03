@@ -191,8 +191,8 @@
     {
       "name": "dev",
       "source": "./plugins/dev",
-      "description": "Universal development assistant with real skill discovery. v1.27.2: Fixed marketplace plugin skill discovery - now searches ~/.claude/plugins/marketplaces/ for installed plugin skills. 44 skills.",
-      "version": "1.27.2",
+      "description": "Universal development assistant with real skill discovery. v1.27.3: Complete skill discovery - searches all 7 official locations: personal, project, nested (monorepos), marketplace plugins, local plugins, and legacy commands. 44 skills.",
+      "version": "1.27.3",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",

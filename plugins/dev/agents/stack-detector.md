@@ -178,89 +178,137 @@ tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Glob, Grep, Bash
     </phase>
 
     <phase number="3.5" name="Real Skill Discovery">
-      <objective>Discover real Claude Code Agent Skills in the target project</objective>
+      <objective>Discover ALL Claude Code Agent Skills available to this project</objective>
       <steps>
         <step>Mark skill discovery as in_progress</step>
         <step>
-          **IMPORTANT: All paths are relative to CURRENT WORKING DIRECTORY.**
-          First, confirm working directory with Bash: pwd
+          **IMPORTANT: Confirm working directory with Bash: pwd**
+          This ensures all relative paths are correct.
         </step>
+
+        <!-- LOCATION 1: Personal skills (user-wide) -->
         <step>
-          Search for project-level skills in .claude/skills/:
+          **1. Search PERSONAL skills (user-wide, all projects):**
           ```
-          Use Glob with pattern: ".claude/skills/**/SKILL.md"
-          This is the PRIMARY location for project-specific skills.
+          Use Glob with ABSOLUTE path: ~/.claude/skills/**/SKILL.md
+
+          Example path: ~/.claude/skills/explain-code/SKILL.md
           ```
-          CRITICAL: Use relative path ".claude/skills/" - NOT absolute paths.
+          Source: "personal"
         </step>
+
+        <!-- LOCATION 2: Project skills -->
         <step>
-          Parse .claude/settings.json for enabled plugins:
+          **2. Search PROJECT skills (this project only):**
+          ```
+          Use Glob with relative pattern: .claude/skills/**/SKILL.md
+
+          Example path: .claude/skills/tdd-workflow/SKILL.md
+          ```
+          Source: "project"
+          CRITICAL: Use relative path, NOT absolute.
+        </step>
+
+        <!-- LOCATION 3: Nested skills (monorepos) -->
+        <step>
+          **3. Search NESTED skills (monorepo packages):**
+          ```
+          Use Glob with pattern: **/.claude/skills/**/SKILL.md
+
+          Example path: packages/frontend/.claude/skills/design-system/SKILL.md
+          ```
+          Source: "nested"
+          Note: For monorepo setups where packages have their own skills.
+        </step>
+
+        <!-- LOCATION 4: Legacy commands -->
+        <step>
+          **4. Search LEGACY commands (backward compatibility):**
+          ```
+          Use Glob with pattern: .claude/commands/*.md
+
+          Example path: .claude/commands/review.md
+          ```
+          Source: "legacy-command"
+          Note: Files here work the same as skills but lack supporting files.
+        </step>
+
+        <!-- LOCATION 5: Marketplace-installed plugins -->
+        <step>
+          **5. Parse .claude/settings.json for ENABLED PLUGINS:**
           ```
           If .claude/settings.json exists:
           - Read file
           - Extract enabledPlugins object
           - For each enabled plugin where value == true:
-            - Parse plugin name: "dev@mag-claude-plugins" → plugin="dev", marketplace="mag-claude-plugins"
-            - Note for marketplace skill search
+            - Parse: "dev@mag-claude-plugins" → plugin="dev", marketplace="mag-claude-plugins"
+            - Add to list for marketplace search
           ```
         </step>
         <step>
-          **CRITICAL: Search MARKETPLACE-INSTALLED plugin skills:**
+          **6. Search MARKETPLACE-INSTALLED plugin skills:**
           ```
-          For each enabled plugin from .claude/settings.json:
+          For each enabled plugin from step 5:
 
           Example: "dev@mag-claude-plugins" is enabled
-          → Search: ~/.claude/plugins/marketplaces/mag-claude-plugins/plugins/dev/skills/**/SKILL.md
-
-          Use Glob with ABSOLUTE path:
-          ~/.claude/plugins/marketplaces/{marketplace}/plugins/{plugin}/skills/**/SKILL.md
+          → Glob: ~/.claude/plugins/marketplaces/mag-claude-plugins/plugins/dev/skills/**/SKILL.md
 
           This is where REAL plugin skills live when installed via marketplace!
+          Use ABSOLUTE path with ~ expansion.
           ```
+          Source: "plugin:{plugin-name}"
         </step>
+
+        <!-- LOCATION 6: Local plugins in workspace -->
         <step>
-          Search for LOCAL plugin skills (workspace/project):
+          **7. Search LOCAL plugin skills (workspace/project):**
           ```
-          Use Glob with pattern: ".claude-plugin/*/skills/**/SKILL.md"
-          Use Glob with pattern: "plugins/*/skills/**/SKILL.md"
+          Use Glob patterns:
+          - .claude-plugin/skills/**/SKILL.md
+          - plugins/*/skills/**/SKILL.md
           ```
-          Note: These are for locally-developed plugins, not marketplace installs.
+          Source: "local-plugin"
+          Note: For locally-developed plugins, not marketplace installs.
         </step>
+
+        <!-- Parse all discovered skills -->
         <step>
-          For each discovered SKILL.md, follow these EXACT steps:
+          **8. Parse each discovered SKILL.md:**
 
           STEP A: Use Read tool to read the file content
           STEP B: Find the YAML frontmatter (between --- markers at top)
           STEP C: Extract these fields from frontmatter:
-             - name: (the skill name)
+             - name: (the skill name, or directory name if omitted)
              - description: (what the skill does)
           STEP D: Add to discovered_skills array:
              {
                "name": "{extracted name}",
                "description": "{extracted description}",
                "path": "{file path}",
-               "source": "project",
+               "source": "{source from above steps}",
                "categories": []
              }
 
           DO NOT make up names. Only use values actually found in the file.
         </step>
-        <step>
-          Categorize each discovered skill by matching keywords:
 
-          For each skill, check name and description for these keywords:
+        <!-- Categorize skills -->
+        <step>
+          **9. Categorize each discovered skill by keywords:**
+
+          Check name and description for these keywords:
           - "test", "tdd", "spec" → add category "testing"
           - "debug", "trace", "error" → add category "debugging"
           - "react", "vue", "component", "ui" → add category "frontend"
           - "api", "endpoint", "server" → add category "backend"
           - "workflow", "process", "pipeline" → add category "workflow"
           - "doc", "readme" → add category "documentation"
-
-          Add matching categories to the skill's categories array.
+          - "security", "auth", "jwt" → add category "security"
+          - "database", "sql", "orm" → add category "database"
         </step>
         <step>Mark skill discovery as completed</step>
       </steps>
-      <quality_gate>All discoverable skills cataloged with metadata</quality_gate>
+      <quality_gate>All discoverable skills cataloged with metadata from all locations</quality_gate>
     </phase>
 
     <phase number="4" name="Technology Mapping">
@@ -470,22 +518,42 @@ tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Glob, Grep, Bash
   </bundled_skill_path_mapping>
 
   <discovered_skill_locations>
-    Project-level skills (highest priority):
-    - .claude/skills/**/SKILL.md
+    **Skill locations per Claude Code official documentation:**
+    (Priority order: higher-priority locations win when names conflict)
 
-    Local plugin skills:
-    - .claude-plugin/*/skills/**/SKILL.md
-    - plugins/*/skills/**/SKILL.md
+    1. ENTERPRISE (managed settings):
+       - Organization-wide skills (via managed settings)
+       - Highest priority
 
-    **MARKETPLACE-INSTALLED PLUGIN SKILLS** (CRITICAL):
-    - Read .claude/settings.json to get enabledPlugins
-    - For each enabled plugin like "dev@mag-claude-plugins":
-      - Parse: plugin="dev", marketplace="mag-claude-plugins"
-      - Search: ~/.claude/plugins/marketplaces/{marketplace}/plugins/{plugin}/skills/**/SKILL.md
-    - Example: ~/.claude/plugins/marketplaces/mag-claude-plugins/plugins/dev/skills/**/SKILL.md
+    2. PERSONAL (user-wide, all projects):
+       - ~/.claude/skills/<skill-name>/SKILL.md
+       - Example: ~/.claude/skills/explain-code/SKILL.md
 
-    Home directory skills (user-wide):
-    - ~/.claude/skills/**/SKILL.md
+    3. PROJECT (this project only):
+       - .claude/skills/<skill-name>/SKILL.md
+       - Example: .claude/skills/api-contracts/SKILL.md
+
+    4. NESTED (monorepo packages):
+       - **/.claude/skills/<skill-name>/SKILL.md
+       - Example: packages/frontend/.claude/skills/design-system/SKILL.md
+       - Auto-discovered when working with files in subdirectories
+
+    5. PLUGIN (marketplace-installed):
+       - Read .claude/settings.json → enabledPlugins
+       - Parse "dev@mag-claude-plugins" → plugin="dev", marketplace="mag-claude-plugins"
+       - Search: ~/.claude/plugins/marketplaces/{marketplace}/plugins/{plugin}/skills/**/SKILL.md
+       - Example: ~/.claude/plugins/marketplaces/mag-claude-plugins/plugins/dev/skills/**/SKILL.md
+       - Uses plugin-name:skill-name namespace
+
+    6. LOCAL PLUGIN (workspace/project):
+       - .claude-plugin/skills/**/SKILL.md
+       - plugins/*/skills/**/SKILL.md
+       - For locally-developed plugins
+
+    7. LEGACY COMMANDS (backward compatibility):
+       - .claude/commands/*.md
+       - Same functionality as skills but no supporting files directory
+       - If skill and command share same name, skill takes precedence
   </discovered_skill_locations>
 
   <skill_category_keywords>
