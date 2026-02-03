@@ -191,8 +191,8 @@
     {
       "name": "dev",
       "source": "./plugins/dev",
-      "description": "Universal development assistant with real skill discovery. v1.27.0: Discovers real Claude Code Agent Skills in target projects (.claude/skills/, enabled plugins). Auto-loads skills matching task keywords. Priority: project skills > bundled skills. New skill-discovery agent. 44 skills.",
-      "version": "1.27.0",
+      "description": "Universal development assistant with real skill discovery. v1.27.1: Improved skill discovery for external models - explicit step-by-step instructions, path verification. Internal Claude (sonnet) default is reliable. 44 skills.",
+      "version": "1.27.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
