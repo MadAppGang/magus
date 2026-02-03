@@ -108,14 +108,30 @@ skills: dev:context-detection, dev:universal-patterns, orchestration:task-orches
           2. Framework versions
           3. Testing tools
           4. Build tools
-          5. Recommended skills with file paths
+          5. Bundled skills from dev plugin
+          6. **DISCOVER REAL PROJECT SKILLS** in:
+             - .claude/skills/**/SKILL.md
+             - Enabled plugins from .claude/settings.json
+             - .claude-plugin/*/skills/**/SKILL.md
 
           Context: User wants to implement: {user_request}
 
           Save detection results to: ${SESSION_PATH}/context.json
+          Include discovered_skills array with name, description, path, source, categories.
           ```
         </step>
         <step>Read detection results from ${SESSION_PATH}/context.json using Read tool</step>
+        <step>
+          **Auto-load relevant skills based on task keywords:**
+
+          Match user_request keywords to discovered skill categories:
+          - "test", "tdd" → load skills with category "testing"
+          - "debug", "fix", "error" → load skills with category "debugging"
+          - "component", "ui", "form" → load skills with category "frontend"
+          - "api", "endpoint", "handler" → load skills with category "backend"
+
+          Mark matched skills as "auto_loaded": true in context.
+        </step>
         <step>Mark PHASE 0 as completed</step>
       </steps>
       <quality_gate>Stack detected, skills identified, context.json created</quality_gate>
@@ -133,17 +149,29 @@ skills: dev:context-detection, dev:universal-patterns, orchestration:task-orches
           ```
           Detected Stack: {stack_name}
           Mode: {frontend | backend | fullstack}
-          Recommended Skills:
+
+          🎯 **Discovered Project Skills** ({count} found):
+          {for each skill in discovered_skills}
+          - {skill.name} ({skill.source}) - {skill.description}
+            ⚡ Auto-loaded: {if skill.auto_loaded} YES - matches task keywords
+          {end}
+
+          📦 **Bundled Skills** (from dev plugin):
           - {skill_1}
           - {skill_2}
           - {skill_3}
 
           Options:
           1. Proceed with these skills [RECOMMENDED]
-          2. Add additional skills
+          2. Add additional discovered skills
           3. Remove some skills
           4. Manual skill selection
           ```
+
+          **Priority Order:**
+          1. Auto-loaded discovered skills (matched to task)
+          2. User-selected discovered skills
+          3. Bundled skills (fallback patterns)
         </step>
 
         <step name="1b_validation_criteria">
@@ -275,18 +303,24 @@ skills: dev:context-detection, dev:universal-patterns, orchestration:task-orches
           ```
           SESSION_PATH: ${SESSION_PATH}
 
-          Read these skills for best practices:
-          - {skill_path_1}
-          - {skill_path_2}
-          - {skill_path_3}
+          **DISCOVERED PROJECT SKILLS** (project-specific patterns):
+          {for each skill in discovered_skills where auto_loaded == true}
+          - {skill.path} ({skill.name})
+          {end}
+
+          **BUNDLED SKILLS** (dev plugin patterns):
+          - {bundled_skill_path_1}
+          - {bundled_skill_path_2}
+          - {bundled_skill_path_3}
 
           Create implementation plan for: {user_request}
 
           Consider:
-          1. Existing patterns in codebase
-          2. Best practices from loaded skills
-          3. Testing requirements
-          4. Quality checks for this stack
+          1. **Discovered skill patterns first** (project conventions)
+          2. Existing patterns in codebase
+          3. Bundled skill best practices
+          4. Testing requirements
+          5. Quality checks for this stack
 
           Save plan to: ${SESSION_PATH}/implementation-plan.md
           ```
@@ -357,10 +391,19 @@ skills: dev:context-detection, dev:universal-patterns, orchestration:task-orches
           ```
           SESSION_PATH: ${SESSION_PATH}
 
-          Read these skills before implementing:
-          - {skill_path_1}
-          - {skill_path_2}
-          - {skill_path_3}
+          **DISCOVERED PROJECT SKILLS** (read these first - project-specific patterns):
+          {for each skill in discovered_skills where auto_loaded == true}
+          - {skill.path} ({skill.name} - {skill.description})
+          {end}
+
+          **BUNDLED SKILLS** (fallback patterns):
+          - {bundled_skill_path_1}
+          - {bundled_skill_path_2}
+          - {bundled_skill_path_3}
+
+          **FULL SKILL CATALOG** (invoke as needed via Skill tool):
+          Available project skills: {discovered_skills.names}
+          Use: Skill tool with skill name to load on-demand
 
           Implement according to plan: ${SESSION_PATH}/implementation-plan.md
 
@@ -370,7 +413,11 @@ skills: dev:context-detection, dev:universal-patterns, orchestration:task-orches
           Fix the issues identified above.
           {/If}
 
-          Follow patterns from loaded skills.
+          PRIORITY:
+          1. Follow patterns from discovered project skills first
+          2. Use bundled skills for additional guidance
+          3. Invoke Skill tool for specialized skills as needed
+
           Run quality checks appropriate for this stack.
           ```
         </step>
@@ -604,6 +651,31 @@ skills: dev:context-detection, dev:universal-patterns, orchestration:task-orches
   </stack>
 </quality_checks_by_stack>
 
+<skill_auto_load>
+  **Automatic Skill Loading Based on Task Keywords**
+
+  The orchestrator matches user request keywords to discovered skill categories:
+
+  | Task Keywords | Skill Category | Example Skills |
+  |---------------|----------------|----------------|
+  | test, tdd, spec, coverage | testing | tdd-workflow, unit-testing |
+  | debug, fix, error, trace | debugging | debug-patterns, error-handling |
+  | component, ui, form, style | frontend | react-patterns, form-validation |
+  | api, endpoint, handler, route | backend | api-design, auth-patterns |
+  | sql, query, migration, schema | database | db-patterns, migrations |
+  | deploy, ci, cd, pipeline | workflow | deployment, ci-workflow |
+  | doc, readme, comment | documentation | doc-standards, api-docs |
+  | auth, jwt, oauth, permission | security | auth-patterns, security |
+
+  **Priority:**
+  1. Exact keyword match in skill name (+10 points)
+  2. Keyword in skill description (+5 points)
+  3. Category match (+3 points)
+  4. Project source bonus (+2 points over plugin skills)
+
+  Skills with score > 5 are marked as "auto_loaded": true and passed to developer.
+</skill_auto_load>
+
 <escalation>
   **When iteration limit reached:**
 
@@ -710,6 +782,38 @@ skills: dev:context-detection, dev:universal-patterns, orchestration:task-orches
       Duration: ~3 minutes
     </execution>
   </example>
+
+  <example name="Implementation with Discovered Skills">
+    <user_request>/dev:implement Add test coverage for auth service</user_request>
+    <execution>
+      PHASE 0: Detect stack and discover skills
+        Detected: golang
+        🎯 Discovered Skills (2 found):
+          - tdd-workflow (project) - TDD with red-green-refactor ⚡ Auto-loaded
+          - auth-patterns (project) - JWT authentication patterns ⚡ Auto-loaded
+        📦 Bundled Skills:
+          - golang, testing-strategies
+
+      PHASE 1: Confirm skills
+        Auto-loaded: tdd-workflow, auth-patterns (matched "test", "auth")
+        User confirms
+
+      PHASE 2: Architect plans using TDD skill patterns
+        - Red: Write failing tests first
+        - Green: Implement to pass
+        - Refactor: Clean up
+
+      PHASE 3: Developer implements following discovered TDD workflow
+        - Reads .claude/skills/tdd-workflow/SKILL.md first
+        - Follows project-specific patterns
+        - Uses Skill tool for auth-patterns details
+
+      PHASE 4: CLI checks pass
+      PHASE 6: Complete
+
+      **Result:** Implementation follows PROJECT conventions, not generic patterns
+    </execution>
+  </example>
 </examples>
 
 <formatting>
@@ -728,10 +832,19 @@ skills: dev:context-detection, dev:universal-patterns, orchestration:task-orches
 
 **Stack**: {detected_stack}
 **Mode**: {mode}
-**Skills Used**: {skill_list}
 **Session**: ${SESSION_PATH}
 **Validation**: {validation_type}
 {If iterations > 1}**Iterations**: {count}{/If}
+
+**🎯 Discovered Skills Used** (project-specific):
+{for each skill in discovered_skills where used == true}
+- {skill.name} ({skill.source})
+{end}
+{If no discovered skills used}(none found in project){/If}
+
+**📦 Bundled Skills Used**:
+- {bundled_skill_1}
+- {bundled_skill_2}
 
 **Files Modified**:
 - {file_1}
@@ -754,6 +867,7 @@ skills: dev:context-detection, dev:universal-patterns, orchestration:task-orches
 **Artifacts**:
 - Implementation Plan: ${SESSION_PATH}/implementation-plan.md
 - Detection Report: ${SESSION_PATH}/context.json
+- Skill Catalog: ${SESSION_PATH}/skill-catalog.json (if skills discovered)
 {If real validation}- Validation Evidence: ${SESSION_PATH}/validation/{/If}
 
 Ready to commit!

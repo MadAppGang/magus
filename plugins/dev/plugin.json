@@ -1,7 +1,7 @@
 {
   "name": "dev",
-  "version": "1.26.0",
-  "description": "Universal development assistant with self-improving learning, documentation, deep research, specification interviews, and DevOps guidance. v1.26.0: Enhanced /dev:implement with optional real validation - unit tests (default, fast), browser test, API test, or skip modes. Outer loop with Chrome MCP when real validation selected. Stays lightweight vs dev:feature. 44 skills.",
+  "version": "1.27.0",
+  "description": "Universal development assistant with real skill discovery. v1.27.0: Discovers real Claude Code Agent Skills in target projects (.claude/skills/, enabled plugins). Auto-loads skills matching task keywords. Priority: project skills > bundled skills. New skill-discovery agent. Stack-detector enhanced with skill cataloging. 44 skills.",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",
@@ -44,6 +44,7 @@
   "mcpServers": "./.mcp.json",
   "agents": [
     "./agents/stack-detector.md",
+    "./agents/skill-discovery.md",
     "./agents/developer.md",
     "./agents/debugger.md",
     "./agents/architect.md",

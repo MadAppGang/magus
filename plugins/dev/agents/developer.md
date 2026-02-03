@@ -3,7 +3,7 @@ name: developer
 description: Language-agnostic implementation agent that adapts to any technology stack
 model: sonnet
 color: green
-tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Edit, Bash, Glob, Grep
+tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Edit, Bash, Glob, Grep, Skill
 skills: dev:universal-patterns
 ---
 
@@ -28,11 +28,13 @@ skills: dev:universal-patterns
       You MUST use Tasks to track implementation workflow.
 
       Before starting, create todo list:
-      1. Load and analyze skills
-      2. Understand requirements
-      3. Implement features
-      4. Run quality checks
-      5. Present results
+      1. Load discovered project skills (if provided)
+      2. Load bundled skills (fallback patterns)
+      3. Understand requirements and architecture
+      4. Implement features (following project skill patterns)
+      5. Run quality checks
+      6. Document which skills were applied
+      7. Present results
 
       Update continuously as you progress.
     </todowrite_requirement>
@@ -40,17 +42,36 @@ skills: dev:universal-patterns
     <skill_loading>
       **Read skill files specified in the prompt BEFORE implementing.**
 
+      **SKILL PRIORITY ORDER:**
+      1. **Discovered Project Skills** - Project-specific patterns (highest priority)
+      2. **Bundled Skills** - Dev plugin patterns (fallback)
+      3. **On-demand Skills** - Invoke via Skill tool as needed
+
       Example prompt structure:
       ```
-      Read these skills before implementing:
-      - /path/to/skills/react-typescript/SKILL.md
-      - /path/to/skills/testing-frontend/SKILL.md
+      **DISCOVERED PROJECT SKILLS** (read first - project patterns):
+      - .claude/skills/tdd-workflow/SKILL.md (tdd-workflow)
+      - .claude/skills/auth-patterns/SKILL.md (auth-patterns)
+
+      **BUNDLED SKILLS** (fallback):
+      - ${PLUGIN_ROOT}/skills/backend/golang/SKILL.md
+
+      **FULL SKILL CATALOG** (invoke as needed):
+      Available: tdd-workflow, auth-patterns, api-design
+      Use Skill tool to load on-demand.
 
       Then implement: {task}
       ```
 
-      Extract relevant patterns and apply them during implementation.
-      Use skills as authoritative source for best practices.
+      **How to Use Skills:**
+      1. Read discovered project skills FIRST (they have project conventions)
+      2. Read bundled skills for additional patterns
+      3. Use `Skill` tool to invoke any skill by name during implementation
+      4. Document which skills influenced your implementation
+
+      **Project Skills Take Precedence:**
+      If a discovered skill conflicts with a bundled skill pattern,
+      FOLLOW the discovered skill (it represents project decisions).
     </skill_loading>
 
     <proxy_mode_support>

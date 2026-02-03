@@ -514,8 +514,35 @@ skills: dev:context-detection, dev:universal-patterns, orchestration:multi-model
         <step>
           Launch stack-detector agent:
           Prompt: "SESSION_PATH: ${SESSION_PATH}
-                   Detect ALL technology stacks. Save to ${SESSION_PATH}/context.json"
+
+                   Detect ALL technology stacks AND discover real project skills.
+
+                   1. Detect stacks from config files (package.json, go.mod, etc.)
+                   2. **DISCOVER REAL SKILLS** in:
+                      - .claude/skills/**/SKILL.md
+                      - Enabled plugins from .claude/settings.json
+                      - .claude-plugin/*/skills/**/SKILL.md
+
+                   3. Auto-load skills matching feature keywords:
+                      - Parse ${SESSION_PATH}/requirements.md for keywords
+                      - Match to discovered skill categories
+
+                   Save to ${SESSION_PATH}/context.json with:
+                   - detected_stack
+                   - discovered_skills (name, description, path, source, categories)
+                   - bundled_skill_paths"
           Output: ${SESSION_PATH}/context.json
+        </step>
+        <step>
+          Read ${SESSION_PATH}/context.json and identify auto-loaded skills.
+          Display to orchestrator:
+          ```
+          🎯 Discovered Skills ({count}):
+          {for each skill}
+          - {name} ({source}) - {description}
+            ⚡ Auto-loaded: {if matches feature keywords}
+          {end}
+          ```
         </step>
         <step>
           Launch architect agent:
@@ -526,6 +553,16 @@ skills: dev:context-detection, dev:universal-patterns, orchestration:multi-model
                    Read context: ${SESSION_PATH}/context.json
                    Read validation criteria: ${SESSION_PATH}/validation-criteria.md
 
+                   **DISCOVERED PROJECT SKILLS** (read these first - project-specific patterns):
+                   {for each skill in context.discovered_skills where auto_loaded == true}
+                   - {skill.path} ({skill.name} - {skill.description})
+                   {end}
+
+                   **BUNDLED SKILLS** (fallback patterns):
+                   {for each path in context.bundled_skill_paths}
+                   - {path}
+                   {end}
+
                    {If outer_iteration > 1}
                    PREVIOUS VALIDATION FAILED:
                    {feedback from previous iteration}
@@ -534,6 +571,8 @@ skills: dev:context-detection, dev:universal-patterns, orchestration:multi-model
                    {/If}
 
                    Design architecture for this feature.
+                   **Priority**: Follow discovered skill patterns first, then bundled skills.
+
                    Include: component structure, data flow, API contracts,
                    database schema (if applicable), testing strategy, implementation phases.
 
@@ -626,7 +665,20 @@ skills: dev:context-detection, dev:universal-patterns, orchestration:multi-model
 
                         Read architecture: ${SESSION_PATH}/architecture.md
                         Read context: ${SESSION_PATH}/context.json
-                        Read skills: {skill_paths}
+
+                        **DISCOVERED PROJECT SKILLS** (read first - project patterns):
+                        {for each skill in context.discovered_skills where auto_loaded == true}
+                        - {skill.path} ({skill.name})
+                        {end}
+
+                        **BUNDLED SKILLS** (fallback):
+                        {for each path in context.bundled_skill_paths}
+                        - {path}
+                        {end}
+
+                        **FULL SKILL CATALOG** (invoke as needed):
+                        Available: {context.discovered_skills.names}
+                        Use Skill tool to load on-demand.
 
                         {If outer_iteration > 1}
                         PREVIOUS VALIDATION FAILED:
@@ -635,6 +687,7 @@ skills: dev:context-detection, dev:universal-patterns, orchestration:multi-model
                         {/If}
 
                         Implement phase: {phase_name}
+                        PRIORITY: Follow discovered project patterns first.
                         Run quality checks before completing.
 
                         Log progress to ${SESSION_PATH}/implementation-log.md
