@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "Hook configuration for /dev:feature phase completion enforcement",
+  "name": "feature-enforcement-hooks",
+  "description": "PreToolUse hooks to enforce evidence-based phase completion for /dev:feature",
+  "version": "1.0.0",
+
+  "instructions": {
+    "install": "Add the 'hooks' section to your project's .claude/settings.json",
+    "session_path": "Set CLAUDE_SESSION_PATH environment variable or hooks will auto-detect from ai-docs/sessions/",
+    "scripts_path": "Adjust paths if plugins are installed in a different location"
+  },
+
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "^TaskUpdate$",
+        "hooks": [
+          "node ${CLAUDE_PLUGIN_ROOT}/plugins/dev/scripts/phase-completion-validator.js"
+        ],
+        "continueOnError": false,
+        "timeout": 10000,
+        "$comment": "Validates artifacts exist before allowing phase completion"
+      }
+    ],
+
+    "PostToolUse": [
+      {
+        "matcher": "^Write$",
+        "hooks": [
+          "echo 'File written: $CLAUDE_TOOL_INPUT'"
+        ],
+        "continueOnError": true,
+        "$comment": "Logs file writes for audit trail"
+      }
+    ]
+  },
+
+  "manual_hooks": {
+    "$comment": "These hooks should be called manually by the orchestrator at appropriate times",
+
+    "outer_loop_start": {
+      "command": "node ${CLAUDE_PLUGIN_ROOT}/plugins/dev/scripts/outer-loop-enforcer.js start-iteration ${SESSION_PATH}",
+      "when": "Before starting phases 3-7 in the outer loop",
+      "returns": "Exit 2 if max iterations reached (escalation required)"
+    },
+
+    "phase7_result": {
+      "command": "node ${CLAUDE_PLUGIN_ROOT}/plugins/dev/scripts/outer-loop-enforcer.js record-result ${SESSION_PATH} <PASS|FAIL|PARTIAL> [reason] [score]",
+      "when": "After Phase 7 validation completes",
+      "returns": "Updates session-meta.json with result"
+    },
+
+    "check_can_complete": {
+      "command": "node ${CLAUDE_PLUGIN_ROOT}/plugins/dev/scripts/outer-loop-enforcer.js check-can-complete ${SESSION_PATH}",
+      "when": "Before starting Phase 8",
+      "returns": "Exit 1 if Phase 7 did not PASS"
+    },
+
+    "validation_criteria_check": {
+      "command": "node ${CLAUDE_PLUGIN_ROOT}/plugins/dev/scripts/validation-criteria-enforcer.js ${SESSION_PATH}",
+      "when": "After Phase 7 creates result.md",
+      "returns": "Exit 1 if >20% criteria unaddressed"
+    },
+
+    "checkpoint_verify": {
+      "command": "${CLAUDE_PLUGIN_ROOT}/plugins/dev/scripts/checkpoint-verifier.sh <phase> ${SESSION_PATH}",
+      "when": "Before marking any phase as complete",
+      "returns": "Exit 1 if required artifacts missing"
+    }
+  },
+
+  "environment_variables": {
+    "CLAUDE_SESSION_PATH": "Path to current feature session (ai-docs/sessions/dev-feature-*)",
+    "CLAUDE_TOOL_INPUT": "JSON string with tool parameters (auto-set by Claude Code)",
+    "CLAUDE_TASK_SUBJECT": "Subject of the task being updated (if available)"
+  },
+
+  "integration_example": {
+    "$comment": "Example .claude/settings.json with enforcement hooks",
+    "content": {
+      "hooks": {
+        "PreToolUse": [
+          {
+            "matcher": "^TaskUpdate$",
+            "hooks": ["node ./node_modules/@mag/claude-plugins/plugins/dev/scripts/phase-completion-validator.js"],
+            "continueOnError": false
+          }
+        ]
+      }
+    }
+  }
+}

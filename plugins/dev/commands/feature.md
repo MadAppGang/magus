@@ -2,7 +2,7 @@
 name: feature
 description: 8-phase feature development with real validation loops
 allowed-tools: Task, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep, mcp__chrome-devtools__navigate_page, mcp__chrome-devtools__take_screenshot, mcp__chrome-devtools__take_snapshot, mcp__chrome-devtools__click, mcp__chrome-devtools__fill, mcp__chrome-devtools__new_page, mcp__chrome-devtools__select_page, mcp__chrome-devtools__list_pages
-skills: dev:context-detection, dev:universal-patterns, orchestration:multi-model-validation, orchestration:quality-gates, orchestration:model-tracking-protocol
+skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, orchestration:multi-model-validation, orchestration:quality-gates, orchestration:model-tracking-protocol
 ---
 
 <role>
@@ -138,6 +138,74 @@ skills: dev:context-detection, dev:universal-patterns, orchestration:multi-model
       **Why:** Tests validate behavior, not implementation.
       If tests fail, implementation changes (not tests).
     </test_independence>
+
+    <phase_completion_enforcement>
+      **MANDATORY: Evidence-based phase completion**
+
+      Before marking ANY phase as completed, you MUST:
+
+      1. **Run checkpoint verification:**
+         ```bash
+         ${PLUGIN_PATH}/scripts/checkpoint-verifier.sh phase{N} ${SESSION_PATH}
+         ```
+         If this fails, DO NOT mark phase complete. Fix missing artifacts first.
+
+      2. **Show evidence summary (3-5 lines):**
+         ```
+         ## Phase {N} Evidence
+         - Artifact: ${SESSION_PATH}/{artifact}.md (exists, 1234 bytes)
+         - Key result: {actual output from phase}
+         - Evidence: {file paths to screenshots, logs, etc.}
+         ```
+
+      3. **For Phase 7, map to validation criteria:**
+         ```
+         From validation-criteria.md:
+         - [x] Criterion 1 → Verified (evidence file)
+         - [x] Criterion 2 → Verified (screenshot)
+         - [ ] Criterion 3 → Skipped (reason documented)
+         ```
+
+      4. **Only then mark task complete:**
+         ```
+         TaskUpdate(taskId: X, status: "completed")
+         ```
+
+      **If artifacts cannot be produced:**
+      - Failure report auto-generated at: ${SESSION_PATH}/failures/phase{N}-failure-report.md
+      - Report includes: what failed, why, manual testing steps, workarounds
+      - Either fix and retry, or create skip-reason.md with justification
+
+      **Show-your-work requirement:**
+      - Display ACTUAL command output, not summaries
+      - "Tests passed" must show real test output
+      - Screenshots must be saved to files, paths shown
+      - Errors must show full stack trace
+
+      **Anti-pattern (BLOCKED):**
+      ```
+      I'll run the tests now.
+      [Task tool call]
+      Tests passed! Moving on.
+      ```
+
+      **Required pattern:**
+      ```
+      Running tests:
+
+      $ bun test
+      ✓ auth.test.ts (5 tests, 50ms)
+        ✓ should authenticate valid user
+        ✓ should reject invalid password
+      ✗ payment.test.ts (FAILED)
+        ✗ should handle timeout
+          Error: Expected timeout, got success
+
+      Results: 6 passed, 1 failed
+
+      Payment test failure needs fixing before Phase 6 completes.
+      ```
+    </phase_completion_enforcement>
   </critical_constraints>
 
   <workflow>
@@ -451,15 +519,21 @@ skills: dev:context-detection, dev:universal-patterns, orchestration:multi-model
     </phase>
 
     <outer_validation_loop>
-      **OUTER LOOP: Wraps Phases 3-7**
+      **OUTER LOOP: Wraps Phases 3-7 (ENFORCED via scripts)**
 
       Read iteration config from ${SESSION_PATH}/iteration-config.json
+
+      **MANDATORY ENFORCEMENT CALLS:**
 
       ```
       outer_iteration = 0
       max_iterations = config.outerLoop.maxIterations  // or "infinite"
 
       while (true):
+        // ENFORCEMENT: Start iteration tracking
+        // Run: node ${PLUGIN_PATH}/scripts/outer-loop-enforcer.js start-iteration ${SESSION_PATH}
+        // If exit code 2: Max iterations reached, must escalate to user
+
         outer_iteration++
 
         // Display progress
@@ -468,15 +542,20 @@ skills: dev:context-detection, dev:universal-patterns, orchestration:multi-model
         else:
           log("OUTER LOOP: Iteration ${outer_iteration} / ${max_iterations}")
 
-        // Execute Phases 3-7
-        execute_phase_3()  // Planning
-        execute_phase_4()  // Implementation
-        execute_phase_5()  // Code Review
-        execute_phase_6()  // Unit Testing
-        validation_result = execute_phase_7()  // REAL Validation
+        // Execute Phases 3-7 (each with checkpoint verification before completion)
+        execute_phase_3()  // Planning - verify architecture.md exists
+        execute_phase_4()  // Implementation - verify git changes
+        execute_phase_5()  // Code Review - verify consolidated.md has verdict
+        execute_phase_6()  // Unit Testing - verify test files created
+        validation_result = execute_phase_7()  // REAL Validation - verify result.md + evidence
+
+        // ENFORCEMENT: Record Phase 7 result
+        // Run: node ${PLUGIN_PATH}/scripts/outer-loop-enforcer.js record-result ${SESSION_PATH} <PASS|FAIL> "reason" [score]
 
         if validation_result == PASS:
-          // Exit loop, proceed to Phase 8
+          // ENFORCEMENT: Verify can proceed to Phase 8
+          // Run: node ${PLUGIN_PATH}/scripts/outer-loop-enforcer.js check-can-complete ${SESSION_PATH}
+          // If exit code 1: Cannot proceed - Phase 7 result not PASS
           break
 
         if max_iterations != "infinite" and outer_iteration >= max_iterations:

@@ -1,7 +1,7 @@
 {
   "name": "dev",
-  "version": "1.28.0",
-  "description": "Universal development assistant with real skill discovery. v1.28.0: Added explicit name: fields to all commands for prefix-free invocation (/implement instead of /dev:implement). 44 skills.",
+  "version": "1.29.0",
+  "description": "Universal development assistant with real skill discovery. v1.29.0: Added phase completion enforcement system with evidence-based validation, failure reporting, and manual testing steps. 45 skills.",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",
@@ -119,7 +119,8 @@
     "./skills/test-coverage",
     "./skills/mcp-standards",
     "./skills/adr-documentation",
-    "./skills/planning/brainstorming"
+    "./skills/planning/brainstorming",
+    "./skills/enforcement"
   ],
   "dependencies": {
     "multimodel@mag-claude-plugins": "^2.0.0"
