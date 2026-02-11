@@ -1,0 +1,32 @@
+I'll search for all `plugin.json` files in the project.
+`★ Insight ─────────────────────────────────────`
+**Plugin Discovery Pattern**: This codebase uses a conventional directory structure where each plugin has its manifest at `plugins/{plugin-name}/plugin.json`. The Glob pattern `**/plugin.json` efficiently finds all manifests recursively, including test fixtures in the claudeup-core tooling.
+
+**Architecture Note**: Notice there are 11 production plugins plus test fixtures - the test fixtures under `tools/claudeup-core/src/__tests__/fixtures/` are used to validate the plugin loading system itself, demonstrating good testing practices for plugin infrastructure.
+`─────────────────────────────────────────────────`
+
+## Found Plugin Manifests
+
+Here are all the `plugin.json` files in the project:
+
+### **Production Plugins** (11 total)
+1. `plugins/instantly/plugin.json`
+2. `plugins/frontend/plugin.json`
+3. `plugins/bun/plugin.json`
+4. `plugins/code-analysis/plugin.json`
+5. `plugins/agentdev/plugin.json`
+6. `plugins/seo/plugin.json`
+7. `plugins/conductor/plugin.json`
+8. `plugins/nanobanana/plugin.json`
+9. `plugins/video-editing/plugin.json`
+10. `plugins/autopilot/plugin.json`
+11. `plugins/dev/plugin.json`
+12. `plugins/multimodel/plugin.json`
+
+### **Test Fixtures** (4 files)
+- `tools/claudeup-core/src/__tests__/fixtures/valid-plugin/plugin.json`
+- `tools/claudeup-core/src/__tests__/fixtures/invalid-plugin/missing-version/plugin.json`
+- `tools/claudeup-core/src/__tests__/fixtures/invalid-plugin/invalid-agents/plugin.json`
+- `tools/claudeup-core/src/__tests__/fixtures/invalid-plugin/bad-frontmatter/plugin.json`
+
+The production plugins align with the ones documented in CLAUDE.md, plus a few additional ones (instantly, autopilot, conductor) that may be in development or recently added.

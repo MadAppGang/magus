@@ -1,0 +1,28 @@
+{
+  "passed": false,
+  "checks": [
+    {
+      "check": "task_agent_is",
+      "passed": false,
+      "detail": "No Task calls found (expected agent: dev:researcher)"
+    },
+    {
+      "check": "has_vote_template",
+      "passed": false,
+      "detail": "No vote template text found in any Task prompt"
+    },
+    {
+      "check": "has_vote_format",
+      "passed": false,
+      "detail": "No VERDICT/APPROVE/REJECT format found in Task prompts"
+    }
+  ],
+  "summary": {
+    "total_checks": 3,
+    "passed_checks": 0,
+    "failed_checks": 3,
+    "total_tool_calls": 8,
+    "task_calls": 0,
+    "bash_calls": 1
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "test_id": "research-local-01",
+  "run": 1,
+  "expected_agent": "code-analysis:detective",
+  "actual_agent": "NO_TASK_CALL",
+  "result": "NO_DELEGATION",
+  "duration_seconds": 0,
+  "exit_code": 127,
+  "finished_at": "2026-02-09T06:45:28Z"
+}

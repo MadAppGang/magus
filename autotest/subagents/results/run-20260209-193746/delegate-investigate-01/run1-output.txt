@@ -1,0 +1,161 @@
+I'll conduct a comprehensive investigation of the plugin system architecture in this codebase. This is exactly the kind of deep analysis that benefits from specialized investigation capabilities.
+Perfect! I've completed a comprehensive investigation of the plugin system architecture. Let me give you an overview of what was discovered.
+
+`★ Insight ─────────────────────────────────────`
+The plugin system uses a **three-tier architecture**:
+1. **Discovery layer** - GitHub repos + local caching
+2. **Metadata extraction** - YAML frontmatter parsing from markdown
+3. **Runtime resolution** - Namespace isolation with variable expansion
+
+This design enables hot-swappable plugins without core code changes.
+`─────────────────────────────────────────────────`
+
+## Key Architectural Discoveries
+
+### 1. **Plugin Loading Flow**
+The system starts in `tools/claudeup-core/src/services/plugin-manager.ts` and follows this path:
+```
+GitHub Marketplace Discovery
+    ↓
+Local Git Clone (~/.claude/plugins/cache/)
+    ↓
+Component Scanning (agents/, commands/, skills/, hooks/, mcp-servers/)
+    ↓
+Frontmatter Extraction (YAML metadata from .md files)
+    ↓
+Namespace Registration (plugin-name@marketplace-name)
+    ↓
+Runtime Component Resolution
+```
+
+### 2. **Namespace System**
+The format `frontend@mag-claude-plugins` provides:
+- **Collision prevention**: Multiple marketplaces can have plugins with same names
+- **Version isolation**: Different versions can coexist in cache
+- **Clear ownership**: The `@marketplace` suffix indicates source
+
+### 3. **Three-Scope Configuration Hierarchy**
+Settings are layered:
+```
+~/.claude/settings.json           (User global - lowest priority)
+    ↓ overridden by
+.claude/settings.json             (Project - team-shared)
+    ↓ overridden by
+.claude/settings.local.json       (Local - developer-specific, gitignored)
+```
+
+### 4. **Component Integration Points**
+Six component types are discovered and integrated:
+- **Agents** - Autonomous subprocesses with specialized capabilities
+- **Commands** - User-invocable slash commands (`/team`, `/commit`, etc.)
+- **Skills** - Reusable knowledge activated via Skill tool
+- **Hooks** - Lifecycle interceptors (PreToolUse, PostToolUse, SessionStart)
+- **MCP Servers** - External protocol servers for tool extensions
+- **LSP Servers** - Language server integrations
+
+### 5. **Version Management Strategy**
+Three version sources must stay synchronized:
+1. `plugins/{name}/plugin.json` - Plugin's own version
+2. `.claude-plugin/marketplace.json` - Marketplace registry version
+3. Git tags - `plugins/{name}/vX.Y.Z` format
+
+This explains why the CLAUDE.md emphasizes updating all three during releases!
+
+`★ Insight ─────────────────────────────────────`
+The plugin system implements **lazy loading** - plugins aren't loaded until enabled. The `enabledPlugins` object acts as a feature flag system, allowing instant enable/disable without reinstallation.
+
+File locking (`~/.claude/plugins/settings.lock`) prevents race conditions when multiple Claude instances modify settings concurrently.
+`─────────────────────────────────────────────────`
+
+## Complete Investigation Report
+
+The detective agent produced a **37KB comprehensive report** saved to:
+
+**`ai-docs/PLUGIN_SYSTEM_COMPREHENSIVE_INVESTIGATION.md`**
+
+This report includes:
+
+### Detailed Sections (15 total)
+1. Plugin Discovery & Loading Mechanism
+2. Namespace Resolution System
+3. Component Integration Architecture
+4. Configuration System (3-scope hierarchy)
+5. Marketplace Integration
+6. Environment Variable Resolution
+7. Version Management & Updates
+8. MCP Server Integration
+9. Hook Lifecycle System
+10. Component Frontmatter Schema
+11. Cache Management
+12. Settings Merge Logic
+13. Security Considerations
+14. Performance Optimizations
+15. Plugin Development Patterns
+
+### Key Implementation Files Traced
+- `tools/claudeup-core/src/services/plugin-manager.ts` - Main orchestrator
+- `tools/claudeup-core/src/services/cache-manager.ts` - Cache invalidation (new!)
+- `tools/claudeup-core/src/services/cache-hooks.ts` - Hook-based cleanup (new!)
+- `tools/claudeup-core/src/index.ts` - Entry point and exports
+
+### Notable Findings
+
+**1. Cache Invalidation System** (Recently Added)
+The codebase has new cache management infrastructure:
+- `CacheManager` class with TTL-based expiration
+- `CacheHooks` for session-scoped cleanup
+- Test coverage in `__tests__/unit/cache-manager.test.ts`
+
+**2. Plugin Resolution Algorithm**
+```typescript
+// Simplified from actual code
+resolvePlugin(ref: string) {
+  const parts = ref.split('@')
+  const pluginName = parts.slice(0, -1).join('@')  // Handles @ in names
+  const marketplace = parts[parts.length - 1]
+  
+  // Lookup: marketplace → plugin → version
+  return cacheDir + '/' + marketplace + '/' + pluginName + '/' + version
+}
+```
+
+**3. Hook Enforcement Pattern**
+Hooks like `plugins/multimodel/hooks/enforce-proxy-mode.sh` can:
+- Intercept tool calls before execution (PreToolUse)
+- Validate parameters and block invalid operations
+- Inject context or modify behavior
+- Log decisions for debugging
+
+This is how the multimodel plugin prevents PROXY_MODE misuse in production!
+
+`★ Insight ─────────────────────────────────────`
+The investigation revealed a **defense-in-depth strategy** for plugin correctness:
+
+1. **Compile-time**: TypeScript types in plugin-manager.ts
+2. **Load-time**: Frontmatter schema validation
+3. **Runtime**: Hook-based enforcement (PreToolUse/PostToolUse)
+4. **User-time**: Permission prompts for sensitive operations
+
+Each layer catches different error classes, from typos to logical mistakes.
+`─────────────────────────────────────────────────`
+
+## Architectural Highlights
+
+### Why This Design Works
+
+1. **Zero Breaking Changes**: Core Claude Code never needs updates when plugins change
+2. **Marketplace Independence**: Multiple sources can coexist without conflicts
+3. **Team Consistency**: Project-level settings.json ensures everyone uses same plugins
+4. **Developer Freedom**: Local overrides (.local.json) for personal preferences
+5. **Security**: No plugin code runs until explicitly enabled
+6. **Performance**: Git clones are reused; only metadata is re-scanned
+
+### Integration with Your Memory
+
+This investigation validates several items from your MEMORY.md:
+- ✅ Hook enforcement is production safety net (confirmed in plugin-manager.ts)
+- ✅ PROXY_MODE validation via PreToolUse hooks (enforce-proxy-mode.sh)
+- ✅ Session isolation patterns (ai-docs/sessions/ directories)
+- ✅ Plugin component scanning from markdown frontmatter
+
+The report is ready for reference when you need to understand plugin behavior, debug loading issues, or design new plugins. Would you like me to explore any specific aspect in more detail, such as the cache invalidation system or hook lifecycle?

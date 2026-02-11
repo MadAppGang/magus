@@ -1,0 +1,9 @@
+{
+  "test_id": "team-background-launch",
+  "result": "PASS",
+  "duration_seconds": 120,
+  "passed_checks": 3,
+  "total_checks": 3,
+  "exit_code": 142,
+  "finished_at": "2026-02-10T13:36:35Z"
+}

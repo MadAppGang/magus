@@ -1,0 +1,11 @@
+{
+  "test_id": "team-agent-internal",
+  "prompt": "/multimodel:team --models internal --no-memory Review the plugin.json structure in the dev plugin",
+  "checks": {
+    "task_agent_is": "dev:researcher",
+    "task_min_count": 1,
+    "no_proxy_mode_for_internal": true,
+    "has_vote_template": true
+  },
+  "started_at": "2026-02-10T01:55:08Z"
+}

@@ -1,0 +1,53 @@
+I'll delegate this architecture design task to the specialized dev:architect agent, which is designed for system design and trade-off analysis.
+# Architecture Design Complete
+
+The dev:architect agent has completed a comprehensive system architecture design for your microservices-based payment processing system. Here's what was delivered:
+
+## 📋 Architecture Overview
+
+**Architecture Pattern:** Event-Driven Microservices with SAGA Orchestration
+
+**Core Services Designed:**
+- **Payment Facade Service** - Unified API gateway for payment operations
+- **Tokenization Gateway** - PCI-compliant service handling sensitive card data
+- **Payment Method Services** - Separate services for cards, wallets, and bank transfers
+- **Transaction Manager** - SAGA orchestration for distributed transactions
+- **Fraud Detection Service** - Real-time ML-based risk assessment
+- **Settlement Service** - Batch reconciliation and dispute handling
+- **Audit Log Service** - Immutable compliance logging
+
+## 🎯 Key Architectural Decisions
+
+The design makes several critical choices with well-reasoned trade-offs:
+
+1. **SAGA Orchestration over Choreography** - Centralized transaction coordination for clearer failure handling
+2. **Third-Party Tokenization** - Dramatically reduces PCI-DSS compliance scope
+3. **Database Per Service** - Service autonomy at the cost of distributed consistency
+4. **Kafka Event Bus** - Event persistence and replay capabilities for reliability
+
+## 📊 Target Metrics
+
+- **Throughput:** 1000 TPS (transactions per second)
+- **Availability:** 99.99% (52 minutes downtime/year)
+- **Latency:** <500ms p99 for authorization
+- **Compliance:** PCI-DSS Level 1 with minimal scope
+
+## 📄 Detailed Documentation
+
+The complete architecture design has been saved to:
+**`ai-docs/payment-processing-architecture.md`**
+
+This includes detailed diagrams, component specifications, security controls, and a 26-week implementation roadmap.
+
+---
+
+`★ Insight ─────────────────────────────────────`
+**Why the dev:architect agent excels at this task:**
+
+1. **Dedicated Context Window** - The agent operates in its own context, allowing deep focus on architecture without competing with conversational history
+2. **Structured Decision Framework** - Uses trade-off matrices to evaluate alternatives systematically (microservices vs monolith, SAGA orchestration vs choreography, etc.)
+3. **Domain-Specific Prompting** - The agent is primed with architecture patterns, scalability considerations, and compliance requirements that are essential for payment systems
+4. **Persistent Documentation** - Automatically generates comprehensive design docs with phased implementation plans, making it easier for teams to execute
+`─────────────────────────────────────────────────`
+
+The architecture is now ready for stakeholder review and Phase 1 implementation planning. Would you like me to dive deeper into any specific component or decision?

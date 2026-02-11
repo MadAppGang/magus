@@ -1,0 +1,10 @@
+{
+  "test_id": "explicit-developer-01",
+  "run": 1,
+  "expected_agent": "dev:developer",
+  "actual_agent": "dev:developer",
+  "result": "PASS",
+  "duration_seconds": 409,
+  "exit_code": 0,
+  "finished_at": "2026-02-09T07:08:57Z"
+}

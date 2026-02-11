@@ -1,0 +1,10 @@
+{
+  "test_id": "delegate-research-01",
+  "run": 1,
+  "expected_agent": "NO_TASK_CALL",
+  "actual_agent": "NO_TASK_CALL",
+  "result": "PASS",
+  "duration_seconds": 750,
+  "exit_code": 0,
+  "finished_at": "2026-02-09T08:50:16Z"
+}

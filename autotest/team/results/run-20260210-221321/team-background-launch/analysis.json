@@ -1,0 +1,28 @@
+{
+  "passed": false,
+  "checks": [
+    {
+      "check": "task_agent_is",
+      "passed": false,
+      "detail": "No Task calls found (expected agent: dev:researcher)"
+    },
+    {
+      "check": "task_min_count",
+      "passed": false,
+      "detail": "0 Task calls (minimum: 2)"
+    },
+    {
+      "check": "run_in_background",
+      "passed": true,
+      "detail": "All 0 Task calls use run_in_background"
+    }
+  ],
+  "summary": {
+    "total_checks": 3,
+    "passed_checks": 1,
+    "failed_checks": 2,
+    "total_tool_calls": 18,
+    "task_calls": 0,
+    "bash_calls": 2
+  }
+}

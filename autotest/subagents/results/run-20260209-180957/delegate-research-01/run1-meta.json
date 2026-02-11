@@ -1,0 +1,10 @@
+{
+  "test_id": "delegate-research-01",
+  "run": 1,
+  "expected_agent": "dev:researcher",
+  "actual_agent": "NO_TASK_CALL",
+  "result": "NO_DELEGATION",
+  "duration_seconds": 249,
+  "exit_code": 0,
+  "finished_at": "2026-02-09T07:23:19Z"
+}

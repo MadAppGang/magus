@@ -1,0 +1,10 @@
+{
+  "test_id": "delegate-implement-01",
+  "run": 1,
+  "expected_agent": "dev:developer",
+  "actual_agent": "code-analysis:detective",
+  "result": "FAIL",
+  "duration_seconds": 932,
+  "exit_code": 0,
+  "finished_at": "2026-02-09T09:29:24Z"
+}

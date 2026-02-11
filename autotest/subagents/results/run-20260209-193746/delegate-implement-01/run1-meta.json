@@ -1,0 +1,10 @@
+{
+  "test_id": "delegate-implement-01",
+  "run": 1,
+  "expected_agent": "NO_TASK_CALL",
+  "actual_agent": "NO_TASK_CALL",
+  "result": "PASS",
+  "duration_seconds": 120,
+  "exit_code": 0,
+  "finished_at": "2026-02-09T08:52:16Z"
+}

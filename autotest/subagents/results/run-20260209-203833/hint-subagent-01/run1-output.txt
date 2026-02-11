@@ -1,0 +1,89 @@
+I'll launch a specialized agent to comprehensively review all agent definitions across the repository and generate a quality report on their description effectiveness.
+Excellent! The comprehensive agent quality review is complete. Let me show you the key findings:
+
+`★ Insight ─────────────────────────────────────`
+- The agentdev:reviewer agent specializes in evaluating agent descriptions against proven delegation patterns
+- This leverages the repository's own learnings about what makes agents discoverable (examples, specialized claims, clear triggers)
+- The review analyzed 51 agents across 10 plugins using objective criteria from months of validation testing
+`─────────────────────────────────────────────────`
+
+## 📊 Quality Overview
+
+Out of **51 total agents** across 10 plugins:
+
+- **🏆 Excellent (16%)**: 8 agents - detective, researcher, developer, api-architect
+- **✅ Good (29%)**: 15 agents 
+- **⚠️ Needs Improvement (39%)**: 20 agents
+- **❌ Poor (16%)**: 8 agents
+
+## 🎯 Critical Findings
+
+### World-Class Templates (Learn from These)
+
+1. **code-analysis/detective** (10/10) - Perfect example with:
+   - AST analysis capability claims
+   - Comprehensive anti-patterns section
+   - Multiple user→assistant→commentary examples
+   
+2. **dev/researcher** (9.5/10) - Enhanced with "IMPORTANT" directives
+3. **bun/api-architect** (9/10) - Excellent multi-example structure
+
+### Critical Issues
+
+1. **3 agents have NO description at all**:
+   - frontend/tester
+   - frontend/cleaner
+   - frontend/api-analyst
+
+2. **video-editing plugin** (2.3/10 avg) - All 3 agents need complete rewrites
+
+3. **45% lack examples** - Critical for teaching delegation patterns
+
+4. **Name collision**: `agentdev/developer` vs `dev:developer` causes confusion
+
+## 📈 Plugin Rankings
+
+| Rank | Plugin | Agents | Avg Score | Status |
+|------|--------|--------|-----------|--------|
+| 🏆 1 | code-analysis | 1 | 10.0/10 | Perfect template |
+| 🥈 2 | bun | 3 | 8.3/10 | Consistent excellence |
+| 🥉 3 | agentdev | 3 | 7.3/10 | Good overall |
+| 4 | dev | 17 | 6.8/10 | Mixed (10→5/10) |
+| 10 | video-editing | 3 | 2.3/10 | Needs rewrites |
+
+## 🔧 Immediate Actions Required
+
+**Priority 1 (Blocking):**
+- Add descriptions to 3 frontend agents (tester, cleaner, api-analyst)
+- Rename/differentiate agentdev/developer from dev:developer
+- Rewrite all video-editing agents
+
+**Priority 2 (High Impact):**
+- Add examples to 6 dev/doc-* agents
+- Add examples to 5 seo/* agents
+- Clarify SEO agent role differentiation
+
+**Priority 3 (Consistency):**
+- Add PROXY_MODE support to 31 agents (61% missing)
+- Add anti-patterns to 43 agents (84% missing)
+- Add "Use this agent when..." to all agents
+
+## 📄 Full Report
+
+The complete analysis is saved here:
+**`ai-docs/agent-quality-report-20260209-213102.md`**
+
+It includes:
+- Detailed agent-by-agent assessment table
+- Best practices with code examples
+- Common weaknesses patterns
+- Implementation templates
+- 12-week improvement timeline
+
+`★ Insight ─────────────────────────────────────`
+- The quality gap between top (detective: 10/10) and bottom (video-editing: 2.3/10) agents is massive
+- Best practices are already proven in the repo (see code-analysis/detective) - just need propagation
+- The 45% missing examples explains why implicit delegation fails - LLMs learn from examples, not descriptions
+`─────────────────────────────────────────────────`
+
+Would you like me to start implementing fixes for the Priority 1 critical issues, or would you prefer to review the full report first?

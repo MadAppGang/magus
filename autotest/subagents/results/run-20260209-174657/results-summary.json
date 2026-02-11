@@ -1,0 +1,25 @@
+{
+  "runs": [
+    {
+      "test_id": "explore-01",
+      "run": 1,
+      "expected_agent": "Explore",
+      "actual_agent": "NO_TASK_CALL",
+      "result": "NO_DELEGATION",
+      "duration_seconds": 34,
+      "exit_code": 0,
+      "finished_at": "2026-02-09T06:47:32Z"
+    }
+  ],
+  "summary": {
+    "total": 1,
+    "passed": 0,
+    "failed": 0,
+    "errors": 1,
+    "pass_rate": 0.0,
+    "agent_distribution": {
+      "NO_TASK_CALL": 1
+    },
+    "timestamp": "20260209-174657"
+  }
+}

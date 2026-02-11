@@ -1,0 +1,33 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "check": "task_agent_is",
+      "passed": true,
+      "detail": "All 2 Task calls use dev:researcher"
+    },
+    {
+      "check": "task_min_count",
+      "passed": true,
+      "detail": "2 Task calls (minimum: 2)"
+    },
+    {
+      "check": "has_proxy_mode",
+      "passed": true,
+      "detail": "PROXY_MODE found in Task prompt"
+    },
+    {
+      "check": "run_in_background",
+      "passed": true,
+      "detail": "All 2 Task calls use run_in_background"
+    }
+  ],
+  "summary": {
+    "total_checks": 4,
+    "passed_checks": 4,
+    "failed_checks": 0,
+    "total_tool_calls": 7,
+    "task_calls": 2,
+    "bash_calls": 1
+  }
+}

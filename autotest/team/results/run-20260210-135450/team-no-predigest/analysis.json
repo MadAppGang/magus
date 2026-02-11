@@ -1,0 +1,23 @@
+{
+  "passed": false,
+  "checks": [
+    {
+      "check": "task_agent_is",
+      "passed": true,
+      "detail": "All 1 Task calls use dev:researcher"
+    },
+    {
+      "check": "no_predigest",
+      "passed": false,
+      "detail": "Pre-digestion detected: ['Read'] called before first Task"
+    }
+  ],
+  "summary": {
+    "total_checks": 2,
+    "passed_checks": 1,
+    "failed_checks": 1,
+    "total_tool_calls": 26,
+    "task_calls": 1,
+    "bash_calls": 7
+  }
+}

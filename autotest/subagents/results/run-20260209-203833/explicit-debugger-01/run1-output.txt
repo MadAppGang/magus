@@ -1,0 +1,50 @@
+I'll delegate this debugging task to the specialized dev:debugger agent, which has the tools and context needed for root cause investigation of authentication timeout errors.
+
+`★ Insight ─────────────────────────────────────`
+- The dev:debugger agent is designed for non-obvious bugs and multi-file root cause analysis
+- According to the task routing table in CLAUDE.md, debugging tasks should be delegated to maintain focus and produce higher quality results
+- The agent will investigate the authentication timeout issue in a dedicated context window with sustained focus
+`─────────────────────────────────────────────────`
+The dev:debugger agent has completed a comprehensive root cause analysis of the authentication timeout errors. Here's what was discovered:
+
+## Key Findings
+
+The authentication timeouts are occurring in the **claudeup-core** tool, specifically in the MCP (Model Context Protocol) server connection testing code.
+
+`★ Insight ─────────────────────────────────────`
+- The investigation revealed two timeout configurations: 15 seconds for server testing and 5 seconds for status checks
+- The 5-second timeout is too aggressive for modern authentication flows (OAuth, token validation, MFA)
+- The code doesn't distinguish between "server unreachable" and "authentication in progress," treating both as failures
+`─────────────────────────────────────────────────`
+
+### Root Cause
+
+**Primary Issue**: The `getMcpServerStatus()` function in `tools/claudeup-core/src/services/claude-settings.ts` (line 1130) uses a **5-second timeout** that's insufficient for multi-step authentication:
+
+- OAuth 2.1 flows with PKCE require multiple round-trips
+- API key validation may involve database lookups
+- Token exchange with external providers adds latency
+- Cold-start serverless auth providers need warmup time
+
+### Why This Matters
+
+When the 5-second timeout fires, it **aborts the request** before the server can respond with a proper 401/403 authentication error. This means:
+
+1. The code can't distinguish between "server down" and "auth taking too long"
+2. Users get a generic "Connection timeout" error instead of "Authentication in progress"
+3. No retry logic means transient delays become permanent failures
+
+### Recommended Fixes (Priority Order)
+
+1. **Immediate**: Increase timeout to 30 seconds for authentication flows
+2. **Short-term**: Add retry logic with exponential backoff (5s → 10s → 20s)
+3. **Medium-term**: Separate network timeout (5s) from auth timeout (30s)
+4. **Long-term**: Make timeouts configurable via environment variables
+
+`★ Insight ─────────────────────────────────────`
+- The debugger identified not just the symptom but the architectural issue: authentication is treated as instantaneous
+- The fix requires understanding that auth is a multi-phase process: network connect → TLS handshake → credential validation
+- Progressive timeouts (extending deadline when server responds) are more resilient than fixed timeouts
+`─────────────────────────────────────────────────`
+
+Would you like me to implement the recommended fixes? I can start with the immediate fix (increasing the timeout) and then add the more sophisticated retry logic.

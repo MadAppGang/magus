@@ -1,0 +1,145 @@
+I'll conduct a comprehensive investigation of the plugin system architecture in this codebase. This is exactly the type of deep-dive investigation that benefits from specialized tooling.
+
+`★ Insight ─────────────────────────────────────`
+This investigation requires understanding:
+1. Plugin discovery and loading mechanisms
+2. Namespace resolution (how `frontend@mag-claude-plugins` works)
+3. Component registration (agents, commands, skills, MCP servers)
+4. Integration with Claude Code's core system
+`─────────────────────────────────────────────────`
+
+Let me use the code-analysis detective agent to conduct this investigation with semantic search capabilities:
+Excellent! The investigation is complete. Let me highlight the key architectural discoveries:
+
+`★ Insight ─────────────────────────────────────`
+The plugin system's elegance comes from three design choices:
+1. **No Runtime Loader** - Claude Code just reads markdown files with YAML frontmatter at startup
+2. **Filesystem as Database** - Plugin discovery uses 7 prioritized directory locations, first match wins
+3. **External Manager** - `claudeup-core` handles all plugin operations; Claude Code is just a consumer
+`─────────────────────────────────────────────────`
+
+## Investigation Results
+
+The detective agent has created a **comprehensive 500+ line architectural document** at:
+**`ai-docs/PLUGIN_SYSTEM_ARCHITECTURE.md`**
+
+### Major Discoveries
+
+#### 1. **The "Plugin Loader" Doesn't Exist** 
+Surprisingly, there's no traditional plugin loader in Claude Code's core. Instead:
+- Plugins are just **structured directories** with markdown files
+- Each markdown file has **YAML frontmatter** defining metadata
+- Claude Code **scans 7 filesystem locations** at startup
+- **First match wins** in the priority chain (no conflict resolution)
+
+#### 2. **Three-Tier Architecture**
+
+```
+┌─────────────────┐
+│  Claude Code    │  Runtime consumer (reads markdown files)
+│     (Core)      │
+└────────┬────────┘
+         │
+┌────────▼────────┐
+│   claudeup      │  Plugin manager (install, scan, enable)
+│  (Tool Layer)   │
+└────────┬────────┘
+         │
+┌────────▼────────┐
+│  Marketplaces   │  Git repositories with plugin collections
+│  (Distribution) │
+└─────────────────┘
+```
+
+#### 3. **Namespace Resolution Mystery Solved**
+
+The `frontend@mag-claude-plugins` format works through:
+- **Marketplace name** (`mag-claude-plugins`) → Git repo URL mapping in `marketplace.json`
+- **Plugin name** (`frontend`) → Directory name in cloned marketplace
+- **Component name** (skill/command/agent) → Markdown filename
+- **Full resolution**: `~/.claude/plugins/mag-claude-plugins/plugins/frontend/skills/setup.md`
+
+#### 4. **Seven Discovery Locations** (Priority Order)
+
+1. **Personal Skills** - `~/.claude/skills/` (highest priority)
+2. **Project Skills** - `.claude/skills/` in repo
+3. **Nested Plugins** - `.claude/plugins/{name}/` in repo
+4. **Legacy Plugins** - `~/.claude/plugins/{name}/`
+5. **Marketplace Plugins** - `~/.claude/plugins/{marketplace}/plugins/{name}/`
+6. **Local Plugin Root** - `./.` when developing plugins
+7. **Global Installed** - Various npm/system locations
+
+#### 5. **Key Files Analyzed**
+
+| File | Lines | Purpose |
+|------|-------|---------|
+| `local-marketplace.ts` | 1,084 | Clone repos, scan plugins, extract metadata |
+| `claude-settings.ts` | 1,438 | Manage settings, MCP servers, enablement |
+| `discover-skills.js` | 292 | The actual runtime discovery algorithm |
+
+### Architectural Highlights
+
+**Split Configuration Pattern** (Team-First Design):
+```json
+// .claude/settings.json (committed - team config)
+{
+  "enabledPlugins": {
+    "frontend@mag-claude-plugins": true
+  }
+}
+
+// .claude/settings.local.json (gitignored - secrets)
+{
+  "mcpServers": {
+    "figma": {
+      "env": {
+        "FIGMA_ACCESS_TOKEN": "personal-token"
+      }
+    }
+  }
+}
+```
+
+**No Build Step Trade-offs**:
+- ✅ **Pros**: Instant edit-reload, no compilation, easy debugging
+- ⚠️ **Cons**: Slower startup, no static validation, runtime errors only
+
+`★ Insight ─────────────────────────────────────`
+Why this architecture is brilliant for Claude Code:
+1. **Zero learning curve** - Developers just write markdown files
+2. **Git-native distribution** - Marketplaces are just repos
+3. **Natural versioning** - Git tags = plugin versions
+4. **Security by isolation** - Each plugin is sandboxed directory
+`─────────────────────────────────────────────────`
+
+### What's in the Document
+
+The complete architectural document includes:
+
+1. **System Overview** - High-level architecture and design principles
+2. **Component Types** - Agents, commands, skills, MCP servers definitions
+3. **Discovery Mechanisms** - 7-location priority chain with examples
+4. **Flow Diagrams** - 3 detailed text-based flows
+5. **Configuration Formats** - All JSON schemas with examples
+6. **Integration Points** - How plugins hook into Claude Code
+7. **Common Operations** - Install, enable, create workflows
+8. **Troubleshooting** - 4 common error scenarios with solutions
+9. **Security Considerations** - Risks and mitigations
+10. **Future Improvements** - Enhancement opportunities
+
+### Investigation Methodology
+
+The detective agent used **claudemem v0.16.6** for structural code analysis:
+- `map` queries to understand architectural layout
+- `search` with semantic ranking for specific features
+- Direct file reading for implementation details
+- **Total**: 8 files analyzed, 5,000+ lines of code, 22 tool invocations
+
+---
+
+You now have a complete understanding of how the plugin system works, from marketplace installation through to runtime component execution. The document is ready for onboarding, architecture reviews, or troubleshooting plugin issues.
+
+Would you like me to:
+1. Add specific sections to the document (e.g., plugin development guide)?
+2. Create flow diagrams in a different format (e.g., Mermaid)?
+3. Investigate a specific aspect in more detail?

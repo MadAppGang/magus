@@ -1,0 +1,94 @@
+I'll use the dev:architect agent to design the microservices-based payment processing system architecture.
+# Payment Microservices Architecture Design Complete
+
+The dev:architect agent has created a comprehensive architecture design for your payment processing system. Here are the key highlights:
+
+`★ Insight ─────────────────────────────────────`
+The architect chose **orchestration over choreography** for the Saga pattern - this means one service (Payment Gateway Service) coordinates the entire payment flow rather than services reacting to each other's events. This trade-off prioritizes debuggability and clearer compensation logic over pure decoupling, which is critical for payment systems where tracing failures is paramount.
+`─────────────────────────────────────────────────`
+
+## Core Architecture
+
+**9 Microservices** designed with clear boundaries:
+- **Payment Gateway Service** - Orchestrates payment flows using Saga pattern
+- **Transaction Service** - Manages transaction lifecycle with FSM (9 states)
+- **Fraud Detection Service** - Rules-based scoring with ML integration points
+- **Gateway Adapter Service** - Abstracts Stripe, Adyen, PayPal with circuit breakers
+- **Wallet Service** - PCI-scoped tokenized payment method storage
+- **Settlement Service** - Batch reconciliation with gateway reports
+- **Notification Service** - Webhook delivery with exponential backoff retry
+- **Audit Service** - Immutable event log for compliance (7-year retention)
+- **Idempotency Service** - Redis-based duplicate request prevention
+
+## Key Architectural Decisions
+
+1. **PostgreSQL for all services** - ACID guarantees are non-negotiable for money
+2. **Kafka for event bus** - Event persistence enables audit replay
+3. **Go as primary language** - Performance + concurrency + type safety
+4. **2-second fraud check timeout** - Balances user experience vs fraud coverage
+5. **Orchestration-based Saga** - Centralized flow control for easier debugging
+
+`★ Insight ─────────────────────────────────────`
+The architecture includes a dedicated **Idempotency Service** using Redis - this prevents duplicate charges when users retry failed payments. It's a small service but critical: without it, network timeouts could lead to double-charging customers, which is both a compliance issue and damages trust.
+`─────────────────────────────────────────────────`
+
+## Security & Compliance
+
+**PCI DSS compliant by design:**
+- Wallet Service in isolated VPC (network segmentation)
+- Never stores raw card numbers (tokenization only)
+- 7-year audit retention
+- Encrypted at rest and in transit
+
+**Fraud prevention built-in:**
+- Velocity checks (5 transactions/hour per card)
+- Geolocation mismatch detection
+- 3D Secure for high-risk transactions
+
+## Scalability Strategy
+
+- **Target**: 100 TPS initially → 1000 TPS within 12 months
+- **Horizontal scaling**: Stateless services behind load balancers
+- **Database**: Read replicas for reporting, monthly partitions
+- **Circuit breakers**: Per-gateway isolation (prevents cascade failures)
+- **Rate limiting**: Token bucket per merchant (100 req/min)
+
+## Implementation Roadmap
+
+**5 phases over 16 weeks:**
+1. **Weeks 1-4**: Core authorize/capture flow with Stripe
+2. **Weeks 5-7**: Fraud detection + audit logging
+3. **Weeks 8-10**: Wallet service + multi-gateway support
+4. **Weeks 11-13**: Refunds, voids, webhook notifications
+5. **Weeks 14-16**: Settlement reconciliation
+
+`★ Insight ─────────────────────────────────────`
+The phased approach is strategically designed: Phase 1 delivers a working payment flow quickly (MVP), Phase 2 adds compliance essentials (fraud + audit), Phase 3 enables business growth (multiple gateways), and Phases 4-5 complete operational maturity. This lets you start processing payments in 4 weeks while building toward production-grade capabilities.
+`─────────────────────────────────────────────────`
+
+## Full Documentation
+
+Two comprehensive documents were created:
+- **`ai-docs/payment-processing-architecture.md`** - 67-page architecture overview
+- **`ai-docs/payment-processing-technical-details.md`** - Technical implementation guide with code examples
+
+## Open Questions for Stakeholders
+
+The architect identified 5 critical scope questions:
+1. Multi-currency support needed?
+2. Recurring payments for subscriptions?
+3. Split payments for marketplace scenarios?
+4. Regional compliance requirements (GDPR, PSD2)?
+5. Full chargeback management or basic tracking?
+
+These should be clarified before Phase 1 kickoff to avoid rework.
+
+---
+
+**Next Steps:**
+1. Review the detailed documentation files
+2. Answer the open questions with stakeholders
+3. Use `/dev:implement` to begin Phase 1 implementation
+4. Consider `/dev:feature` for individual service development with validation loops
+
+Would you like me to explore any specific part of the architecture in more detail, or shall we proceed with implementation planning?

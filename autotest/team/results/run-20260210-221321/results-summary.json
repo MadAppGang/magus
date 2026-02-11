@@ -1,0 +1,102 @@
+{
+  "runs": [
+    {
+      "test_id": "team-agent-external",
+      "result": "PASS",
+      "duration_seconds": 120,
+      "passed_checks": 5,
+      "total_checks": 5,
+      "exit_code": 142,
+      "finished_at": "2026-02-10T11:17:22Z"
+    },
+    {
+      "test_id": "team-agent-internal",
+      "result": "FAIL",
+      "duration_seconds": 120,
+      "passed_checks": 3,
+      "total_checks": 4,
+      "exit_code": 142,
+      "finished_at": "2026-02-10T11:15:21Z"
+    },
+    {
+      "test_id": "team-background-launch",
+      "result": "FAIL",
+      "duration_seconds": 120,
+      "passed_checks": 1,
+      "total_checks": 3,
+      "exit_code": 142,
+      "finished_at": "2026-02-10T11:30:46Z"
+    },
+    {
+      "test_id": "team-model-alias-gemini",
+      "result": "PASS",
+      "duration_seconds": 97,
+      "passed_checks": 2,
+      "total_checks": 2,
+      "exit_code": 0,
+      "finished_at": "2026-02-10T11:27:26Z"
+    },
+    {
+      "test_id": "team-model-alias-grok",
+      "result": "PASS",
+      "duration_seconds": 95,
+      "passed_checks": 2,
+      "total_checks": 2,
+      "exit_code": 0,
+      "finished_at": "2026-02-10T11:25:49Z"
+    },
+    {
+      "test_id": "team-multi-external",
+      "result": "PASS",
+      "duration_seconds": 120,
+      "passed_checks": 5,
+      "total_checks": 5,
+      "exit_code": 142,
+      "finished_at": "2026-02-10T11:24:14Z"
+    },
+    {
+      "test_id": "team-no-predigest",
+      "result": "FAIL",
+      "duration_seconds": 120,
+      "passed_checks": 1,
+      "total_checks": 2,
+      "exit_code": 142,
+      "finished_at": "2026-02-10T11:20:55Z"
+    },
+    {
+      "test_id": "team-parallel-mixed",
+      "result": "PASS",
+      "duration_seconds": 93,
+      "passed_checks": 4,
+      "total_checks": 4,
+      "exit_code": 0,
+      "finished_at": "2026-02-10T11:18:55Z"
+    },
+    {
+      "test_id": "team-session-dir",
+      "result": "FAIL",
+      "duration_seconds": 78,
+      "passed_checks": 1,
+      "total_checks": 2,
+      "exit_code": 0,
+      "finished_at": "2026-02-10T11:22:13Z"
+    },
+    {
+      "test_id": "team-vote-template",
+      "result": "FAIL",
+      "duration_seconds": 80,
+      "passed_checks": 0,
+      "total_checks": 3,
+      "exit_code": 0,
+      "finished_at": "2026-02-10T11:28:46Z"
+    }
+  ],
+  "summary": {
+    "total": 10,
+    "passed": 5,
+    "failed": 5,
+    "errors": 0,
+    "pass_rate": 50.0,
+    "timestamp": "20260210-221321"
+  }
+}

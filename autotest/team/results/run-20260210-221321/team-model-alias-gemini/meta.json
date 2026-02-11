@@ -1,0 +1,9 @@
+{
+  "test_id": "team-model-alias-gemini",
+  "result": "PASS",
+  "duration_seconds": 97,
+  "passed_checks": 2,
+  "total_checks": 2,
+  "exit_code": 0,
+  "finished_at": "2026-02-10T11:27:26Z"
+}

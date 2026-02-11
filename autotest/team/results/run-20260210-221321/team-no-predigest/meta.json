@@ -1,0 +1,9 @@
+{
+  "test_id": "team-no-predigest",
+  "result": "FAIL",
+  "duration_seconds": 120,
+  "passed_checks": 1,
+  "total_checks": 2,
+  "exit_code": 142,
+  "finished_at": "2026-02-10T11:20:55Z"
+}

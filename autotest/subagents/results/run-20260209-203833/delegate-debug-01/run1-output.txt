@@ -1,0 +1,89 @@
+I'll investigate this memory leak using a specialized debugging agent. Let me delegate this to the `dev:debugger` agent who can systematically analyze the codebase for common memory leak patterns.
+
+`★ Insight ─────────────────────────────────────`
+- Memory leaks that manifest only after many iterations typically indicate accumulation issues (event listeners, cache growth, or connection pooling problems)
+- Proper investigation requires examining both the request handling lifecycle AND long-lived singleton objects
+- According to the project's CLAUDE.md, debugging tasks with non-obvious multi-file root causes should be delegated to specialized agents
+`─────────────────────────────────────────────────`
+Excellent! The debugging agent has completed a comprehensive investigation and found **4 distinct memory leak patterns** in the codebase. Let me summarize the critical findings:
+
+## 🔍 Memory Leak Investigation Results
+
+### **PRIMARY LEAK: Session Manager (Most Critical)**
+
+**Location:** `tools/autopilot-server/src/services/claude-session-manager.ts`
+
+**The Problem:**
+- The `sessions` Map stores ALL session records forever
+- Each session contains a growing transcript array (every tool call appends messages)
+- After 1000 requests: **~100MB+ leaked memory**
+- Sessions are marked "completed" but never removed from memory
+
+**The Fix:**
+Add session eviction after line 239 to keep only the last 50 terminated sessions.
+
+---
+
+### **SECONDARY LEAK: Legacy Marketplace Cache**
+
+**Location:** `tools/claudeup-core/src/services/plugin-manager.ts:123`
+
+**The Problem:**
+- Module-level `marketplaceCache` Map persists for entire process lifetime
+- Never expires, only cleared on explicit refresh
+- Redundant with the new enhanced LRU cache
+
+**The Fix:**
+Remove the legacy `marketplaceCache` entirely and use only the LRU-based `pluginCache`.
+
+---
+
+### **TERTIARY LEAK: Local Marketplaces Promise Cache**
+
+**Location:** `tools/claudeup-core/src/services/plugin-manager.ts:68`
+
+**The Problem:**
+- `localMarketplacesPromise` holds deeply nested marketplace data structures
+- No TTL or expiration mechanism
+- Contains full plugin metadata (agents, commands, skills)
+
+**The Fix:**
+Add 5-minute TTL-based invalidation to automatically refresh stale data.
+
+---
+
+### **QUATERNARY ISSUE: Priority Queue Arrays**
+
+**Location:** `tools/autopilot-server/src/services/priority-queue.ts:274-317`
+
+**Status:** ✅ Already mitigated (limited to 100 tasks)
+- Contributes ~200KB constant overhead but doesn't grow unbounded
+
+---
+
+`★ Insight ─────────────────────────────────────`
+- **Unbounded Maps are the #1 memory leak pattern** - All three major leaks involve Map/Promise caches without eviction policies
+- **Transcripts grow silently** - Appending to arrays inside cached objects creates hidden memory accumulation
+- **Module-level state in Node.js never GCs** - Variables at module scope persist for the entire process lifetime, making them dangerous for caching without bounds
+`─────────────────────────────────────────────────`
+
+## 📊 Impact Analysis
+
+| Leak Source | Memory/1000 Requests | Fix Complexity |
+|-------------|---------------------|----------------|
+| Session Manager | ~100MB | Medium (add eviction logic) |
+| Legacy Cache | ~10-20MB | Easy (remove code) |
+| Marketplace Promise | ~5-10MB | Easy (add TTL) |
+| Priority Queue | ~200KB (capped) | N/A (already fixed) |
+
+**Total Expected Savings:** ~115-130MB per 1000 requests
+
+## 🛠️ Next Steps
+
+Would you like me to:
+1. **Implement the fixes** for all three leaks?
+2. **Add memory monitoring** to track heap usage every 100 requests?
+3. **Create tests** to verify the eviction logic works correctly?
+4. **Review related files** (Linear client, multi-model reviewer) for similar patterns?
+
+The agent has provided detailed fix recommendations with exact line numbers and code snippets ready to implement.

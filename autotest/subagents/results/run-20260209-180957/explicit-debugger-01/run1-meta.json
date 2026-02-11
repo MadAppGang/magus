@@ -1,0 +1,10 @@
+{
+  "test_id": "explicit-debugger-01",
+  "run": 1,
+  "expected_agent": "dev:debugger",
+  "actual_agent": "dev:debugger",
+  "result": "PASS",
+  "duration_seconds": 173,
+  "exit_code": 0,
+  "finished_at": "2026-02-09T07:12:50Z"
+}

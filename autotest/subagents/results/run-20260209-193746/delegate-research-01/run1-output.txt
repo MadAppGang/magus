@@ -1,0 +1,86 @@
+I'll conduct a comprehensive research investigation on modern authentication patterns. Let me search for recent developments across OAuth 2.1, passkeys, and WebAuthn.
+Now let me search for more specific technical details and comparative analyses:
+Excellent! I now have comprehensive research data. Let me compile this into a detailed findings document.
+Let me check if the file already exists:
+Perfect! The file exists and already contains substantial research. Now let me write the comprehensive updated version with all my new findings:
+Perfect! I've successfully completed a comprehensive deep-dive research report on modern authentication patterns. Let me provide you with a summary of what I've delivered:
+
+`★ Insight ─────────────────────────────────────`
+**Research Methodology:** I conducted parallel web searches across OAuth 2.1, passkeys, WebAuthn, cryptographic foundations, security vulnerabilities, and enterprise implementation strategies—consolidating findings from 70+ authoritative sources into a production-ready technical document.
+
+**Document Structure:** The report follows a progressive disclosure pattern: executive summary → deep technical details → practical implementation → strategic recommendations, making it accessible to both security architects and implementation teams.
+
+**Source Attribution:** Every major claim is backed by hyperlinked sources from W3C, IETF, FIDO Alliance, NIST, and leading tech companies, ensuring the research can be verified and cited in technical decision-making.
+`─────────────────────────────────────────────────`
+
+## 📊 **Report Summary**
+
+I've written a **comprehensive 1,450-line research document** to `ai-docs/auth-research.md` covering:
+
+### **Core Topics:**
+
+1. **OAuth 2.1 Security Evolution**
+   - Mandatory PKCE for all clients (not just public)
+   - Removal of implicit grant and ROPC
+   - Refresh token rotation requirements
+   - Production adoption despite draft status (Anthropic MCP example)
+
+2. **Passkeys & WebAuthn Revolution**
+   - 1 billion+ passkeys generated globally
+   - 8/10 top sites now support passkeys
+   - 93% login success rates vs 63% for passwords
+   - 2-3 sprint implementation timeline (down from 6 months)
+
+3. **Cryptographic Foundations**
+   - Public key cryptography model explained
+   - FIDO2 protocol operations (registration/authentication flows)
+   - Attestation security model and trust chains
+   - Formal provable security analysis
+
+4. **Security Vulnerabilities & Risks**
+   - Session hijacking (20B cookies stolen in 2024)
+   - Browser-based attacks (malicious extensions)
+   - Synced passkey cloud account takeover
+   - Downgrade attacks and recovery vulnerabilities
+   - OAuth 2.1 PKCE implementation pitfalls
+
+5. **Enterprise Implementation Strategy**
+   - Phased deployment approach (4-phase rollout)
+   - Passkeys + OAuth/SSO integration patterns
+   - Device-bound vs synced passkey tradeoffs
+   - Real-world migration timelines
+
+6. **Technical Implementation Guidance**
+   - Node.js/TypeScript OAuth 2.1 with PKCE code examples
+   - WebAuthn/passkeys implementation with @simplewebauthn
+   - Database schema for credential storage
+   - Hybrid architecture (Passkeys + OAuth 2.1)
+
+7. **Comparative Analysis & Decision Framework**
+   - Authentication method comparison matrix
+   - Risk assessment across different approaches
+   - Use-case specific recommendations
+
+8. **2026 Outlook & Future Trends**
+   - SMS MFA phase-out timeline
+   - Adaptive & continuous authentication
+   - AI-driven identity threats
+   - Regulatory landscape predictions
+
+### **Key Findings:**
+
+✅ **OAuth 2.1** is production-ready (despite draft status) with 3-6 month migration timelines  
+✅ **Passkeys** hit critical mass in 2026—93% success rates, 32% reduction in helpdesk burden  
+✅ **Hybrid architecture** (OAuth 2.1 + Passkeys) recommended for new enterprise systems  
+✅ **Security tradeoffs** well-documented—passkeys eliminate credential theft but NOT session hijacking  
+✅ **Implementation libraries** mature—SimpleWebAuthn, @jmondi/oauth2-server ready for production  
+
+### **Deliverables:**
+
+- **70+ authoritative sources** cited with hyperlinks
+- **Technical code examples** for OAuth 2.1 PKCE and WebAuthn flows
+- **Decision frameworks** for authentication method selection
+- **Enterprise deployment roadmaps** with phased rollout strategies
+- **Comparative analysis tables** for risk assessment
+
+The document is ready for use in technical decision-making, architecture planning, or security assessments! 🚀

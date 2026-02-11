@@ -1,0 +1,187 @@
+I'll analyze the plugin loading system and trace all dependencies using the code-analysis detective agent.
+`★ Insight ─────────────────────────────────────`
+The plugin system uses a **filesystem-driven discovery model** rather than a compile-time registry. This means:
+- No build step required - just add a .md file to `agents/` and it's immediately available
+- Component metadata lives in YAML frontmatter, not a central database
+- The tradeoff: startup scanning overhead vs. developer ergonomics
+`─────────────────────────────────────────────────`
+
+# Plugin Loading System Analysis
+
+The detective agent has traced the complete plugin architecture. Here's what I found:
+
+## 🔍 Discovery & Loading Flow
+
+The system follows a **6-phase initialization** managed by `claudeup`:
+
+```
+1. Plugin Detection → Scan marketplaces from settings.json
+2. Marketplace Discovery → Load ~/.claude/plugins/marketplaces/
+3. Manifest Parsing → Read plugin.json + scan component dirs
+4. Dependency Resolution → ⚠️ DECLARED BUT NOT ENFORCED
+5. Component Registration → Extract frontmatter metadata
+6. Activation → Load only enabled plugins from settings
+```
+
+## 📦 Manifest Architecture
+
+**Two-tier structure:**
+
+1. **marketplace.json** (repository root) - Defines the marketplace and lists all plugins
+2. **plugin.json** (plugin root) - Defines individual plugin metadata and components
+
+Example from this codebase:
+- `.claude-plugin/marketplace.json` → Lists all 10 MAG plugins
+- `plugins/dev/plugin.json` → Defines dev plugin with 44 skills
+
+## 🔗 Dependency Resolution Gap
+
+**Critical Finding:** Dependencies are **metadata-only**:
+
+```json
+// plugins/dev/plugin.json
+"dependencies": {
+  "multimodel@mag-claude-plugins": "^2.0.0"
+}
+```
+
+This declares the dependency but:
+- ❌ No automatic installation
+- ❌ No version verification
+- ❌ No transitive resolution
+- ✅ Only documentation for users
+
+## 🎯 Component Discovery Pattern
+
+Components are discovered via **filesystem scanning**, not registration:
+
+```typescript
+// For each plugin:
+agents/ → Scan *.md files → Extract YAML frontmatter
+commands/ → Scan *.md files → Extract frontmatter
+skills/ → Scan *.md OR {dir}/SKILL.md → Extract frontmatter
+mcp-servers/ → Scan *.json files → Load configs
+hooks/ → Load hooks.json → Register lifecycle hooks
+```
+
+`★ Insight ─────────────────────────────────────`
+The **YAML frontmatter extraction** is the key to component registration:
+```yaml
+---
+name: developer
+description: Implementation specialist
+allowed-tools: Read,Write,Bash
+---
+```
+This metadata becomes the `ComponentMeta` object that Claude Code uses for `/agent developer` routing.
+`─────────────────────────────────────────────────`
+
+## ⚙️ Configuration Hierarchy
+
+Three-level settings cascade:
+
+```
+~/.claude/settings.json           (Global user settings)
+    ↓ overridden by
+.claude/settings.json              (Project settings - committed)
+    ↓ overridden by
+.claude/settings.local.json        (Developer overrides - gitignored)
+```
+
+**enabledPlugins** controls what loads:
+```json
+{
+  "enabledPlugins": {
+    "frontend@mag-claude-plugins": true,
+    "dev@mag-claude-plugins": true
+  }
+}
+```
+
+## 🪝 Lifecycle Hook System
+
+Plugins can intercept 4 events:
+
+1. **SessionStart** - Initialize plugin state
+2. **PreToolUse** - Allow/deny tool execution
+3. **PostToolUse** - React to tool results
+4. **Stop** - Cleanup on session end
+
+**Real example from code-analysis plugin:**
+```json
+"PreToolUse": [{
+  "matcher": "Grep|Bash|Glob|Read",
+  "hooks": [{
+    "type": "command",
+    "command": "bun \"${CLAUDE_PLUGIN_ROOT}/hooks/handler.ts\"",
+    "timeout": 15
+  }]
+}]
+```
+
+This hook intercepts search tools and can deny them if claudemem should be used instead.
+
+`★ Insight ─────────────────────────────────────`
+**PreToolUse hooks enable enforcement patterns** - the multimodel plugin uses this to block `general-purpose` agent with PROXY_MODE (because it silently ignores it). The hook returns `permissionDecision: "deny"` before the tool executes, preventing the violation at runtime.
+`─────────────────────────────────────────────────`
+
+## 🔄 Initialization Sequence
+
+From `claudeup prerun` startup:
+
+```
+1. Check for Updates (time-cached, ~5 min TTL)
+2. Recover Marketplace Settings (auto-enable updates)
+3. Clear Marketplace Cache (force fresh scan)
+4. Get Available Plugins (scan all marketplaces)
+5. Auto-Update Enabled Plugins (git pull + copy to cache)
+6. Launch Claude Code (load enabled components)
+```
+
+**No explicit initialization order** - plugins load in arbitrary sequence with no dependency ordering.
+
+## 🏪 Marketplace Integration
+
+**Git-backed architecture:**
+- Marketplaces are git repositories
+- Stored in `~/.claude/plugins/marketplaces/{name}/`
+- Updates via `git pull` on each launch (cached)
+- `known_marketplaces.json` tracks sources
+
+**This repository is a marketplace:**
+```
+.claude-plugin/marketplace.json → Defines "mag-claude-plugins"
+plugins/{name}/plugin.json → Each plugin manifest
+```
+
+## 📊 Key Architectural Decisions
+
+1. **Filesystem-Driven Discovery** - No build step, immediate availability
+2. **Three-Scope Installation** - User, project, and local scopes with independent enable states
+3. **Frontmatter Metadata** - YAML in markdown files vs. central registry
+4. **Git-Based Distribution** - Version control built into marketplace design
+5. **Hook-Based Enforcement** - Plugins can intercept and modify behavior
+6. **No Plugin Isolation** - All share Claude Code environment
+7. **Dependency Declaration Only** - No automatic resolution
+8. **Auto-Update by Default** - Pulls latest on launch (cached)
+
+## 🎯 Dependencies for This Codebase
+
+**No circular dependencies found** - the plugin system is self-contained:
+- `tools/claudeup-core/` → Plugin manager implementation
+- `plugins/*/` → Individual plugins (independent)
+- `.claude-plugin/marketplace.json` → Marketplace definition
+
+Each plugin **declares** dependencies but they're not enforced:
+- `dev@mag-claude-plugins` → depends on `multimodel@mag-claude-plugins`
+- No automatic verification that multimodel is installed
+
+This design choice prioritizes **simplicity over safety** - users must manually ensure dependencies are met.
+
+---
+
+**Want me to dive deeper into any specific aspect?** I can trace:
+- Hook execution flow in detail
+- Component metadata extraction
+- Settings merge logic
+- Marketplace update mechanism

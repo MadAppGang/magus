@@ -1,0 +1,40 @@
+I'll launch a security audit subagent to scan the codebase for vulnerabilities. This is a complex analysis task that's perfect for delegation.
+
+`★ Insight ─────────────────────────────────────`
+- Security audits benefit from dedicated context windows to maintain comprehensive analysis across many files
+- Running in background allows continued work while the audit completes
+- The `dev:audit` agent specializes in security scanning with patterns for common vulnerabilities
+`─────────────────────────────────────────────────`
+I see - the `dev:audit` skill exists but there's no dedicated audit agent. Let me use the appropriate agent for this task. The `code-analysis:detective` agent is perfect for comprehensive codebase investigation.
+
+`★ Insight ─────────────────────────────────────`
+- The detective agent specializes in deep codebase analysis and pattern detection
+- It has access to semantic search tools (claudemem) for finding patterns across many files
+- Background execution allows thorough scanning without blocking your work
+`─────────────────────────────────────────────────`
+Perfect! I've launched a security audit subagent that's now scanning the entire codebase in the background.
+
+`★ Insight ─────────────────────────────────────`
+- **Background agents run independently**: The detective agent is now analyzing the codebase without blocking your current session
+- **Automatic notification**: You'll receive an alert when the audit completes
+- **Progress monitoring**: You can check intermediate progress by reading the output file at any time
+- **Comprehensive scanning**: The agent will use Grep to search for security patterns across all files, then analyze and categorize findings by severity
+`─────────────────────────────────────────────────`
+
+The security audit is running and will:
+
+1. **Search for hardcoded secrets** - API keys, tokens, passwords, private keys
+2. **Detect injection vulnerabilities** - SQL injection, command injection, XSS vectors
+3. **Analyze authentication/authorization** - Missing checks, weak policies, JWT issues
+4. **Check dependencies** - Known vulnerabilities in package.json files
+5. **Review configurations** - Debug modes, CORS settings, security headers
+6. **Examine cryptography** - Weak algorithms, hardcoded keys
+7. **Assess file operations** - Path traversal, unsafe file handling
+
+The final report will be written to **`ai-docs/security-audit.md`** with:
+- Executive summary with risk assessment
+- Findings categorized by severity (Critical/High/Medium/Low)
+- Specific file locations and line numbers
+- Impact analysis and remediation recommendations
+
+You'll be notified automatically when the audit completes. Feel free to continue with other tasks while it runs!

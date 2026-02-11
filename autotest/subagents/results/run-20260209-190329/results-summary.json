@@ -1,0 +1,68 @@
+{
+  "runs": [
+    {
+      "test_id": "delegate-implement-01",
+      "run": 1,
+      "expected_agent": "dev:developer",
+      "actual_agent": "NO_TASK_CALL",
+      "result": "NO_DELEGATION",
+      "duration_seconds": 78,
+      "exit_code": 0,
+      "finished_at": "2026-02-09T08:19:29Z"
+    },
+    {
+      "test_id": "delegate-research-01",
+      "run": 1,
+      "expected_agent": "dev:researcher",
+      "actual_agent": "NO_TASK_CALL",
+      "result": "NO_DELEGATION",
+      "duration_seconds": 882,
+      "exit_code": 0,
+      "finished_at": "2026-02-09T08:18:11Z"
+    },
+    {
+      "test_id": "explicit-developer-01",
+      "run": 1,
+      "expected_agent": "dev:developer",
+      "actual_agent": "dev:developer",
+      "result": "PASS",
+      "duration_seconds": 197,
+      "exit_code": 0,
+      "finished_at": "2026-02-09T08:24:24Z"
+    },
+    {
+      "test_id": "explicit-researcher-01",
+      "run": 1,
+      "expected_agent": "dev:researcher",
+      "actual_agent": "dev:researcher",
+      "result": "PASS",
+      "duration_seconds": 55,
+      "exit_code": 0,
+      "finished_at": "2026-02-09T08:21:07Z"
+    },
+    {
+      "test_id": "hint-subagent-02",
+      "run": 1,
+      "expected_agent": "general-purpose",
+      "actual_agent": "dev:audit",
+      "result": "PASS_ALT",
+      "duration_seconds": 43,
+      "exit_code": 0,
+      "finished_at": "2026-02-09T08:20:12Z"
+    }
+  ],
+  "summary": {
+    "total": 5,
+    "passed": 3,
+    "failed": 0,
+    "errors": 2,
+    "pass_rate": 60.0,
+    "agent_distribution": {
+      "NO_TASK_CALL": 2,
+      "dev:developer": 1,
+      "dev:researcher": 1,
+      "dev:audit": 1
+    },
+    "timestamp": "20260209-190329"
+  }
+}

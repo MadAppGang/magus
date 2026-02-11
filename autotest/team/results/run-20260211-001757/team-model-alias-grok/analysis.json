@@ -1,0 +1,23 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "check": "task_agent_is",
+      "passed": true,
+      "detail": "All 1 Task calls use dev:researcher"
+    },
+    {
+      "check": "proxy_mode_model_contains",
+      "passed": true,
+      "detail": "Found: PROXY_MODE: x-ai/grok-code-fast-1"
+    }
+  ],
+  "summary": {
+    "total_checks": 2,
+    "passed_checks": 2,
+    "failed_checks": 0,
+    "total_tool_calls": 5,
+    "task_calls": 1,
+    "bash_calls": 2
+  }
+}

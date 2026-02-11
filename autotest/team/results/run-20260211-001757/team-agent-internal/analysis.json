@@ -1,0 +1,33 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "check": "task_agent_is",
+      "passed": true,
+      "detail": "All 1 Task calls use dev:researcher"
+    },
+    {
+      "check": "task_min_count",
+      "passed": true,
+      "detail": "1 Task calls (minimum: 1)"
+    },
+    {
+      "check": "no_proxy_mode_for_internal",
+      "passed": true,
+      "detail": "No PROXY_MODE in Task prompts (correct for internal)"
+    },
+    {
+      "check": "has_vote_template",
+      "passed": true,
+      "detail": "Vote template found in Task prompt"
+    }
+  ],
+  "summary": {
+    "total_checks": 4,
+    "passed_checks": 4,
+    "failed_checks": 0,
+    "total_tool_calls": 6,
+    "task_calls": 1,
+    "bash_calls": 1
+  }
+}

@@ -1,0 +1,162 @@
+{
+  "runs": [
+    {
+      "test_id": "delegate-debug-01",
+      "run": 1,
+      "expected_agent": "dev:debugger",
+      "actual_agent": "dev:debugger",
+      "result": "PASS",
+      "duration_seconds": 152,
+      "exit_code": 0,
+      "finished_at": "2026-02-09T10:19:23Z"
+    },
+    {
+      "test_id": "delegate-implement-01",
+      "run": 1,
+      "expected_agent": "dev:developer",
+      "actual_agent": "dev:developer",
+      "result": "PASS",
+      "duration_seconds": 154,
+      "exit_code": 0,
+      "finished_at": "2026-02-09T10:16:51Z"
+    },
+    {
+      "test_id": "delegate-investigate-01",
+      "run": 1,
+      "expected_agent": "code-analysis:detective",
+      "actual_agent": "code-analysis:detective",
+      "result": "PASS",
+      "duration_seconds": 549,
+      "exit_code": 0,
+      "finished_at": "2026-02-09T10:14:17Z"
+    },
+    {
+      "test_id": "delegate-parallel-01",
+      "run": 1,
+      "expected_agent": "dev:researcher",
+      "actual_agent": "dev:researcher",
+      "result": "PASS",
+      "duration_seconds": 347,
+      "exit_code": 0,
+      "finished_at": "2026-02-09T10:25:11Z"
+    },
+    {
+      "test_id": "delegate-research-01",
+      "run": 1,
+      "expected_agent": "dev:researcher",
+      "actual_agent": "dev:researcher",
+      "result": "PASS",
+      "duration_seconds": 53,
+      "exit_code": 0,
+      "finished_at": "2026-02-09T10:05:08Z"
+    },
+    {
+      "test_id": "direct-simple-01",
+      "run": 1,
+      "expected_agent": "NO_TASK_CALL",
+      "actual_agent": "NO_TASK_CALL",
+      "result": "PASS",
+      "duration_seconds": 21,
+      "exit_code": 0,
+      "finished_at": "2026-02-09T10:25:32Z"
+    },
+    {
+      "test_id": "direct-simple-02",
+      "run": 1,
+      "expected_agent": "NO_TASK_CALL",
+      "actual_agent": "NO_TASK_CALL",
+      "result": "PASS",
+      "duration_seconds": 25,
+      "exit_code": 0,
+      "finished_at": "2026-02-09T10:25:57Z"
+    },
+    {
+      "test_id": "explicit-architect-01",
+      "run": 1,
+      "expected_agent": "dev:architect",
+      "actual_agent": "dev:architect",
+      "result": "PASS",
+      "duration_seconds": 424,
+      "exit_code": 0,
+      "finished_at": "2026-02-09T10:04:15Z"
+    },
+    {
+      "test_id": "explicit-debugger-01",
+      "run": 1,
+      "expected_agent": "dev:debugger",
+      "actual_agent": "dev:debugger",
+      "result": "PASS",
+      "duration_seconds": 137,
+      "exit_code": 0,
+      "finished_at": "2026-02-09T09:57:11Z"
+    },
+    {
+      "test_id": "explicit-detective-01",
+      "run": 1,
+      "expected_agent": "code-analysis:detective",
+      "actual_agent": "code-analysis:detective",
+      "result": "PASS",
+      "duration_seconds": 596,
+      "exit_code": 0,
+      "finished_at": "2026-02-09T09:53:22Z"
+    },
+    {
+      "test_id": "explicit-developer-01",
+      "run": 1,
+      "expected_agent": "dev:developer",
+      "actual_agent": "dev:developer",
+      "result": "PASS",
+      "duration_seconds": 91,
+      "exit_code": 0,
+      "finished_at": "2026-02-09T09:54:54Z"
+    },
+    {
+      "test_id": "explicit-researcher-01",
+      "run": 1,
+      "expected_agent": "dev:researcher",
+      "actual_agent": "dev:researcher",
+      "result": "PASS",
+      "duration_seconds": 292,
+      "exit_code": 0,
+      "finished_at": "2026-02-09T09:43:25Z"
+    },
+    {
+      "test_id": "hint-subagent-01",
+      "run": 1,
+      "expected_agent": "agentdev:reviewer",
+      "actual_agent": "agentdev:reviewer",
+      "result": "PASS",
+      "duration_seconds": 631,
+      "exit_code": 0,
+      "finished_at": "2026-02-09T10:36:28Z"
+    },
+    {
+      "test_id": "hint-subagent-02",
+      "run": 1,
+      "expected_agent": "general-purpose",
+      "actual_agent": "dev:audit",
+      "result": "PASS_ALT",
+      "duration_seconds": 56,
+      "exit_code": 0,
+      "finished_at": "2026-02-09T10:37:24Z"
+    }
+  ],
+  "summary": {
+    "total": 14,
+    "passed": 14,
+    "failed": 0,
+    "errors": 0,
+    "pass_rate": 100.0,
+    "agent_distribution": {
+      "dev:debugger": 2,
+      "dev:developer": 2,
+      "code-analysis:detective": 2,
+      "dev:researcher": 3,
+      "NO_TASK_CALL": 2,
+      "dev:architect": 1,
+      "agentdev:reviewer": 1,
+      "dev:audit": 1
+    },
+    "timestamp": "20260209-203833"
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "runs": [
+    {
+      "test_id": "debug-01",
+      "run": 1,
+      "expected_agent": "dev:debugger",
+      "actual_agent": "NO_TASK_CALL",
+      "result": "NO_DELEGATION",
+      "duration_seconds": 0,
+      "exit_code": 127,
+      "finished_at": "2026-02-09T06:45:28Z"
+    },
+    {
+      "test_id": "explore-01",
+      "run": 1,
+      "expected_agent": "Explore",
+      "actual_agent": "NO_TASK_CALL",
+      "result": "NO_DELEGATION",
+      "duration_seconds": 0,
+      "exit_code": 127,
+      "finished_at": "2026-02-09T06:45:28Z"
+    },
+    {
+      "test_id": "implement-01",
+      "run": 1,
+      "expected_agent": "dev:developer",
+      "actual_agent": "NO_TASK_CALL",
+      "result": "NO_DELEGATION",
+      "duration_seconds": 0,
+      "exit_code": 127,
+      "finished_at": "2026-02-09T06:45:28Z"
+    },
+    {
+      "test_id": "research-local-01",
+      "run": 1,
+      "expected_agent": "code-analysis:detective",
+      "actual_agent": "NO_TASK_CALL",
+      "result": "NO_DELEGATION",
+      "duration_seconds": 0,
+      "exit_code": 127,
+      "finished_at": "2026-02-09T06:45:28Z"
+    },
+    {
+      "test_id": "research-web-01",
+      "run": 1,
+      "expected_agent": "dev:researcher",
+      "actual_agent": "NO_TASK_CALL",
+      "result": "NO_DELEGATION",
+      "duration_seconds": 0,
+      "exit_code": 127,
+      "finished_at": "2026-02-09T06:45:27Z"
+    }
+  ],
+  "summary": {
+    "total": 5,
+    "passed": 0,
+    "failed": 0,
+    "errors": 5,
+    "pass_rate": 0.0,
+    "agent_distribution": {
+      "NO_TASK_CALL": 5
+    },
+    "timestamp": "20260209-174527"
+  }
+}

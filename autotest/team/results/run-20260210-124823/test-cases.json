@@ -1,0 +1,130 @@
+{
+  "meta": {
+    "description": "Test cases for /multimodel:team command orchestration. Verifies correct Task call construction: agent selection, PROXY_MODE placement, parallel launch, model alias resolution, vote template, session dir, and no pre-digestion.",
+    "version": "1.0.0",
+    "created": "2026-02-10",
+    "notes": "Tests the ORCHESTRATOR layer only (what Task calls does /team create?). Uses 120s timeout since we only need the first response. Sub-agents may start but we don't need them to complete."
+  },
+  "model_aliases": {
+    "grok": "x-ai/grok-code-fast-1",
+    "gemini": "google/gemini-3-pro-preview",
+    "gpt-5": "openai/gpt-5.2-codex",
+    "deepseek": "deepseek/deepseek-v3.2",
+    "minimax": "minimax/minimax-m2.5",
+    "glm": "z-ai/glm-4.7"
+  },
+  "test_cases": [
+    {
+      "id": "team-agent-internal",
+      "description": "Internal-only model should use dev:researcher agent",
+      "prompt": "/multimodel:team --models internal --no-memory Review the plugin.json structure in the dev plugin",
+      "checks": {
+        "task_agent_is": "dev:researcher",
+        "task_min_count": 1,
+        "no_proxy_mode_for_internal": true,
+        "has_vote_template": true
+      },
+      "tags": ["agent-selection", "internal"]
+    },
+    {
+      "id": "team-agent-external",
+      "description": "External model should use dev:researcher with PROXY_MODE",
+      "prompt": "/multimodel:team --models grok --no-memory Review the plugin.json structure in the dev plugin",
+      "checks": {
+        "task_agent_is": "dev:researcher",
+        "task_min_count": 1,
+        "has_proxy_mode": true,
+        "proxy_mode_first_line": true,
+        "proxy_mode_model_contains": "grok"
+      },
+      "tags": ["agent-selection", "proxy-mode", "external"]
+    },
+    {
+      "id": "team-parallel-mixed",
+      "description": "Mixed internal+external should launch parallel Tasks with correct PROXY_MODE",
+      "prompt": "/multimodel:team --models internal,grok --no-memory Check if CLAUDE.md has proper formatting",
+      "checks": {
+        "task_agent_is": "dev:researcher",
+        "task_min_count": 2,
+        "has_proxy_mode": true,
+        "run_in_background": true
+      },
+      "tags": ["parallel", "mixed-models"]
+    },
+    {
+      "id": "team-no-predigest",
+      "description": "Investigation task should NOT be pre-solved by orchestrator",
+      "prompt": "/multimodel:team --models internal --no-memory Investigate how the conductor plugin orchestration patterns work and document the key design decisions",
+      "checks": {
+        "task_agent_is": "dev:researcher",
+        "no_predigest": true
+      },
+      "tags": ["no-predigest"]
+    },
+    {
+      "id": "team-session-dir",
+      "description": "Session directory should be under ai-docs/sessions/",
+      "prompt": "/multimodel:team --models internal --no-memory Quick check on README formatting",
+      "checks": {
+        "session_dir_pattern": "ai-docs/sessions/",
+        "no_tmp_dir": true
+      },
+      "tags": ["session-dir"]
+    },
+    {
+      "id": "team-multi-external",
+      "description": "Multiple external models should all get PROXY_MODE with correct model IDs",
+      "prompt": "/multimodel:team --models grok,gemini --no-memory Review the multimodel plugin structure",
+      "checks": {
+        "task_agent_is": "dev:researcher",
+        "task_min_count": 2,
+        "has_proxy_mode": true,
+        "proxy_mode_first_line": true,
+        "run_in_background": true
+      },
+      "tags": ["multi-external", "proxy-mode"]
+    },
+    {
+      "id": "team-model-alias-grok",
+      "description": "Alias 'grok' should resolve to full model ID in PROXY_MODE",
+      "prompt": "/multimodel:team --models grok --no-memory Check plugin version numbers",
+      "checks": {
+        "proxy_mode_model_contains": "grok",
+        "task_agent_is": "dev:researcher"
+      },
+      "tags": ["model-alias"]
+    },
+    {
+      "id": "team-model-alias-gemini",
+      "description": "Alias 'gemini' should resolve to full model ID in PROXY_MODE",
+      "prompt": "/multimodel:team --models gemini --no-memory Check plugin version numbers",
+      "checks": {
+        "proxy_mode_model_contains": "gemini",
+        "task_agent_is": "dev:researcher"
+      },
+      "tags": ["model-alias"]
+    },
+    {
+      "id": "team-vote-template",
+      "description": "Task prompts should contain the vote template with required format",
+      "prompt": "/multimodel:team --models internal --no-memory Evaluate if the README has all required sections",
+      "checks": {
+        "has_vote_template": true,
+        "has_vote_format": true,
+        "task_agent_is": "dev:researcher"
+      },
+      "tags": ["vote-template"]
+    },
+    {
+      "id": "team-background-launch",
+      "description": "All model Task calls should use run_in_background for parallel execution",
+      "prompt": "/multimodel:team --models internal,grok --no-memory Review code quality of plugin.json files",
+      "checks": {
+        "run_in_background": true,
+        "task_min_count": 2,
+        "task_agent_is": "dev:researcher"
+      },
+      "tags": ["parallel", "background"]
+    }
+  ]
+}

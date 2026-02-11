@@ -1,0 +1,28 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "check": "task_agent_is",
+      "passed": true,
+      "detail": "All 1 Task calls use dev:researcher"
+    },
+    {
+      "check": "has_vote_template",
+      "passed": true,
+      "detail": "Vote template found in Task prompt"
+    },
+    {
+      "check": "has_vote_format",
+      "passed": true,
+      "detail": "Vote format block found"
+    }
+  ],
+  "summary": {
+    "total_checks": 3,
+    "passed_checks": 3,
+    "failed_checks": 0,
+    "total_tool_calls": 7,
+    "task_calls": 1,
+    "bash_calls": 3
+  }
+}

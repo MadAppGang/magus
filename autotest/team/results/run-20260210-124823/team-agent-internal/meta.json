@@ -1,0 +1,9 @@
+{
+  "test_id": "team-agent-internal",
+  "result": "PASS",
+  "duration_seconds": 169,
+  "passed_checks": 4,
+  "total_checks": 4,
+  "exit_code": 0,
+  "finished_at": "2026-02-10T01:51:12Z"
+}

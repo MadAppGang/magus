@@ -1,0 +1,130 @@
+{
+  "meta": {
+    "description": "Subagent selection test cases. Each test verifies that Claude selects the expected subagent_type when given a specific task prompt.",
+    "version": "1.0.0",
+    "created": "2026-02-09"
+  },
+  "test_cases": [
+    {
+      "id": "research-web-01",
+      "description": "Web research task should trigger dev:researcher",
+      "prompt": "Search the web for best practices on JWT token refresh rotation and summarize findings",
+      "expected_agent": "dev:researcher",
+      "category": "research",
+      "tags": ["web", "research"]
+    },
+    {
+      "id": "research-local-01",
+      "description": "Local investigation should trigger code-analysis:detective",
+      "prompt": "Investigate how authentication is implemented in this codebase and trace the auth flow",
+      "expected_agent": "code-analysis:detective",
+      "category": "investigation",
+      "tags": ["local", "codebase"]
+    },
+    {
+      "id": "implement-01",
+      "description": "Implementation task should trigger dev:developer",
+      "prompt": "Create a new utility function that validates email addresses and add tests for it",
+      "expected_agent": "dev:developer",
+      "category": "implementation",
+      "tags": ["code", "create"]
+    },
+    {
+      "id": "review-01",
+      "description": "Code review task should trigger relevant reviewer",
+      "prompt": "Review the recent changes in plugins/dev/agents/ for quality and standards compliance",
+      "expected_agent": "agentdev:reviewer",
+      "category": "review",
+      "tags": ["review", "quality"]
+    },
+    {
+      "id": "debug-01",
+      "description": "Debugging task should trigger dev:debugger",
+      "prompt": "Debug why the test suite is failing with a timeout error in the authentication module",
+      "expected_agent": "dev:debugger",
+      "category": "debugging",
+      "tags": ["debug", "error"]
+    },
+    {
+      "id": "explore-01",
+      "description": "Quick codebase exploration should trigger Explore agent",
+      "prompt": "Find all TypeScript files that export a function named 'validate'",
+      "expected_agent": "Explore",
+      "category": "exploration",
+      "tags": ["search", "quick"]
+    },
+    {
+      "id": "architecture-01",
+      "description": "Architecture task should trigger dev:architect",
+      "prompt": "Design the architecture for adding a caching layer to our API endpoints",
+      "expected_agent": "dev:architect",
+      "category": "architecture",
+      "tags": ["design", "architecture"]
+    },
+    {
+      "id": "docs-01",
+      "description": "Documentation writing should trigger dev:doc-writer",
+      "prompt": "Write comprehensive API documentation for the user authentication endpoints",
+      "expected_agent": "dev:doc-writer",
+      "category": "documentation",
+      "tags": ["docs", "write"]
+    },
+    {
+      "id": "test-01",
+      "description": "Test creation should trigger dev:test-architect",
+      "prompt": "Create a comprehensive test suite for the payment processing module based on the requirements",
+      "expected_agent": "dev:test-architect",
+      "category": "testing",
+      "tags": ["test", "create"]
+    },
+    {
+      "id": "devops-01",
+      "description": "DevOps/infra task should trigger dev:devops",
+      "prompt": "Set up a CI/CD pipeline configuration for automated testing and deployment",
+      "expected_agent": "dev:devops",
+      "category": "devops",
+      "tags": ["infrastructure", "deployment"]
+    },
+    {
+      "id": "ambiguous-01",
+      "description": "Ambiguous research/investigation - could go either way",
+      "prompt": "Figure out why our build process is slow and suggest improvements",
+      "expected_agent": "dev:debugger",
+      "expected_alternatives": ["code-analysis:detective", "dev:researcher"],
+      "category": "ambiguous",
+      "tags": ["investigate", "performance"]
+    },
+    {
+      "id": "complex-01",
+      "description": "Complex multi-step task - general-purpose may be appropriate",
+      "prompt": "Find all TODO comments in the codebase, categorize them by priority, create issues for the critical ones, and update the project README with a summary",
+      "expected_agent": "general-purpose",
+      "category": "complex",
+      "tags": ["multi-step", "mixed"]
+    },
+    {
+      "id": "ui-01",
+      "description": "UI development task should trigger dev:ui-engineer",
+      "prompt": "Build a responsive dashboard component with charts showing user activity metrics",
+      "expected_agent": "dev:ui-engineer",
+      "category": "ui",
+      "tags": ["component", "visual"]
+    },
+    {
+      "id": "explicit-01",
+      "description": "Explicit agent request should be honored",
+      "prompt": "Use the dev:researcher agent to investigate the latest React Server Components patterns",
+      "expected_agent": "dev:researcher",
+      "category": "explicit",
+      "tags": ["explicit", "named"]
+    },
+    {
+      "id": "explicit-02",
+      "description": "Explicit detective request should be honored",
+      "prompt": "Use the code-analysis:detective agent to analyze the plugin loading system",
+      "expected_agent": "code-analysis:detective",
+      "category": "explicit",
+      "tags": ["explicit", "named"]
+    }
+  ]
+}

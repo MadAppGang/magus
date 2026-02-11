@@ -1,0 +1,44 @@
+I'll launch the dev:researcher agent to search for the latest React Server Components patterns and create a comprehensive research report.
+
+`★ Insight ─────────────────────────────────────`
+- The dev:researcher agent supports PROXY_MODE, making it ideal for deep research tasks with external models
+- Using ai-docs/ directory follows the project's documentation structure pattern for technical artifacts
+- The agent will autonomously search, synthesize findings, and produce structured documentation
+`─────────────────────────────────────────────────`
+Excellent! The research report has been successfully created. Let me show you what was produced:
+
+`★ Insight ─────────────────────────────────────`
+- The dev:researcher agent autonomously conducted web searches, synthesized information from multiple authoritative sources, and produced a structured technical document
+- The report includes both theoretical concepts and practical implementation patterns with code examples
+- Positioning this in ai-docs/ follows the project's pattern for technical documentation that supports development work
+`─────────────────────────────────────────────────`
+
+## Report Summary
+
+The comprehensive research report at **ai-docs/research-rsc.md** covers React Server Components patterns as of 2026:
+
+### Key Findings:
+
+1. **Paradigm Shift**: Server Components are now the default in modern React - client components require explicit opt-in with `"use client"`
+
+2. **Major Features in 2026**:
+   - **Partial Prerendering (PPR)** - Stable and production-ready for mixing static/dynamic content
+   - **Server Actions** - Have largely replaced traditional API routes
+   - **Automatic Request Deduplication** - Framework-level optimization for parallel data fetching
+
+3. **Critical Patterns Documented**:
+   - Data fetching colocation (fetch directly in components)
+   - Waterfall prevention through parallel requests
+   - Streaming with Suspense for progressive rendering
+   - URL-as-state pattern for shareable UI state
+   - Granular caching strategies
+
+4. **Real-World Guidance**:
+   - Next.js App Router implementation patterns
+   - Migration strategies from Client Components
+   - Common pitfalls and their solutions
+   - Testing approaches for Server Components
+
+The report includes **50+ code examples** comparing correct patterns with anti-patterns, making it immediately actionable for development teams. It synthesizes information from official React docs, Next.js documentation, and the latest 2026 best practices from the React community.
+
+The document is ready to use as a team reference guide or onboarding resource for React Server Components development!

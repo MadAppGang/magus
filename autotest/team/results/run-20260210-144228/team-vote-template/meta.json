@@ -1,0 +1,9 @@
+{
+  "test_id": "team-vote-template",
+  "result": "PASS",
+  "duration_seconds": 108,
+  "passed_checks": 3,
+  "total_checks": 3,
+  "exit_code": 0,
+  "finished_at": "2026-02-10T04:03:12Z"
+}

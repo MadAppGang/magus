@@ -1,0 +1,9 @@
+{
+  "test_id": "team-multi-external",
+  "result": "PASS",
+  "duration_seconds": 167,
+  "passed_checks": 5,
+  "total_checks": 5,
+  "exit_code": 0,
+  "finished_at": "2026-02-10T03:56:41Z"
+}

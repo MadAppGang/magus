@@ -1,0 +1,10 @@
+{
+  "test_id": "delegate-investigate-01",
+  "run": 1,
+  "expected_agent": "code-analysis:detective",
+  "actual_agent": "code-analysis:detective",
+  "result": "PASS",
+  "duration_seconds": 1155,
+  "exit_code": 0,
+  "finished_at": "2026-02-09T09:11:31Z"
+}

@@ -1,0 +1,98 @@
+I'll launch a specialized subagent to comprehensively review all agent definitions across the repository and generate a quality report.
+
+`★ Insight ─────────────────────────────────────`
+- Using the **agentdev:reviewer** agent which specializes in agent quality assessment
+- This task requires analyzing multiple agent files across different plugins - perfect for a dedicated subagent with sustained focus
+- The reviewer agent has specific expertise in evaluating agent descriptions, trigger patterns, and PROXY_MODE support
+`─────────────────────────────────────────────────`
+Excellent! The comprehensive agent quality audit is complete. Let me share the key findings with you.
+
+`★ Insight ─────────────────────────────────────`
+- The **agentdev:reviewer** agent analyzed **50 agents across 10 plugins** in just over 5 minutes
+- Quality distribution shows **24% are excellent** (9.0+), while only **6% need significant work** (<7.0) - this is a strong foundation
+- The report uses a **multi-dimensional scoring system** (clarity, completeness, trigger effectiveness, example quality) rather than just subjective assessment
+`─────────────────────────────────────────────────`
+
+## 📊 Executive Summary
+
+**Report Location**: `ai-docs/agent-quality-report-20260209-201246.md`
+
+### Overall Health: 🟢 Strong Foundation
+
+Out of 50 agents analyzed:
+- **12 agents (24%)** are Tier 1 (Excellent, 9.0+)
+- **18 agents (36%)** are Tier 2 (Very Good, 8.0-8.9)
+- **10 agents (20%)** are Tier 3 (Good, 7.5-7.9)
+- **7 agents (14%)** are Tier 4 (Adequate, 7.0-7.4)
+- **3 agents (6%)** are Tier 5 (Needs Work, <7.0)
+
+### 🏆 Top 5 Best-in-Class Agents
+
+1. **`code-analysis:detective`** (9.8/10) - The gold standard with setup validation, anti-patterns section, and token efficiency guidance
+2. **`agentdev:reviewer`** (9.5/10) - Meta-quality: practices what it preaches
+3. **`dev:researcher`** (9.3/10) - 289-word description with 4 detailed examples and PROXY_MODE error handling
+4. **`dev:developer`** (9.2/10) - Comprehensive skill loading system and iterative quality checks
+5. **`frontend:architect`** (9.0/10) - Innovative gap analysis pattern with file-based communication
+
+### 🔍 Critical Findings
+
+**Strengths:**
+- ✅ **90%** have TodoWrite/Tasks integration (excellent progress tracking)
+- ✅ **Consistent XML structure** across core plugins (dev, agentdev, code-analysis)
+- ✅ **Modern agents have great examples** - recent work shows quality improvement trend
+- ✅ **Clear standards documented** in agentdev:patterns skill
+
+**Weaknesses:**
+- ⚠️ **40% need description improvements** - too brief, missing examples, unclear triggers
+- ⚠️ **60% missing PROXY_MODE support** - blocks `/team` multi-model orchestration
+- ⚠️ **12% have no examples** - according to your MEMORY.md, this caps implicit delegation at 10%
+- ⚠️ **90% missing SESSION_PATH** - missing opportunity for token-efficient file-based communication
+
+### 🎯 Priority Improvements
+
+The report identifies **~75 hours of improvement work** broken into priorities:
+
+**🔴 Critical (25.5 hours):**
+1. **Add examples to 6 agents** without any - fixes delegation reliability
+2. **Add PROXY_MODE to 30 agents** - enables `/team` workflows
+
+**🟡 High (30.8 hours):**
+3. **Improve 15 agent descriptions** - expand to 200-350 words with clear triggers
+4. **Add SESSION_PATH to 25 agents** - reduce token consumption
+
+**🟢 Medium (18.3 hours):**
+5. **Standardize tool declarations** - consistency across plugins
+6. **Add anti-patterns sections** - explicit "don't do this" guidance
+
+### 📚 Best Practices Gallery
+
+The report extracted **5 reusable patterns** from top agents:
+
+1. **Excellent Description Pattern** (from dev:researcher) - 289 words with 4 examples
+2. **Setup Validation Pattern** (from code-analysis:detective) - Phase 0 tool availability checks
+3. **Anti-Patterns Section** (from code-analysis:detective) - prevents common mistakes
+4. **PROXY_MODE Error Handling** (from dev:researcher) - catches silent fallback to Claude
+5. **Token Efficiency Guidance** (from code-analysis:detective) - educates about claudemem costs
+
+`★ Insight ─────────────────────────────────────`
+- The **critical fixes directly address your MEMORY.md learnings**: adding examples boosts implicit delegation from 10% to 30%, and PROXY_MODE support unblocks `/team` orchestration
+- The report identifies that **recent agents (dev, agentdev, code-analysis) set a quality bar** that older plugins should reach - this is a natural evolution pattern
+- **Plugin age correlates with quality**: newer plugins (dev v1.29.0, agentdev v1.4.0) score higher than older ones (video-editing v1.0.1, conductor v2.0.1)
+`─────────────────────────────────────────────────`
+
+## 📖 Full Report Contents
+
+The detailed report includes:
+
+- **Plugin-by-Plugin Analysis** - scoring and recommendations for each plugin
+- **Agent-by-Agent Scoring** - detailed ratings across 4 dimensions
+- **Best Practice Gallery** - code snippets you can copy/paste
+- **Standardization Templates** - XML structure examples
+- **Scoring Methodology** - transparent criteria for ratings
+- **Improvement Roadmap** - prioritized work with time estimates
+
+Would you like me to:
+1. **Start implementing the critical fixes** (examples + PROXY_MODE for specific agents)?
+2. **Create a tracking issue** or project plan for the 75 hours of improvements?
+3. **Deep-dive into a specific plugin** to see detailed agent-by-agent analysis?
+4. **Extract and standardize** the best practices into reusable templates?

@@ -1,0 +1,59 @@
+I'll dispatch three parallel research agents to investigate these topics independently, with each writing findings to separate files.
+
+`★ Insight ─────────────────────────────────────`
+- **Parallel agent orchestration**: Using multiple Task agents simultaneously maximizes efficiency for independent research tasks
+- **Session isolation pattern**: Each agent writes to a unique file in `ai-docs/sessions/` to prevent collision, following the multi-model workflow patterns established in this codebase
+- **Agent selection**: Using `dev:deep-research` agents since they're designed for comprehensive research with convergence-based finalization
+`─────────────────────────────────────────────────`
+Perfect! All three research agents have completed their work in parallel. Here's what was accomplished:
+
+## Research Complete - Three Parallel Investigations
+
+### 📊 **1. GraphQL vs REST Performance** 
+**File:** `ai-docs/sessions/parallel-research-graphql-rest-1770622895.md`
+
+**Key Takeaways:**
+- **GraphQL wins** for mobile apps (36% faster), nested data (71% faster), complex dashboards
+- **REST wins** for simple CRUD (15-30% faster), caching (38% better hit rates), public APIs
+- **Real data** from Netflix, GitHub, Shopify, PayPal showing production performance
+- **42% of companies** use hybrid approach - both technologies together
+
+**Standout Benchmark:** Shopify reduced bandwidth by 48% (461KB vs 892KB per session) with GraphQL
+
+---
+
+### 🔌 **2. WebSocket Scaling Patterns**
+**File:** `ai-docs/sessions/parallel-research-websocket-scaling-1770622897.md`
+
+**Key Takeaways:**
+- **Single server limit:** ~50,000 concurrent connections
+- **Scaling strategy:** Sticky sessions + Redis Pub/Sub works for 95% of use cases
+- **Message brokers compared:** Redis (fast), RabbitMQ (reliable), Kafka (high throughput)
+- **Cloud solutions:** AWS API Gateway WebSocket, Azure SignalR for managed scaling
+- **Architecture patterns** for small (1k-10k), medium (10k-100k), and large scale (100k-1M+ connections)
+
+**Critical Insight:** Each WebSocket connection uses 30-50KB memory - plan capacity accordingly!
+
+---
+
+### ⚡ **3. Edge Computing for API Gateways**
+**File:** `ai-docs/sessions/parallel-research-edge-api-gateways-1770622901.md`
+
+**Key Takeaways:**
+- **Latency reduction:** 50-87% improvement globally (450ms → 60ms for Asia from US East)
+- **Cost savings:** 75-91% reduction at scale ($11 vs $113/month for 10M requests)
+- **Platform winner:** Cloudflare Workers ($0.50/M requests, <1ms cold starts)
+- **Best for:** Authentication (8ms vs 120ms), rate limiting, caching, DDoS protection
+- **Limitations:** CPU time (10-50ms), memory (128-512MB), debugging complexity
+
+**Standout Stat:** Edge DDoS protection can absorb 50M-100M+ requests/sec before traffic reaches your backend
+
+---
+
+`★ Insight ─────────────────────────────────────`
+- **Parallel execution efficiency**: All three agents ran simultaneously, completing in ~7.3 minutes total (vs ~22 minutes if sequential)
+- **Agent resource usage**: Combined 160,766 tokens across agents - this distributed approach kept the main context clean while gathering extensive research
+- **Session isolation pattern**: Each agent wrote to timestamped files preventing any collision risk, following the `ai-docs/sessions/` convention from the multimodel plugin patterns
+`─────────────────────────────────────────────────`
+
+All research files are ready for review in the `ai-docs/sessions/` directory with comprehensive findings, benchmarks, code examples, and actionable recommendations!

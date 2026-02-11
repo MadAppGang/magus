@@ -1,0 +1,9 @@
+{
+  "test_id": "team-parallel-mixed",
+  "result": "FAIL",
+  "duration_seconds": 34,
+  "passed_checks": 1,
+  "total_checks": 4,
+  "exit_code": 0,
+  "finished_at": "2026-02-10T01:44:16Z"
+}

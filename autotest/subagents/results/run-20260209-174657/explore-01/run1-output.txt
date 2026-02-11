@@ -1,0 +1,39 @@
+I'll search for TypeScript files that export a function named 'validate'.
+Let me also check for default exports and other export patterns:
+Now let me look at the actual content of these files to confirm they export a `validate` function:
+Based on my search, I found **no TypeScript files that export a function named exactly `validate`**. However, I found several files with `validate*` functions (validateFrontmatter, validateMcpServerName, etc.).
+
+`★ Insight ─────────────────────────────────────`
+1. **Pattern matching nuance**: The search shows validate-prefixed functions but none named exactly "validate". This is a common naming pattern in validation utilities where functions are more descriptive (validateProjectPath, validatePluginId, etc.)
+
+2. **Validation centralization**: The main validation logic lives in `tools/claudeup-core/src/utils/validators.ts` with 6 specific validators, while test utilities in `__tests__/utils/parsers.ts` handle frontmatter/config validation.
+
+3. **Export patterns found**: All exports use the `export function name()` pattern rather than `export const name = () =>` or default exports, which is typical for utility functions.
+`─────────────────────────────────────────────────`
+
+## Files with validate-related exports:
+
+1. **tools/claudeup-core/src/utils/validators.ts** (6 validators)
+   - validateProjectPath
+   - validatePluginId
+   - validateCommand
+   - validateFilePath
+   - validateToolName
+   - validatePackageManager
+
+2. **tools/claudeup-core/src/services/claude-settings.ts** (2 validators)
+   - validateMcpServerName
+   - validateMcpServerConfig
+
+3. **tools/claudeup-core/src/__tests__/utils/parsers.ts** (6 validators)
+   - validateAgentFrontmatter
+   - validateCommandFrontmatter
+   - validateSkillFrontmatter
+   - validatePluginManifest
+   - validateHooksConfig
+   - validateMcpConfig
+
+4. **tests/integration/utils/skill-parser.ts** (1 validator)
+   - validateFrontmatter
+
+Would you like me to search for a different function name, or would you like to see the implementation of any of these validation functions?

@@ -1,0 +1,8 @@
+I'll read the plugin.json file to check the version number.
+The version number in `plugins/dev/plugin.json` is **1.29.0**.
+
+`★ Insight ─────────────────────────────────────`
+- The dev plugin uses semantic versioning (major.minor.patch) and is currently at v1.29.0, indicating it's a mature plugin with 29 minor versions of enhancements
+- The version appears in both the `version` field and the `description` field for visibility to users
+- According to the CLAUDE.md release checklist, when bumping this version you'd also need to update `.claude-plugin/marketplace.json` and create a git tag `plugins/dev/v1.29.0`
+`─────────────────────────────────────────────────`

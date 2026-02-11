@@ -1,0 +1,68 @@
+{
+  "runs": [
+    {
+      "test_id": "direct-simple-01",
+      "run": 1,
+      "expected_agent": "NO_TASK_CALL",
+      "actual_agent": "NO_TASK_CALL",
+      "result": "PASS",
+      "duration_seconds": 21,
+      "exit_code": 0,
+      "finished_at": "2026-02-09T07:09:18Z"
+    },
+    {
+      "test_id": "direct-simple-02",
+      "run": 1,
+      "expected_agent": "NO_TASK_CALL",
+      "actual_agent": "NO_TASK_CALL",
+      "result": "PASS",
+      "duration_seconds": 25,
+      "exit_code": 0,
+      "finished_at": "2026-02-09T07:09:43Z"
+    },
+    {
+      "test_id": "explicit-detective-01",
+      "run": 1,
+      "expected_agent": "code-analysis:detective",
+      "actual_agent": "code-analysis:detective",
+      "result": "PASS",
+      "duration_seconds": 399,
+      "exit_code": 0,
+      "finished_at": "2026-02-09T07:02:07Z"
+    },
+    {
+      "test_id": "explicit-developer-01",
+      "run": 1,
+      "expected_agent": "dev:developer",
+      "actual_agent": "dev:developer",
+      "result": "PASS",
+      "duration_seconds": 409,
+      "exit_code": 0,
+      "finished_at": "2026-02-09T07:08:57Z"
+    },
+    {
+      "test_id": "explicit-researcher-01",
+      "run": 1,
+      "expected_agent": "dev:researcher",
+      "actual_agent": "dev:researcher",
+      "result": "PASS",
+      "duration_seconds": 263,
+      "exit_code": 0,
+      "finished_at": "2026-02-09T06:55:28Z"
+    }
+  ],
+  "summary": {
+    "total": 5,
+    "passed": 5,
+    "failed": 0,
+    "errors": 0,
+    "pass_rate": 100.0,
+    "agent_distribution": {
+      "NO_TASK_CALL": 2,
+      "code-analysis:detective": 1,
+      "dev:developer": 1,
+      "dev:researcher": 1
+    },
+    "timestamp": "20260209-175105"
+  }
+}

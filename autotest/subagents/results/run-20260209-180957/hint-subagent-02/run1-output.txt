@@ -1,0 +1,32 @@
+I'll launch a security audit agent to scan the codebase for vulnerabilities and generate a comprehensive report.
+
+`★ Insight ─────────────────────────────────────`
+- **Background agents** let me continue helping you while intensive tasks run in parallel
+- **Security audits** check for OWASP Top 10 vulnerabilities: injection flaws, authentication issues, XSS, and exposed secrets
+- **Codebase-wide scanning** is perfect for a background task since it may take time to traverse all files
+`─────────────────────────────────────────────────`
+I see - let me use the correct agent type. I'll use the `code-analysis:detective` agent which is designed for deep codebase investigation, perfect for security auditing.
+Perfect! I've launched a security audit agent in the background. The agent is now scanning the entire codebase for vulnerabilities.
+
+`★ Insight ─────────────────────────────────────`
+- **Background tasks** run asynchronously - you'll be notified automatically when complete
+- **Detective agent** uses semantic search and pattern analysis to find security issues across the codebase
+- **Comprehensive coverage** - the agent will examine TypeScript, JavaScript, shell scripts, configuration files, and dependencies
+`─────────────────────────────────────────────────`
+
+The security audit is checking for:
+- 🔑 **Hardcoded secrets** - API keys, tokens, passwords in source files
+- 💉 **Injection flaws** - SQL injection, command injection, path traversal
+- 🛡️ **XSS vulnerabilities** - Unsafe HTML rendering, unescaped user input
+- 🔐 **Auth/authz issues** - Weak authentication, insecure token handling
+- 📦 **Dependency risks** - Known vulnerable packages, outdated libraries
+- ⚙️ **Configuration problems** - Debug mode in prod, permissive CORS
+- 📊 **Data exposure** - Sensitive data in logs, verbose error messages
+
+The report will be written to **`ai-docs/security-audit.md`** with:
+- Executive summary with severity counts (Critical/High/Medium/Low)
+- Detailed findings with specific file paths and line numbers
+- Recommended fixes for each vulnerability
+- Actionable remediation steps
+
+I'll notify you as soon as the scan completes. In the meantime, feel free to continue with other work - the audit runs independently in the background.

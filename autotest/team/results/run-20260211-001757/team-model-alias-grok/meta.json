@@ -1,0 +1,9 @@
+{
+  "test_id": "team-model-alias-grok",
+  "result": "PASS",
+  "duration_seconds": 120,
+  "passed_checks": 2,
+  "total_checks": 2,
+  "exit_code": 142,
+  "finished_at": "2026-02-10T13:30:55Z"
+}

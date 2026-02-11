@@ -1,0 +1,36 @@
+{
+  "runs": [
+    {
+      "test_id": "delegate-implement-01",
+      "run": 1,
+      "expected_agent": "dev:developer",
+      "actual_agent": "dev:developer",
+      "result": "PASS",
+      "duration_seconds": 159,
+      "exit_code": 0,
+      "finished_at": "2026-02-09T09:38:19Z"
+    },
+    {
+      "test_id": "delegate-research-01",
+      "run": 1,
+      "expected_agent": "dev:researcher",
+      "actual_agent": "dev:researcher",
+      "result": "PASS",
+      "duration_seconds": 322,
+      "exit_code": 0,
+      "finished_at": "2026-02-09T09:35:39Z"
+    }
+  ],
+  "summary": {
+    "total": 2,
+    "passed": 2,
+    "failed": 0,
+    "errors": 0,
+    "pass_rate": 100.0,
+    "agent_distribution": {
+      "dev:developer": 1,
+      "dev:researcher": 1
+    },
+    "timestamp": "20260209-203017"
+  }
+}

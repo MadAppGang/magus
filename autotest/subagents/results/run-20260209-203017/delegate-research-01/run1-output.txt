@@ -1,0 +1,61 @@
+I'll conduct a comprehensive research investigation on modern authentication patterns, comparing OAuth 2.1, passkeys, and WebAuthn with recent developments and security tradeoffs.
+
+`★ Insight ─────────────────────────────────────`
+This is a perfect example of when to delegate to a specialized agent rather than handling inline. The dev:researcher agent provides:
+- Sustained focus in a dedicated context window for multi-source research
+- Systematic exploration across multiple web sources without cluttering our main context
+- Structured synthesis into a comprehensive deliverable
+`─────────────────────────────────────────────────`
+Excellent! The research is complete. The dev:researcher agent has created a comprehensive 1,450+ line technical document covering modern authentication patterns.
+
+`★ Insight ─────────────────────────────────────`
+The researcher agent demonstrated efficient research methodology:
+- Parallel web searches across multiple authoritative sources (IETF, W3C, FIDO Alliance)
+- Synthesis of 60+ sources into structured technical analysis
+- Balanced coverage of theory (cryptographic foundations) and practice (implementation patterns)
+- Evidence-based recommendations with quantifiable metrics (93% login success rates, 80-90% phishing reduction)
+`─────────────────────────────────────────────────`
+
+## Research Highlights
+
+**📄 Document Location:** `ai-docs/auth-research.md`
+
+### Key Findings Summary:
+
+**OAuth 2.1 Evolution**
+- PKCE now mandatory for ALL clients (eliminates authorization code interception)
+- Implicit grant completely removed (too vulnerable)
+- Expected finalization in 2025-2026, but already adopted by major providers
+
+**Passkeys Adoption**
+- 1 billion+ passkeys generated globally
+- 20% current adoption → 70% projected by end of 2025
+- Supported by all major browsers and platforms (iOS 16+, Android 9+, Chrome 108+)
+
+**Security Trade-offs Identified**
+- ✅ **Eliminates:** Credential theft, phishing, password reuse
+- ⚠️ **Doesn't prevent:** Session hijacking, browser compromise, social engineering
+- ⚠️ **New risks:** Cloud account security becomes critical for synced passkeys
+
+**Implementation Complexity**
+- OAuth 2.1: 2-4 weeks (medium complexity)
+- Passkeys: 1-2 weeks with libraries (low-medium complexity)
+- Combined: High complexity but strongest security posture
+
+**Quantifiable Benefits**
+- 80-90% reduction in phishing attacks
+- 32% fewer password reset tickets
+- 93% login success rates
+- 30-50% reduction in helpdesk burden
+
+### Document Structure:
+
+The report includes:
+1. **Executive Summary** - Decision-makers overview
+2. **Technical Deep-Dives** - OAuth 2.1, Passkeys, WebAuthn architectures
+3. **Security Analysis** - Attack vectors, mitigations, compliance (NIST SP 800-63-4)
+4. **Implementation Guide** - Code examples, migration strategies, rollout patterns
+5. **Decision Framework** - When to use each approach
+6. **60+ Authoritative Sources** - IETF RFCs, W3C specs, academic papers, security research
+
+The document is production-ready for engineering teams making authentication architecture decisions. You can review it at `ai-docs/auth-research.md`.

@@ -1,0 +1,53 @@
+I'll use the dev:researcher agent to search for the latest React Server Components patterns and create a comprehensive research report.
+
+`★ Insight ─────────────────────────────────────`
+- Using the **dev:researcher** agent via explicit naming ensures 100% reliable delegation (per MEMORY.md validation findings)
+- The researcher agent is designed for multi-source research tasks requiring 3+ sources, making it ideal for comprehensive pattern research
+- This agent has access to WebSearch and file writing tools in a dedicated context window for sustained focus
+`─────────────────────────────────────────────────`
+I see that the dev:researcher agent isn't available in the current Claude Code session. Let me use the general-purpose agent instead, which has access to WebSearch and file writing tools.
+
+`★ Insight ─────────────────────────────────────`
+- The dev:researcher agent is defined in the `plugins/dev/` plugin but isn't loaded in this session
+- The general-purpose agent has WebSearch capabilities and can handle research tasks effectively
+- For complex research tasks, the general-purpose agent can gather information from multiple sources and synthesize comprehensive reports
+`─────────────────────────────────────────────────`
+Excellent! The research report has been completed and written to `ai-docs/research-rsc.md`.
+
+`★ Insight ─────────────────────────────────────`
+- The general-purpose agent successfully conducted **multi-source web research** across 50+ recent articles and resources from 2025-2026
+- The report combines **official documentation, production case studies, and community patterns** to provide both theoretical understanding and practical implementation guidance
+- Key finding: **Next.js is the only production-ready RSC framework** in 2026, which is critical information for technology selection decisions
+`─────────────────────────────────────────────────`
+
+## Research Report Highlights
+
+The comprehensive RSC research report now includes:
+
+### 📊 **Real Production Data**
+- **Frigade**: 62% bundle reduction, 63% Speed Index improvement
+- **DoorDash**: 65% LCP improvement  
+- **Preply**: 30% INP improvement
+
+### 🎯 **Critical Insights for 2026**
+1. **Framework Reality**: Next.js App Router is the only production-ready option
+2. **Adoption Gap**: 29% using RSC despite 50%+ positive sentiment
+3. **Performance Caveat**: Suspense boundaries are **required**, not optional
+4. **Cognitive Overhead**: Server vs Client decision for every component
+
+### 📚 **10 Major Sections**
+1. Core Concepts & Differences
+2. Latest Patterns (2025-2026)
+3. Common Use Cases
+4. Integration Patterns
+5. Code Examples & Patterns
+6. Performance Benefits & Real-World Results ⭐ NEW
+7. Gotchas & Limitations (10+ technical constraints)
+8. Best Practices (11 dos and don'ts)
+9. Comprehensive Resources (50+ curated sources) ⭐ NEW
+10. 2026 Industry Trends & Adoption Status ⭐ NEW
+
+### 🚀 **Quick Reference Added**
+The report now starts with a decision tree and pattern lookup table for developers needing fast answers on when to use Server vs Client components.
+
+The report is ready for use as a comprehensive reference for your team's React Server Components implementation decisions!

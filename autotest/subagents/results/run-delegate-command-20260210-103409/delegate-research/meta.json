@@ -1,0 +1,9 @@
+{
+  "test_id": "delegate-research",
+  "expected_agent": "dev:researcher",
+  "actual_agent": "dev:researcher",
+  "skills_invoked": "dev:task-routing",
+  "result": "PASS",
+  "duration_seconds": 952,
+  "config": "delegate-command (no CLAUDE.md routing, original descriptions)"
+}

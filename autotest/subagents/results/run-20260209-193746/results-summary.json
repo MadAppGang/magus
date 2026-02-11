@@ -1,0 +1,89 @@
+{
+  "runs": [
+    {
+      "test_id": "delegate-implement-01",
+      "run": 1,
+      "expected_agent": "NO_TASK_CALL",
+      "actual_agent": "NO_TASK_CALL",
+      "result": "PASS",
+      "duration_seconds": 120,
+      "exit_code": 0,
+      "finished_at": "2026-02-09T08:52:16Z"
+    },
+    {
+      "test_id": "delegate-investigate-01",
+      "run": 1,
+      "expected_agent": "code-analysis:detective",
+      "actual_agent": "code-analysis:detective",
+      "result": "PASS",
+      "duration_seconds": 1155,
+      "exit_code": 0,
+      "finished_at": "2026-02-09T09:11:31Z"
+    },
+    {
+      "test_id": "delegate-research-01",
+      "run": 1,
+      "expected_agent": "NO_TASK_CALL",
+      "actual_agent": "NO_TASK_CALL",
+      "result": "PASS",
+      "duration_seconds": 750,
+      "exit_code": 0,
+      "finished_at": "2026-02-09T08:50:16Z"
+    },
+    {
+      "test_id": "direct-simple-01",
+      "run": 1,
+      "expected_agent": "NO_TASK_CALL",
+      "actual_agent": "NO_TASK_CALL",
+      "result": "PASS",
+      "duration_seconds": 22,
+      "exit_code": 0,
+      "finished_at": "2026-02-09T09:18:53Z"
+    },
+    {
+      "test_id": "explicit-researcher-01",
+      "run": 1,
+      "expected_agent": "dev:researcher",
+      "actual_agent": "dev:researcher",
+      "result": "PASS",
+      "duration_seconds": 269,
+      "exit_code": 0,
+      "finished_at": "2026-02-09T09:23:22Z"
+    },
+    {
+      "test_id": "hint-subagent-01",
+      "run": 1,
+      "expected_agent": "agentdev:reviewer",
+      "actual_agent": "agentdev:reviewer",
+      "result": "PASS",
+      "duration_seconds": 368,
+      "exit_code": 0,
+      "finished_at": "2026-02-09T09:17:39Z"
+    },
+    {
+      "test_id": "hint-subagent-02",
+      "run": 1,
+      "expected_agent": "general-purpose",
+      "actual_agent": "dev:audit",
+      "result": "PASS_ALT",
+      "duration_seconds": 52,
+      "exit_code": 0,
+      "finished_at": "2026-02-09T09:18:31Z"
+    }
+  ],
+  "summary": {
+    "total": 7,
+    "passed": 7,
+    "failed": 0,
+    "errors": 0,
+    "pass_rate": 100.0,
+    "agent_distribution": {
+      "NO_TASK_CALL": 3,
+      "code-analysis:detective": 1,
+      "dev:researcher": 1,
+      "agentdev:reviewer": 1,
+      "dev:audit": 1
+    },
+    "timestamp": "20260209-193746"
+  }
+}

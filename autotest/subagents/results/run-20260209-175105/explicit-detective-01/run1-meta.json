@@ -1,0 +1,10 @@
+{
+  "test_id": "explicit-detective-01",
+  "run": 1,
+  "expected_agent": "code-analysis:detective",
+  "actual_agent": "code-analysis:detective",
+  "result": "PASS",
+  "duration_seconds": 399,
+  "exit_code": 0,
+  "finished_at": "2026-02-09T07:02:07Z"
+}

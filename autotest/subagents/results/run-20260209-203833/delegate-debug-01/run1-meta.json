@@ -1,0 +1,10 @@
+{
+  "test_id": "delegate-debug-01",
+  "run": 1,
+  "expected_agent": "dev:debugger",
+  "actual_agent": "dev:debugger",
+  "result": "PASS",
+  "duration_seconds": 152,
+  "exit_code": 0,
+  "finished_at": "2026-02-09T10:19:23Z"
+}

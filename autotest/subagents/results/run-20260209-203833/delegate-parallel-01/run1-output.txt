@@ -1,0 +1,48 @@
+I'll launch three separate research subagents in parallel to investigate these topics independently, with each writing to its own file.
+Perfect! All three research subagents have completed their work in parallel. Here's what was delivered:
+
+## Research Complete ✅
+
+All three topics have been researched independently and written to separate files:
+
+### 1. **GraphQL vs REST Performance Benchmarks**
+**File:** `ai-docs/research-graphql-vs-rest.md`
+
+**Key Findings:**
+- **GraphQL wins:** 30-50% smaller payloads, 35-60% fewer requests for complex queries
+- **REST wins:** 20-30% faster simple queries, 10-100x faster with CDN caching
+- **Real case studies:** GitHub (50-60% data reduction), Netflix (30-40% latency improvement), Shopify (35% fewer requests)
+- **Critical insight:** N+1 problem is GraphQL's biggest pitfall—requires DataLoader for 85-90% performance boost
+- **Decision matrix included** for choosing between GraphQL, REST, or hybrid approaches
+
+### 2. **WebSocket Scaling Patterns**
+**File:** `ai-docs/research-websocket-scaling.md`
+
+**Key Findings:**
+- **Scaling limits:** 10K-65K connections per server (up to 2M with Erlang/Elixir)
+- **Industry pattern:** Hub-and-spoke with Redis pub/sub is the proven standard
+- **Memory optimization:** 1-8KB per connection achievable with proper tuning
+- **Real implementations:** Discord (5M+ concurrent), Slack (10M+ connections), WhatsApp (100B+ messages/day)
+- **Complete architectures:** AWS Terraform examples, Kubernetes deployments, monitoring setups
+
+### 3. **Edge Computing for API Gateways**
+**File:** `ai-docs/research-edge-api-gateways.md`
+
+**Key Findings:**
+- **Latency reduction:** 50-87% improvement globally (Asia: 450ms → 60ms)
+- **Cost savings:** 75-91% reduction at scale (traditional $112/month → edge $10.50/month for 10M requests)
+- **Platform winner:** Cloudflare Workers best overall value ($0.50/M requests, <1ms cold starts)
+- **Real case study:** E-commerce API reduced p50 latency from 280ms → 45ms (84% improvement)
+- **Decision criteria:** Use edge for global APIs with >1M req/month; avoid for heavy compute or large payloads
+
+---
+
+`★ Insight ─────────────────────────────────────`
+**Parallel Research Delegation Pattern:**
+- Launching 3 subagents simultaneously maximized throughput (total ~536s across 3 agents, but only ~5 minutes wall-clock time)
+- Each subagent ran in its own context window, preventing cross-contamination and ensuring independent research perspectives
+- Writing to separate files avoided any coordination overhead or file locking issues
+- This pattern scales well: you could launch 5-10 research tasks in parallel for even faster comprehensive research
+`─────────────────────────────────────────────────`
+
+All three documents include comprehensive citations, real-world case studies, performance data, architecture patterns, and implementation examples. You now have ~35,000 words of research ready for review!

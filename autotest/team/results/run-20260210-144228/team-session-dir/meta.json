@@ -1,0 +1,9 @@
+{
+  "test_id": "team-session-dir",
+  "result": "PASS",
+  "duration_seconds": 91,
+  "passed_checks": 2,
+  "total_checks": 2,
+  "exit_code": 0,
+  "finished_at": "2026-02-10T03:53:53Z"
+}

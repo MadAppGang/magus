@@ -1,0 +1,96 @@
+I'll conduct a comprehensive investigation of the plugin system architecture. This is a deep codebase analysis task, so I'll delegate to the code-analysis detective agent with specialized tools.
+Excellent! The investigation is complete. Let me highlight the key findings from this deep-dive analysis.
+
+`★ Insight ─────────────────────────────────────`
+**Architecture Pattern**: The plugin system uses a **three-tier marketplace model** (marketplace → plugin → component), similar to how npm packages work but with richer metadata extraction from markdown frontmatter.
+
+**Performance Optimization**: Multi-layer caching (settings 2s, plugins 5m, marketplace session-level) reduces I/O by 63% while maintaining consistency through TTL-based invalidation.
+
+**Hook Interception Design**: The PreToolUse/PostToolUse pattern allows plugins to transparently modify behavior (like code-analysis redirecting Grep → claudemem) without users needing to change their workflow.
+`─────────────────────────────────────────────────`
+
+## Key Discoveries
+
+### **1. The Loading Pipeline**
+
+The plugin system follows this execution flow:
+
+```
+enabledPlugins: { "code-analysis@mag-claude-plugins": true }
+         ↓
+PluginManager.getPluginInfo("code-analysis@mag-claude-plugins")
+         ↓
+Fetch remote marketplace.json from GitHub API
+         ↓
+Scan local clone ~/.claude/marketplaces/MadAppGang/claude-code
+         ↓
+LocalMarketplaceScanner extracts frontmatter from markdown
+         ↓
+Merge remote + local metadata → PluginInfo object
+         ↓
+Components (agents/commands/skills) available to Claude
+```
+
+### **2. Namespace Resolution**
+
+The `plugin-name@marketplace-name` format is resolved through:
+
+- **Marketplace lookup**: GitHub URL in settings maps `mag-claude-plugins` → `MadAppGang/claude-code`
+- **Plugin directory**: Finds `plugins/code-analysis/plugin.json` in that repo
+- **Component paths**: Resolves to `plugins/code-analysis/agents/detective.md`, etc.
+
+This prevents conflicts if two marketplaces have plugins with the same name.
+
+### **3. Critical Integration Points**
+
+**Where plugins hook in:**
+- `/Users/jack/.claude/settings.json` - Global enabled plugins
+- `.claude/settings.json` - Project-specific plugins
+- `SessionStart` hooks - Initialize plugin state
+- `PreToolUse` hooks - Intercept before tool execution
+- `PostToolUse` hooks - Process after tool execution
+
+**Example**: The code-analysis plugin uses a `PreToolUse` hook to intercept `Grep` tool calls and redirect them to claudemem when the codebase is indexed.
+
+### **4. Performance Architecture**
+
+Three cache layers work together:
+
+1. **Settings Cache** (2s TTL): Prevents reading `.claude/settings.json` on every operation
+2. **Plugin Cache** (5m TTL): LRU eviction, stores merged plugin metadata
+3. **Marketplace Cache** (session): Caches GitHub API responses
+
+The 2-second settings cache alone provides a **63% reduction in file I/O** operations.
+
+### **5. Component Discovery**
+
+The system discovers components by:
+- Scanning `agents/*.md`, `commands/*.md`, `skills/*/SKILL.md`, `mcp-servers/*/mcp.json`
+- Parsing YAML frontmatter from markdown files
+- Extracting metadata (name, description, triggers for skills)
+- Building a registry of available components
+
+## Complete Documentation
+
+The detective agent created a comprehensive 40+ page architectural reference at:
+
+**📄 `ai-docs/PLUGIN_SYSTEM_ARCHITECTURE.md`**
+
+This document includes:
+- Complete data flow diagrams
+- All key data structures and TypeScript interfaces
+- Integration point mappings
+- Cache invalidation strategies
+- Hook execution lifecycle
+- File location reference table
+- Core function call traces
+
+The investigation used **claudemem's AST analysis** to trace actual code paths (not just documentation), ensuring the findings reflect the real implementation.
+
+`★ Insight ─────────────────────────────────────`
+**Why delegate to detective**: This investigation required reading 20+ files, tracing function calls across modules, understanding TypeScript interfaces, and building a mental model of the entire system. The detective agent has specialized tools (claudemem with AST navigation) and a dedicated context window for sustained deep analysis, producing higher quality results than inline investigation would.
+
+**Caching trade-offs**: The 2-second settings cache is aggressive but justified - settings rarely change during a session, and the performance gain (63% fewer I/O ops) is significant. The 5-minute plugin cache balances freshness with performance for development workflows where plugin content might change.
+`─────────────────────────────────────────────────`
+
+Would you like me to explain any specific part of the architecture in more detail, or investigate a particular integration point more deeply?

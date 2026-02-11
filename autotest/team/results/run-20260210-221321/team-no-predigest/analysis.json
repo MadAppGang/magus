@@ -1,0 +1,23 @@
+{
+  "passed": false,
+  "checks": [
+    {
+      "check": "task_agent_is",
+      "passed": false,
+      "detail": "Wrong agents used: ['code-analysis:detective'] (expected: dev:researcher)"
+    },
+    {
+      "check": "no_predigest",
+      "passed": true,
+      "detail": "No pre-digestion tools before Task"
+    }
+  ],
+  "summary": {
+    "total_checks": 2,
+    "passed_checks": 1,
+    "failed_checks": 1,
+    "total_tool_calls": 11,
+    "task_calls": 1,
+    "bash_calls": 5
+  }
+}

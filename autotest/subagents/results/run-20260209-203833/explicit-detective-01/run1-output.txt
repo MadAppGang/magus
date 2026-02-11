@@ -1,0 +1,165 @@
+I'll analyze the plugin loading system and trace all its dependencies using the code-analysis:detective agent.
+# Plugin Loading System Analysis Complete
+
+The code-analysis:detective agent has completed a comprehensive investigation of the plugin loading system. Here's what was discovered:
+
+---
+
+## Core Architecture Overview
+
+The plugin system implements a **three-tier architecture** with sophisticated caching and multi-scope configuration:
+
+```
+Marketplaces (GitHub/Local)
+    ↓
+Plugins (Frontend, Code Analysis, etc.)
+    ↓
+Components (Agents, Commands, Skills, Hooks, MCP Servers)
+```
+
+---
+
+`★ Insight ─────────────────────────────────────`
+**1. Multi-Source Plugin Discovery**: The system intelligently combines three discovery sources:
+   - **Remote GitHub** marketplaces (fetched via HTTPS with 10s timeout)
+   - **Local git clones** (`~/.claude/plugins/marketplaces/`)
+   - **Directory references** (custom local plugins for development)
+
+**2. Scope-Based Precedence**: Settings follow a clear hierarchy:
+   - **Local** (`{project}/.claude/settings.local.json`) - Not in git, for secrets
+   - **Project** (`{project}/.claude/settings.json`) - Team config in git
+   - **Global** (`~/.claude/settings.json`) - User defaults
+   
+   This allows developers to have personal overrides without affecting team configuration.
+
+**3. Intelligent Caching Layer**: Three-tier cache with different TTLs:
+   - Settings cache: 2sec TTL → **63% I/O reduction** (24ms → 9ms)
+   - Plugin metadata: 5min TTL with LRU eviction
+   - Hook-based invalidation on state changes
+`─────────────────────────────────────────────────`
+
+---
+
+## Key Entry Points
+
+The main orchestrator is `/tools/claudeup-core/src/services/plugin-manager.ts`:
+
+| Function | Purpose | Lines |
+|----------|---------|-------|
+| `getAvailablePlugins()` | Get all plugins with multi-scope status | 224 |
+| `enablePlugin()` | Enable/disable plugin in project scope | 846 |
+| `saveInstalledPluginVersion()` | Track installed version | 676 |
+| `refreshAllMarketplaces()` | Git pull + auto-repair all marketplaces | 794 |
+
+---
+
+## Complete Dependency Chain
+
+```
+plugin-manager.ts (Entry Point - 902 lines)
+├─ claude-settings.ts (Configuration management)
+│  ├─ file-locking.js (Concurrent write safety)
+│  ├─ validators.js (Path/ID validation)
+│  └─ cache-manager.ts (Settings cache)
+│
+├─ local-marketplace.ts (Component scanning)
+│  ├─ Frontmatter parsing (YAML in markdown)
+│  ├─ AST-based component discovery
+│  └─ Git operations (refresh, auto-repair)
+│
+├─ cache-manager.ts (Namespaced LRU cache)
+│  └─ Pure TypeScript, no external deps
+│
+├─ cache-hooks.ts (Invalidation events)
+│  └─ Standard hooks for plugin lifecycle
+│
+└─ data/marketplaces.ts (Default marketplace list)
+```
+
+---
+
+## Loading Sequence (8 Steps)
+
+The complete flow from discovery to activation:
+
+1. **Initialize Cache Layer** - Create namespaced cache managers (500 entries, 5min TTL)
+2. **Load Configuration** - Read settings with 2sec cache (63% faster on hits)
+3. **Fetch Remote Marketplaces** - Parallel GitHub requests with 10sec timeout
+4. **Scan Local Clones** - AST-based frontmatter extraction from components
+5. **Merge Data Sources** - Combine GitHub + local + directory sources
+6. **Resolve Scope Status** - Apply local > project > global precedence
+7. **Version Comparison** - Check for available updates
+8. **Return Unified PluginInfo[]** - Complete metadata with scope breakdown
+
+---
+
+## Component Discovery Mechanism
+
+The system scans plugin directories for components:
+
+- **Agents**: `agents/*.md` with YAML frontmatter
+- **Commands**: `commands/*.md` with YAML frontmatter
+- **Skills**: `skills/*/SKILL.md` (directory-based) or `skills/*.md` (file-based)
+- **Hooks**: `hooks/hooks.json` + shell scripts
+- **MCP Servers**: `mcp-servers/*.json` config files
+
+**Frontmatter Example**:
+```markdown
+---
+name: developer
+description: Expert TypeScript developer
+tools: Write, Edit, Read, Bash
+allowed-tools: Write, Edit
+---
+```
+
+This metadata is extracted and cached for UI display and capability tracking.
+
+---
+
+## Security & Error Handling
+
+`★ Insight ─────────────────────────────────────`
+**Security Measures**:
+- **SSRF Prevention**: GitHub repo validation (`/^[\w-]+\/[\w-]+$/`)
+- **Command Injection Prevention**: Shell metacharacter validation for MCP configs
+- **File Locking**: Prevents concurrent write corruption
+
+**Graceful Degradation**:
+- Missing marketplace.json → Skip marketplace, continue with others
+- Fetch timeout (10sec) → Return empty array, plugin list incomplete
+- Broken component scan → Load plugin with empty component arrays
+- Corrupted settings.json → Backup + return defaults for recovery
+`─────────────────────────────────────────────────`
+
+---
+
+## Performance Optimizations
+
+**Race Condition Prevention**:
+```typescript
+let localMarketplacesPromise: Promise<Map<...>> | null = null;
+```
+Multiple concurrent calls share a single scan operation instead of duplicating work.
+
+**Cache Statistics** (from real usage):
+- Marketplace cache: 93.75% hit rate
+- Plugin cache: 93.02% hit rate  
+- Settings cache: 95.24% hit rate → **63% I/O reduction**
+
+---
+
+## File Locations Reference
+
+| File | Purpose | Location |
+|------|---------|----------|
+| marketplace.json | Marketplace manifest | `.claude-plugin/marketplace.json` |
+| plugin.json | Plugin manifest | `{plugin-root}/plugin.json` |
+| settings.json | Project/global config | `.claude/settings.json` |
+| settings.local.json | Local overrides | `.claude/settings.local.json` |
+| known_marketplaces.json | Marketplace registry | `~/.claude/plugins/known_marketplaces.json` |
+| Plugin cache | Installed files | `~/.claude/plugins/cache/{marketplace}/{plugin}/{version}/` |
+
+---
+
+The complete analysis document includes detailed schemas, data flow diagrams, and integration points. The detective agent traced **~3500 lines of code** across **8 core services** to map the entire dependency tree.

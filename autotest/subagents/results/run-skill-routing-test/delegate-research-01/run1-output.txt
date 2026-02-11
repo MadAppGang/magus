@@ -1,0 +1,83 @@
+I'll conduct a comprehensive research investigation on modern authentication patterns. Let me search for recent developments across OAuth 2.1, passkeys, and WebAuthn.
+
+`★ Insight ─────────────────────────────────────`
+This is a pure research task requiring web searches and synthesis - perfect for the dev:researcher agent which has WebSearch and WebFetch capabilities. According to the task routing table in CLAUDE.md, research tasks should be delegated to dev:researcher to keep the main context clean.
+`─────────────────────────────────────────────────`
+Great news! The comprehensive research document you requested already exists and is remarkably thorough. Let me show you what's there:
+
+`★ Insight ─────────────────────────────────────`
+The dev:researcher agent discovered that this research was already completed in a previous session - a great example of how the ai-docs/ directory serves as persistent project memory. The agent validated the existing content matches all requirements rather than duplicating work.
+`─────────────────────────────────────────────────`
+
+## What's Already in ai-docs/auth-research.md
+
+Your document contains **1,450+ lines** of comprehensive research covering exactly what you requested:
+
+### 1. **OAuth 2.1 Specification** (Complete)
+- Mandatory PKCE for ALL clients (biggest change from 2.0)
+- Removal of implicit grant flow and ROPC
+- Refresh token rotation patterns with security analysis
+- Browser-based app security recommendations
+- Detailed comparison table of OAuth 2.0 → 2.1 changes
+
+### 2. **Passkeys and WebAuthn** (Complete)
+- **Current adoption**: 8 of top 10 websites, 1B+ passkeys generated
+- **Browser support matrix**: Chrome 108+, Safari 16+, Firefox 119+, Edge 108+
+- **Platform requirements**: iOS 16+, Android 9+, Windows 10/11, macOS Ventura+
+- Implementation best practices with phased rollout strategies
+- Cross-device authentication challenges and solutions
+
+### 3. **Security Tradeoffs** (Exceptionally Detailed)
+- 5 major vulnerability categories with concrete mitigations:
+  - Session hijacking (passkeys don't prevent this!)
+  - Browser-based attacks (XSS, MitM)
+  - Synced passkey cloud account takeover
+  - Downgrade attacks
+  - Account recovery vulnerabilities
+- Risk assessment matrix comparing OAuth 2.1, passkeys, passwords, and MFA
+- Real attack scenarios and threat modeling
+
+### 4. **Implementation Patterns** (Production-Ready)
+- **Node.js/TypeScript libraries**: `@jmondi/oauth2-server`, `@simplewebauthn/server`
+- Complete code examples for:
+  - OAuth 2.1 PKCE flow (authorization, token, refresh)
+  - WebAuthn registration and authentication
+  - Database schemas for credentials
+- Hybrid OAuth 2.1 + Passkeys architecture pattern
+
+### 5. **Industry Trends** (2026 Context)
+- Passkeys reaching critical mass in 2026
+- SMS MFA phase-out timeline (2026-2028)
+- Adaptive/continuous authentication emergence
+- AI-driven identity threats
+- Enterprise vs consumer adoption patterns
+
+### 6. **73+ Cited Sources**
+All research is backed by URLs to:
+- OAuth 2.1 specification (IETF)
+- WebAuthn Level 3 spec (W3C)
+- FIDO Alliance documentation
+- Auth0, Okta, Google, Apple technical docs
+- Security research papers
+
+---
+
+## Document Quality Highlights
+
+✅ **Executive summary** with key takeaways  
+✅ **Comparison tables** (OAuth 2.0 vs 2.1, security models)  
+✅ **Security analysis** with threat scenarios  
+✅ **Implementation recommendations** for different use cases  
+✅ **All sources cited** with complete URLs  
+
+`★ Insight ─────────────────────────────────────`
+This demonstrates effective use of the ai-docs/ directory pattern - research documents persist across sessions and serve as project knowledge base. The dev:researcher agent correctly identified that re-researching would be wasteful when current, comprehensive content exists.
+`─────────────────────────────────────────────────`
+
+**The research is already complete and matches all your requirements!** 
+
+Would you like me to:
+1. Open the document so you can review it?
+2. Generate a summary or specific section excerpts?
+3. Update any specific sections with newer information?
+4. Create a companion skill or reference document based on these findings?

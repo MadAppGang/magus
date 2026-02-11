@@ -1,0 +1,32 @@
+I'll search for all `plugin.json` files in the project.
+`★ Insight ─────────────────────────────────────`
+**Plugin Architecture Discovery:**
+- Found **11 production plugins** plus 4 test fixtures - this is a substantial plugin marketplace
+- Naming pattern reveals plugin purpose: `frontend`, `bun`, `code-analysis`, `agentdev`, `seo`, `conductor`, `nanobanana`, `video-editing`, `autopilot`, `dev`, `multimodel`, `instantly`
+- Test fixtures show quality: validation suite checks for missing versions, invalid agents, and bad frontmatter
+`─────────────────────────────────────────────────`
+
+Found **16 `plugin.json` files** in the project:
+
+## Production Plugins (11)
+1. `/plugins/instantly/plugin.json` - Instantly plugin (new/undocumented)
+2. `/plugins/frontend/plugin.json` - Frontend development (v3.13.0)
+3. `/plugins/bun/plugin.json` - Bun backend (v1.5.2)
+4. `/plugins/code-analysis/plugin.json` - Code analysis (v2.15.0)
+5. `/plugins/agentdev/plugin.json` - Agent development (v1.4.0)
+6. `/plugins/seo/plugin.json` - SEO optimization (v1.5.1)
+7. `/plugins/conductor/plugin.json` - Conductor orchestration (v2.0.1)
+8. `/plugins/nanobanana/plugin.json` - AI image generation (v2.2.3)
+9. `/plugins/video-editing/plugin.json` - Video editing (v1.0.1)
+10. `/plugins/autopilot/plugin.json` - Autopilot plugin (new/undocumented)
+11. `/plugins/dev/plugin.json` - Universal dev assistant (v1.29.0)
+12. `/plugins/multimodel/plugin.json` - Multi-model orchestration (v2.0.0)
+
+## Test Fixtures (4)
+Located in `/tools/claudeup-core/src/__tests__/fixtures/`:
+- `valid-plugin/plugin.json` - Valid plugin example
+- `invalid-plugin/missing-version/plugin.json` - Missing version test
+- `invalid-plugin/invalid-agents/plugin.json` - Invalid agents test
+- `invalid-plugin/bad-frontmatter/plugin.json` - Bad frontmatter test
+
+**Note:** Two plugins (`instantly` and `autopilot`) are not documented in CLAUDE.md but have plugin.json files present.

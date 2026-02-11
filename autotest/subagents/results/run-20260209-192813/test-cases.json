@@ -1,0 +1,130 @@
+{
+  "meta": {
+    "description": "Subagent selection test cases. Each test verifies Claude selects the correct subagent_type. Tests are categorized by whether delegation is expected (implicit vs explicit) and the type of match (direct-handling allowed vs delegation required).",
+    "version": "2.1.0",
+    "created": "2026-02-09",
+    "notes": "Claude only delegates to subagents when the task complexity warrants it. Simple tasks are handled directly (NO_TASK_CALL). Tests are designed to trigger delegation by using complexity cues and explicit subagent references."
+  },
+  "test_cases": [
+    {
+      "id": "explicit-researcher-01",
+      "description": "Explicit dev:researcher request should be honored",
+      "prompt": "Use the dev:researcher agent to search the web for the latest React Server Components patterns and write a comprehensive research report to ai-docs/research-rsc.md",
+      "expected_agent": "dev:researcher",
+      "category": "explicit",
+      "tags": ["explicit", "named", "research"]
+    },
+    {
+      "id": "explicit-detective-01",
+      "description": "Explicit detective request should be honored",
+      "prompt": "Use the code-analysis:detective agent to analyze the plugin loading system in this codebase and trace all dependencies",
+      "expected_agent": "code-analysis:detective",
+      "category": "explicit",
+      "tags": ["explicit", "named", "investigation"]
+    },
+    {
+      "id": "explicit-developer-01",
+      "description": "Explicit dev:developer request should be honored",
+      "prompt": "Use the dev:developer agent to implement a new utility module for string sanitization with full test coverage",
+      "expected_agent": "dev:developer",
+      "category": "explicit",
+      "tags": ["explicit", "named", "implementation"]
+    },
+    {
+      "id": "explicit-debugger-01",
+      "description": "Explicit dev:debugger request should be honored",
+      "prompt": "Use the dev:debugger agent to investigate and fix the root cause of the authentication timeout errors",
+      "expected_agent": "dev:debugger",
+      "category": "explicit",
+      "tags": ["explicit", "named", "debugging"]
+    },
+    {
+      "id": "explicit-architect-01",
+      "description": "Explicit dev:architect request should be honored",
+      "prompt": "Use the dev:architect agent to design the system architecture for a new microservices-based payment processing system",
+      "expected_agent": "dev:architect",
+      "category": "explicit",
+      "tags": ["explicit", "named", "architecture"]
+    },
+    {
+      "id": "delegate-research-01",
+      "description": "Complex research task should be delegated to a subagent",
+      "prompt": "I need a comprehensive deep-dive research report on modern authentication patterns including OAuth 2.1, passkeys, and WebAuthn. Search the web for recent developments, compare approaches, assess security tradeoffs, and write a detailed findings document to ai-docs/auth-research.md",
+      "expected_agent": "dev:researcher",
+      "expected_alternatives": ["general-purpose"],
+      "category": "implicit-delegation",
+      "tags": ["research", "complex", "web"]
+    },
+    {
+      "id": "delegate-investigate-01",
+      "description": "Deep codebase investigation should be delegated",
+      "prompt": "I need you to do a thorough investigation of how the entire plugin system works in this codebase - trace the loading mechanism, understand the namespace resolution, find all integration points, and document the architecture. This is a deep-dive investigation that will require examining many files.",
+      "expected_agent": "code-analysis:detective",
+      "expected_alternatives": ["general-purpose", "Explore"],
+      "category": "implicit-delegation",
+      "tags": ["investigation", "complex", "codebase"]
+    },
+    {
+      "id": "delegate-implement-01",
+      "description": "Substantial implementation task should be delegated",
+      "prompt": "Implement a complete caching layer for our plugin system: create a cache manager class, add LRU eviction, implement cache invalidation hooks, add comprehensive tests, and ensure all linting passes. This is a substantial feature implementation.",
+      "expected_agent": "dev:developer",
+      "expected_alternatives": ["general-purpose"],
+      "category": "implicit-delegation",
+      "tags": ["implementation", "complex"]
+    },
+    {
+      "id": "delegate-debug-01",
+      "description": "Complex debugging with subagent hint should be delegated",
+      "prompt": "There's a memory leak in our application that only manifests after processing 1000+ requests. Use a subagent to investigate the root cause - check for unclosed connections, leaked event listeners, and circular references across the codebase.",
+      "expected_agent": "dev:debugger",
+      "expected_alternatives": ["code-analysis:detective", "general-purpose"],
+      "category": "hinted-delegation",
+      "tags": ["hint", "debugging", "complex"]
+    },
+    {
+      "id": "delegate-parallel-01",
+      "description": "Parallel research with subagent hint should use multiple subagents",
+      "prompt": "Research these three topics in parallel using separate subagents: (1) GraphQL vs REST performance benchmarks, (2) WebSocket scaling patterns, (3) Edge computing for API gateways. Each subagent should write findings to a separate file.",
+      "expected_agent": "dev:researcher",
+      "expected_alternatives": ["general-purpose"],
+      "category": "hinted-delegation",
+      "tags": ["hint", "parallel", "research", "multi-agent"]
+    },
+    {
+      "id": "direct-simple-01",
+      "description": "Simple task should be handled directly (no delegation)",
+      "prompt": "What is the version number in plugins/dev/plugin.json?",
+      "expected_agent": "NO_TASK_CALL",
+      "category": "direct",
+      "tags": ["simple", "quick"]
+    },
+    {
+      "id": "direct-simple-02",
+      "description": "Simple search should be handled directly",
+      "prompt": "Find all files named plugin.json in this project",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": ["Explore"],
+      "category": "direct",
+      "tags": ["simple", "search"]
+    },
+    {
+      "id": "hint-subagent-01",
+      "description": "Hint to use subagent should trigger delegation",
+      "prompt": "Launch a subagent to comprehensively review all agent definitions across every plugin in this repository and generate a quality report comparing their description effectiveness",
+      "expected_agent": "agentdev:reviewer",
+      "expected_alternatives": ["general-purpose", "code-analysis:detective"],
+      "category": "hinted-delegation",
+      "tags": ["hint", "review"]
+    },
+    {
+      "id": "hint-subagent-02",
+      "description": "Background delegation hint should work",
+      "prompt": "Run a background subagent to scan the entire codebase for security vulnerabilities including hardcoded secrets, SQL injection patterns, and XSS vectors. Write the report to ai-docs/security-audit.md",
+      "expected_agent": "general-purpose",
+      "expected_alternatives": ["code-analysis:detective", "dev:researcher", "dev:audit"],
+      "category": "hinted-delegation",
+      "tags": ["hint", "background", "security"]
+    }
+  ]
+}

@@ -1,0 +1,120 @@
+I'll help you implement a complete caching layer for the plugin system. Let me start by exploring the current plugin architecture to understand where caching should be integrated.
+Let me explore the plugin manager to understand the current architecture:
+Now let me check the project structure to understand the testing setup and TypeScript configuration:
+Now let me check for any existing linting configuration:
+Perfect! Now I understand the architecture. Let me create a comprehensive caching layer for the plugin system. I'll create a todo list to track this substantial implementation:
+Now let me start implementing the caching layer. First, I'll create the CacheManager class:
+`★ Insight ─────────────────────────────────────`
+**LRU Cache Implementation Design:**
+1. **Access Order Tracking** - Uses an array to track access order, where the first element is the least recently used. On access, we move the key to the end (most recent).
+2. **TTL Support** - Each entry stores `expiresAt` timestamp, checked on every `get()` to automatically remove stale data. Separate `cleanup()` method for batch expiration.
+3. **Hook System** - Invalidation hooks are fire-and-forget, allowing async operations without blocking cache operations. Errors are caught to prevent cascade failures.
+`─────────────────────────────────────────────────`
+
+Now let me mark this task as complete and move to the next one:
+`★ Insight ─────────────────────────────────────`
+**Hook System Design:**
+1. **Event-Driven Architecture** - Hooks respond to specific system events (install, uninstall, settings change) using a declarative rule system rather than scattered invalidation logic.
+2. **Pattern Flexibility** - Supports both simple wildcards (`plugins:*`) and context-based patterns (`plugins:installed:{pluginId}`) that resolve at runtime.
+3. **Namespace Support** - Automatically detects if cache is namespaced and invalidates accordingly, allowing the same hook system to work with both cache types.
+`─────────────────────────────────────────────────`
+Now let me integrate the cache into the plugin-manager.ts file. I'll need to read it again and make strategic modifications:
+Now let me update the fetchMarketplacePlugins function to use the cache:
+Now let me update the cache clearing and plugin save/remove functions to trigger invalidation hooks:
+Now let me add a function to export cache statistics and complete the integration:
+`★ Insight ─────────────────────────────────────`
+**Cache Integration Strategy:**
+1. **Gradual Migration** - Keep old `marketplaceCache` Map alongside new `NamespacedCacheManager` during transition, allowing fallback lookups for backwards compatibility.
+2. **Hook Trigger Points** - Invalidation hooks fire at write operations (install/uninstall/settings change) rather than reads, ensuring consistency without performance impact.
+3. **Namespace Organization** - `marketplace:`, `plugins:`, `settings:` namespaces logically separate concerns and enable targeted invalidation without clearing unrelated data.
+`─────────────────────────────────────────────────`
+
+Now let me create comprehensive unit tests for the cache manager:
+`★ Insight ─────────────────────────────────────`
+**Test Design Principles:**
+1. **Unit vs Integration** - Unit tests verify individual cache behaviors (LRU, TTL, stats) in isolation. Integration tests verify the hook system's interaction with cache managers across realistic workflows.
+2. **Fake Timers for TTL** - Using Vitest's `useFakeTimers()` allows testing time-based expiration without actual delays, making TTL tests fast and deterministic.
+3. **Real-world Scenarios** - Integration tests simulate actual plugin workflows (install, refresh, settings change) to ensure the system behaves correctly in production use cases.
+`─────────────────────────────────────────────────`
+Now let me update the index.ts to export the new cache modules:
+Now let me run TypeScript type checking and linting:
+Let me fix these TypeScript errors:
+Now I need to add a size() method to NamespacedCacheManager:
+Now let me run type checking again:
+Perfect! Type checking passes. Now let me update the todo list and run the test suite:
+I see the test failures. The issue is that `clear()` in NamespacedCacheManager clears the cache contents but doesn't remove the namespace entries from the map. Let me fix these issues:
+The code looks correct. The issue is that the standard hooks are not invalidating everything with the `*` pattern. Let me check how the hooks handle the wildcard pattern with NamespacedCacheManager:
+Let me look at the invalidatePattern method:
+I see the issue. When the pattern is `*`, it doesn't have a colon, so it should clear all namespaces. Let me fix the invalidatePattern method:
+Now let me run the tests again:
+Good progress! Now we have different test failures. The issue is with the scoped invalidator. It's registering a new rule and then triggering `onSettingsChanged`, which clears EVERYTHING because of the `*` pattern in the standard settings change hook. Let me fix the scoped invalidator to use a more direct approach:
+Now let me also check that the clear() method properly removes empty namespaces. Looking at the test failure for "should clear all namespaces", it seems the namespaces aren't being removed. Let me trace through the code:
+The test expects the namespaces to be completely removed after clear(). However, when we call `cache.has()` after clear(), it's calling `getCache()` which creates a new empty cache for that namespace. Let me look at the implementation:
+I see - the test is calling `cache.has()` which calls `getCache()` which auto-creates the namespace. The test should check namespaces() BEFORE calling has(). But actually, looking at the test code, the has() checks come before the namespaces() check, so those are creating the namespaces. The test logic is checking the keys don't exist (which is correct) but then expects no namespaces (which won't be true after calling has()).
+
+This is actually a test issue, not a code issue. The test should check namespaces length first, or use a non-auto-creating method. Let me fix the test:
+Now let me run the tests again:
+Perfect! All tests are now passing. Let me mark the final todo as complete and create a summary:
+Excellent! Let me verify the build works as well:
+Perfect! The build completed successfully. Now let me create a brief summary document:
+
+## Summary
+
+I've successfully implemented a complete caching layer for the plugin system with all requested features:
+
+### ✅ Completed Features
+
+**1. CacheManager Class** (`cache-manager.ts` - 542 lines)
+- **LRU (Least Recently Used) eviction**: Automatically removes oldest entries when cache reaches `maxSize`
+- **TTL (Time To Live) support**: Optional expiration with per-entry override
+- **Statistics tracking**: Hit/miss rates, eviction counts, cache size metrics
+- **Pattern-based invalidation**: Wildcard support (`user:*`, `*:posts`)
+- **Invalidation hooks**: Fire-and-forget callbacks on cache changes
+- **NamespacedCacheManager**: Logical grouping with isolated statistics
+
+**2. Cache Invalidation Hooks** (`cache-hooks.ts` - 348 lines)
+- **Event-driven architecture**: Declarative rules for plugin install/uninstall/settings changes
+- **Standard hooks**: Auto-configured for plugin lifecycle events
+- **PluginCacheInvalidator**: High-level API for plugin-specific operations
+- **Scoped invalidation**: Namespace-aware targeting
+
+**3. Plugin Manager Integration** (`plugin-manager.ts` - updated)
+- Integrated `NamespacedCacheManager` with marketplace fetching
+- Added invalidation hooks to `saveInstalledPluginVersion`, `removeInstalledPluginVersion`, `refreshAllMarketplaces`
+- Exported `getCacheStats()`, `getCacheHooks()`, `getCacheManager()` utilities
+- Backward-compatible migration from old Map-based cache
+
+**4. Comprehensive Testing**
+- **42 unit tests** (`cache-manager.test.ts`): LRU eviction, TTL, statistics, hooks, pattern matching
+- **23 integration tests** (`cache-invalidation.test.ts`): Hook interactions, real-world workflows, edge cases
+- **All 327 tests passing** ✅
+
+**5. TypeScript Definitions**
+- Full type safety with exported interfaces: `CacheOptions`, `CacheEntry`, `CacheStats`, `InvalidationHook`, `HookTrigger`
+- Type checking passes with strict mode
+
+**6. Clean Code Quality**
+- No linting errors
+- Builds successfully to ESM + CJS with type definitions
+- Well-documented with JSDoc comments
+
+`★ Insight ─────────────────────────────────────`
+**Architecture Highlights:**
+1. **Session-level cache with controlled TTL** - Unlike the old infinite Map cache, the new system provides 5-minute TTL by default, reducing stale data while maintaining performance.
+2. **Zero-impact invalidation** - Hooks fire asynchronously without blocking cache operations, preventing cascade failures.
+3. **Gradual adoption path** - Old `marketplaceCache` Map coexists with new system, allowing safe migration without breaking changes.
+`─────────────────────────────────────────────────`
+
+### Files Created/Modified
+
+**New Files:**
+- `/tools/claudeup-core/src/services/cache-manager.ts` (542 lines)
+- `/tools/claudeup-core/src/services/cache-hooks.ts` (348 lines)
+- `/tools/claudeup-core/src/__tests__/unit/cache-manager.test.ts` (564 lines)
+- `/tools/claudeup-core/src/__tests__/integration/cache-invalidation.test.ts` (414 lines)
+
+**Modified Files:**
+- `/tools/claudeup-core/src/services/plugin-manager.ts` (added cache integration)
+- `/tools/claudeup-core/src/index.ts` (exported new cache APIs)
+
+**Total:** 1,868 lines of production code + tests, all passing linting and type checking!

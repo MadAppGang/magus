@@ -1,0 +1,38 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "check": "task_agent_is",
+      "passed": true,
+      "detail": "All 2 Task calls use dev:researcher"
+    },
+    {
+      "check": "task_min_count",
+      "passed": true,
+      "detail": "2 Task calls (minimum: 2)"
+    },
+    {
+      "check": "has_proxy_mode",
+      "passed": true,
+      "detail": "PROXY_MODE found in Task prompt"
+    },
+    {
+      "check": "proxy_mode_first_line",
+      "passed": true,
+      "detail": "OK: \"PROXY_MODE: x-ai/grok-code-fast-1\"; OK: \"PROXY_MODE: google/gemini-3-pro-preview\""
+    },
+    {
+      "check": "run_in_background",
+      "passed": true,
+      "detail": "All 2 Task calls use run_in_background"
+    }
+  ],
+  "summary": {
+    "total_checks": 5,
+    "passed_checks": 5,
+    "failed_checks": 0,
+    "total_tool_calls": 5,
+    "task_calls": 2,
+    "bash_calls": 2
+  }
+}

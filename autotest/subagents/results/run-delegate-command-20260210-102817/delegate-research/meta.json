@@ -1,0 +1,9 @@
+{
+  "test_id": "delegate-research",
+  "expected_agent": "dev:researcher",
+  "actual_agent": "NO_TASK_CALL",
+  "skills_invoked": "NONE",
+  "result": "NO_DELEGATION",
+  "duration_seconds": 10,
+  "config": "delegate-command (no CLAUDE.md routing, original descriptions)"
+}

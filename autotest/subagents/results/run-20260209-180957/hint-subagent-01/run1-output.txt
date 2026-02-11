@@ -1,0 +1,67 @@
+I'll launch a comprehensive review of all agent definitions across the plugins in this repository. This will analyze their description quality, clarity, triggering effectiveness, and overall structure.
+## Agent Quality Review Complete ✅
+
+I've completed a comprehensive review of **51 agent definitions** across **15 plugins** in your repository. The analysis evaluated description quality, triggering effectiveness, tool access patterns, and structural consistency.
+
+`★ Insight ─────────────────────────────────────`
+**Repository-Wide Agent Quality:** 8.1/10 (Strong)
+- 35% are excellent (9-10/10) with best-in-class descriptions
+- 43% are good (7-8/10) with solid foundations
+- Only 4% need significant improvement
+
+The review reveals a mature agent ecosystem with clear patterns emerging from your best agents that can be systematically applied to elevate the remaining 33 agents.
+`─────────────────────────────────────────────────`
+
+### 📊 Key Findings
+
+**Best-in-Class Agents** (Use as Templates):
+1. **agentdev:reviewer** (10/10) - Perfect multi-scenario description with comprehensive XML examples and full PROXY_MODE support
+2. **dev:researcher** (10/10) - Exemplary ReAct pattern with SESSION_PATH integration and source citation requirements
+3. **seo:writer** (9.5/10) - Auto-GATE quality enforcement with E-E-A-T scoring and self-correction loops
+4. **code-analysis:detective** (9/10) - Visual workflow documentation with PageRank integration
+5. **frontend:developer** (8.5/10) - 5-scenario description with quality check integration
+
+**Primary Improvement Opportunities:**
+- **Standardize descriptions** → 65% of agents need multi-example format (currently only 18 agents use it)
+- **Universal PROXY_MODE** → 11 agents missing support (should be 100% coverage)
+- **Mandatory Tasks** → 10 agents don't require Tasks tool (creates inconsistent patterns)
+- **Add examples** → 8 agents have 0-1 examples (minimum should be 2)
+- **Optimize tool lists** → ~10 agents have tool/workflow mismatches
+
+### 📁 Full Report Location
+
+```
+ai-docs/sessions/agent-review-20260209-185015/agent-quality-report.md
+```
+
+The report includes:
+- **Executive summary** with quality distribution
+- **Plugin-by-plugin breakdown** with grades (A+ to B range)
+- **Best practices** identified from top-performing agents
+- **Specific improvement recommendations** for each agent needing work
+- **Complete agent inventory** table with scores and metadata
+- **3-week action plan** to achieve 95%+ repository quality
+
+`★ Insight ─────────────────────────────────────`
+**Pattern Recognition:** Your best agents share 3 common traits:
+1. **Multi-scenario descriptions** (3-5 concrete examples of when to use)
+2. **Self-documenting workflows** (visual diagrams, step-by-step guides)
+3. **Quality enforcement** (AUTO GATEs, validation requirements, explicit deliverables)
+
+These patterns, when applied systematically to the remaining 33 agents, will create a consistently excellent agent ecosystem across all 15 plugins.
+`─────────────────────────────────────────────────`
+
+### 🎯 Recommended Next Steps
+
+The report includes a **3-week improvement plan** (20-23 hours total):
+
+**Week 1:** Standardize descriptions, add PROXY_MODE, make Tasks mandatory
+**Week 2:** Add examples, optimize tool lists, integrate SESSION_PATH
+**Week 3:** Enrich knowledge sections, add help blocks, create visual documentation
+
+**Expected outcome:** 95%+ agent quality (9.0+ average) with zero agents below 7/10.
+
+Would you like me to:
+1. Start implementing the Week 1 improvements for the 11 agents needing PROXY_MODE?
+2. Show you the detailed breakdown for a specific plugin?
+3. Create improvement templates based on your best-in-class agents?

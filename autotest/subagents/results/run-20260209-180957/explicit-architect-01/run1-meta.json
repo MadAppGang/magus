@@ -1,0 +1,10 @@
+{
+  "test_id": "explicit-architect-01",
+  "run": 1,
+  "expected_agent": "dev:architect",
+  "actual_agent": "dev:architect",
+  "result": "PASS",
+  "duration_seconds": 380,
+  "exit_code": 0,
+  "finished_at": "2026-02-09T07:19:10Z"
+}
