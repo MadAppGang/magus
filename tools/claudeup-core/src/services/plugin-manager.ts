@@ -30,7 +30,12 @@ import {
   getLocalInstalledPluginVersions,
   updateInstalledPluginsRegistry,
   removeFromInstalledPluginsRegistry,
+  enablePlugin as enablePluginInternal,
+  enableLocalPlugin as enableLocalPluginInternal,
+  enableGlobalPlugin as enableGlobalPluginInternal,
 } from "./claude-settings.js";
+import { NamespacedCacheManager } from "./cache-manager.js";
+import { CacheInvalidationHooks, createStandardHooks } from "./cache-hooks.js";
 
 // Path constants for local marketplaces
 const MARKETPLACES_DIR = path.join(os.homedir(), ".claude", "plugins", "marketplaces");
@@ -61,6 +66,16 @@ export type LoggerCallback = (level: "info" | "warn" | "error", message: string,
 
 // Cache for local marketplaces (session-level) - Promise-based to prevent race conditions
 let localMarketplacesPromise: Promise<Map<string, LocalMarketplace>> | null = null;
+
+// Enhanced caching layer with LRU eviction and invalidation hooks
+const pluginCache = new NamespacedCacheManager<unknown>({
+  maxSize: 500, // Max 500 entries per namespace
+  ttl: 5 * 60 * 1000, // 5 minute default TTL
+  enableStats: true,
+});
+
+// Cache invalidation hooks
+const cacheHooks = createStandardHooks(pluginCache);
 
 export interface ScopeStatus {
   enabled: boolean;
@@ -119,10 +134,19 @@ export async function fetchMarketplacePlugins(
   repo: string,
   logger?: LoggerCallback,
 ): Promise<MarketplacePlugin[]> {
-  // Check cache first - session-level, no TTL
-  const cached = marketplaceCache.get(marketplaceName);
+  // Check enhanced cache first - with TTL and LRU eviction
+  const cacheKey = `marketplace:${marketplaceName}`;
+  const cached = pluginCache.get('marketplace', cacheKey) as MarketplacePlugin[] | undefined;
   if (cached) {
     return cached;
+  }
+
+  // Fallback to old cache for backwards compatibility during transition
+  const legacyCached = marketplaceCache.get(marketplaceName);
+  if (legacyCached) {
+    // Migrate to new cache
+    pluginCache.set('marketplace', cacheKey, legacyCached);
+    return legacyCached;
   }
 
   // Validate repo format to prevent SSRF
@@ -180,8 +204,9 @@ export async function fetchMarketplacePlugins(
       }
     }
 
-    // Cache the result (session-level)
+    // Cache the result in both old and new cache
     marketplaceCache.set(marketplaceName, plugins);
+    pluginCache.set('marketplace', cacheKey, plugins);
 
     return plugins;
   } catch (error) {
@@ -675,6 +700,9 @@ export async function saveInstalledPluginVersion(
     projectPath ? "project" : "user",
     projectPath ? path.resolve(projectPath) : undefined,
   );
+
+  // Trigger cache invalidation hook
+  await cacheHooks.onPluginInstalled(pluginId);
 }
 
 /**
@@ -710,6 +738,9 @@ export async function removeInstalledPluginVersion(
     projectPath ? "project" : "user",
     projectPath ? path.resolve(projectPath) : undefined,
   );
+
+  // Trigger cache invalidation hook
+  await cacheHooks.onPluginUninstalled(pluginId);
 }
 
 /**
@@ -719,6 +750,10 @@ export async function removeInstalledPluginVersion(
 export function clearMarketplaceCache(): void {
   marketplaceCache.clear();
   localMarketplacesPromise = null;
+  // Clear enhanced cache namespaces
+  pluginCache.invalidateNamespace('marketplace');
+  pluginCache.invalidateNamespace('plugins');
+  pluginCache.invalidateNamespace('settings');
 }
 
 /**
@@ -768,8 +803,99 @@ export async function refreshAllMarketplaces(
   // Then clear all caches to force fresh data
   clearMarketplaceCache();
 
+  // Trigger marketplace refresh hook
+  await cacheHooks.onMarketplaceRefreshed();
+
   return {
     refresh: refreshResults,
     repair: repairResults,
   };
+}
+
+/**
+ * Get cache statistics for monitoring and debugging
+ * @returns Cache statistics for all namespaces
+ */
+export function getCacheStats(): Record<string, unknown> {
+  return pluginCache.getAllStats();
+}
+
+/**
+ * Get cache invalidation hooks instance for advanced usage
+ * @returns Cache hooks instance
+ */
+export function getCacheHooks(): CacheInvalidationHooks {
+  return cacheHooks;
+}
+
+/**
+ * Get cache manager instance for advanced usage
+ * @returns Cache manager instance
+ */
+export function getCacheManager(): NamespacedCacheManager<unknown> {
+  return pluginCache;
+}
+
+/**
+ * Enable or disable a plugin in project scope with cache invalidation
+ * @param pluginId - Plugin ID (format: "plugin-name@marketplace-name")
+ * @param enabled - Whether to enable or disable the plugin
+ * @param projectPath - Absolute path to project
+ * @throws Error if plugin ID format is invalid
+ */
+export async function enablePlugin(
+  pluginId: string,
+  enabled: boolean,
+  projectPath: string,
+): Promise<void> {
+  await enablePluginInternal(pluginId, enabled, projectPath);
+
+  // Trigger cache invalidation hook
+  if (enabled) {
+    await cacheHooks.onPluginEnabled(pluginId);
+  } else {
+    await cacheHooks.onPluginDisabled(pluginId);
+  }
+}
+
+/**
+ * Enable or disable a plugin in local scope with cache invalidation
+ * @param pluginId - Plugin ID (format: "plugin-name@marketplace-name")
+ * @param enabled - Whether to enable or disable the plugin
+ * @param projectPath - Absolute path to project
+ * @throws Error if plugin ID format is invalid
+ */
+export async function enableLocalPlugin(
+  pluginId: string,
+  enabled: boolean,
+  projectPath: string,
+): Promise<void> {
+  await enableLocalPluginInternal(pluginId, enabled, projectPath);
+
+  // Trigger cache invalidation hook
+  if (enabled) {
+    await cacheHooks.onPluginEnabled(pluginId);
+  } else {
+    await cacheHooks.onPluginDisabled(pluginId);
+  }
+}
+
+/**
+ * Enable or disable a plugin in global scope with cache invalidation
+ * @param pluginId - Plugin ID (format: "plugin-name@marketplace-name")
+ * @param enabled - Whether to enable or disable the plugin
+ * @throws Error if plugin ID format is invalid
+ */
+export async function enableGlobalPlugin(
+  pluginId: string,
+  enabled: boolean,
+): Promise<void> {
+  await enableGlobalPluginInternal(pluginId, enabled);
+
+  // Trigger cache invalidation hook
+  if (enabled) {
+    await cacheHooks.onPluginEnabled(pluginId);
+  } else {
+    await cacheHooks.onPluginDisabled(pluginId);
+  }
 }

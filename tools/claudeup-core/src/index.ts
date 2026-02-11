@@ -28,6 +28,24 @@ export {
 export * from './utils/validators.js';
 export * from './utils/file-locking.js';
 
+// Services - Cache Management
+export {
+  CacheManager,
+  NamespacedCacheManager,
+  type CacheOptions,
+  type CacheEntry,
+  type CacheStats,
+  type InvalidationHook,
+} from './services/cache-manager.js';
+
+export {
+  CacheInvalidationHooks,
+  PluginCacheInvalidator,
+  createStandardHooks,
+  type InvalidationRule,
+  type HookTrigger,
+} from './services/cache-hooks.js';
+
 // Services - Plugin Management
 export {
   // Plugin listing
@@ -38,9 +56,17 @@ export {
   // Plugin version management
   saveInstalledPluginVersion,
   removeInstalledPluginVersion,
+  // Plugin enable/disable (with cache invalidation)
+  enablePlugin,
+  enableLocalPlugin,
+  enableGlobalPlugin,
   // Marketplace operations
   refreshAllMarketplaces,
   clearMarketplaceCache,
+  // Cache utilities
+  getCacheStats,
+  getCacheHooks,
+  getCacheManager,
   // Types
   type PluginInfo,
   type ScopeStatus,
@@ -77,10 +103,10 @@ export {
   writeGlobalSettings,
   readLocalSettings,
   writeLocalSettings,
-  // Plugin enable/disable
-  enablePlugin,
-  enableGlobalPlugin,
-  enableLocalPlugin,
+  // Settings cache management
+  getSettingsCacheStats,
+  clearSettingsCache,
+  // Plugin enabled state (read-only - use plugin-manager for enable/disable)
   getEnabledPlugins,
   getGlobalEnabledPlugins,
   getLocalEnabledPlugins,
