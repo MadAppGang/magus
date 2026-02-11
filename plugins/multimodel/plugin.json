@@ -1,7 +1,7 @@
 {
   "name": "multimodel",
-  "version": "2.2.0",
-  "description": "Multi-model collaboration, orchestration, and workflow patterns. v2.2.0: Migrated to Tasks system (TaskCreate/TaskUpdate/TaskList/TaskGet) - renamed task-orchestration to task-orchestration with new patterns for dependencies, ownership, and cross-session persistence.",
+  "version": "2.3.0",
+  "description": "Multi-model collaboration, orchestration, and workflow patterns. v2.3.0: Rewrote /team with <critical_override> for 100% agent selection, added PROXY_MODE enforcement hooks, agent-enforcement skill, resolve-agents pre-processor.",
   "author": "MadAppGang",
   "license": "MIT",
   "homepage": "https://github.com/MadAppGang/claude-code",
