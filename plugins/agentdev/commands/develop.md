@@ -163,40 +163,33 @@ skills: orchestration:multi-model-validation, orchestration:quality-gates, orche
           Read and display avg time, success rate, quality for each model.
         </step>
         <step>
-          **Run Reviews IN PARALLEL** (single message, multiple Task calls):
-
-          **CRITICAL**: Use PROXY_MODE-enabled agents, NOT general-purpose!
+          **Run Reviews IN PARALLEL** (single message, multiple Bash+claudish calls):
 
           **Correct Pattern:**
-          For each model, record MODEL_START time, then launch `agentdev:architect` with:
-          ```typescript
-          // ✅ CORRECT: Use agentdev:architect (has PROXY_MODE support)
-          Task({
-            subagent_type: "agentdev:architect",
-            description: "Grok plan review",
-            run_in_background: true,
-            prompt: `PROXY_MODE: x-ai/grok-code-fast-1
-SESSION_PATH: ${SESSION_PATH}
+          For each model, record MODEL_START time, then:
 
-Review the design plan at ${SESSION_PATH}/design.md
+          1. Write review prompt to ${SESSION_PATH}/reviews/plan-review/prompt.md
+          2. Launch claudish:
+          ```bash
+          # For each external model:
+          claudish --model x-ai/grok-code-fast-1 --stdin --quiet < ${SESSION_PATH}/reviews/plan-review/prompt.md > ${SESSION_PATH}/reviews/plan-review/grok.md &
+          echo $? > ${SESSION_PATH}/reviews/plan-review/grok.exit &
 
-Evaluate:
-1. Design completeness
-2. XML/YAML structure validity
-3. Tasks integration
-4. Proxy mode support
-5. Example quality
+          claudish --model google/gemini-2.5-flash --stdin --quiet < ${SESSION_PATH}/reviews/plan-review/prompt.md > ${SESSION_PATH}/reviews/plan-review/gemini-flash.md &
+          echo $? > ${SESSION_PATH}/reviews/plan-review/gemini-flash.exit &
 
-Save findings to: ${SESSION_PATH}/reviews/plan-review/grok.md`
-          })
+          # Wait for all to complete
+          wait
           ```
 
-          **DO NOT** use general-purpose agents:
+          **Internal review via Task:**
           ```typescript
-          // ❌ WRONG - This will NOT work correctly
           Task({
-            subagent_type: "general-purpose",
-            prompt: "Review using claudish with model X..."
+            subagent_type: "agentdev:architect",
+            description: "Internal plan review",
+            prompt: `SESSION_PATH: ${SESSION_PATH}
+Review the design plan at ${SESSION_PATH}/design.md
+Save findings to: ${SESSION_PATH}/reviews/plan-review/internal.md`
           })
           ```
         </step>
@@ -292,14 +285,13 @@ Save findings to: ${SESSION_PATH}/reviews/plan-review/grok.md`
           Track: `LOCAL_START=$(date +%s)` before, calculate duration after.
         </step>
         <step>
-          **Reviews 2..N: External IN PARALLEL** (single message):
-          For each model, launch `agentdev:reviewer` with:
-          ```
-          PROXY_MODE: {model_id}
-          SESSION_PATH: ${SESSION_PATH}
-
-          Review agent at {file_path}
-          Save to: ${SESSION_PATH}/reviews/impl-review/{model-sanitized}.md
+          **Reviews 2..N: External IN PARALLEL** (via claudish):
+          For each model:
+          1. Write review prompt to ${SESSION_PATH}/reviews/impl-review/prompt.md
+          2. Launch claudish:
+          ```bash
+          claudish --model {model_id} --stdin --quiet < ${SESSION_PATH}/reviews/impl-review/prompt.md > ${SESSION_PATH}/reviews/impl-review/{model-sanitized}.md &
+          echo $? > ${SESSION_PATH}/reviews/impl-review/{model-sanitized}.exit &
           ```
         </step>
         <step>

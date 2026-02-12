@@ -1137,7 +1137,6 @@ Use **Task tool** with `subagent_type: frontend:plan-reviewer`
 
 **Prompt format:**
 ```
-PROXY_MODE: {model_id}
 
 Review the architecture plan via {model_name} and provide critical feedback.
 
@@ -1181,10 +1180,10 @@ Return ONLY:
 ```
 Send a single message with 2 Task calls:
 
-Task 1: frontend:plan-reviewer with PROXY_MODE: x-ai/grok-code-fast-1
+Bash 1: claudish --model x-ai/grok-code-fast-1
   Output: ${SESSION_PATH}/reviews/plan-review/grok-review.md
 
-Task 2: frontend:plan-reviewer with PROXY_MODE: openai/gpt-5-codex
+Bash 2: claudish --model openai/gpt-5-codex
   Output: ${SESSION_PATH}/reviews/plan-review/codex-review.md
 
 Both run in parallel.
@@ -2512,9 +2511,9 @@ e. **Loop Until Tests Pass**:
    ```
    Send a single message with (1 + external_review_models.length) Task calls:
 
-   Task 1: Launch reviewer (normal Claude Sonnet - no PROXY_MODE)
-   Task 2: Launch reviewer with PROXY_MODE: {external_review_models[0]} (e.g., grok-fast)
-   Task 3: Launch reviewer with PROXY_MODE: {external_review_models[1]} (e.g., code-review)
+   Task 1: Launch reviewer (normal Claude Sonnet - internal model)
+   Task 2: Launch reviewer via Bash+claudish with model {external_review_models[0]} (e.g., grok-fast)
+   Task 3: Launch reviewer via Bash+claudish with model {external_review_models[1]} (e.g., code-review)
    ... (repeat for each model in external_review_models array)
    ```
 
@@ -2526,16 +2525,16 @@ e. **Loop Until Tests Pass**:
    ```
    Send a single message with (1 + external_review_models.length + 1) Task calls:
 
-   Task 1: Launch reviewer (normal Claude Sonnet - no PROXY_MODE)
-   Task 2: Launch reviewer with PROXY_MODE: {external_review_models[0]} (e.g., grok-fast)
-   Task 3: Launch reviewer with PROXY_MODE: {external_review_models[1]} (e.g., code-review)
+   Task 1: Launch reviewer (normal Claude Sonnet - internal model)
+   Task 2: Launch reviewer via Bash+claudish with model {external_review_models[0]} (e.g., grok-fast)
+   Task 3: Launch reviewer via Bash+claudish with model {external_review_models[1]} (e.g., code-review)
    ... (repeat for each model in external_review_models array)
    Task N: Launch tester (UI testing)
    ```
 
    - **Reviewer 1 - Claude Sonnet Code Reviewer (Comprehensive Human-Focused Review)**:
      * Use Task tool with `subagent_type: frontend:reviewer`
-     * **DO NOT include PROXY_MODE directive** - this runs with normal Claude Sonnet
+     * This runs with normal Claude Sonnet (internal model)
      * Provide context:
        - "Review all unstaged git changes from the current implementation"
        - Path to the original plan for reference (${SESSION_PATH}/...)
@@ -2563,7 +2562,7 @@ e. **Loop Until Tests Pass**:
    - **Reviewers 2..N - External AI Code Analyzers (via Claudish CLI + OpenRouter)**:
      * For EACH model in `external_review_models` array (e.g., ["x-ai/grok-code-fast-1", "openai/gpt-4o"]):
        - Use Task tool with `subagent_type: frontend:reviewer` (**NOT** `frontend:plan-reviewer`)
-       - **CRITICAL**: Start the prompt with `PROXY_MODE: {model_id}` directive
+       - **CRITICAL**: Use Bash tool to invoke claudish CLI directly (external models via Bash+claudish)
        - The agent will automatically delegate to the external AI model via Claudish CLI
        - Provide the same review context as Reviewer 1:
          * Full prompt format (see Reviewer 1 above for structure)
@@ -2571,14 +2570,13 @@ e. **Loop Until Tests Pass**:
          * Git diff output and review standards
        - Format:
          ```
-         PROXY_MODE: {model_id}
 
          [Include all the same context and instructions as Reviewer 1]
          ```
      * Example for user selecting "Grok Code Fast" + "GPT-4o" in PHASE 1.6:
        - `external_review_models = ["x-ai/grok-code-fast-1", "openai/gpt-4o"]`
-       - Reviewer 2: `PROXY_MODE: x-ai/grok-code-fast-1` → **Grok Code Fast (xAI)**
-       - Reviewer 3: `PROXY_MODE: openai/gpt-4o` → **GPT-4o (OpenAI)**
+       - Reviewer 2: `Bash+claudish with model x-ai/grok-code-fast-1` → **Grok Code Fast (xAI)**
+       - Reviewer 3: `Bash+claudish with model openai/gpt-4o` → **GPT-4o (OpenAI)**
      * The number of external reviewers = `external_review_models.length`
      * **Model Name Display**: When presenting results, show friendly names:
        - `x-ai/grok-code-fast-1` → "Grok Code Fast (xAI)"

@@ -289,15 +289,15 @@ Sub-agents should return **2-5 sentence summaries**, not full output:
 
 **Proxy Mode Invocation:**
 
-For external AI models (Claudish), use the PROXY_MODE directive:
+For external AI models (Claudish), use the claudish CLI directive:
 
 ```
-Task: codex-code-reviewer PROXY_MODE: x-ai/grok-code-fast-1
+Task: codex-code-reviewer claudish CLI: x-ai/grok-code-fast-1
   Prompt: "Review authentication implementation for security issues.
            Code context in ai-docs/code-review-context.md"
 
 Agent Behavior:
-  1. Detects PROXY_MODE directive
+  1. Detects claudish CLI directive
   2. Extracts model: x-ai/grok-code-fast-1
   3. Extracts task: "Review authentication implementation..."
   4. Executes: claudish --model x-ai/grok-code-fast-1 --stdin <<< "..."
@@ -521,10 +521,10 @@ Message 2: Parallel Execution (3 Task calls in single message)
   Task: senior-code-reviewer
     Prompt: "Review ai-docs/code-review-context.md for security issues"
   ---
-  Task: codex-code-reviewer PROXY_MODE: x-ai/grok-code-fast-1
+  Task: codex-code-reviewer claudish CLI: x-ai/grok-code-fast-1
     Prompt: "Review ai-docs/code-review-context.md for security issues"
   ---
-  Task: codex-code-reviewer PROXY_MODE: google/gemini-2.5-flash
+  Task: codex-code-reviewer claudish CLI: google/gemini-2.5-flash
     Prompt: "Review ai-docs/code-review-context.md for security issues"
 
   All 3 execute simultaneously (3x faster than sequential)
@@ -629,7 +629,7 @@ Step 2b: If user says YES (quality mode)
     Task: designer
       Prompt: "Validate navbar against Figma design"
     ---
-    Task: designer PROXY_MODE: design-review-codex
+    Task: designer claudish CLI: design-review-codex
       Prompt: "Validate navbar against Figma design"
 
   Message 2: Consolidate

@@ -1,7 +1,7 @@
 ---
 name: agent-enforcement
 description: |
-  Multi-agent orchestration enforcement for /team command. Enforces claudish --agent usage,
+  Multi-agent orchestration enforcement for /team command. Provides claudish CLI validation,
   validates session directory paths, and ensures /team internal Tasks use dev:researcher.
   Use when debugging /team orchestration failures.
 triggers:
@@ -25,7 +25,7 @@ Two-layer defense against orchestration violations in `/team`:
 | Model Type | Method | Tool | Reliability |
 |------------|--------|------|-------------|
 | Internal (Claude) | Task(dev:researcher) | Task tool | High (same process) |
-| External (Grok, Gemini, etc.) | Bash(claudish --agent --model) | Bash tool | 100% (deterministic CLI) |
+| External (Grok, Gemini, etc.) | Bash(claudish --model) | Bash tool | 100% (deterministic CLI) |
 
 External models are called via claudish CLI directly from Bash — no LLM delegation needed.
 
@@ -36,15 +36,13 @@ The PreToolUse hook intercepts Task and Bash tool calls at runtime:
 | Rule | Condition | Action |
 |------|-----------|--------|
 | 1 | /team Task with wrong agent | DENY (must be dev:researcher) |
-| 2 | claudish without --agent | DENY |
-| 3 | /tmp/ in Task prompt | DENY |
+| 2 | /tmp/ in Task prompt | DENY |
 
 ### Layer 1: PreToolUse Hook
 
 Detects /team workflows by vote template pattern in Task prompts. Blocks:
 
 - **Wrong agent for /team Tasks:** Only `dev:researcher` is allowed for internal model Tasks
-- **Missing --agent on claudish:** All claudish CLI calls must specify `--agent`
 - **Insecure paths:** No `/tmp/` paths in Task prompts (use `ai-docs/sessions/`)
 
 ### Layer 2: model: opus
@@ -52,7 +50,7 @@ Detects /team workflows by vote template pattern in Task prompts. Blocks:
 The `/team` command uses `model: opus` (Opus 4.6) which follows complex XML instructions
 much more reliably than Sonnet (~90% vs ~33% compliance).
 
-## Agent Selection for --agent Flag
+## Agent Selection for Task Delegation
 
 | Task Type | Primary Agent | Alternatives |
 |-----------|--------------|--------------|
@@ -89,7 +87,7 @@ Output:
 
 Methods:
 - `"direct"` — Internal Claude via Task(agent)
-- `"cli"` — External model via Bash(claudish --agent --model)
+- `"cli"` — External model via Bash(claudish --model)
 
 ## Validation
 
@@ -108,6 +106,5 @@ Normal Task usage (without vote templates) is never affected.
 **resolve-agents.sh not found:**
 The `/team` command uses its own built-in logic. The hook still provides runtime protection.
 
-**False positive on claudish --agent:**
-The hook skips existence checks (`which claudish`, `command -v claudish`). If you see
-a false positive, check if the command starts with a detection pattern.
+**Hook behavior:**
+The hook skips existence checks (`which claudish`, `command -v claudish`).

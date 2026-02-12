@@ -4,9 +4,8 @@ Analyze a /team command JSONL transcript for orchestration correctness.
 
 Usage: python3 analyze-transcript.py <transcript.jsonl> <checks_json>
 
-v2.0.0: Updated for Bash+claudish architecture. External models use Bash(claudish),
-internal models use Task(dev:researcher). PROXY_MODE checks replaced with
-Bash+claudish verification.
+v2.1.0: Updated for claudish v4.5.1 (--agent flag removed). External models use
+Bash(claudish --model), internal models use Task(dev:researcher).
 
 Checks JSON format:
 {
@@ -22,7 +21,6 @@ Checks JSON format:
   "bash_has_claudish": true,             # At least one Bash call contains "claudish"
   "bash_min_count": 2,                   # Minimum Bash claudish calls
   "bash_claudish_model_contains": "grok",# --model flag contains keyword
-  "bash_claudish_has_agent": true,       # --agent flag present in claudish calls
   "bash_claudish_has_stdin": true,       # --stdin flag present
   "bash_claudish_has_output_redirect": true, # > redirect to session dir
   "bash_claudish_captures_exit": true,   # echo $? > .exit pattern
@@ -292,17 +290,6 @@ def run_checks(checks, tool_calls, task_calls, bash_calls, write_calls, read_cal
             'check': 'bash_claudish_model_contains',
             'passed': found,
             'detail': detail
-        })
-
-    # Check: bash_claudish_has_agent
-    if checks.get('bash_claudish_has_agent'):
-        any_have_agent = any('--agent' in bc['input'].get('command', '') for bc in claudish_calls)
-        results.append({
-            'check': 'bash_claudish_has_agent',
-            'passed': any_have_agent,
-            'detail': f'At least one claudish call has --agent ({len(claudish_calls)} total)' if any_have_agent
-                      else 'Missing --agent in all claudish calls' if claudish_calls
-                      else 'No claudish calls found'
         })
 
     # Check: bash_claudish_has_stdin

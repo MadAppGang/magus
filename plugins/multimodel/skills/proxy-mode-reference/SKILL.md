@@ -30,7 +30,7 @@ External models are invoked **deterministically** via the claudish CLI. The orch
 (e.g., `/team` command) calls claudish directly through Bash — no LLM delegation needed.
 
 ```
-Orchestrator → Bash(claudish --model {MODEL_ID} --agent {AGENT} --stdin) → External Model
+Orchestrator → Bash(claudish --model {MODEL_ID} --stdin) → External Model
 ```
 
 This approach is 100% reliable because it's a direct CLI invocation, not a prompt-based delegation.
@@ -41,21 +41,20 @@ This approach is 100% reliable because it's a direct CLI invocation, not a promp
 
 The `/team` command handles this automatically:
 - **Internal models** → Task(dev:researcher)
-- **External models** → Bash(claudish --agent dev:researcher --model {MODEL_ID} --stdin)
+- **External models** → Bash(claudish --model {MODEL_ID} --stdin)
 
 ### Direct CLI Usage
 
 ```bash
 # Pattern
-claudish --agent {PLUGIN}:{AGENT} --model {MODEL_ID} --stdin --quiet < prompt-file.md > result.md
+claudish --model {MODEL_ID} --stdin --quiet < prompt-file.md > result.md
 
 # Examples
-claudish --agent dev:researcher --model x-ai/grok-code-fast-1 --stdin --quiet < task.md > grok-result.md
-claudish --agent dev:debugger --model google/gemini-3-pro-preview --stdin --quiet < task.md > gemini-result.md
+claudish --model x-ai/grok-code-fast-1 --stdin --quiet < task.md > grok-result.md
+claudish --model google/gemini-3-pro-preview --stdin --quiet < task.md > gemini-result.md
 ```
 
 **Required flags:**
-- `--agent` — Specifies the specialized agent for the task
 - `--model` — The external model to use
 - `--stdin` — Read prompt from stdin (for large prompts)
 - `--quiet` — Suppress log messages (for clean output capture)
@@ -105,32 +104,20 @@ OpenRouter model IDs may collide with routing prefixes. Check the prefix table a
 
 ---
 
-## Agent Selection for --agent Flag
-
-| Task Type | Recommended Agent | Alternatives |
-|-----------|------------------|--------------|
-| Investigation/Research | `dev:researcher` | `dev:debugger` |
-| Code Review | `agentdev:reviewer` | `frontend:reviewer` |
-| Architecture | `dev:architect` | `frontend:architect` |
-| Implementation | `dev:developer` | `frontend:developer` |
-| Testing | `dev:test-architect` | `frontend:test-architect` |
-| DevOps | `dev:devops` | — |
-| UI/Design | `dev:ui` | `frontend:designer` |
-
 ## Correct Usage Patterns
 
 ### Single External Model
 
 ```bash
-claudish --agent dev:researcher --model x-ai/grok-code-fast-1 --stdin --quiet < task.md > result.md
+claudish --model x-ai/grok-code-fast-1 --stdin --quiet < task.md > result.md
 ```
 
 ### Parallel External Models (in /team)
 
 ```bash
 # All launched in a single message with run_in_background: true
-Bash("claudish --agent dev:researcher --model x-ai/grok-code-fast-1 --stdin --quiet < vote-prompt.md > grok-result.md 2>grok-stderr.log; echo $? > grok.exit")
-Bash("claudish --agent dev:researcher --model google/gemini-3-pro-preview --stdin --quiet < vote-prompt.md > gemini-result.md 2>gemini-stderr.log; echo $? > gemini.exit")
+Bash("claudish --model x-ai/grok-code-fast-1 --stdin --quiet < vote-prompt.md > grok-result.md 2>grok-stderr.log; echo $? > grok.exit")
+Bash("claudish --model google/gemini-3-pro-preview --stdin --quiet < vote-prompt.md > gemini-result.md 2>gemini-stderr.log; echo $? > gemini.exit")
 ```
 
 ### Verifying Results
@@ -148,24 +135,14 @@ cat grok-stderr.log
 
 ## Common Mistakes
 
-### Mistake 1: Missing --agent flag
-
-```bash
-# ❌ WRONG - no agent specialization
-claudish --model x-ai/grok-code-fast-1 --stdin < task.md
-
-# ✅ CORRECT
-claudish --agent dev:researcher --model x-ai/grok-code-fast-1 --stdin < task.md
-```
-
-### Mistake 2: Not capturing exit code
+### Mistake 1: Not capturing exit code
 
 ```bash
 # ❌ WRONG - no way to detect failures
-claudish --agent dev:researcher --model grok --stdin < task.md > result.md
+claudish --model grok --stdin < task.md > result.md
 
 # ✅ CORRECT - capture exit code
-claudish --agent dev:researcher --model grok --stdin < task.md > result.md 2>stderr.log; echo $? > result.exit
+claudish --model grok --stdin < task.md > result.md 2>stderr.log; echo $? > result.exit
 ```
 
 ## Troubleshooting

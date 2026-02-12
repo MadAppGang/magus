@@ -160,7 +160,7 @@ Run up to **10 iterations** of the following sequence:
 
 #### Step 3.1: Launch Designer Agent(s) for Parallel Design Validation
 
-**IMPORTANT**: If external AI review is enabled, launch TWO designer agents IN PARALLEL using a SINGLE message with TWO Task tool calls (one normal, one with PROXY_MODE for external AI).
+**IMPORTANT**: If external AI review is enabled, launch TWO designer agents IN PARALLEL using a SINGLE message with TWO Task tool calls (one normal, one via Bash+claudish for external AI).
 
 **Designer Agent** (always runs):
 
@@ -210,11 +210,10 @@ Return detailed design review report.
 
 **External AI Designer Review** (if enabled):
 
-If user selected "Yes" for external AI review, launch designer agent WITH PROXY_MODE IN PARALLEL with the normal designer agent:
+If user selected "Yes" for external AI review, launch designer agent VIA Bash+claudish IN PARALLEL with the normal designer agent:
 
 Use Task tool with `subagent_type: frontend:designer` and start the prompt with:
 ```
-PROXY_MODE: design-review
 
 Review the [Component Name] implementation against the design reference and provide a detailed design fidelity report.
 

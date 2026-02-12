@@ -15,15 +15,15 @@
 
 | Plugin | Version | Purpose |
 |--------|---------|---------|
-| **Frontend** | v3.15.0 | React/TypeScript dev with 11 agents, multi-model review |
-| **Code Analysis** | v3.0.0 | Codebase investigation with claudemem, enrichment mode (non-blocking) |
-| **Bun Backend** | v1.5.2 | TypeScript backend with Bun, Apidog integration |
+| **Frontend** | v3.15.1 | React/TypeScript dev with 11 agents, multi-model review |
+| **Code Analysis** | v3.2.2 | Codebase investigation with claudemem, enrichment mode (non-blocking) |
+| **Bun Backend** | v1.6.1 | TypeScript backend with Bun, Apidog integration |
 | **Orchestration** | v0.8.2 | Multi-agent coordination patterns (6 skills) |
-| **Agent Development** | v1.3.0 | Create Claude Code agents and plugins |
-| **SEO** | v1.5.1 | SEO analysis and optimization with AUTO GATEs |
+| **Agent Development** | v1.5.2 | Create Claude Code agents and plugins |
+| **SEO** | v1.6.2 | SEO analysis and optimization with AUTO GATEs |
 | **Video Editing** | v1.0.1 | FFmpeg, Whisper, Final Cut Pro integration |
 | **Nanobanana** | v2.2.3 | AI image generation with Gemini 3 Pro Image |
-| **Dev** | v1.30.0 | Universal dev assistant with real validation loops, 45 skills |
+| **Dev** | v1.31.2 | Universal dev assistant with real validation loops, 46 skills |
 
 **Claudish CLI**: `npm install -g claudish` - Run Claude with OpenRouter models (separate repo)
 
@@ -212,16 +212,16 @@ Key distinction: If the task asks to IMPLEMENT/CREATE/BUILD → `dev:developer`.
 **Detailed Release Notes:** See [RELEASES.md](./RELEASES.md) for comprehensive release documentation
 
 **Current Versions:**
-- Multimodel Plugin: **v2.4.0** (2026-02-12)
-- Frontend Plugin: **v3.15.0** (2026-02-10)
-- Code Analysis Plugin: **v3.2.1** (2026-02-12)
-- Bun Backend Plugin: **v1.5.2** (2025-11-26)
-- Agent Development Plugin: **v1.5.1** (2026-02-12)
-- SEO Plugin: **v1.6.1** (2026-02-12)
+- Multimodel Plugin: **v2.4.1** (2026-02-12)
+- Frontend Plugin: **v3.15.1** (2026-02-12)
+- Code Analysis Plugin: **v3.2.2** (2026-02-12)
+- Bun Backend Plugin: **v1.6.1** (2026-02-12)
+- Agent Development Plugin: **v1.5.2** (2026-02-12)
+- SEO Plugin: **v1.6.2** (2026-02-12)
 - Video Editing Plugin: **v1.0.1** (2026-01-06)
 - Nanobanana Plugin: **v2.2.3** (2026-01-08)
 - Conductor Plugin: **v2.0.1** (2026-01-06)
-- Dev Plugin: **v1.31.1** (2026-02-12)
+- Dev Plugin: **v1.31.2** (2026-02-12)
 - Claudish CLI: See https://github.com/MadAppGang/claudish (separate repository)
 
 **Latest Changes (Code Analysis v2.15.0):**
@@ -232,16 +232,16 @@ Key distinction: If the task asks to IMPLEMENT/CREATE/BUILD → `dev:developer`.
 - ✅ **Preserved Fallbacks**: Native tools still work when claudemem not indexed
 
 **Git Tags:**
-- Multimodel: `plugins/multimodel/v2.4.0`
-- Frontend: `plugins/frontend/v3.15.0`
-- Bun: `plugins/bun/v1.5.2`
-- Code Analysis: `plugins/code-analysis/v3.2.1`
-- Agent Development: `plugins/agentdev/v1.5.1`
-- SEO: `plugins/seo/v1.6.1`
+- Multimodel: `plugins/multimodel/v2.4.1`
+- Frontend: `plugins/frontend/v3.15.1`
+- Bun: `plugins/bun/v1.6.1`
+- Code Analysis: `plugins/code-analysis/v3.2.2`
+- Agent Development: `plugins/agentdev/v1.5.2`
+- SEO: `plugins/seo/v1.6.2`
 - Video Editing: `plugins/video-editing/v1.0.1`
 - Nanobanana: `plugins/nanobanana/v2.2.3`
 - Conductor: `plugins/conductor/v2.0.1`
-- Dev: `plugins/dev/v1.31.1`
+- Dev: `plugins/dev/v1.31.2`
 - Use correct tag format when releasing: `plugins/{plugin-name}/vX.Y.Z`
 
 **⚠️ RELEASE CHECKLIST (ALL 3 REQUIRED):**
@@ -271,5 +271,5 @@ The workflow `.github/workflows/claudeup-release.yml` triggers on `tools/claudeu
 
 **Maintained by:** Jack Rudenko @ MadAppGang
 **Last Updated:** February 10, 2026
-**Version:** 10 plugins (Multimodel v2.4.0, Frontend v3.15.0, Code Analysis v2.15.0, Bun Backend v1.5.2, Agent Development v1.4.0, SEO v1.5.1, Video Editing v1.0.1, Nanobanana v2.2.3, Conductor v2.0.1, Dev v1.30.0)
+**Version:** 10 plugins (Multimodel v2.4.1, Frontend v3.15.1, Code Analysis v3.2.2, Bun Backend v1.6.1, Agent Development v1.5.2, SEO v1.6.2, Video Editing v1.0.1, Nanobanana v2.2.3, Conductor v2.0.1, Dev v1.31.2)
 - do not use hardcoded path in code, docs, comments or any other files

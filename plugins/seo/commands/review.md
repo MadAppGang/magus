@@ -11,7 +11,7 @@ skills: orchestration:multi-model-validation, orchestration:model-tracking-proto
   <expertise>
     - Parallel multi-model AI coordination for 3-5x speedup
     - Consensus analysis and E-E-A-T score prioritization across diverse AI perspectives
-    - Cost-aware external model management via Claudish proxy mode
+    - Cost-aware external model management via claudish CLI
     - Graceful degradation and error recovery (works with/without external models)
     - Content quality assessment (readability, SEO compliance, factual accuracy)
   </expertise>
@@ -62,16 +62,16 @@ skills: orchestration:multi-model-validation, orchestration:model-tracking-proto
     </graceful_degradation>
 
     <parallel_execution_requirement>
-      CRITICAL: Execute ALL external model reviews in parallel using multiple Task
-      invocations in a SINGLE message. This achieves 3-5x speedup vs sequential.
+      CRITICAL: Execute ALL external model reviews in parallel using Bash with
+      background execution. This achieves 3-5x speedup vs sequential.
 
       Example pattern:
-      [One message with:]
-      Task: seo-editor PROXY_MODE: model-1 ...
+      [One message with multiple Bash calls:]
+      Bash: claudish --model model-1 --stdin --quiet < prompt.md > result-1.md &
       ---
-      Task: seo-editor PROXY_MODE: model-2 ...
+      Bash: claudish --model model-2 --stdin --quiet < prompt.md > result-2.md &
       ---
-      Task: seo-editor PROXY_MODE: model-3 ...
+      Bash: claudish --model model-3 --stdin --quiet < prompt.md > result-3.md &
 
       This is the KEY INNOVATION that makes multi-model review practical (5-10 min
       vs 15-30 min). See Key Design Innovation section in knowledge base.
@@ -146,10 +146,10 @@ skills: orchestration:multi-model-validation, orchestration:model-tracking-proto
 
   <delegation_rules>
     <rule scope="embedded_review">
-      Embedded (local) review → seo-editor agent (NO PROXY_MODE)
+      Embedded (local) review → seo-editor agent via Task tool
     </rule>
     <rule scope="external_review">
-      External model review → seo-editor agent (WITH PROXY_MODE: {model_id})
+      External model review → claudish CLI with --model {model_id}
     </rule>
     <rule scope="consolidation">
       Orchestrator performs consolidation (reads files, analyzes consensus, writes report)
@@ -407,31 +407,35 @@ skills: orchestration:multi-model-validation, orchestration:model-tracking-proto
           MODEL_START_TIMES["claude-embedded"]=$(date +%s)
           ```
 
-          Task: seo-editor (NO PROXY_MODE)
+          Task: seo-editor
           Prompt: "Review content in ${SESSION_PATH}/content-review-context.md
                    Write detailed review to ${SESSION_PATH}/reviews/claude-review.md
                    Return brief summary only."
         </step>
 
-        <step>If external models selected, launch ALL in PARALLEL (SINGLE MESSAGE):
+        <step>If external models selected, launch ALL in PARALLEL (BASH BACKGROUND):
           ```bash
           # Record start times for all external models
           for model in "${external_models[@]}"; do
             MODEL_START_TIMES["$model"]=$(date +%s)
+            model_slug=$(echo "$model" | sed 's/[^a-zA-Z0-9-]/_/g')
+
+            claudish --model "$model" --stdin --quiet <<EOF > "${SESSION_PATH}/reviews/${model_slug}-review.md" &
+          Review content in ${SESSION_PATH}/content-review-context.md
+          Write detailed review focusing on:
+          1. E-E-A-T signals
+          2. SEO compliance
+          3. Readability
+          4. Factual accuracy
+          5. Brand voice consistency
+EOF
           done
+
+          # Wait for all background processes
+          wait
           ```
 
-          Construct SINGLE message with multiple Task invocations separated by "---":
-
-          Task: seo-editor PROXY_MODE: x-ai/grok-code-fast-1
-          Prompt: "Review content in ${SESSION_PATH}/content-review-context.md
-                   Write review to ${SESSION_PATH}/reviews/grok-review.md"
-          ---
-          Task: seo-editor PROXY_MODE: qwen/qwen3-coder:free
-          Prompt: "Review content in ${SESSION_PATH}/content-review-context.md
-                   Write review to ${SESSION_PATH}/reviews/qwen-coder-review.md"
-          ---
-          [... additional models ...]
+          Launch ALL external models in parallel using Bash background execution.
         </step>
 
         <step>Track completion and calculate durations:
@@ -789,7 +793,7 @@ skills: orchestration:multi-model-validation, orchestration:model-tracking-proto
 
       **PHASE 3: Parallel Multi-Model Review**
       - Launch embedded review
-      - Launch 3 external reviews IN PARALLEL (single message)
+      - Launch 3 external reviews IN PARALLEL (Bash background)
       - All complete in ~55s (vs ~196s sequential)
 
       **PHASE 4: Consolidate Reviews**

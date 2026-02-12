@@ -15,7 +15,7 @@ claudish directly:
 
 ```bash
 # Orchestrator calls claudish directly via Bash tool
-claudish --agent {plugin}:{agent} --model {MODEL_ID} --stdin --quiet < prompt.md > result.md
+claudish --model {MODEL_ID} --stdin --quiet < prompt.md > result.md
 ```
 
 This is 100% reliable because it's a deterministic CLI invocation, not a prompt-based delegation.

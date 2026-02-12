@@ -305,7 +305,7 @@ claudish --models --force-update
 
 ```bash
 # Use specific agent (prepends @agent- automatically)
-claudish --model x-ai/grok-code-fast-1 --agent frontend:developer "implement React component"
+claudish --model x-ai/grok-code-fast-1 "implement React component"
 
 # Claude receives: "Use the @agent-frontend:developer agent to: implement React component"
 
@@ -332,7 +332,7 @@ claudish --list-agents
 
 **Simple task (use `--agent`):**
 ```bash
-claudish --model x-ai/grok-code-fast-1 --agent frontend:developer "create button component"
+claudish --model x-ai/grok-code-fast-1 "create button component"
 ```
 
 **Complex task (use file-based):**

@@ -43,9 +43,9 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
   AGENT RULES FOR THIS COMMAND:
   - Stack detection → dev:stack-detector agent (subagent_type: "dev:stack-detector")
   - Architecture/planning → dev:architect agent (subagent_type: "dev:architect")
-  - Plan review (with PROXY_MODE) → dev:architect agent
+  - Plan review (external models via claudish) → dev:architect agent
   - Implementation → dev:developer agent (subagent_type: "dev:developer")
-  - Code review (with PROXY_MODE) → agentdev:reviewer or dev:architect agent
+  - Code review (external models via claudish) → agentdev:reviewer or dev:architect agent
   - Test creation → dev:test-architect agent (subagent_type: "dev:test-architect")
   - Real validation → Orchestrator (Chrome MCP tools directly)
 
@@ -135,9 +135,9 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
       - Research: Orchestrator (external tools if available)
       - Stack detection: stack-detector agent
       - Architecture: architect agent
-      - Plan review: architect agent (with PROXY_MODE for external)
+      - Plan review: architect agent (external models via claudish)
       - Implementation: developer agent
-      - Code review: reviewer/architect agent (with PROXY_MODE for external)
+      - Code review: reviewer/architect agent (external models via claudish)
       - Test creation: test-architect agent (NEVER external)
       - Test execution: Bash
       - Real validation: Orchestrator (Chrome MCP tools)
@@ -742,13 +742,11 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
                         Write review to ${SESSION_PATH}/reviews/plan-review/claude-internal.md
                         Return brief summary"
              ---
-             Task: architect PROXY_MODE: {model1}
-               Prompt: "Review ${SESSION_PATH}/architecture.md for issues.
-                        Write review to ${SESSION_PATH}/reviews/plan-review/{model1}.md
-                        Return brief summary"
+             Bash: claudish --model {model1} --stdin --quiet < ${SESSION_PATH}/reviews/plan-review/prompt.md > ${SESSION_PATH}/reviews/plan-review/{model1-slug}.md
              ---
-             Task: architect PROXY_MODE: {model2}
-               ... (for each selected model)
+             Bash: claudish --model {model2} --stdin --quiet < ${SESSION_PATH}/reviews/plan-review/prompt.md > ${SESSION_PATH}/reviews/plan-review/{model2-slug}.md
+             ---
+             ... (for each selected model)
 
           c. Wait for all reviews to complete
 
@@ -889,11 +887,7 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
                      Write review to ${SESSION_PATH}/reviews/code-review/claude-internal.md
                      Return brief summary"
           ---
-          Task: reviewer PROXY_MODE: {model1}
-            Prompt: "Review code changes in ${SESSION_PATH}/code-changes.diff
-                     Focus on: security, performance, code quality, best practices
-                     Write review to ${SESSION_PATH}/reviews/code-review/{model1}.md
-                     Return brief summary"
+          Bash: claudish --model {model1} --stdin --quiet < ${SESSION_PATH}/reviews/code-review/prompt.md > ${SESSION_PATH}/reviews/code-review/{model1-slug}.md
           ---
           ... (for each selected model)
         </step>

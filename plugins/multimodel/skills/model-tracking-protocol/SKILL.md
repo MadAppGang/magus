@@ -847,7 +847,7 @@ echo "$SESSION_DIR" > /tmp/.claude-multi-model-active
 # Launch
 echo "Launching Claude + Grok..."
 # Task: claude-embedded
-# Task: PROXY_MODE grok
+# Task: claudish grok
 
 # Track
 track_model_performance "claude" "success" 32 8 95

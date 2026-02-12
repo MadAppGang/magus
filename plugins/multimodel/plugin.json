@@ -1,11 +1,10 @@
 {
   "name": "multimodel",
-  "version": "2.4.0",
+  "version": "2.4.1",
   "description": "Multi-model collaboration, orchestration, and workflow patterns. v2.4.0: Removed PROXY_MODE (67% failure rate). External models now use deterministic Bash+claudish CLI. Updated /team command, hooks, and all skills.",
   "author": "MadAppGang",
   "license": "MIT",
   "homepage": "https://github.com/MadAppGang/claude-code",
-
   "tags": [
     "multimodel",
     "voting",
@@ -27,9 +26,7 @@
     "performance-tracking",
     "cost-optimization"
   ],
-
   "hooks": "./hooks/hooks.json",
-
   "skills": [
     "multi-agent-coordination",
     "multi-model-validation",
@@ -46,21 +43,42 @@
     "performance-tracking",
     "agent-enforcement"
   ],
-
   "commands": [
     "./commands/team.md"
   ],
-
   "skillBundles": {
-    "core": ["multi-agent-coordination", "quality-gates"],
-    "advanced": ["multi-model-validation", "error-recovery", "hierarchical-coordinator"],
-    "optimization": ["task-complexity-router", "performance-tracking", "batching-patterns"],
-    "hooks": ["hooks-system", "agent-enforcement"],
-    "complete": ["multi-agent-coordination", "multi-model-validation", "quality-gates", "task-orchestration", "error-recovery", "hooks-system", "task-complexity-router", "hierarchical-coordinator", "batching-patterns", "performance-tracking"]
+    "core": [
+      "multi-agent-coordination",
+      "quality-gates"
+    ],
+    "advanced": [
+      "multi-model-validation",
+      "error-recovery",
+      "hierarchical-coordinator"
+    ],
+    "optimization": [
+      "task-complexity-router",
+      "performance-tracking",
+      "batching-patterns"
+    ],
+    "hooks": [
+      "hooks-system",
+      "agent-enforcement"
+    ],
+    "complete": [
+      "multi-agent-coordination",
+      "multi-model-validation",
+      "quality-gates",
+      "task-orchestration",
+      "error-recovery",
+      "hooks-system",
+      "task-complexity-router",
+      "hierarchical-coordinator",
+      "batching-patterns",
+      "performance-tracking"
+    ]
   },
-
   "dependencies": {},
-
   "compatibility": {
     "claudeCode": ">=0.1.0"
   }

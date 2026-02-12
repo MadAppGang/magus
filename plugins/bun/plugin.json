@@ -1,41 +1,41 @@
 {
-	"name": "bun",
-	"version": "1.6.0",
-	"description": "Production-ready TypeScript backend development with Bun runtime. Includes specialized agents for backend development, API design, Apidog synchronization, and DevOps. Features comprehensive best practices, tools integration (Biome, Prisma, Hono, Docker, Apidog MCP), testing workflows, and AWS ECS deployment guidance (2025).",
-	"author": {
-		"name": "Jack Rudenko",
-		"email": "i@madappgang.com",
-		"company": "MadAppGang"
-	},
-	"license": "MIT",
-	"keywords": [
-		"bun",
-		"typescript",
-		"backend",
-		"hono",
-		"prisma",
-		"biome",
-		"docker",
-		"aws-ecs",
-		"api",
-		"apidog",
-		"openapi",
-		"testing"
-	],
-	"category": "development",
-	"agents": [
-		"./agents/backend-developer.md",
-		"./agents/api-architect.md",
-		"./agents/apidog.md"
-	],
-	"commands": [
-		"./commands/implement-api.md",
-		"./commands/setup-project.md",
-		"./commands/apidog.md",
-		"./commands/help.md"
-	],
-	"skills": [
-		"./skills/best-practices"
-	],
-	"mcpServers": "./mcp-servers/mcp-config.json"
+  "name": "bun",
+  "version": "1.6.1",
+  "description": "Production-ready TypeScript backend development with Bun runtime. Includes specialized agents for backend development, API design, Apidog synchronization, and DevOps. Features comprehensive best practices, tools integration (Biome, Prisma, Hono, Docker, Apidog MCP), testing workflows, and AWS ECS deployment guidance (2025).",
+  "author": {
+    "name": "Jack Rudenko",
+    "email": "i@madappgang.com",
+    "company": "MadAppGang"
+  },
+  "license": "MIT",
+  "keywords": [
+    "bun",
+    "typescript",
+    "backend",
+    "hono",
+    "prisma",
+    "biome",
+    "docker",
+    "aws-ecs",
+    "api",
+    "apidog",
+    "openapi",
+    "testing"
+  ],
+  "category": "development",
+  "agents": [
+    "./agents/backend-developer.md",
+    "./agents/api-architect.md",
+    "./agents/apidog.md"
+  ],
+  "commands": [
+    "./commands/implement-api.md",
+    "./commands/setup-project.md",
+    "./commands/apidog.md",
+    "./commands/help.md"
+  ],
+  "skills": [
+    "./skills/best-practices"
+  ],
+  "mcpServers": "./mcp-servers/mcp-config.json"
 }

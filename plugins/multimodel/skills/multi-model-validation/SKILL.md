@@ -490,16 +490,16 @@ Message 2: Parallel Execution (ONLY Task calls - single message)
              Write detailed review to $SESSION_DIR/claude-review.md
              Return only brief summary."
   ---
-  Bash: claudish --agent dev:researcher --model x-ai/grok-code-fast-1 --stdin --quiet
+  Bash: claudish --model x-ai/grok-code-fast-1 --stdin --quiet
     < $SESSION_DIR/review-prompt.md > $SESSION_DIR/grok-review.md 2>$SESSION_DIR/grok-stderr.log
   ---
-  Bash: claudish --agent dev:researcher --model qwen/qwen3-coder:free --stdin --quiet
+  Bash: claudish --model qwen/qwen3-coder:free --stdin --quiet
     < $SESSION_DIR/review-prompt.md > $SESSION_DIR/qwen-coder-review.md 2>$SESSION_DIR/qwen-stderr.log
   ---
-  Bash: claudish --agent dev:researcher --model openai/gpt-5.1-codex --stdin --quiet
+  Bash: claudish --model openai/gpt-5.1-codex --stdin --quiet
     < $SESSION_DIR/review-prompt.md > $SESSION_DIR/gpt5-review.md 2>$SESSION_DIR/gpt5-stderr.log
   ---
-  Bash: claudish --agent dev:researcher --model mistralai/devstral-2512:free --stdin --quiet
+  Bash: claudish --model mistralai/devstral-2512:free --stdin --quiet
     < $SESSION_DIR/review-prompt.md > $SESSION_DIR/devstral-review.md 2>$SESSION_DIR/devstral-stderr.log
 
   All 5 models execute simultaneously (5x parallelism!)
@@ -674,13 +674,13 @@ calls claudish directly — no LLM delegation needed. This is 100% reliable.
 
 ```bash
 # Pattern: Bash tool with run_in_background
-claudish --agent dev:researcher --model x-ai/grok-code-fast-1 --stdin --quiet \
+claudish --model x-ai/grok-code-fast-1 --stdin --quiet \
   < $SESSION_DIR/prompt.md > $SESSION_DIR/grok-result.md 2>$SESSION_DIR/grok-stderr.log; \
   echo $? > $SESSION_DIR/grok.exit
 ```
 
 **Required Flags:**
-- `--agent` — Specifies specialized agent (e.g., `dev:researcher`)
+
 - `--model` — The external model ID
 - `--stdin` — Read prompt from stdin
 - `--quiet` — Clean output for file capture
@@ -707,30 +707,18 @@ Claudish auto-approves by default (non-interactive mode for scripting):
 
 ```
 ✅ CORRECT - Auto-approve is default, no flag needed:
-  claudish --agent dev:researcher --model grok --stdin --quiet
+  claudish --model grok --stdin --quiet
 
 ⚠️ Interactive mode (requires user input, avoid in automation):
-  claudish --agent dev:researcher --model grok --stdin --quiet --no-auto-approve
+  claudish --model grok --stdin --quiet --no-auto-approve
 ```
-
-### Agent Selection for --agent Flag
-
-| Task Type | Recommended Agent | Alternatives |
-|-----------|------------------|--------------|
-| Investigation/Research | `dev:researcher` | `dev:debugger` |
-| Code Review | `agentdev:reviewer` | `frontend:reviewer` |
-| Architecture | `dev:architect` | `frontend:architect` |
-| Implementation | `dev:developer` | `frontend:developer` |
-| Testing | `dev:test-architect` | `frontend:test-architect` |
-| DevOps | `dev:devops` | — |
-| UI/Design | `dev:ui` | `frontend:designer` |
 
 ### Correct Pattern Example
 
 ```bash
 # ✅ CORRECT: External model via Bash+claudish (deterministic)
 Bash({
-  command: "claudish --agent dev:researcher --model x-ai/grok-code-fast-1 --stdin --quiet < session/prompt.md > session/grok-result.md 2>session/grok-stderr.log; echo $? > session/grok.exit",
+  command: "claudish --model x-ai/grok-code-fast-1 --stdin --quiet < session/prompt.md > session/grok-result.md 2>session/grok-stderr.log; echo $? > session/grok.exit",
   description: "Run Grok review via claudish",
   run_in_background: true
 })
@@ -1886,13 +1874,13 @@ Message 3: Parallel Execution (Task only - single message)
     Prompt: "Review $SESSION_DIR/code-context.md.
              Write to $SESSION_DIR/claude-review.md"
   ---
-  Bash: claudish --agent dev:researcher --model x-ai/grok-code-fast-1 --stdin --quiet
+  Bash: claudish --model x-ai/grok-code-fast-1 --stdin --quiet
     < $SESSION_DIR/review-prompt.md > $SESSION_DIR/grok-review.md
   ---
-  Bash: claudish --agent dev:researcher --model qwen/qwen3-coder:free --stdin --quiet
+  Bash: claudish --model qwen/qwen3-coder:free --stdin --quiet
     < $SESSION_DIR/review-prompt.md > $SESSION_DIR/qwen-coder-review.md
   ---
-  Bash: claudish --agent dev:researcher --model mistralai/devstral-2512:free --stdin --quiet
+  Bash: claudish --model mistralai/devstral-2512:free --stdin --quiet
     < $SESSION_DIR/review-prompt.md > $SESSION_DIR/devstral-review.md
 
   All 4 execute simultaneously!
@@ -1950,9 +1938,9 @@ Message 1: Preparation
 
 Message 2: Parallel Execution
   Task: senior-code-reviewer (internal)
-  Bash: claudish --agent dev:researcher --model grok (external)
-  Bash: claudish --agent dev:researcher --model gemini (external)
-  Bash: claudish --agent dev:researcher --model gpt-5-codex (external)
+  Bash: claudish --model grok (external)
+  Bash: claudish --model gemini (external)
+  Bash: claudish --model gpt-5-codex (external)
 
 Message 3: Error Recovery (error-recovery skill)
   results = await Promise.allSettled([...]);

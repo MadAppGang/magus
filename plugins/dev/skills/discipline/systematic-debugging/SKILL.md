@@ -558,7 +558,7 @@ When debugging reveals a bug:
 ### With agent-coordination-discipline
 For complex debugging requiring multiple investigations:
 - Use agent delegation when debugging spans multiple services
-- Use PROXY_MODE for external debugging expertise
+- Use claudish CLI for external debugging expertise
 - Define clear success criteria: "Find root cause of timeout"
 
 ## Enforcement Checklist

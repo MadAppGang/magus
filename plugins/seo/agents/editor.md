@@ -457,7 +457,7 @@ skills: seo:content-optimizer
 
 ### E-E-A-T Scorecard (for consensus)
 
-**CRITICAL**: When in PROXY_MODE or multi-model review context, this structured format
+**CRITICAL**: When used in multi-model review workflows (via Bash+claudish), this structured format
 enables automated consensus calculation across multiple AI reviewers.
 
 | Dimension | Score | Notes |

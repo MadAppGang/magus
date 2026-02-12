@@ -11,7 +11,7 @@ set -euo pipefail
 #   1. PROXY_MODE never used with general-purpose agent (CRITICAL)
 #   2. Session files written to ai-docs/sessions/ (not /tmp/)
 #   3. PROXY_MODE only used with known-enabled agents
-#   4. claudish --agent flag present when CLI fallback used
+#   4. claudish --model flag present when CLI is used
 #   5. Task prompt contains raw investigation (not pre-solved)
 # ============================================================================
 
@@ -219,37 +219,16 @@ for transcript in "${SESSION_DIR}"/run*-transcript.jsonl; do
   fi
 
   # ------------------------------------------------------------------
-  # CHECK 4: claudish --agent flag when CLI fallback used
+  # CHECK 4: claudish --model flag in CLI calls
   # ------------------------------------------------------------------
   echo ""
-  echo "  --- Check 4: claudish --agent flag in CLI fallback ---"
+  echo "  --- Check 4: claudish --model flag in CLI calls ---"
 
-  claudish_tasks=$(
-    echo "${TASK_CALLS_JSON}" | jq -c '
-      select(.prompt | test("claudish"; "i"))
-    ' 2>/dev/null || true
-  )
-
-  if [ -n "${claudish_tasks}" ]; then
-    while IFS= read -r task_json; do
-      prompt=$(echo "${task_json}" | jq -r '.prompt')
-      desc=$(echo "${task_json}" | jq -r '.description // "unnamed"')
-
-      if echo "${prompt}" | grep -q "\-\-agent"; then
-        pass "${run_name}: --agent flag present in claudish call (${desc})"
-      else
-        fail "${run_name}: claudish called WITHOUT --agent flag (${desc})"
-      fi
-    done <<< "${claudish_tasks}"
-  else
-    echo "  (No claudish CLI calls found in Task prompts - likely using PROXY_MODE approach)"
-  fi
-
-  # Also check direct Bash calls that pipe to or invoke claudish
+  # Check direct Bash calls that invoke claudish
   # Filter out `which claudish` / `command -v claudish` (existence checks)
   # Use NUL-delimited output to handle multi-line commands correctly
   BASH_CLAUDISH_COUNT=0
-  BASH_CLAUDISH_AGENT_COUNT=0
+  BASH_CLAUDISH_MODEL_COUNT=0
 
   while IFS= read -r -d '' cmd; do
     # Skip existence checks
@@ -257,11 +236,11 @@ for transcript in "${SESSION_DIR}"/run*-transcript.jsonl; do
       continue
     fi
     ((BASH_CLAUDISH_COUNT++))
-    if echo "${cmd}" | grep -q "\-\-agent"; then
-      ((BASH_CLAUDISH_AGENT_COUNT++))
-      pass "${run_name}: --agent flag in direct Bash claudish call"
+    if echo "${cmd}" | grep -q "\-\-model"; then
+      ((BASH_CLAUDISH_MODEL_COUNT++))
+      pass "${run_name}: --model flag in direct Bash claudish call"
     else
-      warn "${run_name}: Direct Bash claudish call without --agent flag"
+      warn "${run_name}: Direct Bash claudish call without --model flag"
     fi
   done < <(
     jq -rj '

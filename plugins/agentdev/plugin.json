@@ -1,11 +1,10 @@
 {
   "name": "agentdev",
-  "version": "1.5.1",
+  "version": "1.5.2",
   "description": "Create, implement, and review Claude Code agents and commands with multi-model validation, LLM performance tracking, and session-based artifact isolation. Full-cycle development workflow with design, implementation, and quality review agents. Session isolation prevents file collisions across workflows.",
   "author": "MadAppGang",
   "license": "MIT",
   "homepage": "https://github.com/MadAppGang/claude-code",
-
   "tags": [
     "agents",
     "commands",
@@ -20,13 +19,11 @@
     "session-isolation",
     "debug-mode"
   ],
-
   "agents": [
     "architect",
     "developer",
     "reviewer"
   ],
-
   "commands": [
     "./commands/develop.md",
     "./commands/help.md",
@@ -34,7 +31,6 @@
     "./commands/debug-disable.md",
     "./commands/debug-status.md"
   ],
-
   "skills": [
     "xml-standards",
     "patterns",
@@ -42,7 +38,6 @@
     "debug-mode",
     "yaml-agent-format"
   ],
-
   "hooks": {
     "PreToolUse": {
       "handler": "hooks/debug-capture.ts",
@@ -57,11 +52,9 @@
       "description": "Captures tool results when debug mode is enabled, correlates with invocations"
     }
   },
-
   "dependencies": {
     "multimodel@mag-claude-plugins": "^2.0.0"
   },
-
   "compatibility": {
     "claudeCode": ">=0.1.0"
   }

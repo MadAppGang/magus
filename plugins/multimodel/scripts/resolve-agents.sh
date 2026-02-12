@@ -10,7 +10,7 @@ set -euo pipefail
 #
 # Methods:
 #   - "direct": Internal Claude via Task(agent)
-#   - "cli":    External models via Bash(claudish --model --agent)
+#   - "cli":    External models via Bash(claudish --model)
 #
 # Usage:
 #   bash resolve-agents.sh --models "internal,x-ai/grok-code-fast-1" --task-type "investigation"
@@ -114,7 +114,7 @@ for model_id in "${MODEL_ARRAY[@]}"; do
   else
     # External models use claudish CLI (deterministic, 100% reliable)
     METHOD="cli"
-    REASON="External model via claudish CLI with '${AGENT}' agent"
+    REASON="External model via claudish CLI (--model ${model_id})"
   fi
 
   RESOLUTIONS+=$(jq -nc \

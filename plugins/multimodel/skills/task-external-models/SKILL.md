@@ -3,7 +3,7 @@ name: task-external-models
 version: 2.0.0
 description: Quick-reference for using external AI models in orchestration workflows. External models are invoked via Bash+claudish CLI (deterministic, 100% reliable). Use when confused about how to run external models, "claudish with Bash", "external model in /team", or "how to specify external model". Trigger keywords - "external model", "claudish", "Bash claudish", "external LLM", "model parameter".
 tags: [external-model, quick-reference, bash, claudish, agent-cli]
-keywords: [external model, grok, gemini, gpt-5, minimax, claudish, bash, external LLM, --agent, cli]
+keywords: [external model, grok, gemini, gpt-5, minimax, claudish, bash, external LLM, cli]
 plugin: multimodel
 updated: 2026-02-11
 ---
@@ -33,12 +33,12 @@ cat .claude/multimodel-team.json 2>/dev/null
 External AI models are invoked via **Bash+claudish CLI**. This is deterministic and 100% reliable.
 
 ```bash
-claudish --agent {PLUGIN}:{AGENT} --model {MODEL_ID} --stdin --quiet < prompt.md > result.md
+claudish --model {MODEL_ID} --stdin --quiet < prompt.md > result.md
 ```
 
 **In /team orchestration:**
 - **Internal model** (Claude) → `Task(subagent_type: "dev:researcher")`
-- **External models** (Grok, Gemini, etc.) → `Bash(claudish --agent dev:researcher --model {MODEL_ID} --stdin)`
+- **External models** (Grok, Gemini, etc.) → `Bash(claudish --model {MODEL_ID} --stdin)`
 
 ---
 
@@ -48,19 +48,18 @@ claudish --agent {PLUGIN}:{AGENT} --model {MODEL_ID} --stdin --quiet < prompt.md
 
 ```bash
 # Pattern
-claudish --agent {PLUGIN}:{AGENT} --model {MODEL_ID} --stdin --quiet < prompt.md > result.md 2>stderr.log; echo $? > result.exit
+claudish --model {MODEL_ID} --stdin --quiet < prompt.md > result.md 2>stderr.log; echo $? > result.exit
 
 # Examples
-claudish --agent dev:researcher --model x-ai/grok-code-fast-1 --stdin --quiet < task.md > grok.md 2>grok-err.log; echo $? > grok.exit
-claudish --agent dev:debugger --model google/gemini-3-pro-preview --stdin --quiet < task.md > gemini.md 2>gemini-err.log; echo $? > gemini.exit
-claudish --agent dev:architect --model openai/gpt-5.2-codex --stdin --quiet < task.md > gpt5.md 2>gpt5-err.log; echo $? > gpt5.exit
+claudish --model x-ai/grok-code-fast-1 --stdin --quiet < task.md > grok.md 2>grok-err.log; echo $? > grok.exit
+claudish --model google/gemini-3-pro-preview --stdin --quiet < task.md > gemini.md 2>gemini-err.log; echo $? > gemini.exit
+claudish --model openai/gpt-5.2-codex --stdin --quiet < task.md > gpt5.md 2>gpt5-err.log; echo $? > gpt5.exit
 ```
 
 **CLI Reference:**
 ```
 claudish [options]
 
---agent <name>       Specify an agent (e.g., dev:researcher, agentdev:reviewer)
 --model <id>         AI model to use (e.g., x-ai/grok-code-fast-1)
 --stdin              Read prompt from stdin
 --quiet              Minimal output
@@ -81,12 +80,12 @@ Task({
 
 // External models via Bash+claudish (all in same message)
 Bash({
-  command: "claudish --agent dev:researcher --model x-ai/grok-code-fast-1 --stdin --quiet < {SESSION_DIR}/vote-prompt.md > {SESSION_DIR}/grok-result.md 2>{SESSION_DIR}/grok-stderr.log; echo $? > {SESSION_DIR}/grok.exit",
+  command: "claudish --model x-ai/grok-code-fast-1 --stdin --quiet < {SESSION_DIR}/vote-prompt.md > {SESSION_DIR}/grok-result.md 2>{SESSION_DIR}/grok-stderr.log; echo $? > {SESSION_DIR}/grok.exit",
   run_in_background: true
 })
 
 Bash({
-  command: "claudish --agent dev:researcher --model google/gemini-3-pro-preview --stdin --quiet < {SESSION_DIR}/vote-prompt.md > {SESSION_DIR}/gemini-result.md 2>{SESSION_DIR}/gemini-stderr.log; echo $? > {SESSION_DIR}/gemini.exit",
+  command: "claudish --model google/gemini-3-pro-preview --stdin --quiet < {SESSION_DIR}/vote-prompt.md > {SESSION_DIR}/gemini-result.md 2>{SESSION_DIR}/gemini-stderr.log; echo $? > {SESSION_DIR}/gemini.exit",
   run_in_background: true
 })
 ```
@@ -97,26 +96,10 @@ Bash({
 
 | Mistake | Why It Fails | Fix |
 |---------|--------------|-----|
-| Missing `--agent` flag | External model gets default instance with no specialized tools | Always specify `--agent {plugin}:{agent}` |
 | Missing `--stdin` flag | claudish expects prompt as argument, truncated for large prompts | Use `--stdin` with `< prompt-file.md` |
 | Not capturing exit code | No way to detect failures | Add `; echo $? > result.exit` |
 | Not capturing stderr | Error details lost | Add `2>stderr.log` |
 | `$(cat file.md)` in Task prompt | Shell expansion doesn't work in JSON string parameters | Read file content first, then include in prompt |
-
----
-
-## Agent Selection for --agent Flag
-
-| Task Type | Recommended Agent |
-|-----------|------------------|
-| Investigation/Research | `dev:researcher` |
-| Code Review | `agentdev:reviewer` |
-| Architecture | `dev:architect` |
-| Implementation | `dev:developer` |
-| Testing | `dev:test-architect` |
-| Debugging | `dev:debugger` |
-| DevOps | `dev:devops` |
-| UI/Design | `dev:ui` |
 
 ---
 

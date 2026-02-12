@@ -603,7 +603,7 @@ Implementation:
   Task: task-executor
     Model: grok-code-fast-1
     Prompt: "Add JSDoc comments to all functions in UserService.ts"
-    PROXY_MODE: x-ai/grok-code-fast-1
+    claudish: x-ai/grok-code-fast-1
 ```
 
 ---

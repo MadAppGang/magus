@@ -61,7 +61,7 @@ Find appropriate agent or create one → Delegate to sub-agent (default)
 
 ### Step 2: Agent Type Selection Matrix
 
-> **Note:** External models are invoked via Bash+claudish CLI with `--agent` flag.
+> **Note:** External models are invoked via Bash+claudish CLI with `--model` flag.
 > The `--agent` flag gives the external model specialized capabilities.
 
 | Task Type | Recommended `--agent` | Alternatives | Notes |
@@ -158,7 +158,7 @@ When used with the `/team` command for multi-model blind voting:
 
 **External models are invoked via Bash+claudish CLI (deterministic, 100% reliable):**
 ```bash
-claudish --agent dev:researcher --model x-ai/grok-code-fast-1 --stdin --quiet \
+claudish --model x-ai/grok-code-fast-1 --stdin --quiet \
   < "ai-docs/sessions/team-xyz/vote-prompt.md" \
   > "ai-docs/sessions/team-xyz/grok-result.md" \
   2>"ai-docs/sessions/team-xyz/grok-stderr.log"; \
@@ -391,7 +391,7 @@ claudish --models --force-update
 
 ```bash
 # Use specific agent (prepends @agent- automatically)
-claudish --model x-ai/grok-code-fast-1 --agent frontend:developer "implement React component"
+claudish --model x-ai/grok-code-fast-1 "implement React component"
 
 # Claude receives: "Use the @agent-frontend:developer agent to: implement React component"
 
@@ -418,7 +418,7 @@ claudish --list-agents
 
 **Simple task (use `--agent`):**
 ```bash
-claudish --model x-ai/grok-code-fast-1 --agent frontend:developer "create button component"
+claudish --model x-ai/grok-code-fast-1 "create button component"
 ```
 
 **Complex task (use file-based):**

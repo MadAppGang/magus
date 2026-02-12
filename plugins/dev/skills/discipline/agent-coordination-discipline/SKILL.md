@@ -1,7 +1,7 @@
 ---
 name: agent-coordination-discipline
-description: "Use when deciding whether to launch an agent, selecting which agent to use, or coordinating multiple agents. Covers delegation criteria, PROXY_MODE patterns, task isolation, and agent selection strategies."
-keywords: [agent-coordination, PROXY_MODE, task-isolation, delegation-criteria, multi-agent, external-model, claudish, orchestration, agent-selection, Task-tool, developer-agent, architect-agent, grok-code-fast, sonnet-4-5, thinking-budget]
+description: "Use when deciding whether to launch an agent, selecting which agent to use, or coordinating multiple agents. Covers delegation criteria, external-model patterns, task isolation, and agent selection strategies."
+keywords: [agent-coordination, external-model, task-isolation, delegation-criteria, multi-agent, external-model, claudish, orchestration, agent-selection, Task-tool, developer-agent, architect-agent, grok-code-fast, sonnet-4-5, thinking-budget]
 created: 2026-01-20
 updated: 2026-01-20
 plugin: dev
@@ -20,7 +20,7 @@ Use this skill when:
 - Evaluating whether a task requires agent delegation
 - Selecting between different agent types or external models
 - Coordinating multiple agents in a workflow
-- Implementing PROXY_MODE for external model delegation
+- Implementing external-model for external model delegation
 - Debugging agent coordination failures
 
 This skill prevents premature agent launches, redundant agent usage, and poor task isolation that wastes thinking budget and causes coordination failures.
@@ -28,7 +28,7 @@ This skill prevents premature agent launches, redundant agent usage, and poor ta
 ## Red Flags (Violation Indicators)
 
 - [ ] **Agent for single grep** - Launching agent to run one grep/glob command (trivial-task anti-pattern)
-- [ ] **Missing PROXY_MODE model** - Using PROXY_MODE without explicit model name specification
+- [ ] **Missing external-model model** - Using external-model without explicit model name specification
 - [ ] **No task isolation** - Agent task description lacks independent context or success criteria
 - [ ] **No success criteria** - Task description doesn't define what "done" looks like
 - [ ] **Default thinking pattern** - Not considering whether task needs deep thinking vs. fast execution
@@ -53,7 +53,7 @@ Does the task require:
 ├─ Multi-step investigation with branching logic?
 │  └─ ✓ AGENT - Task tool with developer/architect agent
 ├─ External model expertise (Grok, DeepSeek, etc.)?
-│  └─ ✓ AGENT - PROXY_MODE pattern with model specification
+│  └─ ✓ AGENT - external-model pattern with model specification
 ├─ Parallel exploration of multiple code paths?
 │  └─ ✓ AGENT - Multiple Task calls with coordination
 └─ High-risk change needing isolation?
@@ -77,14 +77,13 @@ Evidence: Error occurs after recent commit abc123 that changed user data structu
 Success criteria: Identify root cause, propose fix, verify with test scenario."
 ```
 
-### 3. PROXY_MODE Pattern
+### 3. External Model Pattern
 
-When delegating to external models via claudish:
+When delegating to external models via claudish CLI:
 
 **Structure:**
-```
-PROXY_MODE: {model_id}
-
+```bash
+claudish --model {model_id} --stdin --quiet <<EOF > output.md
 {Task Description}
 
 Context:
@@ -100,12 +99,12 @@ Constraints:
 - {Time limits}
 - {Tool restrictions}
 - {Quality requirements}
+EOF
 ```
 
 **Example:**
-```
-PROXY_MODE: x-ai/grok-code-fast-1
-
+```bash
+claudish --model x-ai/grok-code-fast-1 --stdin --quiet <<EOF > analysis.md
 Analyze the React component rendering performance issue in Dashboard.tsx.
 
 Context:
@@ -121,6 +120,7 @@ Success Criteria:
 Constraints:
 - Max 3 minutes analysis time
 - Focus on React 19 compiler-friendly patterns
+EOF
 ```
 
 ## When to Use Agents
@@ -132,7 +132,7 @@ Constraints:
 
 ### External Model Expertise
 **Trigger:** Need specialized model capabilities (code speed, vision, reasoning)
-**Agent:** PROXY_MODE with specific model
+**Agent:** external-model with specific model
 **Example:** "Use Grok Code Fast to refactor 15 files for consistency in < 2 minutes"
 
 ### Parallel Work
@@ -218,12 +218,12 @@ if (performanceIsCritical) {
 | **Design review** | architect | sonnet-4-5 | System thinking, trade-off evaluation |
 | **Code generation** | developer | grok-code-fast | Speed for repetitive patterns |
 | **Multi-codebase analysis** | developer | sonnet-4-5 | Cross-repo understanding |
-| **Performance profiling** | developer + PROXY_MODE | grok-code-fast | Fast scanning + specific optimization |
+| **Performance profiling** | developer + external-model | grok-code-fast | Fast scanning + specific optimization |
 | **Security audit** | security (if available) | sonnet-4-5 | Nuanced threat modeling |
 | **Documentation generation** | developer | grok-code-fast | Fast, straightforward task |
 | **Refactoring (large scope)** | developer | sonnet-4-5 | Maintain consistency across changes |
 
-## PROXY_MODE Pattern Details
+## external-model Pattern Details
 
 ### 1. Model Selection
 
@@ -277,7 +277,7 @@ Success Criteria:
 
 **Pattern:**
 ```
-1. Launch agent with PROXY_MODE
+1. Launch agent with external-model
 2. Capture result in variable or file
 3. Validate result against success criteria
 4. Route to next step:
@@ -288,7 +288,7 @@ Success Criteria:
 
 **Example:**
 ```
-result = Task("PROXY_MODE: x-ai/grok-code-fast-1\n\nRefactor 10 components for React 19...")
+result = Task("external-model: x-ai/grok-code-fast-1\n\nRefactor 10 components for React 19...")
 
 if (result.contains("Refactored successfully")) {
   // Apply changes to codebase
@@ -347,11 +347,11 @@ Constraints:
 - No code changes (diagnosis only)"
 ```
 
-### Example 3: PROXY_MODE with External Model (Go)
+### Example 3: external-model with External Model (Go)
 
 ```go
 // ✓ CORRECT: Fast refactoring with Grok
-PROXY_MODE: x-ai/grok-code-fast-1
+external-model: x-ai/grok-code-fast-1
 
 Refactor 15 handler functions in handlers/ to use consistent error handling pattern.
 
@@ -398,7 +398,7 @@ Constraints:
 
 **Detection:**
 1. Before Task tool call, check if task description includes success criteria
-2. Before PROXY_MODE, verify model name is explicitly specified
+2. Before external-model, verify model name is explicitly specified
 3. Before agent launch, confirm native tools were attempted first
 4. After agent completes, verify result is validated before use
 

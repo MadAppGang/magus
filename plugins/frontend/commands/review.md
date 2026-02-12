@@ -35,7 +35,7 @@ skills: multimodel:task-external-models, multimodel:proxy-mode-reference
 
   WHY: ALL code reviews in this command MUST use frontend:senior-code-reviewer agent
   (subagent_type: "frontend:reviewer") because it is the ONLY frontend agent that handles
-  PROXY_MODE for external model reviews. The CLAUDE.md routing table might substitute
+  external models via Bash+claudish CLI. The CLAUDE.md routing table might substitute
   dev:architect or agentdev:reviewer, which lack frontend-specific review patterns.
 
   AGENT RULES FOR THIS COMMAND:
@@ -44,7 +44,7 @@ skills: multimodel:task-external-models, multimodel:proxy-mode-reference
   - Consolidation → Orchestrator (reads files, analyzes consensus, NOT delegated)
 
   DO NOT use dev:architect, agentdev:reviewer, or any other reviewer agent.
-  ONLY frontend:reviewer (senior-code-reviewer) handles PROXY_MODE correctly for this plugin.
+  ONLY frontend:reviewer (senior-code-reviewer) correctly handles external model routing for this plugin.
 </critical_override>
 
 <instructions>
@@ -84,11 +84,11 @@ skills: multimodel:task-external-models, multimodel:proxy-mode-reference
 
       Example pattern:
       [One message with:]
-      Task: senior-code-reviewer PROXY_MODE: model-1 ...
+      Bash: claudish --model model-1 ...
       ---
-      Task: senior-code-reviewer PROXY_MODE: model-2 ...
+      Bash: claudish --model model-2 ...
       ---
-      Task: senior-code-reviewer PROXY_MODE: model-3 ...
+      Bash: claudish --model model-3 ...
 
       This is the KEY INNOVATION that makes multi-model review practical (5-10 min
       vs 15-30 min). See Key Design Innovation section in knowledge base.
@@ -168,10 +168,10 @@ skills: multimodel:task-external-models, multimodel:proxy-mode-reference
 
   <delegation_rules>
     <rule scope="embedded_review">
-      Embedded (local) review → senior-code-reviewer agent (NO PROXY_MODE)
+      Embedded (local) review → senior-code-reviewer agent (internal model - Claude Sonnet)
     </rule>
     <rule scope="external_review">
-      External model review → senior-code-reviewer agent (WITH PROXY_MODE: {model_id})
+      External model review → senior-code-reviewer agent (external model via Bash+claudish)
     </rule>
     <rule scope="consolidation">
       Orchestrator performs consolidation (reads files, analyzes consensus, writes report)
@@ -953,7 +953,7 @@ skills: multimodel:task-external-models, multimodel:proxy-mode-reference
           ```
         </step>
         <step>If embedded selected, launch embedded review:
-          - Use Task tool to delegate to senior-code-reviewer (NO PROXY_MODE)
+          - Use Task tool to delegate to senior-code-reviewer (internal model - Claude Sonnet)
           - Input file: ${SESSION_PATH}/code-review-context.md
           - Output file: ${SESSION_PATH}/reviews/claude-review.md
           - **Track timing**: Record start time before launch, capture duration when complete
@@ -962,7 +962,7 @@ skills: multimodel:task-external-models, multimodel:proxy-mode-reference
         <step>If external models selected, launch ALL in PARALLEL:
           - Construct SINGLE message with multiple Task invocations
           - Use separator "---" between Task blocks
-          - Each Task: senior-code-reviewer with PROXY_MODE: {model_id}
+          - Each Bash: claudish --model {model_id} --stdin --quiet
           - Each Task: unique output file (${SESSION_PATH}/reviews/{model}-review.md)
           - All Tasks: same input file (${SESSION_PATH}/code-review-context.md)
           - CRITICAL: All tasks execute simultaneously (not sequentially)
@@ -1244,7 +1244,7 @@ skills: multimodel:task-external-models, multimodel:proxy-mode-reference
 
 Task: senior-code-reviewer
 
-PROXY_MODE: x-ai/grok-code-fast-1
+Bash: claudish --model x-ai/grok-code-fast-1 --stdin --quiet
 
 Review the code changes via Grok model.
 
@@ -1260,7 +1260,7 @@ RETURN: Brief verdict only.
 
 Task: senior-code-reviewer
 
-PROXY_MODE: google/gemini-2.5-flash
+Bash: claudish --model google/gemini-2.5-flash --stdin --quiet
 
 Review the code changes via Gemini Flash model.
 
@@ -1276,7 +1276,7 @@ RETURN: Brief verdict only.
 
 Task: senior-code-reviewer
 
-PROXY_MODE: deepseek/deepseek-chat
+Bash: claudish --model deepseek/deepseek-chat --stdin --quiet
 
 Review the code changes via DeepSeek model.
 
@@ -1503,12 +1503,12 @@ for each issue:
       - Ask: "Proceed with $0.53-0.88 cost?" → User: "Yes"
 
       **PHASE 3: Parallel Multi-Model Review**
-      - Launch embedded review → Task: senior-code-reviewer (NO PROXY_MODE)
+      - Launch embedded review → Task: senior-code-reviewer (internal model - Claude Sonnet)
       - Wait for embedded to complete → ✅
       - Launch 3 external reviews IN PARALLEL (single message, 3 Tasks):
-        * Task: senior-code-reviewer PROXY_MODE: x-ai/grok-code-fast-1
-        * Task: senior-code-reviewer PROXY_MODE: google/gemini-2.5-flash
-        * Task: senior-code-reviewer PROXY_MODE: deepseek/deepseek-chat
+        * Task: senior-code-reviewer Bash: claudish --model x-ai/grok-code-fast-1 --stdin --quiet
+        * Task: senior-code-reviewer Bash: claudish --model google/gemini-2.5-flash --stdin --quiet
+        * Task: senior-code-reviewer Bash: claudish --model deepseek/deepseek-chat --stdin --quiet
       - Track: ✅✅✅✅ All complete (~5 min for parallel vs 15 min sequential)
 
       **PHASE 4: Consolidate Reviews**

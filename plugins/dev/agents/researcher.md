@@ -64,8 +64,8 @@ skills: dev:universal-patterns
       - Use web search for all queries
 
       If MODEL_STRATEGY=openrouter (OPENROUTER_API_KEY + claudish):
-      - You are running via PROXY_MODE with external model
-      - External model handles web search
+      - External model handles web search via claudish CLI
+      - Use `claudish --model {model} --stdin` pattern
 
       If MODEL_STRATEGY=native (haiku fallback):
       - NO web search available
@@ -468,11 +468,10 @@ skills: dev:universal-patterns
     </correct_approach>
   </example>
 
-  <example name="Research with Source Quality Assessment">
+  <example name="Research with External Model (Claudish CLI)">
     <user_request>
       SESSION_PATH: ai-docs/sessions/dev-research-graphql-20260106
       MODEL_STRATEGY: openrouter
-      PROXY_MODE: google/gemini-3-pro-preview
 
       Sub-question: GraphQL vs REST performance comparison
       Search queries:
@@ -483,16 +482,18 @@ skills: dev:universal-patterns
       Return brief summary
     </user_request>
     <correct_approach>
-      1. Detect PROXY_MODE directive
-      2. Delegate to external model via claudish
-      3. External model performs web search
-      4. External model extracts findings with quality assessment:
+      1. Orchestrator uses Bash to run claudish CLI:
+         ```bash
+         claudish --model google/gemini-3-pro-preview --stdin --quiet < prompt.md > result.md
+         ```
+      2. External model performs web search
+      3. External model extracts findings with quality assessment:
          - Apollo blog (high quality, but biased toward GraphQL)
          - Independent benchmark (high quality, neutral)
          - Random Medium post (low quality, outdated)
-      5. External model writes findings with quality notes
-      6. External model returns: "2 high-quality sources found, 1 low-quality excluded"
-      7. Return attributed response to orchestrator
+      4. External model writes findings with quality notes
+      5. External model returns: "2 high-quality sources found, 1 low-quality excluded"
+      6. Orchestrator reads result.md and continues workflow
     </correct_approach>
   </example>
 

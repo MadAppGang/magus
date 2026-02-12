@@ -2,15 +2,18 @@
 set -u
 # ============================================================================
 # enforce-team-rules.sh
-# PreToolUse hook that blocks orchestration violations in /team workflows
+# PreToolUse hook for /team workflow enforcement and claudish usage logging
 #
 # Intercepted tools: Task, Bash
 # Protocol: reads JSON from stdin, writes JSON to fd3 (or stdout)
 #
 # Rules enforced:
 #   1. /team Task calls must use dev:researcher agent (vote template detection)
-#   2. claudish Bash calls must include --agent flag
-#   3. Session files must not use /tmp/ paths
+#   2. Session files must not use /tmp/ paths
+#
+# Logging:
+#   - Every claudish invocation is logged to .claude/claudish-usage.log
+#   - Log includes: timestamp, model, agent, flags, full command
 #
 # Fail-open: parse errors default to ALLOW (never block due to own bugs)
 # ============================================================================
@@ -70,22 +73,50 @@ if [ "${TOOL_NAME}" = "Task" ]; then
 fi
 
 # --------------------------------------------------------------------------
-# RULE: Bash tool validation (claudish --agent enforcement)
+# RULE: Bash tool validation (claudish usage logging)
 # --------------------------------------------------------------------------
 if [ "${TOOL_NAME}" = "Bash" ]; then
   COMMAND=$(echo "${INPUT}" | jq -r '.tool_input.command // empty' 2>/dev/null || true)
 
-  # Only enforce on commands that invoke claudish
-  if echo "${COMMAND}" | grep -qi "claudish"; then
+  # Only enforce on actual claudish CLI invocations (not file references like claudish-usage.log)
+  # Match claudish at a command position: start of line, after pipe, semicolon, or &&
+  if echo "${COMMAND}" | grep -qE '(^|[;&|]+\s*)claudish\s'; then
     # Skip existence checks (which claudish, command -v claudish, type claudish)
     if echo "${COMMAND}" | grep -qE "^(which |command -v |type )"; then
       allow
     fi
 
-    # RULE 2: claudish calls must include --agent
-    if ! echo "${COMMAND}" | grep -q "\-\-agent"; then
-      deny "BLOCKED: claudish invocation missing --agent flag. Always specify --agent for specialized agent capabilities."
+    # Skip version/help checks
+    if echo "${COMMAND}" | grep -qE "claudish\s+--(version|help|top-models|free)"; then
+      allow
     fi
+
+    # --- Claudish usage logging ---
+    # Extract flags from the command for post-mortem investigation
+    CLAUDISH_MODEL=$(echo "${COMMAND}" | grep -oE '\-\-model\s+\S+' | head -1 | sed 's/--model //' || true)
+    CLAUDISH_HAS_STDIN="no"
+    if echo "${COMMAND}" | grep -q "\-\-stdin"; then
+      CLAUDISH_HAS_STDIN="yes"
+    fi
+    CLAUDISH_HAS_QUIET="no"
+    if echo "${COMMAND}" | grep -q "\-\-quiet"; then
+      CLAUDISH_HAS_QUIET="yes"
+    fi
+    CLAUDISH_BG=$(echo "${INPUT}" | jq -r '.tool_input.run_in_background // false' 2>/dev/null || echo "false")
+    CLAUDISH_TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+    # Log to .claude/claudish-usage.log (create dir if needed)
+    LOG_FILE=".claude/claudish-usage.log"
+    mkdir -p "$(dirname "${LOG_FILE}")" 2>/dev/null || true
+    {
+      printf '%s | model=%-35s | stdin=%s | quiet=%s | bg=%s | cmd=%s\n' \
+        "${CLAUDISH_TS}" \
+        "${CLAUDISH_MODEL:-MISSING}" \
+        "${CLAUDISH_HAS_STDIN}" \
+        "${CLAUDISH_HAS_QUIET}" \
+        "${CLAUDISH_BG}" \
+        "${COMMAND}"
+    } >> "${LOG_FILE}" 2>/dev/null || true
   fi
 
   allow

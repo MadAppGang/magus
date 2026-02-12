@@ -119,7 +119,7 @@ skills: dev:context-detection, orchestration:multi-model-validation, orchestrati
       2. **Secondary: OpenRouter Gemini**
          - Check: OPENROUTER_API_KEY set and claudish available
          - Model ID: google/gemini-3-pro-preview (via claudish)
-         - Why: Fallback if no GOOGLE_API_KEY (uses correct OpenRouter prefix)
+         - Why: Fallback if no GOOGLE_API_KEY
 
       3. **Fallback: Haiku**
          - Check: Always available (native Claude)
@@ -134,18 +134,12 @@ skills: dev:context-detection, orchestration:multi-model-validation, orchestrati
         AGENT_MODEL="sonnet"  # Agents use sonnet, call Gemini for web
       elif command -v claudish &> /dev/null && [[ -n "$OPENROUTER_API_KEY" ]]; then
         MODEL_STRATEGY="openrouter"
-        PROXY_MODEL="google/gemini-3-pro-preview"  # No prefix = OpenRouter
+        EXTERNAL_MODEL="google/gemini-3-pro-preview"
       else
         MODEL_STRATEGY="native"
         AGENT_MODEL="haiku"
       fi
       ```
-
-      **CRITICAL: Claudish Model Routing**
-      - NO prefix = OpenRouter (default): `google/gemini-3-pro-preview`
-      - `g/` or `gemini/` prefix = Gemini Direct API: `g/gemini-2.0-flash`
-      - `mm/` prefix = MiniMax Direct API: `mm/minimax-m2.1`
-      - `glm/` prefix = GLM Direct API: `glm/glm-4.7`
     </model_fallback_strategy>
 
     <iteration_limits>
@@ -204,7 +198,7 @@ skills: dev:context-detection, orchestration:multi-model-validation, orchestrati
           # Check OpenRouter
           elif command -v claudish &> /dev/null && [[ -n "$OPENROUTER_API_KEY" ]]; then
             echo "MODEL_STRATEGY=openrouter" > "${SESSION_PATH}/config.env"
-            echo "PROXY_MODEL=google/gemini-3-pro-preview" >> "${SESSION_PATH}/config.env"
+            echo "EXTERNAL_MODEL=google/gemini-3-pro-preview" >> "${SESSION_PATH}/config.env"
             echo "Secondary model: Gemini via OpenRouter"
           else
             echo "MODEL_STRATEGY=native" > "${SESSION_PATH}/config.env"
@@ -687,10 +681,9 @@ skills: dev:context-detection, orchestration:multi-model-validation, orchestrati
     - Requires: researcher agent with web search capability
 
     **OpenRouter Strategy:**
-    - Agents use PROXY_MODE with google/gemini-3-pro-preview
-    - Web search via claudish proxy
+    - External models via claudish CLI with google/gemini-3-pro-preview
+    - Web search via external model execution
     - Requires: OPENROUTER_API_KEY
-    - CRITICAL: Always use or/ prefix to avoid Gemini Direct routing
 
     **Native Strategy:**
     - Agents use haiku model

@@ -259,15 +259,14 @@ Deep analysis including:
 
 ## Integration with Multi-Model Validation
 
-The ui agent supports PROXY_MODE for multi-model design reviews:
+Use claudish CLI for multi-model design reviews:
 
-```
-Task: ui PROXY_MODE: google/gemini-3-pro-preview
-
+```bash
+claudish --model google/gemini-3-pro-preview --stdin --quiet <<EOF > ${SESSION_PATH}/reviews/design-review/gemini.md
 Review the dashboard screenshot at screenshots/dashboard.png
 
 Focus on usability and accessibility.
-Write review to: ${SESSION_PATH}/reviews/design-review/gemini.md
+EOF
 ```
 
 This enables:

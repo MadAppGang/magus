@@ -262,7 +262,7 @@ skills: dev:context-detection, dev:universal-patterns, orchestration:quality-gat
         </step>
         <step>
           If models selected:
-          Launch parallel architecture reviews with PROXY_MODE:
+          Launch parallel architecture reviews via Bash+claudish:
           - Internal: architect
           - External: Selected models
 

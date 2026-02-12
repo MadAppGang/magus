@@ -16,9 +16,6 @@ args:
   - name: --models
     description: Comma-separated model IDs to override stored preferences
     required: false
-  - name: --agent
-    description: Specific agent to use for internal Task (overrides default dev:researcher)
-    required: false
   - name: --threshold
     description: Vote threshold for approval (default 50%, use "unanimous" for 100%, "supermajority" for 67%)
     required: false
@@ -48,7 +45,6 @@ args:
        - **External models** (any other model ID): Use Bash(claudish --model {MODEL_ID})
        Internal models run inside Claude's agent system. External models are invoked
        deterministically via claudish CLI — no LLM compliance needed.
-       Exception: user explicitly passed --agent to override the internal agent.
 
     2. NON-INTERACTIVE EXECUTION:
        After Step 1, go DIRECTLY to Step 2, then Step 3, then Step 4.
@@ -78,7 +74,7 @@ args:
 
     b. Load preferences from `.claude/multimodel-team.json` if it exists.
 
-    c. Parse command arguments: task, --models, --agent, --threshold, --no-memory.
+    c. Parse command arguments: task, --models, --threshold, --no-memory.
 
     d. If no task was provided, ask the user what task to evaluate.
 
@@ -125,7 +121,7 @@ args:
     For each external model (deterministic Bash+claudish):
     ```
     Bash({
-      command: "claudish --agent dev:researcher --model {MODEL_ID} --stdin --quiet < {SESSION_DIR}/vote-prompt.md > {SESSION_DIR}/{model-slug}-result.md 2>{SESSION_DIR}/{model-slug}-stderr.log; echo $? > {SESSION_DIR}/{model-slug}.exit",
+      command: "claudish --model {MODEL_ID} --stdin --quiet < {SESSION_DIR}/vote-prompt.md > {SESSION_DIR}/{model-slug}-result.md 2>{SESSION_DIR}/{model-slug}-stderr.log; echo $? > {SESSION_DIR}/{model-slug}.exit",
       description: "Run {Model Name} vote via claudish",
       run_in_background: true
     })
