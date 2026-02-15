@@ -302,8 +302,13 @@ fi
 if [ "$SHOW_CONTEXT_BAR" = "true" ]; then
   CTX_SECTION="${BAR_COLOR}$(repeat_char "$CTX_F" '█')${C_GRAY}$(repeat_char "$CTX_E" '░')${R} ${BAR_COLOR}${PCT}%%${R}"
 
-  # Token count (e.g., 142k/200k) — dim, secondary info
-  CTX_USED_FMT=$(fmt_tokens "$TOTAL_INPUT_TOKENS")
+  # Token count (e.g., 156k/200k) — derived from percentage to stay consistent
+  # Note: total_input_tokens is cumulative (grows past window size after compaction)
+  CTX_USED_TOKENS=0
+  if [ "$CTX_MAX_TOKENS" -gt 0 ] 2>/dev/null; then
+    CTX_USED_TOKENS=$((PCT * CTX_MAX_TOKENS / 100))
+  fi
+  CTX_USED_FMT=$(fmt_tokens "$CTX_USED_TOKENS")
   CTX_MAX_FMT=$(fmt_tokens "$CTX_MAX_TOKENS")
   if [ -n "$CTX_USED_FMT" ] && [ -n "$CTX_MAX_FMT" ]; then
     CTX_SECTION="${CTX_SECTION} ${C_GRAY}${D}${CTX_USED_FMT}/${CTX_MAX_FMT}${R}"
