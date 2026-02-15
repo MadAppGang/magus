@@ -315,10 +315,19 @@ if [ "$SHOW_CONTEXT_BAR" = "true" ]; then
   fi
 
   # Compaction detection — compare total_input_tokens with cached value
-  TOKEN_CACHE="$HOME/.claude/.statusline-token-cache"
+  # Per-project cache (keyed by CWD hash) to avoid cross-session false positives
+  CWD_HASH=$(printf '%s' "$CWD" | cksum | cut -d' ' -f1)
+  TOKEN_CACHE="$HOME/.claude/.statusline-token-cache-${CWD_HASH}"
   COMPACTED=""
   if [ "$TOTAL_INPUT_TOKENS" -gt 0 ] 2>/dev/null; then
-    PREV_TOKENS=$(cat "$TOKEN_CACHE" 2>/dev/null || echo 0)
+    PREV_TOKENS=0
+    if [ -f "$TOKEN_CACHE" ]; then
+      # Ignore stale cache (>5 min old = likely a different session)
+      CACHE_AGE=$(( $(date +%s) - $(stat -f %m "$TOKEN_CACHE" 2>/dev/null || echo 0) ))
+      if [ "$CACHE_AGE" -lt 300 ]; then
+        PREV_TOKENS=$(cat "$TOKEN_CACHE" 2>/dev/null || echo 0)
+      fi
+    fi
     if [ "$PREV_TOKENS" -gt 0 ] && [ "$TOTAL_INPUT_TOKENS" -lt "$PREV_TOKENS" ]; then
       COMPACTED=1
     fi
