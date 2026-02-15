@@ -1,0 +1,31 @@
+{
+  "name": "statusline",
+  "version": "1.0.0",
+  "description": "Colorful statusline with worktree awareness, plan limit bars with reset countdowns, and customizable sections.",
+  "author": {
+    "name": "Jack Rudenko",
+    "email": "i@madappgang.com",
+    "company": "MadAppGang"
+  },
+  "license": "MIT",
+  "keywords": [
+    "statusline",
+    "worktree",
+    "context",
+    "plan-limits",
+    "customization",
+    "themes"
+  ],
+  "category": "utility",
+  "commands": [
+    "./commands/install.md",
+    "./commands/uninstall.md",
+    "./commands/customize.md"
+  ],
+  "skills": [
+    "./skills/statusline-customization"
+  ],
+  "compatibility": {
+    "claudeCode": ">=0.1.0"
+  }
+}

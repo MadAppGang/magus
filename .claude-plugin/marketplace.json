@@ -191,8 +191,8 @@
     {
       "name": "dev",
       "source": "./plugins/dev",
-      "description": "Universal development assistant with real skill discovery. v1.31.2: Updated for claudish v4.5.1 (--agent flag removed). 46 skills.",
-      "version": "1.31.2",
+      "description": "Universal development assistant with real skill discovery. v1.31.3: Statusline extracted to standalone plugin. 46 skills.",
+      "version": "1.31.3",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -228,6 +228,28 @@
         "ui-engineer",
         "framer-motion",
         "awwwards"
+      ],
+      "strict": true
+    },
+    {
+      "name": "statusline",
+      "source": "./plugins/statusline",
+      "description": "Colorful statusline with worktree awareness, plan limit bars with reset countdowns, and customizable sections/themes. v1.0.0: Initial release.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Jack Rudenko",
+        "email": "i@madappgang.com",
+        "company": "MadAppGang"
+      },
+      "category": "utility",
+      "keywords": [
+        "statusline",
+        "worktree",
+        "context",
+        "plan-limits",
+        "customization",
+        "themes",
+        "reset-countdown"
       ],
       "strict": true
     }
