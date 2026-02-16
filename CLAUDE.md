@@ -23,7 +23,7 @@
 | **SEO** | v1.6.2 | SEO analysis and optimization with AUTO GATEs |
 | **Video Editing** | v1.0.1 | FFmpeg, Whisper, Final Cut Pro integration |
 | **Nanobanana** | v2.2.3 | AI image generation with Gemini 3 Pro Image |
-| **Dev** | v1.31.2 | Universal dev assistant with real validation loops, 46 skills |
+| **Dev** | v1.32.0 | Universal dev assistant with real validation loops, 47 skills |
 
 **Claudish CLI**: `npm install -g claudish` - Run Claude with OpenRouter models (separate repo)
 
@@ -233,7 +233,7 @@ NOTE: Skills use the `Skill` tool, NOT the `Task` tool. The `namespace:name` for
 - Video Editing Plugin: **v1.0.1** (2026-01-06)
 - Nanobanana Plugin: **v2.2.3** (2026-01-08)
 - Conductor Plugin: **v2.0.1** (2026-01-06)
-- Dev Plugin: **v1.31.2** (2026-02-12)
+- Dev Plugin: **v1.32.0** (2026-02-16)
 - Claudish CLI: See https://github.com/MadAppGang/claudish (separate repository)
 
 **Latest Changes (Code Analysis v2.15.0):**
@@ -253,7 +253,7 @@ NOTE: Skills use the `Skill` tool, NOT the `Task` tool. The `namespace:name` for
 - Video Editing: `plugins/video-editing/v1.0.1`
 - Nanobanana: `plugins/nanobanana/v2.2.3`
 - Conductor: `plugins/conductor/v2.0.1`
-- Dev: `plugins/dev/v1.31.2`
+- Dev: `plugins/dev/v1.32.0`
 - Use correct tag format when releasing: `plugins/{plugin-name}/vX.Y.Z`
 
 **⚠️ RELEASE CHECKLIST (ALL 3 REQUIRED):**
@@ -283,5 +283,5 @@ The workflow `.github/workflows/claudeup-release.yml` triggers on `tools/claudeu
 
 **Maintained by:** Jack Rudenko @ MadAppGang
 **Last Updated:** February 10, 2026
-**Version:** 10 plugins (Multimodel v2.4.1, Frontend v3.15.1, Code Analysis v3.2.2, Bun Backend v1.6.1, Agent Development v1.5.2, SEO v1.6.2, Video Editing v1.0.1, Nanobanana v2.2.3, Conductor v2.0.1, Dev v1.31.2)
+**Version:** 10 plugins (Multimodel v2.4.1, Frontend v3.15.1, Code Analysis v3.2.2, Bun Backend v1.6.1, Agent Development v1.5.2, SEO v1.6.2, Video Editing v1.0.1, Nanobanana v2.2.3, Conductor v2.0.1, Dev v1.32.0)
 - do not use hardcoded path in code, docs, comments or any other files

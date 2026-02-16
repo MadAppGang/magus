@@ -1,7 +1,7 @@
 {
   "name": "dev",
-  "version": "1.31.3",
-  "description": "Universal development assistant with real skill discovery. v1.31.3: Statusline extracted to standalone plugin. 46 skills.",
+  "version": "1.32.0",
+  "description": "Universal development assistant with real skill discovery. v1.32.0: db-branching skill for worktree database isolation (Neon, Turso, Supabase). Skill routing tables. 47 skills.",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",
