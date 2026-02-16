@@ -455,3 +455,4 @@ IMPORTANT: You are working in an isolated worktree.
 - **systematic-debugging:** Isolated worktrees for reproducing bugs
 - **context-detection:** Multi-stack detection feeds into setup phase
 - **agent-coordination-discipline:** Parallel agents use separate worktrees
+- **db-branching:** Automatic database branch creation/cleanup for worktrees with schema changes — supports Neon, Turso, Supabase (invoke `dev:db-branching` skill when branchable database detected)

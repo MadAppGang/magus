@@ -74,6 +74,17 @@ allowed-tools: Read, Write, Edit, Bash, Glob, AskUserQuestion
     | Agent/plugin quality review | `agentdev:reviewer` | Agent description or plugin assessment |
 
     Key distinction: If the task asks to IMPLEMENT/CREATE/BUILD -> `dev:developer`. If the task asks to UNDERSTAND/ANALYZE/TRACE -> `code-analysis:detective`.
+
+    ### Skill Routing (Skill tool, NOT Task tool)
+
+    NOTE: Skills use the `Skill` tool, NOT the `Task` tool. The `namespace:name` format is shared by both agents and skills — check which tool to use before invoking.
+
+    | Need | Invoke Skill | When |
+    |---|---|---|
+    | Semantic code search, claudemem CLI usage, AST analysis | `code-analysis:claudemem-search` | Before using `claudemem` commands |
+    | Multi-agent claudemem orchestration | `code-analysis:claudemem-orchestration` | Parallel claudemem across agents |
+    | Architecture investigation with PageRank | `code-analysis:architect-detective` | Architecture-focused claudemem usage |
+    | Deep multi-perspective analysis | `code-analysis:deep-analysis` | Comprehensive codebase investigation |
     ```
   </step>
 
@@ -83,7 +94,7 @@ allowed-tools: Read, Write, Edit, Bash, Glob, AskUserQuestion
     ## Dev Plugin Setup Complete
 
     **Added to CLAUDE.md:**
-    - Task Routing table (6 agent delegation rules)
+    - Task Routing table (6 agent delegation rules + 4 skill routing rules)
 
     **What this does:**
     - Routes complex tasks to specialized agents automatically

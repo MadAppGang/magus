@@ -1,6 +1,6 @@
 ---
 name: claudemem-search
-description: "⚡ PRIMARY TOOL for semantic code search AND structural analysis. NEW: AST tree navigation with map, symbol, callers, callees, context commands. PageRank ranking. Recommended workflow: Map structure first, then search semantically, analyze callers before modifying."
+description: "claudemem CLI expert — PRIMARY TOOL for semantic code search AND structural analysis. This is a SKILL (use Skill tool), NOT an agent. AST tree navigation with map, symbol, callers, callees, context commands. PageRank ranking. Workflow: Map structure first, then search semantically, analyze callers before modifying."
 allowed-tools: Bash, Task, AskUserQuestion
 ---
 

@@ -105,6 +105,7 @@
     "./skills/backend/bunjs-architecture",
     "./skills/backend/bunjs-production",
     "./skills/backend/bunjs-apidog",
+    "./skills/backend/db-branching",
     "./skills/backend/python",
     "./skills/backend/rust",
     "./skills/design/ui-analyse",

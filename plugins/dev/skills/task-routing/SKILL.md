@@ -27,6 +27,18 @@ IMPORTANT: For complex tasks, prefer delegating to specialized agents via the Ta
 
 If the task asks to IMPLEMENT/CREATE/BUILD → `dev:developer`. If the task asks to UNDERSTAND/ANALYZE/TRACE → `code-analysis:detective`.
 
+## Skill Routing (Skill tool, NOT Task tool)
+
+NOTE: Skills use the `Skill` tool, NOT the `Task` tool. The `namespace:name` format is shared by both agents and skills — check which tool to use before invoking.
+
+| Need | Invoke Skill | When |
+|---|---|---|
+| Semantic code search, claudemem CLI usage, AST analysis | `code-analysis:claudemem-search` | Before using `claudemem` commands |
+| Multi-agent claudemem orchestration | `code-analysis:claudemem-orchestration` | Parallel claudemem across agents |
+| Architecture investigation with PageRank | `code-analysis:architect-detective` | Architecture-focused claudemem usage |
+| Deep multi-perspective analysis | `code-analysis:deep-analysis` | Comprehensive codebase investigation |
+| Database branching with git worktrees (Neon, Turso, Supabase) | `dev:db-branching` | Worktree creation with schema changes needing DB isolation |
+
 ## When to Use This Skill
 
-Consult this routing table BEFORE making any delegation decision. If the user's task matches any row in the table above, delegate to the specified agent rather than handling the task inline.
+Consult this routing table BEFORE making any delegation decision. If the user's task matches any row in the table above, delegate to the specified agent rather than handling the task inline. If the user needs claudemem commands, invoke the appropriate skill via the Skill tool first.

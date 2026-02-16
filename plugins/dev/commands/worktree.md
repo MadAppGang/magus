@@ -1,8 +1,8 @@
 ---
 name: worktree
-description: Manage git worktrees - create isolated workspaces, list active worktrees, and clean up
-allowed-tools: Bash, Read, AskUserQuestion, Glob, Grep
-skills: dev:worktree-lifecycle
+description: Manage git worktrees - create isolated workspaces, list active worktrees, and clean up. Supports automatic Neon DB branching for schema isolation.
+allowed-tools: Bash, Read, Write, Edit, AskUserQuestion, Glob, Grep
+skills: dev:worktree-lifecycle, dev:db-branching
 ---
 
 <role>
@@ -42,13 +42,20 @@ skills: dev:worktree-lifecycle
        - Verify .gitignore
        - Create worktree with `git worktree add`
        - Store original CWD
-    6. Execute Phase 4: Setup
+    6. Execute Phase 3.5: Database Branch (if applicable)
+       - Detect database provider from .env (neon.tech, turso.io, supabase.co)
+       - If branchable provider detected, ask user if branch involves schema changes
+       - If yes: create DB branch, get connection string, patch .env, write .db-branch.json
+       - Follow dev:db-branching skill for provider-specific procedure
+    7. Execute Phase 4: Setup
        - Detect stacks (nodejs, rust, golang, python, ruby)
        - Install dependencies for each stack
+       - If Neon branch created: run schema push command against branch
        - Run baseline tests
-    7. Execute Phase 5: Handoff
+    8. Execute Phase 5: Handoff
        - Display worktree information
        - Show path, branch, stacks, test results
+       - If Neon branch: show Neon branch ID and isolation status
     8. Write worktree context marker for statusline persistence
        - Get Claude Code session ID (if available from environment or session context)
        - Write marker file to `~/.claude/.statusline-worktree-{SESSION_ID}`:
@@ -70,6 +77,8 @@ skills: dev:worktree-lifecycle
     Branch: {branch-name}
     Stacks: {detected-stacks}
     Tests: {passing} passing, {failing} failing
+    Neon Branch: {branch-id} (from {parent}) | (none)
+    Database: Isolated | Shared (production)
 
     To work in this worktree:
       cd .worktrees/{slug}
@@ -91,16 +100,17 @@ skills: dev:worktree-lifecycle
        - Branch name
        - HEAD commit
        - Locked status
-    3. Format as table:
+    3. For each worktree, check for `.neon-branch.json` to detect Neon branches
+    4. Format as table:
 
     ```
     Active Worktrees:
 
-    Path                          Branch              Commit
-    ────────────────────────────────────────────────────────────
-    /path/to/project              main                abc1234
-    /path/to/.worktrees/feature   feature/auth        def5678
-    /path/to/.worktrees/hotfix    hotfix/login        ghi9012
+    Path                          Branch              Commit    Neon Branch
+    ──────────────────────────────────────────────────────────────────────────
+    /path/to/project              main                abc1234   production
+    /path/to/.worktrees/feature   feature/auth        def5678   br-dark-sky-a8xyz123
+    /path/to/.worktrees/hotfix    hotfix/login        ghi9012   (none)
     ```
 
     If no worktrees besides main:
@@ -130,6 +140,11 @@ skills: dev:worktree-lifecycle
              - Stash changes
              - Discard changes
              - Abort cleanup
+       - Check for `.db-branch.json` in worktree root
+       - If database branch exists, follow dev:db-branching cleanup:
+         - Ask user about schema migration (apply to production / discard / keep)
+         - If applying: merge code first, then run schema push in main worktree
+         - Delete database branch via provider-specific method (MCP or CLI)
        - Remove worktree with `git worktree remove`
        - Remove statusline worktree marker: `rm -f ~/.claude/.statusline-worktree-*`
          (clean all markers for this project to avoid stale files)

@@ -15,6 +15,9 @@
 
 set -euo pipefail
 
+# Allow running from inside a Claude session (tests launch separate non-interactive processes)
+unset CLAUDECODE 2>/dev/null || true
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 TEST_CASES_FILE="$SCRIPT_DIR/test-cases.json"
