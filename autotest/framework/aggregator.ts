@@ -1,13 +1,12 @@
 #!/usr/bin/env bun
 /**
- * aggregate-results.ts - Aggregate test results into results-summary.json.
+ * aggregator.ts - Aggregate test results into results-summary.json.
  *
- * Called by runner-base.sh after all tests complete. Reads meta.json, metrics.json,
- * and transcript.jsonl from each test directory to build a backward-compatible
- * results-summary.json.
+ * Replaces parsers/aggregate-results.ts. Uses transcript-parser and evaluator
+ * modules. Enriches RunEntry with 7 new fields from metrics.json.
  *
  * Usage:
- *   bun run aggregate-results.ts <results-dir> --suite <name> --models <csv>
+ *   bun run aggregator.ts <results-dir> --suite <name> --models <csv>
  *
  * Environment:
  *   OUTPUT_DIR  - Results directory (fallback if no positional arg)
@@ -24,6 +23,12 @@ import {
 } from "fs";
 import { join, dirname } from "path";
 import { parseArgs } from "util";
+import type { RunEntry, ResultsSummary, TestCase } from "./types.js";
+import {
+  parseTranscriptFile,
+  extractAgentFromTranscript,
+} from "./parsers/transcript-parser.js";
+import { evaluate } from "./evaluator.js";
 
 // --- Helpers ---
 
@@ -80,7 +85,7 @@ if (!resultsDir) {
 // --- Load test cases ---
 
 const testCasesFile = join(resultsDir, "test-cases.json");
-const tcMap: Record<string, any> = {};
+const tcMap: Record<string, TestCase> = {};
 if (existsSync(testCasesFile)) {
   const tcData = readJson(testCasesFile);
   for (const tc of tcData?.test_cases ?? []) {
@@ -91,19 +96,6 @@ if (existsSync(testCasesFile)) {
 // --- Find all meta.json files ---
 
 const metaPaths = findFilesRecursive(resultsDir, "meta.json");
-
-interface RunEntry {
-  test_id: string;
-  model: string;
-  result: string;
-  expected_agent: string;
-  actual_agent: string;
-  duration_seconds: number;
-  exit_code: number;
-  total_tokens: number;
-  cost_usd?: number;
-}
-
 const runs: RunEntry[] = [];
 
 for (const metaPath of metaPaths) {
@@ -120,11 +112,27 @@ for (const metaPath of metaPaths) {
   // Load metrics
   let totalTokens = 0;
   let costUsd: number | undefined;
+  let promptTokens = 0;
+  let completionTokens = 0;
+  let turns = 0;
+  let retries = 0;
+  let uniqueTools: string[] = [];
+  let wallTimeMs: number | undefined;
+  let timeToFirstToolMs: number | null | undefined;
+
   const metrics = readJson(join(testDir, "metrics.json"));
   if (metrics) {
     const totals = metrics.totals ?? {};
     totalTokens = (totals.total_tokens ?? {}).total ?? 0;
     costUsd = totals.cost_usd ?? undefined;
+    // Enriched fields:
+    promptTokens = (totals.total_tokens ?? {}).prompt ?? 0;
+    completionTokens = (totals.total_tokens ?? {}).completion ?? 0;
+    turns = totals.total_turns ?? 0;
+    retries = totals.total_retries ?? 0;
+    uniqueTools = totals.unique_tools ?? [];
+    wallTimeMs = totals.wall_time_ms ?? undefined;
+    timeToFirstToolMs = totals.time_to_first_tool_ms ?? null;
   }
 
   // Parse transcript for agent selection
@@ -133,28 +141,8 @@ for (const metaPath of metaPaths) {
   const transcriptPath = join(testDir, "transcript.jsonl");
   if (existsSync(transcriptPath)) {
     try {
-      const content = readFileSync(transcriptPath, "utf-8");
-      for (const line of content.split("\n")) {
-        const trimmed = line.trim();
-        if (!trimmed) continue;
-        try {
-          const obj = JSON.parse(trimmed);
-          if (obj.type === "assistant") {
-            for (const block of obj.message?.content ?? []) {
-              if (block.type === "tool_use" && block.name === "Task") {
-                const agent = block.input?.subagent_type ?? "";
-                if (agent) {
-                  actualAgent = agent;
-                  break;
-                }
-              }
-            }
-            if (actualAgent) break;
-          }
-        } catch {
-          // Skip unparseable lines
-        }
-      }
+      const entries = parseTranscriptFile(transcriptPath);
+      actualAgent = extractAgentFromTranscript(entries);
     } catch {
       // Skip unreadable transcripts
     }
@@ -170,53 +158,30 @@ for (const metaPath of metaPaths) {
     }
   }
 
-  // Determine pass/fail
-  const tc = tcMap[testId] ?? {};
-  const expectedAgent: string = tc.expected_agent ?? "";
-  const expectedAlternatives: string[] = tc.expected_alternatives ?? [];
-
-  let result = "ERROR";
-  if (exitCode !== 0) {
-    result = exitCode === 124 ? "TIMEOUT" : "ERROR";
-  } else if (expectedAgent) {
-    if (expectedAgent === "NO_TASK_CALL") {
-      // Test expects direct handling (no delegation)
-      if (!actualAgent || actualAgent === "NO_TASK_CALL") {
-        result = "PASS";
-      } else {
-        // Model delegated when it shouldn't have
-        result = "FAIL_OVER_DELEGATED";
-      }
-    } else if (actualAgent === expectedAgent) {
-      result = "PASS";
-    } else if (expectedAlternatives.includes(actualAgent)) {
-      result = "PASS_ALT";
-    } else if (actualAgent === "TASK_USED") {
-      // Task tool was used but subagent_type couldn't be extracted from transcript.
-      // This happens when claudish --json only outputs the final result summary.
-      // The delegation DID happen, we just can't verify which specific agent.
-      result = "PASS_DELEGATED";
-    } else if (!actualAgent || actualAgent === "NO_TASK_CALL") {
-      result = "NO_DELEGATION";
-    } else {
-      result = "FAIL";
-    }
-  } else {
-    // No expected agent specified — exit code 0 is a pass
-    result = exitCode === 0 ? "PASS" : "FAIL";
-  }
+  // Determine pass/fail using pure evaluator
+  const tc: TestCase = tcMap[testId] ?? { id: testId };
+  const result = evaluate(tc, actualAgent, exitCode);
 
   const entry: RunEntry = {
     test_id: testId,
     model,
     result,
-    expected_agent: expectedAgent,
+    expected_agent: tc.expected_agent ?? "",
     actual_agent: actualAgent || "NO_TASK_CALL",
     duration_seconds: duration,
     exit_code: exitCode,
     total_tokens: totalTokens,
+    // Enriched fields:
+    prompt_tokens: promptTokens,
+    completion_tokens: completionTokens,
+    turns,
+    retries,
+    unique_tools: uniqueTools,
   };
-  if (costUsd != null) (entry as any).cost_usd = costUsd;
+
+  if (costUsd != null) entry.cost_usd = costUsd;
+  if (wallTimeMs != null) entry.wall_time_ms = wallTimeMs;
+  if (timeToFirstToolMs !== undefined) entry.time_to_first_tool_ms = timeToFirstToolMs;
 
   runs.push(entry);
 }
@@ -244,8 +209,8 @@ for (const r of runs) {
   else byModel[r.model].error++;
 }
 
-// Build output (backward-compatible shape)
-const summary = {
+// Build output (backward-compatible shape + enriched fields)
+const summaryOutput: ResultsSummary = {
   runs,
   summary: {
     total,
@@ -262,7 +227,7 @@ const summary = {
 
 writeFileSync(
   join(resultsDir, "results-summary.json"),
-  JSON.stringify(summary, null, 2) + "\n"
+  JSON.stringify(summaryOutput, null, 2) + "\n"
 );
 
 // --- Print summary ---

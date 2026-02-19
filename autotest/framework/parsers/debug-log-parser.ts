@@ -12,6 +12,7 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
 import { dirname } from "path";
 import { parseArgs } from "util";
+import type { ToolCall, Tokens, OutputTurn, Totals, Metrics } from "../types.js";
 
 // --- Regex patterns for claudish debug log format ---
 
@@ -33,18 +34,8 @@ const RE_TOOL_CALL_ENTRY = /(\w+)\((\d+)\s*chars?\)/g;
 
 // --- Types ---
 
-interface ToolCall {
-  name: string;
-  input_chars: number;
-}
-
-interface Tokens {
-  prompt: number;
-  completion: number;
-  total: number;
-}
-
-interface Turn {
+/** Internal parsing state — not a JSON artifact, not exported. */
+interface DebugTurn {
   turn_number: number;
   timestamp: string | null;
   target_model?: string | null;
@@ -58,36 +49,6 @@ interface Turn {
   retry: boolean;
   response_status?: number | null;
   stream_status?: string;
-}
-
-interface OutputTurn {
-  turn_number: number;
-  timestamp: string | null;
-  duration_ms: number | null;
-  tool_calls: string[];
-  tokens: Tokens | null;
-  retry: boolean;
-  stream_status?: string;
-  message_count?: number | null;
-}
-
-interface Totals {
-  total_turns: number;
-  total_retries: number;
-  total_time_ms: number;
-  wall_time_ms: number | null;
-  total_tokens: Tokens;
-  time_to_first_tool_ms: number | null;
-  tool_call_sequence: string[];
-  unique_tools: string[];
-  cost_usd: number | null;
-  model: string | null;
-}
-
-interface Metrics {
-  turns: OutputTurn[];
-  totals: Totals | null;
-  error?: string;
 }
 
 // --- Parsing ---
@@ -165,8 +126,8 @@ export function parseDebugLog(logPath: string): Metrics {
   const lines = preProcessLines(content);
 
   // State tracking
-  const turns: Turn[] = [];
-  let currentRequest: Turn | null = null;
+  const turns: DebugTurn[] = [];
+  let currentRequest: DebugTurn | null = null;
   let firstTimestamp: Date | null = null;
   let lastTimestamp: Date | null = null;
   let totalCost: number | null = null;

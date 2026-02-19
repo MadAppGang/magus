@@ -26,38 +26,13 @@ import {
 import { join } from "path";
 import { parseArgs } from "util";
 import { createInterface } from "readline";
+import type { ReplayTurn } from "./types.js";
+import {
+  parseTranscriptFile,
+  buildReplayTurns,
+} from "./parsers/transcript-parser.js";
 
-// --- Types ---
-
-interface Turn {
-  turn_number: number;
-  type: string;
-  session_id?: string;
-  timestamp?: string;
-  content?: string;
-  text?: string;
-  tool_calls?: any[];
-  metrics?: any;
-  tool_id?: string;
-  result?: string;
-}
-
-// --- Loaders ---
-
-function loadTranscript(path: string): any[] {
-  const entries: any[] = [];
-  const content = readFileSync(path, "utf-8");
-  for (const [i, line] of content.split("\n").entries()) {
-    const trimmed = line.trim();
-    if (!trimmed) continue;
-    try {
-      entries.push(JSON.parse(trimmed));
-    } catch {
-      entries.push({ type: "parse_error", line: i + 1, raw: trimmed.slice(0, 200) });
-    }
-  }
-  return entries;
-}
+// --- Helpers ---
 
 function readJson(path: string): any {
   if (!existsSync(path)) return null;
@@ -68,107 +43,9 @@ function readJson(path: string): any {
   }
 }
 
-// --- Turn reconstruction ---
-
-function buildTurns(entries: any[], metrics: any): Turn[] {
-  const turns: Turn[] = [];
-  let turnNumber = 0;
-
-  for (const entry of entries) {
-    const type = entry.type ?? "";
-
-    if (type === "session_start") {
-      turns.push({
-        turn_number: 0,
-        type: "session_start",
-        session_id: entry.id ?? "",
-        timestamp: entry.timestamp ?? "",
-        content: "[Session started]",
-      });
-      continue;
-    }
-
-    if (type === "session_end") {
-      turns.push({
-        turn_number: turnNumber + 1,
-        type: "session_end",
-        timestamp: entry.timestamp ?? "",
-        content: "[Session ended]",
-      });
-      continue;
-    }
-
-    if (type === "assistant") {
-      turnNumber++;
-      const message = entry.message ?? {};
-      const contentBlocks: any[] = message.content ?? [];
-
-      const textParts: string[] = [];
-      const toolCalls: any[] = [];
-
-      for (const block of contentBlocks) {
-        if (block.type === "text") {
-          textParts.push(block.text ?? "");
-        } else if (block.type === "tool_use") {
-          toolCalls.push({
-            id: block.id ?? "",
-            name: block.name ?? "",
-            input: block.input ?? {},
-          });
-        }
-      }
-
-      // Find matching metrics turn
-      let metricsTurn: any = null;
-      if (metrics) {
-        metricsTurn =
-          (metrics.turns ?? []).find((mt: any) => mt.turn_number === turnNumber) ??
-          null;
-      }
-
-      turns.push({
-        turn_number: turnNumber,
-        type: "assistant",
-        text: textParts.join("\n"),
-        tool_calls: toolCalls,
-        metrics: metricsTurn,
-      });
-      continue;
-    }
-
-    if (type === "tool_result") {
-      let resultText = entry.result ?? "";
-      if (typeof resultText === "object") {
-        resultText = JSON.stringify(resultText, null, 2);
-      }
-      if (String(resultText).length > 2000) {
-        resultText = String(resultText).slice(0, 2000) + "... [truncated]";
-      }
-
-      turns.push({
-        turn_number: turnNumber,
-        type: "tool_result",
-        tool_id: entry.id ?? "",
-        result: resultText,
-      });
-      continue;
-    }
-
-    if (type === "parse_error") {
-      turns.push({
-        turn_number: turnNumber,
-        type: "error",
-        content: `[Parse error on line ${entry.line ?? "?"}]: ${entry.raw ?? ""}`,
-      });
-    }
-  }
-
-  return turns;
-}
-
 // --- Formatting ---
 
-function formatTurnText(turn: Turn): string {
+function formatTurnText(turn: ReplayTurn): string {
   const lines: string[] = [];
 
   if (turn.type === "session_start") {
@@ -245,7 +122,7 @@ function formatTurnText(turn: Turn): string {
   return lines.join("\n");
 }
 
-function formatReplayText(meta: any, turns: Turn[], metrics: any): string {
+function formatReplayText(meta: any, turns: ReplayTurn[], metrics: any): string {
   const lines: string[] = [];
 
   lines.push("=".repeat(60));
@@ -286,7 +163,7 @@ function formatReplayText(meta: any, turns: Turn[], metrics: any): string {
   return lines.join("\n");
 }
 
-function formatReplayJson(meta: any, turns: Turn[], metrics: any): string {
+function formatReplayJson(meta: any, turns: ReplayTurn[], metrics: any): string {
   return JSON.stringify(
     {
       meta,
@@ -302,7 +179,7 @@ function formatReplayJson(meta: any, turns: Turn[], metrics: any): string {
 
 async function interactiveReplay(
   meta: any,
-  turns: Turn[],
+  turns: ReplayTurn[],
   metrics: any,
   startTurn: number
 ) {
@@ -438,10 +315,10 @@ if (!existsSync(transcriptPath)) {
   process.exit(1);
 }
 
-const entries = loadTranscript(transcriptPath);
+const entries = parseTranscriptFile(transcriptPath);
 const metrics = readJson(join(testDir, "metrics.json"));
 const meta = readJson(join(testDir, "meta.json"));
-const turns = buildTurns(entries, metrics);
+const turns = buildReplayTurns(entries, metrics);
 const startTurn = parseInt(values.turn ?? "1", 10);
 
 if (values.interactive) {

@@ -1,54 +1,30 @@
 #!/usr/bin/env bun
 /**
- * metrics-aggregator.ts - Aggregate metrics across models for comparison.
+ * comparator.ts - Aggregate metrics across models for comparison.
  *
- * Reads per-test metrics.json files from a run directory and generates
- * a model-comparison report showing speed, token usage, cost, and accuracy.
+ * Replaces parsers/metrics-aggregator.ts. Reads ONLY results-summary.json
+ * instead of walking the directory tree. Requires aggregator.ts to be run
+ * first (which writes the enriched results-summary.json).
  *
  * Usage:
- *   bun run metrics-aggregator.ts <results-dir> [--output comparison.json] [--format json|table]
+ *   bun run comparator.ts <results-dir> [--output comparison.json] [--format json|table]
  */
 
 import {
   existsSync,
   readFileSync,
   writeFileSync,
-  readdirSync,
-  statSync,
   mkdirSync,
 } from "fs";
 import { join, dirname } from "path";
 import { parseArgs } from "util";
-
-// --- Types ---
-
-interface TestEntry {
-  test_id: string;
-  model_slug: string;
-  model: string;
-  duration_seconds: number;
-  exit_code: number;
-  total_tokens?: number;
-  prompt_tokens?: number;
-  completion_tokens?: number;
-  total_turns?: number;
-  total_retries?: number;
-  time_to_first_tool_ms?: number | null;
-  api_time_ms?: number;
-  wall_time_ms?: number;
-  cost_usd?: number | null;
-  unique_tools?: string[];
-}
-
-interface ModelComparison {
-  run_id: string;
-  suite: string;
-  models: string[];
-  test_cases: number;
-  comparison: any[];
-  aggregate_stats: Record<string, any>;
-  error?: string;
-}
+import type {
+  TestEntry,
+  ModelComparison,
+  ComparisonEntry,
+  AggregateStats,
+  ResultsSummary,
+} from "./types.js";
 
 // --- Helpers ---
 
@@ -60,92 +36,50 @@ function readJson(path: string): any {
   }
 }
 
-function listDirs(dir: string): string[] {
-  if (!existsSync(dir)) return [];
-  return readdirSync(dir)
-    .map((name) => join(dir, name))
-    .filter((p) => statSync(p).isDirectory())
-    .sort();
-}
-
 // --- Core ---
 
 function loadRunData(
   resultsDir: string
-): [any, any, Record<string, TestEntry[]>] {
+): [config: any, summary: ResultsSummary, modelResults: Record<string, TestEntry[]>] {
   const config = readJson(join(resultsDir, "config.json")) ?? {};
-  const summary = readJson(join(resultsDir, "results-summary.json")) ?? {};
+  const summary: ResultsSummary = readJson(join(resultsDir, "results-summary.json")) ?? { runs: [] };
 
+  // Build modelResults from summary.runs (no tree walk needed)
   const modelResults: Record<string, TestEntry[]> = {};
 
-  for (const modelDir of listDirs(resultsDir)) {
-    const modelSlug = modelDir.split("/").pop()!;
-    if (modelSlug === "comparison") continue;
+  for (const run of summary.runs ?? []) {
+    // Derive model_slug from model string (same tr '/@:' '_' logic as runner-base.sh)
+    const modelSlug = run.model.replace(/[\/@:]/g, "_");
 
-    for (const testDir of listDirs(modelDir)) {
-      const testId = testDir.split("/").pop()!;
+    const entry: TestEntry = {
+      test_id: run.test_id,
+      model_slug: modelSlug,
+      model: run.model,
+      duration_seconds: run.duration_seconds,
+      exit_code: run.exit_code,
+      // Fields now available from enriched RunEntry:
+      total_tokens: run.total_tokens ?? 0,
+      prompt_tokens: run.prompt_tokens ?? 0,
+      completion_tokens: run.completion_tokens ?? 0,
+      total_turns: run.turns ?? 0,
+      total_retries: run.retries ?? 0,
+      time_to_first_tool_ms: run.time_to_first_tool_ms ?? null,
+      api_time_ms: undefined, // Not in RunEntry; wall_time_ms approximates
+      wall_time_ms: run.wall_time_ms ?? (run.duration_seconds * 1000),
+      cost_usd: run.cost_usd ?? null,
+      unique_tools: run.unique_tools ?? [],
+    };
 
-      // Check for run subdirectories (multi-run mode)
-      const runDirs = listDirs(testDir).filter((d) =>
-        d.split("/").pop()!.startsWith("run-")
-      );
-
-      const dirsToProcess = runDirs.length > 0 ? runDirs : [testDir];
-
-      for (const dataDir of dirsToProcess) {
-        const entry = loadTestEntry(dataDir, testId, modelSlug);
-        if (entry) {
-          if (!modelResults[modelSlug]) modelResults[modelSlug] = [];
-          modelResults[modelSlug].push(entry);
-        }
-      }
-    }
+    if (!modelResults[modelSlug]) modelResults[modelSlug] = [];
+    modelResults[modelSlug].push(entry);
   }
 
   return [config, summary, modelResults];
 }
 
-function loadTestEntry(
-  dataDir: string,
-  testId: string,
-  modelSlug: string
-): TestEntry | null {
-  const metaPath = join(dataDir, "meta.json");
-  const metricsPath = join(dataDir, "metrics.json");
-
-  const meta = readJson(metaPath);
-  if (!meta) return null;
-
-  const entry: TestEntry = {
-    test_id: testId,
-    model_slug: modelSlug,
-    model: meta.model ?? modelSlug,
-    duration_seconds: meta.duration_seconds ?? 0,
-    exit_code: meta.exit_code ?? -1,
-  };
-
-  const metrics = readJson(metricsPath);
-  if (metrics) {
-    const totals = metrics.totals ?? {};
-    const tokens = totals.total_tokens ?? {};
-    entry.total_tokens = tokens.total ?? 0;
-    entry.prompt_tokens = tokens.prompt ?? 0;
-    entry.completion_tokens = tokens.completion ?? 0;
-    entry.total_turns = totals.total_turns ?? 0;
-    entry.total_retries = totals.total_retries ?? 0;
-    entry.time_to_first_tool_ms = totals.time_to_first_tool_ms ?? null;
-    entry.api_time_ms = totals.total_time_ms ?? 0;
-    entry.wall_time_ms = totals.wall_time_ms ?? 0;
-    entry.cost_usd = totals.cost_usd ?? null;
-    entry.unique_tools = totals.unique_tools ?? [];
-  }
-
-  return entry;
-}
-
 function buildComparison(
   config: any,
-  summary: any,
+  summary: ResultsSummary,
   modelResults: Record<string, TestEntry[]>
 ): ModelComparison {
   const models = Object.keys(modelResults).sort();
@@ -177,8 +111,8 @@ function buildComparison(
   }
 
   // Per-test comparison
-  const comparison = allTestIds.map((testId) => {
-    const testEntry: any = { test_id: testId, results: {} };
+  const comparison: ComparisonEntry[] = allTestIds.map((testId) => {
+    const testEntry: ComparisonEntry = { test_id: testId, results: {}, winner: {} };
 
     for (const modelSlug of models) {
       const entries = (modelResults[modelSlug] ?? []).filter(
@@ -214,7 +148,7 @@ function buildComparison(
 
     // Winners (among passing models)
     const passing = Object.entries(testEntry.results).filter(
-      ([, r]: any) => r.passed
+      ([, r]) => r.passed
     ) as [string, any][];
     const winners: Record<string, string> = {};
     if (passing.length > 0) {
@@ -234,7 +168,7 @@ function buildComparison(
   });
 
   // Aggregate stats per model
-  const aggregate: Record<string, any> = {};
+  const aggregate: Record<string, AggregateStats> = {};
   for (const modelSlug of models) {
     const entries = modelResults[modelSlug] ?? [];
     if (entries.length === 0) continue;
@@ -376,7 +310,7 @@ const { values, positionals } = parseArgs({
 
 if (values.help || positionals.length === 0) {
   console.log(
-    "Usage: bun run metrics-aggregator.ts <results-dir> [--output comparison.json] [--format json|table]"
+    "Usage: bun run comparator.ts <results-dir> [--output comparison.json] [--format json|table]"
   );
   process.exit(positionals.length === 0 && !values.help ? 1 : 0);
 }

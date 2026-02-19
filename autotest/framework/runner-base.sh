@@ -331,7 +331,7 @@ echo ""
 # This format is backward-compatible with the existing analyze-results.sh
 MODELS_STR=$(IFS=','; echo "${MODELS[*]}")
 
-bun run "$SCRIPT_DIR/parsers/aggregate-results.ts" \
+bun run "$SCRIPT_DIR/aggregator.ts" \
   "$OUTPUT_DIR" \
   --suite "$SUITE" \
   --models "$MODELS_STR"
@@ -356,4 +356,5 @@ echo "Config:       $OUTPUT_DIR/config.json"
 echo ""
 echo "To analyze:   $REPO_ROOT/autotest/subagents/analyze-results.sh $OUTPUT_DIR"
 echo "To replay:    bun run $SCRIPT_DIR/replay.ts $OUTPUT_DIR/<model>/<case>/ --interactive"
+echo "To compare:   bun run $SCRIPT_DIR/comparator.ts $OUTPUT_DIR"
 echo "To metrics:   bun run $SCRIPT_DIR/parsers/debug-log-parser.ts $OUTPUT_DIR/<model>/<case>/debug.log --format table"
