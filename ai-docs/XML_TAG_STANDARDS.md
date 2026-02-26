@@ -716,7 +716,7 @@ When creating or updating agents/commands:
 
 - [Anthropic Prompt Engineering Guide](https://docs.claude.com/en/docs/build-with-claude/prompt-engineering/overview)
 - [Anthropic XML Tags Documentation](https://docs.claude.com/en/docs/build-with-claude/prompt-engineering/use-xml-tags)
-- [Magus Repository](https://github.com/MadAppGang/claude-code)
+- [Magus Repository](https://github.com/MadAppGang/magus)
 
 ---
 

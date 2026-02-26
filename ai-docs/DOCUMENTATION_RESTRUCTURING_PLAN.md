@@ -485,7 +485,7 @@ claude-code/
 
 ```bash
 # 1. Add marketplace
-/plugin marketplace add MadAppGang/claude-code
+/plugin marketplace add MadAppGang/magus
 
 # 2. Enable in .claude/settings.json
 {
@@ -549,8 +549,8 @@ claude-code/
 ## Support
 
 - **[Troubleshooting Guide](docs/troubleshooting/)** - Common issues
-- **[GitHub Issues](https://github.com/MadAppGang/claude-code/issues)** - Bug reports
-- **[Discussions](https://github.com/MadAppGang/claude-code/discussions)** - Questions
+- **[GitHub Issues](https://github.com/MadAppGang/magus/issues)** - Bug reports
+- **[Discussions](https://github.com/MadAppGang/magus/discussions)** - Questions
 - **Email:** i@madappgang.com
 
 ## Contributing
@@ -596,7 +596,7 @@ You need:
 
 ```bash
 # In Claude Code, run:
-/plugin marketplace add MadAppGang/claude-code
+/plugin marketplace add MadAppGang/magus
 ```
 
 You should see: ✅ "Marketplace added successfully"
@@ -691,7 +691,7 @@ Basic features work without configuration. For advanced features:
 /plugin marketplace list
 
 # 2. If not listed, add again
-/plugin marketplace add MadAppGang/claude-code
+/plugin marketplace add MadAppGang/magus
 
 # 3. Reload settings
 # Restart Claude Code
@@ -719,7 +719,7 @@ Check settings format (must be object, not array):
 
 - **[Troubleshooting Guide](docs/troubleshooting/)** - Common issues
 - **[FAQ](docs/faq.md)** - Frequently asked questions
-- **[GitHub Issues](https://github.com/MadAppGang/claude-code/issues)** - Get help
+- **[GitHub Issues](https://github.com/MadAppGang/magus/issues)** - Get help
 
 ---
 
@@ -863,8 +863,8 @@ Working examples you can copy:
 
 - **[Troubleshooting Guide](troubleshooting/)** - Common issues
 - **[FAQ](faq.md)** - Frequently asked questions
-- **[GitHub Issues](https://github.com/MadAppGang/claude-code/issues)** - Report bugs
-- **[GitHub Discussions](https://github.com/MadAppGang/claude-code/discussions)** - Ask questions
+- **[GitHub Issues](https://github.com/MadAppGang/magus/issues)** - Report bugs
+- **[GitHub Discussions](https://github.com/MadAppGang/magus/discussions)** - Ask questions
 - **Email:** i@madappgang.com
 
 ---
@@ -906,7 +906,7 @@ Working examples you can copy:
 **Quick Method (Recommended):**
 ```bash
 # 1. Add marketplace globally
-/plugin marketplace add MadAppGang/claude-code
+/plugin marketplace add MadAppGang/magus
 
 # 2. Enable in .claude/settings.json
 {
@@ -1078,7 +1078,7 @@ Working examples you can copy:
    ```bash
    /plugin marketplace list
    ```
-   If not listed: `/plugin marketplace add MadAppGang/claude-code`
+   If not listed: `/plugin marketplace add MadAppGang/magus`
 
 2. **Check settings format (must be object, not array):**
    ```json
@@ -1346,7 +1346,7 @@ claudish --model minimax/minimax-m2 "your task"
 
 **Quick contribution guide:**
 
-1. **Fork repository:** https://github.com/MadAppGang/claude-code
+1. **Fork repository:** https://github.com/MadAppGang/magus
 2. **Clone fork:** `git clone <your-fork>`
 3. **Create branch:** `git checkout -b feature/my-feature`
 4. **Make changes:** Edit files
@@ -1401,8 +1401,8 @@ claudish --model minimax/minimax-m2 "your task"
 ### Get Help:
 
 - **[Troubleshooting Guide](troubleshooting/)** - Common issues and solutions
-- **[GitHub Discussions](https://github.com/MadAppGang/claude-code/discussions)** - Ask the community
-- **[GitHub Issues](https://github.com/MadAppGang/claude-code/issues)** - Report bugs
+- **[GitHub Discussions](https://github.com/MadAppGang/magus/discussions)** - Ask the community
+- **[GitHub Issues](https://github.com/MadAppGang/magus/issues)** - Report bugs
 - **Email:** i@madappgang.com
 
 ### Documentation:
@@ -1586,7 +1586,7 @@ Now that you've completed [this topic], you can:
 
 ---
 
-**Questions?** [Ask in Discussions](https://github.com/MadAppGang/claude-code/discussions)
+**Questions?** [Ask in Discussions](https://github.com/MadAppGang/magus/discussions)
 ```
 
 ---

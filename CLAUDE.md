@@ -173,7 +173,7 @@ CODEX_API_KEY=your-codex-key
 
 ## Quick Reference
 
-**Setup:** `/plugin marketplace add MadAppGang/claude-code`
+**Setup:** `/plugin marketplace add MadAppGang/magus`
 
 **Enable in `.claude/settings.json`:**
 ```json

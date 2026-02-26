@@ -237,4 +237,4 @@ For issues or questions:
 ---
 
 **Maintained by:** MadAppGang
-**Homepage:** https://github.com/MadAppGang/claude-code
+**Homepage:** https://github.com/MadAppGang/magus

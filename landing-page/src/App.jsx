@@ -834,7 +834,7 @@ function Plugins() {
                             ))}
                         </div>
                         <div className="font-mono text-[10px] text-offwhite/20">
-                            <span className="text-signal">$</span> /plugin marketplace add MadAppGang/claude-code
+                            <span className="text-signal">$</span> /plugin marketplace add MadAppGang/magus
                         </div>
                     </div>
                 </div>
@@ -847,7 +847,7 @@ function Plugins() {
                     <div className="inline-flex items-center gap-3 bg-offwhite/[0.04] border border-offwhite/[0.08] rounded-full px-5 py-2.5">
                         <Terminal size={14} className="text-signal" />
                         <code className="font-mono text-xs text-offwhite/50">
-                            /plugin marketplace add MadAppGang/claude-code
+                            /plugin marketplace add MadAppGang/magus
                         </code>
                     </div>
                 </div>
@@ -1246,7 +1246,7 @@ function Plugins() {
                 <div className="bg-offwhite/5 border border-offwhite/10 rounded-2xl p-4 md:p-5 mb-10 md:mb-14 max-w-xl">
                     <div className="font-mono text-[10px] text-offwhite/30 mb-2">INSTALL THE ECOSYSTEM</div>
                     <div className="font-mono text-xs text-offwhite/70">
-                        <span className="text-signal">$</span> /plugin marketplace add MadAppGang/claude-code
+                        <span className="text-signal">$</span> /plugin marketplace add MadAppGang/magus
                     </div>
                     <div className="font-mono text-xs text-offwhite/40 mt-1">
                         <span className="text-offwhite/20">→</span> Enable per-project in <span className="text-offwhite/60">.claude/settings.json</span> — commit, and your team auto-syncs.

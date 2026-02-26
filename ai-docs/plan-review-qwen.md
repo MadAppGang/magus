@@ -448,7 +448,7 @@ Consider optional `/seo-review` command that:
 **Problem:**
 Installation section (8.2) is generic template:
 ```bash
-/plugin marketplace add MadAppGang/claude-code
+/plugin marketplace add MadAppGang/magus
 /plugin install seo@magus
 ```
 

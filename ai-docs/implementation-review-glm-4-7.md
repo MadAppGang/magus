@@ -120,9 +120,9 @@ description: ...
 {
   "repository": {
     "type": "git",
-    "url": "https://github.com/MadAppGang/claude-code"
+    "url": "https://github.com/MadAppGang/magus"
   },
-  "homepage": "https://github.com/MadAppGang/claude-code/tree/main/plugins/video-editing"
+  "homepage": "https://github.com/MadAppGang/magus/tree/main/plugins/video-editing"
 }
 ```
 

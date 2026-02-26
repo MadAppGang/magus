@@ -90,7 +90,7 @@ All 3 critical issues from the plan review have been successfully addressed:
       Show setup instructions:
       1. Option A (no install): "Run: npx claudish --version"
       2. Option B (install globally): "Run: npm install -g claudish"
-      3. Link to docs: https://github.com/MadAppGang/claude-code
+      3. Link to docs: https://github.com/MadAppGang/magus
 
       Offer embedded-only option as fallback if user prefers not to install.
       Don't block workflow - graceful degradation always available.

@@ -278,7 +278,7 @@ Sequential Pipeline with Quality Gates:
 ### Option 1: From Marketplace
 
 ```bash
-/plugin marketplace add MadAppGang/claude-code
+/plugin marketplace add MadAppGang/magus
 /plugin install seo@magus
 ```
 
@@ -410,7 +410,7 @@ The seo-editor agent uses a quantified E-E-A-T rubric (0-100 scale):
 
 ## Contributing
 
-Issues and feature requests: https://github.com/MadAppGang/claude-code/issues
+Issues and feature requests: https://github.com/MadAppGang/magus/issues
 
 ## License
 

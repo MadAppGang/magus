@@ -50,7 +50,7 @@ The video-editing plugin brings comprehensive video production capabilities to C
 
 ```bash
 # Add the MAG plugin marketplace
-/plugin marketplace add MadAppGang/claude-code
+/plugin marketplace add MadAppGang/magus
 
 # Or for local development
 /plugin marketplace add /path/to/claude-code
@@ -436,7 +436,7 @@ MIT License - See LICENSE file for details
 ## Support
 
 For issues, questions, or feature requests:
-- GitHub Issues: https://github.com/MadAppGang/claude-code/issues
+- GitHub Issues: https://github.com/MadAppGang/magus/issues
 - Email: i@madappgang.com
 
 ---

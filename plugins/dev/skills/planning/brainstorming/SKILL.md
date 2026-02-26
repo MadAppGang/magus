@@ -91,7 +91,7 @@ Use this skill BEFORE implementing any feature:
 
 ```bash
 # 1. Install required skills
-/plugin marketplace add MadAppGang/claude-code
+/plugin marketplace add MadAppGang/magus
 skill install superpowers:using-git-worktrees
 skill install superpowers:writing-plans
 

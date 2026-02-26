@@ -1343,7 +1343,7 @@ Routes → Controllers → Services → Repositories
 
 ```bash
 # 1. Install the plugin
-/plugin marketplace add MadAppGang/claude-code
+/plugin marketplace add MadAppGang/magus
 /plugin install bun@magus
 
 # 2. Set up environment (if using Apidog)
@@ -1373,4 +1373,4 @@ git commit -m "feat: implement [feature]"
 
 ---
 
-*For issues or feedback, visit: https://github.com/MadAppGang/claude-code/issues*
+*For issues or feedback, visit: https://github.com/MadAppGang/magus/issues*

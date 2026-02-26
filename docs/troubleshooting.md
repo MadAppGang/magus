@@ -44,7 +44,7 @@ Your `.claude/settings.json` must use **object format**, not array format:
 /plugin marketplace list
 
 # If marketplace not listed, add it
-/plugin marketplace add MadAppGang/claude-code
+/plugin marketplace add MadAppGang/magus
 ```
 
 **3. Check Settings File Location**
@@ -86,7 +86,7 @@ Error: "Marketplace 'magus' not found"
 **1. Add Marketplace**
 
 ```bash
-/plugin marketplace add MadAppGang/claude-code
+/plugin marketplace add MadAppGang/magus
 ```
 
 **2. Verify Marketplace Added**
@@ -106,7 +106,7 @@ Error: "Marketplace 'magus' not found"
 ```bash
 # Remove and re-add
 /plugin marketplace remove magus
-/plugin marketplace add MadAppGang/claude-code
+/plugin marketplace add MadAppGang/magus
 ```
 
 **5. Check Internet Connection**
@@ -114,7 +114,7 @@ Error: "Marketplace 'magus' not found"
 ```bash
 # Test GitHub access
 ping github.com
-curl -I https://github.com/MadAppGang/claude-code
+curl -I https://github.com/MadAppGang/magus
 ```
 
 ---
@@ -542,8 +542,8 @@ Gather this information:
 ### Where to Get Help
 
 **GitHub Issues (Recommended)**
-- [Report a bug](https://github.com/MadAppGang/claude-code/issues/new)
-- [Ask a question](https://github.com/MadAppGang/claude-code/issues/new)
+- [Report a bug](https://github.com/MadAppGang/magus/issues/new)
+- [Ask a question](https://github.com/MadAppGang/magus/issues/new)
 - Search existing issues first
 
 **Email Support**
@@ -593,7 +593,7 @@ Gather this information:
 /plugin marketplace remove magus
 
 # 4. Re-add marketplace
-/plugin marketplace add MadAppGang/claude-code
+/plugin marketplace add MadAppGang/magus
 
 # 5. Reinstall plugins
 /plugin install frontend@magus
@@ -650,4 +650,4 @@ rm -rf .claude/settings.json
 
 ---
 
-**Still stuck?** [Open an issue](https://github.com/MadAppGang/claude-code/issues/new) or email [i@madappgang.com](mailto:i@madappgang.com)
+**Still stuck?** [Open an issue](https://github.com/MadAppGang/magus/issues/new) or email [i@madappgang.com](mailto:i@madappgang.com)

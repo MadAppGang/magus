@@ -848,7 +848,7 @@ Add to `.claude/settings.json`:
     "magus": {
       "source": {
         "source": "github",
-        "repo": "MadAppGang/claude-code"
+        "repo": "MadAppGang/magus"
       }
     }
   },

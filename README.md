@@ -81,7 +81,7 @@ These aren't "best practices" from blog posts. This is the **battle-tested playb
 
 ```bash
 # Step 1: Add marketplace globally (one-time setup)
-/plugin marketplace add MadAppGang/claude-code
+/plugin marketplace add MadAppGang/magus
 ```
 
 Then add to your project's `.claude/settings.json`:
@@ -321,7 +321,7 @@ This approach gives you the best of both worlds: marketplace installed once glob
 Each developer on your team does this once:
 
 ```bash
-/plugin marketplace add MadAppGang/claude-code
+/plugin marketplace add MadAppGang/magus
 ```
 
 This registers the Magus marketplace in your Claude Code installation. You only need to do this once, and it works for all your projects.
@@ -504,7 +504,7 @@ For architecture and implementation details, see the **[ai-docs](./ai-docs/)** d
 
 ### Community Requests
 
-Have a plugin idea? [Open an issue](https://github.com/MadAppGang/claude-code/issues) with the `plugin-request` label.
+Have a plugin idea? [Open an issue](https://github.com/MadAppGang/magus/issues) with the `plugin-request` label.
 
 ---
 ## 📖 Detailed Documentation
@@ -560,8 +560,8 @@ Company: [MadAppGang](https://madappgang.com)
 ## 📞 Contact & Support
 
 - **Email**: [i@madappgang.com](mailto:i@madappgang.com)
-- **Issues**: [GitHub Issues](https://github.com/MadAppGang/claude-code/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/MadAppGang/claude-code/discussions)
+- **Issues**: [GitHub Issues](https://github.com/MadAppGang/magus/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/MadAppGang/magus/discussions)
 - **Website**: [madappgang.com](https://madappgang.com)
 
 ---

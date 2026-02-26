@@ -20,7 +20,7 @@ AI image generation and editing using Google Gemini 3 Pro Image API.
 
 1. **Install the plugin** via Claude Code:
    ```bash
-   /plugin marketplace add MadAppGang/claude-code
+   /plugin marketplace add MadAppGang/magus
    ```
 
 2. **Enable in `.claude/settings.json`**:
@@ -359,7 +359,7 @@ MadAppGang
 ## Support
 
 For issues and questions:
-- GitHub: https://github.com/MadAppGang/claude-code
+- GitHub: https://github.com/MadAppGang/magus
 - Email: i@madappgang.com
 
 ## Changelog

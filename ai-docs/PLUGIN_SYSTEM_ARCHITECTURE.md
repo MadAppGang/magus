@@ -199,7 +199,7 @@ const defaultMarketplaces: DefaultMarketplace[] = [
     description: 'Professional plugin marketplace',
     source: {
       source: 'github',
-      repo: 'MadAppGang/claude-code',              // GitHub repo
+      repo: 'MadAppGang/magus',              // GitHub repo
     },
     official: true,
     featured: true,
@@ -557,7 +557,7 @@ const cacheHooks = {
 │     └── Check extraKnownMarketplaces                        │
 │         ↓                                                    │
 │  3. Clone marketplace (if not cached)                       │
-│     git clone https://github.com/MadAppGang/claude-code     │
+│     git clone https://github.com/MadAppGang/magus     │
 │         ↓                                                    │
 │  4. Copy plugin to cache                                    │
 │     ~/.claude/plugins/cache/magus/             │
@@ -665,7 +665,7 @@ interface LocalMarketplace {
   name: string;                            // "magus"
   description: string;
   plugins: LocalMarketplacePlugin[];
-  gitRepo?: string;                        // "MadAppGang/claude-code"
+  gitRepo?: string;                        // "MadAppGang/magus"
 }
 
 interface LocalMarketplacePlugin {

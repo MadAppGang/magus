@@ -94,7 +94,7 @@ Present the following help information to the user in a clear, organized format:
 
 ```bash
 # Add marketplace (one-time)
-/plugin marketplace add MadAppGang/claude-code
+/plugin marketplace add MadAppGang/magus
 
 # Install plugin
 /plugin install frontend@magus
@@ -118,5 +118,5 @@ export OPENROUTER_API_KEY="your-key"  # https://openrouter.ai
 
 ## More Info
 
-- **Repo**: https://github.com/MadAppGang/claude-code
+- **Repo**: https://github.com/MadAppGang/magus
 - **Author**: Jack Rudenko @ MadAppGang

@@ -34,12 +34,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/MadAppGang/claude-code"
+    "url": "https://github.com/MadAppGang/magus"
   },
   "bugs": {
-    "url": "https://github.com/MadAppGang/claude-code/issues"
+    "url": "https://github.com/MadAppGang/magus/issues"
   },
-  "homepage": "https://github.com/MadAppGang/claude-code/tree/main/tools/claudeup#readme",
+  "homepage": "https://github.com/MadAppGang/magus/tree/main/tools/claudeup#readme",
   "engines": {
     "bun": ">=1.0.0"
   },

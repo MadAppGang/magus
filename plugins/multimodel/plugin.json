@@ -4,7 +4,7 @@
   "description": "Multi-model collaboration, orchestration, and workflow patterns. v2.4.0: Removed PROXY_MODE (67% failure rate). External models now use deterministic Bash+claudish CLI. Updated /team command, hooks, and all skills.",
   "author": "MadAppGang",
   "license": "MIT",
-  "homepage": "https://github.com/MadAppGang/claude-code",
+  "homepage": "https://github.com/MadAppGang/magus",
   "tags": [
     "multimodel",
     "voting",

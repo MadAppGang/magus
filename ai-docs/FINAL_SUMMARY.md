@@ -203,13 +203,13 @@ claude-code/ (27 files)
 
 ```bash
 # Push to GitHub (from repo root)
-git remote add origin https://github.com/MadAppGang/claude-code.git
+git remote add origin https://github.com/MadAppGang/magus.git
 git add .
 git commit -m "Complete plugin marketplace with team architecture"
 git push -u origin main
 
 # Team members install
-/plugin marketplace add MadAppGang/claude-code
+/plugin marketplace add MadAppGang/magus
 /plugin install frontend@magus
 ```
 
@@ -231,7 +231,7 @@ Add to project's `.claude/settings.json`:
     "magus": {
       "source": {
         "source": "github",
-        "repo": "MadAppGang/claude-code"
+        "repo": "MadAppGang/magus"
       }
     }
   },
@@ -251,7 +251,7 @@ Add to project's `.claude/settings.json`:
 ```bash
 git clone project-repo
 cd project-repo
-/plugin marketplace add MadAppGang/claude-code
+/plugin marketplace add MadAppGang/magus
 /plugin install frontend@magus
 ```
 

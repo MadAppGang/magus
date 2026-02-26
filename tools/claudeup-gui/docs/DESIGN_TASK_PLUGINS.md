@@ -82,7 +82,7 @@ interface Author {
 |-------|------|---------|
 | `category` | string | `"development"`, `"media"`, `"workflow"`, `"content"` |
 | `keywords` | string[] | `["frontend", "typescript", "react", "vite", "tanstack"]` |
-| `homepage` | string? | `"https://github.com/MadAppGang/claude-code"` |
+| `homepage` | string? | `"https://github.com/MadAppGang/magus"` |
 | `license` | string? | `"MIT"` |
 
 ---

@@ -395,7 +395,7 @@ interface ClaudeSettings {
   "extraKnownMarketplaces": {
     "magus": {
       "source": "github",
-      "repo": "MadAppGang/claude-code"
+      "repo": "MadAppGang/magus"
     }
   }
 }
@@ -526,7 +526,7 @@ export const defaultMarketplaces: Marketplace[] = [
     displayName: 'Magus',
     source: {
       source: 'github',
-      repo: 'MadAppGang/claude-code'
+      repo: 'MadAppGang/magus'
     },
     featured: true
   }
@@ -542,7 +542,7 @@ export const defaultMarketplaces: Marketplace[] = [
   "magus": {
     "source": {
       "source": "github",
-      "repo": "MadAppGang/claude-code"
+      "repo": "MadAppGang/magus"
     },
     "installLocation": "/Users/jack/.claude/plugins/marketplaces/claude-code",
     "lastUpdated": "2026-02-09T10:30:00.000Z"
@@ -1114,7 +1114,7 @@ interface LocalMarketplace {
   name: string;
   description: string;
   plugins: LocalMarketplacePlugin[];
-  gitRepo?: string;  // e.g., "MadAppGang/claude-code"
+  gitRepo?: string;  // e.g., "MadAppGang/magus"
 }
 
 interface LocalMarketplacePlugin {

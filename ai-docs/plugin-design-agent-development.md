@@ -264,7 +264,7 @@ skills: |
   "description": "Create, implement, and review Claude Code agents and commands with multi-model validation. Includes specialized agents for design, implementation, and quality review, plus a full-cycle orchestration command.",
   "author": "MadAppGang",
   "license": "MIT",
-  "homepage": "https://github.com/MadAppGang/claude-code",
+  "homepage": "https://github.com/MadAppGang/magus",
 
   "tags": [
     "agent-development",

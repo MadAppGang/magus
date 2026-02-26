@@ -344,7 +344,7 @@ export function PluginsScreen() {
 			"To add a marketplace, run this command in your terminal:\n\n" +
 				"  claude marketplace add owner/repo\n\n" +
 				"Examples:\n" +
-				"  claude marketplace add MadAppGang/claude-code\n" +
+				"  claude marketplace add MadAppGang/magus\n" +
 				"  claude marketplace add anthropics/claude-plugins-official\n\n" +
 				"Auto-update is enabled by default for new marketplaces.\n\n" +
 				"After adding, refresh claudeup with 'r' to see the new marketplace.",

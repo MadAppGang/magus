@@ -38,7 +38,7 @@ Global installation makes plugins available in **all projects** without per-proj
 
 ```bash
 # Step 1: Add marketplace globally (one-time)
-/plugin marketplace add MadAppGang/claude-code
+/plugin marketplace add MadAppGang/magus
 
 # Step 2: Install plugin globally
 /plugin install frontend@magus
@@ -118,7 +118,7 @@ Edit agents, commands, skills, or configurations in your local directory.
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/MadAppGang/claude-code.git
+git clone https://github.com/MadAppGang/magus.git
 cd claude-code
 
 # 2. Create feature branch
@@ -202,7 +202,7 @@ Add marketplace to `.claude/settings.json`:
     "magus": {
       "source": {
         "source": "github",
-        "repo": "MadAppGang/claude-code"
+        "repo": "MadAppGang/magus"
       }
     }
   },
@@ -486,7 +486,7 @@ Some plugins support additional configuration in `.claude/settings.json`:
 /plugin marketplace list
 
 # Add marketplace
-/plugin marketplace add MadAppGang/claude-code
+/plugin marketplace add MadAppGang/magus
 
 # Update marketplace
 /plugin marketplace update magus
@@ -502,7 +502,7 @@ ping github.com
 
 # Try re-adding
 /plugin marketplace remove magus
-/plugin marketplace add MadAppGang/claude-code
+/plugin marketplace add MadAppGang/magus
 ```
 
 ### Plugin Issues
@@ -563,6 +563,6 @@ echo $FIGMA_ACCESS_TOKEN
 
 ## 📞 Need Help?
 
-- **GitHub Issues**: [Report a problem](https://github.com/MadAppGang/claude-code/issues)
+- **GitHub Issues**: [Report a problem](https://github.com/MadAppGang/magus/issues)
 - **Email**: [i@madappgang.com](mailto:i@madappgang.com)
 - **Documentation**: Check plugin-specific README files

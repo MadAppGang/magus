@@ -9,7 +9,7 @@
 
 Our plugins are already available via our own marketplace:
 ```bash
-/plugin marketplace add MadAppGang/claude-code
+/plugin marketplace add MadAppGang/magus
 ```
 
 ## Goal
@@ -31,7 +31,7 @@ Open an issue on https://github.com/anthropics/claude-plugins-official/issues
 ## About Us
 **Organization:** MadAppGang
 **Maintainer:** Jack Rudenko (i@madappgang.com)
-**Repository:** https://github.com/MadAppGang/claude-code
+**Repository:** https://github.com/MadAppGang/magus
 
 ## Plugins for Consideration
 
@@ -143,7 +143,7 @@ repository. Our plugins are:
 - MIT licensed
 - Fully documented (6,000+ lines)
 
-Repository: https://github.com/MadAppGang/claude-code
+Repository: https://github.com/MadAppGang/magus
 
 Would there be an appropriate channel to discuss this?
 

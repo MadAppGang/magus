@@ -145,8 +145,8 @@ None found.
 1. **Verify author email**: Confirm "i@madappgang.com" is correct maintainer email
 2. **Add repository URLs**: Include homepage and repository fields in manifest:
    ```json
-   "repository": "https://github.com/MadAppGang/claude-code",
-   "homepage": "https://github.com/MadAppGang/claude-code/tree/main/plugins/nanobanana"
+   "repository": "https://github.com/MadAppGang/magus",
+   "homepage": "https://github.com/MadAppGang/magus/tree/main/plugins/nanobanana"
    ```
 
 ### Priority 2 (Recommended)

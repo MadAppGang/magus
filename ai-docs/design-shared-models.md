@@ -1778,7 +1778,7 @@ When updating pricing:
 ---
 
 **Maintained By:** MadAppGang Claude Code Team
-**Repository:** https://github.com/MadAppGang/claude-code
+**Repository:** https://github.com/MadAppGang/magus
 **License:** MIT
 ```
 

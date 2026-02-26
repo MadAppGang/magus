@@ -3017,7 +3017,7 @@ The SEO plugin depends on orchestration for:
 
 ```bash
 # Via marketplace
-/plugin marketplace add MadAppGang/claude-code
+/plugin marketplace add MadAppGang/magus
 /plugin install seo@magus
 
 # Or in .claude/settings.json

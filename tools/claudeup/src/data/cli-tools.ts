@@ -19,7 +19,7 @@ export const cliTools: CliTool[] = [
 		installCommand: "npm install -g claudeup",
 		checkCommand: "claudeup --version",
 		website:
-			"https://github.com/MadAppGang/claude-code/tree/main/tools/claudeup",
+			"https://github.com/MadAppGang/magus/tree/main/tools/claudeup",
 		category: "ai-coding",
 		packageManager: "npm",
 		packageName: "claudeup",

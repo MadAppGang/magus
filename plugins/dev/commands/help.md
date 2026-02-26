@@ -213,8 +213,8 @@ See: https://github.com/MadAppGang/claudish
 ### Need Help?
 
 - **Documentation**: See README.md in plugin directory
-- **Issues**: https://github.com/MadAppGang/claude-code/issues
-- **Discussions**: https://github.com/MadAppGang/claude-code/discussions
+- **Issues**: https://github.com/MadAppGang/magus/issues
+- **Discussions**: https://github.com/MadAppGang/magus/discussions
 
 ---
 

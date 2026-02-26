@@ -26,7 +26,7 @@ The **Dev Plugin** is a universal, language-agnostic development assistant that 
 
 ```bash
 # Install from MadAppGang marketplace
-/plugin marketplace add MadAppGang/claude-code
+/plugin marketplace add MadAppGang/magus
 ```
 
 ### Enable in Settings
@@ -46,7 +46,7 @@ Add to `.claude/settings.json`:
 
 ```bash
 # Clone repository
-git clone https://github.com/MadAppGang/claude-code.git
+git clone https://github.com/MadAppGang/magus.git
 cd claude-code
 
 # Add as local marketplace
@@ -375,8 +375,8 @@ MIT License - see [LICENSE](../../LICENSE)
 
 ## Support
 
-- Issues: [GitHub Issues](https://github.com/MadAppGang/claude-code/issues)
-- Discussions: [GitHub Discussions](https://github.com/MadAppGang/claude-code/discussions)
+- Issues: [GitHub Issues](https://github.com/MadAppGang/magus/issues)
+- Discussions: [GitHub Discussions](https://github.com/MadAppGang/magus/discussions)
 - Documentation: [docs/](../../docs/)
 
 ---

@@ -1,7 +1,7 @@
 #!/bin/bash
 # Claude Code Status Line — colorful worktree-aware status with plan limits & reset countdowns
 # Receives JSON session data via stdin
-# Part of statusline plugin (MadAppGang/claude-code)
+# Part of statusline plugin (MadAppGang/magus)
 
 input=$(cat)
 

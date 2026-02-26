@@ -37,7 +37,7 @@ This guide covers how to develop, test, and debug plugins locally before publish
 
 ```bash
 # Clone from GitHub
-git clone https://github.com/MadAppGang/claude-code.git
+git clone https://github.com/MadAppGang/magus.git
 
 # Navigate to the directory
 cd claude-code
@@ -640,7 +640,7 @@ After pushing, test the GitHub version:
 /plugin marketplace remove magus
 
 # Add GitHub version
-/plugin marketplace add MadAppGang/claude-code
+/plugin marketplace add MadAppGang/magus
 
 # Install from GitHub
 /plugin install frontend@magus
@@ -783,11 +783,11 @@ git push origin main
 2. Verify JSON syntax
 3. Check file permissions
 4. Review Claude Code docs: https://docs.claude.com/en/docs/claude-code/plugins
-5. Open issue: https://github.com/MadAppGang/claude-code/issues
+5. Open issue: https://github.com/MadAppGang/magus/issues
 
 **Contact:**
 - Email: i@madappgang.com
-- GitHub: https://github.com/MadAppGang/claude-code
+- GitHub: https://github.com/MadAppGang/magus
 
 ---
 

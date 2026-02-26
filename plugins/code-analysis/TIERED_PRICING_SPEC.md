@@ -525,10 +525,10 @@ if (estimatedTokens < 200000) {
 
 **For technical issues:**
 - Contact: Jack Rudenko (i@madappgang.com)
-- Repository: https://github.com/MadAppGang/claude-code
+- Repository: https://github.com/MadAppGang/magus
 
 ---
 
 **Maintained By:** MadAppGang Claude Code Team
-**Repository:** https://github.com/MadAppGang/claude-code
+**Repository:** https://github.com/MadAppGang/magus
 **License:** MIT

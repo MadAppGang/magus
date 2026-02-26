@@ -134,7 +134,7 @@ Requires orchestration plugin:
 
 ```bash
 # Add marketplace (one-time)
-/plugin marketplace add MadAppGang/claude-code
+/plugin marketplace add MadAppGang/magus
 
 # Install plugin
 /plugin install agentdev@magus
@@ -146,5 +146,5 @@ Requires orchestration plugin:
 
 ## More Info
 
-- **Repo**: https://github.com/MadAppGang/claude-code
+- **Repo**: https://github.com/MadAppGang/magus
 - **Author**: Jack Rudenko @ MadAppGang

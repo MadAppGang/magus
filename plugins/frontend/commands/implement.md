@@ -137,10 +137,10 @@ Benefits:
 - 🎯 Better understanding of where to integrate new features
 
 Installation (2 commands):
-/plugin marketplace add MadAppGang/claude-code
+/plugin marketplace add MadAppGang/magus
 /plugin install code-analysis@magus
 
-Repository: https://github.com/MadAppGang/claude-code
+Repository: https://github.com/MadAppGang/magus
 
 You can continue without it, but investigation of existing code will be less efficient.
 ```

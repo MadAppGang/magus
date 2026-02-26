@@ -118,7 +118,7 @@ src/
 
 ```bash
 # Add marketplace (one-time)
-/plugin marketplace add MadAppGang/claude-code
+/plugin marketplace add MadAppGang/magus
 
 # Install plugin
 /plugin install bun@magus
@@ -130,5 +130,5 @@ src/
 
 ## More Info
 
-- **Repo**: https://github.com/MadAppGang/claude-code
+- **Repo**: https://github.com/MadAppGang/magus
 - **Author**: Jack Rudenko @ MadAppGang

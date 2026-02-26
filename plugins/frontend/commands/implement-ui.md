@@ -63,10 +63,10 @@ Benefits:
 - 🎯 Identify where to place new components in the project structure
 
 Installation (2 commands):
-/plugin marketplace add MadAppGang/claude-code
+/plugin marketplace add MadAppGang/magus
 /plugin install code-analysis@magus
 
-Repository: https://github.com/MadAppGang/claude-code
+Repository: https://github.com/MadAppGang/magus
 
 You can continue without it, but investigation of existing UI patterns will be less efficient.
 ```

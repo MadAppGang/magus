@@ -2,7 +2,7 @@
 
 **Date:** February 9-10, 2026
 **Author:** Jack Rudenko + Claude Opus 4.6
-**Repository:** MadAppGang/claude-code (Magus)
+**Repository:** MadAppGang/magus (Magus)
 **Duration:** ~10 hours across 3 conversation sessions (~95 automated test runs)
 
 ---

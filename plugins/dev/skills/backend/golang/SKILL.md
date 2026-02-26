@@ -1519,4 +1519,4 @@ type storage interface { ... } // Define where used
 
 **Skill Version**: 2.0.0
 **Last Updated**: January 7, 2026
-**Maintainer**: MadAppGang/claude-code
+**Maintainer**: MadAppGang/magus

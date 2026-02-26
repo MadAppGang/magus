@@ -64,7 +64,7 @@ Claudeup uses Claude Code's native plugin system for marketplace management. Thi
     "magus": {
       "source": {
         "source": "github",
-        "repo": "MadAppGang/claude-code"
+        "repo": "MadAppGang/magus"
       }
     }
   },
@@ -146,4 +146,4 @@ This is useful for testing plugins before publishing.
 
 ---
 
-**Need help?** File an issue at [github.com/MadAppGang/claude-code](https://github.com/MadAppGang/claude-code/issues)
+**Need help?** File an issue at [github.com/MadAppGang/magus](https://github.com/MadAppGang/magus/issues)

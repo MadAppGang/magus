@@ -99,7 +99,7 @@ Releases are automated via GitHub Actions using [npm Trusted Publishing](https:/
    ```
 
 2. **Configure Trusted Publisher on npmjs.com** (already done):
-   - Repository: `MadAppGang/claude-code`
+   - Repository: `MadAppGang/magus`
    - Workflow: `claudeup-release.yml`
 
 ### Releasing New Versions

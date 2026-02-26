@@ -80,7 +80,7 @@ If the `code-analysis` plugin is available (check for codebase-detective agent):
 If not available, recommend installation:
 ```
 For best results investigating existing code, install: code-analysis@magus
-Repository: https://github.com/MadAppGang/claude-code
+Repository: https://github.com/MadAppGang/magus
 ```
 
 **Fallback:** Use Glob/Grep to search for existing components and patterns manually.

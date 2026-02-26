@@ -28,7 +28,7 @@ export const defaultMarketplaces: DefaultMarketplace[] = [
     description: 'Professional plugin marketplace with Frontend, Code Analysis, Orchestration, and more',
     source: {
       source: 'github',
-      repo: 'MadAppGang/claude-code',
+      repo: 'MadAppGang/magus',
     },
     official: true,
     featured: true,
@@ -59,7 +59,7 @@ export interface Marketplace {
 export const MARKETPLACES: Marketplace[] = [
   {
     name: "Magus",
-    url: "https://github.com/MadAppGang/claude-code",
+    url: "https://github.com/MadAppGang/magus",
     description: "Professional plugin marketplace with Frontend, Code Analysis, Orchestration, and more",
     owner: "MadAppGang",
     category: "official",

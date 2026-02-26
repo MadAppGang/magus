@@ -36,7 +36,7 @@ The **orchestration plugin** extracts and centralizes sophisticated multi-agent 
   "description": "Shared multi-agent coordination and workflow orchestration patterns for complex Claude Code workflows. Provides proven patterns for parallel execution, multi-model validation, quality gates, and phase-based orchestration.",
   "author": "MadAppGang",
   "license": "MIT",
-  "homepage": "https://github.com/MadAppGang/claude-code",
+  "homepage": "https://github.com/MadAppGang/magus",
 
   "tags": [
     "orchestration",
@@ -753,7 +753,7 @@ Install orchestration globally (available to all projects):
 
 ```bash
 # Add marketplace (if not already added)
-/plugin marketplace add MadAppGang/claude-code
+/plugin marketplace add MadAppGang/magus
 
 # Install plugin globally
 /plugin install orchestration@magus --global

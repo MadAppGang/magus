@@ -8,7 +8,7 @@ export const defaultMarketplaces: Marketplace[] = [
 		displayName: "Magus",
 		source: {
 			source: "github",
-			repo: "MadAppGang/claude-code",
+			repo: "MadAppGang/magus",
 		},
 		description:
 			"Professional plugins for frontend, backend, and code analysis",

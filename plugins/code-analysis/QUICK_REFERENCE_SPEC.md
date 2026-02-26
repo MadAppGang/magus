@@ -400,5 +400,5 @@ x-ai/grok-code-fast-1 - Ultra-fast coding, $0.85/1M, 256K ⭐  # Missing backtic
 ---
 
 **Maintained By:** MadAppGang Claude Code Team
-**Repository:** https://github.com/MadAppGang/claude-code
+**Repository:** https://github.com/MadAppGang/magus
 **License:** MIT

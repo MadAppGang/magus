@@ -4,7 +4,7 @@
   "description": "Create, implement, and review Claude Code agents and commands with multi-model validation, LLM performance tracking, and session-based artifact isolation. Full-cycle development workflow with design, implementation, and quality review agents. Session isolation prevents file collisions across workflows.",
   "author": "MadAppGang",
   "license": "MIT",
-  "homepage": "https://github.com/MadAppGang/claude-code",
+  "homepage": "https://github.com/MadAppGang/magus",
   "tags": [
     "agents",
     "commands",

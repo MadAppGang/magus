@@ -232,7 +232,7 @@ Pre-configured combinations for common use cases:
 **Option 3: Global Installation**
 
 ```bash
-/plugin marketplace add MadAppGang/claude-code
+/plugin marketplace add MadAppGang/magus
 /plugin install orchestration@mag-claude-plugins --global
 ```
 
@@ -390,10 +390,10 @@ skills: orchestration:testing, orchestration:multi-model-validation
 
 ### 🔗 Quick Links
 
-- **Plugin Source:** [/plugins/orchestration](https://github.com/MadAppGang/claude-code/tree/main/plugins/orchestration)
-- **Marketplace:** [mag-claude-plugins](https://github.com/MadAppGang/claude-code)
-- **Release Tag:** [plugins/orchestration/v0.1.0](https://github.com/MadAppGang/claude-code/releases/tag/plugins%2Forchestration%2Fv0.1.0)
-- **Installation Guide:** [README.md](https://github.com/MadAppGang/claude-code/blob/main/plugins/orchestration/README.md)
+- **Plugin Source:** [/plugins/orchestration](https://github.com/MadAppGang/magus/tree/main/plugins/orchestration)
+- **Marketplace:** [mag-claude-plugins](https://github.com/MadAppGang/magus)
+- **Release Tag:** [plugins/orchestration/v0.1.0](https://github.com/MadAppGang/magus/releases/tag/plugins%2Forchestration%2Fv0.1.0)
+- **Installation Guide:** [README.md](https://github.com/MadAppGang/magus/blob/main/plugins/orchestration/README.md)
 
 ---
 
@@ -634,7 +634,7 @@ The `/implement` command now requires PHASE 1.5 completion:
 
 1. **Update plugin** (if globally installed):
    ```bash
-   /plugin marketplace add MadAppGang/claude-code
+   /plugin marketplace add MadAppGang/magus
    /plugin install frontend@mag-claude-plugins
    ```
 
@@ -685,7 +685,7 @@ git push origin plugins/frontend/v3.3.0
 
 **Developed by:** Jack Rudenko @ MadAppGang
 **License:** MIT
-**Repository:** https://github.com/MadAppGang/claude-code
+**Repository:** https://github.com/MadAppGang/magus
 
 ---
 
@@ -1069,7 +1069,7 @@ Benefits:
 
 ### Support
 
-**Issues:** https://github.com/MadAppGang/claude-code/issues
+**Issues:** https://github.com/MadAppGang/magus/issues
 **Discussions:** Use GitHub Discussions for questions
 
 ### Next Steps
@@ -1130,7 +1130,7 @@ git push origin main
 git push origin plugins/frontend/vX.Y.Z
 
 # 8. Verify tag on GitHub
-# Check: https://github.com/MadAppGang/claude-code/tags
+# Check: https://github.com/MadAppGang/magus/tags
 ```
 
 #### After Release

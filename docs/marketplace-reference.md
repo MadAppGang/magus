@@ -486,5 +486,5 @@ Complete plugin with all components:
 
 ## 📞 Questions?
 
-- **Issues**: [GitHub Issues](https://github.com/MadAppGang/claude-code/issues)
+- **Issues**: [GitHub Issues](https://github.com/MadAppGang/magus/issues)
 - **Email**: [i@madappgang.com](mailto:i@madappgang.com)
