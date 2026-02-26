@@ -1,7 +1,7 @@
 {
   "name": "claude-plugins-tests",
   "version": "1.0.0",
-  "description": "Integration tests for MAG Claude Plugins",
+  "description": "Integration tests for Magus",
   "type": "module",
   "scripts": {
     "test": "bun test",

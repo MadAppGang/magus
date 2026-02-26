@@ -247,7 +247,7 @@ The SEO Plugin design is **well-architected and production-ready** with a solid 
 **Orchestration Dependency (✅ Correct):**
 ```json
 "dependencies": {
-  "orchestration@mag-claude-plugins": "^0.5.0"
+  "orchestration@magus": "^0.5.0"
 }
 ```
 - Uses: multi-agent-coordination, quality-gates, todowrite-orchestration
@@ -741,7 +741,7 @@ All 7 skills are well-specified with appropriate knowledge sections:
 **Plugin manifest:**
 ```json
 "dependencies": {
-  "orchestration@mag-claude-plugins": "^0.5.0"
+  "orchestration@magus": "^0.5.0"
 }
 ```
 

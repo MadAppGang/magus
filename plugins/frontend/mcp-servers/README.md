@@ -53,7 +53,7 @@ Add to `.claude/settings.json` (this gets committed):
     "APIDOG_PROJECT_ID": "your-team-project-id"
   },
   "enabledPlugins": {
-    "frontend@mag-claude-plugins": true
+    "frontend@magus": true
   }
 }
 ```
@@ -164,7 +164,7 @@ npm install -g claudish
     "APIDOG_PROJECT_ID": "team-project-123"
   },
   "enabledPlugins": {
-    "frontend@mag-claude-plugins": true
+    "frontend@magus": true
   }
 }
 ```
@@ -256,7 +256,7 @@ OPENROUTER_API_KEY=sk-or-v1-...
 ```bash
 /plugin list
 
-# Should show: frontend@mag-claude-plugins ✓ enabled
+# Should show: frontend@magus ✓ enabled
 ```
 
 **Check 3: MCP server logs**
@@ -311,7 +311,7 @@ This usually means the server started but configuration is incomplete:
     "APIDOG_PROJECT_ID": "abc123xyz"
   },
   "enabledPlugins": {
-    "frontend@mag-claude-plugins": true
+    "frontend@magus": true
   }
 }
 ```

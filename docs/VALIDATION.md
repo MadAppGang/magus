@@ -49,7 +49,7 @@ The validation script checks:
 🔍 Validating plugin versions...
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-📦 Marketplace: mag-claude-plugins v2.9.0
+📦 Marketplace: magus v2.9.0
    Plugin root: ./plugins
 
 🔧 Checking plugin: frontend

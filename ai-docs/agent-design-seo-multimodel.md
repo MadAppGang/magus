@@ -3,7 +3,7 @@
 **Version:** 1.0.0
 **Date:** 2025-12-26
 **Author:** Claude Code Agent Designer
-**Plugin:** seo@mag-claude-plugins
+**Plugin:** seo@magus
 **Status:** Design Complete - Ready for Implementation
 
 ---
@@ -1360,7 +1360,7 @@ The agent has proxy mode support but needs enhanced patterns for multi-model orc
   ],
   "category": "content",
   "dependencies": {
-    "orchestration@mag-claude-plugins": "^0.6.0"
+    "orchestration@magus": "^0.6.0"
   },
   "agents": [
     "./agents/analyst.md",

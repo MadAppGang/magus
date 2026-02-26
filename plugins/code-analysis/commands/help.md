@@ -180,7 +180,7 @@ The `/implement` command will suggest it for better codebase understanding.
 /plugin marketplace add MadAppGang/claude-code
 
 # Install plugin
-/plugin install code-analysis@mag-claude-plugins
+/plugin install code-analysis@magus
 ```
 
 **Optional**: For semantic code search, install claudemem: `npm install -g claude-codemem`

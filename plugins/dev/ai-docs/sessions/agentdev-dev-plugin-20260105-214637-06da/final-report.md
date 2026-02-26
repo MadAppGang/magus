@@ -1,6 +1,6 @@
 # Dev Plugin - Final Development Report
 
-**Plugin**: dev@mag-claude-plugins
+**Plugin**: dev@magus
 **Version**: 1.1.0
 **Date**: January 5, 2026
 **Session**: agentdev-dev-plugin-20260105-214637-06da
@@ -165,10 +165,10 @@ All agents and commands track workflow progress with mandatory TodoWrite usage.
 ## Dependencies
 
 **Required:**
-- orchestration@mag-claude-plugins (^0.8.0)
+- orchestration@magus (^0.8.0)
 
 **Optional:**
-- code-analysis@mag-claude-plugins - Enhanced semantic search
+- code-analysis@magus - Enhanced semantic search
 - Claudish CLI - Multi-model validation
 
 ## Usage Examples

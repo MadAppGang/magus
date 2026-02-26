@@ -7,7 +7,7 @@ const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 export interface UpdateCacheData {
 	lastUpdateCheck: string; // ISO timestamp
 	lastUpdateResult: {
-		updated: string[]; // ["frontend@mag-claude-plugins v3.13.0", ...]
+		updated: string[]; // ["frontend@magus v3.13.0", ...]
 		failed: string[]; // Marketplaces that failed
 		autoUpdated?: Array<{
 			pluginId: string;

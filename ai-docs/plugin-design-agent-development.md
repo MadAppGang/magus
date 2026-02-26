@@ -74,12 +74,12 @@ plugins/agent-development/
 
 ## Dependencies
 
-### Required: orchestration@mag-claude-plugins
+### Required: orchestration@magus
 
 ```json
 {
   "dependencies": {
-    "orchestration@mag-claude-plugins": "^0.1.1"
+    "orchestration@magus": "^0.1.1"
   }
 }
 ```
@@ -294,7 +294,7 @@ skills: |
   ],
 
   "dependencies": {
-    "orchestration@mag-claude-plugins": "^0.1.1"
+    "orchestration@magus": "^0.1.1"
   },
 
   "compatibility": {
@@ -312,7 +312,7 @@ skills: |
 **Steps:**
 1. Complete plugin implementation
 2. Add to marketplace.json
-3. Install plugin: `/plugin install agent-development@mag-claude-plugins`
+3. Install plugin: `/plugin install agent-development@magus`
 4. Remove local files:
    - `.claude/agents/agent-architect.md`
    - `.claude/agents/agent-developer.md`

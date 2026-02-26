@@ -2,7 +2,7 @@
 
 **Date:** February 9-10, 2026
 **Author:** Jack Rudenko + Claude Opus 4.6
-**Repository:** MadAppGang/claude-code (MAG Claude Plugins)
+**Repository:** MadAppGang/claude-code (Magus)
 **Duration:** ~10 hours across 3 conversation sessions (~95 automated test runs)
 
 ---
@@ -610,7 +610,7 @@ The command template instructs Claude to:
 
 ### First Attempt: Cache Discovery Problem
 
-The first test run returned `"Unknown skill: delegate"` in 4ms — the CLI never made an API call. The `/delegate` command was created in the local repo but the installed plugin loads from the **cache directory** (`~/.claude/plugins/cache/mag-claude-plugins/dev/1.29.0/`). The local changes weren't deployed.
+The first test run returned `"Unknown skill: delegate"` in 4ms — the CLI never made an API call. The `/delegate` command was created in the local repo but the installed plugin loads from the **cache directory** (`~/.claude/plugins/cache/magus/dev/1.29.0/`). The local changes weren't deployed.
 
 Additionally, the command needed to be invoked as `/dev:delegate` (namespaced), not `/delegate`.
 

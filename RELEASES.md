@@ -1,6 +1,6 @@
 # Release Notes
 
-Detailed release documentation for MAG Claude Plugins.
+Detailed release documentation for Magus.
 
 See [CHANGELOG.md](./CHANGELOG.md) for version history.
 

@@ -529,7 +529,7 @@ keywords: [grok, gemini, gpt-5, claudish, parallel, consensus, multi-model, exte
    ```json
    {
      "dependencies": {
-       "orchestration@mag-claude-plugins": "^0.1.0"
+       "orchestration@magus": "^0.1.0"
      }
    }
    ```

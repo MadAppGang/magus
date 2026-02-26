@@ -1,9 +1,9 @@
-# MAG Claude Plugins - Final Summary
+# Magus - Final Summary
 
 ## 🎉 Repository Complete and Production-Ready!
 
-**Repository:** `mag-claude-plugins` (local development path: project root)
-**Marketplace:** mag-claude-plugins
+**Repository:** `magus` (local development path: project root)
+**Marketplace:** magus
 **Owner:** Jack Rudenko (i@madappgang.com) @ MadAppGang
 **License:** MIT
 **Status:** ✅ Production Ready
@@ -210,7 +210,7 @@ git push -u origin main
 
 # Team members install
 /plugin marketplace add MadAppGang/claude-code
-/plugin install frontend@mag-claude-plugins
+/plugin install frontend@magus
 ```
 
 ### Option 2: Local Testing
@@ -218,7 +218,7 @@ git push -u origin main
 ```bash
 # Add locally for testing (from repo root)
 /plugin marketplace add /path/to/claude-code
-/plugin install frontend@mag-claude-plugins
+/plugin install frontend@magus
 ```
 
 ### Option 3: Auto-Install in Projects
@@ -228,7 +228,7 @@ Add to project's `.claude/settings.json`:
 ```json
 {
   "extraKnownMarketplaces": {
-    "mag-claude-plugins": {
+    "magus": {
       "source": {
         "source": "github",
         "repo": "MadAppGang/claude-code"
@@ -236,7 +236,7 @@ Add to project's `.claude/settings.json`:
     }
   },
   "enabledPlugins": {
-    "frontend@mag-claude-plugins": true
+    "frontend@magus": true
   }
 }
 ```
@@ -252,7 +252,7 @@ Add to project's `.claude/settings.json`:
 git clone project-repo
 cd project-repo
 /plugin marketplace add MadAppGang/claude-code
-/plugin install frontend@mag-claude-plugins
+/plugin install frontend@magus
 ```
 
 **Step 2: Set Up Environment**
@@ -442,7 +442,7 @@ Extracted from real project (caremaster-tenant-frontend) with proven workflows.
 1. **Push to GitHub (from repo root):**
    ```bash
    git add .
-   git commit -m "Complete MAG Claude Plugins marketplace"
+   git commit -m "Complete Magus marketplace"
    git push origin main
    ```
 

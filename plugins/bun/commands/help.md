@@ -121,7 +121,7 @@ src/
 /plugin marketplace add MadAppGang/claude-code
 
 # Install plugin
-/plugin install bun@mag-claude-plugins
+/plugin install bun@magus
 ```
 
 **Optional**: Configure Apidog integration for API documentation sync.

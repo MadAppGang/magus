@@ -724,7 +724,7 @@ describe('Settings cache optimization', () => {
 describe('Incremental marketplace scanning', () => {
   it('should only rescan changed marketplaces after git pull', async () => {
     const initial = await getLocalMarketplacesIncremental();
-    await simulateGitPull('mag-claude-plugins'); // Change one
+    await simulateGitPull('magus'); // Change one
     const updated = await getLocalMarketplacesIncremental();
     expect(scanSingleMarketplace).toHaveBeenCalledTimes(1);
   });
@@ -890,7 +890,7 @@ Key format: marketplace:{marketplaceName}
 Value type: MarketplacePlugin[]
 
 Examples:
-- marketplace:mag-claude-plugins → [{name: "frontend", ...}, {name: "code-analysis", ...}]
+- marketplace:magus → [{name: "frontend", ...}, {name: "code-analysis", ...}]
 - marketplace:official → [{name: "aws-integration", ...}]
 - marketplace:featured → [{name: "popular-plugin", ...}]
 ```
@@ -951,8 +951,8 @@ manager.clear();                             // Nuclear clear
 
 // Access hooks for manual triggers
 const hooks = getCacheHooks();
-await hooks.onPluginEnabled('frontend@mag-claude-plugins');
-await hooks.onMarketplaceRefreshed('mag-claude-plugins');
+await hooks.onPluginEnabled('frontend@magus');
+await hooks.onMarketplaceRefreshed('magus');
 ```
 
 ### 11.2 Recommended TUI/GUI Debug Views
@@ -1007,7 +1007,7 @@ await hooks.onMarketplaceRefreshed('mag-claude-plugins');
 ```
 ┌─ Cache Viewer: marketplace ────────────────────────┐
 │                                                     │
-│  Key: marketplace:mag-claude-plugins                │
+│  Key: marketplace:magus                │
 │    Created: 2026-02-09 12:30:00                    │
 │    Accessed: 2026-02-09 12:34:56                   │
 │    Expires: 2026-02-09 12:35:00 (4s remaining)     │

@@ -182,7 +182,7 @@ claudemem --agent impact <name>      # Impact analysis
 
 ## Next Steps
 
-1. **Test plugin loading:** `/plugin reload code-analysis@mag-claude-plugins`
+1. **Test plugin loading:** `/plugin reload code-analysis@magus`
 2. **Verify hooks:** Check session-start output for version detection
 3. **Test workflows:** Run detective skills with new commands
 4. **Commit changes:** Review git status and commit

@@ -449,7 +449,7 @@ Consider optional `/seo-review` command that:
 Installation section (8.2) is generic template:
 ```bash
 /plugin marketplace add MadAppGang/claude-code
-/plugin install seo@mag-claude-plugins
+/plugin install seo@magus
 ```
 
 But doesn't specify:

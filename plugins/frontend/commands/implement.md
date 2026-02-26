@@ -138,7 +138,7 @@ Benefits:
 
 Installation (2 commands):
 /plugin marketplace add MadAppGang/claude-code
-/plugin install code-analysis@mag-claude-plugins
+/plugin install code-analysis@magus
 
 Repository: https://github.com/MadAppGang/claude-code
 

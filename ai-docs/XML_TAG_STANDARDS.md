@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document defines the standard XML tag structure for all agents and commands in the MAG Claude Plugins repository. Following these standards ensures:
+This document defines the standard XML tag structure for all agents and commands in the Magus repository. Following these standards ensures:
 
 - **Improved clarity**: AI models better understand prompt structure
 - **Better consistency**: Standardized patterns across all plugins
@@ -716,7 +716,7 @@ When creating or updating agents/commands:
 
 - [Anthropic Prompt Engineering Guide](https://docs.claude.com/en/docs/build-with-claude/prompt-engineering/overview)
 - [Anthropic XML Tags Documentation](https://docs.claude.com/en/docs/build-with-claude/prompt-engineering/use-xml-tags)
-- [MAG Claude Plugins Repository](https://github.com/MadAppGang/claude-code)
+- [Magus Repository](https://github.com/MadAppGang/claude-code)
 
 ---
 

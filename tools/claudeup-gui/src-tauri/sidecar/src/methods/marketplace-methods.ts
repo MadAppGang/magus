@@ -32,7 +32,7 @@ type LoggerCallback = (level: 'info' | 'warn' | 'error', message: string) => voi
 /**
  * Default marketplaces that cannot be removed
  */
-const DEFAULT_MARKETPLACES = ['claude-plugins-official', 'mag-claude-plugins'];
+const DEFAULT_MARKETPLACES = ['claude-plugins-official', 'magus'];
 
 /**
  * Paths for marketplace storage
@@ -190,7 +190,7 @@ function mapMarketplaceErrorToRpc(error: unknown): { code: number; message: stri
   if (errorMessage.includes('Cannot remove default')) {
     return {
       code: JSON_RPC_ERRORS.VALIDATION_ERROR,
-      message: 'Cannot remove default marketplaces (claude-plugins-official, mag-claude-plugins)',
+      message: 'Cannot remove default marketplaces (claude-plugins-official, magus)',
       data: { originalError: errorMessage },
     };
   }
@@ -388,7 +388,7 @@ export const marketplaceMethods: Record<string, RpcMethodHandler> = {
     if (isDefaultMarketplace(name)) {
       throw {
         code: JSON_RPC_ERRORS.VALIDATION_ERROR,
-        message: 'Cannot remove default marketplaces (claude-plugins-official, mag-claude-plugins)',
+        message: 'Cannot remove default marketplaces (claude-plugins-official, magus)',
       };
     }
 
@@ -467,7 +467,7 @@ export const marketplaceMethods: Record<string, RpcMethodHandler> = {
       // Add default marketplaces first (hardcoded)
       const defaultMarketplacesInfo: Array<{ id: string; name: string }> = [
         { id: 'claude-plugins-official', name: 'Claude Official' },
-        { id: 'mag-claude-plugins', name: 'MAG Claude Plugins' },
+        { id: 'magus', name: 'Magus' },
       ];
 
       for (const defaultMkt of defaultMarketplacesInfo) {

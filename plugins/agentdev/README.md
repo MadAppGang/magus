@@ -5,7 +5,7 @@ Create, implement, and review Claude Code agents and commands with multi-model v
 ## Installation
 
 ```bash
-/plugin install agentdev@mag-claude-plugins
+/plugin install agentdev@magus
 ```
 
 ## Features
@@ -57,7 +57,7 @@ Create, implement, and review Claude Code agents and commands with multi-model v
 
 ## Dependencies
 
-- `orchestration@mag-claude-plugins` (auto-installed)
+- `orchestration@magus` (auto-installed)
 
 ## Multi-Model Validation
 

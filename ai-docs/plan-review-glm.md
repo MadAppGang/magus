@@ -436,7 +436,7 @@ The design correctly depends on the orchestration plugin:
 ```json
 {
   "dependencies": {
-    "orchestration@mag-claude-plugins": "^0.5.0"
+    "orchestration@magus": "^0.5.0"
   }
 }
 ```
@@ -761,7 +761,7 @@ The SEO plugin design represents a **high-quality, production-ready specificatio
 4. **Consistent patterns** with the existing plugin ecosystem
 5. **Practical focus** with real-world workflows and examples
 
-With minor improvements (MCP tool declarations, error recovery patterns, validation thresholds), the design is ready for implementation. The plugin will be a valuable addition to the MAG Claude Plugins marketplace, providing enterprise-grade SEO capabilities to Claude Code users.
+With minor improvements (MCP tool declarations, error recovery patterns, validation thresholds), the design is ready for implementation. The plugin will be a valuable addition to the Magus marketplace, providing enterprise-grade SEO capabilities to Claude Code users.
 
 **Recommendation:** Proceed with implementation after addressing High Priority Issues (#1-3).
 

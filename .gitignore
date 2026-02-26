@@ -38,6 +38,7 @@ Temporary Items
 # Claude Code Local Settings (NEVER commit!)
 .claude/settings.local.json
 .claude/**/*.secret.json
+.claude/.coaching/
 
 # Secrets (NEVER commit!)
 **/*.secret.json

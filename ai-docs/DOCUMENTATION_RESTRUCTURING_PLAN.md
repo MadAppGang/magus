@@ -1,4 +1,4 @@
-# MAG Claude Plugins - Documentation Restructuring Plan
+# Magus - Documentation Restructuring Plan
 
 **Created:** 2025-11-11
 **Author:** Claude Code Analysis
@@ -468,7 +468,7 @@ claude-code/
 #### Proposed Structure:
 
 ```markdown
-# MAG Claude Plugins
+# Magus
 
 > Professional Claude Code plugins battle-tested in production
 
@@ -490,7 +490,7 @@ claude-code/
 # 2. Enable in .claude/settings.json
 {
   "enabledPlugins": {
-    "frontend@mag-claude-plugins": true
+    "frontend@magus": true
   }
 }
 
@@ -583,7 +583,7 @@ MIT - See [LICENSE](LICENSE)
 ```markdown
 # 5-Minute Quick Start
 
-Get MAG Claude Plugins running in 5 minutes.
+Get Magus running in 5 minutes.
 
 ## Prerequisites (1 minute)
 
@@ -608,7 +608,7 @@ Create `.claude/settings.json` in your project:
 ```json
 {
   "enabledPlugins": {
-    "frontend@mag-claude-plugins": true
+    "frontend@magus": true
   }
 }
 ```
@@ -624,7 +624,7 @@ Save the file. Claude Code will automatically install the plugin.
 
 You should see:
 ```
-✅ frontend@mag-claude-plugins
+✅ frontend@magus
    Version: 2.9.0
    Status: Loaded
 ```
@@ -705,13 +705,13 @@ Check settings format (must be object, not array):
 // ✅ CORRECT
 {
   "enabledPlugins": {
-    "frontend@mag-claude-plugins": true
+    "frontend@magus": true
   }
 }
 
 // ❌ WRONG
 {
-  "enabledPlugins": ["frontend@mag-claude-plugins"]
+  "enabledPlugins": ["frontend@magus"]
 }
 ```
 
@@ -743,7 +743,7 @@ Check settings format (must be object, not array):
 ```markdown
 # Documentation Hub
 
-Welcome to MAG Claude Plugins documentation. Find what you need based on your goal:
+Welcome to Magus documentation. Find what you need based on your goal:
 
 ## I want to...
 
@@ -911,7 +911,7 @@ Working examples you can copy:
 # 2. Enable in .claude/settings.json
 {
   "enabledPlugins": {
-    "frontend@mag-claude-plugins": true
+    "frontend@magus": true
   }
 }
 ```
@@ -1026,7 +1026,7 @@ Working examples you can copy:
 ```json
 {
   "enabledPlugins": {
-    "code-analysis@mag-claude-plugins": true
+    "code-analysis@magus": true
   }
 }
 ```
@@ -1052,9 +1052,9 @@ Working examples you can copy:
 ```json
 {
   "enabledPlugins": {
-    "frontend@mag-claude-plugins": true,
-    "code-analysis@mag-claude-plugins": true,
-    "bun@mag-claude-plugins": true
+    "frontend@magus": true,
+    "code-analysis@magus": true,
+    "bun@magus": true
   }
 }
 ```
@@ -1085,19 +1085,19 @@ Working examples you can copy:
    // ✅ CORRECT
    {
      "enabledPlugins": {
-       "frontend@mag-claude-plugins": true
+       "frontend@magus": true
      }
    }
 
    // ❌ WRONG
    {
-     "enabledPlugins": ["frontend@mag-claude-plugins"]
+     "enabledPlugins": ["frontend@magus"]
    }
    ```
 
 3. **Reload plugin:**
    ```bash
-   /plugin reload frontend@mag-claude-plugins
+   /plugin reload frontend@magus
    ```
 
 4. **Restart Claude Code**
@@ -1142,13 +1142,13 @@ Working examples you can copy:
 
 **Simple update (updates all):**
 ```bash
-/plugin marketplace update mag-claude-plugins
+/plugin marketplace update magus
 ```
 
 **Manual update (specific plugin):**
 ```bash
-/plugin remove frontend@mag-claude-plugins
-/plugin install frontend@mag-claude-plugins
+/plugin remove frontend@magus
+/plugin install frontend@magus
 ```
 
 **Check current version:**
@@ -1191,7 +1191,7 @@ Working examples you can copy:
    // .claude/settings.json (commit to git)
    {
      "enabledPlugins": {
-       "frontend@mag-claude-plugins": true
+       "frontend@magus": true
      },
      "env": {
        "APIDOG_PROJECT_ID": "your-project-id"  // Shareable
@@ -1640,7 +1640,7 @@ Create `.claude/settings.json` in your project root:
 {
   // Enable the frontend plugin
   "enabledPlugins": {
-    "frontend@mag-claude-plugins": true
+    "frontend@magus": true
   }
 }
 ```
@@ -1654,7 +1654,7 @@ Save the file. Claude Code will automatically install the plugin.
 
 **Expected output:**
 ```
-✅ frontend@mag-claude-plugins
+✅ frontend@magus
    Version: 2.9.0
    Status: Loaded
 ```
@@ -2182,7 +2182,7 @@ These can be completed in 1-2 hours and provide immediate UX improvement:
 
 **Action:**
 ```markdown
-# MAG Claude Plugins
+# Magus
 
 > Professional Claude Code plugins battle-tested in production
 

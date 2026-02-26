@@ -38,7 +38,7 @@ All agents use `npx claudish --stdin --model {model_name} --quiet` but the code 
 # Note: Do NOT use --auto-approve flag (it does not exist in claudish).
 ```
 
-However, based on the orchestration:multi-model-validation skill patterns and existing MAG plugins, claudish **DOES support** `--auto-approve` (or non-interactive execution by default). The command should be:
+However, based on the orchestration:multi-model-validation skill patterns and existing Magus plugins, claudish **DOES support** `--auto-approve` (or non-interactive execution by default). The command should be:
 
 ```bash
 printf '%s' "$AGENT_PROMPT" | npx claudish --stdin --model {model_name} --quiet --auto-approve

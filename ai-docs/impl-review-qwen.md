@@ -26,7 +26,7 @@ The SEO plugin demonstrates **production-ready** implementation with comprehensi
 ✅ **Strengths:**
 - Well-formed JSON with proper structure
 - Clear metadata (name, version, author, license)
-- Proper dependency declaration: `orchestration@mag-claude-plugins ^0.5.0`
+- Proper dependency declaration: `orchestration@magus ^0.5.0`
 - All component paths correctly specified
 - Meaningful keywords for discoverability
 - Professional author info

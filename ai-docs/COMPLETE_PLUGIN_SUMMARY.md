@@ -1,9 +1,9 @@
-# Complete Plugin Summary - MAG Claude Plugins
+# Complete Plugin Summary - Magus
 
 ## ✅ Repository Status: PRODUCTION READY
 
-**Repository:** `mag-claude-plugins` (local development path: project root)
-**Marketplace:** mag-claude-plugins
+**Repository:** `magus` (local development path: project root)
+**Marketplace:** magus
 **Owner:** Jack Rudenko (i@madappgang.com) @ MadAppGang
 **License:** MIT
 
@@ -280,7 +280,7 @@ claude-code/
 /plugin marketplace add /path/to/claude-code
 
 # Install plugin
-/plugin install frontend@mag-claude-plugins
+/plugin install frontend@magus
 ```
 
 ### Option 2: GitHub Distribution
@@ -293,7 +293,7 @@ git push origin main
 
 # Team members install
 /plugin marketplace add MadAppGang/claude-code
-/plugin install frontend@mag-claude-plugins
+/plugin install frontend@magus
 ```
 
 ### Option 3: GitLab/Other Git
@@ -305,7 +305,7 @@ git push -u origin main
 
 # Team members install
 /plugin marketplace add https://gitlab.com/MadAppGang/claude-code.git
-/plugin install frontend@mag-claude-plugins
+/plugin install frontend@magus
 ```
 
 ### Option 4: Auto-Install in Projects
@@ -315,7 +315,7 @@ Add to project's `.claude/settings.json`:
 ```json
 {
   "extraKnownMarketplaces": {
-    "mag-claude-plugins": {
+    "magus": {
       "source": {
         "source": "github",
         "repo": "MadAppGang/claude-code"
@@ -323,7 +323,7 @@ Add to project's `.claude/settings.json`:
     }
   },
   "enabledPlugins": {
-    "frontend@mag-claude-plugins": true
+    "frontend@magus": true
   }
 }
 ```

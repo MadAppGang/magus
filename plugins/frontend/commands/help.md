@@ -97,7 +97,7 @@ Present the following help information to the user in a clear, organized format:
 /plugin marketplace add MadAppGang/claude-code
 
 # Install plugin
-/plugin install frontend@mag-claude-plugins
+/plugin install frontend@magus
 ```
 
 ---

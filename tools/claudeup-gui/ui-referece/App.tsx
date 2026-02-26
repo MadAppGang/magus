@@ -19,7 +19,7 @@ const App: React.FC = () => {
   const projectMenuRef = useRef<HTMLDivElement>(null);
 
   const [state, setState] = useState<AppState>({
-    activeMarketplace: 'mag-claude-plugins',
+    activeMarketplace: 'magus',
     activeProjectId: 'proj_1',
     searchQuery: '',
     selectedPluginId: null

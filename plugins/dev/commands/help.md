@@ -180,10 +180,10 @@ Backend:
 ### Dependencies
 
 **Required:**
-- **orchestration@mag-claude-plugins** (^0.8.0) - Multi-model validation and quality gates
+- **orchestration@magus** (^0.8.0) - Multi-model validation and quality gates
 
 **Optional:**
-- **code-analysis@mag-claude-plugins** - Semantic code search for better context
+- **code-analysis@magus** - Semantic code search for better context
 - **Claudish CLI** (`npm install -g claudish`) - External AI model reviews
 
 To check if optional dependencies are available:

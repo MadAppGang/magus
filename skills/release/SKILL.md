@@ -1,11 +1,11 @@
 ---
 name: release
-description: Plugin release process for MAG Claude Plugins marketplace. Covers version bumping, marketplace.json updates, git tagging, and common mistakes. Use when releasing new plugin versions or troubleshooting update issues.
+description: Plugin release process for Magus marketplace. Covers version bumping, marketplace.json updates, git tagging, and common mistakes. Use when releasing new plugin versions or troubleshooting update issues.
 ---
 
 # Plugin Release Process
 
-Complete guide for releasing new versions of plugins in the MAG Claude Plugins marketplace.
+Complete guide for releasing new versions of plugins in the Magus marketplace.
 
 ## Critical Understanding
 
@@ -79,7 +79,7 @@ git push origin plugins/{plugin}/v{X.Y.Z}
 ### Step 5: Verify
 
 ```bash
-/plugin marketplace update mag-claude-plugins
+/plugin marketplace update magus
 # Should show new version ✅
 ```
 
@@ -157,7 +157,7 @@ git push origin main
 git push origin plugins/frontend/v3.3.0
 
 # 5. Verify
-/plugin marketplace update mag-claude-plugins
+/plugin marketplace update magus
 # Output: frontend v3.3.0 ✅
 ```
 

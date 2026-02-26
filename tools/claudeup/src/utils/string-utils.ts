@@ -4,7 +4,7 @@
 
 /**
  * Format marketplace name for display
- * e.g., "mag-claude-plugins" -> "Mag Claude Plugins"
+ * e.g., "magus" -> "Magus"
  */
 export function formatMarketplaceName(name: string): string {
 	return name

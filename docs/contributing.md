@@ -1,4 +1,4 @@
-# Contributing to MAG Claude Plugins
+# Contributing to Magus
 
 We welcome contributions from the community! This guide will help you submit high-quality plugins.
 
@@ -392,7 +392,7 @@ Before submitting your PR, verify:
 
 ---
 
-**Thank you for contributing to MAG Claude Plugins!** 🚀
+**Thank you for contributing to Magus!** 🚀
 
 Your contributions help developers ship faster and build better software.
 

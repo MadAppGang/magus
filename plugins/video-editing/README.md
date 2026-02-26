@@ -63,7 +63,7 @@ Add to your `.claude/settings.json`:
 ```json
 {
   "enabledPlugins": {
-    "video-editing@mag-claude-plugins": true
+    "video-editing@magus": true
   }
 }
 ```
@@ -427,7 +427,7 @@ pip install insanely-fast-whisper
 
 ## Contributing
 
-This plugin is part of the MAG Claude Plugins collection. See the main repository for contribution guidelines.
+This plugin is part of the Magus collection. See the main repository for contribution guidelines.
 
 ## License
 

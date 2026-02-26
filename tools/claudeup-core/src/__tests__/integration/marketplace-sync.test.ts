@@ -49,7 +49,7 @@ describe('marketplace-sync integration', () => {
       const content = await readFile(MARKETPLACE_JSON, 'utf-8');
       marketplace = JSON.parse(content);
 
-      expect(marketplace.name).toBe('mag-claude-plugins');
+      expect(marketplace.name).toBe('magus');
       expect(Array.isArray(marketplace.plugins)).toBe(true);
     });
 

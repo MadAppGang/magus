@@ -1,6 +1,6 @@
 # Plugin Development Guide
 
-Complete guide to creating Claude Code plugins for the MAG Claude Plugins marketplace.
+Complete guide to creating Claude Code plugins for the Magus marketplace.
 
 ---
 
@@ -82,7 +82,7 @@ your-plugin-name/
 /plugin marketplace add /path/to/claude-code
 
 # Install your plugin
-/plugin install your-plugin-name@mag-claude-plugins
+/plugin install your-plugin-name@magus
 
 # Verify it works
 /plugin list

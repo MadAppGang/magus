@@ -630,7 +630,7 @@ export interface MarketplaceRecoveryResult {
 }
 
 /**
- * Check if a marketplace is from MadAppGang
+ * Check if a marketplace is from Magus (MadAppGang)
  */
 function isMadAppGangMarketplace(entry: KnownMarketplaceEntry): boolean {
 	const repo = entry.source?.repo?.toLowerCase() || "";
@@ -639,7 +639,7 @@ function isMadAppGangMarketplace(entry: KnownMarketplaceEntry): boolean {
 
 /**
  * Recover/sync marketplace settings:
- * - Enable autoUpdate for MadAppGang marketplaces that don't have it set
+ * - Enable autoUpdate for Magus marketplaces that don't have it set
  * - Remove entries for marketplaces whose installLocation no longer exists
  */
 export async function recoverMarketplaceSettings(): Promise<MarketplaceRecoveryResult> {
@@ -661,7 +661,7 @@ export async function recoverMarketplaceSettings(): Promise<MarketplaceRecoveryR
 			continue;
 		}
 
-		// Enable autoUpdate if not set - only for MadAppGang marketplaces
+		// Enable autoUpdate if not set - only for Magus (MadAppGang) marketplaces
 		if (entry.autoUpdate === undefined && isMadAppGangMarketplace(entry)) {
 			entry.autoUpdate = true;
 			result.enabledAutoUpdate.push(name);

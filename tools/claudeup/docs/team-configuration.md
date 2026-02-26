@@ -61,7 +61,7 @@ Claudeup uses Claude Code's native plugin system for marketplace management. Thi
 ```json
 {
   "extraKnownMarketplaces": {
-    "mag-claude-plugins": {
+    "magus": {
       "source": {
         "source": "github",
         "repo": "MadAppGang/claude-code"
@@ -69,7 +69,7 @@ Claudeup uses Claude Code's native plugin system for marketplace management. Thi
     }
   },
   "enabledPlugins": {
-    "frontend@mag-claude-plugins": true
+    "frontend@magus": true
   }
 }
 ```

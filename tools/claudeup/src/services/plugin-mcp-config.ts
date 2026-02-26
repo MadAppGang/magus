@@ -74,7 +74,7 @@ interface McpServerConfig {
 
 /**
  * Get the path to a plugin's mcp-config.json in the marketplace cache
- * @param marketplaceName - Name of the marketplace (e.g., "mag-claude-plugins")
+ * @param marketplaceName - Name of the marketplace (e.g., "magus")
  * @param pluginSource - Plugin source path from marketplace.json (e.g., "./plugins/frontend")
  * @returns Full path to mcp-config.json or undefined if not found
  */
@@ -142,7 +142,7 @@ function generateLabel(varName: string): string {
  * Get all environment variable requirements for a plugin
  * Extracts ${VAR_NAME} patterns from the plugin's mcp-config.json
  *
- * @param marketplaceName - Name of the marketplace (e.g., "mag-claude-plugins")
+ * @param marketplaceName - Name of the marketplace (e.g., "magus")
  * @param pluginSource - Plugin source path from marketplace.json (e.g., "./plugins/frontend")
  * @returns Array of required env vars with metadata
  */

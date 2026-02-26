@@ -40,8 +40,8 @@
   ],
   "hooks": "./hooks/hooks.json",
   "dependencies": {
-    "dev@mag-claude-plugins": "^1.13.0",
-    "orchestration@mag-claude-plugins": "^0.9.0"
+    "dev@magus": "^1.13.0",
+    "orchestration@magus": "^0.9.0"
   },
   "npmDependencies": {
     "@linear/sdk": "^26.0.0",

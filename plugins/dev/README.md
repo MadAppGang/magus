@@ -36,8 +36,8 @@ Add to `.claude/settings.json`:
 ```json
 {
   "enabledPlugins": {
-    "dev@mag-claude-plugins": true,
-    "orchestration@mag-claude-plugins": true
+    "dev@magus": true,
+    "orchestration@magus": true
   }
 }
 ```
@@ -55,8 +55,8 @@ cd claude-code
 # Enable in .claude/settings.json
 {
   "enabledPlugins": {
-    "dev@mag-claude-plugins": true,
-    "orchestration@mag-claude-plugins": true
+    "dev@magus": true,
+    "orchestration@magus": true
   }
 }
 ```
@@ -282,10 +282,10 @@ npm install -g claudish
 ## Dependencies
 
 ### Required
-- **orchestration@mag-claude-plugins** (^0.8.0) - Multi-model validation and quality gates
+- **orchestration@magus** (^0.8.0) - Multi-model validation and quality gates
 
 ### Optional
-- **code-analysis@mag-claude-plugins** - Semantic code search
+- **code-analysis@magus** - Semantic code search
 - **Claudish CLI** - External AI model reviews
 
 ## Troubleshooting

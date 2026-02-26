@@ -257,7 +257,7 @@ The plugin has a README.md file (shown in glob results), but I didn't read it as
 
 **Impact**: Users might not have clear setup instructions. Based on observed files, README should document:
 - Installation instructions
-- Plugin dependencies (orchestration@mag-claude-plugins)
+- Plugin dependencies (orchestration@magus)
 - Command usage examples
 - Available agents
 
@@ -512,7 +512,7 @@ Analyze SERP, identify intent, note competitors..."</step>
 1. **Well-Structured Multi-Agent System**: 4 specialized agents (analyst, researcher, writer, editor) with clear roles and no overlap
 2. **Comprehensive Workflow**: Each command orchestrates a complete end-to-end workflow (research → analysis → content creation → review)
 3. **Session-Based Isolation**: Uses `/tmp/seo-{timestamp}-{keyword}` for unique session isolation (prevents cross-contamination)
-4. **Dependency Management**: Correctly declares `orchestration@mag-claude-plugins` as required dependency
+4. **Dependency Management**: Correctly declares `orchestration@magus` as required dependency
 
 ### Knowledge Base
 1. **E-E-A-T Framework**: Quantified 0-100 scoring rubric with clear criteria for evaluation

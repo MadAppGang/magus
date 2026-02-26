@@ -1344,7 +1344,7 @@ Routes → Controllers → Services → Repositories
 ```bash
 # 1. Install the plugin
 /plugin marketplace add MadAppGang/claude-code
-/plugin install bun@mag-claude-plugins
+/plugin install bun@magus
 
 # 2. Set up environment (if using Apidog)
 echo "APIDOG_PROJECT_ID=your-id" >> .env

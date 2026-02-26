@@ -12,12 +12,12 @@ Design the UI components for displaying Claude Code plugins in claudeup-gui. Thi
 
 | Field | Type | Description | Example |
 |-------|------|-------------|---------|
-| `id` | string | Unique identifier (name@marketplace) | `"frontend@mag-claude-plugins"` |
+| `id` | string | Unique identifier (name@marketplace) | `"frontend@magus"` |
 | `name` | string | Plugin display name | `"frontend"` |
 | `version` | string \| null | Current version | `"3.13.0"` |
 | `description` | string | Plugin description (can be long) | `"Comprehensive frontend development toolkit with TypeScript, React 19, Vite..."` |
-| `marketplace` | string | Marketplace identifier | `"mag-claude-plugins"` |
-| `marketplaceDisplay` | string | Human-readable marketplace name | `"MAG Claude Plugins"` |
+| `marketplace` | string | Marketplace identifier | `"magus"` |
+| `marketplaceDisplay` | string | Human-readable marketplace name | `"Magus"` |
 | `enabled` | boolean | Whether plugin is currently enabled | `true` |
 
 ### Update Information
@@ -107,12 +107,12 @@ These arrays show what the plugin provides:
 
 ```json
 {
-  "id": "dev@mag-claude-plugins",
+  "id": "dev@magus",
   "name": "dev",
   "version": "1.17.0",
   "description": "Universal development assistant with self-improving learning, documentation, deep research, specification interviews, and DevOps guidance. v1.17.0: Dingo skill auto-detection - agents now auto-load dingo+golang skills when .dingo files detected. 30+ skills.",
-  "marketplace": "mag-claude-plugins",
-  "marketplaceDisplay": "MAG Claude Plugins",
+  "marketplace": "magus",
+  "marketplaceDisplay": "Magus",
   "enabled": true,
   "hasUpdate": false,
   "category": "development",
@@ -135,12 +135,12 @@ These arrays show what the plugin provides:
 
 ```json
 {
-  "id": "nanobanana@mag-claude-plugins",
+  "id": "nanobanana@magus",
   "name": "nanobanana",
   "version": "2.2.3",
   "description": "AI image generation and editing using Google Gemini 3 Pro Image API (Nano Banana Pro). Simple Node.js CLI with markdown styles, batch generation, reference image support, and comprehensive error handling with retry logic.",
-  "marketplace": "mag-claude-plugins",
-  "marketplaceDisplay": "MAG Claude Plugins",
+  "marketplace": "magus",
+  "marketplaceDisplay": "Magus",
   "enabled": false,
   "hasUpdate": true,
   "installedVersion": "2.1.0",
@@ -163,12 +163,12 @@ These arrays show what the plugin provides:
 
 ```json
 {
-  "id": "code-analysis@mag-claude-plugins",
+  "id": "code-analysis@magus",
   "name": "code-analysis",
   "version": "3.0.0",
   "description": "Deep code investigation with claudemem. v3.0.0: ENRICHMENT MODE - hooks now enhance native tools with AST context instead of blocking.",
-  "marketplace": "mag-claude-plugins",
-  "marketplaceDisplay": "MAG Claude Plugins",
+  "marketplace": "magus",
+  "marketplaceDisplay": "Magus",
   "enabled": true,
   "hasUpdate": false,
   "category": "development",

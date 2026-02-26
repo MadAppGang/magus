@@ -168,7 +168,7 @@ SESSION_PATH="/tmp/seo-$(date +%Y%m%d-%H%M%S)-${KEYWORD_SLUG}"
 - ✅ Description: Comprehensive
 - ✅ Author: Jack Rudenko, MadAppGang
 - ✅ License: MIT
-- ✅ Dependencies: orchestration@mag-claude-plugins ^0.5.0
+- ✅ Dependencies: orchestration@magus ^0.5.0
 
 ### Agents (4/4) ✓
 1. seo-writer - Content creation (Sonnet)

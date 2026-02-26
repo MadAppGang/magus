@@ -59,7 +59,7 @@ The system is designed for **UI-independent operation** with no console.log depe
 **Marketplace Manifest** (`.claude-plugin/marketplace.json`):
 ```json
 {
-  "name": "mag-claude-plugins",
+  "name": "magus",
   "owner": { "name": "Jack Rudenko", "email": "i@madappgang.com" },
   "metadata": {
     "description": "Professional plugin marketplace",
@@ -96,7 +96,7 @@ The system is designed for **UI-independent operation** with no console.log depe
 │                                                              │
 │  2. Get configured marketplaces                             │
 │     ├── defaultMarketplaces (hardcoded)                     │
-│     │   ├── mag-claude-plugins                              │
+│     │   ├── magus                              │
 │     │   └── claude-plugins-official                         │
 │     └── extraKnownMarketplaces (from settings)              │
 │                                                              │
@@ -170,9 +170,9 @@ All plugins use the format: **`plugin-name@marketplace-name`**
 
 ```typescript
 // Example plugin IDs:
-"code-analysis@mag-claude-plugins"
-"frontend@mag-claude-plugins"
-"seo@mag-claude-plugins"
+"code-analysis@magus"
+"frontend@magus"
+"seo@magus"
 
 // Parsing:
 function parsePluginId(pluginId: string): { pluginName: string; marketplace: string } | null {
@@ -194,8 +194,8 @@ Marketplaces are identified by their unique name from `marketplace.json`:
 ```typescript
 const defaultMarketplaces: DefaultMarketplace[] = [
   {
-    name: 'mag-claude-plugins',                    // Unique identifier
-    displayName: 'MAG Claude Plugins',             // Human-readable name
+    name: 'magus',                    // Unique identifier
+    displayName: 'Magus',             // Human-readable name
     description: 'Professional plugin marketplace',
     source: {
       source: 'github',
@@ -432,11 +432,11 @@ Runtime Overrides
 ```json
 {
   "enabledPlugins": {
-    "code-analysis@mag-claude-plugins": true,
-    "frontend@mag-claude-plugins": true
+    "code-analysis@magus": true,
+    "frontend@magus": true
   },
   "installedPluginVersions": {
-    "code-analysis@mag-claude-plugins": "3.2.0"
+    "code-analysis@magus": "3.2.0"
   },
   "extraKnownMarketplaces": {
     "my-custom-marketplace": {
@@ -451,10 +451,10 @@ Runtime Overrides
 ```json
 {
   "enabledPlugins": {
-    "dev@mag-claude-plugins": true
+    "dev@magus": true
   },
   "installedPluginVersions": {
-    "dev@mag-claude-plugins": "1.29.0"
+    "dev@magus": "1.29.0"
   },
   "env": {
     "GITHUB_TOKEN": "ghp_xxxxx"
@@ -548,7 +548,7 @@ const cacheHooks = {
 │ Plugin Installation Flow                                     │
 ├─────────────────────────────────────────────────────────────┤
 │                                                              │
-│  User: Install "code-analysis@mag-claude-plugins"           │
+│  User: Install "code-analysis@magus"           │
 │         ↓                                                    │
 │  1. Validate plugin ID format                               │
 │         ↓                                                    │
@@ -560,7 +560,7 @@ const cacheHooks = {
 │     git clone https://github.com/MadAppGang/claude-code     │
 │         ↓                                                    │
 │  4. Copy plugin to cache                                    │
-│     ~/.claude/plugins/cache/mag-claude-plugins/             │
+│     ~/.claude/plugins/cache/magus/             │
 │                      code-analysis/3.2.0/                   │
 │         ↓                                                    │
 │  5. Update settings                                         │
@@ -625,12 +625,12 @@ Complete plugin metadata with multi-scope status:
 
 ```typescript
 interface PluginInfo {
-  id: string;                              // "code-analysis@mag-claude-plugins"
+  id: string;                              // "code-analysis@magus"
   name: string;                            // "code-analysis"
   version: string | null;                  // "3.2.0"
   description: string;
-  marketplace: string;                     // "mag-claude-plugins"
-  marketplaceDisplay: string;              // "MAG Claude Plugins"
+  marketplace: string;                     // "magus"
+  marketplaceDisplay: string;              // "Magus"
   enabled: boolean;                        // Current scope enabled status
   installedVersion?: string;
   hasUpdate?: boolean;
@@ -662,7 +662,7 @@ Complete marketplace metadata from local clone:
 
 ```typescript
 interface LocalMarketplace {
-  name: string;                            // "mag-claude-plugins"
+  name: string;                            // "magus"
   description: string;
   plugins: LocalMarketplacePlugin[];
   gitRepo?: string;                        // "MadAppGang/claude-code"

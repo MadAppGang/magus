@@ -1,6 +1,6 @@
 # Advanced Usage Guide
 
-Advanced installation methods, configuration options, and workflows for MAG Claude Plugins.
+Advanced installation methods, configuration options, and workflows for Magus.
 
 ---
 
@@ -41,7 +41,7 @@ Global installation makes plugins available in **all projects** without per-proj
 /plugin marketplace add MadAppGang/claude-code
 
 # Step 2: Install plugin globally
-/plugin install frontend@mag-claude-plugins
+/plugin install frontend@magus
 
 # Step 3: Verify installation
 /plugin list
@@ -65,7 +65,7 @@ Global installation makes plugins available in **all projects** without per-proj
 
 ```bash
 # Uninstall a plugin
-/plugin uninstall frontend@mag-claude-plugins
+/plugin uninstall frontend@magus
 
 # Verify removal
 /plugin list
@@ -99,7 +99,7 @@ Point to your local clone of the repository:
 #### 2. Install Plugin from Local Source
 
 ```bash
-/plugin install frontend@mag-claude-plugins
+/plugin install frontend@magus
 ```
 
 #### 3. Make Changes to Plugin Files
@@ -109,7 +109,7 @@ Edit agents, commands, skills, or configurations in your local directory.
 #### 4. Reload Plugin
 
 ```bash
-/plugin reload frontend@mag-claude-plugins
+/plugin reload frontend@magus
 ```
 
 **Note:** Some changes may require a full Claude Code restart.
@@ -132,13 +132,13 @@ git checkout -b feature/my-new-agent
 
 # 5. Test locally
 /plugin marketplace add /path/to/claude-code
-/plugin install frontend@mag-claude-plugins
+/plugin install frontend@magus
 
 # 6. Verify changes work
 # Test your new agent
 
 # 7. Reload after changes
-/plugin reload frontend@mag-claude-plugins
+/plugin reload frontend@magus
 
 # 8. Commit and push
 git add .
@@ -154,8 +154,8 @@ git push origin feature/my-new-agent
 /plugin marketplace list
 
 # Reinstall plugin
-/plugin remove frontend@mag-claude-plugins
-/plugin install frontend@mag-claude-plugins
+/plugin remove frontend@magus
+/plugin install frontend@magus
 
 # Verify plugin files exist
 ls -la /path/to/claude-code/plugins/frontend
@@ -164,7 +164,7 @@ ls -la /path/to/claude-code/plugins/frontend
 **Changes not appearing:**
 ```bash
 # Reload plugin
-/plugin reload frontend@mag-claude-plugins
+/plugin reload frontend@magus
 
 # Or restart Claude Code completely
 ```
@@ -199,7 +199,7 @@ Add marketplace to `.claude/settings.json`:
 ```json
 {
   "extraKnownMarketplaces": {
-    "mag-claude-plugins": {
+    "magus": {
       "source": {
         "source": "github",
         "repo": "MadAppGang/claude-code"
@@ -207,8 +207,8 @@ Add marketplace to `.claude/settings.json`:
     }
   },
   "enabledPlugins": {
-    "frontend@mag-claude-plugins": true,
-    "code-analysis@mag-claude-plugins": true
+    "frontend@magus": true,
+    "code-analysis@magus": true
   }
 }
 ```
@@ -252,10 +252,10 @@ Control plugin versions in `marketplace.json`:
 
 ```bash
 # Install latest version
-/plugin install frontend@mag-claude-plugins
+/plugin install frontend@magus
 
 # Install specific version
-/plugin install frontend@mag-claude-plugins@2.2.0
+/plugin install frontend@magus@2.2.0
 
 # Verify installed version
 /plugin list
@@ -285,11 +285,11 @@ cat .claude-plugin/marketplace.json | grep version
 
 ```bash
 # Update marketplace metadata
-/plugin marketplace update mag-claude-plugins
+/plugin marketplace update magus
 
 # Reinstall plugin to get latest version
-/plugin remove frontend@mag-claude-plugins
-/plugin install frontend@mag-claude-plugins
+/plugin remove frontend@magus
+/plugin install frontend@magus
 ```
 
 ---
@@ -301,7 +301,7 @@ cat .claude-plugin/marketplace.json | grep version
 Get the latest marketplace metadata:
 
 ```bash
-/plugin marketplace update mag-claude-plugins
+/plugin marketplace update magus
 ```
 
 This updates:
@@ -319,7 +319,7 @@ This updates:
 
 ```bash
 # Update marketplace
-/plugin marketplace update mag-claude-plugins
+/plugin marketplace update magus
 
 # Plugins will update automatically on next use
 ```
@@ -328,8 +328,8 @@ This updates:
 
 ```bash
 # Remove and reinstall
-/plugin remove frontend@mag-claude-plugins
-/plugin install frontend@mag-claude-plugins
+/plugin remove frontend@magus
+/plugin install frontend@magus
 ```
 
 **Method 3: Reload Plugin**
@@ -337,7 +337,7 @@ This updates:
 For local development changes:
 
 ```bash
-/plugin reload frontend@mag-claude-plugins
+/plugin reload frontend@magus
 ```
 
 ### Update Workflow for Teams
@@ -346,7 +346,7 @@ For local development changes:
 
 ```bash
 # 1. One team member updates marketplace
-/plugin marketplace update mag-claude-plugins
+/plugin marketplace update magus
 
 # 2. Check what changed
 /plugin list
@@ -354,7 +354,7 @@ For local development changes:
 # 3. Test updated plugins
 
 # 4. If all good, other team members run:
-/plugin marketplace update mag-claude-plugins
+/plugin marketplace update magus
 ```
 
 **No action needed by team members if:**
@@ -435,7 +435,7 @@ Some plugins support additional configuration in `.claude/settings.json`:
 ```json
 {
   "enabledPlugins": {
-    "frontend@mag-claude-plugins": true
+    "frontend@magus": true
   },
   "pluginConfig": {
     "frontend": {
@@ -489,7 +489,7 @@ Some plugins support additional configuration in `.claude/settings.json`:
 /plugin marketplace add MadAppGang/claude-code
 
 # Update marketplace
-/plugin marketplace update mag-claude-plugins
+/plugin marketplace update magus
 ```
 
 **Cannot access marketplace:**
@@ -501,7 +501,7 @@ ping github.com
 /plugin marketplace list
 
 # Try re-adding
-/plugin marketplace remove mag-claude-plugins
+/plugin marketplace remove magus
 /plugin marketplace add MadAppGang/claude-code
 ```
 
@@ -531,8 +531,8 @@ echo $FIGMA_ACCESS_TOKEN
 # (if available in plugin documentation)
 
 # Reinstall plugin
-/plugin remove frontend@mag-claude-plugins
-/plugin install frontend@mag-claude-plugins
+/plugin remove frontend@magus
+/plugin install frontend@magus
 ```
 
 ### Version Issues
@@ -543,11 +543,11 @@ echo $FIGMA_ACCESS_TOKEN
 /plugin list
 
 # Update marketplace
-/plugin marketplace update mag-claude-plugins
+/plugin marketplace update magus
 
 # Reinstall specific version
-/plugin remove frontend@mag-claude-plugins
-/plugin install frontend@mag-claude-plugins@2.3.0
+/plugin remove frontend@magus
+/plugin install frontend@magus@2.3.0
 ```
 
 ---

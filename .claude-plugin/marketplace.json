@@ -1,12 +1,12 @@
 {
-  "name": "mag-claude-plugins",
+  "name": "magus",
   "owner": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",
     "company": "MadAppGang"
   },
   "metadata": {
-    "description": "MAG team's curated collection of Claude Code plugins for modern full-stack development with LLM performance tracking and E2E skill testing",
+    "description": "Curated collection of Claude Code plugins for modern full-stack development with LLM performance tracking and E2E skill testing",
     "version": "6.2.0",
     "pluginRoot": "./plugins"
   },

@@ -1,6 +1,6 @@
 # Troubleshooting Guide
 
-Common issues and solutions for MAG Claude Plugins.
+Common issues and solutions for Magus.
 
 ---
 
@@ -21,8 +21,8 @@ Your `.claude/settings.json` must use **object format**, not array format:
 // ✅ CORRECT - Object format (required)
 {
   "enabledPlugins": {
-    "frontend@mag-claude-plugins": true,
-    "code-analysis@mag-claude-plugins": true
+    "frontend@magus": true,
+    "code-analysis@magus": true
   }
 }
 ```
@@ -31,8 +31,8 @@ Your `.claude/settings.json` must use **object format**, not array format:
 // ❌ INCORRECT - Array format (will cause validation error)
 {
   "enabledPlugins": [
-    "frontend@mag-claude-plugins",
-    "code-analysis@mag-claude-plugins"
+    "frontend@magus",
+    "code-analysis@magus"
   ]
 }
 ```
@@ -58,7 +58,7 @@ mkdir -p .claude
 cat > .claude/settings.json <<EOF
 {
   "enabledPlugins": {
-    "frontend@mag-claude-plugins": true
+    "frontend@magus": true
   }
 }
 EOF
@@ -67,7 +67,7 @@ EOF
 **4. Reload Plugin**
 
 ```bash
-/plugin reload frontend@mag-claude-plugins
+/plugin reload frontend@magus
 ```
 
 **5. Restart Claude Code**
@@ -79,7 +79,7 @@ Complete restart may be needed for some changes.
 ### Marketplace Not Found
 
 #### Symptom
-Error: "Marketplace 'mag-claude-plugins' not found"
+Error: "Marketplace 'magus' not found"
 
 #### Solutions
 
@@ -98,14 +98,14 @@ Error: "Marketplace 'mag-claude-plugins' not found"
 **3. Update Marketplace Metadata**
 
 ```bash
-/plugin marketplace update mag-claude-plugins
+/plugin marketplace update magus
 ```
 
 **4. Re-add if Needed**
 
 ```bash
 # Remove and re-add
-/plugin marketplace remove mag-claude-plugins
+/plugin marketplace remove magus
 /plugin marketplace add MadAppGang/claude-code
 ```
 
@@ -196,7 +196,7 @@ Look for version number next to plugin name.
 **2. Check Latest Version**
 
 ```bash
-/plugin marketplace update mag-claude-plugins
+/plugin marketplace update magus
 /plugin list
 ```
 
@@ -204,17 +204,17 @@ Look for version number next to plugin name.
 
 ```bash
 # Method 1: Marketplace update (automatic)
-/plugin marketplace update mag-claude-plugins
+/plugin marketplace update magus
 
 # Method 2: Reinstall plugin
-/plugin remove frontend@mag-claude-plugins
-/plugin install frontend@mag-claude-plugins
+/plugin remove frontend@magus
+/plugin install frontend@magus
 ```
 
 **4. Install Specific Version**
 
 ```bash
-/plugin install frontend@mag-claude-plugins@2.3.0
+/plugin install frontend@magus@2.3.0
 ```
 
 ---
@@ -230,11 +230,11 @@ Error about invalid settings format or validation failure
 
 ```json
 // ❌ WRONG - Array
-"enabledPlugins": ["frontend@mag-claude-plugins"]
+"enabledPlugins": ["frontend@magus"]
 
 // ✅ CORRECT - Object
 "enabledPlugins": {
-  "frontend@mag-claude-plugins": true
+  "frontend@magus": true
 }
 ```
 
@@ -244,14 +244,14 @@ Error about invalid settings format or validation failure
 // ❌ WRONG - Trailing comma
 {
   "enabledPlugins": {
-    "frontend@mag-claude-plugins": true,
+    "frontend@magus": true,
   }
 }
 
 // ✅ CORRECT - No trailing comma
 {
   "enabledPlugins": {
-    "frontend@mag-claude-plugins": true
+    "frontend@magus": true
   }
 }
 ```
@@ -262,14 +262,14 @@ Error about invalid settings format or validation failure
 // ❌ WRONG - Unquoted value
 {
   "enabledPlugins": {
-    "frontend@mag-claude-plugins": yes
+    "frontend@magus": yes
   }
 }
 
 // ✅ CORRECT - Quoted boolean
 {
   "enabledPlugins": {
-    "frontend@mag-claude-plugins": true
+    "frontend@magus": true
   }
 }
 ```
@@ -361,7 +361,7 @@ Enabled plugins show with a checkmark or indicator.
 cat .claude-plugin/marketplace.json
 
 # Or for installed plugin
-cat ~/.config/claude-code/plugins/frontend@mag-claude-plugins/plugin.json
+cat ~/.config/claude-code/plugins/frontend@magus/plugin.json
 ```
 
 Verify the agent/command is listed in `agents` or `commands` arrays.
@@ -369,14 +369,14 @@ Verify the agent/command is listed in `agents` or `commands` arrays.
 **3. Reload Plugin**
 
 ```bash
-/plugin reload frontend@mag-claude-plugins
+/plugin reload frontend@magus
 ```
 
 **4. Reinstall Plugin**
 
 ```bash
-/plugin remove frontend@mag-claude-plugins
-/plugin install frontend@mag-claude-plugins
+/plugin remove frontend@magus
+/plugin install frontend@magus
 ```
 
 **5. Check Spelling**
@@ -410,8 +410,8 @@ htop
 
 ```bash
 # Remove and reinstall plugins
-/plugin remove frontend@mag-claude-plugins
-/plugin install frontend@mag-claude-plugins
+/plugin remove frontend@magus
+/plugin install frontend@magus
 ```
 
 **4. Check Network Speed**
@@ -426,7 +426,7 @@ speedtest-cli
 **5. Update to Latest Version**
 
 ```bash
-/plugin marketplace update mag-claude-plugins
+/plugin marketplace update magus
 ```
 
 ---
@@ -587,16 +587,16 @@ Gather this information:
 # Note which plugins are installed
 
 # 2. Remove broken plugin
-/plugin remove frontend@mag-claude-plugins
+/plugin remove frontend@magus
 
 # 3. Remove marketplace
-/plugin marketplace remove mag-claude-plugins
+/plugin marketplace remove magus
 
 # 4. Re-add marketplace
 /plugin marketplace add MadAppGang/claude-code
 
 # 5. Reinstall plugins
-/plugin install frontend@mag-claude-plugins
+/plugin install frontend@magus
 
 # 6. Verify
 /plugin list
@@ -612,7 +612,7 @@ cp .claude/settings.json .claude/settings.json.backup
 cat > .claude/settings.json <<EOF
 {
   "enabledPlugins": {
-    "frontend@mag-claude-plugins": true
+    "frontend@magus": true
   }
 }
 EOF

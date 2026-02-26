@@ -497,7 +497,7 @@ Well-designed session architecture:
 ### Plugin Manifest: PASS (9/10)
 - ✅ Valid JSON structure
 - ✅ All required fields present (name, version, description, author, license)
-- ✅ Proper dependency declaration (`orchestration@mag-claude-plugins: ^0.5.0`)
+- ✅ Proper dependency declaration (`orchestration@magus: ^0.5.0`)
 - ✅ All agents and commands listed
 - ✅ All skills registered
 - ✅ Proper file paths and naming conventions
@@ -589,7 +589,7 @@ Clarify with Claudish maintainers whether `--auto-approve` exists. If it does, u
 The plugin correctly depends on orchestration plugin:
 ```json
 "dependencies": {
-  "orchestration@mag-claude-plugins": "^0.5.0"
+  "orchestration@magus": "^0.5.0"
 }
 ```
 

@@ -26,7 +26,7 @@ Open an issue on https://github.com/anthropics/claude-plugins-official/issues
 ### Template
 
 ```markdown
-# Plugin Submission Request: MAG Claude Plugins
+# Plugin Submission Request: Magus
 
 ## About Us
 **Organization:** MadAppGang

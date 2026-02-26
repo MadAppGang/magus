@@ -123,7 +123,7 @@ Requires orchestration plugin:
 ```json
 {
   "dependencies": {
-    "orchestration@mag-claude-plugins": "^0.2.0"
+    "orchestration@magus": "^0.2.0"
   }
 }
 ```
@@ -137,7 +137,7 @@ Requires orchestration plugin:
 /plugin marketplace add MadAppGang/claude-code
 
 # Install plugin
-/plugin install agentdev@mag-claude-plugins
+/plugin install agentdev@magus
 ```
 
 **Note**: Automatically installs orchestration plugin as dependency.

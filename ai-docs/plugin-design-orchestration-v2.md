@@ -726,7 +726,7 @@ Plugins declare orchestration as a dependency:
   "name": "frontend",
   "version": "3.7.0",
   "dependencies": {
-    "orchestration@mag-claude-plugins": "^0.1.0"
+    "orchestration@magus": "^0.1.0"
   }
 }
 ```
@@ -742,7 +742,7 @@ Plugins declare orchestration as a dependency:
 Users install orchestration plugin directly:
 
 ```bash
-/plugin install orchestration@mag-claude-plugins
+/plugin install orchestration@magus
 ```
 
 **Use Case:** Users want orchestration patterns for custom agents/workflows
@@ -756,7 +756,7 @@ Install orchestration globally (available to all projects):
 /plugin marketplace add MadAppGang/claude-code
 
 # Install plugin globally
-/plugin install orchestration@mag-claude-plugins --global
+/plugin install orchestration@magus --global
 ```
 
 ---
@@ -837,7 +837,7 @@ skills_optional: orchestration:quality-gates>=1.0.0
 
 ```
 ❌ ERROR: Required skill orchestration:multi-model-validation>=1.0.0 not found
-   Install orchestration plugin: /plugin install orchestration@mag-claude-plugins
+   Install orchestration plugin: /plugin install orchestration@magus
 
 ⚠️ WARNING: Optional skill orchestration:quality-gates>=1.0.0 not found
    Some features may be unavailable
@@ -1093,7 +1093,7 @@ skills: orchestration:core
 // plugins/frontend/plugin.json
 {
   "dependencies": {
-    "orchestration@mag-claude-plugins": "^0.1.0"
+    "orchestration@magus": "^0.1.0"
   }
 }
 ```
@@ -1201,7 +1201,7 @@ v2.0.0: Remove multi-model-validation, only multi-model-consensus remains
 ```json
 {
   "dependencies": {
-    "orchestration@mag-claude-plugins": "^0.1.0"
+    "orchestration@magus": "^0.1.0"
   }
 }
 ```
@@ -1834,7 +1834,7 @@ User Project
 - [ ] Add orchestration to `plugin.json` dependencies:
   ```json
   "dependencies": {
-    "orchestration@mag-claude-plugins": "^0.1.0"
+    "orchestration@magus": "^0.1.0"
   }
   ```
 

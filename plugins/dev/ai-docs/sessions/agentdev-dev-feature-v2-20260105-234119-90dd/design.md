@@ -529,7 +529,7 @@ skills: dev:context-detection, dev:universal-patterns, orchestration:multi-model
 
     **Code Analysis Plugin:**
     - Check in: .claude/settings.json
-    - Look for: "code-analysis@mag-claude-plugins": true
+    - Look for: "code-analysis@magus": true
     - If unavailable: Skip semantic search, use manual file discovery
   </dependency_checks>
 

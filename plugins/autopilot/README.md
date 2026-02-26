@@ -225,8 +225,8 @@ Configure Linear webhook to point to your server URL.
 ## Dependencies
 
 ### Plugin Dependencies
-- dev@mag-claude-plugins ^1.13.0
-- orchestration@mag-claude-plugins ^0.9.0
+- dev@magus ^1.13.0
+- orchestration@magus ^0.9.0
 
 ### NPM Dependencies
 - @linear/sdk ^26.0.0

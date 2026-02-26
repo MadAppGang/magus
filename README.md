@@ -1,4 +1,4 @@
-# MAG Claude Plugins
+# Magus
 
 > **Battle-tested AI workflows from the top 1% of developers**
 
@@ -68,7 +68,7 @@ These aren't "best practices" from blog posts. This is the **battle-tested playb
 **Already installed?** Update to get the latest features:
 
 ```bash
-/plugin marketplace update mag-claude-plugins
+/plugin marketplace update magus
 ```
 
 **This single command updates everything** - works for both global and local installations. No need to reinstall plugins.
@@ -89,10 +89,10 @@ Then add to your project's `.claude/settings.json`:
 ```json
 {
   "enabledPlugins": {
-    "frontend@mag-claude-plugins": true,
-    "code-analysis@mag-claude-plugins": true,
-    "bun@mag-claude-plugins": true,
-    "orchestration@mag-claude-plugins": true
+    "frontend@magus": true,
+    "code-analysis@magus": true,
+    "bun@magus": true,
+    "orchestration@magus": true
   }
 }
 ```
@@ -324,7 +324,7 @@ Each developer on your team does this once:
 /plugin marketplace add MadAppGang/claude-code
 ```
 
-This registers the MAG Claude Plugins marketplace in your Claude Code installation. You only need to do this once, and it works for all your projects.
+This registers the Magus marketplace in your Claude Code installation. You only need to do this once, and it works for all your projects.
 
 #### Step 2: Enable Plugins in Your Project
 
@@ -333,7 +333,7 @@ Add or edit `.claude/settings.json` in your project root:
 ```json
 {
   "enabledPlugins": {
-    "frontend@mag-claude-plugins": true
+    "frontend@magus": true
   }
 }
 ```
@@ -342,7 +342,7 @@ Add or edit `.claude/settings.json` in your project root:
 
 ```bash
 git add .claude/settings.json
-git commit -m "Enable MAG Claude plugins for this project"
+git commit -m "Enable Magus plugins for this project"
 git push
 ```
 
@@ -372,10 +372,10 @@ Need more than one plugin? Just add more entries:
 ```json
 {
   "enabledPlugins": {
-    "frontend@mag-claude-plugins": true,
-    "code-analysis@mag-claude-plugins": true,
-    "bun@mag-claude-plugins": true,
-    "orchestration@mag-claude-plugins": true
+    "frontend@magus": true,
+    "code-analysis@magus": true,
+    "bun@magus": true,
+    "orchestration@magus": true
   }
 }
 ```
@@ -394,7 +394,7 @@ After setup, verify everything works:
 /plugin list
 
 # Should show:
-# frontend@mag-claude-plugins (project-specific)
+# frontend@magus (project-specific)
 #   Version: 1.2.0
 #   Status: ✓ Loaded
 ```

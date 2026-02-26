@@ -456,7 +456,7 @@ async function getMarketplaceRepo(
   const defaults: Record<string, string> = {
     'claude-plugins-official': 'anthropics/claude-plugins-official',
     'claude-code-plugins': 'anthropics/claude-code',
-    'mag-claude-plugins': 'MadAppGang/claude-code',
+    'magus': 'MadAppGang/claude-code',
   };
 
   return defaults[name];

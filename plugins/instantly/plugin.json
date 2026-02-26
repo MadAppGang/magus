@@ -21,7 +21,7 @@
   ],
   "category": "productivity",
   "dependencies": {
-    "orchestration@mag-claude-plugins": "^0.8.0"
+    "orchestration@magus": "^0.8.0"
   },
   "agents": [
     "./agents/campaign-analyst.md",

@@ -279,7 +279,7 @@ Sequential Pipeline with Quality Gates:
 
 ```bash
 /plugin marketplace add MadAppGang/claude-code
-/plugin install seo@mag-claude-plugins
+/plugin install seo@magus
 ```
 
 ### Option 2: Per-Project (Recommended for Teams)
@@ -289,7 +289,7 @@ Add to `.claude/settings.json`:
 ```json
 {
   "enabledPlugins": {
-    "seo@mag-claude-plugins": true
+    "seo@magus": true
   }
 }
 ```
@@ -303,7 +303,7 @@ This plugin requires the orchestration plugin for multi-agent coordination patte
 ```json
 {
   "dependencies": {
-    "orchestration@mag-claude-plugins": "^0.5.0"
+    "orchestration@magus": "^0.5.0"
   }
 }
 ```

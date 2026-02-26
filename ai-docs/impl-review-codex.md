@@ -31,7 +31,7 @@ The SEO plugin demonstrates **excellent architecture and comprehensive design** 
 - Valid JSON structure
 - Correct version (1.0.0)
 - All agents and commands properly referenced
-- Dependency on orchestration@mag-claude-plugins ^0.5.0 correct
+- Dependency on orchestration@magus ^0.5.0 correct
 - 4 agents, 4 commands, 7 skills properly organized
 
 ### Agents (4 total)

@@ -14,7 +14,7 @@ The video-editing plugin design document is a well-structured blueprint for a pr
 
 ## Strengths
 
-The design demonstrates strong architectural decisions in several areas. The orchestrator pattern is correctly implemented with `/video-edit` command delegating to specialized agents rather than executing operations directly, which aligns with best practices established in other MAG plugins. The skill-based knowledge distribution is excellent - reference material is properly isolated in skills while agents focus on execution workflows. The FCPXML documentation is thorough with accurate timing calculations, frame duration references for various frame rates, and complete project templates that will ensure valid output generation.
+The design demonstrates strong architectural decisions in several areas. The orchestrator pattern is correctly implemented with `/video-edit` command delegating to specialized agents rather than executing operations directly, which aligns with best practices established in other Magus plugins. The skill-based knowledge distribution is excellent - reference material is properly isolated in skills while agents focus on execution workflows. The FCPXML documentation is thorough with accurate timing calculations, frame duration references for various frame rates, and complete project templates that will ensure valid output generation.
 
 **Key Insight:** The decision to use FCPXML 1.9 for broad compatibility while supporting modern features like HDR and object tracking reflects careful consideration of real-world NTSC timing complexities (1001/30000s notation) that commonly trip up developers new to video editing.
 
@@ -71,7 +71,7 @@ The architecture diagram at lines 24-44 shows `README.md` at the plugin root, an
 
 **4. Commands Missing Frontmatter Type Specification**
 
-Commands at lines 1665-1673 (video-edit), 1916-1924 (transcribe), and 2069-2077 (create-fcp-project) lack the required `type` field in YAML frontmatter. Other MAG plugins use:
+Commands at lines 1665-1673 (video-edit), 1916-1924 (transcribe), and 2069-2077 (create-fcp-project) lack the required `type` field in YAML frontmatter. Other Magus plugins use:
 
 ```yaml
 type: command

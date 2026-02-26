@@ -396,6 +396,6 @@ For issues or questions:
 
 ---
 
-**Maintained by:** MAG Claude Plugins Team
+**Maintained by:** MadAppGang
 **Last Updated:** 2026-01-29
 **Version:** 1.0.0

@@ -27,7 +27,7 @@ AI image generation and editing using Google Gemini 3 Pro Image API.
    ```json
    {
      "enabledPlugins": {
-       "nanobanana@mag-claude-plugins": true
+       "nanobanana@magus": true
      }
    }
    ```

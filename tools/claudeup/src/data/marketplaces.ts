@@ -4,8 +4,8 @@ import { formatMarketplaceName } from "../utils/string-utils.js";
 
 export const defaultMarketplaces: Marketplace[] = [
 	{
-		name: "mag-claude-plugins",
-		displayName: "MadAppGang Plugins",
+		name: "magus",
+		displayName: "Magus",
 		source: {
 			source: "github",
 			repo: "MadAppGang/claude-code",
@@ -82,9 +82,9 @@ export function getAllMarketplaces(
 		}
 	}
 
-	// Sort: MadAppGang first, then alphabetically
+	// Sort: Magus first, then alphabetically
 	return Array.from(all.values()).sort((a, b) => {
-		// MadAppGang always first
+		// Magus (MadAppGang) always first
 		const aIsMag = a.source.repo?.toLowerCase().includes("madappgang/");
 		const bIsMag = b.source.repo?.toLowerCase().includes("madappgang/");
 		if (aIsMag && !bIsMag) return -1;

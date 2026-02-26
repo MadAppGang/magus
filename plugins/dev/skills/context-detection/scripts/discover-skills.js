@@ -170,7 +170,7 @@ function getEnabledPlugins(projectPath) {
 
       for (const [pluginKey, enabled] of Object.entries(enabledPlugins)) {
         if (enabled === true) {
-          // Parse "dev@mag-claude-plugins" → { plugin: "dev", marketplace: "mag-claude-plugins" }
+          // Parse "dev@magus" → { plugin: "dev", marketplace: "magus" }
           const match = pluginKey.match(/^(.+)@(.+)$/);
           if (match) {
             plugins.push({ plugin: match[1], marketplace: match[2] });

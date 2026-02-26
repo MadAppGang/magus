@@ -1028,4 +1028,4 @@ full-plugin/
 
 ---
 
-*Inspired by the MAG Claude Plugins ecosystem and Claude Code plugin architecture*
+*Inspired by the Magus ecosystem and Claude Code plugin architecture*

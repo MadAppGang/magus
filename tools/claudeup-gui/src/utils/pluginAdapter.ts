@@ -6,7 +6,7 @@ import { Plugin as FrontendPlugin } from '../types';
  */
 export function getMarketplaceName(id: string): string {
   const knownMarketplaces: Record<string, string> = {
-    'mag-claude-plugins': 'MAG Claude Plugins',
+    'magus': 'Magus',
     'community': 'Community Marketplace',
     'official': 'Official Plugins',
   };

@@ -8,7 +8,7 @@
 
 ## Summary
 
-Migrate all MAG Claude Plugins from TodoWrite to the new Tasks system to align with Claude Code platform evolution and unlock new capabilities (dependencies, cross-session persistence, task ownership).
+Migrate all Magus plugins from TodoWrite to the new Tasks system to align with Claude Code platform evolution and unlock new capabilities (dependencies, cross-session persistence, task ownership).
 
 ## Context
 

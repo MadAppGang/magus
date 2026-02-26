@@ -223,7 +223,7 @@ Project `.claude/settings.json` (committed to git):
     "APIDOG_PROJECT_ID": "your-team-project-id"
   },
   "enabledPlugins": {
-    "frontend@mag-claude-plugins": true
+    "frontend@magus": true
   }
 }
 ```
@@ -433,7 +433,7 @@ npx -y @modelcontextprotocol/server-chrome-devtools \
 /plugin list
 
 # Should show:
-# ✅ frontend@mag-claude-plugins
+# ✅ frontend@magus
 ```
 
 ## Troubleshooting

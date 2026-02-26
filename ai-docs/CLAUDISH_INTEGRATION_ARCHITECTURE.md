@@ -6,7 +6,7 @@
 
 ## Executive Summary
 
-This document defines the **Single Source of Truth** architecture for model management in the MAG Claude ecosystem. Instead of building a complex API + caching system in Claude Code, we delegate model management to **Claudish**, which already has the infrastructure and expertise to handle OpenRouter integration.
+This document defines the **Single Source of Truth** architecture for model management in the Magus ecosystem. Instead of building a complex API + caching system in Claude Code, we delegate model management to **Claudish**, which already has the infrastructure and expertise to handle OpenRouter integration.
 
 **Key Principle:** Claudish owns the model list, Claude Code queries it.
 
@@ -14,7 +14,7 @@ This document defines the **Single Source of Truth** architecture for model mana
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    MAG Claude Ecosystem                      │
+│                    Magus Ecosystem                           │
 ├─────────────────────────────────────────────────────────────┤
 │                                                               │
 │  ┌──────────────────┐                ┌───────────────────┐  │

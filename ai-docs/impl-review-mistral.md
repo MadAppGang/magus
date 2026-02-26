@@ -314,7 +314,7 @@ Current tools: `TodoWrite, Read, Write, Bash, WebSearch, WebFetch, Glob, Grep`
 
 #### Skills Integration
 
-**Observation**: Plugin correctly depends on `orchestration@mag-claude-plugins ^0.5.0`
+**Observation**: Plugin correctly depends on `orchestration@magus ^0.5.0`
 
 Verify skills usage:
 - ✅ `orchestration:error-recovery` referenced in audit.md
@@ -808,7 +808,7 @@ Output requirement: Write detailed analysis to files, return brief summary:
 7. **Error Recovery** - WebSearch/WebFetch failure handling documented in researcher agent
 8. **Orchestration Patterns** - Proper use of Task delegation, TodoWrite tracking, AskUserQuestion gates
 9. **Documentation** - Excellent examples, templates, checklists (content-brief template is outstanding)
-10. **Dependencies** - Properly declares orchestration@mag-claude-plugins dependency
+10. **Dependencies** - Properly declares orchestration@magus dependency
 
 ---
 

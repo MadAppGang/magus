@@ -274,7 +274,7 @@ frontend/
 
 **Step 1: Install plugin**
 ```bash
-/plugin install frontend@mag-claude-plugins
+/plugin install frontend@magus
 ```
 
 **Step 2: Run setup**
@@ -452,4 +452,4 @@ npx -y @apidog/mcp-server --project-id abc123 --token secret
 
 **Author:** Jack Rudenko (i@madappgang.com)
 **Company:** MadAppGang
-**Plugin:** mag-claude-plugins
+**Plugin:** magus

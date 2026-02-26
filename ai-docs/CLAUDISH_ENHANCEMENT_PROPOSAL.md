@@ -7,7 +7,7 @@
 
 ## Overview
 
-This document proposes three new features for Claudish to make it the **single source of truth** for OpenRouter model management in the MAG Claude ecosystem. These enhancements enable Claude Code commands to dynamically query Claudish for model recommendations instead of maintaining duplicate model lists.
+This document proposes three new features for Claudish to make it the **single source of truth** for OpenRouter model management in the Magus ecosystem. These enhancements enable Claude Code commands to dynamically query Claudish for model recommendations instead of maintaining duplicate model lists.
 
 ## Motivation
 

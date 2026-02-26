@@ -2,7 +2,7 @@
 name: brainstorming
 version: 2.0.0
 description: "Collaborative ideation and planning with resilient multi-model exploration, consensus scoring, and adaptive confidence-based validation"
-author: "MAG Claude Plugins"
+author: "Magus"
 tags:
   - planning
   - ideation

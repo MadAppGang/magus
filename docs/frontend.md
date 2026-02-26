@@ -837,7 +837,7 @@ Access GitHub repositories and issues.
 ### Global Installation
 ```bash
 /plugin marketplace add madappgang/claude-plugins
-/plugin install frontend@mag-claude-plugins
+/plugin install frontend@magus
 ```
 
 ### Project-Specific Installation
@@ -845,7 +845,7 @@ Add to `.claude/settings.json`:
 ```json
 {
   "extraKnownMarketplaces": {
-    "mag-claude-plugins": {
+    "magus": {
       "source": {
         "source": "github",
         "repo": "MadAppGang/claude-code"
@@ -853,7 +853,7 @@ Add to `.claude/settings.json`:
     }
   },
   "enabledPlugins": {
-    "frontend@mag-claude-plugins": true
+    "frontend@magus": true
   }
 }
 ```

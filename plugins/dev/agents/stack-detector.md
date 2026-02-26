@@ -450,9 +450,9 @@ tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Glob, Grep, Bash
 
     5. PLUGIN (marketplace-installed):
        - Read .claude/settings.json → enabledPlugins
-       - Parse "dev@mag-claude-plugins" → plugin="dev", marketplace="mag-claude-plugins"
+       - Parse "dev@magus" → plugin="dev", marketplace="magus"
        - Search: ~/.claude/plugins/marketplaces/{marketplace}/plugins/{plugin}/skills/**/SKILL.md
-       - Example: ~/.claude/plugins/marketplaces/mag-claude-plugins/plugins/dev/skills/**/SKILL.md
+       - Example: ~/.claude/plugins/marketplaces/magus/plugins/dev/skills/**/SKILL.md
        - Uses plugin-name:skill-name namespace
 
     6. LOCAL PLUGIN (workspace/project):

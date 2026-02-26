@@ -1,6 +1,6 @@
 # Plugin Release Process
 
-This document describes the correct process for releasing a new version of a plugin in the MAG Claude Plugins marketplace.
+This document describes the correct process for releasing a new version of a plugin in the Magus marketplace.
 
 ## Critical Understanding
 
@@ -111,7 +111,7 @@ git push origin plugins/{plugin-name}/v{X.Y.Z}
 
 ```bash
 # As a user, run:
-/plugin marketplace update mag-claude-plugins
+/plugin marketplace update magus
 
 # Should show the new version
 # If it still shows old version, you forgot to update marketplace.json!
@@ -218,7 +218,7 @@ git push origin main
 git push origin plugins/frontend/v3.3.0
 
 # 5. Verify
-# Run: /plugin marketplace update mag-claude-plugins
+# Run: /plugin marketplace update magus
 # Should show: frontend v3.3.0 ✅
 ```
 
@@ -245,7 +245,7 @@ git push origin plugins/{plugin}/v{X.Y.Z}
 A: Use local marketplace:
 ```bash
 /plugin marketplace add /path/to/claude-code
-/plugin install {plugin}@mag-claude-plugins
+/plugin install {plugin}@magus
 ```
 
 ---

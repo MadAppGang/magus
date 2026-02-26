@@ -116,7 +116,7 @@ Sequential Pipeline with Quality Gates:
   ],
   "category": "content",
   "dependencies": {
-    "orchestration@mag-claude-plugins": "^0.5.0"
+    "orchestration@magus": "^0.5.0"
   },
   "agents": [
     "./agents/analyst.md",
@@ -3001,7 +3001,7 @@ When Chrome DevTools MCP is not available:
 ```json
 {
   "dependencies": {
-    "orchestration@mag-claude-plugins": "^0.5.0"
+    "orchestration@magus": "^0.5.0"
   }
 }
 ```
@@ -3018,12 +3018,12 @@ The SEO plugin depends on orchestration for:
 ```bash
 # Via marketplace
 /plugin marketplace add MadAppGang/claude-code
-/plugin install seo@mag-claude-plugins
+/plugin install seo@magus
 
 # Or in .claude/settings.json
 {
   "enabledPlugins": {
-    "seo@mag-claude-plugins": true
+    "seo@magus": true
   }
 }
 ```

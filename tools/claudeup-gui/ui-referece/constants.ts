@@ -7,19 +7,19 @@ export const MOCK_PROJECTS: Project[] = [
 ];
 
 export const MOCK_MARKETPLACES: Marketplace[] = [
-  { id: 'mag-claude-plugins', name: 'MAG Claude Plugins', count: '12 plugins', icon: 'package' },
+  { id: 'magus', name: 'Magus', count: '12 plugins', icon: 'package' },
   { id: 'community', name: 'Community Registry', count: '189 plugins', icon: 'globe' },
   { id: 'official', name: 'Official Plugins', count: '45 plugins', icon: 'chrome' },
 ];
 
 export const MOCK_PLUGINS: Plugin[] = [
   {
-    id: "dev@mag-claude-plugins",
+    id: "dev@magus",
     name: "dev",
     version: "1.17.0",
     description: "Universal development assistant with self-improving learning, documentation, deep research, specification interviews, and DevOps guidance. v1.17.0: Dingo skill auto-detection - agents now auto-load dingo+golang skills when .dingo files detected. 30+ skills.",
-    marketplace: "mag-claude-plugins",
-    marketplaceDisplay: "MAG Claude Plugins",
+    marketplace: "magus",
+    marketplaceDisplay: "Magus",
     enabled: true,
     hasUpdate: false,
     installedVersion: "1.17.0",
@@ -74,12 +74,12 @@ export const MOCK_PLUGINS: Plugin[] = [
     localScope: null
   },
   {
-    id: "nanobanana@mag-claude-plugins",
+    id: "nanobanana@magus",
     name: "nanobanana",
     version: "2.2.3",
     description: "AI image generation and editing using Google Gemini 3 Pro Image API (Nano Banana Pro). Simple Node.js CLI with markdown styles, batch generation, reference image support, and comprehensive error handling with retry logic.",
-    marketplace: "mag-claude-plugins",
-    marketplaceDisplay: "MAG Claude Plugins",
+    marketplace: "magus",
+    marketplaceDisplay: "Magus",
     enabled: false,
     hasUpdate: true,
     installedVersion: "2.1.0",
@@ -103,12 +103,12 @@ export const MOCK_PLUGINS: Plugin[] = [
     localScope: null
   },
   {
-    id: "code-analysis@mag-claude-plugins",
+    id: "code-analysis@magus",
     name: "code-analysis",
     version: "3.0.0",
     description: "Deep code investigation with claudemem. v3.0.0: ENRICHMENT MODE - hooks now enhance native tools with AST context instead of blocking.",
-    marketplace: "mag-claude-plugins",
-    marketplaceDisplay: "MAG Claude Plugins",
+    marketplace: "magus",
+    marketplaceDisplay: "Magus",
     enabled: true,
     hasUpdate: false,
     installedVersion: "3.0.0",
@@ -138,12 +138,12 @@ export const MOCK_PLUGINS: Plugin[] = [
     localScope: null
   },
   {
-    id: "conductor@mag-claude-plugins",
+    id: "conductor@magus",
     name: "conductor",
     version: "1.0.5",
     description: "Workflow orchestration and task management for complex multi-agent systems.",
-    marketplace: "mag-claude-plugins",
-    marketplaceDisplay: "MAG Claude Plugins",
+    marketplace: "magus",
+    marketplaceDisplay: "Magus",
     enabled: true,
     hasUpdate: false,
     installedVersion: "1.0.5",

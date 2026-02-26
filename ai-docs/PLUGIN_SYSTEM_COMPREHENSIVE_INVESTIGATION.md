@@ -137,8 +137,8 @@ interface ComponentMeta {
 **Standard format**: `{plugin-name}@{marketplace-name}`
 
 **Examples**:
-- `frontend@mag-claude-plugins`
-- `code-analysis@mag-claude-plugins`
+- `frontend@magus`
+- `code-analysis@magus`
 - `my-plugin@my-marketplace`
 
 ### 2.2 Parsing Implementation
@@ -385,15 +385,15 @@ interface ClaudeSettings {
 ```json
 {
   "enabledPlugins": {
-    "frontend@mag-claude-plugins": true,
-    "code-analysis@mag-claude-plugins": true
+    "frontend@magus": true,
+    "code-analysis@magus": true
   },
   "installedPluginVersions": {
-    "frontend@mag-claude-plugins": "3.14.0",
-    "code-analysis@mag-claude-plugins": "3.2.0"
+    "frontend@magus": "3.14.0",
+    "code-analysis@magus": "3.2.0"
   },
   "extraKnownMarketplaces": {
-    "mag-claude-plugins": {
+    "magus": {
       "source": "github",
       "repo": "MadAppGang/claude-code"
     }
@@ -446,7 +446,7 @@ await withFileLock(settingsPath, async () => {
 
 ```json
 {
-  "name": "mag-claude-plugins",
+  "name": "magus",
   "owner": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",
@@ -522,8 +522,8 @@ export const defaultMarketplaces: Marketplace[] = [
     featured: true
   },
   {
-    name: 'mag-claude-plugins',
-    displayName: 'MAG Claude Plugins',
+    name: 'magus',
+    displayName: 'Magus',
     source: {
       source: 'github',
       repo: 'MadAppGang/claude-code'
@@ -539,7 +539,7 @@ export const defaultMarketplaces: Marketplace[] = [
 
 ```json
 {
-  "mag-claude-plugins": {
+  "magus": {
     "source": {
       "source": "github",
       "repo": "MadAppGang/claude-code"
@@ -574,7 +574,7 @@ export const defaultMarketplaces: Marketplace[] = [
 
 **Resolves to** (example):
 ```bash
-bun "/Users/jack/.claude/plugins/cache/mag-claude-plugins/code-analysis/3.2.0/hooks/handler.ts"
+bun "/Users/jack/.claude/plugins/cache/magus/code-analysis/3.2.0/hooks/handler.ts"
 ```
 
 ### 6.2 MCP Server Environment Variables
@@ -671,7 +671,7 @@ if (!key.match(/^[A-Z_][A-Z0-9_]*$/)) {
 ```json
 {
   "installedPluginVersions": {
-    "frontend@mag-claude-plugins": "3.14.0"
+    "frontend@magus": "3.14.0"
   }
 }
 ```
@@ -734,10 +734,10 @@ hasUpdate: installedVersion && plugin.version
 {
   "version": 2,
   "plugins": {
-    "frontend@mag-claude-plugins": [
+    "frontend@magus": [
       {
         "scope": "user",
-        "installPath": "/Users/jack/.claude/plugins/cache/mag-claude-plugins/frontend/3.14.0",
+        "installPath": "/Users/jack/.claude/plugins/cache/magus/frontend/3.14.0",
         "version": "3.14.0",
         "installedAt": "2026-02-01T10:00:00.000Z",
         "lastUpdated": "2026-02-09T14:30:00.000Z",
@@ -746,7 +746,7 @@ hasUpdate: installedVersion && plugin.version
       {
         "scope": "project",
         "projectPath": "/Users/jack/projects/my-app",
-        "installPath": "/Users/jack/.claude/plugins/cache/mag-claude-plugins/frontend/3.13.0",
+        "installPath": "/Users/jack/.claude/plugins/cache/magus/frontend/3.13.0",
         "version": "3.13.0",
         "installedAt": "2026-01-15T09:00:00.000Z",
         "lastUpdated": "2026-01-15T09:00:00.000Z"
@@ -797,7 +797,7 @@ export async function updateInstalledPluginsRegistry(
 **Example**:
 ```
 ~/.claude/plugins/cache/
-  mag-claude-plugins/
+  magus/
     frontend/
       3.14.0/
         plugin.json
@@ -1069,12 +1069,12 @@ export function getCacheStats(): Record<string, unknown> {
 
 ```typescript
 interface PluginInfo {
-  id: string;                       // "frontend@mag-claude-plugins"
+  id: string;                       // "frontend@magus"
   name: string;                     // "frontend"
   version: string | null;           // "3.14.0" (latest)
   description: string;
-  marketplace: string;              // "mag-claude-plugins"
-  marketplaceDisplay: string;       // "MAG Claude Plugins"
+  marketplace: string;              // "magus"
+  marketplaceDisplay: string;       // "Magus"
   enabled: boolean;                 // Current scope enabled status
   installedVersion?: string;        // "3.13.0" (installed)
   hasUpdate?: boolean;              // true if version > installedVersion
@@ -1179,7 +1179,7 @@ MCP:
         code-analysis/
 
   cache/                     # Installed plugin copies
-    mag-claude-plugins/
+    magus/
       frontend/
         3.14.0/
         3.13.0/

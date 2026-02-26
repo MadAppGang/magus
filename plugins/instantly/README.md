@@ -28,7 +28,7 @@ Add to `.claude/settings.json`:
 ```json
 {
   "enabledPlugins": {
-    "instantly@mag-claude-plugins": true
+    "instantly@magus": true
   }
 }
 ```
@@ -256,7 +256,7 @@ See `orchestration:multi-model-validation` skill for details.
 
 | Dependency | Version | Purpose |
 |------------|---------|---------|
-| orchestration@mag-claude-plugins | ^0.8.0 | Multi-agent coordination |
+| orchestration@magus | ^0.8.0 | Multi-agent coordination |
 | Instantly Account | - | Active subscription required |
 | Claudish CLI | latest | For PROXY_MODE (optional) |
 
