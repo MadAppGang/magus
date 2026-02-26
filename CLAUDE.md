@@ -15,16 +15,20 @@
 
 | Plugin | Version | Purpose |
 |--------|---------|---------|
-| **Frontend** | v3.15.1 | React/TypeScript dev with 11 agents, multi-model review |
-| **Code Analysis** | v3.2.2 | Codebase investigation with claudemem, enrichment mode (non-blocking) |
-| **Bun Backend** | v1.6.1 | TypeScript backend with Bun, Apidog integration |
-| **Orchestration** | v0.8.2 | Multi-agent coordination patterns (6 skills) |
-| **Agent Development** | v1.5.2 | Create Claude Code agents and plugins |
-| **SEO** | v1.6.2 | SEO analysis and optimization with AUTO GATEs |
-| **Video Editing** | v1.0.1 | FFmpeg, Whisper, Final Cut Pro integration |
-| **Nanobanana** | v2.2.3 | AI image generation with Gemini 3 Pro Image |
-| **Terminal** | v1.0.0 | Interactive terminal via ht-mcp + tmux-mcp (screen read, keystroke, TUI nav) |
-| **Dev** | v1.32.0 | Universal dev assistant with real validation loops, 47 skills |
+| **Frontend** | v3.15.2 | React/TypeScript dev with 11 agents, multi-model review |
+| **Code Analysis** | v3.2.3 | Codebase investigation with claudemem, enrichment mode (non-blocking) |
+| **Bun Backend** | v1.6.2 | TypeScript backend with Bun, Apidog integration |
+| **Multimodel** | v2.4.2 | Multi-model collaboration and orchestration |
+| **Agent Development** | v1.5.3 | Create Claude Code agents and plugins |
+| **SEO** | v1.6.3 | SEO analysis and optimization with AUTO GATEs |
+| **Video Editing** | v1.1.1 | FFmpeg, Whisper, Final Cut Pro integration |
+| **Nanobanana** | v2.3.1 | AI image generation with Gemini 3 Pro Image |
+| **Conductor** | v2.1.1 | Context-Driven Development with TDD and Git Notes |
+| **Terminal** | v1.0.0 | Interactive terminal via ht-mcp + tmux-mcp |
+| **Statusline** | v1.4.1 | Colorful statusline with worktree awareness |
+| **Autopilot** | v0.2.1 | Autonomous task execution with Linear integration |
+| **Instantly** | v1.0.3 | Cold email outreach with Instantly.ai MCP |
+| **Dev** | v1.33.0 | Universal dev assistant with coaching system, 47 skills |
 
 **Claudish CLI**: `npm install -g claudish` - Run Claude with OpenRouter models (separate repo)
 
@@ -225,38 +229,44 @@ NOTE: Skills use the `Skill` tool, NOT the `Task` tool. The `namespace:name` for
 **Detailed Release Notes:** See [RELEASES.md](./RELEASES.md) for comprehensive release documentation
 
 **Current Versions:**
-- Multimodel Plugin: **v2.4.1** (2026-02-12)
-- Frontend Plugin: **v3.15.1** (2026-02-12)
-- Code Analysis Plugin: **v3.2.2** (2026-02-12)
-- Bun Backend Plugin: **v1.6.1** (2026-02-12)
-- Agent Development Plugin: **v1.5.2** (2026-02-12)
-- SEO Plugin: **v1.6.2** (2026-02-12)
-- Video Editing Plugin: **v1.0.1** (2026-01-06)
-- Nanobanana Plugin: **v2.2.3** (2026-01-08)
-- Conductor Plugin: **v2.0.1** (2026-01-06)
-- Terminal Plugin: **v1.0.0** (2026-02-26)
-- Dev Plugin: **v1.32.0** (2026-02-16)
+- Multimodel Plugin: **v2.4.2** (2026-02-27)
+- Frontend Plugin: **v3.15.2** (2026-02-27)
+- Code Analysis Plugin: **v3.2.3** (2026-02-27)
+- Bun Backend Plugin: **v1.6.2** (2026-02-27)
+- Agent Development Plugin: **v1.5.3** (2026-02-27)
+- SEO Plugin: **v1.6.3** (2026-02-27)
+- Video Editing Plugin: **v1.1.1** (2026-02-27)
+- Nanobanana Plugin: **v2.3.1** (2026-02-27)
+- Conductor Plugin: **v2.1.1** (2026-02-27)
+- Terminal Plugin: **v1.0.0** (2026-02-27)
+- Statusline Plugin: **v1.4.1** (2026-02-27)
+- Autopilot Plugin: **v0.2.1** (2026-02-27)
+- Instantly Plugin: **v1.0.3** (2026-02-27)
+- Dev Plugin: **v1.33.0** (2026-02-27)
 - Claudish CLI: See https://github.com/MadAppGang/claudish (separate repository)
 
-**Latest Changes (Code Analysis v2.15.0):**
-- ✅ **Hybrid 2+3 Hook Approach**: Results-first format with "Task complete" language
-- ✅ **71% Retry Reduction**: Agents treat denials as completions instead of retrying
-- ✅ **"Completed via claudemem"**: Success-like language in denial reasons
-- ✅ **Minimal Context**: 10 lines vs 32 lines (69% reduction in noise)
-- ✅ **Preserved Fallbacks**: Native tools still work when claudemem not indexed
+**Latest Changes (Marketplace v7.0.0 — 2026-02-27):**
+- ✅ **Marketplace Rename**: mag-claude-plugins → magus across all 15 plugins
+- ✅ **Workflow Coaching** (Dev v1.33.0): Stop/SessionStart hooks, 8 rule-based detections, cross-session persistence
+- ✅ **Terminal Plugin** (v1.0.0): ht-mcp + tmux-mcp integration, 9 E2E tests, 100% pass across 3 models
+- ✅ **Statusline Fix** (v1.4.1): UTC timezone for countdown, days/hours duration formatting
+- ✅ **Landing Page**: React + Vite + Tailwind marketplace landing page
 
 **Git Tags:**
-- Multimodel: `plugins/multimodel/v2.4.1`
-- Frontend: `plugins/frontend/v3.15.1`
-- Bun: `plugins/bun/v1.6.1`
-- Code Analysis: `plugins/code-analysis/v3.2.2`
-- Agent Development: `plugins/agentdev/v1.5.2`
-- SEO: `plugins/seo/v1.6.2`
-- Video Editing: `plugins/video-editing/v1.0.1`
-- Nanobanana: `plugins/nanobanana/v2.2.3`
-- Conductor: `plugins/conductor/v2.0.1`
+- Multimodel: `plugins/multimodel/v2.4.2`
+- Frontend: `plugins/frontend/v3.15.2`
+- Bun: `plugins/bun/v1.6.2`
+- Code Analysis: `plugins/code-analysis/v3.2.3`
+- Agent Development: `plugins/agentdev/v1.5.3`
+- SEO: `plugins/seo/v1.6.3`
+- Video Editing: `plugins/video-editing/v1.1.1`
+- Nanobanana: `plugins/nanobanana/v2.3.1`
+- Conductor: `plugins/conductor/v2.1.1`
 - Terminal: `plugins/terminal/v1.0.0`
-- Dev: `plugins/dev/v1.32.0`
+- Statusline: `plugins/statusline/v1.4.1`
+- Autopilot: `plugins/autopilot/v0.2.1`
+- Instantly: `plugins/instantly/v1.0.3`
+- Dev: `plugins/dev/v1.33.0`
 - Use correct tag format when releasing: `plugins/{plugin-name}/vX.Y.Z`
 
 **⚠️ RELEASE CHECKLIST (ALL 3 REQUIRED):**
@@ -285,6 +295,6 @@ The workflow `.github/workflows/claudeup-release.yml` triggers on `tools/claudeu
 ---
 
 **Maintained by:** Jack Rudenko @ MadAppGang
-**Last Updated:** February 10, 2026
-**Version:** 11 plugins (Multimodel v2.4.1, Frontend v3.15.1, Code Analysis v3.2.2, Bun Backend v1.6.1, Agent Development v1.5.2, SEO v1.6.2, Video Editing v1.0.1, Nanobanana v2.2.3, Conductor v2.0.1, Terminal v1.0.0, Dev v1.32.0)
+**Last Updated:** February 27, 2026
+**Version:** 15 plugins (Multimodel v2.4.2, Frontend v3.15.2, Code Analysis v3.2.3, Bun v1.6.2, Agent Dev v1.5.3, SEO v1.6.3, Video Editing v1.1.1, Nanobanana v2.3.1, Conductor v2.1.1, Terminal v1.0.0, Statusline v1.4.1, Autopilot v0.2.1, Instantly v1.0.3, Dev v1.33.0)
 - do not use hardcoded path in code, docs, comments or any other files

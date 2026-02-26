@@ -1,6 +1,6 @@
 {
   "name": "dev",
-  "version": "1.32.0",
+  "version": "1.33.0",
   "description": "Universal development assistant with real skill discovery. v1.32.0: db-branching skill for worktree database isolation (Neon, Turso, Supabase). Skill routing tables. 47 skills.",
   "author": {
     "name": "Jack Rudenko",
