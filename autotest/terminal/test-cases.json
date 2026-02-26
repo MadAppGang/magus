@@ -1,0 +1,184 @@
+{
+  "meta": {
+    "description": "Terminal plugin E2E test cases. Each test verifies Claude can accomplish real developer tasks using MCP terminal tools (mcp__ht__* and mcp__tmux__*). Tests check tool selection, sequencing, and response accuracy.",
+    "version": "1.2.0",
+    "created": "2026-02-26",
+    "notes": "v1.2: Removed no_tool_prefix checks — parallel test execution shares debug logs across tests, causing cross-contamination of tool calls. Positive checks (has_tool_prefix, tools_used_include_any) are sufficient. v1.1: Accept ht_execute_command as alternative to ht_send_keys for non-TUI tests."
+  },
+  "test_cases": [
+    {
+      "id": "tmux-inspect-sessions-01",
+      "description": "List all tmux sessions, count windows per session, capture active pane of the one with most windows",
+      "prompt": "Use the tmux MCP tools to do the following:\n1. List all current tmux sessions.\n2. For each session, list its windows and count them.\n3. Identify which session has the most windows.\n4. Capture the active pane output of that session.\n5. Report your findings including the session name, window count, and pane content.\n\nIMPORTANT: Only use mcp__tmux__* tools. Do NOT create any ht-mcp sessions. Do NOT modify any existing tmux sessions.",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "advanced",
+      "tags": ["tmux", "inspect", "sessions", "windows", "capture"],
+      "checks": {
+        "has_tool_prefix": "mcp__tmux__",
+        "tools_used_include_any": [
+          ["mcp__tmux__list-sessions", "mcp__tmux__list-windows", "mcp__tmux__capture-pane"],
+          ["mcp__tmux-mcp__list-sessions", "mcp__tmux-mcp__list-windows", "mcp__tmux-mcp__capture-pane"]
+        ],
+        "min_tool_calls": 3
+      }
+    },
+    {
+      "id": "multi-session-server-02",
+      "description": "Create 2 ht-mcp sessions: run Python HTTP server in first, curl it from second, verify response, close both",
+      "prompt": "Use the ht-mcp terminal tools to complete this task:\n1. Create a new ht-mcp session (call it session A).\n2. In session A, start a Python HTTP server on port 19876 in the background: run `python3 -m http.server 19876 &` then wait 2 seconds.\n3. Create a second ht-mcp session (call it session B).\n4. In session B, run `curl -s http://localhost:19876/` to fetch the server response.\n5. Take a snapshot of session B to capture the curl output.\n6. Close BOTH sessions when done.\n7. Report what the curl response contained.\n\nIMPORTANT: Only use mcp__ht__* tools. Do NOT use any tmux tools. Clean up both sessions at the end.",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "advanced",
+      "tags": ["ht-mcp", "http-server", "multi-session", "curl"],
+      "checks": {
+        "has_tool_prefix": "mcp__ht__",
+        "min_tool_calls_by_name": {
+          "ht_create_session": 2,
+          "ht_close_session": 2,
+          "ht_take_snapshot": 1
+        },
+        "min_tool_calls": 6
+      }
+    },
+    {
+      "id": "vim-file-create-03",
+      "description": "Use vim in ht-mcp to create a file with specific text, verify with cat, close session",
+      "prompt": "Use the ht-mcp terminal tools to create a file using vim:\n1. First, create the directory: mkdir -p $HOME/e2e-terminal-scratch\n2. Create an ht-mcp session.\n3. In the session, open vim to create a new file: run `vim $HOME/e2e-terminal-scratch/test.txt`\n4. Enter insert mode (press i), type the text: Terminal plugin E2E test passed\n5. Save and quit vim (press Escape, then type :wq and press Enter).\n6. Take a snapshot to confirm vim closed.\n7. Run `cat $HOME/e2e-terminal-scratch/test.txt` in the session.\n8. Take another snapshot to see the cat output.\n9. Close the session.\n10. Clean up: delete $HOME/e2e-terminal-scratch/test.txt\n11. Report whether the file contained the expected text.\n\nIMPORTANT: Only use mcp__ht__* tools. The file MUST contain exactly: Terminal plugin E2E test passed",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "advanced",
+      "tags": ["ht-mcp", "vim", "file-creation", "verification"],
+      "checks": {
+        "has_tool_prefix": "mcp__ht__",
+        "tools_used_include_any": [
+          ["mcp__ht__ht_create_session", "mcp__ht__ht_send_keys", "mcp__ht__ht_take_snapshot", "mcp__ht__ht_close_session"],
+          ["mcp__ht-mcp__ht_create_session", "mcp__ht-mcp__ht_send_keys", "mcp__ht-mcp__ht_take_snapshot", "mcp__ht-mcp__ht_close_session"]
+        ],
+        "min_tool_calls_by_name": {
+          "ht_send_keys": 3,
+          "ht_take_snapshot": 1
+        },
+        "min_tool_calls": 6,
+        "response_contains": "Terminal plugin E2E test passed"
+      }
+    },
+    {
+      "id": "repl-calculation-04",
+      "description": "Start Python REPL in ht-mcp, calculate sum of squares for 1-10, report result (385), exit and close",
+      "prompt": "Use the ht-mcp terminal tools to run a Python calculation:\n1. Create an ht-mcp session.\n2. Start the Python REPL by running: `python3`\n3. Wait for the Python prompt (>>>).\n4. Enter this calculation: `sum(i**2 for i in range(1, 11))`\n5. Press Enter and take a snapshot to capture the result.\n6. Exit the REPL by typing `exit()` or pressing Ctrl+D.\n7. Close the session.\n8. Report the numerical result of the calculation.\n\nThe correct answer is 385. Confirm in your response whether the REPL returned 385.\n\nIMPORTANT: Only use mcp__ht__* tools. Do NOT use any tmux tools.",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "advanced",
+      "tags": ["ht-mcp", "python-repl", "calculation", "verification"],
+      "checks": {
+        "has_tool_prefix": "mcp__ht__",
+        "min_tool_calls_by_name": {
+          "ht_create_session": 1,
+          "ht_send_keys": 3,
+          "ht_take_snapshot": 1,
+          "ht_close_session": 1
+        },
+        "min_tool_calls": 5,
+        "response_contains": "385"
+      }
+    },
+    {
+      "id": "log-monitoring-05",
+      "description": "Create ht-mcp session, write log lines, tail -f to monitor, append ERROR line, detect it in snapshot, clean up",
+      "prompt": "Use the ht-mcp terminal tools to simulate log monitoring:\n1. Create the scratch directory: mkdir -p $HOME/e2e-terminal-scratch\n2. Create an ht-mcp session.\n3. Write 3 INFO log lines to $HOME/e2e-terminal-scratch/test.log:\n   - `echo '[INFO] Server starting' >> $HOME/e2e-terminal-scratch/test.log`\n   - `echo '[INFO] Listening on port 8080' >> $HOME/e2e-terminal-scratch/test.log`\n   - `echo '[INFO] Connection pool initialized' >> $HOME/e2e-terminal-scratch/test.log`\n4. Start tailing the log file in the background: `tail -f $HOME/e2e-terminal-scratch/test.log &`\n5. Append a critical error line: `echo '[ERROR] Database connection timeout' >> $HOME/e2e-terminal-scratch/test.log`\n6. Take a snapshot of the session to see if the error appeared in the tail output.\n7. Clean up: kill the background tail process, delete $HOME/e2e-terminal-scratch/test.log\n8. Close the session.\n9. Report whether you detected the ERROR line in the snapshot.\n\nIMPORTANT: Only use mcp__ht__* tools.",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "advanced",
+      "tags": ["ht-mcp", "log-monitoring", "tail", "background-process"],
+      "checks": {
+        "has_tool_prefix": "mcp__ht__",
+        "min_tool_calls_by_name": {
+          "ht_create_session": 1,
+          "ht_send_keys": 4,
+          "ht_take_snapshot": 1,
+          "ht_close_session": 1
+        },
+        "min_tool_calls": 7,
+        "response_contains_any": ["ERROR", "error", "connection timeout", "Database"]
+      }
+    },
+    {
+      "id": "tmux-command-workflow-06",
+      "description": "Create tmux session, execute command with unique marker, capture output, kill session",
+      "prompt": "Use the tmux MCP tools to complete a workflow:\n1. Create a new tmux session named 'e2e-terminal-test' (detached).\n2. Send a command to that session that echoes a unique marker: `echo TMUX_E2E_SUCCESS_MARKER`\n3. Wait briefly for the command to complete.\n4. Capture the pane output of the session to verify the marker appeared.\n5. Kill the 'e2e-terminal-test' session to clean up.\n6. Report whether TMUX_E2E_SUCCESS_MARKER appeared in the captured output.\n\nIMPORTANT: Only use mcp__tmux__* tools. Do NOT use ht-mcp tools. Clean up the session at the end.",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "advanced",
+      "tags": ["tmux", "command-execution", "capture", "session-lifecycle"],
+      "checks": {
+        "has_tool_prefix": "mcp__tmux__",
+        "tools_used_include_any": [
+          ["mcp__tmux__create-session", "mcp__tmux__capture-pane", "mcp__tmux__kill-session"],
+          ["mcp__tmux-mcp__create-session", "mcp__tmux-mcp__capture-pane", "mcp__tmux-mcp__kill-session"],
+          ["mcp__tmux__create-session", "mcp__tmux__execute-command", "mcp__tmux__capture-pane"],
+          ["mcp__tmux__execute-command", "mcp__tmux__capture-pane"],
+          ["mcp__tmux__list-sessions", "mcp__tmux__capture-pane"]
+        ],
+        "min_tool_calls": 3,
+        "response_contains": "TMUX_E2E_SUCCESS_MARKER"
+      }
+    },
+    {
+      "id": "process-management-07",
+      "description": "ht-mcp session: start sleep background job, verify with jobs, kill it, verify gone, show output from each step",
+      "prompt": "Use the ht-mcp terminal tools to practice process management:\n1. Create an ht-mcp session.\n2. Start a background process: `sleep 300 &`\n3. Run `jobs` to list background jobs and take a snapshot.\n4. Kill the background job: `kill %1`\n5. Run `jobs` again to confirm the job is gone (or shows 'Terminated') and take another snapshot.\n6. Close the session.\n7. Report what each snapshot showed — specifically, did jobs show a running process, then did the kill work?\n\nIMPORTANT: Only use mcp__ht__* tools. Do NOT use tmux tools.",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "advanced",
+      "tags": ["ht-mcp", "process-management", "background-jobs", "kill"],
+      "checks": {
+        "has_tool_prefix": "mcp__ht__",
+        "min_tool_calls_by_name": {
+          "ht_create_session": 1,
+          "ht_send_keys": 4,
+          "ht_take_snapshot": 2,
+          "ht_close_session": 1
+        },
+        "min_tool_calls": 8
+      }
+    },
+    {
+      "id": "environment-inspection-08",
+      "description": "ht-mcp session: inspect environment variables (HOME, USER, SHELL, TERM, PWD), check current shell, report findings",
+      "prompt": "Use the ht-mcp terminal tools to inspect the shell environment:\n1. Create an ht-mcp session.\n2. Run `env | grep -E '^(HOME|USER|SHELL|TERM|PWD)='` to list key environment variables.\n3. Run `echo $0` to check what shell is running.\n4. Take a snapshot to capture all the output.\n5. Close the session.\n6. In your response, report the values of HOME, USER, SHELL, TERM, and PWD as found in the snapshot, plus what $0 returned.\n\nIMPORTANT: Only use mcp__ht__* tools. Do NOT use tmux tools.",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "advanced",
+      "tags": ["ht-mcp", "environment", "shell-inspection"],
+      "checks": {
+        "has_tool_prefix": "mcp__ht__",
+        "min_tool_calls_by_name": {
+          "ht_create_session": 1,
+          "ht_take_snapshot": 1,
+          "ht_close_session": 1
+        },
+        "min_tool_calls": 4,
+        "response_contains_any": ["HOME", "USER", "SHELL"]
+      }
+    },
+    {
+      "id": "cross-backend-compare-09",
+      "description": "Use BOTH tmux and ht-mcp backends in one task: list tmux sessions, capture a pane, then create ht-mcp session, run uname -a, report both outputs",
+      "prompt": "Use BOTH tmux and ht-mcp MCP tools in this single task:\n\nPart A (tmux backend):\n1. List all current tmux sessions using the tmux MCP tools.\n2. If any session exists, capture the output of any pane in the first session.\n3. If no sessions exist, just note that no sessions are running.\n\nPart B (ht-mcp backend):\n4. Create a new ht-mcp session.\n5. Run `uname -a` in the session.\n6. Take a snapshot to capture the uname output.\n7. Close the ht-mcp session.\n\nReport:\n- What tmux sessions were found (if any) and what was in the captured pane.\n- The full uname -a output from the ht-mcp session.\n\nIMPORTANT: You MUST use BOTH mcp__tmux__* tools AND mcp__ht__* tools. Do NOT skip either backend.",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "advanced",
+      "tags": ["tmux", "ht-mcp", "cross-backend", "dual-backend"],
+      "checks": {
+        "has_tool_prefix": "mcp__tmux__",
+        "has_tool_prefix_also": "mcp__ht__",
+        "tools_used_include_any": [
+          ["mcp__tmux__list-sessions", "mcp__ht__ht_create_session", "mcp__ht__ht_take_snapshot", "mcp__ht__ht_close_session"],
+          ["mcp__tmux-mcp__list-sessions", "mcp__ht-mcp__ht_create_session", "mcp__ht-mcp__ht_take_snapshot", "mcp__ht-mcp__ht_close_session"]
+        ],
+        "min_tool_calls": 5
+      }
+    }
+  ]
+}

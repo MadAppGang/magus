@@ -6,7 +6,7 @@
 
 ## Project Overview
 
-**Repository:** MAG Claude Plugins
+**Repository:** Magus
 **Purpose:** Professional plugin marketplace for Claude Code
 **Owner:** Jack Rudenko (i@madappgang.com) @ MadAppGang
 **License:** MIT
@@ -23,6 +23,7 @@
 | **SEO** | v1.6.2 | SEO analysis and optimization with AUTO GATEs |
 | **Video Editing** | v1.0.1 | FFmpeg, Whisper, Final Cut Pro integration |
 | **Nanobanana** | v2.2.3 | AI image generation with Gemini 3 Pro Image |
+| **Terminal** | v1.0.0 | Interactive terminal via ht-mcp + tmux-mcp (screen read, keystroke, TUI nav) |
 | **Dev** | v1.32.0 | Universal dev assistant with real validation loops, 47 skills |
 
 **Claudish CLI**: `npm install -g claudish` - Run Claude with OpenRouter models (separate repo)
@@ -174,8 +175,8 @@ CODEX_API_KEY=your-codex-key
 ```json
 {
   "enabledPlugins": {
-    "frontend@mag-claude-plugins": true,
-    "code-analysis@mag-claude-plugins": true
+    "frontend@magus": true,
+    "code-analysis@magus": true
   }
 }
 ```
@@ -233,6 +234,7 @@ NOTE: Skills use the `Skill` tool, NOT the `Task` tool. The `namespace:name` for
 - Video Editing Plugin: **v1.0.1** (2026-01-06)
 - Nanobanana Plugin: **v2.2.3** (2026-01-08)
 - Conductor Plugin: **v2.0.1** (2026-01-06)
+- Terminal Plugin: **v1.0.0** (2026-02-26)
 - Dev Plugin: **v1.32.0** (2026-02-16)
 - Claudish CLI: See https://github.com/MadAppGang/claudish (separate repository)
 
@@ -253,6 +255,7 @@ NOTE: Skills use the `Skill` tool, NOT the `Task` tool. The `namespace:name` for
 - Video Editing: `plugins/video-editing/v1.0.1`
 - Nanobanana: `plugins/nanobanana/v2.2.3`
 - Conductor: `plugins/conductor/v2.0.1`
+- Terminal: `plugins/terminal/v1.0.0`
 - Dev: `plugins/dev/v1.32.0`
 - Use correct tag format when releasing: `plugins/{plugin-name}/vX.Y.Z`
 
@@ -283,5 +286,5 @@ The workflow `.github/workflows/claudeup-release.yml` triggers on `tools/claudeu
 
 **Maintained by:** Jack Rudenko @ MadAppGang
 **Last Updated:** February 10, 2026
-**Version:** 10 plugins (Multimodel v2.4.1, Frontend v3.15.1, Code Analysis v3.2.2, Bun Backend v1.6.1, Agent Development v1.5.2, SEO v1.6.2, Video Editing v1.0.1, Nanobanana v2.2.3, Conductor v2.0.1, Dev v1.32.0)
+**Version:** 11 plugins (Multimodel v2.4.1, Frontend v3.15.1, Code Analysis v3.2.2, Bun Backend v1.6.1, Agent Development v1.5.2, SEO v1.6.2, Video Editing v1.0.1, Nanobanana v2.2.3, Conductor v2.0.1, Terminal v1.0.0, Dev v1.32.0)
 - do not use hardcoded path in code, docs, comments or any other files

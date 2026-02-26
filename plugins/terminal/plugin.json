@@ -1,0 +1,26 @@
+{
+  "name": "terminal",
+  "version": "1.0.0",
+  "description": "Interactive terminal integration for Claude Code. Enables Claude to interact with TUI applications, run commands, and observe real terminal output using ht-mcp and tmux-mcp.",
+  "author": {
+    "name": "Jack Rudenko",
+    "email": "i@madappgang.com",
+    "company": "MadAppGang"
+  },
+  "license": "MIT",
+  "keywords": ["terminal", "pty", "tui", "interactive", "ht", "tmux", "headless"],
+  "category": "development",
+  "agents": [
+    "./agents/tui-navigator.md"
+  ],
+  "commands": [
+    "./commands/snapshot.md",
+    "./commands/send.md",
+    "./commands/session.md"
+  ],
+  "skills": [
+    "./skills/terminal-interaction",
+    "./skills/tui-navigation-patterns"
+  ],
+  "mcpServers": "./mcp-servers/mcp-config.json"
+}

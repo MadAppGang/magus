@@ -30,7 +30,7 @@ const RE_STREAM_COMPLETE = /\[OpenRouter\] Stream complete:\s*(\w+)/;
 const RE_RESPONSE_STATUS = /\[OpenRouter\] Response status:\s*(\d+)/;
 const RE_COST_TRACKER = /\[Cost Tracker\] Total cost:\s*\$?([\d.]+)/;
 const RE_PROXY_START = /\[Proxy\] Server started on port\s*(\d+)/;
-const RE_TOOL_CALL_ENTRY = /(\w+)\((\d+)\s*chars?\)/g;
+const RE_TOOL_CALL_ENTRY = /([\w][\w-]*(?:__[\w-]+)*)\((\d+)\s*chars?\)/g;
 
 // --- Types ---
 

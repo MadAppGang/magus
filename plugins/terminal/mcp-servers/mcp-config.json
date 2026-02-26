@@ -1,0 +1,10 @@
+{
+  "ht": {
+    "command": "ht-mcp",
+    "args": []
+  },
+  "tmux": {
+    "command": "npx",
+    "args": ["-y", "tmux-mcp"]
+  }
+}
