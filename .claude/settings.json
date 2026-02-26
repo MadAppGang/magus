@@ -1,18 +1,20 @@
 {
   "enabledPlugins": {
-    "agentdev@mag-claude-plugins": true,
-    "code-analysis@mag-claude-plugins": true,
-    "dev@mag-claude-plugins": true,
-    "multimodel@mag-claude-plugins": true,
+    "agentdev@magus": true,
+    "code-analysis@magus": true,
+    "dev@magus": true,
+    "multimodel@magus": true,
     "explanatory-output-style@claude-plugins-official": true,
-    "ralph-loop@claude-plugins-official": true,
+    "ralph-loop@claude-plugins-official": false,
     "claude-md-management@claude-plugins-official": true,
     "claude-code-setup@claude-plugins-official": true,
     "superpowers@claude-plugins-official": true,
     "plugin-dev@claude-plugins-official": true,
     "code-simplifier@claude-plugins-official": true,
     "code-review@claude-plugins-official": true,
-    "commit-commands@claude-plugins-official": true
+    "commit-commands@claude-plugins-official": true,
+    "statusline@magus": true,
+    "terminal@magus": true
   },
   "enableAllProjectMcpServers": true,
   "extraKnownMarketplaces": {
@@ -24,16 +26,40 @@
     }
   },
   "installedPluginVersions": {
-    "dev@mag-claude-plugins": "1.29.0",
-    "multimodel@mag-claude-plugins": "2.4.0",
+    "dev@magus": "1.31.3",
+    "multimodel@magus": "2.4.1",
     "explanatory-output-style@claude-plugins-official": "0.0.0",
-    "ralph-loop@claude-plugins-official": "0.0.0",
     "claude-md-management@claude-plugins-official": "0.0.0",
     "claude-code-setup@claude-plugins-official": "0.0.0",
     "superpowers@claude-plugins-official": "0.0.0",
     "plugin-dev@claude-plugins-official": "0.0.0",
     "code-simplifier@claude-plugins-official": "0.0.0",
     "code-review@claude-plugins-official": "0.0.0",
-    "commit-commands@claude-plugins-official": "0.0.0"
+    "commit-commands@claude-plugins-official": "0.0.0",
+    "statusline@magus": "1.4.0"
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CLAUDE_PLUGIN_ROOT=\"$CLAUDE_PROJECT_DIR/plugins/dev\" bash \"$CLAUDE_PROJECT_DIR/plugins/dev/hooks/stop-coaching.sh\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CLAUDE_PLUGIN_ROOT=\"$CLAUDE_PROJECT_DIR/plugins/dev\" bash \"$CLAUDE_PROJECT_DIR/plugins/dev/hooks/session-start-coaching.sh\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
   }
 }
