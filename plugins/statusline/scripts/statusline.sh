@@ -122,8 +122,9 @@ countdown() {
   clean="${clean%%+*}"
 
   # macOS date -jf; fall back to GNU date -d
+  # API returns UTC timestamps — parse in UTC to avoid local timezone offset
   local reset_epoch
-  reset_epoch=$(date -jf "%Y-%m-%dT%H:%M:%S" "$clean" +%s 2>/dev/null)
+  reset_epoch=$(TZ=UTC date -jf "%Y-%m-%dT%H:%M:%S" "$clean" +%s 2>/dev/null)
   if [ -z "$reset_epoch" ]; then
     reset_epoch=$(date -d "$reset_ts" +%s 2>/dev/null)
   fi
@@ -176,9 +177,16 @@ esac
 COST_FMT=$(printf '%.2f' "$COST")
 
 # ── Format duration ───────────────────────────────────────
-MINS=$((DURATION_MS / 60000))
-SECS=$(((DURATION_MS % 60000) / 1000))
-if [ "$MINS" -gt 0 ]; then
+TOTAL_SECS=$((DURATION_MS / 1000))
+DAYS=$((TOTAL_SECS / 86400))
+HOURS=$(((TOTAL_SECS % 86400) / 3600))
+MINS=$(((TOTAL_SECS % 3600) / 60))
+SECS=$((TOTAL_SECS % 60))
+if [ "$DAYS" -gt 0 ]; then
+  DURATION="${DAYS}d${HOURS}h${MINS}m"
+elif [ "$HOURS" -gt 0 ]; then
+  DURATION="${HOURS}h${MINS}m"
+elif [ "$MINS" -gt 0 ]; then
   DURATION="${MINS}m${SECS}s"
 else
   DURATION="${SECS}s"

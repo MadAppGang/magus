@@ -1,0 +1,100 @@
+{
+  "meta": {
+    "description": "Skill routing test cases. Verifies Claude uses the Skill tool (not Task) for skill invocations, spells tool names correctly in Bash, and follows the CLAUDE.md skill routing table.",
+    "version": "1.0.0",
+    "created": "2026-02-16",
+    "notes": "v1.0: Tests claudemem skill routing fixes: (1) Skill vs Agent disambiguation, (2) correct spelling in Bash, (3) CLAUDE.md routing table honoring. Covers the triple-failure cascade identified on 2026-02-16."
+  },
+  "test_cases": [
+    {
+      "id": "skill-claudemem-explicit-01",
+      "description": "Explicit claudemem skill request should use Skill tool, not Task",
+      "prompt": "Use the code-analysis:claudemem-search skill to understand how to search this codebase with claudemem. Just load the skill and report what commands are available. Do not actually run claudemem.",
+      "checks": {
+        "skill_invoked_is": "code-analysis:claudemem-search",
+        "no_task_with_skill_name": true
+      },
+      "category": "explicit-skill",
+      "tags": ["explicit", "claudemem", "skill-vs-agent"]
+    },
+    {
+      "id": "skill-claudemem-implicit-01",
+      "description": "Implicit claudemem need should invoke skill from routing table, not try as Task agent",
+      "prompt": "I need to search this codebase semantically using claudemem to find all authentication-related code. First load the appropriate skill, then explain what claudemem commands I should use.",
+      "checks": {
+        "skill_invoked_contains": "claudemem",
+        "no_task_with_skill_name": true
+      },
+      "category": "implicit-skill",
+      "tags": ["implicit", "claudemem", "routing-table"]
+    },
+    {
+      "id": "skill-spelling-bash-01",
+      "description": "After loading claudemem skill, Bash commands should spell 'claudemem' correctly",
+      "prompt": "Load the code-analysis:claudemem-search skill, then run 'which claudemem' and 'claudemem --version' to check if claudemem is installed.",
+      "checks": {
+        "skill_invoked_contains": "claudemem",
+        "bash_claudemem_spelled_correctly": true,
+        "no_bash_typo_clademem": true
+      },
+      "category": "spelling",
+      "tags": ["spelling", "claudemem", "bash"]
+    },
+    {
+      "id": "skill-not-agent-01",
+      "description": "claudemem-search should never appear as a Task subagent_type",
+      "prompt": "I need semantic code search capabilities. Use claudemem to map the architecture of the plugins directory. Load the appropriate skill first.",
+      "checks": {
+        "no_task_with_skill_name": true,
+        "skill_invoked_contains": "claudemem"
+      },
+      "category": "agent-vs-skill",
+      "tags": ["disambiguation", "agent-vs-skill"]
+    },
+    {
+      "id": "skill-routing-detective-01",
+      "description": "Detective agent should be used for investigation, claudemem skill for search tool guidance",
+      "prompt": "Investigate the hook system in this codebase. If you need claudemem for searching, load the claudemem-search skill first. Use the detective agent for the actual investigation.",
+      "checks": {
+        "task_agent_is": "code-analysis:detective",
+        "no_task_with_skill_name": true
+      },
+      "expected_alternatives_task": ["general-purpose", "Explore"],
+      "category": "mixed-routing",
+      "tags": ["detective", "claudemem", "mixed"]
+    },
+    {
+      "id": "skill-deep-analysis-01",
+      "description": "Deep analysis skill should be invoked via Skill tool",
+      "prompt": "Use the code-analysis:deep-analysis skill to prepare a comprehensive analysis approach for the multimodel plugin. Just load the skill and explain the methodology it describes.",
+      "checks": {
+        "skill_invoked_is": "code-analysis:deep-analysis",
+        "no_task_with_skill_name": true
+      },
+      "category": "explicit-skill",
+      "tags": ["explicit", "deep-analysis", "skill-vs-agent"]
+    },
+    {
+      "id": "skill-architect-detective-01",
+      "description": "Architect detective skill should be invoked via Skill tool, not as Task agent",
+      "prompt": "Use the code-analysis:architect-detective skill to understand the architecture investigation methodology. Load the skill and summarize what claudemem commands it recommends for architecture analysis.",
+      "checks": {
+        "skill_invoked_is": "code-analysis:architect-detective",
+        "no_task_with_skill_name": true,
+        "no_bash_typo_clademem": true
+      },
+      "category": "explicit-skill",
+      "tags": ["explicit", "architect", "skill-vs-agent"]
+    },
+    {
+      "id": "skill-simple-no-skill-01",
+      "description": "Simple file read should NOT invoke any skill - direct handling",
+      "prompt": "Read the file plugins/code-analysis/plugin.json and tell me what agents are registered",
+      "checks": {
+        "no_skill_invoked": true
+      },
+      "category": "no-skill",
+      "tags": ["simple", "direct", "no-skill"]
+    }
+  ]
+}
