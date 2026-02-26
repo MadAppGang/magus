@@ -1,0 +1,125 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Global Reset ── */
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: 'Space Grotesk', sans-serif;
+  background: #F5F3EE;
+  color: #111111;
+  overflow-x: hidden;
+  position: relative;
+}
+
+/* ── SVG Noise Overlay ── */
+body::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.04;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 256px 256px;
+}
+
+/* ── Selection ── */
+::selection {
+  background: #E63B2E;
+  color: #F5F3EE;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #E8E4DD;
+}
+::-webkit-scrollbar-thumb {
+  background: #111111;
+  border-radius: 3px;
+}
+
+/* ── Magnetic Button ── */
+.btn-magnetic {
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+              box-shadow 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+.btn-magnetic:hover {
+  transform: scale(1.03);
+}
+.btn-magnetic .btn-bg {
+  position: absolute;
+  inset: 0;
+  transform: translateY(100%);
+  transition: transform 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  z-index: 0;
+}
+.btn-magnetic:hover .btn-bg {
+  transform: translateY(0);
+}
+.btn-magnetic span {
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Interactive Lift ── */
+.lift-hover {
+  transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+.lift-hover:hover {
+  transform: translateY(-1px);
+}
+
+/* ── Blinking Cursor ── */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+.cursor-blink {
+  animation: blink 1s step-end infinite;
+}
+
+/* ── Pulsing Dot ── */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.5); }
+}
+.pulse-dot {
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+/* ── Card Container ── */
+.card-container {
+  @apply bg-offwhite border border-paper rounded-[2rem] shadow-sm;
+}
+
+/* ── Hero gradient ── */
+.hero-gradient {
+  background: linear-gradient(
+    to top,
+    rgba(17, 17, 17, 0.95) 0%,
+    rgba(17, 17, 17, 0.7) 30%,
+    rgba(17, 17, 17, 0.3) 60%,
+    rgba(17, 17, 17, 0.1) 100%
+  );
+}
