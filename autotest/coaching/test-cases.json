@@ -1,0 +1,439 @@
+{
+  "version": "1.0.0",
+  "description": "Coaching pipeline E2E test cases. Each test runs the real analyzer CLI with a synthetic JSONL transcript and validates outputs.",
+  "test_cases": [
+    {
+      "id": "coaching-grep-rule-01",
+      "description": "3 bash grep calls triggers claudemem suggestion",
+      "category": "rule-detection",
+      "tags": ["grep-instead-of-claudemem", "bash"],
+      "filler_count": 7,
+      "transcript": [
+        {"tool": "Bash", "input": {"command": "grep -r 'pattern' src/"}},
+        {"tool": "Bash", "input": {"command": "grep -n 'pattern' lib/"}},
+        {"tool": "Bash", "input": {"command": "grep 'pattern' tests/"}}
+      ],
+      "checks": {
+        "recommendations_not_null": true,
+        "recommendations_contains": "claudemem",
+        "exit_code_is": 0
+      }
+    },
+    {
+      "id": "coaching-tmp-path-01",
+      "description": "Bash using /tmp/ path triggers the tmp-path-usage rule",
+      "category": "rule-detection",
+      "tags": ["tmp-path-usage", "bash"],
+      "filler_count": 9,
+      "transcript": [
+        {"tool": "Bash", "input": {"command": "cat /tmp/session-data.md"}}
+      ],
+      "checks": {
+        "recommendations_not_null": true,
+        "recommendations_contains": "session"
+      }
+    },
+    {
+      "id": "coaching-skill-as-task-01",
+      "description": "Task with skill name warns about triple failure cascade",
+      "category": "rule-detection",
+      "tags": ["skill-invoked-as-task", "api-correctness"],
+      "filler_count": 9,
+      "transcript": [
+        {"tool": "Task", "input": {"subagent_type": "code-analysis:claudemem-search", "prompt": "find patterns"}}
+      ],
+      "checks": {
+        "recommendations_not_null": true,
+        "recommendations_contains": "code-analysis:claudemem-search",
+        "recommendations_contains_2": "Skill"
+      }
+    },
+    {
+      "id": "coaching-wrong-agent-01",
+      "description": "Research prompt with developer agent suggests dev:researcher",
+      "category": "rule-detection",
+      "tags": ["wrong-agent-for-task", "delegation"],
+      "filler_count": 9,
+      "transcript": [
+        {"tool": "Task", "input": {"subagent_type": "dev:developer", "prompt": "research the best authentication patterns and compare OAuth vs SAML"}}
+      ],
+      "checks": {
+        "recommendations_not_null": true,
+        "recommendations_contains": "dev:researcher"
+      }
+    },
+    {
+      "id": "coaching-background-tasks-01",
+      "description": "3 sequential non-background Tasks suggest run_in_background",
+      "category": "rule-detection",
+      "tags": ["no-background-tasks", "performance"],
+      "filler_count": 7,
+      "transcript": [
+        {"tool": "Task", "input": {"subagent_type": "dev:developer", "prompt": "task 1"}},
+        {"tool": "Task", "input": {"subagent_type": "dev:developer", "prompt": "task 2"}},
+        {"tool": "Task", "input": {"subagent_type": "dev:developer", "prompt": "task 3"}}
+      ],
+      "checks": {
+        "recommendations_not_null": true,
+        "recommendations_contains": "run_in_background"
+      }
+    },
+    {
+      "id": "coaching-single-model-review-01",
+      "description": "Code review task without claudish suggests using the team command",
+      "category": "rule-detection",
+      "tags": ["single-model-critical-review", "quality"],
+      "filler_count": 9,
+      "transcript": [
+        {"tool": "Task", "input": {"subagent_type": "dev:developer", "prompt": "perform a thorough code review of the auth module"}}
+      ],
+      "checks": {
+        "recommendations_not_null": true,
+        "recommendations_contains": "/team"
+      }
+    },
+    {
+      "id": "coaching-excessive-reads-01",
+      "description": "6 Read calls before first Task mentions pre-digestion",
+      "category": "rule-detection",
+      "tags": ["excessive-reads-before-delegation", "delegation"],
+      "filler_count": 3,
+      "transcript": [
+        {"tool": "Read", "input": {"file_path": "/project/file1.ts"}},
+        {"tool": "Read", "input": {"file_path": "/project/file2.ts"}},
+        {"tool": "Read", "input": {"file_path": "/project/file3.ts"}},
+        {"tool": "Read", "input": {"file_path": "/project/file4.ts"}},
+        {"tool": "Read", "input": {"file_path": "/project/file5.ts"}},
+        {"tool": "Read", "input": {"file_path": "/project/file6.ts"}},
+        {"tool": "Task", "input": {"subagent_type": "dev:developer", "prompt": "implement the feature"}}
+      ],
+      "checks": {
+        "recommendations_not_null": true,
+        "recommendations_contains": "pre-digestion"
+      }
+    },
+    {
+      "id": "coaching-plugin-gap-01",
+      "description": "curl github.com suggests gh CLI",
+      "category": "rule-detection",
+      "tags": ["plugin-command-gap", "discovery"],
+      "filler_count": 9,
+      "transcript": [
+        {"tool": "Bash", "input": {"command": "curl https://github.com/owner/repo/pulls"}}
+      ],
+      "checks": {
+        "recommendations_not_null": true,
+        "recommendations_contains": "gh CLI"
+      }
+    },
+    {
+      "id": "coaching-low-signal-01",
+      "description": "Only 5 tool calls produces no recommendations (low-signal guard)",
+      "category": "edge-case",
+      "tags": ["low-signal", "guard"],
+      "filler_count": 0,
+      "transcript": [
+        {"tool": "Write", "input": {"file_path": "/project/f1.ts", "content": "x"}},
+        {"tool": "Write", "input": {"file_path": "/project/f2.ts", "content": "x"}},
+        {"tool": "Write", "input": {"file_path": "/project/f3.ts", "content": "x"}},
+        {"tool": "Write", "input": {"file_path": "/project/f4.ts", "content": "x"}},
+        {"tool": "Write", "input": {"file_path": "/project/f5.ts", "content": "x"}}
+      ],
+      "checks": {
+        "recommendations_is_null": true,
+        "exit_code_is": 0
+      }
+    },
+    {
+      "id": "coaching-low-signal-preserves-01",
+      "description": "Low-signal session preserves existing recommendations",
+      "category": "edge-case",
+      "tags": ["low-signal", "preservation"],
+      "filler_count": 0,
+      "transcript": [
+        {"tool": "Write", "input": {"file_path": "/project/f1.ts", "content": "x"}},
+        {"tool": "Write", "input": {"file_path": "/project/f2.ts", "content": "x"}},
+        {"tool": "Write", "input": {"file_path": "/project/f3.ts", "content": "x"}}
+      ],
+      "pre_recommendations": "# Existing coaching\n1. Use claudemem for search\n",
+      "checks": {
+        "recommendations_is_not_null": true,
+        "recommendations_contains": "Existing coaching"
+      }
+    },
+    {
+      "id": "coaching-suppression-01",
+      "description": "Pre-seeded suppression state blocks a triggered rule",
+      "category": "suppression",
+      "tags": ["suppression", "state"],
+      "filler_count": 7,
+      "transcript": [
+        {"tool": "Bash", "input": {"command": "grep -r 'pattern' src/"}},
+        {"tool": "Bash", "input": {"command": "grep -n 'pattern' lib/"}},
+        {"tool": "Bash", "input": {"command": "grep 'pattern' tests/"}}
+      ],
+      "pre_state": {
+        "_session_count": 5,
+        "rules": {
+          "grep-instead-of-claudemem": {
+            "last_shown_session": 3,
+            "shown_count": 1,
+            "suppress_until_count": 20
+          }
+        }
+      },
+      "checks": {
+        "recommendations_not_contains": "claudemem"
+      }
+    },
+    {
+      "id": "coaching-state-tracking-01",
+      "description": "After running, state.json tracks shown rules correctly",
+      "category": "cross-session",
+      "tags": ["state", "tracking"],
+      "filler_count": 7,
+      "transcript": [
+        {"tool": "Bash", "input": {"command": "grep -r 'pattern' src/"}},
+        {"tool": "Bash", "input": {"command": "grep -n 'pattern' lib/"}},
+        {"tool": "Bash", "input": {"command": "grep 'pattern' tests/"}}
+      ],
+      "checks": {
+        "state_session_count_is": 1,
+        "state_rule_exists": "grep-instead-of-claudemem",
+        "state_rule_suppress_until_gt": 1
+      }
+    },
+    {
+      "id": "coaching-top3-cap-01",
+      "description": "Trigger 4+ rules but only 3 suggestions appear",
+      "category": "pipeline",
+      "tags": ["top3-cap", "priority"],
+      "filler_count": 0,
+      "transcript": [
+        {"tool": "Bash", "input": {"command": "grep -r 'pattern' src/"}},
+        {"tool": "Bash", "input": {"command": "grep -n 'pattern' lib/"}},
+        {"tool": "Bash", "input": {"command": "grep 'pattern' tests/"}},
+        {"tool": "Bash", "input": {"command": "cat /tmp/session-data.md"}},
+        {"tool": "Task", "input": {"subagent_type": "code-analysis:claudemem-search", "prompt": "find patterns"}},
+        {"tool": "Write", "input": {"file_path": "/project/a.ts", "content": "x"}},
+        {"tool": "Write", "input": {"file_path": "/project/b.ts", "content": "x"}},
+        {"tool": "Task", "input": {"subagent_type": "dev:developer", "prompt": "task 1"}},
+        {"tool": "Task", "input": {"subagent_type": "dev:developer", "prompt": "task 2"}},
+        {"tool": "Task", "input": {"subagent_type": "dev:developer", "prompt": "task 3"}}
+      ],
+      "checks": {
+        "recommendations_numbered_lte": 3,
+        "recommendations_numbered_gt": 0
+      }
+    },
+    {
+      "id": "coaching-opt-out-01",
+      "description": "WORKFLOW_COACHING=off produces no output, deletes existing",
+      "category": "opt-out",
+      "tags": ["opt-out", "env"],
+      "filler_count": 7,
+      "transcript": [
+        {"tool": "Bash", "input": {"command": "grep -r 'pattern' src/"}},
+        {"tool": "Bash", "input": {"command": "grep -n 'pattern' lib/"}},
+        {"tool": "Bash", "input": {"command": "grep 'pattern' tests/"}}
+      ],
+      "env": {"WORKFLOW_COACHING": "off"},
+      "pre_recommendations": "# Stale\n1. Old suggestion\n",
+      "checks": {
+        "recommendations_is_null": true
+      }
+    },
+    {
+      "id": "coaching-sessionstart-hook-01",
+      "description": "Full pipeline: analyzer produces recommendations, SessionStart hook emits hookSpecificOutput JSON",
+      "category": "pipeline",
+      "tags": ["sessionstart", "full-pipeline", "integration"],
+      "filler_count": 7,
+      "transcript": [
+        {"tool": "Bash", "input": {"command": "grep -r 'pattern' src/"}},
+        {"tool": "Bash", "input": {"command": "grep -n 'pattern' lib/"}},
+        {"tool": "Bash", "input": {"command": "grep 'pattern' tests/"}}
+      ],
+      "checks": {
+        "recommendations_not_null": true,
+        "sessionstart_output_valid_json": true,
+        "sessionstart_has_hook_event_name": true,
+        "sessionstart_has_additional_context": true,
+        "sessionstart_context_contains": "claudemem"
+      }
+    },
+    {
+      "id": "coaching-boundary-9calls-01",
+      "description": "Exactly 9 tool calls triggers low-signal guard (< 10 = skip), no recommendations even if grep rule would fire",
+      "category": "edge-case",
+      "tags": ["boundary", "low-signal"],
+      "filler_count": 0,
+      "transcript": [
+        {"tool": "Write", "input": {"file_path": "/project/f1.ts", "content": "x"}},
+        {"tool": "Write", "input": {"file_path": "/project/f2.ts", "content": "x"}},
+        {"tool": "Write", "input": {"file_path": "/project/f3.ts", "content": "x"}},
+        {"tool": "Write", "input": {"file_path": "/project/f4.ts", "content": "x"}},
+        {"tool": "Write", "input": {"file_path": "/project/f5.ts", "content": "x"}},
+        {"tool": "Write", "input": {"file_path": "/project/f6.ts", "content": "x"}},
+        {"tool": "Bash", "input": {"command": "grep -r 'pattern' src/"}},
+        {"tool": "Bash", "input": {"command": "grep -n 'pattern' lib/"}},
+        {"tool": "Bash", "input": {"command": "grep 'pattern' tests/"}}
+      ],
+      "checks": {
+        "recommendations_is_null": true,
+        "exit_code_is": 0
+      }
+    },
+    {
+      "id": "coaching-boundary-10calls-01",
+      "description": "Exactly 10 tool calls should NOT trigger low-signal guard (10 is not < 10), grep rule fires",
+      "category": "edge-case",
+      "tags": ["boundary", "low-signal"],
+      "filler_count": 0,
+      "transcript": [
+        {"tool": "Write", "input": {"file_path": "/project/f1.ts", "content": "x"}},
+        {"tool": "Write", "input": {"file_path": "/project/f2.ts", "content": "x"}},
+        {"tool": "Write", "input": {"file_path": "/project/f3.ts", "content": "x"}},
+        {"tool": "Write", "input": {"file_path": "/project/f4.ts", "content": "x"}},
+        {"tool": "Write", "input": {"file_path": "/project/f5.ts", "content": "x"}},
+        {"tool": "Write", "input": {"file_path": "/project/f6.ts", "content": "x"}},
+        {"tool": "Write", "input": {"file_path": "/project/f7.ts", "content": "x"}},
+        {"tool": "Bash", "input": {"command": "grep -r 'pattern' src/"}},
+        {"tool": "Bash", "input": {"command": "grep -n 'pattern' lib/"}},
+        {"tool": "Bash", "input": {"command": "grep 'pattern' tests/"}}
+      ],
+      "checks": {
+        "recommendations_not_null": true,
+        "recommendations_contains": "claudemem",
+        "exit_code_is": 0
+      }
+    },
+    {
+      "id": "coaching-negative-correct-agent-01",
+      "description": "Using dev:researcher for a research task should NOT trigger wrong-agent rule",
+      "category": "negative",
+      "tags": ["wrong-agent-for-task", "negative"],
+      "filler_count": 9,
+      "transcript": [
+        {"tool": "Task", "input": {"subagent_type": "dev:researcher", "prompt": "research the best authentication patterns and compare OAuth vs SAML"}}
+      ],
+      "checks": {
+        "recommendations_not_contains": "wrong",
+        "exit_code_is": 0
+      }
+    },
+    {
+      "id": "coaching-negative-claudish-present-01",
+      "description": "Code review WITH claudish in transcript should NOT trigger single-model-critical-review",
+      "category": "negative",
+      "tags": ["single-model-critical-review", "negative"],
+      "filler_count": 8,
+      "transcript": [
+        {"tool": "Task", "input": {"subagent_type": "agentdev:reviewer", "prompt": "perform a thorough code review of the auth module"}},
+        {"tool": "Bash", "input": {"command": "claudish --model x-ai/grok-code-fast-1 --stdin --quiet < review-prompt.md > review.md"}}
+      ],
+      "checks": {
+        "recommendations_not_contains": "/team",
+        "exit_code_is": 0
+      }
+    },
+    {
+      "id": "coaching-suppression-expiry-01",
+      "description": "When _session_count reaches suppress_until_count, suppression expires and rule fires again",
+      "category": "cross-session",
+      "tags": ["suppression", "expiry", "lifecycle"],
+      "filler_count": 7,
+      "transcript": [
+        {"tool": "Bash", "input": {"command": "grep -r 'pattern' src/"}},
+        {"tool": "Bash", "input": {"command": "grep -n 'pattern' lib/"}},
+        {"tool": "Bash", "input": {"command": "grep 'pattern' tests/"}}
+      ],
+      "pre_state": {
+        "_session_count": 20,
+        "rules": {
+          "grep-instead-of-claudemem": {
+            "last_shown_session": 3,
+            "shown_count": 1,
+            "suppress_until_count": 15
+          }
+        }
+      },
+      "checks": {
+        "recommendations_not_null": true,
+        "recommendations_contains": "claudemem"
+      }
+    },
+    {
+      "id": "coaching-priority-ordering-01",
+      "description": "When 4+ rules fire, top 3 by priority appear; lowest priority (no-background-tasks) excluded",
+      "category": "pipeline",
+      "tags": ["priority", "ordering", "top3-cap"],
+      "filler_count": 0,
+      "transcript": [
+        {"tool": "Bash", "input": {"command": "grep -r 'pattern' src/"}},
+        {"tool": "Bash", "input": {"command": "grep -n 'pattern' lib/"}},
+        {"tool": "Bash", "input": {"command": "grep 'pattern' tests/"}},
+        {"tool": "Bash", "input": {"command": "cat /tmp/session-data.md"}},
+        {"tool": "Task", "input": {"subagent_type": "code-analysis:claudemem-search", "prompt": "find patterns"}},
+        {"tool": "Write", "input": {"file_path": "/project/a.ts", "content": "x"}},
+        {"tool": "Write", "input": {"file_path": "/project/b.ts", "content": "x"}},
+        {"tool": "Task", "input": {"subagent_type": "dev:developer", "prompt": "task 1"}},
+        {"tool": "Task", "input": {"subagent_type": "dev:developer", "prompt": "task 2"}},
+        {"tool": "Task", "input": {"subagent_type": "dev:developer", "prompt": "task 3"}}
+      ],
+      "checks": {
+        "recommendations_numbered_lte": 3,
+        "recommendations_numbered_gt": 0,
+        "recommendations_contains": "claudemem",
+        "recommendations_not_contains": "run_in_background"
+      }
+    },
+    {
+      "id": "coaching-malformed-jsonl-01",
+      "description": "Analyzer gracefully handles invalid JSON lines mixed with valid ones",
+      "category": "edge-case",
+      "tags": ["malformed", "error-handling"],
+      "filler_count": 0,
+      "transcript": [],
+      "raw_transcript_lines": [
+        "this is not json",
+        "",
+        "{\"broken json",
+        "{\"type\":\"assistant\",\"message\":{\"content\":[{\"type\":\"tool_use\",\"name\":\"Bash\",\"input\":{\"command\":\"grep -r 'pattern' src/\"}}]}}",
+        "{\"type\":\"assistant\",\"message\":{\"content\":[{\"type\":\"tool_use\",\"name\":\"Bash\",\"input\":{\"command\":\"grep -n 'pattern' lib/\"}}]}}",
+        "{\"type\":\"assistant\",\"message\":{\"content\":[{\"type\":\"tool_use\",\"name\":\"Bash\",\"input\":{\"command\":\"grep 'pattern' tests/\"}}]}}",
+        "{\"type\":\"assistant\",\"message\":{\"content\":[{\"type\":\"tool_use\",\"name\":\"Write\",\"input\":{\"file_path\":\"/project/f1.ts\",\"content\":\"x\"}}]}}",
+        "{\"type\":\"assistant\",\"message\":{\"content\":[{\"type\":\"tool_use\",\"name\":\"Write\",\"input\":{\"file_path\":\"/project/f2.ts\",\"content\":\"x\"}}]}}",
+        "{\"type\":\"assistant\",\"message\":{\"content\":[{\"type\":\"tool_use\",\"name\":\"Write\",\"input\":{\"file_path\":\"/project/f3.ts\",\"content\":\"x\"}}]}}",
+        "{\"type\":\"assistant\",\"message\":{\"content\":[{\"type\":\"tool_use\",\"name\":\"Write\",\"input\":{\"file_path\":\"/project/f4.ts\",\"content\":\"x\"}}]}}",
+        "{\"type\":\"assistant\",\"message\":{\"content\":[{\"type\":\"tool_use\",\"name\":\"Write\",\"input\":{\"file_path\":\"/project/f5.ts\",\"content\":\"x\"}}]}}",
+        "{\"type\":\"assistant\",\"message\":{\"content\":[{\"type\":\"tool_use\",\"name\":\"Write\",\"input\":{\"file_path\":\"/project/f6.ts\",\"content\":\"x\"}}]}}",
+        "{\"type\":\"assistant\",\"message\":{\"content\":[{\"type\":\"tool_use\",\"name\":\"Write\",\"input\":{\"file_path\":\"/project/f7.ts\",\"content\":\"x\"}}]}}"
+      ],
+      "checks": {
+        "recommendations_not_null": true,
+        "recommendations_contains": "claudemem",
+        "exit_code_is": 0
+      }
+    },
+    {
+      "id": "coaching-sessionstart-optout-01",
+      "description": "After analyzer deletes recommendations (opt-out), SessionStart has nothing to inject",
+      "category": "pipeline",
+      "tags": ["sessionstart", "opt-out"],
+      "filler_count": 7,
+      "transcript": [
+        {"tool": "Bash", "input": {"command": "grep -r 'pattern' src/"}},
+        {"tool": "Bash", "input": {"command": "grep -n 'pattern' lib/"}},
+        {"tool": "Bash", "input": {"command": "grep 'pattern' tests/"}}
+      ],
+      "pre_recommendations": "# Stale coaching\n1. Use claudemem for search\n",
+      "env": {"WORKFLOW_COACHING": "off"},
+      "checks": {
+        "recommendations_is_null": true,
+        "exit_code_is": 0,
+        "sessionstart_output_is_empty": true
+      }
+    }
+  ]
+}

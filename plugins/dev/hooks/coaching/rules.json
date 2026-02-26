@@ -1,0 +1,114 @@
+[
+  {
+    "id": "grep-instead-of-claudemem",
+    "signal": {
+      "tool": "Bash",
+      "command_pattern": "\\b(grep|rg|ag|ack)\\b",
+      "min_count": 3
+    },
+    "category": "search-efficiency",
+    "priority": 1,
+    "suggestion": "You ran {count} grep/rg searches this session. For faster semantic code exploration:\n  `claudemem --agent map \"your concept\"` -- understands intent, not just text\n  `claudemem --agent symbol \"SymbolName\"` -- direct AST symbol lookup\n  Skill: use the Skill tool with `code-analysis:claudemem-search`",
+    "suppress_after_sessions": 10
+  },
+  {
+    "id": "tmp-path-usage",
+    "signal": {
+      "any_tool": true,
+      "content_pattern": "/tmp/"
+    },
+    "category": "session-hygiene",
+    "priority": 1,
+    "suggestion": "Session files detected in /tmp/ -- these are cleared on reboot. Use persistent paths:\n  `ai-docs/sessions/{task-slug}-{timestamp}-{random}/` for research artifacts\n  `.claude/.coaching/` for plugin state\n  See: CLAUDE.md Session Directories section",
+    "suppress_after_sessions": 10
+  },
+  {
+    "id": "skill-invoked-as-task",
+    "signal": {
+      "tool": "Task",
+      "input_key": "subagent_type",
+      "value_in": [
+        "code-analysis:claudemem-search",
+        "code-analysis:claudemem-orchestration",
+        "code-analysis:architect-detective",
+        "code-analysis:deep-analysis",
+        "dev:db-branching"
+      ]
+    },
+    "category": "api-correctness",
+    "priority": 1,
+    "suggestion": "'{subagent_type}' is a Skill, not an agent -- using Task causes a triple failure cascade.\n  Use the Skill tool instead: Skill({ \"skill\": \"{subagent_type}\" })\n  See: CLAUDE.md Skill Routing table",
+    "suppress_after_sessions": 10
+  },
+  {
+    "id": "excessive-reads-before-delegation",
+    "signal": {
+      "tool": "Read",
+      "min_count_before_first_task": 5
+    },
+    "category": "delegation-efficiency",
+    "priority": 2,
+    "suggestion": "You read {count} files before delegating to an agent (pre-digestion anti-pattern).\n  For investigation tasks, give agents the raw problem -- they investigate independently.\n  Pre-digested context reduces multi-model diversity. See: MEMORY.md 'Raw Task vs Pre-Digested Context'",
+    "suppress_after_sessions": 5
+  },
+  {
+    "id": "wrong-agent-for-task",
+    "signal": {
+      "tool": "Task",
+      "prompt_patterns": {
+        "research|compare|sources": "dev:researcher",
+        "implement|create|build|write": "dev:developer",
+        "understand|investigate|trace|analyze": "code-analysis:detective",
+        "debug|error|root cause": "dev:debugger"
+      }
+    },
+    "category": "delegation-efficiency",
+    "priority": 2,
+    "suggestion": "Task prompt matched '{pattern}' pattern but used '{actual}' agent.\n  Consider '{recommended}' -- it is optimized for this task type.\n  See: CLAUDE.md Task Routing table",
+    "suppress_after_sessions": 5
+  },
+  {
+    "id": "single-model-critical-review",
+    "signal": {
+      "tool": "Task",
+      "prompt_pattern": "\\b(code\\s+review|architecture\\s+review|security\\s+audit|code\\s+audit)\\b",
+      "no_bash_pattern": "claudish"
+    },
+    "category": "quality-assurance",
+    "priority": 3,
+    "suggestion": "Code review performed by a single model. Consider multi-model consensus:\n  `/team` command -- gets independent perspectives from 3+ models\n  Multi-model review has documented 3-5x better issue detection vs single-model",
+    "suppress_after_sessions": 5
+  },
+  {
+    "id": "plugin-command-gap",
+    "signal": {
+      "bash_patterns": [
+        {
+          "pattern": "curl.*github\\.com|open.*github\\.com",
+          "plugin": "gh CLI",
+          "command": "gh pr list, gh issue create, gh repo view"
+        },
+        {
+          "pattern": "\\bkeyword.*seo\\b|\\bmeta.*tag\\b|\\bbacklink\\b",
+          "plugin": "seo plugin",
+          "command": "/seo:analyze"
+        }
+      ]
+    },
+    "category": "plugin-discovery",
+    "priority": 4,
+    "suggestion": "Detected manual {plugin} operations. The {plugin} could automate this:\n  `{command}`",
+    "suppress_after_sessions": 3
+  },
+  {
+    "id": "no-background-tasks",
+    "signal": {
+      "tool": "Task",
+      "min_sequential": 2
+    },
+    "category": "performance",
+    "priority": 4,
+    "suggestion": "Detected {count} sequential Task calls that may be parallelizable.\n  If tasks are independent, add `run_in_background: true` to all but the last:\n  Task({ subagent_type: \"...\", run_in_background: true, ... })\n  Parallel execution can reduce total time significantly.",
+    "suppress_after_sessions": 3
+  }
+]

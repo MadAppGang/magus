@@ -42,6 +42,7 @@
   ],
   "category": "development",
   "mcpServers": "./.mcp.json",
+  "hooks": "./hooks/hooks.json",
   "agents": [
     "./agents/stack-detector.md",
     "./agents/skill-discovery.md",
@@ -128,7 +129,7 @@
     "./skills/enforcement"
   ],
   "dependencies": {
-    "multimodel@mag-claude-plugins": "^2.0.0"
+    "multimodel@magus": "^2.0.0"
   },
   "compatibility": {
     "claudeCode": ">=0.1.0"

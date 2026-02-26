@@ -1,0 +1,27 @@
+{
+  "description": "Workflow coaching: analyze session transcript on Stop, inject suggestions on SessionStart. Note: Stop hook here is the first plugin-based Stop hook in this ecosystem; it uses the same double-nested hooks array schema as SessionStart (validated pattern from code-analysis plugin).",
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/stop-coaching.sh",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/session-start-coaching.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}
