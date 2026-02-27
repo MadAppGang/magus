@@ -629,6 +629,166 @@ export interface MarketplaceRecoveryResult {
 	removed: string[];
 }
 
+// =============================================================================
+// MARKETPLACE RENAME MIGRATION: mag-claude-plugins → magus
+// =============================================================================
+
+const OLD_MARKETPLACE_NAME = "mag-claude-plugins";
+const NEW_MARKETPLACE_NAME = "magus";
+
+/**
+ * Rename plugin keys in a Record from old marketplace to new.
+ * e.g., "frontend@mag-claude-plugins" → "frontend@magus"
+ * Returns [migratedRecord, count] — count=0 means no changes.
+ */
+function migratePluginKeys<T>(
+	record: Record<string, T> | undefined,
+): [Record<string, T>, number] {
+	if (!record) return [{}, 0];
+	const migrated: Record<string, T> = {};
+	let count = 0;
+	for (const [key, value] of Object.entries(record)) {
+		if (key.endsWith(`@${OLD_MARKETPLACE_NAME}`)) {
+			const pluginName = key.slice(0, key.lastIndexOf("@"));
+			migrated[`${pluginName}@${NEW_MARKETPLACE_NAME}`] = value;
+			count++;
+		} else {
+			migrated[key] = value;
+		}
+	}
+	return [migrated, count];
+}
+
+/**
+ * Migrate a single settings object in-place.
+ * Returns number of keys renamed.
+ */
+function migrateSettingsObject(settings: ClaudeSettings): number {
+	let total = 0;
+
+	const [ep, epCount] = migratePluginKeys(settings.enabledPlugins);
+	if (epCount > 0) {
+		settings.enabledPlugins = ep;
+		total += epCount;
+	}
+
+	const [iv, ivCount] = migratePluginKeys(settings.installedPluginVersions);
+	if (ivCount > 0) {
+		settings.installedPluginVersions = iv;
+		total += ivCount;
+	}
+
+	// Migrate extraKnownMarketplaces key
+	if (settings.extraKnownMarketplaces?.[OLD_MARKETPLACE_NAME]) {
+		const entry = settings.extraKnownMarketplaces[OLD_MARKETPLACE_NAME];
+		delete settings.extraKnownMarketplaces[OLD_MARKETPLACE_NAME];
+		settings.extraKnownMarketplaces[NEW_MARKETPLACE_NAME] = entry;
+		total++;
+	}
+
+	return total;
+}
+
+export interface MigrationResult {
+	projectMigrated: number;
+	globalMigrated: number;
+	localMigrated: number;
+	knownMarketplacesMigrated: boolean;
+	registryMigrated: number;
+}
+
+/**
+ * Migrate all settings from mag-claude-plugins to magus.
+ * Safe to call multiple times — no-ops if already migrated.
+ * Runs across project settings, global settings, local settings,
+ * known_marketplaces.json, and installed_plugins.json.
+ */
+export async function migrateMarketplaceRename(
+	projectPath?: string,
+): Promise<MigrationResult> {
+	const result: MigrationResult = {
+		projectMigrated: 0,
+		globalMigrated: 0,
+		localMigrated: 0,
+		knownMarketplacesMigrated: false,
+		registryMigrated: 0,
+	};
+
+	// 1. Project settings
+	try {
+		const settings = await readSettings(projectPath);
+		const count = migrateSettingsObject(settings);
+		if (count > 0) {
+			await writeSettings(settings, projectPath);
+			result.projectMigrated = count;
+		}
+	} catch { /* skip if unreadable */ }
+
+	// 2. Global settings
+	try {
+		const settings = await readGlobalSettings();
+		const count = migrateSettingsObject(settings);
+		if (count > 0) {
+			await writeGlobalSettings(settings);
+			result.globalMigrated = count;
+		}
+	} catch { /* skip if unreadable */ }
+
+	// 3. Local settings (settings.local.json)
+	try {
+		const local = await readLocalSettings(projectPath);
+		let localCount = 0;
+		const [ep, epCount] = migratePluginKeys(local.enabledPlugins);
+		if (epCount > 0) { local.enabledPlugins = ep; localCount += epCount; }
+		const [iv, ivCount] = migratePluginKeys(local.installedPluginVersions);
+		if (ivCount > 0) { local.installedPluginVersions = iv; localCount += ivCount; }
+		if (localCount > 0) {
+			await writeLocalSettings(local, projectPath);
+			result.localMigrated = localCount;
+		}
+	} catch { /* skip if unreadable */ }
+
+	// 4. known_marketplaces.json — rename the key
+	try {
+		const known = await readKnownMarketplaces();
+		if (known[OLD_MARKETPLACE_NAME]) {
+			known[NEW_MARKETPLACE_NAME] = {
+				...known[OLD_MARKETPLACE_NAME],
+				source: {
+					...known[OLD_MARKETPLACE_NAME].source,
+					repo: "MadAppGang/magus",
+				},
+			};
+			delete known[OLD_MARKETPLACE_NAME];
+			await writeKnownMarketplaces(known);
+			result.knownMarketplacesMigrated = true;
+		}
+	} catch { /* skip if unreadable */ }
+
+	// 5. installed_plugins.json — rename plugin ID keys
+	try {
+		const registry = await readInstalledPluginsRegistry();
+		let regCount = 0;
+		const newPlugins: typeof registry.plugins = {};
+		for (const [pluginId, entries] of Object.entries(registry.plugins)) {
+			if (pluginId.endsWith(`@${OLD_MARKETPLACE_NAME}`)) {
+				const pluginName = pluginId.slice(0, pluginId.lastIndexOf("@"));
+				newPlugins[`${pluginName}@${NEW_MARKETPLACE_NAME}`] = entries;
+				regCount++;
+			} else {
+				newPlugins[pluginId] = entries;
+			}
+		}
+		if (regCount > 0) {
+			registry.plugins = newPlugins;
+			await writeInstalledPluginsRegistry(registry);
+			result.registryMigrated = regCount;
+		}
+	} catch { /* skip if unreadable */ }
+
+	return result;
+}
+
 /**
  * Check if a marketplace is from Magus (MadAppGang)
  */

@@ -5,7 +5,7 @@ import {
 	saveInstalledPluginVersion,
 } from "../services/plugin-manager.js";
 import { runClaude } from "../services/claude-runner.js";
-import { recoverMarketplaceSettings } from "../services/claude-settings.js";
+import { recoverMarketplaceSettings, migrateMarketplaceRename } from "../services/claude-settings.js";
 
 export interface PrerunOptions {
 	force?: boolean; // Bypass cache and force update check
@@ -24,6 +24,15 @@ export async function prerunClaude(
 	const cache = new UpdateCache();
 
 	try {
+		// STEP 0: Migrate mag-claude-plugins → magus (idempotent, no-ops if already migrated)
+		const migration = await migrateMarketplaceRename();
+		const migTotal = migration.projectMigrated + migration.globalMigrated
+			+ migration.localMigrated + migration.registryMigrated
+			+ (migration.knownMarketplacesMigrated ? 1 : 0);
+		if (migTotal > 0) {
+			console.log(`✓ Migrated ${migTotal} plugin reference(s) from mag-claude-plugins → magus`);
+		}
+
 		// STEP 1: Check if we should update (time-based cache, or forced)
 		const shouldUpdate = options.force || (await cache.shouldCheckForUpdates());
 

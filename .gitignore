@@ -85,4 +85,4 @@ test-workspace
 autotest/*/results/
 
 # Git worktrees (isolated development environments)
-.worktrees/
+.worktrees/setup-secrets.sh

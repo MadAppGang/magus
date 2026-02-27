@@ -23,6 +23,7 @@ import {
 } from "./screens/index.js";
 import type { Screen } from "./state/types.js";
 import { repairAllMarketplaces } from "../services/local-marketplace.js";
+import { migrateMarketplaceRename } from "../services/claude-settings.js";
 import {
 	checkForUpdates,
 	getCurrentVersion,
@@ -264,8 +265,10 @@ function AppContentInner({
 			state: { message: "Scanning marketplaces..." },
 		});
 
-		// Note: Marketplace updates should be done via Claude Code's /plugin marketplace update
-		// Just repair plugin.json files
+		// Migrate mag-claude-plugins → magus (idempotent), then repair plugin.json files
+		migrateMarketplaceRename()
+			.catch(() => {}); // non-blocking, best-effort
+
 		repairAllMarketplaces()
 			.then(async () => {
 				dispatch({ type: "HIDE_PROGRESS" });
