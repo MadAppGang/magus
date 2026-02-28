@@ -748,22 +748,76 @@ export async function migrateMarketplaceRename(
 		}
 	} catch { /* skip if unreadable */ }
 
-	// 4. known_marketplaces.json — rename the key
+	// 4. known_marketplaces.json — rename the key + physical directory cleanup
+	const pluginsDir = path.join(os.homedir(), ".claude", "plugins", "marketplaces");
+	const oldDir = path.join(pluginsDir, OLD_MARKETPLACE_NAME);
+	const newDir = path.join(pluginsDir, NEW_MARKETPLACE_NAME);
+
 	try {
 		const known = await readKnownMarketplaces();
+		let knownModified = false;
+
 		if (known[OLD_MARKETPLACE_NAME]) {
-			known[NEW_MARKETPLACE_NAME] = {
-				...known[OLD_MARKETPLACE_NAME],
-				source: {
-					...known[OLD_MARKETPLACE_NAME].source,
-					repo: "MadAppGang/magus",
-				},
-			};
+			const oldEntry = known[OLD_MARKETPLACE_NAME];
+
+			// If canonical entry already exists, just delete the old one
+			if (!known[NEW_MARKETPLACE_NAME]) {
+				known[NEW_MARKETPLACE_NAME] = {
+					...oldEntry,
+					source: {
+						...oldEntry.source,
+						repo: "MadAppGang/magus",
+					},
+				};
+			}
 			delete known[OLD_MARKETPLACE_NAME];
+			knownModified = true;
+		}
+
+		// Ensure installLocation points to new directory name
+		if (known[NEW_MARKETPLACE_NAME]?.installLocation?.includes(OLD_MARKETPLACE_NAME)) {
+			known[NEW_MARKETPLACE_NAME].installLocation =
+				known[NEW_MARKETPLACE_NAME].installLocation.replace(
+					OLD_MARKETPLACE_NAME,
+					NEW_MARKETPLACE_NAME,
+				);
+			knownModified = true;
+		}
+
+		if (knownModified) {
 			await writeKnownMarketplaces(known);
 			result.knownMarketplacesMigrated = true;
 		}
 	} catch { /* skip if unreadable */ }
+
+	// 4b. Rename/remove the old physical directory (runs even if key was already migrated)
+	try {
+		if (await fs.pathExists(oldDir)) {
+			if (!(await fs.pathExists(newDir))) {
+				await fs.rename(oldDir, newDir);
+			} else {
+				// Both exist — remove the old one (magus dir is canonical)
+				await fs.remove(oldDir);
+			}
+		}
+	} catch { /* non-fatal: directory cleanup is best-effort */ }
+
+	// 4c. Update git remote URL in the marketplace clone (old → new repo)
+	try {
+		const marketplaceDir = await fs.pathExists(newDir) ? newDir : oldDir;
+		if (await fs.pathExists(path.join(marketplaceDir, ".git"))) {
+			const { execSync } = await import("node:child_process");
+			const remote = execSync("git remote get-url origin", {
+				cwd: marketplaceDir, encoding: "utf-8", timeout: 5000,
+			}).trim();
+			if (remote.includes("claude-code") && remote.includes("MadAppGang")) {
+				const newRemote = remote.replace("claude-code", NEW_MARKETPLACE_NAME);
+				execSync(`git remote set-url origin "${newRemote}"`, {
+					cwd: marketplaceDir, encoding: "utf-8", timeout: 5000,
+				});
+			}
+		}
+	} catch { /* non-fatal: git remote update is best-effort */ }
 
 	// 5. installed_plugins.json — rename plugin ID keys
 	try {
