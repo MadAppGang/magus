@@ -101,6 +101,17 @@
     "suppress_after_sessions": 3
   },
   {
+    "id": "skipped-multi-model-review",
+    "signal": {
+      "feature_session_agents": ["dev:architect", "dev:developer"],
+      "requires_ask_user_or_claudish": true
+    },
+    "category": "quality-assurance",
+    "priority": 2,
+    "suggestion": "Feature development session detected (dev:architect + dev:developer) but multi-model review was skipped.\n  Phase 3 and Phase 5 of /dev:feature require model selection via AskUserQuestion and external reviews via claudish.\n  Next time, ensure model selection is not skipped -- multi-model review catches 3-5x more issues than single-model.",
+    "suppress_after_sessions": 10
+  },
+  {
     "id": "no-background-tasks",
     "signal": {
       "tool": "Task",

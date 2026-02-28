@@ -251,22 +251,54 @@ function extractToolCallsFromMetrics(metricsPath: string): ToolUse[] | null {
 }
 
 /**
+ * Extract MCP tool calls from debug.log SSE events (native Anthropic format).
+ *
+ * When claudish runs in native mode (e.g., --model claude-sonnet-4-6), the debug
+ * log contains raw Anthropic SSE events rather than the OpenRouter format that
+ * debug-log-parser.ts expects. Tool calls appear as:
+ *   data: {"type":"content_block_start",...,"content_block":{"type":"tool_use","name":"mcp__ht-mcp__ht_create_session",...}}
+ *
+ * Returns null if debug.log doesn't exist or contains no SSE tool_use events.
+ */
+function extractToolCallsFromDebugLogSSE(debugLogPath: string): ToolUse[] | null {
+  if (!existsSync(debugLogPath)) return null;
+  try {
+    const content = readFileSync(debugLogPath, "utf-8");
+    // Match content_block_start events with tool_use type and extract tool name
+    const re = /content_block_start[^}]*"type"\s*:\s*"tool_use"[^}]*"name"\s*:\s*"([^"]+)"/g;
+    const calls: ToolUse[] = [];
+    let match: RegExpExecArray | null;
+    while ((match = re.exec(content)) !== null) {
+      const name = match[1];
+      if (name.startsWith("mcp__")) {
+        calls.push({ name, input: {} });
+      }
+    }
+    return calls.length > 0 ? calls : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Extract all MCP tool calls.
  *
- * Primary source: metrics.json (sibling of transcript.jsonl in transcriptDir).
- * Fallback: parse transcript.jsonl for type==="assistant" entries with tool_use blocks.
+ * Sources (in priority order):
+ * 1. metrics.json → tool_call_sequence (from debug-log-parser, OpenRouter format)
+ * 2. transcript.jsonl → intermediate assistant tool_use blocks (full transcript)
+ * 3. debug.log → SSE content_block_start events (native Anthropic format)
  *
  * Only returns calls whose names start with "mcp__" (terminal plugin tools).
  */
 function extractMcpToolCalls(transcriptDir: string, entries: TranscriptEntry[]): ToolUse[] {
-  // Primary: metrics.json
+  // Primary: metrics.json (OpenRouter format)
   const metricsPath = join(transcriptDir, "metrics.json");
   const fromMetrics = extractToolCallsFromMetrics(metricsPath);
-  if (fromMetrics !== null) {
+  if (fromMetrics !== null && fromMetrics.length > 0) {
     return fromMetrics;
   }
 
-  // Fallback: parse transcript.jsonl for assistant tool_use blocks
+  // Fallback 1: parse transcript.jsonl for assistant tool_use blocks
   const calls: ToolUse[] = [];
   for (const entry of entries) {
     if (entry.type !== "assistant") continue;
@@ -276,7 +308,16 @@ function extractMcpToolCalls(transcriptDir: string, entries: TranscriptEntry[]):
       }
     }
   }
-  return calls;
+  if (calls.length > 0) return calls;
+
+  // Fallback 2: parse debug.log SSE events (native Anthropic format)
+  const debugLogPath = join(transcriptDir, "debug.log");
+  const fromSSE = extractToolCallsFromDebugLogSSE(debugLogPath);
+  if (fromSSE !== null) {
+    return fromSSE;
+  }
+
+  return [];
 }
 
 /**

@@ -523,6 +523,45 @@
         "exit_code_is": 0,
         "state_session_count_is": 2
       }
+    },
+    {
+      "id": "coaching-skipped-review-01",
+      "description": "Feature session with dev:architect + dev:developer but no AskUserQuestion or claudish triggers skipped-multi-model-review",
+      "category": "rule-detection",
+      "tags": ["skipped-multi-model-review", "quality"],
+      "filler_count": 5,
+      "transcript": [
+        {"tool": "Task", "input": {"subagent_type": "dev:stack-detector", "prompt": "detect stack"}},
+        {"tool": "Task", "input": {"subagent_type": "dev:architect", "prompt": "design architecture for user auth feature"}},
+        {"tool": "Read", "input": {"file_path": "/project/architecture.md"}},
+        {"tool": "Task", "input": {"subagent_type": "dev:developer", "prompt": "implement user auth based on architecture"}},
+        {"tool": "Task", "input": {"subagent_type": "dev:test-architect", "prompt": "create tests"}}
+      ],
+      "checks": {
+        "recommendations_not_null": true,
+        "recommendations_contains": "multi-model review",
+        "exit_code_is": 0
+      }
+    },
+    {
+      "id": "coaching-skipped-review-negative-01",
+      "description": "Feature session WITH AskUserQuestion and claudish should NOT trigger skipped-multi-model-review",
+      "category": "negative",
+      "tags": ["skipped-multi-model-review", "negative"],
+      "filler_count": 3,
+      "transcript": [
+        {"tool": "Task", "input": {"subagent_type": "dev:architect", "prompt": "design architecture for feature"}},
+        {"tool": "AskUserQuestion", "input": {"questions": [{"question": "Select models for review", "header": "Models", "options": [{"label": "Grok", "description": "fast"}], "multiSelect": true}]}},
+        {"tool": "Bash", "input": {"command": "claudish --model x-ai/grok-code-fast-1 --stdin --quiet < review-prompt.md > review.md"}},
+        {"tool": "Task", "input": {"subagent_type": "dev:developer", "prompt": "implement the feature"}},
+        {"tool": "Bash", "input": {"command": "claudish --model google/gemini-2.5-flash --stdin --quiet < code-review.md > cr.md"}},
+        {"tool": "Task", "input": {"subagent_type": "dev:test-architect", "prompt": "create tests"}},
+        {"tool": "Read", "input": {"file_path": "/project/result.md"}}
+      ],
+      "checks": {
+        "recommendations_not_contains": "multi-model review",
+        "exit_code_is": 0
+      }
     }
   ]
 }

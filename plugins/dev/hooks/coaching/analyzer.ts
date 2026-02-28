@@ -316,6 +316,37 @@ function applyRules(
         break;
       }
 
+      case "skipped-multi-model-review": {
+        // Detect /dev:feature sessions that skipped multi-model review.
+        // Signal: has dev:architect AND dev:developer Task calls (feature session)
+        // but NO AskUserQuestion calls AND NO claudish Bash calls.
+        const architectTasks = taskCalls.filter(
+          (tc) => String(tc.input.subagent_type ?? "") === "dev:architect"
+        );
+        const developerTasks = taskCalls.filter(
+          (tc) => String(tc.input.subagent_type ?? "") === "dev:developer"
+        );
+        const askUserCalls = toolCalls.filter(
+          (tc) => tc.tool === "AskUserQuestion"
+        );
+        const claudishReviewCalls = bashCalls.filter((c) =>
+          String(c.input.command ?? "").includes("claudish")
+        );
+
+        // Only fire if this looks like a /dev:feature session (both agents present)
+        // AND the user was never asked about model selection
+        // AND no claudish calls were made for external reviews
+        if (
+          architectTasks.length > 0 &&
+          developerTasks.length > 0 &&
+          askUserCalls.length === 0 &&
+          claudishReviewCalls.length === 0
+        ) {
+          matched = true;
+        }
+        break;
+      }
+
       case "no-background-tasks": {
         let sequential = 0;
         for (let i = 0; i < taskCalls.length - 1; i++) {
