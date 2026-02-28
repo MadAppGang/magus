@@ -1,0 +1,546 @@
+{
+  "meta": {
+    "description": "dev:loop command E2E test cases. Two layers: unit tests run the real stop-hook/reflection/convergence CLI components with synthetic state; e2e tests run full claudish sessions with the /dev:loop command.",
+    "version": "1.0.0",
+    "created": "2026-02-28",
+    "notes": "Unit layer (20 tests): deterministic, fast, no LLM calls — tests stop-hook logic, reflection generator, convergence detector, and agent router in isolation. E2E layer (10 tests): claudish-based integration tests that verify the full /dev:loop command workflow end-to-end."
+  },
+  "test_cases": [
+    {
+      "id": "stop-hook-block-01",
+      "layer": "unit",
+      "target": "stop-hook",
+      "description": "Blocks exit when loop state file exists and no promise match",
+      "category": "stop-hook",
+      "tags": ["stop-hook", "block-exit", "iteration"],
+      "state_file": {
+        "task": "Create hello.py",
+        "iteration": 1,
+        "max_iterations": 5,
+        "completion_promise": "DONE",
+        "phase": "implementing"
+      },
+      "filler_count": 12,
+      "transcript": [
+        {"tool": "Write", "input": {"file_path": "/project/hello.py", "content": "print('hello')"}},
+        {"tool": "Bash", "input": {"command": "python3 /project/hello.py"}}
+      ],
+      "checks": {
+        "exit_code_is": 0,
+        "stdout_contains": "\"decision\"",
+        "stdout_contains_2": "\"block\"",
+        "state_file_exists": true,
+        "state_iteration_is": 2
+      }
+    },
+    {
+      "id": "stop-hook-allow-exit-02",
+      "layer": "unit",
+      "target": "stop-hook",
+      "description": "Allows exit when no loop state file exists",
+      "category": "stop-hook",
+      "tags": ["stop-hook", "allow-exit", "no-state"],
+      "state_file": null,
+      "filler_count": 0,
+      "transcript": [],
+      "checks": {
+        "exit_code_is": 0,
+        "stdout_is_empty": true,
+        "state_file_exists": false
+      }
+    },
+    {
+      "id": "stop-hook-promise-match-03",
+      "layer": "unit",
+      "target": "stop-hook",
+      "description": "Promise tag match in transcript exits the loop",
+      "category": "stop-hook",
+      "tags": ["stop-hook", "promise-match", "completion"],
+      "state_file": {
+        "task": "Create greet.py",
+        "iteration": 2,
+        "max_iterations": 5,
+        "completion_promise": "DONE",
+        "phase": "implementing"
+      },
+      "filler_count": 10,
+      "transcript_text": ["The task is complete. <promise>DONE</promise>"],
+      "checks": {
+        "exit_code_is": 0,
+        "state_file_exists": false,
+        "stdout_is_empty": true
+      }
+    },
+    {
+      "id": "stop-hook-max-iter-04",
+      "layer": "unit",
+      "target": "stop-hook",
+      "description": "Max iterations reached exits the loop",
+      "category": "stop-hook",
+      "tags": ["stop-hook", "max-iterations", "budget"],
+      "state_file": {
+        "task": "Impossible task",
+        "iteration": 5,
+        "max_iterations": 5,
+        "completion_promise": "DONE",
+        "phase": "implementing"
+      },
+      "filler_count": 10,
+      "transcript": [
+        {"tool": "Bash", "input": {"command": "echo 'still trying'"}}
+      ],
+      "checks": {
+        "exit_code_is": 0,
+        "state_file_exists": false,
+        "stdout_is_empty": true
+      }
+    },
+    {
+      "id": "stop-hook-increment-05",
+      "layer": "unit",
+      "target": "stop-hook",
+      "description": "Iteration counter increments on each hook run",
+      "category": "stop-hook",
+      "tags": ["stop-hook", "increment", "state-mutation"],
+      "state_file": {
+        "task": "Build feature",
+        "iteration": 3,
+        "max_iterations": 10,
+        "completion_promise": "ALL_PASS",
+        "phase": "implementing"
+      },
+      "filler_count": 12,
+      "transcript": [
+        {"tool": "Write", "input": {"file_path": "/project/feature.ts", "content": "export {}"}}
+      ],
+      "checks": {
+        "exit_code_is": 0,
+        "stdout_contains": "\"block\"",
+        "state_file_exists": true,
+        "state_iteration_is": 4
+      }
+    },
+    {
+      "id": "stop-hook-corrupt-state-06",
+      "layer": "unit",
+      "target": "stop-hook",
+      "description": "Corrupted state file handled gracefully",
+      "category": "stop-hook",
+      "tags": ["stop-hook", "error-handling", "corrupt-state"],
+      "raw_state_file": "this is {{ not valid yaml or json ]]",
+      "filler_count": 0,
+      "transcript": [],
+      "checks": {
+        "exit_code_is": 0,
+        "state_file_exists": false
+      }
+    },
+    {
+      "id": "reflect-basic-01",
+      "layer": "unit",
+      "target": "reflection-generator",
+      "description": "Generates reflection JSON from a substantial transcript",
+      "category": "reflection",
+      "tags": ["reflection", "json-output", "basic"],
+      "state_file": {
+        "task": "Implement auth module",
+        "iteration": 1,
+        "max_iterations": 5,
+        "phase": "implementing"
+      },
+      "filler_count": 12,
+      "transcript": [
+        {"tool": "Read", "input": {"file_path": "/project/auth.ts"}},
+        {"tool": "Write", "input": {"file_path": "/project/auth.ts", "content": "export function login() {}"}},
+        {"tool": "Bash", "input": {"command": "bun test auth.test.ts"}}
+      ],
+      "checks": {
+        "exit_code_is": 0,
+        "reflection_file_exists": true,
+        "reflection_valid_json": true,
+        "reflection_has_field": "approach",
+        "reflection_has_field_2": "successes"
+      }
+    },
+    {
+      "id": "reflect-test-failure-02",
+      "layer": "unit",
+      "target": "reflection-generator",
+      "description": "Captures test failure details in reflection",
+      "category": "reflection",
+      "tags": ["reflection", "test-failure", "failures-field"],
+      "state_file": {
+        "task": "Fix failing tests",
+        "iteration": 2,
+        "max_iterations": 5,
+        "phase": "implementing"
+      },
+      "filler_count": 10,
+      "transcript": [
+        {"tool": "Bash", "input": {"command": "bun test", "output_hint": "FAIL src/auth.test.ts > login > should validate email\nExpected: true\nReceived: false"}},
+        {"tool": "Read", "input": {"file_path": "/project/auth.test.ts"}},
+        {"tool": "Write", "input": {"file_path": "/project/auth.ts", "content": "export function login(email: string) { return email.includes('@'); }"}}
+      ],
+      "checks": {
+        "exit_code_is": 0,
+        "reflection_file_exists": true,
+        "reflection_valid_json": true,
+        "reflection_has_field": "failures"
+      }
+    },
+    {
+      "id": "reflect-history-03",
+      "layer": "unit",
+      "target": "reflection-generator",
+      "description": "Reads ALL previous reflections when generating new one",
+      "category": "reflection",
+      "tags": ["reflection", "history", "cross-iteration"],
+      "state_file": {
+        "task": "Build calculator",
+        "iteration": 4,
+        "max_iterations": 10,
+        "phase": "implementing"
+      },
+      "filler_count": 10,
+      "pre_reflections": [
+        {"iteration": 1, "approach": "basic structure", "successes": ["created files"], "failures": []},
+        {"iteration": 2, "approach": "add tests", "successes": ["tests written"], "failures": ["2 tests fail"]},
+        {"iteration": 3, "approach": "fix tests", "successes": ["1 test fixed"], "failures": ["1 test still fails"]}
+      ],
+      "transcript": [
+        {"tool": "Bash", "input": {"command": "bun test"}},
+        {"tool": "Write", "input": {"file_path": "/project/calc.ts", "content": "// fixed"}}
+      ],
+      "checks": {
+        "exit_code_is": 0,
+        "reflection_file_exists": true,
+        "reflection_valid_json": true,
+        "reflection_references_prior": true
+      }
+    },
+    {
+      "id": "reflect-thrash-detect-04",
+      "layer": "unit",
+      "target": "reflection-generator",
+      "description": "Detects thrashing when same error hash repeats 3x",
+      "category": "reflection",
+      "tags": ["reflection", "thrashing", "oscillation-detection"],
+      "state_file": {
+        "task": "Fix import error",
+        "iteration": 4,
+        "max_iterations": 10,
+        "phase": "implementing"
+      },
+      "filler_count": 10,
+      "pre_reflections": [
+        {"iteration": 1, "approach": "fix import", "successes": [], "failures": ["Cannot find module 'foo'"], "error_hash": "abc123"},
+        {"iteration": 2, "approach": "try different path", "successes": [], "failures": ["Cannot find module 'foo'"], "error_hash": "abc123"},
+        {"iteration": 3, "approach": "install package", "successes": [], "failures": ["Cannot find module 'foo'"], "error_hash": "abc123"}
+      ],
+      "transcript": [
+        {"tool": "Bash", "input": {"command": "bun test", "output_hint": "Cannot find module 'foo'"}}
+      ],
+      "checks": {
+        "exit_code_is": 0,
+        "reflection_file_exists": true,
+        "reflection_valid_json": true,
+        "reflection_has_field": "thrashing",
+        "reflection_thrashing_is": true
+      }
+    },
+    {
+      "id": "reflect-low-signal-05",
+      "layer": "unit",
+      "target": "reflection-generator",
+      "description": "Reflection generator skips writing for low-signal sessions (< 10 tool calls)",
+      "category": "reflection",
+      "tags": ["reflection", "low-signal", "guard"],
+      "filler_count": 0,
+      "transcript": [
+        {"tool": "Write", "input": {"file_path": "/project/f1.ts", "content": "x"}},
+        {"tool": "Write", "input": {"file_path": "/project/f2.ts", "content": "x"}}
+      ],
+      "checks": {
+        "reflection_file_exists": false,
+        "exit_code_is": 0
+      }
+    },
+    {
+      "id": "reflect-json-format-06",
+      "layer": "unit",
+      "target": "reflection-generator",
+      "description": "Reflection output conforms to expected JSON schema with all required fields",
+      "category": "reflection",
+      "tags": ["reflection", "schema", "json-format"],
+      "filler_count": 12,
+      "transcript": [
+        {"tool": "Bash", "input": {"command": "bun test", "output_hint": "2 tests passed, 1 failed"}},
+        {"tool": "Write", "input": {"file_path": "/project/src/util.ts", "content": "export const clamp = (n: number, min: number, max: number) => Math.min(Math.max(n, min), max);"}},
+        {"tool": "Bash", "input": {"command": "bun run lint && bun run typecheck", "output_hint": "no issues"}}
+      ],
+      "checks": {
+        "reflection_file_exists": true,
+        "reflection_valid_json": true,
+        "reflection_schema_valid": true,
+        "exit_code_is": 0
+      }
+    },
+    {
+      "id": "converge-success-01",
+      "layer": "unit",
+      "target": "convergence-detector",
+      "description": "Convergence detector reports success when quality metrics exceed thresholds",
+      "category": "convergence",
+      "tags": ["convergence", "success", "metrics"],
+      "metrics_history": [
+        {"iteration": 1, "test_pass_rate": 0.60, "lint_score": 0.70, "build_success": true},
+        {"iteration": 2, "test_pass_rate": 0.85, "lint_score": 0.85, "build_success": true},
+        {"iteration": 3, "test_pass_rate": 0.95, "lint_score": 0.90, "build_success": true}
+      ],
+      "checks": {
+        "convergence_status_is": "converged_success",
+        "exit_code_is": 0
+      }
+    },
+    {
+      "id": "converge-plateau-02",
+      "layer": "unit",
+      "target": "convergence-detector",
+      "description": "Convergence detector identifies stuck plateau when delta < 0.01 for 4 consecutive iterations",
+      "category": "convergence",
+      "tags": ["convergence", "plateau", "stuck"],
+      "metrics_history": [
+        {"iteration": 1, "test_pass_rate": 0.70, "lint_score": 0.80, "build_success": true},
+        {"iteration": 2, "test_pass_rate": 0.71, "lint_score": 0.80, "build_success": true},
+        {"iteration": 3, "test_pass_rate": 0.71, "lint_score": 0.81, "build_success": true},
+        {"iteration": 4, "test_pass_rate": 0.72, "lint_score": 0.81, "build_success": true}
+      ],
+      "checks": {
+        "convergence_status_is": "stuck_plateau",
+        "exit_code_is": 0
+      }
+    },
+    {
+      "id": "converge-thrashing-03",
+      "layer": "unit",
+      "target": "convergence-detector",
+      "description": "Convergence detector identifies oscillation when alternating pass/fail with same error hash",
+      "category": "convergence",
+      "tags": ["convergence", "thrashing", "oscillation"],
+      "metrics_history": [
+        {"iteration": 1, "test_pass_rate": 0.80, "error_hash": "abc123"},
+        {"iteration": 2, "test_pass_rate": 0.50, "error_hash": "abc123"},
+        {"iteration": 3, "test_pass_rate": 0.80, "error_hash": "abc123"},
+        {"iteration": 4, "test_pass_rate": 0.50, "error_hash": "abc123"}
+      ],
+      "checks": {
+        "convergence_status_is": "thrashing",
+        "exit_code_is": 0
+      }
+    },
+    {
+      "id": "converge-exploring-04",
+      "layer": "unit",
+      "target": "convergence-detector",
+      "description": "Convergence detector marks as exploring when alternating results have different error hashes",
+      "category": "convergence",
+      "tags": ["convergence", "exploring", "different-errors"],
+      "metrics_history": [
+        {"iteration": 1, "test_pass_rate": 0.60, "error_hash": "aaa111"},
+        {"iteration": 2, "test_pass_rate": 0.55, "error_hash": "bbb222"},
+        {"iteration": 3, "test_pass_rate": 0.65, "error_hash": "ccc333"}
+      ],
+      "checks": {
+        "convergence_status_is": "exploring",
+        "exit_code_is": 0
+      }
+    },
+    {
+      "id": "converge-budget-05",
+      "layer": "unit",
+      "target": "convergence-detector",
+      "description": "Convergence detector reports budget_exhausted when iteration equals max_iterations",
+      "category": "convergence",
+      "tags": ["convergence", "budget", "max-iterations"],
+      "state_file": {
+        "iteration": 10,
+        "max_iterations": 10
+      },
+      "metrics_history": [
+        {"iteration": 9, "test_pass_rate": 0.60},
+        {"iteration": 10, "test_pass_rate": 0.65}
+      ],
+      "checks": {
+        "convergence_status_is": "budget_exhausted",
+        "exit_code_is": 0
+      }
+    },
+    {
+      "id": "route-initial-01",
+      "layer": "unit",
+      "target": "agent-router",
+      "description": "Agent router selects dev:developer for the initial implementation phase",
+      "category": "agent-routing",
+      "tags": ["routing", "initial-phase", "developer"],
+      "routing_input": {
+        "phase": "initial",
+        "iteration": 1,
+        "last_outcome": null,
+        "convergence_status": "exploring"
+      },
+      "checks": {
+        "routed_agent_is": "dev:developer",
+        "exit_code_is": 0
+      }
+    },
+    {
+      "id": "route-test-fail-02",
+      "layer": "unit",
+      "target": "agent-router",
+      "description": "Agent router selects dev:debugger when last outcome is test_fail during implementation",
+      "category": "agent-routing",
+      "tags": ["routing", "test-failure", "debugger"],
+      "routing_input": {
+        "phase": "implementing",
+        "iteration": 3,
+        "last_outcome": "test_fail",
+        "convergence_status": "exploring"
+      },
+      "checks": {
+        "routed_agent_is": "dev:debugger",
+        "exit_code_is": 0
+      }
+    },
+    {
+      "id": "route-plateau-03",
+      "layer": "unit",
+      "target": "agent-router",
+      "description": "Agent router selects dev:architect when convergence status is stuck_plateau",
+      "category": "agent-routing",
+      "tags": ["routing", "plateau", "architect"],
+      "routing_input": {
+        "phase": "implementing",
+        "iteration": 6,
+        "last_outcome": "test_fail",
+        "convergence_status": "stuck_plateau"
+      },
+      "checks": {
+        "routed_agent_is": "dev:architect",
+        "exit_code_is": 0
+      }
+    },
+    {
+      "id": "e2e-loop-start-01",
+      "layer": "e2e",
+      "description": "Loop initializes state file and respects max-iterations",
+      "category": "lifecycle",
+      "tags": ["e2e", "loop-init", "start"],
+      "prompt": "/dev:loop \"Create a file hello.py that prints hello world\" --max-iterations 3",
+      "checks": {
+        "response_contains_any": ["hello", "iteration", "loop", "created"],
+        "iteration_count_lte": 3
+      }
+    },
+    {
+      "id": "e2e-loop-iterate-02",
+      "layer": "e2e",
+      "description": "Loop completes with promise tag and creates expected file",
+      "category": "lifecycle",
+      "tags": ["e2e", "completion-promise", "file-creation"],
+      "prompt": "/dev:loop \"Create a Python file greet.py with a function greet(name) that returns 'Hello, {name}!'\" --max-iterations 5 --completion-promise \"DONE\"",
+      "checks": {
+        "response_contains_any": ["DONE", "greet", "complete"],
+        "file_exists": "greet.py"
+      }
+    },
+    {
+      "id": "e2e-loop-cancel-03",
+      "layer": "e2e",
+      "description": "Loop cancel command stops any active loop and reports cancellation",
+      "category": "lifecycle",
+      "tags": ["e2e", "cancel", "cleanup"],
+      "prompt": "/dev:loop cancel",
+      "checks": {
+        "response_contains_any": ["cancel", "stopped", "no active", "no loop", "cleared"]
+      }
+    },
+    {
+      "id": "e2e-loop-max-iter-04",
+      "layer": "e2e",
+      "description": "Loop stops at max iterations and does not exceed the budget",
+      "category": "lifecycle",
+      "tags": ["e2e", "max-iterations", "budget"],
+      "prompt": "/dev:loop \"Solve the halting problem and prove P=NP\" --max-iterations 2",
+      "checks": {
+        "response_contains_any": ["iteration", "max", "limit", "budget", "stopped"],
+        "iteration_count_lte": 2
+      }
+    },
+    {
+      "id": "e2e-reflect-written-05",
+      "layer": "e2e",
+      "description": "Loop writes reflection files during iteration cycle",
+      "category": "reflection",
+      "tags": ["e2e", "reflections", "file-artifacts"],
+      "prompt": "/dev:loop \"Fix a bug in a calculator module\" --max-iterations 3",
+      "checks": {
+        "response_contains_any": ["reflection", "iteration", "progress", "fix", "loop"]
+      }
+    },
+    {
+      "id": "e2e-agent-selection-06",
+      "layer": "e2e",
+      "description": "Loop selects appropriate agent type based on task nature (research task routes to researcher)",
+      "category": "reflection",
+      "tags": ["e2e", "agent-selection", "routing"],
+      "prompt": "/dev:loop \"Research the best caching strategies for Node.js APIs and summarize findings\" --max-iterations 2",
+      "checks": {
+        "response_contains_any": ["research", "caching", "strategy", "findings", "cache"]
+      }
+    },
+    {
+      "id": "e2e-discovery-07",
+      "layer": "e2e",
+      "description": "Skill discovery runs in first iteration",
+      "category": "reflection",
+      "tags": ["e2e", "implementation", "progress"],
+      "prompt": "/dev:loop \"Implement a simple counter module with increment and decrement functions\" --max-iterations 2",
+      "checks": {
+        "response_contains_any": ["implement", "counter", "function", "module", "iteration"]
+      }
+    },
+    {
+      "id": "e2e-converge-exit-08",
+      "layer": "e2e",
+      "description": "Loop exits early when quality threshold is met before max iterations",
+      "category": "convergence",
+      "tags": ["e2e", "early-exit", "quality-gate"],
+      "prompt": "/dev:loop \"Create hello.py that prints Hello World and passes a basic smoke test\" --max-iterations 10 --completion-promise \"ALL TESTS PASS\"",
+      "checks": {
+        "response_contains_any": ["pass", "complete", "success", "done", "converge", "hello"]
+      }
+    },
+    {
+      "id": "e2e-metrics-tracked-09",
+      "layer": "e2e",
+      "description": "Loop tracks and reports metrics across iterations",
+      "category": "convergence",
+      "tags": ["e2e", "metrics", "tracking"],
+      "prompt": "/dev:loop \"Build a simple calculator with add and subtract functions\" --max-iterations 3",
+      "checks": {
+        "response_contains_any": ["iteration", "progress", "metric", "quality", "calculator", "add"]
+      }
+    },
+    {
+      "id": "e2e-checkpoint-10",
+      "layer": "e2e",
+      "description": "Loop respects checkpoint-every flag and triggers multi-model review at checkpoints",
+      "category": "convergence",
+      "tags": ["e2e", "checkpoint", "multi-model", "review"],
+      "prompt": "/dev:loop \"Build a REST API with a single GET /health endpoint\" --max-iterations 8 --checkpoint-every 3",
+      "checks": {
+        "response_contains_any": ["checkpoint", "review", "api", "health", "iteration", "build"]
+      }
+    }
+  ]
+}
