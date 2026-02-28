@@ -281,6 +281,60 @@ run_single_test() {
   exit_code=$?
   set -e
 
+  # Double-run support: run analyzer again to test session-ID deduplication guard
+  local double_run
+  double_run=$(jq -r --arg id "$case_id" '.test_cases[] | select(.id == $id) | .double_run // false' "$TEST_CASES_FILE")
+  if [[ "$double_run" == "true" ]]; then
+    set +e
+    if [[ -n "$env_prefix" ]]; then
+      if [[ -n "$TIMEOUT_CMD" ]]; then
+        eval "env $env_prefix $TIMEOUT_CMD ${TIMEOUT}s bun \"$COACHING_ANALYZER\" \
+          --transcript \"$transcript_file\" \
+          --session-id \"aabbccdd11223344\" \
+          --rules \"$COACHING_RULES\" \
+          --state \"$state_file\" \
+          --output \"$recs_file\" \
+          --history-dir \"$history_dir\"" \
+          > "$test_dir/analyzer-stdout-run2.txt" \
+          2> "$test_dir/analyzer-stderr-run2.txt"
+      else
+        eval "env $env_prefix bun \"$COACHING_ANALYZER\" \
+          --transcript \"$transcript_file\" \
+          --session-id \"aabbccdd11223344\" \
+          --rules \"$COACHING_RULES\" \
+          --state \"$state_file\" \
+          --output \"$recs_file\" \
+          --history-dir \"$history_dir\"" \
+          > "$test_dir/analyzer-stdout-run2.txt" \
+          2> "$test_dir/analyzer-stderr-run2.txt"
+      fi
+    else
+      if [[ -n "$TIMEOUT_CMD" ]]; then
+        $TIMEOUT_CMD ${TIMEOUT}s bun "$COACHING_ANALYZER" \
+          --transcript "$transcript_file" \
+          --session-id "aabbccdd11223344" \
+          --rules "$COACHING_RULES" \
+          --state "$state_file" \
+          --output "$recs_file" \
+          --history-dir "$history_dir" \
+          > "$test_dir/analyzer-stdout-run2.txt" \
+          2> "$test_dir/analyzer-stderr-run2.txt"
+      else
+        bun "$COACHING_ANALYZER" \
+          --transcript "$transcript_file" \
+          --session-id "aabbccdd11223344" \
+          --rules "$COACHING_RULES" \
+          --state "$state_file" \
+          --output "$recs_file" \
+          --history-dir "$history_dir" \
+          > "$test_dir/analyzer-stdout-run2.txt" \
+          2> "$test_dir/analyzer-stderr-run2.txt"
+      fi
+    fi
+    # Don't override exit_code — checks validate the final state after both runs
+    set -e
+  fi
+
   # Run SessionStart hook if the test checks sessionstart_ outputs
   if [[ "$has_sessionstart" == "true" ]]; then
     # The SessionStart hook reads from ${CWD}/.claude/.coaching/recommendations.md

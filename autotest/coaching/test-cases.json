@@ -434,6 +434,95 @@
         "exit_code_is": 0,
         "sessionstart_output_is_empty": true
       }
+    },
+    {
+      "id": "coaching-double-exec-01",
+      "description": "Double execution: second run with all rules suppressed does NOT delete existing recommendations",
+      "category": "regression",
+      "tags": ["double-execution", "idempotency", "regression"],
+      "filler_count": 0,
+      "transcript": [
+        {"tool": "Write", "input": {"file_path": "/project/f1.ts", "content": "x"}},
+        {"tool": "Write", "input": {"file_path": "/project/f2.ts", "content": "x"}},
+        {"tool": "Write", "input": {"file_path": "/project/f3.ts", "content": "x"}},
+        {"tool": "Write", "input": {"file_path": "/project/f4.ts", "content": "x"}},
+        {"tool": "Write", "input": {"file_path": "/project/f5.ts", "content": "x"}},
+        {"tool": "Write", "input": {"file_path": "/project/f6.ts", "content": "x"}},
+        {"tool": "Write", "input": {"file_path": "/project/f7.ts", "content": "x"}},
+        {"tool": "Write", "input": {"file_path": "/project/f8.ts", "content": "x"}},
+        {"tool": "Write", "input": {"file_path": "/project/f9.ts", "content": "x"}},
+        {"tool": "Write", "input": {"file_path": "/project/f10.ts", "content": "x"}}
+      ],
+      "pre_state": {
+        "_session_count": 50,
+        "rules": {
+          "grep-instead-of-claudemem": {
+            "last_shown_session": 45,
+            "shown_count": 5,
+            "suppress_until_count": 100
+          },
+          "tmp-path-usage": {
+            "last_shown_session": 45,
+            "shown_count": 3,
+            "suppress_until_count": 100
+          },
+          "skill-invoked-as-task": {
+            "last_shown_session": 45,
+            "shown_count": 2,
+            "suppress_until_count": 100
+          },
+          "excessive-reads-before-delegation": {
+            "last_shown_session": 45,
+            "shown_count": 2,
+            "suppress_until_count": 100
+          },
+          "wrong-agent-for-task": {
+            "last_shown_session": 45,
+            "shown_count": 2,
+            "suppress_until_count": 100
+          },
+          "single-model-critical-review": {
+            "last_shown_session": 45,
+            "shown_count": 2,
+            "suppress_until_count": 100
+          },
+          "plugin-command-gap": {
+            "last_shown_session": 45,
+            "shown_count": 2,
+            "suppress_until_count": 100
+          },
+          "no-background-tasks": {
+            "last_shown_session": 45,
+            "shown_count": 2,
+            "suppress_until_count": 100
+          }
+        }
+      },
+      "pre_recommendations": "# Previous coaching\n1. Use claudemem for semantic search\n",
+      "checks": {
+        "recommendations_is_not_null": true,
+        "recommendations_contains": "Previous coaching",
+        "exit_code_is": 0
+      }
+    },
+    {
+      "id": "coaching-double-exec-02",
+      "description": "Double execution with same session ID: dedup guard preserves first run's recommendations",
+      "category": "regression",
+      "tags": ["double-execution", "session-id-guard", "dedup", "regression"],
+      "filler_count": 7,
+      "double_run": true,
+      "transcript": [
+        {"tool": "Bash", "input": {"command": "grep -r 'pattern' src/"}},
+        {"tool": "Bash", "input": {"command": "grep -n 'pattern' lib/"}},
+        {"tool": "Bash", "input": {"command": "grep 'pattern' tests/"}}
+      ],
+      "checks": {
+        "recommendations_not_null": true,
+        "recommendations_contains": "claudemem",
+        "exit_code_is": 0,
+        "state_session_count_is": 2
+      }
     }
   ]
 }

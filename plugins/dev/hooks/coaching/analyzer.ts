@@ -484,6 +484,16 @@ function main(): void {
     process.exit(0);
   }
 
+  // Session deduplication guard: if this session was already analyzed, skip.
+  // Prevents double processing when hooks fire twice (settings.json + plugin hooks.json).
+  if (historyDir) {
+    const historyFile = join(historyDir, `session-${sessionId.substring(0, 8)}.md`);
+    if (existsSync(historyFile)) {
+      saveState(statePath, state); // Still increment session count
+      process.exit(0);
+    }
+  }
+
   // Apply rules
   const suggestions = applyRules(toolCalls, rules, state);
 
@@ -536,8 +546,9 @@ function main(): void {
       }
     }
   } else {
-    // No suggestions — remove stale recommendations file
-    if (existsSync(outputPath)) rmSync(outputPath);
+    // No new suggestions — preserve existing recommendations.
+    // Deleting here would cause a race condition if the hook fires twice
+    // (e.g., from dual registration in settings.json + plugin hooks.json).
   }
 }
 

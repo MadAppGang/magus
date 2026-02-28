@@ -232,12 +232,20 @@ NOTE: Skills use the `Skill` tool, NOT the `Task` tool. The `namespace:name` for
 - Video Editing Plugin: **v1.1.1** (2026-02-27)
 - Nanobanana Plugin: **v2.3.1** (2026-02-27)
 - Conductor Plugin: **v2.1.1** (2026-02-27)
-- Dev Plugin: **v1.33.0** (2026-02-27)
+- Dev Plugin: **v1.33.1** (2026-02-28)
 - Statusline Plugin: **v1.4.1** (2026-02-27)
 - Terminal Plugin: **v1.0.0** (2026-02-27)
 - Claudish CLI: See https://github.com/MadAppGang/claudish (separate repository)
 
-**Latest Changes (Marketplace v7.1.0 — 2026-02-28):**
+**Latest Changes (Marketplace v7.1.1 — 2026-02-28):**
+- ✅ **Dev v1.33.1**: Fix coaching double-execution bug (Stop hook firing twice, deleting recommendations)
+  - Fix 1: Removed duplicate hooks from settings.json (root cause)
+  - Fix 2: Idempotent analyzer — no longer deletes recommendations.md on empty results
+  - Fix 3: Session-ID deduplication guard via history file check
+  - 25 E2E coaching tests (was 22), 37 unit tests (was 33)
+  - 5-model team review: 4/5 APPROVE (Internal, MiniMax, Kimi, Gemini), 1 REJECT (GLM-5 — addressed)
+
+**Previous (Marketplace v7.1.0 — 2026-02-28):**
 - ✅ **Marketplace Cleanup**: Removed bun, frontend, instantly, autopilot from public listing (10 plugins)
 - ✅ **claudeup v3.5.0**: Full mag-claude-plugins ghost removal (directory rename, git remote, repo alias dedup)
 
@@ -256,7 +264,7 @@ NOTE: Skills use the `Skill` tool, NOT the `Task` tool. The `namespace:name` for
 - Video Editing: `plugins/video-editing/v1.1.1`
 - Nanobanana: `plugins/nanobanana/v2.3.1`
 - Conductor: `plugins/conductor/v2.1.1`
-- Dev: `plugins/dev/v1.33.0`
+- Dev: `plugins/dev/v1.33.1`
 - Statusline: `plugins/statusline/v1.4.1`
 - Terminal: `plugins/terminal/v1.0.0`
 - Use correct tag format when releasing: `plugins/{plugin-name}/vX.Y.Z`
@@ -288,5 +296,5 @@ The workflow `.github/workflows/claudeup-release.yml` triggers on `tools/claudeu
 
 **Maintained by:** Jack Rudenko @ MadAppGang
 **Last Updated:** February 28, 2026
-**Version:** 10 plugins (Code Analysis v3.2.3, Multimodel v2.4.2, Agent Dev v1.5.3, SEO v1.6.3, Video Editing v1.1.1, Nanobanana v2.3.1, Conductor v2.1.1, Dev v1.33.0, Statusline v1.4.1, Terminal v1.0.0)
+**Version:** 10 plugins (Code Analysis v3.2.3, Multimodel v2.4.2, Agent Dev v1.5.3, SEO v1.6.3, Video Editing v1.1.1, Nanobanana v2.3.1, Conductor v2.1.1, Dev v1.33.1, Statusline v1.4.1, Terminal v1.0.0)
 - do not use hardcoded path in code, docs, comments or any other files

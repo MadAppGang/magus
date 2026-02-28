@@ -810,3 +810,195 @@ describe("Session ID in Output", () => {
     expect(recs).toContain("abcdef12");
   });
 });
+
+// ---------------------------------------------------------------------------
+// TEST GROUP: Double-Execution Guard
+// ---------------------------------------------------------------------------
+
+describe("Double-Execution Guard", () => {
+  it("second run with same session ID does NOT delete recommendations from first run", () => {
+    // Session ID must match /^[a-f0-9-]+$/i
+    const sessionId = "deadbeef11223344";
+    const transcript = generateTranscript([
+      { tool: "Bash", input: { command: "grep -r 'foo' src/" } },
+      { tool: "Bash", input: { command: "grep -r 'bar' lib/" } },
+      { tool: "Bash", input: { command: "grep -r 'baz' tests/" } },
+    ]);
+    const transcriptPath = writeTranscript(testDir, transcript);
+
+    // First run: should produce recommendations.md and write history file
+    runAnalyzer(transcriptPath, sessionId, testDir);
+    const recsAfterFirstRun = readRecommendations(testDir);
+    expect(recsAfterFirstRun).not.toBeNull();
+    expect(recsAfterFirstRun).toContain("claudemem");
+
+    // Verify history file was written by the first run
+    const historyPath = join(testDir, "history", `session-${sessionId.substring(0, 8)}.md`);
+    expect(existsSync(historyPath)).toBe(true);
+
+    // Second run with SAME session ID: dedup guard should detect history file and skip
+    runAnalyzer(transcriptPath, sessionId, testDir);
+    const recsAfterSecondRun = readRecommendations(testDir);
+
+    // recommendations.md must still exist with the same content
+    expect(recsAfterSecondRun).not.toBeNull();
+    expect(recsAfterSecondRun).toContain("claudemem");
+    // Content should not have been overwritten by a blank second run
+    expect(recsAfterSecondRun).toBe(recsAfterFirstRun);
+  });
+
+  it("second run with same session ID preserves recommendations and increments session_count to 2", () => {
+    // This exercises the session-ID dedup guard (Fix 3) at the unit test level.
+    // First run: produces recommendations and writes history file.
+    // Second run with SAME session ID: dedup guard detects history file, saves state
+    // (incrementing session_count), then exits early without overwriting recommendations.md.
+    const sessionId = "deadbeef99887766";
+    const transcript = generateTranscript([
+      { tool: "Bash", input: { command: "grep -r 'foo' src/" } },
+      { tool: "Bash", input: { command: "grep -r 'bar' lib/" } },
+      { tool: "Bash", input: { command: "grep -r 'baz' tests/" } },
+    ]);
+    const transcriptPath = writeTranscript(testDir, transcript);
+
+    // First run
+    runAnalyzer(transcriptPath, sessionId, testDir);
+    const recsAfterFirstRun = readRecommendations(testDir);
+    expect(recsAfterFirstRun).not.toBeNull();
+
+    const stateAfterFirst = readState(testDir);
+    expect(stateAfterFirst!._session_count).toBe(1);
+
+    // Verify history file was written by the first run
+    const historyPath = join(testDir, "history", `session-${sessionId.substring(0, 8)}.md`);
+    expect(existsSync(historyPath)).toBe(true);
+
+    // Second run with SAME session ID
+    runAnalyzer(transcriptPath, sessionId, testDir);
+    const recsAfterSecondRun = readRecommendations(testDir);
+
+    // recommendations.md must still exist with the same content (dedup guard does not overwrite it)
+    expect(recsAfterSecondRun).not.toBeNull();
+    expect(recsAfterSecondRun).toContain("claudemem");
+    expect(recsAfterSecondRun).toBe(recsAfterFirstRun);
+
+    // session_count is 2 because the dedup guard still increments it before exiting
+    const stateAfterSecond = readState(testDir);
+    expect(stateAfterSecond!._session_count).toBe(2);
+  });
+
+  it("second run with all rules suppressed does NOT delete recommendations", () => {
+    // Pre-seed state.json with all rules suppressed well into the future
+    const statePath = join(testDir, "state.json");
+    writeFileSync(statePath, JSON.stringify({
+      _session_count: 50,
+      rules: {
+        "grep-instead-of-claudemem": {
+          last_shown_session: 45,
+          shown_count: 5,
+          suppress_until_count: 100,
+        },
+        "tmp-path-usage": {
+          last_shown_session: 45,
+          shown_count: 3,
+          suppress_until_count: 100,
+        },
+        "skill-invoked-as-task": {
+          last_shown_session: 45,
+          shown_count: 2,
+          suppress_until_count: 100,
+        },
+        "excessive-reads-before-delegation": {
+          last_shown_session: 45,
+          shown_count: 2,
+          suppress_until_count: 100,
+        },
+        "wrong-agent-for-task": {
+          last_shown_session: 45,
+          shown_count: 2,
+          suppress_until_count: 100,
+        },
+        "single-model-critical-review": {
+          last_shown_session: 45,
+          shown_count: 2,
+          suppress_until_count: 100,
+        },
+        "plugin-command-gap": {
+          last_shown_session: 45,
+          shown_count: 2,
+          suppress_until_count: 100,
+        },
+        "no-background-tasks": {
+          last_shown_session: 45,
+          shown_count: 2,
+          suppress_until_count: 100,
+        },
+      },
+    }));
+
+    // Pre-create recommendations.md with content from a prior high-signal session
+    const outputPath = join(testDir, "recommendations.md");
+    const existingContent = "# Previous coaching\n1. Use claudemem for semantic search\n";
+    writeFileSync(outputPath, existingContent);
+
+    // Use a high-signal transcript (10+ Write calls) that would normally fire rules
+    // but all rules are suppressed — simulating what the second run sees
+    const lines: string[] = [];
+    for (let i = 0; i < 10; i++) {
+      lines.push(
+        JSON.stringify({
+          type: "assistant",
+          message: {
+            content: [{
+              type: "tool_use",
+              name: "Write",
+              input: { file_path: `/project/f${i}.ts`, content: "x" },
+            }],
+          },
+        })
+      );
+    }
+    const transcript = lines.join("\n") + "\n";
+    const transcriptPath = writeTranscript(testDir, transcript);
+
+    // Run analyzer — all rules suppressed, so no new suggestions are generated.
+    // The existing recommendations.md should be preserved (not deleted).
+    const historyDir = join(testDir, "history");
+    const result = spawnSync(
+      "bun",
+      [
+        ANALYZER_PATH,
+        "--transcript", transcriptPath,
+        "--session-id", "cafebabe11223344",
+        "--rules", RULES_PATH,
+        "--state", statePath,
+        "--output", outputPath,
+        "--history-dir", historyDir,
+      ],
+      { env: { ...process.env }, timeout: 30000 }
+    );
+    expect(result.status).toBe(0);
+
+    // recommendations.md must still exist with the original content
+    expect(existsSync(outputPath)).toBe(true);
+    const recsAfterRun = readFileSync(outputPath, "utf-8");
+    expect(recsAfterRun).toBe(existingContent);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// TEST GROUP: Fix 1 Regression Guard
+// ---------------------------------------------------------------------------
+
+describe("Fix 1 Regression Guard: settings.json hooks", () => {
+  it("settings.json does not contain a hooks block", () => {
+    // This test ensures Fix 1 doesn't regress — if someone re-adds hooks
+    // to settings.json, the double-execution bug would return.
+    const settingsPath = join(import.meta.dir, "../../../../.claude/settings.json");
+    if (!existsSync(settingsPath)) {
+      // Settings file doesn't exist — no risk of duplicate hooks
+      return;
+    }
+    const settings = JSON.parse(readFileSync(settingsPath, "utf-8"));
+    expect(settings.hooks).toBeUndefined();
+  });
+});

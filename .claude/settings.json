@@ -26,8 +26,8 @@
     }
   },
   "installedPluginVersions": {
-    "dev@magus": "1.31.3",
-    "multimodel@magus": "2.4.1",
+    "dev@magus": "1.33.0",
+    "multimodel@magus": "2.4.2",
     "explanatory-output-style@claude-plugins-official": "0.0.0",
     "claude-md-management@claude-plugins-official": "0.0.0",
     "claude-code-setup@claude-plugins-official": "0.0.0",
@@ -36,30 +36,6 @@
     "code-simplifier@claude-plugins-official": "0.0.0",
     "code-review@claude-plugins-official": "0.0.0",
     "commit-commands@claude-plugins-official": "0.0.0",
-    "statusline@magus": "1.4.0"
-  },
-  "hooks": {
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "CLAUDE_PLUGIN_ROOT=\"$CLAUDE_PROJECT_DIR/plugins/dev\" bash \"$CLAUDE_PROJECT_DIR/plugins/dev/hooks/stop-coaching.sh\"",
-            "timeout": 30
-          }
-        ]
-      }
-    ],
-    "SessionStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "CLAUDE_PLUGIN_ROOT=\"$CLAUDE_PROJECT_DIR/plugins/dev\" bash \"$CLAUDE_PROJECT_DIR/plugins/dev/hooks/session-start-coaching.sh\"",
-            "timeout": 5
-          }
-        ]
-      }
-    ]
+    "statusline@magus": "1.4.1"
   }
 }
