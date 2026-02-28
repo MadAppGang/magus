@@ -6,6 +6,8 @@ allowed-tools: mcp__ht__ht_create_session, mcp__ht__ht_list_sessions, mcp__ht__h
 
 # /terminal:session
 
+> **Advanced command** — For most tasks, use `/terminal:run`, `/terminal:watch`, or `/terminal:repl` instead. They handle session lifecycle automatically. Use this command only when you need manual control over sessions.
+
 Create, list, and manage terminal sessions using ht-mcp and tmux-mcp.
 
 ## Usage

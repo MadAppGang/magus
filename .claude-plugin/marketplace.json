@@ -256,8 +256,8 @@
     {
       "name": "terminal",
       "source": "./plugins/terminal",
-      "description": "Interactive terminal integration for Claude Code. v1.0.0: First release with ht-mcp and tmux-mcp support, 9 E2E tests across 3 models. Enables Claude to interact with TUI applications, run commands, and observe real terminal output.",
-      "version": "1.0.0",
+      "description": "Interactive terminal integration for Claude Code. v2.0.0: Intent-level commands (run, watch, observe, repl, tui), broadened skill keywords, 9 commands total. Enables Claude to run commands, monitor dev servers, query databases, navigate TUI apps.",
+      "version": "2.0.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",

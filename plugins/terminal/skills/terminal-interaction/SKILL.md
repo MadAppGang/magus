@@ -1,11 +1,11 @@
 ---
 name: terminal-interaction
-description: ht-mcp and tmux-mcp tool API patterns for interactive terminal access. Use when interacting with TUI applications, running interactive CLI tools, or observing terminal output. Trigger keywords - "terminal", "TUI", "interactive", "ht-mcp", "tmux", "vim", "htop", "session".
-version: 1.0.0
-tags: [terminal, tui, pty, interactive, ht, tmux]
-keywords: [terminal, tui, pty, interactive, session, snapshot, send-keys, vim, htop, lazygit]
+description: ht-mcp and tmux-mcp tool API patterns for interactive terminal access. Use when running commands interactively, starting dev servers, watching test output, querying databases, navigating TUI apps, or observing terminal output. Trigger keywords - "run tests", "watch mode", "dev server", "database query", "terminal", "TUI", "interactive", "REPL".
+version: 2.0.0
+tags: [terminal, tui, pty, interactive, ht, tmux, testing-workflow, dev-server, database, monitoring, repl]
+keywords: [terminal, tui, pty, interactive, session, snapshot, send-keys, vim, htop, lazygit, run tests, watch mode, test watcher, dev server, start server, database query, psql, redis, mongo, mongosh, docker logs, tail logs, process monitor, bun test, npm run dev, go test, REPL, interactive shell, run command, execute script, long-running process]
 plugin: terminal
-updated: 2026-02-26
+updated: 2026-02-28
 ---
 
 # Terminal Interaction Skill
@@ -36,7 +36,7 @@ This skill teaches Claude how to use `ht-mcp` and `tmux-mcp` for interactive ter
 
 ## 2. Tool Naming Convention
 
-Server keys in `mcp-config.json` are `ht` and `tmux`. This produces tool name prefixes:
+Server keys in `.mcp.json` are `ht` and `tmux`. This produces tool name prefixes:
 
 - **ht-mcp tools**: `mcp__ht__ht_create_session`, `mcp__ht__ht_send_keys`, etc.
 - **tmux-mcp tools**: `mcp__tmux__list-sessions`, `mcp__tmux__capture-pane`, etc.

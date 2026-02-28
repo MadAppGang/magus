@@ -1,6 +1,6 @@
 ---
 name: tui-navigator
-description: Use this agent for multi-step interactive terminal workflows -- navigating TUI apps (vim, htop, lazygit, psql), running interactive CLI tools, or observing terminal output from running processes. This agent creates isolated ht-mcp sessions for tasks or connects to existing tmux sessions. It handles the full terminal lifecycle: create session, send keystrokes, read screen state, interpret output, and clean up. Delegate to this agent whenever a task requires interactive terminal control beyond what the Bash tool provides.
+description: Use this agent for multi-step interactive terminal workflows -- navigating TUI apps (vim, htop, lazygit, psql, k9s), running interactive CLI tools, starting dev servers, running test watchers, monitoring build output, executing database queries, or observing terminal output from running processes. This agent creates isolated ht-mcp sessions for tasks or connects to existing tmux sessions. It handles the full terminal lifecycle: create session, send keystrokes, read screen state, interpret output, and clean up. Delegate to this agent whenever a task requires interactive terminal control, TTY output, or process monitoring beyond what the Bash tool provides.
 model: sonnet
 color: green
 tools: mcp__ht__ht_create_session, mcp__ht__ht_send_keys, mcp__ht__ht_take_snapshot, mcp__ht__ht_execute_command, mcp__ht__ht_list_sessions, mcp__ht__ht_close_session, mcp__tmux__list-sessions, mcp__tmux__capture-pane, mcp__tmux__execute-command, mcp__tmux__send-keys, Bash

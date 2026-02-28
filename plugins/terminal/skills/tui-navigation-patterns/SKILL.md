@@ -1,11 +1,11 @@
 ---
 name: tui-navigation-patterns
-description: Key sequences and navigation patterns for common TUI applications. Use when navigating vim, nano, htop, less, psql, lazygit, or other terminal user interfaces via ht-mcp or tmux-mcp. Trigger keywords - "vim keys", "TUI navigation", "terminal keys", "key sequence".
-version: 1.0.0
-tags: [terminal, tui, navigation, keys, vim, nano, htop]
-keywords: [vim, nano, htop, less, psql, lazygit, docker, key sequence, navigation, escape]
+description: Key sequences and navigation patterns for common TUI applications. Use when navigating vim, nano, htop, less, psql, lazygit, k9s, tig, btop, or other terminal user interfaces. Also triggers on database shell navigation, git TUI operations, and system monitoring.
+version: 2.0.0
+tags: [terminal, tui, navigation, keys, vim, nano, htop, git-tui, database-shell, system-monitor]
+keywords: [vim, nano, htop, btop, less, psql, lazygit, tig, k9s, docker, mongosh, redis-cli, turso, key sequence, navigation, escape, git tui, stage commit, database shell, system monitor, process manager, file editor, terminal editor]
 plugin: terminal
-updated: 2026-02-26
+updated: 2026-02-28
 ---
 
 # TUI Navigation Patterns

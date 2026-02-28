@@ -6,6 +6,8 @@ allowed-tools: mcp__ht__ht_take_snapshot, mcp__ht__ht_list_sessions, mcp__tmux__
 
 # /terminal:snapshot
 
+> **Advanced command** — For most tasks, use `/terminal:observe` instead. It lists sessions and takes snapshots automatically. Use this command only when you need raw snapshot access.
+
 Read the current visible screen content of an active terminal session.
 
 ## Usage

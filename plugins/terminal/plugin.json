@@ -1,26 +1,32 @@
 {
   "name": "terminal",
-  "version": "1.0.0",
-  "description": "Interactive terminal integration for Claude Code. Enables Claude to interact with TUI applications, run commands, and observe real terminal output using ht-mcp and tmux-mcp.",
+  "version": "2.0.0",
+  "description": "Interactive terminal integration for Claude Code. v2.0.0: Intent-level commands (run, watch, observe, repl, tui), broadened skill keywords, 9 commands total. Enables Claude to run commands, monitor dev servers, query databases, navigate TUI apps, and observe terminal output.",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",
     "company": "MadAppGang"
   },
   "license": "MIT",
-  "keywords": ["terminal", "pty", "tui", "interactive", "ht", "tmux", "headless"],
+  "keywords": ["terminal", "pty", "tui", "interactive", "ht", "tmux", "headless", "run", "watch", "repl", "dev-server", "test-watcher"],
   "category": "development",
   "agents": [
     "./agents/tui-navigator.md"
   ],
   "commands": [
+    "./commands/run.md",
+    "./commands/watch.md",
+    "./commands/observe.md",
+    "./commands/repl.md",
+    "./commands/tui.md",
+    "./commands/help.md",
+    "./commands/session.md",
     "./commands/snapshot.md",
-    "./commands/send.md",
-    "./commands/session.md"
+    "./commands/send.md"
   ],
   "skills": [
     "./skills/terminal-interaction",
     "./skills/tui-navigation-patterns"
   ],
-  "mcpServers": "./mcp-servers/mcp-config.json"
+  "mcpServers": "./.mcp.json"
 }

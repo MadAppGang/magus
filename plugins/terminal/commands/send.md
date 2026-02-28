@@ -6,6 +6,8 @@ allowed-tools: mcp__ht__ht_send_keys, mcp__ht__ht_take_snapshot, mcp__ht__ht_lis
 
 # /terminal:send
 
+> **Advanced command** — For most tasks, use `/terminal:run` (one-shot commands), `/terminal:repl` (database/REPL queries), or `/terminal:tui` (TUI navigation) instead. Use this command only when you need to send raw keystrokes manually.
+
 Send keystrokes or text input to an active terminal session and see the result.
 
 ## Usage

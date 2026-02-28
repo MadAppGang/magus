@@ -21,7 +21,7 @@ brew install ht-mcp
 ### Verify
 
 ```bash
-ht-mcp --version
+which ht-mcp
 ```
 
 ### Register with Claude Code

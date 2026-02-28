@@ -1,9 +1,10 @@
 {
   "meta": {
-    "description": "Terminal plugin E2E test cases. Each test verifies Claude can accomplish real developer tasks using MCP terminal tools (mcp__ht__* and mcp__tmux__*). Tests check tool selection, sequencing, and response accuracy.",
-    "version": "1.2.0",
+    "description": "Terminal plugin E2E test cases. Tests verify Claude can accomplish real developer tasks using MCP terminal tools. v2.0.0: Added intent-level command tests (run, watch, observe, repl, tui) alongside existing primitive tests.",
+    "version": "2.0.0",
     "created": "2026-02-26",
-    "notes": "v1.2: Removed no_tool_prefix checks — parallel test execution shares debug logs across tests, causing cross-contamination of tool calls. Positive checks (has_tool_prefix, tools_used_include_any) are sufficient. v1.1: Accept ht_execute_command as alternative to ht_send_keys for non-TUI tests."
+    "updated": "2026-02-28",
+    "notes": "v2.0: Added 9 intent-level command tests for run/watch/observe/repl/tui commands. v1.2: Removed no_tool_prefix checks — parallel test execution shares debug logs across tests. v1.1: Accept ht_execute_command as alternative to ht_send_keys for non-TUI tests."
   },
   "test_cases": [
     {
@@ -178,6 +179,177 @@
           ["mcp__tmux-mcp__list-sessions", "mcp__ht-mcp__ht_create_session", "mcp__ht-mcp__ht_take_snapshot", "mcp__ht-mcp__ht_close_session"]
         ],
         "min_tool_calls": 5
+      }
+    },
+
+    {
+      "id": "intent-run-echo-10",
+      "description": "Intent test: /terminal:run — run a simple echo command, verify output captured, session auto-cleaned",
+      "prompt": "Run this command in a terminal and report the output: `echo INTENT_RUN_E2E_MARKER_12345`\n\nUse the ht-mcp terminal tools to:\n1. Create a session\n2. Execute the echo command\n3. Capture the output\n4. Close the session\n5. Report the exact output\n\nThe output should contain: INTENT_RUN_E2E_MARKER_12345",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "intent-commands",
+      "tags": ["intent", "run", "echo", "auto-cleanup"],
+      "checks": {
+        "has_tool_prefix": "mcp__ht__",
+        "min_tool_calls_by_name": {
+          "ht_create_session": 1,
+          "ht_close_session": 1
+        },
+        "min_tool_calls": 3,
+        "response_contains": "INTENT_RUN_E2E_MARKER_12345"
+      }
+    },
+    {
+      "id": "intent-run-multiline-11",
+      "description": "Intent test: /terminal:run — run command with multi-line output, verify key lines captured",
+      "prompt": "Run this command in a terminal session and report what you see: `for i in 1 2 3 4 5; do echo \"Line $i: test output\"; done`\n\nUse ht-mcp tools to create a session, execute the command, take a snapshot, then close the session. Report all 5 lines of output.\n\nIMPORTANT: Must use mcp__ht__* tools. Must close the session when done.",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "intent-commands",
+      "tags": ["intent", "run", "multi-line", "output-capture"],
+      "checks": {
+        "has_tool_prefix": "mcp__ht__",
+        "min_tool_calls_by_name": {
+          "ht_create_session": 1,
+          "ht_take_snapshot": 1,
+          "ht_close_session": 1
+        },
+        "min_tool_calls": 3,
+        "response_contains_any": ["Line 1", "Line 5", "test output"]
+      }
+    },
+    {
+      "id": "intent-watch-server-12",
+      "description": "Intent test: /terminal:watch — start a simulated server, detect readiness signal, report status",
+      "prompt": "Start a simulated server process in a terminal and monitor it for readiness.\n\nRun this command: `echo 'Starting server...' && sleep 1 && echo 'Server listening on port 8080' && sleep 300`\n\nUse ht-mcp tools to:\n1. Create a session\n2. Send the command\n3. Poll with snapshots until you detect 'listening on port 8080'\n4. Report that the server is ready\n5. Then send Ctrl+C to stop the server\n6. Close the session\n\nIMPORTANT: Must use mcp__ht__* tools. Must detect the 'listening on port' readiness signal.",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "intent-commands",
+      "tags": ["intent", "watch", "server", "readiness-detection", "polling"],
+      "checks": {
+        "min_tool_calls_by_name": {
+          "ht_create_session": 1,
+          "ht_take_snapshot": 1,
+          "ht_close_session": 1
+        },
+        "min_tool_calls": 4,
+        "response_contains_any": ["listening", "port 8080", "ready", "server"]
+      }
+    },
+    {
+      "id": "intent-observe-list-13",
+      "description": "Intent test: /terminal:observe — create a session, then use observe pattern to list and snapshot it",
+      "prompt": "Demonstrate the observe workflow:\n1. Create an ht-mcp session.\n2. Run `echo OBSERVE_TEST_MARKER` in the session.\n3. Now, separately list all active ht-mcp sessions to show what's running.\n4. Take a snapshot of the session to see the output.\n5. Close the session.\n6. Report the marker text and session listing.\n\nIMPORTANT: You MUST call mcp__ht__ht_list_sessions at some point to demonstrate session discovery. Must use mcp__ht__* tools only.",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "intent-commands",
+      "tags": ["intent", "observe", "list-sessions", "discovery"],
+      "checks": {
+        "has_tool_prefix": "mcp__ht__",
+        "min_tool_calls_by_name": {
+          "ht_create_session": 1,
+          "ht_list_sessions": 1,
+          "ht_take_snapshot": 1,
+          "ht_close_session": 1
+        },
+        "min_tool_calls": 5,
+        "response_contains": "OBSERVE_TEST_MARKER"
+      }
+    },
+    {
+      "id": "intent-repl-python-14",
+      "description": "Intent test: /terminal:repl — open Python REPL, run 2 expressions, exit cleanly, report results",
+      "prompt": "Open a Python REPL session and run two calculations:\n1. Create an ht-mcp session.\n2. Start python3.\n3. Wait for the >>> prompt.\n4. Run: 2 ** 10\n5. Take a snapshot to see the result (should be 1024).\n6. Run: len('hello world')\n7. Take a snapshot to see the result (should be 11).\n8. Exit the REPL cleanly (exit() or Ctrl+D).\n9. Close the session.\n10. Report both results: 1024 and 11.\n\nIMPORTANT: Must use mcp__ht__* tools. Must exit the REPL cleanly before closing.",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "intent-commands",
+      "tags": ["intent", "repl", "python", "multi-query", "clean-exit"],
+      "checks": {
+        "has_tool_prefix": "mcp__ht__",
+        "min_tool_calls_by_name": {
+          "ht_create_session": 1,
+          "ht_send_keys": 2,
+          "ht_take_snapshot": 2,
+          "ht_close_session": 1
+        },
+        "min_tool_calls": 6,
+        "response_contains_any": ["1024", "11"]
+      }
+    },
+    {
+      "id": "intent-tui-vim-15",
+      "description": "Intent test: /terminal:tui — open vim, insert text, search for it, save and quit, verify file content",
+      "prompt": "Use vim in a terminal session to create a file:\n1. Create the directory: mkdir -p $HOME/e2e-terminal-scratch\n2. Create an ht-mcp session.\n3. Open vim: `vim $HOME/e2e-terminal-scratch/tui-test.txt`\n4. Take a snapshot to confirm vim loaded (look for ~ lines).\n5. Enter insert mode: press i\n6. Type: TUI_NAVIGATION_E2E_SUCCESS\n7. Press Escape to return to normal mode.\n8. Search for the text: type /TUI_NAVIGATION then Enter\n9. Take a snapshot to confirm the search found the text.\n10. Save and quit: type :wq then Enter\n11. Verify by running: cat $HOME/e2e-terminal-scratch/tui-test.txt\n12. Take a snapshot to see the cat output.\n13. Close the session.\n14. Clean up the file.\n15. Report whether the file contained TUI_NAVIGATION_E2E_SUCCESS.\n\nIMPORTANT: Must use mcp__ht__* tools. Must use vim navigation (insert mode, search, save).",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "intent-commands",
+      "tags": ["intent", "tui", "vim", "navigation", "search", "insert-mode"],
+      "checks": {
+        "has_tool_prefix": "mcp__ht__",
+        "min_tool_calls_by_name": {
+          "ht_create_session": 1,
+          "ht_send_keys": 5,
+          "ht_take_snapshot": 2,
+          "ht_close_session": 1
+        },
+        "min_tool_calls": 8,
+        "response_contains": "TUI_NAVIGATION_E2E_SUCCESS"
+      }
+    },
+    {
+      "id": "intent-run-error-handling-16",
+      "description": "Intent test: /terminal:run error handling — run a command that fails, detect error, report, and still cleanup",
+      "prompt": "Run a command that will fail and handle the error gracefully:\n1. Create an ht-mcp session.\n2. Run this command: `ls /nonexistent_directory_e2e_test_12345 2>&1`\n3. Take a snapshot to capture the error output.\n4. Close the session (MUST close even after error).\n5. Report the error message you saw.\n\nThe command should fail with 'No such file or directory'. Confirm you detected this error.\n\nIMPORTANT: Must use mcp__ht__* tools. Must close the session even though the command failed.",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "intent-commands",
+      "tags": ["intent", "run", "error-handling", "cleanup-on-error"],
+      "checks": {
+        "has_tool_prefix": "mcp__ht__",
+        "min_tool_calls_by_name": {
+          "ht_create_session": 1,
+          "ht_close_session": 1
+        },
+        "min_tool_calls": 3,
+        "response_contains_any": ["No such file", "not found", "nonexistent", "error"]
+      }
+    },
+    {
+      "id": "intent-observe-tmux-17",
+      "description": "Intent test: /terminal:observe with tmux — list tmux sessions and capture a pane without modifying anything",
+      "prompt": "Observe the current tmux environment without modifying anything:\n1. List all tmux sessions using mcp__tmux__* tools.\n2. If any session exists, list its windows and panes.\n3. Capture the content of one pane.\n4. Report what you found.\n\nIMPORTANT: This is READ-ONLY observation. Do NOT create new sessions, send keys, or kill anything. Only use mcp__tmux__list-sessions, mcp__tmux__list-windows, mcp__tmux__list-panes, and mcp__tmux__capture-pane.",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "intent-commands",
+      "tags": ["intent", "observe", "tmux", "read-only", "non-destructive"],
+      "checks": {
+        "has_tool_prefix": "mcp__tmux__",
+        "tools_used_include_any": [
+          ["mcp__tmux__list-sessions"],
+          ["mcp__tmux-mcp__list-sessions"]
+        ],
+        "min_tool_calls": 1
+      }
+    },
+    {
+      "id": "intent-lifecycle-complete-18",
+      "description": "Intent test: Full lifecycle — create session, run command, observe output, send interrupt, close. Tests all intent patterns in one flow.",
+      "prompt": "Demonstrate a complete terminal workflow:\n1. Create an ht-mcp session.\n2. Start a long process: `while true; do echo \"heartbeat $(date +%H:%M:%S)\"; sleep 1; done`\n3. Take 2-3 snapshots over a few seconds to observe the heartbeat output changing.\n4. Send Ctrl+C (^c) to interrupt the process.\n5. Take a snapshot to confirm the process stopped (shell prompt should return).\n6. Run `echo LIFECYCLE_COMPLETE` to verify the session is still usable.\n7. Take a final snapshot to see the echo output.\n8. Close the session.\n9. Report: Did you see changing heartbeat timestamps? Did Ctrl+C work? Did the session survive interruption?\n\nIMPORTANT: Must use mcp__ht__* tools. This tests the full lifecycle: create → execute → observe → interrupt → reuse → close.",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "intent-commands",
+      "tags": ["intent", "lifecycle", "interrupt", "observe", "reuse"],
+      "checks": {
+        "has_tool_prefix": "mcp__ht__",
+        "min_tool_calls_by_name": {
+          "ht_create_session": 1,
+          "ht_send_keys": 3,
+          "ht_take_snapshot": 3,
+          "ht_close_session": 1
+        },
+        "min_tool_calls": 8,
+        "response_contains_any": ["heartbeat", "LIFECYCLE_COMPLETE", "Ctrl+C", "interrupt"]
       }
     }
   ]
