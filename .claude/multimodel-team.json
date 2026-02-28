@@ -2,8 +2,12 @@
   "schemaVersion": "2.0.0",
   "lastUpdated": "2026-02-09T16:41:00Z",
   "defaultModels": [
-    "x-ai/grok-code-fast-1",
-    "google/gemini-3-pro-preview"
+    "internal",
+    "minimax-m2.5",
+    "kimi-k2.5",
+    "glm-5",
+    "gemini-3.1-pro-preview",
+    "gpt-5.2"
   ],
   "defaultThreshold": "majority",
   "contextPreferences": {
@@ -14,9 +18,9 @@
     ]
   },
   "customAliases": {
-    "gpt5-codex": "openai/gpt-5.2-codex",
-    "glm": "z-ai/glm-4.7",
-    "m2.5": "minimax/minimax-m2.5"
+    "gpt5-codex": "gpt-5.2-codex",
+    "glm": "glm-4.7",
+    "m2.5": "minimax-m2.5"
   },
   "agentPreferences": {
     "research": "code-analysis:detective"

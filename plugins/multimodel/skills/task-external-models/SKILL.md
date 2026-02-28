@@ -37,7 +37,7 @@ claudish --model {MODEL_ID} --stdin --quiet < prompt.md > result.md
 ```
 
 **In /team orchestration:**
-- **Internal model** (Claude) → `Task(subagent_type: "dev:researcher")`
+- **Internal model** (Claude) → `Task(subagent_type: "{RESOLVED_AGENT}")` — agent auto-detected from task type
 - **External models** (Grok, Gemini, etc.) → `Bash(claudish --model {MODEL_ID} --stdin)`
 
 ---
@@ -47,20 +47,20 @@ claudish --model {MODEL_ID} --stdin --quiet < prompt.md > result.md
 **Works with ANY agent** — deterministic, no LLM compliance needed.
 
 ```bash
-# Pattern
+# Pattern — pass model names EXACTLY as user provides them, NO provider prefixes
 claudish --model {MODEL_ID} --stdin --quiet < prompt.md > result.md 2>stderr.log; echo $? > result.exit
 
-# Examples
-claudish --model x-ai/grok-code-fast-1 --stdin --quiet < task.md > grok.md 2>grok-err.log; echo $? > grok.exit
-claudish --model google/gemini-3-pro-preview --stdin --quiet < task.md > gemini.md 2>gemini-err.log; echo $? > gemini.exit
-claudish --model openai/gpt-5.2-codex --stdin --quiet < task.md > gpt5.md 2>gpt5-err.log; echo $? > gpt5.exit
+# Examples (bare model names — claudish handles routing internally)
+claudish --model grok-code-fast-1 --stdin --quiet < task.md > grok.md 2>grok-err.log; echo $? > grok.exit
+claudish --model gemini-3-pro-preview --stdin --quiet < task.md > gemini.md 2>gemini-err.log; echo $? > gemini.exit
+claudish --model gpt-5.2-codex --stdin --quiet < task.md > gpt5.md 2>gpt5-err.log; echo $? > gpt5.exit
 ```
 
 **CLI Reference:**
 ```
 claudish [options]
 
---model <id>         AI model to use (e.g., x-ai/grok-code-fast-1)
+--model <id>         AI model to use (e.g., grok-code-fast-1, minimax-m2.5)
 --stdin              Read prompt from stdin
 --quiet              Minimal output
 ```
@@ -70,22 +70,24 @@ claudish [options]
 All Bash calls are launched in a SINGLE message with `run_in_background: true`:
 
 ```javascript
-// Internal model via Task
+// Internal model via Task (agent resolved from task keywords)
 Task({
-  subagent_type: "dev:researcher",
+  subagent_type: "{RESOLVED_AGENT}",
   description: "Internal Claude vote",
   run_in_background: true,
   prompt: "{VOTE_PROMPT}\n\nWrite to: {SESSION_DIR}/internal-result.md"
 })
+// External models get role context through a preamble in vote-prompt.md
 
 // External models via Bash+claudish (all in same message)
+// IMPORTANT: Use model names exactly as user provided — no provider prefixes
 Bash({
-  command: "claudish --model x-ai/grok-code-fast-1 --stdin --quiet < {SESSION_DIR}/vote-prompt.md > {SESSION_DIR}/grok-result.md 2>{SESSION_DIR}/grok-stderr.log; echo $? > {SESSION_DIR}/grok.exit",
+  command: "claudish --model grok-code-fast-1 --stdin --quiet < {SESSION_DIR}/vote-prompt.md > {SESSION_DIR}/grok-result.md 2>{SESSION_DIR}/grok-stderr.log; echo $? > {SESSION_DIR}/grok.exit",
   run_in_background: true
 })
 
 Bash({
-  command: "claudish --model google/gemini-3-pro-preview --stdin --quiet < {SESSION_DIR}/vote-prompt.md > {SESSION_DIR}/gemini-result.md 2>{SESSION_DIR}/gemini-stderr.log; echo $? > {SESSION_DIR}/gemini.exit",
+  command: "claudish --model gemini-3-pro-preview --stdin --quiet < {SESSION_DIR}/vote-prompt.md > {SESSION_DIR}/gemini-result.md 2>{SESSION_DIR}/gemini-stderr.log; echo $? > {SESSION_DIR}/gemini.exit",
   run_in_background: true
 })
 ```
@@ -111,17 +113,9 @@ Bash({
 # Get current available models
 claudish --top-models    # Best value paid models
 claudish --free          # Free models
-
-# Example model IDs (verify with commands above)
-x-ai/grok-code-fast-1       # Grok (fast coding)
-minimax/minimax-m2.5        # MiniMax M2.5
-google/gemini-3-pro-preview # Gemini Pro
-openai/gpt-5.2-codex        # GPT-5.2 Codex
-z-ai/glm-4.7                # GLM 4.7
-deepseek/deepseek-v3.2      # DeepSeek v3.2
 ```
 
-> **Prefix routing:** Use direct API prefixes for cost savings: `oai/` (OpenAI), `g/` (Gemini), `mmax/` (MiniMax), `kimi/` (Kimi), `glm/` (GLM).
+> **IMPORTANT: Pass model names EXACTLY as the user provides them.** Do NOT add provider prefixes (like `minimax/`, `openai/`, `google/`). The claudish CLI handles routing and provider detection internally. If the user says `minimax-m2.5`, pass `minimax-m2.5` — not `minimax/minimax-m2.5`.
 
 ---
 

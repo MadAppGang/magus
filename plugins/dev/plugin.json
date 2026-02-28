@@ -1,7 +1,7 @@
 {
   "name": "dev",
-  "version": "1.33.1",
-  "description": "Universal development assistant with real skill discovery. v1.33.1: Fix coaching double-execution bug. Session-ID dedup guard, idempotent analyzer. 47 skills.",
+  "version": "1.34.0",
+  "description": "Universal development assistant with real skill discovery. v1.34.0: Programmatic workflow enforcement for /dev:feature — required plan reviews, phase ordering, anti-gaming heuristics, progressive context loading. 47 skills.",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",

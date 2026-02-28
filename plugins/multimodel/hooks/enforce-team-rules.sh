@@ -8,7 +8,7 @@ set -u
 # Protocol: reads JSON from stdin, writes JSON to fd3 (or stdout)
 #
 # Rules enforced:
-#   1. /team Task calls must use dev:researcher agent (vote template detection)
+#   1. /team Task calls must use a valid agent from whitelist (vote template detection)
 #   2. Session files must not use /tmp/ paths
 #
 # Logging:
@@ -58,9 +58,21 @@ if [ "${TOOL_NAME}" = "Task" ]; then
   PROMPT=$(echo "${INPUT}" | jq -r '.tool_input.prompt // empty' 2>/dev/null || true)
 
   # RULE 1: /team workflow enforcement (detect by vote block pattern in prompt)
+  # Whitelist of valid agents for /team (matches context_detection in team.md)
+  VALID_AGENTS="dev:researcher dev:debugger dev:developer dev:architect dev:test-architect dev:devops dev:ui agentdev:reviewer"
+
   if echo "${PROMPT}" | grep -q "Team Vote: Independent Review Request\|VERDICT:.*APPROVE\|Required Vote Format"; then
-    if [ -n "${SUBAGENT}" ] && [ "${SUBAGENT}" != "dev:researcher" ]; then
-      deny "BLOCKED: /team workflow must use subagent_type 'dev:researcher', not '${SUBAGENT}'. The agent for /team internal models is always dev:researcher."
+    if [ -n "${SUBAGENT}" ]; then
+      AGENT_VALID=false
+      for valid in ${VALID_AGENTS}; do
+        if [ "${SUBAGENT}" = "${valid}" ]; then
+          AGENT_VALID=true
+          break
+        fi
+      done
+      if [ "${AGENT_VALID}" = false ]; then
+        deny "BLOCKED: /team agent '${SUBAGENT}' not in whitelist. Valid: ${VALID_AGENTS}"
+      fi
     fi
   fi
 

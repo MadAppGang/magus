@@ -3,7 +3,7 @@ name: team
 description: |
   Multi-model blind voting system with project memory. Runs tasks across AI models in parallel,
   collects independent votes (APPROVE/REJECT), and presents aggregated verdicts with performance tracking.
-  Internal models use Task (dev:researcher). External models use Bash (claudish --model).
+  Internal models use Task (agent auto-detected from task type). External models use Bash (claudish --model).
   Examples: "/team Review auth implementation", "/team --models grok,gemini Check API security",
   "/team --threshold unanimous Validate migration plan"
 allowed-tools: Read, Write, Bash, Task, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep, AskUserQuestion
@@ -38,10 +38,19 @@ args:
   to Step 3 to Step 4 without stopping. This is a non-interactive workflow.
 
   <mandatory_rules>
-    FOUR HARD REQUIREMENTS - violating any one makes the entire workflow fail:
+    FIVE HARD REQUIREMENTS - violating any one makes the entire workflow fail:
+
+    0. MODEL NAMES VERBATIM:
+       Pass model names EXACTLY as the user provides them to `claudish --model`.
+       NEVER add provider prefixes like "minimax/", "openai/", "google/", "x-ai/",
+       "z-ai/", "moonshotai/", "deepseek/" to model names.
+       If user says `minimax-m2.5` → use `--model minimax-m2.5` (NOT `--model minimax/minimax-m2.5`).
+       If user says `kimi-k2.5` → use `--model kimi-k2.5` (NOT `--model moonshotai/kimi-k2.5`).
+       The claudish CLI resolves providers internally. Adding prefixes BREAKS routing.
 
     1. MODEL EXECUTION METHODS:
-       - **Internal models** (model ID = "internal"): Use Task(subagent_type: "dev:researcher")
+       - **Internal models** (model ID = "internal"): Use Task(subagent_type: "{RESOLVED_AGENT}")
+         where {RESOLVED_AGENT} is determined in Step 1 from the `<context_detection>` table.
        - **External models** (any other model ID): Use Bash(claudish --model {MODEL_ID})
        Internal models run inside Claude's agent system. External models are invoked
        deterministically via claudish CLI — no LLM compliance needed.
@@ -55,9 +64,10 @@ args:
 
     3. NO PRE-SOLVING:
        For investigation tasks, pass the RAW question to models.
-       You do NOT Read files, Grep code, or Glob directories to gather context BEFORE
+       You do NOT Read files, Grep code, or Glob directories to gather TASK context BEFORE
        launching the model calls. The models do their own investigation.
-       You MAY Read the preferences file and check claudish availability (setup tasks only).
+       EXCEPTION: You MUST Read `.claude/multimodel-team.json` in Step 1 to load preferences
+       and check claudish availability. These are SETUP reads, not pre-solving.
 
     4. PARALLEL LAUNCH:
        When there are 2+ models, ALL model calls (Task and Bash) MUST be in a SINGLE
@@ -72,17 +82,27 @@ args:
        ```
        If NOT_FOUND: display install instructions and stop.
 
-    b. Load preferences from `.claude/multimodel-team.json` if it exists.
+    b. Read `.claude/multimodel-team.json` using the Read tool. This is MANDATORY setup, not pre-solving.
+       Parse the JSON to extract: defaultModels, contextPreferences, customAliases, defaultThreshold.
 
     c. Parse command arguments: task, --models, --threshold, --no-memory.
 
     d. If no task was provided, ask the user what task to evaluate.
 
-    e. Determine models to use:
-       - If --models was provided, use those.
-       - Else if preferences exist with contextPreferences matching task keywords, use those.
-       - Else if defaultModels exist in preferences, use those.
-       - Else show model list from `claudish --top-models` and ask user to pick.
+    e. Determine models to use (check in this EXACT order, stop at first match):
+       1. If `--models` flag was provided → use those model IDs
+       2. Else if preferences file has `contextPreferences` matching task keywords → use those
+       3. Else if preferences file has `defaultModels` array with entries → use those
+       4. ONLY if none of the above matched → show `claudish --top-models` and ask user to pick
+       When using defaultModels or contextPreferences, announce: "Using saved models: {list}"
+
+    e2. Resolve agent for this task:
+        1. Match task keywords against `<context_detection>` Keywords column
+        2. If `agentPreferences[context]` exists in preferences → use that agent
+        3. Else use the Agent column from matched row
+        4. No match → default: `dev:researcher`
+        5. If multiple contexts match, use the FIRST keyword match from the task
+        Store as {RESOLVED_AGENT}. Announce: "Task type: {context} → Agent: {RESOLVED_AGENT}"
 
     f. Save model selection to preferences unless --no-memory.
 
@@ -111,7 +131,7 @@ args:
     For the internal model (model ID = "internal"):
     ```
     Task({
-      subagent_type: "dev:researcher",
+      subagent_type: "{RESOLVED_AGENT}",
       description: "Internal Claude vote",
       run_in_background: true,
       prompt: "{VOTE_PROMPT}\n\nWrite your complete analysis and vote to: {SESSION_DIR}/internal-result.md"
@@ -186,8 +206,27 @@ args:
 </instructions>
 
 <knowledge>
+  <agent_roles>
+    | Agent | Role Description |
+    |-------|-----------------|
+    | dev:researcher | Research analyst focused on thorough investigation |
+    | dev:debugger | Debugging specialist focused on root cause analysis |
+    | dev:developer | Implementation specialist focused on code quality |
+    | agentdev:reviewer | Code reviewer focused on quality and correctness |
+    | dev:architect | System architect focused on design trade-offs |
+    | dev:test-architect | Testing specialist focused on test strategy |
+    | dev:devops | DevOps specialist focused on deployment and infra |
+    | dev:ui | UI specialist focused on user interface quality |
+  </agent_roles>
+
   <vote_prompt_template>
     ```markdown
+    ## Your Role
+    You are acting as a **{ROLE_DESCRIPTION}** (from `<agent_roles>` table, based on {RESOLVED_AGENT}).
+    Evaluate the task below through this lens.
+
+    ---
+
     ## Team Vote: Independent Review Request
 
     You are a team member evaluating the following task independently.
@@ -229,14 +268,22 @@ args:
   <model_aliases>
     | Alias | Full Model ID |
     |-------|---------------|
-    | grok | x-ai/grok-code-fast-1 |
-    | gemini | google/gemini-3-pro-preview |
-    | gpt-5 | openai/gpt-5.2-codex |
-    | deepseek | deepseek/deepseek-v3.2 |
-    | minimax | minimax/minimax-m2.5 |
-    | glm | z-ai/glm-4.7 |
+    | grok | grok-code-fast-1 |
+    | gemini | gemini-3-pro-preview |
+    | gpt-5 | gpt-5.2-codex |
+    | deepseek | deepseek-v3.2 |
+    | minimax | minimax-m2.5 |
+    | glm | glm-4.7 |
     | internal | internal (Claude) |
   </model_aliases>
+
+  <critical_override>
+    PASS MODEL NAMES EXACTLY AS THE USER PROVIDES THEM to `claudish --model`.
+    Do NOT add provider prefixes like "minimax/", "openai/", "google/", "x-ai/", "z-ai/", "moonshotai/", "deepseek/".
+    The claudish CLI handles model routing and provider detection internally.
+    Only resolve SHORT ALIASES from the table above (e.g., "grok" → "grok-code-fast-1").
+    If user says `--models minimax-m2.5,kimi-k2.5` → use exactly `minimax-m2.5` and `kimi-k2.5`.
+  </critical_override>
 
   <preferences_schema>
     **File:** `.claude/multimodel-team.json`
@@ -252,19 +299,29 @@ args:
         "coding": ["models for implementation tasks"],
         "review": ["models for code review tasks"]
       },
+      "agentPreferences": {
+        "debug": "dev:debugger",
+        "review": "agentdev:reviewer"
+      },
       "customAliases": { "alias": "full-model-id" },
       "history": []
     }
     ```
+    `agentPreferences` is optional. When present, overrides the default agent from `<context_detection>`
+    for specific contexts. If absent, agents are resolved from the table's Agent column.
   </preferences_schema>
 
   <context_detection>
-    | Context | Keywords | Default Models |
-    |---------|----------|----------------|
-    | debug | debug, error, bug, fix, trace, issue | grok, glm, minimax |
-    | research | research, investigate, analyze, explore, find | gemini, gpt-5, glm |
-    | coding | implement, build, create, code, develop, feature | grok, minimax, deepseek |
-    | review | review, audit, check, validate, verify | gemini, gpt-5, glm, grok |
+    | Context | Keywords | Default Models | Agent |
+    |---------|----------|----------------|-------|
+    | debug | debug, error, bug, fix, trace, issue | grok, glm, minimax | dev:debugger |
+    | research | research, investigate, analyze, explore, find | gemini, gpt-5, glm | dev:researcher |
+    | coding | implement, build, create, code, develop, feature | grok, minimax, deepseek | dev:developer |
+    | review | review, audit, check, validate, verify | gemini, gpt-5, glm, grok | agentdev:reviewer |
+    | architecture | architecture, design, plan, system, refactor | gemini, gpt-5, glm | dev:architect |
+    | testing | test, coverage, unit test, integration, e2e | grok, minimax, deepseek | dev:test-architect |
+    | devops | deploy, infrastructure, ci, cd, pipeline, docker | grok, deepseek, minimax | dev:devops |
+    | ui | ui, frontend, component, css, layout | gemini, gpt-5, minimax | dev:ui |
   </context_detection>
 
   <abstain_handling>
@@ -282,8 +339,8 @@ args:
     | Model | Method | Status | Output | Exit | Notes |
     |-------|--------|--------|--------|------|-------|
     | Internal (Claude) | Task | OK | 4.2KB | N/A | |
-    | x-ai/grok-code-fast-1 | claudish | OK | 3.8KB | 0 | |
-    | google/gemini-3-pro | claudish | FAILED | 0B | 1 | Rate limit exceeded |
+    | grok-code-fast-1 | claudish | OK | 3.8KB | 0 | |
+    | gemini-3-pro-preview | claudish | FAILED | 0B | 1 | Rate limit exceeded |
 
     External models verified: {ok_count}/{total_external} ({percent}%)
     {If any failed: "WORKFLOW DEVIATION: {n} external model(s) failed — see stderr logs in session dir"}
@@ -310,15 +367,8 @@ args:
   <first_run_welcome>
     Welcome to Team! No saved preferences found.
 
-    Available models (from `claudish --top-models`):
-    [1] x-ai/grok-code-fast-1 (fast, code-focused)
-    [2] google/gemini-3-pro-preview (balanced)
-    [3] openai/gpt-5.2-codex (thorough)
-    [4] deepseek/deepseek-v3.2 (cost-effective)
-    [5] minimax/minimax-m2.5 (creative)
-    [6] z-ai/glm-4.7 (efficient)
-
-    Enter numbers separated by commas (min 2):
+    Run `claudish --top-models` to see available models, then ask the user to pick.
+    Pass model names exactly as shown by claudish — do NOT add provider prefixes.
   </first_run_welcome>
 </formatting>
 

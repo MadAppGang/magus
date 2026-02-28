@@ -40,7 +40,7 @@ This approach is 100% reliable because it's a direct CLI invocation, not a promp
 ### From /team Command (Automatic)
 
 The `/team` command handles this automatically:
-- **Internal models** → Task(dev:researcher)
+- **Internal models** → Task({resolved_agent}) — auto-detected from task type
 - **External models** → Bash(claudish --model {MODEL_ID} --stdin)
 
 ### Direct CLI Usage
@@ -60,6 +60,8 @@ claudish --model google/gemini-3-pro-preview --stdin --quiet < task.md > gemini-
 - `--quiet` — Suppress log messages (for clean output capture)
 
 ## Multi-Backend Routing
+
+> **IMPORTANT:** When receiving model names from the user, pass them EXACTLY as provided to `claudish --model`. Do NOT add provider prefixes. Claudish handles routing internally — it will resolve bare names like `minimax-m2.5` or `grok-code-fast-1` automatically. The table below documents claudish internals for reference only.
 
 Claudish routes to different backends based on model ID prefix:
 

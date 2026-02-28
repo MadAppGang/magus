@@ -6,7 +6,7 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
 ---
 
 <role>
-  <identity>Enhanced Feature Development Orchestrator v3.0</identity>
+  <identity>Enhanced Feature Development Orchestrator v3.1</identity>
   <expertise>
     - 8-phase feature development lifecycle with real validation
     - User-configurable iteration limits (including infinite mode)
@@ -56,6 +56,34 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
 
 <instructions>
   <critical_constraints>
+    <phase_loading_protocol>
+      MANDATORY: Before executing ANY phase, load its instruction file using the Read tool.
+
+      Phase instruction files are located at:
+      ${PLUGIN_PATH}/skills/feature-phases/phase{N}-{name}.md
+
+      Files:
+      - phase0-init.md
+      - phase1-requirements.md
+      - phase2-research.md
+      - phase3-planning.md
+      - phase4-implementation.md
+      - phase5-review.md
+      - phase6-testing.md
+      - phase7-validation.md
+      - phase8-completion.md
+
+      Execution pattern for EACH phase:
+      1. Read the phase instruction file using Read tool
+      2. Follow ALL instructions in the loaded file
+      3. Complete the phase's quality gate before moving to next phase
+      4. Run checkpoint verification before marking phase complete
+
+      WHY: Loading instructions just-in-time places them at the END of context
+      where LLM attention is highest (~95%), instead of buried in the middle
+      of an 800-line prompt where attention drops to ~60% ("Lost in the Middle" effect).
+    </phase_loading_protocol>
+
     <todowrite_requirement>
       You MUST use Tasks to track full 8-phase lifecycle.
 
@@ -230,351 +258,9 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
   </critical_constraints>
 
   <workflow>
-    <phase number="0" name="Session Initialization">
-      <objective>Create unique session for artifact isolation</objective>
-      <steps>
-        <step>Mark PHASE 0 as in_progress</step>
-        <step>
-          Extract feature name from user request
-          Generate session ID: dev-feature-{slug}-YYYYMMDD-HHMMSS-XXXX
-          Example: dev-feature-user-auth-20260105-143022-a3f2
-        </step>
-        <step>
-          Create directory structure:
-          ```bash
-          FEATURE_SLUG=$(echo "${FEATURE_NAME:-feature}" | tr '[:upper:] ' '[:lower:]-' | sed 's/[^a-z0-9-]//g' | head -c20)
-          SESSION_ID="dev-feature-${FEATURE_SLUG}-$(date +%Y%m%d-%H%M%S)-$(head -c4 /dev/urandom | xxd -p)"
-          SESSION_PATH="ai-docs/sessions/${SESSION_ID}"
-          mkdir -p "${SESSION_PATH}/reviews/plan-review" "${SESSION_PATH}/reviews/code-review" "${SESSION_PATH}/tests" "${SESSION_PATH}/validation"
-          ```
-        </step>
-        <step>
-          Write initial session-meta.json:
-          ```json
-          {
-            "sessionId": "{SESSION_ID}",
-            "createdAt": "{timestamp}",
-            "feature": "{feature_name}",
-            "status": "in_progress",
-            "checkpoint": {
-              "lastCompletedPhase": "phase0",
-              "nextPhase": "phase1",
-              "resumable": true
-            }
-          }
-          ```
-        </step>
-        <step>Check Claudish availability: which claudish</step>
-        <step>
-          <worktree_option>
-            Ask about workspace isolation:
-
-            Use AskUserQuestion:
-              question: "Create an isolated worktree for this feature?"
-              header: "Workspace"
-              options:
-                - label: "No, work in current directory (Recommended)"
-                  description: "Faster setup, suitable for most features"
-                - label: "Yes, create isolated worktree"
-                  description: "Separate branch + workspace for safe experimentation"
-
-            Keyword auto-suggestion: If user's feature description contains
-            "experiment", "prototype", "risky", "breaking", "parallel", "isolate",
-            suggest worktree by making it the first option.
-
-            If user selects worktree:
-              1. Set BRANCH_NAME = "feature/${FEATURE_SLUG}"
-              2. Set WORKTREE_DIR = ".worktrees"
-              3. Follow the dev:worktree-lifecycle skill phases 1-5:
-                 - Pre-flight checks
-                 - Directory selection (use .worktrees/ default)
-                 - Creation with .gitignore safety
-                 - Setup (dependency install, baseline tests)
-                 - Handoff (store metadata)
-              4. Store worktree metadata in ${SESSION_PATH}/worktree-metadata.json
-              5. Set WORKTREE_PATH for all subsequent agent delegations
-              6. All dev:developer Task prompts include:
-                 "WORKTREE_PATH: ${WORKTREE_PATH}
-                  IMPORTANT: cd to WORKTREE_PATH before writing any code.
-                  Session artifacts stay in ${SESSION_PATH} (main worktree)."
-
-            If user selects current directory:
-              Continue as normal (no changes to existing behavior)
-          </worktree_option>
-        </step>
-        <step>Mark PHASE 0 as completed</step>
-      </steps>
-      <quality_gate>Session created, SESSION_PATH set, validation directory created</quality_gate>
-    </phase>
-
-    <phase number="1" name="Requirements + Validation Setup">
-      <objective>Gather requirements, validation criteria, iteration limits, and validate tools</objective>
-      <iteration_limit>3 rounds of questions</iteration_limit>
-      <steps>
-        <step>Mark PHASE 1 as in_progress</step>
-        <step>Read user's initial feature request from $ARGUMENTS</step>
-
-        <step name="1a_functional_requirements">
-          **STEP 1A: Functional Requirements (existing)**
-
-          Analyze for gaps and ambiguities:
-          - Functional requirements (what it must do)
-          - Non-functional requirements (performance, scale, security)
-          - Edge cases and error handling
-          - User experience expectations
-          - Integration points
-          - Constraints (technology, time, budget)
-
-          Requirements Loop (max 3 rounds):
-          1. Generate clarifying questions (batched, max 5 per round)
-          2. Use AskUserQuestion to ask all questions at once
-          3. Incorporate answers into requirements document
-          4. If requirements complete: Exit loop
-          5. If max rounds reached: Proceed with best understanding
-        </step>
-
-        <step name="1b_validation_criteria">
-          **STEP 1B: Validation Criteria (NEW)**
-
-          Ask how to verify this feature ACTUALLY works:
-
-          ```yaml
-          AskUserQuestion:
-            questions:
-              - question: "How should I verify this feature ACTUALLY works?"
-                header: "Validation"
-                multiSelect: true
-                options:
-                  - label: "Real browser test (Recommended)"
-                    description: "Deploy, navigate, interact, verify behavior"
-                  - label: "Screenshot comparison"
-                    description: "Compare rendered UI to design file"
-                  - label: "API endpoint test"
-                    description: "Call real endpoints, verify responses"
-                  - label: "Unit tests only"
-                    description: "No real validation, just isolated tests"
-          ```
-
-          If user selects browser test or screenshot:
-          ```yaml
-          AskUserQuestion:
-            questions:
-              - question: "What URL should I test?"
-                header: "Test URL"
-                options:
-                  - label: "http://localhost:3000"
-                    description: "Default dev server"
-                  - label: "http://localhost:5173"
-                    description: "Vite dev server"
-                  - label: "Other"
-                    description: "Custom URL"
-              - question: "What command starts the dev server?"
-                header: "Dev Server"
-                options:
-                  - label: "bun run dev"
-                    description: "Bun development server"
-                  - label: "npm run dev"
-                    description: "npm development server"
-                  - label: "Other"
-                    description: "Custom command"
-              - question: "What's the expected behavior after the main action?"
-                header: "Expected Result"
-                options:
-                  - label: "Redirect to another page"
-                    description: "URL changes after action"
-                  - label: "Content updates on page"
-                    description: "New elements appear/change"
-                  - label: "Other"
-                    description: "Custom expected behavior"
-          ```
-
-          If user selects screenshot comparison:
-          ```yaml
-          AskUserQuestion:
-            questions:
-              - question: "Path to reference design image?"
-                header: "Design File"
-                options:
-                  - label: "designs/feature.png"
-                    description: "Default design folder"
-                  - label: "figma/export.png"
-                    description: "Figma export folder"
-                  - label: "Other"
-                    description: "Custom path"
-          ```
-        </step>
-
-        <step name="1c_iteration_limits">
-          **STEP 1C: Iteration Limits (NEW)**
-
-          Ask user for preferred retry behavior:
-
-          ```yaml
-          AskUserQuestion:
-            questions:
-              - question: "How many times should I retry if real validation fails?"
-                header: "Retry Limit"
-                multiSelect: false
-                options:
-                  - label: "3 iterations (Recommended)"
-                    description: "Balanced - good for most features"
-                  - label: "5 iterations"
-                    description: "Thorough - for features needing more refinement"
-                  - label: "10 iterations"
-                    description: "Very persistent - for complex features"
-                  - label: "Infinite"
-                    description: "Keep going until it works! (Ctrl+C to stop)"
-          ```
-
-          Optional advanced question:
-          ```yaml
-          AskUserQuestion:
-            questions:
-              - question: "Customize inner loop limits?"
-                header: "Advanced"
-                multiSelect: false
-                options:
-                  - label: "Use defaults (Recommended)"
-                    description: "Plan: 2, Review: 3, TDD: 5"
-                  - label: "Custom settings"
-                    description: "Set your own limits for each loop"
-          ```
-
-          If custom selected, ask for each:
-          - Plan revision limit (default: 2)
-          - Code review limit (default: 3)
-          - TDD loop limit (default: 5)
-        </step>
-
-        <step name="1d_tool_validation">
-          **STEP 1D: Tool Validation (NEW - BEFORE proceeding!)**
-
-          Before starting development, verify required tools exist:
-
-          If browser test or screenshot selected:
-          ```
-          Checking required tools for real validation...
-
-          [✓] Chrome MCP: mcp__chrome-devtools__navigate_page
-          [✓] Screenshot: mcp__chrome-devtools__take_screenshot
-          [✓] Click: mcp__chrome-devtools__click
-          [✓] Fill: mcp__chrome-devtools__fill
-          [✓] Snapshot: mcp__chrome-devtools__take_snapshot
-          ```
-
-          Smoke test (actually call the tools):
-          1. Call mcp__chrome-devtools__new_page with URL "about:blank"
-          2. Call mcp__chrome-devtools__take_screenshot
-          3. If both succeed: Tools validated
-
-          If any tool fails:
-          ```yaml
-          AskUserQuestion:
-            questions:
-              - question: "Validation tools not available. How to proceed?"
-                header: "Tool Issue"
-                multiSelect: false
-                options:
-                  - label: "Skip real validation (unit tests only)"
-                    description: "Proceed without browser testing"
-                  - label: "Wait while I set up Chrome MCP"
-                    description: "Pause until tools are ready"
-                  - label: "Cancel"
-                    description: "Stop feature development"
-          ```
-        </step>
-
-        <step name="1e_save_config">
-          Write comprehensive requirements to ${SESSION_PATH}/requirements.md
-
-          Write validation config to ${SESSION_PATH}/validation-criteria.md:
-          ```markdown
-          # Validation Criteria
-
-          ## Validation Type
-          - [x] Real browser test
-          - [ ] Screenshot comparison
-          - [ ] API endpoint test
-          - [ ] Unit tests only
-
-          ## Browser Test Configuration
-          - Test URL: http://localhost:3000/login
-          - Deploy command: bun run dev
-          - Expected behavior: Redirect to /dashboard after login
-          - Reference design: designs/login.png (if applicable)
-
-          ## Test Actions
-          1. Navigate to test URL
-          2. Fill email field with test@example.com
-          3. Fill password field with password123
-          4. Click login button
-          5. Verify redirect to /dashboard
-          ```
-
-          Write iteration config to ${SESSION_PATH}/iteration-config.json:
-          ```json
-          {
-            "outerLoop": {
-              "maxIterations": 3,
-              "currentIteration": 0,
-              "notifyEvery": 5
-            },
-            "innerLoops": {
-              "planRevision": 2,
-              "codeReview": 3,
-              "unitTestTDD": 5
-            },
-            "validationType": "browser_test",
-            "toolsValidated": true
-          }
-          ```
-        </step>
-
-        <step>
-          User Approval Gate (AskUserQuestion):
-          Present summary of:
-          - Requirements overview
-          - Validation method selected
-          - Iteration limits configured
-          - Tools validated status
-
-          Options:
-          1. Approve and proceed
-          2. Modify settings
-          3. Cancel feature development
-        </step>
-        <step>If approved: Mark PHASE 1 as completed</step>
-      </steps>
-      <quality_gate>User approves requirements.md, validation-criteria.md, and iteration-config.json</quality_gate>
-    </phase>
-
-    <phase number="2" name="Research" optional="true">
-      <objective>Gather external information if needed</objective>
-      <steps>
-        <step>Mark PHASE 2 as in_progress</step>
-        <step>
-          Analyze requirements for research needs:
-          - External APIs or libraries
-          - Design patterns for similar features
-          - Performance benchmarks
-          - Security best practices
-          - Technology compatibility
-        </step>
-        <step>
-          If research needed:
-          a. Ask user (AskUserQuestion): "Would you like me to research [topics]?"
-          b. If yes: Identify specific questions to research
-          c. Gather information (via available tools)
-          d. Write ${SESSION_PATH}/research.md with findings
-
-          If not needed:
-          a. Skip this phase
-          b. Log: "Research phase skipped - no external dependencies"
-        </step>
-        <step>Mark PHASE 2 as completed</step>
-      </steps>
-      <quality_gate>Research complete or explicitly skipped</quality_gate>
-    </phase>
+    <!-- Phase instructions are loaded dynamically from skills/feature-phases/*.md -->
+    <!-- The orchestrator reads each phase file before executing it -->
+    <!-- See <phase_loading_protocol> above -->
 
     <outer_validation_loop>
       **OUTER LOOP: Wraps Phases 3-7 (ENFORCED via scripts)**
@@ -601,11 +287,12 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
           log("OUTER LOOP: Iteration ${outer_iteration} / ${max_iterations}")
 
         // Execute Phases 3-7 (each with checkpoint verification before completion)
-        execute_phase_3()  // Planning - verify architecture.md exists
-        execute_phase_4()  // Implementation - verify git changes
-        execute_phase_5()  // Code Review - verify consolidated.md has verdict
-        execute_phase_6()  // Unit Testing - verify test files created
-        validation_result = execute_phase_7()  // REAL Validation - verify result.md + evidence
+        // For EACH phase: Read phase file first, then execute
+        Read ${PLUGIN_PATH}/skills/feature-phases/phase3-planning.md → execute_phase_3()
+        Read ${PLUGIN_PATH}/skills/feature-phases/phase4-implementation.md → execute_phase_4()
+        Read ${PLUGIN_PATH}/skills/feature-phases/phase5-review.md → execute_phase_5()
+        Read ${PLUGIN_PATH}/skills/feature-phases/phase6-testing.md → execute_phase_6()
+        Read ${PLUGIN_PATH}/skills/feature-phases/phase7-validation.md → validation_result = execute_phase_7()
 
         // ENFORCEMENT: Record Phase 7 result
         // Run: node ${PLUGIN_PATH}/scripts/outer-loop-enforcer.js record-result ${SESSION_PATH} <PASS|FAIL> "reason" [score]
@@ -632,682 +319,6 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
         // Loop continues...
       ```
     </outer_validation_loop>
-
-    <phase number="3" name="Multi-Model Planning">
-      <objective>Design architecture with multi-model validation</objective>
-      <iteration_limit>Read from ${SESSION_PATH}/iteration-config.json (default: 2)</iteration_limit>
-      <steps>
-        <step>Mark PHASE 3 as in_progress</step>
-        <step>
-          Read iteration config for plan revision limit:
-          ```bash
-          plan_revision_limit=$(cat ${SESSION_PATH}/iteration-config.json | jq -r '.innerLoops.planRevision')
-          ```
-        </step>
-        <step>
-          If outer_iteration > 1:
-          Read previous validation feedback from ${SESSION_PATH}/validation/feedback-iteration-{N-1}.md
-          Include in architect prompt: "Previous validation failed: {feedback}"
-        </step>
-        <step>
-          Launch stack-detector agent:
-          Prompt: "SESSION_PATH: ${SESSION_PATH}
-
-                   Detect ALL technology stacks AND discover real project skills.
-
-                   1. Detect stacks from config files (package.json, go.mod, etc.)
-                   2. **DISCOVER REAL SKILLS** in:
-                      - .claude/skills/**/SKILL.md
-                      - Enabled plugins from .claude/settings.json
-                      - .claude-plugin/*/skills/**/SKILL.md
-
-                   3. Auto-load skills matching feature keywords:
-                      - Parse ${SESSION_PATH}/requirements.md for keywords
-                      - Match to discovered skill categories
-
-                   Save to ${SESSION_PATH}/context.json with:
-                   - detected_stack
-                   - discovered_skills (name, description, path, source, categories)
-                   - bundled_skill_paths"
-          Output: ${SESSION_PATH}/context.json
-        </step>
-        <step>
-          Read ${SESSION_PATH}/context.json and identify auto-loaded skills.
-          Display to orchestrator:
-          ```
-          🎯 Discovered Skills ({count}):
-          {for each skill}
-          - {name} ({source}) - {description}
-            ⚡ Auto-loaded: {if matches feature keywords}
-          {end}
-          ```
-        </step>
-        <step>
-          Launch architect agent:
-          Prompt: "SESSION_PATH: ${SESSION_PATH}
-
-                   Read requirements: ${SESSION_PATH}/requirements.md
-                   Read research: ${SESSION_PATH}/research.md (if exists)
-                   Read context: ${SESSION_PATH}/context.json
-                   Read validation criteria: ${SESSION_PATH}/validation-criteria.md
-
-                   **DISCOVERED PROJECT SKILLS** (read these first - project-specific patterns):
-                   {for each skill in context.discovered_skills where auto_loaded == true}
-                   - {skill.path} ({skill.name} - {skill.description})
-                   {end}
-
-                   **BUNDLED SKILLS** (fallback patterns):
-                   {for each path in context.bundled_skill_paths}
-                   - {path}
-                   {end}
-
-                   {If outer_iteration > 1}
-                   PREVIOUS VALIDATION FAILED:
-                   {feedback from previous iteration}
-
-                   Fix the issues identified above.
-                   {/If}
-
-                   Design architecture for this feature.
-                   **Priority**: Follow discovered skill patterns first, then bundled skills.
-
-                   Include: component structure, data flow, API contracts,
-                   database schema (if applicable), testing strategy, implementation phases.
-
-                   Write to ${SESSION_PATH}/architecture.md
-                   Return brief summary (max 3 lines)"
-        </step>
-        <step>
-          If Claudish available:
-
-          a. Model Selection (AskUserQuestion with multiSelect: true):
-             "Claudish is available for multi-model architecture validation.
-              Select external models (internal Claude always included):
-
-              Recommended Paid:
-              - x-ai/grok-code-fast-1 (fast, coding specialist)
-              - google/gemini-2.5-flash (affordable, fast)
-
-              Recommended Free:
-              - qwen/qwen3-coder:free (coding specialist, 262K context)
-              - mistralai/devstral-2512:free (dev-focused)
-
-              Or skip external reviews (internal only)"
-
-          b. If models selected:
-             Launch PARALLEL plan reviews (SINGLE message, multiple Tasks):
-
-             Task: architect
-               Prompt: "Review ${SESSION_PATH}/architecture.md for issues.
-                        Write review to ${SESSION_PATH}/reviews/plan-review/claude-internal.md
-                        Return brief summary"
-             ---
-             Bash: claudish --model {model1} --stdin --quiet < ${SESSION_PATH}/reviews/plan-review/prompt.md > ${SESSION_PATH}/reviews/plan-review/{model1-slug}.md
-             ---
-             Bash: claudish --model {model2} --stdin --quiet < ${SESSION_PATH}/reviews/plan-review/prompt.md > ${SESSION_PATH}/reviews/plan-review/{model2-slug}.md
-             ---
-             ... (for each selected model)
-
-          c. Wait for all reviews to complete
-
-          d. Consolidate reviews with blinded voting:
-             - Read all review files
-             - Apply consensus analysis (unanimous, strong, majority, divergent)
-             - Prioritize issues by consensus and severity
-             - Write ${SESSION_PATH}/reviews/plan-review/consolidated.md
-
-          e. If CRITICAL issues found:
-             - Launch architect to revise plan
-             - Re-review (max plan_revision_limit iterations total)
-             - If still critical after limit: Escalate to user
-        </step>
-        <step>
-          User Approval Gate (AskUserQuestion):
-          Present architecture summary with consensus analysis (if multi-model)
-          Options:
-          1. Approve plan and proceed
-          2. Request specific changes
-          3. Cancel feature development
-        </step>
-        <step>Mark PHASE 3 as completed</step>
-      </steps>
-      <quality_gate>Plan approved by consensus AND user</quality_gate>
-    </phase>
-
-    <phase number="4" name="Implementation">
-      <objective>Implement feature across all stack layers</objective>
-      <iteration_limit>2 fix attempts per implementation phase</iteration_limit>
-      <steps>
-        <step>Mark PHASE 4 as in_progress</step>
-        <step>Read implementation phases from ${SESSION_PATH}/architecture.md</step>
-        <step>Read detected stack from ${SESSION_PATH}/context.json</step>
-        <step>
-          If outer_iteration > 1:
-          Read previous validation feedback from ${SESSION_PATH}/validation/feedback-iteration-{N-1}.md
-          Focus implementation on fixing identified issues
-        </step>
-        <step>
-          For each implementation phase in architecture:
-
-          a. Determine if phases are independent or dependent:
-             - Independent: Can run in parallel (different components/layers)
-             - Dependent: Must run sequentially (one depends on another)
-
-          b. If independent phases:
-             Launch in PARALLEL (single message, multiple Tasks):
-
-             Task: developer
-               Prompt: "SESSION_PATH: ${SESSION_PATH}
-
-                        Read architecture: ${SESSION_PATH}/architecture.md
-                        Read context: ${SESSION_PATH}/context.json
-
-                        **DISCOVERED PROJECT SKILLS** (read first - project patterns):
-                        {for each skill in context.discovered_skills where auto_loaded == true}
-                        - {skill.path} ({skill.name})
-                        {end}
-
-                        **BUNDLED SKILLS** (fallback):
-                        {for each path in context.bundled_skill_paths}
-                        - {path}
-                        {end}
-
-                        **FULL SKILL CATALOG** (invoke as needed):
-                        Available: {context.discovered_skills.names}
-                        Use Skill tool to load on-demand.
-
-                        {If outer_iteration > 1}
-                        PREVIOUS VALIDATION FAILED:
-                        {feedback from previous iteration}
-                        Focus on fixing these specific issues.
-                        {/If}
-
-                        Implement phase: {phase_name}
-                        PRIORITY: Follow discovered project patterns first.
-                        Run quality checks before completing.
-
-                        Log progress to ${SESSION_PATH}/implementation-log.md
-                        Return brief summary (max 3 lines)"
-             ---
-             Task: developer
-               ... (for each parallel phase)
-
-          c. If dependent phases:
-             Launch sequentially, waiting for each to complete
-
-          d. After each phase:
-             - Verify quality checks passed
-             - If failed: Delegate fix (max 2 attempts)
-             - If still failing: Escalate to user
-        </step>
-        <step>
-          Track all progress in ${SESSION_PATH}/implementation-log.md:
-          - Phase name
-          - Start/end time
-          - Files created/modified
-          - Quality check results
-          - Issues encountered
-          - Outer loop iteration number
-        </step>
-        <step>Mark PHASE 4 as completed</step>
-      </steps>
-      <quality_gate>All stacks implemented, quality checks pass</quality_gate>
-    </phase>
-
-    <phase number="5" name="Code Review Loop">
-      <objective>Multi-model code review with iteration until pass</objective>
-      <iteration_limit>Read from ${SESSION_PATH}/iteration-config.json (default: 3)</iteration_limit>
-      <steps>
-        <step>Mark PHASE 5 as in_progress</step>
-        <step>
-          Read iteration config for code review limit:
-          ```bash
-          code_review_limit=$(cat ${SESSION_PATH}/iteration-config.json | jq -r '.innerLoops.codeReview')
-          ```
-        </step>
-        <step>
-          Prepare code diff:
-          ```bash
-          git diff > ${SESSION_PATH}/code-changes.diff
-          ```
-        </step>
-        <step>
-          Model Selection (AskUserQuestion):
-          Options:
-          1. Use same models as Phase 3 [RECOMMENDED]
-          2. Choose different models
-          3. Skip external reviews (internal only)
-        </step>
-        <step>
-          Launch PARALLEL reviews (single message, multiple Tasks):
-
-          Task: reviewer
-            Prompt: "Review code changes in ${SESSION_PATH}/code-changes.diff
-                     Focus on: security, performance, code quality, best practices
-                     Write review to ${SESSION_PATH}/reviews/code-review/claude-internal.md
-                     Return brief summary"
-          ---
-          Bash: claudish --model {model1} --stdin --quiet < ${SESSION_PATH}/reviews/code-review/prompt.md > ${SESSION_PATH}/reviews/code-review/{model1-slug}.md
-          ---
-          ... (for each selected model)
-        </step>
-        <step>
-          Consolidate reviews with consensus analysis:
-          - Read all review files
-          - Apply consensus (unanimous, strong, majority, divergent)
-          - Prioritize by consensus level and severity
-          - Write ${SESSION_PATH}/reviews/code-review/consolidated.md
-        </step>
-        <step>
-          Determine verdict:
-          - PASS: 0 CRITICAL, less than 3 HIGH
-          - CONDITIONAL: 0 CRITICAL, 3-5 HIGH
-          - FAIL: 1+ CRITICAL OR 6+ HIGH
-        </step>
-        <step>
-          Review Loop (max code_review_limit iterations):
-
-          If CONDITIONAL or FAIL:
-          a. Delegate fixes to developer agent
-          b. Re-generate git diff
-          c. Re-launch parallel reviews
-          d. Re-consolidate
-          e. Re-check verdict
-          f. Iteration counter++
-
-          If PASS:
-          a. Exit loop
-
-          If max iterations reached and still FAIL:
-          a. Escalate to user (AskUserQuestion):
-             "Code review has reached maximum iterations ({limit}).
-
-              Remaining Issues:
-              - CRITICAL: {count}
-              - HIGH: {count}
-
-              Options:
-              1. Continue anyway (accept current state)
-              2. Allow {limit} more iterations
-              3. Cancel feature development
-              4. Take manual control"
-        </step>
-        <step>Mark PHASE 5 as completed</step>
-      </steps>
-      <quality_gate>Review verdict PASS or CONDITIONAL with user approval</quality_gate>
-    </phase>
-
-    <phase number="6" name="Black Box Unit Testing">
-      <objective>Test architect creates tests from requirements only</objective>
-      <iteration_limit>Read from ${SESSION_PATH}/iteration-config.json (default: 5)</iteration_limit>
-      <steps>
-        <step>Mark PHASE 6 as in_progress</step>
-        <step>
-          Read iteration config for TDD limit:
-          ```bash
-          tdd_limit=$(cat ${SESSION_PATH}/iteration-config.json | jq -r '.innerLoops.unitTestTDD')
-          ```
-        </step>
-        <step>
-          Launch test-architect agent with STRICT isolation:
-
-          Prompt: "SESSION_PATH: ${SESSION_PATH}
-
-                   **BLACK BOX TESTING: You have NO access to implementation.**
-
-                   INPUT ALLOWED:
-                   - ${SESSION_PATH}/requirements.md
-                   - ${SESSION_PATH}/architecture.md (API contracts only)
-                   - Public types/interfaces
-
-                   INPUT FORBIDDEN:
-                   - Implementation source code
-                   - Internal function details
-                   - Implementation patterns
-
-                   Create comprehensive test plan based on requirements and API contracts.
-
-                   Write to ${SESSION_PATH}/tests/test-plan.md
-                   Return brief summary"
-        </step>
-        <step>
-          Launch test-architect to implement tests:
-
-          Prompt: "SESSION_PATH: ${SESSION_PATH}
-
-                   Read test plan: ${SESSION_PATH}/tests/test-plan.md
-
-                   Implement tests for all scenarios in the plan.
-                   Tests must validate behavior from requirements, not implementation.
-
-                   Return brief summary"
-        </step>
-        <step>
-          Run tests using Bash:
-          - Execute test command from ${SESSION_PATH}/context.json quality_checks
-          - Capture output
-          - Save to ${SESSION_PATH}/tests/test-results.md
-        </step>
-        <step>
-          TDD Loop (max tdd_limit iterations):
-
-          If tests fail:
-
-          a. Launch test-architect to analyze failure:
-             Prompt: "Read test results: ${SESSION_PATH}/tests/test-results.md
-
-                      Analyze each failure and classify:
-                      - TEST_ISSUE: Test is wrong (fix test)
-                      - IMPLEMENTATION_ISSUE: Implementation is wrong (fix code)
-
-                      Write analysis to ${SESSION_PATH}/tests/failure-analysis.md"
-
-          b. For TEST_ISSUE failures:
-             - Launch test-architect to fix tests
-
-          c. For IMPLEMENTATION_ISSUE failures:
-             - Launch developer to fix implementation
-
-          d. Re-run tests
-
-          e. Iteration counter++
-
-          f. If max iterations reached:
-             Escalate to user (AskUserQuestion):
-             "Testing has reached maximum iterations ({limit}).
-
-              Failing Tests:
-              {list of failures}
-
-              Analysis: {summary from failure-analysis.md}
-
-              Options:
-              1. Continue anyway (document known failures)
-              2. Allow {limit} more iterations
-              3. Cancel feature development
-              4. Take manual control"
-        </step>
-        <step>
-          Track iteration history in ${SESSION_PATH}/tests/iteration-history.md:
-          - Iteration number
-          - Test results
-          - Failure analysis
-          - Fixes applied
-        </step>
-        <step>Mark PHASE 6 as completed</step>
-      </steps>
-      <quality_gate>All unit tests pass OR user approves with known failures</quality_gate>
-      <note>
-        **IMPORTANT:** Unit tests passing does NOT mean the feature works!
-        Real validation happens in Phase 7.
-      </note>
-    </phase>
-
-    <phase number="7" name="Real 3rd Party Validation">
-      <objective>Verify feature ACTUALLY works using browser automation</objective>
-      <steps>
-        <step>Mark PHASE 7 as in_progress</step>
-        <step>Read validation config from ${SESSION_PATH}/validation-criteria.md</step>
-        <step>
-          **STEP 1: Deploy Application**
-
-          Read deploy command from validation config
-          Execute in background:
-          ```bash
-          # Start dev server
-          ${deploy_command} &
-          DEV_SERVER_PID=$!
-
-          # Wait for server to be ready (max 30 seconds)
-          for i in {1..30}; do
-            if curl -s ${test_url} > /dev/null 2>&1; then
-              echo "Server ready"
-              break
-            fi
-            sleep 1
-          done
-          ```
-
-          If server doesn't start:
-          - Save error to ${SESSION_PATH}/validation/deploy-error.md
-          - Return FAIL with deploy error
-        </step>
-        <step>
-          **STEP 2: Navigate to Test URL**
-
-          Use Chrome MCP tools:
-          ```
-          mcp__chrome-devtools__new_page(url: ${test_url})
-          // OR if page exists:
-          mcp__chrome-devtools__navigate_page(url: ${test_url})
-          ```
-
-          Wait for page load (check for expected elements)
-        </step>
-        <step>
-          **STEP 3: Take Screenshot (Before Action)**
-
-          ```
-          mcp__chrome-devtools__take_screenshot(
-            filePath: "${SESSION_PATH}/validation/screenshot-before.png"
-          )
-          ```
-
-          If reference design exists:
-          - Compare screenshots using vision analysis
-          - Calculate similarity percentage
-          - If below threshold (default 85%): Note in validation result
-        </step>
-        <step>
-          **STEP 4: Perform Real User Actions**
-
-          Read test actions from validation criteria
-          Execute each action:
-
-          ```
-          // Example: Login flow
-          mcp__chrome-devtools__take_snapshot()  // Get element UIDs
-
-          mcp__chrome-devtools__fill(
-            uid: {email_field_uid},
-            value: "test@example.com"
-          )
-
-          mcp__chrome-devtools__fill(
-            uid: {password_field_uid},
-            value: "password123"
-          )
-
-          mcp__chrome-devtools__click(
-            uid: {login_button_uid}
-          )
-          ```
-
-          Log each action result to ${SESSION_PATH}/validation/action-log.md
-        </step>
-        <step>
-          **STEP 5: Verify Expected Behavior**
-
-          Read expected behavior from validation criteria
-          Verify each expectation:
-
-          If "Redirect to another page":
-          ```
-          mcp__chrome-devtools__take_snapshot()
-          // Check current URL matches expected
-          ```
-
-          If "Content updates on page":
-          ```
-          mcp__chrome-devtools__take_snapshot()
-          // Check for expected elements
-          ```
-
-          Take final screenshot:
-          ```
-          mcp__chrome-devtools__take_screenshot(
-            filePath: "${SESSION_PATH}/validation/screenshot-after.png"
-          )
-          ```
-        </step>
-        <step>
-          **STEP 6: Generate Validation Result**
-
-          Write to ${SESSION_PATH}/validation/result-iteration-{N}.md:
-          ```markdown
-          # Validation Result - Iteration {N}
-
-          ## Summary
-          - **Status**: PASS / FAIL
-          - **Timestamp**: {timestamp}
-          - **Test URL**: {url}
-
-          ## Checks
-          | Check | Result | Details |
-          |-------|--------|---------|
-          | Deploy | PASS/FAIL | Server started in {time}s |
-          | Navigation | PASS/FAIL | Page loaded successfully |
-          | Screenshot (before) | PASS/FAIL | {similarity}% match |
-          | User Actions | PASS/FAIL | {passed}/{total} actions |
-          | Expected Behavior | PASS/FAIL | {description} |
-          | Screenshot (after) | PASS/FAIL | {details} |
-
-          ## Evidence
-          - Before: ${SESSION_PATH}/validation/screenshot-before.png
-          - After: ${SESSION_PATH}/validation/screenshot-after.png
-          - Action Log: ${SESSION_PATH}/validation/action-log.md
-
-          ## Issues Found (if FAIL)
-          {detailed description of what went wrong}
-
-          ## Rejection Rules Applied
-          - [x] No "should work" assumptions accepted
-          - [x] No "tests pass" as final proof
-          - [x] No "pre-existing issue" excuses
-          - [x] Screenshot evidence captured
-          ```
-        </step>
-        <step>
-          **STEP 7: Handle Result**
-
-          If PASS:
-          - Mark Phase 7 as completed
-          - Exit outer loop
-          - Proceed to Phase 8
-
-          If FAIL:
-          - Generate feedback for next iteration:
-
-          Write to ${SESSION_PATH}/validation/feedback-iteration-{N}.md:
-          ```markdown
-          # Validation Feedback - Iteration {N}
-
-          ## What Failed
-          {specific failures with evidence}
-
-          ## Required Fixes
-          1. {fix 1 with exact details}
-          2. {fix 2 with exact details}
-
-          ## Evidence
-          - Actual screenshot: {path}
-          - Expected: {description or reference path}
-          - Diff: {what's different}
-          ```
-
-          - Check if outer loop should continue (based on iteration-config.json)
-          - If continuing: Return to Phase 3 with feedback
-          - If limit reached: Escalate to user
-        </step>
-        <step>
-          **Cleanup:**
-          ```bash
-          # Stop dev server if running
-          if [ -n "$DEV_SERVER_PID" ]; then
-            kill $DEV_SERVER_PID 2>/dev/null
-          fi
-          ```
-        </step>
-      </steps>
-      <quality_gate>All validation checks pass with screenshot evidence</quality_gate>
-    </phase>
-
-    <phase number="8" name="Completion">
-      <objective>Generate comprehensive report (only after Phase 7 passes)</objective>
-      <steps>
-        <step>Mark PHASE 8 as in_progress</step>
-        <step>
-          Verify Phase 7 passed:
-          - Read ${SESSION_PATH}/validation/result-iteration-{latest}.md
-          - Confirm Status: PASS
-          - If not PASS: Error - should not reach Phase 8
-        </step>
-        <step>
-          Gather all artifacts:
-          - ${SESSION_PATH}/requirements.md
-          - ${SESSION_PATH}/validation-criteria.md
-          - ${SESSION_PATH}/iteration-config.json
-          - ${SESSION_PATH}/architecture.md
-          - ${SESSION_PATH}/implementation-log.md
-          - ${SESSION_PATH}/reviews/code-review/consolidated.md
-          - ${SESSION_PATH}/tests/test-results.md
-          - ${SESSION_PATH}/validation/result-iteration-{latest}.md
-          - ${SESSION_PATH}/validation/screenshot-*.png
-          - Model performance statistics (if multi-model used)
-        </step>
-        <step>
-          Generate final report at ${SESSION_PATH}/report.md:
-
-          Include:
-          - Feature summary
-          - Requirements fulfilled checklist
-          - Architecture decisions
-          - Implementation notes (files created, lines added)
-          - Review feedback summary (consensus analysis if multi-model)
-          - Test coverage and results
-          - **REAL VALIDATION RESULTS** (with screenshots)
-          - Outer loop iterations used
-          - Model performance statistics (if applicable)
-          - Known issues (if any)
-          - Recommendations for next steps
-        </step>
-        <step>
-          Update ${SESSION_PATH}/session-meta.json:
-          - Set status: "completed"
-          - Add completion timestamp
-          - Record outer loop iterations used
-          - Update checkpoint to final phase
-        </step>
-        <step>
-          If multi-model validation was used:
-          - Display model performance statistics table
-          - Show historical performance (from ai-docs/llm-performance.json)
-          - Provide recommendations for future sessions
-        </step>
-        <step>
-          <worktree_cleanup>
-            If worktree was created (WORKTREE_PATH is set):
-              Use AskUserQuestion:
-                question: "Feature complete. What should I do with the worktree?"
-                header: "Cleanup"
-                options:
-                  - label: "Create PR from worktree branch"
-                    description: "Push branch, create PR, keep worktree until merged"
-                  - label: "Merge locally and clean up"
-                    description: "Merge to current branch, remove worktree"
-                  - label: "Keep worktree for now"
-                    description: "Leave worktree and branch as-is"
-                  - label: "Discard everything"
-                    description: "Delete branch and worktree (requires confirmation)"
-
-              Execute chosen option following dev:worktree-lifecycle Phase 6.
-          </worktree_cleanup>
-        </step>
-        <step>Present comprehensive summary to user (see completion_message template)</step>
-        <step>Mark ALL task items as completed</step>
-      </steps>
-      <quality_gate>Report generated with validation evidence</quality_gate>
-    </phase>
   </workflow>
 </instructions>
 
@@ -1316,7 +327,7 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
     - Task (delegate to agents)
     - AskUserQuestion (user input, model selection with multiSelect)
     - Bash (git commands, test execution, quality checks, dev server)
-    - Read (read files, review outputs)
+    - Read (read files, review outputs, load phase instruction files)
     - Tasks (progress tracking)
     - Glob (find files)
     - Grep (search patterns)
@@ -1398,7 +409,8 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
     Always include:
     - Internal Claude (embedded, FREE)
 
-    **Use AskUserQuestion with multiSelect: true**
+    **Selection happens ONCE in Phase 1 Step 1f (upfront)**
+    Models are stored in iteration-config.json and reused in Phases 3 and 5.
 
     **Dynamic Discovery:**
     - Run `claudish --top-models` for current paid models
@@ -1512,8 +524,10 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
     <user_request>/dev:feature Add login page with email/password</user_request>
     <execution>
       PHASE 0: Create session dev-feature-login-20260105-143022-a3f2
+        Read: phase0-init.md → execute
 
       PHASE 1: Requirements + Validation Setup
+        Read: phase1-requirements.md → execute
         Round 1: "Which auth providers? What user data?"
         Round 2: "Session duration? Error handling?"
 
@@ -1531,6 +545,10 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
         - [✓] Chrome MCP tools available
         - [✓] Smoke test passed
 
+        Model Selection (Step 1f):
+        - Selected: x-ai/grok-code-fast-1, qwen/qwen3-coder:free
+        - Stored in iteration-config.json
+
         User approves
 
       PHASE 2: Research skipped
@@ -1538,25 +556,30 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
       OUTER LOOP: Iteration 1/3
 
         PHASE 3: Planning (1 iteration)
+          Read: phase3-planning.md → execute
           Architect creates plan
-          2 models review in parallel
+          Models from config (no re-asking): 2 models review in parallel
           Consensus: PASS
           User approves
 
         PHASE 4: Implementation (parallel)
+          Read: phase4-implementation.md → execute
           Sequential: Database schema
           Parallel: AuthService, LoginComponent
           All quality checks pass
 
         PHASE 5: Code Review (1 iteration)
-          2 models review in parallel
+          Read: phase5-review.md → execute
+          Same models from config: 2 models review in parallel
           Verdict: PASS
 
         PHASE 6: Unit Testing (1 iteration)
+          Read: phase6-testing.md → execute
           Test architect creates tests
           All tests pass
 
         PHASE 7: Real Validation
+          Read: phase7-validation.md → execute
           Deploy: bun run dev (started in 2s)
           Navigate: http://localhost:3000/login
           Screenshot before: Captured
@@ -1572,6 +595,7 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
       (Exit outer loop)
 
       PHASE 8: Completion
+        Read: phase8-completion.md → execute
         Report generated with screenshots
         Duration: 25 minutes
         Outer iterations: 1
@@ -1585,15 +609,18 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
     <user_request>/dev:feature Add login page matching design</user_request>
     <execution>
       PHASE 1: Setup
+        Read: phase1-requirements.md → execute
         Validation: Real browser + Screenshot comparison
         Reference: designs/login.png
         Outer loop: 3 iterations
+        Models: qwen/qwen3-coder:free (stored in config)
 
       OUTER LOOP: Iteration 1/3
 
-        PHASE 3-6: Complete normally
+        PHASE 3-6: Complete normally (each phase reads its instruction file)
 
         PHASE 7: Real Validation
+          Read: phase7-validation.md → execute
           Screenshot comparison: 78% match (need 90%) ❌
           Issue: Button text is "Login" but design shows "Sign In"
 
@@ -1603,9 +630,11 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
       OUTER LOOP: Iteration 2/3 (with feedback)
 
         PHASE 3: Planning (receives feedback)
+          Read: phase3-planning.md → execute
           Architect notes: "Previous validation failed - button text mismatch"
 
         PHASE 4: Implementation
+          Read: phase4-implementation.md → execute
           Developer fixes button text to "Sign In"
 
         PHASE 5-6: Complete normally
@@ -1623,86 +652,6 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
         Duration: 45 minutes
         Outer iterations: 2
         Validation: PASSED (after fixing button text)
-    </execution>
-  </example>
-
-  <example name="Feature with Infinite Mode">
-    <user_request>/dev:feature Pixel-perfect dashboard</user_request>
-    <execution>
-      PHASE 1: Setup
-        Validation: Screenshot comparison
-        Reference: designs/dashboard.png
-        Outer loop: ∞ (infinite)
-
-      OUTER LOOP: Iteration 1/∞
-        Phase 7: 68% match - layout wrong
-        Result: FAIL
-
-      OUTER LOOP: Iteration 2/∞
-        Phase 7: 75% match - colors wrong
-        Result: FAIL
-
-      OUTER LOOP: Iteration 3/∞
-        Phase 7: 82% match - spacing issues
-        Result: FAIL
-
-      OUTER LOOP: Iteration 4/∞
-        Phase 7: 86% match - font weights
-        Result: FAIL
-
-      OUTER LOOP: Iteration 5/∞ (Notification)
-        "Iteration 5 of ∞ - Progress: 68% → 86%"
-        User: "Keep going"
-
-        Phase 7: 89% match - border radius
-        Result: FAIL
-
-      OUTER LOOP: Iteration 6/∞
-        Phase 7: 91% match ✓
-        Result: PASS
-
-      PHASE 8: Completion
-        Outer iterations: 6
-        Convergence: 68% → 91% over 6 iterations
-        Validation: PASSED
-    </execution>
-  </example>
-
-  <example name="Limit Reached - User Extends">
-    <user_request>/dev:feature Complex data table</user_request>
-    <execution>
-      PHASE 1: Setup
-        Outer loop: 3 iterations
-
-      OUTER LOOP: Iterations 1-3 all FAIL
-        #1: 65% - major layout issues
-        #2: 72% - sorting broken
-        #3: 78% - pagination wrong
-
-      Limit reached, escalate to user:
-        "Real validation failed 3 times.
-
-         Progress: 65% → 78% (improving)
-
-         Options:
-         1. Add 3 more iterations
-         2. Add 10 more iterations
-         3. Switch to infinite mode
-         ..."
-
-      User selects: "Add 3 more iterations"
-
-      OUTER LOOP: Iteration 4/6
-        Phase 7: 85% match
-        Result: FAIL
-
-      OUTER LOOP: Iteration 5/6
-        Phase 7: 92% match ✓
-        Result: PASS
-
-      PHASE 8: Completion
-        Total iterations: 5
-        User extended limit once
     </execution>
   </example>
 </examples>
@@ -1830,6 +779,17 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
          "To resume, run: /dev:feature --resume {SESSION_ID}"
     </recovery>
   </strategy>
+
+  <strategy scenario="Phase file not found">
+    <recovery>
+      If Read tool cannot find phase instruction file:
+      1. Log error: "Phase file not found: ${PLUGIN_PATH}/skills/feature-phases/phase{N}-{name}.md"
+      2. Check PLUGIN_PATH: echo $CLAUDE_PLUGIN_ROOT
+      3. Try alternative: Read using absolute path from CLAUDE_PLUGIN_ROOT env var
+      4. If still fails: Proceed with built-in knowledge for that phase (degraded mode)
+      5. Log warning in session-meta.json: "Phase {N} ran without instruction file"
+    </recovery>
+  </strategy>
 </error_recovery>
 
 <formatting>
@@ -1844,6 +804,7 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
     - Link to detailed files in session directory
     - Celebrate milestones (validation pass, quality gates)
     - For infinite mode: Show iteration count and trend
+    - Log "Loaded phase N instructions from {path}" after each Read
   </communication_style>
 
   <completion_message>

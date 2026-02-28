@@ -1,30 +1,30 @@
 {
   "meta": {
-    "description": "Test cases for /multimodel:team command orchestration. Verifies correct model invocation: internal via Task(dev:researcher), external via Bash(claudish). Tests parallel launch, session dir, vote template, no pre-digestion, and model verification.",
-    "version": "2.1.0",
+    "description": "Test cases for /multimodel:team command orchestration. Verifies correct model invocation: internal via Task({resolved_agent}), external via Bash(claudish). Tests dynamic agent routing, parallel launch, session dir, vote template, no pre-digestion, and model verification.",
+    "version": "2.2.0",
     "created": "2026-02-11",
-    "notes": "v2.1.0: claudish v4.5.1 --agent flag removed. External models use Bash+claudish --model. Tests verify Bash calls with --model, --stdin flags, exit code capture, and output redirection."
+    "notes": "v2.2.0: Dynamic agent routing — task keywords determine subagent_type from context_detection table. Review→agentdev:reviewer, debug→dev:debugger, architecture→dev:architect. Default: dev:researcher."
   },
   "model_aliases": {
-    "grok": "x-ai/grok-code-fast-1",
-    "gemini": "google/gemini-3-pro-preview",
-    "gpt-5": "openai/gpt-5.2-codex",
-    "deepseek": "deepseek/deepseek-v3.2",
-    "minimax": "minimax/minimax-m2.5",
-    "glm": "z-ai/glm-4.7"
+    "grok": "grok-code-fast-1",
+    "gemini": "gemini-3-pro-preview",
+    "gpt-5": "gpt-5.2-codex",
+    "deepseek": "deepseek-v3.2",
+    "minimax": "minimax-m2.5",
+    "glm": "glm-4.7"
   },
   "test_cases": [
     {
       "id": "team-agent-internal",
-      "description": "Internal-only model should use Task with dev:researcher agent, no Bash claudish",
+      "description": "Internal-only model should use Task with dynamically resolved agent, no Bash claudish",
       "prompt": "/multimodel:team --models internal --no-memory Review the plugin.json structure in the dev plugin",
       "checks": {
-        "task_agent_is": "dev:researcher",
+        "task_agent_is": "agentdev:reviewer",
         "task_min_count": 1,
         "no_proxy_mode_in_tasks": true,
         "has_vote_template": true
       },
-      "tags": ["agent-selection", "internal"]
+      "tags": ["agent-selection", "internal", "agent-routing"]
     },
     {
       "id": "team-agent-external",
@@ -47,11 +47,11 @@
         "internal_uses_task": true,
         "external_uses_bash": true,
         "bash_has_claudish": true,
-        "task_agent_is": "dev:researcher",
+        "task_agent_is": "agentdev:reviewer",
         "bash_run_in_background": true,
         "run_in_background": true
       },
-      "tags": ["parallel", "mixed-models"]
+      "tags": ["parallel", "mixed-models", "agent-routing"]
     },
     {
       "id": "team-no-predigest",
@@ -95,9 +95,9 @@
       "checks": {
         "bash_claudish_model_contains": "grok",
         "bash_has_claudish": true,
-        "bash_claudish_has_agent": true
+        "no_provider_prefix_in_model": true
       },
-      "tags": ["model-alias"]
+      "tags": ["model-alias", "no-prefix"]
     },
     {
       "id": "team-model-alias-gemini",
@@ -106,9 +106,9 @@
       "checks": {
         "bash_claudish_model_contains": "gemini",
         "bash_has_claudish": true,
-        "bash_claudish_has_agent": true
+        "no_provider_prefix_in_model": true
       },
-      "tags": ["model-alias"]
+      "tags": ["model-alias", "no-prefix"]
     },
     {
       "id": "team-vote-template",
@@ -128,9 +128,9 @@
       "checks": {
         "run_in_background": true,
         "bash_run_in_background": true,
-        "task_agent_is": "dev:researcher"
+        "task_agent_is": "agentdev:reviewer"
       },
-      "tags": ["parallel", "background"]
+      "tags": ["parallel", "background", "agent-routing"]
     },
     {
       "id": "team-bash-claudish-flags",
@@ -184,6 +184,59 @@
         "external_uses_bash": true
       },
       "tags": ["verification"]
+    },
+    {
+      "id": "team-no-provider-prefix",
+      "description": "Bare model names should NOT get provider prefixes added (e.g., minimax-m2.5 stays minimax-m2.5, not minimax/minimax-m2.5)",
+      "prompt": "/multimodel:team --models minimax-m2.5 --no-memory Quick check on README structure",
+      "checks": {
+        "bash_has_claudish": true,
+        "bash_claudish_model_contains": "minimax-m2.5",
+        "no_provider_prefix_in_model": true
+      },
+      "tags": ["no-prefix", "critical"]
+    },
+    {
+      "id": "team-no-provider-prefix-multi",
+      "description": "Multiple bare model names should all be passed without provider prefixes",
+      "prompt": "/multimodel:team --models minimax-m2.5,kimi-k2.5 --no-memory Check plugin versions",
+      "checks": {
+        "bash_has_claudish": true,
+        "bash_min_count": 2,
+        "no_provider_prefix_in_model": true,
+        "bash_run_in_background": true
+      },
+      "tags": ["no-prefix", "multi-external", "critical"]
+    },
+    {
+      "id": "team-default-models-loaded",
+      "description": "When no --models flag, should read preferences and use defaultModels from multimodel-team.json",
+      "prompt": "/multimodel:team --no-memory Check if README has all required sections",
+      "checks": {
+        "reads_preferences_file": true,
+        "bash_has_claudish": true
+      },
+      "tags": ["default-models", "preferences", "critical"]
+    },
+    {
+      "id": "team-agent-routing-debug",
+      "description": "Debug task routes to dev:debugger agent",
+      "prompt": "/multimodel:team --models internal --no-memory Debug the authentication error in login handler",
+      "checks": {
+        "task_agent_is": "dev:debugger",
+        "task_min_count": 1
+      },
+      "tags": ["agent-routing"]
+    },
+    {
+      "id": "team-agent-routing-architecture",
+      "description": "Architecture task routes to dev:architect agent",
+      "prompt": "/multimodel:team --models internal --no-memory Review the architecture of the plugin system",
+      "checks": {
+        "task_agent_is": "dev:architect",
+        "task_min_count": 1
+      },
+      "tags": ["agent-routing"]
     }
   ]
 }

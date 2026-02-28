@@ -2,7 +2,7 @@
 name: agent-enforcement
 description: |
   Multi-agent orchestration enforcement for /team command. Provides claudish CLI validation,
-  validates session directory paths, and ensures /team internal Tasks use dev:researcher.
+  validates session directory paths, and ensures /team Tasks use a valid agent from the routing whitelist.
   Use when debugging /team orchestration failures.
 triggers:
   - "team enforcement"
@@ -24,7 +24,7 @@ Two-layer defense against orchestration violations in `/team`:
 
 | Model Type | Method | Tool | Reliability |
 |------------|--------|------|-------------|
-| Internal (Claude) | Task(dev:researcher) | Task tool | High (same process) |
+| Internal (Claude) | Task({resolved_agent}) | Task tool | High (same process) |
 | External (Grok, Gemini, etc.) | Bash(claudish --model) | Bash tool | 100% (deterministic CLI) |
 
 External models are called via claudish CLI directly from Bash — no LLM delegation needed.
@@ -35,14 +35,14 @@ The PreToolUse hook intercepts Task and Bash tool calls at runtime:
 
 | Rule | Condition | Action |
 |------|-----------|--------|
-| 1 | /team Task with wrong agent | DENY (must be dev:researcher) |
+| 1 | /team Task with wrong agent | DENY (must be in agent whitelist) |
 | 2 | /tmp/ in Task prompt | DENY |
 
 ### Layer 1: PreToolUse Hook
 
 Detects /team workflows by vote template pattern in Task prompts. Blocks:
 
-- **Wrong agent for /team Tasks:** Only `dev:researcher` is allowed for internal model Tasks
+- **Wrong agent for /team Tasks:** Only agents in the whitelist are allowed: `dev:researcher`, `dev:debugger`, `dev:developer`, `dev:architect`, `dev:test-architect`, `dev:devops`, `dev:ui`, `agentdev:reviewer`
 - **Insecure paths:** No `/tmp/` paths in Task prompts (use `ai-docs/sessions/`)
 
 ### Layer 2: model: opus
@@ -72,6 +72,10 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/resolve-agents.sh" \
   --models "internal,x-ai/grok-code-fast-1" \
   --task-type "investigation"
 ```
+
+> **Note:** The agent varies by task type. The `/team` command resolves the agent dynamically
+> from the `<context_detection>` table in `team.md` based on task keywords (e.g., "debug" → `dev:debugger`,
+> "review" → `agentdev:reviewer`). The hook enforces a whitelist of all valid agents.
 
 Output:
 ```json

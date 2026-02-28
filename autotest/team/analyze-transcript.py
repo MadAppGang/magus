@@ -4,6 +4,7 @@ Analyze a /team command JSONL transcript for orchestration correctness.
 
 Usage: python3 analyze-transcript.py <transcript.jsonl> <checks_json>
 
+v2.2.0: Added no_provider_prefix_in_model and reads_preferences_file checks.
 v2.1.0: Updated for claudish v4.5.1 (--agent flag removed). External models use
 Bash(claudish --model), internal models use Task(dev:researcher).
 
@@ -29,6 +30,10 @@ Checks JSON format:
   # Negative checks (PROXY_MODE completely gone)
   "no_proxy_mode_in_tasks": true,        # NO Task prompts contain "PROXY_MODE"
   "no_proxy_mode_in_bash": true,         # NO Bash commands contain "PROXY_MODE"
+
+  # Provider prefix checks
+  "no_provider_prefix_in_model": true,  # No provider/ prefix in --model values
+  "reads_preferences_file": true,       # Read tool used on multimodel-team.json
 
   # Mixed model checks
   "internal_uses_task": true,            # At least one Task call (for internal)
@@ -342,6 +347,51 @@ def run_checks(checks, tool_calls, task_calls, bash_calls, write_calls, read_cal
             'detail': f'At least one claudish Bash call uses run_in_background ({len(claudish_calls)} total)' if any_bg
                       else 'No claudish Bash calls have run_in_background=true' if claudish_calls
                       else 'No claudish calls found'
+        })
+
+    # ---- No provider prefix check ----
+
+    # Check: no_provider_prefix_in_model
+    if checks.get('no_provider_prefix_in_model'):
+        # Provider prefixes that should NOT appear in --model values
+        forbidden_prefixes = [
+            'minimax/', 'openai/', 'google/', 'x-ai/', 'z-ai/',
+            'moonshotai/', 'deepseek/', 'anthropic/', 'meta-llama/',
+            'mistralai/', 'qwen/'
+        ]
+        violations = []
+        for bc in claudish_calls:
+            cmd = bc['input'].get('command', '')
+            model_match = re.search(r'--model\s+(\S+)', cmd)
+            if model_match:
+                model_id = model_match.group(1)
+                for prefix in forbidden_prefixes:
+                    if model_id.startswith(prefix):
+                        violations.append(f'{model_id} (has prefix "{prefix}")')
+                        break
+        passed = len(violations) == 0
+        results.append({
+            'check': 'no_provider_prefix_in_model',
+            'passed': passed,
+            'detail': 'No provider prefixes in --model values' if passed
+                      else f'Provider prefixes found: {violations}'
+        })
+
+    # ---- Preferences file read check ----
+
+    # Check: reads_preferences_file
+    if checks.get('reads_preferences_file'):
+        found = False
+        for rc in read_calls:
+            file_path = rc['input'].get('file_path', '')
+            if 'multimodel-team.json' in file_path:
+                found = True
+                break
+        results.append({
+            'check': 'reads_preferences_file',
+            'passed': found,
+            'detail': 'multimodel-team.json read via Read tool' if found
+                      else 'Preferences file not read (multimodel-team.json)'
         })
 
     # ---- Negative checks (PROXY_MODE completely gone) ----

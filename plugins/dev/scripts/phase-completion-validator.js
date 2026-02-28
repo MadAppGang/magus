@@ -7,6 +7,7 @@
  * 2. Validation criteria mapping (Phase 7)
  * 3. Outer loop enforcement (Phase 8 requires Phase 7 PASS)
  * 4. Show-your-work requirement (evidence files must have content)
+ * 5. Phase ordering enforcement (predecessors must complete before phase starts)
  *
  * Usage: Automatically called by PreToolUse hook when TaskUpdate is invoked
  *
@@ -22,31 +23,33 @@
 const fs = require('fs');
 const path = require('path');
 
-// Phase-specific required artifacts
+// Phase-specific required artifacts (P2a: object format with minSize and patterns)
 const PHASE_ARTIFACTS = {
   'phase1': {
     name: 'Requirements + Validation Setup',
     required: [
-      'requirements.md',
-      'validation-criteria.md',
-      'iteration-config.json'
+      { file: 'requirements.md',        minSize: 100 },
+      { file: 'validation-criteria.md', minSize: 50  },
+      { file: 'iteration-config.json',  minSize: 50  },
     ],
     optional: []
   },
   'phase3': {
     name: 'Multi-Model Planning',
     required: [
-      'architecture.md'
+      { file: 'architecture.md',                        minSize: 500  },  // P2a: substantial content
+      { file: 'reviews/plan-review/consolidated.md',    minSize: 200,
+        patterns: [/model|review|analysis|issue|concern|verdict/i] },     // P0+P2a: moved to required
+      { file: 'reviews/plan-review/claude-internal.md', minSize: 100,
+        patterns: [/review|analysis|issue|concern|recommendation/i] },    // P0+P2a: moved to required
     ],
-    optional: [
-      'reviews/plan-review/consolidated.md',
-      'reviews/plan-review/claude-internal.md'
-    ]
+    optional: []
   },
   'phase4': {
     name: 'Implementation',
     required: [
-      'implementation-log.md'
+      { file: 'implementation-log.md', minSize: 100,
+        patterns: [/Phase|Step|Started|Completed|Created|Modified/] },    // P2a: structured log
     ],
     optional: [],
     customCheck: 'checkGitChanges'
@@ -54,44 +57,55 @@ const PHASE_ARTIFACTS = {
   'phase5': {
     name: 'Code Review',
     required: [
-      'reviews/code-review/consolidated.md'
+      { file: 'reviews/code-review/consolidated.md', minSize: 200 },
     ],
     optional: [
-      'code-changes.diff'
+      { file: 'code-changes.diff', minSize: 0 },
     ],
     customCheck: 'checkReviewVerdict'
   },
   'phase6': {
     name: 'Unit Testing',
     required: [
-      'tests/test-plan.md'
+      { file: 'tests/test-plan.md', minSize: 50 },
     ],
     optional: [
-      'tests/test-results.md',
-      'tests/iteration-history.md'
+      { file: 'tests/test-results.md',      minSize: 0 },
+      { file: 'tests/iteration-history.md', minSize: 0 },
     ],
     customCheck: 'checkTestsCreated'
   },
   'phase7': {
     name: 'Real Validation',
     required: [
-      'validation/result.md'
+      { file: 'validation/result.md', minSize: 100,
+        patterns: [/status.*:.*PASS|status.*:.*FAIL/i] },                 // P2a: must have status
     ],
     optional: [
-      'validation/screenshot-before.png',
-      'validation/screenshot-after.png',
-      'validation/action-log.md'
+      { file: 'validation/screenshot-before.png', minSize: 0 },
+      { file: 'validation/screenshot-after.png',  minSize: 0 },
+      { file: 'validation/action-log.md',         minSize: 0 },
     ],
     customCheck: 'checkValidationResult'
   },
   'phase8': {
     name: 'Completion',
     required: [
-      'report.md'
+      { file: 'report.md', minSize: 500 },                               // P2a: substantial report
     ],
     optional: [],
     customCheck: 'checkPhase7Passed'
   }
+};
+
+// Phase dependency map: phase cannot start until all predecessors are completed
+// Keys are phase IDs, values are arrays of predecessor phases that must have
+// their artifacts verified before this phase can become in_progress.
+const PHASE_DEPENDENCIES = {
+  'phase4': ['phase3'],  // Implementation blocked until Planning complete
+  'phase5': ['phase4'],  // Code Review blocked until Implementation complete
+  'phase6': ['phase4'],  // Unit Testing blocked until Implementation complete
+  'phase7': ['phase6'],  // Validation blocked until Testing complete
 };
 
 // Pattern to detect phase-related task subjects
@@ -316,36 +330,104 @@ function checkValidationResult(sessionPath) {
 }
 
 /**
- * Custom check: Verify Phase 7 passed before allowing Phase 8 (for Phase 8)
+ * Custom check: Verify all preceding phases completed before allowing Phase 8 (P1c)
+ *
+ * Checks:
+ * 1. Phase 7 validation PASSED (existing check)
+ * 2. Phase 3 plan review was conducted (consolidated.md exists with content)
+ * 3. Phase 5 code review was conducted (consolidated.md has verdict)
+ * 4. session-meta.json has checkpoint records for all phases
  */
 function checkPhase7Passed(sessionPath) {
-  // Read session-meta.json
-  const metaPath = path.join(sessionPath, 'session-meta.json');
+  const errors = [];
 
+  // --- Existing check: Phase 7 validation PASS ---
+  const metaPath = path.join(sessionPath, 'session-meta.json');
   if (!fs.existsSync(metaPath)) {
     return { valid: false, message: 'Missing session-meta.json' };
   }
 
   const meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
 
-  // Check outer loop results
+  let phase7Passed = false;
   if (meta.outerLoop && meta.outerLoop.phase7Results) {
     const lastResult = meta.outerLoop.phase7Results[meta.outerLoop.phase7Results.length - 1];
     if (lastResult && lastResult.status === 'PASS') {
-      return { valid: true, message: 'Phase 7 passed, Phase 8 allowed' };
+      phase7Passed = true;
     }
   }
 
-  // Fallback: Check validation result directly
-  const validationCheck = checkValidationResult(sessionPath);
-  if (validationCheck.status === 'PASS') {
-    return { valid: true, message: 'Phase 7 validation PASSED' };
+  if (!phase7Passed) {
+    // Fallback: check validation result file directly
+    const validationCheck = checkValidationResult(sessionPath);
+    phase7Passed = validationCheck.status === 'PASS';
   }
 
-  return {
-    valid: false,
-    message: `Cannot complete Phase 8: Phase 7 validation did not PASS (status: ${validationCheck.status || 'unknown'})`
-  };
+  if (!phase7Passed) {
+    errors.push('Phase 7 validation did not PASS');
+  }
+
+  // --- P1c: Phase 3 plan review verification ---
+  const planConsolidated = path.join(sessionPath, 'reviews/plan-review/consolidated.md');
+  if (!fs.existsSync(planConsolidated)) {
+    errors.push('Phase 3 plan review missing: reviews/plan-review/consolidated.md not found');
+  } else {
+    const content = fs.readFileSync(planConsolidated, 'utf-8');
+    if (content.trim().length < 100) {
+      errors.push('Phase 3 plan review is too short (< 100 bytes) — may not be a real review');
+    }
+  }
+
+  // --- P1c: Phase 5 code review verification ---
+  const codeConsolidated = path.join(sessionPath, 'reviews/code-review/consolidated.md');
+  if (!fs.existsSync(codeConsolidated)) {
+    errors.push('Phase 5 code review missing: reviews/code-review/consolidated.md not found');
+  } else {
+    const content = fs.readFileSync(codeConsolidated, 'utf-8');
+    const hasVerdict = /verdict:\s*(PASS|FAIL|CONDITIONAL)/i.test(content) ||
+                       /##.*verdict/i.test(content) ||
+                       /\*\*verdict\*\*/i.test(content);
+    if (!hasVerdict) {
+      errors.push('Phase 5 code review missing verdict (PASS/FAIL/CONDITIONAL)');
+    }
+  }
+
+  if (errors.length > 0) {
+    return {
+      valid: false,
+      message: `Phase 8 blocked — ${errors.length} prerequisite(s) not met:\n${errors.map(e => '  - ' + e).join('\n')}`
+    };
+  }
+
+  return { valid: true, message: 'All Phase 8 prerequisites verified' };
+}
+
+/**
+ * Check that all predecessor phases have their required artifacts before
+ * allowing a phase to become in_progress.
+ */
+function checkPredecessors(phase, sessionPath) {
+  try {
+    const predecessors = PHASE_DEPENDENCIES[phase];
+    if (!predecessors || predecessors.length === 0) {
+      return { valid: true, errors: [] };
+    }
+
+    const errors = [];
+    for (const pred of predecessors) {
+      const result = validatePhaseCompletion(pred, sessionPath);
+      if (!result.valid) {
+        errors.push(
+          `Cannot start ${phase}: prerequisite ${pred} (${result.phaseName}) ` +
+          `is not complete. Missing: ${result.errors.join(', ')}`
+        );
+      }
+    }
+    return { valid: errors.length === 0, errors };
+  } catch (error) {
+    // Fail open — predecessor check error should not block work
+    return { valid: true, errors: [] };
+  }
 }
 
 /**
@@ -362,23 +444,47 @@ function validatePhaseCompletion(phase, sessionPath) {
   const errors = [];
   const warnings = [];
 
+  // Helper: normalize artifact entry (string or object) for backward compat
+  const normalize = (a) => typeof a === 'string'
+    ? { file: a, minSize: 10, patterns: [] }
+    : { minSize: 10, patterns: [], ...a };
+
   // Check required artifacts
-  for (const artifact of phaseConfig.required) {
-    const artifactPath = path.join(sessionPath, artifact);
+  for (const entry of phaseConfig.required) {
+    const { file, minSize, patterns } = normalize(entry);
+    const artifactPath = path.join(sessionPath, file);
 
     if (!fs.existsSync(artifactPath)) {
-      errors.push(`Missing required artifact: ${artifact}`);
-    } else if (!fileExistsWithContent(artifactPath)) {
-      errors.push(`Artifact exists but is empty: ${artifact}`);
+      errors.push(`Missing required artifact: ${file}`);
+      continue;
+    }
+
+    const stats = fs.statSync(artifactPath);
+    if (stats.size < minSize) {
+      errors.push(
+        `Artifact too small: ${file} (${stats.size} bytes < required ${minSize} bytes)`
+      );
+      continue;
+    }
+
+    // Content pattern validation (P2a)
+    if (patterns && patterns.length > 0) {
+      const content = fs.readFileSync(artifactPath, 'utf-8');
+      const allMatch = patterns.every(p => p.test(content));
+      if (!allMatch) {
+        errors.push(
+          `Artifact content validation failed: ${file} missing expected patterns`
+        );
+      }
     }
   }
 
   // Check optional artifacts (warnings only)
-  for (const artifact of phaseConfig.optional) {
-    const artifactPath = path.join(sessionPath, artifact);
-
+  for (const entry of phaseConfig.optional) {
+    const { file } = normalize(entry);
+    const artifactPath = path.join(sessionPath, file);
     if (!fs.existsSync(artifactPath)) {
-      warnings.push(`Optional artifact missing: ${artifact}`);
+      warnings.push(`Optional artifact missing: ${file}`);
     }
   }
 
@@ -451,16 +557,33 @@ function main() {
 
     const input = JSON.parse(toolInput);
 
-    // Only validate when status is being set to "completed"
-    if (input.status !== 'completed') {
-      console.log('Phase Completion Validator: Not a completion update, skipping');
+    // Get task subject to detect phase
+    const taskSubject = input.subject || process.env.CLAUDE_TASK_SUBJECT || '';
+
+    // Validate on both in_progress (predecessor check) and completed (artifact check)
+    if (input.status === 'in_progress') {
+      // P1a: Check that predecessor phases are complete before allowing start
+      const phase = detectPhase(taskSubject);
+      if (phase && PHASE_DEPENDENCIES[phase]) {
+        const sessionPath = findSessionPath();
+        if (sessionPath) {
+          const predResult = checkPredecessors(phase, sessionPath);
+          if (!predResult.valid) {
+            predResult.errors.forEach(e => console.error(`   - ${e}`));
+            console.error('\nPhase ordering violation: Complete prerequisites first.');
+            process.exit(1);
+          }
+        }
+      }
+      console.log('Phase Completion Validator: in_progress allowed');
       process.exit(0);
     }
 
-    // Get task subject to detect phase
-    // Note: In real hook, we'd need to fetch task details via TaskGet
-    // For now, check if there's a phase pattern in any available context
-    const taskSubject = input.subject || process.env.CLAUDE_TASK_SUBJECT || '';
+    if (input.status !== 'completed') {
+      console.log('Phase Completion Validator: Not a phase transition, skipping');
+      process.exit(0);
+    }
+
     const phase = detectPhase(taskSubject);
 
     if (!phase) {
@@ -482,21 +605,21 @@ function main() {
     const result = validatePhaseCompletion(phase, sessionPath);
 
     if (result.warnings.length > 0) {
-      console.log(`\n⚠️  Warnings for ${result.phaseName}:`);
+      console.log(`\nWarnings for ${result.phaseName}:`);
       result.warnings.forEach(w => console.log(`   - ${w}`));
     }
 
     if (!result.valid) {
-      console.error(`\n❌ BLOCKED: Cannot complete ${result.phaseName}`);
+      console.error(`\nBLOCKED: Cannot complete ${result.phaseName}`);
       console.error('\nMissing requirements:');
       result.errors.forEach(e => console.error(`   - ${e}`));
       console.error('\nSession path:', sessionPath);
 
       // Generate detailed failure report with manual testing steps
-      console.error('\n📋 Generating failure report with manual testing steps...\n');
+      console.error('\nGenerating failure report with manual testing steps...\n');
       generateFailureReport(phase, sessionPath, result.errors, result.warnings);
 
-      console.error('\n💡 See failure report for:');
+      console.error('\nSee failure report for:');
       console.error('   - What was expected');
       console.error('   - Why it failed');
       console.error('   - Manual testing steps');
@@ -505,7 +628,7 @@ function main() {
       process.exit(1);
     }
 
-    console.log(`\n✅ ${result.phaseName} completion validated`);
+    console.log(`\n${result.phaseName} completion validated`);
     console.log(`   Session: ${sessionPath}`);
     process.exit(0);
 
