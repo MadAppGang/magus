@@ -141,7 +141,6 @@ For each external model result:
 
 ## Related Skills
 
-- **multimodel:proxy-mode-reference** - Complete claudish CLI documentation with routing prefixes
 - **multimodel:multi-model-validation** - Full parallel validation patterns
 - **multimodel:model-tracking-protocol** - Progress tracking during reviews
 - **multimodel:error-recovery** - Handle failures and timeouts

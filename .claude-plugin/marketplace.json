@@ -40,8 +40,8 @@
     {
       "name": "multimodel",
       "source": "./plugins/multimodel",
-      "description": "Multi-model collaboration, orchestration, and workflow patterns. v2.4.3: Team command and skill updates.",
-      "version": "2.4.3",
+      "description": "Multi-model collaboration, orchestration, and workflow patterns. v2.4.4: Fix provider prefix injection, load default models from preferences.",
+      "version": "2.4.4",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",

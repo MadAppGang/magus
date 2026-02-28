@@ -147,7 +147,7 @@ args:
     })
     ```
 
-    Where {model-slug} is the model ID with slashes replaced by dashes (e.g., "x-ai-grok-code-fast-1").
+    Where {model-slug} is the model ID used as a filename-safe string (e.g., "minimax-m2.5", "kimi-k2.5").
 
     All model calls (Task + Bash) are launched in a SINGLE message for parallel execution.
     run_in_background is true when launching 2+ models.
