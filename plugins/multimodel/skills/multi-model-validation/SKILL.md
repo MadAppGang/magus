@@ -725,7 +725,7 @@ Bash({
 
 # ✅ CORRECT: Internal model via Task
 Task({
-  subagent_type: "dev:researcher",  // or dev:debugger, agentdev:reviewer, etc. — resolved from task type
+  subagent_type: "dev:researcher",  // or dev:debugger, dev:architect, etc. — resolved from task type
   description: "Internal Claude review",
   run_in_background: true,
   prompt: "Review the design plan...\n\nWrite to: session/internal-result.md"

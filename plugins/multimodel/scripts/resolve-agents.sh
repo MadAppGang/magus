@@ -53,7 +53,7 @@ resolve_agent() {
     debugging|debug|trace)
       echo "dev:debugger" ;;
     review|audit|check|validate)
-      echo "agentdev:reviewer" ;;
+      echo "dev:researcher" ;;
     architecture|design|plan)
       echo "dev:architect" ;;
     implementation|coding|build|create)

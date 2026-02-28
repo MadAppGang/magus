@@ -3,7 +3,7 @@
     "description": "Test cases for /multimodel:team command orchestration. Verifies correct model invocation: internal via Task({resolved_agent}), external via Bash(claudish). Tests dynamic agent routing, parallel launch, session dir, vote template, no pre-digestion, and model verification.",
     "version": "2.2.0",
     "created": "2026-02-11",
-    "notes": "v2.2.0: Dynamic agent routing — task keywords determine subagent_type from context_detection table. Review→agentdev:reviewer, debug→dev:debugger, architecture→dev:architect. Default: dev:researcher."
+    "notes": "v2.2.0: Dynamic agent routing — task keywords determine subagent_type from context_detection table. Review→dev:researcher, debug→dev:debugger, architecture→dev:architect. Default: dev:researcher."
   },
   "model_aliases": {
     "grok": "grok-code-fast-1",
@@ -19,7 +19,7 @@
       "description": "Internal-only model should use Task with dynamically resolved agent, no Bash claudish",
       "prompt": "/multimodel:team --models internal --no-memory Review the plugin.json structure in the dev plugin",
       "checks": {
-        "task_agent_is": "agentdev:reviewer",
+        "task_agent_is": "dev:researcher",
         "task_min_count": 1,
         "no_proxy_mode_in_tasks": true,
         "has_vote_template": true
@@ -47,7 +47,7 @@
         "internal_uses_task": true,
         "external_uses_bash": true,
         "bash_has_claudish": true,
-        "task_agent_is": "agentdev:reviewer",
+        "task_agent_is": "dev:researcher",
         "bash_run_in_background": true,
         "run_in_background": true
       },
@@ -128,7 +128,7 @@
       "checks": {
         "run_in_background": true,
         "bash_run_in_background": true,
-        "task_agent_is": "agentdev:reviewer"
+        "task_agent_is": "dev:researcher"
       },
       "tags": ["parallel", "background", "agent-routing"]
     },

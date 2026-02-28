@@ -59,7 +59,7 @@ if [ "${TOOL_NAME}" = "Task" ]; then
 
   # RULE 1: /team workflow enforcement (detect by vote block pattern in prompt)
   # Whitelist of valid agents for /team (matches context_detection in team.md)
-  VALID_AGENTS="dev:researcher dev:debugger dev:developer dev:architect dev:test-architect dev:devops dev:ui agentdev:reviewer"
+  VALID_AGENTS="dev:researcher dev:debugger dev:developer dev:architect dev:test-architect dev:devops dev:ui"
 
   if echo "${PROMPT}" | grep -q "Team Vote: Independent Review Request\|VERDICT:.*APPROVE\|Required Vote Format"; then
     if [ -n "${SUBAGENT}" ]; then

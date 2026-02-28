@@ -42,7 +42,7 @@ The PreToolUse hook intercepts Task and Bash tool calls at runtime:
 
 Detects /team workflows by vote template pattern in Task prompts. Blocks:
 
-- **Wrong agent for /team Tasks:** Only agents in the whitelist are allowed: `dev:researcher`, `dev:debugger`, `dev:developer`, `dev:architect`, `dev:test-architect`, `dev:devops`, `dev:ui`, `agentdev:reviewer`
+- **Wrong agent for /team Tasks:** Only agents in the whitelist are allowed: `dev:researcher`, `dev:debugger`, `dev:developer`, `dev:architect`, `dev:test-architect`, `dev:devops`, `dev:ui`
 - **Insecure paths:** No `/tmp/` paths in Task prompts (use `ai-docs/sessions/`)
 
 ### Layer 2: model: opus
@@ -55,7 +55,7 @@ much more reliably than Sonnet (~90% vs ~33% compliance).
 | Task Type | Primary Agent | Alternatives |
 |-----------|--------------|--------------|
 | Investigation | dev:researcher | dev:debugger |
-| Review | agentdev:reviewer | frontend:reviewer |
+| Review | dev:researcher | frontend:reviewer |
 | Architecture | dev:architect | frontend:architect, agentdev:architect |
 | Implementation | dev:developer | frontend:developer, agentdev:developer |
 | Testing | dev:test-architect | frontend:test-architect |
@@ -75,7 +75,7 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/resolve-agents.sh" \
 
 > **Note:** The agent varies by task type. The `/team` command resolves the agent dynamically
 > from the `<context_detection>` table in `team.md` based on task keywords (e.g., "debug" → `dev:debugger`,
-> "review" → `agentdev:reviewer`). The hook enforces a whitelist of all valid agents.
+> "review" → `dev:researcher`). The hook enforces a whitelist of all valid agents.
 
 Output:
 ```json

@@ -209,10 +209,9 @@ args:
   <agent_roles>
     | Agent | Role Description |
     |-------|-----------------|
-    | dev:researcher | Research analyst focused on thorough investigation |
+    | dev:researcher | Research analyst and code reviewer |
     | dev:debugger | Debugging specialist focused on root cause analysis |
     | dev:developer | Implementation specialist focused on code quality |
-    | agentdev:reviewer | Code reviewer focused on quality and correctness |
     | dev:architect | System architect focused on design trade-offs |
     | dev:test-architect | Testing specialist focused on test strategy |
     | dev:devops | DevOps specialist focused on deployment and infra |
@@ -300,8 +299,7 @@ args:
         "review": ["models for code review tasks"]
       },
       "agentPreferences": {
-        "debug": "dev:debugger",
-        "review": "agentdev:reviewer"
+        "debug": "dev:debugger"
       },
       "customAliases": { "alias": "full-model-id" },
       "history": []
@@ -317,7 +315,7 @@ args:
     | debug | debug, error, bug, fix, trace, issue | grok, glm, minimax | dev:debugger |
     | research | research, investigate, analyze, explore, find | gemini, gpt-5, glm | dev:researcher |
     | coding | implement, build, create, code, develop, feature | grok, minimax, deepseek | dev:developer |
-    | review | review, audit, check, validate, verify | gemini, gpt-5, glm, grok | agentdev:reviewer |
+    | review | review, audit, check, validate, verify | gemini, gpt-5, glm, grok | dev:researcher |
     | architecture | architecture, design, plan, system, refactor | gemini, gpt-5, glm | dev:architect |
     | testing | test, coverage, unit test, integration, e2e | grok, minimax, deepseek | dev:test-architect |
     | devops | deploy, infrastructure, ci, cd, pipeline, docker | grok, deepseek, minimax | dev:devops |
