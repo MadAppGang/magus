@@ -15,20 +15,16 @@
 
 | Plugin | Version | Purpose |
 |--------|---------|---------|
-| **Frontend** | v3.15.2 | React/TypeScript dev with 11 agents, multi-model review |
 | **Code Analysis** | v3.2.3 | Codebase investigation with claudemem, enrichment mode (non-blocking) |
-| **Bun Backend** | v1.6.2 | TypeScript backend with Bun, Apidog integration |
 | **Multimodel** | v2.4.2 | Multi-model collaboration and orchestration |
 | **Agent Development** | v1.5.3 | Create Claude Code agents and plugins |
 | **SEO** | v1.6.3 | SEO analysis and optimization with AUTO GATEs |
 | **Video Editing** | v1.1.1 | FFmpeg, Whisper, Final Cut Pro integration |
 | **Nanobanana** | v2.3.1 | AI image generation with Gemini 3 Pro Image |
 | **Conductor** | v2.1.1 | Context-Driven Development with TDD and Git Notes |
-| **Terminal** | v1.0.0 | Interactive terminal via ht-mcp + tmux-mcp |
-| **Statusline** | v1.4.1 | Colorful statusline with worktree awareness |
-| **Autopilot** | v0.2.1 | Autonomous task execution with Linear integration |
-| **Instantly** | v1.0.3 | Cold email outreach with Instantly.ai MCP |
 | **Dev** | v1.33.0 | Universal dev assistant with coaching system, 47 skills |
+| **Statusline** | v1.4.1 | Colorful statusline with worktree awareness |
+| **Terminal** | v1.0.0 | Interactive terminal via ht-mcp + tmux-mcp |
 
 **Claudish CLI**: `npm install -g claudish` - Run Claude with OpenRouter models (separate repo)
 
@@ -229,44 +225,40 @@ NOTE: Skills use the `Skill` tool, NOT the `Task` tool. The `namespace:name` for
 **Detailed Release Notes:** See [RELEASES.md](./RELEASES.md) for comprehensive release documentation
 
 **Current Versions:**
-- Multimodel Plugin: **v2.4.2** (2026-02-27)
-- Frontend Plugin: **v3.15.2** (2026-02-27)
 - Code Analysis Plugin: **v3.2.3** (2026-02-27)
-- Bun Backend Plugin: **v1.6.2** (2026-02-27)
+- Multimodel Plugin: **v2.4.2** (2026-02-27)
 - Agent Development Plugin: **v1.5.3** (2026-02-27)
 - SEO Plugin: **v1.6.3** (2026-02-27)
 - Video Editing Plugin: **v1.1.1** (2026-02-27)
 - Nanobanana Plugin: **v2.3.1** (2026-02-27)
 - Conductor Plugin: **v2.1.1** (2026-02-27)
-- Terminal Plugin: **v1.0.0** (2026-02-27)
-- Statusline Plugin: **v1.4.1** (2026-02-27)
-- Autopilot Plugin: **v0.2.1** (2026-02-27)
-- Instantly Plugin: **v1.0.3** (2026-02-27)
 - Dev Plugin: **v1.33.0** (2026-02-27)
+- Statusline Plugin: **v1.4.1** (2026-02-27)
+- Terminal Plugin: **v1.0.0** (2026-02-27)
 - Claudish CLI: See https://github.com/MadAppGang/claudish (separate repository)
 
-**Latest Changes (Marketplace v7.0.0 — 2026-02-27):**
-- ✅ **Marketplace Rename**: mag-claude-plugins → magus across all 15 plugins
+**Latest Changes (Marketplace v7.1.0 — 2026-02-28):**
+- ✅ **Marketplace Cleanup**: Removed bun, frontend, instantly, autopilot from public listing (10 plugins)
+- ✅ **claudeup v3.5.0**: Full mag-claude-plugins ghost removal (directory rename, git remote, repo alias dedup)
+
+**Previous (Marketplace v7.0.0 — 2026-02-27):**
+- ✅ **Marketplace Rename**: mag-claude-plugins → magus across all plugins
 - ✅ **Workflow Coaching** (Dev v1.33.0): Stop/SessionStart hooks, 8 rule-based detections, cross-session persistence
 - ✅ **Terminal Plugin** (v1.0.0): ht-mcp + tmux-mcp integration, 9 E2E tests, 100% pass across 3 models
 - ✅ **Statusline Fix** (v1.4.1): UTC timezone for countdown, days/hours duration formatting
 - ✅ **Landing Page**: React + Vite + Tailwind marketplace landing page
 
 **Git Tags:**
-- Multimodel: `plugins/multimodel/v2.4.2`
-- Frontend: `plugins/frontend/v3.15.2`
-- Bun: `plugins/bun/v1.6.2`
 - Code Analysis: `plugins/code-analysis/v3.2.3`
+- Multimodel: `plugins/multimodel/v2.4.2`
 - Agent Development: `plugins/agentdev/v1.5.3`
 - SEO: `plugins/seo/v1.6.3`
 - Video Editing: `plugins/video-editing/v1.1.1`
 - Nanobanana: `plugins/nanobanana/v2.3.1`
 - Conductor: `plugins/conductor/v2.1.1`
-- Terminal: `plugins/terminal/v1.0.0`
-- Statusline: `plugins/statusline/v1.4.1`
-- Autopilot: `plugins/autopilot/v0.2.1`
-- Instantly: `plugins/instantly/v1.0.3`
 - Dev: `plugins/dev/v1.33.0`
+- Statusline: `plugins/statusline/v1.4.1`
+- Terminal: `plugins/terminal/v1.0.0`
 - Use correct tag format when releasing: `plugins/{plugin-name}/vX.Y.Z`
 
 **⚠️ RELEASE CHECKLIST (ALL 3 REQUIRED):**
@@ -289,12 +281,12 @@ The workflow `.github/workflows/claudeup-release.yml` triggers on `tools/claudeu
 - Publishes to npm via OIDC (no tokens needed - Trusted Publisher configured)
 - Creates GitHub release
 
-**Current claudeup version:** v1.3.0
+**Current claudeup version:** v3.5.0
 **Install:** `bun install -g claudeup@latest`
 
 ---
 
 **Maintained by:** Jack Rudenko @ MadAppGang
-**Last Updated:** February 27, 2026
-**Version:** 15 plugins (Multimodel v2.4.2, Frontend v3.15.2, Code Analysis v3.2.3, Bun v1.6.2, Agent Dev v1.5.3, SEO v1.6.3, Video Editing v1.1.1, Nanobanana v2.3.1, Conductor v2.1.1, Terminal v1.0.0, Statusline v1.4.1, Autopilot v0.2.1, Instantly v1.0.3, Dev v1.33.0)
+**Last Updated:** February 28, 2026
+**Version:** 10 plugins (Code Analysis v3.2.3, Multimodel v2.4.2, Agent Dev v1.5.3, SEO v1.6.3, Video Editing v1.1.1, Nanobanana v2.3.1, Conductor v2.1.1, Dev v1.33.0, Statusline v1.4.1, Terminal v1.0.0)
 - do not use hardcoded path in code, docs, comments or any other files

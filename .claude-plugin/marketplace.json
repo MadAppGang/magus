@@ -7,7 +7,7 @@
   },
   "metadata": {
     "description": "Curated collection of Claude Code plugins for modern full-stack development with LLM performance tracking and E2E skill testing",
-    "version": "7.0.0",
+    "version": "7.1.0",
     "pluginRoot": "./plugins"
   },
   "plugins": [
