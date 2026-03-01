@@ -17,13 +17,13 @@
 | Plugin | Version | Purpose |
 |--------|---------|---------|
 | **Code Analysis** | v3.2.3 | Codebase investigation with claudemem, enrichment mode (non-blocking) |
-| **Multimodel** | v2.4.3 | Multi-model collaboration and orchestration |
+| **Multimodel** | v2.4.5 | Multi-model collaboration and orchestration |
 | **Agent Development** | v1.5.3 | Create Claude Code agents and plugins |
 | **SEO** | v1.6.3 | SEO analysis and optimization with AUTO GATEs |
 | **Video Editing** | v1.1.1 | FFmpeg, Whisper, Final Cut Pro integration |
 | **Nanobanana** | v2.3.1 | AI image generation with Gemini 3 Pro Image |
 | **Conductor** | v2.1.1 | Context-Driven Development with TDD and Git Notes |
-| **Dev** | v1.34.0 | Universal dev assistant with workflow enforcement, 47 skills |
+| **Dev** | v1.35.0 | Universal dev assistant with workflow enforcement, 47 skills |
 | **Statusline** | v1.4.1 | Colorful statusline with worktree awareness |
 | **Terminal** | v2.0.0 | Intent-level terminal: run, watch, observe, repl, tui + ht-mcp/tmux-mcp |
 
@@ -41,13 +41,13 @@ claude-code/
 │   └── marketplace.json       # Marketplace plugin listing
 ├── plugins/                   # All plugins (10 published, 5 unlisted)
 │   ├── code-analysis/         # v3.2.3 — 13 skills, 1 agent
-│   ├── multimodel/            # v2.4.3 — 15 skills
+│   ├── multimodel/            # v2.4.5 — 15 skills
 │   ├── agentdev/              # v1.5.3 — 5 skills
 │   ├── seo/                   # v1.6.3 — 12 skills
 │   ├── video-editing/         # v1.1.1 — 3 skills
 │   ├── nanobanana/            # v2.3.1 — 2 skills
 │   ├── conductor/             # v2.1.1 — 6 skills
-│   ├── dev/                   # v1.34.0 — 47 skills, workflow enforcement
+│   ├── dev/                   # v1.35.0 — 47 skills, workflow enforcement
 │   ├── statusline/            # v1.4.1 — 1 skill
 │   ├── terminal/              # v1.0.0 — 2 skills, ht-mcp + tmux-mcp
 │   └── (bun, frontend, go, instantly, autopilot — unlisted)

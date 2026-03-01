@@ -1,7 +1,7 @@
 {
   "name": "multimodel",
-  "version": "2.4.4",
-  "description": "Multi-model collaboration, orchestration, and workflow patterns. v2.4.0: Removed PROXY_MODE (67% failure rate). External models now use deterministic Bash+claudish CLI. Updated /team command, hooks, and all skills.",
+  "version": "2.4.5",
+  "description": "Multi-model collaboration, orchestration, and workflow patterns. v2.4.5: Dynamic agent routing for /team — routes to specialized agents (debugger, architect, developer) based on task keywords.",
   "author": "MadAppGang",
   "license": "MIT",
   "homepage": "https://github.com/MadAppGang/magus",
