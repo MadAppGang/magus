@@ -39,6 +39,11 @@ Temporary Items
 .claude/settings.local.json
 .claude/**/*.secret.json
 .claude/.coaching/
+.claude/tasks.md
+
+# Plugin runtime state (coaching, logs)
+**/.claude/.coaching/
+**/claudish-usage.log
 
 # Secrets (NEVER commit!)
 **/*.secret.json
