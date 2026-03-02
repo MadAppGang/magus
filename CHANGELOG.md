@@ -5,6 +5,12 @@ All notable changes to the Magus project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Dev 1.35.1] - 2026-03-02
+
+### Changed
+- **Coaching box formatting** - Workflow coaching suggestions now use visual insight-style boxes (`★ Coaching ───`) matching the explanatory output style, making them clearly distinct from conversation content
+- Removed `WORKFLOW_COACHING=off` disable line from coaching output for cleaner presentation
+
 ## [Marketplace 4.3.0] - 2025-11-28
 
 ### Changed

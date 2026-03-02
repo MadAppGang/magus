@@ -191,8 +191,8 @@
     {
       "name": "dev",
       "source": "./plugins/dev",
-      "description": "Universal development assistant with real skill discovery. v1.35.0: Add dev:reviewer agent — research-backed 3-pass code review.",
-      "version": "1.35.0",
+      "description": "Universal development assistant with real skill discovery. v1.35.1: Coaching box formatting — visual insight-style boxes for workflow suggestions.",
+      "version": "1.35.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",

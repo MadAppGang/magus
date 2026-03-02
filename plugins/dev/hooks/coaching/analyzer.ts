@@ -399,10 +399,8 @@ function formatRecommendations(
 
   const lines: string[] = [
     "",
-    "---",
-    "## Workflow Coaching (from previous session)",
-    "",
-    `*Analyzed: session ${sessionId.substring(0, 8)}...*`,
+    "`★ Coaching ────────────────────────────────────`",
+    `*Session ${sessionId.substring(0, 8)}...*`,
     "",
   ];
 
@@ -411,10 +409,7 @@ function formatRecommendations(
     lines.push("");
   }
 
-  lines.push(
-    "*To disable: set `WORKFLOW_COACHING=off` in your environment.*"
-  );
-  lines.push("---");
+  lines.push("`─────────────────────────────────────────────────`");
   lines.push("");
 
   return lines.join("\n");
