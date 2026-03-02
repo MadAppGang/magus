@@ -14,8 +14,8 @@
     {
       "name": "code-analysis",
       "source": "./plugins/code-analysis",
-      "description": "Deep code investigation with claudemem. v3.2.4: Fix orchestration→multimodel skill namespace. v3.0.0: ENRICHMENT MODE.",
-      "version": "3.2.4",
+      "description": "Deep code investigation with claudemem MCP server. v4.0.0: MCP-based architecture with 18 tools (map, symbol, callers, callees, context, search, structural analysis). Removed hook-based enrichment.",
+      "version": "4.0.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -33,7 +33,9 @@
         "code-navigation",
         "semantic-search",
         "claudemem",
-        "enrichment"
+        "mcp",
+        "ast",
+        "structural-analysis"
       ],
       "strict": true
     },
@@ -191,8 +193,8 @@
     {
       "name": "dev",
       "source": "./plugins/dev",
-      "description": "Universal development assistant with real skill discovery. v1.36.2: Fix orchestration→multimodel skill namespace migration across all commands.",
-      "version": "1.36.2",
+      "description": "Universal development assistant with real skill discovery. v1.36.3: Split coaching AI/human instructions — clean data/presentation separation.",
+      "version": "1.36.3",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",

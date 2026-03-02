@@ -32,10 +32,9 @@ COACHING_CONTENT=$(cat "$RECS_FILE" 2>/dev/null || true)
 # Empty file -> nothing to inject
 [ -z "$COACHING_CONTENT" ] && exit 0
 
-# Wrap recommendations in behavioral instructions.
-# Pattern: tell Claude HOW to present the content, not just what the content is.
-# This matches the explanatory-output-style plugin's SessionStart approach.
-# Uses the same backtick box visual treatment as ★ Insight boxes.
+# ── AI-only instructions (never shown to user) ──────────────────────────────
+# These behavioral directives tell Claude HOW to present coaching suggestions.
+# The user only sees the formatted output Claude generates, not these instructions.
 BEHAVIORAL_INSTRUCTIONS="## Workflow Coaching Instructions
 
 You have received workflow coaching suggestions from the user's previous session.
@@ -44,6 +43,16 @@ PRESENT these suggestions to the user at the start of this session as visible ou
 Do NOT silently discard them. Do NOT summarize or paraphrase them.
 Output them verbatim, formatted as shown below, BEFORE responding to the user's first message.
 
+── FORMAT (use this exact visual box) ──
+
+\`★ Coaching ────────────────────────────────────\`
+*Session {session_id}...*
+
+1. {suggestion text}
+
+\`─────────────────────────────────────────────────\`
+
+── SUGGESTIONS DATA ──
 
 ${COACHING_CONTENT}
 

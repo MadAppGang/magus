@@ -397,19 +397,18 @@ function formatRecommendations(
 ): string {
   if (suggestions.length === 0) return "";
 
+  // Output raw data only — no visual formatting.
+  // The SessionStart hook controls presentation via behavioral instructions.
   const lines: string[] = [
-    "",
-    "`★ Coaching ────────────────────────────────────`",
-    `*Session ${sessionId.substring(0, 8)}...*`,
+    `session: ${sessionId.substring(0, 8)}`,
+    `count: ${suggestions.length}`,
     "",
   ];
 
   for (let i = 0; i < suggestions.length; i++) {
     lines.push(`${i + 1}. ${suggestions[i].suggestion}`);
-    lines.push("");
   }
 
-  lines.push("`─────────────────────────────────────────────────`");
   lines.push("");
 
   return lines.join("\n");

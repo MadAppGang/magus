@@ -1,7 +1,7 @@
 {
   "name": "dev",
-  "version": "1.36.2",
-  "description": "Universal development assistant with real skill discovery. v1.36.2: Fix orchestration→multimodel skill namespace migration. 47 skills.",
+  "version": "1.36.3",
+  "description": "Universal development assistant with real skill discovery. v1.36.3: Split coaching AI/human instructions — clean data/presentation separation. 47 skills.",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",
