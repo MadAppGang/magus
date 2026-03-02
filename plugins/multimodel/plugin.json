@@ -1,7 +1,7 @@
 {
   "name": "multimodel",
-  "version": "2.4.5",
-  "description": "Multi-model collaboration, orchestration, and workflow patterns. v2.4.5: Dynamic agent routing for /team — routes to specialized agents (debugger, architect, developer) based on task keywords.",
+  "version": "2.5.0",
+  "description": "Multi-model collaboration, orchestration, and workflow patterns. v2.5.0: Claude Code flag passthrough via claudish v5.3.0 — claudeFlags in preferences flow through to external models.",
   "author": "MadAppGang",
   "license": "MIT",
   "homepage": "https://github.com/MadAppGang/magus",

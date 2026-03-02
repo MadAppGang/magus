@@ -38,7 +38,7 @@ args:
   to Step 3 to Step 4 without stopping. This is a non-interactive workflow.
 
   <mandatory_rules>
-    FIVE HARD REQUIREMENTS - violating any one makes the entire workflow fail:
+    SIX HARD REQUIREMENTS - violating any one makes the entire workflow fail:
 
     0. MODEL NAMES VERBATIM:
        Pass model names EXACTLY as the user provides them to `claudish --model`.
@@ -73,6 +73,15 @@ args:
        When there are 2+ models, ALL model calls (Task and Bash) MUST be in a SINGLE
        message with run_in_background: true on every call. This ensures parallel execution.
        For a single model, run_in_background is optional.
+
+    5. CLAUDE CODE FLAG PASSTHROUGH:
+       If the preferences file (`.claude/multimodel-team.json`) contains a `claudeFlags` field
+       with a non-empty string value, you MUST append those flags to EVERY claudish command.
+       Place them after `--quiet` and before the `<` input redirect.
+       Example: if claudeFlags is `--effort high`, the command MUST be:
+       `claudish --model {MODEL_ID} --stdin --quiet --effort high < vote-prompt.md > result.md ...`
+       NOT: `claudish --model {MODEL_ID} --stdin --quiet < vote-prompt.md > result.md ...`
+       Omitting claudeFlags when they are configured is a WORKFLOW VIOLATION.
   </mandatory_rules>
 
   <step_1 name="Setup">
@@ -83,7 +92,7 @@ args:
        If NOT_FOUND: display install instructions and stop.
 
     b. Read `.claude/multimodel-team.json` using the Read tool. This is MANDATORY setup, not pre-solving.
-       Parse the JSON to extract: defaultModels, contextPreferences, customAliases, defaultThreshold.
+       Parse the JSON to extract: defaultModels, contextPreferences, customAliases, defaultThreshold, claudeFlags.
 
     c. Parse command arguments: task, --models, --threshold, --no-memory.
 
@@ -105,6 +114,15 @@ args:
         Store as {RESOLVED_AGENT}. Announce: "Task type: {context} → Agent: {RESOLVED_AGENT}"
 
     f. Save model selection to preferences unless --no-memory.
+
+    f2. MANDATORY — Resolve Claude Code flags for external models:
+        Read the `claudeFlags` field from the preferences file parsed in step b.
+        If `claudeFlags` is present and non-empty, you MUST include these flags in EVERY
+        claudish command in Step 2. Place them after `--quiet` and before the `<` redirect.
+        If `claudeFlags` is absent or empty, omit the placeholder (no extra flags).
+        Example: if claudeFlags is `--effort high`, the command becomes:
+        `claudish --model {MODEL_ID} --stdin --quiet --effort high < vote-prompt.md > result.md`
+        These flags pass through to Claude Code via claudish v5.3.0's two-pass parser.
 
     g. Determine threshold (default: majority/50%).
 
@@ -141,13 +159,19 @@ args:
     For each external model (deterministic Bash+claudish):
     ```
     Bash({
-      command: "claudish --model {MODEL_ID} --stdin --quiet < {SESSION_DIR}/vote-prompt.md > {SESSION_DIR}/{model-slug}-result.md 2>{SESSION_DIR}/{model-slug}-stderr.log; echo $? > {SESSION_DIR}/{model-slug}.exit",
+      command: "claudish --model {MODEL_ID} --stdin --quiet {CLAUDE_FLAGS} < {SESSION_DIR}/vote-prompt.md > {SESSION_DIR}/{model-slug}-result.md 2>{SESSION_DIR}/{model-slug}-stderr.log; echo $? > {SESSION_DIR}/{model-slug}.exit",
       description: "Run {Model Name} vote via claudish",
       run_in_background: true
     })
     ```
 
     Where {model-slug} is the model ID used as a filename-safe string (e.g., "minimax-m2.5", "kimi-k2.5").
+
+    CRITICAL: If `claudeFlags` was read from preferences in step f2, substitute {CLAUDE_FLAGS} with
+    those exact flags. For example, if claudeFlags was `--effort high --max-budget-usd 0.50`, the command is:
+    `claudish --model grok-code-fast-1 --stdin --quiet --effort high --max-budget-usd 0.50 < ...`
+    If no claudeFlags, omit {CLAUDE_FLAGS} entirely (just `--stdin --quiet` as before).
+    claudish v5.3.0's two-pass parser forwards these flags directly to Claude Code.
 
     All model calls (Task + Bash) are launched in a SINGLE message for parallel execution.
     run_in_background is true when launching 2+ models.
@@ -288,10 +312,11 @@ args:
     **File:** `.claude/multimodel-team.json`
     ```json
     {
-      "schemaVersion": "2.0.0",
+      "schemaVersion": "2.1.0",
       "lastUpdated": "ISO-8601 timestamp",
       "defaultModels": ["model-id-1", "model-id-2"],
       "defaultThreshold": "majority|supermajority|unanimous",
+      "claudeFlags": "--effort high --max-budget-usd 0.50",
       "contextPreferences": {
         "debug": ["models for debugging tasks"],
         "research": ["models for research tasks"],
@@ -307,6 +332,10 @@ args:
     ```
     `agentPreferences` is optional. When present, overrides the default agent from `<context_detection>`
     for specific contexts. If absent, agents are resolved from the table's Agent column.
+
+    `claudeFlags` is optional. When present, these Claude Code flags are passed through to claudish
+    for every external model invocation. Claudish v5.3.0's two-pass parser forwards them to Claude Code.
+    Example flags: `--effort high`, `--permission-mode plan`, `--max-budget-usd 0.50`, `--allowedTools "Read Grep"`.
   </preferences_schema>
 
   <context_detection>

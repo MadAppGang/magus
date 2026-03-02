@@ -1,11 +1,11 @@
 ---
 name: task-external-models
-version: 2.0.0
-description: Quick-reference for using external AI models in orchestration workflows. External models are invoked via Bash+claudish CLI (deterministic, 100% reliable). Use when confused about how to run external models, "claudish with Bash", "external model in /team", or "how to specify external model". Trigger keywords - "external model", "claudish", "Bash claudish", "external LLM", "model parameter".
-tags: [external-model, quick-reference, bash, claudish, agent-cli]
-keywords: [external model, grok, gemini, gpt-5, minimax, claudish, bash, external LLM, cli]
+version: 3.0.0
+description: Quick-reference for using external AI models in orchestration workflows. External models are invoked via Bash+claudish CLI (deterministic, 100% reliable). Claudish v5.3.0 supports Claude Code flag passthrough — unknown flags flow through to Claude Code automatically. Use when confused about how to run external models, "claudish with Bash", "external model in /team", or "how to specify external model". Trigger keywords - "external model", "claudish", "Bash claudish", "external LLM", "model parameter", "flag passthrough".
+tags: [external-model, quick-reference, bash, claudish, agent-cli, flag-passthrough]
+keywords: [external model, grok, gemini, gpt-5, minimax, claudish, bash, external LLM, cli, flag passthrough, effort, permission-mode]
 plugin: multimodel
-updated: 2026-02-11
+updated: 2026-03-02
 ---
 
 # External Models: Quick Reference
@@ -36,9 +36,17 @@ External AI models are invoked via **Bash+claudish CLI**. This is deterministic 
 claudish --model {MODEL_ID} --stdin --quiet < prompt.md > result.md
 ```
 
+**With Claude Code flag passthrough (claudish v5.3.0+):**
+```bash
+claudish --model {MODEL_ID} --stdin --quiet --effort high --permission-mode plan < prompt.md > result.md
+```
+Claudish's two-pass parser recognizes its own flags (`--model`, `--stdin`, `--quiet`) and forwards
+unknown flags (`--effort`, `--permission-mode`) directly to Claude Code.
+
 **In /team orchestration:**
 - **Internal model** (Claude) → `Task(subagent_type: "{RESOLVED_AGENT}")` — agent auto-detected from task type
-- **External models** (Grok, Gemini, etc.) → `Bash(claudish --model {MODEL_ID} --stdin)`
+- **External models** (Grok, Gemini, etc.) → `Bash(claudish --model {MODEL_ID} --stdin {CLAUDE_FLAGS})`
+- **{CLAUDE_FLAGS}** comes from `claudeFlags` in `.claude/multimodel-team.json`
 
 ---
 
@@ -56,13 +64,27 @@ claudish --model gemini-3-pro-preview --stdin --quiet < task.md > gemini.md 2>ge
 claudish --model gpt-5.2-codex --stdin --quiet < task.md > gpt5.md 2>gpt5-err.log; echo $? > gpt5.exit
 ```
 
-**CLI Reference:**
+**CLI Reference (claudish v5.3.0+):**
 ```
-claudish [options]
+claudish [options] [-- claude-code-flags...]
 
+Claudish-owned flags:
 --model <id>         AI model to use (e.g., grok-code-fast-1, minimax-m2.5)
 --stdin              Read prompt from stdin
 --quiet              Minimal output
+-y, --auto-approve   Skip permission checks
+--debug, -d          Enable claudish debug logging
+--profile, -p        Select model profile
+
+Passthrough flags (forwarded to Claude Code):
+--effort <level>     low, medium, high
+--permission-mode    acceptEdits, bypassPermissions, default, dontAsk, plan
+--max-budget-usd     Spending cap for the session
+--allowedTools       Restrict available tools
+--system-prompt      Override system prompt
+--append-system-prompt  Append to system prompt
+--settings           Merged with claudish statusLine config
+(any other unknown flag is forwarded automatically)
 ```
 
 **Parallel Execution in /team:**
@@ -81,13 +103,14 @@ Task({
 
 // External models via Bash+claudish (all in same message)
 // IMPORTANT: Use model names exactly as user provided — no provider prefixes
+// {CLAUDE_FLAGS} comes from claudeFlags in .claude/multimodel-team.json (may be empty)
 Bash({
-  command: "claudish --model grok-code-fast-1 --stdin --quiet < {SESSION_DIR}/vote-prompt.md > {SESSION_DIR}/grok-result.md 2>{SESSION_DIR}/grok-stderr.log; echo $? > {SESSION_DIR}/grok.exit",
+  command: "claudish --model grok-code-fast-1 --stdin --quiet {CLAUDE_FLAGS} < {SESSION_DIR}/vote-prompt.md > {SESSION_DIR}/grok-result.md 2>{SESSION_DIR}/grok-stderr.log; echo $? > {SESSION_DIR}/grok.exit",
   run_in_background: true
 })
 
 Bash({
-  command: "claudish --model gemini-3-pro-preview --stdin --quiet < {SESSION_DIR}/vote-prompt.md > {SESSION_DIR}/gemini-result.md 2>{SESSION_DIR}/gemini-stderr.log; echo $? > {SESSION_DIR}/gemini.exit",
+  command: "claudish --model gemini-3-pro-preview --stdin --quiet {CLAUDE_FLAGS} < {SESSION_DIR}/vote-prompt.md > {SESSION_DIR}/gemini-result.md 2>{SESSION_DIR}/gemini-stderr.log; echo $? > {SESSION_DIR}/gemini.exit",
   run_in_background: true
 })
 ```
@@ -102,6 +125,8 @@ Bash({
 | Not capturing exit code | No way to detect failures | Add `; echo $? > result.exit` |
 | Not capturing stderr | Error details lost | Add `2>stderr.log` |
 | `$(cat file.md)` in Task prompt | Shell expansion doesn't work in JSON string parameters | Read file content first, then include in prompt |
+| Worrying about flag order | Not needed with claudish v5.3.0 two-pass parser | Known flags are recognized anywhere in the command |
+| Adding provider prefixes to `--model` | claudish handles routing internally | Pass bare model names exactly as provided |
 
 ---
 

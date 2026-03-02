@@ -4,6 +4,8 @@ Analyze a /team command JSONL transcript for orchestration correctness.
 
 Usage: python3 analyze-transcript.py <transcript.jsonl> <checks_json>
 
+v2.3.0: Added bash_claudish_has_passthrough_flags and bash_claudish_no_passthrough_flags
+checks for claudish v5.3.0 flag passthrough validation.
 v2.2.0: Added no_provider_prefix_in_model and reads_preferences_file checks.
 v2.1.0: Updated for claudish v4.5.1 (--agent flag removed). External models use
 Bash(claudish --model), internal models use Task(dev:researcher).
@@ -34,6 +36,10 @@ Checks JSON format:
   # Provider prefix checks
   "no_provider_prefix_in_model": true,  # No provider/ prefix in --model values
   "reads_preferences_file": true,       # Read tool used on multimodel-team.json
+
+  # Flag passthrough checks (claudish v5.3.0+)
+  "bash_claudish_has_passthrough_flags": "--effort",  # Claudish cmd contains this passthrough flag
+  "bash_claudish_no_passthrough_flags": true,          # No passthrough flags in claudish cmd (regression)
 
   # Mixed model checks
   "internal_uses_task": true,            # At least one Task call (for internal)
@@ -392,6 +398,48 @@ def run_checks(checks, tool_calls, task_calls, bash_calls, write_calls, read_cal
             'passed': found,
             'detail': 'multimodel-team.json read via Read tool' if found
                       else 'Preferences file not read (multimodel-team.json)'
+        })
+
+    # ---- Flag passthrough checks (claudish v5.3.0+) ----
+
+    # Check: bash_claudish_has_passthrough_flags
+    if 'bash_claudish_has_passthrough_flags' in checks:
+        expected_flag = checks['bash_claudish_has_passthrough_flags']
+        found = False
+        detail = ''
+        for bc in claudish_calls:
+            cmd = bc['input'].get('command', '')
+            if expected_flag in cmd:
+                found = True
+                detail = f'Found passthrough flag "{expected_flag}" in claudish command'
+                break
+        if not found:
+            detail = f'Passthrough flag "{expected_flag}" not found in any claudish command'
+        results.append({
+            'check': 'bash_claudish_has_passthrough_flags',
+            'passed': found,
+            'detail': detail
+        })
+
+    # Check: bash_claudish_no_passthrough_flags (regression check — no flags when none configured)
+    if checks.get('bash_claudish_no_passthrough_flags'):
+        known_passthrough_flags = [
+            '--effort', '--permission-mode', '--max-budget-usd',
+            '--allowedTools', '--allowed-tools', '--disallowedTools', '--disallowed-tools',
+            '--system-prompt', '--append-system-prompt', '--agent'
+        ]
+        violations = []
+        for bc in claudish_calls:
+            cmd = bc['input'].get('command', '')
+            for flag in known_passthrough_flags:
+                if flag in cmd:
+                    violations.append(flag)
+        passed = len(violations) == 0
+        results.append({
+            'check': 'bash_claudish_no_passthrough_flags',
+            'passed': passed,
+            'detail': 'No passthrough flags in claudish commands (correct for no claudeFlags config)' if passed
+                      else f'Unexpected passthrough flags found: {violations}'
         })
 
     # ---- Negative checks (PROXY_MODE completely gone) ----

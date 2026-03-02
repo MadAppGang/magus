@@ -103,7 +103,7 @@ if [ "${TOOL_NAME}" = "Bash" ]; then
       allow
     fi
 
-    # --- Claudish usage logging ---
+    # --- Claudish usage logging (v5.3.0+ with flag passthrough) ---
     # Extract flags from the command for post-mortem investigation
     CLAUDISH_MODEL=$(echo "${COMMAND}" | grep -oE '\-\-model\s+\S+' | head -1 | sed 's/--model //' || true)
     CLAUDISH_HAS_STDIN="no"
@@ -114,6 +114,14 @@ if [ "${TOOL_NAME}" = "Bash" ]; then
     if echo "${COMMAND}" | grep -q "\-\-quiet"; then
       CLAUDISH_HAS_QUIET="yes"
     fi
+    # Detect Claude Code passthrough flags (v5.3.0+)
+    CLAUDISH_EXTRA_FLAGS=""
+    for flag in --effort --permission-mode --max-budget-usd --allowedTools --disallowedTools --system-prompt --append-system-prompt --agent; do
+      if echo "${COMMAND}" | grep -q "${flag}"; then
+        CLAUDISH_EXTRA_FLAGS="${CLAUDISH_EXTRA_FLAGS} ${flag}"
+      fi
+    done
+    CLAUDISH_EXTRA_FLAGS="${CLAUDISH_EXTRA_FLAGS# }"  # trim leading space
     CLAUDISH_BG=$(echo "${INPUT}" | jq -r '.tool_input.run_in_background // false' 2>/dev/null || echo "false")
     CLAUDISH_TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
@@ -121,12 +129,13 @@ if [ "${TOOL_NAME}" = "Bash" ]; then
     LOG_FILE=".claude/claudish-usage.log"
     mkdir -p "$(dirname "${LOG_FILE}")" 2>/dev/null || true
     {
-      printf '%s | model=%-35s | stdin=%s | quiet=%s | bg=%s | cmd=%s\n' \
+      printf '%s | model=%-35s | stdin=%s | quiet=%s | bg=%s | extra=%s | cmd=%s\n' \
         "${CLAUDISH_TS}" \
         "${CLAUDISH_MODEL:-MISSING}" \
         "${CLAUDISH_HAS_STDIN}" \
         "${CLAUDISH_HAS_QUIET}" \
         "${CLAUDISH_BG}" \
+        "${CLAUDISH_EXTRA_FLAGS:-none}" \
         "${COMMAND}"
     } >> "${LOG_FILE}" 2>/dev/null || true
   fi

@@ -1,9 +1,9 @@
 {
   "meta": {
-    "description": "Test cases for /multimodel:team command orchestration. Verifies correct model invocation: internal via Task({resolved_agent}), external via Bash(claudish). Tests dynamic agent routing, parallel launch, session dir, vote template, no pre-digestion, and model verification.",
-    "version": "2.2.0",
+    "description": "Test cases for /multimodel:team command orchestration. Verifies correct model invocation: internal via Task({resolved_agent}), external via Bash(claudish). Tests dynamic agent routing, parallel launch, session dir, vote template, no pre-digestion, model verification, and claudish v5.3.0 flag passthrough.",
+    "version": "2.4.0",
     "created": "2026-02-11",
-    "notes": "v2.2.0: Dynamic agent routing — task keywords determine subagent_type from context_detection table. Review→dev:researcher, debug→dev:debugger, architecture→dev:architect. Default: dev:researcher."
+    "notes": "v2.4.0: Flag passthrough tests now use mixed internal+chatgpt models (validates both Task and Bash paths). v2.3.0: Added flag passthrough tests for claudish v5.3.0 — claudeFlags from preferences injected into claudish commands. v2.2.0: Dynamic agent routing — task keywords determine subagent_type from context_detection table."
   },
   "model_aliases": {
     "grok": "grok-code-fast-1",
@@ -11,7 +11,8 @@
     "gpt-5": "gpt-5.2-codex",
     "deepseek": "deepseek-v3.2",
     "minimax": "minimax-m2.5",
-    "glm": "glm-4.7"
+    "glm": "glm-4.7",
+    "chatgpt": "chatgpt-4o-latest"
   },
   "test_cases": [
     {
@@ -237,6 +238,65 @@
         "task_min_count": 1
       },
       "tags": ["agent-routing"]
+    },
+    {
+      "id": "team-flag-passthrough-effort",
+      "description": "When claudeFlags contains --effort high, it should appear in claudish command (mixed internal+external)",
+      "prompt": "/multimodel:team --models internal,chatgpt --no-memory Quick review of README formatting",
+      "setup": {
+        "claudeFlags": "--effort high"
+      },
+      "checks": {
+        "internal_uses_task": true,
+        "bash_has_claudish": true,
+        "bash_claudish_has_stdin": true,
+        "bash_claudish_has_passthrough_flags": "--effort",
+        "run_in_background": true
+      },
+      "tags": ["flag-passthrough", "claudish-v5.3.0", "mixed-models"]
+    },
+    {
+      "id": "team-flag-passthrough-permission-mode",
+      "description": "When claudeFlags contains --permission-mode plan, it should appear in claudish command (mixed internal+external)",
+      "prompt": "/multimodel:team --models internal,chatgpt --no-memory Check plugin version numbers",
+      "setup": {
+        "claudeFlags": "--permission-mode plan"
+      },
+      "checks": {
+        "internal_uses_task": true,
+        "bash_has_claudish": true,
+        "bash_claudish_has_passthrough_flags": "--permission-mode",
+        "run_in_background": true
+      },
+      "tags": ["flag-passthrough", "claudish-v5.3.0", "mixed-models"]
+    },
+    {
+      "id": "team-flag-passthrough-multiple",
+      "description": "Multiple passthrough flags should all appear in claudish command (mixed internal+external)",
+      "prompt": "/multimodel:team --models internal,chatgpt --no-memory Review the error handling patterns",
+      "setup": {
+        "claudeFlags": "--effort high --max-budget-usd 0.50"
+      },
+      "checks": {
+        "internal_uses_task": true,
+        "bash_has_claudish": true,
+        "bash_claudish_has_passthrough_flags": "--effort",
+        "run_in_background": true
+      },
+      "tags": ["flag-passthrough", "claudish-v5.3.0", "mixed-models"]
+    },
+    {
+      "id": "team-flag-passthrough-none",
+      "description": "When no claudeFlags configured, no passthrough flags should appear (mixed internal+external regression test)",
+      "prompt": "/multimodel:team --models internal,chatgpt --no-memory Quick check on README",
+      "checks": {
+        "internal_uses_task": true,
+        "bash_has_claudish": true,
+        "bash_claudish_has_stdin": true,
+        "bash_claudish_no_passthrough_flags": true,
+        "run_in_background": true
+      },
+      "tags": ["flag-passthrough", "regression", "mixed-models"]
     }
   ]
 }

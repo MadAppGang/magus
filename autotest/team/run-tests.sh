@@ -99,6 +99,35 @@ FAIL=0
 ERROR=0
 TOTAL=0
 
+PREFS_FILE="$REPO_ROOT/.claude/multimodel-team.json"
+PREFS_BACKUP=""
+
+# Setup: modify preferences file if test case has a setup.claudeFlags field
+setup_test_prefs() {
+  local case_id="$1"
+  local setup_flags
+  setup_flags=$(jq -r --arg id "$case_id" '.test_cases[] | select(.id == $id) | .setup.claudeFlags // empty' "$TEST_CASES_FILE")
+
+  if [[ -n "$setup_flags" ]]; then
+    # Backup current preferences
+    if [[ -f "$PREFS_FILE" ]]; then
+      PREFS_BACKUP="$PREFS_FILE.bak.$$"
+      cp "$PREFS_FILE" "$PREFS_BACKUP"
+      # Inject claudeFlags into preferences
+      jq --arg flags "$setup_flags" '. + {claudeFlags: $flags}' "$PREFS_BACKUP" > "$PREFS_FILE"
+    fi
+    echo "    Setup: injected claudeFlags='$setup_flags' into preferences"
+  fi
+}
+
+# Teardown: restore original preferences file
+teardown_test_prefs() {
+  if [[ -n "$PREFS_BACKUP" && -f "$PREFS_BACKUP" ]]; then
+    mv "$PREFS_BACKUP" "$PREFS_FILE"
+    PREFS_BACKUP=""
+  fi
+}
+
 run_single_test() {
   local case_id="$1"
   local case_dir="$OUTPUT_DIR/$case_id"
@@ -128,6 +157,9 @@ run_single_test() {
     echo "    [DRY RUN] Would execute claude -p with ${TIMEOUT}s timeout"
     return 0
   fi
+
+  # Setup preferences if test case requires it
+  setup_test_prefs "$case_id"
 
   # Write metadata
   jq -n \
@@ -168,6 +200,9 @@ run_single_test() {
   fi
   local exit_code=$?
   set -e
+
+  # Teardown: restore preferences
+  teardown_test_prefs
 
   local end_time
   end_time=$(date +%s)

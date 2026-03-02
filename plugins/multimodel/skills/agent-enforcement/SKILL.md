@@ -25,7 +25,7 @@ Two-layer defense against orchestration violations in `/team`:
 | Model Type | Method | Tool | Reliability |
 |------------|--------|------|-------------|
 | Internal (Claude) | Task({resolved_agent}) | Task tool | High (same process) |
-| External (Grok, Gemini, etc.) | Bash(claudish --model) | Bash tool | 100% (deterministic CLI) |
+| External (Grok, Gemini, etc.) | Bash(claudish --model {CLAUDE_FLAGS}) | Bash tool | 100% (deterministic CLI, v5.3.0 flag passthrough) |
 
 External models are called via claudish CLI directly from Bash — no LLM delegation needed.
 

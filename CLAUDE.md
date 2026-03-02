@@ -17,7 +17,7 @@
 | Plugin | Version | Purpose |
 |--------|---------|---------|
 | **Code Analysis** | v3.2.3 | Codebase investigation with claudemem, enrichment mode (non-blocking) |
-| **Multimodel** | v2.4.5 | Multi-model collaboration and orchestration |
+| **Multimodel** | v2.5.0 | Multi-model collaboration and orchestration |
 | **Agent Development** | v1.5.3 | Create Claude Code agents and plugins |
 | **SEO** | v1.6.3 | SEO analysis and optimization with AUTO GATEs |
 | **Video Editing** | v1.1.1 | FFmpeg, Whisper, Final Cut Pro integration |
