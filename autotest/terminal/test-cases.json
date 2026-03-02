@@ -351,6 +351,28 @@
         "min_tool_calls": 8,
         "response_contains_any": ["heartbeat", "LIFECYCLE_COMPLETE", "Ctrl+C", "interrupt"]
       }
+    },
+    {
+      "id": "tmux-split-pane-19",
+      "description": "tmux split-pane workflow: create session, get pane ID, split it, run command in new pane, capture, clean up. Validates split-pane uses paneId parameter correctly.",
+      "prompt": "Use the tmux MCP tools to test pane splitting:\n1. Create a new tmux session named 'e2e-split-test'.\n2. List the panes in the first window to find the initial pane ID.\n3. Split that pane horizontally using mcp__tmux__split-pane with the paneId parameter.\n4. In the new pane, run: echo SPLIT_PANE_E2E_MARKER\n5. Capture the new pane to verify the marker appeared.\n6. Kill the 'e2e-split-test' session to clean up.\n7. Report whether SPLIT_PANE_E2E_MARKER appeared in the captured output of the split pane.\n\nIMPORTANT: You MUST use mcp__tmux__split-pane (not create-session) to create the second pane. The split-pane tool takes a paneId parameter. Clean up the session at the end.",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "advanced",
+      "tags": ["tmux", "split-pane", "paneId", "context-detection"],
+      "checks": {
+        "has_tool_prefix": "mcp__tmux__",
+        "tools_used_include_any": [
+          ["mcp__tmux__create-session", "mcp__tmux__split-pane", "mcp__tmux__capture-pane", "mcp__tmux__kill-session"],
+          ["mcp__tmux-mcp__create-session", "mcp__tmux-mcp__split-pane", "mcp__tmux-mcp__capture-pane", "mcp__tmux-mcp__kill-session"]
+        ],
+        "min_tool_calls_by_name": {
+          "split-pane": 1,
+          "capture-pane": 1
+        },
+        "min_tool_calls": 4,
+        "response_contains": "SPLIT_PANE_E2E_MARKER"
+      }
     }
   ]
 }

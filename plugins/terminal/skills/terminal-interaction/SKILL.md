@@ -30,7 +30,38 @@ This skill teaches Claude how to use `ht-mcp` and `tmux-mcp` for interactive ter
 | Attach to developer's live session | No | Yes |
 | Multi-pane split layouts | No | Yes |
 
-**Decision rule**: Default to ht-mcp for new isolated tasks. Switch to tmux-mcp when you need to observe existing running processes, read historical output, or the user explicitly has a tmux environment running.
+**Decision rule**: First check `$TMUX_PANE` — if set, you are already inside tmux and should use tmux-mcp for any pane operations (split, capture, send-keys). Only fall back to ht-mcp when you are NOT in tmux or need a fully isolated throwaway session.
+
+---
+
+## 1b. Current Context Detection (CRITICAL — Do This First)
+
+**Before creating sessions or listing anything**, check if you are already running inside tmux:
+
+```bash
+echo "TMUX_PANE=$TMUX_PANE TMUX=$TMUX"
+```
+
+| Variable | Meaning |
+|----------|---------|
+| `$TMUX_PANE` | Your exact pane ID (e.g., `%57`). Use directly with `split-pane`, `capture-pane`, `send-keys`. |
+| `$TMUX` | Tmux socket path. If set, you are inside tmux. |
+
+**If `$TMUX_PANE` is set**: You already know your pane ID. Skip `list-sessions` → `list-windows` → `list-panes`. Use `$TMUX_PANE` directly.
+
+**If `$TMUX_PANE` is empty**: You are NOT in tmux. Use ht-mcp for isolated tasks, or `create-session` to start a new tmux session.
+
+### Quick example: User says "split this window" or "run X beside me"
+
+```
+1. Bash: echo $TMUX_PANE                                            → "%57"
+2. mcp__tmux__split-pane({ paneId: "%57", direction: "horizontal" }) → new pane "%66"
+3. mcp__tmux__execute-command({ sessionId: "...", command: "bun test --watch" })
+```
+
+**2 tool calls** — not 6. Never call `list-sessions`/`list-windows`/`list-panes` just to find your own pane.
+
+**Common mistake**: Creating a new tmux session (`create-session`) when the user says "here" or "in this window." If `$TMUX_PANE` is set, always split the current pane — never create a detached session.
 
 ---
 
@@ -143,7 +174,7 @@ Returns: confirmation
 | `mcp__tmux__send-keys` | `paneId` (string), `keys` (string) | Send keystrokes to pane |
 | `mcp__tmux__create-session` | `name` (string, optional) | Create new tmux session |
 | `mcp__tmux__create-window` | `sessionId` (string) | Create new window |
-| `mcp__tmux__split-pane` | `windowId` (string) | Split pane |
+| `mcp__tmux__split-pane` | `paneId` (string, required), `direction` (optional: "horizontal"/"vertical"), `size` (optional: 1-99%) | Split pane |
 | `mcp__tmux__kill-session` | `sessionId` (string) | Terminate session |
 | `mcp__tmux__kill-window` | `windowId` (string) | Close window |
 | `mcp__tmux__kill-pane` | `paneId` (string) | Close pane |
@@ -306,6 +337,32 @@ for (let i = 0; i < 30; i++) {
 6. mcp__ht__ht_send_keys(sessionId, ["\\q", "Enter"])      → graceful exit
 7. mcp__ht__ht_close_session(sessionId)
 ```
+
+### Example F: Split Current Window (Side-by-Side)
+
+**Use when**: User says "run it here", "split pane", "beside me", "in this window", "show alongside".
+
+```
+// Step 1: Detect current pane (CRITICAL — do not skip)
+Bash: echo $TMUX_PANE                                        → "%57"
+
+// Step 2: Split the current pane (creates new pane beside Claude Code)
+mcp__tmux__split-pane({ paneId: "%57", direction: "horizontal", size: 50 })
+                                                              → new pane "%66"
+
+// Step 3: Launch process in the new pane
+mcp__tmux__execute-command({ sessionId: "current", command: "bun test --watch" })
+// Or use send-keys for the new pane directly:
+mcp__tmux__send-keys({ paneId: "%66", keys: "bun test --watch\nEnter" })
+
+// Step 4: Monitor via capture-pane
+mcp__tmux__capture-pane({ paneId: "%66" })                   → current screen
+
+// Cleanup: when done, close only the pane you created
+mcp__tmux__kill-pane({ paneId: "%66" })
+```
+
+**Common mistake**: Creating a new tmux session instead of splitting the current pane. If `$TMUX_PANE` is set, always split — never `create-session`.
 
 ---
 

@@ -1,7 +1,7 @@
 {
   "name": "terminal",
-  "version": "2.0.0",
-  "description": "Interactive terminal integration for Claude Code. v2.0.0: Intent-level commands (run, watch, observe, repl, tui), broadened skill keywords, 9 commands total. Enables Claude to run commands, monitor dev servers, query databases, navigate TUI apps, and observe terminal output.",
+  "version": "2.1.0",
+  "description": "Interactive terminal integration for Claude Code. v2.1.0: tmux context detection ($TMUX_PANE), split-pane workflow, corrected split-pane API docs. v2.0.0: Intent-level commands (run, watch, observe, repl, tui), 9 commands total.",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",
