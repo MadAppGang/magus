@@ -11,7 +11,7 @@ description: |
 model: sonnet
 color: cyan
 tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Bash, AskUserQuestion
-skills: instantly:campaign-metrics, orchestration:task-orchestration
+skills: instantly:campaign-metrics, multimodel:task-orchestration
 ---
 
 <role>

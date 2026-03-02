@@ -5,7 +5,7 @@ description: |
   Design, run, and analyze A/B tests on subject lines, copy, and timing.
   Workflow: ANALYZE -> DESIGN TEST -> APPROVE -> IMPLEMENT -> MONITOR
 allowed-tools: Task, AskUserQuestion, Read, TaskCreate, TaskUpdate, TaskList, TaskGet
-skills: instantly:ab-testing-patterns, instantly:campaign-metrics, orchestration:task-orchestration
+skills: instantly:ab-testing-patterns, instantly:campaign-metrics, multimodel:task-orchestration
 ---
 
 <role>

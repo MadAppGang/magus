@@ -4,7 +4,7 @@ description: Expert agent designer for Claude Code agents and commands. Use when
 model: opus
 color: purple
 tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Glob, Grep, Bash
-skills: agentdev:xml-standards, agentdev:schemas, agentdev:patterns, orchestration:multi-model-validation
+skills: agentdev:xml-standards, agentdev:schemas, agentdev:patterns, multimodel:multi-model-validation
 ---
 
 <role>

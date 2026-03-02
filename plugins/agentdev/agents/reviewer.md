@@ -4,7 +4,7 @@ description: Expert agent quality reviewer for Claude Code agents and commands. 
 model: opus
 color: cyan
 tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Glob, Grep, Bash
-skills: agentdev:xml-standards, agentdev:schemas, agentdev:patterns, orchestration:multi-model-validation, orchestration:quality-gates
+skills: agentdev:xml-standards, agentdev:schemas, agentdev:patterns, multimodel:multi-model-validation, multimodel:quality-gates
 ---
 
 <role>

@@ -89,10 +89,10 @@ Then add to your project's `.claude/settings.json`:
 ```json
 {
   "enabledPlugins": {
-    "frontend@magus": true,
+    "dev@magus": true,
     "code-analysis@magus": true,
-    "bun@magus": true,
-    "orchestration@magus": true
+    "multimodel@magus": true,
+    "terminal@magus": true
   }
 }
 ```
@@ -106,55 +106,6 @@ Then add to your project's `.claude/settings.json`:
 This repository contains production-ready plugins designed for modern web development teams. Each plugin includes specialized agents, custom slash commands, and workflow skills to streamline your development process.
 
 ### Available Plugins
-
-#### 🎨 Frontend Development (Full-Featured)
-
-**Version:** 2.8.0 | **Category:** Development | **Model:** Sonnet | **[📖 Full Documentation](./docs/frontend.md)**
-
-Professional toolkit for TypeScript/React development with intelligent workflow detection, CSS-aware design validation, orchestrated workflows, quality automation, and team collaboration features.
-
-**Highlights:**
-- **NEW in v2.8.0: Intelligent Workflow Detection** - Automatically detects API/UI/Mixed tasks and adapts execution for faster, more focused implementations
-- **13 Specialized Agents** - Including CSS Developer, Designer ecosystem (designer + designer-codex), UI Developer team (ui-developer + ui-developer-codex), architecture planning, code review, and browser testing
-- **6 Slash Commands** - Including `/implement` (8-phase with adaptive workflow detection), `/implement-ui` (with task decomposition), `/validate-ui`
-- **3 Skills** - Browser testing, API analysis, and proactive UI implementation
-- **3 MCP Servers** - Apidog, Figma, Chrome DevTools (plus [Claudish CLI](https://github.com/MadAppGang/claudish) for external AI models)
-- **CSS-Aware Validation** - DOM inspection, computed CSS analysis, pattern awareness
-- **CVA Best Practices** - Comprehensive shadcn/ui integration guidance
-- **Task Decomposition** - Parallel execution for independent UI components
-
-**The `/implement` Workflow with Intelligent Detection:**
-
-The star feature is the `/implement` command—now with intelligent workflow detection that automatically adapts based on your task:
-
-**For API Integration Tasks** (e.g., "Integrate user management API"):
-- Skips design validation (PHASE 2.5) entirely
-- Runs 2 code reviewers (manual + AI) focused on API patterns
-- Skips UI testing - focuses on API service tests
-- **Result**: Faster implementation, no wasted time on irrelevant UI checks
-
-**For UI Implementation Tasks** (e.g., "Build UserProfile component"):
-1. **Architecture Planning** → Designs solution, asks questions, gets approval
-2. **Implementation** → Generates code following project patterns
-2.5. **Design Fidelity Validation** → CSS-aware validation if Figma links present
-3. **Triple Review** → Manual review + AI analysis + browser testing
-4. **Test Generation** → UI-focused test suites
-5. **User Approval** → Final review gate
-6. **Cleanup** → Removes temporary artifacts
-7. **Delivery** → Production-ready feature with documentation
-- **Result**: Pixel-perfect UI, comprehensive validation
-
-**For Mixed Tasks** (both API and UI):
-- Combines both workflows with appropriate focus areas
-- Design validation for UI parts only
-- All 3 reviewers with targeted focus
-- Both API and UI test coverage
-
-**Perfect for:** React/TypeScript teams, TanStack ecosystem, API-driven apps, Figma workflows, shadcn/ui projects, pixel-perfect UI implementation, production-ready code quality
-
-👉 **[Read the complete guide](./docs/frontend.md)** for detailed workflow documentation
-
----
 
 #### 🔍 Code Analysis
 
@@ -171,34 +122,6 @@ Deep code investigation and analysis toolkit for understanding complex codebases
 - **Bug investigation** - Tracks down issues across the codebase
 
 **Perfect for:** Code exploration, bug investigation, understanding legacy code, architectural analysis, large codebase navigation
-
----
-
-#### ⚡ Bun Backend Development
-
-**Version:** 1.2.0 | **Category:** Development | **Model:** Sonnet
-
-Production-ready TypeScript backend development with Bun runtime, featuring comprehensive camelCase naming conventions, API documentation synchronization, and clean architecture patterns.
-
-**Highlights:**
-- **3 Specialized Agents** - Backend developer, API architect, Apidog synchronization specialist
-- **3 Slash Commands** - `/implement-api` (full-cycle), `/setup-project` (initialize), `/apidog` (sync API docs)
-- **1 Comprehensive Skill** - Best practices (2025) with camelCase conventions
-- **MCP Servers** - Apidog integration
-- **camelCase Conventions** - End-to-end naming consistency (database → API → frontend)
-- **Clean Architecture** - Layered design (routes → controllers → services → repositories)
-- **Apidog Integration** - Automatic API documentation synchronization with schema reuse
-- **Security First** - Authentication, authorization, validation, error handling built-in
-
-**The Stack:**
-- **Bun 1.x** - Native TypeScript execution, lightning-fast performance
-- **Hono 4.6** - Ultra-fast web framework, TypeScript-first
-- **Prisma 6.2** - Type-safe ORM with camelCase schema support
-- **Zod** - Runtime validation
-- **Biome 2.3** - Formatting + linting
-- **PostgreSQL/MongoDB** - Database flexibility
-
-**Perfect for:** TypeScript backend APIs, Bun projects, REST API development, microservices, API-first architectures, teams requiring naming consistency, Prisma ORM users, production-ready backends
 
 ---
 
@@ -227,10 +150,10 @@ Shared multi-agent coordination and workflow orchestration patterns for complex 
 **Usage:**
 ```yaml
 # In your agent or command frontmatter
-skills: orchestration:multi-model-validation, orchestration:quality-gates
+skills: multimodel:multi-model-validation, multimodel:quality-gates
 
 # Or use skill bundles
-skills: orchestration:complete  # All 5 skills
+skills: multimodel:complete  # All 5 skills
 ```
 
 **Perfect for:** Plugin developers, complex multi-phase workflows, multi-model validation, parallel execution patterns, test-driven development loops, production-grade error handling
@@ -333,7 +256,8 @@ Add or edit `.claude/settings.json` in your project root:
 ```json
 {
   "enabledPlugins": {
-    "frontend@magus": true
+    "dev@magus": true,
+    "code-analysis@magus": true
   }
 }
 ```
@@ -372,10 +296,11 @@ Need more than one plugin? Just add more entries:
 ```json
 {
   "enabledPlugins": {
-    "frontend@magus": true,
+    "dev@magus": true,
     "code-analysis@magus": true,
-    "bun@magus": true,
-    "orchestration@magus": true
+    "multimodel@magus": true,
+    "terminal@magus": true,
+    "statusline@magus": true
   }
 }
 ```
@@ -394,8 +319,8 @@ After setup, verify everything works:
 /plugin list
 
 # Should show:
-# frontend@magus (project-specific)
-#   Version: 1.2.0
+# dev@magus (project-specific)
+#   Version: 1.35.1
 #   Status: ✓ Loaded
 ```
 
@@ -444,26 +369,10 @@ Fetches your Figma component, adapts it to your codebase, installs dependencies,
 
 ---
 
-**📖 For comprehensive documentation, examples, and detailed workflow explanations:**
-
-👉 **[Frontend Development Plugin - Complete Guide](./docs/frontend.md)**
-
-The complete guide includes:
-- Detailed `/implement` workflow (all 7 stages explained)
-- Complete agent reference with use cases
-- All slash commands with examples
-- Skills documentation
-- MCP server setup guides
-- Troubleshooting and best practices
-
----
-
-
 ## 📚 Documentation
 
 ### For Users
 
-- **[Frontend Plugin Guide](./docs/frontend.md)** - Complete user guide with `/implement` workflow deep-dive
 - **[Troubleshooting](./docs/troubleshooting.md)** - Common issues and solutions
 - **[Advanced Usage](./docs/advanced-usage.md)** - Advanced configuration and workflows
 
@@ -489,10 +398,11 @@ For architecture and implementation details, see the **[ai-docs](./ai-docs/)** d
 
 ### Current Focus
 
-- ✅ Frontend Development plugin (v2.7.0 - complete with CSS-aware validation & CVA best practices)
-- ✅ Code Analysis plugin (v1.1.0 - complete with semantic search)
-- ✅ Backend Development plugin (v1.2.0 - complete with Bun, camelCase conventions, Apidog integration)
-- 🚧 API Development plugin (planned)
+- ✅ Dev plugin (v1.35.1 - universal dev assistant, 47 skills)
+- ✅ Code Analysis plugin (v3.2.3 - semantic search with claudemem)
+- ✅ Multimodel plugin (v2.5.0 - multi-model orchestration)
+- ✅ Terminal plugin (v2.0.0 - intent-level terminal commands)
+- ✅ Statusline plugin (v1.4.1 - worktree-aware statusline)
 
 ### Future Plugins
 
@@ -509,11 +419,6 @@ Have a plugin idea? [Open an issue](https://github.com/MadAppGang/magus/issues) 
 ---
 ## 📖 Detailed Documentation
 
-### User Documentation
-
-- **[Frontend Development Plugin Guide](./docs/frontend.md)** - Complete user guide with `/implement` workflow deep-dive
-- **[Figma Integration Guide](./docs/figma-integration-guide.md)** - How to get Figma URLs and set up design imports
-
 ### Technical Documentation
 
 For technical details and architecture, see the **[ai-docs](./ai-docs/)** directory:
@@ -521,15 +426,10 @@ For technical details and architecture, see the **[ai-docs](./ai-docs/)** direct
 #### Architecture & Configuration
 - **[TEAM_CONFIG_ARCHITECTURE.md](./ai-docs/TEAM_CONFIG_ARCHITECTURE.md)** - Team-first configuration, shareable config vs private secrets
 - **[DYNAMIC_MCP_GUIDE.md](./ai-docs/DYNAMIC_MCP_GUIDE.md)** - Dynamic MCP server configuration patterns
-- **[IMPROVEMENTS_SUMMARY.md](./ai-docs/IMPROVEMENTS_SUMMARY.md)** - Configuration command design decisions
 
 #### Reference
-- **[COMPLETE_PLUGIN_SUMMARY.md](./ai-docs/COMPLETE_PLUGIN_SUMMARY.md)** - Complete plugin inventory (13 frontend agents, 6 commands, 3 skills)
+- **[COMPLETE_PLUGIN_SUMMARY.md](./ai-docs/COMPLETE_PLUGIN_SUMMARY.md)** - Complete plugin inventory
 - **[FINAL_SUMMARY.md](./ai-docs/FINAL_SUMMARY.md)** - Project overview and statistics
-
-#### Plugin-Specific Technical Docs
-- **[DEPENDENCIES.md](./plugins/frontend/DEPENDENCIES.md)** - All dependencies and environment variables
-- **[CONFIGURE_MCP_FLOW.md](./plugins/frontend/commands/CONFIGURE_MCP_FLOW.md)** - Configuration flow diagram
 
 ---
 

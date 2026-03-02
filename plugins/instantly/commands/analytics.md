@@ -5,7 +5,7 @@ description: |
   Fetches data from Instantly MCP, calculates KPIs, identifies trends.
   Workflow: DATA FETCH -> METRICS CALCULATION -> PATTERN ANALYSIS -> REPORT
 allowed-tools: Task, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet, AskUserQuestion
-skills: instantly:campaign-metrics, orchestration:task-orchestration
+skills: instantly:campaign-metrics, multimodel:task-orchestration
 ---
 
 <role>

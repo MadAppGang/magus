@@ -2,7 +2,7 @@
 name: seo-optimize
 description: Optimize existing content for SEO with keyword density, meta tags, headings, and optional multi-model validation
 allowed-tools: Task, AskUserQuestion, Bash, Read, Write, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep
-skills: orchestration:quality-gates, orchestration:multi-model-validation, seo:content-optimizer
+skills: multimodel:quality-gates, multimodel:multi-model-validation, seo:content-optimizer
 ---
 
 <role>
@@ -67,7 +67,7 @@ skills: orchestration:quality-gates, orchestration:multi-model-validation, seo:c
       Cost estimate: Quick: $0, Thorough: ~$0.01, Comprehensive: ~$0.03"
       ```
 
-      If user selects multi-model, use orchestration:multi-model-validation skill patterns.
+      If user selects multi-model, use multimodel:multi-model-validation skill patterns.
     </multi_model_option>
   </critical_constraints>
 

@@ -6,7 +6,7 @@ description: |
   Tracks model performance to ai-docs/llm-performance.json for shortlist optimization.
   Enable debug mode with /agentdev:debug-enable before running.
 allowed-tools: Task, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep
-skills: orchestration:multi-model-validation, orchestration:quality-gates, orchestration:task-orchestration, orchestration:error-recovery, agentdev:xml-standards, agentdev:debug-mode
+skills: multimodel:multi-model-validation, multimodel:quality-gates, multimodel:task-orchestration, multimodel:error-recovery, agentdev:xml-standards, agentdev:debug-mode
 ---
 
 <mission>
@@ -203,7 +203,7 @@ Save findings to: ${SESSION_PATH}/reviews/plan-review/internal.md`
           track_model_performance "x-ai/grok-code-fast-1" "success" 45 3 85
           track_model_performance "google/gemini-2.5-flash" "success" 38 2 90
           ```
-          See orchestration:multi-model-validation Pattern 7 for implementation.
+          See multimodel:multi-model-validation Pattern 7 for implementation.
         </step>
         <step>Consolidate feedback → ${SESSION_PATH}/reviews/plan-review/consolidated.md</step>
         <step>Mark PHASE 1.5 completed</step>

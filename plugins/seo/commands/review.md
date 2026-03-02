@@ -2,7 +2,7 @@
 name: seo-review
 description: Multi-model content review orchestrator with parallel E-E-A-T validation and consensus analysis
 allowed-tools: Task, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep
-skills: orchestration:multi-model-validation, orchestration:model-tracking-protocol, orchestration:quality-gates, seo:content-optimizer
+skills: multimodel:multi-model-validation, multimodel:model-tracking-protocol, multimodel:quality-gates, seo:content-optimizer
 ---
 
 <role>

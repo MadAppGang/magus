@@ -5,7 +5,7 @@ description: |
   Interactive workflow for designing multi-step email sequences.
   Workflow: CONTEXT GATHERING -> SEQUENCE DESIGN -> REVIEW -> CREATE
 allowed-tools: Task, AskUserQuestion, Read, TaskCreate, TaskUpdate, TaskList, TaskGet
-skills: instantly:sequence-best-practices, orchestration:task-orchestration
+skills: instantly:sequence-best-practices, multimodel:task-orchestration
 ---
 
 <role>

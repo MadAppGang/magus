@@ -4,7 +4,7 @@ description: Use when orchestrating multi-agent code analysis with claudemem. Ru
 updated: 2026-01-20
 keywords: claudemem, orchestration, multi-agent, parallel-execution, consensus
 allowed-tools: Bash, Task, Read, Write, AskUserQuestion
-skills: orchestration:multi-model-validation
+skills: multimodel:multi-model-validation
 ---
 
 # Claudemem Multi-Agent Orchestration
@@ -22,21 +22,21 @@ When multiple agents need to investigate the same codebase:
 
 This pattern avoids redundant claudemem calls and enables consensus-based prioritization.
 
-**For parallel execution patterns, see:** `orchestration:multi-model-validation` skill
+**For parallel execution patterns, see:** `multimodel:multi-model-validation` skill
 
 ## Claudemem-Specific Patterns
 
 This skill focuses on claudemem-specific orchestration. For general parallel execution:
-- **4-Message Pattern** - See `orchestration:multi-model-validation` Pattern 1
-- **Session Setup** - See `orchestration:multi-model-validation` Pattern 0
-- **Statistics Collection** - See `orchestration:multi-model-validation` Pattern 7
+- **4-Message Pattern** - See `multimodel:multi-model-validation` Pattern 1
+- **Session Setup** - See `multimodel:multi-model-validation` Pattern 0
+- **Statistics Collection** - See `multimodel:multi-model-validation` Pattern 7
 
 ### Pattern 1: Shared Claudemem Output
 
 **Purpose:** Run expensive claudemem commands ONCE, share results across agents.
 
 ```bash
-# Create unique session directory (per orchestration:multi-model-validation Pattern 0)
+# Create unique session directory (per multimodel:multi-model-validation Pattern 0)
 SESSION_ID="analysis-$(date +%Y%m%d-%H%M%S)-$(head -c 4 /dev/urandom | xxd -p)"
 SESSION_DIR="/tmp/${SESSION_ID}"
 mkdir -p "$SESSION_DIR"
@@ -261,7 +261,7 @@ The agent then follows this pattern:
 **Do:**
 - Run claudemem ONCE per investigation type
 - Write all output to session directory
-- Use parallel execution for independent analyses (see `orchestration:multi-model-validation`)
+- Use parallel execution for independent analyses (see `multimodel:multi-model-validation`)
 - Consolidate with ultrathink for cross-perspective insights
 - Handle empty results gracefully
 

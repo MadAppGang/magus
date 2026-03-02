@@ -11,7 +11,7 @@ description: |
 model: sonnet
 color: orange
 tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Bash, AskUserQuestion
-skills: instantly:ab-testing-patterns, instantly:campaign-metrics, orchestration:multi-model-validation
+skills: instantly:ab-testing-patterns, instantly:campaign-metrics, multimodel:multi-model-validation
 ---
 
 <role>

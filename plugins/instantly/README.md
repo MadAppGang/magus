@@ -225,7 +225,7 @@ PROXY_MODE: x-ai/grok-code-fast-1
 Analyze my "SaaS Founders Q1" campaign performance
 ```
 
-See `orchestration:multi-model-validation` skill for details.
+See `multimodel:multi-model-validation` skill for details.
 
 ## Troubleshooting
 

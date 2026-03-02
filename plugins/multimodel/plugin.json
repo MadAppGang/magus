@@ -1,6 +1,6 @@
 {
   "name": "multimodel",
-  "version": "2.5.0",
+  "version": "2.5.1",
   "description": "Multi-model collaboration, orchestration, and workflow patterns. v2.5.0: Claude Code flag passthrough via claudish v5.3.0 — claudeFlags in preferences flow through to external models.",
   "author": "MadAppGang",
   "license": "MIT",

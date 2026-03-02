@@ -5,7 +5,7 @@ description: |
   Routes users to appropriate commands based on their goals.
   Workflow: GOAL DISCOVERY -> REFINEMENT -> ROUTING -> EXECUTION
 allowed-tools: Task, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet
-skills: orchestration:task-orchestration
+skills: multimodel:task-orchestration
 ---
 
 <role>

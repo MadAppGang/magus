@@ -5,7 +5,7 @@ description: |
   Add, import, move, and manage leads across campaigns.
   Workflow: IDENTIFY ACTION -> VALIDATE -> EXECUTE -> CONFIRM
 allowed-tools: Task, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet
-skills: instantly:email-deliverability, orchestration:task-orchestration
+skills: instantly:email-deliverability, multimodel:task-orchestration
 ---
 
 <role>

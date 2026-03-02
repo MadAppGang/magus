@@ -7,15 +7,15 @@
   },
   "metadata": {
     "description": "Curated collection of Claude Code plugins for modern full-stack development with LLM performance tracking and E2E skill testing",
-    "version": "7.1.1",
+    "version": "7.1.2",
     "pluginRoot": "./plugins"
   },
   "plugins": [
     {
       "name": "code-analysis",
       "source": "./plugins/code-analysis",
-      "description": "Deep code investigation with claudemem. v3.2.3: Marketplace rename to magus. v3.0.0: ENRICHMENT MODE.",
-      "version": "3.2.3",
+      "description": "Deep code investigation with claudemem. v3.2.4: Fix orchestration→multimodel skill namespace. v3.0.0: ENRICHMENT MODE.",
+      "version": "3.2.4",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -40,8 +40,8 @@
     {
       "name": "multimodel",
       "source": "./plugins/multimodel",
-      "description": "Multi-model collaboration, orchestration, and workflow patterns. v2.5.0: Claude Code flag passthrough via claudish v5.3.0 — claudeFlags in preferences flow through to external models.",
-      "version": "2.5.0",
+      "description": "Multi-model collaboration, orchestration, and workflow patterns. v2.5.1: Fix orchestration→multimodel self-referencing skill namespace.",
+      "version": "2.5.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -69,8 +69,8 @@
     {
       "name": "agentdev",
       "source": "./plugins/agentdev",
-      "description": "Create, implement, and review Claude Code agents and commands with multi-model validation, LLM performance tracking, and session-based artifact isolation. v1.5.3: Marketplace rename to magus.",
-      "version": "1.5.3",
+      "description": "Create, implement, and review Claude Code agents and commands with multi-model validation, LLM performance tracking, and session-based artifact isolation. v1.5.4: Fix orchestration→multimodel skill namespace.",
+      "version": "1.5.4",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -94,8 +94,8 @@
     {
       "name": "seo",
       "source": "./plugins/seo",
-      "description": "Highly autonomous SEO toolkit (~80% autonomy) with AUTO GATEs, self-correction loops, and multi-model validation. v1.6.3: Marketplace rename to magus. Features E-E-A-T self-assessment, keyword research, content optimization, technical audits.",
-      "version": "1.6.3",
+      "description": "Highly autonomous SEO toolkit (~80% autonomy) with AUTO GATEs, self-correction loops, and multi-model validation. v1.6.4: Fix orchestration→multimodel skill namespace.",
+      "version": "1.6.4",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -191,8 +191,8 @@
     {
       "name": "dev",
       "source": "./plugins/dev",
-      "description": "Universal development assistant with real skill discovery. v1.36.1: Magus boxes coexist with official Insight boxes.",
-      "version": "1.36.1",
+      "description": "Universal development assistant with real skill discovery. v1.36.2: Fix orchestration→multimodel skill namespace migration across all commands.",
+      "version": "1.36.2",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",

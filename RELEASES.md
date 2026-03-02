@@ -244,7 +244,7 @@ Pre-configured combinations for common use cases:
 ---
 name: my-orchestrator
 description: Custom orchestration agent
-skills: orchestration:multi-model-validation, orchestration:quality-gates
+skills: multimodel:multi-model-validation, multimodel:quality-gates
 ---
 ```
 
@@ -253,7 +253,7 @@ skills: orchestration:multi-model-validation, orchestration:quality-gates
 ```yaml
 ---
 description: My multi-phase workflow
-skills: orchestration:todowrite-orchestration, orchestration:multi-agent-coordination
+skills: multimodel:todowrite-orchestration, multimodel:multi-agent-coordination
 ---
 ```
 
@@ -261,13 +261,13 @@ skills: orchestration:todowrite-orchestration, orchestration:multi-agent-coordin
 
 ```yaml
 # Load specific bundle
-skills: orchestration:complete  # All 5 skills
+skills: multimodel:complete  # All 5 skills
 
 # Load multiple bundles
-skills: orchestration:core, orchestration:advanced
+skills: multimodel:core, multimodel:advanced
 
 # Mix bundles and individual skills
-skills: orchestration:testing, orchestration:multi-model-validation
+skills: multimodel:testing, multimodel:multi-model-validation
 ```
 
 ### 📋 Quality Metrics

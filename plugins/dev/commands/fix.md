@@ -2,7 +2,7 @@
 name: fix
 description: Full agentic debugging workflow with multimodel review, TDD, and deployment monitoring
 allowed-tools: Task, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep, Write, Edit, Skill
-skills: dev:systematic-debugging, dev:test-driven-development, dev:testing-strategies, dev:verification-before-completion, orchestration:quality-gates
+skills: dev:systematic-debugging, dev:test-driven-development, dev:testing-strategies, dev:verification-before-completion, multimodel:quality-gates
 ---
 
 <role>

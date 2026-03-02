@@ -40,7 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `agentdev:patterns` - Common agent patterns (proxy mode, TodoWrite, quality checks)
   - `agentdev:schemas` - YAML frontmatter schemas
 - **Multi-Model Validation** - Parallel external reviews via Claudish
-- **Depends on Orchestration** - Uses `orchestration:multi-model-validation`, `orchestration:quality-gates`
+- **Depends on Multimodel** - Uses `multimodel:multi-model-validation`, `multimodel:quality-gates`
 
 ## [Marketplace 4.1.2] - 2025-11-26
 
@@ -182,10 +182,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 **Usage:**
 ```yaml
 # In agent or command frontmatter
-skills: orchestration:multi-model-validation, orchestration:quality-gates
+skills: multimodel:multi-model-validation, multimodel:quality-gates
 
 # Or use skill bundles
-skills: orchestration:complete  # All 5 skills
+skills: multimodel:complete  # All 5 skills
 ```
 
 **Quality Metrics:**

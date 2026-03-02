@@ -16,14 +16,14 @@
 
 | Plugin | Version | Purpose |
 |--------|---------|---------|
-| **Code Analysis** | v3.2.3 | Codebase investigation with claudemem, enrichment mode (non-blocking) |
-| **Multimodel** | v2.5.0 | Multi-model collaboration and orchestration |
-| **Agent Development** | v1.5.3 | Create Claude Code agents and plugins |
-| **SEO** | v1.6.3 | SEO analysis and optimization with AUTO GATEs |
+| **Code Analysis** | v3.2.4 | Codebase investigation with claudemem, enrichment mode (non-blocking) |
+| **Multimodel** | v2.5.1 | Multi-model collaboration and orchestration |
+| **Agent Development** | v1.5.4 | Create Claude Code agents and plugins |
+| **SEO** | v1.6.4 | SEO analysis and optimization with AUTO GATEs |
 | **Video Editing** | v1.1.1 | FFmpeg, Whisper, Final Cut Pro integration |
 | **Nanobanana** | v2.3.1 | AI image generation with Gemini 3 Pro Image |
 | **Conductor** | v2.1.1 | Context-Driven Development with TDD and Git Notes |
-| **Dev** | v1.35.1 | Universal dev assistant with workflow enforcement, 47 skills |
+| **Dev** | v1.36.2 | Universal dev assistant with workflow enforcement, 47 skills |
 | **Statusline** | v1.4.1 | Colorful statusline with worktree awareness |
 | **Terminal** | v2.0.0 | Intent-level terminal: run, watch, observe, repl, tui + ht-mcp/tmux-mcp |
 
@@ -50,7 +50,7 @@ claude-code/
 │   ├── dev/                   # v1.35.1 — 47 skills, workflow enforcement
 │   ├── statusline/            # v1.4.1 — 1 skill
 │   ├── terminal/              # v1.0.0 — 2 skills, ht-mcp + tmux-mcp
-│   └── (bun, frontend, go, instantly, autopilot — unlisted)
+│   └── (go, instantly, autopilot — unlisted)
 ├── autotest/                  # E2E test framework
 │   ├── framework/             # Shared runner, parsers (Bun/TS)
 │   ├── coaching/              # Coaching hook tests

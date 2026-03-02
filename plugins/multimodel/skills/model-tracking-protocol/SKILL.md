@@ -907,7 +907,7 @@ The `multi-model-validation` skill defines the execution patterns (4-Message Pat
 
 **Use together:**
 ```yaml
-skills: orchestration:multi-model-validation, orchestration:model-tracking-protocol
+skills: multimodel:multi-model-validation, multimodel:model-tracking-protocol
 ```
 
 **Workflow:**

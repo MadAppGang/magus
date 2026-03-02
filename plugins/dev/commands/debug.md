@@ -2,7 +2,7 @@
 name: debug
 description: Universal debugging command that adapts to any technology stack
 allowed-tools: Task, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep
-skills: dev:context-detection, dev:debugging-strategies, orchestration:error-recovery
+skills: dev:context-detection, dev:debugging-strategies, multimodel:error-recovery
 ---
 
 <role>

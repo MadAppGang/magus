@@ -116,20 +116,20 @@ Task: "Debug this error, use different models"
 > **CRITICAL: Tracking Protocol Required**
 >
 > Before using any patterns in this skill, ensure you have completed the
-> pre-launch setup from `orchestration:model-tracking-protocol`.
+> pre-launch setup from `multimodel:model-tracking-protocol`.
 >
 > Launching models without tracking setup = INCOMPLETE validation.
 
 **Cross-References:**
 
-- **orchestration:model-tracking-protocol** - MANDATORY tracking templates and protocols (NEW in v0.6.0)
+- **multimodel:model-tracking-protocol** - MANDATORY tracking templates and protocols (NEW in v0.6.0)
   - Pre-launch checklist (8 required items)
   - Tracking table templates
   - Failure documentation format
   - Results presentation template
-- **orchestration:quality-gates** - Approval gates and severity classification
-- **orchestration:task-orchestration** - Progress tracking during execution
-- **orchestration:error-recovery** - Handling failures and retries
+- **multimodel:quality-gates** - Approval gates and severity classification
+- **multimodel:task-orchestration** - Progress tracking during execution
+- **multimodel:error-recovery** - Handling failures and retries
 
 **Skill Integration:**
 
@@ -138,7 +138,7 @@ The `model-tracking-protocol` skill defines **tracking infrastructure** (how to 
 
 **Use both together:**
 ```yaml
-skills: orchestration:multi-model-validation, orchestration:model-tracking-protocol
+skills: multimodel:multi-model-validation, multimodel:model-tracking-protocol
 ```
 
 ---
@@ -1630,7 +1630,7 @@ Over time, the system learns which models work best for YOUR codebase and valida
 ### Step 1: Reference This Skill
 Add to your command's frontmatter:
 ```yaml
-skills: orchestration:multi-model-validation
+skills: multimodel:multi-model-validation
 ```
 
 ### Step 2: Track Each Model Execution
@@ -2079,7 +2079,7 @@ For the complete tracking protocol including:
 - Consensus analysis requirements
 - Results presentation template
 
-**See:** `orchestration:model-tracking-protocol`
+**See:** `multimodel:model-tracking-protocol`
 
 The tracking protocol skill provides copy-paste templates that make compliance easy and unforgettable.
 

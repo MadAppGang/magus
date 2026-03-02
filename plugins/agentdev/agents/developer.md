@@ -4,7 +4,7 @@ description: Expert agent implementer for Claude Code agents and commands. Use w
 model: sonnet
 color: green
 tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Edit, Glob, Grep, Bash
-skills: agentdev:xml-standards, agentdev:schemas, agentdev:patterns, orchestration:multi-model-validation
+skills: agentdev:xml-standards, agentdev:schemas, agentdev:patterns, multimodel:multi-model-validation
 ---
 
 <role>

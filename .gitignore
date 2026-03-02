@@ -80,8 +80,7 @@ __pycache__/
 .venv/
 venv/
 .uv/
-ai-docs/sessions
-tools/claudeup-gui/ai-docs/sessions 
+**/ai-docs/sessions
 node_modules 
 tools/autopilot-server/data
 test-workspace
