@@ -191,8 +191,8 @@
     {
       "name": "dev",
       "source": "./plugins/dev",
-      "description": "Universal development assistant with real skill discovery. v1.35.1: Coaching box formatting — visual insight-style boxes for workflow suggestions.",
-      "version": "1.35.1",
+      "description": "Universal development assistant with real skill discovery. v1.36.0: Magus insight boxes, /fix and /quick-fix commands.",
+      "version": "1.36.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
