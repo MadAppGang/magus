@@ -38,7 +38,7 @@ This skill focuses on claudemem-specific orchestration. For general parallel exe
 ```bash
 # Create unique session directory (per multimodel:multi-model-validation Pattern 0)
 SESSION_ID="analysis-$(date +%Y%m%d-%H%M%S)-$(head -c 4 /dev/urandom | xxd -p)"
-SESSION_DIR="/tmp/${SESSION_ID}"
+SESSION_DIR="ai-docs/sessions/${SESSION_ID}"
 mkdir -p "$SESSION_DIR"
 
 # Run claudemem ONCE, write to shared files
@@ -238,6 +238,9 @@ Phase 5: Action Planning
   Prioritize by: PageRank * impact_depth * test_coverage
 ```
 
+**MCP Tool Integration:** For single-agent workflows, claudemem MCP tools can be called
+directly instead of via CLI. The `claudemem-search` skill covers both modes.
+
 ## Agent System Prompt Integration
 
 When an agent needs deep code analysis, it should reference the claudemem skill:
@@ -269,17 +272,15 @@ The agent then follows this pattern:
 - Run same claudemem command multiple times
 - Let each agent run its own claudemem (wasteful)
 - Skip the consolidation step
-- Forget to clean up session directory (automatic TTL cleanup via `session-start.sh`)
+- Forget to clean up session directory after investigation completes
 
 ## Session Lifecycle Management
 
-**Automatic TTL Cleanup:**
+**Session TTL Cleanup:**
+Clean up expired session directories manually or use a cleanup pattern:
 
-The `session-start.sh` hook automatically cleans up expired session directories:
-- Default TTL: 24 hours
-- Runs at session start
-- Cleans `/tmp/analysis-*`, `/tmp/review-*` directories older than TTL
-- See `plugins/code-analysis/hooks/session-start.sh` for implementation
+**Note:** Use `ai-docs/sessions/{session-id}/` for session artifacts instead of `/tmp/`
+to comply with project conventions.
 
 **Manual Cleanup:**
 
@@ -288,7 +289,7 @@ The `session-start.sh` hook automatically cleans up expired session directories:
 rm -rf "$SESSION_DIR"
 
 # Clean all old sessions (24+ hours)
-find /tmp -maxdepth 1 -name "analysis-*" -o -name "review-*" -mtime +1 -exec rm -rf {} \;
+find ai-docs/sessions -maxdepth 1 -name "analysis-*" -o -name "review-*" -mtime +1 -exec rm -rf {} \;
 ```
 
 ## Error Handling Templates
@@ -326,5 +327,5 @@ fi
 ---
 
 **Maintained by:** MadAppGang
-**Plugin:** code-analysis v2.8.0
-**Last Updated:** December 2025 (v1.1.0 - Search feedback protocol support)
+**Plugin:** code-analysis v4.0.0
+**Last Updated:** March 2026 (v4.0.0 - MCP-based integration, removed hook refs)

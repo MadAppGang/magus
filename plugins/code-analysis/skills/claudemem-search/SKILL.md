@@ -1,10 +1,10 @@
 ---
 name: claudemem-search
-description: "claudemem CLI expert — PRIMARY TOOL for semantic code search AND structural analysis. This is a SKILL (use Skill tool), NOT an agent. AST tree navigation with map, symbol, callers, callees, context commands. PageRank ranking. Workflow: Map structure first, then search semantically, analyze callers before modifying."
+description: "claudemem MCP and CLI expert — PRIMARY TOOL for semantic code search AND structural analysis. Available as MCP tools (direct invocation) or CLI via Bash (--agent flag). This is a SKILL (use Skill tool), NOT an agent. AST tree navigation with map, symbol, callers, callees, context commands. PageRank ranking. Workflow: Map structure first, then search semantically, analyze callers before modifying."
 allowed-tools: Bash, Task, AskUserQuestion
 ---
 
-# Claudemem Semantic Code Search Expert (v0.6.0)
+# Claudemem Semantic Code Search Expert (v0.20.1 MCP)
 
 This Skill provides comprehensive guidance on leveraging **claudemem** v0.7.0+ with **AST-based structural analysis**, **code analysis commands**, and **framework documentation** for intelligent codebase understanding.
 
@@ -43,7 +43,65 @@ v0.3.0 adds **AST tree navigation** with symbol graph analysis:
 
 ---
 
-## Quick Reference
+## MCP Tool Integration (v0.20.1+)
+
+In Claude Code with code-analysis plugin enabled, claudemem tools are available
+directly as MCP tools — no CLI invocation needed.
+
+### Available MCP Tools (18 total)
+
+**Structured Tools (11):**
+| Tool | Purpose |
+|------|---------|
+| `map` | Repository structure with PageRank ranking |
+| `symbol` | Find symbol definition (file:line) |
+| `callers` | What calls this symbol? |
+| `callees` | What does this symbol call? |
+| `context` | Full call chain (callers + callees + dependencies) |
+| `search` | Semantic vector search |
+| `search-with-context` | Search + repository context |
+| `references` | All references to a symbol |
+| `definition` | Symbol definition with surrounding context |
+| `impact` | BFS transitive caller analysis |
+| `dependency-graph` | Transitive dependency visualization |
+
+**Legacy Tools (7):**
+| Tool | Purpose |
+|------|---------|
+| `dead-code` | Find unused symbols |
+| `test-gaps` | Find high-importance untested code |
+| `import-paths` | Analyze import patterns |
+| `test-impact` | Impact analysis for tests |
+| `trace-execution` | Execution flow analysis |
+| `dependency-analyzer` | Dependency tree analysis |
+| `ast-structure` | AST visualization |
+
+### Dual-Mode: MCP + CLI
+
+Both modes access the same index. Choose based on context:
+
+| Mode | When to Use | How |
+|------|-------------|-----|
+| MCP tools | Direct invocation in Claude Code | Call `map`, `symbol`, etc. directly |
+| CLI via Bash | Shell scripts, orchestration | `Bash("claudemem --agent map 'query'")` |
+
+---
+
+## Dual-Mode Quick Reference
+
+```bash
+# MCP mode (preferred in Claude Code — call tools directly)
+# Call the 'map' MCP tool with query: "authentication flow"
+# Call the 'symbol' MCP tool with name: "AuthService"
+
+# CLI mode (Bash tool — for scripts or orchestration)
+claudemem --agent map "authentication flow"
+claudemem --agent symbol AuthService
+```
+
+---
+
+## Quick Reference (CLI)
 
 ```bash
 # For agentic use, always use --agent flag for clean output
@@ -1512,8 +1570,6 @@ Native search tools (grep, Glob, find) are available when needed. They work well
 - File pattern searches
 - When the index isn't available
 
-For bypass, use: `_bypass_claudemem: true` in tool input.
-
 ### Comparison
 
 | Feature | claudemem | grep/Glob |
@@ -1572,4 +1628,4 @@ Before completing a claudemem workflow, ensure:
 
 **Maintained by:** Jack Rudenko @ MadAppGang
 **Plugin:** code-analysis v2.8.0
-**Last Updated:** December 2025 (v0.8.0 - Search feedback protocol)
+**Last Updated:** March 2026 (v4.0.0 - MCP-based integration, 18 tools)

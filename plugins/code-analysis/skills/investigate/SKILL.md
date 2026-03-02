@@ -319,7 +319,7 @@ This skill is **additive only** and does not change existing behavior:
 - **Direct detective usage** still works (Task → specific detective)
 - **/analyze command** unchanged (launches codebase-detective)
 - **Parallel orchestration** patterns unchanged
-- **All claudemem hooks** preserved
+- **claudemem MCP tools** available directly in Claude Code
 
 ## Use Cases
 
@@ -342,5 +342,5 @@ This skill is **additive only** and does not change existing behavior:
 ---
 
 **Maintained by:** MadAppGang
-**Plugin:** code-analysis v3.1.0
-**Last Updated:** January 2026 (v1.0.0 - Initial release)
+**Plugin:** code-analysis v4.0.0
+**Last Updated:** March 2026 (v4.0.0 - MCP tool references)

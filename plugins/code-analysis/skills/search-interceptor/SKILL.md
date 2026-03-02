@@ -177,37 +177,18 @@ This skill works with:
 
 ---
 
-## Hook System Integration
-
-The hook system may provide claudemem results proactively when the index is available:
-
-- **Grep queries** → May receive claudemem search results instead
-- **Bulk reads** → May receive suggestion to use semantic search
-- **Broad globs** → May receive map results
-
-### Using the Bypass Flag
-
-When you specifically need native tool behavior:
-```json
-{ "pattern": "exact string", "_bypass_claudemem": true }
-```
-
-This tells hooks you intentionally want native tool output.
-
----
-
 ## Quick Reference
 
 Before bulk Read/Glob operations, consider:
 
 1. **Is claudemem indexed?** → `claudemem status`
 2. **Can this be one semantic query?** → Often yes
-3. **Do you need exact matches?** → Use native tools with bypass flag
+3. **Do you need exact matches?** → Use native tools (Grep, Glob)
 
 **General guideline:** For understanding/investigation, try semantic search first. For exact matches, use native tools.
 
 ---
 
 **Maintained by:** MadAppGang
-**Plugin:** code-analysis v2.16.0
+**Plugin:** code-analysis v4.0.0
 **Purpose:** Help optimize bulk file operations with semantic search alternatives

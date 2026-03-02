@@ -138,18 +138,6 @@ Native tools (Grep, Glob, find) work well for exact matches but provide no seman
 
 ---
 
-## When Hooks Redirect to Claudemem
-
-If a hook provides claudemem results instead of native tool output:
-
-1. **Use the provided results** - They're ranked by relevance
-2. **For more data** - Run additional claudemem queries
-3. **Bypass available** - Use `_bypass_claudemem: true` for native tools when needed
-
-The hook system provides claudemem results proactively when the index is available.
-
----
-
 ## Task-to-Tool Mapping Reference
 
 | User Request | Native Approach | Semantic Approach (Recommended) |
@@ -298,5 +286,5 @@ This workflow finds relevant code faster than reading files sequentially.
 ---
 
 **Maintained by:** MadAppGang
-**Plugin:** code-analysis v2.16.0
+**Plugin:** code-analysis v4.0.0
 **Purpose:** Help choose the most efficient search tool for each task

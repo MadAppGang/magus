@@ -40,7 +40,7 @@ claude-code/
 ├── .claude-plugin/
 │   └── marketplace.json       # Marketplace plugin listing
 ├── plugins/                   # All plugins (10 published, 5 unlisted)
-│   ├── code-analysis/         # v3.2.3 — 13 skills, 1 agent
+│   ├── code-analysis/         # v4.0.0 — 13 skills, 1 agent, claudemem MCP
 │   ├── multimodel/            # v2.4.5 — 15 skills
 │   ├── agentdev/              # v1.5.3 — 5 skills
 │   ├── seo/                   # v1.6.3 — 12 skills

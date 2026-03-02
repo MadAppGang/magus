@@ -1,4 +1,9 @@
 {
+  "claudemem": {
+    "command": "claudemem",
+    "args": ["--mcp"],
+    "env": {}
+  },
   "claudish": {
     "command": "claudish",
     "args": ["--mcp"],

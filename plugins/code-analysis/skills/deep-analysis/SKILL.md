@@ -152,6 +152,20 @@ Provide a comprehensive report including:
 claudemem status
 ```
 
+### MCP Tools (Preferred in Claude Code)
+
+When using Claude Code with code-analysis plugin, call claudemem tools directly:
+
+| MCP Tool | Equivalent CLI | When to Use |
+|----------|---------------|-------------|
+| `map` | `claudemem --agent map` | Architecture overview, start here |
+| `symbol` | `claudemem --agent symbol` | Find exact definition |
+| `callers` | `claudemem --agent callers` | Impact analysis |
+| `callees` | `claudemem --agent callees` | Dependency analysis |
+| `context` | `claudemem --agent context` | Full call chain |
+| `search` | `claudemem --agent search` | Semantic search |
+| `dependency-graph` | `claudemem --agent dependency-graph` | Transitive dependencies |
+
 ### ✅ PRIMARY METHOD: claudemem (Indexed Memory)
 
 ```bash
@@ -337,7 +351,7 @@ This Skill works well with:
 - The codebase-detective agent uses extended thinking for complex analysis
 - **claudemem is REQUIRED** - grep/find produce inferior results
 - Fallback to grep ONLY if claudemem unavailable AND user accepts degraded mode
-- claudemem requires OpenRouter API key (https://openrouter.ai)
+- claudemem uses OpenRouter API for embedding (https://openrouter.ai). In MCP mode, the API key is read from environment.
 - Default model: `voyage/voyage-code-3` (best code understanding)
 - Run `claudemem --models` to see all options and pricing
 - Results are actionable and navigable
@@ -364,5 +378,5 @@ This Skill works well with:
 ---
 
 **Maintained by:** MadAppGang
-**Plugin:** code-analysis v2.2.0
-**Last Updated:** December 2025
+**Plugin:** code-analysis v4.0.0
+**Last Updated:** March 2026 (v4.0.0 - Added MCP tools section)

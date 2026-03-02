@@ -1,6 +1,6 @@
 ---
 name: architect-detective
-description: Use when analyzing architecture and system design. Find design patterns, map layers, identify core abstractions via PageRank. Uses claudemem AST structural analysis for efficient architecture investigation.
+description: Use when analyzing architecture and system design. Find design patterns, map layers, identify core abstractions via PageRank. Uses claudemem MCP tools (map, dependency-graph, context) or CLI for efficient architecture investigation.
 updated: 2026-01-20
 keywords: architecture, design-patterns, system-design, claudemem, pagerank, layers
 allowed-tools: Bash, Task, Read, AskUserQuestion
@@ -18,6 +18,7 @@ This skill uses claudemem's AST structural analysis for architecture investigati
 | Identify design patterns | Structural symbol graph | Grep patterns |
 | Map dependencies | `callers`/`callees` chains | Manual tracing |
 | Find architectural pillars | High-PageRank symbols | Unknown |
+| Visualize transitive dependencies | `dependency-graph` | Manual tracing |
 
 **Primary commands:**
 - `claudemem --agent map "query"` - Architecture overview with PageRank
@@ -46,7 +47,10 @@ The `map` command with PageRank shows you:
 - **File distribution** = Where architectural layers live
 - **Dependency centrality** = Which code is most connected
 
-## Architect-Focused Commands (v0.3.0)
+## Architect-Focused Commands (v0.20.1+)
+
+> Note: These examples use CLI syntax (`claudemem --agent`). In Claude Code, call
+> the MCP tools directly: `map`, `symbol`, `callers`, `callees`, `dependency-graph`.
 
 ### Architecture Discovery (use `map`)
 
@@ -87,7 +91,10 @@ claudemem --agent callers CoreService
 # See what the abstraction depends on
 claudemem --agent callees CoreService
 # Get full dependency context
-claudemem --agent context CoreService```
+claudemem --agent context CoreService
+# Full transitive dependency visualization
+claudemem --agent dependency-graph CoreService
+```
 
 ### Dead Code Detection (v0.4.0+ Required)
 
@@ -135,11 +142,11 @@ Results labeled "Potentially Dead" require manual verification for:
 
 ## PHASE 0: MANDATORY SETUP
 
-### Step 1: Verify claudemem v0.3.0
+### Step 1: Verify claudemem v0.20.1+
 
 ```bash
 which claudemem && claudemem --version
-# Must be 0.3.0+
+# Must be 0.20.1+
 ```
 
 ### Step 2: If Not Installed → STOP
@@ -263,7 +270,7 @@ fi
 │    - UserService (0.092) - Central business logic       │
 │    - Database (0.078) - Data access foundation          │
 │    - AuthMiddleware (0.056) - Security boundary         │
-│  Search Method: claudemem v0.3.0 (AST + PageRank)       │
+│  Search Method: claudemem v0.20.1+ (AST + PageRank)      │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -480,5 +487,5 @@ Search Feedback: [X helpful, Y unhelpful] - Submitted (v0.8.0+)
 ---
 
 **Maintained by:** MadAppGang
-**Plugin:** code-analysis v2.7.0
-**Last Updated:** December 2025 (v3.3.0 - Cross-platform compatibility, inline templates, improved validation)
+**Plugin:** code-analysis v4.0.0
+**Last Updated:** March 2026 (v4.0.0 - MCP tools, dependency-graph support)

@@ -1,40 +1,65 @@
 
-## Code Search: CLAUDEMEM ENFORCED
+## Code Search: CLAUDEMEM MCP
 
-> Added by `code-analysis` plugin v2.3.0
+> Added by `code-analysis` plugin v4.0.0
 
-### Automatic Interception
+### Available MCP Tools
 
-The code-analysis plugin automatically intercepts search tools:
+The code-analysis plugin provides claudemem as an MCP server with 18 tools
+for semantic code search, symbol navigation, and architecture analysis.
 
-| Tool | Behavior |
-|------|----------|
-| **Grep** | BLOCKED → Replaced with `claudemem search` |
-| **Bash grep/rg/find** | BLOCKED → Replaced with `claudemem search` |
-| **Glob (broad patterns)** | WARNING → Suggests `claudemem search` |
-| **Read (bulk 3+ files)** | WARNING → Suggests `claudemem search` |
+Use `ToolSearch` with query `"claudemem"` to discover and load available tools.
 
-### Why
+**Structured Tools (11):**
 
-- **Semantic search** - Finds code by meaning, not just text patterns
-- **Pre-indexed** - Instant results from vector database
-- **Ranked results** - Most relevant code chunks first
-- **No noise** - Excludes generated types, fixtures, node_modules
+| Tool | Purpose |
+|------|---------|
+| `search` | Semantic + BM25 hybrid code search |
+| `symbol` | Find symbol definition with usages and PageRank |
+| `callers` | What depends on this symbol? (call graph up) |
+| `callees` | What does this symbol depend on? (call graph down) |
+| `context` | Enclosing symbol, imports, and related symbols |
+| `map` | Repository structure with PageRank-ranked symbols |
+| `dead_code` | Find unreferenced symbols for cleanup |
+| `test_gaps` | High-importance symbols missing tests |
+| `impact` | Blast radius of changing a symbol |
+| `index_status` | Index health and server status |
+| `reindex` | Trigger background or blocking reindex |
 
-### Manual Commands
+### Freshness Metadata
+
+Every tool response includes freshness metadata:
+- `freshness`: `"fresh"` or `"stale"` — whether index is current
+- `lastIndexed`: ISO timestamp of last index
+- `reindexingInProgress`: whether background reindex is running
+- `responseTimeMs`: wall-clock time for the tool call
+
+If results are stale, use the `reindex` tool or wait for auto-reindex (2-minute debounce).
+
+### Recommended Workflow
+
+1. **Architecture overview**: `map` with depth 3-5 for PageRank-ranked structure
+2. **Semantic search**: `search` for natural language queries
+3. **Symbol investigation**: `symbol` → `callers` → `callees` for dependency analysis
+4. **Impact assessment**: `impact` before modifying high-PageRank symbols
+
+### Why Use Claudemem MCP
+
+- **Semantic search**: Finds code by meaning, not just text patterns
+- **Pre-indexed**: Instant results from vector database (~50ms)
+- **PageRank ranking**: Symbols ranked by architectural importance
+- **AST analysis**: Understands code structure (functions, classes, imports)
+- **Auto-reindex**: File watcher detects changes, reindexes in background
+
+### CLI Fallback
+
+If MCP tools are unavailable, claudemem CLI commands work via Bash:
 
 ```bash
-claudemem search "authentication flow"  # Semantic search
-claudemem status                         # Check index
-claudemem index                          # Re-index project
+claudemem --agent search "query"     # Semantic search
+claudemem --agent symbol "Name"      # Symbol lookup
+claudemem --agent map                # Architecture overview
+claudemem --agent callers "Name"     # Dependency analysis
+claudemem status                     # Index health
+claudemem index                      # Manual reindex
 ```
-
-### How It Works
-
-1. You call `Grep({ pattern: "auth" })`
-2. PreToolUse hook intercepts the call
-3. Hook runs `claudemem search "auth"` instead
-4. Results returned to Claude as context
-5. Original Grep is blocked
-
-This is transparent - you get semantic results without changing your workflow.

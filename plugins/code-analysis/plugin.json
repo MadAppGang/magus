@@ -1,7 +1,7 @@
 {
   "name": "code-analysis",
-  "version": "3.2.4",
-  "description": "Deep code investigation with claudemem. v3.1.0: Added investigate skill for keyword-based routing and enhanced documentation. v3.0.0: ENRICHMENT MODE - hooks now enhance native tools with AST context instead of blocking.",
+  "version": "4.0.0",
+  "description": "Deep code investigation with claudemem MCP server. v4.0.0: MCP-based integration with 18 tools (map, symbol, callers, callees, context, search, structural analysis). Call tools directly for AST-based code understanding.",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",
@@ -19,12 +19,11 @@
     "code-navigation",
     "semantic-search",
     "claudemem",
-    "hooks",
-    "enrichment",
-    "context-enhancement"
+    "mcp",
+    "ast",
+    "structural-analysis"
   ],
   "category": "development",
-  "hooks": "./hooks/hooks.json",
   "mcpServers": "./.mcp.json",
   "agents": [
     "./agents/codebase-detective.md"
