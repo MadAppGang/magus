@@ -9,7 +9,7 @@
  *   bun run debug-log-parser.ts <debug.log> [--output metrics.json] [--format json|table]
  */
 
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
+import { readFileSync, writeFileSync, mkdirSync } from "fs";
 import { dirname } from "path";
 import { parseArgs } from "util";
 import type { ToolCall, Tokens, OutputTurn, Totals, Metrics } from "../types.js";
@@ -33,7 +33,7 @@ const RE_STREAMING_USAGE =
   /\[Streaming\] Usage data received:\s*prompt=(\d+),\s*completion=(\d+),\s*total=(\d+)/;
 const RE_STREAMING_FINAL_USAGE =
   /\[Streaming\] Final usage:\s*prompt=(\d+),\s*completion=(\d+)/;
-const RE_STREAMING_FINISH = /\[Streaming\] Chunk:.*finish_reason=stop/;
+const RE_STREAMING_FINISH = /\[Streaming\] Chunk:.*\bfinish_reason=stop\b/;
 // Common patterns
 const RE_RESPONSE_STATUS = /\[OpenRouter\] Response status:\s*(\d+)/;
 const RE_COST_TRACKER = /\[Cost Tracker\] Total cost:\s*\$?([\d.]+)/;
@@ -79,10 +79,10 @@ function extractTimestamp(line: string): Date | null {
 function parseToolCallsStr(toolStr: string): ToolCall[] {
   const tools: ToolCall[] = [];
   let m: RegExpExecArray | null;
-  const re = new RegExp(RE_TOOL_CALL_ENTRY.source, "g");
-  while ((m = re.exec(toolStr)) !== null) {
+  while ((m = RE_TOOL_CALL_ENTRY.exec(toolStr)) !== null) {
     tools.push({ name: m[1], input_chars: parseInt(m[2], 10) });
   }
+  RE_TOOL_CALL_ENTRY.lastIndex = 0; // Reset for next call
   return tools;
 }
 
@@ -113,6 +113,12 @@ function preProcessLines(content: string): string[] {
   }
 
   return lines;
+}
+
+function calculateDuration(ts: Date | null, requestTimestamp: string | null): number | null {
+  if (!ts || !requestTimestamp) return null;
+  const reqTs = new Date(requestTimestamp);
+  return isNaN(reqTs.getTime()) ? null : ts.getTime() - reqTs.getTime();
 }
 
 function parseLinesInternal(lines: string[]): Metrics {
@@ -229,14 +235,7 @@ function parseLinesInternal(lines: string[]): Metrics {
     if (m && currentRequest) {
       currentRequest.completed = true;
       currentRequest.stream_status = m[1];
-
-      // Calculate duration
-      if (ts && currentRequest.timestamp) {
-        const reqTs = new Date(currentRequest.timestamp);
-        if (!isNaN(reqTs.getTime())) {
-          currentRequest.duration_ms = ts.getTime() - reqTs.getTime();
-        }
-      }
+      currentRequest.duration_ms = calculateDuration(ts, currentRequest.timestamp);
 
       turns.push(currentRequest);
       currentRequest = null;
@@ -247,14 +246,7 @@ function parseLinesInternal(lines: string[]): Metrics {
     if (RE_STREAMING_FINISH.test(line) && currentRequest) {
       currentRequest.completed = true;
       currentRequest.stream_status = "stop";
-
-      // Calculate duration
-      if (ts && currentRequest.timestamp) {
-        const reqTs = new Date(currentRequest.timestamp);
-        if (!isNaN(reqTs.getTime())) {
-          currentRequest.duration_ms = ts.getTime() - reqTs.getTime();
-        }
-      }
+      currentRequest.duration_ms = calculateDuration(ts, currentRequest.timestamp);
 
       // Don't push yet — wait for usage data that follows in the next lines
       // We set completed=true here and will push when we encounter the next request or EOF
@@ -277,9 +269,13 @@ function parseLinesInternal(lines: string[]): Metrics {
     turns.push(currentRequest);
   }
 
-  // Calculate aggregates
-  const completedTurns = turns.filter((t) => t.completed && !t.retry);
-  const retryTurns = turns.filter((t) => t.retry);
+  // Calculate aggregates — single pass to categorize turns
+  const completedTurns: DebugTurn[] = [];
+  const retryTurns: DebugTurn[] = [];
+  for (const t of turns) {
+    if (t.retry) retryTurns.push(t);
+    else if (t.completed) completedTurns.push(t);
+  }
 
   const totalTokens: Tokens = { prompt: 0, completion: 0, total: 0 };
   let totalDurationMs = 0;
@@ -339,27 +335,22 @@ function parseLinesInternal(lines: string[]): Metrics {
 }
 
 export function parseDebugLog(logPath: string): Metrics {
-  if (!existsSync(logPath)) {
-    return { error: "debug.log not found", turns: [], totals: null };
-  }
-
   let content: string;
   try {
     content = readFileSync(logPath, "utf-8");
   } catch (e: any) {
-    return { error: e.message, turns: [], totals: null };
+    if (e?.code === "ENOENT") {
+      return { error: "debug.log not found", turns: [], totals: null };
+    }
+    return { error: e?.message ?? String(e), turns: [], totals: null };
   }
 
-  if (!content.trim()) {
-    return { error: "empty debug log", turns: [], totals: null };
-  }
-
-  return parseLinesInternal(preProcessLines(content));
+  return parseDebugLogContent(content);
 }
 
 export function parseDebugLogContent(content: string): Metrics {
   if (!content.trim()) {
-    return { turns: [], totals: null };
+    return { error: "empty debug log", turns: [], totals: null };
   }
   return parseLinesInternal(preProcessLines(content));
 }
