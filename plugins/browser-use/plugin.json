@@ -1,7 +1,7 @@
 {
   "name": "browser-use",
-  "version": "1.0.0",
-  "description": "Full-platform browser automation for Claude Code. v1.0.0: 15 MCP tools via in-process asyncio server, 5 skills (core-api, navigation, scraping, debug-ui, hybrid debugging), local CDP + Cloud support, claude-in-chrome hybrid workflows.",
+  "version": "1.0.1",
+  "description": "Full-platform browser automation for Claude Code. v1.0.1: Fix macOS dock icon (Python rocket) for MCP server process. 15 MCP tools via in-process asyncio server, 5 skills, local CDP + Cloud support, claude-in-chrome hybrid workflows.",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",
