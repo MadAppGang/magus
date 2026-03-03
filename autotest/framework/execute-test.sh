@@ -75,10 +75,15 @@ fi
 
 # Build claudish flags
 CLAUDISH_FLAGS="-y --json --debug --log-level debug"
+USE_NATIVE_CLAUDE=false
 
-# Model selection: "monitor" uses --monitor (native Anthropic), others use --model
-# NOTE: --cost-tracker breaks model routing in claudish v4.6.10 (forces monitor mode)
-if [[ "$MODEL" == "monitor" ]]; then
+# Model selection:
+#   "internal" — native Claude Code (claude -p) with full plugin/skill access
+#   "monitor"  — claudish --monitor (broken since v5.2.0, kept for compat)
+#   other      — claudish --model <name> (auto-routed by claudish)
+if [[ "$MODEL" == "internal" ]]; then
+  USE_NATIVE_CLAUDE=true
+elif [[ "$MODEL" == "monitor" ]]; then
   CLAUDISH_FLAGS="$CLAUDISH_FLAGS --monitor"
 else
   CLAUDISH_FLAGS="$CLAUDISH_FLAGS --model $MODEL"
@@ -103,32 +108,61 @@ if [[ -d "$LOGS_DIR" ]]; then
   LAST_LOG_BEFORE=$(ls -t "$LOGS_DIR"/claudish_*.log 2>/dev/null | head -1)
 fi
 
-# Execute claudish with output capture
-# NOTE: claudish --debug writes to logs/claudish_*.log, NOT stderr.
-# stderr is captured for any unexpected errors.
+# Execute test command with output capture
 set +e
-if [[ -n "$TIMEOUT_CMD" ]]; then
-  $TIMEOUT_CMD claudish $CLAUDISH_FLAGS \
-    --stdin < "$PROMPT_FILE" \
-    > "$OUTPUT_DIR/transcript.jsonl" \
-    2> "$OUTPUT_DIR/stderr.log"
+if [[ "$USE_NATIVE_CLAUDE" == "true" ]]; then
+  # Native Claude Code — full plugin/skill access via claude -p
+  # --output-format stream-json: JSONL transcript with tool calls visible
+  # --dangerously-skip-permissions: non-interactive execution
+  # --plugin-dir: load local dev plugin (skills not in cache yet)
+  SUITE_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+  PLUGIN_DIR="$SUITE_DIR/../plugins/dev"
+  CLAUDE_P_FLAGS="-p --verbose --output-format stream-json --dangerously-skip-permissions"
+  if [[ -d "$PLUGIN_DIR" ]]; then
+    CLAUDE_P_FLAGS="$CLAUDE_P_FLAGS --plugin-dir $PLUGIN_DIR"
+  fi
+  if [[ -n "$TIMEOUT_CMD" ]]; then
+    $TIMEOUT_CMD claude $CLAUDE_P_FLAGS \
+      < "$PROMPT_FILE" \
+      > "$OUTPUT_DIR/transcript.jsonl" \
+      2> "$OUTPUT_DIR/stderr.log"
+  else
+    claude $CLAUDE_P_FLAGS \
+      < "$PROMPT_FILE" \
+      > "$OUTPUT_DIR/transcript.jsonl" \
+      2> "$OUTPUT_DIR/stderr.log"
+  fi
+  EXIT_CODE=$?
+  # No claudish debug log for native claude — stderr.log serves as debug log
+  if [[ -f "$OUTPUT_DIR/stderr.log" && -s "$OUTPUT_DIR/stderr.log" ]]; then
+    cp "$OUTPUT_DIR/stderr.log" "$OUTPUT_DIR/debug.log"
+  fi
 else
-  claudish $CLAUDISH_FLAGS \
-    --stdin < "$PROMPT_FILE" \
-    > "$OUTPUT_DIR/transcript.jsonl" \
-    2> "$OUTPUT_DIR/stderr.log"
-fi
-EXIT_CODE=$?
-set -e
+  # claudish for external models
+  # NOTE: claudish --debug writes to logs/claudish_*.log, NOT stderr.
+  if [[ -n "$TIMEOUT_CMD" ]]; then
+    $TIMEOUT_CMD claudish $CLAUDISH_FLAGS \
+      --stdin < "$PROMPT_FILE" \
+      > "$OUTPUT_DIR/transcript.jsonl" \
+      2> "$OUTPUT_DIR/stderr.log"
+  else
+    claudish $CLAUDISH_FLAGS \
+      --stdin < "$PROMPT_FILE" \
+      > "$OUTPUT_DIR/transcript.jsonl" \
+      2> "$OUTPUT_DIR/stderr.log"
+  fi
+  EXIT_CODE=$?
 
-# Find and copy the claudish debug log (written to logs/claudish_*.log)
-NEWEST_LOG=$(ls -t "$LOGS_DIR"/claudish_*.log 2>/dev/null | head -1)
-if [[ -n "$NEWEST_LOG" && "$NEWEST_LOG" != "$LAST_LOG_BEFORE" ]]; then
-  cp "$NEWEST_LOG" "$OUTPUT_DIR/debug.log"
-else
-  # Fallback: if no new log file, rename stderr as debug.log
-  mv "$OUTPUT_DIR/stderr.log" "$OUTPUT_DIR/debug.log" 2>/dev/null || true
+  # Find and copy the claudish debug log (written to logs/claudish_*.log)
+  NEWEST_LOG=$(ls -t "$LOGS_DIR"/claudish_*.log 2>/dev/null | head -1)
+  if [[ -n "$NEWEST_LOG" && "$NEWEST_LOG" != "$LAST_LOG_BEFORE" ]]; then
+    cp "$NEWEST_LOG" "$OUTPUT_DIR/debug.log"
+  else
+    # Fallback: if no new log file, rename stderr as debug.log
+    mv "$OUTPUT_DIR/stderr.log" "$OUTPUT_DIR/debug.log" 2>/dev/null || true
+  fi
 fi
+set -e
 
 # Clean up empty stderr.log
 if [[ -f "$OUTPUT_DIR/stderr.log" && ! -s "$OUTPUT_DIR/stderr.log" ]]; then

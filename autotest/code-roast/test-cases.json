@@ -1,0 +1,114 @@
+{
+  "meta": {
+    "description": "Code Roast skill E2E tests — validates on-demand skill loading per language stack",
+    "version": "1.0.0",
+    "created": "2026-03-03",
+    "notes": "8 test cases: 4 language-specific (TS file, Python/Go/SQL inline), 2 trigger-phrase variants, 1 negative (no trigger), 1 tone control. Models: internal, minimax-m2.5, kimi-k2.5, glm-5, gemini-3.1-pro-preview, gpt-5.2."
+  },
+  "test_cases": [
+    {
+      "id": "roast-ts-file-01",
+      "description": "Roast a real TypeScript file — skill invoked, TS registry loaded, grep patterns run, severity output",
+      "prompt": "Roast the code in autotest/framework/evaluator.ts — give me the full sin inventory with severity levels.",
+      "expected_agent": "NO_TASK_CALL",
+      "category": "language-specific",
+      "tags": ["typescript", "file-based", "skill-trigger", "grep-detection"],
+      "checks": {
+        "skill_invoked_is": "code-roast",
+        "no_task_with_skill_name": true,
+        "reads_file_any": ["sin-registry.md", "detection-patterns.md"],
+        "grep_used": true,
+        "response_contains_any": ["CAPITAL", "FELONY", "CRIME", "MISDEMEANOR", "Sin Inventory", "severity"]
+      }
+    },
+    {
+      "id": "roast-python-inline-02",
+      "description": "Roast inline Python with deliberate PY-01 (mutable default), PY-02 (bare except), PY-08 (os.system) sins",
+      "prompt": "Roast this Python code:\n\n```python\ndef process_items(items=[], cache={}):\n    try:\n        for item in items:\n            result = items.append(item.upper())\n    except:\n        pass\n    return items\n\nimport os\nos.system(f\"process {items[0]}\")\n```",
+      "expected_agent": "NO_TASK_CALL",
+      "category": "language-specific",
+      "tags": ["python", "inline", "mutable-default", "bare-except", "os-system"],
+      "checks": {
+        "skill_invoked_is": "code-roast",
+        "no_task_with_skill_name": true,
+        "response_contains_any": ["mutable default", "bare except", "os.system", "CAPITAL", "FELONY", "CRIME", "PY-01", "PY-02", "PY-08", "mutable"]
+      }
+    },
+    {
+      "id": "roast-go-inline-03",
+      "description": "Roast inline Go with deliberate GO-01 (ignored error), GO-06 (stutter), GO-16 (unbounded goroutine) sins",
+      "prompt": "Roast this Go code:\n\n```go\npackage user\n\nimport (\n\t\"fmt\"\n\t\"io\"\n\t\"net/http\"\n)\n\ntype UserService struct{}\n\nfunc FetchAllUsers(urls []string) []string {\n\tvar results []string\n\tfor _, url := range urls {\n\t\tgo func() {\n\t\t\tresp, _ := http.Get(url)\n\t\t\tbody, _ := io.ReadAll(resp.Body)\n\t\t\tresults = append(results, string(body))\n\t\t}()\n\t}\n\treturn results\n}\n```",
+      "expected_agent": "NO_TASK_CALL",
+      "category": "language-specific",
+      "tags": ["go", "inline", "ignored-error", "goroutine-leak", "stutter"],
+      "checks": {
+        "skill_invoked_is": "code-roast",
+        "no_task_with_skill_name": true,
+        "response_contains_any": ["error", "goroutine", "stutter", "FELONY", "CRIME", "CAPITAL", "GO-01", "GO-02", "GO-06", "GO-16", "race", "leak"]
+      }
+    },
+    {
+      "id": "roast-sql-inline-04",
+      "description": "Roast inline SQL with deliberate SQL-01 (SELECT *), SQL-08 (OFFSET), SQL-09 (injection) sins",
+      "prompt": "Roast these SQL queries:\n\n```sql\n-- Query 1: Get user by name\nSELECT * FROM users WHERE name = '\" + userName + \"' AND deleted = false;\n\n-- Query 2: Paginated orders\nSELECT * FROM orders WHERE status = 'active' ORDER BY created_at OFFSET 50000 LIMIT 20;\n```",
+      "expected_agent": "NO_TASK_CALL",
+      "category": "language-specific",
+      "tags": ["sql", "inline", "injection", "select-star", "offset-pagination"],
+      "checks": {
+        "skill_invoked_is": "code-roast",
+        "no_task_with_skill_name": true,
+        "response_contains_any": ["injection", "SELECT *", "OFFSET", "CAPITAL", "CRIME", "SQL-01", "SQL-08", "SQL-09", "parameterized", "cursor"]
+      }
+    },
+    {
+      "id": "roast-trigger-sins-05",
+      "description": "Alternative trigger phrase 'find sins' invokes the code-roast skill",
+      "prompt": "Find the sins in autotest/framework/comparator.ts",
+      "expected_agent": "NO_TASK_CALL",
+      "category": "trigger-phrase",
+      "tags": ["trigger", "sins", "skill-invocation", "typescript"],
+      "checks": {
+        "skill_invoked_is": "code-roast",
+        "no_task_with_skill_name": true,
+        "response_contains_any": ["CAPITAL", "FELONY", "CRIME", "MISDEMEANOR", "sin", "Sin", "roast", "Roast"]
+      }
+    },
+    {
+      "id": "roast-trigger-shame-06",
+      "description": "Alternative trigger phrase 'shame my code' invokes the code-roast skill",
+      "prompt": "Shame my code — check autotest/framework/debug-log-parser.ts for problems",
+      "expected_agent": "NO_TASK_CALL",
+      "category": "trigger-phrase",
+      "tags": ["trigger", "shame", "skill-invocation", "typescript"],
+      "checks": {
+        "skill_invoked_is": "code-roast",
+        "no_task_with_skill_name": true
+      }
+    },
+    {
+      "id": "roast-no-trigger-07",
+      "description": "Non-roast question about code should NOT invoke the code-roast skill",
+      "prompt": "What is the purpose of the evaluator.ts file in the autotest framework? Explain its main functions and return types.",
+      "expected_agent": "NO_TASK_CALL",
+      "category": "negative",
+      "tags": ["negative", "no-trigger", "explanation-only"],
+      "checks": {
+        "no_skill_invoked_is": "code-roast",
+        "response_not_contains": "Sin Inventory"
+      }
+    },
+    {
+      "id": "roast-tone-nuclear-08",
+      "description": "Nuclear tone requested — skill invoked, enhanced roast output with TypeScript sins detected",
+      "prompt": "Roast this TypeScript in nuclear mode — hold nothing back:\n\n```typescript\nfunction getData(x: any): any {\n    var result = fetch('/api/data?id=' + x);\n    console.log(result);\n    return result as unknown as ProcessedData;\n}\n```",
+      "expected_agent": "NO_TASK_CALL",
+      "category": "tone-control",
+      "tags": ["tone", "nuclear", "typescript", "inline", "any-type", "var", "type-gaslighting"],
+      "checks": {
+        "skill_invoked_is": "code-roast",
+        "no_task_with_skill_name": true,
+        "response_contains_any": ["any", "var ", "console.log", "unknown", "TS-02", "TS-09", "TS-11", "SLOP", "CRIME", "FELONY", "nuclear", "NUCLEAR"]
+      }
+    }
+  ]
+}

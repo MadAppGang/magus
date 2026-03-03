@@ -605,9 +605,36 @@ After fixing UI issues:
 
 ---
 
+## Designer Plugin Integration (Optional)
+
+If the `designer` plugin is installed (`designer@magus`), use it for pixel-level
+design fidelity validation instead of manual screenshot comparison:
+
+```bash
+# Check if designer plugin is available
+claude /plugin list 2>/dev/null | grep -q "designer" && echo "available" || echo "not installed"
+```
+
+**Pattern: Delegate pixel-diff to designer**
+- Use `designer:review` agent for structured diff reports (pixel + AI semantic)
+- Use manual Chrome MCP screenshot comparison only when designer is not installed
+- Prefer `designer:review` for Figma-to-implementation validation
+
+```
+# When designer is available, replace manual visual comparison with:
+Task(
+  subagent_type: "designer:review",
+  prompt: "Compare reference at {REFERENCE_PATH} against implementation at {IMPL_URL}. Viewport: 1440x900."
+)
+```
+
+This is an optional enhancement — browser-debugging works without designer installed.
+If designer is not available, use the manual visual comparison patterns in Recipe 2 above.
+
 ## Related Skills
 
 - **react-typescript** - React component patterns
 - **tanstack-router** - Navigation and routing
 - **shadcn-ui** - Component library usage
 - **testing-frontend** - Automated testing strategies
+- **designer-integration** - Optional designer plugin detection and delegation patterns

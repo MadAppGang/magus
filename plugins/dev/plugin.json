@@ -1,7 +1,7 @@
 {
   "name": "dev",
-  "version": "1.36.3",
-  "description": "Universal development assistant with real skill discovery. v1.36.3: Split coaching AI/human instructions — clean data/presentation separation. 47 skills.",
+  "version": "1.38.0",
+  "description": "Universal development assistant with real skill discovery. v1.38.0: Code Roast skill — 192 anti-patterns, 8 languages, AI slop detection. Design migrated to designer plugin. 45 skills.",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",
@@ -34,8 +34,7 @@
     "python",
     "rust",
     "orchestration",
-    "ui-design",
-    "design-review",
+    "optional-designer",
     "gemini",
     "multimodal",
     "vision"
@@ -49,8 +48,7 @@
     "./agents/developer.md",
     "./agents/debugger.md",
     "./agents/architect.md",
-    "./agents/ui.md",
-    "./agents/ui-engineer.md",
+    "./agents/frontend.md",
     "./agents/scribe.md",
     "./agents/spec-writer.md",
     "./agents/devops.md",
@@ -59,7 +57,8 @@
     "./agents/doc-writer.md",
     "./agents/doc-analyzer.md",
     "./agents/doc-fixer.md",
-    "./agents/reviewer.md"
+    "./agents/reviewer.md",
+    "./agents/test-architect.md"
   ],
   "commands": [
     "./commands/help.md",
@@ -68,8 +67,6 @@
     "./commands/feature.md",
     "./commands/architect.md",
     "./commands/brainstorm.md",
-    "./commands/ui.md",
-    "./commands/create-style.md",
     "./commands/interview.md",
     "./commands/deep-research.md",
     "./commands/doc.md",
@@ -98,6 +95,8 @@
     "./skills/frontend/shadcn-ui",
     "./skills/frontend/tailwindcss",
     "./skills/frontend/css-modules",
+    "./skills/frontend/frontend-implement",
+    "./skills/design/designer-integration",
     "./skills/backend/api-design",
     "./skills/backend/database-patterns",
     "./skills/backend/auth-patterns",
@@ -112,10 +111,6 @@
     "./skills/backend/db-branching",
     "./skills/backend/python",
     "./skills/backend/rust",
-    "./skills/design/ui-analyse",
-    "./skills/design/ui-implement",
-    "./skills/design/design-references",
-    "./skills/design/ui-style-format",
     "./skills/documentation-standards",
     "./skills/discipline/verification-before-completion",
     "./skills/discipline/test-driven-development",
@@ -124,6 +119,7 @@
     "./skills/discipline/worktree-lifecycle",
     "./skills/plugin-sdk-patterns",
     "./skills/audit",
+    "./skills/code-roast",
     "./skills/optimize",
     "./skills/test-coverage",
     "./skills/mcp-standards",
@@ -133,6 +129,9 @@
   ],
   "dependencies": {
     "multimodel@magus": "^2.0.0"
+  },
+  "optionalDependencies": {
+    "designer@magus": ">=0.1.0"
   },
   "compatibility": {
     "claudeCode": ">=0.1.0"

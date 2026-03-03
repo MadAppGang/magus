@@ -1,13 +1,13 @@
 ---
-name: ui-implement
+name: frontend-implement
 version: 1.0.0
 description: |
   Patterns for implementing UI improvements based on design analysis.
-  Works with review documents from dev:ui-analyse or /dev:ui command.
+  Works with review documents from designer:ui-analyse (requires designer plugin) or /designer:ui command.
   Includes Anti-AI design rules and visual verification.
 ---
 
-# UI Implementation Skill
+# Frontend Implementation Skill
 
 ## Overview
 
@@ -17,16 +17,16 @@ This skill provides patterns for implementing UI improvements based on design an
 
 | Skill | Purpose | Modifies Code? |
 |-------|---------|----------------|
-| dev:ui-analyse | Visual analysis, issue detection | No |
-| dev:ui-implement | Apply improvements from analysis | Yes |
-| dev:ui-style-format | Style file specification | No |
-| dev:design-references | Reference image management | No |
+| designer:ui-analyse | Visual analysis, issue detection (requires designer plugin) | No |
+| dev:frontend-implement | Apply improvements from analysis | Yes |
+| designer:ui-style-format | Style file specification (requires designer plugin) | No |
+| designer:design-references | Reference image management (requires designer plugin) | No |
 
 ## Prerequisite
 
 This skill assumes analysis has been completed using:
-- `dev:ui-analyse` skill
-- `/dev:ui` command output
+- `designer:ui-analyse` skill (requires designer plugin)
+- `/designer:ui` command output
 - External design review
 
 Before implementing, ensure you have:

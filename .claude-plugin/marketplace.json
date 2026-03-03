@@ -193,8 +193,8 @@
     {
       "name": "dev",
       "source": "./plugins/dev",
-      "description": "Universal development assistant with real skill discovery. v1.36.3: Split coaching AI/human instructions — clean data/presentation separation.",
-      "version": "1.36.3",
+      "description": "Universal development assistant with real skill discovery. v1.38.0: Code Roast skill — 192 anti-patterns, 8 languages, AI slop detection. Design migrated to designer plugin. 45 skills.",
+      "version": "1.38.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
