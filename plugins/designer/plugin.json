@@ -1,0 +1,52 @@
+{
+  "name": "designer",
+  "version": "0.2.0",
+  "description": "UI design validation, review, and style management. Pixel-diff comparison, AI semantic analysis, and design system workflows.",
+  "author": {
+    "name": "Jack Rudenko",
+    "email": "i@madappgang.com",
+    "company": "MadAppGang"
+  },
+  "license": "MIT",
+  "keywords": [
+    "ui",
+    "design",
+    "design-review",
+    "figma",
+    "pixel-diff",
+    "accessibility",
+    "usability",
+    "gemini",
+    "multimodal",
+    "design-system",
+    "style-guide"
+  ],
+  "category": "design",
+  "agents": [
+    "./agents/design-review.md",
+    "./agents/ui.md"
+  ],
+  "commands": [
+    "./commands/review.md",
+    "./commands/ui.md",
+    "./commands/create-style.md"
+  ],
+  "skills": [
+    "./skills/compare",
+    "./skills/ui-analyse",
+    "./skills/design-references",
+    "./skills/ui-style-format",
+    "./skills/ui-design-review",
+    "./skills/browser-use-integration"
+  ],
+  "dependencies": {
+    "multimodel@magus": "^2.0.0"
+  },
+  "optionalDependencies": {
+    "dev@magus": ">=1.37.0",
+    "browser-use@magus": ">=1.0.0"
+  },
+  "compatibility": {
+    "claudeCode": ">=0.1.0"
+  }
+}

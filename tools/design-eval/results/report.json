@@ -1,0 +1,75 @@
+{
+  "dimensions": {
+    "padding": {
+      "overall_score": 1.7835,
+      "dataset_scores": {
+        "gde": 3.5669999999999997,
+        "designbench_edit": 0.0
+      },
+      "num_datasets": 2
+    },
+    "color": {
+      "overall_score": 1.949,
+      "dataset_scores": {
+        "gde": 3.398,
+        "designbench_edit": 0.5
+      },
+      "num_datasets": 2
+    },
+    "typography": {
+      "overall_score": 0.5,
+      "dataset_scores": {
+        "designbench_edit": 0.5
+      },
+      "num_datasets": 1
+    },
+    "alignment": {
+      "overall_score": 1.992,
+      "dataset_scores": {
+        "gde": 3.484,
+        "designbench_edit": 0.5
+      },
+      "num_datasets": 2
+    },
+    "layout": {
+      "overall_score": 0.0,
+      "dataset_scores": {
+        "designbench_edit": 0.0
+      },
+      "num_datasets": 1
+    }
+  },
+  "datasets": {
+    "gde": {
+      "num_samples": 1,
+      "aggregate_scores": {
+        "pearson_p": 0.18835404247790433,
+        "pearson_r": 0.9565500500787414,
+        "spearman_p": 0.0,
+        "spearman_r": 1.0
+      },
+      "dimension_scores": {
+        "alignment": 3.484,
+        "color": 3.398,
+        "padding": 3.5669999999999997
+      }
+    },
+    "designbench_edit": {
+      "num_samples": 2,
+      "aggregate_scores": {
+        "accuracy": 0.7,
+        "exact_match": 0.0,
+        "f1": 0.65,
+        "precision": 0.5,
+        "recall": 1.0
+      },
+      "dimension_scores": {
+        "alignment": 0.5,
+        "color": 0.5,
+        "layout": 0.0,
+        "padding": 0.0,
+        "typography": 0.5
+      }
+    }
+  }
+}

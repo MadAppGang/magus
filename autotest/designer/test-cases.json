@@ -1,0 +1,128 @@
+{
+  "meta": {
+    "description": "Designer plugin E2E test cases. Verifies agent routing (designer:design-review, designer:ui), skill invocation via Skill tool (designer:compare, designer:ui-analyse, designer:design-references), slash command parsing, and cross-plugin awareness with the dev plugin.",
+    "version": "1.0.0",
+    "created": "2026-03-03",
+    "total_cases": 12,
+    "notes": "v1.0: Initial test suite covering agent-routing (4), skill-routing (3), command-parsing (3), cross-plugin (2). Designer plugin v0.2.0 with agents: design-review, ui; commands: review, ui, create-style; skills: compare, ui-analyse, design-references, ui-style-format, ui-design-review."
+  },
+  "test_cases": [
+    {
+      "id": "design-review-explicit-01",
+      "description": "Explicit designer:design-review agent request should be honored",
+      "prompt": "Use the designer:design-review agent to compare these two screenshots: reference.png and actual.png. Analyze visual differences and report what does not match.",
+      "expected_agent": "designer:design-review",
+      "category": "agent-routing",
+      "tags": ["explicit", "named", "design-review"]
+    },
+    {
+      "id": "design-review-implicit-02",
+      "description": "Implicit design comparison task should route to designer:design-review via CLAUDE.md routing",
+      "prompt": "Compare my Figma design against the live implementation at localhost:3000 and tell me what's different. Focus on layout, colors, spacing, and typography.",
+      "expected_agent": "designer:design-review",
+      "expected_alternatives": ["dev:ui", "general-purpose"],
+      "category": "agent-routing",
+      "tags": ["implicit-delegation", "figma", "design-diff"]
+    },
+    {
+      "id": "ui-review-explicit-03",
+      "description": "Explicit designer:ui agent request should be honored",
+      "prompt": "Use the designer:ui agent to review the usability and accessibility of this page. Check for WCAG compliance issues and design system violations.",
+      "expected_agent": "designer:ui",
+      "category": "agent-routing",
+      "tags": ["explicit", "named", "accessibility", "usability"]
+    },
+    {
+      "id": "ui-review-implicit-04",
+      "description": "Implicit UI design review task should route to designer:ui agent",
+      "prompt": "Review the UI design of my homepage for accessibility issues and design system violations. Check contrast ratios, touch targets, and component consistency.",
+      "expected_agent": "designer:ui",
+      "expected_alternatives": ["general-purpose", "NO_TASK_CALL"],
+      "category": "agent-routing",
+      "tags": ["implicit-delegation", "accessibility", "design-system"]
+    },
+    {
+      "id": "skill-compare-explicit-05",
+      "description": "Explicit designer:compare skill should be invoked via Skill tool, not Task",
+      "prompt": "Use the designer:compare skill to understand how to run pixel-diff comparison between two screenshots. Just load the skill and report what approach it describes.",
+      "checks": {
+        "skill_invoked_is": "designer:compare",
+        "no_task_with_skill_name": true
+      },
+      "category": "skill-routing",
+      "tags": ["explicit-skill", "pixel-diff", "skill-vs-agent"]
+    },
+    {
+      "id": "skill-ui-analyse-explicit-06",
+      "description": "Explicit designer:ui-analyse skill should be invoked via Skill tool, not Task",
+      "prompt": "Use the designer:ui-analyse skill for visual analysis patterns. Load the skill and summarize what visual analysis methodology it describes.",
+      "checks": {
+        "skill_invoked_is": "designer:ui-analyse",
+        "no_task_with_skill_name": true
+      },
+      "category": "skill-routing",
+      "tags": ["explicit-skill", "visual-analysis", "skill-vs-agent"]
+    },
+    {
+      "id": "skill-design-refs-07",
+      "description": "Explicit designer:design-references skill should be invoked via Skill tool, not Task",
+      "prompt": "Load the designer:design-references skill to check Material Design 3 guidelines. Just load the skill and report what design reference systems it covers.",
+      "checks": {
+        "skill_invoked_is": "designer:design-references",
+        "no_task_with_skill_name": true
+      },
+      "category": "skill-routing",
+      "tags": ["explicit-skill", "material-design", "design-system", "skill-vs-agent"]
+    },
+    {
+      "id": "command-review-08",
+      "description": "Slash command /designer:review should invoke the review command skill",
+      "prompt": "/designer:review reference.png actual.png",
+      "checks": {
+        "skill_invoked_is": "designer:review"
+      },
+      "category": "command-parsing",
+      "tags": ["command", "review", "pixel-diff"]
+    },
+    {
+      "id": "command-ui-09",
+      "description": "Slash command /designer:ui should invoke the ui command skill",
+      "prompt": "/designer:ui screenshot.png --style material",
+      "checks": {
+        "skill_invoked_is": "designer:ui"
+      },
+      "category": "command-parsing",
+      "tags": ["command", "ui", "style"]
+    },
+    {
+      "id": "command-create-style-10",
+      "description": "Slash command /designer:create-style should invoke the create-style command skill",
+      "prompt": "/designer:create-style",
+      "checks": {
+        "skill_invoked_is": "designer:create-style"
+      },
+      "category": "command-parsing",
+      "tags": ["command", "create-style", "style-guide"]
+    },
+    {
+      "id": "cross-plugin-frontend-awareness-11",
+      "description": "dev:frontend agent should be aware of designer plugin for design review tasks",
+      "prompt": "I need to implement UI improvements based on a design review. Use the dev:frontend agent.",
+      "expected_agent": "dev:frontend",
+      "checks": {
+        "response_contains_any": ["designer", "design-review", "designer:review"]
+      },
+      "category": "cross-plugin",
+      "tags": ["cross-plugin", "optional-dependency", "frontend"]
+    },
+    {
+      "id": "cross-plugin-browser-debug-12",
+      "description": "Browser UI debugging should be handled directly or by a dev agent, not necessarily designer",
+      "prompt": "Debug the UI rendering issues on my page using browser debugging tools",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": ["dev:developer", "dev:debugger"],
+      "category": "cross-plugin",
+      "tags": ["browser-debugging", "optional-dependency"]
+    }
+  ]
+}

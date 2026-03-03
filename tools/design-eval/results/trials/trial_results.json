@@ -1,0 +1,901 @@
+{
+  "config": {
+    "trials": 10,
+    "limit": 5,
+    "models": [
+      "claude-sonnet-4.6",
+      "gpt-5.2",
+      "minimax-m2.5",
+      "kimi-k2.5",
+      "glm-5",
+      "gemini-3.1-pro"
+    ]
+  },
+  "summary": {
+    "claude-sonnet-4.6": {
+      "trials_ok": 10,
+      "trials_err": 0,
+      "edit_f1": 0.2,
+      "edit_accuracy": 0.68,
+      "gde_pearson_r": -0.1041,
+      "gde_spearman_r": -0.1732,
+      "avg_duration_s": 40.5,
+      "dimensions": {
+        "padding": 1.2,
+        "color": 1.9345,
+        "typography": 0.0,
+        "alignment": 1.55,
+        "layout": 0.0
+      }
+    },
+    "gpt-5.2": {
+      "trials_ok": 7,
+      "trials_err": 3,
+      "edit_f1": 0.2,
+      "edit_accuracy": 0.68,
+      "gde_pearson_r": -0.1268,
+      "gde_spearman_r": -0.1732,
+      "avg_duration_s": 38.9,
+      "dimensions": {
+        "padding": 1.2214,
+        "color": 1.8186,
+        "typography": 0.0,
+        "alignment": 1.5714,
+        "layout": 0.0
+      }
+    },
+    "minimax-m2.5": {
+      "status": "ALL FAILED"
+    },
+    "kimi-k2.5": {
+      "status": "ALL FAILED"
+    },
+    "glm-5": {
+      "status": "ALL FAILED"
+    },
+    "gemini-3.1-pro": {
+      "status": "ALL FAILED"
+    }
+  },
+  "raw_results": [
+    {
+      "model": "claude-sonnet-4.6",
+      "trial": 1,
+      "gde_scores": {
+        "pearson_p": 0.6321250051441645,
+        "pearson_r": -0.10407908816824651,
+        "spearman_p": 0.6,
+        "spearman_r": -0.17320508075688773
+      },
+      "edit_scores": {
+        "accuracy": 0.68,
+        "exact_match": 0.2,
+        "f1": 0.2,
+        "precision": 0.2,
+        "recall": 0.2
+      },
+      "dimension_scores": {
+        "padding": 1.2,
+        "color": 1.935,
+        "typography": 0.0,
+        "alignment": 1.55,
+        "layout": 0.0
+      },
+      "duration_s": 48.5,
+      "error": null
+    },
+    {
+      "model": "claude-sonnet-4.6",
+      "trial": 2,
+      "gde_scores": {
+        "pearson_p": 0.6321250051441645,
+        "pearson_r": -0.10407908816824651,
+        "spearman_p": 0.6,
+        "spearman_r": -0.17320508075688773
+      },
+      "edit_scores": {
+        "accuracy": 0.68,
+        "exact_match": 0.2,
+        "f1": 0.2,
+        "precision": 0.2,
+        "recall": 0.2
+      },
+      "dimension_scores": {
+        "padding": 1.2,
+        "color": 1.935,
+        "typography": 0.0,
+        "alignment": 1.55,
+        "layout": 0.0
+      },
+      "duration_s": 42.0,
+      "error": null
+    },
+    {
+      "model": "claude-sonnet-4.6",
+      "trial": 3,
+      "gde_scores": {
+        "pearson_p": 0.6321250051441645,
+        "pearson_r": -0.10407908816824651,
+        "spearman_p": 0.6,
+        "spearman_r": -0.17320508075688773
+      },
+      "edit_scores": {
+        "accuracy": 0.68,
+        "exact_match": 0.2,
+        "f1": 0.2,
+        "precision": 0.2,
+        "recall": 0.2
+      },
+      "dimension_scores": {
+        "padding": 1.2,
+        "color": 1.93,
+        "typography": 0.0,
+        "alignment": 1.55,
+        "layout": 0.0
+      },
+      "duration_s": 34.6,
+      "error": null
+    },
+    {
+      "model": "claude-sonnet-4.6",
+      "trial": 4,
+      "gde_scores": {
+        "pearson_p": 0.6321250051441645,
+        "pearson_r": -0.10407908816824656,
+        "spearman_p": 0.6,
+        "spearman_r": -0.17320508075688773
+      },
+      "edit_scores": {
+        "accuracy": 0.68,
+        "exact_match": 0.2,
+        "f1": 0.2,
+        "precision": 0.2,
+        "recall": 0.2
+      },
+      "dimension_scores": {
+        "padding": 1.2,
+        "color": 1.945,
+        "typography": 0.0,
+        "alignment": 1.55,
+        "layout": 0.0
+      },
+      "duration_s": 35.9,
+      "error": null
+    },
+    {
+      "model": "claude-sonnet-4.6",
+      "trial": 5,
+      "gde_scores": {
+        "pearson_p": 0.6321250051441645,
+        "pearson_r": -0.10407908816824651,
+        "spearman_p": 0.6,
+        "spearman_r": -0.17320508075688773
+      },
+      "edit_scores": {
+        "accuracy": 0.68,
+        "exact_match": 0.2,
+        "f1": 0.2,
+        "precision": 0.2,
+        "recall": 0.2
+      },
+      "dimension_scores": {
+        "padding": 1.2,
+        "color": 1.94,
+        "typography": 0.0,
+        "alignment": 1.55,
+        "layout": 0.0
+      },
+      "duration_s": 41.0,
+      "error": null
+    },
+    {
+      "model": "claude-sonnet-4.6",
+      "trial": 6,
+      "gde_scores": {
+        "pearson_p": 0.6321250051441645,
+        "pearson_r": -0.10407908816824656,
+        "spearman_p": 0.6,
+        "spearman_r": -0.17320508075688773
+      },
+      "edit_scores": {
+        "accuracy": 0.68,
+        "exact_match": 0.2,
+        "f1": 0.2,
+        "precision": 0.2,
+        "recall": 0.2
+      },
+      "dimension_scores": {
+        "padding": 1.2,
+        "color": 1.935,
+        "typography": 0.0,
+        "alignment": 1.55,
+        "layout": 0.0
+      },
+      "duration_s": 38.3,
+      "error": null
+    },
+    {
+      "model": "claude-sonnet-4.6",
+      "trial": 7,
+      "gde_scores": {
+        "pearson_p": 0.6321250051441645,
+        "pearson_r": -0.10407908816824651,
+        "spearman_p": 0.6,
+        "spearman_r": -0.17320508075688773
+      },
+      "edit_scores": {
+        "accuracy": 0.68,
+        "exact_match": 0.2,
+        "f1": 0.2,
+        "precision": 0.2,
+        "recall": 0.2
+      },
+      "dimension_scores": {
+        "padding": 1.2,
+        "color": 1.915,
+        "typography": 0.0,
+        "alignment": 1.55,
+        "layout": 0.0
+      },
+      "duration_s": 36.2,
+      "error": null
+    },
+    {
+      "model": "claude-sonnet-4.6",
+      "trial": 8,
+      "gde_scores": {
+        "pearson_p": 0.6321250051441645,
+        "pearson_r": -0.10407908816824651,
+        "spearman_p": 0.6,
+        "spearman_r": -0.17320508075688773
+      },
+      "edit_scores": {
+        "accuracy": 0.68,
+        "exact_match": 0.2,
+        "f1": 0.2,
+        "precision": 0.2,
+        "recall": 0.2
+      },
+      "dimension_scores": {
+        "padding": 1.2,
+        "color": 1.935,
+        "typography": 0.0,
+        "alignment": 1.55,
+        "layout": 0.0
+      },
+      "duration_s": 40.9,
+      "error": null
+    },
+    {
+      "model": "claude-sonnet-4.6",
+      "trial": 9,
+      "gde_scores": {
+        "pearson_p": 0.6321250051441645,
+        "pearson_r": -0.10407908816824651,
+        "spearman_p": 0.6,
+        "spearman_r": -0.17320508075688773
+      },
+      "edit_scores": {
+        "accuracy": 0.68,
+        "exact_match": 0.2,
+        "f1": 0.2,
+        "precision": 0.2,
+        "recall": 0.2
+      },
+      "dimension_scores": {
+        "padding": 1.2,
+        "color": 1.93,
+        "typography": 0.0,
+        "alignment": 1.55,
+        "layout": 0.0
+      },
+      "duration_s": 36.8,
+      "error": null
+    },
+    {
+      "model": "claude-sonnet-4.6",
+      "trial": 10,
+      "gde_scores": {
+        "pearson_p": 0.6321250051441645,
+        "pearson_r": -0.10407908816824651,
+        "spearman_p": 0.6,
+        "spearman_r": -0.17320508075688773
+      },
+      "edit_scores": {
+        "accuracy": 0.68,
+        "exact_match": 0.2,
+        "f1": 0.2,
+        "precision": 0.2,
+        "recall": 0.2
+      },
+      "dimension_scores": {
+        "padding": 1.2,
+        "color": 1.945,
+        "typography": 0.0,
+        "alignment": 1.55,
+        "layout": 0.0
+      },
+      "duration_s": 50.8,
+      "error": null
+    },
+    {
+      "model": "gpt-5.2",
+      "trial": 1,
+      "gde_scores": {
+        "pearson_p": 0.6321250051441645,
+        "pearson_r": -0.10407908816824651,
+        "spearman_p": 0.6,
+        "spearman_r": -0.17320508075688773
+      },
+      "edit_scores": {
+        "accuracy": 0.68,
+        "exact_match": 0.2,
+        "f1": 0.2,
+        "precision": 0.2,
+        "recall": 0.2
+      },
+      "dimension_scores": {
+        "padding": 1.2,
+        "color": 1.81,
+        "typography": 0.0,
+        "alignment": 1.55,
+        "layout": 0.0
+      },
+      "duration_s": 38.0,
+      "error": null
+    },
+    {
+      "model": "gpt-5.2",
+      "trial": 2,
+      "gde_scores": {
+        "pearson_p": 0.6321250051441645,
+        "pearson_r": -0.10407908816824651,
+        "spearman_p": 0.6,
+        "spearman_r": -0.17320508075688773
+      },
+      "edit_scores": {
+        "accuracy": 0.68,
+        "exact_match": 0.2,
+        "f1": 0.2,
+        "precision": 0.2,
+        "recall": 0.2
+      },
+      "dimension_scores": {
+        "padding": 1.2,
+        "color": 1.75,
+        "typography": 0.0,
+        "alignment": 1.55,
+        "layout": 0.0
+      },
+      "duration_s": 34.9,
+      "error": null
+    },
+    {
+      "model": "gpt-5.2",
+      "trial": 3,
+      "gde_scores": {
+        "pearson_p": 0.6321250051441645,
+        "pearson_r": -0.10407908816824651,
+        "spearman_p": 0.6,
+        "spearman_r": -0.17320508075688773
+      },
+      "edit_scores": {
+        "accuracy": 0.68,
+        "exact_match": 0.2,
+        "f1": 0.2,
+        "precision": 0.2,
+        "recall": 0.2
+      },
+      "dimension_scores": {
+        "padding": 1.2,
+        "color": 1.87,
+        "typography": 0.0,
+        "alignment": 1.55,
+        "layout": 0.0
+      },
+      "duration_s": 39.8,
+      "error": null
+    },
+    {
+      "model": "gpt-5.2",
+      "trial": 4,
+      "gde_scores": {
+        "pearson_p": 0.6321250051441645,
+        "pearson_r": -0.10407908816824651,
+        "spearman_p": 0.6,
+        "spearman_r": -0.17320508075688773
+      },
+      "edit_scores": {
+        "accuracy": 0.68,
+        "exact_match": 0.2,
+        "f1": 0.2,
+        "precision": 0.2,
+        "recall": 0.2
+      },
+      "dimension_scores": {
+        "padding": 1.2,
+        "color": 1.81,
+        "typography": 0.0,
+        "alignment": 1.55,
+        "layout": 0.0
+      },
+      "duration_s": 32.2,
+      "error": null
+    },
+    {
+      "model": "gpt-5.2",
+      "trial": 5,
+      "gde_scores": {
+        "pearson_p": 0.6321250051441645,
+        "pearson_r": -0.26302297101605177,
+        "spearman_p": 0.6,
+        "spearman_r": -0.17320508075688773
+      },
+      "edit_scores": {
+        "accuracy": 0.68,
+        "exact_match": 0.2,
+        "f1": 0.2,
+        "precision": 0.2,
+        "recall": 0.2
+      },
+      "dimension_scores": {
+        "padding": 1.3,
+        "color": 1.86,
+        "typography": 0.0,
+        "alignment": 1.65,
+        "layout": 0.0
+      },
+      "duration_s": 33.7,
+      "error": null
+    },
+    {
+      "model": "gpt-5.2",
+      "trial": 6,
+      "gde_scores": {
+        "pearson_p": 0.6321250051441645,
+        "pearson_r": -0.10407908816824656,
+        "spearman_p": 0.6,
+        "spearman_r": -0.17320508075688773
+      },
+      "edit_scores": {},
+      "dimension_scores": {},
+      "duration_s": 22.9,
+      "error": "TypeError: float() argument must be a string or a real number, not 'NoneType'"
+    },
+    {
+      "model": "gpt-5.2",
+      "trial": 7,
+      "gde_scores": {
+        "pearson_p": 0.6841543928027658,
+        "pearson_r": -0.18355102959214914,
+        "spearman_p": 0.6,
+        "spearman_r": -0.17320508075688773
+      },
+      "edit_scores": {},
+      "dimension_scores": {},
+      "duration_s": 31.8,
+      "error": "TypeError: float() argument must be a string or a real number, not 'NoneType'"
+    },
+    {
+      "model": "gpt-5.2",
+      "trial": 8,
+      "gde_scores": {
+        "pearson_p": 0.6321250051441645,
+        "pearson_r": -0.10407908816824651,
+        "spearman_p": 0.6,
+        "spearman_r": -0.17320508075688773
+      },
+      "edit_scores": {
+        "accuracy": 0.68,
+        "exact_match": 0.2,
+        "f1": 0.2,
+        "precision": 0.2,
+        "recall": 0.2
+      },
+      "dimension_scores": {
+        "padding": 1.25,
+        "color": 1.88,
+        "typography": 0.0,
+        "alignment": 1.6,
+        "layout": 0.0
+      },
+      "duration_s": 45.6,
+      "error": null
+    },
+    {
+      "model": "gpt-5.2",
+      "trial": 9,
+      "gde_scores": {
+        "pearson_p": 0.6321250051441645,
+        "pearson_r": -0.10407908816824651,
+        "spearman_p": 0.6,
+        "spearman_r": -0.17320508075688773
+      },
+      "edit_scores": {
+        "accuracy": 0.68,
+        "exact_match": 0.2,
+        "f1": 0.2,
+        "precision": 0.2,
+        "recall": 0.2
+      },
+      "dimension_scores": {
+        "padding": 1.2,
+        "color": 1.75,
+        "typography": 0.0,
+        "alignment": 1.55,
+        "layout": 0.0
+      },
+      "duration_s": 47.8,
+      "error": null
+    },
+    {
+      "model": "gpt-5.2",
+      "trial": 10,
+      "gde_scores": {},
+      "edit_scores": {},
+      "dimension_scores": {},
+      "duration_s": 16.8,
+      "error": "TypeError: float() argument must be a string or a real number, not 'NoneType'"
+    },
+    {
+      "model": "minimax-m2.5",
+      "trial": 1,
+      "gde_scores": {},
+      "edit_scores": {},
+      "dimension_scores": {},
+      "duration_s": 0.6,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'User not found.', 'code': 401}}"
+    },
+    {
+      "model": "minimax-m2.5",
+      "trial": 2,
+      "gde_scores": {},
+      "edit_scores": {},
+      "dimension_scores": {},
+      "duration_s": 0.1,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'User not found.', 'code': 401}}"
+    },
+    {
+      "model": "minimax-m2.5",
+      "trial": 3,
+      "gde_scores": {},
+      "edit_scores": {},
+      "dimension_scores": {},
+      "duration_s": 0.2,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'User not found.', 'code': 401}}"
+    },
+    {
+      "model": "minimax-m2.5",
+      "trial": 4,
+      "gde_scores": {},
+      "edit_scores": {},
+      "dimension_scores": {},
+      "duration_s": 0.2,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'User not found.', 'code': 401}}"
+    },
+    {
+      "model": "minimax-m2.5",
+      "trial": 5,
+      "gde_scores": {},
+      "edit_scores": {},
+      "dimension_scores": {},
+      "duration_s": 0.1,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'User not found.', 'code': 401}}"
+    },
+    {
+      "model": "minimax-m2.5",
+      "trial": 6,
+      "gde_scores": {},
+      "edit_scores": {},
+      "dimension_scores": {},
+      "duration_s": 0.2,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'User not found.', 'code': 401}}"
+    },
+    {
+      "model": "minimax-m2.5",
+      "trial": 7,
+      "gde_scores": {},
+      "edit_scores": {},
+      "dimension_scores": {},
+      "duration_s": 0.2,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'User not found.', 'code': 401}}"
+    },
+    {
+      "model": "minimax-m2.5",
+      "trial": 8,
+      "gde_scores": {},
+      "edit_scores": {},
+      "dimension_scores": {},
+      "duration_s": 0.1,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'User not found.', 'code': 401}}"
+    },
+    {
+      "model": "minimax-m2.5",
+      "trial": 9,
+      "gde_scores": {},
+      "edit_scores": {},
+      "dimension_scores": {},
+      "duration_s": 0.1,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'User not found.', 'code': 401}}"
+    },
+    {
+      "model": "minimax-m2.5",
+      "trial": 10,
+      "gde_scores": {},
+      "edit_scores": {},
+      "dimension_scores": {},
+      "duration_s": 0.2,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'User not found.', 'code': 401}}"
+    },
+    {
+      "model": "kimi-k2.5",
+      "trial": 1,
+      "gde_scores": {},
+      "edit_scores": {},
+      "dimension_scores": {},
+      "duration_s": 0.2,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'User not found.', 'code': 401}}"
+    },
+    {
+      "model": "kimi-k2.5",
+      "trial": 2,
+      "gde_scores": {},
+      "edit_scores": {},
+      "dimension_scores": {},
+      "duration_s": 0.2,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'User not found.', 'code': 401}}"
+    },
+    {
+      "model": "kimi-k2.5",
+      "trial": 3,
+      "gde_scores": {},
+      "edit_scores": {},
+      "dimension_scores": {},
+      "duration_s": 0.2,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'User not found.', 'code': 401}}"
+    },
+    {
+      "model": "kimi-k2.5",
+      "trial": 4,
+      "gde_scores": {},
+      "edit_scores": {},
+      "dimension_scores": {},
+      "duration_s": 0.2,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'User not found.', 'code': 401}}"
+    },
+    {
+      "model": "kimi-k2.5",
+      "trial": 5,
+      "gde_scores": {},
+      "edit_scores": {},
+      "dimension_scores": {},
+      "duration_s": 0.2,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'User not found.', 'code': 401}}"
+    },
+    {
+      "model": "kimi-k2.5",
+      "trial": 6,
+      "gde_scores": {},
+      "edit_scores": {},
+      "dimension_scores": {},
+      "duration_s": 0.2,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'User not found.', 'code': 401}}"
+    },
+    {
+      "model": "kimi-k2.5",
+      "trial": 7,
+      "gde_scores": {},
+      "edit_scores": {},
+      "dimension_scores": {},
+      "duration_s": 0.1,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'User not found.', 'code': 401}}"
+    },
+    {
+      "model": "kimi-k2.5",
+      "trial": 8,
+      "gde_scores": {},
+      "edit_scores": {},
+      "dimension_scores": {},
+      "duration_s": 0.1,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'User not found.', 'code': 401}}"
+    },
+    {
+      "model": "kimi-k2.5",
+      "trial": 9,
+      "gde_scores": {},
+      "edit_scores": {},
+      "dimension_scores": {},
+      "duration_s": 0.1,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'User not found.', 'code': 401}}"
+    },
+    {
+      "model": "kimi-k2.5",
+      "trial": 10,
+      "gde_scores": {},
+      "edit_scores": {},
+      "dimension_scores": {},
+      "duration_s": 0.2,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'User not found.', 'code': 401}}"
+    },
+    {
+      "model": "glm-5",
+      "trial": 1,
+      "gde_scores": {},
+      "edit_scores": {},
+      "dimension_scores": {},
+      "duration_s": 0.1,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'User not found.', 'code': 401}}"
+    },
+    {
+      "model": "glm-5",
+      "trial": 2,
+      "gde_scores": {},
+      "edit_scores": {},
+      "dimension_scores": {},
+      "duration_s": 0.1,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'User not found.', 'code': 401}}"
+    },
+    {
+      "model": "glm-5",
+      "trial": 3,
+      "gde_scores": {},
+      "edit_scores": {},
+      "dimension_scores": {},
+      "duration_s": 0.1,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'User not found.', 'code': 401}}"
+    },
+    {
+      "model": "glm-5",
+      "trial": 4,
+      "gde_scores": {},
+      "edit_scores": {},
+      "dimension_scores": {},
+      "duration_s": 0.2,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'User not found.', 'code': 401}}"
+    },
+    {
+      "model": "glm-5",
+      "trial": 5,
+      "gde_scores": {},
+      "edit_scores": {},
+      "dimension_scores": {},
+      "duration_s": 0.2,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'User not found.', 'code': 401}}"
+    },
+    {
+      "model": "glm-5",
+      "trial": 6,
+      "gde_scores": {},
+      "edit_scores": {},
+      "dimension_scores": {},
+      "duration_s": 0.1,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'User not found.', 'code': 401}}"
+    },
+    {
+      "model": "glm-5",
+      "trial": 7,
+      "gde_scores": {},
+      "edit_scores": {},
+      "dimension_scores": {},
+      "duration_s": 0.2,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'User not found.', 'code': 401}}"
+    },
+    {
+      "model": "glm-5",
+      "trial": 8,
+      "gde_scores": {},
+      "edit_scores": {},
+      "dimension_scores": {},
+      "duration_s": 0.2,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'User not found.', 'code': 401}}"
+    },
+    {
+      "model": "glm-5",
+      "trial": 9,
+      "gde_scores": {},
+      "edit_scores": {},
+      "dimension_scores": {},
+      "duration_s": 0.2,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'User not found.', 'code': 401}}"
+    },
+    {
+      "model": "glm-5",
+      "trial": 10,
+      "gde_scores": {},
+      "edit_scores": {},
+      "dimension_scores": {},
+      "duration_s": 0.2,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'User not found.', 'code': 401}}"
+    },
+    {
+      "model": "gemini-3.1-pro",
+      "trial": 1,
+      "gde_scores": {},
+      "edit_scores": {},
+      "dimension_scores": {},
+      "duration_s": 0.2,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'User not found.', 'code': 401}}"
+    },
+    {
+      "model": "gemini-3.1-pro",
+      "trial": 2,
+      "gde_scores": {},
+      "edit_scores": {},
+      "dimension_scores": {},
+      "duration_s": 0.1,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'User not found.', 'code': 401}}"
+    },
+    {
+      "model": "gemini-3.1-pro",
+      "trial": 3,
+      "gde_scores": {},
+      "edit_scores": {},
+      "dimension_scores": {},
+      "duration_s": 0.2,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'User not found.', 'code': 401}}"
+    },
+    {
+      "model": "gemini-3.1-pro",
+      "trial": 4,
+      "gde_scores": {},
+      "edit_scores": {},
+      "dimension_scores": {},
+      "duration_s": 0.2,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'User not found.', 'code': 401}}"
+    },
+    {
+      "model": "gemini-3.1-pro",
+      "trial": 5,
+      "gde_scores": {},
+      "edit_scores": {},
+      "dimension_scores": {},
+      "duration_s": 0.2,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'User not found.', 'code': 401}}"
+    },
+    {
+      "model": "gemini-3.1-pro",
+      "trial": 6,
+      "gde_scores": {},
+      "edit_scores": {},
+      "dimension_scores": {},
+      "duration_s": 0.2,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'User not found.', 'code': 401}}"
+    },
+    {
+      "model": "gemini-3.1-pro",
+      "trial": 7,
+      "gde_scores": {},
+      "edit_scores": {},
+      "dimension_scores": {},
+      "duration_s": 0.1,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'User not found.', 'code': 401}}"
+    },
+    {
+      "model": "gemini-3.1-pro",
+      "trial": 8,
+      "gde_scores": {},
+      "edit_scores": {},
+      "dimension_scores": {},
+      "duration_s": 0.1,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'User not found.', 'code': 401}}"
+    },
+    {
+      "model": "gemini-3.1-pro",
+      "trial": 9,
+      "gde_scores": {},
+      "edit_scores": {},
+      "dimension_scores": {},
+      "duration_s": 0.1,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'User not found.', 'code': 401}}"
+    },
+    {
+      "model": "gemini-3.1-pro",
+      "trial": 10,
+      "gde_scores": {},
+      "edit_scores": {},
+      "dimension_scores": {},
+      "duration_s": 0.3,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'User not found.', 'code': 401}}"
+    }
+  ]
+}
