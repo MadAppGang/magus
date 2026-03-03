@@ -216,11 +216,14 @@ def main():
             all_results.append(result)
 
             if result.error:
-                print(f"  Trial {trial:2d}: ERROR — {result.error}")
+                print(f"  Trial {trial:2d}: ERROR ({result.duration_s}s) — {result.error}")
             else:
                 f1 = result.edit_scores.get("f1", 0)
                 pr = result.gde_scores.get("pearson_r", 0)
                 print(f"  Trial {trial:2d}: edit_f1={f1:.3f}  gde_pearson={pr:.3f}  ({result.duration_s}s)")
+                if result.dimension_scores:
+                    dims = "  ".join(f"{k}={v:.2f}" for k, v in sorted(result.dimension_scores.items()))
+                    print(f"            dims: {dims}")
 
     # ── Summary ─────────────────────────────────────────────────────────
 

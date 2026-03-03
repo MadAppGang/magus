@@ -61,6 +61,7 @@ class LiteLLMModel:
         self.client = OpenAI(
             api_key=api_key or os.environ.get("LITELLM_API_KEY", ""),
             base_url=(base_url or os.environ.get("LITELLM_BASE_URL", "")) + "/v1",
+            timeout=600.0,  # 10 min — Kimi can take 270s per response
         )
 
     def critique(self, sample: EvalSample) -> ModelOutput:
@@ -93,23 +94,31 @@ class LiteLLMModel:
             {"role": "user", "content": content},
         ]
 
-        # Retry with backoff for rate limits
+        # Retry with backoff for rate limits and timeouts
         max_retries = 3
         for attempt in range(max_retries):
             try:
+                t0 = time.time()
                 response = self.client.chat.completions.create(
                     model=self.model,
                     messages=messages,
                     max_tokens=2000,
                 )
+                elapsed = time.time() - t0
                 raw = response.choices[0].message.content or "{}"
+                if os.environ.get("DESIGN_EVAL_VERBOSE"):
+                    print(f"    [{self.model}] response in {elapsed:.1f}s, {len(raw)} chars")
                 return _parse_response(raw)
             except Exception as e:
-                if "429" in str(e) and attempt < max_retries - 1:
+                elapsed = time.time() - t0
+                is_retryable = "429" in str(e) or "timeout" in str(e).lower()
+                if is_retryable and attempt < max_retries - 1:
                     wait = 30 * (attempt + 1)
-                    print(f"    Rate limited, waiting {wait}s...")
+                    print(f"    [{self.model}] {type(e).__name__} after {elapsed:.1f}s (attempt {attempt+1}/{max_retries}), retrying in {wait}s...")
                     time.sleep(wait)
                 else:
+                    if os.environ.get("DESIGN_EVAL_VERBOSE"):
+                        print(f"    [{self.model}] FAILED after {elapsed:.1f}s: {type(e).__name__}: {e}")
                     raise
 
 

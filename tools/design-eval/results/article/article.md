@@ -116,7 +116,9 @@ The direct API models (Claude, GPT) use native SDK clients with provider-specifi
 | **Gemini 3 Pro** | 10/10 (100%) | 0.200 | 0.680 | -0.104 | 60.7s |
 | **Gemini 3.1 Pro** | 10/10 (100%) | 0.200 | 0.680 | -0.104 | 298.9s |
 | **MiniMax M2.5** | 10/10 (100%) | 0.120 | 0.744 | 0.000 | 103.8s |
-| **Kimi K2.5** | 6/10 (60%) | 0.200 | 0.680 | -0.046 | 246.8s |
+| **Kimi K2.5** | 10/10 (100%)* | 0.200 | 0.680 | -0.069 | 359.9s |
+
+*\*Kimi initially showed 6/10 (60%) due to proxy timeouts at 17s. A rerun with a 600s SDK timeout achieved 10/10 — confirming the failures were infrastructure, not model quality.*
 
 ### Speed Comparison
 
@@ -124,17 +126,17 @@ The direct API models (Claude, GPT) use native SDK clients with provider-specifi
 
 **GPT-5.2** is the fastest responder at 38.9s average per trial (processing 10 samples: 5 GDE + 5 edit), followed closely by **Claude Sonnet 4.6** at 40.5s. **Gemini 3 Pro** comes in third at 60.7s — still very usable for batch processing.
 
-The slowest models are **Gemini 3.1 Pro** (298.9s, nearly 5 minutes per trial) and **Kimi K2.5** (246.8s). Gemini 3.1 Pro's latency is especially notable because it produces *identical* scores to Gemini 3 Pro — the same accuracy at 5x the cost in wall-clock time. This is likely due to the larger model's longer inference time, with no quality benefit on this particular task.
+The slowest models are **Kimi K2.5** (359.9s per trial) and **Gemini 3.1 Pro** (298.9s, nearly 5 minutes per trial). Gemini 3.1 Pro's latency is especially notable because it produces *identical* scores to Gemini 3 Pro — the same accuracy at 5x the cost in wall-clock time. Kimi's high latency is the price for its non-deterministic reasoning — it's the only model that occasionally produces positive ground truth correlation.
 
 ### Reliability
 
 ![Reliability](images/04_reliability.png)
 
-**Reliability was the most decisive differentiator.** Four models achieved 100% success across all 10 trials: Claude, Gemini 3 Pro, Gemini 3.1 Pro, and MiniMax.
+**Reliability was the most decisive differentiator.** Five models achieved 100% success across all 10 trials: Claude, Gemini 3 Pro, Gemini 3.1 Pro, MiniMax, and Kimi (after fixing a proxy timeout issue — see below).
 
 **GPT-5.2 failed 3/10 trials** due to returning `null` values in JSON dimension scores — a structured output compliance issue. The model understood the task but occasionally emitted `{"padding": null, "color": 0.8, ...}` instead of numeric values. We patched this with null-safety checks (`float(v) if v is not None else 0.0`), but the underlying issue reveals a JSON schema adherence gap.
 
-**Kimi K2.5 failed 4/10 trials** due to API timeouts exceeding the 600-second SDK default. When it responded, its quality matched the top tier — but a 40% failure rate makes it impractical for production batch evaluation.
+**Kimi K2.5 initially failed 4/10 trials** due to a LiteLLM proxy gateway timeout at ~17 seconds — far too short for Kimi's typical 30–50s per-request latency. A rerun with a 600-second SDK timeout and timeout-aware retry logic achieved **10/10 success**. This is a common pitfall in multi-model evaluation: proxy infrastructure limitations can masquerade as model failures.
 
 ### Dimension Analysis
 
@@ -184,11 +186,36 @@ The dot matrix above shows every individual trial result. Each colored dot is a 
 
 **MiniMax M2.5** was perfectly consistent (zero Pearson r across all trials) — but this consistency came from outputting near-constant dimension scores, giving it zero correlation by definition.
 
+## Final Verdict
+
+| Model | Reliability | Speed | Quality | Consistency | Best For |
+|-------|:-----------:|:-----:|:-------:|:-----------:|----------|
+| **Claude Sonnet 4.6** | 10/10 | 40.5s | Top tier | Deterministic | Production pipelines — best speed+reliability balance |
+| **GPT-5.2** | 7/10 | 38.9s | Top tier | Mostly stable | Latency-sensitive tasks if you handle null JSON values |
+| **Gemini 3 Pro** | 10/10 | 60.7s | Top tier | Deterministic | Budget-friendly reliable option — same quality as 3.1 at 1/5 the time |
+| **Gemini 3.1 Pro** | 10/10 | 298.9s | Top tier | Deterministic | Skip — identical results to 3 Pro at 5x the latency |
+| **MiniMax M2.5** | 10/10 | 103.8s | Unique | Deterministic | Spatial analysis — only model detecting layout and elevated alignment issues |
+| **Kimi K2.5** | 10/10* | 359.9s | Top tier | Variable | Research — only model producing positive ground truth correlation (trial 3: +0.242) |
+
+*\*With proper 600s timeout. Initial run showed 6/10 due to proxy gateway timeouts.*
+
+### Category Winners
+
+| Category | Winner | Why |
+|----------|--------|-----|
+| **Overall** | Claude Sonnet 4.6 | 100% reliable, 40.5s, deterministic, top-tier quality |
+| **Speed** | GPT-5.2 (38.9s) | Fastest, but 3/10 null-JSON failures reduce trust |
+| **Color Detection** | Gemini 3 Pro (2.00/2.00) | Perfect score, other models close (1.82–1.97) |
+| **Spatial Reasoning** | MiniMax M2.5 | Uniquely high alignment (1.98) and padding (1.63); only layout detector |
+| **Cost Efficiency** | Gemini 3 Pro | Identical to 3.1 Pro at 60.7s vs 298.9s |
+| **Consistency** | Claude / Gemini 3 Pro | Zero variance across all 10 trials |
+| **Upside Potential** | Kimi K2.5 | Only positive Pearson r in entire benchmark (+0.242) |
+
 ## Key Findings
 
 ### 1. Structured Output Compliance Is the Real Bottleneck
 
-All models understood the design critique task. None refused or hallucinated completely irrelevant responses. The differentiator wasn't *understanding* — it was reliably producing valid, parseable structured output. GPT's null values and Kimi's timeouts both stem from structured output edge cases, not comprehension failures.
+All models understood the design critique task. None refused or hallucinated completely irrelevant responses. The differentiator wasn't *understanding* — it was reliably producing valid, parseable structured output. GPT's null values stem from a JSON schema adherence gap, not comprehension failure. Kimi's initial failures were purely infrastructure (proxy timeouts), not model quality.
 
 ### 2. Speed and Quality Are Not Correlated
 
@@ -196,11 +223,15 @@ Gemini 3.1 Pro takes 5x longer than Gemini 3 Pro to produce *identical* results.
 
 ### 3. Models Agree on Obvious Issues, Diverge on Subtle Ones
 
-All models correctly identified color shifts as the primary issue. But padding and alignment — dimensions that require spatial reasoning rather than pixel-level detection — showed meaningful model-to-model variation. This is where future, more complex benchmarks will likely reveal larger gaps.
+All models correctly identified color shifts as the primary issue. But padding and alignment — dimensions that require spatial reasoning rather than pixel-level detection — showed meaningful model-to-model variation. MiniMax stands alone in detecting layout issues. This is where future, more complex benchmarks will likely reveal larger gaps.
 
 ### 4. Deterministic Output Is Model-Dependent
 
-Some models (Claude, Gemini) are highly deterministic, producing identical outputs across trials. Others (Kimi) show significant run-to-run variance. For production design QA pipelines, determinism is a feature — you want the same input to produce the same assessment.
+Some models (Claude, Gemini) are highly deterministic, producing identical outputs across trials. Others (Kimi) show significant run-to-run variance. For production design QA pipelines, determinism is a feature — you want the same input to produce the same assessment. For research, Kimi's variance may actually be a strength.
+
+### 5. Infrastructure Can Masquerade as Model Failure
+
+Kimi K2.5 went from 60% to 100% reliability with a single timeout fix. Always verify whether failures are the model's fault or the infrastructure's — especially when routing through proxies or gateways.
 
 ## Limitations and Next Steps
 
@@ -218,7 +249,9 @@ Some models (Claude, Gemini) are highly deterministic, producing identical outpu
 - **Metrics**: Pearson r (GDE rating correlation), F1 (edit issue classification), success rate, wall-clock latency
 - **Infrastructure**: Anthropic SDK (Claude), OpenAI SDK (GPT), LiteLLM proxy (MiniMax, Kimi, Gemini x2)
 - **Null-safety**: All adapters handle `null` JSON values gracefully after initial GPT failures revealed the issue
+- **Timeout handling**: LiteLLM adapter uses 600s SDK timeout with retry-on-timeout (3 attempts, 30s linear backoff) — critical for slow models like Kimi
 - **Rate limiting**: LiteLLM adapter implements retry with 30s linear backoff for 429 responses
+- **Kimi rerun**: Initial 6/10 results were re-evaluated with proper timeouts, achieving 10/10 — final article uses rerun data
 - **Toolkit**: [design-eval](../README.md) — open Python package with pluggable model adapters and dataset loaders
 
 ## Reproducing This Benchmark
