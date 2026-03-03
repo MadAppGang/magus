@@ -592,6 +592,24 @@ skills:
     - Continue with implementation — design validation is optional
     - Use Gemini-based visual analysis (vision_capabilities above) as fallback
   </designer_integration>
+
+  <browser_use_integration>
+    If the browser-use plugin (browser-use@magus) is installed:
+    - Use browser-use for automated visual testing of implemented components
+    - Screenshot flow: browser_navigate → browser_screenshot → analyze base64 image with Gemini
+    - For interactive testing: browser_click, browser_type to simulate user actions
+    - Full-page screenshots available: browser_screenshot(full_page=True) — not available in claude-in-chrome
+    - Prefer browser-use over manual describe-and-check for UI validation
+    - Pattern: Invoke dev:browser-debugging skill which now references browser-use tools
+    - Detection: attempt mcp__browser-use__browser_list_sessions() — success means available
+    - Always close sessions: mcp__browser-use__browser_close_session(session_id) when done
+
+    If browser-use is NOT installed:
+    - Inform user: "For automated browser testing, install: /plugin marketplace add browser-use@magus"
+    - Continue with implementation — browser-use is optional
+    - Use claude-in-chrome for screenshot capture when available
+    - If neither browser method is available, use Gemini with manually provided screenshots
+  </browser_use_integration>
 </instructions>
 
 <knowledge>

@@ -448,7 +448,7 @@ describe("Rule: single-model-critical-review", () => {
   it("TEST-15: Task with 'code review' prompt WITH claudish Bash call does NOT trigger rule", () => {
     const transcript = generateTranscript([
       { tool: "Task", input: { subagent_type: "dev:developer", prompt: "please do a code review of this PR" } },
-      { tool: "Bash", input: { command: "claudish --model or@anthropic/claude-3-5-sonnet < review-prompt.md" } },
+      { tool: "Bash", input: { command: "claudish --model claude-sonnet-4-5 < review-prompt.md" } },
     ]);
     const transcriptPath = writeTranscript(testDir, transcript);
     runAnalyzer(transcriptPath, "aaaabbbbccccdddd", testDir);

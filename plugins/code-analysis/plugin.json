@@ -1,7 +1,7 @@
 {
   "name": "code-analysis",
-  "version": "4.0.1",
-  "description": "Deep code investigation with claudemem MCP server. v4.0.1: Add index-skill.sh utility for auto-indexing new skills in claudemem after creation.",
+  "version": "4.0.2",
+  "description": "Deep code investigation with claudemem MCP server. v4.0.2: Updated recommended models and claudish usage patterns.",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",

@@ -153,9 +153,9 @@ skills: multimodel:multi-model-validation, multimodel:quality-gates, multimodel:
         <step>Record start time: `PHASE1_5_START=$(date +%s)`</step>
         <step>
           **Select Models** (AskUserQuestion, multiSelect: true):
-          - x-ai/grok-code-fast-1 [$0.10-0.20]
-          - google/gemini-2.5-flash [$0.05-0.15]
-          - google/gemini-2.5-pro [$0.20-0.40]
+          - grok-code-fast-1 [$0.10-0.20]
+          - gemini-3.1-pro-preview [$0.05-0.15]
+          - gemini-3.1-pro-preview [$0.20-0.40]
           - deepseek/deepseek-chat [$0.05-0.15]
           Default: grok + gemini-flash
 
@@ -172,10 +172,10 @@ skills: multimodel:multi-model-validation, multimodel:quality-gates, multimodel:
           2. Launch claudish:
           ```bash
           # For each external model:
-          claudish --model x-ai/grok-code-fast-1 --stdin --quiet < ${SESSION_PATH}/reviews/plan-review/prompt.md > ${SESSION_PATH}/reviews/plan-review/grok.md &
+          claudish --model grok-code-fast-1 --stdin --quiet < ${SESSION_PATH}/reviews/plan-review/prompt.md > ${SESSION_PATH}/reviews/plan-review/grok.md &
           echo $? > ${SESSION_PATH}/reviews/plan-review/grok.exit &
 
-          claudish --model google/gemini-2.5-flash --stdin --quiet < ${SESSION_PATH}/reviews/plan-review/prompt.md > ${SESSION_PATH}/reviews/plan-review/gemini-flash.md &
+          claudish --model gemini-3.1-pro-preview --stdin --quiet < ${SESSION_PATH}/reviews/plan-review/prompt.md > ${SESSION_PATH}/reviews/plan-review/gemini-flash.md &
           echo $? > ${SESSION_PATH}/reviews/plan-review/gemini-flash.exit &
 
           # Wait for all to complete
@@ -200,8 +200,8 @@ Save findings to: ${SESSION_PATH}/reviews/plan-review/internal.md`
           track_model_performance "{model_id}" "{status}" "{duration}" "{issues_found}" "{quality_score}"
 
           # Example:
-          track_model_performance "x-ai/grok-code-fast-1" "success" 45 3 85
-          track_model_performance "google/gemini-2.5-flash" "success" 38 2 90
+          track_model_performance "grok-code-fast-1" "success" 45 3 85
+          track_model_performance "gemini-3.1-pro-preview" "success" 38 2 90
           ```
           See multimodel:multi-model-validation Pattern 7 for implementation.
         </step>
@@ -299,7 +299,7 @@ Save findings to: ${SESSION_PATH}/reviews/plan-review/internal.md`
           ```bash
           # Track each model's performance
           track_model_performance "claude-embedded" "success" $LOCAL_DURATION $LOCAL_ISSUES $LOCAL_QUALITY
-          track_model_performance "x-ai/grok-code-fast-1" "success" $GROK_DURATION $GROK_ISSUES $GROK_QUALITY
+          track_model_performance "grok-code-fast-1" "success" $GROK_DURATION $GROK_ISSUES $GROK_QUALITY
           # ... for each model
 
           # Record session summary
@@ -368,8 +368,8 @@ Save findings to: ${SESSION_PATH}/reviews/plan-review/internal.md`
           | Model                     | Time   | Issues | Quality | Status    |
           |---------------------------|--------|--------|---------|-----------|
           | claude-embedded           | 32s    | 5      | 92%     | ✓         |
-          | x-ai/grok-code-fast-1     | 45s    | 4      | 88%     | ✓         |
-          | google/gemini-2.5-flash   | 38s    | 3      | 90%     | ✓         |
+          | grok-code-fast-1     | 45s    | 4      | 88%     | ✓         |
+          | gemini-3.1-pro-preview   | 38s    | 3      | 90%     | ✓         |
 
           ### Session Summary
           - Parallel Speedup: 2.4x
@@ -380,11 +380,11 @@ Save findings to: ${SESSION_PATH}/reviews/plan-review/internal.md`
           | Model                     | Avg Time | Runs | Success% | Avg Quality |
           |---------------------------|----------|------|----------|-------------|
           | claude-embedded           | 35s      | 8    | 100%     | 90%         |
-          | x-ai/grok-code-fast-1     | 48s      | 6    | 83%      | 85%         |
-          | google/gemini-2.5-flash   | 42s      | 7    | 100%     | 88%         |
+          | grok-code-fast-1     | 48s      | 6    | 83%      | 85%         |
+          | gemini-3.1-pro-preview   | 42s      | 7    | 100%     | 88%         |
 
           ### Recommendations
-          ✓ Top performers: claude-embedded, gemini-2.5-flash
+          ✓ Top performers: claude-embedded, gemini-3.1-pro-preview
           ```
         </step>
         <step>Present final summary</step>
@@ -420,17 +420,17 @@ Save findings to: ${SESSION_PATH}/reviews/plan-review/internal.md`
 
 <recommended_models>
   **Budget**:
-  - google/gemini-2.5-flash [$0.05-0.15]
+  - gemini-3.1-pro-preview [$0.05-0.15]
   - deepseek/deepseek-chat [$0.05-0.15]
 
   **Default** (2 models):
-  - x-ai/grok-code-fast-1 [$0.10-0.20]
-  - google/gemini-2.5-flash [$0.05-0.15]
+  - grok-code-fast-1 [$0.10-0.20]
+  - gemini-3.1-pro-preview [$0.05-0.15]
 
   **Comprehensive** (4 models):
-  - x-ai/grok-code-fast-1
-  - google/gemini-2.5-flash
-  - google/gemini-2.5-pro
+  - grok-code-fast-1
+  - gemini-3.1-pro-preview
+  - gemini-3.1-pro-preview
   - deepseek/deepseek-chat
 </recommended_models>
 

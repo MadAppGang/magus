@@ -336,9 +336,9 @@ skills: multimodel:multi-model-validation, multimodel:model-tracking-protocol, m
           Based on historical data (if available) or current offerings:
 
           Options:
-          - x-ai/grok-code-fast-1 ⚡ ($0.85/1M | Quality: 87% | Fast)
-          - google/gemini-3-pro-preview ($ 7.00/1M | Quality: 91%)
-          - qwen/qwen3-coder:free 🆓 (FREE | Quality: 82%)
+          - grok-code-fast-1 ⚡ ($0.85/1M | Quality: 87% | Fast)
+          - gemini-3.1-pro-preview ($ 7.00/1M | Quality: 91%)
+          - qwen3.5-plus-02-15 🆓 (FREE | Quality: 82%)
           - mistralai/devstral-2512:free 🆓 (FREE | Dev-focused)
           - [Custom model ID]
           ```
@@ -646,8 +646,8 @@ EOF
           | Model                     | Time | Issues | E-E-A-T Avg | Quality | Status |
           |---------------------------|------|--------|-------------|---------|--------|
           | claude-embedded           | 42s  | 8      | 73/100      | 92%     | ✓      |
-          | x-ai/grok-code-fast-1     | 55s  | 6      | 71/100      | 88%     | ✓      |
-          | qwen/qwen3-coder:free     | 48s  | 5      | 68/100      | 85%     | ✓      |
+          | grok-code-fast-1     | 55s  | 6      | 71/100      | 88%     | ✓      |
+          | qwen3.5-plus-02-15     | 48s  | 5      | 68/100      | 85%     | ✓      |
           | mistralai/devstral:free   | 51s  | 7      | 72/100      | 90%     | ✓      |
 
           **Session Summary**:
@@ -785,8 +785,8 @@ EOF
       - Show historical performance (if exists)
       - Ask: "Select models" → User selects:
         * claude-embedded (Opus)
-        * x-ai/grok-code-fast-1
-        * qwen/qwen3-coder:free
+        * grok-code-fast-1
+        * qwen3.5-plus-02-15
         * mistralai/devstral-2512:free
       - Calculate costs: $0.002 (3 free models + 1 paid)
       - User approves

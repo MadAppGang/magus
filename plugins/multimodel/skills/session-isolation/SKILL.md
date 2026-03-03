@@ -146,7 +146,7 @@ fi
   "completed_at": "2026-01-05T15:45:30Z",
   "status": "completed",
   "phases_completed": ["init", "design", "plan-review", "implementation", "quality-review"],
-  "models_used": ["claude-embedded", "x-ai/grok-code-fast-1", "google/gemini-3-pro"],
+  "models_used": ["claude-embedded", "grok-code-fast-1", "gemini-3.1-pro-preview"],
   "artifacts": {
     "design": "design.md",
     "plan_reviews": ["reviews/plan-review/internal.md", "reviews/plan-review/grok.md"],

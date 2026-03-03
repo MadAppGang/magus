@@ -360,7 +360,7 @@ skills: dev:systematic-debugging, dev:test-driven-development, dev:testing-strat
               Model 2 (Grok — external via claudish):
               ```
               Bash(
-                command: "claudish --model or@x-ai/grok-code-fast-1 --stdin --quiet < ${SESSION_PATH}/vote-prompt-root-cause.md > ${SESSION_PATH}/grok-vote-root-cause.md; echo $? > ${SESSION_PATH}/grok-vote-root-cause.exit",
+                command: "claudish --model grok-code-fast-1 --stdin --quiet < ${SESSION_PATH}/vote-prompt-root-cause.md > ${SESSION_PATH}/grok-vote-root-cause.md; echo $? > ${SESSION_PATH}/grok-vote-root-cause.exit",
                 run_in_background: true
               )
               ```
@@ -368,7 +368,7 @@ skills: dev:systematic-debugging, dev:test-driven-development, dev:testing-strat
               Model 3 (Qwen — external via claudish, free tier):
               ```
               Bash(
-                command: "claudish --model or@qwen/qwen3-coder:free --stdin --quiet < ${SESSION_PATH}/vote-prompt-root-cause.md > ${SESSION_PATH}/qwen-vote-root-cause.md; echo $? > ${SESSION_PATH}/qwen-vote-root-cause.exit",
+                command: "claudish --model qwen3.5-plus-02-15 --stdin --quiet < ${SESSION_PATH}/vote-prompt-root-cause.md > ${SESSION_PATH}/qwen-vote-root-cause.md; echo $? > ${SESSION_PATH}/qwen-vote-root-cause.exit",
                 run_in_background: true
               )
               ```
@@ -638,7 +638,7 @@ skills: dev:systematic-debugging, dev:test-driven-development, dev:testing-strat
           Model 2 (Grok):
           ```
           Bash(
-            command: "claudish --model or@x-ai/grok-code-fast-1 --stdin --quiet < ${SESSION_PATH}/vote-prompt-patch.md > ${SESSION_PATH}/grok-vote-patch.md; echo $? > ${SESSION_PATH}/grok-vote-patch.exit",
+            command: "claudish --model grok-code-fast-1 --stdin --quiet < ${SESSION_PATH}/vote-prompt-patch.md > ${SESSION_PATH}/grok-vote-patch.md; echo $? > ${SESSION_PATH}/grok-vote-patch.exit",
             run_in_background: true
           )
           ```
@@ -646,7 +646,7 @@ skills: dev:systematic-debugging, dev:test-driven-development, dev:testing-strat
           Model 3 (Qwen — free tier):
           ```
           Bash(
-            command: "claudish --model or@qwen/qwen3-coder:free --stdin --quiet < ${SESSION_PATH}/vote-prompt-patch.md > ${SESSION_PATH}/qwen-vote-patch.md; echo $? > ${SESSION_PATH}/qwen-vote-patch.exit",
+            command: "claudish --model qwen3.5-plus-02-15 --stdin --quiet < ${SESSION_PATH}/vote-prompt-patch.md > ${SESSION_PATH}/qwen-vote-patch.md; echo $? > ${SESSION_PATH}/qwen-vote-patch.exit",
             run_in_background: true
           )
           ```

@@ -60,8 +60,8 @@ claudish --model {MODEL_ID} --stdin --quiet < prompt.md > result.md 2>stderr.log
 
 # Examples (bare model names — claudish handles routing internally)
 claudish --model grok-code-fast-1 --stdin --quiet < task.md > grok.md 2>grok-err.log; echo $? > grok.exit
-claudish --model gemini-3-pro-preview --stdin --quiet < task.md > gemini.md 2>gemini-err.log; echo $? > gemini.exit
-claudish --model gpt-5.2-codex --stdin --quiet < task.md > gpt5.md 2>gpt5-err.log; echo $? > gpt5.exit
+claudish --model gemini-3.1-pro-preview --stdin --quiet < task.md > gemini.md 2>gemini-err.log; echo $? > gemini.exit
+claudish --model gpt-5.3-codex --stdin --quiet < task.md > gpt5.md 2>gpt5-err.log; echo $? > gpt5.exit
 ```
 
 **CLI Reference (claudish v5.3.0+):**
@@ -110,7 +110,7 @@ Bash({
 })
 
 Bash({
-  command: "claudish --model gemini-3-pro-preview --stdin --quiet {CLAUDE_FLAGS} < {SESSION_DIR}/vote-prompt.md > {SESSION_DIR}/gemini-result.md 2>{SESSION_DIR}/gemini-stderr.log; echo $? > {SESSION_DIR}/gemini.exit",
+  command: "claudish --model gemini-3.1-pro-preview --stdin --quiet {CLAUDE_FLAGS} < {SESSION_DIR}/vote-prompt.md > {SESSION_DIR}/gemini-result.md 2>{SESSION_DIR}/gemini-stderr.log; echo $? > {SESSION_DIR}/gemini.exit",
   run_in_background: true
 })
 ```

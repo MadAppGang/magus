@@ -50,8 +50,8 @@ The `/team` command handles this automatically:
 claudish --model {MODEL_ID} --stdin --quiet < prompt-file.md > result.md
 
 # Examples
-claudish --model x-ai/grok-code-fast-1 --stdin --quiet < task.md > grok-result.md
-claudish --model google/gemini-3-pro-preview --stdin --quiet < task.md > gemini-result.md
+claudish --model grok-code-fast-1 --stdin --quiet < task.md > grok-result.md
+claudish --model gemini-3.1-pro-preview --stdin --quiet < task.md > gemini-result.md
 ```
 
 **Required flags:**
@@ -59,50 +59,18 @@ claudish --model google/gemini-3-pro-preview --stdin --quiet < task.md > gemini-
 - `--stdin` — Read prompt from stdin (for large prompts)
 - `--quiet` — Suppress log messages (for clean output capture)
 
-## Multi-Backend Routing
+## Model Routing
 
-> **IMPORTANT:** When receiving model names from the user, pass them EXACTLY as provided to `claudish --model`. Do NOT add provider prefixes. Claudish handles routing internally — it will resolve bare names like `minimax-m2.5` or `grok-code-fast-1` automatically. The table below documents claudish internals for reference only.
+Claudish handles all model routing internally. Pass bare model names — claudish auto-resolves them to the best available provider.
 
-Claudish routes to different backends based on model ID prefix:
+```bash
+# Just use bare model names — claudish handles the rest
+claudish --model grok-code-fast-1 --stdin --quiet < task.md > result.md
+claudish --model gemini-3.1-pro-preview --stdin --quiet < task.md > result.md
+claudish --model gpt-5.3-codex --stdin --quiet < task.md > result.md
+```
 
-| Prefix | Backend | Required Key | Example |
-|--------|---------|--------------|---------|
-| (none) | OpenRouter | `OPENROUTER_API_KEY` | `openai/gpt-5.2` |
-| `g/` `gemini/` | Google Gemini API | `GEMINI_API_KEY` | `g/gemini-2.0-flash` |
-| `oai/` | OpenAI Direct API | `OPENAI_API_KEY` | `oai/gpt-4o` |
-| `mmax/` `mm/` | MiniMax Direct API | `MINIMAX_API_KEY` | `mmax/MiniMax-M2.1` |
-| `kimi/` `moonshot/` | Kimi Direct API | `KIMI_API_KEY` | `kimi/kimi-k2-thinking-turbo` |
-| `glm/` `zhipu/` | GLM Direct API | `GLM_API_KEY` | `glm/glm-4.7` |
-| `ollama/` | Ollama (local) | None | `ollama/llama3.2` |
-| `lmstudio/` | LM Studio (local) | None | `lmstudio/qwen` |
-| `vllm/` | vLLM (local) | None | `vllm/model` |
-| `mlx/` | MLX (local) | None | `mlx/model` |
-| `http://...` | Custom endpoint | None | `http://localhost:8000/model` |
-
-### ⚠️ Prefix Collision Warning
-
-OpenRouter model IDs may collide with routing prefixes. Check the prefix table above.
-
-**Collision-free models (safe for OpenRouter):**
-- `x-ai/grok-*` ✅
-- `deepseek/*` ✅
-- `minimax/*` ✅ (use `mmax/` for MiniMax Direct)
-- `qwen/*` ✅
-- `mistralai/*` ✅
-- `moonshotai/*` ✅ (use `kimi/` for Kimi Direct)
-- `anthropic/*` ✅
-- `z-ai/*` ✅ (use `glm/` for GLM Direct)
-- `google/*` ✅ (use `g/` for Gemini Direct)
-- `openai/*` ✅ (use `oai/` for OpenAI Direct)
-
-**Direct API prefixes for cost savings:**
-| OpenRouter Model | Direct API Prefix | Notes |
-|------------------|-------------------|-------|
-| `openai/gpt-*` | `oai/gpt-*` | OpenAI Direct API |
-| `google/gemini-*` | `g/gemini-*` | Gemini Direct API |
-| `minimax/*` | `mmax/*` or `mm/*` | MiniMax Direct API |
-| `moonshotai/*` | `kimi/*` or `moonshot/` | Kimi Direct API |
-| `z-ai/glm-*` | `glm/*` or `zhipu/*` | GLM Direct API |
+Do NOT add provider prefixes (`x-ai/`, `google/`, `openai/`, `minimax/`, etc.) — claudish manages provider detection and routing automatically since v5.4.0.
 
 ---
 
@@ -111,15 +79,15 @@ OpenRouter model IDs may collide with routing prefixes. Check the prefix table a
 ### Single External Model
 
 ```bash
-claudish --model x-ai/grok-code-fast-1 --stdin --quiet < task.md > result.md
+claudish --model grok-code-fast-1 --stdin --quiet < task.md > result.md
 ```
 
 ### Parallel External Models (in /team)
 
 ```bash
 # All launched in a single message with run_in_background: true
-Bash("claudish --model x-ai/grok-code-fast-1 --stdin --quiet < vote-prompt.md > grok-result.md 2>grok-stderr.log; echo $? > grok.exit")
-Bash("claudish --model google/gemini-3-pro-preview --stdin --quiet < vote-prompt.md > gemini-result.md 2>gemini-stderr.log; echo $? > gemini.exit")
+Bash("claudish --model grok-code-fast-1 --stdin --quiet < vote-prompt.md > grok-result.md 2>grok-stderr.log; echo $? > grok.exit")
+Bash("claudish --model gemini-3.1-pro-preview --stdin --quiet < vote-prompt.md > gemini-result.md 2>gemini-stderr.log; echo $? > gemini.exit")
 ```
 
 ### Verifying Results

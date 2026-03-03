@@ -87,7 +87,7 @@ tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Edit, Bash
 ### External Model Integration
 Orchestrators use Bash+claudish for external AI models:
 ```bash
-claudish --model x-ai/grok-code-fast-1 --stdin --quiet \
+claudish --model grok-code-fast-1 --stdin --quiet \
   < prompt.md > result.md
 echo $? > result.exit
 ```

@@ -256,8 +256,8 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates
         <step>
           If Claudish available:
           **Select Review Models** (AskUserQuestion, multiSelect):
-          - x-ai/grok-code-fast-1
-          - google/gemini-2.5-flash
+          - grok-code-fast-1
+          - gemini-3.1-pro-preview
           - Or skip external validation
         </step>
         <step>

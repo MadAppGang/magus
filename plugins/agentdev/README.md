@@ -68,9 +68,9 @@ The `/develop` command uses external AI models via [Claudish](https://github.com
 **Install Claudish:** `npm install -g claudish`
 
 Supported models:
-- `x-ai/grok-code-fast-1` - Fast, coding-focused
-- `google/gemini-2.5-flash` - Budget-friendly
-- `google/gemini-2.5-pro` - Advanced reasoning
+- `grok-code-fast-1` - Fast, coding-focused
+- `gemini-3.1-pro-preview` - Budget-friendly
+- `gemini-3.1-pro-preview` - Advanced reasoning
 - `deepseek/deepseek-chat` - Reasoning specialist
 - `anthropic/claude-sonnet-4.5` - Alternative perspective
 

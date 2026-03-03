@@ -63,7 +63,7 @@ setInterval(() => {
 
 ```
 Step 1: Detect Timeout
-  Log: "Timeout: x-ai/grok-code-fast-1 after 30s with no response"
+  Log: "Timeout: grok-code-fast-1 after 30s with no response"
 
 Step 2: Notify User
   Present options:
@@ -125,7 +125,7 @@ Benefits:
 ```bash
 # In codex-code-reviewer agent (proxy mode)
 
-MODEL="x-ai/grok-code-fast-1"
+MODEL="grok-code-fast-1"
 TIMEOUT=30
 
 # Execute with timeout
@@ -206,7 +206,7 @@ Detection:
   API returns 500 status code
 
 Recovery:
-  1. Log: "Model service error (500): x-ai/grok-code-fast-1"
+  1. Log: "Model service error (500): grok-code-fast-1"
   2. Wait 5 seconds (give service time to recover)
   3. Retry ONCE
   4. If retry succeeds: Continue normally
@@ -907,7 +907,7 @@ Step 4: Execution (multi-agent-coordination)
 
 ```
 Attempt 1:
-  Bash: timeout 30s claudish --model x-ai/grok-code-fast-1 ...
+  Bash: timeout 30s claudish --model grok-code-fast-1 ...
   Result: Timeout after 30s
 
   Notify user:
@@ -920,7 +920,7 @@ Attempt 1:
   User selects: 1 (Retry)
 
 Attempt 2:
-  Bash: timeout 60s claudish --model x-ai/grok-code-fast-1 ...
+  Bash: timeout 60s claudish --model grok-code-fast-1 ...
   Result: Success after 45s
 
   Log: "Grok review completed on retry (45s)"

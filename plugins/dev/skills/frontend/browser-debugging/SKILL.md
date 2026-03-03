@@ -50,31 +50,31 @@ For best visual analysis of UI screenshots, use these models via Claudish:
 
 | Model | Strengths | Cost | Best For |
 |-------|-----------|------|----------|
-| **qwen/qwen3-vl-32b-instruct** | Best OCR, spatial reasoning, GUI automation, 32+ languages | ~$0.06/1M input | Design fidelity, OCR, element detection |
-| **google/gemini-2.5-flash** | Fast, excellent price/performance, 1M context | ~$0.05/1M input | Real-time validation, large pages |
-| **openai/gpt-4o** | Most fluid multimodal, strong all-around | ~$0.15/1M input | Complex visual reasoning |
+| **qwen3.5-plus-02-15** | Best OCR, spatial reasoning, GUI automation, 32+ languages | ~$0.06/1M input | Design fidelity, OCR, element detection |
+| **gemini-3.1-pro-preview** | Fast, excellent price/performance, 1M context | ~$0.05/1M input | Real-time validation, large pages |
+| **gpt-4o** | Most fluid multimodal, strong all-around | ~$0.15/1M input | Complex visual reasoning |
 
 ### Tier 2: Fast & Affordable
 
 | Model | Strengths | Cost | Best For |
 |-------|-----------|------|----------|
-| **qwen/qwen3-vl-30b-a3b-instruct** | Good balance, MoE architecture | ~$0.04/1M input | Quick checks, multiple iterations |
-| **google/gemini-2.5-flash-lite** | Ultrafast, very cheap | ~$0.01/1M input | High-volume testing |
+| **qwen3-vl-30b-a3b-instruct** | Good balance, MoE architecture | ~$0.04/1M input | Quick checks, multiple iterations |
+| **gemini-3.1-pro-preview-lite** | Ultrafast, very cheap | ~$0.01/1M input | High-volume testing |
 
 ### Tier 3: Free Options
 
 | Model | Notes |
 |-------|-------|
-| **openrouter/polaris-alpha** | FREE, good for testing workflows |
+| **polaris-alpha** | FREE, good for testing workflows |
 
 ### Model Selection Guide
 
 ```
-Design Fidelity Validation → qwen/qwen3-vl-32b-instruct (best OCR & spatial)
-Quick Smoke Tests → google/gemini-2.5-flash (fast & cheap)
-Complex Layout Analysis → openai/gpt-4o (best reasoning)
-High Volume Testing → google/gemini-2.5-flash-lite (ultrafast)
-Budget Conscious → openrouter/polaris-alpha (free)
+Design Fidelity Validation → qwen3.5-plus-02-15 (best OCR & spatial)
+Quick Smoke Tests → gemini-3.1-pro-preview (fast & cheap)
+Complex Layout Analysis → gpt-4o (best reasoning)
+High Volume Testing → gemini-3.1-pro-preview-lite (ultrafast)
+Budget Conscious → polaris-alpha (free)
 ```
 
 ---
@@ -105,7 +105,7 @@ Budget Conscious → openrouter/polaris-alpha (free)
 4. **Optional: Enhanced analysis with vision model**:
    \`\`\`bash
    # Use Qwen VL for detailed visual analysis
-   npx claudish --model qwen/qwen3-vl-32b-instruct --stdin --quiet <<EOF
+   npx claudish --model qwen3.5-plus-02-15 --stdin --quiet <<EOF
    Analyze this UI screenshot and identify any visual issues:
 
    IMAGE: [screenshot from previous step]
@@ -172,7 +172,7 @@ mcp__claude-in-chrome__computer(action: "screenshot")
 ### Step 2: Visual Analysis with Vision Model
 
 \`\`\`bash
-npx claudish --model qwen/qwen3-vl-32b-instruct --stdin --quiet <<EOF
+npx claudish --model qwen3.5-plus-02-15 --stdin --quiet <<EOF
 Compare these two UI screenshots and identify design fidelity issues:
 
 DESIGN REFERENCE: /tmp/design-reference.png
@@ -301,7 +301,7 @@ mcp__claude-in-chrome__computer(action: "screenshot")
 
 Use vision model to compare before/after screenshots:
 \`\`\`bash
-npx claudish --model google/gemini-2.5-flash --stdin --quiet <<EOF
+npx claudish --model gemini-3.1-pro-preview --stdin --quiet <<EOF
 Compare these before/after screenshots and verify the interaction worked:
 
 BEFORE: [screenshot before interaction]
@@ -366,7 +366,7 @@ done
 ### Visual Analysis for Responsive Issues
 
 \`\`\`bash
-npx claudish --model qwen/qwen3-vl-32b-instruct --stdin --quiet <<EOF
+npx claudish --model qwen3.5-plus-02-15 --stdin --quiet <<EOF
 Analyze these responsive screenshots for layout issues:
 
 MOBILE (375px): [screenshot 1]
@@ -417,7 +417,7 @@ mcp__claude-in-chrome__get_page_text()
 ### Visual Contrast Analysis
 
 \`\`\`bash
-npx claudish --model qwen/qwen3-vl-32b-instruct --stdin --quiet <<EOF
+npx claudish --model qwen3.5-plus-02-15 --stdin --quiet <<EOF
 Analyze this screenshot for accessibility issues:
 
 IMAGE: [screenshot]
@@ -631,6 +631,47 @@ Task(
 This is an optional enhancement — browser-debugging works without designer installed.
 If designer is not available, use the manual visual comparison patterns in Recipe 2 above.
 
+## Browser-Use Plugin Integration (Optional)
+
+If the `browser-use` plugin is installed (`browser-use@magus`), it provides an
+alternative browser automation path for scenarios where claude-in-chrome is unavailable.
+
+**When browser-use complements claude-in-chrome**:
+- Headless screenshot capture when user's Chrome isn't open or unavailable
+- Full-page screenshots (`browser_screenshot(full_page=True)`) — not supported in claude-in-chrome
+- Autonomous agent mode for complex interactions (`retry_with_browser_use_agent`)
+- Session export/import for cookie-persistent testing across runs
+
+**Detection** (preferred — no subprocess):
+```
+browser_use_available = try mcp__browser-use__browser_list_sessions()
+  → success: browser-use is available
+  → error: browser-use not available → use claude-in-chrome only
+```
+
+**Detection** (bash fallback for scripts):
+```bash
+# Check browser-use availability
+browser_use_available=$(claude /plugin list 2>/dev/null | grep -c "browser-use" || echo "0")
+if [ "$browser_use_available" -gt "0" ]; then
+  echo "browser-use available — headless browser tools accessible"
+fi
+```
+
+**Hybrid workflow**:
+For the most complete debugging workflow (console errors + network + screenshots),
+see the `browser-use:hybrid-debugging` skill. That skill documents the exact tool
+capability map and combined workflows for using both plugins simultaneously.
+
+**When only browser-use is available** (claude-in-chrome not installed):
+See the `browser-use:debug-ui` skill for visual debugging patterns using headless
+browser screenshot and DOM inspection.
+Note: console error capture, network request tracing, and computed CSS snapshots
+require claude-in-chrome (not available via browser-use).
+
+This is an optional enhancement — browser-debugging works without browser-use installed.
+If browser-use is not available, use the claude-in-chrome-based patterns above.
+
 ## Related Skills
 
 - **react-typescript** - React component patterns
@@ -638,3 +679,5 @@ If designer is not available, use the manual visual comparison patterns in Recip
 - **shadcn-ui** - Component library usage
 - **testing-frontend** - Automated testing strategies
 - **designer-integration** - Optional designer plugin detection and delegation patterns
+- **browser-use:debug-ui** - Visual debugging with Browser Use (when claude-in-chrome unavailable)
+- **browser-use:hybrid-debugging** - Combined Browser Use + claude-in-chrome workflows

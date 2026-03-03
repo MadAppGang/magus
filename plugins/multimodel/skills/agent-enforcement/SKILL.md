@@ -69,7 +69,7 @@ for each model before launching:
 
 ```bash
 bash "${CLAUDE_PLUGIN_ROOT}/scripts/resolve-agents.sh" \
-  --models "internal,x-ai/grok-code-fast-1" \
+  --models "internal,grok-code-fast-1" \
   --task-type "investigation"
 ```
 
@@ -84,7 +84,7 @@ Output:
   "taskType": "investigation",
   "resolutions": [
     { "modelId": "internal", "method": "direct", "agent": "dev:researcher" },
-    { "modelId": "x-ai/grok-code-fast-1", "method": "cli", "agent": "dev:researcher" }
+    { "modelId": "grok-code-fast-1", "method": "cli", "agent": "dev:researcher" }
   ]
 }
 ```

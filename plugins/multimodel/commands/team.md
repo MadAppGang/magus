@@ -372,11 +372,12 @@ args:
     | Alias | Full Model ID |
     |-------|---------------|
     | grok | grok-code-fast-1 |
-    | gemini | gemini-3-pro-preview |
-    | gpt-5 | gpt-5.2-codex |
+    | gemini | gemini-3.1-pro-preview |
+    | gpt-5 | gpt-5.3-codex |
     | deepseek | deepseek-v3.2 |
     | minimax | minimax-m2.5 |
-    | glm | glm-4.7 |
+    | glm | glm-5 |
+    | kimi | kimi-k2.5 |
     | internal | internal (Claude) |
   </model_aliases>
 
@@ -447,7 +448,7 @@ args:
     |-------|--------|--------|--------|------|-------|
     | Internal (Claude) | Task | OK | 4.2KB | N/A | |
     | grok-code-fast-1 | claudish | OK | 3.8KB | 0 | |
-    | gemini-3-pro-preview | claudish | FAILED | 0B | 1 | Rate limit exceeded |
+    | gemini-3.1-pro-preview | claudish | FAILED | 0B | 1 | Rate limit exceeded |
 
     External models verified: {ok_count}/{total_external} ({percent}%)
     {If any failed: "WORKFLOW DEVIATION: {n} external model(s) failed — see stderr logs in session dir"}

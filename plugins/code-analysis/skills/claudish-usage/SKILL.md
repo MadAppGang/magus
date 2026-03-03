@@ -158,7 +158,7 @@ When used with the `/team` command for multi-model blind voting:
 
 **External models are invoked via Bash+claudish CLI (deterministic, 100% reliable):**
 ```bash
-claudish --model x-ai/grok-code-fast-1 --stdin --quiet \
+claudish --model grok-code-fast-1 --stdin --quiet \
   < "ai-docs/sessions/team-xyz/vote-prompt.md" \
   > "ai-docs/sessions/team-xyz/grok-result.md" \
   2>"ai-docs/sessions/team-xyz/grok-stderr.log"; \
@@ -215,18 +215,18 @@ Claudish (Claude-ish) is a proxy tool that:
 | Model ID | Claudish Routes To | Problem | Fix |
 |----------|-------------------|---------|-----|
 | `google/gemini-3-pro-preview` | Google Gemini Direct | Needs `GEMINI_API_KEY`, different API | Use `google/gemini-3-pro-preview` |
-| `google/gemini-2.5-flash` | Google Gemini Direct | Needs `GEMINI_API_KEY`, different API | Use `google/gemini-2.5-flash` |
-| `openai/gpt-5.1-codex` | OpenAI Direct | Needs `OPENAI_API_KEY`, different API | Use `openai/gpt-5.1-codex` |
-| `openai/gpt-5` | OpenAI Direct | Needs `OPENAI_API_KEY`, different API | Use `openai/gpt-5` |
+| `gemini-3.1-pro-preview` | Google Gemini Direct | Needs `GEMINI_API_KEY`, different API | Use `gemini-3.1-pro-preview` |
+| `gpt-5.3-codex` | OpenAI Direct | Needs `OPENAI_API_KEY`, different API | Use `gpt-5.3-codex` |
+| `gpt-5.3` | OpenAI Direct | Needs `OPENAI_API_KEY`, different API | Use `gpt-5.3` |
 
 ### Safe Model IDs (No Collision)
 
 These OpenRouter model IDs are SAFE to use without the `or/` prefix:
 
-- `x-ai/grok-code-fast-1` - No `x-ai/` prefix in claudish
+- `grok-code-fast-1` - No `x-ai/` prefix in claudish
 - `anthropic/claude-3.5-sonnet` - No `anthropic/` prefix in claudish
 - `deepseek/deepseek-chat` - No `deepseek/` prefix in claudish
-- `minimax/minimax-m2` - No `minimax/` prefix in claudish
+- `minimax-m2.5` - No `minimax/` prefix in claudish
 - `qwen/qwen3-coder:free` - No `qwen/` prefix in claudish
 - `mistralai/devstral-2512:free` - No `mistralai/` prefix in claudish
 - `moonshotai/kimi-k2-thinking` - No `moonshotai/` prefix in claudish
@@ -247,7 +247,7 @@ claudish --model google/gemini-3-pro-preview
 claudish --model google/gemini-3-pro-preview
 
 # SAFE - No collision (x-ai/ is not a routing prefix)
-claudish --model x-ai/grok-code-fast-1
+claudish --model grok-code-fast-1
 ```
 
 ## Requirements
@@ -275,7 +275,7 @@ export OPENAI_API_KEY='sk-...'
 export ANTHROPIC_API_KEY='sk-ant-api03-placeholder'  # Prevents Claude Code dialog
 
 # Optional - default model
-export CLAUDISH_MODEL='x-ai/grok-code-fast-1'  # or ANTHROPIC_MODEL
+export CLAUDISH_MODEL='grok-code-fast-1'  # or ANTHROPIC_MODEL
 ```
 
 **Get OpenRouter API Key:**
@@ -331,35 +331,35 @@ claudish
 **Single-shot Mode:**
 ```bash
 # One task and exit (requires --model)
-claudish --model x-ai/grok-code-fast-1 "implement user authentication"
+claudish --model grok-code-fast-1 "implement user authentication"
 ```
 
 **With stdin for large prompts:**
 ```bash
 # Read prompt from stdin (useful for git diffs, code review)
-git diff | claudish --stdin --model openai/gpt-5-codex "Review these changes"
+git diff | claudish --stdin --model gpt-5.3-codex "Review these changes"
 ```
 
 ## Recommended Models
 
 **Top Models for Development (verified from OpenRouter):**
 
-1. **x-ai/grok-code-fast-1** - xAI's Grok (fast coding, visible reasoning)
+1. **grok-code-fast-1** - xAI's Grok (fast coding, visible reasoning)
    - Category: coding
    - Context: 256K
    - Best for: Quick iterations, agentic coding
 
-2. **google/gemini-2.5-flash** - Google's Gemini (state-of-the-art reasoning)
+2. **gemini-3.1-pro-preview** - Google's Gemini (state-of-the-art reasoning)
    - Category: reasoning
    - Context: 1000K
    - Best for: Complex analysis, multi-step reasoning
 
-3. **minimax/minimax-m2** - MiniMax M2 (high performance)
+3. **minimax-m2.5** - MiniMax M2 (high performance)
    - Category: coding
    - Context: 128K
    - Best for: General coding tasks
 
-4. **openai/gpt-5** - OpenAI's GPT-5 (advanced reasoning)
+4. **gpt-5.3** - OpenAI's GPT-5 (advanced reasoning)
    - Category: reasoning
    - Context: 128K
    - Best for: Complex implementations, architecture decisions
@@ -391,7 +391,7 @@ claudish --models --force-update
 
 ```bash
 # Use specific agent (prepends @agent- automatically)
-claudish --model x-ai/grok-code-fast-1 "implement React component"
+claudish --model grok-code-fast-1 "implement React component"
 
 # Claude receives: "Use the @agent-frontend:developer agent to: implement React component"
 
@@ -418,7 +418,7 @@ claudish --list-agents
 
 **Simple task (use `--agent`):**
 ```bash
-claudish --model x-ai/grok-code-fast-1 "create button component"
+claudish --model grok-code-fast-1 "create button component"
 ```
 
 **Complex task (use file-based):**
@@ -430,7 +430,7 @@ Phase 3: Use test-architect to add tests
 Phase 4: Use senior-code-reviewer to review
 
 then:
-claudish --model x-ai/grok-code-fast-1 --stdin < multi-phase-workflow.md
+claudish --model grok-code-fast-1 --stdin < multi-phase-workflow.md
 ```
 
 ## Best Practice: File-Based Sub-Agent Pattern
@@ -482,7 +482,7 @@ Write implementation to: /tmp/claudish-result-{timestamp}.md
 **Step 2: Run Claudish with file instruction**
 ```bash
 # Read instruction from file, write result to file
-claudish --model x-ai/grok-code-fast-1 --stdin < /tmp/claudish-task-{timestamp}.md > /tmp/claudish-result-{timestamp}.md
+claudish --model grok-code-fast-1 --stdin < /tmp/claudish-task-{timestamp}.md > /tmp/claudish-result-{timestamp}.md
 ```
 
 **Step 3: Read result file and provide summary**
@@ -550,7 +550,7 @@ Use this format:
   await Write({ file_path: instructionFile, content: instruction });
 
   // Step 2: Run Claudish with stdin
-  await Bash(`claudish --model x-ai/grok-code-fast-1 --stdin < ${instructionFile}`);
+  await Bash(`claudish --model grok-code-fast-1 --stdin < ${instructionFile}`);
 
   // Step 3: Read result
   const result = await Read({ file_path: resultFile });
@@ -610,7 +610,7 @@ INSTRUCTIONS:
    claudish --models grok
 
 2. Run implementation with Grok:
-   claudish --model x-ai/grok-code-fast-1 "${featureDescription}"
+   claudish --model grok-code-fast-1 "${featureDescription}"
 
 3. Return ONLY:
    - List of files created/modified
@@ -669,7 +669,7 @@ Result file: ${resultFile}
 
 STEPS:
 1. Read instruction file: ${instructionFile}
-2. Run: claudish --model google/gemini-2.5-flash --stdin < ${instructionFile}
+2. Run: claudish --model gemini-3.1-pro-preview --stdin < ${instructionFile}
 3. Wait for completion
 4. Read result file: ${resultFile}
 5. Return ONLY a 2-3 sentence summary
@@ -743,14 +743,14 @@ DO NOT return full output.
 
 ```bash
 # Fast, agentic coding with visible reasoning
-claudish --model x-ai/grok-code-fast-1 "add error handling to api routes"
+claudish --model grok-code-fast-1 "add error handling to api routes"
 ```
 
 ### Workflow 2: Complex Refactoring with GPT-5
 
 ```bash
 # Advanced reasoning for complex tasks
-claudish --model openai/gpt-5 "refactor authentication system to use OAuth2"
+claudish --model gpt-5.3 "refactor authentication system to use OAuth2"
 ```
 
 ### Workflow 3: UI Implementation with Qwen (Vision)
@@ -764,14 +764,14 @@ claudish --model qwen/qwen3-vl-235b-a22b-instruct "implement dashboard from figm
 
 ```bash
 # State-of-the-art reasoning for thorough review
-git diff | claudish --stdin --model google/gemini-2.5-flash "Review these changes for bugs and improvements"
+git diff | claudish --stdin --model gemini-3.1-pro-preview "Review these changes for bugs and improvements"
 ```
 
 ### Workflow 5: Multi-Model Consensus
 
 ```bash
 # Run same task with multiple models
-for model in "x-ai/grok-code-fast-1" "google/gemini-2.5-flash" "openai/gpt-5"; do
+for model in "grok-code-fast-1" "gemini-3.1-pro-preview" "gpt-5.3"; do
   echo "=== Testing with $model ==="
   claudish --model "$model" "find security vulnerabilities in auth.ts"
 done
@@ -783,7 +783,7 @@ done
 
 | Flag | Description | Example |
 |------|-------------|---------|
-| `--model <model>` | OpenRouter model to use | `--model x-ai/grok-code-fast-1` |
+| `--model <model>` | OpenRouter model to use | `--model grok-code-fast-1` |
 | `--stdin` | Read prompt from stdin | `git diff \| claudish --stdin --model grok` |
 | `--models` | List all models or search | `claudish --models` or `claudish --models gemini` |
 | `--top-models` | Show top recommended models | `claudish --top-models` |
@@ -834,7 +834,7 @@ directory • model-id • $cost • ctx%
 
 **Example:**
 ```
-my-project • x-ai/grok-code-fast-1 • $0.12 • 67%
+my-project • grok-code-fast-1 • $0.12 • 67%
 ```
 
 Shows:
@@ -888,7 +888,7 @@ Model 'invalid/model' not found
 claudish --models
 
 # Use valid model ID
-claudish --model x-ai/grok-code-fast-1 "task"
+claudish --model grok-code-fast-1 "task"
 ```
 
 ### Error 4: OpenRouter API Error
@@ -939,8 +939,8 @@ cat /tmp/result.md
 
 ### 2. ✅ Choose Right Model for Task
 
-**Fast Coding:** `x-ai/grok-code-fast-1`
-**Complex Reasoning:** `google/gemini-2.5-flash` or `openai/gpt-5`
+**Fast Coding:** `grok-code-fast-1`
+**Complex Reasoning:** `gemini-3.1-pro-preview` or `gpt-5.3`
 **Vision/UI:** `qwen/qwen3-vl-235b-a22b-instruct`
 
 ### 3. ✅ Use --json for Automation
@@ -1021,7 +1021,7 @@ Use Claudish to implement the feature with Grok model.
 CRITICAL INSTRUCTIONS:
 1. Create instruction file: /tmp/claudish-task-${Date.now()}.md
 2. Write detailed task requirements to file
-3. Run: claudish --model x-ai/grok-code-fast-1 --stdin < /tmp/claudish-task-*.md
+3. Run: claudish --model grok-code-fast-1 --stdin < /tmp/claudish-task-*.md
 4. Read result file and return ONLY a 2-3 sentence summary
 
 DO NOT return full implementation or conversation.
@@ -1034,7 +1034,7 @@ const result = await Task({
   subagent_type: "backend-developer", // or frontend-dev, etc.
   description: "Implement with external model",
   prompt: `
-Use Claudish with x-ai/grok-code-fast-1 model to implement authentication.
+Use Claudish with grok-code-fast-1 model to implement authentication.
 Follow file-based instruction pattern.
 Return summary only.
   `
@@ -1061,8 +1061,8 @@ claudish "any task"
 **Right:**
 ```bash
 # Choose appropriate model
-claudish --model x-ai/grok-code-fast-1 "quick fix"
-claudish --model google/gemini-2.5-flash "complex analysis"
+claudish --model grok-code-fast-1 "quick fix"
+claudish --model gemini-3.1-pro-preview "complex analysis"
 ```
 
 ### ❌ Don't Parse Text Output
@@ -1083,7 +1083,7 @@ COST=$(claudish --json --model grok "task" | jq -r '.total_cost_usd')
 
 **Wrong:**
 ```typescript
-const MODELS = ["x-ai/grok-code-fast-1", "openai/gpt-5"];
+const MODELS = ["grok-code-fast-1", "gpt-5.3"];
 ```
 
 **Right:**
@@ -1099,7 +1099,7 @@ const models = JSON.parse(stdout).models.map(m => m.id);
 
 **Wrong (rejecting custom models):**
 ```typescript
-const availableModels = ["x-ai/grok-code-fast-1", "openai/gpt-5"];
+const availableModels = ["grok-code-fast-1", "gpt-5.3"];
 const userModel = "custom/provider/model-123";
 
 if (!availableModels.includes(userModel)) {
@@ -1224,9 +1224,9 @@ try {
  */
 async function reviewCodeWithMultipleModels(files: string[]) {
   const models = [
-    "x-ai/grok-code-fast-1",      // Fast initial scan
-    "google/gemini-2.5-flash",    // Deep analysis
-    "openai/gpt-5"                // Final validation
+    "grok-code-fast-1",      // Fast initial scan
+    "gemini-3.1-pro-preview",    // Deep analysis
+    "gpt-5.3"                // Final validation
   ];
 
   const reviews = [];
@@ -1324,7 +1324,7 @@ Include:
 **Symptoms:** Claudish takes long time to respond
 
 **Solutions:**
-1. Use faster model: `x-ai/grok-code-fast-1` or `minimax/minimax-m2`
+1. Use faster model: `grok-code-fast-1` or `minimax-m2.5`
 2. Reduce prompt size (use --stdin with concise instructions)
 3. Check internet connection to OpenRouter
 

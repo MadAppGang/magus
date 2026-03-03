@@ -292,15 +292,15 @@ Sub-agents should return **2-5 sentence summaries**, not full output:
 For external AI models (Claudish), use the claudish CLI directive:
 
 ```
-Task: codex-code-reviewer claudish CLI: x-ai/grok-code-fast-1
+Task: codex-code-reviewer claudish CLI: grok-code-fast-1
   Prompt: "Review authentication implementation for security issues.
            Code context in ai-docs/code-review-context.md"
 
 Agent Behavior:
   1. Detects claudish CLI directive
-  2. Extracts model: x-ai/grok-code-fast-1
+  2. Extracts model: grok-code-fast-1
   3. Extracts task: "Review authentication implementation..."
-  4. Executes: claudish --model x-ai/grok-code-fast-1 --stdin <<< "..."
+  4. Executes: claudish --model grok-code-fast-1 --stdin <<< "..."
   5. Waits for full response (blocking execution)
   6. Writes: ai-docs/grok-review.md (full detailed review)
   7. Returns: "Grok review complete. Found 3 CRITICAL issues. See ai-docs/grok-review.md"
@@ -312,12 +312,12 @@ External models MUST execute synchronously (blocking) so the agent waits for the
 
 ```
 ✅ CORRECT - Blocking:
-  RESULT=$(claudish --model x-ai/grok-code-fast-1 --stdin <<< "$PROMPT")
+  RESULT=$(claudish --model grok-code-fast-1 --stdin <<< "$PROMPT")
   echo "$RESULT" > ai-docs/grok-review.md
   echo "Review complete - see ai-docs/grok-review.md"
 
 ❌ WRONG - Background (returns before completion):
-  claudish --model x-ai/grok-code-fast-1 --stdin <<< "$PROMPT" &
+  claudish --model grok-code-fast-1 --stdin <<< "$PROMPT" &
   echo "Review started..."  # Agent returns immediately, review not done!
 ```
 
@@ -521,10 +521,10 @@ Message 2: Parallel Execution (3 Task calls in single message)
   Task: senior-code-reviewer
     Prompt: "Review ai-docs/code-review-context.md for security issues"
   ---
-  Task: codex-code-reviewer claudish CLI: x-ai/grok-code-fast-1
+  Task: codex-code-reviewer claudish CLI: grok-code-fast-1
     Prompt: "Review ai-docs/code-review-context.md for security issues"
   ---
-  Task: codex-code-reviewer claudish CLI: google/gemini-2.5-flash
+  Task: codex-code-reviewer claudish CLI: gemini-3.1-pro-preview
     Prompt: "Review ai-docs/code-review-context.md for security issues"
 
   All 3 execute simultaneously (3x faster than sequential)

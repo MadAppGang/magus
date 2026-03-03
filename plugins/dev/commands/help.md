@@ -106,7 +106,7 @@ Override auto-detection in `.claude/settings.json`:
       },
       "multiModelReview": {
         "enabled": true,
-        "models": ["x-ai/grok-code-fast-1", "google/gemini-2.5-flash"]
+        "models": ["grok-code-fast-1", "gemini-3.1-pro-preview"]
       }
     }
   }
@@ -203,9 +203,9 @@ When Claudish CLI is installed, you can use external AI models for:
 - Design validation
 
 **Supported models:**
-- `x-ai/grok-code-fast-1` (fast, accurate)
-- `google/gemini-2.5-flash` (free tier available)
-- `openai/gpt-5-codex` (premium)
+- `grok-code-fast-1` (fast, accurate)
+- `gemini-3.1-pro-preview` (free tier available)
+- `gpt-5.3-codex` (premium)
 - Many more via OpenRouter
 
 See: https://github.com/MadAppGang/claudish

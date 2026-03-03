@@ -197,7 +197,7 @@ Store performance metrics in `.claude/agent-performance.json`:
         "testing": { "success": 20, "failure": 3 }
       }
     },
-    "x-ai/grok-code-fast-1": {
+    "grok-code-fast-1": {
       "totalRuns": 35,
       "successCount": 30,
       "failureCount": 5,
@@ -356,19 +356,19 @@ Failure Flow:
 Execution Flow:
 
 1. Model completes task
-   Model: x-ai/grok-code-fast-1
+   Model: grok-code-fast-1
    Task: Code review
    Latency: 1800ms
    Cost: $0.002
    Result: Success
 
 2. Update model metrics
-   models["x-ai/grok-code-fast-1"].totalRuns += 1
-   models["x-ai/grok-code-fast-1"].successCount += 1
-   models["x-ai/grok-code-fast-1"].avgLatency = rolling_avg(1800)
-   models["x-ai/grok-code-fast-1"].totalCost += 0.002
-   models["x-ai/grok-code-fast-1"].lastUsed = NOW
-   models["x-ai/grok-code-fast-1"].taskTypePerformance["code-review"].success += 1
+   models["grok-code-fast-1"].totalRuns += 1
+   models["grok-code-fast-1"].successCount += 1
+   models["grok-code-fast-1"].avgLatency = rolling_avg(1800)
+   models["grok-code-fast-1"].totalCost += 0.002
+   models["grok-code-fast-1"].lastUsed = NOW
+   models["grok-code-fast-1"].taskTypePerformance["code-review"].success += 1
 
 3. Compare model performance
    Claude Sonnet: avgLatency=2500ms, cost=$0.45 (120 runs)
@@ -683,7 +683,7 @@ Model: claude-sonnet-4-5-20250929
   Cost per success: $0.0042
   Success rate: 90%
 
-Model: x-ai/grok-code-fast-1
+Model: grok-code-fast-1
   Total cost: $0.08
   Total runs: 35
   Success count: 30
@@ -691,7 +691,7 @@ Model: x-ai/grok-code-fast-1
   Cost per success: $0.0027
   Success rate: 86%
 
-Model: google/gemini-2.5-flash
+Model: gemini-3.1-pro-preview
   Total cost: $0.02
   Total runs: 20
   Success count: 16
@@ -1321,7 +1321,7 @@ Step 3: Track individual model executions
     models["claude-sonnet-4-5-20250929"].totalCost = $0.453
     models["claude-sonnet-4-5-20250929"].taskTypePerformance["code-review"].success = 26
 
-  Model: x-ai/grok-code-fast-1
+  Model: grok-code-fast-1
     Start: 15:00:05Z
     End: 15:00:07Z
     Latency: 2000ms
@@ -1330,13 +1330,13 @@ Step 3: Track individual model executions
     Outcome: Success
 
   Update metrics:
-    models["x-ai/grok-code-fast-1"].totalRuns = 36
-    models["x-ai/grok-code-fast-1"].successCount = 31
-    models["x-ai/grok-code-fast-1"].avgLatency = 1820ms
-    models["x-ai/grok-code-fast-1"].totalCost = $0.082
-    models["x-ai/grok-code-fast-1"].taskTypePerformance["code-review"].success = 19
+    models["grok-code-fast-1"].totalRuns = 36
+    models["grok-code-fast-1"].successCount = 31
+    models["grok-code-fast-1"].avgLatency = 1820ms
+    models["grok-code-fast-1"].totalCost = $0.082
+    models["grok-code-fast-1"].taskTypePerformance["code-review"].success = 19
 
-  Model: google/gemini-2.5-flash
+  Model: gemini-3.1-pro-preview
     Start: 15:00:05Z
     End: 15:00:06Z
     Latency: 1500ms
@@ -1345,11 +1345,11 @@ Step 3: Track individual model executions
     Outcome: Success
 
   Update metrics:
-    models["google/gemini-2.5-flash"].totalRuns = 21
-    models["google/gemini-2.5-flash"].successCount = 17
-    models["google/gemini-2.5-flash"].avgLatency = 1480ms
-    models["google/gemini-2.5-flash"].totalCost = $0.021
-    models["google/gemini-2.5-flash"].taskTypePerformance["code-review"].success = 11
+    models["gemini-3.1-pro-preview"].totalRuns = 21
+    models["gemini-3.1-pro-preview"].successCount = 17
+    models["gemini-3.1-pro-preview"].avgLatency = 1480ms
+    models["gemini-3.1-pro-preview"].totalCost = $0.021
+    models["gemini-3.1-pro-preview"].taskTypePerformance["code-review"].success = 11
 
 Step 4: Track skill activation
   skills["multi-model-validation"].activations = 16

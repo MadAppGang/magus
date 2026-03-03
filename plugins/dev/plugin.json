@@ -1,7 +1,7 @@
 {
   "name": "dev",
-  "version": "1.38.0",
-  "description": "Universal development assistant with real skill discovery. v1.38.0: Code Roast skill — 192 anti-patterns, 8 languages, AI slop detection. Design migrated to designer plugin. 45 skills.",
+  "version": "1.39.0",
+  "description": "Universal development assistant with real skill discovery. v1.39.0: Browser-use optional integration for frontend agent. 47 skills.",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",
@@ -90,6 +90,7 @@
     "./skills/frontend/state-management",
     "./skills/frontend/testing-frontend",
     "./skills/frontend/browser-debugging",
+    "./skills/frontend/browser-use-integration",
     "./skills/frontend/tanstack-router",
     "./skills/frontend/tanstack-query",
     "./skills/frontend/shadcn-ui",
@@ -131,7 +132,8 @@
     "multimodel@magus": "^2.0.0"
   },
   "optionalDependencies": {
-    "designer@magus": ">=0.1.0"
+    "designer@magus": ">=0.1.0",
+    "browser-use@magus": ">=1.0.0"
   },
   "compatibility": {
     "claudeCode": ">=0.1.0"

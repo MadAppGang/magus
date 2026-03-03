@@ -13,7 +13,7 @@ set -euo pipefail
 #   - "cli":    External models via Bash(claudish --model)
 #
 # Usage:
-#   bash resolve-agents.sh --models "internal,x-ai/grok-code-fast-1" --task-type "investigation"
+#   bash resolve-agents.sh --models "internal,grok-code-fast-1" --task-type "investigation"
 #
 # Output: JSON to stdout with resolved agent, method, and session directory
 # ============================================================================

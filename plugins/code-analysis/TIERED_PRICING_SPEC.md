@@ -249,7 +249,7 @@ const context = getContextForTier(tier);
 **OpenRouter Data:**
 ```json
 {
-  "id": "google/gemini-2.5-flash",
+  "id": "gemini-3.1-pro-preview",
   "context_length": 1049000,
   "pricing": {
     "prompt": 0.075,
@@ -266,12 +266,12 @@ const context = getContextForTier(tier);
 
 **Record in Quick Reference:**
 ```markdown
-- `google/gemini-2.5-flash` - Massive context, $0.19/1M, 1M ⭐
+- `gemini-3.1-pro-preview` - Massive context, $0.19/1M, 1M ⭐
 ```
 
 **Record in XML:**
 ```xml
-<model slug="google/gemini-2.5-flash" price="0.19" context="1M" recommended="true" />
+<model slug="gemini-3.1-pro-preview" price="0.19" context="1M" recommended="true" />
 ```
 
 ### Example 3: GPT-4 Turbo (Tiered)
@@ -472,8 +472,8 @@ When reviewing scraped models:
 - `openai/o1-preview` (tiered at 32K boundary)
 
 **Models with flat pricing:**
-- `x-ai/grok-code-fast-1` (flat $0.85/1M, 256K)
-- `google/gemini-2.5-flash` (flat $0.19/1M, 1M)
+- `grok-code-fast-1` (flat $0.85/1M, 256K)
+- `gemini-3.1-pro-preview` (flat $0.19/1M, 1M)
 - `deepseek/deepseek-v3-0324` (flat $0.21/1M, 64K)
 
 ---

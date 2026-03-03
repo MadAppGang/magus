@@ -268,9 +268,9 @@ skills: multimodel:multi-model-validation, multimodel:model-tracking-protocol, m
 
           Top Performers for Content:
           - claude-embedded (Sonnet) - FREE, excellent quality
-          - x-ai/grok-code-fast-1 ⚡ - $0.85/1M, creative angles
-          - google/gemini-3-pro-preview - $7.00/1M, polished output
-          - qwen/qwen3-coder:free 🆓 - FREE, technical focus
+          - grok-code-fast-1 ⚡ - $0.85/1M, creative angles
+          - gemini-3.1-pro-preview - $7.00/1M, polished output
+          - qwen3.5-plus-02-15 🆓 - FREE, technical focus
           - anthropic/claude-opus-4.5 - $15/1M, premium quality
           - [Custom model ID]
 

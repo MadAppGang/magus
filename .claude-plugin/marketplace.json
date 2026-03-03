@@ -7,15 +7,15 @@
   },
   "metadata": {
     "description": "Curated collection of Claude Code plugins for modern full-stack development with LLM performance tracking and E2E skill testing",
-    "version": "7.1.2",
+    "version": "7.2.0",
     "pluginRoot": "./plugins"
   },
   "plugins": [
     {
       "name": "code-analysis",
       "source": "./plugins/code-analysis",
-      "description": "Deep code investigation with claudemem MCP server. v4.0.1: Add index-skill.sh for auto-indexing new skills in claudemem.",
-      "version": "4.0.1",
+      "description": "Deep code investigation with claudemem MCP server. v4.0.2: Updated recommended models and claudish usage patterns.",
+      "version": "4.0.2",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -42,8 +42,8 @@
     {
       "name": "multimodel",
       "source": "./plugins/multimodel",
-      "description": "Multi-model collaboration, orchestration, and workflow patterns. v2.6.1: Bundle monitor.ts dependencies — fix crash for marketplace installs.",
-      "version": "2.6.1",
+      "description": "Multi-model collaboration, orchestration, and workflow patterns. v2.6.2: Skill refinements and model reference updates.",
+      "version": "2.6.2",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -71,8 +71,8 @@
     {
       "name": "agentdev",
       "source": "./plugins/agentdev",
-      "description": "Create, implement, and review Claude Code agents and commands with multi-model validation, LLM performance tracking, and session-based artifact isolation. v1.5.4: Fix orchestration→multimodel skill namespace.",
-      "version": "1.5.4",
+      "description": "Create, implement, and review Claude Code agents and commands with multi-model validation, LLM performance tracking, and session-based artifact isolation. v1.5.5: Command and documentation fixes.",
+      "version": "1.5.5",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -96,8 +96,8 @@
     {
       "name": "seo",
       "source": "./plugins/seo",
-      "description": "Highly autonomous SEO toolkit (~80% autonomy) with AUTO GATEs, self-correction loops, and multi-model validation. v1.6.4: Fix orchestration→multimodel skill namespace.",
-      "version": "1.6.4",
+      "description": "Highly autonomous SEO toolkit (~80% autonomy) with AUTO GATEs, self-correction loops, and multi-model validation. v1.6.5: Command parameter fixes.",
+      "version": "1.6.5",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -193,8 +193,8 @@
     {
       "name": "dev",
       "source": "./plugins/dev",
-      "description": "Universal development assistant with real skill discovery. v1.38.0: Code Roast skill — 192 anti-patterns, 8 languages, AI slop detection. Design migrated to designer plugin. 45 skills.",
-      "version": "1.38.0",
+      "description": "Universal development assistant with real skill discovery. v1.39.0: Browser-use optional integration for frontend agent. 47 skills.",
+      "version": "1.39.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -278,6 +278,32 @@
         "vision",
         "cloud",
         "debugging"
+      ],
+      "strict": true
+    },
+    {
+      "name": "designer",
+      "source": "./plugins/designer",
+      "description": "UI design validation with pixel-diff comparison engine. v0.2.0: Design review agent, visual comparison, style guide creation, browser-use optional integration. 6 skills.",
+      "version": "0.2.0",
+      "author": {
+        "name": "Jack Rudenko",
+        "email": "i@madappgang.com",
+        "company": "MadAppGang"
+      },
+      "category": "development",
+      "keywords": [
+        "design",
+        "ui",
+        "ux",
+        "pixel-diff",
+        "visual-comparison",
+        "accessibility",
+        "wcag",
+        "design-review",
+        "figma",
+        "style-guide",
+        "design-system"
       ],
       "strict": true
     },

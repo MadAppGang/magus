@@ -30,7 +30,7 @@ dependencies:
       - anthropic/claude-haiku-3-20250514
     explorers:
       fallback_chain:
-        - x-ai/grok-code-fast-1
+        - grok-code-fast-1
         - google/gemini-2-5-pro
         - deepseek/deepseek-coder
         - anthropic/claude-sonnet-4-20250514
@@ -103,7 +103,7 @@ export OPENROUTER_API_KEY=your-key
   "brainstorming": {
     "primary_model": "anthropic/claude-opus-4-20250514",
     "explorer_models": [
-      "x-ai/grok-code-fast-1",
+      "grok-code-fast-1",
       "google/gemini-2-5-pro",
       "anthropic/claude-sonnet-4-20250514"
     ]
@@ -190,7 +190,7 @@ async function exploreWithFallback(
   role: "explorer"
 ): Promise<ModelResult> {
   const fallbackModels = role === "explorer"
-    ? ["x-ai/grok-code-fast-1", "google/gemini-2-5-pro", "deepseek/deepseek-coder"]
+    ? ["grok-code-fast-1", "google/gemini-2-5-pro", "deepseek/deepseek-coder"]
     : ["anthropic/claude-opus-4-20250514", "anthropic/claude-sonnet-4-20250514"];
 
   for (const model of fallbackModels) {
@@ -223,7 +223,7 @@ async function exploreWithFallback(
 // CORRECT: Parallel (3-5x faster)
 const [result1, result2, result3] = await Promise.all([
   Task({
-    model: "x-ai/grok-code-fast-1",
+    model: "grok-code-fast-1",
     prompt: generateExplorerPrompt(problem, "fast_code")
   }),
   Task({
@@ -506,7 +506,7 @@ Which approach best fits your requirements?
 // Complete Phase 1 parallel exploration
 async function runParallelExploration(problem: string): Promise<Approach[]> {
   const explorerModels = [
-    "x-ai/grok-code-fast-1",     // Fast, code-focused
+    "grok-code-fast-1",     // Fast, code-focused
     "google/gemini-2-5-pro",     // Balanced, creative
     "anthropic/claude-sonnet-4-20250514"  // Thorough
   ];
@@ -627,7 +627,7 @@ BRAINSTORM_MIN_MODELS=2  # Minimum models for valid consensus
   "brainstorming": {
     "primary": ["anthropic/claude-opus-4-20250514"],
     "explorers": {
-      "primary_chain": ["x-ai/grok-code-fast-1", "google/gemini-2-5-pro"],
+      "primary_chain": ["grok-code-fast-1", "google/gemini-2-5-pro"],
       "fallback_chain": ["deepseek/deepseek-coder", "anthropic/claude-haiku-3-20250514"]
     },
     "thresholds": {

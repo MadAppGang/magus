@@ -12,20 +12,22 @@
 **Owner:** Jack Rudenko (i@madappgang.com) @ MadAppGang
 **License:** MIT
 
-## Plugins (10 published)
+## Plugins (12 published)
 
 | Plugin | Version | Purpose |
 |--------|---------|---------|
-| **Code Analysis** | v3.2.4 | Codebase investigation with claudemem, enrichment mode (non-blocking) |
-| **Multimodel** | v2.5.1 | Multi-model collaboration and orchestration |
-| **Agent Development** | v1.5.4 | Create Claude Code agents and plugins |
-| **SEO** | v1.6.4 | SEO analysis and optimization with AUTO GATEs |
+| **Code Analysis** | v4.0.2 | Codebase investigation with claudemem MCP, 13 skills |
+| **Multimodel** | v2.6.2 | Multi-model collaboration and orchestration |
+| **Agent Development** | v1.5.5 | Create Claude Code agents and plugins |
+| **SEO** | v1.6.5 | SEO analysis and optimization with AUTO GATEs |
 | **Video Editing** | v1.1.1 | FFmpeg, Whisper, Final Cut Pro integration |
 | **Nanobanana** | v2.3.1 | AI image generation with Gemini 3 Pro Image |
 | **Conductor** | v2.1.1 | Context-Driven Development with TDD and Git Notes |
-| **Dev** | v1.36.2 | Universal dev assistant with workflow enforcement, 47 skills |
+| **Dev** | v1.39.0 | Universal dev assistant with workflow enforcement, 47 skills |
+| **Designer** | v0.2.0 | UI design validation with pixel-diff comparison, 6 skills |
+| **Browser Use** | v1.0.0 | Full-platform browser automation, 18 MCP tools, 5 skills |
 | **Statusline** | v1.4.1 | Colorful statusline with worktree awareness |
-| **Terminal** | v2.0.0 | Intent-level terminal: run, watch, observe, repl, tui + ht-mcp/tmux-mcp |
+| **Terminal** | v2.1.0 | Intent-level terminal: run, watch, observe, repl, tui + ht-mcp/tmux-mcp |
 
 **Claudish CLI**: `npm install -g claudish` - Run Claude with OpenRouter models ([separate repo](https://github.com/MadAppGang/claudish))
 
@@ -39,21 +41,24 @@ claude-code/
 ├── .env.example               # Environment template
 ├── .claude-plugin/
 │   └── marketplace.json       # Marketplace plugin listing
-├── plugins/                   # All plugins (10 published, 5 unlisted)
-│   ├── code-analysis/         # v4.0.0 — 13 skills, 1 agent, claudemem MCP
-│   ├── multimodel/            # v2.4.5 — 15 skills
-│   ├── agentdev/              # v1.5.3 — 5 skills
-│   ├── seo/                   # v1.6.3 — 12 skills
+├── plugins/                   # All plugins (12 published, 3 unlisted)
+│   ├── code-analysis/         # v4.0.2 — 13 skills, 1 agent, claudemem MCP
+│   ├── multimodel/            # v2.6.2 — 15 skills
+│   ├── agentdev/              # v1.5.5 — 5 skills
+│   ├── seo/                   # v1.6.5 — 12 skills
 │   ├── video-editing/         # v1.1.1 — 3 skills
 │   ├── nanobanana/            # v2.3.1 — 2 skills
 │   ├── conductor/             # v2.1.1 — 6 skills
-│   ├── dev/                   # v1.35.1 — 47 skills, workflow enforcement
+│   ├── dev/                   # v1.39.0 — 47 skills, workflow enforcement
+│   ├── designer/              # v0.2.0 — 6 skills, pixel-diff design validation
+│   ├── browser-use/           # v1.0.0 — 5 skills, 18 MCP tools
 │   ├── statusline/            # v1.4.1 — 1 skill
-│   ├── terminal/              # v1.0.0 — 2 skills, ht-mcp + tmux-mcp
+│   ├── terminal/              # v2.1.0 — 2 skills, ht-mcp + tmux-mcp
 │   └── (go, instantly, autopilot — unlisted)
 ├── autotest/                  # E2E test framework
 │   ├── framework/             # Shared runner, parsers (Bun/TS)
 │   ├── coaching/              # Coaching hook tests
+│   ├── designer/              # Designer plugin tests (12 cases)
 │   ├── subagents/             # Agent delegation tests
 │   ├── team/                  # Multi-model /team tests
 │   ├── skills/                # Skill routing tests
@@ -83,6 +88,7 @@ claude-code/
 # Run a test suite (all use autotest/framework/ shared runner)
 ./autotest/terminal/run.sh --model claude-sonnet-4-6 --parallel 3
 ./autotest/coaching/run.sh --model claude-sonnet-4-6
+./autotest/designer/run.sh --model claude-sonnet-4-6
 ./autotest/subagents/run.sh --model or@x-ai/grok-code-fast-1
 
 # Run specific test cases
@@ -189,4 +195,4 @@ The workflow `.github/workflows/claudeup-release.yml` triggers on `tools/claudeu
 ---
 
 **Maintained by:** Jack Rudenko @ MadAppGang
-**Last Updated:** February 28, 2026
+**Last Updated:** March 3, 2026

@@ -232,13 +232,13 @@ Use AskUserQuestion with multiSelect: true:
   question: "Select models for multi-model reviews (Phase 3 plan review + Phase 5 code review)"
   header: "Review Models"
   options:
-    - label: "x-ai/grok-code-fast-1 [PAID]"
+    - label: "grok-code-fast-1 [PAID]"
       description: "Fast, coding specialist"
-    - label: "google/gemini-2.5-flash [PAID]"
-      description: "Affordable, good reasoning"
-    - label: "qwen/qwen3-coder:free [FREE]"
-      description: "Coding specialist, 262K context"
-    - label: "mistralai/devstral-2512:free [FREE]"
+    - label: "gemini-3.1-pro-preview [PAID]"
+      description: "Advanced reasoning, 1M context"
+    - label: "qwen3.5-plus-02-15 [PAID]"
+      description: "Multimodal, 262K context"
+    - label: "devstral-2512:free [FREE]"
       description: "Dev-focused, free tier"
     - label: "Internal Claude only"
       description: "No external models (faster, less thorough)"
@@ -248,7 +248,7 @@ Store selection in ${SESSION_PATH}/iteration-config.json under `selectedModels`:
 {
   "selectedModels": {
     "configured": true,
-    "models": ["x-ai/grok-code-fast-1", "qwen/qwen3-coder:free"],
+    "models": ["grok-code-fast-1", "qwen3.5-plus-02-15"],
     "includeInternal": true
   }
 }

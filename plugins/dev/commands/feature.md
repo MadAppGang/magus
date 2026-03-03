@@ -398,9 +398,9 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
     **Recommended models for validation:**
 
     Paid (best quality):
-    - x-ai/grok-code-fast-1 (fast, coding specialist)
-    - google/gemini-2.5-flash (affordable, fast)
-    - openai/gpt-5.1-codex (advanced analysis)
+    - grok-code-fast-1 (fast, coding specialist)
+    - gemini-3.1-pro-preview (affordable, fast)
+    - gpt-5.3-codex (advanced analysis)
 
     Free (zero cost):
     - qwen/qwen3-coder:free (coding specialist, 262K context)
@@ -546,7 +546,7 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
         - [✓] Smoke test passed
 
         Model Selection (Step 1f):
-        - Selected: x-ai/grok-code-fast-1, qwen/qwen3-coder:free
+        - Selected: grok-code-fast-1, qwen/qwen3-coder:free
         - Stored in iteration-config.json
 
         User approves

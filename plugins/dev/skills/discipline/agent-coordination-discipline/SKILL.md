@@ -104,7 +104,7 @@ EOF
 
 **Example:**
 ```bash
-claudish --model x-ai/grok-code-fast-1 --stdin --quiet <<EOF > analysis.md
+claudish --model grok-code-fast-1 --stdin --quiet <<EOF > analysis.md
 Analyze the React component rendering performance issue in Dashboard.tsx.
 
 Context:
@@ -228,12 +228,12 @@ if (performanceIsCritical) {
 ### 1. Model Selection
 
 **Fast Execution (< 2 min):**
-- `x-ai/grok-code-fast-1` - Code generation, refactoring, simple analysis
-- `anthropic/claude-3-5-haiku` - Quick decisions, data transformation
+- `grok-code-fast-1` - Code generation, refactoring, simple analysis
+- `claude-haiku-4-5` - Quick decisions, data transformation
 
 **Deep Reasoning (> 2 min):**
-- `anthropic/claude-sonnet-4-5` - Complex debugging, architecture design
-- `google/gemini-2.0-flash-thinking-exp-01-21` - Extended thinking budget
+- `claude-sonnet-4-5` - Complex debugging, architecture design
+- `gemini-3.1-pro-preview` - Extended thinking budget
 
 **Specialized:**
 - Vision models - Screenshot analysis, diagram interpretation
@@ -288,7 +288,7 @@ Success Criteria:
 
 **Example:**
 ```
-result = Task("external-model: x-ai/grok-code-fast-1\n\nRefactor 10 components for React 19...")
+result = Task("external-model: grok-code-fast-1\n\nRefactor 10 components for React 19...")
 
 if (result.contains("Refactored successfully")) {
   // Apply changes to codebase
@@ -351,7 +351,7 @@ Constraints:
 
 ```go
 // ✓ CORRECT: Fast refactoring with Grok
-external-model: x-ai/grok-code-fast-1
+external-model: grok-code-fast-1
 
 Refactor 15 handler functions in handlers/ to use consistent error handling pattern.
 

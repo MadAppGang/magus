@@ -85,7 +85,7 @@ The **Quick Reference** section provides a concise, scannable list of recommende
 
 **Components:**
 1. **List marker:** `-` (dash with space)
-2. **Model slug:** Backtick-wrapped OpenRouter ID (e.g., `` `x-ai/grok-code-fast-1` ``)
+2. **Model slug:** Backtick-wrapped OpenRouter ID (e.g., `` `grok-code-fast-1` ``)
 3. **Separator:** ` - ` (space-dash-space)
 4. **Description:** 3-7 word benefit/purpose (e.g., "Ultra-fast coding")
 5. **Comma:** `, `
@@ -98,16 +98,16 @@ The **Quick Reference** section provides a concise, scannable list of recommende
 
 ✅ **Correct:**
 ```markdown
-- `x-ai/grok-code-fast-1` - Ultra-fast coding, $0.85/1M, 256K ⭐
-- `google/gemini-2.5-flash` - Massive context, $0.19/1M, 1M ⭐
+- `grok-code-fast-1` - Ultra-fast coding, $0.85/1M, 256K ⭐
+- `gemini-3.1-pro-preview` - Massive context, $0.19/1M, 1M ⭐
 - `deepseek/deepseek-v3-0324` - Affordable coding, $0.21/1M, 64K
 ```
 
 ❌ **Incorrect:**
 ```markdown
-- x-ai/grok-code-fast-1 - Ultra-fast coding, $0.85/1M, 256K ⭐  # Missing backticks
-- `x-ai/grok-code-fast-1`: Ultra-fast coding ($0.85/1M), 256K ⭐  # Wrong separators
-- `x-ai/grok-code-fast-1` - Very fast and affordable model for coding tasks, $0.85/1M, 256K ⭐  # Description too long
+- grok-code-fast-1 - Ultra-fast coding, $0.85/1M, 256K ⭐  # Missing backticks
+- `grok-code-fast-1`: Ultra-fast coding ($0.85/1M), 256K ⭐  # Wrong separators
+- `grok-code-fast-1` - Very fast and affordable model for coding tasks, $0.85/1M, 256K ⭐  # Description too long
 ```
 
 ### Context Window Shorthand
@@ -183,8 +183,8 @@ The **Quick Reference** section provides a concise, scannable list of recommende
 ## Quick Reference - Model IDs Only
 
 **Coding (Fast):**
-- `x-ai/grok-code-fast-1` - Ultra-fast coding, $0.85/1M, 256K ⭐
-- `google/gemini-2.5-flash` - Massive context, $0.19/1M, 1M ⭐
+- `grok-code-fast-1` - Ultra-fast coding, $0.85/1M, 256K ⭐
+- `gemini-3.1-pro-preview` - Massive context, $0.19/1M, 1M ⭐
 - `deepseek/deepseek-v3-0324` - Affordable coding, $0.21/1M, 64K
 
 **Reasoning (Architecture):**
@@ -194,8 +194,8 @@ The **Quick Reference** section provides a concise, scannable list of recommende
 - `qwen/qwen3-vl-235b` - Premium vision, $5.00/1M, 32K ⭐
 
 **Budget (Free/Cheap):**
-- `minimax/minimax-m2` - FREE, 128K ⭐
-- `google/gemini-2.5-flash` - Ultra-cheap massive context, $0.19/1M, 1M
+- `minimax-m2.5` - FREE, 128K ⭐
+- `gemini-3.1-pro-preview` - Ultra-cheap massive context, $0.19/1M, 1M
 ```
 
 ---
@@ -319,8 +319,8 @@ insertSection(quickRef, metadataEndIndex + 1);
 
 ```markdown
 **Coding (Fast):**
-- `x-ai/grok-code-fast-1` - Ultra-fast coding, $0.85/1M, 256K ⭐
-- `google/gemini-2.5-flash` - Massive context, $0.19/1M, 1M ⭐
+- `grok-code-fast-1` - Ultra-fast coding, $0.85/1M, 256K ⭐
+- `gemini-3.1-pro-preview` - Massive context, $0.19/1M, 1M ⭐
 - `deepseek/deepseek-v3-0324` - Affordable coding, $0.21/1M, 64K
 ```
 
@@ -355,8 +355,8 @@ insertSection(quickRef, metadataEndIndex + 1);
 
 ```markdown
 **Budget (Free/Cheap):**
-- `minimax/minimax-m2` - FREE, 128K ⭐
-- `google/gemini-2.5-flash` - Ultra-cheap massive context, $0.19/1M, 1M
+- `minimax-m2.5` - FREE, 128K ⭐
+- `gemini-3.1-pro-preview` - Ultra-cheap massive context, $0.19/1M, 1M
 ```
 
 **Description rules:**
@@ -375,11 +375,11 @@ insertSection(quickRef, metadataEndIndex + 1);
 
 Coding Models:  # Missing bold, wrong format
 
-x-ai/grok-code-fast-1 - Ultra-fast coding, $0.85/1M, 256K ⭐  # Missing backticks
+grok-code-fast-1 - Ultra-fast coding, $0.85/1M, 256K ⭐  # Missing backticks
 
-- `x-ai/grok-code-fast-1` Ultra-fast coding $0.85/1M 256K ⭐  # Missing separators
+- `grok-code-fast-1` Ultra-fast coding $0.85/1M 256K ⭐  # Missing separators
 
-- `x-ai/grok-code-fast-1` - This is an incredibly fast coding model that's great for rapid development, $0.85/1M, 256K ⭐  # Description too long
+- `grok-code-fast-1` - This is an incredibly fast coding model that's great for rapid development, $0.85/1M, 256K ⭐  # Description too long
 ```
 
 ### ✅ Correct Format
@@ -388,7 +388,7 @@ x-ai/grok-code-fast-1 - Ultra-fast coding, $0.85/1M, 256K ⭐  # Missing backtic
 ## Quick Reference - Model IDs Only
 
 **Coding (Fast):**
-- `x-ai/grok-code-fast-1` - Ultra-fast coding, $0.85/1M, 256K ⭐
+- `grok-code-fast-1` - Ultra-fast coding, $0.85/1M, 256K ⭐
 ```
 
 ---
