@@ -76,13 +76,18 @@ fi
 # Build claudish flags
 CLAUDISH_FLAGS="-y --json --debug --log-level debug"
 USE_NATIVE_CLAUDE=false
+NATIVE_MODEL_FLAG=""
 
 # Model selection:
-#   "internal" — native Claude Code (claude -p) with full plugin/skill access
+#   "internal" — native Claude Code (claude -p) with full plugin/skill access, default model
+#   "internal:sonnet" — native Claude Code (claude -p --model sonnet) with specific model
 #   "monitor"  — claudish --monitor (broken since v5.2.0, kept for compat)
 #   other      — claudish --model <name> (auto-routed by claudish)
 if [[ "$MODEL" == "internal" ]]; then
   USE_NATIVE_CLAUDE=true
+elif [[ "$MODEL" == internal:* ]]; then
+  USE_NATIVE_CLAUDE=true
+  NATIVE_MODEL_FLAG="--model ${MODEL#internal:}"
 elif [[ "$MODEL" == "monitor" ]]; then
   CLAUDISH_FLAGS="$CLAUDISH_FLAGS --monitor"
 else
@@ -118,6 +123,9 @@ if [[ "$USE_NATIVE_CLAUDE" == "true" ]]; then
   SUITE_DIR="$(cd "$(dirname "$0")/.." && pwd)"
   PLUGIN_DIR="$SUITE_DIR/../plugins/dev"
   CLAUDE_P_FLAGS="-p --verbose --output-format stream-json --dangerously-skip-permissions"
+  if [[ -n "$NATIVE_MODEL_FLAG" ]]; then
+    CLAUDE_P_FLAGS="$CLAUDE_P_FLAGS $NATIVE_MODEL_FLAG"
+  fi
   if [[ -d "$PLUGIN_DIR" ]]; then
     CLAUDE_P_FLAGS="$CLAUDE_P_FLAGS --plugin-dir $PLUGIN_DIR"
   fi

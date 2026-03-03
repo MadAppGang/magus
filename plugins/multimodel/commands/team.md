@@ -42,11 +42,15 @@ args:
 
     0. MODEL NAMES VERBATIM:
        Pass model names EXACTLY as the user provides them to `claudish --model`.
-       NEVER add provider prefixes like "minimax/", "openai/", "google/", "x-ai/",
-       "z-ai/", "moonshotai/", "deepseek/" to model names.
-       If user says `minimax-m2.5` → use `--model minimax-m2.5` (NOT `--model minimax/minimax-m2.5`).
-       If user says `kimi-k2.5` → use `--model kimi-k2.5` (NOT `--model moonshotai/kimi-k2.5`).
-       The claudish CLI resolves providers internally. Adding prefixes BREAKS routing.
+       NEVER add ANY prefix to model names. ALL prefix formats are PROHIBITED:
+       - No slash prefixes: "minimax/", "openai/", "google/", "x-ai/", "moonshotai/", "deepseek/"
+       - No shortcut prefixes: "mm@", "oai@", "g@", "kimi@", "glm@", "or@", "litellm@"
+       - No format: "provider/model" or "shortcut@model"
+       If user says `minimax-m2.5` → use `--model minimax-m2.5` (NOT `--model mm@minimax-m2.5` or `--model minimax/minimax-m2.5`).
+       If user says `kimi-k2.5` → use `--model kimi-k2.5` (NOT `--model kimi@kimi-k2.5` or `--model moonshotai/kimi-k2.5`).
+       If user says `gemini-3.1-pro-preview` → use `--model gemini-3.1-pro-preview` (NOT `--model g@gemini-3.1-pro-preview`).
+       The claudish CLI resolves providers internally. Adding ANY prefix BREAKS routing.
+       Do NOT run `claudish --help` or `claudish --models` to discover prefixes — just pass bare names.
 
     1. MODEL EXECUTION METHODS:
        - **Internal models** (model ID = "internal"): Use Task(subagent_type: "{RESOLVED_AGENT}")
@@ -383,10 +387,11 @@ args:
 
   <critical_override>
     PASS MODEL NAMES EXACTLY AS THE USER PROVIDES THEM to `claudish --model`.
-    Do NOT add provider prefixes like "minimax/", "openai/", "google/", "x-ai/", "z-ai/", "moonshotai/", "deepseek/".
+    Do NOT add ANY prefix — no slash prefixes ("minimax/", "openai/", "google/"), no shortcut prefixes ("mm@", "oai@", "g@", "kimi@", "glm@", "or@", "litellm@").
     The claudish CLI handles model routing and provider detection internally.
     Only resolve SHORT ALIASES from the table above (e.g., "grok" → "grok-code-fast-1").
     If user says `--models minimax-m2.5,kimi-k2.5` → use exactly `minimax-m2.5` and `kimi-k2.5`.
+    Do NOT run `claudish --help` or `claudish --models` to discover routing prefixes.
   </critical_override>
 
   <preferences_schema>
@@ -476,7 +481,7 @@ args:
     Welcome to Team! No saved preferences found.
 
     Run `claudish --top-models` to see available models, then ask the user to pick.
-    Pass model names exactly as shown by claudish — do NOT add provider prefixes.
+    Pass model names exactly as shown — do NOT add ANY prefixes (no "mm@", "g@", "oai@", no "minimax/", "google/").
   </first_run_welcome>
 </formatting>
 

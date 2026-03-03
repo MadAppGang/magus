@@ -85,6 +85,7 @@ allowed-tools: Read, Write, Edit, Bash, Glob, AskUserQuestion
     | Multi-agent claudemem orchestration | `code-analysis:claudemem-orchestration` | Parallel claudemem across agents |
     | Architecture investigation with PageRank | `code-analysis:architect-detective` | Architecture-focused claudemem usage |
     | Deep multi-perspective analysis | `code-analysis:deep-analysis` | Comprehensive codebase investigation |
+    | Claudish CLI usage, model routing, provider backends | `code-analysis:claudish-usage` | Before ANY `claudish` command — use bare model names, no prefixes |
     ```
   </step>
 
@@ -94,7 +95,7 @@ allowed-tools: Read, Write, Edit, Bash, Glob, AskUserQuestion
     ## Dev Plugin Setup Complete
 
     **Added to CLAUDE.md:**
-    - Task Routing table (6 agent delegation rules + 4 skill routing rules)
+    - Task Routing table (6 agent delegation rules + 5 skill routing rules)
 
     **What this does:**
     - Routes complex tasks to specialized agents automatically

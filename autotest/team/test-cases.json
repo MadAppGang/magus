@@ -1,9 +1,9 @@
 {
   "meta": {
     "description": "Test cases for /multimodel:team command orchestration. Verifies correct model invocation: internal via Task({resolved_agent}), external via Bash(claudish). Tests dynamic agent routing, parallel launch, session dir, vote template, no pre-digestion, model verification, and claudish v5.3.0 flag passthrough.",
-    "version": "2.4.0",
+    "version": "2.5.0",
     "created": "2026-02-11",
-    "notes": "v2.4.0: Flag passthrough tests now use mixed internal+chatgpt models (validates both Task and Bash paths). v2.3.0: Added flag passthrough tests for claudish v5.3.0 — claudeFlags from preferences injected into claudish commands. v2.2.0: Dynamic agent routing — task keywords determine subagent_type from context_detection table."
+    "notes": "v2.5.0: Added shortcut-prefix detection (mm@, g@, oai@, etc.) and claudish-usage skill loading tests. v2.4.0: Flag passthrough tests now use mixed internal+chatgpt models (validates both Task and Bash paths). v2.3.0: Added flag passthrough tests for claudish v5.3.0 — claudeFlags from preferences injected into claudish commands. v2.2.0: Dynamic agent routing — task keywords determine subagent_type from context_detection table."
   },
   "model_aliases": {
     "grok": "grok-code-fast-1",
@@ -91,23 +91,25 @@
     },
     {
       "id": "team-model-alias-grok",
-      "description": "Alias 'grok' should resolve to model containing 'grok' in Bash claudish command",
+      "description": "Alias 'grok' should resolve to model containing 'grok' in Bash claudish command without any prefix",
       "prompt": "/multimodel:team --models grok --no-memory Check plugin version numbers",
       "checks": {
         "bash_claudish_model_contains": "grok",
         "bash_has_claudish": true,
-        "no_provider_prefix_in_model": true
+        "no_provider_prefix_in_model": true,
+        "no_shortcut_prefix_in_model": true
       },
       "tags": ["model-alias", "no-prefix"]
     },
     {
       "id": "team-model-alias-gemini",
-      "description": "Alias 'gemini' should resolve to model containing 'gemini' in Bash claudish command",
+      "description": "Alias 'gemini' should resolve to model containing 'gemini' in Bash claudish command without any prefix",
       "prompt": "/multimodel:team --models gemini --no-memory Check plugin version numbers",
       "checks": {
         "bash_claudish_model_contains": "gemini",
         "bash_has_claudish": true,
-        "no_provider_prefix_in_model": true
+        "no_provider_prefix_in_model": true,
+        "no_shortcut_prefix_in_model": true
       },
       "tags": ["model-alias", "no-prefix"]
     },
@@ -188,23 +190,25 @@
     },
     {
       "id": "team-no-provider-prefix",
-      "description": "Bare model names should NOT get provider prefixes added (e.g., minimax-m2.5 stays minimax-m2.5, not minimax/minimax-m2.5)",
+      "description": "Bare model names should NOT get provider prefixes added (e.g., minimax-m2.5 stays minimax-m2.5, not minimax/minimax-m2.5 or mm@minimax-m2.5)",
       "prompt": "/multimodel:team --models minimax-m2.5 --no-memory Quick check on README structure",
       "checks": {
         "bash_has_claudish": true,
         "bash_claudish_model_contains": "minimax-m2.5",
-        "no_provider_prefix_in_model": true
+        "no_provider_prefix_in_model": true,
+        "no_shortcut_prefix_in_model": true
       },
       "tags": ["no-prefix", "critical"]
     },
     {
       "id": "team-no-provider-prefix-multi",
-      "description": "Multiple bare model names should all be passed without provider prefixes",
+      "description": "Multiple bare model names should all be passed without provider prefixes (slash or shortcut)",
       "prompt": "/multimodel:team --models minimax-m2.5,kimi-k2.5 --no-memory Check plugin versions",
       "checks": {
         "bash_has_claudish": true,
         "bash_min_count": 2,
         "no_provider_prefix_in_model": true,
+        "no_shortcut_prefix_in_model": true,
         "bash_run_in_background": true
       },
       "tags": ["no-prefix", "multi-external", "critical"]
@@ -297,6 +301,54 @@
         "run_in_background": true
       },
       "tags": ["flag-passthrough", "regression", "mixed-models"]
+    },
+    {
+      "id": "team-no-shortcut-prefix-gemini",
+      "description": "gemini-3.1-pro-preview should NOT get shortcut prefix like g@ or google@",
+      "prompt": "/multimodel:team --models gemini-3.1-pro-preview --no-memory Quick check on README structure",
+      "checks": {
+        "bash_has_claudish": true,
+        "bash_claudish_model_contains": "gemini-3.1-pro-preview",
+        "no_provider_prefix_in_model": true,
+        "no_shortcut_prefix_in_model": true
+      },
+      "tags": ["no-prefix", "shortcut-prefix", "critical"]
+    },
+    {
+      "id": "team-no-shortcut-prefix-multi",
+      "description": "Multiple models with potential shortcut collisions (gemini, kimi, glm) should all use bare names",
+      "prompt": "/multimodel:team --models gemini-3.1-pro-preview,kimi-k2.5,glm-5 --no-memory Check plugin versions",
+      "checks": {
+        "bash_has_claudish": true,
+        "bash_min_count": 3,
+        "no_provider_prefix_in_model": true,
+        "no_shortcut_prefix_in_model": true,
+        "bash_run_in_background": true
+      },
+      "tags": ["no-prefix", "shortcut-prefix", "multi-external", "critical"]
+    },
+    {
+      "id": "team-no-shortcut-prefix-gpt",
+      "description": "gpt-5.3-codex should NOT get oai@ or openai@ prefix",
+      "prompt": "/multimodel:team --models gpt-5.3-codex --no-memory Review the README formatting",
+      "checks": {
+        "bash_has_claudish": true,
+        "bash_claudish_model_contains": "gpt",
+        "no_provider_prefix_in_model": true,
+        "no_shortcut_prefix_in_model": true
+      },
+      "tags": ["no-prefix", "shortcut-prefix", "critical"]
+    },
+    {
+      "id": "team-loads-claudish-skill",
+      "description": "Model should load claudish-usage skill via Skill tool before running claudish commands",
+      "prompt": "/multimodel:team --models grok-code-fast-1 --no-memory Quick check on plugin structure",
+      "checks": {
+        "bash_has_claudish": true,
+        "loads_claudish_skill": true,
+        "no_provider_prefix_in_model": true
+      },
+      "tags": ["skill-loading", "claudish-usage", "critical"]
     }
   ]
 }

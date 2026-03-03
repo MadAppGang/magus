@@ -37,6 +37,7 @@ NOTE: Skills use the `Skill` tool, NOT the `Task` tool. The `namespace:name` for
 | Multi-agent claudemem orchestration | `code-analysis:claudemem-orchestration` | Parallel claudemem across agents |
 | Architecture investigation with PageRank | `code-analysis:architect-detective` | Architecture-focused claudemem usage |
 | Deep multi-perspective analysis | `code-analysis:deep-analysis` | Comprehensive codebase investigation |
+| Claudish CLI usage, model routing, provider backends | `code-analysis:claudish-usage` | Before ANY `claudish` command — use bare model names, no prefixes |
 | Database branching with git worktrees (Neon, Turso, Supabase) | `dev:db-branching` | Worktree creation with schema changes needing DB isolation |
 
 ## When to Use This Skill

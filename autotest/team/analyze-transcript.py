@@ -4,6 +4,9 @@ Analyze a /team command JSONL transcript for orchestration correctness.
 
 Usage: python3 analyze-transcript.py <transcript.jsonl> <checks_json>
 
+v2.5.0: Added no_shortcut_prefix_in_model, loads_claudish_skill checks. Expanded
+no_provider_prefix_in_model to also catch shortcut-style prefixes (mm@, g@, oai@, etc.).
+Added Skill tool call parsing to transcript parser.
 v2.3.0: Added bash_claudish_has_passthrough_flags and bash_claudish_no_passthrough_flags
 checks for claudish v5.3.0 flag passthrough validation.
 v2.2.0: Added no_provider_prefix_in_model and reads_preferences_file checks.
@@ -34,8 +37,12 @@ Checks JSON format:
   "no_proxy_mode_in_bash": true,         # NO Bash commands contain "PROXY_MODE"
 
   # Provider prefix checks
-  "no_provider_prefix_in_model": true,  # No provider/ prefix in --model values
+  "no_provider_prefix_in_model": true,  # No provider/ or shortcut@ prefix in --model values
+  "no_shortcut_prefix_in_model": true,  # No mm@/g@/oai@/kimi@/glm@/or@/litellm@ in --model values
   "reads_preferences_file": true,       # Read tool used on multimodel-team.json
+
+  # Skill loading checks
+  "loads_claudish_skill": true,         # Skill tool invoked for claudish-usage before claudish command
 
   # Flag passthrough checks (claudish v5.3.0+)
   "bash_claudish_has_passthrough_flags": "--effort",  # Claudish cmd contains this passthrough flag
@@ -68,6 +75,7 @@ def parse_transcript(filepath):
     bash_calls = []  # Just Bash tool calls
     write_calls = []  # Just Write tool calls
     read_calls = []  # Just Read tool calls
+    skill_calls = []  # Just Skill tool calls
 
     with open(filepath) as f:
         for line in f:
@@ -96,10 +104,12 @@ def parse_transcript(filepath):
                                 write_calls.append(entry)
                             elif name == 'Read':
                                 read_calls.append(entry)
+                            elif name == 'Skill':
+                                skill_calls.append(entry)
             except json.JSONDecodeError:
                 continue
 
-    return tool_calls, task_calls, bash_calls, write_calls, read_calls
+    return tool_calls, task_calls, bash_calls, write_calls, read_calls, skill_calls
 
 
 def get_claudish_bash_calls(bash_calls):
@@ -120,7 +130,7 @@ def get_claudish_bash_calls(bash_calls):
     return claudish_calls
 
 
-def run_checks(checks, tool_calls, task_calls, bash_calls, write_calls, read_calls):
+def run_checks(checks, tool_calls, task_calls, bash_calls, write_calls, read_calls, skill_calls):
     """Run all checks against parsed transcript data."""
     results = []
     claudish_calls = get_claudish_bash_calls(bash_calls)
@@ -360,10 +370,16 @@ def run_checks(checks, tool_calls, task_calls, bash_calls, write_calls, read_cal
     # Check: no_provider_prefix_in_model
     if checks.get('no_provider_prefix_in_model'):
         # Provider prefixes that should NOT appear in --model values
-        forbidden_prefixes = [
+        # Includes both slash-style (openai/) and shortcut-style (oai@) prefixes
+        forbidden_slash_prefixes = [
             'minimax/', 'openai/', 'google/', 'x-ai/', 'z-ai/',
             'moonshotai/', 'deepseek/', 'anthropic/', 'meta-llama/',
             'mistralai/', 'qwen/'
+        ]
+        forbidden_shortcut_prefixes = [
+            'mm@', 'mmax@', 'oai@', 'openai@', 'g@', 'gemini@', 'google@',
+            'kimi@', 'moon@', 'glm@', 'zhipu@', 'or@', 'openrouter@',
+            'litellm@', 'ollama@', 'lmstudio@', 'vllm@', 'mlx@'
         ]
         violations = []
         for bc in claudish_calls:
@@ -371,16 +387,46 @@ def run_checks(checks, tool_calls, task_calls, bash_calls, write_calls, read_cal
             model_match = re.search(r'--model\s+(\S+)', cmd)
             if model_match:
                 model_id = model_match.group(1)
-                for prefix in forbidden_prefixes:
+                for prefix in forbidden_slash_prefixes:
                     if model_id.startswith(prefix):
-                        violations.append(f'{model_id} (has prefix "{prefix}")')
+                        violations.append(f'{model_id} (has slash prefix "{prefix}")')
                         break
+                else:
+                    for prefix in forbidden_shortcut_prefixes:
+                        if model_id.startswith(prefix):
+                            violations.append(f'{model_id} (has shortcut prefix "{prefix}")')
+                            break
         passed = len(violations) == 0
         results.append({
             'check': 'no_provider_prefix_in_model',
             'passed': passed,
-            'detail': 'No provider prefixes in --model values' if passed
+            'detail': 'No provider prefixes (slash or shortcut) in --model values' if passed
                       else f'Provider prefixes found: {violations}'
+        })
+
+    # Check: no_shortcut_prefix_in_model (focused check for shortcut-style only)
+    if checks.get('no_shortcut_prefix_in_model'):
+        forbidden_shortcuts = [
+            'mm@', 'mmax@', 'oai@', 'openai@', 'g@', 'gemini@', 'google@',
+            'kimi@', 'moon@', 'glm@', 'zhipu@', 'or@', 'openrouter@',
+            'litellm@', 'ollama@', 'lmstudio@', 'vllm@', 'mlx@'
+        ]
+        violations = []
+        for bc in claudish_calls:
+            cmd = bc['input'].get('command', '')
+            model_match = re.search(r'--model\s+(\S+)', cmd)
+            if model_match:
+                model_id = model_match.group(1)
+                for prefix in forbidden_shortcuts:
+                    if model_id.startswith(prefix):
+                        violations.append(f'{model_id} (has shortcut prefix "{prefix}")')
+                        break
+        passed = len(violations) == 0
+        results.append({
+            'check': 'no_shortcut_prefix_in_model',
+            'passed': passed,
+            'detail': 'No shortcut prefixes (mm@, g@, oai@, etc.) in --model values' if passed
+                      else f'Shortcut prefixes found: {violations}'
         })
 
     # ---- Preferences file read check ----
@@ -537,6 +583,42 @@ def run_checks(checks, tool_calls, task_calls, bash_calls, write_calls, read_cal
                       else 'No verification reads (.exit/.result files) found after model calls'
         })
 
+    # ---- Skill loading checks ----
+
+    # Check: loads_claudish_skill
+    if checks.get('loads_claudish_skill'):
+        # Verify Skill tool was used to load claudish-usage before first claudish command
+        claudish_skill_loaded = False
+        claudish_skill_order = float('inf')
+        for sc in skill_calls:
+            skill_name = sc['input'].get('skill', '')
+            if 'claudish' in skill_name.lower():
+                claudish_skill_loaded = True
+                claudish_skill_order = sc['order']
+                break
+
+        if claudish_skill_loaded and claudish_calls:
+            first_claudish_order = min(bc['order'] for bc in claudish_calls)
+            loaded_before = claudish_skill_order < first_claudish_order
+            results.append({
+                'check': 'loads_claudish_skill',
+                'passed': loaded_before,
+                'detail': f'claudish-usage skill loaded (order {claudish_skill_order}) before first claudish command (order {first_claudish_order})' if loaded_before
+                          else f'claudish-usage skill loaded AFTER first claudish command (skill: {claudish_skill_order}, claudish: {first_claudish_order})'
+            })
+        elif claudish_skill_loaded:
+            results.append({
+                'check': 'loads_claudish_skill',
+                'passed': True,
+                'detail': 'claudish-usage skill loaded (no claudish commands found to verify ordering)'
+            })
+        else:
+            results.append({
+                'check': 'loads_claudish_skill',
+                'passed': False,
+                'detail': 'claudish-usage skill was NOT loaded via Skill tool'
+            })
+
     # ---- Session checks ----
 
     # Check: session_dir_pattern
@@ -586,9 +668,9 @@ def main():
     transcript_path = sys.argv[1]
     checks = json.loads(sys.argv[2])
 
-    tool_calls, task_calls, bash_calls, write_calls, read_calls = parse_transcript(transcript_path)
+    tool_calls, task_calls, bash_calls, write_calls, read_calls, skill_calls = parse_transcript(transcript_path)
 
-    results = run_checks(checks, tool_calls, task_calls, bash_calls, write_calls, read_calls)
+    results = run_checks(checks, tool_calls, task_calls, bash_calls, write_calls, read_calls, skill_calls)
 
     all_passed = all(r['passed'] for r in results)
 
@@ -604,7 +686,8 @@ def main():
             'bash_calls': len(bash_calls),
             'claudish_calls': len(get_claudish_bash_calls(bash_calls)),
             'write_calls': len(write_calls),
-            'read_calls': len(read_calls)
+            'read_calls': len(read_calls),
+            'skill_calls': len(skill_calls)
         }
     }
 
