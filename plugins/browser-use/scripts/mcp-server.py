@@ -31,6 +31,9 @@ if sys.platform == "darwin":
         import ctypes.util
 
         _objc = ctypes.cdll.LoadLibrary(ctypes.util.find_library("objc"))
+        # AppKit must be loaded first — NSApplication isn't available in a bare
+        # Python process until its framework is loaded into the address space.
+        ctypes.cdll.LoadLibrary("/System/Library/Frameworks/AppKit.framework/AppKit")
         _objc.objc_getClass.restype = ctypes.c_void_p
         _objc.sel_registerName.restype = ctypes.c_void_p
         _objc.objc_msgSend.restype = ctypes.c_void_p
