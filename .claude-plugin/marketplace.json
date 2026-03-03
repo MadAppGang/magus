@@ -14,8 +14,8 @@
     {
       "name": "code-analysis",
       "source": "./plugins/code-analysis",
-      "description": "Deep code investigation with claudemem MCP server. v4.0.0: MCP-based architecture with 18 tools (map, symbol, callers, callees, context, search, structural analysis). Removed hook-based enrichment.",
-      "version": "4.0.0",
+      "description": "Deep code investigation with claudemem MCP server. v4.0.1: Add index-skill.sh for auto-indexing new skills in claudemem.",
+      "version": "4.0.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -252,6 +252,32 @@
         "customization",
         "themes",
         "reset-countdown"
+      ],
+      "strict": true
+    },
+    {
+      "name": "browser-use",
+      "source": "./plugins/browser-use",
+      "description": "Full-platform browser automation for Claude Code. v1.0.0: 18 MCP tools via in-process asyncio server (navigate, click, type, screenshot, extract, autonomous agent), 5 skills (core-api, navigation, scraping, debug-ui, hybrid debugging), local CDP + Cloud support.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Jack Rudenko",
+        "email": "i@madappgang.com",
+        "company": "MadAppGang"
+      },
+      "category": "development",
+      "keywords": [
+        "browser",
+        "automation",
+        "scraping",
+        "testing",
+        "accessibility",
+        "browser-use",
+        "cdp",
+        "dom",
+        "vision",
+        "cloud",
+        "debugging"
       ],
       "strict": true
     },

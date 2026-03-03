@@ -1,7 +1,7 @@
 {
   "name": "code-analysis",
-  "version": "4.0.0",
-  "description": "Deep code investigation with claudemem MCP server. v4.0.0: MCP-based integration with 18 tools (map, symbol, callers, callees, context, search, structural analysis). Call tools directly for AST-based code understanding.",
+  "version": "4.0.1",
+  "description": "Deep code investigation with claudemem MCP server. v4.0.1: Add index-skill.sh utility for auto-indexing new skills in claudemem after creation.",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",
