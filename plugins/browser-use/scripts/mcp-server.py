@@ -22,6 +22,26 @@ Architecture:
 import os
 import sys
 
+# Hide Python from macOS dock — Homebrew's framework Python shows a rocket icon
+# for every process. We call NSApplication.setActivationPolicy_(Prohibited) via
+# ctypes so there's no pyobjc dependency.
+if sys.platform == "darwin":
+    try:
+        import ctypes
+        import ctypes.util
+
+        _objc = ctypes.cdll.LoadLibrary(ctypes.util.find_library("objc"))
+        _objc.objc_getClass.restype = ctypes.c_void_p
+        _objc.sel_registerName.restype = ctypes.c_void_p
+        _objc.objc_msgSend.restype = ctypes.c_void_p
+        _objc.objc_msgSend.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+        _NSApp = _objc.objc_getClass(b"NSApplication")
+        _app = _objc.objc_msgSend(_NSApp, _objc.sel_registerName(b"sharedApplication"))
+        _objc.objc_msgSend.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_long]
+        _objc.objc_msgSend(_app, _objc.sel_registerName(b"setActivationPolicy:"), 2)
+    except Exception:
+        pass
+
 # Suppress browser_use logging before any imports to prevent stdout contamination.
 # MCP uses stdout for JSON-RPC — any stray output breaks the protocol.
 os.environ["BROWSER_USE_LOGGING_LEVEL"] = "critical"
