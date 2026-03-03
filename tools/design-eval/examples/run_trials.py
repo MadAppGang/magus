@@ -10,8 +10,12 @@ from __future__ import annotations
 import argparse
 import json
 import time
+import warnings
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
+
+warnings.filterwarnings("ignore", category=RuntimeWarning, module="scipy")
+warnings.filterwarnings("ignore", message=".*ConstantInputWarning.*")
 
 from PIL import Image
 
@@ -34,20 +38,20 @@ MODELS = {
         "model_id": "gpt-4o",  # adjust to gpt-5.2 when available
     },
     "minimax-m2.5": {
-        "type": "openrouter",
-        "model_id": "minimax/minimax-m2.5",
+        "type": "litellm",
+        "model_id": "minimax-m2.5",
     },
     "kimi-k2.5": {
-        "type": "openrouter",
-        "model_id": "moonshotai/kimi-k2.5",
+        "type": "litellm",
+        "model_id": "kimi-for-coding",
     },
-    "glm-5": {
-        "type": "openrouter",
-        "model_id": "zhipu-ai/glm-5-0131",
+    "gemini-3-pro": {
+        "type": "litellm",
+        "model_id": "gemini-3-pro-preview",
     },
     "gemini-3.1-pro": {
-        "type": "openrouter",
-        "model_id": "google/gemini-2.5-pro-preview",  # adjust when 3.1 available
+        "type": "litellm",
+        "model_id": "gemini-sub/gemini-3.1-pro-preview",
     },
 }
 
@@ -63,6 +67,9 @@ def create_model(name: str, config: dict):
     elif config["type"] == "openrouter":
         from design_eval.adapters.openrouter_adapter import OpenRouterModel
         return OpenRouterModel(model=config["model_id"])
+    elif config["type"] == "litellm":
+        from design_eval.adapters.litellm_adapter import LiteLLMModel
+        return LiteLLMModel(model=config["model_id"])
     else:
         raise ValueError(f"Unknown model type: {config['type']}")
 
