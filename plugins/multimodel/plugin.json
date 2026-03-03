@@ -1,7 +1,7 @@
 {
   "name": "multimodel",
-  "version": "2.5.1",
-  "description": "Multi-model collaboration, orchestration, and workflow patterns. v2.5.0: Claude Code flag passthrough via claudish v5.3.0 — claudeFlags in preferences flow through to external models.",
+  "version": "2.6.0",
+  "description": "Multi-model collaboration, orchestration, and workflow patterns. v2.6.0: Process observability — co-launched Bun monitor tracks claudish state in real-time via debug logs.",
   "author": "MadAppGang",
   "license": "MIT",
   "homepage": "https://github.com/MadAppGang/magus",

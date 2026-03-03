@@ -156,21 +156,82 @@ args:
     })
     ```
 
-    For each external model (deterministic Bash+claudish):
+    For each external model (deterministic Bash+claudish), use the following template.
+    All external models are launched in a SINGLE Bash call with run_in_background: true.
+
     ```
     Bash({
-      command: "claudish --model {MODEL_ID} --stdin --quiet {CLAUDE_FLAGS} < {SESSION_DIR}/vote-prompt.md > {SESSION_DIR}/{model-slug}-result.md 2>{SESSION_DIR}/{model-slug}-stderr.log; echo $? > {SESSION_DIR}/{model-slug}.exit",
-      description: "Run {Model Name} vote via claudish",
+      command: "
+    # --- Setup directories ---
+    mkdir -p \"{SESSION_DIR}/pids\" \\
+             \"{SESSION_DIR}/work/{model-slug-1}\" \\
+             \"{SESSION_DIR}/work/{model-slug-2}\"
+
+    # --- Track subshell PIDs for wait ---
+    SUBSHELL_PIDS=\"\"
+
+    # --- Launch model 1 ---
+    # claudish PID captured INSIDE subshell; subshell PID captured OUTSIDE
+    (
+      cd \"{SESSION_DIR}/work/{model-slug-1}\"
+      claudish --model {MODEL_ID_1} --debug --stdin --quiet {CLAUDE_FLAGS} \\
+        < \"{SESSION_DIR}/vote-prompt.md\" \\
+        > \"{SESSION_DIR}/{model-slug-1}-result.md\" \\
+        2>\"{SESSION_DIR}/{model-slug-1}-stderr.log\" &
+      CLAUDISH_PID=$!
+      echo $CLAUDISH_PID > \"{SESSION_DIR}/pids/{model-slug-1}.pid\"
+      wait $CLAUDISH_PID
+      echo $? > \"{SESSION_DIR}/{model-slug-1}.exit\"
+    ) &
+    SUBSHELL_PIDS=\"$SUBSHELL_PIDS $!\"
+
+    # --- Launch model 2 ---
+    (
+      cd \"{SESSION_DIR}/work/{model-slug-2}\"
+      claudish --model {MODEL_ID_2} --debug --stdin --quiet {CLAUDE_FLAGS} \\
+        < \"{SESSION_DIR}/vote-prompt.md\" \\
+        > \"{SESSION_DIR}/{model-slug-2}-result.md\" \\
+        2>\"{SESSION_DIR}/{model-slug-2}-stderr.log\" &
+      CLAUDISH_PID=$!
+      echo $CLAUDISH_PID > \"{SESSION_DIR}/pids/{model-slug-2}.pid\"
+      wait $CLAUDISH_PID
+      echo $? > \"{SESSION_DIR}/{model-slug-2}.exit\"
+    ) &
+    SUBSHELL_PIDS=\"$SUBSHELL_PIDS $!\"
+
+    # --- Launch monitor (stderr redirected to monitor-error.log) ---
+    bun \"${CLAUDE_PLUGIN_ROOT}/scripts/monitor.ts\" \\
+      --session-dir \"{SESSION_DIR}\" \\
+      --models \"{model-slug-1},{model-slug-2}\" \\
+      --timeout 180 \\
+      2>\"{SESSION_DIR}/monitor-error.log\" &
+    MONITOR_PID=$!
+
+    # --- Wait for all subshells (DEADLINE-based for Bash 3.2 compatibility) ---
+    DEADLINE=$(( $(date +%s) + 300 ))
+    while true; do
+      [ $(date +%s) -ge $DEADLINE ] && break
+      ALIVE=0; for pid in $SUBSHELL_PIDS; do kill -0 $pid 2>/dev/null && ALIVE=1; done; [ $ALIVE -eq 0 ] && break
+      sleep 5
+    done
+    wait $SUBSHELL_PIDS
+
+    # --- Stop monitor (graceful: SIGTERM, then force if needed) ---
+    kill $MONITOR_PID 2>/dev/null || true
+    wait $MONITOR_PID 2>/dev/null || true
+    ",
+      description: "Launch all external models in parallel with monitor",
       run_in_background: true
     })
     ```
 
     Where {model-slug} is the model ID used as a filename-safe string (e.g., "minimax-m2.5", "kimi-k2.5").
+    Expand the template for N models by adding N launch subshell blocks and listing all slugs in --models.
 
     CRITICAL: If `claudeFlags` was read from preferences in step f2, substitute {CLAUDE_FLAGS} with
     those exact flags. For example, if claudeFlags was `--effort high --max-budget-usd 0.50`, the command is:
-    `claudish --model grok-code-fast-1 --stdin --quiet --effort high --max-budget-usd 0.50 < ...`
-    If no claudeFlags, omit {CLAUDE_FLAGS} entirely (just `--stdin --quiet` as before).
+    `claudish --model grok-code-fast-1 --debug --stdin --quiet --effort high --max-budget-usd 0.50 < ...`
+    If no claudeFlags, omit {CLAUDE_FLAGS} entirely (just `--debug --stdin --quiet` as before).
     claudish v5.3.0's two-pass parser forwards these flags directly to Claude Code.
 
     All model calls (Task + Bash) are launched in a SINGLE message for parallel execution.
@@ -178,6 +239,25 @@ args:
   </step_2>
 
   <step_3 name="Collect, Verify, and Parse Votes">
+    a0. While waiting for the background Bash call to return, poll monitor status every ~15 seconds:
+        - Read "{SESSION_DIR}/monitor-status.json" using the Read tool
+        - Check each model's `state` field:
+          - STARTING / ACTIVE / CALLING_API / TOOL_EXECUTING: normal — include in progress table
+          - STALLED: report to user with context (model name, time stalled via `last_activity_seconds_ago`, last state)
+            - Ask user whether to kill the stalled model or wait longer
+            - If kill: Write "{SESSION_DIR}/{model-slug}.kill" (empty file) using the Write tool
+            - If skip: Write "{SESSION_DIR}/{model-slug}.skip" (empty file) using the Write tool
+          - COMPLETED / ERRORED / KILLED / SKIPPED: terminal — exclude from future polls
+        - Display progress table each poll cycle:
+          ```
+          [t={elapsed_seconds}s] Model status:
+            {model-slug-1}  : {state}     turn={turns_completed}  tokens={tokens_so_far}  tools=[{tool_calls}]
+            {model-slug-2}  : STALLED     turn={turns_completed}  tokens={tokens_so_far}  (no activity for {last_activity_seconds_ago}s)
+          ```
+        - Stop polling when all models reach a terminal state (COMPLETED, ERRORED, KILLED, SKIPPED)
+          or when the Bash call itself returns
+        - If monitor-status.json does not yet exist on the first poll, wait and retry next cycle
+
     a. Wait for all model calls to complete (timeout: 180s).
 
     b. Verify each model execution:

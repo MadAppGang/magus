@@ -243,3 +243,60 @@ export type EvalResult =
   | "NO_DELEGATION"
   | "TIMEOUT"
   | "ERROR";
+
+// ---------------------------------------------------------------------------
+// Monitor types (used by plugins/multimodel/scripts/monitor.ts)
+// ---------------------------------------------------------------------------
+
+export type ProcessState =
+  | "STARTING"
+  | "ACTIVE"
+  | "CALLING_API"
+  | "TOOL_EXECUTING"
+  | "STALLED"
+  | "COMPLETED"
+  | "ERRORED"
+  | "KILLED"
+  | "SKIPPED";
+
+export interface ModelStatus {
+  model_id: string;
+  model_slug: string;
+  state: ProcessState;
+  turns_completed: number;
+  retries: number;
+  consecutive_retries: number;
+  tokens_so_far: number;
+  tool_calls: string[];
+  elapsed_seconds: number;
+  last_activity_seconds_ago: number;
+  stall_during_api_call: boolean;
+  pid: number | null;
+  exit_code: number | null;
+  result_file_bytes: number;
+  debug_log_path: string;
+  error_message: string | null;
+}
+
+export interface MonitorStatus {
+  session_id: string;
+  generated_at: string;
+  elapsed_seconds: number;
+  timeout_seconds: number;
+  poll_count: number;
+  models: ModelStatus[];
+}
+
+export interface MonitorFinal extends MonitorStatus {
+  summary: {
+    all_completed: boolean;
+    completed_models: string[];
+    stalled_models: string[];
+    errored_models: string[];
+    killed_models: string[];
+    skipped_models: string[];
+    total_tokens_all_models: number;
+    total_turns_all_models: number;
+    wall_time_seconds: number;
+  };
+}

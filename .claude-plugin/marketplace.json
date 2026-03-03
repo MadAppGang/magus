@@ -42,8 +42,8 @@
     {
       "name": "multimodel",
       "source": "./plugins/multimodel",
-      "description": "Multi-model collaboration, orchestration, and workflow patterns. v2.5.1: Fix orchestration→multimodel self-referencing skill namespace.",
-      "version": "2.5.1",
+      "description": "Multi-model collaboration, orchestration, and workflow patterns. v2.6.0: Process observability — co-launched Bun monitor tracks claudish state in real-time via debug logs.",
+      "version": "2.6.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",

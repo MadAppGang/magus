@@ -22,11 +22,19 @@ const RE_TARGET_MODEL = /"targetModel"\s*:\s*"([^"]+)"/;
 const RE_ORIGINAL_MODEL = /"originalModel"\s*:\s*"([^"]+)"/;
 const RE_MESSAGE_COUNT = /"messageCount"\s*:\s*(\d+)/;
 const RE_TOOL_COUNT = /"toolCount"\s*:\s*(\d+)/;
+// Old format (pre-v5.3.0)
 const RE_TOOL_CALLS = /\[OpenRouter\] Tool calls:\s*(.*)/;
 const RE_TOOL_VALIDATED = /\[OpenRouter\] Tool validated:\s*(\w+)/;
 const RE_USAGE =
   /\[OpenRouter\] Usage:\s*prompt=(\d+),\s*completion=(\d+),\s*total=(\d+)/;
 const RE_STREAM_COMPLETE = /\[OpenRouter\] Stream complete:\s*(\w+)/;
+// New format (v5.3.0+)
+const RE_STREAMING_USAGE =
+  /\[Streaming\] Usage data received:\s*prompt=(\d+),\s*completion=(\d+),\s*total=(\d+)/;
+const RE_STREAMING_FINAL_USAGE =
+  /\[Streaming\] Final usage:\s*prompt=(\d+),\s*completion=(\d+)/;
+const RE_STREAMING_FINISH = /\[Streaming\] Chunk:.*finish_reason=stop/;
+// Common patterns
 const RE_RESPONSE_STATUS = /\[OpenRouter\] Response status:\s*(\d+)/;
 const RE_COST_TRACKER = /\[Cost Tracker\] Total cost:\s*\$?([\d.]+)/;
 const RE_PROXY_START = /\[Proxy\] Server started on port\s*(\d+)/;
@@ -107,25 +115,7 @@ function preProcessLines(content: string): string[] {
   return lines;
 }
 
-export function parseDebugLog(logPath: string): Metrics {
-  if (!existsSync(logPath)) {
-    return { error: "debug.log not found", turns: [], totals: null };
-  }
-
-  let content: string;
-  try {
-    content = readFileSync(logPath, "utf-8");
-  } catch (e: any) {
-    return { error: e.message, turns: [], totals: null };
-  }
-
-  if (!content.trim()) {
-    return { error: "empty debug log", turns: [], totals: null };
-  }
-
-  const lines = preProcessLines(content);
-
-  // State tracking
+function parseLinesInternal(lines: string[]): Metrics {
   const turns: DebugTurn[] = [];
   let currentRequest: DebugTurn | null = null;
   let firstTimestamp: Date | null = null;
@@ -154,9 +144,11 @@ export function parseDebugLog(logPath: string): Metrics {
 
       if (model === null && target) model = target[1];
 
-      // Incomplete previous request → mark as retry
-      if (currentRequest && !currentRequest.completed) {
-        currentRequest.retry = true;
+      // Push previous request: mark incomplete ones as retry
+      if (currentRequest) {
+        if (!currentRequest.completed) {
+          currentRequest.retry = true;
+        }
         turns.push(currentRequest);
       }
 
@@ -194,7 +186,7 @@ export function parseDebugLog(logPath: string): Metrics {
       continue;
     }
 
-    // Token usage
+    // Token usage — old format [OpenRouter] Usage: (prefer if total present)
     m = line.match(RE_USAGE);
     if (m && currentRequest) {
       currentRequest.tokens = {
@@ -205,7 +197,34 @@ export function parseDebugLog(logPath: string): Metrics {
       continue;
     }
 
-    // Stream complete
+    // Token usage — new format [Streaming] Usage data received: (has total, prefer over final usage)
+    m = line.match(RE_STREAMING_USAGE);
+    if (m && currentRequest) {
+      // Only overwrite if we don't already have tokens with a total (old format wins if present)
+      if (!currentRequest.tokens || currentRequest.tokens.total === 0) {
+        currentRequest.tokens = {
+          prompt: parseInt(m[1], 10),
+          completion: parseInt(m[2], 10),
+          total: parseInt(m[3], 10),
+        };
+      }
+      continue;
+    }
+
+    // Token usage — new format [Streaming] Final usage: (no total, only use as fallback)
+    m = line.match(RE_STREAMING_FINAL_USAGE);
+    if (m && currentRequest && !currentRequest.tokens) {
+      const prompt = parseInt(m[1], 10);
+      const completion = parseInt(m[2], 10);
+      currentRequest.tokens = {
+        prompt,
+        completion,
+        total: prompt + completion,
+      };
+      continue;
+    }
+
+    // Stream complete — old format [OpenRouter] Stream complete:
     m = line.match(RE_STREAM_COMPLETE);
     if (m && currentRequest) {
       currentRequest.completed = true;
@@ -224,6 +243,24 @@ export function parseDebugLog(logPath: string): Metrics {
       continue;
     }
 
+    // Stream complete — new format finish_reason=stop in streaming chunk
+    if (RE_STREAMING_FINISH.test(line) && currentRequest) {
+      currentRequest.completed = true;
+      currentRequest.stream_status = "stop";
+
+      // Calculate duration
+      if (ts && currentRequest.timestamp) {
+        const reqTs = new Date(currentRequest.timestamp);
+        if (!isNaN(reqTs.getTime())) {
+          currentRequest.duration_ms = ts.getTime() - reqTs.getTime();
+        }
+      }
+
+      // Don't push yet — wait for usage data that follows in the next lines
+      // We set completed=true here and will push when we encounter the next request or EOF
+      continue;
+    }
+
     // Cost tracker
     m = line.match(RE_COST_TRACKER);
     if (m) {
@@ -232,9 +269,11 @@ export function parseDebugLog(logPath: string): Metrics {
     }
   }
 
-  // Handle incomplete last request
-  if (currentRequest && !currentRequest.completed) {
-    currentRequest.retry = true;
+  // Handle last request (push whether complete or not; mark incomplete as retry)
+  if (currentRequest) {
+    if (!currentRequest.completed) {
+      currentRequest.retry = true;
+    }
     turns.push(currentRequest);
   }
 
@@ -299,6 +338,32 @@ export function parseDebugLog(logPath: string): Metrics {
   return { turns: outputTurns, totals };
 }
 
+export function parseDebugLog(logPath: string): Metrics {
+  if (!existsSync(logPath)) {
+    return { error: "debug.log not found", turns: [], totals: null };
+  }
+
+  let content: string;
+  try {
+    content = readFileSync(logPath, "utf-8");
+  } catch (e: any) {
+    return { error: e.message, turns: [], totals: null };
+  }
+
+  if (!content.trim()) {
+    return { error: "empty debug log", turns: [], totals: null };
+  }
+
+  return parseLinesInternal(preProcessLines(content));
+}
+
+export function parseDebugLogContent(content: string): Metrics {
+  if (!content.trim()) {
+    return { turns: [], totals: null };
+  }
+  return parseLinesInternal(preProcessLines(content));
+}
+
 // --- Formatting ---
 
 function formatTable(metrics: Metrics): string {
@@ -350,33 +415,35 @@ function formatTable(metrics: Metrics): string {
 
 // --- CLI ---
 
-const { values, positionals } = parseArgs({
-  args: Bun.argv.slice(2),
-  options: {
-    output: { type: "string", short: "o" },
-    format: { type: "string", short: "f", default: "json" },
-    help: { type: "boolean", short: "h" },
-  },
-  allowPositionals: true,
-});
+if (import.meta.main) {
+  const { values, positionals } = parseArgs({
+    args: Bun.argv.slice(2),
+    options: {
+      output: { type: "string", short: "o" },
+      format: { type: "string", short: "f", default: "json" },
+      help: { type: "boolean", short: "h" },
+    },
+    allowPositionals: true,
+  });
 
-if (values.help || positionals.length === 0) {
-  console.log(
-    "Usage: bun run debug-log-parser.ts <debug.log> [--output metrics.json] [--format json|table]"
-  );
-  process.exit(positionals.length === 0 && !values.help ? 1 : 0);
-}
+  if (values.help || positionals.length === 0) {
+    console.log(
+      "Usage: bun run debug-log-parser.ts <debug.log> [--output metrics.json] [--format json|table]"
+    );
+    process.exit(positionals.length === 0 && !values.help ? 1 : 0);
+  }
 
-const metrics = parseDebugLog(positionals[0]);
+  const metrics = parseDebugLog(positionals[0]);
 
-const output =
-  values.format === "table"
-    ? formatTable(metrics)
-    : JSON.stringify(metrics, null, 2);
+  const output =
+    values.format === "table"
+      ? formatTable(metrics)
+      : JSON.stringify(metrics, null, 2);
 
-if (values.output) {
-  mkdirSync(dirname(values.output), { recursive: true });
-  writeFileSync(values.output, output + "\n");
-} else {
-  console.log(output);
+  if (values.output) {
+    mkdirSync(dirname(values.output), { recursive: true });
+    writeFileSync(values.output, output + "\n");
+  } else {
+    console.log(output);
+  }
 }
