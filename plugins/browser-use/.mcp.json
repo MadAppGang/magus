@@ -1,0 +1,13 @@
+{
+  "browser-use": {
+    "command": "python3",
+    "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/mcp-server.py"],
+    "env": {
+      "ANTHROPIC_API_KEY": "${ANTHROPIC_API_KEY}",
+      "OPENAI_API_KEY": "${OPENAI_API_KEY}",
+      "BROWSER_USE_API_KEY": "${BROWSER_USE_API_KEY}",
+      "BROWSER_USE_SESSION_DIR": "${HOME}/.browser-use/sessions",
+      "CLAUDE_PLUGIN_ROOT": "${CLAUDE_PLUGIN_ROOT}"
+    }
+  }
+}

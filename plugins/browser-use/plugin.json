@@ -1,0 +1,27 @@
+{
+  "name": "browser-use",
+  "version": "1.0.0",
+  "description": "Full-platform browser automation for Claude Code. v1.0.0: 15 MCP tools via in-process asyncio server, 5 skills (core-api, navigation, scraping, debug-ui, hybrid debugging), local CDP + Cloud support, claude-in-chrome hybrid workflows.",
+  "author": {
+    "name": "Jack Rudenko",
+    "email": "i@madappgang.com",
+    "company": "MadAppGang"
+  },
+  "license": "MIT",
+  "keywords": [
+    "browser", "automation", "scraping", "testing",
+    "accessibility", "browser-use", "cdp", "dom",
+    "vision", "cloud", "captcha", "debugging"
+  ],
+  "category": "development",
+  "mcpServers": "./.mcp.json",
+  "agents": [],
+  "commands": [],
+  "skills": [
+    "./skills/core-api",
+    "./skills/navigation-patterns",
+    "./skills/web-scraping",
+    "./skills/debug-ui",
+    "./skills/hybrid-debugging"
+  ]
+}
