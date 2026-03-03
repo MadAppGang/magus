@@ -19,13 +19,13 @@ import {
 } from "fs";
 import { join } from "path";
 import { parseArgs } from "util";
-import { parseDebugLogContent } from "../../../autotest/framework/parsers/debug-log-parser.ts";
+import { parseDebugLogContent } from "./lib/debug-log-parser.ts";
 import type {
   ProcessState,
   ModelStatus,
   MonitorStatus,
   MonitorFinal,
-} from "../../../autotest/framework/types.ts";
+} from "./lib/types.ts";
 
 // ---------------------------------------------------------------------------
 // Configuration constants
