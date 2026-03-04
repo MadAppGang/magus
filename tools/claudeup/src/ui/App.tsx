@@ -265,7 +265,7 @@ function AppContentInner({
 			state: { message: "Scanning marketplaces..." },
 		});
 
-		// Migrate mag-claude-plugins → magus (idempotent), then repair plugin.json files
+		// Migrate old marketplace names → magus (idempotent), then repair plugin.json files
 		migrateMarketplaceRename()
 			.catch(() => {}); // non-blocking, best-effort
 

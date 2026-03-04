@@ -24,13 +24,13 @@ export async function prerunClaude(
 	const cache = new UpdateCache();
 
 	try {
-		// STEP 0: Migrate mag-claude-plugins → magus (idempotent, no-ops if already migrated)
+		// STEP 0: Migrate old marketplace names → magus (idempotent, no-ops if already migrated)
 		const migration = await migrateMarketplaceRename();
 		const migTotal = migration.projectMigrated + migration.globalMigrated
 			+ migration.localMigrated + migration.registryMigrated
 			+ (migration.knownMarketplacesMigrated ? 1 : 0);
 		if (migTotal > 0) {
-			console.log(`✓ Migrated ${migTotal} plugin reference(s) from mag-claude-plugins → magus`);
+			console.log(`✓ Migrated ${migTotal} plugin reference(s) → magus`);
 		}
 
 		// STEP 1: Check if we should update (time-based cache, or forced)

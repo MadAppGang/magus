@@ -630,15 +630,16 @@ export interface MarketplaceRecoveryResult {
 }
 
 // =============================================================================
-// MARKETPLACE RENAME MIGRATION: mag-claude-plugins → magus
+// MARKETPLACE RENAME MIGRATION: mag-claude-plugins / MadAppGang-claude-code → magus
 // =============================================================================
 
-const OLD_MARKETPLACE_NAME = "mag-claude-plugins";
+const OLD_MARKETPLACE_NAMES = ["mag-claude-plugins", "MadAppGang-claude-code"];
 const NEW_MARKETPLACE_NAME = "magus";
 
 /**
- * Rename plugin keys in a Record from old marketplace to new.
+ * Rename plugin keys in a Record from any old marketplace name to new.
  * e.g., "frontend@mag-claude-plugins" → "frontend@magus"
+ *        "dev@MadAppGang-claude-code" → "dev@magus"
  * Returns [migratedRecord, count] — count=0 means no changes.
  */
 function migratePluginKeys<T>(
@@ -648,9 +649,14 @@ function migratePluginKeys<T>(
 	const migrated: Record<string, T> = {};
 	let count = 0;
 	for (const [key, value] of Object.entries(record)) {
-		if (key.endsWith(`@${OLD_MARKETPLACE_NAME}`)) {
+		const oldName = OLD_MARKETPLACE_NAMES.find((n) => key.endsWith(`@${n}`));
+		if (oldName) {
 			const pluginName = key.slice(0, key.lastIndexOf("@"));
-			migrated[`${pluginName}@${NEW_MARKETPLACE_NAME}`] = value;
+			const newKey = `${pluginName}@${NEW_MARKETPLACE_NAME}`;
+			// Don't overwrite if canonical key already exists
+			if (!record[newKey]) {
+				migrated[newKey] = value;
+			}
 			count++;
 		} else {
 			migrated[key] = value;
@@ -678,12 +684,16 @@ function migrateSettingsObject(settings: ClaudeSettings): number {
 		total += ivCount;
 	}
 
-	// Migrate extraKnownMarketplaces key
-	if (settings.extraKnownMarketplaces?.[OLD_MARKETPLACE_NAME]) {
-		const entry = settings.extraKnownMarketplaces[OLD_MARKETPLACE_NAME];
-		delete settings.extraKnownMarketplaces[OLD_MARKETPLACE_NAME];
-		settings.extraKnownMarketplaces[NEW_MARKETPLACE_NAME] = entry;
-		total++;
+	// Migrate extraKnownMarketplaces keys
+	for (const oldName of OLD_MARKETPLACE_NAMES) {
+		if (settings.extraKnownMarketplaces?.[oldName]) {
+			const entry = settings.extraKnownMarketplaces[oldName];
+			delete settings.extraKnownMarketplaces[oldName];
+			if (!settings.extraKnownMarketplaces[NEW_MARKETPLACE_NAME]) {
+				settings.extraKnownMarketplaces[NEW_MARKETPLACE_NAME] = entry;
+			}
+			total++;
+		}
 	}
 
 	return total;
@@ -748,40 +758,40 @@ export async function migrateMarketplaceRename(
 		}
 	} catch { /* skip if unreadable */ }
 
-	// 4. known_marketplaces.json — rename the key + physical directory cleanup
+	// 4. known_marketplaces.json — rename old keys + physical directory cleanup
 	const pluginsDir = path.join(os.homedir(), ".claude", "plugins", "marketplaces");
-	const oldDir = path.join(pluginsDir, OLD_MARKETPLACE_NAME);
 	const newDir = path.join(pluginsDir, NEW_MARKETPLACE_NAME);
 
 	try {
 		const known = await readKnownMarketplaces();
 		let knownModified = false;
 
-		if (known[OLD_MARKETPLACE_NAME]) {
-			const oldEntry = known[OLD_MARKETPLACE_NAME];
-
-			// If canonical entry already exists, just delete the old one
-			if (!known[NEW_MARKETPLACE_NAME]) {
-				known[NEW_MARKETPLACE_NAME] = {
-					...oldEntry,
-					source: {
-						...oldEntry.source,
-						repo: "MadAppGang/magus",
-					},
-				};
+		for (const oldName of OLD_MARKETPLACE_NAMES) {
+			if (known[oldName]) {
+				const oldEntry = known[oldName];
+				// If canonical entry doesn't exist yet, create it
+				if (!known[NEW_MARKETPLACE_NAME]) {
+					known[NEW_MARKETPLACE_NAME] = {
+						...oldEntry,
+						source: {
+							...oldEntry.source,
+							repo: "MadAppGang/magus",
+						},
+					};
+				}
+				delete known[oldName];
+				knownModified = true;
 			}
-			delete known[OLD_MARKETPLACE_NAME];
-			knownModified = true;
-		}
 
-		// Ensure installLocation points to new directory name
-		if (known[NEW_MARKETPLACE_NAME]?.installLocation?.includes(OLD_MARKETPLACE_NAME)) {
-			known[NEW_MARKETPLACE_NAME].installLocation =
-				known[NEW_MARKETPLACE_NAME].installLocation.replace(
-					OLD_MARKETPLACE_NAME,
-					NEW_MARKETPLACE_NAME,
-				);
-			knownModified = true;
+			// Ensure installLocation doesn't reference old directory names
+			if (known[NEW_MARKETPLACE_NAME]?.installLocation?.includes(oldName)) {
+				known[NEW_MARKETPLACE_NAME].installLocation =
+					known[NEW_MARKETPLACE_NAME].installLocation.replace(
+						oldName,
+						NEW_MARKETPLACE_NAME,
+					);
+				knownModified = true;
+			}
 		}
 
 		if (knownModified) {
@@ -790,30 +800,32 @@ export async function migrateMarketplaceRename(
 		}
 	} catch { /* skip if unreadable */ }
 
-	// 4b. Rename/remove the old physical directory (runs even if key was already migrated)
-	try {
-		if (await fs.pathExists(oldDir)) {
-			if (!(await fs.pathExists(newDir))) {
-				await fs.rename(oldDir, newDir);
-			} else {
-				// Both exist — remove the old one (magus dir is canonical)
-				await fs.remove(oldDir);
+	// 4b. Rename/remove old physical directories (runs even if keys were already migrated)
+	for (const oldName of OLD_MARKETPLACE_NAMES) {
+		const oldDir = path.join(pluginsDir, oldName);
+		try {
+			if (await fs.pathExists(oldDir)) {
+				if (!(await fs.pathExists(newDir))) {
+					await fs.rename(oldDir, newDir);
+				} else {
+					// Both exist — remove the old one (magus dir is canonical)
+					await fs.remove(oldDir);
+				}
 			}
-		}
-	} catch { /* non-fatal: directory cleanup is best-effort */ }
+		} catch { /* non-fatal: directory cleanup is best-effort */ }
+	}
 
 	// 4c. Update git remote URL in the marketplace clone (old → new repo)
 	try {
-		const marketplaceDir = await fs.pathExists(newDir) ? newDir : oldDir;
-		if (await fs.pathExists(path.join(marketplaceDir, ".git"))) {
+		if (await fs.pathExists(path.join(newDir, ".git"))) {
 			const { execSync } = await import("node:child_process");
 			const remote = execSync("git remote get-url origin", {
-				cwd: marketplaceDir, encoding: "utf-8", timeout: 5000,
+				cwd: newDir, encoding: "utf-8", timeout: 5000,
 			}).trim();
 			if (remote.includes("claude-code") && remote.includes("MadAppGang")) {
 				const newRemote = remote.replace("claude-code", NEW_MARKETPLACE_NAME);
 				execSync(`git remote set-url origin "${newRemote}"`, {
-					cwd: marketplaceDir, encoding: "utf-8", timeout: 5000,
+					cwd: newDir, encoding: "utf-8", timeout: 5000,
 				});
 			}
 		}
@@ -825,9 +837,13 @@ export async function migrateMarketplaceRename(
 		let regCount = 0;
 		const newPlugins: typeof registry.plugins = {};
 		for (const [pluginId, entries] of Object.entries(registry.plugins)) {
-			if (pluginId.endsWith(`@${OLD_MARKETPLACE_NAME}`)) {
+			const oldName = OLD_MARKETPLACE_NAMES.find((n) => pluginId.endsWith(`@${n}`));
+			if (oldName) {
 				const pluginName = pluginId.slice(0, pluginId.lastIndexOf("@"));
-				newPlugins[`${pluginName}@${NEW_MARKETPLACE_NAME}`] = entries;
+				const newKey = `${pluginName}@${NEW_MARKETPLACE_NAME}`;
+				if (!newPlugins[newKey]) {
+					newPlugins[newKey] = entries;
+				}
 				regCount++;
 			} else {
 				newPlugins[pluginId] = entries;

@@ -22,6 +22,7 @@ function normalizeRepo(repo: string): string {
  */
 export const deprecatedMarketplaces: Record<string, string> = {
 	"mag-claude-plugins": "magus",
+	"MadAppGang-claude-code": "magus",
 };
 
 export const defaultMarketplaces: Marketplace[] = [
