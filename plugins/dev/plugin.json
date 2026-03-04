@@ -1,7 +1,7 @@
 {
   "name": "dev",
-  "version": "1.39.0",
-  "description": "Universal development assistant with real skill discovery. v1.39.0: Browser-use optional integration for frontend agent. 47 skills.",
+  "version": "1.40.0",
+  "description": "Universal development assistant with real skill discovery. v1.40.0: Tech-writer benchmark (blind A/B, 6-model judging panel). 47 skills.",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",

@@ -1,0 +1,461 @@
+{
+  "run_dir": "autotest/tech-writer/results/run-20260304-175409",
+  "analyzed_at": "2026-03-04T07:21:51.959Z",
+  "topic": "How skill injection works in the dev plugin's /dev:implement command",
+  "sample_mapping": {
+    "coin_flip": 0,
+    "sample_a": "default",
+    "sample_b": "techwriter",
+    "created_at": "2026-03-04T07:19:36Z"
+  },
+  "total_judges": 7,
+  "successful_judges": 6,
+  "failed_judges": [
+    "qwen"
+  ],
+  "criteria_results": [
+    {
+      "criterion_id": "slop",
+      "criterion_name": "AI Slop Absence",
+      "weight": 2,
+      "default_scores": [
+        9,
+        10,
+        10,
+        10,
+        10,
+        10
+      ],
+      "techwriter_scores": [
+        9,
+        10,
+        10,
+        10,
+        10,
+        10
+      ],
+      "default_mean": 9.8,
+      "techwriter_mean": 9.8,
+      "default_stddev": 0.4,
+      "techwriter_stddev": 0.4,
+      "default_min": 9,
+      "default_max": 10,
+      "techwriter_min": 9,
+      "techwriter_max": 10,
+      "winner": "tie",
+      "delta": 0
+    },
+    {
+      "criterion_id": "readability",
+      "criterion_name": "Readability",
+      "weight": 1.5,
+      "default_scores": [
+        8,
+        9,
+        9,
+        8,
+        9,
+        8
+      ],
+      "techwriter_scores": [
+        7,
+        8,
+        9,
+        7,
+        9,
+        9
+      ],
+      "default_mean": 8.5,
+      "techwriter_mean": 8.2,
+      "default_stddev": 0.5,
+      "techwriter_stddev": 1,
+      "default_min": 8,
+      "default_max": 9,
+      "techwriter_min": 7,
+      "techwriter_max": 9,
+      "winner": "default",
+      "delta": -0.3
+    },
+    {
+      "criterion_id": "structure",
+      "criterion_name": "Document Structure",
+      "weight": 1.5,
+      "default_scores": [
+        4,
+        6,
+        6,
+        4,
+        5,
+        3
+      ],
+      "techwriter_scores": [
+        6,
+        5,
+        7,
+        6,
+        7,
+        4
+      ],
+      "default_mean": 4.7,
+      "techwriter_mean": 5.8,
+      "default_stddev": 1.2,
+      "techwriter_stddev": 1.2,
+      "default_min": 3,
+      "default_max": 6,
+      "techwriter_min": 4,
+      "techwriter_max": 7,
+      "winner": "techwriter",
+      "delta": 1.2
+    },
+    {
+      "criterion_id": "conciseness",
+      "criterion_name": "Conciseness",
+      "weight": 1,
+      "default_scores": [
+        9,
+        5,
+        9,
+        9,
+        8,
+        9
+      ],
+      "techwriter_scores": [
+        8,
+        5,
+        9,
+        8,
+        10,
+        8
+      ],
+      "default_mean": 8.2,
+      "techwriter_mean": 8,
+      "default_stddev": 1.6,
+      "techwriter_stddev": 1.7,
+      "default_min": 5,
+      "default_max": 9,
+      "techwriter_min": 5,
+      "techwriter_max": 10,
+      "winner": "default",
+      "delta": -0.2
+    },
+    {
+      "criterion_id": "accuracy",
+      "criterion_name": "Technical Accuracy",
+      "weight": 2,
+      "default_scores": [
+        6,
+        8,
+        8,
+        8,
+        8,
+        7
+      ],
+      "techwriter_scores": [
+        8,
+        7,
+        9,
+        8,
+        8,
+        8
+      ],
+      "default_mean": 7.5,
+      "techwriter_mean": 8,
+      "default_stddev": 0.8,
+      "techwriter_stddev": 0.6,
+      "default_min": 6,
+      "default_max": 8,
+      "techwriter_min": 7,
+      "techwriter_max": 9,
+      "winner": "techwriter",
+      "delta": 0.5
+    },
+    {
+      "criterion_id": "disclosure",
+      "criterion_name": "Progressive Disclosure",
+      "weight": 1,
+      "default_scores": [
+        5,
+        5,
+        5,
+        5,
+        5,
+        3
+      ],
+      "techwriter_scores": [
+        7,
+        5,
+        7,
+        7,
+        8,
+        6
+      ],
+      "default_mean": 4.7,
+      "techwriter_mean": 6.7,
+      "default_stddev": 0.8,
+      "techwriter_stddev": 1,
+      "default_min": 3,
+      "default_max": 5,
+      "techwriter_min": 5,
+      "techwriter_max": 8,
+      "winner": "techwriter",
+      "delta": 2
+    },
+    {
+      "criterion_id": "diagrams",
+      "criterion_name": "Diagram Quality",
+      "weight": 1,
+      "default_scores": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "techwriter_scores": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "default_mean": 1,
+      "techwriter_mean": 1,
+      "default_stddev": 0,
+      "techwriter_stddev": 0,
+      "default_min": 1,
+      "default_max": 1,
+      "techwriter_min": 1,
+      "techwriter_max": 1,
+      "winner": "tie",
+      "delta": 0
+    },
+    {
+      "criterion_id": "overall",
+      "criterion_name": "Overall Quality",
+      "weight": 2,
+      "default_scores": [
+        6,
+        7,
+        6,
+        6,
+        7,
+        5
+      ],
+      "techwriter_scores": [
+        7,
+        6,
+        7,
+        7,
+        8,
+        7
+      ],
+      "default_mean": 6.2,
+      "techwriter_mean": 7,
+      "default_stddev": 0.8,
+      "techwriter_stddev": 0.6,
+      "default_min": 5,
+      "default_max": 7,
+      "techwriter_min": 6,
+      "techwriter_max": 8,
+      "winner": "techwriter",
+      "delta": 0.8
+    }
+  ],
+  "weighted_scores": {
+    "default": 6.7,
+    "techwriter": 7.2,
+    "winner": "techwriter",
+    "delta": 0.5
+  },
+  "preference_votes": {
+    "default": 1,
+    "techwriter": 5,
+    "total": 6,
+    "consensus_pct": 83,
+    "winner": "techwriter"
+  },
+  "judge_details": [
+    {
+      "judge_id": "internal",
+      "model": "internal",
+      "scores": {
+        "sample_a": {
+          "slop": 9,
+          "readability": 8,
+          "structure": 4,
+          "conciseness": 9,
+          "accuracy": 6,
+          "disclosure": 5,
+          "diagrams": 1,
+          "overall": 6
+        },
+        "sample_b": {
+          "slop": 9,
+          "readability": 7,
+          "structure": 6,
+          "conciseness": 8,
+          "accuracy": 8,
+          "disclosure": 7,
+          "diagrams": 1,
+          "overall": 7
+        }
+      },
+      "preference": "B",
+      "reasoning": "Both fragments are clean and slop-free, but Sample B provides more specific, actionable information: it names five concrete topics (including a properly backtick-formatted `${PLUGIN_ROOT}`) and references a section anchor (§7), giving readers a navigable roadmap. Sample A makes a useful legacy-vs-convention distinction but is narrower in scope and offers no technical specificity beyond naming one skill directory. As documentation fragments, B would do more work for a reader scanning the document",
+      "parse_method": "json",
+      "raw_response_length": 787
+    },
+    {
+      "judge_id": "minimax",
+      "model": "minimax-m2.5",
+      "scores": {
+        "sample_a": {
+          "slop": 10,
+          "readability": 9,
+          "structure": 6,
+          "conciseness": 5,
+          "accuracy": 8,
+          "disclosure": 5,
+          "diagrams": 1,
+          "overall": 7
+        },
+        "sample_b": {
+          "slop": 10,
+          "readability": 8,
+          "structure": 5,
+          "conciseness": 5,
+          "accuracy": 7,
+          "disclosure": 5,
+          "diagrams": 1,
+          "overall": 6
+        }
+      },
+      "preference": "A",
+      "reasoning": "Sample A is slightly more direct and actionable—it explicitly states what the convention is (not following the legacy pattern). Sample B references §7 and 'collapsible sections' which assumes prior context about document structure. Both are brief fragments lacking diagrams and progressive disclosure, but A's clarity edge makes it marginally preferable.",
+      "parse_method": "json",
+      "raw_response_length": 635
+    },
+    {
+      "judge_id": "kimi",
+      "model": "kimi-k2.5",
+      "scores": {
+        "sample_a": {
+          "slop": 10,
+          "readability": 9,
+          "structure": 6,
+          "conciseness": 9,
+          "accuracy": 8,
+          "disclosure": 5,
+          "diagrams": 1,
+          "overall": 6
+        },
+        "sample_b": {
+          "slop": 10,
+          "readability": 9,
+          "structure": 7,
+          "conciseness": 9,
+          "accuracy": 9,
+          "disclosure": 7,
+          "diagrams": 1,
+          "overall": 7
+        }
+      },
+      "preference": "B",
+      "reasoning": "Sample B provides more actionable information by explicitly listing the five edge cases covered, giving readers immediate visibility into the content scope. The parenthetical section reference (§7) also indicates better document organization and navigability compared to Sample A's more vague 'not the convention to follow' warning without concrete alternatives.",
+      "parse_method": "json",
+      "raw_response_length": 817
+    },
+    {
+      "judge_id": "glm",
+      "model": "glm-5",
+      "scores": {
+        "sample_a": {
+          "slop": 10,
+          "readability": 8,
+          "structure": 4,
+          "conciseness": 9,
+          "accuracy": 8,
+          "disclosure": 5,
+          "diagrams": 1,
+          "overall": 6
+        },
+        "sample_b": {
+          "slop": 10,
+          "readability": 7,
+          "structure": 6,
+          "conciseness": 8,
+          "accuracy": 8,
+          "disclosure": 7,
+          "diagrams": 1,
+          "overall": 7
+        }
+      },
+      "preference": "B",
+      "reasoning": "Sample B demonstrates better structural awareness by cross-referencing §7 and explicitly mentioning collapsible sections as a progressive disclosure technique. Sample A is just a standalone exception note with no context about where it fits in the larger document. Both are fragments, but B shows more professional documentation patterns.",
+      "parse_method": "json",
+      "raw_response_length": 793
+    },
+    {
+      "judge_id": "gemini",
+      "model": "gemini-3.1-pro-preview",
+      "scores": {
+        "sample_a": {
+          "slop": 10,
+          "readability": 9,
+          "structure": 5,
+          "conciseness": 8,
+          "accuracy": 8,
+          "disclosure": 5,
+          "diagrams": 1,
+          "overall": 7
+        },
+        "sample_b": {
+          "slop": 10,
+          "readability": 9,
+          "structure": 7,
+          "conciseness": 10,
+          "accuracy": 8,
+          "disclosure": 8,
+          "diagrams": 1,
+          "overall": 8
+        }
+      },
+      "preference": "B",
+      "reasoning": "Sample B provides a highly concise, scannable summary that excellently demonstrates progressive disclosure by referencing deeper sections (§7). Sample A is a good specific note, but Sample B serves as a better navigational and informational anchor for technical documentation.",
+      "parse_method": "json",
+      "raw_response_length": 732
+    },
+    {
+      "judge_id": "gpt",
+      "model": "gpt-5.3-codex",
+      "scores": {
+        "sample_a": {
+          "slop": 10,
+          "readability": 8,
+          "structure": 3,
+          "conciseness": 9,
+          "accuracy": 7,
+          "disclosure": 3,
+          "diagrams": 1,
+          "overall": 5
+        },
+        "sample_b": {
+          "slop": 10,
+          "readability": 9,
+          "structure": 4,
+          "conciseness": 8,
+          "accuracy": 8,
+          "disclosure": 6,
+          "diagrams": 1,
+          "overall": 7
+        }
+      },
+      "preference": "B",
+      "reasoning": "Sample B is more reader-oriented and gives clearer navigational context by referencing an edge-cases section and enumerating what it covers. Sample A is concise but feels more like an internal note and provides less scaffolding for a reader trying to find detailed guidance. Neither sample demonstrates full document structure or diagram support, but B is more publishable as a documentation line item.",
+      "parse_method": "json",
+      "raw_response_length": 857
+    }
+  ]
+}
