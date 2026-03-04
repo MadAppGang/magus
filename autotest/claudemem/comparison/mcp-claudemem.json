@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "claudemem": {
+      "command": "claudemem",
+      "args": ["--mcp"],
+      "env": {
+        "CLAUDEMEM_LSP": "true"
+      }
+    }
+  }
+}
