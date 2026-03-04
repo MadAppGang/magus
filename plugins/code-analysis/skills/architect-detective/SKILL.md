@@ -96,6 +96,32 @@ claudemem --agent context CoreService
 claudemem --agent dependency-graph CoreService
 ```
 
+### Phase 2b: Architecture Knowledge Persistence
+
+After completing architectural analysis, persist findings for future sessions:
+
+```bash
+# Write architecture summary to memory
+memory_write("auth/architecture", "AuthService is central (PageRank 0.092). Pattern: Service Layer → Repository → Database. Entry via LoginController and SessionMiddleware.")
+
+# Write key conventions discovered
+memory_write("project/conventions", "No direct DB access from controllers. All writes go through Repository pattern. Event sourcing in payment module only.")
+
+# At session start, check for existing architecture notes
+memory_list()
+# → ["auth/architecture", "project/conventions", "payment/known-issues"]
+memory_read("auth/architecture")
+```
+
+**LSP enrichment for interface discovery:**
+```bash
+# For interfaces and abstract types, LSP hover reveals implementations
+hover("IAuthProvider")
+# Output: interface IAuthProvider — implemented by: AuthService, TestAuthMock
+```
+
+**Key principle**: Architecture knowledge is expensive to re-derive. Write findings to memory after each deep investigation.
+
 ### Dead Code Detection (v0.4.0+ Required)
 
 ```bash

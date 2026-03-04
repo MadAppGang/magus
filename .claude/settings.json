@@ -14,7 +14,9 @@
     "code-review@claude-plugins-official": true,
     "commit-commands@claude-plugins-official": true,
     "statusline@magus": true,
-    "terminal@magus": true
+    "terminal@magus": true,
+    "designer@magus": true,
+    "browser-use@magus": true
   },
   "enableAllProjectMcpServers": true,
   "extraKnownMarketplaces": {
@@ -26,8 +28,8 @@
     }
   },
   "installedPluginVersions": {
-    "dev@magus": "1.36.2",
-    "multimodel@magus": "2.5.1",
+    "dev@magus": "1.39.0",
+    "multimodel@magus": "2.6.2",
     "explanatory-output-style@claude-plugins-official": "0.0.0",
     "claude-md-management@claude-plugins-official": "0.0.0",
     "claude-code-setup@claude-plugins-official": "0.0.0",
@@ -36,6 +38,8 @@
     "code-simplifier@claude-plugins-official": "0.0.0",
     "code-review@claude-plugins-official": "0.0.0",
     "commit-commands@claude-plugins-official": "0.0.0",
-    "statusline@magus": "1.4.1"
+    "statusline@magus": "1.4.1",
+    "designer@magus": "0.2.0",
+    "browser-use@magus": "1.0.2"
   }
 }

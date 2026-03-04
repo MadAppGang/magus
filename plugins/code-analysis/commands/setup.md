@@ -85,7 +85,8 @@ Report status:
 ```
 claudemem MCP setup complete!
 
-- 11 structured MCP tools available (search, map, symbol, callers, callees, etc.)
+- 22 core MCP tools available across 6 groups: Navigation & Search, Edit & Refactor, LSP Navigation, Memory, Reasoning, and Index Management
+- Key tools: search, map, symbol, edit_symbol, rename_symbol, hover, memory_write, think
 - Auto-reindexing on file changes (2-minute debounce)
 - Freshness metadata on every response
 

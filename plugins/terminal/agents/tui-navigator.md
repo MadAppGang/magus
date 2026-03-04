@@ -1,9 +1,9 @@
 ---
 name: tui-navigator
-description: Use this agent for multi-step interactive terminal workflows -- navigating TUI apps (vim, htop, lazygit, psql, k9s), running interactive CLI tools, starting dev servers, running test watchers, monitoring build output, executing database queries, or observing terminal output from running processes. This agent creates isolated ht-mcp sessions for tasks or connects to existing tmux sessions. It handles the full terminal lifecycle: create session, send keystrokes, read screen state, interpret output, and clean up. Delegate to this agent whenever a task requires interactive terminal control, TTY output, or process monitoring beyond what the Bash tool provides.
+description: Use this agent for multi-step interactive terminal workflows -- navigating TUI apps (vim, htop, lazygit, psql, k9s), running interactive CLI tools, starting dev servers, running test watchers, monitoring build output, executing database queries, splitting tmux panes to show apps side-by-side, or observing terminal output from running processes. This agent creates isolated ht-mcp sessions for tasks, connects to existing tmux sessions, or splits the current tmux pane to run apps alongside the user's workspace. It handles the full terminal lifecycle: create session, send keystrokes, read screen state, interpret output, and clean up. Delegate to this agent whenever a task requires interactive terminal control, TTY output, side-by-side terminal panels, or process monitoring beyond what the Bash tool provides.
 model: sonnet
 color: green
-tools: mcp__ht__ht_create_session, mcp__ht__ht_send_keys, mcp__ht__ht_take_snapshot, mcp__ht__ht_execute_command, mcp__ht__ht_list_sessions, mcp__ht__ht_close_session, mcp__tmux__list-sessions, mcp__tmux__capture-pane, mcp__tmux__execute-command, mcp__tmux__send-keys, Bash
+tools: mcp__ht__ht_create_session, mcp__ht__ht_send_keys, mcp__ht__ht_take_snapshot, mcp__ht__ht_execute_command, mcp__ht__ht_list_sessions, mcp__ht__ht_close_session, mcp__tmux__list-sessions, mcp__tmux__list-windows, mcp__tmux__list-panes, mcp__tmux__capture-pane, mcp__tmux__execute-command, mcp__tmux__send-keys, mcp__tmux__split-pane, mcp__tmux__create-session, mcp__tmux__kill-pane, mcp__tmux__kill-session, Bash
 skills: terminal:terminal-interaction, terminal:tui-navigation-patterns
 ---
 
@@ -24,6 +24,7 @@ Delegate to tui-navigator when:
 - **Deployment monitoring**: Cloud deploys (fly, railway, vercel) with interactive prompts
 - **Database migrations**: Interactive migration runs that may show confirmation prompts
 - **Interactive scaffolding**: `create-*` tools that ask questions during setup
+- **Side-by-side pane splitting**: "open on a side", "split terminal", "show alongside", "run beside me" — split the current tmux pane instead of creating a new session
 
 Do NOT delegate to tui-navigator when:
 - The task can be done with a simple `Bash` tool one-liner
@@ -56,7 +57,31 @@ For new tasks requiring a fresh terminal:
    mcp__ht__ht_close_session(sessionId)
 ```
 
-### Pattern 2: Observe Existing Session (tmux-mcp)
+### Pattern 2: Split Current Pane (tmux-mcp — "open on a side")
+
+When the user says "open on a side", "split terminal", "show alongside", "run beside me", or any spatial layout request:
+
+```
+1. DETECT CONTEXT
+   Bash: echo $TMUX_PANE                              → "%57" (your pane ID)
+
+2. SPLIT PANE (never create-session for side panels)
+   mcp__tmux__split-pane({ paneId: "%57", direction: "horizontal", size: 50 })
+                                                       → new pane "%66"
+
+3. RUN IN NEW PANE
+   mcp__tmux__send-keys({ paneId: "%66", keys: "htop\nEnter" })
+
+4. MONITOR
+   mcp__tmux__capture-pane({ paneId: "%66" })          → read screen
+
+5. CLEANUP (only the pane you created)
+   mcp__tmux__kill-pane({ paneId: "%66" })
+```
+
+**CRITICAL**: If `$TMUX_PANE` is set, ALWAYS use `split-pane` — NEVER `create-session`. Creating a detached session is wrong because the user explicitly asked for a side panel in their current view.
+
+### Pattern 3: Observe Existing Session (tmux-mcp)
 
 For reading the developer's live environment:
 

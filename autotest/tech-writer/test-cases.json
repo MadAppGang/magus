@@ -1,0 +1,133 @@
+{
+  "meta": {
+    "description": "Tech-Writer E2E comparison benchmark. Generates documentation with vanilla vs anti-slop approach, then has 7 models blindly judge quality across 8 weighted criteria.",
+    "version": "1.0.0",
+    "created": "2026-03-04",
+    "type": "quality-comparison",
+    "notes": "v1.0: Blind A/B comparison benchmark. NOT a standard autotest suite — uses 3-phase pipeline (generate → judge → analyze) instead of runner-base.sh flat matrix."
+  },
+  "topic": {
+    "title": "How skill injection works in the dev plugin's /dev:implement command",
+    "context": "Real codebase topic from the Magus plugin ecosystem. Covers: skill file discovery (SKILL.md), frontmatter parsing, Skill tool invocation, content injection into conversation context, and how the implement command chains brainstorming → planning → execution skills. Complex enough to require diagrams and progressive disclosure."
+  },
+  "generation": {
+    "model": "internal",
+    "timeout": 600,
+    "approaches": {
+      "default": {
+        "prompt_file": "prompts/generate-default.md",
+        "description": "Vanilla documentation prompt with no style rules"
+      },
+      "techwriter": {
+        "prompt_file": "prompts/generate-techwriter.md",
+        "description": "Anti-slop rules + Diátaxis template + readability constraints"
+      }
+    }
+  },
+  "evaluation": {
+    "criteria": [
+      {
+        "id": "slop",
+        "name": "AI Slop Absence",
+        "weight": 2.0,
+        "description": "Freedom from banned AI-generated words and phrases. Check for: marketing superlatives (amazing, powerful, robust), difficulty dismissers (simply, just, easy), corporate jargon (leverage, utilize, streamline), hedge phrases (it is worth noting, in order to), AI preambles (As an AI, I'd be happy to, Great question). Reference: 77-entry slop registry with CRITICAL/HIGH/MEDIUM/LOW severity levels."
+      },
+      {
+        "id": "readability",
+        "name": "Readability",
+        "weight": 1.5,
+        "description": "Short sentences (<25 words average), minimal passive voice (<10%), scannable paragraphs (<100 words), second-person address for instructions. Grade level should be accessible (Flesch-Kincaid < 12)."
+      },
+      {
+        "id": "structure",
+        "name": "Document Structure",
+        "weight": 1.5,
+        "description": "Logical heading hierarchy (H1 → H2 → H3, no skipping), metadata header (title, description, audience), clear section ordering (overview → quickstart → details → reference), table of contents for long docs."
+      },
+      {
+        "id": "conciseness",
+        "name": "Conciseness",
+        "weight": 1.0,
+        "description": "No filler paragraphs, high information density, no repetition of the same point in different words. Every sentence adds new information."
+      },
+      {
+        "id": "accuracy",
+        "name": "Technical Accuracy",
+        "weight": 2.0,
+        "description": "Correct technical claims, accurate code examples that would actually work, proper API references, no hallucinated features or parameters."
+      },
+      {
+        "id": "disclosure",
+        "name": "Progressive Disclosure",
+        "weight": 1.0,
+        "description": "Essential information first, details progressively deeper. Uses collapsible sections, layered examples (basic → advanced), clear separation between must-know and nice-to-know."
+      },
+      {
+        "id": "diagrams",
+        "name": "Diagram Quality",
+        "weight": 1.0,
+        "description": "Useful diagrams that aid understanding (not decorative), correct Mermaid/ASCII syntax, diagrams match the text they accompany, appropriate diagram types (flowchart for processes, sequence for interactions)."
+      },
+      {
+        "id": "overall",
+        "name": "Overall Quality",
+        "weight": 2.0,
+        "description": "Holistic assessment: Would you publish this documentation as-is? Does it serve the reader's needs? Is it professional and trustworthy?"
+      }
+    ],
+    "total_weight": 12.0,
+    "score_range": {
+      "min": 1,
+      "max": 10
+    }
+  },
+  "judges": [
+    {
+      "id": "internal",
+      "model": "internal",
+      "method": "execute-test.sh --model internal",
+      "description": "Native Claude via claude -p"
+    },
+    {
+      "id": "minimax",
+      "model": "minimax-m2.5",
+      "method": "claudish",
+      "description": "MiniMax M2.5 via OpenRouter"
+    },
+    {
+      "id": "kimi",
+      "model": "kimi-k2.5",
+      "method": "claudish",
+      "description": "Kimi K2.5 via OpenRouter"
+    },
+    {
+      "id": "glm",
+      "model": "glm-5",
+      "method": "claudish",
+      "description": "GLM-5 via OpenRouter"
+    },
+    {
+      "id": "gemini",
+      "model": "gemini-3.1-pro-preview",
+      "method": "claudish",
+      "description": "Gemini 3.1 Pro Preview via OpenRouter"
+    },
+    {
+      "id": "gpt",
+      "model": "gpt-5.3-codex",
+      "method": "claudish",
+      "description": "GPT-5.3 Codex via OpenRouter"
+    },
+    {
+      "id": "qwen",
+      "model": "qwen3.5-plus-02-15",
+      "method": "claudish",
+      "description": "Qwen 3.5 Plus via OpenRouter"
+    }
+  ],
+  "thresholds": {
+    "min_judges": 3,
+    "min_output_chars": 100,
+    "score_clamp": [1, 10]
+  }
+}

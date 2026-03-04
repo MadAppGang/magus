@@ -1,10 +1,10 @@
 {
   "meta": {
     "description": "Terminal plugin E2E test cases. Tests verify Claude can accomplish real developer tasks using MCP terminal tools. v2.0.0: Added intent-level command tests (run, watch, observe, repl, tui) alongside existing primitive tests.",
-    "version": "2.0.0",
+    "version": "2.1.0",
     "created": "2026-02-26",
     "updated": "2026-02-28",
-    "notes": "v2.0: Added 9 intent-level command tests for run/watch/observe/repl/tui commands. v1.2: Removed no_tool_prefix checks — parallel test execution shares debug logs across tests. v1.1: Accept ht_execute_command as alternative to ht_send_keys for non-TUI tests."
+    "notes": "v2.1: Added intent-side-panel-20 test for 'open on a side' natural language → split-pane behavior. v2.0: Added 9 intent-level command tests for run/watch/observe/repl/tui commands. v1.2: Removed no_tool_prefix checks — parallel test execution shares debug logs across tests. v1.1: Accept ht_execute_command as alternative to ht_send_keys for non-TUI tests."
   },
   "test_cases": [
     {
@@ -372,6 +372,28 @@
         },
         "min_tool_calls": 4,
         "response_contains": "SPLIT_PANE_E2E_MARKER"
+      }
+    },
+    {
+      "id": "intent-side-panel-20",
+      "description": "Intent test: Natural language 'open htop on a side' — must use split-pane to create side panel, not a separate session",
+      "prompt": "I'm working in tmux. Open htop on a side panel alongside my current work.\n\nTo set up the test environment:\n1. Create a tmux session named 'e2e-side-panel' (this simulates my workspace).\n2. Now open htop alongside — I want to see it on a side, not in a separate disconnected session.\n3. Capture the pane where htop is running to verify it started.\n4. Clean up: kill the 'e2e-side-panel' session.\n5. Report whether htop appeared in the side panel.\n\nThe key behavior: when I say 'on a side' or 'alongside', I mean a split pane in the same tmux window — not a brand new tmux session.",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "intent-commands",
+      "tags": ["intent", "tmux", "split-pane", "side-panel", "natural-language", "spatial"],
+      "checks": {
+        "has_tool_prefix": "mcp__tmux__",
+        "tools_used_include_any": [
+          ["mcp__tmux__create-session", "mcp__tmux__split-pane", "mcp__tmux__capture-pane", "mcp__tmux__kill-session"],
+          ["mcp__tmux-mcp__create-session", "mcp__tmux-mcp__split-pane", "mcp__tmux-mcp__capture-pane", "mcp__tmux-mcp__kill-session"]
+        ],
+        "min_tool_calls_by_name": {
+          "split-pane": 1,
+          "capture-pane": 1
+        },
+        "min_tool_calls": 4,
+        "response_contains_any": ["htop", "side", "split", "alongside", "pane"]
       }
     }
   ]

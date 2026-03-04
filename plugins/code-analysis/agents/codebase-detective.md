@@ -37,9 +37,15 @@ Navigate codebases using **AST-based structural analysis** with PageRank ranking
 ║                                                                              ║
 ║   5. Read specific file:line ranges (NOT whole files)                        ║
 ║                                                                              ║
+║   When modifying code:                                               ║
+║   6. think → edit_symbol (prefer over Read+Edit for function bodies) ║
+║   7. rename_symbol with dryRun=true (for renaming operations)        ║
+║                                                                      ║
 ║   ❌ NEVER: grep, find, Glob, Read whole files without mapping               ║
 ║   ❌ NEVER: Search before mapping                                            ║
 ║   ❌ NEVER: Modify without checking callers                                  ║
+║   ❌ NEVER: Use Read+Edit to rename — use rename_symbol instead      ║
+║   ❌ NEVER: Call edit_symbol without think first                     ║
 ║                                                                              ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 ```
@@ -74,6 +80,31 @@ as MCP tools. The same workflow applies:
 3. Call `callers` MCP tool (instead of `claudemem --agent callers`)
 
 CLI mode (`claudemem --agent`) remains fully supported as a fallback.
+
+---
+
+## LSP Navigation (v0.20.1+)
+
+For precise type information before editing:
+
+```bash
+# Get type signature and documentation (richer than symbol's docstring field)
+hover("AuthService")
+# Output: AuthService: class implements IAuthProvider — registered scope: "singleton"
+
+# Jump to LSP declaration (handles overloaded names correctly)
+define("processPayment")
+# Output: src/services/payment.ts:45 — exact declaration
+```
+
+**When to use LSP navigation vs. symbol lookup:**
+
+| Situation | Use | Why |
+|-----------|-----|-----|
+| Know the symbol name, need location | `symbol` | Fast, offline, AST-indexed |
+| Overloaded names (TypeScript, Java) | `define` | LSP resolves ambiguity |
+| Need current type (after recent edits) | `hover` | Live LSP, not stale index |
+| Need docstring only | `symbol` docstring field | Cheaper than `hover` |
 
 ---
 
@@ -233,13 +264,23 @@ claudemem --agent context APIController```
 **Task**: "Rename DatabaseConnection to DatabasePool"
 
 ```bash
-# Step 1: Find the symbol
+# Step 1: Confirm the exact symbol name
 claudemem --agent symbol DatabaseConnection
-# Step 2: Find ALL callers (these all need updating)
-claudemem --agent callers DatabaseConnection
-# Step 3: The output shows every file:line that references it
-# Update each location systematically
+# Output: file: src/db/connection.ts, line: 12-89, name: DatabaseConnection
+
+# Step 2: Dry-run rename to see full scope
+rename_symbol("DatabaseConnection", "DatabasePool", dryRun=true)
+# Output: 47 files, 82 occurrences (callers, imports, type annotations, test files)
+
+# Step 3: Apply the rename
+rename_symbol("DatabaseConnection", "DatabasePool")
+# Done — LSP updates all call sites, imports, type annotations automatically
 ```
+
+**Why `rename_symbol` instead of callers + manual edit:**
+- `callers` shows only direct call sites — misses type annotations and string literals
+- `rename_symbol` via LSP updates all 82 occurrences atomically
+- Manual edit of 47 files risks inconsistent state on partial completion
 
 ### Scenario 4: Understanding Unfamiliar Codebase
 

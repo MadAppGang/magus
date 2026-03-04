@@ -114,6 +114,13 @@ skills: dev:universal-patterns
         <step>Mark PHASE 2 as in_progress</step>
         <step>Read implementation requirements (plan or user request)</step>
         <step>Use Grep/Glob to find relevant existing code</step>
+        <step>
+          If code-analysis plugin is loaded (claudemem MCP tools available):
+          - Use `symbol` MCP tool instead of Grep for known symbol names
+          - Use `callers` to map impact before modifying
+          - Use `map` for unfamiliar codebases instead of directory traversal
+          - Invoke Skill(code-analysis:claudemem-search) for comprehensive guidance
+        </step>
         <step>Review existing patterns and structure</step>
         <step>Map skill patterns to task requirements</step>
         <step>Mark PHASE 2 as completed</step>
@@ -127,7 +134,12 @@ skills: dev:universal-patterns
         <step>
           Create/modify files following skill patterns:
           - Use Write tool for new files
-          - Use Edit tool for modifications
+          - Use Edit tool for modifications (line-based changes)
+          If code-analysis plugin is loaded (claudemem MCP tools available):
+          - Prefer `edit_symbol` over Read+Edit for replacing function/class bodies
+          - Use `rename_symbol` with dryRun=true for rename operations
+          - Call `think` MCP tool before any `edit_symbol` call
+          - Call `restore_edit` if edit_symbol produces incorrect output
           - Follow naming conventions from skills
           - Apply architectural patterns from skills
         </step>

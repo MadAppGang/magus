@@ -106,6 +106,31 @@ Test detection relies on file naming patterns:
 - Integration tests in non-standard locations may not be detected
 - Manual test files require naming convention updates
 
+### Phase 2b: LSP Reference Verification
+
+The `references` tool provides LSP-backed reference discovery — more complete than `callers` for test detection:
+
+```bash
+# Find all references including test files (LSP-backed)
+references("processPayment")
+# Output includes:
+# src/services/payment.test.ts:45 — test call
+# src/integration/checkout.test.ts:89 — integration test
+# src/services/payment.ts:12 — internal self-reference
+
+# Compare with AST callers (may miss some test patterns)
+claudemem --agent callers processPayment
+```
+
+**When `references` finds more than `callers`:**
+- Mock setup files (`vi.mock()`, `jest.mock()`) — AST may not index these as callers
+- Dynamic test generation using `describe.each()` patterns
+- TypeScript interface implementations counted as references
+
+**Test coverage reporting improvement**: Add "LSP References" alongside "AST Callers" in the output format to show complete coverage.
+
+**Note**: `references` count may exceed `callers` count — difference indicates dynamic or mock usage.
+
 ### Find Untested Code
 
 **Method 1: Automated (v0.4.0+ Required - Recommended)**

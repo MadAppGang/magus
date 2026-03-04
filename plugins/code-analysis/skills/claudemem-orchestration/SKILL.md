@@ -208,13 +208,13 @@ Phase 5: Cleanup
 
 ## Role-Based Command Mapping
 
-| Agent Role | Primary Commands | Secondary Commands | Focus |
-|------------|------------------|-------------------|-------|
-| Architect | `map`, `dead-code` | `context` | Structure, cleanup |
-| Developer | `callers`, `callees`, `impact` | `symbol` | Modification scope |
-| Tester | `test-gaps` | `callers` | Coverage priorities |
-| Debugger | `context`, `impact` | `symbol`, `callers` | Error tracing |
-| Ultrathink | ALL | ALL | Comprehensive |
+| Agent Role | Primary Commands | Secondary Commands | New Tools | Focus |
+|------------|------------------|--------------------|-----------|-------|
+| Architect | `map`, `dead-code` | `context`, `dependency-graph` | `memory_write` (persist arch findings) | Structure, cleanup, knowledge persistence |
+| Developer | `callers`, `callees`, `impact` | `symbol` | `edit_symbol`, `rename_symbol`, `think` | Modification scope, safe edits |
+| Tester | `test-gaps` | `callers` | `references` (find all usages including tests) | Coverage priorities |
+| Debugger | `context`, `impact` | `symbol`, `callers` | `define`, `references` (LSP-backed call sites) | Error tracing, type verification |
+| Ultrathink | ALL | ALL | ALL | Comprehensive |
 
 ## Sequential Investigation Flow
 

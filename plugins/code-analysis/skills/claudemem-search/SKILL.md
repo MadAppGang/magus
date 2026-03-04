@@ -48,9 +48,10 @@ v0.3.0 adds **AST tree navigation** with symbol graph analysis:
 In Claude Code with code-analysis plugin enabled, claudemem tools are available
 directly as MCP tools — no CLI invocation needed.
 
-### Available MCP Tools (18 total)
+### Available MCP Tools
 
-**Structured Tools (11):**
+**Navigation & Search (9 tools):**
+
 | Tool | Purpose |
 |------|---------|
 | `map` | Repository structure with PageRank ranking |
@@ -60,21 +61,64 @@ directly as MCP tools — no CLI invocation needed.
 | `context` | Full call chain (callers + callees + dependencies) |
 | `search` | Semantic vector search |
 | `search-with-context` | Search + repository context |
-| `references` | All references to a symbol |
+| `references` | All references to a symbol (LSP-backed) |
 | `definition` | Symbol definition with surrounding context |
-| `impact` | BFS transitive caller analysis |
-| `dependency-graph` | Transitive dependency visualization |
 
-**Legacy Tools (7):**
+**Edit & Refactor (4 tools) — prefer over Read+Edit for symbol modifications:**
+
 | Tool | Purpose |
 |------|---------|
-| `dead-code` | Find unused symbols |
-| `test-gaps` | Find high-importance untested code |
+| `edit_symbol` | Replace a symbol's body by name. IMPORTANT: Always call `think` first. |
+| `edit_lines` | Replace a line range. Use when symbol boundary is unclear. |
+| `restore_edit` | Undo the last edit. ALWAYS available as a safety net. |
+| `rename_symbol` | Rename across the entire codebase via LSP refactoring. Use `dryRun=true` first. |
+
+**LSP Navigation (2 tools):**
+
+| Tool | Purpose |
+|------|---------|
+| `define` | Jump to declaration via live LSP — more precise than `symbol` for overloaded names |
+| `hover` | Get type signature and documentation — richer than symbol's docstring field |
+
+**Memory (4 tools) — persist findings across sessions:**
+
+| Tool | Purpose |
+|------|---------|
+| `memory_write` | Write a named note. Key convention: `{project}/{topic}` |
+| `memory_read` | Read a previously written note by key |
+| `memory_list` | List all memory keys, optionally filtered |
+| `memory_delete` | Delete a memory entry (irreversible) |
+
+**Reasoning (1 tool):**
+
+| Tool | Purpose |
+|------|---------|
+| `think` | Structured reflection. Returns a self-check prompt. Call before any edit. |
+
+**Legacy Tools (9) — available but lower priority than Navigation & Search equivalents:**
+
+| Tool | Purpose |
+|------|---------|
+| `dead-code` | Find unreferenced symbols for cleanup |
+| `test-gaps` | High-importance symbols missing tests |
+| `impact` | BFS transitive caller analysis |
+| `dependency-graph` | Transitive dependency visualization |
 | `import-paths` | Analyze import patterns |
 | `test-impact` | Impact analysis for tests |
 | `trace-execution` | Execution flow analysis |
 | `dependency-analyzer` | Dependency tree analysis |
 | `ast-structure` | AST visualization |
+
+### ANTI-PATTERNS
+
+| Anti-Pattern | Why It's Wrong | Preferred Alternative |
+|--------------|---------------|----------------------|
+| Read whole file to find a function | Wastes tokens; index has exact locations | `symbol` → Read specific line range |
+| Grep for text to find call sites | Misses type-aliased calls, cross-file calls | `callers` (AST-backed) |
+| Manual search-and-replace for rename | Misses type annotations, generics, docs | `rename_symbol` with `dryRun=true` |
+| Read + Edit to modify function body | Line numbers go stale after edits | `edit_symbol` (symbol-name-based) |
+| `define` on every symbol | Expensive LSP call; index is usually sufficient | Use `define` only for overloaded names |
+| `memory_read` on all available keys | Unnecessary context; slows session start | Read only keys relevant to task name |
 
 ### Dual-Mode: MCP + CLI
 
@@ -287,6 +331,114 @@ When you need actual code snippets:
 claudemem --agent search "password hashing"
 # Search with repo map context (recommended for complex tasks)
 claudemem --agent search "password hashing" --map```
+
+---
+
+## Advanced Tool Workflows
+
+### Edit Tools Workflow
+
+Use `edit_symbol` to modify a function or class body without knowing the exact line numbers.
+
+**Decision tree:**
+```
+Need to modify code?
+├─ Modifying a whole function/class/method body? → edit_symbol
+├─ Modifying a few lines within a body (and you have line numbers)? → edit_lines
+├─ Result is wrong? → restore_edit (then try again)
+└─ Renaming across codebase? → rename_symbol with dryRun=true first
+```
+
+**Workflow: Edit a symbol**
+1. Call `symbol` to confirm the exact symbol name
+2. Call `think` — IMPORTANT: structured reflection before any edit
+3. Call `edit_symbol` with the symbol name and new body
+4. If result is incorrect: call `restore_edit` immediately, then revise approach
+
+**Anti-patterns:**
+- DO NOT use Read + Edit tool to replace function bodies — prefer `edit_symbol` (it's symbol-name-based, not line-number-based, and survives concurrent edits)
+- DO NOT call `edit_symbol` without calling `think` first — edits without reflection have higher failure rates
+- DO NOT use `edit_lines` when you know the symbol name — line numbers go stale after any edit
+
+**IMPORTANT: Line numbers go stale.** After any `edit_symbol` or `edit_lines` call, all previously-obtained line numbers are invalid. Re-query if needed.
+
+### LSP Navigation Workflow
+
+Use `define` and `hover` to get live, language-server-backed type information before editing.
+
+**`hover` vs `symbol` docstring field:**
+- `symbol` docstring: extracted from AST at index time — may be stale
+- `hover`: queried from live LSP — always current, includes inferred types
+
+**`define` vs `symbol`:**
+- `symbol`: AST-indexed lookup, fast, works offline
+- `define`: LSP textDocument/definition, handles overloaded names and generics correctly
+
+**Workflow: Understand a symbol before editing**
+1. Call `hover` on the symbol to get its current type signature
+2. Call `define` if the symbol is overloaded or if `symbol` returned multiple matches
+3. Proceed with edit using confirmed type information
+
+**When to prefer LSP Navigation:**
+- Overloaded function names in Java, C++, or TypeScript
+- Generic types where you need the concrete instantiation
+- After the index may be stale (check `index_status` first)
+
+### Rename Workflow
+
+`rename_symbol` uses LSP to rename a symbol consistently across the entire codebase.
+
+**ALWAYS run with `dryRun=true` first** to see the full scope of changes before committing.
+
+**Workflow:**
+1. Call `symbol` to confirm the exact canonical name
+2. Call `rename_symbol` with `dryRun=true` — review the change list
+3. If scope looks correct: call `rename_symbol` without `dryRun` to apply
+4. Verify with `symbol` on the new name
+
+**Example (Scenario 3: Refactoring from codebase-detective)**:
+```
+Task: Rename DatabaseConnection to DatabasePool
+
+Old approach (error-prone):
+  claudemem callers DatabaseConnection → manual grep → edit each file
+
+New approach (correct):
+  rename_symbol("DatabaseConnection", "DatabasePool", dryRun=true)
+  → Review: 47 files affected, 82 occurrences
+  rename_symbol("DatabaseConnection", "DatabasePool")
+  → Done. All callers, imports, type annotations updated.
+```
+
+**Anti-pattern:** DO NOT use `callers` + manual edit for rename operations. `rename_symbol` handles:
+- String literals that match the name (configurable)
+- Type annotations and generics
+- Import statements
+- Test files
+
+### Memory Workflow
+
+Use memory tools to persist investigation findings across sessions.
+
+**Key naming convention**: `{project}/{topic}` format
+- Example: `auth/architecture` — authentication module architecture notes
+- Example: `payment/known-issues` — known bugs in payment flow
+- Example: `global/code-style` — project-wide coding conventions
+
+**Workflow: Write findings**
+1. After completing an investigation, call `memory_write` with a descriptive key
+2. Content: bullet-point summary (not full code — keep it < 500 chars)
+3. Start new sessions with `memory_list` to see what's already known
+
+**Workflow: Read findings**
+1. Call `memory_list` at session start to see available notes
+2. Call `memory_read` only when the key is relevant to current task
+3. DO NOT read all memories — only read those relevant by key name
+
+**Anti-patterns:**
+- DO NOT write large code blocks to memory — write summaries and file:line references instead
+- DO NOT call `memory_read` for every available key — infer relevance from the key name
+- DO NOT `memory_delete` without user confirmation — deletion is irreversible
 
 ---
 
@@ -1627,5 +1779,5 @@ Before completing a claudemem workflow, ensure:
 ---
 
 **Maintained by:** Jack Rudenko @ MadAppGang
-**Plugin:** code-analysis v2.8.0
-**Last Updated:** March 2026 (v4.0.0 - MCP-based integration, 18 tools)
+**Plugin:** code-analysis v4.0.2
+**Last Updated:** March 2026 (v4.0.2 - MCP-based integration, grouped tool architecture)

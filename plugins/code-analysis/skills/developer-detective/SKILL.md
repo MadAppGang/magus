@@ -71,6 +71,28 @@ claudemem --agent callers processPayment
 # This shows EVERY place that uses this code
 ```
 
+### Phase 2b: LSP Enrichment (Before Modifying)
+
+After locating a symbol, enrich with live type information before editing:
+
+```bash
+# Get current type signature (richer than cached docstring)
+hover("processPayment")
+# Use: verify argument types match your planned edit
+
+# If symbol name is overloaded or ambiguous:
+define("processPayment")
+# Use: get exact declaration, especially in TypeScript generics
+```
+
+**When to skip**: Investigation-only tasks (no edits planned) — LSP calls are expensive.
+
+**Safe-edit checkpoint (IMPORTANT):**
+```
+Before editing: symbol → hover → think → edit_symbol
+NOT: Grep → Read → Edit
+```
+
 ### Impact Analysis (v0.4.0+ Required)
 
 ```bash
@@ -238,6 +260,7 @@ claudemem --agent callers PaymentService
 │  Symbol: processPayment                                  │
 │  Location: src/services/payment.ts:45-89                │
 │  Kind: function                                          │
+│  Type: (from hover — current type signature)             │
 │  PageRank: 0.034                                         │
 │  Search Method: claudemem v0.3.0 (AST analysis)         │
 └─────────────────────────────────────────────────────────┘

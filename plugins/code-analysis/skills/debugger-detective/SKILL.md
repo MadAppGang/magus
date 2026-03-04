@@ -55,6 +55,26 @@ claudemem --agent symbol authenticate
 # Get full context (callers + callees)
 claudemem --agent context authenticate```
 
+### Phase 2b: LSP Type Verification
+
+During debugging, use LSP to verify types at the error boundary:
+
+```bash
+# Verify the type of the buggy function's return value
+hover("authenticate")
+# Use: check if return type matches what callers expect (common bug source)
+
+# If multiple overloads exist:
+define("authenticate")
+# Use: identify exactly which overload is being called
+
+# Find all references to the failing symbol (LSP-backed, more complete than callers)
+references("authenticate")
+# Use: find call sites that may not appear in AST callers (dynamic dispatch)
+```
+
+**Key debugging insight**: Type mismatches between what `hover` shows (actual type) and what callers expect (from `callers` output) are a leading cause of runtime errors.
+
 ### Trace Back to Source (callers)
 
 ```bash
@@ -230,6 +250,8 @@ claudemem --agent callers buggyFunction
 │  Symptom: User sees "undefined" in profile name          │
 │  Location: src/components/Profile.tsx:45                │
 │  Error Type: Data inconsistency / Null reference         │
+│  Actual Type: (from hover)                               │
+│  Expected Type: (from calling context)                   │
 │  Search Method: claudemem v0.3.0 (AST call chain)       │
 └─────────────────────────────────────────────────────────┘
 ```

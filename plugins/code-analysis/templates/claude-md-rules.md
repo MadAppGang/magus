@@ -5,12 +5,11 @@
 
 ### Available MCP Tools
 
-The code-analysis plugin provides claudemem as an MCP server with 18 tools
-for semantic code search, symbol navigation, and architecture analysis.
+The code-analysis plugin provides claudemem as an MCP server with tools
+organized into functional groups. Use `ToolSearch` with query `"claudemem"`
+to discover and load available tools.
 
-Use `ToolSearch` with query `"claudemem"` to discover and load available tools.
-
-**Structured Tools (11):**
+**Navigation & Search (9 tools):**
 
 | Tool | Purpose |
 |------|---------|
@@ -20,9 +19,45 @@ Use `ToolSearch` with query `"claudemem"` to discover and load available tools.
 | `callees` | What does this symbol depend on? (call graph down) |
 | `context` | Enclosing symbol, imports, and related symbols |
 | `map` | Repository structure with PageRank-ranked symbols |
-| `dead_code` | Find unreferenced symbols for cleanup |
-| `test_gaps` | High-importance symbols missing tests |
-| `impact` | Blast radius of changing a symbol |
+| `references` | All references to a symbol (LSP-backed) |
+| `definition` | Symbol definition with surrounding context |
+| `search-with-context` | Semantic search plus repository context |
+
+**Edit & Refactor (4 tools):**
+
+| Tool | Purpose |
+|------|---------|
+| `edit_symbol` | Replace a symbol's body by name — prefer over Read+Edit |
+| `edit_lines` | Replace a line range within a file |
+| `restore_edit` | Undo the last edit_symbol or edit_lines operation |
+| `rename_symbol` | Rename a symbol across the entire codebase (LSP refactoring) |
+
+**LSP Navigation (2 tools):**
+
+| Tool | Purpose |
+|------|---------|
+| `define` | Jump to declaration via live LSP (textDocument/definition) |
+| `hover` | Get type information and documentation for a symbol |
+
+**Memory (4 tools):**
+
+| Tool | Purpose |
+|------|---------|
+| `memory_write` | Persist a named note across sessions |
+| `memory_read` | Retrieve a previously written note |
+| `memory_list` | List all available memory keys |
+| `memory_delete` | Remove a memory entry |
+
+**Reasoning (1 tool):**
+
+| Tool | Purpose |
+|------|---------|
+| `think` | Structured reflection checkpoint — use before editing |
+
+**Index Management (2 tools):**
+
+| Tool | Purpose |
+|------|---------|
 | `index_status` | Index health and server status |
 | `reindex` | Trigger background or blocking reindex |
 
