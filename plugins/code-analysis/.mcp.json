@@ -2,7 +2,9 @@
   "claudemem": {
     "command": "claudemem",
     "args": ["--mcp"],
-    "env": {}
+    "env": {
+      "CLAUDEMEM_LSP": "true"
+    }
   },
   "claudish": {
     "command": "claudish",
