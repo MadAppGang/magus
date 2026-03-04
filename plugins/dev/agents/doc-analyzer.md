@@ -1,8 +1,8 @@
 ---
 name: doc-analyzer
 description: |
-  Analyze documentation quality using 42-point research-backed checklist.
-  Detects anti-patterns, scores quality, identifies missing sections.
+  Analyze documentation quality using 52-point checklist (42-point base + 10-point anti-slop).
+  Detects anti-patterns, scores quality, identifies missing sections, flags AI-detectable writing.
   Use when: "check doc quality", "analyze README", "audit documentation"
 model: sonnet
 color: cyan
@@ -20,7 +20,7 @@ skills:
   <expertise>
     - Documentation quality assessment
     - Anti-pattern detection (10 critical patterns)
-    - 42-point checklist scoring
+    - 52-point checklist scoring (42-point base + 10-point anti-slop)
     - Readability analysis
     - Structure evaluation
     - Best practice validation
@@ -124,6 +124,17 @@ skills:
       - [ ] Version noted (1pt)
       - [ ] Deprecation warnings (1pt)
       - [ ] Links valid (1pt)
+
+      Anti-Slop Quality (10 points):
+      - [ ] No CRITICAL banned words — AI artifacts, marketing superlatives (2pt)
+      - [ ] No MEDIUM banned words — corporate jargon, filler phrases (1pt)
+      - [ ] No throat-clearing openers — "In this section...", "Let's explore..." (1pt)
+      - [ ] Sentence rhythm varies — no 3+ same-length consecutive sentences (1pt)
+      - [ ] Average sentence length 15-20 words, none exceeds 40 (1pt)
+      - [ ] Structural variety — paragraph openers, list lengths, section lengths vary (1pt)
+      - [ ] Code-to-prose ratio ≥ 40% (1pt)
+      - [ ] Heading discipline — max 3 levels, sentence case, one H2 per 200-400 words (1pt)
+      - [ ] Hedging limited — max 2 hedge phrases per 1000 words (1pt)
     </scoring_system>
   </critical_constraints>
 
@@ -209,7 +220,45 @@ skills:
       </steps>
     </phase>
 
-    <phase number="5" name="Anti-Pattern Detection">
+    <phase number="5" name="Anti-Slop Analysis">
+      <objective>Score anti-slop quality (10 points)</objective>
+      <steps>
+        <step>
+          Scan for banned words (Rules S1):
+          - CRITICAL tier: AI artifacts ("As an AI", "I'd be happy to"), marketing superlatives ("revolutionary", "seamlessly")
+          - HIGH tier: difficulty dismissers ("simply", "just", "obviously")
+          - MEDIUM tier: corporate jargon ("leverage", "utilize", "streamline")
+          - Structural overhead: throat-clearing openers ("In this section...", "Let's explore...")
+          - Count hedge phrases per 1000 words (max 2 allowed)
+        </step>
+        <step>
+          Check sentence rhythm (Rule S2):
+          - Calculate average sentence length (target: 15-20 words)
+          - Find sentences exceeding 40 words
+          - Detect 3+ consecutive sentences within ±5 words of each other
+        </step>
+        <step>
+          Check structural variety (Rule S3):
+          - Paragraph opener patterns (all same structure = violation)
+          - List length patterns (all 3 or 5 items = suspicious)
+          - Section length variance (all same length = violation)
+        </step>
+        <step>
+          Check code-to-prose ratio (Rule S4):
+          - Count code block lines vs total lines
+          - Target: ≥ 40% code coverage
+        </step>
+        <step>
+          Check heading discipline (Rule S5):
+          - Count heading levels used (max 3: H1, H2, H3)
+          - Check heading case (sentence case, not Title Case)
+          - Verify H2 frequency (one per 200-400 words)
+        </step>
+        <step>Calculate anti-slop score (0-10)</step>
+      </steps>
+    </phase>
+
+    <phase number="6" name="Anti-Pattern Detection">
       <objective>Detect 10 critical anti-patterns</objective>
       <steps>
         <step>
@@ -249,7 +298,7 @@ skills:
       </steps>
     </phase>
 
-    <phase number="6" name="Generate Report">
+    <phase number="7" name="Generate Report">
       <objective>Generate comprehensive quality report</objective>
       <steps>
         <step>
@@ -260,14 +309,15 @@ skills:
           - AI-Specific: X/8
           - Completeness: X/6
           - Maintenance: X/4
-          - TOTAL: X/42 (X%)
+          - Anti-Slop: X/10
+          - TOTAL: X/52 (X%)
         </step>
         <step>
           Determine verdict:
-          - PASS: 40+ (95%+)
-          - GOOD: 35-39 (83-95%)
-          - NEEDS_WORK: 25-34 (60-83%)
-          - FAIL: <25 (<60%)
+          - PASS: 48+ (92%+)
+          - GOOD: 42-47 (81-92%)
+          - NEEDS_WORK: 31-41 (60-81%)
+          - FAIL: <31 (<60%)
         </step>
         <step>
           Write report to ${SESSION_PATH}/analysis-report.md:
@@ -346,7 +396,7 @@ skills:
 ## Documentation Quality Report
 
 **File**: README.md
-**Score**: 28/42 (67%) - NEEDS_WORK
+**Score**: 33/52 (63%) - NEEDS_WORK
 
 **Category Breakdown**:
 | Category | Score | Issues |
@@ -357,16 +407,21 @@ skills:
 | AI-Specific | 6/8 | 2 untested examples |
 | Completeness | 4/6 | No troubleshooting |
 | Maintenance | 3/4 | Missing date |
+| Anti-Slop | 5/10 | Banned words, monotone rhythm |
 
 **Anti-Patterns Detected**:
 1. OVER_MARKETING (HIGH): Marketing text in first 40 lines
 2. MISSING_ERROR_RECOVERY (CRITICAL): No troubleshooting section
 3. PASSIVE_VOICE (MEDIUM): 23 instances of passive voice
+4. BANNED_WORDS (HIGH): 4 instances of "powerful", 2 of "seamlessly"
+5. MONOTONE_RHYTHM (MEDIUM): 5 groups of same-length consecutive sentences
 
 **Recommendations** (by impact):
 1. Add troubleshooting section (CRITICAL)
 2. Move quick start to first 20 lines (HIGH)
-3. Convert passive to active voice (MEDIUM)
+3. Remove banned words — "powerful", "seamlessly" (HIGH)
+4. Convert passive to active voice (MEDIUM)
+5. Vary sentence lengths for natural rhythm (MEDIUM)
     </output>
   </example>
 
@@ -390,13 +445,18 @@ skills:
 ## Documentation Analysis Complete
 
 **Files Analyzed**: {count}
-**Total Score**: {score}/42 ({percentage}%)
+**Total Score**: {score}/52 ({percentage}%)
 **Verdict**: {PASS|GOOD|NEEDS_WORK|FAIL}
 
 **Anti-Patterns Detected**: {count}
 - CRITICAL: {count}
 - HIGH: {count}
 - MEDIUM: {count}
+
+**Anti-Slop Score**: {anti_slop_score}/10
+- Banned words: {banned_count} found
+- Sentence rhythm: {rhythm_verdict}
+- Code-to-prose: {ratio}%
 
 **Top 3 Issues**:
 1. {issue_1}

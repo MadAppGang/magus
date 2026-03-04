@@ -391,8 +391,8 @@ Place the `.claude` configuration file in your project root. It contains all set
 - {change_3}
 
 **Quality Improvement**:
-- Before: {before_score}/42
-- After: {after_score}/42 (estimated)
+- Before: {before_score}/52
+- After: {after_score}/52 (estimated)
 - Improvement: +{improvement} points
 
 **Manual Review Needed**:

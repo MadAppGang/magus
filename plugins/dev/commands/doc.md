@@ -94,7 +94,7 @@ skills: dev:documentation-standards, multimodel:quality-gates
 
     **ANALYZE** (triggers: "analyze", "check", "score", "review", "audit"):
     - Analyze existing documentation quality
-    - Score against 42-point checklist
+    - Score against 52-point checklist
     - Detect anti-patterns
 
     **FIX** (triggers: "fix", "improve", "update", "refactor"):
@@ -204,7 +204,7 @@ skills: dev:documentation-standards, multimodel:quality-gates
                    Read context: ${SESSION_PATH}/context.json
                    Analyze documentation: {target_files}
 
-                   Score against 42-point checklist.
+                   Score against 52-point checklist.
                    Detect anti-patterns.
                    Cross-reference with source code to verify accuracy.
                    Generate quality report.
@@ -271,7 +271,7 @@ skills: dev:documentation-standards, multimodel:quality-gates
           - Verify best practices applied
         </step>
         <step>
-          If score < 35/42, launch doc-fixer to improve:
+          If score < 42/52, launch doc-fixer to improve:
           - Fix critical issues
           - Re-validate
         </step>
@@ -317,7 +317,7 @@ skills: dev:documentation-standards, multimodel:quality-gates
       1. Detect action: GENERATE, type: README
       2. Gather context: package.json, src/, existing docs
       3. Launch doc-writer with README template
-      4. Validate generated README (score 40/42)
+      4. Validate generated README (score 48/52)
       5. Report: README.md created at project root
     </execution>
   </example>
@@ -327,8 +327,8 @@ skills: dev:documentation-standards, multimodel:quality-gates
     <execution>
       1. Detect action: ANALYZE
       2. Find all .md files in docs/
-      3. Launch doc-analyzer with 42-point checklist
-      4. Report quality score: 28/42
+      3. Launch doc-analyzer with 52-point checklist
+      4. Report quality score: 34/52
          - Anti-patterns: 3 (stale docs, missing troubleshooting, passive voice)
          - Recommendations: Fix passive voice, add troubleshooting section
     </execution>
@@ -338,12 +338,12 @@ skills: dev:documentation-standards, multimodel:quality-gates
     <user_request>/dev:doc fix README.md</user_request>
     <execution>
       1. Detect action: FIX
-      2. Analyze README.md first (score: 25/42)
+      2. Analyze README.md first (score: 30/52)
       3. Ask user: "Found 8 issues. Proceed with fixes? (yes/no)"
       4. User confirms: yes
       5. Launch doc-fixer with analysis
       6. Apply fixes: passive -> active voice, add quick start
-      7. Re-validate: score improved to 38/42
+      7. Re-validate: score improved to 46/52
       8. Report: 5 issues fixed, 2 remaining (need manual attention)
     </execution>
   </example>
@@ -355,7 +355,7 @@ skills: dev:documentation-standards, multimodel:quality-gates
       2. Find all documentation files
       3. Launch doc-analyzer in validation mode
       4. Check examples, links, best practices
-      5. Report: PASS with 40/42 score
+      5. Report: PASS with 48/52 score
          - 2 broken links found
          - Recommendations: Update dead links
     </execution>
@@ -373,13 +373,14 @@ skills: dev:documentation-standards, multimodel:quality-gates
 **Results**:
 - {result_summary}
 
-**Quality Score**: {score}/42 ({percentage}%)
+**Quality Score**: {score}/52 ({percentage}%)
 - Content Quality: {content_score}/8
 - Structure Quality: {structure_score}/8
 - Writing Style: {style_score}/8
 - AI-Specific: {ai_score}/8
 - Completeness: {completeness_score}/6
 - Maintenance: {maintenance_score}/4
+- Anti-Slop: {anti_slop_score}/10
 
 **Files Created/Modified**:
 - {file_list}

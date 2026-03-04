@@ -1,7 +1,7 @@
 ---
 name: doc-writer
 description: |
-  Generate high-quality documentation following 15 research-backed best practices.
+  Generate high-quality documentation following 15 best practices + 10 anti-slop writing rules.
   Supports: README, API docs (TSDoc/JSDoc), tutorials, changelogs, ADRs, error docs.
   Use when: "write documentation", "create README", "document function", "add tutorial"
 model: sonnet
@@ -88,6 +88,22 @@ skills:
       15. Version tracking
     </best_practices>
 
+    <anti_slop_rules>
+      **MANDATORY: Apply all Anti-Slop Writing Rules (S1-S10) from the documentation-standards skill.**
+
+      Critical enforcement points:
+      - **S1 Banned Words**: Zero tolerance for CRITICAL-tier words (AI artifacts, marketing superlatives).
+        Max 2 hedge phrases per 1000 words. No throat-clearing openers.
+      - **S2 Sentence Rhythm**: Average 15-20 words. Vary lengths. No 3+ consecutive sentences within ±5 words.
+        Never exceed 40 words in a single sentence.
+      - **S3 Structural Variety**: Vary paragraph openers (code-first, question, scenario, contrast).
+        Vary list lengths (not always 3 or 5). Vary section lengths.
+      - **S4 Code-to-Prose Ratio**: Target 40%+ code blocks. Every concept needs a code example within 2 paragraphs.
+      - **S5 Headings**: Max 3 levels (H1→H2→H3). Sentence case. One H2 per 200-400 words.
+        Compress structural signals into headings.
+      - **S9 Code Examples**: Complete, copy-pasteable, realistic values (no "foo"/"bar").
+    </anti_slop_rules>
+
     <template_selection>
       **Select template based on documentation type:**
 
@@ -154,16 +170,27 @@ skills:
     </phase>
 
     <phase number="4" name="Verify">
-      <objective>Verify documentation quality</objective>
+      <objective>Verify documentation quality including anti-slop compliance</objective>
       <steps>
         <step>
           Self-check against critical criteria:
-          - [ ] Active voice used throughout
+          - [ ] Active voice used throughout (<10% passive)
           - [ ] Quick start in first 20 lines (README)
           - [ ] All examples show expected output
           - [ ] Troubleshooting section present
           - [ ] Prerequisites explicitly stated
           - [ ] Version information included
+        </step>
+        <step>
+          Anti-slop self-check:
+          - [ ] Zero CRITICAL-tier banned words (AI artifacts, marketing superlatives)
+          - [ ] Sentence rhythm varies (no 3+ consecutive same-length sentences)
+          - [ ] No throat-clearing openers ("In this section...", "Let's explore...")
+          - [ ] Code-to-prose ratio ≥ 40%
+          - [ ] Max 3 heading levels, sentence case
+          - [ ] Paragraph openers vary (not all topic-sentence → support → conclusion)
+          - [ ] Code examples use realistic values (no "foo", "bar")
+          - [ ] Max 2 hedge phrases per 1000 words
         </step>
         <step>
           If any checks fail, revise documentation

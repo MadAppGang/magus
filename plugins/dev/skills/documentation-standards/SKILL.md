@@ -300,6 +300,145 @@ Before starting, ensure you have:
 
 ---
 
+## Anti-Slop Writing Rules
+
+These rules eliminate AI-detectable writing patterns and enforce professional technical writing standards.
+Every doc-writer and doc-fixer agent MUST apply these rules. The doc-analyzer agent MUST check for violations.
+
+### Rule S1: Banned Words and Phrases
+
+NEVER use these words or phrases. Each tier has escalating severity.
+
+**CRITICAL — instant disqualifier (AI generation artifacts):**
+- "As an AI", "As a language model", "I'd be happy to", "Certainly!", "Absolutely!", "Great question!", "I hope this helps", "Feel free to ask", "Let me explain", "Allow me to clarify"
+- "In today's [anything] world", "In an increasingly [adj]", "In the realm of", "At the heart of", "The weight of [X]"
+
+**HIGH — marketing superlatives and difficulty dismissers:**
+- amazing, revolutionary, powerful, robust, seamlessly, effortlessly, incredible, world-class, cutting-edge, state-of-the-art, next-generation, innovative, game-changing, industry-leading, best-in-class
+- simply, easy, just, obviously, of course, clearly, trivially, straightforward, quick
+
+**MEDIUM — corporate jargon and filler:**
+- leverage, utilize, streamline, facilitate, empower, unlock, accelerate, transform, drive (metaphorical), deliver value, synergy/synergize, actioning, comprehensive (unless you enumerate what it covers)
+- "it is worth noting that", "it is important to note", "please note that", "as mentioned above", "as stated earlier", "due to the fact that" (use "because"), "in the event that" (use "if"), "in order to" (use "to"), "might potentially", "could potentially", "may or may not"
+
+**STRUCTURAL OVERHEAD — throat-clearing and meta-commentary:**
+- "In this section, we will discuss...", "This document covers...", "Now that we have...", "As you can see...", "This section explains...", "Let's explore...", "Let's take a look at...", "Let's dive into..."
+- Never begin a section with a sentence that describes the section. Start with the first piece of actual content.
+
+**HEDGING CASCADES — qualify-then-qualify patterns:**
+- "It's important to note that... depending on your specific use case"
+- "While this may vary... it generally tends to..."
+- "...depending on your particular requirements/needs/situation"
+- Maximum 2 hedge phrases per 1000 words. Technical docs should be authoritative.
+
+---
+
+### Rule S2: Sentence Length and Rhythm
+
+Vary sentence lengths for natural rhythm. Monotonous sentence length signals AI generation.
+
+**Targets:**
+- Average sentence length: 15-20 words
+- Short sentences (≤10 words) for key points and transitions
+- Medium sentences (11-25 words) for explanations
+- Long sentences (26-40 words) allowed for complex technical explanations, maximum 1 per paragraph
+- NEVER exceed 40 words in a single sentence
+
+**Anti-monotony rule**: No more than 3 consecutive sentences within ±5 words of each other.
+
+**Transitions**: Words like "however", "therefore", "for example" help readers connect ideas. Use them — but don't open more than 40% of paragraphs with an explicit transition word.
+
+---
+
+### Rule S3: Structural Variety (Anti-AI-Pattern)
+
+AI-generated text has detectable patterns. Avoid these:
+
+**Paragraph variety**: Don't lock every paragraph into topic-sentence → supports → conclusion. Start some paragraphs with:
+- A code example that you then explain
+- A question that you then answer
+- A concrete scenario or use case
+- A contrast ("Unlike X, this approach...")
+
+**List variety**: Don't make every list exactly 3 or 5 items. Use 2, 4, 6, or 7 items when the content calls for it. Never pad a list with filler items to reach a round number.
+
+**Section length variety**: Vary section lengths. Some sections need 50 words, others need 300. Don't make every section approximately the same length.
+
+---
+
+### Rule S4: Code-to-Prose Ratio
+
+Target 40%+ code coverage (code blocks as a percentage of total content). Developer documentation should show, not tell. Every concept explanation should have an accompanying code example within 2 paragraphs.
+
+---
+
+### Rule S5: Enhanced Heading Rules
+
+Following Stripe/Twilio/Vercel patterns:
+- Maximum 3 heading levels per page (H1 → H2 → H3). Never use H4.
+- One H2 per 200-400 words of body text.
+- Use sentence case for headings, not Title Case.
+- Compress structural signals into headings, not opening sentences:
+  - BAD: `## Prerequisites` followed by "Before starting, ensure you have the following installed:"
+  - GOOD: `## Prerequisites: Node.js 18+, plugin SDK`
+
+---
+
+### Rule S6: Enhanced Progressive Disclosure
+
+Lead with essentials. Layer details in 5 tiers:
+1. One-paragraph overview (what + why)
+2. Quick-start example (5-minute version)
+3. Detailed walkthrough
+4. Reference tables
+5. Edge cases and advanced usage
+
+Use collapsible sections (`<details>`) for advanced content that most readers skip.
+
+**Escape hatches**: At each tier, provide a link forward for users who already know the basics ("Already familiar? Skip to the API reference →").
+
+---
+
+### Rule S7: Conciseness
+
+Every sentence must add new information. Delete:
+- Introductory throat-clearing ("In this section, we will discuss...")
+- Repetition of the same point in different words
+- Filler paragraphs that summarize what's coming next
+- Conclusions that repeat what was already said
+
+---
+
+### Rule S8: Diagram Requirements
+
+Include at least one Mermaid diagram for architecture or flow documentation.
+Diagrams must:
+- Use correct Mermaid syntax
+- Match the text they accompany
+- Add information that prose alone cannot convey (flow, timing, relationships)
+- Have descriptive labels (not "Step 1", "Step 2")
+
+---
+
+### Rule S9: Enhanced Code Examples
+
+Every code example must:
+- Be complete enough to copy-paste and use
+- Show expected output or behavior in a comment
+- Use realistic values (not "foo", "bar", "example")
+
+---
+
+### Rule S10: Active Voice Exceptions
+
+Target: <10% passive voice sentences. Use imperative mood for instructions.
+
+**Exception**: Use passive voice when the actor is irrelevant or unknown:
+- OK: "The configuration file is parsed at startup" (who parses it doesn't matter)
+- OK: "Skills are cached after first load" (the caching mechanism is an implementation detail)
+
+---
+
 ## 7 Ready-to-Use Templates
 
 ### Template 1: README Quick Start
@@ -877,9 +1016,9 @@ API_TOKEN="abc123"
 
 ---
 
-## 42-Point Anti-Pattern Checklist
+## 52-Point Quality Checklist
 
-Use this checklist to validate documentation quality.
+Use this checklist to validate documentation quality (42-point base + 10-point anti-slop).
 
 ### Content Quality (8 points)
 
@@ -941,16 +1080,28 @@ Use this checklist to validate documentation quality.
 - [ ] **Deprecation Warnings**: Old approaches marked
 - [ ] **Links Valid**: All links work
 
+### Anti-Slop Quality (10 points)
+
+- [ ] **No CRITICAL Banned Words**: Zero AI artifacts or marketing superlatives (2pt)
+- [ ] **No MEDIUM Banned Words**: No corporate jargon or filler phrases (1pt)
+- [ ] **No Throat-Clearing**: No section openers like "In this section..." (1pt)
+- [ ] **Sentence Rhythm Varies**: No 3+ same-length consecutive sentences (1pt)
+- [ ] **Sentence Length**: Average 15-20 words, none exceeds 40 (1pt)
+- [ ] **Structural Variety**: Paragraph openers, list lengths, section lengths vary (1pt)
+- [ ] **Code-to-Prose Ratio**: ≥ 40% code blocks (1pt)
+- [ ] **Heading Discipline**: Max 3 levels, sentence case, one H2 per 200-400 words (1pt)
+- [ ] **Hedging Limited**: Max 2 hedge phrases per 1000 words (1pt)
+
 ---
 
 ## Quality Gate Thresholds
 
 | Score | Verdict | Action |
 |-------|---------|--------|
-| 40-42 | PASS | Ready to publish |
-| 35-39 | GOOD | Minor improvements optional |
-| 25-34 | NEEDS_WORK | Fix HIGH issues before publish |
-| <25 | FAIL | Major revision required |
+| 48-52 | PASS | Ready to publish |
+| 42-47 | GOOD | Minor improvements optional |
+| 31-41 | NEEDS_WORK | Fix HIGH issues before publish |
+| <31 | FAIL | Major revision required |
 
 ---
 
