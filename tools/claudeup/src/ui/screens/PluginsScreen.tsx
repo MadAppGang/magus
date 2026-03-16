@@ -11,22 +11,19 @@ import {
 	getAvailablePlugins,
 	refreshAllMarketplaces,
 	clearMarketplaceCache,
-	saveInstalledPluginVersion,
-	removeInstalledPluginVersion,
 	getLocalMarketplacesInfo,
 	type PluginInfo,
 } from "../../services/plugin-manager.js";
 import {
-	enablePlugin,
-	enableGlobalPlugin,
-	enableLocalPlugin,
-	saveGlobalInstalledPluginVersion,
-	removeGlobalInstalledPluginVersion,
-	saveLocalInstalledPluginVersion,
-	removeLocalInstalledPluginVersion,
 	setMcpEnvVar,
 	getMcpEnvVars,
 } from "../../services/claude-settings.js";
+import {
+	installPlugin as cliInstallPlugin,
+	uninstallPlugin as cliUninstallPlugin,
+	updatePlugin as cliUpdatePlugin,
+	type PluginScope,
+} from "../../services/claude-cli.js";
 import {
 	getPluginEnvRequirements,
 	getPluginSourcePath,
@@ -342,10 +339,10 @@ export function PluginsScreen() {
 		await modal.message(
 			"Add Marketplace",
 			"To add a marketplace, run this command in your terminal:\n\n" +
-				"  claude marketplace add owner/repo\n\n" +
+				"  claude plugin marketplace add owner/repo\n\n" +
 				"Examples:\n" +
-				"  claude marketplace add MadAppGang/magus\n" +
-				"  claude marketplace add anthropics/claude-plugins-official\n\n" +
+				"  claude plugin marketplace add MadAppGang/magus\n" +
+				"  claude plugin marketplace add anthropics/claude-plugins-official\n\n" +
 				"Auto-update is enabled by default for new marketplaces.\n\n" +
 				"After adding, refresh claudeup with 'r' to see the new marketplace.",
 			"info",
@@ -500,7 +497,7 @@ export function PluginsScreen() {
 				await modal.message(
 					`Add ${mp.displayName}?`,
 					`To add this marketplace, run in your terminal:\n\n` +
-						`  claude marketplace add ${mp.source.repo || mp.name}\n\n` +
+						`  claude plugin marketplace add ${mp.source.repo || mp.name}\n\n` +
 						`Auto-update is enabled by default.\n\n` +
 						`After adding, refresh claudeup with 'r' to see it.`,
 					"info",
@@ -596,47 +593,17 @@ export function PluginsScreen() {
 			modal.loading(`${actionLabel}...`);
 
 			try {
+				const scope = scopeValue as PluginScope;
 				if (action === "uninstall") {
-					// Uninstall from this scope
-					if (scopeValue === "user") {
-						await enableGlobalPlugin(plugin.id, false);
-						await removeGlobalInstalledPluginVersion(plugin.id);
-					} else if (scopeValue === "project") {
-						await enablePlugin(plugin.id, false, state.projectPath);
-						await removeInstalledPluginVersion(plugin.id, state.projectPath);
-					} else {
-						await enableLocalPlugin(plugin.id, false, state.projectPath);
-						await removeLocalInstalledPluginVersion(
-							plugin.id,
-							state.projectPath,
-						);
-					}
+					await cliUninstallPlugin(plugin.id, scope);
+				} else if (action === "update") {
+					await cliUpdatePlugin(plugin.id, scope);
 				} else {
-					// Install or update (both save the latest version)
-					if (scopeValue === "user") {
-						await enableGlobalPlugin(plugin.id, true);
-						await saveGlobalInstalledPluginVersion(plugin.id, latestVersion);
-					} else if (scopeValue === "project") {
-						await enablePlugin(plugin.id, true, state.projectPath);
-						await saveInstalledPluginVersion(
-							plugin.id,
-							latestVersion,
-							state.projectPath,
-						);
-					} else {
-						await enableLocalPlugin(plugin.id, true, state.projectPath);
-						await saveLocalInstalledPluginVersion(
-							plugin.id,
-							latestVersion,
-							state.projectPath,
-						);
-					}
+					await cliInstallPlugin(plugin.id, scope);
 
 					// On fresh install, prompt for MCP server env vars if needed
-					if (action === "install") {
-						modal.hideModal();
-						await collectPluginEnvVars(plugin.name, plugin.marketplace);
-					}
+					modal.hideModal();
+					await collectPluginEnvVars(plugin.name, plugin.marketplace);
 				}
 				if (action !== "install") {
 					modal.hideModal();
@@ -654,20 +621,11 @@ export function PluginsScreen() {
 		if (!item || item.type !== "plugin" || !item.plugin?.hasUpdate) return;
 
 		const plugin = item.plugin;
-		const isGlobal = pluginsState.scope === "global";
+		const scope: PluginScope = pluginsState.scope === "global" ? "user" : "project";
 
 		modal.loading(`Updating ${plugin.name}...`);
 		try {
-			const versionToSave = plugin.version || "0.0.0";
-			if (isGlobal) {
-				await saveGlobalInstalledPluginVersion(plugin.id, versionToSave);
-			} else {
-				await saveInstalledPluginVersion(
-					plugin.id,
-					versionToSave,
-					state.projectPath,
-				);
-			}
+			await cliUpdatePlugin(plugin.id, scope);
 			modal.hideModal();
 			fetchData();
 		} catch (error) {
@@ -682,21 +640,12 @@ export function PluginsScreen() {
 		const updatable = pluginsState.plugins.data.filter((p) => p.hasUpdate);
 		if (updatable.length === 0) return;
 
-		const isGlobal = pluginsState.scope === "global";
+		const scope: PluginScope = pluginsState.scope === "global" ? "user" : "project";
 		modal.loading(`Updating ${updatable.length} plugin(s)...`);
 
 		try {
 			for (const plugin of updatable) {
-				const versionToSave = plugin.version || "0.0.0";
-				if (isGlobal) {
-					await saveGlobalInstalledPluginVersion(plugin.id, versionToSave);
-				} else {
-					await saveInstalledPluginVersion(
-						plugin.id,
-						versionToSave,
-						state.projectPath,
-					);
-				}
+				await cliUpdatePlugin(plugin.id, scope);
 			}
 			modal.hideModal();
 			fetchData();
@@ -753,43 +702,15 @@ export function PluginsScreen() {
 
 		try {
 			if (action === "uninstall") {
-				// Uninstall from this scope
-				if (scope === "user") {
-					await enableGlobalPlugin(plugin.id, false);
-					await removeGlobalInstalledPluginVersion(plugin.id);
-				} else if (scope === "project") {
-					await enablePlugin(plugin.id, false, state.projectPath);
-					await removeInstalledPluginVersion(plugin.id, state.projectPath);
-				} else {
-					await enableLocalPlugin(plugin.id, false, state.projectPath);
-					await removeLocalInstalledPluginVersion(plugin.id, state.projectPath);
-				}
+				await cliUninstallPlugin(plugin.id, scope);
+			} else if (action === "update") {
+				await cliUpdatePlugin(plugin.id, scope);
 			} else {
-				// Install or update to this scope (both save the latest version)
-				if (scope === "user") {
-					await enableGlobalPlugin(plugin.id, true);
-					await saveGlobalInstalledPluginVersion(plugin.id, latestVersion);
-				} else if (scope === "project") {
-					await enablePlugin(plugin.id, true, state.projectPath);
-					await saveInstalledPluginVersion(
-						plugin.id,
-						latestVersion,
-						state.projectPath,
-					);
-				} else {
-					await enableLocalPlugin(plugin.id, true, state.projectPath);
-					await saveLocalInstalledPluginVersion(
-						plugin.id,
-						latestVersion,
-						state.projectPath,
-					);
-				}
+				await cliInstallPlugin(plugin.id, scope);
 
 				// On fresh install, prompt for MCP server env vars if needed
-				if (action === "install") {
-					modal.hideModal();
-					await collectPluginEnvVars(plugin.name, plugin.marketplace);
-				}
+				modal.hideModal();
+				await collectPluginEnvVars(plugin.name, plugin.marketplace);
 			}
 			if (action !== "install") {
 				modal.hideModal();
@@ -848,17 +769,7 @@ export function PluginsScreen() {
 		modal.loading(`Uninstalling ${plugin.name}...`);
 
 		try {
-			if (scopeValue === "user") {
-				await enableGlobalPlugin(plugin.id, false);
-				await removeGlobalInstalledPluginVersion(plugin.id);
-			} else if (scopeValue === "project") {
-				await enablePlugin(plugin.id, false, state.projectPath);
-				await removeInstalledPluginVersion(plugin.id, state.projectPath);
-			} else {
-				// local scope
-				await enableLocalPlugin(plugin.id, false, state.projectPath);
-				await removeLocalInstalledPluginVersion(plugin.id, state.projectPath);
-			}
+			await cliUninstallPlugin(plugin.id, scopeValue as PluginScope);
 			modal.hideModal();
 			fetchData();
 		} catch (error) {

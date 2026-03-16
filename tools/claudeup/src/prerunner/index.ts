@@ -1,14 +1,110 @@
+import fs from "fs-extra";
+import path from "node:path";
+import os from "node:os";
 import { UpdateCache } from "../services/update-cache.js";
 import {
 	getAvailablePlugins,
 	clearMarketplaceCache,
-	saveInstalledPluginVersion,
 } from "../services/plugin-manager.js";
 import { runClaude } from "../services/claude-runner.js";
-import { recoverMarketplaceSettings, migrateMarketplaceRename } from "../services/claude-settings.js";
+import {
+	recoverMarketplaceSettings,
+	migrateMarketplaceRename,
+	getGlobalEnabledPlugins,
+	getEnabledPlugins,
+	getLocalEnabledPlugins,
+} from "../services/claude-settings.js";
+import { parsePluginId } from "../utils/string-utils.js";
+import { defaultMarketplaces } from "../data/marketplaces.js";
+import {
+	updatePlugin,
+	addMarketplace,
+	isClaudeAvailable,
+} from "../services/claude-cli.js";
+
+const MARKETPLACES_DIR = path.join(
+	os.homedir(),
+	".claude",
+	"plugins",
+	"marketplaces",
+);
 
 export interface PrerunOptions {
 	force?: boolean; // Bypass cache and force update check
+}
+
+/**
+ * Collect all unique marketplace names from enabled plugins across all settings scopes.
+ * Returns a Set of marketplace names (e.g., "magus", "claude-plugins-official").
+ */
+async function getReferencedMarketplaces(
+	projectPath?: string,
+): Promise<Set<string>> {
+	const marketplaceNames = new Set<string>();
+
+	// Collect plugin IDs from all scopes
+	const allPluginIds = new Set<string>();
+
+	try {
+		const global = await getGlobalEnabledPlugins();
+		for (const id of Object.keys(global)) allPluginIds.add(id);
+	} catch { /* skip if unreadable */ }
+
+	if (projectPath) {
+		try {
+			const project = await getEnabledPlugins(projectPath);
+			for (const id of Object.keys(project)) allPluginIds.add(id);
+		} catch { /* skip if unreadable */ }
+
+		try {
+			const local = await getLocalEnabledPlugins(projectPath);
+			for (const id of Object.keys(local)) allPluginIds.add(id);
+		} catch { /* skip if unreadable */ }
+	}
+
+	// Parse marketplace names from plugin IDs
+	for (const pluginId of allPluginIds) {
+		const parsed = parsePluginId(pluginId);
+		if (parsed) {
+			marketplaceNames.add(parsed.marketplace);
+		}
+	}
+
+	return marketplaceNames;
+}
+
+/**
+ * Check which referenced marketplaces are missing locally and auto-add them.
+ * Only adds marketplaces with known repos (from defaultMarketplaces).
+ */
+async function autoAddMissingMarketplaces(
+	projectPath?: string,
+): Promise<string[]> {
+	const referenced = await getReferencedMarketplaces(projectPath);
+	const added: string[] = [];
+
+	for (const mpName of referenced) {
+		// Check if marketplace directory exists locally
+		const mpDir = path.join(MARKETPLACES_DIR, mpName);
+		if (await fs.pathExists(mpDir)) continue;
+
+		// Look up the repo URL from default marketplaces
+		const defaultMp = defaultMarketplaces.find((m) => m.name === mpName);
+		if (!defaultMp?.source.repo) continue;
+
+		try {
+			await addMarketplace(defaultMp.source.repo);
+			added.push(mpName);
+		} catch (error) {
+			// Non-fatal: log and continue
+			console.warn(
+				`⚠ Failed to auto-add marketplace ${mpName}:`,
+				error instanceof Error ? error.message : "Unknown error",
+			);
+		}
+	}
+
+	return added;
 }
 
 /**
@@ -33,6 +129,18 @@ export async function prerunClaude(
 			console.log(`✓ Migrated ${migTotal} plugin reference(s) → magus`);
 		}
 
+		// STEP 0.5: Auto-add missing marketplaces
+		// When plugins reference a marketplace that's not installed locally
+		// (e.g., settings synced from another machine), add it automatically.
+		if (await isClaudeAvailable()) {
+			const addedMarketplaces = await autoAddMissingMarketplaces();
+			if (addedMarketplaces.length > 0) {
+				console.log(
+					`✓ Auto-added marketplace(s): ${addedMarketplaces.join(", ")}`,
+				);
+			}
+		}
+
 		// STEP 1: Check if we should update (time-based cache, or forced)
 		const shouldUpdate = options.force || (await cache.shouldCheckForUpdates());
 
@@ -55,18 +163,19 @@ export async function prerunClaude(
 			}
 
 			// STEP 2: Clear cache to force fresh plugin info
-			// Note: Marketplace updates should be done via Claude Code's /plugin marketplace update
 			clearMarketplaceCache();
 
 			// STEP 3: Get updated plugin info (to detect versions)
 			const plugins = await getAvailablePlugins();
 
-			// STEP 4: Auto-update enabled plugins with available updates
+			// STEP 4: Auto-update enabled plugins via claude CLI
 			const autoUpdatedPlugins: Array<{
 				pluginId: string;
 				oldVersion: string;
 				newVersion: string;
 			}> = [];
+
+			const cliAvailable = await isClaudeAvailable();
 
 			for (const plugin of plugins) {
 				// Only update if:
@@ -80,11 +189,9 @@ export async function prerunClaude(
 					plugin.version
 				) {
 					try {
-						// Save new version - this will:
-						// 1. Update settings.json
-						// 2. Call updateInstalledPluginsRegistry()
-						// 3. Copy plugin files to cache (via copyPluginToCache())
-						await saveInstalledPluginVersion(plugin.id, plugin.version);
+						if (cliAvailable) {
+							await updatePlugin(plugin.id, "user");
+						}
 
 						autoUpdatedPlugins.push({
 							pluginId: plugin.id,
