@@ -196,16 +196,36 @@ async function installBrewPackages(
 }
 
 /**
- * Install npm global packages
+ * Detect the best available Node.js package installer for globals
+ * Prefers: bun > npm
+ */
+async function detectNpmCommand(): Promise<{
+	cmd: string;
+	args: string[];
+	label: string;
+} | null> {
+	const bunPath = await which("bun");
+	if (bunPath) {
+		return { cmd: bunPath, args: ["install", "-g"], label: "bun" };
+	}
+	const npmPath = await which("npm");
+	if (npmPath) {
+		return { cmd: npmPath, args: ["install", "-g"], label: "npm" };
+	}
+	return null;
+}
+
+/**
+ * Install global Node.js packages (prefers bun > npm)
  */
 async function installNpmPackages(
 	packages: string[],
 	result: SetupResult,
 ): Promise<void> {
-	const npmPath = await which("npm");
-	if (!npmPath) {
+	const installer = await detectNpmCommand();
+	if (!installer) {
 		for (const pkg of packages) {
-			result.failed.push({ pkg: `npm:${pkg}`, error: "npm not found" });
+			result.failed.push({ pkg: `npm:${pkg}`, error: "No bun or npm found" });
 		}
 		return;
 	}
@@ -216,11 +236,11 @@ async function installNpmPackages(
 			continue;
 		}
 
-		const { ok, stderr } = await run(npmPath, ["install", "-g", pkg]);
+		const { ok, stderr } = await run(installer.cmd, [...installer.args, pkg]);
 		if (ok) {
-			result.installed.push(`npm:${pkg}`);
+			result.installed.push(`${installer.label}:${pkg}`);
 		} else {
-			result.failed.push({ pkg: `npm:${pkg}`, error: stderr });
+			result.failed.push({ pkg: `${installer.label}:${pkg}`, error: stderr });
 		}
 	}
 }
