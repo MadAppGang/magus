@@ -14,8 +14,8 @@
     {
       "name": "code-analysis",
       "source": "./plugins/code-analysis",
-      "description": "Deep code investigation with claudemem MCP server. v4.0.2: Updated recommended models and claudish usage patterns.",
-      "version": "4.0.2",
+      "description": "Deep code investigation with claudemem MCP server. v4.0.3: Cleaned stale --agent refs in claudish-usage, added error escalation protocol.",
+      "version": "4.0.3",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -42,8 +42,8 @@
     {
       "name": "multimodel",
       "source": "./plugins/multimodel",
-      "description": "Multi-model collaboration, orchestration, and workflow patterns. v2.6.2: Skill refinements and model reference updates.",
-      "version": "2.6.2",
+      "description": "Multi-model collaboration, orchestration, and workflow patterns. v2.7.0: Error Escalation Protocol (Pattern 0) — stop and report on model failure.",
+      "version": "2.7.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
