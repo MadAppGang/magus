@@ -75,14 +75,20 @@ export async function installPlugin(
 }
 
 /**
- * Uninstall a plugin using claude CLI
- * Handles disabling + version removal in one shot
+ * Uninstall a plugin using claude CLI.
+ * Falls back to `disable` if `uninstall` fails (e.g., for plugins
+ * installed via old JSON method that the CLI doesn't recognize).
  */
 export async function uninstallPlugin(
 	pluginId: string,
 	scope: PluginScope = "user",
 ): Promise<void> {
-	await execClaude(["plugin", "uninstall", pluginId, "--scope", scope]);
+	try {
+		await execClaude(["plugin", "uninstall", pluginId, "--scope", scope]);
+	} catch {
+		// Fallback: disable works for plugins installed via old JSON method
+		await execClaude(["plugin", "disable", pluginId, "--scope", scope]);
+	}
 }
 
 /**
