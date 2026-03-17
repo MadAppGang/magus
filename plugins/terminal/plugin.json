@@ -28,5 +28,8 @@
     "./skills/terminal-interaction",
     "./skills/tui-navigation-patterns"
   ],
+  "setup": {
+    "brew": ["memextech/tap/ht-mcp"]
+  },
   "mcpServers": "./.mcp.json"
 }

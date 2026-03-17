@@ -14,6 +14,9 @@
     "vision", "cloud", "captcha", "debugging"
   ],
   "category": "development",
+  "setup": {
+    "pip": ["browser-use", "mcp"]
+  },
   "mcpServers": "./.mcp.json",
   "agents": [],
   "commands": [],

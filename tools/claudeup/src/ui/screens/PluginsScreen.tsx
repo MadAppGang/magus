@@ -28,6 +28,11 @@ import {
 	getPluginEnvRequirements,
 	getPluginSourcePath,
 } from "../../services/plugin-mcp-config.js";
+import {
+	getPluginSetupFromSource,
+	checkMissingDeps,
+	installPluginDeps,
+} from "../../services/plugin-setup.js";
 import type { Marketplace } from "../../types/index.js";
 
 interface ListItem {
@@ -466,6 +471,66 @@ export function PluginsScreen() {
 		}
 	};
 
+	/**
+	 * Install system dependencies required by a plugin's MCP servers
+	 * Auto-detects available package managers (uv/pip, brew, npm, cargo)
+	 */
+	const installPluginSystemDeps = async (
+		pluginName: string,
+		marketplace: string,
+	): Promise<void> => {
+		try {
+			const setup = await getPluginSetupFromSource(marketplace, pluginName);
+			if (!setup) return;
+
+			const missing = await checkMissingDeps(setup);
+			const hasMissing =
+				(missing.pip?.length || 0) +
+				(missing.brew?.length || 0) +
+				(missing.npm?.length || 0) +
+				(missing.cargo?.length || 0) > 0;
+
+			if (!hasMissing) return;
+
+			// Build description of what will be installed
+			const parts: string[] = [];
+			if (missing.pip?.length) parts.push(`pip: ${missing.pip.join(", ")}`);
+			if (missing.brew?.length) parts.push(`brew: ${missing.brew.join(", ")}`);
+			if (missing.npm?.length) parts.push(`npm: ${missing.npm.join(", ")}`);
+			if (missing.cargo?.length) parts.push(`cargo: ${missing.cargo.join(", ")}`);
+
+			const wantInstall = await modal.confirm(
+				"Install Dependencies?",
+				`This plugin needs system dependencies:\n\n${parts.join("\n")}\n\nInstall now?`,
+			);
+
+			if (!wantInstall) return;
+
+			modal.loading("Installing dependencies...");
+			const result = await installPluginDeps(missing);
+			modal.hideModal();
+
+			if (result.failed.length > 0) {
+				const failMsg = result.failed
+					.map((f) => `${f.pkg}: ${f.error}`)
+					.join("\n");
+				await modal.message(
+					"Partial Install",
+					`Installed: ${result.installed.length}\nFailed:\n${failMsg}`,
+					"error",
+				);
+			} else if (result.installed.length > 0) {
+				await modal.message(
+					"Dependencies Installed",
+					`Installed ${result.installed.length} package(s):\n${result.installed.join(", ")}`,
+					"success",
+				);
+			}
+		} catch (error) {
+			console.error("Error installing plugin deps:", error);
+		}
+	};
+
 	const handleSelect = async () => {
 		const item = selectableItems[pluginsState.selectedIndex];
 		if (!item) return;
@@ -601,9 +666,10 @@ export function PluginsScreen() {
 				} else {
 					await cliInstallPlugin(plugin.id, scope);
 
-					// On fresh install, prompt for MCP server env vars if needed
+					// On fresh install, configure env vars and install system deps
 					modal.hideModal();
 					await collectPluginEnvVars(plugin.name, plugin.marketplace);
+					await installPluginSystemDeps(plugin.name, plugin.marketplace);
 				}
 				if (action !== "install") {
 					modal.hideModal();
@@ -708,9 +774,10 @@ export function PluginsScreen() {
 			} else {
 				await cliInstallPlugin(plugin.id, scope);
 
-				// On fresh install, prompt for MCP server env vars if needed
+				// On fresh install, configure env vars and install system deps
 				modal.hideModal();
 				await collectPluginEnvVars(plugin.name, plugin.marketplace);
+				await installPluginSystemDeps(plugin.name, plugin.marketplace);
 			}
 			if (action !== "install") {
 				modal.hideModal();
