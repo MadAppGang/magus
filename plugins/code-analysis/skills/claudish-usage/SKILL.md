@@ -62,9 +62,9 @@ Find appropriate agent or create one → Delegate to sub-agent (default)
 ### Step 2: Agent Type Selection Matrix
 
 > **Note:** External models are invoked via Bash+claudish CLI with `--model` flag.
-> The `--agent` flag gives the external model specialized capabilities.
+> The agent is resolved by the orchestrator and set via Task tool for internal models, or through the vote prompt for external models.
 
-| Task Type | Recommended `--agent` | Alternatives | Notes |
+| Task Type | Recommended Agent | Alternatives | Notes |
 |-----------|----------------------|--------------|-------|
 | **Investigation** | `dev:researcher` | `code-analysis:detective` | For finding bugs, tracing issues |
 | **Code review** | `agentdev:reviewer` | `frontend:reviewer` | Check if plugin has review agent |
@@ -165,8 +165,8 @@ claudish --model grok-code-fast-1 --stdin --quiet \
   echo $? > "ai-docs/sessions/team-xyz/grok.exit"
 ```
 
-The `--agent` flag is **required** to give the external model specialized capabilities
-(e.g., claudemem search, structured investigation workflow).
+The agent role is communicated through the vote prompt content, not via CLI flags.
+The `--agent` flag was removed in claudish v4.5.1.
 
 ## Overview
 
@@ -385,53 +385,21 @@ claudish --top-models
 claudish --models --force-update
 ```
 
-## NEW: Direct Agent Selection (v2.1.0)
+## Task Complexity: Direct vs File-Based
 
-**Use `--agent` flag to invoke agents directly without the file-based pattern:**
-
-```bash
-# Use specific agent (prepends @agent- automatically)
-claudish --model grok-code-fast-1 "implement React component"
-
-# Claude receives: "Use the @agent-frontend:developer agent to: implement React component"
-
-# List available agents in project
-claudish --list-agents
-```
-
-**When to use `--agent` vs file-based pattern:**
-
-**Use `--agent` when:**
-- Single, simple task that needs agent specialization
-- Direct conversation with one agent
-- Testing agent behavior
-- CLI convenience
-
-**Use file-based pattern when:**
-- Complex multi-step workflows
-- Multiple agents needed
-- Large codebases
-- Production tasks requiring review
-- Need isolation from main conversation
-
-**Example comparisons:**
-
-**Simple task (use `--agent`):**
+**Simple task (direct prompt):**
 ```bash
 claudish --model grok-code-fast-1 "create button component"
 ```
 
-**Complex task (use file-based):**
-```typescript
-// multi-phase-workflow.md
-Phase 1: Use api-architect to design API
-Phase 2: Use backend-developer to implement
-Phase 3: Use test-architect to add tests
-Phase 4: Use senior-code-reviewer to review
-
-then:
+**Complex task (file-based with --stdin):**
+```bash
+# Write instructions to file, pipe via --stdin
 claudish --model grok-code-fast-1 --stdin < multi-phase-workflow.md
 ```
+
+> **Note:** The `--agent` flag was removed in claudish v4.5.1. Agent specialization
+> is now handled through the vote prompt content or Claude Code's own agent system.
 
 ## Best Practice: File-Based Sub-Agent Pattern
 
@@ -1204,13 +1172,25 @@ await Bash(`claudish --model ${model} "task 2"`);
 const result = await Bash("claudish --model grok 'task'");
 ```
 
-**Right:**
+**Right — STOP and REPORT (never silently substitute):**
 ```typescript
+const result = await Bash("claudish --model grok --stdin --quiet < task.md > result.md 2>stderr.log; echo $? > result.exit");
+const exitCode = await Read({ file_path: "result.exit" });
+if (exitCode.trim() !== "0") {
+  const stderr = await Read({ file_path: "stderr.log" });
+  // REPORT to user — never silently fall back
+  // "Grok failed: {stderr}. Options: (1) Retry, (2) Different model, (3) Skip, (4) Cancel"
+}
+```
+
+**❌ NEVER do silent fallback:**
+```typescript
+// ❌ WRONG — silently substitutes a different model
 try {
-  const result = await Bash("claudish --model grok 'task'");
+  const result = await Bash("claudish --model gemini 'task'");
 } catch (error) {
-  console.error("Claudish failed:", error.message);
-  // Fallback to embedded Claude or handle error
+  // ❌ WRONG — don't silently fall back to embedded Claude
+  const result = await Task({ subagent_type: "dev:developer", prompt: "..." });
 }
 ```
 

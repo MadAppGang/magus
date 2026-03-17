@@ -115,6 +115,42 @@ claudish --model grok --stdin < task.md > result.md
 claudish --model grok --stdin < task.md > result.md 2>stderr.log; echo $? > result.exit
 ```
 
+## Error Escalation Protocol
+
+**CRITICAL: When claudish fails, STOP and REPORT — never silently substitute a different model.**
+
+### Rules
+
+1. **If claudish exits with non-zero exit code or empty output:** STOP and report the exact error (from stderr log) to the user before trying any alternative.
+2. **Never silently substitute a different model** than the user requested. If the user asked for Gemini, don't silently launch GPT-5 instead.
+3. **Never silently retry with a different provider prefix.** If `or@google/gemini-3.1-pro-preview` fails, don't silently try `g@gemini-3.1-pro-preview` without telling the user.
+4. **Report all attempts made** so the user understands what was tried and can make an informed decision.
+
+### Failure Report Template
+
+```
+"{Model} failed — {error category}.
+
+Attempts:
+1. {command tried} — {exact error from stderr}
+
+Options:
+(1) {Fix suggestion}
+(2) Use a different model
+(3) Skip and continue without this model
+(4) Cancel
+
+Which do you prefer?"
+```
+
+### When to apply
+
+This protocol applies whenever a user has requested a specific external model. It does NOT apply to automated pipelines where the user said "use whatever works" or when the `/team` command is managing its own failure reporting.
+
+See also: `multimodel:error-recovery` skill, Pattern 0 (User Escalation).
+
+---
+
 ## Troubleshooting
 
 ### "claudish: command not found"
