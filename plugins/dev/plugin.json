@@ -128,13 +128,6 @@
     "./skills/planning/brainstorming",
     "./skills/enforcement"
   ],
-  "dependencies": {
-    "multimodel@magus": "^2.0.0"
-  },
-  "optionalDependencies": {
-    "designer@magus": ">=0.1.0",
-    "browser-use@magus": ">=1.0.0"
-  },
   "compatibility": {
     "claudeCode": ">=0.1.0"
   }

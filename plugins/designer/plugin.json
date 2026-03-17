@@ -39,13 +39,6 @@
     "./skills/ui-design-review",
     "./skills/browser-use-integration"
   ],
-  "dependencies": {
-    "multimodel@magus": "^2.0.0"
-  },
-  "optionalDependencies": {
-    "dev@magus": ">=1.37.0",
-    "browser-use@magus": ">=1.0.0"
-  },
   "compatibility": {
     "claudeCode": ">=0.1.0"
   }

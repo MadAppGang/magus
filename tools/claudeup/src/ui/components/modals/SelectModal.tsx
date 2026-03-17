@@ -42,6 +42,7 @@ export function SelectModal({
 			border
 			borderStyle="rounded"
 			borderColor="cyan"
+			bg="#1a1a2e"
 			paddingLeft={2}
 			paddingRight={2}
 			paddingTop={1}

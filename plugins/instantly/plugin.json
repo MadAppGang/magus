@@ -20,9 +20,6 @@
     "sales-automation"
   ],
   "category": "productivity",
-  "dependencies": {
-    "orchestration@magus": "^0.8.0"
-  },
   "agents": [
     "./agents/campaign-analyst.md",
     "./agents/sequence-builder.md",

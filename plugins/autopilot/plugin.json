@@ -32,17 +32,8 @@
     "./commands/run.md",
     "./commands/help.md"
   ],
-  "skills": [
-    "linear-integration",
-    "tag-command-mapping",
-    "proof-of-work",
-    "state-machine"
-  ],
+  "skills": "./skills/",
   "hooks": "./hooks/hooks.json",
-  "dependencies": {
-    "dev@magus": "^1.13.0",
-    "orchestration@magus": "^0.9.0"
-  },
   "npmDependencies": {
     "@linear/sdk": "^26.0.0",
     "playwright": "^1.40.0"

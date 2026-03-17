@@ -32,6 +32,7 @@ export function ConfirmModal({
 			border
 			borderStyle="rounded"
 			borderColor="yellow"
+			bg="#1a1a2e"
 			paddingLeft={2}
 			paddingRight={2}
 			paddingTop={1}

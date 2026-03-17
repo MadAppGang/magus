@@ -2,7 +2,10 @@
   "name": "multimodel",
   "version": "2.6.2",
   "description": "Multi-model collaboration, orchestration, and workflow patterns. v2.6.2: Skill refinements and model reference updates.",
-  "author": "MadAppGang",
+  "author": {
+    "name": "MadAppGang",
+    "email": "i@madappgang.com"
+  },
   "license": "MIT",
   "homepage": "https://github.com/MadAppGang/magus",
   "tags": [
@@ -27,58 +30,10 @@
     "cost-optimization"
   ],
   "hooks": "./hooks/hooks.json",
-  "skills": [
-    "multi-agent-coordination",
-    "multi-model-validation",
-    "quality-gates",
-    "task-orchestration",
-    "error-recovery",
-    "model-tracking-protocol",
-    "session-isolation",
-    "task-external-models",
-    "hooks-system",
-    "task-complexity-router",
-    "hierarchical-coordinator",
-    "batching-patterns",
-    "performance-tracking",
-    "agent-enforcement"
-  ],
+  "skills": "./skills/",
   "commands": [
     "./commands/team.md"
   ],
-  "skillBundles": {
-    "core": [
-      "multi-agent-coordination",
-      "quality-gates"
-    ],
-    "advanced": [
-      "multi-model-validation",
-      "error-recovery",
-      "hierarchical-coordinator"
-    ],
-    "optimization": [
-      "task-complexity-router",
-      "performance-tracking",
-      "batching-patterns"
-    ],
-    "hooks": [
-      "hooks-system",
-      "agent-enforcement"
-    ],
-    "complete": [
-      "multi-agent-coordination",
-      "multi-model-validation",
-      "quality-gates",
-      "task-orchestration",
-      "error-recovery",
-      "hooks-system",
-      "task-complexity-router",
-      "hierarchical-coordinator",
-      "batching-patterns",
-      "performance-tracking"
-    ]
-  },
-  "dependencies": {},
   "compatibility": {
     "claudeCode": ">=0.1.0"
   }
