@@ -1,9 +1,9 @@
 {
   "meta": {
     "description": "Test cases for /multimodel:team command orchestration. Verifies correct model invocation: internal via Task({resolved_agent}), external via Bash(claudish). Tests dynamic agent routing, parallel launch, session dir, vote template, no pre-digestion, model verification, and claudish v5.3.0 flag passthrough.",
-    "version": "2.5.0",
+    "version": "2.6.0",
     "created": "2026-02-11",
-    "notes": "v2.5.0: Added shortcut-prefix detection (mm@, g@, oai@, etc.) and claudish-usage skill loading tests. v2.4.0: Flag passthrough tests now use mixed internal+chatgpt models (validates both Task and Bash paths). v2.3.0: Added flag passthrough tests for claudish v5.3.0 — claudeFlags from preferences injected into claudish commands. v2.2.0: Dynamic agent routing — task keywords determine subagent_type from context_detection table."
+    "notes": "v2.6.0: Added 6 anti-substitution and failure-path tests — unknown model verbatim passthrough (rule-0), no discovery when --models explicit, multi-unknown verbatim, alias-no-override for full IDs, alias positive regression, and failure-no-recovery (rule-6). v2.5.0: Added shortcut-prefix detection (mm@, g@, oai@, etc.) and claudish-usage skill loading tests. v2.4.0: Flag passthrough tests now use mixed internal+chatgpt models (validates both Task and Bash paths). v2.3.0: Added flag passthrough tests for claudish v5.3.0 — claudeFlags from preferences injected into claudish commands. v2.2.0: Dynamic agent routing — task keywords determine subagent_type from context_detection table."
   },
   "model_aliases": {
     "grok": "grok-code-fast-1",
@@ -349,6 +349,87 @@
         "no_provider_prefix_in_model": true
       },
       "tags": ["skill-loading", "claudish-usage", "critical"]
+    },
+    {
+      "id": "team-no-substitution-unknown-model",
+      "description": "Unknown model ID (not in alias table) must be passed verbatim — no substitution to a 'similar' model",
+      "prompt": "/multimodel:team --models gpt-5.4 --no-memory Quick check on README structure",
+      "checks": {
+        "bash_has_claudish": true,
+        "bash_claudish_model_exact": "gpt-5.4",
+        "no_top_models_discovery": true,
+        "no_provider_prefix_in_model": true,
+        "no_shortcut_prefix_in_model": true
+      },
+      "tags": ["anti-substitution", "rule-0", "critical"]
+    },
+    {
+      "id": "team-no-discovery-with-explicit-models",
+      "description": "When --models is explicit, claudish --top-models must NOT be called. Both models must appear verbatim.",
+      "prompt": "/multimodel:team --models minimax-m2.5,glm-5 --no-memory Review plugin version numbers",
+      "checks": {
+        "bash_has_claudish": true,
+        "no_top_models_discovery": true,
+        "bash_claudish_all_models_in": ["minimax-m2.5", "glm-5"],
+        "bash_min_count": 2,
+        "bash_run_in_background": true,
+        "no_provider_prefix_in_model": true
+      },
+      "tags": ["anti-substitution", "no-discovery", "rule-0", "critical"]
+    },
+    {
+      "id": "team-verbatim-multi-unknown",
+      "description": "Multiple unknown model IDs (not in alias table) must all be passed verbatim with no substitution",
+      "prompt": "/multimodel:team --models gpt-5.4,qwen3.5-plus-02-15 --no-memory Check README formatting",
+      "checks": {
+        "bash_has_claudish": true,
+        "bash_claudish_all_models_in": ["gpt-5.4", "qwen3.5-plus-02-15"],
+        "bash_min_count": 2,
+        "no_top_models_discovery": true,
+        "bash_run_in_background": true,
+        "no_provider_prefix_in_model": true,
+        "no_shortcut_prefix_in_model": true
+      },
+      "tags": ["anti-substitution", "rule-0", "critical"]
+    },
+    {
+      "id": "team-alias-no-override-full-id",
+      "description": "Full model ID 'kimi-k2.5' must NOT be alias-resolved via 'kimi' alias (alias table maps 'kimi' → 'kimi-k2.5' but user already provides the full ID)",
+      "prompt": "/multimodel:team --models kimi-k2.5 --no-memory Review the README",
+      "checks": {
+        "bash_has_claudish": true,
+        "bash_claudish_model_exact": "kimi-k2.5",
+        "bash_claudish_all_models_in": ["kimi-k2.5"],
+        "no_top_models_discovery": true,
+        "no_provider_prefix_in_model": true
+      },
+      "tags": ["anti-substitution", "alias-override", "rule-0", "critical"]
+    },
+    {
+      "id": "team-alias-positive-regression",
+      "description": "Short alias 'grok' must still resolve to 'grok-code-fast-1' after alias table scoping changes",
+      "prompt": "/multimodel:team --models grok --no-memory Check plugin versions",
+      "checks": {
+        "bash_has_claudish": true,
+        "bash_claudish_model_contains": "grok",
+        "no_provider_prefix_in_model": true,
+        "no_shortcut_prefix_in_model": true
+      },
+      "tags": ["alias-regression", "positive-control"]
+    },
+    {
+      "id": "team-failure-no-recovery",
+      "description": "When a model fails (nonexistent model), orchestrator must NOT run --top-models, substitute, or retry. Should report failure and proceed with remaining models.",
+      "prompt": "/multimodel:team --models internal,fake-nonexistent-model-xyz --no-memory Quick check on README",
+      "checks": {
+        "internal_uses_task": true,
+        "bash_has_claudish": true,
+        "no_top_models_discovery": true,
+        "bash_claudish_model_exact": "fake-nonexistent-model-xyz",
+        "no_provider_prefix_in_model": true,
+        "run_in_background": true
+      },
+      "tags": ["rule-6", "no-auto-recovery", "failure-path", "critical"]
     }
   ]
 }
