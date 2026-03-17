@@ -106,13 +106,17 @@ export async function disablePlugin(
 }
 
 /**
- * Update a plugin to the latest version
+ * Update a plugin to the latest version.
+ * Uses `install` as primary method since `update` only works for plugins
+ * originally installed via the CLI. `install` handles both fresh installs
+ * and re-installs (upgrades) of existing plugins regardless of how they
+ * were originally added.
  */
 export async function updatePlugin(
 	pluginId: string,
 	scope: PluginScope = "user",
 ): Promise<void> {
-	await execClaude(["plugin", "update", pluginId, "--scope", scope], 60000);
+	await execClaude(["plugin", "install", pluginId, "--scope", scope], 60000);
 }
 
 /**
