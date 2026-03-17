@@ -21,7 +21,7 @@ unset CLAUDECODE 2>/dev/null || true
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 TEST_CASES_FILE="$SCRIPT_DIR/test-cases.json"
-ANALYZER="$SCRIPT_DIR/analyze-transcript.py"
+ANALYZER="$SCRIPT_DIR/analyze-transcript.ts"
 TIMESTAMP=$(date +%Y%m%d-%H%M%S)
 OUTPUT_DIR="$SCRIPT_DIR/results/run-$TIMESTAMP"
 TIMEOUT=120
@@ -211,7 +211,7 @@ run_single_test() {
   # Run analysis
   local analysis_result
   set +e
-  analysis_result=$(python3 "$ANALYZER" "$transcript_file" "$checks" 2>"$case_dir/analyzer-stderr.txt")
+  analysis_result=$(bun "$ANALYZER" "$transcript_file" "$checks" 2>"$case_dir/analyzer-stderr.txt")
   local analysis_exit=$?
   set -e
 

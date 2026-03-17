@@ -38,9 +38,10 @@ args:
   to Step 3 to Step 4 without stopping. This is a non-interactive workflow.
 
   <mandatory_rules>
-    SIX HARD REQUIREMENTS - violating any one makes the entire workflow fail:
+    SEVEN HARD REQUIREMENTS - violating any one makes the entire workflow fail:
 
     0. MODEL NAMES VERBATIM:
+       Explicit user-provided model list is AUTHORITATIVE.
        Pass model names EXACTLY as the user provides them to `claudish --model`.
        NEVER add ANY prefix to model names. ALL prefix formats are PROHIBITED:
        - No slash prefixes: "minimax/", "openai/", "google/", "x-ai/", "moonshotai/", "deepseek/"
@@ -51,6 +52,11 @@ args:
        If user says `gemini-3.1-pro-preview` → use `--model gemini-3.1-pro-preview` (NOT `--model g@gemini-3.1-pro-preview`).
        The claudish CLI resolves providers internally. Adding ANY prefix BREAKS routing.
        Do NOT run `claudish --help` or `claudish --models` to discover prefixes — just pass bare names.
+       NEVER substitute, replace, or "correct" model names. If user says `gpt-5.4`,
+       use `gpt-5.4` — even if `claudish --top-models` shows a different version.
+       The user knows what model they want. If it fails, report the failure.
+       NEVER run `claudish --top-models` to validate user-provided model names.
+       Do not validate, normalize, alias-resolve, or discover alternatives for user-provided models.
 
     1. MODEL EXECUTION METHODS:
        - **Internal models** (model ID = "internal"): Use Task(subagent_type: "{RESOLVED_AGENT}")
@@ -86,6 +92,17 @@ args:
        `claudish --model {MODEL_ID} --stdin --quiet --effort high < vote-prompt.md > result.md ...`
        NOT: `claudish --model {MODEL_ID} --stdin --quiet < vote-prompt.md > result.md ...`
        Omitting claudeFlags when they are configured is a WORKFLOW VIOLATION.
+
+    6. NO AUTO-RECOVERY:
+       When a model fails (non-zero exit code, stderr errors), REPORT the failure.
+       NEVER automatically retry, substitute a different model, or silently skip.
+       NEVER run `claudish --top-models` or any other discovery command after failures.
+       NEVER attempt to diagnose API keys or check model status on behalf of the user.
+       Present the error details in the verification table and let the user decide.
+       The user may want to fix the model name, check API keys, or accept partial results.
+       Your role is to REPORT failures, not FIX them. The user decides next steps.
+       If user explicitly requests retry, you may retry the specific failed model with the
+       same exact model ID.
   </mandatory_rules>
 
   <step_1 name="Setup">
@@ -103,7 +120,12 @@ args:
     d. If no task was provided, ask the user what task to evaluate.
 
     e. Determine models to use (check in this EXACT order, stop at first match):
-       1. If `--models` flag was provided → use those model IDs
+       1. If `--models` flag was provided → use those model IDs VERBATIM.
+          When --models is provided, DO NOT run `claudish --top-models` to validate them.
+          DO NOT check if the model names exist in any alias table or discovery output.
+          DO NOT consult `<model_aliases>` to validate user-provided names.
+          Use the exact strings the user provided. If a model doesn't exist, claudish
+          will return a non-zero exit code — report that in the verification table.
        2. Else if preferences file has `contextPreferences` matching task keywords → use those
        3. Else if preferences file has `defaultModels` array with entries → use those
        4. ONLY if none of the above matched → show `claudish --top-models` and ask user to pick
@@ -178,7 +200,7 @@ args:
     # claudish PID captured INSIDE subshell; subshell PID captured OUTSIDE
     (
       cd \"{SESSION_DIR}/work/{model-slug-1}\"
-      claudish --model {MODEL_ID_1} --debug --stdin --quiet {CLAUDE_FLAGS} \\
+      claudish -y --model {MODEL_ID_1} --debug --stdin --quiet {CLAUDE_FLAGS} \\
         < \"{SESSION_DIR}/vote-prompt.md\" \\
         > \"{SESSION_DIR}/{model-slug-1}-result.md\" \\
         2>\"{SESSION_DIR}/{model-slug-1}-stderr.log\" &
@@ -192,7 +214,7 @@ args:
     # --- Launch model 2 ---
     (
       cd \"{SESSION_DIR}/work/{model-slug-2}\"
-      claudish --model {MODEL_ID_2} --debug --stdin --quiet {CLAUDE_FLAGS} \\
+      claudish -y --model {MODEL_ID_2} --debug --stdin --quiet {CLAUDE_FLAGS} \\
         < \"{SESSION_DIR}/vote-prompt.md\" \\
         > \"{SESSION_DIR}/{model-slug-2}-result.md\" \\
         2>\"{SESSION_DIR}/{model-slug-2}-stderr.log\" &
@@ -234,7 +256,7 @@ args:
 
     CRITICAL: If `claudeFlags` was read from preferences in step f2, substitute {CLAUDE_FLAGS} with
     those exact flags. For example, if claudeFlags was `--effort high --max-budget-usd 0.50`, the command is:
-    `claudish --model grok-code-fast-1 --debug --stdin --quiet --effort high --max-budget-usd 0.50 < ...`
+    `claudish -y --model grok-code-fast-1 --debug --stdin --quiet --effort high --max-budget-usd 0.50 < ...`
     If no claudeFlags, omit {CLAUDE_FLAGS} entirely (just `--debug --stdin --quiet` as before).
     claudish v5.3.0's two-pass parser forwards these flags directly to Claude Code.
 
@@ -279,6 +301,9 @@ args:
 
     c. Build verification summary.
        If any external model failed: prefix results with "WORKFLOW DEVIATION" warning.
+       Display the failure details from stderr, including the exact error message.
+       Do NOT run additional commands to recover from the failure (Rule 6 applies here).
+       Do NOT run `claudish --top-models` or substitute alternative models.
        Only parse votes from models that succeeded.
 
     d. Parse vote blocks from successful results using regex:
@@ -373,6 +398,12 @@ args:
   </vote_prompt_template>
 
   <model_aliases>
+    This table applies ONLY to exact short single-word alias matches (no dots, no version numbers).
+    If the user provides a full model ID with dots or version numbers (e.g., `gpt-5.4`,
+    `gemini-3.1-pro-preview`, `minimax-m2.5`), it is NOT an alias — use it verbatim.
+    NEVER use this table to "correct" or "resolve" full model IDs that don't appear here.
+    When `--models` is provided with full model IDs, ignore this table entirely.
+
     | Alias | Full Model ID |
     |-------|---------------|
     | grok | grok-code-fast-1 |
@@ -505,4 +536,27 @@ args:
   <parse_failure>
     If vote block cannot be parsed: count as ERROR, include raw excerpt, continue with others.
   </parse_failure>
+
+  <partial_model_failure>
+    When some models fail and others succeed:
+    1. Report each failure clearly with the error from stderr in the verification table.
+    2. Common errors and what they mean:
+       - "No healthy deployments": Model ID not available from any provider.
+         Tell user: "Model '{id}' is not currently available. Verify the model ID separately if needed."
+       - "litellm.BadRequestError": Invalid model ID or configuration.
+         Tell user: "Model '{id}' was rejected by the API. Verify the model name."
+       - "Rate limit" / "429": Temporary overload.
+         Tell user: "Model '{id}' is rate-limited. Try again in a few minutes."
+       - "401" / "Unauthorized": API key issue.
+         Tell user: "Authentication failed for '{id}'. Check OPENROUTER_API_KEY."
+       - "Connection timeout" / "ETIMEDOUT": Network issue or API endpoint unreachable.
+         Tell user: "Model '{id}' timed out. This may be temporary — try again or check connectivity."
+       - For any other error: "Model '{id}' execution failed: [excerpt of stderr]."
+    3. NEVER auto-retry or auto-substitute failed models (Rule 6).
+       Report the failure and let the user decide.
+    4. Proceed with verdict using only successful models (if >= 2 valid votes).
+    5. If < 2 valid votes: report INCONCLUSIVE with failure details.
+    6. If only 1 model succeeds: report single-result warning:
+       "Only 1 model completed successfully. Verdict based on limited data."
+  </partial_model_failure>
 </error_handling>
