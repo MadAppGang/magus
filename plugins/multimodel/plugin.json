@@ -1,7 +1,7 @@
 {
   "name": "multimodel",
-  "version": "2.7.0",
-  "description": "Multi-model collaboration, orchestration, and workflow patterns. v2.7.0: Error Escalation Protocol (Pattern 0) — stop and report on model failure instead of silent substitution.",
+  "version": "2.8.0",
+  "description": "Multi-model collaboration, orchestration, and workflow patterns. v2.8.0: Anti-substitution rules (Rule 0/6), TS analyzer rewrite, -y flag fix, 6 new E2E tests.",
   "author": {
     "name": "MadAppGang",
     "email": "i@madappgang.com"
