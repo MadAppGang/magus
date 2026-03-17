@@ -3,11 +3,14 @@
 import { createCliRenderer } from "@opentui/core";
 import { createRoot } from "@opentui/react";
 import { spawn } from "node:child_process";
+import { createRequire } from "node:module";
 import { App } from "./ui/App.js";
 import { prerunClaude } from "./prerunner/index.js";
 import { checkForUpdates } from "./services/version-check.js";
 
-export const VERSION = "3.0.0";
+const require = createRequire(import.meta.url);
+const pkg = require("../package.json") as { version: string };
+export const VERSION = pkg.version;
 
 // Note: OpenTUI renderer handles alternate screen buffer automatically
 // No need for manual ANSI escape codes
