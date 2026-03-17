@@ -87,7 +87,7 @@ export function ModalContainer() {
 		}
 	};
 
-	// Center the modal on screen with opaque backdrop
+	// Center the modal on screen
 	return (
 		<box
 			position="absolute"
@@ -95,7 +95,6 @@ export function ModalContainer() {
 			height="100%"
 			justifyContent="center"
 			alignItems="center"
-			backgroundColor="#1a1a2e"
 		>
 			{renderModal()}
 		</box>
