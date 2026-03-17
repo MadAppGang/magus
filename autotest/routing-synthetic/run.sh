@@ -1,6 +1,6 @@
 #!/bin/bash
 # Synthetic routing test suite runner
-# Runs generated skill/agent routing test cases against the real Claude Code CLI.
+# Runs generated skill/agent routing test cases using native Claude Code (claude -p).
 #
 # Prerequisites:
 #   1. Generate cases: cd ../magus-bench/skill-routing-eval && ./generate-tests.sh
@@ -33,5 +33,6 @@ fi
 
 exec "$FRAMEWORK_DIR/runner-base.sh" \
   --suite routing-synthetic \
+  --model internal \
   --analyzer "$SCRIPT_DIR/analyze-results.sh" \
   "$@"

@@ -151,6 +151,7 @@ export function buildReplayTurns(
  * Extracted from aggregate-results.ts inline JSONL scan loop (lines 131-161).
  */
 export function extractAgentFromTranscript(entries: TranscriptEntry[]): string {
+  // Strategy 1: Look for Task tool_use blocks in stream-json format
   for (const entry of entries) {
     if (entry.type !== "assistant") continue;
     for (const block of entry.message?.content ?? []) {
@@ -162,5 +163,23 @@ export function extractAgentFromTranscript(entries: TranscriptEntry[]): string {
       }
     }
   }
+
+  // Strategy 2: Handle monitor-mode transcripts (type:"result" with modelUsage)
+  for (const entry of entries) {
+    if (entry.type !== "result") continue;
+
+    // Check if result text mentions a known agent type
+    const resultText = typeof (entry as any).result === "string" ? (entry as any).result : "";
+    const agentMatch = resultText.match(/\b(dev:\w[\w-]*|code-analysis:\w[\w-]*|terminal:\w[\w-]*|agentdev:\w[\w-]*)\b/);
+    if (agentMatch) return agentMatch[1];
+
+    // Check modelUsage for multi-model delegation signal
+    // Return "TASK_USED" (not "DELEGATED") so evaluator treats it as PASS_DELEGATED
+    const modelUsage = (entry as any).modelUsage ?? {};
+    if (Object.keys(modelUsage).length > 1) {
+      return "TASK_USED";
+    }
+  }
+
   return "";
 }

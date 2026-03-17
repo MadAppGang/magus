@@ -50,8 +50,24 @@ SKILL_SKIP=0
 if [[ $SKILL_COUNT -gt 0 ]]; then
   echo "=== Skill-Type Analysis ==="
 
-  # Get all skill-type case IDs
-  SKILL_IDS=$(jq -r '.test_cases[] | select(.checks) | .id' "$TEST_CASES_FILE")
+  # Discover executed skill-type cases by scanning model dirs for transcript files,
+  # then cross-referencing with test-cases.json to confirm they have .checks.
+  EXECUTED_SKILL_IDS=""
+  for model_dir in "$RESULTS_DIR"/*/; do
+    for transcript_file in "$model_dir"*/transcript.jsonl; do
+      [[ -f "$transcript_file" ]] || continue
+      candidate_id="$(basename "$(dirname "$transcript_file")")"
+      # Only include if this case has .checks defined in test-cases.json
+      has_checks=$(jq -r --arg id "$candidate_id" \
+        '.test_cases[] | select(.id == $id and .checks != null) | .id' \
+        "$TEST_CASES_FILE")
+      if [[ -n "$has_checks" ]]; then
+        EXECUTED_SKILL_IDS="$EXECUTED_SKILL_IDS $candidate_id"
+      fi
+    done
+  done
+  # Deduplicate
+  SKILL_IDS=$(echo "$EXECUTED_SKILL_IDS" | tr ' ' '\n' | sort -u | grep -v '^$' || true)
 
   for case_id in $SKILL_IDS; do
     # Find transcript for this case (check all model dirs)
