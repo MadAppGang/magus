@@ -1,0 +1,131 @@
+{
+  "meta": {
+    "description": "Error escalation protocol test cases. Verifies that when external models fail, Claude follows Pattern 0 (stop and report to user) instead of silently substituting models or falling back to embedded Claude.",
+    "version": "2.0.0",
+    "created": "2026-03-16",
+    "updated": "2026-03-17",
+    "notes": "v2.0: 10 test cases covering skill knowledge, scenario simulation, behavioral validation, and boundary conditions. Includes no_task_fallback and has_options_template analyzer checks. Action-oriented text_not_contains phrases to avoid false positives from negated explanations."
+  },
+  "test_cases": [
+    {
+      "id": "escalation-skill-knowledge-01",
+      "description": "Claude should know Pattern 0 from error-recovery skill when asked about model failure handling",
+      "prompt": "Load the multimodel:error-recovery skill and tell me: what is Pattern 0 and what does it say about handling model failures? Be specific about what you should NEVER do when a user-requested model fails.",
+      "checks": {
+        "loads_error_recovery_skill": true,
+        "text_contains_any": ["Pattern 0", "User Escalation", "never silently substitute", "STOP and REPORT", "stop and report"],
+        "text_contains_any_2": ["never silently", "NEVER automatically", "never substitute"]
+      },
+      "category": "skill-knowledge",
+      "tags": ["error-recovery", "pattern-0", "skill-loading"]
+    },
+    {
+      "id": "escalation-skill-knowledge-02",
+      "description": "proxy-mode-reference skill should contain error escalation protocol",
+      "prompt": "Load the multimodel:proxy-mode-reference skill and summarize the Error Escalation Protocol section. What are the 4 rules?",
+      "checks": {
+        "loads_proxy_mode_skill": true,
+        "text_contains_any": ["Error Escalation", "escalation", "STOP and report", "stop and report"],
+        "text_contains_any_2": ["never silently substitute", "never substitute", "Never silently"]
+      },
+      "category": "skill-knowledge",
+      "tags": ["proxy-mode", "escalation-rules", "skill-loading"]
+    },
+    {
+      "id": "escalation-scenario-report-01",
+      "description": "Given a model failure scenario, Claude should produce an escalation report, not silently substitute",
+      "prompt": "Scenario: I asked you to run Gemini 3.1 Pro Preview to review my code, but claudish exited with error: '429 Too Many Requests - daily quota exceeded'. What should you do next? Do NOT actually run any commands. Just tell me what your response to me should look like, following the error escalation protocol from the multimodel skills.",
+      "checks": {
+        "text_contains_any": ["Options", "options", "Which do you prefer", "which would you prefer", "How would you like"],
+        "text_contains_any_2": ["rate limit", "429", "quota", "daily quota"],
+        "text_not_contains": ["launching another", "I'll use GPT", "I'll use Grok", "I'll switch to", "I'll fall back to", "I'll use Claude instead", "I'll try another", "let me use another", "I'm switching to", "I'll substitute", "I'll proceed with another", "I'll pivot to"],
+        "has_options_template": true
+      },
+      "category": "scenario-simulation",
+      "tags": ["scenario", "rate-limit", "report-template"]
+    },
+    {
+      "id": "escalation-scenario-report-02",
+      "description": "Given a claudish binary crash scenario, Claude should report with options, not silently retry with different binary",
+      "prompt": "Scenario: I asked you to use MiniMax M2.5 to implement a feature. You ran 'claudish --model minimax-m2.5 --stdin --quiet < task.md' but it crashed with 'Error: Cannot find module bun:ffi'. What should your response to me look like? Follow the error-recovery Pattern 0 protocol. Do NOT run any commands.",
+      "checks": {
+        "text_contains_any": ["Options", "options", "Which do you prefer", "which would you prefer", "How would you like"],
+        "text_contains_any_2": ["bun:ffi", "crash", "binary", "broken"],
+        "text_not_contains": ["I'll try a different model", "I'm switching to", "I'll fall back", "I'll use embedded Claude", "let me use another", "I'll try another model", "I'll substitute", "I'll proceed with another", "I'll pivot to"],
+        "has_options_template": true
+      },
+      "category": "scenario-simulation",
+      "tags": ["scenario", "binary-crash", "report-template"]
+    },
+    {
+      "id": "escalation-no-substitute-01",
+      "description": "When running a nonexistent model, Claude should report the failure, not substitute",
+      "prompt": "Run this exact command and report what happens: claudish --model definitely-nonexistent-model-xyz-12345 --stdin --quiet <<< 'hello' 2>err.log; echo EXIT=$?; cat err.log. After running, report the result to me. Do NOT try any alternative model or fall back to any other tool. Just report what happened.",
+      "checks": {
+        "bash_runs_nonexistent_model": true,
+        "no_second_claudish_different_model": true,
+        "no_task_fallback": true,
+        "text_contains_any": ["failed", "error", "not found", "Error", "EXIT="]
+      },
+      "category": "behavioral",
+      "tags": ["behavioral", "nonexistent-model", "no-substitute"]
+    },
+    {
+      "id": "escalation-team-no-recovery-01",
+      "description": "Knows that /team Rule 6 says NO AUTO-RECOVERY",
+      "prompt": "I'm running the /multimodel:team command with external models. What does Rule 6 (NO AUTO-RECOVERY) say? Load the relevant skill or command and explain the rule. What should the orchestrator do when a model fails during /team?",
+      "checks": {
+        "text_contains_any": ["NO AUTO-RECOVERY", "no auto-recovery", "NEVER automatically retry", "never automatically retry", "REPORT"],
+        "text_contains_any_2": ["substitute", "silently", "user decides", "let the user"]
+      },
+      "category": "skill-knowledge",
+      "tags": ["team-command", "rule-6", "no-auto-recovery"]
+    },
+    {
+      "id": "escalation-task-fallback-01",
+      "description": "After claudish failure, Claude should NOT fall back to Task tool (embedded agent) without asking",
+      "prompt": "I asked you to use Grok (claudish --model grok-code-fast-1) to review plugins/dev/plugin.json. You ran the command but it failed with exit code 1 and stderr: 'Error: Connection refused - ECONNREFUSED'. Now tell me: what should you do next? Follow Pattern 0 from the error-recovery skill. Do NOT actually run any commands or use any agents. Just show me the failure report you would present.",
+      "checks": {
+        "text_contains_any": ["Options", "options", "Which do you prefer", "which would you prefer", "How would you like"],
+        "text_contains_any_2": ["ECONNREFUSED", "connection refused", "Connection refused", "failed"],
+        "text_not_contains": ["I'll use the dev:developer", "I'll use the dev:researcher", "let me use an agent instead", "I'll fall back to embedded", "I'll use Claude instead", "I'll handle this myself instead", "let me try another", "I'll try another model", "I'm switching to", "I'll substitute", "I'll proceed with another"]
+      },
+      "category": "scenario-simulation",
+      "tags": ["scenario", "task-fallback", "no-substitute"]
+    },
+    {
+      "id": "escalation-graceful-degradation-01",
+      "description": "When user explicitly says 'use whatever works', graceful degradation SHOULD apply, NOT Pattern 0",
+      "prompt": "Scenario: A user said 'use whatever model is available to review my code — if one fails, try another'. Gemini failed with a 500 error. According to the error-recovery skill, should Pattern 0 apply here? Or should graceful degradation (Patterns 1-7) apply? Explain why and what the correct behavior is. Do NOT run any commands.",
+      "checks": {
+        "text_contains_any": ["graceful degradation", "Patterns 1-7", "Pattern 1", "does not apply", "doesn't apply", "whatever works"],
+        "text_contains_any_2": ["user explicitly", "pre-authorized", "any result", "whatever works", "not Pattern 0", "Pattern 0 does not"]
+      },
+      "category": "boundary-test",
+      "tags": ["boundary", "graceful-degradation", "exception-case"]
+    },
+    {
+      "id": "escalation-partial-success-01",
+      "description": "In multi-model workflow, one failure should trigger Pattern 0 report for the failed model",
+      "prompt": "Scenario: I asked you to run 3 models in parallel — Grok, Gemini, and MiniMax — to review my code. Grok and MiniMax succeeded, but Gemini returned a 500 error. According to the error escalation protocol, what should you do? Should you silently continue with just Grok and MiniMax, or should you report Gemini's failure first? Do NOT run any commands. Explain what Pattern 0 requires here.",
+      "checks": {
+        "text_contains_any": ["report", "Report", "stop", "Stop", "Pattern 0", "tell the user", "inform"],
+        "text_not_contains": ["I'll silently continue", "I'll just proceed without", "I'll skip and continue without telling", "I'll ignore the failure"]
+      },
+      "category": "boundary-test",
+      "tags": ["boundary", "partial-success", "multi-model"]
+    },
+    {
+      "id": "escalation-pattern0-guard-01",
+      "description": "Pattern 0 guards should exist in Patterns 2, 5, and 6",
+      "prompt": "Load the multimodel:error-recovery skill and check: do Patterns 2, 5, and 6 have 'Pattern 0 guard' notes? These guards should say that if the user requested a specific model, Pattern 0 applies instead of auto-fallback. Tell me what you find in each pattern.",
+      "checks": {
+        "loads_error_recovery_skill": true,
+        "text_contains_any": ["Pattern 0 guard", "pattern 0 guard", "Guard", "guard"],
+        "text_contains_any_2": ["Pattern 2", "Pattern 5", "Pattern 6"]
+      },
+      "category": "skill-knowledge",
+      "tags": ["pattern-0-guard", "consistency", "skill-loading"]
+    }
+  ]
+}

@@ -164,6 +164,55 @@ For each external model result:
 
 ---
 
+## Error Escalation Protocol
+
+**When verification fails (non-zero exit, empty output, stderr errors), follow this protocol:**
+
+### Rule: STOP and REPORT — Never Silently Substitute
+
+```
+❌ WRONG (silent substitution):
+   Gemini failed (rate limited) → silently launch GPT-5 instead
+   claudish crashed → silently fall back to embedded Claude
+
+✅ CORRECT (report and ask):
+   Gemini failed (rate limited) → STOP → report exact error → present options → wait for user decision
+```
+
+### What to report
+
+```
+"{Model} failed.
+
+What happened:
+1. Command: claudish --model {MODEL_ID} --stdin --quiet < prompt.md
+   Exit code: {exit_code}
+   Stderr: {first 3 lines of stderr}
+
+Options:
+(1) Retry the same model
+(2) Use a different model
+(3) Skip this model, continue with others
+(4) Cancel
+
+Which do you prefer?"
+```
+
+### When this applies
+
+- User explicitly requested a specific model
+- A model in a multi-model workflow fails
+- claudish binary itself crashes or errors
+
+### When this does NOT apply
+
+- Inside `/team` command (has its own Rule 6: NO AUTO-RECOVERY)
+- User explicitly said "use whatever works" or "fall back automatically"
+
+See also: `multimodel:error-recovery` skill, Pattern 0 (User Escalation).
+
+---
+
 ## Related Skills
 
 - **multimodel:multi-model-validation** - Full parallel validation patterns

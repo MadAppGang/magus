@@ -1,16 +1,16 @@
 ---
 name: error-recovery
 description: Handle errors, timeouts, and failures in multi-agent workflows. Use when dealing with external model timeouts, API failures, partial success, user cancellation, or graceful degradation. Trigger keywords - "error", "failure", "timeout", "retry", "fallback", "cancelled", "graceful degradation", "recovery", "partial success".
-version: 0.1.0
-tags: [orchestration, error-handling, retry, fallback, timeout, recovery]
-keywords: [error, failure, timeout, retry, fallback, graceful-degradation, cancellation, recovery, partial-success, resilience]
+version: 1.1.0
+tags: [orchestration, error-handling, retry, fallback, timeout, recovery, escalation]
+keywords: [error, failure, timeout, retry, fallback, graceful-degradation, cancellation, recovery, partial-success, resilience, escalation, report-to-user]
 plugin: multimodel
-updated: 2026-01-20
+updated: 2026-03-17
 ---
 
 # Error Recovery
 
-**Version:** 1.0.0
+**Version:** 1.1.0
 **Purpose:** Patterns for handling failures in multi-agent workflows
 **Status:** Production Ready
 
@@ -19,6 +19,7 @@ updated: 2026-01-20
 Error recovery is the practice of handling failures gracefully in multi-agent workflows, ensuring that temporary errors, timeouts, or partial failures don't derail entire workflows. In production systems with external dependencies (AI models, APIs, network calls), failures are inevitable. The question is not "will it fail?" but "how will we handle it when it does?"
 
 This skill provides battle-tested patterns for:
+- **User escalation** (STOP and report before fallback — DEFAULT)
 - **Timeout handling** (external models taking >30s)
 - **API failure recovery** (401, 500, network errors)
 - **Partial success strategies** (some agents succeed, others fail)
@@ -30,6 +31,65 @@ This skill provides battle-tested patterns for:
 With proper error recovery, workflows become **resilient** and **production-ready**.
 
 ## Core Patterns
+
+### Pattern 0: User Escalation (DEFAULT — Read First)
+
+**This is the MOST IMPORTANT pattern. It overrides all other patterns when the user has requested a specific model.**
+
+**Rule: NEVER silently substitute, retry with a different model, or fall back to embedded Claude when the user requested a specific model. STOP and REPORT the failure first.**
+
+**When this applies:**
+- User explicitly requested a model (e.g., "use Gemini to redesign X")
+- User selected specific models for a task
+- Any workflow where the model choice was intentional
+
+**When graceful degradation (Patterns 1-7) applies instead:**
+- Automated pipelines where *any result* > *no result*
+- User explicitly said "use whatever works"
+- `/team` workflows where the command already handles failure reporting
+
+**The Protocol:**
+
+```
+Step 1: Model fails (non-zero exit, empty output, API error, rate limit, binary crash)
+
+Step 2: STOP immediately. Do NOT:
+  ❌ Silently launch a different model
+  ❌ Retry with a different provider prefix
+  ❌ Fall back to embedded Claude without asking
+  ❌ Run `claudish --top-models` to find alternatives
+  ❌ Substitute a "similar" model
+
+Step 3: REPORT to the user with:
+  - What model was requested
+  - What happened (exact error message)
+  - How many attempts were made and what was tried
+  - Actionable options for the user to choose from
+
+Step 4: WAIT for user's decision before proceeding
+```
+
+**Report Template:**
+
+```
+"{Model Name} failed — {error category}.
+
+What happened:
+1. Attempt 1: {what was tried} — {exact error}
+2. Attempt 2: {what was tried} — {exact error}
+
+Options:
+(1) {Fix and retry} — {specific fix description}
+(2) Use a different model — {suggest alternatives if known}
+(3) Skip this model and continue without it
+(4) Cancel the workflow
+
+Which do you prefer?"
+```
+
+**Why this matters:** When a user says "use Gemini", they've made a deliberate choice — for its 1M context, its reasoning style, or for model diversity. Silently substituting GPT-5 defeats the purpose. The user should always be in control of model selection decisions.
+
+---
 
 ### Pattern 1: Timeout Handling
 
@@ -178,6 +238,8 @@ Network Errors:
 
 **401 Unauthorized:**
 
+> **Pattern 0 guard:** If the user requested a specific model, apply Pattern 0 (stop and report with options) instead of auto-fallback. The fallback below applies only to automated pipelines or when the user pre-authorized graceful degradation.
+
 ```
 Detection:
   API returns 401 status code
@@ -298,6 +360,8 @@ Note: Respect Retry-After header (avoid hammering API)
 ```
 
 **Graceful Degradation for All API Failures:**
+
+> **Pattern 0 guard:** If the user requested specific models, apply Pattern 0 (stop and report with options) instead of auto-fallback. The fallback below applies only to automated pipelines or when the user pre-authorized graceful degradation.
 
 ```
 Fallback Strategy:
@@ -568,6 +632,8 @@ if (state) {
 
 ### Pattern 5: Claudish Not Installed
 
+> **Pattern 0 guard:** If the user requested a specific external model (e.g., "use Gemini"), apply Pattern 0 (stop and report with options) instead of auto-fallback to embedded Claude. The fallback below applies only to automated pipelines or when the user pre-authorized graceful degradation.
+
 **Scenario: User Requests Multi-Model Review but Claudish Missing**
 
 **Detection:**
@@ -642,6 +708,8 @@ fi
 ---
 
 ### Pattern 6: Out of OpenRouter Credits
+
+> **Pattern 0 guard:** If the user requested a specific external model, apply Pattern 0 (stop and report with options) instead of auto-fallback. The fallback below applies only to automated pipelines or when the user pre-authorized graceful degradation.
 
 **Scenario: External Model API Call Fails Due to Insufficient Credits**
 
@@ -882,6 +950,8 @@ Step 4: Execution (multi-agent-coordination)
 - ✅ Adapt to partial success (N ≥ 2 reviews is useful)
 
 **Don't:**
+- ❌ Silently substitute a different model than the user requested (Pattern 0 violation)
+- ❌ Fall back to embedded Claude without asking when user requested a specific model
 - ❌ Retry indefinitely (set max retry limits)
 - ❌ Retry non-retriable errors (waste time on 401, 404)
 - ❌ Fail entire workflow for single model failure (graceful degradation)
