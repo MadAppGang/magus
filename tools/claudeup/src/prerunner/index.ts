@@ -13,6 +13,7 @@ import {
 	getGlobalEnabledPlugins,
 	getEnabledPlugins,
 	getLocalEnabledPlugins,
+	saveGlobalInstalledPluginVersion,
 } from "../services/claude-settings.js";
 import { parsePluginId } from "../utils/string-utils.js";
 import { defaultMarketplaces } from "../data/marketplaces.js";
@@ -192,6 +193,7 @@ export async function prerunClaude(
 						if (cliAvailable) {
 							await updatePlugin(plugin.id, "user");
 						}
+						await saveGlobalInstalledPluginVersion(plugin.id, plugin.version);
 
 						autoUpdatedPlugins.push({
 							pluginId: plugin.id,
