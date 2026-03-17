@@ -95,7 +95,7 @@ export function ModalContainer() {
 			height="100%"
 			justifyContent="center"
 			alignItems="center"
-			bg="#1a1a2e"
+			backgroundColor="#1a1a2e"
 		>
 			{renderModal()}
 		</box>
