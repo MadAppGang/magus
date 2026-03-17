@@ -1,7 +1,7 @@
 {
   "name": "multimodel",
-  "version": "2.6.2",
-  "description": "Multi-model collaboration, orchestration, and workflow patterns. v2.6.2: Skill refinements and model reference updates.",
+  "version": "2.7.0",
+  "description": "Multi-model collaboration, orchestration, and workflow patterns. v2.7.0: Error Escalation Protocol (Pattern 0) — stop and report on model failure instead of silent substitution.",
   "author": "MadAppGang",
   "license": "MIT",
   "homepage": "https://github.com/MadAppGang/magus",
