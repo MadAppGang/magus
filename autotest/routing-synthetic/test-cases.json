@@ -1,0 +1,3226 @@
+{
+  "meta": {
+    "description": "Synthetically generated routing test cases. Imported from magus-bench skill-routing-eval.",
+    "version": "1.0.0",
+    "created": "2026-03-17",
+    "source_file": "/Users/jack/mag/claude-code/../magus-bench/skill-routing-eval/generated/test-cases-generated.json",
+    "seed_count": 22,
+    "generated_count": 219,
+    "generator": "import-cases.sh + magus-bench/generate-test-cases.ts"
+  },
+  "test_cases": [
+    {
+      "id": "skill-claudemem-explicit-01-var-01",
+      "description": "Direct rephrasing with explicit skill name, clear instruction to only inspect capabilities",
+      "prompt": "Load code-analysis:claudemem-search and tell me what it can do. Don't execute any searches.",
+      "category": "explicit-skill",
+      "tags": [
+        "rephrased",
+        "easy",
+        "synthetic",
+        "seed:skill-claudemem-explicit-01"
+      ],
+      "checks": {
+        "skill_invoked_is": "code-analysis:claudemem-search",
+        "no_task_with_skill_name": true
+      }
+    },
+    {
+      "id": "skill-claudemem-explicit-01-var-02",
+      "description": "Minimal prompt with just the skill identifier and a brief question",
+      "prompt": "code-analysis:claudemem-search - what commands does this skill have?",
+      "category": "explicit-skill",
+      "tags": [
+        "terse",
+        "easy",
+        "synthetic",
+        "seed:skill-claudemem-explicit-01"
+      ],
+      "checks": {
+        "skill_invoked_is": "code-analysis:claudemem-search",
+        "no_task_with_skill_name": true
+      }
+    },
+    {
+      "id": "skill-claudemem-explicit-01-var-03",
+      "description": "Highly detailed professional request with explicit skill name and clear boundaries",
+      "prompt": "I'm trying to understand our codebase search tooling. Could you please invoke the code-analysis:claudemem-search skill and provide me with a comprehensive overview of its available commands and capabilities? I want to learn about it before actually using it, so please don't run any actual claudemem searches against the repository.",
+      "category": "explicit-skill",
+      "tags": [
+        "verbose",
+        "easy",
+        "synthetic",
+        "seed:skill-claudemem-explicit-01"
+      ],
+      "checks": {
+        "skill_invoked_is": "code-analysis:claudemem-search",
+        "no_task_with_skill_name": true
+      }
+    },
+    {
+      "id": "skill-claudemem-explicit-01-var-04",
+      "description": "Casual phrasing with 'pull up' idiom but explicit skill identifier",
+      "prompt": "Pull up code-analysis:claudemem-search. Just show me the interface, no actual execution.",
+      "category": "explicit-skill",
+      "tags": [
+        "rephrased",
+        "easy",
+        "synthetic",
+        "seed:skill-claudemem-explicit-01"
+      ],
+      "checks": {
+        "skill_invoked_is": "code-analysis:claudemem-search",
+        "no_task_with_skill_name": true
+      }
+    },
+    {
+      "id": "skill-claudemem-explicit-01-var-05",
+      "description": "Bare skill identifier with no additional context tests whether system infers intent to load/inspect",
+      "prompt": "code-analysis:claudemem-search",
+      "category": "explicit-skill",
+      "tags": [
+        "edge_case",
+        "medium",
+        "synthetic",
+        "seed:skill-claudemem-explicit-01"
+      ],
+      "checks": {
+        "skill_invoked_is": "code-analysis:claudemem-search",
+        "no_task_with_skill_name": true
+      }
+    },
+    {
+      "id": "skill-claudemem-explicit-01-var-06",
+      "description": "Negation-first structure with explicit skill name tests parsing of complex instruction",
+      "prompt": "Don't search with claudemem yet. First, use the code-analysis:claudemem-search skill to show me what commands I'd have available for searching this codebase.",
+      "category": "explicit-skill",
+      "tags": [
+        "rephrased",
+        "easy",
+        "synthetic",
+        "seed:skill-claudemem-explicit-01"
+      ],
+      "checks": {
+        "skill_invoked_is": "code-analysis:claudemem-search",
+        "no_task_with_skill_name": true
+      }
+    },
+    {
+      "id": "skill-claudemem-explicit-01-var-07",
+      "description": "Mentions 'delegate' and 'agent' which could trigger Task tool, but explicitly requests Skill usage",
+      "prompt": "I need to delegate a codebase search task to an agent. But first, use the code-analysis:claudemem-search skill to tell me what claudemem commands exist. Don't run anything.",
+      "category": "explicit-skill",
+      "tags": [
+        "adversarial",
+        "hard",
+        "synthetic",
+        "seed:skill-claudemem-explicit-01"
+      ],
+      "checks": {
+        "skill_invoked_is": "code-analysis:claudemem-search",
+        "no_task_with_skill_name": true
+      }
+    },
+    {
+      "id": "skill-claudemem-explicit-01-var-08",
+      "description": "Frames request in onboarding context but maintains explicit skill invocation",
+      "prompt": "We're onboarding a new dev and they want to know about claudemem. Activate code-analysis:claudemem-search and list the available commands without running any searches.",
+      "category": "explicit-skill",
+      "tags": [
+        "context_shift",
+        "medium",
+        "synthetic",
+        "seed:skill-claudemem-explicit-01"
+      ],
+      "checks": {
+        "skill_invoked_is": "code-analysis:claudemem-search",
+        "no_task_with_skill_name": true
+      }
+    },
+    {
+      "id": "skill-claudemem-explicit-01-var-09",
+      "description": "Symbolic/terse notation that mimics command syntax tests non-natural language parsing",
+      "prompt": "skill: code-analysis:claudemem-search → describe",
+      "category": "explicit-skill",
+      "tags": [
+        "edge_case",
+        "medium",
+        "synthetic",
+        "seed:skill-claudemem-explicit-01"
+      ],
+      "checks": {
+        "skill_invoked_is": "code-analysis:claudemem-search",
+        "no_task_with_skill_name": true
+      }
+    },
+    {
+      "id": "skill-claudemem-explicit-01-var-10",
+      "description": "Self-correcting prompt with initial ambiguous 'run' instruction tests handling of revised intent",
+      "prompt": "Can you run the code-analysis:claudemem-search skill? Wait, actually don't search anything - I only want to see what claudemem search commands are exposed by this skill.",
+      "category": "explicit-skill",
+      "tags": [
+        "adversarial",
+        "hard",
+        "synthetic",
+        "seed:skill-claudemem-explicit-01"
+      ],
+      "checks": {
+        "skill_invoked_is": "code-analysis:claudemem-search",
+        "no_task_with_skill_name": true
+      }
+    },
+    {
+      "id": "skill-claudemem-implicit-01-var-01",
+      "description": "Directly mentions claudemem and semantic search with clear intent, straightforward routing decision",
+      "prompt": "Can you help me do a semantic search through the code using claudemem? I'm looking for anything related to user login flows.",
+      "category": "implicit-skill",
+      "tags": [
+        "rephrased",
+        "easy",
+        "synthetic",
+        "seed:skill-claudemem-implicit-01"
+      ],
+      "checks": {
+        "skill_invoked_contains": "claudemem",
+        "no_task_with_skill_name": true
+      }
+    },
+    {
+      "id": "skill-claudemem-implicit-01-var-02",
+      "description": "Minimal prompt with just the tool name and action, tests routing with sparse context",
+      "prompt": "claudemem search auth",
+      "category": "implicit-skill",
+      "tags": [
+        "terse",
+        "medium",
+        "synthetic",
+        "seed:skill-claudemem-implicit-01"
+      ],
+      "checks": {
+        "skill_invoked_contains": "claudemem",
+        "no_task_with_skill_name": true
+      }
+    },
+    {
+      "id": "skill-claudemem-implicit-01-var-03",
+      "description": "Highly detailed request with explicit claudemem mention, tests that verbosity doesn't confuse routing",
+      "prompt": "I've been told claudemem can help me understand this legacy codebase better. We have authentication scattered everywhere and I need to find all the pieces. Could you load up claudemem and walk me through how to use its semantic search capabilities to locate every file that touches our auth system, including JWT validation, session management, and OAuth integrations?",
+      "category": "implicit-skill",
+      "tags": [
+        "verbose",
+        "easy",
+        "synthetic",
+        "seed:skill-claudemem-implicit-01"
+      ],
+      "checks": {
+        "skill_invoked_contains": "claudemem",
+        "no_task_with_skill_name": true
+      }
+    },
+    {
+      "id": "skill-claudemem-implicit-01-var-04",
+      "description": "Uses 'memory tool' instead of claudemem explicitly, tests synonym recognition for the skill",
+      "prompt": "Use the memory tool to semantically query for password hashing implementations",
+      "category": "implicit-skill",
+      "tags": [
+        "edge_case",
+        "hard",
+        "synthetic",
+        "seed:skill-claudemem-implicit-01"
+      ],
+      "checks": {
+        "skill_invoked_contains": "claudemem",
+        "no_task_with_skill_name": true
+      }
+    },
+    {
+      "id": "skill-claudemem-implicit-01-var-05",
+      "description": "Frames request by contrasting with other tools, mentions claudemem in context of semantic vs literal search",
+      "prompt": "I don't want to use grep or ripgrep for this - I need something smarter. Load claudemem so I can find auth code by meaning, not just string matching.",
+      "category": "implicit-skill",
+      "tags": [
+        "context_shift",
+        "medium",
+        "synthetic",
+        "seed:skill-claudemem-implicit-01"
+      ],
+      "checks": {
+        "skill_invoked_contains": "claudemem",
+        "no_task_with_skill_name": true
+      }
+    },
+    {
+      "id": "skill-claudemem-implicit-01-var-06",
+      "description": "Professional context with explicit skill mention and clear action request",
+      "prompt": "Before I start refactoring, I need claudemem to map out all the security-related code paths. Can you get that skill ready and show me the commands?",
+      "category": "implicit-skill",
+      "tags": [
+        "rephrased",
+        "easy",
+        "synthetic",
+        "seed:skill-claudemem-implicit-01"
+      ],
+      "checks": {
+        "skill_invoked_contains": "claudemem",
+        "no_task_with_skill_name": true
+      }
+    },
+    {
+      "id": "skill-claudemem-implicit-01-var-07",
+      "description": "Mentions both claudemem skill and potentially delegating to an agent, tests that skill is prioritized when explicitly named",
+      "prompt": "I need to analyze authentication patterns across this repo. Would the claudemem semantic indexing help here, or should I just ask a research agent to investigate?",
+      "category": "implicit-skill",
+      "tags": [
+        "adversarial",
+        "hard",
+        "synthetic",
+        "seed:skill-claudemem-implicit-01"
+      ],
+      "checks": {
+        "skill_invoked_contains": "claudemem",
+        "no_task_with_skill_name": true
+      }
+    },
+    {
+      "id": "skill-claudemem-implicit-01-var-08",
+      "description": "Casual shorthand command style, tests routing with informal lowercase phrasing",
+      "prompt": "get claudemem going, need to find where we handle tokens",
+      "category": "implicit-skill",
+      "tags": [
+        "terse",
+        "medium",
+        "synthetic",
+        "seed:skill-claudemem-implicit-01"
+      ],
+      "checks": {
+        "skill_invoked_contains": "claudemem",
+        "no_task_with_skill_name": true
+      }
+    },
+    {
+      "id": "skill-claudemem-implicit-01-var-09",
+      "description": "Formal enterprise context with explicit skill initialization request and detailed scope",
+      "prompt": "Our security audit requires finding all authentication touchpoints. Please initialize the claudemem skill and provide documentation on performing semantic codebase queries for credential handling, session tokens, and access control logic.",
+      "category": "implicit-skill",
+      "tags": [
+        "verbose",
+        "easy",
+        "synthetic",
+        "seed:skill-claudemem-implicit-01"
+      ],
+      "checks": {
+        "skill_invoked_contains": "claudemem",
+        "no_task_with_skill_name": true
+      }
+    },
+    {
+      "id": "skill-claudemem-implicit-01-var-10",
+      "description": "Uncertain phrasing with hedging language, tests that tentative skill references still route correctly",
+      "prompt": "The codebase memory feature - claudemem I think? - I want to use it to search for anything authentication-related without exact keyword matching",
+      "category": "implicit-skill",
+      "tags": [
+        "edge_case",
+        "medium",
+        "synthetic",
+        "seed:skill-claudemem-implicit-01"
+      ],
+      "checks": {
+        "skill_invoked_contains": "claudemem",
+        "no_task_with_skill_name": true
+      }
+    },
+    {
+      "id": "skill-spelling-bash-01-var-01",
+      "description": "Direct rephrasing with same explicit skill name and bash commands, testing basic routing with clear intent",
+      "prompt": "Load code-analysis:claudemem-search and verify claudemem installation by running 'which claudemem' and 'claudemem --version'",
+      "category": "spelling",
+      "tags": [
+        "rephrased",
+        "easy",
+        "synthetic",
+        "seed:skill-spelling-bash-01"
+      ],
+      "checks": {
+        "skill_invoked_contains": "claudemem",
+        "bash_claudemem_spelled_correctly": true,
+        "no_bash_typo_clademem": true
+      }
+    },
+    {
+      "id": "skill-spelling-bash-01-var-02",
+      "description": "Very terse command-style input with abbreviated grammar tests parser tolerance for minimal context",
+      "prompt": "claudemem search skill load, then which claudemem && claudemem --version",
+      "category": "spelling",
+      "tags": [
+        "terse",
+        "medium",
+        "synthetic",
+        "seed:skill-spelling-bash-01"
+      ],
+      "checks": {
+        "skill_invoked_contains": "claudemem",
+        "bash_claudemem_spelled_correctly": true,
+        "no_bash_typo_clademem": true
+      }
+    },
+    {
+      "id": "skill-spelling-bash-01-var-03",
+      "description": "Over-explained prompt with full context ensures verbose requests still route correctly to the skill",
+      "prompt": "I need to check if claudemem is available on this system. First, please activate the code-analysis:claudemem-search skill from the plugin ecosystem, then execute the shell commands 'which claudemem' to find the binary path and 'claudemem --version' to confirm the installed version number.",
+      "category": "spelling",
+      "tags": [
+        "verbose",
+        "easy",
+        "synthetic",
+        "seed:skill-spelling-bash-01"
+      ],
+      "checks": {
+        "skill_invoked_contains": "claudemem",
+        "bash_claudemem_spelled_correctly": true,
+        "no_bash_typo_clademem": true
+      }
+    },
+    {
+      "id": "skill-spelling-bash-01-var-04",
+      "description": "Partial skill name without namespace prefix tests fuzzy matching on skill identifiers",
+      "prompt": "Use the claudemem-search skill to help me figure out if claudemem exists - run which and version checks",
+      "category": "spelling",
+      "tags": [
+        "rephrased",
+        "medium",
+        "synthetic",
+        "seed:skill-spelling-bash-01"
+      ],
+      "checks": {
+        "skill_invoked_contains": "claudemem",
+        "bash_claudemem_spelled_correctly": true,
+        "no_bash_typo_clademem": true
+      }
+    },
+    {
+      "id": "skill-spelling-bash-01-var-05",
+      "description": "Minimal two-word input tests whether system can infer skill loading with absolute minimum context",
+      "prompt": "skill claudemem",
+      "category": "spelling",
+      "tags": [
+        "edge_case",
+        "hard",
+        "synthetic",
+        "seed:skill-spelling-bash-01"
+      ],
+      "checks": {
+        "skill_invoked_contains": "claudemem",
+        "bash_claudemem_spelled_correctly": true,
+        "no_bash_typo_clademem": true
+      }
+    },
+    {
+      "id": "skill-spelling-bash-01-var-06",
+      "description": "Explicitly mentions agents and delegation which could confuse routing into using Task instead of Skill",
+      "prompt": "Don't delegate this to another agent - just load the code-analysis:claudemem-search skill yourself and run which claudemem and claudemem --version",
+      "category": "spelling",
+      "tags": [
+        "adversarial",
+        "hard",
+        "synthetic",
+        "seed:skill-spelling-bash-01"
+      ],
+      "checks": {
+        "skill_invoked_contains": "claudemem",
+        "bash_claudemem_spelled_correctly": true,
+        "no_bash_typo_clademem": true
+      }
+    },
+    {
+      "id": "skill-spelling-bash-01-var-07",
+      "description": "Frames the request in a dev environment setup context with casual tone to test routing across scenarios",
+      "prompt": "We're setting up the dev environment. Can you pull in that claudemem search skill from code-analysis and then just quickly check if claudemem is installed via bash?",
+      "category": "spelling",
+      "tags": [
+        "context_shift",
+        "medium",
+        "synthetic",
+        "seed:skill-spelling-bash-01"
+      ],
+      "checks": {
+        "skill_invoked_contains": "claudemem",
+        "bash_claudemem_spelled_correctly": true,
+        "no_bash_typo_clademem": true
+      }
+    },
+    {
+      "id": "skill-spelling-bash-01-var-08",
+      "description": "Explicitly contrasts Skill vs Task routing which could paradoxically trigger wrong tool selection",
+      "prompt": "I want to search for claudemem using the skill, not by delegating to a subagent. Load code-analysis:claudemem-search and check installation with bash commands.",
+      "category": "spelling",
+      "tags": [
+        "adversarial",
+        "hard",
+        "synthetic",
+        "seed:skill-spelling-bash-01"
+      ],
+      "checks": {
+        "skill_invoked_contains": "claudemem",
+        "bash_claudemem_spelled_correctly": true,
+        "no_bash_typo_clademem": true
+      }
+    },
+    {
+      "id": "skill-spelling-bash-01-var-09",
+      "description": "Shell-style semicolon-separated commands without natural language tests parsing of technical shorthand",
+      "prompt": "activate code-analysis:claudemem-search; which claudemem; claudemem --version",
+      "category": "spelling",
+      "tags": [
+        "edge_case",
+        "medium",
+        "synthetic",
+        "seed:skill-spelling-bash-01"
+      ],
+      "checks": {
+        "skill_invoked_contains": "claudemem",
+        "bash_claudemem_spelled_correctly": true,
+        "no_bash_typo_clademem": true
+      }
+    },
+    {
+      "id": "skill-spelling-bash-01-var-10",
+      "description": "Professional CI/CD context with technical jargon like 'namespace' tests domain-specific vocabulary handling",
+      "prompt": "For my CI pipeline debugging, I need the claudemem-search capability loaded from the code-analysis namespace, then validate the claudemem binary is present using standard unix checks",
+      "category": "spelling",
+      "tags": [
+        "context_shift",
+        "medium",
+        "synthetic",
+        "seed:skill-spelling-bash-01"
+      ],
+      "checks": {
+        "skill_invoked_contains": "claudemem",
+        "bash_claudemem_spelled_correctly": true,
+        "no_bash_typo_clademem": true
+      }
+    },
+    {
+      "id": "skill-not-agent-01-var-01",
+      "description": "Direct request with explicit skill name and clear action, tests basic skill routing",
+      "prompt": "Load claudemem and use it to analyze the architecture of the plugins folder",
+      "category": "agent-vs-skill",
+      "tags": [
+        "rephrased",
+        "easy",
+        "synthetic",
+        "seed:skill-not-agent-01"
+      ],
+      "checks": {
+        "no_task_with_skill_name": true,
+        "skill_invoked_contains": "claudemem"
+      }
+    },
+    {
+      "id": "skill-not-agent-01-var-02",
+      "description": "Minimal command-style input tests whether the system can parse extremely terse skill invocations",
+      "prompt": "claudemem plugins/",
+      "category": "agent-vs-skill",
+      "tags": [
+        "terse",
+        "medium",
+        "synthetic",
+        "seed:skill-not-agent-01"
+      ],
+      "checks": {
+        "no_task_with_skill_name": true,
+        "skill_invoked_contains": "claudemem"
+      }
+    },
+    {
+      "id": "skill-not-agent-01-var-03",
+      "description": "Highly detailed request with explicit skill mention buried in verbose context",
+      "prompt": "I'm trying to understand how our plugin system is structured. Can you activate the claudemem skill and have it create an architectural map of everything under ./plugins? I need to see the relationships between components.",
+      "category": "agent-vs-skill",
+      "tags": [
+        "verbose",
+        "easy",
+        "synthetic",
+        "seed:skill-not-agent-01"
+      ],
+      "checks": {
+        "no_task_with_skill_name": true,
+        "skill_invoked_contains": "claudemem"
+      }
+    },
+    {
+      "id": "skill-not-agent-01-var-04",
+      "description": "Describes claudemem by its function rather than name, tests semantic matching to correct skill",
+      "prompt": "Use the memory mapping tool to scan plugins directory structure",
+      "category": "agent-vs-skill",
+      "tags": [
+        "rephrased",
+        "medium",
+        "synthetic",
+        "seed:skill-not-agent-01"
+      ],
+      "checks": {
+        "no_task_with_skill_name": true,
+        "skill_invoked_contains": "claudemem"
+      }
+    },
+    {
+      "id": "skill-not-agent-01-var-05",
+      "description": "User incorrectly calls claudemem an 'agent' - system must recognize it's actually a skill and use Skill tool",
+      "prompt": "Can you ask the claudemem agent to map out the plugins architecture for me?",
+      "category": "agent-vs-skill",
+      "tags": [
+        "adversarial",
+        "hard",
+        "synthetic",
+        "seed:skill-not-agent-01"
+      ],
+      "checks": {
+        "no_task_with_skill_name": true,
+        "skill_invoked_contains": "claudemem"
+      }
+    },
+    {
+      "id": "skill-not-agent-01-var-06",
+      "description": "Telegram-style abbreviated syntax tests parsing of non-standard prompt formats",
+      "prompt": "spin up claudemem, target: plugins dir, goal: architecture mapping",
+      "category": "agent-vs-skill",
+      "tags": [
+        "terse",
+        "medium",
+        "synthetic",
+        "seed:skill-not-agent-01"
+      ],
+      "checks": {
+        "no_task_with_skill_name": true,
+        "skill_invoked_contains": "claudemem"
+      }
+    },
+    {
+      "id": "skill-not-agent-01-var-07",
+      "description": "Frames the same task within a documentation/refactoring workflow context",
+      "prompt": "For my documentation sprint, I need semantic code search on the plugins directory. Initialize claudemem to build a mental model of the plugin architecture before we start refactoring.",
+      "category": "agent-vs-skill",
+      "tags": [
+        "context_shift",
+        "medium",
+        "synthetic",
+        "seed:skill-not-agent-01"
+      ],
+      "checks": {
+        "no_task_with_skill_name": true,
+        "skill_invoked_contains": "claudemem"
+      }
+    },
+    {
+      "id": "skill-not-agent-01-var-08",
+      "description": "Uses 'delegate' keyword which suggests Task tool, but claudemem is a skill requiring Skill tool",
+      "prompt": "delegate to claudemem: map plugins architecture",
+      "category": "agent-vs-skill",
+      "tags": [
+        "adversarial",
+        "hard",
+        "synthetic",
+        "seed:skill-not-agent-01"
+      ],
+      "checks": {
+        "no_task_with_skill_name": true,
+        "skill_invoked_contains": "claudemem"
+      }
+    },
+    {
+      "id": "skill-not-agent-01-var-09",
+      "description": "Extremely minimal prompt without mentioning claudemem tests whether semantic intent alone routes correctly",
+      "prompt": "map architecture plugins",
+      "category": "agent-vs-skill",
+      "tags": [
+        "edge_case",
+        "hard",
+        "synthetic",
+        "seed:skill-not-agent-01"
+      ],
+      "checks": {
+        "no_task_with_skill_name": true,
+        "skill_invoked_contains": "claudemem"
+      }
+    },
+    {
+      "id": "skill-not-agent-01-var-10",
+      "description": "Explicitly distinguishes between skill and agent, reinforcing that Skill tool must be used",
+      "prompt": "Before I make changes, run the claudemem skill against plugins/** to give me a structural overview. Don't delegate this to another agent - handle it directly with the skill.",
+      "category": "agent-vs-skill",
+      "tags": [
+        "edge_case",
+        "easy",
+        "synthetic",
+        "seed:skill-not-agent-01"
+      ],
+      "checks": {
+        "no_task_with_skill_name": true,
+        "skill_invoked_contains": "claudemem"
+      }
+    },
+    {
+      "id": "skill-routing-detective-01-var-01",
+      "description": "Direct rephrasing with clear skill-first, then agent sequence preserving explicit routing instructions.",
+      "prompt": "I need to understand how hooks work in this project. Make sure to load claudemem-search skill before anything else, then have the detective agent dig into it.",
+      "category": "mixed-routing",
+      "tags": [
+        "rephrased",
+        "easy",
+        "synthetic",
+        "seed:skill-routing-detective-01"
+      ],
+      "checks": {
+        "task_agent_is": "code-analysis:detective",
+        "no_task_with_skill_name": true
+      }
+    },
+    {
+      "id": "skill-routing-detective-01-var-02",
+      "description": "Minimal command-like syntax tests parsing of abbreviated instructions with colon notation.",
+      "prompt": "detective: investigate hooks. prereq: claudemem-search skill",
+      "category": "mixed-routing",
+      "tags": [
+        "terse",
+        "medium",
+        "synthetic",
+        "seed:skill-routing-detective-01"
+      ],
+      "checks": {
+        "task_agent_is": "code-analysis:detective",
+        "no_task_with_skill_name": true
+      }
+    },
+    {
+      "id": "skill-routing-detective-01-var-03",
+      "description": "Highly detailed enterprise-style request with explicit ordering and context, testing parser tolerance for verbosity.",
+      "prompt": "Our team has been struggling to understand the hook implementation patterns throughout the codebase. I'd like you to conduct a thorough investigation using the detective agent. Before you start the investigation, please ensure the claudemem-search skill is loaded so you have access to our semantic search capabilities for finding relevant code sections. Focus on understanding the lifecycle, registration, and invocation patterns.",
+      "category": "mixed-routing",
+      "tags": [
+        "verbose",
+        "easy",
+        "synthetic",
+        "seed:skill-routing-detective-01"
+      ],
+      "checks": {
+        "task_agent_is": "code-analysis:detective",
+        "no_task_with_skill_name": true
+      }
+    },
+    {
+      "id": "skill-routing-detective-01-var-04",
+      "description": "Casual phrasing with implicit skill reference ('search from claudemem') requires inference to map to claudemem-search skill.",
+      "prompt": "hook system analysis needed - use search from claudemem and detective for the deep dive",
+      "category": "mixed-routing",
+      "tags": [
+        "rephrased",
+        "medium",
+        "synthetic",
+        "seed:skill-routing-detective-01"
+      ],
+      "checks": {
+        "task_agent_is": "code-analysis:detective",
+        "no_task_with_skill_name": true
+      }
+    },
+    {
+      "id": "skill-routing-detective-01-var-05",
+      "description": "Uses 'search' and 'memory' without explicit skill name, could be misrouted to raw search or different skill.",
+      "prompt": "Can you search through the codebase memory to find hook-related code, then run a detective investigation on what you find?",
+      "category": "mixed-routing",
+      "tags": [
+        "adversarial",
+        "hard",
+        "synthetic",
+        "seed:skill-routing-detective-01"
+      ],
+      "checks": {
+        "task_agent_is": "code-analysis:detective",
+        "no_task_with_skill_name": true
+      }
+    },
+    {
+      "id": "skill-routing-detective-01-var-06",
+      "description": "Minimal prompt with no explicit routing hints tests whether system infers detective agent from investigation verb.",
+      "prompt": "investigate hooks",
+      "category": "mixed-routing",
+      "tags": [
+        "edge_case",
+        "hard",
+        "synthetic",
+        "seed:skill-routing-detective-01"
+      ],
+      "checks": {
+        "task_agent_is": "code-analysis:detective",
+        "no_task_with_skill_name": true
+      }
+    },
+    {
+      "id": "skill-routing-detective-01-var-07",
+      "description": "Onboarding scenario framing with casual language tests routing under different user context.",
+      "prompt": "I'm onboarding to this repo and trying to grok the hook architecture. Load up the claudemem search skill first so you can find stuff, then get the detective on the case to map out how hooks flow through the system.",
+      "category": "mixed-routing",
+      "tags": [
+        "context_shift",
+        "medium",
+        "synthetic",
+        "seed:skill-routing-detective-01"
+      ],
+      "checks": {
+        "task_agent_is": "code-analysis:detective",
+        "no_task_with_skill_name": true
+      }
+    },
+    {
+      "id": "skill-routing-detective-01-var-08",
+      "description": "Structured format with explicit 'skill' and 'task' labels tests whether system correctly uses Skill tool then Task tool.",
+      "prompt": "First skill: claudemem-search. Then task: detective analyzes the hook mechanism end-to-end.",
+      "category": "mixed-routing",
+      "tags": [
+        "rephrased",
+        "easy",
+        "synthetic",
+        "seed:skill-routing-detective-01"
+      ],
+      "checks": {
+        "task_agent_is": "code-analysis:detective",
+        "no_task_with_skill_name": true
+      }
+    },
+    {
+      "id": "skill-routing-detective-01-var-09",
+      "description": "Explicitly references tool mechanics which could confuse the system or be treated as meta-instruction.",
+      "prompt": "Don't use Task for claudemem-search, use Skill. Then delegate the hook investigation to detective via Task.",
+      "category": "mixed-routing",
+      "tags": [
+        "adversarial",
+        "hard",
+        "synthetic",
+        "seed:skill-routing-detective-01"
+      ],
+      "checks": {
+        "task_agent_is": "code-analysis:detective",
+        "no_task_with_skill_name": true
+      }
+    },
+    {
+      "id": "skill-routing-detective-01-var-10",
+      "description": "Extremely casual with punctuation quirks and abbreviated words tests robustness to informal input.",
+      "prompt": "hooks?? detective pls, but grab claudemem-search first",
+      "category": "mixed-routing",
+      "tags": [
+        "edge_case",
+        "medium",
+        "synthetic",
+        "seed:skill-routing-detective-01"
+      ],
+      "checks": {
+        "task_agent_is": "code-analysis:detective",
+        "no_task_with_skill_name": true
+      }
+    },
+    {
+      "id": "skill-deep-analysis-01-var-01",
+      "description": "Direct rephrasing with explicit skill identifier, testing basic routing with slightly different word order",
+      "prompt": "Load the code-analysis:deep-analysis skill and walk me through the methodology it provides for analyzing the multimodel plugin",
+      "category": "explicit-skill",
+      "tags": [
+        "rephrased",
+        "easy",
+        "synthetic",
+        "seed:skill-deep-analysis-01"
+      ],
+      "checks": {
+        "skill_invoked_is": "code-analysis:deep-analysis",
+        "no_task_with_skill_name": true
+      }
+    },
+    {
+      "id": "skill-deep-analysis-01-var-02",
+      "description": "Minimal command-style prompt with explicit skill name, tests routing with very sparse context",
+      "prompt": "code-analysis:deep-analysis for multimodel plugin - just show me the methodology, don't run it",
+      "category": "explicit-skill",
+      "tags": [
+        "terse",
+        "easy",
+        "synthetic",
+        "seed:skill-deep-analysis-01"
+      ],
+      "checks": {
+        "skill_invoked_is": "code-analysis:deep-analysis",
+        "no_task_with_skill_name": true
+      }
+    },
+    {
+      "id": "skill-deep-analysis-01-var-03",
+      "description": "Highly contextual request with explicit skill name buried in verbose explanation, tests extraction of intent from noise",
+      "prompt": "I need to understand the comprehensive analysis framework before diving into the multimodel plugin codebase. Can you invoke the code-analysis:deep-analysis skill and explain what steps and methodology it outlines? I want to review the approach before committing to a full analysis run.",
+      "category": "explicit-skill",
+      "tags": [
+        "verbose",
+        "easy",
+        "synthetic",
+        "seed:skill-deep-analysis-01"
+      ],
+      "checks": {
+        "skill_invoked_is": "code-analysis:deep-analysis",
+        "no_task_with_skill_name": true
+      }
+    },
+    {
+      "id": "skill-deep-analysis-01-var-04",
+      "description": "Question-form request with explicit skill identifier, tests routing when framed as inquiry",
+      "prompt": "What methodology does code-analysis:deep-analysis use? Load it for the multimodel plugin context",
+      "category": "explicit-skill",
+      "tags": [
+        "rephrased",
+        "easy",
+        "synthetic",
+        "seed:skill-deep-analysis-01"
+      ],
+      "checks": {
+        "skill_invoked_is": "code-analysis:deep-analysis",
+        "no_task_with_skill_name": true
+      }
+    },
+    {
+      "id": "skill-deep-analysis-01-var-05",
+      "description": "Fragmented skill name with reversed namespace:skill order, tests parser robustness with minimal syntax",
+      "prompt": "deep-analysis skill from code-analysis - multimodel plugin - methodology only",
+      "category": "explicit-skill",
+      "tags": [
+        "edge_case",
+        "medium",
+        "synthetic",
+        "seed:skill-deep-analysis-01"
+      ],
+      "checks": {
+        "skill_invoked_is": "code-analysis:deep-analysis",
+        "no_task_with_skill_name": true
+      }
+    },
+    {
+      "id": "skill-deep-analysis-01-var-06",
+      "description": "Uses word 'agent' which might trigger Task tool routing, but explicit skill identifier should take precedence",
+      "prompt": "Have the deep analysis agent prepare a methodology overview for multimodel plugin using code-analysis:deep-analysis",
+      "category": "explicit-skill",
+      "tags": [
+        "adversarial",
+        "hard",
+        "synthetic",
+        "seed:skill-deep-analysis-01"
+      ],
+      "checks": {
+        "skill_invoked_is": "code-analysis:deep-analysis",
+        "no_task_with_skill_name": true
+      }
+    },
+    {
+      "id": "skill-deep-analysis-01-var-07",
+      "description": "Mentions another agent (researcher) as future context, testing whether system correctly handles immediate skill request vs mentioned delegation",
+      "prompt": "Before I ask the researcher to dig into multimodel, pull up code-analysis:deep-analysis and tell me what analysis methodology it describes",
+      "category": "explicit-skill",
+      "tags": [
+        "adversarial",
+        "hard",
+        "synthetic",
+        "seed:skill-deep-analysis-01"
+      ],
+      "checks": {
+        "skill_invoked_is": "code-analysis:deep-analysis",
+        "no_task_with_skill_name": true
+      }
+    },
+    {
+      "id": "skill-deep-analysis-01-var-08",
+      "description": "Frames request in different project context (mobile SDK) while maintaining explicit skill reference for same target",
+      "prompt": "For the mobile SDK integration project, I want to use code-analysis:deep-analysis on multimodel plugin. Just load the skill and summarize the analysis approach it defines.",
+      "category": "explicit-skill",
+      "tags": [
+        "context_shift",
+        "medium",
+        "synthetic",
+        "seed:skill-deep-analysis-01"
+      ],
+      "checks": {
+        "skill_invoked_is": "code-analysis:deep-analysis",
+        "no_task_with_skill_name": true
+      }
+    },
+    {
+      "id": "skill-deep-analysis-01-var-09",
+      "description": "Structured key-value format instead of natural language, tests routing with unconventional but valid input format",
+      "prompt": "skill: code-analysis:deep-analysis target: multimodel action: explain methodology",
+      "category": "explicit-skill",
+      "tags": [
+        "edge_case",
+        "medium",
+        "synthetic",
+        "seed:skill-deep-analysis-01"
+      ],
+      "checks": {
+        "skill_invoked_is": "code-analysis:deep-analysis",
+        "no_task_with_skill_name": true
+      }
+    },
+    {
+      "id": "skill-deep-analysis-01-var-10",
+      "description": "Casual/colloquial phrasing with partial skill reference, tests routing when skill name is described rather than precisely quoted",
+      "prompt": "Hey, can you fire up that deep analysis skill under code-analysis and gimme the rundown on how it would approach the multimodel plugin? Don't actually do the analysis, just explain the game plan",
+      "category": "explicit-skill",
+      "tags": [
+        "rephrased",
+        "medium",
+        "synthetic",
+        "seed:skill-deep-analysis-01"
+      ],
+      "checks": {
+        "skill_invoked_is": "code-analysis:deep-analysis",
+        "no_task_with_skill_name": true
+      }
+    },
+    {
+      "id": "skill-architect-detective-01-var-01",
+      "description": "Direct rephrasing with explicit skill identifier preserves clear routing intent while varying sentence structure.",
+      "prompt": "Load the code-analysis:architect-detective skill and tell me what claudemem commands it suggests for investigating system architecture.",
+      "category": "explicit-skill",
+      "tags": [
+        "rephrased",
+        "easy",
+        "synthetic",
+        "seed:skill-architect-detective-01"
+      ],
+      "checks": {
+        "skill_invoked_is": "code-analysis:architect-detective",
+        "no_task_with_skill_name": true,
+        "no_bash_typo_clademem": true
+      }
+    },
+    {
+      "id": "skill-architect-detective-01-var-02",
+      "description": "Minimal input with just the skill identifier tests whether the system recognizes bare skill names as invocation requests.",
+      "prompt": "code-analysis:architect-detective",
+      "category": "explicit-skill",
+      "tags": [
+        "terse",
+        "medium",
+        "synthetic",
+        "seed:skill-architect-detective-01"
+      ],
+      "checks": {
+        "skill_invoked_is": "code-analysis:architect-detective",
+        "no_task_with_skill_name": true,
+        "no_bash_typo_clademem": true
+      }
+    },
+    {
+      "id": "skill-architect-detective-01-var-03",
+      "description": "Highly contextual request with explicit skill name buried in longer prose tests extraction of skill identifier from verbose input.",
+      "prompt": "I'm trying to understand how to approach architecture analysis in this codebase. Can you invoke the code-analysis:architect-detective skill and walk me through the methodology it recommends, especially any claudemem-related workflows?",
+      "category": "explicit-skill",
+      "tags": [
+        "verbose",
+        "easy",
+        "synthetic",
+        "seed:skill-architect-detective-01"
+      ],
+      "checks": {
+        "skill_invoked_is": "code-analysis:architect-detective",
+        "no_task_with_skill_name": true,
+        "no_bash_typo_clademem": true
+      }
+    },
+    {
+      "id": "skill-architect-detective-01-var-04",
+      "description": "Inverted namespace:skill format tests whether the system correctly assembles the full skill identifier from split references.",
+      "prompt": "Run architect-detective from code-analysis and summarize the architecture investigation approach",
+      "category": "explicit-skill",
+      "tags": [
+        "rephrased",
+        "medium",
+        "synthetic",
+        "seed:skill-architect-detective-01"
+      ],
+      "checks": {
+        "skill_invoked_is": "code-analysis:architect-detective",
+        "no_task_with_skill_name": true,
+        "no_bash_typo_clademem": true
+      }
+    },
+    {
+      "id": "skill-architect-detective-01-var-05",
+      "description": "Mentions 'delegate' and 'agent' which could mislead toward Task tool, but explicitly requests loading a skill which should route to Skill tool.",
+      "prompt": "I need to delegate architecture investigation to an agent. Start by loading code-analysis:architect-detective to see what methodology we should follow.",
+      "category": "explicit-skill",
+      "tags": [
+        "adversarial",
+        "hard",
+        "synthetic",
+        "seed:skill-architect-detective-01"
+      ],
+      "checks": {
+        "skill_invoked_is": "code-analysis:architect-detective",
+        "no_task_with_skill_name": true,
+        "no_bash_typo_clademem": true
+      }
+    },
+    {
+      "id": "skill-architect-detective-01-var-06",
+      "description": "Question format with namespace and skill name separated tests natural language parsing of skill references.",
+      "prompt": "What does the architect-detective skill in the code-analysis namespace teach about using claudemem for architecture work?",
+      "category": "explicit-skill",
+      "tags": [
+        "rephrased",
+        "easy",
+        "synthetic",
+        "seed:skill-architect-detective-01"
+      ],
+      "checks": {
+        "skill_invoked_is": "code-analysis:architect-detective",
+        "no_task_with_skill_name": true,
+        "no_bash_typo_clademem": true
+      }
+    },
+    {
+      "id": "skill-architect-detective-01-var-07",
+      "description": "CLI-style syntax with flags tests whether unusual formatting still routes correctly to the named skill.",
+      "prompt": "skill code-analysis:architect-detective --summarize",
+      "category": "explicit-skill",
+      "tags": [
+        "edge_case",
+        "medium",
+        "synthetic",
+        "seed:skill-architect-detective-01"
+      ],
+      "checks": {
+        "skill_invoked_is": "code-analysis:architect-detective",
+        "no_task_with_skill_name": true,
+        "no_bash_typo_clademem": true
+      }
+    },
+    {
+      "id": "skill-architect-detective-01-var-08",
+      "description": "Workplace scenario framing with explicit skill name tests that contextual information doesn't interfere with skill routing.",
+      "prompt": "Our team lead wants me to document how we analyze system architecture. Pull up code-analysis:architect-detective so I can see the recommended claudemem commands for this kind of investigation.",
+      "category": "explicit-skill",
+      "tags": [
+        "context_shift",
+        "easy",
+        "synthetic",
+        "seed:skill-architect-detective-01"
+      ],
+      "checks": {
+        "skill_invoked_is": "code-analysis:architect-detective",
+        "no_task_with_skill_name": true,
+        "no_bash_typo_clademem": true
+      }
+    },
+    {
+      "id": "skill-architect-detective-01-var-09",
+      "description": "References both an agent and a skill explicitly; tests that the immediate request for the skill takes precedence over the mentioned agent.",
+      "prompt": "Before I ask the dev:architect agent to analyze this codebase, show me what code-analysis:architect-detective recommends as the methodology",
+      "category": "explicit-skill",
+      "tags": [
+        "adversarial",
+        "hard",
+        "synthetic",
+        "seed:skill-architect-detective-01"
+      ],
+      "checks": {
+        "skill_invoked_is": "code-analysis:architect-detective",
+        "no_task_with_skill_name": true,
+        "no_bash_typo_clademem": true
+      }
+    },
+    {
+      "id": "skill-simple-no-skill-01-var-01",
+      "description": "Direct rephrasing using 'show me' and 'list' instead of 'read' and 'tell me'",
+      "prompt": "Show me the contents of plugins/code-analysis/plugin.json and list the registered agents",
+      "category": "no-skill",
+      "tags": [
+        "rephrased",
+        "easy",
+        "synthetic",
+        "seed:skill-simple-no-skill-01"
+      ],
+      "checks": {
+        "no_skill_invoked": true
+      }
+    },
+    {
+      "id": "skill-simple-no-skill-01-var-02",
+      "description": "Unix-style terse command that implies file reading without any skill involvement",
+      "prompt": "cat plugins/code-analysis/plugin.json",
+      "category": "no-skill",
+      "tags": [
+        "terse",
+        "easy",
+        "synthetic",
+        "seed:skill-simple-no-skill-01"
+      ],
+      "checks": {
+        "no_skill_invoked": true
+      }
+    },
+    {
+      "id": "skill-simple-no-skill-01-var-03",
+      "description": "Highly contextual verbose request that still fundamentally asks for file reading without needing skills",
+      "prompt": "I need to understand the plugin architecture. Could you please open the file located at plugins/code-analysis/plugin.json and extract the list of all agents that have been registered within that configuration file? I'm trying to document our plugin ecosystem.",
+      "category": "no-skill",
+      "tags": [
+        "verbose",
+        "medium",
+        "synthetic",
+        "seed:skill-simple-no-skill-01"
+      ],
+      "checks": {
+        "no_skill_invoked": true
+      }
+    },
+    {
+      "id": "skill-simple-no-skill-01-var-04",
+      "description": "Minimal context edge case with incomplete path - tests handling of ambiguous but simple file queries",
+      "prompt": "what agents in plugin.json?",
+      "category": "no-skill",
+      "tags": [
+        "edge_case",
+        "medium",
+        "synthetic",
+        "seed:skill-simple-no-skill-01"
+      ],
+      "checks": {
+        "no_skill_invoked": true
+      }
+    },
+    {
+      "id": "skill-simple-no-skill-01-var-05",
+      "description": "Adversarial prompt mentioning 'code-analysis plugin' which might trick the system into invoking that skill, but the task is just reading a file",
+      "prompt": "Use the code-analysis plugin to tell me what agents are in its own plugin.json",
+      "category": "no-skill",
+      "tags": [
+        "adversarial",
+        "hard",
+        "synthetic",
+        "seed:skill-simple-no-skill-01"
+      ],
+      "checks": {
+        "no_skill_invoked": true
+      }
+    },
+    {
+      "id": "skill-simple-no-skill-01-var-06",
+      "description": "Uses 'parse' and mentions the plugin by name which could be misinterpreted as needing the code-analysis skill",
+      "prompt": "For the code-analysis plugin, parse the plugin.json and enumerate registered agents",
+      "category": "no-skill",
+      "tags": [
+        "adversarial",
+        "hard",
+        "synthetic",
+        "seed:skill-simple-no-skill-01"
+      ],
+      "checks": {
+        "no_skill_invoked": true
+      }
+    },
+    {
+      "id": "skill-simple-no-skill-01-var-07",
+      "description": "Casual conversational phrasing with 'quick question' framing",
+      "prompt": "Quick question - which agents does plugins/code-analysis/plugin.json define?",
+      "category": "no-skill",
+      "tags": [
+        "rephrased",
+        "easy",
+        "synthetic",
+        "seed:skill-simple-no-skill-01"
+      ],
+      "checks": {
+        "no_skill_invoked": true
+      }
+    },
+    {
+      "id": "skill-simple-no-skill-01-var-08",
+      "description": "Onboarding context with explicit instruction not to run analysis, reinforcing no-skill expectation",
+      "prompt": "I'm onboarding onto this codebase. Can you check plugins/code-analysis/plugin.json and summarize what agents it registers? Don't run any analysis, just read the file.",
+      "category": "no-skill",
+      "tags": [
+        "context_shift",
+        "easy",
+        "synthetic",
+        "seed:skill-simple-no-skill-01"
+      ],
+      "checks": {
+        "no_skill_invoked": true
+      }
+    },
+    {
+      "id": "skill-simple-no-skill-01-var-09",
+      "description": "Extremely terse edge case with just path and keyword - tests minimal input handling",
+      "prompt": "plugins/code-analysis/plugin.json agents?",
+      "category": "no-skill",
+      "tags": [
+        "edge_case",
+        "medium",
+        "synthetic",
+        "seed:skill-simple-no-skill-01"
+      ],
+      "checks": {
+        "no_skill_invoked": true
+      }
+    },
+    {
+      "id": "skill-simple-no-skill-01-var-10",
+      "description": "Pre-configuration context that mentions skills but explicitly wants raw file access, not skill invocation",
+      "prompt": "Before I configure any skills, I need to see the raw plugin.json file under plugins/code-analysis/ - what agents are declared there?",
+      "category": "no-skill",
+      "tags": [
+        "context_shift",
+        "medium",
+        "synthetic",
+        "seed:skill-simple-no-skill-01"
+      ],
+      "checks": {
+        "no_skill_invoked": true
+      }
+    },
+    {
+      "id": "explicit-researcher-01-var-01",
+      "description": "Casual rephrasing that still explicitly names dev:researcher agent with clear task",
+      "prompt": "Hey, can you have the dev:researcher agent look up current best practices for React Server Components and save a research doc to ai-docs/research-rsc.md?",
+      "category": "explicit",
+      "tags": [
+        "rephrased",
+        "easy",
+        "synthetic",
+        "seed:explicit-researcher-01"
+      ],
+      "expected_agent": "dev:researcher",
+      "expected_alternatives": []
+    },
+    {
+      "id": "explicit-researcher-01-var-02",
+      "description": "Extremely terse command-line style prompt that names the agent but uses minimal syntax",
+      "prompt": "dev:researcher - RSC patterns research -> ai-docs/research-rsc.md",
+      "category": "explicit",
+      "tags": [
+        "terse",
+        "medium",
+        "synthetic",
+        "seed:explicit-researcher-01"
+      ],
+      "expected_agent": "dev:researcher",
+      "expected_alternatives": []
+    },
+    {
+      "id": "explicit-researcher-01-var-03",
+      "description": "Highly detailed prompt that explicitly requests dev:researcher delegation with extensive context",
+      "prompt": "I need you to delegate this to the dev:researcher agent specifically: perform a comprehensive web search on React Server Components architecture patterns, streaming strategies, and caching approaches as of 2024, then compile all findings into a detailed markdown report with code examples, pros/cons analysis, and implementation recommendations, saving the final document to ai-docs/research-rsc.md",
+      "category": "explicit",
+      "tags": [
+        "verbose",
+        "easy",
+        "synthetic",
+        "seed:explicit-researcher-01"
+      ],
+      "expected_agent": "dev:researcher",
+      "expected_alternatives": []
+    },
+    {
+      "id": "explicit-researcher-01-var-04",
+      "description": "Technical routing-style phrasing that directly specifies the agent destination",
+      "prompt": "Route to dev:researcher for web research on React Server Components, output: ai-docs/research-rsc.md",
+      "category": "explicit",
+      "tags": [
+        "rephrased",
+        "easy",
+        "synthetic",
+        "seed:explicit-researcher-01"
+      ],
+      "expected_agent": "dev:researcher",
+      "expected_alternatives": []
+    },
+    {
+      "id": "explicit-researcher-01-var-05",
+      "description": "Minimal edge case with only agent mention and no task - tests if explicit naming alone triggers routing",
+      "prompt": "@dev:researcher",
+      "category": "explicit",
+      "tags": [
+        "edge_case",
+        "hard",
+        "synthetic",
+        "seed:explicit-researcher-01"
+      ],
+      "expected_agent": "dev:researcher",
+      "expected_alternatives": []
+    },
+    {
+      "id": "explicit-researcher-01-var-06",
+      "description": "Adversarial prompt that mentions skills negatively while explicitly requesting dev:researcher - tests if negative skill mention confuses routing",
+      "prompt": "Don't use any code analysis skills for this - instead use the dev:researcher agent to search online for React Server Components patterns and create ai-docs/research-rsc.md",
+      "category": "explicit",
+      "tags": [
+        "adversarial",
+        "hard",
+        "synthetic",
+        "seed:explicit-researcher-01"
+      ],
+      "expected_agent": "dev:researcher",
+      "expected_alternatives": []
+    },
+    {
+      "id": "explicit-researcher-01-var-07",
+      "description": "Context shift that frames the task within a Vue project while still explicitly naming dev:researcher for React research",
+      "prompt": "For our Vue.js project documentation, invoke dev:researcher to gather intel on React Server Components patterns (yes, React - we're comparing frameworks) and write findings to ai-docs/research-rsc.md",
+      "category": "explicit",
+      "tags": [
+        "context_shift",
+        "medium",
+        "synthetic",
+        "seed:explicit-researcher-01"
+      ],
+      "expected_agent": "dev:researcher",
+      "expected_alternatives": []
+    },
+    {
+      "id": "explicit-researcher-01-var-08",
+      "description": "Adversarial variant that explicitly contrasts agent vs skill - tests if clarification about tool type affects routing",
+      "prompt": "Please use the dev:researcher subagent (not a skill) to conduct web research about the newest React Server Components patterns and generate a comprehensive report at ai-docs/research-rsc.md",
+      "category": "explicit",
+      "tags": [
+        "adversarial",
+        "medium",
+        "synthetic",
+        "seed:explicit-researcher-01"
+      ],
+      "expected_agent": "dev:researcher",
+      "expected_alternatives": []
+    },
+    {
+      "id": "explicit-researcher-01-var-09",
+      "description": "Edge case with minimal context and abbreviated topic - tests routing with explicit agent but ambiguous task scope",
+      "prompt": "dev:researcher agent task: research RSC",
+      "category": "explicit",
+      "tags": [
+        "edge_case",
+        "medium",
+        "synthetic",
+        "seed:explicit-researcher-01"
+      ],
+      "expected_agent": "dev:researcher",
+      "expected_alternatives": []
+    },
+    {
+      "id": "explicit-researcher-01-var-10",
+      "description": "Context-rich prompt framed around frontend architecture work that naturally leads to explicit dev:researcher invocation",
+      "prompt": "I'm working on improving our frontend architecture. Can you call upon the dev:researcher agent to scour the web for how teams are implementing React Server Components in production, what patterns have emerged, and document everything in ai-docs/research-rsc.md?",
+      "category": "explicit",
+      "tags": [
+        "context_shift",
+        "easy",
+        "synthetic",
+        "seed:explicit-researcher-01"
+      ],
+      "expected_agent": "dev:researcher",
+      "expected_alternatives": []
+    },
+    {
+      "id": "explicit-detective-01-var-01",
+      "description": "Direct rephrasing with explicit agent naming, testing basic explicit routing recognition",
+      "prompt": "I need the code-analysis:detective agent to look into how plugins are loaded and map out their dependency chain",
+      "category": "explicit",
+      "tags": [
+        "rephrased",
+        "easy",
+        "synthetic",
+        "seed:explicit-detective-01"
+      ],
+      "expected_agent": "code-analysis:detective",
+      "expected_alternatives": []
+    },
+    {
+      "id": "explicit-detective-01-var-02",
+      "description": "Minimal terse command with agent prefix, tests parsing of abbreviated instructions",
+      "prompt": "code-analysis:detective - investigate plugin loader, trace deps",
+      "category": "explicit",
+      "tags": [
+        "terse",
+        "easy",
+        "synthetic",
+        "seed:explicit-detective-01"
+      ],
+      "expected_agent": "code-analysis:detective",
+      "expected_alternatives": []
+    },
+    {
+      "id": "explicit-detective-01-var-03",
+      "description": "Highly verbose request with explicit agent naming buried in conversational text",
+      "prompt": "Hey, could you please invoke the code-analysis:detective agent for me? I'm trying to understand our plugin loading mechanism and I really need someone to dig deep into all the dependencies involved. The codebase has gotten pretty complex and I want a thorough investigation of how everything connects together when plugins initialize.",
+      "category": "explicit",
+      "tags": [
+        "verbose",
+        "easy",
+        "synthetic",
+        "seed:explicit-detective-01"
+      ],
+      "expected_agent": "code-analysis:detective",
+      "expected_alternatives": []
+    },
+    {
+      "id": "explicit-detective-01-var-04",
+      "description": "Command-style phrasing with 'run' verb, tests imperative instruction parsing",
+      "prompt": "Run code-analysis:detective on the plugin system to find dependency issues",
+      "category": "explicit",
+      "tags": [
+        "rephrased",
+        "easy",
+        "synthetic",
+        "seed:explicit-detective-01"
+      ],
+      "expected_agent": "code-analysis:detective",
+      "expected_alternatives": []
+    },
+    {
+      "id": "explicit-detective-01-var-05",
+      "description": "Extremely minimal input with only partial agent name, tests whether system can resolve shorthand to full identifier",
+      "prompt": "detective",
+      "category": "explicit",
+      "tags": [
+        "edge_case",
+        "hard",
+        "synthetic",
+        "seed:explicit-detective-01"
+      ],
+      "expected_agent": "code-analysis:detective",
+      "expected_alternatives": []
+    },
+    {
+      "id": "explicit-detective-01-var-06",
+      "description": "Agent identifier split across natural language, tests parsing of non-standard agent reference format",
+      "prompt": "I want to analyze code but specifically need the detective from code-analysis to trace the plugin dependency graph",
+      "category": "explicit",
+      "tags": [
+        "rephrased",
+        "medium",
+        "synthetic",
+        "seed:explicit-detective-01"
+      ],
+      "expected_agent": "code-analysis:detective",
+      "expected_alternatives": []
+    },
+    {
+      "id": "explicit-detective-01-var-07",
+      "description": "Negation of alternatives while specifying correct agent, tests whether negations confuse routing",
+      "prompt": "Don't use the regular code analysis tools - I specifically need code-analysis:detective to investigate the plugin loading dependencies",
+      "category": "explicit",
+      "tags": [
+        "adversarial",
+        "medium",
+        "synthetic",
+        "seed:explicit-detective-01"
+      ],
+      "expected_agent": "code-analysis:detective",
+      "expected_alternatives": []
+    },
+    {
+      "id": "explicit-detective-01-var-08",
+      "description": "Same agent request framed within a migration project context, tests routing stability across different scenarios",
+      "prompt": "For our microservices migration project, use code-analysis:detective to examine the legacy plugin loader and create a complete dependency map before we refactor",
+      "category": "explicit",
+      "tags": [
+        "context_shift",
+        "medium",
+        "synthetic",
+        "seed:explicit-detective-01"
+      ],
+      "expected_agent": "code-analysis:detective",
+      "expected_alternatives": []
+    },
+    {
+      "id": "explicit-detective-01-var-09",
+      "description": "Mentions 'skill' as a distractor while explicitly requesting agent, tests Skill vs Task tool confusion resistance",
+      "prompt": "code-analysis:detective please - need a full investigation into plugin loading. Also wondering if I should use a skill instead but no, definitely want the detective agent for this",
+      "category": "explicit",
+      "tags": [
+        "adversarial",
+        "hard",
+        "synthetic",
+        "seed:explicit-detective-01"
+      ],
+      "expected_agent": "code-analysis:detective",
+      "expected_alternatives": []
+    },
+    {
+      "id": "explicit-detective-01-var-10",
+      "description": "Uses @ mention syntax common in chat systems, tests handling of alternative agent reference conventions",
+      "prompt": "@code-analysis:detective analyze plugin deps",
+      "category": "explicit",
+      "tags": [
+        "edge_case",
+        "medium",
+        "synthetic",
+        "seed:explicit-detective-01"
+      ],
+      "expected_agent": "code-analysis:detective",
+      "expected_alternatives": []
+    },
+    {
+      "id": "explicit-developer-01-var-01",
+      "description": "Direct rephrasing with explicit agent name, maintains clear routing signal",
+      "prompt": "Have dev:developer create a string sanitization utility with comprehensive tests",
+      "category": "explicit",
+      "tags": [
+        "rephrased",
+        "easy",
+        "synthetic",
+        "seed:explicit-developer-01"
+      ],
+      "expected_agent": "dev:developer",
+      "expected_alternatives": []
+    },
+    {
+      "id": "explicit-developer-01-var-02",
+      "description": "Minimal command-style prompt with agent prefix, tests terse explicit routing",
+      "prompt": "dev:developer - build string sanitizer module, need 100% test coverage",
+      "category": "explicit",
+      "tags": [
+        "terse",
+        "easy",
+        "synthetic",
+        "seed:explicit-developer-01"
+      ],
+      "expected_agent": "dev:developer",
+      "expected_alternatives": []
+    },
+    {
+      "id": "explicit-developer-01-var-03",
+      "description": "Highly detailed prompt with explicit agent mention buried in verbose context",
+      "prompt": "I need you to delegate to the dev:developer agent for this task: we have user input coming in from multiple sources and I need a robust string sanitization utility module that handles XSS prevention, SQL injection patterns, and null byte injection. The module should be fully tested with unit tests covering all edge cases, integration tests, and ideally some property-based tests if the framework supports it.",
+      "category": "explicit",
+      "tags": [
+        "verbose",
+        "easy",
+        "synthetic",
+        "seed:explicit-developer-01"
+      ],
+      "expected_agent": "dev:developer",
+      "expected_alternatives": []
+    },
+    {
+      "id": "explicit-developer-01-var-04",
+      "description": "Ultra-minimal prompt with clear routing directive",
+      "prompt": "Route this to dev:developer: sanitization utils + tests",
+      "category": "explicit",
+      "tags": [
+        "terse",
+        "easy",
+        "synthetic",
+        "seed:explicit-developer-01"
+      ],
+      "expected_agent": "dev:developer",
+      "expected_alternatives": []
+    },
+    {
+      "id": "explicit-developer-01-var-05",
+      "description": "Casual conversational style with explicit agent mention as a question",
+      "prompt": "Can the dev:developer agent help me out? Looking to add some string cleaning functions to our codebase with proper test suites",
+      "category": "explicit",
+      "tags": [
+        "rephrased",
+        "easy",
+        "synthetic",
+        "seed:explicit-developer-01"
+      ],
+      "expected_agent": "dev:developer",
+      "expected_alternatives": []
+    },
+    {
+      "id": "explicit-developer-01-var-06",
+      "description": "Frames task in specific project context while maintaining explicit agent reference",
+      "prompt": "For our new microservice that handles webhook payloads, please use dev:developer to implement input sanitization utilities - we're on a tight deadline so full test coverage is mandatory for the PR to pass CI",
+      "category": "explicit",
+      "tags": [
+        "context_shift",
+        "medium",
+        "synthetic",
+        "seed:explicit-developer-01"
+      ],
+      "expected_agent": "dev:developer",
+      "expected_alternatives": []
+    },
+    {
+      "id": "explicit-developer-01-var-07",
+      "description": "Minimal edge case - just the agent name with no task description, tests handling of incomplete requests",
+      "prompt": "dev:developer",
+      "category": "explicit",
+      "tags": [
+        "edge_case",
+        "hard",
+        "synthetic",
+        "seed:explicit-developer-01"
+      ],
+      "expected_agent": "dev:developer",
+      "expected_alternatives": []
+    },
+    {
+      "id": "explicit-developer-01-var-08",
+      "description": "Mentions research which might trigger dev:researcher, but explicitly names dev:developer for implementation",
+      "prompt": "I want to research best practices for string sanitization, then have dev:developer implement a utility module with tests based on those findings",
+      "category": "explicit",
+      "tags": [
+        "adversarial",
+        "hard",
+        "synthetic",
+        "seed:explicit-developer-01"
+      ],
+      "expected_agent": "dev:developer",
+      "expected_alternatives": []
+    },
+    {
+      "id": "explicit-developer-01-var-09",
+      "description": "Professional instruction style with specific file naming and test requirements",
+      "prompt": "The dev:developer agent should be tasked with building out our str_sanitize.py module - make sure there are tests for unicode edge cases, empty strings, and malicious payloads",
+      "category": "explicit",
+      "tags": [
+        "rephrased",
+        "easy",
+        "synthetic",
+        "seed:explicit-developer-01"
+      ],
+      "expected_agent": "dev:developer",
+      "expected_alternatives": []
+    },
+    {
+      "id": "explicit-developer-01-var-10",
+      "description": "Explicitly negates wrong agent while affirming correct one, tests handling of negative routing signals",
+      "prompt": "NOT dev:researcher, use dev:developer specifically - I need implementation not analysis. Create string sanitization helpers with full test suite.",
+      "category": "explicit",
+      "tags": [
+        "adversarial",
+        "medium",
+        "synthetic",
+        "seed:explicit-developer-01"
+      ],
+      "expected_agent": "dev:developer",
+      "expected_alternatives": []
+    },
+    {
+      "id": "explicit-debugger-01-var-01",
+      "description": "Casual rephrasing that still explicitly names dev:debugger with the same debugging task",
+      "prompt": "Have dev:debugger look into why our auth is timing out and patch it",
+      "category": "explicit",
+      "tags": [
+        "rephrased",
+        "easy",
+        "synthetic",
+        "seed:explicit-debugger-01"
+      ],
+      "expected_agent": "dev:debugger",
+      "expected_alternatives": []
+    },
+    {
+      "id": "explicit-debugger-01-var-02",
+      "description": "Minimal command-style prompt tests whether terse explicit agent naming still routes correctly",
+      "prompt": "dev:debugger auth timeout fix",
+      "category": "explicit",
+      "tags": [
+        "terse",
+        "medium",
+        "synthetic",
+        "seed:explicit-debugger-01"
+      ],
+      "expected_agent": "dev:debugger",
+      "expected_alternatives": []
+    },
+    {
+      "id": "explicit-debugger-01-var-03",
+      "description": "Highly detailed request with explicit agent naming tests verbose prompt handling",
+      "prompt": "I need you to delegate to the dev:debugger agent specifically for this issue — we're seeing intermittent authentication timeout errors in production and I want a thorough root cause analysis followed by a working fix. Please make sure dev:debugger handles this end-to-end rather than just doing surface-level analysis.",
+      "category": "explicit",
+      "tags": [
+        "verbose",
+        "easy",
+        "synthetic",
+        "seed:explicit-debugger-01"
+      ],
+      "expected_agent": "dev:debugger",
+      "expected_alternatives": []
+    },
+    {
+      "id": "explicit-debugger-01-var-04",
+      "description": "Explicit routing instruction with colon-separated task description",
+      "prompt": "Route this to dev:debugger: authentication is failing with timeouts, need root cause + fix",
+      "category": "explicit",
+      "tags": [
+        "rephrased",
+        "easy",
+        "synthetic",
+        "seed:explicit-debugger-01"
+      ],
+      "expected_agent": "dev:debugger",
+      "expected_alternatives": []
+    },
+    {
+      "id": "explicit-debugger-01-var-05",
+      "description": "Adds deployment context while maintaining explicit agent naming",
+      "prompt": "Can you ask dev:debugger to debug the auth timeout? It's been happening since yesterday's deploy.",
+      "category": "explicit",
+      "tags": [
+        "context_shift",
+        "easy",
+        "synthetic",
+        "seed:explicit-debugger-01"
+      ],
+      "expected_agent": "dev:debugger",
+      "expected_alternatives": []
+    },
+    {
+      "id": "explicit-debugger-01-var-06",
+      "description": "Uses @ mention syntax which is an unusual but plausible way to invoke an agent",
+      "prompt": "@dev:debugger investigate auth timeouts",
+      "category": "explicit",
+      "tags": [
+        "edge_case",
+        "medium",
+        "synthetic",
+        "seed:explicit-debugger-01"
+      ],
+      "expected_agent": "dev:debugger",
+      "expected_alternatives": []
+    },
+    {
+      "id": "explicit-debugger-01-var-07",
+      "description": "Mentions another agent (dev:researcher) negatively which could confuse routing if not parsed carefully",
+      "prompt": "Don't use dev:researcher for this — I want dev:debugger to find and fix the authentication timeout bug",
+      "category": "explicit",
+      "tags": [
+        "adversarial",
+        "hard",
+        "synthetic",
+        "seed:explicit-debugger-01"
+      ],
+      "expected_agent": "dev:debugger",
+      "expected_alternatives": []
+    },
+    {
+      "id": "explicit-debugger-01-var-08",
+      "description": "Absolute minimal prompt with only agent name tests whether system requests clarification or invokes agent",
+      "prompt": "dev:debugger",
+      "category": "explicit",
+      "tags": [
+        "edge_case",
+        "hard",
+        "synthetic",
+        "seed:explicit-debugger-01"
+      ],
+      "expected_agent": "dev:debugger",
+      "expected_alternatives": []
+    },
+    {
+      "id": "explicit-debugger-01-var-09",
+      "description": "Adds specific infrastructure context (K8s, middleware) while explicitly requesting dev:debugger",
+      "prompt": "For the Kubernetes auth service that's timing out, please use dev:debugger to trace the issue through the middleware stack and implement a fix",
+      "category": "explicit",
+      "tags": [
+        "context_shift",
+        "medium",
+        "synthetic",
+        "seed:explicit-debugger-01"
+      ],
+      "expected_agent": "dev:debugger",
+      "expected_alternatives": []
+    },
+    {
+      "id": "explicit-debugger-01-var-10",
+      "description": "Rephrases auth as login and uses declarative 'should handle' phrasing while naming agent",
+      "prompt": "The dev:debugger agent should handle this: we need someone to figure out why login requests are hitting timeout errors and then commit a fix",
+      "category": "explicit",
+      "tags": [
+        "rephrased",
+        "easy",
+        "synthetic",
+        "seed:explicit-debugger-01"
+      ],
+      "expected_agent": "dev:debugger",
+      "expected_alternatives": []
+    },
+    {
+      "id": "explicit-architect-01-var-01",
+      "description": "Uses alternative verb 'ask' with explicit agent name, testing basic explicit routing recognition",
+      "prompt": "Ask dev:architect to create a system architecture for our new distributed payment gateway",
+      "category": "explicit",
+      "tags": [
+        "rephrased",
+        "easy",
+        "synthetic",
+        "seed:explicit-architect-01"
+      ],
+      "expected_agent": "dev:architect",
+      "expected_alternatives": []
+    },
+    {
+      "id": "explicit-architect-01-var-02",
+      "description": "Minimal punctuation-style invocation testing parser handling of em-dash separator",
+      "prompt": "dev:architect — need architecture docs for a microservices payment platform",
+      "category": "explicit",
+      "tags": [
+        "terse",
+        "easy",
+        "synthetic",
+        "seed:explicit-architect-01"
+      ],
+      "expected_agent": "dev:architect",
+      "expected_alternatives": []
+    },
+    {
+      "id": "explicit-architect-01-var-03",
+      "description": "Highly detailed prompt testing that explicit agent name is still extracted from verbose context",
+      "prompt": "I have a complex payment processing system that needs to handle PCI compliance, multi-region deployments, and integrate with Stripe, Adyen, and legacy banking APIs. The system should support real-time fraud detection and handle 10k transactions per second. Please have the dev:architect agent design the complete system architecture including service boundaries, data flow diagrams, and technology recommendations.",
+      "category": "explicit",
+      "tags": [
+        "verbose",
+        "easy",
+        "synthetic",
+        "seed:explicit-architect-01"
+      ],
+      "expected_agent": "dev:architect",
+      "expected_alternatives": []
+    },
+    {
+      "id": "explicit-architect-01-var-04",
+      "description": "Meta-instruction style phrasing where user explicitly states routing intent",
+      "prompt": "Route this to dev:architect: microservices architecture for payment processing",
+      "category": "explicit",
+      "tags": [
+        "rephrased",
+        "easy",
+        "synthetic",
+        "seed:explicit-architect-01"
+      ],
+      "expected_agent": "dev:architect",
+      "expected_alternatives": []
+    },
+    {
+      "id": "explicit-architect-01-var-05",
+      "description": "Bare agent name with no task description tests handling of minimal input edge case",
+      "prompt": "dev:architect",
+      "category": "explicit",
+      "tags": [
+        "edge_case",
+        "hard",
+        "synthetic",
+        "seed:explicit-architect-01"
+      ],
+      "expected_agent": "dev:architect",
+      "expected_alternatives": []
+    },
+    {
+      "id": "explicit-architect-01-var-06",
+      "description": "User incorrectly calls agent a 'skill' — tests whether explicit agent name overrides terminology confusion",
+      "prompt": "Can you use the dev:architect skill to help me design an event-driven checkout system?",
+      "category": "explicit",
+      "tags": [
+        "adversarial",
+        "medium",
+        "synthetic",
+        "seed:explicit-architect-01"
+      ],
+      "expected_agent": "dev:architect",
+      "expected_alternatives": []
+    },
+    {
+      "id": "explicit-architect-01-var-07",
+      "description": "Shifts context to startup/fintech domain while maintaining explicit agent naming",
+      "prompt": "For our fintech startup, delegate to dev:architect and get a proposed architecture for handling card payments across EU and US markets",
+      "category": "explicit",
+      "tags": [
+        "context_shift",
+        "easy",
+        "synthetic",
+        "seed:explicit-architect-01"
+      ],
+      "expected_agent": "dev:architect",
+      "expected_alternatives": []
+    },
+    {
+      "id": "explicit-architect-01-var-08",
+      "description": "Mentions multiple agents explicitly — tests that the affirmed agent is selected over the negated one",
+      "prompt": "I want dev:architect's opinion on how to structure a payment microservices system, not dev:researcher",
+      "category": "explicit",
+      "tags": [
+        "adversarial",
+        "medium",
+        "synthetic",
+        "seed:explicit-architect-01"
+      ],
+      "expected_agent": "dev:architect",
+      "expected_alternatives": []
+    },
+    {
+      "id": "explicit-architect-01-var-09",
+      "description": "Uses @-mention syntax common in chat systems, testing alternative invocation patterns",
+      "prompt": "@dev:architect design payment system architecture",
+      "category": "explicit",
+      "tags": [
+        "edge_case",
+        "medium",
+        "synthetic",
+        "seed:explicit-architect-01"
+      ],
+      "expected_agent": "dev:architect",
+      "expected_alternatives": []
+    },
+    {
+      "id": "explicit-architect-01-var-10",
+      "description": "Frames request as evaluation of existing system rather than greenfield design, with technical specificity",
+      "prompt": "The payment architecture needs work. Let's bring in dev:architect to evaluate whether we should use choreography or orchestration for our transaction flows between the billing, fraud, and settlement services.",
+      "category": "explicit",
+      "tags": [
+        "context_shift",
+        "easy",
+        "synthetic",
+        "seed:explicit-architect-01"
+      ],
+      "expected_agent": "dev:architect",
+      "expected_alternatives": []
+    },
+    {
+      "id": "delegate-research-01-var-01",
+      "description": "Direct rephrasing with explicit research keywords and file output, clearly mapping to researcher agent",
+      "prompt": "Research OAuth 2.1, passkeys, and WebAuthn for me. I want a thorough comparison of these auth approaches with security analysis. Save the report to ai-docs/auth-research.md",
+      "category": "passive-routing",
+      "tags": [
+        "rephrased",
+        "easy",
+        "synthetic",
+        "seed:delegate-research-01"
+      ],
+      "expected_agent": "dev:researcher",
+      "expected_alternatives": []
+    },
+    {
+      "id": "delegate-research-01-var-02",
+      "description": "Minimal terse phrasing tests whether the system can extract research intent from abbreviated commands",
+      "prompt": "auth research plz - oauth2.1 passkeys webauthn - need web search + comparison + write to ai-docs/auth-research.md",
+      "category": "passive-routing",
+      "tags": [
+        "terse",
+        "medium",
+        "synthetic",
+        "seed:delegate-research-01"
+      ],
+      "expected_agent": "dev:researcher",
+      "expected_alternatives": []
+    },
+    {
+      "id": "delegate-research-01-var-03",
+      "description": "Highly detailed verbose prompt with clear research signals and context, should unambiguously route to researcher",
+      "prompt": "I'm preparing for an architecture review next week and need to get up to speed on the latest in authentication. Can you do a deep investigation into what's happening with OAuth 2.1, the new passkey standards, and WebAuthn? Look up recent articles and RFCs, analyze the security implications of each approach, compare their implementation complexity, and then compile everything into a comprehensive markdown document at ai-docs/auth-research.md. This will be shared with the security team so make it thorough.",
+      "category": "passive-routing",
+      "tags": [
+        "verbose",
+        "easy",
+        "synthetic",
+        "seed:delegate-research-01"
+      ],
+      "expected_agent": "dev:researcher",
+      "expected_alternatives": []
+    },
+    {
+      "id": "delegate-research-01-var-04",
+      "description": "Inverts typical sentence structure by leading with the output file, testing if research intent is still detected",
+      "prompt": "Write ai-docs/auth-research.md with findings on modern auth patterns after searching for info on OAuth 2.1, passkeys, WebAuthn",
+      "category": "passive-routing",
+      "tags": [
+        "rephrased",
+        "medium",
+        "synthetic",
+        "seed:delegate-research-01"
+      ],
+      "expected_agent": "dev:researcher",
+      "expected_alternatives": []
+    },
+    {
+      "id": "delegate-research-01-var-05",
+      "description": "Extremely minimal single-word prompt tests whether system defaults to research for ambiguous technical topics",
+      "prompt": "webauthn",
+      "category": "passive-routing",
+      "tags": [
+        "edge_case",
+        "hard",
+        "synthetic",
+        "seed:delegate-research-01"
+      ],
+      "expected_agent": "dev:researcher",
+      "expected_alternatives": []
+    },
+    {
+      "id": "delegate-research-01-var-06",
+      "description": "Explicit negation of coding might confuse routing, but research intent with web search should still route correctly",
+      "prompt": "Don't write any code yet - first I need you to investigate authentication options. Search online for the current state of OAuth 2.1, passkeys, and WebAuthn. Document security tradeoffs and your recommendations in ai-docs/auth-research.md",
+      "category": "passive-routing",
+      "tags": [
+        "adversarial",
+        "hard",
+        "synthetic",
+        "seed:delegate-research-01"
+      ],
+      "expected_agent": "dev:researcher",
+      "expected_alternatives": []
+    },
+    {
+      "id": "delegate-research-01-var-07",
+      "description": "Frames research in mobile app context which could suggest implementation, but explicit research verbs should route correctly",
+      "prompt": "Our mobile app needs better auth. Look into what's new with OAuth 2.1 and passkeys/WebAuthn - search for recent blog posts and specs, analyze the options, and drop a research summary into ai-docs/auth-research.md",
+      "category": "passive-routing",
+      "tags": [
+        "context_shift",
+        "medium",
+        "synthetic",
+        "seed:delegate-research-01"
+      ],
+      "expected_agent": "dev:researcher",
+      "expected_alternatives": []
+    },
+    {
+      "id": "delegate-research-01-var-08",
+      "description": "Polite question format with explicit research and documentation requirements maps cleanly to researcher",
+      "prompt": "Can you help me understand the differences between OAuth 2.1, passkeys, and WebAuthn? I need a written report with web research covering security considerations. Output to ai-docs/auth-research.md",
+      "category": "passive-routing",
+      "tags": [
+        "rephrased",
+        "easy",
+        "synthetic",
+        "seed:delegate-research-01"
+      ],
+      "expected_agent": "dev:researcher",
+      "expected_alternatives": []
+    },
+    {
+      "id": "delegate-research-01-var-09",
+      "description": "Command-style with investigate/document verbs and explicit web research clearly signals researcher routing",
+      "prompt": "Investigate and document: pull together everything you can find online about modern passwordless authentication - OAuth 2.1 updates, passkey implementations, WebAuthn specs. Be thorough. Security analysis required. File: ai-docs/auth-research.md",
+      "category": "passive-routing",
+      "tags": [
+        "rephrased",
+        "easy",
+        "synthetic",
+        "seed:delegate-research-01"
+      ],
+      "expected_agent": "dev:researcher",
+      "expected_alternatives": []
+    },
+    {
+      "id": "delegate-research-01-var-10",
+      "description": "Mentions implementation intent which could trigger coder routing, but explicit 'first need research' qualifier should preserve researcher delegation",
+      "prompt": "I want to implement passkeys but first need research. Search the web for OAuth 2.1, passkeys, and WebAuthn info, compare them, and write findings to ai-docs/auth-research.md before we start coding",
+      "category": "passive-routing",
+      "tags": [
+        "adversarial",
+        "hard",
+        "synthetic",
+        "seed:delegate-research-01"
+      ],
+      "expected_agent": "dev:researcher",
+      "expected_alternatives": []
+    },
+    {
+      "id": "delegate-investigate-01-var-01",
+      "description": "Straightforward rephrasing using casual language while preserving all key investigation keywords",
+      "prompt": "Can you dig deep into this codebase and figure out how plugins get loaded? I want to understand the whole architecture - namespaces, integration points, everything. It's gonna require looking at a lot of files.",
+      "category": "implicit-delegation",
+      "tags": [
+        "rephrased",
+        "easy",
+        "synthetic",
+        "seed:delegate-investigate-01"
+      ],
+      "expected_agent": "code-analysis:detective",
+      "expected_alternatives": []
+    },
+    {
+      "id": "delegate-investigate-01-var-02",
+      "description": "Minimal prompt that tests whether the system can infer deep investigation from just four words",
+      "prompt": "investigate plugin system architecture",
+      "category": "implicit-delegation",
+      "tags": [
+        "terse",
+        "medium",
+        "synthetic",
+        "seed:delegate-investigate-01"
+      ],
+      "expected_agent": "code-analysis:detective",
+      "expected_alternatives": []
+    },
+    {
+      "id": "delegate-investigate-01-var-03",
+      "description": "Highly detailed prompt with extensive context that unambiguously signals a deep investigation task",
+      "prompt": "I've inherited this legacy codebase and nobody documented how the plugin ecosystem works. I need someone to do forensic analysis across the entire repo - trace how plugins are discovered, loaded, and registered. Check the namespace resolution logic, find where third-party code hooks in, and map out all the extension points. This is critical for our migration planning and will probably touch 50+ files across multiple directories.",
+      "category": "implicit-delegation",
+      "tags": [
+        "verbose",
+        "easy",
+        "synthetic",
+        "seed:delegate-investigate-01"
+      ],
+      "expected_agent": "code-analysis:detective",
+      "expected_alternatives": []
+    },
+    {
+      "id": "delegate-investigate-01-var-04",
+      "description": "Extremely minimal edge case that tests whether 'trace' alone signals detective-level investigation",
+      "prompt": "Trace plugin loading",
+      "category": "implicit-delegation",
+      "tags": [
+        "edge_case",
+        "hard",
+        "synthetic",
+        "seed:delegate-investigate-01"
+      ],
+      "expected_agent": "code-analysis:detective",
+      "expected_alternatives": []
+    },
+    {
+      "id": "delegate-investigate-01-var-05",
+      "description": "Emphatic phrasing that explicitly contrasts shallow analysis with deep investigation",
+      "prompt": "Don't just give me a quick summary - I need a real deep-dive investigation into the plugin loading mechanism. Look at how namespaces are resolved, find every single integration point in the codebase, and put together proper architecture documentation. Take your time, this needs to be thorough.",
+      "category": "implicit-delegation",
+      "tags": [
+        "rephrased",
+        "easy",
+        "synthetic",
+        "seed:delegate-investigate-01"
+      ],
+      "expected_agent": "code-analysis:detective",
+      "expected_alternatives": []
+    },
+    {
+      "id": "delegate-investigate-01-var-06",
+      "description": "Adversarial prompt using 'quickly scan' that might trigger simpler analysis, but the underlying task requires full investigation",
+      "prompt": "I want to add a new plugin to our system but first I need to understand how existing plugins work. Can you quickly scan the codebase and tell me where plugins are loaded from?",
+      "category": "implicit-delegation",
+      "tags": [
+        "adversarial",
+        "hard",
+        "synthetic",
+        "seed:delegate-investigate-01"
+      ],
+      "expected_agent": "code-analysis:detective",
+      "expected_alternatives": []
+    },
+    {
+      "id": "delegate-investigate-01-var-07",
+      "description": "Shifts context to security audit domain while preserving the deep investigation nature of the task",
+      "prompt": "We're doing a security audit on our VS Code extension. Need comprehensive analysis of the plugin subsystem - how extensions get loaded, sandboxed, and communicate with the host. Map all entry points and document the architecture for the security team.",
+      "category": "implicit-delegation",
+      "tags": [
+        "context_shift",
+        "medium",
+        "synthetic",
+        "seed:delegate-investigate-01"
+      ],
+      "expected_agent": "code-analysis:detective",
+      "expected_alternatives": []
+    },
+    {
+      "id": "delegate-investigate-01-var-08",
+      "description": "Terse professional bullet-point style that tests recognition of investigation intent in structured format",
+      "prompt": "Full plugin system analysis needed. Trace: loading mechanism, namespace resolution, integration points. Deliverable: architecture documentation. Scope: entire codebase.",
+      "category": "implicit-delegation",
+      "tags": [
+        "rephrased",
+        "medium",
+        "synthetic",
+        "seed:delegate-investigate-01"
+      ],
+      "expected_agent": "code-analysis:detective",
+      "expected_alternatives": []
+    },
+    {
+      "id": "delegate-investigate-01-var-09",
+      "description": "Very casual, lowercase prompt that tests routing under informal developer chat-style input",
+      "prompt": "how does plugin loading work here? need to understand the whole thing end to end - namespace stuff, where things hook in, the works. gonna need to check a bunch of files i think",
+      "category": "implicit-delegation",
+      "tags": [
+        "rephrased",
+        "medium",
+        "synthetic",
+        "seed:delegate-investigate-01"
+      ],
+      "expected_agent": "code-analysis:detective",
+      "expected_alternatives": []
+    },
+    {
+      "id": "delegate-investigate-01-var-10",
+      "description": "Frames investigation as prerequisite to implementation work, testing whether future intent affects routing of the analysis task",
+      "prompt": "Before I start implementing the new hooks system, reverse-engineer how the current plugin architecture works. I need to understand the loader, namespace resolver, and all integration surfaces documented so I can design something compatible.",
+      "category": "implicit-delegation",
+      "tags": [
+        "context_shift",
+        "medium",
+        "synthetic",
+        "seed:delegate-investigate-01"
+      ],
+      "expected_agent": "code-analysis:detective",
+      "expected_alternatives": []
+    },
+    {
+      "id": "delegate-implement-01-var-01",
+      "description": "Direct rephrasing with identical scope and complexity, clearly a substantial implementation task",
+      "prompt": "Build out a full caching system for plugins - need a CacheManager class with LRU eviction strategy, invalidation callbacks, unit tests covering edge cases, and make sure eslint is happy with everything",
+      "category": "passive-routing",
+      "tags": [
+        "rephrased",
+        "easy",
+        "synthetic",
+        "seed:delegate-implement-01"
+      ],
+      "expected_agent": "dev:developer",
+      "expected_alternatives": []
+    },
+    {
+      "id": "delegate-implement-01-var-02",
+      "description": "Extremely minimal prompt that still implies multi-component feature work requiring developer delegation",
+      "prompt": "cache layer for plugins pls. lru, invalidation hooks, tests, lint",
+      "category": "passive-routing",
+      "tags": [
+        "terse",
+        "medium",
+        "synthetic",
+        "seed:delegate-implement-01"
+      ],
+      "expected_agent": "dev:developer",
+      "expected_alternatives": []
+    },
+    {
+      "id": "delegate-implement-01-var-03",
+      "description": "Over-explained context with clear feature scope, unambiguously requires developer-level implementation",
+      "prompt": "I've been thinking about performance bottlenecks in our plugin architecture. We're seeing repeated expensive computations that could benefit from memoization. What I need is a proper caching infrastructure: a central manager class that coordinates cache access, least-recently-used eviction to prevent memory bloat, hooks so plugins can invalidate stale entries when their state changes, a comprehensive test suite because this is critical infrastructure, and obviously it all needs to pass our linting rules. This is going to touch multiple files and needs careful design.",
+      "category": "passive-routing",
+      "tags": [
+        "verbose",
+        "easy",
+        "synthetic",
+        "seed:delegate-implement-01"
+      ],
+      "expected_agent": "dev:developer",
+      "expected_alternatives": []
+    },
+    {
+      "id": "delegate-implement-01-var-04",
+      "description": "Minimal context edge case - tests whether system infers substantial implementation from extremely vague request in a plugin system context",
+      "prompt": "We need caching",
+      "category": "passive-routing",
+      "tags": [
+        "edge_case",
+        "hard",
+        "synthetic",
+        "seed:delegate-implement-01"
+      ],
+      "expected_agent": "dev:developer",
+      "expected_alternatives": []
+    },
+    {
+      "id": "delegate-implement-01-var-05",
+      "description": "Adversarial framing as research/learning task, but actual request includes implementation work that requires developer",
+      "prompt": "Can you research best practices for LRU cache implementations and then create a small utility function that demonstrates the pattern? Just want to understand caching better before we build anything serious.",
+      "category": "passive-routing",
+      "tags": [
+        "adversarial",
+        "hard",
+        "synthetic",
+        "seed:delegate-implement-01"
+      ],
+      "expected_agent": "dev:developer",
+      "expected_alternatives": []
+    },
+    {
+      "id": "delegate-implement-01-var-06",
+      "description": "Same implementation task reframed as VS Code extension work, testing context-independence of routing",
+      "prompt": "For our VS Code extension's plugin framework, implement a memory-efficient caching subsystem with automatic eviction, lifecycle hooks for invalidation, full test coverage, and ensure it conforms to our TypeScript strict mode and ESLint configuration",
+      "category": "passive-routing",
+      "tags": [
+        "context_shift",
+        "medium",
+        "synthetic",
+        "seed:delegate-implement-01"
+      ],
+      "expected_agent": "dev:developer",
+      "expected_alternatives": []
+    },
+    {
+      "id": "delegate-implement-01-var-07",
+      "description": "Professional shorthand with 'production-ready' signaling substantial implementation scope",
+      "prompt": "Ship a production-ready cache manager: LRU eviction, invalidation API, tests passing, lint clean",
+      "category": "passive-routing",
+      "tags": [
+        "rephrased",
+        "easy",
+        "synthetic",
+        "seed:delegate-implement-01"
+      ],
+      "expected_agent": "dev:developer",
+      "expected_alternatives": []
+    },
+    {
+      "id": "delegate-implement-01-var-08",
+      "description": "Edge case with explicit anti-pattern instruction ('don't just give me a snippet'), testing whether emphasis on completeness routes correctly",
+      "prompt": "Don't just give me a code snippet - actually implement the entire caching feature end-to-end. Cache manager class, LRU algorithm, hooks for plugins to invalidate their cached data, tests that actually run and pass, linting green. Do the whole thing.",
+      "category": "passive-routing",
+      "tags": [
+        "edge_case",
+        "medium",
+        "synthetic",
+        "seed:delegate-implement-01"
+      ],
+      "expected_agent": "dev:developer",
+      "expected_alternatives": []
+    },
+    {
+      "id": "delegate-implement-01-var-09",
+      "description": "Delegatory language ('take ownership', 'meaty task') clearly signals developer-level work",
+      "prompt": "Take ownership of adding caching to the plugin system. Design and implement a CacheManager, choose an appropriate eviction strategy like LRU, expose invalidation hooks to plugin authors, write tests, fix any lint issues that come up. This is a meaty task so take your time and do it right.",
+      "category": "passive-routing",
+      "tags": [
+        "rephrased",
+        "easy",
+        "synthetic",
+        "seed:delegate-implement-01"
+      ],
+      "expected_agent": "dev:developer",
+      "expected_alternatives": []
+    },
+    {
+      "id": "delegate-implement-01-var-10",
+      "description": "Adversarial framing that requests analysis first, potentially triggering researcher routing, but implementation scope dominates",
+      "prompt": "I need help with caching. Specifically: 1) architect a cache manager 2) implement LRU eviction 3) add invalidation hooks 4) write tests 5) lint. Can you analyze which approach would be best before implementing?",
+      "category": "passive-routing",
+      "tags": [
+        "adversarial",
+        "hard",
+        "synthetic",
+        "seed:delegate-implement-01"
+      ],
+      "expected_agent": "dev:developer",
+      "expected_alternatives": []
+    },
+    {
+      "id": "delegate-debug-01-var-01",
+      "description": "Direct rephrasing with explicit 'subagent' mention and clear debugging task for memory leak investigation.",
+      "prompt": "Spin up a subagent to debug this performance degradation - our service starts leaking memory after sustained load, probably unclosed database connections or orphaned listeners somewhere.",
+      "category": "hinted-delegation",
+      "tags": [
+        "rephrased",
+        "easy",
+        "synthetic",
+        "seed:delegate-debug-01"
+      ],
+      "expected_agent": "dev:debugger",
+      "expected_alternatives": []
+    },
+    {
+      "id": "delegate-debug-01-var-02",
+      "description": "Minimal command-style prompt with 'delegate' prefix tests routing with sparse context.",
+      "prompt": "delegate: hunt down memory leak after high request volume - check connections, listeners, circular refs",
+      "category": "hinted-delegation",
+      "tags": [
+        "terse",
+        "medium",
+        "synthetic",
+        "seed:delegate-debug-01"
+      ],
+      "expected_agent": "dev:debugger",
+      "expected_alternatives": []
+    },
+    {
+      "id": "delegate-debug-01-var-03",
+      "description": "Highly detailed prompt with explicit delegation language and comprehensive debugging requirements.",
+      "prompt": "I've been chasing this bug for days. After about a thousand requests hit our API, memory usage climbs and never comes back down. I need you to hand this off to a dedicated debugging assistant that can methodically trace through the entire codebase looking for resource leaks - things like connections that aren't being closed properly, event handlers that accumulate over time, or objects holding references to each other in cycles. This needs deep investigation.",
+      "category": "hinted-delegation",
+      "tags": [
+        "verbose",
+        "easy",
+        "synthetic",
+        "seed:delegate-debug-01"
+      ],
+      "expected_agent": "dev:debugger",
+      "expected_alternatives": []
+    },
+    {
+      "id": "delegate-debug-01-var-04",
+      "description": "Same debugging task reframed in a Kubernetes/SSR context with 'another agent' hint.",
+      "prompt": "Our production Kubernetes pods keep getting OOMKilled after running for a few hours under normal traffic. Have another agent dig into whether we're leaking socket connections or accumulating detached DOM references in our SSR layer.",
+      "category": "hinted-delegation",
+      "tags": [
+        "context_shift",
+        "medium",
+        "synthetic",
+        "seed:delegate-debug-01"
+      ],
+      "expected_agent": "dev:debugger",
+      "expected_alternatives": []
+    },
+    {
+      "id": "delegate-debug-01-var-05",
+      "description": "Extremely minimal prompt tests whether the system can route based on just 'subagent' plus 'memory leak' keywords.",
+      "prompt": "subagent memory leak",
+      "category": "hinted-delegation",
+      "tags": [
+        "edge_case",
+        "hard",
+        "synthetic",
+        "seed:delegate-debug-01"
+      ],
+      "expected_agent": "dev:debugger",
+      "expected_alternatives": []
+    },
+    {
+      "id": "delegate-debug-01-var-06",
+      "description": "Uses 'spawn a worker' as delegation hint with technical debugging context around heap analysis.",
+      "prompt": "Don't try to fix this yourself - spawn a worker to analyze why heap snapshots show retained objects growing linearly with request count. Focus on async handlers and connection pooling.",
+      "category": "hinted-delegation",
+      "tags": [
+        "rephrased",
+        "medium",
+        "synthetic",
+        "seed:delegate-debug-01"
+      ],
+      "expected_agent": "dev:debugger",
+      "expected_alternatives": []
+    },
+    {
+      "id": "delegate-debug-01-var-07",
+      "description": "Uses 'research' which might trigger dev:researcher, but 'helper agent' and concrete debugging task should route to debugger.",
+      "prompt": "Can you research why our app leaks memory? Use a helper agent to look through the code for common leak patterns like unclosed streams and forgotten timers.",
+      "category": "hinted-delegation",
+      "tags": [
+        "adversarial",
+        "hard",
+        "synthetic",
+        "seed:delegate-debug-01"
+      ],
+      "expected_agent": "dev:debugger",
+      "expected_alternatives": []
+    },
+    {
+      "id": "delegate-debug-01-var-08",
+      "description": "Casual phrasing with 'background task' as delegation hint and specific debugging hypotheses.",
+      "prompt": "fire off a background task to root-cause the slow memory creep we see in long-running processes - suspect it's event emitter buildup or maybe circular deps in our module graph",
+      "category": "hinted-delegation",
+      "tags": [
+        "rephrased",
+        "medium",
+        "synthetic",
+        "seed:delegate-debug-01"
+      ],
+      "expected_agent": "dev:debugger",
+      "expected_alternatives": []
+    },
+    {
+      "id": "delegate-debug-01-var-09",
+      "description": "Unconventional punctuation and shorthand tests parser resilience while maintaining core routing signals.",
+      "prompt": "?? leak after 1k reqs - need subagent to check connections/listeners/cycles",
+      "category": "hinted-delegation",
+      "tags": [
+        "edge_case",
+        "hard",
+        "synthetic",
+        "seed:delegate-debug-01"
+      ],
+      "expected_agent": "dev:debugger",
+      "expected_alternatives": []
+    },
+    {
+      "id": "delegate-debug-01-var-10",
+      "description": "Professional tone with explicit 'debugging agent' reference and comprehensive scope definition.",
+      "prompt": "This requires careful systematic analysis so please use a separate debugging agent: our Node.js service has a memory leak that only appears under sustained load. Need to audit the entire codebase for improper resource cleanup - database connection handles, WebSocket listeners, and any potential retain cycles in our caching layer.",
+      "category": "hinted-delegation",
+      "tags": [
+        "verbose",
+        "easy",
+        "synthetic",
+        "seed:delegate-debug-01"
+      ],
+      "expected_agent": "dev:debugger",
+      "expected_alternatives": []
+    },
+    {
+      "id": "delegate-parallel-01-var-01",
+      "description": "Direct rephrasing that preserves the parallel subagent delegation hint with explicit multi-file output requirement",
+      "prompt": "I need three separate agents working simultaneously to investigate: GraphQL vs REST speed comparisons, how to scale WebSockets, and using edge computing with API gateways. Have each one save their research to its own file.",
+      "category": "hinted-delegation",
+      "tags": [
+        "rephrased",
+        "easy",
+        "synthetic",
+        "seed:delegate-parallel-01"
+      ],
+      "expected_agent": "dev:researcher",
+      "expected_alternatives": []
+    },
+    {
+      "id": "delegate-parallel-01-var-02",
+      "description": "Minimal command-style prompt tests whether terse phrasing with 'spawn agents' still triggers researcher delegation",
+      "prompt": "spawn 3 research agents: graphql/rest benchmarks, websocket scaling, edge api gateways. each writes own file",
+      "category": "hinted-delegation",
+      "tags": [
+        "terse",
+        "medium",
+        "synthetic",
+        "seed:delegate-parallel-01"
+      ],
+      "expected_agent": "dev:researcher",
+      "expected_alternatives": []
+    },
+    {
+      "id": "delegate-parallel-01-var-03",
+      "description": "Over-explained request with explicit business context tests whether verbose prompts correctly route to researcher subagents",
+      "prompt": "For our architecture review meeting tomorrow, I really need comprehensive research done efficiently. Could you please delegate to multiple subagents running in parallel? The topics are: first, I need performance benchmark data comparing GraphQL and REST APIs; second, I need patterns and best practices for scaling WebSocket connections in production; and third, I need an analysis of edge computing approaches for API gateway deployments. Each research thread should produce a standalone markdown file with sources and findings. Time is tight so parallel execution is essential.",
+      "category": "hinted-delegation",
+      "tags": [
+        "verbose",
+        "easy",
+        "synthetic",
+        "seed:delegate-parallel-01"
+      ],
+      "expected_agent": "dev:researcher",
+      "expected_alternatives": []
+    },
+    {
+      "id": "delegate-parallel-01-var-04",
+      "description": "Uses 'workers' instead of 'subagents' to test whether synonymous terms still route correctly to researcher",
+      "prompt": "Use separate workers to look into these three things at once and document each separately: 1) how GraphQL performs against REST 2) WebSocket at scale 3) edge computing for gateways",
+      "category": "hinted-delegation",
+      "tags": [
+        "rephrased",
+        "medium",
+        "synthetic",
+        "seed:delegate-parallel-01"
+      ],
+      "expected_agent": "dev:researcher",
+      "expected_alternatives": []
+    },
+    {
+      "id": "delegate-parallel-01-var-05",
+      "description": "Extremely minimal prompt with bare keywords tests boundary of context needed for parallel research delegation",
+      "prompt": "research in parallel: graphql rest, websockets, edge gateways",
+      "category": "hinted-delegation",
+      "tags": [
+        "edge_case",
+        "hard",
+        "synthetic",
+        "seed:delegate-parallel-01"
+      ],
+      "expected_agent": "dev:researcher",
+      "expected_alternatives": []
+    },
+    {
+      "id": "delegate-parallel-01-var-06",
+      "description": "Explicitly instructs not to handle directly, testing whether negative framing still routes to researcher delegation",
+      "prompt": "Don't do this yourself - fan out to three independent research subagents for: GraphQL/REST performance analysis, WebSocket horizontal scaling strategies, and edge computing integration with API gateways. Output to three files.",
+      "category": "hinted-delegation",
+      "tags": [
+        "rephrased",
+        "easy",
+        "synthetic",
+        "seed:delegate-parallel-01"
+      ],
+      "expected_agent": "dev:researcher",
+      "expected_alternatives": []
+    },
+    {
+      "id": "delegate-parallel-01-var-07",
+      "description": "Mentions 'write code' and 'threads' which could trick routing toward code generation instead of research delegation",
+      "prompt": "I want you to write code that spawns three parallel threads, each researching one topic: GraphQL vs REST benchmarks, WebSocket scaling, and edge computing for APIs. Save results to separate files.",
+      "category": "hinted-delegation",
+      "tags": [
+        "adversarial",
+        "hard",
+        "synthetic",
+        "seed:delegate-parallel-01"
+      ],
+      "expected_agent": "dev:researcher",
+      "expected_alternatives": []
+    },
+    {
+      "id": "delegate-parallel-01-var-08",
+      "description": "Frames request within microservices evaluation context to test whether domain-specific framing affects routing",
+      "prompt": "We're evaluating our microservices stack. Kick off parallel research subagents for these investigations: comparing query performance between GraphQL and REST endpoints, patterns for maintaining thousands of concurrent WebSocket connections, and whether edge computing makes sense for our API gateway layer. Each agent should dump findings to a dedicated file.",
+      "category": "hinted-delegation",
+      "tags": [
+        "context_shift",
+        "medium",
+        "synthetic",
+        "seed:delegate-parallel-01"
+      ],
+      "expected_agent": "dev:researcher",
+      "expected_alternatives": []
+    },
+    {
+      "id": "delegate-parallel-01-var-09",
+      "description": "Question format with 'gather information' and 'reports' tests natural conversational phrasing for research delegation",
+      "prompt": "Can you have multiple agents simultaneously gather information on these and write separate reports? Topics: REST vs GraphQL speed tests, scaling real-time WebSocket apps, edge functions for API routing",
+      "category": "hinted-delegation",
+      "tags": [
+        "rephrased",
+        "easy",
+        "synthetic",
+        "seed:delegate-parallel-01"
+      ],
+      "expected_agent": "dev:researcher",
+      "expected_alternatives": []
+    },
+    {
+      "id": "delegate-parallel-01-var-10",
+      "description": "Explicitly mentions 'not skills' to test whether the system respects the Task vs Skill distinction when user specifies it",
+      "prompt": "Run three concurrent background tasks to research and save findings: benchmark GraphQL against REST, document WebSocket scaling techniques, analyze edge computing for gateways. Use separate subagents, not skills.",
+      "category": "hinted-delegation",
+      "tags": [
+        "edge_case",
+        "hard",
+        "synthetic",
+        "seed:delegate-parallel-01"
+      ],
+      "expected_agent": "dev:researcher",
+      "expected_alternatives": []
+    },
+    {
+      "id": "direct-simple-01-var-01",
+      "description": "Simple rephrasing using 'show me' instead of 'what is' with identical file path",
+      "prompt": "Show me the version from plugins/dev/plugin.json",
+      "category": "direct",
+      "tags": [
+        "rephrased",
+        "easy",
+        "synthetic",
+        "seed:direct-simple-01"
+      ],
+      "expected_agent": "NO_TASK_CALL"
+    },
+    {
+      "id": "direct-simple-01-var-02",
+      "description": "Minimal terse command testing that extremely short prompts still route correctly",
+      "prompt": "plugins/dev/plugin.json version?",
+      "category": "direct",
+      "tags": [
+        "terse",
+        "easy",
+        "synthetic",
+        "seed:direct-simple-01"
+      ],
+      "expected_agent": "NO_TASK_CALL"
+    },
+    {
+      "id": "direct-simple-01-var-03",
+      "description": "Verbose prompt with contextual explanation that might seem like it needs more processing but is still a simple file read",
+      "prompt": "I'm updating our changelog and need to reference the current version. Can you check plugins/dev/plugin.json and tell me what version is specified there?",
+      "category": "direct",
+      "tags": [
+        "verbose",
+        "medium",
+        "synthetic",
+        "seed:direct-simple-01"
+      ],
+      "expected_agent": "NO_TASK_CALL"
+    },
+    {
+      "id": "direct-simple-01-var-04",
+      "description": "Shell-style syntax as a prompt testing whether command-like input triggers incorrect tool routing",
+      "prompt": "cat plugins/dev/plugin.json | grep version",
+      "category": "direct",
+      "tags": [
+        "edge_case",
+        "medium",
+        "synthetic",
+        "seed:direct-simple-01"
+      ],
+      "expected_agent": "NO_TASK_CALL"
+    },
+    {
+      "id": "direct-simple-01-var-05",
+      "description": "Casual conversational style with implicit file path reference to test informal phrasing",
+      "prompt": "Hey quick q - what's the version field set to in the dev plugin's json config?",
+      "category": "direct",
+      "tags": [
+        "rephrased",
+        "easy",
+        "synthetic",
+        "seed:direct-simple-01"
+      ],
+      "expected_agent": "NO_TASK_CALL"
+    },
+    {
+      "id": "direct-simple-01-var-06",
+      "description": "Adversarial prompt that explicitly mentions a skill name but the task is too simple to warrant skill invocation",
+      "prompt": "Use the code-analysis skill to extract the version number from plugins/dev/plugin.json",
+      "category": "direct",
+      "tags": [
+        "adversarial",
+        "hard",
+        "synthetic",
+        "seed:direct-simple-01"
+      ],
+      "expected_agent": "NO_TASK_CALL"
+    },
+    {
+      "id": "direct-simple-01-var-07",
+      "description": "More formal instruction-style phrasing with explicit property name reference",
+      "prompt": "Read the plugin.json file in plugins/dev and extract the version property value",
+      "category": "direct",
+      "tags": [
+        "rephrased",
+        "easy",
+        "synthetic",
+        "seed:direct-simple-01"
+      ],
+      "expected_agent": "NO_TASK_CALL"
+    },
+    {
+      "id": "direct-simple-01-var-08",
+      "description": "Extreme edge case with minimal context - tests behavior when prompt is ambiguous but should still not delegate",
+      "prompt": "version",
+      "category": "direct",
+      "tags": [
+        "edge_case",
+        "hard",
+        "synthetic",
+        "seed:direct-simple-01"
+      ],
+      "expected_agent": "NO_TASK_CALL"
+    },
+    {
+      "id": "direct-simple-01-var-09",
+      "description": "Adversarial prompt explicitly naming an agent but the underlying task is trivial file reading that requires no delegation",
+      "prompt": "I need the dev:researcher agent to look up the version in plugins/dev/plugin.json for me",
+      "category": "direct",
+      "tags": [
+        "adversarial",
+        "hard",
+        "synthetic",
+        "seed:direct-simple-01"
+      ],
+      "expected_agent": "NO_TASK_CALL"
+    },
+    {
+      "id": "direct-simple-01-var-10",
+      "description": "Frames the simple read task within a deployment context that might suggest needing verification tools but is still just a file read",
+      "prompt": "We're deploying to staging and I need to verify our plugin version matches the release tag. What does plugins/dev/plugin.json say the version is?",
+      "category": "direct",
+      "tags": [
+        "context_shift",
+        "medium",
+        "synthetic",
+        "seed:direct-simple-01"
+      ],
+      "expected_agent": "NO_TASK_CALL"
+    },
+    {
+      "id": "direct-simple-02-var-01",
+      "description": "Simple rephrasing using 'search' instead of 'find' with same clear intent",
+      "prompt": "Search for plugin.json files in the codebase",
+      "category": "direct",
+      "tags": [
+        "rephrased",
+        "easy",
+        "synthetic",
+        "seed:direct-simple-02"
+      ],
+      "expected_agent": "NO_TASK_CALL"
+    },
+    {
+      "id": "direct-simple-02-var-02",
+      "description": "Casual lowercase question form tests minimal phrasing recognition",
+      "prompt": "where are the plugin.json files?",
+      "category": "direct",
+      "tags": [
+        "terse",
+        "easy",
+        "synthetic",
+        "seed:direct-simple-02"
+      ],
+      "expected_agent": "NO_TASK_CALL"
+    },
+    {
+      "id": "direct-simple-02-var-03",
+      "description": "Over-explained request that still resolves to a simple file search operation",
+      "prompt": "I need to locate every instance of a file called plugin.json within our project directory structure. Can you help me find where these configuration files are located?",
+      "category": "direct",
+      "tags": [
+        "verbose",
+        "easy",
+        "synthetic",
+        "seed:direct-simple-02"
+      ],
+      "expected_agent": "NO_TASK_CALL"
+    },
+    {
+      "id": "direct-simple-02-var-04",
+      "description": "Unix-style terse command with minimal context tests parser robustness",
+      "prompt": "ls plugin.json locations",
+      "category": "direct",
+      "tags": [
+        "edge_case",
+        "medium",
+        "synthetic",
+        "seed:direct-simple-02"
+      ],
+      "expected_agent": "NO_TASK_CALL"
+    },
+    {
+      "id": "direct-simple-02-var-05",
+      "description": "Mentioning 'capabilities' might trigger skill routing, but this is a direct file search",
+      "prompt": "Use your file search capabilities to find all plugin.json manifest files across the repository",
+      "category": "direct",
+      "tags": [
+        "adversarial",
+        "hard",
+        "synthetic",
+        "seed:direct-simple-02"
+      ],
+      "expected_agent": "NO_TASK_CALL"
+    },
+    {
+      "id": "direct-simple-02-var-06",
+      "description": "Monorepo context adds complexity framing but core task remains simple file listing",
+      "prompt": "In our monorepo, I'm trying to audit which packages have plugin configurations. List all plugin.json files.",
+      "category": "direct",
+      "tags": [
+        "context_shift",
+        "medium",
+        "synthetic",
+        "seed:direct-simple-02"
+      ],
+      "expected_agent": "NO_TASK_CALL"
+    },
+    {
+      "id": "direct-simple-02-var-07",
+      "description": "Absolute minimal input with no verb tests implicit intent recognition",
+      "prompt": "plugin.json",
+      "category": "direct",
+      "tags": [
+        "edge_case",
+        "hard",
+        "synthetic",
+        "seed:direct-simple-02"
+      ],
+      "expected_agent": "NO_TASK_CALL"
+    },
+    {
+      "id": "direct-simple-02-var-08",
+      "description": "Polite formal phrasing with technical specificity ('recursive', 'exactly') for same simple task",
+      "prompt": "Could you please run a recursive search and tell me the paths of any files named exactly plugin.json?",
+      "category": "direct",
+      "tags": [
+        "rephrased",
+        "easy",
+        "synthetic",
+        "seed:direct-simple-02"
+      ],
+      "expected_agent": "NO_TASK_CALL"
+    },
+    {
+      "id": "direct-simple-02-var-09",
+      "description": "Word 'delegate' might trick system into Task call, but intent is direct file search",
+      "prompt": "I want to delegate finding plugin.json files - just show me where they are",
+      "category": "direct",
+      "tags": [
+        "adversarial",
+        "hard",
+        "synthetic",
+        "seed:direct-simple-02"
+      ],
+      "expected_agent": "NO_TASK_CALL"
+    },
+    {
+      "id": "direct-simple-02-var-10",
+      "description": "Migration context implies larger workflow but explicit 'first step' isolates the simple search task",
+      "prompt": "We're migrating our plugin system. First step: find all plugin.json files in the project tree.",
+      "category": "direct",
+      "tags": [
+        "context_shift",
+        "medium",
+        "synthetic",
+        "seed:direct-simple-02"
+      ],
+      "expected_agent": "NO_TASK_CALL"
+    },
+    {
+      "id": "hint-subagent-01-var-01",
+      "description": "Clear hint to use subagent with explicit focus on reviewing agent description quality",
+      "prompt": "Spin up a subagent to analyze how well each agent's description communicates its purpose across all plugins",
+      "category": "hinted-delegation",
+      "tags": [
+        "rephrased",
+        "easy",
+        "synthetic",
+        "seed:hint-subagent-01"
+      ],
+      "expected_agent": "agentdev:reviewer",
+      "expected_alternatives": []
+    },
+    {
+      "id": "hint-subagent-01-var-02",
+      "description": "Minimal command-style prompt that hints at subagent delegation for agent review task",
+      "prompt": "subagent: review agent defs, compare description quality",
+      "category": "hinted-delegation",
+      "tags": [
+        "terse",
+        "medium",
+        "synthetic",
+        "seed:hint-subagent-01"
+      ],
+      "expected_agent": "agentdev:reviewer",
+      "expected_alternatives": []
+    },
+    {
+      "id": "hint-subagent-01-var-03",
+      "description": "Highly detailed request explicitly mentioning delegation for comprehensive agent definition review",
+      "prompt": "I need you to delegate to another agent that can go through every single plugin we have in this monorepo, examine each agent.yaml or agent definition file, and produce a detailed comparative analysis of how effective their descriptions are at explaining what each agent does, what their limitations are, and whether the descriptions follow best practices for clarity and completeness",
+      "category": "hinted-delegation",
+      "tags": [
+        "verbose",
+        "easy",
+        "synthetic",
+        "seed:hint-subagent-01"
+      ],
+      "expected_agent": "agentdev:reviewer",
+      "expected_alternatives": []
+    },
+    {
+      "id": "hint-subagent-01-var-04",
+      "description": "Uses 'helper agent' as hint for subagent, focuses on description quality audit",
+      "prompt": "Have a helper agent audit the quality of agent descriptions in our plugin system",
+      "category": "hinted-delegation",
+      "tags": [
+        "rephrased",
+        "medium",
+        "synthetic",
+        "seed:hint-subagent-01"
+      ],
+      "expected_agent": "agentdev:reviewer",
+      "expected_alternatives": []
+    },
+    {
+      "id": "hint-subagent-01-var-05",
+      "description": "Frames as scoring/ranking task while hinting at background agent delegation for review work",
+      "prompt": "Kick off a background agent to score and rank all the agent definitions by how well-written their descriptions are",
+      "category": "hinted-delegation",
+      "tags": [
+        "context_shift",
+        "medium",
+        "synthetic",
+        "seed:hint-subagent-01"
+      ],
+      "expected_agent": "agentdev:reviewer",
+      "expected_alternatives": []
+    },
+    {
+      "id": "hint-subagent-01-var-06",
+      "description": "Extremely minimal prompt that could be interpreted multiple ways but core intent is agent review",
+      "prompt": "review agents",
+      "category": "hinted-delegation",
+      "tags": [
+        "edge_case",
+        "hard",
+        "synthetic",
+        "seed:hint-subagent-01"
+      ],
+      "expected_agent": "agentdev:reviewer",
+      "expected_alternatives": []
+    },
+    {
+      "id": "hint-subagent-01-var-07",
+      "description": "Clear subagent hint with 'separate agent process' for evaluating description usefulness",
+      "prompt": "Use a separate agent process to evaluate whether our agent descriptions are actually useful - check every plugin and write up findings",
+      "category": "hinted-delegation",
+      "tags": [
+        "rephrased",
+        "easy",
+        "synthetic",
+        "seed:hint-subagent-01"
+      ],
+      "expected_agent": "agentdev:reviewer",
+      "expected_alternatives": []
+    },
+    {
+      "id": "hint-subagent-01-var-08",
+      "description": "Explicit instruction to NOT handle directly could confuse routing, but clearly needs reviewer subagent",
+      "prompt": "Don't do this yourself - spawn a subagent to create a report comparing how good the descriptions are for all agents defined in plugins",
+      "category": "hinted-delegation",
+      "tags": [
+        "adversarial",
+        "hard",
+        "synthetic",
+        "seed:hint-subagent-01"
+      ],
+      "expected_agent": "agentdev:reviewer",
+      "expected_alternatives": []
+    },
+    {
+      "id": "hint-subagent-01-var-09",
+      "description": "Casual question format hinting at delegation, specific to agent.yaml files for description review",
+      "prompt": "Can you have another agent look at the agent.yaml files across plugins and tell me which ones have poor descriptions?",
+      "category": "hinted-delegation",
+      "tags": [
+        "context_shift",
+        "medium",
+        "synthetic",
+        "seed:hint-subagent-01"
+      ],
+      "expected_agent": "agentdev:reviewer",
+      "expected_alternatives": []
+    },
+    {
+      "id": "hint-subagent-01-var-10",
+      "description": "Structured command-like format with 'Delegate:' prefix as unconventional hint for subagent usage",
+      "prompt": "Delegate: comprehensive agent definition description analysis across all plugins, output quality comparison report",
+      "category": "hinted-delegation",
+      "tags": [
+        "edge_case",
+        "medium",
+        "synthetic",
+        "seed:hint-subagent-01"
+      ],
+      "expected_agent": "agentdev:reviewer",
+      "expected_alternatives": []
+    },
+    {
+      "id": "hint-subagent-02-var-01",
+      "description": "Direct rephrasing with same structure, explicitly mentions subagent and background execution",
+      "prompt": "Spin up a subagent in the background to audit our entire repo for security issues - look for hardcoded API keys, injection vulnerabilities, and cross-site scripting problems. Output findings to ai-docs/security-audit.md",
+      "category": "hinted-delegation",
+      "tags": [
+        "rephrased",
+        "easy",
+        "synthetic",
+        "seed:hint-subagent-02"
+      ],
+      "expected_agent": "general-purpose",
+      "expected_alternatives": []
+    },
+    {
+      "id": "hint-subagent-02-var-02",
+      "description": "Minimal command-style prompt that hints at background agent with abbreviated security concerns",
+      "prompt": "background agent: full codebase security scan, check secrets/sqli/xss, report to ai-docs/security-audit.md",
+      "category": "hinted-delegation",
+      "tags": [
+        "terse",
+        "medium",
+        "synthetic",
+        "seed:hint-subagent-02"
+      ],
+      "expected_agent": "general-purpose",
+      "expected_alternatives": []
+    },
+    {
+      "id": "hint-subagent-02-var-03",
+      "description": "Overly detailed explanation that clearly signals delegation intent with explicit reasoning",
+      "prompt": "I need you to delegate this to a background worker since it's going to take a while - go through every file in the project looking for security vulnerabilities. I'm particularly concerned about secrets that might have been committed, any SQL injection risks in our database queries, and XSS vulnerabilities in our frontend code. Please compile everything into a markdown report at ai-docs/security-audit.md so the team can review it.",
+      "category": "hinted-delegation",
+      "tags": [
+        "verbose",
+        "easy",
+        "synthetic",
+        "seed:hint-subagent-02"
+      ],
+      "expected_agent": "general-purpose",
+      "expected_alternatives": []
+    },
+    {
+      "id": "hint-subagent-02-var-04",
+      "description": "Uses 'separate process' idiom instead of subagent, testing recognition of delegation hints",
+      "prompt": "kick off a separate process to crawl the codebase for vuln patterns - secrets, sqli, xss - dump results in ai-docs/security-audit.md",
+      "category": "hinted-delegation",
+      "tags": [
+        "rephrased",
+        "medium",
+        "synthetic",
+        "seed:hint-subagent-02"
+      ],
+      "expected_agent": "general-purpose",
+      "expected_alternatives": []
+    },
+    {
+      "id": "hint-subagent-02-var-05",
+      "description": "Minimal context edge case - mentions subagent but lacks specific vulnerability types and output location",
+      "prompt": "Use a subagent to perform comprehensive security analysis",
+      "category": "hinted-delegation",
+      "tags": [
+        "edge_case",
+        "hard",
+        "synthetic",
+        "seed:hint-subagent-02"
+      ],
+      "expected_agent": "general-purpose",
+      "expected_alternatives": []
+    },
+    {
+      "id": "hint-subagent-02-var-06",
+      "description": "Explicit instruction NOT to handle directly, clearly delegating to background task",
+      "prompt": "Don't do this yourself - hand it off to a background task: security vulnerability scan of all source files checking for leaked credentials, database injection flaws, and cross-site scripting issues. Generate ai-docs/security-audit.md with the findings.",
+      "category": "hinted-delegation",
+      "tags": [
+        "rephrased",
+        "easy",
+        "synthetic",
+        "seed:hint-subagent-02"
+      ],
+      "expected_agent": "general-purpose",
+      "expected_alternatives": []
+    },
+    {
+      "id": "hint-subagent-02-var-07",
+      "description": "Mentions a non-existent 'security-scanner skill' which might trick routing toward explicit-skill, but subagent hint should prevail",
+      "prompt": "I want to run the security-scanner skill in a background subagent to check for hardcoded secrets and injection vulnerabilities, output to ai-docs/security-audit.md",
+      "category": "hinted-delegation",
+      "tags": [
+        "adversarial",
+        "hard",
+        "synthetic",
+        "seed:hint-subagent-02"
+      ],
+      "expected_agent": "general-purpose",
+      "expected_alternatives": []
+    },
+    {
+      "id": "hint-subagent-02-var-08",
+      "description": "Frames request in context of upcoming penetration test, testing routing stability with project context",
+      "prompt": "We're prepping for a pen test next week. Can you spawn a background agent to sweep through all our code looking for the usual suspects - hardcoded passwords, SQL injection points, XSS vectors? Save the report to ai-docs/security-audit.md",
+      "category": "hinted-delegation",
+      "tags": [
+        "context_shift",
+        "medium",
+        "synthetic",
+        "seed:hint-subagent-02"
+      ],
+      "expected_agent": "general-purpose",
+      "expected_alternatives": []
+    },
+    {
+      "id": "hint-subagent-02-var-09",
+      "description": "Extremely terse arrow notation edge case that might be parsed incorrectly but contains subagent hint",
+      "prompt": "async subagent scan: secrets + sqli + xss -> ai-docs/security-audit.md",
+      "category": "hinted-delegation",
+      "tags": [
+        "edge_case",
+        "hard",
+        "synthetic",
+        "seed:hint-subagent-02"
+      ],
+      "expected_agent": "general-purpose",
+      "expected_alternatives": []
+    },
+    {
+      "id": "hint-subagent-02-var-10",
+      "description": "Uses technical synonyms for vulnerabilities and 'another agent in parallel' phrasing for delegation hint",
+      "prompt": "This is a big job so let's have another agent handle it in parallel: perform a thorough security audit scanning for environment variables and API keys in source, parameterized query violations, and DOM-based script injection risks. Write everything up in ai-docs/security-audit.md",
+      "category": "hinted-delegation",
+      "tags": [
+        "rephrased",
+        "medium",
+        "synthetic",
+        "seed:hint-subagent-02"
+      ],
+      "expected_agent": "general-purpose",
+      "expected_alternatives": []
+    }
+  ]
+}
