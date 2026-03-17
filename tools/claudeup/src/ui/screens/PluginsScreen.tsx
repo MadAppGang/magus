@@ -595,7 +595,7 @@ export function PluginsScreen() {
 			try {
 				const scope = scopeValue as PluginScope;
 				if (action === "uninstall") {
-					await cliUninstallPlugin(plugin.id, scope);
+					await cliUninstallPlugin(plugin.id, scope, state.projectPath);
 				} else if (action === "update") {
 					await cliUpdatePlugin(plugin.id, scope);
 				} else {
@@ -702,7 +702,7 @@ export function PluginsScreen() {
 
 		try {
 			if (action === "uninstall") {
-				await cliUninstallPlugin(plugin.id, scope);
+				await cliUninstallPlugin(plugin.id, scope, state.projectPath);
 			} else if (action === "update") {
 				await cliUpdatePlugin(plugin.id, scope);
 			} else {
@@ -769,7 +769,7 @@ export function PluginsScreen() {
 		modal.loading(`Uninstalling ${plugin.name}...`);
 
 		try {
-			await cliUninstallPlugin(plugin.id, scopeValue as PluginScope);
+			await cliUninstallPlugin(plugin.id, scopeValue as PluginScope, state.projectPath);
 			modal.hideModal();
 			fetchData();
 		} catch (error) {

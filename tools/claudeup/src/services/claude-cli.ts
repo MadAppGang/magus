@@ -12,6 +12,13 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { which } from "../utils/command-utils.js";
+import {
+	removeGlobalInstalledPluginVersion,
+	removeLocalInstalledPluginVersion,
+} from "./claude-settings.js";
+import {
+	removeInstalledPluginVersion,
+} from "./plugin-manager.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -76,18 +83,26 @@ export async function installPlugin(
 
 /**
  * Uninstall a plugin using claude CLI.
- * Falls back to `disable` if `uninstall` fails (e.g., for plugins
- * installed via old JSON method that the CLI doesn't recognize).
+ * Falls back to direct settings removal if CLI uninstall fails
+ * (e.g., for plugins installed via old JSON method).
+ * @param projectPath - Required for project/local scope fallback
  */
 export async function uninstallPlugin(
 	pluginId: string,
 	scope: PluginScope = "user",
+	projectPath?: string,
 ): Promise<void> {
 	try {
 		await execClaude(["plugin", "uninstall", pluginId, "--scope", scope]);
 	} catch {
-		// Fallback: disable works for plugins installed via old JSON method
-		await execClaude(["plugin", "disable", pluginId, "--scope", scope]);
+		// Fallback: directly remove from settings JSON
+		if (scope === "user") {
+			await removeGlobalInstalledPluginVersion(pluginId);
+		} else if (scope === "local" && projectPath) {
+			await removeLocalInstalledPluginVersion(pluginId, projectPath);
+		} else if (projectPath) {
+			await removeInstalledPluginVersion(pluginId, projectPath);
+		}
 	}
 }
 
