@@ -27,13 +27,14 @@ Rather than maintaining separate commands per workflow depth, the consolidation 
 - Standard debug — reproduce, localize, root cause, TDD patch, validate
 - Production-grade — full 9-phase TDD state machine, dual multimodel review, deployment monitoring
 
-**`/dev:build`** (absorbs implement + feature)
+**`/dev:dev`** (absorbs implement + feature)
 - Focused implementation — detect stack, plan, implement, tests
 - Full lifecycle — requirements, multi-model planning, implement, review, browser validation
 
-**`/dev:plan`** (absorbs architect + brainstorm)
-- Architecture design — structured design with trade-off analysis
+**`/dev:architect`** (absorbs architect + brainstorm)
+- Architecture design — complexity-aware with plan mode reasoning and multi-model escalation
 - Brainstorm first — multi-model parallel ideation, then converge
+- /team escalation — for complex or retry scenarios
 
 **`/dev:research`** (rename of deep-research)
 - No scope question needed; single workflow retained as-is
@@ -73,7 +74,7 @@ Auto-inference rules skip the scope question when intent is unambiguous. A stack
 | help | help |
 | debug | debug + fix + quick-fix |
 | build | implement + feature |
-| plan | architect + brainstorm |
+| architect | architect + brainstorm |
 | research | deep-research |
 | interview | interview |
 | investigate | new — routes to code-analysis:detective |
@@ -91,8 +92,8 @@ Auto-inference rules skip the scope question when intent is unambiguous. A stack
 
 ```
 "I have a bug"         /dev:debug       quick patch / standard / production-grade
-"Build something"      /dev:build       focused / full lifecycle
-"Plan or design"       /dev:plan        architecture / brainstorm
+"Build something"      /dev:dev       focused / full lifecycle
+"Plan or design"       /dev:architect   architecture / brainstorm / team escalation
 "Research a topic"     /dev:research
 "Gather requirements"  /dev:interview
 "How does X work"      /dev:investigate

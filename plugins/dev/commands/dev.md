@@ -1,6 +1,6 @@
 ---
-name: build
-description: "Build features — adaptive depth and automation. Quick/standard/full process, interactive/guided/autonomous execution."
+name: dev
+description: "Develop features — adaptive depth and automation. Quick/standard/full process, interactive/guided/autonomous execution."
 allowed-tools: Task, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep, mcp__chrome-devtools__navigate_page, mcp__chrome-devtools__take_screenshot, mcp__chrome-devtools__take_snapshot, mcp__chrome-devtools__click, mcp__chrome-devtools__fill, mcp__chrome-devtools__new_page, mcp__chrome-devtools__select_page, mcp__chrome-devtools__list_pages
 skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, dev:worktree-lifecycle, multimodel:multi-model-validation, multimodel:quality-gates, multimodel:model-tracking-protocol
 ---
@@ -653,7 +653,7 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
 
 <examples>
   <example name="Focused Implementation (auto-inferred)">
-    <user_request>/dev:build Add a loading spinner to the submit button</user_request>
+    <user_request>/dev:dev Add a loading spinner to the submit button</user_request>
     <execution>
       SCOPE SELECTION: Auto-inferred → Focused (single component, clear deliverable)
 
@@ -681,7 +681,7 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
   </example>
 
   <example name="Build with Scope Question">
-    <user_request>/dev:build auth system with JWT</user_request>
+    <user_request>/dev:dev auth system with JWT</user_request>
     <execution>
       SCOPE SELECTION: Auto-inference → ambiguous (keyword "auth", multiple components)
       Ask user: "How much process do you need?"
@@ -704,7 +704,7 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
   </example>
 
   <example name="Full Lifecycle with Real Validation Pass on First Try">
-    <user_request>/dev:build Add login page with email/password</user_request>
+    <user_request>/dev:dev Add login page with email/password</user_request>
     <execution>
       SCOPE SELECTION: "Full lifecycle" selected by user
 
@@ -791,7 +791,7 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
   </example>
 
   <example name="Full Lifecycle with Validation Loop (2 iterations)">
-    <user_request>/dev:build Add login page matching design</user_request>
+    <user_request>/dev:dev Add login page matching design</user_request>
     <execution>
       SCOPE SELECTION: "Full lifecycle" selected by user
 
@@ -963,7 +963,7 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
       2. Update session-meta.json with checkpoint
       3. Log: "Development cancelled at Phase {N}, Iteration {M}"
       4. Provide instructions to resume:
-         "To resume, run: /dev:build --resume {SESSION_ID}"
+         "To resume, run: /dev:dev --resume {SESSION_ID}"
     </recovery>
   </strategy>
 

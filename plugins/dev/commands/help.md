@@ -73,8 +73,8 @@ skills: dev:context-detection
 |---------|-------------|
 | `/dev:help` | Show this help message and detected stack |
 | `/dev:debug` | Universal debugging — quick patch, systematic debug, or production-grade TDD fix |
-| `/dev:build` | Build features — focused implementation or full lifecycle development |
-| `/dev:plan` | Architecture and ideation planning — structured design or brainstorming |
+| `/dev:dev` | Develop features — focused implementation or full lifecycle development |
+| `/dev:architect` | Architecture design and technical planning — complexity-aware with plan mode and multi-model escalation |
 | `/dev:research` | Multi-source research with convergence-based finalization |
 
 ### Recommended Skills for Your Project
@@ -117,16 +117,16 @@ Override auto-detection in `.claude/settings.json`:
 
 ```bash
 # Build a feature (focused mode)
-/dev:build Create user authentication with JWT
+/dev:dev Create user authentication with JWT
 
 # Debug an error
 /dev:debug TypeError: Cannot read property 'map' of undefined
 
-# Plan architecture
-/dev:plan Design microservice for user management
+# Architect a system
+/dev:architect Design microservice for user management
 
 # Build a feature (full lifecycle)
-/dev:build Add OAuth2 login with Google
+/dev:dev Add OAuth2 login with Google
 
 # Show this help
 /dev:help
@@ -198,8 +198,8 @@ which claudish
 ### Multi-Model Validation
 
 When Claudish CLI is installed, you can use external AI models for:
-- Architecture reviews (`/dev:plan`)
-- Code reviews (`/dev:build`)
+- Architecture reviews (`/dev:architect`)
+- Code reviews (`/dev:dev`)
 - Design validation
 
 **Supported models:**
@@ -331,7 +331,7 @@ See: https://github.com/MadAppGang/claudish
       - python (Python backend)
       - bunjs (Bun backend)
 
-      Or run /dev:build with explicit stack in prompt
+      Or run /dev:dev with explicit stack in prompt
     </output>
   </example>
 </examples>

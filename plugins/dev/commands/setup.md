@@ -100,7 +100,7 @@ allowed-tools: Read, Write, Edit, Bash, Glob, AskUserQuestion
     **What this does:**
     - Routes complex tasks to specialized agents automatically
     - Ensures research goes to dev:researcher, implementation to dev:developer, etc.
-    - Commands like /dev:build and /dev:debug use <critical_override> blocks
+    - Commands like /dev:dev and /dev:debug use <critical_override> blocks
       to override this table when their specific agent requirements differ
 
     **Alternative approaches (no CLAUDE.md modification needed):**

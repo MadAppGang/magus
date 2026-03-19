@@ -1,6 +1,6 @@
 {
   "name": "dev",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Universal development assistant. v2.0.0: Command consolidation — 17 commands to 12 via progressive disclosure. 46 skills, 15 agents.",
   "author": {
     "name": "Jack Rudenko",
@@ -62,8 +62,8 @@
   "commands": [
     "./commands/help.md",
     "./commands/debug.md",
-    "./commands/build.md",
-    "./commands/plan.md",
+    "./commands/dev.md",
+    "./commands/architect.md",
     "./commands/research.md",
     "./commands/interview.md",
     "./commands/investigate.md",

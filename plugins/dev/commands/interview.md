@@ -789,14 +789,14 @@ skills: dev:context-detection, dev:universal-patterns, dev:api-design, multimode
           Determine recommended next commands:
 
           ALWAYS recommend:
-          - /dev:build {feature_name} - "To start implementing"
+          - /dev:dev {feature_name} - "To start implementing"
 
           If design assets collected:
           - /dev:create-style - "To configure project design style"
           - /dev:ui-design - "To review UI against design system"
 
           If complex architecture:
-          - /dev:plan {topic} - "For detailed technical design"
+          - /dev:architect {topic} - "For detailed technical design"
         </step>
         <step>
           Update session-meta.json (via scribe) with status: "completed"
@@ -1118,7 +1118,7 @@ skills: dev:context-detection, dev:universal-patterns, dev:api-design, multimode
       PHASE 4: Synthesize comprehensive spec with all gaps filled
         (Delegated to spec-writer agent)
 
-      PHASE 5: Create 12 implementation tasks, propose /dev:build
+      PHASE 5: Create 12 implementation tasks, propose /dev:dev
     </execution>
   </example>
 
@@ -1302,12 +1302,12 @@ skills: dev:context-detection, dev:universal-patterns, dev:api-design, multimode
 - Phase 4 (Polish): {count} tasks
 
 **Recommended Next Steps**:
-1. `/dev:build {feature_name}` - Start implementation
+1. `/dev:dev {feature_name}` - Start implementation
 {if design_assets}
 2. `/dev:create-style` - Configure project design style
 {end}
 {if complex_architecture}
-2. `/dev:plan {topic}` - Detailed technical design
+2. `/dev:architect {topic}` - Detailed technical design
 {end}
 
 Ready to build!
