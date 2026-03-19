@@ -16,14 +16,14 @@
 
 | Plugin | Version | Purpose |
 |--------|---------|---------|
-| **Code Analysis** | v4.0.2 | Codebase investigation with claudemem MCP, 13 skills |
-| **Multimodel** | v2.6.2 | Multi-model collaboration and orchestration |
+| **Code Analysis** | v5.0.0 | Codebase investigation with claudemem MCP, 4 skills |
+| **Multimodel** | v2.8.1 | Multi-model collaboration and orchestration |
 | **Agent Development** | v1.5.5 | Create Claude Code agents and plugins |
 | **SEO** | v1.6.5 | SEO analysis and optimization with AUTO GATEs |
 | **Video Editing** | v1.1.1 | FFmpeg, Whisper, Final Cut Pro integration |
 | **Nanobanana** | v2.3.1 | AI image generation with Gemini 3 Pro Image |
 | **Conductor** | v2.1.1 | Context-Driven Development with TDD and Git Notes |
-| **Dev** | v1.39.0 | Universal dev assistant with workflow enforcement, 47 skills |
+| **Dev** | v2.0.0 | Universal dev assistant, 12 commands via progressive disclosure, 46 skills |
 | **Designer** | v0.2.0 | UI design validation with pixel-diff comparison, 6 skills |
 | **Browser Use** | v1.0.0 | Full-platform browser automation, 18 MCP tools, 5 skills |
 | **Statusline** | v1.4.1 | Colorful statusline with worktree awareness |
@@ -165,12 +165,12 @@ NOTE: Skills use the `Skill` tool, NOT the `Task` tool. The `namespace:name` for
 |---|---|---|
 | Semantic code search, claudemem CLI usage, AST analysis | `code-analysis:claudemem-search` | Before using `claudemem` commands |
 | Multi-agent claudemem orchestration | `code-analysis:claudemem-orchestration` | Parallel claudemem across agents |
-| Architecture investigation with PageRank | `code-analysis:architect-detective` | Architecture-focused claudemem usage |
-| Deep multi-perspective analysis | `code-analysis:deep-analysis` | Comprehensive codebase investigation |
+| Code investigation — architecture, implementation, tests, bugs | `code-analysis:investigate` | Mode-based routing (architecture/implementation/testing/debugging) |
+| Deep multi-perspective comprehensive analysis | `code-analysis:deep-analysis` | Comprehensive codebase audit, all dimensions |
 | Database branching with git worktrees (Neon, Turso, Supabase) | `dev:db-branching` | Worktree creation with schema changes needing DB isolation |
 | Interactive terminal: run commands, dev servers, test watchers, REPLs | `terminal:terminal-interaction` | Task needs TTY, interactive output, long-running process, or database shell |
 | TUI navigation: vim, nano, htop, lazygit, k9s, less | `terminal:tui-navigation-patterns` | Navigating TUI apps, sending key sequences, reading screen state |
-| Claudish CLI usage, model routing, provider backends | `code-analysis:claudish-usage` | Before ANY `claudish` command — bare model names, no prefixes |
+| Claudish CLI usage, model routing, provider backends | `multimodel:claudish-usage` | Before ANY `claudish` command — bare model names, no prefixes |
 
 ## Release Process
 

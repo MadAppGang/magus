@@ -212,17 +212,14 @@ claudemem --agent search "password hashing" --map```
 
 ---
 
-## Role-Based Investigation Skills
+## Investigation Skills
 
-For specialized investigations, use the appropriate role-based skill:
+For targeted investigations, use the appropriate skill:
 
 | Skill | When to Use | Focus |
 |-------|-------------|-------|
-| `architect-detective` | Architecture, design patterns, layers | Structure via `map` |
-| `developer-detective` | Implementation, data flow, changes | Dependencies via `callers`/`callees` |
-| `tester-detective` | Test coverage, edge cases | Test callers via `callers` |
-| `debugger-detective` | Bug investigation, root cause | Call chain via `context` |
-| `ultrathink-detective` | Comprehensive deep analysis | All commands combined |
+| `code-analysis:investigate` | Architecture, implementation, tests, or bugs | Mode-based routing (auto-selects mode) |
+| `code-analysis:deep-analysis` | Comprehensive multi-dimensional audit | All dimensions combined |
 
 ---
 

@@ -75,16 +75,16 @@
       "tags": ["explicit", "deep-analysis", "skill-vs-agent"]
     },
     {
-      "id": "skill-architect-detective-01",
-      "description": "Architect detective skill should be invoked via Skill tool, not as Task agent",
-      "prompt": "Use the code-analysis:architect-detective skill to understand the architecture investigation methodology. Load the skill and summarize what claudemem commands it recommends for architecture analysis.",
+      "id": "skill-investigate-01",
+      "description": "Investigate skill should be invoked via Skill tool, not as Task agent",
+      "prompt": "Use the code-analysis:investigate skill to understand the architecture investigation methodology. Load the skill and summarize what claudemem commands it recommends for architecture analysis.",
       "checks": {
-        "skill_invoked_is": "code-analysis:architect-detective",
+        "skill_invoked_is": "code-analysis:investigate",
         "no_task_with_skill_name": true,
         "no_bash_typo_clademem": true
       },
       "category": "explicit-skill",
-      "tags": ["explicit", "architect", "skill-vs-agent"]
+      "tags": ["explicit", "investigate", "skill-vs-agent"]
     },
     {
       "id": "skill-simple-no-skill-01",

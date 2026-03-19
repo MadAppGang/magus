@@ -14,8 +14,8 @@
     {
       "name": "code-analysis",
       "source": "./plugins/code-analysis",
-      "description": "Deep code investigation with claudemem MCP server. v4.0.3: Cleaned stale --agent refs in claudish-usage, added error escalation protocol.",
-      "version": "4.0.3",
+      "description": "Deep code investigation with claudemem MCP server. v5.0.0: Consolidated 13 skills to 4. Removed detective branding.",
+      "version": "5.0.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -42,8 +42,8 @@
     {
       "name": "multimodel",
       "source": "./plugins/multimodel",
-      "description": "Multi-model collaboration, orchestration, and workflow patterns. v2.8.0: Anti-substitution rules, TS analyzer, -y flag fix, 6 new E2E tests.",
-      "version": "2.8.0",
+      "description": "Multi-model collaboration, orchestration, and workflow patterns. v2.8.1: Added claudish-usage skill (moved from code-analysis).",
+      "version": "2.8.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",

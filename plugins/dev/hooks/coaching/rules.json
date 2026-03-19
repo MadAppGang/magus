@@ -30,7 +30,7 @@
       "value_in": [
         "code-analysis:claudemem-search",
         "code-analysis:claudemem-orchestration",
-        "code-analysis:architect-detective",
+        "code-analysis:investigate",
         "code-analysis:deep-analysis",
         "dev:db-branching"
       ]

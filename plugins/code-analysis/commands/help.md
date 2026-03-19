@@ -56,73 +56,47 @@ Present the following help information to the user:
 
 ---
 
-## Skills (9)
+## Skills (4)
 
 | Skill | Description |
 |-------|-------------|
-| **deep-analysis** | Automatic code investigation patterns - proactively analyzes code |
-| **claudemem-search** | Expert guidance on claudemem CLI for local semantic code search |
-| **claudish-usage** | Guide for using Claudish CLI through sub-agents |
-| **architect-detective** | Architecture-focused investigation (patterns, boundaries, layers) |
-| **developer-detective** | Implementation-focused investigation (data flow, side effects) |
-| **tester-detective** | Testing-focused investigation (coverage, edge cases) |
-| **debugger-detective** | Bug investigation (root cause, error tracing) |
-| **ultrathink-detective** | Comprehensive deep analysis with Opus model |
-| **cross-plugin-detective** | Agent-to-skill mapping for any plugin |
-| **investigate** | Unified entry point with keyword-based routing to specialized detectives |
+| **investigate** | Code investigation with mode-based routing: architecture, implementation, testing, debugging |
+| **deep-analysis** | Comprehensive multi-dimensional audit with all claudemem AST commands |
+| **claudemem-search** | Expert guidance on claudemem CLI for semantic code search and AST analysis |
+| **claudemem-orchestration** | Parallel multi-agent claudemem orchestration patterns |
 
-### Which Detective Should I Use?
+### Which Skill Should I Use?
 
-| Your Question Contains... | Use This Detective | Why |
-|--------------------------|-------------------|-----|
-| "debug", "error", "broken", "failing", "crash" | **debugger-detective** | Root cause analysis via call chain tracing |
-| "test", "coverage", "edge case", "mock" | **tester-detective** | Test discovery via callers analysis |
-| "architecture", "design", "structure", "layer" | **architect-detective** | Pattern discovery via PageRank |
-| "implementation", "how does", "code flow" | **developer-detective** | Data flow via callers/callees |
-| No specific keywords | **investigate skill** | Auto-routes based on keywords |
+| Your Question Contains... | Use This Skill | Mode |
+|--------------------------|----------------|------|
+| "debug", "error", "broken", "failing", "crash" | **investigate** | Bug Investigation |
+| "test", "coverage", "edge case", "mock" | **investigate** | Test Gap Analysis |
+| "architecture", "design", "structure", "layer" | **investigate** | Architecture Analysis |
+| "implementation", "how does", "code flow" | **investigate** | Implementation Tracing |
+| "comprehensive audit", "full review", "all dimensions" | **deep-analysis** | All dimensions |
 
 **Examples:**
-- "Why is login broken?" → debugger-detective
-- "What's tested?" → tester-detective
-- "What's the architecture?" → architect-detective
-- "How does auth work?" → developer-detective
-
-### Understanding Skills vs Agents
-
-**Skills** (use with Task tool):
-- `architect-detective`, `developer-detective`, `tester-detective`, `debugger-detective`
-- Specialized investigation workflows
-- Keyword-optimized for specific investigation types
-- Can be loaded by any agent via Task tool
-
-**Task-Only Agents** (no direct usage):
-- `ultrathink-detective` - High-quality analysis with Opus model
-- `cross-plugin-detective` - Maps agents to skills across plugins
-
-**When to Use Task Tool:**
-```typescript
-// From any agent/skill, delegate to specialist
-Task({
-  description: "Investigate auth implementation",
-  agent: "developer-detective"
-})
-```
+- "Why is login broken?" → investigate (Bug Investigation mode)
+- "What's tested?" → investigate (Test Gap Analysis mode)
+- "What's the architecture?" → investigate (Architecture Analysis mode)
+- "How does auth work?" → investigate (Implementation Tracing mode)
+- "Full codebase audit" → deep-analysis
 
 ### Quick Reference
 
-| Scenario | Command/Skill | Example |
-|----------|---------------|---------|
-| General investigation | `/analyze` | `/analyze How does payment work?` |
-| Architecture focus | Task → architect-detective | See multimodel plugin patterns |
-| Implementation focus | Task → developer-detective | Data flow analysis |
-| Test coverage | Task → tester-detective | Find untested code |
-| Bug investigation | Task → debugger-detective | Root cause tracing |
-| Deep analysis | Task → ultrathink-detective | Opus-powered investigation |
+| Scenario | Skill |
+|----------|-------|
+| General investigation | `code-analysis:investigate` |
+| Architecture, implementation, tests, bugs | `code-analysis:investigate` |
+| Comprehensive multi-dimensional audit | `code-analysis:deep-analysis` |
+| claudemem commands guidance | `code-analysis:claudemem-search` |
+| Parallel multi-agent orchestration | `code-analysis:claudemem-orchestration` |
+| Claudish CLI usage | `multimodel:claudish-usage` |
 
 **Integration Patterns:**
-- Frontend plugin's `/implement` suggests code-analysis for codebase understanding
-- Multimodel plugin uses detective skills for parallel orchestration
-- Use investigate skill for automatic routing
+- Use `investigate` for targeted single-dimension analysis
+- Use `deep-analysis` for comprehensive audits requiring all 7 dimensions
+- Use `claudemem-search` before any direct claudemem command usage
 
 ### Semantic Code Search with claudemem
 

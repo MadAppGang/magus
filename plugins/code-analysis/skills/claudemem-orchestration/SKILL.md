@@ -55,23 +55,23 @@ echo "$SESSION_ID" > "$SESSION_DIR/session-id.txt"
 - Same index serves all queries in session
 - Parallel agents reading same file = no redundant computation
 
-### Pattern 2: Role-Based Agent Distribution
+### Pattern 2: Mode-Based Analysis Distribution
 
-After running claudemem, distribute to role-specific agents:
+After running claudemem, distribute to mode-specific agents:
 
 ```
 # Parallel Execution (ONLY Task calls - per 4-Message Pattern)
-Task: architect-detective
+Task: code-analysis:investigate (architecture mode)
   Prompt: "Analyze architecture from $SESSION_DIR/structure-map.md.
            Focus on layer boundaries and design patterns.
            Write findings to $SESSION_DIR/architect-analysis.md"
 ---
-Task: tester-detective
+Task: code-analysis:investigate (testing mode)
   Prompt: "Analyze test gaps from $SESSION_DIR/test-gaps.md.
            Prioritize coverage recommendations.
            Write findings to $SESSION_DIR/tester-analysis.md"
 ---
-Task: developer-detective
+Task: code-analysis:investigate (implementation mode)
   Prompt: "Analyze dead code from $SESSION_DIR/dead-code.md.
            Identify cleanup opportunities.
            Write findings to $SESSION_DIR/developer-analysis.md"
@@ -79,10 +79,10 @@ Task: developer-detective
 All 3 execute simultaneously (3x speedup!)
 ```
 
-### Pattern 3: Consolidation with Ultrathink
+### Pattern 3: Consolidation with Deep Analysis
 
 ```
-Task: ultrathink-detective
+Task: code-analysis:deep-analysis
   Prompt: "Consolidate analyses from:
            - $SESSION_DIR/architect-analysis.md
            - $SESSION_DIR/tester-analysis.md
@@ -265,7 +265,7 @@ The agent then follows this pattern:
 - Run claudemem ONCE per investigation type
 - Write all output to session directory
 - Use parallel execution for independent analyses (see `multimodel:multi-model-validation`)
-- Consolidate with ultrathink for cross-perspective insights
+- Consolidate with deep-analysis for cross-perspective insights
 - Handle empty results gracefully
 
 **Don't:**

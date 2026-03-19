@@ -982,7 +982,7 @@
     {
       "id": "skill-architect-detective-01-var-01",
       "description": "Direct rephrasing with explicit skill identifier preserves clear routing intent while varying sentence structure.",
-      "prompt": "Load the code-analysis:architect-detective skill and tell me what claudemem commands it suggests for investigating system architecture.",
+      "prompt": "Load the code-analysis:investigate skill and tell me what claudemem commands it suggests for investigating system architecture.",
       "category": "explicit-skill",
       "tags": [
         "rephrased",
@@ -991,7 +991,7 @@
         "seed:skill-architect-detective-01"
       ],
       "checks": {
-        "skill_invoked_is": "code-analysis:architect-detective",
+        "skill_invoked_is": "code-analysis:investigate",
         "no_task_with_skill_name": true,
         "no_bash_typo_clademem": true
       }
@@ -999,7 +999,7 @@
     {
       "id": "skill-architect-detective-01-var-02",
       "description": "Minimal input with just the skill identifier tests whether the system recognizes bare skill names as invocation requests.",
-      "prompt": "code-analysis:architect-detective",
+      "prompt": "code-analysis:investigate",
       "category": "explicit-skill",
       "tags": [
         "terse",
@@ -1008,7 +1008,7 @@
         "seed:skill-architect-detective-01"
       ],
       "checks": {
-        "skill_invoked_is": "code-analysis:architect-detective",
+        "skill_invoked_is": "code-analysis:investigate",
         "no_task_with_skill_name": true,
         "no_bash_typo_clademem": true
       }
@@ -1016,7 +1016,7 @@
     {
       "id": "skill-architect-detective-01-var-03",
       "description": "Highly contextual request with explicit skill name buried in longer prose tests extraction of skill identifier from verbose input.",
-      "prompt": "I'm trying to understand how to approach architecture analysis in this codebase. Can you invoke the code-analysis:architect-detective skill and walk me through the methodology it recommends, especially any claudemem-related workflows?",
+      "prompt": "I'm trying to understand how to approach architecture analysis in this codebase. Can you invoke the code-analysis:investigate skill and walk me through the methodology it recommends, especially any claudemem-related workflows?",
       "category": "explicit-skill",
       "tags": [
         "verbose",
@@ -1025,7 +1025,7 @@
         "seed:skill-architect-detective-01"
       ],
       "checks": {
-        "skill_invoked_is": "code-analysis:architect-detective",
+        "skill_invoked_is": "code-analysis:investigate",
         "no_task_with_skill_name": true,
         "no_bash_typo_clademem": true
       }
@@ -1033,7 +1033,7 @@
     {
       "id": "skill-architect-detective-01-var-04",
       "description": "Inverted namespace:skill format tests whether the system correctly assembles the full skill identifier from split references.",
-      "prompt": "Run architect-detective from code-analysis and summarize the architecture investigation approach",
+      "prompt": "Run investigate from code-analysis and summarize the architecture investigation approach",
       "category": "explicit-skill",
       "tags": [
         "rephrased",
@@ -1042,7 +1042,7 @@
         "seed:skill-architect-detective-01"
       ],
       "checks": {
-        "skill_invoked_is": "code-analysis:architect-detective",
+        "skill_invoked_is": "code-analysis:investigate",
         "no_task_with_skill_name": true,
         "no_bash_typo_clademem": true
       }
@@ -1050,7 +1050,7 @@
     {
       "id": "skill-architect-detective-01-var-05",
       "description": "Mentions 'delegate' and 'agent' which could mislead toward Task tool, but explicitly requests loading a skill which should route to Skill tool.",
-      "prompt": "I need to delegate architecture investigation to an agent. Start by loading code-analysis:architect-detective to see what methodology we should follow.",
+      "prompt": "I need to delegate architecture investigation to an agent. Start by loading code-analysis:investigate to see what methodology we should follow.",
       "category": "explicit-skill",
       "tags": [
         "adversarial",
@@ -1059,7 +1059,7 @@
         "seed:skill-architect-detective-01"
       ],
       "checks": {
-        "skill_invoked_is": "code-analysis:architect-detective",
+        "skill_invoked_is": "code-analysis:investigate",
         "no_task_with_skill_name": true,
         "no_bash_typo_clademem": true
       }
@@ -1067,7 +1067,7 @@
     {
       "id": "skill-architect-detective-01-var-06",
       "description": "Question format with namespace and skill name separated tests natural language parsing of skill references.",
-      "prompt": "What does the architect-detective skill in the code-analysis namespace teach about using claudemem for architecture work?",
+      "prompt": "What does the investigate skill in the code-analysis namespace teach about using claudemem for architecture work?",
       "category": "explicit-skill",
       "tags": [
         "rephrased",
@@ -1076,7 +1076,7 @@
         "seed:skill-architect-detective-01"
       ],
       "checks": {
-        "skill_invoked_is": "code-analysis:architect-detective",
+        "skill_invoked_is": "code-analysis:investigate",
         "no_task_with_skill_name": true,
         "no_bash_typo_clademem": true
       }
@@ -1084,7 +1084,7 @@
     {
       "id": "skill-architect-detective-01-var-07",
       "description": "CLI-style syntax with flags tests whether unusual formatting still routes correctly to the named skill.",
-      "prompt": "skill code-analysis:architect-detective --summarize",
+      "prompt": "skill code-analysis:investigate --summarize",
       "category": "explicit-skill",
       "tags": [
         "edge_case",
@@ -1093,7 +1093,7 @@
         "seed:skill-architect-detective-01"
       ],
       "checks": {
-        "skill_invoked_is": "code-analysis:architect-detective",
+        "skill_invoked_is": "code-analysis:investigate",
         "no_task_with_skill_name": true,
         "no_bash_typo_clademem": true
       }
@@ -1101,7 +1101,7 @@
     {
       "id": "skill-architect-detective-01-var-08",
       "description": "Workplace scenario framing with explicit skill name tests that contextual information doesn't interfere with skill routing.",
-      "prompt": "Our team lead wants me to document how we analyze system architecture. Pull up code-analysis:architect-detective so I can see the recommended claudemem commands for this kind of investigation.",
+      "prompt": "Our team lead wants me to document how we analyze system architecture. Pull up code-analysis:investigate so I can see the recommended claudemem commands for this kind of investigation.",
       "category": "explicit-skill",
       "tags": [
         "context_shift",
@@ -1110,7 +1110,7 @@
         "seed:skill-architect-detective-01"
       ],
       "checks": {
-        "skill_invoked_is": "code-analysis:architect-detective",
+        "skill_invoked_is": "code-analysis:investigate",
         "no_task_with_skill_name": true,
         "no_bash_typo_clademem": true
       }
@@ -1118,7 +1118,7 @@
     {
       "id": "skill-architect-detective-01-var-09",
       "description": "References both an agent and a skill explicitly; tests that the immediate request for the skill takes precedence over the mentioned agent.",
-      "prompt": "Before I ask the dev:architect agent to analyze this codebase, show me what code-analysis:architect-detective recommends as the methodology",
+      "prompt": "Before I ask the dev:architect agent to analyze this codebase, show me what code-analysis:investigate recommends as the methodology",
       "category": "explicit-skill",
       "tags": [
         "adversarial",
@@ -1127,7 +1127,7 @@
         "seed:skill-architect-detective-01"
       ],
       "checks": {
-        "skill_invoked_is": "code-analysis:architect-detective",
+        "skill_invoked_is": "code-analysis:investigate",
         "no_task_with_skill_name": true,
         "no_bash_typo_clademem": true
       }

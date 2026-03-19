@@ -1,7 +1,7 @@
 {
   "name": "multimodel",
-  "version": "2.8.0",
-  "description": "Multi-model collaboration, orchestration, and workflow patterns. v2.8.0: Anti-substitution rules (Rule 0/6), TS analyzer rewrite, -y flag fix, 6 new E2E tests.",
+  "version": "2.8.1",
+  "description": "Multi-model collaboration, orchestration, and workflow patterns. v2.8.1: Added claudish-usage skill (moved from code-analysis).",
   "author": {
     "name": "MadAppGang",
     "email": "i@madappgang.com"

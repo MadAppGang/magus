@@ -35,17 +35,9 @@ import re
 KNOWN_SKILLS = {
     'code-analysis:claudemem-search',
     'code-analysis:claudemem-orchestration',
-    'code-analysis:architect-detective',
-    'code-analysis:developer-detective',
-    'code-analysis:tester-detective',
-    'code-analysis:debugger-detective',
-    'code-analysis:ultrathink-detective',
     'code-analysis:deep-analysis',
     'code-analysis:investigate',
-    'code-analysis:code-search-selector',
-    'code-analysis:search-interceptor',
-    'code-analysis:cross-plugin-detective',
-    'code-analysis:claudish-usage',
+    'multimodel:claudish-usage',
 }
 
 # Known misspellings of 'claudemem'

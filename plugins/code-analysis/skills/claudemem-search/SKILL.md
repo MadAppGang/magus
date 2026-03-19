@@ -8,6 +8,103 @@ allowed-tools: Bash, Task, AskUserQuestion
 
 This Skill provides comprehensive guidance on leveraging **claudemem** v0.7.0+ with **AST-based structural analysis**, **code analysis commands**, and **framework documentation** for intelligent codebase understanding.
 
+## Tool Selection: When to Use claudemem vs Native Tools
+
+Before starting any investigation, classify the task to pick the right tool.
+
+### Classify the Task
+
+| Task Type | Example | Use |
+|-----------|---------|-----|
+| "How does X work?" | "How does authentication work?" | `claudemem search` |
+| Find implementations | "Find all API endpoints" | `claudemem search` |
+| Architecture questions | "Map the service layer" | `claudemem --agent map` |
+| Trace data flow | "How does user data flow?" | `claudemem search` |
+| Audit integrations | "Audit Prime API usage" | `claudemem search` |
+| Exact string match | "Find 'DEPRECATED_FLAG'" | `Grep` |
+| Count occurrences | "How many TODO comments?" | `Grep -c` |
+| Find specific symbol | "Find class UserService" | `Grep` |
+| File patterns | "Find all *.config.ts" | `Glob` |
+
+**Rule:** Use claudemem for semantic/conceptual queries. Use Grep/Glob for exact matches only.
+
+### Check claudemem Status (MANDATORY for Semantic)
+
+```bash
+claudemem status
+```
+
+| Status | Meaning | Next Action |
+|--------|---------|-------------|
+| Shows chunk count ("938 chunks") | Indexed | USE claudemem |
+| "No index found" | Not indexed | Offer to index |
+| "command not found" | Not installed | Fall back to Grep |
+
+### Why Semantic Search is More Efficient
+
+| Approach | Token Cost | Result Quality |
+|----------|------------|----------------|
+| Read 5+ files sequentially | ~5000 tokens | No ranking |
+| Glob → Read all matches | ~3000+ tokens | No semantic understanding |
+| `claudemem search` once | ~500 tokens | Ranked by relevance |
+
+Claudemem results include context around matches — you often don't need to read full files.
+
+---
+
+## Bulk Read Optimization
+
+Before executing bulk file operations, consider semantic search alternatives.
+
+### Decision Matrix
+
+| Situation | Intercept? | Action |
+|-----------|-----------|--------|
+| Read 1–2 specific files | No | Proceed with Read |
+| Read 3+ files in investigation | YES | Convert to claudemem search |
+| Glob for exact filename | No | Proceed with Glob |
+| Glob for pattern discovery | YES | Convert to claudemem search |
+| Grep for exact string | No | Proceed with Grep |
+| Grep for semantic concept | YES | Convert to claudemem search |
+| Files mentioned in prompt | YES | Search semantically first |
+
+### Interception Examples
+
+**Instead of reading multiple files:**
+
+```
+Read src/services/auth/login.ts
+Read src/services/auth/session.ts
+Read src/services/auth/jwt.ts
+Read src/services/auth/middleware.ts
+```
+
+**Do:**
+
+```bash
+claudemem search "authentication login session JWT middleware" -n 15
+```
+
+**Instead of glob + sequential reads:**
+
+```
+Glob("src/**/*.controller.ts") → Read all 15 controllers
+```
+
+**Do:**
+
+```bash
+claudemem search "HTTP controller endpoint route handler" -n 20
+```
+
+**Interception protocol:**
+1. `claudemem status` — check if indexed
+2. If indexed: replace bulk reads with one semantic query
+3. If not indexed: `claudemem index -y`, then search
+4. Read only specific file:line ranges from results
+
+---
+
 ## What's New in v0.3.0
 
 ```
@@ -1735,7 +1832,6 @@ Native search tools (grep, Glob, find) are available when needed. They work well
 **Tip:** After using native tools, consider running `claudemem index` to enable
 semantic search for future investigations.
 
-**See ultrathink-detective skill for complete Fallback Protocol documentation.**
 
 ---
 
@@ -1779,5 +1875,5 @@ Before completing a claudemem workflow, ensure:
 ---
 
 **Maintained by:** Jack Rudenko @ MadAppGang
-**Plugin:** code-analysis v4.0.2
-**Last Updated:** March 2026 (v4.0.2 - MCP-based integration, grouped tool architecture)
+**Plugin:** code-analysis v5.0.0
+**Last Updated:** March 2026 (v5.0.0 - Absorbed code-search-selector and search-interceptor)
