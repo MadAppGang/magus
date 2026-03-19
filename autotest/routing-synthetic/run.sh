@@ -14,7 +14,7 @@
 #
 # Examples:
 #   ./autotest/routing-synthetic/run.sh --dry-run
-#   ./autotest/routing-synthetic/run.sh --cases skill-claudemem-explicit-01-var-01
+#   ./autotest/routing-synthetic/run.sh --cases skill-mnemex-explicit-01-var-01
 #   ./autotest/routing-synthetic/run.sh --parallel 3
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"

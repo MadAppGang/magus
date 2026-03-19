@@ -1066,9 +1066,9 @@ skills: dev:context-detection, dev:debugging-strategies, dev:systematic-debuggin
 
       <step name="large-repo">
         **Large codebase path** (if Grep returns >50 hits across >10 files):
-        - Invoke code-analysis:claudemem-search skill via Skill tool
+        - Invoke code-analysis:mnemex-search skill via Skill tool
         - Pass error signature as semantic search query
-        - Append high-confidence claudemem results to candidate list
+        - Append high-confidence mnemex results to candidate list
       </step>
 
       <step>
@@ -1095,7 +1095,7 @@ skills: dev:context-detection, dev:debugging-strategies, dev:systematic-debuggin
       <step>Mark PHASE 2 as completed</step>
     </steps>
     <output>${SESSION_PATH}/localization.md</output>
-    <tools>Grep, Glob, Read (line-range), Skill (code-analysis:claudemem-search if needed)</tools>
+    <tools>Grep, Glob, Read (line-range), Skill (code-analysis:mnemex-search if needed)</tools>
     <estimated_duration>2-5 minutes</estimated_duration>
   </phase>
 

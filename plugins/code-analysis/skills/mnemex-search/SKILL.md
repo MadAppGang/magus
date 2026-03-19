@@ -1,14 +1,14 @@
 ---
-name: claudemem-search
-description: "claudemem MCP and CLI expert — PRIMARY TOOL for semantic code search AND structural analysis. Available as MCP tools (direct invocation) or CLI via Bash (--agent flag). This is a SKILL (use Skill tool), NOT an agent. AST tree navigation with map, symbol, callers, callees, context commands. PageRank ranking. Workflow: Map structure first, then search semantically, analyze callers before modifying."
+name: mnemex-search
+description: "mnemex MCP and CLI expert — PRIMARY TOOL for semantic code search AND structural analysis. Available as MCP tools (direct invocation) or CLI via Bash (--agent flag). This is a SKILL (use Skill tool), NOT an agent. AST tree navigation with map, symbol, callers, callees, context commands. PageRank ranking. Workflow: Map structure first, then search semantically, analyze callers before modifying."
 allowed-tools: Bash, Task, AskUserQuestion
 ---
 
 # Claudemem Semantic Code Search Expert (v0.20.1 MCP)
 
-This Skill provides comprehensive guidance on leveraging **claudemem** v0.7.0+ with **AST-based structural analysis**, **code analysis commands**, and **framework documentation** for intelligent codebase understanding.
+This Skill provides comprehensive guidance on leveraging **mnemex** v0.7.0+ with **AST-based structural analysis**, **code analysis commands**, and **framework documentation** for intelligent codebase understanding.
 
-## Tool Selection: When to Use claudemem vs Native Tools
+## Tool Selection: When to Use mnemex vs Native Tools
 
 Before starting any investigation, classify the task to pick the right tool.
 
@@ -16,27 +16,27 @@ Before starting any investigation, classify the task to pick the right tool.
 
 | Task Type | Example | Use |
 |-----------|---------|-----|
-| "How does X work?" | "How does authentication work?" | `claudemem search` |
-| Find implementations | "Find all API endpoints" | `claudemem search` |
-| Architecture questions | "Map the service layer" | `claudemem --agent map` |
-| Trace data flow | "How does user data flow?" | `claudemem search` |
-| Audit integrations | "Audit Prime API usage" | `claudemem search` |
+| "How does X work?" | "How does authentication work?" | `mnemex search` |
+| Find implementations | "Find all API endpoints" | `mnemex search` |
+| Architecture questions | "Map the service layer" | `mnemex --agent map` |
+| Trace data flow | "How does user data flow?" | `mnemex search` |
+| Audit integrations | "Audit Prime API usage" | `mnemex search` |
 | Exact string match | "Find 'DEPRECATED_FLAG'" | `Grep` |
 | Count occurrences | "How many TODO comments?" | `Grep -c` |
 | Find specific symbol | "Find class UserService" | `Grep` |
 | File patterns | "Find all *.config.ts" | `Glob` |
 
-**Rule:** Use claudemem for semantic/conceptual queries. Use Grep/Glob for exact matches only.
+**Rule:** Use mnemex for semantic/conceptual queries. Use Grep/Glob for exact matches only.
 
-### Check claudemem Status (MANDATORY for Semantic)
+### Check mnemex Status (MANDATORY for Semantic)
 
 ```bash
-claudemem status
+mnemex status
 ```
 
 | Status | Meaning | Next Action |
 |--------|---------|-------------|
-| Shows chunk count ("938 chunks") | Indexed | USE claudemem |
+| Shows chunk count ("938 chunks") | Indexed | USE mnemex |
 | "No index found" | Not indexed | Offer to index |
 | "command not found" | Not installed | Fall back to Grep |
 
@@ -46,7 +46,7 @@ claudemem status
 |----------|------------|----------------|
 | Read 5+ files sequentially | ~5000 tokens | No ranking |
 | Glob → Read all matches | ~3000+ tokens | No semantic understanding |
-| `claudemem search` once | ~500 tokens | Ranked by relevance |
+| `mnemex search` once | ~500 tokens | Ranked by relevance |
 
 Claudemem results include context around matches — you often don't need to read full files.
 
@@ -61,11 +61,11 @@ Before executing bulk file operations, consider semantic search alternatives.
 | Situation | Intercept? | Action |
 |-----------|-----------|--------|
 | Read 1–2 specific files | No | Proceed with Read |
-| Read 3+ files in investigation | YES | Convert to claudemem search |
+| Read 3+ files in investigation | YES | Convert to mnemex search |
 | Glob for exact filename | No | Proceed with Glob |
-| Glob for pattern discovery | YES | Convert to claudemem search |
+| Glob for pattern discovery | YES | Convert to mnemex search |
 | Grep for exact string | No | Proceed with Grep |
-| Grep for semantic concept | YES | Convert to claudemem search |
+| Grep for semantic concept | YES | Convert to mnemex search |
 | Files mentioned in prompt | YES | Search semantically first |
 
 ### Interception Examples
@@ -82,7 +82,7 @@ Read src/services/auth/middleware.ts
 **Do:**
 
 ```bash
-claudemem search "authentication login session JWT middleware" -n 15
+mnemex search "authentication login session JWT middleware" -n 15
 ```
 
 **Instead of glob + sequential reads:**
@@ -94,13 +94,13 @@ Glob("src/**/*.controller.ts") → Read all 15 controllers
 **Do:**
 
 ```bash
-claudemem search "HTTP controller endpoint route handler" -n 20
+mnemex search "HTTP controller endpoint route handler" -n 20
 ```
 
 **Interception protocol:**
-1. `claudemem status` — check if indexed
+1. `mnemex status` — check if indexed
 2. If indexed: replace bulk reads with one semantic query
-3. If not indexed: `claudemem index -y`, then search
+3. If not indexed: `mnemex index -y`, then search
 4. Read only specific file:line ranges from results
 
 ---
@@ -142,7 +142,7 @@ v0.3.0 adds **AST tree navigation** with symbol graph analysis:
 
 ## MCP Tool Integration (v0.20.1+)
 
-In Claude Code with code-analysis plugin enabled, claudemem tools are available
+In Claude Code with code-analysis plugin enabled, mnemex tools are available
 directly as MCP tools — no CLI invocation needed.
 
 ### Available MCP Tools
@@ -224,7 +224,7 @@ Both modes access the same index. Choose based on context:
 | Mode | When to Use | How |
 |------|-------------|-----|
 | MCP tools | Direct invocation in Claude Code | Call `map`, `symbol`, etc. directly |
-| CLI via Bash | Shell scripts, orchestration | `Bash("claudemem --agent map 'query'")` |
+| CLI via Bash | Shell scripts, orchestration | `Bash("mnemex --agent map 'query'")` |
 
 ---
 
@@ -236,8 +236,8 @@ Both modes access the same index. Choose based on context:
 # Call the 'symbol' MCP tool with name: "AuthService"
 
 # CLI mode (Bash tool — for scripts or orchestration)
-claudemem --agent map "authentication flow"
-claudemem --agent symbol AuthService
+mnemex --agent map "authentication flow"
+mnemex --agent symbol AuthService
 ```
 
 ---
@@ -246,16 +246,16 @@ claudemem --agent symbol AuthService
 
 ```bash
 # For agentic use, always use --agent flag for clean output
-claudemem --agent <command>
+mnemex --agent <command>
 
 # Core commands for agents
-claudemem --agent map [query]              # Get structural overview (repo map)
-claudemem --agent symbol <name>            # Find symbol definition
-claudemem --agent callers <name>           # What calls this symbol?
-claudemem --agent callees <name>           # What does this symbol call?
-claudemem --agent context <name>           # Full context (symbol + dependencies)
-claudemem --agent search <query>           # Semantic search (clean output)
-claudemem --agent search <query> --map     # Search + include repo map context
+mnemex --agent map [query]              # Get structural overview (repo map)
+mnemex --agent symbol <name>            # Find symbol definition
+mnemex --agent callers <name>           # What calls this symbol?
+mnemex --agent callees <name>           # What does this symbol call?
+mnemex --agent context <name>           # Full context (symbol + dependencies)
+mnemex --agent search <query>           # Semantic search (clean output)
+mnemex --agent search <query> --map     # Search + include repo map context
 ```
 
 ---
@@ -265,7 +265,7 @@ claudemem --agent search <query> --map     # Search + include repo map context
 Claudemem has evolved significantly. **Check your version** before using commands:
 
 ```bash
-claudemem --version
+mnemex --version
 ```
 
 ### Command Availability by Version
@@ -287,13 +287,13 @@ claudemem --version
 
 ```bash
 # Get version number
-VERSION=$(claudemem --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+VERSION=$(mnemex --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
 
 # Check if v0.4.0+ features available
 if [ -n "$VERSION" ] && printf '%s\n' "0.4.0" "$VERSION" | sort -V -C; then
   # v0.4.0+ available
-  claudemem --agent dead-code  claudemem --agent test-gaps  claudemem --agent impact SymbolNameelse
-  echo "Code analysis commands require claudemem v0.4.0+"
+  mnemex --agent dead-code  mnemex --agent test-gaps  mnemex --agent impact SymbolNameelse
+  echo "Code analysis commands require mnemex v0.4.0+"
   echo "Current version: $VERSION"
   echo "Fallback to v0.3.0 commands (map, symbol, callers, callees)"
 fi
@@ -305,12 +305,12 @@ When using v0.4.0+ commands, always provide fallback:
 
 ```bash
 # Try impact analysis (v0.4.0+), fallback to callers (v0.3.0)
-IMPACT=$(claudemem --agent impact SymbolName  2>/dev/null)
+IMPACT=$(mnemex --agent impact SymbolName  2>/dev/null)
 if [ -n "$IMPACT" ] && [ "$IMPACT" != "command not found" ]; then
   echo "$IMPACT"
 else
   echo "Using fallback (direct callers only):"
-  claudemem --agent callers SymbolNamefi
+  mnemex --agent callers SymbolNamefi
 ```
 
 **Why This Matters:**
@@ -328,7 +328,7 @@ Before reading any code files, get the structural overview:
 
 ```bash
 # For a specific task, get focused repo map
-claudemem --agent map "authentication flow"
+mnemex --agent map "authentication flow"
 # Output shows relevant symbols ranked by importance (PageRank):
 # file: src/auth/AuthService.ts
 # line: 15-89
@@ -352,7 +352,7 @@ Once you know what to look for:
 
 ```bash
 # Find exact location of a symbol
-claudemem --agent symbol AuthService
+mnemex --agent symbol AuthService
 # Output:
 # file: src/auth/AuthService.ts
 # line: 15-89
@@ -370,7 +370,7 @@ Before modifying code, understand what depends on it:
 
 ```bash
 # What calls AuthService? (impact of changes)
-claudemem --agent callers AuthService
+mnemex --agent callers AuthService
 # Output:
 # caller: LoginController.authenticate
 # file: src/controllers/login.ts
@@ -385,7 +385,7 @@ claudemem --agent callers AuthService
 
 ```bash
 # What does AuthService call? (its dependencies)
-claudemem --agent callees AuthService
+mnemex --agent callees AuthService
 # Output:
 # callee: Database.query
 # file: src/db/database.ts
@@ -403,7 +403,7 @@ claudemem --agent callees AuthService
 For complex modifications, get everything at once:
 
 ```bash
-claudemem --agent context AuthService
+mnemex --agent context AuthService
 # Output includes:
 # [symbol]
 # file: src/auth/AuthService.ts
@@ -425,9 +425,9 @@ When you need actual code snippets:
 
 ```bash
 # Semantic search
-claudemem --agent search "password hashing"
+mnemex --agent search "password hashing"
 # Search with repo map context (recommended for complex tasks)
-claudemem --agent search "password hashing" --map```
+mnemex --agent search "password hashing" --map```
 
 ---
 
@@ -498,7 +498,7 @@ Use `define` and `hover` to get live, language-server-backed type information be
 Task: Rename DatabaseConnection to DatabasePool
 
 Old approach (error-prone):
-  claudemem callers DatabaseConnection → manual grep → edit each file
+  mnemex callers DatabaseConnection → manual grep → edit each file
 
 New approach (correct):
   rename_symbol("DatabaseConnection", "DatabasePool", dryRun=true)
@@ -566,74 +566,74 @@ Records are separated by `---`. Each field is `key: value` on its own line.
 
 ## Command Reference
 
-### claudemem map [query]
+### mnemex map [query]
 
 Get structural overview of the codebase. Optionally focused on a query.
 
 ```bash
 # Full repo map (top symbols by PageRank)
-claudemem --agent map
+mnemex --agent map
 # Focused on specific task
-claudemem --agent map "authentication"
+mnemex --agent map "authentication"
 # Limit tokens
-claudemem --agent map "auth" --tokens 500```
+mnemex --agent map "auth" --tokens 500```
 
 **Output fields**: file, line, kind, name, signature, pagerank, exported
 
 **When to use**: Always first - understand structure before reading code
 
-### claudemem symbol <name>
+### mnemex symbol <name>
 
 Find a symbol by name. Disambiguates using PageRank and export status.
 
 ```bash
-claudemem --agent symbol Indexerclaudemem --agent symbol "search" --file retriever   # hint which file
+mnemex --agent symbol Indexermnemex --agent symbol "search" --file retriever   # hint which file
 ```
 
 **Output fields**: file, line, kind, name, signature, pagerank, exported, docstring
 
 **When to use**: When you know the symbol name and need exact location
 
-### claudemem callers <name>
+### mnemex callers <name>
 
 Find all symbols that call/reference the given symbol.
 
 ```bash
-claudemem --agent callers AuthService```
+mnemex --agent callers AuthService```
 
 **Output fields**: caller (name), file, line, kind (call/import/extends/etc)
 
 **When to use**: Before modifying anything - know the impact radius
 
-### claudemem callees <name>
+### mnemex callees <name>
 
 Find all symbols that the given symbol calls/references.
 
 ```bash
-claudemem --agent callees AuthService```
+mnemex --agent callees AuthService```
 
 **Output fields**: callee (name), file, line, kind
 
 **When to use**: To understand dependencies and trace data flow
 
-### claudemem context <name>
+### mnemex context <name>
 
 Get full context: the symbol plus its callers and callees.
 
 ```bash
-claudemem --agent context Indexerclaudemem --agent context Indexer --callers 10 --callees 20```
+mnemex --agent context Indexermnemex --agent context Indexer --callers 10 --callees 20```
 
 **Output sections**: [symbol], [callers], [callees]
 
 **When to use**: For complex modifications requiring full awareness
 
-### claudemem search <query>
+### mnemex search <query>
 
 Semantic search across the codebase.
 
 ```bash
-claudemem --agent search "error handling"claudemem --agent search "error handling" --map   # include repo map
-claudemem --agent search "auth" -n 5   # limit results
+mnemex --agent search "error handling"mnemex --agent search "error handling" --map   # include repo map
+mnemex --agent search "auth" -n 5   # limit results
 ```
 
 **Output fields**: file, line, kind, name, score, content (truncated)
@@ -644,17 +644,17 @@ claudemem --agent search "auth" -n 5   # limit results
 
 ## Code Analysis Commands (v0.4.0+ Required)
 
-### claudemem dead-code
+### mnemex dead-code
 
 Find unused symbols in the codebase.
 
 ```bash
 # Find all unused symbols
-claudemem --agent dead-code
+mnemex --agent dead-code
 # Stricter threshold (only very low PageRank)
-claudemem --agent dead-code --max-pagerank 0.005
+mnemex --agent dead-code --max-pagerank 0.005
 # Include exported symbols (usually excluded)
-claudemem --agent dead-code --include-exported```
+mnemex --agent dead-code --include-exported```
 
 **Algorithm:**
 - Zero callers (nothing references the symbol)
@@ -667,7 +667,7 @@ claudemem --agent dead-code --include-exported```
 
 **Empty Result Handling:**
 ```bash
-RESULT=$(claudemem --agent dead-code )
+RESULT=$(mnemex --agent dead-code )
 if [ -z "$RESULT" ] || [ "$RESULT" = "No dead code found" ]; then
   echo "Codebase is clean - no dead code detected!"
   echo "This indicates good code hygiene."
@@ -682,15 +682,15 @@ fi
 - External callers (other repos, CLI usage) not visible
 - Exported symbols excluded by default for this reason
 
-### claudemem test-gaps
+### mnemex test-gaps
 
 Find high-importance code without test coverage.
 
 ```bash
 # Find all test coverage gaps
-claudemem --agent test-gaps
+mnemex --agent test-gaps
 # Only critical gaps (high PageRank)
-claudemem --agent test-gaps --min-pagerank 0.05```
+mnemex --agent test-gaps --min-pagerank 0.05```
 
 **Algorithm:**
 - High PageRank (> 0.01 default) - Important code
@@ -702,7 +702,7 @@ claudemem --agent test-gaps --min-pagerank 0.05```
 
 **Empty Result Handling:**
 ```bash
-RESULT=$(claudemem --agent test-gaps )
+RESULT=$(mnemex --agent test-gaps )
 if [ -z "$RESULT" ] || [ "$RESULT" = "No test gaps found" ]; then
   echo "Excellent! All high-importance code has test coverage."
   echo "Consider lowering --min-pagerank threshold for additional coverage."
@@ -716,15 +716,15 @@ fi
 - Integration tests calling code indirectly may not be detected
 - Mocked dependencies may show false positives
 
-### claudemem impact <symbol>
+### mnemex impact <symbol>
 
 Analyze the impact of changing a symbol using BFS traversal.
 
 ```bash
 # Get all transitive callers
-claudemem --agent impact UserService
+mnemex --agent impact UserService
 # Limit depth for large codebases
-claudemem --agent impact UserService --max-depth 5```
+mnemex --agent impact UserService --max-depth 5```
 
 **Algorithm:**
 - BFS traversal from symbol to all transitive callers
@@ -737,10 +737,10 @@ claudemem --agent impact UserService --max-depth 5```
 
 **Empty Result Handling:**
 ```bash
-RESULT=$(claudemem --agent impact FunctionName )
+RESULT=$(mnemex --agent impact FunctionName )
 if [ -z "$RESULT" ] || echo "$RESULT" | grep -q "No callers found"; then
   echo "No callers found - this symbol appears unused or is an entry point."
-  echo "If unused, consider running: claudemem --agent dead-code "
+  echo "If unused, consider running: mnemex --agent dead-code "
   echo "If entry point (API handler, main), this is expected."
 else
   echo "$RESULT"
@@ -775,9 +775,9 @@ For agent-optimized search with document type weighting:
 
 ```bash
 # Navigation-focused search (prioritizes summaries)
-claudemem --agent search "authentication" --use-case navigation
+mnemex --agent search "authentication" --use-case navigation
 # Default search (balanced)
-claudemem --agent search "authentication"```
+mnemex --agent search "authentication"```
 
 **Navigation mode search weights:**
 - `symbol_summary`: 1.5x (higher priority)
@@ -828,16 +828,16 @@ dependencies:
 
 ```bash
 # Find function behavior without reading code
-claudemem --agent search "processPayment behavior" --use-case navigation
+mnemex --agent search "processPayment behavior" --use-case navigation
 # Output includes symbol_summary:
 # symbol: PaymentService.processPayment
 # behavior: "Charges customer card via Stripe and saves transaction"
 # side_effects: ["Updates balance", "Sends receipt email", "Logs to audit"]
 
 # Find file purposes for architecture understanding
-claudemem --agent search "file:services purpose" --use-case navigation
+mnemex --agent search "file:services purpose" --use-case navigation
 # Find anti-patterns to avoid
-claudemem --agent search "anti_pattern SQL"```
+mnemex --agent search "anti_pattern SQL"```
 
 ### Regenerating Enrichments
 
@@ -845,10 +845,10 @@ If codebase changes significantly:
 
 ```bash
 # Re-index with LLM enrichment
-claudemem index --enrich
+mnemex index --enrich
 
 # Or enrich specific files
-claudemem enrich src/services/payment.ts
+mnemex enrich src/services/payment.ts
 ```
 
 ---
@@ -863,23 +863,23 @@ Standardized investigation patterns for common scenarios. All templates include 
 
 ```bash
 # Step 1: Locate the symptom
-SYMBOL=$(claudemem --agent symbol FunctionFromStackTrace )
+SYMBOL=$(mnemex --agent symbol FunctionFromStackTrace )
 if [ -z "$SYMBOL" ]; then
-  echo "Symbol not found - check spelling or run: claudemem --agent map 'related keywords' "
+  echo "Symbol not found - check spelling or run: mnemex --agent map 'related keywords' "
   exit 1
 fi
 
 # Step 2: Get full context (callers + callees)
-claudemem --agent context FunctionFromStackTrace
+mnemex --agent context FunctionFromStackTrace
 # Step 3: Trace backwards to find root cause
-claudemem --agent callers suspectedSource
+mnemex --agent callers suspectedSource
 # Step 4: Check full impact of the bug (v0.4.0+)
-IMPACT=$(claudemem --agent impact BuggyFunction  2>/dev/null)
+IMPACT=$(mnemex --agent impact BuggyFunction  2>/dev/null)
 if [ -n "$IMPACT" ]; then
   echo "$IMPACT"
 else
-  echo "Impact analysis requires claudemem v0.4.0+ or no callers found"
-  echo "Fallback: claudemem --agent callers BuggyFunction "
+  echo "Impact analysis requires mnemex v0.4.0+ or no callers found"
+  echo "Fallback: mnemex --agent callers BuggyFunction "
 fi
 
 # Step 5: Read identified file:line ranges
@@ -907,21 +907,21 @@ fi
 
 ```bash
 # Step 1: Map the feature area
-MAP=$(claudemem --agent map "feature area keywords" )
+MAP=$(mnemex --agent map "feature area keywords" )
 if [ -z "$MAP" ]; then
   echo "No matches found - try broader keywords"
 fi
 
 # Step 2: Identify extension points
-claudemem --agent callees ExistingFeature
+mnemex --agent callees ExistingFeature
 # Step 3: Get full context for modification point
-claudemem --agent context ModificationPoint
+mnemex --agent context ModificationPoint
 # Step 4: Check existing patterns to follow
-claudemem --agent search "similar pattern" --use-case navigation
+mnemex --agent search "similar pattern" --use-case navigation
 # Step 5: Implement following existing patterns
 
 # Step 6: Check test coverage gaps (v0.4.0+)
-GAPS=$(claudemem --agent test-gaps  2>/dev/null)
+GAPS=$(mnemex --agent test-gaps  2>/dev/null)
 if [ -n "$GAPS" ]; then
   echo "Test gaps to address:"
   echo "$GAPS"
@@ -948,27 +948,27 @@ fi
 
 ```bash
 # Step 1: Find the symbol to refactor
-SYMBOL=$(claudemem --agent symbol SymbolToRename )
+SYMBOL=$(mnemex --agent symbol SymbolToRename )
 if [ -z "$SYMBOL" ]; then
   echo "Symbol not found - check exact name"
   exit 1
 fi
 
 # Step 2: Get FULL impact (all transitive callers) (v0.4.0+)
-IMPACT=$(claudemem --agent impact SymbolToRename  2>/dev/null)
+IMPACT=$(mnemex --agent impact SymbolToRename  2>/dev/null)
 if [ -n "$IMPACT" ]; then
   echo "$IMPACT"
   # (impact output includes grouped_by_file)
 else
   echo "Using fallback (direct callers only):"
-  claudemem --agent callers SymbolToRenamefi
+  mnemex --agent callers SymbolToRenamefi
 
 # Step 3: Group by file for systematic updates
 
 # Step 4: Update each caller location systematically
 
 # Step 5: Verify all callers updated
-claudemem --agent callers NewSymbolName
+mnemex --agent callers NewSymbolName
 # Step 6: Run affected tests
 ```
 
@@ -991,9 +991,9 @@ claudemem --agent callers NewSymbolName
 
 ```bash
 # Step 1: Get full structural map
-MAP=$(claudemem --agent map )
+MAP=$(mnemex --agent map )
 if [ -z "$MAP" ]; then
-  echo "Index may be empty - run: claudemem index"
+  echo "Index may be empty - run: mnemex index"
   exit 1
 fi
 echo "$MAP"
@@ -1002,11 +1002,11 @@ echo "$MAP"
 # Document top 5 by PageRank
 
 # Step 3: For each pillar, get full context
-claudemem --agent context PillarSymbol
+mnemex --agent context PillarSymbol
 # Step 4: Trace major flows via callees
-claudemem --agent callees EntryPoint
+mnemex --agent callees EntryPoint
 # Step 5: Identify dead code (cleanup opportunities) (v0.4.0+)
-DEAD=$(claudemem --agent dead-code  2>/dev/null)
+DEAD=$(mnemex --agent dead-code  2>/dev/null)
 if [ -n "$DEAD" ]; then
   echo "Dead code found:"
   echo "$DEAD"
@@ -1015,7 +1015,7 @@ else
 fi
 
 # Step 6: Identify test gaps (risk areas) (v0.4.0+)
-GAPS=$(claudemem --agent test-gaps  2>/dev/null)
+GAPS=$(mnemex --agent test-gaps  2>/dev/null)
 if [ -n "$GAPS" ]; then
   echo "Test gaps:"
   echo "$GAPS"
@@ -1059,21 +1059,21 @@ fi
 
 ```bash
 # Step 1: Map security-related code
-claudemem --agent map "auth permission security token"
+mnemex --agent map "auth permission security token"
 # Step 2: Find authentication entry points
-SYMBOL=$(claudemem --agent symbol authenticate )
+SYMBOL=$(mnemex --agent symbol authenticate )
 if [ -z "$SYMBOL" ]; then
   echo "No 'authenticate' symbol - try: login, verify, validate"
 fi
-claudemem --agent callers authenticate
+mnemex --agent callers authenticate
 # Step 3: Trace authentication flow
-claudemem --agent callees authenticate
+mnemex --agent callees authenticate
 # Step 4: Check authorization patterns
-claudemem --agent map "authorize permission check guard"
+mnemex --agent map "authorize permission check guard"
 # Step 5: Find sensitive data handlers
-claudemem --agent map "password hash token secret key"
+mnemex --agent map "password hash token secret key"
 # Step 6: Check for test coverage on security code (v0.4.0+)
-GAPS=$(claudemem --agent test-gaps --min-pagerank 0.01  2>/dev/null)
+GAPS=$(mnemex --agent test-gaps --min-pagerank 0.01  2>/dev/null)
 if [ -n "$GAPS" ]; then
   # Filter for security-related symbols
   echo "$GAPS" | grep -E "(auth|login|password|token|permission|secret)"
@@ -1166,11 +1166,11 @@ container.register(IService, ServiceImpl);
 
 ```bash
 # Step 1: Get overview of auth-related code
-claudemem --agent map "authentication null pointer"
+mnemex --agent map "authentication null pointer"
 # Step 2: Locate the specific symbol mentioned in error
-claudemem --agent symbol authenticate
+mnemex --agent symbol authenticate
 # Step 3: Check what calls it (to understand how it's used)
-claudemem --agent callers authenticate
+mnemex --agent callers authenticate
 # Step 4: Read the actual code at the identified location
 # Now you know exactly which file:line to read
 ```
@@ -1181,15 +1181,15 @@ claudemem --agent callers authenticate
 
 ```bash
 # Step 1: Understand API structure
-claudemem --agent map "API endpoints rate"
+mnemex --agent map "API endpoints rate"
 # Step 2: Find the main API handler
-claudemem --agent symbol APIController
+mnemex --agent symbol APIController
 # Step 3: See what the API controller depends on
-claudemem --agent callees APIController
+mnemex --agent callees APIController
 # Step 4: Check if rate limiting already exists somewhere
-claudemem --agent search "rate limit"
+mnemex --agent search "rate limit"
 # Step 5: Get full context for the modification point
-claudemem --agent context APIController```
+mnemex --agent context APIController```
 
 ### Scenario 3: Refactoring
 
@@ -1197,9 +1197,9 @@ claudemem --agent context APIController```
 
 ```bash
 # Step 1: Find the symbol
-claudemem --agent symbol DatabaseConnection
+mnemex --agent symbol DatabaseConnection
 # Step 2: Find ALL callers (these all need updating)
-claudemem --agent callers DatabaseConnection
+mnemex --agent callers DatabaseConnection
 # Step 3: The output shows every file:line that references it
 # Update each location systematically
 ```
@@ -1210,13 +1210,13 @@ claudemem --agent callers DatabaseConnection
 
 ```bash
 # Step 1: Get high-level structure
-claudemem --agent map "indexing pipeline"
+mnemex --agent map "indexing pipeline"
 # Step 2: Find the main entry point (highest PageRank)
-claudemem --agent symbol Indexer
+mnemex --agent symbol Indexer
 # Step 3: Trace the flow - what does Indexer call?
-claudemem --agent callees Indexer
+mnemex --agent callees Indexer
 # Step 4: For each major callee, get its callees
-claudemem --agent callees VectorStoreclaudemem --agent callees FileTracker
+mnemex --agent callees VectorStoremnemex --agent callees FileTracker
 # Now you have the full pipeline traced
 ```
 
@@ -1247,14 +1247,14 @@ For maximum efficiency, follow this pattern:
 ```
 1. RECEIVE TASK
    ↓
-2. claudemem --agent map "<task keywords>"   → Understand structure, identify key symbols
+2. mnemex --agent map "<task keywords>"   → Understand structure, identify key symbols
    ↓
-3. claudemem --agent symbol <high-pagerank-symbol>   → Get exact location
+3. mnemex --agent symbol <high-pagerank-symbol>   → Get exact location
    ↓
-4. claudemem --agent callers <symbol>   (if modifying)
+4. mnemex --agent callers <symbol>   (if modifying)
    → Know the impact radius
    ↓
-5. claudemem --agent callees <symbol>   (if needed)
+5. mnemex --agent callees <symbol>   (if needed)
    → Understand dependencies
    ↓
 6. READ specific file:line ranges (not whole files)
@@ -1290,12 +1290,12 @@ Claudemem provides more efficient alternatives to common search patterns:
 
 | Instead of... | Try this | Benefit |
 |---------------|----------|---------|
-| `cat src/core/*.ts \| head -1000` | `claudemem --agent map "task"` | Saves tokens, finds relevant files |
-| `grep -r "Database" src/` | `claudemem --agent symbol Database` | Semantic relationships, not just strings |
-| Edit without caller check | `claudemem --agent callers X` first | Know what depends on your changes |
+| `cat src/core/*.ts \| head -1000` | `mnemex --agent map "task"` | Saves tokens, finds relevant files |
+| `grep -r "Database" src/` | `mnemex --agent symbol Database` | Semantic relationships, not just strings |
+| Edit without caller check | `mnemex --agent callers X` first | Know what depends on your changes |
 | Search immediately | `map` first, then `search` | Context improves search accuracy |
 | Read every matching file | Focus on high-PageRank symbols | Core code first, utilities later |
-| `claudemem search "query"` | `claudemem --agent search "query"` | Clean output without ASCII art |
+| `mnemex search "query"` | `mnemex --agent search "query"` | Clean output without ASCII art |
 
 ### Why These Patterns Work Better
 
@@ -1317,19 +1317,19 @@ If output is too large, use built-in flags instead of truncating:
 
 | Flag | Purpose | Example |
 |------|---------|---------|
-| `--tokens N` | Limit by token count | `claudemem --agent map "query" --tokens 2000` |
-| `-n N` | Limit result count | `claudemem --agent search "auth" -n 10` |
-| `--page-size N` | Pagination | `claudemem --agent search "x" --page-size 20` |
-| `--max-depth N` | Limit traversal | `claudemem --agent context Func --max-depth 3` |
+| `--tokens N` | Limit by token count | `mnemex --agent map "query" --tokens 2000` |
+| `-n N` | Limit result count | `mnemex --agent search "auth" -n 10` |
+| `--page-size N` | Pagination | `mnemex --agent search "x" --page-size 20` |
+| `--max-depth N` | Limit traversal | `mnemex --agent context Func --max-depth 3` |
 
-**Tip:** Piping to file preserves full output: `claudemem --agent map "query" > /tmp/map.txt`
+**Tip:** Piping to file preserves full output: `mnemex --agent map "query" > /tmp/map.txt`
 
 ### Quick Reference: Recommended Patterns
 
 | Instead of... | Try this | Why |
 |--------------|----------|-----|
 | Read files blindly | `map` first, then read specific lines | Ranked results, less tokens |
-| `grep -r "auth"` | `claudemem --agent symbol auth` | Semantic understanding |
+| `grep -r "auth"` | `mnemex --agent symbol auth` | Semantic understanding |
 | Modify without callers | `callers` before any modification | Avoid breaking changes |
 | Search immediately | `map` → `symbol` → search | Structural context first |
 | `cmd \| head` | Use `-n` or `--tokens` flags | Output is pre-optimized |
@@ -1343,16 +1343,16 @@ If output is too large, use built-in flags instead of truncating:
 │                 CORRECT INVESTIGATION FLOW (v0.3.0)              │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
-│  1. claudemem --agent map "task"                          │
+│  1. mnemex --agent map "task"                          │
 │     → Understand structure, find high-PageRank symbols          │
 │                                                                  │
-│  2. claudemem --agent symbol <name>                       │
+│  2. mnemex --agent symbol <name>                       │
 │     → Get exact file:line location                              │
 │                                                                  │
-│  3. claudemem --agent callers <name>                      │
+│  3. mnemex --agent callers <name>                      │
 │     → Know impact radius BEFORE modifying                       │
 │                                                                  │
-│  4. claudemem --agent callees <name>                      │
+│  4. mnemex --agent callees <name>                      │
 │     → Understand dependencies                                    │
 │                                                                  │
 │  5. Read specific file:line ranges (NOT whole files)            │
@@ -1373,11 +1373,11 @@ If output is too large, use built-in flags instead of truncating:
 ### Check Installation
 
 ```bash
-# Check if claudemem CLI is available
-which claudemem || command -v claudemem
+# Check if mnemex CLI is available
+which mnemex || command -v mnemex
 
 # Check version (must be 0.3.0+)
-claudemem --version
+mnemex --version
 ```
 
 ### Installation Options
@@ -1387,17 +1387,17 @@ claudemem --version
 npm install -g claude-codemem
 
 # Homebrew (macOS)
-brew tap MadAppGang/claude-mem && brew install --cask claudemem
+brew tap MadAppGang/claude-mem && brew install --cask mnemex
 ```
 
 ### Index Codebase
 
 ```bash
 # Index current project
-claudemem index
+mnemex index
 
 # Check status
-claudemem --version && ls -la .claudemem/index.db 2>/dev/null
+mnemex --version && ls -la .mnemex/index.db 2>/dev/null
 ```
 
 ---
@@ -1410,13 +1410,13 @@ Claudemem v0.7.0+ includes **automatic framework documentation fetching** for yo
 
 ```bash
 # Core documentation commands
-claudemem docs status            # Show indexed libraries and cache state
-claudemem docs fetch             # Fetch docs for all detected dependencies
-claudemem docs fetch react vue   # Fetch specific libraries
-claudemem docs providers         # List available documentation providers
-claudemem docs refresh           # Force refresh all cached documentation
-claudemem docs clear             # Clear all documentation cache
-claudemem docs clear react       # Clear specific library cache
+mnemex docs status            # Show indexed libraries and cache state
+mnemex docs fetch             # Fetch docs for all detected dependencies
+mnemex docs fetch react vue   # Fetch specific libraries
+mnemex docs providers         # List available documentation providers
+mnemex docs refresh           # Force refresh all cached documentation
+mnemex docs clear             # Clear all documentation cache
+mnemex docs clear react       # Clear specific library cache
 ```
 
 ### Documentation Providers
@@ -1444,7 +1444,7 @@ Claudemem automatically detects dependencies from:
 
 ```bash
 # Option 1: Run init (includes docs configuration)
-claudemem init
+mnemex init
 
 # Option 2: Configure Context7 manually (optional, for best coverage)
 export CONTEXT7_API_KEY=your_key
@@ -1456,7 +1456,7 @@ export CONTEXT7_API_KEY=your_key
 
 ```bash
 # Check current documentation status
-claudemem docs status
+mnemex docs status
 
 # Output:
 # 📚 Documentation Status
@@ -1473,7 +1473,7 @@ claudemem docs status
 #     ...
 
 # Fetch documentation for all project dependencies
-claudemem docs fetch
+mnemex docs fetch
 
 # Output:
 # 📚 Fetching Documentation
@@ -1485,21 +1485,21 @@ claudemem docs fetch
 #   ...
 
 # Fetch specific library
-claudemem docs fetch fastapi
+mnemex docs fetch fastapi
 
 # View available providers
-claudemem docs providers
+mnemex docs providers
 
 # Force refresh (clears cache, refetches)
-claudemem docs refresh
+mnemex docs refresh
 ```
 
 ### Unified Search (Code + Documentation)
 
-After indexing documentation, `claudemem search` returns results from **both** your codebase **and** framework documentation:
+After indexing documentation, `mnemex search` returns results from **both** your codebase **and** framework documentation:
 
 ```bash
-claudemem --agent search "how to use React hooks"
+mnemex --agent search "how to use React hooks"
 # Output includes:
 # --- Your Code ---
 # file: src/components/UserProfile.tsx
@@ -1527,11 +1527,11 @@ claudemem --agent search "how to use React hooks"
 
 | Scenario | Command | Why |
 |----------|---------|-----|
-| New project setup | `claudemem docs fetch` | Index docs for all dependencies |
-| Learning new library | `claudemem docs fetch <library>` | Get searchable reference |
-| Updated dependencies | `claudemem docs refresh` | Refresh to get new versions |
-| Check what's indexed | `claudemem docs status` | View cache state |
-| Clear space | `claudemem docs clear` | Remove cached documentation |
+| New project setup | `mnemex docs fetch` | Index docs for all dependencies |
+| Learning new library | `mnemex docs fetch <library>` | Get searchable reference |
+| Updated dependencies | `mnemex docs refresh` | Refresh to get new versions |
+| Check what's indexed | `mnemex docs status` | View cache state |
+| Clear space | `mnemex docs clear` | Remove cached documentation |
 
 ### Integration with Investigation Workflow
 
@@ -1541,27 +1541,27 @@ Add documentation fetch to your investigation workflow:
 # ENHANCED Investigation Workflow (v0.7.0+)
 
 # Step 0: Ensure framework docs are available (one-time)
-claudemem docs status || claudemem docs fetch
+mnemex docs status || mnemex docs fetch
 
 # Step 1: Map architecture (now includes library patterns)
-claudemem --agent map "authentication"
+mnemex --agent map "authentication"
 # Step 2: Search both code AND framework docs
-claudemem --agent search "JWT token validation"# Returns: your auth code + library docs on JWT handling
+mnemex --agent search "JWT token validation"# Returns: your auth code + library docs on JWT handling
 
 # Step 3: Understand how the library recommends usage
-claudemem --agent search "react best practices hooks"# Returns: your patterns + React official guidance
+mnemex --agent search "react best practices hooks"# Returns: your patterns + React official guidance
 ```
 
 ### Version Information
 
-The `claudemem docs` command requires **v0.7.0+**. Check your version:
+The `mnemex docs` command requires **v0.7.0+**. Check your version:
 
 ```bash
-claudemem --version
+mnemex --version
 # Expected: 0.7.0 or higher
 ```
 
-**Note:** If `claudemem docs help` returns "Unknown command", upgrade your claudemem installation.
+**Note:** If `mnemex docs help` returns "Unknown command", upgrade your mnemex installation.
 
 ---
 
@@ -1581,12 +1581,12 @@ Claudemem learns from your search patterns. After completing a task, report whic
 
 ```bash
 # After using search results, report feedback
-claudemem feedback --query "your original query" \
+mnemex feedback --query "your original query" \
   --helpful id1,id2 \
   --unhelpful id3,id4
 
 # Result IDs are shown in search output:
-claudemem search "authentication" --agent# Output includes:
+mnemex search "authentication" --agent# Output includes:
 # id: abc123
 # file: src/auth/middleware.ts
 # ...
@@ -1639,12 +1639,12 @@ Add feedback reporting to the end of each workflow template:
 # Step 7: Report feedback
 if [ -n "$SEARCH_QUERY" ] && [ -n "$HELPFUL_IDS" ]; then
   # Check if feedback is available (v0.8.0+)
-  if claudemem feedback --help 2>&1 | grep -qi "feedback"; then
-    timeout 5 claudemem feedback --query "$SEARCH_QUERY" \
+  if mnemex feedback --help 2>&1 | grep -qi "feedback"; then
+    timeout 5 mnemex feedback --query "$SEARCH_QUERY" \
       --helpful "${HELPFUL_IDS}" \
       --unhelpful "${UNHELPFUL_IDS}" 2>/dev/null || true
   else
-    echo "Note: Search feedback requires claudemem v0.8.0+"
+    echo "Note: Search feedback requires mnemex v0.8.0+"
   fi
 fi
 ```
@@ -1656,14 +1656,14 @@ fi
 
 # 0. Check if feedback is available (v0.8.0+)
 FEEDBACK_AVAILABLE=false
-if claudemem feedback --help 2>&1 | grep -qi "feedback"; then
+if mnemex feedback --help 2>&1 | grep -qi "feedback"; then
   FEEDBACK_AVAILABLE=true
 else
-  echo "Note: Search feedback requires claudemem v0.8.0+"
+  echo "Note: Search feedback requires mnemex v0.8.0+"
 fi
 
 # 1. Search and capture IDs
-RESULTS=$(claudemem --agent search "payment processing" -n 10 )
+RESULTS=$(mnemex --agent search "payment processing" -n 10 )
 ALL_IDS=$(echo "$RESULTS" | grep "^id:" | awk '{print $2}')
 SEARCH_QUERY="payment processing"
 
@@ -1679,7 +1679,7 @@ UNHELPFUL+=("def456")
 
 # 4. Report feedback (at end of investigation)
 if [ "$FEEDBACK_AVAILABLE" = true ] && ([ ${#HELPFUL[@]} -gt 0 ] || [ ${#UNHELPFUL[@]} -gt 0 ]); then
-  timeout 5 claudemem feedback \
+  timeout 5 mnemex feedback \
     --query "$SEARCH_QUERY" \
     --helpful "$(IFS=,; echo "${HELPFUL[*]}")" \
     --unhelpful "$(IFS=,; echo "${UNHELPFUL[*]}")" \
@@ -1703,15 +1703,15 @@ Before proceeding with investigation, verify the index is current:
 ```bash
 # Count files modified since last index
 STALE_COUNT=$(find . -type f \( -name "*.ts" -o -name "*.tsx" -o -name "*.js" -o -name "*.jsx" -o -name "*.py" -o -name "*.go" -o -name "*.rs" \) \
-  -newer .claudemem/index.db 2>/dev/null | grep -v "node_modules" | grep -v ".git" | grep -v "dist" | grep -v "build" | wc -l)
+  -newer .mnemex/index.db 2>/dev/null | grep -v "node_modules" | grep -v ".git" | grep -v "dist" | grep -v "build" | wc -l)
 STALE_COUNT=$((STALE_COUNT + 0))  # Normalize to integer
 
 if [ "$STALE_COUNT" -gt 0 ]; then
   # Get index time with explicit platform detection
   if [[ "$OSTYPE" == "darwin"* ]]; then
-    INDEX_TIME=$(stat -f "%Sm" -t "%Y-%m-%d %H:%M" .claudemem/index.db 2>/dev/null)
+    INDEX_TIME=$(stat -f "%Sm" -t "%Y-%m-%d %H:%M" .mnemex/index.db 2>/dev/null)
   else
-    INDEX_TIME=$(stat -c "%y" .claudemem/index.db 2>/dev/null | cut -d'.' -f1)
+    INDEX_TIME=$(stat -c "%y" .mnemex/index.db 2>/dev/null | cut -d'.' -f1)
   fi
   INDEX_TIME=${INDEX_TIME:-"unknown time"}
 
@@ -1725,13 +1725,13 @@ fi
 ```typescript
 AskUserQuestion({
   questions: [{
-    question: `${STALE_COUNT} files have been modified since the last index (${INDEX_TIME}). The claudemem index may be outdated, which could cause missing or incorrect results. How would you like to proceed?`,
+    question: `${STALE_COUNT} files have been modified since the last index (${INDEX_TIME}). The mnemex index may be outdated, which could cause missing or incorrect results. How would you like to proceed?`,
     header: "Index Freshness Warning",
     multiSelect: false,
     options: [
       {
         label: "Reindex now (Recommended)",
-        description: "Run claudemem index to update. Takes ~1-2 minutes."
+        description: "Run mnemex index to update. Takes ~1-2 minutes."
       },
       {
         label: "Proceed with stale index",
@@ -1760,13 +1760,13 @@ AskUserQuestion({
 
 ```bash
 # map validation
-RESULTS=$(claudemem --agent map "authentication" )
+RESULTS=$(mnemex --agent map "authentication" )
 EXIT_CODE=$?
 
 if [ "$EXIT_CODE" -ne 0 ]; then
-  echo "ERROR: claudemem command failed"
+  echo "ERROR: mnemex command failed"
   # Diagnose index health
-  DIAGNOSIS=$(claudemem --version && ls -la .claudemem/index.db 2>&1)
+  DIAGNOSIS=$(mnemex --version && ls -la .mnemex/index.db 2>&1)
   # Use AskUserQuestion
 fi
 
@@ -1781,14 +1781,14 @@ if ! echo "$RESULTS" | grep -qi "auth\|login\|user\|session"; then
 fi
 
 # symbol validation
-RESULTS=$(claudemem --agent symbol UserService )
+RESULTS=$(mnemex --agent symbol UserService )
 if ! echo "$RESULTS" | grep -q "name: UserService"; then
   echo "WARNING: UserService not found - check spelling or reindex"
   # Use AskUserQuestion
 fi
 
 # search validation
-RESULTS=$(claudemem --agent search "error handling" )
+RESULTS=$(mnemex --agent search "error handling" )
 MATCH_COUNT=0
 for kw in error handling catch try; do
   if echo "$RESULTS" | grep -qi "$kw"; then
@@ -1805,11 +1805,11 @@ fi
 
 ## Fallback Options
 
-If claudemem returns no results or the index isn't available:
+If mnemex returns no results or the index isn't available:
 
-1. **Check index status** - Run `claudemem status` to verify
+1. **Check index status** - Run `mnemex status` to verify
 2. **Try different query** - Rephrase or use more specific terms
-3. **Reindex if needed** - Run `claudemem index` (~1-2 min)
+3. **Reindex if needed** - Run `mnemex index` (~1-2 min)
 4. **Native tools available** - grep/Glob work but without semantic ranking
 
 ### Using Native Tools
@@ -1821,7 +1821,7 @@ Native search tools (grep, Glob, find) are available when needed. They work well
 
 ### Comparison
 
-| Feature | claudemem | grep/Glob |
+| Feature | mnemex | grep/Glob |
 |---------|-----------|-----------|
 | Semantic understanding | ✓ | - |
 | Call graph analysis | ✓ | - |
@@ -1829,7 +1829,7 @@ Native search tools (grep, Glob, find) are available when needed. They work well
 | Exact string match | ✓ | ✓ |
 | Works without index | - | ✓ |
 
-**Tip:** After using native tools, consider running `claudemem index` to enable
+**Tip:** After using native tools, consider running `mnemex index` to enable
 semantic search for future investigations.
 
 
@@ -1837,10 +1837,10 @@ semantic search for future investigations.
 
 ## Quality Checklist
 
-Before completing a claudemem workflow, ensure:
+Before completing a mnemex workflow, ensure:
 
-- [ ] claudemem CLI is installed (v0.3.0+)
-- [ ] Codebase is indexed (check with `claudemem status`)
+- [ ] mnemex CLI is installed (v0.3.0+)
+- [ ] Codebase is indexed (check with `mnemex status`)
 - [ ] **Checked index freshness** before starting ⭐NEW in v0.5.0
 - [ ] **Started with `map`** to understand structure ⭐CRITICAL
 - [ ] Used `--agent` for all commands
@@ -1857,7 +1857,7 @@ Before completing a claudemem workflow, ensure:
 
 - Requires OpenRouter API key for embeddings (https://openrouter.ai)
 - Default model: `voyage/voyage-code-3` (best code understanding)
-- All data stored locally in `.claudemem/` directory
+- All data stored locally in `.mnemex/` directory
 - Tree-sitter provides AST parsing for TypeScript, Go, Python, Rust
 - PageRank based on symbol call graph analysis
 - Can run as MCP server with `--mcp` flag

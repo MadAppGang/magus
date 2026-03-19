@@ -1,12 +1,12 @@
 ---
 name: investigate
-description: "Investigate code — architecture, implementation, tests, or bugs. Mode-based routing with claudemem AST analysis. Use when investigation type is unclear or for targeted analysis: architecture (map/PageRank), implementation (callers/callees), testing (test-gaps/callers), debugging (context/call chains)."
+description: "Investigate code — architecture, implementation, tests, or bugs. Mode-based routing with mnemex AST analysis. Use when investigation type is unclear or for targeted analysis: architecture (map/PageRank), implementation (callers/callees), testing (test-gaps/callers), debugging (context/call chains)."
 allowed-tools: Bash, Task, Read, AskUserQuestion
 ---
 
 # Investigate Skill
 
-Keyword-based routing to the appropriate investigation mode, each using claudemem AST commands optimized for that investigation type.
+Keyword-based routing to the appropriate investigation mode, each using mnemex AST commands optimized for that investigation type.
 
 ## Routing
 
@@ -23,10 +23,10 @@ Higher priority wins when multiple keywords match (Bug > Test > Architecture > I
 
 ## SHARED SETUP (All Modes)
 
-### Verify claudemem
+### Verify mnemex
 
 ```bash
-which claudemem && claudemem --version
+which mnemex && mnemex --version
 # Must be v0.3.0+
 ```
 
@@ -35,30 +35,30 @@ If not installed, use AskUserQuestion with options: Install via npm, Install via
 ### Check Index
 
 ```bash
-claudemem --version && ls -la .claudemem/index.db 2>/dev/null
+mnemex --version && ls -la .mnemex/index.db 2>/dev/null
 ```
 
 ### Check Index Freshness
 
 ```bash
-if [ ! -d ".claudemem" ] || [ ! -f ".claudemem/index.db" ]; then
+if [ ! -d ".mnemex" ] || [ ! -f ".mnemex/index.db" ]; then
   # AskUserQuestion: [1] Create index now, [2] Cancel
   exit 1
 fi
 
 STALE_COUNT=$(find . -type f \( -name "*.ts" -o -name "*.tsx" -o -name "*.js" -o -name "*.jsx" -o -name "*.py" -o -name "*.go" -o -name "*.rs" \) \
-  -newer .claudemem/index.db 2>/dev/null | grep -v "node_modules" | grep -v ".git" | grep -v "dist" | grep -v "build" | wc -l)
+  -newer .mnemex/index.db 2>/dev/null | grep -v "node_modules" | grep -v ".git" | grep -v "dist" | grep -v "build" | wc -l)
 STALE_COUNT=$((STALE_COUNT + 0))
 
 if [ "$STALE_COUNT" -gt 0 ]; then
   if [[ "$OSTYPE" == "darwin"* ]]; then
-    INDEX_TIME=$(stat -f "%Sm" -t "%Y-%m-%d %H:%M" .claudemem/index.db 2>/dev/null)
+    INDEX_TIME=$(stat -f "%Sm" -t "%Y-%m-%d %H:%M" .mnemex/index.db 2>/dev/null)
   else
-    INDEX_TIME=$(stat -c "%y" .claudemem/index.db 2>/dev/null | cut -d'.' -f1)
+    INDEX_TIME=$(stat -c "%y" .mnemex/index.db 2>/dev/null | cut -d'.' -f1)
   fi
   INDEX_TIME=${INDEX_TIME:-"unknown time"}
   STALE_SAMPLE=$(find . -type f \( -name "*.ts" -o -name "*.tsx" \) \
-    -newer .claudemem/index.db 2>/dev/null | grep -v "node_modules" | grep -v ".git" | head -5)
+    -newer .mnemex/index.db 2>/dev/null | grep -v "node_modules" | grep -v ".git" | head -5)
 
   # AskUserQuestion: [1] Reindex now (Recommended), [2] Proceed with stale, [3] Cancel
 fi
@@ -67,7 +67,7 @@ fi
 ### Index if Needed
 
 ```bash
-claudemem index
+mnemex index
 ```
 
 ### FALLBACK PROTOCOL (All Modes)
@@ -75,9 +75,9 @@ claudemem index
 ```
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║   FALLBACK PROTOCOL (NEVER SILENT)                                          ║
-║   If claudemem fails OR returns irrelevant results:                          ║
+║   If mnemex fails OR returns irrelevant results:                          ║
 ║   1. STOP — Do not silently switch to grep/find                              ║
-║   2. DIAGNOSE — Run claudemem status                                         ║
+║   2. DIAGNOSE — Run mnemex status                                         ║
 ║   3. COMMUNICATE — Tell user what happened                                   ║
 ║   4. ASK — Use AskUserQuestion for next steps                                ║
 ║   grep/find/Glob FORBIDDEN without explicit user approval                    ║
@@ -87,11 +87,11 @@ claudemem index
 ```typescript
 AskUserQuestion({
   questions: [{
-    question: "claudemem failed or returned no relevant results. How should I proceed?",
+    question: "mnemex failed or returned no relevant results. How should I proceed?",
     header: "Investigation Issue",
     multiSelect: false,
     options: [
-      { label: "Reindex codebase", description: "Run claudemem index (~1-2 min)" },
+      { label: "Reindex codebase", description: "Run mnemex index (~1-2 min)" },
       { label: "Try different query", description: "Rephrase the search" },
       { label: "Use grep (not recommended)", description: "Traditional search — loses AST analysis" },
       { label: "Cancel", description: "Stop investigation" }
@@ -103,14 +103,14 @@ AskUserQuestion({
 ### Never Truncate Output
 
 ```
-FORBIDDEN: claudemem --agent map "q" | head -80
-FORBIDDEN: claudemem --agent callers X | tail -50
-FORBIDDEN: claudemem --agent search "x" | grep -m 10 "y"
+FORBIDDEN: mnemex --agent map "q" | head -80
+FORBIDDEN: mnemex --agent callers X | tail -50
+FORBIDDEN: mnemex --agent search "x" | grep -m 10 "y"
 
-CORRECT: claudemem --agent map "query"
-CORRECT: claudemem --agent search "auth" -n 10        (built-in limit)
-CORRECT: claudemem --agent map "q" --tokens 2000      (token-limited)
-CORRECT: claudemem --agent context Func --max-depth 3  (depth-limited)
+CORRECT: mnemex --agent map "query"
+CORRECT: mnemex --agent search "auth" -n 10        (built-in limit)
+CORRECT: mnemex --agent map "q" --tokens 2000      (token-limited)
+CORRECT: mnemex --agent context Func --max-depth 3  (depth-limited)
 ```
 
 ---
@@ -173,50 +173,50 @@ Proceed to the appropriate mode section below.
 
 ```bash
 # Get high-level architecture overview
-claudemem --agent map "architecture layers"
-claudemem --agent map  # Full map, sorted by importance
+mnemex --agent map "architecture layers"
+mnemex --agent map  # Full map, sorted by importance
 
 # Map specific architectural concerns
-claudemem --agent map "service layer business logic"
-claudemem --agent map "repository data access"
-claudemem --agent map "controller API endpoints"
-claudemem --agent map "middleware request handling"
+mnemex --agent map "service layer business logic"
+mnemex --agent map "repository data access"
+mnemex --agent map "controller API endpoints"
+mnemex --agent map "middleware request handling"
 ```
 
 ### Identify Layers
 
 ```bash
 # Find interfaces/contracts (architectural boundaries)
-claudemem --agent map "interface contract abstract"
+mnemex --agent map "interface contract abstract"
 # Dependency injection points
-claudemem --agent map "inject provider module"
+mnemex --agent map "inject provider module"
 # Configuration and bootstrap
-claudemem --agent map "config bootstrap initialize"
+mnemex --agent map "config bootstrap initialize"
 ```
 
 ### Identify Patterns
 
 ```bash
-claudemem --agent map "factory create builder"
-claudemem --agent map "repository persist query"
-claudemem --agent map "event emit subscribe handler"
+mnemex --agent map "factory create builder"
+mnemex --agent map "repository persist query"
+mnemex --agent map "event emit subscribe handler"
 ```
 
 ### Trace Dependencies
 
 ```bash
 # For a core abstraction, see what depends on it
-claudemem --agent callers CoreService
+mnemex --agent callers CoreService
 # See what it depends on
-claudemem --agent callees CoreService
+mnemex --agent callees CoreService
 # Full transitive dependencies
-claudemem --agent dependency-graph CoreService
+mnemex --agent dependency-graph CoreService
 ```
 
 ### Find Dead Code (v0.4.0+ Required)
 
 ```bash
-DEAD_CODE=$(claudemem --agent dead-code)
+DEAD_CODE=$(mnemex --agent dead-code)
 if [ -z "$DEAD_CODE" ]; then
   echo "No dead code found — architecture is well-maintained"
 else
@@ -269,7 +269,7 @@ memory_read("auth/architecture")
 │  Core Abstractions (PageRank > 0.05):                   │
 │    - UserService (0.092) - Central business logic       │
 │    - Database (0.078) - Data access foundation          │
-│  Search Method: claudemem (AST + PageRank)               │
+│  Search Method: mnemex (AST + PageRank)               │
 └─────────────────────────────────────────────────────────┘
 
 Layer Structure:
@@ -286,11 +286,11 @@ Layer Structure:
 ### Validate Architecture Results
 
 ```bash
-RESULTS=$(claudemem --agent map "service layer business logic")
+RESULTS=$(mnemex --agent map "service layer business logic")
 EXIT_CODE=$?
 
 if [ "$EXIT_CODE" -ne 0 ]; then
-  DIAGNOSIS=$(claudemem status 2>&1)
+  DIAGNOSIS=$(mnemex status 2>&1)
   # Use AskUserQuestion
 fi
 
@@ -323,18 +323,18 @@ fi
 
 ```bash
 # Find where a function is defined
-claudemem --agent symbol processPayment
+mnemex --agent symbol processPayment
 # Get full context
-claudemem --agent context processPayment
+mnemex --agent context processPayment
 
 # What does this function call? (data flows OUT)
-claudemem --agent callees processPayment
+mnemex --agent callees processPayment
 # Follow the chain
-claudemem --agent callees validateCard
-claudemem --agent callees chargeStripe
+mnemex --agent callees validateCard
+mnemex --agent callees chargeStripe
 
 # Who calls this function? (usage patterns)
-claudemem --agent callers processPayment
+mnemex --agent callers processPayment
 ```
 
 ### LSP Enrichment (Before Modifying)
@@ -352,7 +352,7 @@ Safe-edit checkpoint: `symbol → hover → think → edit_symbol` (NOT Grep →
 
 ```bash
 # Before modifying ANY code, check full transitive impact
-IMPACT=$(claudemem --agent impact functionToChange)
+IMPACT=$(mnemex --agent impact functionToChange)
 
 if [ -z "$IMPACT" ] || echo "$IMPACT" | grep -q "No callers"; then
   echo "No static callers — verify dynamic usage patterns"
@@ -372,7 +372,7 @@ fi
 │  Symbol: processPayment                                  │
 │  Location: src/services/payment.ts:45-89                │
 │  PageRank: 0.034                                         │
-│  Search Method: claudemem (AST analysis)                │
+│  Search Method: mnemex (AST analysis)                │
 └─────────────────────────────────────────────────────────┘
 
 Data Flow (Callees):
@@ -389,15 +389,15 @@ Usage (Callers):
 ### Validate Implementation Results
 
 ```bash
-SYMBOL=$(claudemem --agent symbol PaymentService)
+SYMBOL=$(mnemex --agent symbol PaymentService)
 EXIT_CODE=$?
 
 if [ "$EXIT_CODE" -ne 0 ] || [ -z "$SYMBOL" ] || echo "$SYMBOL" | grep -qi "not found\|error"; then
-  DIAGNOSIS=$(claudemem --version && ls -la .claudemem/index.db 2>&1)
+  DIAGNOSIS=$(mnemex --version && ls -la .mnemex/index.db 2>&1)
   # AskUserQuestion: [1] Reindex, [2] Try different name, [3] Cancel
 fi
 
-CALLERS=$(claudemem --agent callers PaymentService)
+CALLERS=$(mnemex --agent callers PaymentService)
 if echo "$CALLERS" | grep -qi "error\|failed"; then
   # AskUserQuestion
 fi
@@ -422,31 +422,31 @@ fi
 
 ```bash
 # Who calls this function? (test files will appear as callers)
-claudemem --agent callers processPayment
+mnemex --agent callers processPayment
 # src/services/payment.test.ts:45 → This is a test caller
 
 # Map test infrastructure
-claudemem --agent map "test spec describe it"
-claudemem --agent map "test helper mock stub"
-claudemem --agent map "fixture factory builder"
+mnemex --agent map "test spec describe it"
+mnemex --agent map "test helper mock stub"
+mnemex --agent map "fixture factory builder"
 ```
 
 ### Automated Gap Detection (v0.4.0+ Required — Do This First)
 
 ```bash
-GAPS=$(claudemem --agent test-gaps)
+GAPS=$(mnemex --agent test-gaps)
 
 if [ -z "$GAPS" ] || echo "$GAPS" | grep -q "No test gaps"; then
   echo "Excellent test coverage! All high-importance code has tests."
   echo "Optional: Check lower-importance code:"
-  claudemem --agent test-gaps --min-pagerank 0.005
+  mnemex --agent test-gaps --min-pagerank 0.005
 else
   echo "Test Coverage Gaps Found:"
   echo "$GAPS"
 fi
 
 # Focus on critical gaps only
-claudemem --agent test-gaps --min-pagerank 0.05
+mnemex --agent test-gaps --min-pagerank 0.05
 ```
 
 `test-gaps` automatically finds high-PageRank symbols with 0 test callers and returns a prioritized list.
@@ -469,9 +469,9 @@ When `references` finds more than `callers`: add "LSP References" alongside "AST
 
 ```bash
 # For each critical function, check callers
-claudemem --agent callers authenticateUser
-claudemem --agent callers processPayment
-claudemem --agent callers saveToDatabase
+mnemex --agent callers authenticateUser
+mnemex --agent callers processPayment
+mnemex --agent callers saveToDatabase
 
 # Count test vs production callers
 TEST_CALLERS=$(echo "$CALLERS" | grep -E "\.test\.|\.spec\.|_test\." | wc -l)
@@ -490,7 +490,7 @@ fi
 ├─────────────────────────────────────────────────────────┤
 │  Framework: [Detected framework]                        │
 │  Test Files: N files (*.spec.ts, *.test.ts)             │
-│  Search Method: claudemem (callers analysis)            │
+│  Search Method: mnemex (callers analysis)            │
 └─────────────────────────────────────────────────────────┘
 
 Coverage by Function:
@@ -511,11 +511,11 @@ MEDIUM PRIORITY — Few Test Callers:
 ### Validate Test Results
 
 ```bash
-CALLERS=$(claudemem --agent callers processPayment)
+CALLERS=$(mnemex --agent callers processPayment)
 EXIT_CODE=$?
 
 if [ "$EXIT_CODE" -ne 0 ]; then
-  DIAGNOSIS=$(claudemem status 2>&1)
+  DIAGNOSIS=$(mnemex status 2>&1)
   # AskUserQuestion for recovery
 fi
 
@@ -523,7 +523,7 @@ if echo "$CALLERS" | grep -qi "error\|failed"; then
   # AskUserQuestion
 fi
 
-if [ -z "$(claudemem --agent map "test spec describe")" ]; then
+if [ -z "$(mnemex --agent map "test spec describe")" ]; then
   echo "WARNING: No test infrastructure found"
   # May indicate non-standard test locations or index gap
 fi
@@ -548,9 +548,9 @@ fi
 
 ```bash
 # Find the function mentioned in error
-claudemem --agent symbol authenticate
+mnemex --agent symbol authenticate
 # Get full context (callers + callees)
-claudemem --agent context authenticate
+mnemex --agent context authenticate
 ```
 
 ### LSP Type Verification
@@ -568,22 +568,22 @@ Type mismatches between what `hover` shows (actual type) and what callers expect
 ### Trace Backwards (Root Cause)
 
 ```bash
-claudemem --agent callers authenticate
-claudemem --agent callers LoginController
-claudemem --agent callers handleRequest
+mnemex --agent callers authenticate
+mnemex --agent callers LoginController
+mnemex --agent callers handleRequest
 ```
 
 ### Trace Forward (Effect)
 
 ```bash
-claudemem --agent callees authenticate
-claudemem --agent callees updateSession
+mnemex --agent callees authenticate
+mnemex --agent callees updateSession
 ```
 
 ### Blast Radius Analysis (v0.4.0+ Required)
 
 ```bash
-IMPACT=$(claudemem --agent impact buggyFunction)
+IMPACT=$(mnemex --agent impact buggyFunction)
 
 if [ -z "$IMPACT" ] || echo "$IMPACT" | grep -q "No callers"; then
   echo "No static callers — bug is isolated (or dynamically called)"
@@ -599,17 +599,17 @@ Use for: post-fix verification, regression prevention, incident documentation.
 ### Error Origin Hunting
 
 ```bash
-claudemem --agent map "throw error exception"
-claudemem --agent symbol AuthenticationError
-claudemem --agent callers AuthenticationError
+mnemex --agent map "throw error exception"
+mnemex --agent symbol AuthenticationError
+mnemex --agent callers AuthenticationError
 ```
 
 ### State Mutation Tracking
 
 ```bash
-claudemem --agent map "set state update mutate"
-claudemem --agent symbol updateUserState
-claudemem --agent callers updateUserState
+mnemex --agent map "set state update mutate"
+mnemex --agent symbol updateUserState
+mnemex --agent callers updateUserState
 ```
 
 ### Bug Investigation Output Format
@@ -622,7 +622,7 @@ claudemem --agent callers updateUserState
 │  Location: src/[file]:line                              │
 │  Actual Type: (from hover)                               │
 │  Expected Type: (from calling context)                   │
-│  Search Method: claudemem (AST call chain)              │
+│  Search Method: mnemex (AST call chain)              │
 └─────────────────────────────────────────────────────────┘
 
 Call Chain (backwards):
@@ -638,17 +638,17 @@ Problem: [description]
 Evidence: [from callers/callees/context output]
 
 Impact:
-claudemem --agent callers [buggy function] shows N affected locations
+mnemex --agent callers [buggy function] shows N affected locations
 ```
 
 ### Validate Bug Investigation Results
 
 ```bash
-CONTEXT=$(claudemem --agent context failingFunction)
+CONTEXT=$(mnemex --agent context failingFunction)
 EXIT_CODE=$?
 
 if [ "$EXIT_CODE" -ne 0 ]; then
-  DIAGNOSIS=$(claudemem status 2>&1)
+  DIAGNOSIS=$(mnemex status 2>&1)
   # AskUserQuestion
 fi
 
@@ -677,8 +677,8 @@ UNHELPFUL_IDS=""
 # When reading a helpful result: HELPFUL_IDS="$HELPFUL_IDS,$result_id"
 # When reading an unhelpful result: UNHELPFUL_IDS="$UNHELPFUL_IDS,$result_id"
 
-if claudemem feedback --help 2>&1 | grep -qi "feedback"; then
-  timeout 5 claudemem feedback \
+if mnemex feedback --help 2>&1 | grep -qi "feedback"; then
+  timeout 5 mnemex feedback \
     --query "$SEARCH_QUERY" \
     --helpful "${HELPFUL_IDS#,}" \
     --unhelpful "${UNHELPFUL_IDS#,}" 2>/dev/null || true

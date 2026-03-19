@@ -1,7 +1,7 @@
 {
   "mcpServers": {
-    "claudemem": {
-      "command": "claudemem",
+    "mnemex": {
+      "command": "mnemex",
       "args": ["--mcp"],
       "env": {
         "CLAUDEMEM_LSP": "true"

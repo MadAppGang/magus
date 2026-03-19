@@ -12,7 +12,7 @@ Present the following help information to the user:
 
 ## Code Analysis Plugin v3.1.0
 
-**Deep code investigation using INDEXED MEMORY (claudemem). GREP/FIND FORBIDDEN.**
+**Deep code investigation using INDEXED MEMORY (mnemex). GREP/FIND FORBIDDEN.**
 
 ### Quick Start
 
@@ -61,9 +61,9 @@ Present the following help information to the user:
 | Skill | Description |
 |-------|-------------|
 | **investigate** | Code investigation with mode-based routing: architecture, implementation, testing, debugging |
-| **deep-analysis** | Comprehensive multi-dimensional audit with all claudemem AST commands |
-| **claudemem-search** | Expert guidance on claudemem CLI for semantic code search and AST analysis |
-| **claudemem-orchestration** | Parallel multi-agent claudemem orchestration patterns |
+| **deep-analysis** | Comprehensive multi-dimensional audit with all mnemex AST commands |
+| **mnemex-search** | Expert guidance on mnemex CLI for semantic code search and AST analysis |
+| **mnemex-orchestration** | Parallel multi-agent mnemex orchestration patterns |
 
 ### Which Skill Should I Use?
 
@@ -89,31 +89,31 @@ Present the following help information to the user:
 | General investigation | `code-analysis:investigate` |
 | Architecture, implementation, tests, bugs | `code-analysis:investigate` |
 | Comprehensive multi-dimensional audit | `code-analysis:deep-analysis` |
-| claudemem commands guidance | `code-analysis:claudemem-search` |
-| Parallel multi-agent orchestration | `code-analysis:claudemem-orchestration` |
+| mnemex commands guidance | `code-analysis:mnemex-search` |
+| Parallel multi-agent orchestration | `code-analysis:mnemex-orchestration` |
 | Claudish CLI usage | `multimodel:claudish-usage` |
 
 **Integration Patterns:**
 - Use `investigate` for targeted single-dimension analysis
 - Use `deep-analysis` for comprehensive audits requiring all 7 dimensions
-- Use `claudemem-search` before any direct claudemem command usage
+- Use `mnemex-search` before any direct mnemex command usage
 
-### Semantic Code Search with claudemem
+### Semantic Code Search with mnemex
 
-For large codebases, use claudemem CLI:
+For large codebases, use mnemex CLI:
 
 **Install:**
 ```bash
 npm install -g claude-codemem
-claudemem init     # Configure OpenRouter API key
-claudemem --models # See available embedding models
+mnemex init     # Configure OpenRouter API key
+mnemex --models # See available embedding models
 ```
 
 **Usage:**
 ```bash
-claudemem index              # Index codebase (once)
-claudemem search "auth flow" # Semantic search
-claudemem status             # Check index
+mnemex index              # Index codebase (once)
+mnemex search "auth flow" # Semantic search
+mnemex status             # Check index
 ```
 
 **Embedding Models:**
@@ -157,7 +157,7 @@ The `/implement` command will suggest it for better codebase understanding.
 /plugin install code-analysis@magus
 ```
 
-**Optional**: For semantic code search, install claudemem: `npm install -g claude-codemem`
+**Optional**: For semantic code search, install mnemex: `npm install -g claude-codemem`
 
 ---
 

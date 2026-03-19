@@ -1,6 +1,6 @@
 [
   {
-    "id": "grep-instead-of-claudemem",
+    "id": "grep-instead-of-mnemex",
     "signal": {
       "tool": "Bash",
       "command_pattern": "\\b(grep|rg|ag|ack)\\b",
@@ -8,7 +8,7 @@
     },
     "category": "search-efficiency",
     "priority": 1,
-    "suggestion": "You ran {count} grep/rg searches this session. For faster semantic code exploration:\n  `claudemem --agent map \"your concept\"` -- understands intent, not just text\n  `claudemem --agent symbol \"SymbolName\"` -- direct AST symbol lookup\n  Skill: use the Skill tool with `code-analysis:claudemem-search`",
+    "suggestion": "You ran {count} grep/rg searches this session. For faster semantic code exploration:\n  `mnemex --agent map \"your concept\"` -- understands intent, not just text\n  `mnemex --agent symbol \"SymbolName\"` -- direct AST symbol lookup\n  Skill: use the Skill tool with `code-analysis:mnemex-search`",
     "suppress_after_sessions": 10
   },
   {
@@ -28,8 +28,8 @@
       "tool": "Task",
       "input_key": "subagent_type",
       "value_in": [
-        "code-analysis:claudemem-search",
-        "code-analysis:claudemem-orchestration",
+        "code-analysis:mnemex-search",
+        "code-analysis:mnemex-orchestration",
         "code-analysis:investigate",
         "code-analysis:deep-analysis",
         "dev:db-branching"

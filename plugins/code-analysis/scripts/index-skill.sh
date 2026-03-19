@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # index-skill.sh
-# Register a newly created skill file in claudemem and generated-skills.md.
+# Register a newly created skill file in mnemex and generated-skills.md.
 #
 # Usage:
 #   bash index-skill.sh \
@@ -53,24 +53,24 @@ if [ -z "$PROJECT_ROOT" ]; then
   PROJECT_ROOT=$(dirname "$(dirname "$SKILL_PATH")")
 fi
 
-# ── Step 1: claudemem index ──────────────────────────────────────────────────
+# ── Step 1: mnemex index ──────────────────────────────────────────────────
 CLAUDEMEM_BIN=""
-if command -v claudemem >/dev/null 2>&1; then
-  CLAUDEMEM_BIN="claudemem"
+if command -v mnemex >/dev/null 2>&1; then
+  CLAUDEMEM_BIN="mnemex"
 fi
 
 if [ -z "$CLAUDEMEM_BIN" ]; then
-  echo "index-skill: claudemem not found — skipping index update" >&2
+  echo "index-skill: mnemex not found — skipping index update" >&2
   echo "  Install: npm install -g claude-codemem" >&2
-  # Continue to generated-skills.md update even if claudemem is absent
+  # Continue to generated-skills.md update even if mnemex is absent
 else
-  # Run index from the project root so claudemem picks up the right .claudemem/ dir
+  # Run index from the project root so mnemex picks up the right .mnemex/ dir
   # Errors are non-fatal: capture exit code without set -e
   INDEX_OUTPUT=$(cd "$PROJECT_ROOT" && $CLAUDEMEM_BIN index 2>&1) || true
-  echo "index-skill: claudemem index complete"
+  echo "index-skill: mnemex index complete"
   # Surface any warning lines
   if echo "$INDEX_OUTPUT" | grep -qi "error\|failed\|warn"; then
-    echo "index-skill: claudemem warnings:" >&2
+    echo "index-skill: mnemex warnings:" >&2
     echo "$INDEX_OUTPUT" >&2
   fi
 fi
@@ -93,7 +93,7 @@ mkdir -p "$(dirname "$MEMORY_FILE")"
 # ── Table header ─────────────────────────────────────────────────────────────
 TABLE_HEADER="# Generated Skills Index
 
-Skills auto-indexed by claudemem for semantic search discovery.
+Skills auto-indexed by mnemex for semantic search discovery.
 
 | Skill Name | Date | Description | Path |
 |------------|------|-------------|------|"

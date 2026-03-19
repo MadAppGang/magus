@@ -81,8 +81,8 @@ allowed-tools: Read, Write, Edit, Bash, Glob, AskUserQuestion
 
     | Need | Invoke Skill | When |
     |---|---|---|
-    | Semantic code search, claudemem CLI usage, AST analysis | `code-analysis:claudemem-search` | Before using `claudemem` commands |
-    | Multi-agent claudemem orchestration | `code-analysis:claudemem-orchestration` | Parallel claudemem across agents |
+    | Semantic code search, mnemex CLI usage, AST analysis | `code-analysis:mnemex-search` | Before using `mnemex` commands |
+    | Multi-agent mnemex orchestration | `code-analysis:mnemex-orchestration` | Parallel mnemex across agents |
     | Codebase investigation (architecture/implementation/debugging/testing) | `code-analysis:investigate` | Mode-based investigation routing |
     | Deep multi-perspective analysis | `code-analysis:deep-analysis` | Comprehensive codebase investigation |
     | Claudish CLI usage, model routing, provider backends | `multimodel:claudish-usage` | Before ANY `claudish` command — bare model names, no prefixes |

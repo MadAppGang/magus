@@ -6,4 +6,4 @@ Report:
 3. Its full type signature (parameters and return type)
 4. What file imports or calls it
 
-Use ONLY the MCP tools available to you (mcp__claudemem__* or mcp__serena__*). Do NOT use Read, Grep, Glob, or Bash tools.
+Use ONLY the MCP tools available to you (mcp__mnemex__* or mcp__serena__*). Do NOT use Read, Grep, Glob, or Bash tools.

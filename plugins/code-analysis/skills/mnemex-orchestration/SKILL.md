@@ -1,8 +1,8 @@
 ---
-name: claudemem-orchestration
-description: Use when orchestrating multi-agent code analysis with claudemem. Run claudemem once, share output across parallel agents. Enables parallel investigation, consensus analysis, and role-based command mapping.
+name: mnemex-orchestration
+description: Use when orchestrating multi-agent code analysis with mnemex. Run mnemex once, share output across parallel agents. Enables parallel investigation, consensus analysis, and role-based command mapping.
 updated: 2026-01-20
-keywords: claudemem, orchestration, multi-agent, parallel-execution, consensus
+keywords: mnemex, orchestration, multi-agent, parallel-execution, consensus
 allowed-tools: Bash, Task, Read, Write, AskUserQuestion
 skills: multimodel:multi-model-validation
 ---
@@ -10,30 +10,30 @@ skills: multimodel:multi-model-validation
 # Claudemem Multi-Agent Orchestration
 
 **Version:** 1.1.0
-**Purpose:** Coordinate multiple agents using shared claudemem output
+**Purpose:** Coordinate multiple agents using shared mnemex output
 
 ## Overview
 
 When multiple agents need to investigate the same codebase:
-1. **Run claudemem ONCE** to get structural overview
+1. **Run mnemex ONCE** to get structural overview
 2. **Write output to shared file** in session directory
 3. **Launch agents in parallel** - all read the same file
 4. **Consolidate results** with consensus analysis
 
-This pattern avoids redundant claudemem calls and enables consensus-based prioritization.
+This pattern avoids redundant mnemex calls and enables consensus-based prioritization.
 
 **For parallel execution patterns, see:** `multimodel:multi-model-validation` skill
 
 ## Claudemem-Specific Patterns
 
-This skill focuses on claudemem-specific orchestration. For general parallel execution:
+This skill focuses on mnemex-specific orchestration. For general parallel execution:
 - **4-Message Pattern** - See `multimodel:multi-model-validation` Pattern 1
 - **Session Setup** - See `multimodel:multi-model-validation` Pattern 0
 - **Statistics Collection** - See `multimodel:multi-model-validation` Pattern 7
 
 ### Pattern 1: Shared Claudemem Output
 
-**Purpose:** Run expensive claudemem commands ONCE, share results across agents.
+**Purpose:** Run expensive mnemex commands ONCE, share results across agents.
 
 ```bash
 # Create unique session directory (per multimodel:multi-model-validation Pattern 0)
@@ -41,10 +41,10 @@ SESSION_ID="analysis-$(date +%Y%m%d-%H%M%S)-$(head -c 4 /dev/urandom | xxd -p)"
 SESSION_DIR="ai-docs/sessions/${SESSION_ID}"
 mkdir -p "$SESSION_DIR"
 
-# Run claudemem ONCE, write to shared files
-claudemem --agent map "feature area" > "$SESSION_DIR/structure-map.md"
-claudemem --agent test-gaps > "$SESSION_DIR/test-gaps.md" 2>&1 || echo "No gaps found" > "$SESSION_DIR/test-gaps.md"
-claudemem --agent dead-code > "$SESSION_DIR/dead-code.md" 2>&1 || echo "No dead code" > "$SESSION_DIR/dead-code.md"
+# Run mnemex ONCE, write to shared files
+mnemex --agent map "feature area" > "$SESSION_DIR/structure-map.md"
+mnemex --agent test-gaps > "$SESSION_DIR/test-gaps.md" 2>&1 || echo "No gaps found" > "$SESSION_DIR/test-gaps.md"
+mnemex --agent dead-code > "$SESSION_DIR/dead-code.md" 2>&1 || echo "No dead code" > "$SESSION_DIR/dead-code.md"
 
 # Export session info
 echo "$SESSION_ID" > "$SESSION_DIR/session-id.txt"
@@ -57,7 +57,7 @@ echo "$SESSION_ID" > "$SESSION_DIR/session-id.txt"
 
 ### Pattern 2: Mode-Based Analysis Distribution
 
-After running claudemem, distribute to mode-specific agents:
+After running mnemex, distribute to mode-specific agents:
 
 ```
 # Parallel Execution (ONLY Task calls - per 4-Message Pattern)
@@ -137,8 +137,8 @@ consolidate_feedback() {
   [ -f "$feedback_log" ] || return 0
 
   # Check if feedback command available (v0.8.0+)
-  if ! claudemem feedback --help 2>&1 | grep -qi "feedback"; then
-    echo "Note: Search feedback requires claudemem v0.8.0+"
+  if ! mnemex feedback --help 2>&1 | grep -qi "feedback"; then
+    echo "Note: Search feedback requires mnemex v0.8.0+"
     return 0
   fi
 
@@ -149,7 +149,7 @@ consolidate_feedback() {
     # Skip empty lines
     [ -n "$query" ] || continue
 
-    if timeout 5 claudemem feedback \
+    if timeout 5 mnemex feedback \
       --query "$query" \
       --helpful "$helpful" \
       --unhelpful "$unhelpful" 2>/dev/null; then
@@ -185,7 +185,7 @@ Phase 3: Results Consolidation
 
 Phase 4: Feedback Consolidation (NEW)
   └── Read all feedback entries from log
-  └── Submit each to claudemem
+  └── Submit each to mnemex
   └── Report success/failure counts
 
 Phase 5: Cleanup
@@ -222,39 +222,39 @@ For complex bugs or features requiring ordered investigation:
 
 ```
 Phase 1: Architecture Understanding
-  claudemem --agent map "problem area"  Identify high-PageRank symbols (> 0.05)
+  mnemex --agent map "problem area"  Identify high-PageRank symbols (> 0.05)
 
 Phase 2: Symbol Deep Dive
   For each high-PageRank symbol:
-    claudemem --agent context <symbol>    Document dependencies and callers
+    mnemex --agent context <symbol>    Document dependencies and callers
 
 Phase 3: Impact Assessment (v0.4.0+)
-  claudemem --agent impact <primary-symbol>  Document full blast radius
+  mnemex --agent impact <primary-symbol>  Document full blast radius
 
 Phase 4: Gap Analysis (v0.4.0+)
-  claudemem --agent test-gaps --min-pagerank 0.01  Identify coverage holes in affected code
+  mnemex --agent test-gaps --min-pagerank 0.01  Identify coverage holes in affected code
 
 Phase 5: Action Planning
   Prioritize by: PageRank * impact_depth * test_coverage
 ```
 
-**MCP Tool Integration:** For single-agent workflows, claudemem MCP tools can be called
-directly instead of via CLI. The `claudemem-search` skill covers both modes.
+**MCP Tool Integration:** For single-agent workflows, mnemex MCP tools can be called
+directly instead of via CLI. The `mnemex-search` skill covers both modes.
 
 ## Agent System Prompt Integration
 
-When an agent needs deep code analysis, it should reference the claudemem skill:
+When an agent needs deep code analysis, it should reference the mnemex skill:
 
 ```yaml
 ---
-skills: code-analysis:claudemem-search, code-analysis:claudemem-orchestration
+skills: code-analysis:mnemex-search, code-analysis:mnemex-orchestration
 ---
 ```
 
 The agent then follows this pattern:
 
-1. **Check claudemem status**: `claudemem status`
-2. **Index if needed**: `claudemem index`
+1. **Check mnemex status**: `mnemex status`
+2. **Index if needed**: `mnemex index`
 3. **Run appropriate command** based on role
 4. **Write results to session file** for sharing
 5. **Return brief summary** to orchestrator
@@ -262,15 +262,15 @@ The agent then follows this pattern:
 ## Best Practices
 
 **Do:**
-- Run claudemem ONCE per investigation type
+- Run mnemex ONCE per investigation type
 - Write all output to session directory
 - Use parallel execution for independent analyses (see `multimodel:multi-model-validation`)
 - Consolidate with deep-analysis for cross-perspective insights
 - Handle empty results gracefully
 
 **Don't:**
-- Run same claudemem command multiple times
-- Let each agent run its own claudemem (wasteful)
+- Run same mnemex command multiple times
+- Let each agent run its own mnemex (wasteful)
 - Skip the consolidation step
 - Forget to clean up session directory after investigation completes
 
@@ -294,11 +294,11 @@ find ai-docs/sessions -maxdepth 1 -name "analysis-*" -o -name "review-*" -mtime 
 
 ## Error Handling Templates
 
-For robust orchestration, handle common claudemem errors. See `claudemem-search` skill for complete error handling templates:
+For robust orchestration, handle common mnemex errors. See `mnemex-search` skill for complete error handling templates:
 
 ### Empty Results
 ```bash
-RESULT=$(claudemem --agent map "query" 2>/dev/null)
+RESULT=$(mnemex --agent map "query" 2>/dev/null)
 if [ -z "$RESULT" ] || echo "$RESULT" | grep -q "No results found"; then
   echo "No results - try broader keywords or check index status"
 fi
@@ -307,8 +307,8 @@ fi
 ### Version Compatibility
 ```bash
 # Check if command is available (v0.4.0+ commands)
-if claudemem --agent dead-code 2>&1 | grep -q "unknown command"; then
-  echo "dead-code requires claudemem v0.4.0+"
+if mnemex --agent dead-code 2>&1 | grep -q "unknown command"; then
+  echo "dead-code requires mnemex v0.4.0+"
   echo "Fallback: Use map command instead"
 fi
 ```
@@ -316,13 +316,13 @@ fi
 ### Index Status
 ```bash
 # Verify index before running commands
-if ! claudemem status 2>&1 | grep -qE "[0-9]+ (chunks|symbols)"; then
-  echo "Index not found - run: claudemem index"
+if ! mnemex status 2>&1 | grep -qE "[0-9]+ (chunks|symbols)"; then
+  echo "Index not found - run: mnemex index"
   exit 1
 fi
 ```
 
-**Reference:** For complete error handling patterns, see templates in `code-analysis:claudemem-search` skill (Templates 1-5)
+**Reference:** For complete error handling patterns, see templates in `code-analysis:mnemex-search` skill (Templates 1-5)
 
 ---
 

@@ -16,7 +16,7 @@
 
 | Plugin | Version | Purpose |
 |--------|---------|---------|
-| **Code Analysis** | v5.0.0 | Codebase investigation with claudemem MCP, 4 skills |
+| **Code Analysis** | v5.0.0 | Codebase investigation with mnemex MCP, 4 skills |
 | **Multimodel** | v2.8.1 | Multi-model collaboration and orchestration |
 | **Agent Development** | v1.5.5 | Create Claude Code agents and plugins |
 | **SEO** | v1.6.5 | SEO analysis and optimization with AUTO GATEs |
@@ -42,7 +42,7 @@ claude-code/
 ├── .claude-plugin/
 │   └── marketplace.json       # Marketplace plugin listing
 ├── plugins/                   # All plugins (12 published, 3 unlisted)
-│   ├── code-analysis/         # v4.0.2 — 13 skills, 1 agent, claudemem MCP
+│   ├── code-analysis/         # v4.0.2 — 13 skills, 1 agent, mnemex MCP
 │   ├── multimodel/            # v2.6.2 — 15 skills
 │   ├── agentdev/              # v1.5.5 — 5 skills
 │   ├── seo/                   # v1.6.5 — 12 skills
@@ -163,8 +163,8 @@ NOTE: Skills use the `Skill` tool, NOT the `Task` tool. The `namespace:name` for
 
 | Need | Invoke Skill | When |
 |---|---|---|
-| Semantic code search, claudemem CLI usage, AST analysis | `code-analysis:claudemem-search` | Before using `claudemem` commands |
-| Multi-agent claudemem orchestration | `code-analysis:claudemem-orchestration` | Parallel claudemem across agents |
+| Semantic code search, mnemex CLI usage, AST analysis | `code-analysis:mnemex-search` | Before using `mnemex` commands |
+| Multi-agent mnemex orchestration | `code-analysis:mnemex-orchestration` | Parallel mnemex across agents |
 | Code investigation — architecture, implementation, tests, bugs | `code-analysis:investigate` | Mode-based routing (architecture/implementation/testing/debugging) |
 | Deep multi-perspective comprehensive analysis | `code-analysis:deep-analysis` | Comprehensive codebase audit, all dimensions |
 | Database branching with git worktrees (Neon, Turso, Supabase) | `dev:db-branching` | Worktree creation with schema changes needing DB isolation |

@@ -10,329 +10,329 @@
   },
   "test_cases": [
     {
-      "id": "skill-claudemem-explicit-01-var-01",
+      "id": "skill-mnemex-explicit-01-var-01",
       "description": "Direct rephrasing with explicit skill name, clear instruction to only inspect capabilities",
-      "prompt": "Load code-analysis:claudemem-search and tell me what it can do. Don't execute any searches.",
+      "prompt": "Load code-analysis:mnemex-search and tell me what it can do. Don't execute any searches.",
       "category": "explicit-skill",
       "tags": [
         "rephrased",
         "easy",
         "synthetic",
-        "seed:skill-claudemem-explicit-01"
+        "seed:skill-mnemex-explicit-01"
       ],
       "checks": {
-        "skill_invoked_is": "code-analysis:claudemem-search",
+        "skill_invoked_is": "code-analysis:mnemex-search",
         "no_task_with_skill_name": true
       }
     },
     {
-      "id": "skill-claudemem-explicit-01-var-02",
+      "id": "skill-mnemex-explicit-01-var-02",
       "description": "Minimal prompt with just the skill identifier and a brief question",
-      "prompt": "code-analysis:claudemem-search - what commands does this skill have?",
+      "prompt": "code-analysis:mnemex-search - what commands does this skill have?",
       "category": "explicit-skill",
       "tags": [
         "terse",
         "easy",
         "synthetic",
-        "seed:skill-claudemem-explicit-01"
+        "seed:skill-mnemex-explicit-01"
       ],
       "checks": {
-        "skill_invoked_is": "code-analysis:claudemem-search",
+        "skill_invoked_is": "code-analysis:mnemex-search",
         "no_task_with_skill_name": true
       }
     },
     {
-      "id": "skill-claudemem-explicit-01-var-03",
+      "id": "skill-mnemex-explicit-01-var-03",
       "description": "Highly detailed professional request with explicit skill name and clear boundaries",
-      "prompt": "I'm trying to understand our codebase search tooling. Could you please invoke the code-analysis:claudemem-search skill and provide me with a comprehensive overview of its available commands and capabilities? I want to learn about it before actually using it, so please don't run any actual claudemem searches against the repository.",
+      "prompt": "I'm trying to understand our codebase search tooling. Could you please invoke the code-analysis:mnemex-search skill and provide me with a comprehensive overview of its available commands and capabilities? I want to learn about it before actually using it, so please don't run any actual mnemex searches against the repository.",
       "category": "explicit-skill",
       "tags": [
         "verbose",
         "easy",
         "synthetic",
-        "seed:skill-claudemem-explicit-01"
+        "seed:skill-mnemex-explicit-01"
       ],
       "checks": {
-        "skill_invoked_is": "code-analysis:claudemem-search",
+        "skill_invoked_is": "code-analysis:mnemex-search",
         "no_task_with_skill_name": true
       }
     },
     {
-      "id": "skill-claudemem-explicit-01-var-04",
+      "id": "skill-mnemex-explicit-01-var-04",
       "description": "Casual phrasing with 'pull up' idiom but explicit skill identifier",
-      "prompt": "Pull up code-analysis:claudemem-search. Just show me the interface, no actual execution.",
+      "prompt": "Pull up code-analysis:mnemex-search. Just show me the interface, no actual execution.",
       "category": "explicit-skill",
       "tags": [
         "rephrased",
         "easy",
         "synthetic",
-        "seed:skill-claudemem-explicit-01"
+        "seed:skill-mnemex-explicit-01"
       ],
       "checks": {
-        "skill_invoked_is": "code-analysis:claudemem-search",
+        "skill_invoked_is": "code-analysis:mnemex-search",
         "no_task_with_skill_name": true
       }
     },
     {
-      "id": "skill-claudemem-explicit-01-var-05",
+      "id": "skill-mnemex-explicit-01-var-05",
       "description": "Bare skill identifier with no additional context tests whether system infers intent to load/inspect",
-      "prompt": "code-analysis:claudemem-search",
+      "prompt": "code-analysis:mnemex-search",
       "category": "explicit-skill",
       "tags": [
         "edge_case",
         "medium",
         "synthetic",
-        "seed:skill-claudemem-explicit-01"
+        "seed:skill-mnemex-explicit-01"
       ],
       "checks": {
-        "skill_invoked_is": "code-analysis:claudemem-search",
+        "skill_invoked_is": "code-analysis:mnemex-search",
         "no_task_with_skill_name": true
       }
     },
     {
-      "id": "skill-claudemem-explicit-01-var-06",
+      "id": "skill-mnemex-explicit-01-var-06",
       "description": "Negation-first structure with explicit skill name tests parsing of complex instruction",
-      "prompt": "Don't search with claudemem yet. First, use the code-analysis:claudemem-search skill to show me what commands I'd have available for searching this codebase.",
+      "prompt": "Don't search with mnemex yet. First, use the code-analysis:mnemex-search skill to show me what commands I'd have available for searching this codebase.",
       "category": "explicit-skill",
       "tags": [
         "rephrased",
         "easy",
         "synthetic",
-        "seed:skill-claudemem-explicit-01"
+        "seed:skill-mnemex-explicit-01"
       ],
       "checks": {
-        "skill_invoked_is": "code-analysis:claudemem-search",
+        "skill_invoked_is": "code-analysis:mnemex-search",
         "no_task_with_skill_name": true
       }
     },
     {
-      "id": "skill-claudemem-explicit-01-var-07",
+      "id": "skill-mnemex-explicit-01-var-07",
       "description": "Mentions 'delegate' and 'agent' which could trigger Task tool, but explicitly requests Skill usage",
-      "prompt": "I need to delegate a codebase search task to an agent. But first, use the code-analysis:claudemem-search skill to tell me what claudemem commands exist. Don't run anything.",
+      "prompt": "I need to delegate a codebase search task to an agent. But first, use the code-analysis:mnemex-search skill to tell me what mnemex commands exist. Don't run anything.",
       "category": "explicit-skill",
       "tags": [
         "adversarial",
         "hard",
         "synthetic",
-        "seed:skill-claudemem-explicit-01"
+        "seed:skill-mnemex-explicit-01"
       ],
       "checks": {
-        "skill_invoked_is": "code-analysis:claudemem-search",
+        "skill_invoked_is": "code-analysis:mnemex-search",
         "no_task_with_skill_name": true
       }
     },
     {
-      "id": "skill-claudemem-explicit-01-var-08",
+      "id": "skill-mnemex-explicit-01-var-08",
       "description": "Frames request in onboarding context but maintains explicit skill invocation",
-      "prompt": "We're onboarding a new dev and they want to know about claudemem. Activate code-analysis:claudemem-search and list the available commands without running any searches.",
+      "prompt": "We're onboarding a new dev and they want to know about mnemex. Activate code-analysis:mnemex-search and list the available commands without running any searches.",
       "category": "explicit-skill",
       "tags": [
         "context_shift",
         "medium",
         "synthetic",
-        "seed:skill-claudemem-explicit-01"
+        "seed:skill-mnemex-explicit-01"
       ],
       "checks": {
-        "skill_invoked_is": "code-analysis:claudemem-search",
+        "skill_invoked_is": "code-analysis:mnemex-search",
         "no_task_with_skill_name": true
       }
     },
     {
-      "id": "skill-claudemem-explicit-01-var-09",
+      "id": "skill-mnemex-explicit-01-var-09",
       "description": "Symbolic/terse notation that mimics command syntax tests non-natural language parsing",
-      "prompt": "skill: code-analysis:claudemem-search → describe",
+      "prompt": "skill: code-analysis:mnemex-search → describe",
       "category": "explicit-skill",
       "tags": [
         "edge_case",
         "medium",
         "synthetic",
-        "seed:skill-claudemem-explicit-01"
+        "seed:skill-mnemex-explicit-01"
       ],
       "checks": {
-        "skill_invoked_is": "code-analysis:claudemem-search",
+        "skill_invoked_is": "code-analysis:mnemex-search",
         "no_task_with_skill_name": true
       }
     },
     {
-      "id": "skill-claudemem-explicit-01-var-10",
+      "id": "skill-mnemex-explicit-01-var-10",
       "description": "Self-correcting prompt with initial ambiguous 'run' instruction tests handling of revised intent",
-      "prompt": "Can you run the code-analysis:claudemem-search skill? Wait, actually don't search anything - I only want to see what claudemem search commands are exposed by this skill.",
+      "prompt": "Can you run the code-analysis:mnemex-search skill? Wait, actually don't search anything - I only want to see what mnemex search commands are exposed by this skill.",
       "category": "explicit-skill",
       "tags": [
         "adversarial",
         "hard",
         "synthetic",
-        "seed:skill-claudemem-explicit-01"
+        "seed:skill-mnemex-explicit-01"
       ],
       "checks": {
-        "skill_invoked_is": "code-analysis:claudemem-search",
+        "skill_invoked_is": "code-analysis:mnemex-search",
         "no_task_with_skill_name": true
       }
     },
     {
-      "id": "skill-claudemem-implicit-01-var-01",
-      "description": "Directly mentions claudemem and semantic search with clear intent, straightforward routing decision",
-      "prompt": "Can you help me do a semantic search through the code using claudemem? I'm looking for anything related to user login flows.",
+      "id": "skill-mnemex-implicit-01-var-01",
+      "description": "Directly mentions mnemex and semantic search with clear intent, straightforward routing decision",
+      "prompt": "Can you help me do a semantic search through the code using mnemex? I'm looking for anything related to user login flows.",
       "category": "implicit-skill",
       "tags": [
         "rephrased",
         "easy",
         "synthetic",
-        "seed:skill-claudemem-implicit-01"
+        "seed:skill-mnemex-implicit-01"
       ],
       "checks": {
-        "skill_invoked_contains": "claudemem",
+        "skill_invoked_contains": "mnemex",
         "no_task_with_skill_name": true
       }
     },
     {
-      "id": "skill-claudemem-implicit-01-var-02",
+      "id": "skill-mnemex-implicit-01-var-02",
       "description": "Minimal prompt with just the tool name and action, tests routing with sparse context",
-      "prompt": "claudemem search auth",
+      "prompt": "mnemex search auth",
       "category": "implicit-skill",
       "tags": [
         "terse",
         "medium",
         "synthetic",
-        "seed:skill-claudemem-implicit-01"
+        "seed:skill-mnemex-implicit-01"
       ],
       "checks": {
-        "skill_invoked_contains": "claudemem",
+        "skill_invoked_contains": "mnemex",
         "no_task_with_skill_name": true
       }
     },
     {
-      "id": "skill-claudemem-implicit-01-var-03",
-      "description": "Highly detailed request with explicit claudemem mention, tests that verbosity doesn't confuse routing",
-      "prompt": "I've been told claudemem can help me understand this legacy codebase better. We have authentication scattered everywhere and I need to find all the pieces. Could you load up claudemem and walk me through how to use its semantic search capabilities to locate every file that touches our auth system, including JWT validation, session management, and OAuth integrations?",
+      "id": "skill-mnemex-implicit-01-var-03",
+      "description": "Highly detailed request with explicit mnemex mention, tests that verbosity doesn't confuse routing",
+      "prompt": "I've been told mnemex can help me understand this legacy codebase better. We have authentication scattered everywhere and I need to find all the pieces. Could you load up mnemex and walk me through how to use its semantic search capabilities to locate every file that touches our auth system, including JWT validation, session management, and OAuth integrations?",
       "category": "implicit-skill",
       "tags": [
         "verbose",
         "easy",
         "synthetic",
-        "seed:skill-claudemem-implicit-01"
+        "seed:skill-mnemex-implicit-01"
       ],
       "checks": {
-        "skill_invoked_contains": "claudemem",
+        "skill_invoked_contains": "mnemex",
         "no_task_with_skill_name": true
       }
     },
     {
-      "id": "skill-claudemem-implicit-01-var-04",
-      "description": "Uses 'memory tool' instead of claudemem explicitly, tests synonym recognition for the skill",
+      "id": "skill-mnemex-implicit-01-var-04",
+      "description": "Uses 'memory tool' instead of mnemex explicitly, tests synonym recognition for the skill",
       "prompt": "Use the memory tool to semantically query for password hashing implementations",
       "category": "implicit-skill",
       "tags": [
         "edge_case",
         "hard",
         "synthetic",
-        "seed:skill-claudemem-implicit-01"
+        "seed:skill-mnemex-implicit-01"
       ],
       "checks": {
-        "skill_invoked_contains": "claudemem",
+        "skill_invoked_contains": "mnemex",
         "no_task_with_skill_name": true
       }
     },
     {
-      "id": "skill-claudemem-implicit-01-var-05",
-      "description": "Frames request by contrasting with other tools, mentions claudemem in context of semantic vs literal search",
-      "prompt": "I don't want to use grep or ripgrep for this - I need something smarter. Load claudemem so I can find auth code by meaning, not just string matching.",
+      "id": "skill-mnemex-implicit-01-var-05",
+      "description": "Frames request by contrasting with other tools, mentions mnemex in context of semantic vs literal search",
+      "prompt": "I don't want to use grep or ripgrep for this - I need something smarter. Load mnemex so I can find auth code by meaning, not just string matching.",
       "category": "implicit-skill",
       "tags": [
         "context_shift",
         "medium",
         "synthetic",
-        "seed:skill-claudemem-implicit-01"
+        "seed:skill-mnemex-implicit-01"
       ],
       "checks": {
-        "skill_invoked_contains": "claudemem",
+        "skill_invoked_contains": "mnemex",
         "no_task_with_skill_name": true
       }
     },
     {
-      "id": "skill-claudemem-implicit-01-var-06",
+      "id": "skill-mnemex-implicit-01-var-06",
       "description": "Professional context with explicit skill mention and clear action request",
-      "prompt": "Before I start refactoring, I need claudemem to map out all the security-related code paths. Can you get that skill ready and show me the commands?",
+      "prompt": "Before I start refactoring, I need mnemex to map out all the security-related code paths. Can you get that skill ready and show me the commands?",
       "category": "implicit-skill",
       "tags": [
         "rephrased",
         "easy",
         "synthetic",
-        "seed:skill-claudemem-implicit-01"
+        "seed:skill-mnemex-implicit-01"
       ],
       "checks": {
-        "skill_invoked_contains": "claudemem",
+        "skill_invoked_contains": "mnemex",
         "no_task_with_skill_name": true
       }
     },
     {
-      "id": "skill-claudemem-implicit-01-var-07",
-      "description": "Mentions both claudemem skill and potentially delegating to an agent, tests that skill is prioritized when explicitly named",
-      "prompt": "I need to analyze authentication patterns across this repo. Would the claudemem semantic indexing help here, or should I just ask a research agent to investigate?",
+      "id": "skill-mnemex-implicit-01-var-07",
+      "description": "Mentions both mnemex skill and potentially delegating to an agent, tests that skill is prioritized when explicitly named",
+      "prompt": "I need to analyze authentication patterns across this repo. Would the mnemex semantic indexing help here, or should I just ask a research agent to investigate?",
       "category": "implicit-skill",
       "tags": [
         "adversarial",
         "hard",
         "synthetic",
-        "seed:skill-claudemem-implicit-01"
+        "seed:skill-mnemex-implicit-01"
       ],
       "checks": {
-        "skill_invoked_contains": "claudemem",
+        "skill_invoked_contains": "mnemex",
         "no_task_with_skill_name": true
       }
     },
     {
-      "id": "skill-claudemem-implicit-01-var-08",
+      "id": "skill-mnemex-implicit-01-var-08",
       "description": "Casual shorthand command style, tests routing with informal lowercase phrasing",
-      "prompt": "get claudemem going, need to find where we handle tokens",
+      "prompt": "get mnemex going, need to find where we handle tokens",
       "category": "implicit-skill",
       "tags": [
         "terse",
         "medium",
         "synthetic",
-        "seed:skill-claudemem-implicit-01"
+        "seed:skill-mnemex-implicit-01"
       ],
       "checks": {
-        "skill_invoked_contains": "claudemem",
+        "skill_invoked_contains": "mnemex",
         "no_task_with_skill_name": true
       }
     },
     {
-      "id": "skill-claudemem-implicit-01-var-09",
+      "id": "skill-mnemex-implicit-01-var-09",
       "description": "Formal enterprise context with explicit skill initialization request and detailed scope",
-      "prompt": "Our security audit requires finding all authentication touchpoints. Please initialize the claudemem skill and provide documentation on performing semantic codebase queries for credential handling, session tokens, and access control logic.",
+      "prompt": "Our security audit requires finding all authentication touchpoints. Please initialize the mnemex skill and provide documentation on performing semantic codebase queries for credential handling, session tokens, and access control logic.",
       "category": "implicit-skill",
       "tags": [
         "verbose",
         "easy",
         "synthetic",
-        "seed:skill-claudemem-implicit-01"
+        "seed:skill-mnemex-implicit-01"
       ],
       "checks": {
-        "skill_invoked_contains": "claudemem",
+        "skill_invoked_contains": "mnemex",
         "no_task_with_skill_name": true
       }
     },
     {
-      "id": "skill-claudemem-implicit-01-var-10",
+      "id": "skill-mnemex-implicit-01-var-10",
       "description": "Uncertain phrasing with hedging language, tests that tentative skill references still route correctly",
-      "prompt": "The codebase memory feature - claudemem I think? - I want to use it to search for anything authentication-related without exact keyword matching",
+      "prompt": "The codebase memory feature - mnemex I think? - I want to use it to search for anything authentication-related without exact keyword matching",
       "category": "implicit-skill",
       "tags": [
         "edge_case",
         "medium",
         "synthetic",
-        "seed:skill-claudemem-implicit-01"
+        "seed:skill-mnemex-implicit-01"
       ],
       "checks": {
-        "skill_invoked_contains": "claudemem",
+        "skill_invoked_contains": "mnemex",
         "no_task_with_skill_name": true
       }
     },
     {
       "id": "skill-spelling-bash-01-var-01",
       "description": "Direct rephrasing with same explicit skill name and bash commands, testing basic routing with clear intent",
-      "prompt": "Load code-analysis:claudemem-search and verify claudemem installation by running 'which claudemem' and 'claudemem --version'",
+      "prompt": "Load code-analysis:mnemex-search and verify mnemex installation by running 'which mnemex' and 'mnemex --version'",
       "category": "spelling",
       "tags": [
         "rephrased",
@@ -341,15 +341,15 @@
         "seed:skill-spelling-bash-01"
       ],
       "checks": {
-        "skill_invoked_contains": "claudemem",
-        "bash_claudemem_spelled_correctly": true,
+        "skill_invoked_contains": "mnemex",
+        "bash_mnemex_spelled_correctly": true,
         "no_bash_typo_clademem": true
       }
     },
     {
       "id": "skill-spelling-bash-01-var-02",
       "description": "Very terse command-style input with abbreviated grammar tests parser tolerance for minimal context",
-      "prompt": "claudemem search skill load, then which claudemem && claudemem --version",
+      "prompt": "mnemex search skill load, then which mnemex && mnemex --version",
       "category": "spelling",
       "tags": [
         "terse",
@@ -358,15 +358,15 @@
         "seed:skill-spelling-bash-01"
       ],
       "checks": {
-        "skill_invoked_contains": "claudemem",
-        "bash_claudemem_spelled_correctly": true,
+        "skill_invoked_contains": "mnemex",
+        "bash_mnemex_spelled_correctly": true,
         "no_bash_typo_clademem": true
       }
     },
     {
       "id": "skill-spelling-bash-01-var-03",
       "description": "Over-explained prompt with full context ensures verbose requests still route correctly to the skill",
-      "prompt": "I need to check if claudemem is available on this system. First, please activate the code-analysis:claudemem-search skill from the plugin ecosystem, then execute the shell commands 'which claudemem' to find the binary path and 'claudemem --version' to confirm the installed version number.",
+      "prompt": "I need to check if mnemex is available on this system. First, please activate the code-analysis:mnemex-search skill from the plugin ecosystem, then execute the shell commands 'which mnemex' to find the binary path and 'mnemex --version' to confirm the installed version number.",
       "category": "spelling",
       "tags": [
         "verbose",
@@ -375,15 +375,15 @@
         "seed:skill-spelling-bash-01"
       ],
       "checks": {
-        "skill_invoked_contains": "claudemem",
-        "bash_claudemem_spelled_correctly": true,
+        "skill_invoked_contains": "mnemex",
+        "bash_mnemex_spelled_correctly": true,
         "no_bash_typo_clademem": true
       }
     },
     {
       "id": "skill-spelling-bash-01-var-04",
       "description": "Partial skill name without namespace prefix tests fuzzy matching on skill identifiers",
-      "prompt": "Use the claudemem-search skill to help me figure out if claudemem exists - run which and version checks",
+      "prompt": "Use the mnemex-search skill to help me figure out if mnemex exists - run which and version checks",
       "category": "spelling",
       "tags": [
         "rephrased",
@@ -392,15 +392,15 @@
         "seed:skill-spelling-bash-01"
       ],
       "checks": {
-        "skill_invoked_contains": "claudemem",
-        "bash_claudemem_spelled_correctly": true,
+        "skill_invoked_contains": "mnemex",
+        "bash_mnemex_spelled_correctly": true,
         "no_bash_typo_clademem": true
       }
     },
     {
       "id": "skill-spelling-bash-01-var-05",
       "description": "Minimal two-word input tests whether system can infer skill loading with absolute minimum context",
-      "prompt": "skill claudemem",
+      "prompt": "skill mnemex",
       "category": "spelling",
       "tags": [
         "edge_case",
@@ -409,15 +409,15 @@
         "seed:skill-spelling-bash-01"
       ],
       "checks": {
-        "skill_invoked_contains": "claudemem",
-        "bash_claudemem_spelled_correctly": true,
+        "skill_invoked_contains": "mnemex",
+        "bash_mnemex_spelled_correctly": true,
         "no_bash_typo_clademem": true
       }
     },
     {
       "id": "skill-spelling-bash-01-var-06",
       "description": "Explicitly mentions agents and delegation which could confuse routing into using Task instead of Skill",
-      "prompt": "Don't delegate this to another agent - just load the code-analysis:claudemem-search skill yourself and run which claudemem and claudemem --version",
+      "prompt": "Don't delegate this to another agent - just load the code-analysis:mnemex-search skill yourself and run which mnemex and mnemex --version",
       "category": "spelling",
       "tags": [
         "adversarial",
@@ -426,15 +426,15 @@
         "seed:skill-spelling-bash-01"
       ],
       "checks": {
-        "skill_invoked_contains": "claudemem",
-        "bash_claudemem_spelled_correctly": true,
+        "skill_invoked_contains": "mnemex",
+        "bash_mnemex_spelled_correctly": true,
         "no_bash_typo_clademem": true
       }
     },
     {
       "id": "skill-spelling-bash-01-var-07",
       "description": "Frames the request in a dev environment setup context with casual tone to test routing across scenarios",
-      "prompt": "We're setting up the dev environment. Can you pull in that claudemem search skill from code-analysis and then just quickly check if claudemem is installed via bash?",
+      "prompt": "We're setting up the dev environment. Can you pull in that mnemex search skill from code-analysis and then just quickly check if mnemex is installed via bash?",
       "category": "spelling",
       "tags": [
         "context_shift",
@@ -443,15 +443,15 @@
         "seed:skill-spelling-bash-01"
       ],
       "checks": {
-        "skill_invoked_contains": "claudemem",
-        "bash_claudemem_spelled_correctly": true,
+        "skill_invoked_contains": "mnemex",
+        "bash_mnemex_spelled_correctly": true,
         "no_bash_typo_clademem": true
       }
     },
     {
       "id": "skill-spelling-bash-01-var-08",
       "description": "Explicitly contrasts Skill vs Task routing which could paradoxically trigger wrong tool selection",
-      "prompt": "I want to search for claudemem using the skill, not by delegating to a subagent. Load code-analysis:claudemem-search and check installation with bash commands.",
+      "prompt": "I want to search for mnemex using the skill, not by delegating to a subagent. Load code-analysis:mnemex-search and check installation with bash commands.",
       "category": "spelling",
       "tags": [
         "adversarial",
@@ -460,15 +460,15 @@
         "seed:skill-spelling-bash-01"
       ],
       "checks": {
-        "skill_invoked_contains": "claudemem",
-        "bash_claudemem_spelled_correctly": true,
+        "skill_invoked_contains": "mnemex",
+        "bash_mnemex_spelled_correctly": true,
         "no_bash_typo_clademem": true
       }
     },
     {
       "id": "skill-spelling-bash-01-var-09",
       "description": "Shell-style semicolon-separated commands without natural language tests parsing of technical shorthand",
-      "prompt": "activate code-analysis:claudemem-search; which claudemem; claudemem --version",
+      "prompt": "activate code-analysis:mnemex-search; which mnemex; mnemex --version",
       "category": "spelling",
       "tags": [
         "edge_case",
@@ -477,15 +477,15 @@
         "seed:skill-spelling-bash-01"
       ],
       "checks": {
-        "skill_invoked_contains": "claudemem",
-        "bash_claudemem_spelled_correctly": true,
+        "skill_invoked_contains": "mnemex",
+        "bash_mnemex_spelled_correctly": true,
         "no_bash_typo_clademem": true
       }
     },
     {
       "id": "skill-spelling-bash-01-var-10",
       "description": "Professional CI/CD context with technical jargon like 'namespace' tests domain-specific vocabulary handling",
-      "prompt": "For my CI pipeline debugging, I need the claudemem-search capability loaded from the code-analysis namespace, then validate the claudemem binary is present using standard unix checks",
+      "prompt": "For my CI pipeline debugging, I need the mnemex-search capability loaded from the code-analysis namespace, then validate the mnemex binary is present using standard unix checks",
       "category": "spelling",
       "tags": [
         "context_shift",
@@ -494,15 +494,15 @@
         "seed:skill-spelling-bash-01"
       ],
       "checks": {
-        "skill_invoked_contains": "claudemem",
-        "bash_claudemem_spelled_correctly": true,
+        "skill_invoked_contains": "mnemex",
+        "bash_mnemex_spelled_correctly": true,
         "no_bash_typo_clademem": true
       }
     },
     {
       "id": "skill-not-agent-01-var-01",
       "description": "Direct request with explicit skill name and clear action, tests basic skill routing",
-      "prompt": "Load claudemem and use it to analyze the architecture of the plugins folder",
+      "prompt": "Load mnemex and use it to analyze the architecture of the plugins folder",
       "category": "agent-vs-skill",
       "tags": [
         "rephrased",
@@ -512,13 +512,13 @@
       ],
       "checks": {
         "no_task_with_skill_name": true,
-        "skill_invoked_contains": "claudemem"
+        "skill_invoked_contains": "mnemex"
       }
     },
     {
       "id": "skill-not-agent-01-var-02",
       "description": "Minimal command-style input tests whether the system can parse extremely terse skill invocations",
-      "prompt": "claudemem plugins/",
+      "prompt": "mnemex plugins/",
       "category": "agent-vs-skill",
       "tags": [
         "terse",
@@ -528,13 +528,13 @@
       ],
       "checks": {
         "no_task_with_skill_name": true,
-        "skill_invoked_contains": "claudemem"
+        "skill_invoked_contains": "mnemex"
       }
     },
     {
       "id": "skill-not-agent-01-var-03",
       "description": "Highly detailed request with explicit skill mention buried in verbose context",
-      "prompt": "I'm trying to understand how our plugin system is structured. Can you activate the claudemem skill and have it create an architectural map of everything under ./plugins? I need to see the relationships between components.",
+      "prompt": "I'm trying to understand how our plugin system is structured. Can you activate the mnemex skill and have it create an architectural map of everything under ./plugins? I need to see the relationships between components.",
       "category": "agent-vs-skill",
       "tags": [
         "verbose",
@@ -544,12 +544,12 @@
       ],
       "checks": {
         "no_task_with_skill_name": true,
-        "skill_invoked_contains": "claudemem"
+        "skill_invoked_contains": "mnemex"
       }
     },
     {
       "id": "skill-not-agent-01-var-04",
-      "description": "Describes claudemem by its function rather than name, tests semantic matching to correct skill",
+      "description": "Describes mnemex by its function rather than name, tests semantic matching to correct skill",
       "prompt": "Use the memory mapping tool to scan plugins directory structure",
       "category": "agent-vs-skill",
       "tags": [
@@ -560,13 +560,13 @@
       ],
       "checks": {
         "no_task_with_skill_name": true,
-        "skill_invoked_contains": "claudemem"
+        "skill_invoked_contains": "mnemex"
       }
     },
     {
       "id": "skill-not-agent-01-var-05",
-      "description": "User incorrectly calls claudemem an 'agent' - system must recognize it's actually a skill and use Skill tool",
-      "prompt": "Can you ask the claudemem agent to map out the plugins architecture for me?",
+      "description": "User incorrectly calls mnemex an 'agent' - system must recognize it's actually a skill and use Skill tool",
+      "prompt": "Can you ask the mnemex agent to map out the plugins architecture for me?",
       "category": "agent-vs-skill",
       "tags": [
         "adversarial",
@@ -576,13 +576,13 @@
       ],
       "checks": {
         "no_task_with_skill_name": true,
-        "skill_invoked_contains": "claudemem"
+        "skill_invoked_contains": "mnemex"
       }
     },
     {
       "id": "skill-not-agent-01-var-06",
       "description": "Telegram-style abbreviated syntax tests parsing of non-standard prompt formats",
-      "prompt": "spin up claudemem, target: plugins dir, goal: architecture mapping",
+      "prompt": "spin up mnemex, target: plugins dir, goal: architecture mapping",
       "category": "agent-vs-skill",
       "tags": [
         "terse",
@@ -592,13 +592,13 @@
       ],
       "checks": {
         "no_task_with_skill_name": true,
-        "skill_invoked_contains": "claudemem"
+        "skill_invoked_contains": "mnemex"
       }
     },
     {
       "id": "skill-not-agent-01-var-07",
       "description": "Frames the same task within a documentation/refactoring workflow context",
-      "prompt": "For my documentation sprint, I need semantic code search on the plugins directory. Initialize claudemem to build a mental model of the plugin architecture before we start refactoring.",
+      "prompt": "For my documentation sprint, I need semantic code search on the plugins directory. Initialize mnemex to build a mental model of the plugin architecture before we start refactoring.",
       "category": "agent-vs-skill",
       "tags": [
         "context_shift",
@@ -608,13 +608,13 @@
       ],
       "checks": {
         "no_task_with_skill_name": true,
-        "skill_invoked_contains": "claudemem"
+        "skill_invoked_contains": "mnemex"
       }
     },
     {
       "id": "skill-not-agent-01-var-08",
-      "description": "Uses 'delegate' keyword which suggests Task tool, but claudemem is a skill requiring Skill tool",
-      "prompt": "delegate to claudemem: map plugins architecture",
+      "description": "Uses 'delegate' keyword which suggests Task tool, but mnemex is a skill requiring Skill tool",
+      "prompt": "delegate to mnemex: map plugins architecture",
       "category": "agent-vs-skill",
       "tags": [
         "adversarial",
@@ -624,12 +624,12 @@
       ],
       "checks": {
         "no_task_with_skill_name": true,
-        "skill_invoked_contains": "claudemem"
+        "skill_invoked_contains": "mnemex"
       }
     },
     {
       "id": "skill-not-agent-01-var-09",
-      "description": "Extremely minimal prompt without mentioning claudemem tests whether semantic intent alone routes correctly",
+      "description": "Extremely minimal prompt without mentioning mnemex tests whether semantic intent alone routes correctly",
       "prompt": "map architecture plugins",
       "category": "agent-vs-skill",
       "tags": [
@@ -640,13 +640,13 @@
       ],
       "checks": {
         "no_task_with_skill_name": true,
-        "skill_invoked_contains": "claudemem"
+        "skill_invoked_contains": "mnemex"
       }
     },
     {
       "id": "skill-not-agent-01-var-10",
       "description": "Explicitly distinguishes between skill and agent, reinforcing that Skill tool must be used",
-      "prompt": "Before I make changes, run the claudemem skill against plugins/** to give me a structural overview. Don't delegate this to another agent - handle it directly with the skill.",
+      "prompt": "Before I make changes, run the mnemex skill against plugins/** to give me a structural overview. Don't delegate this to another agent - handle it directly with the skill.",
       "category": "agent-vs-skill",
       "tags": [
         "edge_case",
@@ -656,13 +656,13 @@
       ],
       "checks": {
         "no_task_with_skill_name": true,
-        "skill_invoked_contains": "claudemem"
+        "skill_invoked_contains": "mnemex"
       }
     },
     {
       "id": "skill-routing-detective-01-var-01",
       "description": "Direct rephrasing with clear skill-first, then agent sequence preserving explicit routing instructions.",
-      "prompt": "I need to understand how hooks work in this project. Make sure to load claudemem-search skill before anything else, then have the detective agent dig into it.",
+      "prompt": "I need to understand how hooks work in this project. Make sure to load mnemex-search skill before anything else, then have the detective agent dig into it.",
       "category": "mixed-routing",
       "tags": [
         "rephrased",
@@ -678,7 +678,7 @@
     {
       "id": "skill-routing-detective-01-var-02",
       "description": "Minimal command-like syntax tests parsing of abbreviated instructions with colon notation.",
-      "prompt": "detective: investigate hooks. prereq: claudemem-search skill",
+      "prompt": "detective: investigate hooks. prereq: mnemex-search skill",
       "category": "mixed-routing",
       "tags": [
         "terse",
@@ -694,7 +694,7 @@
     {
       "id": "skill-routing-detective-01-var-03",
       "description": "Highly detailed enterprise-style request with explicit ordering and context, testing parser tolerance for verbosity.",
-      "prompt": "Our team has been struggling to understand the hook implementation patterns throughout the codebase. I'd like you to conduct a thorough investigation using the detective agent. Before you start the investigation, please ensure the claudemem-search skill is loaded so you have access to our semantic search capabilities for finding relevant code sections. Focus on understanding the lifecycle, registration, and invocation patterns.",
+      "prompt": "Our team has been struggling to understand the hook implementation patterns throughout the codebase. I'd like you to conduct a thorough investigation using the detective agent. Before you start the investigation, please ensure the mnemex-search skill is loaded so you have access to our semantic search capabilities for finding relevant code sections. Focus on understanding the lifecycle, registration, and invocation patterns.",
       "category": "mixed-routing",
       "tags": [
         "verbose",
@@ -709,8 +709,8 @@
     },
     {
       "id": "skill-routing-detective-01-var-04",
-      "description": "Casual phrasing with implicit skill reference ('search from claudemem') requires inference to map to claudemem-search skill.",
-      "prompt": "hook system analysis needed - use search from claudemem and detective for the deep dive",
+      "description": "Casual phrasing with implicit skill reference ('search from mnemex') requires inference to map to mnemex-search skill.",
+      "prompt": "hook system analysis needed - use search from mnemex and detective for the deep dive",
       "category": "mixed-routing",
       "tags": [
         "rephrased",
@@ -758,7 +758,7 @@
     {
       "id": "skill-routing-detective-01-var-07",
       "description": "Onboarding scenario framing with casual language tests routing under different user context.",
-      "prompt": "I'm onboarding to this repo and trying to grok the hook architecture. Load up the claudemem search skill first so you can find stuff, then get the detective on the case to map out how hooks flow through the system.",
+      "prompt": "I'm onboarding to this repo and trying to grok the hook architecture. Load up the mnemex search skill first so you can find stuff, then get the detective on the case to map out how hooks flow through the system.",
       "category": "mixed-routing",
       "tags": [
         "context_shift",
@@ -774,7 +774,7 @@
     {
       "id": "skill-routing-detective-01-var-08",
       "description": "Structured format with explicit 'skill' and 'task' labels tests whether system correctly uses Skill tool then Task tool.",
-      "prompt": "First skill: claudemem-search. Then task: detective analyzes the hook mechanism end-to-end.",
+      "prompt": "First skill: mnemex-search. Then task: detective analyzes the hook mechanism end-to-end.",
       "category": "mixed-routing",
       "tags": [
         "rephrased",
@@ -790,7 +790,7 @@
     {
       "id": "skill-routing-detective-01-var-09",
       "description": "Explicitly references tool mechanics which could confuse the system or be treated as meta-instruction.",
-      "prompt": "Don't use Task for claudemem-search, use Skill. Then delegate the hook investigation to detective via Task.",
+      "prompt": "Don't use Task for mnemex-search, use Skill. Then delegate the hook investigation to detective via Task.",
       "category": "mixed-routing",
       "tags": [
         "adversarial",
@@ -806,7 +806,7 @@
     {
       "id": "skill-routing-detective-01-var-10",
       "description": "Extremely casual with punctuation quirks and abbreviated words tests robustness to informal input.",
-      "prompt": "hooks?? detective pls, but grab claudemem-search first",
+      "prompt": "hooks?? detective pls, but grab mnemex-search first",
       "category": "mixed-routing",
       "tags": [
         "edge_case",
@@ -982,7 +982,7 @@
     {
       "id": "skill-architect-detective-01-var-01",
       "description": "Direct rephrasing with explicit skill identifier preserves clear routing intent while varying sentence structure.",
-      "prompt": "Load the code-analysis:investigate skill and tell me what claudemem commands it suggests for investigating system architecture.",
+      "prompt": "Load the code-analysis:investigate skill and tell me what mnemex commands it suggests for investigating system architecture.",
       "category": "explicit-skill",
       "tags": [
         "rephrased",
@@ -1016,7 +1016,7 @@
     {
       "id": "skill-architect-detective-01-var-03",
       "description": "Highly contextual request with explicit skill name buried in longer prose tests extraction of skill identifier from verbose input.",
-      "prompt": "I'm trying to understand how to approach architecture analysis in this codebase. Can you invoke the code-analysis:investigate skill and walk me through the methodology it recommends, especially any claudemem-related workflows?",
+      "prompt": "I'm trying to understand how to approach architecture analysis in this codebase. Can you invoke the code-analysis:investigate skill and walk me through the methodology it recommends, especially any mnemex-related workflows?",
       "category": "explicit-skill",
       "tags": [
         "verbose",
@@ -1067,7 +1067,7 @@
     {
       "id": "skill-architect-detective-01-var-06",
       "description": "Question format with namespace and skill name separated tests natural language parsing of skill references.",
-      "prompt": "What does the investigate skill in the code-analysis namespace teach about using claudemem for architecture work?",
+      "prompt": "What does the investigate skill in the code-analysis namespace teach about using mnemex for architecture work?",
       "category": "explicit-skill",
       "tags": [
         "rephrased",
@@ -1101,7 +1101,7 @@
     {
       "id": "skill-architect-detective-01-var-08",
       "description": "Workplace scenario framing with explicit skill name tests that contextual information doesn't interfere with skill routing.",
-      "prompt": "Our team lead wants me to document how we analyze system architecture. Pull up code-analysis:investigate so I can see the recommended claudemem commands for this kind of investigation.",
+      "prompt": "Our team lead wants me to document how we analyze system architecture. Pull up code-analysis:investigate so I can see the recommended mnemex commands for this kind of investigation.",
       "category": "explicit-skill",
       "tags": [
         "context_shift",

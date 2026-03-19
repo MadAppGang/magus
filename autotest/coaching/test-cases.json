@@ -4,9 +4,9 @@
   "test_cases": [
     {
       "id": "coaching-grep-rule-01",
-      "description": "3 bash grep calls triggers claudemem suggestion",
+      "description": "3 bash grep calls triggers mnemex suggestion",
       "category": "rule-detection",
-      "tags": ["grep-instead-of-claudemem", "bash"],
+      "tags": ["grep-instead-of-mnemex", "bash"],
       "filler_count": 7,
       "transcript": [
         {"tool": "Bash", "input": {"command": "grep -r 'pattern' src/"}},
@@ -15,7 +15,7 @@
       ],
       "checks": {
         "recommendations_not_null": true,
-        "recommendations_contains": "claudemem",
+        "recommendations_contains": "mnemex",
         "exit_code_is": 0
       }
     },
@@ -40,11 +40,11 @@
       "tags": ["skill-invoked-as-task", "api-correctness"],
       "filler_count": 9,
       "transcript": [
-        {"tool": "Task", "input": {"subagent_type": "code-analysis:claudemem-search", "prompt": "find patterns"}}
+        {"tool": "Task", "input": {"subagent_type": "code-analysis:mnemex-search", "prompt": "find patterns"}}
       ],
       "checks": {
         "recommendations_not_null": true,
-        "recommendations_contains": "code-analysis:claudemem-search",
+        "recommendations_contains": "code-analysis:mnemex-search",
         "recommendations_contains_2": "Skill"
       }
     },
@@ -155,7 +155,7 @@
         {"tool": "Write", "input": {"file_path": "/project/f2.ts", "content": "x"}},
         {"tool": "Write", "input": {"file_path": "/project/f3.ts", "content": "x"}}
       ],
-      "pre_recommendations": "# Existing coaching\n1. Use claudemem for search\n",
+      "pre_recommendations": "# Existing coaching\n1. Use mnemex for search\n",
       "checks": {
         "recommendations_is_not_null": true,
         "recommendations_contains": "Existing coaching"
@@ -175,7 +175,7 @@
       "pre_state": {
         "_session_count": 5,
         "rules": {
-          "grep-instead-of-claudemem": {
+          "grep-instead-of-mnemex": {
             "last_shown_session": 3,
             "shown_count": 1,
             "suppress_until_count": 20
@@ -183,7 +183,7 @@
         }
       },
       "checks": {
-        "recommendations_not_contains": "claudemem"
+        "recommendations_not_contains": "mnemex"
       }
     },
     {
@@ -199,7 +199,7 @@
       ],
       "checks": {
         "state_session_count_is": 1,
-        "state_rule_exists": "grep-instead-of-claudemem",
+        "state_rule_exists": "grep-instead-of-mnemex",
         "state_rule_suppress_until_gt": 1
       }
     },
@@ -214,7 +214,7 @@
         {"tool": "Bash", "input": {"command": "grep -n 'pattern' lib/"}},
         {"tool": "Bash", "input": {"command": "grep 'pattern' tests/"}},
         {"tool": "Bash", "input": {"command": "cat /tmp/session-data.md"}},
-        {"tool": "Task", "input": {"subagent_type": "code-analysis:claudemem-search", "prompt": "find patterns"}},
+        {"tool": "Task", "input": {"subagent_type": "code-analysis:mnemex-search", "prompt": "find patterns"}},
         {"tool": "Write", "input": {"file_path": "/project/a.ts", "content": "x"}},
         {"tool": "Write", "input": {"file_path": "/project/b.ts", "content": "x"}},
         {"tool": "Task", "input": {"subagent_type": "dev:developer", "prompt": "task 1"}},
@@ -259,7 +259,7 @@
         "sessionstart_output_valid_json": true,
         "sessionstart_has_hook_event_name": true,
         "sessionstart_has_additional_context": true,
-        "sessionstart_context_contains": "claudemem"
+        "sessionstart_context_contains": "mnemex"
       }
     },
     {
@@ -304,7 +304,7 @@
       ],
       "checks": {
         "recommendations_not_null": true,
-        "recommendations_contains": "claudemem",
+        "recommendations_contains": "mnemex",
         "exit_code_is": 0
       }
     },
@@ -351,7 +351,7 @@
       "pre_state": {
         "_session_count": 20,
         "rules": {
-          "grep-instead-of-claudemem": {
+          "grep-instead-of-mnemex": {
             "last_shown_session": 3,
             "shown_count": 1,
             "suppress_until_count": 15
@@ -360,7 +360,7 @@
       },
       "checks": {
         "recommendations_not_null": true,
-        "recommendations_contains": "claudemem"
+        "recommendations_contains": "mnemex"
       }
     },
     {
@@ -374,7 +374,7 @@
         {"tool": "Bash", "input": {"command": "grep -n 'pattern' lib/"}},
         {"tool": "Bash", "input": {"command": "grep 'pattern' tests/"}},
         {"tool": "Bash", "input": {"command": "cat /tmp/session-data.md"}},
-        {"tool": "Task", "input": {"subagent_type": "code-analysis:claudemem-search", "prompt": "find patterns"}},
+        {"tool": "Task", "input": {"subagent_type": "code-analysis:mnemex-search", "prompt": "find patterns"}},
         {"tool": "Write", "input": {"file_path": "/project/a.ts", "content": "x"}},
         {"tool": "Write", "input": {"file_path": "/project/b.ts", "content": "x"}},
         {"tool": "Task", "input": {"subagent_type": "dev:developer", "prompt": "task 1"}},
@@ -384,7 +384,7 @@
       "checks": {
         "recommendations_numbered_lte": 3,
         "recommendations_numbered_gt": 0,
-        "recommendations_contains": "claudemem",
+        "recommendations_contains": "mnemex",
         "recommendations_not_contains": "run_in_background"
       }
     },
@@ -412,7 +412,7 @@
       ],
       "checks": {
         "recommendations_not_null": true,
-        "recommendations_contains": "claudemem",
+        "recommendations_contains": "mnemex",
         "exit_code_is": 0
       }
     },
@@ -427,7 +427,7 @@
         {"tool": "Bash", "input": {"command": "grep -n 'pattern' lib/"}},
         {"tool": "Bash", "input": {"command": "grep 'pattern' tests/"}}
       ],
-      "pre_recommendations": "# Stale coaching\n1. Use claudemem for search\n",
+      "pre_recommendations": "# Stale coaching\n1. Use mnemex for search\n",
       "env": {"WORKFLOW_COACHING": "off"},
       "checks": {
         "recommendations_is_null": true,
@@ -456,7 +456,7 @@
       "pre_state": {
         "_session_count": 50,
         "rules": {
-          "grep-instead-of-claudemem": {
+          "grep-instead-of-mnemex": {
             "last_shown_session": 45,
             "shown_count": 5,
             "suppress_until_count": 100
@@ -498,7 +498,7 @@
           }
         }
       },
-      "pre_recommendations": "# Previous coaching\n1. Use claudemem for semantic search\n",
+      "pre_recommendations": "# Previous coaching\n1. Use mnemex for semantic search\n",
       "checks": {
         "recommendations_is_not_null": true,
         "recommendations_contains": "Previous coaching",
@@ -519,7 +519,7 @@
       ],
       "checks": {
         "recommendations_not_null": true,
-        "recommendations_contains": "claudemem",
+        "recommendations_contains": "mnemex",
         "exit_code_is": 0,
         "state_session_count_is": 2
       }

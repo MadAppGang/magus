@@ -643,7 +643,7 @@ updated: 2026-01-28
 **tool_denial** (Priority 2-3):
 - Intercept tool calls and provide alternative results
 - Use for custom tool implementations
-- Example: claudemem integration
+- Example: mnemex integration
 
 **pre_response** (Priority 2):
 - Inject context before agent responds

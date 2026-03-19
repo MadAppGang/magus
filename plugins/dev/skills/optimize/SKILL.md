@@ -636,7 +636,7 @@ Optimize bundle size and verify test coverage remains above 80%
 Use enrichment for better context:
 
 ```
-Enrich codebase with claudemem, then identify performance bottlenecks
+Enrich codebase with mnemex, then identify performance bottlenecks
 ```
 
 ## Best Practices

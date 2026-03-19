@@ -1,14 +1,14 @@
 #!/bin/bash
-# run-comparison.sh — Head-to-head claudemem vs Serena efficiency test
+# run-comparison.sh — Head-to-head mnemex vs Serena efficiency test
 #
 # Runs identical task prompts against isolated MCP configs:
-#   - claudemem-only (--strict-mcp-config)
+#   - mnemex-only (--strict-mcp-config)
 #   - serena-only (--strict-mcp-config)
 #
 # Captures: transcript, duration, tool calls, token count
 #
 # Usage:
-#   ./autotest/claudemem/comparison/run-comparison.sh [--cases <ids>] [--parallel]
+#   ./autotest/mnemex/comparison/run-comparison.sh [--cases <ids>] [--parallel]
 
 set -euo pipefail
 unset CLAUDECODE 2>/dev/null || true
@@ -21,7 +21,7 @@ TIMEOUT=300
 MAX_BUDGET=0.50
 
 # MCP configs
-CLAUDEMEM_MCP="$SCRIPT_DIR/mcp-claudemem.json"
+CLAUDEMEM_MCP="$SCRIPT_DIR/mcp-mnemex.json"
 SERENA_MCP="$SCRIPT_DIR/mcp-serena.json"
 
 # Test prompts directory
@@ -65,7 +65,7 @@ echo ""
 
 # Run a single test
 run_test() {
-  local mcp_name="$1"    # claudemem or serena
+  local mcp_name="$1"    # mnemex or serena
   local mcp_config="$2"  # path to MCP JSON
   local prompt_file="$3" # path to prompt .md
   local test_id="$4"     # e.g. find-references
@@ -77,9 +77,9 @@ run_test() {
   local start_epoch=$(date +%s)
   local timed_out=false
 
-  # Build env prefix for claudemem (LSP needs CLAUDEMEM_LSP in parent env)
+  # Build env prefix for mnemex (LSP needs CLAUDEMEM_LSP in parent env)
   local env_prefix=""
-  if [[ "$mcp_name" == "claudemem" ]]; then
+  if [[ "$mcp_name" == "mnemex" ]]; then
     env_prefix="CLAUDEMEM_LSP=true"
   fi
 
@@ -148,11 +148,11 @@ for prompt_file in "${PROMPT_FILES[@]}"; do
   echo "--- $test_id ---"
 
   if $PARALLEL; then
-    run_test "claudemem" "$CLAUDEMEM_MCP" "$prompt_file" "$test_id" &
+    run_test "mnemex" "$CLAUDEMEM_MCP" "$prompt_file" "$test_id" &
     run_test "serena" "$SERENA_MCP" "$prompt_file" "$test_id" &
     wait
   else
-    run_test "claudemem" "$CLAUDEMEM_MCP" "$prompt_file" "$test_id"
+    run_test "mnemex" "$CLAUDEMEM_MCP" "$prompt_file" "$test_id"
     run_test "serena" "$SERENA_MCP" "$prompt_file" "$test_id"
   fi
   echo ""

@@ -2,17 +2,17 @@
 /**
  * analyze-results.ts - Claudemem MCP E2E test analyzer
  *
- * Validates claudemem-specific checks in transcript.jsonl files produced by
+ * Validates mnemex-specific checks in transcript.jsonl files produced by
  * the shared autotest framework (runner-base.sh + execute-test.sh).
  *
  * Usage:
- *   bun ./autotest/claudemem/analyze-results.ts <results-dir>
+ *   bun ./autotest/mnemex/analyze-results.ts <results-dir>
  *
  * The results-dir must contain test-cases.json (copied there by runner-base.sh)
  * and per-test subdirectories with transcript.jsonl files.
  *
  * Outputs:
- *   <results-dir>/claudemem-analysis.json  — structured check results
+ *   <results-dir>/mnemex-analysis.json  — structured check results
  *   stdout                                 — human-readable summary table
  *
  * Exit codes:
@@ -21,9 +21,9 @@
  *
  * Tool name normalization:
  *   Both prefix variants are accepted and treated as equivalent:
- *     mcp__claudemem__search
- *     mcp__plugin_code-analysis_claudemem__search
- *   Both normalize to canonical form: mcp__claudemem__<tool>
+ *     mcp__mnemex__search
+ *     mcp__plugin_code-analysis_mnemex__search
+ *   Both normalize to canonical form: mcp__mnemex__<tool>
  */
 
 import { readFileSync, writeFileSync, readdirSync, existsSync } from "fs";
@@ -121,35 +121,35 @@ interface AnalysisOutput {
 // ---------------------------------------------------------------------------
 
 /**
- * Normalize claudemem MCP tool names so both prefix variants are equivalent.
+ * Normalize mnemex MCP tool names so both prefix variants are equivalent.
  *
- * Claude Code may expose claudemem tools under two possible prefixes depending
+ * Claude Code may expose mnemex tools under two possible prefixes depending
  * on how it resolves the code-analysis plugin's MCP server:
  *
- *   mcp__claudemem__search                          (config key name)
- *   mcp__plugin_code-analysis_claudemem__search     (plugin-qualified name)
+ *   mcp__mnemex__search                          (config key name)
+ *   mcp__plugin_code-analysis_mnemex__search     (plugin-qualified name)
  *
- * Both normalize to canonical form: mcp__claudemem__<toolName>
+ * Both normalize to canonical form: mcp__mnemex__<toolName>
  *
  * Also handles the short-form variant that metrics.json sometimes produces
  * (missing the second double-underscore server separator):
- *   mcp__claudemem_search  →  mcp__claudemem__search
+ *   mcp__mnemex_search  →  mcp__mnemex__search
  */
 function normalizeToolPrefix(name: string): { prefix: string; shortName: string } {
   let normalized = name;
 
   // Normalize plugin-qualified variant → canonical
-  //   mcp__plugin_code-analysis_claudemem__search → mcp__claudemem__search
+  //   mcp__plugin_code-analysis_mnemex__search → mcp__mnemex__search
   normalized = normalized.replace(
-    /^mcp__plugin_code-analysis_claudemem__/,
-    "mcp__claudemem__"
+    /^mcp__plugin_code-analysis_mnemex__/,
+    "mcp__mnemex__"
   );
 
   // Normalize short-form metrics.json variant (missing second __)
-  //   mcp__claudemem_search → mcp__claudemem__search
-  //   Negative lookahead (?!_) prevents matching already-canonical mcp__claudemem__*
-  if (/^mcp__claudemem_(?!_)/.test(normalized)) {
-    normalized = normalized.replace(/^mcp__claudemem_(?!_)/, "mcp__claudemem__");
+  //   mcp__mnemex_search → mcp__mnemex__search
+  //   Negative lookahead (?!_) prevents matching already-canonical mcp__mnemex__*
+  if (/^mcp__mnemex_(?!_)/.test(normalized)) {
+    normalized = normalized.replace(/^mcp__mnemex_(?!_)/, "mcp__mnemex__");
   }
 
   // Split into prefix and shortName at the second "__"
@@ -157,7 +157,7 @@ function normalizeToolPrefix(name: string): { prefix: string; shortName: string 
   if (underscoreIdx === -1) {
     return { prefix: normalized, shortName: normalized };
   }
-  const prefix = normalized.slice(0, underscoreIdx + 2); // e.g. "mcp__claudemem__"
+  const prefix = normalized.slice(0, underscoreIdx + 2); // e.g. "mcp__mnemex__"
   const shortName = normalized.slice(underscoreIdx + 2);  // e.g. "search"
   return { prefix, shortName };
 }
@@ -175,8 +175,8 @@ function toolMatchesPrefix(toolName: string, prefix: string): boolean {
 
 /**
  * Returns the full canonical name for a tool (prefix + shortName after normalization).
- * e.g. "mcp__plugin_code-analysis_claudemem__search" → "mcp__claudemem__search"
- *      "mcp__claudemem__search"                      → "mcp__claudemem__search"
+ * e.g. "mcp__plugin_code-analysis_mnemex__search" → "mcp__mnemex__search"
+ *      "mcp__mnemex__search"                      → "mcp__mnemex__search"
  */
 function canonicalName(name: string): string {
   const { prefix, shortName } = normalizeToolPrefix(name);
@@ -252,7 +252,7 @@ function extractToolCallsFromMetrics(metricsPath: string): ToolUse[] | null {
  *
  * When claudish runs in native mode (e.g., --model claude-sonnet-4-6), the debug
  * log contains raw Anthropic SSE events. Tool calls appear as:
- *   data: {"type":"content_block_start",...,"content_block":{"type":"tool_use","name":"mcp__claudemem__search",...}}
+ *   data: {"type":"content_block_start",...,"content_block":{"type":"tool_use","name":"mcp__mnemex__search",...}}
  *
  * Returns null if debug.log doesn't exist or contains no SSE tool_use events.
  */
@@ -746,7 +746,7 @@ function main(): void {
   console.log(`Pass rate: ${colorize(`${passRate}%`, passRate === 100 ? GREEN : passRate >= 50 ? YELLOW : RED)}`);
   console.log("");
 
-  // --- Write claudemem-analysis.json ---
+  // --- Write mnemex-analysis.json ---
   const output: AnalysisOutput = {
     results_dir: resultsDir,
     analyzed_at: new Date().toISOString(),
@@ -758,7 +758,7 @@ function main(): void {
     tests: testAnalyses,
   };
 
-  const outputPath = join(resultsDir, "claudemem-analysis.json");
+  const outputPath = join(resultsDir, "mnemex-analysis.json");
   writeFileSync(outputPath, JSON.stringify(output, null, 2));
   console.log(`Analysis written to: ${outputPath}`);
   console.log("");

@@ -5,8 +5,8 @@
 
 ### Available MCP Tools
 
-The code-analysis plugin provides claudemem as an MCP server with tools
-organized into functional groups. Use `ToolSearch` with query `"claudemem"`
+The code-analysis plugin provides mnemex as an MCP server with tools
+organized into functional groups. Use `ToolSearch` with query `"mnemex"`
 to discover and load available tools.
 
 **Navigation & Search (9 tools):**
@@ -88,13 +88,13 @@ If results are stale, use the `reindex` tool or wait for auto-reindex (2-minute 
 
 ### CLI Fallback
 
-If MCP tools are unavailable, claudemem CLI commands work via Bash:
+If MCP tools are unavailable, mnemex CLI commands work via Bash:
 
 ```bash
-claudemem --agent search "query"     # Semantic search
-claudemem --agent symbol "Name"      # Symbol lookup
-claudemem --agent map                # Architecture overview
-claudemem --agent callers "Name"     # Dependency analysis
-claudemem status                     # Index health
-claudemem index                      # Manual reindex
+mnemex --agent search "query"     # Semantic search
+mnemex --agent symbol "Name"      # Symbol lookup
+mnemex --agent map                # Architecture overview
+mnemex --agent callers "Name"     # Dependency analysis
+mnemex status                     # Index health
+mnemex index                      # Manual reindex
 ```

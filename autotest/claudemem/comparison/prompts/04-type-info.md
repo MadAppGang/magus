@@ -6,4 +6,4 @@ Report:
 3. What functions or modules consume `ResultsSummary`?
 4. If I add a new field to it, what files would need updating?
 
-Use ONLY the MCP tools available to you (mcp__claudemem__* or mcp__serena__*). Do NOT use Read, Grep, Glob, or Bash tools.
+Use ONLY the MCP tools available to you (mcp__mnemex__* or mcp__serena__*). Do NOT use Read, Grep, Glob, or Bash tools.

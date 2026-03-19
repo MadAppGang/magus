@@ -6,4 +6,4 @@ Report:
 3. Which module is the most important/central (highest connectivity)
 4. The dependency hierarchy
 
-Use ONLY the MCP tools available to you (mcp__claudemem__* or mcp__serena__*). Do NOT use Read, Grep, Glob, or Bash tools.
+Use ONLY the MCP tools available to you (mcp__mnemex__* or mcp__serena__*). Do NOT use Read, Grep, Glob, or Bash tools.

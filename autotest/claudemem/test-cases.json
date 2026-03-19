@@ -1,25 +1,25 @@
 {
   "meta": {
-    "description": "Claudemem MCP E2E test cases. Tests verify Claude can use claudemem MCP tools (via the code-analysis plugin) for semantic code search, architecture mapping, and symbol lookup.",
+    "description": "Claudemem MCP E2E test cases. Tests verify Claude can use mnemex MCP tools (via the code-analysis plugin) for semantic code search, architecture mapping, and symbol lookup.",
     "version": "1.0.0",
     "created": "2026-03-03",
     "updated": "2026-03-03",
-    "notes": "v1.0: Initial 5 tests covering index_status, search, map, symbol, and freshness metadata. Accepts both mcp__claudemem__* and mcp__plugin_code-analysis_claudemem__* prefix variants."
+    "notes": "v1.0: Initial 5 tests covering index_status, search, map, symbol, and freshness metadata. Accepts both mcp__mnemex__* and mcp__plugin_code-analysis_mnemex__* prefix variants."
   },
   "test_cases": [
     {
       "id": "index-status-01",
-      "description": "Check claudemem MCP server health and index status",
-      "prompt": "Use the claudemem MCP tools to check the current index status of this codebase.\n\nCall the index_status tool and report:\n1. Whether the index is initialized (true/false)\n2. How many files are indexed (if available)\n3. Whether the index is fresh or stale\n4. The index path\n\nIMPORTANT: Only use claudemem MCP tools (mcp__claudemem__* or mcp__plugin_code-analysis_claudemem__*). Do NOT use Bash to run claudemem CLI commands. Do NOT use the Read or Glob tools.",
+      "description": "Check mnemex MCP server health and index status",
+      "prompt": "Use the mnemex MCP tools to check the current index status of this codebase.\n\nCall the index_status tool and report:\n1. Whether the index is initialized (true/false)\n2. How many files are indexed (if available)\n3. Whether the index is fresh or stale\n4. The index path\n\nIMPORTANT: Only use mnemex MCP tools (mcp__mnemex__* or mcp__plugin_code-analysis_mnemex__*). Do NOT use Bash to run mnemex CLI commands. Do NOT use the Read or Glob tools.",
       "expected_agent": "NO_TASK_CALL",
       "expected_alternatives": [],
       "category": "basic",
-      "tags": ["claudemem", "index-status", "health-check"],
+      "tags": ["mnemex", "index-status", "health-check"],
       "checks": {
-        "has_tool_prefix": "mcp__claudemem__",
+        "has_tool_prefix": "mcp__mnemex__",
         "tools_used_include_any": [
-          ["mcp__claudemem__index_status"],
-          ["mcp__plugin_code-analysis_claudemem__index_status"]
+          ["mcp__mnemex__index_status"],
+          ["mcp__plugin_code-analysis_mnemex__index_status"]
         ],
         "min_tool_calls": 1,
         "response_contains_any": ["initialized", "fresh", "indexed", "index"]
@@ -27,17 +27,17 @@
     },
     {
       "id": "search-code-02",
-      "description": "Semantic search for plugin manifest loading using claudemem MCP",
-      "prompt": "Use the claudemem MCP search tool to find code related to \"plugin manifest loading and version\".\n\nCall the search tool with that descriptive query and report:\n1. The file paths of the top results\n2. The line numbers where relevant code was found\n3. Brief snippets of what was found\n4. The relevance scores\n\nIMPORTANT: Use mcp__claudemem__search or mcp__plugin_code-analysis_claudemem__search tool directly. Do NOT use grep, Bash, or file system tools like Read or Glob.",
+      "description": "Semantic search for plugin manifest loading using mnemex MCP",
+      "prompt": "Use the mnemex MCP search tool to find code related to \"plugin manifest loading and version\".\n\nCall the search tool with that descriptive query and report:\n1. The file paths of the top results\n2. The line numbers where relevant code was found\n3. Brief snippets of what was found\n4. The relevance scores\n\nIMPORTANT: Use mcp__mnemex__search or mcp__plugin_code-analysis_mnemex__search tool directly. Do NOT use grep, Bash, or file system tools like Read or Glob.",
       "expected_agent": "NO_TASK_CALL",
       "expected_alternatives": [],
       "category": "basic",
-      "tags": ["claudemem", "search", "semantic-search"],
+      "tags": ["mnemex", "search", "semantic-search"],
       "checks": {
-        "has_tool_prefix": "mcp__claudemem__",
+        "has_tool_prefix": "mcp__mnemex__",
         "tools_used_include_any": [
-          ["mcp__claudemem__search"],
-          ["mcp__plugin_code-analysis_claudemem__search"]
+          ["mcp__mnemex__search"],
+          ["mcp__plugin_code-analysis_mnemex__search"]
         ],
         "min_tool_calls": 1,
         "response_contains_any": ["plugin.json", "version", "score", ".json", "manifest"]
@@ -45,17 +45,17 @@
     },
     {
       "id": "map-architecture-03",
-      "description": "Generate architecture map using claudemem MCP map tool",
-      "prompt": "Use the claudemem MCP map tool to generate an architectural overview of this codebase.\n\nCall the map tool with depth 3 and report:\n1. The high-level structure it returns\n2. Key files and directories identified\n3. Any PageRank importance scores mentioned\n4. The overall shape of the codebase architecture\n\nIMPORTANT: Only use mcp__claudemem__map or mcp__plugin_code-analysis_claudemem__map. Do NOT use Bash, Read, Glob, or other file system tools.",
+      "description": "Generate architecture map using mnemex MCP map tool",
+      "prompt": "Use the mnemex MCP map tool to generate an architectural overview of this codebase.\n\nCall the map tool with depth 3 and report:\n1. The high-level structure it returns\n2. Key files and directories identified\n3. Any PageRank importance scores mentioned\n4. The overall shape of the codebase architecture\n\nIMPORTANT: Only use mcp__mnemex__map or mcp__plugin_code-analysis_mnemex__map. Do NOT use Bash, Read, Glob, or other file system tools.",
       "expected_agent": "NO_TASK_CALL",
       "expected_alternatives": [],
       "category": "advanced",
-      "tags": ["claudemem", "map", "architecture", "pagerank"],
+      "tags": ["mnemex", "map", "architecture", "pagerank"],
       "checks": {
-        "has_tool_prefix": "mcp__claudemem__",
+        "has_tool_prefix": "mcp__mnemex__",
         "tools_used_include_any": [
-          ["mcp__claudemem__map"],
-          ["mcp__plugin_code-analysis_claudemem__map"]
+          ["mcp__mnemex__map"],
+          ["mcp__plugin_code-analysis_mnemex__map"]
         ],
         "min_tool_calls": 1,
         "response_contains_any": ["PageRank", "pagerank", "Repository Map", "mapText", "plugins", "autotest"]
@@ -63,17 +63,17 @@
     },
     {
       "id": "symbol-lookup-04",
-      "description": "Look up a specific symbol definition using claudemem MCP symbol tool",
-      "prompt": "Use the claudemem MCP symbol tool to find the definition and usages of the symbol \"evaluate\" — this is the evaluate function from the autotest framework evaluator.\n\nCall the symbol tool with the name \"evaluate\" and report:\n1. The file where it is defined\n2. Its kind (function, class, etc.)\n3. Its signature or a brief description\n4. How many usages it has (if shown)\n\nIMPORTANT: Only use mcp__claudemem__symbol or mcp__plugin_code-analysis_claudemem__symbol tool. Do NOT use grep, Bash, Read, or Glob tools.",
+      "description": "Look up a specific symbol definition using mnemex MCP symbol tool",
+      "prompt": "Use the mnemex MCP symbol tool to find the definition and usages of the symbol \"evaluate\" — this is the evaluate function from the autotest framework evaluator.\n\nCall the symbol tool with the name \"evaluate\" and report:\n1. The file where it is defined\n2. Its kind (function, class, etc.)\n3. Its signature or a brief description\n4. How many usages it has (if shown)\n\nIMPORTANT: Only use mcp__mnemex__symbol or mcp__plugin_code-analysis_mnemex__symbol tool. Do NOT use grep, Bash, Read, or Glob tools.",
       "expected_agent": "NO_TASK_CALL",
       "expected_alternatives": [],
       "category": "advanced",
-      "tags": ["claudemem", "symbol", "definition-lookup"],
+      "tags": ["mnemex", "symbol", "definition-lookup"],
       "checks": {
-        "has_tool_prefix": "mcp__claudemem__",
+        "has_tool_prefix": "mcp__mnemex__",
         "tools_used_include_any": [
-          ["mcp__claudemem__symbol"],
-          ["mcp__plugin_code-analysis_claudemem__symbol"]
+          ["mcp__mnemex__symbol"],
+          ["mcp__plugin_code-analysis_mnemex__symbol"]
         ],
         "min_tool_calls": 1,
         "response_contains_any": ["evaluator.ts", "function", "evaluate", "EvalResult", "TestCase"]
@@ -81,19 +81,19 @@
     },
     {
       "id": "freshness-check-05",
-      "description": "Verify claudemem returns freshness metadata in tool responses",
-      "prompt": "Use TWO claudemem MCP tools in sequence to verify freshness metadata is present in responses:\n\n1. First call index_status and note any freshness-related fields in the response.\n2. Then call search with the query \"MCP server configuration\" and note freshness fields in that response.\n\nFor each tool response, report these metadata fields if present:\n- freshness status (fresh/stale)\n- lastIndexed timestamp\n- reindexingInProgress flag\n- responseTimeMs\n- Any other timing or freshness metadata\n\nIMPORTANT: Only use claudemem MCP tools (mcp__claudemem__* or mcp__plugin_code-analysis_claudemem__*). You must call at least 2 different claudemem tools.",
+      "description": "Verify mnemex returns freshness metadata in tool responses",
+      "prompt": "Use TWO mnemex MCP tools in sequence to verify freshness metadata is present in responses:\n\n1. First call index_status and note any freshness-related fields in the response.\n2. Then call search with the query \"MCP server configuration\" and note freshness fields in that response.\n\nFor each tool response, report these metadata fields if present:\n- freshness status (fresh/stale)\n- lastIndexed timestamp\n- reindexingInProgress flag\n- responseTimeMs\n- Any other timing or freshness metadata\n\nIMPORTANT: Only use mnemex MCP tools (mcp__mnemex__* or mcp__plugin_code-analysis_mnemex__*). You must call at least 2 different mnemex tools.",
       "expected_agent": "NO_TASK_CALL",
       "expected_alternatives": [],
       "category": "basic",
-      "tags": ["claudemem", "freshness", "metadata", "multi-tool"],
+      "tags": ["mnemex", "freshness", "metadata", "multi-tool"],
       "checks": {
-        "has_tool_prefix": "mcp__claudemem__",
+        "has_tool_prefix": "mcp__mnemex__",
         "tools_used_include_any": [
-          ["mcp__claudemem__index_status", "mcp__claudemem__search"],
-          ["mcp__plugin_code-analysis_claudemem__index_status", "mcp__plugin_code-analysis_claudemem__search"],
-          ["mcp__claudemem__index_status", "mcp__plugin_code-analysis_claudemem__search"],
-          ["mcp__plugin_code-analysis_claudemem__index_status", "mcp__claudemem__search"]
+          ["mcp__mnemex__index_status", "mcp__mnemex__search"],
+          ["mcp__plugin_code-analysis_mnemex__index_status", "mcp__plugin_code-analysis_mnemex__search"],
+          ["mcp__mnemex__index_status", "mcp__plugin_code-analysis_mnemex__search"],
+          ["mcp__plugin_code-analysis_mnemex__index_status", "mcp__mnemex__search"]
         ],
         "min_tool_calls": 2,
         "response_contains_any": ["fresh", "lastIndexed", "responseTimeMs", "stale", "timestamp", "reindexing"]

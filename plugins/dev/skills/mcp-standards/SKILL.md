@@ -201,8 +201,8 @@ mcp__<plugin-name>__<tool-name>
 "mcp__frontend__lighthouse_audit"      // Run Lighthouse audit
 
 // Code Analysis Plugin
-"mcp__code-analysis__claudemem_search"       // Search codebase
-"mcp__code-analysis__claudemem_enrich"       // Enrich file context
+"mcp__code-analysis__mnemex_search"       // Search codebase
+"mcp__code-analysis__mnemex_enrich"       // Enrich file context
 
 // Bun Backend Plugin
 "mcp__bun__apidog_sync"                // Sync with Apidog

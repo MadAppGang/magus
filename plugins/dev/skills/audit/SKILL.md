@@ -317,7 +317,7 @@ npm install lodash@latest
 Use code-analysis enrichment before audit:
 
 ```
-First enrich the codebase with claudemem, then run security audit
+First enrich the codebase with mnemex, then run security audit
 ```
 
 This provides:

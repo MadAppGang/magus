@@ -5,8 +5,8 @@ Automated testing framework for validating Claude Code's skill routing behavior 
 ## Background
 
 On 2026-02-16, a triple failure cascade was identified:
-1. Model tried `Task(code-analysis:claudemem-search)` — but it's a **skill**, not an agent
-2. Model typed `clademem` instead of `claudemem` in Bash
+1. Model tried `Task(code-analysis:mnemex-search)` — but it's a **skill**, not an agent
+2. Model typed `clademem` instead of `mnemex` in Bash
 3. CLAUDE.md had no skill routing table to guide correct invocation
 
 This test suite validates the fixes and prevents regression.
@@ -18,7 +18,7 @@ This test suite validates the fixes and prevents regression.
 ./autotest/skills/run-tests.sh
 
 # Run specific test cases
-./autotest/skills/run-tests.sh --cases skill-claudemem-explicit-01,skill-spelling-bash-01
+./autotest/skills/run-tests.sh --cases skill-mnemex-explicit-01,skill-spelling-bash-01
 
 # Dry run (show what would execute)
 ./autotest/skills/run-tests.sh --dry-run
@@ -31,10 +31,10 @@ This test suite validates the fixes and prevents regression.
 
 | ID | Category | Validates |
 |----|----------|-----------|
-| `skill-claudemem-explicit-01` | explicit-skill | Skill tool used for explicit claudemem request |
-| `skill-claudemem-implicit-01` | implicit-skill | Routing table triggers correct skill |
-| `skill-spelling-bash-01` | spelling | No typos in claudemem Bash commands |
-| `skill-not-agent-01` | agent-vs-skill | claudemem-search never used as Task subagent_type |
+| `skill-mnemex-explicit-01` | explicit-skill | Skill tool used for explicit mnemex request |
+| `skill-mnemex-implicit-01` | implicit-skill | Routing table triggers correct skill |
+| `skill-spelling-bash-01` | spelling | No typos in mnemex Bash commands |
+| `skill-not-agent-01` | agent-vs-skill | mnemex-search never used as Task subagent_type |
 | `skill-routing-detective-01` | mixed-routing | Agent for investigation, skill for search guidance |
 | `skill-deep-analysis-01` | explicit-skill | deep-analysis invoked via Skill tool |
 | `skill-architect-detective-01` | explicit-skill | architect-detective invoked via Skill tool |
@@ -49,8 +49,8 @@ This test suite validates the fixes and prevents regression.
 | `no_skill_invoked` | No Skill tool calls at all |
 | `no_task_with_skill_name` | No Task calls with skill names as subagent_type |
 | `task_agent_is` | Task calls use expected agent |
-| `bash_claudemem_spelled_correctly` | All claudemem Bash commands spelled right |
-| `no_bash_typo_clademem` | No misspellings of claudemem |
+| `bash_mnemex_spelled_correctly` | All mnemex Bash commands spelled right |
+| `no_bash_typo_clademem` | No misspellings of mnemex |
 
 ## How It Works
 

@@ -204,7 +204,7 @@ function applyRules(
     const signal = rule.signal;
 
     switch (rule.id) {
-      case "grep-instead-of-claudemem": {
+      case "grep-instead-of-mnemex": {
         const grepPattern = /\b(grep|rg|ag|ack)\b/;
         const bashGrepCalls = bashCalls.filter((c) =>
           grepPattern.test(String(c.input.command ?? ""))
