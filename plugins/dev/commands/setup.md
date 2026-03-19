@@ -71,7 +71,7 @@ allowed-tools: Read, Write, Edit, Bash, Glob, AskUserQuestion
     | Investigation: READ-ONLY codebase analysis, tracing, understanding | `code-analysis:detective` | Only when task is to UNDERSTAND code, not to WRITE new code |
     | Debugging: error analysis, root cause investigation | `dev:debugger` | Non-obvious bugs or multi-file root cause |
     | Architecture: system design, trade-off analysis | `dev:architect` | New systems or major refactors |
-    | Agent/plugin quality review | `agentdev:reviewer` | Agent description or plugin assessment |
+    | Agent/plugin quality review | `agentdev:agent-reviewer` | Agent description or plugin assessment |
 
     Key distinction: If the task asks to IMPLEMENT/CREATE/BUILD -> `dev:developer`. If the task asks to UNDERSTAND/ANALYZE/TRACE -> `code-analysis:detective`.
 
@@ -83,9 +83,9 @@ allowed-tools: Read, Write, Edit, Bash, Glob, AskUserQuestion
     |---|---|---|
     | Semantic code search, claudemem CLI usage, AST analysis | `code-analysis:claudemem-search` | Before using `claudemem` commands |
     | Multi-agent claudemem orchestration | `code-analysis:claudemem-orchestration` | Parallel claudemem across agents |
-    | Architecture investigation with PageRank | `code-analysis:architect-detective` | Architecture-focused claudemem usage |
+    | Codebase investigation (architecture/implementation/debugging/testing) | `code-analysis:investigate` | Mode-based investigation routing |
     | Deep multi-perspective analysis | `code-analysis:deep-analysis` | Comprehensive codebase investigation |
-    | Claudish CLI usage, model routing, provider backends | `code-analysis:claudish-usage` | Before ANY `claudish` command — use bare model names, no prefixes |
+    | Claudish CLI usage, model routing, provider backends | `multimodel:claudish-usage` | Before ANY `claudish` command — bare model names, no prefixes |
     ```
   </step>
 
@@ -100,11 +100,10 @@ allowed-tools: Read, Write, Edit, Bash, Glob, AskUserQuestion
     **What this does:**
     - Routes complex tasks to specialized agents automatically
     - Ensures research goes to dev:researcher, implementation to dev:developer, etc.
-    - Commands like /dev:implement and /dev:feature use <critical_override> blocks
+    - Commands like /dev:build and /dev:debug use <critical_override> blocks
       to override this table when their specific agent requirements differ
 
     **Alternative approaches (no CLAUDE.md modification needed):**
-    - Use `/dev:delegate <task>` to route tasks through the routing skill
     - Commands with `skills:` frontmatter auto-load routing context
     - `<critical_override>` blocks in commands override CLAUDE.md when needed
     ```

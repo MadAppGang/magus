@@ -72,10 +72,10 @@ skills: dev:context-detection
 | Command | Description |
 |---------|-------------|
 | `/dev:help` | Show this help message and detected stack |
-| `/dev:implement` | Implement features with auto-detected stack knowledge |
-| `/dev:debug` | Debug errors and investigate issues systematically |
-| `/dev:feature` | Full feature development lifecycle with quality gates |
-| `/dev:architect` | Architecture planning and design with trade-off analysis |
+| `/dev:debug` | Universal debugging — quick patch, systematic debug, or production-grade TDD fix |
+| `/dev:build` | Build features — focused implementation or full lifecycle development |
+| `/dev:plan` | Architecture and ideation planning — structured design or brainstorming |
+| `/dev:research` | Multi-source research with convergence-based finalization |
 
 ### Recommended Skills for Your Project
 
@@ -116,17 +116,17 @@ Override auto-detection in `.claude/settings.json`:
 ### Usage Examples
 
 ```bash
-# Implement a feature
-/dev:implement Create user authentication with JWT
+# Build a feature (focused mode)
+/dev:build Create user authentication with JWT
 
 # Debug an error
 /dev:debug TypeError: Cannot read property 'map' of undefined
 
 # Plan architecture
-/dev:architect Design microservice for user management
+/dev:plan Design microservice for user management
 
-# Full feature development
-/dev:feature Add OAuth2 login with Google
+# Build a feature (full lifecycle)
+/dev:build Add OAuth2 login with Google
 
 # Show this help
 /dev:help
@@ -198,8 +198,8 @@ which claudish
 ### Multi-Model Validation
 
 When Claudish CLI is installed, you can use external AI models for:
-- Architecture reviews (`/dev:architect`)
-- Code reviews (`/dev:feature`)
+- Architecture reviews (`/dev:plan`)
+- Code reviews (`/dev:build`)
 - Design validation
 
 **Supported models:**
@@ -331,7 +331,7 @@ See: https://github.com/MadAppGang/claudish
       - python (Python backend)
       - bunjs (Bun backend)
 
-      Or run /dev:implement with explicit stack in prompt
+      Or run /dev:build with explicit stack in prompt
     </output>
   </example>
 </examples>

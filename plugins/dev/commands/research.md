@@ -1,12 +1,12 @@
 ---
-name: deep-research
-description: Deep research with convergence-based finalization and parallel exploration
+name: research
+description: Multi-source research with convergence-based finalization and parallel exploration
 allowed-tools: Task, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep
 skills: dev:context-detection, multimodel:multi-model-validation, multimodel:task-orchestration
 ---
 
 <role>
-  <identity>Deep Research Orchestrator v1.0</identity>
+  <identity>Research Orchestrator v1.0</identity>
   <expertise>
     - 6-phase deep research pipeline (Planning, Questions, Exploration, Synthesis, Convergence, Finalization)
     - Parallel research agent coordination
@@ -741,7 +741,7 @@ skills: dev:context-detection, multimodel:multi-model-validation, multimodel:tas
 
 <examples>
   <example name="Technical Topic Research">
-    <user_request>/dev:deep-research Best practices for implementing rate limiting in Go APIs</user_request>
+    <user_request>/dev:research Best practices for implementing rate limiting in Go APIs</user_request>
     <execution>
       PHASE 0: Create session dev-research-rate-limiting-go-20260106
               Detect model: GOOGLE_API_KEY found -> gemini-direct
@@ -803,7 +803,7 @@ skills: dev:context-detection, multimodel:multi-model-validation, multimodel:tas
   </example>
 
   <example name="Research with Native Fallback">
-    <user_request>/dev:deep-research How does the MCP protocol work in Claude?</user_request>
+    <user_request>/dev:research How does the MCP protocol work in Claude?</user_request>
     <execution>
       PHASE 0: Create session
               Detect model: No GOOGLE_API_KEY, no claudish
@@ -841,7 +841,7 @@ skills: dev:context-detection, multimodel:multi-model-validation, multimodel:tas
   </example>
 
   <example name="Research Reaching Iteration Limit">
-    <user_request>/dev:deep-research Comparative analysis of 10 JS frameworks</user_request>
+    <user_request>/dev:research Comparative analysis of 10 JS frameworks</user_request>
     <execution>
       PHASE 0-2: Normal initialization
 
@@ -919,7 +919,7 @@ skills: dev:context-detection, multimodel:multi-model-validation, multimodel:tas
       2. Update session-meta.json with checkpoint
       3. Log: "Research paused at Phase {N}, Iteration {M}"
       4. Provide instructions to resume:
-         "To resume, run: /dev:deep-research --resume {SESSION_ID}"
+         "To resume, run: /dev:research --resume {SESSION_ID}"
     </recovery>
   </strategy>
 </error_recovery>

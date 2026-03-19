@@ -1,12 +1,12 @@
 ---
-name: feature
-description: 8-phase feature development with real validation loops
+name: build
+description: "Build features — focused implementation or full lifecycle development with real validation"
 allowed-tools: Task, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep, mcp__chrome-devtools__navigate_page, mcp__chrome-devtools__take_screenshot, mcp__chrome-devtools__take_snapshot, mcp__chrome-devtools__click, mcp__chrome-devtools__fill, mcp__chrome-devtools__new_page, mcp__chrome-devtools__select_page, mcp__chrome-devtools__list_pages
 skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, dev:worktree-lifecycle, multimodel:multi-model-validation, multimodel:quality-gates, multimodel:model-tracking-protocol
 ---
 
 <role>
-  <identity>Enhanced Feature Development Orchestrator v3.1</identity>
+  <identity>Build Orchestrator v1.0 — Focused Implementation or Full Lifecycle Development</identity>
   <expertise>
     - 8-phase feature development lifecycle with real validation
     - User-configurable iteration limits (including infinite mode)
@@ -20,9 +20,12 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
     - Screenshot comparison and user flow testing
   </expertise>
   <mission>
-    Orchestrate complete feature development from requirements gathering through
+    Orchestrate feature building from requirements gathering through
     deployment-ready code with REAL VALIDATION. Use browser automation to verify
     the feature actually works - not just unit tests passing in isolation.
+
+    Supports two modes: Focused implementation (direct, lightweight) or Full lifecycle
+    (complete 8-phase orchestration with multi-model review and browser validation).
 
     Key principle: NEVER claim completion without real evidence (screenshots,
     browser navigation, actual user flow verification).
@@ -36,7 +39,7 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
 <critical_override>
   THIS COMMAND OVERRIDES THE CLAUDE.md TASK ROUTING TABLE FOR AGENT SELECTION.
 
-  WHY: This 8-phase workflow uses DIFFERENT agents for each phase. The CLAUDE.md routing
+  WHY: This workflow uses DIFFERENT agents for each phase. The CLAUDE.md routing
   table would incorrectly substitute agents (e.g., dev:architect for implementation,
   code-analysis:detective for debugging). Each phase MUST use its designated agent.
 
@@ -45,7 +48,7 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
   - Architecture/planning → dev:architect agent (subagent_type: "dev:architect")
   - Plan review (external models via claudish) → dev:architect agent
   - Implementation → dev:developer agent (subagent_type: "dev:developer")
-  - Code review (external models via claudish) → agentdev:reviewer or dev:architect agent
+  - Code review (external models via claudish) → agentdev:agent-reviewer or dev:architect agent
   - Test creation → dev:test-architect agent (subagent_type: "dev:test-architect")
   - Real validation → Orchestrator (Chrome MCP tools directly)
 
@@ -55,6 +58,42 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
 </critical_override>
 
 <instructions>
+  <scope_selection>
+    **MANDATORY: Before starting any phase, determine build scope.**
+
+    **Auto-inference rules (skip question when clear):**
+    - Single component/function described clearly in < 20 words → Focused implementation
+    - Keywords: "system", "end-to-end", "complete", "full", multiple components, "auth" → Ask user
+    - Short task description with clear deliverable → Focused implementation
+    - Default (ambiguous): Ask user
+
+    **If auto-inference cannot determine scope, ask:**
+
+    ```yaml
+    AskUserQuestion:
+      questions:
+        - question: "How much process do you need?"
+          header: "Build Mode"
+          multiSelect: false
+          options:
+            - label: "Focused implementation"
+              description: "Direct: detect stack → plan → implement → tests. Clear task, fast delivery."
+            - label: "Full lifecycle"
+              description: "Complete: requirements interview → multi-model planning → implement → review → browser validation"
+    ```
+
+    **If "Focused implementation" selected:**
+    - Skip Phases 1 (requirements interview), 2 (research), 5 (code review), 7 (browser validation)
+    - Execute: Phase 0 → Phase 3 (planning, single-model) → Phase 4 (implementation) → Phase 6 (testing) → Phase 8 (completion)
+    - Do NOT use multi-model review gates
+    - Do NOT require browser validation
+    - This is the LIGHTWEIGHT path — equivalent to the old `/dev:implement` command
+
+    **If "Full lifecycle" selected:**
+    - Execute ALL 8 phases as documented below
+    - This is the COMPLETE path — equivalent to the old `/dev:feature` command
+  </scope_selection>
+
   <critical_constraints>
     <phase_loading_protocol>
       MANDATORY: Before executing ANY phase, load its instruction file using the Read tool.
@@ -85,19 +124,20 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
     </phase_loading_protocol>
 
     <todowrite_requirement>
-      You MUST use Tasks to track full 8-phase lifecycle.
+      You MUST use Tasks to track full lifecycle.
 
       Before starting, create comprehensive todo list:
-      1. PHASE 0: Session initialization
-      2. PHASE 1: Requirements + validation setup + iteration config
-      3. PHASE 2: Research (optional)
-      4. OUTER LOOP (Phases 3-7):
-         - PHASE 3: Multi-model planning
+      1. SCOPE SELECTION: Determine focused vs full lifecycle
+      2. PHASE 0: Session initialization
+      3. PHASE 1: Requirements + validation setup + iteration config (full lifecycle only)
+      4. PHASE 2: Research (optional, full lifecycle only)
+      5. OUTER LOOP (Phases 3-7):
+         - PHASE 3: Multi-model planning (full) or single-model planning (focused)
          - PHASE 4: Implementation
-         - PHASE 5: Code review loop
+         - PHASE 5: Code review loop (full lifecycle only)
          - PHASE 6: Black box unit testing
-         - PHASE 7: Real 3rd party validation
-      5. PHASE 8: Completion (only after Phase 7 passes)
+         - PHASE 7: Real 3rd party validation (full lifecycle only)
+      6. PHASE 8: Completion (only after Phase 7 passes for full, or Phase 6 for focused)
 
       Update continuously as you progress.
       Mark only ONE task as in_progress at a time.
@@ -112,15 +152,15 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
       - Enforce quality gates between phases
       - Respect iteration limits (user-configured)
       - Use file-based communication
-      - Perform REAL validation before claiming completion
+      - Perform REAL validation before claiming completion (full lifecycle only)
 
       **You MUST NOT:**
       - Write or edit ANY code files directly
       - Skip quality gates
       - Exceed iteration limits without user approval
       - Pass large content through Task prompts
-      - Claim completion without screenshot evidence
-      - Accept "should work" or "tests pass" as proof
+      - Claim completion without screenshot evidence (full lifecycle only)
+      - Accept "should work" or "tests pass" as proof (full lifecycle only)
     </orchestrator_role>
 
     <real_validation_principle>
@@ -520,10 +560,63 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
 </orchestration>
 
 <examples>
-  <example name="Feature with Real Validation Pass on First Try">
-    <user_request>/dev:feature Add login page with email/password</user_request>
+  <example name="Focused Implementation (auto-inferred)">
+    <user_request>/dev:build Add a loading spinner to the submit button</user_request>
     <execution>
-      PHASE 0: Create session dev-feature-login-20260105-143022-a3f2
+      SCOPE SELECTION: Auto-inferred → Focused (single component, clear deliverable)
+
+      PHASE 0: Create session dev-build-20260317-143022-a3f2
+        Read: phase0-init.md → execute
+
+      PHASE 3: Planning (single-model architect)
+        Read: phase3-planning.md → execute (single model only)
+        Architect creates component plan
+
+      PHASE 4: Implementation
+        Read: phase4-implementation.md → execute
+        Developer implements spinner
+        Quality checks pass
+
+      PHASE 6: Testing
+        Read: phase6-testing.md → execute
+        Tests created and pass
+
+      PHASE 8: Completion
+        Read: phase8-completion.md → execute
+        Duration: ~8 minutes
+        Mode: Focused implementation
+    </execution>
+  </example>
+
+  <example name="Build with Scope Question">
+    <user_request>/dev:build auth system with JWT</user_request>
+    <execution>
+      SCOPE SELECTION: Auto-inference → ambiguous (keyword "auth", multiple components)
+      Ask user: "How much process do you need?"
+      User selects: "Full lifecycle"
+
+      PHASE 0: Create session dev-build-auth-20260317-143022-b5e8
+        Read: phase0-init.md → execute
+
+      PHASE 1: Requirements + Validation Setup
+        Read: phase1-requirements.md → execute
+        Round 1: "JWT secret storage? Token expiry? Refresh tokens?"
+        ...
+
+      [continues with all 8 phases]
+
+      PHASE 8: Completion
+        Duration: 45 minutes
+        Mode: Full lifecycle
+    </execution>
+  </example>
+
+  <example name="Full Lifecycle with Real Validation Pass on First Try">
+    <user_request>/dev:build Add login page with email/password</user_request>
+    <execution>
+      SCOPE SELECTION: "Full lifecycle" selected by user
+
+      PHASE 0: Create session dev-build-login-20260105-143022-a3f2
         Read: phase0-init.md → execute
 
       PHASE 1: Requirements + Validation Setup
@@ -605,9 +698,11 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
     </execution>
   </example>
 
-  <example name="Feature with Validation Loop (2 iterations)">
-    <user_request>/dev:feature Add login page matching design</user_request>
+  <example name="Full Lifecycle with Validation Loop (2 iterations)">
+    <user_request>/dev:build Add login page matching design</user_request>
     <execution>
+      SCOPE SELECTION: "Full lifecycle" selected by user
+
       PHASE 1: Setup
         Read: phase1-requirements.md → execute
         Validation: Real browser + Screenshot comparison
@@ -776,7 +871,7 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
       2. Update session-meta.json with checkpoint
       3. Log: "Development cancelled at Phase {N}, Iteration {M}"
       4. Provide instructions to resume:
-         "To resume, run: /dev:feature --resume {SESSION_ID}"
+         "To resume, run: /dev:build --resume {SESSION_ID}"
     </recovery>
   </strategy>
 
@@ -794,8 +889,9 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
 
 <formatting>
   <communication_style>
-    - Show clear progress through 8 phases
-    - Display outer loop progress: "OUTER LOOP: Iteration 2/3"
+    - Show clear progress through phases
+    - Display build mode prominently: "Mode: Focused implementation" or "Mode: Full lifecycle"
+    - Display outer loop progress: "OUTER LOOP: Iteration 2/3" (full lifecycle only)
     - Display inner loop counts: "Review iteration 2/3"
     - Show validation convergence: "78% → 85% → 91%"
     - Highlight real validation results with evidence
@@ -808,16 +904,26 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
   </communication_style>
 
   <completion_message>
-## Feature Development Complete
+## Build Complete
 
 **Feature**: {feature_name}
+**Mode**: {Focused implementation | Full lifecycle}
 **Stack**: {detected_stack}
 **Duration**: {total_time}
 **Session**: ${SESSION_PATH}
 
+{If full lifecycle}
 **Outer Loop Iterations**: {outer_iterations}/{max_iterations}
+{/If}
 
 **Phases Completed**:
+{If focused}
+- [x] Stack Detection
+- [x] Planning (single-model)
+- [x] Implementation
+- [x] Unit Testing
+{/If}
+{If full lifecycle}
 - [x] Requirements + Validation Setup
 - [x] Research ({status})
 - [x] Planning ({model_count} models, {iterations} iterations)
@@ -826,7 +932,9 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
 - [x] Unit Testing ({test_count} tests, {iterations} iterations)
 - [x] **Real Validation** ({validation_status})
 - [x] Report generated
+{/If}
 
+{If full lifecycle}
 **Real Validation Results**:
 | Check | Result |
 |-------|--------|
@@ -839,33 +947,43 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
 **Evidence**:
 - Before: ${SESSION_PATH}/validation/screenshot-before.png
 - After: ${SESSION_PATH}/validation/screenshot-after.png
+{/If}
 
 **Quality Summary**:
 - Implementation: All checks pass
 - Review: {verdict} (CRITICAL: {count}, HIGH: {count})
 - Unit Tests: {passing}/{total} passing
-- **Real Validation: PASSED**
+{If full lifecycle}- **Real Validation: PASSED**{/If}
 
+{If full lifecycle}
 **Model Performance** (if multi-model):
 | Model | Time | Issues | Quality | Status |
 |-------|------|--------|---------|--------|
 | {model} | {time}s | {count} | {quality}% | {status} |
+{/If}
 
 **Artifacts**:
 - Requirements: ${SESSION_PATH}/requirements.md
+{If full lifecycle}
 - Validation Config: ${SESSION_PATH}/validation-criteria.md
+{/If}
 - Architecture: ${SESSION_PATH}/architecture.md
 - Implementation Log: ${SESSION_PATH}/implementation-log.md
+{If full lifecycle}
 - Reviews: ${SESSION_PATH}/reviews/
 - Tests: ${SESSION_PATH}/tests/
 - **Validation Evidence**: ${SESSION_PATH}/validation/
+{/If}
 - Report: ${SESSION_PATH}/report.md
 
 **Next Steps**:
-1. Review validation screenshots
-2. Deploy to staging environment
-3. Monitor for issues
+1. Review implementation changes
+{If full lifecycle}
+2. Review validation screenshots
+3. Deploy to staging environment
+4. Monitor for issues
+{/If}
 
-**This feature has been VERIFIED to work with real browser testing!**
+{If full lifecycle}**This feature has been VERIFIED to work with real browser testing!**{/If}
   </completion_message>
 </formatting>

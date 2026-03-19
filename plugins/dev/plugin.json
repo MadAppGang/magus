@@ -1,7 +1,7 @@
 {
   "name": "dev",
-  "version": "1.41.0",
-  "description": "Universal development assistant with real skill discovery. v1.41.0: Anti-slop writing rules merged into doc-writer (52-point quality checklist). 47 skills.",
+  "version": "2.0.0",
+  "description": "Universal development assistant. v2.0.0: Command consolidation — 17 commands to 12 via progressive disclosure. 46 skills, 15 agents.",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",
@@ -44,7 +44,6 @@
   "hooks": "./hooks/hooks.json",
   "agents": [
     "./agents/stack-detector.md",
-    "./agents/skill-discovery.md",
     "./agents/developer.md",
     "./agents/debugger.md",
     "./agents/architect.md",
@@ -62,20 +61,17 @@
   ],
   "commands": [
     "./commands/help.md",
-    "./commands/implement.md",
     "./commands/debug.md",
-    "./commands/feature.md",
-    "./commands/architect.md",
-    "./commands/brainstorm.md",
+    "./commands/build.md",
+    "./commands/plan.md",
+    "./commands/research.md",
     "./commands/interview.md",
-    "./commands/deep-research.md",
+    "./commands/investigate.md",
+    "./commands/review.md",
     "./commands/doc.md",
     "./commands/learn.md",
     "./commands/setup.md",
-    "./commands/delegate.md",
-    "./commands/worktree.md",
-    "./commands/fix.md",
-    "./commands/quick-fix.md"
+    "./commands/worktree.md"
   ],
   "outputStyles": [
     "./output-styles/self-improving.md"

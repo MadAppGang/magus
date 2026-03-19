@@ -2,7 +2,7 @@
 name: interview
 description: Comprehensive specification interview with intelligent requirements elicitation
 allowed-tools: Task, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep
-skills: dev:context-detection, dev:universal-patterns, dev:api-design, dev:design-references, multimodel:quality-gates, multimodel:task-orchestration
+skills: dev:context-detection, dev:universal-patterns, dev:api-design, multimodel:quality-gates, multimodel:task-orchestration
 ---
 
 <role>
@@ -789,14 +789,14 @@ skills: dev:context-detection, dev:universal-patterns, dev:api-design, dev:desig
           Determine recommended next commands:
 
           ALWAYS recommend:
-          - /dev:feature {feature_name} - "To start implementing"
+          - /dev:build {feature_name} - "To start implementing"
 
           If design assets collected:
           - /dev:create-style - "To configure project design style"
           - /dev:ui-design - "To review UI against design system"
 
           If complex architecture:
-          - /dev:architect {topic} - "For detailed technical design"
+          - /dev:plan {topic} - "For detailed technical design"
         </step>
         <step>
           Update session-meta.json (via scribe) with status: "completed"
@@ -1118,7 +1118,7 @@ skills: dev:context-detection, dev:universal-patterns, dev:api-design, dev:desig
       PHASE 4: Synthesize comprehensive spec with all gaps filled
         (Delegated to spec-writer agent)
 
-      PHASE 5: Create 12 implementation tasks, propose /dev:feature
+      PHASE 5: Create 12 implementation tasks, propose /dev:build
     </execution>
   </example>
 
@@ -1302,12 +1302,12 @@ skills: dev:context-detection, dev:universal-patterns, dev:api-design, dev:desig
 - Phase 4 (Polish): {count} tasks
 
 **Recommended Next Steps**:
-1. `/dev:feature {feature_name}` - Start implementation
+1. `/dev:build {feature_name}` - Start implementation
 {if design_assets}
 2. `/dev:create-style` - Configure project design style
 {end}
 {if complex_architecture}
-2. `/dev:architect {topic}` - Detailed technical design
+2. `/dev:plan {topic}` - Detailed technical design
 {end}
 
 Ready to build!
