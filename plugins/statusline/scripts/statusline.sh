@@ -390,14 +390,14 @@ if [ "$SHOW_AGENT" = "true" ] && [ -n "$AGENT_NAME" ]; then
   append_section "${C_CYAN}→${AGENT_NAME}${R}"
 fi
 
-# ── 3. Git branch ─────────────────────────────────────────
+# ── 3. Git branch (background highlight) ─────────────────
 if [ "$SHOW_BRANCH" = "true" ] && [ -n "$BRANCH" ]; then
-  append_section "${C_GREEN}${BRANCH}${R}"
+  append_section "\033[48;5;22m\033[97m ${BRANCH} ${R}"
 fi
 
-# ── 4. Worktree name ──────────────────────────────────────
+# ── 4. Worktree name (background highlight) ──────────────
 if [ "$SHOW_WORKTREE" = "true" ] && [ -n "$WORKTREE_NAME" ]; then
-  append_section "${B}${C_ORANGE}wt:${WORKTREE_NAME}${R}"
+  append_section "\033[48;5;130m${B}\033[97m wt:${WORKTREE_NAME} ${R}"
 fi
 
 # ── 5. Vim mode (if active) ───────────────────────────────
@@ -461,7 +461,7 @@ if [ "$SHOW_DIFF" = "true" ] && { [ "${LINES_ADDED:-0}" -gt 0 ] || [ "${LINES_RE
   append_section "$DIFF_SECTION"
 fi
 
-# ── 9. Context bar (adaptive) ─────────────────────────────
+# ── 9. Context bar (always visible, adaptive width) ───────
 if [ "$SHOW_CONTEXT_BAR" = "true" ]; then
   BAR_COLOR=$(color_for_pct "$PCT")
   CTX_USED_TOKENS="${CURRENT_USAGE:-0}"
@@ -480,35 +480,43 @@ if [ "$SHOW_CONTEXT_BAR" = "true" ]; then
     EXCEEDS_IND=" ${C_RED}${B}200k+${R}"
   fi
 
+  # Adaptive bar width: short bar when low, full bar when high
   if [ "${PCT:-0}" -gt 50 ] 2>/dev/null; then
-    # Full form: bar + tokens + warnings
-    BAR_WIDTH=$CTX_BAR_WIDTH
-    CTX_F=$((PCT * BAR_WIDTH / 100))
-    [ "$CTX_F" -gt "$BAR_WIDTH" ] && CTX_F=$BAR_WIDTH
-    CTX_E=$((BAR_WIDTH - CTX_F))
-
-    CTX_SECTION="${BAR_COLOR}$(repeat_char "$CTX_F" '█')${C_GRAY}$(repeat_char "$CTX_E" '░')${R} ${BAR_COLOR}${PCT}%%${R}"
-
-    if [ -n "$CTX_USED_FMT" ] && [ -n "$CTX_MAX_FMT" ]; then
-      CTX_SECTION="${CTX_SECTION} ${C_GRAY}${D}${CTX_USED_FMT}/${CTX_MAX_FMT}${R}"
-    fi
-
-    CTX_SECTION="${CTX_SECTION}${COMPACT_IND}"
-
-    if [ "${PCT:-0}" -ge 80 ] 2>/dev/null; then
-      CTX_SECTION="${CTX_SECTION} ${C_RED}${B}⚡${R}"
-    fi
-
-    CTX_SECTION="${CTX_SECTION}${EXCEEDS_IND}"
+    CUR_BAR_W=$CTX_BAR_WIDTH      # full width (default 12)
   else
-    # Short form: just percentage with color
-    CTX_SECTION="${BAR_COLOR}${PCT}%%${R}${COMPACT_IND}${EXCEEDS_IND}"
+    CUR_BAR_W=6                    # compact width
   fi
+
+  CTX_F=$((PCT * CUR_BAR_W / 100))
+  [ "$CTX_F" -gt "$CUR_BAR_W" ] && CTX_F=$CUR_BAR_W
+  CTX_E=$((CUR_BAR_W - CTX_F))
+
+  # Percentage label — background highlight when critical (≥80%)
+  if [ "${PCT:-0}" -ge 80 ] 2>/dev/null; then
+    PCT_LABEL="\033[41m${B}\033[97m ${PCT}%% ${R}"
+  else
+    PCT_LABEL="${BAR_COLOR}${PCT}%%${R}"
+  fi
+
+  CTX_SECTION="${BAR_COLOR}$(repeat_char "$CTX_F" '█')${C_GRAY}$(repeat_char "$CTX_E" '░')${R} ${PCT_LABEL}"
+
+  # Token count in full form
+  if [ "${PCT:-0}" -gt 50 ] 2>/dev/null && [ -n "$CTX_USED_FMT" ] && [ -n "$CTX_MAX_FMT" ]; then
+    CTX_SECTION="${CTX_SECTION} ${C_GRAY}${D}${CTX_USED_FMT}/${CTX_MAX_FMT}${R}"
+  fi
+
+  CTX_SECTION="${CTX_SECTION}${COMPACT_IND}"
+
+  if [ "${PCT:-0}" -ge 80 ] 2>/dev/null; then
+    CTX_SECTION="${CTX_SECTION} ${C_RED}${B}⚡${R}"
+  fi
+
+  CTX_SECTION="${CTX_SECTION}${EXCEEDS_IND}"
 
   append_section "$CTX_SECTION"
 fi
 
-# ── 10. Plan limits (adaptive) ────────────────────────────
+# ── 10. Plan limits (always bar, adaptive width) ──────────
 if [ "$SHOW_PLAN_LIMITS" = "true" ] && { [ -n "$FIVE_HR" ] || [ -n "$SEVEN_DAY" ]; }; then
   FIVE_HR=${FIVE_HR:-0}
   SEVEN_DAY=${SEVEN_DAY:-0}
@@ -516,44 +524,53 @@ if [ "$SHOW_PLAN_LIMITS" = "true" ] && { [ -n "$FIVE_HR" ] || [ -n "$SEVEN_DAY" 
     FH_C=$(plan_color_for_pct "$FIVE_HR")
     SD_C=$(plan_color_for_pct "$SEVEN_DAY")
 
-    # Adaptive: full form if either >40%, short form otherwise
+    # Adaptive bar width: short when both low, full when either high
     if [ "${FIVE_HR:-0}" -gt 40 ] || [ "${SEVEN_DAY:-0}" -gt 40 ] 2>/dev/null; then
-      # Full form: dual bar with countdowns
-      PLAN_W=$PLAN_BAR_WIDTH
-      N_5H=$((FIVE_HR * PLAN_W / 100))
-      N_7D=$((SEVEN_DAY * PLAN_W / 100))
-      [ "$N_5H" -gt "$PLAN_W" ] && N_5H=$PLAN_W
-      [ "$N_7D" -gt "$PLAN_W" ] && N_7D=$PLAN_W
-
-      MIN_N=$N_5H; MAX_N=$N_7D; MID_CH='▄'
-      if [ "$N_5H" -gt "$N_7D" ]; then
-        MIN_N=$N_7D; MAX_N=$N_5H; MID_CH='▀'
-      fi
-      N_BOTH=$MIN_N
-      N_MID=$((MAX_N - MIN_N))
-      N_EMPTY=$((PLAN_W - MAX_N))
-
-      MAX_P=$FIVE_HR
-      [ "${SEVEN_DAY:-0}" -gt "$MAX_P" ] && MAX_P=$SEVEN_DAY
-      P_COLOR=$(plan_color_for_pct "$MAX_P")
-
-      PBAR="${P_COLOR}$(repeat_char "$N_BOTH" '█')$(repeat_char "$N_MID" "$MID_CH")${R}${C_GRAY}${D}$(repeat_char "$N_EMPTY" '-')${R}"
-
-      FH_LABEL="${FH_C}${D}5h${R}${FH_C}:${FIVE_HR}%%${R}"
-      if [ -n "$FIVE_HR_CD" ]; then
-        FH_LABEL="${FH_LABEL} ${C_GRAY}${D}↻${FIVE_HR_CD}${R}"
-      fi
-
-      SD_LABEL="${SD_C}${D}7d${R}${SD_C}:${SEVEN_DAY}%%${R}"
-      if [ -n "$SEVEN_DAY_CD" ]; then
-        SD_LABEL="${SD_LABEL} ${C_GRAY}${D}↻${SEVEN_DAY_CD}${R}"
-      fi
-
-      append_section "${PBAR} ${FH_LABEL} ${SD_LABEL}"
+      PLAN_W=$PLAN_BAR_WIDTH      # full width (default 10)
     else
-      # Short form: just text, no bar, no countdowns
-      append_section "${FH_C}5h:${FIVE_HR}%%${R} ${SD_C}7d:${SEVEN_DAY}%%${R}"
+      PLAN_W=5                     # compact width
     fi
+
+    N_5H=$((FIVE_HR * PLAN_W / 100))
+    N_7D=$((SEVEN_DAY * PLAN_W / 100))
+    [ "$N_5H" -gt "$PLAN_W" ] && N_5H=$PLAN_W
+    [ "$N_7D" -gt "$PLAN_W" ] && N_7D=$PLAN_W
+
+    MIN_N=$N_5H; MAX_N=$N_7D; MID_CH='▄'
+    if [ "$N_5H" -gt "$N_7D" ]; then
+      MIN_N=$N_7D; MAX_N=$N_5H; MID_CH='▀'
+    fi
+    N_BOTH=$MIN_N
+    N_MID=$((MAX_N - MIN_N))
+    N_EMPTY=$((PLAN_W - MAX_N))
+
+    MAX_P=$FIVE_HR
+    [ "${SEVEN_DAY:-0}" -gt "$MAX_P" ] && MAX_P=$SEVEN_DAY
+    P_COLOR=$(plan_color_for_pct "$MAX_P")
+
+    PBAR="${P_COLOR}$(repeat_char "$N_BOTH" '█')$(repeat_char "$N_MID" "$MID_CH")${R}${C_GRAY}${D}$(repeat_char "$N_EMPTY" '-')${R}"
+
+    # 5h label — background highlight when critical (≥80%)
+    if [ "${FIVE_HR:-0}" -ge 80 ] 2>/dev/null; then
+      FH_LABEL="\033[41m${B}\033[97m 5h:${FIVE_HR}%% ${R}"
+    else
+      FH_LABEL="${FH_C}${D}5h${R}${FH_C}:${FIVE_HR}%%${R}"
+    fi
+    if [ -n "$FIVE_HR_CD" ]; then
+      FH_LABEL="${FH_LABEL} ${C_GRAY}${D}↻${FIVE_HR_CD}${R}"
+    fi
+
+    # 7d label — background highlight when critical (≥80%)
+    if [ "${SEVEN_DAY:-0}" -ge 80 ] 2>/dev/null; then
+      SD_LABEL="\033[41m${B}\033[97m 7d:${SEVEN_DAY}%% ${R}"
+    else
+      SD_LABEL="${SD_C}${D}7d${R}${SD_C}:${SEVEN_DAY}%%${R}"
+    fi
+    if [ -n "$SEVEN_DAY_CD" ]; then
+      SD_LABEL="${SD_LABEL} ${C_GRAY}${D}↻${SEVEN_DAY_CD}${R}"
+    fi
+
+    append_section "${PBAR} ${FH_LABEL} ${SD_LABEL}"
   fi
 fi
 
