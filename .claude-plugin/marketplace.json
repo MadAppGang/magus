@@ -236,8 +236,8 @@
     {
       "name": "statusline",
       "source": "./plugins/statusline",
-      "description": "Colorful statusline with worktree awareness, plan limits with reset countdowns, token counts, compaction detection, and customizable themes. v1.4.1: UTC timezone fix, days/hours duration formatting.",
-      "version": "1.4.1",
+      "description": "Adaptive statusline — native rate limits, provider-aware model display, vim mode, diff stats, compaction count, adaptive detail, single jq call. v2.0.0: Major rewrite using native Claude Code JSON fields.",
+      "version": "2.0.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",

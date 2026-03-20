@@ -1,7 +1,7 @@
 {
   "name": "statusline",
-  "version": "1.4.1",
-  "description": "Colorful statusline with worktree awareness, plan limits with reset countdowns, token counts, compaction detection, and customizable themes.",
+  "version": "2.0.0",
+  "description": "Colorful adaptive statusline — native rate limits, worktree detection, provider-aware model display, vim mode, diff stats, compaction count, and 4 themes.",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",
