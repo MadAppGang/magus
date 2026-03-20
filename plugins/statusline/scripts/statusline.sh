@@ -5,6 +5,14 @@
 
 input=$(cat)
 
+# ── Debug: capture raw JSON for test fixtures ─────────────
+# Set STATUSLINE_DEBUG=1 to save each render's input JSON
+if [ "${STATUSLINE_DEBUG:-0}" = "1" ]; then
+  DEBUG_DIR="$HOME/.claude/.statusline-debug"
+  mkdir -p "$DEBUG_DIR"
+  printf '%s\n' "$input" > "${DEBUG_DIR}/$(date +%s).json"
+fi
+
 # ── Config file (optional) ───────────────────────────────
 CONFIG_FILE="$HOME/.claude/statusline-config.json"
 
@@ -178,8 +186,8 @@ eval "$(printf '%s' "$input" | jq -r '
   "CURRENT_USAGE=\(n(.context_window.current_usage))",
   "TOTAL_INPUT_TOKENS=\(n(.context_window.total_input_tokens))",
   "SESSION_ID=\(s(.session_id) | @sh)",
-  "FIVE_HR=\(n(.rate_limits.five_hour.used_percentage))",
-  "SEVEN_DAY=\(n(.rate_limits.seven_day.used_percentage))",
+  "FIVE_HR=\(s(.rate_limits.five_hour.used_percentage) | @sh)",
+  "SEVEN_DAY=\(s(.rate_limits.seven_day.used_percentage) | @sh)",
   "FIVE_HR_RESET=\(s(.rate_limits.five_hour.resets_at) | @sh)",
   "SEVEN_DAY_RESET=\(s(.rate_limits.seven_day.resets_at) | @sh)",
   "WORKTREE_NAME_NATIVE=\(s(.worktree.name) | @sh)",
@@ -298,6 +306,45 @@ if [ -n "$SESSION_ID" ] && [ "${TOTAL_INPUT_TOKENS:-0}" -gt 0 ] 2>/dev/null; the
     COMPACTION_COUNT=$((COMPACTION_COUNT + 1))
   fi
   printf '%s %s\n' "$TOTAL_INPUT_TOKENS" "$COMPACTION_COUNT" > "$TOKEN_CACHE"
+fi
+
+# ── Plan usage fallback (API poll when native fields absent) ──
+if [ -z "$FIVE_HR" ] && [ -z "$SEVEN_DAY" ]; then
+  USAGE_CACHE="$HOME/.claude/.statusline-usage-cache.json"
+  CACHE_TTL=60
+  NEED_REFRESH=0
+  if [ ! -f "$USAGE_CACHE" ]; then
+    NEED_REFRESH=1
+  else
+    CACHE_MTIME=$(stat -f %m "$USAGE_CACHE" 2>/dev/null || stat -c %Y "$USAGE_CACHE" 2>/dev/null || echo 0)
+    NOW_TS=$(date +%s)
+    [ $((NOW_TS - CACHE_MTIME)) -gt "$CACHE_TTL" ] && NEED_REFRESH=1
+  fi
+
+  if [ "$NEED_REFRESH" -eq 1 ]; then
+    (
+      TOKEN=$(security find-generic-password -s "Claude Code-credentials" -w 2>/dev/null | jq -r '.claudeAiOauth.accessToken // empty' 2>/dev/null)
+      if [ -z "$TOKEN" ]; then
+        TOKEN=$(cat "$HOME/.claude/.credentials" 2>/dev/null | jq -r '.claudeAiOauth.accessToken // empty' 2>/dev/null)
+      fi
+      if [ -n "$TOKEN" ]; then
+        curl -s --max-time 3 \
+          -H "Accept: application/json" \
+          -H "Content-Type: application/json" \
+          -H "Authorization: Bearer $TOKEN" \
+          -H "anthropic-beta: oauth-2025-04-20" \
+          "https://api.anthropic.com/api/oauth/usage" > "${USAGE_CACHE}.tmp" 2>/dev/null \
+        && mv "${USAGE_CACHE}.tmp" "$USAGE_CACHE"
+      fi
+    ) &
+  fi
+
+  if [ -f "$USAGE_CACHE" ]; then
+    FIVE_HR=$(jq -r '.five_hour.utilization // empty' "$USAGE_CACHE" 2>/dev/null | cut -d. -f1)
+    SEVEN_DAY=$(jq -r '.seven_day.utilization // empty' "$USAGE_CACHE" 2>/dev/null | cut -d. -f1)
+    FIVE_HR_RESET=$(jq -r '.five_hour.resets_at // empty' "$USAGE_CACHE" 2>/dev/null)
+    SEVEN_DAY_RESET=$(jq -r '.seven_day.resets_at // empty' "$USAGE_CACHE" 2>/dev/null)
+  fi
 fi
 
 # ── Compute reset countdowns ────────────────────────────
@@ -462,8 +509,10 @@ if [ "$SHOW_CONTEXT_BAR" = "true" ]; then
 fi
 
 # ── 10. Plan limits (adaptive) ────────────────────────────
-if [ "$SHOW_PLAN_LIMITS" = "true" ] && [ "${FIVE_HR:-0}" -gt 0 ] || [ "${SEVEN_DAY:-0}" -gt 0 ] 2>/dev/null; then
-  if [ -n "$FIVE_HR" ] && [ -n "$SEVEN_DAY" ]; then
+if [ "$SHOW_PLAN_LIMITS" = "true" ] && { [ -n "$FIVE_HR" ] || [ -n "$SEVEN_DAY" ]; }; then
+  FIVE_HR=${FIVE_HR:-0}
+  SEVEN_DAY=${SEVEN_DAY:-0}
+  if [ "$FIVE_HR" -gt 0 ] || [ "$SEVEN_DAY" -gt 0 ] 2>/dev/null; then
     FH_C=$(plan_color_for_pct "$FIVE_HR")
     SD_C=$(plan_color_for_pct "$SEVEN_DAY")
 
