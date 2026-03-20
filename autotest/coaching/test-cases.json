@@ -562,6 +562,401 @@
         "recommendations_not_contains": "multi-model review",
         "exit_code_is": 0
       }
+    },
+    {
+      "id": "coaching-bash-terminal-run-01",
+      "description": "3+ Bash test commands trigger terminal plugin suggestion",
+      "category": "rule-detection",
+      "tags": ["bash-instead-of-terminal-run", "plugin-discovery"],
+      "filler_count": 7,
+      "transcript": [
+        {"tool": "Bash", "input": {"command": "bun test"}},
+        {"tool": "Bash", "input": {"command": "bun test --watch"}},
+        {"tool": "Bash", "input": {"command": "npm test"}}
+      ],
+      "checks": {
+        "recommendations_not_null": true,
+        "recommendations_contains": "terminal",
+        "exit_code_is": 0
+      }
+    },
+    {
+      "id": "coaching-webfetch-browser-use-01",
+      "description": "3+ WebFetch calls trigger browser-use plugin suggestion",
+      "category": "rule-detection",
+      "tags": ["webfetch-instead-of-browser-use", "plugin-discovery"],
+      "filler_count": 7,
+      "transcript": [
+        {"tool": "WebFetch", "input": {"url": "https://example.com/page1"}},
+        {"tool": "WebFetch", "input": {"url": "https://example.com/page2"}},
+        {"tool": "WebFetch", "input": {"url": "https://example.com/page3"}}
+      ],
+      "checks": {
+        "recommendations_not_null": true,
+        "recommendations_contains": "browser-use",
+        "exit_code_is": 0
+      }
+    },
+    {
+      "id": "coaching-claudish-in-bash-01",
+      "description": "claudish in a Bash call triggers sub-agent suggestion",
+      "category": "rule-detection",
+      "tags": ["claudish-in-main-bash", "api-correctness"],
+      "filler_count": 9,
+      "transcript": [
+        {"tool": "Bash", "input": {"command": "claudish --model x-ai/grok-code-fast-1 --stdin --quiet < prompt.md > result.md"}}
+      ],
+      "checks": {
+        "recommendations_not_null": true,
+        "recommendations_contains": "sub-agent",
+        "exit_code_is": 0
+      }
+    },
+    {
+      "id": "coaching-direct-settings-edit-01",
+      "description": "Write to .claude/settings.json triggers claudeup TUI suggestion",
+      "category": "rule-detection",
+      "tags": ["direct-settings-json-edit", "plugin-discovery"],
+      "filler_count": 9,
+      "transcript": [
+        {"tool": "Write", "input": {"file_path": "/project/.claude/settings.json", "content": "{\"enabledPlugins\":{\"dev@magus\":true}}"}}
+      ],
+      "checks": {
+        "recommendations_not_null": true,
+        "recommendations_contains": "claudeup",
+        "exit_code_is": 0
+      }
+    },
+    {
+      "id": "coaching-bash-ffmpeg-01",
+      "description": "Bash with ffmpeg command triggers video-editing plugin suggestion",
+      "category": "rule-detection",
+      "tags": ["bash-ffmpeg-without-plugin", "plugin-discovery"],
+      "filler_count": 9,
+      "transcript": [
+        {"tool": "Bash", "input": {"command": "ffmpeg -i input.mp4 -c:v libx264 output.mp4"}}
+      ],
+      "checks": {
+        "recommendations_not_null": true,
+        "recommendations_contains": "video-editing",
+        "exit_code_is": 0
+      }
+    },
+    {
+      "id": "coaching-no-mnemex-investigation-01",
+      "description": "5+ Grep calls with no mnemex triggers mnemex suggestion",
+      "category": "rule-detection",
+      "tags": ["no-mnemex-during-investigation", "search-efficiency"],
+      "filler_count": 5,
+      "transcript": [
+        {"tool": "Grep", "input": {"pattern": "AuthService", "path": "/project/src"}},
+        {"tool": "Grep", "input": {"pattern": "UserRepository", "path": "/project/src"}},
+        {"tool": "Grep", "input": {"pattern": "TokenManager", "path": "/project/src"}},
+        {"tool": "Grep", "input": {"pattern": "SessionStore", "path": "/project/src"}},
+        {"tool": "Grep", "input": {"pattern": "PermissionGuard", "path": "/project/src"}}
+      ],
+      "checks": {
+        "recommendations_not_null": true,
+        "recommendations_contains": "mnemex",
+        "exit_code_is": 0
+      }
+    },
+    {
+      "id": "coaching-sequential-reads-mnemex-01",
+      "description": "9 sequential Read calls (8 adjacent pairs) trigger mnemex callers suggestion (excessive-reads rule suppressed)",
+      "category": "rule-detection",
+      "tags": ["sequential-reads-suggest-mnemex", "search-efficiency"],
+      "filler_count": 1,
+      "transcript": [
+        {"tool": "Read", "input": {"file_path": "/project/src/auth.ts"}},
+        {"tool": "Read", "input": {"file_path": "/project/src/user.ts"}},
+        {"tool": "Read", "input": {"file_path": "/project/src/token.ts"}},
+        {"tool": "Read", "input": {"file_path": "/project/src/session.ts"}},
+        {"tool": "Read", "input": {"file_path": "/project/src/permission.ts"}},
+        {"tool": "Read", "input": {"file_path": "/project/src/role.ts"}},
+        {"tool": "Read", "input": {"file_path": "/project/src/guard.ts"}},
+        {"tool": "Read", "input": {"file_path": "/project/src/middleware.ts"}},
+        {"tool": "Read", "input": {"file_path": "/project/src/interceptor.ts"}}
+      ],
+      "pre_state": {
+        "_session_count": 5,
+        "rules": {
+          "excessive-reads-before-delegation": {
+            "last_shown_session": 3,
+            "shown_count": 1,
+            "suppress_until_count": 20
+          }
+        }
+      },
+      "checks": {
+        "recommendations_not_null": true,
+        "recommendations_contains": "callers",
+        "exit_code_is": 0
+      }
+    },
+    {
+      "id": "coaching-plugin-install-claudeup-01",
+      "description": "Bash with /plugin marketplace add triggers claudeup TUI suggestion",
+      "category": "rule-detection",
+      "tags": ["suggest-claudeup-for-plugin-install", "plugin-discovery"],
+      "filler_count": 9,
+      "transcript": [
+        {"tool": "Bash", "input": {"command": "/plugin marketplace add MadAppGang/magus"}}
+      ],
+      "checks": {
+        "recommendations_not_null": true,
+        "recommendations_contains": "claudeup",
+        "exit_code_is": 0
+      }
+    },
+    {
+      "id": "coaching-external-model-claudish-01",
+      "description": "Task prompt mentioning grok but no claudish triggers claudish suggestion",
+      "category": "rule-detection",
+      "tags": ["suggest-claudish-for-external-models", "plugin-discovery"],
+      "filler_count": 9,
+      "transcript": [
+        {"tool": "Task", "input": {"subagent_type": "dev:developer", "prompt": "use grok to review this code and compare approaches"}}
+      ],
+      "checks": {
+        "recommendations_not_null": true,
+        "recommendations_contains": "claudish",
+        "exit_code_is": 0
+      }
+    },
+    {
+      "id": "coaching-designer-review-missing-01",
+      "description": "UI implementation with dev:frontend but no designer review triggers designer suggestion",
+      "category": "rule-detection",
+      "tags": ["designer-review-after-ui-implementation", "quality-assurance"],
+      "filler_count": 5,
+      "transcript": [
+        {"tool": "Task", "input": {"subagent_type": "dev:frontend", "prompt": "implement the login form component"}},
+        {"tool": "Task", "input": {"subagent_type": "dev:frontend", "prompt": "implement the dashboard layout"}},
+        {"tool": "Task", "input": {"subagent_type": "dev:frontend", "prompt": "implement the settings page"}},
+        {"tool": "Write", "input": {"file_path": "/project/src/LoginForm.tsx", "content": "x"}},
+        {"tool": "Write", "input": {"file_path": "/project/src/Dashboard.tsx", "content": "x"}}
+      ],
+      "checks": {
+        "recommendations_not_null": true,
+        "recommendations_contains": "designer",
+        "exit_code_is": 0
+      }
+    },
+    {
+      "id": "coaching-agentdev-bypassed-01",
+      "description": "Write to agents/*.md triggers agentdev workflow suggestion",
+      "category": "rule-detection",
+      "tags": ["agentdev-workflow-bypassed", "quality-assurance"],
+      "filler_count": 9,
+      "transcript": [
+        {"tool": "Write", "input": {"file_path": "/project/agents/my-custom-agent.md", "content": "# Custom Agent\nDoes things."}}
+      ],
+      "checks": {
+        "recommendations_not_null": true,
+        "recommendations_contains": "agentdev",
+        "exit_code_is": 0
+      }
+    },
+    {
+      "id": "coaching-conductor-missing-01",
+      "description": "5+ dev:developer Tasks without conductor triggers conductor suggestion",
+      "category": "rule-detection",
+      "tags": ["conductor-missing-for-multi-session-feature", "plugin-discovery"],
+      "filler_count": 5,
+      "transcript": [
+        {"tool": "Task", "input": {"subagent_type": "dev:developer", "prompt": "implement auth module"}},
+        {"tool": "Task", "input": {"subagent_type": "dev:developer", "prompt": "implement user module"}},
+        {"tool": "Task", "input": {"subagent_type": "dev:developer", "prompt": "implement session module"}},
+        {"tool": "Task", "input": {"subagent_type": "dev:developer", "prompt": "implement permission module"}},
+        {"tool": "Task", "input": {"subagent_type": "dev:developer", "prompt": "implement notification module"}}
+      ],
+      "checks": {
+        "recommendations_not_null": true,
+        "recommendations_contains": "conductor",
+        "exit_code_is": 0
+      }
+    },
+    {
+      "id": "coaching-nanobanana-not-suggested-01",
+      "description": "Bash mentioning midjourney triggers nanobanana plugin suggestion",
+      "category": "rule-detection",
+      "tags": ["nanobanana-not-suggested-for-images", "plugin-discovery"],
+      "filler_count": 9,
+      "transcript": [
+        {"tool": "Bash", "input": {"command": "echo 'generate image with midjourney: a sunset over mountains'"}}
+      ],
+      "checks": {
+        "recommendations_not_null": true,
+        "recommendations_contains": "nanobanana",
+        "exit_code_is": 0
+      }
+    },
+    {
+      "id": "coaching-seo-plugin-01",
+      "description": "Bash with semrush reference triggers seo plugin suggestion",
+      "category": "rule-detection",
+      "tags": ["seo-plugin-for-web-content", "plugin-discovery"],
+      "filler_count": 9,
+      "transcript": [
+        {"tool": "Bash", "input": {"command": "open https://www.semrush.com/analytics/keywordoverview/"}}
+      ],
+      "checks": {
+        "recommendations_not_null": true,
+        "recommendations_contains": "seo",
+        "exit_code_is": 0
+      }
+    },
+    {
+      "id": "coaching-browser-use-playwright-01",
+      "description": "Bash with playwright reference triggers browser-use plugin suggestion",
+      "category": "rule-detection",
+      "tags": ["browser-use-for-playwright-selenium", "plugin-discovery"],
+      "filler_count": 9,
+      "transcript": [
+        {"tool": "Bash", "input": {"command": "npx playwright test --headed"}}
+      ],
+      "checks": {
+        "recommendations_not_null": true,
+        "recommendations_contains": "browser-use",
+        "exit_code_is": 0
+      }
+    },
+    {
+      "id": "coaching-dev-setup-claude-md-01",
+      "description": "Write to CLAUDE.md triggers /dev:setup suggestion",
+      "category": "rule-detection",
+      "tags": ["dev-setup-missing-routing-table", "plugin-discovery"],
+      "filler_count": 9,
+      "transcript": [
+        {"tool": "Write", "input": {"file_path": "/project/CLAUDE.md", "content": "# Project Context\n\n## Stack\nTypeScript"}}
+      ],
+      "checks": {
+        "recommendations_not_null": true,
+        "recommendations_contains": "/dev:setup",
+        "exit_code_is": 0
+      }
+    },
+    {
+      "id": "coaching-tui-via-bash-01",
+      "description": "Bash with lazygit triggers terminal plugin TUI suggestion",
+      "category": "rule-detection",
+      "tags": ["tui-via-bash-instead-of-terminal", "plugin-discovery"],
+      "filler_count": 9,
+      "transcript": [
+        {"tool": "Bash", "input": {"command": "lazygit"}}
+      ],
+      "checks": {
+        "recommendations_not_null": true,
+        "recommendations_contains": "terminal",
+        "exit_code_is": 0
+      }
+    },
+    {
+      "id": "coaching-audience-human-section-01",
+      "description": "Human-audience rule (single-model-critical-review) produces [human] section in recommendations",
+      "category": "audience-split",
+      "tags": ["audience", "human", "single-model-critical-review"],
+      "filler_count": 9,
+      "transcript": [
+        {"tool": "Task", "input": {"subagent_type": "dev:developer", "prompt": "perform a thorough code review of the auth module"}}
+      ],
+      "checks": {
+        "recommendations_not_null": true,
+        "recommendations_contains_section": "human",
+        "exit_code_is": 0
+      }
+    },
+    {
+      "id": "coaching-audience-claude-section-01",
+      "description": "Claude-audience rule (grep-instead-of-mnemex) produces [claude] section in recommendations",
+      "category": "audience-split",
+      "tags": ["audience", "claude", "grep-instead-of-mnemex"],
+      "filler_count": 7,
+      "transcript": [
+        {"tool": "Bash", "input": {"command": "grep -r 'pattern' src/"}},
+        {"tool": "Bash", "input": {"command": "grep -n 'pattern' lib/"}},
+        {"tool": "Bash", "input": {"command": "grep 'pattern' tests/"}}
+      ],
+      "checks": {
+        "recommendations_not_null": true,
+        "recommendations_contains_section": "claude",
+        "exit_code_is": 0
+      }
+    },
+    {
+      "id": "coaching-audience-both-sections-01",
+      "description": "Triggering both human and claude rules produces both [human] and [claude] sections",
+      "category": "audience-split",
+      "tags": ["audience", "human", "claude", "dual-channel"],
+      "filler_count": 4,
+      "transcript": [
+        {"tool": "Bash", "input": {"command": "grep -r 'pattern' src/"}},
+        {"tool": "Bash", "input": {"command": "grep -n 'pattern' lib/"}},
+        {"tool": "Bash", "input": {"command": "grep 'pattern' tests/"}},
+        {"tool": "Task", "input": {"subagent_type": "dev:developer", "prompt": "perform a thorough code review of the security module"}},
+        {"tool": "Write", "input": {"file_path": "/project/f1.ts", "content": "x"}},
+        {"tool": "Write", "input": {"file_path": "/project/f2.ts", "content": "x"}}
+      ],
+      "checks": {
+        "recommendations_not_null": true,
+        "recommendations_contains_section": "human",
+        "recommendations_contains_2": "[claude]",
+        "exit_code_is": 0
+      }
+    },
+    {
+      "id": "coaching-sessionstart-dual-channel-01",
+      "description": "Full pipeline with both audiences: SessionStart has Coaching (human) and Silent Behavioral (claude) blocks",
+      "category": "audience-split",
+      "tags": ["sessionstart", "dual-channel", "full-pipeline", "audience"],
+      "filler_count": 4,
+      "transcript": [
+        {"tool": "Bash", "input": {"command": "grep -r 'pattern' src/"}},
+        {"tool": "Bash", "input": {"command": "grep -n 'pattern' lib/"}},
+        {"tool": "Bash", "input": {"command": "grep 'pattern' tests/"}},
+        {"tool": "Task", "input": {"subagent_type": "dev:developer", "prompt": "perform a thorough code review of the security module"}},
+        {"tool": "Write", "input": {"file_path": "/project/f1.ts", "content": "x"}},
+        {"tool": "Write", "input": {"file_path": "/project/f2.ts", "content": "x"}}
+      ],
+      "checks": {
+        "recommendations_not_null": true,
+        "sessionstart_output_valid_json": true,
+        "sessionstart_has_additional_context": true,
+        "sessionstart_context_contains": "Coaching",
+        "sessionstart_context_contains_2": "Silent Behavioral",
+        "exit_code_is": 0
+      }
+    },
+    {
+      "id": "coaching-negative-terminal-low-count-01",
+      "description": "Only 2 Bash test calls (below threshold of 3) should NOT trigger terminal suggestion",
+      "category": "negative",
+      "tags": ["bash-instead-of-terminal-run", "negative", "boundary"],
+      "filler_count": 8,
+      "transcript": [
+        {"tool": "Bash", "input": {"command": "bun test"}},
+        {"tool": "Bash", "input": {"command": "npm test"}}
+      ],
+      "checks": {
+        "recommendations_not_contains": "terminal",
+        "exit_code_is": 0
+      }
+    },
+    {
+      "id": "coaching-negative-webfetch-low-count-01",
+      "description": "Only 2 WebFetch calls (below threshold of 3) should NOT trigger browser-use suggestion",
+      "category": "negative",
+      "tags": ["webfetch-instead-of-browser-use", "negative", "boundary"],
+      "filler_count": 8,
+      "transcript": [
+        {"tool": "WebFetch", "input": {"url": "https://example.com/page1"}},
+        {"tool": "WebFetch", "input": {"url": "https://example.com/page2"}}
+      ],
+      "checks": {
+        "recommendations_not_contains": "browser-use",
+        "exit_code_is": 0
+      }
     }
   ]
 }

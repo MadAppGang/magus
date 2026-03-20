@@ -2,7 +2,7 @@
 /**
  * Workflow Coaching Analyzer
  *
- * Parses a Claude Code session transcript (JSONL), applies 8 rule-based
+ * Parses a Claude Code session transcript (JSONL), applies rule-based
  * detectors, and writes top-3 coaching suggestions to the output file.
  *
  * Usage:
@@ -52,10 +52,18 @@ interface RuleSignal {
   no_bash_pattern?: string;
   bash_patterns?: Array<{ pattern: string; plugin: string; command: string }>;
   min_sequential?: number;
+  // New signal fields for medium-complexity rules
+  absent_tool_prefix?: string;
+  feature_session_agents?: string[];
+  requires_ask_user_or_claudish?: boolean;
+  absent_agent?: string;
+  min_agent_count?: number;
+  absent_bash_pattern?: string;
 }
 
 interface Rule {
   id: string;
+  audience: "human" | "claude";
   signal: RuleSignal;
   category: string;
   priority: number;
@@ -77,6 +85,7 @@ interface CoachingState {
 
 interface MatchedSuggestion {
   id: string;
+  audience: "human" | "claude";
   category: string;
   priority: number;
   suggestion: string;
@@ -191,6 +200,8 @@ function applyRules(
   const bashCalls = toolCalls.filter((tc) => tc.tool === "Bash");
   const taskCalls = toolCalls.filter((tc) => tc.tool === "Task");
   const readCalls = toolCalls.filter((tc) => tc.tool === "Read");
+  const grepCalls = toolCalls.filter((tc) => tc.tool === "Grep");
+  const webFetchCalls = toolCalls.filter((tc) => tc.tool === "WebFetch");
 
   const sortedRules = [...rules].sort(
     (a, b) => (a.priority ?? 99) - (b.priority ?? 99)
@@ -300,7 +311,13 @@ function applyRules(
         break;
       }
 
-      case "plugin-command-gap": {
+      case "plugin-command-gap":
+      case "bash-ffmpeg-without-plugin":
+      case "suggest-claudeup-for-plugin-install":
+      case "nanobanana-not-suggested-for-images":
+      case "seo-plugin-for-web-content":
+      case "browser-use-for-playwright-selenium":
+      case "tui-via-bash-instead-of-terminal": {
         const bashPatterns = signal.bash_patterns ?? [];
         outerLoop: for (const c of bashCalls) {
           const cmd = String(c.input.command ?? "");
@@ -366,6 +383,135 @@ function applyRules(
         }
         break;
       }
+
+      case "bash-instead-of-terminal-run": {
+        const terminalPattern = new RegExp(signal.command_pattern ?? "");
+        const matchingCalls = bashCalls.filter((c) =>
+          terminalPattern.test(String(c.input.command ?? ""))
+        );
+        if (matchingCalls.length >= (signal.min_count ?? 3)) {
+          matched = true;
+          substitutions.count = String(matchingCalls.length);
+        }
+        break;
+      }
+
+      case "webfetch-instead-of-browser-use": {
+        if (webFetchCalls.length >= (signal.min_count ?? 3)) {
+          matched = true;
+          substitutions.count = String(webFetchCalls.length);
+        }
+        break;
+      }
+
+      case "claudish-in-main-bash": {
+        const claudishPattern = new RegExp(signal.command_pattern ?? "");
+        const claudishCalls = bashCalls.filter((c) =>
+          claudishPattern.test(String(c.input.command ?? ""))
+        );
+        if (claudishCalls.length >= (signal.min_count ?? 1)) {
+          matched = true;
+        }
+        break;
+      }
+
+      case "direct-settings-json-edit":
+      case "agentdev-workflow-bypassed":
+      case "dev-setup-missing-routing-table": {
+        // Detect Write calls whose file_path matches command_pattern
+        const writeCalls = toolCalls.filter((tc) => tc.tool === "Write");
+        const filePattern = new RegExp(signal.command_pattern ?? "");
+        const matchingWrite = writeCalls.find((tc) =>
+          filePattern.test(String(tc.input.file_path ?? ""))
+        );
+        if (matchingWrite) {
+          matched = true;
+        }
+        break;
+      }
+
+      case "no-mnemex-during-investigation": {
+        // Fire when Grep count >= min_count AND no mcp__mnemex__* tool calls exist
+        const minCount = signal.min_count ?? 5;
+        const absentPrefix = signal.absent_tool_prefix ?? "";
+        const hasMnemex = toolCalls.some((tc) =>
+          absentPrefix ? tc.tool.startsWith(absentPrefix) : false
+        );
+        if (grepCalls.length >= minCount && !hasMnemex) {
+          matched = true;
+          substitutions.count = String(grepCalls.length);
+        }
+        break;
+      }
+
+      case "sequential-reads-suggest-mnemex": {
+        // Count sequential Read calls (adjacent with no gaps of more than 2 orders)
+        let sequential = 0;
+        for (let i = 0; i < readCalls.length - 1; i++) {
+          const a = readCalls[i];
+          const b = readCalls[i + 1];
+          if (b.order - a.order <= 2) {
+            sequential++;
+          }
+        }
+        if (sequential >= (signal.min_sequential ?? 8)) {
+          matched = true;
+          substitutions.count = String(sequential + 1);
+        }
+        break;
+      }
+
+      case "suggest-claudish-for-external-models": {
+        const externalPattern = new RegExp(signal.prompt_pattern ?? "", "i");
+        const noBashPat = signal.no_bash_pattern;
+        const matchingTasks = taskCalls.filter((tc) =>
+          externalPattern.test(String(tc.input.prompt ?? ""))
+        );
+        const claudishUsed = noBashPat
+          ? bashCalls.some((c) =>
+              String(c.input.command ?? "").includes(noBashPat)
+            )
+          : false;
+        if (matchingTasks.length > 0 && !claudishUsed) {
+          matched = true;
+        }
+        break;
+      }
+
+      case "designer-review-after-ui-implementation": {
+        // Signal: dev:frontend Task present AND no designer:design-review Task
+        const frontendTasks = taskCalls.filter(
+          (tc) => String(tc.input.subagent_type ?? "") === "dev:frontend"
+        );
+        const absentAgent = signal.absent_agent ?? "";
+        const designerTasks = absentAgent
+          ? taskCalls.filter(
+              (tc) => String(tc.input.subagent_type ?? "") === absentAgent
+            )
+          : [];
+        if (frontendTasks.length > 0 && designerTasks.length === 0) {
+          matched = true;
+        }
+        break;
+      }
+
+      case "conductor-missing-for-multi-session-feature": {
+        // Signal: dev:developer Tasks >= min_agent_count AND no conductor Bash calls
+        const developerTasks = taskCalls.filter(
+          (tc) => String(tc.input.subagent_type ?? "") === "dev:developer"
+        );
+        const minAgentCount = signal.min_agent_count ?? 5;
+        const absentBashPat = signal.absent_bash_pattern ?? "";
+        const conductorUsed = absentBashPat
+          ? bashCalls.some((c) =>
+              String(c.input.command ?? "").includes(absentBashPat)
+            )
+          : false;
+        if (developerTasks.length >= minAgentCount && !conductorUsed) {
+          matched = true;
+        }
+        break;
+      }
     }
 
     if (matched) {
@@ -376,6 +522,7 @@ function applyRules(
       }
       results.push({
         id: rule.id,
+        audience: rule.audience ?? "claude",
         category: rule.category,
         priority: rule.priority ?? 99,
         suggestion: suggestionText,
@@ -397,18 +544,28 @@ function formatRecommendations(
 ): string {
   if (suggestions.length === 0) return "";
 
-  // Output raw data only — no visual formatting.
-  // The SessionStart hook controls presentation via behavioral instructions.
-  const lines: string[] = [
-    `session: ${sessionId.substring(0, 8)}`,
-    `count: ${suggestions.length}`,
-    "",
-  ];
+  const humanSuggestions = suggestions.filter((s) => s.audience === "human");
+  const claudeSuggestions = suggestions.filter((s) => s.audience === "claude");
 
-  for (let i = 0; i < suggestions.length; i++) {
-    lines.push(`${i + 1}. ${suggestions[i].suggestion}`);
+  const lines: string[] = [];
+
+  // Human section
+  lines.push("[human]");
+  lines.push(`session: ${sessionId.substring(0, 8)}`);
+  lines.push(`count: ${humanSuggestions.length}`);
+  lines.push("");
+  for (let i = 0; i < humanSuggestions.length; i++) {
+    lines.push(`${i + 1}. ${humanSuggestions[i].suggestion}`);
   }
+  lines.push("");
 
+  // Claude section
+  lines.push("[claude]");
+  lines.push(`count: ${claudeSuggestions.length}`);
+  lines.push("");
+  for (let i = 0; i < claudeSuggestions.length; i++) {
+    lines.push(`${i + 1}. ${claudeSuggestions[i].suggestion}`);
+  }
   lines.push("");
 
   return lines.join("\n");
@@ -522,8 +679,16 @@ function main(): void {
   // Apply rules
   const suggestions = applyRules(toolCalls, rules, state);
 
-  // Take top 3 by priority
-  const top3 = suggestions.sort((a, b) => a.priority - b.priority).slice(0, 3);
+  // Take top 3 by priority (split into human/claude buckets, take top from each)
+  const humanSuggestions = suggestions
+    .filter((s) => s.audience === "human")
+    .sort((a, b) => a.priority - b.priority)
+    .slice(0, 3);
+  const claudeSuggestions = suggestions
+    .filter((s) => s.audience === "claude")
+    .sort((a, b) => a.priority - b.priority)
+    .slice(0, 3);
+  const top3 = [...humanSuggestions, ...claudeSuggestions];
 
   // Update suppression state for shown suggestions (Fix 8: use state.rules[])
   for (const s of top3) {

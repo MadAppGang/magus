@@ -193,8 +193,8 @@
     {
       "name": "dev",
       "source": "./plugins/dev",
-      "description": "Universal development assistant. v2.1.0: Rename /dev:build → /dev:dev, /dev:plan → /dev:architect for clearer intent.",
-      "version": "2.1.0",
+      "description": "Universal development assistant. v2.2.0: Dual-audience coaching — 26 rules (17 claude-facing, 9 human-facing) promoting all 12 plugins.",
+      "version": "2.2.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",

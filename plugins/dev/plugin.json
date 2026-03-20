@@ -1,7 +1,7 @@
 {
   "name": "dev",
-  "version": "2.1.0",
-  "description": "Universal development assistant. v2.0.0: Command consolidation — 17 commands to 12 via progressive disclosure. 46 skills, 15 agents.",
+  "version": "2.2.0",
+  "description": "Universal development assistant. v2.2.0: Dual-audience coaching — 26 rules (17 claude-facing, 9 human-facing) promoting all 12 plugins, claudish, and claudeup.",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",

@@ -394,6 +394,47 @@ function runChecks(
     results.push({ check: "sessionstart_context_contains", passed, detail });
   }
 
+  if ("sessionstart_context_contains_2" in checks) {
+    const expected = String(checks.sessionstart_context_contains_2);
+    let passed = false;
+    let detail = "sessionstart-output.json is absent or invalid";
+    if (sessionStartContent !== null) {
+      try {
+        const parsed = JSON.parse(sessionStartContent) as Record<string, unknown>;
+        const hookOutput = parsed.hookSpecificOutput as Record<string, unknown> | undefined;
+        const additionalContext = String(hookOutput?.additionalContext ?? "");
+        passed = additionalContext.includes(expected);
+        detail = passed
+          ? `additionalContext contains "${expected}"`
+          : `additionalContext does NOT contain "${expected}". Preview: ${additionalContext.substring(0, 200)}`;
+      } catch {
+        detail = "sessionstart-output.json is invalid JSON";
+      }
+    }
+    results.push({ check: "sessionstart_context_contains_2", passed, detail });
+  }
+
+  if ("recommendations_contains_section" in checks) {
+    const section = String(checks.recommendations_contains_section);
+    const sectionHeader = `[${section}]`;
+    if (recsContent === null) {
+      results.push({
+        check: "recommendations_contains_section",
+        passed: false,
+        detail: `recommendations.md is absent; expected section header "${sectionHeader}"`,
+      });
+    } else {
+      const passed = recsContent.includes(sectionHeader);
+      results.push({
+        check: "recommendations_contains_section",
+        passed,
+        detail: passed
+          ? `recommendations.md contains section header "${sectionHeader}"`
+          : `recommendations.md does NOT contain section header "${sectionHeader}". Content preview: ${recsContent.substring(0, 200)}`,
+      });
+    }
+  }
+
   if ("sessionstart_output_is_empty" in checks) {
     const passed = sessionStartContent === null || sessionStartContent.trim().length === 0;
     results.push({
