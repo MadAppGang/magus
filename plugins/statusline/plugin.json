@@ -1,6 +1,6 @@
 {
   "name": "statusline",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "Colorful adaptive statusline — native rate limits, worktree detection, provider-aware model display, vim mode, diff stats, compaction count, and 4 themes.",
   "author": {
     "name": "Jack Rudenko",

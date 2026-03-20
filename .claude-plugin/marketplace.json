@@ -236,8 +236,8 @@
     {
       "name": "statusline",
       "source": "./plugins/statusline",
-      "description": "Adaptive statusline — native rate limits with API fallback, provider-aware model display, vim mode, diff stats, compaction count, adaptive detail. v2.0.1: Fix plan limits display, add test fixtures.",
-      "version": "2.0.1",
+      "description": "Adaptive statusline — always-visible bars, background highlights for critical states, provider-aware model display, vim mode, diff stats, compaction count. v2.0.2: Background badges for branch/worktree/critical values.",
+      "version": "2.0.2",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
