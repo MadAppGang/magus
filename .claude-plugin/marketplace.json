@@ -236,8 +236,8 @@
     {
       "name": "statusline",
       "source": "./plugins/statusline",
-      "description": "Adaptive statusline — native rate limits, provider-aware model display, vim mode, diff stats, compaction count, adaptive detail, single jq call. v2.0.0: Major rewrite using native Claude Code JSON fields.",
-      "version": "2.0.0",
+      "description": "Adaptive statusline — native rate limits with API fallback, provider-aware model display, vim mode, diff stats, compaction count, adaptive detail. v2.0.1: Fix plan limits display, add test fixtures.",
+      "version": "2.0.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
