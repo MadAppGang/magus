@@ -27,7 +27,7 @@
 | **Designer** | v0.2.0 | UI design validation with pixel-diff comparison, 6 skills |
 | **Browser Use** | v1.0.0 | Full-platform browser automation, 18 MCP tools, 5 skills |
 | **Statusline** | v1.4.1 | Colorful statusline with worktree awareness |
-| **Terminal** | v2.1.0 | Intent-level terminal: run, watch, observe, repl, tui + ht-mcp/tmux-mcp |
+| **Terminal** | v3.0.0 | Intent-level terminal: 5 skills, 9 commands, TDD workflow, dashboard archetypes + ht-mcp/tmux-mcp |
 | **GTD** | v1.0.0 | Getting Things Done workflow with real-time task sync via hooks |
 
 **Claudish CLI**: `npm install -g claudish` - Run Claude with OpenRouter models ([separate repo](https://github.com/MadAppGang/claudish))
@@ -54,7 +54,7 @@ claude-code/
 │   ├── designer/              # v0.2.0 — 6 skills, pixel-diff design validation
 │   ├── browser-use/           # v1.0.0 — 5 skills, 18 MCP tools
 │   ├── statusline/            # v1.4.1 — 1 skill
-│   ├── terminal/              # v2.1.0 — 2 skills, ht-mcp + tmux-mcp
+│   ├── terminal/              # v3.0.0 — 5 skills, 9 commands, ht-mcp + tmux-mcp
 │   ├── gtd/                   # v1.0.0 — 7 commands, 2 skills, real-time task sync
 │   └── (go, instantly, autopilot — unlisted)
 ├── autotest/                  # E2E test framework
@@ -64,7 +64,7 @@ claude-code/
 │   ├── subagents/             # Agent delegation tests
 │   ├── team/                  # Multi-model /team tests
 │   ├── skills/                # Skill routing tests
-│   ├── terminal/              # Terminal plugin tests (9 cases)
+│   ├── terminal/              # Terminal plugin tests (24 cases)
 │   ├── gtd/                   # GTD plugin tests (12 cases)
 │   └── worktree/              # Worktree tests
 ├── tools/                     # Standalone tools
@@ -176,6 +176,9 @@ NOTE: Skills use the `Skill` tool, NOT the `Task` tool. The `namespace:name` for
 | Database branching with git worktrees (Neon, Turso, Supabase) | `dev:db-branching` | Worktree creation with schema changes needing DB isolation |
 | Interactive terminal: run commands, dev servers, test watchers, REPLs | `terminal:terminal-interaction` | Task needs TTY, interactive output, long-running process, or database shell |
 | TUI navigation: vim, nano, htop, lazygit, k9s, less | `terminal:tui-navigation-patterns` | Navigating TUI apps, sending key sequences, reading screen state |
+| Poll terminal for test/build/deploy completion signals | `terminal:framework-signals` | Waiting for CI, test runners, or build tools to report pass/fail |
+| TDD red-green-refactor loop with test watchers | `terminal:tdd-workflow` | Running TDD cycles with continuous test feedback |
+| Create tmux workspaces, dashboards, or ambient monitors | `terminal:workspace-setup` | Setting up multi-pane layouts, dashboard archetypes, or background monitors |
 | Claudish CLI usage, model routing, provider backends | `multimodel:claudish-usage` | Before ANY `claudish` command — bare model names, no prefixes |
 
 ## Release Process
