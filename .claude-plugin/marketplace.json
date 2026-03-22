@@ -328,6 +328,31 @@
         "command-line"
       ],
       "strict": true
+    },
+    {
+      "name": "gtd",
+      "source": "./plugins/gtd",
+      "description": "GTD (Getting Things Done) workflow integration. v1.0.0: Real-time task sync via PreToolUse/PostToolUse hooks, 7 commands, 2 skills, ANSI dashboard, proactive capture. Write-through cache: session TaskList as ephemeral working copy, .claude/gtd/tasks.json as persistent store.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Jack Rudenko",
+        "email": "i@madappgang.com",
+        "company": "MadAppGang"
+      },
+      "category": "productivity",
+      "keywords": [
+        "gtd",
+        "getting-things-done",
+        "productivity",
+        "task-management",
+        "inbox",
+        "next-actions",
+        "weekly-review",
+        "workflow",
+        "hooks",
+        "real-time-sync"
+      ],
+      "strict": true
     }
   ]
 }

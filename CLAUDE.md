@@ -28,6 +28,7 @@
 | **Browser Use** | v1.0.0 | Full-platform browser automation, 18 MCP tools, 5 skills |
 | **Statusline** | v1.4.1 | Colorful statusline with worktree awareness |
 | **Terminal** | v2.1.0 | Intent-level terminal: run, watch, observe, repl, tui + ht-mcp/tmux-mcp |
+| **GTD** | v1.0.0 | Getting Things Done workflow with real-time task sync via hooks |
 
 **Claudish CLI**: `npm install -g claudish` - Run Claude with OpenRouter models ([separate repo](https://github.com/MadAppGang/claudish))
 
@@ -41,7 +42,7 @@ claude-code/
 ├── .env.example               # Environment template
 ├── .claude-plugin/
 │   └── marketplace.json       # Marketplace plugin listing
-├── plugins/                   # All plugins (12 published, 3 unlisted)
+├── plugins/                   # All plugins (13 published, 3 unlisted)
 │   ├── code-analysis/         # v4.0.2 — 13 skills, 1 agent, mnemex MCP
 │   ├── multimodel/            # v2.6.2 — 15 skills
 │   ├── agentdev/              # v1.5.5 — 5 skills
@@ -54,6 +55,7 @@ claude-code/
 │   ├── browser-use/           # v1.0.0 — 5 skills, 18 MCP tools
 │   ├── statusline/            # v1.4.1 — 1 skill
 │   ├── terminal/              # v2.1.0 — 2 skills, ht-mcp + tmux-mcp
+│   ├── gtd/                   # v1.0.0 — 7 commands, 2 skills, real-time task sync
 │   └── (go, instantly, autopilot — unlisted)
 ├── autotest/                  # E2E test framework
 │   ├── framework/             # Shared runner, parsers (Bun/TS)
@@ -63,6 +65,7 @@ claude-code/
 │   ├── team/                  # Multi-model /team tests
 │   ├── skills/                # Skill routing tests
 │   ├── terminal/              # Terminal plugin tests (9 cases)
+│   ├── gtd/                   # GTD plugin tests (12 cases)
 │   └── worktree/              # Worktree tests
 ├── tools/                     # Standalone tools
 │   ├── claudeup/              # TUI installer (npm package, v3.5.0)
@@ -90,12 +93,15 @@ claude-code/
 ./autotest/coaching/run.sh --model claude-sonnet-4-6
 ./autotest/designer/run.sh --model claude-sonnet-4-6
 ./autotest/subagents/run.sh --model or@x-ai/grok-code-fast-1
+./autotest/gtd/run.sh --model internal  # GTD tests require internal model for hooks
 
 # Run specific test cases
 ./autotest/terminal/run.sh --model claude-sonnet-4-6 --cases environment-inspection-08
+./autotest/gtd/run.sh --model internal --cases gtd-capture-01
 
 # Analyze existing results
 bun autotest/terminal/analyze-results.ts autotest/terminal/results/<run-dir>
+bun autotest/gtd/analyze-results.ts autotest/gtd/results/<run-dir>
 ```
 
 ## Environment Variables
