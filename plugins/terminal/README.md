@@ -264,7 +264,7 @@ If `ht-mcp` is not listed, re-install: `brew tap memextech/tap && brew install h
 
 ### Pane splits appear in the wrong window
 
-Claude uses `tmux display-message -p '#{pane_id}'` to detect the current pane, which is always correct. If a split appeared in an unexpected window, the shell running Claude Code may not be inside tmux. Verify with `echo $TMUX_PANE` — if empty, you are not in a tmux pane and Claude will use an isolated ht-mcp session instead.
+Claude uses `$TMUX_PANE` to detect the current pane, which is always correct — it's set by tmux at shell creation and never changes. If a split appeared in an unexpected window, the shell running Claude Code may not be inside tmux. Verify with `echo $TMUX_PANE` — if empty, you are not in a tmux pane and Claude will use an isolated ht-mcp session instead.
 
 ### Database queries return partial results
 
@@ -312,5 +312,5 @@ After running these, restart iTerm2. Next time a TUI app exits uncleanly, iTerm2
 
 ---
 
-**Terminal Plugin** · v3.0.0 · MIT License
+**Terminal Plugin** · v3.0.1 · MIT License
 [MadAppGang](https://madappgang.com) · [Jack Rudenko](mailto:i@madappgang.com)

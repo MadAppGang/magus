@@ -18,6 +18,9 @@
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 FRAMEWORK_DIR="$(cd "$SCRIPT_DIR/../framework" && pwd)"
 
+# Terminal tests need the terminal plugin loaded for MCP servers (ht-mcp, tmux-mcp)
+export EXTRA_PLUGIN_DIRS="$SCRIPT_DIR/../../plugins/terminal"
+
 exec "$FRAMEWORK_DIR/runner-base.sh" \
   --suite terminal \
   --analyzer "bun $SCRIPT_DIR/analyze-results.ts" \

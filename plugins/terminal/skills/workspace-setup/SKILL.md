@@ -90,7 +90,7 @@ For the TDD archetype's full state machine, see `terminal:tdd-workflow`.
 Construction:
 
 ```
-1. Bash: PANE=$(tmux display-message -p '#{pane_id}')
+1. Bash: PANE=$(echo "$TMUX_PANE")
 2. mcp__tmux__split-pane({ paneId: PANE, direction: "horizontal", size: "40%" }) → right
 3. mcp__tmux__split-pane({ paneId: right, direction: "vertical" })               → log
 4. mcp__tmux__send-keys({ paneId: PANE, keys: "bun run dev\nEnter" })
@@ -114,7 +114,7 @@ Construction:
 Construction:
 
 ```
-1. Bash: PANE=$(tmux display-message -p '#{pane_id}')
+1. Bash: PANE=$(echo "$TMUX_PANE")
 2. mcp__tmux__split-pane({ paneId: PANE, direction: "horizontal" })  → mid
 3. mcp__tmux__split-pane({ paneId: mid, direction: "horizontal" })   → right
 4. mcp__tmux__send-keys for each pane: ingestion / transform / DB monitor commands
@@ -138,7 +138,7 @@ Construction:
 Construction:
 
 ```
-1. Bash: PANE=$(tmux display-message -p '#{pane_id}')
+1. Bash: PANE=$(echo "$TMUX_PANE")
 2. mcp__tmux__split-pane({ paneId: PANE, direction: "horizontal" })       → top-right
 3. mcp__tmux__split-pane({ paneId: PANE, direction: "vertical" })         → bottom-left
 4. mcp__tmux__split-pane({ paneId: top-right, direction: "vertical" })    → bottom-right
@@ -166,7 +166,7 @@ Construction:
 Construction:
 
 ```
-1. Bash: PANE=$(tmux display-message -p '#{pane_id}')
+1. Bash: PANE=$(echo "$TMUX_PANE")
 2. mcp__tmux__split-pane({ paneId: PANE, direction: "vertical", size: "30%" })    → watcher
 3. mcp__tmux__split-pane({ paneId: watcher, direction: "horizontal", size: "40%" }) → coverage
 4. mcp__tmux__send-keys({ paneId: watcher, keys: "bun test --watch\nEnter" })

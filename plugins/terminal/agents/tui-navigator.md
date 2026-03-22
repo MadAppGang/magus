@@ -63,7 +63,7 @@ When the user says "open on a side", "split terminal", "show alongside", "run be
 
 ```
 1. DETECT CURRENT PANE (never use list-windows active flag)
-   Bash: tmux display-message -p '#{pane_id}'          → "%57" (your actual pane)
+   Bash: echo "$TMUX_PANE"                             → "%57" (your actual pane)
 
 2. CHECK FOR EXISTING HELPER PANE (reuse if possible)
    Bash: tmux list-panes -F '#{pane_id} #{pane_title}' | grep claude-helper
@@ -85,7 +85,7 @@ When the user says "open on a side", "split terminal", "show alongside", "run be
 ```
 
 **CRITICAL RULES:**
-- ALWAYS use `tmux display-message -p '#{pane_id}'` to find the user's pane. NEVER rely on `list-windows` active flag — it shows the most recently selected window in the session, not the window the user is looking at. This has caused splits to appear in wrong windows.
+- ALWAYS use `echo "$TMUX_PANE"` to find the user's pane. `$TMUX_PANE` is set by tmux at shell creation and is stable for the pane's lifetime — it never races with user focus changes. NEVER use `tmux display-message -p` without `-t` (returns the focused pane, not yours) or `list-windows` active flag.
 - ALWAYS check for existing `claude-helper` pane before splitting — reuse it instead of spawning duplicates.
 - First split is ALWAYS `direction: "horizontal"` (creates vertical divider, helper on right).
 - After splitting, ALWAYS label with `tmux select-pane -t <id> -T "claude-helper"`.

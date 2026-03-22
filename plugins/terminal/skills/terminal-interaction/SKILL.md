@@ -36,26 +36,27 @@ This skill teaches Claude how to use `ht-mcp` and `tmux-mcp` for interactive ter
 
 ## 1b. Current Pane Detection (CRITICAL — Do This First)
 
-**Before splitting or creating anything**, find your actual current pane by querying tmux directly:
+**Before splitting or creating anything**, find your actual current pane using the environment variable:
 
 ```bash
-tmux display-message -p '#{pane_id}'
+echo "$TMUX_PANE"
 ```
 
-This returns the pane ID (e.g., `%57`) where the Bash tool is actually running. This is the only reliable method.
+This returns the pane ID (e.g., `%57`) where the Bash tool is actually running. `$TMUX_PANE` is set by tmux at shell creation, is stable for the pane's lifetime, and is correctly inherited by subprocesses — it never queries mutable server state, so it cannot race with user focus changes.
 
 ### Why other detection methods fail
 
 | Method | Reliability | Problem |
 |--------|-------------|---------|
-| `tmux display-message -p '#{pane_id}'` | **Always correct** | None — queries live tmux state |
-| `$TMUX_PANE` env var | Usually correct | Subagents may inherit stale environment |
-| `list-windows` active flag | **Unreliable — NEVER use** | "active" means most recently selected window in the session, NOT the one the user is looking at. With multiple clients attached, this points to the wrong window. |
+| `$TMUX_PANE` env var | **Always correct** | Set at shell creation, stable, no server round-trip |
+| `tmux display-message -t "$TMUX_PANE" -p '#{pane_id}'` | **Always correct** | Equivalent but unnecessary round-trip |
+| `tmux display-message -p` (no `-t`) | **Unreliable — NEVER use** | Returns whichever pane has focus. If the user switches tmux windows during agent spin-up delay, this returns the wrong pane. |
+| `list-windows` active flag | **Unreliable — NEVER use** | "active" means most recently selected window in the session, NOT the one the user is looking at. Same class of race condition. |
 
-A real failure: the agent listed sessions, saw window @30 marked `active: true`, split a pane there — but the user was in window @50. The `active` flag is per-session, not per-client. `display-message` resolves from the Bash tool's actual terminal context, which is always correct.
+Two real failures: (1) The agent listed sessions, saw window @30 marked `active: true`, split a pane there — but the user was in window @50. (2) A subagent ran `tmux display-message -p '#{pane_id}'` during its 2-5 second spin-up delay — the user had switched windows, so the split appeared in the wrong window. `$TMUX_PANE` is immune to both.
 
-**If `display-message` returns a pane ID**: You're in tmux. Use it directly for splits.
-**If it fails (not in tmux)**: Use ht-mcp for isolated tasks, or `create-session` for a new tmux session.
+**If `$TMUX_PANE` is set**: You're in tmux. Use it directly for splits.
+**If it's empty or unset**: Use ht-mcp for isolated tasks, or `create-session` for a new tmux session.
 
 ### Helper Pane Reuse (check BEFORE splitting)
 
@@ -135,7 +136,7 @@ Bash: tmux select-pane -t {pane_id3} -T "App Logs"
 ### Quick example: User says "split this window" or "run X beside me"
 
 ```
-1. Bash: tmux display-message -p '#{pane_id}'                       → "%57"
+1. Bash: echo "$TMUX_PANE"                                          → "%57"
 2. Bash: tmux list-panes -F '#{pane_id} #{pane_title}' | grep claude-helper
    → If found "%66 claude-helper": reuse %66, skip to step 5
 3. mcp__tmux__split-pane({ paneId: "%57", direction: "horizontal" }) → new pane "%66"
@@ -474,8 +475,8 @@ for (let i = 0; i < 30; i++) {
 **Use when**: User says "run it here", "split pane", "beside me", "in this window", "show alongside".
 
 ```
-// Step 1: Detect current pane (CRITICAL — never skip, never use list-windows)
-Bash: tmux display-message -p '#{pane_id}'                    → "%57"
+// Step 1: Detect current pane (CRITICAL — never skip, never use list-windows or display-message without -t)
+Bash: echo "$TMUX_PANE"                                       → "%57"
 
 // Step 2: Check for existing helper pane to reuse
 Bash: tmux list-panes -F '#{pane_id} #{pane_title}' | grep claude-helper
@@ -499,7 +500,7 @@ mcp__tmux__kill-pane({ paneId: "%66" })
 ```
 
 **Key rules:**
-- Always detect pane with `tmux display-message -p`, never `list-windows` active flag
+- Always detect pane with `echo "$TMUX_PANE"`, never `display-message -p` without `-t` or `list-windows` active flag
 - Always check for existing `claude-helper` pane before splitting
 - First split is `direction: "horizontal"` (helper appears on right)
 - Label created panes with `tmux select-pane -t <id> -T "claude-helper"`

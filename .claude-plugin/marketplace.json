@@ -310,8 +310,8 @@
     {
       "name": "terminal",
       "source": "./plugins/terminal",
-      "description": "Interactive terminal integration for Claude Code. v3.0.0: 3 new skills (framework-signals, tdd-workflow, workspace-setup), pane detection fix, helper pane reuse, tee-to-file, approval gates, desktop notifications, dashboard archetypes, tmux-mcp reliability fix. 5 skills, 9 commands, 1 agent.",
-      "version": "3.0.0",
+      "description": "Interactive terminal integration for Claude Code. v3.0.1: fix pane detection race condition — use $TMUX_PANE instead of display-message -p (immune to focus changes during subagent delay), fix E2E test runner. 5 skills, 9 commands, 1 agent.",
+      "version": "3.0.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
