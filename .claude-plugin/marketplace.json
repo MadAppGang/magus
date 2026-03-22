@@ -236,8 +236,8 @@
     {
       "name": "statusline",
       "source": "./plugins/statusline",
-      "description": "Adaptive statusline — always-visible bars, background highlights for critical states, provider-aware model display, vim mode, diff stats, compaction count. v2.0.2: Background badges for branch/worktree/critical values.",
-      "version": "2.0.2",
+      "description": "Adaptive statusline — always-visible bars, background highlights for critical states, provider-aware model display, vim mode, diff stats, compaction count. v2.0.3: Show 1M/1.5M/2M for large context windows instead of 1000k.",
+      "version": "2.0.3",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
