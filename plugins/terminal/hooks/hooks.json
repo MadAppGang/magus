@@ -1,0 +1,17 @@
+{
+  "description": "Terminal safety hooks: prevent destructive tmux operations from Claude Code sessions.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "^Bash$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/block-tmux-kill.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

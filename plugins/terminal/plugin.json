@@ -26,10 +26,15 @@
   ],
   "skills": [
     "./skills/terminal-interaction",
-    "./skills/tui-navigation-patterns"
+    "./skills/tui-navigation-patterns",
+    "./skills/framework-signals",
+    "./skills/tdd-workflow",
+    "./skills/workspace-setup"
   ],
   "setup": {
-    "brew": ["memextech/tap/ht-mcp"]
+    "brew": ["memextech/tap/ht-mcp"],
+    "npm": ["tmux-mcp"]
   },
+  "hooks": "./hooks/hooks.json",
   "mcpServers": "./.mcp.json"
 }

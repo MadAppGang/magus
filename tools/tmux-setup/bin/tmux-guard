@@ -1,0 +1,83 @@
+#!/bin/bash
+# tmux-guard: Prevents tmux kill-server without explicit confirmation.
+# Deploy to ~/bin/tmux (must be higher in PATH than the real tmux binary).
+#
+# Install:   ln -sf /path/to/tmux-guard ~/bin/tmux
+# Uninstall: rm ~/bin/tmux
+#
+# Override methods:
+#   TMUX_ALLOW_KILL=1 tmux kill-server   (env var)
+#   tmux kill-server --i-mean-it         (flag)
+
+# Auto-detect real tmux binary (skip this wrapper)
+REAL_TMUX=""
+for candidate in /opt/homebrew/bin/tmux /usr/local/bin/tmux /usr/bin/tmux; do
+    if [[ -x "$candidate" ]]; then
+        REAL_TMUX="$candidate"
+        break
+    fi
+done
+
+if [[ -z "$REAL_TMUX" ]]; then
+    echo "tmux-guard: cannot find real tmux binary" >&2
+    exit 1
+fi
+
+GUARD_LOG="${TMPDIR:-/tmp}/tmux-guard.log"
+
+# Fast path: if no args match kill-server, pass through immediately
+has_kill_server=false
+for arg in "$@"; do
+    if [[ "$arg" == "kill-server" ]]; then
+        has_kill_server=true
+        break
+    fi
+done
+
+if [[ "$has_kill_server" == "false" ]]; then
+    exec "$REAL_TMUX" "$@"
+fi
+
+# --- kill-server intercepted ---
+
+# Check override env var
+if [[ "${TMUX_ALLOW_KILL:-0}" == "1" ]]; then
+    exec "$REAL_TMUX" kill-server
+fi
+
+# Check override flag
+if [[ " $* " == *" --i-mean-it "* ]]; then
+    exec "$REAL_TMUX" kill-server
+fi
+
+# Count active sessions and panes for the warning
+session_count=$("$REAL_TMUX" list-sessions 2>/dev/null | wc -l | tr -d ' ')
+pane_count=$("$REAL_TMUX" list-panes -a 2>/dev/null | wc -l | tr -d ' ')
+
+# Log the blocked attempt
+caller_cmd=$(ps -o comm= -p $PPID 2>/dev/null || echo "unknown")
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] BLOCKED kill-server | caller_pid=$PPID cmd=$caller_cmd sessions=$session_count panes=$pane_count" >> "$GUARD_LOG"
+
+# Interactive terminal: ask for confirmation
+if [[ -t 0 && -t 1 ]]; then
+    echo ""
+    echo "  tmux kill-server BLOCKED by tmux-guard"
+    echo ""
+    echo "  This will destroy $session_count sessions with $pane_count panes."
+    echo "  All running processes (Claude Code, dev servers, etc.) will be killed."
+    echo ""
+    read -p "  Type 'kill' to confirm: " response
+    if [[ "$response" == "kill" ]]; then
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] ALLOWED kill-server (user confirmed)" >> "$GUARD_LOG"
+        exec "$REAL_TMUX" kill-server
+    else
+        echo "  Cancelled."
+        exit 1
+    fi
+else
+    # Non-interactive: block completely
+    echo "ERROR: tmux kill-server blocked by tmux-guard (non-interactive)." >&2
+    echo "  Active: $session_count sessions, $pane_count panes." >&2
+    echo "  To override: TMUX_ALLOW_KILL=1 tmux kill-server" >&2
+    exit 1
+fi
