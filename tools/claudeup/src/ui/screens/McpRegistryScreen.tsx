@@ -239,25 +239,35 @@ export function McpRegistryScreen() {
 
 		return (
 			<box flexDirection="column">
-				<text fg="magenta"><strong>{selectedServer.name}</strong></text>
+				<text fg="magenta">
+					<strong>{selectedServer.name}</strong>
+				</text>
 				<box marginTop={1}>
 					<text>{selectedServer.short_description}</text>
 				</box>
 				<box marginTop={1}>
-					<text><strong>Version: </strong></text>
+					<text>
+						<strong>Version: </strong>
+					</text>
 					<text fg="green">{versionDisplay}</text>
 				</box>
 				<box>
-					<text><strong>Published: </strong></text>
+					<text>
+						<strong>Published: </strong>
+					</text>
 					<text fg="cyan">{dateDisplay}</text>
 				</box>
 				<box marginTop={1} flexDirection="column">
-					<text><strong>URL:</strong></text>
+					<text>
+						<strong>URL:</strong>
+					</text>
 					<text fg="cyan">{selectedServer.url}</text>
 				</box>
 				{selectedServer.source_code_url && (
 					<box marginTop={1} flexDirection="column">
-						<text><strong>Source:</strong></text>
+						<text>
+							<strong>Source:</strong>
+						</text>
 						<text fg="gray">{selectedServer.source_code_url}</text>
 					</box>
 				)}
@@ -282,7 +292,9 @@ export function McpRegistryScreen() {
 			</text>
 		) : (
 			<text>
-				<span><strong>{server.name}</strong></span>
+				<span>
+					<strong>{server.name}</strong>
+				</span>
 				<span fg="green">{version}</span>
 			</text>
 		);

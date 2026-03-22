@@ -354,7 +354,7 @@ export function CliToolsScreen() {
 					)}
 					<box>
 						<text fg="gray">Website </text>
-						<text fg="blue">{tool.website}</text>
+						<text fg="#5c9aff">{tool.website}</text>
 					</box>
 				</box>
 
@@ -432,18 +432,18 @@ export function CliToolsScreen() {
 	const installedCount = toolStatuses.filter((s) => s.installed).length;
 	const updateCount = toolStatuses.filter((s) => s.hasUpdate).length;
 	const statusContent = (
-		<>
-			<text fg="gray">Installed: </text>
-			<text fg="cyan">
+		<text>
+			<span fg="gray">Installed: </span>
+			<span fg="cyan">
 				{installedCount}/{toolStatuses.length}
-			</text>
+			</span>
 			{updateCount > 0 && (
 				<>
-					<text fg="gray"> │ Updates: </text>
-					<text fg="yellow">{updateCount}</text>
+					<span fg="gray"> │ Updates: </span>
+					<span fg="yellow">{updateCount}</span>
 				</>
 			)}
-		</>
+		</text>
 	);
 
 	return (

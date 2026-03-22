@@ -1,6 +1,6 @@
-import React from 'react';
-import { useKeyboardHandler } from '../hooks/useKeyboardHandler';
-import type { Screen } from '../state/types.js';
+import React from "react";
+import { useKeyboardHandler } from "../hooks/useKeyboardHandler";
+import type { Screen } from "../state/types.js";
 
 interface Tab {
 	key: string;
@@ -9,11 +9,11 @@ interface Tab {
 }
 
 const TABS: Tab[] = [
-	{ key: '1', label: 'Plugins', screen: 'plugins' },
-	{ key: '2', label: 'MCP', screen: 'mcp' },
-	{ key: '3', label: 'Status', screen: 'statusline' },
-	{ key: '4', label: 'Env', screen: 'env-vars' },
-	{ key: '5', label: 'CLI', screen: 'cli-tools' },
+	{ key: "1", label: "Plugins", screen: "plugins" },
+	{ key: "2", label: "MCP", screen: "mcp" },
+	{ key: "3", label: "Settings", screen: "settings" },
+	{ key: "4", label: "CLI", screen: "cli-tools" },
+	{ key: "5", label: "Profiles", screen: "profiles" },
 ];
 
 interface TabBarProps {
@@ -21,10 +21,7 @@ interface TabBarProps {
 	onTabChange?: (screen: Screen) => void;
 }
 
-export function TabBar({
-	currentScreen,
-	onTabChange,
-}: TabBarProps) {
+export function TabBar({ currentScreen, onTabChange }: TabBarProps) {
 	// Handle number key shortcuts (1-5)
 	useKeyboardHandler((input, key) => {
 		if (!onTabChange) return;
@@ -61,23 +58,21 @@ export function TabBar({
 							<box>
 								<text bg="#7e57c2" fg="white">
 									<strong>
-										{' '}
-										{tab.key}:{tab.label}{' '}
+										{" "}
+										{tab.key}:{tab.label}{" "}
 									</strong>
 								</text>
 							</box>
 						) : (
 							<box>
 								<text fg="gray">
-									{' '}
-									{tab.key}:{tab.label}{' '}
+									{" "}
+									{tab.key}:{tab.label}{" "}
 								</text>
 							</box>
 						)}
 						{/* Separator */}
-						{!isLast && (
-							<text fg="#666666">│</text>
-						)}
+						{!isLast && <text fg="#666666">│</text>}
 					</box>
 				);
 			})}

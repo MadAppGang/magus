@@ -17,12 +17,12 @@ import {
 import {
 	setMcpEnvVar,
 	getMcpEnvVars,
+	readSettings,
 	saveGlobalInstalledPluginVersion,
 	saveLocalInstalledPluginVersion,
 } from "../../services/claude-settings.js";
-import {
-	saveInstalledPluginVersion,
-} from "../../services/plugin-manager.js";
+import { saveProfile } from "../../services/profiles.js";
+import { saveInstalledPluginVersion } from "../../services/plugin-manager.js";
 import {
 	installPlugin as cliInstallPlugin,
 	uninstallPlugin as cliUninstallPlugin,
@@ -209,53 +209,87 @@ export function PluginsScreen() {
 		);
 	}, [filteredItems]);
 
-	// Keyboard handling
+	// Keyboard handling — inline search with live filtering
 	useKeyboard((event) => {
-		// Handle search mode
-		if (isSearchActive) {
-			if (event.name === "escape") {
-				dispatch({ type: "SET_SEARCHING", isSearching: false });
+		if (state.modal) return;
+
+		const hasQuery = pluginsState.searchQuery.length > 0;
+
+		// Escape: always clear search state fully
+		if (event.name === "escape") {
+			if (hasQuery || isSearchActive) {
 				dispatch({ type: "PLUGINS_SET_SEARCH", query: "" });
-			} else if (event.name === "enter") {
 				dispatch({ type: "SET_SEARCHING", isSearching: false });
-				// Keep the search query, just exit search mode
-			} else if (event.name === "backspace" || event.name === "delete") {
-				dispatch({
-					type: "PLUGINS_SET_SEARCH",
-					query: pluginsState.searchQuery.slice(0, -1),
-				});
-			} else if (event.name.length === 1 && !event.ctrl && !event.meta) {
-				dispatch({
-					type: "PLUGINS_SET_SEARCH",
-					query: pluginsState.searchQuery + event.name,
-				});
+				dispatch({ type: "PLUGINS_SELECT", index: 0 });
+			}
+			// Don't return — let GlobalKeyHandler handle Escape too (for quit)
+			return;
+		}
+
+		// Backspace: remove last char from search query
+		if (event.name === "backspace" || event.name === "delete") {
+			if (hasQuery) {
+				const newQuery = pluginsState.searchQuery.slice(0, -1);
+				dispatch({ type: "PLUGINS_SET_SEARCH", query: newQuery });
+				dispatch({ type: "PLUGINS_SELECT", index: 0 });
+				// If query becomes empty, exit search mode
+				if (newQuery.length === 0) {
+					dispatch({ type: "SET_SEARCHING", isSearching: false });
+				}
 			}
 			return;
 		}
 
-		if (state.modal) return;
-
-		// Start search with /
-		if (event.name === "/") {
-			dispatch({ type: "SET_SEARCHING", isSearching: true });
-			return;
-		}
-
-		// Navigation
+		// Navigation — always works (even during search)
 		if (event.name === "up" || event.name === "k") {
+			// 'k' navigates when query is empty, otherwise appends to search
+			if (event.name === "k" && (hasQuery || isSearchActive)) {
+				dispatch({
+					type: "PLUGINS_SET_SEARCH",
+					query: pluginsState.searchQuery + event.name,
+				});
+				dispatch({ type: "PLUGINS_SELECT", index: 0 });
+				return;
+			}
 			const newIndex = Math.max(0, pluginsState.selectedIndex - 1);
 			dispatch({ type: "PLUGINS_SELECT", index: newIndex });
-		} else if (event.name === "down" || event.name === "j") {
+			return;
+		}
+		if (event.name === "down" || event.name === "j") {
+			// 'j' navigates when query is empty, otherwise appends to search
+			if (event.name === "j" && (hasQuery || isSearchActive)) {
+				dispatch({
+					type: "PLUGINS_SET_SEARCH",
+					query: pluginsState.searchQuery + event.name,
+				});
+				dispatch({ type: "PLUGINS_SELECT", index: 0 });
+				return;
+			}
 			const newIndex = Math.min(
 				selectableItems.length - 1,
 				pluginsState.selectedIndex + 1,
 			);
 			dispatch({ type: "PLUGINS_SELECT", index: newIndex });
+			return;
 		}
 
-		// Collapse/expand marketplace
-		else if (
-			(event.name === "left" || event.name === "right" || event.name === "<" || event.name === ">") &&
+		// Enter — exit search mode (keep filter active) + select/install
+		if (event.name === "enter") {
+			if (isSearchActive) {
+				dispatch({ type: "SET_SEARCHING", isSearching: false });
+				// Keep the query — filter stays active, shortcuts resume
+				return;
+			}
+			handleSelect();
+			return;
+		}
+
+		// Collapse/expand marketplace — always works
+		if (
+			(event.name === "left" ||
+				event.name === "right" ||
+				event.name === "<" ||
+				event.name === ">") &&
 			selectableItems[pluginsState.selectedIndex]?.marketplace
 		) {
 			const item = selectableItems[pluginsState.selectedIndex];
@@ -265,50 +299,49 @@ export function PluginsScreen() {
 					name: item.marketplace.name,
 				});
 			}
+			return;
 		}
 
-		// Refresh
-		else if (event.name === "r") {
-			handleRefresh();
+		// When search query is non-empty, printable letters go to the query
+		// (shortcuts are suspended while filtering, digits skip to let tab nav work)
+		if (hasQuery || isSearchActive) {
+			if (event.name.length === 1 && !event.ctrl && !event.meta && !/[0-9]/.test(event.name)) {
+				dispatch({
+					type: "PLUGINS_SET_SEARCH",
+					query: pluginsState.searchQuery + event.name,
+				});
+				dispatch({ type: "PLUGINS_SELECT", index: 0 });
+			}
+			return;
 		}
 
-		// New marketplace (show instructions)
-		else if (event.name === "n") {
-			handleShowAddMarketplaceInstructions();
+		// When search query is empty: action shortcuts work normally
+
+		// Start explicit search mode with /
+		if (event.name === "/") {
+			dispatch({ type: "SET_SEARCHING", isSearching: true });
+			return;
 		}
 
-		// Team config help
-		else if (event.name === "t") {
-			handleShowTeamConfigHelp();
-		}
-
-		// Scope-specific toggle shortcuts (u/p/l)
-		else if (event.name === "u") {
-			handleScopeToggle("user");
-		} else if (event.name === "p") {
-			handleScopeToggle("project");
-		} else if (event.name === "l") {
-			handleScopeToggle("local");
-		}
-
-		// Update plugin (Shift+U)
-		else if (event.name === "U") {
-			handleUpdate();
-		}
-
-		// Update all
-		else if (event.name === "a") {
-			handleUpdateAll();
-		}
-
-		// Delete/uninstall
-		else if (event.name === "d") {
-			handleUninstall();
-		}
-
-		// Enter for selection
-		else if (event.name === "enter") {
-			handleSelect();
+		// Action shortcuts (only when query is empty)
+		if (event.name === "r") handleRefresh();
+		else if (event.name === "n") handleShowAddMarketplaceInstructions();
+		else if (event.name === "t") handleShowTeamConfigHelp();
+		else if (event.name === "u") handleScopeToggle("user");
+		else if (event.name === "p") handleScopeToggle("project");
+		else if (event.name === "l") handleScopeToggle("local");
+		else if (event.name === "U") handleUpdate();
+		else if (event.name === "a") handleUpdateAll();
+		else if (event.name === "d") handleUninstall();
+		else if (event.name === "s") handleSaveAsProfile();
+		// Any other printable letter: start inline search (skip digits — used for tab nav)
+		else if (event.name.length === 1 && !event.ctrl && !event.meta && !/[0-9]/.test(event.name)) {
+			dispatch({ type: "SET_SEARCHING", isSearching: true });
+			dispatch({
+				type: "PLUGINS_SET_SEARCH",
+				query: event.name,
+			});
+			dispatch({ type: "PLUGINS_SELECT", index: 0 });
 		}
 	});
 
@@ -491,9 +524,10 @@ export function PluginsScreen() {
 			const missing = await checkMissingDeps(setup);
 			const hasMissing =
 				(missing.pip?.length || 0) +
-				(missing.brew?.length || 0) +
-				(missing.npm?.length || 0) +
-				(missing.cargo?.length || 0) > 0;
+					(missing.brew?.length || 0) +
+					(missing.npm?.length || 0) +
+					(missing.cargo?.length || 0) >
+				0;
 
 			if (!hasMissing) return;
 
@@ -502,7 +536,8 @@ export function PluginsScreen() {
 			if (missing.pip?.length) parts.push(`pip: ${missing.pip.join(", ")}`);
 			if (missing.brew?.length) parts.push(`brew: ${missing.brew.join(", ")}`);
 			if (missing.npm?.length) parts.push(`npm: ${missing.npm.join(", ")}`);
-			if (missing.cargo?.length) parts.push(`cargo: ${missing.cargo.join(", ")}`);
+			if (missing.cargo?.length)
+				parts.push(`cargo: ${missing.cargo.join(", ")}`);
 
 			const wantInstall = await modal.confirm(
 				"Install Dependencies?",
@@ -550,7 +585,11 @@ export function PluginsScreen() {
 			if (scope === "user") {
 				await saveGlobalInstalledPluginVersion(pluginId, version);
 			} else if (scope === "local") {
-				await saveLocalInstalledPluginVersion(pluginId, version, state.projectPath);
+				await saveLocalInstalledPluginVersion(
+					pluginId,
+					version,
+					state.projectPath,
+				);
 			} else {
 				await saveInstalledPluginVersion(pluginId, version, state.projectPath);
 			}
@@ -717,12 +756,17 @@ export function PluginsScreen() {
 		if (!item || item.type !== "plugin" || !item.plugin?.hasUpdate) return;
 
 		const plugin = item.plugin;
-		const scope: PluginScope = pluginsState.scope === "global" ? "user" : "project";
+		const scope: PluginScope =
+			pluginsState.scope === "global" ? "user" : "project";
 
 		modal.loading(`Updating ${plugin.name}...`);
 		try {
 			await cliUpdatePlugin(plugin.id, scope);
-			await saveVersionAfterInstall(plugin.id, plugin.version || "0.0.0", scope);
+			await saveVersionAfterInstall(
+				plugin.id,
+				plugin.version || "0.0.0",
+				scope,
+			);
 			modal.hideModal();
 			fetchData();
 		} catch (error) {
@@ -737,13 +781,18 @@ export function PluginsScreen() {
 		const updatable = pluginsState.plugins.data.filter((p) => p.hasUpdate);
 		if (updatable.length === 0) return;
 
-		const scope: PluginScope = pluginsState.scope === "global" ? "user" : "project";
+		const scope: PluginScope =
+			pluginsState.scope === "global" ? "user" : "project";
 		modal.loading(`Updating ${updatable.length} plugin(s)...`);
 
 		try {
 			for (const plugin of updatable) {
 				await cliUpdatePlugin(plugin.id, scope);
-				await saveVersionAfterInstall(plugin.id, plugin.version || "0.0.0", scope);
+				await saveVersionAfterInstall(
+					plugin.id,
+					plugin.version || "0.0.0",
+					scope,
+				);
 			}
 			modal.hideModal();
 			fetchData();
@@ -823,6 +872,47 @@ export function PluginsScreen() {
 		}
 	};
 
+	const handleSaveAsProfile = async () => {
+		// Read current enabledPlugins from project settings
+		const settings = await readSettings(state.projectPath);
+		const enabledPlugins = settings.enabledPlugins ?? {};
+
+		const name = await modal.input("Save Profile", "Profile name:");
+		if (name === null || !name.trim()) return;
+
+		const scopeChoice = await modal.select(
+			"Save to scope",
+			"Where should this profile be saved?",
+			[
+				{
+					label: "User — ~/.claude/profiles.json (available everywhere)",
+					value: "user",
+				},
+				{
+					label: "Project — .claude/profiles.json (shared with team via git)",
+					value: "project",
+				},
+			],
+		);
+		if (scopeChoice === null) return;
+
+		const scope = scopeChoice as "user" | "project";
+
+		modal.loading("Saving profile...");
+		try {
+			await saveProfile(name.trim(), enabledPlugins, scope, state.projectPath);
+			modal.hideModal();
+			await modal.message(
+				"Saved",
+				`Profile "${name.trim()}" saved.\nPress 6 to manage profiles.`,
+				"success",
+			);
+		} catch (error) {
+			modal.hideModal();
+			await modal.message("Error", `Failed to save profile: ${error}`, "error");
+		}
+	};
+
 	const handleUninstall = async () => {
 		const item = selectableItems[pluginsState.selectedIndex];
 		if (!item || item.type !== "plugin" || !item.plugin) return;
@@ -870,7 +960,11 @@ export function PluginsScreen() {
 		modal.loading(`Uninstalling ${plugin.name}...`);
 
 		try {
-			await cliUninstallPlugin(plugin.id, scopeValue as PluginScope, state.projectPath);
+			await cliUninstallPlugin(
+				plugin.id,
+				scopeValue as PluginScope,
+				state.projectPath,
+			);
 			modal.hideModal();
 			fetchData();
 		} catch (error) {
@@ -886,7 +980,9 @@ export function PluginsScreen() {
 	) {
 		return (
 			<box flexDirection="column" paddingLeft={1} paddingRight={1}>
-				<text fg="#7e57c2"><strong>claudeup Plugins</strong></text>
+				<text fg="#7e57c2">
+					<strong>claudeup Plugins</strong>
+				</text>
 				<text fg="gray">Loading...</text>
 			</box>
 		);
@@ -899,7 +995,9 @@ export function PluginsScreen() {
 	) {
 		return (
 			<box flexDirection="column" paddingLeft={1} paddingRight={1}>
-				<text fg="#7e57c2"><strong>claudeup Plugins</strong></text>
+				<text fg="#7e57c2">
+					<strong>claudeup Plugins</strong>
+				</text>
 				<text fg="red">Error loading data</text>
 			</box>
 		);
@@ -942,7 +1040,13 @@ export function PluginsScreen() {
 						? ` (${item.pluginCount})`
 						: "";
 				return (
-					<text bg="magenta" fg="white"><strong> {arrow} {mp.displayName}{count} </strong></text>
+					<text bg="magenta" fg="white">
+						<strong>
+							{" "}
+							{arrow} {mp.displayName}
+							{count}{" "}
+						</strong>
+					</text>
 				);
 			}
 
@@ -962,7 +1066,10 @@ export function PluginsScreen() {
 			let statusIcon = "○";
 			let statusColor = "gray";
 
-			if (plugin.enabled) {
+			if (plugin.isOrphaned) {
+				statusIcon = "x";
+				statusColor = "red";
+			} else if (plugin.enabled) {
 				statusIcon = "●";
 				statusColor = "green";
 			} else if (plugin.installedVersion) {
@@ -972,7 +1079,9 @@ export function PluginsScreen() {
 
 			// Build version string
 			let versionStr = "";
-			if (plugin.installedVersion && plugin.installedVersion !== "0.0.0") {
+			if (plugin.isOrphaned) {
+				versionStr = " deprecated";
+			} else if (plugin.installedVersion && plugin.installedVersion !== "0.0.0") {
 				versionStr = ` v${plugin.installedVersion}`;
 				if (plugin.hasUpdate && plugin.version) {
 					versionStr += ` → v${plugin.version}`;
@@ -996,9 +1105,26 @@ export function PluginsScreen() {
 			const displayName = segments
 				? segments.map((seg) => seg.text).join("")
 				: plugin.name;
+
+			if (plugin.isOrphaned) {
+				const ver = plugin.installedVersion && plugin.installedVersion !== "0.0.0"
+					? ` v${plugin.installedVersion}` : "";
+				return (
+					<text>
+						<span fg="red">{"   "}{statusIcon} </span>
+						<span fg="gray">{displayName}</span>
+						{ver && <span fg="yellow">{ver}</span>}
+						<span fg="red"> deprecated</span>
+					</text>
+				);
+			}
+
 			return (
 				<text>
-					<span fg={statusColor}>{"   "}{statusIcon} </span>
+					<span fg={statusColor}>
+						{"   "}
+						{statusIcon}{" "}
+					</span>
 					<span>{displayName}</span>
 					<span fg={plugin.hasUpdate ? "yellow" : "gray"}>{versionStr}</span>
 				</text>
@@ -1042,15 +1168,23 @@ export function PluginsScreen() {
 
 			return (
 				<box flexDirection="column">
-					<text fg="cyan"><strong>{mp.displayName}{getBadge()}</strong></text>
+					<text fg="cyan">
+						<strong>
+							{mp.displayName}
+							{getBadge()}
+						</strong>
+					</text>
 					<text fg="gray">{mp.description || "No description"}</text>
 					<text fg={isEnabled ? "green" : "gray"}>
 						{isEnabled ? "● Added" : "○ Not added"}
 					</text>
-					<text fg="blue">github.com/{mp.source.repo}</text>
+					<text fg="#5c9aff">github.com/{mp.source.repo}</text>
 					<text>Plugins: {selectedItem.pluginCount || 0}</text>
 					<box marginTop={1}>
-						<text bg={isEnabled ? "cyan" : "green"} fg="black"> Enter </text>
+						<text bg={isEnabled ? "cyan" : "green"} fg="black">
+							{" "}
+							Enter{" "}
+						</text>
 						<text fg="gray"> {actionHint}</text>
 					</box>
 					{isEnabled && (
@@ -1065,6 +1199,31 @@ export function PluginsScreen() {
 		if (selectedItem.type === "plugin" && selectedItem.plugin) {
 			const plugin = selectedItem.plugin;
 			const isInstalled = plugin.enabled || plugin.installedVersion;
+
+			// Orphaned/deprecated plugin
+			if (plugin.isOrphaned) {
+				return (
+					<box flexDirection="column">
+						<box justifyContent="center">
+							<text bg="yellow" fg="black"><strong> {plugin.name} — DEPRECATED </strong></text>
+						</box>
+						<box marginTop={1}>
+							<text fg="yellow">This plugin is no longer in the marketplace.</text>
+						</box>
+						<box marginTop={1}>
+							<text fg="gray">It was removed from the marketplace but still referenced in your settings. Press d to uninstall and clean up.</text>
+						</box>
+						{isInstalled && (
+							<box flexDirection="column" marginTop={2}>
+								<box>
+									<text bg="red" fg="white"> d </text>
+									<text> Uninstall (recommended)</text>
+								</box>
+							</box>
+						)}
+					</box>
+				);
+			}
 
 			// Build component counts
 			const components: string[] = [];
@@ -1089,7 +1248,13 @@ export function PluginsScreen() {
 				<box flexDirection="column">
 					{/* Plugin name header - centered */}
 					<box justifyContent="center">
-						<text bg="magenta" fg="white"><strong> {plugin.name}{plugin.hasUpdate ? " ⬆" : ""} </strong></text>
+						<text bg="magenta" fg="white">
+							<strong>
+								{" "}
+								{plugin.name}
+								{plugin.hasUpdate ? " ⬆" : ""}{" "}
+							</strong>
+						</text>
 					</box>
 
 					{/* Status line */}
@@ -1112,7 +1277,7 @@ export function PluginsScreen() {
 					{showVersion && (
 						<text>
 							<span>Version </span>
-							<span fg="blue">v{plugin.version}</span>
+							<span fg="#5c9aff">v{plugin.version}</span>
 							{showInstalledVersion &&
 								plugin.installedVersion !== plugin.version && (
 									<span> (v{plugin.installedVersion} installed)</span>
@@ -1141,10 +1306,15 @@ export function PluginsScreen() {
 					{/* Scope Status with shortcuts - each scope has its own color */}
 					<box flexDirection="column" marginTop={1}>
 						<text>────────────────────────</text>
-						<text><strong>Scopes:</strong></text>
+						<text>
+							<strong>Scopes:</strong>
+						</text>
 						<box marginTop={1} flexDirection="column">
 							<text>
-								<span bg="cyan" fg="black"> u </span>
+								<span bg="cyan" fg="black">
+									{" "}
+									u{" "}
+								</span>
 								<span fg={plugin.userScope?.enabled ? "cyan" : "gray"}>
 									{plugin.userScope?.enabled ? " ● " : " ○ "}
 								</span>
@@ -1155,7 +1325,10 @@ export function PluginsScreen() {
 								)}
 							</text>
 							<text>
-								<span bg="green" fg="black"> p </span>
+								<span bg="green" fg="black">
+									{" "}
+									p{" "}
+								</span>
 								<span fg={plugin.projectScope?.enabled ? "green" : "gray"}>
 									{plugin.projectScope?.enabled ? " ● " : " ○ "}
 								</span>
@@ -1166,7 +1339,10 @@ export function PluginsScreen() {
 								)}
 							</text>
 							<text>
-								<span bg="yellow" fg="black"> l </span>
+								<span bg="yellow" fg="black">
+									{" "}
+									l{" "}
+								</span>
 								<span fg={plugin.localScope?.enabled ? "yellow" : "gray"}>
 									{plugin.localScope?.enabled ? " ● " : " ○ "}
 								</span>
@@ -1184,12 +1360,18 @@ export function PluginsScreen() {
 						<box flexDirection="column" marginTop={1}>
 							{plugin.hasUpdate && (
 								<box>
-									<text bg="magenta" fg="white"> U </text>
+									<text bg="magenta" fg="white">
+										{" "}
+										U{" "}
+									</text>
 									<text> Update to v{plugin.version}</text>
 								</box>
 							)}
 							<box>
-								<text bg="red" fg="white"> d </text>
+								<text bg="red" fg="white">
+									{" "}
+									d{" "}
+								</text>
 								<text> Uninstall</text>
 							</box>
 						</box>
@@ -1201,9 +1383,10 @@ export function PluginsScreen() {
 		return null;
 	};
 
-	const footerHints = isSearchActive
-		? "Type to search │ Enter Confirm │ Esc Cancel"
-		: "u/p/l:scope │ U:update │ a:all │ d:remove │ n:add │ t:team │ /:search";
+	const footerHints =
+		isSearchActive || pluginsState.searchQuery
+			? "↑↓:nav │ Enter:select │ Esc:clear │ type to filter"
+			: "u/p/l:scope │ U:update │ a:all │ d:remove │ s:profile │ type to search";
 
 	// Calculate status for subtitle
 	const scopeLabel = pluginsState.scope === "global" ? "Global" : "Project";

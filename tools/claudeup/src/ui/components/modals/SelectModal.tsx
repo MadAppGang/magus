@@ -1,5 +1,4 @@
-import React, { useState } from "react";
-import { useKeyboard } from "../../hooks/useKeyboard.js";
+import React from "react";
 import type { SelectOption } from "../../state/types.js";
 
 interface SelectModalProps {
@@ -9,6 +8,8 @@ interface SelectModalProps {
 	message: string;
 	/** Select options */
 	options: SelectOption[];
+	/** Currently selected index (controlled by ModalContainer) */
+	defaultIndex?: number;
 	/** Callback when option selected */
 	onSelect: (value: string) => void;
 	/** Callback when cancelled */
@@ -19,22 +20,13 @@ export function SelectModal({
 	title,
 	message,
 	options,
-	onSelect,
-	onCancel,
+	defaultIndex,
+	onSelect: _onSelect,
+	onCancel: _onCancel,
 }: SelectModalProps) {
-	const [selectedIndex, setSelectedIndex] = useState(0);
-
-	useKeyboard((key) => {
-		if (key.name === "enter") {
-			onSelect(options[selectedIndex].value);
-		} else if (key.name === "escape" || key.name === "q") {
-			onCancel();
-		} else if (key.name === "up" || key.name === "k") {
-			setSelectedIndex((prev) => Math.max(0, prev - 1));
-		} else if (key.name === "down" || key.name === "j") {
-			setSelectedIndex((prev) => Math.min(options.length - 1, prev + 1));
-		}
-	});
+	// Keyboard handling is done by ModalContainer
+	// defaultIndex is the live selectedIndex from ModalContainer state
+	const selectedIndex = defaultIndex ?? 0;
 
 	return (
 		<box
@@ -62,10 +54,7 @@ export function SelectModal({
 					const isSelected = idx === selectedIndex;
 					const label = isSelected ? `> ${option.label}` : `  ${option.label}`;
 					return (
-						<text
-							key={option.value}
-							fg={isSelected ? "cyan" : "#666666"}
-						>
+						<text key={option.value} fg={isSelected ? "cyan" : "#666666"}>
 							{isSelected && <strong>{label}</strong>}
 							{!isSelected && label}
 						</text>

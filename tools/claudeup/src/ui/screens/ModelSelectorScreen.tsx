@@ -282,11 +282,7 @@ export function ModelSelectorScreen() {
 		}
 
 		// Regular text input (single character keys)
-		if (
-			event.name.length === 1 &&
-			!event.ctrl &&
-			!event.shift
-		) {
+		if (event.name.length === 1 && !event.ctrl && !event.shift) {
 			dispatch({
 				type: "MODEL_SELECTOR_SET_SEARCH",
 				query: modelSelector.searchQuery + event.name,
@@ -304,11 +300,9 @@ export function ModelSelectorScreen() {
 			return (
 				<box margin={0}>
 					<text fg="gray">{item.label} </text>
-					<text fg="#888888">
-						⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
-					</text>
+					<text fg="#888888">⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯</text>
 					{status && <text fg="green"> {status}</text>}
-					{item.provider && <text fg="blue"> {item.provider}</text>}
+					{item.provider && <text fg="#5c9aff"> {item.provider}</text>}
 				</box>
 			);
 		}
@@ -334,7 +328,13 @@ export function ModelSelectorScreen() {
 											: "white"
 								}
 							>
-								{seg.highlighted ? <u><strong>{seg.text}</strong></u> : seg.text}
+								{seg.highlighted ? (
+									<u>
+										<strong>{seg.text}</strong>
+									</u>
+								) : (
+									seg.text
+								)}
 							</text>
 						))
 					: item.label}
@@ -395,15 +395,11 @@ export function ModelSelectorScreen() {
 					<box flexDirection="row" justifyContent="space-between">
 						<box>
 							<text fg="#7e57c2">Switch Model </text>
-							<text
-								fg={modelSelector.taskSize === "large" ? "white" : "gray"}
-							>
+							<text fg={modelSelector.taskSize === "large" ? "white" : "gray"}>
 								{modelSelector.taskSize === "large" ? "◎" : "○"} Large Task
 								{"  "}
 							</text>
-							<text
-								fg={modelSelector.taskSize === "small" ? "white" : "gray"}
-							>
+							<text fg={modelSelector.taskSize === "small" ? "white" : "gray"}>
 								{modelSelector.taskSize === "small" ? "◎" : "○"} Small Task
 							</text>
 						</box>

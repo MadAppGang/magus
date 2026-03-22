@@ -16,10 +16,10 @@ import {
 	PluginsScreen,
 	McpScreen,
 	McpRegistryScreen,
-	StatusLineScreen,
-	EnvVarsScreen,
+	SettingsScreen,
 	CliToolsScreen,
 	ModelSelectorScreen,
+	ProfilesScreen,
 } from "./screens/index.js";
 import type { Screen } from "./state/types.js";
 import { repairAllMarketplaces } from "../services/local-marketplace.js";
@@ -49,14 +49,14 @@ function Router() {
 			return <McpScreen />;
 		case "mcp-registry":
 			return <McpRegistryScreen />;
-		case "statusline":
-			return <StatusLineScreen />;
-		case "env-vars":
-			return <EnvVarsScreen />;
+		case "settings":
+			return <SettingsScreen />;
 		case "cli-tools":
 			return <CliToolsScreen />;
 		case "model-selector":
 			return <ModelSelectorScreen />;
+		case "profiles":
+			return <ProfilesScreen />;
 		default:
 			return <PluginsScreen />;
 	}
@@ -112,27 +112,27 @@ function GlobalKeyHandler({
 			"plugins",
 			"mcp",
 			"mcp-registry",
-			"statusline",
-			"env-vars",
+			"settings",
 			"cli-tools",
 			"model-selector",
+			"profiles",
 		].includes(state.currentRoute.screen);
 
 		if (isTopLevel) {
 			if (input === "1") navigateToScreen("plugins");
 			else if (input === "2") navigateToScreen("mcp");
-			else if (input === "3") navigateToScreen("statusline");
-			else if (input === "4") navigateToScreen("env-vars");
-			else if (input === "5") navigateToScreen("cli-tools");
+			else if (input === "3") navigateToScreen("settings");
+			else if (input === "4") navigateToScreen("cli-tools");
+			else if (input === "5") navigateToScreen("profiles");
 
 			// Tab navigation cycling
 			if (key.tab) {
 				const screens: Screen[] = [
 					"plugins",
 					"mcp",
-					"statusline",
-					"env-vars",
+					"settings",
 					"cli-tools",
+					"profiles",
 				];
 				const currentIndex = screens.indexOf(
 					state.currentRoute.screen as Screen,
@@ -171,9 +171,9 @@ function GlobalKeyHandler({
   ?             This help
 
 Quick Navigation
-  1  Plugins      4  Env Vars
-  2  MCP Servers  5  CLI Tools
-  3  Status Line
+  1  Plugins      4  CLI Tools
+  2  MCP Servers  5  Profiles
+  3  Settings
 
 Plugin Actions
   u  Update        d  Uninstall
@@ -194,13 +194,11 @@ MCP Servers
  * UpdateBanner Component
  * Shows version update notification
  */
-function UpdateBanner({
-	result,
-}: { result: VersionCheckResult }) {
+function UpdateBanner({ result }: { result: VersionCheckResult }) {
 	if (!result.updateAvailable) return null;
 
 	return (
-		<box paddingLeft={1} paddingRight={1} >
+		<box paddingLeft={1} paddingRight={1}>
 			<text bg="yellow" fg="black">
 				<strong> UPDATE </strong>
 			</text>
@@ -266,8 +264,7 @@ function AppContentInner({
 		});
 
 		// Migrate old marketplace names → magus (idempotent), then repair plugin.json files
-		migrateMarketplaceRename()
-			.catch(() => {}); // non-blocking, best-effort
+		migrateMarketplaceRename().catch(() => {}); // non-blocking, best-effort
 
 		repairAllMarketplaces()
 			.then(async () => {
@@ -295,7 +292,8 @@ function AppContentInner({
 			<box
 				flexDirection="column"
 				height={dimensions.contentHeight}
-				paddingLeft={1} paddingRight={1}
+				paddingLeft={1}
+				paddingRight={1}
 			>
 				<Router />
 			</box>

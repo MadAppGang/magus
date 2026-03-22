@@ -251,7 +251,7 @@ export function StatusLineScreen() {
 								<span fg="gray">→</span> Session cost
 							</text>
 							<text>
-								<span fg="blue">
+								<span fg="#5c9aff">
 									<strong>{"{cwd}"}</strong>
 								</span>{" "}
 								<span fg="gray">→</span> Working directory
@@ -310,7 +310,8 @@ export function StatusLineScreen() {
 						</text>
 						<box
 							marginTop={1}
-							paddingLeft={1} paddingRight={1}
+							paddingLeft={1}
+							paddingRight={1}
 							borderStyle="rounded"
 							borderColor="green"
 						>
@@ -336,7 +337,7 @@ export function StatusLineScreen() {
 	) => {
 		if (item.isCategory) {
 			return (
-				<text fg="magenta" >
+				<text fg="magenta">
 					<strong>▸ {item.label}</strong>
 				</text>
 			);
@@ -344,14 +345,11 @@ export function StatusLineScreen() {
 
 		if (item.isCustom) {
 			return isSelected ? (
-				<text bg="cyan" fg="black" >
-					<strong>
-						{" "}
-						➕ Custom Status Line{" "}
-					</strong>
+				<text bg="cyan" fg="black">
+					<strong> ➕ Custom Status Line </strong>
 				</text>
 			) : (
-				<text fg="cyan" >
+				<text fg="cyan">
 					<strong>{"  "}➕ Custom Status Line</strong>
 				</text>
 			);
@@ -361,12 +359,12 @@ export function StatusLineScreen() {
 		const isActive = item.preset && currentForScope === item.preset.template;
 
 		return isSelected ? (
-			<text bg="magenta" fg="white" >
+			<text bg="magenta" fg="white">
 				{" "}
 				{isActive ? "●" : "○"} {item.preset?.name || ""}{" "}
 			</text>
 		) : (
-			<text fg={isActive ? "green" : "white"} >
+			<text fg={isActive ? "green" : "white"}>
 				{"  "}
 				{isActive ? "●" : "○"} {item.preset?.name || ""}
 			</text>
@@ -392,7 +390,7 @@ export function StatusLineScreen() {
 	return (
 		<ScreenLayout
 			title="claudeup Status Line"
-			currentScreen="statusline"
+			currentScreen={"statusline" as never}
 			statusLine={statusContent}
 			footerHints="↑↓:nav │ Enter:apply │ p:project │ g:global │ r:reset"
 			listPanel={

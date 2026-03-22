@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { useApp } from "../../state/AppContext.js";
 import { useKeyboard } from "../../hooks/useKeyboard.js";
 import { ConfirmModal } from "./ConfirmModal.js";
@@ -9,23 +9,54 @@ import { LoadingModal } from "./LoadingModal.js";
 
 /**
  * Container that renders the active modal as an overlay
- * Handles global Escape key to close modals
+ * Handles ALL keyboard events when a modal is open to avoid
+ * conflicts with multiple useKeyboard hooks in child components
  */
 export function ModalContainer() {
 	const { state } = useApp();
 	const { modal } = state;
 
-	// Handle Escape key to close modal (except loading)
+	// Track select modal index here (lifted from SelectModal)
+	const [selectIndex, setSelectIndex] = useState(0);
+
+	// Reset select index when modal changes
+	const modalRef = React.useRef(modal);
+	if (modal !== modalRef.current) {
+		modalRef.current = modal;
+		if (modal?.type === "select") {
+			setSelectIndex(modal.defaultIndex ?? 0);
+		}
+	}
+
+	// Handle ALL keyboard events for modals
 	useKeyboard((key) => {
-		if (key.name === "escape" && modal && modal.type !== "loading") {
-			// Loading modal cannot be dismissed with Escape
-			if (modal.type === "confirm") {
-				modal.onCancel();
-			} else if (modal.type === "input") {
-				modal.onCancel();
-			} else if (modal.type === "select") {
-				modal.onCancel();
-			} else if (modal.type === "message") {
+		if (!modal) return;
+		if (modal.type === "loading") return;
+
+		// Escape — close any modal
+		if (key.name === "escape" || key.name === "q") {
+			if (modal.type === "confirm") modal.onCancel();
+			else if (modal.type === "input") modal.onCancel();
+			else if (modal.type === "select") modal.onCancel();
+			else if (modal.type === "message") modal.onDismiss();
+			return;
+		}
+
+		// Select modal — handle navigation and selection
+		if (modal.type === "select") {
+			if (key.name === "return" || key.name === "enter") {
+				modal.onSelect(modal.options[selectIndex].value);
+			} else if (key.name === "up" || key.name === "k") {
+				setSelectIndex((prev) => Math.max(0, prev - 1));
+			} else if (key.name === "down" || key.name === "j") {
+				setSelectIndex((prev) => Math.min(modal.options.length - 1, prev + 1));
+			}
+			return;
+		}
+
+		// Message modal — Enter to dismiss
+		if (modal.type === "message") {
+			if (key.name === "return" || key.name === "enter") {
 				modal.onDismiss();
 			}
 		}
@@ -64,6 +95,7 @@ export function ModalContainer() {
 						title={modal.title}
 						message={modal.message}
 						options={modal.options}
+						defaultIndex={selectIndex}
 						onSelect={modal.onSelect}
 						onCancel={modal.onCancel}
 					/>

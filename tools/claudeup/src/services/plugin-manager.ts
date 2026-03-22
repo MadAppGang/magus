@@ -61,6 +61,7 @@ export interface PluginInfo {
 	skills?: string[];
 	mcpServers?: string[];
 	lspServers?: Record<string, unknown>;
+	isOrphaned?: boolean;
 }
 
 export interface MarketplacePlugin {
@@ -323,6 +324,7 @@ export async function getAvailablePlugins(
 			enabled: isEnabled,
 			installedVersion: installedVersion,
 			hasUpdate,
+			isOrphaned: true,
 			...scopeStatus,
 		});
 	}
@@ -500,6 +502,7 @@ export async function getGlobalAvailablePlugins(): Promise<PluginInfo[]> {
 			...scopeStatus,
 			installedVersion: installedVersion,
 			hasUpdate,
+			isOrphaned: true,
 		});
 	}
 

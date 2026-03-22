@@ -269,7 +269,9 @@ export function McpScreen() {
 		return (
 			<box flexDirection="column">
 				<box marginBottom={1}>
-					<text fg="cyan"><strong>⚡ {server.name}</strong></text>
+					<text fg="cyan">
+						<strong>⚡ {server.name}</strong>
+					</text>
 					{server.requiresConfig && <text fg="yellow"> ⚙</text>}
 				</box>
 
@@ -295,7 +297,7 @@ export function McpScreen() {
 					{server.type === "http" ? (
 						<box>
 							<text fg="gray">URL </text>
-							<text fg="blue">{server.url}</text>
+							<text fg="#5c9aff">{server.url}</text>
 						</box>
 					) : (
 						<box>
@@ -316,12 +318,18 @@ export function McpScreen() {
 				<box marginTop={2}>
 					{isInstalled ? (
 						<box>
-							<text bg="red" fg="white"> Enter </text>
+							<text bg="red" fg="white">
+								{" "}
+								Enter{" "}
+							</text>
 							<text fg="gray"> Remove server</text>
 						</box>
 					) : (
 						<box>
-							<text bg="green" fg="black"> Enter </text>
+							<text bg="green" fg="black">
+								{" "}
+								Enter{" "}
+							</text>
 							<text fg="gray"> Install server</text>
 						</box>
 					)}
@@ -338,7 +346,9 @@ export function McpScreen() {
 		// Category header
 		if (item.isCategory) {
 			return (
-				<text fg="magenta"><strong>▸ {item.label}</strong></text>
+				<text fg="magenta">
+					<strong>▸ {item.label}</strong>
+				</text>
 			);
 		}
 

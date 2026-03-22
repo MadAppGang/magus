@@ -44,9 +44,9 @@ export const initialState: AppState = {
 		currentPreset: null,
 	},
 
-	envVars: {
+	settings: {
 		selectedIndex: 0,
-		variables: { status: "idle" },
+		values: { status: "idle" },
 	},
 
 	cliTools: {
@@ -59,6 +59,11 @@ export const initialState: AppState = {
 		searchQuery: "",
 		taskSize: "large",
 	},
+
+	profiles: {
+		selectedIndex: 0,
+		profiles: { status: "idle" },
+	},
 };
 
 export function appReducer(state: AppState, action: AppAction): AppState {
@@ -67,7 +72,12 @@ export function appReducer(state: AppState, action: AppAction): AppState {
 		// Navigation
 		// =========================================================================
 		case "NAVIGATE":
-			return { ...state, currentRoute: action.route };
+			return {
+				...state,
+				currentRoute: action.route,
+				// Clear search state when navigating away
+				isSearching: false,
+			};
 
 		// =========================================================================
 		// Plugins Screen
@@ -304,41 +314,41 @@ export function appReducer(state: AppState, action: AppAction): AppState {
 			};
 
 		// =========================================================================
-		// Env Vars Screen
+		// Settings Screen
 		// =========================================================================
-		case "ENVVARS_SELECT":
+		case "SETTINGS_SELECT":
 			return {
 				...state,
-				envVars: {
-					...state.envVars,
+				settings: {
+					...state.settings,
 					selectedIndex: action.index,
 				},
 			};
 
-		case "ENVVARS_DATA_LOADING":
+		case "SETTINGS_DATA_LOADING":
 			return {
 				...state,
-				envVars: {
-					...state.envVars,
-					variables: { status: "loading" },
+				settings: {
+					...state.settings,
+					values: { status: "loading" },
 				},
 			};
 
-		case "ENVVARS_DATA_SUCCESS":
+		case "SETTINGS_DATA_SUCCESS":
 			return {
 				...state,
-				envVars: {
-					...state.envVars,
-					variables: { status: "success", data: action.variables },
+				settings: {
+					...state.settings,
+					values: { status: "success", data: action.values },
 				},
 			};
 
-		case "ENVVARS_DATA_ERROR":
+		case "SETTINGS_DATA_ERROR":
 			return {
 				...state,
-				envVars: {
-					...state.envVars,
-					variables: { status: "error", error: action.error },
+				settings: {
+					...state.settings,
+					values: { status: "error", error: action.error },
 				},
 			};
 
@@ -425,6 +435,45 @@ export function appReducer(state: AppState, action: AppAction): AppState {
 				modelSelector: {
 					...state.modelSelector,
 					taskSize: action.size,
+				},
+			};
+
+		// =========================================================================
+		// Profiles Screen
+		// =========================================================================
+		case "PROFILES_SELECT":
+			return {
+				...state,
+				profiles: {
+					...state.profiles,
+					selectedIndex: action.index,
+				},
+			};
+
+		case "PROFILES_DATA_LOADING":
+			return {
+				...state,
+				profiles: {
+					...state.profiles,
+					profiles: { status: "loading" },
+				},
+			};
+
+		case "PROFILES_DATA_SUCCESS":
+			return {
+				...state,
+				profiles: {
+					...state.profiles,
+					profiles: { status: "success", data: action.profiles },
+				},
+			};
+
+		case "PROFILES_DATA_ERROR":
+			return {
+				...state,
+				profiles: {
+					...state.profiles,
+					profiles: { status: "error", error: action.error },
 				},
 			};
 

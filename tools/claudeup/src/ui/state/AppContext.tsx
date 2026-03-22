@@ -153,6 +153,7 @@ export function useModal() {
 			title: string,
 			message: string,
 			options: { label: string; value: string; description?: string }[],
+			defaultIndex?: number,
 		): Promise<string | null> => {
 			return new Promise((resolve) => {
 				dispatch({
@@ -162,6 +163,7 @@ export function useModal() {
 						title,
 						message,
 						options,
+						defaultIndex,
 						onSelect: (value: string) => {
 							dispatch({ type: "HIDE_MODAL" });
 							resolve(value);

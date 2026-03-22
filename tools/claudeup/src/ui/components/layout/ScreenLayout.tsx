@@ -43,60 +43,62 @@ export function ScreenLayout({
 }: ScreenLayoutProps) {
 	const dimensions = useDimensions();
 
-	// Calculate panel heights
-	// Header: 4 lines (border + title + status/search + border)
-	// Footer: 2 lines (border-top + content)
-	const headerHeight = 4;
-	const footerHeight = 2;
-	const panelHeight = Math.max(
-		5,
-		dimensions.contentHeight - headerHeight - footerHeight,
-	);
+	const hasSearchBar = search && (search.isActive || search.query);
+
+	// Fixed chrome: top line + tabs + line + header + separator + footer = 6
+	// Search bar adds 1 when active
+	const fixedHeight = 6 + (hasSearchBar ? 1 : 0);
+	const panelHeight = Math.max(5, dimensions.contentHeight - fixedHeight);
+	const lineWidth = Math.max(10, dimensions.terminalWidth - 4);
 
 	return (
 		<box flexDirection="column" height={dimensions.contentHeight}>
-			{/* Header */}
-			<box
-				flexDirection="column"
-				border
-				borderStyle="single"
-				borderColor={HEADER_COLOR}
-				padding={1}
-				marginBottom={0}
-			>
-				{/* Title row */}
-				<box flexDirection="row" justifyContent="space-between">
-					<text fg={HEADER_COLOR}>
-						<strong>{title}</strong>
-					</text>
-					{subtitle && <text fg="gray">{subtitle}</text>}
-				</box>
+			{/* Line above tabs */}
+			<box height={1} paddingLeft={1} paddingRight={1}>
+				<text fg="#333333">{"─".repeat(lineWidth)}</text>
+			</box>
 
-				{/* Status/Search row - always present */}
-				<box flexDirection="row" marginTop={0}>
-					{search ? (
-						// Search mode
-						<>
-							<text fg="green">{"> "}</text>
-							{search.isActive ? (
-								<>
-									<text fg="white">{search.query}</text>
-									<text bg="white" fg="black"> </text>
-								</>
-							) : (
-								<text fg="gray">
-									{search.query || search.placeholder || "/"}
-								</text>
-							)}
-						</>
-					) : statusLine ? (
-						// Custom status line
-						statusLine
+			{/* Tab bar */}
+			<box height={1} paddingLeft={1} paddingRight={1}>
+				<TabBar currentScreen={currentScreen} />
+			</box>
+
+			{/* Line below tabs */}
+			<box height={1} paddingLeft={1} paddingRight={1}>
+				<text fg="#333333">{"─".repeat(lineWidth)}</text>
+			</box>
+
+			{/* Header — title on left, subtitle/status on right */}
+			<box height={1} paddingLeft={1} paddingRight={1} flexDirection="row" justifyContent="space-between">
+				<text fg={HEADER_COLOR}>
+					<strong>{title}</strong>
+				</text>
+				{subtitle && <text fg="gray">{subtitle}</text>}
+				{!subtitle && statusLine ? statusLine : null}
+			</box>
+
+			{/* Search bar — own line, only when active */}
+			{hasSearchBar && (
+				<box height={1} paddingLeft={1} paddingRight={1}>
+					{search.isActive ? (
+						<text>
+							<span fg="green">{"Filter: "}</span>
+							<span fg="white">{search.query}</span>
+							<span bg="white" fg="black"> </span>
+						</text>
 					) : (
-						// Default empty status
-						<text fg="gray">─</text>
+						<text>
+							<span fg="green">{"Filter: "}</span>
+							<span fg="yellow">{search.query}</span>
+							<span fg="gray">  (Esc to clear)</span>
+						</text>
 					)}
 				</box>
+			)}
+
+			{/* Separator below header */}
+			<box height={1} paddingLeft={1} paddingRight={1}>
+				<text fg="#444444">{"─".repeat(lineWidth)}</text>
 			</box>
 
 			{/* Main content area */}
@@ -112,11 +114,7 @@ export function ScreenLayout({
 				</box>
 
 				{/* Vertical separator */}
-				<box
-					flexDirection="column"
-					width={1}
-					height={panelHeight}
-				>
+				<box flexDirection="column" width={1} height={panelHeight}>
 					<text fg="#444444">{"│".repeat(panelHeight)}</text>
 				</box>
 
@@ -132,13 +130,8 @@ export function ScreenLayout({
 			</box>
 
 			{/* Footer */}
-			<box
-				height={1}
-				flexDirection="row"
-				justifyContent="space-between"
-			>
+			<box height={1} paddingLeft={1}>
 				<text fg="gray">{footerHints}</text>
-				<TabBar currentScreen={currentScreen} />
 			</box>
 		</box>
 	);

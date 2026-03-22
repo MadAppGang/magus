@@ -2,6 +2,7 @@ import type {
 	Marketplace,
 	McpServer,
 	StatusLineConfig,
+	ProfileEntry,
 } from "../../types/index.js";
 import type { PluginInfo } from "../../services/plugin-manager.js";
 
@@ -13,19 +14,19 @@ export type Screen =
 	| "plugins"
 	| "mcp"
 	| "mcp-registry"
-	| "statusline"
-	| "env-vars"
+	| "settings"
 	| "cli-tools"
-	| "model-selector";
+	| "model-selector"
+	| "profiles";
 
 export type Route =
 	| { screen: "plugins" }
 	| { screen: "mcp" }
 	| { screen: "mcp-registry"; query?: string }
-	| { screen: "statusline" }
-	| { screen: "env-vars" }
+	| { screen: "settings" }
 	| { screen: "cli-tools" }
-	| { screen: "model-selector" };
+	| { screen: "model-selector" }
+	| { screen: "profiles" };
 
 // ============================================================================
 // Async Data Types
@@ -68,6 +69,7 @@ export type ModalState =
 			title: string;
 			message: string;
 			options: SelectOption[];
+			defaultIndex?: number;
 			onSelect: (value: string) => void;
 			onCancel: () => void;
 	  }
@@ -125,9 +127,14 @@ export interface StatusLineScreenState {
 	currentPreset: string | null;
 }
 
-export interface EnvVarsScreenState {
+export interface ScopedSettingValues {
+	user: string | undefined;
+	project: string | undefined;
+}
+
+export interface SettingsScreenState {
 	selectedIndex: number;
-	variables: AsyncData<Record<string, string>>;
+	values: AsyncData<Map<string, ScopedSettingValues>>;
 }
 
 export interface CliTool {
@@ -156,6 +163,11 @@ export interface ModelSelectorScreenState {
 	taskSize: "large" | "small";
 }
 
+export interface ProfilesScreenState {
+	selectedIndex: number;
+	profiles: AsyncData<ProfileEntry[]>;
+}
+
 // ============================================================================
 // App State
 // ============================================================================
@@ -181,9 +193,10 @@ export interface AppState {
 	mcp: McpScreenState;
 	mcpRegistry: McpRegistryScreenState;
 	statusline: StatusLineScreenState;
-	envVars: EnvVarsScreenState;
+	settings: SettingsScreenState;
 	cliTools: CliToolsScreenState;
 	modelSelector: ModelSelectorScreenState;
+	profiles: ProfilesScreenState;
 }
 
 // ============================================================================
@@ -239,11 +252,11 @@ export type AppAction =
 	  }
 	| { type: "STATUSLINE_DATA_ERROR"; error: Error }
 
-	// Env vars screen
-	| { type: "ENVVARS_SELECT"; index: number }
-	| { type: "ENVVARS_DATA_LOADING" }
-	| { type: "ENVVARS_DATA_SUCCESS"; variables: Record<string, string> }
-	| { type: "ENVVARS_DATA_ERROR"; error: Error }
+	// Settings screen
+	| { type: "SETTINGS_SELECT"; index: number }
+	| { type: "SETTINGS_DATA_LOADING" }
+	| { type: "SETTINGS_DATA_SUCCESS"; values: Map<string, ScopedSettingValues> }
+	| { type: "SETTINGS_DATA_ERROR"; error: Error }
 
 	// CLI tools screen
 	| { type: "CLITOOLS_SELECT"; index: number }
@@ -268,6 +281,12 @@ export type AppAction =
 
 	// Search state (blocks global key handlers)
 	| { type: "SET_SEARCHING"; isSearching: boolean }
+
+	// Profiles screen
+	| { type: "PROFILES_SELECT"; index: number }
+	| { type: "PROFILES_DATA_LOADING" }
+	| { type: "PROFILES_DATA_SUCCESS"; profiles: ProfileEntry[] }
+	| { type: "PROFILES_DATA_ERROR"; error: Error }
 
 	// Data refresh - triggers screens to refetch
 	| { type: "DATA_REFRESH_COMPLETE" };

@@ -73,6 +73,15 @@ export interface MarketplaceSource {
 	autoUpdate?: boolean; // Enable auto-update for this marketplace (default: true for new marketplaces)
 }
 
+export interface ClaudeHookEntry {
+	type: string;
+	command: string;
+}
+
+export interface ClaudeHookGroup {
+	hooks: ClaudeHookEntry[];
+}
+
 export interface ClaudeSettings {
 	enabledMcpServers?: Record<string, boolean>;
 	mcpServers?: Record<string, McpServerConfig>;
@@ -80,6 +89,7 @@ export interface ClaudeSettings {
 	extraKnownMarketplaces?: Record<string, MarketplaceSource>;
 	installedPluginVersions?: Record<string, string>;
 	statusLine?: string;
+	hooks?: Record<string, ClaudeHookGroup[]>;
 }
 
 export interface McpServerConfig {
@@ -138,4 +148,28 @@ export interface InstalledPluginEntry {
 export interface InstalledPluginsRegistry {
 	version: number;
 	plugins: Record<string, InstalledPluginEntry[]>;
+}
+
+// ─── Plugin Profile Types ──────────────────────────────────────────────────────
+
+export interface Profile {
+	name: string;
+	plugins: Record<string, boolean>;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface ProfilesFile {
+	version: number;
+	profiles: Record<string, Profile>;
+}
+
+/** A profile with its id and scope, as used in UI lists */
+export interface ProfileEntry {
+	id: string;
+	name: string;
+	plugins: Record<string, boolean>;
+	createdAt: string;
+	updatedAt: string;
+	scope: "user" | "project";
 }
