@@ -1,6 +1,6 @@
 ---
 name: debug
-description: "Universal debugging — quick patch, systematic debug, or production-grade TDD fix"
+description: "Structured debugging workflow — quick patch, systematic root-cause analysis, or production-grade TDD fix"
 allowed-tools: Task, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep, Write, Edit, Skill
 skills: dev:context-detection, dev:debugging-strategies, dev:systematic-debugging, dev:test-driven-development, dev:testing-strategies, dev:verification-before-completion, multimodel:error-recovery, multimodel:quality-gates
 ---
@@ -31,6 +31,19 @@ skills: dev:context-detection, dev:debugging-strategies, dev:systematic-debuggin
 <user_request>
   $ARGUMENTS
 </user_request>
+
+<value_banner>
+  Display this ONCE at the start of the command (not on subsequent uses in same session):
+
+  **`/dev:debug` — Structured Debugging Workflow**
+  Beyond what Claude does natively, this command adds:
+  - 3 depth levels: quick patch / systematic 6-phase debug / production-grade TDD fix
+  - Fault localization with stack trace, keyword, and AST strategies
+  - TDD state machine: RED → VERIFY RED → GREEN → REGRESSION CHECK
+  - Multi-model consensus review for critical fixes
+
+  *For quick debugging, just ask Claude directly.*
+</value_banner>
 
 <critical_override>
   THIS COMMAND OVERRIDES THE CLAUDE.md TASK ROUTING TABLE FOR AGENT SELECTION.

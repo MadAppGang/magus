@@ -1,6 +1,6 @@
 ---
 name: dev
-description: "Develop features — adaptive depth and automation. Quick/standard/full process, interactive/guided/autonomous execution."
+description: "Feature development workflow — adaptive depth (quick/standard/full) and automation (interactive/guided/autonomous)"
 allowed-tools: Task, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep, mcp__chrome-devtools__navigate_page, mcp__chrome-devtools__take_screenshot, mcp__chrome-devtools__take_snapshot, mcp__chrome-devtools__click, mcp__chrome-devtools__fill, mcp__chrome-devtools__new_page, mcp__chrome-devtools__select_page, mcp__chrome-devtools__list_pages
 skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, dev:worktree-lifecycle, multimodel:multi-model-validation, multimodel:quality-gates, multimodel:model-tracking-protocol
 ---
@@ -33,6 +33,19 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
 <user_request>
   $ARGUMENTS
 </user_request>
+
+<value_banner>
+  Display this ONCE at the start of the command (not on subsequent uses in same session):
+
+  **`/dev:dev` — Structured Feature Development**
+  Beyond what Claude does natively, this command adds:
+  - 8-phase lifecycle with quality gates between each phase
+  - Adaptive depth: quick (just build) / standard (plan+build+test) / full (multi-model review + browser validation)
+  - Parallel multi-stack implementation with specialized agents
+  - Real browser validation with screenshot evidence (full mode)
+
+  *For quick help without structure, just ask Claude directly.*
+</value_banner>
 
 <critical_override>
   THIS COMMAND OVERRIDES THE CLAUDE.md TASK ROUTING TABLE FOR AGENT SELECTION.

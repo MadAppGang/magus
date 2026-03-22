@@ -50,7 +50,7 @@ skills: dev:context-detection
       <objective>Present formatted help output</objective>
       <steps>
         <step>Show plugin header and detected stack</step>
-        <step>List all 5 available commands with descriptions</step>
+        <step>List all 12 available commands with descriptions</step>
         <step>Show recommended skills based on detected stack</step>
         <step>Provide configuration examples</step>
         <step>Show usage examples</step>
@@ -63,19 +63,43 @@ skills: dev:context-detection
 <output_format>
 ## Dev Plugin Help
 
-**Version:** 1.1.0
+**Version:** 2.2.0
 **Detected Stack:** {detected_stack}
 **Mode:** {frontend | backend | fullstack}
 
 ### Available Commands
 
+**PLAN**
+
 | Command | Description |
 |---------|-------------|
-| `/dev:help` | Show this help message and detected stack |
-| `/dev:debug` | Universal debugging — quick patch, systematic debug, or production-grade TDD fix |
-| `/dev:dev` | Develop features — focused implementation or full lifecycle development |
-| `/dev:architect` | Architecture design and technical planning — complexity-aware with plan mode and multi-model escalation |
 | `/dev:research` | Multi-source research with convergence-based finalization |
+| `/dev:interview` | Specification interview with requirements elicitation |
+| `/dev:architect` | Architecture design and technical planning |
+
+**BUILD & FIX**
+
+| Command | Description |
+|---------|-------------|
+| `/dev:dev` | Develop features — adaptive depth and automation |
+| `/dev:debug` | Structured debugging — quick patch, root-cause analysis, or TDD fix |
+
+**REVIEW & UNDERSTAND**
+
+| Command | Description |
+|---------|-------------|
+| `/dev:audit` | Multi-scope quality audit (code, UI, docs, security, plugins) |
+| `/dev:investigate` | Read-only code investigation — architecture, implementation, bug origins |
+| `/dev:doc` | Documentation — generate, analyze, fix, or validate |
+
+**CONFIGURE**
+
+| Command | Description |
+|---------|-------------|
+| `/dev:setup` | Set up project CLAUDE.md with task routing and agent delegation |
+| `/dev:learn` | Analyze session for learnable patterns, propose CLAUDE.md updates |
+| `/dev:worktree` | Git worktree management with optional DB branching |
+| `/dev:help` | Show this help message |
 
 ### Recommended Skills for Your Project
 
@@ -116,17 +140,32 @@ Override auto-detection in `.claude/settings.json`:
 ### Usage Examples
 
 ```bash
-# Build a feature (focused mode)
+# Research a technology decision
+/dev:research Compare Zod vs Valibot for runtime validation
+
+# Elicit requirements via interview
+/dev:interview I need a notifications system
+
+# Architect a system
+/dev:architect Design microservice for user management
+
+# Build a feature
 /dev:dev Create user authentication with JWT
 
 # Debug an error
 /dev:debug TypeError: Cannot read property 'map' of undefined
 
-# Architect a system
-/dev:architect Design microservice for user management
+# Audit code quality
+/dev:audit Review auth module for security issues
 
-# Build a feature (full lifecycle)
-/dev:dev Add OAuth2 login with Google
+# Investigate how code works
+/dev:investigate How does the request pipeline work?
+
+# Generate or fix documentation
+/dev:doc Generate API docs for the users module
+
+# Manage a git worktree
+/dev:worktree Create feature/payments branch
 
 # Show this help
 /dev:help
@@ -243,7 +282,7 @@ See: https://github.com/MadAppGang/claudish
       - bun run typecheck
       - bun test
 
-      Shows all 5 commands with React-specific examples
+      Shows all 12 commands with React-specific examples
     </output>
   </example>
 
@@ -268,7 +307,7 @@ See: https://github.com/MadAppGang/claudish
       - golangci-lint run
       - go test ./...
 
-      Shows all 5 commands with Go-specific examples
+      Shows all 12 commands with Go-specific examples
     </output>
   </example>
 

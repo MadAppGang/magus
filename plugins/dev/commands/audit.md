@@ -1,7 +1,6 @@
-<!-- DEPRECATED: Use /dev:audit instead. Kept for backward compatibility. Will be removed in v3.0.0 -->
 ---
-name: review
-description: Review code, UI, docs, security, or plugin quality — routes to the right reviewer.
+name: audit
+description: "Structured quality audit — routes to specialist reviewers for code, UI, docs, security, or plugin quality"
 allowed-tools: Task, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet
 skills: dev:context-detection
 ---
@@ -23,6 +22,24 @@ skills: dev:context-detection
   RULE: ALL review work must be delegated via Task tool to the resolved agent.
   NEVER: Review code, assess quality, or provide feedback inline.
 </critical_override>
+
+<disambiguation>
+  This is the dev plugin's multi-scope quality audit command.
+  For PR-specific diff review, use Claude Code's built-in /review command instead.
+</disambiguation>
+
+<value_banner>
+  Display this ONCE at the start of the command (not on subsequent uses in same session):
+
+  **`/dev:audit` — Multi-Scope Quality Audit**
+  Beyond Claude's built-in `/review` (PR diff review), this command adds:
+  - 5 audit scopes: code quality, UI/design, documentation, security, plugin/agent
+  - Routes to specialist reviewer agents (designer, doc-analyzer, agentdev)
+  - Structured reports with severity levels (CRITICAL/HIGH/MEDIUM/LOW)
+  - Plugin-aware: detects and uses designer/agentdev plugins when installed
+
+  *For PR-specific diff review, use the built-in `/review` command.*
+</value_banner>
 
 <instructions>
   <workflow>

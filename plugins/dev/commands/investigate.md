@@ -1,6 +1,6 @@
 ---
 name: investigate
-description: Investigate how code works — architecture, implementation traces, bug origins, test coverage.
+description: "Read-only code investigation — architecture traces, implementation analysis, bug origin tracking with specialist agents"
 allowed-tools: Task, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet
 skills: dev:context-detection
 ---
