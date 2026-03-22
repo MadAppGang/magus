@@ -62,24 +62,34 @@ For new tasks requiring a fresh terminal:
 When the user says "open on a side", "split terminal", "show alongside", "run beside me", or any spatial layout request:
 
 ```
-1. DETECT CONTEXT
-   Bash: echo $TMUX_PANE                              → "%57" (your pane ID)
+1. DETECT CURRENT PANE (never use list-windows active flag)
+   Bash: tmux display-message -p '#{pane_id}'          → "%57" (your actual pane)
 
-2. SPLIT PANE (never create-session for side panels)
-   mcp__tmux__split-pane({ paneId: "%57", direction: "horizontal", size: 50 })
-                                                       → new pane "%66"
+2. CHECK FOR EXISTING HELPER PANE (reuse if possible)
+   Bash: tmux list-panes -F '#{pane_id} #{pane_title}' | grep claude-helper
+   → If found "%66 claude-helper": skip to step 4
 
-3. RUN IN NEW PANE
+3. SPLIT PANE (never create-session for side panels)
+   mcp__tmux__split-pane({ paneId: "%57", direction: "horizontal" })
+                                                        → new pane "%66"
+   Bash: tmux select-pane -t %66 -T "claude-helper"    → label it for reuse
+
+4. RUN IN HELPER PANE
    mcp__tmux__send-keys({ paneId: "%66", keys: "htop\nEnter" })
 
-4. MONITOR
-   mcp__tmux__capture-pane({ paneId: "%66" })          → read screen
+5. MONITOR
+   mcp__tmux__capture-pane({ paneId: "%66" })           → read screen
 
-5. CLEANUP (only the pane you created)
+6. CLEANUP (only the pane you created)
    mcp__tmux__kill-pane({ paneId: "%66" })
 ```
 
-**CRITICAL**: If `$TMUX_PANE` is set, ALWAYS use `split-pane` — NEVER `create-session`. Creating a detached session is wrong because the user explicitly asked for a side panel in their current view.
+**CRITICAL RULES:**
+- ALWAYS use `tmux display-message -p '#{pane_id}'` to find the user's pane. NEVER rely on `list-windows` active flag — it shows the most recently selected window in the session, not the window the user is looking at. This has caused splits to appear in wrong windows.
+- ALWAYS check for existing `claude-helper` pane before splitting — reuse it instead of spawning duplicates.
+- First split is ALWAYS `direction: "horizontal"` (creates vertical divider, helper on right).
+- After splitting, ALWAYS label with `tmux select-pane -t <id> -T "claude-helper"`.
+- NEVER `create-session` when user asked for a side panel.
 
 ### Pattern 3: Observe Existing Session (tmux-mcp)
 

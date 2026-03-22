@@ -310,8 +310,8 @@
     {
       "name": "terminal",
       "source": "./plugins/terminal",
-      "description": "Interactive terminal integration for Claude Code. v2.1.0: tmux context detection ($TMUX_PANE), split-pane workflow, corrected split-pane API docs. Enables Claude to run commands, monitor dev servers, query databases, navigate TUI apps.",
-      "version": "2.1.0",
+      "description": "Interactive terminal integration for Claude Code. v3.0.0: 3 new skills (framework-signals, tdd-workflow, workspace-setup), pane detection fix, helper pane reuse, tee-to-file, approval gates, desktop notifications, dashboard archetypes, tmux-mcp reliability fix. 5 skills, 9 commands, 1 agent.",
+      "version": "3.0.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",

@@ -49,10 +49,22 @@ interface TerminalChecks {
   min_tool_calls?: number;
   /** Minimum calls per tool (short name, without MCP prefix) */
   min_tool_calls_by_name?: Record<string, number>;
+  /** Maximum calls per tool (short name) — used with min for "exactly N" checks */
+  max_tool_calls_by_name?: Record<string, number>;
   /** Final assistant response contains this exact string (case-sensitive) */
   response_contains?: string;
   /** Final assistant response contains at least one of these strings */
   response_contains_any?: string[];
+  /** At least one Bash tool call command contains this string */
+  bash_command_contains?: string;
+  /** At least one Bash tool call command contains one of these strings */
+  bash_command_contains_any?: string[];
+  /** MCP tool call was made with specific argument values (checked from transcript) */
+  tool_arg_match?: Array<{
+    tool_pattern: string;  // substring match on tool name (e.g., "split-pane")
+    arg: string;           // input key to check (e.g., "direction")
+    value: string;         // expected value (e.g., "horizontal")
+  }>;
 }
 
 interface TestCase {
@@ -115,23 +127,32 @@ interface AnalysisOutput {
 // ---------------------------------------------------------------------------
 
 /**
- * Normalize MCP tool names so both prefix variants are treated as equivalent.
+ * Normalize MCP tool names so all prefix variants are treated as equivalent.
  *
- * The MCP system exposes tools under two possible prefixes:
- *   mcp__ht-mcp__ht_create_session  (binary name)
- *   mcp__ht__ht_create_session       (config key name)
+ * The MCP system exposes tools under three possible prefixes:
+ *   mcp__ht-mcp__ht_create_session           (binary name, claudish)
+ *   mcp__ht__ht_create_session                (config key name, claudish)
+ *   mcp__plugin_terminal_ht__ht_create_session (plugin-namespaced, native claude -p)
  *
  * Similarly for tmux:
  *   mcp__tmux-mcp__list-sessions
  *   mcp__tmux__list-sessions
+ *   mcp__plugin_terminal_tmux__list-sessions
  *
  * This function returns the canonical prefix form (without trailing double-underscore).
  */
 function normalizeToolPrefix(name: string): { prefix: string; shortName: string } {
+  // Step 0: Normalize plugin-namespaced variants (native claude -p) → canonical form
+  //   mcp__plugin_terminal_ht__ht_create_session  →  mcp__ht__ht_create_session
+  //   mcp__plugin_terminal_tmux__list-sessions     →  mcp__tmux__list-sessions
+  let normalized = name
+    .replace(/^mcp__plugin_terminal_ht__/, "mcp__ht__")
+    .replace(/^mcp__plugin_terminal_tmux__/, "mcp__tmux__");
+
   // Step 1: Normalize long-form binary-name variants → canonical double-underscore form
   //   mcp__ht-mcp__ht_create_session  →  mcp__ht__ht_create_session
   //   mcp__tmux-mcp__list-sessions    →  mcp__tmux__list-sessions
-  let normalized = name
+  normalized = normalized
     .replace(/^mcp__ht-mcp__/, "mcp__ht__")
     .replace(/^mcp__tmux-mcp__/, "mcp__tmux__");
 
@@ -357,13 +378,35 @@ function extractFinalResponse(entries: TranscriptEntry[]): string {
 }
 
 // ---------------------------------------------------------------------------
+// All tool call extraction (including Bash, Read, etc. — not just MCP)
+// ---------------------------------------------------------------------------
+
+/**
+ * Extract ALL tool calls from transcript entries (not filtered by prefix).
+ * Used for Bash command checks and tool argument validation.
+ */
+function extractAllToolCallsFromTranscript(entries: TranscriptEntry[]): ToolUse[] {
+  const calls: ToolUse[] = [];
+  for (const entry of entries) {
+    if (entry.type !== "assistant") continue;
+    for (const block of entry.message?.content ?? []) {
+      if (block.type === "tool_use" && block.name) {
+        calls.push({ name: block.name, input: (block.input ?? {}) as Record<string, unknown> });
+      }
+    }
+  }
+  return calls;
+}
+
+// ---------------------------------------------------------------------------
 // Check evaluation
 // ---------------------------------------------------------------------------
 
 function evaluateChecks(
   checks: TerminalChecks,
   mcpCalls: ToolUse[],
-  finalResponse: string
+  finalResponse: string,
+  allToolCalls: ToolUse[] = []
 ): CheckResult[] {
   const results: CheckResult[] = [];
 
@@ -548,6 +591,92 @@ function evaluateChecks(
     });
   }
 
+  // --- max_tool_calls_by_name ---
+  if (checks.max_tool_calls_by_name !== undefined) {
+    const countByShortName: Record<string, number> = {};
+    for (const call of normalizedCalls) {
+      const sn = call.normalized.shortName;
+      countByShortName[sn] = (countByShortName[sn] ?? 0) + 1;
+    }
+
+    for (const [toolName, maxCount] of Object.entries(checks.max_tool_calls_by_name)) {
+      const actual = countByShortName[toolName] ?? 0;
+      const passed = actual <= maxCount;
+      results.push({
+        check: `max_tool_calls_by_name[${toolName}]`,
+        passed,
+        detail: passed
+          ? `${toolName} called ${actual}x (maximum: ${maxCount})`
+          : `${toolName} called ${actual}x, expected at most ${maxCount}x`,
+      });
+    }
+  }
+
+  // --- bash_command_contains ---
+  if (checks.bash_command_contains !== undefined) {
+    const bashCalls = allToolCalls.filter(
+      (c) => c.name === "Bash" || c.name === "bash" || c.name === "computer_tool"
+    );
+    const bashCommands = bashCalls.map((c) => String(c.input?.command ?? ""));
+    const needle = checks.bash_command_contains;
+    const found = bashCommands.some((cmd) => cmd.includes(needle));
+    results.push({
+      check: "bash_command_contains",
+      passed: found,
+      detail: found
+        ? `Bash command contains "${needle}"`
+        : bashCalls.length === 0
+          ? `No Bash tool calls found in transcript (may need internal model mode)`
+          : `No Bash command contains "${needle}". Commands: ${bashCommands.slice(0, 3).map((c) => c.slice(0, 60)).join(" | ")}`,
+    });
+  }
+
+  // --- bash_command_contains_any ---
+  if (checks.bash_command_contains_any !== undefined) {
+    const bashCalls = allToolCalls.filter(
+      (c) => c.name === "Bash" || c.name === "bash" || c.name === "computer_tool"
+    );
+    const bashCommands = bashCalls.map((c) => String(c.input?.command ?? ""));
+    const candidates = checks.bash_command_contains_any;
+    const found = candidates.some((needle) =>
+      bashCommands.some((cmd) => cmd.includes(needle))
+    );
+    const matched = candidates.filter((needle) =>
+      bashCommands.some((cmd) => cmd.includes(needle))
+    );
+    results.push({
+      check: "bash_command_contains_any",
+      passed: found,
+      detail: found
+        ? `Bash commands contain: ${matched.map((m) => `"${m}"`).join(", ")}`
+        : bashCalls.length === 0
+          ? `No Bash tool calls found in transcript (may need internal model mode)`
+          : `No Bash command contains any of: ${candidates.map((c) => `"${c}"`).join(", ")}`,
+    });
+  }
+
+  // --- tool_arg_match ---
+  if (checks.tool_arg_match !== undefined) {
+    // Use allToolCalls which includes input args from transcript
+    const mcpWithArgs = allToolCalls.filter((c) => c.name.startsWith("mcp__"));
+
+    for (const match of checks.tool_arg_match) {
+      const matchingCalls = mcpWithArgs.filter((c) => c.name.includes(match.tool_pattern));
+      const found = matchingCalls.some(
+        (c) => String(c.input?.[match.arg] ?? "") === match.value
+      );
+      results.push({
+        check: `tool_arg_match[${match.tool_pattern}.${match.arg}=${match.value}]`,
+        passed: found,
+        detail: found
+          ? `Tool matching "${match.tool_pattern}" was called with ${match.arg}="${match.value}"`
+          : matchingCalls.length === 0
+            ? `No tool calls matching "${match.tool_pattern}" found in transcript`
+            : `Tool "${match.tool_pattern}" called ${matchingCalls.length}x but none had ${match.arg}="${match.value}". Args seen: ${matchingCalls.map((c) => JSON.stringify(c.input)).slice(0, 2).join(", ")}`,
+      });
+    }
+  }
+
   return results;
 }
 
@@ -675,8 +804,9 @@ function main(): void {
 
     const mcpCalls = extractMcpToolCalls(caseDir, entries);
     const finalResponse = extractFinalResponse(entries);
+    const allToolCalls = extractAllToolCallsFromTranscript(entries);
 
-    const checkResults = evaluateChecks(tc.checks, mcpCalls, finalResponse);
+    const checkResults = evaluateChecks(tc.checks, mcpCalls, finalResponse, allToolCalls);
 
     const allPassed = checkResults.every((r) => r.passed);
 

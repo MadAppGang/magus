@@ -1,7 +1,7 @@
 {
   "name": "terminal",
-  "version": "2.1.0",
-  "description": "Interactive terminal integration for Claude Code. v2.1.0: tmux context detection ($TMUX_PANE), split-pane workflow, corrected split-pane API docs. v2.0.0: Intent-level commands (run, watch, observe, repl, tui), 9 commands total.",
+  "version": "3.0.0",
+  "description": "Interactive terminal integration for Claude Code. v3.0.0: 3 new skills (framework-signals, tdd-workflow, workspace-setup), pane detection fix (display-message), helper pane reuse, tee-to-file output capture, approval gates, desktop notifications, dashboard archetypes, tmux-mcp reliability fix (npx→direct binary). 5 skills, 9 commands, 1 agent.",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",

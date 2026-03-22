@@ -1,10 +1,10 @@
 {
   "meta": {
     "description": "Terminal plugin E2E test cases. Tests verify Claude can accomplish real developer tasks using MCP terminal tools. v2.0.0: Added intent-level command tests (run, watch, observe, repl, tui) alongside existing primitive tests.",
-    "version": "2.1.0",
+    "version": "2.2.0",
     "created": "2026-02-26",
-    "updated": "2026-02-28",
-    "notes": "v2.1: Added intent-side-panel-20 test for 'open on a side' natural language → split-pane behavior. v2.0: Added 9 intent-level command tests for run/watch/observe/repl/tui commands. v1.2: Removed no_tool_prefix checks — parallel test execution shares debug logs across tests. v1.1: Accept ht_execute_command as alternative to ht_send_keys for non-TUI tests."
+    "updated": "2026-03-19",
+    "notes": "v2.2: Added 4 pane-management tests (21-24) for split direction, labeling, reuse, and natural 'beside me' behavior. New analyzer checks: max_tool_calls_by_name, bash_command_contains_any, tool_arg_match. v2.1: Added intent-side-panel-20 test for 'open on a side' natural language → split-pane behavior. v2.0: Added 9 intent-level command tests for run/watch/observe/repl/tui commands. v1.2: Removed no_tool_prefix checks — parallel test execution shares debug logs across tests. v1.1: Accept ht_execute_command as alternative to ht_send_keys for non-TUI tests."
   },
   "test_cases": [
     {
@@ -394,6 +394,95 @@
         },
         "min_tool_calls": 4,
         "response_contains_any": ["htop", "side", "split", "alongside", "pane"]
+      }
+    },
+
+    {
+      "id": "split-correct-direction-21",
+      "description": "Pane management: first split uses direction 'horizontal' to create helper pane on the RIGHT side (vertical divider)",
+      "prompt": "Use the tmux MCP tools to test pane split direction:\n1. Create a new tmux session named 'e2e-split-dir'.\n2. List the panes in the first window to find the initial pane ID.\n3. Split that pane using mcp__tmux__split-pane with direction 'horizontal' — this creates a vertical divider with the helper pane on the RIGHT side.\n4. In the new right-side pane, send the command: echo SPLIT_HORIZONTAL_RIGHT_SUCCESS\n5. Capture the new pane to verify the marker appeared.\n6. Kill the 'e2e-split-dir' session to clean up.\n7. Report whether SPLIT_HORIZONTAL_RIGHT_SUCCESS appeared, and confirm the split direction was 'horizontal'.\n\nIMPORTANT: The split direction MUST be 'horizontal' (creates vertical divider, helper on right). Do NOT use 'vertical' for the first split. Use mcp__tmux__split-pane with the direction parameter set to 'horizontal'.",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "pane-management",
+      "tags": ["tmux", "split-pane", "direction", "horizontal", "right-side"],
+      "checks": {
+        "has_tool_prefix": "mcp__tmux__",
+        "tools_used_include_any": [
+          ["mcp__tmux__create-session", "mcp__tmux__split-pane", "mcp__tmux__capture-pane", "mcp__tmux__kill-session"],
+          ["mcp__tmux-mcp__create-session", "mcp__tmux-mcp__split-pane", "mcp__tmux-mcp__capture-pane", "mcp__tmux-mcp__kill-session"]
+        ],
+        "min_tool_calls_by_name": {
+          "split-pane": 1
+        },
+        "tool_arg_match": [
+          { "tool_pattern": "split-pane", "arg": "direction", "value": "horizontal" }
+        ],
+        "min_tool_calls": 4,
+        "response_contains": "SPLIT_HORIZONTAL_RIGHT_SUCCESS"
+      }
+    },
+    {
+      "id": "split-label-helper-22",
+      "description": "Pane management: helper pane is labeled 'claude-helper' after creation for future reuse identification",
+      "prompt": "Use tmux MCP tools AND the Bash tool to test pane labeling:\n1. Create a new tmux session named 'e2e-split-label'.\n2. List panes to find the initial pane ID.\n3. Split that pane horizontally (direction: 'horizontal') using mcp__tmux__split-pane.\n4. Label the new pane as 'claude-helper' by running this Bash command:\n   tmux select-pane -t <new_pane_id> -T \"claude-helper\"\n   (Replace <new_pane_id> with the actual pane ID returned from the split.)\n5. Verify the label was set by running this Bash command:\n   tmux list-panes -F '#{pane_id} #{pane_title}'\n6. Kill the 'e2e-split-label' session to clean up.\n7. Report whether you found a pane with title 'claude-helper' in the listing.\n\nIMPORTANT: You MUST label the new pane with 'claude-helper' using tmux select-pane -T via the Bash tool. You MUST verify the label by listing panes with #{pane_title} format.",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "pane-management",
+      "tags": ["tmux", "split-pane", "labeling", "claude-helper", "reuse-id"],
+      "checks": {
+        "has_tool_prefix": "mcp__tmux__",
+        "min_tool_calls_by_name": {
+          "split-pane": 1
+        },
+        "min_tool_calls": 4,
+        "response_contains": "claude-helper",
+        "bash_command_contains_any": ["select-pane", "claude-helper"]
+      }
+    },
+    {
+      "id": "split-reuse-existing-23",
+      "description": "Pane management: existing claude-helper pane is reused — split-pane called exactly once, second command goes to same pane",
+      "prompt": "Use tmux MCP tools AND the Bash tool to test pane reuse:\n1. Create a new tmux session named 'e2e-split-reuse'.\n2. List panes to find the initial pane ID.\n3. Split that pane horizontally (direction: 'horizontal') using mcp__tmux__split-pane — creating a helper pane.\n4. Label the new pane as 'claude-helper' by running: tmux select-pane -t <new_pane_id> -T \"claude-helper\"\n5. Send `echo FIRST_COMMAND` to the helper pane (via send-keys or execute-command).\n6. Now, WITHOUT creating another split, check for the existing claude-helper pane by running: tmux list-panes -F '#{pane_id} #{pane_title}' | grep claude-helper\n7. Since it already exists, REUSE it — send `echo REUSE_SUCCESS` to the SAME helper pane (via send-keys or execute-command).\n8. Capture the helper pane to verify both commands ran there.\n9. Kill the 'e2e-split-reuse' session.\n10. Report that you reused the existing pane and confirm both FIRST_COMMAND and REUSE_SUCCESS markers appeared.\n\nCRITICAL: You MUST call mcp__tmux__split-pane EXACTLY ONCE. The second command MUST go to the SAME pane without splitting again. This tests the reuse behavior — do not create duplicate helper panes.",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "pane-management",
+      "tags": ["tmux", "split-pane", "reuse", "claude-helper", "no-duplicate"],
+      "checks": {
+        "has_tool_prefix": "mcp__tmux__",
+        "min_tool_calls_by_name": {
+          "split-pane": 1,
+          "capture-pane": 1
+        },
+        "max_tool_calls_by_name": {
+          "split-pane": 1
+        },
+        "min_tool_calls": 6,
+        "response_contains_any": ["REUSE_SUCCESS", "reuse", "existing"]
+      }
+    },
+    {
+      "id": "split-natural-beside-24",
+      "description": "Pane management: natural language 'run X beside me' uses split-pane in same session, not a second create-session",
+      "prompt": "Set up a tmux workspace, then respond to a natural 'beside me' request:\n\nStep 1 (Setup): Create a tmux session named 'e2e-natural-beside'. This simulates an existing workspace.\n\nStep 2 (Natural request): Run `echo BESIDE_ME_SUCCESS && sleep 1` in a side panel beside the main workspace. This means:\n- Split the existing window's pane using mcp__tmux__split-pane (direction: 'horizontal')\n- Send the echo command to the new pane via mcp__tmux__send-keys\n- Capture the side panel output to verify the command ran\n\nStep 3 (Cleanup): Kill the 'e2e-natural-beside' session.\n\nStep 4 (Report): Report whether BESIDE_ME_SUCCESS appeared in the side panel.\n\nKey constraints:\n- You MUST use mcp__tmux__split-pane to create the side panel — NOT a second mcp__tmux__create-session\n- The helper must be a split pane in the SAME window of the SAME session\n- 'Beside me' always means a split pane, never a separate session",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "pane-management",
+      "tags": ["tmux", "split-pane", "natural-language", "beside", "side-panel", "same-session"],
+      "checks": {
+        "has_tool_prefix": "mcp__tmux__",
+        "tools_used_include_any": [
+          ["mcp__tmux__create-session", "mcp__tmux__split-pane", "mcp__tmux__capture-pane", "mcp__tmux__kill-session"],
+          ["mcp__tmux-mcp__create-session", "mcp__tmux-mcp__split-pane", "mcp__tmux-mcp__capture-pane", "mcp__tmux-mcp__kill-session"]
+        ],
+        "min_tool_calls_by_name": {
+          "split-pane": 1,
+          "capture-pane": 1
+        },
+        "tool_arg_match": [
+          { "tool_pattern": "split-pane", "arg": "direction", "value": "horizontal" }
+        ],
+        "min_tool_calls": 5,
+        "response_contains": "BESIDE_ME_SUCCESS"
       }
     }
   ]

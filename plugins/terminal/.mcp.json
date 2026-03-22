@@ -4,7 +4,7 @@
     "args": []
   },
   "tmux": {
-    "command": "npx",
-    "args": ["-y", "tmux-mcp"]
+    "command": "tmux-mcp",
+    "args": []
   }
 }
