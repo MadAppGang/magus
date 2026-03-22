@@ -1,0 +1,168 @@
+{
+  "meta": {
+    "description": "Architect command E2E tests. Validates the /dev:architect rename from /dev:plan, complexity triage, plan mode integration, task-management skill loading, and GTD plugin integration. Tests real developer scenarios across simple/moderate/complex architecture tasks.",
+    "version": "1.0.0",
+    "created": "2026-03-21",
+    "notes": "v1.0: Tests rename routing, complexity triage, plan mode usage, task creation patterns, GTD awareness. All tests use prompts that stop after early phases to keep execution fast (< 2 min each)."
+  },
+  "test_cases": [
+    {
+      "id": "architect-routing-01",
+      "description": "Verify /dev:architect loads the renamed command (not old /dev:plan)",
+      "prompt": "/dev:architect Design a caching layer for our user service. Stop after showing the complexity triage result — do NOT proceed to architecture design. Just show the triage assessment and what mode you would recommend.",
+      "category": "routing",
+      "tags": ["architect", "rename", "routing", "triage"],
+      "checks": {
+        "response_contains_any": ["Simple", "Moderate", "Complex", "triage", "complexity", "Architecture"],
+        "output_not_contains": "Unknown skill",
+        "min_tool_calls": 1
+      }
+    },
+    {
+      "id": "architect-old-plan-gone-02",
+      "description": "Verify /dev:plan no longer exists as a command",
+      "prompt": "/dev:plan Design a user service. Just tell me if this command loaded successfully or not. Do not proceed with any design work.",
+      "category": "routing",
+      "tags": ["plan", "deprecated", "routing"],
+      "checks": {
+        "response_contains_any": ["Unknown", "not found", "not available", "architect", "renamed", "no longer", "dev:architect"]
+      }
+    },
+    {
+      "id": "architect-simple-triage-03",
+      "description": "Simple task should be triaged as Simple complexity — adding Redis caching to one service",
+      "prompt": "/dev:architect Add Redis caching to the user profile endpoint. Only do the complexity triage step (Phase 0). Show the triage result and stop. Do NOT proceed to requirements or design.",
+      "category": "triage",
+      "tags": ["triage", "simple", "caching", "single-component"],
+      "checks": {
+        "response_contains_any": ["Simple", "simple", "direct", "Direct", "single", "well-understood"],
+        "min_tool_calls": 1
+      }
+    },
+    {
+      "id": "architect-complex-triage-04",
+      "description": "Complex task should be triaged as Complex — real-time collaboration engine spans multiple systems",
+      "prompt": "/dev:architect Design a real-time collaborative document editing system with conflict resolution, presence indicators, offline support, and multi-device sync. Only do the complexity triage step. Show the triage result, complexity signals you detected, and what approach you recommend. Do NOT proceed further.",
+      "category": "triage",
+      "tags": ["triage", "complex", "multi-system", "novel-domain"],
+      "checks": {
+        "response_contains_any": ["Complex", "complex", "multiple", "novel", "/team", "multi-model", "plan mode"],
+        "min_tool_calls": 1
+      }
+    },
+    {
+      "id": "architect-plan-mode-05",
+      "description": "Moderate/complex task should trigger plan mode reasoning (EnterPlanMode)",
+      "prompt": "/dev:architect Design a multi-tenant authorization system with role-based access control, tenant isolation, and audit logging. This involves cross-cutting concerns across 3 subsystems. Run the complexity triage, then if moderate or complex, enter plan mode to reason about the architecture. Stop after plan mode reasoning — do NOT proceed to requirements.",
+      "category": "plan-mode",
+      "tags": ["plan-mode", "EnterPlanMode", "reasoning", "complex"],
+      "checks": {
+        "response_contains_any": ["plan mode", "Plan Mode", "reasoning", "decompos", "constraint", "EnterPlanMode", "structured reasoning"],
+        "min_tool_calls": 2
+      }
+    },
+    {
+      "id": "architect-task-creation-06",
+      "description": "Architect command should create phase tasks upfront following task-management skill patterns",
+      "prompt": "/dev:architect Design a REST API for a bookmark manager app. This is a simple, well-understood problem. Run triage, then create the phase tasks and show them. Stop after creating tasks — do NOT start the actual architecture work.",
+      "category": "task-management",
+      "tags": ["tasks", "TaskCreate", "phase-tracking", "upfront"],
+      "checks": {
+        "response_contains_any": ["PHASE", "Phase", "task", "Task"],
+        "min_tool_calls": 2
+      }
+    },
+    {
+      "id": "architect-gtd-detection-07",
+      "description": "With GTD plugin active (.claude/gtd/tasks.json exists), architect should detect it and suggest /gtd:work",
+      "prompt": "First run these setup steps:\n1. mkdir -p .claude/gtd\n2. echo '{\"version\":\"1.0\",\"lastReview\":null,\"activeTaskId\":null,\"tasks\":[]}' > .claude/gtd/tasks.json\n\nNow run: /dev:architect Design a notification service. Only do the initialization phase. Check for GTD plugin and report whether it was detected. Then stop — do NOT proceed with design.\n\nAfter reporting, clean up: rm -rf .claude/gtd",
+      "category": "gtd-integration",
+      "tags": ["gtd", "detection", "gtd:work", "persistence"],
+      "checks": {
+        "response_contains_any": ["GTD", "gtd", "/gtd:work", "persist", "active task", "detected", "tasks.json"],
+        "bash_command_contains": "tasks.json",
+        "min_tool_calls": 3
+      }
+    },
+    {
+      "id": "architect-no-gtd-fallback-08",
+      "description": "Without GTD plugin, architect should use native tasks and suggest GTD installation",
+      "prompt": "First ensure GTD store does not exist: rm -rf .claude/gtd\n\nNow run: /dev:architect Design a simple key-value cache. Only do the initialization phase. Check for GTD plugin and report whether it was found or not. Then stop — do NOT proceed with design.",
+      "category": "gtd-integration",
+      "tags": ["gtd", "fallback", "no-gtd", "native-tasks"],
+      "checks": {
+        "response_contains_any": ["not found", "not installed", "not active", "inactive", "GTD_INACTIVE", "native", "session", "Install", "install"],
+        "min_tool_calls": 2
+      }
+    },
+    {
+      "id": "architect-brainstorm-mode-09",
+      "description": "Open-ended question should auto-infer brainstorm mode and load brainstorming skill",
+      "prompt": "/dev:architect How should we handle real-time notifications in our app? Only do the mode selection step. Tell me which mode you auto-inferred (Architecture design vs Brainstorm first) and why. Do NOT actually run the brainstorming workflow.",
+      "category": "mode-selection",
+      "tags": ["brainstorm", "mode-inference", "open-ended"],
+      "checks": {
+        "response_contains_any": ["Brainstorm", "brainstorm", "open question", "explore", "ideation", "how should"],
+        "min_tool_calls": 1
+      }
+    },
+    {
+      "id": "architect-design-mode-10",
+      "description": "Clear system description should auto-infer architecture design mode",
+      "prompt": "/dev:architect Design a PostgreSQL schema for a multi-tenant SaaS billing system with subscription tiers, usage tracking, and invoice generation. Only do the mode selection step. Tell me which mode you auto-inferred and why. Do NOT proceed with design.",
+      "category": "mode-selection",
+      "tags": ["design", "mode-inference", "clear-system"],
+      "checks": {
+        "response_contains_any": ["Architecture", "architecture", "design", "Design", "clear", "defined"],
+        "min_tool_calls": 1
+      }
+    },
+    {
+      "id": "architect-retry-detection-11",
+      "description": "When previous architecture session exists for same topic, should detect retry and recommend /team",
+      "prompt": "First create a fake previous session:\n1. mkdir -p ai-docs/sessions/dev-arch-auth-20260320-100000-abcd1234\n2. echo '# Auth Architecture v1' > ai-docs/sessions/dev-arch-auth-20260320-100000-abcd1234/architecture.md\n\nNow run: /dev:architect Design the auth system. Only do the complexity triage. Check for previous sessions with similar topic. Report whether a retry was detected and what you recommend. Stop after triage.\n\nClean up: rm -rf ai-docs/sessions/dev-arch-auth-20260320-100000-abcd1234",
+      "category": "retry-detection",
+      "tags": ["retry", "previous-session", "team", "escalation"],
+      "checks": {
+        "response_contains_any": ["previous", "Previous", "retry", "Retry", "existing", "second", "attempt", "/team", "session"],
+        "bash_command_contains_any": ["ai-docs/sessions", "dev-arch"],
+        "min_tool_calls": 3
+      }
+    },
+    {
+      "id": "architect-help-shows-architect-12",
+      "description": "Verify /dev:help lists /dev:architect (not /dev:plan)",
+      "prompt": "/dev:help",
+      "category": "help-integration",
+      "tags": ["help", "architect", "plan-removed"],
+      "checks": {
+        "response_contains": "/dev:architect",
+        "output_not_contains": "/dev:plan",
+        "min_tool_calls": 1
+      }
+    },
+    {
+      "id": "architect-session-creates-dir-13",
+      "description": "Architect command should create session directory under ai-docs/sessions/dev-arch-*",
+      "prompt": "/dev:architect Design a URL shortener service. Run only Phase 0 (Initialize) — create the session directory and detect the stack. Report the session path. Stop after Phase 0.\n\nAfter reporting the session path, clean up: remove the session directory you created.",
+      "category": "session-management",
+      "tags": ["session", "directory", "init", "phase-0"],
+      "checks": {
+        "response_contains_any": ["dev-arch", "ai-docs/sessions", "Session"],
+        "bash_command_contains_any": ["mkdir", "ai-docs/sessions"],
+        "min_tool_calls": 2
+      }
+    },
+    {
+      "id": "architect-skill-loaded-14",
+      "description": "Verify task-management skill is loaded (architect should reference GTD detection pattern)",
+      "prompt": "/dev:architect Design a simple CRUD API for notes. Before starting any architecture work, demonstrate that you loaded the task-management skill by: (1) checking for GTD plugin, (2) checking for stale tasks. Report what you found, then stop.",
+      "category": "skill-loading",
+      "tags": ["task-management", "skill", "gtd-detection", "stale-tasks"],
+      "checks": {
+        "response_contains_any": ["GTD", "gtd", "stale", "task-management", "tasks.json", "TaskList"],
+        "min_tool_calls": 2
+      }
+    }
+  ]
+}

@@ -2,7 +2,7 @@
 name: architect
 description: "Architecture design and technical planning — complexity-aware with plan mode reasoning and multi-model escalation"
 allowed-tools: Task, AskUserQuestion, Bash, Read, Skill, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep, EnterPlanMode, ExitPlanMode
-skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates, dev:brainstorming
+skills: dev:task-management, dev:context-detection, dev:universal-patterns, multimodel:quality-gates, dev:brainstorming
 ---
 
 <role>
@@ -134,20 +134,15 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates,
 
   <critical_constraints>
     <todowrite_requirement>
-      You MUST use Tasks to track architecture workflow.
+      Load and follow the `dev:task-management` skill for all task tracking.
 
-      Before starting, create todo list with all phases:
-      0. Complexity Triage
-      1. Initialize (detect stack)
-      2. Plan Mode Reasoning (if moderate/complex)
-      3. Requirements Analysis
-      4. Alternative Designs
-      5. Trade-off Analysis
-      6. Detailed Design
-      7. Validation (optional, if Claudish available)
-      8. Finalization
-
-      Update continuously as you progress.
+      At workflow start:
+      1. Check if GTD plugin is active (`.claude/gtd/tasks.json` exists)
+      2. If active: suggest `/gtd:work` to set active task before creating phase tasks
+      3. Clean up any stale tasks from previous workflows
+      4. Create phase tasks upfront for: Triage, Initialize, Plan Mode (if applicable),
+         Requirements, Alternatives, Trade-offs, Detailed Design, Validation, Finalization
+      5. Track progress per the skill's phase task patterns
     </todowrite_requirement>
 
     <orchestrator_role>
