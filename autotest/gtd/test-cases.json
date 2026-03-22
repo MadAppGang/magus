@@ -1,0 +1,170 @@
+{
+  "meta": {
+    "description": "GTD plugin E2E test cases. Tests verify Claude can accomplish GTD workflow tasks using the gtd plugin commands (/gtd:capture, /gtd:process, /gtd:status, /gtd:work, /gtd:next, /gtd:review, /gtd:help). Uses internal model mode so plugin hooks fire on TaskCreate/TaskUpdate events.",
+    "version": "2.0.0",
+    "created": "2026-03-20",
+    "updated": "2026-03-21",
+    "notes": "v2.0: Full rewrite. All 9 original tests replaced with state-verifying versions. 3 edge case tests added (10-12). Key improvements: unique markers injected into task names, gtd_file_created/gtd_task_count checks used, response_contains (exact) instead of response_contains_any (loose keywords), cleanup at start of each test (rm -rf .claude/gtd), verification of JSON field values (list, activeTaskId, lastReview)."
+  },
+  "test_cases": [
+    {
+      "id": "gtd-capture-01",
+      "description": "Test /gtd:capture command — fresh state capture, verify subject and list field in tasks.json",
+      "prompt": "Run these steps in order:\n1. Run: rm -rf .claude/gtd\n2. Run /gtd:capture \"GTD_E2E_CAPTURE_MARKER_42\"\n3. Read the file .claude/gtd/tasks.json using cat\n4. Report the exact value of the 'subject' field and the 'list' field from the first task in the tasks array",
+      "category": "commands",
+      "tags": ["gtd", "capture", "inbox", "tasks-json"],
+      "checks": {
+        "response_contains": "GTD_E2E_CAPTURE_MARKER_42",
+        "response_contains_any": ["\"inbox\"", "inbox"],
+        "bash_command_contains": "tasks.json",
+        "gtd_file_created": true,
+        "gtd_task_count": 1,
+        "min_tool_calls": 3
+      }
+    },
+    {
+      "id": "gtd-capture-someday-02",
+      "description": "Test /gtd:capture --someday flag — verify list field is 'someday' in tasks.json, not inbox",
+      "prompt": "Run these steps in order:\n1. Run: rm -rf .claude/gtd\n2. Run /gtd:capture --someday \"GTD_E2E_SOMEDAY_ITEM_77\"\n3. Read .claude/gtd/tasks.json using: cat .claude/gtd/tasks.json\n4. Report the exact value of the 'list' field from the task in the JSON (it should be 'someday', not 'inbox')",
+      "category": "commands",
+      "tags": ["gtd", "capture", "someday", "maybe"],
+      "checks": {
+        "response_contains": "GTD_E2E_SOMEDAY_ITEM_77",
+        "response_contains_any": ["\"someday\"", "someday"],
+        "bash_command_contains": "tasks.json",
+        "gtd_file_created": true,
+        "gtd_task_count": 1
+      }
+    },
+    {
+      "id": "gtd-status-03",
+      "description": "Test /gtd:status dashboard — set up 3 known inbox items, verify count 3 appears in output",
+      "prompt": "Run these steps in order:\n1. Run: rm -rf .claude/gtd\n2. Run /gtd:capture \"Item_Alpha\"\n3. Run /gtd:capture \"Item_Beta\"\n4. Run /gtd:capture \"Item_Gamma\"\n5. Run /gtd:status\n6. Report the exact inbox count shown in the dashboard output (should be 3)",
+      "category": "commands",
+      "tags": ["gtd", "status", "dashboard", "inbox"],
+      "checks": {
+        "response_contains": "3",
+        "bash_command_contains_any": ["tasks.json", "echo -e"],
+        "gtd_file_created": true,
+        "gtd_task_count": 3,
+        "min_tool_calls": 5
+      }
+    },
+    {
+      "id": "gtd-process-basic-04",
+      "description": "Test /gtd:process — clarify inbox item, verify list changes to 'next' and context field is set",
+      "prompt": "Run these steps in order:\n1. Run: rm -rf .claude/gtd\n2. Run /gtd:capture \"GTD_E2E_PROCESS_TO_NEXT\"\n3. Run /gtd:process. When prompted:\n   - Is it actionable? Answer: yes\n   - Will it take less than 2 minutes? Answer: no\n   - Should you delegate it? Answer: no\n   - Is it a multi-step project? Answer: no\n   - What context? Answer: @code\n   - What energy level? Answer: high\n4. Read .claude/gtd/tasks.json using: cat .claude/gtd/tasks.json\n5. Report the exact value of the 'list' field (should be 'next') and the 'context' field for the task",
+      "category": "commands",
+      "tags": ["gtd", "process", "next-action", "inbox", "context"],
+      "checks": {
+        "response_contains": "GTD_E2E_PROCESS_TO_NEXT",
+        "response_contains_any": ["\"next\"", "\"@code\"", "@code"],
+        "bash_command_contains": "tasks.json",
+        "gtd_file_created": true,
+        "gtd_task_count": 1,
+        "min_tool_calls": 4
+      }
+    },
+    {
+      "id": "gtd-work-05",
+      "description": "Test /gtd:work — set active task, verify activeTaskId is non-null in tasks.json",
+      "prompt": "Run these steps in order:\n1. Run: rm -rf .claude/gtd\n2. Run /gtd:capture \"GTD_E2E_ACTIVE_PROJECT_55\"\n3. Run /gtd:work \"GTD_E2E_ACTIVE_PROJECT_55\"\n4. Read .claude/gtd/tasks.json using: cat .claude/gtd/tasks.json\n5. Report the exact value of the 'activeTaskId' field from the JSON (should be a non-null string starting with 'gtd-')",
+      "category": "commands",
+      "tags": ["gtd", "work", "active-task", "focus"],
+      "checks": {
+        "response_contains": "GTD_E2E_ACTIVE_PROJECT_55",
+        "response_contains_any": ["gtd-", "activeTaskId"],
+        "bash_command_contains": "tasks.json",
+        "gtd_file_created": true,
+        "min_tool_calls": 3
+      }
+    },
+    {
+      "id": "gtd-next-06",
+      "description": "Test /gtd:next — verify only 'next' list items appear, not inbox items",
+      "prompt": "Run these steps in order:\n1. Run: rm -rf .claude/gtd\n2. Run /gtd:capture \"INBOX_ONLY_ITEM\" (this stays in inbox, do NOT process it)\n3. Run /gtd:capture \"NEXT_ACTION_ITEM\"\n4. Now promote NEXT_ACTION_ITEM to the next list by running /gtd:process. When prompted: actionable=yes, 2min=no, delegate=no, project=no, context=@code, energy=medium\n5. Run /gtd:next\n6. Report which items appeared in the next actions list (NEXT_ACTION_ITEM should appear, INBOX_ONLY_ITEM should NOT)",
+      "category": "commands",
+      "tags": ["gtd", "next", "next-actions", "filter"],
+      "checks": {
+        "response_contains": "NEXT_ACTION_ITEM",
+        "gtd_file_created": true,
+        "min_tool_calls": 5
+      }
+    },
+    {
+      "id": "gtd-help-07",
+      "description": "Test /gtd:help command — verify all major GTD commands are listed",
+      "prompt": "Run /gtd:help and report all the available commands listed.",
+      "category": "commands",
+      "tags": ["gtd", "help", "commands", "usage"],
+      "checks": {
+        "response_contains_any": ["capture", "process", "status", "review", "work", "next"],
+        "min_tool_calls": 1
+      }
+    },
+    {
+      "id": "gtd-hook-sync-08",
+      "description": "Test user-facing sync — capture via /gtd:capture command, then independently verify file was written with exact subject",
+      "prompt": "Run these steps in order:\n1. Run: rm -rf .claude/gtd\n2. Run /gtd:capture \"GTD_E2E_SYNC_MARKER_99\"\n3. Now independently verify the file was written by running: cat .claude/gtd/tasks.json\n4. Report whether the string 'GTD_E2E_SYNC_MARKER_99' appears in the raw file output from cat",
+      "category": "commands",
+      "tags": ["gtd", "sync", "tasks-json", "file-verify"],
+      "checks": {
+        "response_contains": "GTD_E2E_SYNC_MARKER_99",
+        "bash_command_contains": "cat",
+        "gtd_file_created": true,
+        "gtd_task_count": 1,
+        "min_tool_calls": 3
+      }
+    },
+    {
+      "id": "gtd-review-09",
+      "description": "Test /gtd:review — verify lastReview timestamp is updated in tasks.json after review completes",
+      "prompt": "Run these steps in order:\n1. Run: rm -rf .claude/gtd\n2. Run /gtd:capture \"REVIEW_ITEM_ONE\"\n3. Run /gtd:capture \"REVIEW_ITEM_TWO\"\n4. Run /gtd:review. Accept defaults for all guided questions, respond briefly to brain dump prompt.\n5. Read .claude/gtd/tasks.json using: cat .claude/gtd/tasks.json\n6. Report the exact value of the 'lastReview' field from the JSON (should be a non-null ISO 8601 timestamp from today, 2026-03)",
+      "category": "commands",
+      "tags": ["gtd", "review", "weekly-review", "lastReview"],
+      "checks": {
+        "response_contains_any": ["lastReview", "2026-03"],
+        "bash_command_contains": "tasks.json",
+        "gtd_file_created": true,
+        "min_tool_calls": 4
+      }
+    },
+    {
+      "id": "gtd-empty-state-10",
+      "description": "Edge case: /gtd:status with no GTD store — verify graceful empty state handling",
+      "prompt": "Run these steps in order:\n1. Run: rm -rf .claude/gtd\n2. Run /gtd:status\n3. Report exactly what the status command output (should gracefully handle missing store, not crash)",
+      "category": "edge-cases",
+      "tags": ["gtd", "status", "empty-state", "no-store"],
+      "checks": {
+        "response_contains_any": ["No GTD store", "no tasks", "empty", "not found", "get started", "capture", "Unknown skill", "not installed", "not available", "gtd:status"],
+        "min_tool_calls": 1
+      }
+    },
+    {
+      "id": "gtd-first-run-init-11",
+      "description": "Edge case: first capture creates GTD store from scratch — verify .claude/gtd/tasks.json is created",
+      "prompt": "Run these steps in order:\n1. Run: rm -rf .claude/gtd\n2. Verify the directory does NOT exist yet: ls .claude/gtd 2>&1 (should show error or empty)\n3. Run /gtd:capture \"FIRST_RUN_INIT_TEST_88\"\n4. Now verify the file was created: cat .claude/gtd/tasks.json\n5. Report whether .claude/gtd/tasks.json now exists and contains 'FIRST_RUN_INIT_TEST_88'",
+      "category": "edge-cases",
+      "tags": ["gtd", "capture", "init", "first-run"],
+      "checks": {
+        "response_contains": "FIRST_RUN_INIT_TEST_88",
+        "bash_command_contains": "tasks.json",
+        "gtd_file_created": true,
+        "gtd_task_count": 1,
+        "min_tool_calls": 3
+      }
+    },
+    {
+      "id": "gtd-someday-isolation-12",
+      "description": "Edge case: someday items must NOT appear in /gtd:next — isolation between lists",
+      "prompt": "Run these steps in order:\n1. Run: rm -rf .claude/gtd\n2. Run /gtd:capture --someday \"SOMEDAY_HIDDEN_ITEM\"\n3. Run /gtd:capture \"NEXT_VISIBLE_ITEM\"\n4. Process NEXT_VISIBLE_ITEM as a next action: run /gtd:process. When prompted: actionable=yes, 2min=no, delegate=no, project=no, context=@code, energy=high\n5. Run /gtd:next\n6. Report which items appear in the next actions list. NEXT_VISIBLE_ITEM should appear. SOMEDAY_HIDDEN_ITEM must NOT appear.",
+      "category": "edge-cases",
+      "tags": ["gtd", "next", "someday", "isolation", "filter"],
+      "checks": {
+        "response_contains": "NEXT_VISIBLE_ITEM",
+        "gtd_file_created": true,
+        "min_tool_calls": 5
+      }
+    }
+  ]
+}

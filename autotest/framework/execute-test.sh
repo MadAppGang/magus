@@ -120,6 +120,7 @@ if [[ "$USE_NATIVE_CLAUDE" == "true" ]]; then
   # --output-format stream-json: JSONL transcript with tool calls visible
   # --dangerously-skip-permissions: non-interactive execution
   # --plugin-dir: load local dev plugin (skills not in cache yet)
+  # EXTRA_PLUGIN_DIRS: space-separated list of additional plugin directories (set by suite runners)
   SUITE_DIR="$(cd "$(dirname "$0")/.." && pwd)"
   PLUGIN_DIR="$SUITE_DIR/../plugins/dev"
   CLAUDE_P_FLAGS="-p --verbose --output-format stream-json --dangerously-skip-permissions"
@@ -129,6 +130,12 @@ if [[ "$USE_NATIVE_CLAUDE" == "true" ]]; then
   if [[ -d "$PLUGIN_DIR" ]]; then
     CLAUDE_P_FLAGS="$CLAUDE_P_FLAGS --plugin-dir $PLUGIN_DIR"
   fi
+  # Append extra plugin dirs from suite runner (e.g., GTD suite adds plugins/gtd)
+  for extra_dir in ${EXTRA_PLUGIN_DIRS:-}; do
+    if [[ -d "$extra_dir" ]]; then
+      CLAUDE_P_FLAGS="$CLAUDE_P_FLAGS --plugin-dir $extra_dir"
+    fi
+  done
   if [[ -n "$TIMEOUT_CMD" ]]; then
     $TIMEOUT_CMD claude $CLAUDE_P_FLAGS \
       < "$PROMPT_FILE" \
