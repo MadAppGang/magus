@@ -193,8 +193,8 @@
     {
       "name": "dev",
       "source": "./plugins/dev",
-      "description": "Universal development assistant. v2.3.0: /dev:architect with complexity triage, plan mode reasoning, /team escalation, and task-management skill with GTD integration.",
-      "version": "2.3.0",
+      "description": "Universal development assistant. v2.4.0: /dev:audit command, value banners, improved help with 12 commands in 4 workflow groups.",
+      "version": "2.4.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
