@@ -164,6 +164,10 @@ export interface SkillInfo {
 	hasUpdate: boolean;
 	/** Whether this is a recommended skill */
 	isRecommended?: boolean;
+	/** GitHub star count from the skills API */
+	stars?: number;
+	/** Short description (from API, before frontmatter is loaded) */
+	description?: string;
 }
 
 // ─── GitHub Tree API types ────────────────────────────────────────────────────

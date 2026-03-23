@@ -10,7 +10,7 @@ import {
 	installSkill,
 	uninstallSkill,
 } from "../../services/skills-manager.js";
-import { DEFAULT_SKILL_REPOS, RECOMMENDED_SKILLS } from "../../data/skill-repos.js";
+import { DEFAULT_SKILL_REPOS } from "../../data/skill-repos.js";
 import type { SkillInfo } from "../../types/index.js";
 
 interface SkillListItem {
@@ -21,19 +21,13 @@ interface SkillListItem {
 	categoryKey?: string;
 }
 
-const CATEGORY_COLORS: Record<string, string> = {
-	recommended: "#2e7d32",
-	frontend: "#1565c0",
-	design: "#6a1b9a",
-	media: "#e65100",
-	security: "#b71c1c",
-	debugging: "#00838f",
-	database: "#4527a0",
-	search: "#4e342e",
-	general: "#333333",
-};
-
-const RECOMMENDED_NAMES = new Set(RECOMMENDED_SKILLS.map((r) => r.name));
+function formatStars(stars?: number): string {
+	if (!stars) return "";
+	if (stars >= 1000000) return `★ ${(stars / 1000000).toFixed(1)}M`;
+	if (stars >= 10000) return `★ ${Math.round(stars / 1000)}K`;
+	if (stars >= 1000) return `★ ${(stars / 1000).toFixed(1)}K`;
+	return `★ ${stars}`;
+}
 
 export function SkillsScreen() {
 	const { state, dispatch } = useApp();
@@ -67,7 +61,7 @@ export function SkillsScreen() {
 		fetchData();
 	}, [fetchData, state.dataRefreshVersion]);
 
-	// Build flat list: recommended first (as their own category), then by repo
+	// Build flat list: Recommended first, then Popular (sorted by stars)
 	const allItems = useMemo((): SkillListItem[] => {
 		if (skillsState.skills.status !== "success") return [];
 
@@ -79,6 +73,7 @@ export function SkillsScreen() {
 					(s) =>
 						s.name.toLowerCase().includes(query) ||
 						s.source.repo.toLowerCase().includes(query) ||
+						(s.description || "").toLowerCase().includes(query) ||
 						s.frontmatter?.description?.toLowerCase().includes(query),
 				)
 			: skills;
@@ -86,12 +81,7 @@ export function SkillsScreen() {
 		const items: SkillListItem[] = [];
 
 		// Recommended section
-		const recommendedSkills = filtered.filter((s) =>
-			RECOMMENDED_NAMES.has(
-				s.name.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
-			) || RECOMMENDED_SKILLS.some((r) => r.skillPath === s.name),
-		);
-
+		const recommendedSkills = filtered.filter((s) => s.isRecommended);
 		if (recommendedSkills.length > 0) {
 			items.push({
 				id: "cat:recommended",
@@ -109,24 +99,19 @@ export function SkillsScreen() {
 			}
 		}
 
-		// Group remaining skills by repo
-		const repoMap = new Map<string, SkillInfo[]>();
-		for (const skill of filtered) {
-			const isRec = recommendedSkills.includes(skill);
-			if (isRec) continue;
-			const existing = repoMap.get(skill.source.repo) || [];
-			existing.push(skill);
-			repoMap.set(skill.source.repo, existing);
-		}
+		// Popular section — skills not in recommended, sorted by stars desc
+		const popularSkills = filtered
+			.filter((s) => !s.isRecommended)
+			.sort((a, b) => (b.stars ?? 0) - (a.stars ?? 0));
 
-		for (const [repo, repoSkills] of repoMap) {
+		if (popularSkills.length > 0) {
 			items.push({
-				id: `cat:${repo}`,
+				id: "cat:popular",
 				type: "category",
-				label: `${repo} (${repoSkills.length})`,
-				categoryKey: repo,
+				label: "Popular",
+				categoryKey: "popular",
 			});
-			for (const skill of repoSkills) {
+			for (const skill of popularSkills) {
 				items.push({
 					id: `skill:${skill.id}`,
 					type: "skill",
@@ -298,9 +283,8 @@ export function SkillsScreen() {
 		isSelected: boolean,
 	) => {
 		if (item.type === "category") {
-			const catKey = item.categoryKey || "general";
-			const isRec = catKey === "recommended";
-			const bgColor = CATEGORY_COLORS[catKey] || CATEGORY_COLORS.general;
+			const isRec = item.categoryKey === "recommended";
+			const bgColor = isRec ? "green" : "cyan";
 			const star = isRec ? "★ " : "";
 
 			if (isSelected) {
@@ -321,18 +305,13 @@ export function SkillsScreen() {
 			const skill = item.skill;
 			const indicator = skill.installed ? "●" : "○";
 			const indicatorColor = skill.installed ? "cyan" : "gray";
-			const scopeLabel = skill.installedScope
-				? skill.installedScope === "user"
-					? "[u]"
-					: "[p]"
-				: "   ";
-			const updateBadge = skill.hasUpdate ? "[UPDT] " : "";
+			const scopeTag = skill.installedScope === "user" ? "u" : skill.installedScope === "project" ? "p" : "";
+			const starsStr = formatStars(skill.stars);
 
 			if (isSelected) {
 				return (
 					<text bg="magenta" fg="white">
-						{" "}
-						{indicator} {scopeLabel} {updateBadge}{skill.name.padEnd(30)}{skill.source.repo}{" "}
+						{" "}{indicator} {skill.name}{skill.hasUpdate ? " ⬆" : ""}{scopeTag ? ` [${scopeTag}]` : ""}{starsStr ? `  ${starsStr}` : ""}{" "}
 					</text>
 				);
 			}
@@ -340,15 +319,14 @@ export function SkillsScreen() {
 			return (
 				<text>
 					<span fg={indicatorColor}> {indicator} </span>
-					<span fg={skill.installedScope === "user" ? "cyan" : skill.installedScope === "project" ? "green" : "gray"}>
-						{scopeLabel}
-					</span>
-					<span> </span>
-					{skill.hasUpdate && (
-						<span bg="yellow" fg="black">{updateBadge}</span>
+					<span fg="white">{skill.name}</span>
+					{skill.hasUpdate && <span fg="yellow"> ⬆</span>}
+					{scopeTag && (
+						<span fg={scopeTag === "u" ? "cyan" : "green"}> [{scopeTag}]</span>
 					)}
-					<span fg="white">{skill.name.padEnd(30)}</span>
-					<span fg="gray">{skill.source.repo}</span>
+					{starsStr && (
+						<span fg="yellow">{"  "}{starsStr}</span>
+					)}
 				</text>
 			);
 		}
@@ -368,9 +346,6 @@ export function SkillsScreen() {
 					<box marginTop={1}>
 						<text fg="gray">{skillsState.skills.error.message}</text>
 					</box>
-					<box marginTop={1}>
-						<text fg="gray">Set GITHUB_TOKEN to increase rate limits.</text>
-					</box>
 				</box>
 			);
 		}
@@ -380,15 +355,16 @@ export function SkillsScreen() {
 		}
 
 		if (selectedItem.type === "category") {
-			const catKey = selectedItem.categoryKey || "general";
-			const color = CATEGORY_COLORS[catKey] ? "green" : "cyan";
+			const isRec = selectedItem.categoryKey === "recommended";
 			return (
 				<box flexDirection="column">
-					<text fg={color}>
-						<strong>{selectedItem.label}</strong>
+					<text fg={isRec ? "green" : "cyan"}>
+						<strong>{isRec ? "★ " : ""}{selectedItem.label}</strong>
 					</text>
 					<box marginTop={1}>
-						<text fg="gray">Skills in this category</text>
+						<text fg="gray">
+							{isRec ? "Curated skills recommended for most projects" : "Popular skills sorted by stars"}
+						</text>
 					</box>
 				</box>
 			);
@@ -397,17 +373,20 @@ export function SkillsScreen() {
 		if (!selectedSkill) return null;
 
 		const fm = selectedSkill.frontmatter;
+		const description = fm?.description || selectedSkill.description || "Loading...";
 		const scopeColor = selectedSkill.installedScope === "user" ? "cyan" : "green";
+		const starsStr = formatStars(selectedSkill.stars);
 
 		return (
 			<box flexDirection="column">
 				<text fg="cyan">
 					<strong>{selectedSkill.name}</strong>
+					{starsStr && <span fg="yellow">  {starsStr}</span>}
 				</text>
 
 				<box marginTop={1}>
 					<text fg="white">
-						{fm ? fm.description : "Loading..."}
+						{description}
 					</text>
 				</box>
 
@@ -520,16 +499,13 @@ export function SkillsScreen() {
 		skillsState.skills.status === "success" ? skillsState.skills.data : [];
 	const installedCount = skills.filter((s) => s.installed).length;
 	const totalCount = skills.length;
-	const updateCount = skills.filter((s) => s.hasUpdate).length;
 
 	const statusContent = (
 		<text>
 			<span fg="gray">Skills: </span>
 			<span fg="cyan">{installedCount} installed</span>
-			<span fg="gray"> │ {totalCount} available</span>
-			{updateCount > 0 && (
-				<span fg="yellow"> │ {updateCount} updates</span>
-			)}
+			<span fg="gray"> │ </span>
+			<span fg="white">{totalCount} available</span>
 		</text>
 	);
 
@@ -547,7 +523,7 @@ export function SkillsScreen() {
 						}
 					: undefined
 			}
-			footerHints="↑↓:nav │ u:user scope │ p:project scope │ Enter:install │ d:uninstall │ type to search"
+			footerHints="↑↓:nav │ u:user │ p:project │ d:uninstall │ type to search"
 			listPanel={
 				skillsState.skills.status !== "success" ? (
 					<text fg="gray">

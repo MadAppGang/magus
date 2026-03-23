@@ -7,6 +7,10 @@ import type {
 	SkillFrontmatter,
 	GitTreeResponse,
 } from "../types/index.js";
+import { RECOMMENDED_SKILLS } from "../data/skill-repos.js";
+
+const SKILLS_API_BASE =
+	"https://us-central1-claudish-6da10.cloudfunctions.net/skills";
 
 // ─── In-process cache ─────────────────────────────────────────────────────────
 
@@ -175,69 +179,99 @@ export async function getInstalledSkillNames(
 	return installed;
 }
 
+// ─── Firebase Skills API ──────────────────────────────────────────────────────
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapApiSkillToSkillInfo(raw: any): SkillInfo {
+	const repo = (raw.repo as string) || "unknown";
+	const skillPath = (raw.skillPath as string) || (raw.name as string) || "";
+	const source: SkillSource = {
+		label: repo,
+		repo,
+		skillsPath: "",
+	};
+	return {
+		id: `${repo}/${skillPath}`,
+		name: (raw.name as string) || skillPath,
+		description: (raw.description as string) || "",
+		source,
+		repoPath: skillPath ? `${skillPath}/SKILL.md` : "SKILL.md",
+		gitBlobSha: "",
+		frontmatter: null,
+		installed: false,
+		installedScope: null,
+		hasUpdate: false,
+		stars: typeof raw.stars === "number" ? raw.stars : undefined,
+	};
+}
+
+export async function fetchPopularSkills(limit = 30): Promise<SkillInfo[]> {
+	try {
+		const res = await fetch(
+			`${SKILLS_API_BASE}/search?q=development&limit=${limit}&sortBy=stars`,
+			{ signal: AbortSignal.timeout(10000) },
+		);
+		if (!res.ok) return [];
+		const data = (await res.json()) as { skills?: unknown[] };
+		return (data.skills || []).map(mapApiSkillToSkillInfo);
+	} catch {
+		return [];
+	}
+}
+
 // ─── Fetch available skills ───────────────────────────────────────────────────
 
 export async function fetchAvailableSkills(
-	repos: SkillSource[],
+	_repos: SkillSource[],
 	projectPath?: string,
 ): Promise<SkillInfo[]> {
 	const userInstalled = await getInstalledSkillNames("user");
 	const projectInstalled = await getInstalledSkillNames("project", projectPath);
 
-	const skills: SkillInfo[] = [];
+	const markInstalled = (skill: SkillInfo): SkillInfo => {
+		const isUserInstalled = userInstalled.has(skill.name);
+		const isProjInstalled = projectInstalled.has(skill.name);
+		const installed = isUserInstalled || isProjInstalled;
+		const installedScope: "user" | "project" | null = isProjInstalled
+			? "project"
+			: isUserInstalled
+				? "user"
+				: null;
+		return { ...skill, installed, installedScope };
+	};
 
-	for (const source of repos) {
-		let tree: GitTreeResponse;
-		try {
-			tree = await fetchGitTree(source.repo);
-		} catch {
-			// Skip this repo on error
-			continue;
-		}
+	// 1. Recommended skills from RECOMMENDED_SKILLS constant (no API call)
+	const recommendedSkills: SkillInfo[] = RECOMMENDED_SKILLS.map((rec) => {
+		const source: SkillSource = {
+			label: rec.repo,
+			repo: rec.repo,
+			skillsPath: "",
+		};
+		const skill: SkillInfo = {
+			id: `${rec.repo}/${rec.skillPath}`,
+			name: rec.name,
+			description: rec.description,
+			source,
+			repoPath: `${rec.skillPath}/SKILL.md`,
+			gitBlobSha: "",
+			frontmatter: null,
+			installed: false,
+			installedScope: null,
+			hasUpdate: false,
+			isRecommended: true,
+		};
+		return markInstalled(skill);
+	});
 
-		// Filter for SKILL.md files under skillsPath
-		const prefix = source.skillsPath ? `${source.skillsPath}/` : "";
+	// 2. Fetch popular skills from Firebase API
+	const popular = await fetchPopularSkills(30);
+	const popularSkills = popular.map((s) => markInstalled({ ...s, isRecommended: false }));
 
-		for (const item of tree.tree) {
-			if (item.type !== "blob") continue;
-			if (!item.path.endsWith("/SKILL.md")) continue;
-			if (prefix && !item.path.startsWith(prefix)) continue;
+	// 3. Combine: recommended first, then popular (dedup by name)
+	const seen = new Set<string>(recommendedSkills.map((s) => s.name));
+	const deduped = popularSkills.filter((s) => !seen.has(s.name));
 
-			// Extract skill name: second-to-last segment of path
-			const parts = item.path.split("/");
-			if (parts.length < 2) continue;
-			const skillName = parts[parts.length - 2];
-
-			// Validate name (prevent traversal)
-			if (!/^[a-z0-9][a-z0-9-_]*$/i.test(skillName)) continue;
-
-			const isUserInstalled = userInstalled.has(skillName);
-			const isProjInstalled = projectInstalled.has(skillName);
-			const installed = isUserInstalled || isProjInstalled;
-			const installedScope: "user" | "project" | null = isProjInstalled
-				? "project"
-				: isUserInstalled
-					? "user"
-					: null;
-
-			skills.push({
-				id: `${source.repo}/${item.path}`,
-				name: skillName,
-				source,
-				repoPath: item.path,
-				gitBlobSha: item.sha,
-				frontmatter: null,
-				installed,
-				installedScope,
-				hasUpdate: false,
-			});
-		}
-	}
-
-	// Sort by name within each repo
-	skills.sort((a, b) => a.name.localeCompare(b.name));
-
-	return skills;
+	return [...recommendedSkills, ...deduped];
 }
 
 // ─── Install / Uninstall ──────────────────────────────────────────────────────
