@@ -42,8 +42,8 @@
     {
       "name": "multimodel",
       "source": "./plugins/multimodel",
-      "description": "Multi-model collaboration, orchestration, and workflow patterns. v2.8.1: Added claudish-usage skill (moved from code-analysis).",
-      "version": "2.8.1",
+      "description": "Multi-model collaboration, orchestration, and workflow patterns. v2.9.0: /delegate command — route any task to an external model with capability discovery and pre-flight question gathering.",
+      "version": "2.9.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
