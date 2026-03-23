@@ -3,6 +3,7 @@ import type {
 	McpServer,
 	StatusLineConfig,
 	ProfileEntry,
+	SkillInfo,
 } from "../../types/index.js";
 import type { PluginInfo } from "../../services/plugin-manager.js";
 
@@ -17,7 +18,8 @@ export type Screen =
 	| "settings"
 	| "cli-tools"
 	| "model-selector"
-	| "profiles";
+	| "profiles"
+	| "skills";
 
 export type Route =
 	| { screen: "plugins" }
@@ -26,7 +28,8 @@ export type Route =
 	| { screen: "settings" }
 	| { screen: "cli-tools" }
 	| { screen: "model-selector" }
-	| { screen: "profiles" };
+	| { screen: "profiles" }
+	| { screen: "skills" };
 
 // ============================================================================
 // Async Data Types
@@ -168,6 +171,16 @@ export interface ProfilesScreenState {
 	profiles: AsyncData<ProfileEntry[]>;
 }
 
+export interface SkillsScreenState {
+	scope: "user" | "project";
+	selectedIndex: number;
+	searchQuery: string;
+	/** Available skills from Tree API, cross-referenced with lock files */
+	skills: AsyncData<SkillInfo[]>;
+	/** Null until check completes; then Map<skillName, hasUpdate> */
+	updateStatus: Map<string, boolean> | null;
+}
+
 // ============================================================================
 // App State
 // ============================================================================
@@ -197,6 +210,7 @@ export interface AppState {
 	cliTools: CliToolsScreenState;
 	modelSelector: ModelSelectorScreenState;
 	profiles: ProfilesScreenState;
+	skills: SkillsScreenState;
 }
 
 // ============================================================================
@@ -287,6 +301,17 @@ export type AppAction =
 	| { type: "PROFILES_DATA_LOADING" }
 	| { type: "PROFILES_DATA_SUCCESS"; profiles: ProfileEntry[] }
 	| { type: "PROFILES_DATA_ERROR"; error: Error }
+
+	// Skills screen
+	| { type: "SKILLS_SET_SCOPE"; scope: "user" | "project" }
+	| { type: "SKILLS_TOGGLE_SCOPE" }
+	| { type: "SKILLS_SELECT"; index: number }
+	| { type: "SKILLS_SET_SEARCH"; query: string }
+	| { type: "SKILLS_DATA_LOADING" }
+	| { type: "SKILLS_DATA_SUCCESS"; skills: SkillInfo[] }
+	| { type: "SKILLS_DATA_ERROR"; error: Error }
+	| { type: "SKILLS_UPDATE_STATUS"; updates: Map<string, boolean> }
+	| { type: "SKILLS_UPDATE_ITEM"; name: string; updates: Partial<SkillInfo> }
 
 	// Data refresh - triggers screens to refetch
 	| { type: "DATA_REFRESH_COMPLETE" };

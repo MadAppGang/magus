@@ -116,7 +116,73 @@ export type Screen =
 	| "plugins"
 	| "statusline"
 	| "cli-tools"
-	| "env-vars";
+	| "env-vars"
+	| "skills";
+
+// ─── Skill Types ──────────────────────────────────────────────────────────────
+
+/** A configured skill repository (entry in skill-repos.ts) */
+export interface SkillSource {
+	/** Human-readable label, e.g. "vercel-labs/agent-skills" */
+	label: string;
+	/** GitHub owner/repo, e.g. "vercel-labs/agent-skills" */
+	repo: string;
+	/** Sub-path within the repo where skills live, e.g. "skills" */
+	skillsPath: string;
+}
+
+/** YAML frontmatter extracted from a SKILL.md file */
+export interface SkillFrontmatter {
+	name: string;
+	description: string;
+	category?: string;
+	author?: string;
+	version?: string;
+	tags?: string[];
+	[key: string]: unknown;
+}
+
+/** A skill entry from the available-skills list (may or may not be installed) */
+export interface SkillInfo {
+	/** Unique key: "{owner}/{repo}/{path}" */
+	id: string;
+	/** Slug used as directory name: last segment of path */
+	name: string;
+	/** Source repo this skill comes from */
+	source: SkillSource;
+	/** Relative path within repo, e.g. "skills/researcher/SKILL.md" */
+	repoPath: string;
+	/** Git blob SHA from Tree API response */
+	gitBlobSha: string;
+	/** Parsed frontmatter (null if not yet fetched) */
+	frontmatter: SkillFrontmatter | null;
+	/** Whether the skill is installed (either scope) */
+	installed: boolean;
+	/** Scope of the installed copy */
+	installedScope: "user" | "project" | null;
+	/** True when lock file SHA differs from Tree API SHA */
+	hasUpdate: boolean;
+	/** Whether this is a recommended skill */
+	isRecommended?: boolean;
+}
+
+// ─── GitHub Tree API types ────────────────────────────────────────────────────
+
+export interface GitTreeItem {
+	path: string;
+	mode: string;
+	type: "blob" | "tree";
+	sha: string;
+	size?: number;
+	url: string;
+}
+
+export interface GitTreeResponse {
+	sha: string;
+	url: string;
+	tree: GitTreeItem[];
+	truncated: boolean;
+}
 
 // MCP Registry Types (registry.modelcontextprotocol.io)
 export interface McpRegistryServer {

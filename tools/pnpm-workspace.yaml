@@ -1,4 +1,5 @@
 packages:
-  - 'claudeup-core'
-  - 'claudeup-gui'
-  - 'claudeup-gui/src-tauri/sidecar'
+  - 'skills-api'
+allowBuilds:
+  '@firebase/util': true
+  protobufjs: true

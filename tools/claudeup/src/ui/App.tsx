@@ -20,6 +20,7 @@ import {
 	CliToolsScreen,
 	ModelSelectorScreen,
 	ProfilesScreen,
+	SkillsScreen,
 } from "./screens/index.js";
 import type { Screen } from "./state/types.js";
 import { repairAllMarketplaces } from "../services/local-marketplace.js";
@@ -57,6 +58,8 @@ function Router() {
 			return <ModelSelectorScreen />;
 		case "profiles":
 			return <ProfilesScreen />;
+		case "skills":
+			return <SkillsScreen />;
 		default:
 			return <PluginsScreen />;
 	}
@@ -116,6 +119,7 @@ function GlobalKeyHandler({
 			"cli-tools",
 			"model-selector",
 			"profiles",
+			"skills",
 		].includes(state.currentRoute.screen);
 
 		if (isTopLevel) {
@@ -124,6 +128,7 @@ function GlobalKeyHandler({
 			else if (input === "3") navigateToScreen("settings");
 			else if (input === "4") navigateToScreen("cli-tools");
 			else if (input === "5") navigateToScreen("profiles");
+			else if (input === "6") navigateToScreen("skills");
 
 			// Tab navigation cycling
 			if (key.tab) {
@@ -133,6 +138,7 @@ function GlobalKeyHandler({
 					"settings",
 					"cli-tools",
 					"profiles",
+					"skills",
 				];
 				const currentIndex = screens.indexOf(
 					state.currentRoute.screen as Screen,
@@ -173,7 +179,7 @@ function GlobalKeyHandler({
 Quick Navigation
   1  Plugins      4  CLI Tools
   2  MCP Servers  5  Profiles
-  3  Settings
+  3  Settings     6  Skills
 
 Plugin Actions
   u  Update        d  Uninstall

@@ -14,6 +14,7 @@ const TABS: Tab[] = [
 	{ key: "3", label: "Settings", screen: "settings" },
 	{ key: "4", label: "CLI", screen: "cli-tools" },
 	{ key: "5", label: "Profiles", screen: "profiles" },
+	{ key: "6", label: "Skills", screen: "skills" },
 ];
 
 interface TabBarProps {

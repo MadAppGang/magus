@@ -64,6 +64,14 @@ export const initialState: AppState = {
 		selectedIndex: 0,
 		profiles: { status: "idle" },
 	},
+
+	skills: {
+		scope: "user",
+		selectedIndex: 0,
+		searchQuery: "",
+		skills: { status: "idle" },
+		updateStatus: null,
+	},
 };
 
 export function appReducer(state: AppState, action: AppAction): AppState {
@@ -476,6 +484,97 @@ export function appReducer(state: AppState, action: AppAction): AppState {
 					profiles: { status: "error", error: action.error },
 				},
 			};
+
+		// =========================================================================
+		// Skills Screen
+		// =========================================================================
+		case "SKILLS_SET_SCOPE":
+			return {
+				...state,
+				skills: {
+					...state.skills,
+					scope: action.scope,
+					selectedIndex: 0,
+					skills: { status: "loading" },
+				},
+			};
+
+		case "SKILLS_TOGGLE_SCOPE":
+			return appReducer(state, {
+				type: "SKILLS_SET_SCOPE",
+				scope: state.skills.scope === "user" ? "project" : "user",
+			});
+
+		case "SKILLS_SELECT":
+			return {
+				...state,
+				skills: {
+					...state.skills,
+					selectedIndex: action.index,
+				},
+			};
+
+		case "SKILLS_SET_SEARCH":
+			return {
+				...state,
+				skills: {
+					...state.skills,
+					searchQuery: action.query,
+					selectedIndex: 0,
+				},
+			};
+
+		case "SKILLS_DATA_LOADING":
+			return {
+				...state,
+				skills: {
+					...state.skills,
+					skills: { status: "loading" },
+				},
+			};
+
+		case "SKILLS_DATA_SUCCESS":
+			return {
+				...state,
+				skills: {
+					...state.skills,
+					skills: { status: "success", data: action.skills },
+				},
+			};
+
+		case "SKILLS_DATA_ERROR":
+			return {
+				...state,
+				skills: {
+					...state.skills,
+					skills: { status: "error", error: action.error },
+				},
+			};
+
+		case "SKILLS_UPDATE_STATUS":
+			return {
+				...state,
+				skills: {
+					...state.skills,
+					updateStatus: action.updates,
+				},
+			};
+
+		case "SKILLS_UPDATE_ITEM": {
+			if (state.skills.skills.status !== "success") return state;
+			return {
+				...state,
+				skills: {
+					...state.skills,
+					skills: {
+						status: "success",
+						data: state.skills.skills.data.map((s) =>
+							s.name === action.name ? { ...s, ...action.updates } : s,
+						),
+					},
+				},
+			};
+		}
 
 		// =========================================================================
 		// Modals
