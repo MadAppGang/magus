@@ -32,7 +32,8 @@
   "hooks": "./hooks/hooks.json",
   "skills": "./skills/",
   "commands": [
-    "./commands/team.md"
+    "./commands/team.md",
+    "./commands/delegate.md"
   ],
   "compatibility": {
     "claudeCode": ">=0.1.0"

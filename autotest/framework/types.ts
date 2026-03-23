@@ -73,6 +73,7 @@ export interface Metrics {
 /**
  * Per-test record inside results-summary.json.
  * Enriched with 7 new optional fields (Problem 7 fix).
+ * Enriched with analyzer_checks_* fields when per-test analyzer runs.
  */
 export interface RunEntry {
   test_id: string;
@@ -93,6 +94,10 @@ export interface RunEntry {
   unique_tools?: string[];
   wall_time_ms?: number;
   time_to_first_tool_ms?: number | null;
+  // Per-test analyzer results (present when ANALYZER_CMD is configured and checks exist):
+  analyzer_checks_total?: number;
+  analyzer_checks_passed?: number;
+  analyzer_checks_failed?: number;
 }
 
 export interface ResultsSummary {
@@ -239,6 +244,7 @@ export type EvalResult =
   | "PASS_ALT"
   | "PASS_DELEGATED"
   | "FAIL"
+  | "FAIL_CHECKS"
   | "FAIL_OVER_DELEGATED"
   | "NO_DELEGATION"
   | "TIMEOUT"

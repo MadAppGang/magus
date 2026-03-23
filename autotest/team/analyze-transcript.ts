@@ -86,6 +86,7 @@ interface CheckResult {
 interface TranscriptData {
   toolCalls: ToolCall[];
   taskCalls: ToolCall[];
+  agentCalls: ToolCall[];
   bashCalls: ToolCall[];
   writeCalls: ToolCall[];
   readCalls: ToolCall[];
@@ -97,6 +98,7 @@ type ChecksConfig = Record<string, unknown>;
 async function parseTranscript(filepath: string): Promise<TranscriptData> {
   const toolCalls: ToolCall[] = [];
   const taskCalls: ToolCall[] = [];
+  const agentCalls: ToolCall[] = [];
   const bashCalls: ToolCall[] = [];
   const writeCalls: ToolCall[] = [];
   const readCalls: ToolCall[] = [];
@@ -138,6 +140,7 @@ async function parseTranscript(filepath: string): Promise<TranscriptData> {
       toolCalls.push(entry);
 
       if (name === "Task") taskCalls.push(entry);
+      else if (name === "Agent") agentCalls.push(entry);
       else if (name === "Bash") bashCalls.push(entry);
       else if (name === "Write") writeCalls.push(entry);
       else if (name === "Read") readCalls.push(entry);
@@ -145,7 +148,7 @@ async function parseTranscript(filepath: string): Promise<TranscriptData> {
     }
   }
 
-  return { toolCalls, taskCalls, bashCalls, writeCalls, readCalls, skillCalls };
+  return { toolCalls, taskCalls, agentCalls, bashCalls, writeCalls, readCalls, skillCalls };
 }
 
 function getClaudishBashCalls(bashCalls: ToolCall[]): ToolCall[] {
@@ -179,7 +182,7 @@ function extractModelValues(claudishCalls: ToolCall[]): string[] {
 
 function runChecks(
   checks: ChecksConfig,
-  { toolCalls, taskCalls, bashCalls, writeCalls, readCalls, skillCalls }: TranscriptData
+  { toolCalls, taskCalls, agentCalls, bashCalls, writeCalls, readCalls, skillCalls }: TranscriptData
 ): CheckResult[] {
   const results: CheckResult[] = [];
   const claudishCalls = getClaudishBashCalls(bashCalls);
@@ -189,15 +192,16 @@ function runChecks(
   // Check: task_agent_is
   if ("task_agent_is" in checks) {
     const expectedAgent = checks["task_agent_is"] as string;
-    if (taskCalls.length === 0) {
+    const allSubagentCalls = [...taskCalls, ...agentCalls];
+    if (allSubagentCalls.length === 0) {
       results.push({
         check: "task_agent_is",
         passed: false,
-        detail: `No Task calls found (expected agent: ${expectedAgent})`,
+        detail: `No Task or Agent calls found (expected agent: ${expectedAgent})`,
       });
     } else {
       const wrongAgents: string[] = [];
-      for (const tc of taskCalls) {
+      for (const tc of allSubagentCalls) {
         const agent = (tc.input["subagent_type"] as string) ?? "MISSING";
         if (agent !== expectedAgent) {
           wrongAgents.push(agent);
@@ -213,7 +217,7 @@ function runChecks(
         results.push({
           check: "task_agent_is",
           passed: true,
-          detail: `All ${taskCalls.length} Task calls use ${expectedAgent}`,
+          detail: `All ${allSubagentCalls.length} Task/Agent calls use ${expectedAgent}`,
         });
       }
     }
@@ -222,19 +226,20 @@ function runChecks(
   // Check: task_min_count
   if ("task_min_count" in checks) {
     const minCount = checks["task_min_count"] as number;
-    const actual = taskCalls.length;
+    const actual = taskCalls.length + agentCalls.length;
     const passed = actual >= minCount;
     results.push({
       check: "task_min_count",
       passed,
-      detail: `${actual} Task calls (minimum: ${minCount})`,
+      detail: `${actual} Task/Agent calls (${taskCalls.length} Task + ${agentCalls.length} Agent, minimum: ${minCount})`,
     });
   }
 
-  // Check: run_in_background (for Task calls)
+  // Check: run_in_background (for Task and Agent calls)
   if (checks["run_in_background"]) {
+    const allSubagentCalls = [...taskCalls, ...agentCalls];
     let allBg = true;
-    for (const tc of taskCalls) {
+    for (const tc of allSubagentCalls) {
       if (!tc.input["run_in_background"]) {
         allBg = false;
         break;
@@ -244,15 +249,15 @@ function runChecks(
       check: "run_in_background",
       passed: allBg,
       detail: allBg
-        ? `All ${taskCalls.length} Task calls use run_in_background`
-        : "Some Task calls missing run_in_background=true",
+        ? `All ${allSubagentCalls.length} Task/Agent calls use run_in_background`
+        : "Some Task/Agent calls missing run_in_background=true",
     });
   }
 
   // Check: has_vote_template
   if (checks["has_vote_template"]) {
     let found = false;
-    for (const tc of taskCalls) {
+    for (const tc of [...taskCalls, ...agentCalls]) {
       const prompt = (tc.input["prompt"] as string) ?? "";
       if (prompt.includes("Team Vote") || prompt.includes("Independent Review")) {
         found = true;
@@ -273,7 +278,7 @@ function runChecks(
       passed: found,
       detail: found
         ? "Vote template found"
-        : "No vote template text found in Task prompts or Write calls",
+        : "No vote template text found in Task/Agent prompts or Write calls",
     });
   }
 
@@ -638,13 +643,13 @@ function runChecks(
 
   // Check: internal_uses_task
   if (checks["internal_uses_task"]) {
-    const hasTask = taskCalls.length > 0;
+    const hasTask = taskCalls.length > 0 || agentCalls.length > 0;
     results.push({
       check: "internal_uses_task",
       passed: hasTask,
       detail: hasTask
-        ? `${taskCalls.length} Task calls found (for internal model)`
-        : "No Task calls found (internal model should use Task)",
+        ? `${taskCalls.length + agentCalls.length} Task/Agent calls found (${taskCalls.length} Task + ${agentCalls.length} Agent, for internal model)`
+        : "No Task or Agent calls found (internal model should use Task or Agent)",
     });
   }
 
@@ -887,6 +892,7 @@ async function main() {
       failed_checks: results.filter((r) => !r.passed).length,
       total_tool_calls: data.toolCalls.length,
       task_calls: data.taskCalls.length,
+      agent_calls: data.agentCalls.length,
       bash_calls: data.bashCalls.length,
       claudish_calls: getClaudishBashCalls(data.bashCalls).length,
       write_calls: data.writeCalls.length,

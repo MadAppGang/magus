@@ -160,7 +160,25 @@ for (const metaPath of metaPaths) {
 
   // Determine pass/fail using pure evaluator
   const tc: TestCase = tcMap[testId] ?? { id: testId };
-  const result = evaluate(tc, actualAgent, exitCode);
+  let result = evaluate(tc, actualAgent, exitCode);
+
+  // Apply per-test analyzer result if present — override to FAIL if checks failed
+  let analyzerChecksTotal: number | undefined;
+  let analyzerChecksPassed: number | undefined;
+  let analyzerChecksFailed: number | undefined;
+  const analyzerResultPath = join(testDir, "analyzer-result.json");
+  const analyzerResult = readJson(analyzerResultPath);
+  if (analyzerResult) {
+    const summary = analyzerResult.summary ?? {};
+    analyzerChecksTotal = summary.total_checks;
+    analyzerChecksPassed = summary.passed_checks;
+    analyzerChecksFailed = summary.failed_checks;
+    // If the analyzer says the test failed, override result to FAIL_CHECKS
+    // unless the test already has a harder failure (TIMEOUT/ERROR)
+    if (analyzerResult.passed === false && result !== "TIMEOUT" && result !== "ERROR") {
+      result = "FAIL_CHECKS";
+    }
+  }
 
   const entry: RunEntry = {
     test_id: testId,
@@ -178,6 +196,10 @@ for (const metaPath of metaPaths) {
     retries,
     unique_tools: uniqueTools,
   };
+
+  if (analyzerChecksTotal !== undefined) entry.analyzer_checks_total = analyzerChecksTotal;
+  if (analyzerChecksPassed !== undefined) entry.analyzer_checks_passed = analyzerChecksPassed;
+  if (analyzerChecksFailed !== undefined) entry.analyzer_checks_failed = analyzerChecksFailed;
 
   if (costUsd != null) entry.cost_usd = costUsd;
   if (wallTimeMs != null) entry.wall_time_ms = wallTimeMs;

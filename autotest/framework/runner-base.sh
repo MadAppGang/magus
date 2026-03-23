@@ -277,6 +277,24 @@ for model in "${MODELS[@]}"; do
             --output "$test_output_dir/metrics.json" \
             2>/dev/null || true
         fi
+
+        # Run per-test analyzer if configured and checks are non-empty.
+        # The per-test analyzer must accept: <transcript.jsonl> <checks_json>
+        # and return JSON with a top-level "passed" boolean field.
+        if [[ -n "$ANALYZER_CMD" && -f "$test_output_dir/transcript.jsonl" ]]; then
+          CHECKS_JSON=$(jq -c --arg id "$case_id" '.test_cases[] | select(.id == $id) | .checks // {}' "$TEST_CASES_FILE")
+          if [[ -n "$CHECKS_JSON" && "$CHECKS_JSON" != "{}" ]]; then
+            ANALYZER_OUTPUT=$($ANALYZER_CMD "$test_output_dir/transcript.jsonl" "$CHECKS_JSON" 2>/dev/null || true)
+            ANALYZER_PASSED=$(echo "$ANALYZER_OUTPUT" | jq -r '.passed' 2>/dev/null || echo "")
+            # Only save if output is valid JSON with a "passed" field
+            if [[ "$ANALYZER_PASSED" == "true" || "$ANALYZER_PASSED" == "false" ]]; then
+              echo "$ANALYZER_OUTPUT" > "$test_output_dir/analyzer-result.json"
+              if [[ "$ANALYZER_PASSED" == "false" ]]; then
+                echo "  CHKFAIL [$case_id] analyzer checks failed (see analyzer-result.json)"
+              fi
+            fi
+          fi
+        fi
       else
         # Parallel execution: wait if we've hit the limit
         while [[ $ACTIVE -ge $PARALLEL ]]; do
@@ -301,6 +319,21 @@ for model in "${MODELS[@]}"; do
               "$test_output_dir/debug.log" \
               --output "$test_output_dir/metrics.json" \
               2>/dev/null || true
+          fi
+
+          # Run per-test analyzer if configured and checks are non-empty.
+          # The per-test analyzer must accept: <transcript.jsonl> <checks_json>
+          # and return JSON with a top-level "passed" boolean field.
+          if [[ -n "$ANALYZER_CMD" && -f "$test_output_dir/transcript.jsonl" ]]; then
+            CHECKS_JSON=$(jq -c --arg id "$case_id" '.test_cases[] | select(.id == $id) | .checks // {}' "$TEST_CASES_FILE")
+            if [[ -n "$CHECKS_JSON" && "$CHECKS_JSON" != "{}" ]]; then
+              ANALYZER_OUTPUT=$($ANALYZER_CMD "$test_output_dir/transcript.jsonl" "$CHECKS_JSON" 2>/dev/null || true)
+              ANALYZER_PASSED=$(echo "$ANALYZER_OUTPUT" | jq -r '.passed' 2>/dev/null || echo "")
+              # Only save if output is valid JSON with a "passed" field
+              if [[ "$ANALYZER_PASSED" == "true" || "$ANALYZER_PASSED" == "false" ]]; then
+                echo "$ANALYZER_OUTPUT" > "$test_output_dir/analyzer-result.json"
+              fi
+            fi
           fi
         ) &
         PIDS+=($!)
@@ -338,14 +371,31 @@ bun run "$SCRIPT_DIR/aggregator.ts" \
 
 echo "Results:      $OUTPUT_DIR/results-summary.json"
 
-# --- Run suite-specific analyzer (if provided) ---
+# --- Report per-test analyzer failures (if any) ---
 
 if [[ -n "$ANALYZER_CMD" ]]; then
+  ANALYZER_PASS_COUNT=0
+  ANALYZER_FAIL_COUNT=0
+  ANALYZER_SKIP_COUNT=0
+  for dir in "${ALL_TEST_DIRS[@]}"; do
+    result_file="$dir/analyzer-result.json"
+    if [[ -f "$result_file" ]]; then
+      ap=$(jq -r '.passed' "$result_file" 2>/dev/null || echo "")
+      if [[ "$ap" == "true" ]]; then
+        ANALYZER_PASS_COUNT=$((ANALYZER_PASS_COUNT + 1))
+      elif [[ "$ap" == "false" ]]; then
+        ANALYZER_FAIL_COUNT=$((ANALYZER_FAIL_COUNT + 1))
+      fi
+    else
+      ANALYZER_SKIP_COUNT=$((ANALYZER_SKIP_COUNT + 1))
+    fi
+  done
   echo ""
-  echo "=== Running Suite Analyzer ==="
-  echo "Command: $ANALYZER_CMD $OUTPUT_DIR"
-  echo ""
-  $ANALYZER_CMD "$OUTPUT_DIR" || echo "WARNING: Suite analyzer returned non-zero exit code"
+  echo "=== Analyzer Check Results ==="
+  echo "  Pass: $ANALYZER_PASS_COUNT  Fail: $ANALYZER_FAIL_COUNT  Skip (no checks): $ANALYZER_SKIP_COUNT"
+  if [[ $ANALYZER_FAIL_COUNT -gt 0 ]]; then
+    echo "  ATTENTION: $ANALYZER_FAIL_COUNT test(s) failed analyzer checks"
+  fi
 fi
 
 echo ""
