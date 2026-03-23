@@ -38,7 +38,8 @@ gtd_init() {
   if [ ! -f "$file" ]; then
     cat > "$file" <<'EOF'
 {
-  "version": "1.0",
+  "version": "2.0",
+  "nextId": 1,
   "lastReview": null,
   "activeTaskId": null,
   "tasks": []
@@ -57,7 +58,7 @@ gtd_read() {
   if [ -f "$file" ]; then
     cat "$file"
   else
-    printf '{"version":"1.0","lastReview":null,"activeTaskId":null,"tasks":[]}\n'
+    printf '{"version":"2.0","nextId":1,"lastReview":null,"activeTaskId":null,"tasks":[]}\n'
   fi
 }
 
@@ -75,11 +76,19 @@ gtd_write() {
 
 # ── ID Generation ────────────────────────────────────────────────────────────
 
-# gtd_new_id — generate unique ID like gtd-a1b2c3
+# gtd_new_id — allocate next sequential ID (atomic read-increment-write)
+# Returns: the new ID as a plain number (e.g. "1", "19")
+# Race-safe: reads nextId, increments, writes back in one atomic operation
 gtd_new_id() {
-  local hex
-  hex=$(head -c 3 /dev/urandom | xxd -p 2>/dev/null || openssl rand -hex 3 2>/dev/null || date +%s | tail -c 7)
-  echo "gtd-${hex}"
+  local file
+  file=$(gtd_tasks_file)
+  local current
+  current=$(cat "$file")
+  local id
+  id=$(echo "$current" | jq -r '.nextId')
+  local next=$(( id + 1 ))
+  echo "$current" | jq --argjson next "$next" '.nextId = $next' | gtd_write
+  echo "$id"
 }
 
 # ── Active Task ───────────────────────────────────────────────────────────────

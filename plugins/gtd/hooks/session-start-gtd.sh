@@ -75,7 +75,7 @@ fi
 
 # Inbox nudge
 if [ "$SHOW_INBOX_NUDGE" = "true" ]; then
-  CONTEXT_LINES="${CONTEXT_LINES}**Inbox:** ${INBOX_COUNT} unclarified items. Run \`/gtd:process\` when ready.
+  CONTEXT_LINES="${CONTEXT_LINES}**Inbox:** ${INBOX_COUNT} unclarified items. Run \`/gtd:clarify\` when ready.
 
 "
 fi

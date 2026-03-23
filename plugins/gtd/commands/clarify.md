@@ -1,11 +1,11 @@
 ---
-name: process
-description: "Walk through inbox items applying the GTD decision tree. Usage: /gtd:process [--id gtd-xxx]"
+name: clarify
+description: "Walk through inbox items applying the GTD decision tree. Usage: /gtd:clarify [--id gtd-xxx]"
 ---
 
-# GTD Process — Clarify Inbox Items
+# GTD Clarify — Process Inbox Items
 
-You are implementing the GTD process command. The user wants to clarify inbox items by walking through the GTD decision tree interactively.
+You are implementing the GTD clarify command. The user wants to clarify inbox items by walking through the GTD decision tree interactively.
 
 ## Parse the Input
 
@@ -45,7 +45,7 @@ Show: `Processing: "<subject>" [<id>]`
 Ask: "Is this actionable? [y / n / trash / reference / someday]"
 
 - **trash**: Delete from GTD store. Move on.
-- **reference**: Mark as reference (add to notes, remove from active lists). Ask for reference label.
+- **reference**: Move to `reference` list. Ask for a reference label to add to notes.
 - **someday**: Move to `someday` list.
 - **n (not actionable, not trash)**: Ask "Move to reference or trash?" and handle.
 - **y**: Continue to step 3.
@@ -73,7 +73,7 @@ Ask: "Is this a multi-step project? [y/N]"
 
 ### Step 6: Context and energy
 
-Ask: "Context tags? [@code / @review / @test / @deploy / @research / @meeting / @offline / skip]"
+Ask: "Context — where/how can you do this? [@code / @review / @test / @deploy / @research / @meeting / @offline / skip]"
 
 Ask: "Energy level? [high / medium / low / skip]"
 
@@ -88,7 +88,7 @@ CWD=$(pwd)
 GTD_FILE="${CWD}/.claude/gtd/tasks.json"
 
 TASK_ID="<id>"
-NEW_LIST="next"  # or project/waiting/someday/completed
+NEW_LIST="next"  # or project/waiting/someday/reference/completed
 CONTEXT='["@code"]'  # JSON array
 ENERGY="medium"
 TIME_ESTIMATE=60
@@ -113,15 +113,15 @@ jq \
     .modified = $now
   )' "$GTD_FILE" > "$TMP" && mv "$TMP" "$GTD_FILE"
 
-echo -e "\033[92mMoved to ${NEW_LIST}:\033[0m \"$(jq -r --arg id "$TASK_ID" '.tasks[] | select(.id == $id) | .subject' "$GTD_FILE")\""
+SUBJECT=$(jq -r --arg id "$TASK_ID" '.tasks[] | select(.id == $id) | .subject' "$GTD_FILE")
+bun run "${CLAUDE_PLUGIN_ROOT}/tools/gtd-display.ts" moved "$TASK_ID" "$NEW_LIST" "$SUBJECT"
 ```
 
 ## After Processing All Items
 
 Show a summary:
 ```bash
-echo -e "\033[92mInbox cleared.\033[0m"
-echo -e "Run \033[97m/gtd:next\033[0m to see your next actions."
+bun run "${CLAUDE_PLUGIN_ROOT}/tools/gtd-display.ts" clarify-done "$PROCESSED_COUNT"
 ```
 
 Run `/gtd:status` output to show the updated dashboard.

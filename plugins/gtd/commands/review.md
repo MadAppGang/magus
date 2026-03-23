@@ -60,7 +60,7 @@ jq --arg cutoff "$SEVEN_DAYS_AGO" \
   "$GTD_FILE"
 ```
 
-If any: "These inbox items haven't been processed. Run `/gtd:process` after this review."
+If any: "These inbox items haven't been processed. Run `/gtd:clarify` after this review."
 
 ### Automated Section 3: Waiting For Follow-Ups
 
@@ -140,7 +140,7 @@ TMP="${GTD_FILE}.tmp.$$"
 
 jq --arg now "$NOW" '.lastReview = $now' "$GTD_FILE" > "$TMP" && mv "$TMP" "$GTD_FILE"
 
-echo -e "\033[92mWeekly Review complete.\033[0m Last review updated to now."
+echo "Weekly Review complete. Last review updated to now."
 
 # Optionally save review to file
 REVIEW_DIR="${CWD}/.claude/gtd/reviews"

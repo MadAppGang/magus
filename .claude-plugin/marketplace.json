@@ -332,8 +332,8 @@
     {
       "name": "gtd",
       "source": "./plugins/gtd",
-      "description": "GTD (Getting Things Done) workflow integration. v1.0.0: Real-time task sync via PreToolUse/PostToolUse hooks, 7 commands, 2 skills, ANSI dashboard, proactive capture. Write-through cache: session TaskList as ephemeral working copy, .claude/gtd/tasks.json as persistent store.",
-      "version": "1.0.0",
+      "description": "GTD (Getting Things Done) workflow integration. v2.0.0: Canonical GTD terminology (Clarify, Engage), sequential task IDs (#1, #2), boxed terminal display, reference list, Bun display tool. Real-time sync via hooks, 7 commands, 2 skills.",
+      "version": "2.0.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",

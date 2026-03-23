@@ -61,7 +61,7 @@ NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 TASK_JSON=$(jq -n --arg id "$ID" --arg subject "<detected text>" --arg list "<inbox|waiting|someday>" --arg created "$NOW" \
   '{id: $id, subject: $subject, list: $list, context: [], parentId: null, energy: null, timeEstimate: null, waitingOn: null, dueDate: null, created: $created, modified: $created, completed: null, notes: ""}')
 echo "$TASK_JSON" | gtd_append_task
-echo -e "\033[92mCaptured:\033[0m \"<detected text>\" \033[90m[$ID]\033[0m"
+bun run "${CLAUDE_PLUGIN_ROOT}/tools/gtd-display.ts" capture "$ID" "<detected text>" --list "<inbox|waiting|someday>"
 ```
 
 **If user says "n", ignores it, or doesn't respond:** Drop it silently. Never repeat the suggestion for the same item.

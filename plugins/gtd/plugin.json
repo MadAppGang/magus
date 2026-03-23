@@ -1,7 +1,7 @@
 {
   "name": "gtd",
-  "version": "1.0.0",
-  "description": "GTD (Getting Things Done) workflow integration for Claude Code. Capture, organize, and engage with tasks using the GTD five-list system. Real-time sync via hooks, ANSI dashboard, and proactive capture suggestions.",
+  "version": "2.0.0",
+  "description": "GTD (Getting Things Done) workflow integration for Claude Code. Canonical five-step workflow (Capture, Clarify, Organize, Reflect, Engage) with six lists, sequential task IDs, boxed terminal display, and real-time sync via hooks.",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",
@@ -31,8 +31,8 @@
   "commands": [
     "./commands/help.md",
     "./commands/capture.md",
-    "./commands/work.md",
-    "./commands/process.md",
+    "./commands/engage.md",
+    "./commands/clarify.md",
     "./commands/next.md",
     "./commands/review.md",
     "./commands/status.md"

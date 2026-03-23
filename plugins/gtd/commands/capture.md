@@ -63,19 +63,15 @@ TASK=$(jq -n \
 TMP="${GTD_FILE}.tmp.$$"
 jq --argjson task "$TASK" '.tasks += [$task]' "$GTD_FILE" > "$TMP" && mv "$TMP" "$GTD_FILE"
 
-# Confirmation output
-if [ "$LIST" = "inbox" ]; then
-  echo -e "\033[95mInbox\033[0m \033[90m+\033[0m \"${TEXT}\" \033[90m[${ID}]\033[0m"
-else
-  echo -e "\033[96mSomeday/Maybe\033[0m \033[90m+\033[0m \"${TEXT}\" \033[90m[${ID}]\033[0m"
-fi
+# Display confirmation
+bun run "${CLAUDE_PLUGIN_ROOT}/tools/gtd-display.ts" capture "$ID" "$TEXT" --list "$LIST"
 ```
 
 ## After Capture
 
 Tell the user:
 - The item was captured with its ID
-- If it went to inbox: "Run `/gtd:process` to clarify it when ready."
+- If it went to inbox: "Run `/gtd:clarify` to clarify it when ready."
 - If it went to Someday/Maybe: "Review during your weekly `/gtd:review`."
 
-Do NOT ask clarifying questions during capture — the GTD principle is to capture fast and clarify later in `/gtd:process`.
+Do NOT ask clarifying questions during capture — the GTD principle is to capture fast and clarify later in `/gtd:clarify`.
