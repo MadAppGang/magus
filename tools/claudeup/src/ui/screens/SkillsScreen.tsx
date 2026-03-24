@@ -1,17 +1,19 @@
-import React, { useEffect, useCallback, useMemo } from "react";
+import React, { useEffect, useCallback, useMemo, useState, useRef } from "react";
 import { useApp, useModal } from "../state/AppContext.js";
 import { useDimensions } from "../state/DimensionsContext.js";
 import { useKeyboard } from "../hooks/useKeyboard.js";
 import { ScreenLayout } from "../components/layout/index.js";
 import { ScrollableList } from "../components/ScrollableList.js";
+import { EmptyFilterState } from "../components/EmptyFilterState.js";
 import {
 	fetchAvailableSkills,
 	fetchSkillFrontmatter,
 	installSkill,
 	uninstallSkill,
 } from "../../services/skills-manager.js";
-import { DEFAULT_SKILL_REPOS } from "../../data/skill-repos.js";
-import type { SkillInfo } from "../../types/index.js";
+import { searchSkills } from "../../services/skillsmp-client.js";
+import { DEFAULT_SKILL_REPOS, RECOMMENDED_SKILLS } from "../../data/skill-repos.js";
+import type { SkillInfo, SkillSource } from "../../types/index.js";
 
 interface SkillListItem {
 	id: string;
@@ -61,68 +63,184 @@ export function SkillsScreen() {
 		fetchData();
 	}, [fetchData, state.dataRefreshVersion]);
 
-	// Build flat list: Recommended first, then Popular (sorted by stars)
-	const allItems = useMemo((): SkillListItem[] => {
-		if (skillsState.skills.status !== "success") return [];
+	// Remote search: query Firebase API when user types (debounced, cached)
+	const [searchResults, setSearchResults] = useState<SkillInfo[]>([]);
+	const [isSearchLoading, setIsSearchLoading] = useState(false);
+	const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const searchCacheRef = useRef<Map<string, SkillInfo[]>>(new Map());
 
-		const skills = skillsState.skills.data;
-		const query = skillsState.searchQuery.toLowerCase();
-
-		const filtered = query
-			? skills.filter(
-					(s) =>
-						s.name.toLowerCase().includes(query) ||
-						s.source.repo.toLowerCase().includes(query) ||
-						(s.description || "").toLowerCase().includes(query) ||
-						s.frontmatter?.description?.toLowerCase().includes(query),
-				)
-			: skills;
-
-		const items: SkillListItem[] = [];
-
-		// Recommended section
-		const recommendedSkills = filtered.filter((s) => s.isRecommended);
-		if (recommendedSkills.length > 0) {
-			items.push({
-				id: "cat:recommended",
-				type: "category",
-				label: "Recommended",
-				categoryKey: "recommended",
-			});
-			for (const skill of recommendedSkills) {
-				items.push({
-					id: `skill:${skill.id}`,
-					type: "skill",
-					label: skill.name,
-					skill,
-				});
-			}
+	useEffect(() => {
+		const query = skillsState.searchQuery.trim();
+		if (query.length < 2) {
+			setSearchResults([]);
+			setIsSearchLoading(false);
+			return;
 		}
 
-		// Popular section — skills not in recommended, sorted by stars desc
-		const popularSkills = filtered
-			.filter((s) => !s.isRecommended)
-			.sort((a, b) => (b.stars ?? 0) - (a.stars ?? 0));
+		// Check cache first
+		const cached = searchCacheRef.current.get(query);
+		if (cached) {
+			setSearchResults(cached);
+			setIsSearchLoading(false);
+			return;
+		}
 
-		if (popularSkills.length > 0) {
-			items.push({
-				id: "cat:popular",
-				type: "category",
-				label: "Popular",
-				categoryKey: "popular",
-			});
-			for (const skill of popularSkills) {
-				items.push({
-					id: `skill:${skill.id}`,
-					type: "skill",
-					label: skill.name,
-					skill,
+		setIsSearchLoading(true);
+
+		if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+		searchTimerRef.current = setTimeout(async () => {
+			try {
+				const results = await searchSkills(query, { limit: 30 });
+				const mapped: SkillInfo[] = results.map((r) => {
+					const source: SkillSource = {
+						label: r.repo || "unknown",
+						repo: r.repo || "unknown",
+						skillsPath: "",
+					};
+					return {
+						id: `remote:${r.repo}/${r.skillPath}`,
+						name: r.name,
+						description: r.description || "",
+						source,
+						repoPath: r.skillPath ? `${r.skillPath}/SKILL.md` : "SKILL.md",
+						gitBlobSha: "",
+						frontmatter: null,
+						installed: false,
+						installedScope: null,
+						hasUpdate: false,
+						stars: r.stars,
+					};
 				});
+				searchCacheRef.current.set(query, mapped);
+				setSearchResults(mapped);
+			} catch {
+				setSearchResults([]);
+			}
+			setIsSearchLoading(false);
+		}, 400);
+
+		return () => {
+			if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+		};
+	}, [skillsState.searchQuery]);
+
+	// Static recommended skills — always available, no API needed
+	const staticRecommended = useMemo((): SkillInfo[] => {
+		return RECOMMENDED_SKILLS.map((r) => ({
+			id: `rec:${r.repo}/${r.skillPath}`,
+			name: r.name,
+			description: r.description,
+			source: { label: r.repo, repo: r.repo, skillsPath: "" },
+			repoPath: `${r.skillPath}/SKILL.md`,
+			gitBlobSha: "",
+			frontmatter: null,
+			installed: false,
+			installedScope: null,
+			hasUpdate: false,
+			isRecommended: true,
+			stars: undefined,
+		}));
+	}, []);
+
+	// Merge static recommended with fetched data (to get install status + stars)
+	const mergedRecommended = useMemo((): SkillInfo[] => {
+		if (skillsState.skills.status !== "success") return staticRecommended;
+		const fetched = skillsState.skills.data.filter((s) => s.isRecommended);
+		// Merge: keep fetched data (has stars + install status), fall back to static
+		return staticRecommended.map((staticSkill) => {
+			const match = fetched.find(
+				(f) => f.source.repo === staticSkill.source.repo && f.name === staticSkill.name,
+			);
+			return match || staticSkill;
+		});
+	}, [staticRecommended, skillsState.skills]);
+
+	// Build list: recommended always shown, then search results or popular
+	const allItems = useMemo((): SkillListItem[] => {
+		const query = skillsState.searchQuery.toLowerCase();
+		const items: SkillListItem[] = [];
+
+		// ── RECOMMENDED: always shown, filtered when searching ──
+		const filteredRec = query
+			? mergedRecommended.filter(
+					(s) =>
+						s.name.toLowerCase().includes(query) ||
+						(s.description || "").toLowerCase().includes(query),
+				)
+			: mergedRecommended;
+
+		items.push({
+			id: "cat:recommended",
+			type: "category",
+			label: "Recommended",
+			categoryKey: "recommended",
+		});
+		for (const skill of filteredRec) {
+			items.push({
+				id: `skill:${skill.id}`,
+				type: "skill",
+				label: skill.name,
+				skill,
+			});
+		}
+
+		// ── SEARCH MODE ──
+		if (query.length >= 2) {
+			// Loading and no-results handled in listPanel, not as list items
+
+			if (!isSearchLoading && searchResults.length > 0) {
+				// Dedup against recommended
+				const recNames = new Set(mergedRecommended.map((s) => s.name));
+				const deduped = searchResults.filter((s) => !recNames.has(s.name));
+				if (deduped.length > 0) {
+					items.push({
+						id: "cat:search",
+						type: "category",
+						label: `Search (${deduped.length})`,
+						categoryKey: "popular",
+					});
+					for (const skill of deduped) {
+						items.push({
+							id: `skill:${skill.id}`,
+							type: "skill",
+							label: skill.name,
+							skill,
+						});
+					}
+				}
+			}
+			// No-results message handled in listPanel below, not as a list item
+			return items;
+		}
+
+		// ── POPULAR (default, no search query) ──
+		// Loading state handled in listPanel, not as category header
+
+		if (skillsState.skills.status === "success") {
+			const popularSkills = skillsState.skills.data
+				.filter((s) => !s.isRecommended)
+				.sort((a, b) => (b.stars ?? 0) - (a.stars ?? 0));
+
+			if (popularSkills.length > 0) {
+				items.push({
+					id: "cat:popular",
+					type: "category",
+					label: "Popular",
+					categoryKey: "popular",
+				});
+				for (const skill of popularSkills) {
+					items.push({
+						id: `skill:${skill.id}`,
+						type: "skill",
+						label: skill.name,
+						skill,
+					});
+				}
 			}
 		}
 
 		return items;
-	}, [skillsState.skills, skillsState.searchQuery]);
+	}, [skillsState.skills, skillsState.searchQuery, searchResults, isSearchLoading, mergedRecommended]);
 
 	const selectableItems = useMemo(
 		() => allItems.filter((item) => item.type === "skill" || item.type === "category"),
@@ -204,75 +322,91 @@ export function SkillsScreen() {
 		}
 	}, [selectedSkill, state.projectPath, dispatch, modal]);
 
-	// Keyboard handling
+	// Keyboard handling — same pattern as PluginsScreen
 	useKeyboard((event) => {
 		if (state.modal) return;
 
+		const hasQuery = skillsState.searchQuery.length > 0;
+
+		// Escape: clear search
+		if (event.name === "escape") {
+			if (hasQuery || isSearchActive) {
+				dispatch({ type: "SKILLS_SET_SEARCH", query: "" });
+				dispatch({ type: "SET_SEARCHING", isSearching: false });
+				dispatch({ type: "SKILLS_SELECT", index: 0 });
+			}
+			return;
+		}
+
+		// Backspace: remove last char
+		if (event.name === "backspace" || event.name === "delete") {
+			if (hasQuery) {
+				const newQuery = skillsState.searchQuery.slice(0, -1);
+				dispatch({ type: "SKILLS_SET_SEARCH", query: newQuery });
+				dispatch({ type: "SKILLS_SELECT", index: 0 });
+				if (!newQuery) dispatch({ type: "SET_SEARCHING", isSearching: false });
+			}
+			return;
+		}
+
+		// Navigation — always works; exits search mode on navigate
 		if (event.name === "up" || event.name === "k") {
-			if (state.isSearching) return;
+			if (isSearchActive) dispatch({ type: "SET_SEARCHING", isSearching: false });
 			const newIndex = Math.max(0, skillsState.selectedIndex - 1);
 			dispatch({ type: "SKILLS_SELECT", index: newIndex });
-		} else if (event.name === "down" || event.name === "j") {
-			if (state.isSearching) return;
+			return;
+		}
+		if (event.name === "down" || event.name === "j") {
+			if (isSearchActive) dispatch({ type: "SET_SEARCHING", isSearching: false });
 			const newIndex = Math.min(
 				Math.max(0, selectableItems.length - 1),
 				skillsState.selectedIndex + 1,
 			);
 			dispatch({ type: "SKILLS_SELECT", index: newIndex });
-		} else if (event.name === "u") {
-			if (state.isSearching) return;
-			if (selectedSkill) {
-				if (selectedSkill.installed && selectedSkill.installedScope === "user") {
-					handleUninstall();
-				} else {
-					handleInstall("user");
-				}
+			return;
+		}
+
+		// Enter — install (always works)
+		if (event.name === "return" || event.name === "enter") {
+			if (isSearchActive) {
+				dispatch({ type: "SET_SEARCHING", isSearching: false });
+				return;
 			}
-		} else if (event.name === "p") {
-			if (state.isSearching) return;
-			if (selectedSkill) {
-				if (selectedSkill.installed && selectedSkill.installedScope === "project") {
-					handleUninstall();
-				} else {
-					handleInstall("project");
-				}
-			}
-		} else if (event.name === "return" || event.name === "enter") {
-			if (state.isSearching) return;
 			if (selectedSkill && !selectedSkill.installed) {
 				handleInstall("project");
 			}
-		} else if (event.name === "d") {
-			if (state.isSearching) return;
-			if (selectedSkill?.installed) {
-				handleUninstall();
+			return;
+		}
+
+		// When actively typing in search, letters go to the query
+		if (isSearchActive) {
+			if (event.name === "k" || event.name === "j") {
+				const delta = event.name === "k" ? -1 : 1;
+				const newIndex = Math.max(0, Math.min(selectableItems.length - 1, skillsState.selectedIndex + delta));
+				dispatch({ type: "SKILLS_SELECT", index: newIndex });
+				return;
 			}
+			if (event.name && event.name.length === 1 && !event.ctrl && !event.meta && !/[0-9]/.test(event.name)) {
+				dispatch({ type: "SKILLS_SET_SEARCH", query: skillsState.searchQuery + event.name });
+				dispatch({ type: "SKILLS_SELECT", index: 0 });
+			}
+			return;
+		}
+
+		// Action shortcuts (work when not actively typing, even with filter visible)
+		if (event.name === "u" && selectedSkill) {
+			if (selectedSkill.installed && selectedSkill.installedScope === "user") handleUninstall();
+			else handleInstall("user");
+		} else if (event.name === "p" && selectedSkill) {
+			if (selectedSkill.installed && selectedSkill.installedScope === "project") handleUninstall();
+			else handleInstall("project");
+		} else if (event.name === "d" && selectedSkill?.installed) {
+			handleUninstall();
 		} else if (event.name === "r") {
-			if (state.isSearching) return;
 			fetchData();
-		} else if (event.name === "escape") {
-			if (skillsState.searchQuery) {
-				dispatch({ type: "SKILLS_SET_SEARCH", query: "" });
-				dispatch({ type: "SET_SEARCHING", isSearching: false });
-			}
-		} else if (event.name === "backspace") {
-			if (skillsState.searchQuery) {
-				const newQuery = skillsState.searchQuery.slice(0, -1);
-				dispatch({ type: "SKILLS_SET_SEARCH", query: newQuery });
-				if (!newQuery) {
-					dispatch({ type: "SET_SEARCHING", isSearching: false });
-				}
-			}
-		} else if (
-			event.name &&
-			event.name.length === 1 &&
-			!/[0-9]/.test(event.name) &&
-			!event.ctrl &&
-			!event.meta
-		) {
-			// Inline search: type to filter
-			const newQuery = skillsState.searchQuery + event.name;
-			dispatch({ type: "SKILLS_SET_SEARCH", query: newQuery });
+		}
+		// "/" to enter search mode
+		else if (event.name === "/") {
 			dispatch({ type: "SET_SEARCHING", isSearching: true });
 		}
 	});
@@ -356,6 +490,34 @@ export function SkillsScreen() {
 
 		if (selectedItem.type === "category") {
 			const isRec = selectedItem.categoryKey === "recommended";
+			const isNoResults = selectedItem.categoryKey === "no-results";
+
+			if (isNoResults) {
+				return (
+					<box flexDirection="column">
+						<text fg="yellow">
+							<strong>No skills found</strong>
+						</text>
+						<box marginTop={1}>
+							<text fg="gray">
+								Nothing matched "{skillsState.searchQuery}".
+							</text>
+						</box>
+						<box marginTop={1}>
+							<text fg="gray">
+								Try a different search term, or if you think this is a mistake, create an issue at:
+							</text>
+						</box>
+						<box marginTop={1}>
+							<text fg="#5c9aff">github.com/MadAppGang/magus/issues</text>
+						</box>
+						<box marginTop={2}>
+							<text fg="gray">Press Esc to clear the search.</text>
+						</box>
+					</box>
+				);
+			}
+
 			return (
 				<box flexDirection="column">
 					<text fg={isRec ? "green" : "cyan"}>
@@ -498,14 +660,21 @@ export function SkillsScreen() {
 	const skills =
 		skillsState.skills.status === "success" ? skillsState.skills.data : [];
 	const installedCount = skills.filter((s) => s.installed).length;
-	const totalCount = skills.length;
+	const query = skillsState.searchQuery.trim();
 
 	const statusContent = (
 		<text>
 			<span fg="gray">Skills: </span>
 			<span fg="cyan">{installedCount} installed</span>
-			<span fg="gray"> │ </span>
-			<span fg="white">{totalCount} available</span>
+			{query.length >= 2 && isSearchLoading && (
+				<span fg="yellow"> │ searching...</span>
+			)}
+			{query.length >= 2 && !isSearchLoading && searchResults.length > 0 && (
+				<span fg="green"> │ {searchResults.length} found</span>
+			)}
+			{!query && (
+				<span fg="gray"> │ 89K+ searchable</span>
+			)}
 		</text>
 	);
 
@@ -523,24 +692,32 @@ export function SkillsScreen() {
 						}
 					: undefined
 			}
-			footerHints="↑↓:nav │ u:user │ p:project │ d:uninstall │ type to search"
+			footerHints={isSearchActive
+				? "type to filter │ Enter:done │ Esc:clear"
+				: "u:user │ p:project │ d:uninstall │ /:search"
+			}
 			listPanel={
-				skillsState.skills.status !== "success" ? (
-					<text fg="gray">
-						{skillsState.skills.status === "loading"
-							? "Loading skills..."
-							: skillsState.skills.status === "error"
-								? "Error loading skills"
-								: "Press r to load skills"}
-					</text>
-				) : (
+				<box flexDirection="column">
 					<ScrollableList
 						items={selectableItems}
 						selectedIndex={skillsState.selectedIndex}
 						renderItem={renderListItem}
 						maxHeight={dimensions.listPanelHeight}
 					/>
-				)
+					{!query && skillsState.skills.status === "loading" && (
+						<box marginTop={2} paddingLeft={2}>
+							<text fg="yellow">Loading popular skills...</text>
+						</box>
+					)}
+					{query.length >= 2 && isSearchLoading && (
+						<box marginTop={2} paddingLeft={2}>
+							<text fg="yellow">Searching for "{skillsState.searchQuery}"...</text>
+						</box>
+					)}
+					{query.length >= 2 && !isSearchLoading && searchResults.length === 0 && (
+						<EmptyFilterState query={skillsState.searchQuery} entityName="skills" />
+					)}
+				</box>
 			}
 			detailPanel={renderDetail()}
 		/>

@@ -124,21 +124,21 @@ function GlobalKeyHandler({
 
 		if (isTopLevel) {
 			if (input === "1") navigateToScreen("plugins");
-			else if (input === "2") navigateToScreen("mcp");
-			else if (input === "3") navigateToScreen("settings");
-			else if (input === "4") navigateToScreen("cli-tools");
+			else if (input === "2") navigateToScreen("skills");
+			else if (input === "3") navigateToScreen("mcp");
+			else if (input === "4") navigateToScreen("settings");
 			else if (input === "5") navigateToScreen("profiles");
-			else if (input === "6") navigateToScreen("skills");
+			else if (input === "6") navigateToScreen("cli-tools");
 
 			// Tab navigation cycling
 			if (key.tab) {
 				const screens: Screen[] = [
 					"plugins",
+					"skills",
 					"mcp",
 					"settings",
-					"cli-tools",
 					"profiles",
-					"skills",
+					"cli-tools",
 				];
 				const currentIndex = screens.indexOf(
 					state.currentRoute.screen as Screen,
@@ -177,9 +177,9 @@ function GlobalKeyHandler({
   ?             This help
 
 Quick Navigation
-  1  Plugins      4  CLI Tools
-  2  MCP Servers  5  Profiles
-  3  Settings     6  Skills
+  1  Plugins      4  Settings
+  2  Skills       5  Profiles
+  3  MCP Servers  6  CLI Tools
 
 Plugin Actions
   u  Update        d  Uninstall

@@ -5,6 +5,7 @@ import { useKeyboard } from "../hooks/useKeyboard.js";
 import { ScreenLayout } from "../components/layout/index.js";
 import { CategoryHeader } from "../components/CategoryHeader.js";
 import { ScrollableList } from "../components/ScrollableList.js";
+import { EmptyFilterState } from "../components/EmptyFilterState.js";
 import { fuzzyFilter, highlightMatches } from "../../utils/fuzzy-search.js";
 import { getAllMarketplaces } from "../../data/marketplaces.js";
 import {
@@ -240,31 +241,15 @@ export function PluginsScreen() {
 			return;
 		}
 
-		// Navigation — always works (even during search)
+		// Navigation — always works; exits search mode on navigate
 		if (event.name === "up" || event.name === "k") {
-			// 'k' navigates when query is empty, otherwise appends to search
-			if (event.name === "k" && (hasQuery || isSearchActive)) {
-				dispatch({
-					type: "PLUGINS_SET_SEARCH",
-					query: pluginsState.searchQuery + event.name,
-				});
-				dispatch({ type: "PLUGINS_SELECT", index: 0 });
-				return;
-			}
+			if (isSearchActive) dispatch({ type: "SET_SEARCHING", isSearching: false });
 			const newIndex = Math.max(0, pluginsState.selectedIndex - 1);
 			dispatch({ type: "PLUGINS_SELECT", index: newIndex });
 			return;
 		}
 		if (event.name === "down" || event.name === "j") {
-			// 'j' navigates when query is empty, otherwise appends to search
-			if (event.name === "j" && (hasQuery || isSearchActive)) {
-				dispatch({
-					type: "PLUGINS_SET_SEARCH",
-					query: pluginsState.searchQuery + event.name,
-				});
-				dispatch({ type: "PLUGINS_SELECT", index: 0 });
-				return;
-			}
+			if (isSearchActive) dispatch({ type: "SET_SEARCHING", isSearching: false });
 			const newIndex = Math.min(
 				selectableItems.length - 1,
 				pluginsState.selectedIndex + 1,
@@ -302,9 +287,9 @@ export function PluginsScreen() {
 			return;
 		}
 
-		// When search query is non-empty, printable letters go to the query
-		// (shortcuts are suspended while filtering, digits skip to let tab nav work)
-		if (hasQuery || isSearchActive) {
+		// When actively typing in search, letters go to the query
+		// After Enter (isSearchActive=false, hasQuery=true), shortcuts resume
+		if (isSearchActive) {
 			if (event.name.length === 1 && !event.ctrl && !event.meta && !/[0-9]/.test(event.name)) {
 				dispatch({
 					type: "PLUGINS_SET_SEARCH",
@@ -315,7 +300,7 @@ export function PluginsScreen() {
 			return;
 		}
 
-		// When search query is empty: action shortcuts work normally
+		// Action shortcuts work when not actively typing (even with filter visible)
 
 		// Start explicit search mode with /
 		if (event.name === "/") {
@@ -334,14 +319,9 @@ export function PluginsScreen() {
 		else if (event.name === "a") handleUpdateAll();
 		else if (event.name === "d") handleUninstall();
 		else if (event.name === "s") handleSaveAsProfile();
-		// Any other printable letter: start inline search (skip digits — used for tab nav)
-		else if (event.name.length === 1 && !event.ctrl && !event.meta && !/[0-9]/.test(event.name)) {
+		// "/" to enter search mode
+		else if (event.name === "/") {
 			dispatch({ type: "SET_SEARCHING", isSearching: true });
-			dispatch({
-				type: "PLUGINS_SET_SEARCH",
-				query: event.name,
-			});
-			dispatch({ type: "PLUGINS_SELECT", index: 0 });
 		}
 	});
 
@@ -1260,9 +1240,7 @@ export function PluginsScreen() {
 					{/* Status line */}
 					<box marginTop={1}>
 						{isInstalled ? (
-							<text fg={plugin.enabled ? "green" : "yellow"}>
-								{plugin.enabled ? "● Enabled" : "● Disabled"}
-							</text>
+							<text fg="green">● Installed</text>
 						) : (
 							<text fg="gray">○ Not installed</text>
 						)}
@@ -1383,10 +1361,9 @@ export function PluginsScreen() {
 		return null;
 	};
 
-	const footerHints =
-		isSearchActive || pluginsState.searchQuery
-			? "↑↓:nav │ Enter:select │ Esc:clear │ type to filter"
-			: "u/p/l:scope │ U:update │ a:all │ d:remove │ s:profile │ type to search";
+	const footerHints = isSearchActive
+			? "type to filter │ Enter:done │ Esc:clear"
+			: "u/p/l:scope │ U:update │ a:all │ d:remove │ s:profile │ /:search";
 
 	// Calculate status for subtitle
 	const scopeLabel = pluginsState.scope === "global" ? "Global" : "Project";
@@ -1411,12 +1388,17 @@ export function PluginsScreen() {
 			}}
 			footerHints={footerHints}
 			listPanel={
-				<ScrollableList
-					items={selectableItems}
-					selectedIndex={pluginsState.selectedIndex}
-					renderItem={renderListItem}
-					maxHeight={dimensions.listPanelHeight}
-				/>
+				<box flexDirection="column">
+					<ScrollableList
+						items={selectableItems}
+						selectedIndex={pluginsState.selectedIndex}
+						renderItem={renderListItem}
+						maxHeight={dimensions.listPanelHeight}
+					/>
+					{pluginsState.searchQuery && selectableItems.length === 0 && (
+						<EmptyFilterState query={pluginsState.searchQuery} entityName="plugins" />
+					)}
+				</box>
 			}
 			detailPanel={renderDetail()}
 		/>

@@ -10,11 +10,11 @@ interface Tab {
 
 const TABS: Tab[] = [
 	{ key: "1", label: "Plugins", screen: "plugins" },
-	{ key: "2", label: "MCP", screen: "mcp" },
-	{ key: "3", label: "Settings", screen: "settings" },
-	{ key: "4", label: "CLI", screen: "cli-tools" },
+	{ key: "2", label: "Skills", screen: "skills" },
+	{ key: "3", label: "MCP", screen: "mcp" },
+	{ key: "4", label: "Settings", screen: "settings" },
 	{ key: "5", label: "Profiles", screen: "profiles" },
-	{ key: "6", label: "Skills", screen: "skills" },
+	{ key: "6", label: "CLI", screen: "cli-tools" },
 ];
 
 interface TabBarProps {

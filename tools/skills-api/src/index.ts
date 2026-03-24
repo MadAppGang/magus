@@ -346,15 +346,13 @@ export const skills = onRequest(
       const limit = parseInt(req.query.limit as string) || 20;
       const wordCount = q.trim().split(/\s+/).length;
 
+      // Always run both keyword and AI search in parallel for best coverage
+      // Keyword search is exact; AI search handles partial/fuzzy matches
       const promises: Promise<{ skills: SkillEntry[]; total: number } | SkillEntry[]>[] = [
         searchSkillsMP(q, page, limit),
+        aiSearchSkillsMP(q),
       ];
-      const sources: string[] = ["skillsmp"];
-
-      if (wordCount > 3) {
-        promises.push(aiSearchSkillsMP(q));
-        sources.push("skillsmp-ai");
-      }
+      const sources: string[] = ["skillsmp", "skillsmp-ai"];
 
       const results = await Promise.allSettled(promises);
 

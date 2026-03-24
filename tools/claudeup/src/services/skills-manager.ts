@@ -267,7 +267,30 @@ export async function fetchAvailableSkills(
 	const popular = await fetchPopularSkills(30);
 	const popularSkills = popular.map((s) => markInstalled({ ...s, isRecommended: false }));
 
-	// 3. Combine: recommended first, then popular (dedup by name)
+	// 3. Enrich recommended skills with GitHub repo stars
+	//    Fetch stars for each unique repo (typically ~7 repos, parallel)
+	const uniqueRepos = [...new Set(recommendedSkills.map((s) => s.source.repo))];
+	const repoStars = new Map<string, number>();
+	try {
+		const starResults = await Promise.allSettled(
+			uniqueRepos.map(async (repo) => {
+				const res = await fetch(`https://api.github.com/repos/${repo}`, {
+					headers: { Accept: "application/vnd.github+json" },
+					signal: AbortSignal.timeout(5000),
+				});
+				if (!res.ok) return;
+				const data = (await res.json()) as { stargazers_count?: number };
+				if (data.stargazers_count) repoStars.set(repo, data.stargazers_count);
+			}),
+		);
+	} catch {
+		// Non-fatal — stars are cosmetic
+	}
+	for (const rec of recommendedSkills) {
+		rec.stars = repoStars.get(rec.source.repo) || undefined;
+	}
+
+	// 4. Combine: recommended first, then popular (dedup by name)
 	const seen = new Set<string>(recommendedSkills.map((s) => s.name));
 	const deduped = popularSkills.filter((s) => !seen.has(s.name));
 
@@ -281,19 +304,35 @@ export async function installSkill(
 	scope: "user" | "project",
 	projectPath?: string,
 ): Promise<void> {
-	const url = `https://raw.githubusercontent.com/${skill.source.repo}/HEAD/${skill.repoPath}`;
+	// Try multiple URL patterns — repos structure SKILL.md differently
+	const repo = skill.source.repo;
+	const repoPath = skill.repoPath.replace(/\/SKILL\.md$/, "");
+	const candidates = [
+		`https://raw.githubusercontent.com/${repo}/HEAD/${repoPath}/SKILL.md`,
+		`https://raw.githubusercontent.com/${repo}/main/${repoPath}/SKILL.md`,
+		`https://raw.githubusercontent.com/${repo}/master/${repoPath}/SKILL.md`,
+		`https://raw.githubusercontent.com/${repo}/HEAD/SKILL.md`,
+		`https://raw.githubusercontent.com/${repo}/main/SKILL.md`,
+	];
 
-	const response = await fetch(url, {
-		signal: AbortSignal.timeout(15000),
-	});
-
-	if (!response.ok) {
-		throw new Error(
-			`Failed to fetch skill: ${response.status} ${response.statusText}`,
-		);
+	let content: string | null = null;
+	for (const url of candidates) {
+		try {
+			const response = await fetch(url, { signal: AbortSignal.timeout(8000) });
+			if (response.ok) {
+				content = await response.text();
+				break;
+			}
+		} catch {
+			continue;
+		}
 	}
 
-	const content = await response.text();
+	if (!content) {
+		throw new Error(
+			`Failed to fetch skill: SKILL.md not found in ${repo}/${repoPath}`,
+		);
+	}
 
 	const installDir =
 		scope === "user"
