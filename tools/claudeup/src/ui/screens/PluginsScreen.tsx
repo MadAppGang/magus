@@ -317,7 +317,6 @@ export function PluginsScreen() {
 		else if (event.name === "l") handleScopeToggle("local");
 		else if (event.name === "U") handleUpdate();
 		else if (event.name === "a") handleUpdateAll();
-		else if (event.name === "d") handleUninstall();
 		else if (event.name === "s") handleSaveAsProfile();
 		// "/" to enter search mode
 		else if (event.name === "/") {
@@ -792,7 +791,7 @@ export function PluginsScreen() {
 		const scopeLabel =
 			scope === "user" ? "User" : scope === "project" ? "Project" : "Local";
 
-		// Check if installed in this scope
+		// Check if installed in this specific scope
 		const scopeData =
 			scope === "user"
 				? plugin.userScope
@@ -802,6 +801,9 @@ export function PluginsScreen() {
 		const isInstalledInScope = scopeData?.enabled;
 		const installedVersion = scopeData?.version;
 
+		// Also check if installed in ANY scope (for the toggle behavior)
+		const isInstalledAnywhere = plugin.userScope?.enabled || plugin.projectScope?.enabled || plugin.localScope?.enabled;
+
 		// Check if this scope has an update available
 		const hasUpdateInScope =
 			isInstalledInScope &&
@@ -809,14 +811,19 @@ export function PluginsScreen() {
 			latestVersion !== "0.0.0" &&
 			installedVersion !== latestVersion;
 
-		// Determine action: update if available, otherwise toggle install/uninstall
+		// Determine action: if installed in this scope → uninstall
+		// If installed anywhere else but not this scope → uninstall from detected scope
+		// Otherwise → install
 		let action: "update" | "install" | "uninstall";
 		if (isInstalledInScope && hasUpdateInScope) {
 			action = "update";
 		} else if (isInstalledInScope) {
 			action = "uninstall";
-		} else {
+		} else if (!isInstalledAnywhere) {
 			action = "install";
+		} else {
+			// Installed in a different scope — uninstall from the scope it's actually in
+			action = "uninstall";
 		}
 
 		const actionLabel =
@@ -1046,15 +1053,13 @@ export function PluginsScreen() {
 			let statusIcon = "○";
 			let statusColor = "gray";
 
+			const isAnyScope = plugin.userScope?.enabled || plugin.projectScope?.enabled || plugin.localScope?.enabled;
 			if (plugin.isOrphaned) {
 				statusIcon = "x";
 				statusColor = "red";
-			} else if (plugin.enabled) {
+			} else if (isAnyScope) {
 				statusIcon = "●";
 				statusColor = "green";
-			} else if (plugin.installedVersion) {
-				statusIcon = "●";
-				statusColor = "yellow";
 			}
 
 			// Build version string
@@ -1178,7 +1183,7 @@ export function PluginsScreen() {
 
 		if (selectedItem.type === "plugin" && selectedItem.plugin) {
 			const plugin = selectedItem.plugin;
-			const isInstalled = plugin.enabled || plugin.installedVersion;
+			const isInstalled = plugin.userScope?.enabled || plugin.projectScope?.enabled || plugin.localScope?.enabled;
 
 			// Orphaned/deprecated plugin
 			if (plugin.isOrphaned) {
@@ -1345,13 +1350,6 @@ export function PluginsScreen() {
 									<text> Update to v{plugin.version}</text>
 								</box>
 							)}
-							<box>
-								<text bg="red" fg="white">
-									{" "}
-									d{" "}
-								</text>
-								<text> Uninstall</text>
-							</box>
 						</box>
 					)}
 				</box>
@@ -1363,7 +1361,7 @@ export function PluginsScreen() {
 
 	const footerHints = isSearchActive
 			? "type to filter │ Enter:done │ Esc:clear"
-			: "u/p/l:scope │ U:update │ a:all │ d:remove │ s:profile │ /:search";
+			: "u/p/l:toggle │ U:update │ a:all │ s:profile │ /:search";
 
 	// Calculate status for subtitle
 	const scopeLabel = pluginsState.scope === "global" ? "Global" : "Project";
