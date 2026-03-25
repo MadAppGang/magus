@@ -1140,12 +1140,11 @@ export function PluginsScreen() {
 			const plugin = item.plugin;
 			const isAnyScope = plugin.userScope?.enabled || plugin.projectScope?.enabled || plugin.localScope?.enabled;
 
-			// Build scope suffix like "(u,p)" or "(p)"
-			const scopes: string[] = [];
-			if (plugin.userScope?.enabled) scopes.push("u");
-			if (plugin.projectScope?.enabled) scopes.push("p");
-			if (plugin.localScope?.enabled) scopes.push("l");
-			const scopeSuffix = scopes.length > 0 ? ` (${scopes.join(",")})` : "";
+			// Build scope parts for colored rendering
+			const hasUser = plugin.userScope?.enabled;
+			const hasProject = plugin.projectScope?.enabled;
+			const hasLocal = plugin.localScope?.enabled;
+			const hasAnyScope = hasUser || hasProject || hasLocal;
 
 			// Build version string
 			let versionStr = "";
@@ -1165,7 +1164,7 @@ export function PluginsScreen() {
 			if (isSelected) {
 				return (
 					<text bg="magenta" fg="white">
-						{"    "}{plugin.name}{versionStr}{scopeSuffix}{" "}
+						{"    "}{plugin.name}{versionStr}{hasAnyScope ? ` (${[hasUser && "u", hasProject && "p", hasLocal && "l"].filter(Boolean).join(",")})` : ""}{" "}
 					</text>
 				);
 			}
@@ -1192,7 +1191,13 @@ export function PluginsScreen() {
 				<text>
 					<span fg={nameColor}>{"    "}{displayName}</span>
 					<span fg={plugin.hasUpdate ? "yellow" : "gray"}>{versionStr}</span>
-					{scopeSuffix && <span fg="cyan">{scopeSuffix}</span>}
+					{hasAnyScope && <span fg="gray"> (</span>}
+					{hasUser && <span bg="cyan" fg="black">u</span>}
+					{hasUser && (hasProject || hasLocal) && <span fg="gray">,</span>}
+					{hasProject && <span bg="green" fg="black">p</span>}
+					{hasProject && hasLocal && <span fg="gray">,</span>}
+					{hasLocal && <span bg="yellow" fg="black">l</span>}
+					{hasAnyScope && <span fg="gray">)</span>}
 				</text>
 			);
 		}

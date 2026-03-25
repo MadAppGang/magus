@@ -427,13 +427,14 @@ export function SkillsScreen() {
 		if (item.type === "skill" && item.skill) {
 			const skill = item.skill;
 			const starsStr = formatStars(skill.stars);
-			const scopeSuffix = skill.installedScope ? ` (${skill.installedScope === "user" ? "u" : "p"})` : "";
+			const hasUser = skill.installedScope === "user";
+			const hasProject = skill.installedScope === "project";
 			const nameColor = skill.installed ? "white" : "gray";
 
 			if (isSelected) {
 				return (
 					<text bg="magenta" fg="white">
-						{"    "}{skill.name}{skill.hasUpdate ? " ⬆" : ""}{scopeSuffix}{starsStr ? `  ${starsStr}` : ""}{" "}
+						{"    "}{skill.name}{skill.hasUpdate ? " ⬆" : ""}{skill.installed ? ` (${hasUser ? "u" : "p"})` : ""}{starsStr ? `  ${starsStr}` : ""}{" "}
 					</text>
 				);
 			}
@@ -442,7 +443,12 @@ export function SkillsScreen() {
 				<text>
 					<span fg={nameColor}>{"    "}{skill.name}</span>
 					{skill.hasUpdate && <span fg="yellow"> ⬆</span>}
-					{scopeSuffix && <span fg="cyan">{scopeSuffix}</span>}
+					{hasUser && <span fg="gray"> (</span>}
+					{hasUser && <span bg="cyan" fg="black">u</span>}
+					{hasUser && <span fg="gray">)</span>}
+					{hasProject && <span fg="gray"> (</span>}
+					{hasProject && <span bg="green" fg="black">p</span>}
+					{hasProject && <span fg="gray">)</span>}
 					{starsStr && (
 						<span fg="yellow">{"  "}{starsStr}</span>
 					)}
