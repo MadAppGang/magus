@@ -1162,10 +1162,13 @@ export function PluginsScreen() {
 			const segments = matches ? highlightMatches(plugin.name, matches) : null;
 
 			if (isSelected) {
-				const scopeStr = `[${hasUser ? "u" : "."}${hasProject ? "p" : "."}${hasLocal ? "l" : "."}]`;
 				return (
 					<text bg="magenta" fg="white">
-						{" "}{scopeStr} {plugin.name}{versionStr}{" "}
+						{" "}
+						<span>{hasUser ? "■" : "□"}</span>
+						<span>{hasProject ? "■" : "□"}</span>
+						<span>{hasLocal ? "■" : "□"}</span>
+						{" "}{plugin.name}{versionStr}{" "}
 					</text>
 				);
 			}
@@ -1179,7 +1182,7 @@ export function PluginsScreen() {
 					? ` v${plugin.installedVersion}` : "";
 				return (
 					<text>
-						<span fg="red"> [x..] </span>
+						<span fg="red"> ■■■ </span>
 						<span fg="gray">{displayName}</span>
 						{ver && <span fg="yellow">{ver}</span>}
 						<span fg="red"> deprecated</span>
@@ -1189,11 +1192,10 @@ export function PluginsScreen() {
 
 			return (
 				<text>
-					<span fg="#555555"> [</span>
-					<span fg={hasUser ? "cyan" : "#555555"}>{hasUser ? "u" : "."}</span>
-					<span fg={hasProject ? "green" : "#555555"}>{hasProject ? "p" : "."}</span>
-					<span fg={hasLocal ? "yellow" : "#555555"}>{hasLocal ? "l" : "."}</span>
-					<span fg="#555555">]</span>
+					<span> </span>
+					<span fg={hasUser ? "cyan" : "#333333"}>■</span>
+					<span fg={hasProject ? "green" : "#333333"}>■</span>
+					<span fg={hasLocal ? "yellow" : "#333333"}>■</span>
 					<span> </span>
 					<span fg={hasAnyScope ? "white" : "gray"}>{displayName}</span>
 					<span fg={plugin.hasUpdate ? "yellow" : "gray"}>{versionStr}</span>

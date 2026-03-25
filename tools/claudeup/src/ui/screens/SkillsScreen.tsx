@@ -432,20 +432,22 @@ export function SkillsScreen() {
 			const nameColor = skill.installed ? "white" : "gray";
 
 			if (isSelected) {
-				const scopeStr = `[${hasUser ? "u" : "."}${hasProject ? "p" : "."}]`;
 				return (
 					<text bg="magenta" fg="white">
-						{" "}{scopeStr} {skill.name}{skill.hasUpdate ? " ⬆" : ""}{starsStr ? `  ${starsStr}` : ""}{" "}
+						{" "}
+						<span>{hasUser ? "■" : "□"}</span>
+						<span>{hasProject ? "■" : "□"}</span>
+						{" "}{skill.name}{skill.hasUpdate ? " ⬆" : ""}{starsStr ? `  ${starsStr}` : ""}{" "}
 					</text>
 				);
 			}
 
 			return (
 				<text>
-					<span fg="#555555"> [</span>
-					<span fg={hasUser ? "cyan" : "#555555"}>{hasUser ? "u" : "."}</span>
-					<span fg={hasProject ? "green" : "#555555"}>{hasProject ? "p" : "."}</span>
-					<span fg="#555555">] </span>
+					<span> </span>
+					<span fg={hasUser ? "cyan" : "#333333"}>■</span>
+					<span fg={hasProject ? "green" : "#333333"}>■</span>
+					<span> </span>
 					<span fg={nameColor}>{skill.name}</span>
 					{skill.hasUpdate && <span fg="yellow"> ⬆</span>}
 					{starsStr && (
