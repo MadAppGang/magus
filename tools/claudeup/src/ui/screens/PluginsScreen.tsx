@@ -6,6 +6,7 @@ import { ScreenLayout } from "../components/layout/index.js";
 import { CategoryHeader } from "../components/CategoryHeader.js";
 import { ScrollableList } from "../components/ScrollableList.js";
 import { EmptyFilterState } from "../components/EmptyFilterState.js";
+import { scopeIndicatorText } from "../components/ScopeIndicator.js";
 import { fuzzyFilter, highlightMatches } from "../../utils/fuzzy-search.js";
 import { getAllMarketplaces } from "../../data/marketplaces.js";
 import {
@@ -1137,17 +1138,11 @@ export function PluginsScreen() {
 
 		if (item.type === "plugin" && item.plugin) {
 			const plugin = item.plugin;
-			let statusIcon = "○";
-			let statusColor = "gray";
-
-			const isAnyScope = plugin.userScope?.enabled || plugin.projectScope?.enabled || plugin.localScope?.enabled;
-			if (plugin.isOrphaned) {
-				statusIcon = "x";
-				statusColor = "red";
-			} else if (isAnyScope) {
-				statusIcon = "●";
-				statusColor = "green";
-			}
+			const si = scopeIndicatorText(
+				plugin.userScope?.enabled,
+				plugin.projectScope?.enabled,
+				plugin.localScope?.enabled,
+			);
 
 			// Build version string
 			let versionStr = "";
@@ -1165,15 +1160,13 @@ export function PluginsScreen() {
 			const segments = matches ? highlightMatches(plugin.name, matches) : null;
 
 			if (isSelected) {
-				const displayText = `   ${statusIcon} ${plugin.name}${versionStr} `;
 				return (
 					<text bg="magenta" fg="white">
-						{displayText}
+						{" "}{si.chars} {plugin.name}{versionStr}{" "}
 					</text>
 				);
 			}
 
-			// For non-selected, render with colors
 			const displayName = segments
 				? segments.map((seg) => seg.text).join("")
 				: plugin.name;
@@ -1183,7 +1176,7 @@ export function PluginsScreen() {
 					? ` v${plugin.installedVersion}` : "";
 				return (
 					<text>
-						<span fg="red">{"   "}{statusIcon} </span>
+						<span fg="red">  x </span>
 						<span fg="gray">{displayName}</span>
 						{ver && <span fg="yellow">{ver}</span>}
 						<span fg="red"> deprecated</span>
@@ -1193,10 +1186,11 @@ export function PluginsScreen() {
 
 			return (
 				<text>
-					<span fg={statusColor}>
-						{"   "}
-						{statusIcon}{" "}
-					</span>
+					<span> </span>
+					<span fg={si.colors[0]}>{si.chars[0]}</span>
+					<span fg={si.colors[1]}>{si.chars[1]}</span>
+					<span fg={si.colors[2]}>{si.chars[2]}</span>
+					<span>{" "}</span>
 					<span>{displayName}</span>
 					<span fg={plugin.hasUpdate ? "yellow" : "gray"}>{versionStr}</span>
 				</text>

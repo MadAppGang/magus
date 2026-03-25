@@ -5,6 +5,7 @@ import { useKeyboard } from "../hooks/useKeyboard.js";
 import { ScreenLayout } from "../components/layout/index.js";
 import { ScrollableList } from "../components/ScrollableList.js";
 import { EmptyFilterState } from "../components/EmptyFilterState.js";
+import { scopeIndicatorText } from "../components/ScopeIndicator.js";
 import {
 	fetchAvailableSkills,
 	fetchSkillFrontmatter,
@@ -437,27 +438,30 @@ export function SkillsScreen() {
 
 		if (item.type === "skill" && item.skill) {
 			const skill = item.skill;
-			const indicator = skill.installed ? "●" : "○";
-			const indicatorColor = skill.installed ? "cyan" : "gray";
-			const scopeTag = skill.installedScope === "user" ? "u" : skill.installedScope === "project" ? "p" : "";
+			const si = scopeIndicatorText(
+				skill.installedScope === "user",
+				skill.installedScope === "project",
+				false, // skills don't have local scope
+			);
 			const starsStr = formatStars(skill.stars);
 
 			if (isSelected) {
 				return (
 					<text bg="magenta" fg="white">
-						{" "}{indicator} {skill.name}{skill.hasUpdate ? " ⬆" : ""}{scopeTag ? ` [${scopeTag}]` : ""}{starsStr ? `  ${starsStr}` : ""}{" "}
+						{" "}{si.chars} {skill.name}{skill.hasUpdate ? " ⬆" : ""}{starsStr ? `  ${starsStr}` : ""}{" "}
 					</text>
 				);
 			}
 
 			return (
 				<text>
-					<span fg={indicatorColor}> {indicator} </span>
+					<span> </span>
+					<span fg={si.colors[0]}>{si.chars[0]}</span>
+					<span fg={si.colors[1]}>{si.chars[1]}</span>
+					<span fg={si.colors[2]}>{si.chars[2]}</span>
+					<span> </span>
 					<span fg="white">{skill.name}</span>
 					{skill.hasUpdate && <span fg="yellow"> ⬆</span>}
-					{scopeTag && (
-						<span fg={scopeTag === "u" ? "cyan" : "green"}> [{scopeTag}]</span>
-					)}
 					{starsStr && (
 						<span fg="yellow">{"  "}{starsStr}</span>
 					)}
