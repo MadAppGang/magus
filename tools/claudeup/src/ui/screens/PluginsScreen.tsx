@@ -1162,9 +1162,10 @@ export function PluginsScreen() {
 			const segments = matches ? highlightMatches(plugin.name, matches) : null;
 
 			if (isSelected) {
+				const scopeStr = `[${hasUser ? "u" : "."}${hasProject ? "p" : "."}${hasLocal ? "l" : "."}]`;
 				return (
 					<text bg="magenta" fg="white">
-						{"    "}{plugin.name}{versionStr}{hasAnyScope ? ` (${[hasUser && "u", hasProject && "p", hasLocal && "l"].filter(Boolean).join(",")})` : ""}{" "}
+						{" "}{scopeStr} {plugin.name}{versionStr}{" "}
 					</text>
 				);
 			}
@@ -1172,14 +1173,13 @@ export function PluginsScreen() {
 			const displayName = segments
 				? segments.map((seg) => seg.text).join("")
 				: plugin.name;
-			const nameColor = isAnyScope ? "white" : "gray";
 
 			if (plugin.isOrphaned) {
 				const ver = plugin.installedVersion && plugin.installedVersion !== "0.0.0"
 					? ` v${plugin.installedVersion}` : "";
 				return (
 					<text>
-						<span fg="red">  x </span>
+						<span fg="red"> [x..] </span>
 						<span fg="gray">{displayName}</span>
 						{ver && <span fg="yellow">{ver}</span>}
 						<span fg="red"> deprecated</span>
@@ -1189,15 +1189,14 @@ export function PluginsScreen() {
 
 			return (
 				<text>
-					<span fg={nameColor}>{"    "}{displayName}</span>
+					<span fg="#555555"> [</span>
+					<span fg={hasUser ? "cyan" : "#555555"}>{hasUser ? "u" : "."}</span>
+					<span fg={hasProject ? "green" : "#555555"}>{hasProject ? "p" : "."}</span>
+					<span fg={hasLocal ? "yellow" : "#555555"}>{hasLocal ? "l" : "."}</span>
+					<span fg="#555555">]</span>
+					<span> </span>
+					<span fg={hasAnyScope ? "white" : "gray"}>{displayName}</span>
 					<span fg={plugin.hasUpdate ? "yellow" : "gray"}>{versionStr}</span>
-					{hasAnyScope && <span fg="gray"> (</span>}
-					{hasUser && <span bg="cyan" fg="black">u</span>}
-					{hasUser && (hasProject || hasLocal) && <span fg="gray">,</span>}
-					{hasProject && <span bg="green" fg="black">p</span>}
-					{hasProject && hasLocal && <span fg="gray">,</span>}
-					{hasLocal && <span bg="yellow" fg="black">l</span>}
-					{hasAnyScope && <span fg="gray">)</span>}
 				</text>
 			);
 		}
