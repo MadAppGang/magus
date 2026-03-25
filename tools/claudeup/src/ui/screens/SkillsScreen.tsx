@@ -278,7 +278,9 @@ export function SkillsScreen() {
 			if (!isSearchLoading && searchResults.length > 0) {
 				// Dedup against recommended
 				const recNames = new Set(mergedRecommended.map((s) => s.name));
-				const deduped = searchResults.filter((s) => !recNames.has(s.name));
+				const deduped = searchResults
+					.filter((s) => !recNames.has(s.name))
+					.sort((a, b) => (b.stars ?? 0) - (a.stars ?? 0));
 				if (deduped.length > 0) {
 					items.push({
 						id: "cat:search",
