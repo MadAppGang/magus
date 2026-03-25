@@ -236,8 +236,8 @@
     {
       "name": "statusline",
       "source": "./plugins/statusline",
-      "description": "Adaptive statusline — always-visible bars, background highlights for critical states, provider-aware model display, vim mode, diff stats, compaction count. v2.0.3: Show 1M/1.5M/2M for large context windows instead of 1000k.",
-      "version": "2.0.3",
+      "description": "Adaptive statusline — always-visible bars, background highlights for critical states, provider-aware model display, vim mode, diff stats, compaction count. v2.0.4: Fix plan limits vanishing after 60s — validate API response before overwriting usage cache.",
+      "version": "2.0.4",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
