@@ -1138,11 +1138,14 @@ export function PluginsScreen() {
 
 		if (item.type === "plugin" && item.plugin) {
 			const plugin = item.plugin;
-			const si = scopeIndicatorText(
-				plugin.userScope?.enabled,
-				plugin.projectScope?.enabled,
-				plugin.localScope?.enabled,
-			);
+			const isAnyScope = plugin.userScope?.enabled || plugin.projectScope?.enabled || plugin.localScope?.enabled;
+
+			// Build scope suffix like "(u,p)" or "(p)"
+			const scopes: string[] = [];
+			if (plugin.userScope?.enabled) scopes.push("u");
+			if (plugin.projectScope?.enabled) scopes.push("p");
+			if (plugin.localScope?.enabled) scopes.push("l");
+			const scopeSuffix = scopes.length > 0 ? ` (${scopes.join(",")})` : "";
 
 			// Build version string
 			let versionStr = "";
@@ -1162,7 +1165,7 @@ export function PluginsScreen() {
 			if (isSelected) {
 				return (
 					<text bg="magenta" fg="white">
-						{" "}{si.text} {plugin.name}{versionStr}{" "}
+						{"    "}{plugin.name}{versionStr}{scopeSuffix}{" "}
 					</text>
 				);
 			}
@@ -1170,6 +1173,7 @@ export function PluginsScreen() {
 			const displayName = segments
 				? segments.map((seg) => seg.text).join("")
 				: plugin.name;
+			const nameColor = isAnyScope ? "white" : "gray";
 
 			if (plugin.isOrphaned) {
 				const ver = plugin.installedVersion && plugin.installedVersion !== "0.0.0"
@@ -1186,15 +1190,9 @@ export function PluginsScreen() {
 
 			return (
 				<text>
-					<span> </span>
-					{si.segments.map((s, i) =>
-						s.bg
-							? <span key={i} bg={s.bg} fg={s.fg}>{s.char}</span>
-							: <span key={i}>{" "}</span>
-					)}
-					<span>{" "}</span>
-					<span>{displayName}</span>
+					<span fg={nameColor}>{"    "}{displayName}</span>
 					<span fg={plugin.hasUpdate ? "yellow" : "gray"}>{versionStr}</span>
+					{scopeSuffix && <span fg="cyan">{scopeSuffix}</span>}
 				</text>
 			);
 		}

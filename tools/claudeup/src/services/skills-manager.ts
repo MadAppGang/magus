@@ -228,9 +228,13 @@ export async function fetchAvailableSkills(
 	const userInstalled = await getInstalledSkillNames("user");
 	const projectInstalled = await getInstalledSkillNames("project", projectPath);
 
+	const slugify = (name: string) =>
+		name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
 	const markInstalled = (skill: SkillInfo): SkillInfo => {
-		const isUserInstalled = userInstalled.has(skill.name);
-		const isProjInstalled = projectInstalled.has(skill.name);
+		const slug = slugify(skill.name);
+		const isUserInstalled = userInstalled.has(slug) || userInstalled.has(skill.name);
+		const isProjInstalled = projectInstalled.has(slug) || projectInstalled.has(skill.name);
 		const installed = isUserInstalled || isProjInstalled;
 		const installedScope: "user" | "project" | null = isProjInstalled
 			? "project"
@@ -334,10 +338,16 @@ export async function installSkill(
 		);
 	}
 
+	// Use slug for directory name — display names can have slashes/spaces
+	const dirName = skill.name
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, "-")
+		.replace(/^-|-$/g, "");
+
 	const installDir =
 		scope === "user"
-			? path.join(getUserSkillsDir(), skill.name)
-			: path.join(getProjectSkillsDir(projectPath), skill.name);
+			? path.join(getUserSkillsDir(), dirName)
+			: path.join(getProjectSkillsDir(projectPath), dirName);
 
 	await fs.ensureDir(installDir);
 	await fs.writeFile(path.join(installDir, "SKILL.md"), content, "utf8");
@@ -348,10 +358,15 @@ export async function uninstallSkill(
 	scope: "user" | "project",
 	projectPath?: string,
 ): Promise<void> {
+	const dirName = skillName
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, "-")
+		.replace(/^-|-$/g, "");
+
 	const installDir =
 		scope === "user"
-			? path.join(getUserSkillsDir(), skillName)
-			: path.join(getProjectSkillsDir(projectPath), skillName);
+			? path.join(getUserSkillsDir(), dirName)
+			: path.join(getProjectSkillsDir(projectPath), dirName);
 
 	const skillMdPath = path.join(installDir, "SKILL.md");
 

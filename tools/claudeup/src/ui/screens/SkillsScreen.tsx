@@ -272,14 +272,8 @@ export function SkillsScreen() {
 		try {
 			await installSkill(selectedSkill, scope, state.projectPath);
 			modal.hideModal();
-			dispatch({
-				type: "SKILLS_UPDATE_ITEM",
-				name: selectedSkill.name,
-				updates: {
-					installed: true,
-					installedScope: scope,
-				},
-			});
+			// Refetch to pick up install status for all skills including recommended
+			await fetchData();
 			await modal.message(
 				"Installed",
 				`${selectedSkill.name} installed to ${scope === "user" ? "~/.claude/skills/" : ".claude/skills/"}`,
@@ -289,7 +283,7 @@ export function SkillsScreen() {
 			modal.hideModal();
 			await modal.message("Error", `Failed to install: ${error}`, "error");
 		}
-	}, [selectedSkill, state.projectPath, dispatch, modal]);
+	}, [selectedSkill, state.projectPath, dispatch, modal, fetchData]);
 
 	// Uninstall handler
 	const handleUninstall = useCallback(async () => {
@@ -308,20 +302,14 @@ export function SkillsScreen() {
 		try {
 			await uninstallSkill(selectedSkill.name, scope, state.projectPath);
 			modal.hideModal();
-			dispatch({
-				type: "SKILLS_UPDATE_ITEM",
-				name: selectedSkill.name,
-				updates: {
-					installed: false,
-					installedScope: null,
-				},
-			});
+			// Refetch to pick up uninstall status
+			await fetchData();
 			await modal.message("Uninstalled", `${selectedSkill.name} removed.`, "success");
 		} catch (error) {
 			modal.hideModal();
 			await modal.message("Error", `Failed to uninstall: ${error}`, "error");
 		}
-	}, [selectedSkill, state.projectPath, dispatch, modal]);
+	}, [selectedSkill, state.projectPath, dispatch, modal, fetchData]);
 
 	// Keyboard handling — same pattern as PluginsScreen
 	useKeyboard((event) => {
@@ -438,32 +426,23 @@ export function SkillsScreen() {
 
 		if (item.type === "skill" && item.skill) {
 			const skill = item.skill;
-			const si = scopeIndicatorText(
-				skill.installedScope === "user",
-				skill.installedScope === "project",
-				false, // skills don't have local scope
-			);
 			const starsStr = formatStars(skill.stars);
+			const scopeSuffix = skill.installedScope ? ` (${skill.installedScope === "user" ? "u" : "p"})` : "";
+			const nameColor = skill.installed ? "white" : "gray";
 
 			if (isSelected) {
 				return (
 					<text bg="magenta" fg="white">
-						{" "}{si.text} {skill.name}{skill.hasUpdate ? " ⬆" : ""}{starsStr ? `  ${starsStr}` : ""}{" "}
+						{"    "}{skill.name}{skill.hasUpdate ? " ⬆" : ""}{scopeSuffix}{starsStr ? `  ${starsStr}` : ""}{" "}
 					</text>
 				);
 			}
 
 			return (
 				<text>
-					<span> </span>
-					{si.segments.map((s, i) =>
-						s.bg
-							? <span key={i} bg={s.bg} fg={s.fg}>{s.char}</span>
-							: <span key={i}>{" "}</span>
-					)}
-					<span> </span>
-					<span fg="white">{skill.name}</span>
+					<span fg={nameColor}>{"    "}{skill.name}</span>
 					{skill.hasUpdate && <span fg="yellow"> ⬆</span>}
+					{scopeSuffix && <span fg="cyan">{scopeSuffix}</span>}
 					{starsStr && (
 						<span fg="yellow">{"  "}{starsStr}</span>
 					)}
