@@ -93,6 +93,30 @@ interface MatchedSuggestion {
 }
 
 // =============================================================================
+// STAGE 2: SESSION CLASSIFIER TYPES
+// =============================================================================
+
+interface LearningSignals {
+  corrections: { count: number; phrases: string[] };
+  explicitRules: { count: number; phrases: string[] };
+  repeatedPatterns: number;
+  failedAttempts: number;
+  messageCount: number;
+  toolCallCount: number;
+}
+
+interface QueueEntry {
+  session_id: string;
+  transcript_path: string;
+  queued_at: string;
+  cwd: string;
+  tool_call_count: number;
+  rule_based_signals: string[];
+  learning_signals: LearningSignals;
+  learning_score: number;
+}
+
+// =============================================================================
 // ATOMIC WRITES (Fix 1)
 // =============================================================================
 
@@ -142,6 +166,39 @@ function parseToolCalls(transcriptPath: string): ToolCall[] {
   }
 
   return toolCalls;
+}
+
+// =============================================================================
+// USER MESSAGE PARSING (Stage 2)
+// =============================================================================
+
+function parseUserMessages(transcriptPath: string): string[] {
+  const messages: string[] = [];
+  const content = readFileSync(transcriptPath, "utf-8");
+  const lines = content.split("\n").filter((l) => l.trim());
+
+  for (const line of lines) {
+    let obj: Record<string, unknown>;
+    try {
+      obj = JSON.parse(line);
+    } catch {
+      continue;
+    }
+    if (obj.type !== "human") continue;
+    const message = obj.message as Record<string, unknown> | undefined;
+    if (!message) continue;
+    const contentBlocks = message.content;
+    if (typeof contentBlocks === "string") {
+      messages.push(contentBlocks);
+    } else if (Array.isArray(contentBlocks)) {
+      for (const block of contentBlocks as Record<string, unknown>[]) {
+        if (block.type === "text" && typeof block.text === "string") {
+          messages.push(block.text);
+        }
+      }
+    }
+  }
+  return messages;
 }
 
 // =============================================================================
@@ -535,6 +592,100 @@ function applyRules(
 }
 
 // =============================================================================
+// STAGE 2: LEARNING SIGNAL EXTRACTION AND SCORING
+// =============================================================================
+
+const CORRECTION_PATTERN =
+  /\b(no[,.]\s|wrong|instead|not that|we always|we use|don't use|never use)\b/i;
+const EXPLICIT_RULE_PATTERN =
+  /\b(in this project|our convention|we always|the rule is|we never|always use|never use)\b/i;
+const LEARNING_SCORE_THRESHOLD = 5;
+
+function extractLearningSignals(
+  transcriptPath: string,
+  toolCalls: ToolCall[]
+): LearningSignals {
+  const userMessages = parseUserMessages(transcriptPath);
+
+  // Corrections: user messages with correction language
+  const correctionPhrases: string[] = [];
+  for (const msg of userMessages) {
+    if (CORRECTION_PATTERN.test(msg)) {
+      // Extract the matched phrase for evidence
+      const match = msg.match(CORRECTION_PATTERN);
+      if (match) correctionPhrases.push(match[0]);
+    }
+  }
+
+  // Explicit rules: user messages with convention language
+  const explicitRulePhrases: string[] = [];
+  for (const msg of userMessages) {
+    if (EXPLICIT_RULE_PATTERN.test(msg)) {
+      const match = msg.match(EXPLICIT_RULE_PATTERN);
+      if (match) explicitRulePhrases.push(match[0]);
+    }
+  }
+
+  // Repeated patterns: group correction phrases by similarity (same keyword = same topic)
+  // Count topics that appear 2+ times
+  const topicCounts: Record<string, number> = {};
+  for (const phrase of correctionPhrases) {
+    const key = phrase.toLowerCase().trim();
+    topicCounts[key] = (topicCounts[key] ?? 0) + 1;
+  }
+  const repeatedPatterns = Object.values(topicCounts).filter(
+    (count) => count >= 2
+  ).length;
+
+  // Failed attempts: consecutive Bash/Grep calls where first has an error response
+  // Heuristic: look for adjacent Bash calls with notably different commands
+  // (indicates the first approach failed and a different one was tried)
+  let failedAttempts = 0;
+  const actionTools = toolCalls.filter(
+    (tc) => tc.tool === "Bash" || tc.tool === "Grep"
+  );
+  for (let i = 0; i < actionTools.length - 1; i++) {
+    const a = actionTools[i];
+    const b = actionTools[i + 1];
+    // If two adjacent Bash calls use completely different commands (retry heuristic)
+    if (
+      a.tool === "Bash" &&
+      b.tool === "Bash" &&
+      b.order - a.order <= 2
+    ) {
+      const cmdA = String(a.input.command ?? "").split(/\s+/)[0];
+      const cmdB = String(b.input.command ?? "").split(/\s+/)[0];
+      if (cmdA !== cmdB && cmdA !== "" && cmdB !== "") {
+        failedAttempts++;
+      }
+    }
+  }
+
+  return {
+    corrections: { count: correctionPhrases.length, phrases: correctionPhrases },
+    explicitRules: {
+      count: explicitRulePhrases.length,
+      phrases: explicitRulePhrases,
+    },
+    repeatedPatterns,
+    failedAttempts,
+    messageCount: userMessages.length,
+    toolCallCount: toolCalls.length,
+  };
+}
+
+function computeLearningScore(signals: LearningSignals): number {
+  return (
+    signals.corrections.count * 3 +
+    signals.explicitRules.count * 4 +
+    signals.repeatedPatterns * 3 +
+    signals.failedAttempts * 2 +
+    Math.min(signals.messageCount / 10, 5) -
+    (signals.toolCallCount < 10 ? 10 : 0) // noise penalty
+  );
+}
+
+// =============================================================================
 // OUTPUT FORMATTING
 // =============================================================================
 
@@ -601,6 +752,7 @@ function main(): void {
   const statePath = args.state;
   const outputPath = args.output;
   const historyDir = args["history-dir"];
+  const queueDir = args["queue-dir"]; // optional: Stage 2 learning queue
 
   // Validate required args
   const missing: string[] = [];
@@ -739,6 +891,38 @@ function main(): void {
     // No new suggestions — preserve existing recommendations.
     // Deleting here would cause a race condition if the hook fires twice
     // (e.g., from dual registration in settings.json + plugin hooks.json).
+  }
+
+  // Stage 2: Session Classifier — compute learning score and queue for LLM analysis
+  // Runs after Stage 1 output is written; failures are non-fatal (graceful degradation)
+  if (queueDir) {
+    try {
+      // Opt-out check for learning pipeline
+      const learningEnv = (process.env.WORKFLOW_LEARNING ?? "on").toLowerCase();
+      if (!["off", "false", "0", "disabled"].includes(learningEnv)) {
+        const learningSignals = extractLearningSignals(transcriptPath, toolCalls);
+        const learningScore = computeLearningScore(learningSignals);
+
+        if (learningScore >= LEARNING_SCORE_THRESHOLD) {
+          mkdirSync(queueDir, { recursive: true });
+          const ruleBasedSignals = top3.map((s) => s.id);
+          const entry: QueueEntry = {
+            session_id: sessionId,
+            transcript_path: transcriptPath,
+            queued_at: new Date().toISOString(),
+            cwd: args.cwd ?? "",
+            tool_call_count: toolCalls.length,
+            rule_based_signals: ruleBasedSignals,
+            learning_signals: learningSignals,
+            learning_score: learningScore,
+          };
+          const queueFilePath = join(queueDir, `${sessionId}.json`);
+          atomicWriteFileSync(queueFilePath, JSON.stringify(entry, null, 2));
+        }
+      }
+    } catch {
+      // Stage 2 failure is non-fatal — coaching output is already written
+    }
   }
 }
 

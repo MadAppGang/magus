@@ -1,7 +1,7 @@
 {
   "name": "dev",
-  "version": "2.5.0",
-  "description": "Universal development assistant. v2.5.0: debug refactor — /dev:fix restored, debug router (82% token reduction), 3 new debugging skills.",
+  "version": "2.6.0",
+  "description": "Universal development assistant. v2.6.0: self-learning Stop hook — automated session learning with LLM classifier, background daemon, pending-learnings queue, /dev:learn --apply/--prune.",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",

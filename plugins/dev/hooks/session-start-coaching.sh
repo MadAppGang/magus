@@ -98,6 +98,47 @@ else
   BEHAVIORAL_INSTRUCTIONS="${CLAUDE_BLOCK}"
 fi
 
+# ── Check for pending learnings from self-learning daemon ────────────────────
+PENDING_FILE="${CWD}/.claude/.coaching/pending-learnings.json"
+PENDING_BLOCK=""
+if [ -f "$PENDING_FILE" ] && [ -s "$PENDING_FILE" ]; then
+  PENDING_COUNT=$(jq 'length' "$PENDING_FILE" 2>/dev/null || echo "0")
+  if [ "$PENDING_COUNT" -gt 0 ] && [ "$PENDING_COUNT" != "0" ]; then
+    PENDING_SUMMARY=$(jq -r '
+      . as $all |
+      "★ Learning Review ──────────────────────────────\n" +
+      ($all | length | tostring) + " learnings pending approval:\n\n" +
+      (to_entries | map(
+        (.key + 1 | tostring) + ". [" + .value.learning.confidence + "] " + .value.learning.rule_text + "\n" +
+        "   Evidence: " + .value.learning.evidence + "\n" +
+        "   → Add to: ## Learned Preferences > " + .value.learning.subsection
+      ) | join("\n\n")) +
+      "\n\nReply `/dev:learn --apply` to add all, or `/dev:learn` to review individually.\n────────────────────────────────────────────────"
+    ' "$PENDING_FILE" 2>/dev/null || echo "")
+
+    if [ -n "$PENDING_SUMMARY" ]; then
+      PENDING_BLOCK="## Pending Learnings
+
+Show the user this learning review box at the START of the session, before their first message:
+
+${PENDING_SUMMARY}"
+    fi
+  fi
+fi
+
+# Integrate PENDING_BLOCK into behavioral instructions
+if [ -n "$PENDING_BLOCK" ]; then
+  if [ -n "$BEHAVIORAL_INSTRUCTIONS" ]; then
+    BEHAVIORAL_INSTRUCTIONS="${BEHAVIORAL_INSTRUCTIONS}
+
+---
+
+${PENDING_BLOCK}"
+  else
+    BEHAVIORAL_INSTRUCTIONS="${PENDING_BLOCK}"
+  fi
+fi
+
 # Build JSON output using hookSpecificOutput format (matches explanatory-output-style plugin)
 # Claude Code reads SessionStart hook output from stdout in this format
 OUTPUT=$(jq -n --arg ctx "$BEHAVIORAL_INSTRUCTIONS" '{hookSpecificOutput: {hookEventName: "SessionStart", additionalContext: $ctx}}')

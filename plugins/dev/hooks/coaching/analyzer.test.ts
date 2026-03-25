@@ -1002,3 +1002,390 @@ describe("Fix 1 Regression Guard: settings.json hooks", () => {
     expect(settings.hooks).toBeUndefined();
   });
 });
+
+// ---------------------------------------------------------------------------
+// TEST GROUP: Stage 2 — Session Classifier
+// ---------------------------------------------------------------------------
+
+/**
+ * Generates a JSONL transcript that includes human messages in addition to
+ * assistant tool_use blocks. Used to test Stage 2 learning signal extraction.
+ */
+function generateTranscriptWithUserMessages(
+  toolCalls: ToolCallSpec[],
+  userMessages: string[],
+  enoughForSignal = true
+): string {
+  const lines: string[] = [];
+
+  // Filler assistant calls to hit 10+ tool call minimum
+  const fillerCount = enoughForSignal ? Math.max(0, 10 - toolCalls.length) : 0;
+  for (let i = 0; i < fillerCount; i++) {
+    lines.push(
+      JSON.stringify({
+        type: "assistant",
+        message: {
+          content: [
+            {
+              type: "tool_use",
+              name: "Write",
+              input: { file_path: `/project/filler${i}.ts`, content: "// filler" },
+            },
+          ],
+        },
+      })
+    );
+  }
+
+  for (const tc of toolCalls) {
+    lines.push(
+      JSON.stringify({
+        type: "assistant",
+        message: {
+          content: [
+            {
+              type: "tool_use",
+              name: tc.tool,
+              input: tc.input,
+            },
+          ],
+        },
+      })
+    );
+  }
+
+  for (const msg of userMessages) {
+    lines.push(
+      JSON.stringify({
+        type: "human",
+        message: {
+          content: [{ type: "text", text: msg }],
+        },
+      })
+    );
+  }
+
+  return lines.join("\n") + "\n";
+}
+
+/** Run the analyzer CLI with --queue-dir and return exit code + queue dir path. */
+function runAnalyzerWithQueue(
+  transcriptPath: string,
+  sessionId: string,
+  stateDir: string,
+  queueDir: string,
+  env?: Record<string, string>
+): { code: number } {
+  const statePath = join(stateDir, "state.json");
+  const outputPath = join(stateDir, "recommendations.md");
+  const historyDir = join(stateDir, "history");
+
+  const result = spawnSync(
+    "bun",
+    [
+      ANALYZER_PATH,
+      "--transcript", transcriptPath,
+      "--session-id", sessionId,
+      "--rules", RULES_PATH,
+      "--state", statePath,
+      "--output", outputPath,
+      "--history-dir", historyDir,
+      "--cwd", stateDir,
+      "--queue-dir", queueDir,
+    ],
+    {
+      env: { ...process.env, ...(env ?? {}) },
+      timeout: 30000,
+    }
+  );
+
+  return { code: result.status ?? 1 };
+}
+
+/** Read a queue entry JSON file; returns null if absent. */
+function readQueueEntry(queueDir: string, sessionId: string): Record<string, unknown> | null {
+  const path = join(queueDir, `${sessionId}.json`);
+  if (!existsSync(path)) return null;
+  try {
+    return JSON.parse(readFileSync(path, "utf-8"));
+  } catch {
+    return null;
+  }
+}
+
+describe("Stage 2: computeLearningScore formula", () => {
+  it("zero signals produces a negative score due to noise penalty when toolCallCount < 10", () => {
+    // toolCallCount < 10 adds -10 penalty
+    // corrections=0, explicitRules=0, repeatedPatterns=0, failedAttempts=0, messageCount=0
+    // score = 0 + 0 + 0 + 0 + 0 - 10 = -10
+    // We verify this indirectly: a session with no user messages and < 10 tool calls produces no queue file
+    const transcript = generateTranscript([], false);
+    const queueDir = join(testDir, "queue");
+    const transcriptPath = writeTranscript(testDir, transcript);
+    runAnalyzerWithQueue(transcriptPath, "aabbccdd11223344", testDir, queueDir);
+    expect(existsSync(join(queueDir, "aabbccdd11223344.json"))).toBe(false);
+  });
+
+  it("session with 2 corrections produces score of 6 (2*3=6 >= threshold 5)", () => {
+    // corrections=2 -> score = 2*3 + 0 + 0 + 0 + min(20/10,5) - 0 = 6 + 2 = 8
+    // messageCount set to 20 to contribute min(20/10,5)=2
+    // toolCallCount >= 10, no noise penalty
+    // Total: 8 >= 5 => queue file should be written
+    const sessionId = "aabbccdd22334455";
+    const queueDir = join(testDir, "queue");
+
+    const transcript = generateTranscriptWithUserMessages(
+      [],  // no special tool calls
+      [
+        "no, wrong — we always use pnpm not npm",
+        "no, that's wrong again, use the existing helper",
+        // 18 more filler messages to push messageCount to 20
+        "ok", "ok", "ok", "ok", "ok", "ok", "ok", "ok", "ok", "ok",
+        "ok", "ok", "ok", "ok", "ok", "ok", "ok", "ok",
+      ]
+    );
+    const transcriptPath = writeTranscript(testDir, transcript);
+    runAnalyzerWithQueue(transcriptPath, sessionId, testDir, queueDir);
+
+    const entry = readQueueEntry(queueDir, sessionId);
+    expect(entry).not.toBeNull();
+    expect(entry!.learning_score).toBeGreaterThanOrEqual(5);
+    expect((entry!.learning_signals as Record<string, unknown>)).toBeDefined();
+  });
+
+  it("session with 1 explicit rule produces score of 4+message contribution (>= 5 threshold with enough messages)", () => {
+    // explicitRules=1 -> 1*4=4
+    // messageCount=15 -> min(15/10,5)=1.5 -> total = 5.5 >= 5
+    const sessionId = "aabbccdd33445566";
+    const queueDir = join(testDir, "queue");
+
+    const transcript = generateTranscriptWithUserMessages(
+      [],
+      [
+        "in this project we always use absolute imports",
+        // 14 filler messages
+        "ok", "ok", "ok", "ok", "ok", "ok", "ok", "ok", "ok", "ok",
+        "ok", "ok", "ok", "ok",
+      ]
+    );
+    const transcriptPath = writeTranscript(testDir, transcript);
+    runAnalyzerWithQueue(transcriptPath, sessionId, testDir, queueDir);
+
+    const entry = readQueueEntry(queueDir, sessionId);
+    expect(entry).not.toBeNull();
+    expect(entry!.learning_score).toBeGreaterThanOrEqual(5);
+  });
+
+  it("low-signal session (0 corrections, 0 rules, few messages) does NOT produce queue file", () => {
+    // score = 0 + 0 + 0 + 0 + min(5/10,5) - 0 = 0.5 < 5
+    const sessionId = "aabbccddffeeddcc";
+    const queueDir = join(testDir, "queue");
+
+    const transcript = generateTranscriptWithUserMessages(
+      [],
+      ["ok", "looks good", "thanks", "yes", "sure"]
+    );
+    const transcriptPath = writeTranscript(testDir, transcript);
+    runAnalyzerWithQueue(transcriptPath, sessionId, testDir, queueDir);
+
+    expect(readQueueEntry(queueDir, sessionId)).toBeNull();
+  });
+});
+
+describe("Stage 2: parseUserMessages", () => {
+  it("extracts text from human messages with content array", () => {
+    const sessionId = "ccddaabb11223344";
+    const queueDir = join(testDir, "queue");
+
+    // Create a transcript with human messages that have correction language
+    const lines = [
+      // 10 assistant Write calls for signal threshold
+      ...Array.from({ length: 10 }, (_, i) =>
+        JSON.stringify({
+          type: "assistant",
+          message: {
+            content: [{ type: "tool_use", name: "Write", input: { file_path: `/p/f${i}.ts`, content: "x" } }],
+          },
+        })
+      ),
+      // Human messages with text content blocks
+      JSON.stringify({
+        type: "human",
+        message: {
+          content: [{ type: "text", text: "no, wrong approach, we always use TypeScript" }],
+        },
+      }),
+      JSON.stringify({
+        type: "human",
+        message: {
+          content: [{ type: "text", text: "in this project we never use var" }],
+        },
+      }),
+    ];
+    const transcriptPath = writeTranscript(testDir, lines.join("\n") + "\n");
+    runAnalyzerWithQueue(transcriptPath, sessionId, testDir, queueDir);
+
+    // The correction + explicit rule should push score high enough for queue entry
+    const entry = readQueueEntry(queueDir, sessionId);
+    expect(entry).not.toBeNull();
+    const signals = entry!.learning_signals as Record<string, unknown>;
+    const corrections = signals.corrections as Record<string, unknown>;
+    const explicitRules = signals.explicitRules as Record<string, unknown>;
+    expect((corrections.count as number)).toBeGreaterThanOrEqual(1);
+    expect((explicitRules.count as number)).toBeGreaterThanOrEqual(1);
+  });
+
+  it("human messages with string content (not array) are also parsed", () => {
+    const sessionId = "ccddaabb22334455";
+    const queueDir = join(testDir, "queue");
+
+    // Human message with string content field (not array)
+    const lines = [
+      ...Array.from({ length: 10 }, (_, i) =>
+        JSON.stringify({
+          type: "assistant",
+          message: {
+            content: [{ type: "tool_use", name: "Write", input: { file_path: `/p/f${i}.ts`, content: "x" } }],
+          },
+        })
+      ),
+      JSON.stringify({
+        type: "human",
+        message: {
+          content: "no, wrong — we always use pnpm and our convention is to never install globally",
+        },
+      }),
+    ];
+    const transcriptPath = writeTranscript(testDir, lines.join("\n") + "\n");
+    runAnalyzerWithQueue(transcriptPath, sessionId, testDir, queueDir);
+
+    // Correction + explicit rule from single string message
+    const entry = readQueueEntry(queueDir, sessionId);
+    expect(entry).not.toBeNull();
+  });
+
+  it("assistant and result messages are NOT counted as user messages", () => {
+    const sessionId = "ccddaabb33445566";
+    const queueDir = join(testDir, "queue");
+
+    // Only assistant tool_use calls — no human messages at all
+    // Correction pattern inside an assistant message should NOT count
+    const lines = Array.from({ length: 10 }, (_, i) =>
+      JSON.stringify({
+        type: "assistant",
+        message: {
+          content: [{ type: "tool_use", name: "Write", input: { file_path: `/p/f${i}.ts`, content: "no, wrong" } }],
+        },
+      })
+    );
+    const transcriptPath = writeTranscript(testDir, lines.join("\n") + "\n");
+    runAnalyzerWithQueue(transcriptPath, sessionId, testDir, queueDir);
+
+    // Score should be too low to queue (no human messages means 0 corrections)
+    expect(readQueueEntry(queueDir, sessionId)).toBeNull();
+  });
+});
+
+describe("Stage 2: queue file integration", () => {
+  it("high-signal session writes queue file with correct structure", () => {
+    const sessionId = "deadbeef44556677";
+    const queueDir = join(testDir, "queue");
+
+    // 2 corrections + 1 explicit rule + 20 messages = score well above 5
+    const transcript = generateTranscriptWithUserMessages(
+      [],
+      [
+        "no, wrong — we always use pnpm",
+        "no, wrong again — in this project we never use npm install",
+        ...Array.from({ length: 18 }, () => "ok"),
+      ]
+    );
+    const transcriptPath = writeTranscript(testDir, transcript);
+    runAnalyzerWithQueue(transcriptPath, sessionId, testDir, queueDir);
+
+    const entry = readQueueEntry(queueDir, sessionId);
+    expect(entry).not.toBeNull();
+
+    // Verify queue entry structure matches QueueEntry interface
+    expect(typeof entry!.session_id).toBe("string");
+    expect(entry!.session_id).toBe(sessionId);
+    expect(typeof entry!.transcript_path).toBe("string");
+    expect(typeof entry!.queued_at).toBe("string");
+    expect(typeof entry!.cwd).toBe("string");
+    expect(typeof entry!.tool_call_count).toBe("number");
+    expect(Array.isArray(entry!.rule_based_signals)).toBe(true);
+    expect(typeof entry!.learning_signals).toBe("object");
+    expect(typeof entry!.learning_score).toBe("number");
+    expect((entry!.learning_score as number)).toBeGreaterThanOrEqual(5);
+  });
+
+  it("low-signal session does NOT produce a queue file", () => {
+    const sessionId = "deadbeef55667788";
+    const queueDir = join(testDir, "queue");
+
+    // Only neutral messages — no corrections, no explicit rules
+    const transcript = generateTranscriptWithUserMessages(
+      [],
+      ["sounds good", "yes", "please continue", "okay", "done"]
+    );
+    const transcriptPath = writeTranscript(testDir, transcript);
+    runAnalyzerWithQueue(transcriptPath, sessionId, testDir, queueDir);
+
+    expect(readQueueEntry(queueDir, sessionId)).toBeNull();
+  });
+
+  it("--queue-dir argument is optional: missing it does not crash the analyzer", () => {
+    // Use the standard runAnalyzer (no --queue-dir) with a high-signal session
+    const transcript = generateTranscriptWithUserMessages(
+      [],
+      [
+        "no, wrong — we always use pnpm",
+        "no, wrong again",
+        ...Array.from({ length: 18 }, () => "ok"),
+      ]
+    );
+    const transcriptPath = writeTranscript(testDir, transcript);
+    const { code } = runAnalyzer(transcriptPath, "deadbeefaabbccdd", testDir);
+    // Should exit cleanly with 0
+    expect(code).toBe(0);
+  });
+
+  it("WORKFLOW_LEARNING=off skips queue file even for high-signal session", () => {
+    const sessionId = "cafebabe11223344";
+    const queueDir = join(testDir, "queue");
+
+    const transcript = generateTranscriptWithUserMessages(
+      [],
+      [
+        "no, wrong — we always use pnpm",
+        "no, wrong again — in this project we never use npm",
+        ...Array.from({ length: 18 }, () => "ok"),
+      ]
+    );
+    const transcriptPath = writeTranscript(testDir, transcript);
+    runAnalyzerWithQueue(transcriptPath, sessionId, testDir, queueDir, {
+      WORKFLOW_LEARNING: "off",
+    });
+
+    expect(readQueueEntry(queueDir, sessionId)).toBeNull();
+  });
+
+  it("queue file path is {queue-dir}/{session-id}.json", () => {
+    const sessionId = "cafebabe22334455";
+    const queueDir = join(testDir, "my-queue");
+
+    const transcript = generateTranscriptWithUserMessages(
+      [],
+      [
+        "no, wrong — we always use pnpm",
+        "no, wrong again",
+        ...Array.from({ length: 18 }, () => "ok"),
+      ]
+    );
+    const transcriptPath = writeTranscript(testDir, transcript);
+    runAnalyzerWithQueue(transcriptPath, sessionId, testDir, queueDir);
+
+    const expectedPath = join(queueDir, `${sessionId}.json`);
+    expect(existsSync(expectedPath)).toBe(true);
+  });
+});

@@ -193,8 +193,8 @@
     {
       "name": "dev",
       "source": "./plugins/dev",
-      "description": "Universal development assistant. v2.5.0: debug refactor — /dev:fix restored, debug router (82% token reduction), 3 new debugging skills.",
-      "version": "2.5.0",
+      "description": "Universal development assistant. v2.6.0: self-learning Stop hook — automated session learning with LLM classifier, background daemon, /dev:learn --apply/--prune.",
+      "version": "2.6.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -351,6 +351,30 @@
         "workflow",
         "hooks",
         "real-time-sync"
+      ],
+      "strict": true
+    },
+    {
+      "name": "kanban",
+      "source": "./plugins/kanban",
+      "description": "Kanban board view for task management. v1.0.0: Visual board with 5 columns, task dependencies (cycle-safe), priority indicators, WIP limits. Shares tasks.json with GTD plugin — works standalone or alongside GTD.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Jack Rudenko",
+        "email": "i@madappgang.com",
+        "company": "MadAppGang"
+      },
+      "category": "productivity",
+      "keywords": [
+        "kanban",
+        "board",
+        "task-management",
+        "productivity",
+        "dependencies",
+        "wip-limit",
+        "workflow",
+        "gtd",
+        "visual"
       ],
       "strict": true
     }
