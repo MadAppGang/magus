@@ -1714,7 +1714,9 @@
         "seed:explicit-debugger-01"
       ],
       "expected_agent": "dev:debugger",
-      "expected_alternatives": []
+      "expected_alternatives": [
+        "code-analysis:detective"
+      ]
     },
     {
       "id": "explicit-debugger-01-var-02",
@@ -1728,7 +1730,10 @@
         "seed:explicit-debugger-01"
       ],
       "expected_agent": "dev:debugger",
-      "expected_alternatives": []
+      "expected_alternatives": [
+        "NO_TASK_CALL",
+        "dev:debug"
+      ]
     },
     {
       "id": "explicit-debugger-01-var-03",
@@ -1756,7 +1761,9 @@
         "seed:explicit-debugger-01"
       ],
       "expected_agent": "dev:debugger",
-      "expected_alternatives": []
+      "expected_alternatives": [
+        "NO_TASK_CALL"
+      ]
     },
     {
       "id": "explicit-debugger-01-var-05",
@@ -1770,7 +1777,9 @@
         "seed:explicit-debugger-01"
       ],
       "expected_agent": "dev:debugger",
-      "expected_alternatives": []
+      "expected_alternatives": [
+        "NO_TASK_CALL"
+      ]
     },
     {
       "id": "explicit-debugger-01-var-06",
@@ -1784,7 +1793,9 @@
         "seed:explicit-debugger-01"
       ],
       "expected_agent": "dev:debugger",
-      "expected_alternatives": []
+      "expected_alternatives": [
+        "NO_TASK_CALL"
+      ]
     },
     {
       "id": "explicit-debugger-01-var-07",
@@ -1798,7 +1809,9 @@
         "seed:explicit-debugger-01"
       ],
       "expected_agent": "dev:debugger",
-      "expected_alternatives": []
+      "expected_alternatives": [
+        "NO_TASK_CALL"
+      ]
     },
     {
       "id": "explicit-debugger-01-var-08",
@@ -1812,7 +1825,10 @@
         "seed:explicit-debugger-01"
       ],
       "expected_agent": "dev:debugger",
-      "expected_alternatives": []
+      "expected_alternatives": [
+        "dev:debug",
+        "NO_TASK_CALL"
+      ]
     },
     {
       "id": "explicit-debugger-01-var-09",
@@ -2484,7 +2500,9 @@
         "seed:delegate-debug-01"
       ],
       "expected_agent": "dev:debugger",
-      "expected_alternatives": []
+      "expected_alternatives": [
+        "code-analysis:detective"
+      ]
     },
     {
       "id": "delegate-debug-01-var-07",

@@ -63,7 +63,7 @@ skills: dev:context-detection
 <output_format>
 ## Dev Plugin Help
 
-**Version:** 2.2.0
+**Version:** 2.5.0
 **Detected Stack:** {detected_stack}
 **Mode:** {frontend | backend | fullstack}
 
@@ -82,7 +82,8 @@ skills: dev:context-detection
 | Command | Description |
 |---------|-------------|
 | `/dev:dev` | Develop features — adaptive depth and automation |
-| `/dev:debug` | Structured debugging — quick patch, root-cause analysis, or TDD fix |
+| `/dev:debug` | Debug router — quick patch (inline) or standard debug (via skill) |
+| `/dev:fix` | Production-grade TDD fix — dual multimodel review + deployment monitoring |
 
 **REVIEW & UNDERSTAND**
 

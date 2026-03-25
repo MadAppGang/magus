@@ -1,7 +1,7 @@
 {
   "name": "dev",
-  "version": "2.4.0",
-  "description": "Universal development assistant. v2.4.0: /dev:audit command, value banners, improved help with 12 commands in 4 workflow groups.",
+  "version": "2.5.0",
+  "description": "Universal development assistant. v2.5.0: debug refactor — /dev:fix restored, debug router (82% token reduction), 3 new debugging skills.",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",
@@ -62,6 +62,7 @@
   "commands": [
     "./commands/help.md",
     "./commands/debug.md",
+    "./commands/fix.md",
     "./commands/dev.md",
     "./commands/architect.md",
     "./commands/research.md",
@@ -113,6 +114,9 @@
     "./skills/discipline/verification-before-completion",
     "./skills/discipline/test-driven-development",
     "./skills/discipline/systematic-debugging",
+    "./skills/discipline/debug-shared-init",
+    "./skills/discipline/debug-localization",
+    "./skills/discipline/debug-standard",
     "./skills/discipline/agent-coordination-discipline",
     "./skills/discipline/worktree-lifecycle",
     "./skills/discipline/task-management",

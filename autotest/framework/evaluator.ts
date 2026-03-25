@@ -27,30 +27,35 @@ export function evaluate(
   }
 
   if (expectedAgent) {
+    // Normalize empty/missing agent to canonical "NO_TASK_CALL" for consistent matching
+    const normalizedActual = (!actualAgent || actualAgent === "NO_TASK_CALL")
+      ? "NO_TASK_CALL"
+      : actualAgent;
+
     if (expectedAgent === "NO_TASK_CALL") {
       // Test expects direct handling (no delegation)
-      if (!actualAgent || actualAgent === "NO_TASK_CALL") {
+      if (normalizedActual === "NO_TASK_CALL") {
         return "PASS";
       }
       // Model delegated when it shouldn't have
       return "FAIL_OVER_DELEGATED";
     }
 
-    if (actualAgent === expectedAgent) {
+    if (normalizedActual === expectedAgent) {
       return "PASS";
     }
 
-    if (expectedAlternatives.includes(actualAgent)) {
+    if (expectedAlternatives.includes(normalizedActual)) {
       return "PASS_ALT";
     }
 
-    if (actualAgent === "TASK_USED") {
+    if (normalizedActual === "TASK_USED") {
       // Task tool was used but subagent_type couldn't be extracted from transcript.
       // The delegation DID happen, we just can't verify which specific agent.
       return "PASS_DELEGATED";
     }
 
-    if (!actualAgent || actualAgent === "NO_TASK_CALL") {
+    if (normalizedActual === "NO_TASK_CALL") {
       return "NO_DELEGATION";
     }
 

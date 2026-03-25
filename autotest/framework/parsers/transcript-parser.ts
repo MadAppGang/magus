@@ -151,14 +151,15 @@ export function buildReplayTurns(
  * Extracted from aggregate-results.ts inline JSONL scan loop (lines 131-161).
  */
 export function extractAgentFromTranscript(entries: TranscriptEntry[]): string {
-  // Strategy 1: Look for Task tool_use blocks in stream-json format
+  // Strategy 1: Look for Agent/Task tool_use blocks in stream-json format
+  // Claude Code uses "Agent" as the tool name; older transcripts may use "Task"
   for (const entry of entries) {
     if (entry.type !== "assistant") continue;
     for (const block of entry.message?.content ?? []) {
-      if (block.type === "tool_use" && block.name === "Task") {
+      if (block.type === "tool_use" && (block.name === "Agent" || block.name === "Task")) {
         const agent = block.input?.subagent_type ?? "";
         if (agent) return agent;
-        // Task was used but subagent_type not present
+        // Agent/Task was used but subagent_type not present
         return "TASK_USED";
       }
     }

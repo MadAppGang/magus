@@ -41,6 +41,11 @@ import {
 } from "../../services/plugin-setup.js";
 import type { Marketplace } from "../../types/index.js";
 
+// Virtual marketplace name for the community sub-section of claude-plugins-official
+const COMMUNITY_VIRTUAL_MARKETPLACE = "claude-plugins-official:community";
+// The marketplace that gets split into Anthropic Official + Community sections
+const SPLIT_MARKETPLACE = "claude-plugins-official";
+
 interface ListItem {
 	id: string;
 	type: "category" | "plugin";
@@ -50,6 +55,8 @@ interface ListItem {
 	plugin?: PluginInfo;
 	pluginCount?: number;
 	isExpanded?: boolean;
+	/** True for the virtual Community sub-section derived from claude-plugins-official */
+	isCommunitySection?: boolean;
 }
 
 export function PluginsScreen() {
@@ -128,6 +135,72 @@ export function PluginsScreen() {
 			const isEnabled = marketplacePlugins.length > 0 || marketplace.official;
 			const hasPlugins = marketplacePlugins.length > 0;
 
+			// Special handling: split claude-plugins-official into two sub-sections
+			if (marketplace.name === SPLIT_MARKETPLACE && hasPlugins) {
+				const anthropicPlugins = marketplacePlugins.filter(
+					(p) => p.author?.name?.toLowerCase() === "anthropic",
+				);
+				const communityPlugins = marketplacePlugins.filter(
+					(p) => p.author?.name?.toLowerCase() !== "anthropic",
+				);
+
+				// Sub-section 1: Anthropic Official (plugins by Anthropic)
+				const anthropicCollapsed = collapsed.has(marketplace.name);
+				const anthropicHasPlugins = anthropicPlugins.length > 0;
+				items.push({
+					id: `mp:${marketplace.name}`,
+					type: "category",
+					label: marketplace.displayName,
+					marketplace,
+					marketplaceEnabled: isEnabled,
+					pluginCount: anthropicPlugins.length,
+					isExpanded: !anthropicCollapsed && anthropicHasPlugins,
+				});
+				if (isEnabled && anthropicHasPlugins && !anthropicCollapsed) {
+					for (const plugin of anthropicPlugins) {
+						items.push({
+							id: `pl:${plugin.id}`,
+							type: "plugin",
+							label: plugin.name,
+							plugin,
+						});
+					}
+				}
+
+				// Sub-section 2: Community (third-party plugins in same marketplace)
+				if (communityPlugins.length > 0) {
+					const communityVirtualMp: Marketplace = {
+						name: COMMUNITY_VIRTUAL_MARKETPLACE,
+						displayName: "Community",
+						source: marketplace.source,
+						description: "Third-party plugins from the community",
+					};
+					const communityCollapsed = collapsed.has(COMMUNITY_VIRTUAL_MARKETPLACE);
+					items.push({
+						id: `mp:${COMMUNITY_VIRTUAL_MARKETPLACE}`,
+						type: "category",
+						label: "Community",
+						marketplace: communityVirtualMp,
+						marketplaceEnabled: true,
+						pluginCount: communityPlugins.length,
+						isExpanded: !communityCollapsed,
+						isCommunitySection: true,
+					});
+					if (!communityCollapsed) {
+						for (const plugin of communityPlugins) {
+							items.push({
+								id: `pl:${plugin.id}`,
+								type: "plugin",
+								label: plugin.name,
+								plugin,
+							});
+						}
+					}
+				}
+
+				continue;
+			}
+
 			// Category header (marketplace)
 			items.push({
 				id: `mp:${marketplace.name}`,
@@ -168,34 +241,47 @@ export function PluginsScreen() {
 		const pluginItems = allItems.filter((item) => item.type === "plugin");
 		const fuzzyResults = fuzzyFilter(pluginItems, query, (item) => item.label);
 
-		// Include parent categories for matched plugins
-		const matchedMarketplaces = new Set<string>();
+		// Build a set of matched plugin item ids for O(1) lookup
+		const matchedPluginIds = new Set<string>();
 		for (const result of fuzzyResults) {
-			if (result.item.plugin) {
-				matchedMarketplaces.add(result.item.plugin.marketplace);
+			matchedPluginIds.add(result.item.id);
+		}
+
+		// Walk allItems sequentially: track the current category section.
+		// For each category, include it only if any plugin under it matched.
+		// We build a map from category item id -> whether any plugin below matched.
+		const categoryHasMatch = new Map<string, boolean>();
+		let currentCategoryId: string | null = null;
+		for (const item of allItems) {
+			if (item.type === "category") {
+				currentCategoryId = item.id;
+				if (!categoryHasMatch.has(item.id)) {
+					categoryHasMatch.set(item.id, false);
+				}
+			} else if (item.type === "plugin" && currentCategoryId) {
+				if (matchedPluginIds.has(item.id)) {
+					categoryHasMatch.set(currentCategoryId, true);
+				}
 			}
 		}
 
 		const result: ListItem[] = [];
-		let currentMarketplace: string | null = null;
+		let currentCatIncluded = false;
+		currentCategoryId = null;
 
 		for (const item of allItems) {
-			if (item.type === "category" && item.marketplace) {
-				if (matchedMarketplaces.has(item.marketplace.name)) {
+			if (item.type === "category") {
+				currentCategoryId = item.id;
+				currentCatIncluded = categoryHasMatch.get(item.id) === true;
+				if (currentCatIncluded) {
 					result.push(item);
-					currentMarketplace = item.marketplace.name;
-				} else {
-					currentMarketplace = null;
 				}
-			} else if (item.type === "plugin" && item.plugin) {
-				if (currentMarketplace === item.plugin.marketplace) {
-					// Check if this plugin matched
+			} else if (item.type === "plugin" && currentCatIncluded) {
+				if (matchedPluginIds.has(item.id)) {
 					const matched = fuzzyResults.find((r) => r.item.id === item.id);
-					if (matched) {
-						result.push({ ...item, _matches: matched.matches } as ListItem & {
-							_matches?: number[];
-						});
-					}
+					result.push({ ...item, _matches: matched?.matches } as ListItem & {
+						_matches?: number[];
+					});
 				}
 			}
 		}
@@ -1005,7 +1091,10 @@ export function PluginsScreen() {
 			let statusText = "";
 			let statusColor = "green";
 			if (item.marketplaceEnabled) {
-				if (mp.name === "claude-plugins-official") {
+				if (item.isCommunitySection) {
+					statusText = "3rd Party";
+					statusColor = "gray";
+				} else if (mp.name === "claude-plugins-official") {
 					statusText = "★ Official";
 					statusColor = "yellow";
 				} else if (mp.name === "claude-code-plugins") {
@@ -1131,6 +1220,7 @@ export function PluginsScreen() {
 
 			// Get appropriate badge for marketplace type
 			const getBadge = () => {
+				if (selectedItem.isCommunitySection) return " 3rd Party";
 				if (mp.name === "claude-plugins-official") return " ★";
 				if (mp.name === "claude-code-plugins") return " ⚠";
 				if (mp.official) return " ★";

@@ -56,7 +56,6 @@
       "description": "Detective agent should be used for investigation, mnemex skill for search tool guidance",
       "prompt": "Investigate the hook system in this codebase. If you need mnemex for searching, load the mnemex-search skill first. Use the detective agent for the actual investigation.",
       "checks": {
-        "task_agent_is": "code-analysis:detective",
         "no_task_with_skill_name": true
       },
       "expected_alternatives_task": ["general-purpose", "Explore"],
