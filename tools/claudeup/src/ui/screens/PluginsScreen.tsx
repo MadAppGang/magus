@@ -171,15 +171,15 @@ export function PluginsScreen() {
 				if (communityPlugins.length > 0) {
 					const communityVirtualMp: Marketplace = {
 						name: COMMUNITY_VIRTUAL_MARKETPLACE,
-						displayName: "Community",
+						displayName: "Anthropic Official — 3rd Party",
 						source: marketplace.source,
-						description: "Third-party plugins from the community",
+						description: "Third-party plugins in the Anthropic Official marketplace",
 					};
 					const communityCollapsed = collapsed.has(COMMUNITY_VIRTUAL_MARKETPLACE);
 					items.push({
 						id: `mp:${COMMUNITY_VIRTUAL_MARKETPLACE}`,
 						type: "category",
-						label: "Community",
+						label: "Anthropic Official — 3rd Party",
 						marketplace: communityVirtualMp,
 						marketplaceEnabled: true,
 						pluginCount: communityPlugins.length,
@@ -897,19 +897,17 @@ export function PluginsScreen() {
 			latestVersion !== "0.0.0" &&
 			installedVersion !== latestVersion;
 
-		// Determine action: if installed in this scope → uninstall
-		// If installed anywhere else but not this scope → uninstall from detected scope
-		// Otherwise → install
+		// Determine action for THIS scope:
+		// - installed in this scope + has update → update
+		// - installed in this scope → uninstall from this scope
+		// - not installed in this scope → install to this scope
 		let action: "update" | "install" | "uninstall";
 		if (isInstalledInScope && hasUpdateInScope) {
 			action = "update";
 		} else if (isInstalledInScope) {
 			action = "uninstall";
-		} else if (!isInstalledAnywhere) {
-			action = "install";
 		} else {
-			// Installed in a different scope — uninstall from the scope it's actually in
-			action = "uninstall";
+			action = "install";
 		}
 
 		const actionLabel =
