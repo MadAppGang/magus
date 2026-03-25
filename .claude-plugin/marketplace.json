@@ -193,8 +193,8 @@
     {
       "name": "dev",
       "source": "./plugins/dev",
-      "description": "Universal development assistant. v2.4.0: /dev:audit command, value banners, improved help with 12 commands in 4 workflow groups.",
-      "version": "2.4.0",
+      "description": "Universal development assistant. v2.5.0: debug refactor — /dev:fix restored, debug router (82% token reduction), 3 new debugging skills.",
+      "version": "2.5.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
