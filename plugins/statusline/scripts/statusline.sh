@@ -343,8 +343,13 @@ if [ -z "$FIVE_HR" ] && [ -z "$SEVEN_DAY" ]; then
           -H "Content-Type: application/json" \
           -H "Authorization: Bearer $TOKEN" \
           -H "anthropic-beta: oauth-2025-04-20" \
-          "https://api.anthropic.com/api/oauth/usage" > "${USAGE_CACHE}.tmp" 2>/dev/null \
-        && mv "${USAGE_CACHE}.tmp" "$USAGE_CACHE"
+          "https://api.anthropic.com/api/oauth/usage" > "${USAGE_CACHE}.tmp" 2>/dev/null
+        # Only overwrite cache if response contains valid usage data (not an error)
+        if jq -e '.five_hour.utilization // .seven_day.utilization' "${USAGE_CACHE}.tmp" >/dev/null 2>&1; then
+          mv "${USAGE_CACHE}.tmp" "$USAGE_CACHE"
+        else
+          rm -f "${USAGE_CACHE}.tmp"
+        fi
       fi
     ) &
   fi
