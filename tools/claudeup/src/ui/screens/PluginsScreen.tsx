@@ -1162,7 +1162,7 @@ export function PluginsScreen() {
 			if (isSelected) {
 				return (
 					<text bg="magenta" fg="white">
-						{" "}{si.chars} {plugin.name}{versionStr}{" "}
+						{" "}{si.text} {plugin.name}{versionStr}{" "}
 					</text>
 				);
 			}
@@ -1187,9 +1187,11 @@ export function PluginsScreen() {
 			return (
 				<text>
 					<span> </span>
-					<span fg={si.colors[0]}>{si.chars[0]}</span>
-					<span fg={si.colors[1]}>{si.chars[1]}</span>
-					<span fg={si.colors[2]}>{si.chars[2]}</span>
+					{si.segments.map((s, i) =>
+						s.bg
+							? <span key={i} bg={s.bg} fg={s.fg}>{s.char}</span>
+							: <span key={i}>{" "}</span>
+					)}
 					<span>{" "}</span>
 					<span>{displayName}</span>
 					<span fg={plugin.hasUpdate ? "yellow" : "gray"}>{versionStr}</span>

@@ -448,7 +448,7 @@ export function SkillsScreen() {
 			if (isSelected) {
 				return (
 					<text bg="magenta" fg="white">
-						{" "}{si.chars} {skill.name}{skill.hasUpdate ? " ⬆" : ""}{starsStr ? `  ${starsStr}` : ""}{" "}
+						{" "}{si.text} {skill.name}{skill.hasUpdate ? " ⬆" : ""}{starsStr ? `  ${starsStr}` : ""}{" "}
 					</text>
 				);
 			}
@@ -456,9 +456,11 @@ export function SkillsScreen() {
 			return (
 				<text>
 					<span> </span>
-					<span fg={si.colors[0]}>{si.chars[0]}</span>
-					<span fg={si.colors[1]}>{si.chars[1]}</span>
-					<span fg={si.colors[2]}>{si.chars[2]}</span>
+					{si.segments.map((s, i) =>
+						s.bg
+							? <span key={i} bg={s.bg} fg={s.fg}>{s.char}</span>
+							: <span key={i}>{" "}</span>
+					)}
 					<span> </span>
 					<span fg="white">{skill.name}</span>
 					{skill.hasUpdate && <span fg="yellow"> ⬆</span>}

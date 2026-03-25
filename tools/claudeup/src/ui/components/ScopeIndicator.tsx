@@ -1,14 +1,36 @@
 import React from "react";
 
 /**
- * Renders 3 colored squares showing install status per scope:
- *   ■■□  = user + project installed, local not
- *   □■□  = only project
- *   □□□  = not installed anywhere
+ * Scope indicator for list items.
+ * Shows colored letter badges when installed, empty space when not.
  *
- * Colors: cyan=user, green=project, yellow=local
- * Filled square: ■  Empty square: □
+ * Installed in user+project:  u p
+ * Installed in project only:    p
+ * Not installed:              (3 spaces)
+ *
+ * Colors match the detail panel: cyan=user, green=project, yellow=local
  */
+
+export function scopeIndicatorText(
+	user?: boolean,
+	project?: boolean,
+	local?: boolean,
+): { text: string; segments: Array<{ char: string; bg: string; fg: string }> } {
+	const segments: Array<{ char: string; bg: string; fg: string }> = [
+		user
+			? { char: "u", bg: "cyan", fg: "black" }
+			: { char: " ", bg: "", fg: "" },
+		project
+			? { char: "p", bg: "green", fg: "black" }
+			: { char: " ", bg: "", fg: "" },
+		local
+			? { char: "l", bg: "yellow", fg: "black" }
+			: { char: " ", bg: "", fg: "" },
+	];
+
+	const text = segments.map((s) => s.char).join("");
+	return { text, segments };
+}
 
 interface ScopeIndicatorProps {
 	user?: boolean;
@@ -16,42 +38,20 @@ interface ScopeIndicatorProps {
 	local?: boolean;
 }
 
-export function scopeIndicatorText(
-	user?: boolean,
-	project?: boolean,
-	local?: boolean,
-): { chars: string; colors: [string, string, string] } {
-	return {
-		chars: `${user ? "■" : "□"}${project ? "■" : "□"}${local ? "■" : "□"}`,
-		colors: [
-			user ? "cyan" : "#444444",
-			project ? "green" : "#444444",
-			local ? "yellow" : "#444444",
-		],
-	};
-}
-
 export function ScopeIndicator({ user, project, local }: ScopeIndicatorProps) {
-	return (
-		<text>
-			<span fg={user ? "cyan" : "#444444"}>{user ? "■" : "□"}</span>
-			<span fg={project ? "green" : "#444444"}>{project ? "■" : "□"}</span>
-			<span fg={local ? "yellow" : "#444444"}>{local ? "■" : "□"}</span>
-		</text>
-	);
-}
+	const { segments } = scopeIndicatorText(user, project, local);
 
-/**
- * For skills (only 2 scopes: user + project)
- */
-export function ScopeIndicator2({
-	user,
-	project,
-}: { user?: boolean; project?: boolean }) {
 	return (
 		<text>
-			<span fg={user ? "cyan" : "#444444"}>{user ? "■" : "□"}</span>
-			<span fg={project ? "green" : "#444444"}>{project ? "■" : "□"}</span>
+			{segments.map((s, i) =>
+				s.bg ? (
+					<span key={i} bg={s.bg} fg={s.fg}>
+						{s.char}
+					</span>
+				) : (
+					<span key={i}> </span>
+				),
+			)}
 		</text>
 	);
 }
