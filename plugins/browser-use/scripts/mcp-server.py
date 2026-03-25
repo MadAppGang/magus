@@ -69,6 +69,7 @@ import asyncio
 import base64
 import json
 import logging
+import socket
 import time
 import uuid
 from datetime import datetime
@@ -137,6 +138,28 @@ def _new_session_id() -> str:
     return uuid.uuid4().hex[:8]
 
 
+def _read_devtools_active_port(user_data_dir: str) -> str | None:
+    """
+    Read DevToolsActivePort from a Chrome profile directory.
+
+    Chrome writes this file on startup; line 0 = port number,
+    line 1 = browser target path. Returns CDP URL if port is
+    reachable, None otherwise.
+    """
+    port_file = Path(user_data_dir).expanduser() / "DevToolsActivePort"
+    if not port_file.exists():
+        return None
+    try:
+        lines = port_file.read_text().strip().splitlines()
+        port = int(lines[0])
+        # Verify the port is actually accepting connections
+        with socket.create_connection(("127.0.0.1", port), timeout=1.0):
+            pass
+        return f"http://127.0.0.1:{port}/"
+    except Exception:
+        return None
+
+
 async def get_or_create_session(session_id: str | None = None) -> tuple[str, BrowserSession]:
     """
     Return (session_id, BrowserSession). Creates a new session if session_id
@@ -161,6 +184,11 @@ async def get_or_create_session(session_id: str | None = None) -> tuple[str, Bro
         "headless": False,
         **profile_config,
     }
+
+    # Detect existing Chrome instance to avoid SingletonLock contention
+    existing_cdp_url = _read_devtools_active_port(profile_data["user_data_dir"])
+    if existing_cdp_url:
+        profile_data["cdp_url"] = existing_cdp_url
 
     profile = BrowserProfile(**profile_data)
     session = BrowserSession(browser_profile=profile)
@@ -1377,6 +1405,12 @@ async def _handle_import_session(args: dict[str, Any]) -> str:
         # Create a fresh session
         config = load_browser_use_config()
         profile_config = get_default_profile(config)
+        # Detect existing Chrome instance to avoid SingletonLock contention
+        existing_cdp_url = _read_devtools_active_port(
+            profile_config.get("user_data_dir", "~/.config/browseruse/profiles/default")
+        )
+        if existing_cdp_url:
+            profile_config["cdp_url"] = existing_cdp_url
         profile = BrowserProfile(**profile_config)
         session = BrowserSession(browser_profile=profile)
         await session.start()

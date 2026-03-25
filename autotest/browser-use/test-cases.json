@@ -1,0 +1,48 @@
+{
+  "meta": {
+    "description": "Browser-use plugin E2E test cases. Tests verify Claude can accomplish browser automation tasks using the browser-use MCP server tools (navigate, screenshot, click, type, etc.). Requires the browser-use plugin to be loaded and a reachable Chrome/Chromium install.",
+    "version": "1.0.0",
+    "created": "2026-03-25",
+    "updated": "2026-03-25",
+    "notes": "v1.0: Initial suite. Covers session lifecycle (create, navigate, screenshot, close). REGRESSION coverage: SingletonLock contention bug tracked in dev-fix-20260325-143046-4ff02ed6."
+  },
+  "test_cases": [
+    {
+      "id": "browser-navigate-01",
+      "description": "Navigate to a URL and verify session_id is returned — basic session lifecycle smoke test",
+      "prompt": "Use the browser-use MCP tools to do the following:\n1. Call the navigate tool with url=\"https://example.com\" (do not pass a session_id — let the server create a new one).\n2. Report the session_id returned by the navigate call.\n3. Take a screenshot using the screenshot tool, passing the session_id from step 2.\n4. Call the close_session tool with the session_id from step 2.\n5. Report whether the page title visible in the screenshot contains 'Example'.\n\nIMPORTANT: Only use mcp__browser-use__* tools. Do NOT use any other browser automation tools.",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "smoke",
+      "tags": ["browser-use", "navigate", "session", "screenshot", "close"],
+      "checks": {
+        "has_tool_prefix": "mcp__browser-use__",
+        "tools_used_include_any": [
+          ["mcp__browser-use__navigate", "mcp__browser-use__screenshot", "mcp__browser-use__close_session"],
+          ["mcp__browser_use__navigate", "mcp__browser_use__screenshot", "mcp__browser_use__close_session"]
+        ],
+        "response_contains_any": ["session_id", "session"],
+        "min_tool_calls": 3
+      }
+    },
+    {
+      "id": "browser-singleton-lock-02",
+      "description": "Regression: two sequential navigate calls must not time out due to SingletonLock contention — each call should succeed within the timeout window",
+      "prompt": "Use the browser-use MCP tools to run two sequential navigation tasks that share no session, verifying that a second Chrome session can start even when one is already running:\n1. Call navigate with url=\"https://example.com\" and no session_id. Record session_id_A.\n2. Call navigate with url=\"https://example.org\" and no session_id. Record session_id_B.\n3. Take a screenshot with session_id_A.\n4. Take a screenshot with session_id_B.\n5. Close session_id_A with close_session.\n6. Close session_id_B with close_session.\n7. Report both session IDs and confirm both screenshots succeeded.\n\nIMPORTANT: Only use mcp__browser-use__* tools. Both navigate calls MUST succeed — if either times out or returns an error this test fails.",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "regression",
+      "tags": ["browser-use", "singleton-lock", "multi-session", "regression"],
+      "checks": {
+        "has_tool_prefix": "mcp__browser-use__",
+        "min_tool_calls_by_name": {
+          "navigate": 2,
+          "screenshot": 2,
+          "close_session": 2
+        },
+        "response_contains_any": ["session_id", "session"],
+        "min_tool_calls": 6
+      }
+    }
+  ]
+}
