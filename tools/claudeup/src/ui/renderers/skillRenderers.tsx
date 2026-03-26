@@ -62,19 +62,28 @@ const categoryRenderer: ItemRenderer<SkillCategoryItem> = {
 
 // ─── Skill renderer ───────────────────────────────────────────────────────────
 
+const MAX_SKILL_NAME_LEN = 35;
+
+function truncateName(name: string): string {
+  return name.length > MAX_SKILL_NAME_LEN
+    ? name.slice(0, MAX_SKILL_NAME_LEN - 1) + "\u2026"
+    : name;
+}
+
 const skillRenderer: ItemRenderer<SkillSkillItem> = {
   renderRow: ({ item, isSelected }) => {
     const { skill } = item;
     const hasUser = skill.installedScope === "user";
     const hasProject = skill.installedScope === "project";
     const starsStr = formatStars(skill.stars);
+    const displayName = truncateName(skill.name);
 
     return (
       <SelectableRow selected={isSelected} indent={1}>
         <ScopeSquares user={hasUser} project={hasProject} selected={isSelected} />
         <span> </span>
         <span fg={isSelected ? "white" : skill.installed ? "white" : "gray"}>
-          {skill.name}
+          {displayName}
         </span>
         {skill.hasUpdate ? <MetaText text=" ⬆" tone="warning" /> : null}
         {starsStr ? <MetaText text={`  ${starsStr}`} tone="warning" /> : null}

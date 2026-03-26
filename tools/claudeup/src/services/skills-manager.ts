@@ -271,27 +271,49 @@ export async function fetchAvailableSkills(
 	const popular = await fetchPopularSkills(30);
 	const popularSkills = popular.map((s) => markInstalled({ ...s, isRecommended: false }));
 
-	// 3. Enrich recommended skills with GitHub repo stars
-	//    Fetch stars for each unique repo (typically ~7 repos, parallel)
+	// 3. Enrich recommended skills with GitHub repo stars (cached to disk)
+	const starsCachePath = path.join(os.homedir(), ".claude", "skill-stars-cache.json");
+	let starsCache: Record<string, { stars: number; fetchedAt: string }> = {};
+	try { starsCache = await fs.readJson(starsCachePath); } catch { /* no cache yet */ }
+
 	const uniqueRepos = [...new Set(recommendedSkills.map((s) => s.source.repo))];
 	const repoStars = new Map<string, number>();
-	try {
-		const starResults = await Promise.allSettled(
-			uniqueRepos.map(async (repo) => {
-				const res = await fetch(`https://api.github.com/repos/${repo}`, {
-					headers: { Accept: "application/vnd.github+json" },
-					signal: AbortSignal.timeout(5000),
-				});
-				if (!res.ok) return;
+	const cacheMaxAge = 24 * 60 * 60 * 1000; // 24 hours
+	let cacheUpdated = false;
+
+	for (const repo of uniqueRepos) {
+		const cached = starsCache[repo];
+		if (cached && Date.now() - new Date(cached.fetchedAt).getTime() < cacheMaxAge) {
+			repoStars.set(repo, cached.stars);
+			continue;
+		}
+		// Try fetching from GitHub (may be rate limited)
+		try {
+			const res = await fetch(`https://api.github.com/repos/${repo}`, {
+				headers: { Accept: "application/vnd.github+json" },
+				signal: AbortSignal.timeout(5000),
+			});
+			if (res.ok) {
 				const data = (await res.json()) as { stargazers_count?: number };
-				if (data.stargazers_count) repoStars.set(repo, data.stargazers_count);
-			}),
-		);
-	} catch {
-		// Non-fatal — stars are cosmetic
+				if (data.stargazers_count) {
+					repoStars.set(repo, data.stargazers_count);
+					starsCache[repo] = { stars: data.stargazers_count, fetchedAt: new Date().toISOString() };
+					cacheUpdated = true;
+				}
+			} else if (cached) {
+				// Rate limited but have stale cache — use it
+				repoStars.set(repo, cached.stars);
+			}
+		} catch {
+			if (cached) repoStars.set(repo, cached.stars);
+		}
 	}
+	if (cacheUpdated) {
+		try { await fs.writeJson(starsCachePath, starsCache); } catch { /* ignore */ }
+	}
+
 	for (const rec of recommendedSkills) {
-		rec.stars = repoStars.get(rec.source.repo) || undefined;
+		rec.stars = repoStars.get(rec.source.repo) || rec.stars || undefined;
 	}
 
 	// 4. Combine: recommended first, then popular (dedup by name)

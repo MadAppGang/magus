@@ -161,7 +161,7 @@ export function SkillsScreen() {
         installedScope: isProj ? "project" : isUser ? "user" : null,
         hasUpdate: false,
         isRecommended: true,
-        stars: undefined,
+        stars: r.stars,
       };
     });
   }, [installedFromDisk]);
@@ -173,7 +173,9 @@ export function SkillsScreen() {
       const match = fetched.find(
         (f) => f.source.repo === staticSkill.source.repo && f.name === staticSkill.name,
       );
-      return match || staticSkill;
+      if (!match) return staticSkill;
+      // Merge: prefer fetched data but keep static stars as fallback
+      return { ...staticSkill, ...match, stars: match.stars || staticSkill.stars };
     });
   }, [staticRecommended, skillsState.skills]);
 
