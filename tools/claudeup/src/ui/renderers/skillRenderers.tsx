@@ -138,46 +138,48 @@ const skillRenderer: ItemRenderer<SkillSkillItem> = {
           </text>
         </DetailSection>
 
-        {skill.installed && skill.installedScope && (
-          <DetailSection>
-            <text>{"─".repeat(24)}</text>
-            <ScopeDetail
-              scopes={{
-                user: skill.installedScope === "user",
-                project: skill.installedScope === "project",
-              }}
-              paths={{
-                user: "~/.claude/skills/",
-                project: ".claude/skills/",
-              }}
-            />
-          </DetailSection>
-        )}
+        <DetailSection>
+          <text>{"─".repeat(24)}</text>
+          <text><strong>Scopes:</strong></text>
+          <box marginTop={1} flexDirection="column">
+            <text>
+              <span bg="cyan" fg="black"> u </span>
+              <span fg={skill.installedScope === "user" ? "cyan" : "gray"}>
+                {skill.installedScope === "user" ? " ● " : " ○ "}
+              </span>
+              <span fg="cyan">User</span>
+              <span fg="gray"> ~/.claude/skills/</span>
+            </text>
+            <text>
+              <span bg="green" fg="black"> p </span>
+              <span fg={skill.installedScope === "project" ? "green" : "gray"}>
+                {skill.installedScope === "project" ? " ● " : " ○ "}
+              </span>
+              <span fg="green">Project</span>
+              <span fg="gray"> .claude/skills/</span>
+            </text>
+          </box>
+        </DetailSection>
 
         {skill.hasUpdate && (
           <box marginTop={1}>
-            <text bg="yellow" fg="black">
-              {" "}
-              UPDATE AVAILABLE{" "}
-            </text>
+            <text bg="yellow" fg="black"> UPDATE AVAILABLE </text>
           </box>
         )}
 
-        <ActionHints
-          hints={[
-            {
-              key: "u",
-              label: skill.installedScope === "user" ? "Uninstall from user" : "Install to user",
-              tone: skill.installedScope === "user" ? "danger" : "primary",
-            },
-            {
-              key: "p",
-              label: skill.installedScope === "project" ? "Uninstall from project" : "Install to project",
-              tone: skill.installedScope === "project" ? "danger" : "primary",
-            },
-            { key: "o", label: "Open in browser" },
-          ]}
-        />
+        <box marginTop={1}>
+          <text fg="gray">
+            {skill.installed
+              ? "Press u/p to toggle scope"
+              : "Press u/p to install"}
+          </text>
+        </box>
+        <box>
+          <text>
+            <span bg="#555555" fg="white"> o </span>
+            <span fg="gray"> Open in browser</span>
+          </text>
+        </box>
       </box>
     );
   },
