@@ -1,0 +1,205 @@
+export interface PredefinedProfile {
+	id: string;
+	name: string;
+	description: string;
+	icon: string; // emoji or symbol
+	magusPlugins: string[];
+	anthropicPlugins: string[];
+	skills: string[];
+	settings: Record<string, unknown>;
+}
+
+export const PREDEFINED_PROFILES: PredefinedProfile[] = [
+	{
+		id: "frontend-pro",
+		name: "Frontend Pro",
+		description: "UI implementation, design fidelity, browser-driven workflows",
+		icon: "🎨",
+		magusPlugins: [
+			"dev",
+			"code-analysis",
+			"terminal",
+			"statusline",
+			"designer",
+			"browser-use",
+			"multimodel",
+		],
+		anthropicPlugins: [
+			"feature-dev",
+			"frontend-design",
+			"code-simplifier",
+			"explanatory-output-style",
+			"typescript-lsp",
+		],
+		skills: [
+			"React Best Practices",
+			"Web Design Guidelines",
+			"shadcn/ui",
+			"UI/UX Pro Max",
+			"Find Skills",
+		],
+		settings: {
+			effortLevel: "high",
+			alwaysThinkingEnabled: true,
+			model: "claude-sonnet-4-6",
+			outputStyle: "explanatory",
+			env: {
+				CLAUDE_CODE_ENABLE_TASKS: "true",
+				CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "true",
+			},
+			includeGitInstructions: true,
+			respectGitignore: true,
+			enableAllProjectMcpServers: true,
+		},
+	},
+	{
+		id: "backend-forge",
+		name: "Backend Forge",
+		description: "API development, debugging, code quality, data workflows",
+		icon: "⚙️",
+		magusPlugins: [
+			"dev",
+			"code-analysis",
+			"terminal",
+			"statusline",
+			"conductor",
+			"multimodel",
+			"gtd",
+		],
+		anthropicPlugins: [
+			"feature-dev",
+			"code-review",
+			"code-simplifier",
+			"commit-commands",
+			"security-guidance",
+			"agent-sdk-dev",
+		],
+		skills: ["Systematic Debugging", "Neon Postgres", "Find Skills"],
+		settings: {
+			effortLevel: "high",
+			alwaysThinkingEnabled: true,
+			model: "claude-sonnet-4-6",
+			outputStyle: "concise",
+			env: {
+				CLAUDE_CODE_ENABLE_TASKS: "true",
+				CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "true",
+			},
+			includeGitInstructions: true,
+			respectGitignore: true,
+			enableAllProjectMcpServers: true,
+		},
+	},
+	{
+		id: "infra-ops",
+		name: "Infra Ops",
+		description:
+			"Infrastructure, operational debugging, automation, terminal-first",
+		icon: "🔧",
+		magusPlugins: [
+			"dev",
+			"code-analysis",
+			"terminal",
+			"statusline",
+			"multimodel",
+			"gtd",
+			"browser-use",
+		],
+		anthropicPlugins: [
+			"claude-code-setup",
+			"hookify",
+			"code-review",
+			"commit-commands",
+			"security-guidance",
+			"plugin-dev",
+		],
+		skills: ["Systematic Debugging", "Find Skills"],
+		settings: {
+			effortLevel: "high",
+			alwaysThinkingEnabled: true,
+			model: "claude-opus-4-6",
+			outputStyle: "concise",
+			env: {
+				CLAUDE_CODE_ENABLE_TASKS: "true",
+				CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "true",
+			},
+			includeGitInstructions: true,
+			respectGitignore: true,
+			enableAllProjectMcpServers: true,
+		},
+	},
+	{
+		id: "growth-marketer",
+		name: "Growth Marketer",
+		description:
+			"SEO, website audits, content production, marketing automation",
+		icon: "📈",
+		magusPlugins: [
+			"dev",
+			"code-analysis",
+			"terminal",
+			"statusline",
+			"seo",
+			"browser-use",
+			"nanobanana",
+			"video-editing",
+		],
+		anthropicPlugins: [
+			"explanatory-output-style",
+			"frontend-design",
+			"playground",
+		],
+		skills: [
+			"Audit Website",
+			"Web Design Guidelines",
+			"ElevenLabs TTS",
+			"Find Skills",
+		],
+		settings: {
+			effortLevel: "medium",
+			alwaysThinkingEnabled: false,
+			model: "claude-sonnet-4-6",
+			outputStyle: "explanatory",
+			env: { CLAUDE_CODE_ENABLE_TASKS: "true" },
+			respectGitignore: true,
+			enableAllProjectMcpServers: true,
+		},
+	},
+	{
+		id: "team-lead",
+		name: "Team Lead",
+		description:
+			"Planning, code review, coordination, and broad repo visibility",
+		icon: "👔",
+		magusPlugins: [
+			"dev",
+			"code-analysis",
+			"terminal",
+			"statusline",
+			"multimodel",
+			"gtd",
+			"agentdev",
+		],
+		anthropicPlugins: [
+			"code-review",
+			"pr-review-toolkit",
+			"claude-md-management",
+			"commit-commands",
+			"explanatory-output-style",
+			"skill-creator",
+		],
+		skills: ["Systematic Debugging", "Find Skills", "Audit Website"],
+		settings: {
+			effortLevel: "medium",
+			alwaysThinkingEnabled: true,
+			model: "claude-sonnet-4-6",
+			outputStyle: "explanatory",
+			env: {
+				CLAUDE_CODE_ENABLE_TASKS: "true",
+				CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "true",
+			},
+			includeGitInstructions: true,
+			respectGitignore: true,
+			enableAllProjectMcpServers: true,
+		},
+	},
+];

@@ -13,11 +13,39 @@ import {
 	importProfileFromJson,
 } from "../../services/profiles.js";
 import {
+	readSettings,
+	writeSettings,
+} from "../../services/claude-settings.js";
+import {
 	writeClipboard,
 	readClipboard,
 	ClipboardUnavailableError,
 } from "../../utils/clipboard.js";
 import type { ProfileEntry } from "../../types/index.js";
+import {
+	PREDEFINED_PROFILES,
+	type PredefinedProfile,
+} from "../../data/predefined-profiles.js";
+
+// ─── List item discriminated union ───────────────────────────────────────────
+
+type ListItem =
+	| { kind: "predefined"; profile: PredefinedProfile }
+	| { kind: "saved"; entry: ProfileEntry };
+
+function buildListItems(profileList: ProfileEntry[]): ListItem[] {
+	const predefined: ListItem[] = PREDEFINED_PROFILES.map((p) => ({
+		kind: "predefined" as const,
+		profile: p,
+	}));
+	const saved: ListItem[] = profileList.map((e) => ({
+		kind: "saved" as const,
+		entry: e,
+	}));
+	return [...predefined, ...saved];
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export function ProfilesScreen() {
 	const { state, dispatch } = useApp();
@@ -48,8 +76,8 @@ export function ProfilesScreen() {
 			? profilesState.profiles.data
 			: [];
 
-	const selectedProfile: ProfileEntry | undefined =
-		profileList[profilesState.selectedIndex];
+	const allItems = buildListItems(profileList);
+	const selectedItem: ListItem | undefined = allItems[profilesState.selectedIndex];
 
 	// Keyboard handling
 	useKeyboard((event) => {
@@ -60,25 +88,100 @@ export function ProfilesScreen() {
 			dispatch({ type: "PROFILES_SELECT", index: newIndex });
 		} else if (event.name === "down" || event.name === "j") {
 			const newIndex = Math.min(
-				Math.max(0, profileList.length - 1),
+				Math.max(0, allItems.length - 1),
 				profilesState.selectedIndex + 1,
 			);
 			dispatch({ type: "PROFILES_SELECT", index: newIndex });
 		} else if (event.name === "enter" || event.name === "a") {
-			handleApply();
+			if (selectedItem?.kind === "predefined") {
+				void handleApplyPredefined(selectedItem.profile);
+			} else {
+				void handleApply();
+			}
 		} else if (event.name === "r") {
-			handleRename();
+			if (selectedItem?.kind === "saved") void handleRename();
 		} else if (event.name === "d") {
-			handleDelete();
+			if (selectedItem?.kind === "saved") void handleDelete();
 		} else if (event.name === "c") {
-			handleCopy();
+			if (selectedItem?.kind === "saved") void handleCopy();
 		} else if (event.name === "i") {
-			handleImport();
+			void handleImport();
 		}
 	});
 
+	// ─── Predefined profile apply ─────────────────────────────────────────────
+
+	const handleApplyPredefined = async (profile: PredefinedProfile) => {
+		const allPlugins = [
+			...profile.magusPlugins.map((p) => `${p}@magus`),
+			...profile.anthropicPlugins.map(
+				(p) => `${p}@claude-plugins-official`,
+			),
+		];
+		const settingsCount = Object.keys(profile.settings).length;
+
+		const confirmed = await modal.confirm(
+			`Apply ${profile.name}?`,
+			`This will add ${allPlugins.length} plugins, ${profile.skills.length} skills, and update ${settingsCount} settings.\n\nSettings are merged additively — existing values are kept.`,
+		);
+		if (!confirmed) return;
+
+		modal.loading(`Applying "${profile.name}"...`);
+		try {
+			const settings = await readSettings(state.projectPath);
+
+			// Merge plugins (additive only)
+			settings.enabledPlugins = settings.enabledPlugins ?? {};
+			for (const plugin of allPlugins) {
+				if (!settings.enabledPlugins[plugin]) {
+					settings.enabledPlugins[plugin] = true;
+				}
+			}
+
+			// Merge top-level settings (additive — only set if not already set)
+			for (const [key, value] of Object.entries(profile.settings)) {
+				if (key === "env") {
+					const envMap = value as Record<string, string>;
+					const existing = settings as Record<string, unknown>;
+					const existingEnv =
+						(existing["env"] as Record<string, string> | undefined) ?? {};
+					for (const [envKey, envVal] of Object.entries(envMap)) {
+						if (!existingEnv[envKey]) {
+							existingEnv[envKey] = envVal;
+						}
+					}
+					(settings as Record<string, unknown>)["env"] = existingEnv;
+				} else {
+					const settingsMap = settings as Record<string, unknown>;
+					if (settingsMap[key] === undefined) {
+						settingsMap[key] = value;
+					}
+				}
+			}
+
+			await writeSettings(settings, state.projectPath);
+			modal.hideModal();
+			dispatch({ type: "DATA_REFRESH_COMPLETE" });
+			await modal.message(
+				"Applied",
+				`Profile "${profile.name}" merged into project settings.`,
+				"success",
+			);
+		} catch (error) {
+			modal.hideModal();
+			await modal.message(
+				"Error",
+				`Failed to apply profile: ${error}`,
+				"error",
+			);
+		}
+	};
+
+	// ─── Saved profile actions ────────────────────────────────────────────────
+
 	const handleApply = async () => {
-		if (!selectedProfile) return;
+		if (selectedItem?.kind !== "saved") return;
+		const selectedProfile = selectedItem.entry;
 
 		const scopeChoice = await modal.select(
 			"Apply Profile",
@@ -138,7 +241,8 @@ export function ProfilesScreen() {
 	};
 
 	const handleRename = async () => {
-		if (!selectedProfile) return;
+		if (selectedItem?.kind !== "saved") return;
+		const selectedProfile = selectedItem.entry;
 
 		const newName = await modal.input(
 			"Rename Profile",
@@ -169,7 +273,8 @@ export function ProfilesScreen() {
 	};
 
 	const handleDelete = async () => {
-		if (!selectedProfile) return;
+		if (selectedItem?.kind !== "saved") return;
+		const selectedProfile = selectedItem.entry;
 
 		const confirmed = await modal.confirm(
 			`Delete "${selectedProfile.name}"?`,
@@ -188,7 +293,7 @@ export function ProfilesScreen() {
 			// Adjust selection if we deleted the last item
 			const newIndex = Math.max(
 				0,
-				Math.min(profilesState.selectedIndex, profileList.length - 2),
+				Math.min(profilesState.selectedIndex, allItems.length - 2),
 			);
 			dispatch({ type: "PROFILES_SELECT", index: newIndex });
 			await fetchData();
@@ -200,7 +305,8 @@ export function ProfilesScreen() {
 	};
 
 	const handleCopy = async () => {
-		if (!selectedProfile) return;
+		if (selectedItem?.kind !== "saved") return;
+		const selectedProfile = selectedItem.entry;
 
 		modal.loading("Exporting...");
 		try {
@@ -284,6 +390,8 @@ export function ProfilesScreen() {
 		}
 	};
 
+	// ─── Rendering helpers ────────────────────────────────────────────────────
+
 	const formatDate = (iso: string): string => {
 		try {
 			const d = new Date(iso);
@@ -297,11 +405,41 @@ export function ProfilesScreen() {
 		}
 	};
 
-	const renderListItem = (
-		entry: ProfileEntry,
-		_idx: number,
-		isSelected: boolean,
-	) => {
+	const renderListItem = (item: ListItem, _idx: number, isSelected: boolean) => {
+		if (item.kind === "predefined") {
+			const { profile } = item;
+			const pluginCount =
+				profile.magusPlugins.length + profile.anthropicPlugins.length;
+			const skillCount = profile.skills.length;
+
+			if (isSelected) {
+				return (
+					<text bg="blue" fg="white">
+						{" "}
+						{profile.icon} {profile.name} — {pluginCount} plugins · {skillCount}{" "}
+						skill{skillCount !== 1 ? "s" : ""}{" "}
+					</text>
+				);
+			}
+
+			return (
+				<text>
+					<span fg="blue">[preset]</span>
+					<span> </span>
+					<span fg="white">
+						{profile.icon} {profile.name}
+					</span>
+					<span fg="gray">
+						{" "}
+						— {pluginCount} plugins · {skillCount} skill
+						{skillCount !== 1 ? "s" : ""}
+					</span>
+				</text>
+			);
+		}
+
+		// Saved profile
+		const { entry } = item;
 		const pluginCount = Object.keys(entry.plugins).length;
 		const dateStr = formatDate(entry.updatedAt);
 		const scopeColor = entry.scope === "user" ? "cyan" : "green";
@@ -341,24 +479,93 @@ export function ProfilesScreen() {
 			);
 		}
 
-		if (profileList.length === 0) {
-			return (
-				<box flexDirection="column">
-					<text fg="gray">No profiles yet.</text>
-					<box marginTop={1}>
-						<text fg="green">
-							Press 's' in the Plugins screen to save the current selection as a
-							profile.
-						</text>
-					</box>
-				</box>
-			);
-		}
-
-		if (!selectedProfile) {
+		if (!selectedItem) {
 			return <text fg="gray">Select a profile to see details</text>;
 		}
 
+		if (selectedItem.kind === "predefined") {
+			return renderPredefinedDetail(selectedItem.profile);
+		}
+
+		return renderSavedDetail(selectedItem.entry);
+	};
+
+	const renderPredefinedDetail = (profile: PredefinedProfile) => {
+		const allPlugins = [
+			...profile.magusPlugins.map((p) => `${p}@magus`),
+			...profile.anthropicPlugins.map((p) => `${p}@claude-plugins-official`),
+		];
+
+		return (
+			<box flexDirection="column">
+				<text fg="blue">
+					<strong>
+						{profile.icon} {profile.name}
+					</strong>
+				</text>
+				<box marginTop={1}>
+					<text fg="gray">{profile.description}</text>
+				</box>
+				<box marginTop={1} flexDirection="column">
+					<text fg="gray">
+						Magus plugins ({profile.magusPlugins.length}):
+					</text>
+					{profile.magusPlugins.map((p) => (
+						<box key={p}>
+							<text fg="cyan"> {p}@magus</text>
+						</box>
+					))}
+				</box>
+				<box marginTop={1} flexDirection="column">
+					<text fg="gray">
+						Anthropic plugins ({profile.anthropicPlugins.length}):
+					</text>
+					{profile.anthropicPlugins.map((p) => (
+						<box key={p}>
+							<text fg="yellow"> {p}@claude-plugins-official</text>
+						</box>
+					))}
+				</box>
+				<box marginTop={1} flexDirection="column">
+					<text fg="gray">Skills ({profile.skills.length}):</text>
+					{profile.skills.map((s) => (
+						<box key={s}>
+							<text fg="white"> {s}</text>
+						</box>
+					))}
+				</box>
+				<box marginTop={1} flexDirection="column">
+					<text fg="gray">
+						Settings ({Object.keys(profile.settings).length}):
+					</text>
+					{Object.entries(profile.settings)
+						.filter(([k]) => k !== "env")
+						.map(([k, v]) => (
+							<box key={k}>
+								<text fg="white">
+									{" "}
+									{k}: {String(v)}
+								</text>
+							</box>
+						))}
+				</box>
+				<box marginTop={2} flexDirection="column">
+					<box>
+						<text bg="blue" fg="white">
+							{" "}
+							Enter/a{" "}
+						</text>
+						<text fg="gray">
+							{" "}
+							Apply (merges {allPlugins.length} plugins into project settings)
+						</text>
+					</box>
+				</box>
+			</box>
+		);
+	};
+
+	const renderSavedDetail = (selectedProfile: ProfileEntry) => {
 		const plugins = Object.keys(selectedProfile.plugins);
 		const scopeColor = selectedProfile.scope === "user" ? "cyan" : "green";
 		const scopeLabel =
@@ -444,12 +651,13 @@ export function ProfilesScreen() {
 
 	const statusContent = (
 		<text>
-			<span fg="gray">Profiles: </span>
+			<span fg="blue">{PREDEFINED_PROFILES.length} presets</span>
+			<span fg="gray"> + </span>
 			<span fg="cyan">{userCount} user</span>
 			<span fg="gray"> + </span>
 			<span fg="green">{projCount} project</span>
 			<span fg="gray"> = </span>
-			<span fg="white">{profileCount} total</span>
+			<span fg="white">{PREDEFINED_PROFILES.length + profileCount} total</span>
 		</text>
 	);
 
@@ -460,24 +668,12 @@ export function ProfilesScreen() {
 			statusLine={statusContent}
 			footerHints="↑↓:nav │ Enter/a:apply │ r:rename │ d:delete │ c:copy │ i:import"
 			listPanel={
-				profileList.length === 0 &&
-				profilesState.profiles.status !== "loading" ? (
-					<box flexDirection="column">
-						<text fg="gray">No profiles yet.</text>
-						<box marginTop={1}>
-							<text fg="green">
-								Go to Plugins (1) and press 's' to save a profile.
-							</text>
-						</box>
-					</box>
-				) : (
-					<ScrollableList
-						items={profileList}
-						selectedIndex={profilesState.selectedIndex}
-						renderItem={renderListItem}
-						maxHeight={dimensions.listPanelHeight}
-					/>
-				)
+				<ScrollableList
+					items={allItems}
+					selectedIndex={profilesState.selectedIndex}
+					renderItem={renderListItem}
+					maxHeight={dimensions.listPanelHeight}
+				/>
 			}
 			detailPanel={renderDetail()}
 		/>
