@@ -191,7 +191,8 @@ function mapSkillsMPResult(raw: SkillsMPRawSkill): SkillEntry {
 async function searchSkillsMP(
   query: string,
   page = 1,
-  limit = 20
+  limit = 20,
+  sortBy = "stars"
 ): Promise<{ skills: SkillEntry[]; total: number }> {
   const apiKey = getSkillsMPKey();
   if (!apiKey) return { skills: [], total: 0 };
@@ -200,6 +201,7 @@ async function searchSkillsMP(
     q: query,
     page: String(page),
     limit: String(limit),
+    sortBy,
   });
 
   const res = await fetch(
@@ -344,12 +346,12 @@ export const skills = onRequest(
 
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 20;
-      const wordCount = q.trim().split(/\s+/).length;
+      const sortBy = (req.query.sortBy as string) || "stars";
 
       // Always run both keyword and AI search in parallel for best coverage
       // Keyword search is exact; AI search handles partial/fuzzy matches
       const promises: Promise<{ skills: SkillEntry[]; total: number } | SkillEntry[]>[] = [
-        searchSkillsMP(q, page, limit),
+        searchSkillsMP(q, page, limit, sortBy),
         aiSearchSkillsMP(q),
       ];
       const sources: string[] = ["skillsmp", "skillsmp-ai"];
