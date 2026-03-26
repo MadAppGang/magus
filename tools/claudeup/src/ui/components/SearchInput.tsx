@@ -1,5 +1,5 @@
-import React from 'react';
-import { useKeyboardHandler } from '../hooks/useKeyboardHandler.js';
+import React from "react";
+import { useKeyboardHandler } from "../hooks/useKeyboardHandler.js";
 
 interface SearchInputProps {
 	/** Current search value */
@@ -19,7 +19,7 @@ interface SearchInputProps {
 export function SearchInput({
 	value,
 	onChange,
-	placeholder = 'Search...',
+	placeholder = "Search...",
 	isActive,
 	onExit,
 	onSubmit,

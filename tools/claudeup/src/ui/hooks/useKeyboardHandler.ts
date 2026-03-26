@@ -1,4 +1,4 @@
-import { useKeyboard as useOpenTUIKeyboard } from '@opentui/react';
+import { useKeyboard as useOpenTUIKeyboard } from "@opentui/react";
 
 /**
  * Wrapper hook for OpenTUI's useKeyboard that provides an Ink-like API
@@ -45,18 +45,18 @@ export function useKeyboardHandler(handler: KeyHandler): void {
 			ctrl: event.ctrl || false,
 			shift: event.shift || false,
 			meta: event.meta || false,
-			return: event.name === 'enter' || event.name === 'return',
-			upArrow: event.name === 'up',
-			downArrow: event.name === 'down',
-			leftArrow: event.name === 'left',
-			rightArrow: event.name === 'right',
-			escape: event.name === 'escape',
-			tab: event.name === 'tab',
+			return: event.name === "enter" || event.name === "return",
+			upArrow: event.name === "up",
+			downArrow: event.name === "down",
+			leftArrow: event.name === "left",
+			rightArrow: event.name === "right",
+			escape: event.name === "escape",
+			tab: event.name === "tab",
 		};
 
 		// For printable characters, pass the character as input
 		// For special keys, pass empty string
-		const input = event.name.length === 1 ? event.name : '';
+		const input = event.name.length === 1 ? event.name : "";
 
 		handler(input, key);
 	});

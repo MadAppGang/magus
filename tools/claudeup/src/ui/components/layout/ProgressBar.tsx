@@ -9,11 +9,7 @@ interface ProgressBarProps {
 	total?: number;
 }
 
-export function ProgressBar({
-	message,
-	current,
-	total,
-}: ProgressBarProps) {
+export function ProgressBar({ message, current, total }: ProgressBarProps) {
 	const isDeterminate =
 		current !== undefined && total !== undefined && total > 0;
 

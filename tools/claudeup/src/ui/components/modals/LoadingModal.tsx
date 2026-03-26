@@ -7,9 +7,7 @@ interface LoadingModalProps {
 
 const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
-export function LoadingModal({
-	message,
-}: LoadingModalProps) {
+export function LoadingModal({ message }: LoadingModalProps) {
 	const [frame, setFrame] = useState(0);
 
 	useEffect(() => {

@@ -19,8 +19,6 @@ export interface KeyEvent {
  * - Arrow keys: "up", "down", "left", "right"
  * - Special: "enter", "escape", "tab", "backspace", "delete"
  */
-export function useKeyboard(
-	handler: (event: KeyEvent) => void,
-): void {
+export function useKeyboard(handler: (event: KeyEvent) => void): void {
 	useOpenTUIKeyboard(handler);
 }

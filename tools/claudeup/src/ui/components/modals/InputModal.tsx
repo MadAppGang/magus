@@ -52,12 +52,7 @@ export function InputModal({
 				<text>{label}</text>
 			</box>
 
-			<input
-				value={value}
-				onChange={setValue}
-				focused
-				width={54}
-			/>
+			<input value={value} onChange={setValue} focused width={54} />
 
 			<box marginTop={1}>
 				<text fg="#666666">Enter to confirm • Escape to cancel</text>

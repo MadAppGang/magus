@@ -3,11 +3,9 @@ import { useApp, useModal, useProgress } from "../state/AppContext.js";
 import { useDimensions } from "../state/DimensionsContext.js";
 import { useKeyboard } from "../hooks/useKeyboard.js";
 import { ScreenLayout } from "../components/layout/index.js";
-import { CategoryHeader } from "../components/CategoryHeader.js";
 import { ScrollableList } from "../components/ScrollableList.js";
 import { EmptyFilterState } from "../components/EmptyFilterState.js";
-import { scopeIndicatorText } from "../components/ScopeIndicator.js";
-import { fuzzyFilter, highlightMatches } from "../../utils/fuzzy-search.js";
+import { fuzzyFilter } from "../../utils/fuzzy-search.js";
 import { getAllMarketplaces } from "../../data/marketplaces.js";
 import {
 	getAvailablePlugins,
@@ -40,25 +38,11 @@ import {
 	checkMissingDeps,
 	installPluginDeps,
 } from "../../services/plugin-setup.js";
-import type { Marketplace } from "../../types/index.js";
-
-// Virtual marketplace name for the community sub-section of claude-plugins-official
-const COMMUNITY_VIRTUAL_MARKETPLACE = "claude-plugins-official:community";
-// The marketplace that gets split into Anthropic Official + Community sections
-const SPLIT_MARKETPLACE = "claude-plugins-official";
-
-interface ListItem {
-	id: string;
-	type: "category" | "plugin";
-	label: string;
-	marketplace?: Marketplace;
-	marketplaceEnabled?: boolean;
-	plugin?: PluginInfo;
-	pluginCount?: number;
-	isExpanded?: boolean;
-	/** True for the virtual Community sub-section derived from claude-plugins-official */
-	isCommunitySection?: boolean;
-}
+import {
+	buildPluginBrowserItems,
+	type PluginBrowserItem,
+} from "../adapters/pluginsAdapter.js";
+import { renderPluginRow, renderPluginDetail } from "../renderers/pluginRenderers.js";
 
 export function PluginsScreen() {
 	const { state, dispatch } = useApp();
@@ -78,10 +62,7 @@ export function PluginsScreen() {
 		try {
 			const localMarketplaces = await getLocalMarketplacesInfo();
 			const allMarketplaces = getAllMarketplaces(localMarketplaces);
-
-			// Always use getAvailablePlugins which fetches all scope data
 			const pluginData = await getAvailablePlugins(state.projectPath);
-
 			dispatch({
 				type: "PLUGINS_DATA_SUCCESS",
 				marketplaces: allMarketplaces,
@@ -101,132 +82,18 @@ export function PluginsScreen() {
 	}, [fetchData, state.dataRefreshVersion]);
 
 	// Build list items (categories + plugins)
-	const allItems = useMemo((): ListItem[] => {
+	const allItems = useMemo((): PluginBrowserItem[] => {
 		if (
 			pluginsState.marketplaces.status !== "success" ||
 			pluginsState.plugins.status !== "success"
 		) {
 			return [];
 		}
-
-		const marketplaces = pluginsState.marketplaces.data;
-		const plugins = pluginsState.plugins.data;
-		const collapsed = pluginsState.collapsedMarketplaces;
-
-		const pluginsByMarketplace = new Map<string, PluginInfo[]>();
-		for (const plugin of plugins) {
-			const existing = pluginsByMarketplace.get(plugin.marketplace) || [];
-			existing.push(plugin);
-			pluginsByMarketplace.set(plugin.marketplace, existing);
-		}
-
-		// Sort marketplaces: deprecated ones go to the bottom
-		const sortedMarketplaces = [...marketplaces].sort((a, b) => {
-			const aDeprecated = a.name === "claude-code-plugins" ? 1 : 0;
-			const bDeprecated = b.name === "claude-code-plugins" ? 1 : 0;
-			return aDeprecated - bDeprecated;
+		return buildPluginBrowserItems({
+			marketplaces: pluginsState.marketplaces.data,
+			plugins: pluginsState.plugins.data,
+			collapsedMarketplaces: pluginsState.collapsedMarketplaces,
 		});
-
-		const items: ListItem[] = [];
-
-		for (const marketplace of sortedMarketplaces) {
-			const marketplacePlugins =
-				pluginsByMarketplace.get(marketplace.name) || [];
-			const isCollapsed = collapsed.has(marketplace.name);
-			const isEnabled = marketplacePlugins.length > 0 || marketplace.official;
-			const hasPlugins = marketplacePlugins.length > 0;
-
-			// Special handling: split claude-plugins-official into two sub-sections
-			if (marketplace.name === SPLIT_MARKETPLACE && hasPlugins) {
-				const anthropicPlugins = marketplacePlugins.filter(
-					(p) => p.author?.name?.toLowerCase() === "anthropic",
-				);
-				const communityPlugins = marketplacePlugins.filter(
-					(p) => p.author?.name?.toLowerCase() !== "anthropic",
-				);
-
-				// Sub-section 1: Anthropic Official (plugins by Anthropic)
-				const anthropicCollapsed = collapsed.has(marketplace.name);
-				const anthropicHasPlugins = anthropicPlugins.length > 0;
-				items.push({
-					id: `mp:${marketplace.name}`,
-					type: "category",
-					label: marketplace.displayName,
-					marketplace,
-					marketplaceEnabled: isEnabled,
-					pluginCount: anthropicPlugins.length,
-					isExpanded: !anthropicCollapsed && anthropicHasPlugins,
-				});
-				if (isEnabled && anthropicHasPlugins && !anthropicCollapsed) {
-					for (const plugin of anthropicPlugins) {
-						items.push({
-							id: `pl:${plugin.id}`,
-							type: "plugin",
-							label: plugin.name,
-							plugin,
-						});
-					}
-				}
-
-				// Sub-section 2: Community (third-party plugins in same marketplace)
-				if (communityPlugins.length > 0) {
-					const communityVirtualMp: Marketplace = {
-						name: COMMUNITY_VIRTUAL_MARKETPLACE,
-						displayName: "Anthropic Official — 3rd Party",
-						source: marketplace.source,
-						description: "Third-party plugins in the Anthropic Official marketplace",
-					};
-					const communityCollapsed = collapsed.has(COMMUNITY_VIRTUAL_MARKETPLACE);
-					items.push({
-						id: `mp:${COMMUNITY_VIRTUAL_MARKETPLACE}`,
-						type: "category",
-						label: "Anthropic Official — 3rd Party",
-						marketplace: communityVirtualMp,
-						marketplaceEnabled: true,
-						pluginCount: communityPlugins.length,
-						isExpanded: !communityCollapsed,
-						isCommunitySection: true,
-					});
-					if (!communityCollapsed) {
-						for (const plugin of communityPlugins) {
-							items.push({
-								id: `pl:${plugin.id}`,
-								type: "plugin",
-								label: plugin.name,
-								plugin,
-							});
-						}
-					}
-				}
-
-				continue;
-			}
-
-			// Category header (marketplace)
-			items.push({
-				id: `mp:${marketplace.name}`,
-				type: "category",
-				label: marketplace.displayName,
-				marketplace,
-				marketplaceEnabled: isEnabled,
-				pluginCount: marketplacePlugins.length,
-				isExpanded: !isCollapsed && hasPlugins,
-			});
-
-			// Plugins under this marketplace (if expanded)
-			if (isEnabled && hasPlugins && !isCollapsed) {
-				for (const plugin of marketplacePlugins) {
-					items.push({
-						id: `pl:${plugin.id}`,
-						type: "plugin",
-						label: plugin.name,
-						plugin,
-					});
-				}
-			}
-		}
-
-		return items;
 	}, [
 		pluginsState.marketplaces,
 		pluginsState.plugins,
@@ -239,50 +106,43 @@ export function PluginsScreen() {
 		if (!query) return allItems;
 
 		// Only search plugins, not categories
-		const pluginItems = allItems.filter((item) => item.type === "plugin");
+		const pluginItems = allItems.filter((item) => item.kind === "plugin");
 		const fuzzyResults = fuzzyFilter(pluginItems, query, (item) => item.label);
 
-		// Build a set of matched plugin item ids for O(1) lookup
 		const matchedPluginIds = new Set<string>();
 		for (const result of fuzzyResults) {
 			matchedPluginIds.add(result.item.id);
 		}
 
-		// Walk allItems sequentially: track the current category section.
-		// For each category, include it only if any plugin under it matched.
-		// We build a map from category item id -> whether any plugin below matched.
+		// Walk allItems sequentially: include a category only if any plugin below matched
 		const categoryHasMatch = new Map<string, boolean>();
 		let currentCategoryId: string | null = null;
 		for (const item of allItems) {
-			if (item.type === "category") {
+			if (item.kind === "category") {
 				currentCategoryId = item.id;
 				if (!categoryHasMatch.has(item.id)) {
 					categoryHasMatch.set(item.id, false);
 				}
-			} else if (item.type === "plugin" && currentCategoryId) {
+			} else if (item.kind === "plugin" && currentCategoryId) {
 				if (matchedPluginIds.has(item.id)) {
 					categoryHasMatch.set(currentCategoryId, true);
 				}
 			}
 		}
 
-		const result: ListItem[] = [];
+		const result: PluginBrowserItem[] = [];
 		let currentCatIncluded = false;
 		currentCategoryId = null;
 
 		for (const item of allItems) {
-			if (item.type === "category") {
+			if (item.kind === "category") {
 				currentCategoryId = item.id;
 				currentCatIncluded = categoryHasMatch.get(item.id) === true;
-				if (currentCatIncluded) {
-					result.push(item);
-				}
-			} else if (item.type === "plugin" && currentCatIncluded) {
+				if (currentCatIncluded) result.push(item);
+			} else if (item.kind === "plugin" && currentCatIncluded) {
 				if (matchedPluginIds.has(item.id)) {
 					const matched = fuzzyResults.find((r) => r.item.id === item.id);
-					result.push({ ...item, _matches: matched?.matches } as ListItem & {
-						_matches?: number[];
-					});
+					result.push({ ...item, matches: matched?.matches });
 				}
 			}
 		}
@@ -290,37 +150,28 @@ export function PluginsScreen() {
 		return result;
 	}, [allItems, pluginsState.searchQuery]);
 
-	// Only selectable items (plugins, not categories)
-	const selectableItems = useMemo(() => {
-		return filteredItems.filter(
-			(item) => item.type === "plugin" || item.type === "category",
-		);
-	}, [filteredItems]);
+	const selectableItems = useMemo(() => filteredItems, [filteredItems]);
 
-	// Keyboard handling — inline search with live filtering
+	// Keyboard handling
 	useKeyboard((event) => {
 		if (state.modal) return;
 
 		const hasQuery = pluginsState.searchQuery.length > 0;
 
-		// Escape: always clear search state fully
 		if (event.name === "escape") {
 			if (hasQuery || isSearchActive) {
 				dispatch({ type: "PLUGINS_SET_SEARCH", query: "" });
 				dispatch({ type: "SET_SEARCHING", isSearching: false });
 				dispatch({ type: "PLUGINS_SELECT", index: 0 });
 			}
-			// Don't return — let GlobalKeyHandler handle Escape too (for quit)
 			return;
 		}
 
-		// Backspace: remove last char from search query
 		if (event.name === "backspace" || event.name === "delete") {
 			if (hasQuery) {
 				const newQuery = pluginsState.searchQuery.slice(0, -1);
 				dispatch({ type: "PLUGINS_SET_SEARCH", query: newQuery });
 				dispatch({ type: "PLUGINS_SELECT", index: 0 });
-				// If query becomes empty, exit search mode
 				if (newQuery.length === 0) {
 					dispatch({ type: "SET_SEARCHING", isSearching: false });
 				}
@@ -328,54 +179,43 @@ export function PluginsScreen() {
 			return;
 		}
 
-		// Navigation — always works; exits search mode on navigate
 		if (event.name === "up" || event.name === "k") {
 			if (isSearchActive) dispatch({ type: "SET_SEARCHING", isSearching: false });
-			const newIndex = Math.max(0, pluginsState.selectedIndex - 1);
-			dispatch({ type: "PLUGINS_SELECT", index: newIndex });
+			dispatch({ type: "PLUGINS_SELECT", index: Math.max(0, pluginsState.selectedIndex - 1) });
 			return;
 		}
 		if (event.name === "down" || event.name === "j") {
 			if (isSearchActive) dispatch({ type: "SET_SEARCHING", isSearching: false });
-			const newIndex = Math.min(
-				selectableItems.length - 1,
-				pluginsState.selectedIndex + 1,
-			);
-			dispatch({ type: "PLUGINS_SELECT", index: newIndex });
+			dispatch({
+				type: "PLUGINS_SELECT",
+				index: Math.min(selectableItems.length - 1, pluginsState.selectedIndex + 1),
+			});
 			return;
 		}
 
-		// Enter — exit search mode (keep filter active) + select/install
-		if (event.name === "enter") {
+		if (event.name === "enter" || event.name === "return") {
 			if (isSearchActive) {
 				dispatch({ type: "SET_SEARCHING", isSearching: false });
-				// Keep the query — filter stays active, shortcuts resume
 				return;
 			}
 			handleSelect();
 			return;
 		}
 
-		// Collapse/expand marketplace — always works
 		if (
 			(event.name === "left" ||
 				event.name === "right" ||
 				event.name === "<" ||
 				event.name === ">") &&
-			selectableItems[pluginsState.selectedIndex]?.marketplace
+			selectableItems[pluginsState.selectedIndex]?.kind === "category"
 		) {
 			const item = selectableItems[pluginsState.selectedIndex];
-			if (item?.marketplace) {
-				dispatch({
-					type: "PLUGINS_TOGGLE_MARKETPLACE",
-					name: item.marketplace.name,
-				});
+			if (item?.kind === "category") {
+				dispatch({ type: "PLUGINS_TOGGLE_MARKETPLACE", name: item.marketplace.name });
 			}
 			return;
 		}
 
-		// When actively typing in search, letters go to the query
-		// After Enter (isSearchActive=false, hasQuery=true), shortcuts resume
 		if (isSearchActive) {
 			if (event.name.length === 1 && !event.ctrl && !event.meta && !/[0-9]/.test(event.name)) {
 				dispatch({
@@ -387,15 +227,11 @@ export function PluginsScreen() {
 			return;
 		}
 
-		// Action shortcuts work when not actively typing (even with filter visible)
-
-		// Start explicit search mode with /
 		if (event.name === "/") {
 			dispatch({ type: "SET_SEARCHING", isSearching: true });
 			return;
 		}
 
-		// Action shortcuts (only when query is empty)
 		if (event.name === "r") handleRefresh();
 		else if (event.name === "n") handleShowAddMarketplaceInstructions();
 		else if (event.name === "t") handleShowTeamConfigHelp();
@@ -405,13 +241,10 @@ export function PluginsScreen() {
 		else if (event.name === "U") handleUpdate();
 		else if (event.name === "a") handleUpdateAll();
 		else if (event.name === "s") handleSaveAsProfile();
-		// "/" to enter search mode
-		else if (event.name === "/") {
-			dispatch({ type: "SET_SEARCHING", isSearching: true });
-		}
 	});
 
-	// Handle actions
+	// ── Action handlers ────────────────────────────────────────────────────────
+
 	const handleRefresh = async () => {
 		progress.show("Refreshing cache...");
 		try {
@@ -421,7 +254,6 @@ export function PluginsScreen() {
 			clearMarketplaceCache();
 			progress.hide();
 
-			// Build message
 			let message =
 				"Cache refreshed.\n\n" +
 				"To update marketplaces from GitHub, run in Claude Code:\n" +
@@ -487,34 +319,26 @@ export function PluginsScreen() {
 	};
 
 	/**
-	 * Collect environment variables required by a plugin's MCP servers
-	 * Prompts user for missing values and saves to local settings
+	 * Collect environment variables required by a plugin's MCP servers.
 	 */
 	const collectPluginEnvVars = async (
 		pluginName: string,
 		marketplace: string,
 	): Promise<boolean> => {
 		try {
-			// Get plugin source path from marketplace manifest
 			const pluginSource = await getPluginSourcePath(marketplace, pluginName);
-			if (!pluginSource) return true; // No source path, nothing to configure
+			if (!pluginSource) return true;
 
-			// Get env var requirements from plugin's MCP config
-			const requirements = await getPluginEnvRequirements(
-				marketplace,
-				pluginSource,
-			);
-			if (requirements.length === 0) return true; // No env vars needed
+			const requirements = await getPluginEnvRequirements(marketplace, pluginSource);
+			if (requirements.length === 0) return true;
 
-			// Get existing env vars
 			const existingEnvVars = await getMcpEnvVars(state.projectPath);
 			const missingVars = requirements.filter(
 				(req) => !existingEnvVars[req.name] && !process.env[req.name],
 			);
 
-			if (missingVars.length === 0) return true; // All vars already configured
+			if (missingVars.length === 0) return true;
 
-			// Ask user if they want to configure MCP server env vars now
 			const serverNames = [...new Set(missingVars.map((v) => v.serverName))];
 			const wantToConfigure = await modal.confirm(
 				"Configure MCP Servers?",
@@ -527,12 +351,10 @@ export function PluginsScreen() {
 					"You can configure these variables later in the Environment Variables screen (press 4).",
 					"info",
 				);
-				return true; // Still installed, just not configured
+				return true;
 			}
 
-			// Collect each missing env var
 			for (const req of missingVars) {
-				// Check if value exists in process.env
 				const existingProcessEnv = process.env[req.name];
 				if (existingProcessEnv) {
 					const useExisting = await modal.confirm(
@@ -540,13 +362,11 @@ export function PluginsScreen() {
 						`${req.name} is already set in your environment.\n\nUse the existing value?`,
 					);
 					if (useExisting) {
-						// Store reference to env var instead of literal value
 						await setMcpEnvVar(req.name, `\${${req.name}}`, state.projectPath);
 						continue;
 					}
 				}
 
-				// Prompt for value
 				const value = await modal.input(
 					`Configure ${req.serverName}`,
 					`${req.label} (required):`,
@@ -554,13 +374,12 @@ export function PluginsScreen() {
 				);
 
 				if (value === null) {
-					// User cancelled
 					await modal.message(
 						"Configuration Incomplete",
 						`Skipped remaining configuration.\nYou can configure these later in Environment Variables (press 4).`,
 						"info",
 					);
-					return true; // Still installed
+					return true;
 				}
 
 				if (value) {
@@ -571,13 +390,12 @@ export function PluginsScreen() {
 			return true;
 		} catch (error) {
 			console.error("Error collecting plugin env vars:", error);
-			return true; // Don't block installation on config errors
+			return true;
 		}
 	};
 
 	/**
-	 * Install system dependencies required by a plugin's MCP servers
-	 * Auto-detects available package managers (uv/pip, brew, npm, cargo)
+	 * Install system dependencies required by a plugin's MCP servers.
 	 */
 	const installPluginSystemDeps = async (
 		pluginName: string,
@@ -597,13 +415,11 @@ export function PluginsScreen() {
 
 			if (!hasMissing) return;
 
-			// Build description of what will be installed
 			const parts: string[] = [];
 			if (missing.pip?.length) parts.push(`pip: ${missing.pip.join(", ")}`);
 			if (missing.brew?.length) parts.push(`brew: ${missing.brew.join(", ")}`);
 			if (missing.npm?.length) parts.push(`npm: ${missing.npm.join(", ")}`);
-			if (missing.cargo?.length)
-				parts.push(`cargo: ${missing.cargo.join(", ")}`);
+			if (missing.cargo?.length) parts.push(`cargo: ${missing.cargo.join(", ")}`);
 
 			const wantInstall = await modal.confirm(
 				"Install Dependencies?",
@@ -617,9 +433,7 @@ export function PluginsScreen() {
 			modal.hideModal();
 
 			if (result.failed.length > 0) {
-				const failMsg = result.failed
-					.map((f) => `${f.pkg}: ${f.error}`)
-					.join("\n");
+				const failMsg = result.failed.map((f) => `${f.pkg}: ${f.error}`).join("\n");
 				await modal.message(
 					"Partial Install",
 					`Installed: ${result.installed.length}\nFailed:\n${failMsg}`,
@@ -638,9 +452,7 @@ export function PluginsScreen() {
 	};
 
 	/**
-	 * Save the installed version to settings after CLI install/update.
-	 * Claude CLI doesn't update installedPluginVersions in settings.json,
-	 * so we do it ourselves to keep the TUI version display accurate.
+	 * Save installed plugin version to settings after CLI install/update.
 	 */
 	const saveVersionAfterInstall = async (
 		pluginId: string,
@@ -651,11 +463,7 @@ export function PluginsScreen() {
 			if (scope === "user") {
 				await saveGlobalInstalledPluginVersion(pluginId, version);
 			} else if (scope === "local") {
-				await saveLocalInstalledPluginVersion(
-					pluginId,
-					version,
-					state.projectPath,
-				);
+				await saveLocalInstalledPluginVersion(pluginId, version, state.projectPath);
 			} else {
 				await saveInstalledPluginVersion(pluginId, version, state.projectPath);
 			}
@@ -668,20 +476,16 @@ export function PluginsScreen() {
 		const item = selectableItems[pluginsState.selectedIndex];
 		if (!item) return;
 
-		if (item.type === "category" && item.marketplace) {
+		if (item.kind === "category") {
 			const mp = item.marketplace;
 
 			if (item.marketplaceEnabled) {
 				const isCollapsed = pluginsState.collapsedMarketplaces.has(mp.name);
-
-				// If collapsed, expand first (even if no plugins - they might load)
 				if (isCollapsed) {
 					dispatch({ type: "PLUGINS_TOGGLE_MARKETPLACE", name: mp.name });
-				} else if (item.pluginCount && item.pluginCount > 0) {
-					// If expanded with plugins, collapse
+				} else if (item.pluginCount > 0) {
 					dispatch({ type: "PLUGINS_TOGGLE_MARKETPLACE", name: mp.name });
 				} else {
-					// If expanded with no plugins, show removal instructions
 					await modal.message(
 						`Remove ${mp.displayName}?`,
 						`To remove this marketplace, run in Claude Code:\n\n` +
@@ -691,7 +495,6 @@ export function PluginsScreen() {
 					);
 				}
 			} else {
-				// Show add marketplace instructions
 				await modal.message(
 					`Add ${mp.displayName}?`,
 					`To add this marketplace, run in your terminal:\n\n` +
@@ -701,11 +504,10 @@ export function PluginsScreen() {
 					"info",
 				);
 			}
-		} else if (item.type === "plugin" && item.plugin) {
+		} else if (item.kind === "plugin") {
 			const plugin = item.plugin;
 			const latestVersion = plugin.version || "0.0.0";
 
-			// Build scope options with status info
 			const buildScopeLabel = (
 				name: string,
 				scope: { enabled?: boolean; version?: string } | undefined,
@@ -713,12 +515,7 @@ export function PluginsScreen() {
 			) => {
 				const installed = scope?.enabled;
 				const ver = scope?.version;
-				const hasUpdate =
-					ver &&
-					latestVersion &&
-					ver !== latestVersion &&
-					latestVersion !== "0.0.0";
-
+				const hasUpdate = ver && latestVersion && ver !== latestVersion && latestVersion !== "0.0.0";
 				let label = installed ? `● ${name}` : `○ ${name}`;
 				label += ` (${desc})`;
 				if (ver) label += ` v${ver}`;
@@ -727,29 +524,14 @@ export function PluginsScreen() {
 			};
 
 			const scopeOptions = [
-				{
-					label: buildScopeLabel("User", plugin.userScope, "global"),
-					value: "user",
-				},
-				{
-					label: buildScopeLabel("Project", plugin.projectScope, "team"),
-					value: "project",
-				},
-				{
-					label: buildScopeLabel("Local", plugin.localScope, "private"),
-					value: "local",
-				},
+				{ label: buildScopeLabel("User", plugin.userScope, "global"), value: "user" },
+				{ label: buildScopeLabel("Project", plugin.projectScope, "team"), value: "project" },
+				{ label: buildScopeLabel("Local", plugin.localScope, "private"), value: "local" },
 			];
 
-			const scopeValue = await modal.select(
-				plugin.name,
-				`Select scope to toggle:`,
-				scopeOptions,
-			);
+			const scopeValue = await modal.select(plugin.name, `Select scope to toggle:`, scopeOptions);
+			if (scopeValue === null) return;
 
-			if (scopeValue === null) return; // Cancelled
-
-			// Determine action based on selected scope's current state
 			const selectedScope =
 				scopeValue === "user"
 					? plugin.userScope
@@ -759,20 +541,14 @@ export function PluginsScreen() {
 			const isInstalledInScope = selectedScope?.enabled;
 			const installedVersion = selectedScope?.version;
 			const scopeLabel =
-				scopeValue === "user"
-					? "User"
-					: scopeValue === "project"
-						? "Project"
-						: "Local";
+				scopeValue === "user" ? "User" : scopeValue === "project" ? "Project" : "Local";
 
-			// Check if this scope has an update available
 			const hasUpdateInScope =
 				isInstalledInScope &&
 				installedVersion &&
 				latestVersion !== "0.0.0" &&
 				installedVersion !== latestVersion;
 
-			// Determine action: update if available, otherwise toggle
 			let action: "update" | "install" | "uninstall";
 			if (isInstalledInScope && hasUpdateInScope) {
 				action = "update";
@@ -800,8 +576,6 @@ export function PluginsScreen() {
 				} else {
 					await cliInstallPlugin(plugin.id, scope);
 					await saveVersionAfterInstall(plugin.id, latestVersion, scope);
-
-					// On fresh install, configure env vars and install system deps
 					modal.hideModal();
 					await collectPluginEnvVars(plugin.name, plugin.marketplace);
 					await installPluginSystemDeps(plugin.name, plugin.marketplace);
@@ -819,20 +593,15 @@ export function PluginsScreen() {
 
 	const handleUpdate = async () => {
 		const item = selectableItems[pluginsState.selectedIndex];
-		if (!item || item.type !== "plugin" || !item.plugin?.hasUpdate) return;
+		if (!item || item.kind !== "plugin" || !item.plugin.hasUpdate) return;
 
 		const plugin = item.plugin;
-		const scope: PluginScope =
-			pluginsState.scope === "global" ? "user" : "project";
+		const scope: PluginScope = pluginsState.scope === "global" ? "user" : "project";
 
 		modal.loading(`Updating ${plugin.name}...`);
 		try {
 			await cliUpdatePlugin(plugin.id, scope);
-			await saveVersionAfterInstall(
-				plugin.id,
-				plugin.version || "0.0.0",
-				scope,
-			);
+			await saveVersionAfterInstall(plugin.id, plugin.version || "0.0.0", scope);
 			modal.hideModal();
 			fetchData();
 		} catch (error) {
@@ -847,18 +616,13 @@ export function PluginsScreen() {
 		const updatable = pluginsState.plugins.data.filter((p) => p.hasUpdate);
 		if (updatable.length === 0) return;
 
-		const scope: PluginScope =
-			pluginsState.scope === "global" ? "user" : "project";
+		const scope: PluginScope = pluginsState.scope === "global" ? "user" : "project";
 		modal.loading(`Updating ${updatable.length} plugin(s)...`);
 
 		try {
 			for (const plugin of updatable) {
 				await cliUpdatePlugin(plugin.id, scope);
-				await saveVersionAfterInstall(
-					plugin.id,
-					plugin.version || "0.0.0",
-					scope,
-				);
+				await saveVersionAfterInstall(plugin.id, plugin.version || "0.0.0", scope);
 			}
 			modal.hideModal();
 			fetchData();
@@ -868,17 +632,15 @@ export function PluginsScreen() {
 		}
 	};
 
-	// Scope-specific toggle (install if not installed, uninstall if installed)
 	const handleScopeToggle = async (scope: "user" | "project" | "local") => {
 		const item = selectableItems[pluginsState.selectedIndex];
-		if (!item || item.type !== "plugin" || !item.plugin) return;
+		if (!item || item.kind !== "plugin") return;
 
 		const plugin = item.plugin;
 		const latestVersion = plugin.version || "0.0.0";
 		const scopeLabel =
 			scope === "user" ? "User" : scope === "project" ? "Project" : "Local";
 
-		// Check if installed in this specific scope
 		const scopeData =
 			scope === "user"
 				? plugin.userScope
@@ -888,20 +650,12 @@ export function PluginsScreen() {
 		const isInstalledInScope = scopeData?.enabled;
 		const installedVersion = scopeData?.version;
 
-		// Also check if installed in ANY scope (for the toggle behavior)
-		const isInstalledAnywhere = plugin.userScope?.enabled || plugin.projectScope?.enabled || plugin.localScope?.enabled;
-
-		// Check if this scope has an update available
 		const hasUpdateInScope =
 			isInstalledInScope &&
 			installedVersion &&
 			latestVersion !== "0.0.0" &&
 			installedVersion !== latestVersion;
 
-		// Determine action for THIS scope:
-		// - installed in this scope + has update → update
-		// - installed in this scope → uninstall from this scope
-		// - not installed in this scope → install to this scope
 		let action: "update" | "install" | "uninstall";
 		if (isInstalledInScope && hasUpdateInScope) {
 			action = "update";
@@ -928,8 +682,6 @@ export function PluginsScreen() {
 			} else {
 				await cliInstallPlugin(plugin.id, scope);
 				await saveVersionAfterInstall(plugin.id, latestVersion, scope);
-
-				// On fresh install, configure env vars and install system deps
 				modal.hideModal();
 				await collectPluginEnvVars(plugin.name, plugin.marketplace);
 				await installPluginSystemDeps(plugin.name, plugin.marketplace);
@@ -945,7 +697,6 @@ export function PluginsScreen() {
 	};
 
 	const handleSaveAsProfile = async () => {
-		// Read current enabledPlugins from project settings
 		const settings = await readSettings(state.projectPath);
 		const enabledPlugins = settings.enabledPlugins ?? {};
 
@@ -956,14 +707,8 @@ export function PluginsScreen() {
 			"Save to scope",
 			"Where should this profile be saved?",
 			[
-				{
-					label: "User — ~/.claude/profiles.json (available everywhere)",
-					value: "user",
-				},
-				{
-					label: "Project — .claude/profiles.json (shared with team via git)",
-					value: "project",
-				},
+				{ label: "User — ~/.claude/profiles.json (available everywhere)", value: "user" },
+				{ label: "Project — .claude/profiles.json (shared with team via git)", value: "project" },
 			],
 		);
 		if (scopeChoice === null) return;
@@ -985,67 +730,8 @@ export function PluginsScreen() {
 		}
 	};
 
-	const handleUninstall = async () => {
-		const item = selectableItems[pluginsState.selectedIndex];
-		if (!item || item.type !== "plugin" || !item.plugin) return;
+	// ── Render ─────────────────────────────────────────────────────────────────
 
-		const plugin = item.plugin;
-
-		// Build list of scopes where plugin is installed
-		const installedScopes: { label: string; value: string }[] = [];
-		if (plugin.userScope?.enabled) {
-			const ver = plugin.userScope.version
-				? ` v${plugin.userScope.version}`
-				: "";
-			installedScopes.push({ label: `User (global)${ver}`, value: "user" });
-		}
-		if (plugin.projectScope?.enabled) {
-			const ver = plugin.projectScope.version
-				? ` v${plugin.projectScope.version}`
-				: "";
-			installedScopes.push({ label: `Project${ver}`, value: "project" });
-		}
-		if (plugin.localScope?.enabled) {
-			const ver = plugin.localScope.version
-				? ` v${plugin.localScope.version}`
-				: "";
-			installedScopes.push({ label: `Local${ver}`, value: "local" });
-		}
-
-		if (installedScopes.length === 0) {
-			await modal.message(
-				"Not Installed",
-				`${plugin.name} is not installed in any scope.`,
-				"info",
-			);
-			return;
-		}
-
-		const scopeValue = await modal.select(
-			`Uninstall ${plugin.name}`,
-			`Installed in ${installedScopes.length} scope(s):`,
-			installedScopes,
-		);
-
-		if (scopeValue === null) return; // Cancelled
-
-		modal.loading(`Uninstalling ${plugin.name}...`);
-
-		try {
-			await cliUninstallPlugin(
-				plugin.id,
-				scopeValue as PluginScope,
-				state.projectPath,
-			);
-			modal.hideModal();
-			fetchData();
-		} catch (error) {
-			modal.hideModal();
-			await modal.message("Error", `Failed to uninstall: ${error}`, "error");
-		}
-	};
-
-	// Render loading state
 	if (
 		pluginsState.marketplaces.status === "loading" ||
 		pluginsState.plugins.status === "loading"
@@ -1060,7 +746,6 @@ export function PluginsScreen() {
 		);
 	}
 
-	// Render error state
 	if (
 		pluginsState.marketplaces.status === "error" ||
 		pluginsState.plugins.status === "error"
@@ -1075,391 +760,18 @@ export function PluginsScreen() {
 		);
 	}
 
-	// Get selected item for detail panel
 	const selectedItem = selectableItems[pluginsState.selectedIndex];
 
-	// Render item with fuzzy highlight support
-	const renderListItem = (
-		item: ListItem,
-		_idx: number,
-		isSelected: boolean,
-	) => {
-		if (item.type === "category" && item.marketplace) {
-			const mp = item.marketplace;
-			// Differentiate marketplace types with appropriate badges
-			let statusText = "";
-			let statusColor = "green";
-			if (item.marketplaceEnabled) {
-				if (item.isCommunitySection) {
-					statusText = "3rd Party";
-					statusColor = "gray";
-				} else if (mp.name === "claude-plugins-official") {
-					statusText = "★ Official";
-					statusColor = "yellow";
-				} else if (mp.name === "claude-code-plugins") {
-					statusText = "⚠ Deprecated";
-					statusColor = "gray";
-				} else if (mp.official) {
-					statusText = "★ Official";
-					statusColor = "yellow";
-				} else {
-					statusText = "✓ Added";
-					statusColor = "green";
-				}
-			}
-
-			if (isSelected) {
-				const arrow = item.isExpanded ? "▼" : "▶";
-				const count =
-					item.pluginCount !== undefined && item.pluginCount > 0
-						? ` (${item.pluginCount})`
-						: "";
-				return (
-					<text bg="magenta" fg="white">
-						<strong>
-							{" "}
-							{arrow} {mp.displayName}
-							{count}{" "}
-						</strong>
-					</text>
-				);
-			}
-
-			return (
-				<CategoryHeader
-					title={mp.displayName}
-					expanded={item.isExpanded}
-					count={item.pluginCount}
-					status={statusText}
-					statusColor={statusColor}
-				/>
-			);
-		}
-
-		if (item.type === "plugin" && item.plugin) {
-			const plugin = item.plugin;
-			const isAnyScope = plugin.userScope?.enabled || plugin.projectScope?.enabled || plugin.localScope?.enabled;
-
-			// Build scope parts for colored rendering
-			const hasUser = plugin.userScope?.enabled;
-			const hasProject = plugin.projectScope?.enabled;
-			const hasLocal = plugin.localScope?.enabled;
-			const hasAnyScope = hasUser || hasProject || hasLocal;
-
-			// Build version string
-			let versionStr = "";
-			if (plugin.isOrphaned) {
-				versionStr = " deprecated";
-			} else if (plugin.installedVersion && plugin.installedVersion !== "0.0.0") {
-				versionStr = ` v${plugin.installedVersion}`;
-				if (plugin.hasUpdate && plugin.version) {
-					versionStr += ` → v${plugin.version}`;
-				}
-			}
-
-			// Get fuzzy match highlights if available
-			const matches = (item as ListItem & { _matches?: number[] })._matches;
-			const segments = matches ? highlightMatches(plugin.name, matches) : null;
-
-			if (isSelected) {
-				return (
-					<text bg="magenta" fg="white">
-						{" "}
-						<span>{hasUser ? "■" : "□"}</span>
-						<span>{hasProject ? "■" : "□"}</span>
-						<span>{hasLocal ? "■" : "□"}</span>
-						{" "}{plugin.name}{versionStr}{" "}
-					</text>
-				);
-			}
-
-			const displayName = segments
-				? segments.map((seg) => seg.text).join("")
-				: plugin.name;
-
-			if (plugin.isOrphaned) {
-				const ver = plugin.installedVersion && plugin.installedVersion !== "0.0.0"
-					? ` v${plugin.installedVersion}` : "";
-				return (
-					<text>
-						<span fg="red"> ■■■ </span>
-						<span fg="gray">{displayName}</span>
-						{ver && <span fg="yellow">{ver}</span>}
-						<span fg="red"> deprecated</span>
-					</text>
-				);
-			}
-
-			return (
-				<text>
-					<span> </span>
-					<span fg={hasUser ? "cyan" : "#333333"}>■</span>
-					<span fg={hasProject ? "green" : "#333333"}>■</span>
-					<span fg={hasLocal ? "yellow" : "#333333"}>■</span>
-					<span> </span>
-					<span fg={hasAnyScope ? "white" : "gray"}>{displayName}</span>
-					<span fg={plugin.hasUpdate ? "yellow" : "gray"}>{versionStr}</span>
-				</text>
-			);
-		}
-
-		return <text fg="gray">{item.label}</text>;
-	};
-
-	// Render detail content - compact to fit in available space
-	const renderDetail = () => {
-		if (!selectedItem) {
-			return <text fg="gray">Select an item</text>;
-		}
-
-		if (selectedItem.type === "category" && selectedItem.marketplace) {
-			const mp = selectedItem.marketplace;
-			const isEnabled = selectedItem.marketplaceEnabled;
-
-			// Get appropriate badge for marketplace type
-			const getBadge = () => {
-				if (selectedItem.isCommunitySection) return " 3rd Party";
-				if (mp.name === "claude-plugins-official") return " ★";
-				if (mp.name === "claude-code-plugins") return " ⚠";
-				if (mp.official) return " ★";
-				return "";
-			};
-
-			// Determine action hint based on state
-			const isCollapsed = pluginsState.collapsedMarketplaces.has(mp.name);
-			const hasPlugins = (selectedItem.pluginCount || 0) > 0;
-			let actionHint = "Add";
-			if (isEnabled) {
-				if (isCollapsed) {
-					actionHint = "Expand";
-				} else if (hasPlugins) {
-					actionHint = "Collapse";
-				} else {
-					actionHint = "Remove";
-				}
-			}
-
-			return (
-				<box flexDirection="column">
-					<text fg="cyan">
-						<strong>
-							{mp.displayName}
-							{getBadge()}
-						</strong>
-					</text>
-					<text fg="gray">{mp.description || "No description"}</text>
-					<text fg={isEnabled ? "green" : "gray"}>
-						{isEnabled ? "● Added" : "○ Not added"}
-					</text>
-					<text fg="#5c9aff">github.com/{mp.source.repo}</text>
-					<text>Plugins: {selectedItem.pluginCount || 0}</text>
-					<box marginTop={1}>
-						<text bg={isEnabled ? "cyan" : "green"} fg="black">
-							{" "}
-							Enter{" "}
-						</text>
-						<text fg="gray"> {actionHint}</text>
-					</box>
-					{isEnabled && (
-						<box>
-							<text fg="gray">← → to expand/collapse</text>
-						</box>
-					)}
-				</box>
-			);
-		}
-
-		if (selectedItem.type === "plugin" && selectedItem.plugin) {
-			const plugin = selectedItem.plugin;
-			const isInstalled = plugin.userScope?.enabled || plugin.projectScope?.enabled || plugin.localScope?.enabled;
-
-			// Orphaned/deprecated plugin
-			if (plugin.isOrphaned) {
-				return (
-					<box flexDirection="column">
-						<box justifyContent="center">
-							<text bg="yellow" fg="black"><strong> {plugin.name} — DEPRECATED </strong></text>
-						</box>
-						<box marginTop={1}>
-							<text fg="yellow">This plugin is no longer in the marketplace.</text>
-						</box>
-						<box marginTop={1}>
-							<text fg="gray">It was removed from the marketplace but still referenced in your settings. Press d to uninstall and clean up.</text>
-						</box>
-						{isInstalled && (
-							<box flexDirection="column" marginTop={2}>
-								<box>
-									<text bg="red" fg="white"> d </text>
-									<text> Uninstall (recommended)</text>
-								</box>
-							</box>
-						)}
-					</box>
-				);
-			}
-
-			// Build component counts
-			const components: string[] = [];
-			if (plugin.agents?.length)
-				components.push(`${plugin.agents.length} agents`);
-			if (plugin.commands?.length)
-				components.push(`${plugin.commands.length} commands`);
-			if (plugin.skills?.length)
-				components.push(`${plugin.skills.length} skills`);
-			if (plugin.mcpServers?.length)
-				components.push(`${plugin.mcpServers.length} MCP`);
-			if (plugin.lspServers && Object.keys(plugin.lspServers).length) {
-				components.push(`${Object.keys(plugin.lspServers).length} LSP`);
-			}
-
-			// Show version only if valid (not null, not 0.0.0)
-			const showVersion = plugin.version && plugin.version !== "0.0.0";
-			const showInstalledVersion =
-				plugin.installedVersion && plugin.installedVersion !== "0.0.0";
-
-			return (
-				<box flexDirection="column">
-					{/* Plugin name header - centered */}
-					<box justifyContent="center">
-						<text bg="magenta" fg="white">
-							<strong>
-								{" "}
-								{plugin.name}
-								{plugin.hasUpdate ? " ⬆" : ""}{" "}
-							</strong>
-						</text>
-					</box>
-
-					{/* Status line */}
-					<box marginTop={1}>
-						{isInstalled ? (
-							<text fg="green">● Installed</text>
-						) : (
-							<text fg="gray">○ Not installed</text>
-						)}
-					</box>
-
-					{/* Description */}
-					<box marginTop={1} marginBottom={1}>
-						<text fg="white">{plugin.description}</text>
-					</box>
-
-					{/* Metadata */}
-					{showVersion && (
-						<text>
-							<span>Version </span>
-							<span fg="#5c9aff">v{plugin.version}</span>
-							{showInstalledVersion &&
-								plugin.installedVersion !== plugin.version && (
-									<span> (v{plugin.installedVersion} installed)</span>
-								)}
-						</text>
-					)}
-					{plugin.category && (
-						<text>
-							<span>Category </span>
-							<span fg="magenta">{plugin.category}</span>
-						</text>
-					)}
-					{plugin.author && (
-						<text>
-							<span>Author </span>
-							<span>{plugin.author.name}</span>
-						</text>
-					)}
-					{components.length > 0 && (
-						<text>
-							<span>Contains </span>
-							<span fg="yellow">{components.join(" · ")}</span>
-						</text>
-					)}
-
-					{/* Scope Status with shortcuts - each scope has its own color */}
-					<box flexDirection="column" marginTop={1}>
-						<text>────────────────────────</text>
-						<text>
-							<strong>Scopes:</strong>
-						</text>
-						<box marginTop={1} flexDirection="column">
-							<text>
-								<span bg="cyan" fg="black">
-									{" "}
-									u{" "}
-								</span>
-								<span fg={plugin.userScope?.enabled ? "cyan" : "gray"}>
-									{plugin.userScope?.enabled ? " ● " : " ○ "}
-								</span>
-								<span fg="cyan">User</span>
-								<span> global</span>
-								{plugin.userScope?.version && (
-									<span fg="cyan"> v{plugin.userScope.version}</span>
-								)}
-							</text>
-							<text>
-								<span bg="green" fg="black">
-									{" "}
-									p{" "}
-								</span>
-								<span fg={plugin.projectScope?.enabled ? "green" : "gray"}>
-									{plugin.projectScope?.enabled ? " ● " : " ○ "}
-								</span>
-								<span fg="green">Project</span>
-								<span> team</span>
-								{plugin.projectScope?.version && (
-									<span fg="green"> v{plugin.projectScope.version}</span>
-								)}
-							</text>
-							<text>
-								<span bg="yellow" fg="black">
-									{" "}
-									l{" "}
-								</span>
-								<span fg={plugin.localScope?.enabled ? "yellow" : "gray"}>
-									{plugin.localScope?.enabled ? " ● " : " ○ "}
-								</span>
-								<span fg="yellow">Local</span>
-								<span> private</span>
-								{plugin.localScope?.version && (
-									<span fg="yellow"> v{plugin.localScope.version}</span>
-								)}
-							</text>
-						</box>
-					</box>
-
-					{/* Additional actions */}
-					{isInstalled && (
-						<box flexDirection="column" marginTop={1}>
-							{plugin.hasUpdate && (
-								<box>
-									<text bg="magenta" fg="white">
-										{" "}
-										U{" "}
-									</text>
-									<text> Update to v{plugin.version}</text>
-								</box>
-							)}
-						</box>
-					)}
-				</box>
-			);
-		}
-
-		return null;
-	};
-
 	const footerHints = isSearchActive
-			? "type to filter │ Enter:done │ Esc:clear"
-			: "u/p/l:toggle │ U:update │ a:all │ s:profile │ /:search";
+		? "type to filter │ Enter:done │ Esc:clear"
+		: "u/p/l:toggle │ U:update │ a:all │ s:profile │ /:search";
 
-	// Calculate status for subtitle
 	const scopeLabel = pluginsState.scope === "global" ? "Global" : "Project";
-	const plugins =
+	const plugins: PluginInfo[] =
 		pluginsState.plugins.status === "success" ? pluginsState.plugins.data : [];
 	const installedCount = plugins.filter((p) => p.enabled).length;
 	const updateCount = plugins.filter((p) => p.hasUpdate).length;
 	const subtitle = `${scopeLabel} │ ${installedCount} installed${updateCount > 0 ? ` │ ${updateCount} updates` : ""}`;
-
-	// Search placeholder shows status when not searching
 	const searchPlaceholder = `${scopeLabel} │ ${installedCount} installed${updateCount > 0 ? ` │ ${updateCount} ⬆` : ""} │ / to search`;
 
 	return (
@@ -1478,7 +790,7 @@ export function PluginsScreen() {
 					<ScrollableList
 						items={selectableItems}
 						selectedIndex={pluginsState.selectedIndex}
-						renderItem={renderListItem}
+						renderItem={renderPluginRow}
 						maxHeight={dimensions.listPanelHeight}
 					/>
 					{pluginsState.searchQuery && selectableItems.length === 0 && (
@@ -1486,7 +798,7 @@ export function PluginsScreen() {
 					)}
 				</box>
 			}
-			detailPanel={renderDetail()}
+			detailPanel={renderPluginDetail(selectedItem, pluginsState.collapsedMarketplaces)}
 		/>
 	);
 }

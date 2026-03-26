@@ -56,7 +56,11 @@ export function StyledText({
 	}
 	if (inverse) {
 		// Inverse effect approximated with contrasting colors
-		content = <span fg="black" bg="white">{content}</span>;
+		content = (
+			<span fg="black" bg="white">
+				{content}
+			</span>
+		);
 	}
 
 	// Apply colors (outer layer)

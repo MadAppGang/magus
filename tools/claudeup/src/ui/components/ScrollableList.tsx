@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useKeyboardHandler } from '../hooks/useKeyboardHandler';
+import React, { useState, useEffect, useMemo } from "react";
+import { useKeyboardHandler } from "../hooks/useKeyboardHandler";
 
 interface ScrollableListProps<T> {
 	/** Array of items to display */
@@ -33,10 +33,10 @@ export function ScrollableList<T>({
 	useKeyboardHandler((input, key) => {
 		if (!focused || !onSelect) return;
 
-		if (key.upArrow || input === 'k') {
+		if (key.upArrow || input === "k") {
 			const newIndex = Math.max(0, selectedIndex - 1);
 			onSelect(newIndex);
-		} else if (key.downArrow || input === 'j') {
+		} else if (key.downArrow || input === "j") {
 			const newIndex = Math.min(items.length - 1, selectedIndex + 1);
 			onSelect(newIndex);
 		}
