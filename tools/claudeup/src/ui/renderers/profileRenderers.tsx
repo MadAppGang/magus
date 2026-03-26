@@ -36,6 +36,12 @@ export function humanizeKey(key: string): string {
     model: "Model",
     outputStyle: "Output",
     alwaysThinkingEnabled: "Thinking",
+    includeGitInstructions: "Git Instructions",
+    respectGitignore: "Gitignore",
+    enableAllProjectMcpServers: "Auto MCP",
+    autoUpdatesChannel: "Updates",
+    language: "Language",
+    cleanupPeriodDays: "Cleanup",
   };
   return labels[key] ?? key;
 }
@@ -130,12 +136,6 @@ const predefinedRenderer: ItemRenderer<{ kind: "predefined"; profile: Predefined
 
   renderDetail: ({ item }) => {
     const { profile } = item;
-    const magusNames = profile.magusPlugins;
-    const anthropicNames = profile.anthropicPlugins;
-    const magusLines = wrapNames(magusNames);
-    const anthropicLines = wrapNames(anthropicNames);
-    const skillLines = wrapNames(profile.skills);
-
     const settingEntries = Object.entries(profile.settings).filter(
       ([k]) => k !== "env",
     );
@@ -146,76 +146,74 @@ const predefinedRenderer: ItemRenderer<{ kind: "predefined"; profile: Predefined
 
     return (
       <box flexDirection="column">
-        <text fg={theme.colors.text}>
+        <text fg={theme.colors.info}>
           <strong>{profile.name}</strong>
         </text>
         <box marginTop={1}>
           <text fg={theme.colors.muted}>{profile.description}</text>
         </box>
-        <box marginTop={1}>
-          <text fg={theme.colors.dim}>{DIVIDER}</text>
-        </box>
+
+        {/* Magus plugins as badges */}
         <box marginTop={1} flexDirection="column">
-          <text fg={theme.colors.muted}>
-            Magus plugins ({magusNames.length}):
-          </text>
-          {magusLines.map((line, i) => (
-            <text key={i} fg={theme.colors.info}>
-              {"  "}
-              {line}
-            </text>
-          ))}
+          <text fg={theme.colors.muted}>Magus ({profile.magusPlugins.length})</text>
+          <box flexDirection="row" gap={0}>
+            {profile.magusPlugins.map((p) => (
+              <text key={p}>
+                <span bg="#00695c" fg="white"> {p} </span>
+                <span> </span>
+              </text>
+            ))}
+          </box>
         </box>
+
+        {/* Anthropic plugins as badges */}
         <box marginTop={1} flexDirection="column">
-          <text fg={theme.colors.muted}>
-            Anthropic plugins ({anthropicNames.length}):
-          </text>
-          {anthropicLines.map((line, i) => (
-            <text key={i} fg={theme.colors.warning}>
-              {"  "}
-              {line}
-            </text>
-          ))}
+          <text fg={theme.colors.muted}>Anthropic ({profile.anthropicPlugins.length})</text>
+          <box flexDirection="row" gap={0}>
+            {profile.anthropicPlugins.map((p) => (
+              <text key={p}>
+                <span bg="#4527a0" fg="white"> {p} </span>
+                <span> </span>
+              </text>
+            ))}
+          </box>
         </box>
-        <box marginTop={1} flexDirection="column">
-          <text fg={theme.colors.muted}>Skills ({profile.skills.length}):</text>
-          {skillLines.map((line, i) => (
-            <text key={i} fg={theme.colors.text}>
-              {"  "}
-              {line}
-            </text>
-          ))}
-        </box>
-        <box marginTop={1}>
-          <text fg={theme.colors.dim}>{DIVIDER}</text>
-        </box>
-        <box marginTop={1} flexDirection="column">
-          <text fg={theme.colors.muted}>Settings:</text>
+
+        {/* Skills as badges */}
+        {profile.skills.length > 0 && (
+          <box marginTop={1} flexDirection="column">
+            <text fg={theme.colors.muted}>Skills ({profile.skills.length})</text>
+            <box flexDirection="row" gap={0}>
+              {profile.skills.map((s) => (
+                <text key={s}>
+                  <span bg="#8d6e00" fg="white"> {s} </span>
+                  <span> </span>
+                </text>
+              ))}
+            </box>
+          </box>
+        )}
+
+        <text fg={theme.colors.dim}>{DIVIDER}</text>
+
+        {/* Settings as clean key-value */}
+        <box flexDirection="column">
           {settingEntries.map(([k, v]) => (
             <text key={k}>
-              <span fg={theme.colors.muted}>
-                {"  "}
-                {humanizeKey(k).padEnd(14)}
-              </span>
+              <span fg={theme.colors.muted}>  {humanizeKey(k).padEnd(16)}</span>
               <span fg={theme.colors.text}>{humanizeValue(k, v)}</span>
             </text>
           ))}
           {tasksOn && (
             <text>
-              <span fg={theme.colors.muted}>
-                {"  "}
-                {"Tasks".padEnd(14)}
-              </span>
-              <span fg={theme.colors.text}>on</span>
+              <span fg={theme.colors.muted}>  {"Tasks".padEnd(16)}</span>
+              <span fg="green">on</span>
             </text>
           )}
           {teamsOn && (
             <text>
-              <span fg={theme.colors.muted}>
-                {"  "}
-                {"Agent Teams".padEnd(14)}
-              </span>
-              <span fg={theme.colors.text}>on</span>
+              <span fg={theme.colors.muted}>  {"Agent Teams".padEnd(16)}</span>
+              <span fg="green">on</span>
             </text>
           )}
         </box>
