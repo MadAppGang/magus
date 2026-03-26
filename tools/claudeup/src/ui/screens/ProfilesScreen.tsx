@@ -30,19 +30,91 @@ import {
 // ─── List item discriminated union ───────────────────────────────────────────
 
 type ListItem =
+	| { kind: "header"; label: string; color: string; count: number }
 	| { kind: "predefined"; profile: PredefinedProfile }
 	| { kind: "saved"; entry: ProfileEntry };
 
 function buildListItems(profileList: ProfileEntry[]): ListItem[] {
-	const predefined: ListItem[] = PREDEFINED_PROFILES.map((p) => ({
-		kind: "predefined" as const,
-		profile: p,
-	}));
-	const saved: ListItem[] = profileList.map((e) => ({
-		kind: "saved" as const,
-		entry: e,
-	}));
-	return [...predefined, ...saved];
+	const items: ListItem[] = [];
+
+	// Presets section
+	items.push({
+		kind: "header",
+		label: "Presets",
+		color: "#4527a0",
+		count: PREDEFINED_PROFILES.length,
+	});
+	for (const p of PREDEFINED_PROFILES) {
+		items.push({ kind: "predefined", profile: p });
+	}
+
+	// Saved profiles section
+	items.push({
+		kind: "header",
+		label: "Your Profiles",
+		color: "#00695c",
+		count: profileList.length,
+	});
+	for (const e of profileList) {
+		items.push({ kind: "saved", entry: e });
+	}
+
+	return items;
+}
+
+/** Truncate a string to maxLen, appending ellipsis if needed */
+function truncate(s: string, maxLen: number): string {
+	if (s.length <= maxLen) return s;
+	return s.slice(0, maxLen - 1) + "…";
+}
+
+/** Humanize setting values for display */
+function humanizeValue(_key: string, value: unknown): string {
+	if (typeof value === "boolean") return value ? "on" : "off";
+	if (typeof value !== "string") return String(value);
+	// Model names
+	if (value === "claude-sonnet-4-6") return "Sonnet";
+	if (value === "claude-opus-4-6") return "Opus";
+	if (value === "claude-haiku-4-6") return "Haiku";
+	if (value.startsWith("claude-sonnet")) return "Sonnet";
+	if (value.startsWith("claude-opus")) return "Opus";
+	if (value.startsWith("claude-haiku")) return "Haiku";
+	return value;
+}
+
+/** Human-readable label for a setting key */
+function humanizeKey(key: string): string {
+	const labels: Record<string, string> = {
+		effortLevel: "Effort",
+		model: "Model",
+		outputStyle: "Output",
+		alwaysThinkingEnabled: "Thinking",
+	};
+	return labels[key] ?? key;
+}
+
+/** Strip @magus or @claude-plugins-official suffixes from a plugin name */
+function stripSuffix(pluginName: string): string {
+	return pluginName
+		.replace(/@magus$/, "")
+		.replace(/@claude-plugins-official$/, "");
+}
+
+/** Join an array of names into comma-separated lines, max ~40 chars each */
+function wrapNames(names: string[], lineMax = 40): string[] {
+	const lines: string[] = [];
+	let current = "";
+	for (const name of names) {
+		const add = current ? `, ${name}` : name;
+		if (current && current.length + add.length > lineMax) {
+			lines.push(current);
+			current = name;
+		} else {
+			current += current ? `, ${name}` : name;
+		}
+	}
+	if (current) lines.push(current);
+	return lines;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -79,23 +151,33 @@ export function ProfilesScreen() {
 	const allItems = buildListItems(profileList);
 	const selectedItem: ListItem | undefined = allItems[profilesState.selectedIndex];
 
+	// Skip header items when navigating
+	const isNavigable = (item: ListItem) => item.kind !== "header";
+
 	// Keyboard handling
 	useKeyboard((event) => {
 		if (state.isSearching || state.modal) return;
 
 		if (event.name === "up" || event.name === "k") {
-			const newIndex = Math.max(0, profilesState.selectedIndex - 1);
-			dispatch({ type: "PROFILES_SELECT", index: newIndex });
+			let newIndex = profilesState.selectedIndex - 1;
+			while (newIndex > 0 && !isNavigable(allItems[newIndex]!)) {
+				newIndex--;
+			}
+			if (newIndex >= 0 && isNavigable(allItems[newIndex]!)) {
+				dispatch({ type: "PROFILES_SELECT", index: newIndex });
+			}
 		} else if (event.name === "down" || event.name === "j") {
-			const newIndex = Math.min(
-				Math.max(0, allItems.length - 1),
-				profilesState.selectedIndex + 1,
-			);
-			dispatch({ type: "PROFILES_SELECT", index: newIndex });
+			let newIndex = profilesState.selectedIndex + 1;
+			while (newIndex < allItems.length - 1 && !isNavigable(allItems[newIndex]!)) {
+				newIndex++;
+			}
+			if (newIndex < allItems.length && isNavigable(allItems[newIndex]!)) {
+				dispatch({ type: "PROFILES_SELECT", index: newIndex });
+			}
 		} else if (event.name === "enter" || event.name === "a") {
 			if (selectedItem?.kind === "predefined") {
 				void handleApplyPredefined(selectedItem.profile);
-			} else {
+			} else if (selectedItem?.kind === "saved") {
 				void handleApply();
 			}
 		} else if (event.name === "r") {
@@ -406,34 +488,35 @@ export function ProfilesScreen() {
 	};
 
 	const renderListItem = (item: ListItem, _idx: number, isSelected: boolean) => {
+		// Category header
+		if (item.kind === "header") {
+			return (
+				<text bg={item.color} fg="white">
+					<strong> {item.label} ({item.count}) </strong>
+				</text>
+			);
+		}
+
 		if (item.kind === "predefined") {
 			const { profile } = item;
 			const pluginCount =
 				profile.magusPlugins.length + profile.anthropicPlugins.length;
 			const skillCount = profile.skills.length;
+			const label = truncate(
+				`${profile.name} — ${pluginCount} plugins · ${skillCount} skill${skillCount !== 1 ? "s" : ""}`,
+				45,
+			);
 
 			if (isSelected) {
 				return (
-					<text bg="blue" fg="white">
-						{" "}
-						{profile.icon} {profile.name} — {pluginCount} plugins · {skillCount}{" "}
-						skill{skillCount !== 1 ? "s" : ""}{" "}
-					</text>
+					<text bg="blue" fg="white"> {label} </text>
 				);
 			}
 
 			return (
 				<text>
-					<span fg="blue">[preset]</span>
-					<span> </span>
-					<span fg="white">
-						{profile.icon} {profile.name}
-					</span>
-					<span fg="gray">
-						{" "}
-						— {pluginCount} plugins · {skillCount} skill
-						{skillCount !== 1 ? "s" : ""}
-					</span>
+					<span fg="gray">- </span>
+					<span fg="white">{label}</span>
 				</text>
 			);
 		}
@@ -444,26 +527,21 @@ export function ProfilesScreen() {
 		const dateStr = formatDate(entry.updatedAt);
 		const scopeColor = entry.scope === "user" ? "cyan" : "green";
 		const scopeLabel = entry.scope === "user" ? "[user]" : "[proj]";
+		const label = truncate(
+			`${entry.name} — ${pluginCount} plugin${pluginCount !== 1 ? "s" : ""} · ${dateStr}`,
+			45,
+		);
 
 		if (isSelected) {
 			return (
-				<text bg="magenta" fg="white">
-					{" "}
-					{scopeLabel} {entry.name} — {pluginCount} plugin
-					{pluginCount !== 1 ? "s" : ""} · {dateStr}{" "}
-				</text>
+				<text bg="magenta" fg="white"> {label} </text>
 			);
 		}
 
 		return (
 			<text>
-				<span fg={scopeColor}>{scopeLabel}</span>
-				<span> </span>
-				<span fg="white">{entry.name}</span>
-				<span fg="gray">
-					{" "}
-					— {pluginCount} plugin{pluginCount !== 1 ? "s" : ""} · {dateStr}
-				</span>
+				<span fg={scopeColor}>{scopeLabel} </span>
+				<span fg="white">{label}</span>
 			</text>
 		);
 	};
@@ -479,7 +557,7 @@ export function ProfilesScreen() {
 			);
 		}
 
-		if (!selectedItem) {
+		if (!selectedItem || selectedItem.kind === "header") {
 			return <text fg="gray">Select a profile to see details</text>;
 		}
 
@@ -491,75 +569,84 @@ export function ProfilesScreen() {
 	};
 
 	const renderPredefinedDetail = (profile: PredefinedProfile) => {
-		const allPlugins = [
-			...profile.magusPlugins.map((p) => `${p}@magus`),
-			...profile.anthropicPlugins.map((p) => `${p}@claude-plugins-official`),
-		];
+		const magusNames = profile.magusPlugins;
+		const anthropicNames = profile.anthropicPlugins;
+		const magusLines = wrapNames(magusNames);
+		const anthropicLines = wrapNames(anthropicNames);
+		const skillLines = wrapNames(profile.skills);
+		const divider = "────────────────────────";
+
+		// Settings to display (excluding env)
+		const settingEntries = Object.entries(profile.settings).filter(
+			([k]) => k !== "env",
+		);
+
+		// Env flags as readable settings
+		const envMap =
+			(profile.settings["env"] as Record<string, string> | undefined) ?? {};
+		const tasksOn = envMap["CLAUDE_CODE_ENABLE_TASKS"] === "true";
+		const teamsOn =
+			envMap["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"] === "true";
 
 		return (
 			<box flexDirection="column">
-				<text fg="blue">
-					<strong>
-						{profile.icon} {profile.name}
-					</strong>
+				<text fg="white">
+					<strong>{profile.name}</strong>
 				</text>
 				<box marginTop={1}>
 					<text fg="gray">{profile.description}</text>
 				</box>
+				<box marginTop={1}>
+					<text fg="#666666">{divider}</text>
+				</box>
 				<box marginTop={1} flexDirection="column">
-					<text fg="gray">
-						Magus plugins ({profile.magusPlugins.length}):
-					</text>
-					{profile.magusPlugins.map((p) => (
-						<box key={p}>
-							<text fg="cyan"> {p}@magus</text>
-						</box>
+					<text fg="gray">Magus plugins ({magusNames.length}):</text>
+					{magusLines.map((line, i) => (
+						<text key={i} fg="cyan">  {line}</text>
 					))}
 				</box>
 				<box marginTop={1} flexDirection="column">
-					<text fg="gray">
-						Anthropic plugins ({profile.anthropicPlugins.length}):
-					</text>
-					{profile.anthropicPlugins.map((p) => (
-						<box key={p}>
-							<text fg="yellow"> {p}@claude-plugins-official</text>
-						</box>
+					<text fg="gray">Anthropic plugins ({anthropicNames.length}):</text>
+					{anthropicLines.map((line, i) => (
+						<text key={i} fg="yellow">  {line}</text>
 					))}
 				</box>
 				<box marginTop={1} flexDirection="column">
 					<text fg="gray">Skills ({profile.skills.length}):</text>
-					{profile.skills.map((s) => (
-						<box key={s}>
-							<text fg="white"> {s}</text>
-						</box>
+					{skillLines.map((line, i) => (
+						<text key={i} fg="white">  {line}</text>
 					))}
 				</box>
-				<box marginTop={1} flexDirection="column">
-					<text fg="gray">
-						Settings ({Object.keys(profile.settings).length}):
-					</text>
-					{Object.entries(profile.settings)
-						.filter(([k]) => k !== "env")
-						.map(([k, v]) => (
-							<box key={k}>
-								<text fg="white">
-									{" "}
-									{k}: {String(v)}
-								</text>
-							</box>
-						))}
+				<box marginTop={1}>
+					<text fg="#666666">{divider}</text>
 				</box>
-				<box marginTop={2} flexDirection="column">
-					<box>
-						<text bg="blue" fg="white">
-							{" "}
-							Enter/a{" "}
+				<box marginTop={1} flexDirection="column">
+					<text fg="gray">Settings:</text>
+					{settingEntries.map(([k, v]) => (
+						<text key={k}>
+							<span fg="gray">  {humanizeKey(k).padEnd(14)}</span>
+							<span fg="white">{humanizeValue(k, v)}</span>
 						</text>
-						<text fg="gray">
-							{" "}
-							Apply (merges {allPlugins.length} plugins into project settings)
+					))}
+					{tasksOn && (
+						<text>
+							<span fg="gray">  {"Tasks".padEnd(14)}</span>
+							<span fg="white">on</span>
 						</text>
-					</box>
+					)}
+					{teamsOn && (
+						<text>
+							<span fg="gray">  {"Agent Teams".padEnd(14)}</span>
+							<span fg="white">on</span>
+						</text>
+					)}
+				</box>
+				<box marginTop={1}>
+					<text fg="#666666">{divider}</text>
+				</box>
+				<box marginTop={1}>
+					<text bg="blue" fg="white"> Enter/a </text>
+					<text fg="gray"> Apply to project</text>
 				</box>
 			</box>
 		);
@@ -567,6 +654,7 @@ export function ProfilesScreen() {
 
 	const renderSavedDetail = (selectedProfile: ProfileEntry) => {
 		const plugins = Object.keys(selectedProfile.plugins);
+		const cleanPlugins = plugins.map(stripSuffix);
 		const scopeColor = selectedProfile.scope === "user" ? "cyan" : "green";
 		const scopeLabel =
 			selectedProfile.scope === "user"
@@ -594,50 +682,33 @@ export function ProfilesScreen() {
 						{plugins.length === 0 ? " — applying will disable all plugins" : ""}
 						):
 					</text>
-					{plugins.length === 0 ? (
+					{cleanPlugins.length === 0 ? (
 						<text fg="yellow"> (none)</text>
 					) : (
-						plugins.map((p) => (
-							<box key={p}>
-								<text fg="white"> {p}</text>
-							</box>
+						wrapNames(cleanPlugins).map((line, i) => (
+							<text key={i} fg="white">  {line}</text>
 						))
 					)}
 				</box>
 				<box marginTop={2} flexDirection="column">
 					<box>
-						<text bg="magenta" fg="white">
-							{" "}
-							Enter/a{" "}
-						</text>
+						<text bg="magenta" fg="white"> Enter/a </text>
 						<text fg="gray"> Apply profile</text>
 					</box>
 					<box marginTop={1}>
-						<text bg="#333333" fg="white">
-							{" "}
-							r{" "}
-						</text>
+						<text bg="#333333" fg="white"> r </text>
 						<text fg="gray"> Rename</text>
 					</box>
 					<box marginTop={1}>
-						<text bg="red" fg="white">
-							{" "}
-							d{" "}
-						</text>
+						<text bg="red" fg="white"> d </text>
 						<text fg="gray"> Delete</text>
 					</box>
 					<box marginTop={1}>
-						<text bg="blue" fg="white">
-							{" "}
-							c{" "}
-						</text>
+						<text bg="blue" fg="white"> c </text>
 						<text fg="gray"> Copy JSON to clipboard</text>
 					</box>
 					<box marginTop={1}>
-						<text bg="green" fg="white">
-							{" "}
-							i{" "}
-						</text>
+						<text bg="green" fg="white"> i </text>
 						<text fg="gray"> Import from clipboard</text>
 					</box>
 				</box>
@@ -661,6 +732,13 @@ export function ProfilesScreen() {
 		</text>
 	);
 
+	// Find first navigable index for initial selection
+	const firstNavigableIndex = allItems.findIndex(isNavigable);
+	const effectiveIndex =
+		profilesState.selectedIndex === 0 && selectedItem?.kind === "header"
+			? firstNavigableIndex
+			: profilesState.selectedIndex;
+
 	return (
 		<ScreenLayout
 			title="claudeup Plugin Profiles"
@@ -670,7 +748,7 @@ export function ProfilesScreen() {
 			listPanel={
 				<ScrollableList
 					items={allItems}
-					selectedIndex={profilesState.selectedIndex}
+					selectedIndex={effectiveIndex}
 					renderItem={renderListItem}
 					maxHeight={dimensions.listPanelHeight}
 				/>
