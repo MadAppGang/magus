@@ -253,46 +253,39 @@ export function SkillsScreen() {
 
   // ── Action handlers ───────────────────────────────────────────────────────
 
+  // Status bar message (auto-clears)
+  const [statusMsg, setStatusMsg] = useState<{ text: string; tone: "success" | "error" } | null>(null);
+  const statusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showStatus = useCallback((text: string, tone: "success" | "error" = "success") => {
+    setStatusMsg({ text, tone });
+    if (statusTimerRef.current) clearTimeout(statusTimerRef.current);
+    statusTimerRef.current = setTimeout(() => setStatusMsg(null), 3000);
+  }, []);
+
   const handleInstall = useCallback(async (scope: "user" | "project") => {
     if (!selectedSkill) return;
-    modal.loading(`Installing ${selectedSkill.name}...`);
     try {
       await installSkill(selectedSkill, scope, state.projectPath);
-      modal.hideModal();
       await fetchData();
-      await modal.message(
-        "Installed",
-        `${selectedSkill.name} installed to ${scope === "user" ? "~/.claude/skills/" : ".claude/skills/"}`,
-        "success",
-      );
+      showStatus(`Installed ${selectedSkill.name} to ${scope}`);
     } catch (error) {
-      modal.hideModal();
-      await modal.message("Error", `Failed to install: ${error}`, "error");
+      showStatus(`Failed: ${error}`, "error");
     }
-  }, [selectedSkill, state.projectPath, dispatch, modal, fetchData]);
+  }, [selectedSkill, state.projectPath, fetchData, showStatus]);
 
   const handleUninstall = useCallback(async () => {
     if (!selectedSkill || !selectedSkill.installed) return;
     const scope = selectedSkill.installedScope;
     if (!scope) return;
 
-    const confirmed = await modal.confirm(
-      `Uninstall "${selectedSkill.name}"?`,
-      `This will remove it from the ${scope} scope.`,
-    );
-    if (!confirmed) return;
-
-    modal.loading(`Uninstalling ${selectedSkill.name}...`);
     try {
       await uninstallSkill(selectedSkill.name, scope, state.projectPath);
-      modal.hideModal();
       await fetchData();
-      await modal.message("Uninstalled", `${selectedSkill.name} removed.`, "success");
+      showStatus(`Removed ${selectedSkill.name} from ${scope}`);
     } catch (error) {
-      modal.hideModal();
-      await modal.message("Error", `Failed to uninstall: ${error}`, "error");
+      showStatus(`Failed: ${error}`, "error");
     }
-  }, [selectedSkill, state.projectPath, dispatch, modal, fetchData]);
+  }, [selectedSkill, state.projectPath, fetchData, showStatus]);
 
   // ── Keyboard handling ─────────────────────────────────────────────────────
 
@@ -390,7 +383,11 @@ export function SkillsScreen() {
   const installedCount = skills.filter((s) => s.installed).length;
   const query = skillsState.searchQuery.trim();
 
-  const statusContent = (
+  const statusContent = statusMsg ? (
+    <text>
+      <span fg={statusMsg.tone === "success" ? "green" : "red"}>{statusMsg.text}</span>
+    </text>
+  ) : (
     <text>
       <span fg="gray">Skills: </span>
       <span fg="cyan">{installedCount} installed</span>
