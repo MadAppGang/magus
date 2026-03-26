@@ -134,18 +134,19 @@ export function buildSkillBrowserItems({
     return items;
   }
 
-  // ── POPULAR (default, no search query) ──
-  if (popular.length > 0) {
+  // ── POPULAR (default, no search query) — only skills with meaningful stars ──
+  const popularWithStars = popular.filter((s) => (s.stars ?? 0) >= 5);
+  if (popularWithStars.length > 0) {
     items.push({
       id: "cat:popular",
       kind: "category",
       label: "Popular",
       title: "Popular",
       categoryKey: "popular",
-      count: popular.length,
+      count: popularWithStars.length,
       tone: "teal",
     });
-    for (const skill of popular) {
+    for (const skill of popularWithStars) {
       items.push({
         id: `skill:${skill.id}`,
         kind: "skill",

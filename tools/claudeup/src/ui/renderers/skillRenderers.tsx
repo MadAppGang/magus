@@ -164,19 +164,19 @@ const skillRenderer: ItemRenderer<SkillSkillItem> = {
         )}
 
         <ActionHints
-          hints={
-            skill.installed
-              ? [
-                  { key: "d", label: "Uninstall", tone: "danger" },
-                  { key: "u/p", label: "Reinstall in user/project scope" },
-                  { key: "o", label: "Open in browser" },
-                ]
-              : [
-                  { key: "u", label: "Install in user scope", tone: "primary" },
-                  { key: "p", label: "Install in project scope", tone: "primary" },
-                  { key: "o", label: "Open in browser" },
-                ]
-          }
+          hints={[
+            {
+              key: "u",
+              label: skill.installedScope === "user" ? "Uninstall from user" : "Install to user",
+              tone: skill.installedScope === "user" ? "danger" : "primary",
+            },
+            {
+              key: "p",
+              label: skill.installedScope === "project" ? "Uninstall from project" : "Install to project",
+              tone: skill.installedScope === "project" ? "danger" : "primary",
+            },
+            { key: "o", label: "Open in browser" },
+          ]}
         />
       </box>
     );

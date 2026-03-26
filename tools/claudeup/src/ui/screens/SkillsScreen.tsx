@@ -367,8 +367,6 @@ export function SkillsScreen() {
     } else if (event.name === "p" && selectedSkill) {
       if (selectedSkill.installed && selectedSkill.installedScope === "project") handleUninstall();
       else handleInstall("project");
-    } else if (event.name === "d" && selectedSkill?.installed) {
-      handleUninstall();
     } else if (event.name === "r") {
       fetchData();
     } else if (event.name === "o" && selectedSkill) {
