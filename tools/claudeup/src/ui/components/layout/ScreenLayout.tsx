@@ -119,16 +119,17 @@ export function ScreenLayout({
 				</box>
 
 				{/* Detail panel — scrollable */}
-				<scrollbox
-					flexDirection="column"
-					width="50%"
-					height={panelHeight}
-					paddingLeft={1}
-					scrollY={true}
-					scrollX={false}
-				>
-					{detailPanel}
-				</scrollbox>
+				<box width="50%" height={panelHeight} paddingLeft={1}>
+					<scrollbox
+						height={panelHeight}
+						scrollY={true}
+						scrollX={false}
+					>
+						<box flexDirection="column">
+							{detailPanel}
+						</box>
+					</scrollbox>
+				</box>
 			</box>
 
 			{/* Footer */}
