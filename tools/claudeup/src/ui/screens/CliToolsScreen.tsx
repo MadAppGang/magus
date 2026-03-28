@@ -32,43 +32,56 @@ function parseVersion(versionOutput: string): string | undefined {
 	return match ? match[1] : undefined;
 }
 
-async function detectInstallMethod(
+function methodFromPath(binPath: string): InstallMethod | null {
+	if (binPath.includes("/.bun/")) return "bun";
+	if (binPath.includes("/homebrew/") || binPath.includes("/Cellar/")) return "brew";
+	if (binPath.includes("/.local/share/claude") || binPath.includes("/.local/bin/claude")) return "npm";
+	if (binPath.includes("/.nvm/") || binPath.includes("/node_modules/")) return "npm";
+	if (binPath.includes("/.local/share/pnpm") || binPath.includes("/pnpm/")) return "pnpm";
+	if (binPath.includes("/.yarn/")) return "yarn";
+	return null;
+}
+
+interface InstallInfo {
+	primary: InstallMethod;
+	all: InstallMethod[];
+}
+
+async function detectInstallMethods(
 	tool: import("../../data/cli-tools.js").CliTool,
-): Promise<InstallMethod> {
+): Promise<InstallInfo> {
+	const fallback = tool.packageManager === "pip" ? "pip" : "unknown";
 	try {
-		const { stdout } = await execAsync(`which ${tool.name} 2>/dev/null`, {
+		// which -a returns all matching binaries across PATH
+		const { stdout } = await execAsync(`which -a ${tool.name} 2>/dev/null`, {
 			timeout: 3000,
 			shell: "/bin/bash",
 		});
-		const binPath = stdout.trim();
-		if (!binPath) return tool.packageManager === "pip" ? "pip" : "unknown";
+		const paths = stdout.trim().split("\n").filter((p) => p && !p.includes("aliased"));
+		if (paths.length === 0) return { primary: fallback as InstallMethod, all: [] };
 
-		if (binPath.includes("/.bun/")) return "bun";
-		if (binPath.includes("/homebrew/") || binPath.includes("/Cellar/")) return "brew";
-		if (binPath.includes("/.local/share/claude") || binPath.includes("/.local/bin/claude")) return "npm";
-
-		// Check symlink target for more clues
-		try {
-			const { stdout: linkTarget } = await execAsync(
-				`readlink "${binPath}" 2>/dev/null || true`,
-				{ timeout: 2000, shell: "/bin/bash" },
-			);
-			const target = linkTarget.trim();
-			if (target.includes("/.bun/")) return "bun";
-			if (target.includes("/pnpm/")) return "pnpm";
-			if (target.includes("/.yarn/")) return "yarn";
-		} catch {
-			// ignore
+		const methods: InstallMethod[] = [];
+		for (const binPath of paths) {
+			let method = methodFromPath(binPath);
+			if (!method) {
+				// Check symlink target
+				try {
+					const { stdout: linkTarget } = await execAsync(
+						`readlink "${binPath}" 2>/dev/null || true`,
+						{ timeout: 2000, shell: "/bin/bash" },
+					);
+					method = methodFromPath(linkTarget.trim());
+				} catch {
+					// ignore
+				}
+			}
+			if (method && !methods.includes(method)) methods.push(method);
 		}
 
-		// Path-based detection for npm variants
-		if (binPath.includes("/.nvm/") || binPath.includes("/node_modules/")) return "npm";
-		if (binPath.includes("/.local/share/pnpm")) return "pnpm";
-		if (binPath.includes("/.yarn/")) return "yarn";
-
-		return tool.packageManager === "pip" ? "pip" : "npm";
+		if (methods.length === 0) return { primary: fallback as InstallMethod, all: [] };
+		return { primary: methods[0]!, all: methods };
 	} catch {
-		return tool.packageManager === "pip" ? "pip" : "unknown";
+		return { primary: fallback as InstallMethod, all: [] };
 	}
 }
 
@@ -84,17 +97,6 @@ function getUpdateCommand(tool: import("../../data/cli-tools.js").CliTool, metho
 	}
 }
 
-function getInstallMethodLabel(method: InstallMethod): string {
-	switch (method) {
-		case "bun": return "bun";
-		case "npm": return "npm";
-		case "pnpm": return "pnpm";
-		case "yarn": return "yarn";
-		case "brew": return "Homebrew";
-		case "pip": return "pip";
-		default: return "unknown";
-	}
-}
 
 async function getInstalledVersion(
 	tool: import("../../data/cli-tools.js").CliTool,
@@ -195,8 +197,8 @@ export function CliToolsScreen() {
 			Promise.all([
 				getInstalledVersion(tool),
 				getLatestVersion(tool),
-				detectInstallMethod(tool),
-			]).then(([version, latest, method]) => {
+				detectInstallMethods(tool),
+			]).then(([version, latest, info]) => {
 				updateToolStatus(i, {
 					installedVersion: version,
 					installed: version !== undefined,
@@ -206,8 +208,9 @@ export function CliToolsScreen() {
 						version && latest
 							? compareVersions(version, latest) < 0
 							: false,
-					installMethod: version ? method : undefined,
-					updateCommand: version ? getUpdateCommand(tool, method) : undefined,
+					installMethod: version ? info.primary : undefined,
+					allMethods: version && info.all.length > 1 ? info.all : undefined,
+					updateCommand: version ? getUpdateCommand(tool, info.primary) : undefined,
 				});
 			});
 		}

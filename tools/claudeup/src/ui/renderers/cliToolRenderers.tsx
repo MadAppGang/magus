@@ -14,7 +14,22 @@ export interface CliToolStatus {
   hasUpdate?: boolean;
   checking: boolean;
   installMethod?: InstallMethod;
+  allMethods?: InstallMethod[];
   updateCommand?: string;
+}
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+function getUninstallHint(tool: CliTool, method: InstallMethod): string {
+  switch (method) {
+    case "bun": return `bun remove -g ${tool.packageName}`;
+    case "npm": return `npm uninstall -g ${tool.packageName}`;
+    case "pnpm": return `pnpm remove -g ${tool.packageName}`;
+    case "yarn": return `yarn global remove ${tool.packageName}`;
+    case "brew": return `brew uninstall ${tool.name}`;
+    case "pip": return `pip uninstall ${tool.packageName}`;
+    default: return "";
+  }
 }
 
 // ─── Row renderer ──────────────────────────────────────────────────────────────
@@ -24,7 +39,8 @@ export function renderCliToolRow(
   _index: number,
   isSelected: boolean,
 ): React.ReactNode {
-  const { tool, installed, installedVersion, hasUpdate, checking } = status;
+  const { tool, installed, installedVersion, hasUpdate, checking, allMethods } = status;
+  const hasConflict = allMethods && allMethods.length > 1;
 
   let icon: string;
   let iconColor: string;
@@ -32,6 +48,9 @@ export function renderCliToolRow(
   if (!installed) {
     icon = "○";
     iconColor = theme.colors.muted;
+  } else if (hasConflict) {
+    icon = "⚠";
+    iconColor = theme.colors.danger;
   } else if (hasUpdate) {
     icon = "⬆";
     iconColor = theme.colors.warning;
@@ -41,12 +60,15 @@ export function renderCliToolRow(
   }
 
   const versionText = installedVersion ? `v${installedVersion}` : "";
+  const methodTag = installed && allMethods?.length
+    ? ` ${allMethods.join("+")}`
+    : "";
 
   if (isSelected) {
     return (
       <text bg={theme.selection.bg} fg={theme.selection.fg}>
         {" "}
-        {icon} {tool.displayName} {versionText}
+        {icon} {tool.displayName} {versionText}{methodTag}
         {checking ? "..." : ""}{" "}
       </text>
     );
@@ -57,6 +79,7 @@ export function renderCliToolRow(
       <span fg={iconColor}>{icon}</span>
       <span fg={theme.colors.text}> {tool.displayName}</span>
       {versionText ? <span fg={theme.colors.success}> {versionText}</span> : null}
+      {methodTag ? <span fg={hasConflict ? theme.colors.danger : theme.colors.dim}>{methodTag}</span> : null}
       {checking ? <span fg={theme.colors.muted}>{"..."}</span> : null}
     </text>
   );
@@ -80,10 +103,10 @@ export function renderCliToolDetail(
     );
   }
 
-  const { tool, installed, installedVersion, latestVersion, hasUpdate, checking, installMethod, updateCommand } =
+  const { tool, installed, installedVersion, latestVersion, hasUpdate, checking, installMethod, allMethods, updateCommand } =
     status;
 
-  const methodLabel = installMethod && installMethod !== "unknown" ? installMethod : null;
+  const hasConflict = allMethods && allMethods.length > 1;
 
   return (
     <box flexDirection="column">
@@ -92,6 +115,7 @@ export function renderCliToolDetail(
           <strong>{"⚙ "}{tool.displayName}</strong>
         </text>
         {hasUpdate ? <text fg={theme.colors.warning}> ⬆</text> : null}
+        {hasConflict ? <text fg={theme.colors.danger}> ⚠</text> : null}
       </box>
 
       <text fg={theme.colors.muted}>{tool.description}</text>
@@ -142,36 +166,55 @@ export function renderCliToolDetail(
         </box>
       </box>
 
+      {/* Conflict warning */}
+      {hasConflict ? (
+        <box marginTop={1} flexDirection="column">
+          <box>
+            <text bg={theme.colors.danger} fg="white">
+              <strong>{" "}Conflict: installed via {allMethods.join(" + ")}{" "}</strong>
+            </text>
+          </box>
+          <box marginTop={1}>
+            <text fg={theme.colors.muted}>
+              Multiple installs can cause version mismatches.
+              {"\n"}Keep one, remove the rest:
+            </text>
+          </box>
+          {allMethods.map((method, i) => (
+            <box key={method}>
+              <text>
+                <span fg={i === 0 ? theme.colors.success : theme.colors.danger}>
+                  {i === 0 ? "  ● keep  " : "  ○ remove "}
+                </span>
+                <span fg={theme.colors.warning}>{method}</span>
+                {i > 0 ? (
+                  <span fg={theme.colors.dim}>{`  ${getUninstallHint(tool, method)}`}</span>
+                ) : (
+                  <span fg={theme.colors.dim}>  (active in PATH)</span>
+                )}
+              </text>
+            </box>
+          ))}
+        </box>
+      ) : null}
+
+      {/* Actions */}
       <box marginTop={2} flexDirection="column">
         {!installed ? (
-          <box flexDirection="column">
-            <box>
-              <text bg={theme.colors.success} fg="black">{" "}Enter{" "}</text>
-              <text fg={theme.colors.muted}> Install via {tool.packageManager}</text>
-            </box>
-            <box marginTop={1}>
-              <text fg={theme.colors.dim}>  {tool.installCommand}</text>
-            </box>
+          <box>
+            <text bg={theme.colors.success} fg="black">{" "}Enter{" "}</text>
+            <text fg={theme.colors.muted}> Install</text>
+            <text fg={theme.colors.dim}>  {tool.installCommand}</text>
           </box>
         ) : hasUpdate ? (
-          <box flexDirection="column">
-            <box>
-              <text bg={theme.colors.warning} fg="black">{" "}Enter{" "}</text>
-              <text fg={theme.colors.muted}> Update to v{latestVersion}</text>
-            </box>
-            <box marginTop={1}>
-              <text fg={theme.colors.dim}>  {updateCommand || tool.installCommand}</text>
-            </box>
+          <box>
+            <text bg={theme.colors.warning} fg="black">{" "}Enter{" "}</text>
+            <text fg={theme.colors.muted}> Update to v{latestVersion}</text>
           </box>
         ) : (
-          <box flexDirection="column">
-            <box>
-              <text bg={theme.colors.muted} fg="white">{" "}Enter{" "}</text>
-              <text fg={theme.colors.muted}> Reinstall</text>
-            </box>
-            <box marginTop={1}>
-              <text fg={theme.colors.dim}>  {updateCommand || tool.installCommand}</text>
-            </box>
+          <box>
+            <text bg={theme.colors.muted} fg="white">{" "}Enter{" "}</text>
+            <text fg={theme.colors.muted}> Reinstall</text>
           </box>
         )}
       </box>
