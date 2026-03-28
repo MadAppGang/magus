@@ -61,7 +61,8 @@ bun run "${CLAUDE_PLUGIN_ROOT}/tools/gtd-display.ts" engage "$TASK_ID"
 1. Tell the user which task is now active and how many subtasks it has.
 2. Load any existing subtasks (tasks where parentId == the active task ID) into the session TaskList via TaskCreate with metadata `{ gtdId: "<subtask_id>", gtdParent: "<active_id>" }`.
 3. Show the active task's details: subject, context, energy, timeEstimate if set.
-4. Offer: "Run `/gtd:next` to see all next actions, or `/gtd:status` for the full dashboard."
+4. If the dev plugin is installed (check if `/dev:dev` is available): suggest "Ready to implement? Run `/dev:dev` to start development."
+5. Offer: "Run `/gtd:next` to see all next actions, or `/gtd:status` for the full dashboard."
 
 If the user provides no argument, show the current active task:
 ```bash

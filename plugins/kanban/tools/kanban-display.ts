@@ -562,42 +562,41 @@ function buildModernCard(t: BoardTask, col: ColumnDef, colWidth: number): string
   const R = S.reset;
   const content: string[] = [];
 
-  // Title: colored dot + #id + bold white title
+  // Line 1: colored dot + #id + bold white title (full width for name)
   const idStr    = `${S.gray}#${String(t.id).padStart(2, "0")}${R}`;
-  const titleRaw = truncate(t.title, inner - 7);
+  const titleRaw = truncate(t.title, inner - 7); // dot(2) + id(4) + space(1)
   content.push(` ${theme.dot}●${R} ${idStr} ${S.bold}${S.white}${titleRaw}${R}`);
 
-  // Priority pill (background badge)
-  if (t.priority) {
-    const p = MODERN.priorityPill[t.priority];
-    if (p) {
-      content.push(`  ${p.bg}${S.bold}${p.fg}${p.label}${R}`);
+  // Line 2: priority pill + progress bar on same line (compact)
+  const p = t.priority ? MODERN.priorityPill[t.priority] : null;
+  const prioPill = p ? `${p.bg}${S.bold}${p.fg}${p.label}${R}` : "";
+  // Priority pill — always on its own line
+  if (prioPill) {
+    content.push(`  ${prioPill}`);
+  }
+
+  // Subtask progress bar + checklist — separate line
+  if (t.subtasks) {
+    const { done, total, items } = t.subtasks;
+    const pct  = Math.round((done / total) * 100);
+    const barW = Math.max(4, inner - 16);
+    const bar  = blockBar(done, total, barW);
+    content.push(`  ${S.gray}[${done}/${total}]${R} ${bar} ${S.bold}${pct}%${R}`);
+
+    for (let i = 0; i < Math.min(items.length, 3); i++) {
+      const sub   = items[i];
+      const icon  = sub.done ? `${S.green}✓${R}` : `${S.gray}○${R}`;
+      const lbl   = `${S.italic}${S.gray}${truncate(sub.title, inner - 6)}${R}`;
+      content.push(`   ${icon} ${lbl}`);
+    }
+    if (items.length > 3) {
+      content.push(`   ${S.gray}+ ${items.length - 3} more...${R}`);
     }
   }
 
   // Blocked: [BLK] blocked → #id  (use text, not ⛔ — double-width)
   if (t.blockedBy.length > 0) {
     content.push(`  ${S.red}${S.bold}[BLK]${R}${S.red} blocked -> #${t.blockedBy.join(" #")}${R}`);
-  }
-
-  // Subtask progress: [done/total] + bar + percentage + checklist
-  if (t.subtasks) {
-    const { done, total, items } = t.subtasks;
-    const pct  = Math.round((done / total) * 100);
-    const barW = Math.max(4, colWidth - 20);
-    const bar  = blockBar(done, total, barW);
-    content.push(`  ${S.gray}[${done}/${total}]${R} ${bar} ${S.bold}${pct}%${R}`);
-
-    // Individual subtask checklist items (max 3, then "N more")
-    for (let i = 0; i < Math.min(items.length, 3); i++) {
-      const sub   = items[i];
-      const icon  = sub.done ? `${S.green}✓${R}` : `${S.gray}○${R}`;
-      const lbl   = `${S.italic}${S.gray}${truncate(sub.title, colWidth - 10)}${R}`;
-      content.push(`   ${icon} ${lbl}`);
-    }
-    if (items.length > 3) {
-      content.push(`   ${S.gray}+ ${items.length - 3} more...${R}`);
-    }
   }
 
   // Wrap in cardBox (guaranteed exact width) + blank gap between cards

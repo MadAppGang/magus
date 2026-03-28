@@ -22,44 +22,18 @@
  *   --list <name>       Target list for capture confirmation (inbox|someday)
  */
 
-// ── ANSI helpers ────────────────────────────────────────────────────────────
+import {
+  S,
+  fg,
+  formatTime,
+  renderBox,
+  renderInlineBox,
+  pill,
+  badge,
+  print,
+} from "../../../tools/table/index.ts";
 
-const S = {
-  reset: "\x1b[0m",
-  bold: "\x1b[1m",
-  dim: "\x1b[2m",
-  italic: "\x1b[3m",
-  // Foreground
-  black: "\x1b[30m",
-  red: "\x1b[91m",
-  green: "\x1b[92m",
-  yellow: "\x1b[93m",
-  blue: "\x1b[94m",
-  magenta: "\x1b[95m",
-  cyan: "\x1b[96m",
-  white: "\x1b[97m",
-  gray: "\x1b[90m",
-  // Background
-  bgBlack: "\x1b[40m",
-  bgRed: "\x1b[41m",
-  bgGreen: "\x1b[42m",
-  bgYellow: "\x1b[43m",
-  bgBlue: "\x1b[44m",
-  bgMagenta: "\x1b[45m",
-  bgCyan: "\x1b[46m",
-  bgWhite: "\x1b[47m",
-  bgGray: "\x1b[100m",
-  bgBrightGreen: "\x1b[102m",
-  bgBrightYellow: "\x1b[103m",
-  bgBrightMagenta: "\x1b[105m",
-  bgBrightCyan: "\x1b[106m",
-} as const;
-
-function fg(style: string, text: string): string {
-  return `${style}${text}${S.reset}`;
-}
-
-// ── Types ───────────────────────────────────────────────────────────────────
+// ── Types ────────────────────────────────────────────────────────────────────
 
 interface Task {
   id: string;
@@ -84,138 +58,11 @@ interface GTDStore {
   tasks: Task[];
 }
 
-// ── Utilities ───────────────────────────────────────────────────────────────
-
-function termW(): number {
-  return process.stdout.columns || 80;
-}
-
-function stripAnsi(text: string): string {
-  return text.replace(/\x1b\[[0-9;]*m/g, "");
-}
-
-function visLen(text: string): number {
-  return stripAnsi(text).length;
-}
-
-function truncate(text: string, maxLen: number): string {
-  if (text.length <= maxLen) return text;
-  return text.slice(0, maxLen - 1) + "…";
-}
-
-function formatTime(minutes: number | null): string {
-  if (minutes === null) return "";
-  if (minutes < 60) return `${minutes}m`;
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  return m > 0 ? `${h}h${m}m` : `${h}h`;
-}
+// ── GTD-specific utilities ───────────────────────────────────────────────────
 
 function daysSince(dateStr: string | null): number {
   if (!dateStr) return 999;
   return Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
-}
-
-// ── Box renderer ────────────────────────────────────────────────────────────
-
-/**
- * Wraps lines in a unicode box with a colored title bar.
- * The title bar fills the full box width with a background color.
- */
-function renderBox(opts: {
-  title: string;
-  titleBg: string;
-  titleFg?: string;
-  lines: string[];
-  borderColor?: string;
-}): void {
-  const { title, titleBg, titleFg = S.white, lines, borderColor = S.gray } = opts;
-  const w = Math.min(termW(), 80);
-  const inner = w - 4; // "│ " + content + " │"
-  const bc = borderColor;
-
-  // Top border
-  console.log(fg(bc, `╭${"─".repeat(w - 2)}╮`));
-
-  // Title bar — full width background fill
-  const titleText = ` ${title} `;
-  const titlePad = Math.max(0, w - 4 - titleText.length);
-  console.log(
-    `${fg(bc, "│")} ${titleBg}${S.bold}${titleFg}${titleText}${" ".repeat(titlePad)}${S.reset} ${fg(bc, "│")}`
-  );
-
-  // Separator after title
-  console.log(fg(bc, `├${"─".repeat(w - 2)}┤`));
-
-  // Content lines — clamp to inner width
-  for (const line of lines) {
-    const vl = visLen(line);
-    if (vl <= inner) {
-      const pad = inner - vl;
-      console.log(`${fg(bc, "│")} ${line}${" ".repeat(pad)} ${fg(bc, "│")}`);
-    } else {
-      // Truncate: walk through chars, tracking visible length
-      let out = "";
-      let vis = 0;
-      let inEsc = false;
-      for (let i = 0; i < line.length && vis < inner - 1; i++) {
-        const ch = line[i];
-        if (ch === "\x1b") { inEsc = true; out += ch; continue; }
-        if (inEsc) { out += ch; if (ch >= "A" && ch <= "z") inEsc = false; continue; }
-        out += ch;
-        vis++;
-      }
-      out += S.reset + "…";
-      const finalVis = vis + 1; // +1 for ellipsis
-      const pad = Math.max(0, inner - finalVis);
-      console.log(`${fg(bc, "│")} ${out}${" ".repeat(pad)} ${fg(bc, "│")}`);
-    }
-  }
-
-  // Bottom border
-  console.log(fg(bc, `╰${"─".repeat(w - 2)}╯`));
-}
-
-/**
- * Small inline box for single-line confirmations (capture, moved, completed).
- */
-function renderInlineBox(content: string, borderColor: string = S.gray): void {
-  const w = Math.min(termW(), 80);
-  const inner = w - 4;
-  const bc = borderColor;
-  const vl = visLen(content);
-
-  console.log(fg(bc, `╭${"─".repeat(w - 2)}╮`));
-  if (vl <= inner) {
-    const pad = inner - vl;
-    console.log(`${fg(bc, "│")} ${content}${" ".repeat(pad)} ${fg(bc, "│")}`);
-  } else {
-    // Truncate safely
-    let out = "";
-    let vis = 0;
-    let inEsc = false;
-    for (let i = 0; i < content.length && vis < inner - 1; i++) {
-      const ch = content[i];
-      if (ch === "\x1b") { inEsc = true; out += ch; continue; }
-      if (inEsc) { out += ch; if (ch >= "A" && ch <= "z") inEsc = false; continue; }
-      out += ch;
-      vis++;
-    }
-    out += S.reset + "…";
-    const pad = Math.max(0, inner - vis - 1);
-    console.log(`${fg(bc, "│")} ${out}${" ".repeat(pad)} ${fg(bc, "│")}`);
-  }
-  console.log(fg(bc, `╰${"─".repeat(w - 2)}╯`));
-}
-
-// ── Visual building blocks ──────────────────────────────────────────────────
-
-function pill(label: string, value: number | string, bg: string, fgColor: string = S.white): string {
-  return `${bg}${S.bold}${fgColor} ${label} ${value} ${S.reset}`;
-}
-
-function badge(text: string, style: string = `${S.bgGray}${S.white}`): string {
-  return `${style} ${text} ${S.reset}`;
 }
 
 function energyDisplay(energy: string | null): { icon: string; color: string; label: string } {
@@ -239,7 +86,7 @@ function listBg(list: string): string {
   }
 }
 
-// ── Load data ───────────────────────────────────────────────────────────────
+// ── Load data ────────────────────────────────────────────────────────────────
 
 function loadStore(filePath: string): GTDStore {
   try {
@@ -250,7 +97,7 @@ function loadStore(filePath: string): GTDStore {
   }
 }
 
-// ── Render task line ────────────────────────────────────────────────────────
+// ── Render task line ─────────────────────────────────────────────────────────
 
 function renderTask(t: Task, opts: {
   prefix?: string;
@@ -304,7 +151,7 @@ function renderTask(t: Task, opts: {
   return line;
 }
 
-// ── Commands ────────────────────────────────────────────────────────────────
+// ── Commands ─────────────────────────────────────────────────────────────────
 
 function cmdStatus(store: GTDStore, jsonOutput: boolean): void {
   const active = store.tasks.filter(t => t.completed === null);
@@ -386,7 +233,7 @@ function cmdStatus(store: GTDStore, jsonOutput: boolean): void {
   lines.push("");
   lines.push(`${fg(S.gray, "Review:")} ${reviewStr}`);
 
-  renderBox({ title: "GTD STATUS", titleBg: S.bgBlue, lines });
+  print(renderBox({ title: "GTD STATUS", titleBg: S.bgBlue, lines }));
 }
 
 function cmdNext(
@@ -413,12 +260,12 @@ function cmdNext(
   const fgc = S.black;
 
   if (tasks.length === 0) {
-    renderBox({
+    print(renderBox({
       title: `${listLabel}  ·  0 tasks`,
       titleBg: bg,
       titleFg: fgc,
       lines: [fg(S.gray, "No tasks match. Try /gtd:clarify to process inbox items.")],
-    });
+    }));
     return;
   }
 
@@ -496,12 +343,12 @@ function cmdNext(
     }
   }
 
-  renderBox({
+  print(renderBox({
     title: `${listLabel}  ·  ${tasks.length} tasks`,
     titleBg: bg,
     titleFg: fgc,
     lines,
-  });
+  }));
 }
 
 function cmdCapture(_store: GTDStore, taskId: string, text: string, list: string): void {
@@ -509,7 +356,7 @@ function cmdCapture(_store: GTDStore, taskId: string, text: string, list: string
   const label = list === "someday" ? "SOMEDAY" : "INBOX";
   const content = `${pill(label + " +", "", bg, S.black)} ${fg(S.bold + S.white, `"${text}"`)}  ${fg(S.gray, taskId)}`;
   const borderColor = list === "someday" ? S.cyan : S.magenta;
-  renderInlineBox(content, borderColor);
+  print(renderInlineBox(content, borderColor));
 }
 
 function cmdWork(store: GTDStore, taskId: string): void {
@@ -537,7 +384,7 @@ function cmdWork(store: GTDStore, taskId: string): void {
     }
   }
 
-  renderBox({ title: "ACTIVE TASK", titleBg: S.bgGreen, titleFg: S.black, lines });
+  print(renderBox({ title: "ACTIVE TASK", titleBg: S.bgGreen, titleFg: S.black, lines }));
 }
 
 function cmdTree(store: GTDStore, jsonOutput: boolean): void {
@@ -598,27 +445,27 @@ function cmdTree(store: GTDStore, jsonOutput: boolean): void {
     }
   }
 
-  renderBox({ title: "TASK TREE", titleBg: S.bgBlue, lines });
+  print(renderBox({ title: "TASK TREE", titleBg: S.bgBlue, lines }));
 }
 
 function cmdClarifyDone(count: number): void {
   const content = `${pill("✓ INBOX CLARIFIED", "", S.bgGreen, S.black)} ${count} item(s) clarified. Run /gtd:next for next actions.`;
-  renderInlineBox(content, S.green);
+  print(renderInlineBox(content, S.green));
 }
 
 function cmdMoved(task: { subject: string; list: string; id: string }): void {
   const bg = listBg(task.list);
   const label = task.list.toUpperCase();
   const content = `${pill("→ " + label, "", bg, S.black)} ${fg(S.white, `"${task.subject}"`)}  ${fg(S.gray, task.id)}`;
-  renderInlineBox(content, S.green);
+  print(renderInlineBox(content, S.green));
 }
 
 function cmdCompleted(task: { subject: string; id: string }): void {
   const content = `${pill("✓ DONE", "", S.bgGreen, S.black)} ${fg(S.dim + S.white, task.subject)}  ${fg(S.gray, task.id)}`;
-  renderInlineBox(content, S.green);
+  print(renderInlineBox(content, S.green));
 }
 
-// ── CLI Entry Point ─────────────────────────────────────────────────────────
+// ── CLI Entry Point ──────────────────────────────────────────────────────────
 
 function main(): void {
   const args = process.argv.slice(2);

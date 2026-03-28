@@ -38,10 +38,14 @@ gtd_init() {
   if [ ! -f "$file" ]; then
     cat > "$file" <<'EOF'
 {
-  "version": "2.0",
+  "version": "3.0",
   "nextId": 1,
   "lastReview": null,
   "activeTaskId": null,
+  "kanban": {
+    "columns": ["backlog", "todo", "in-progress", "review", "done"],
+    "wipLimit": 3
+  },
   "tasks": []
 }
 EOF
@@ -58,7 +62,7 @@ gtd_read() {
   if [ -f "$file" ]; then
     cat "$file"
   else
-    printf '{"version":"2.0","nextId":1,"lastReview":null,"activeTaskId":null,"tasks":[]}\n'
+    printf '{"version":"3.0","nextId":1,"lastReview":null,"activeTaskId":null,"kanban":{"columns":["backlog","todo","in-progress","review","done"],"wipLimit":3},"tasks":[]}\n'
   fi
 }
 
