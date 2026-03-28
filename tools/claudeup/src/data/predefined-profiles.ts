@@ -2,7 +2,7 @@ export interface PredefinedProfile {
 	id: string;
 	name: string;
 	description: string;
-	icon: string; // emoji or symbol
+	icon: string;
 	magusPlugins: string[];
 	anthropicPlugins: string[];
 	skills: string[];
@@ -28,7 +28,6 @@ export const PREDEFINED_PROFILES: PredefinedProfile[] = [
 		settings: {
 			effortLevel: "high",
 			alwaysThinkingEnabled: true,
-			model: "claude-sonnet-4-6",
 			outputStyle: "explanatory",
 			env: { CLAUDE_CODE_ENABLE_TASKS: "true" },
 			respectGitignore: true,
@@ -38,7 +37,8 @@ export const PREDEFINED_PROFILES: PredefinedProfile[] = [
 	{
 		id: "developer-essentials",
 		name: "Developer Essentials",
-		description: "Must Have + full dev toolkit: code analysis, browser, terminal, design, review",
+		description:
+			"Must Have + full dev toolkit: code analysis, browser, terminal, design, review",
 		icon: "▶",
 		magusPlugins: [
 			"statusline",
@@ -65,7 +65,6 @@ export const PREDEFINED_PROFILES: PredefinedProfile[] = [
 		settings: {
 			effortLevel: "high",
 			alwaysThinkingEnabled: true,
-			model: "claude-sonnet-4-6",
 			outputStyle: "explanatory",
 			env: {
 				CLAUDE_CODE_ENABLE_TASKS: "true",
@@ -79,8 +78,9 @@ export const PREDEFINED_PROFILES: PredefinedProfile[] = [
 	{
 		id: "frontend-pro",
 		name: "Frontend Pro",
-		description: "UI implementation, design fidelity, browser-driven workflows",
-		icon: "🎨",
+		description:
+			"UI implementation, design fidelity, browser-driven workflows",
+		icon: "★",
 		magusPlugins: [
 			"dev",
 			"code-analysis",
@@ -107,7 +107,6 @@ export const PREDEFINED_PROFILES: PredefinedProfile[] = [
 		settings: {
 			effortLevel: "high",
 			alwaysThinkingEnabled: true,
-			model: "claude-sonnet-4-6",
 			outputStyle: "explanatory",
 			env: {
 				CLAUDE_CODE_ENABLE_TASKS: "true",
@@ -122,7 +121,7 @@ export const PREDEFINED_PROFILES: PredefinedProfile[] = [
 		id: "backend-forge",
 		name: "Backend Forge",
 		description: "API development, debugging, code quality, data workflows",
-		icon: "⚙️",
+		icon: "★",
 		magusPlugins: [
 			"dev",
 			"code-analysis",
@@ -138,13 +137,11 @@ export const PREDEFINED_PROFILES: PredefinedProfile[] = [
 			"code-simplifier",
 			"commit-commands",
 			"security-guidance",
-			"agent-sdk-dev",
 		],
 		skills: ["Systematic Debugging", "Neon Postgres", "Find Skills"],
 		settings: {
 			effortLevel: "high",
 			alwaysThinkingEnabled: true,
-			model: "claude-sonnet-4-6",
 			outputStyle: "concise",
 			env: {
 				CLAUDE_CODE_ENABLE_TASKS: "true",
@@ -160,7 +157,7 @@ export const PREDEFINED_PROFILES: PredefinedProfile[] = [
 		name: "Infra Ops",
 		description:
 			"Infrastructure, operational debugging, automation, terminal-first",
-		icon: "🔧",
+		icon: "★",
 		magusPlugins: [
 			"dev",
 			"code-analysis",
@@ -182,7 +179,6 @@ export const PREDEFINED_PROFILES: PredefinedProfile[] = [
 		settings: {
 			effortLevel: "high",
 			alwaysThinkingEnabled: true,
-			model: "claude-opus-4-6",
 			outputStyle: "concise",
 			env: {
 				CLAUDE_CODE_ENABLE_TASKS: "true",
@@ -198,7 +194,7 @@ export const PREDEFINED_PROFILES: PredefinedProfile[] = [
 		name: "Growth Marketer",
 		description:
 			"SEO, website audits, content production, marketing automation",
-		icon: "📈",
+		icon: "★",
 		magusPlugins: [
 			"dev",
 			"code-analysis",
@@ -222,8 +218,6 @@ export const PREDEFINED_PROFILES: PredefinedProfile[] = [
 		],
 		settings: {
 			effortLevel: "medium",
-			alwaysThinkingEnabled: false,
-			model: "claude-sonnet-4-6",
 			outputStyle: "explanatory",
 			env: { CLAUDE_CODE_ENABLE_TASKS: "true" },
 			respectGitignore: true,
@@ -235,7 +229,7 @@ export const PREDEFINED_PROFILES: PredefinedProfile[] = [
 		name: "Team Lead",
 		description:
 			"Planning, code review, coordination, and broad repo visibility",
-		icon: "👔",
+		icon: "★",
 		magusPlugins: [
 			"dev",
 			"code-analysis",
@@ -257,7 +251,6 @@ export const PREDEFINED_PROFILES: PredefinedProfile[] = [
 		settings: {
 			effortLevel: "medium",
 			alwaysThinkingEnabled: true,
-			model: "claude-sonnet-4-6",
 			outputStyle: "explanatory",
 			env: {
 				CLAUDE_CODE_ENABLE_TASKS: "true",
