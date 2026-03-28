@@ -1,7 +1,7 @@
 {
   "name": "multimodel",
-  "version": "2.9.0",
-  "description": "Multi-model collaboration, orchestration, and workflow patterns. v2.9.0: /delegate command — route any task to an external model with capability discovery and pre-flight question gathering.",
+  "version": "2.10.0",
+  "description": "Multi-model collaboration, orchestration, and workflow patterns. v2.10.0: claudish error reporting via report_error MCP tool, /delegate and /team command rewrites.",
   "author": {
     "name": "MadAppGang",
     "email": "i@madappgang.com"

@@ -1,11 +1,11 @@
 ---
 name: task-external-models
-version: 3.0.0
+version: 3.1.0
 description: Quick-reference for using external AI models in orchestration workflows. External models are invoked via Bash+claudish CLI (deterministic, 100% reliable). Claudish v5.3.0 supports Claude Code flag passthrough — unknown flags flow through to Claude Code automatically. Use when confused about how to run external models, "claudish with Bash", "external model in /team", or "how to specify external model". Trigger keywords - "external model", "claudish", "Bash claudish", "external LLM", "model parameter", "flag passthrough".
 tags: [external-model, quick-reference, bash, claudish, agent-cli, flag-passthrough]
 keywords: [external model, grok, gemini, gpt-5, minimax, claudish, bash, external LLM, cli, flag passthrough, effort, permission-mode]
 plugin: multimodel
-updated: 2026-03-02
+updated: 2026-03-28
 ---
 
 # External Models: Quick Reference
@@ -194,6 +194,7 @@ Options:
 (2) Use a different model
 (3) Skip this model, continue with others
 (4) Cancel
+(5) Report this error to claudish developers
 
 Which do you prefer?"
 ```
@@ -208,6 +209,31 @@ Which do you prefer?"
 
 - Inside `/team` command (has its own Rule 6: NO AUTO-RECOVERY)
 - User explicitly said "use whatever works" or "fall back automatically"
+
+### Error Reporting via MCP
+
+When the user chooses to report an error, call the claudish `report_error` MCP tool:
+
+```bash
+# Map failure context to report_error parameters:
+# - Timeout → error_type: "provider_failure"
+# - Non-zero exit → error_type: "provider_failure" (or "adapter_error" if claudish itself crashed)
+# - Empty output → error_type: "stream_error"
+# - Team session failure → error_type: "team_failure"
+```
+
+```
+report_error(
+  error_type: "{mapped_type}",
+  model: "{MODEL_ID}",
+  stderr_snippet: "{first 500 chars from stderr.log}",
+  exit_code: {from .exit file},
+  error_log_path: "{path to stderr.log}",
+  additional_context: "Invoked via multimodel plugin proxy pattern"
+)
+```
+
+**Consent required.** All data is sanitized before sending.
 
 See also: `multimodel:error-recovery` skill, Pattern 0 (User Escalation).
 

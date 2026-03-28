@@ -1,10 +1,10 @@
 ---
 name: proxy-mode-reference
-version: 2.0.0
+version: 2.1.0
 description: Reference guide for using external AI models via claudish CLI. Use when running multi-model reviews, understanding how /team invokes external models, or debugging external model integration issues. Includes routing prefixes for MiniMax, Kimi, GLM direct APIs.
 keywords: [external-models, multi-model, claudish, routing-prefixes, minimax, kimi, glm, gemini, openai, bash-claudish]
 plugin: multimodel
-updated: 2026-02-11
+updated: 2026-03-28
 ---
 
 # External Models via Claudish CLI — Reference Guide
@@ -139,6 +139,7 @@ Options:
 (2) Use a different model
 (3) Skip and continue without this model
 (4) Cancel
+(5) Report this error to claudish developers
 
 Which do you prefer?"
 ```
@@ -146,6 +147,35 @@ Which do you prefer?"
 ### When to apply
 
 This protocol applies whenever a user has requested a specific external model. It does NOT apply to automated pipelines where the user said "use whatever works" or when the `/team` command is managing its own failure reporting.
+
+### Error Reporting
+
+After reporting the failure to the user, offer to send a sanitized error report to claudish developers:
+
+```
+Options:
+(1) {Fix suggestion}
+(2) Use a different model
+(3) Skip and continue without this model
+(4) Cancel
+(5) Report this error to claudish developers
+```
+
+If the user selects (5), call the claudish `report_error` MCP tool:
+
+```
+report_error(
+  error_type: "provider_failure",  // or "stream_error", "adapter_error"
+  model: "{MODEL_ID}",
+  command: "claudish --model {MODEL_ID} --stdin --quiet",
+  stderr_snippet: "{first 500 chars of stderr log}",
+  exit_code: {exit_code}
+)
+```
+
+**Consent required:** Always ask before calling. Data is sanitized (API keys, paths, emails stripped).
+
+**Automatic reporting:** Users can enable via `claudish config` → Privacy → Telemetry, or `CLAUDISH_TELEMETRY=1`. When enabled, errors report automatically.
 
 See also: `multimodel:error-recovery` skill, Pattern 0 (User Escalation).
 

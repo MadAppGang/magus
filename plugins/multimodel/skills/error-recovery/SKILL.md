@@ -1,16 +1,16 @@
 ---
 name: error-recovery
 description: Handle errors, timeouts, and failures in multi-agent workflows. Use when dealing with external model timeouts, API failures, partial success, user cancellation, or graceful degradation. Trigger keywords - "error", "failure", "timeout", "retry", "fallback", "cancelled", "graceful degradation", "recovery", "partial success".
-version: 1.1.0
+version: 1.2.0
 tags: [orchestration, error-handling, retry, fallback, timeout, recovery, escalation]
 keywords: [error, failure, timeout, retry, fallback, graceful-degradation, cancellation, recovery, partial-success, resilience, escalation, report-to-user]
 plugin: multimodel
-updated: 2026-03-17
+updated: 2026-03-28
 ---
 
 # Error Recovery
 
-**Version:** 1.1.0
+**Version:** 1.2.0
 **Purpose:** Patterns for handling failures in multi-agent workflows
 **Status:** Production Ready
 
@@ -83,6 +83,7 @@ Options:
 (2) Use a different model — {suggest alternatives if known}
 (3) Skip this model and continue without it
 (4) Cancel the workflow
+(5) Report this error to claudish developers
 
 Which do you prefer?"
 ```
@@ -869,6 +870,99 @@ Example:
 
 ---
 
+### Pattern 8: Claudish Error Reporting
+
+**Purpose:** After handling an error with Patterns 0–7, optionally report it to claudish developers via the `report_error` MCP tool. This helps improve claudish reliability. Always ask the user first — data is sanitized before sending.
+
+**The `report_error` Tool:**
+
+```
+Parameters:
+  error_type (required): "provider_failure" | "team_failure" | "stream_error" | "adapter_error" | "other"
+  model (optional):            Model ID that failed (e.g., "grok-code-fast-1")
+  command (optional):          Command that was run (e.g., "claudish --model ...")
+  stderr_snippet (optional):   First 500 chars of stderr output
+  exit_code (optional):        Process exit code
+  error_log_path (optional):   Path to full error log file
+  session_path (optional):     Path to team session directory
+  additional_context (optional): Extra context (what was attempted, retry count, etc.)
+  auto_send (optional):        Mention auto-reporting option to user (bool)
+```
+
+**Consent Requirement:**
+
+```
+ALWAYS ask user before calling report_error.
+
+Ask:
+  "Would you like to report this error to claudish developers?
+   Data is sanitized before sending (API keys, paths, and emails are stripped)."
+
+Only call report_error if user says yes.
+Never call report_error silently or automatically unless CLAUDISH_TELEMETRY=1 is set.
+```
+
+**Error Type Mapping:**
+
+```
+Timeout (Pattern 1)                → "provider_failure"
+500 / 503 errors (Pattern 2)       → "provider_failure"
+Stream interrupted                 → "stream_error"
+Model adapter crash                → "adapter_error"
+Team session failure               → "team_failure"
+Unknown / other                    → "other"
+```
+
+**When to Offer Error Reporting:**
+
+```
+Offer after:
+  ✅ Pattern 0 (user escalation) — add option (5) to the report template
+  ✅ Pattern 1 (timeout) — if model times out repeatedly
+  ✅ Pattern 2 (API failures) — for 500/503 provider errors
+  ✅ Pattern 3 (partial success) — for models that failed in multi-model runs
+
+Do NOT offer after:
+  ❌ Pattern 5 (claudish not installed) — MCP tool is unavailable
+  ❌ Pattern 6 (out of credits) — billing issue, not a claudish bug
+```
+
+**Example Flow:**
+
+```
+1. Model fails (detected by Pattern 0–7)
+2. Handle error per the appropriate pattern (retry, skip, escalate to user)
+3. Ask user:
+     "Would you like to report this error to claudish developers?
+      Data is sanitized before sending."
+4. If yes:
+     call report_error(
+       error_type: "provider_failure",
+       model: "grok-code-fast-1",
+       stderr_snippet: "connection timed out after 30000ms...",
+       exit_code: 124,
+       additional_context: "Timed out on attempt 2 of 2"
+     )
+5. If user reports errors frequently:
+     mention auto_send option:
+     "You can enable automatic reporting via claudish config → Privacy → Telemetry
+      or by setting CLAUDISH_TELEMETRY=1."
+```
+
+**Automatic Reporting:**
+
+```
+When CLAUDISH_TELEMETRY=1 is set (or enabled via claudish config → Privacy → Telemetry):
+  - Errors are reported automatically without asking
+  - Skip the consent step in the flow above
+  - Still log that a report was sent: "Error reported to claudish developers."
+
+To inform users:
+  "Tip: Set CLAUDISH_TELEMETRY=1 to enable automatic error reporting."
+```
+
+---
+
 ## Integration with Other Skills
 
 **error-recovery + multi-model-validation:**
@@ -948,6 +1042,7 @@ Step 4: Execution (multi-agent-coordination)
 - ✅ Save partial results on cancellation
 - ✅ Communicate transparently (tell user what failed and why)
 - ✅ Adapt to partial success (N ≥ 2 reviews is useful)
+- ✅ Offer error reporting for provider/stream failures (report_error tool)
 
 **Don't:**
 - ❌ Silently substitute a different model than the user requested (Pattern 0 violation)
@@ -959,6 +1054,7 @@ Step 4: Execution (multi-agent-coordination)
 - ❌ Discard partial results on failure (save what succeeded)
 - ❌ Ignore user cancellation (handle SIGINT gracefully)
 - ❌ Retry without delay (use backoff)
+- ❌ Call report_error without user consent (privacy requirement)
 
 **Performance:**
 - Exponential backoff: Prevents overwhelming services
@@ -1167,6 +1263,7 @@ Error recovery ensures resilient workflows through:
 - **Missing tools** (claudish not installed, fallback to embedded)
 - **Out of credits** (402 error, fallback to free models)
 - **Retry strategies** (exponential backoff, max 3 retries)
+- **Error reporting** (report_error MCP tool, user consent required)
 
 With these patterns, workflows are **production-ready** and **resilient** to inevitable failures.
 
