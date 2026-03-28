@@ -9,7 +9,8 @@ export type SettingCategory =
 export type SettingType = "boolean" | "string" | "select";
 export type SettingStorage =
 	| { type: "env"; key: string }
-	| { type: "setting"; key: string };
+	| { type: "setting"; key: string }
+	| { type: "attribution" };
 
 export interface SettingDefinition {
 	id: string;
@@ -203,6 +204,16 @@ export const SETTINGS_CATALOG: SettingDefinition[] = [
 		type: "boolean",
 		storage: { type: "env", key: "CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS" },
 		defaultValue: "false",
+	},
+	{
+		id: "attribution",
+		name: "AI Attribution in Commits & PRs",
+		description:
+			"Add 'Co-Authored-By: Claude' and '🤖 Generated with Claude Code' to git commits and PR descriptions",
+		category: "workflow",
+		type: "boolean",
+		storage: { type: "attribution" },
+		defaultValue: "true",
 	},
 	{
 		id: "output-style",

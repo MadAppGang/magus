@@ -19,7 +19,14 @@ export async function readSettingValue(
 			? await readGlobalSettings()
 			: await readSettings(projectPath);
 
-	if (setting.storage.type === "env") {
+	if (setting.storage.type === "attribution") {
+		// Attribution is an object: { commit: "", pr: "" } means disabled
+		const attr = (settings as any).attribution;
+		if (attr && attr.commit === "" && attr.pr === "") {
+			return "false";
+		}
+		return undefined; // default (enabled)
+	} else if (setting.storage.type === "env") {
 		const env = (settings as any).env as Record<string, string> | undefined;
 		return env?.[setting.storage.key];
 	} else {
@@ -45,7 +52,14 @@ export async function writeSettingValue(
 			? await readGlobalSettings()
 			: await readSettings(projectPath);
 
-	if (setting.storage.type === "env") {
+	if (setting.storage.type === "attribution") {
+		// Boolean toggle: "false" -> write { commit: "", pr: "" }, "true"/undefined -> delete key
+		if (value === "false") {
+			(settings as any).attribution = { commit: "", pr: "" };
+		} else {
+			delete (settings as any).attribution;
+		}
+	} else if (setting.storage.type === "env") {
 		// Write to the "env" block in settings.json
 		(settings as any).env = (settings as any).env || {};
 		if (value === undefined || value === "" || value === setting.defaultValue) {
