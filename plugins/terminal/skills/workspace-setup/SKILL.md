@@ -1,10 +1,11 @@
 ---
 name: workspace-setup
 description: Tmux workspace orchestration — session construction, dashboard layouts, ambient monitoring, and multi-host pane sync. Use when setting up project workspaces, creating multi-pane dashboards, running watch/entr monitors, or synchronizing commands across panes. Trigger on "workspace", "dashboard", "layout", "setup session", "project session", "monitor", "watch", "entr", "side by side dashboard", "multi-pane", "synchronize panes".
-version: 1.0.0
+version: 2.0.0
 tags: [terminal, tmux, workspace, dashboard, layout, monitoring, watch, entr, session-management]
 keywords: [workspace, tmux session, dashboard, layout, monitor, watch, entr, project setup, multi-pane, synchronize, sync panes, named session, window, archetype]
 plugin: terminal
+updated: 2026-03-25
 ---
 
 # Workspace Setup
@@ -21,7 +22,9 @@ One tmux session per project, named windows per concern. This pattern covers ses
 
 ```
 1. Bash: tmux display-message -p '#{session_name}'          → check current session
-2. mcp__tmux__find-session({ name: "project" })             → check if session exists
+2. mcp__tmux__list-sessions()                               → scan list for session named "project"
+   // find-session was removed in Go binary; filter client-side
+   // if sessions.sessions.find(s => s.name === "project") → session exists
 3. [if not found] mcp__tmux__create-session({ name: "project" })
 4. mcp__tmux__create-window({ sessionId: "project" })       → window "server"
 5. mcp__tmux__create-window({ sessionId: "project" })       → window "tests"
@@ -61,7 +64,7 @@ tmux attach-session -t "$SESSION"
 
 ### Detection Signals
 
-- `tmux list-sessions` — one line per session
+- `mcp__tmux__list-sessions()` — returns all sessions; filter by name client-side
 - `tmux list-windows -a` — reveals window names across all sessions
 - `#{session_name}` format string in `display-message` — confirm current session
 - `tmux has-session -t {name}` exits 0 if session exists, non-zero if not
@@ -93,9 +96,14 @@ Construction:
 1. Bash: PANE=$(echo "$TMUX_PANE")
 2. mcp__tmux__split-pane({ paneId: PANE, direction: "horizontal", size: "40%" }) → right
 3. mcp__tmux__split-pane({ paneId: right, direction: "vertical" })               → log
-4. mcp__tmux__send-keys({ paneId: PANE, keys: "bun run dev\nEnter" })
-5. mcp__tmux__send-keys({ paneId: right, keys: "bun test --watch\nEnter" })
-6. mcp__tmux__send-keys({ paneId: log, keys: "tail -f logs/app.log\nEnter" })
+4. mcp__tmux__send-keys({ paneId: PANE, keys: "bun run dev\n", literal: false })
+5. mcp__tmux__start-and-watch({
+     paneId: right,
+     command: "bun test --watch",
+     pattern: "press a to rerun|Waiting for file changes|Waiting\\.\\.\\.",
+     timeout: 30
+   }) → WatchResult (confirms watcher initialized)
+6. mcp__tmux__send-keys({ paneId: log, keys: "tail -f logs/app.log\n", literal: false })
 7. Bash: tmux select-layout -t {window} main-vertical
 8. Bash: tmux set-option pane-border-status top
 9. Bash: tmux select-pane -t {PANE} -T "Server" (and right="Tests", log="Logs")
@@ -142,10 +150,10 @@ Construction:
 2. mcp__tmux__split-pane({ paneId: PANE, direction: "horizontal" })       → top-right
 3. mcp__tmux__split-pane({ paneId: PANE, direction: "vertical" })         → bottom-left
 4. mcp__tmux__split-pane({ paneId: top-right, direction: "vertical" })    → bottom-right
-5. mcp__tmux__send-keys({ paneId: PANE, keys: "k9s\nEnter" })
-6. mcp__tmux__send-keys({ paneId: top-right, keys: "kubectl logs -f {pod}\nEnter" })
-7. mcp__tmux__send-keys({ paneId: bottom-left, keys: "watch -n2 kubectl top pods\nEnter" })
-8. mcp__tmux__send-keys({ paneId: bottom-right, keys: "tail -f deploy.log\nEnter" })
+5. mcp__tmux__send-keys({ paneId: PANE, keys: "k9s\n", literal: false })
+6. mcp__tmux__send-keys({ paneId: top-right, keys: "kubectl logs -f {pod}\n", literal: false })
+7. mcp__tmux__send-keys({ paneId: bottom-left, keys: "watch -n2 kubectl top pods\n", literal: false })
+8. mcp__tmux__send-keys({ paneId: bottom-right, keys: "tail -f deploy.log\n", literal: false })
 9. Bash: tmux select-layout -t {window} tiled
 10. Bash: tmux set-option pane-border-status top
 11. Bash: tmux select-pane labels: "k9s Pods", "Pod Logs", "Metrics", "Deploy"
@@ -169,8 +177,13 @@ Construction:
 1. Bash: PANE=$(echo "$TMUX_PANE")
 2. mcp__tmux__split-pane({ paneId: PANE, direction: "vertical", size: "30%" })    → watcher
 3. mcp__tmux__split-pane({ paneId: watcher, direction: "horizontal", size: "40%" }) → coverage
-4. mcp__tmux__send-keys({ paneId: watcher, keys: "bun test --watch\nEnter" })
-5. mcp__tmux__send-keys({ paneId: coverage, keys: "bun test --coverage\nEnter" })
+4. mcp__tmux__start-and-watch({
+     paneId: watcher,
+     command: "bun test --watch",
+     pattern: "press a to rerun|Waiting for file changes|Waiting\\.\\.\\.",
+     timeout: 30
+   }) → WatchResult (confirms watcher is up)
+5. mcp__tmux__send-keys({ paneId: coverage, keys: "bun test --coverage\n", literal: false })
 6. Bash: tmux select-layout -t {window} main-horizontal
 7. Bash: tmux set-option pane-border-status top
 8. Bash: tmux select-pane labels: "Editor", "Test Watcher", "Coverage"
@@ -179,13 +192,24 @@ Construction:
 
 ### Dashboard Read Mode
 
-Periodic multi-pane status synthesis — read all panes and summarize:
+For a point-in-time status snapshot, `capture-pane` is correct:
 
 ```
-mcp__tmux__capture-pane({ paneId: server_pane })  → parse server status
-mcp__tmux__capture-pane({ paneId: test_pane })    → parse test results
-mcp__tmux__capture-pane({ paneId: log_pane })     → scan for errors
+mcp__tmux__capture-pane({ paneId: server_pane, lines: 50 })  → parse server status
+mcp__tmux__capture-pane({ paneId: test_pane, lines: 50 })    → parse test results
+mcp__tmux__capture-pane({ paneId: log_pane, lines: 50 })     → scan for errors
 → Synthesize: "Server: running :3000. Tests: 47 passed. Logs: no errors."
+```
+
+For event-driven monitoring (wait until anything interesting happens):
+
+```
+// Monitor the most active pane for errors or process exit
+mcp__tmux__watch-pane({
+  paneId: server_pane,
+  triggers: "error,exit,idle:30",
+  timeout: 120
+}) → WatchResult  // fires on error, process exit, or 30s of no activity
 ```
 
 ---
@@ -197,9 +221,9 @@ Two sub-patterns: `watch` for polling status monitors, `entr` for file-change-tr
 ### watch Setup / Read / Teardown
 
 ```
-SETUP:    mcp__tmux__split-pane → send 'watch -n2 kubectl get pods' + Enter → label "claude-monitor"
+SETUP:    mcp__tmux__split-pane → send 'watch -n2 kubectl get pods\n' (literal: false) → label "claude-monitor"
 READ:     mcp__tmux__capture-pane (non-disruptive — watch keeps running)
-TEARDOWN: send-keys Ctrl+C → mcp__tmux__kill-pane
+TEARDOWN: mcp__tmux__send-keys({ keys: "C-c", literal: false }) → mcp__tmux__kill-pane
 ```
 
 ### Common watch Patterns

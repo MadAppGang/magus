@@ -1,10 +1,6 @@
 {
-  "ht": {
-    "command": "ht-mcp",
-    "args": []
-  },
   "tmux": {
     "command": "tmux-mcp",
-    "args": []
+    "args": ["-shell-type", "zsh", "-scope", "agentic"]
   }
 }

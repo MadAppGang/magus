@@ -1,7 +1,7 @@
 ---
 name: tui
 description: Launch and navigate TUI (terminal user interface) applications like vim, lazygit, htop, k9s, tig. Delegates to the tui-navigator agent for multi-step interaction.
-allowed-tools: mcp__ht__ht_create_session, mcp__ht__ht_execute_command, mcp__ht__ht_send_keys, mcp__ht__ht_take_snapshot, mcp__ht__ht_close_session, mcp__ht__ht_list_sessions
+allowed-tools: mcp__tmux__create-headless, mcp__tmux__start-and-watch, mcp__tmux__watch-pane, mcp__tmux__send-keys, mcp__tmux__capture-pane, mcp__tmux__pane-state, mcp__tmux__kill-session, mcp__tmux__resize-pane
 ---
 
 # /terminal:tui
@@ -28,13 +28,14 @@ Launch a TUI (terminal user interface) application and navigate it interactively
 
 ## What It Does
 
-1. **Creates** an ht-mcp session
-2. **Launches** the TUI application
-3. **Takes a snapshot** to confirm the app loaded
-4. **Navigates** the application using the correct key sequences
-5. **Reports** what it found or accomplished
-6. **Exits** the application cleanly
-7. **Closes** the session
+1. **Creates** a headless session with `create-headless`
+2. **Launches** and monitors TUI app load with `start-and-watch` using an app-specific load pattern
+3. **Navigates** using `send-keys` (tmux key syntax, `literal: false` for special keys)
+4. **After each navigation action**: either `capture-pane` (quick read) or `watch-pane` with
+   `user_input` or `idle:N` trigger (wait for TUI to settle before next keystroke)
+5. **Reports** findings
+6. **Exits** cleanly using app-specific quit sequence
+7. **Kills** the headless session with `kill-session`
 
 ## Supported Applications
 
@@ -50,39 +51,49 @@ Launch a TUI (terminal user interface) application and navigate it interactively
 
 ## Navigation Strategy
 
-The command uses application-specific key sequences from the `tui-navigation-patterns` skill:
-
-### General pattern
 ```
-1. Take snapshot to detect current state (which app, which mode)
-2. Send keys for desired action
-3. Take snapshot to verify result
-4. Repeat until task is complete
-5. Exit application cleanly (q, :wq, ^x, etc.)
+1. capture-pane to detect current state (which app, which mode)
+2. Send keys for desired action (send-keys with literal: false for special keys)
+3. Wait for TUI to update — one of:
+   a. capture-pane (fast, optimistic — works if TUI redraws quickly)
+   b. watch-pane({ triggers: "user_input,idle:2", timeout: 5 }) — wait for
+      app to be waiting for user input again before sending next keystroke
+4. Repeat until task complete
+5. Exit using app-specific quit sequence
+6. kill-session to clean up
 ```
 
 ### Application detection
-Detect which app is running from snapshot content:
+Detect which app is running from `capture-pane` content:
 - `~` column with status bar → vim
 - `GNU nano` in top bar → nano
 - Commit list with branch panel → lazygit
 - CPU bars and process list → htop
 - Kubernetes resource table → k9s
 
+### App Load Patterns for start-and-watch
+
+| Application | `pattern` |
+|-------------|-----------|
+| vim | `"~"` (blank line tilde indicates loaded) |
+| lazygit | `"Commit list\|Files\|Branches"` |
+| htop / btop | `"CPU\|Mem"` |
+| k9s | `"Pods\|Deployments\|Nodes"` |
+| nano | `"GNU nano"` |
+
 ## Error Handling
 
 | Situation | Recovery |
 |-----------|----------|
 | App not installed | Report error, suggest install command |
-| TUI stuck/unresponsive | Try `q`, `Escape`, then `^c` |
-| Wrong mode (vim) | Send `Escape` to return to normal mode |
+| TUI stuck/unresponsive (`watch-pane` fires `idle:N`) | Try `q`, `Escape`, then `C-c` via `send-keys` with `literal: false` |
+| Wrong mode (vim) | Send `Escape` with `literal: false` to return to normal mode |
 | Confirmation dialog | Pause and ask user before confirming |
-| Password prompt | STOP — never send credentials |
+| Password prompt (`pane-state.waitingForInput == true`) | STOP — never send credentials |
 
 ## Notes
 
-- TUI apps need render time between keystrokes — always take a snapshot after sending keys to verify the screen updated
+- Headless sessions have no fixed terminal size — use `resize-pane` if the app requires a specific size
 - For simple commands (not full-screen TUI), use `/terminal:run` instead
 - For database REPLs, use `/terminal:repl` instead (better prompt detection)
 - For long-running processes, use `/terminal:watch` instead
-- The 120x40 snapshot captures exactly what a human would see on screen

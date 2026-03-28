@@ -1,14 +1,14 @@
 {
   "name": "terminal",
-  "version": "3.0.1",
-  "description": "Interactive terminal integration for Claude Code. v3.0.1: fix pane detection race condition — use $TMUX_PANE instead of display-message -p (immune to focus changes during subagent delay), fix E2E test runner to load terminal plugin MCP servers. 5 skills, 9 commands, 1 agent.",
+  "version": "4.0.0",
+  "description": "Interactive terminal integration for Claude Code. v4.0.0: agentic-first rewrite — single tmux-mcp Go binary replaces ht-mcp + npm tmux-mcp, new agentic tools (start-and-watch, watch-pane, run-in-repl, pane-state) eliminate all polling loops. 5 skills, 9 commands, 1 agent.",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",
     "company": "MadAppGang"
   },
   "license": "MIT",
-  "keywords": ["terminal", "pty", "tui", "interactive", "ht", "tmux", "headless", "run", "watch", "repl", "dev-server", "test-watcher"],
+  "keywords": ["terminal", "pty", "tui", "interactive", "tmux", "headless", "run", "watch", "repl", "dev-server", "test-watcher"],
   "category": "development",
   "agents": [
     "./agents/tui-navigator.md"
@@ -32,8 +32,8 @@
     "./skills/workspace-setup"
   ],
   "setup": {
-    "brew": ["memextech/tap/ht-mcp"],
-    "npm": ["tmux-mcp"]
+    "go": ["github.com/MadAppGang/tmux-mcp@latest"],
+    "required": ["tmux"]
   },
   "hooks": "./hooks/hooks.json",
   "mcpServers": "./.mcp.json"

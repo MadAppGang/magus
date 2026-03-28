@@ -22,7 +22,7 @@ INTENT COMMANDS (use these for most tasks):
                               Examples: watch "bun run dev", watch "npm test --watch"
 
   /terminal:observe [id]     Check on running sessions (read-only)
-                              Examples: observe, observe abc-1234, observe tmux:dev:0.0
+                              Examples: observe, observe %3, observe headless:%0
 
   /terminal:repl {app}       Open interactive REPL or database shell
                               Examples: repl psql $DATABASE_URL, repl python3
@@ -33,8 +33,8 @@ INTENT COMMANDS (use these for most tasks):
 ADVANCED COMMANDS (power-user, manual lifecycle):
 
   /terminal:session          Create, list, close terminal sessions manually
-  /terminal:snapshot         Take a raw screenshot of a session
-  /terminal:send             Send raw keystrokes to a session
+  /terminal:snapshot         Take a raw snapshot of a pane
+  /terminal:send             Send raw keystrokes to a pane
 
 QUICK GUIDE — Which command should I use?
 
@@ -57,3 +57,4 @@ WHEN TO USE /terminal:run vs Bash:
 
 - This command has no tools — it just displays help text
 - For detailed documentation on each command, use the specific command with no arguments
+- Pane IDs use the format `%N` (regular tmux) or `headless:%N` (isolated sessions)

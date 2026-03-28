@@ -11,14 +11,14 @@
 # Examples:
 #   ./autotest/terminal/run.sh                                          # All tests, monitor mode
 #   ./autotest/terminal/run.sh --model google/gemini-2.5-flash
-#   ./autotest/terminal/run.sh --cases tmux-inspect-sessions-01 --dry-run
-#   ./autotest/terminal/run.sh --cases cross-backend-compare-09 --timeout 120
+#   ./autotest/terminal/run.sh --cases execute-headless-01 --dry-run
+#   ./autotest/terminal/run.sh --cases start-and-watch-server-03 --timeout 120
 #   ./autotest/terminal/run.sh --parallel 3
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 FRAMEWORK_DIR="$(cd "$SCRIPT_DIR/../framework" && pwd)"
 
-# Terminal tests need the terminal plugin loaded for MCP servers (ht-mcp, tmux-mcp)
+# Terminal tests need the terminal plugin loaded for MCP server (tmux-mcp Go binary)
 export EXTRA_PLUGIN_DIRS="$SCRIPT_DIR/../../plugins/terminal"
 
 exec "$FRAMEWORK_DIR/runner-base.sh" \

@@ -1,7 +1,7 @@
 ---
 name: watch
 description: Start a long-running process in a terminal session, monitor for readiness or failure, and report status. Use for dev servers, test watchers, log tailing, and build processes.
-allowed-tools: mcp__ht__ht_create_session, mcp__ht__ht_execute_command, mcp__ht__ht_send_keys, mcp__ht__ht_take_snapshot, mcp__ht__ht_close_session, mcp__ht__ht_list_sessions
+allowed-tools: mcp__tmux__start-and-watch, mcp__tmux__watch-pane, mcp__tmux__capture-pane, mcp__tmux__pane-state, mcp__tmux__kill-session, mcp__tmux__kill-headless-server
 ---
 
 # /terminal:watch
@@ -28,58 +28,61 @@ Start a long-running process, monitor it for readiness or failure, and report th
 
 ## What It Does
 
-1. **Creates** an isolated ht-mcp terminal session
-2. **Executes** the given command
-3. **Polls** the terminal with repeated snapshots, looking for:
-   - **Ready signals**: `listening on`, `ready`, `started`, `Local:`, `compiled`, `watching for`
-   - **Error signals**: `error`, `EADDRINUSE`, `failed`, `cannot`, `not found`
-   - **Test result signals**: `passed`, `failed`, `✓`, `×`
+1. **Starts** the given command via `start-and-watch`
+2. **Monitors** using a single blocking call — no polling loop required
+3. **Uses start-and-watch** — a single call that blocks until a readiness trigger fires,
+   sending progress notifications during the wait. No polling loop.
 4. **Reports** the status: ready, errored, or still starting
-5. **Keeps the session alive** — reports the session ID for later use with `/terminal:observe`
+5. **Keeps the session alive** — reports the pane ID for later use with `/terminal:observe`
 
-## Polling Strategy
+## Agentic Watch Strategy
 
-Poll `mcp__ht__ht_take_snapshot` up to 30 times. Each snapshot naturally adds a small delay. Look for these patterns in each snapshot:
+A single call to `start-and-watch` handles all monitoring:
 
-### Dev Server Ready Signals
 ```
-"listening on", "ready on", "started", "Local:", "localhost:",
-"Server running", "compiled successfully", "watching for changes"
-```
-
-### Test Watcher Ready Signals
-```
-"Watching for file changes", "press q to quit", "waiting for changes",
-"Tests:", "passed", "failed"
+mcp__tmux__start-and-watch({
+  command: "<user_command>",
+  pattern: "<readiness_regex>",
+  triggers: "exit,error",
+  mode: "quick",
+  timeout: 60
+}) → WatchResult
 ```
 
-### Error Signals
-```
-"EADDRINUSE", "address already in use", "Error:", "FATAL",
-"Cannot find module", "command not found", "permission denied"
-```
+### Pattern Selection by Command Type
 
-### When Polling Finishes
-- **Ready detected**: Report success, show relevant output, provide session ID
-- **Error detected**: Report error, show error output, close session
-- **Timeout (30 polls, no signal)**: Report status as "still starting", provide session ID
+| Command type | Pattern |
+|-------------|---------|
+| Bun/Node dev server | `"Local:.*http\|listening on\|ready in"` |
+| Go server | `"listening on\|started on\|server running"` |
+| Test watcher (Vitest/Jest) | `"press a to rerun\|Waiting for file changes"` |
+| Bun test watcher | `"watch mode\|watching"` |
+| docker-compose up | `"healthy\|started"` |
+| Log tail | (no pattern needed — use paneId + watch-pane instead) |
 
-## Lifecycle
+### Reading WatchResult
 
-Unlike `/terminal:run`, this command does NOT auto-close the session. The process keeps running. The user can:
-- Use `/terminal:observe {sessionId}` to check on it later
-- Use `/terminal:send {sessionId} key:^c` to stop it
-- Use `/terminal:session close {sessionId}` to close it
+| event value | Meaning | Next action |
+|-------------|---------|-------------|
+| `"pattern:..."` | Readiness pattern matched | Report ready; save paneId |
+| `"error"` | Error output detected | Report error; show WatchResult.output |
+| `"exit"` | Process exited | Check exitCode in paneState |
+| `"timeout"` | No signal in timeout_secs | Report "still starting"; save paneId |
+
+### Lifecycle Difference from /terminal:run
+
+Unlike `/terminal:run`, this command does NOT close the session on success.
+The `paneId` returned in WatchResult is available for later `/terminal:observe` calls.
 
 ## Error Handling
 
-- **Port conflict**: If `EADDRINUSE` detected, report the conflict and suggest alternatives
-- **Command not found**: Report and close session
-- **Crash loop**: If process exits and restarts repeatedly, report the pattern
+- **Port conflict**: If `EADDRINUSE` detected in output, report the conflict and suggest alternatives
+- **Command not found**: Detected via `"error"` event — report and kill session
+- **Process hangs**: If `"timeout"` event fires, use `mcp__tmux__pane-state` to check process state
 
 ## Notes
 
 - Best for processes that produce ongoing output (servers, watchers, log tailers)
 - For one-shot commands, use `/terminal:run` instead
-- The 40-line snapshot limit applies — only the last 40 lines of output are visible
-- Session IDs are ephemeral — if context is compacted, use `/terminal:observe` to rediscover sessions
+- Full output available in WatchResult — no line limit
+- Save the returned paneId for later `/terminal:observe` calls

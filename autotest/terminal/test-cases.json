@@ -1,452 +1,574 @@
 {
   "meta": {
-    "description": "Terminal plugin E2E test cases. Tests verify Claude can accomplish real developer tasks using MCP terminal tools. v2.0.0: Added intent-level command tests (run, watch, observe, repl, tui) alongside existing primitive tests.",
-    "version": "2.2.0",
-    "created": "2026-02-26",
-    "updated": "2026-03-19",
-    "notes": "v2.2: Added 4 pane-management tests (21-24) for split direction, labeling, reuse, and natural 'beside me' behavior. New analyzer checks: max_tool_calls_by_name, bash_command_contains_any, tool_arg_match. v2.1: Added intent-side-panel-20 test for 'open on a side' natural language → split-pane behavior. v2.0: Added 9 intent-level command tests for run/watch/observe/repl/tui commands. v1.2: Removed no_tool_prefix checks — parallel test execution shares debug logs across tests. v1.1: Accept ht_execute_command as alternative to ht_send_keys for non-TUI tests."
+    "description": "Terminal plugin E2E test cases. v4.0.0: Rewritten for Go tmux-mcp single-binary. All tests use mcp__tmux__* tools only. Tests cover agentic tools (start-and-watch, watch-pane, run-in-repl, pane-state), headless sessions, no-truncation output, session management, pane management, and TUI/REPL integration.",
+    "version": "4.0.0",
+    "created": "2026-03-26",
+    "updated": "2026-03-26",
+    "notes": "v4.0.0: Complete rewrite for tmux-mcp Go binary replacing ht-mcp + npm tmux-mcp. No mcp__ht__* tools. New agentic tools: start-and-watch, watch-pane, run-in-repl, pane-state. execute-command is now synchronous. headless:true for auto-cleanup one-shot commands. capture-pane supports lines parameter for scrollback. No 40-line truncation. Known limitation: start-and-watch and watch-pane are MCP Task tools (registered via s.AddTaskTool in Go). Claude Code's MCP client currently sends tools/call instead of tasks/create, causing error -32601. Tests 03 and 05 will fail until Claude Code adds MCP Tasks API support. See: https://spec.modelcontextprotocol.io/specification/server/tasks/"
   },
   "test_cases": [
     {
-      "id": "tmux-inspect-sessions-01",
-      "description": "List all tmux sessions, count windows per session, capture active pane of the one with most windows",
-      "prompt": "Use the tmux MCP tools to do the following:\n1. List all current tmux sessions.\n2. For each session, list its windows and count them.\n3. Identify which session has the most windows.\n4. Capture the active pane output of that session.\n5. Report your findings including the session name, window count, and pane content.\n\nIMPORTANT: Only use mcp__tmux__* tools. Do NOT create any ht-mcp sessions. Do NOT modify any existing tmux sessions.",
+      "id": "execute-headless-01",
+      "description": "Run echo command with execute-command headless:true, verify marker in response",
+      "prompt": "Run the following shell command and report the exact output: `echo E2E_HEADLESS_MARKER_11111`\n\nUse the tmux MCP tools to execute this command. When done, your response must include the exact text: E2E_HEADLESS_MARKER_11111\n\nNote: Use a one-shot approach so you do not need to manage session lifecycle manually.",
       "expected_agent": "NO_TASK_CALL",
       "expected_alternatives": [],
-      "category": "advanced",
-      "tags": ["tmux", "inspect", "sessions", "windows", "capture"],
+      "category": "core-agentic",
+      "tags": [
+        "tmux",
+        "execute-command",
+        "headless",
+        "one-shot",
+        "sync"
+      ],
       "checks": {
         "has_tool_prefix": "mcp__tmux__",
-        "tools_used_include_any": [
-          ["mcp__tmux__list-sessions", "mcp__tmux__list-windows", "mcp__tmux__capture-pane"],
-          ["mcp__tmux-mcp__list-sessions", "mcp__tmux-mcp__list-windows", "mcp__tmux-mcp__capture-pane"]
+        "tool_arg_match": [
+          {
+            "tool_pattern": "execute-command",
+            "arg": "headless",
+            "value": "true"
+          }
         ],
-        "min_tool_calls": 3
+        "min_tool_calls": 1,
+        "response_contains": "E2E_HEADLESS_MARKER_11111"
       }
     },
     {
-      "id": "multi-session-server-02",
-      "description": "Create 2 ht-mcp sessions: run Python HTTP server in first, curl it from second, verify response, close both",
-      "prompt": "Use the ht-mcp terminal tools to complete this task:\n1. Create a new ht-mcp session (call it session A).\n2. In session A, start a Python HTTP server on port 19876 in the background: run `python3 -m http.server 19876 &` then wait 2 seconds.\n3. Create a second ht-mcp session (call it session B).\n4. In session B, run `curl -s http://localhost:19876/` to fetch the server response.\n5. Take a snapshot of session B to capture the curl output.\n6. Close BOTH sessions when done.\n7. Report what the curl response contained.\n\nIMPORTANT: Only use mcp__ht__* tools. Do NOT use any tmux tools. Clean up both sessions at the end.",
+      "id": "execute-sync-02",
+      "description": "Run multi-line output command via execute-command, verify all lines returned with no truncation",
+      "prompt": "Run this command and report ALL lines of output, verifying nothing is truncated:\n\n`for i in $(seq 1 30); do echo \"OUTPUT_LINE_$i\"; done`\n\nUse the tmux MCP tools to execute this command. In your response:\n1. Confirm you received all 30 lines (OUTPUT_LINE_1 through OUTPUT_LINE_30)\n2. State explicitly whether the output was complete or truncated\n3. Include OUTPUT_LINE_1 and OUTPUT_LINE_30 in your response to confirm completeness\n\nNote: The output should NOT be truncated \u2014 report every line.",
       "expected_agent": "NO_TASK_CALL",
       "expected_alternatives": [],
-      "category": "advanced",
-      "tags": ["ht-mcp", "http-server", "multi-session", "curl"],
+      "category": "core-agentic",
+      "tags": [
+        "tmux",
+        "execute-command",
+        "no-truncation",
+        "multi-line",
+        "completeness"
+      ],
       "checks": {
-        "has_tool_prefix": "mcp__ht__",
-        "min_tool_calls_by_name": {
-          "ht_create_session": 2,
-          "ht_close_session": 2,
-          "ht_take_snapshot": 1
-        },
-        "min_tool_calls": 6
-      }
-    },
-    {
-      "id": "vim-file-create-03",
-      "description": "Use vim in ht-mcp to create a file with specific text, verify with cat, close session",
-      "prompt": "Use the ht-mcp terminal tools to create a file using vim:\n1. First, create the directory: mkdir -p $HOME/e2e-terminal-scratch\n2. Create an ht-mcp session.\n3. In the session, open vim to create a new file: run `vim $HOME/e2e-terminal-scratch/test.txt`\n4. Enter insert mode (press i), type the text: Terminal plugin E2E test passed\n5. Save and quit vim (press Escape, then type :wq and press Enter).\n6. Take a snapshot to confirm vim closed.\n7. Run `cat $HOME/e2e-terminal-scratch/test.txt` in the session.\n8. Take another snapshot to see the cat output.\n9. Close the session.\n10. Clean up: delete $HOME/e2e-terminal-scratch/test.txt\n11. Report whether the file contained the expected text.\n\nIMPORTANT: Only use mcp__ht__* tools. The file MUST contain exactly: Terminal plugin E2E test passed",
-      "expected_agent": "NO_TASK_CALL",
-      "expected_alternatives": [],
-      "category": "advanced",
-      "tags": ["ht-mcp", "vim", "file-creation", "verification"],
-      "checks": {
-        "has_tool_prefix": "mcp__ht__",
-        "tools_used_include_any": [
-          ["mcp__ht__ht_create_session", "mcp__ht__ht_send_keys", "mcp__ht__ht_take_snapshot", "mcp__ht__ht_close_session"],
-          ["mcp__ht-mcp__ht_create_session", "mcp__ht-mcp__ht_send_keys", "mcp__ht-mcp__ht_take_snapshot", "mcp__ht-mcp__ht_close_session"]
+        "has_tool_prefix": "mcp__tmux__",
+        "min_tool_calls": 1,
+        "response_contains_any": [
+          "OUTPUT_LINE_30",
+          "30 lines",
+          "all 30"
         ],
-        "min_tool_calls_by_name": {
-          "ht_send_keys": 3,
-          "ht_take_snapshot": 1
-        },
-        "min_tool_calls": 6,
-        "response_contains": "Terminal plugin E2E test passed"
+        "response_contains": "OUTPUT_LINE_1"
       }
     },
     {
-      "id": "repl-calculation-04",
-      "description": "Start Python REPL in ht-mcp, calculate sum of squares for 1-10, report result (385), exit and close",
-      "prompt": "Use the ht-mcp terminal tools to run a Python calculation:\n1. Create an ht-mcp session.\n2. Start the Python REPL by running: `python3`\n3. Wait for the Python prompt (>>>).\n4. Enter this calculation: `sum(i**2 for i in range(1, 11))`\n5. Press Enter and take a snapshot to capture the result.\n6. Exit the REPL by typing `exit()` or pressing Ctrl+D.\n7. Close the session.\n8. Report the numerical result of the calculation.\n\nThe correct answer is 385. Confirm in your response whether the REPL returned 385.\n\nIMPORTANT: Only use mcp__ht__* tools. Do NOT use any tmux tools.",
+      "id": "start-and-watch-server-03",
+      "description": "Start simulated server using start-and-watch, detect readiness pattern 'listening on port'",
+      "prompt": "Start a simulated server process and detect when it is ready using the start-and-watch tool.\n\n1. Use start-and-watch with this command:\n   `bash -c 'echo Starting...; sleep 1; echo \"Server listening on port 18888\"; sleep 30'`\n   Set the pattern to \"listening on port\", timeout to 15 seconds, and headless:true for isolation.\n2. When start-and-watch returns, report the WatchResult: the event type, the matched line, and how long it took.\n3. Kill the session using the paneId or sessionId from the WatchResult to clean up.\n\nReport:\n1. The event type returned (should be pattern:listening on port)\n2. The readiness line that appeared in the output\n3. Approximately how long it took (elapsed field)\n\nIMPORTANT: Use start-and-watch as the primary tool. Do NOT poll with capture-pane.\n\nIMPORTANT: Clean up any sessions you create at the end.\n\nIMPORTANT: Do NOT delegate to any agent or use the Task tool. Call the MCP tools (mcp__tmux__*) directly yourself.",
       "expected_agent": "NO_TASK_CALL",
       "expected_alternatives": [],
-      "category": "advanced",
-      "tags": ["ht-mcp", "python-repl", "calculation", "verification"],
+      "category": "core-agentic",
+      "tags": [
+        "tmux",
+        "start-and-watch",
+        "readiness-detection",
+        "server",
+        "pattern-match",
+        "mcp-task"
+      ],
       "checks": {
-        "has_tool_prefix": "mcp__ht__",
+        "has_tool_prefix": "mcp__tmux__",
         "min_tool_calls_by_name": {
-          "ht_create_session": 1,
-          "ht_send_keys": 3,
-          "ht_take_snapshot": 1,
-          "ht_close_session": 1
+          "start-and-watch": 1
+        },
+        "min_tool_calls": 2,
+        "response_contains_any": [
+          "listening",
+          "port 18888",
+          "ready",
+          "pattern",
+          "18888"
+        ]
+      }
+    },
+    {
+      "id": "start-and-watch-timeout-04",
+      "description": "Start command that never matches pattern, verify timeout behavior is reported",
+      "prompt": "Start a process that will never produce a readiness signal, and observe the timeout behavior.\n\nRun this command:\n`bash -c 'echo RUNNING_BUT_NO_MATCH; sleep 120'`\n\nWatch for the pattern \"WILL_NEVER_APPEAR\" with a timeout of 5 seconds.\n\nReport:\n1. What happened when the timeout was reached\n2. The event type returned (should indicate timeout)\n3. Whether the process was still running after the timeout\n\nThen clean up the session.\n\nIMPORTANT: Clean up any sessions you create at the end.\n\nIMPORTANT: Do NOT delegate to any agent or use the Task tool. Call the MCP tools (mcp__tmux__*) directly yourself.",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "core-agentic",
+      "tags": [
+        "tmux",
+        "start-and-watch",
+        "timeout",
+        "no-match"
+      ],
+      "checks": {
+        "has_tool_prefix": "mcp__tmux__",
+        "min_tool_calls_by_name": {
+          "start-and-watch": 1
+        },
+        "min_tool_calls": 2,
+        "response_contains_any": [
+          "timeout",
+          "timed out",
+          "no match",
+          "not matched",
+          "RUNNING_BUT_NO_MATCH"
+        ]
+      }
+    },
+    {
+      "id": "watch-pane-pattern-05",
+      "description": "Create headless session, start delayed process, use watch-pane to detect output pattern",
+      "prompt": "Monitor a pane until a signal appears in its output using the watch-pane tool.\n\n1. Generate a unique session name such as 'e2e-watch-RANDOM' where RANDOM is a random number or timestamp.\n2. Create a headless tmux session with that unique name using create-headless.\n3. If you get a 'duplicate session' error, kill the existing session first and retry with a new unique name.\n4. Get the pane ID from the create-headless result.\n5. Send this command to the pane using send-keys (literal:true) followed by Enter (literal:false):\n   `bash -c 'sleep 2; echo WATCH_PANE_SIGNAL_22222; sleep 30'`\n6. Use watch-pane on that pane ID to watch for the pattern \"WATCH_PANE_SIGNAL_22222\" with a timeout of 15 seconds.\n7. When watch-pane returns, report the WatchResult: event type, matched output, and elapsed time.\n8. Kill the session to clean up.\n\nYour response must include the text: WATCH_PANE_SIGNAL_22222\n\nIMPORTANT: Use watch-pane as the primary monitoring tool. Do NOT poll with capture-pane.\n\nIMPORTANT: Clean up the session at the end.\n\nIMPORTANT: Do NOT delegate to any agent or use the Task tool. Call the MCP tools (mcp__tmux__*) directly yourself.",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "core-agentic",
+      "tags": [
+        "tmux",
+        "watch-pane",
+        "pattern-detection",
+        "monitor",
+        "mcp-task"
+      ],
+      "checks": {
+        "has_tool_prefix": "mcp__tmux__",
+        "min_tool_calls_by_name": {
+          "watch-pane": 1
+        },
+        "min_tool_calls": 3,
+        "response_contains": "WATCH_PANE_SIGNAL_22222"
+      }
+    },
+    {
+      "id": "run-in-repl-python-06",
+      "description": "Open Python REPL via create-headless with command:python3, use run-in-repl for calculations, verify results 385 and 1024",
+      "prompt": "Open a Python REPL session and run two calculations using the run-in-repl tool:\n\nCRITICAL: Do NOT use execute-command to start python3. execute-command is synchronous and will hang forever waiting for python3 to exit.\n\nUse this exact sequence:\n1. Create a headless session: `create-headless({ name: \"python-repl-RANDOM\", command: \"python3\" })` (replace RANDOM with a random number)\n2. If you get a 'duplicate session' error, kill the existing session first and retry.\n3. Use `run-in-repl({ paneId: \"...\", input: \"sum(i**2 for i in range(1, 11))\", promptPattern: \">>>\" })` \u2014 the promptPattern MUST be exactly the three characters `>>>` with NO trailing space or newline.\n4. Use `run-in-repl({ paneId: \"...\", input: \"2 ** 10\", promptPattern: \">>>\" })`\n5. Kill the headless session directly with kill-session. Do NOT try to exit the REPL with run-in-repl.\n\nReport both results. The correct answers are 385 and 1024.\n\nIMPORTANT: The promptPattern for Python REPL is exactly three greater-than signs: >>> (no space, no newline after).\nIMPORTANT: Do NOT delegate to any agent or use the Task tool. Call the MCP tools (mcp__tmux__*) directly yourself.",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "core-agentic",
+      "tags": [
+        "tmux",
+        "run-in-repl",
+        "python",
+        "calculation",
+        "repl",
+        "create-headless"
+      ],
+      "checks": {
+        "has_tool_prefix": "mcp__tmux__",
+        "min_tool_calls_by_name": {
+          "run-in-repl": 1,
+          "create-headless": 1
+        },
+        "min_tool_calls": 3,
+        "response_contains": "385",
+        "response_contains_any": [
+          "1024",
+          "385"
+        ]
+      }
+    },
+    {
+      "id": "pane-state-running-07",
+      "description": "Start sleep 300, check pane-state shows running process, then kill and verify dead",
+      "prompt": "Check pane-state before and after killing a process:\n\n1. Create a tmux session named 'e2e-pane-state'.\n2. Run `sleep 300` in the pane using execute-command (do NOT use start-and-watch).\n3. Immediately use pane-state to check the pane \u2014 report whether a process is running.\n4. Send Ctrl+C to the pane using send-keys (literal:false, keys: \"C-c\").\n5. Use pane-state again to confirm the process is gone and the shell is waiting.\n6. Kill the 'e2e-pane-state' session.\n\nReport: what foreground command was running in step 3, and what changed after Ctrl+C.\n\nIMPORTANT: Clean up the session at the end.\n\nIMPORTANT: Do NOT delegate to any agent or use the Task tool. Call the MCP tools (mcp__tmux__*) directly yourself.",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "core-agentic",
+      "tags": [
+        "tmux",
+        "pane-state",
+        "process-monitoring",
+        "running",
+        "kill"
+      ],
+      "checks": {
+        "has_tool_prefix": "mcp__tmux__",
+        "min_tool_calls_by_name": {
+          "pane-state": 2
+        },
+        "min_tool_calls": 4,
+        "response_contains_any": [
+          "sleep",
+          "running",
+          "foreground",
+          "alive"
+        ]
+      }
+    },
+    {
+      "id": "pane-state-waiting-08",
+      "description": "Start bash, verify pane-state.waitingForInput is true at shell prompt",
+      "prompt": "Verify that a shell prompt is correctly detected as waiting for input.\n\n1. Create a tmux session named 'e2e-waiting-state'.\n2. The initial pane should have a shell prompt waiting.\n3. Use pane-state on that pane to check its state.\n4. Report whether waitingForInput is true.\n5. Kill the 'e2e-waiting-state' session.\n\nThe pane-state tool should indicate the pane is waiting for input (shell prompt is visible).\n\nIMPORTANT: Clean up the session at the end.",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "core-agentic",
+      "tags": [
+        "tmux",
+        "pane-state",
+        "waiting-for-input",
+        "shell-prompt"
+      ],
+      "checks": {
+        "has_tool_prefix": "mcp__tmux__",
+        "min_tool_calls_by_name": {
+          "pane-state": 1
+        },
+        "min_tool_calls": 2,
+        "response_contains_any": [
+          "waitingForInput",
+          "waiting for input",
+          "waiting",
+          "shell prompt",
+          "true"
+        ]
+      }
+    },
+    {
+      "id": "headless-create-execute-09",
+      "description": "Create headless session with create-headless, run commands, kill session",
+      "prompt": "Use the tmux MCP tools to work with a headless session:\n\n1. Create a headless session using the create-headless tool.\n2. Run this command in the headless session: `echo HEADLESS_SESSION_MARKER_33333`\n3. Capture the pane output to verify the marker appeared.\n4. Kill the headless session.\n5. Report whether HEADLESS_SESSION_MARKER_33333 appeared in the output.\n\nIMPORTANT: You must use the create-headless tool specifically. Clean up the session at the end.",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "headless-sessions",
+      "tags": [
+        "tmux",
+        "create-headless",
+        "headless",
+        "lifecycle"
+      ],
+      "checks": {
+        "has_tool_prefix": "mcp__tmux__",
+        "min_tool_calls_by_name": {
+          "create-headless": 1
+        },
+        "min_tool_calls": 3,
+        "response_contains": "HEADLESS_SESSION_MARKER_33333"
+      }
+    },
+    {
+      "id": "headless-isolation-10",
+      "description": "Verify headless sessions don't appear in regular list-sessions",
+      "prompt": "Test headless session isolation:\n\n1. List all current tmux sessions and note how many there are.\n2. Create a headless session using create-headless.\n3. List sessions again.\n4. Report: Did the headless session appear in the regular session list, or is it isolated?\n5. Kill the headless session using kill-session with its session ID.\n6. List sessions once more to confirm the headless session is gone.\n\nIMPORTANT: Clean up the headless session at the end.",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "headless-sessions",
+      "tags": [
+        "tmux",
+        "create-headless",
+        "isolation",
+        "list-sessions"
+      ],
+      "checks": {
+        "has_tool_prefix": "mcp__tmux__",
+        "min_tool_calls_by_name": {
+          "create-headless": 1,
+          "list-sessions": 2
+        },
+        "min_tool_calls": 4,
+        "response_contains_any": [
+          "isolated",
+          "not appear",
+          "hidden",
+          "separate",
+          "headless"
+        ]
+      }
+    },
+    {
+      "id": "headless-lifecycle-11",
+      "description": "Full lifecycle: create-headless, execute, capture-pane, kill-session, verify cleaned up",
+      "prompt": "Demonstrate the complete headless session lifecycle:\n\n1. Create a headless session with create-headless. Note its session ID and pane ID.\n2. Run: `echo LIFECYCLE_MARKER_44444`\n3. Run: `echo LIFECYCLE_STEP_TWO`\n4. Capture the pane with capture-pane to see both commands in the output.\n5. Kill the session with kill-session using the session ID.\n6. List sessions to verify the session is gone.\n7. Report: Did both markers appear in the pane capture? Was the session successfully cleaned up?\n\nIMPORTANT: Your response must include LIFECYCLE_MARKER_44444 to confirm you captured the output.",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "headless-sessions",
+      "tags": [
+        "tmux",
+        "create-headless",
+        "capture-pane",
+        "kill-session",
+        "lifecycle"
+      ],
+      "checks": {
+        "has_tool_prefix": "mcp__tmux__",
+        "min_tool_calls_by_name": {
+          "create-headless": 1,
+          "capture-pane": 1,
+          "kill-session": 1
+        },
+        "min_tool_calls": 4,
+        "response_contains": "LIFECYCLE_MARKER_44444"
+      }
+    },
+    {
+      "id": "headless-server-cleanup-12",
+      "description": "Create multiple headless sessions, use kill-headless-server to clean all",
+      "prompt": "Test bulk headless session cleanup:\n\n1. Create 2 headless sessions using create-headless (create them one at a time).\n2. Note the session IDs of both.\n3. List sessions to confirm both exist.\n4. Use kill-headless-server to terminate all headless sessions at once.\n5. List sessions again to verify both headless sessions are gone.\n6. Report: How many headless sessions were created? Were they all cleaned up by kill-headless-server?\n\nIMPORTANT: This test verifies kill-headless-server removes ALL headless sessions in one call.",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "headless-sessions",
+      "tags": [
+        "tmux",
+        "create-headless",
+        "kill-headless-server",
+        "bulk-cleanup"
+      ],
+      "checks": {
+        "has_tool_prefix": "mcp__tmux__",
+        "min_tool_calls_by_name": {
+          "create-headless": 2,
+          "kill-headless-server": 1
         },
         "min_tool_calls": 5,
-        "response_contains": "385"
+        "response_contains_any": [
+          "cleaned up",
+          "removed",
+          "terminated",
+          "all",
+          "2 sessions",
+          "both"
+        ]
       }
     },
     {
-      "id": "log-monitoring-05",
-      "description": "Create ht-mcp session, write log lines, tail -f to monitor, append ERROR line, detect it in snapshot, clean up",
-      "prompt": "Use the ht-mcp terminal tools to simulate log monitoring:\n1. Create the scratch directory: mkdir -p $HOME/e2e-terminal-scratch\n2. Create an ht-mcp session.\n3. Write 3 INFO log lines to $HOME/e2e-terminal-scratch/test.log:\n   - `echo '[INFO] Server starting' >> $HOME/e2e-terminal-scratch/test.log`\n   - `echo '[INFO] Listening on port 8080' >> $HOME/e2e-terminal-scratch/test.log`\n   - `echo '[INFO] Connection pool initialized' >> $HOME/e2e-terminal-scratch/test.log`\n4. Start tailing the log file in the background: `tail -f $HOME/e2e-terminal-scratch/test.log &`\n5. Append a critical error line: `echo '[ERROR] Database connection timeout' >> $HOME/e2e-terminal-scratch/test.log`\n6. Take a snapshot of the session to see if the error appeared in the tail output.\n7. Clean up: kill the background tail process, delete $HOME/e2e-terminal-scratch/test.log\n8. Close the session.\n9. Report whether you detected the ERROR line in the snapshot.\n\nIMPORTANT: Only use mcp__ht__* tools.",
+      "id": "no-truncation-100-lines-13",
+      "description": "Generate 100 lines of output, verify ALL captured via execute-command or capture-pane with lines:100",
+      "prompt": "Test that the terminal plugin does NOT truncate output.\n\nRun this command:\n`for i in $(seq 1 100); do echo \"NOTRUNC_LINE_$i\"; done`\n\nRetrieve ALL output and verify completeness. In your response:\n1. Confirm whether you received all 100 lines\n2. State the first line (should be NOTRUNC_LINE_1)\n3. State the last line (should be NOTRUNC_LINE_100)\n4. State explicitly: was any output truncated?\n\nIMPORTANT: The output must NOT be truncated. Report NOTRUNC_LINE_1 and NOTRUNC_LINE_100 in your response.",
       "expected_agent": "NO_TASK_CALL",
       "expected_alternatives": [],
-      "category": "advanced",
-      "tags": ["ht-mcp", "log-monitoring", "tail", "background-process"],
-      "checks": {
-        "has_tool_prefix": "mcp__ht__",
-        "min_tool_calls_by_name": {
-          "ht_create_session": 1,
-          "ht_send_keys": 4,
-          "ht_take_snapshot": 1,
-          "ht_close_session": 1
-        },
-        "min_tool_calls": 7,
-        "response_contains_any": ["ERROR", "error", "connection timeout", "Database"]
-      }
-    },
-    {
-      "id": "tmux-command-workflow-06",
-      "description": "Create tmux session, execute command with unique marker, capture output, kill session",
-      "prompt": "Use the tmux MCP tools to complete a workflow:\n1. Create a new tmux session named 'e2e-terminal-test' (detached).\n2. Send a command to that session that echoes a unique marker: `echo TMUX_E2E_SUCCESS_MARKER`\n3. Wait briefly for the command to complete.\n4. Capture the pane output of the session to verify the marker appeared.\n5. Kill the 'e2e-terminal-test' session to clean up.\n6. Report whether TMUX_E2E_SUCCESS_MARKER appeared in the captured output.\n\nIMPORTANT: Only use mcp__tmux__* tools. Do NOT use ht-mcp tools. Clean up the session at the end.",
-      "expected_agent": "NO_TASK_CALL",
-      "expected_alternatives": [],
-      "category": "advanced",
-      "tags": ["tmux", "command-execution", "capture", "session-lifecycle"],
+      "category": "no-truncation",
+      "tags": [
+        "tmux",
+        "no-truncation",
+        "100-lines",
+        "completeness",
+        "output-capture"
+      ],
       "checks": {
         "has_tool_prefix": "mcp__tmux__",
-        "tools_used_include_any": [
-          ["mcp__tmux__create-session", "mcp__tmux__capture-pane", "mcp__tmux__kill-session"],
-          ["mcp__tmux-mcp__create-session", "mcp__tmux-mcp__capture-pane", "mcp__tmux-mcp__kill-session"],
-          ["mcp__tmux__create-session", "mcp__tmux__execute-command", "mcp__tmux__capture-pane"],
-          ["mcp__tmux__execute-command", "mcp__tmux__capture-pane"],
-          ["mcp__tmux__list-sessions", "mcp__tmux__capture-pane"]
-        ],
-        "min_tool_calls": 3,
-        "response_contains": "TMUX_E2E_SUCCESS_MARKER"
+        "min_tool_calls": 1,
+        "response_contains": "NOTRUNC_LINE_1",
+        "response_contains_any": [
+          "NOTRUNC_LINE_100",
+          "100 lines",
+          "all 100"
+        ]
       }
     },
     {
-      "id": "process-management-07",
-      "description": "ht-mcp session: start sleep background job, verify with jobs, kill it, verify gone, show output from each step",
-      "prompt": "Use the ht-mcp terminal tools to practice process management:\n1. Create an ht-mcp session.\n2. Start a background process: `sleep 300 &`\n3. Run `jobs` to list background jobs and take a snapshot.\n4. Kill the background job: `kill %1`\n5. Run `jobs` again to confirm the job is gone (or shows 'Terminated') and take another snapshot.\n6. Close the session.\n7. Report what each snapshot showed — specifically, did jobs show a running process, then did the kill work?\n\nIMPORTANT: Only use mcp__ht__* tools. Do NOT use tmux tools.",
+      "id": "scrollback-200-lines-14",
+      "description": "Generate 200 lines in a session, use capture-pane with lines:200 to retrieve scrollback, verify completeness",
+      "prompt": "Test scrollback capture with the lines parameter:\n\n1. Create a tmux session named 'e2e-scrollback'.\n2. Run: `for i in $(seq 1 200); do echo \"SCROLL_LINE_$i\"; done`\n3. Wait for the command to complete.\n4. Use capture-pane with the lines parameter set to 200 to retrieve the full scrollback history.\n5. Report:\n   - Did you use the lines parameter?\n   - Did SCROLL_LINE_1 appear in the captured output?\n   - Did SCROLL_LINE_200 appear in the captured output?\n   - Were any lines missing?\n6. Kill the 'e2e-scrollback' session.\n\nIMPORTANT: Your response must confirm SCROLL_LINE_200 was captured. Clean up the session.",
       "expected_agent": "NO_TASK_CALL",
       "expected_alternatives": [],
-      "category": "advanced",
-      "tags": ["ht-mcp", "process-management", "background-jobs", "kill"],
-      "checks": {
-        "has_tool_prefix": "mcp__ht__",
-        "min_tool_calls_by_name": {
-          "ht_create_session": 1,
-          "ht_send_keys": 4,
-          "ht_take_snapshot": 2,
-          "ht_close_session": 1
-        },
-        "min_tool_calls": 8
-      }
-    },
-    {
-      "id": "environment-inspection-08",
-      "description": "ht-mcp session: inspect environment variables (HOME, USER, SHELL, TERM, PWD), check current shell, report findings",
-      "prompt": "Use the ht-mcp terminal tools to inspect the shell environment:\n1. Create an ht-mcp session.\n2. Run `env | grep -E '^(HOME|USER|SHELL|TERM|PWD)='` to list key environment variables.\n3. Run `echo $0` to check what shell is running.\n4. Take a snapshot to capture all the output.\n5. Close the session.\n6. In your response, report the values of HOME, USER, SHELL, TERM, and PWD as found in the snapshot, plus what $0 returned.\n\nIMPORTANT: Only use mcp__ht__* tools. Do NOT use tmux tools.",
-      "expected_agent": "NO_TASK_CALL",
-      "expected_alternatives": [],
-      "category": "advanced",
-      "tags": ["ht-mcp", "environment", "shell-inspection"],
-      "checks": {
-        "has_tool_prefix": "mcp__ht__",
-        "min_tool_calls_by_name": {
-          "ht_create_session": 1,
-          "ht_take_snapshot": 1,
-          "ht_close_session": 1
-        },
-        "min_tool_calls": 4,
-        "response_contains_any": ["HOME", "USER", "SHELL"]
-      }
-    },
-    {
-      "id": "cross-backend-compare-09",
-      "description": "Use BOTH tmux and ht-mcp backends in one task: list tmux sessions, capture a pane, then create ht-mcp session, run uname -a, report both outputs",
-      "prompt": "Use BOTH tmux and ht-mcp MCP tools in this single task:\n\nPart A (tmux backend):\n1. List all current tmux sessions using the tmux MCP tools.\n2. If any session exists, capture the output of any pane in the first session.\n3. If no sessions exist, just note that no sessions are running.\n\nPart B (ht-mcp backend):\n4. Create a new ht-mcp session.\n5. Run `uname -a` in the session.\n6. Take a snapshot to capture the uname output.\n7. Close the ht-mcp session.\n\nReport:\n- What tmux sessions were found (if any) and what was in the captured pane.\n- The full uname -a output from the ht-mcp session.\n\nIMPORTANT: You MUST use BOTH mcp__tmux__* tools AND mcp__ht__* tools. Do NOT skip either backend.",
-      "expected_agent": "NO_TASK_CALL",
-      "expected_alternatives": [],
-      "category": "advanced",
-      "tags": ["tmux", "ht-mcp", "cross-backend", "dual-backend"],
+      "category": "no-truncation",
+      "tags": [
+        "tmux",
+        "capture-pane",
+        "scrollback",
+        "lines-parameter",
+        "200-lines"
+      ],
       "checks": {
         "has_tool_prefix": "mcp__tmux__",
-        "has_tool_prefix_also": "mcp__ht__",
-        "tools_used_include_any": [
-          ["mcp__tmux__list-sessions", "mcp__ht__ht_create_session", "mcp__ht__ht_take_snapshot", "mcp__ht__ht_close_session"],
-          ["mcp__tmux-mcp__list-sessions", "mcp__ht-mcp__ht_create_session", "mcp__ht-mcp__ht_take_snapshot", "mcp__ht-mcp__ht_close_session"]
-        ],
-        "min_tool_calls": 5
-      }
-    },
-
-    {
-      "id": "intent-run-echo-10",
-      "description": "Intent test: /terminal:run — run a simple echo command, verify output captured, session auto-cleaned",
-      "prompt": "Run this command in a terminal and report the output: `echo INTENT_RUN_E2E_MARKER_12345`\n\nUse the ht-mcp terminal tools to:\n1. Create a session\n2. Execute the echo command\n3. Capture the output\n4. Close the session\n5. Report the exact output\n\nThe output should contain: INTENT_RUN_E2E_MARKER_12345",
-      "expected_agent": "NO_TASK_CALL",
-      "expected_alternatives": [],
-      "category": "intent-commands",
-      "tags": ["intent", "run", "echo", "auto-cleanup"],
-      "checks": {
-        "has_tool_prefix": "mcp__ht__",
         "min_tool_calls_by_name": {
-          "ht_create_session": 1,
-          "ht_close_session": 1
-        },
-        "min_tool_calls": 3,
-        "response_contains": "INTENT_RUN_E2E_MARKER_12345"
-      }
-    },
-    {
-      "id": "intent-run-multiline-11",
-      "description": "Intent test: /terminal:run — run command with multi-line output, verify key lines captured",
-      "prompt": "Run this command in a terminal session and report what you see: `for i in 1 2 3 4 5; do echo \"Line $i: test output\"; done`\n\nUse ht-mcp tools to create a session, execute the command, take a snapshot, then close the session. Report all 5 lines of output.\n\nIMPORTANT: Must use mcp__ht__* tools. Must close the session when done.",
-      "expected_agent": "NO_TASK_CALL",
-      "expected_alternatives": [],
-      "category": "intent-commands",
-      "tags": ["intent", "run", "multi-line", "output-capture"],
-      "checks": {
-        "has_tool_prefix": "mcp__ht__",
-        "min_tool_calls_by_name": {
-          "ht_create_session": 1,
-          "ht_take_snapshot": 1,
-          "ht_close_session": 1
-        },
-        "min_tool_calls": 3,
-        "response_contains_any": ["Line 1", "Line 5", "test output"]
-      }
-    },
-    {
-      "id": "intent-watch-server-12",
-      "description": "Intent test: /terminal:watch — start a simulated server, detect readiness signal, report status",
-      "prompt": "Start a simulated server process in a terminal and monitor it for readiness.\n\nRun this command: `echo 'Starting server...' && sleep 1 && echo 'Server listening on port 8080' && sleep 300`\n\nUse ht-mcp tools to:\n1. Create a session\n2. Send the command\n3. Poll with snapshots until you detect 'listening on port 8080'\n4. Report that the server is ready\n5. Then send Ctrl+C to stop the server\n6. Close the session\n\nIMPORTANT: Must use mcp__ht__* tools. Must detect the 'listening on port' readiness signal.",
-      "expected_agent": "NO_TASK_CALL",
-      "expected_alternatives": [],
-      "category": "intent-commands",
-      "tags": ["intent", "watch", "server", "readiness-detection", "polling"],
-      "checks": {
-        "min_tool_calls_by_name": {
-          "ht_create_session": 1,
-          "ht_take_snapshot": 1,
-          "ht_close_session": 1
-        },
-        "min_tool_calls": 4,
-        "response_contains_any": ["listening", "port 8080", "ready", "server"]
-      }
-    },
-    {
-      "id": "intent-observe-list-13",
-      "description": "Intent test: /terminal:observe — create a session, then use observe pattern to list and snapshot it",
-      "prompt": "Demonstrate the observe workflow:\n1. Create an ht-mcp session.\n2. Run `echo OBSERVE_TEST_MARKER` in the session.\n3. Now, separately list all active ht-mcp sessions to show what's running.\n4. Take a snapshot of the session to see the output.\n5. Close the session.\n6. Report the marker text and session listing.\n\nIMPORTANT: You MUST call mcp__ht__ht_list_sessions at some point to demonstrate session discovery. Must use mcp__ht__* tools only.",
-      "expected_agent": "NO_TASK_CALL",
-      "expected_alternatives": [],
-      "category": "intent-commands",
-      "tags": ["intent", "observe", "list-sessions", "discovery"],
-      "checks": {
-        "has_tool_prefix": "mcp__ht__",
-        "min_tool_calls_by_name": {
-          "ht_create_session": 1,
-          "ht_list_sessions": 1,
-          "ht_take_snapshot": 1,
-          "ht_close_session": 1
-        },
-        "min_tool_calls": 5,
-        "response_contains": "OBSERVE_TEST_MARKER"
-      }
-    },
-    {
-      "id": "intent-repl-python-14",
-      "description": "Intent test: /terminal:repl — open Python REPL, run 2 expressions, exit cleanly, report results",
-      "prompt": "Open a Python REPL session and run two calculations:\n1. Create an ht-mcp session.\n2. Start python3.\n3. Wait for the >>> prompt.\n4. Run: 2 ** 10\n5. Take a snapshot to see the result (should be 1024).\n6. Run: len('hello world')\n7. Take a snapshot to see the result (should be 11).\n8. Exit the REPL cleanly (exit() or Ctrl+D).\n9. Close the session.\n10. Report both results: 1024 and 11.\n\nIMPORTANT: Must use mcp__ht__* tools. Must exit the REPL cleanly before closing.",
-      "expected_agent": "NO_TASK_CALL",
-      "expected_alternatives": [],
-      "category": "intent-commands",
-      "tags": ["intent", "repl", "python", "multi-query", "clean-exit"],
-      "checks": {
-        "has_tool_prefix": "mcp__ht__",
-        "min_tool_calls_by_name": {
-          "ht_create_session": 1,
-          "ht_send_keys": 2,
-          "ht_take_snapshot": 2,
-          "ht_close_session": 1
-        },
-        "min_tool_calls": 6,
-        "response_contains_any": ["1024", "11"]
-      }
-    },
-    {
-      "id": "intent-tui-vim-15",
-      "description": "Intent test: /terminal:tui — open vim, insert text, search for it, save and quit, verify file content",
-      "prompt": "Use vim in a terminal session to create a file:\n1. Create the directory: mkdir -p $HOME/e2e-terminal-scratch\n2. Create an ht-mcp session.\n3. Open vim: `vim $HOME/e2e-terminal-scratch/tui-test.txt`\n4. Take a snapshot to confirm vim loaded (look for ~ lines).\n5. Enter insert mode: press i\n6. Type: TUI_NAVIGATION_E2E_SUCCESS\n7. Press Escape to return to normal mode.\n8. Search for the text: type /TUI_NAVIGATION then Enter\n9. Take a snapshot to confirm the search found the text.\n10. Save and quit: type :wq then Enter\n11. Verify by running: cat $HOME/e2e-terminal-scratch/tui-test.txt\n12. Take a snapshot to see the cat output.\n13. Close the session.\n14. Clean up the file.\n15. Report whether the file contained TUI_NAVIGATION_E2E_SUCCESS.\n\nIMPORTANT: Must use mcp__ht__* tools. Must use vim navigation (insert mode, search, save).",
-      "expected_agent": "NO_TASK_CALL",
-      "expected_alternatives": [],
-      "category": "intent-commands",
-      "tags": ["intent", "tui", "vim", "navigation", "search", "insert-mode"],
-      "checks": {
-        "has_tool_prefix": "mcp__ht__",
-        "min_tool_calls_by_name": {
-          "ht_create_session": 1,
-          "ht_send_keys": 5,
-          "ht_take_snapshot": 2,
-          "ht_close_session": 1
-        },
-        "min_tool_calls": 8,
-        "response_contains": "TUI_NAVIGATION_E2E_SUCCESS"
-      }
-    },
-    {
-      "id": "intent-run-error-handling-16",
-      "description": "Intent test: /terminal:run error handling — run a command that fails, detect error, report, and still cleanup",
-      "prompt": "Run a command that will fail and handle the error gracefully:\n1. Create an ht-mcp session.\n2. Run this command: `ls /nonexistent_directory_e2e_test_12345 2>&1`\n3. Take a snapshot to capture the error output.\n4. Close the session (MUST close even after error).\n5. Report the error message you saw.\n\nThe command should fail with 'No such file or directory'. Confirm you detected this error.\n\nIMPORTANT: Must use mcp__ht__* tools. Must close the session even though the command failed.",
-      "expected_agent": "NO_TASK_CALL",
-      "expected_alternatives": [],
-      "category": "intent-commands",
-      "tags": ["intent", "run", "error-handling", "cleanup-on-error"],
-      "checks": {
-        "has_tool_prefix": "mcp__ht__",
-        "min_tool_calls_by_name": {
-          "ht_create_session": 1,
-          "ht_close_session": 1
-        },
-        "min_tool_calls": 3,
-        "response_contains_any": ["No such file", "not found", "nonexistent", "error"]
-      }
-    },
-    {
-      "id": "intent-observe-tmux-17",
-      "description": "Intent test: /terminal:observe with tmux — list tmux sessions and capture a pane without modifying anything",
-      "prompt": "Observe the current tmux environment without modifying anything:\n1. List all tmux sessions using mcp__tmux__* tools.\n2. If any session exists, list its windows and panes.\n3. Capture the content of one pane.\n4. Report what you found.\n\nIMPORTANT: This is READ-ONLY observation. Do NOT create new sessions, send keys, or kill anything. Only use mcp__tmux__list-sessions, mcp__tmux__list-windows, mcp__tmux__list-panes, and mcp__tmux__capture-pane.",
-      "expected_agent": "NO_TASK_CALL",
-      "expected_alternatives": [],
-      "category": "intent-commands",
-      "tags": ["intent", "observe", "tmux", "read-only", "non-destructive"],
-      "checks": {
-        "has_tool_prefix": "mcp__tmux__",
-        "tools_used_include_any": [
-          ["mcp__tmux__list-sessions"],
-          ["mcp__tmux-mcp__list-sessions"]
-        ],
-        "min_tool_calls": 1
-      }
-    },
-    {
-      "id": "intent-lifecycle-complete-18",
-      "description": "Intent test: Full lifecycle — create session, run command, observe output, send interrupt, close. Tests all intent patterns in one flow.",
-      "prompt": "Demonstrate a complete terminal workflow:\n1. Create an ht-mcp session.\n2. Start a long process: `while true; do echo \"heartbeat $(date +%H:%M:%S)\"; sleep 1; done`\n3. Take 2-3 snapshots over a few seconds to observe the heartbeat output changing.\n4. Send Ctrl+C (^c) to interrupt the process.\n5. Take a snapshot to confirm the process stopped (shell prompt should return).\n6. Run `echo LIFECYCLE_COMPLETE` to verify the session is still usable.\n7. Take a final snapshot to see the echo output.\n8. Close the session.\n9. Report: Did you see changing heartbeat timestamps? Did Ctrl+C work? Did the session survive interruption?\n\nIMPORTANT: Must use mcp__ht__* tools. This tests the full lifecycle: create → execute → observe → interrupt → reuse → close.",
-      "expected_agent": "NO_TASK_CALL",
-      "expected_alternatives": [],
-      "category": "intent-commands",
-      "tags": ["intent", "lifecycle", "interrupt", "observe", "reuse"],
-      "checks": {
-        "has_tool_prefix": "mcp__ht__",
-        "min_tool_calls_by_name": {
-          "ht_create_session": 1,
-          "ht_send_keys": 3,
-          "ht_take_snapshot": 3,
-          "ht_close_session": 1
-        },
-        "min_tool_calls": 8,
-        "response_contains_any": ["heartbeat", "LIFECYCLE_COMPLETE", "Ctrl+C", "interrupt"]
-      }
-    },
-    {
-      "id": "tmux-split-pane-19",
-      "description": "tmux split-pane workflow: create session, get pane ID, split it, run command in new pane, capture, clean up. Validates split-pane uses paneId parameter correctly.",
-      "prompt": "Use the tmux MCP tools to test pane splitting:\n1. Create a new tmux session named 'e2e-split-test'.\n2. List the panes in the first window to find the initial pane ID.\n3. Split that pane horizontally using mcp__tmux__split-pane with the paneId parameter.\n4. In the new pane, run: echo SPLIT_PANE_E2E_MARKER\n5. Capture the new pane to verify the marker appeared.\n6. Kill the 'e2e-split-test' session to clean up.\n7. Report whether SPLIT_PANE_E2E_MARKER appeared in the captured output of the split pane.\n\nIMPORTANT: You MUST use mcp__tmux__split-pane (not create-session) to create the second pane. The split-pane tool takes a paneId parameter. Clean up the session at the end.",
-      "expected_agent": "NO_TASK_CALL",
-      "expected_alternatives": [],
-      "category": "advanced",
-      "tags": ["tmux", "split-pane", "paneId", "context-detection"],
-      "checks": {
-        "has_tool_prefix": "mcp__tmux__",
-        "tools_used_include_any": [
-          ["mcp__tmux__create-session", "mcp__tmux__split-pane", "mcp__tmux__capture-pane", "mcp__tmux__kill-session"],
-          ["mcp__tmux-mcp__create-session", "mcp__tmux-mcp__split-pane", "mcp__tmux-mcp__capture-pane", "mcp__tmux-mcp__kill-session"]
-        ],
-        "min_tool_calls_by_name": {
-          "split-pane": 1,
           "capture-pane": 1
-        },
-        "min_tool_calls": 4,
-        "response_contains": "SPLIT_PANE_E2E_MARKER"
-      }
-    },
-    {
-      "id": "intent-side-panel-20",
-      "description": "Intent test: Natural language 'open htop on a side' — must use split-pane to create side panel, not a separate session",
-      "prompt": "I'm working in tmux. Open htop on a side panel alongside my current work.\n\nTo set up the test environment:\n1. Create a tmux session named 'e2e-side-panel' (this simulates my workspace).\n2. Now open htop alongside — I want to see it on a side, not in a separate disconnected session.\n3. Capture the pane where htop is running to verify it started.\n4. Clean up: kill the 'e2e-side-panel' session.\n5. Report whether htop appeared in the side panel.\n\nThe key behavior: when I say 'on a side' or 'alongside', I mean a split pane in the same tmux window — not a brand new tmux session.",
-      "expected_agent": "NO_TASK_CALL",
-      "expected_alternatives": [],
-      "category": "intent-commands",
-      "tags": ["intent", "tmux", "split-pane", "side-panel", "natural-language", "spatial"],
-      "checks": {
-        "has_tool_prefix": "mcp__tmux__",
-        "tools_used_include_any": [
-          ["mcp__tmux__create-session", "mcp__tmux__split-pane", "mcp__tmux__capture-pane", "mcp__tmux__kill-session"],
-          ["mcp__tmux-mcp__create-session", "mcp__tmux-mcp__split-pane", "mcp__tmux-mcp__capture-pane", "mcp__tmux-mcp__kill-session"]
-        ],
-        "min_tool_calls_by_name": {
-          "split-pane": 1,
-          "capture-pane": 1
-        },
-        "min_tool_calls": 4,
-        "response_contains_any": ["htop", "side", "split", "alongside", "pane"]
-      }
-    },
-
-    {
-      "id": "split-correct-direction-21",
-      "description": "Pane management: first split uses direction 'horizontal' to create helper pane on the RIGHT side (vertical divider)",
-      "prompt": "Use the tmux MCP tools to test pane split direction:\n1. Create a new tmux session named 'e2e-split-dir'.\n2. List the panes in the first window to find the initial pane ID.\n3. Split that pane using mcp__tmux__split-pane with direction 'horizontal' — this creates a vertical divider with the helper pane on the RIGHT side.\n4. In the new right-side pane, send the command: echo SPLIT_HORIZONTAL_RIGHT_SUCCESS\n5. Capture the new pane to verify the marker appeared.\n6. Kill the 'e2e-split-dir' session to clean up.\n7. Report whether SPLIT_HORIZONTAL_RIGHT_SUCCESS appeared, and confirm the split direction was 'horizontal'.\n\nIMPORTANT: The split direction MUST be 'horizontal' (creates vertical divider, helper on right). Do NOT use 'vertical' for the first split. Use mcp__tmux__split-pane with the direction parameter set to 'horizontal'.",
-      "expected_agent": "NO_TASK_CALL",
-      "expected_alternatives": [],
-      "category": "pane-management",
-      "tags": ["tmux", "split-pane", "direction", "horizontal", "right-side"],
-      "checks": {
-        "has_tool_prefix": "mcp__tmux__",
-        "tools_used_include_any": [
-          ["mcp__tmux__create-session", "mcp__tmux__split-pane", "mcp__tmux__capture-pane", "mcp__tmux__kill-session"],
-          ["mcp__tmux-mcp__create-session", "mcp__tmux-mcp__split-pane", "mcp__tmux-mcp__capture-pane", "mcp__tmux-mcp__kill-session"]
-        ],
-        "min_tool_calls_by_name": {
-          "split-pane": 1
         },
         "tool_arg_match": [
-          { "tool_pattern": "split-pane", "arg": "direction", "value": "horizontal" }
+          {
+            "tool_pattern": "capture-pane",
+            "arg": "lines",
+            "value": "200"
+          }
         ],
-        "min_tool_calls": 4,
-        "response_contains": "SPLIT_HORIZONTAL_RIGHT_SUCCESS"
+        "min_tool_calls": 3,
+        "response_contains_any": [
+          "SCROLL_LINE_200",
+          "200 lines",
+          "all 200"
+        ]
       }
     },
     {
-      "id": "split-label-helper-22",
-      "description": "Pane management: helper pane is labeled 'claude-helper' after creation for future reuse identification",
-      "prompt": "Use tmux MCP tools AND the Bash tool to test pane labeling:\n1. Create a new tmux session named 'e2e-split-label'.\n2. List panes to find the initial pane ID.\n3. Split that pane horizontally (direction: 'horizontal') using mcp__tmux__split-pane.\n4. Label the new pane as 'claude-helper' by running this Bash command:\n   tmux select-pane -t <new_pane_id> -T \"claude-helper\"\n   (Replace <new_pane_id> with the actual pane ID returned from the split.)\n5. Verify the label was set by running this Bash command:\n   tmux list-panes -F '#{pane_id} #{pane_title}'\n6. Kill the 'e2e-split-label' session to clean up.\n7. Report whether you found a pane with title 'claude-helper' in the listing.\n\nIMPORTANT: You MUST label the new pane with 'claude-helper' using tmux select-pane -T via the Bash tool. You MUST verify the label by listing panes with #{pane_title} format.",
+      "id": "large-output-tee-15",
+      "description": "Run command producing 500+ lines, verify execute-command returns full output without truncation",
+      "prompt": "Verify that execute-command handles large output without truncation.\n\nRun this command:\n`for i in $(seq 1 500); do echo \"LARGE_LINE_$i\"; done`\n\nRetrieve the output and verify completeness. Report:\n1. The total number of lines received\n2. Whether LARGE_LINE_1 is present\n3. Whether LARGE_LINE_500 is present\n4. Explicitly state: was the output complete or was it truncated?\n\nIMPORTANT: Your response must include LARGE_LINE_500 to confirm the full output was received. Do NOT accept truncated output.",
       "expected_agent": "NO_TASK_CALL",
       "expected_alternatives": [],
-      "category": "pane-management",
-      "tags": ["tmux", "split-pane", "labeling", "claude-helper", "reuse-id"],
+      "category": "no-truncation",
+      "tags": [
+        "tmux",
+        "execute-command",
+        "large-output",
+        "500-lines",
+        "no-truncation",
+        "tee"
+      ],
+      "checks": {
+        "has_tool_prefix": "mcp__tmux__",
+        "min_tool_calls": 1,
+        "response_contains": "LARGE_LINE_500",
+        "response_contains_any": [
+          "LARGE_LINE_1",
+          "500 lines",
+          "all 500"
+        ]
+      }
+    },
+    {
+      "id": "session-create-list-kill-16",
+      "description": "Create 2 sessions, list them, kill one, verify list updated",
+      "prompt": "Use the tmux MCP tools to manage multiple sessions:\n\n1. Create a tmux session named 'e2e-session-alpha'.\n2. Create a tmux session named 'e2e-session-beta'.\n3. List all sessions and confirm both appear.\n4. Kill the 'e2e-session-alpha' session.\n5. List sessions again and confirm only 'e2e-session-beta' remains (of the ones you created).\n6. Kill the 'e2e-session-beta' session to clean up.\n7. Report: Were both sessions visible after creation? Did the list update correctly after killing alpha?\n\nIMPORTANT: Clean up both sessions at the end.",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "session-management",
+      "tags": [
+        "tmux",
+        "create-session",
+        "list-sessions",
+        "kill-session",
+        "lifecycle"
+      ],
       "checks": {
         "has_tool_prefix": "mcp__tmux__",
         "min_tool_calls_by_name": {
-          "split-pane": 1
+          "create-session": 2,
+          "list-sessions": 2,
+          "kill-session": 2
         },
-        "min_tool_calls": 4,
-        "response_contains": "claude-helper",
-        "bash_command_contains_any": ["select-pane", "claude-helper"]
+        "min_tool_calls": 6,
+        "response_contains_any": [
+          "e2e-session-alpha",
+          "e2e-session-beta",
+          "alpha",
+          "beta"
+        ]
       }
     },
     {
-      "id": "split-reuse-existing-23",
-      "description": "Pane management: existing claude-helper pane is reused — split-pane called exactly once, second command goes to same pane",
-      "prompt": "Use tmux MCP tools AND the Bash tool to test pane reuse:\n1. Create a new tmux session named 'e2e-split-reuse'.\n2. List panes to find the initial pane ID.\n3. Split that pane horizontally (direction: 'horizontal') using mcp__tmux__split-pane — creating a helper pane.\n4. Label the new pane as 'claude-helper' by running: tmux select-pane -t <new_pane_id> -T \"claude-helper\"\n5. Send `echo FIRST_COMMAND` to the helper pane (via send-keys or execute-command).\n6. Now, WITHOUT creating another split, check for the existing claude-helper pane by running: tmux list-panes -F '#{pane_id} #{pane_title}' | grep claude-helper\n7. Since it already exists, REUSE it — send `echo REUSE_SUCCESS` to the SAME helper pane (via send-keys or execute-command).\n8. Capture the helper pane to verify both commands ran there.\n9. Kill the 'e2e-split-reuse' session.\n10. Report that you reused the existing pane and confirm both FIRST_COMMAND and REUSE_SUCCESS markers appeared.\n\nCRITICAL: You MUST call mcp__tmux__split-pane EXACTLY ONCE. The second command MUST go to the SAME pane without splitting again. This tests the reuse behavior — do not create duplicate helper panes.",
+      "id": "tmux-command-workflow-17",
+      "description": "Create session, execute-command with marker, capture-pane, kill \u2014 classic workflow",
+      "prompt": "Use the tmux MCP tools to complete a classic terminal workflow:\n\n1. Create a new tmux session named 'e2e-workflow-test'.\n2. Run this command in the session: `echo WORKFLOW_E2E_MARKER_55555`\n3. Capture the pane output to verify the marker appeared.\n4. Kill the 'e2e-workflow-test' session.\n5. Report whether WORKFLOW_E2E_MARKER_55555 appeared in the captured output.\n\nIMPORTANT: Your response must include: WORKFLOW_E2E_MARKER_55555. Clean up the session at the end.",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "session-management",
+      "tags": [
+        "tmux",
+        "create-session",
+        "execute-command",
+        "capture-pane",
+        "kill-session"
+      ],
+      "checks": {
+        "has_tool_prefix": "mcp__tmux__",
+        "tools_used_include_any": [
+          [
+            "mcp__tmux__create-session",
+            "mcp__tmux__capture-pane",
+            "mcp__tmux__kill-session"
+          ],
+          [
+            "mcp__tmux__create-session",
+            "mcp__tmux__execute-command",
+            "mcp__tmux__capture-pane"
+          ]
+        ],
+        "min_tool_calls": 3,
+        "response_contains": "WORKFLOW_E2E_MARKER_55555"
+      }
+    },
+    {
+      "id": "tmux-observe-readonly-18",
+      "description": "List sessions and capture pane without modifying anything \u2014 read-only observation",
+      "prompt": "Observe the current tmux environment without modifying anything:\n\n1. List all tmux sessions using mcp__tmux__list-sessions.\n2. Report the session names and how many are attached.\n3. If any session exists, capture the pane content of the first session using mcp__tmux__capture-pane (you'll need to construct a pane ID like %0 or use the first session's pane).\n4. Report what you found.\n\nIMPORTANT: This is READ-ONLY observation. Do NOT create new sessions, send keys, or kill anything.\n\nIMPORTANT: Do NOT delegate to any agent or use the Task tool. Call the MCP tools (mcp__tmux__*) directly yourself. You have list-sessions and capture-pane available.",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "session-management",
+      "tags": [
+        "tmux",
+        "list-sessions",
+        "capture-pane",
+        "read-only",
+        "observe"
+      ],
+      "checks": {
+        "has_tool_prefix": "mcp__tmux__",
+        "min_tool_calls": 1,
+        "min_tool_calls_by_name": {
+          "list-sessions": 1
+        }
+      }
+    },
+    {
+      "id": "split-pane-horizontal-19",
+      "description": "Split pane horizontally, run command in new pane, verify output",
+      "prompt": "Use the tmux MCP tools to test pane splitting:\n\n1. Create a new tmux session named 'e2e-split-horiz'.\n2. List the panes in the first window to find the initial pane ID.\n3. Split that pane horizontally (direction: 'horizontal') using split-pane.\n4. In the new pane, run: `echo SPLIT_HORIZ_MARKER_66666`\n5. Capture the new pane to verify the marker appeared.\n6. Kill the 'e2e-split-horiz' session to clean up.\n7. Report whether SPLIT_HORIZ_MARKER_66666 appeared in the new split pane.\n\nIMPORTANT: Your response must include: SPLIT_HORIZ_MARKER_66666. Clean up the session at the end.",
       "expected_agent": "NO_TASK_CALL",
       "expected_alternatives": [],
       "category": "pane-management",
-      "tags": ["tmux", "split-pane", "reuse", "claude-helper", "no-duplicate"],
+      "tags": [
+        "tmux",
+        "split-pane",
+        "horizontal",
+        "capture-pane"
+      ],
+      "checks": {
+        "has_tool_prefix": "mcp__tmux__",
+        "min_tool_calls_by_name": {
+          "split-pane": 1,
+          "capture-pane": 1
+        },
+        "min_tool_calls": 4,
+        "response_contains": "SPLIT_HORIZ_MARKER_66666"
+      }
+    },
+    {
+      "id": "split-pane-beside-20",
+      "description": "Natural language 'run beside me' \u2014 must use split-pane, not create-session",
+      "prompt": "Set up a tmux workspace, then respond to a natural 'beside me' request:\n\nStep 1 (Setup): Create a tmux session named 'e2e-beside-test'. This simulates an existing workspace.\n\nStep 2 (Natural request): Run `echo BESIDE_SUCCESS_77777` in a side panel beside the main workspace. This means:\n- Split the existing window's pane using split-pane (direction: 'horizontal')\n- Send the echo command to the new pane\n- Capture the side panel output to verify the command ran\n\nStep 3 (Cleanup): Kill the 'e2e-beside-test' session.\n\nStep 4 (Report): Report whether BESIDE_SUCCESS_77777 appeared in the side panel.\n\nKey constraint: You MUST use split-pane to create the side panel \u2014 NOT a second create-session. 'Beside me' always means a split pane in the same window.",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "pane-management",
+      "tags": [
+        "tmux",
+        "split-pane",
+        "natural-language",
+        "beside",
+        "side-panel"
+      ],
+      "checks": {
+        "has_tool_prefix": "mcp__tmux__",
+        "min_tool_calls_by_name": {
+          "split-pane": 1,
+          "capture-pane": 1
+        },
+        "tool_arg_match": [
+          {
+            "tool_pattern": "split-pane",
+            "arg": "direction",
+            "value": "horizontal"
+          }
+        ],
+        "min_tool_calls": 4,
+        "response_contains": "BESIDE_SUCCESS_77777"
+      }
+    },
+    {
+      "id": "split-label-reuse-21",
+      "description": "Split, label as claude-helper, reuse the labeled pane \u2014 split-pane called exactly once",
+      "prompt": "Use tmux MCP tools AND the Bash tool to test pane reuse:\n\n1. Create a new tmux session named 'e2e-label-reuse'.\n2. List panes to find the initial pane ID.\n3. Split that pane horizontally (direction: 'horizontal') using split-pane \u2014 creating a helper pane.\n4. Label the new pane as 'claude-helper' using the Bash tool: `tmux select-pane -t <new_pane_id> -T \"claude-helper\"`\n5. Send `echo FIRST_COMMAND_88888` to the helper pane using send-keys.\n6. Now check if the claude-helper pane exists using the Bash tool: `tmux list-panes -F '#{pane_id} #{pane_title}' | grep claude-helper`\n7. Since it already exists, REUSE it \u2014 send `echo REUSE_CONFIRMED_99999` to the SAME helper pane.\n8. Capture the helper pane to verify both commands ran there.\n9. Kill the 'e2e-label-reuse' session.\n10. Report that you reused the existing pane and confirm both FIRST_COMMAND_88888 and REUSE_CONFIRMED_99999 appeared.\n\nCRITICAL: You MUST call split-pane EXACTLY ONCE. The second command goes to the SAME pane without splitting again.",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "pane-management",
+      "tags": [
+        "tmux",
+        "split-pane",
+        "labeling",
+        "claude-helper",
+        "reuse",
+        "no-duplicate"
+      ],
       "checks": {
         "has_tool_prefix": "mcp__tmux__",
         "min_tool_calls_by_name": {
@@ -456,33 +578,83 @@
         "max_tool_calls_by_name": {
           "split-pane": 1
         },
-        "min_tool_calls": 6,
-        "response_contains_any": ["REUSE_SUCCESS", "reuse", "existing"]
+        "min_tool_calls": 5,
+        "response_contains_any": [
+          "REUSE_CONFIRMED_99999",
+          "reused",
+          "same pane"
+        ],
+        "bash_command_contains_any": [
+          "select-pane",
+          "claude-helper"
+        ]
       }
     },
     {
-      "id": "split-natural-beside-24",
-      "description": "Pane management: natural language 'run X beside me' uses split-pane in same session, not a second create-session",
-      "prompt": "Set up a tmux workspace, then respond to a natural 'beside me' request:\n\nStep 1 (Setup): Create a tmux session named 'e2e-natural-beside'. This simulates an existing workspace.\n\nStep 2 (Natural request): Run `echo BESIDE_ME_SUCCESS && sleep 1` in a side panel beside the main workspace. This means:\n- Split the existing window's pane using mcp__tmux__split-pane (direction: 'horizontal')\n- Send the echo command to the new pane via mcp__tmux__send-keys\n- Capture the side panel output to verify the command ran\n\nStep 3 (Cleanup): Kill the 'e2e-natural-beside' session.\n\nStep 4 (Report): Report whether BESIDE_ME_SUCCESS appeared in the side panel.\n\nKey constraints:\n- You MUST use mcp__tmux__split-pane to create the side panel — NOT a second mcp__tmux__create-session\n- The helper must be a split pane in the SAME window of the SAME session\n- 'Beside me' always means a split pane, never a separate session",
+      "id": "send-keys-literal-22",
+      "description": "Test send-keys with literal:true for text and literal:false for control keys like C-c",
+      "prompt": "Test the send-keys tool with both literal and non-literal modes:\n\n1. Create a tmux session named 'e2e-send-keys'.\n2. Use send-keys with literal:true to type the text: `echo LITERAL_TEXT_AAAAA`\n3. Use send-keys with literal:false to send: `Enter` (to execute the command)\n4. Capture the pane to see LITERAL_TEXT_AAAAA in the output.\n5. Now start a process: use send-keys with literal:true to send `sleep 300` then literal:false `Enter` to run it.\n6. Use send-keys with literal:false to send `C-c` to interrupt the process.\n7. Capture the pane to confirm the interrupt worked (shell prompt returned).\n8. Kill the 'e2e-send-keys' session.\n9. Report: Did literal:true send the text correctly? Did literal:false send Enter and C-c correctly?\n\nIMPORTANT: Clean up the session at the end. Your response must include: LITERAL_TEXT_AAAAA",
       "expected_agent": "NO_TASK_CALL",
       "expected_alternatives": [],
       "category": "pane-management",
-      "tags": ["tmux", "split-pane", "natural-language", "beside", "side-panel", "same-session"],
+      "tags": [
+        "tmux",
+        "send-keys",
+        "literal",
+        "control-keys",
+        "C-c",
+        "Enter"
+      ],
       "checks": {
         "has_tool_prefix": "mcp__tmux__",
-        "tools_used_include_any": [
-          ["mcp__tmux__create-session", "mcp__tmux__split-pane", "mcp__tmux__capture-pane", "mcp__tmux__kill-session"],
-          ["mcp__tmux-mcp__create-session", "mcp__tmux-mcp__split-pane", "mcp__tmux-mcp__capture-pane", "mcp__tmux-mcp__kill-session"]
-        ],
         "min_tool_calls_by_name": {
-          "split-pane": 1,
-          "capture-pane": 1
+          "send-keys": 3
         },
-        "tool_arg_match": [
-          { "tool_pattern": "split-pane", "arg": "direction", "value": "horizontal" }
-        ],
+        "min_tool_calls": 4,
+        "response_contains": "LITERAL_TEXT_AAAAA"
+      }
+    },
+    {
+      "id": "vim-file-create-23",
+      "description": "Open vim in headless session with unique name, insert text, save, verify file content",
+      "prompt": "Use vim in a headless tmux session to create a file:\n\n1. Generate a unique session name like 'vim-e2e-RANDOM' (replace RANDOM with a random number or timestamp).\n2. Create a headless tmux session with that unique name.\n3. If you get a 'duplicate session' error, kill the existing session with that name first and retry.\n4. Open vim in the headless pane: send-keys `vim /tmp/vim-e2e-test.txt` (literal:true), then Enter (literal:false).\n5. Wait briefly (use capture-pane to confirm vim has opened \u2014 look for the vim interface or tildes).\n6. Enter insert mode: send-keys i (literal:false).\n7. Type the text: send-keys VIM_E2E_TEST_PASSED_BBBBB (literal:true).\n8. Exit insert mode: send-keys Escape (literal:false).\n9. Save and quit: send-keys :wq (literal:true), then send-keys Enter (literal:false).\n10. Wait for vim to exit (capture-pane to confirm shell prompt returned).\n11. Verify: use execute-command to run `cat /tmp/vim-e2e-test.txt` and check the output.\n12. Kill the headless session.\n\nReport whether the file contained VIM_E2E_TEST_PASSED_BBBBB.\n\nIMPORTANT: Your response must include: VIM_E2E_TEST_PASSED_BBBBB. Clean up the session at the end.\n\nIMPORTANT: Do NOT delegate to any agent or use the Task tool. Call the MCP tools (mcp__tmux__*) directly yourself. Keep the workflow simple \u2014 minimal vim interactions.",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "tui-repl",
+      "tags": [
+        "tmux",
+        "vim",
+        "tui",
+        "file-creation",
+        "insert-mode",
+        "save"
+      ],
+      "checks": {
+        "has_tool_prefix": "mcp__tmux__",
+        "min_tool_calls_by_name": {
+          "send-keys": 3
+        },
         "min_tool_calls": 5,
-        "response_contains": "BESIDE_ME_SUCCESS"
+        "response_contains": "VIM_E2E_TEST_PASSED_BBBBB"
+      }
+    },
+    {
+      "id": "repl-calculation-24",
+      "description": "Python REPL: calculate sum of squares of 1-10, verify 385",
+      "prompt": "Open a Python REPL and calculate the sum of squares:\n\n1. Create a terminal session.\n2. Start the Python REPL: `python3`\n3. Calculate: `sum(i**2 for i in range(1, 11))`\n4. Exit the REPL.\n5. Kill the session.\n6. Report the numerical result.\n\nThe correct answer is 385. Your response must include: 385\n\nIMPORTANT: Clean up the session at the end.",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "tui-repl",
+      "tags": [
+        "tmux",
+        "python-repl",
+        "calculation",
+        "sum-of-squares"
+      ],
+      "checks": {
+        "has_tool_prefix": "mcp__tmux__",
+        "min_tool_calls": 3,
+        "response_contains": "385"
       }
     }
   ]

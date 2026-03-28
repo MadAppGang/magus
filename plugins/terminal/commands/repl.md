@@ -1,7 +1,7 @@
 ---
 name: repl
 description: Open an interactive REPL or database shell session. Handles prompt detection, query execution, and clean exit for psql, mongosh, redis-cli, python3, node, and other REPLs.
-allowed-tools: mcp__ht__ht_create_session, mcp__ht__ht_execute_command, mcp__ht__ht_send_keys, mcp__ht__ht_take_snapshot, mcp__ht__ht_close_session, mcp__ht__ht_list_sessions
+allowed-tools: mcp__tmux__create-headless, mcp__tmux__start-and-watch, mcp__tmux__run-in-repl, mcp__tmux__pane-state, mcp__tmux__kill-session
 ---
 
 # /terminal:repl
@@ -35,67 +35,59 @@ Open an interactive REPL or database shell, execute queries/expressions, and man
 
 ## What It Does
 
-1. **Creates** an ht-mcp session
-2. **Launches** the REPL application
-3. **Waits** for the REPL prompt using prompt detection patterns:
-   - psql: `=#` or `=>` at end of line
-   - mongosh: `>` after connection banner
-   - redis-cli: `127.0.0.1:6379>`
-   - python3: `>>>` at end of line
-   - node/bun: `>` at end of line
-   - irb: `irb>` or `irb(main)`
-4. **Executes queries** if provided in the command
-5. **Takes snapshots** to capture results
-6. **Exits cleanly** using the appropriate exit command for each REPL
-7. **Closes** the session
+1. **Creates** a headless session: `create-headless({ name: "repl" })` → `{ paneId }`
+2. **Opens** the REPL application with `start-and-watch`, blocking until the prompt appears:
+   `start-and-watch({ paneId, command: app, pattern: <prompt_pattern>, timeout: 15 })`
+3. **Executes** each query with `run-in-repl`:
+   `run-in-repl({ paneId, input: query, promptPattern: <pattern>, timeout: 10 })`
+   → returns `{ output }` directly (no snapshot needed)
+4. **Exits** the REPL with `run-in-repl({ input: exit_command, promptPattern: "\\$" })`
+5. **Closes** the session with `kill-session`
+
+## Prompt Patterns for run-in-repl
+
+| Application | `promptPattern` |
+|-------------|----------------|
+| psql | `"=#"` |
+| mongosh | `">"` |
+| redis-cli | `"127\\.0\\.0\\.1:\\d+>"` |
+| python3 | `">>> "` |
+| node / bun | `"> "` |
+| irb | `"irb>"` |
+| turso shell | `">"` |
+| bash/zsh shell | `"\\$\\s*$"` |
 
 ## REPL Exit Commands
 
 | Application | Exit Command |
 |-------------|-------------|
-| psql | `\q` + Enter |
-| mongosh | `.exit` + Enter or `^d` |
-| redis-cli | `quit` + Enter or `^d` |
-| python3 | `exit()` + Enter or `^d` |
-| node / bun | `.exit` + Enter or `^d` |
-| irb | `exit` + Enter or `^d` |
-| turso shell | `.quit` + Enter |
+| psql | `\q` |
+| mongosh | `.exit` or Ctrl+D |
+| redis-cli | `quit` or Ctrl+D |
+| python3 | `exit()` or Ctrl+D |
+| node / bun | `.exit` or Ctrl+D |
+| irb | `exit` or Ctrl+D |
+| turso shell | `.quit` |
 
 ## Multi-Query Sessions
 
-If the user wants to run multiple queries, execute them sequentially:
+Each query is one `run-in-repl` call — output is returned directly, no screen scraping needed:
 
 ```
-1. Send first query + Enter
-2. Take snapshot to capture result
-3. Wait for prompt to return
-4. Send next query + Enter
-5. Take snapshot
-6. ... repeat ...
-7. Exit cleanly
+result1 = run-in-repl({ input: "SELECT count(*) FROM users;", promptPattern: "=#" })
+result2 = run-in-repl({ input: "SELECT * FROM settings LIMIT 5;", promptPattern: "=#" })
+// output fields contain the full query results
 ```
 
-## 40-Line Rule for Database Queries
-
-Always add row limits to database queries to stay within the 120x40 snapshot window:
-
-```sql
--- Good: limited results fit on screen
-SELECT * FROM users ORDER BY id LIMIT 20;
-
--- Bad: unlimited results will scroll off screen
-SELECT * FROM users;
-```
+`run-in-repl` captures output between the sent input and the next prompt appearance — the full response, regardless of length. No row limits needed for readability.
 
 ## Safety
 
-- **Never send passwords**: If a password prompt is detected, STOP and report to the user
-- **Confirm destructive operations**: DROP TABLE, DELETE, TRUNCATE — always ask first
-- **Use LIMIT**: Always limit query results to fit within 40-line snapshot
+- **Never send passwords**: If `mcp__tmux__pane-state` shows `waitingForInput == true` and output contains "password", STOP and report to the user
+- **Confirm destructive operations**: `DROP TABLE`, `DELETE`, `TRUNCATE` — always ask first
 
 ## Notes
 
 - REPL sessions are inherently multi-turn — the session stays open until explicitly exited
-- If context is compacted and the session ID is lost, use `/terminal:observe` to find it
 - For one-shot commands (not interactive), use `/terminal:run` instead
 - For TUI navigation (vim, lazygit), use `/terminal:tui` instead

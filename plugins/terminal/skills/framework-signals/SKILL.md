@@ -1,15 +1,16 @@
 ---
 name: framework-signals
-description: Pass/fail/running/idle output markers for 15+ test frameworks, build tools, and deploy platforms. Use when polling terminal snapshots for test results, build completion, deploy status, or watcher state. Trigger on any test/build/deploy monitoring task, especially with jest, vitest, cargo, pytest, go test, bun test, webpack, vite, gradle, make, fly, vercel, railway.
-version: 1.0.0
+description: Pass/fail/running/idle output markers for 15+ test frameworks, build tools, and deploy platforms. Use when monitoring terminal output for test results, build completion, deploy status, or watcher state. Trigger on any test/build/deploy monitoring task, especially with jest, vitest, cargo, pytest, go test, bun test, webpack, vite, gradle, make, fly, vercel, railway.
+version: 2.0.0
 tags: [terminal, testing, build, deploy, signals, markers, output-parsing]
 keywords: [jest, vitest, cargo watch, pytest, go test, bun test, webpack, vite, gradle, make, fly deploy, vercel, railway, pass, fail, running, idle, watcher, test output, build output]
 plugin: terminal
+updated: 2026-03-25
 ---
 
 # Framework Signal Reference
 
-Copy-paste-ready signal strings for polling terminal snapshots. Consult this table whenever you need to know what text to look for — whether detecting completion, failure, or that a watcher is still initializing. For the state machine that drives the poll loop, see `terminal:tdd-workflow`. For watcher setup, see `terminal:terminal-interaction`.
+Copy-paste-ready signal strings for `start-and-watch` and `watch-pane` pattern parameters. Consult this table whenever you need to know what text to look for — whether detecting completion, failure, or that a watcher is still initializing. For the state machine that drives the TDD loop, see `terminal:tdd-workflow`. For watcher setup, see `terminal:terminal-interaction`.
 
 > **Note on Vitest version sensitivity**: The `press a to rerun` idle signal applies to Vitest < 2.0. Vitest >= 2.0 may use different watch mode output — verify against the running version if results seem off.
 
@@ -58,8 +59,62 @@ Copy-paste-ready signal strings for polling terminal snapshots. Consult this tab
 
 ## Key Detection Principles
 
-1. **Snapshot is point-in-time**: A spinner character means "still running now." A progress bar shows current completion percentage. Neither is the final result.
-2. **Wait for the idle marker before declaring result**: Reading a Jest snapshot during `RUNS ` phase returns stale or incomplete data. Wait for `Waiting for file changes`.
+1. **Output is point-in-time**: A spinner character means "still running now." A progress bar shows current completion percentage. Neither is the final result.
+2. **Wait for the idle marker before declaring result**: Reading a Jest pane during `RUNS ` phase returns stale or incomplete data. Wait for `Waiting for file changes`.
 3. **Make and Go build do not announce success**: Only errors are printed. Shell prompt return = success for these tools.
 4. **After a file save, wait for "change detected"**: `[Running`, `RUNS`, `Ding!` — these confirm the watcher noticed the change. Don't read results until they appear.
-5. **Prefer `tmux capture-pane` over `ht_take_snapshot` for failure parsing**: capture-pane returns plain text with ANSI already stripped by tmux. ht-mcp snapshots are also plain text (VT100-rendered).
+5. **With agentic tools, use framework signals as `pattern` values in start-and-watch
+   and watch-pane**. The signal strings in the tables above are valid Go regex patterns.
+   Example: watch-pane with `triggers: "pattern:Tests: \\d+ passed|pattern:FAIL "` returns
+   a WatchResult the moment the framework announces its result.
+
+---
+
+## Using Signals as watch-pane / start-and-watch Patterns
+
+The signal strings in this skill are valid Go regex patterns and can be passed directly to
+the `pattern` or `triggers` parameters of `start-and-watch` and `watch-pane`.
+
+### Test watcher: wait for cycle completion
+
+```
+mcp__tmux__watch-pane({
+  paneId: watcher_pane,
+  triggers: "pattern:Tests: \\d+ passed|pattern:FAIL |pattern:test result: ok",
+  timeout: 60
+})
+```
+
+### Dev server: wait for ready
+
+```
+mcp__tmux__start-and-watch({
+  command: "npm run dev",
+  pattern: "Local:.*http|listening on|ready in",
+  mode: "quick",
+  timeout: 60
+})
+```
+
+### Build tool: wait for completion
+
+```
+mcp__tmux__start-and-watch({
+  command: "cargo build",
+  pattern: "Finished|error\\[E",
+  triggers: "exit",
+  timeout: 120
+})
+```
+
+### Test watcher initialization: wait for idle
+
+```
+mcp__tmux__start-and-watch({
+  paneId: watcher_pane,
+  command: "bun test --watch",
+  pattern: "press a to rerun|Waiting for file changes|Waiting\\.\\.\\.",
+  mode: "medium",
+  timeout: 30
+})
+```

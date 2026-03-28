@@ -1,7 +1,7 @@
 ---
 name: run
 description: Run a command in an isolated terminal session, capture output, and auto-cleanup. Use instead of Bash when you need TTY, interactive prompts, or screen-rendered output.
-allowed-tools: mcp__ht__ht_create_session, mcp__ht__ht_execute_command, mcp__ht__ht_send_keys, mcp__ht__ht_take_snapshot, mcp__ht__ht_close_session, mcp__ht__ht_list_sessions
+allowed-tools: mcp__tmux__execute-command, mcp__tmux__start-and-watch, mcp__tmux__capture-pane, mcp__tmux__pane-state, mcp__tmux__kill-session, mcp__tmux__send-keys
 ---
 
 # /terminal:run
@@ -27,11 +27,10 @@ Run a command in an isolated headless terminal, capture its output, and automati
 
 ## What It Does
 
-1. **Creates** an isolated ht-mcp terminal session
-2. **Executes** the given command
-3. **Captures** the terminal output (120x40 visible screen)
-4. **Reports** the results to the user
-5. **Closes** the session automatically
+1. **Executes** the given command in an isolated headless session
+2. **Captures** the full output (no line limit — uses tee + file internally)
+3. **Reports** the results including exit code
+4. **Auto-cleans** the session on completion
 
 The user never needs to manage session IDs or lifecycle.
 
@@ -49,28 +48,40 @@ The user never needs to manage session IDs or lifecycle.
 
 ## Behavior
 
-### For quick commands (< 10 seconds)
-Use `mcp__ht__ht_execute_command` which sends the command and waits for output. Take a snapshot to capture the result. Close the session.
+### For all one-shot commands
 
-### For longer commands (> 10 seconds)
-Use `mcp__ht__ht_send_keys` to type the command + Enter, then poll with `mcp__ht__ht_take_snapshot` until you detect completion markers:
-- Shell prompt returns (e.g., `$`, `%`, `#`)
-- Known completion patterns: `passed`, `failed`, `done in`, `built in`, `error`
-- Exit code patterns
+```
+mcp__tmux__execute-command({ command: "<user_command>", headless: true })
+```
 
-### Output handling (40-line rule)
-If the command is expected to produce more than 40 lines of output, append `| tail -40` or `| head -40` to capture the most relevant portion. The ht-mcp terminal is 120 columns x 40 lines — only the visible screen is captured, no scrollback.
+Returns `{ output, exitCode }` synchronously. Session is auto-destroyed. No session management needed.
+
+### For commands with complex output or streaming status
+
+```
+mcp__tmux__start-and-watch({
+  command: "<user_command>",
+  pattern: "\\$",
+  triggers: "exit,error",
+  mode: "medium",
+  headless: true,
+  timeout: 120
+})
+```
+
+Use `WatchResult.output` for the results and `WatchResult.event` to distinguish success from error.
+
+`execute-command` returns full output — no line limit since it captures via tee to a temp file rather than a fixed-size viewport.
 
 ## Error Handling
 
-- If the command hangs (no prompt return after many polls), send `^c` to interrupt
-- If the session is lost, check `mcp__ht__ht_list_sessions` for orphans
-- Always close the session, even on error
+- If the command hangs, use `mcp__tmux__pane-state` to check if it is waiting for input
+- If `WatchResult.event == "timeout"`, the command did not complete within the timeout — report and kill the session
+- For stuck processes, send `C-c` via `mcp__tmux__send-keys` with `literal: false`
 
 ## Notes
 
-- This command auto-manages the full session lifecycle — create, use, close
-- Session IDs are ephemeral and not exposed to the user
+- This command auto-manages the full session lifecycle — execute, capture, auto-cleanup
 - For watching long-running processes, use `/terminal:watch` instead
 - For interactive REPL sessions, use `/terminal:repl` instead
 - For TUI app navigation (vim, lazygit), use `/terminal:tui` instead

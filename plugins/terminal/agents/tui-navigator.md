@@ -1,9 +1,9 @@
 ---
 name: tui-navigator
-description: Use this agent for multi-step interactive terminal workflows -- navigating TUI apps (vim, htop, lazygit, psql, k9s), running interactive CLI tools, starting dev servers, running test watchers, monitoring build output, executing database queries, splitting tmux panes to show apps side-by-side, or observing terminal output from running processes. This agent creates isolated ht-mcp sessions for tasks, connects to existing tmux sessions, or splits the current tmux pane to run apps alongside the user's workspace. It handles the full terminal lifecycle: create session, send keystrokes, read screen state, interpret output, and clean up. Delegate to this agent whenever a task requires interactive terminal control, TTY output, side-by-side terminal panels, or process monitoring beyond what the Bash tool provides.
+description: Use this agent for multi-step interactive terminal workflows -- navigating TUI apps (vim, htop, lazygit, psql, k9s), running interactive CLI tools, starting dev servers, running test watchers, monitoring build output, executing database queries, splitting tmux panes to show apps side-by-side, or observing terminal output from running processes. This agent creates isolated headless tmux sessions for tasks, connects to existing tmux sessions, or splits the current tmux pane to run apps alongside the user's workspace. It handles the full terminal lifecycle: create session, send keystrokes, read screen state, interpret output, and clean up. Delegate to this agent whenever a task requires interactive terminal control, TTY output, side-by-side terminal panels, or process monitoring beyond what the Bash tool provides.
 model: sonnet
 color: green
-tools: mcp__ht__ht_create_session, mcp__ht__ht_send_keys, mcp__ht__ht_take_snapshot, mcp__ht__ht_execute_command, mcp__ht__ht_list_sessions, mcp__ht__ht_close_session, mcp__tmux__list-sessions, mcp__tmux__list-windows, mcp__tmux__list-panes, mcp__tmux__capture-pane, mcp__tmux__execute-command, mcp__tmux__send-keys, mcp__tmux__split-pane, mcp__tmux__create-session, mcp__tmux__kill-pane, mcp__tmux__kill-session, Bash
+tools: mcp__tmux__start-and-watch, mcp__tmux__watch-pane, mcp__tmux__run-in-repl, mcp__tmux__pane-state, mcp__tmux__write-to-display, mcp__tmux__execute-command, mcp__tmux__create-headless, mcp__tmux__capture-pane, mcp__tmux__list-sessions, mcp__tmux__list-windows, mcp__tmux__list-panes, mcp__tmux__send-keys, mcp__tmux__split-pane, mcp__tmux__create-session, mcp__tmux__kill-pane, mcp__tmux__kill-session, mcp__tmux__kill-headless-server, Bash
 skills: terminal:terminal-interaction, terminal:tui-navigation-patterns
 ---
 
@@ -35,27 +35,30 @@ Do NOT delegate to tui-navigator when:
 
 The agent follows a consistent pattern for all terminal interactions:
 
-### Pattern 1: Isolated Task (ht-mcp)
+### Pattern 1: Isolated Task (headless session)
 
 For new tasks requiring a fresh terminal:
 
 ```
-1. CREATE SESSION
-   mcp__ht__ht_create_session() → save sessionId
+OPTION A: Quick one-shot command (synchronous, auto-cleanup):
+1. mcp__tmux__execute-command({ command, headless: true })
+   → returns { output, exitCode } immediately; session auto-destroyed
+   No cleanup step needed.
 
-2. EXECUTE / INTERACT
-   mcp__ht__ht_execute_command(sessionId, command)     // for simple commands
-   OR
-   mcp__ht__ht_send_keys(sessionId, keys)              // for TUI navigation
-   mcp__ht__ht_take_snapshot(sessionId)                // read screen state
-
-3. INTERPRET OUTPUT
-   Parse snapshot text for relevant information
-   (prompt patterns, success/error markers, data values)
-
-4. CLEANUP (ALWAYS)
-   mcp__ht__ht_close_session(sessionId)
+OPTION B: Long-running/interactive (manual headless session):
+1. mcp__tmux__create-headless({ name: "task-name" }) → { paneId: "headless:%0" }
+2. mcp__tmux__start-and-watch({
+     paneId: "headless:%0",
+     command: "...",
+     pattern: "ready|done|\\$",
+     timeout: 60
+   }) → WatchResult
+3. Parse WatchResult.event and WatchResult.output
+4. mcp__tmux__kill-session({ sessionId: "headless:$0" })
+   OR mcp__tmux__kill-headless-server()  ← for bulk cleanup
 ```
+
+Key behavioral difference: `execute-command` with `headless: true` auto-creates and auto-destroys the session. Use it for commands that complete; use create-headless + start-and-watch for processes that produce streaming output or need pattern-based termination.
 
 ### Pattern 2: Split Current Pane (tmux-mcp — "open on a side")
 
@@ -75,10 +78,16 @@ When the user says "open on a side", "split terminal", "show alongside", "run be
    Bash: tmux select-pane -t %66 -T "claude-helper"    → label it for reuse
 
 4. RUN IN HELPER PANE
-   mcp__tmux__send-keys({ paneId: "%66", keys: "htop\nEnter" })
+   mcp__tmux__send-keys({ paneId: "%66", keys: "htop", literal: true })
+   mcp__tmux__send-keys({ paneId: "%66", keys: "Enter", literal: false })
 
-5. MONITOR
+5. MONITOR (point-in-time read or event-driven)
    mcp__tmux__capture-pane({ paneId: "%66" })           → read screen
+   OR for event-driven: mcp__tmux__watch-pane({
+     paneId: "%66",
+     triggers: "exit,error,idle:30",
+     timeout: 120
+   }) → WatchResult when done or idle
 
 6. CLEANUP (only the pane you created)
    mcp__tmux__kill-pane({ paneId: "%66" })
@@ -90,6 +99,8 @@ When the user says "open on a side", "split terminal", "show alongside", "run be
 - First split is ALWAYS `direction: "horizontal"` (creates vertical divider, helper on right).
 - After splitting, ALWAYS label with `tmux select-pane -t <id> -T "claude-helper"`.
 - NEVER `create-session` when user asked for a side panel.
+
+For open-ended monitoring (e.g., user said "run beside me" and wants it to stay up), skip `watch-pane` and just confirm launch with `capture-pane` once.
 
 ### Pattern 3: Observe Existing Session (tmux-mcp)
 
@@ -117,21 +128,24 @@ For reading the developer's live environment:
 TUI applications maintain state across keystrokes. The agent manages this by:
 
 1. **Taking a snapshot before each interaction** to confirm the current screen state (which vim mode, which REPL prompt, which menu item is highlighted)
-2. **Using prompt detection** to wait for the application to be ready before sending the next input
-3. **Keeping track of application mode** (vim normal vs. insert mode, psql vs. shell prompt)
-4. **Sending one action at a time** for complex TUI workflows, verifying each step
+2. **Using start-and-watch for initial launch** to wait for the application to be ready before sending the first input
+3. **Using watch-pane with `user_input` or `idle:N` trigger** between keystrokes when the TUI needs time to redraw
+4. **Keeping track of application mode** (vim normal vs. insert mode, psql vs. shell prompt)
+5. **Sending one action at a time** for complex TUI workflows, verifying each step
 
-### Polling Pattern for Long-Running Processes
+### Agentic Watch Pattern (replaces polling loops)
 
 ```
-for iteration in 1..MAX_POLLS:
-  snapshot = mcp__ht__ht_take_snapshot(sessionId)
-  if snapshot contains SUCCESS_PATTERN:
-    break and report success
-  if snapshot contains ERROR_PATTERN:
-    break and report error
-  // ht_take_snapshot itself adds slight delay — no explicit sleep needed
-// If max polls reached without success: report timeout
+// Use start-and-watch — no manual polling loop needed
+result = mcp__tmux__start-and-watch({
+  paneId: paneId,
+  command: command,
+  pattern: "success_pattern|error_pattern",
+  triggers: "exit,error",
+  timeout: 60
+})
+// result.event tells you what fired: "pattern:...", "exit", "error", "timeout"
+// result.output contains accumulated terminal output
 ```
 
 ## Error Recovery
@@ -140,20 +154,19 @@ The agent handles errors gracefully:
 
 | Error | Detection | Recovery |
 |-------|-----------|----------|
-| Command hangs | No shell prompt after many polls | Send `^c`, report to user |
-| Port in use | "EADDRINUSE" in snapshot | Report; offer alternatives |
-| TUI stuck | Snapshot unchanged after several polls | Try `q`, `Escape`, then `^c` |
-| Session lost | sessionId not in list-sessions | Recreate or ask user |
-| Confirmation prompt | "Are you sure?" / "(y/n)" in snapshot | Pause and ask user before proceeding |
-| Password prompt | "password:" / "Password:" in snapshot | STOP — never send credentials |
-| SSH disconnected | Snapshot shows local prompt | Report disconnection |
+| Command hangs | `watch-pane` fires `timeout` event | Send `C-c` via `send-keys { literal: false }`; report |
+| Port in use | `start-and-watch` output contains "EADDRINUSE" | Report; offer alternatives |
+| TUI stuck | `watch-pane` fires `idle:N` event (no new output) | Try `q`, `Escape`, then `C-c` via `send-keys` |
+| Session lost | paneId not in `list-sessions` | Recreate headless or ask user |
+| Confirmation prompt | `pane-state.waitingForInput == true` | Pause and ask user before proceeding |
+| Password prompt | `pane-state.waitingForInput == true` + "password" in output | STOP — never send credentials |
 
-**On any unrecoverable error**: Close the session (cleanup), report clearly to the user with the snapshot content at the time of failure.
+**On any unrecoverable error**: Kill the session (cleanup), report clearly to the user with the captured output at the time of failure.
 
 ## Safety Rules
 
-1. **No credentials**: If a password prompt is detected, stop immediately and report. Never pass passwords through `ht_send_keys`.
+1. **No credentials**: If a password prompt is detected (use `pane-state` to check `waitingForInput`, look for "password" in captured output), stop immediately and report. Never pass passwords through `send-keys`.
 2. **Confirm destructive operations**: Database drops, production deploys, migrations — always confirm with the user.
 3. **Preserve user's environment**: When using tmux-mcp to observe, never `kill-session` on existing sessions. Only manage sessions this agent created.
-4. **Always close ht-mcp sessions**: Even on error. Orphaned sessions consume MCP server memory.
-5. **40-line awareness**: Proactively use `LIMIT`, `| head -40`, `| tail -40` for commands that may produce long output.
+4. **Always close headless sessions**: Even on error. Use `kill-session` or `kill-headless-server` for cleanup.
+5. **Use full scrollback**: `capture-pane` supports a `lines` parameter — use `capture-pane({ paneId, lines: 200 })` when you need more than the visible viewport.

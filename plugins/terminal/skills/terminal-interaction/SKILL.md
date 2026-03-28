@@ -1,36 +1,40 @@
 ---
 name: terminal-interaction
-description: ht-mcp and tmux-mcp tool API patterns for interactive terminal access. Use when running commands interactively, starting dev servers, watching test output, querying databases, navigating TUI apps, splitting panes to show apps side-by-side, or observing terminal output. Trigger keywords - "run tests", "watch mode", "dev server", "database query", "terminal", "TUI", "interactive", "REPL", "split", "side", "panel", "alongside", "beside".
-version: 2.0.0
-tags: [terminal, tui, pty, interactive, ht, tmux, testing-workflow, dev-server, database, monitoring, repl]
-keywords: [terminal, tui, pty, interactive, session, snapshot, send-keys, vim, htop, lazygit, run tests, watch mode, test watcher, dev server, start server, database query, psql, redis, mongo, mongosh, docker logs, tail logs, process monitor, bun test, npm run dev, go test, REPL, interactive shell, run command, execute script, long-running process, split, side, panel, alongside, beside, side by side, split pane, side panel, open on a side, show beside]
+description: tmux-mcp tool API patterns for interactive terminal access. Use when running commands interactively, starting dev servers, watching test output, querying databases, navigating TUI apps, splitting panes to show apps side-by-side, or observing terminal output. Trigger keywords - "run tests", "watch mode", "dev server", "database query", "terminal", "TUI", "interactive", "REPL", "split", "side", "panel", "alongside", "beside".
+version: 3.0.0
+tags: [terminal, tui, pty, interactive, tmux, testing-workflow, dev-server, database, monitoring, repl]
+keywords: [terminal, tui, pty, interactive, session, capture, send-keys, vim, htop, lazygit, run tests, watch mode, test watcher, dev server, start server, database query, psql, redis, mongo, mongosh, docker logs, tail logs, process monitor, bun test, npm run dev, go test, REPL, interactive shell, run command, execute script, long-running process, split, side, panel, alongside, beside, side by side, split pane, side panel, open on a side, show beside]
 plugin: terminal
-updated: 2026-02-28
+updated: 2026-03-25
 ---
 
 # Terminal Interaction Skill
 
-This skill teaches Claude how to use `ht-mcp` and `tmux-mcp` for interactive terminal access: screen reading, keystroke injection, and TUI application navigation.
+This skill teaches Claude how to use `tmux-mcp` for interactive terminal access: screen reading, keystroke injection, process monitoring, and TUI application navigation.
 
-**Analogy**: `chrome-devtools-mcp` gives Claude eyes and hands in the browser. `ht-mcp` + `tmux-mcp` give Claude eyes and hands in the terminal.
+**Analogy**: `chrome-devtools-mcp` gives Claude eyes and hands in the browser. `tmux-mcp` gives Claude eyes and hands in the terminal.
 
 ---
 
-## 1. When to Use ht-mcp vs tmux-mcp
+## 1. Tool Selection Guide — Layer 1 vs Layer 2
 
-| Scenario | Use ht-mcp | Use tmux-mcp |
-|----------|-----------|-------------|
-| Isolated task terminal (create, use, destroy) | Yes | No |
-| Interact with already-running terminal | No | Yes |
-| TUI app navigation (vim, htop, lazygit) | Yes | Yes |
-| Read scrollback history (>40 lines) | No | Yes |
-| Zero external dependencies | Yes | No (requires tmux) |
-| Monitor long-running process output | No (40-line limit) | Yes |
-| Web preview of terminal | Yes (`enableWebServer`) | No |
-| Attach to developer's live session | No | Yes |
-| Multi-pane split layouts | No | Yes |
+The Go tmux-mcp binary provides two layers of tools. Choose based on whether your task involves waiting for a condition.
 
-**Decision rule**: First check `$TMUX_PANE` — if set, you are already inside tmux and should use tmux-mcp for any pane operations (split, capture, send-keys). Only fall back to ht-mcp when you are NOT in tmux or need a fully isolated throwaway session.
+| Scenario | Primary Tool | Notes |
+|----------|-------------|-------|
+| Start command, wait for ready pattern | `start-and-watch` | Single call, no loop |
+| Watch existing pane for change/exit | `watch-pane` | Single call, no loop |
+| Multi-step REPL session | `run-in-repl` | Synchronous, prompt-aware |
+| Check if process is alive/blocked | `pane-state` | Kernel-level, no screen scraping |
+| One-shot command (non-interactive) | `execute-command headless:true` | Sync, auto-cleanup |
+| Long interactive session | `create-headless` + `start-and-watch` | Manual lifecycle |
+| Split pane side-by-side | `split-pane` + `send-keys` | Layout unchanged |
+| Observe existing session | `capture-pane` | Read-only, no change |
+
+**Layer 2 (agentic) tools**: `start-and-watch`, `watch-pane`, `run-in-repl`, `pane-state`, `write-to-display`
+**Layer 1 (primitive) tools**: `execute-command`, `create-headless`, `capture-pane`, `send-keys`, `create-session`, `split-pane`, etc.
+
+**Decision rule**: If the task involves waiting — for a process to be ready, for output to change, for a REPL to respond — use a Layer 2 tool. For structural operations (create pane, send keystroke, read current state), use Layer 1.
 
 ---
 
@@ -56,7 +60,7 @@ This returns the pane ID (e.g., `%57`) where the Bash tool is actually running. 
 Two real failures: (1) The agent listed sessions, saw window @30 marked `active: true`, split a pane there — but the user was in window @50. (2) A subagent ran `tmux display-message -p '#{pane_id}'` during its 2-5 second spin-up delay — the user had switched windows, so the split appeared in the wrong window. `$TMUX_PANE` is immune to both.
 
 **If `$TMUX_PANE` is set**: You're in tmux. Use it directly for splits.
-**If it's empty or unset**: Use ht-mcp for isolated tasks, or `create-session` for a new tmux session.
+**If it's empty or unset**: Use `execute-command` with `headless: true` for isolated tasks, or `create-session` for a new tmux session.
 
 ### Helper Pane Reuse (check BEFORE splitting)
 
@@ -141,7 +145,8 @@ Bash: tmux select-pane -t {pane_id3} -T "App Logs"
    → If found "%66 claude-helper": reuse %66, skip to step 5
 3. mcp__tmux__split-pane({ paneId: "%57", direction: "horizontal" }) → new pane "%66"
 4. Bash: tmux select-pane -t %66 -T "claude-helper"                 → label it
-5. mcp__tmux__send-keys({ paneId: "%66", keys: "bun test --watch\nEnter" })
+5. mcp__tmux__send-keys({ paneId: "%66", keys: "bun test --watch", literal: true })
+   mcp__tmux__send-keys({ paneId: "%66", keys: "Enter", literal: false })
 ```
 
 **Never call `list-sessions`/`list-windows`/`list-panes` just to find your own pane.** Detection + reuse check + split is 2-4 Bash calls at most.
@@ -152,214 +157,230 @@ Bash: tmux select-pane -t {pane_id3} -T "App Logs"
 
 ## 2. Tool Naming Convention
 
-Server keys in `.mcp.json` are `ht` and `tmux`. This produces tool name prefixes:
+The server key in `.mcp.json` is `tmux`. This produces tool name prefix `mcp__tmux__`:
 
-- **ht-mcp tools**: `mcp__ht__ht_create_session`, `mcp__ht__ht_send_keys`, etc.
-- **tmux-mcp tools**: `mcp__tmux__list-sessions`, `mcp__tmux__capture-pane`, etc.
-
----
-
-## 3. ht-mcp Complete API (6 Tools)
-
-### `mcp__ht__ht_create_session`
-```
-Parameters:
-  command:         string[]  (optional, default: ["bash"])
-  enableWebServer: boolean   (optional, default: false)
-Returns: session ID (UUID) + optional web preview URL (http://127.0.0.1:3618-3999)
-```
-
-Use `command` to launch a specific program instead of bash:
-```
-mcp__ht__ht_create_session({ command: ["vim", "myfile.ts"] })
-mcp__ht__ht_create_session({ command: ["python3"] })
-mcp__ht__ht_create_session({ enableWebServer: true })   // for web preview
-```
-
-### `mcp__ht__ht_send_keys`
-```
-Parameters:
-  sessionId: string   (required)
-  keys:      string[] (required) — plain text or named keys
-Returns: confirmation
-```
-
-Keys are an array of strings. Each element is either:
-- Plain text: `"hello world"` (typed literally)
-- Named key: `"Enter"`, `"Escape"`, `"Tab"`, `"^c"` (see Section 5 for full reference)
-
-```
-// Type text then press Enter
-mcp__ht__ht_send_keys({ sessionId, keys: ["ls -la", "Enter"] })
-
-// Navigate vim: press Escape then type :wq then Enter
-mcp__ht__ht_send_keys({ sessionId, keys: ["Escape"] })
-mcp__ht__ht_send_keys({ sessionId, keys: [":wq", "Enter"] })
-```
-
-### `mcp__ht__ht_take_snapshot`
-```
-Parameters:
-  sessionId: string (required)
-Returns: rendered terminal text — what a human would see (120x40 grid)
-```
-
-Returns the **visible screen** as plain text. This is a 120-column by 40-line grid — the equivalent of what a human would see looking at the terminal. **No scrollback.** Only the current viewport.
-
-### `mcp__ht__ht_execute_command`
-```
-Parameters:
-  sessionId: string (required)
-  command:   string (required)
-Returns: snapshot after command execution
-```
-
-Convenience tool: sends the command string as keystrokes + `Enter`, then waits for and returns the resulting snapshot. Use this for simple commands that complete quickly. For TUI applications, use `ht_send_keys` + manual `ht_take_snapshot` instead (TUIs need render time).
-
-```
-// Good for simple commands
-mcp__ht__ht_execute_command({ sessionId, command: "echo hello" })
-mcp__ht__ht_execute_command({ sessionId, command: "ls -la src/" })
-
-// For TUI apps, prefer send_keys + take_snapshot
-mcp__ht__ht_send_keys({ sessionId, keys: ["vim myfile.ts", "Enter"] })
-// ... wait ...
-mcp__ht__ht_take_snapshot({ sessionId })
-```
-
-### `mcp__ht__ht_list_sessions`
-```
-Parameters: none
-Returns: list of active session IDs with metadata
-```
-
-Use to find existing sessions (e.g., orphaned sessions from a previous task). Always check for orphans at the start of a new workflow.
-
-### `mcp__ht__ht_close_session`
-```
-Parameters:
-  sessionId: string (required)
-Returns: confirmation
-```
-
-**Always close sessions when done.** Sessions are in-memory and live in the MCP server process. Orphaned sessions waste resources. Sessions do NOT survive context compaction — always save session IDs to variables before any multi-step workflow.
+- `mcp__tmux__start-and-watch`, `mcp__tmux__watch-pane`, `mcp__tmux__run-in-repl`
+- `mcp__tmux__execute-command`, `mcp__tmux__create-headless`, `mcp__tmux__capture-pane`
+- `mcp__tmux__send-keys`, `mcp__tmux__list-sessions`, `mcp__tmux__kill-session`, etc.
 
 ---
 
-## 4. tmux-mcp Complete API (13 Tools)
+## 3. MCP Task Tools — start-and-watch and watch-pane
 
-| Tool (full name) | Parameters | Description |
+`start-and-watch` and `watch-pane` are MCP Task tools. They behave differently from regular tools:
+
+1. The tool call returns immediately with a task ID (non-blocking at the protocol level).
+2. While running, the tool sends `notifications/progress` messages. Each contains `progress` (elapsed seconds), `total` (timeout), and `message` (e.g., `"[5% +2s] 12 new lines"`).
+3. When a trigger fires (pattern matched, exit, error, timeout), the tool sends a final notification with `progress=-1, total=-1` as sentinel values. The `message` field contains the full WatchResult JSON.
+4. The task result also contains the WatchResult via `WithModelImmediateResponse`.
+
+**From the skill author's perspective**: The tool call blocks until a trigger fires — equivalent to a synchronous call with real-time streaming side effects. No manual polling loop is needed.
+
+### WatchResult Structure
+
+```json
+{
+  "paneId": "%6",
+  "event": "pattern:listening on",
+  "detail": "Ready — matched: Listening on port 3000",
+  "elapsed": 2.14,
+  "output": "Listening on port 3000\n...",
+  "paneState": {
+    "panePid": 12345,
+    "foregroundPid": 12347,
+    "foregroundCmd": "node",
+    "isAlive": true,
+    "waitingForInput": false
+  }
+}
+```
+
+### WatchResult event values
+
+| event value | Meaning | Next action |
+|-------------|---------|-------------|
+| `"pattern:<regex>"` | Readiness pattern matched | Report ready; save paneId for later calls |
+| `"exit"` | Process exited | Check exitCode via pane-state |
+| `"error"` | Error output detected | Report error; show WatchResult.output |
+| `"idle:N"` | No new output for N seconds | Process may be waiting; use pane-state |
+| `"shell"` | Shell prompt returned (process exited to shell) | Confirmed completion |
+| `"timeout"` | No trigger fired in timeout_secs | Report; save paneId for continued monitoring |
+
+### MCP Task Tool Limitation (Claude Code MCP Client)
+
+**Known limitation (as of March 2026)**: Claude Code's MCP client does not yet support the MCP Tasks API.
+Calling `start-and-watch` or `watch-pane` returns error `-32601: requires task augmentation`.
+This will be resolved when Claude Code implements `tasks/create` per the MCP specification.
+Until then, use `execute-command` (synchronous) for one-shot commands, or `send-keys` + `capture-pane`
+for monitoring. These tools ARE registered and WILL work once the client adds Tasks support.
+
+### REPL Startup — create-headless vs execute-command
+
+**REPL startup**: Do NOT use `execute-command` to start REPLs (python3, psql, node, etc.). `execute-command` is synchronous — it waits for the command to exit, and REPLs never exit on their own. This causes an indefinite hang.
+
+Instead, use `create-headless` with the REPL as the session's initial command, then `run-in-repl` for interactions:
+
+```
+// WRONG — hangs forever:
+mcp__tmux__execute-command({ command: "python3", headless: true })
+
+// CORRECT — python3 starts as the session's shell:
+mcp__tmux__create-headless({ name: "python-session", command: "python3" })
+→ { paneId: "headless:%0", sessionId: "headless:$0" }
+// python3 is now waiting at its REPL prompt in that pane
+mcp__tmux__run-in-repl({ paneId: "headless:%0", input: "1 + 1", promptPattern: ">>>" })
+→ { output: "2" }
+mcp__tmux__kill-session({ sessionId: "headless:$0" })
+```
+
+---
+
+## 4. tmux-mcp Complete API (20 Tools)
+
+### Layer 2 Agentic Tools
+
+| Tool | Type | Primary Use |
+|------|------|-------------|
+| `mcp__tmux__start-and-watch` | MCP Task (async) | Start command, wait for readiness pattern |
+| `mcp__tmux__watch-pane` | MCP Task (async) | Monitor existing pane for change/exit |
+| `mcp__tmux__run-in-repl` | Sync | Send input to REPL, get structured output |
+| `mcp__tmux__pane-state` | Sync | OS-level process info (pid, alive, waiting) |
+| `mcp__tmux__write-to-display` | Sync | Write status message to Claude's pane |
+| `mcp__tmux__display-message` | Sync | Show message in tmux status bar |
+
+### Layer 1 Primitive Tools
+
+| Tool | Parameters | Description |
 |------|-----------|-------------|
-| `mcp__tmux__list-sessions` | none | List all tmux sessions |
-| `mcp__tmux__find-session` | `name` (string) | Find session by name |
+| `mcp__tmux__execute-command` | `command` (string), `headless` (bool), `paneId` (string) | Run command synchronously; returns `{ output, exitCode }` |
+| `mcp__tmux__create-headless` | `name` (string, optional) | Create isolated headless session; returns `{ paneId, sessionId }` |
+| `mcp__tmux__list-sessions` | none | List all sessions (regular + headless) |
 | `mcp__tmux__list-windows` | `sessionId` (string) | List windows in session |
 | `mcp__tmux__list-panes` | `windowId` (string) | List panes in window |
-| `mcp__tmux__capture-pane` | `paneId` (string) | Read screen content of pane (text) |
-| `mcp__tmux__execute-command` | `sessionId` (string), `command` (string) | Run command in session |
-| `mcp__tmux__send-keys` | `paneId` (string), `keys` (string) | Send keystrokes to pane |
-| `mcp__tmux__create-session` | `name` (string, optional) | Create new tmux session |
+| `mcp__tmux__capture-pane` | `paneId` (string), `lines` (int, optional), `colors` (bool, optional) | Read screen content of pane |
+| `mcp__tmux__send-keys` | `paneId` (string), `keys` (string), `literal` (bool, default true) | Send keystrokes to pane |
+| `mcp__tmux__create-session` | `name` (string, optional) | Create new visible tmux session |
 | `mcp__tmux__create-window` | `sessionId` (string) | Create new window |
-| `mcp__tmux__split-pane` | `paneId` (string, required), `direction` (optional: "horizontal"/"vertical"), `size` (optional: 1-99%) | Split pane |
+| `mcp__tmux__split-pane` | `paneId` (string), `direction` (optional), `size` (optional) | Split pane |
 | `mcp__tmux__kill-session` | `sessionId` (string) | Terminate session |
+| `mcp__tmux__kill-headless-server` | none | Terminate all headless sessions at once |
 | `mcp__tmux__kill-window` | `windowId` (string) | Close window |
 | `mcp__tmux__kill-pane` | `paneId` (string) | Close pane |
+| `mcp__tmux__resize-pane` | `paneId` (string), dimensions | Resize pane |
+| `mcp__tmux__rename-session` | `sessionId` (string), `name` (string) | Rename session |
 
-tmux-mcp also exposes MCP resources: `tmux://sessions`, `tmux://pane/{paneId}`, `tmux://command/{commandId}/result`.
+**Note on `send-keys`**:
+- `literal: true` (default) — text is sent byte-for-byte; plain text typing.
+- `literal: false` — text is interpreted as tmux key names. Required for control sequences.
 
-**Note on `send-keys`**: tmux-mcp `send-keys` takes a `keys` string (not array like ht-mcp). Use tmux key syntax: `C-c` for Ctrl+C, `Enter` for Enter.
+**Note on `capture-pane`**: Use `lines` parameter to retrieve scrollback history beyond the visible viewport. Example: `capture-pane({ paneId: "%3", lines: 200 })` returns the last 200 lines.
+
+**Note on `execute-command`**: When `headless: true` is set, the command runs in an auto-created isolated session that is destroyed after completion. Output and exit code are returned synchronously in the same call. No session tracking needed.
+
+**Removed tools** (do not use — not in Go binary):
+- `find-session` → replaced by `list-sessions` + client-side name filtering
+- `get-command-result` → `execute-command` is now synchronous; no polling needed
 
 ---
 
-## 5. Key Name Reference (ht_send_keys)
+## 5. send-keys Parameter Guide
 
-| Category | Key Names |
-|----------|-----------|
-| Navigation | `Enter`, `Space`, `Escape`, `Tab`, `Left`, `Right`, `Up`, `Down`, `Home`, `End`, `PageUp`, `PageDown` |
-| Function keys | `F1` through `F12` |
-| Ctrl (caret notation preferred) | `^c`, `^d`, `^l`, `^z`, `^x`, `^o`, `^w`, `^k`, `^u` |
-| Ctrl (C- notation) | `C-c`, `C-d`, `C-l`, `C-z` |
-| Shift | `S-F6`, `S-Left`, `S-Right`, `S-Up`, `S-Down` |
-| Alt | `A-x`, `A-Home`, `A-End` |
-| Combined | `S-A-Up` (Shift+Alt+Up), `C-S-Left` (Ctrl+Shift+Left) |
+```
+mcp__tmux__send-keys({ paneId, keys, literal })
 
-**Prefer caret notation** (`^c`) over `C-c` for reliability. Use named keys (`Escape`) not escape sequences (`\e`).
+  literal: true  (default) — text is sent byte-for-byte; special characters are NOT
+                             interpreted as key sequences. Use for typing commands.
+  literal: false           — text is interpreted as tmux key names. Use for:
+                             - Control sequences: "C-c", "C-d", "Escape", "Enter"
+                             - Arrow keys: "Up", "Down", "Left", "Right"
+                             - Function keys: "F1" through "F12"
+
+To type text AND execute (press Enter):
+  mcp__tmux__send-keys({ paneId, keys: "bun test --watch", literal: true })
+  mcp__tmux__send-keys({ paneId, keys: "Enter", literal: false })
+  OR (single call):
+  mcp__tmux__send-keys({ paneId, keys: "bun test --watch\n", literal: false })
+
+Control key reference (all require literal: false):
+  Interrupt:   keys: "C-c"
+  EOF/exit:    keys: "C-d"
+  Clear:       keys: "C-l"
+  Suspend:     keys: "C-z"
+  Escape:      keys: "Escape"
+  Enter:       keys: "Enter"
+  Arrow keys:  keys: "Up", "Down", "Left", "Right"
+```
+
+| What you want | Keys string | literal |
+|--------------|-------------|---------|
+| Type command text | `"ls -la src/"` | `true` (default) |
+| Press Enter | `"Enter"` | `false` |
+| Ctrl+C (interrupt) | `"C-c"` | `false` |
+| Ctrl+D (EOF / exit) | `"C-d"` | `false` |
+| Escape | `"Escape"` | `false` |
+| Arrow Up | `"Up"` | `false` |
+| Arrow Down | `"Down"` | `false` |
+| F1–F12 | `"F1"` … `"F12"` | `false` |
 
 ---
 
 ## 6. Session Lifecycle
 
-The correct pattern for ALL ht-mcp workflows:
+### Headless Sessions (for isolated/ephemeral tasks)
 
 ```
-1. CREATE:  mcp__ht__ht_create_session()               → save sessionId
-2. USE:     mcp__ht__ht_execute_command() / ht_send_keys() / ht_take_snapshot()
-3. CLEANUP: mcp__ht__ht_close_session(sessionId)       → ALWAYS close
+QUICK (auto-lifecycle):
+  mcp__tmux__execute-command({ command, headless: true })
+  → auto-creates session, runs command, returns { output, exitCode }, auto-destroys
+  No session ID to track. No cleanup needed.
+
+MANUAL (for processes that outlive a single command):
+  mcp__tmux__create-headless({ name: "task-name" })
+  → { paneId: "headless:%0", sessionId: "headless:$0" }
+  → save paneId for subsequent tool calls
+  → cleanup: mcp__tmux__kill-session({ sessionId: "headless:$0" })
+             OR mcp__tmux__kill-headless-server()  ← clears all headless sessions
 ```
 
-**Save the session ID immediately** after creation. If the ID is lost (e.g., context compaction), use `mcp__ht__ht_list_sessions` to find it.
+Headless sessions are isolated on a separate tmux socket (`mcp-headless`). They do not appear in the user's `tmux ls`. They persist until explicitly killed or `kill-headless-server` is called.
+
+### Visible Sessions (for user-facing work)
 
 ```
-// Full lifecycle example
-const { sessionId } = await mcp__ht__ht_create_session()
-try {
-  const result = await mcp__ht__ht_execute_command({ sessionId, command: "npm test" })
-  // ... use result ...
-} finally {
-  await mcp__ht__ht_close_session({ sessionId })  // always runs
-}
+mcp__tmux__create-session({ name: "project" })
+→ returns { sessionId: "$N" }
+→ user can attach with: tmux attach -t project
+→ cleanup: mcp__tmux__kill-session({ sessionId: "$N" })
+```
+
+**Never kill sessions you did not create.** When observing the user's existing sessions, use `capture-pane` only.
+
+---
+
+## 7. Capturing Full Output
+
+`capture-pane` has access to tmux scrollback history:
+
+```
+mcp__tmux__capture-pane({ paneId: "%3" })          → visible viewport
+mcp__tmux__capture-pane({ paneId: "%3", lines: 200 }) → last 200 lines of scrollback
+```
+
+For very long output (build logs, test suites with hundreds of cases):
+
+```
+mcp__tmux__execute-command({
+  command: "npm test 2>&1 | tee /tmp/claude-output.log",
+  headless: true
+})
+Read({ file_path: "/tmp/claude-output.log" })  → full output, unlimited lines
 ```
 
 ---
 
-## 7. The 40-Line Rule
+## 7b. Output Parsing Rules
 
-**Critical limitation**: `ht_take_snapshot` returns ONLY the visible terminal — a 120x40 grid. There is no scrollback.
-
-This means:
-- Commands producing more than 40 lines will only show the last 40 visible lines
-- TUI apps with more than 40 rows will be truncated
-
-**Workarounds**:
-
-| Problem | Workaround |
-|---------|-----------|
-| Long command output (e.g., `seq 1 100`) | Pipe through `\| tail -40` or `\| head -40` |
-| Query results (psql, mongosh) | Add `LIMIT 40` to the query |
-| Log files | Use `tail -f` (shows last N lines) |
-| Long directory listings | Use `ls -la \| head -40` |
-| Test output | Use `\| tail -40` or check summary lines |
-| Need full output | Switch to tmux-mcp (`capture-pane` can read scrollback) |
-
-**Best practice for long output**: Design commands to return <40 lines. Use `| head -40`, `| tail -40`, `LIMIT`, or `-n` flags proactively.
-
----
-
-## 7b. Capturing Full Output with tee
-
-When output exceeds 40 lines (large test suites, build output, migration logs), pipe through `tee` to a temp file so the full output is available via the Read tool:
-
-```
-1. mcp__ht__ht_execute_command(sessionId, 'npm test 2>&1 | tee /tmp/claude-terminal-1711930000.log')
-2. # Poll ht_take_snapshot until summary line appears in last 40 visible lines
-3. Read('/tmp/claude-terminal-1711930000.log')   # full output, unlimited lines
-4. mcp__ht__ht_execute_command(sessionId, 'rm /tmp/claude-terminal-1711930000.log')
-```
-
-**Naming convention**: `/tmp/claude-terminal-$(date +%s).log` — avoids conflicts when running multiple terminal tasks in parallel.
-
-**The snapshot poll is still required**: It tells you WHEN the command finishes. Poll for framework-specific completion markers (see `terminal:framework-signals`). The log file is available immediately and persists across context compaction.
-
-**When required**:
-- Test suites with >40 cases where individual failures scroll off
-- Build output with warnings spanning many lines
-- Deploy logs or migration output
-- Any command where you need to search the full history, not just the tail
-
----
-
-## 7c. Output Parsing Rules
-
-Both `ht_take_snapshot` and `tmux capture-pane` return **plain text** — ANSI escape codes are stripped by the terminal emulator before Claude sees them. Color is never available.
+`tmux capture-pane` returns **plain text** — ANSI escape codes are stripped by tmux before Claude sees them. Color is never available.
 
 ```
 CORRECT: look for ✓ / ✗ / PASS / FAIL / error: / warning: / ⠋ (spinner active)
@@ -372,43 +393,15 @@ WRONG:   "is this line red?" — ANSI color is stripped; color state is unavaila
 
 **Prompt detection**: `$` or `%` at the end of a line indicates the command has returned to the shell prompt.
 
-**ANSI stripping regex** (for edge cases where raw output is obtained outside the MCP tools):
-```javascript
-text.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '')
-```
-
 ---
 
-## 8. Race Conditions and Timing
+## 8. Timing and Race Conditions
 
-**TUI apps need render time**. After sending keys to a TUI application, wait before taking a snapshot. The application needs time to process input and redraw the screen.
+**TUI apps need render time.** After sending keys to a TUI application, use `watch-pane` with a `user_input` or `idle:N` trigger to wait for the application to process input and redraw before reading state.
 
-```
-// WRONG: snapshot immediately after send_keys (may see stale screen)
-mcp__ht__ht_send_keys({ sessionId, keys: ["i"] })
-mcp__ht__ht_take_snapshot({ sessionId })   // screen may not have updated yet
+For long-running processes, `start-and-watch` or `watch-pane` replace polling loops — they block until a trigger condition fires, streaming progress notifications as output arrives.
 
-// RIGHT: use ht_execute_command for commands, or accept slight delay for TUI
-// For TUI interactive apps, taking a snapshot is usually fast enough in practice
-// but be prepared to take a second snapshot if the first looks stale
-```
-
-**For long-running processes** (server startup, build, migration), poll with repeated snapshots:
-
-For comprehensive framework-specific pass/fail/running/idle markers, see the `terminal:framework-signals` skill.
-
-```
-// Polling pattern for server startup
-let ready = false
-for (let i = 0; i < 30; i++) {
-  const snap = await mcp__ht__ht_take_snapshot({ sessionId })
-  if (snap.includes("listening on") || snap.includes("ready") || snap.includes("started")) {
-    ready = true
-    break
-  }
-  // slight pause between polls (ht_take_snapshot itself takes a moment)
-}
-```
+For comprehensive framework-specific pass/fail/running/idle markers, see `terminal:framework-signals`.
 
 ---
 
@@ -417,34 +410,49 @@ for (let i = 0; i < 30; i++) {
 ### Example A: Simple Command Execution
 
 ```
-1. mcp__ht__ht_create_session()                           → sessionId
-2. mcp__ht__ht_execute_command(sessionId, "npm test")     → output snapshot
-3. Parse snapshot for pass/fail indicators
-4. mcp__ht__ht_close_session(sessionId)
+mcp__tmux__execute-command({ command: "npm test", headless: true })
+→ returns { output, exitCode } synchronously
+Parse output for pass/fail. Done.
 ```
 
 ### Example B: vim File Editing
 
 ```
-1. mcp__ht__ht_create_session()
-2. mcp__ht__ht_execute_command(sessionId, "vim myfile.ts")  → vim opens
-3. mcp__ht__ht_send_keys(sessionId, ["i"])                  → insert mode
-4. mcp__ht__ht_send_keys(sessionId, ["hello world"])        → type text
-5. mcp__ht__ht_send_keys(sessionId, ["Escape"])             → normal mode
-6. mcp__ht__ht_send_keys(sessionId, [":wq", "Enter"])       → save and quit
-7. mcp__ht__ht_take_snapshot(sessionId)                     → verify shell prompt returned
-8. mcp__ht__ht_close_session(sessionId)
+1. mcp__tmux__create-headless({ name: "vim-edit" }) → { paneId: "headless:%0" }
+2. mcp__tmux__start-and-watch({
+     paneId: "headless:%0",
+     command: "vim myfile.ts",
+     pattern: "~",           // vim blank line tilde indicates loaded
+     timeout: 10
+   }) → WatchResult
+3. // vim is now open; use send-keys for navigation
+4. mcp__tmux__send-keys({ paneId: "headless:%0", keys: "i", literal: false })
+5. mcp__tmux__send-keys({ paneId: "headless:%0", keys: "hello world", literal: true })
+6. mcp__tmux__send-keys({ paneId: "headless:%0", keys: "Escape", literal: false })
+7. mcp__tmux__send-keys({ paneId: "headless:%0", keys: ":wq", literal: true })
+8. mcp__tmux__send-keys({ paneId: "headless:%0", keys: "Enter", literal: false })
+9. // watch-pane: wait for shell prompt to return
+10. mcp__tmux__watch-pane({
+      paneId: "headless:%0",
+      triggers: "shell,idle:2",
+      timeout: 10
+    }) → WatchResult (event: "shell" = vim exited, shell regained)
+11. mcp__tmux__kill-session({ sessionId: "headless:$0" })
 ```
 
-### Example C: Interactive Application with Monitoring
+### Example C: Server Startup (was a polling loop)
 
 ```
-1. mcp__ht__ht_create_session()
-2. mcp__ht__ht_execute_command(sessionId, "bun run dev")    → start server
-3. POLL: mcp__ht__ht_take_snapshot until "listening on port"
-4. Report: "Server ready on port 3000. Session: {id}"
-5. // Leave session running; close when user is done
-6. mcp__ht__ht_close_session(sessionId)
+1. mcp__tmux__start-and-watch({
+     command: "bun run dev",
+     pattern: "Local:.*http|listening on|ready in",
+     mode: "quick",
+     timeout: 60
+   })
+   // paneId omitted → auto-creates session; headless=false → visible session
+   → WatchResult { event: "pattern:...", output: "...", paneId: "%N" }
+2. Save the returned paneId for later observation
+3. Report: "Server ready. Pane: %N"
 ```
 
 ### Example D: Read Existing tmux Session
@@ -461,13 +469,27 @@ for (let i = 0; i < 30; i++) {
 ### Example E: Database REPL Query
 
 ```
-1. mcp__ht__ht_create_session()
-2. mcp__ht__ht_execute_command(sessionId, "psql $DATABASE_URL")
-3. POLL snapshot for "=#" or "=#" prompt pattern (psql ready)
-4. mcp__ht__ht_send_keys(sessionId, ["SELECT count(*) FROM users LIMIT 1;", "Enter"])
-5. mcp__ht__ht_take_snapshot(sessionId)                    → see results
-6. mcp__ht__ht_send_keys(sessionId, ["\\q", "Enter"])      → graceful exit
-7. mcp__ht__ht_close_session(sessionId)
+1. mcp__tmux__create-headless({ name: "psql-session" }) → { paneId: "headless:%0" }
+2. mcp__tmux__start-and-watch({
+     paneId: "headless:%0",
+     command: "psql $DATABASE_URL",
+     pattern: "=#",
+     timeout: 15
+   }) → WatchResult (event confirms psql is ready)
+3. mcp__tmux__run-in-repl({
+     paneId: "headless:%0",
+     input: "SELECT count(*) FROM users LIMIT 10;",
+     promptPattern: "=#",
+     timeout: 10
+   }) → { output: " count\n-------\n 1247" }
+4. Parse output directly (no screen scraping needed)
+5. mcp__tmux__run-in-repl({
+     paneId: "headless:%0",
+     input: "\\q",
+     promptPattern: "\\$",
+     timeout: 5
+   })
+6. mcp__tmux__kill-session({ sessionId: "headless:$0" })
 ```
 
 ### Example F: Split Current Window (Side-by-Side)
@@ -490,9 +512,10 @@ mcp__tmux__split-pane({ paneId: "%57", direction: "horizontal" })
 Bash: tmux select-pane -t %66 -T "claude-helper"
 
 // Step 5: Launch process in the helper pane
-mcp__tmux__send-keys({ paneId: "%66", keys: "bun test --watch\nEnter" })
+mcp__tmux__send-keys({ paneId: "%66", keys: "bun test --watch", literal: true })
+mcp__tmux__send-keys({ paneId: "%66", keys: "Enter", literal: false })
 
-// Step 6: Monitor via capture-pane
+// Step 6: Monitor via capture-pane or event-driven watch-pane
 mcp__tmux__capture-pane({ paneId: "%66" })                    → current screen
 
 // Cleanup: when done, close only the pane you created
@@ -534,66 +557,75 @@ notify() {
 
 Then use it: `npm run build && notify "Build complete" || notify "Build FAILED"`
 
-**Availability check**: `osascript` exits 0 on success, non-zero if system notifications are denied. Verify before relying on it:
-```bash
-osascript -e 'display notification "test"' 2>/dev/null && echo "available" || echo "check System Settings > Notifications"
-```
-
 ---
 
 ## 10. Error Handling Patterns
 
-### Session Not Found
-```
-// If sessionId is lost or stale
-const sessions = await mcp__ht__ht_list_sessions()
-// Pick matching session or create new one
-```
+### Process Stuck / Command Hangs
 
-### Command Hangs (No Prompt Return)
 ```
-// Detect: snapshot still shows running command, no shell prompt returned
+// Detect using pane-state — kernel-level, no screen scraping needed
+mcp__tmux__pane-state({ paneId })
+→ { isAlive: true, waitingForInput: true, foregroundCmd: "psql" }
+
+// Or detect via watch-pane idle trigger:
+// start-and-watch / watch-pane fires event: "timeout" when nothing happens in timeout_secs
+
 // Recovery: send Ctrl+C
-mcp__ht__ht_send_keys({ sessionId, keys: ["^c"] })
-mcp__ht__ht_take_snapshot({ sessionId })   // verify prompt returned
+mcp__tmux__send-keys({ paneId, keys: "C-c", literal: false })
+mcp__tmux__capture-pane({ paneId })  // verify prompt returned
 ```
 
 ### Port Already in Use
+
 ```
-// Detect: snapshot contains "EADDRINUSE" or "address already in use"
+// Detect: start-and-watch output contains "EADDRINUSE" or "address already in use"
+// WatchResult.event will be "error" or "pattern:EADDRINUSE"
 // Recovery options:
-// 1. Find and kill the occupying process: lsof -ti:3000 | xargs kill
+// 1. Find and kill the occupying process: execute-command({ command: "lsof -ti:3000 | xargs kill", headless: true })
 // 2. Try a different port
 // 3. Report to user for manual resolution
 ```
 
 ### TUI App Stuck
+
 ```
-// Detection: snapshot unchanged after multiple polls
+// Detection: watch-pane fires idle:N event (no new output for N seconds)
+// OR: pane-state shows waitingForInput: false but isAlive: true (spinning but not drawing)
 // Recovery sequence:
-mcp__ht__ht_send_keys({ sessionId, keys: ["^c"] })    // try interrupt first
+mcp__tmux__send-keys({ paneId, keys: "C-c", literal: false })  // try interrupt first
 // If still stuck:
-mcp__ht__ht_send_keys({ sessionId, keys: ["q"] })      // try quit command
+mcp__tmux__send-keys({ paneId, keys: "q", literal: true })     // try quit command
 // If still stuck:
-mcp__ht__ht_close_session({ sessionId })               // force close session
+mcp__tmux__kill-session({ sessionId })                          // force close session
+```
+
+### Password Prompt Detection
+
+```
+// Use pane-state to detect waiting + check output for "password":
+result = mcp__tmux__pane-state({ paneId })
+if result.waitingForInput and "password" in capture-pane output:
+  STOP — never send credentials through send-keys
+  Report to user, ask them to handle authentication
 ```
 
 ### Long-Running Process (SSH, Migration, Deploy)
+
 ```
 // For database migrations: ALWAYS confirm with user before proceeding
-// For SSH: detect password prompts → stop and report (never pass passwords)
-// For deployments: poll for completion markers, set max poll count (e.g., 60 iterations)
+// For SSH: use pane-state to detect password prompt → stop and report
+// For deployments: use start-and-watch with deploy-specific patterns from terminal:framework-signals
 ```
 
 ---
 
 ## 11. Safety Guidelines
 
-1. **Never store credentials**: Do not send passwords or API keys through `ht_send_keys`. Detect password prompts and stop.
+1. **Never store credentials**: Do not send passwords or API keys through `send-keys`. Use `pane-state` to detect password prompts and stop.
 2. **Confirm destructive operations**: Database migrations, `DROP TABLE`, production deployments — always confirm with user.
 3. **Never kill user's tmux sessions**: When using tmux-mcp to observe existing sessions, use `capture-pane` only. Do NOT call `kill-session` on sessions you did not create.
-4. **Memory limits**: Close sessions after use. Long-running sessions with heavy output can grow in memory (ht-mcp known issue #39).
-5. **Session IDs are ephemeral**: Save session IDs to variables immediately. They do not survive context compaction.
+4. **Clean up headless sessions**: Use `kill-session` or `kill-headless-server` when done. Headless sessions persist until explicitly killed.
 
 ---
 
@@ -603,11 +635,11 @@ Before running any command that cannot be undone, Claude must **stop and confirm
 
 **RPGAO loop** (universal protocol for any terminal action):
 ```
-READ    → snapshot or capture-pane to see current state
+READ    → capture-pane to see current state
 PROPOSE → "I plan to run: {command}. Reason: {explanation}"
 GATE    → "Shall I proceed?" (ALWAYS for destructive; optional for safe commands)
-ACT     → send-keys or execute_command on user confirmation
-OBSERVE → poll for completion + success/failure signal
+ACT     → send-keys or execute-command on user confirmation
+OBSERVE → use start-and-watch or watch-pane for completion signal
 → Repeat from READ if failure
 ```
 
@@ -623,48 +655,4 @@ OBSERVE → poll for completion + success/failure signal
 | Curl pipe to bash | `\bcurl\s+.*\|\s*bash\b` |
 | dd overwrite | `\bdd\s+.*\bof=` |
 
-**Example tool-call sequence** (destructive command path):
-```
-1. Claude detects command matches git_force_push pattern
-2. Claude shows: "I plan to run: git push --force origin main
-   This is a force push. Choose:
-   A) Run it for me
-   B) Show me the safe alternative first
-   C) Cancel"
-3. User picks A → mcp__ht__ht_execute_command(sessionId, 'git push --force origin main')
-4. Poll snapshot for completion marker
-```
-
 The GATE step is always required for any pattern in the table above. For safe, reversible commands, PROPOSE + ACT is sufficient (no explicit GATE pause needed).
-
----
-
-## 12. Multi-Session Pattern (Parallel Tasks)
-
-Run multiple sessions concurrently for parallel work:
-
-```
-// Launch unit tests and integration tests in parallel
-const [session1, session2] = await Promise.all([
-  mcp__ht__ht_create_session(),
-  mcp__ht__ht_create_session()
-])
-
-// Start both in parallel
-await Promise.all([
-  mcp__ht__ht_execute_command({ sessionId: session1.sessionId, command: "bun test src/" }),
-  mcp__ht__ht_execute_command({ sessionId: session2.sessionId, command: "bun test tests/" })
-])
-
-// Read results
-const [snap1, snap2] = await Promise.all([
-  mcp__ht__ht_take_snapshot({ sessionId: session1.sessionId }),
-  mcp__ht__ht_take_snapshot({ sessionId: session2.sessionId })
-])
-
-// Cleanup both
-await Promise.all([
-  mcp__ht__ht_close_session({ sessionId: session1.sessionId }),
-  mcp__ht__ht_close_session({ sessionId: session2.sessionId })
-])
-```
