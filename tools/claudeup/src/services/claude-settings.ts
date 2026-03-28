@@ -731,6 +731,36 @@ export interface MigrationResult {
  * Runs across project settings, global settings, local settings,
  * known_marketplaces.json, and installed_plugins.json.
  */
+/**
+ * Decode a ~/.claude/projects/ directory name back to a filesystem path.
+ * Claude Code encodes paths by replacing "/" with "-", which is lossy when
+ * directory names themselves contain dashes (e.g., "circl-infra" → "circl/infra").
+ * Strategy: split on "-", then greedily recombine segments by checking which
+ * combinations actually exist on disk.
+ * Returns null if no valid path can be resolved.
+ */
+async function decodeProjectDirName(encoded: string): Promise<string | null> {
+	// Split into segments: "-Users-jack-dev-circl-infra" → ["Users","jack","dev","circl","infra"]
+	const segments = encoded.replace(/^-/, "").split("-");
+	if (segments.length === 0) return null;
+
+	// Build path greedily: at each step, try joining the next segment with a dash first
+	// (preserving directory names like "circl-infra"), fall back to slash (new path segment)
+	let current = "/" + segments[0];
+	for (let i = 1; i < segments.length; i++) {
+		const withDash = current + "-" + segments[i];
+		const withSlash = current + "/" + segments[i];
+		// Prefer dash (keeps compound names intact) if that path prefix exists
+		if (await fs.pathExists(withDash)) {
+			current = withDash;
+		} else {
+			current = withSlash;
+		}
+	}
+
+	return (await fs.pathExists(current)) ? current : null;
+}
+
 export async function migrateMarketplaceRename(
 	projectPath?: string,
 ): Promise<MigrationResult> {
@@ -914,9 +944,8 @@ export async function migrateMarketplaceRename(
 			seenPaths.add(currentProject);
 
 			for (const entry of entries) {
-				// Directory names encode paths: -Users-jack-dev-foo → /Users/jack/dev/foo
-				const decoded = entry.replace(/^-/, "/").replace(/-/g, "/");
-				if (seenPaths.has(decoded)) continue;
+				const decoded = await decodeProjectDirName(entry);
+				if (!decoded || seenPaths.has(decoded)) continue;
 				seenPaths.add(decoded);
 
 				const settingsFile = path.join(decoded, ".claude", "settings.json");
