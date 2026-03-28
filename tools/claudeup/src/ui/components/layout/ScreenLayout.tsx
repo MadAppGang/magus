@@ -118,14 +118,17 @@ export function ScreenLayout({
 					<text fg="#444444">{"│".repeat(panelHeight)}</text>
 				</box>
 
-				{/* Detail panel */}
-				<box
+				{/* Detail panel — scrollable */}
+				<scrollbox
 					flexDirection="column"
 					width="50%"
+					height={panelHeight}
 					paddingLeft={1}
+					scrollY={true}
+					scrollX={false}
 				>
 					{detailPanel}
-				</box>
+				</scrollbox>
 			</box>
 
 			{/* Footer */}
