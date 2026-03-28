@@ -194,6 +194,10 @@ export function renderCliToolDetail(
               </text>
             </box>
           ))}
+          <box marginTop={1}>
+            <text bg={theme.colors.danger} fg="white">{" "}c{" "}</text>
+            <text fg={theme.colors.muted}> Resolve — pick which to keep</text>
+          </box>
         </box>
       ) : null}
 

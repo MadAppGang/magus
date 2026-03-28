@@ -1,5 +1,5 @@
 import React, { useEffect, useCallback, useState, useRef } from "react";
-import { exec, execSync } from "child_process";
+import { exec } from "child_process";
 import { promisify } from "util";
 import { useApp, useModal } from "../state/AppContext.js";
 import { useDimensions } from "../state/DimensionsContext.js";
@@ -82,6 +82,18 @@ async function detectInstallMethods(
 		return { primary: methods[0]!, all: methods };
 	} catch {
 		return { primary: fallback as InstallMethod, all: [] };
+	}
+}
+
+function getUninstallCommand(tool: import("../../data/cli-tools.js").CliTool, method: InstallMethod): string {
+	switch (method) {
+		case "bun": return `bun remove -g ${tool.packageName}`;
+		case "npm": return `npm uninstall -g ${tool.packageName}`;
+		case "pnpm": return `pnpm remove -g ${tool.packageName}`;
+		case "yarn": return `yarn global remove ${tool.packageName}`;
+		case "brew": return `brew uninstall ${tool.name}`;
+		case "pip": return `pip uninstall -y ${tool.packageName}`;
+		default: return "";
 	}
 }
 
@@ -240,6 +252,8 @@ export function CliToolsScreen() {
 			handleRefresh();
 		} else if (event.name === "a") {
 			handleUpdateAll();
+		} else if (event.name === "c") {
+			handleResolveConflict();
 		} else if (event.name === "enter" || event.name === "return") {
 			handleInstall();
 		}
@@ -259,6 +273,19 @@ export function CliToolsScreen() {
 		fetchVersionInfo();
 	};
 
+	const runCommand = async (command: string): Promise<{ ok: boolean; error?: string }> => {
+		try {
+			await execAsync(command, {
+				shell: "/bin/bash",
+				timeout: 60000,
+			});
+			return { ok: true };
+		} catch (err) {
+			const msg = err instanceof Error ? err.message : String(err);
+			return { ok: false, error: msg };
+		}
+	};
+
 	const handleInstall = async () => {
 		const status = toolStatuses[cliToolsState.selectedIndex];
 		if (!status) return;
@@ -268,23 +295,61 @@ export function CliToolsScreen() {
 		const command = installed && updateCommand ? updateCommand : tool.installCommand;
 
 		modal.loading(`${action} ${tool.displayName}...`);
-		try {
-			execSync(command, {
-				encoding: "utf-8",
-				stdio: "pipe",
-				shell: "/bin/bash",
-				timeout: 60000,
-			});
-			modal.hideModal();
+		const result = await runCommand(command);
+		modal.hideModal();
+
+		if (result.ok) {
 			handleRefresh();
-		} catch (error) {
-			modal.hideModal();
+		} else {
 			await modal.message(
 				"Error",
 				`Failed to ${action.toLowerCase()} ${tool.displayName}.\n\nTry running manually:\n${command}`,
 				"error",
 			);
 		}
+	};
+
+	const handleResolveConflict = async () => {
+		const status = toolStatuses[cliToolsState.selectedIndex];
+		if (!status || !status.allMethods || status.allMethods.length < 2) return;
+
+		const { tool, allMethods, installMethod } = status;
+
+		// Let user pick which install to keep
+		const options = allMethods.map((method) => ({
+			label: `Keep ${method}${method === installMethod ? " (active)" : ""}, remove others`,
+			value: method,
+		}));
+
+		const keep = await modal.select(
+			`Resolve ${tool.displayName} conflict`,
+			`Installed via ${allMethods.join(" + ")}. Which to keep?`,
+			options,
+		);
+		if (keep === null) return;
+
+		const toRemove = allMethods.filter((m) => m !== keep);
+		modal.loading(`Removing ${toRemove.join(", ")} install(s)...`);
+
+		const errors: string[] = [];
+		for (const method of toRemove) {
+			const cmd = getUninstallCommand(tool, method);
+			if (!cmd) continue;
+			const result = await runCommand(cmd);
+			if (!result.ok) errors.push(`${method}: ${cmd}`);
+		}
+
+		modal.hideModal();
+
+		if (errors.length > 0) {
+			await modal.message(
+				"Partial",
+				`Some removals failed. Try manually:\n\n${errors.join("\n")}`,
+				"error",
+			);
+		}
+
+		handleRefresh();
 	};
 
 	const handleUpdateAll = async () => {
@@ -298,16 +363,7 @@ export function CliToolsScreen() {
 
 		for (const status of updatable) {
 			const command = status.updateCommand || status.tool.installCommand;
-			try {
-				execSync(command, {
-					encoding: "utf-8",
-					stdio: "pipe",
-					shell: "/bin/bash",
-					timeout: 60000,
-				});
-			} catch {
-				// Continue with other updates
-			}
+			await runCommand(command);
 		}
 
 		modal.hideModal();
@@ -338,7 +394,7 @@ export function CliToolsScreen() {
 			title="claudeup CLI Tools"
 			currentScreen="cli-tools"
 			statusLine={statusContent}
-			footerHints="↑↓:nav │ Enter:install │ a:update all │ r:refresh"
+			footerHints="Enter:install │ a:update all │ c:fix conflict │ r:refresh"
 			listPanel={
 				<ScrollableList
 					items={toolStatuses}
