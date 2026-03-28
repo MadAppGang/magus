@@ -45,6 +45,18 @@ function methodFromPath(binPath: string): InstallMethod | null {
 interface InstallInfo {
 	primary: InstallMethod;
 	all: InstallMethod[];
+	brewFormula?: string;
+}
+
+/** Extract brew formula name from a Cellar symlink target like ../Cellar/gemini-cli/0.35.2/bin/gemini */
+function extractBrewFormula(binPath: string, linkTarget: string): string | undefined {
+	// Try symlink target first: ../Cellar/{formula}/{version}/...
+	const cellarMatch = linkTarget.match(/Cellar\/([^/]+)\//);
+	if (cellarMatch) return cellarMatch[1];
+	// Try binary path: /opt/homebrew/Cellar/{formula}/...
+	const pathMatch = binPath.match(/Cellar\/([^/]+)\//);
+	if (pathMatch) return pathMatch[1];
+	return undefined;
 }
 
 async function detectInstallMethods(
@@ -61,49 +73,58 @@ async function detectInstallMethods(
 		if (paths.length === 0) return { primary: fallback as InstallMethod, all: [] };
 
 		const methods: InstallMethod[] = [];
+		let brewFormula: string | undefined;
+
 		for (const binPath of paths) {
 			let method = methodFromPath(binPath);
-			if (!method) {
-				// Check symlink target
-				try {
-					const { stdout: linkTarget } = await execAsync(
-						`readlink "${binPath}" 2>/dev/null || true`,
-						{ timeout: 2000, shell: "/bin/bash" },
-					);
-					method = methodFromPath(linkTarget.trim());
-				} catch {
-					// ignore
-				}
+			let linkTarget = "";
+
+			// Check symlink target
+			try {
+				const { stdout: lt } = await execAsync(
+					`readlink "${binPath}" 2>/dev/null || true`,
+					{ timeout: 2000, shell: "/bin/bash" },
+				);
+				linkTarget = lt.trim();
+				if (!method) method = methodFromPath(linkTarget);
+			} catch {
+				// ignore
 			}
+
+			// Detect brew formula name
+			if (method === "brew" && !brewFormula) {
+				brewFormula = extractBrewFormula(binPath, linkTarget);
+			}
+
 			if (method && !methods.includes(method)) methods.push(method);
 		}
 
 		if (methods.length === 0) return { primary: fallback as InstallMethod, all: [] };
-		return { primary: methods[0]!, all: methods };
+		return { primary: methods[0]!, all: methods, brewFormula };
 	} catch {
 		return { primary: fallback as InstallMethod, all: [] };
 	}
 }
 
-function getUninstallCommand(tool: import("../../data/cli-tools.js").CliTool, method: InstallMethod): string {
+function getUninstallCommand(tool: import("../../data/cli-tools.js").CliTool, method: InstallMethod, brewFormula?: string): string {
 	switch (method) {
 		case "bun": return `bun remove -g ${tool.packageName}`;
 		case "npm": return `npm uninstall -g ${tool.packageName}`;
 		case "pnpm": return `pnpm remove -g ${tool.packageName}`;
 		case "yarn": return `yarn global remove ${tool.packageName}`;
-		case "brew": return `brew uninstall ${tool.name}`;
+		case "brew": return `brew uninstall ${brewFormula || tool.name}`;
 		case "pip": return `pip uninstall -y ${tool.packageName}`;
 		default: return "";
 	}
 }
 
-function getUpdateCommand(tool: import("../../data/cli-tools.js").CliTool, method: InstallMethod): string {
+function getUpdateCommand(tool: import("../../data/cli-tools.js").CliTool, method: InstallMethod, brewFormula?: string): string {
 	switch (method) {
 		case "bun": return `bun install -g ${tool.packageName}`;
 		case "npm": return `npm install -g ${tool.packageName}`;
 		case "pnpm": return `pnpm install -g ${tool.packageName}`;
 		case "yarn": return `yarn global add ${tool.packageName}`;
-		case "brew": return `brew upgrade ${tool.name}`;
+		case "brew": return `brew upgrade ${brewFormula || tool.name}`;
 		case "pip": return tool.installCommand;
 		default: return tool.installCommand;
 	}
@@ -222,7 +243,8 @@ export function CliToolsScreen() {
 							: false,
 					installMethod: version ? info.primary : undefined,
 					allMethods: version && info.all.length > 1 ? info.all : undefined,
-					updateCommand: version ? getUpdateCommand(tool, info.primary) : undefined,
+					updateCommand: version ? getUpdateCommand(tool, info.primary, info.brewFormula) : undefined,
+					brewFormula: info.brewFormula,
 				});
 			});
 		}
@@ -313,7 +335,7 @@ export function CliToolsScreen() {
 		const status = toolStatuses[cliToolsState.selectedIndex];
 		if (!status || !status.allMethods || status.allMethods.length < 2) return;
 
-		const { tool, allMethods, installMethod } = status;
+		const { tool, allMethods, installMethod, brewFormula } = status;
 
 		// Let user pick which install to keep
 		const options = allMethods.map((method) => ({
@@ -333,7 +355,7 @@ export function CliToolsScreen() {
 
 		const errors: string[] = [];
 		for (const method of toRemove) {
-			const cmd = getUninstallCommand(tool, method);
+			const cmd = getUninstallCommand(tool, method, brewFormula);
 			if (!cmd) continue;
 			const result = await runCommand(cmd);
 			if (!result.ok) errors.push(`${method}: ${cmd}`);

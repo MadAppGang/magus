@@ -16,17 +16,18 @@ export interface CliToolStatus {
   installMethod?: InstallMethod;
   allMethods?: InstallMethod[];
   updateCommand?: string;
+  brewFormula?: string;
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-function getUninstallHint(tool: CliTool, method: InstallMethod): string {
+function getUninstallHint(tool: CliTool, method: InstallMethod, brewFormula?: string): string {
   switch (method) {
     case "bun": return `bun remove -g ${tool.packageName}`;
     case "npm": return `npm uninstall -g ${tool.packageName}`;
     case "pnpm": return `pnpm remove -g ${tool.packageName}`;
     case "yarn": return `yarn global remove ${tool.packageName}`;
-    case "brew": return `brew uninstall ${tool.name}`;
+    case "brew": return `brew uninstall ${brewFormula || tool.name}`;
     case "pip": return `pip uninstall ${tool.packageName}`;
     default: return "";
   }
@@ -102,7 +103,7 @@ export function renderCliToolDetail(
     );
   }
 
-  const { tool, installed, installedVersion, latestVersion, hasUpdate, checking, installMethod, allMethods, updateCommand } =
+  const { tool, installed, installedVersion, latestVersion, hasUpdate, checking, installMethod, allMethods, updateCommand, brewFormula } =
     status;
 
   const hasConflict = allMethods && allMethods.length > 1;
@@ -187,7 +188,7 @@ export function renderCliToolDetail(
                 </span>
                 <span fg={theme.colors.warning}>{method}</span>
                 {i > 0 ? (
-                  <span fg={theme.colors.dim}>{`  ${getUninstallHint(tool, method)}`}</span>
+                  <span fg={theme.colors.dim}>{`  ${getUninstallHint(tool, method, brewFormula)}`}</span>
                 ) : (
                   <span fg={theme.colors.dim}>  (active in PATH)</span>
                 )}
