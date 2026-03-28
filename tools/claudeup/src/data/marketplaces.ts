@@ -85,7 +85,10 @@ export function getAllMarketplaces(
 			const canonical = deprecatedMarketplaces[name];
 			if (canonical) {
 				// If canonical already in the map or in defaults, skip this entry
-				if (all.has(canonical) || defaultMarketplaces.some((m) => m.name === canonical)) {
+				if (
+					all.has(canonical) ||
+					defaultMarketplaces.some((m) => m.name === canonical)
+				) {
 					continue;
 				}
 			}
@@ -100,8 +103,12 @@ export function getAllMarketplaces(
 			all.set(name, {
 				name,
 				// Prefer default displayName over stale local clone data
-				displayName: defaultMp?.displayName || local.name || formatMarketplaceName(name),
-				source: { source: "github" as const, repo: defaultMp?.source.repo || local.gitRepo || "" },
+				displayName:
+					defaultMp?.displayName || local.name || formatMarketplaceName(name),
+				source: {
+					source: "github" as const,
+					repo: defaultMp?.source.repo || local.gitRepo || "",
+				},
 				description: defaultMp?.description || local.description || "",
 				official:
 					defaultMp?.official ?? repo.toLowerCase().includes("anthropics/"),

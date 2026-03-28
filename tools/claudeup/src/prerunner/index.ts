@@ -14,6 +14,8 @@ import {
 	getEnabledPlugins,
 	getLocalEnabledPlugins,
 	saveGlobalInstalledPluginVersion,
+	readGlobalSettings,
+	writeGlobalSettings,
 } from "../services/claude-settings.js";
 import { parsePluginId } from "../utils/string-utils.js";
 import { defaultMarketplaces } from "../data/marketplaces.js";
@@ -49,18 +51,24 @@ async function getReferencedMarketplaces(
 	try {
 		const global = await getGlobalEnabledPlugins();
 		for (const id of Object.keys(global)) allPluginIds.add(id);
-	} catch { /* skip if unreadable */ }
+	} catch {
+		/* skip if unreadable */
+	}
 
 	if (projectPath) {
 		try {
 			const project = await getEnabledPlugins(projectPath);
 			for (const id of Object.keys(project)) allPluginIds.add(id);
-		} catch { /* skip if unreadable */ }
+		} catch {
+			/* skip if unreadable */
+		}
 
 		try {
 			const local = await getLocalEnabledPlugins(projectPath);
 			for (const id of Object.keys(local)) allPluginIds.add(id);
-		} catch { /* skip if unreadable */ }
+		} catch {
+			/* skip if unreadable */
+		}
 	}
 
 	// Parse marketplace names from plugin IDs
@@ -108,6 +116,75 @@ async function autoAddMissingMarketplaces(
 	return added;
 }
 
+const CONTINUITY_PLUGIN_SENTINEL = "tmux-claude-continuity";
+const CONTINUITY_PLUGIN_SCRIPT = path.join(
+	os.homedir(),
+	".tmux",
+	"plugins",
+	"tmux-claude-continuity",
+	"scripts",
+	"on_session_start.sh",
+);
+
+/**
+ * Ensure tmux-claude-continuity Claude Code hooks are present in global settings.
+ * If the tmux plugin is installed but the hooks are missing, they are appended.
+ * Returns a description of what was added, or null if nothing changed.
+ */
+async function ensureTmuxContinuityHooks(): Promise<string | null> {
+	// Plugin not installed — nothing to do
+	if (!(await fs.pathExists(CONTINUITY_PLUGIN_SCRIPT))) {
+		return null;
+	}
+
+	const settings = await readGlobalSettings();
+
+	// Check if hooks are already configured by looking for the sentinel string
+	const existingHooks = settings.hooks ?? {};
+	for (const groups of Object.values(existingHooks)) {
+		for (const group of groups) {
+			for (const hook of group.hooks) {
+				if (hook.command.includes(CONTINUITY_PLUGIN_SENTINEL)) {
+					return null; // Already configured
+				}
+			}
+		}
+	}
+
+	// Append hooks, preserving any existing entries in SessionStart and Stop
+	const sessionStartGroups = existingHooks["SessionStart"] ?? [];
+	const stopGroups = existingHooks["Stop"] ?? [];
+
+	sessionStartGroups.push({
+		hooks: [
+			{
+				type: "command",
+				command:
+					"bash ~/.tmux/plugins/tmux-claude-continuity/scripts/on_session_start.sh",
+			},
+		],
+	});
+
+	stopGroups.push({
+		hooks: [
+			{
+				type: "command",
+				command:
+					"bash ~/.tmux/plugins/tmux-claude-continuity/scripts/on_stop.sh",
+			},
+		],
+	});
+
+	settings.hooks = {
+		...existingHooks,
+		SessionStart: sessionStartGroups,
+		Stop: stopGroups,
+	};
+
+	await writeGlobalSettings(settings);
+	return "SessionStart + Stop hooks";
+}
+
 /**
  * Prerun orchestration: Check for updates, apply them, then run claude
  * @param claudeArgs - Arguments to pass to claude CLI
@@ -123,9 +200,12 @@ export async function prerunClaude(
 	try {
 		// STEP 0: Migrate old marketplace names → magus (idempotent, no-ops if already migrated)
 		const migration = await migrateMarketplaceRename();
-		const migTotal = migration.projectMigrated + migration.globalMigrated
-			+ migration.localMigrated + migration.registryMigrated
-			+ (migration.knownMarketplacesMigrated ? 1 : 0);
+		const migTotal =
+			migration.projectMigrated +
+			migration.globalMigrated +
+			migration.localMigrated +
+			migration.registryMigrated +
+			(migration.knownMarketplacesMigrated ? 1 : 0);
 		if (migTotal > 0) {
 			console.log(`✓ Migrated ${migTotal} plugin reference(s) → magus`);
 		}
@@ -140,6 +220,14 @@ export async function prerunClaude(
 					`✓ Auto-added marketplace(s): ${addedMarketplaces.join(", ")}`,
 				);
 			}
+		}
+
+		// STEP 0.6: Ensure tmux-claude-continuity hooks are configured
+		const addedHooks = await ensureTmuxContinuityHooks();
+		if (addedHooks) {
+			console.log(
+				`✓ Added tmux-claude-continuity hooks to ~/.claude/settings.json`,
+			);
 		}
 
 		// STEP 1: Check if we should update (time-based cache, or forced)

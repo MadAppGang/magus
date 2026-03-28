@@ -112,24 +112,20 @@ const predefinedRenderer: ItemRenderer<{ kind: "predefined"; profile: Predefined
     const pluginCount =
       profile.magusPlugins.length + profile.anthropicPlugins.length;
     const skillCount = profile.skills.length;
-    const label = truncate(
-      `${profile.name} — ${pluginCount} plugins · ${skillCount} skill${skillCount !== 1 ? "s" : ""}`,
-      45,
-    );
+    const countStr = `${pluginCount}p ${skillCount}s`;
 
     if (isSelected) {
       return (
-        <text bg="blue" fg="white">
-          {" "}
-          {label}{" "}
+        <text bg={theme.selection.bg} fg={theme.selection.fg}>
+          {"  "}{profile.name}  {countStr}{" "}
         </text>
       );
     }
 
     return (
       <text>
-        <span fg={theme.colors.muted}>{"- "}</span>
-        <span fg={theme.colors.text}>{label}</span>
+        <span fg="white">{"  "}{profile.name}</span>
+        <span fg={theme.colors.dim}>  {countStr}</span>
       </text>
     );
   },
@@ -146,9 +142,11 @@ const predefinedRenderer: ItemRenderer<{ kind: "predefined"; profile: Predefined
 
     return (
       <box flexDirection="column">
-        <text fg={theme.colors.info}>
-          <strong>{profile.name}</strong>
-        </text>
+        <box>
+          <text bg={theme.colors.accent} fg="white">
+            <strong> {profile.name} </strong>
+          </text>
+        </box>
         <box marginTop={1}>
           <text fg={theme.colors.muted}>{profile.description}</text>
         </box>

@@ -732,7 +732,9 @@ export async function migrateMarketplaceRename(
 			await writeSettings(settings, projectPath);
 			result.projectMigrated = count;
 		}
-	} catch { /* skip if unreadable */ }
+	} catch {
+		/* skip if unreadable */
+	}
 
 	// 2. Global settings
 	try {
@@ -742,24 +744,39 @@ export async function migrateMarketplaceRename(
 			await writeGlobalSettings(settings);
 			result.globalMigrated = count;
 		}
-	} catch { /* skip if unreadable */ }
+	} catch {
+		/* skip if unreadable */
+	}
 
 	// 3. Local settings (settings.local.json)
 	try {
 		const local = await readLocalSettings(projectPath);
 		let localCount = 0;
 		const [ep, epCount] = migratePluginKeys(local.enabledPlugins);
-		if (epCount > 0) { local.enabledPlugins = ep; localCount += epCount; }
+		if (epCount > 0) {
+			local.enabledPlugins = ep;
+			localCount += epCount;
+		}
 		const [iv, ivCount] = migratePluginKeys(local.installedPluginVersions);
-		if (ivCount > 0) { local.installedPluginVersions = iv; localCount += ivCount; }
+		if (ivCount > 0) {
+			local.installedPluginVersions = iv;
+			localCount += ivCount;
+		}
 		if (localCount > 0) {
 			await writeLocalSettings(local, projectPath);
 			result.localMigrated = localCount;
 		}
-	} catch { /* skip if unreadable */ }
+	} catch {
+		/* skip if unreadable */
+	}
 
 	// 4. known_marketplaces.json — rename old keys + physical directory cleanup
-	const pluginsDir = path.join(os.homedir(), ".claude", "plugins", "marketplaces");
+	const pluginsDir = path.join(
+		os.homedir(),
+		".claude",
+		"plugins",
+		"marketplaces",
+	);
 	const newDir = path.join(pluginsDir, NEW_MARKETPLACE_NAME);
 
 	try {
@@ -785,11 +802,9 @@ export async function migrateMarketplaceRename(
 
 			// Ensure installLocation doesn't reference old directory names
 			if (known[NEW_MARKETPLACE_NAME]?.installLocation?.includes(oldName)) {
-				known[NEW_MARKETPLACE_NAME].installLocation =
-					known[NEW_MARKETPLACE_NAME].installLocation.replace(
-						oldName,
-						NEW_MARKETPLACE_NAME,
-					);
+				known[NEW_MARKETPLACE_NAME].installLocation = known[
+					NEW_MARKETPLACE_NAME
+				].installLocation.replace(oldName, NEW_MARKETPLACE_NAME);
 				knownModified = true;
 			}
 		}
@@ -798,7 +813,9 @@ export async function migrateMarketplaceRename(
 			await writeKnownMarketplaces(known);
 			result.knownMarketplacesMigrated = true;
 		}
-	} catch { /* skip if unreadable */ }
+	} catch {
+		/* skip if unreadable */
+	}
 
 	// 4b. Rename/remove old physical directories (runs even if keys were already migrated)
 	for (const oldName of OLD_MARKETPLACE_NAMES) {
@@ -812,7 +829,9 @@ export async function migrateMarketplaceRename(
 					await fs.remove(oldDir);
 				}
 			}
-		} catch { /* non-fatal: directory cleanup is best-effort */ }
+		} catch {
+			/* non-fatal: directory cleanup is best-effort */
+		}
 	}
 
 	// 4c. Update git remote URL in the marketplace clone (old → new repo)
@@ -820,16 +839,22 @@ export async function migrateMarketplaceRename(
 		if (await fs.pathExists(path.join(newDir, ".git"))) {
 			const { execSync } = await import("node:child_process");
 			const remote = execSync("git remote get-url origin", {
-				cwd: newDir, encoding: "utf-8", timeout: 5000,
+				cwd: newDir,
+				encoding: "utf-8",
+				timeout: 5000,
 			}).trim();
 			if (remote.includes("claude-code") && remote.includes("MadAppGang")) {
 				const newRemote = remote.replace("claude-code", NEW_MARKETPLACE_NAME);
 				execSync(`git remote set-url origin "${newRemote}"`, {
-					cwd: newDir, encoding: "utf-8", timeout: 5000,
+					cwd: newDir,
+					encoding: "utf-8",
+					timeout: 5000,
 				});
 			}
 		}
-	} catch { /* non-fatal: git remote update is best-effort */ }
+	} catch {
+		/* non-fatal: git remote update is best-effort */
+	}
 
 	// 5. installed_plugins.json — rename plugin ID keys
 	try {
@@ -837,7 +862,9 @@ export async function migrateMarketplaceRename(
 		let regCount = 0;
 		const newPlugins: typeof registry.plugins = {};
 		for (const [pluginId, entries] of Object.entries(registry.plugins)) {
-			const oldName = OLD_MARKETPLACE_NAMES.find((n) => pluginId.endsWith(`@${n}`));
+			const oldName = OLD_MARKETPLACE_NAMES.find((n) =>
+				pluginId.endsWith(`@${n}`),
+			);
 			if (oldName) {
 				const pluginName = pluginId.slice(0, pluginId.lastIndexOf("@"));
 				const newKey = `${pluginName}@${NEW_MARKETPLACE_NAME}`;
@@ -854,7 +881,9 @@ export async function migrateMarketplaceRename(
 			await writeInstalledPluginsRegistry(registry);
 			result.registryMigrated = regCount;
 		}
-	} catch { /* skip if unreadable */ }
+	} catch {
+		/* skip if unreadable */
+	}
 
 	return result;
 }

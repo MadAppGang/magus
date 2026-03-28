@@ -18,8 +18,7 @@ export const cliTools: CliTool[] = [
 			"TUI tool for managing Claude Code plugins, MCPs, and configuration",
 		installCommand: "npm install -g claudeup",
 		checkCommand: "claudeup --version",
-		website:
-			"https://github.com/MadAppGang/magus/tree/main/tools/claudeup",
+		website: "https://github.com/MadAppGang/magus/tree/main/tools/claudeup",
 		category: "ai-coding",
 		packageManager: "npm",
 		packageName: "claudeup",

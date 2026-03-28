@@ -243,3 +243,36 @@ export interface ProfileEntry {
 	updatedAt: string;
 	scope: "user" | "project";
 }
+
+// ─── Predefined Profile Types ──────────────────────────────────────────────────
+
+/** A skill reference for predefined profiles */
+export interface PredefinedSkill {
+	name: string;
+	repo: string;
+	skillPath: string;
+}
+
+/** Settings that can be configured in a predefined profile */
+export interface PredefinedSettings {
+	effortLevel?: "low" | "medium" | "high";
+	alwaysThinkingEnabled?: boolean;
+	model?: "claude-sonnet-4-6" | "claude-opus-4-6";
+	outputStyle?: "concise" | "explanatory" | "formal";
+	CLAUDE_CODE_ENABLE_TASKS?: boolean;
+	CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS?: boolean;
+	includeGitInstructions?: boolean;
+	respectGitignore?: boolean;
+	enableAllProjectMcpServers?: boolean;
+}
+
+/** A predefined (built-in) profile for claudeup */
+export interface PredefinedProfile {
+	id: string;
+	name: string;
+	description: string;
+	targetAudience: string;
+	plugins: Record<string, boolean>;
+	skills: PredefinedSkill[];
+	settings: PredefinedSettings;
+}
