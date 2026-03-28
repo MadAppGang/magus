@@ -4,6 +4,8 @@ import { theme } from "../theme.js";
 
 // ─── Status type ───────────────────────────────────────────────────────────────
 
+export type InstallMethod = "npm" | "bun" | "pnpm" | "yarn" | "brew" | "pip" | "unknown";
+
 export interface CliToolStatus {
   tool: CliTool;
   installed: boolean;
@@ -11,6 +13,8 @@ export interface CliToolStatus {
   latestVersion?: string;
   hasUpdate?: boolean;
   checking: boolean;
+  installMethod?: InstallMethod;
+  updateCommand?: string;
 }
 
 // ─── Row renderer ──────────────────────────────────────────────────────────────
@@ -76,8 +80,10 @@ export function renderCliToolDetail(
     );
   }
 
-  const { tool, installed, installedVersion, latestVersion, hasUpdate, checking } =
+  const { tool, installed, installedVersion, latestVersion, hasUpdate, checking, installMethod, updateCommand } =
     status;
+
+  const methodLabel = installMethod && installMethod !== "unknown" ? installMethod : null;
 
   return (
     <box flexDirection="column">
@@ -92,7 +98,7 @@ export function renderCliToolDetail(
 
       <box marginTop={1} flexDirection="column">
         <box>
-          <text fg={theme.colors.muted}>{"Status "}</text>
+          <text fg={theme.colors.muted}>{"Status   "}</text>
           {!installed ? (
             <text fg={theme.colors.muted}>{"○ Not installed"}</text>
           ) : checking ? (
@@ -105,54 +111,66 @@ export function renderCliToolDetail(
         </box>
         {installedVersion ? (
           <box>
-            <text fg={theme.colors.muted}>{"Installed "}</text>
-            <text fg={theme.colors.success}>v{installedVersion}</text>
+            <text fg={theme.colors.muted}>{"Version  "}</text>
+            <text>
+              <span fg={theme.colors.success}>v{installedVersion}</span>
+              {latestVersion && hasUpdate ? (
+                <span fg={theme.colors.warning}> → v{latestVersion}</span>
+              ) : null}
+            </text>
           </box>
-        ) : null}
-        {latestVersion ? (
+        ) : latestVersion ? (
           <box>
-            <text fg={theme.colors.muted}>{"Latest "}</text>
+            <text fg={theme.colors.muted}>{"Latest   "}</text>
             <text fg={theme.colors.text}>v{latestVersion}</text>
           </box>
         ) : null}
+        {installed && methodLabel ? (
+          <box>
+            <text fg={theme.colors.muted}>{"Via      "}</text>
+            <text fg={theme.colors.accent}>{methodLabel}</text>
+          </box>
+        ) : null}
         <box>
-          <text fg={theme.colors.muted}>{"Package "}</text>
+          <text fg={theme.colors.muted}>{"Package  "}</text>
           <text fg={theme.colors.text}>{tool.packageName}</text>
         </box>
         <box>
-          <text fg={theme.colors.muted}>{"Install "}</text>
-          <text fg={theme.colors.accent}>{tool.installCommand}</text>
-        </box>
-        <box>
-          <text fg={theme.colors.muted}>{"Website "}</text>
+          <text fg={theme.colors.muted}>{"Website  "}</text>
           <text fg={theme.colors.link}>{tool.website}</text>
         </box>
       </box>
 
-      <box marginTop={2}>
+      <box marginTop={2} flexDirection="column">
         {!installed ? (
-          <box>
-            <text bg={theme.colors.success} fg="black">
-              {" "}
-              Enter{" "}
-            </text>
-            <text fg={theme.colors.muted}> Install</text>
+          <box flexDirection="column">
+            <box>
+              <text bg={theme.colors.success} fg="black">{" "}Enter{" "}</text>
+              <text fg={theme.colors.muted}> Install via {tool.packageManager}</text>
+            </box>
+            <box marginTop={1}>
+              <text fg={theme.colors.dim}>  {tool.installCommand}</text>
+            </box>
           </box>
         ) : hasUpdate ? (
-          <box>
-            <text bg={theme.colors.warning} fg="black">
-              {" "}
-              Enter{" "}
-            </text>
-            <text fg={theme.colors.muted}> Update to v{latestVersion}</text>
+          <box flexDirection="column">
+            <box>
+              <text bg={theme.colors.warning} fg="black">{" "}Enter{" "}</text>
+              <text fg={theme.colors.muted}> Update to v{latestVersion}</text>
+            </box>
+            <box marginTop={1}>
+              <text fg={theme.colors.dim}>  {updateCommand || tool.installCommand}</text>
+            </box>
           </box>
         ) : (
-          <box>
-            <text bg={theme.colors.muted} fg="white">
-              {" "}
-              Enter{" "}
-            </text>
-            <text fg={theme.colors.muted}> Reinstall</text>
+          <box flexDirection="column">
+            <box>
+              <text bg={theme.colors.muted} fg="white">{" "}Enter{" "}</text>
+              <text fg={theme.colors.muted}> Reinstall</text>
+            </box>
+            <box marginTop={1}>
+              <text fg={theme.colors.dim}>  {updateCommand || tool.installCommand}</text>
+            </box>
           </box>
         )}
       </box>
