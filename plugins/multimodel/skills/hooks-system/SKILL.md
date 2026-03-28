@@ -6,6 +6,7 @@ tags: [orchestration, hooks, lifecycle, PreToolUse, PostToolUse, UserPromptSubmi
 keywords: [hooks, lifecycle, pre-tool, post-tool, user-prompt, session-start, stop, subagent, notification, permission, validation, auto-format, security, metrics]
 plugin: multimodel
 updated: 2026-01-28
+user-invocable: false
 ---
 
 # Hooks System

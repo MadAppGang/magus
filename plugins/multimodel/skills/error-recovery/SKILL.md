@@ -6,6 +6,7 @@ tags: [orchestration, error-handling, retry, fallback, timeout, recovery, escala
 keywords: [error, failure, timeout, retry, fallback, graceful-degradation, cancellation, recovery, partial-success, resilience, escalation, report-to-user]
 plugin: multimodel
 updated: 2026-03-28
+user-invocable: false
 ---
 
 # Error Recovery
@@ -183,28 +184,20 @@ Benefits:
 
 **Example Implementation:**
 
-```bash
-# In codex-code-reviewer agent (proxy mode)
+```
+# Via create_session MCP tool (timeout handled by the tool)
+create_session(model="grok-code-fast-1", prompt=PROMPT, timeout_seconds=30)
 
-MODEL="grok-code-fast-1"
-TIMEOUT=30
+# React to channel events:
+# - completed → get_output(session_id) → process result
+# - failed → inspect error content:
+#   - Content contains "timeout" → timeout occurred
+#   - Content contains "401" → API key issue
+#   - Other → general failure
 
-# Execute with timeout
-RESULT=$(timeout ${TIMEOUT}s bash -c "
-  printf '%s' '$PROMPT' | claudish --model $MODEL --stdin --quiet --auto-approve
-" 2>&1)
-
-# Check exit code
-if [ $? -eq 124 ]; then
-  # Timeout occurred (exit code 124 from timeout command)
-  echo "⚠️ Timeout: Model $MODEL exceeded ${TIMEOUT}s" >&2
-  echo "TIMEOUT_ERROR: Model did not respond within ${TIMEOUT}s"
-  exit 1
-fi
-
-# Success - write results
-echo "$RESULT" > ai-docs/grok-review.md
-echo "Grok review complete. See ai-docs/grok-review.md"
+# Via team MCP tool (timeout per model)
+team(mode="run", models=["grok-code-fast-1"], input=PROMPT, timeout=30)
+# Check per-model status in structured response
 ```
 
 ---
@@ -880,9 +873,8 @@ Example:
 Parameters:
   error_type (required): "provider_failure" | "team_failure" | "stream_error" | "adapter_error" | "other"
   model (optional):            Model ID that failed (e.g., "grok-code-fast-1")
-  command (optional):          Command that was run (e.g., "claudish --model ...")
-  stderr_snippet (optional):   First 500 chars of stderr output
-  exit_code (optional):        Process exit code
+  stderr_snippet (optional):   First 500 chars of error output (from MCP result or channel event)
+  exit_code (optional):        Process exit code (if CLI fallback was used)
   error_log_path (optional):   Path to full error log file
   session_path (optional):     Path to team session directory
   additional_context (optional): Extra context (what was attempted, retry count, etc.)
@@ -1073,8 +1065,8 @@ Step 4: Execution (multi-agent-coordination)
 
 ```
 Attempt 1:
-  Bash: timeout 30s claudish --model grok-code-fast-1 ...
-  Result: Timeout after 30s
+  create_session(model="grok-code-fast-1", prompt=PROMPT, timeout_seconds=30)
+  Result: failed channel event — timeout after 30s
 
   Notify user:
     "⚠️ Grok timed out after 30s.
@@ -1086,11 +1078,11 @@ Attempt 1:
   User selects: 1 (Retry)
 
 Attempt 2:
-  Bash: timeout 60s claudish --model grok-code-fast-1 ...
-  Result: Success after 45s
+  create_session(model="grok-code-fast-1", prompt=PROMPT, timeout_seconds=60)
+  Result: completed channel event after 45s
 
   Log: "Grok review completed on retry (45s)"
-  Write: ai-docs/grok-review.md
+  get_output(session_id) → process result
   Continue with workflow
 ```
 

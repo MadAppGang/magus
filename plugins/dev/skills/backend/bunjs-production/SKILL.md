@@ -15,6 +15,7 @@ keywords:
   - rate limiting
 plugin: dev
 updated: 2026-01-20
+user-invocable: false
 ---
 
 # Bun.js Production Deployment Patterns

@@ -6,6 +6,7 @@ tags: [dev, plugin, sdk, patterns, templates, builder, architecture]
 keywords: [plugin, sdk, patterns, templates, builder, architecture, structure, manifest, frontmatter]
 plugin: dev
 updated: 2026-01-28
+user-invocable: false
 ---
 
 # Plugin SDK Patterns

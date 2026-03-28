@@ -7,6 +7,7 @@ updated: 2026-02-11
 plugin: dev
 type: discipline
 difficulty: intermediate
+user-invocable: false
 ---
 
 # Worktree Lifecycle

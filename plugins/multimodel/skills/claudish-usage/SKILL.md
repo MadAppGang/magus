@@ -1,6 +1,7 @@
 ---
 name: claudish-usage
-description: CRITICAL - Guide for using Claudish CLI ONLY through sub-agents to run Claude Code with OpenRouter models (Grok, GPT-5, Gemini, MiniMax). NEVER run Claudish directly in main context unless user explicitly requests it. Use when user mentions external AI models, Claudish, OpenRouter, or alternative models. Includes mandatory sub-agent delegation patterns, agent selection guide, file-based instructions, and strict rules to prevent context window pollution.
+description: Guide for using Claudish — both via MCP tools (preferred for orchestration) and CLI (for direct usage). In orchestration workflows (/team, /delegate), use claudish MCP tools (team, create_session) — not Bash+CLI. For direct user-facing tasks, the CLI remains the primary interface. Use when user mentions external AI models, Claudish, OpenRouter, or alternative models.
+user-invocable: false
 ---
 
 # Claudish Usage Skill
@@ -9,40 +10,35 @@ description: CRITICAL - Guide for using Claudish CLI ONLY through sub-agents to 
 **Purpose:** Guide AI agents on how to use Claudish CLI to run Claude Code with OpenRouter models
 **Status:** Production Ready
 
-## ⚠️ CRITICAL RULES - READ FIRST
+## Orchestration vs Direct Usage
 
-### 🚫 NEVER Run Claudish from Main Context
+### MCP Tools (for orchestration — /team, /delegate, multi-model workflows)
 
-**Claudish MUST ONLY be run through sub-agents** unless the user **explicitly** requests direct execution.
+In orchestration workflows, use claudish MCP tools — NOT Bash+CLI:
 
-**Why:**
-- Running Claudish directly pollutes main context with 10K+ tokens (full conversation + reasoning)
-- Destroys context window efficiency
-- Makes main conversation unmanageable
+- **`team` MCP tool** — run prompt across multiple models in parallel
+- **`create_session` MCP tool** — start a single async session
+- **`get_output`** — retrieve session output
+- **`send_input`** — answer interactive questions
+- **`report_error`** — report failures
 
-**When you can run Claudish directly:**
-- ✅ User explicitly says "run claudish directly" or "don't use a sub-agent"
-- ✅ User is debugging and wants to see full output
-- ✅ User specifically requests main context execution
+MCP sessions run externally — no context window pollution.
 
-**When you MUST use sub-agent:**
-- ✅ User says "use Grok to implement X" (delegate to sub-agent)
-- ✅ User says "ask GPT-5 to review X" (delegate to sub-agent)
-- ✅ User mentions any model name without "directly" (delegate to sub-agent)
-- ✅ Any production task (always delegate)
+### CLI (for direct user tasks)
 
-### 📋 Workflow Decision Tree
+For direct user-facing tasks outside orchestration workflows, the claudish CLI is the standard interface. See CLI sections below.
+
+### Decision Tree
 
 ```
 User Request
     ↓
-Does it mention Claudish/OpenRouter/model name? → NO → Don't use this skill
-    ↓ YES
-    ↓
-Does user say "directly" or "in main context"? → YES → Run in main context (rare)
+Orchestration workflow (/team, /delegate, multi-model vote)? → YES → Use MCP tools
     ↓ NO
     ↓
-Find appropriate agent or create one → Delegate to sub-agent (default)
+Direct task (user says "use Grok to implement X")? → Use /delegate command (MCP-based)
+    ↓
+Direct CLI usage (user debugging, testing models)? → CLI is fine
 ```
 
 ## 🤖 Agent Selection Guide
@@ -61,8 +57,8 @@ Find appropriate agent or create one → Delegate to sub-agent (default)
 
 ### Step 2: Agent Type Selection Matrix
 
-> **Note:** External models are invoked via Bash+claudish CLI with `--model` flag.
-> The agent is resolved by the orchestrator and set via Task tool for internal models, or through the vote prompt for external models.
+> **Note:** In orchestration workflows, external models are invoked via claudish MCP tools (team, create_session).
+> The agent is resolved by the orchestrator and set via Task tool for internal models. External models receive context through the vote prompt.
 
 | Task Type | Recommended Agent | Alternatives | Notes |
 |-----------|----------------------|--------------|-------|
@@ -156,17 +152,14 @@ Decision:
 
 When used with the `/team` command for multi-model blind voting:
 
-**External models are invoked via Bash+claudish CLI (deterministic, 100% reliable):**
-```bash
-claudish --model grok-code-fast-1 --stdin --quiet \
-  < "ai-docs/sessions/team-xyz/vote-prompt.md" \
-  > "ai-docs/sessions/team-xyz/grok-result.md" \
-  2>"ai-docs/sessions/team-xyz/grok-stderr.log"; \
-  echo $? > "ai-docs/sessions/team-xyz/grok.exit"
+**External models are invoked via the `team` MCP tool:**
+```
+claudish team(mode="run", path=SESSION_DIR, models=["grok-code-fast-1", "gemini-3.1-pro-preview"],
+  input=VOTE_PROMPT, timeout=180, claude_flags=claudeFlags)
 ```
 
-The agent role is communicated through the vote prompt content, not via CLI flags.
-The `--agent` flag was removed in claudish v4.5.1.
+The `team` tool runs all models in parallel internally and returns structured per-model results.
+The agent role is communicated through the vote prompt content.
 
 ## Overview
 
@@ -1167,31 +1160,23 @@ await Bash(`claudish --model ${model} "task 2"`);
 
 ### ❌ Don't Skip Error Handling
 
-**Wrong:**
-```typescript
-const result = await Bash("claudish --model grok 'task'");
-```
+**In orchestration workflows, use MCP tools with proper error handling:**
 
-**Right — STOP and REPORT (never silently substitute):**
-```typescript
-const result = await Bash("claudish --model grok --stdin --quiet < task.md > result.md 2>stderr.log; echo $? > result.exit");
-const exitCode = await Read({ file_path: "result.exit" });
-if (exitCode.trim() !== "0") {
-  const stderr = await Read({ file_path: "stderr.log" });
-  // REPORT to user — never silently fall back
-  // "Grok failed: {stderr}. Options: (1) Retry, (2) Different model, (3) Skip, (4) Cancel"
-}
+```
+// Use create_session and react to channel events
+create_session(model="grok-code-fast-1", prompt=TASK, timeout_seconds=300)
+
+// On "failed" channel event → STOP and REPORT
+// "Grok failed: {error content}. Options: (1) Retry, (2) Different model, (3) Skip, (4) Cancel"
+
+// On "completed" → get_output(session_id)
 ```
 
 **❌ NEVER do silent fallback:**
-```typescript
-// ❌ WRONG — silently substitutes a different model
-try {
-  const result = await Bash("claudish --model gemini 'task'");
-} catch (error) {
-  // ❌ WRONG — don't silently fall back to embedded Claude
-  const result = await Task({ subagent_type: "dev:developer", prompt: "..." });
-}
+```
+// ❌ WRONG — silently substitutes a different model on failure
+// If create_session fails for Gemini, don't silently run with embedded Claude instead
+// ALWAYS report the failure and let the user decide
 ```
 
 ## Agent Integration Examples

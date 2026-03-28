@@ -6,6 +6,7 @@ tags: [dev, quality, roast, humor, code-review, sins, anti-patterns]
 keywords: [roast, sins, shame, code-quality, anti-patterns, code-review, humor, savage]
 plugin: dev
 updated: 2026-03-03
+user-invocable: false
 ---
 
 # Code Roast Skill

@@ -6,6 +6,7 @@ tags: [dev, mcp, standards, server, tools, protocol]
 keywords: [mcp, server, tools, transport, naming, configuration, protocol, stdio, http]
 plugin: dev
 updated: 2026-01-28
+user-invocable: false
 ---
 
 # MCP Standards Skill

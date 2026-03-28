@@ -4,6 +4,7 @@ description: Proof artifact generation patterns for task validation. Covers scre
 version: 0.1.0
 tags: [proof, validation, screenshots, tests, deployment]
 keywords: [proof, artifact, screenshot, test, deployment, confidence, validation]
+user-invocable: false
 ---
 plugin: autopilot
 updated: 2026-01-20

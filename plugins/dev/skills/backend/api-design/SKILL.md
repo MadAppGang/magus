@@ -14,6 +14,7 @@ keywords:
   - Swagger
 plugin: dev
 updated: 2026-01-20
+user-invocable: false
 ---
 
 # API Design Patterns

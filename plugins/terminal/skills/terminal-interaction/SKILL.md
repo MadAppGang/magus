@@ -6,6 +6,7 @@ tags: [terminal, tui, pty, interactive, tmux, testing-workflow, dev-server, data
 keywords: [terminal, tui, pty, interactive, session, capture, send-keys, vim, htop, lazygit, run tests, watch mode, test watcher, dev server, start server, database query, psql, redis, mongo, mongosh, docker logs, tail logs, process monitor, bun test, npm run dev, go test, REPL, interactive shell, run command, execute script, long-running process, split, side, panel, alongside, beside, side by side, split pane, side panel, open on a side, show beside]
 plugin: terminal
 updated: 2026-03-25
+user-invocable: false
 ---
 
 # Terminal Interaction Skill

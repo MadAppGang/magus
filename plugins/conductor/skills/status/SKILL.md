@@ -4,6 +4,7 @@ description: Show active tracks, progress, current tasks, and blockers
 version: 1.0.0
 tags: [conductor, status, progress, overview]
 keywords: [status, progress, tracks, overview, blockers, current]
+user-invocable: false
 ---
 plugin: conductor
 updated: 2026-01-20

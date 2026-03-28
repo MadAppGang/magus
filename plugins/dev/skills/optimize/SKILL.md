@@ -6,6 +6,7 @@ tags: [dev, optimize, performance, bottleneck, bundle]
 keywords: [optimize, performance, bottleneck, bundle-size, build-time, speed, profiling]
 plugin: dev
 updated: 2026-01-28
+user-invocable: false
 ---
 
 # Optimize Skill

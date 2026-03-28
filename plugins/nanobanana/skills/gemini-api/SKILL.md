@@ -1,6 +1,7 @@
 ---
 name: gemini-api
 description: Google Gemini 3 Pro Image API reference. Covers text-to-image, editing, reference images, aspect ratios, and error handling.
+user-invocable: false
 ---
 plugin: nanobanana
 updated: 2026-01-20

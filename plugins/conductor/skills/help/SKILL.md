@@ -4,6 +4,7 @@ description: Get help with Conductor - commands, usage examples, and best practi
 version: 1.0.0
 tags: [conductor, help, documentation, guide]
 keywords: [help, guide, usage, commands, reference]
+user-invocable: false
 ---
 plugin: conductor
 updated: 2026-01-20

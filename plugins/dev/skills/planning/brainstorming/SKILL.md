@@ -61,6 +61,7 @@ gates:
   - phase: 5
     type: USER_GATE
     trigger: "Final plan approval"
+user-invocable: false
 ---
 
 # Brainstorming v2.0: Resilient Multi-Model Planning

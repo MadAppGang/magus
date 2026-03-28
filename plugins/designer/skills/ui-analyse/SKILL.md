@@ -5,6 +5,7 @@ description: |
   UI visual analysis patterns using Gemini 3 Pro Preview multimodal capabilities.
   Analysis-only - no code changes. Use dev:frontend-implement for applying improvements.
   Includes provider detection, prompting patterns, and severity guidelines.
+user-invocable: false
 ---
 
 # UI Analysis Skill

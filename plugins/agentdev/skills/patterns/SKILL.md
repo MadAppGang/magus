@@ -1,6 +1,7 @@
 ---
 name: patterns
 description: Common agent patterns and templates for Claude Code. Use when implementing agents to follow proven patterns for Tasks integration, quality checks, and external model invocation via claudish CLI.
+user-invocable: false
 ---
 plugin: agentdev
 updated: 2026-02-11
@@ -9,16 +10,19 @@ updated: 2026-02-11
 
 ## External Model Invocation Pattern
 
-External AI models are invoked via **Bash+claudish CLI** by the orchestrator (e.g., `/team`).
+External AI models are invoked via **claudish MCP tools** by the orchestrator (e.g., `/team`).
 Agents do NOT need special blocks to support external models — the orchestrator calls
-claudish directly:
+MCP tools directly:
 
-```bash
-# Orchestrator calls claudish directly via Bash tool
-claudish --model {MODEL_ID} --stdin --quiet < prompt.md > result.md
+```
+# /team uses team MCP tool for parallel multi-model execution
+team(mode="run", models=[...], input=PROMPT, timeout=180)
+
+# /delegate uses create_session MCP tool for single-model sessions
+create_session(model="grok-code-fast-1", prompt=TASK, timeout_seconds=300)
 ```
 
-This is 100% reliable because it's a deterministic CLI invocation, not a prompt-based delegation.
+This is 100% reliable because it's a deterministic MCP tool invocation, not a prompt-based delegation.
 
 ---
 

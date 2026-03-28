@@ -4,6 +4,7 @@ description: Initialize Conductor with product.md, tech-stack.md, and workflow.m
 version: 1.1.0
 tags: [conductor, setup, initialization, context, project]
 keywords: [conductor setup, initialize, project context, greenfield, brownfield]
+user-invocable: false
 ---
 plugin: conductor
 updated: 2026-01-20

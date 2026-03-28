@@ -1,6 +1,6 @@
 {
   "name": "gtd",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "GTD (Getting Things Done) workflow integration for Claude Code. Canonical five-step workflow (Capture, Clarify, Organize, Reflect, Engage) with six lists, sequential task IDs, boxed terminal display, and real-time sync via hooks.",
   "author": {
     "name": "Jack Rudenko",

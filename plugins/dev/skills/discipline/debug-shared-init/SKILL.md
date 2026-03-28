@@ -1,6 +1,7 @@
 ---
 name: debug-shared-init
 description: Shared initialization for debugging workflows — session setup, stack detection, reproduction, and bug report generation. Used by /dev:debug and /dev:fix.
+user-invocable: false
 ---
 
 # Debug Shared Initialization

@@ -4,6 +4,7 @@ description: |
   CSS Modules with Lightning CSS and PostCSS for component-scoped styling.
   Covers *.module.css patterns, TypeScript integration, Vite configuration, and composition.
   Use when building complex animations, styling third-party components, or migrating legacy CSS.
+user-invocable: false
 ---
 
 # CSS Modules

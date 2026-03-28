@@ -1,11 +1,12 @@
 ---
 name: multi-model-validation
-description: Run multiple AI models in parallel for 3-5x speedup with ENFORCED performance statistics tracking. Use when validating with Grok, Gemini, GPT-5, DeepSeek, MiniMax, Kimi, GLM, or Claudish proxy for code review, consensus analysis, or multi-expert validation. NEW in v3.2.0 - Direct API prefixes (mmax/, kimi/, glm/) for cost savings. Includes dynamic model discovery via `claudish --top-models` and `claudish --free`, session-based workspaces, and Pattern 7-8 for tracking model performance. Trigger keywords - "grok", "gemini", "gpt-5", "deepseek", "minimax", "kimi", "glm", "claudish", "multiple models", "parallel review", "external AI", "consensus", "multi-model", "model performance", "statistics", "free models".
-version: 3.3.0
+description: Run multiple AI models in parallel for 3-5x speedup with ENFORCED performance statistics tracking. Use when validating with Grok, Gemini, GPT-5, DeepSeek, MiniMax, Kimi, GLM via claudish MCP tools for code review, consensus analysis, or multi-expert validation. External models run via `team` MCP tool (not Bash+CLI). Includes dynamic model discovery via `list_models` MCP tool, session-based workspaces, and Pattern 7-8 for tracking model performance. Trigger keywords - "grok", "gemini", "gpt-5", "deepseek", "minimax", "kimi", "glm", "claudish", "multiple models", "parallel review", "external AI", "consensus", "multi-model", "model performance", "statistics", "free models".
+version: 3.4.0
 tags: [orchestration, claudish, parallel, consensus, multi-model, grok, gemini, external-ai, statistics, performance, free-models, minimax, kimi, glm]
 keywords: [grok, gemini, gpt-5, deepseek, claudish, parallel, consensus, multi-model, external-ai, proxy, openrouter, statistics, performance, quality-score, execution-time, free-models, top-models, minimax, kimi, glm, mmax, zhipu]
 plugin: multimodel
 updated: 2026-01-20
+user-invocable: false
 ---
 
 # Multi-Model Validation
@@ -484,25 +485,17 @@ Message 1: Preparation (Session Setup + Model Discovery)
 
   # User selects models via AskUserQuestion (see Pattern 0)
 
-Message 2: Parallel Execution (ONLY Task calls - single message)
+Message 2: Parallel Execution (single message)
   Task: senior-code-reviewer
     Prompt: "Review $SESSION_DIR/code-context.md for security issues.
              Write detailed review to $SESSION_DIR/claude-review.md
              Return only brief summary."
   ---
-  Bash: claudish --model x-ai/grok-code-fast-1 --stdin --quiet
-    < $SESSION_DIR/review-prompt.md > $SESSION_DIR/grok-review.md 2>$SESSION_DIR/grok-stderr.log
-  ---
-  Bash: claudish --model qwen/qwen3-coder:free --stdin --quiet
-    < $SESSION_DIR/review-prompt.md > $SESSION_DIR/qwen-coder-review.md 2>$SESSION_DIR/qwen-stderr.log
-  ---
-  Bash: claudish --model openai/gpt-5.1-codex --stdin --quiet
-    < $SESSION_DIR/review-prompt.md > $SESSION_DIR/gpt5-review.md 2>$SESSION_DIR/gpt5-stderr.log
-  ---
-  Bash: claudish --model mistralai/devstral-2512:free --stdin --quiet
-    < $SESSION_DIR/review-prompt.md > $SESSION_DIR/devstral-review.md 2>$SESSION_DIR/devstral-stderr.log
+  claudish team(mode="run", path=$SESSION_DIR,
+    models=["grok-code-fast-1", "qwen3-coder:free", "gpt-5.1-codex", "devstral-2512:free"],
+    input=REVIEW_PROMPT, timeout=180)
 
-  All 5 models execute simultaneously (5x parallelism!)
+  All 5 models execute simultaneously (Task for internal + team MCP for externals!)
 
 Message 3: Auto-Consolidation
   (Automatically triggered - don't wait for user to request)
@@ -665,63 +658,39 @@ Do NOT consolidate until ALL tasks complete:
 
 ---
 
-### Pattern 3: External Model Invocation via Bash+claudish
+### Pattern 3: External Model Invocation via claudish MCP
 
 **How External Models Are Invoked:**
 
-External AI models are invoked **deterministically** via Bash+claudish CLI. The orchestrator
-calls claudish directly — no LLM delegation needed. This is 100% reliable.
+External AI models are invoked via claudish MCP tools. The orchestrator calls MCP tools
+directly — no Bash invocation needed. This is 100% reliable.
 
-```bash
-# Pattern: Bash tool with run_in_background
-claudish --model x-ai/grok-code-fast-1 --stdin --quiet \
-  < $SESSION_DIR/prompt.md > $SESSION_DIR/grok-result.md 2>$SESSION_DIR/grok-stderr.log; \
-  echo $? > $SESSION_DIR/grok.exit
+**For /team (parallel multi-model):**
+```
+team(mode="run", path=SESSION_DIR, models=["grok-code-fast-1", "gemini-3.1-pro-preview"],
+  input=VOTE_PROMPT, timeout=180, claude_flags=claudeFlags)
 ```
 
-**Required Flags:**
+The `team` tool runs all models in parallel internally and returns structured per-model results
+including status, output, and errors.
 
-- `--model` — The external model ID
-- `--stdin` — Read prompt from stdin
-- `--quiet` — Clean output for file capture
-
-**Output Strategy:**
-
-Claudish writes full output to the redirect file. The orchestrator reads results after completion:
-
+**For single-model delegation:**
 ```
-Full Output ($SESSION_DIR/grok-result.md):
-  "# Code Review by Grok
-   ## Security Issues
-   ### CRITICAL: SQL Injection in User Search
-   [full detailed analysis]"
-
-Verification:
-  Exit code ($SESSION_DIR/grok.exit): 0
-  Stderr ($SESSION_DIR/grok-stderr.log): (empty = success)
+create_session(model="grok-code-fast-1", prompt=TASK_PROMPT, timeout_seconds=300)
+→ channel events: session_started → tool_executing → completed/failed
+→ get_output(session_id) to retrieve result
 ```
 
-**Auto-Approve Behavior:**
-
-Claudish auto-approves by default (non-interactive mode for scripting):
-
-```
-✅ CORRECT - Auto-approve is default, no flag needed:
-  claudish --model grok --stdin --quiet
-
-⚠️ Interactive mode (requires user input, avoid in automation):
-  claudish --model grok --stdin --quiet --no-auto-approve
-```
+**Verification:**
+- `team` tool: Check each model's status field in the structured response
+- `create_session`: The `completed` channel event confirms success; `failed` provides error details
 
 ### Correct Pattern Example
 
-```bash
-# ✅ CORRECT: External model via Bash+claudish (deterministic)
-Bash({
-  command: "claudish --model x-ai/grok-code-fast-1 --stdin --quiet < session/prompt.md > session/grok-result.md 2>session/grok-stderr.log; echo $? > session/grok.exit",
-  description: "Run Grok review via claudish",
-  run_in_background: true
-})
+```
+// ✅ CORRECT: External models via team MCP tool
+team(mode="run", path=SESSION_DIR, models=["grok-code-fast-1", "gemini-3.1-pro-preview"],
+  input=VOTE_PROMPT, timeout=180)
 
 # ✅ CORRECT: Internal model via Task
 Task({
@@ -1869,21 +1838,16 @@ Message 2: Model Selection (AskUserQuestion with multiSelect)
   # qwen/qwen3-coder:free
   # mistralai/devstral-2512:free
 
-Message 3: Parallel Execution (Task only - single message)
+Message 3: Parallel Execution (single message)
   Task: senior-code-reviewer
     Prompt: "Review $SESSION_DIR/code-context.md.
              Write to $SESSION_DIR/claude-review.md"
   ---
-  Bash: claudish --model x-ai/grok-code-fast-1 --stdin --quiet
-    < $SESSION_DIR/review-prompt.md > $SESSION_DIR/grok-review.md
-  ---
-  Bash: claudish --model qwen/qwen3-coder:free --stdin --quiet
-    < $SESSION_DIR/review-prompt.md > $SESSION_DIR/qwen-coder-review.md
-  ---
-  Bash: claudish --model mistralai/devstral-2512:free --stdin --quiet
-    < $SESSION_DIR/review-prompt.md > $SESSION_DIR/devstral-review.md
+  claudish team(mode="run", path=$SESSION_DIR,
+    models=["grok-code-fast-1", "qwen3-coder:free", "devstral-2512:free"],
+    input=REVIEW_PROMPT, timeout=180)
 
-  All 4 execute simultaneously!
+  All 4 execute simultaneously (Task for internal + team MCP for externals)!
 
 Message 4: Auto-Consolidation + Statistics Update
   # Consolidate
@@ -2006,16 +1970,18 @@ Solution: Use ONLY Task calls in Message 2
 
 **Problem: Agent returns before external model completes**
 
-Cause: Background claudish execution
+Cause: Not waiting for MCP session completion.
 
-Solution: Use synchronous (blocking) execution
+Solution: The orchestrating command waits for `completed` channel events from MCP sessions.
+External model execution is handled by MCP tools (team/create_session), not by sub-agents.
 
 ```
 ❌ Wrong:
-  claudish --model grok ... &
+  Running claudish CLI directly in sub-agent context
 
 ✅ Correct:
-  RESULT=$(claudish --model grok ...)
+  Orchestrator uses team MCP tool → waits for structured results
+  Or uses create_session → waits for completed channel event
 ```
 
 ---

@@ -13,6 +13,7 @@ keywords:
   - thiserror
 plugin: dev
 updated: 2026-01-20
+user-invocable: false
 ---
 
 # Rust Backend Patterns

@@ -4,6 +4,7 @@ description: How tag-to-command routing works in autopilot. Defines default mapp
 version: 0.1.0
 tags: [routing, tags, commands, mapping]
 keywords: [tag, command, mapping, routing, classification, precedence]
+user-invocable: false
 ---
 plugin: autopilot
 updated: 2026-01-20

@@ -6,6 +6,7 @@ tags: [orchestration, multi-agent, parallel, sequential, delegation, coordinatio
 keywords: [parallel, sequential, delegate, sub-agent, agent-switching, multi-agent, task-decomposition, coordination]
 plugin: multimodel
 updated: 2026-01-20
+user-invocable: false
 ---
 
 # Multi-Agent Coordination
@@ -287,39 +288,26 @@ Sub-agents should return **2-5 sentence summaries**, not full output:
    [another 500 lines]"
 ```
 
-**Proxy Mode Invocation:**
+**External Model Invocation:**
 
-For external AI models (Claudish), use the claudish CLI directive:
-
-```
-Task: codex-code-reviewer claudish CLI: grok-code-fast-1
-  Prompt: "Review authentication implementation for security issues.
-           Code context in ai-docs/code-review-context.md"
-
-Agent Behavior:
-  1. Detects claudish CLI directive
-  2. Extracts model: grok-code-fast-1
-  3. Extracts task: "Review authentication implementation..."
-  4. Executes: claudish --model grok-code-fast-1 --stdin <<< "..."
-  5. Waits for full response (blocking execution)
-  6. Writes: ai-docs/grok-review.md (full detailed review)
-  7. Returns: "Grok review complete. Found 3 CRITICAL issues. See ai-docs/grok-review.md"
-```
-
-**Key: Blocking Execution**
-
-External models MUST execute synchronously (blocking) so the agent waits for the full response:
+For external AI models, the orchestrating command (/team, /delegate) handles invocation
+via claudish MCP tools. Sub-agents do NOT invoke claudish directly.
 
 ```
-✅ CORRECT - Blocking:
-  RESULT=$(claudish --model grok-code-fast-1 --stdin <<< "$PROMPT")
-  echo "$RESULT" > ai-docs/grok-review.md
-  echo "Review complete - see ai-docs/grok-review.md"
+/team command:
+  1. Uses `team` MCP tool with model list and vote prompt
+  2. team tool runs all external models in parallel internally
+  3. Results returned as structured per-model responses
+  4. Sub-agents only handle internal Claude work via Task tool
 
-❌ WRONG - Background (returns before completion):
-  claudish --model grok-code-fast-1 --stdin <<< "$PROMPT" &
-  echo "Review started..."  # Agent returns immediately, review not done!
+/delegate command:
+  1. Uses `create_session` MCP tool with model and prompt
+  2. Channel events notify on progress (tool_executing, input_required, completed)
+  3. `get_output(session_id)` retrieves the result
 ```
+
+**Key:** External model execution is handled by the MCP server, not by sub-agents.
+Sub-agents receive their work context through Task prompts and write results to files.
 
 ---
 
@@ -706,19 +694,13 @@ Default: Ask user to clarify task type
 
 ---
 
-**Problem: Agent returns immediately before external model completes**
+**Problem: Agent returns before external model completes**
 
-Cause: Background execution (non-blocking claudish call)
+Cause: Not waiting for channel events from MCP session.
 
-Solution: Use synchronous (blocking) execution
-
-```
-❌ Wrong:
-  claudish --model grok ... &  (background, returns immediately)
-
-✅ Correct:
-  RESULT=$(claudish --model grok ...)  (blocks until complete)
-```
+Solution: The orchestrating command (/team, /delegate) waits for the `completed` channel event
+before presenting results. Sub-agents do not invoke external models directly — the command
+handles this via MCP tools.
 
 ---
 

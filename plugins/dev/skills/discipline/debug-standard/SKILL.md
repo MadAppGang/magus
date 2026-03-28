@@ -4,6 +4,7 @@ description: Enhanced standard debug workflow — 6-phase orchestration with 3-s
 keywords: [debugging, root-cause, localization, fault-isolation, self-critique, regression, agent-delegation, standard-debug]
 plugin: dev
 type: discipline
+user-invocable: false
 ---
 
 # Standard Debug Workflow

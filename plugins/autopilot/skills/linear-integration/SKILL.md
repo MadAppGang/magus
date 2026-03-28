@@ -4,6 +4,7 @@ description: Linear API patterns and examples for autopilot. Includes authentica
 version: 0.1.0
 tags: [linear, api, webhook, integration]
 keywords: [linear, api, webhook, issue, comment, state, attachment]
+user-invocable: false
 ---
 plugin: autopilot
 updated: 2026-01-20

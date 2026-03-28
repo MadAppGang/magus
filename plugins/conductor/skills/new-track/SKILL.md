@@ -4,6 +4,7 @@ description: Create development track with spec and hierarchical plan through in
 version: 1.0.0
 tags: [conductor, track, planning, spec, phases]
 keywords: [new track, feature, bugfix, plan, spec, phases, tasks]
+user-invocable: false
 ---
 plugin: conductor
 updated: 2026-01-20

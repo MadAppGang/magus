@@ -3,6 +3,7 @@ name: deep-analysis
 description: "Comprehensive multi-dimensional codebase analysis. Best for: 'comprehensive audit', 'deep analysis', 'full codebase review', 'multi-perspective investigation', 'analyze architecture', 'trace flow'. Uses ALL mnemex AST commands with PageRank, chain-of-thought reasoning, and code health assessment."
 allowed-tools: Bash, Task, Read, AskUserQuestion
 model: opus
+user-invocable: false
 ---
 
 # Deep Code Analysis

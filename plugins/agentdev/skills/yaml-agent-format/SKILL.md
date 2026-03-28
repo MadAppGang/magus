@@ -6,6 +6,7 @@ tags: [agentdev, yaml, agent, format, schema, definition]
 keywords: [yaml, agent, format, schema, definition, conversion, validation, frontmatter]
 plugin: agentdev
 updated: 2026-01-28
+user-invocable: false
 ---
 
 # YAML Agent Format

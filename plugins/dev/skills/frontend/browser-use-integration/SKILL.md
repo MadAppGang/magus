@@ -6,6 +6,7 @@ description: |
   Provides detection pattern and automated browser workflows for frontend development.
   Use when dev:frontend agent or dev:browser-debugging skill needs headless browser automation.
   This is a SKILL (use Skill tool), NOT an agent.
+user-invocable: false
 ---
 
 # Browser-Use Plugin Integration (dev)

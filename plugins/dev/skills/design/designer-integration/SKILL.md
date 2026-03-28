@@ -5,6 +5,7 @@ description: |
   Optional integration patterns for the designer plugin (designer@magus).
   Provides detection pattern and delegation workflows for pixel-level design validation.
   Use when dev:frontend agent or dev:browser-debugging skill needs design validation.
+user-invocable: false
 ---
 
 # Designer Plugin Integration

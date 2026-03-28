@@ -13,6 +13,7 @@ keywords:
   - API
 plugin: dev
 updated: 2026-01-20
+user-invocable: false
 ---
 
 # Python Backend Patterns

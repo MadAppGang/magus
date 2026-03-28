@@ -1,6 +1,7 @@
 ---
 name: ffmpeg-core
 description: FFmpeg fundamentals for video/audio manipulation. Covers common operations (trim, concat, convert, extract), codec selection, filter chains, and performance optimization. Use when planning or executing video processing tasks.
+user-invocable: false
 ---
 plugin: video-editing
 updated: 2026-01-20

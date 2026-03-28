@@ -15,6 +15,7 @@ keywords:
   - file operations
 plugin: dev
 updated: 2026-01-20
+user-invocable: false
 ---
 
 # Bun.js Backend Patterns

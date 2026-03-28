@@ -7,6 +7,7 @@ updated: 2026-01-20
 plugin: dev
 type: discipline
 difficulty: intermediate
+user-invocable: false
 ---
 
 # Agent Coordination Discipline
@@ -79,48 +80,28 @@ Success criteria: Identify root cause, propose fix, verify with test scenario."
 
 ### 3. External Model Pattern
 
-When delegating to external models via claudish CLI:
+When delegating to external models, use claudish MCP tools:
 
-**Structure:**
-```bash
-claudish --model {model_id} --stdin --quiet <<EOF > output.md
-{Task Description}
+**For single-model tasks:**
+```
+create_session(model="grok-code-fast-1",
+  prompt="Analyze the React component rendering performance issue in Dashboard.tsx.
 
-Context:
-- {Relevant file paths}
-- {Current state}
-- {Related decisions}
+  Context:
+  - File: src/components/Dashboard.tsx (247 lines)
+  - Issue: Component re-renders 40+ times on data updates
 
-Success Criteria:
-- {What constitutes success}
-- {Expected output format}
-
-Constraints:
-- {Time limits}
-- {Tool restrictions}
-- {Quality requirements}
-EOF
+  Success Criteria:
+  - Identify unnecessary re-renders (provide line numbers)
+  - Propose memoization strategy",
+  timeout_seconds=180)
 ```
 
-**Example:**
-```bash
-claudish --model grok-code-fast-1 --stdin --quiet <<EOF > analysis.md
-Analyze the React component rendering performance issue in Dashboard.tsx.
-
-Context:
-- File: src/components/Dashboard.tsx (247 lines)
-- Issue: Component re-renders 40+ times on data updates
-- Recent changes: Added real-time WebSocket updates in commit f4a2c1b
-
-Success Criteria:
-- Identify unnecessary re-renders (provide line numbers)
-- Propose memoization strategy
-- Estimate performance improvement
-
-Constraints:
-- Max 3 minutes analysis time
-- Focus on React 19 compiler-friendly patterns
-EOF
+**For multi-model parallel tasks:**
+```
+team(mode="run", path=SESSION_DIR,
+  models=["grok-code-fast-1", "gemini-3.1-pro-preview"],
+  input=PROMPT, timeout=180)
 ```
 
 ## When to Use Agents

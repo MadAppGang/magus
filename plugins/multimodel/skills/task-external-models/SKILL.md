@@ -1,11 +1,12 @@
 ---
 name: task-external-models
-version: 3.1.0
-description: Quick-reference for using external AI models in orchestration workflows. External models are invoked via Bash+claudish CLI (deterministic, 100% reliable). Claudish v5.3.0 supports Claude Code flag passthrough — unknown flags flow through to Claude Code automatically. Use when confused about how to run external models, "claudish with Bash", "external model in /team", or "how to specify external model". Trigger keywords - "external model", "claudish", "Bash claudish", "external LLM", "model parameter", "flag passthrough".
-tags: [external-model, quick-reference, bash, claudish, agent-cli, flag-passthrough]
-keywords: [external model, grok, gemini, gpt-5, minimax, claudish, bash, external LLM, cli, flag passthrough, effort, permission-mode]
+version: 4.0.0
+description: Quick-reference for using external AI models in orchestration workflows. External models are invoked via claudish MCP tools (team, create_session). Use when confused about how to run external models, "external model in /team", "how to specify external model", or "claudish MCP tools". Trigger keywords - "external model", "claudish", "external LLM", "model parameter", "MCP tool", "create_session", "team tool".
+tags: [external-model, quick-reference, claudish, mcp, team, create-session]
+keywords: [external model, grok, gemini, gpt-5, minimax, claudish, mcp, external LLM, create_session, team, effort, permission-mode]
 plugin: multimodel
-updated: 2026-03-28
+updated: 2026-03-29
+user-invocable: false
 ---
 
 # External Models: Quick Reference
@@ -28,68 +29,50 @@ cat .claude/multimodel-team.json 2>/dev/null
 
 ---
 
-## The Simple Truth
+## How External Models Work
 
-External AI models are invoked via **Bash+claudish CLI**. This is deterministic and 100% reliable.
-
-```bash
-claudish --model {MODEL_ID} --stdin --quiet < prompt.md > result.md
-```
-
-**With Claude Code flag passthrough (claudish v5.3.0+):**
-```bash
-claudish --model {MODEL_ID} --stdin --quiet --effort high --permission-mode plan < prompt.md > result.md
-```
-Claudish's two-pass parser recognizes its own flags (`--model`, `--stdin`, `--quiet`) and forwards
-unknown flags (`--effort`, `--permission-mode`) directly to Claude Code.
+External AI models are invoked via **claudish MCP tools**. No Bash invocation needed.
 
 **In /team orchestration:**
 - **Internal model** (Claude) → `Task(subagent_type: "{RESOLVED_AGENT}")` — agent auto-detected from task type
-- **External models** (Grok, Gemini, etc.) → `Bash(claudish --model {MODEL_ID} --stdin {CLAUDE_FLAGS})`
-- **{CLAUDE_FLAGS}** comes from `claudeFlags` in `.claude/multimodel-team.json`
+- **External models** (Grok, Gemini, etc.) → `claudish team(mode="run", models=[...], input=PROMPT, timeout=180)`
+- `claude_flags` comes from `claudeFlags` in `.claude/multimodel-team.json`
+
+**For single-model delegation (/delegate):**
+- `create_session(model, prompt, timeout_seconds, claude_flags)` → returns session_id
+- Watch for channel `completed` event → `get_output(session_id)`
+- On `input_required` → forward to user via AskUserQuestion → `send_input(session_id, answer)`
 
 ---
 
-## Bash + claudish Pattern
+## Available MCP Tools
 
-**Works with ANY agent** — deterministic, no LLM compliance needed.
+| Tool | Purpose |
+|------|---------|
+| `team` | Run prompt across multiple external models in parallel |
+| `create_session` | Start a single async external model session |
+| `get_output` | Retrieve output from a completed or running session |
+| `send_input` | Answer a question from an interactive session |
+| `list_sessions` | List active and completed sessions |
+| `cancel_session` | Stop a running session |
+| `list_models` | List available external models |
+| `search_models` | Search for models by capability |
+| `compare_models` | Compare model capabilities |
+| `run_prompt` | One-shot prompt to a single model (no session lifecycle) |
+| `report_error` | Report failures to claudish developers |
 
-```bash
-# Pattern — pass model names EXACTLY as user provides them, NO provider prefixes
-claudish --model {MODEL_ID} --stdin --quiet < prompt.md > result.md 2>stderr.log; echo $? > result.exit
+---
 
-# Examples (bare model names — claudish handles routing internally)
-claudish --model grok-code-fast-1 --stdin --quiet < task.md > grok.md 2>grok-err.log; echo $? > grok.exit
-claudish --model gemini-3.1-pro-preview --stdin --quiet < task.md > gemini.md 2>gemini-err.log; echo $? > gemini.exit
-claudish --model gpt-5.3-codex --stdin --quiet < task.md > gpt5.md 2>gpt5-err.log; echo $? > gpt5.exit
+## /team Execution Pattern
+
+The `/team` command uses the `team` MCP tool for all external models in a single call:
+
+```
+claudish team(mode="run", path=SESSION_DIR, models=[...externals...],
+  input=VOTE_PROMPT, timeout=180, claude_flags=claudeFlags)
 ```
 
-**CLI Reference (claudish v5.3.0+):**
-```
-claudish [options] [-- claude-code-flags...]
-
-Claudish-owned flags:
---model <id>         AI model to use (e.g., grok-code-fast-1, minimax-m2.5)
---stdin              Read prompt from stdin
---quiet              Minimal output
--y, --auto-approve   Skip permission checks
---debug, -d          Enable claudish debug logging
---profile, -p        Select model profile
-
-Passthrough flags (forwarded to Claude Code):
---effort <level>     low, medium, high
---permission-mode    acceptEdits, bypassPermissions, default, dontAsk, plan
---max-budget-usd     Spending cap for the session
---allowedTools       Restrict available tools
---system-prompt      Override system prompt
---append-system-prompt  Append to system prompt
---settings           Merged with claudish statusLine config
-(any other unknown flag is forwarded automatically)
-```
-
-**Parallel Execution in /team:**
-
-All Bash calls are launched in a SINGLE message with `run_in_background: true`:
+Internal models (Claude) run via Task in the **same message** for true parallelism:
 
 ```javascript
 // Internal model via Task (agent resolved from task keywords)
@@ -99,20 +82,32 @@ Task({
   run_in_background: true,
   prompt: "{VOTE_PROMPT}\n\nWrite to: {SESSION_DIR}/internal-result.md"
 })
-// External models get role context through a preamble in vote-prompt.md
 
-// External models via Bash+claudish (all in same message)
-// IMPORTANT: Use model names exactly as user provided — no provider prefixes
-// {CLAUDE_FLAGS} comes from claudeFlags in .claude/multimodel-team.json (may be empty)
-Bash({
-  command: "claudish --model grok-code-fast-1 --stdin --quiet {CLAUDE_FLAGS} < {SESSION_DIR}/vote-prompt.md > {SESSION_DIR}/grok-result.md 2>{SESSION_DIR}/grok-stderr.log; echo $? > {SESSION_DIR}/grok.exit",
-  run_in_background: true
-})
+// External models — single MCP tool call handles all
+// The team tool runs all models in parallel internally
+claudish team(mode="run", path=SESSION_DIR,
+  models=["grok-code-fast-1", "gemini-3.1-pro-preview"],
+  input=VOTE_PROMPT, timeout=180, claude_flags=claudeFlags)
+```
 
-Bash({
-  command: "claudish --model gemini-3.1-pro-preview --stdin --quiet {CLAUDE_FLAGS} < {SESSION_DIR}/vote-prompt.md > {SESSION_DIR}/gemini-result.md 2>{SESSION_DIR}/gemini-stderr.log; echo $? > {SESSION_DIR}/gemini.exit",
-  run_in_background: true
-})
+---
+
+## /delegate Execution Pattern
+
+The `/delegate` command uses channel-based sessions:
+
+```
+// Start session
+create_session(model="grok-code-fast-1", prompt=TASK_PROMPT,
+  timeout_seconds=300, claude_flags=claudeFlags)
+→ returns session_id
+
+// React to channel events
+session_started  → Log: "Delegating to {MODEL}..."
+tool_executing   → Log: "{MODEL}: executing {content}"
+input_required   → AskUserQuestion → send_input(session_id, answer)
+completed        → get_output(session_id, tail_lines=200)
+failed           → get_output(session_id) → report error → stop
 ```
 
 ---
@@ -121,26 +116,17 @@ Bash({
 
 | Mistake | Why It Fails | Fix |
 |---------|--------------|-----|
-| Missing `--stdin` flag | claudish expects prompt as argument, truncated for large prompts | Use `--stdin` with `< prompt-file.md` |
-| Not capturing exit code | No way to detect failures | Add `; echo $? > result.exit` |
-| Not capturing stderr | Error details lost | Add `2>stderr.log` |
-| `$(cat file.md)` in Task prompt | Shell expansion doesn't work in JSON string parameters | Read file content first, then include in prompt |
-| Worrying about flag order | Not needed with claudish v5.3.0 two-pass parser | Known flags are recognized anywhere in the command |
-| Adding provider prefixes to `--model` | claudish handles routing internally | Pass bare model names exactly as provided |
+| Using `Bash(claudish --model ...)` | Bypasses MCP; loses structured I/O and error handling | Use `team` or `create_session` MCP tools |
+| Adding provider prefixes to model IDs | claudish handles routing internally | Pass bare model names exactly as provided |
+| Running claudish in main context | Pollutes context with full conversation output | Use MCP tools (sessions run externally) |
 
 ---
 
 ## Model IDs
 
-> **Note:** Model IDs change frequently. Use `claudish --top-models` for current list.
+> **Note:** Model IDs change frequently. Use `list_models` MCP tool or `claudish --top-models` for current list.
 
-```bash
-# Get current available models
-claudish --top-models    # Best value paid models
-claudish --free          # Free models
-```
-
-> **IMPORTANT: Pass model names EXACTLY as the user provides them.** Do NOT add provider prefixes (like `minimax/`, `openai/`, `google/`). The claudish CLI handles routing and provider detection internally. If the user says `minimax-m2.5`, pass `minimax-m2.5` — not `minimax/minimax-m2.5`.
+> **IMPORTANT: Pass model names EXACTLY as the user provides them.** Do NOT add provider prefixes (like `minimax/`, `openai/`, `google/`). The claudish MCP server handles routing and provider detection internally.
 
 ---
 
@@ -148,25 +134,23 @@ claudish --free          # Free models
 
 After collecting results from external models, **always verify**:
 
-1. **Check exit code:** `cat {model-slug}.exit` → should be `0`
-2. **Check output size:** `wc -c < {model-slug}-result.md` → should be >50 bytes
-3. **Check stderr:** `cat {model-slug}-stderr.log` → should be empty or just info
-4. **Record in verification table** for /team results display
+**For `team` tool results:** The tool returns structured per-model results including status, output, and errors. Check each model's status field.
+
+**For `create_session` results:** The channel `completed` event confirms success. Call `get_output(session_id)` for full output. The `failed` event with content details the error.
 
 **Verification checklist:**
 ```
 For each external model result:
-  ☐ Exit code is 0
-  ☐ Result file exists and has >50 bytes
-  ☐ Response contains substantive analysis (not just acknowledgment)
-  ☐ No error messages in stderr log
+  ☐ Model status is "completed" (not "failed" or "timeout")
+  ☐ Output contains substantive analysis (not just acknowledgment)
+  ☐ No error content in the result
 ```
 
 ---
 
 ## Error Escalation Protocol
 
-**When verification fails (non-zero exit, empty output, stderr errors), follow this protocol:**
+**When a model fails, follow this protocol:**
 
 ### Rule: STOP and REPORT — Never Silently Substitute
 
@@ -181,13 +165,15 @@ For each external model result:
 
 ### What to report
 
+For `team` tool failures: extract the error from the per-model result object.
+For `create_session` failures: the `failed` channel event content contains the error.
+
 ```
 "{Model} failed.
 
 What happened:
-1. Command: claudish --model {MODEL_ID} --stdin --quiet < prompt.md
-   Exit code: {exit_code}
-   Stderr: {first 3 lines of stderr}
+1. Tool: {team or create_session}
+   Error: {error content from result or channel event}
 
 Options:
 (1) Retry the same model
@@ -199,43 +185,23 @@ Options:
 Which do you prefer?"
 ```
 
-### When this applies
-
-- User explicitly requested a specific model
-- A model in a multi-model workflow fails
-- claudish binary itself crashes or errors
-
-### When this does NOT apply
-
-- Inside `/team` command (has its own Rule 6: NO AUTO-RECOVERY)
-- User explicitly said "use whatever works" or "fall back automatically"
-
 ### Error Reporting via MCP
 
 When the user chooses to report an error, call the claudish `report_error` MCP tool:
 
-```bash
-# Map failure context to report_error parameters:
-# - Timeout → error_type: "provider_failure"
-# - Non-zero exit → error_type: "provider_failure" (or "adapter_error" if claudish itself crashed)
-# - Empty output → error_type: "stream_error"
-# - Team session failure → error_type: "team_failure"
-```
-
 ```
 report_error(
-  error_type: "{mapped_type}",
+  error_type: "{provider_failure|adapter_error|stream_error|team_failure}",
   model: "{MODEL_ID}",
-  stderr_snippet: "{first 500 chars from stderr.log}",
-  exit_code: {from .exit file},
-  error_log_path: "{path to stderr.log}",
-  additional_context: "Invoked via multimodel plugin proxy pattern"
+  stderr_snippet: "{error content from result}",
+  session_path: "{SESSION_DIR}",
+  additional_context: "Invoked via multimodel plugin"
 )
 ```
 
 **Consent required.** All data is sanitized before sending.
 
-See also: `multimodel:error-recovery` skill, Pattern 0 (User Escalation).
+See also: `multimodel:error-recovery` skill for retry patterns.
 
 ---
 

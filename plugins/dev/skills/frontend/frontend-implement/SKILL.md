@@ -5,6 +5,7 @@ description: |
   Patterns for implementing UI improvements based on design analysis.
   Works with review documents from designer:ui-analyse (requires designer plugin) or /designer:ui command.
   Includes Anti-AI design rules and visual verification.
+user-invocable: false
 ---
 
 # Frontend Implementation Skill

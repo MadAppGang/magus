@@ -6,6 +6,7 @@ tags: [orchestration, enforcement, validation, quality-gates, evidence]
 keywords: [phase-completion, artifacts, evidence, validation-criteria, outer-loop, checkpoint, enforcement, quality-gate]
 plugin: dev
 updated: 2026-02-04
+user-invocable: false
 ---
 
 # Phase Completion Enforcement

@@ -5,6 +5,7 @@ globs:
   - "**/statusline*"
   - "**/.claude/settings.json"
   - "**/statusline-config.json"
+user-invocable: false
 ---
 
 # Statusline Customization Reference

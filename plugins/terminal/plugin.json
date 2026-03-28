@@ -1,14 +1,26 @@
 {
   "name": "terminal",
-  "version": "4.0.0",
-  "description": "Interactive terminal integration for Claude Code. v4.0.0: agentic-first rewrite — single tmux-mcp Go binary replaces ht-mcp + npm tmux-mcp, new agentic tools (start-and-watch, watch-pane, run-in-repl, pane-state) eliminate all polling loops. 5 skills, 9 commands, 1 agent.",
+  "version": "4.0.1",
+  "description": "Interactive terminal integration for Claude Code. v4.0.0: agentic-first rewrite \u2014 single tmux-mcp Go binary replaces ht-mcp + npm tmux-mcp, new agentic tools (start-and-watch, watch-pane, run-in-repl, pane-state) eliminate all polling loops. 5 skills, 9 commands, 1 agent.",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",
     "company": "MadAppGang"
   },
   "license": "MIT",
-  "keywords": ["terminal", "pty", "tui", "interactive", "tmux", "headless", "run", "watch", "repl", "dev-server", "test-watcher"],
+  "keywords": [
+    "terminal",
+    "pty",
+    "tui",
+    "interactive",
+    "tmux",
+    "headless",
+    "run",
+    "watch",
+    "repl",
+    "dev-server",
+    "test-watcher"
+  ],
   "category": "development",
   "agents": [
     "./agents/tui-navigator.md"
@@ -32,8 +44,12 @@
     "./skills/workspace-setup"
   ],
   "setup": {
-    "go": ["github.com/MadAppGang/tmux-mcp@latest"],
-    "required": ["tmux"]
+    "go": [
+      "github.com/MadAppGang/tmux-mcp@latest"
+    ],
+    "required": [
+      "tmux"
+    ]
   },
   "hooks": "./hooks/hooks.json",
   "mcpServers": "./.mcp.json"

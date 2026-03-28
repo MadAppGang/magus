@@ -1,6 +1,7 @@
 ---
 name: transcription
 description: Audio/video transcription using OpenAI Whisper. Covers installation, model selection, transcript formats (SRT, VTT, JSON), timing synchronization, and speaker diarization. Use when transcribing media or generating subtitles.
+user-invocable: false
 ---
 plugin: video-editing
 updated: 2026-01-20

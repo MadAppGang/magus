@@ -1,14 +1,14 @@
 ---
 name: agent-enforcement
 description: |
-  Multi-agent orchestration enforcement for /team command. Provides claudish CLI validation,
-  validates session directory paths, and ensures /team Tasks use a valid agent from the routing whitelist.
+  Multi-agent orchestration enforcement for /team command. Validates session directory paths
+  and ensures /team Tasks use a valid agent from the routing whitelist.
   Use when debugging /team orchestration failures.
 triggers:
   - "team enforcement"
   - "agent selection"
   - "orchestration failure"
-  - "claudish agent flag"
+user-invocable: false
 ---
 
 # Agent Enforcement Skill
@@ -25,9 +25,9 @@ Two-layer defense against orchestration violations in `/team`:
 | Model Type | Method | Tool | Reliability |
 |------------|--------|------|-------------|
 | Internal (Claude) | Task({resolved_agent}) | Task tool | High (same process) |
-| External (Grok, Gemini, etc.) | Bash(claudish --model {CLAUDE_FLAGS}) | Bash tool | 100% (deterministic CLI, v5.3.0 flag passthrough) |
+| External (Grok, Gemini, etc.) | claudish MCP tools (team/create_session) | MCP | 100% (deterministic) |
 
-External models are called via claudish CLI directly from Bash — no LLM delegation needed.
+External models are called via claudish MCP tools — no Bash invocation needed.
 
 ## Hook Rules (enforce-team-rules.sh)
 
@@ -62,36 +62,15 @@ much more reliably than Sonnet (~90% vs ~33% compliance).
 | DevOps | dev:devops | — |
 | UI/Design | dev:ui | frontend:designer, frontend:ui-developer |
 
-## Pre-processor (resolve-agents.sh)
+## Agent Resolution
 
-The `/team` command can optionally call `resolve-agents.sh` to determine agent and method
-for each model before launching:
-
-```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/resolve-agents.sh" \
-  --models "internal,grok-code-fast-1" \
-  --task-type "investigation"
-```
-
-> **Note:** The agent varies by task type. The `/team` command resolves the agent dynamically
-> from the `<context_detection>` table in `team.md` based on task keywords (e.g., "debug" → `dev:debugger`,
-> "review" → `dev:researcher`). The hook enforces a whitelist of all valid agents.
-
-Output:
-```json
-{
-  "sessionDir": "ai-docs/sessions/team-slug-timestamp-random",
-  "taskType": "investigation",
-  "resolutions": [
-    { "modelId": "internal", "method": "direct", "agent": "dev:researcher" },
-    { "modelId": "grok-code-fast-1", "method": "cli", "agent": "dev:researcher" }
-  ]
-}
-```
+The `/team` command resolves the agent dynamically from the context detection table in `team.md`
+based on task keywords (e.g., "debug" → `dev:debugger`, "review" → `dev:researcher`).
+The hook enforces a whitelist of all valid agents.
 
 Methods:
-- `"direct"` — Internal Claude via Task(agent)
-- `"cli"` — External model via Bash(claudish --model)
+- **Internal models** — Task(agent) via Task tool
+- **External models** — `team` MCP tool (handles parallel execution internally)
 
 ## Validation
 

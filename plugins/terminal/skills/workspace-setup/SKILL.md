@@ -6,6 +6,7 @@ tags: [terminal, tmux, workspace, dashboard, layout, monitoring, watch, entr, se
 keywords: [workspace, tmux session, dashboard, layout, monitor, watch, entr, project setup, multi-pane, synchronize, sync panes, named session, window, archetype]
 plugin: terminal
 updated: 2026-03-25
+user-invocable: false
 ---
 
 # Workspace Setup

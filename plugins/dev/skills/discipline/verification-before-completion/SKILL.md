@@ -7,6 +7,7 @@ updated: 2026-01-20
 plugin: dev
 type: discipline
 difficulty: beginner
+user-invocable: false
 ---
 
 # Verification Before Completion

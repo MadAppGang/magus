@@ -6,6 +6,7 @@ tags: [terminal, testing, build, deploy, signals, markers, output-parsing]
 keywords: [jest, vitest, cargo watch, pytest, go test, bun test, webpack, vite, gradle, make, fly deploy, vercel, railway, pass, fail, running, idle, watcher, test output, build output]
 plugin: terminal
 updated: 2026-03-25
+user-invocable: false
 ---
 
 # Framework Signal Reference

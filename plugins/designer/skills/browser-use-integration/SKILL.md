@@ -6,6 +6,7 @@ description: |
   Provides detection pattern and screenshot capture workflow for URL-based references.
   Use when designer agents need browser screenshot capture and claude-in-chrome is unavailable.
   This is a SKILL (use Skill tool), NOT an agent.
+user-invocable: false
 ---
 
 # Browser-Use Plugin Integration

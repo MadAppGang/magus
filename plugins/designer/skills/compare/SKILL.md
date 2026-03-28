@@ -7,6 +7,7 @@ description: >
   selection guide for UI design comparison. Use when any agent needs to invoke
   the designer pixel-diff pipeline or AI semantic analysis outside the full
   design-review agent workflow.
+user-invocable: false
 ---
 
 # UI Comparison Skill

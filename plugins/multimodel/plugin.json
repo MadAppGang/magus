@@ -1,6 +1,6 @@
 {
   "name": "multimodel",
-  "version": "2.10.0",
+  "version": "2.10.1",
   "description": "Multi-model collaboration, orchestration, and workflow patterns. v2.10.0: claudish error reporting via report_error MCP tool, /delegate and /team command rewrites.",
   "author": {
     "name": "MadAppGang",

@@ -13,6 +13,7 @@ tags: [delegate, capability-discovery, preflight, claudish, external-model, prom
 keywords: [delegate, capability discovery, preflight questions, command delegation, claudish stdin]
 plugin: multimodel
 updated: 2026-03-22
+user-invocable: false
 ---
 
 # Delegate Patterns

@@ -6,6 +6,7 @@ tags: [dev, testing, coverage, quality, gaps]
 keywords: [test-coverage, coverage, gaps, untested, metrics, testing, quality]
 plugin: dev
 updated: 2026-01-28
+user-invocable: false
 ---
 
 # Test Coverage Skill

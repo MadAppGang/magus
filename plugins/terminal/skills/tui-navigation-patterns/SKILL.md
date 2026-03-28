@@ -6,6 +6,7 @@ tags: [terminal, tui, navigation, keys, vim, nano, htop, git-tui, database-shell
 keywords: [vim, nano, htop, btop, less, psql, lazygit, tig, k9s, docker, mongosh, redis-cli, turso, key sequence, navigation, escape, git tui, stage commit, database shell, system monitor, process manager, file editor, terminal editor]
 plugin: terminal
 updated: 2026-03-25
+user-invocable: false
 ---
 
 # TUI Navigation Patterns

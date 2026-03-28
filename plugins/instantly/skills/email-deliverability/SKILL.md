@@ -2,6 +2,7 @@
 name: email-deliverability
 version: 1.0.0
 description: Email deliverability best practices and troubleshooting
+user-invocable: false
 ---
 plugin: instantly
 updated: 2026-01-20

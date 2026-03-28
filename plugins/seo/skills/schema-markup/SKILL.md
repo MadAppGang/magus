@@ -3,6 +3,7 @@ plugin: seo
 updated: 2026-01-20
 name: schema-markup
 description: Schema.org markup implementation patterns for rich results. Use when adding structured data to content for enhanced SERP appearances.
+user-invocable: false
 ---
 plugin: seo
 updated: 2026-01-20

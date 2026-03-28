@@ -4,6 +4,7 @@ description: Git-aware logical undo at track, phase, or task level with confirma
 version: 1.0.0
 tags: [conductor, revert, undo, git, rollback]
 keywords: [revert, undo, rollback, git, track, phase, task]
+user-invocable: false
 ---
 plugin: conductor
 updated: 2026-01-20

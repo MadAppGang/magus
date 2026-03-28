@@ -13,6 +13,7 @@ keywords:
   - Go tooling
 plugin: dev
 updated: 2026-01-20
+user-invocable: false
 ---
 
 # Dingo Language Patterns

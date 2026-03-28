@@ -1,3 +1,9 @@
+---
+name: gtd-capture
+description: Proactive capture trigger detection for GTD workflow. Detects "I need to", "we should", "remind me" signals and routes to inbox.
+user-invocable: false
+---
+
 # GTD Capture Skill — Proactive Capture Trigger Detection
 
 ## When This Skill Applies

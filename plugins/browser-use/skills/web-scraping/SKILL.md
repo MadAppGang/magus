@@ -6,6 +6,7 @@ tags: [scraping, extraction, pagination, spa, authentication, rate-limiting, str
 keywords: [scrape, extract data, collect data, paginate, next page, infinite scroll, spa, dynamic content, login, authenticated, rate limit, anti-bot, structured data, json, csv, crawl, harvest]
 plugin: browser-use
 updated: 2026-03-03
+user-invocable: false
 ---
 
 # Web Scraping Patterns

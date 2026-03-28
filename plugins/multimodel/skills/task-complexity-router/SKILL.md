@@ -6,6 +6,7 @@ tags: [orchestration, routing, complexity, model-selection, cost-optimization, t
 keywords: [routing, complexity, model-selection, tier, cost, haiku, sonnet, opus, optimization, task-analysis]
 plugin: multimodel
 updated: 2026-01-28
+user-invocable: false
 ---
 
 # Task Complexity Router

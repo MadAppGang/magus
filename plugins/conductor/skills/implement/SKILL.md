@@ -4,6 +4,7 @@ description: Execute tasks from track plan with TDD workflow and git commit inte
 version: 1.1.0
 tags: [conductor, implement, execute, tasks, git, tdd]
 keywords: [implement, execute, task, commit, progress, workflow, tdd, phase]
+user-invocable: false
 ---
 plugin: conductor
 updated: 2026-01-20

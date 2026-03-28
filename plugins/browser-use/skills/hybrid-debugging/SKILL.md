@@ -6,6 +6,7 @@ tags: [hybrid, debugging, claude-in-chrome, browser-use, console, network, javas
 keywords: [hybrid debugging, console errors, network requests, javascript errors, combined tools, browser use and chrome, debug workflow, tool combination, claude-in-chrome, console log, fetch, xhr, api trace, gif recording]
 plugin: browser-use
 updated: 2026-03-03
+user-invocable: false
 ---
 
 # Hybrid Debugging: Browser Use + claude-in-chrome

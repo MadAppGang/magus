@@ -2,6 +2,7 @@
 name: investigate
 description: "Investigate code — architecture, implementation, tests, or bugs. Mode-based routing with mnemex AST analysis. Use when investigation type is unclear or for targeted analysis: architecture (map/PageRank), implementation (callers/callees), testing (test-gaps/callers), debugging (context/call chains)."
 allowed-tools: Bash, Task, Read, AskUserQuestion
+user-invocable: false
 ---
 
 # Investigate Skill

@@ -13,6 +13,7 @@ keywords:
   - debugging
 plugin: dev
 updated: 2026-01-20
+user-invocable: false
 ---
 
 # Error Handling Patterns

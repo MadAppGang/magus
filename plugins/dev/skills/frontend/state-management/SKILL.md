@@ -13,6 +13,7 @@ keywords:
   - React context
 plugin: dev
 updated: 2026-01-20
+user-invocable: false
 ---
 
 # Frontend State Management

@@ -6,6 +6,7 @@ tags: [dev, adr, architecture, decisions, documentation, trade-offs]
 keywords: [adr, architecture, decision, record, trade-offs, documentation, rationale, alternatives]
 plugin: dev
 updated: 2026-01-28
+user-invocable: false
 ---
 
 # ADR Documentation

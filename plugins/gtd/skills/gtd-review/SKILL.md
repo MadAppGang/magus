@@ -1,3 +1,9 @@
+---
+name: gtd-review
+description: Weekly review automation for GTD workflow. Guides through inbox processing, project review, and next actions.
+user-invocable: false
+---
+
 # GTD Review Skill — Weekly Review Automation
 
 ## When This Skill Applies

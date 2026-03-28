@@ -6,6 +6,7 @@ tags: [debugging, ui, visual, css, responsive, screenshot, layout, regression, m
 keywords: [debug ui, visual bug, layout issue, responsive, screenshot, css, visual regression, broken layout, mobile view, desktop view, css validation, element position, overlap, overflow, hidden, z-index, viewport]
 plugin: browser-use
 updated: 2026-03-03
+user-invocable: false
 ---
 
 # UI Debugging Patterns

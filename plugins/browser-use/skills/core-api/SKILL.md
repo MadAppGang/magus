@@ -6,6 +6,7 @@ tags: [browser, mcp, tools, api, reference, navigate, click, type, extract, scre
 keywords: [browser_navigate, browser_click, browser_type, browser_get_state, browser_extract_content, browser_get_html, browser_screenshot, browser_scroll, browser_go_back, browser_list_tabs, browser_switch_tab, browser_close_tab, browser_list_sessions, browser_close_session, retry_with_browser_use_agent, browser_export_session, browser_import_session, browser_run_script]
 plugin: browser-use
 updated: 2026-03-03
+user-invocable: false
 ---
 
 # Browser Use Core API

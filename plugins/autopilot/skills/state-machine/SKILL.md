@@ -4,6 +4,7 @@ description: Task lifecycle state transitions with validation gates. Defines sta
 version: 0.1.0
 tags: [state-machine, workflow, transitions, gates]
 keywords: [state, transition, gate, validation, workflow, lifecycle]
+user-invocable: false
 ---
 plugin: autopilot
 updated: 2026-01-20

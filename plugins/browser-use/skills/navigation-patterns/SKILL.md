@@ -6,6 +6,7 @@ tags: [browser, navigation, tabs, session, profile, url, multi-tab, authenticati
 keywords: [navigate to, open url, new tab, tab, session, back, forward, browser profile, cookies, authentication, session persistence, multi-tab, switch tab, close tab, profile, user data dir]
 plugin: browser-use
 updated: 2026-03-03
+user-invocable: false
 ---
 
 # Navigation Patterns

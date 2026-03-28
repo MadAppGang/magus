@@ -4,6 +4,7 @@ description: |
   TailwindCSS v4 patterns with CSS-first configuration using @theme, @source, and modern CSS features.
   Covers design tokens, CSS variables, container queries, dark mode, and Vite integration.
   Use when configuring Tailwind, defining design tokens, or leveraging modern CSS with Tailwind utilities.
+user-invocable: false
 ---
 
 # TailwindCSS v4 Patterns

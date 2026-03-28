@@ -6,6 +6,7 @@ tags: [orchestration, batching, parallel, performance, golden-rule, single-messa
 keywords: [batching, parallel, single-message, golden-rule, concurrent, performance, anti-pattern, sequential, optimization]
 plugin: multimodel
 updated: 2026-01-28
+user-invocable: false
 ---
 
 # Batching Patterns

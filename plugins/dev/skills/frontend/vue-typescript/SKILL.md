@@ -13,6 +13,7 @@ keywords:
   - script setup
 plugin: dev
 updated: 2026-01-20
+user-invocable: false
 ---
 
 # Vue 3 + TypeScript Patterns

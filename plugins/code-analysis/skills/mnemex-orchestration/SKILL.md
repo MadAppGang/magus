@@ -5,6 +5,7 @@ updated: 2026-01-20
 keywords: mnemex, orchestration, multi-agent, parallel-execution, consensus
 allowed-tools: Bash, Task, Read, Write, AskUserQuestion
 skills: multimodel:multi-model-validation
+user-invocable: false
 ---
 
 # Claudemem Multi-Agent Orchestration

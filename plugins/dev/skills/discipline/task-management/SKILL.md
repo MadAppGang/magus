@@ -6,6 +6,7 @@ created: 2026-03-21
 updated: 2026-03-21
 plugin: dev
 type: discipline
+user-invocable: false
 ---
 
 # Task Management

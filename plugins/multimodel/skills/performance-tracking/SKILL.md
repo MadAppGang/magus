@@ -6,6 +6,7 @@ tags: [orchestration, performance, metrics, tracking, agent-performance, optimiz
 keywords: [performance, metrics, tracking, agent, skill, success-rate, latency, cost, optimization, history, routing]
 plugin: multimodel
 updated: 2026-01-28
+user-invocable: false
 ---
 
 # Performance Tracking

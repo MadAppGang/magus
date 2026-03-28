@@ -5,6 +5,7 @@ description: |
   UI design style file format specification with reference image support.
   Defines the schema for .claude/design-style.md and .claude/design-references/.
   Use when creating, validating, or parsing project design styles.
+user-invocable: false
 ---
 
 # UI Style Format Specification

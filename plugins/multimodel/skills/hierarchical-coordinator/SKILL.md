@@ -6,6 +6,7 @@ tags: [orchestration, hierarchical, coordinator, anti-drift, checkpoint, validat
 keywords: [hierarchical, coordinator, anti-drift, checkpoint, validation, goal-alignment, decomposition, phase-gate, shared-state]
 plugin: multimodel
 updated: 2026-01-28
+user-invocable: false
 ---
 
 # Hierarchical Coordinator

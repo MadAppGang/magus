@@ -14,6 +14,7 @@ plugin: dev
 updated: 2026-02-03
 used_by: stack-detector agent, all dev commands
 allowed-tools: Bash(node *)
+user-invocable: false
 ---
 
 # Context Detection Skill

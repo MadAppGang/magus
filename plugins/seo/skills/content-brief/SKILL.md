@@ -3,6 +3,7 @@ plugin: seo
 updated: 2026-01-20
 name: content-brief
 description: Content brief template and creation methodology for SEO-optimized content. Use when preparing briefs for writers or planning new content pieces.
+user-invocable: false
 ---
 plugin: seo
 updated: 2026-01-20

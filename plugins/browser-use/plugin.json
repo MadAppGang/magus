@@ -1,7 +1,7 @@
 {
   "name": "browser-use",
-  "version": "1.1.0",
-  "description": "Full-platform browser automation for Claude Code. v1.1.0: Rewrite as thin wrapper over built-in BrowserUseServer — 63% less code (1518→566 lines). Fix TCC downloads_path, per-PID Chrome profiles to prevent SingletonLock contention, graceful shutdown. 19 MCP tools, 5 skills.",
+  "version": "1.1.1",
+  "description": "Full-platform browser automation for Claude Code. v1.1.0: Rewrite as thin wrapper over built-in BrowserUseServer \u2014 63% less code (1518\u2192566 lines). Fix TCC downloads_path, per-PID Chrome profiles to prevent SingletonLock contention, graceful shutdown. 19 MCP tools, 5 skills.",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",
@@ -9,13 +9,25 @@
   },
   "license": "MIT",
   "keywords": [
-    "browser", "automation", "scraping", "testing",
-    "accessibility", "browser-use", "cdp", "dom",
-    "vision", "cloud", "captcha", "debugging"
+    "browser",
+    "automation",
+    "scraping",
+    "testing",
+    "accessibility",
+    "browser-use",
+    "cdp",
+    "dom",
+    "vision",
+    "cloud",
+    "captcha",
+    "debugging"
   ],
   "category": "development",
   "setup": {
-    "pip": ["browser-use", "mcp"]
+    "pip": [
+      "browser-use",
+      "mcp"
+    ]
   },
   "mcpServers": "./.mcp.json",
   "agents": [],

@@ -2,6 +2,7 @@
 name: campaign-metrics
 version: 1.0.0
 description: Cold email campaign KPIs, benchmarks, and diagnostic patterns
+user-invocable: false
 ---
 plugin: instantly
 updated: 2026-01-20

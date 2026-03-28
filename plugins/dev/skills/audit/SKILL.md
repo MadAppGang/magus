@@ -6,6 +6,7 @@ tags: [dev, audit, security, quality, compliance]
 keywords: [audit, security, vulnerability, code-quality, compliance, scan, check]
 plugin: dev
 updated: 2026-01-28
+user-invocable: false
 ---
 
 # Audit Skill

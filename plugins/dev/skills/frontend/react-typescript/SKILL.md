@@ -1,6 +1,7 @@
 ---
 name: react-typescript
 description: Modern React 19+ patterns with TypeScript including function components, hooks, state management, TanStack Query integration, form handling with Zod, error boundaries, and performance optimization. Use when building React applications, implementing components, or setting up state management.
+user-invocable: false
 ---
 
 # React + TypeScript Patterns

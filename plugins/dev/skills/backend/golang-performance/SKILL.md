@@ -13,6 +13,7 @@ keywords:
   - performance tuning
 plugin: dev
 updated: 2026-01-20
+user-invocable: false
 ---
 
 # Go Performance Optimization

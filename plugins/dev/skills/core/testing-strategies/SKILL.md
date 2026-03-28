@@ -14,6 +14,7 @@ keywords:
   - test pyramid
 plugin: dev
 updated: 2026-01-20
+user-invocable: false
 ---
 
 # Universal Testing Strategies

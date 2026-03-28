@@ -1,13 +1,14 @@
 ---
 name: proxy-mode-reference
-version: 2.1.0
-description: Reference guide for using external AI models via claudish CLI. Use when running multi-model reviews, understanding how /team invokes external models, or debugging external model integration issues. Includes routing prefixes for MiniMax, Kimi, GLM direct APIs.
-keywords: [external-models, multi-model, claudish, routing-prefixes, minimax, kimi, glm, gemini, openai, bash-claudish]
+version: 3.0.0
+description: Reference guide for using external AI models via claudish MCP tools and CLI. Orchestration workflows (/team, /delegate) use MCP tools. Direct usage uses CLI. Includes model routing and error handling patterns.
+keywords: [external-models, multi-model, claudish, mcp, team, create-session, routing-prefixes, minimax, kimi, glm, gemini, openai]
 plugin: multimodel
-updated: 2026-03-28
+updated: 2026-03-29
+user-invocable: false
 ---
 
-# External Models via Claudish CLI — Reference Guide
+# External Models via Claudish — Reference Guide
 
 ## ⚠️ Learn and Reuse Model Preferences
 
@@ -26,24 +27,27 @@ cat .claude/multimodel-team.json 2>/dev/null
 
 ## How External Models Work
 
-External models are invoked **deterministically** via the claudish CLI. The orchestrator
-(e.g., `/team` command) calls claudish directly through Bash — no LLM delegation needed.
+External models are invoked via **claudish MCP tools**. The orchestrator calls MCP tools directly — no Bash invocation needed.
 
 ```
-Orchestrator → Bash(claudish --model {MODEL_ID} --stdin) → External Model
+Orchestrator → claudish MCP tool → External Model
 ```
-
-This approach is 100% reliable because it's a direct CLI invocation, not a prompt-based delegation.
-
-## Invoking External Models
 
 ### From /team Command (Automatic)
 
 The `/team` command handles this automatically:
-- **Internal models** → Task({resolved_agent}) — auto-detected from task type
-- **External models** → Bash(claudish --model {MODEL_ID} --stdin)
+- **Internal models** → `Task({resolved_agent})` — auto-detected from task type
+- **External models** → `team(mode="run", models=[...], input=PROMPT, timeout=180)`
 
-### Direct CLI Usage
+The `team` MCP tool runs all models in parallel internally and returns structured per-model results.
+
+### From /delegate Command
+
+- `create_session(model, prompt, timeout_seconds, claude_flags)` → returns session_id
+- React to channel events: `completed` → `get_output(session_id)`
+- On `input_required` → forward to user → `send_input(session_id, answer)`
+
+### Direct CLI Usage (for non-orchestration tasks)
 
 ```bash
 # Pattern
@@ -53,11 +57,6 @@ claudish --model {MODEL_ID} --stdin --quiet < prompt-file.md > result.md
 claudish --model grok-code-fast-1 --stdin --quiet < task.md > grok-result.md
 claudish --model gemini-3.1-pro-preview --stdin --quiet < task.md > gemini-result.md
 ```
-
-**Required flags:**
-- `--model` — The external model to use
-- `--stdin` — Read prompt from stdin (for large prompts)
-- `--quiet` — Suppress log messages (for clean output capture)
 
 ## Model Routing
 
@@ -76,43 +75,39 @@ Do NOT add provider prefixes (`x-ai/`, `google/`, `openai/`, `minimax/`, etc.) �
 
 ## Correct Usage Patterns
 
-### Single External Model
+### Single External Model (via MCP)
 
-```bash
-claudish --model grok-code-fast-1 --stdin --quiet < task.md > result.md
+```
+// One-shot prompt
+run_prompt(model="grok-code-fast-1", prompt="Review this code for security issues")
+
+// Session-based (for longer tasks)
+create_session(model="grok-code-fast-1", prompt=TASK_PROMPT, timeout_seconds=300)
 ```
 
 ### Parallel External Models (in /team)
 
-```bash
-# All launched in a single message with run_in_background: true
-Bash("claudish --model grok-code-fast-1 --stdin --quiet < vote-prompt.md > grok-result.md 2>grok-stderr.log; echo $? > grok.exit")
-Bash("claudish --model gemini-3.1-pro-preview --stdin --quiet < vote-prompt.md > gemini-result.md 2>gemini-stderr.log; echo $? > gemini.exit")
+```
+// Single MCP tool call handles all external models in parallel
+team(mode="run", path=SESSION_DIR, models=["grok-code-fast-1", "gemini-3.1-pro-preview"],
+  input=VOTE_PROMPT, timeout=180)
 ```
 
 ### Verifying Results
 
-```bash
-# Check exit code
-cat grok.exit  # 0 = success
-
-# Check output size
-wc -c < grok-result.md  # Should be >50 bytes
-
-# Check stderr for errors
-cat grok-stderr.log
-```
+**For `team` tool:** Check each model's status in the structured response.
+**For `create_session`:** The `completed` channel event confirms success; `failed` event contains error details.
 
 ## Common Mistakes
 
-### Mistake 1: Not capturing exit code
+### Mistake 1: Using Bash+CLI in orchestration
 
-```bash
-# ❌ WRONG - no way to detect failures
-claudish --model grok --stdin < task.md > result.md
+```
+❌ WRONG — bypasses MCP structured I/O and error handling
+Bash("claudish --model grok --stdin < task.md > result.md")
 
-# ✅ CORRECT - capture exit code
-claudish --model grok --stdin < task.md > result.md 2>stderr.log; echo $? > result.exit
+✅ CORRECT — use MCP tools in orchestration workflows
+team(mode="run", models=["grok"], input=PROMPT, timeout=180)
 ```
 
 ## Error Escalation Protocol
@@ -165,11 +160,11 @@ If the user selects (5), call the claudish `report_error` MCP tool:
 
 ```
 report_error(
-  error_type: "provider_failure",  // or "stream_error", "adapter_error"
+  error_type: "provider_failure",  // or "stream_error", "adapter_error", "team_failure"
   model: "{MODEL_ID}",
-  command: "claudish --model {MODEL_ID} --stdin --quiet",
-  stderr_snippet: "{first 500 chars of stderr log}",
-  exit_code: {exit_code}
+  stderr_snippet: "{error content from MCP result or channel event}",
+  session_path: "{SESSION_DIR}",
+  additional_context: "Invoked via multimodel plugin"
 )
 ```
 

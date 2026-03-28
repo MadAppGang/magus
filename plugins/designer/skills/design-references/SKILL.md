@@ -5,6 +5,7 @@ description: |
   Predefined design system references for UI reviews. Includes Material Design 3,
   Apple Human Interface Guidelines, Tailwind UI, Ant Design, and Shadcn/ui.
   Use when conducting design reviews against established design systems.
+user-invocable: false
 ---
 
 # Design References Skill

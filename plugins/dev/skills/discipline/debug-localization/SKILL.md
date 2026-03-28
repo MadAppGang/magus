@@ -7,6 +7,7 @@ updated: 2026-03-24
 plugin: dev
 type: discipline
 difficulty: intermediate
+user-invocable: false
 ---
 
 # Fault Localization — 3-Strategy Methodology

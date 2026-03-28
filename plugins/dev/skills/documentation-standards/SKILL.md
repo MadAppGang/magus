@@ -13,6 +13,7 @@ keywords:
 plugin: dev
 updated: 2026-01-20
 research_source: 73+ authoritative sources with 98% factual integrity
+user-invocable: false
 ---
 
 # Documentation Standards
