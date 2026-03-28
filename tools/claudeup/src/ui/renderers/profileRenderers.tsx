@@ -153,44 +153,38 @@ const predefinedRenderer: ItemRenderer<{ kind: "predefined"; profile: Predefined
           <text fg={theme.colors.muted}>{profile.description}</text>
         </box>
 
-        {/* Magus plugins as badges */}
+        {/* Magus plugins */}
         <box marginTop={1} flexDirection="column">
           <text fg={theme.colors.muted}>Magus ({profile.magusPlugins.length})</text>
-          <box flexDirection="row" gap={0}>
-            {profile.magusPlugins.map((p) => (
-              <text key={p}>
-                <span bg="#00695c" fg="white"> {p} </span>
-                <span> </span>
-              </text>
-            ))}
-          </box>
+          {profile.magusPlugins.map((p) => (
+            <text key={p}>
+              <span fg="#00bfa5">  ■ </span>
+              <span fg="white">{p}</span>
+            </text>
+          ))}
         </box>
 
-        {/* Anthropic plugins as badges */}
+        {/* Anthropic plugins */}
         <box marginTop={1} flexDirection="column">
           <text fg={theme.colors.muted}>Anthropic ({profile.anthropicPlugins.length})</text>
-          <box flexDirection="row" gap={0}>
-            {profile.anthropicPlugins.map((p) => (
-              <text key={p}>
-                <span bg="#4527a0" fg="white"> {p} </span>
-                <span> </span>
-              </text>
-            ))}
-          </box>
+          {profile.anthropicPlugins.map((p) => (
+            <text key={p}>
+              <span fg="#b39ddb">  ■ </span>
+              <span fg="white">{p}</span>
+            </text>
+          ))}
         </box>
 
-        {/* Skills as badges */}
+        {/* Skills */}
         {profile.skills.length > 0 && (
           <box marginTop={1} flexDirection="column">
             <text fg={theme.colors.muted}>Skills ({profile.skills.length})</text>
-            <box flexDirection="row" gap={0}>
-              {profile.skills.map((s) => (
-                <text key={s}>
-                  <span bg="#8d6e00" fg="white"> {s} </span>
-                  <span> </span>
-                </text>
-              ))}
-            </box>
+            {profile.skills.map((s) => (
+              <text key={s}>
+                <span fg="#ffd54f">  ■ </span>
+                <span fg="white">{s}</span>
+              </text>
+            ))}
           </box>
         )}
 
