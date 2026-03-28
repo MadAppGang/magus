@@ -10,7 +10,8 @@ export type SettingType = "boolean" | "string" | "select";
 export type SettingStorage =
 	| { type: "env"; key: string }
 	| { type: "setting"; key: string }
-	| { type: "attribution" };
+	| { type: "attribution" }
+	| { type: "attribution-text" };
 
 export interface SettingDefinition {
 	id: string;
@@ -214,6 +215,17 @@ export const SETTINGS_CATALOG: SettingDefinition[] = [
 		type: "boolean",
 		storage: { type: "attribution" },
 		defaultValue: "true",
+	},
+	{
+		id: "attribution-text",
+		name: "Custom Attribution Text",
+		description:
+			"Custom text for commit and PR attribution. Applied when AI Attribution is enabled. Leave empty to use Claude's default",
+		category: "workflow",
+		type: "string",
+		storage: { type: "attribution-text" },
+		defaultValue:
+			"Crafted with agentic harness Magus (https://github.com/MadAppGang/magus)",
 	},
 	{
 		id: "output-style",

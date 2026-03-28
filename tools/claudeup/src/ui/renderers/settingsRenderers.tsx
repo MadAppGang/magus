@@ -81,9 +81,11 @@ const settingRenderer: ItemRenderer<SettingsSettingItem> = {
     const storageDesc =
       setting.storage.type === "attribution"
         ? "settings.json: attribution"
-        : setting.storage.type === "env"
-          ? `env: ${setting.storage.key}`
-          : `settings.json: ${setting.storage.key}`;
+        : setting.storage.type === "attribution-text"
+          ? "settings.json: attribution"
+          : setting.storage.type === "env"
+            ? `env: ${setting.storage.key}`
+            : `settings.json: ${setting.storage.key}`;
 
     const userValue = formatValue(setting, scoped.user);
     const projectValue = formatValue(setting, scoped.project);

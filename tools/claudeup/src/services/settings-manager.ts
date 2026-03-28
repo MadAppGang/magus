@@ -26,6 +26,26 @@ export async function readSettingValue(
 			return "false";
 		}
 		return undefined; // default (enabled)
+	} else if (setting.storage.type === "attribution-text") {
+		// Custom attribution text: read from attribution.commit, strip the Co-Authored-By trailer prefix
+		const attr = (settings as any).attribution;
+		if (!attr || (attr.commit === "" && attr.pr === "")) {
+			// Attribution is disabled or not set — no custom text stored
+			return undefined;
+		}
+		const commit: string | undefined = attr.commit;
+		if (!commit) {
+			return undefined;
+		}
+		// The commit value is "Co-Authored-By: Magus <magus@madappgang.com>\n\n{customText}"
+		// Strip the trailer prefix if present
+		const trailerPrefix = "Co-Authored-By: Magus <magus@madappgang.com>\n\n";
+		if (commit.startsWith(trailerPrefix)) {
+			const text = commit.slice(trailerPrefix.length);
+			return text.length > 0 ? text : undefined;
+		}
+		// If no trailer prefix, the value is the raw text (or Claude default — return undefined)
+		return undefined;
 	} else if (setting.storage.type === "env") {
 		const env = (settings as any).env as Record<string, string> | undefined;
 		return env?.[setting.storage.key];
@@ -57,6 +77,22 @@ export async function writeSettingValue(
 		if (value === "false") {
 			(settings as any).attribution = { commit: "", pr: "" };
 		} else {
+			delete (settings as any).attribution;
+		}
+	} else if (setting.storage.type === "attribution-text") {
+		const attr = (settings as any).attribution;
+		// If attribution is explicitly disabled ({ commit: "", pr: "" }), do not overwrite it
+		if (attr && attr.commit === "" && attr.pr === "") {
+			return;
+		}
+		if (value && value.trim().length > 0) {
+			// Write custom text: commit gets a Co-Authored-By trailer + the text; pr gets the text
+			(settings as any).attribution = {
+				commit: `Co-Authored-By: Magus <magus@madappgang.com>\n\n${value}`,
+				pr: value,
+			};
+		} else {
+			// Empty value: remove attribution key entirely (revert to Claude defaults)
 			delete (settings as any).attribution;
 		}
 	} else if (setting.storage.type === "env") {

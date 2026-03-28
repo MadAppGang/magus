@@ -1,7 +1,7 @@
 {
   "name": "browser-use",
-  "version": "1.0.3",
-  "description": "Full-platform browser automation for Claude Code. v1.0.3: Fix oneOf schema rejection (browser-use#4211), SingletonLock contention via DevToolsActivePort CDP reuse, headless env var. 18 MCP tools, 5 skills, 15 E2E tests.",
+  "version": "1.1.0",
+  "description": "Full-platform browser automation for Claude Code. v1.1.0: Rewrite as thin wrapper over built-in BrowserUseServer — 63% less code (1518→566 lines). Fix TCC downloads_path, per-PID Chrome profiles to prevent SingletonLock contention, graceful shutdown. 19 MCP tools, 5 skills.",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",
