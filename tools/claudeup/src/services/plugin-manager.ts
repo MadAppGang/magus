@@ -27,6 +27,7 @@ import {
 	isValidGitHubRepo,
 	parsePluginId,
 } from "../utils/string-utils.js";
+import { updateMarketplace } from "./claude-cli.js";
 
 // Cache for local marketplaces (session-level) - Promise-based to prevent race conditions
 let localMarketplacesPromise: Promise<Map<string, LocalMarketplace>> | null =
@@ -206,6 +207,9 @@ export async function getAvailablePlugins(
 		}
 	}
 
+	// Fetch local marketplace caches up front so we can detect stale caches
+	let localMarketplaces = await getLocalMarketplaces();
+
 	// Fetch plugins from each configured marketplace
 	for (const mpName of marketplaceNames) {
 		const marketplace = defaultMarketplaces.find((m) => m.name === mpName);
@@ -214,6 +218,13 @@ export async function getAvailablePlugins(
 		const marketplacePlugins = await fetchMarketplacePlugins(
 			mpName,
 			marketplace.source.repo,
+		);
+
+		// Auto-sync local cache if remote has plugins the local cache doesn't
+		localMarketplaces = await autoSyncIfStale(
+			mpName,
+			marketplacePlugins.map((p) => p.name),
+			localMarketplaces,
 		);
 
 		for (const plugin of marketplacePlugins) {
@@ -244,9 +255,6 @@ export async function getAvailablePlugins(
 			});
 		}
 	}
-
-	// Fetch ALL plugins from local marketplace caches (for marketplaces not in defaults)
-	const localMarketplaces = await getLocalMarketplaces();
 
 	for (const [mpName, localMp] of localMarketplaces) {
 		// Skip if already fetched from defaults
@@ -383,6 +391,9 @@ export async function getGlobalAvailablePlugins(): Promise<PluginInfo[]> {
 		}
 	}
 
+	// Fetch local marketplace caches up front so we can detect stale caches
+	let localMarketplaces = await getLocalMarketplaces();
+
 	// Fetch plugins from each configured marketplace
 	for (const mpName of marketplaceNames) {
 		const marketplace = defaultMarketplaces.find((m) => m.name === mpName);
@@ -391,6 +402,13 @@ export async function getGlobalAvailablePlugins(): Promise<PluginInfo[]> {
 		const marketplacePlugins = await fetchMarketplacePlugins(
 			mpName,
 			marketplace.source.repo,
+		);
+
+		// Auto-sync local cache if remote has plugins the local cache doesn't
+		localMarketplaces = await autoSyncIfStale(
+			mpName,
+			marketplacePlugins.map((p) => p.name),
+			localMarketplaces,
 		);
 
 		for (const plugin of marketplacePlugins) {
@@ -421,9 +439,6 @@ export async function getGlobalAvailablePlugins(): Promise<PluginInfo[]> {
 			});
 		}
 	}
-
-	// Fetch ALL plugins from local marketplace caches (for marketplaces not in defaults)
-	const localMarketplaces = await getLocalMarketplaces();
 
 	for (const [mpName, localMp] of localMarketplaces) {
 		// Skip if already fetched from defaults
@@ -596,6 +611,42 @@ export async function getLocalMarketplacesInfo(): Promise<
 	Map<string, LocalMarketplace>
 > {
 	return getLocalMarketplaces();
+}
+
+// Track which marketplaces have already been auto-synced this session
+// so we only attempt the update once per marketplace per claudeup run.
+const autoSyncedMarketplaces = new Set<string>();
+
+/**
+ * If the remote manifest lists plugins that aren't in the local cache,
+ * the local clone is stale. Silently run `claude plugin marketplace update`
+ * to pull the latest, then invalidate the local cache so the next scan
+ * picks up the new plugins.
+ */
+async function autoSyncIfStale(
+	mpName: string,
+	remotePluginNames: string[],
+	localMarketplaces: Map<string, LocalMarketplace>,
+): Promise<Map<string, LocalMarketplace>> {
+	if (autoSyncedMarketplaces.has(mpName)) return localMarketplaces;
+
+	const localMp = localMarketplaces.get(mpName);
+	if (!localMp) return localMarketplaces;
+
+	const localNames = new Set(localMp.plugins.map((p) => p.name));
+	const hasMissing = remotePluginNames.some((name) => !localNames.has(name));
+	if (!hasMissing) return localMarketplaces;
+
+	autoSyncedMarketplaces.add(mpName);
+	try {
+		await updateMarketplace(mpName);
+		// Invalidate local cache so re-scan picks up new plugins
+		localMarketplacesPromise = null;
+		return getLocalMarketplaces();
+	} catch {
+		// Update failed (no network, CLI missing, etc.) — continue with stale data
+		return localMarketplaces;
+	}
 }
 
 export interface RefreshAndRepairResult {

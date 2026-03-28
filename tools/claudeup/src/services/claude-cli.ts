@@ -16,9 +16,7 @@ import {
 	removeGlobalInstalledPluginVersion,
 	removeLocalInstalledPluginVersion,
 } from "./claude-settings.js";
-import {
-	removeInstalledPluginVersion,
-} from "./plugin-manager.js";
+import { removeInstalledPluginVersion } from "./plugin-manager.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -44,10 +42,7 @@ async function getClaudePath(): Promise<string> {
  * @param timeoutMs - Timeout in milliseconds (default: 30s)
  * @returns stdout from the command
  */
-async function execClaude(
-	args: string[],
-	timeoutMs = 30000,
-): Promise<string> {
+async function execClaude(args: string[], timeoutMs = 30000): Promise<string> {
 	const claudePath = await getClaudePath();
 	try {
 		const { stdout } = await execFileAsync(claudePath, args, {
@@ -146,6 +141,14 @@ export async function updatePlugin(
  */
 export async function addMarketplace(repo: string): Promise<void> {
 	await execClaude(["plugin", "marketplace", "add", repo], 60000);
+}
+
+/**
+ * Update marketplace cache by running git pull via Claude CLI
+ * Uses longer timeout since this involves git network operations
+ */
+export async function updateMarketplace(name: string): Promise<void> {
+	await execClaude(["plugin", "marketplace", "update", name], 60000);
 }
 
 /**
