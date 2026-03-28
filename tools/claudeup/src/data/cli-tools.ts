@@ -24,16 +24,16 @@ export const cliTools: CliTool[] = [
 		packageName: "claudeup",
 	},
 	{
-		name: "claudemem",
-		displayName: "Claudemem",
+		name: "mnemex",
+		displayName: "Mnemex",
 		description:
-			"Local semantic code search for Claude Code with vector embeddings",
-		installCommand: "npm install -g claude-codemem",
-		checkCommand: "claudemem --version",
-		website: "https://github.com/MadAppGang/claudemem",
+			"AST-aware code search with PageRank, callers/callees, and semantic embeddings",
+		installCommand: "npm install -g mnemex",
+		checkCommand: "mnemex --version",
+		website: "https://github.com/MadAppGang/mnemex",
 		category: "ai-coding",
 		packageManager: "npm",
-		packageName: "claude-codemem",
+		packageName: "mnemex",
 	},
 	{
 		name: "claudish",
