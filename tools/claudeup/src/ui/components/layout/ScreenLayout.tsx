@@ -118,12 +118,13 @@ export function ScreenLayout({
 					<text fg="#444444">{"│".repeat(panelHeight)}</text>
 				</box>
 
-				{/* Detail panel */}
+				{/* Detail panel — scrollable */}
 				<box
 					flexDirection="column"
 					width="50%"
 					height={panelHeight}
 					paddingLeft={1}
+					overflow="scroll"
 				>
 					{detailPanel}
 				</box>
