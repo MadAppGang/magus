@@ -125,16 +125,17 @@ export function renderCliToolDetail(
             <text fg={theme.colors.text}>v{latestVersion}</text>
           </box>
         ) : null}
-        {installed && methodLabel ? (
+        {installed && updateCommand ? (
           <box>
-            <text fg={theme.colors.muted}>{"Via      "}</text>
-            <text fg={theme.colors.accent}>{methodLabel}</text>
+            <text fg={theme.colors.muted}>{"Update   "}</text>
+            <text fg={theme.colors.accent}>{updateCommand}</text>
+          </box>
+        ) : !installed ? (
+          <box>
+            <text fg={theme.colors.muted}>{"Install  "}</text>
+            <text fg={theme.colors.accent}>{tool.installCommand}</text>
           </box>
         ) : null}
-        <box>
-          <text fg={theme.colors.muted}>{"Package  "}</text>
-          <text fg={theme.colors.text}>{tool.packageName}</text>
-        </box>
         <box>
           <text fg={theme.colors.muted}>{"Website  "}</text>
           <text fg={theme.colors.link}>{tool.website}</text>
