@@ -154,63 +154,75 @@ const predefinedRenderer: ItemRenderer<{ kind: "predefined"; profile: Predefined
         </box>
 
         {/* Magus plugins */}
-        <box marginTop={1} flexDirection="column">
+        <box marginTop={1}>
           <text fg={theme.colors.muted}>Magus ({profile.magusPlugins.length})</text>
-          {profile.magusPlugins.map((p) => (
-            <text key={p}>
+        </box>
+        {profile.magusPlugins.map((p) => (
+          <box key={`m-${p}`}>
+            <text>
               <span fg="#00bfa5">  ■ </span>
               <span fg="white">{p}</span>
             </text>
-          ))}
-        </box>
+          </box>
+        ))}
 
         {/* Anthropic plugins */}
-        <box marginTop={1} flexDirection="column">
+        <box marginTop={1}>
           <text fg={theme.colors.muted}>Anthropic ({profile.anthropicPlugins.length})</text>
-          {profile.anthropicPlugins.map((p) => (
-            <text key={p}>
+        </box>
+        {profile.anthropicPlugins.map((p) => (
+          <box key={`a-${p}`}>
+            <text>
               <span fg="#b39ddb">  ■ </span>
               <span fg="white">{p}</span>
             </text>
-          ))}
-        </box>
+          </box>
+        ))}
 
         {/* Skills */}
         {profile.skills.length > 0 && (
-          <box marginTop={1} flexDirection="column">
-            <text fg={theme.colors.muted}>Skills ({profile.skills.length})</text>
+          <>
+            <box marginTop={1}>
+              <text fg={theme.colors.muted}>Skills ({profile.skills.length})</text>
+            </box>
             {profile.skills.map((s) => (
-              <text key={s}>
-                <span fg="#ffd54f">  ■ </span>
-                <span fg="white">{s}</span>
-              </text>
+              <box key={`s-${s}`}>
+                <text>
+                  <span fg="#ffd54f">  ■ </span>
+                  <span fg="white">{s}</span>
+                </text>
+              </box>
             ))}
-          </box>
+          </>
         )}
 
-        <text fg={theme.colors.dim}>{DIVIDER}</text>
+        <box><text fg={theme.colors.dim}>{DIVIDER}</text></box>
 
         {/* Settings as clean key-value */}
-        <box flexDirection="column">
-          {settingEntries.map(([k, v]) => (
-            <text key={k}>
+        {settingEntries.map(([k, v]) => (
+          <box key={k}>
+            <text>
               <span fg={theme.colors.muted}>  {humanizeKey(k).padEnd(16)}</span>
               <span fg={theme.colors.text}>{humanizeValue(k, v)}</span>
             </text>
-          ))}
-          {tasksOn && (
+          </box>
+        ))}
+        {tasksOn && (
+          <box>
             <text>
               <span fg={theme.colors.muted}>  {"Tasks".padEnd(16)}</span>
               <span fg="green">on</span>
             </text>
-          )}
-          {teamsOn && (
+          </box>
+        )}
+        {teamsOn && (
+          <box>
             <text>
               <span fg={theme.colors.muted}>  {"Agent Teams".padEnd(16)}</span>
               <span fg="green">on</span>
             </text>
-          )}
-        </box>
+          </box>
+        )}
         <box marginTop={1}>
           <text fg={theme.colors.dim}>{DIVIDER}</text>
         </box>
