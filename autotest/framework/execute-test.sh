@@ -136,6 +136,11 @@ if [[ "$USE_NATIVE_CLAUDE" == "true" ]]; then
       CLAUDE_P_FLAGS="$CLAUDE_P_FLAGS --plugin-dir $extra_dir"
     fi
   done
+  # EXTRA_CLAUDE_FLAGS: additional flags passed to claude -p (set by suite runners)
+  # e.g., --disallowedTools to restrict tool access for disambiguation
+  if [[ -n "${EXTRA_CLAUDE_FLAGS:-}" ]]; then
+    CLAUDE_P_FLAGS="$CLAUDE_P_FLAGS $EXTRA_CLAUDE_FLAGS"
+  fi
   if [[ -n "$TIMEOUT_CMD" ]]; then
     $TIMEOUT_CMD claude $CLAUDE_P_FLAGS \
       < "$PROMPT_FILE" \

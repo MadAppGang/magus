@@ -1,47 +1,298 @@
 {
   "meta": {
-    "description": "Browser-use plugin E2E test cases. Tests verify Claude can accomplish browser automation tasks using the browser-use MCP server tools (navigate, screenshot, click, type, etc.). Requires the browser-use plugin to be loaded and a reachable Chrome/Chromium install.",
-    "version": "1.0.0",
+    "description": "Browser-use plugin E2E test cases. Tests verify Claude can accomplish browser automation tasks using the browser-use MCP server tools (18 tools). Requires Chrome/Chromium installed and browser-use Python package.",
+    "version": "3.0.0",
     "created": "2026-03-25",
-    "updated": "2026-03-25",
-    "notes": "v1.0: Initial suite. Covers session lifecycle (create, navigate, screenshot, close). REGRESSION coverage: SingletonLock contention bug tracked in dev-fix-20260325-143046-4ff02ed6."
+    "updated": "2026-03-26",
+    "notes": "v3.0: Strengthened checks per multimodel review. Added response_contains_all for behavioral assertions (not just call counts). Added missing tool coverage: browser_type (13), extract_content (14), run_script (15). Replaced vague response_contains_any with specific behavioral assertions. Total: 15 test cases."
   },
   "test_cases": [
     {
       "id": "browser-navigate-01",
-      "description": "Navigate to a URL and verify session_id is returned — basic session lifecycle smoke test",
-      "prompt": "Use the browser-use MCP tools to do the following:\n1. Call the navigate tool with url=\"https://example.com\" (do not pass a session_id — let the server create a new one).\n2. Report the session_id returned by the navigate call.\n3. Take a screenshot using the screenshot tool, passing the session_id from step 2.\n4. Call the close_session tool with the session_id from step 2.\n5. Report whether the page title visible in the screenshot contains 'Example'.\n\nIMPORTANT: Only use mcp__browser-use__* tools. Do NOT use any other browser automation tools.",
+      "description": "Navigate to a URL, take screenshot, verify page loaded with correct title, close session",
+      "prompt": "You MUST use the browser-use MCP tools (prefixed with 'browser-use' in the tool names, e.g. tools containing 'browser_navigate', 'browser_screenshot', 'browser_get_state', etc. from the browser-use MCP server). Do NOT use chrome-devtools tools. The browser-use tools are: browser_navigate, browser_click, browser_type, browser_get_state, browser_extract_content, browser_get_html, browser_screenshot, browser_scroll, browser_go_back, browser_list_tabs, browser_switch_tab, browser_close_tab, browser_list_sessions, browser_close_session, browser_export_session, browser_import_session, browser_run_script.\n\nDo the following:\n1. Call browser_navigate with url=\"https://example.com\" (do not pass a session_id — let the server create a new one).\n2. Record the session_id returned by the navigate call.\n3. Call browser_get_state with the session_id to verify the page loaded.\n4. Take a screenshot using browser_screenshot, passing the session_id.\n5. Call browser_close_session with the session_id.\n6. Report the EXACT current URL and page title from get_state.\n\nAlways close the session when done. You MUST report the exact URL and title values.",
       "expected_agent": "NO_TASK_CALL",
       "expected_alternatives": [],
       "category": "smoke",
-      "tags": ["browser-use", "navigate", "session", "screenshot", "close"],
+      "tags": ["navigate", "screenshot", "session-lifecycle", "close"],
       "checks": {
-        "has_tool_prefix": "mcp__browser-use__",
+        "has_tool_prefix": "browser",
         "tools_used_include_any": [
-          ["mcp__browser-use__navigate", "mcp__browser-use__screenshot", "mcp__browser-use__close_session"],
-          ["mcp__browser_use__navigate", "mcp__browser_use__screenshot", "mcp__browser_use__close_session"]
+          ["browser_navigate", "browser_get_state", "browser_screenshot", "browser_close_session"]
         ],
-        "response_contains_any": ["session_id", "session"],
-        "min_tool_calls": 3
+        "response_contains_all": ["example.com", "Example Domain"],
+        "min_tool_calls": 4
       }
     },
     {
       "id": "browser-singleton-lock-02",
-      "description": "Regression: two sequential navigate calls must not time out due to SingletonLock contention — each call should succeed within the timeout window",
-      "prompt": "Use the browser-use MCP tools to run two sequential navigation tasks that share no session, verifying that a second Chrome session can start even when one is already running:\n1. Call navigate with url=\"https://example.com\" and no session_id. Record session_id_A.\n2. Call navigate with url=\"https://example.org\" and no session_id. Record session_id_B.\n3. Take a screenshot with session_id_A.\n4. Take a screenshot with session_id_B.\n5. Close session_id_A with close_session.\n6. Close session_id_B with close_session.\n7. Report both session IDs and confirm both screenshots succeeded.\n\nIMPORTANT: Only use mcp__browser-use__* tools. Both navigate calls MUST succeed — if either times out or returns an error this test fails.",
+      "description": "Regression: two sequential navigate calls must both succeed — no SingletonLock timeout",
+      "prompt": "You MUST use the browser-use MCP tools (prefixed with 'browser-use' in the tool names, e.g. tools containing 'browser_navigate', 'browser_screenshot', 'browser_get_state', etc. from the browser-use MCP server). Do NOT use chrome-devtools tools. The browser-use tools are: browser_navigate, browser_click, browser_type, browser_get_state, browser_extract_content, browser_get_html, browser_screenshot, browser_scroll, browser_go_back, browser_list_tabs, browser_switch_tab, browser_close_tab, browser_list_sessions, browser_close_session, browser_export_session, browser_import_session, browser_run_script.\n\nRun two sequential navigation tasks. This tests that a second browser session can start even when one is already running:\n1. Call browser_navigate with url=\"https://example.com\" and no session_id. Record session_id_A.\n2. Call browser_navigate with url=\"https://example.org\" and no session_id. Record session_id_B.\n3. Call browser_get_state with session_id_A — report the exact URL.\n4. Call browser_get_state with session_id_B — report the exact URL.\n5. Close session_id_A with browser_close_session.\n6. Close session_id_B with browser_close_session.\n7. Confirm both sessions returned different session IDs and both URLs loaded correctly.\n\nFAILURE CRITERIA: If either navigate call times out, returns an error, or get_state shows the wrong URL, this test FAILS. Report 'TEST PASSED' only if both sessions worked correctly with correct URLs, otherwise report 'TEST FAILED' with the error.",
       "expected_agent": "NO_TASK_CALL",
       "expected_alternatives": [],
       "category": "regression",
-      "tags": ["browser-use", "singleton-lock", "multi-session", "regression"],
+      "tags": ["singleton-lock", "multi-session", "regression", "navigate"],
       "checks": {
-        "has_tool_prefix": "mcp__browser-use__",
+        "has_tool_prefix": "browser",
         "min_tool_calls_by_name": {
-          "navigate": 2,
-          "screenshot": 2,
-          "close_session": 2
+          "browser_navigate": 2,
+          "browser_get_state": 2,
+          "browser_close_session": 2
         },
-        "response_contains_any": ["session_id", "session"],
+        "response_contains_all": ["example.com", "example.org", "TEST PASSED"],
+        "response_not_contains": ["TEST FAILED", "timed out", "timeout"],
         "min_tool_calls": 6
+      }
+    },
+    {
+      "id": "browser-get-state-03",
+      "description": "Navigate to a page, get DOM state, verify exact URL, title, and element count are reported",
+      "prompt": "You MUST use the browser-use MCP tools (prefixed with 'browser-use' in the tool names, e.g. tools containing 'browser_navigate', 'browser_screenshot', 'browser_get_state', etc. from the browser-use MCP server). Do NOT use chrome-devtools tools. The browser-use tools are: browser_navigate, browser_click, browser_type, browser_get_state, browser_extract_content, browser_get_html, browser_screenshot, browser_scroll, browser_go_back, browser_list_tabs, browser_switch_tab, browser_close_tab, browser_list_sessions, browser_close_session, browser_export_session, browser_import_session, browser_run_script.\n\nDo the following:\n1. Navigate to https://example.com using browser_navigate. Record the session_id.\n2. Call browser_get_state with the session_id to get the current page DOM state.\n3. From the get_state response, extract and report:\n   a. The EXACT current URL (copy it verbatim)\n   b. The EXACT page title (copy it verbatim)\n   c. The number of interactive elements found\n4. Close the session with browser_close_session.\n\nYou MUST copy the exact URL and title strings from the get_state response, not guess them.",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "core",
+      "tags": ["get-state", "dom", "elements", "inspect"],
+      "checks": {
+        "has_tool_prefix": "browser",
+        "tools_used_include_any": [
+          ["browser_navigate", "browser_get_state", "browser_close_session"]
+        ],
+        "response_contains_all": ["https://example.com", "Example Domain"],
+        "min_tool_calls": 3
+      }
+    },
+    {
+      "id": "browser-get-html-04",
+      "description": "Navigate to a page, extract raw HTML, verify specific markup content is present",
+      "prompt": "You MUST use the browser-use MCP tools (prefixed with 'browser-use' in the tool names, e.g. tools containing 'browser_navigate', 'browser_screenshot', 'browser_get_state', etc. from the browser-use MCP server). Do NOT use chrome-devtools tools. The browser-use tools are: browser_navigate, browser_click, browser_type, browser_get_state, browser_extract_content, browser_get_html, browser_screenshot, browser_scroll, browser_go_back, browser_list_tabs, browser_switch_tab, browser_close_tab, browser_list_sessions, browser_close_session, browser_export_session, browser_import_session, browser_run_script.\n\nDo the following:\n1. Navigate to https://example.com using browser_navigate. Record the session_id.\n2. Call browser_get_html with the session_id to get the full page HTML source.\n3. From the HTML response, verify and report:\n   a. The exact text content inside the <h1> tag\n   b. Whether a <p> tag exists containing the word 'illustrative'\n   c. Whether the HTML contains a link to 'iana.org'\n4. Close the session with browser_close_session.\n\nQuote the actual h1 content from the HTML.",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "core",
+      "tags": ["get-html", "raw-html", "markup"],
+      "checks": {
+        "has_tool_prefix": "browser",
+        "tools_used_include_any": [
+          ["browser_navigate", "browser_get_html", "browser_close_session"]
+        ],
+        "response_contains_all": ["Example Domain", "iana.org"],
+        "min_tool_calls": 3
+      }
+    },
+    {
+      "id": "browser-scroll-05",
+      "description": "Navigate to a long page, scroll down, verify scroll position changed via get_state",
+      "prompt": "You MUST use the browser-use MCP tools (prefixed with 'browser-use' in the tool names, e.g. tools containing 'browser_navigate', 'browser_screenshot', 'browser_get_state', etc. from the browser-use MCP server). Do NOT use chrome-devtools tools. The browser-use tools are: browser_navigate, browser_click, browser_type, browser_get_state, browser_extract_content, browser_get_html, browser_screenshot, browser_scroll, browser_go_back, browser_list_tabs, browser_switch_tab, browser_close_tab, browser_list_sessions, browser_close_session, browser_export_session, browser_import_session, browser_run_script.\n\nDo the following:\n1. Navigate to https://en.wikipedia.org/wiki/Web_browser using browser_navigate. Record the session_id.\n2. Call browser_get_state to capture the initial page state (note the scroll position or visible content).\n3. Scroll down 2000 pixels using browser_scroll with direction=\"down\" and amount=2000.\n4. Call browser_get_state again to capture state after scrolling.\n5. Compare the two states: the visible elements or content should differ because we scrolled.\n6. Scroll back up using browser_scroll with direction=\"up\" and amount=2000.\n7. Call browser_get_state one final time.\n8. Close the session with browser_close_session.\n9. Report 'SCROLL VERIFIED' if the get_state results showed different content at different scroll positions. Report 'SCROLL FAILED' if all three states showed the same content.\n\nThe key assertion is that get_state returns DIFFERENT element indices or content at different scroll positions.",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "interaction",
+      "tags": ["scroll", "navigation", "viewport", "behavioral"],
+      "checks": {
+        "has_tool_prefix": "browser",
+        "tools_used_include_any": [
+          ["browser_navigate", "browser_scroll", "browser_get_state", "browser_close_session"]
+        ],
+        "min_tool_calls_by_name": {
+          "browser_scroll": 2,
+          "browser_get_state": 3
+        },
+        "response_contains_all": ["SCROLL VERIFIED"],
+        "response_not_contains": ["SCROLL FAILED"],
+        "min_tool_calls": 8
+      }
+    },
+    {
+      "id": "browser-multi-tab-06",
+      "description": "Open multiple tabs, verify tab count is 2, switch tabs, close one, verify tab count is 1",
+      "prompt": "You MUST use the browser-use MCP tools (prefixed with 'browser-use' in the tool names, e.g. tools containing 'browser_navigate', 'browser_screenshot', 'browser_get_state', etc. from the browser-use MCP server). Do NOT use chrome-devtools tools. The browser-use tools are: browser_navigate, browser_click, browser_type, browser_get_state, browser_extract_content, browser_get_html, browser_screenshot, browser_scroll, browser_go_back, browser_list_tabs, browser_switch_tab, browser_close_tab, browser_list_sessions, browser_close_session, browser_export_session, browser_import_session, browser_run_script.\n\nTest multi-tab management:\n1. Navigate to https://example.com using browser_navigate. Record the session_id.\n2. Navigate to https://example.org in a new tab using browser_navigate with the same session_id and new_tab=true.\n3. Call browser_list_tabs with the session_id.\n4. Count the tabs: report the EXACT number (should be 2). If it is not 2, report 'TAB COUNT WRONG'.\n5. Switch to the first tab using browser_switch_tab (use the tab_id from list_tabs).\n6. Call browser_get_state to verify you're on example.com (report the exact URL).\n7. Close the second tab using browser_close_tab.\n8. Call browser_list_tabs again.\n9. Report the new tab count (should be 1). If it is not 1, report 'TAB COUNT WRONG'.\n10. Close the session with browser_close_session.\n11. Report 'TABS VERIFIED: 2 then 1' if both counts were correct.",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "advanced",
+      "tags": ["multi-tab", "tabs", "switch-tab", "close-tab", "list-tabs"],
+      "checks": {
+        "has_tool_prefix": "browser",
+        "tools_used_include_any": [
+          ["browser_navigate", "browser_list_tabs", "browser_switch_tab", "browser_close_tab", "browser_close_session"]
+        ],
+        "min_tool_calls_by_name": {
+          "browser_navigate": 2,
+          "browser_list_tabs": 2
+        },
+        "response_contains_all": ["TABS VERIFIED", "example.com"],
+        "response_not_contains": ["TAB COUNT WRONG"],
+        "min_tool_calls": 8
+      }
+    },
+    {
+      "id": "browser-go-back-07",
+      "description": "Navigate to two pages sequentially, go back, verify URL returned to the first page",
+      "prompt": "You MUST use the browser-use MCP tools (prefixed with 'browser-use' in the tool names, e.g. tools containing 'browser_navigate', 'browser_screenshot', 'browser_get_state', etc. from the browser-use MCP server). Do NOT use chrome-devtools tools. The browser-use tools are: browser_navigate, browser_click, browser_type, browser_get_state, browser_extract_content, browser_get_html, browser_screenshot, browser_scroll, browser_go_back, browser_list_tabs, browser_switch_tab, browser_close_tab, browser_list_sessions, browser_close_session, browser_export_session, browser_import_session, browser_run_script.\n\nTest browser history navigation:\n1. Navigate to https://example.com using browser_navigate. Record the session_id.\n2. Call browser_get_state — report the exact URL (should be https://example.com).\n3. Navigate to https://example.org using browser_navigate with the same session_id.\n4. Call browser_get_state — report the exact URL (should be https://example.org).\n5. Call browser_go_back with the session_id to go back in history.\n6. Call browser_get_state — report the exact URL (should be back to https://example.com).\n7. Close the session with browser_close_session.\n8. Report 'BACK NAVIGATION VERIFIED' if the URL after go_back returned to example.com. Report 'BACK NAVIGATION FAILED' if the URL did not change back.\n\nReport all three URLs exactly as returned by get_state.",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "interaction",
+      "tags": ["go-back", "history", "navigation"],
+      "checks": {
+        "has_tool_prefix": "browser",
+        "min_tool_calls_by_name": {
+          "browser_navigate": 2,
+          "browser_get_state": 3,
+          "browser_go_back": 1
+        },
+        "response_contains_all": ["example.com", "example.org", "BACK NAVIGATION VERIFIED"],
+        "response_not_contains": ["BACK NAVIGATION FAILED"],
+        "min_tool_calls": 7
+      }
+    },
+    {
+      "id": "browser-session-management-08",
+      "description": "Create multiple sessions, verify session counts at each stage, close individually, verify cleanup",
+      "prompt": "You MUST use the browser-use MCP tools (prefixed with 'browser-use' in the tool names, e.g. tools containing 'browser_navigate', 'browser_screenshot', 'browser_get_state', etc. from the browser-use MCP server). Do NOT use chrome-devtools tools. The browser-use tools are: browser_navigate, browser_click, browser_type, browser_get_state, browser_extract_content, browser_get_html, browser_screenshot, browser_scroll, browser_go_back, browser_list_tabs, browser_switch_tab, browser_close_tab, browser_list_sessions, browser_close_session, browser_export_session, browser_import_session, browser_run_script.\n\nTest session management:\n1. Navigate to https://example.com to create session A. Record session_id_A.\n2. Navigate to https://example.org to create session B (no session_id — new session). Record session_id_B.\n3. Call browser_list_sessions. Count and report: 'SESSIONS AFTER CREATE: N' (should be at least 2).\n4. Close session A with browser_close_session.\n5. Call browser_list_sessions again. Report: 'SESSIONS AFTER CLOSE A: N' (should be at least 1, and session_id_A should NOT be in the list).\n6. Close session B with browser_close_session.\n7. Call browser_list_sessions one final time. Report: 'SESSIONS AFTER CLOSE B: N' (should be 0 or only other sessions).\n8. Report 'SESSION LIFECYCLE VERIFIED' if counts decreased correctly at each step.\n\nAlways clean up all sessions.",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "advanced",
+      "tags": ["session-management", "list-sessions", "cleanup", "lifecycle"],
+      "checks": {
+        "has_tool_prefix": "browser",
+        "min_tool_calls_by_name": {
+          "browser_navigate": 2,
+          "browser_list_sessions": 3,
+          "browser_close_session": 2
+        },
+        "response_contains_all": ["SESSIONS AFTER CREATE", "SESSIONS AFTER CLOSE A", "SESSIONS AFTER CLOSE B", "SESSION LIFECYCLE VERIFIED"],
+        "min_tool_calls": 7
+      }
+    },
+    {
+      "id": "browser-export-import-09",
+      "description": "Export session state to file, close session, import into new session, verify page loads",
+      "prompt": "You MUST use the browser-use MCP tools (prefixed with 'browser-use' in the tool names, e.g. tools containing 'browser_navigate', 'browser_screenshot', 'browser_get_state', etc. from the browser-use MCP server). Do NOT use chrome-devtools tools. The browser-use tools are: browser_navigate, browser_click, browser_type, browser_get_state, browser_extract_content, browser_get_html, browser_screenshot, browser_scroll, browser_go_back, browser_list_tabs, browser_switch_tab, browser_close_tab, browser_list_sessions, browser_close_session, browser_export_session, browser_import_session, browser_run_script.\n\nTest session persistence:\n1. Navigate to https://example.com using browser_navigate. Record session_id_A.\n2. Export the session using browser_export_session with session_id_A and output_path=\"/tmp/browser-use-e2e-session.json\".\n3. Close session_id_A with browser_close_session.\n4. Import the session file using browser_import_session with import_path=\"/tmp/browser-use-e2e-session.json\" and navigate_to=\"https://example.com\".\n5. Record the new session_id_B from the import response.\n6. Call browser_get_state with session_id_B — report the exact URL (should be https://example.com).\n7. Close session_id_B with browser_close_session.\n8. Confirm session_id_A and session_id_B are DIFFERENT session IDs.\n9. Report 'EXPORT/IMPORT VERIFIED' if the import created a new working session. Report 'EXPORT/IMPORT FAILED' if the import failed or get_state showed wrong URL.\n\nClean up all sessions.",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "advanced",
+      "tags": ["export", "import", "session-persistence", "cookies"],
+      "checks": {
+        "has_tool_prefix": "browser",
+        "tools_used_include_any": [
+          ["browser_navigate", "browser_export_session", "browser_import_session", "browser_get_state", "browser_close_session"]
+        ],
+        "response_contains_all": ["example.com", "EXPORT/IMPORT VERIFIED"],
+        "response_not_contains": ["EXPORT/IMPORT FAILED"],
+        "min_tool_calls": 6
+      }
+    },
+    {
+      "id": "browser-click-link-10",
+      "description": "Navigate to a page, find a link by DOM index, click it, verify the URL changed",
+      "prompt": "You MUST use the browser-use MCP tools (prefixed with 'browser-use' in the tool names, e.g. tools containing 'browser_navigate', 'browser_screenshot', 'browser_get_state', etc. from the browser-use MCP server). Do NOT use chrome-devtools tools. The browser-use tools are: browser_navigate, browser_click, browser_type, browser_get_state, browser_extract_content, browser_get_html, browser_screenshot, browser_scroll, browser_go_back, browser_list_tabs, browser_switch_tab, browser_close_tab, browser_list_sessions, browser_close_session, browser_export_session, browser_import_session, browser_run_script.\n\nTest clicking interactive elements:\n1. Navigate to https://example.com using browser_navigate. Record the session_id.\n2. Call browser_get_state with the session_id to get interactive elements and their indices.\n3. Report the URL before clicking: should be https://example.com\n4. Find the 'More information...' link in the elements list. Report its index number.\n5. Click that link using browser_click with the session_id and the element's index.\n6. Call browser_get_state again to get the new URL after clicking.\n7. Report the URL after clicking — it should have changed away from example.com (likely to iana.org).\n8. Close the session with browser_close_session.\n9. Report 'CLICK NAVIGATION VERIFIED' if the URL changed after clicking. Report 'CLICK NAVIGATION FAILED' if the URL stayed the same.\n\nUse index-based clicking (not coordinates).",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "interaction",
+      "tags": ["click", "link", "dom-interaction", "get-state"],
+      "checks": {
+        "has_tool_prefix": "browser",
+        "min_tool_calls_by_name": {
+          "browser_get_state": 2,
+          "browser_click": 1
+        },
+        "response_contains_all": ["example.com", "iana.org", "CLICK NAVIGATION VERIFIED"],
+        "response_not_contains": ["CLICK NAVIGATION FAILED"],
+        "min_tool_calls": 5
+      }
+    },
+    {
+      "id": "browser-full-page-screenshot-11",
+      "description": "Take viewport and full-page screenshots, verify full-page is larger",
+      "prompt": "You MUST use the browser-use MCP tools (prefixed with 'browser-use' in the tool names, e.g. tools containing 'browser_navigate', 'browser_screenshot', 'browser_get_state', etc. from the browser-use MCP server). Do NOT use chrome-devtools tools. The browser-use tools are: browser_navigate, browser_click, browser_type, browser_get_state, browser_extract_content, browser_get_html, browser_screenshot, browser_scroll, browser_go_back, browser_list_tabs, browser_switch_tab, browser_close_tab, browser_list_sessions, browser_close_session, browser_export_session, browser_import_session, browser_run_script.\n\nDo the following:\n1. Navigate to https://en.wikipedia.org/wiki/Web_browser using browser_navigate. Record the session_id.\n2. Take a viewport screenshot using browser_screenshot with the session_id (default settings, no full_page flag).\n3. Note the screenshot response — look for any size/dimension info.\n4. Take a full-page screenshot using browser_screenshot with full_page=true.\n5. Note the screenshot response for this one too.\n6. Compare the two screenshot responses. The full-page screenshot should capture more content (larger data or dimensions).\n7. Close the session with browser_close_session.\n8. Report 'FULL PAGE LARGER' if the full-page screenshot returned more data than the viewport screenshot. Report 'SCREENSHOTS SAME SIZE' if they appear identical.",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "core",
+      "tags": ["screenshot", "full-page", "viewport", "compare"],
+      "checks": {
+        "has_tool_prefix": "browser",
+        "min_tool_calls_by_name": {
+          "browser_screenshot": 2
+        },
+        "response_contains_all": ["FULL PAGE LARGER"],
+        "response_not_contains": ["SCREENSHOTS SAME SIZE"],
+        "min_tool_calls": 4
+      }
+    },
+    {
+      "id": "browser-error-handling-12",
+      "description": "Test graceful error handling: invalid session operations should return error messages, not crash",
+      "prompt": "You MUST use the browser-use MCP tools (prefixed with 'browser-use' in the tool names, e.g. tools containing 'browser_navigate', 'browser_screenshot', 'browser_get_state', etc. from the browser-use MCP server). Do NOT use chrome-devtools tools. The browser-use tools are: browser_navigate, browser_click, browser_type, browser_get_state, browser_extract_content, browser_get_html, browser_screenshot, browser_scroll, browser_go_back, browser_list_tabs, browser_switch_tab, browser_close_tab, browser_list_sessions, browser_close_session, browser_export_session, browser_import_session, browser_run_script.\n\nTest error handling:\n1. Call browser_get_state with session_id=\"nonexistent_session_12345\". Record the EXACT error message returned.\n2. Call browser_screenshot with session_id=\"nonexistent_session_12345\". Record the EXACT error message.\n3. Navigate to https://example.com using browser_navigate to create a valid session. Record session_id.\n4. Close the session with browser_close_session.\n5. Try to take a screenshot with the now-closed session_id. Record the EXACT error message.\n6. For each of the 3 error calls above, report:\n   - 'ERROR 1: [exact message]'\n   - 'ERROR 2: [exact message]'\n   - 'ERROR 3: [exact message]'\n7. Report 'ERRORS HANDLED GRACEFULLY' if all 3 calls returned error messages without crashing. Report 'ERROR HANDLING BROKEN' if any call crashed or threw an unhandled exception.\n\nThis tests that the server handles bad input gracefully.",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "error-handling",
+      "tags": ["error", "invalid-session", "graceful-degradation", "robustness"],
+      "checks": {
+        "has_tool_prefix": "browser",
+        "tools_used_include_any": [
+          ["browser_get_state", "browser_screenshot", "browser_navigate", "browser_close_session"]
+        ],
+        "response_contains_all": ["ERROR 1:", "ERROR 2:", "ERROR 3:", "ERRORS HANDLED GRACEFULLY"],
+        "response_not_contains": ["ERROR HANDLING BROKEN"],
+        "min_tool_calls": 5
+      }
+    },
+    {
+      "id": "browser-type-search-13",
+      "description": "Navigate to a search engine, type a query into the search box, verify typed text appears",
+      "prompt": "You MUST use the browser-use MCP tools (prefixed with 'browser-use' in the tool names, e.g. tools containing 'browser_navigate', 'browser_screenshot', 'browser_get_state', etc. from the browser-use MCP server). Do NOT use chrome-devtools tools. The browser-use tools are: browser_navigate, browser_click, browser_type, browser_get_state, browser_extract_content, browser_get_html, browser_screenshot, browser_scroll, browser_go_back, browser_list_tabs, browser_switch_tab, browser_close_tab, browser_list_sessions, browser_close_session, browser_export_session, browser_import_session, browser_run_script.\n\nTest text input:\n1. Navigate to https://www.google.com using browser_navigate. Record the session_id.\n2. Call browser_get_state to find the search input field. Look for a textarea or input element. Report its index.\n3. Click the search input element using browser_click with its index.\n4. Type the text 'browser automation testing' into the search field using browser_type with the session_id and text parameter.\n5. Call browser_get_state again to verify the text was entered — the search field should now contain the typed text.\n6. Take a screenshot to visually confirm the text appears in the search box.\n7. Close the session with browser_close_session.\n8. Report 'TYPE VERIFIED' if the text was successfully entered into the search field. Report 'TYPE FAILED' if the text did not appear in the field.\n\nDo NOT press Enter or submit the form — just type the text.",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "interaction",
+      "tags": ["type", "text-input", "search", "form"],
+      "checks": {
+        "has_tool_prefix": "browser",
+        "tools_used_include_any": [
+          ["browser_navigate", "browser_get_state", "browser_click", "browser_type", "browser_close_session"]
+        ],
+        "min_tool_calls_by_name": {
+          "browser_type": 1,
+          "browser_get_state": 2
+        },
+        "response_contains_all": ["browser automation testing", "TYPE VERIFIED"],
+        "response_not_contains": ["TYPE FAILED"],
+        "min_tool_calls": 6
+      }
+    },
+    {
+      "id": "browser-extract-content-14",
+      "description": "Navigate to a content-rich page, use extract_content to get structured text, verify content",
+      "prompt": "You MUST use the browser-use MCP tools (prefixed with 'browser-use' in the tool names, e.g. tools containing 'browser_navigate', 'browser_screenshot', 'browser_get_state', etc. from the browser-use MCP server). Do NOT use chrome-devtools tools. The browser-use tools are: browser_navigate, browser_click, browser_type, browser_get_state, browser_extract_content, browser_get_html, browser_screenshot, browser_scroll, browser_go_back, browser_list_tabs, browser_switch_tab, browser_close_tab, browser_list_sessions, browser_close_session, browser_export_session, browser_import_session, browser_run_script.\n\nTest content extraction:\n1. Navigate to https://example.com using browser_navigate. Record the session_id.\n2. Call browser_extract_content with the session_id to extract the page content as structured text.\n3. Report the extracted content — it should contain 'Example Domain' as the heading and descriptive text about this domain being for illustrative examples.\n4. Close the session with browser_close_session.\n5. Report 'EXTRACTION VERIFIED' if extract_content returned meaningful text content (not empty, not just HTML tags). Report 'EXTRACTION FAILED' if the result was empty or contained only raw HTML.\n\nThe extract_content tool should return cleaned text, not raw HTML.",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "core",
+      "tags": ["extract-content", "text-extraction", "structured-data"],
+      "checks": {
+        "has_tool_prefix": "browser",
+        "tools_used_include_any": [
+          ["browser_navigate", "browser_extract_content", "browser_close_session"]
+        ],
+        "min_tool_calls_by_name": {
+          "browser_extract_content": 1
+        },
+        "response_contains_all": ["Example Domain", "EXTRACTION VERIFIED"],
+        "response_not_contains": ["EXTRACTION FAILED"],
+        "min_tool_calls": 3
+      }
+    },
+    {
+      "id": "browser-run-script-15",
+      "description": "Navigate to a page, execute JavaScript via run_script, verify the script return value",
+      "prompt": "You MUST use the browser-use MCP tools (prefixed with 'browser-use' in the tool names, e.g. tools containing 'browser_navigate', 'browser_screenshot', 'browser_get_state', etc. from the browser-use MCP server). Do NOT use chrome-devtools tools. The browser-use tools are: browser_navigate, browser_click, browser_type, browser_get_state, browser_extract_content, browser_get_html, browser_screenshot, browser_scroll, browser_go_back, browser_list_tabs, browser_switch_tab, browser_close_tab, browser_list_sessions, browser_close_session, browser_export_session, browser_import_session, browser_run_script.\n\nTest JavaScript execution:\n1. Navigate to https://example.com using browser_navigate. Record the session_id.\n2. Call browser_run_script with the session_id and script=\"document.title\" to get the page title via JS.\n3. Report the return value — it should be 'Example Domain'.\n4. Call browser_run_script again with script=\"document.querySelectorAll('a').length\" to count all links on the page.\n5. Report the number of links found.\n6. Call browser_run_script with script=\"window.location.href\" to get the current URL via JS.\n7. Report the URL returned by JavaScript.\n8. Close the session with browser_close_session.\n9. Report 'SCRIPT EXECUTION VERIFIED' if all three scripts returned correct values (title matches 'Example Domain', link count is a number, URL contains example.com). Report 'SCRIPT EXECUTION FAILED' if any script returned an error or unexpected value.",
+      "expected_agent": "NO_TASK_CALL",
+      "expected_alternatives": [],
+      "category": "advanced",
+      "tags": ["run-script", "javascript", "dom-query", "execution"],
+      "checks": {
+        "has_tool_prefix": "browser",
+        "min_tool_calls_by_name": {
+          "browser_run_script": 3
+        },
+        "response_contains_all": ["Example Domain", "example.com", "SCRIPT EXECUTION VERIFIED"],
+        "response_not_contains": ["SCRIPT EXECUTION FAILED"],
+        "min_tool_calls": 5
       }
     }
   ]

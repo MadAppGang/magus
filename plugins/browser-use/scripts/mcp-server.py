@@ -174,6 +174,8 @@ async def get_or_create_session(session_id: str | None = None) -> tuple[str, Bro
     profile_config = get_default_profile(config)
 
     # Merge sane defaults with any config file values
+    # BROWSER_USE_HEADLESS=true runs Chrome without a visible window (useful for CI/E2E)
+    headless_env = os.environ.get("BROWSER_USE_HEADLESS", "").lower() in ("true", "1", "yes")
     profile_data: dict[str, Any] = {
         "downloads_path": str(Path.home() / "Downloads" / "browser-use-mcp"),
         "wait_between_actions": 0.5,
@@ -181,7 +183,7 @@ async def get_or_create_session(session_id: str | None = None) -> tuple[str, Bro
         "user_data_dir": "~/.config/browseruse/profiles/default",
         "device_scale_factor": 1.0,
         "disable_security": False,
-        "headless": False,
+        "headless": headless_env or False,
         **profile_config,
     }
 
@@ -378,10 +380,6 @@ async def list_tools() -> list[types.Tool]:
                     },
                 },
                 "required": ["session_id"],
-                "oneOf": [
-                    {"required": ["index"]},
-                    {"required": ["coordinate_x", "coordinate_y"]},
-                ],
             },
         ),
         # ------------------------------------------------------------------

@@ -1,7 +1,7 @@
 {
   "name": "browser-use",
-  "version": "1.0.2",
-  "description": "Full-platform browser automation for Claude Code. v1.0.1: Fix macOS dock icon (Python rocket) for MCP server process. 15 MCP tools via in-process asyncio server, 5 skills, local CDP + Cloud support, claude-in-chrome hybrid workflows.",
+  "version": "1.0.3",
+  "description": "Full-platform browser automation for Claude Code. v1.0.3: Fix oneOf schema rejection (browser-use#4211), SingletonLock contention via DevToolsActivePort CDP reuse, headless env var. 18 MCP tools, 5 skills, 15 E2E tests.",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",
