@@ -310,8 +310,8 @@
     {
       "name": "terminal",
       "source": "./plugins/terminal",
-      "description": "Interactive terminal integration for Claude Code. v3.0.1: fix pane detection race condition — use $TMUX_PANE instead of display-message -p (immune to focus changes during subagent delay), fix E2E test runner. 5 skills, 9 commands, 1 agent.",
-      "version": "3.0.1",
+      "description": "Interactive terminal integration for Claude Code. v4.0.0: agentic-first rewrite — single Go tmux-mcp binary replaces ht-mcp + npm tmux-mcp. New agentic tools (start-and-watch, watch-pane, run-in-repl, pane-state) eliminate all polling loops. 5 skills, 9 commands, 1 agent.",
+      "version": "4.0.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -322,10 +322,11 @@
         "terminal",
         "tmux",
         "tui",
-        "ht-mcp",
+        "agentic",
         "interactive",
         "shell",
-        "command-line"
+        "headless",
+        "repl"
       ],
       "strict": true
     },
