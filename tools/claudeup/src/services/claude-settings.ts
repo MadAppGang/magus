@@ -635,6 +635,8 @@ export interface MarketplaceRecoveryResult {
 
 const OLD_MARKETPLACE_NAMES = ["mag-claude-plugins", "MadAppGang-claude-code"];
 const NEW_MARKETPLACE_NAME = "magus";
+const NEW_MARKETPLACE_REPO = "MadAppGang/magus";
+const OLD_MARKETPLACE_REPOS = ["MadAppGang/claude-code"];
 
 /**
  * Rename plugin keys in a Record from any old marketplace name to new.
@@ -690,10 +692,26 @@ function migrateSettingsObject(settings: ClaudeSettings): number {
 			const entry = settings.extraKnownMarketplaces[oldName];
 			delete settings.extraKnownMarketplaces[oldName];
 			if (!settings.extraKnownMarketplaces[NEW_MARKETPLACE_NAME]) {
-				settings.extraKnownMarketplaces[NEW_MARKETPLACE_NAME] = entry;
+				settings.extraKnownMarketplaces[NEW_MARKETPLACE_NAME] = {
+					...entry,
+					source: {
+						...entry.source,
+						repo: NEW_MARKETPLACE_REPO,
+					},
+				};
 			}
 			total++;
 		}
+	}
+
+	// Fix stale repo URL on existing magus entry (e.g. key is "magus" but repo is still "MadAppGang/claude-code")
+	const magusEntry = settings.extraKnownMarketplaces?.[NEW_MARKETPLACE_NAME];
+	if (
+		magusEntry?.source?.repo &&
+		OLD_MARKETPLACE_REPOS.includes(magusEntry.source.repo)
+	) {
+		magusEntry.source.repo = NEW_MARKETPLACE_REPO;
+		total++;
 	}
 
 	return total;
@@ -883,6 +901,41 @@ export async function migrateMarketplaceRename(
 		}
 	} catch {
 		/* skip if unreadable */
+	}
+
+	// 6. Scan all known project settings (derived from ~/.claude/projects/ directory names)
+	try {
+		const projectsDir = path.join(os.homedir(), ".claude", "projects");
+		if (await fs.pathExists(projectsDir)) {
+			const entries = await fs.readdir(projectsDir);
+			const seenPaths = new Set<string>();
+			// Current project (from step 1) already handled — skip it
+			const currentProject = projectPath || process.cwd();
+			seenPaths.add(currentProject);
+
+			for (const entry of entries) {
+				// Directory names encode paths: -Users-jack-dev-foo → /Users/jack/dev/foo
+				const decoded = entry.replace(/^-/, "/").replace(/-/g, "/");
+				if (seenPaths.has(decoded)) continue;
+				seenPaths.add(decoded);
+
+				const settingsFile = path.join(decoded, ".claude", "settings.json");
+				try {
+					if (await fs.pathExists(settingsFile)) {
+						const raw = await fs.readJson(settingsFile);
+						const count = migrateSettingsObject(raw);
+						if (count > 0) {
+							await fs.writeJson(settingsFile, raw, { spaces: 2 });
+							result.projectMigrated += count;
+						}
+					}
+				} catch {
+					/* skip individual projects that fail */
+				}
+			}
+		}
+	} catch {
+		/* non-fatal: cross-project scan is best-effort */
 	}
 
 	return result;
