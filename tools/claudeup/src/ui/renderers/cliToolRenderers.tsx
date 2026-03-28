@@ -49,17 +49,17 @@ export function renderCliToolRow(
     icon = "○";
     iconColor = theme.colors.muted;
   } else if (hasConflict) {
-    icon = "⚠";
+    icon = "!";
     iconColor = theme.colors.danger;
   } else if (hasUpdate) {
-    icon = "⬆";
+    icon = "*";
     iconColor = theme.colors.warning;
   } else {
     icon = "●";
     iconColor = theme.colors.success;
   }
 
-  const versionText = installedVersion ? `v${installedVersion}` : "";
+  const versionText = installedVersion ? ` v${installedVersion}` : "";
   const methodTag = installed && allMethods?.length
     ? ` ${allMethods.join("+")}`
     : "";
@@ -67,20 +67,19 @@ export function renderCliToolRow(
   if (isSelected) {
     return (
       <text bg={theme.selection.bg} fg={theme.selection.fg}>
-        {" "}
-        {icon} {tool.displayName} {versionText}{methodTag}
-        {checking ? "..." : ""}{" "}
+        {" "}{icon} {tool.displayName}{versionText}{methodTag}
+        {checking ? " ..." : ""}{" "}
       </text>
     );
   }
 
   return (
     <text>
-      <span fg={iconColor}>{icon}</span>
+      <span fg={iconColor}> {icon}</span>
       <span fg={theme.colors.text}> {tool.displayName}</span>
-      {versionText ? <span fg={theme.colors.success}> {versionText}</span> : null}
+      {versionText ? <span fg={theme.colors.success}>{versionText}</span> : null}
       {methodTag ? <span fg={hasConflict ? theme.colors.danger : theme.colors.dim}>{methodTag}</span> : null}
-      {checking ? <span fg={theme.colors.muted}>{"..."}</span> : null}
+      {checking ? <span fg={theme.colors.muted}>{" ..."}</span> : null}
     </text>
   );
 }
@@ -115,7 +114,7 @@ export function renderCliToolDetail(
           <strong>{"⚙ "}{tool.displayName}</strong>
         </text>
         {hasUpdate ? <text fg={theme.colors.warning}> ⬆</text> : null}
-        {hasConflict ? <text fg={theme.colors.danger}> ⚠</text> : null}
+        {hasConflict ? <text fg={theme.colors.danger}> !</text> : null}
       </box>
 
       <text fg={theme.colors.muted}>{tool.description}</text>
