@@ -238,6 +238,7 @@ export function PluginsScreen() {
 		else if (event.name === "u") handleScopeToggle("user");
 		else if (event.name === "p") handleScopeToggle("project");
 		else if (event.name === "l") handleScopeToggle("local");
+		else if (event.name === "d") handleRemoveDeprecated();
 		else if (event.name === "U") handleUpdate();
 		else if (event.name === "a") handleUpdateAll();
 		else if (event.name === "s") handleSaveAsProfile();
@@ -693,6 +694,30 @@ export function PluginsScreen() {
 		} catch (error) {
 			modal.hideModal();
 			await modal.message("Error", `Failed: ${error}`, "error");
+		}
+	};
+
+	const handleRemoveDeprecated = async () => {
+		const item = selectableItems[pluginsState.selectedIndex];
+		if (!item || item.kind !== "plugin" || !item.plugin.isOrphaned) return;
+
+		const plugin = item.plugin;
+		modal.loading(`Removing ${plugin.name}...`);
+		try {
+			// Remove from all scopes — try all to clean up stale references
+			const scopes: PluginScope[] = ["user", "project", "local"];
+			for (const scope of scopes) {
+				try {
+					await cliUninstallPlugin(plugin.id, scope, state.projectPath);
+				} catch {
+					// Ignore errors for scopes where it doesn't exist
+				}
+			}
+			modal.hideModal();
+			fetchData();
+		} catch (error) {
+			modal.hideModal();
+			await modal.message("Error", `Failed to remove: ${error}`, "error");
 		}
 	};
 

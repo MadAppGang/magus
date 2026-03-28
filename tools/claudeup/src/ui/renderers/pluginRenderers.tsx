@@ -191,11 +191,9 @@ function pluginDetail(item: PluginPluginItem): React.ReactNode {
             uninstall and clean up.
           </text>
         </box>
-        {isInstalled ? (
-          <ActionHints
-            hints={[{ key: "d", label: "Uninstall (recommended)", tone: "danger" }]}
-          />
-        ) : null}
+        <ActionHints
+          hints={[{ key: "d", label: isInstalled ? "Remove from all scopes" : "Clean up stale reference", tone: "danger" }]}
+        />
       </box>
     );
   }
