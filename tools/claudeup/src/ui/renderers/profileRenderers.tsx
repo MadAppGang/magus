@@ -153,53 +153,29 @@ const predefinedRenderer: ItemRenderer<{ kind: "predefined"; profile: Predefined
           <text fg={theme.colors.muted}>{profile.description}</text>
         </box>
 
-        {/* Magus plugins — single text block */}
-        <box marginTop={1}>
-          <text fg={theme.colors.muted}>Magus ({profile.magusPlugins.length})</text>
-        </box>
+        {/* Everything as ONE text block to prevent any merging */}
         <box>
-          <text fg="#00bfa5">{profile.magusPlugins.map((p) => `  ${p}`).join("\n")}</text>
-        </box>
-
-        {/* Anthropic plugins — single text block */}
-        <box marginTop={1}>
-          <text fg={theme.colors.muted}>Anthropic ({profile.anthropicPlugins.length})</text>
-        </box>
-        <box>
-          <text fg="#b39ddb">{profile.anthropicPlugins.map((p) => `  ${p}`).join("\n")}</text>
-        </box>
-
-        {/* Skills — single text block */}
-        {profile.skills.length > 0 && (
-          <>
-            <box marginTop={1}>
-              <text fg={theme.colors.muted}>Skills ({profile.skills.length})</text>
-            </box>
-            <box>
-              <text fg="#ffd54f">{profile.skills.map((s) => `  ${s}`).join("\n")}</text>
-            </box>
-          </>
-        )}
-
-        <box><text fg={theme.colors.dim}>{DIVIDER}</text></box>
-
-        {/* Settings as single text block */}
-        <box>
-          <text fg={theme.colors.muted}>{[
-            ...settingEntries.map(([k, v]) => `  ${humanizeKey(k).padEnd(16)}${humanizeValue(k, v)}`),
-            ...(tasksOn ? [`  ${"Tasks".padEnd(16)}on`] : []),
-            ...(teamsOn ? [`  ${"Agent Teams".padEnd(16)}on`] : []),
+          <text fg="white">{[
+            "",
+            `Magus (${profile.magusPlugins.length})`,
+            ...profile.magusPlugins.map((p) => `  ${p}`),
+            "",
+            `Anthropic (${profile.anthropicPlugins.length})`,
+            ...profile.anthropicPlugins.map((p) => `  ${p}`),
+            ...(profile.skills.length > 0 ? [
+              "",
+              `Skills (${profile.skills.length})`,
+              ...profile.skills.map((s) => `  ${s}`),
+            ] : []),
+            "",
+            DIVIDER,
+            ...settingEntries.map(([k, v]) => `  ${humanizeKey(k).padEnd(18)}${humanizeValue(k, v)}`),
+            ...(tasksOn ? [`  ${"Tasks".padEnd(18)}on`] : []),
+            ...(teamsOn ? [`  ${"Agent Teams".padEnd(18)}on`] : []),
+            "",
+            DIVIDER,
+            "  Enter/a to apply",
           ].join("\n")}</text>
-        </box>
-        <box marginTop={1}>
-          <text fg={theme.colors.dim}>{DIVIDER}</text>
-        </box>
-        <box marginTop={1}>
-          <text bg="blue" fg="white">
-            {" "}
-            Enter/a{" "}
-          </text>
-          <text fg={theme.colors.muted}> Apply to project</text>
         </box>
       </box>
     );
