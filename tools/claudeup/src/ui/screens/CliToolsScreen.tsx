@@ -138,24 +138,22 @@ export function CliToolsScreen() {
 	const fetchVersionInfo = useCallback(async () => {
 		for (let i = 0; i < cliTools.length; i++) {
 			const tool = cliTools[i]!;
-			getInstalledVersion(tool).then((version) => {
-				updateToolStatus(i, {
-					installedVersion: version,
-					installed: version !== undefined,
-				});
-			});
 
-			getLatestVersion(tool).then((latest) => {
-				const current = statusesRef.current[i]!;
-				updateToolStatus(i, {
-					latestVersion: latest,
-					checking: false,
-					hasUpdate:
-						current.installedVersion && latest
-							? compareVersions(current.installedVersion, latest) < 0
-							: false,
-				});
-			});
+			// Run both checks in parallel, then compute hasUpdate with both results
+			Promise.all([getInstalledVersion(tool), getLatestVersion(tool)]).then(
+				([version, latest]) => {
+					updateToolStatus(i, {
+						installedVersion: version,
+						installed: version !== undefined,
+						latestVersion: latest,
+						checking: false,
+						hasUpdate:
+							version && latest
+								? compareVersions(version, latest) < 0
+								: false,
+					});
+				},
+			);
 		}
 	}, [updateToolStatus]);
 
@@ -183,7 +181,7 @@ export function CliToolsScreen() {
 			handleRefresh();
 		} else if (event.name === "a") {
 			handleUpdateAll();
-		} else if (event.name === "enter") {
+		} else if (event.name === "enter" || event.name === "return") {
 			handleInstall();
 		}
 	});

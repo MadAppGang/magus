@@ -116,6 +116,14 @@ export function renderCliToolDetail(
           </box>
         ) : null}
         <box>
+          <text fg={theme.colors.muted}>{"Package "}</text>
+          <text fg={theme.colors.text}>{tool.packageName}</text>
+        </box>
+        <box>
+          <text fg={theme.colors.muted}>{"Install "}</text>
+          <text fg={theme.colors.accent}>{tool.installCommand}</text>
+        </box>
+        <box>
           <text fg={theme.colors.muted}>{"Website "}</text>
           <text fg={theme.colors.link}>{tool.website}</text>
         </box>
