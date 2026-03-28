@@ -39,7 +39,7 @@ Parse args: task, `--models`, `--threshold`, `--no-memory`. If no task: ask the 
 check `agentPreferences[context]` first, else table default, else `dev:researcher`.
 Announce: "Agent: {RESOLVED_AGENT}"
 
-**Session directory** (for internal model output): `Bash: SESSION_DIR="ai-docs/sessions/team-$(date +%Y%m%d-%H%M%S)" && mkdir -p "$SESSION_DIR" && echo "$SESSION_DIR"`
+**Session directory** (for internal model output): `Bash: SESSION_DIR="$(pwd)/ai-docs/sessions/team-$(date +%Y%m%d-%H%M%S)" && mkdir -p "$SESSION_DIR" && echo "$SESSION_DIR"`
 
 **Build vote prompt** using the template below with `{TASK}` substituted.
 Unless `--no-memory`, save resolved models to `defaultModels` in the preferences file.
