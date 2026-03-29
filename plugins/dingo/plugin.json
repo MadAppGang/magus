@@ -1,0 +1,36 @@
+{
+  "name": "dingo",
+  "version": "1.0.0",
+  "description": "Dingo language skills for AI agents. Write idiomatic Dingo code with Result/Option types, error propagation (?), enums, pattern matching, lambdas, safe navigation, and 12 total features. Compiler-verified patterns.",
+  "author": {
+    "name": "Jack Rudenko",
+    "email": "i@madappgang.com",
+    "company": "MadAppGang"
+  },
+  "license": "MIT",
+  "keywords": [
+    "dingo",
+    "golang",
+    "go",
+    "meta-language",
+    "transpiler",
+    "error-handling",
+    "result-type",
+    "option-type",
+    "enums",
+    "sum-types",
+    "pattern-matching",
+    "lambdas",
+    "safe-navigation",
+    "null-coalescing",
+    "code-review",
+    "best-practices"
+  ],
+  "category": "language",
+  "skills": [
+    "./skills/dingo-developer"
+  ],
+  "compatibility": {
+    "claudeCode": ">=0.1.0"
+  }
+}
