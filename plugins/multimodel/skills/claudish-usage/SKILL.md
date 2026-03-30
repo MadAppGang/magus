@@ -295,19 +295,15 @@ claudish --version
 ### Step 2: Get Available Models
 
 ```bash
-# List ALL OpenRouter models grouped by provider
-claudish --models
+# Read the local model aliases file (synced from Firebase via /update-models)
+cat shared/model-aliases.json
 
-# Fuzzy search models by name, ID, or description
+# Shows shortAliases (short names → full IDs), roles, teams, and knownModels sections
+# Run /update-models to refresh from the queryPluginDefaults Firebase API
+
+# Search available models (still works, fetches from OpenRouter API)
 claudish --models gemini
 claudish --models "grok code"
-
-# Show top recommended programming models (curated list)
-claudish --top-models
-
-# JSON output for parsing
-claudish --models --json
-claudish --top-models --json
 
 # Force update from OpenRouter API
 claudish --models --force-update
@@ -364,17 +360,14 @@ git diff | claudish --stdin --model gpt-5.3-codex "Review these changes"
 
 **Get Latest Models:**
 ```bash
-# List all models (auto-updates every 2 days)
-claudish --models
+# Read the authoritative model aliases file (primary source)
+cat shared/model-aliases.json
 
-# Search for specific models
+# Search for specific models (fetches from OpenRouter API)
 claudish --models grok
 claudish --models "gemini flash"
 
-# Show curated top models
-claudish --top-models
-
-# Force immediate update
+# Force immediate update from OpenRouter
 claudish --models --force-update
 ```
 
@@ -747,7 +740,7 @@ done
 | `--model <model>` | OpenRouter model to use | `--model grok-code-fast-1` |
 | `--stdin` | Read prompt from stdin | `git diff \| claudish --stdin --model grok` |
 | `--models` | List all models or search | `claudish --models` or `claudish --models gemini` |
-| `--top-models` | Show top recommended models | `claudish --top-models` |
+| `--top-models` | ~~Show top recommended models~~ (deprecated — use `shared/model-aliases.json`) | `cat shared/model-aliases.json` |
 | `--json` | JSON output (implies --quiet) | `claudish --json "task"` |
 | `--help-ai` | Print AI agent usage guide | `claudish --help-ai` |
 
@@ -845,7 +838,10 @@ Model 'invalid/model' not found
 
 **Fix:**
 ```bash
-# List available models
+# Check available models in the aliases file
+cat shared/model-aliases.json
+
+# Or search via OpenRouter API
 claudish --models
 
 # Use valid model ID
@@ -933,13 +929,16 @@ await Task({
 
 **How:**
 ```bash
-# Auto-updates every 2 days
-claudish --models
+# Run /update-models command to sync from Firebase queryPluginDefaults API
+# This writes to shared/model-aliases.json
 
-# Search for specific models
+# Then read the authoritative list:
+cat shared/model-aliases.json
+
+# Search for specific models via OpenRouter (supplemental)
 claudish --models deepseek
 
-# Force update now
+# Force update from OpenRouter now
 claudish --models --force-update
 ```
 
@@ -1049,14 +1048,14 @@ const MODELS = ["grok-code-fast-1", "gpt-5.3"];
 
 **Right:**
 ```typescript
-// Query dynamically
-const { stdout } = await Bash("claudish --models --json");
-const models = JSON.parse(stdout).models.map(m => m.id);
+// Read from the authoritative model aliases file
+const aliases = JSON.parse(await Bun.file("shared/model-aliases.json").text());
+const models = Object.keys(aliases.knownModels);
 ```
 
 ### ✅ Do Accept Custom Models From Users
 
-**Problem:** User provides a custom model ID that's not in --top-models
+**Problem:** User provides a custom model ID that's not in `shared/model-aliases.json`
 
 **Wrong (rejecting custom models):**
 ```typescript
@@ -1070,7 +1069,7 @@ if (!availableModels.includes(userModel)) {
 
 **Right (accept any valid model ID):**
 ```typescript
-// Claudish accepts ANY valid OpenRouter model ID, even if not in --top-models
+// Claudish accepts ANY valid OpenRouter model ID, even if not in shared/model-aliases.json
 const userModel = "custom/provider/model-123";
 
 // Validate it's a non-empty string with provider format
@@ -1124,12 +1123,12 @@ const model = prefs.preferredModel || defaultModel;
 ```typescript
 // In a multi-step workflow, ask once
 if (!process.env.CLAUDISH_MODEL) {
-  const { stdout } = await Bash("claudish --models --json");
-  const models = JSON.parse(stdout).models;
+  const aliases = JSON.parse(await Bun.file("shared/model-aliases.json").text());
+  const models = Object.entries(aliases.knownModels).map(([id, info]) => ({ id, ...(info as object) }));
 
   const response = await AskUserQuestion({
     question: "Select model (or enter custom model ID):",
-    options: models.map((m, i) => ({ label: m.name, value: m.id })).concat([
+    options: models.map((m) => ({ label: m.id, value: m.id })).concat([
       { label: "Enter custom model...", value: "custom" }
     ])
   });
@@ -1154,7 +1153,7 @@ await Bash(`claudish --model ${model} "task 2"`);
 1. ✅ **Accept any model ID** user provides (unless obviously malformed)
 2. ✅ **Don't filter** based on your "shortlist" - let Claudish handle validation
 3. ✅ **Offer to set CLAUDISH_MODEL** environment variable for session persistence
-4. ✅ **Explain** that --top-models shows curated recommendations, --models shows all
+4. ✅ **Explain** that `shared/model-aliases.json` contains curated model recommendations (run `/update-models` to refresh)
 5. ✅ **Validate format** (should contain "/") but not restrict to known models
 6. ❌ **Never reject** a user's custom model with "not in my shortlist"
 
@@ -1234,9 +1233,9 @@ async function reviewCodeWithMultipleModels(files: string[]) {
  * Usage: /implement-with-model "feature description"
  */
 async function implementWithModel(featureDescription: string) {
-  // Step 1: Get available models
-  const { stdout } = await Bash("claudish --models --json");
-  const models = JSON.parse(stdout).models;
+  // Step 1: Get available models from the authoritative aliases file
+  const aliases = JSON.parse(await Bun.file("shared/model-aliases.json").text());
+  const models = Object.entries(aliases.knownModels).map(([id, info]) => ({ id, ...(info as object) }));
 
   // Step 2: Let user select model
   const selectedModel = await promptUserForModel(models);
@@ -1298,7 +1297,7 @@ Include:
 **Symptoms:** Unexpected API costs
 
 **Solutions:**
-1. Use budget-friendly models (check pricing with `--models` or `--top-models`)
+1. Use budget-friendly models (check pricing in `shared/model-aliases.json` or with `claudish --models`)
 2. Enable cost tracking: `--cost-tracker`
 3. Use --json to monitor costs: `claudish --json "task" | jq '.total_cost_usd'`
 

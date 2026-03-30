@@ -55,8 +55,8 @@ External AI models are invoked via **claudish MCP tools**. No Bash invocation ne
 | `send_input` | Answer a question from an interactive session |
 | `list_sessions` | List active and completed sessions |
 | `cancel_session` | Stop a running session |
-| `list_models` | List available external models |
-| `search_models` | Search for models by capability |
+| `list_models` | List available external models (supplemental — prefer `shared/model-aliases.json`) |
+| `search_models` | Search for models by capability (supplemental — prefer `shared/model-aliases.json`) |
 | `compare_models` | Compare model capabilities |
 | `run_prompt` | One-shot prompt to a single model (no session lifecycle) |
 | `report_error` | Report failures to claudish developers |
@@ -124,7 +124,7 @@ failed           → get_output(session_id) → report error → stop
 
 ## Model IDs
 
-> **Note:** Model IDs change frequently. Use `list_models` MCP tool or `claudish --top-models` for current list.
+> **Note:** Model IDs change frequently. Read `shared/model-aliases.json` for the current authoritative list (synced from Firebase via `/update-models`). The `list_models` MCP tool and `claudish --models` are available as supplemental sources but `shared/model-aliases.json` is the primary reference.
 
 > **IMPORTANT: Pass model names EXACTLY as the user provides them.** Do NOT add provider prefixes (like `minimax/`, `openai/`, `google/`). The claudish MCP server handles routing and provider detection internally.
 

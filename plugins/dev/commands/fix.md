@@ -1,7 +1,7 @@
 ---
 name: fix
 description: "Production-grade TDD bug fix — dual multimodel review gates, deployment monitoring, and full validation"
-allowed-tools: Task, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep, Write, Edit, Skill
+allowed-tools: Task, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep, Write, Edit, Skill, mcp__plugin_claudish__team, mcp__plugin_claudish__run_prompt
 skills: dev:debug-shared-init, dev:debug-localization, dev:context-detection, dev:systematic-debugging, dev:test-driven-development, dev:testing-strategies, dev:verification-before-completion, multimodel:error-recovery, multimodel:quality-gates
 ---
 
@@ -53,14 +53,13 @@ skills: dev:debug-shared-init, dev:debug-localization, dev:context-detection, de
   - Error analysis and root cause investigation → dev:debugger agent (subagent_type: "dev:debugger")
   - Writing tests and applying patches → dev:developer agent (subagent_type: "dev:developer")
   - Multimodel vote (internal Claude) → dev:debugger with EVALUATE ONLY instruction, run_in_background: true
-  - Multimodel vote (external models) → Bash + claudish (NOT Task tool), run_in_background: true
+  - Multimodel vote (external models) → claudish MCP tools (team/create_session), run_in_background: true
   - Post-deploy monitoring → inline Bash
   - Validation → inline Bash (run tests directly)
 
   DO NOT use code-analysis:detective (READ-ONLY — cannot apply fixes or write tests).
   DO NOT use dev:researcher (researches topics, does NOT debug code).
   DO NOT use dev:architect (plans architecture, does NOT debug or fix code).
-  DO NOT use Task tool for external model voting — use Bash + claudish exclusively.
 </critical_override>
 
 <instructions>
@@ -433,28 +432,19 @@ skills: dev:debug-shared-init, dev:debug-localization, dev:context-detection, de
           )
           ```
 
-          Model 2 — Grok (external via claudish):
+          Models 2+3 — External models via claudish MCP team tool:
           ```
-          Bash(
-            command: "claudish --model grok-code-fast-1 --stdin --quiet < ${SESSION_PATH}/vote-prompt-root-cause.md > ${SESSION_PATH}/grok-vote-root-cause.md; echo $? > ${SESSION_PATH}/grok-vote-root-cause.exit",
-            run_in_background: true
-          )
-          ```
-
-          Model 3 — Qwen (external via claudish, free tier):
-          ```
-          Bash(
-            command: "claudish --model qwen3.5-plus-02-15 --stdin --quiet < ${SESSION_PATH}/vote-prompt-root-cause.md > ${SESSION_PATH}/qwen-vote-root-cause.md; echo $? > ${SESSION_PATH}/qwen-vote-root-cause.exit",
-            run_in_background: true
-          )
+          claudish team(mode="run", path=${SESSION_PATH},
+            models=["grok-code-fast-1", "qwen3.5-plus-02-15"],
+            input=contents_of_vote-prompt-root-cause.md,
+            timeout=180)
           ```
         </step>
 
         <step>
-          After all background tasks complete, read vote files:
-          - ${SESSION_PATH}/claude-vote-root-cause.md
-          - ${SESSION_PATH}/grok-vote-root-cause.md + .exit
-          - ${SESSION_PATH}/qwen-vote-root-cause.md + .exit
+          After all background tasks complete, read results:
+          - ${SESSION_PATH}/claude-vote-root-cause.md (from Task)
+          - External model results from `team` tool structured response
         </step>
 
         <step>
@@ -741,34 +731,25 @@ skills: dev:debug-shared-init, dev:debug-localization, dev:context-detection, de
         )
         ```
 
-        Model 2 — Grok (external via claudish):
+        Models 2+3 — External models via claudish MCP team tool:
         ```
-        Bash(
-          command: "claudish --model grok-code-fast-1 --stdin --quiet < ${SESSION_PATH}/vote-prompt-patch.md > ${SESSION_PATH}/grok-vote-patch.md; echo $? > ${SESSION_PATH}/grok-vote-patch.exit",
-          run_in_background: true
-        )
-        ```
-
-        Model 3 — Qwen (external via claudish, free tier):
-        ```
-        Bash(
-          command: "claudish --model qwen3.5-plus-02-15 --stdin --quiet < ${SESSION_PATH}/vote-prompt-patch.md > ${SESSION_PATH}/qwen-vote-patch.md; echo $? > ${SESSION_PATH}/qwen-vote-patch.exit",
-          run_in_background: true
-        )
+        claudish team(mode="run", path=${SESSION_PATH},
+          models=["grok-code-fast-1", "qwen3.5-plus-02-15"],
+          input=contents_of_vote-prompt-patch.md,
+          timeout=180)
         ```
       </step>
 
       <step>
-        After all background tasks complete, read vote files:
-        - ${SESSION_PATH}/claude-vote-patch.md
-        - ${SESSION_PATH}/grok-vote-patch.md + .exit
-        - ${SESSION_PATH}/qwen-vote-patch.md + .exit
+        After all background tasks complete, read results:
+        - ${SESSION_PATH}/claude-vote-patch.md (from Task)
+        - External model results from `team` tool structured response
       </step>
 
       <step>
         Parse votes with fault tolerance:
         - Extract VERDICT, REGRESSION_RISK, PATCH_SCOPE_ASSESSMENT (case-insensitive)
-        - Malformed output or non-zero claudish exit → treat as ABSTAIN with CONFIDENCE=0
+        - Malformed output or failed model in team results → treat as ABSTAIN with CONFIDENCE=0
         - Count APPROVE, REJECT, ABSTAIN
 
         Report votes in tabular form:

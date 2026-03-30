@@ -85,11 +85,13 @@ tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Edit, Bash
 ## Key Patterns
 
 ### External Model Integration
-Orchestrators use Bash+claudish for external AI models:
-```bash
-claudish --model grok-code-fast-1 --stdin --quiet \
-  < prompt.md > result.md
-echo $? > result.exit
+Orchestrators use claudish MCP tools for external AI models:
+```
+# /team — parallel multi-model
+team(mode="run", models=["grok-code-fast-1", ...], input=PROMPT, timeout=180)
+
+# /delegate — single-model session
+create_session(model="grok-code-fast-1", prompt=TASK, timeout_seconds=300)
 ```
 
 ### Tasks Integration

@@ -104,11 +104,9 @@ If selectedModels.configured = true and selectedModels.models is non-empty:
                 Write review to ${SESSION_PATH}/reviews/plan-review/claude-internal.md
                 Return brief summary"
      ---
-     Bash: claudish --model {model1} --stdin --quiet < ${SESSION_PATH}/reviews/plan-review/prompt.md > ${SESSION_PATH}/reviews/plan-review/{model1-slug}.md
-     ---
-     Bash: claudish --model {model2} --stdin --quiet < ${SESSION_PATH}/reviews/plan-review/prompt.md > ${SESSION_PATH}/reviews/plan-review/{model2-slug}.md
-     ---
-     ... (for each configured model)
+     claudish team(mode="run", path=${SESSION_PATH}/reviews/plan-review,
+       models=[{model1}, {model2}, ...],
+       input=contents_of_prompt.md, timeout=180)
 
   c. Wait for all reviews to complete
 

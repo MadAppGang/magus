@@ -72,7 +72,7 @@ skills: multimodel:multi-model-validation, multimodel:quality-gates, multimodel:
           fi
           ```
         </step>
-        <step>Check Claudish: `npx claudish --version`</step>
+        <step>Verify claudish MCP tools are available (mcp__plugin_claudish__team, mcp__plugin_claudish__run_prompt)</step>
         <step>If unavailable, notify user (will skip external reviews)</step>
         <step>
           **Session Initialization** (for artifact isolation):
@@ -121,7 +121,7 @@ skills: multimodel:multi-model-validation, multimodel:quality-gates, multimodel:
           ```
         </step>
       </steps>
-      <quality_gate>Session initialized (SESSION_PATH set), Claudish checked</quality_gate>
+      <quality_gate>Session initialized (SESSION_PATH set), claudish MCP tools checked</quality_gate>
     </phase>
 
     <phase number="1" name="Design">
@@ -153,33 +153,26 @@ skills: multimodel:multi-model-validation, multimodel:quality-gates, multimodel:
         <step>Record start time: `PHASE1_5_START=$(date +%s)`</step>
         <step>
           **Select Models** (AskUserQuestion, multiSelect: true):
-          - grok-code-fast-1 [$0.10-0.20]
-          - gemini-3.1-pro-preview [$0.05-0.15]
-          - gemini-3.1-pro-preview [$0.20-0.40]
-          - deepseek/deepseek-chat [$0.05-0.15]
-          Default: grok + gemini-flash
+          Read `shared/model-aliases.json` → `teams.review` for available models.
+          Default: first two models from `teams.review` after `internal`.
+          Run `/update-models` to refresh the model list.
 
           **Show Historical Performance** (if ai-docs/llm-performance.json exists):
           Read and display avg time, success rate, quality for each model.
         </step>
         <step>
-          **Run Reviews IN PARALLEL** (single message, multiple Bash+claudish calls):
+          **Run Reviews IN PARALLEL** (single message):
 
           **Correct Pattern:**
           For each model, record MODEL_START time, then:
 
           1. Write review prompt to ${SESSION_PATH}/reviews/plan-review/prompt.md
-          2. Launch claudish:
-          ```bash
-          # For each external model:
-          claudish --model grok-code-fast-1 --stdin --quiet < ${SESSION_PATH}/reviews/plan-review/prompt.md > ${SESSION_PATH}/reviews/plan-review/grok.md &
-          echo $? > ${SESSION_PATH}/reviews/plan-review/grok.exit &
-
-          claudish --model gemini-3.1-pro-preview --stdin --quiet < ${SESSION_PATH}/reviews/plan-review/prompt.md > ${SESSION_PATH}/reviews/plan-review/gemini-flash.md &
-          echo $? > ${SESSION_PATH}/reviews/plan-review/gemini-flash.exit &
-
-          # Wait for all to complete
-          wait
+          2. Launch external models via claudish MCP team tool:
+          ```
+          # Use models from shared/model-aliases.json → teams.review
+          team(mode="run", path=${SESSION_PATH}/reviews/plan-review,
+            models=[(models from shared/model-aliases.json teams.review)],
+            input=contents_of_prompt.md, timeout=180)
           ```
 
           **Internal review via Task:**
@@ -199,9 +192,9 @@ Save findings to: ${SESSION_PATH}/reviews/plan-review/internal.md`
           # For each model that completed:
           track_model_performance "{model_id}" "{status}" "{duration}" "{issues_found}" "{quality_score}"
 
-          # Example:
-          track_model_performance "grok-code-fast-1" "success" 45 3 85
-          track_model_performance "gemini-3.1-pro-preview" "success" 38 2 90
+          # Example (use model IDs from shared/model-aliases.json → teams.review):
+          track_model_performance "(model-id)" "success" 45 3 85
+          track_model_performance "(model-id)" "success" 38 2 90
           ```
           See multimodel:multi-model-validation Pattern 7 for implementation.
         </step>
@@ -285,21 +278,24 @@ Save findings to: ${SESSION_PATH}/reviews/plan-review/internal.md`
           Track: `LOCAL_START=$(date +%s)` before, calculate duration after.
         </step>
         <step>
-          **Reviews 2..N: External IN PARALLEL** (via claudish):
-          For each model:
+          **Reviews 2..N: External IN PARALLEL** (via claudish MCP team tool):
           1. Write review prompt to ${SESSION_PATH}/reviews/impl-review/prompt.md
-          2. Launch claudish:
-          ```bash
-          claudish --model {model_id} --stdin --quiet < ${SESSION_PATH}/reviews/impl-review/prompt.md > ${SESSION_PATH}/reviews/impl-review/{model-sanitized}.md &
-          echo $? > ${SESSION_PATH}/reviews/impl-review/{model-sanitized}.exit &
+          2. Launch all external models in parallel:
           ```
+          team(mode="run", path="${SESSION_PATH}/reviews/impl-review",
+            models=[...selected_external_models...],
+            input=contents_of_prompt.md,
+            timeout=180)
+          ```
+          Write each model's result to ${SESSION_PATH}/reviews/impl-review/{model-sanitized}.md.
         </step>
         <step>
           **Track Model Performance** (after all reviews complete):
           ```bash
           # Track each model's performance
           track_model_performance "claude-embedded" "success" $LOCAL_DURATION $LOCAL_ISSUES $LOCAL_QUALITY
-          track_model_performance "grok-code-fast-1" "success" $GROK_DURATION $GROK_ISSUES $GROK_QUALITY
+          # Use model IDs from shared/model-aliases.json → teams.review
+          track_model_performance "(model-id)" "success" $MODEL_DURATION $MODEL_ISSUES $MODEL_QUALITY
           # ... for each model
 
           # Record session summary
@@ -368,8 +364,8 @@ Save findings to: ${SESSION_PATH}/reviews/plan-review/internal.md`
           | Model                     | Time   | Issues | Quality | Status    |
           |---------------------------|--------|--------|---------|-----------|
           | claude-embedded           | 32s    | 5      | 92%     | ✓         |
-          | grok-code-fast-1     | 45s    | 4      | 88%     | ✓         |
-          | gemini-3.1-pro-preview   | 38s    | 3      | 90%     | ✓         |
+          | (model from teams.review) | 45s    | 4      | 88%     | ✓         |
+          | (model from teams.review) | 38s    | 3      | 90%     | ✓         |
 
           ### Session Summary
           - Parallel Speedup: 2.4x
@@ -380,11 +376,11 @@ Save findings to: ${SESSION_PATH}/reviews/plan-review/internal.md`
           | Model                     | Avg Time | Runs | Success% | Avg Quality |
           |---------------------------|----------|------|----------|-------------|
           | claude-embedded           | 35s      | 8    | 100%     | 90%         |
-          | grok-code-fast-1     | 48s      | 6    | 83%      | 85%         |
-          | gemini-3.1-pro-preview   | 42s      | 7    | 100%     | 88%         |
+          | (model from teams.review) | 48s      | 6    | 83%      | 85%         |
+          | (model from teams.review) | 42s      | 7    | 100%     | 88%         |
 
           ### Recommendations
-          ✓ Top performers: claude-embedded, gemini-3.1-pro-preview
+          ✓ Top performers: claude-embedded, (model from shared/model-aliases.json → teams.review)
           ```
         </step>
         <step>Present final summary</step>
@@ -401,9 +397,9 @@ Save findings to: ${SESSION_PATH}/reviews/plan-review/internal.md`
 </orchestration>
 
 <error_recovery>
-  <strategy name="Claudish Failure">
-    1. Check OPENROUTER_API_KEY set
-    2. Check model ID valid
+  <strategy name="External Model Failure">
+    1. Check claudish MCP tools are available
+    2. Check model IDs are valid (use shared/model-aliases.json)
     3. Offer to skip external reviews
   </strategy>
 
@@ -419,19 +415,12 @@ Save findings to: ${SESSION_PATH}/reviews/plan-review/internal.md`
 </error_recovery>
 
 <recommended_models>
-  **Budget**:
-  - gemini-3.1-pro-preview [$0.05-0.15]
-  - deepseek/deepseek-chat [$0.05-0.15]
+  Available models and aliases are listed in `shared/model-aliases.json`.
+  Run `/update-models` to refresh.
 
-  **Default** (2 models):
-  - grok-code-fast-1 [$0.10-0.20]
-  - gemini-3.1-pro-preview [$0.05-0.15]
-
-  **Comprehensive** (4 models):
-  - grok-code-fast-1
-  - gemini-3.1-pro-preview
-  - gemini-3.1-pro-preview
-  - deepseek/deepseek-chat
+  **Default** (2 models): first two entries from `teams.review` after `internal`
+  **Comprehensive** (4 models): first four entries from `teams.review` after `internal`
+  **Code-focused**: use `teams.code` from `shared/model-aliases.json`
 </recommended_models>
 
 <examples>

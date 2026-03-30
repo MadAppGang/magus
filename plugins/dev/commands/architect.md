@@ -1,7 +1,7 @@
 ---
 name: architect
 description: "Architecture design and technical planning — complexity-aware with plan mode reasoning and multi-model escalation"
-allowed-tools: Task, AskUserQuestion, Bash, Read, Skill, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep, EnterPlanMode, ExitPlanMode
+allowed-tools: Task, AskUserQuestion, Bash, Read, Skill, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep, EnterPlanMode, ExitPlanMode, mcp__plugin_claudish__team, mcp__plugin_claudish__run_prompt
 skills: dev:task-management, dev:context-detection, dev:universal-patterns, multimodel:quality-gates, dev:brainstorming
 ---
 
@@ -397,9 +397,7 @@ skills: dev:task-management, dev:context-detection, dev:universal-patterns, mult
       <objective>Validate architecture with external review</objective>
       <steps>
         <step>Mark PHASE 6 as in_progress</step>
-        <step>Check if Claudish is available: which claudish</step>
         <step>
-          If Claudish available:
           **Select Review Models** (AskUserQuestion, multiSelect):
           - grok-code-fast-1
           - gemini-3.1-pro-preview
@@ -407,7 +405,7 @@ skills: dev:task-management, dev:context-detection, dev:universal-patterns, mult
         </step>
         <step>
           If models selected:
-          Launch parallel architecture reviews via Bash+claudish:
+          Launch parallel architecture reviews via claudish `team` MCP tool:
           - Internal: architect
           - External: Selected models
 

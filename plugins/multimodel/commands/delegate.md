@@ -92,18 +92,11 @@ Model: {MODEL} | Session: {SESSION_ID}
 
 <knowledge>
   <model_aliases>
+    Read `shared/model-aliases.json` → `shortAliases` for alias resolution.
     Short single-word aliases only. Full model IDs (containing dots or version numbers) are never aliases — use verbatim.
-
-    | Alias | Full Model ID |
-    |-------|---------------|
-    | grok | grok-code-fast-1 |
-    | gemini | gemini-3.1-pro-preview |
-    | gpt-5 | gpt-5.3-codex |
-    | deepseek | deepseek-v3.2 |
-    | minimax | minimax-m2.5 |
-    | glm | glm-5 |
-    | kimi | kimi-k2.5 |
-    | internal | internal (Claude) |
+    If `shared/model-aliases.json` doesn't exist, tell user: "Run /update-models to sync model aliases."
+    NEVER invent model IDs from training knowledge. Only use IDs from the aliases file or passed verbatim by user.
+    Special: `internal` is always valid (means "use host Claude model").
   </model_aliases>
 
   <preferences_schema>
@@ -119,11 +112,13 @@ Model: {MODEL} | Session: {SESSION_ID}
   </preferences_schema>
 
   <argument_parsing_examples>
+    Aliases below are illustrative — actual resolution comes from `shared/model-aliases.json` → `shortAliases`.
+
     `grok implement authentication`
-    → MODEL=grok-code-fast-1, TASK="implement authentication"
+    → MODEL=grok-code-fast-1 (resolved from aliases file), TASK="implement authentication"
 
     `gemini /dev:architect design payment service`
-    → MODEL=gemini-3.1-pro-preview, EXPLICIT_COMMAND=/dev:architect, TASK="design payment service"
+    → MODEL=gemini-3.1-pro-preview (resolved from aliases file), EXPLICIT_COMMAND=/dev:architect, TASK="design payment service"
 
     `/dev:research rate limiting patterns`
     → EXPLICIT_COMMAND=/dev:research, TASK="rate limiting patterns" (model from preferences)

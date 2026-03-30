@@ -40,9 +40,9 @@ Task: reviewer
            Write review to ${SESSION_PATH}/reviews/code-review/claude-internal.md
            Return brief summary"
 ---
-Bash: claudish --model {model1} --stdin --quiet < ${SESSION_PATH}/reviews/code-review/prompt.md > ${SESSION_PATH}/reviews/code-review/{model1-slug}.md
----
-... (for each configured model from selectedModels.models)
+claudish team(mode="run", path=${SESSION_PATH}/reviews/code-review,
+  models=[...selectedModels.models],
+  input=contents_of_prompt.md, timeout=180)
 
 ### Step 5.6: Consolidate reviews
 Consolidate reviews with consensus analysis:

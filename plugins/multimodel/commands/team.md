@@ -28,10 +28,13 @@ Parse: `defaultModels`, `contextPreferences`, `agentPreferences`, `defaultThresh
 Parse args: task, `--models`, `--threshold`, `--no-memory`. If no task: ask the user.
 
 **Resolve models** (stop at first match):
-1. `--models` flag → use VERBATIM, skip alias table
-2. `contextPreferences` keyword matching task → use those
-3. `defaultModels` → use those, announce "Using saved models: {list}"
-4. None matched → call the claudish `list_models` MCP tool, ask user to pick
+1. `--models` flag → resolve each name via `shared/model-aliases.json` `shortAliases` (e.g. "grok" → full ID). Full model IDs (containing dots or version numbers) pass verbatim.
+2. `contextPreferences` keyword matching task → resolve aliases via file, use those
+3. `defaultModels` → resolve aliases via file, announce "Using saved models: {list}"
+4. None matched → read `shared/model-aliases.json` `teams` section for task-type defaults
+5. Still nothing → call the claudish `list_models` MCP tool, ask user to pick
+
+**Alias resolution:** Always read `shared/model-aliases.json` → `shortAliases` to resolve short names to full model IDs. NEVER resolve aliases from memory or training data.
 
 **Resolve threshold:** unset/"majority" → 50%, "supermajority" → 67%, "unanimous" → 100%
 
@@ -117,21 +120,22 @@ If any models FAILED in the verification table:
 
 ## Knowledge
 
-**Model aliases** — short single-word only; full IDs (contain dots/numbers) always verbatim:
-| grok → grok-code-fast-1 | gemini → gemini-3.1-pro-preview | deepseek → deepseek-v3.2 |
-| minimax → minimax-m2.5 | glm → glm-5 | kimi → kimi-k2.5 |
+**Model aliases** — Read `shared/model-aliases.json` → `shortAliases` for alias resolution.
+Short single-word aliases only; full IDs (containing dots or version numbers) are never aliases — use verbatim.
+If `shared/model-aliases.json` doesn't exist, tell user: "Run /update-models to sync model aliases."
+NEVER invent model IDs from training knowledge. Only use IDs from the aliases file or passed verbatim by user.
 
 **NEVER add provider prefixes** (no "openai/", "google/", "mm@", "or@"). claudish resolves internally.
 
 **Context detection:**
 | Context | Keywords | Default Models | Agent |
 |---------|----------|----------------|-------|
-| debug | debug, error, bug, fix, trace | grok, glm, minimax | dev:debugger |
-| research | research, investigate, analyze, explore | gemini, gpt-5, glm | dev:researcher |
-| coding | implement, build, create, code, develop | grok, minimax, deepseek | dev:developer |
-| review | review, audit, check, validate, verify | gemini, gpt-5, glm, grok | dev:researcher |
-| architecture | architecture, design, plan, system, refactor | gemini, gpt-5, glm | dev:architect |
-| testing | test, coverage, unit test, integration, e2e | grok, minimax, deepseek | dev:test-architect |
+| debug | debug, error, bug, fix, trace | Read `shared/model-aliases.json` → `teams.debug` | dev:debugger |
+| research | research, investigate, analyze, explore | Read `shared/model-aliases.json` → `teams.research` | dev:researcher |
+| coding | implement, build, create, code, develop | Read `shared/model-aliases.json` → `teams.code` | dev:developer |
+| review | review, audit, check, validate, verify | Read `shared/model-aliases.json` → `teams.review` | dev:researcher |
+| architecture | architecture, design, plan, system, refactor | Read `shared/model-aliases.json` → `teams.architecture` | dev:architect |
+| testing | test, coverage, unit test, integration, e2e | Read `shared/model-aliases.json` → `teams.code` | dev:test-architect |
 
 **Preferences** (`.claude/multimodel-team.json`): `defaultModels[]`, `defaultThreshold`, `claudeFlags`,
 `contextPreferences{context:[models]}`, `agentPreferences{context:"agent"}`. All fields optional.

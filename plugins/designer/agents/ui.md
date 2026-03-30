@@ -141,9 +141,9 @@ skills:
          Store matched reference paths for Phase 3 (Visual Analysis)
 
       5. **External Model Integration with Reference Images**:
-         When using external models via claudish AND reference images are matched:
-         - Include reference image paths in the prompt file
-         - External model (via claudish CLI) receives: target image + reference image paths
+         When using external models via claudish MCP tools AND reference images are matched:
+         - Include reference image paths in the prompt
+         - External model (via claudish `run_prompt` MCP tool) receives: target image + reference image paths
          - External model should compare both for style consistency
     </reference_image_loading>
 
@@ -220,7 +220,7 @@ skills:
       - You are a REVIEWER that creates review documents
       - Use Read to analyze existing designs and documentation
       - Use Figma MCP tools when available for direct design access
-      - Use Bash to run Claudish for Gemini multimodal analysis (fallback)
+      - Use the claudish `run_prompt` MCP tool for Gemini multimodal analysis (fallback)
       - Use Write to create review documents at ${SESSION_PATH} or ai-docs/
       - **MUST NOT** modify user's source files (only create review output files)
       - Provide specific, actionable feedback with severity levels
@@ -238,26 +238,14 @@ skills:
          - Use `mcp__figma__get_file_nodes` to get specific components
          - Use `mcp__figma__get_images` to export screenshots
 
-      2. **Gemini Direct** (if image provided and GEMINI_API_KEY available):
-         ```bash
-         if [[ -n "$GEMINI_API_KEY" ]]; then
-           GEMINI_MODEL="g/gemini-3-pro-preview"
-           echo "Using Gemini Direct API (lower latency)"
-         fi
-         ```
+      2. **Vision model via claudish MCP** (if image provided):
+         Read `shared/model-aliases.json` → `roles.designer_review.modelId` to get the
+         configured vision model. Pass that model ID to the claudish `run_prompt` MCP tool for image analysis.
 
-      3. **OpenRouter** (if OPENROUTER_API_KEY available):
-         ```bash
-         if [[ -n "$OPENROUTER_API_KEY" ]]; then
-           GEMINI_MODEL="google/gemini-3-pro-preview"
-           echo "Using OpenRouter (OPENROUTER_API_KEY found)"
-         fi
-         ```
-
-      4. **Error** (no access method available):
+      3. **Error** (no access method available):
          ```bash
          echo "ERROR: No design access method available"
-         echo "Need: Figma MCP, GEMINI_API_KEY, or OPENROUTER_API_KEY"
+         echo "Need: Figma MCP or a configured vision model in shared/model-aliases.json"
          ```
 
       Use the selected method for all design analysis.
@@ -332,11 +320,9 @@ skills:
         - If successful, log: "Using Figma MCP for direct design access"
         - Store file structure for later use
       </step>
-      <step>**ELSE IF Image + Gemini Available**:
-        - Check GEMINI_API_KEY availability
-        - If not available, check OPENROUTER_API_KEY
-        - Select model prefix (g/ or google/)
-        - Verify Claudish is available: `npx claudish --version`
+      <step>**ELSE IF Image available**:
+        - Read `shared/model-aliases.json` → `roles.designer_review.modelId` to get VISION_MODEL
+        - Vision model will be invoked via claudish `run_prompt` MCP tool
       </step>
       <step>**ELSE**:
         - Report error: No design access method available
@@ -356,25 +342,27 @@ skills:
         - Match references to review target using scoring logic
         - Load matched reference image paths
       </step>
-      <step>**IF Using Gemini (with references)**:
+      <step>**IF Using vision model (with references)**:
         - Construct comparative prompt with both images
-        - Pass reference + target to Gemini:
-          ```bash
-          npx claudish --model "$GEMINI_MODEL" \
-            --image "$REFERENCE_IMAGE" \
-            --image "$TARGET_IMAGE" \
-            --quiet --auto-approve <<< "$ANALYSIS_PROMPT"
+        - Pass reference + target to vision model via claudish `run_prompt` MCP tool:
+          ```
+          run_prompt(model=VISION_MODEL,
+            input=ANALYSIS_PROMPT,
+            images=[REFERENCE_IMAGE, TARGET_IMAGE],
+            timeout=120)
           ```
         - Parse comparative analysis response
       </step>
-      <step>**IF Using Gemini (without references)**:
-        - Standard single-image analysis (existing behavior)
+      <step>**IF Using vision model (without references)**:
+        - Standard single-image analysis via claudish `run_prompt` MCP tool:
+          ```
+          run_prompt(model=VISION_MODEL, input=ANALYSIS_PROMPT,
+            images=[TARGET_IMAGE], timeout=120)
+          ```
       </step>
       <step>**IF External Model (claudish) with references**:
-        - Write reference paths to prompt file
-        - Run: claudish --model {model} --stdin < prompt.md > result.md
-        - External model receives both target and reference context
-        - Expected output: comparative analysis in result.md
+        - Invoke via claudish `run_prompt` MCP tool, including target and reference image context
+        - Expected output: comparative analysis returned from tool
       </step>
     </phase>
 
@@ -555,7 +543,7 @@ skills:
        - Use top 1-3 matching references
        - If no matches (all scores = 0), skip reference comparison
 
-    4. **Pass to Gemini or External Model (claudish)**:
+    4. **Pass to Vision Model or External Model (claudish MCP)**:
        Include matched references in comparative analysis prompt
 
     **Note for v1.1**: Consider adding stemming (form/forms), synonyms
@@ -718,7 +706,7 @@ Overall Match: X/10
       1. Detect Figma URL: Extract fileKey=XYZ789, nodeId=45-1234
       2. Check MCP: mcp__figma__get_file_nodes NOT available
       3. Notify: "Figma MCP not available. Falling back to screenshot analysis."
-      4. Setup: Check GEMINI_API_KEY, then OPENROUTER_API_KEY, select g/ or or/ prefix
+      4. Setup: Read `shared/model-aliases.json` → `roles.designer_review.modelId` for VISION_MODEL
       5. Request: Ask user for screenshot of the Figma design
       6. Analyze: Send screenshot to Gemini with usability-focused prompt
       7. Apply: Nielsen's heuristics checklist (estimated values)
@@ -731,8 +719,8 @@ Overall Match: X/10
     <user_request>Review this dashboard screenshot for usability issues</user_request>
     <correct_approach>
       1. Validate: Check image file exists (no Figma URL detected)
-      2. Setup: Check GEMINI_API_KEY, then OPENROUTER_API_KEY, select g/ or or/ prefix
-      3. Analyze: Send to Gemini with usability-focused prompt using --image flag
+      2. Setup: Read `shared/model-aliases.json` → `roles.designer_review.modelId` for VISION_MODEL
+      3. Analyze: Send to vision model via claudish `run_prompt` MCP tool with usability-focused prompt and image
       4. Apply: Nielsen's heuristics checklist
       5. Report: Structure by severity
          - [CRITICAL] Nielsen #1: No loading indicator for data refresh
@@ -746,7 +734,7 @@ Overall Match: X/10
     <user_request>Check if this form meets WCAG AA standards</user_request>
     <correct_approach>
       1. Validate: Check form screenshot exists
-      2. Setup: Configure Gemini model
+      2. Setup: Read `shared/model-aliases.json` → `roles.designer_review.modelId` for VISION_MODEL
       3. Analyze: Send with accessibility-focused prompt
       4. Apply: WCAG AA checklist
       5. Report: Structure by WCAG criterion
@@ -760,20 +748,14 @@ Overall Match: X/10
   <example name="External Model Review (Orchestrator Pattern)">
     <user_request>Orchestrator wants external model review of checkout flow</user_request>
     <correct_approach>
-      **Orchestrator side (using Bash+claudish):**
-      1. Write review prompt to file:
-         ```bash
-         cat > ${SESSION_PATH}/prompts/review-prompt.md << 'EOF'
-         Review the checkout flow screenshot at screenshots/checkout.png for usability issues.
-         Write review to: ai-docs/sessions/review-001/reviews/design-review/gemini.md
-         EOF
+      **Orchestrator side (using claudish MCP tools):**
+      1. Write review prompt to file
+      2. Execute via claudish MCP:
          ```
-      2. Execute via Claudish CLI:
-         ```bash
-         claudish --model google/gemini-3-pro-preview --stdin --quiet \
-           < ${SESSION_PATH}/prompts/review-prompt.md \
-           > ${SESSION_PATH}/reviews/design-review/gemini.md
-         echo $? > ${SESSION_PATH}/reviews/design-review/gemini.exit
+         create_session(model="gemini-3.1-pro-preview",
+           prompt="Review the checkout flow screenshot at screenshots/checkout.png for usability issues.
+                   Write review to: ${SESSION_PATH}/reviews/design-review/gemini.md",
+           timeout_seconds=300)
          ```
       3. Read result file and .exit file to verify success
       4. Continue orchestration workflow

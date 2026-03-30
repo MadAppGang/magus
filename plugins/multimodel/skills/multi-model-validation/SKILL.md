@@ -1,6 +1,6 @@
 ---
 name: multi-model-validation
-description: Run multiple AI models in parallel for 3-5x speedup with ENFORCED performance statistics tracking. Use when validating with Grok, Gemini, GPT-5, DeepSeek, MiniMax, Kimi, GLM via claudish MCP tools for code review, consensus analysis, or multi-expert validation. External models run via `team` MCP tool (not Bash+CLI). Includes dynamic model discovery via `list_models` MCP tool, session-based workspaces, and Pattern 7-8 for tracking model performance. Trigger keywords - "grok", "gemini", "gpt-5", "deepseek", "minimax", "kimi", "glm", "claudish", "multiple models", "parallel review", "external AI", "consensus", "multi-model", "model performance", "statistics", "free models".
+description: Run multiple AI models in parallel for 3-5x speedup with ENFORCED performance statistics tracking. Use when validating with Grok, Gemini, GPT-5, DeepSeek, MiniMax, Kimi, GLM via claudish MCP tools for code review, consensus analysis, or multi-expert validation. External models run via `team` MCP tool (not Bash+CLI). Includes dynamic model discovery via `shared/model-aliases.json`, session-based workspaces, and Pattern 7-8 for tracking model performance. Trigger keywords - "grok", "gemini", "gpt-5", "deepseek", "minimax", "kimi", "glm", "claudish", "multiple models", "parallel review", "external AI", "consensus", "multi-model", "model performance", "statistics", "free models".
 version: 3.4.0
 tags: [orchestration, claudish, parallel, consensus, multi-model, grok, gemini, external-ai, statistics, performance, free-models, minimax, kimi, glm]
 keywords: [grok, gemini, gpt-5, deepseek, claudish, parallel, consensus, multi-model, external-ai, proxy, openrouter, statistics, performance, quality-score, execution-time, free-models, top-models, minimax, kimi, glm, mmax, zhipu]
@@ -30,7 +30,7 @@ Multi-model validation is the practice of running multiple AI models (Grok, Gemi
 **Key Innovations:**
 
 1. **Context-Aware Preferences** (NEW v3.3.0) - Automatically use saved model preferences per task type (debug/research/coding/review) from `.claude/multimodel-team.json`
-2. **Dynamic Model Discovery** (v3.0) - Use `claudish --top-models` and `claudish --free` to get current available models with pricing
+2. **Dynamic Model Discovery** (v3.0) - Read `shared/model-aliases.json` for current available models (synced from Firebase via `/update-models`)
 3. **Session-Based Workspaces** (v3.0) - Each validation session gets a unique directory to prevent conflicts
 4. **4-Message Pattern** - Ensures true parallel execution by using only Task tool calls in a single message
 5. **Pattern 7-8** - Statistics collection and data-driven model recommendations
@@ -69,7 +69,7 @@ cat .claude/multimodel-team.json 2>/dev/null
    → Proceed with validation
 
    IF EMPTY/MISSING (first time for this context):
-   → Run: claudish --top-models
+   → Read: shared/model-aliases.json (shortAliases, roles, knownModels)
    → Ask user to select models (AskUserQuestion)
    → Save to contextPreferences[context]
    → Proceed with validation
@@ -191,29 +191,19 @@ echo "Directory: $SESSION_DIR"
 
 **Dynamic Model Discovery:**
 
-**NEVER hardcode model lists.** Models change frequently - new ones appear, old ones deprecate, pricing updates. Instead, use `claudish` to get current available models:
+**NEVER hardcode model lists.** Models change frequently — new ones appear, old ones deprecate, pricing updates. Instead, read `shared/model-aliases.json` for current available models:
 
 ```bash
-# Get top paid models (best value for money)
-claudish --top-models
+# Read the authoritative model aliases file (synced from Firebase via /update-models)
+cat shared/model-aliases.json
 
-# Example output:
-#   google/gemini-3-pro-preview    Google     $7.00/1M   1048K   🔧 🧠 👁️
-#   openai/gpt-5.2-codex           Openai     $5.63/1M   400K    🔧 🧠 👁️
-#   x-ai/grok-code-fast-1          X-ai       $0.85/1M   256K    🔧 🧠
-#   minimax/minimax-m2.5           Minimax    $0.64/1M   262K    🔧 🧠
-#   z-ai/glm-4.7                   Z-ai       $1.07/1M   202K    🔧 🧠
-#   qwen/qwen3-vl-235b-a22b-ins... Qwen       $0.70/1M   262K    🔧    👁️
+# Contains:
+#   shortAliases: short name → full model ID mapping
+#   roles: role-based model assignments (coding, review, research, etc.)
+#   teams: pre-configured model sets for common workflows
+#   knownModels: full model registry with metadata
 
-# Get free models from trusted providers
-claudish --free
-
-# Example output:
-#   google/gemini-2.0-flash-exp:free  Google     FREE      1049K   ✓ · ✓
-#   mistralai/devstral-2512:free      Mistralai  FREE      262K    ✓ · ·
-#   qwen/qwen3-coder:free             Qwen       FREE      262K    ✓ · ·
-#   qwen/qwen3-235b-a22b:free         Qwen       FREE      131K    ✓ ✓ ·
-#   openai/gpt-oss-120b:free          Openai     FREE      131K    ✓ ✓ ·
+# Run /update-models to refresh from Firebase queryPluginDefaults API
 ```
 
 **Recommended Free Models for Code Review:**
@@ -251,7 +241,7 @@ claudish --free
      → Go to step 6
 
    IF models empty OR force_ask:
-     → Run: claudish --top-models
+     → Read: shared/model-aliases.json
      → AskUserQuestion with multiSelect
      → Save user selection to contextPreferences[context]
      → Go to step 6
@@ -334,7 +324,7 @@ AskUserQuestion({
     header: "Models",
     multiSelect: true,
     options: [
-      // Top paid (from claudish --top-models + historical data)
+      // Top paid (from shared/model-aliases.json + historical data)
       {
         label: "x-ai/grok-code-fast-1 ⚡",
         description: "$0.85/1M | Quality: 87% | Avg: 42s | Fast + accurate"
@@ -343,7 +333,7 @@ AskUserQuestion({
         label: "google/gemini-3-pro-preview",
         description: "$7.00/1M | Quality: 91% | Avg: 55s | High accuracy"
       },
-      // Free models (from claudish --free)
+      // Free models (from shared/model-aliases.json knownModels — filter by free)
       {
         label: "qwen/qwen3-coder:free 🆓",
         description: "FREE | Quality: 82% | 262K context | Coding-specialized"
@@ -480,8 +470,7 @@ Message 1: Preparation (Session Setup + Model Discovery)
   Bash: git diff > "$SESSION_DIR/code-context.md"
 
   # Discover available models
-  Bash: claudish --top-models  # See paid options
-  Bash: claudish --free        # See free options
+  Bash: cat shared/model-aliases.json  # Read shortAliases, roles, teams, knownModels
 
   # User selects models via AskUserQuestion (see Pattern 0)
 
@@ -1456,9 +1445,10 @@ Use accumulated performance data to recommend:
 Instead of just displaying recommendations, use AskUserQuestion with multiSelect to let users interactively choose:
 
 ```typescript
-// Build options from claudish output + historical data
-const paidModels = getTopModelsFromClaudish();  // claudish --top-models
-const freeModels = getFreeModelsFromClaudish(); // claudish --free
+// Build options from shared/model-aliases.json + historical data
+const aliases = JSON.parse(await Bun.file("shared/model-aliases.json").text());
+const paidModels = Object.entries(aliases.knownModels).filter(([, info]: [string, any]) => !info.free);
+const freeModels = Object.entries(aliases.knownModels).filter(([, info]: [string, any]) => info.free);
 const history = loadPerformanceHistory();        // ai-docs/llm-performance.json
 
 // Merge and build AskUserQuestion options
@@ -1569,15 +1559,15 @@ generate_shortlist "free-only"  # Zero-cost validation
 
 ```
 Workflow:
-1. Run `claudish --top-models` → Get current paid models
-2. Run `claudish --free` → Get current free models
-3. Load ai-docs/llm-performance.json → Get historical performance
-4. Merge data:
+1. Read `shared/model-aliases.json` → Get current models (shortAliases, roles, knownModels)
+   Run `/update-models` first if the file is stale or missing
+2. Load ai-docs/llm-performance.json → Get historical performance
+3. Merge data:
    - New models (no history): Mark as "🆕 New"
    - Known models: Show performance metrics
-   - Deprecated models: Filter out (not in claudish output)
-5. Generate recommendations
-6. Present to user with AskUserQuestion
+   - Deprecated models: Filter out (not in knownModels)
+4. Generate recommendations
+5. Present to user with AskUserQuestion
 ```
 
 **Why This Matters:**
@@ -1786,18 +1776,10 @@ Message 1: Session Setup + Model Discovery
   Output: Session: review-20251212-143052-a3f2
 
   # Discover available models
-  Bash: claudish --top-models
+  Bash: cat shared/model-aliases.json
   Output:
-    google/gemini-3-pro-preview    Google     $7.00/1M   1048K   🔧 🧠 👁️
-    openai/gpt-5.1-codex           Openai     $5.63/1M   400K    🔧 🧠 👁️
-    x-ai/grok-code-fast-1          X-ai       $0.85/1M   256K    🔧 🧠
-    minimax/minimax-m2             Minimax    $0.64/1M   262K    🔧 🧠
-
-  Bash: claudish --free
-  Output:
-    qwen/qwen3-coder:free          Qwen       FREE       262K    ✓ · ·
-    mistralai/devstral-2512:free   Mistralai  FREE       262K    ✓ · ·
-    qwen/qwen3-235b-a22b:free      Qwen       FREE       131K    ✓ ✓ ·
+    shortAliases, roles, teams, knownModels sections
+    (Run /update-models to refresh from Firebase if stale)
 
   # Load historical performance
   Bash: cat ai-docs/llm-performance.json | jq '.models | keys'
@@ -2281,7 +2263,7 @@ Master this skill and you can validate any implementation with multiple AI persp
 **Version 3.0 Additions:**
 - **Pattern 0: Session Setup and Model Discovery**
   - Unique session directories (`ai-docs/sessions/review-{slug}-{timestamp}-{hash}`)
-  - Dynamic model discovery via `claudish --top-models` and `claudish --free`
+  - Dynamic model discovery via `shared/model-aliases.json` (synced via `/update-models`)
   - Always include internal reviewer (safety net)
   - Recommended free models: qwen3-coder, devstral-2512, qwen3-235b
 - **Pattern 8: Data-Driven Model Selection**

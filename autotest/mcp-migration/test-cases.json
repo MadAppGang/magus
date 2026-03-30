@@ -1,0 +1,133 @@
+{
+  "meta": {
+    "description": "Regression tests for MCP migration: verify /team and /delegate use claudish MCP tools (team, create_session) and NEVER fall back to Bash+claudish CLI (claudish --model --stdin). These are negative tests — they check absence of CLI patterns, complementing the positive tests in autotest/team/ and autotest/delegate/ which verify MCP tool calls exist.",
+    "version": "1.0.0",
+    "created": "2026-03-29",
+    "notes": "v1.0.0: Initial suite. Tests the migration from Bash+claudish CLI to claudish MCP tools across /team and /delegate commands. Each test verifies: (1) no Bash calls contain 'claudish --model', (2) MCP tools are used instead, (3) no exit code capture patterns, (4) no stdin/stdout file piping."
+  },
+  "test_cases": [
+    {
+      "id": "mcp-team-no-bash-cli-01",
+      "description": "External model via /team must use team MCP tool, NOT Bash+claudish CLI",
+      "prompt": "/multimodel:team --models grok --no-memory Check if CLAUDE.md exists and has content",
+      "checks": {
+        "no_bash_claudish_cli": true,
+        "mcp_tool_called": "team",
+        "no_exit_code_capture": true,
+        "no_stderr_redirect": true
+      },
+      "tags": ["team", "no-cli", "critical"]
+    },
+    {
+      "id": "mcp-team-multi-external-no-bash-02",
+      "description": "Multiple external models via /team must use single team MCP tool call, NOT multiple Bash+claudish calls",
+      "prompt": "/multimodel:team --models grok,gemini --no-memory Review the README structure",
+      "checks": {
+        "no_bash_claudish_cli": true,
+        "mcp_tool_called": "team",
+        "no_exit_code_capture": true,
+        "no_stderr_redirect": true,
+        "no_stdin_redirect": true
+      },
+      "tags": ["team", "multi-external", "no-cli", "critical"]
+    },
+    {
+      "id": "mcp-team-mixed-no-bash-03",
+      "description": "Mixed internal+external via /team: internal uses Task, external uses team MCP — no Bash+claudish CLI",
+      "prompt": "/multimodel:team --models internal,grok --no-memory Check plugin version numbers",
+      "checks": {
+        "no_bash_claudish_cli": true,
+        "mcp_tool_called": "team",
+        "internal_uses_task": true,
+        "no_exit_code_capture": true
+      },
+      "tags": ["team", "mixed", "no-cli", "critical"]
+    },
+    {
+      "id": "mcp-delegate-no-bash-cli-04",
+      "description": "Delegating to external model must use create_session MCP tool, NOT Bash+claudish CLI",
+      "prompt": "/multimodel:delegate grok check if README has a license section",
+      "checks": {
+        "no_bash_claudish_cli": true,
+        "mcp_tool_called": "create_session",
+        "no_exit_code_capture": true,
+        "no_stderr_redirect": true
+      },
+      "tags": ["delegate", "no-cli", "critical"]
+    },
+    {
+      "id": "mcp-delegate-gemini-no-bash-05",
+      "description": "Delegating to gemini alias must use create_session MCP tool, NOT Bash+claudish CLI",
+      "prompt": "/multimodel:delegate gemini list the plugins in this repository",
+      "checks": {
+        "no_bash_claudish_cli": true,
+        "mcp_tool_called": "create_session",
+        "no_exit_code_capture": true,
+        "no_stdin_redirect": true
+      },
+      "tags": ["delegate", "no-cli", "model-alias"]
+    },
+    {
+      "id": "mcp-team-flag-passthrough-no-bash-06",
+      "description": "With claudeFlags configured, /team must pass flags via team MCP tool claude_flags param, NOT via Bash CLI flags",
+      "prompt": "/multimodel:team --models grok --no-memory Quick check on README",
+      "setup": {
+        "claudeFlags": "--effort high"
+      },
+      "checks": {
+        "no_bash_claudish_cli": true,
+        "mcp_tool_called": "team",
+        "mcp_team_has_claude_flags": "--effort",
+        "no_exit_code_capture": true
+      },
+      "tags": ["team", "flag-passthrough", "no-cli"]
+    },
+    {
+      "id": "mcp-team-no-file-piping-07",
+      "description": "External models must NOT use stdin file piping (< prompt.md > result.md) — MCP handles I/O",
+      "prompt": "/multimodel:team --models grok --no-memory Check if package.json exists",
+      "checks": {
+        "no_bash_claudish_cli": true,
+        "no_stdin_redirect": true,
+        "no_stdout_redirect": true,
+        "mcp_tool_called": "team"
+      },
+      "tags": ["team", "no-file-piping", "no-cli"]
+    },
+    {
+      "id": "mcp-team-no-run-prompt-bash-08",
+      "description": "Agent must NOT use Bash to invoke claudish run_prompt — use MCP run_prompt tool instead",
+      "prompt": "/multimodel:team --models grok --no-memory Verify plugin.json has required fields",
+      "checks": {
+        "no_bash_claudish_cli": true,
+        "no_bash_claudish_run_prompt": true,
+        "mcp_tool_called": "team"
+      },
+      "tags": ["team", "no-cli", "no-run-prompt-bash"]
+    },
+    {
+      "id": "mcp-delegate-full-model-id-no-bash-09",
+      "description": "Full model ID (not alias) via /delegate must use create_session, NOT Bash+claudish",
+      "prompt": "/multimodel:delegate grok-code-fast-1 check how many plugins are in this repo",
+      "checks": {
+        "no_bash_claudish_cli": true,
+        "mcp_tool_called": "create_session",
+        "no_exit_code_capture": true
+      },
+      "tags": ["delegate", "full-model-id", "no-cli"]
+    },
+    {
+      "id": "mcp-team-skill-loaded-no-regression-10",
+      "description": "Even when multimodel skills are loaded into context, agent must use MCP tools (not CLI patterns from stale skill content)",
+      "prompt": "/multimodel:team --models grok --no-memory How does the external model invocation work in this project?",
+      "checks": {
+        "no_bash_claudish_cli": true,
+        "mcp_tool_called": "team",
+        "no_exit_code_capture": true,
+        "no_stderr_redirect": true,
+        "no_stdin_redirect": true
+      },
+      "tags": ["team", "skill-regression", "no-cli", "critical"]
+    }
+  ]
+}

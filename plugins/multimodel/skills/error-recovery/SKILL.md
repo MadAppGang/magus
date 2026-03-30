@@ -58,7 +58,7 @@ Step 2: STOP immediately. Do NOT:
   ❌ Silently launch a different model
   ❌ Retry with a different provider prefix
   ❌ Fall back to embedded Claude without asking
-  ❌ Run `claudish --top-models` to find alternatives
+  ❌ Run `claudish --top-models` or invent model IDs — use `shared/model-aliases.json` instead
   ❌ Substitute a "similar" model
 
 Step 3: REPORT to the user with:
