@@ -1,8 +1,6 @@
 ---
 name: seo-writer
 description: SEO content writer that creates optimized articles from briefs with E-E-A-T focus
-model: sonnet
-color: green
 tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Glob, Grep
 skills: seo:content-optimizer, seo:link-strategy
 ---

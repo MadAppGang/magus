@@ -4,8 +4,6 @@ description: |
   Analyze documentation quality using 52-point checklist (42-point base + 10-point anti-slop).
   Detects anti-patterns, scores quality, identifies missing sections, flags AI-detectable writing.
   Use when: "check doc quality", "analyze README", "audit documentation"
-model: sonnet
-color: cyan
 tools:
   - Read
   - Glob

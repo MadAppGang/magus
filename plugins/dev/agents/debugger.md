@@ -1,8 +1,7 @@
 ---
 name: debugger
 description: Language-agnostic debugging for error analysis and root cause investigation
-model: sonnet
-color: orange
+model: opus
 tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Glob, Grep, Bash
 skills: dev:debugging-strategies
 ---

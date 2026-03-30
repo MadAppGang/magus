@@ -2,7 +2,6 @@
 name: architect
 description: Expert agent designer for Claude Code agents and commands. Use when planning new agents, improving existing agents, or designing slash commands. Examples: (1) "Design a GraphQL reviewer agent" - creates comprehensive design plan. (2) "Plan improvements to backend-developer" - analyzes and designs enhancements. (3) "Design a /deploy-aws command" - creates orchestrator design.
 model: opus
-color: purple
 tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Glob, Grep, Bash
 skills: agentdev:xml-standards, agentdev:schemas, agentdev:patterns, multimodel:multi-model-validation
 ---

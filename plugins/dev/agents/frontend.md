@@ -5,8 +5,6 @@ description: |
   Uses Gemini 3 Pro Preview for screenshot understanding and design review.
   If designer plugin is available, delegate pixel-level design validation to designer:review.
   Examples: "Improve this component based on review", "Create glassmorphic dashboard matching reference", "Build hero section for creative agency"
-model: sonnet
-color: magenta
 tools:
   - TaskCreate
   - TaskUpdate
@@ -304,35 +302,23 @@ skills:
       4. **Visual Verification**: Confirm changes match expectations
 
       <provider_detection>
-        Before visual analysis, detect available Gemini provider:
+        Before visual analysis, resolve the vision model from centralized config:
 
-        ```bash
-        # Check providers in priority order
-        if [[ -n "$GEMINI_API_KEY" ]]; then
-          GEMINI_MODEL="g/gemini-3-pro-preview"
-          PROVIDER="Gemini Direct"
-        elif [[ -n "$OPENROUTER_API_KEY" ]]; then
-          GEMINI_MODEL="or/google/gemini-3-pro-preview"
-          PROVIDER="OpenRouter"
-        elif [[ -n "$GOOGLE_APPLICATION_CREDENTIALS" ]]; then
-          GEMINI_MODEL="vertex/gemini-3-pro-preview"
-          PROVIDER="Vertex AI"
-        elif npx claudish --list-accounts 2>/dev/null | grep -q "gemini"; then
-          GEMINI_MODEL="g/gemini-3-pro-preview"
-          PROVIDER="Gemini OAuth"
-        else
-          # No vision available - proceed with text-only mode
-          GEMINI_MODEL=""
-          PROVIDER="none"
-        fi
-        ```
+        Read `shared/model-aliases.json` → `roles.designer_review.modelId` → GEMINI_MODEL.
+
+        If the file is missing or the key is absent:
+        - Set GEMINI_MODEL="" and PROVIDER="none"
+        - Proceed in text-only mode
+
+        If GEMINI_MODEL is set, the claudish `run_prompt` MCP tool will route to the
+        correct backend automatically based on the model ID prefix.
       </provider_detection>
 
       <visual_analysis_patterns>
         **Pattern 1: Analyze Screenshot for Implementation**
-        ```bash
-        npx claudish --model "$GEMINI_MODEL" --image "$SCREENSHOT_PATH" --quiet --auto-approve <<< "
-        Analyze this UI screenshot. Identify:
+        ```
+        run_prompt(model=GEMINI_MODEL,
+          input="Analyze this UI screenshot. Identify:
         1. Visual hierarchy issues
         2. Spacing inconsistencies
         3. Color contrast problems
@@ -340,31 +326,34 @@ skills:
         5. Texture/depth opportunities
 
         Focus on Anti-AI improvements (asymmetry, texture, drama).
-        Output as actionable code changes."
+        Output as actionable code changes.",
+          images=[SCREENSHOT_PATH],
+          timeout=120)
         ```
 
         **Pattern 2: Compare Reference to Implementation**
-        ```bash
-        npx claudish --model "$GEMINI_MODEL" \
-          --image "$REFERENCE_PATH" \
-          --image "$IMPLEMENTATION_PATH" \
-          --quiet --auto-approve <<< "
-        Compare these two images:
+        ```
+        run_prompt(model=GEMINI_MODEL,
+          input="Compare these two images:
         - Image 1: Design reference (target)
         - Image 2: Current implementation
 
-        List specific deviations and how to fix them."
+        List specific deviations and how to fix them.",
+          images=[REFERENCE_PATH, IMPLEMENTATION_PATH],
+          timeout=120)
         ```
 
         **Pattern 3: Verify Changes Match Design**
-        ```bash
-        npx claudish --model "$GEMINI_MODEL" --image "$NEW_SCREENSHOT_PATH" --quiet --auto-approve <<< "
-        Verify this implementation matches the design requirements:
+        ```
+        run_prompt(model=GEMINI_MODEL,
+          input="Verify this implementation matches the design requirements:
         - Visual metaphor: {metaphor}
         - Color palette: {colors}
         - Expected animations: {animations}
 
-        Score 1-10 and list any remaining issues."
+        Score 1-10 and list any remaining issues.",
+          images=[NEW_SCREENSHOT_PATH],
+          timeout=120)
         ```
       </visual_analysis_patterns>
 

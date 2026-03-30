@@ -1,9 +1,6 @@
 ---
 name: seo-data-analyst
 description: Analytics specialist for GA4 and Google Search Console performance interpretation
-model: sonnet
-model-id: claude-sonnet-4-20250514
-color: cyan
 tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Bash, WebFetch
 skills: seo:analytics-interpretation, seo:performance-correlation, seo:data-extraction-patterns
 ---

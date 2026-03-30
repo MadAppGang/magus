@@ -2,7 +2,6 @@
 name: reviewer
 description: Expert agent quality reviewer for Claude Code agents and commands. Use when validating implemented agents for quality, completeness, and standards compliance. Examples: (1) "Review .claude/agents/graphql-reviewer.md" - validates YAML, XML, completeness. (2) "Check plugins/bun/agents/backend-developer.md" - reviews against standards. (3) "Provide feedback on /deploy-aws command" - reviews orchestration patterns.
 model: opus
-color: cyan
 tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Glob, Grep, Bash
 skills: agentdev:xml-standards, agentdev:schemas, agentdev:patterns, multimodel:multi-model-validation, multimodel:quality-gates
 ---

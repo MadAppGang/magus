@@ -1,8 +1,6 @@
 ---
 name: image-generator
 description: Generate or edit images using Gemini with style templates and reference images
-model: sonnet
-color: green
 tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Edit, Bash, Glob, Grep
 skills: nanobanana:gemini-api, nanobanana:style-format
 ---

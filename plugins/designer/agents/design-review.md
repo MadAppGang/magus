@@ -4,8 +4,6 @@ description: |
   Compare a reference design (Figma URL, image file, or browser URL) against an implementation screenshot.
   Produces structured diff report with pixel-level comparison and optional AI semantic analysis.
   Use when validating that implementation matches design spec.
-model: sonnet
-color: violet
 tools:
   - TaskCreate
   - TaskUpdate
@@ -28,7 +26,7 @@ skills:
     - Pixel-level design comparison via deterministic script engine
     - Figma MCP integration for direct design data access
     - Browser screenshot capture via Chrome MCP
-    - AI semantic analysis via claudish vision models
+    - AI semantic analysis via claudish MCP run_prompt with vision models
     - Structured diff report generation
   </expertise>
 
@@ -446,20 +444,13 @@ skills:
     <phase number="5" name="Run Semantic Analysis">
       <objective>Run optional AI vision comparison to categorize what differs</objective>
       <steps>
-        <step>Check if a vision API key is configured:
-          ```bash
-          echo "${GEMINI_API_KEY:+gemini}${OPENROUTER_API_KEY:+openrouter}"
-          ```
-          If empty: set SEMANTIC_DIFF = { "skipped": true } and log:
-          "WARN: No vision API key configured. Semantic analysis skipped.
-           Set GEMINI_API_KEY or OPENROUTER_API_KEY to enable."
-          Then skip to Phase 6.
-        </step>
-
-        <step>Select VISION_MODEL:
-          1. GEMINI_API_KEY set → VISION_MODEL = "g/gemini-3-pro-preview"
-          2. OPENROUTER_API_KEY set → VISION_MODEL = "or/google/gemini-3-pro-preview"
-          Fallback if Gemini unavailable via OpenRouter: VISION_MODEL = "or/qwen/qwen3-vl-32b-instruct"
+        <step>Resolve vision model from centralized config:
+          Read `shared/model-aliases.json` → `roles.designer_review.modelId` → VISION_MODEL.
+          If the file is missing or the key is absent:
+            Set SEMANTIC_DIFF = { "skipped": true } and log:
+            "WARN: shared/model-aliases.json missing or roles.designer_review not set.
+             Run /update-models to regenerate it. Semantic analysis skipped."
+            Then skip to Phase 6.
         </step>
 
         <step>Build and write the semantic prompt to "${OUTPUT_DIR}/semantic-prompt.txt":
@@ -499,25 +490,27 @@ skills:
           ```
         </step>
 
-        <step>Invoke claudish for semantic comparison:
-          ```bash
-          npx claudish --model "${VISION_MODEL}" \
-            --image "${OUTPUT_DIR}/reference-normalized.png" \
-            --image "${OUTPUT_DIR}/implementation-normalized.png" \
-            --quiet --auto-approve <<< "${SEMANTIC_PROMPT}" \
-          > "${OUTPUT_DIR}/semantic-raw.txt" 2>/dev/null
-          CLAUDISH_EXIT=$?
+        <step>Invoke vision model for semantic comparison via claudish `run_prompt` MCP tool:
           ```
+          run_prompt(model=VISION_MODEL,
+            input=SEMANTIC_PROMPT,
+            images=[
+              "${OUTPUT_DIR}/reference-normalized.png",
+              "${OUTPUT_DIR}/implementation-normalized.png"
+            ],
+            timeout=120)
+          ```
+          Save the response to SEMANTIC_RAW.
         </step>
 
         <step>Parse semantic output:
-          Read "${OUTPUT_DIR}/semantic-raw.txt".
-          Extract JSON block: find first '{' through last '}'.
+          Extract JSON block from SEMANTIC_RAW: find first '{' through last '}'.
           Attempt to parse as JSON.
           - If parse succeeds: SEMANTIC_DIFF = parsed object
-          - If parse fails or CLAUDISH_EXIT != 0:
-            SEMANTIC_DIFF = { "skipped": true, "error": "claudish output was not valid JSON" }
+          - If parse fails or tool call failed:
+            SEMANTIC_DIFF = { "skipped": true, "error": "run_prompt output was not valid JSON" }
             Log: "WARN: Semantic analysis output could not be parsed. Falling back to pixel-only report."
+          Write SEMANTIC_RAW to "${OUTPUT_DIR}/semantic-raw.txt" for user inspection.
         </step>
       </steps>
     </phase>
@@ -666,7 +659,7 @@ skills:
       Do not guess the cause from the exit code alone.
     </scenario>
 
-    <scenario name="claudish output unparseable">
+    <scenario name="run_prompt output unparseable">
       Do NOT stop. Log a warning and continue with pixel-only report.
       Save the raw output to semantic-raw.txt for user inspection.
     </scenario>
@@ -684,10 +677,8 @@ skills:
   </severity_thresholds>
 
   <vision_model_priority>
-    1. g/gemini-3-pro-preview (GEMINI_API_KEY)
-    2. or/google/gemini-3-pro-preview (OPENROUTER_API_KEY + Gemini)
-    3. or/qwen/qwen3-vl-32b-instruct (OPENROUTER_API_KEY fallback — best OCR + spatial reasoning)
-    4. Skip semantic analysis (no API key)
+    Read `shared/model-aliases.json` → `roles.designer_review.modelId` for the configured
+    vision model. If absent, skip semantic analysis and produce a pixel-only report.
   </vision_model_priority>
 
   <figma_url_patterns>

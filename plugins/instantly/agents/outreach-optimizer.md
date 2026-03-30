@@ -8,8 +8,6 @@ description: |
   (3) "Why is my campaign underperforming?" - diagnostic analysis
   (4) "Auto-pause low performing campaigns" - automated management
   (5) "Analyze my A/B test results" - statistical significance check
-model: sonnet
-color: orange
 tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Bash, AskUserQuestion
 skills: instantly:ab-testing-patterns, instantly:campaign-metrics, multimodel:multi-model-validation
 ---

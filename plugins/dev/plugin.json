@@ -1,6 +1,6 @@
 {
   "name": "dev",
-  "version": "2.6.1",
+  "version": "2.6.2",
   "description": "Universal development assistant. v2.6.0: self-learning Stop hook \u2014 automated session learning with LLM classifier, background daemon, pending-learnings queue, /dev:learn --apply/--prune.",
   "author": {
     "name": "Jack Rudenko",

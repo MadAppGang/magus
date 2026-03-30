@@ -4,8 +4,6 @@ description: |
   Generate high-quality documentation following 15 best practices + 10 anti-slop writing rules.
   Supports: README, API docs (TSDoc/JSDoc), tutorials, changelogs, ADRs, error docs.
   Use when: "write documentation", "create README", "document function", "add tutorial"
-model: sonnet
-color: green
 tools:
   - Read
   - Write

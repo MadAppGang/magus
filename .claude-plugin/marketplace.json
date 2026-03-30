@@ -15,7 +15,7 @@
       "name": "code-analysis",
       "source": "./plugins/code-analysis",
       "description": "Deep code investigation with mnemex MCP server. v5.0.1: Renamed mnemex CLI tool.",
-      "version": "5.0.2",
+      "version": "5.0.3",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -72,7 +72,7 @@
       "name": "agentdev",
       "source": "./plugins/agentdev",
       "description": "Create, implement, and review Claude Code agents and commands with multi-model validation, LLM performance tracking, and session-based artifact isolation. v1.5.5: Command and documentation fixes.",
-      "version": "1.5.6",
+      "version": "1.5.7",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -97,7 +97,7 @@
       "name": "seo",
       "source": "./plugins/seo",
       "description": "Highly autonomous SEO toolkit (~80% autonomy) with AUTO GATEs, self-correction loops, and multi-model validation. v1.6.5: Command parameter fixes.",
-      "version": "1.6.6",
+      "version": "1.6.7",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -121,7 +121,7 @@
       "name": "video-editing",
       "source": "./plugins/video-editing",
       "description": "Professional video editing toolkit with FFmpeg operations, Whisper transcription, and Apple Final Cut Pro project generation. v1.1.1: Marketplace rename to magus. Features intelligent video analysis, automated transcription with timing sync, FCPXML timeline creation.",
-      "version": "1.1.2",
+      "version": "1.1.3",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -146,7 +146,7 @@
       "name": "nanobanana",
       "source": "./plugins/nanobanana",
       "description": "AI image generation and editing using Google Gemini 3 Pro Image API. v2.3.1: Marketplace rename to magus. Simple Node.js CLI with markdown styles and batch generation.",
-      "version": "2.3.2",
+      "version": "2.3.3",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -194,7 +194,7 @@
       "name": "dev",
       "source": "./plugins/dev",
       "description": "Universal development assistant. v2.6.0: self-learning Stop hook \u2014 automated session learning with LLM classifier, background daemon, /dev:learn --apply/--prune.",
-      "version": "2.6.1",
+      "version": "2.6.2",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -285,7 +285,7 @@
       "name": "designer",
       "source": "./plugins/designer",
       "description": "UI design validation with pixel-diff comparison engine. v0.2.0: Design review agent, visual comparison, style guide creation, browser-use optional integration. 6 skills.",
-      "version": "0.2.1",
+      "version": "0.2.2",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -311,7 +311,7 @@
       "name": "terminal",
       "source": "./plugins/terminal",
       "description": "Interactive terminal integration for Claude Code. v4.0.0: agentic-first rewrite \u2014 single Go tmux-mcp binary replaces ht-mcp + npm tmux-mcp. New agentic tools (start-and-watch, watch-pane, run-in-repl, pane-state) eliminate all polling loops. 5 skills, 9 commands, 1 agent.",
-      "version": "4.0.1",
+      "version": "4.0.2",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",

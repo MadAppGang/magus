@@ -1,6 +1,6 @@
 {
   "name": "code-analysis",
-  "version": "5.0.2",
+  "version": "5.0.3",
   "description": "Deep code investigation with mnemex MCP server. v5.0.1: Renamed mnemex CLI tool.",
   "author": {
     "name": "Jack Rudenko",

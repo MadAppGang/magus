@@ -2,7 +2,6 @@
 name: seo-editor
 description: Senior SEO editor and quality gate for content approval with E-E-A-T scoring
 model: opus
-color: cyan
 tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Glob, Grep
 skills: seo:content-optimizer
 ---

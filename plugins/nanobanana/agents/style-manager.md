@@ -1,8 +1,6 @@
 ---
 name: style-manager
 description: Manage image generation style templates (create, update, list, show, delete)
-model: sonnet
-color: green
 tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion
 skills: nanobanana:style-format
 ---

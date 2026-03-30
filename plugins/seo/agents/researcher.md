@@ -1,8 +1,6 @@
 ---
 name: seo-researcher
 description: Keyword research specialist for expansion, clustering, and content gap analysis
-model: sonnet
-color: blue
 tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, WebSearch, WebFetch, Glob, Grep
 skills: seo:keyword-cluster-builder, seo:content-brief
 ---

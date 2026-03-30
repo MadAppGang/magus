@@ -1,8 +1,6 @@
 ---
 name: ui
 description: UI design review, usability analysis, accessibility checks, and Figma implementation help
-model: sonnet
-color: cyan
 tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Edit, Bash, Glob, Grep
 skills:
   - designer:ui-analyse

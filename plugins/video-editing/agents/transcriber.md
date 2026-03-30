@@ -1,8 +1,6 @@
 ---
 name: transcriber
 description: Transcribe audio/video with Whisper to SRT, VTT, JSON, or TXT
-model: sonnet
-color: orange
 tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Edit, Bash, Glob, Grep
 skills: video-editing:transcription, video-editing:ffmpeg-core
 ---

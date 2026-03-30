@@ -8,8 +8,6 @@ description: |
   (3) "Optimize my sequence timing" - timing and gap analysis
   (4) "Write cold email templates" - template generation
   (5) "Build a breakup sequence" - final follow-up sequence design
-model: sonnet
-color: green
 tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Bash, AskUserQuestion
 skills: instantly:sequence-best-practices, instantly:email-deliverability
 ---

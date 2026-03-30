@@ -1,8 +1,6 @@
 ---
 name: scribe
 description: Lightweight file writer for interview sessions. Appends Q&A to interview log, updates checkpoints, and maintains session state. Designed for fast, reliable file operations.
-model: haiku
-color: blue
 allowed-tools: Read, Write, Bash
 ---
 

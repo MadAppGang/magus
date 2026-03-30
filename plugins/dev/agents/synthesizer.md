@@ -1,8 +1,6 @@
 ---
 name: synthesizer
 description: Research synthesis for consolidating multi-source findings with consensus detection
-model: sonnet
-color: cyan
 tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Glob, Grep
 skills: dev:universal-patterns
 ---

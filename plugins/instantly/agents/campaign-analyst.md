@@ -8,8 +8,6 @@ description: |
   (3) "Show me reply rate trends" - temporal analysis of engagement
   (4) "Compare campaign A vs B" - comparative analysis
   (5) "What's my bounce rate across campaigns?" - deliverability health check
-model: sonnet
-color: cyan
 tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Bash, AskUserQuestion
 skills: instantly:campaign-metrics, multimodel:task-orchestration
 ---

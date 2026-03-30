@@ -1,8 +1,6 @@
 ---
 name: feedback-processor
 description: Handles Linear comment feedback and triggers iterative refinement
-model: sonnet
-color: cyan
 tools: Read, Write, Bash, Task
 skills: autopilot:linear-integration, autopilot:state-machine, multimodel:quality-gates
 ---

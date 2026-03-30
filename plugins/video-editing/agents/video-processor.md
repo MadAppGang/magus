@@ -1,8 +1,6 @@
 ---
 name: video-processor
 description: Process video/audio files using FFmpeg (trim, concat, convert, extract)
-model: sonnet
-color: green
 tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Edit, Bash, Glob, Grep
 skills: video-editing:ffmpeg-core
 ---

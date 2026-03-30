@@ -4,8 +4,6 @@ description: |
   Scrapes OpenRouter programming model rankings and generates recommended-models.md.
   Use when: (1) Updating model recommendations before release, (2) Adding new models
   to recommendations, (3) Verifying model pricing/context window updates.
-model: sonnet
-color: cyan
 tools: TodoWrite, Read, Write, Bash, mcp__chrome-devtools__navigate_page, mcp__chrome-devtools__take_snapshot, mcp__chrome-devtools__evaluate_script, mcp__chrome-devtools__list_console_messages, mcp__chrome-devtools__take_screenshot, mcp__chrome-devtools__new_page, mcp__chrome-devtools__select_page, mcp__chrome-devtools__list_pages
 ---
 

@@ -1,8 +1,6 @@
 ---
 name: proof-generator
 description: Generates proof-of-work artifacts for task validation
-model: sonnet
-color: orange
 tools: Bash, Read, Write, Glob
 skills: autopilot:proof-of-work
 ---

@@ -4,8 +4,6 @@ description: |
   Automatically fix documentation issues and apply transformations.
   Supports: passive->active voice, add missing sections, restructure for progressive disclosure.
   Use when: "fix documentation", "improve docs", "update README"
-model: sonnet
-color: yellow
 tools:
   - Read
   - Write

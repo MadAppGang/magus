@@ -2,7 +2,6 @@
 name: devops
 description: Infrastructure and DevOps specialist with extended thinking for complex decisions
 model: opus
-color: blue
 tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Bash, WebSearch, WebFetch, Glob, Grep
 skills: dev:bunjs-production
 ---

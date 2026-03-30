@@ -1,8 +1,6 @@
 ---
 name: timeline-builder
 description: Create Final Cut Pro projects, timelines, and multicam sequences
-model: sonnet
-color: green
 tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Edit, Bash, Glob, Grep
 skills: video-editing:final-cut-pro, video-editing:ffmpeg-core
 ---

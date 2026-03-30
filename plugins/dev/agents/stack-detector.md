@@ -1,8 +1,6 @@
 ---
 name: stack-detector
 description: Analyzes project to detect technology stack and discover real Claude Code skills
-model: sonnet
-color: blue
 tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Glob, Grep, Bash
 ---
 

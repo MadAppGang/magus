@@ -1,8 +1,6 @@
 ---
 name: seo-analyst
 description: SERP analysis expert for search intent, competitive intelligence, and ranking opportunities
-model: sonnet
-color: purple
 tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Bash, WebSearch, WebFetch, Glob, Grep
 skills: seo:serp-analysis, seo:keyword-cluster-builder
 ---

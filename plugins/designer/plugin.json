@@ -1,6 +1,6 @@
 {
   "name": "designer",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "UI design validation, review, and style management. Pixel-diff comparison, AI semantic analysis, and design system workflows.",
   "author": {
     "name": "Jack Rudenko",

@@ -1,8 +1,6 @@
 ---
 name: developer
 description: Expert agent implementer for Claude Code agents and commands. Use when you have an approved design plan and need to create the actual agent/command file. Examples: (1) "Implement agent from ai-docs/agent-design-graphql-reviewer.md" - creates the agent file. (2) "Create the /deploy command from design" - implements orchestrator. (3) "Fix backend-developer based on review" - applies fixes.
-model: sonnet
-color: green
 tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Edit, Glob, Grep, Bash
 skills: agentdev:xml-standards, agentdev:schemas, agentdev:patterns, multimodel:multi-model-validation
 ---

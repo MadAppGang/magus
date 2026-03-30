@@ -1,8 +1,6 @@
 ---
 name: tui-navigator
 description: Use this agent for multi-step interactive terminal workflows -- navigating TUI apps (vim, htop, lazygit, psql, k9s), running interactive CLI tools, starting dev servers, running test watchers, monitoring build output, executing database queries, splitting tmux panes to show apps side-by-side, or observing terminal output from running processes. This agent creates isolated headless tmux sessions for tasks, connects to existing tmux sessions, or splits the current tmux pane to run apps alongside the user's workspace. It handles the full terminal lifecycle: create session, send keystrokes, read screen state, interpret output, and clean up. Delegate to this agent whenever a task requires interactive terminal control, TTY output, side-by-side terminal panels, or process monitoring beyond what the Bash tool provides.
-model: sonnet
-color: green
 tools: mcp__tmux__start-and-watch, mcp__tmux__watch-pane, mcp__tmux__run-in-repl, mcp__tmux__pane-state, mcp__tmux__write-to-display, mcp__tmux__execute-command, mcp__tmux__create-headless, mcp__tmux__capture-pane, mcp__tmux__list-sessions, mcp__tmux__list-windows, mcp__tmux__list-panes, mcp__tmux__send-keys, mcp__tmux__split-pane, mcp__tmux__create-session, mcp__tmux__kill-pane, mcp__tmux__kill-session, mcp__tmux__kill-headless-server, Bash
 skills: terminal:terminal-interaction, terminal:tui-navigation-patterns
 ---

@@ -1,8 +1,6 @@
 ---
 name: spec-writer
 description: Synthesizes comprehensive specifications from interview sessions. Reads interview log, assets, and context to produce structured spec.md and tasks.md documents.
-model: sonnet
-color: purple
 allowed-tools: Read, Write, Glob, Grep
 ---
 
