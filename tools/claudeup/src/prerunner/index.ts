@@ -13,7 +13,6 @@ import {
 	getGlobalEnabledPlugins,
 	getEnabledPlugins,
 	getLocalEnabledPlugins,
-	saveGlobalInstalledPluginVersion,
 	readGlobalSettings,
 	writeGlobalSettings,
 } from "../services/claude-settings.js";
@@ -278,10 +277,12 @@ export async function prerunClaude(
 					plugin.version
 				) {
 					try {
-						if (cliAvailable) {
-							await updatePlugin(plugin.id, "user");
+						if (!cliAvailable) {
+							// CLI unavailable — skip update entirely, don't write phantom state
+							continue;
 						}
-						await saveGlobalInstalledPluginVersion(plugin.id, plugin.version);
+						await updatePlugin(plugin.id, "user");
+						// CLI wrote all plugin state; no claudeup write needed
 
 						autoUpdatedPlugins.push({
 							pluginId: plugin.id,

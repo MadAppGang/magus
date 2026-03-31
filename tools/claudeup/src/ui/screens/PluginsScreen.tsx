@@ -18,11 +18,8 @@ import {
 	setMcpEnvVar,
 	getMcpEnvVars,
 	readSettings,
-	saveGlobalInstalledPluginVersion,
-	saveLocalInstalledPluginVersion,
 } from "../../services/claude-settings.js";
 import { saveProfile } from "../../services/profiles.js";
-import { saveInstalledPluginVersion } from "../../services/plugin-manager.js";
 import {
 	installPlugin as cliInstallPlugin,
 	uninstallPlugin as cliUninstallPlugin,
@@ -452,27 +449,6 @@ export function PluginsScreen() {
 		}
 	};
 
-	/**
-	 * Save installed plugin version to settings after CLI install/update.
-	 */
-	const saveVersionAfterInstall = async (
-		pluginId: string,
-		version: string,
-		scope: PluginScope,
-	): Promise<void> => {
-		try {
-			if (scope === "user") {
-				await saveGlobalInstalledPluginVersion(pluginId, version);
-			} else if (scope === "local") {
-				await saveLocalInstalledPluginVersion(pluginId, version, state.projectPath);
-			} else {
-				await saveInstalledPluginVersion(pluginId, version, state.projectPath);
-			}
-		} catch {
-			// Non-fatal: version display may be stale but plugin still works
-		}
-	};
-
 	const handleSelect = async () => {
 		const item = selectableItems[pluginsState.selectedIndex];
 		if (!item) return;
@@ -573,10 +549,8 @@ export function PluginsScreen() {
 					await cliUninstallPlugin(plugin.id, scope, state.projectPath);
 				} else if (action === "update") {
 					await cliUpdatePlugin(plugin.id, scope);
-					await saveVersionAfterInstall(plugin.id, latestVersion, scope);
 				} else {
 					await cliInstallPlugin(plugin.id, scope);
-					await saveVersionAfterInstall(plugin.id, latestVersion, scope);
 					modal.hideModal();
 					await collectPluginEnvVars(plugin.name, plugin.marketplace);
 					await installPluginSystemDeps(plugin.name, plugin.marketplace);
@@ -602,7 +576,6 @@ export function PluginsScreen() {
 		modal.loading(`Updating ${plugin.name}...`);
 		try {
 			await cliUpdatePlugin(plugin.id, scope);
-			await saveVersionAfterInstall(plugin.id, plugin.version || "0.0.0", scope);
 			modal.hideModal();
 			fetchData();
 		} catch (error) {
@@ -623,7 +596,6 @@ export function PluginsScreen() {
 		try {
 			for (const plugin of updatable) {
 				await cliUpdatePlugin(plugin.id, scope);
-				await saveVersionAfterInstall(plugin.id, plugin.version || "0.0.0", scope);
 			}
 			modal.hideModal();
 			fetchData();
@@ -679,10 +651,8 @@ export function PluginsScreen() {
 				await cliUninstallPlugin(plugin.id, scope, state.projectPath);
 			} else if (action === "update") {
 				await cliUpdatePlugin(plugin.id, scope);
-				await saveVersionAfterInstall(plugin.id, latestVersion, scope);
 			} else {
 				await cliInstallPlugin(plugin.id, scope);
-				await saveVersionAfterInstall(plugin.id, latestVersion, scope);
 				modal.hideModal();
 				await collectPluginEnvVars(plugin.name, plugin.marketplace);
 				await installPluginSystemDeps(plugin.name, plugin.marketplace);
