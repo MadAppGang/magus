@@ -378,6 +378,54 @@
         "visual"
       ],
       "strict": true
+    },
+    {
+      "name": "autopilot",
+      "source": "./plugins/autopilot",
+      "description": "Autonomous task execution with Linear integration. Picks tasks from Linear, routes to agents via tag-to-command mapping, generates proof-of-work artifacts, and handles feedback loops.",
+      "version": "0.2.4",
+      "author": {
+        "name": "Jack Rudenko",
+        "email": "i@madappgang.com",
+        "company": "MadAppGang"
+      },
+      "category": "automation",
+      "keywords": [
+        "autopilot",
+        "autonomous",
+        "linear",
+        "task-execution",
+        "proof-of-work",
+        "webhook",
+        "state-machine",
+        "feedback-loop",
+        "multi-agent"
+      ],
+      "strict": true
+    },
+    {
+      "name": "instantly",
+      "source": "./plugins/instantly",
+      "description": "Cold email outreach toolkit with Instantly.ai MCP integration. Campaign analytics, sequence building, A/B testing, lead management, and auto-optimization.",
+      "version": "1.0.6",
+      "author": {
+        "name": "Jack Rudenko",
+        "email": "i@madappgang.com",
+        "company": "MadAppGang"
+      },
+      "category": "productivity",
+      "keywords": [
+        "instantly",
+        "cold-email",
+        "outreach",
+        "email-campaigns",
+        "lead-generation",
+        "ab-testing",
+        "email-sequences",
+        "deliverability",
+        "sales-automation"
+      ],
+      "strict": true
     }
   ]
 }
