@@ -210,5 +210,27 @@ The workflow `.github/workflows/claudeup-release.yml` triggers on `tools/claudeu
 
 ---
 
+## Learned Preferences
+
+### Model Selection & Routing
+<!-- learned: 2026-03-31 session: model-sel source: explicit_rule -->
+- Model routing/resolution is claudish's responsibility. Magus only does alias lookup (ALIAS_TABLE[name] → full ID). Never implement provider detection, API key checking, or fallback chains in plugin code.
+<!-- learned: 2026-03-31 session: model-sel source: explicit_rule -->
+- Model selection is a 3-step chain: (1) Claude Code interprets user intent to an alias key, (2) Magus looks up ALIAS_TABLE[key] for the full model ID, (3) claudish routes the ID to the correct provider. Never skip steps or merge responsibilities.
+<!-- learned: 2026-03-31 session: model-sel source: explicit_rule -->
+- User customAliases (from .claude/multimodel-team.json) override global shortAliases (from shared/model-aliases.json) on key conflict. Always merge both when building ALIAS_TABLE.
+
+### Tools & Commands
+<!-- learned: 2026-03-31 session: model-sel source: explicit_rule -->
+- In agent/command workflows, use claudish MCP tools (team, create_session, run_prompt) — never Bash+claudish CLI. CLI references are only acceptable in claudish-usage skill documentation.
+
+### Conventions
+<!-- learned: 2026-03-31 session: model-sel source: explicit_rule -->
+- Shared procedures (like alias resolution) belong in ONE skill file referenced by all commands — not duplicated inline. Currently: `multimodel:claudish-usage` → "Model Alias Resolution" section.
+<!-- learned: 2026-03-31 session: model-sel source: explicit_rule -->
+- ai-docs/ files are consumed by agents as context. Delete completed design docs once the feature ships — stale model IDs, old architecture patterns, and outdated recommendations will actively mislead agents.
+
+---
+
 **Maintained by:** Jack Rudenko @ MadAppGang
-**Last Updated:** March 3, 2026
+**Last Updated:** March 31, 2026
