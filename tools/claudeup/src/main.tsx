@@ -38,8 +38,69 @@ async function main(): Promise<void> {
 
 	// Handle "claudeup update" - self-update command
 	if (args[0] === "update") {
-		// Detect how claudeup was installed by checking the executable path
 		const { execSync } = await import("node:child_process");
+
+		// Detect all installations of claudeup across package managers
+		const installations: Array<{
+			manager: "bun" | "npm";
+			path: string;
+		}> = [];
+
+		// Check bun global
+		try {
+			const bunGlobalBin = execSync("bun pm -g bin", {
+				encoding: "utf-8",
+				timeout: 5000,
+			}).trim();
+			const bunPath = `${bunGlobalBin}/claudeup`;
+			const stat = await import("node:fs").then((fs) =>
+				fs.existsSync(bunPath),
+			);
+			if (stat) installations.push({ manager: "bun", path: bunPath });
+		} catch {
+			// bun not installed or no global claudeup
+		}
+
+		// Check npm global
+		try {
+			const npmPrefix = execSync("npm prefix -g", {
+				encoding: "utf-8",
+				timeout: 5000,
+			}).trim();
+			const npmPath = `${npmPrefix}/bin/claudeup`;
+			const stat = await import("node:fs").then((fs) =>
+				fs.existsSync(npmPath),
+			);
+			if (stat) installations.push({ manager: "npm", path: npmPath });
+		} catch {
+			// npm not installed or no global claudeup
+		}
+
+		// Warn about duplicate installations
+		if (installations.length > 1) {
+			const activePath = execSync("which claudeup", {
+				encoding: "utf-8",
+				timeout: 5000,
+			}).trim();
+			const active = installations.find((i) => i.path === activePath);
+			const shadowed = installations.filter((i) => i.path !== activePath);
+
+			console.log(
+				`⚠ claudeup is installed via multiple package managers:\n`,
+			);
+			for (const inst of installations) {
+				const tag =
+					inst.path === activePath ? " (active)" : " (shadowed)";
+				console.log(`  ${inst.manager}: ${inst.path}${tag}`);
+			}
+			console.log(`\nTo fix, keep one and remove the other:`);
+			for (const inst of installations) {
+				console.log(`  ${inst.manager} uninstall -g claudeup`);
+			}
+			console.log();
+		}
+
+		// Determine which package manager to use for the update
 		let usesBun = false;
 		try {
 			const claudeupPath = execSync("which claudeup", {
@@ -54,15 +115,68 @@ async function main(): Promise<void> {
 		const pkgManager = usesBun ? "bun" : "npm";
 		console.log(`Updating claudeup using ${pkgManager}...`);
 
-		const installArgs = usesBun
-			? ["install", "-g", "claudeup@latest"]
-			: ["install", "-g", "claudeup@latest"];
+		const installArgs = ["install", "-g", "claudeup@latest"];
 
 		const proc = spawn(pkgManager, installArgs, {
 			stdio: "inherit",
 			shell: false, // Avoid shell for security (fixes DEP0190 warning)
 		});
 		proc.on("exit", (code) => process.exit(code || 0));
+		return;
+	}
+
+	// Handle "claudeup doctor" - convention audit command
+	if (args[0] === "doctor") {
+		const fix = args.includes("--fix");
+		const json = args.includes("--json");
+		const { runDoctor, fixDoctorIssues } = await import("claudeup-core");
+
+		const result = await runDoctor((level, msg) => {
+			if (!json) console.log(`[${level}] ${msg}`);
+		});
+
+		if (fix) {
+			const fixResult = await fixDoctorIssues(result, (level, msg) => {
+				if (!json) console.log(`[${level}] ${msg}`);
+			});
+			if (json) {
+				console.log(JSON.stringify({ ...result, fixes: fixResult }));
+			} else {
+				console.log(
+					`\nFixed ${fixResult.fixed} issue(s), ${fixResult.failed} failed.`,
+				);
+			}
+		} else {
+			if (json) {
+				console.log(JSON.stringify(result));
+			} else {
+				// Pretty-print results
+				for (const project of result.projects) {
+					console.log(`\n${project.projectPath}`);
+					for (const check of project.checks) {
+						const icon =
+							check.status === "pass"
+								? "PASS"
+								: check.status === "warn"
+									? "WARN"
+									: "FAIL";
+						console.log(`  ${icon}  ${check.message}`);
+					}
+				}
+
+				const s = result.summary;
+				console.log(
+					`\nSummary: ${s.totalProjects} project(s), ${s.totalChecks} check(s)`,
+				);
+				console.log(
+					`  ${s.passed} passed, ${s.warnings} warning(s), ${s.failures} failure(s)`,
+				);
+				if (s.fixable > 0) {
+					console.log(`  ${s.fixable} fixable with --fix`);
+				}
+			}
+		}
+		process.exit(result.summary.failures > 0 ? 1 : 0);
 		return;
 	}
 
@@ -86,6 +200,7 @@ TUI tool for managing Claude Code plugins, MCPs, and configuration.
 Usage: claudeup [options]
        claudeup claude [args...]  Run claude with auto-update prerunner
        claudeup update            Update claudeup to latest version
+       claudeup doctor [--fix]    Audit plugin conventions across projects
 
 Options:
   -v, --version  Show version and check for updates
@@ -96,6 +211,9 @@ Commands:
   claude [args...]   Check for plugin updates (1h cache), then run claude
     -f, --force      Force update check (bypass 1h cache)
   update             Update claudeup itself to latest version
+  doctor [--fix]     Audit plugin conventions (gitignore, CLAUDE.md)
+    --fix            Auto-repair fixable issues
+    --json           Machine-readable JSON output
 
 Navigation:
   [1] Plugins    Manage plugin marketplaces and installed plugins
