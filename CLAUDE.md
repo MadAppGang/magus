@@ -17,15 +17,15 @@
 
 | Plugin | Version | Purpose |
 |--------|---------|---------|
-| **Code Analysis** | v5.0.0 | Codebase investigation with mnemex MCP, 4 skills |
-| **Multimodel** | v2.8.1 | Multi-model collaboration and orchestration |
-| **Agent Development** | v1.5.5 | Create Claude Code agents and plugins |
-| **SEO** | v1.6.5 | SEO analysis and optimization with AUTO GATEs |
+| **Code Analysis** | v5.1.0 | Codebase investigation with mnemex MCP, 4 skills |
+| **Multimodel** | v3.1.0 | Multi-model collaboration and orchestration |
+| **Agent Development** | v1.6.0 | Create Claude Code agents and plugins |
+| **SEO** | v1.7.0 | SEO analysis and optimization with AUTO GATEs |
 | **Video Editing** | v1.1.1 | FFmpeg, Whisper, Final Cut Pro integration |
-| **Nanobanana** | v2.3.1 | AI image generation with Gemini 3 Pro Image |
+| **Nanobanana** | v2.4.0 | AI image generation with Gemini 3 Pro Image |
 | **Conductor** | v2.1.1 | Context-Driven Development with TDD and Git Notes |
-| **Dev** | v2.0.0 | Universal dev assistant, 12 commands via progressive disclosure, 46 skills |
-| **Designer** | v0.2.0 | UI design validation with pixel-diff comparison, 6 skills |
+| **Dev** | v2.7.0 | Universal dev assistant, 12 commands via progressive disclosure, 46 skills |
+| **Designer** | v0.3.0 | UI design validation with pixel-diff comparison, 6 skills |
 | **Browser Use** | v1.0.0 | Full-platform browser automation, 18 MCP tools, 5 skills |
 | **Statusline** | v1.4.1 | Colorful statusline with worktree awareness |
 | **Terminal** | v3.0.0 | Intent-level terminal: 5 skills, 9 commands, TDD workflow, dashboard archetypes + ht-mcp/tmux-mcp |
