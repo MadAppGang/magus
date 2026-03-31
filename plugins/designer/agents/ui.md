@@ -750,7 +750,7 @@ Overall Match: X/10
       1. Write review prompt to file
       2. Execute via claudish MCP:
          ```
-         create_session(model="gemini-3.1-pro-preview",
+         create_session(model="gemini",
            prompt="Review the checkout flow screenshot at screenshots/checkout.png for usability issues.
                    Write review to: ${SESSION_PATH}/reviews/design-review/gemini.md",
            timeout_seconds=300)

@@ -285,7 +285,7 @@
       "name": "designer",
       "source": "./plugins/designer",
       "description": "UI design validation with pixel-diff comparison engine. v0.2.0: Design review agent, visual comparison, style guide creation, browser-use optional integration. 6 skills.",
-      "version": "0.2.2",
+      "version": "0.2.3",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
