@@ -1,12 +1,14 @@
 /**
- * Dual-write prevention tests
+ * Version tracking tests
  *
- * Verifies that claudeup does NOT write plugin state (via saveGlobalInstalledPluginVersion
- * or saveVersionAfterInstall) when the Claude CLI has already handled the write.
+ * The Claude CLI's `plugin install` command does NOT update `installedPluginVersions`
+ * in settings.json — it only manages `enabledPlugins`. Claudeup must save the version
+ * itself after a successful CLI install/update.
  *
- * RED before fix: PluginsScreen has 6 saveVersionAfterInstall calls after CLI ops;
- *                 prerunner calls saveGlobalInstalledPluginVersion unconditionally.
- * GREEN after fix: those calls are removed.
+ * PluginsScreen: no saveVersionAfterInstall helper (removed in v4.5.0), but each
+ *   action handler calls saveVersionForScope after CLI success.
+ * Prerunner: calls saveGlobalInstalledPluginVersion after successful updatePlugin,
+ *   but NOT when CLI is unavailable or update fails (no phantom state).
  */
 
 import { describe, it, expect, mock, beforeEach, afterEach } from "bun:test";
@@ -121,6 +123,7 @@ mock.module("../services/claude-cli.js", () => ({
   updatePlugin: (...args: unknown[]) => mockUpdatePlugin(...args),
   isClaudeAvailable: (...args: unknown[]) => mockIsClaudeAvailable(...args),
   addMarketplace: mock(() => Promise.resolve()),
+  updateMarketplace: mock(() => Promise.resolve()),
 }));
 
 mock.module("../services/plugin-manager.js", () => ({
@@ -194,16 +197,16 @@ describe("prerunner — saveGlobalInstalledPluginVersion call count", () => {
     );
   });
 
-  it("does NOT call saveGlobalInstalledPluginVersion when CLI is available and updatePlugin succeeds", async () => {
+  it("calls saveGlobalInstalledPluginVersion once after successful CLI update", async () => {
     // CLI is available, updatePlugin succeeds.
-    // The FIXED code removes the saveGlobalInstalledPluginVersion call entirely —
-    // the CLI already wrote the state.
+    // The CLI does NOT update installedPluginVersions, so claudeup must save
+    // the version after a successful update.
     mockIsClaudeAvailable = mock(() => Promise.resolve(true));
     mockUpdatePlugin = mock(() => Promise.resolve());
 
     await prerunClaude(["--help"], { force: true });
 
-    expect(mockSaveGlobal).toHaveBeenCalledTimes(0);
+    expect(mockSaveGlobal).toHaveBeenCalledTimes(1);
   });
 
   it("does NOT call saveGlobalInstalledPluginVersion when CLI is unavailable", async () => {

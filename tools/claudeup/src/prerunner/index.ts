@@ -15,12 +15,14 @@ import {
 	getLocalEnabledPlugins,
 	readGlobalSettings,
 	writeGlobalSettings,
+	saveGlobalInstalledPluginVersion,
 } from "../services/claude-settings.js";
 import { parsePluginId } from "../utils/string-utils.js";
 import { defaultMarketplaces } from "../data/marketplaces.js";
 import {
 	updatePlugin,
 	addMarketplace,
+	updateMarketplace,
 	isClaudeAvailable,
 } from "../services/claude-cli.js";
 
@@ -84,6 +86,11 @@ async function getReferencedMarketplaces(
 /**
  * Check which referenced marketplaces are missing locally and auto-add them.
  * Only adds marketplaces with known repos (from defaultMarketplaces).
+ *
+ * Uses `marketplace update` (not `marketplace add`) for recovery because
+ * `add` short-circuits when the marketplace is already declared in settings
+ * — even if the directory was deleted. `update` detects the missing dir and
+ * re-clones automatically.
  */
 async function autoAddMissingMarketplaces(
 	projectPath?: string,
@@ -101,14 +108,20 @@ async function autoAddMissingMarketplaces(
 		if (!defaultMp?.source.repo) continue;
 
 		try {
-			await addMarketplace(defaultMp.source.repo);
+			// Try `marketplace update` first — it re-clones missing directories
+			await updateMarketplace(mpName);
 			added.push(mpName);
-		} catch (error) {
-			// Non-fatal: log and continue
-			console.warn(
-				`⚠ Failed to auto-add marketplace ${mpName}:`,
-				error instanceof Error ? error.message : "Unknown error",
-			);
+		} catch {
+			// If update fails (marketplace not in settings yet), try add
+			try {
+				await addMarketplace(defaultMp.source.repo);
+				added.push(mpName);
+			} catch (error) {
+				console.warn(
+					`⚠ Failed to auto-add marketplace ${mpName}:`,
+					error instanceof Error ? error.message : "Unknown error",
+				);
+			}
 		}
 	}
 
@@ -282,7 +295,8 @@ export async function prerunClaude(
 							continue;
 						}
 						await updatePlugin(plugin.id, "user");
-						// CLI wrote all plugin state; no claudeup write needed
+						// CLI does NOT update installedPluginVersions — save it ourselves
+						await saveGlobalInstalledPluginVersion(plugin.id, plugin.version);
 
 						autoUpdatedPlugins.push({
 							pluginId: plugin.id,
