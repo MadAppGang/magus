@@ -290,7 +290,7 @@ Claudish routes to different backends based on model ID prefix:
 | `mlx/` | MLX (local) | None |
 
 **Collision-Free Models (safe for OpenRouter):**
-- `x-ai/grok-code-fast-1` ✅
+- `grok` ✅
 - `google/gemini-*` ✅ (use `g/` for Gemini Direct)
 - `deepseek/deepseek-chat` ✅
 - `minimax/*` ✅ (use `mmax/` for MiniMax Direct)
@@ -326,11 +326,11 @@ AskUserQuestion({
     options: [
       // Top paid (from shared/model-aliases.json + historical data)
       {
-        label: "x-ai/grok-code-fast-1 ⚡",
+        label: "grok ⚡",
         description: "$0.85/1M | Quality: 87% | Avg: 42s | Fast + accurate"
       },
       {
-        label: "google/gemini-3-pro-preview",
+        label: "gemini",
         description: "$7.00/1M | Quality: 91% | Avg: 55s | High accuracy"
       },
       // Free models (from shared/model-aliases.json knownModels — filter by free)
@@ -377,7 +377,7 @@ load_session_models() {
 
 # Usage:
 # After AskUserQuestion returns selected models
-save_session_models "$SESSION_DIR" "x-ai/grok-code-fast-1" "qwen/qwen3-coder:free"
+save_session_models "$SESSION_DIR" "grok" "qwen/qwen3-coder:free"
 
 # Later in the session, retrieve the selection
 MODELS=$(load_session_models "$SESSION_DIR")
@@ -481,7 +481,7 @@ Message 2: Parallel Execution (single message)
              Return only brief summary."
   ---
   claudish team(mode="run", path=$SESSION_DIR,
-    models=["grok-code-fast-1", "qwen3-coder:free", "gpt-5.1-codex", "devstral-2512:free"],
+    models=["grok", "qwen3-coder:free", "gpt", "devstral-2512:free"],
     input=REVIEW_PROMPT, timeout=180)
 
   All 5 models execute simultaneously (Task for internal + team MCP for externals!)
@@ -509,9 +509,9 @@ Message 3: Auto-Consolidation
 Message 4: Present Results + Update Statistics
   # Track performance for each model (see Pattern 7)
   track_model_performance "claude-embedded" "success" 32 8 95
-  track_model_performance "x-ai/grok-code-fast-1" "success" 45 6 87
+  track_model_performance "grok" "success" 45 6 87
   track_model_performance "qwen/qwen3-coder:free" "success" 52 5 82
-  track_model_performance "openai/gpt-5.1-codex" "success" 68 7 89
+  track_model_performance "gpt" "success" 68 7 89
   track_model_performance "mistralai/devstral-2512:free" "success" 48 5 84
 
   # Record session summary
@@ -531,9 +531,9 @@ Message 4: Present Results + Update Statistics
    | Model                          | Time | Issues | Quality | Cost   |
    |--------------------------------|------|--------|---------|--------|
    | claude-embedded                | 32s  | 8      | 95%     | FREE   |
-   | x-ai/grok-code-fast-1          | 45s  | 6      | 87%     | $0.002 |
+   | grok          | 45s  | 6      | 87%     | $0.002 |
    | qwen/qwen3-coder:free          | 52s  | 5      | 82%     | FREE   |
-   | openai/gpt-5.1-codex        | 68s  | 7      | 89%     | $0.015 |
+   | gpt        | 68s  | 7      | 89%     | $0.015 |
    | mistralai/devstral-2512:free   | 48s  | 5      | 84%     | FREE   |
 
    Parallel Speedup: 3.6x (245s sequential → 68s parallel)
@@ -656,7 +656,7 @@ directly — no Bash invocation needed. This is 100% reliable.
 
 **For /team (parallel multi-model):**
 ```
-team(mode="run", path=SESSION_DIR, models=["grok-code-fast-1", "gemini-3.1-pro-preview"],
+team(mode="run", path=SESSION_DIR, models=["grok", "gemini"],
   input=VOTE_PROMPT, timeout=180, claude_flags=claudeFlags)
 ```
 
@@ -665,7 +665,7 @@ including status, output, and errors.
 
 **For single-model delegation:**
 ```
-create_session(model="grok-code-fast-1", prompt=TASK_PROMPT, timeout_seconds=300)
+create_session(model="grok", prompt=TASK_PROMPT, timeout_seconds=300)
 → channel events: session_started → tool_executing → completed/failed
 → get_output(session_id) to retrieve result
 ```
@@ -678,7 +678,7 @@ create_session(model="grok-code-fast-1", prompt=TASK_PROMPT, timeout_seconds=300
 
 ```
 // ✅ CORRECT: External models via team MCP tool
-team(mode="run", path=SESSION_DIR, models=["grok-code-fast-1", "gemini-3.1-pro-preview"],
+team(mode="run", path=SESSION_DIR, models=["grok", "gemini"],
   input=VOTE_PROMPT, timeout=180)
 
 # ✅ CORRECT: Internal model via Task
@@ -1079,8 +1079,8 @@ Instead of keyword matching, use semantic similarity:
         }
       ]
     },
-    "x-ai-grok-code-fast-1": {
-      "modelId": "x-ai/grok-code-fast-1",
+    "x-ai-grok": {
+      "modelId": "grok",
       "provider": "X-ai",
       "isFree": false,
       "pricing": "$0.85/1M",
@@ -1117,9 +1117,9 @@ Instead of keyword matching, use semantic similarity:
     }
   ],
   "recommendations": {
-    "topPaid": ["x-ai/grok-code-fast-1", "google/gemini-3-pro-preview"],
+    "topPaid": ["grok", "gemini"],
     "topFree": ["qwen/qwen3-coder:free", "mistralai/devstral-2512:free"],
-    "bestValue": ["x-ai/grok-code-fast-1"],
+    "bestValue": ["grok"],
     "avoid": [],
     "lastGenerated": "2025-12-12T10:45:00Z"
   }
@@ -1172,20 +1172,20 @@ Speedup: 235 / 120 = 1.96x
 | Model                     | Time   | Issues | Quality | Status    |
 |---------------------------|--------|--------|---------|-----------|
 | claude-embedded           | 32s    | 8      | 95%     | ✓         |
-| x-ai/grok-code-fast-1     | 45s    | 6      | 85%     | ✓         |
-| google/gemini-2.5-flash   | 38s    | 5      | 90%     | ✓         |
-| openai/gpt-5.1-codex   | 120s   | 9      | 88%     | ✓ (slow)  |
+| grok     | 45s    | 6      | 85%     | ✓         |
+| gemini   | 38s    | 5      | 90%     | ✓         |
+| gpt   | 120s   | 9      | 88%     | ✓ (slow)  |
 | deepseek/deepseek-chat    | TIMEOUT| 0      | -       | ✗         |
 
 **Session Summary:**
 - Parallel Speedup: 1.96x (235s sequential → 120s parallel)
 - Average Time: 59s
-- Slowest: gpt-5.1-codex (2.0x avg)
+- Slowest: gpt (2.0x avg)
 
 **Recommendations:**
-⚠️ gpt-5.1-codex runs 2x slower than average - consider removing
+⚠️ gpt runs 2x slower than average - consider removing
 ⚠️ deepseek-chat timed out - check API status or remove from shortlist
-✓ Top performers: claude-embedded, gemini-2.5-flash (fast + high quality)
+✓ Top performers: claude-embedded, gemini (fast + high quality)
 ```
 
 **Recommendation Logic:**
@@ -1297,8 +1297,8 @@ track_model_performance() {
 
 # Usage examples:
 # Paid models
-track_model_performance "x-ai/grok-code-fast-1" "success" 45 6 87 0.002 false
-track_model_performance "openai/gpt-5.1-codex" "success" 68 7 89 0.015 false
+track_model_performance "grok" "success" 45 6 87 0.002 false
+track_model_performance "gpt" "success" 68 7 89 0.015 false
 
 # Free models (cost=0, is_free=true)
 track_model_performance "qwen/qwen3-coder:free" "success" 52 5 82 0 true
@@ -1460,11 +1460,11 @@ AskUserQuestion({
     options: [
       // Top paid with historical data
       {
-        label: "x-ai/grok-code-fast-1 ⚡ (Recommended)",
+        label: "grok ⚡ (Recommended)",
         description: "$0.85/1M | Quality: 87% | Avg: 42s | Fast + accurate"
       },
       {
-        label: "google/gemini-3-pro-preview 🎯",
+        label: "gemini 🎯",
         description: "$7.00/1M | Quality: 91% | Avg: 55s | High accuracy"
       },
       // Top free models
@@ -1495,13 +1495,13 @@ AskUserQuestion({
 **After Selection - Save to Session:**
 
 ```bash
-# User selected: grok-code-fast-1, qwen3-coder:free
+# User selected: grok, qwen3-coder:free
 # Save for session persistence
 save_session_models "$SESSION_DIR" "${USER_SELECTED_MODELS[@]}"
 
 # Now $SESSION_DIR/selected-models.txt contains:
 # claude-embedded
-# x-ai/grok-code-fast-1
+# grok
 # qwen/qwen3-coder:free
 ```
 
@@ -1511,7 +1511,7 @@ If there are models to avoid, show a brief warning before the selection:
 
 ```
 ⚠️ Models excluded from selection (poor historical performance):
-- openai/gpt-5.1-codex: Slow (2.1x avg)
+- gpt: Slow (2.1x avg)
 - some-model: 60% success rate
 ```
 
@@ -1596,7 +1596,7 @@ skills: multimodel:multi-model-validation
 After each external model completes:
 ```bash
 # Parameters: model_id, status, duration_seconds, issues_found, quality_score
-track_model_performance "x-ai/grok-code-fast-1" "success" 45 6 85
+track_model_performance "grok" "success" 45 6 85
 ```
 
 ### Step 3: Record Session Summary
@@ -1783,7 +1783,7 @@ Message 1: Session Setup + Model Discovery
 
   # Load historical performance
   Bash: cat ai-docs/llm-performance.json | jq '.models | keys'
-  Output: ["claude-embedded", "x-ai-grok-code-fast-1", "qwen-qwen3-coder-free"]
+  Output: ["claude-embedded", "x-ai-grok", "qwen-qwen3-coder-free"]
 
   # Prepare code context
   Bash: git diff > "$SESSION_DIR/code-context.md"
@@ -1796,8 +1796,8 @@ Message 2: Model Selection (AskUserQuestion with multiSelect)
       header: "Models",
       multiSelect: true,
       options: [
-        { label: "x-ai/grok-code-fast-1 ⚡", description: "$0.85/1M | Quality: 87% | Avg: 42s" },
-        { label: "google/gemini-3-pro-preview", description: "$7.00/1M | New model, no history" },
+        { label: "grok ⚡", description: "$0.85/1M | Quality: 87% | Avg: 42s" },
+        { label: "gemini", description: "$7.00/1M | New model, no history" },
         { label: "qwen/qwen3-coder:free 🆓", description: "FREE | Quality: 82% | Coding-specialized" },
         { label: "mistralai/devstral-2512:free 🆓", description: "FREE | Dev-focused, new model" }
       ]
@@ -1805,18 +1805,18 @@ Message 2: Model Selection (AskUserQuestion with multiSelect)
   })
 
   # User selects via interactive UI:
-  # ☑ x-ai/grok-code-fast-1
-  # ☐ google/gemini-3-pro-preview
+  # ☑ grok
+  # ☐ gemini
   # ☑ qwen/qwen3-coder:free
   # ☑ mistralai/devstral-2512:free
 
   # Save selection to session for later use
-  save_session_models "$SESSION_DIR" "x-ai/grok-code-fast-1" "qwen/qwen3-coder:free" "mistralai/devstral-2512:free"
+  save_session_models "$SESSION_DIR" "grok" "qwen/qwen3-coder:free" "mistralai/devstral-2512:free"
 
   # Session now has:
   # $SESSION_DIR/selected-models.txt containing:
   # claude-embedded (always)
-  # x-ai/grok-code-fast-1
+  # grok
   # qwen/qwen3-coder:free
   # mistralai/devstral-2512:free
 
@@ -1826,7 +1826,7 @@ Message 3: Parallel Execution (single message)
              Write to $SESSION_DIR/claude-review.md"
   ---
   claudish team(mode="run", path=$SESSION_DIR,
-    models=["grok-code-fast-1", "qwen3-coder:free", "devstral-2512:free"],
+    models=["grok", "qwen3-coder:free", "devstral-2512:free"],
     input=REVIEW_PROMPT, timeout=180)
 
   All 4 execute simultaneously (Task for internal + team MCP for externals)!
@@ -1838,7 +1838,7 @@ Message 4: Auto-Consolidation + Statistics Update
 
   # Track performance
   track_model_performance "claude-embedded" "success" 32 8 95 0 true
-  track_model_performance "x-ai/grok-code-fast-1" "success" 45 6 87 0.002 false
+  track_model_performance "grok" "success" 45 6 87 0.002 false
   track_model_performance "qwen/qwen3-coder:free" "success" 52 5 82 0 true
   track_model_performance "mistralai/devstral-2512:free" "success" 48 5 84 0 true
 
@@ -1856,7 +1856,7 @@ Message 5: Present Results
    | Model                        | Time | Issues | Quality | Cost   |
    |------------------------------|------|--------|---------|--------|
    | claude-embedded              | 32s  | 8      | 95%     | FREE   |
-   | x-ai/grok-code-fast-1        | 45s  | 6      | 87%     | $0.002 |
+   | grok        | 45s  | 6      | 87%     | $0.002 |
    | qwen/qwen3-coder:free        | 52s  | 5      | 82%     | FREE   |
    | mistralai/devstral-2512:free | 48s  | 5      | 84%     | FREE   |
 
@@ -2052,7 +2052,7 @@ declare -A MODEL_START_TIMES
 ```bash
 # Before launching each Task
 MODEL_START_TIMES["claude-embedded"]=$(date +%s)
-MODEL_START_TIMES["x-ai/grok-code-fast-1"]=$(date +%s)
+MODEL_START_TIMES["grok"]=$(date +%s)
 MODEL_START_TIMES["qwen/qwen3-coder:free"]=$(date +%s)
 
 # After each TaskOutput returns, calculate duration
@@ -2074,7 +2074,7 @@ model_completed() {
 
 # Call when each model completes
 model_completed "claude-embedded" "success" 8 95
-model_completed "x-ai/grok-code-fast-1" "success" 6 87
+model_completed "grok" "success" 6 87
 ```
 
 ### Post-Consolidation Checklist (MANDATORY)
@@ -2119,7 +2119,7 @@ declare -A MODEL_DURATIONS
 # === LAUNCH PHASE ===
 # Record start times BEFORE launching Tasks
 MODEL_START_TIMES["claude-embedded"]=$SESSION_START
-MODEL_START_TIMES["x-ai/grok-code-fast-1"]=$SESSION_START
+MODEL_START_TIMES["grok"]=$SESSION_START
 MODEL_START_TIMES["qwen/qwen3-coder:free"]=$SESSION_START
 
 # Launch all Tasks in parallel (Message 2)
@@ -2135,7 +2135,7 @@ record_completion() {
 
 # Call as each completes
 record_completion "claude-embedded"
-record_completion "x-ai/grok-code-fast-1"
+record_completion "grok"
 record_completion "qwen/qwen3-coder:free"
 
 # === STATISTICS PHASE ===
@@ -2153,7 +2153,7 @@ SPEEDUP=$(echo "scale=1; $SEQUENTIAL_TIME / $PARALLEL_TIME" | bc)
 
 # Track each model
 track_model_performance "claude-embedded" "success" "${MODEL_DURATIONS[claude-embedded]}" 8 95 0 true
-track_model_performance "x-ai/grok-code-fast-1" "success" "${MODEL_DURATIONS[x-ai/grok-code-fast-1]}" 6 87 0.002 false
+track_model_performance "grok" "success" "${MODEL_DURATIONS[grok]}" 6 87 0.002 false
 track_model_performance "qwen/qwen3-coder:free" "success" "${MODEL_DURATIONS[qwen/qwen3-coder:free]}" 5 82 0 true
 
 # Record session
@@ -2172,7 +2172,7 @@ Your final message to the user **MUST** include this table:
 | Model                     | Time  | Issues | Quality | Cost   | Status |
 |---------------------------|-------|--------|---------|--------|--------|
 | claude-embedded           | 32s   | 8      | 95%     | FREE   | ✅     |
-| x-ai/grok-code-fast-1     | 45s   | 6      | 87%     | $0.002 | ✅     |
+| grok     | 45s   | 6      | 87%     | $0.002 | ✅     |
 | qwen/qwen3-coder:free     | 52s   | 5      | 82%     | FREE   | ✅     |
 
 ## Session Statistics

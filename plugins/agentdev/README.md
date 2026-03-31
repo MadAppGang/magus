@@ -65,14 +65,7 @@ The `/develop` command uses external AI models via [Claudish](https://github.com
 - **Plan Review** - Validate design before implementation
 - **Implementation Review** - Quality check with multiple perspectives
 
-**Install Claudish:** `npm install -g claudish`
-
-Supported models:
-- `grok-code-fast-1` - Fast, coding-focused
-- `gemini-3.1-pro-preview` - Budget-friendly
-- `gemini-3.1-pro-preview` - Advanced reasoning
-- `deepseek/deepseek-chat` - Reasoning specialist
-- `anthropic/claude-sonnet-4.5` - Alternative perspective
+Available models are resolved from `shared/model-aliases.json` aliases (e.g. `grok`, `gemini`, `deepseek`). Run `/update-models` to refresh from the curated database.
 
 ## License
 

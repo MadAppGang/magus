@@ -248,28 +248,16 @@ CLAUDISH_EXIT=$?
 
 ## 4. Model Selection Guide
 
-Priority order for vision model selection:
+Read the vision model from the centralized config — do not detect providers via env vars:
 
-| Priority | Model | Key | Notes |
-|----------|-------|-----|-------|
-| 1 | `g/gemini-3-pro-preview` | `GEMINI_API_KEY` | Best accuracy, lowest latency, direct API |
-| 2 | `or/google/gemini-3-pro-preview` | `OPENROUTER_API_KEY` | Same model via OpenRouter |
-| 3 | `or/qwen/qwen3-vl-32b-instruct` | `OPENROUTER_API_KEY` | Best OCR and spatial reasoning fallback |
-| 4 | _(skip)_ | none | Produce pixel-only report |
+```
+Read: shared/model-aliases.json → roles.designer_review.modelId → VISION_MODEL
+```
 
-### Detection Pattern
-
-```bash
-if [[ -n "${GEMINI_API_KEY}" ]]; then
-  VISION_MODEL="g/gemini-3-pro-preview"
-elif [[ -n "${OPENROUTER_API_KEY}" ]]; then
-  VISION_MODEL="or/google/gemini-3-pro-preview"
-  # If Gemini not available via OpenRouter, fall back:
-  # VISION_MODEL="or/qwen/qwen3-vl-32b-instruct"
-else
-  echo "WARN: No vision API key. Semantic analysis skipped."
-  SEMANTIC_SKIP=true
-fi
+If the file is missing or the key is absent, set `SEMANTIC_SKIP=true` and log:
+```
+WARN: shared/model-aliases.json missing or roles.designer_review not set.
+      Run /update-models to regenerate it. Semantic analysis skipped.
 ```
 
 ---

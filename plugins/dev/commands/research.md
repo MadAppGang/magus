@@ -2,7 +2,7 @@
 name: research
 description: Multi-source research with convergence-based finalization and parallel exploration
 allowed-tools: Task, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep
-skills: dev:context-detection, multimodel:multi-model-validation, multimodel:task-orchestration
+skills: dev:context-detection, multimodel:task-orchestration
 ---
 
 <role>
@@ -13,7 +13,7 @@ skills: dev:context-detection, multimodel:multi-model-validation, multimodel:tas
     - Convergence-based finalization criteria (k=3 consecutive stable syntheses)
     - Multi-source evidence integration
     - File-based agent communication
-    - Model fallback strategies (Gemini 3 Flash -> OpenRouter -> Haiku)
+    - Native WebSearch/WebFetch for internet sources
   </expertise>
   <mission>
     Orchestrate comprehensive research on any topic by coordinating specialized
@@ -108,40 +108,6 @@ skills: dev:context-detection, multimodel:multi-model-validation, multimodel:tas
       - Report generation: synthesizer agent
     </delegation_rules>
 
-    <model_fallback_strategy>
-      **Model Priority Order:**
-
-      1. **Primary: Gemini 3 Flash Preview**
-         - Check: GOOGLE_API_KEY environment variable set
-         - Model ID: google/gemini-3-flash-preview (via direct Gemini)
-         - Why: Best for web research, large context, fast
-
-      2. **Secondary: OpenRouter Gemini**
-         - Check: OPENROUTER_API_KEY set and claudish available
-         - Model ID: google/gemini-3-pro-preview (via claudish)
-         - Why: Fallback if no GOOGLE_API_KEY
-
-      3. **Fallback: Haiku**
-         - Check: Always available (native Claude)
-         - Model: haiku
-         - Why: Guaranteed availability, fast, cost-effective
-
-      **Detection Logic:**
-      ```bash
-      # Check in order:
-      if [[ -n "$GOOGLE_API_KEY" ]]; then
-        MODEL_STRATEGY="gemini-direct"
-        AGENT_MODEL="sonnet"  # Agents use sonnet, call Gemini for web
-      elif command -v claudish &> /dev/null && [[ -n "$OPENROUTER_API_KEY" ]]; then
-        MODEL_STRATEGY="openrouter"
-        EXTERNAL_MODEL="google/gemini-3-pro-preview"
-      else
-        MODEL_STRATEGY="native"
-        AGENT_MODEL="haiku"
-      fi
-      ```
-    </model_fallback_strategy>
-
     <iteration_limits>
       **Research pipeline has maximum iterations:**
 
@@ -189,25 +155,6 @@ skills: dev:context-detection, multimodel:multi-model-validation, multimodel:tas
           ```
         </step>
         <step>
-          Detect model strategy:
-          ```bash
-          # Check GOOGLE_API_KEY
-          if [[ -n "$GOOGLE_API_KEY" ]]; then
-            echo "MODEL_STRATEGY=gemini-direct" > "${SESSION_PATH}/config.env"
-            echo "Primary model: Gemini 3 Flash (direct API)"
-          # Check OpenRouter
-          elif command -v claudish &> /dev/null && [[ -n "$OPENROUTER_API_KEY" ]]; then
-            echo "MODEL_STRATEGY=openrouter" > "${SESSION_PATH}/config.env"
-            echo "EXTERNAL_MODEL=google/gemini-3-pro-preview" >> "${SESSION_PATH}/config.env"
-            echo "Secondary model: Gemini via OpenRouter"
-          else
-            echo "MODEL_STRATEGY=native" > "${SESSION_PATH}/config.env"
-            echo "AGENT_MODEL=haiku" >> "${SESSION_PATH}/config.env"
-            echo "Fallback model: Claude Haiku (native)"
-          fi
-          ```
-        </step>
-        <step>
           Write session metadata:
           ```json
           {
@@ -215,7 +162,6 @@ skills: dev:context-detection, multimodel:multi-model-validation, multimodel:tas
             "createdAt": "{timestamp}",
             "topic": "{research_topic}",
             "status": "in_progress",
-            "modelStrategy": "{strategy}",
             "iterations": {
               "exploration": 0,
               "synthesis": 0,
@@ -233,7 +179,7 @@ skills: dev:context-detection, multimodel:multi-model-validation, multimodel:tas
         </step>
         <step>Mark PHASE 0 as completed</step>
       </steps>
-      <quality_gate>Session created, model strategy detected</quality_gate>
+      <quality_gate>Session created</quality_gate>
     </phase>
 
     <phase number="1" name="Research Planning">
@@ -316,7 +262,6 @@ skills: dev:context-detection, multimodel:multi-model-validation, multimodel:tas
 
           Task: researcher
             Prompt: "SESSION_PATH: ${SESSION_PATH}
-                     MODEL_STRATEGY: {strategy}
 
                      Sub-question: {sub_question_1}
                      Search queries: {queries_for_1}
@@ -674,22 +619,6 @@ skills: dev:context-detection, multimodel:multi-model-validation, multimodel:tas
     ```
   </convergence_algorithm>
 
-  <model_strategy_execution>
-    **Gemini Direct Strategy:**
-    - Agents use sonnet model
-    - Web search calls Gemini API directly
-    - Requires: researcher agent with web search capability
-
-    **OpenRouter Strategy:**
-    - External models via claudish CLI with google/gemini-3-pro-preview
-    - Web search via external model execution
-    - Requires: OPENROUTER_API_KEY
-
-    **Native Strategy:**
-    - Agents use haiku model
-    - No external web search (local + provided context only)
-    - Gracefully degrades: "Limited to local sources only"
-  </model_strategy_execution>
 </orchestration>
 
 <knowledge>
@@ -744,7 +673,6 @@ skills: dev:context-detection, multimodel:multi-model-validation, multimodel:tas
     <user_request>/dev:research Best practices for implementing rate limiting in Go APIs</user_request>
     <execution>
       PHASE 0: Create session dev-research-rate-limiting-go-20260106
-              Detect model: GOOGLE_API_KEY found -> gemini-direct
 
       PHASE 1: Planner decomposes into sub-questions:
               1. What algorithms exist for rate limiting?
@@ -802,13 +730,10 @@ skills: dev:context-detection, multimodel:multi-model-validation, multimodel:tas
     </execution>
   </example>
 
-  <example name="Research with Native Fallback">
+  <example name="Research with Local Sources Only">
     <user_request>/dev:research How does the MCP protocol work in Claude?</user_request>
     <execution>
       PHASE 0: Create session
-              Detect model: No GOOGLE_API_KEY, no claudish
-              Strategy: native (haiku)
-              Warn user: "Limited to local sources and provided context"
 
       PHASE 1: Planner creates plan based on available info
               Sub-questions:
@@ -816,7 +741,7 @@ skills: dev:context-detection, multimodel:multi-model-validation, multimodel:tas
               2. How do MCP servers register?
               3. What tools can MCP provide?
 
-      PHASE 2: Generate local search strategy (no web)
+      PHASE 2: Generate local search strategy
               - Search codebase for MCP references
               - Check CLAUDE.md for MCP docs
               - Look for mcp-servers directories
@@ -831,12 +756,11 @@ skills: dev:context-detection, multimodel:multi-model-validation, multimodel:tas
               Quality: Lower agreement (only local sources)
 
       PHASE 5: Check convergence
-              - Criterion 4: Iteration limit (no web means faster)
+              - Criterion 4: Iteration limit
               - Present findings with caveat
 
       PHASE 6: Generate report
               - Note: "Based on local sources only"
-              - Recommend: "Set GOOGLE_API_KEY for web research"
     </execution>
   </example>
 
@@ -882,11 +806,8 @@ skills: dev:context-detection, multimodel:multi-model-validation, multimodel:tas
 
   <strategy scenario="Web search unavailable">
     <recovery>
-      1. Check model strategy configuration
-      2. If gemini-direct fails: Try openrouter fallback
-      3. If all external fails: Switch to native strategy
-      4. Notify user: "Degraded to local sources only"
-      5. Continue with available sources
+      1. Notify user: "Degraded to local sources only"
+      2. Continue with available sources (Grep, Glob, Read)
     </recovery>
   </strategy>
 
@@ -964,8 +885,6 @@ skills: dev:context-detection, multimodel:multi-model-validation, multimodel:tas
 **Quality Metrics**:
 - Factual Integrity: {percentage}% (target: 90%+)
 - Agreement Score: {percentage}% (target: 60%+)
-
-**Model Strategy**: {strategy}
 
 **Artifacts**:
 - Research Plan: ${SESSION_PATH}/research-plan.md

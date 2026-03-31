@@ -168,12 +168,7 @@ skills: multimodel:complete  # All 5 skills
 
 Run Claude Code with any OpenRouter model via local Anthropic API proxy. **100% VERIFIED** - Routes to real OpenRouter models, NOT Anthropic.
 
-**Top Recommended Models for Development:**
-- `x-ai/grok-code-fast-1` - xAI's Grok (fast coding, great for rapid prototyping)
-- `openai/gpt-5-codex` - OpenAI's GPT-5 Codex (advanced reasoning, complex tasks)
-- `minimax/minimax-m2` - MiniMax M2 (high performance, balanced)
-- `qwen/qwen3-vl-235b-a22b-instruct` - Alibaba's Qwen (vision-language, multimodal)
-- `anthropic/claude-sonnet-4.5` - Claude Sonnet (for comparison/baseline)
+**Model selection** is managed via `shared/model-aliases.json` — a curated database synced from Firebase with 18+ provider collectors. Run `/update-models` to refresh. Use short aliases like `grok`, `gemini`, `gpt` — claudish resolves providers automatically.
 
 **Features:**
 - 🎯 **Interactive Model Selector** - Beautiful terminal UI when no model specified
@@ -193,11 +188,11 @@ npm install -g claudish
 # Interactive mode - shows model selector
 claudish "implement user authentication"
 
-# Specific model
-claudish --model x-ai/grok-code-fast-1 "add tests"
+# Specific model (use aliases — claudish resolves providers)
+claudish --model grok "add tests"
 
-# Custom model ID
-claudish --model your/custom-model "your task"
+# Or full model ID
+claudish --model grok-4.20-beta "your task"
 
 # Disable auto-approve
 claudish --no-auto-approve "make changes"

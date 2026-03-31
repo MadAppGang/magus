@@ -157,8 +157,8 @@ When enabled, hooks will BLOCK execution if tracking is not set up, rather than 
 | Model | Status | Time | Issues | Quality | Cost |
 |-------|--------|------|--------|---------|------|
 | claude-embedded | pending | - | - | - | FREE |
-| grok-code-fast-1 | pending | - | - | - | - |
-| qwen3.5-plus-02-15 | pending | - | - | - | FREE |
+| grok | pending | - | - | - | - |
+| qwen | pending | - | - | - | FREE |
 ```
 
 **Update as each completes:**
@@ -167,8 +167,8 @@ When enabled, hooks will BLOCK execution if tracking is not set up, rather than 
 | Model | Status | Time | Issues | Quality | Cost |
 |-------|--------|------|--------|---------|------|
 | claude-embedded | success | 32s | 8 | 95% | FREE |
-| grok-code-fast-1 | success | 45s | 6 | 87% | $0.002 |
-| qwen3.5-plus-02-15 | timeout | - | - | - | - |
+| grok | success | 45s | 6 | 87% | $0.002 |
+| qwen | timeout | - | - | - | - |
 ```
 
 ### Template B: Detailed Model Tracking (6+ models)
@@ -188,10 +188,10 @@ When enabled, hooks will BLOCK execution if tracking is not set up, rather than 
 | # | Model | Provider | Status | Start | Duration | Issues | Quality | Cost | Error |
 |---|-------|----------|--------|-------|----------|--------|---------|------|-------|
 | 1 | claude-embedded | Anthropic | pending | - | - | - | - | FREE | - |
-| 2 | grok-code-fast-1 | X-ai | pending | - | - | - | - | - | - |
-| 3 | qwen3.5-plus-02-15 | Qwen | pending | - | - | - | - | FREE | - |
-| 4 | gemini-3.1-pro-preview | Google | pending | - | - | - | - | - | - |
-| 5 | gpt-5.3-codex | OpenAI | pending | - | - | - | - | - | - |
+| 2 | grok | X-ai | pending | - | - | - | - | - | - |
+| 3 | qwen | Qwen | pending | - | - | - | - | FREE | - |
+| 4 | gemini | Google | pending | - | - | - | - | - | - |
+| 5 | gpt | OpenAI | pending | - | - | - | - | - | - |
 | 6 | devstral | Mistral | pending | - | - | - | - | FREE | - |
 | 7 | deepseek-r1 | DeepSeek | pending | - | - | - | - | - | - |
 | 8 | claude-sonnet | Anthropic | pending | - | - | - | - | - | - |
@@ -282,7 +282,7 @@ update_model_status() {
 
 # Usage examples:
 update_model_status "claude-embedded" "success" 8 95
-update_model_status "grok-code-fast-1" "success" 6 87
+update_model_status "grok" "success" 6 87
 update_model_status "some-model" "timeout" 0 "" "Exceeded 120s limit"
 update_model_status "other-model" "failed" 0 "" "API 500 error"
 ```
@@ -305,10 +305,10 @@ Show user progress as models complete:
 ```
 Model Status (3/5 complete):
 ✓ claude-embedded (32s, 8 issues)
-✓ grok-code-fast-1 (45s, 6 issues)
-✓ qwen3.5-plus-02-15 (52s, 5 issues)
-⏳ gpt-5.3-codex (in progress, 60s elapsed)
-⏳ gemini-3.1-pro-preview (in progress, 48s elapsed)
+✓ grok (45s, 6 issues)
+✓ qwen (52s, 5 issues)
+⏳ gpt (in progress, 60s elapsed)
+⏳ gemini (in progress, 48s elapsed)
 ```
 
 ---
@@ -326,14 +326,14 @@ Model Status (3/5 complete):
 ```markdown
 ## Failed Models Report
 
-### Model: grok-code-fast-1
+### Model: grok
 - **Failure Type:** API Error
 - **Error Message:** "500 Internal Server Error from OpenRouter"
 - **Retry Attempted:** Yes, 1 retry, same error
 - **Impact:** Review results based on 3/4 models instead of 4
 - **Recommendation:** Check OpenRouter status, retry later
 
-### Model: gemini-3.1-pro-preview
+### Model: gemini
 - **Failure Type:** Timeout
 - **Error Message:** "Exceeded 120s limit, response incomplete"
 - **Retry Attempted:** No, time constraints
@@ -369,8 +369,8 @@ Always include this in final results:
 
 | Model | Failure | Recoverable? | Action |
 |-------|---------|--------------|--------|
-| grok-code-fast-1 | API 500 | Yes - retry later | Check OpenRouter status |
-| gemini-3-pro | Timeout | Yes - extend limit | Use 180s timeout |
+| grok | API 500 | Yes - retry later | Check OpenRouter status |
+| gemini | Timeout | Yes - extend limit | Use 180s timeout |
 | deepseek-r1 | Auth Error | No - check key | Verify API key valid |
 ```
 
@@ -398,7 +398,7 @@ EOF
 }
 
 # Usage:
-document_failure "grok-code-fast-1" "API Error" "500 Internal Server Error" "Yes, 1 retry"
+document_failure "grok" "API Error" "500 Internal Server Error" "Yes, 1 retry"
 ```
 
 ---
@@ -523,9 +523,9 @@ If you present results without a consensus comparison, your review is INCOMPLETE
 | Model | Time | Issues | Quality | Status | Cost |
 |-------|------|--------|---------|--------|------|
 | claude-embedded | 32s | 8 | 95% | Success | FREE |
-| grok-code-fast-1 | 45s | 6 | 87% | Success | $0.002 |
-| qwen3.5-plus-02-15 | 52s | 5 | 82% | Success | FREE |
-| gpt-5.3-codex | 68s | 7 | 89% | Success | $0.015 |
+| grok | 45s | 6 | 87% | Success | $0.002 |
+| qwen | 52s | 5 | 82% | Success | FREE |
+| gpt | 68s | 7 | 89% | Success | $0.015 |
 | devstral | - | - | - | Timeout | - |
 
 ### Failed Models
@@ -769,8 +769,8 @@ echo "Pre-launch complete. Session: $SESSION_ID"
 
 # Record start times for each model
 MODEL_START_TIMES["claude-embedded"]=$(date +%s)
-MODEL_START_TIMES["grok-code-fast-1"]=$(date +%s)
-MODEL_START_TIMES["qwen3.5-plus-02-15"]=$(date +%s)
+MODEL_START_TIMES["grok"]=$(date +%s)
+MODEL_START_TIMES["qwen"]=$(date +%s)
 
 # Launch all models in single message (parallel execution)
 # (These would be actual Task calls in practice)
@@ -792,8 +792,8 @@ update_model_status() {
 
 # Example completions
 update_model_status "claude-embedded" "success" 8 95
-update_model_status "grok-code-fast-1" "success" 6 87
-update_model_status "qwen3.5-plus-02-15" "timeout"
+update_model_status "grok" "success" 6 87
+update_model_status "qwen" "timeout"
 
 # ============================================================================
 # PHASE 4: CONSENSUS ANALYSIS (MANDATORY)

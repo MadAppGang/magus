@@ -116,7 +116,7 @@ Create `.claude/settings.json`:
       },
       "multiModelReview": {
         "enabled": true,
-        "models": ["grok-code-fast-1", "gemini-3.1-pro-preview"]
+        "models": ["grok", "gemini"]
       }
     }
   }

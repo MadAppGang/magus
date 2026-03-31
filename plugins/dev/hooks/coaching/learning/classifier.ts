@@ -6,7 +6,7 @@
  */
 
 import { execSync } from "child_process";
-import { writeFileSync, unlinkSync } from "fs";
+import { writeFileSync, unlinkSync, readFileSync } from "fs";
 import { join } from "path";
 import { createHash } from "crypto";
 import type { SessionSummary, ClassifierResult, Learning } from "./types";
@@ -99,6 +99,16 @@ export function parseClassifierResponse(response: string): ClassifierResult {
   };
 }
 
+function getClassifierModel(): string {
+  try {
+    const aliasesPath = join(__dirname, "../../../../../shared/model-aliases.json");
+    const aliases = JSON.parse(readFileSync(aliasesPath, "utf-8"));
+    return aliases.roles?.coaching_classifier?.modelId ?? "claude-sonnet-4-20250514";
+  } catch {
+    return "claude-sonnet-4-20250514";
+  }
+}
+
 export async function classifySession(
   summary: SessionSummary,
   options: { maxRetries?: number; tmpDir?: string } = {}
@@ -121,7 +131,7 @@ export async function classifySession(
   const prompt = buildClassifierPrompt(summary);
 
   const requestBody = JSON.stringify({
-    model: "claude-sonnet-4-20250514",
+    model: getClassifierModel(),
     max_tokens: 2048,
     system: CLASSIFIER_SYSTEM_PROMPT,
     messages: [

@@ -15,7 +15,7 @@
       "name": "code-analysis",
       "source": "./plugins/code-analysis",
       "description": "Deep code investigation with mnemex MCP server. v5.0.1: Renamed mnemex CLI tool.",
-      "version": "5.0.3",
+      "version": "5.1.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -42,8 +42,8 @@
     {
       "name": "multimodel",
       "source": "./plugins/multimodel",
-      "description": "Multi-model collaboration, orchestration, and workflow patterns. v3.0.0: MCP-first — all skills updated to reference claudish MCP tools (team, create_session) instead of Bash+CLI. Dead code removed.",
-      "version": "3.0.0",
+      "description": "Multi-model collaboration, orchestration, and workflow patterns. v3.0.0: MCP-first \u2014 all skills updated to reference claudish MCP tools (team, create_session) instead of Bash+CLI. Dead code removed.",
+      "version": "3.1.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -72,7 +72,7 @@
       "name": "agentdev",
       "source": "./plugins/agentdev",
       "description": "Create, implement, and review Claude Code agents and commands with multi-model validation, LLM performance tracking, and session-based artifact isolation. v1.5.5: Command and documentation fixes.",
-      "version": "1.5.7",
+      "version": "1.6.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -97,7 +97,7 @@
       "name": "seo",
       "source": "./plugins/seo",
       "description": "Highly autonomous SEO toolkit (~80% autonomy) with AUTO GATEs, self-correction loops, and multi-model validation. v1.6.5: Command parameter fixes.",
-      "version": "1.6.7",
+      "version": "1.7.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -146,7 +146,7 @@
       "name": "nanobanana",
       "source": "./plugins/nanobanana",
       "description": "AI image generation and editing using Google Gemini 3 Pro Image API. v2.3.1: Marketplace rename to magus. Simple Node.js CLI with markdown styles and batch generation.",
-      "version": "2.3.3",
+      "version": "2.4.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -194,7 +194,7 @@
       "name": "dev",
       "source": "./plugins/dev",
       "description": "Universal development assistant. v2.6.0: self-learning Stop hook \u2014 automated session learning with LLM classifier, background daemon, /dev:learn --apply/--prune.",
-      "version": "2.6.2",
+      "version": "2.7.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -285,7 +285,7 @@
       "name": "designer",
       "source": "./plugins/designer",
       "description": "UI design validation with pixel-diff comparison engine. v0.2.0: Design review agent, visual comparison, style guide creation, browser-use optional integration. 6 skills.",
-      "version": "0.2.3",
+      "version": "0.3.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",

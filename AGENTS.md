@@ -1,15 +1,14 @@
-# Project Context for Claude Code
+# Project Context for Codex
 
 ## CRITICAL RULES
 
-- **NEVER use `pkill` or broad process-killing commands** (like `pkill -f "claudeup"` or `pkill -f "claude"`). This kills all Claude CLI sessions running on the machine. Instead, ask the user to restart applications manually or close specific windows.
+- **NEVER use `pkill` or broad process-killing commands** (like `pkill -f "claudeup"` or `pkill -f "Codex"`). This kills all Codex CLI sessions running on the machine. Instead, ask the user to restart applications manually or close specific windows.
 - **Do not use hardcoded paths** in code, docs, comments, or any other files.
-- **Model Selection — Authoritative Source:** When selecting external AI models (for /team, /delegate, claudish, or any multi-model task), read `shared/model-aliases.json` FIRST. Only use model IDs from `knownModels` or resolved via `shortAliases`. NEVER guess model IDs from training knowledge — your training data has stale model names. If the user says a model name, fuzzy-match against `shortAliases` keys. If no match, list available aliases — don't invent an ID. If `shared/model-aliases.json` doesn't exist, tell user to run `/update-models`. Claudish handles all provider routing — just pass the resolved model ID, never add prefixes.
 
 ## Project Overview
 
 **Repository:** Magus
-**Purpose:** Professional plugin marketplace for Claude Code
+**Purpose:** Professional plugin marketplace for Codex
 **Owner:** Jack Rudenko (i@madappgang.com) @ MadAppGang
 **License:** MIT
 
@@ -17,34 +16,33 @@
 
 | Plugin | Version | Purpose |
 |--------|---------|---------|
-| **Code Analysis** | v5.0.0 | Codebase investigation with mnemex MCP, 4 skills |
-| **Multimodel** | v2.8.1 | Multi-model collaboration and orchestration |
-| **Agent Development** | v1.5.5 | Create Claude Code agents and plugins |
+| **Code Analysis** | v4.0.2 | Codebase investigation with claudemem MCP, 13 skills |
+| **Multimodel** | v2.6.2 | Multi-model collaboration and orchestration |
+| **Agent Development** | v1.5.5 | Create Codex agents and plugins |
 | **SEO** | v1.6.5 | SEO analysis and optimization with AUTO GATEs |
 | **Video Editing** | v1.1.1 | FFmpeg, Whisper, Final Cut Pro integration |
 | **Nanobanana** | v2.3.1 | AI image generation with Gemini 3 Pro Image |
 | **Conductor** | v2.1.1 | Context-Driven Development with TDD and Git Notes |
-| **Dev** | v2.0.0 | Universal dev assistant, 12 commands via progressive disclosure, 46 skills |
+| **Dev** | v1.39.0 | Universal dev assistant with workflow enforcement, 47 skills |
 | **Designer** | v0.2.0 | UI design validation with pixel-diff comparison, 6 skills |
 | **Browser Use** | v1.0.0 | Full-platform browser automation, 18 MCP tools, 5 skills |
 | **Statusline** | v1.4.1 | Colorful statusline with worktree awareness |
-| **Terminal** | v3.0.0 | Intent-level terminal: 5 skills, 9 commands, TDD workflow, dashboard archetypes + ht-mcp/tmux-mcp |
-| **GTD** | v1.0.0 | Getting Things Done workflow with real-time task sync via hooks |
+| **Terminal** | v2.1.0 | Intent-level terminal: run, watch, observe, repl, tui + ht-mcp/tmux-mcp |
 
-**Claudish CLI**: `npm install -g claudish` - Run Claude with OpenRouter models ([separate repo](https://github.com/MadAppGang/claudish))
+**Claudish CLI**: `npm install -g claudish` - Run Codex with OpenRouter models ([separate repo](https://github.com/MadAppGang/claudish))
 
 ## Directory Structure
 
 ```
-claude-code/
-├── CLAUDE.md                  # This file
+Codex/
+├── AGENTS.md                  # This file
 ├── README.md                  # Main documentation
 ├── RELEASE_PROCESS.md         # Plugin release process guide
 ├── .env.example               # Environment template
-├── .claude-plugin/
+├── .Codex-plugin/
 │   └── marketplace.json       # Marketplace plugin listing
-├── plugins/                   # All plugins (13 published, 3 unlisted)
-│   ├── code-analysis/         # v4.0.2 — 13 skills, 1 agent, mnemex MCP
+├── plugins/                   # All plugins (12 published, 3 unlisted)
+│   ├── code-analysis/         # v4.0.2 — 13 skills, 1 agent, claudemem MCP
 │   ├── multimodel/            # v2.6.2 — 15 skills
 │   ├── agentdev/              # v1.5.5 — 5 skills
 │   ├── seo/                   # v1.6.5 — 12 skills
@@ -55,8 +53,7 @@ claude-code/
 │   ├── designer/              # v0.2.0 — 6 skills, pixel-diff design validation
 │   ├── browser-use/           # v1.0.0 — 5 skills, 18 MCP tools
 │   ├── statusline/            # v1.4.1 — 1 skill
-│   ├── terminal/              # v3.0.0 — 5 skills, 9 commands, ht-mcp + tmux-mcp
-│   ├── gtd/                   # v1.0.0 — 7 commands, 2 skills, real-time task sync
+│   ├── terminal/              # v2.1.0 — 2 skills, ht-mcp + tmux-mcp
 │   └── (go, instantly, autopilot — unlisted)
 ├── autotest/                  # E2E test framework
 │   ├── framework/             # Shared runner, parsers (Bun/TS)
@@ -65,28 +62,23 @@ claude-code/
 │   ├── subagents/             # Agent delegation tests
 │   ├── team/                  # Multi-model /team tests
 │   ├── skills/                # Skill routing tests
-│   ├── terminal/              # Terminal plugin tests (24 cases)
-│   ├── gtd/                   # GTD plugin tests (12 cases)
+│   ├── terminal/              # Terminal plugin tests (9 cases)
 │   └── worktree/              # Worktree tests
 ├── tools/                     # Standalone tools
 │   ├── claudeup/              # TUI installer (npm package, v3.5.0)
 │   ├── claudeup-core/         # Core library
 │   └── claudeup-gui/          # GUI version
-├── shared/                    # Shared resources
-│   └── model-aliases.json     # Centralized model aliases (synced from Firebase via /update-models)
 ├── skills/                    # Project-level skills
-│   ├── release/SKILL.md
-│   └── update-models/SKILL.md # Sync model aliases from curated database
+│   └── release/SKILL.md
 ├── ai-docs/                   # Technical documentation
 └── docs/                      # User documentation
 ```
 
 ## Important Files
 
-- `.claude-plugin/marketplace.json` — Marketplace listing (**update when releasing!**)
+- `.Codex-plugin/marketplace.json` — Marketplace listing (**update when releasing!**)
 - `plugins/{name}/plugin.json` — Plugin manifest (version, components, MCP servers)
 - `plugins/{name}/.mcp.json` — MCP server config (if plugin has MCP servers)
-- `shared/model-aliases.json` — Centralized model aliases, roles, teams, knownModels (**synced from Firebase**)
 - `RELEASE_PROCESS.md` / `skills/release/SKILL.md` — Release process docs
 - `autotest/framework/runner-base.sh` — E2E test runner entry point
 
@@ -94,20 +86,16 @@ claude-code/
 
 ```bash
 # Run a test suite (all use autotest/framework/ shared runner)
-./autotest/terminal/run.sh --model claude-sonnet-4-6 --parallel 3
-./autotest/coaching/run.sh --model claude-sonnet-4-6
-./autotest/designer/run.sh --model claude-sonnet-4-6
+./autotest/terminal/run.sh --model Codex-sonnet-4-6 --parallel 3
+./autotest/coaching/run.sh --model Codex-sonnet-4-6
+./autotest/designer/run.sh --model Codex-sonnet-4-6
 ./autotest/subagents/run.sh --model grok
-./autotest/model-aliases/run.sh --model internal  # Model alias resolution tests
-./autotest/gtd/run.sh --model internal  # GTD tests require internal model for hooks
 
 # Run specific test cases
-./autotest/terminal/run.sh --model claude-sonnet-4-6 --cases environment-inspection-08
-./autotest/gtd/run.sh --model internal --cases gtd-capture-01
+./autotest/terminal/run.sh --model Codex-sonnet-4-6 --cases environment-inspection-08
 
 # Analyze existing results
 bun autotest/terminal/analyze-results.ts autotest/terminal/results/<run-dir>
-bun autotest/gtd/analyze-results.ts autotest/gtd/results/<run-dir>
 ```
 
 ## Environment Variables
@@ -125,10 +113,10 @@ CHROME_EXECUTABLE_PATH=/path/to/chrome
 CODEX_API_KEY=your-codex-key
 ```
 
-## Claude Code Plugin Requirements
+## Codex Plugin Requirements
 
 **Plugin System Format:**
-- Plugin manifest: `.claude-plugin/plugin.json` (must be in this location)
+- Plugin manifest: `.Codex-plugin/plugin.json` (must be in this location)
 - Settings format: `enabledPlugins` must be object with boolean values
 - Component directories: `agents/`, `commands/`, `skills/` at plugin root
 - MCP servers: `.mcp.json` at plugin root (referenced as `"mcpServers": "./.mcp.json"` in plugin.json)
@@ -140,10 +128,10 @@ CODEX_API_KEY=your-codex-key
 /plugin marketplace add MadAppGang/magus
 
 # Local development
-/plugin marketplace add /path/to/claude-code
+/plugin marketplace add /path/to/Codex
 ```
 
-**Enable in `.claude/settings.json`:**
+**Enable in `.Codex/settings.json`:**
 ```json
 {
   "enabledPlugins": {
@@ -175,17 +163,14 @@ NOTE: Skills use the `Skill` tool, NOT the `Task` tool. The `namespace:name` for
 
 | Need | Invoke Skill | When |
 |---|---|---|
-| Semantic code search, mnemex CLI usage, AST analysis | `code-analysis:mnemex-search` | Before using `mnemex` commands |
-| Multi-agent mnemex orchestration | `code-analysis:mnemex-orchestration` | Parallel mnemex across agents |
-| Code investigation — architecture, implementation, tests, bugs | `code-analysis:investigate` | Mode-based routing (architecture/implementation/testing/debugging) |
-| Deep multi-perspective comprehensive analysis | `code-analysis:deep-analysis` | Comprehensive codebase audit, all dimensions |
+| Semantic code search, claudemem CLI usage, AST analysis | `code-analysis:claudemem-search` | Before using `claudemem` commands |
+| Multi-agent claudemem orchestration | `code-analysis:claudemem-orchestration` | Parallel claudemem across agents |
+| Architecture investigation with PageRank | `code-analysis:architect-detective` | Architecture-focused claudemem usage |
+| Deep multi-perspective analysis | `code-analysis:deep-analysis` | Comprehensive codebase investigation |
 | Database branching with git worktrees (Neon, Turso, Supabase) | `dev:db-branching` | Worktree creation with schema changes needing DB isolation |
 | Interactive terminal: run commands, dev servers, test watchers, REPLs | `terminal:terminal-interaction` | Task needs TTY, interactive output, long-running process, or database shell |
 | TUI navigation: vim, nano, htop, lazygit, k9s, less | `terminal:tui-navigation-patterns` | Navigating TUI apps, sending key sequences, reading screen state |
-| Poll terminal for test/build/deploy completion signals | `terminal:framework-signals` | Waiting for CI, test runners, or build tools to report pass/fail |
-| TDD red-green-refactor loop with test watchers | `terminal:tdd-workflow` | Running TDD cycles with continuous test feedback |
-| Create tmux workspaces, dashboards, or ambient monitors | `terminal:workspace-setup` | Setting up multi-pane layouts, dashboard archetypes, or background monitors |
-| Claudish CLI usage, model routing, provider backends | `multimodel:claudish-usage` | Before ANY `claudish` command — bare model names, no prefixes |
+| Claudish CLI usage, model routing, provider backends | `code-analysis:claudish-usage` | Before ANY `claudish` command — bare model names, no prefixes |
 
 ## Release Process
 
@@ -195,7 +180,7 @@ NOTE: Skills use the `Skill` tool, NOT the `Task` tool. The `namespace:name` for
 
 **Plugin Release Checklist (ALL 3 REQUIRED):**
 1. **Plugin version** - `plugins/{name}/plugin.json` -> `"version": "X.Y.Z"`
-2. **Marketplace version** - `.claude-plugin/marketplace.json` -> plugin entry `"version": "X.Y.Z"`
+2. **Marketplace version** - `.Codex-plugin/marketplace.json` -> plugin entry `"version": "X.Y.Z"`
 3. **Git tag** - `git tag -a plugins/{name}/vX.Y.Z -m "Release message"` -> push with `--tags`
 
 Missing any of these will cause claudeup to not see the update!

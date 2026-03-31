@@ -330,67 +330,21 @@ skills: designer:ui-analyse, dev:frontend-implement, multimodel:multi-model-vali
       <quality_gate>Valid design reference(s) identified, component path validated (if applicable)</quality_gate>
     </phase>
 
-    <phase number="2" name="API Configuration">
-      <objective>Check API availability and select model</objective>
+    <phase number="2" name="Model Configuration">
+      <objective>Resolve the vision model and check claudish availability</objective>
 
       <steps>
-        <step>Check for Gemini API key:
-          ```bash
-          if [[ -n "$GEMINI_API_KEY" ]]; then
-            echo "GEMINI_DIRECT_AVAILABLE=true"
-            echo "MODEL=g/gemini-3-pro-preview"
-          else
-            echo "GEMINI_DIRECT_AVAILABLE=false"
-          fi
-          ```
+        <step>Read vision model from centralized config:
+          Read `shared/model-aliases.json` → `roles.designer_review.modelId` and store as MODEL.
+          If the file or key is missing, stop with:
+          "ERROR: shared/model-aliases.json not found or missing roles.designer_review.
+           Run /update-models to regenerate it."
         </step>
 
-        <step>Check for OpenRouter API key:
-          ```bash
-          if [[ -n "$OPENROUTER_API_KEY" ]]; then
-            echo "OPENROUTER_AVAILABLE=true"
-            echo "MODEL=google/gemini-3-pro-preview"
-          else
-            echo "OPENROUTER_AVAILABLE=false"
-          fi
-          ```
-        </step>
-
-        <step>Check Claudish availability:
-          ```bash
-          npx claudish --version 2>/dev/null || echo "Claudish not found"
-          ```
-        </step>
-
-        <step>Handle unavailable APIs:
-          If neither API available, show:
-          ```markdown
-          ## API Key Required
-
-          UI design review requires Gemini 3 Pro for visual analysis.
-
-          **Option 1: Gemini Direct (Recommended)**
-          ```bash
-          export GEMINI_API_KEY="your-key-here"
-          ```
-          Get key at: https://aistudio.google.com/apikey
-
-          **Option 2: OpenRouter**
-          ```bash
-          export OPENROUTER_API_KEY="your-key-here"
-          ```
-          Get key at: https://openrouter.ai
-
-          Would you like to:
-          1. Exit and configure API key
-          2. Proceed with verbal description only (limited analysis)
-          ```
-        </step>
-
-        <step>Store selected model for Phase 4</step>
+        <step>Store MODEL for Phase 4 — will be used with claudish `run_prompt` MCP tool</step>
       </steps>
 
-      <quality_gate>API access confirmed or user chose alternative</quality_gate>
+      <quality_gate>MODEL resolved from shared/model-aliases.json</quality_gate>
     </phase>
 
     <phase number="3" name="Review Configuration">
@@ -776,11 +730,10 @@ skills: designer:ui-analyse, dev:frontend-implement, multimodel:multi-model-vali
     </recovery>
   </strategy>
 
-  <strategy scenario="Claudish not installed">
+  <strategy scenario="Claudish MCP unavailable">
     <recovery>
-      Show: "Claudish CLI required. Install with: npm install -g claudish"
-      Or: "Run via npx: npx claudish --version"
-      Verify after user installs.
+      The claudish MCP server should be loaded automatically with the multimodel plugin.
+      If unavailable, check that the multimodel plugin is enabled in .claude/settings.json.
     </recovery>
   </strategy>
 
@@ -889,7 +842,7 @@ skills: designer:ui-analyse, dev:frontend-implement, multimodel:multi-model-vali
     <execution>
       **PHASE 0**: Create session ui-design-20260105-143022-a3f2
       **PHASE 1**: User provides screenshots/dashboard.png
-      **PHASE 2**: GEMINI_API_KEY found, use g/gemini-3-pro-preview
+      **PHASE 2**: GEMINI_API_KEY found, use gemini
       **PHASE 3**: User selects "Quick usability check"
       **PHASE 4**: Launch designer:ui agent
       **PHASE 5**: Present top 3 issues, link to full report
@@ -901,7 +854,7 @@ skills: designer:ui-analyse, dev:frontend-implement, multimodel:multi-model-vali
     <execution>
       **PHASE 0**: Create session
       **PHASE 1**: User provides forms/login.png
-      **PHASE 2**: OPENROUTER_API_KEY found, use google/gemini-3-pro-preview
+      **PHASE 2**: OPENROUTER_API_KEY found, use gemini
       **PHASE 3**: Auto-select "Accessibility audit" from request
       **PHASE 4**: Launch designer:ui with WCAG focus
       **PHASE 5**: Present WCAG compliance summary with pass/fail

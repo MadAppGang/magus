@@ -20,24 +20,24 @@ args:
 
 ## Rules
 
-- **MODEL NAMES VERBATIM** — never add prefixes. Only resolve short aliases from the table below. Full model IDs (dots, version numbers) are used as-is. Never call list_models to validate.
 - **NO AUTO-RECOVERY** — on failure, report verbatim and stop. No retries, no substitution.
 - **NO PRE-SOLVING** — do not read project files before launching. The external model investigates itself.
 - **FORWARD input_required TO USER** — always use AskUserQuestion. Never auto-answer.
+- **NEVER add provider prefixes** — no "openai/", "google/", "mm@", "or@". Claudish resolves internally.
 
 ## Phase 1: Parse and Resolve
 
-Read `.claude/multimodel-team.json` (if missing, treat as `{ defaultModels: [], claudeFlags: "" }`).
+**Step 1a — Load alias table:** Follow the `multimodel:claudish-usage` skill → "Model Alias Resolution" procedure to build ALIAS_TABLE from `shared/model-aliases.json` + `.claude/multimodel-team.json` `customAliases`.
 
-Parse `$ARGUMENTS` left-to-right:
-- First token with no `/` or `--` prefix → MODEL_ARG (resolve via alias table)
+**Step 1b — Parse arguments** left-to-right:
+- First token with no `/` or `--` prefix → MODEL_ARG
 - Token starting with `/` and containing `:` → EXPLICIT_COMMAND
 - Remaining tokens → TASK_DESCRIPTION
 
-Resolve MODEL (in order):
-1. MODEL_ARG if parsed
-2. `preferences.defaultModels[0]` — announce: "Using saved model: {id}"
-3. AskUserQuestion: "Which model should handle this delegation?"
+**Step 1c — Resolve MODEL** (in order, resolve each via ALIAS_TABLE):
+1. MODEL_ARG if parsed → resolve via ALIAS_TABLE
+2. `preferences.defaultModels[0]` → resolve via ALIAS_TABLE, announce "Using saved model: {id}"
+3. AskUserQuestion: "Which model?" — list available aliases from ALIAS_TABLE
 
 Read `claudeFlags` from preferences (pass to create_session if non-empty).
 
@@ -92,11 +92,9 @@ Model: {MODEL} | Session: {SESSION_ID}
 
 <knowledge>
   <model_aliases>
-    Read `shared/model-aliases.json` → `shortAliases` for alias resolution.
-    Short single-word aliases only. Full model IDs (containing dots or version numbers) are never aliases — use verbatim.
-    If `shared/model-aliases.json` doesn't exist, tell user: "Run /update-models to sync model aliases."
-    NEVER invent model IDs from training knowledge. Only use IDs from the aliases file or passed verbatim by user.
-    Special: `internal` is always valid (means "use host Claude model").
+    See `multimodel:claudish-usage` skill → "Model Alias Resolution" for the full procedure.
+    ALIAS_TABLE built in Phase 1a. NEVER resolve from memory. NEVER add prefixes.
+    Special: `internal` means host Claude model — never sent to claudish.
   </model_aliases>
 
   <preferences_schema>
@@ -115,10 +113,10 @@ Model: {MODEL} | Session: {SESSION_ID}
     Aliases below are illustrative — actual resolution comes from `shared/model-aliases.json` → `shortAliases`.
 
     `grok implement authentication`
-    → MODEL=grok-code-fast-1 (resolved from aliases file), TASK="implement authentication"
+    → MODEL=(resolved from aliases file via "grok" shortAlias), TASK="implement authentication"
 
     `gemini /dev:architect design payment service`
-    → MODEL=gemini-3.1-pro-preview (resolved from aliases file), EXPLICIT_COMMAND=/dev:architect, TASK="design payment service"
+    → MODEL=gemini (resolved from aliases file), EXPLICIT_COMMAND=/dev:architect, TASK="design payment service"
 
     `/dev:research rate limiting patterns`
     → EXPLICIT_COMMAND=/dev:research, TASK="rate limiting patterns" (model from preferences)

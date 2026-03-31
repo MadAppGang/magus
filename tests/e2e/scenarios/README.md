@@ -111,12 +111,12 @@ scenarios:
 
 ### 4. Models
 
-Choose models based on availability and purpose:
-- `anthropic/claude-opus-4.5` - Best quality, slower
-- `google/gemini-3-pro-preview` - Good alternative
-- `x-ai/grok-code-fast-1` - Fast for code evaluation
+Choose models using aliases from `shared/model-aliases.json`:
+- `grok` - Fast for code evaluation
+- `gemini` - Good alternative
+- `gpt` - Premium reasoning
 
-Use 1-2 models for faster tests, 2-3 for consensus validation.
+Use 1-2 models for faster tests, 2-3 for consensus validation. Run `/update-models` to refresh available models.
 
 ### 5. Thresholds
 

@@ -1,0 +1,103 @@
+{
+  "meta": {
+    "description": "Test cases for the model-aliases system. Verifies that /team and /delegate read shared/model-aliases.json for alias resolution, /update-models fetches from the Firebase API and writes the file, CLAUDE.md enforcement prevents hallucinated model IDs, and unknown-alias handling directs users to available aliases or /update-models.",
+    "version": "2.0.0",
+    "created": "2026-03-29",
+    "notes": "v2.0.0: Strengthened alias resolution checks to verify EXACT model IDs from file (TC-01, TC-02). Replaced missing-file test with unknown-alias handling test (TC-05). Replaced weak team-defaults test with file-sourced defaults check (TC-06). Added stale-model regression test (TC-09). New checks: mcp_team_models_exact_from_file, mcp_create_session_model_exact_from_file, response_mentions_available_aliases, no_invented_model_id, model_not_stale, reads_model_aliases_file_or_prefs."
+  },
+  "test_cases": [
+    {
+      "id": "alias-resolution-exact-01",
+      "description": "Alias 'grok' must resolve to the EXACT model ID from shared/model-aliases.json shortAliases, not a stale or guessed ID",
+      "prompt": "/multimodel:team --models grok --no-memory Quick check: does CLAUDE.md mention model selection rules?",
+      "checks": {
+        "mcp_tool_called": "team",
+        "mcp_team_models_exact_from_file": { "alias": "grok", "file_key": "shortAliases" },
+        "no_provider_prefix_in_model": true
+      },
+      "tags": ["alias-resolution", "exact-match", "core"]
+    },
+    {
+      "id": "alias-resolution-exact-02",
+      "description": "Alias 'gemini' via /delegate must resolve to the EXACT model ID from shared/model-aliases.json shortAliases",
+      "prompt": "/multimodel:delegate gemini /dev:research what is the model-aliases system",
+      "checks": {
+        "mcp_tool_called": "create_session",
+        "mcp_create_session_model_exact_from_file": { "alias": "gemini", "file_key": "shortAliases" },
+        "no_provider_prefix_in_model": true
+      },
+      "tags": ["alias-resolution", "exact-match", "delegate", "core"]
+    },
+    {
+      "id": "no-invented-models-03",
+      "description": "When asked to use a model, Claude should not add provider prefixes or invent model IDs from training data",
+      "prompt": "/multimodel:team --models grok --no-memory List files in shared/ directory",
+      "checks": {
+        "mcp_tool_called": "team",
+        "no_training_data_models": true,
+        "no_provider_prefix_in_model": true
+      },
+      "tags": ["whitelist", "no-hallucination", "core"]
+    },
+    {
+      "id": "update-models-fetches-04",
+      "description": "/update-models should fetch from the Firebase queryPluginDefaults endpoint and read the existing file",
+      "prompt": "/update-models",
+      "checks": {
+        "bash_contains_curl": true,
+        "bash_curl_url_contains": "queryPluginDefaults",
+        "reads_model_aliases_file": true
+      },
+      "tags": ["update-models", "api-fetch", "core"]
+    },
+    {
+      "id": "unknown-alias-handling-05",
+      "description": "When user provides an alias not in shortAliases (e.g., 'llama'), Claude should list available aliases or suggest /update-models. Test catches both correct refusal and hallucinated model IDs.",
+      "prompt": "/multimodel:team --models llama --no-memory Quick check on README",
+      "checks": {
+        "response_mentions_available_aliases": true
+      },
+      "tags": ["error-handling", "unknown-alias", "core"]
+    },
+    {
+      "id": "team-no-hardcoded-defaults-06",
+      "description": "When /team runs, task prompts should not contain hardcoded model default lists from old implementations",
+      "prompt": "/multimodel:team --models internal --no-memory Review the README structure and formatting",
+      "checks": {
+        "no_hardcoded_team_defaults": true
+      },
+      "tags": ["team-defaults", "no-hardcoded", "core"]
+    },
+    {
+      "id": "user-override-07",
+      "description": "When user specifies --models with a full model ID (not a short alias), it should be passed verbatim without modification or prefix addition",
+      "prompt": "/multimodel:team --models grok-code-fast-1 --no-memory Quick check on README",
+      "checks": {
+        "mcp_tool_called": "team",
+        "mcp_team_models_contain": "grok-code-fast-1",
+        "no_provider_prefix_in_model": true
+      },
+      "tags": ["user-override", "verbatim"]
+    },
+    {
+      "id": "claude-md-rule-08",
+      "description": "When asked about available models for multi-model review, Claude should Read shared/model-aliases.json rather than listing models from training knowledge",
+      "prompt": "What external AI models can I use with /team for code review? List the available models.",
+      "checks": {
+        "reads_model_aliases_file": true,
+        "response_mentions_aliases_file": true
+      },
+      "tags": ["claude-md-rule", "model-listing"]
+    },
+    {
+      "id": "alias-not-stale-09",
+      "description": "When alias 'grok' resolves, the result must NOT be a known stale model ID (e.g. grok-code-fast-1 which was the old default). Must match the current value from model-aliases.json",
+      "prompt": "/multimodel:team --models grok --no-memory Quick check on plugin versions",
+      "checks": {
+        "mcp_tool_called": "team",
+        "model_not_stale": { "alias": "grok", "stale_values": ["grok-code-fast-1", "grok-3-mini", "grok-2"] }
+      },
+      "tags": ["stale-detection", "regression", "core"]
+    }
+  ]
+}

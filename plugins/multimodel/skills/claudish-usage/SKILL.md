@@ -41,6 +41,84 @@ Direct task (user says "use Grok to implement X")? → Use /delegate command (MC
 Direct CLI usage (user debugging, testing models)? → CLI is fine
 ```
 
+## Model Alias Resolution
+
+All commands that use external models (/team, /delegate, /dev:fix, etc.) MUST resolve model names through this three-step chain before calling claudish.
+
+### Three-Step Resolution Chain
+
+```
+Step 1: INTERPRET (Claude Code LLM)
+  User says anything → Claude infers which alias key they mean
+  "use Elon's model"     → "grok"
+  "the Google one"       → "gemini"
+  "fast coding model"    → "grok" (fast_coding role)
+  "grok"                 → "grok" (exact match)
+  "gpt-5.4"              → "gpt-5.4" (not an alias — pass through)
+
+Step 2: RESOLVE (Magus alias table lookup)
+  ALIAS_TABLE[key] → full model ID
+  "grok"           → "grok-4.20-beta"
+  "gemini"         → "gemini"
+  "gpt-5.4"        → not in table → pass through as-is
+
+Step 3: ROUTE (Claudish)
+  Full model ID → correct provider API endpoint
+  "grok-4.20-beta"       → xAI API
+  "gemini" → Google API
+  "gpt-5.4"              → OpenAI API
+```
+
+### Building the ALIAS_TABLE
+
+1. Read `shared/model-aliases.json` → extract `shortAliases` object
+2. Read `.claude/multimodel-team.json` → extract `customAliases` object (may be absent)
+3. Merge: `ALIAS_TABLE = { ...shortAliases, ...customAliases }` — user overrides global
+4. If `shared/model-aliases.json` doesn't exist → tell user: "Run `/update-models`"
+
+### Alias Lookup
+
+For each model name after Step 1 interpretation:
+- If `ALIAS_TABLE[name]` exists → use the mapped value
+- Otherwise → pass name to claudish as-is (claudish handles the rest)
+- Special: `"internal"` is never sent to claudish — it means host Claude model
+
+### Interpreting User Intent (Step 1)
+
+Claude Code uses its language understanding to map natural language to alias keys.
+The ALIAS_TABLE keys are the ONLY valid targets for interpretation. Examples:
+
+| User says | Claude infers alias | Why |
+|---|---|---|
+| "grok" | "grok" | Exact alias match |
+| "use gemini for this" | "gemini" | Direct name mention |
+| "Elon's AI" / "xAI model" | "grok" | Company/person association |
+| "Google's model" | "gemini" | Company association |
+| "OpenAI's model" | "gpt" | Company association |
+| "the cheap one" | Check `roles.free_tier` | Cost-based intent |
+| "something fast for coding" | Check `roles.fast_coding` | Capability-based intent |
+| "minimax-m2.7" | Not an alias → pass through | Already a full model ID |
+
+When uncertain, list ALIAS_TABLE keys and ask the user to pick.
+
+### Responsibility Boundaries
+
+| Responsibility | Owner |
+|---|---|
+| Understanding user intent → alias key | **Claude Code** (LLM heuristic) |
+| Alias key → full model ID | **Magus** (ALIAS_TABLE lookup) |
+| User custom aliases | **Magus** (`.claude/multimodel-team.json` `customAliases`) |
+| Full model ID → API endpoint | **Claudish** (provider routing) |
+| API keys, vendor prefixes, fallbacks | **Claudish** |
+
+### Rules
+
+- Claude Code interprets intent but ONLY maps to keys that exist in ALIAS_TABLE
+- NEVER invent a model ID — if no alias matches, pass the user's text through or ask
+- NEVER add provider prefixes — claudish handles routing
+- NEVER validate model IDs — claudish will error if invalid
+- User `customAliases` always override global `shortAliases` on key conflict
+
 ## 🤖 Agent Selection Guide
 
 ### Step 1: Find the Right Agent
@@ -154,7 +232,7 @@ When used with the `/team` command for multi-model blind voting:
 
 **External models are invoked via the `team` MCP tool:**
 ```
-claudish team(mode="run", path=SESSION_DIR, models=["grok-code-fast-1", "gemini-3.1-pro-preview"],
+claudish team(mode="run", path=SESSION_DIR, models=["grok", "gemini"],
   input=VOTE_PROMPT, timeout=180, claude_flags=claudeFlags)
 ```
 
@@ -207,19 +285,19 @@ Claudish (Claude-ish) is a proxy tool that:
 
 | Model ID | Claudish Routes To | Problem | Fix |
 |----------|-------------------|---------|-----|
-| `google/gemini-3-pro-preview` | Google Gemini Direct | Needs `GEMINI_API_KEY`, different API | Use `google/gemini-3-pro-preview` |
-| `gemini-3.1-pro-preview` | Google Gemini Direct | Needs `GEMINI_API_KEY`, different API | Use `gemini-3.1-pro-preview` |
-| `gpt-5.3-codex` | OpenAI Direct | Needs `OPENAI_API_KEY`, different API | Use `gpt-5.3-codex` |
-| `gpt-5.3` | OpenAI Direct | Needs `OPENAI_API_KEY`, different API | Use `gpt-5.3` |
+| `google/gemini-3-pro-preview` | Google Gemini Direct | Needs `GEMINI_API_KEY`, different API | Use `gemini` |
+| `gemini` | Google Gemini Direct | Needs `GEMINI_API_KEY`, different API | Use `gemini` |
+| `gpt` | OpenAI Direct | Needs `OPENAI_API_KEY`, different API | Use `gpt` |
+| `gpt` | OpenAI Direct | Needs `OPENAI_API_KEY`, different API | Use `gpt` |
 
 ### Safe Model IDs (No Collision)
 
 These OpenRouter model IDs are SAFE to use without the `or/` prefix:
 
-- `grok-code-fast-1` - No `x-ai/` prefix in claudish
+- `grok` - No `x-ai/` prefix in claudish
 - `anthropic/claude-3.5-sonnet` - No `anthropic/` prefix in claudish
 - `deepseek/deepseek-chat` - No `deepseek/` prefix in claudish
-- `minimax-m2.5` - No `minimax/` prefix in claudish
+- `minimax` - No `minimax/` prefix in claudish
 - `qwen/qwen3-coder:free` - No `qwen/` prefix in claudish
 - `mistralai/devstral-2512:free` - No `mistralai/` prefix in claudish
 - `moonshotai/kimi-k2-thinking` - No `moonshotai/` prefix in claudish
@@ -236,11 +314,11 @@ These OpenRouter model IDs are SAFE to use without the `or/` prefix:
 # WRONG - Routes to Google Gemini Direct (needs GEMINI_API_KEY)
 claudish --model google/gemini-3-pro-preview
 
-# CORRECT - Routes to OpenRouter (needs OPENROUTER_API_KEY)
-claudish --model google/gemini-3-pro-preview
+# CORRECT - Use alias instead
+claudish --model gemini
 
 # SAFE - No collision (x-ai/ is not a routing prefix)
-claudish --model grok-code-fast-1
+claudish --model grok
 ```
 
 ## Requirements
@@ -268,7 +346,7 @@ export OPENAI_API_KEY='sk-...'
 export ANTHROPIC_API_KEY='sk-ant-api03-placeholder'  # Prevents Claude Code dialog
 
 # Optional - default model
-export CLAUDISH_MODEL='grok-code-fast-1'  # or ANTHROPIC_MODEL
+export CLAUDISH_MODEL='grok'  # or ANTHROPIC_MODEL
 ```
 
 **Get OpenRouter API Key:**
@@ -320,35 +398,35 @@ claudish
 **Single-shot Mode:**
 ```bash
 # One task and exit (requires --model)
-claudish --model grok-code-fast-1 "implement user authentication"
+claudish --model grok "implement user authentication"
 ```
 
 **With stdin for large prompts:**
 ```bash
 # Read prompt from stdin (useful for git diffs, code review)
-git diff | claudish --stdin --model gpt-5.3-codex "Review these changes"
+git diff | claudish --stdin --model gpt "Review these changes"
 ```
 
 ## Recommended Models
 
 **Top Models for Development (verified from OpenRouter):**
 
-1. **grok-code-fast-1** - xAI's Grok (fast coding, visible reasoning)
+1. **grok** - xAI's Grok (fast coding, visible reasoning)
    - Category: coding
    - Context: 256K
    - Best for: Quick iterations, agentic coding
 
-2. **gemini-3.1-pro-preview** - Google's Gemini (state-of-the-art reasoning)
+2. **gemini** - Google's Gemini (state-of-the-art reasoning)
    - Category: reasoning
    - Context: 1000K
    - Best for: Complex analysis, multi-step reasoning
 
-3. **minimax-m2.5** - MiniMax M2 (high performance)
+3. **minimax** - MiniMax M2 (high performance)
    - Category: coding
    - Context: 128K
    - Best for: General coding tasks
 
-4. **gpt-5.3** - OpenAI's GPT-5 (advanced reasoning)
+4. **gpt** - OpenAI's GPT-5 (advanced reasoning)
    - Category: reasoning
    - Context: 128K
    - Best for: Complex implementations, architecture decisions
@@ -375,13 +453,13 @@ claudish --models --force-update
 
 **Simple task (direct prompt):**
 ```bash
-claudish --model grok-code-fast-1 "create button component"
+claudish --model grok "create button component"
 ```
 
 **Complex task (file-based with --stdin):**
 ```bash
 # Write instructions to file, pipe via --stdin
-claudish --model grok-code-fast-1 --stdin < multi-phase-workflow.md
+claudish --model grok --stdin < multi-phase-workflow.md
 ```
 
 > **Note:** The `--agent` flag was removed in claudish v4.5.1. Agent specialization
@@ -436,7 +514,7 @@ Write implementation to: /tmp/claudish-result-{timestamp}.md
 **Step 2: Run Claudish with file instruction**
 ```bash
 # Read instruction from file, write result to file
-claudish --model grok-code-fast-1 --stdin < /tmp/claudish-task-{timestamp}.md > /tmp/claudish-result-{timestamp}.md
+claudish --model grok --stdin < /tmp/claudish-task-{timestamp}.md > /tmp/claudish-result-{timestamp}.md
 ```
 
 **Step 3: Read result file and provide summary**
@@ -504,7 +582,7 @@ Use this format:
   await Write({ file_path: instructionFile, content: instruction });
 
   // Step 2: Run Claudish with stdin
-  await Bash(`claudish --model grok-code-fast-1 --stdin < ${instructionFile}`);
+  await Bash(`claudish --model grok --stdin < ${instructionFile}`);
 
   // Step 3: Read result
   const result = await Read({ file_path: resultFile });
@@ -564,7 +642,7 @@ INSTRUCTIONS:
    claudish --models grok
 
 2. Run implementation with Grok:
-   claudish --model grok-code-fast-1 "${featureDescription}"
+   claudish --model grok "${featureDescription}"
 
 3. Return ONLY:
    - List of files created/modified
@@ -623,7 +701,7 @@ Result file: ${resultFile}
 
 STEPS:
 1. Read instruction file: ${instructionFile}
-2. Run: claudish --model gemini-3.1-pro-preview --stdin < ${instructionFile}
+2. Run: claudish --model gemini --stdin < ${instructionFile}
 3. Wait for completion
 4. Read result file: ${resultFile}
 5. Return ONLY a 2-3 sentence summary
@@ -697,14 +775,14 @@ DO NOT return full output.
 
 ```bash
 # Fast, agentic coding with visible reasoning
-claudish --model grok-code-fast-1 "add error handling to api routes"
+claudish --model grok "add error handling to api routes"
 ```
 
 ### Workflow 2: Complex Refactoring with GPT-5
 
 ```bash
 # Advanced reasoning for complex tasks
-claudish --model gpt-5.3 "refactor authentication system to use OAuth2"
+claudish --model gpt "refactor authentication system to use OAuth2"
 ```
 
 ### Workflow 3: UI Implementation with Qwen (Vision)
@@ -718,14 +796,14 @@ claudish --model qwen/qwen3-vl-235b-a22b-instruct "implement dashboard from figm
 
 ```bash
 # State-of-the-art reasoning for thorough review
-git diff | claudish --stdin --model gemini-3.1-pro-preview "Review these changes for bugs and improvements"
+git diff | claudish --stdin --model gemini "Review these changes for bugs and improvements"
 ```
 
 ### Workflow 5: Multi-Model Consensus
 
 ```bash
 # Run same task with multiple models
-for model in "grok-code-fast-1" "gemini-3.1-pro-preview" "gpt-5.3"; do
+for model in "grok" "gemini" "gpt"; do
   echo "=== Testing with $model ==="
   claudish --model "$model" "find security vulnerabilities in auth.ts"
 done
@@ -737,7 +815,7 @@ done
 
 | Flag | Description | Example |
 |------|-------------|---------|
-| `--model <model>` | OpenRouter model to use | `--model grok-code-fast-1` |
+| `--model <model>` | OpenRouter model to use | `--model grok` |
 | `--stdin` | Read prompt from stdin | `git diff \| claudish --stdin --model grok` |
 | `--models` | List all models or search | `claudish --models` or `claudish --models gemini` |
 | `--top-models` | ~~Show top recommended models~~ (deprecated — use `shared/model-aliases.json`) | `cat shared/model-aliases.json` |
@@ -788,7 +866,7 @@ directory • model-id • $cost • ctx%
 
 **Example:**
 ```
-my-project • grok-code-fast-1 • $0.12 • 67%
+my-project • grok • $0.12 • 67%
 ```
 
 Shows:
@@ -845,7 +923,7 @@ cat shared/model-aliases.json
 claudish --models
 
 # Use valid model ID
-claudish --model grok-code-fast-1 "task"
+claudish --model grok "task"
 ```
 
 ### Error 4: OpenRouter API Error
@@ -896,8 +974,8 @@ cat /tmp/result.md
 
 ### 2. ✅ Choose Right Model for Task
 
-**Fast Coding:** `grok-code-fast-1`
-**Complex Reasoning:** `gemini-3.1-pro-preview` or `gpt-5.3`
+**Fast Coding:** `grok`
+**Complex Reasoning:** `gemini` or `gpt`
 **Vision/UI:** `qwen/qwen3-vl-235b-a22b-instruct`
 
 ### 3. ✅ Use --json for Automation
@@ -981,7 +1059,7 @@ Use Claudish to implement the feature with Grok model.
 CRITICAL INSTRUCTIONS:
 1. Create instruction file: /tmp/claudish-task-${Date.now()}.md
 2. Write detailed task requirements to file
-3. Run: claudish --model grok-code-fast-1 --stdin < /tmp/claudish-task-*.md
+3. Run: claudish --model grok --stdin < /tmp/claudish-task-*.md
 4. Read result file and return ONLY a 2-3 sentence summary
 
 DO NOT return full implementation or conversation.
@@ -994,7 +1072,7 @@ const result = await Task({
   subagent_type: "backend-developer", // or frontend-dev, etc.
   description: "Implement with external model",
   prompt: `
-Use Claudish with grok-code-fast-1 model to implement authentication.
+Use Claudish with grok model to implement authentication.
 Follow file-based instruction pattern.
 Return summary only.
   `
@@ -1021,8 +1099,8 @@ claudish "any task"
 **Right:**
 ```bash
 # Choose appropriate model
-claudish --model grok-code-fast-1 "quick fix"
-claudish --model gemini-3.1-pro-preview "complex analysis"
+claudish --model grok "quick fix"
+claudish --model gemini "complex analysis"
 ```
 
 ### ❌ Don't Parse Text Output
@@ -1043,7 +1121,7 @@ COST=$(claudish --json --model grok "task" | jq -r '.total_cost_usd')
 
 **Wrong:**
 ```typescript
-const MODELS = ["grok-code-fast-1", "gpt-5.3"];
+const MODELS = ["grok", "gpt"];
 ```
 
 **Right:**
@@ -1059,7 +1137,7 @@ const models = Object.keys(aliases.knownModels);
 
 **Wrong (rejecting custom models):**
 ```typescript
-const availableModels = ["grok-code-fast-1", "gpt-5.3"];
+const availableModels = ["grok", "gpt"];
 const userModel = "custom/provider/model-123";
 
 if (!availableModels.includes(userModel)) {
@@ -1163,7 +1241,7 @@ await Bash(`claudish --model ${model} "task 2"`);
 
 ```
 // Use create_session and react to channel events
-create_session(model="grok-code-fast-1", prompt=TASK, timeout_seconds=300)
+create_session(model="grok", prompt=TASK, timeout_seconds=300)
 
 // On "failed" channel event → STOP and REPORT
 // "Grok failed: {error content}. Options: (1) Retry, (2) Different model, (3) Skip, (4) Cancel"
@@ -1188,9 +1266,9 @@ create_session(model="grok-code-fast-1", prompt=TASK, timeout_seconds=300)
  */
 async function reviewCodeWithMultipleModels(files: string[]) {
   const models = [
-    "grok-code-fast-1",      // Fast initial scan
-    "gemini-3.1-pro-preview",    // Deep analysis
-    "gpt-5.3"                // Final validation
+    "grok",      // Fast initial scan
+    "gemini",    // Deep analysis
+    "gpt"                // Final validation
   ];
 
   const reviews = [];
@@ -1288,7 +1366,7 @@ Include:
 **Symptoms:** Claudish takes long time to respond
 
 **Solutions:**
-1. Use faster model: `grok-code-fast-1` or `minimax-m2.5`
+1. Use faster model: `grok` or `minimax`
 2. Reduce prompt size (use --stdin with concise instructions)
 3. Check internet connection to OpenRouter
 

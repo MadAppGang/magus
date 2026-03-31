@@ -51,16 +51,16 @@ For best visual analysis of UI screenshots, use these models via Claudish:
 
 | Model | Strengths | Cost | Best For |
 |-------|-----------|------|----------|
-| **qwen3.5-plus-02-15** | Best OCR, spatial reasoning, GUI automation, 32+ languages | ~$0.06/1M input | Design fidelity, OCR, element detection |
-| **gemini-3.1-pro-preview** | Fast, excellent price/performance, 1M context | ~$0.05/1M input | Real-time validation, large pages |
-| **gpt-4o** | Most fluid multimodal, strong all-around | ~$0.15/1M input | Complex visual reasoning |
+| **qwen** | Best OCR, spatial reasoning, GUI automation, 32+ languages | ~$0.06/1M input | Design fidelity, OCR, element detection |
+| **gemini** | Fast, excellent price/performance, 1M context | ~$0.05/1M input | Real-time validation, large pages |
+| **gpt** | Most fluid multimodal, strong all-around | ~$0.15/1M input | Complex visual reasoning |
 
 ### Tier 2: Fast & Affordable
 
 | Model | Strengths | Cost | Best For |
 |-------|-----------|------|----------|
 | **qwen3-vl-30b-a3b-instruct** | Good balance, MoE architecture | ~$0.04/1M input | Quick checks, multiple iterations |
-| **gemini-3.1-pro-preview-lite** | Ultrafast, very cheap | ~$0.01/1M input | High-volume testing |
+| **gemini-lite** | Ultrafast, very cheap | ~$0.01/1M input | High-volume testing |
 
 ### Tier 3: Free Options
 
@@ -71,10 +71,10 @@ For best visual analysis of UI screenshots, use these models via Claudish:
 ### Model Selection Guide
 
 ```
-Design Fidelity Validation → qwen3.5-plus-02-15 (best OCR & spatial)
-Quick Smoke Tests → gemini-3.1-pro-preview (fast & cheap)
-Complex Layout Analysis → gpt-4o (best reasoning)
-High Volume Testing → gemini-3.1-pro-preview-lite (ultrafast)
+Design Fidelity Validation → qwen (best OCR & spatial)
+Quick Smoke Tests → gemini (fast & cheap)
+Complex Layout Analysis → gpt (best reasoning)
+High Volume Testing → gemini-lite (ultrafast)
 Budget Conscious → polaris-alpha (free)
 ```
 
@@ -106,7 +106,7 @@ Budget Conscious → polaris-alpha (free)
 4. **Optional: Enhanced analysis with vision model**:
    \`\`\`bash
    # Use Qwen VL for detailed visual analysis
-   npx claudish --model qwen3.5-plus-02-15 --stdin --quiet <<EOF
+   npx claudish --model qwen --stdin --quiet <<EOF
    Analyze this UI screenshot and identify any visual issues:
 
    IMAGE: [screenshot from previous step]
@@ -173,7 +173,7 @@ mcp__claude-in-chrome__computer(action: "screenshot")
 ### Step 2: Visual Analysis with Vision Model
 
 \`\`\`bash
-npx claudish --model qwen3.5-plus-02-15 --stdin --quiet <<EOF
+npx claudish --model qwen --stdin --quiet <<EOF
 Compare these two UI screenshots and identify design fidelity issues:
 
 DESIGN REFERENCE: /tmp/design-reference.png
@@ -302,7 +302,7 @@ mcp__claude-in-chrome__computer(action: "screenshot")
 
 Use vision model to compare before/after screenshots:
 \`\`\`bash
-npx claudish --model gemini-3.1-pro-preview --stdin --quiet <<EOF
+npx claudish --model gemini --stdin --quiet <<EOF
 Compare these before/after screenshots and verify the interaction worked:
 
 BEFORE: [screenshot before interaction]
@@ -367,7 +367,7 @@ done
 ### Visual Analysis for Responsive Issues
 
 \`\`\`bash
-npx claudish --model qwen3.5-plus-02-15 --stdin --quiet <<EOF
+npx claudish --model qwen --stdin --quiet <<EOF
 Analyze these responsive screenshots for layout issues:
 
 MOBILE (375px): [screenshot 1]
@@ -418,7 +418,7 @@ mcp__claude-in-chrome__get_page_text()
 ### Visual Contrast Analysis
 
 \`\`\`bash
-npx claudish --model qwen3.5-plus-02-15 --stdin --quiet <<EOF
+npx claudish --model qwen --stdin --quiet <<EOF
 Analyze this screenshot for accessibility issues:
 
 IMAGE: [screenshot]

@@ -131,7 +131,7 @@ Override auto-detection in `.claude/settings.json`:
       },
       "multiModelReview": {
         "enabled": true,
-        "models": ["grok-code-fast-1", "gemini-3.1-pro-preview"]
+        "models": ["(model aliases from shared/model-aliases.json)"]
       }
     }
   }
@@ -224,16 +224,7 @@ Backend:
 
 **Optional:**
 - **code-analysis@magus** - Semantic code search for better context
-- **Claudish CLI** (`npm install -g claudish`) - External AI model reviews
-
-To check if optional dependencies are available:
-```bash
-# Check for Claudish
-which claudish
-
-# Check for code-analysis plugin
-# (enabled in .claude/settings.json)
-```
+- **multimodel@magus** - External AI model reviews via claudish MCP tools
 
 ### Multi-Model Validation
 
@@ -243,10 +234,12 @@ When Claudish CLI is installed, you can use external AI models for:
 - Design validation
 
 **Supported models:**
-- `grok-code-fast-1` (fast, accurate)
-- `gemini-3.1-pro-preview` (free tier available)
-- `gpt-5.3-codex` (premium)
-- Many more via OpenRouter
+
+Available models and aliases are listed in `shared/model-aliases.json`. Run `/update-models` to refresh.
+
+- Fast coding models: see `roles.fast_coding` in `shared/model-aliases.json`
+- Reasoning models: see `roles.reasoning` and `roles.reasoning_premium`
+- Code review teams: see `teams.code` and `teams.review`
 
 See: https://github.com/MadAppGang/claudish
 

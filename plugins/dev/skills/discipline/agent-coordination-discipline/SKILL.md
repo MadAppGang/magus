@@ -84,7 +84,7 @@ When delegating to external models, use claudish MCP tools:
 
 **For single-model tasks:**
 ```
-create_session(model="grok-code-fast-1",
+create_session(model="grok",
   prompt="Analyze the React component rendering performance issue in Dashboard.tsx.
 
   Context:
@@ -100,7 +100,7 @@ create_session(model="grok-code-fast-1",
 **For multi-model parallel tasks:**
 ```
 team(mode="run", path=SESSION_DIR,
-  models=["grok-code-fast-1", "gemini-3.1-pro-preview"],
+  models=["grok", "gemini"],
   input=PROMPT, timeout=180)
 ```
 
@@ -209,12 +209,12 @@ if (performanceIsCritical) {
 ### 1. Model Selection
 
 **Fast Execution (< 2 min):**
-- `grok-code-fast-1` - Code generation, refactoring, simple analysis
-- `claude-haiku-4-5` - Quick decisions, data transformation
+- `grok` - Code generation, refactoring, simple analysis
+- `haiku` - Quick decisions, data transformation
 
 **Deep Reasoning (> 2 min):**
-- `claude-sonnet-4-5` - Complex debugging, architecture design
-- `gemini-3.1-pro-preview` - Extended thinking budget
+- `sonnet` - Complex debugging, architecture design
+- `gemini` - Extended thinking budget
 
 **Specialized:**
 - Vision models - Screenshot analysis, diagram interpretation
@@ -269,7 +269,7 @@ Success Criteria:
 
 **Example:**
 ```
-result = Task("external-model: grok-code-fast-1\n\nRefactor 10 components for React 19...")
+result = Task("external-model: grok\n\nRefactor 10 components for React 19...")
 
 if (result.contains("Refactored successfully")) {
   // Apply changes to codebase
@@ -332,7 +332,7 @@ Constraints:
 
 ```go
 // ✓ CORRECT: Fast refactoring with Grok
-external-model: grok-code-fast-1
+external-model: grok
 
 Refactor 15 handler functions in handlers/ to use consistent error handling pattern.
 

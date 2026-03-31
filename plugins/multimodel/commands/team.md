@@ -23,18 +23,18 @@ args:
 
 ## Step 1: Setup
 
-Read `.claude/multimodel-team.json` (missing = all fields absent).
-Parse: `defaultModels`, `contextPreferences`, `agentPreferences`, `defaultThreshold`, `claudeFlags`.
-Parse args: task, `--models`, `--threshold`, `--no-memory`. If no task: ask the user.
+**Step 1a — Load alias table:** Follow the `multimodel:claudish-usage` skill → "Model Alias Resolution" procedure to build ALIAS_TABLE from `shared/model-aliases.json` + `.claude/multimodel-team.json` `customAliases`.
 
-**Resolve models** (stop at first match):
-1. `--models` flag → resolve each name via `shared/model-aliases.json` `shortAliases` (e.g. "grok" → full ID). Full model IDs (containing dots or version numbers) pass verbatim.
-2. `contextPreferences` keyword matching task → resolve aliases via file, use those
-3. `defaultModels` → resolve aliases via file, announce "Using saved models: {list}"
-4. None matched → read `shared/model-aliases.json` `teams` section for task-type defaults
-5. Still nothing → call the claudish `list_models` MCP tool, ask user to pick
+**Step 1b — Parse args:**
+Parse: `defaultModels`, `contextPreferences`, `agentPreferences`, `defaultThreshold`, `claudeFlags` from prefs.
+Parse command args: task, `--models`, `--threshold`, `--no-memory`. If no task: ask the user.
 
-**Alias resolution:** Always read `shared/model-aliases.json` → `shortAliases` to resolve short names to full model IDs. NEVER resolve aliases from memory or training data.
+**Step 1c — Resolve models** (stop at first match, resolve each name via ALIAS_TABLE):
+1. `--models` flag provided → resolve each via ALIAS_TABLE
+2. `contextPreferences` keyword matching task → resolve each via ALIAS_TABLE
+3. `defaultModels` from prefs → resolve each via ALIAS_TABLE, announce "Using saved models: {list}"
+4. None matched → read `shared/model-aliases.json` → `teams` section for task-type defaults
+5. Still nothing → AskUserQuestion listing available aliases from ALIAS_TABLE
 
 **Resolve threshold:** unset/"majority" → 50%, "supermajority" → 67%, "unanimous" → 100%
 
@@ -120,12 +120,7 @@ If any models FAILED in the verification table:
 
 ## Knowledge
 
-**Model aliases** — Read `shared/model-aliases.json` → `shortAliases` for alias resolution.
-Short single-word aliases only; full IDs (containing dots or version numbers) are never aliases — use verbatim.
-If `shared/model-aliases.json` doesn't exist, tell user: "Run /update-models to sync model aliases."
-NEVER invent model IDs from training knowledge. Only use IDs from the aliases file or passed verbatim by user.
-
-**NEVER add provider prefixes** (no "openai/", "google/", "mm@", "or@"). claudish resolves internally.
+**Model alias resolution** — see `multimodel:claudish-usage` skill → "Model Alias Resolution" section. ALIAS_TABLE built in Step 1a. NEVER resolve from memory. NEVER add provider prefixes.
 
 **Context detection:**
 | Context | Keywords | Default Models | Agent |

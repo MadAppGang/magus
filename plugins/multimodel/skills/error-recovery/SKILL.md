@@ -125,7 +125,7 @@ setInterval(() => {
 
 ```
 Step 1: Detect Timeout
-  Log: "Timeout: grok-code-fast-1 after 30s with no response"
+  Log: "Timeout: grok after 30s with no response"
 
 Step 2: Notify User
   Present options:
@@ -186,7 +186,7 @@ Benefits:
 
 ```
 # Via create_session MCP tool (timeout handled by the tool)
-create_session(model="grok-code-fast-1", prompt=PROMPT, timeout_seconds=30)
+create_session(model="grok", prompt=PROMPT, timeout_seconds=30)
 
 # React to channel events:
 # - completed → get_output(session_id) → process result
@@ -196,7 +196,7 @@ create_session(model="grok-code-fast-1", prompt=PROMPT, timeout_seconds=30)
 #   - Other → general failure
 
 # Via team MCP tool (timeout per model)
-team(mode="run", models=["grok-code-fast-1"], input=PROMPT, timeout=30)
+team(mode="run", models=["grok"], input=PROMPT, timeout=30)
 # Check per-model status in structured response
 ```
 
@@ -262,7 +262,7 @@ Detection:
   API returns 500 status code
 
 Recovery:
-  1. Log: "Model service error (500): grok-code-fast-1"
+  1. Log: "Model service error (500): grok"
   2. Wait 5 seconds (give service time to recover)
   3. Retry ONCE
   4. If retry succeeds: Continue normally
@@ -872,7 +872,7 @@ Example:
 ```
 Parameters:
   error_type (required): "provider_failure" | "team_failure" | "stream_error" | "adapter_error" | "other"
-  model (optional):            Model ID that failed (e.g., "grok-code-fast-1")
+  model (optional):            Model ID that failed (e.g., "grok")
   stderr_snippet (optional):   First 500 chars of error output (from MCP result or channel event)
   exit_code (optional):        Process exit code (if CLI fallback was used)
   error_log_path (optional):   Path to full error log file
@@ -930,7 +930,7 @@ Do NOT offer after:
 4. If yes:
      call report_error(
        error_type: "provider_failure",
-       model: "grok-code-fast-1",
+       model: "grok",
        stderr_snippet: "connection timed out after 30000ms...",
        exit_code: 124,
        additional_context: "Timed out on attempt 2 of 2"
@@ -1065,7 +1065,7 @@ Step 4: Execution (multi-agent-coordination)
 
 ```
 Attempt 1:
-  create_session(model="grok-code-fast-1", prompt=PROMPT, timeout_seconds=30)
+  create_session(model="grok", prompt=PROMPT, timeout_seconds=30)
   Result: failed channel event — timeout after 30s
 
   Notify user:
@@ -1078,7 +1078,7 @@ Attempt 1:
   User selects: 1 (Retry)
 
 Attempt 2:
-  create_session(model="grok-code-fast-1", prompt=PROMPT, timeout_seconds=60)
+  create_session(model="grok", prompt=PROMPT, timeout_seconds=60)
   Result: completed channel event after 45s
 
   Log: "Grok review completed on retry (45s)"

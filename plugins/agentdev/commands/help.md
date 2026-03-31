@@ -88,10 +88,10 @@ tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Edit, Bash
 Orchestrators use claudish MCP tools for external AI models:
 ```
 # /team — parallel multi-model
-team(mode="run", models=["grok-code-fast-1", ...], input=PROMPT, timeout=180)
+team(mode="run", models=[models resolved from shared/model-aliases.json], input=PROMPT, timeout=180)
 
 # /delegate — single-model session
-create_session(model="grok-code-fast-1", prompt=TASK, timeout_seconds=300)
+create_session(model="model resolved from ALIAS_TABLE", prompt=TASK, timeout_seconds=300)
 ```
 
 ### Tasks Integration

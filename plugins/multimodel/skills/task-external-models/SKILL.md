@@ -86,7 +86,7 @@ Task({
 // External models — single MCP tool call handles all
 // The team tool runs all models in parallel internally
 claudish team(mode="run", path=SESSION_DIR,
-  models=["grok-code-fast-1", "gemini-3.1-pro-preview"],
+  models=["grok", "gemini"],
   input=VOTE_PROMPT, timeout=180, claude_flags=claudeFlags)
 ```
 
@@ -98,7 +98,7 @@ The `/delegate` command uses channel-based sessions:
 
 ```
 // Start session
-create_session(model="grok-code-fast-1", prompt=TASK_PROMPT,
+create_session(model="grok", prompt=TASK_PROMPT,
   timeout_seconds=300, claude_flags=claudeFlags)
 → returns session_id
 

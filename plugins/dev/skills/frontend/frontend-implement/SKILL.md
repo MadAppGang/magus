@@ -75,20 +75,11 @@ Describe the current UI implementation:
 Output as structured data for implementation."
 ```
 
-**Provider Detection**:
+**Model Resolution**:
 
-```bash
-# Check providers in priority order
-if [[ -n "$GEMINI_API_KEY" ]]; then
-  GEMINI_MODEL="g/gemini-3-pro-preview"
-elif [[ -n "$OPENROUTER_API_KEY" ]]; then
-  GEMINI_MODEL="or/google/gemini-3-pro-preview"
-elif [[ -n "$GOOGLE_APPLICATION_CREDENTIALS" ]]; then
-  GEMINI_MODEL="vertex/gemini-3-pro-preview"
-else
-  GEMINI_MODEL=""  # Text-only mode
-fi
-```
+Read `shared/model-aliases.json` → `roles.designer_review.modelId` and assign to
+`GEMINI_MODEL`. If the key is absent or the file does not exist, set `GEMINI_MODEL=""`
+to fall back to text-only mode.
 
 ### Phase 3: Apply Anti-AI Improvements
 

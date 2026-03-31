@@ -399,8 +399,7 @@ skills: dev:task-management, dev:context-detection, dev:universal-patterns, mult
         <step>Mark PHASE 6 as in_progress</step>
         <step>
           **Select Review Models** (AskUserQuestion, multiSelect):
-          - grok-code-fast-1
-          - gemini-3.1-pro-preview
+          - models resolved from shared/model-aliases.json shortAliases
           - Or skip external validation
         </step>
         <step>

@@ -355,7 +355,7 @@ Expected performance:
 Tips for faster tests:
 - Use fewer AI models (1 instead of 2-3)
 - Run scenarios in parallel (test runner handles this)
-- Use faster models (`grok-code-fast-1` vs `claude-opus-4.5`)
+- Use faster models (e.g. `grok` alias vs `opus` tier)
 - Cache results for unchanged scenarios
 
 ## Limitations

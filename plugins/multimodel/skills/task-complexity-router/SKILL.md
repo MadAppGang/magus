@@ -602,9 +602,9 @@ Routing Decision:
 
 Implementation:
   Task: task-executor
-    Model: grok-code-fast-1
+    Model: grok
     Prompt: "Add JSDoc comments to all functions in UserService.ts"
-    claudish: x-ai/grok-code-fast-1
+    claudish: grok
 ```
 
 ---

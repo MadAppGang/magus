@@ -1,7 +1,7 @@
 ---
 name: seo-alternatives
 description: Parallel content generation orchestrator using multiple AI models for A/B testing and hybrid optimization
-allowed-tools: Task, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep
+allowed-tools: Task, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep, mcp__plugin_claudish__team, mcp__plugin_claudish__run_prompt
 skills: multimodel:multi-model-validation, multimodel:model-tracking-protocol, multimodel:quality-gates, seo:content-brief
 ---
 
@@ -13,7 +13,7 @@ skills: multimodel:multi-model-validation, multimodel:model-tracking-protocol, m
     - Content variation analysis and comparison
     - E-E-A-T score-based content selection
     - Hybrid content optimization (best elements from multiple versions)
-    - Cost-aware model coordination via claudish CLI
+    - Cost-aware model coordination via claudish MCP tools
   </expertise>
 
   <mission>
@@ -59,16 +59,16 @@ skills: multimodel:multi-model-validation, multimodel:model-tracking-protocol, m
     </use_cases>
 
     <parallel_execution_requirement>
-      CRITICAL: Execute ALL content generation tasks in parallel using Bash with
-      background execution for 3-5x speedup.
+      CRITICAL: Execute ALL content generation tasks in parallel using the claudish
+      `team` MCP tool for 3-5x speedup.
 
       Example pattern:
-      [One message with multiple Bash calls:]
-      Bash: claudish --model model-1 --stdin --quiet < prompt.md > alt-1.md &
-      ---
-      Bash: claudish --model model-2 --stdin --quiet < prompt.md > alt-2.md &
-      ---
-      Bash: claudish --model model-3 --stdin --quiet < prompt.md > alt-3.md &
+      Use the claudish `team` MCP tool in a single call:
+      team(mode="run", path=SESSION_PATH, models=["model-1", "model-2", "model-3"],
+           input=GENERATION_PROMPT, timeout=180)
+
+      The `team` tool runs all models in parallel internally and returns structured
+      per-model results.
     </parallel_execution_requirement>
 
     <tasks_requirement>
@@ -113,12 +113,14 @@ skills: multimodel:multi-model-validation, multimodel:model-tracking-protocol, m
 
   <allowed_tools>
     - Task (delegate to seo-writer agent)
-    - Bash (session management, Claudish checks)
+    - Bash (session management)
     - Read (read generated alternatives)
     - Glob (find alternative files)
     - Grep (search patterns)
     - Tasks (track progress)
     - AskUserQuestion (user input and selection)
+    - mcp__plugin_claudish__team (parallel multi-model execution)
+    - mcp__plugin_claudish__run_prompt (single-model prompts)
   </allowed_tools>
 
   <forbidden_tools>
@@ -243,13 +245,8 @@ skills: multimodel:multi-model-validation, multimodel:model-tracking-protocol, m
       <objective>Select AI models for content generation and approve costs</objective>
 
       <steps>
-        <step>Check Claudish availability and API key</step>
-
-        <step>Query available models:
-          ```bash
-          claudish --top-models
-          claudish --free
-          ```
+        <step>Read `shared/model-aliases.json` → `teams.review` for default review models, or `shortAliases` for available model aliases.
+          If the file doesn't exist, tell the user to run `/update-models`.
         </step>
 
         <step>Load historical performance for content generation (if exists):
@@ -268,10 +265,10 @@ skills: multimodel:multi-model-validation, multimodel:model-tracking-protocol, m
 
           Top Performers for Content:
           - claude-embedded (Sonnet) - FREE, excellent quality
-          - grok-code-fast-1 ⚡ - $0.85/1M, creative angles
-          - gemini-3.1-pro-preview - $7.00/1M, polished output
-          - qwen3.5-plus-02-15 🆓 - FREE, technical focus
-          - anthropic/claude-opus-4.5 - $15/1M, premium quality
+          - (models resolved via shared/model-aliases.json shortAliases)
+          - gemini - $7.00/1M, polished output
+          - qwen 🆓 - FREE, technical focus
+          - opus - $15/1M, premium quality
           - [Custom model ID]
 
           Recommended: 1 embedded + 2-3 external for cost/quality balance
@@ -327,25 +324,20 @@ skills: multimodel:multi-model-validation, multimodel:model-tracking-protocol, m
           ```
         </step>
 
-        <step>Launch ALL content generation tasks in PARALLEL (BASH BACKGROUND):
-          ```bash
-          # Record start times and launch all models in background
-          for model in "${selected_models[@]}"; do
-            MODEL_START_TIMES["$model"]=$(date +%s)
-            model_slug=$(echo "$model" | sed 's/[^a-zA-Z0-9-]/_/g')
+        <step>Launch ALL content generation tasks in PARALLEL via claudish `team` MCP tool:
 
-            claudish --model "$model" --stdin --quiet <<EOF > "${SESSION_PATH}/alternatives/${model_slug}-alternative.md" &
-          Read brief in ${SESSION_PATH}/content-brief.md
+          Record start time, then call:
+          ```
+          team(mode="run", path="${SESSION_PATH}/alternatives",
+            models=[...selected_models...],
+            input="Read brief in ${SESSION_PATH}/content-brief.md
           Generate {type} following all requirements
-          Include self-assessment: keyword usage, appeal, E-E-A-T
-EOF
-          done
-
-          # Wait for all background processes to complete
-          wait
+          Include self-assessment: keyword usage, appeal, E-E-A-T",
+            timeout=180)
           ```
 
-          Launch ALL content generation tasks in parallel using Bash background execution.
+          The `team` tool runs all models in parallel and returns structured per-model results.
+          Write each model's output to ${SESSION_PATH}/alternatives/{model_slug}-alternative.md.
         </step>
 
         <step>Track completion and calculate durations:

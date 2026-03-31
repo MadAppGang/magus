@@ -24,17 +24,13 @@ dependencies:
     - Edit
     - Glob
   models:
+    # Read shared/model-aliases.json for current model IDs. Run /update-models to refresh.
     primary:
-      - anthropic/claude-opus-4-20250514
-      - anthropic/claude-sonnet-4-20250514
-      - anthropic/claude-haiku-3-20250514
+      - internal  # Claude (embedded)
     explorers:
+      # Use models from shared/model-aliases.json → teams.code or teams.review
       fallback_chain:
-        - grok-code-fast-1
-        - google/gemini-2-5-pro
-        - deepseek/deepseek-coder
-        - anthropic/claude-sonnet-4-20250514
-        - anthropic/claude-haiku-3-20250514
+        - (models from shared/model-aliases.json teams.code)
 parameters:
   exploration_models: 3
   chunk_size: 250
@@ -100,13 +96,12 @@ skill install superpowers:writing-plans
 export OPENROUTER_API_KEY=your-key
 
 # 3. Configure models in ~/.claude/settings.json
+# Use model IDs from shared/model-aliases.json (run /update-models to refresh)
 {
   "brainstorming": {
-    "primary_model": "anthropic/claude-opus-4-20250514",
+    "primary_model": "internal",
     "explorer_models": [
-      "grok-code-fast-1",
-      "google/gemini-2-5-pro",
-      "anthropic/claude-sonnet-4-20250514"
+      "(model alias from shared/model-aliases.json shortAliases or teams.code)"
     ]
   }
 }
@@ -190,9 +185,11 @@ async function exploreWithFallback(
   prompt: string,
   role: "explorer"
 ): Promise<ModelResult> {
+  // Use model IDs from shared/model-aliases.json → teams.code or teams.review
+  // Run /update-models to refresh available models
   const fallbackModels = role === "explorer"
-    ? ["grok-code-fast-1", "google/gemini-2-5-pro", "deepseek/deepseek-coder"]
-    : ["anthropic/claude-opus-4-20250514", "anthropic/claude-sonnet-4-20250514"];
+    ? [/* models from shared/model-aliases.json teams.code */]
+    : ["internal" /* plus models from teams.review */];
 
   for (const model of fallbackModels) {
     try {
@@ -222,17 +219,18 @@ async function exploreWithFallback(
 // const result3 = await Task({ model: "sonnet", ... });
 
 // CORRECT: Parallel (3-5x faster)
+// Use model IDs from shared/model-aliases.json → teams.code (run /update-models to refresh)
 const [result1, result2, result3] = await Promise.all([
   Task({
-    model: "grok-code-fast-1",
+    model: "(fast_coding role from shared/model-aliases.json)",
     prompt: generateExplorerPrompt(problem, "fast_code")
   }),
   Task({
-    model: "google/gemini-2-5-pro",
+    model: "(reasoning role from shared/model-aliases.json)",
     prompt: generateExplorerPrompt(problem, "balanced")
   }),
   Task({
-    model: "anthropic/claude-sonnet-4-20250514",
+    model: "(model from teams.code in shared/model-aliases.json)",
     prompt: generateExplorerPrompt(problem, "thorough")
   })
 ]);
@@ -506,10 +504,12 @@ Which approach best fits your requirements?
 ```typescript
 // Complete Phase 1 parallel exploration
 async function runParallelExploration(problem: string): Promise<Approach[]> {
+  // Use model IDs from shared/model-aliases.json → teams.code
+  // Run /update-models to refresh available models
   const explorerModels = [
-    "grok-code-fast-1",     // Fast, code-focused
-    "google/gemini-2-5-pro",     // Balanced, creative
-    "anthropic/claude-sonnet-4-20250514"  // Thorough
+    // fast_coding role — fast, code-focused
+    // reasoning role — balanced, creative
+    // another model from teams.code — thorough
   ];
 
   const prompts = explorerModels.map(model =>
@@ -626,10 +626,11 @@ BRAINSTORM_MIN_MODELS=2  # Minimum models for valid consensus
 ```json
 {
   "brainstorming": {
-    "primary": ["anthropic/claude-opus-4-20250514"],
+    "primary": ["internal"],
     "explorers": {
-      "primary_chain": ["grok-code-fast-1", "google/gemini-2-5-pro"],
-      "fallback_chain": ["deepseek/deepseek-coder", "anthropic/claude-haiku-3-20250514"]
+      // Use model IDs from shared/model-aliases.json (run /update-models to refresh)
+      "primary_chain": ["(model from teams.code)", "(model from teams.code)"],
+      "fallback_chain": ["(model from teams.review)", "(model from teams.review)"]
     },
     "thresholds": {
       "auto_gate": 95,

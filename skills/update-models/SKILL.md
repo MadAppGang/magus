@@ -1,9 +1,6 @@
 ---
-description: |
-  Sync model aliases from the curated Firebase database.
-  Fetches default model assignments, short aliases, team compositions, and known model metadata
-  from the claudish queryPluginDefaults API and writes to shared/model-aliases.json.
-allowed-tools: Read, Bash, Write, Glob, Grep
+name: update-models
+description: Sync model aliases from the curated Firebase database. Fetches default model assignments, short aliases, team compositions, and known model metadata from the claudish API. Run this to get fresh model recommendations.
 ---
 
 ## Update Models
@@ -54,6 +51,22 @@ Fetch the latest model defaults from the claudish curated database and save loca
 
    Updated: shared/model-aliases.json
    ```
+
+### API Reference
+
+- **Endpoint:** `https://us-central1-claudish-6da10.cloudfunctions.net/queryPluginDefaults`
+- **Method:** GET
+- **Auth:** None required
+- **Cache:** 5 minutes server-side
+- **Param:** `?resolve=true` — expands aliases to full model IDs in roles/teams
+- **Response fields:**
+  - `version` — semver, bumped on config changes
+  - `generatedAt` — ISO timestamp
+  - `shortAliases` — `{alias: fullModelId}` map
+  - `roles` — `{roleName: {modelId, fallback?}}` map
+  - `teams` — `{teamName: [modelIds]}` map
+  - `knownModels` — `{modelId: {displayName, provider, contextWindow, capabilities, status}}` map
+  - `warnings` — optional array of issues (missing models, etc.)
 
 ### Error Handling
 

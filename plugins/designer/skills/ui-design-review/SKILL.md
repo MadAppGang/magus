@@ -21,48 +21,22 @@ This skill provides prompting patterns, checklists, and templates for conducting
 - Comparing implementation to design reference
 - Analyzing UI patterns and usability
 
-## Model Routing
+## Model Selection
 
-### Gemini API Key Detection
-
-```bash
-# Check API key availability and select model
-determine_gemini_model() {
-  if [[ -n "$GEMINI_API_KEY" ]]; then
-    echo "g/gemini-3-pro-preview"  # Direct Gemini API
-  elif [[ -n "$OPENROUTER_API_KEY" ]]; then
-    echo "google/gemini-3-pro-preview"  # OpenRouter
-  else
-    echo "ERROR: No API key available (need GEMINI_API_KEY or OPENROUTER_API_KEY)"
-    return 1
-  fi
-}
-
-GEMINI_MODEL=$(determine_gemini_model)
-```
-
-### Why `or/` Prefix for OpenRouter
-
-The model ID `google/gemini-3-pro-preview` collides with Claudish's automatic routing:
-
-| Model ID | Routes To | Requires |
-|----------|-----------|----------|
-| `google/gemini-*` | Gemini Direct | GEMINI_API_KEY |
-| `google/gemini-*` | OpenRouter | OPENROUTER_API_KEY |
-| `g/gemini-*` | Gemini Direct (explicit) | GEMINI_API_KEY |
-
-**Rule**: Always use `or/` prefix when routing Google models through OpenRouter.
+Read `shared/model-aliases.json` → `roles.designer_review.modelId` for the design review model.
+If the file doesn't exist, tell the user to run `/update-models`.
 
 ## Passing Images to Claudish
 
 ### Method 1: Image File Path (Recommended)
 
 ```bash
+# GEMINI_MODEL: read from shared/model-aliases.json → roles.designer_review.modelId
 # Pass image file directly with --image flag
 npx claudish --model "$GEMINI_MODEL" --image "$IMAGE_PATH" --quiet --auto-approve <<< "$ANALYSIS_PROMPT"
 
 # Example
-npx claudish --model "g/gemini-3-pro-preview" --image "screenshots/dashboard.png" --quiet --auto-approve <<< "Analyze this UI for usability issues."
+npx claudish --model "$GEMINI_MODEL" --image "screenshots/dashboard.png" --quiet --auto-approve <<< "Analyze this UI for usability issues."
 ```
 
 ### Method 2: Base64 Encoded (For Inline Images)
@@ -263,7 +237,7 @@ Deep analysis including:
 Use claudish CLI for multi-model design reviews:
 
 ```bash
-claudish --model google/gemini-3-pro-preview --stdin --quiet <<EOF > ${SESSION_PATH}/reviews/design-review/gemini.md
+claudish --model "$GEMINI_MODEL" --stdin --quiet <<EOF > ${SESSION_PATH}/reviews/design-review/gemini.md
 Review the dashboard screenshot at screenshots/dashboard.png
 
 Focus on usability and accessibility.

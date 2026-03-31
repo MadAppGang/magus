@@ -232,11 +232,11 @@ Use AskUserQuestion with multiSelect: true:
   question: "Select models for multi-model reviews (Phase 3 plan review + Phase 5 code review)"
   header: "Review Models"
   options:
-    - label: "grok-code-fast-1 [PAID]"
+    - label: "grok [PAID]"
       description: "Fast, coding specialist"
-    - label: "gemini-3.1-pro-preview [PAID]"
+    - label: "gemini [PAID]"
       description: "Advanced reasoning, 1M context"
-    - label: "qwen3.5-plus-02-15 [PAID]"
+    - label: "qwen [PAID]"
       description: "Multimodal, 262K context"
     - label: "devstral-2512:free [FREE]"
       description: "Dev-focused, free tier"
@@ -248,7 +248,7 @@ Store selection in ${SESSION_PATH}/iteration-config.json under `selectedModels`:
 {
   "selectedModels": {
     "configured": true,
-    "models": ["grok-code-fast-1", "qwen3.5-plus-02-15"],
+    "models": ["grok", "qwen"],
     "includeInternal": true
   }
 }

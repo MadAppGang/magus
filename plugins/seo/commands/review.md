@@ -1,7 +1,7 @@
 ---
 name: seo-review
 description: Multi-model content review orchestrator with parallel E-E-A-T validation and consensus analysis
-allowed-tools: Task, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep
+allowed-tools: Task, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep, mcp__plugin_claudish__team, mcp__plugin_claudish__run_prompt
 skills: multimodel:multi-model-validation, multimodel:model-tracking-protocol, multimodel:quality-gates, seo:content-optimizer
 ---
 
@@ -11,7 +11,7 @@ skills: multimodel:multi-model-validation, multimodel:model-tracking-protocol, m
   <expertise>
     - Parallel multi-model AI coordination for 3-5x speedup
     - Consensus analysis and E-E-A-T score prioritization across diverse AI perspectives
-    - Cost-aware external model management via claudish CLI
+    - Cost-aware external model management via claudish MCP tools
     - Graceful degradation and error recovery (works with/without external models)
     - Content quality assessment (readability, SEO compliance, factual accuracy)
   </expertise>
@@ -62,19 +62,17 @@ skills: multimodel:multi-model-validation, multimodel:model-tracking-protocol, m
     </graceful_degradation>
 
     <parallel_execution_requirement>
-      CRITICAL: Execute ALL external model reviews in parallel using Bash with
-      background execution. This achieves 3-5x speedup vs sequential.
+      CRITICAL: Execute ALL external model reviews in parallel using the claudish
+      `team` MCP tool. This achieves 3-5x speedup vs sequential.
 
       Example pattern:
-      [One message with multiple Bash calls:]
-      Bash: claudish --model model-1 --stdin --quiet < prompt.md > result-1.md &
-      ---
-      Bash: claudish --model model-2 --stdin --quiet < prompt.md > result-2.md &
-      ---
-      Bash: claudish --model model-3 --stdin --quiet < prompt.md > result-3.md &
+      Use the claudish `team` MCP tool in a single call:
+      team(mode="run", path=SESSION_PATH, models=["model-1", "model-2", "model-3"],
+           input=REVIEW_PROMPT, timeout=180)
 
-      This is the KEY INNOVATION that makes multi-model review practical (5-10 min
-      vs 15-30 min). See Key Design Innovation section in knowledge base.
+      The `team` tool runs all models in parallel internally and returns structured
+      per-model results. This is the KEY INNOVATION that makes multi-model review
+      practical (5-10 min vs 15-30 min). See Key Design Innovation section in knowledge base.
     </parallel_execution_requirement>
 
     <tasks_requirement>
@@ -131,12 +129,14 @@ skills: multimodel:multi-model-validation, multimodel:model-tracking-protocol, m
 
   <allowed_tools>
     - Task (delegate to seo-editor agent)
-    - Bash (session management, Claudish availability checks)
+    - Bash (session management)
     - Read (read content and review files)
     - Glob (expand file patterns)
     - Grep (search for patterns)
     - Tasks (track workflow progress)
     - AskUserQuestion (user approval gates)
+    - mcp__plugin_claudish__team (parallel multi-model execution)
+    - mcp__plugin_claudish__run_prompt (single-model prompts)
   </allowed_tools>
 
   <forbidden_tools>
@@ -149,7 +149,7 @@ skills: multimodel:multi-model-validation, multimodel:model-tracking-protocol, m
       Embedded (local) review → seo-editor agent via Task tool
     </rule>
     <rule scope="external_review">
-      External model review → claudish CLI with --model {model_id}
+      External model review → claudish MCP `team` tool with models list
     </rule>
     <rule scope="consolidation">
       Orchestrator performs consolidation (reads files, analyzes consensus, writes report)
@@ -301,18 +301,8 @@ skills: multimodel:multi-model-validation, multimodel:model-tracking-protocol, m
       </objective>
 
       <steps>
-        <step>Check Claudish CLI availability: npx claudish --version</step>
-
-        <step>If Claudish available, check OPENROUTER_API_KEY environment variable</step>
-
-        <step>Query available models dynamically from Claudish:
-          ```bash
-          # Get top paid models
-          claudish --top-models
-
-          # Get free models
-          claudish --free
-          ```
+        <step>Read `shared/model-aliases.json` → `teams.review` for default review models, or `shortAliases` for available model aliases.
+          If the file doesn't exist, tell the user to run `/update-models`.
         </step>
 
         <step>Load historical performance data (if exists):
@@ -336,9 +326,9 @@ skills: multimodel:multi-model-validation, multimodel:model-tracking-protocol, m
           Based on historical data (if available) or current offerings:
 
           Options:
-          - grok-code-fast-1 ⚡ ($0.85/1M | Quality: 87% | Fast)
-          - gemini-3.1-pro-preview ($ 7.00/1M | Quality: 91%)
-          - qwen3.5-plus-02-15 🆓 (FREE | Quality: 82%)
+          - (models resolved via shared/model-aliases.json shortAliases)
+          - gemini ($ 7.00/1M | Quality: 91%)
+          - qwen 🆓 (FREE | Quality: 82%)
           - mistralai/devstral-2512:free 🆓 (FREE | Dev-focused)
           - [Custom model ID]
           ```
@@ -413,29 +403,24 @@ skills: multimodel:multi-model-validation, multimodel:model-tracking-protocol, m
                    Return brief summary only."
         </step>
 
-        <step>If external models selected, launch ALL in PARALLEL (BASH BACKGROUND):
-          ```bash
-          # Record start times for all external models
-          for model in "${external_models[@]}"; do
-            MODEL_START_TIMES["$model"]=$(date +%s)
-            model_slug=$(echo "$model" | sed 's/[^a-zA-Z0-9-]/_/g')
+        <step>If external models selected, launch ALL in PARALLEL via claudish `team` MCP tool:
 
-            claudish --model "$model" --stdin --quiet <<EOF > "${SESSION_PATH}/reviews/${model_slug}-review.md" &
-          Review content in ${SESSION_PATH}/content-review-context.md
+          Record start time, then call:
+          ```
+          team(mode="run", path="${SESSION_PATH}/reviews",
+            models=[...selected_external_models...],
+            input="Review content in ${SESSION_PATH}/content-review-context.md
           Write detailed review focusing on:
           1. E-E-A-T signals
           2. SEO compliance
           3. Readability
           4. Factual accuracy
-          5. Brand voice consistency
-EOF
-          done
-
-          # Wait for all background processes
-          wait
+          5. Brand voice consistency",
+            timeout=180)
           ```
 
-          Launch ALL external models in parallel using Bash background execution.
+          The `team` tool runs all models in parallel and returns structured per-model results.
+          Write each model's output to ${SESSION_PATH}/reviews/{model_slug}-review.md.
         </step>
 
         <step>Track completion and calculate durations:
@@ -646,8 +631,8 @@ EOF
           | Model                     | Time | Issues | E-E-A-T Avg | Quality | Status |
           |---------------------------|------|--------|-------------|---------|--------|
           | claude-embedded           | 42s  | 8      | 73/100      | 92%     | ✓      |
-          | grok-code-fast-1     | 55s  | 6      | 71/100      | 88%     | ✓      |
-          | qwen3.5-plus-02-15     | 48s  | 5      | 68/100      | 85%     | ✓      |
+          | (model via alias)         | 55s  | 6      | 71/100      | 88%     | ✓      |
+          | qwen     | 48s  | 5      | 68/100      | 85%     | ✓      |
           | mistralai/devstral:free   | 51s  | 7      | 72/100      | 90%     | ✓      |
 
           **Session Summary**:
@@ -781,19 +766,18 @@ EOF
       - Write: ${SESSION_PATH}/content-review-context.md
 
       **PHASE 2: Model Selection and Cost Approval**
-      - Check: Claudish available ✅, API key set ✅
       - Show historical performance (if exists)
       - Ask: "Select models" → User selects:
         * claude-embedded (Opus)
-        * grok-code-fast-1
-        * qwen3.5-plus-02-15
+        * (models resolved via shared/model-aliases.json shortAliases)
+        * qwen
         * mistralai/devstral-2512:free
       - Calculate costs: $0.002 (3 free models + 1 paid)
       - User approves
 
       **PHASE 3: Parallel Multi-Model Review**
       - Launch embedded review
-      - Launch 3 external reviews IN PARALLEL (Bash background)
+      - Launch 3 external reviews IN PARALLEL (via claudish team MCP tool)
       - All complete in ~55s (vs ~196s sequential)
 
       **PHASE 4: Consolidate Reviews**
@@ -833,9 +817,7 @@ EOF
 
     <execution>
       **PHASE 2: Model Selection**
-      - Check: Claudish not available ❌
-      - Show: "Claudish not found. Options: Install / Embedded Only / Cancel"
-      - User: "Embedded Only"
+      - User selects: "Embedded Only"
       - Selected: claude-embedded only (no cost)
 
       **PHASE 3: Review**
@@ -848,7 +830,7 @@ EOF
 
       **PHASE 5: Present**
       - Present: E-E-A-T scores from single reviewer
-      - Note: "Single reviewer. For multi-model validation, install Claudish."
+      - Note: "Single reviewer. For multi-model validation, select external models."
       - Link: Session folder and review file
     </execution>
 
@@ -874,9 +856,9 @@ EOF
     </recovery>
   </strategy>
 
-  <strategy scenario="Claudish not available">
+  <strategy scenario="External models unavailable">
     <recovery>
-      Show setup instructions. Offer embedded-only option as fallback.
+      If claudish MCP tools are not available, offer embedded-only option as fallback.
     </recovery>
   </strategy>
 

@@ -542,14 +542,12 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
   <model_selection>
     **Recommended models for validation:**
 
-    Paid (best quality):
-    - grok-code-fast-1 (fast, coding specialist)
-    - gemini-3.1-pro-preview (affordable, fast)
-    - gpt-5.3-codex (advanced analysis)
+    Read `shared/model-aliases.json` for current model IDs. Run `/update-models` to refresh.
 
-    Free (zero cost):
-    - qwen/qwen3-coder:free (coding specialist, 262K context)
-    - mistralai/devstral-2512:free (dev-focused)
+    - Code review team: see `teams.code` in `shared/model-aliases.json`
+    - Architecture review team: see `teams.architecture`
+    - Fast coding role: see `roles.fast_coding`
+    - Reasoning role: see `roles.reasoning` and `roles.reasoning_premium`
 
     Always include:
     - Internal Claude (embedded, FREE)
@@ -557,9 +555,9 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
     **Selection happens ONCE in Phase 1 Step 1f (upfront)**
     Models are stored in iteration-config.json and reused in Phases 3 and 5.
 
-    **Dynamic Discovery:**
-    - Run `claudish --top-models` for current paid models
-    - Run `claudish --free` for current free models
+    **Model Discovery:**
+    - Read `shared/model-aliases.json` → `teams` section for curated review teams
+    - Use short aliases from `shortAliases` (e.g. `grok`, `gemini`, `gpt`)
     - Merge with historical performance data (if available)
     - Present to user with quality/speed/cost metrics
   </model_selection>
@@ -744,7 +742,7 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
         - [✓] Smoke test passed
 
         Model Selection (Step 1f):
-        - Selected: grok-code-fast-1, qwen/qwen3-coder:free
+        - Selected: (models from shared/model-aliases.json → teams.code)
         - Stored in iteration-config.json
 
         User approves

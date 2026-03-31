@@ -435,7 +435,7 @@ skills: dev:debug-shared-init, dev:debug-localization, dev:context-detection, de
           Models 2+3 — External models via claudish MCP team tool:
           ```
           claudish team(mode="run", path=${SESSION_PATH},
-            models=["grok-code-fast-1", "qwen3.5-plus-02-15"],
+            models=[models from shared/model-aliases.json teams.review],
             input=contents_of_vote-prompt-root-cause.md,
             timeout=180)
           ```
@@ -734,7 +734,7 @@ skills: dev:debug-shared-init, dev:debug-localization, dev:context-detection, de
         Models 2+3 — External models via claudish MCP team tool:
         ```
         claudish team(mode="run", path=${SESSION_PATH},
-          models=["grok-code-fast-1", "qwen3.5-plus-02-15"],
+          models=[models from shared/model-aliases.json teams.review],
           input=contents_of_vote-prompt-patch.md,
           timeout=180)
         ```

@@ -4,7 +4,7 @@ version: 2.0.0
 description: |
   UI visual analysis patterns using Gemini 3 Pro Preview multimodal capabilities.
   Analysis-only - no code changes. Use dev:frontend-implement for applying improvements.
-  Includes provider detection, prompting patterns, and severity guidelines.
+  Includes prompting patterns and severity guidelines.
 user-invocable: false
 ---
 
@@ -23,57 +23,10 @@ This skill provides patterns for analyzing UI designs visually using Gemini 3 Pr
 | designer:ui-style-format | Style file specification | No |
 | designer:design-references | Reference image management | No |
 
-## Provider Selection
+## Model Selection
 
-### Detection Logic
-
-```bash
-detect_gemini_provider() {
-  # Priority 1: Gemini Direct API (lowest latency)
-  if [[ -n "$GEMINI_API_KEY" ]]; then
-    echo "g/gemini-3-pro-preview"
-    return 0
-  fi
-
-  # Priority 2: OpenRouter (requires or/ prefix)
-  if [[ -n "$OPENROUTER_API_KEY" ]]; then
-    echo "or/google/gemini-3-pro-preview"
-    return 0
-  fi
-
-  # Priority 3: Vertex AI
-  if [[ -n "$GOOGLE_APPLICATION_CREDENTIALS" ]]; then
-    echo "vertex/gemini-3-pro-preview"
-    return 0
-  fi
-
-  # Priority 4: Gemini OAuth (check claudish)
-  if npx claudish --list-accounts 2>/dev/null | grep -q "gemini"; then
-    echo "g/gemini-3-pro-preview"
-    return 0
-  fi
-
-  # No provider
-  return 1
-}
-```
-
-### Model Prefix Reference
-
-| Prefix | Provider | Env Var | Notes |
-|--------|----------|---------|-------|
-| `g/` | Gemini Direct | GEMINI_API_KEY | Lowest latency |
-| `or/` | OpenRouter | OPENROUTER_API_KEY | Avoids google/ collision |
-| `vertex/` | Vertex AI | GOOGLE_APPLICATION_CREDENTIALS | Enterprise |
-
-### Error Messages by Provider
-
-| Provider | Missing | Error Message | Setup Instructions |
-|----------|---------|---------------|-------------------|
-| gemini_direct | GEMINI_API_KEY | "Gemini API key not found" | `export GEMINI_API_KEY="your-key"` from aistudio.google.com |
-| openrouter | OPENROUTER_API_KEY | "OpenRouter API key not found" | `export OPENROUTER_API_KEY="your-key"` from openrouter.ai |
-| vertex_ai | GOOGLE_APPLICATION_CREDENTIALS | "Google Cloud credentials not configured" | `gcloud auth application-default login` |
-| gemini_oauth | OAuth session | "No Gemini OAuth session" | `claudish auth gemini` |
+Read `shared/model-aliases.json` → `roles.designer_review.modelId` for the design review model.
+If the file doesn't exist, tell the user to run `/update-models`.
 
 ## Analysis Patterns
 
@@ -261,7 +214,7 @@ The `/designer:ui` command uses this skill when:
 
 When used via `/designer:ui`:
 1. Command detects analysis intent
-2. Detects Gemini provider
+2. Reads model from shared/model-aliases.json → roles.designer_review.modelId
 3. Runs visual analysis with Gemini
 4. Writes review to: `${SESSION_PATH}/reviews/design-review/gemini.md`
 5. Presents summary to user
@@ -272,7 +225,7 @@ If no Gemini provider is available:
 1. Note in output: "Visual verification unavailable - manual review recommended"
 2. Proceed with text-based analysis if component code is available
 3. Use code analysis to infer potential issues
-4. Recommend user provide API key for full visual analysis
+4. Recommend user run `/update-models` and configure model aliases for full visual analysis
 
 ## Best Practices
 

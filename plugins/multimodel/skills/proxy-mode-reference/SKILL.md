@@ -54,8 +54,8 @@ The `team` MCP tool runs all models in parallel internally and returns structure
 claudish --model {MODEL_ID} --stdin --quiet < prompt-file.md > result.md
 
 # Examples
-claudish --model grok-code-fast-1 --stdin --quiet < task.md > grok-result.md
-claudish --model gemini-3.1-pro-preview --stdin --quiet < task.md > gemini-result.md
+claudish --model grok --stdin --quiet < task.md > grok-result.md
+claudish --model gemini --stdin --quiet < task.md > gemini-result.md
 ```
 
 ## Model Routing
@@ -64,9 +64,9 @@ Claudish handles all model routing internally. Pass bare model names — claudis
 
 ```bash
 # Just use bare model names — claudish handles the rest
-claudish --model grok-code-fast-1 --stdin --quiet < task.md > result.md
-claudish --model gemini-3.1-pro-preview --stdin --quiet < task.md > result.md
-claudish --model gpt-5.3-codex --stdin --quiet < task.md > result.md
+claudish --model grok --stdin --quiet < task.md > result.md
+claudish --model gemini --stdin --quiet < task.md > result.md
+claudish --model gpt --stdin --quiet < task.md > result.md
 ```
 
 Do NOT add provider prefixes (`x-ai/`, `google/`, `openai/`, `minimax/`, etc.) — claudish manages provider detection and routing automatically since v5.4.0.
@@ -79,17 +79,17 @@ Do NOT add provider prefixes (`x-ai/`, `google/`, `openai/`, `minimax/`, etc.) �
 
 ```
 // One-shot prompt
-run_prompt(model="grok-code-fast-1", prompt="Review this code for security issues")
+run_prompt(model="grok", prompt="Review this code for security issues")
 
 // Session-based (for longer tasks)
-create_session(model="grok-code-fast-1", prompt=TASK_PROMPT, timeout_seconds=300)
+create_session(model="grok", prompt=TASK_PROMPT, timeout_seconds=300)
 ```
 
 ### Parallel External Models (in /team)
 
 ```
 // Single MCP tool call handles all external models in parallel
-team(mode="run", path=SESSION_DIR, models=["grok-code-fast-1", "gemini-3.1-pro-preview"],
+team(mode="run", path=SESSION_DIR, models=["grok", "gemini"],
   input=VOTE_PROMPT, timeout=180)
 ```
 
@@ -118,7 +118,7 @@ team(mode="run", models=["grok"], input=PROMPT, timeout=180)
 
 1. **If claudish exits with non-zero exit code or empty output:** STOP and report the exact error (from stderr log) to the user before trying any alternative.
 2. **Never silently substitute a different model** than the user requested. If the user asked for Gemini, don't silently launch GPT-5 instead.
-3. **Never silently retry with a different provider prefix.** If `or@google/gemini-3.1-pro-preview` fails, don't silently try `g@gemini-3.1-pro-preview` without telling the user.
+3. **Never silently retry with a different provider prefix.** If `or@google/gemini` fails, don't silently try `g@gemini` without telling the user.
 4. **Report all attempts made** so the user understands what was tried and can make an informed decision.
 
 ### Failure Report Template

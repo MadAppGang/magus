@@ -136,7 +136,7 @@ Store performance metrics in `.claude/agent-performance.json`:
           "confidence": 0.90,
           "duration": 45000,
           "tier": 2,
-          "model": "claude-sonnet-4-5-20250929"
+          "model": "sonnet"
         },
         {
           "timestamp": "2026-01-28T14:20:00Z",
@@ -145,7 +145,7 @@ Store performance metrics in `.claude/agent-performance.json`:
           "confidence": 0.85,
           "duration": 30000,
           "tier": 1,
-          "model": "claude-sonnet-4-5-20250929"
+          "model": "sonnet"
         }
       ]
     },
@@ -185,7 +185,7 @@ Store performance metrics in `.claude/agent-performance.json`:
     }
   },
   "models": {
-    "claude-sonnet-4-5-20250929": {
+    "sonnet": {
       "totalRuns": 120,
       "successCount": 108,
       "failureCount": 12,
@@ -198,7 +198,7 @@ Store performance metrics in `.claude/agent-performance.json`:
         "testing": { "success": 20, "failure": 3 }
       }
     },
-    "grok-code-fast-1": {
+    "grok": {
       "totalRuns": 35,
       "successCount": 30,
       "failureCount": 5,
@@ -289,7 +289,7 @@ Execution Flow:
    Confidence: 0.90
    Duration: 45 seconds
    Tier: 2
-   Model: claude-sonnet-4-5-20250929
+   Model: sonnet
 
 2. Update agent metrics
    Read: .claude/agent-performance.json
@@ -306,7 +306,7 @@ Execution Flow:
        confidence: 0.90,
        duration: 45000,
        tier: 2,
-       model: "claude-sonnet-4-5-20250929"
+       model: "sonnet"
      })
    Trim history if > 100 entries
    Write: .claude/agent-performance.json
@@ -357,19 +357,19 @@ Failure Flow:
 Execution Flow:
 
 1. Model completes task
-   Model: grok-code-fast-1
+   Model: grok
    Task: Code review
    Latency: 1800ms
    Cost: $0.002
    Result: Success
 
 2. Update model metrics
-   models["grok-code-fast-1"].totalRuns += 1
-   models["grok-code-fast-1"].successCount += 1
-   models["grok-code-fast-1"].avgLatency = rolling_avg(1800)
-   models["grok-code-fast-1"].totalCost += 0.002
-   models["grok-code-fast-1"].lastUsed = NOW
-   models["grok-code-fast-1"].taskTypePerformance["code-review"].success += 1
+   models["grok"].totalRuns += 1
+   models["grok"].successCount += 1
+   models["grok"].avgLatency = rolling_avg(1800)
+   models["grok"].totalCost += 0.002
+   models["grok"].lastUsed = NOW
+   models["grok"].taskTypePerformance["code-review"].success += 1
 
 3. Compare model performance
    Claude Sonnet: avgLatency=2500ms, cost=$0.45 (120 runs)
@@ -426,7 +426,7 @@ Routing Flow:
    Analysis: Medium complexity (multiple components, state management)
    Selected tier: 2
    Agent: ui-developer
-   Model: claude-sonnet-4-5-20250929
+   Model: sonnet
 
 2. Record routing decision
    routing.tierDistribution["tier2"] += 1
@@ -676,7 +676,7 @@ For test-architect (60% success):
 ```
 Compare model cost-effectiveness:
 
-Model: claude-sonnet-4-5-20250929
+Model: sonnet
   Total cost: $0.45
   Total runs: 120
   Success count: 108
@@ -684,7 +684,7 @@ Model: claude-sonnet-4-5-20250929
   Cost per success: $0.0042
   Success rate: 90%
 
-Model: grok-code-fast-1
+Model: grok
   Total cost: $0.08
   Total runs: 35
   Success count: 30
@@ -692,7 +692,7 @@ Model: grok-code-fast-1
   Cost per success: $0.0027
   Success rate: 86%
 
-Model: gemini-3.1-pro-preview
+Model: gemini
   Total cost: $0.02
   Total runs: 20
   Success count: 16
@@ -1059,7 +1059,7 @@ Routing Decision Flow:
      complexity: "complex",
      selectedTier: 4,
      agent: "backend-developer",
-     model: "claude-sonnet-4-5-20250929",
+     model: "sonnet",
      result: "pending"
    })
 
@@ -1307,7 +1307,7 @@ Step 2: Execute multi-model review
 
 Step 3: Track individual model executions
 
-  Model: claude-sonnet-4-5-20250929
+  Model: sonnet
     Start: 15:00:05Z
     End: 15:00:08Z
     Latency: 3000ms
@@ -1316,13 +1316,13 @@ Step 3: Track individual model executions
     Outcome: Success
 
   Update metrics:
-    models["claude-sonnet-4-5-20250929"].totalRuns = 121
-    models["claude-sonnet-4-5-20250929"].successCount = 109
-    models["claude-sonnet-4-5-20250929"].avgLatency = 2520ms
-    models["claude-sonnet-4-5-20250929"].totalCost = $0.453
-    models["claude-sonnet-4-5-20250929"].taskTypePerformance["code-review"].success = 26
+    models["sonnet"].totalRuns = 121
+    models["sonnet"].successCount = 109
+    models["sonnet"].avgLatency = 2520ms
+    models["sonnet"].totalCost = $0.453
+    models["sonnet"].taskTypePerformance["code-review"].success = 26
 
-  Model: grok-code-fast-1
+  Model: grok
     Start: 15:00:05Z
     End: 15:00:07Z
     Latency: 2000ms
@@ -1331,13 +1331,13 @@ Step 3: Track individual model executions
     Outcome: Success
 
   Update metrics:
-    models["grok-code-fast-1"].totalRuns = 36
-    models["grok-code-fast-1"].successCount = 31
-    models["grok-code-fast-1"].avgLatency = 1820ms
-    models["grok-code-fast-1"].totalCost = $0.082
-    models["grok-code-fast-1"].taskTypePerformance["code-review"].success = 19
+    models["grok"].totalRuns = 36
+    models["grok"].successCount = 31
+    models["grok"].avgLatency = 1820ms
+    models["grok"].totalCost = $0.082
+    models["grok"].taskTypePerformance["code-review"].success = 19
 
-  Model: gemini-3.1-pro-preview
+  Model: gemini
     Start: 15:00:05Z
     End: 15:00:06Z
     Latency: 1500ms
@@ -1346,11 +1346,11 @@ Step 3: Track individual model executions
     Outcome: Success
 
   Update metrics:
-    models["gemini-3.1-pro-preview"].totalRuns = 21
-    models["gemini-3.1-pro-preview"].successCount = 17
-    models["gemini-3.1-pro-preview"].avgLatency = 1480ms
-    models["gemini-3.1-pro-preview"].totalCost = $0.021
-    models["gemini-3.1-pro-preview"].taskTypePerformance["code-review"].success = 11
+    models["gemini"].totalRuns = 21
+    models["gemini"].successCount = 17
+    models["gemini"].avgLatency = 1480ms
+    models["gemini"].totalCost = $0.021
+    models["gemini"].taskTypePerformance["code-review"].success = 11
 
 Step 4: Track skill activation
   skills["multi-model-validation"].activations = 16

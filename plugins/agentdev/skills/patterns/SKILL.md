@@ -19,7 +19,7 @@ MCP tools directly:
 team(mode="run", models=[...], input=PROMPT, timeout=180)
 
 # /delegate uses create_session MCP tool for single-model sessions
-create_session(model="grok-code-fast-1", prompt=TASK, timeout_seconds=300)
+create_session(model="grok", prompt=TASK, timeout_seconds=300)
 ```
 
 This is 100% reliable because it's a deterministic MCP tool invocation, not a prompt-based delegation.

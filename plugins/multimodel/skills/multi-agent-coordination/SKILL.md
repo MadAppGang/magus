@@ -509,10 +509,10 @@ Message 2: Parallel Execution (3 Task calls in single message)
   Task: senior-code-reviewer
     Prompt: "Review ai-docs/code-review-context.md for security issues"
   ---
-  Task: codex-code-reviewer claudish CLI: grok-code-fast-1
+  Task: codex-code-reviewer claudish CLI: grok
     Prompt: "Review ai-docs/code-review-context.md for security issues"
   ---
-  Task: codex-code-reviewer claudish CLI: gemini-3.1-pro-preview
+  Task: codex-code-reviewer claudish CLI: gemini
     Prompt: "Review ai-docs/code-review-context.md for security issues"
 
   All 3 execute simultaneously (3x faster than sequential)
