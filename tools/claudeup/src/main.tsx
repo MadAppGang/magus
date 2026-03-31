@@ -39,6 +39,7 @@ async function main(): Promise<void> {
 	// Handle "claudeup update" - self-update command
 	if (args[0] === "update") {
 		const { execSync } = await import("node:child_process");
+		const { existsSync } = await import("node:fs");
 
 		// Detect all installations of claudeup across package managers
 		const installations: Array<{
@@ -53,10 +54,7 @@ async function main(): Promise<void> {
 				timeout: 5000,
 			}).trim();
 			const bunPath = `${bunGlobalBin}/claudeup`;
-			const stat = await import("node:fs").then((fs) =>
-				fs.existsSync(bunPath),
-			);
-			if (stat) installations.push({ manager: "bun", path: bunPath });
+			if (existsSync(bunPath)) installations.push({ manager: "bun", path: bunPath });
 		} catch {
 			// bun not installed or no global claudeup
 		}
@@ -68,10 +66,7 @@ async function main(): Promise<void> {
 				timeout: 5000,
 			}).trim();
 			const npmPath = `${npmPrefix}/bin/claudeup`;
-			const stat = await import("node:fs").then((fs) =>
-				fs.existsSync(npmPath),
-			);
-			if (stat) installations.push({ manager: "npm", path: npmPath });
+			if (existsSync(npmPath)) installations.push({ manager: "npm", path: npmPath });
 		} catch {
 			// npm not installed or no global claudeup
 		}
@@ -82,8 +77,6 @@ async function main(): Promise<void> {
 				encoding: "utf-8",
 				timeout: 5000,
 			}).trim();
-			const active = installations.find((i) => i.path === activePath);
-			const shadowed = installations.filter((i) => i.path !== activePath);
 
 			console.log(
 				`⚠ claudeup is installed via multiple package managers:\n`,
@@ -125,61 +118,6 @@ async function main(): Promise<void> {
 		return;
 	}
 
-	// Handle "claudeup doctor" - convention audit command
-	if (args[0] === "doctor") {
-		const fix = args.includes("--fix");
-		const json = args.includes("--json");
-		const { runDoctor, fixDoctorIssues } = await import("claudeup-core");
-
-		const result = await runDoctor((level, msg) => {
-			if (!json) console.log(`[${level}] ${msg}`);
-		});
-
-		if (fix) {
-			const fixResult = await fixDoctorIssues(result, (level, msg) => {
-				if (!json) console.log(`[${level}] ${msg}`);
-			});
-			if (json) {
-				console.log(JSON.stringify({ ...result, fixes: fixResult }));
-			} else {
-				console.log(
-					`\nFixed ${fixResult.fixed} issue(s), ${fixResult.failed} failed.`,
-				);
-			}
-		} else {
-			if (json) {
-				console.log(JSON.stringify(result));
-			} else {
-				// Pretty-print results
-				for (const project of result.projects) {
-					console.log(`\n${project.projectPath}`);
-					for (const check of project.checks) {
-						const icon =
-							check.status === "pass"
-								? "PASS"
-								: check.status === "warn"
-									? "WARN"
-									: "FAIL";
-						console.log(`  ${icon}  ${check.message}`);
-					}
-				}
-
-				const s = result.summary;
-				console.log(
-					`\nSummary: ${s.totalProjects} project(s), ${s.totalChecks} check(s)`,
-				);
-				console.log(
-					`  ${s.passed} passed, ${s.warnings} warning(s), ${s.failures} failure(s)`,
-				);
-				if (s.fixable > 0) {
-					console.log(`  ${s.fixable} fixable with --fix`);
-				}
-			}
-		}
-		process.exit(result.summary.failures > 0 ? 1 : 0);
-		return;
-	}
-
 	// Handle --version flag - show version and check for updates
 	if (args.includes("--version") || args.includes("-v")) {
 		console.log(`claudeup v${VERSION}`);
@@ -200,7 +138,6 @@ TUI tool for managing Claude Code plugins, MCPs, and configuration.
 Usage: claudeup [options]
        claudeup claude [args...]  Run claude with auto-update prerunner
        claudeup update            Update claudeup to latest version
-       claudeup doctor [--fix]    Audit plugin conventions across projects
 
 Options:
   -v, --version  Show version and check for updates
@@ -211,9 +148,6 @@ Commands:
   claude [args...]   Check for plugin updates (1h cache), then run claude
     -f, --force      Force update check (bypass 1h cache)
   update             Update claudeup itself to latest version
-  doctor [--fix]     Audit plugin conventions (gitignore, CLAUDE.md)
-    --fix            Auto-repair fixable issues
-    --json           Machine-readable JSON output
 
 Navigation:
   [1] Plugins    Manage plugin marketplaces and installed plugins
