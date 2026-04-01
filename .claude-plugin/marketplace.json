@@ -358,8 +358,8 @@
     {
       "name": "kanban",
       "source": "./plugins/kanban",
-      "description": "Kanban board view for task management. v1.0.0: Visual board with 5 columns, task dependencies (cycle-safe), priority indicators, WIP limits. Shares tasks.json with GTD plugin \u2014 works standalone or alongside GTD.",
-      "version": "1.0.0",
+      "description": "Kanban board view for task management. v1.2.0: Word-wrapped titles, full-width boards, even column distribution. Visual board with 5 columns, task dependencies (cycle-safe), priority indicators, WIP limits. Shares tasks.json with GTD plugin \u2014 works standalone or alongside GTD.",
+      "version": "1.2.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",

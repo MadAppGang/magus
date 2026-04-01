@@ -120,6 +120,26 @@ const COLUMN_DEFS: ColumnDef[] = [
 
 const MIN_COL_WIDTH = 22;
 
+/** Word-wrap plain text to fit within maxWidth, returning an array of lines. */
+function wordWrap(text: string, maxWidth: number): string[] {
+  if (text.length <= maxWidth) return [text];
+  const words = text.split(/\s+/);
+  const lines: string[] = [];
+  let current = "";
+  for (const word of words) {
+    if (current.length === 0) {
+      current = word;
+    } else if (current.length + 1 + word.length <= maxWidth) {
+      current += " " + word;
+    } else {
+      lines.push(current);
+      current = word;
+    }
+  }
+  if (current.length > 0) lines.push(current);
+  return lines;
+}
+
 /** Resolve effective terminal width (respects --width override via COLUMNS env). */
 function getTermWidth(): number {
   return termW();
@@ -244,9 +264,13 @@ function renderSimpleGroup(
     const lines: string[] = [];
     for (let i = 0; i < tasks.length; i++) {
       const t = tasks[i];
-      // Line 1: #id title
+      // Line 1: #id
       const idStr = fg(S.cyan, `#${t.id}`);
-      lines.push(`${idStr} ${t.title}`);
+      lines.push(idStr);
+      // Title: word-wrapped to fill column width
+      for (const wl of wordWrap(t.title, colInner)) {
+        lines.push(wl);
+      }
       // Line 2: metadata in gray
       const meta: string[] = [];
       if (t.priority) meta.push(`P:${t.priority}`);
@@ -299,8 +323,8 @@ function renderRegularGroup(
   const totalCardWidth = terminalWidth - (n - 1); // space for n-1 gaps between columns
   const baseW = Math.floor(totalCardWidth / n);
   const extra = totalCardWidth - baseW * n;
-  // colWidths[i] = baseW, except the last column gets the extra pixels
-  const colWidths = group.map((_, i) => i === n - 1 ? baseW + extra : baseW);
+  // Distribute remainder pixels across the first `extra` columns (+1 each)
+  const colWidths = group.map((_, i) => baseW + (i < extra ? 1 : 0));
   const out: string[] = [];
 
   // ── Column headers (full-width pills) ──
@@ -343,9 +367,14 @@ function renderRegularGroup(
 function buildRegularCard(t: BoardTask, colWidth: number): string[] {
   const contentLines: string[] = [];
 
-  // Title: #id bold title
+  // Line 1: #id
   const idStr = fg(S.gray, `#${t.id}`);
-  contentLines.push(`${idStr} ${S.bold}${t.title}${S.reset}`);
+  contentLines.push(idStr);
+  // Title: word-wrapped to fill card width (multiple lines if needed)
+  const inner = colWidth - 4;
+  for (const line of wordWrap(t.title, inner)) {
+    contentLines.push(`${S.bold}${line}${S.reset}`);
+  }
 
   // Priority indicator
   if (t.priority) {
@@ -491,18 +520,22 @@ function renderModernGroup(
   terminalWidth: number
 ): string {
   const n = group.length;
-  // Each column gets colWidth visible chars; one space between columns (matching printVariant3)
-  const colWidth = Math.floor((terminalWidth - 2 - (n - 1)) / n);
+  // Distribute terminal width evenly; remainder pixels go to the first columns (+1 each)
+  const totalCardWidth = terminalWidth - 2 - (n - 1); // 2 for left margin, n-1 gaps
+  const baseW = Math.floor(totalCardWidth / n);
+  const extra = totalCardWidth - baseW * n;
+  const colWidths = group.map((_, i) => baseW + (i < extra ? 1 : 0));
   const R = S.reset;
   const out: string[] = [];
 
   // ── Column header capsules via cardBox() ──
   // Build 2 content lines per column with themed background, then wrap in cardBox().
-  const capsuleCols = group.map(col => {
+  const capsuleCols = group.map((col, ci) => {
+    const cw = colWidths[ci];
     const theme = MODERN.colTheme[col.key] ?? MODERN.colTheme["backlog"];
     const tasks = colTaskMap.get(col.key) ?? [];
     const cnt = tasks.length;
-    const inner = colWidth - 4; // cardBox inner width
+    const inner = cw - 4; // cardBox inner width
 
     const label = MODERN.colLabel[col.key] ?? col.label;
     // Line 1: bold label + count, centered
@@ -520,8 +553,8 @@ function renderModernGroup(
       col.key === "review"      ? `${S.italic}${S.magenta} awaiting...` :
       "";
 
-    const capsuleLines = cardBox([hdrLine, hintLine], colWidth, theme.hdrBg, theme.hdrBg);
-    return { lines: capsuleLines, width: colWidth };
+    const capsuleLines = cardBox([hdrLine, hintLine], cw, theme.hdrBg, theme.hdrBg);
+    return { lines: capsuleLines, width: cw };
   });
 
   const capsuleRows = columnsLayout(capsuleCols, 1);
@@ -529,10 +562,10 @@ function renderModernGroup(
   out.push("");
 
   // ── Task cards side-by-side via columnsLayout() ──
-  const colCardLines: string[][] = group.map(col => {
+  const colCardLines: string[][] = group.map((col, ci) => {
     const tasks = colTaskMap.get(col.key) ?? [];
-    if (tasks.length === 0) return modernEmptyCard(colWidth);
-    return tasks.flatMap(t => buildModernCard(t, col, colWidth));
+    if (tasks.length === 0) return modernEmptyCard(colWidths[ci]);
+    return tasks.flatMap(t => buildModernCard(t, col, colWidths[ci]));
   });
 
   const maxLines = Math.max(...colCardLines.map(c => c.length));
@@ -541,7 +574,7 @@ function renderModernGroup(
     // Pad shorter columns with blank lines to maxLines
     const padded = [...lines];
     while (padded.length < maxLines) padded.push("");
-    return { lines: padded, width: colWidth };
+    return { lines: padded, width: colWidths[ci] };
   });
 
   const cardRows = columnsLayout(cardCols, 1);
@@ -562,10 +595,13 @@ function buildModernCard(t: BoardTask, col: ColumnDef, colWidth: number): string
   const R = S.reset;
   const content: string[] = [];
 
-  // Line 1: colored dot + #id + bold white title (full width for name)
+  // Line 1: colored dot + #id
   const idStr    = `${S.gray}#${String(t.id).padStart(2, "0")}${R}`;
-  const titleRaw = truncate(t.title, inner - 7); // dot(2) + id(4) + space(1)
-  content.push(` ${theme.dot}●${R} ${idStr} ${S.bold}${S.white}${titleRaw}${R}`);
+  content.push(` ${theme.dot}●${R} ${idStr}`);
+  // Title: word-wrapped across multiple lines for full readability
+  for (const line of wordWrap(t.title, inner - 1)) {
+    content.push(` ${S.bold}${S.white}${line}${R}`);
+  }
 
   // Line 2: priority pill + progress bar on same line (compact)
   const p = t.priority ? MODERN.priorityPill[t.priority] : null;
@@ -709,12 +745,20 @@ function cmdShow(store: TaskStore, taskId: string): void {
     process.exit(1);
   }
 
+  const terminalWidth = getTermWidth();
+  const boxWidth = Math.min(terminalWidth, 120);
+  const inner = boxWidth - 4; // "│ " + content + " │"
+
   const lines: string[] = [];
 
-  // Title line
-  const prio = task.priority ? priorityIndicator(task.priority) : "";
-  const prioStr = prio ? `  ${prio}` : "";
-  lines.push(`${fg(S.bold + S.white, task.subject)}${prioStr}`);
+  // Title — word-wrapped for full readability
+  for (const tl of wordWrap(task.subject, inner)) {
+    lines.push(fg(S.bold + S.white, tl));
+  }
+  // Priority on its own line
+  if (task.priority) {
+    lines.push(`  ${priorityIndicator(task.priority)}`);
+  }
   lines.push("");
 
   // Status
@@ -782,11 +826,13 @@ function cmdShow(store: TaskStore, taskId: string): void {
     }
   }
 
-  // Notes
+  // Notes — word-wrapped
   if (task.notes && task.notes.trim()) {
     lines.push("");
     lines.push(fg(S.bold + S.white, "Notes"));
-    lines.push(fg(S.gray, task.notes.trim()));
+    for (const nl of wordWrap(task.notes.trim(), inner)) {
+      lines.push(fg(S.gray, nl));
+    }
   }
 
   // Timestamps
@@ -799,6 +845,7 @@ function cmdShow(store: TaskStore, taskId: string): void {
     titleBg: colDef.titleBg,
     titleFg: colDef.titleFg,
     lines,
+    maxWidth: boxWidth,
   }));
 }
 
@@ -807,8 +854,17 @@ function cmdMoved(taskId: string, status: string, title: string): void {
   const bg = colDef?.titleBg ?? S.bgGray;
   const fgColor = colDef?.titleFg ?? S.white;
   const label = status.toUpperCase();
-  const content = `${pill(`→ ${label}`, "", bg, fgColor)} ${fg(S.white, `"${title}"`)}  ${fg(S.gray, `#${taskId}`)}`;
-  print(renderInlineBox(content, S.cyan));
+  // Use renderBox with word-wrapped title for long task names
+  const terminalWidth = getTermWidth();
+  const boxWidth = Math.min(terminalWidth, 120);
+  const inner = boxWidth - 4;
+  const titleLines = wordWrap(title, inner - 4); // leave room for quotes + indent
+  const lines: string[] = [];
+  lines.push(`${pill(`→ ${label}`, "", bg, fgColor)}  ${fg(S.gray, `#${taskId}`)}`);
+  for (const tl of titleLines) {
+    lines.push(fg(S.white, `  "${tl}"`));
+  }
+  print(renderBox({ title: "MOVED", titleBg: S.bgCyan, titleFg: S.black, lines, maxWidth: boxWidth }));
 }
 
 function cmdBlocked(taskId: string, blockerId: string): void {
@@ -822,8 +878,16 @@ function cmdUnblocked(taskId: string): void {
 }
 
 function cmdAdded(taskId: string, title: string): void {
-  const content = `${pill("+ ADDED", "", S.bgBlue)} ${fg(S.bold + S.white, `"${title}"`)}  ${fg(S.gray, `#${taskId}`)}`;
-  print(renderInlineBox(content, S.blue));
+  const terminalWidth = getTermWidth();
+  const boxWidth = Math.min(terminalWidth, 120);
+  const inner = boxWidth - 4;
+  const titleLines = wordWrap(title, inner - 4);
+  const lines: string[] = [];
+  lines.push(`${pill("+ ADDED", "", S.bgBlue)}  ${fg(S.gray, `#${taskId}`)}`);
+  for (const tl of titleLines) {
+    lines.push(fg(S.bold + S.white, `  "${tl}"`));
+  }
+  print(renderBox({ title: "ADDED", titleBg: S.bgBlue, titleFg: S.white, lines, maxWidth: boxWidth }));
 }
 
 // ── CLI Entry Point ──────────────────────────────────────────────────────────
