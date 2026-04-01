@@ -358,15 +358,17 @@ export function SkillsScreen() {
       return;
     }
 
-    // Action keys work regardless of search mode when a skill is selected
-    if (event.name === "u" && selectedSkill) {
-      if (selectedSkill.installed && selectedSkill.installedScope === "user") handleUninstall();
-      else handleInstall("user");
-      return;
-    } else if (event.name === "p" && selectedSkill) {
-      if (selectedSkill.installed && selectedSkill.installedScope === "project") handleUninstall();
-      else handleInstall("project");
-      return;
+    // Action keys only when NOT actively typing in search
+    if (!isSearchActive) {
+      if (event.name === "u" && selectedSkill) {
+        if (selectedSkill.installed && selectedSkill.installedScope === "user") handleUninstall();
+        else handleInstall("user");
+        return;
+      } else if (event.name === "p" && selectedSkill) {
+        if (selectedSkill.installed && selectedSkill.installedScope === "project") handleUninstall();
+        else handleInstall("project");
+        return;
+      }
     }
 
     if (isSearchActive) {
