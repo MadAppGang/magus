@@ -19,11 +19,11 @@
 |--------|---------|---------|
 | **Code Analysis** | v5.1.0 | Codebase investigation with mnemex MCP, 4 skills |
 | **Multimodel** | v3.1.0 | Multi-model collaboration and orchestration |
-| **Agent Development** | v1.6.0 | Create Claude Code agents and plugins |
+| **Agent Development** | v1.6.1 | Create Claude Code agents and plugins |
 | **SEO** | v1.7.0 | SEO analysis and optimization with AUTO GATEs |
 | **Video Editing** | v1.1.1 | FFmpeg, Whisper, Final Cut Pro integration |
 | **Nanobanana** | v2.4.0 | AI image generation with Gemini 3 Pro Image |
-| **Conductor** | v2.1.1 | Context-Driven Development with TDD and Git Notes |
+| **Conductor** | v2.1.3 | Context-Driven Development with TDD and Git Notes |
 | **Dev** | v2.7.0 | Universal dev assistant, 12 commands via progressive disclosure, 46 skills |
 | **Designer** | v0.3.0 | UI design validation with pixel-diff comparison, 6 skills |
 | **Browser Use** | v1.0.0 | Full-platform browser automation, 18 MCP tools, 5 skills |
@@ -89,6 +89,7 @@ claude-code/
 - `shared/model-aliases.json` — Centralized model aliases, roles, teams, knownModels (**synced from Firebase**)
 - `RELEASE_PROCESS.md` / `skills/release/SKILL.md` — Release process docs
 - `autotest/framework/runner-base.sh` — E2E test runner entry point
+- `ai-docs/claudeup-native-plugin-management-issues-and-fixes.md` — Claudeup & Claude Code native plugin management: regressions, decision log, dual-write fixes, hook path issues. **Read before working on claudeup or plugin management.**
 
 ## E2E Testing
 
@@ -210,6 +211,28 @@ The workflow `.github/workflows/claudeup-release.yml` triggers on `tools/claudeu
 
 ---
 
+## Claudeup & Plugin Management
+
+**Knowledge base:** `ai-docs/claudeup-native-plugin-management-issues-and-fixes.md` — **read before any claudeup or plugin management work.**
+
+### Core Rules
+- Never reimplement what `claude plugin` CLI already does. Delegate to CLI commands.
+- Claudeup must auto-detect and auto-fix broken state (missing directories, stale versions, corrupted registry) with zero human interaction.
+- Never write directly to `installed_plugins.json`, `known_marketplaces.json`, `enabledPlugins`, or the plugin cache. These are Claude Code-owned.
+- Claudeup legitimately owns: update-check TTL, env-var collection, TUI, prerunner orchestration, `installedPluginVersions` gap-fill, profile management.
+
+### Diagnosing Plugin/Hook Failures
+When hooks fail, plugins don't load, or magus marketplace is missing:
+1. Check `~/.claude/plugins/marketplaces/magus/` exists (if missing: `claude plugin marketplace update magus`). **Known issue: marketplace clones can disappear (cause under investigation).**
+2. Check `~/.claude/plugins/known_marketplaces.json` has a `magus` entry (this is the official registry, NOT `extraKnownMarketplaces`)
+3. Check `~/.claude/plugins/installed_plugins.json` has correct `installPath` entries pointing to cache
+4. Check `~/.claude/plugins/cache/magus/{plugin}/{version}/` directories exist (cache survives upgrades)
+5. Check both user (`~/.claude/settings.json`) and project (`.claude/settings.json`) have matching `enabledPlugins` and `installedPluginVersions`
+6. Known Claude Code bug: hook executor uses marketplace path instead of cache path for `CLAUDE_PLUGIN_ROOT` — contradicts official docs which say it should reference the "installation directory" (cache)
+
+### Plugins With Hooks (7 plugins, all use `${CLAUDE_PLUGIN_ROOT}`)
+`dev` (Stop, SessionStart), `terminal` (PreToolUse:Bash), `code-analysis` (PreToolUse:Bash), `multimodel` (PreToolUse:Task,Bash), `gtd` (SessionStart, PreToolUse:TaskCreate, PostToolUse:TaskCreate/TaskUpdate, Stop), `seo` (SessionStart), `stats` (PreToolUse, PostToolUse, Stop, SessionStart)
+
 ## Learned Preferences
 
 ### Model Selection & Routing
@@ -233,4 +256,4 @@ The workflow `.github/workflows/claudeup-release.yml` triggers on `tools/claudeu
 ---
 
 **Maintained by:** Jack Rudenko @ MadAppGang
-**Last Updated:** March 31, 2026
+**Last Updated:** April 1, 2026

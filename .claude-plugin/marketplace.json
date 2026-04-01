@@ -71,8 +71,8 @@
     {
       "name": "agentdev",
       "source": "./plugins/agentdev",
-      "description": "Create, implement, and review Claude Code agents and commands with multi-model validation, LLM performance tracking, and session-based artifact isolation. v1.5.5: Command and documentation fixes.",
-      "version": "1.6.0",
+      "description": "Create, implement, and review Claude Code agents and commands with multi-model validation, LLM performance tracking, and session-based artifact isolation. v1.6.1: Fix manifest schema — agents paths, hooks format.",
+      "version": "1.6.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -168,8 +168,8 @@
     {
       "name": "conductor",
       "source": "./plugins/conductor",
-      "description": "Context-Driven Development workflow inspired by Gemini Conductor. v2.1.1: Marketplace rename to magus. Full-featured implementation with TDD workflow, Phase Completion Protocol, Git Notes audit trail, and comprehensive styleguides.",
-      "version": "2.1.2",
+      "description": "Context-Driven Development workflow inspired by Gemini Conductor. v2.1.3: Fix manifest schema — commands paths, add skills registration.",
+      "version": "2.1.3",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",

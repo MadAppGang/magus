@@ -1,6 +1,6 @@
 {
   "name": "agentdev",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "description": "Create, implement, and review Claude Code agents and commands with multi-model validation, LLM performance tracking, and session-based artifact isolation. Full-cycle development workflow with design, implementation, and quality review agents. Session isolation prevents file collisions across workflows.",
   "author": {
     "name": "MadAppGang",
@@ -23,9 +23,9 @@
     "debug-mode"
   ],
   "agents": [
-    "architect",
-    "developer",
-    "reviewer"
+    "./agents/architect.md",
+    "./agents/developer.md",
+    "./agents/reviewer.md"
   ],
   "commands": [
     "./commands/develop.md",
@@ -35,20 +35,7 @@
     "./commands/debug-status.md"
   ],
   "skills": "./skills/",
-  "hooks": {
-    "PreToolUse": {
-      "handler": "hooks/debug-capture.ts",
-      "entry": "handlePreToolUse",
-      "enabled": true,
-      "description": "Captures tool invocations when debug mode is enabled (AGENTDEV_DEBUG_FILE set)"
-    },
-    "PostToolUse": {
-      "handler": "hooks/debug-capture.ts",
-      "entry": "handlePostToolUse",
-      "enabled": true,
-      "description": "Captures tool results when debug mode is enabled, correlates with invocations"
-    }
-  },
+  "hooks": "./hooks/hooks.json",
   "compatibility": {
     "claudeCode": ">=0.1.0"
   }
