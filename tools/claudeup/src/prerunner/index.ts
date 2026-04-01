@@ -10,6 +10,7 @@ import { runClaude } from "../services/claude-runner.js";
 import {
 	recoverMarketplaceSettings,
 	migrateMarketplaceRename,
+	cleanupExtraKnownMarketplaces,
 	getGlobalEnabledPlugins,
 	getEnabledPlugins,
 	getLocalEnabledPlugins,
@@ -232,6 +233,19 @@ export async function prerunClaude(
 					`✓ Auto-added marketplace(s): ${addedMarketplaces.join(", ")}`,
 				);
 			}
+		}
+
+		// STEP 0.55: Clean up extraKnownMarketplaces entries that are now in known_marketplaces.json
+		// extraKnownMarketplaces was the old install mechanism; the official way is known_marketplaces.json
+		try {
+			const cleaned = await cleanupExtraKnownMarketplaces();
+			if (cleaned.length > 0) {
+				console.log(
+					`✓ Cleaned up legacy extraKnownMarketplaces: ${cleaned.join(", ")}`,
+				);
+			}
+		} catch {
+			// Non-fatal: cleanup is best-effort
 		}
 
 		// STEP 0.6: Ensure tmux-claude-continuity hooks are configured

@@ -415,12 +415,33 @@ export async function getEnabledMcpServers(
 	return enabled;
 }
 
-// Get all configured marketplaces
+// Get all configured marketplaces — merges known_marketplaces.json (primary) with extraKnownMarketplaces (legacy fallback)
 export async function getConfiguredMarketplaces(
 	projectPath?: string,
 ): Promise<Record<string, MarketplaceSource>> {
+	const result: Record<string, MarketplaceSource> = {};
+
+	// Primary: known_marketplaces.json (official Claude Code registry)
+	const known = await readKnownMarketplaces();
+	for (const [name, entry] of Object.entries(known)) {
+		if (entry.source?.repo) {
+			result[name] = {
+				source: { source: "github" as const, repo: entry.source.repo },
+			};
+		}
+	}
+
+	// Fallback: extraKnownMarketplaces (legacy — only adds entries not already in known)
 	const settings = await readSettings(projectPath);
-	return settings.extraKnownMarketplaces || {};
+	for (const [name, config] of Object.entries(
+		settings.extraKnownMarketplaces || {},
+	)) {
+		if (!result[name]) {
+			result[name] = config;
+		}
+	}
+
+	return result;
 }
 
 // Global marketplace management - READ ONLY
@@ -429,8 +450,29 @@ export async function getConfiguredMarketplaces(
 export async function getGlobalConfiguredMarketplaces(): Promise<
 	Record<string, MarketplaceSource>
 > {
+	const result: Record<string, MarketplaceSource> = {};
+
+	// Primary: known_marketplaces.json
+	const known = await readKnownMarketplaces();
+	for (const [name, entry] of Object.entries(known)) {
+		if (entry.source?.repo) {
+			result[name] = {
+				source: { source: "github" as const, repo: entry.source.repo },
+			};
+		}
+	}
+
+	// Fallback: extraKnownMarketplaces
 	const settings = await readGlobalSettings();
-	return settings.extraKnownMarketplaces || {};
+	for (const [name, config] of Object.entries(
+		settings.extraKnownMarketplaces || {},
+	)) {
+		if (!result[name]) {
+			result[name] = config;
+		}
+	}
+
+	return result;
 }
 
 // Global plugin management
@@ -494,17 +536,35 @@ export async function removeGlobalInstalledPluginVersion(
 // Shared logic for discovering marketplaces from settings
 function discoverMarketplacesFromSettings(
 	settings: ClaudeSettings,
+	knownMarketplaces?: KnownMarketplaces,
 ): DiscoveredMarketplace[] {
 	const discovered = new Map<string, DiscoveredMarketplace>();
 
-	// 1. From extraKnownMarketplaces (explicitly configured)
+	// 1. From known_marketplaces.json (official Claude Code registry — primary source)
+	if (knownMarketplaces) {
+		for (const [name, entry] of Object.entries(knownMarketplaces)) {
+			if (entry.source?.repo) {
+				discovered.set(name, {
+					name,
+					source: "configured",
+					config: {
+						source: { source: "github" as const, repo: entry.source.repo },
+					},
+				});
+			}
+		}
+	}
+
+	// 2. From extraKnownMarketplaces (legacy/team fallback — only adds entries not already in known_marketplaces.json)
 	for (const [name, config] of Object.entries(
 		settings.extraKnownMarketplaces || {},
 	)) {
-		discovered.set(name, { name, source: "configured", config });
+		if (!discovered.has(name)) {
+			discovered.set(name, { name, source: "configured", config });
+		}
 	}
 
-	// 2. From enabledPlugins (infer marketplace from plugin ID format: pluginName@marketplaceName)
+	// 3. From enabledPlugins (infer marketplace from plugin ID format: pluginName@marketplaceName)
 	for (const pluginId of Object.keys(settings.enabledPlugins || {})) {
 		const parsed = parsePluginId(pluginId);
 		if (parsed && !discovered.has(parsed.marketplace)) {
@@ -515,7 +575,7 @@ function discoverMarketplacesFromSettings(
 		}
 	}
 
-	// 3. From installedPluginVersions (same format)
+	// 4. From installedPluginVersions (same format)
 	for (const pluginId of Object.keys(settings.installedPluginVersions || {})) {
 		const parsed = parsePluginId(pluginId);
 		if (parsed && !discovered.has(parsed.marketplace)) {
@@ -535,7 +595,8 @@ export async function discoverAllMarketplaces(
 ): Promise<DiscoveredMarketplace[]> {
 	try {
 		const settings = await readSettings(projectPath);
-		return discoverMarketplacesFromSettings(settings);
+		const known = await readKnownMarketplaces();
+		return discoverMarketplacesFromSettings(settings, known);
 	} catch (error) {
 		// Graceful degradation - return empty array instead of crashing
 		console.error(
@@ -552,7 +613,8 @@ export async function discoverAllGlobalMarketplaces(): Promise<
 > {
 	try {
 		const settings = await readGlobalSettings();
-		return discoverMarketplacesFromSettings(settings);
+		const known = await readKnownMarketplaces();
+		return discoverMarketplacesFromSettings(settings, known);
 	} catch (error) {
 		// Graceful degradation - return empty array instead of crashing
 		console.error(
@@ -1017,6 +1079,84 @@ export async function recoverMarketplaceSettings(): Promise<MarketplaceRecoveryR
 	}
 
 	return result;
+}
+
+/**
+ * Clean up extraKnownMarketplaces entries that are now properly registered
+ * in known_marketplaces.json (the official Claude Code marketplace registry).
+ *
+ * extraKnownMarketplaces was the old claudeup install mechanism. The official
+ * way is `claude plugin marketplace add` which writes to known_marketplaces.json.
+ * extraKnownMarketplaces should only be used in project settings for team
+ * marketplace suggestions — not in user settings as a primary install path.
+ *
+ * This function removes magus-related entries from extraKnownMarketplaces in
+ * both user and project settings when they're already in known_marketplaces.json.
+ */
+export async function cleanupExtraKnownMarketplaces(
+	projectPath?: string,
+): Promise<string[]> {
+	const known = await readKnownMarketplaces();
+	const cleaned: string[] = [];
+
+	// Clean user-level settings
+	try {
+		const globalSettings = await readGlobalSettings();
+		if (globalSettings.extraKnownMarketplaces) {
+			let changed = false;
+			for (const name of Object.keys(globalSettings.extraKnownMarketplaces)) {
+				if (known[name]) {
+					delete globalSettings.extraKnownMarketplaces[name];
+					cleaned.push(`user:${name}`);
+					changed = true;
+				}
+			}
+			// Remove the field entirely if empty
+			if (
+				changed &&
+				Object.keys(globalSettings.extraKnownMarketplaces).length === 0
+			) {
+				delete globalSettings.extraKnownMarketplaces;
+			}
+			if (changed) {
+				await writeGlobalSettings(globalSettings);
+			}
+		}
+	} catch {
+		// Non-fatal: user settings cleanup is best-effort
+	}
+
+	// Clean project-level settings
+	if (projectPath) {
+		try {
+			const projectSettings = await readSettings(projectPath);
+			if (projectSettings.extraKnownMarketplaces) {
+				let changed = false;
+				for (const name of Object.keys(
+					projectSettings.extraKnownMarketplaces,
+				)) {
+					if (known[name]) {
+						delete projectSettings.extraKnownMarketplaces[name];
+						cleaned.push(`project:${name}`);
+						changed = true;
+					}
+				}
+				if (
+					changed &&
+					Object.keys(projectSettings.extraKnownMarketplaces).length === 0
+				) {
+					delete projectSettings.extraKnownMarketplaces;
+				}
+				if (changed) {
+					await writeSettings(projectSettings, projectPath);
+				}
+			}
+		} catch {
+			// Non-fatal: project settings cleanup is best-effort
+		}
+	}
+
+	return cleaned;
 }
 
 /**
