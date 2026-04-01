@@ -799,7 +799,7 @@ export function PluginsScreen() {
 	const plugins: PluginInfo[] =
 		pluginsState.plugins.status === "success" ? pluginsState.plugins.data : [];
 	const installedCount = plugins.filter((p) => p.enabled).length;
-	const updateCount = plugins.filter((p) => p.hasUpdate).length;
+	const updateCount = plugins.filter((p) => p.hasUpdate && (p.userScope?.enabled || p.projectScope?.enabled || p.localScope?.enabled)).length;
 	const subtitle = `${scopeLabel} │ ${installedCount} installed${updateCount > 0 ? ` │ ${updateCount} updates` : ""}`;
 	const searchPlaceholder = `${scopeLabel} │ ${installedCount} installed${updateCount > 0 ? ` │ ${updateCount} ⬆` : ""} │ / to search`;
 

@@ -121,26 +121,27 @@ export function SkillsScreen() {
     project: Set<string>;
   }>({ user: new Set(), project: new Set() });
 
-  useEffect(() => {
-    async function scanDisk() {
-      const user = new Set<string>();
-      const project = new Set<string>();
-      const userDir = path.join(os.homedir(), ".claude", "skills");
-      const projDir = path.join(state.projectPath || process.cwd(), ".claude", "skills");
-      for (const [dir, set] of [[userDir, user], [projDir, project]] as const) {
-        try {
-          if (await fs.pathExists(dir)) {
-            const entries = await fs.readdir(dir);
-            for (const e of entries) {
-              if (await fs.pathExists(path.join(dir, e, "SKILL.md"))) set.add(e);
-            }
+  const scanDisk = useCallback(async () => {
+    const user = new Set<string>();
+    const project = new Set<string>();
+    const userDir = path.join(os.homedir(), ".claude", "skills");
+    const projDir = path.join(state.projectPath || process.cwd(), ".claude", "skills");
+    for (const [dir, set] of [[userDir, user], [projDir, project]] as const) {
+      try {
+        if (await fs.pathExists(dir)) {
+          const entries = await fs.readdir(dir);
+          for (const e of entries) {
+            if (await fs.pathExists(path.join(dir, e, "SKILL.md"))) set.add(e);
           }
-        } catch { /* ignore */ }
-      }
-      setInstalledFromDisk({ user, project });
+        }
+      } catch { /* ignore */ }
     }
+    setInstalledFromDisk({ user, project });
+  }, [state.projectPath]);
+
+  useEffect(() => {
     scanDisk();
-  }, [state.projectPath, state.dataRefreshVersion]);
+  }, [scanDisk, state.dataRefreshVersion]);
 
   // ── Derived data ──────────────────────────────────────────────────────────
 
@@ -174,8 +175,15 @@ export function SkillsScreen() {
         (f) => f.source.repo === staticSkill.source.repo && f.name === staticSkill.name,
       );
       if (!match) return staticSkill;
-      // Merge: prefer fetched data but keep static stars as fallback
-      return { ...staticSkill, ...match, stars: match.stars || staticSkill.stars };
+      // Merge: prefer fetched data for description/stars, but disk scan is
+      // authoritative for installed state (staticSkill reflects current disk)
+      return {
+        ...staticSkill,
+        ...match,
+        installed: staticSkill.installed,
+        installedScope: staticSkill.installedScope,
+        stars: match.stars || staticSkill.stars,
+      };
     });
   }, [staticRecommended, skillsState.skills]);
 
@@ -234,6 +242,15 @@ export function SkillsScreen() {
     ],
   );
 
+  // Auto-correct selection if it lands on a category header (e.g. initial load, reset)
+  useEffect(() => {
+    const item = allItems[skillsState.selectedIndex];
+    if (item && item.kind === "category") {
+      const firstSkill = allItems.findIndex((i) => i.kind === "skill");
+      if (firstSkill >= 0) dispatch({ type: "SKILLS_SELECT", index: firstSkill });
+    }
+  }, [allItems, skillsState.selectedIndex, dispatch]);
+
   const selectedItem = allItems[skillsState.selectedIndex];
   const selectedSkill =
     selectedItem?.kind === "skill" ? selectedItem.skill : undefined;
@@ -266,12 +283,12 @@ export function SkillsScreen() {
     if (!selectedSkill) return;
     try {
       await installSkill(selectedSkill, scope, state.projectPath);
-      await fetchData();
+      await scanDisk(); // Re-scan disk only — no network re-fetch needed
       showStatus(`Installed ${selectedSkill.name} to ${scope}`);
     } catch (error) {
       showStatus(`Failed: ${error}`, "error");
     }
-  }, [selectedSkill, state.projectPath, fetchData, showStatus]);
+  }, [selectedSkill, state.projectPath, scanDisk, showStatus]);
 
   const handleUninstall = useCallback(async () => {
     if (!selectedSkill || !selectedSkill.installed) return;
@@ -280,12 +297,12 @@ export function SkillsScreen() {
 
     try {
       await uninstallSkill(selectedSkill.name, scope, state.projectPath);
-      await fetchData();
+      await scanDisk(); // Re-scan disk only — no network re-fetch needed
       showStatus(`Removed ${selectedSkill.name} from ${scope}`);
     } catch (error) {
       showStatus(`Failed: ${error}`, "error");
     }
-  }, [selectedSkill, state.projectPath, fetchData, showStatus]);
+  }, [selectedSkill, state.projectPath, scanDisk, showStatus]);
 
   // ── Keyboard handling ─────────────────────────────────────────────────────
 
@@ -315,17 +332,18 @@ export function SkillsScreen() {
 
     if (event.name === "up" || event.name === "k") {
       if (isSearchActive) dispatch({ type: "SET_SEARCHING", isSearching: false });
-      const newIndex = Math.max(0, skillsState.selectedIndex - 1);
-      dispatch({ type: "SKILLS_SELECT", index: newIndex });
+      let newIndex = skillsState.selectedIndex - 1;
+      // Skip category headers
+      while (newIndex >= 0 && allItems[newIndex]?.kind === "category") newIndex--;
+      if (newIndex >= 0) dispatch({ type: "SKILLS_SELECT", index: newIndex });
       return;
     }
     if (event.name === "down" || event.name === "j") {
       if (isSearchActive) dispatch({ type: "SET_SEARCHING", isSearching: false });
-      const newIndex = Math.min(
-        Math.max(0, allItems.length - 1),
-        skillsState.selectedIndex + 1,
-      );
-      dispatch({ type: "SKILLS_SELECT", index: newIndex });
+      let newIndex = skillsState.selectedIndex + 1;
+      // Skip category headers
+      while (newIndex < allItems.length && allItems[newIndex]?.kind === "category") newIndex++;
+      if (newIndex < allItems.length) dispatch({ type: "SKILLS_SELECT", index: newIndex });
       return;
     }
 
@@ -337,6 +355,17 @@ export function SkillsScreen() {
       if (selectedSkill && !selectedSkill.installed) {
         handleInstall("project");
       }
+      return;
+    }
+
+    // Action keys work regardless of search mode when a skill is selected
+    if (event.name === "u" && selectedSkill) {
+      if (selectedSkill.installed && selectedSkill.installedScope === "user") handleUninstall();
+      else handleInstall("user");
+      return;
+    } else if (event.name === "p" && selectedSkill) {
+      if (selectedSkill.installed && selectedSkill.installedScope === "project") handleUninstall();
+      else handleInstall("project");
       return;
     }
 
@@ -354,13 +383,7 @@ export function SkillsScreen() {
       return;
     }
 
-    if (event.name === "u" && selectedSkill) {
-      if (selectedSkill.installed && selectedSkill.installedScope === "user") handleUninstall();
-      else handleInstall("user");
-    } else if (event.name === "p" && selectedSkill) {
-      if (selectedSkill.installed && selectedSkill.installedScope === "project") handleUninstall();
-      else handleInstall("project");
-    } else if (event.name === "r") {
+    if (event.name === "r") {
       fetchData();
     } else if (event.name === "o" && selectedSkill) {
       const repo = selectedSkill.source.repo;

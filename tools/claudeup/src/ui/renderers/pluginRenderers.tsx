@@ -113,11 +113,11 @@ function pluginRow(item: PluginPluginItem, isSelected: boolean): React.ReactNode
   const hasLocal = !!plugin.localScope?.enabled;
   const hasAnyScope = hasUser || hasProject || hasLocal;
 
-  // Build version string
+  // Build version string — only show if plugin is installed in at least one scope
   let versionStr = "";
   if (plugin.isOrphaned) {
     versionStr = " deprecated";
-  } else if (plugin.installedVersion && plugin.installedVersion !== "0.0.0") {
+  } else if (hasAnyScope && plugin.installedVersion && plugin.installedVersion !== "0.0.0") {
     versionStr = ` v${plugin.installedVersion}`;
     if (plugin.hasUpdate && plugin.version) {
       versionStr += ` → v${plugin.version}`;
@@ -210,7 +210,7 @@ function pluginDetail(item: PluginPluginItem): React.ReactNode {
 
   const showVersion = plugin.version && plugin.version !== "0.0.0";
   const showInstalledVersion =
-    plugin.installedVersion && plugin.installedVersion !== "0.0.0";
+    isInstalled && plugin.installedVersion && plugin.installedVersion !== "0.0.0";
 
   return (
     <box flexDirection="column">
@@ -220,7 +220,7 @@ function pluginDetail(item: PluginPluginItem): React.ReactNode {
           <strong>
             {" "}
             {plugin.name}
-            {plugin.hasUpdate ? " ⬆" : ""}{" "}
+            {isInstalled && plugin.hasUpdate ? " ⬆" : ""}{" "}
           </strong>
         </text>
       </box>
