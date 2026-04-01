@@ -1,5 +1,6 @@
 packages:
   - 'skills-api'
+  - 'claudeup-core'
 allowBuilds:
   '@firebase/util': true
   protobufjs: true
