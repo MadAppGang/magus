@@ -52,7 +52,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: tools/claudeup-core
-        run: pnpm install
+        run: pnpm install --ignore-workspace --no-frozen-lockfile
 
       - name: Run type check
         working-directory: tools/claudeup-core
@@ -107,7 +107,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: tools/claudeup-core
-        run: pnpm install
+        run: pnpm install --ignore-workspace --no-frozen-lockfile
 
       - name: Verify marketplace sync
         working-directory: tools/claudeup-core
