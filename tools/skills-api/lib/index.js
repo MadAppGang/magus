@@ -87,6 +87,18 @@ const RECOMMENDED_SKILLS = [
     },
 ];
 // ---------------------------------------------------------------------------
+// Recommended skill sets (curated)
+// ---------------------------------------------------------------------------
+const RECOMMENDED_SKILL_SETS = [
+    {
+        name: "Hugging Face",
+        repo: "huggingface/skills",
+        description: "Give your agents the power of the Hugging Face ecosystem",
+        icon: "\u{1F917}",
+        stars: 10000,
+    },
+];
+// ---------------------------------------------------------------------------
 // Environment helpers
 // ---------------------------------------------------------------------------
 function getSkillsMPKey() {
@@ -135,7 +147,7 @@ function mapSkillsMPResult(raw) {
 // ---------------------------------------------------------------------------
 // SkillsMP: keyword search
 // ---------------------------------------------------------------------------
-async function searchSkillsMP(query, page = 1, limit = 20) {
+async function searchSkillsMP(query, page = 1, limit = 20, sortBy = "stars") {
     const apiKey = getSkillsMPKey();
     if (!apiKey)
         return { skills: [], total: 0 };
@@ -143,6 +155,7 @@ async function searchSkillsMP(query, page = 1, limit = 20) {
         q: query,
         page: String(page),
         limit: String(limit),
+        sortBy,
     });
     const res = await fetch(`https://skillsmp.com/api/v1/skills/search?${params}`, {
         headers: {
@@ -255,15 +268,14 @@ exports.skills = (0, https_1.onRequest)({
         }
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 20;
-        const wordCount = q.trim().split(/\s+/).length;
+        const sortBy = req.query.sortBy || "stars";
+        // Always run both keyword and AI search in parallel for best coverage
+        // Keyword search is exact; AI search handles partial/fuzzy matches
         const promises = [
-            searchSkillsMP(q, page, limit),
+            searchSkillsMP(q, page, limit, sortBy),
+            aiSearchSkillsMP(q),
         ];
-        const sources = ["skillsmp"];
-        if (wordCount > 3) {
-            promises.push(aiSearchSkillsMP(q));
-            sources.push("skillsmp-ai");
-        }
+        const sources = ["skillsmp", "skillsmp-ai"];
         const results = await Promise.allSettled(promises);
         const allSkills = [];
         const seen = new Set();
@@ -304,7 +316,7 @@ exports.skills = (0, https_1.onRequest)({
     // GET /recommended
     // -----------------------------------------------------------------------
     if (path === "/recommended") {
-        res.json({ skills: RECOMMENDED_SKILLS });
+        res.json({ skills: RECOMMENDED_SKILLS, skillSets: RECOMMENDED_SKILL_SETS });
         return;
     }
     res.status(404).json({

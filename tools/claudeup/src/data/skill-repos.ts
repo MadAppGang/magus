@@ -1,4 +1,4 @@
-import type { SkillSource } from "../types/index.js";
+import type { SkillSource, StarReliability } from "../types/index.js";
 
 export interface RecommendedSkill {
 	name: string;
@@ -99,6 +99,75 @@ export const RECOMMENDED_SKILLS: RecommendedSkill[] = [
 		stars: 81,
 	},
 ];
+
+// ─── Skill Sets (grouped skills from a single repo) ──────────────────────────
+
+export interface RecommendedSkillSet {
+  name: string;
+  repo: string;
+  description: string;
+  icon: string;
+  stars?: number;
+}
+
+export const RECOMMENDED_SKILL_SETS: RecommendedSkillSet[] = [
+  {
+    name: "Hugging Face",
+    repo: "huggingface/skills",
+    description: "Give your agents the power of the Hugging Face ecosystem",
+    icon: "\u{1F917}",
+    stars: 10000,
+  },
+];
+
+// ─── Star reliability classification ────────────────────────────────────────
+// Stars from these repos don't reflect individual skill quality.
+
+/** Mega-repos: huge projects that happen to include skills. Stars are about the project. */
+const MEGA_REPOS = new Set([
+  "microsoft/vscode",
+  "Significant-Gravitas/AutoGPT",
+  "n8n-io/n8n",
+  "anomalyco/opencode",
+  "shadcn-ui/ui",
+]);
+
+/** Skill-dump repos: large collections where stars reflect quantity, not quality. */
+const SKILL_DUMP_REPOS = new Set([
+  "affaan-m/everything-claude-code",
+  "openclaw/openclaw",
+  "jh941213/my-claude-code-asset",
+  "inferen-sh/skills",
+]);
+
+/**
+ * Classify how reliable a repo's star count is as a quality signal for its skills.
+ * - "dedicated": Stars reflect skill/repo quality (e.g. huggingface/skills, vercel-labs/agent-skills)
+ * - "mega-repo": Stars are about a larger project, not the skills (e.g. microsoft/vscode)
+ * - "skill-dump": Large skill collection — stars reflect popularity/quantity, not individual quality
+ */
+export function classifyStarReliability(repo: string, stars?: number): StarReliability {
+  if (MEGA_REPOS.has(repo)) return "mega-repo";
+  if (SKILL_DUMP_REPOS.has(repo)) return "skill-dump";
+  // Heuristic: unknown repos with >50K stars are likely mega-repos
+  if (stars && stars > 50000) return "mega-repo";
+  return "dedicated";
+}
+
+export const STAR_RELIABILITY_INFO: Record<StarReliability, { label: string; description: string }> = {
+  dedicated: {
+    label: "Skill repo",
+    description: "Stars reflect this skill repository's quality",
+  },
+  "mega-repo": {
+    label: "Project repo",
+    description: "Stars are for the parent project, not the skills. Skill quality may vary.",
+  },
+  "skill-dump": {
+    label: "Skill collection",
+    description: "Large skill collection — stars reflect repo popularity, not individual skill quality.",
+  },
+};
 
 export const DEFAULT_SKILL_REPOS: SkillSource[] = [
 	{

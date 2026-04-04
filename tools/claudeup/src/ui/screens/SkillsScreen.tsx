@@ -6,19 +6,22 @@ import { useApp, useModal } from "../state/AppContext.js";
 import { useDimensions } from "../state/DimensionsContext.js";
 import { useKeyboard } from "../hooks/useKeyboard.js";
 import { ScreenLayout } from "../components/layout/index.js";
-import { ScrollableList } from "../components/ScrollableList.js";
+
 import { EmptyFilterState } from "../components/EmptyFilterState.js";
 import {
   fetchAvailableSkills,
   fetchSkillFrontmatter,
+  fetchSkillSetSkills,
   installSkill,
   uninstallSkill,
 } from "../../services/skills-manager.js";
 import { searchSkills } from "../../services/skillsmp-client.js";
-import { DEFAULT_SKILL_REPOS, RECOMMENDED_SKILLS } from "../../data/skill-repos.js";
-import type { SkillInfo, SkillSource } from "../../types/index.js";
+import { DEFAULT_SKILL_REPOS, RECOMMENDED_SKILLS, RECOMMENDED_SKILL_SETS, classifyStarReliability } from "../../data/skill-repos.js";
+import type { SkillInfo, SkillSetInfo, SkillSource } from "../../types/index.js";
 import { buildSkillBrowserItems } from "../adapters/skillsAdapter.js";
+import type { SkillBrowserItem } from "../adapters/skillsAdapter.js";
 import { renderSkillRow, renderSkillDetail } from "../renderers/skillRenderers.js";
+import { ScrollableList } from "../components/ScrollableList.js";
 
 export function SkillsScreen() {
   const { state, dispatch } = useApp();
@@ -99,6 +102,7 @@ export function SkillsScreen() {
             installedScope: null,
             hasUpdate: false,
             stars: r.stars,
+            starReliability: classifyStarReliability(r.repo || "unknown", r.stars),
           };
         });
         searchCacheRef.current.set(query, mapped);
@@ -143,6 +147,128 @@ export function SkillsScreen() {
     scanDisk();
   }, [scanDisk, state.dataRefreshVersion]);
 
+  // ── Skill Sets state ──────────────────────────────────────────────────────
+
+  const [skillSets, setSkillSets] = useState<SkillSetInfo[]>(() =>
+    RECOMMENDED_SKILL_SETS.map((rs) => ({
+      id: rs.repo,
+      name: rs.name,
+      description: rs.description,
+      repo: rs.repo,
+      icon: rs.icon,
+      stars: rs.stars,
+      skills: [],
+      loaded: false,
+      loading: false,
+    })),
+  );
+  const [expandedSets, setExpandedSets] = useState<Set<string>>(new Set());
+
+  // Re-mark installed status on child skills when disk state changes
+  useEffect(() => {
+    setSkillSets((prev) =>
+      prev.map((set) => {
+        if (!set.loaded) return set;
+        const updatedSkills = set.skills.map((skill) => {
+          const slug = skill.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+          const isUser = installedFromDisk.user.has(slug) || installedFromDisk.user.has(skill.name);
+          const isProj = installedFromDisk.project.has(slug) || installedFromDisk.project.has(skill.name);
+          return {
+            ...skill,
+            installed: isUser || isProj,
+            installedScope: isProj ? "project" as const : isUser ? "user" as const : null,
+          };
+        });
+        return { ...set, skills: updatedSkills };
+      }),
+    );
+  }, [installedFromDisk]);
+
+  const handleToggleSet = useCallback(
+    async (setId: string) => {
+      const isExpanded = expandedSets.has(setId);
+      const newExpanded = new Set(expandedSets);
+      if (isExpanded) {
+        newExpanded.delete(setId);
+      } else {
+        newExpanded.add(setId);
+      }
+      setExpandedSets(newExpanded);
+
+      // Fetch skills on first expand
+      const set = skillSets.find((s) => s.id === setId);
+      if (!isExpanded && set && !set.loaded && !set.loading) {
+        setSkillSets((prev) =>
+          prev.map((s) => (s.id === setId ? { ...s, loading: true } : s)),
+        );
+        try {
+          const skills = await fetchSkillSetSkills(set.repo, state.projectPath);
+          setSkillSets((prev) =>
+            prev.map((s) =>
+              s.id === setId
+                ? { ...s, skills, loaded: true, loading: false, error: undefined }
+                : s,
+            ),
+          );
+        } catch (error) {
+          setSkillSets((prev) =>
+            prev.map((s) =>
+              s.id === setId
+                ? {
+                    ...s,
+                    loading: false,
+                    error: error instanceof Error ? error.message : String(error),
+                  }
+                : s,
+            ),
+          );
+        }
+      }
+    },
+    [expandedSets, skillSets, state.projectPath],
+  );
+
+  // Status bar message (auto-clears)
+  const [statusMsg, setStatusMsg] = useState<{ text: string; tone: "success" | "error" } | null>(null);
+  const statusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showStatus = useCallback((text: string, tone: "success" | "error" = "success") => {
+    setStatusMsg({ text, tone });
+    if (statusTimerRef.current) clearTimeout(statusTimerRef.current);
+    statusTimerRef.current = setTimeout(() => setStatusMsg(null), 3000);
+  }, []);
+
+  const handleInstallAllFromSet = useCallback(
+    async (setId: string, scope: "user" | "project") => {
+      const set = skillSets.find((s) => s.id === setId);
+      if (!set || !set.loaded) return;
+
+      const toInstall = set.skills.filter((s) => !s.installed);
+      if (toInstall.length === 0) {
+        showStatus(`All ${set.name} skills already installed`);
+        return;
+      }
+
+      showStatus(`Installing ${toInstall.length} skills from ${set.name}...`);
+      let installed = 0;
+      let failed = 0;
+      for (const skill of toInstall) {
+        try {
+          await installSkill(skill, scope, state.projectPath);
+          installed++;
+        } catch {
+          failed++;
+        }
+      }
+      await scanDisk();
+      if (failed > 0) {
+        showStatus(`Installed ${installed}/${toInstall.length} (${failed} failed)`, "error");
+      } else {
+        showStatus(`Installed ${installed} skills from ${set.name} to ${scope}`);
+      }
+    },
+    [skillSets, state.projectPath, scanDisk, showStatus],
+  );
+
   // ── Derived data ──────────────────────────────────────────────────────────
 
   const staticRecommended = useMemo((): SkillInfo[] => {
@@ -163,6 +289,7 @@ export function SkillsScreen() {
         hasUpdate: false,
         isRecommended: true,
         stars: r.stars,
+        starReliability: classifyStarReliability(r.repo, r.stars),
       };
     });
   }, [installedFromDisk]);
@@ -231,6 +358,8 @@ export function SkillsScreen() {
         searchResults,
         query: skillsState.searchQuery,
         isSearchLoading,
+        skillSets,
+        expandedSets,
       }),
     [
       mergedRecommended,
@@ -239,6 +368,8 @@ export function SkillsScreen() {
       searchResults,
       skillsState.searchQuery,
       isSearchLoading,
+      skillSets,
+      expandedSets,
     ],
   );
 
@@ -246,38 +377,48 @@ export function SkillsScreen() {
   useEffect(() => {
     const item = allItems[skillsState.selectedIndex];
     if (item && item.kind === "category") {
-      const firstSkill = allItems.findIndex((i) => i.kind === "skill");
-      if (firstSkill >= 0) dispatch({ type: "SKILLS_SELECT", index: firstSkill });
+      const firstSelectable = allItems.findIndex((i) => i.kind === "skill" || i.kind === "skillset");
+      if (firstSelectable >= 0) dispatch({ type: "SKILLS_SELECT", index: firstSelectable });
     }
   }, [allItems, skillsState.selectedIndex, dispatch]);
 
-  const selectedItem = allItems[skillsState.selectedIndex];
+  const selectedItem: SkillBrowserItem | undefined = allItems[skillsState.selectedIndex];
   const selectedSkill =
     selectedItem?.kind === "skill" ? selectedItem.skill : undefined;
+  const selectedSet =
+    selectedItem?.kind === "skillset" ? selectedItem.skillSet : undefined;
 
   // ── Lazy-load frontmatter for selected skill ───────────────────────────────
+
+  // Check if selected skill belongs to a skill set (lives in local state, not reducer)
+  const isSkillSetChild = selectedSkill
+    ? skillSets.some((s) => s.loaded && s.skills.some((sk) => sk.id === selectedSkill.id))
+    : false;
 
   useEffect(() => {
     if (!selectedSkill || selectedSkill.frontmatter) return;
     fetchSkillFrontmatter(selectedSkill).then((fm) => {
-      dispatch({
-        type: "SKILLS_UPDATE_ITEM",
-        name: selectedSkill.name,
-        updates: { frontmatter: fm },
-      });
+      if (isSkillSetChild) {
+        // Update the local skillSets state
+        setSkillSets((prev) =>
+          prev.map((set) => ({
+            ...set,
+            skills: set.skills.map((sk) =>
+              sk.id === selectedSkill.id ? { ...sk, frontmatter: fm } : sk,
+            ),
+          })),
+        );
+      } else {
+        dispatch({
+          type: "SKILLS_UPDATE_ITEM",
+          name: selectedSkill.name,
+          updates: { frontmatter: fm },
+        });
+      }
     }).catch(() => {});
-  }, [selectedSkill?.id, dispatch]);
+  }, [selectedSkill?.id, isSkillSetChild, dispatch]);
 
   // ── Action handlers ───────────────────────────────────────────────────────
-
-  // Status bar message (auto-clears)
-  const [statusMsg, setStatusMsg] = useState<{ text: string; tone: "success" | "error" } | null>(null);
-  const statusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const showStatus = useCallback((text: string, tone: "success" | "error" = "success") => {
-    setStatusMsg({ text, tone });
-    if (statusTimerRef.current) clearTimeout(statusTimerRef.current);
-    statusTimerRef.current = setTimeout(() => setStatusMsg(null), 3000);
-  }, []);
 
   const handleInstall = useCallback(async (scope: "user" | "project") => {
     if (!selectedSkill) return;
@@ -352,6 +493,10 @@ export function SkillsScreen() {
         dispatch({ type: "SET_SEARCHING", isSearching: false });
         return;
       }
+      if (selectedSet) {
+        handleToggleSet(selectedSet.id);
+        return;
+      }
       if (selectedSkill && !selectedSkill.installed) {
         handleInstall("project");
       }
@@ -360,14 +505,26 @@ export function SkillsScreen() {
 
     // Action keys only when NOT actively typing in search
     if (!isSearchActive) {
-      if (event.name === "u" && selectedSkill) {
-        if (selectedSkill.installed && selectedSkill.installedScope === "user") handleUninstall();
-        else handleInstall("user");
-        return;
-      } else if (event.name === "p" && selectedSkill) {
-        if (selectedSkill.installed && selectedSkill.installedScope === "project") handleUninstall();
-        else handleInstall("project");
-        return;
+      if (event.name === "u") {
+        if (selectedSet) {
+          handleInstallAllFromSet(selectedSet.id, "user");
+          return;
+        }
+        if (selectedSkill) {
+          if (selectedSkill.installed && selectedSkill.installedScope === "user") handleUninstall();
+          else handleInstall("user");
+          return;
+        }
+      } else if (event.name === "p") {
+        if (selectedSet) {
+          handleInstallAllFromSet(selectedSet.id, "project");
+          return;
+        }
+        if (selectedSkill) {
+          if (selectedSkill.installed && selectedSkill.installedScope === "project") handleUninstall();
+          else handleInstall("project");
+          return;
+        }
       }
     }
 
@@ -387,14 +544,21 @@ export function SkillsScreen() {
 
     if (event.name === "r") {
       fetchData();
-    } else if (event.name === "o" && selectedSkill) {
-      const repo = selectedSkill.source.repo;
-      const repoPath = selectedSkill.repoPath?.replace("/SKILL.md", "") || "";
-      if (repo && repo !== "local") {
-        const url = `https://github.com/${repo}/tree/main/${repoPath}`;
+    } else if (event.name === "o" && (selectedSkill || selectedSet)) {
+      if (selectedSet) {
+        const url = `https://github.com/${selectedSet.repo}`;
         import("node:child_process").then(({ execSync: exec }) => {
           try { exec(`open "${url}"`); } catch { /* ignore */ }
         });
+      } else if (selectedSkill) {
+        const repo = selectedSkill.source.repo;
+        const repoPath = selectedSkill.repoPath?.replace("/SKILL.md", "") || "";
+        if (repo && repo !== "local") {
+          const url = `https://github.com/${repo}/tree/main/${repoPath}`;
+          import("node:child_process").then(({ execSync: exec }) => {
+            try { exec(`open "${url}"`); } catch { /* ignore */ }
+          });
+        }
       }
     } else if (event.name === "/") {
       dispatch({ type: "SET_SEARCHING", isSearching: true });
@@ -454,6 +618,7 @@ export function SkillsScreen() {
             selectedIndex={skillsState.selectedIndex}
             renderItem={renderSkillRow}
             maxHeight={dimensions.listPanelHeight}
+            getKey={(item, index) => `${index}:${item.id}`}
           />
           {!query && skillsState.skills.status === "loading" && (
             <box marginTop={2} paddingLeft={2}>

@@ -821,6 +821,7 @@ export function PluginsScreen() {
 						selectedIndex={pluginsState.selectedIndex}
 						renderItem={renderPluginRow}
 						maxHeight={dimensions.listPanelHeight}
+						getKey={(item) => item.id}
 					/>
 					{pluginsState.searchQuery && selectableItems.length === 0 && (
 						<EmptyFilterState query={pluginsState.searchQuery} entityName="plugins" />

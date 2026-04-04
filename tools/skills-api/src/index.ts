@@ -35,6 +35,14 @@ interface RecommendedSkill {
   category: string;
 }
 
+interface RecommendedSkillSet {
+  name: string;
+  repo: string;
+  description: string;
+  icon: string;
+  stars?: number;
+}
+
 // ---------------------------------------------------------------------------
 // Recommended skills (curated)
 // ---------------------------------------------------------------------------
@@ -115,6 +123,19 @@ const RECOMMENDED_SKILLS: RecommendedSkill[] = [
     skillPath: "plugins/code-analysis/skills/mnemex-search",
     description: "Semantic code search and AST analysis with mnemex MCP tools",
     category: "code-analysis",
+  },
+];
+
+// ---------------------------------------------------------------------------
+// Recommended skill sets (curated)
+// ---------------------------------------------------------------------------
+const RECOMMENDED_SKILL_SETS: RecommendedSkillSet[] = [
+  {
+    name: "Hugging Face",
+    repo: "huggingface/skills",
+    description: "Give your agents the power of the Hugging Face ecosystem",
+    icon: "\u{1F917}",
+    stars: 10000,
   },
 ];
 
@@ -401,7 +422,7 @@ export const skills = onRequest(
     // GET /recommended
     // -----------------------------------------------------------------------
     if (path === "/recommended") {
-      res.json({ skills: RECOMMENDED_SKILLS });
+      res.json({ skills: RECOMMENDED_SKILLS, skillSets: RECOMMENDED_SKILL_SETS });
       return;
     }
 

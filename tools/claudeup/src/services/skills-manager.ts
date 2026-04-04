@@ -7,7 +7,7 @@ import type {
 	SkillFrontmatter,
 	GitTreeResponse,
 } from "../types/index.js";
-import { RECOMMENDED_SKILLS } from "../data/skill-repos.js";
+import { RECOMMENDED_SKILLS, classifyStarReliability } from "../data/skill-repos.js";
 
 const SKILLS_API_BASE =
 	"https://us-central1-claudish-6da10.cloudfunctions.net/skills";
@@ -83,6 +83,66 @@ async function fetchGitTree(repo: string): Promise<GitTreeResponse> {
 
 	treeCache.set(repo, { etag, tree, fetchedAt: Date.now() });
 	return tree;
+}
+
+// ─── Skill Set fetching ──────────────────────────────────────────────────────
+
+/**
+ * Fetch all skills from a skill set repo using the GitHub Tree API.
+ * Returns SkillInfo[] with installed status marked via disk scan.
+ */
+export async function fetchSkillSetSkills(
+	repo: string,
+	projectPath?: string,
+): Promise<SkillInfo[]> {
+	const tree = await fetchGitTree(repo);
+
+	// Find all SKILL.md blobs
+	const skillBlobs = tree.tree.filter(
+		(entry) => entry.type === "blob" && entry.path.endsWith("/SKILL.md"),
+	);
+
+	const userInstalled = await getInstalledSkillNames("user");
+	const projectInstalled = await getInstalledSkillNames("project", projectPath);
+
+	const slugify = (name: string) =>
+		name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+	const source: SkillSource = {
+		label: repo,
+		repo,
+		skillsPath: "",
+	};
+
+	return skillBlobs.map((blob) => {
+		// Derive skill name from parent directory of SKILL.md
+		const parts = blob.path.split("/");
+		const name = parts[parts.length - 2]; // e.g. "huggingface-datasets"
+		const repoPath = blob.path; // e.g. "skills/huggingface-datasets/SKILL.md"
+		const slug = slugify(name);
+
+		const isUser = userInstalled.has(slug) || userInstalled.has(name);
+		const isProj = projectInstalled.has(slug) || projectInstalled.has(name);
+		const installed = isUser || isProj;
+		const installedScope: "user" | "project" | null = isProj
+			? "project"
+			: isUser
+				? "user"
+				: null;
+
+		return {
+			id: `${repo}/${blob.path.replace("/SKILL.md", "")}`,
+			name,
+			source,
+			repoPath,
+			gitBlobSha: blob.sha,
+			frontmatter: null,
+			installed,
+			installedScope,
+			hasUpdate: false,
+			description: "",
+		};
+	});
 }
 
 // ─── Frontmatter parser ───────────────────────────────────────────────────────
@@ -190,6 +250,7 @@ function mapApiSkillToSkillInfo(raw: any): SkillInfo {
 		repo,
 		skillsPath: "",
 	};
+	const stars = typeof raw.stars === "number" ? raw.stars : undefined;
 	return {
 		id: `${repo}/${skillPath}`,
 		name: (raw.name as string) || skillPath,
@@ -201,7 +262,8 @@ function mapApiSkillToSkillInfo(raw: any): SkillInfo {
 		installed: false,
 		installedScope: null,
 		hasUpdate: false,
-		stars: typeof raw.stars === "number" ? raw.stars : undefined,
+		stars,
+		starReliability: classifyStarReliability(repo, stars),
 	};
 }
 
@@ -263,6 +325,7 @@ export async function fetchAvailableSkills(
 			installedScope: null,
 			hasUpdate: false,
 			isRecommended: true,
+			starReliability: classifyStarReliability(rec.repo, rec.stars),
 		};
 		return markInstalled(skill);
 	});

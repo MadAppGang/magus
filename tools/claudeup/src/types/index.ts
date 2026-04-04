@@ -168,6 +168,35 @@ export interface SkillInfo {
 	stars?: number;
 	/** Short description (from API, before frontmatter is loaded) */
 	description?: string;
+	/** How reliable the star count is as a quality signal for this skill */
+	starReliability?: "dedicated" | "mega-repo" | "skill-dump";
+}
+
+/** How reliable the star count is as a quality signal for this skill */
+export type StarReliability = "dedicated" | "mega-repo" | "skill-dump";
+
+/** A skill set — a group of skills from a single repo */
+export interface SkillSetInfo {
+	/** Unique key, e.g. "huggingface/skills" */
+	id: string;
+	/** Display name, e.g. "Hugging Face" */
+	name: string;
+	/** Repo description */
+	description: string;
+	/** GitHub owner/repo */
+	repo: string;
+	/** Icon/emoji for display */
+	icon: string;
+	/** GitHub star count */
+	stars?: number;
+	/** Individual skills within this set (fetched lazily via Tree API) */
+	skills: SkillInfo[];
+	/** Whether skills have been fetched yet */
+	loaded: boolean;
+	/** Loading state */
+	loading: boolean;
+	/** Error if fetch failed */
+	error?: string;
 }
 
 // ─── GitHub Tree API types ────────────────────────────────────────────────────
