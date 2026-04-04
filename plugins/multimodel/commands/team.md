@@ -4,8 +4,6 @@ description: |
   Multi-model blind voting. Runs tasks across AI models in parallel via claudish MCP,
   collects independent votes (APPROVE/REJECT), presents aggregated verdicts.
   Examples: "/team Review auth implementation", "/team --models grok,gemini Check API security"
-allowed-tools: Read, Write, Bash, Task, TaskCreate, TaskUpdate, TaskList, TaskGet, AskUserQuestion
-model: opus
 args:
   - name: task
     description: The task to submit to the team

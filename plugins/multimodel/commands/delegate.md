@@ -10,8 +10,6 @@ description: |
     /multimodel:delegate grok implement authentication
     /multimodel:delegate gemini /dev:architect design payment service
     /multimodel:delegate /dev:research rate limiting patterns
-allowed-tools: Read, Write, Task, AskUserQuestion
-model: opus
 args:
   - name: task
     description: Model ID (optional), optional /plugin:command, and task description

@@ -5,6 +5,11 @@ All notable changes to the Magus project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Multimodel 3.1.1] - 2026-04-04
+
+### Fixed
+- **delegate/team commands inherit parent tools and model** — removed hardcoded `allowed-tools` and `model: opus` from both commands. Previously, delegate couldn't load the `claudish-usage` skill for alias resolution, causing heuristic file searches instead of deterministic lookups.
+
 ## [Dev 1.35.1] - 2026-03-02
 
 ### Changed
