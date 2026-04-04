@@ -1,0 +1,6 @@
+# This file intentionally marks claudeup-core as its own pnpm workspace root.
+# Without it, pnpm walks up to tools/pnpm-workspace.yaml and treats claudeup-core
+# as part of the tools/ workspace — but claudeup-core is not listed there, causing
+# "working directory is not a workspace member" errors with pnpm v9 in CI.
+# By declaring an empty workspace here, pnpm uses claudeup-core/pnpm-lock.yaml directly.
+packages: []
