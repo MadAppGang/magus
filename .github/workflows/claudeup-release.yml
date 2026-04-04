@@ -54,7 +54,7 @@ jobs:
           echo "Version verified: $PKG_VERSION"
 
       - name: Update npm for OIDC support
-        run: npm install -g npm@10
+        run: npm install -g npm@11.12.1
 
       - name: Publish to npm
         working-directory: tools/claudeup
