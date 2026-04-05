@@ -1,0 +1,529 @@
+import path from "node:path";
+import os from "node:os";
+import { execSync } from "node:child_process";
+import { getConfiguredMarketplaces, getEnabledPlugins, readSettings, writeSettings, getGlobalConfiguredMarketplaces, getGlobalEnabledPlugins, getGlobalInstalledPluginVersions, getLocalEnabledPlugins, getLocalInstalledPluginVersions, updateInstalledPluginsRegistry, removeFromInstalledPluginsRegistry, } from "./claude-settings.js";
+import { defaultMarketplaces } from "../data/marketplaces.js";
+import { scanLocalMarketplaces, repairAllMarketplaces, } from "./local-marketplace.js";
+import { formatMarketplaceName, isValidGitHubRepo, parsePluginId, } from "../utils/string-utils.js";
+import { updateMarketplace } from "./claude-cli.js";
+// Cache for local marketplaces (session-level) - Promise-based to prevent race conditions
+let localMarketplacesPromise = null;
+// Session-level cache for fetched marketplace data (no TTL - persists until explicit refresh)
+const marketplaceCache = new Map();
+export async function fetchMarketplacePlugins(marketplaceName, repo) {
+    // Check cache first - session-level, no TTL
+    const cached = marketplaceCache.get(marketplaceName);
+    if (cached) {
+        return cached;
+    }
+    // Validate repo format to prevent SSRF
+    if (!isValidGitHubRepo(repo)) {
+        console.error(`Invalid GitHub repo format: ${repo}`);
+        return [];
+    }
+    try {
+        // Fetch marketplace.json from GitHub
+        const url = `https://raw.githubusercontent.com/${repo}/main/.claude-plugin/marketplace.json`;
+        const response = await fetch(url, {
+            signal: AbortSignal.timeout(10000), // 10s timeout
+        });
+        if (!response.ok) {
+            console.error(`Failed to fetch marketplace: ${response.status}`);
+            return [];
+        }
+        // Validate content-type
+        const contentType = response.headers.get("content-type");
+        if (contentType &&
+            !contentType.includes("application/json") &&
+            !contentType.includes("text/plain")) {
+            console.error(`Invalid content-type for marketplace: ${contentType}`);
+            return [];
+        }
+        const data = (await response.json());
+        const plugins = [];
+        if (data.plugins && Array.isArray(data.plugins)) {
+            for (const plugin of data.plugins) {
+                plugins.push({
+                    name: plugin.name,
+                    version: plugin.version || null,
+                    description: plugin.description || "",
+                    category: plugin.category,
+                    author: plugin.author,
+                    homepage: plugin.homepage,
+                    tags: plugin.tags,
+                });
+            }
+        }
+        // Cache the result (session-level)
+        marketplaceCache.set(marketplaceName, plugins);
+        return plugins;
+    }
+    catch (error) {
+        console.error(`Error fetching marketplace ${marketplaceName}:`, error);
+        return [];
+    }
+}
+export async function getAvailablePlugins(projectPath) {
+    const configuredMarketplaces = await getConfiguredMarketplaces(projectPath);
+    const enabledPlugins = await getEnabledPlugins(projectPath);
+    const installedVersions = await getInstalledPluginVersions(projectPath);
+    // Fetch all scopes for per-scope status
+    const userEnabledPlugins = await getGlobalEnabledPlugins();
+    const userInstalledVersions = await getGlobalInstalledPluginVersions();
+    const projectEnabledPlugins = await getEnabledPlugins(projectPath);
+    const projectInstalledVersions = await getInstalledPluginVersions(projectPath);
+    const localEnabledPlugins = await getLocalEnabledPlugins(projectPath);
+    const localInstalledVersions = await getLocalInstalledPluginVersions(projectPath);
+    const plugins = [];
+    const seenPluginIds = new Set();
+    // Helper to build scope status
+    const buildScopeStatus = (pluginId) => ({
+        userScope: userEnabledPlugins[pluginId] !== undefined
+            ? {
+                enabled: userEnabledPlugins[pluginId],
+                version: userInstalledVersions[pluginId],
+            }
+            : undefined,
+        projectScope: projectEnabledPlugins[pluginId] !== undefined
+            ? {
+                enabled: projectEnabledPlugins[pluginId],
+                version: projectInstalledVersions[pluginId],
+            }
+            : undefined,
+        localScope: localEnabledPlugins[pluginId] !== undefined
+            ? {
+                enabled: localEnabledPlugins[pluginId],
+                version: localInstalledVersions[pluginId],
+            }
+            : undefined,
+    });
+    // Get all marketplace names (configured + official/featured defaults)
+    // Always include official and featured marketplaces so users can browse them
+    const marketplaceNames = new Set();
+    for (const mp of defaultMarketplaces) {
+        if (configuredMarketplaces[mp.name] || mp.official || mp.featured) {
+            marketplaceNames.add(mp.name);
+        }
+    }
+    // Fetch local marketplace caches up front so we can detect stale caches
+    let localMarketplaces = await getLocalMarketplaces();
+    // Fetch plugins from each configured marketplace
+    for (const mpName of marketplaceNames) {
+        const marketplace = defaultMarketplaces.find((m) => m.name === mpName);
+        if (!marketplace)
+            continue;
+        const marketplacePlugins = await fetchMarketplacePlugins(mpName, marketplace.source.repo);
+        // Auto-sync local cache if remote has plugins the local cache doesn't
+        localMarketplaces = await autoSyncIfStale(mpName, marketplacePlugins.map((p) => p.name), localMarketplaces);
+        for (const plugin of marketplacePlugins) {
+            const pluginId = `${plugin.name}@${mpName}`;
+            const installedVersion = installedVersions[pluginId];
+            const isEnabled = enabledPlugins[pluginId] === true;
+            const scopeStatus = buildScopeStatus(pluginId);
+            seenPluginIds.add(pluginId);
+            plugins.push({
+                id: pluginId,
+                name: plugin.name,
+                version: plugin.version,
+                description: plugin.description,
+                marketplace: mpName,
+                marketplaceDisplay: marketplace.displayName,
+                enabled: isEnabled,
+                installedVersion: installedVersion,
+                hasUpdate: installedVersion && plugin.version
+                    ? compareVersions(plugin.version, installedVersion) > 0
+                    : false,
+                ...scopeStatus,
+                category: plugin.category,
+                author: plugin.author,
+                homepage: plugin.homepage,
+                tags: plugin.tags,
+            });
+        }
+    }
+    for (const [mpName, localMp] of localMarketplaces) {
+        // Skip if already fetched from defaults
+        if (marketplaceNames.has(mpName))
+            continue;
+        // Add ALL plugins from this local marketplace cache
+        for (const localPlugin of localMp.plugins) {
+            const pluginId = `${localPlugin.name}@${mpName}`;
+            if (seenPluginIds.has(pluginId))
+                continue;
+            const installedVersion = installedVersions[pluginId];
+            const isEnabled = enabledPlugins[pluginId] === true;
+            const scopeStatus = buildScopeStatus(pluginId);
+            seenPluginIds.add(pluginId);
+            plugins.push({
+                id: pluginId,
+                name: localPlugin.name,
+                version: localPlugin.version,
+                description: localPlugin.description || "",
+                marketplace: mpName,
+                marketplaceDisplay: localMp.name || formatMarketplaceName(mpName),
+                enabled: isEnabled,
+                installedVersion: installedVersion,
+                hasUpdate: installedVersion
+                    ? compareVersions(localPlugin.version, installedVersion) > 0
+                    : false,
+                ...scopeStatus,
+                category: localPlugin.category,
+                author: localPlugin.author,
+                agents: localPlugin.agents,
+                commands: localPlugin.commands,
+                skills: localPlugin.skills,
+                mcpServers: localPlugin.mcpServers,
+                lspServers: localPlugin.lspServers,
+            });
+        }
+    }
+    // Add orphaned plugins (enabled/installed but not in any cache)
+    const allPluginIds = new Set([
+        ...Object.keys(enabledPlugins),
+        ...Object.keys(installedVersions),
+    ]);
+    for (const pluginId of allPluginIds) {
+        if (seenPluginIds.has(pluginId))
+            continue;
+        const parsed = parsePluginId(pluginId);
+        if (!parsed)
+            continue;
+        const { pluginName, marketplace: mpName } = parsed;
+        const installedVersion = installedVersions[pluginId];
+        const isEnabled = enabledPlugins[pluginId] === true;
+        const scopeStatus = buildScopeStatus(pluginId);
+        // Try to get plugin info from local marketplace cache (fallback)
+        const localMp = localMarketplaces.get(mpName);
+        const localPlugin = localMp?.plugins.find((p) => p.name === pluginName);
+        const latestVersion = localPlugin?.version || installedVersion || "unknown";
+        const description = localPlugin?.description || "Installed plugin";
+        const hasUpdate = installedVersion && localPlugin?.version
+            ? compareVersions(localPlugin.version, installedVersion) > 0
+            : false;
+        plugins.push({
+            id: pluginId,
+            name: pluginName,
+            version: latestVersion,
+            description,
+            marketplace: mpName,
+            marketplaceDisplay: localMp?.name || formatMarketplaceName(mpName),
+            enabled: isEnabled,
+            installedVersion: installedVersion,
+            hasUpdate,
+            isOrphaned: true,
+            ...scopeStatus,
+        });
+    }
+    return plugins;
+}
+export async function getGlobalAvailablePlugins() {
+    const configuredMarketplaces = await getGlobalConfiguredMarketplaces();
+    const enabledPlugins = await getGlobalEnabledPlugins();
+    const installedVersions = await getGlobalInstalledPluginVersions();
+    // Fetch all scopes for per-scope status display
+    const userEnabledPlugins = await getGlobalEnabledPlugins();
+    const userInstalledVersions = await getGlobalInstalledPluginVersions();
+    // Also fetch project and local scope for complete status display
+    const projectEnabledPlugins = await getEnabledPlugins();
+    const projectInstalledVersions = await getInstalledPluginVersions();
+    const localEnabledPlugins = await getLocalEnabledPlugins();
+    const localInstalledVersions = await getLocalInstalledPluginVersions();
+    const plugins = [];
+    const seenPluginIds = new Set();
+    // Helper to build scope status (show all scopes)
+    const buildScopeStatus = (pluginId) => ({
+        userScope: userEnabledPlugins[pluginId] !== undefined
+            ? {
+                enabled: userEnabledPlugins[pluginId],
+                version: userInstalledVersions[pluginId],
+            }
+            : undefined,
+        projectScope: projectEnabledPlugins[pluginId] !== undefined
+            ? {
+                enabled: projectEnabledPlugins[pluginId],
+                version: projectInstalledVersions[pluginId],
+            }
+            : undefined,
+        localScope: localEnabledPlugins[pluginId] !== undefined
+            ? {
+                enabled: localEnabledPlugins[pluginId],
+                version: localInstalledVersions[pluginId],
+            }
+            : undefined,
+    });
+    // Get all marketplace names (configured + official/featured defaults)
+    // Always include official and featured marketplaces so users can browse them
+    const marketplaceNames = new Set();
+    for (const mp of defaultMarketplaces) {
+        if (configuredMarketplaces[mp.name] || mp.official || mp.featured) {
+            marketplaceNames.add(mp.name);
+        }
+    }
+    // Fetch local marketplace caches up front so we can detect stale caches
+    let localMarketplaces = await getLocalMarketplaces();
+    // Fetch plugins from each configured marketplace
+    for (const mpName of marketplaceNames) {
+        const marketplace = defaultMarketplaces.find((m) => m.name === mpName);
+        if (!marketplace)
+            continue;
+        const marketplacePlugins = await fetchMarketplacePlugins(mpName, marketplace.source.repo);
+        // Auto-sync local cache if remote has plugins the local cache doesn't
+        localMarketplaces = await autoSyncIfStale(mpName, marketplacePlugins.map((p) => p.name), localMarketplaces);
+        for (const plugin of marketplacePlugins) {
+            const pluginId = `${plugin.name}@${mpName}`;
+            const installedVersion = installedVersions[pluginId];
+            const isEnabled = enabledPlugins[pluginId] === true;
+            const scopeStatus = buildScopeStatus(pluginId);
+            seenPluginIds.add(pluginId);
+            plugins.push({
+                id: pluginId,
+                name: plugin.name,
+                version: plugin.version,
+                description: plugin.description,
+                marketplace: mpName,
+                marketplaceDisplay: marketplace.displayName,
+                enabled: isEnabled,
+                installedVersion: installedVersion,
+                hasUpdate: installedVersion && plugin.version
+                    ? compareVersions(plugin.version, installedVersion) > 0
+                    : false,
+                ...scopeStatus,
+                category: plugin.category,
+                author: plugin.author,
+                homepage: plugin.homepage,
+                tags: plugin.tags,
+            });
+        }
+    }
+    for (const [mpName, localMp] of localMarketplaces) {
+        // Skip if already fetched from defaults
+        if (marketplaceNames.has(mpName))
+            continue;
+        // Add ALL plugins from this local marketplace cache
+        for (const localPlugin of localMp.plugins) {
+            const pluginId = `${localPlugin.name}@${mpName}`;
+            if (seenPluginIds.has(pluginId))
+                continue;
+            const installedVersion = installedVersions[pluginId];
+            const isEnabled = enabledPlugins[pluginId] === true;
+            const scopeStatus = buildScopeStatus(pluginId);
+            seenPluginIds.add(pluginId);
+            plugins.push({
+                id: pluginId,
+                name: localPlugin.name,
+                version: localPlugin.version,
+                description: localPlugin.description || "",
+                marketplace: mpName,
+                marketplaceDisplay: localMp.name || formatMarketplaceName(mpName),
+                enabled: isEnabled,
+                installedVersion: installedVersion,
+                hasUpdate: installedVersion
+                    ? compareVersions(localPlugin.version, installedVersion) > 0
+                    : false,
+                ...scopeStatus,
+                category: localPlugin.category,
+                author: localPlugin.author,
+                agents: localPlugin.agents,
+                commands: localPlugin.commands,
+                skills: localPlugin.skills,
+                mcpServers: localPlugin.mcpServers,
+                lspServers: localPlugin.lspServers,
+            });
+        }
+    }
+    // Add orphaned plugins (enabled/installed but not in any cache)
+    const allPluginIds = new Set([
+        ...Object.keys(enabledPlugins),
+        ...Object.keys(installedVersions),
+    ]);
+    for (const pluginId of allPluginIds) {
+        if (seenPluginIds.has(pluginId))
+            continue;
+        const parsed = parsePluginId(pluginId);
+        if (!parsed)
+            continue;
+        const { pluginName, marketplace: mpName } = parsed;
+        const installedVersion = installedVersions[pluginId];
+        const isEnabled = enabledPlugins[pluginId] === true;
+        const scopeStatus = buildScopeStatus(pluginId);
+        // Try to get plugin info from local marketplace cache (fallback)
+        const localMp = localMarketplaces.get(mpName);
+        const localPlugin = localMp?.plugins.find((p) => p.name === pluginName);
+        const latestVersion = localPlugin?.version || installedVersion || "unknown";
+        const description = localPlugin?.description || "Installed plugin";
+        const hasUpdate = installedVersion && localPlugin?.version
+            ? compareVersions(localPlugin.version, installedVersion) > 0
+            : false;
+        plugins.push({
+            id: pluginId,
+            name: pluginName,
+            version: latestVersion,
+            description,
+            marketplace: mpName,
+            marketplaceDisplay: localMp?.name || formatMarketplaceName(mpName),
+            enabled: isEnabled,
+            ...scopeStatus,
+            installedVersion: installedVersion,
+            hasUpdate,
+            isOrphaned: true,
+        });
+    }
+    return plugins;
+}
+// Simple version comparison (returns 1 if a > b, -1 if a < b, 0 if equal)
+function compareVersions(a, b) {
+    if (!a || !b)
+        return 0;
+    const partsA = a.replace(/^v/, "").split(".").map(Number);
+    const partsB = b.replace(/^v/, "").split(".").map(Number);
+    for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
+        const numA = partsA[i] || 0;
+        const numB = partsB[i] || 0;
+        if (numA > numB)
+            return 1;
+        if (numA < numB)
+            return -1;
+    }
+    return 0;
+}
+// Get installed plugin versions from settings.json (shared, not secret)
+async function getInstalledPluginVersions(projectPath) {
+    const settings = await readSettings(projectPath);
+    return settings.installedPluginVersions || {};
+}
+// Save installed plugin version to settings.json
+export async function saveInstalledPluginVersion(pluginId, version, projectPath) {
+    const settings = await readSettings(projectPath);
+    settings.installedPluginVersions = settings.installedPluginVersions || {};
+    settings.installedPluginVersions[pluginId] = version;
+    await writeSettings(settings, projectPath);
+    // Update installed_plugins.json registry
+    await updateInstalledPluginsRegistry(pluginId, version, "project", projectPath ? path.resolve(projectPath) : undefined);
+}
+// Remove installed plugin version from settings.json
+export async function removeInstalledPluginVersion(pluginId, projectPath) {
+    const settings = await readSettings(projectPath);
+    if (settings.installedPluginVersions) {
+        delete settings.installedPluginVersions[pluginId];
+    }
+    if (settings.enabledPlugins) {
+        delete settings.enabledPlugins[pluginId];
+    }
+    await writeSettings(settings, projectPath);
+    // Remove from installed_plugins.json registry
+    await removeFromInstalledPluginsRegistry(pluginId, "project", projectPath ? path.resolve(projectPath) : undefined);
+}
+// Clear marketplace cache
+export function clearMarketplaceCache() {
+    marketplaceCache.clear();
+    localMarketplacesPromise = null;
+}
+// Get local marketplaces (with Promise-based caching to prevent race conditions)
+async function getLocalMarketplaces() {
+    if (localMarketplacesPromise === null) {
+        localMarketplacesPromise = scanLocalMarketplaces();
+    }
+    return localMarketplacesPromise;
+}
+// Export local marketplaces for use in other modules
+export async function getLocalMarketplacesInfo() {
+    return getLocalMarketplaces();
+}
+// Track which marketplaces have already been auto-synced this session
+// so we only attempt the update once per marketplace per claudeup run.
+const autoSyncedMarketplaces = new Set();
+/**
+ * If the remote manifest lists plugins that aren't in the local cache,
+ * the local clone is stale. Silently run `claude plugin marketplace update`
+ * to pull the latest, then invalidate the local cache so the next scan
+ * picks up the new plugins.
+ */
+async function autoSyncIfStale(mpName, remotePluginNames, localMarketplaces) {
+    if (autoSyncedMarketplaces.has(mpName))
+        return localMarketplaces;
+    const localMp = localMarketplaces.get(mpName);
+    if (!localMp)
+        return localMarketplaces;
+    const localNames = new Set(localMp.plugins.map((p) => p.name));
+    const hasMissing = remotePluginNames.some((name) => !localNames.has(name));
+    if (!hasMissing)
+        return localMarketplaces;
+    autoSyncedMarketplaces.add(mpName);
+    try {
+        await updateMarketplace(mpName);
+        // Invalidate local cache so re-scan picks up new plugins
+        localMarketplacesPromise = null;
+        return getLocalMarketplaces();
+    }
+    catch {
+        // Update failed (no network, CLI missing, etc.) — continue with stale data
+        return localMarketplaces;
+    }
+}
+/**
+ * Refresh claudeup's internal cache
+ * Note: Marketplace updates should be done via Claude Code's /plugin marketplace update command
+ */
+export async function refreshAllMarketplaces(onProgress) {
+    onProgress?.({ current: 1, total: 1, name: "Clearing cache..." });
+    // Clear all caches to force fresh data
+    clearMarketplaceCache();
+    // Auto-repair plugin.json files with missing agents/commands/skills
+    const repairResults = await repairAllMarketplaces();
+    return {
+        refresh: [],
+        repair: repairResults,
+    };
+}
+/**
+ * Check if marketplaces have updates available on GitHub
+ * Compares local git HEAD with remote HEAD
+ */
+export async function checkMarketplaceUpdates() {
+    const results = [];
+    const localMarketplaces = await getLocalMarketplaces();
+    for (const [name, marketplace] of localMarketplaces) {
+        if (!marketplace.gitRepo)
+            continue;
+        try {
+            const marketplacePath = path.join(os.homedir(), ".claude", "plugins", "marketplaces", name);
+            // Get current HEAD from local repo
+            let currentHead;
+            try {
+                currentHead = execSync("git rev-parse HEAD", {
+                    cwd: marketplacePath,
+                    encoding: "utf-8",
+                    timeout: 5000,
+                }).trim();
+            }
+            catch {
+                continue; // Skip if can't get HEAD
+            }
+            // Fetch latest commit from GitHub API
+            const apiUrl = `https://api.github.com/repos/${marketplace.gitRepo}/commits/main`;
+            const response = await fetch(apiUrl, {
+                signal: AbortSignal.timeout(10000),
+                headers: {
+                    Accept: "application/vnd.github.v3+json",
+                },
+            });
+            if (response.ok) {
+                const data = (await response.json());
+                const latestCommit = data.sha;
+                results.push({
+                    name,
+                    hasUpdate: currentHead !== latestCommit,
+                    currentCommit: currentHead.substring(0, 7),
+                    latestCommit: latestCommit.substring(0, 7),
+                });
+            }
+            else {
+                results.push({ name, hasUpdate: false });
+            }
+        }
+        catch {
+            results.push({ name, hasUpdate: false });
+        }
+    }
+    return results;
+}

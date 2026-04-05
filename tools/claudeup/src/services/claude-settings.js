@@ -1,0 +1,1085 @@
+import fs from "fs-extra";
+import path from "node:path";
+import os from "node:os";
+import { parsePluginId } from "../utils/string-utils.js";
+const CLAUDE_DIR = ".claude";
+const SETTINGS_FILE = "settings.json";
+const LOCAL_SETTINGS_FILE = "settings.local.json";
+const MCP_CONFIG_FILE = ".mcp.json";
+export function getClaudeDir(projectPath) {
+    const base = projectPath || process.cwd();
+    return path.join(base, CLAUDE_DIR);
+}
+export function getGlobalClaudeDir() {
+    return path.join(os.homedir(), CLAUDE_DIR);
+}
+export async function ensureClaudeDir(projectPath) {
+    const claudeDir = getClaudeDir(projectPath);
+    await fs.ensureDir(claudeDir);
+    return claudeDir;
+}
+export async function readSettings(projectPath) {
+    const settingsPath = path.join(getClaudeDir(projectPath), SETTINGS_FILE);
+    try {
+        if (await fs.pathExists(settingsPath)) {
+            return await fs.readJson(settingsPath);
+        }
+    }
+    catch {
+        // Return empty settings on error
+    }
+    return {};
+}
+export async function writeSettings(settings, projectPath) {
+    const claudeDir = await ensureClaudeDir(projectPath);
+    const settingsPath = path.join(claudeDir, SETTINGS_FILE);
+    await fs.writeJson(settingsPath, settings, { spaces: 2 });
+}
+export async function readLocalSettings(projectPath) {
+    const localPath = path.join(getClaudeDir(projectPath), LOCAL_SETTINGS_FILE);
+    try {
+        if (await fs.pathExists(localPath)) {
+            return await fs.readJson(localPath);
+        }
+    }
+    catch {
+        // Return empty settings on error
+    }
+    return {};
+}
+export async function writeLocalSettings(settings, projectPath) {
+    const claudeDir = await ensureClaudeDir(projectPath);
+    const localPath = path.join(claudeDir, LOCAL_SETTINGS_FILE);
+    await fs.writeJson(localPath, settings, { spaces: 2 });
+}
+// MCP config file management (.mcp.json at project root)
+export function getMcpConfigPath(projectPath) {
+    const base = projectPath || process.cwd();
+    return path.join(base, MCP_CONFIG_FILE);
+}
+export async function readMcpConfig(projectPath) {
+    const mcpPath = getMcpConfigPath(projectPath);
+    try {
+        if (await fs.pathExists(mcpPath)) {
+            return await fs.readJson(mcpPath);
+        }
+    }
+    catch {
+        // Return empty config on error
+    }
+    return {};
+}
+export async function writeMcpConfig(config, projectPath) {
+    const mcpPath = getMcpConfigPath(projectPath);
+    await fs.writeJson(mcpPath, config, { spaces: 2 });
+}
+export async function readGlobalSettings() {
+    const settingsPath = path.join(getGlobalClaudeDir(), SETTINGS_FILE);
+    try {
+        if (await fs.pathExists(settingsPath)) {
+            return await fs.readJson(settingsPath);
+        }
+    }
+    catch {
+        // Return empty settings on error
+    }
+    return {};
+}
+export async function writeGlobalSettings(settings) {
+    await fs.ensureDir(getGlobalClaudeDir());
+    const settingsPath = path.join(getGlobalClaudeDir(), SETTINGS_FILE);
+    await fs.writeJson(settingsPath, settings, { spaces: 2 });
+}
+// MCP Server management (writes to .mcp.json at project root)
+export async function addMcpServer(name, config, projectPath) {
+    // Extract env vars from config - they go to settings.local.json, not .mcp.json
+    const envVars = config.env || {};
+    const configWithoutEnv = { ...config };
+    delete configWithoutEnv.env;
+    // Add to .mcp.json (without env vars)
+    const mcpConfig = await readMcpConfig(projectPath);
+    mcpConfig.mcpServers = mcpConfig.mcpServers || {};
+    mcpConfig.mcpServers[name] = configWithoutEnv;
+    await writeMcpConfig(mcpConfig, projectPath);
+    // Enable in settings.local.json and add env vars
+    const localSettings = await readLocalSettings(projectPath);
+    const enabledServers = localSettings.enabledMcpjsonServers || [];
+    if (!enabledServers.includes(name)) {
+        enabledServers.push(name);
+    }
+    localSettings.enabledMcpjsonServers = enabledServers;
+    localSettings.enableAllProjectMcpServers = true;
+    // Add env vars to settings.local.json
+    if (Object.keys(envVars).length > 0) {
+        localSettings.env = localSettings.env || {};
+        for (const [key, value] of Object.entries(envVars)) {
+            // Only add non-reference values (references like ${VAR} don't need to be stored)
+            if (!value.startsWith("${") || !value.endsWith("}")) {
+                localSettings.env[key] = value;
+            }
+        }
+    }
+    await writeLocalSettings(localSettings, projectPath);
+}
+export async function removeMcpServer(name, projectPath) {
+    // Remove from .mcp.json
+    const mcpConfig = await readMcpConfig(projectPath);
+    if (mcpConfig.mcpServers) {
+        delete mcpConfig.mcpServers[name];
+    }
+    await writeMcpConfig(mcpConfig, projectPath);
+    // Remove from settings.local.json
+    const localSettings = await readLocalSettings(projectPath);
+    if (localSettings.enabledMcpjsonServers) {
+        localSettings.enabledMcpjsonServers =
+            localSettings.enabledMcpjsonServers.filter((s) => s !== name);
+        await writeLocalSettings(localSettings, projectPath);
+    }
+}
+export async function toggleMcpServer(name, enabled, projectPath) {
+    // Toggle is now a remove operation since .mcp.json doesn't have enabled/disabled state
+    // If disabled, remove from config; if enabled, the server should already be in config
+    if (!enabled) {
+        await removeMcpServer(name, projectPath);
+    }
+    // If enabling, the server should already exist in the config
+}
+export async function setAllowMcp(_allow, _projectPath) {
+    // .mcp.json doesn't have an allowMcp setting - servers are either in the file or not
+    // This function is kept for API compatibility but is now a no-op
+}
+// Marketplace management - READ ONLY
+// Use Claude Code CLI commands to add/remove marketplaces:
+// claude marketplace add owner/repo
+// claude marketplace remove name
+// Plugin management
+export async function enablePlugin(pluginId, enabled, projectPath) {
+    const settings = await readSettings(projectPath);
+    settings.enabledPlugins = settings.enabledPlugins || {};
+    if (enabled) {
+        settings.enabledPlugins[pluginId] = true;
+    }
+    else {
+        delete settings.enabledPlugins[pluginId];
+    }
+    await writeSettings(settings, projectPath);
+}
+export async function getEnabledPlugins(projectPath) {
+    const settings = await readSettings(projectPath);
+    return settings.enabledPlugins || {};
+}
+export async function getLocalEnabledPlugins(projectPath) {
+    const settings = await readLocalSettings(projectPath);
+    return settings.enabledPlugins || {};
+}
+export async function getLocalInstalledPluginVersions(projectPath) {
+    const settings = await readLocalSettings(projectPath);
+    return settings.installedPluginVersions || {};
+}
+// Local plugin management (writes to settings.local.json)
+export async function enableLocalPlugin(pluginId, enabled, projectPath) {
+    const settings = await readLocalSettings(projectPath);
+    settings.enabledPlugins = settings.enabledPlugins || {};
+    if (enabled) {
+        settings.enabledPlugins[pluginId] = true;
+    }
+    else {
+        delete settings.enabledPlugins[pluginId];
+    }
+    await writeLocalSettings(settings, projectPath);
+}
+export async function saveLocalInstalledPluginVersion(pluginId, version, projectPath) {
+    const settings = await readLocalSettings(projectPath);
+    settings.installedPluginVersions = settings.installedPluginVersions || {};
+    settings.installedPluginVersions[pluginId] = version;
+    await writeLocalSettings(settings, projectPath);
+    // Update registry for local scope
+    await updateInstalledPluginsRegistry(pluginId, version, "local", projectPath ? path.resolve(projectPath) : undefined);
+}
+export async function removeLocalInstalledPluginVersion(pluginId, projectPath) {
+    const settings = await readLocalSettings(projectPath);
+    if (settings.installedPluginVersions) {
+        delete settings.installedPluginVersions[pluginId];
+    }
+    if (settings.enabledPlugins) {
+        delete settings.enabledPlugins[pluginId];
+    }
+    await writeLocalSettings(settings, projectPath);
+    // Remove from registry for local scope
+    await removeFromInstalledPluginsRegistry(pluginId, "local", projectPath ? path.resolve(projectPath) : undefined);
+}
+// Status line management
+export async function setStatusLine(template, projectPath) {
+    const settings = await readSettings(projectPath);
+    settings.statusLine = template;
+    await writeSettings(settings, projectPath);
+}
+export async function getStatusLine(projectPath) {
+    const settings = await readSettings(projectPath);
+    return settings.statusLine;
+}
+// Global status line management
+export async function setGlobalStatusLine(template) {
+    const settings = await readGlobalSettings();
+    settings.statusLine = template;
+    await writeGlobalSettings(settings);
+}
+export async function getGlobalStatusLine() {
+    const settings = await readGlobalSettings();
+    return settings.statusLine;
+}
+// Get effective status line (project overrides global)
+export async function getEffectiveStatusLine(projectPath) {
+    const projectStatusLine = await getStatusLine(projectPath);
+    if (projectStatusLine) {
+        return { template: projectStatusLine, source: "project" };
+    }
+    const globalStatusLine = await getGlobalStatusLine();
+    if (globalStatusLine) {
+        return { template: globalStatusLine, source: "global" };
+    }
+    return { template: undefined, source: "default" };
+}
+// Check if .claude directory exists
+export async function hasClaudeDir(projectPath) {
+    return fs.pathExists(getClaudeDir(projectPath));
+}
+// Get installed MCP servers (from .mcp.json)
+export async function getInstalledMcpServers(projectPath) {
+    const mcpConfig = await readMcpConfig(projectPath);
+    return mcpConfig.mcpServers || {};
+}
+// Get env vars for MCP servers (from settings.local.json)
+export async function getMcpEnvVars(projectPath) {
+    const localSettings = await readLocalSettings(projectPath);
+    return localSettings.env || {};
+}
+// Set an env var for MCP servers (in settings.local.json)
+export async function setMcpEnvVar(name, value, projectPath) {
+    const localSettings = await readLocalSettings(projectPath);
+    localSettings.env = localSettings.env || {};
+    localSettings.env[name] = value;
+    await writeLocalSettings(localSettings, projectPath);
+}
+// Remove an env var (from settings.local.json)
+export async function removeMcpEnvVar(name, projectPath) {
+    const localSettings = await readLocalSettings(projectPath);
+    if (localSettings.env) {
+        delete localSettings.env[name];
+        await writeLocalSettings(localSettings, projectPath);
+    }
+}
+// Get enabled MCP servers (all servers in .mcp.json are considered enabled)
+export async function getEnabledMcpServers(projectPath) {
+    const mcpConfig = await readMcpConfig(projectPath);
+    const servers = mcpConfig.mcpServers || {};
+    const enabled = {};
+    for (const name of Object.keys(servers)) {
+        enabled[name] = true;
+    }
+    return enabled;
+}
+// Get all configured marketplaces — merges known_marketplaces.json (primary) with extraKnownMarketplaces (legacy fallback)
+export async function getConfiguredMarketplaces(projectPath) {
+    const result = {};
+    // Primary: known_marketplaces.json (official Claude Code registry)
+    const known = await readKnownMarketplaces();
+    for (const [name, entry] of Object.entries(known)) {
+        if (entry.source?.repo) {
+            result[name] = {
+                source: { source: "github", repo: entry.source.repo },
+            };
+        }
+    }
+    // Fallback: extraKnownMarketplaces (legacy — only adds entries not already in known)
+    const settings = await readSettings(projectPath);
+    for (const [name, config] of Object.entries(settings.extraKnownMarketplaces || {})) {
+        if (!result[name]) {
+            result[name] = config;
+        }
+    }
+    return result;
+}
+// Global marketplace management - READ ONLY
+// Marketplaces are managed via Claude Code's native system
+export async function getGlobalConfiguredMarketplaces() {
+    const result = {};
+    // Primary: known_marketplaces.json
+    const known = await readKnownMarketplaces();
+    for (const [name, entry] of Object.entries(known)) {
+        if (entry.source?.repo) {
+            result[name] = {
+                source: { source: "github", repo: entry.source.repo },
+            };
+        }
+    }
+    // Fallback: extraKnownMarketplaces
+    const settings = await readGlobalSettings();
+    for (const [name, config] of Object.entries(settings.extraKnownMarketplaces || {})) {
+        if (!result[name]) {
+            result[name] = config;
+        }
+    }
+    return result;
+}
+// Global plugin management
+export async function enableGlobalPlugin(pluginId, enabled) {
+    const settings = await readGlobalSettings();
+    settings.enabledPlugins = settings.enabledPlugins || {};
+    if (enabled) {
+        settings.enabledPlugins[pluginId] = true;
+    }
+    else {
+        delete settings.enabledPlugins[pluginId];
+    }
+    await writeGlobalSettings(settings);
+}
+export async function getGlobalEnabledPlugins() {
+    const settings = await readGlobalSettings();
+    return settings.enabledPlugins || {};
+}
+export async function getGlobalInstalledPluginVersions() {
+    const settings = await readGlobalSettings();
+    return settings.installedPluginVersions || {};
+}
+export async function saveGlobalInstalledPluginVersion(pluginId, version) {
+    const settings = await readGlobalSettings();
+    settings.installedPluginVersions = settings.installedPluginVersions || {};
+    settings.installedPluginVersions[pluginId] = version;
+    await writeGlobalSettings(settings);
+    // Update registry for user scope
+    await updateInstalledPluginsRegistry(pluginId, version, "user");
+}
+export async function removeGlobalInstalledPluginVersion(pluginId) {
+    const settings = await readGlobalSettings();
+    if (settings.installedPluginVersions) {
+        delete settings.installedPluginVersions[pluginId];
+    }
+    if (settings.enabledPlugins) {
+        delete settings.enabledPlugins[pluginId];
+    }
+    await writeGlobalSettings(settings);
+    // Remove from registry for user scope
+    await removeFromInstalledPluginsRegistry(pluginId, "user");
+}
+// Shared logic for discovering marketplaces from settings
+function discoverMarketplacesFromSettings(settings, knownMarketplaces) {
+    const discovered = new Map();
+    // 1. From known_marketplaces.json (official Claude Code registry — primary source)
+    if (knownMarketplaces) {
+        for (const [name, entry] of Object.entries(knownMarketplaces)) {
+            if (entry.source?.repo) {
+                discovered.set(name, {
+                    name,
+                    source: "configured",
+                    config: {
+                        source: { source: "github", repo: entry.source.repo },
+                    },
+                });
+            }
+        }
+    }
+    // 2. From extraKnownMarketplaces (legacy/team fallback — only adds entries not already in known_marketplaces.json)
+    for (const [name, config] of Object.entries(settings.extraKnownMarketplaces || {})) {
+        if (!discovered.has(name)) {
+            discovered.set(name, { name, source: "configured", config });
+        }
+    }
+    // 3. From enabledPlugins (infer marketplace from plugin ID format: pluginName@marketplaceName)
+    for (const pluginId of Object.keys(settings.enabledPlugins || {})) {
+        const parsed = parsePluginId(pluginId);
+        if (parsed && !discovered.has(parsed.marketplace)) {
+            discovered.set(parsed.marketplace, {
+                name: parsed.marketplace,
+                source: "inferred",
+            });
+        }
+    }
+    // 4. From installedPluginVersions (same format)
+    for (const pluginId of Object.keys(settings.installedPluginVersions || {})) {
+        const parsed = parsePluginId(pluginId);
+        if (parsed && !discovered.has(parsed.marketplace)) {
+            discovered.set(parsed.marketplace, {
+                name: parsed.marketplace,
+                source: "inferred",
+            });
+        }
+    }
+    return Array.from(discovered.values());
+}
+// Discover all marketplaces from settings (configured + inferred from plugins)
+export async function discoverAllMarketplaces(projectPath) {
+    try {
+        const settings = await readSettings(projectPath);
+        const known = await readKnownMarketplaces();
+        return discoverMarketplacesFromSettings(settings, known);
+    }
+    catch (error) {
+        // Graceful degradation - return empty array instead of crashing
+        console.error("Failed to discover project marketplaces:", error instanceof Error ? error.message : "Unknown error");
+        return [];
+    }
+}
+// Discover all marketplaces from global settings
+export async function discoverAllGlobalMarketplaces() {
+    try {
+        const settings = await readGlobalSettings();
+        const known = await readKnownMarketplaces();
+        return discoverMarketplacesFromSettings(settings, known);
+    }
+    catch (error) {
+        // Graceful degradation - return empty array instead of crashing
+        console.error("Failed to discover global marketplaces:", error instanceof Error ? error.message : "Unknown error");
+        return [];
+    }
+}
+// installed_plugins.json registry management
+const INSTALLED_PLUGINS_FILE = path.join(os.homedir(), ".claude", "plugins", "installed_plugins.json");
+const KNOWN_MARKETPLACES_FILE = path.join(os.homedir(), ".claude", "plugins", "known_marketplaces.json");
+/**
+ * Write known_marketplaces.json
+ */
+async function writeKnownMarketplaces(marketplaces) {
+    await fs.ensureDir(path.dirname(KNOWN_MARKETPLACES_FILE));
+    await fs.writeJson(KNOWN_MARKETPLACES_FILE, marketplaces, { spaces: 2 });
+}
+/**
+ * Set autoUpdate flag for a marketplace in known_marketplaces.json
+ * This is where Claude Code actually reads the autoUpdate setting
+ */
+export async function setMarketplaceAutoUpdate(marketplaceName, autoUpdate) {
+    const known = await readKnownMarketplaces();
+    if (known[marketplaceName]) {
+        known[marketplaceName].autoUpdate = autoUpdate;
+        await writeKnownMarketplaces(known);
+        return true;
+    }
+    return false; // Marketplace not yet installed by Claude Code
+}
+/**
+ * Get autoUpdate status for a marketplace
+ */
+export async function getMarketplaceAutoUpdate(marketplaceName) {
+    const known = await readKnownMarketplaces();
+    return known[marketplaceName]?.autoUpdate;
+}
+// =============================================================================
+// MARKETPLACE RENAME MIGRATION: mag-claude-plugins / MadAppGang-claude-code → magus
+// =============================================================================
+const OLD_MARKETPLACE_NAMES = ["mag-claude-plugins", "MadAppGang-claude-code"];
+const NEW_MARKETPLACE_NAME = "magus";
+const NEW_MARKETPLACE_REPO = "MadAppGang/magus";
+const OLD_MARKETPLACE_REPOS = ["MadAppGang/claude-code"];
+/**
+ * Rename plugin keys in a Record from any old marketplace name to new.
+ * e.g., "frontend@mag-claude-plugins" → "frontend@magus"
+ *        "dev@MadAppGang-claude-code" → "dev@magus"
+ * Returns [migratedRecord, count] — count=0 means no changes.
+ */
+function migratePluginKeys(record) {
+    if (!record)
+        return [{}, 0];
+    const migrated = {};
+    let count = 0;
+    for (const [key, value] of Object.entries(record)) {
+        const oldName = OLD_MARKETPLACE_NAMES.find((n) => key.endsWith(`@${n}`));
+        if (oldName) {
+            const pluginName = key.slice(0, key.lastIndexOf("@"));
+            const newKey = `${pluginName}@${NEW_MARKETPLACE_NAME}`;
+            // Don't overwrite if canonical key already exists
+            if (!record[newKey]) {
+                migrated[newKey] = value;
+            }
+            count++;
+        }
+        else {
+            migrated[key] = value;
+        }
+    }
+    return [migrated, count];
+}
+/**
+ * Migrate a single settings object in-place.
+ * Returns number of keys renamed.
+ */
+function migrateSettingsObject(settings) {
+    let total = 0;
+    const [ep, epCount] = migratePluginKeys(settings.enabledPlugins);
+    if (epCount > 0) {
+        settings.enabledPlugins = ep;
+        total += epCount;
+    }
+    const [iv, ivCount] = migratePluginKeys(settings.installedPluginVersions);
+    if (ivCount > 0) {
+        settings.installedPluginVersions = iv;
+        total += ivCount;
+    }
+    // Migrate extraKnownMarketplaces keys
+    for (const oldName of OLD_MARKETPLACE_NAMES) {
+        if (settings.extraKnownMarketplaces?.[oldName]) {
+            const entry = settings.extraKnownMarketplaces[oldName];
+            delete settings.extraKnownMarketplaces[oldName];
+            if (!settings.extraKnownMarketplaces[NEW_MARKETPLACE_NAME]) {
+                settings.extraKnownMarketplaces[NEW_MARKETPLACE_NAME] = {
+                    ...entry,
+                    source: {
+                        ...entry.source,
+                        repo: NEW_MARKETPLACE_REPO,
+                    },
+                };
+            }
+            total++;
+        }
+    }
+    // Fix stale repo URL on existing magus entry (e.g. key is "magus" but repo is still "MadAppGang/claude-code")
+    const magusEntry = settings.extraKnownMarketplaces?.[NEW_MARKETPLACE_NAME];
+    if (magusEntry?.source?.repo &&
+        OLD_MARKETPLACE_REPOS.includes(magusEntry.source.repo)) {
+        magusEntry.source.repo = NEW_MARKETPLACE_REPO;
+        total++;
+    }
+    return total;
+}
+/**
+ * Migrate all settings from mag-claude-plugins to magus.
+ * Safe to call multiple times — no-ops if already migrated.
+ * Runs across project settings, global settings, local settings,
+ * known_marketplaces.json, and installed_plugins.json.
+ */
+/**
+ * Decode a ~/.claude/projects/ directory name back to a filesystem path.
+ * Claude Code encodes paths by replacing "/" with "-", which is lossy when
+ * directory names themselves contain dashes (e.g., "circl-infra" → "circl/infra").
+ * Strategy: split on "-", then greedily recombine segments by checking which
+ * combinations actually exist on disk.
+ * Returns null if no valid path can be resolved.
+ */
+async function decodeProjectDirName(encoded) {
+    // Split into segments: "-Users-jack-dev-circl-infra" → ["Users","jack","dev","circl","infra"]
+    const segments = encoded.replace(/^-/, "").split("-");
+    if (segments.length === 0)
+        return null;
+    // Build path greedily: at each step, try joining the next segment with a dash first
+    // (preserving directory names like "circl-infra"), fall back to slash (new path segment)
+    let current = "/" + segments[0];
+    for (let i = 1; i < segments.length; i++) {
+        const withDash = current + "-" + segments[i];
+        const withSlash = current + "/" + segments[i];
+        // Prefer dash (keeps compound names intact) if that path prefix exists
+        if (await fs.pathExists(withDash)) {
+            current = withDash;
+        }
+        else {
+            current = withSlash;
+        }
+    }
+    return (await fs.pathExists(current)) ? current : null;
+}
+export async function migrateMarketplaceRename(projectPath) {
+    const result = {
+        projectMigrated: 0,
+        globalMigrated: 0,
+        localMigrated: 0,
+        knownMarketplacesMigrated: false,
+        registryMigrated: 0,
+    };
+    // 1. Project settings
+    try {
+        const settings = await readSettings(projectPath);
+        const count = migrateSettingsObject(settings);
+        if (count > 0) {
+            await writeSettings(settings, projectPath);
+            result.projectMigrated = count;
+        }
+    }
+    catch {
+        /* skip if unreadable */
+    }
+    // 2. Global settings
+    try {
+        const settings = await readGlobalSettings();
+        const count = migrateSettingsObject(settings);
+        if (count > 0) {
+            await writeGlobalSettings(settings);
+            result.globalMigrated = count;
+        }
+    }
+    catch {
+        /* skip if unreadable */
+    }
+    // 3. Local settings (settings.local.json)
+    try {
+        const local = await readLocalSettings(projectPath);
+        let localCount = 0;
+        const [ep, epCount] = migratePluginKeys(local.enabledPlugins);
+        if (epCount > 0) {
+            local.enabledPlugins = ep;
+            localCount += epCount;
+        }
+        const [iv, ivCount] = migratePluginKeys(local.installedPluginVersions);
+        if (ivCount > 0) {
+            local.installedPluginVersions = iv;
+            localCount += ivCount;
+        }
+        if (localCount > 0) {
+            await writeLocalSettings(local, projectPath);
+            result.localMigrated = localCount;
+        }
+    }
+    catch {
+        /* skip if unreadable */
+    }
+    // 4. known_marketplaces.json — rename old keys + physical directory cleanup
+    const pluginsDir = path.join(os.homedir(), ".claude", "plugins", "marketplaces");
+    const newDir = path.join(pluginsDir, NEW_MARKETPLACE_NAME);
+    try {
+        const known = await readKnownMarketplaces();
+        let knownModified = false;
+        for (const oldName of OLD_MARKETPLACE_NAMES) {
+            if (known[oldName]) {
+                const oldEntry = known[oldName];
+                // If canonical entry doesn't exist yet, create it
+                if (!known[NEW_MARKETPLACE_NAME]) {
+                    known[NEW_MARKETPLACE_NAME] = {
+                        ...oldEntry,
+                        source: {
+                            ...oldEntry.source,
+                            repo: "MadAppGang/magus",
+                        },
+                    };
+                }
+                delete known[oldName];
+                knownModified = true;
+            }
+            // Ensure installLocation doesn't reference old directory names
+            if (known[NEW_MARKETPLACE_NAME]?.installLocation?.includes(oldName)) {
+                known[NEW_MARKETPLACE_NAME].installLocation = known[NEW_MARKETPLACE_NAME].installLocation.replace(oldName, NEW_MARKETPLACE_NAME);
+                knownModified = true;
+            }
+        }
+        if (knownModified) {
+            await writeKnownMarketplaces(known);
+            result.knownMarketplacesMigrated = true;
+        }
+    }
+    catch {
+        /* skip if unreadable */
+    }
+    // 4b. Rename/remove old physical directories (runs even if keys were already migrated)
+    for (const oldName of OLD_MARKETPLACE_NAMES) {
+        const oldDir = path.join(pluginsDir, oldName);
+        try {
+            if (await fs.pathExists(oldDir)) {
+                if (!(await fs.pathExists(newDir))) {
+                    await fs.rename(oldDir, newDir);
+                }
+                else {
+                    // Both exist — remove the old one (magus dir is canonical)
+                    await fs.remove(oldDir);
+                }
+            }
+        }
+        catch {
+            /* non-fatal: directory cleanup is best-effort */
+        }
+    }
+    // 4c. Update git remote URL in the marketplace clone (old → new repo)
+    try {
+        if (await fs.pathExists(path.join(newDir, ".git"))) {
+            const { execSync } = await import("node:child_process");
+            const remote = execSync("git remote get-url origin", {
+                cwd: newDir,
+                encoding: "utf-8",
+                timeout: 5000,
+            }).trim();
+            if (remote.includes("claude-code") && remote.includes("MadAppGang")) {
+                const newRemote = remote.replace("claude-code", NEW_MARKETPLACE_NAME);
+                execSync(`git remote set-url origin "${newRemote}"`, {
+                    cwd: newDir,
+                    encoding: "utf-8",
+                    timeout: 5000,
+                });
+            }
+        }
+    }
+    catch {
+        /* non-fatal: git remote update is best-effort */
+    }
+    // 5. installed_plugins.json — rename plugin ID keys
+    try {
+        const registry = await readInstalledPluginsRegistry();
+        let regCount = 0;
+        const newPlugins = {};
+        for (const [pluginId, entries] of Object.entries(registry.plugins)) {
+            const oldName = OLD_MARKETPLACE_NAMES.find((n) => pluginId.endsWith(`@${n}`));
+            if (oldName) {
+                const pluginName = pluginId.slice(0, pluginId.lastIndexOf("@"));
+                const newKey = `${pluginName}@${NEW_MARKETPLACE_NAME}`;
+                if (!newPlugins[newKey]) {
+                    newPlugins[newKey] = entries;
+                }
+                regCount++;
+            }
+            else {
+                newPlugins[pluginId] = entries;
+            }
+        }
+        if (regCount > 0) {
+            registry.plugins = newPlugins;
+            await writeInstalledPluginsRegistry(registry);
+            result.registryMigrated = regCount;
+        }
+    }
+    catch {
+        /* skip if unreadable */
+    }
+    // 6. Scan all known project settings (derived from ~/.claude/projects/ directory names)
+    try {
+        const projectsDir = path.join(os.homedir(), ".claude", "projects");
+        if (await fs.pathExists(projectsDir)) {
+            const entries = await fs.readdir(projectsDir);
+            const seenPaths = new Set();
+            // Current project (from step 1) already handled — skip it
+            const currentProject = projectPath || process.cwd();
+            seenPaths.add(currentProject);
+            for (const entry of entries) {
+                const decoded = await decodeProjectDirName(entry);
+                if (!decoded || seenPaths.has(decoded))
+                    continue;
+                seenPaths.add(decoded);
+                const settingsFile = path.join(decoded, ".claude", "settings.json");
+                try {
+                    if (await fs.pathExists(settingsFile)) {
+                        const raw = await fs.readJson(settingsFile);
+                        const count = migrateSettingsObject(raw);
+                        if (count > 0) {
+                            await fs.writeJson(settingsFile, raw, { spaces: 2 });
+                            result.projectMigrated += count;
+                        }
+                    }
+                }
+                catch {
+                    /* skip individual projects that fail */
+                }
+            }
+        }
+    }
+    catch {
+        /* non-fatal: cross-project scan is best-effort */
+    }
+    return result;
+}
+/**
+ * Check if a marketplace is from Magus (MadAppGang)
+ */
+function isMadAppGangMarketplace(entry) {
+    const repo = entry.source?.repo?.toLowerCase() || "";
+    return repo.includes("madappgang");
+}
+/**
+ * Recover/sync marketplace settings:
+ * - Enable autoUpdate for Magus marketplaces that don't have it set
+ * - Remove entries for marketplaces whose installLocation no longer exists
+ */
+export async function recoverMarketplaceSettings() {
+    const known = await readKnownMarketplaces();
+    const result = {
+        enabledAutoUpdate: [],
+        removed: [],
+    };
+    const updatedKnown = {};
+    for (const [name, entry] of Object.entries(known)) {
+        // Check if install location still exists
+        if (entry.installLocation &&
+            !(await fs.pathExists(entry.installLocation))) {
+            result.removed.push(name);
+            continue;
+        }
+        // Enable autoUpdate if not set - only for Magus (MadAppGang) marketplaces
+        if (entry.autoUpdate === undefined && isMadAppGangMarketplace(entry)) {
+            entry.autoUpdate = true;
+            result.enabledAutoUpdate.push(name);
+        }
+        updatedKnown[name] = entry;
+    }
+    // Write back if any changes were made
+    if (result.enabledAutoUpdate.length > 0 || result.removed.length > 0) {
+        await writeKnownMarketplaces(updatedKnown);
+    }
+    return result;
+}
+/**
+ * Clean up extraKnownMarketplaces entries that are now properly registered
+ * in known_marketplaces.json (the official Claude Code marketplace registry).
+ *
+ * extraKnownMarketplaces was the old claudeup install mechanism. The official
+ * way is `claude plugin marketplace add` which writes to known_marketplaces.json.
+ * extraKnownMarketplaces should only be used in project settings for team
+ * marketplace suggestions — not in user settings as a primary install path.
+ *
+ * This function removes magus-related entries from extraKnownMarketplaces in
+ * both user and project settings when they're already in known_marketplaces.json.
+ */
+export async function cleanupExtraKnownMarketplaces(projectPath) {
+    const known = await readKnownMarketplaces();
+    const cleaned = [];
+    // Clean user-level settings
+    try {
+        const globalSettings = await readGlobalSettings();
+        if (globalSettings.extraKnownMarketplaces) {
+            let changed = false;
+            for (const name of Object.keys(globalSettings.extraKnownMarketplaces)) {
+                if (known[name]) {
+                    delete globalSettings.extraKnownMarketplaces[name];
+                    cleaned.push(`user:${name}`);
+                    changed = true;
+                }
+            }
+            // Remove the field entirely if empty
+            if (changed &&
+                Object.keys(globalSettings.extraKnownMarketplaces).length === 0) {
+                delete globalSettings.extraKnownMarketplaces;
+            }
+            if (changed) {
+                await writeGlobalSettings(globalSettings);
+            }
+        }
+    }
+    catch {
+        // Non-fatal: user settings cleanup is best-effort
+    }
+    // Clean project-level settings
+    if (projectPath) {
+        try {
+            const projectSettings = await readSettings(projectPath);
+            if (projectSettings.extraKnownMarketplaces) {
+                let changed = false;
+                for (const name of Object.keys(projectSettings.extraKnownMarketplaces)) {
+                    if (known[name]) {
+                        delete projectSettings.extraKnownMarketplaces[name];
+                        cleaned.push(`project:${name}`);
+                        changed = true;
+                    }
+                }
+                if (changed &&
+                    Object.keys(projectSettings.extraKnownMarketplaces).length === 0) {
+                    delete projectSettings.extraKnownMarketplaces;
+                }
+                if (changed) {
+                    await writeSettings(projectSettings, projectPath);
+                }
+            }
+        }
+        catch {
+            // Non-fatal: project settings cleanup is best-effort
+        }
+    }
+    return cleaned;
+}
+/**
+ * Read known_marketplaces.json to get marketplace source info
+ */
+async function readKnownMarketplaces() {
+    try {
+        if (await fs.pathExists(KNOWN_MARKETPLACES_FILE)) {
+            return await fs.readJson(KNOWN_MARKETPLACES_FILE);
+        }
+    }
+    catch {
+        // Return empty if can't read
+    }
+    return {};
+}
+/**
+ * Get the source path for a plugin from its marketplace
+ * For directory-based marketplaces, returns the local directory path
+ * For GitHub marketplaces, returns the cloned repo path in ~/.claude/plugins/marketplaces/
+ */
+async function getPluginSourcePath(pluginName, marketplace) {
+    const known = await readKnownMarketplaces();
+    const mpEntry = known[marketplace];
+    if (!mpEntry) {
+        return null;
+    }
+    let basePath;
+    if (mpEntry.source.source === "directory" && mpEntry.source.path) {
+        // Directory-based marketplace - use the source path directly
+        basePath = mpEntry.source.path;
+    }
+    else {
+        // GitHub-based marketplace - use installLocation (cloned repo path)
+        basePath = mpEntry.installLocation;
+    }
+    // Look for plugin in standard locations
+    const possiblePaths = [
+        path.join(basePath, "plugins", pluginName),
+        path.join(basePath, pluginName),
+    ];
+    for (const pluginPath of possiblePaths) {
+        if (await fs.pathExists(pluginPath)) {
+            return pluginPath;
+        }
+    }
+    return null;
+}
+/**
+ * Copy plugin files from source to cache
+ * This ensures the cache is populated with the latest plugin version
+ */
+async function copyPluginToCache(pluginId, version, marketplace) {
+    const { pluginName } = parsePluginId(pluginId) || {
+        pluginName: pluginId.split("@")[0],
+    };
+    const sourcePath = await getPluginSourcePath(pluginName, marketplace);
+    if (!sourcePath) {
+        return false;
+    }
+    const cachePath = getPluginCachePath(pluginId, version, marketplace);
+    try {
+        // Remove existing cache directory if it exists
+        if (await fs.pathExists(cachePath)) {
+            await fs.remove(cachePath);
+        }
+        // Copy plugin files to cache
+        await fs.copy(sourcePath, cachePath, {
+            overwrite: true,
+            errorOnExist: false,
+        });
+        return true;
+    }
+    catch (error) {
+        console.warn(`Failed to copy plugin ${pluginId} to cache:`, error instanceof Error ? error.message : "Unknown error");
+        return false;
+    }
+}
+/**
+ * Read installed_plugins.json registry
+ */
+export async function readInstalledPluginsRegistry() {
+    try {
+        if (await fs.pathExists(INSTALLED_PLUGINS_FILE)) {
+            const content = await fs.readJson(INSTALLED_PLUGINS_FILE);
+            // Validate structure
+            if (!content.version || !content.plugins) {
+                throw new Error("Invalid registry structure");
+            }
+            return content;
+        }
+    }
+    catch (error) {
+        // Backup corrupted file
+        if (await fs.pathExists(INSTALLED_PLUGINS_FILE)) {
+            try {
+                const backup = `${INSTALLED_PLUGINS_FILE}.backup.${Date.now()}`;
+                await fs.copy(INSTALLED_PLUGINS_FILE, backup);
+                console.warn(`Corrupted registry backed up to: ${backup}`);
+            }
+            catch {
+                // Ignore backup errors
+            }
+        }
+    }
+    return { version: 2, plugins: {} };
+}
+/**
+ * Write installed_plugins.json registry
+ */
+export async function writeInstalledPluginsRegistry(registry) {
+    await fs.ensureDir(path.dirname(INSTALLED_PLUGINS_FILE));
+    await fs.writeJson(INSTALLED_PLUGINS_FILE, registry, { spaces: 2 });
+}
+/**
+ * Get install path for a plugin version in cache
+ */
+function getPluginCachePath(pluginId, version, marketplace) {
+    const { pluginName } = parsePluginId(pluginId) || {
+        pluginName: pluginId.split("@")[0],
+    };
+    return path.join(os.homedir(), ".claude", "plugins", "cache", marketplace, pluginName, version);
+}
+/**
+ * Update installed_plugins.json when a plugin is installed/updated
+ * Also copies plugin files from source to cache to ensure latest version is available
+ */
+export async function updateInstalledPluginsRegistry(pluginId, version, scope, projectPath) {
+    try {
+        const registry = await readInstalledPluginsRegistry();
+        // Get marketplace from plugin ID
+        const parsed = parsePluginId(pluginId);
+        if (!parsed) {
+            console.warn(`Invalid plugin ID: ${pluginId}, skipping registry update`);
+            return;
+        }
+        const { marketplace } = parsed;
+        // Copy plugin files from source to cache
+        // This ensures the cache has the latest plugin version
+        await copyPluginToCache(pluginId, version, marketplace);
+        const installPath = getPluginCachePath(pluginId, version, marketplace);
+        const now = new Date().toISOString();
+        // Initialize plugin array if it doesn't exist
+        if (!registry.plugins[pluginId]) {
+            registry.plugins[pluginId] = [];
+        }
+        // Find existing entry for this scope and project
+        const existingIndex = registry.plugins[pluginId].findIndex((entry) => {
+            if (entry.scope !== scope)
+                return false;
+            if (scope === "user")
+                return true;
+            return entry.projectPath === projectPath;
+        });
+        const entry = {
+            scope,
+            projectPath,
+            installPath,
+            version,
+            installedAt: existingIndex >= 0
+                ? registry.plugins[pluginId][existingIndex].installedAt
+                : now,
+            lastUpdated: now,
+            gitCommitSha: existingIndex >= 0
+                ? registry.plugins[pluginId][existingIndex].gitCommitSha
+                : undefined,
+        };
+        if (existingIndex >= 0) {
+            // Update existing entry
+            registry.plugins[pluginId][existingIndex] = entry;
+        }
+        else {
+            // Add new entry
+            registry.plugins[pluginId].push(entry);
+        }
+        await writeInstalledPluginsRegistry(registry);
+    }
+    catch (error) {
+        // Log warning but don't block plugin operation
+        console.warn(`Failed to update registry for ${pluginId}:`, error instanceof Error ? error.message : "Unknown error");
+    }
+}
+/**
+ * Remove plugin from installed_plugins.json registry
+ */
+export async function removeFromInstalledPluginsRegistry(pluginId, scope, projectPath) {
+    try {
+        const registry = await readInstalledPluginsRegistry();
+        if (!registry.plugins[pluginId])
+            return;
+        // Remove entry matching scope and projectPath
+        registry.plugins[pluginId] = registry.plugins[pluginId].filter((entry) => {
+            if (entry.scope !== scope)
+                return true;
+            if (scope === "user")
+                return false;
+            return entry.projectPath !== projectPath;
+        });
+        // Remove plugin key if no entries remain
+        if (registry.plugins[pluginId].length === 0) {
+            delete registry.plugins[pluginId];
+        }
+        await writeInstalledPluginsRegistry(registry);
+    }
+    catch (error) {
+        // Log warning but don't block plugin operation
+        console.warn(`Failed to remove from registry for ${pluginId}:`, error instanceof Error ? error.message : "Unknown error");
+    }
+}
