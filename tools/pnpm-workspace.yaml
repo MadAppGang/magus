@@ -1,4 +1,5 @@
 packages:
+  - 'claudeup-core'
   - 'skills-api'
 allowBuilds:
   '@firebase/util': true
