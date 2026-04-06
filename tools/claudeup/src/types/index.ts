@@ -88,7 +88,7 @@ export interface ClaudeSettings {
 	enabledPlugins?: Record<string, boolean>;
 	extraKnownMarketplaces?: Record<string, MarketplaceSource>;
 	installedPluginVersions?: Record<string, string>;
-	statusLine?: string;
+	statusLine?: string | { type: string; template?: string; command?: string };
 	hooks?: Record<string, ClaudeHookGroup[]>;
 }
 

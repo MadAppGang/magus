@@ -522,6 +522,24 @@ export async function removeLocalInstalledPluginVersion(
 }
 
 // Status line management
+// Claude Code expects statusLine as an object: { type: "template", template: "..." }
+// Writing a bare string causes a validation error that skips the entire settings file.
+
+function wrapStatusLine(template: string): { type: string; template: string } | undefined {
+  if (!template) return undefined;
+  return { type: "template", template };
+}
+
+function unwrapStatusLine(value: unknown): string | undefined {
+  if (!value) return undefined;
+  if (typeof value === "string") return value; // legacy format
+  if (typeof value === "object" && value !== null) {
+    const obj = value as { template?: string; command?: string };
+    return obj.template ?? obj.command;
+  }
+  return undefined;
+}
+
 export async function setStatusLine(
   template: string,
   projectPath: string,
@@ -529,7 +547,12 @@ export async function setStatusLine(
   validateProjectPath(projectPath);
 
   const settings = await readSettings(projectPath);
-  settings.statusLine = template;
+  const wrapped = wrapStatusLine(template);
+  if (wrapped) {
+    settings.statusLine = wrapped;
+  } else {
+    delete settings.statusLine;
+  }
   await writeSettings(settings, projectPath);
 }
 
@@ -538,18 +561,23 @@ export async function getStatusLine(
 ): Promise<string | undefined> {
   validateProjectPath(projectPath);
   const settings = await readSettings(projectPath);
-  return settings.statusLine as string | undefined;
+  return unwrapStatusLine(settings.statusLine);
 }
 
 export async function setGlobalStatusLine(template: string): Promise<void> {
   const settings = await readGlobalSettings();
-  settings.statusLine = template;
+  const wrapped = wrapStatusLine(template);
+  if (wrapped) {
+    settings.statusLine = wrapped;
+  } else {
+    delete settings.statusLine;
+  }
   await writeGlobalSettings(settings);
 }
 
 export async function getGlobalStatusLine(): Promise<string | undefined> {
   const settings = await readGlobalSettings();
-  return settings.statusLine as string | undefined;
+  return unwrapStatusLine(settings.statusLine);
 }
 
 export async function getEffectiveStatusLine(projectPath: string): Promise<{
