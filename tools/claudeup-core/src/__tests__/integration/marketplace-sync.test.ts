@@ -26,11 +26,24 @@ interface PluginManifest {
   description: string;
 }
 
+interface GitSubdirSource {
+  source: string;
+  url: string;
+  path: string;
+  ref: string;
+  sha: string;
+}
+
 interface MarketplacePlugin {
   name: string;
   version: string;
-  source: string;
+  source: string | GitSubdirSource;
   description?: string;
+}
+
+function getSourcePath(source: string | GitSubdirSource): string {
+  if (typeof source === 'string') return source;
+  return source.path;
 }
 
 interface MarketplaceJson {
@@ -129,16 +142,19 @@ describe('marketplace-sync integration', () => {
       const invalidSources: string[] = [];
 
       for (const plugin of marketplace.plugins) {
-        // Source should be relative path like "./plugins/name"
-        if (!plugin.source.startsWith('./plugins/')) {
-          invalidSources.push(`${plugin.name}: source should start with ./plugins/`);
+        const sourcePath = getSourcePath(plugin.source);
+
+        // Source path should start with "plugins/" (or "./plugins/" for legacy string format)
+        const normalizedPath = sourcePath.replace(/^\.\//, '');
+        if (!normalizedPath.startsWith('plugins/')) {
+          invalidSources.push(`${plugin.name}: source path should start with plugins/`);
           continue;
         }
 
         // Check if source directory exists
-        const sourcePath = join(REPO_ROOT, plugin.source);
-        if (!existsSync(sourcePath)) {
-          invalidSources.push(`${plugin.name}: source path does not exist: ${plugin.source}`);
+        const fullPath = join(REPO_ROOT, normalizedPath);
+        if (!existsSync(fullPath)) {
+          invalidSources.push(`${plugin.name}: source path does not exist: ${normalizedPath}`);
         }
       }
 
@@ -152,8 +168,10 @@ describe('marketplace-sync integration', () => {
       const mismatches: string[] = [];
 
       for (const plugin of marketplace.plugins) {
-        // Extract name from source path
-        const sourceMatch = plugin.source.match(/\.\/plugins\/(.+)$/);
+        const sourcePath = getSourcePath(plugin.source);
+        const normalizedPath = sourcePath.replace(/^\.\//, '');
+        // Extract name from source path (e.g., "plugins/code-analysis" -> "code-analysis")
+        const sourceMatch = normalizedPath.match(/^plugins\/(.+)$/);
         if (sourceMatch) {
           const sourceName = sourceMatch[1];
           if (sourceName !== plugin.name) {
