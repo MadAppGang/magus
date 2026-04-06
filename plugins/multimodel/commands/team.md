@@ -49,9 +49,11 @@ Unless `--no-memory`, save resolved models to `defaultModels` in the preferences
 
 Issue BOTH calls in ONE message. Do not serialize them.
 
-**External models** (all non-"internal" model IDs):
+**CRITICAL:** "internal" is NOT a real model — never pass it to claudish. Filter it out first.
+
+**External models** (all models EXCEPT "internal"):
 ```
-claudish team(mode="run", path=SESSION_DIR, models=[...externals...],
+claudish team(mode="run", path=SESSION_DIR, models=[...all models with "internal" removed...],
   input=VOTE_PROMPT, timeout=180, claude_flags=claudeFlags)  ← omit claude_flags if empty
 ```
 

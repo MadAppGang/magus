@@ -18,7 +18,7 @@
 | Plugin | Version | Purpose |
 |--------|---------|---------|
 | **Code Analysis** | v5.1.0 | Codebase investigation with mnemex MCP, 4 skills |
-| **Multimodel** | v3.1.0 | Multi-model collaboration and orchestration |
+| **Multimodel** | v3.1.2 | Multi-model collaboration and orchestration |
 | **Agent Development** | v1.6.1 | Create Claude Code agents and plugins |
 | **SEO** | v1.7.0 | SEO analysis and optimization with AUTO GATEs |
 | **Video Editing** | v1.1.1 | FFmpeg, Whisper, Final Cut Pro integration |

@@ -54,8 +54,8 @@
         "ref": "main",
         "sha": "dd690a4e2107e32be6b9a2c73e96d287ee371217"
       },
-      "description": "Multi-model collaboration, orchestration, and workflow patterns. v3.0.0: MCP-first \u2014 all skills updated to reference claudish MCP tools (team, create_session) instead of Bash+CLI. Dead code removed.",
-      "version": "3.1.1",
+      "description": "Multi-model collaboration, orchestration, and workflow patterns. v3.1.2: Fix internal model leaked to claudish — filter sentinel before external dispatch.",
+      "version": "3.1.2",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
