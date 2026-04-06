@@ -207,8 +207,9 @@ class MagusBrowserServer(BrowserUseServer):
     def _extend_list_tools(self) -> None:
         """
         Replace the parent's registered list_tools handler with a wrapper that
-        appends our 3 custom tool definitions. The MCP SDK stores a single handler
-        per request type in server.request_handlers; re-registering replaces it.
+        appends our 3 custom tool definitions and sanitizes upstream schemas.
+        The MCP SDK stores a single handler per request type in
+        server.request_handlers; re-registering replaces it.
         """
         # Capture the parent's handler from the MCP request_handlers dict.
         parent_handler = self.server.request_handlers.get(types.ListToolsRequest)
@@ -222,6 +223,13 @@ class MagusBrowserServer(BrowserUseServer):
                 parent_tools: list[types.Tool] = result.root.tools
             else:
                 parent_tools = []
+            # Sanitize upstream schemas: the Claude API rejects oneOf/allOf/anyOf
+            # at the top level of tool input_schema (browser-use#4211).
+            for tool in parent_tools:
+                schema = tool.inputSchema
+                if isinstance(schema, dict):
+                    for key in ("oneOf", "allOf", "anyOf"):
+                        schema.pop(key, None)
             return parent_tools + _CUSTOM_TOOLS
 
     async def _init_browser_session(

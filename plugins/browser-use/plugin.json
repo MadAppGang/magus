@@ -1,7 +1,7 @@
 {
   "name": "browser-use",
-  "version": "1.1.1",
-  "description": "Full-platform browser automation for Claude Code. v1.1.0: Rewrite as thin wrapper over built-in BrowserUseServer \u2014 63% less code (1518\u2192566 lines). Fix TCC downloads_path, per-PID Chrome profiles to prevent SingletonLock contention, graceful shutdown. 19 MCP tools, 5 skills.",
+  "version": "1.1.2",
+  "description": "Full-platform browser automation for Claude Code. v1.1.2: Re-fix oneOf schema rejection (browser-use#4211) lost in v1.1.0 rewrite \u2014 sanitize upstream tool schemas to strip oneOf/allOf/anyOf rejected by Claude API. 19 MCP tools, 5 skills.",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",
