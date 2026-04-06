@@ -27,7 +27,7 @@
 | **Dev** | v2.7.0 | Universal dev assistant, 12 commands via progressive disclosure, 46 skills |
 | **Designer** | v0.3.0 | UI design validation with pixel-diff comparison, 6 skills |
 | **Browser Use** | v1.0.0 | Full-platform browser automation, 18 MCP tools, 5 skills |
-| **Statusline** | v1.4.1 | Colorful statusline with worktree awareness |
+| **Statusline** | v2.1.0 | Colorful statusline with worktree awareness, memory usage, reset countdowns |
 | **Terminal** | v3.0.0 | Intent-level terminal: 5 skills, 9 commands, TDD workflow, dashboard archetypes + ht-mcp/tmux-mcp |
 | **GTD** | v1.0.0 | Getting Things Done workflow with real-time task sync via hooks |
 

@@ -290,8 +290,8 @@
         "ref": "main",
         "sha": "24bb8308335d7ac88f98cbfcc90d4391dff4516a"
       },
-      "description": "Adaptive statusline \u2014 always-visible bars, background highlights for critical states, provider-aware model display, vim mode, diff stats, compaction count. v2.0.4: Fix plan limits vanishing after 60s \u2014 validate API response before overwriting usage cache.",
-      "version": "2.0.5",
+      "description": "Adaptive statusline \u2014 always-visible bars, background highlights for critical states, provider-aware model display, vim mode, diff stats, compaction count, memory usage. v2.1.0: Prominent reset countdowns when rate-limited, process memory display.",
+      "version": "2.1.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",

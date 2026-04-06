@@ -1,5 +1,5 @@
 {
-  "description": "Real-world statusline JSON test fixtures for regression testing",
+  "description": "Real-world statusline JSON test fixtures for regression testing. Note: MEM section is dynamic (depends on live process) and not included in expected_sections.",
   "usage": "cat plugins/statusline/test-fixtures.json | jq -r '.fixtures[N].input' | bash plugins/statusline/scripts/statusline.sh",
   "fixtures": [
     {
@@ -115,6 +115,21 @@
         "exceeds_200k_tokens": false
       },
       "expected_sections": ["* Opus", " N ", "$1.00", "5m0s", "40%"]
+    },
+    {
+      "name": "rate-limited-100pct",
+      "description": "Fully rate-limited (100%) — countdown should be prominently visible with red background highlight",
+      "input": {
+        "model": {"display_name": "Claude Opus 4.6", "id": "claude-opus-4-6-20251101"},
+        "cost": {"total_cost_usd": 45.00, "total_duration_ms": 14400000, "total_lines_added": 500, "total_lines_removed": 120},
+        "context_window": {"used_percentage": 15, "context_window_size": 200000, "current_usage": 30000, "total_input_tokens": 30000, "remaining_percentage": 85},
+        "cwd": "/Users/jack/mag/magus",
+        "session_id": "test-ratelimit",
+        "rate_limits": {"five_hour": {"used_percentage": 100, "resets_at": "2026-03-20T19:30:00Z"}, "seven_day": {"used_percentage": 85, "resets_at": "2026-03-25T00:00:00Z"}},
+        "exceeds_200k_tokens": false
+      },
+      "expected_sections": ["* Opus", "$45.00", "4h0m", "+500/-120", "15%", "5h:100%", "7d:85%"],
+      "notes": "5h countdown uses red bg highlight (rate-limited), 7d countdown uses orange/bold (critical but not rate-limited)"
     }
   ]
 }

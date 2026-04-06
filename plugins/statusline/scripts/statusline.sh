@@ -1,5 +1,5 @@
 #!/bin/bash
-# Claude Code Status Line — colorful worktree-aware status with plan limits & reset countdowns
+# Claude Code Status Line — colorful worktree-aware status with plan limits, reset countdowns & memory usage
 # Receives JSON session data via stdin
 # Part of statusline plugin (MadAppGang/magus)
 
@@ -27,6 +27,7 @@ SHOW_DIFF=true
 SHOW_VIM=true
 SHOW_AGENT=true
 SHOW_SESSION_NAME=true
+SHOW_MEMORY=true
 CTX_BAR_WIDTH=12
 PLAN_BAR_WIDTH=10
 THEME="default"
@@ -45,6 +46,7 @@ if [ -f "$CONFIG_FILE" ] && command -v jq >/dev/null 2>&1; then
     "SHOW_VIM=\(d(.sections.vim; true))",
     "SHOW_AGENT=\(d(.sections.agent; true))",
     "SHOW_SESSION_NAME=\(d(.sections.session_name; true))",
+    "SHOW_MEMORY=\(d(.sections.memory; true))",
     "CTX_BAR_WIDTH=\(d(.context_bar_width; 12))",
     "PLAN_BAR_WIDTH=\(d(.plan_bar_width; 10))",
     "THEME=\(d(.theme; "default"))"
@@ -179,6 +181,48 @@ fmt_tokens() {
     local k=$((t / 1000))
     printf "%dk" "$k"
   fi
+}
+
+# Format memory in KB as human-readable (e.g., 1048576 → 1.0G, 850000 → 830M)
+fmt_mem() {
+  local kb=$1
+  if [ "$kb" -ge 1048576 ] 2>/dev/null; then
+    # GB range
+    local gb=$((kb / 1048576))
+    local remainder=$(( (kb % 1048576) / 104857 ))
+    printf "%d.%dG" "$gb" "$remainder"
+  elif [ "$kb" -ge 1024 ] 2>/dev/null; then
+    # MB range
+    local mb=$((kb / 1024))
+    printf "%dM" "$mb"
+  else
+    printf "%dk" "$kb"
+  fi
+}
+
+# Find the main Claude/node process PID by walking up the process tree
+find_claude_pid() {
+  local pid=$$
+  local max_depth=10
+  local depth=0
+  while [ "$pid" -gt 1 ] && [ "$depth" -lt "$max_depth" ] 2>/dev/null; do
+    local cmd
+    cmd=$(ps -o command= -p "$pid" 2>/dev/null)
+    case "$cmd" in
+      *claude*|*Claude*)
+        # Found a claude process — return its PID
+        printf '%s' "$pid"
+        return 0
+        ;;
+    esac
+    # Walk to parent
+    local ppid
+    ppid=$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d ' ')
+    [ -z "$ppid" ] || [ "$ppid" = "$pid" ] && break
+    pid=$ppid
+    depth=$((depth + 1))
+  done
+  return 1
 }
 
 # ── Extract session data (single jq call) ─────────────────
@@ -470,13 +514,40 @@ if [ "$SHOW_DURATION" = "true" ]; then
   append_section "${C_MAGENTA}${DURATION}${R}"
 fi
 
-# ── 8. Diff stats ─────────────────────────────────────────
+# ── 8. Memory usage ──────────────────────────────────────
+if [ "$SHOW_MEMORY" = "true" ]; then
+  CLAUDE_PID=""
+  if [ -n "$SESSION_ID" ]; then
+    PID_CACHE="$HOME/.claude/.statusline-pid-cache-${SESSION_ID}"
+    CLAUDE_PID=$(cat "$PID_CACHE" 2>/dev/null)
+    # Verify cached PID is still alive
+    if [ -n "$CLAUDE_PID" ] && ! kill -0 "$CLAUDE_PID" 2>/dev/null; then
+      CLAUDE_PID=""
+      rm -f "$PID_CACHE"
+    fi
+  fi
+  if [ -z "$CLAUDE_PID" ]; then
+    CLAUDE_PID=$(find_claude_pid)
+    if [ -n "$CLAUDE_PID" ] && [ -n "$SESSION_ID" ]; then
+      printf '%s\n' "$CLAUDE_PID" > "$PID_CACHE"
+    fi
+  fi
+  if [ -n "$CLAUDE_PID" ]; then
+    MEM_KB=$(ps -o rss= -p "$CLAUDE_PID" 2>/dev/null | tr -d ' ')
+    if [ -n "$MEM_KB" ] && [ "$MEM_KB" -gt 0 ] 2>/dev/null; then
+      MEM_FMT=$(fmt_mem "$MEM_KB")
+      append_section "${C_CYAN}${D}MEM:${MEM_FMT}${R}"
+    fi
+  fi
+fi
+
+# ── 9. Diff stats ─────────────────────────────────────────
 if [ "$SHOW_DIFF" = "true" ] && { [ "${LINES_ADDED:-0}" -gt 0 ] || [ "${LINES_REMOVED:-0}" -gt 0 ]; } 2>/dev/null; then
   DIFF_SECTION="${C_GREEN}+${LINES_ADDED}${R}${C_GRAY}/${R}${C_RED}-${LINES_REMOVED}${R}"
   append_section "$DIFF_SECTION"
 fi
 
-# ── 9. Context bar (always visible, adaptive width) ───────
+# ── 10. Context bar (always visible, adaptive width) ──────
 if [ "$SHOW_CONTEXT_BAR" = "true" ]; then
   BAR_COLOR=$(color_for_pct "$PCT")
   CTX_USED_TOKENS="${CURRENT_USAGE:-0}"
@@ -492,7 +563,6 @@ if [ "$SHOW_CONTEXT_BAR" = "true" ]; then
   # Context window size indicator (shows when exceeding nominal size)
   EXCEEDS_IND=""
   if [ "$EXCEEDS_200K" = "true" ]; then
-    local ctx_label
     ctx_label=$(fmt_tokens "$CTX_MAX_TOKENS")
     EXCEEDS_IND=" ${C_RED}${B}${ctx_label:-200k}+${R}"
   fi
@@ -533,7 +603,7 @@ if [ "$SHOW_CONTEXT_BAR" = "true" ]; then
   append_section "$CTX_SECTION"
 fi
 
-# ── 10. Plan limits (always bar, adaptive width) ──────────
+# ── 11. Plan limits (always bar, adaptive width) ──────────
 if [ "$SHOW_PLAN_LIMITS" = "true" ] && { [ -n "$FIVE_HR" ] || [ -n "$SEVEN_DAY" ]; }; then
   FIVE_HR=${FIVE_HR:-0}
   SEVEN_DAY=${SEVEN_DAY:-0}
@@ -574,7 +644,15 @@ if [ "$SHOW_PLAN_LIMITS" = "true" ] && { [ -n "$FIVE_HR" ] || [ -n "$SEVEN_DAY" 
       FH_LABEL="${FH_C}${D}5h${R}${FH_C}:${FIVE_HR}%%${R}"
     fi
     if [ -n "$FIVE_HR_CD" ]; then
-      FH_LABEL="${FH_LABEL} ${C_GRAY}${D}↻${FIVE_HR_CD}${R}"
+      if [ "${FIVE_HR:-0}" -ge 100 ] 2>/dev/null; then
+        # Rate-limited: countdown is primary info — red background highlight
+        FH_LABEL="${FH_LABEL} \033[41m${B}\033[97m ↻${FIVE_HR_CD} ${R}"
+      elif [ "${FIVE_HR:-0}" -ge 80 ] 2>/dev/null; then
+        # Critical: orange/yellow countdown — visible but not alarming
+        FH_LABEL="${FH_LABEL} ${C_ORANGE}${B}↻${FIVE_HR_CD}${R}"
+      else
+        FH_LABEL="${FH_LABEL} ${C_GRAY}${D}↻${FIVE_HR_CD}${R}"
+      fi
     fi
 
     # 7d label — background highlight when critical (≥80%)
@@ -584,7 +662,15 @@ if [ "$SHOW_PLAN_LIMITS" = "true" ] && { [ -n "$FIVE_HR" ] || [ -n "$SEVEN_DAY" 
       SD_LABEL="${SD_C}${D}7d${R}${SD_C}:${SEVEN_DAY}%%${R}"
     fi
     if [ -n "$SEVEN_DAY_CD" ]; then
-      SD_LABEL="${SD_LABEL} ${C_GRAY}${D}↻${SEVEN_DAY_CD}${R}"
+      if [ "${SEVEN_DAY:-0}" -ge 100 ] 2>/dev/null; then
+        # Rate-limited: countdown is primary info — red background highlight
+        SD_LABEL="${SD_LABEL} \033[41m${B}\033[97m ↻${SEVEN_DAY_CD} ${R}"
+      elif [ "${SEVEN_DAY:-0}" -ge 80 ] 2>/dev/null; then
+        # Critical: orange/yellow countdown — visible but not alarming
+        SD_LABEL="${SD_LABEL} ${C_ORANGE}${B}↻${SEVEN_DAY_CD}${R}"
+      else
+        SD_LABEL="${SD_LABEL} ${C_GRAY}${D}↻${SEVEN_DAY_CD}${R}"
+      fi
     fi
 
     append_section "${PBAR} ${FH_LABEL} ${SD_LABEL}"
