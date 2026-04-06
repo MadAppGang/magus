@@ -6,3 +6,5 @@ AppIcon.iconset/
 .DS_Store
 .claude/
 .claudemem/
+*.png
+!Sources/ClaudeProfiles/Resources/*.png
