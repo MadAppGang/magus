@@ -1,0 +1,348 @@
+{
+  "version": "1.0.0",
+  "generatedAt": "2026-03-29T23:16:28.153Z",
+  "shortAliases": {
+    "grok": "grok-4.20-beta",
+    "gemini": "gemini-3.1-pro-preview",
+    "gpt": "gpt-5.4",
+    "gpt-5": "gpt-5.4",
+    "deepseek": "deepseek-v3.2",
+    "minimax": "minimax-m2.7",
+    "glm": "glm-5-turbo",
+    "kimi": "kimi-k2.5",
+    "qwen": "qwen3-235b-a22b-2507",
+    "mimo": "mimo-v2-pro"
+  },
+  "roles": {
+    "fast_coding": {
+      "modelId": "grok-code-fast-1",
+      "fallback": "minimax-m2.5"
+    },
+    "reasoning": {
+      "modelId": "gemini-3.1-pro-preview",
+      "fallback": "glm-5"
+    },
+    "reasoning_premium": {
+      "modelId": "gpt-5.3-codex"
+    },
+    "vision": {
+      "modelId": "qwen3.5-plus-02-15"
+    },
+    "image_generation": {
+      "modelId": "gemini-3.1-flash-image-preview",
+      "fallback": "gemini-3-pro-image-preview"
+    },
+    "image_generation_fast": {
+      "modelId": "gemini-3.1-flash-image-preview"
+    },
+    "browser_use_anthropic": {
+      "modelId": "claude-sonnet-4-6"
+    },
+    "browser_use_bedrock": {
+      "modelId": "us.anthropic.claude-sonnet-4-20250514-v1:0"
+    },
+    "browser_use_openai": {
+      "modelId": "gpt-4o"
+    },
+    "coaching_classifier": {
+      "modelId": "claude-sonnet-4-20250514"
+    },
+    "research_primary": {
+      "modelId": "gemini-3.1-pro-preview"
+    },
+    "designer_review": {
+      "modelId": "gemini-3-pro-preview"
+    },
+    "free_tier": {
+      "modelId": "openrouter/polaris-alpha"
+    }
+  },
+  "teams": {
+    "review": [
+      "internal",
+      "grok-4.20-beta",
+      "gemini-3.1-pro-preview",
+      "gpt-5.4",
+      "deepseek-v3.2",
+      "minimax-m2.7",
+      "glm-5-turbo",
+      "kimi-k2.5"
+    ],
+    "research": [
+      "internal",
+      "gemini-3.1-pro-preview",
+      "glm-5-turbo",
+      "mimo-v2-pro"
+    ],
+    "architecture": [
+      "internal",
+      "gemini-3.1-pro-preview",
+      "gpt-5.4",
+      "glm-5-turbo"
+    ],
+    "code": [
+      "internal",
+      "minimax-m2.7",
+      "grok-code-fast-1",
+      "gemini-3.1-pro-preview",
+      "gpt-5.4"
+    ]
+  },
+  "knownModels": {
+    "grok-4.20-beta": {
+      "displayName": "xAI: Grok 4.20 Beta",
+      "provider": "x-ai",
+      "contextWindow": 2000000,
+      "status": "active",
+      "capabilities": {
+        "vision": true,
+        "thinking": true,
+        "tools": true,
+        "streaming": true
+      }
+    },
+    "gemini-3.1-pro-preview": {
+      "displayName": "Gemini 3.1 Pro Preview",
+      "provider": "google",
+      "contextWindow": 1048576,
+      "maxOutputTokens": 65536,
+      "status": "active",
+      "capabilities": {
+        "vision": true,
+        "thinking": true,
+        "tools": true,
+        "streaming": false
+      }
+    },
+    "gpt-5.4": {
+      "displayName": "OpenAI: GPT-5.4",
+      "provider": "openai",
+      "contextWindow": 1050000,
+      "maxOutputTokens": 128000,
+      "status": "active",
+      "capabilities": {
+        "vision": true,
+        "thinking": true,
+        "tools": true,
+        "streaming": true
+      }
+    },
+    "deepseek-v3.2": {
+      "displayName": "DeepSeek: DeepSeek V3.2",
+      "provider": "deepseek",
+      "contextWindow": 163840,
+      "status": "active",
+      "capabilities": {
+        "vision": false,
+        "thinking": true,
+        "tools": true,
+        "streaming": true
+      }
+    },
+    "minimax-m2.7": {
+      "displayName": "MiniMax: MiniMax M2.7",
+      "provider": "minimax",
+      "contextWindow": 204800,
+      "maxOutputTokens": 131072,
+      "status": "active",
+      "capabilities": {
+        "vision": false,
+        "thinking": true,
+        "tools": true,
+        "streaming": true
+      }
+    },
+    "glm-5-turbo": {
+      "displayName": "Z.ai: GLM 5 Turbo",
+      "provider": "z-ai",
+      "contextWindow": 202752,
+      "maxOutputTokens": 131072,
+      "status": "active",
+      "capabilities": {
+        "vision": false,
+        "thinking": true,
+        "tools": true,
+        "streaming": true
+      }
+    },
+    "kimi-k2.5": {
+      "displayName": "MoonshotAI: Kimi K2.5",
+      "provider": "moonshotai",
+      "contextWindow": 262144,
+      "maxOutputTokens": 65535,
+      "status": "active",
+      "capabilities": {
+        "vision": true,
+        "thinking": true,
+        "tools": true,
+        "streaming": true
+      }
+    },
+    "qwen3-235b-a22b-2507": {
+      "displayName": "Qwen: Qwen3 235B A22B Instruct 2507",
+      "provider": "qwen",
+      "contextWindow": 262144,
+      "status": "active",
+      "capabilities": {
+        "vision": false,
+        "thinking": true,
+        "tools": true,
+        "streaming": true
+      }
+    },
+    "mimo-v2-pro": {
+      "displayName": "Xiaomi: MiMo-V2-Pro",
+      "provider": "xiaomi",
+      "contextWindow": 1048576,
+      "maxOutputTokens": 131072,
+      "status": "active",
+      "capabilities": {
+        "vision": false,
+        "thinking": true,
+        "tools": true,
+        "streaming": true
+      }
+    },
+    "grok-code-fast-1": {
+      "displayName": "xAI: Grok Code Fast 1",
+      "provider": "x-ai",
+      "contextWindow": 256000,
+      "maxOutputTokens": 10000,
+      "status": "active",
+      "capabilities": {
+        "vision": false,
+        "thinking": true,
+        "tools": true,
+        "streaming": true
+      }
+    },
+    "minimax-m2.5": {
+      "displayName": "MiniMax: MiniMax M2.5",
+      "provider": "minimax",
+      "contextWindow": 196608,
+      "maxOutputTokens": 65536,
+      "status": "active",
+      "capabilities": {
+        "vision": false,
+        "thinking": true,
+        "tools": true,
+        "streaming": true
+      }
+    },
+    "glm-5": {
+      "displayName": "Z.ai: GLM 5",
+      "provider": "z-ai",
+      "contextWindow": 80000,
+      "maxOutputTokens": 131072,
+      "status": "active",
+      "capabilities": {
+        "vision": false,
+        "thinking": true,
+        "tools": true,
+        "streaming": true
+      }
+    },
+    "gpt-5.3-codex": {
+      "displayName": "OpenAI: GPT-5.3-Codex",
+      "provider": "openai",
+      "contextWindow": 400000,
+      "maxOutputTokens": 128000,
+      "status": "active",
+      "capabilities": {
+        "vision": true,
+        "thinking": true,
+        "tools": true,
+        "streaming": true
+      }
+    },
+    "qwen3.5-plus-02-15": {
+      "displayName": "Qwen: Qwen3.5 Plus 2026-02-15",
+      "provider": "qwen",
+      "contextWindow": 1000000,
+      "maxOutputTokens": 65536,
+      "status": "active",
+      "capabilities": {
+        "vision": true,
+        "thinking": true,
+        "tools": true,
+        "streaming": true
+      }
+    },
+    "gemini-3.1-flash-image-preview": {
+      "displayName": "Nano Banana 2",
+      "provider": "google",
+      "contextWindow": 65536,
+      "maxOutputTokens": 65536,
+      "status": "active",
+      "capabilities": {
+        "vision": true,
+        "thinking": true,
+        "tools": true,
+        "streaming": false
+      }
+    },
+    "gemini-3-pro-image-preview": {
+      "displayName": "Nano Banana Pro",
+      "provider": "google",
+      "contextWindow": 131072,
+      "maxOutputTokens": 32768,
+      "status": "active",
+      "capabilities": {
+        "vision": true,
+        "thinking": true,
+        "tools": true,
+        "streaming": false
+      }
+    },
+    "claude-sonnet-4-6": {
+      "displayName": "Claude Sonnet 4.6",
+      "provider": "anthropic",
+      "contextWindow": 1000000,
+      "status": "active",
+      "capabilities": {
+        "vision": true,
+        "thinking": true,
+        "tools": true,
+        "streaming": true
+      }
+    },
+    "gpt-4o": {
+      "displayName": "OpenAI: GPT-4o",
+      "provider": "openai",
+      "contextWindow": 128000,
+      "maxOutputTokens": 16384,
+      "status": "active",
+      "capabilities": {
+        "vision": true,
+        "thinking": false,
+        "tools": true,
+        "streaming": true
+      }
+    },
+    "claude-sonnet-4-20250514": {
+      "displayName": "Claude Sonnet 4",
+      "provider": "anthropic",
+      "contextWindow": 1000000,
+      "status": "active",
+      "capabilities": {
+        "vision": true,
+        "thinking": true,
+        "tools": true,
+        "streaming": true
+      }
+    },
+    "gemini-3-pro-preview": {
+      "displayName": "Gemini 3 Pro Preview",
+      "provider": "google",
+      "contextWindow": 1048576,
+      "maxOutputTokens": 65536,
+      "status": "active",
+      "capabilities": {
+        "vision": true,
+        "thinking": true,
+        "tools": true,
+        "streaming": false
+      }
+    }
+  }
+}

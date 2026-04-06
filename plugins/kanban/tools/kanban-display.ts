@@ -37,7 +37,7 @@ import {
   cardBox,
   columnsLayout,
   unifiedTable,
-} from "../../../tools/table/index.ts";
+} from "../lib/table.ts";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 

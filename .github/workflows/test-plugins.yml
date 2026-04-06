@@ -6,14 +6,20 @@ on:
     paths:
       - 'tools/claudeup-core/**'
       - 'plugins/**'
+      - 'shared/**'
+      - 'tools/table/**'
       - '.claude-plugin/**'
+      - 'scripts/sync-shared-deps.sh'
       - '.github/workflows/test-plugins.yml'
   pull_request:
     branches: [main]
     paths:
       - 'tools/claudeup-core/**'
       - 'plugins/**'
+      - 'shared/**'
+      - 'tools/table/**'
       - '.claude-plugin/**'
+      - 'scripts/sync-shared-deps.sh'
       - '.github/workflows/test-plugins.yml'
 
 jobs:
@@ -114,3 +120,62 @@ jobs:
         run: |
           echo "Running marketplace sync verification..."
           pnpm vitest run src/__tests__/integration/marketplace-sync.test.ts
+
+  validate-shared-deps:
+    name: Validate shared dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sync shared deps
+        run: scripts/sync-shared-deps.sh
+
+      - name: Check shared deps are in sync
+        run: |
+          if ! git diff --exit-code plugins/*/lib/; then
+            echo ""
+            echo "ERROR: Shared dependencies are out of sync."
+            echo "Run 'scripts/sync-shared-deps.sh' and commit the results."
+            exit 1
+          fi
+          echo "Shared dependencies are in sync."
+
+  validate-marketplace:
+    name: Validate marketplace.json format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate sources are git-subdir objects
+        run: |
+          python3 << 'EOF'
+          import json
+          import sys
+
+          with open(".claude-plugin/marketplace.json", "r") as f:
+              data = json.load(f)
+
+          errors = []
+          for plugin in data.get("plugins", []):
+              name = plugin.get("name", "unknown")
+              source = plugin.get("source")
+
+              if isinstance(source, str):
+                  errors.append(f"  {name}: source is a string ('{source}'), expected git-subdir object")
+              elif isinstance(source, dict):
+                  if source.get("source") != "git-subdir":
+                      errors.append(f"  {name}: source.source is '{source.get('source')}', expected 'git-subdir'")
+                  for field in ["url", "path", "ref", "sha"]:
+                      if not source.get(field):
+                          errors.append(f"  {name}: missing required field 'source.{field}'")
+              else:
+                  errors.append(f"  {name}: source is neither string nor object")
+
+          if errors:
+              print("ERROR: marketplace.json has invalid plugin sources:")
+              print("\n".join(errors))
+              print("\nRun 'scripts/release.sh' to fix marketplace sources.")
+              sys.exit(1)
+
+          print(f"All {len(data.get('plugins', []))} plugin sources are valid git-subdir objects.")
+          EOF

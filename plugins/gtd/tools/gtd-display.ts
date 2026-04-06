@@ -31,7 +31,7 @@ import {
   pill,
   badge,
   print,
-} from "../../../tools/table/index.ts";
+} from "../lib/table.ts";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 

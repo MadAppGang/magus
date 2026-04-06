@@ -101,7 +101,7 @@ export function parseClassifierResponse(response: string): ClassifierResult {
 
 function getClassifierModel(): string {
   try {
-    const aliasesPath = join(__dirname, "../../../../../shared/model-aliases.json");
+    const aliasesPath = join(__dirname, "../../../lib/model-aliases.json");
     const aliases = JSON.parse(readFileSync(aliasesPath, "utf-8"));
     return aliases.roles?.coaching_classifier?.modelId ?? "claude-sonnet-4-20250514";
   } catch {

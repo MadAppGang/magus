@@ -34,7 +34,7 @@ const ErrorCode = {
 const ASPECT_RATIOS = ["1:1", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9"];
 const DEFAULT_MODEL = (() => {
   try {
-    const aliasesPath = new URL("../../shared/model-aliases.json", import.meta.url);
+    const aliasesPath = new URL("./lib/model-aliases.json", import.meta.url);
     const aliases = JSON.parse(readFileSync(aliasesPath, "utf-8"));
     return aliases.roles?.image_generation?.modelId ?? "gemini-2.0-flash-exp";
   } catch {
