@@ -1,6 +1,10 @@
 {
+  "enableAllProjectMcpServers": true,
+  "statusLine": {
+    "type": "command",
+    "command": "bash .claude/statusline-command.sh"
+  },
   "enabledPlugins": {
-    "agentdev@magus": true,
     "code-analysis@magus": true,
     "dev@magus": true,
     "multimodel@magus": true,
@@ -11,25 +15,18 @@
     "superpowers@claude-plugins-official": true,
     "plugin-dev@claude-plugins-official": true,
     "code-simplifier@claude-plugins-official": true,
-    "code-review@claude-plugins-official": true,
+    "code-review@claude-plugins-official": false,
     "commit-commands@claude-plugins-official": true,
-    "statusline@magus": true,
     "terminal@magus": true,
     "designer@magus": true,
-    "browser-use@magus": true
-  },
-  "enableAllProjectMcpServers": true,
-  "extraKnownMarketplaces": {
-    "claude-code-plugins": {
-      "source": {
-        "source": "github",
-        "repo": "anthropics/claude-code"
-      }
-    }
+    "browser-use@magus": true,
+    "skill-creator@claude-plugins-official": true,
+    "kanban@magus": true,
+    "agentdev@magus": true
   },
   "installedPluginVersions": {
-    "dev@magus": "1.39.0",
-    "multimodel@magus": "2.6.2",
+    "dev@magus": "2.7.0",
+    "multimodel@magus": "3.1.2",
     "explanatory-output-style@claude-plugins-official": "0.0.0",
     "claude-md-management@claude-plugins-official": "0.0.0",
     "claude-code-setup@claude-plugins-official": "0.0.0",
@@ -38,8 +35,12 @@
     "code-simplifier@claude-plugins-official": "0.0.0",
     "code-review@claude-plugins-official": "0.0.0",
     "commit-commands@claude-plugins-official": "0.0.0",
-    "statusline@magus": "1.4.1",
-    "designer@magus": "0.2.0",
-    "browser-use@magus": "1.0.2"
+    "designer@magus": "0.3.0",
+    "browser-use@magus": "1.1.1",
+    "skill-creator@claude-plugins-official": "0.0.0",
+    "gtd@magus": "2.0.1",
+    "kanban@magus": "1.2.0",
+    "seo@magus": "1.7.0",
+    "video-editing@magus": "1.1.3"
   }
 }

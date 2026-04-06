@@ -100,9 +100,26 @@ tasks:
     sources:
       - project.yml
 
+  dmg:
+    desc: Create a DMG for distribution
+    vars:
+      VERSION:
+        sh: /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" Info-task.plist
+      DMG_NAME: "ClaudeProfiles-{{.VERSION}}"
+      DMG_DIR: "{{.BUILD_DIR}}/dmg"
+    cmds:
+      - task: release
+      - rm -rf "{{.DMG_DIR}}"
+      - mkdir -p "{{.DMG_DIR}}"
+      - cp -R "{{.APP_BUNDLE}}" "{{.DMG_DIR}}/Claude Profiles.app"
+      - ln -s /Applications "{{.DMG_DIR}}/Applications"
+      - hdiutil create -volname "Claude Profiles" -srcfolder "{{.DMG_DIR}}" -ov -format UDZO "{{.BUILD_DIR}}/{{.DMG_NAME}}.dmg"
+      - rm -rf "{{.DMG_DIR}}"
+      - echo "Created {{.BUILD_DIR}}/{{.DMG_NAME}}.dmg"
+
   clean:
     desc: Remove all build artifacts
     cmds:
       - swift package clean
-      - rm -rf "{{.APP_BUNDLE}}"
+      - rm -rf "{{.APP_BUNDLE}}" "{{.BUILD_DIR}}/*.dmg"
       - echo "Cleaned."

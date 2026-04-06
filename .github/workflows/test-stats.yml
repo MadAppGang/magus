@@ -1,0 +1,30 @@
+name: Test Stats Plugin
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'plugins/stats/**'
+      - '.github/workflows/test-stats.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'plugins/stats/**'
+      - '.github/workflows/test-stats.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Run unit and integration tests
+        working-directory: plugins/stats
+        run: bun test

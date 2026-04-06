@@ -40,6 +40,10 @@ Temporary Items
 .claude/**/*.secret.json
 .claude/.coaching/
 .claude/tasks.md
+.claude/sessions/
+.claude/worktrees/
+.claude/gtd/
+.claude/skills/
 
 # Plugin runtime state (coaching, logs)
 **/.claude/.coaching/
@@ -62,8 +66,9 @@ yarn-error.log*
 *.temp
 .cache/
 
-# Claudemem index (user-specific)
+# Claudemem/Mnemex indexes (user-specific)
 .claudemem/
+.mnemex/
 
 # OS generated files
 Thumbs.db
@@ -89,4 +94,5 @@ test-workspace
 autotest/*/results/
 
 # Git worktrees (isolated development environments)
+.worktrees/
 .worktrees/setup-secrets.sh

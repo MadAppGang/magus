@@ -1,0 +1,187 @@
+{
+  "meta": {
+    "description": "Stats plugin E2E test cases. Tests verify Claude can accomplish stats workflow tasks using the stats plugin commands (/stats:help, /stats:report, /stats:dashboard, /stats:config, /stats:clear). Uses internal model mode so hooks (PreToolUse/PostToolUse/Stop/SessionStart) fire naturally through the plugin system — no direct hook invocation. DB-seeded tests seed via run.sh setup or via /stats:config commands, never inline bun scripts in prompts.",
+    "version": "2.0.0",
+    "created": "2026-03-27",
+    "updated": "2026-03-28",
+    "notes": "v2.0: Full rewrite. Removed all direct hook invocations (tests 07-09) and direct renderer invocation (test 10). Replaced with real user-visible command flows. Hook pipeline is exercised naturally by Claude doing real work (Read/Write/Bash) with --model internal. 15 tests covering: commands (5), real session lifecycle (2), dashboard (2), edge cases (4), missing scenarios (2). Assertions tightened to require specific values and structures."
+  },
+  "test_cases": [
+    {
+      "id": "stats-help-01",
+      "description": "Test /stats:help command — verify ALL 5 command names listed in response",
+      "prompt": "Run /stats:help and report all the available commands listed in the output. List every command name you can see.",
+      "category": "commands",
+      "tags": ["stats", "help", "commands", "usage"],
+      "checks": {
+        "response_contains_any": ["report", "dashboard"],
+        "response_contains_all_commands": true,
+        "min_tool_calls": 1
+      }
+    },
+    {
+      "id": "stats-dashboard-02",
+      "description": "Test /stats:dashboard command — verify dashboard renders without crash and shows section headers",
+      "prompt": "Run /stats:dashboard and report what appears in the output. The dashboard must not crash with an unhandled error. Describe all section headers and data you can see.",
+      "category": "commands",
+      "tags": ["stats", "dashboard", "render", "sections"],
+      "checks": {
+        "response_contains_any": ["Overview", "Activity", "Daily", "Tools", "No data", "No sessions", "sessions recorded", "Claude Code Stats", "Stats Dashboard"],
+        "min_tool_calls": 1
+      }
+    },
+    {
+      "id": "stats-report-03",
+      "description": "Test /stats:report --days 7 — verify report renders with structured output (sessions header or no-data message)",
+      "prompt": "Run /stats:report --days 7 and report exactly what the output contains. The report must include either a structured stats table with session count and tool call data, or a clear 'no data' message. It must not crash with an unhandled error.",
+      "category": "commands",
+      "tags": ["stats", "report", "days", "output"],
+      "checks": {
+        "response_contains_any": ["Sessions", "Tool Calls", "No data", "No sessions", "0 sessions", "session_count", "stats report", "Stats Report", "Last 7 days"],
+        "min_tool_calls": 1
+      }
+    },
+    {
+      "id": "stats-config-show-04",
+      "description": "Test /stats:config --show — verify all 3 config fields shown with their values",
+      "prompt": "Run /stats:config --show and report all configuration fields shown in the output. The config must show all three fields: enabled, retention_days, and session_summary with their current values.",
+      "category": "commands",
+      "tags": ["stats", "config", "show", "settings"],
+      "checks": {
+        "response_contains_any": ["retention_days", "retention"],
+        "stats_config_value": {"key": "enabled", "value": "true"},
+        "min_tool_calls": 1
+      }
+    },
+    {
+      "id": "stats-config-set-05",
+      "description": "Test /stats:config --retention-days 30 then --show — verify retention_days changed to exactly 30",
+      "prompt": "Run these steps in order:\n1. Run /stats:config --retention-days 30 to set retention to 30 days\n2. Run /stats:config --show to display the current config\n3. Report the exact value shown for retention_days (should be 30)\n4. Run /stats:config --retention-days 90 to reset back to default",
+      "category": "commands",
+      "tags": ["stats", "config", "set", "retention_days", "round-trip"],
+      "checks": {
+        "stats_config_value": {"key": "retention_days", "value": 30},
+        "min_tool_calls": 2
+      }
+    },
+    {
+      "id": "stats-real-work-report-06",
+      "description": "Real session lifecycle: do real work (Read files, run Bash) then /stats:report — verify session data appears",
+      "prompt": "Run these steps in order:\n1. Read this file to do real work: read the file ~/.claude/stats/config.json (it may or may not exist — that is fine)\n2. Run a bash command to check the stats directory: ls ~/.claude/stats/ 2>&1 || echo STATS_DIR_EMPTY\n3. Run another bash command: echo STATS_WORK_MARKER_42\n4. Now run /stats:report --days 1\n5. Report what the report shows. If it shows session data from this session (tool calls, duration), note that. If it shows no data yet (data is aggregated at session end), note that too — both outcomes are valid.",
+      "category": "lifecycle",
+      "tags": ["stats", "real-work", "report", "lifecycle", "hooks"],
+      "checks": {
+        "response_contains": "STATS_WORK_MARKER_42",
+        "response_contains_any": ["stats", "Stats", "session", "Sessions", "No data", "tool", "report", "Report"],
+        "min_tool_calls_by_name": {"Bash": 2},
+        "min_tool_calls": 4
+      }
+    },
+    {
+      "id": "stats-report-json-07",
+      "description": "Test /stats:report --json — verify output is valid JSON with required fields",
+      "prompt": "Run /stats:report --json and report the exact JSON output. The output must be valid JSON. Extract and report the top-level field names present in the JSON object. Expected fields include: session_count, total_tool_calls, avg_duration_min (or similar stats fields), or a 'no_data' indicator.",
+      "category": "commands",
+      "tags": ["stats", "report", "json", "structured-output"],
+      "checks": {
+        "response_contains_any": ["session_count", "total_tool_calls", "avg_duration", "no_data", "sessions", "\"sessions\"", "\"days\""],
+        "min_tool_calls": 1
+      }
+    },
+    {
+      "id": "stats-config-disable-08",
+      "description": "Test /stats:config --enabled off — verify config shows enabled: false, then re-enable",
+      "prompt": "Run these steps in order:\n1. Run /stats:config --enabled off to disable stats collection\n2. Run /stats:config --show to verify the current state\n3. Report the exact value shown for 'enabled' (should be false or off)\n4. Run /stats:config --enabled on to re-enable stats collection\n5. Run /stats:config --show again to confirm it is back to enabled: true\n6. Report the final value of 'enabled'",
+      "category": "commands",
+      "tags": ["stats", "config", "enabled", "disable", "toggle"],
+      "checks": {
+        "response_contains_any": ["false", "off", "disabled"],
+        "stats_config_value": {"key": "enabled", "value": "true"},
+        "min_tool_calls": 3
+      }
+    },
+    {
+      "id": "stats-dashboard-seeded-09",
+      "description": "Dashboard with seeded data: seed session via bun, run /stats:dashboard — verify dashboard shows sections with data",
+      "prompt": "Run these steps in order:\n1. Seed test data into the stats database by running this exact bun inline script:\nbun -e \"import { Database } from 'bun:sqlite'; import { join } from 'path'; import { homedir } from 'os'; import { mkdirSync, existsSync } from 'fs'; const d = join(homedir(), '.claude', 'stats'); if (!existsSync(d)) mkdirSync(d, { recursive: true, mode: 0o700 }); const db = new Database(join(d, 'stats.db'), { create: true }); db.exec('PRAGMA journal_mode = WAL;'); db.exec(\\\"CREATE TABLE IF NOT EXISTS schema_version (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL)\\\"); const sv = db.query('SELECT version FROM schema_version WHERE version = 1').get(); if (!sv) db.exec(\\\"INSERT INTO schema_version VALUES (1, '2026-01-01')\\\"); db.exec(\\\"CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, date TEXT NOT NULL, project TEXT NOT NULL, duration_sec INTEGER NOT NULL DEFAULT 0, total_tool_calls INTEGER NOT NULL DEFAULT 0, inter_message_gap_sec INTEGER NOT NULL DEFAULT 0, research_calls INTEGER NOT NULL DEFAULT 0, coding_calls INTEGER NOT NULL DEFAULT 0, testing_calls INTEGER NOT NULL DEFAULT 0, delegation_calls INTEGER NOT NULL DEFAULT 0, other_calls INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL)\\\"); db.exec(\\\"CREATE TABLE IF NOT EXISTS tool_calls (id TEXT PRIMARY KEY, session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE, tool_name TEXT NOT NULL, duration_ms INTEGER NOT NULL DEFAULT 0, success INTEGER NOT NULL DEFAULT 1, activity_category TEXT NOT NULL, timestamp TEXT NOT NULL)\\\"); db.exec(\\\"CREATE TABLE IF NOT EXISTS daily_stats (date TEXT NOT NULL, project TEXT NOT NULL, session_count INTEGER NOT NULL DEFAULT 0, total_tool_calls INTEGER NOT NULL DEFAULT 0, total_duration_sec INTEGER NOT NULL DEFAULT 0, research_calls INTEGER NOT NULL DEFAULT 0, coding_calls INTEGER NOT NULL DEFAULT 0, testing_calls INTEGER NOT NULL DEFAULT 0, delegation_calls INTEGER NOT NULL DEFAULT 0, other_calls INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (date, project))\\\"); const today = new Date().toLocaleDateString('en-CA'); const exists = db.query('SELECT id FROM sessions WHERE id = ?').get('STATS_E2E_DASH_SESSION_09'); if (!exists) { db.run('INSERT INTO sessions VALUES (?,?,?,?,?,?,?,?,?,?,?,?)', ['STATS_E2E_DASH_SESSION_09', today, process.cwd(), 450, 55, 20, 25, 20, 8, 2, 0, new Date().toISOString()]); db.run('INSERT INTO tool_calls VALUES (?,?,?,?,?,?,?)', ['tc-dash-01', 'STATS_E2E_DASH_SESSION_09', 'Read', 120, 1, 'research', new Date().toISOString()]); db.run('INSERT INTO tool_calls VALUES (?,?,?,?,?,?,?)', ['tc-dash-02', 'STATS_E2E_DASH_SESSION_09', 'Write', 200, 1, 'coding', new Date().toISOString()]); } db.close(); console.log('DASH_SEED_OK');\"\n2. Run /stats:dashboard\n3. Report all section headers and any numeric values shown in the dashboard",
+      "category": "dashboard",
+      "tags": ["stats", "dashboard", "render", "sections", "seeded-data"],
+      "checks": {
+        "response_contains": "DASH_SEED_OK",
+        "response_contains_any": ["Overview", "Activity", "Daily", "Tools", "Sessions", "session", "tool calls", "55"],
+        "stats_db_has_data": true,
+        "min_tool_calls": 2
+      }
+    },
+    {
+      "id": "stats-dashboard-nodata-10",
+      "description": "Dashboard with no data: run /stats:dashboard after clearing — verify graceful empty state",
+      "prompt": "Run these steps in order:\n1. Delete the stats database to simulate fresh install: rm -f ~/.claude/stats/stats.db && echo DB_CLEARED\n2. Run /stats:dashboard\n3. Report exactly what the dashboard shows (should show 'No data', 'No sessions', or similar graceful empty state — must not crash)",
+      "category": "dashboard",
+      "tags": ["stats", "dashboard", "no-data", "empty-state"],
+      "checks": {
+        "response_contains": "DB_CLEARED",
+        "response_contains_any": ["No data", "No sessions", "no data", "No session", "0 sessions", "empty", "Claude Code Stats", "Stats Dashboard"],
+        "min_tool_calls": 2
+      }
+    },
+    {
+      "id": "stats-suggestions-11",
+      "description": "Suggestions: seed session with high Read/Grep ratio, run /stats:report — verify mnemex suggestion appears",
+      "prompt": "Run these steps in order:\n1. Seed a session with very high research (Read/Grep) ratio by running:\nbun -e \"import { Database } from 'bun:sqlite'; import { join } from 'path'; import { homedir } from 'os'; import { mkdirSync, existsSync } from 'fs'; const d = join(homedir(), '.claude', 'stats'); if (!existsSync(d)) mkdirSync(d, { recursive: true, mode: 0o700 }); const db = new Database(join(d, 'stats.db'), { create: true }); db.exec('PRAGMA journal_mode = WAL;'); db.exec(\\\"CREATE TABLE IF NOT EXISTS schema_version (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL)\\\"); const sv = db.query('SELECT version FROM schema_version WHERE version = 1').get(); if (!sv) db.exec(\\\"INSERT INTO schema_version VALUES (1, '2026-01-01')\\\"); db.exec(\\\"CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, date TEXT NOT NULL, project TEXT NOT NULL, duration_sec INTEGER NOT NULL DEFAULT 0, total_tool_calls INTEGER NOT NULL DEFAULT 0, inter_message_gap_sec INTEGER NOT NULL DEFAULT 0, research_calls INTEGER NOT NULL DEFAULT 0, coding_calls INTEGER NOT NULL DEFAULT 0, testing_calls INTEGER NOT NULL DEFAULT 0, delegation_calls INTEGER NOT NULL DEFAULT 0, other_calls INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL)\\\"); db.exec(\\\"CREATE TABLE IF NOT EXISTS daily_stats (date TEXT NOT NULL, project TEXT NOT NULL, session_count INTEGER NOT NULL DEFAULT 0, total_tool_calls INTEGER NOT NULL DEFAULT 0, total_duration_sec INTEGER NOT NULL DEFAULT 0, research_calls INTEGER NOT NULL DEFAULT 0, coding_calls INTEGER NOT NULL DEFAULT 0, testing_calls INTEGER NOT NULL DEFAULT 0, delegation_calls INTEGER NOT NULL DEFAULT 0, other_calls INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (date, project))\\\"); const today = new Date().toLocaleDateString('en-CA'); const exists = db.query('SELECT id FROM sessions WHERE id = ?').get('STATS_E2E_SUGGEST_11'); if (!exists) { db.run('INSERT INTO sessions VALUES (?,?,?,?,?,?,?,?,?,?,?,?)', ['STATS_E2E_SUGGEST_11', today, process.cwd(), 800, 60, 5, 50, 5, 2, 0, 3, new Date().toISOString()]); } db.close(); console.log('SUGGEST_SEED_OK');\"\n2. Run /stats:report --days 7\n3. Report whether any suggestion about mnemex, semantic search, or code-analysis appears in the output\n4. Cleanup: bun -e \"import { Database } from 'bun:sqlite'; import { join } from 'path'; import { homedir } from 'os'; const db = new Database(join(homedir(), '.claude', 'stats', 'stats.db')); db.run('DELETE FROM sessions WHERE id = ?', ['STATS_E2E_SUGGEST_11']); db.close(); console.log('CLEANUP_OK');\"",
+      "category": "dashboard",
+      "tags": ["stats", "suggestions", "mnemex", "research-ratio", "productivity"],
+      "checks": {
+        "response_contains": "SUGGEST_SEED_OK",
+        "response_contains_any": ["mnemex", "semantic", "code-analysis", "research", "Grep", "Read"],
+        "min_tool_calls": 3
+      }
+    },
+    {
+      "id": "stats-clear-force-12",
+      "description": "Edge case: /stats:clear --force wipes all data, verify DB is empty after",
+      "prompt": "Run these steps in order:\n1. Seed a test session into the stats DB:\nbun -e \"import { Database } from 'bun:sqlite'; import { join } from 'path'; import { homedir } from 'os'; import { mkdirSync, existsSync } from 'fs'; const d = join(homedir(), '.claude', 'stats'); if (!existsSync(d)) mkdirSync(d, { recursive: true, mode: 0o700 }); const db = new Database(join(d, 'stats.db'), { create: true }); db.exec('PRAGMA journal_mode = WAL;'); db.exec(\\\"CREATE TABLE IF NOT EXISTS schema_version (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL)\\\"); const sv = db.query('SELECT version FROM schema_version WHERE version = 1').get(); if (!sv) db.exec(\\\"INSERT INTO schema_version VALUES (1, '2026-01-01')\\\"); db.exec(\\\"CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, date TEXT NOT NULL, project TEXT NOT NULL, duration_sec INTEGER NOT NULL DEFAULT 0, total_tool_calls INTEGER NOT NULL DEFAULT 0, inter_message_gap_sec INTEGER NOT NULL DEFAULT 0, research_calls INTEGER NOT NULL DEFAULT 0, coding_calls INTEGER NOT NULL DEFAULT 0, testing_calls INTEGER NOT NULL DEFAULT 0, delegation_calls INTEGER NOT NULL DEFAULT 0, other_calls INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL)\\\"); db.exec(\\\"CREATE TABLE IF NOT EXISTS daily_stats (date TEXT NOT NULL, project TEXT NOT NULL, session_count INTEGER NOT NULL DEFAULT 0, total_tool_calls INTEGER NOT NULL DEFAULT 0, total_duration_sec INTEGER NOT NULL DEFAULT 0, research_calls INTEGER NOT NULL DEFAULT 0, coding_calls INTEGER NOT NULL DEFAULT 0, testing_calls INTEGER NOT NULL DEFAULT 0, delegation_calls INTEGER NOT NULL DEFAULT 0, other_calls INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (date, project))\\\"); db.run('INSERT OR IGNORE INTO sessions VALUES (?,?,?,?,?,?,?,?,?,?,?,?)', ['STATS_E2E_CLEAR_12', new Date().toLocaleDateString('en-CA'), process.cwd(), 100, 10, 5, 5, 3, 2, 0, 0, new Date().toISOString()]); db.close(); console.log('CLEAR_SEED_OK');\"\n2. Run /stats:clear --force to clear all data\n3. Run /stats:report --days 7 and report what it shows (should indicate no data or 0 sessions)\n4. Report whether the clear operation succeeded",
+      "category": "edge-cases",
+      "tags": ["stats", "clear", "force", "empty-db", "reset"],
+      "checks": {
+        "response_contains": "CLEAR_SEED_OK",
+        "response_contains_any": ["No data", "no data", "No sessions", "0 sessions", "cleared", "deleted", "removed", "0"],
+        "min_tool_calls": 3
+      }
+    },
+    {
+      "id": "stats-clear-confirm-13",
+      "description": "Edge case: /stats:clear without --force — verify confirmation prompt appears, do not wipe data",
+      "prompt": "Run these steps in order:\n1. Run /stats:clear (without --force)\n2. Report exactly what output or prompt appears. It should ask for confirmation before clearing (e.g., 'Are you sure?', 'use --force', or similar). Do NOT confirm the clear — just report what the command shows.\n3. Run /stats:report --days 7 to verify data is still present (was not accidentally wiped)",
+      "category": "edge-cases",
+      "tags": ["stats", "clear", "confirmation", "safety", "no-force"],
+      "checks": {
+        "response_contains_any": ["--force", "force", "confirm", "sure", "Are you", "require", "use --force", "pass --force"],
+        "min_tool_calls": 2
+      }
+    },
+    {
+      "id": "stats-config-reset-14",
+      "description": "Edge case: set retention to 30, then reset to default 90 — verify round-trip works",
+      "prompt": "Run these steps in order:\n1. Run /stats:config --retention-days 30 to set retention to 30\n2. Run /stats:config --show to verify it shows 30\n3. Report the retention_days value shown (should be 30)\n4. Run /stats:config --retention-days 90 to reset back to default\n5. Run /stats:config --show again to verify it shows 90\n6. Report the final retention_days value (should be 90)",
+      "category": "edge-cases",
+      "tags": ["stats", "config", "reset", "default", "round-trip", "retention"],
+      "checks": {
+        "stats_config_value": {"key": "retention_days", "value": 90},
+        "min_tool_calls": 3
+      }
+    },
+    {
+      "id": "stats-empty-state-15",
+      "description": "Edge case: run /stats:report with no database — verify graceful empty state, no crash",
+      "prompt": "Run these steps in order:\n1. Delete the stats database to simulate fresh install: rm -f ~/.claude/stats/stats.db && echo DB_REMOVED\n2. Run /stats:report\n3. Report exactly what the report command outputs (should handle the missing database gracefully — either create a new empty DB and show no data, or show a 'no data' message. Must not crash with an unhandled error.)",
+      "category": "edge-cases",
+      "tags": ["stats", "report", "empty-state", "no-db", "graceful"],
+      "checks": {
+        "bash_command_contains": "rm",
+        "response_contains_any": ["No data", "no data", "No sessions", "0 sessions", "0", "empty", "no session", "no stats"],
+        "min_tool_calls": 2
+      }
+    }
+  ]
+}

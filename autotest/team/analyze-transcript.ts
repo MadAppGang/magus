@@ -1,71 +1,72 @@
 #!/usr/bin/env bun
 /**
- * Analyze a /team command JSONL transcript for orchestration correctness.
+ * Analyze a /multimodel:delegate command JSONL transcript for orchestration correctness.
  *
- * Usage: bun autotest/team/analyze-transcript.ts <transcript.jsonl> <checks_json>
+ * Usage: bun autotest/delegate/analyze-transcript.ts <transcript.jsonl> <checks_json>
  *
- * v2.6.0: Added no_top_models_discovery, bash_claudish_model_exact,
+ * v2.0.0: MCP channel migration — replaced Bash+claudish CLI checks with MCP channel tool
+ * checks. The /delegate command now uses mcp__plugin_dev_claudish__create_session instead of
+ * Bash(claudish ...). Added mcp_tool_called, mcp_create_session_model,
+ * no_capability_discovery_subagent checks. Updated no_predigest, no_provider_prefix_in_model,
+ * no_shortcut_prefix_in_model, and no_top_models_discovery to inspect MCP tool parameters
+ * instead of Bash command strings. Bash+claudish checks retained for /team compatibility
+ * but not referenced by delegate test cases.
+ *
+ * v1.2.0: Added no_top_models_discovery, bash_claudish_model_exact,
  * bash_claudish_all_models_in checks.
- * v2.5.0: Added no_shortcut_prefix_in_model, loads_claudish_skill checks. Expanded
- * no_provider_prefix_in_model to also catch shortcut-style prefixes (mm@, g@, oai@, etc.).
- * Added Skill tool call parsing to transcript parser.
- * v2.3.0: Added bash_claudish_has_passthrough_flags and bash_claudish_no_passthrough_flags
- * checks for claudish v5.3.0 flag passthrough validation.
- * v2.2.0: Added no_provider_prefix_in_model and reads_preferences_file checks.
- * v2.1.0: Updated for claudish v4.5.1 (--agent flag removed). External models use
- * Bash(claudish --model), internal models use Task(dev:researcher).
+ * v1.1.0: Added no_shortcut_prefix_in_model, loads_claudish_skill checks.
+ * v1.0.0: Initial analyzer for delegate command.
  *
  * Checks JSON format:
  * {
- *   // Task checks (internal model)
- *   "task_agent_is": "dev:researcher",     // All Task calls use this agent
- *   "task_min_count": 2,                   // Minimum number of Task calls
- *   "run_in_background": true,             // Task calls use run_in_background
- *   "has_vote_template": true,             // Task prompt contains vote template text
- *   "has_vote_format": true,               // Task prompt contains vote format block
- *   "no_predigest": true,                  // No Read/Grep/Glob/WebSearch before first model call
+ *   // MCP channel tool checks (delegate v2.0.0+)
+ *   "mcp_tool_called": "create_session",     // At least one MCP tool call matching this suffix
+ *   "mcp_create_session_model": "grok-code-fast-1", // model param in create_session call
+ *   "mcp_tool_called_send_input": true,      // send_input was called (interactive sessions)
+ *   "mcp_tool_called_get_output": true,      // get_output was called (completion)
+ *   "no_capability_discovery_subagent": true, // NO Task/Agent call to dev:researcher exists
  *
- *   // Bash+claudish checks (external models)
- *   "bash_has_claudish": true,             // At least one Bash call contains "claudish"
- *   "bash_min_count": 2,                   // Minimum Bash claudish calls
- *   "bash_claudish_model_contains": "grok",// --model flag contains keyword
- *   "bash_claudish_has_stdin": true,       // --stdin flag present
+ *   // Task checks (internal model / /team)
+ *   "task_agent_is": "dev:researcher",       // All Task calls use this agent
+ *   "task_min_count": 2,                     // Minimum number of Task calls
+ *   "run_in_background": true,               // Task calls use run_in_background
+ *   "has_vote_template": true,               // Task prompt contains vote template text
+ *   "has_vote_format": true,                 // Task prompt contains vote format block
+ *   "no_predigest": true,                    // No Read/Grep/Glob/WebSearch before first model call
+ *
+ *   // Bash+claudish checks (retained for /team compatibility)
+ *   "bash_has_claudish": true,               // At least one Bash call contains "claudish"
+ *   "bash_min_count": 2,                     // Minimum Bash claudish calls
+ *   "bash_claudish_model_contains": "grok",  // --model flag contains keyword
+ *   "bash_claudish_has_stdin": true,         // --stdin flag present
  *   "bash_claudish_has_output_redirect": true, // > redirect to session dir
- *   "bash_claudish_captures_exit": true,   // echo $? > .exit pattern
- *   "bash_run_in_background": true,        // Bash claudish calls use run_in_background
+ *   "bash_claudish_captures_exit": true,     // echo $? > .exit pattern
+ *   "bash_run_in_background": true,          // Bash claudish calls use run_in_background
  *
- *   // Negative checks (PROXY_MODE completely gone)
- *   "no_proxy_mode_in_tasks": true,        // NO Task prompts contain "PROXY_MODE"
- *   "no_proxy_mode_in_bash": true,         // NO Bash commands contain "PROXY_MODE"
- *
- *   // Provider prefix checks
- *   "no_provider_prefix_in_model": true,  // No provider/ or shortcut@ prefix in --model values
- *   "no_shortcut_prefix_in_model": true,  // No mm@/g@/oai@/kimi@/glm@/or@/litellm@ in --model values
- *   "reads_preferences_file": true,       // Read tool used on multimodel-team.json
+ *   // Provider prefix checks (checked in both Bash and MCP params)
+ *   "no_provider_prefix_in_model": true,     // No provider/ or shortcut@ prefix in model values
+ *   "no_shortcut_prefix_in_model": true,     // No mm@/g@/oai@/kimi@/glm@/or@/litellm@ in model values
+ *   "reads_preferences_file": true,          // Read tool used on multimodel-team.json
  *
  *   // Skill loading checks
- *   "loads_claudish_skill": true,         // Skill tool invoked for claudish-usage before claudish command
+ *   "loads_claudish_skill": true,            // Skill tool invoked for claudish-usage
  *
  *   // Flag passthrough checks (claudish v5.3.0+)
- *   "bash_claudish_has_passthrough_flags": "--effort",  // Claudish cmd contains this passthrough flag
- *   "bash_claudish_no_passthrough_flags": true,          // No passthrough flags in claudish cmd (regression)
- *
- *   // Mixed model checks
- *   "internal_uses_task": true,            // At least one Task call (for internal)
- *   "external_uses_bash": true,            // External models use Bash (not Task)
+ *   "bash_claudish_has_passthrough_flags": "--effort",  // Claudish cmd contains this flag
+ *   "bash_claudish_no_passthrough_flags": true,          // No passthrough flags (regression)
  *
  *   // Verification checks
- *   "vote_prompt_file_written": true,      // Write tool creates vote-prompt.md
- *   "has_post_verification_reads": true,   // Read tool checks .exit/.result files after models complete
+ *   "vote_prompt_file_written": true,        // Write tool creates vote-prompt.md
+ *   "has_post_verification_reads": true,     // Read tool checks .exit/.result files after models
  *
- *   // Session checks
+ *   // Session checks (retained for /team; not used by delegate v2.0.0+)
  *   "session_dir_pattern": "ai-docs/sessions/", // Bash mkdir uses this pattern
- *   "no_tmp_dir": true,                    // No /tmp/ in Bash mkdir calls
+ *   "no_tmp_dir": true,                      // No /tmp/ in Bash mkdir calls
  *
- *   // v2.6.0 model discovery checks
- *   "no_top_models_discovery": true,       // No claudish --top-models/--free/--list-models/--help/--models
- *   "bash_claudish_model_exact": "x-ai/grok-2", // Exact model ID in --model flag
- *   "bash_claudish_all_models_in": ["model-a", "model-b"] // All --model values must be from this set
+ *   // Model discovery checks
+ *   "no_top_models_discovery": true,         // No claudish --top-models/--free/--list-models
+ *   "bash_claudish_model_exact": "x-ai/grok-2", // Exact model ID in --model flag (bash)
+ *   "bash_claudish_all_models_in": ["model-a", "model-b"] // All --model values in set
  * }
  *
  * Returns JSON: {"passed": true/false, "checks": [...], "summary": {...}}
@@ -91,6 +92,7 @@ interface TranscriptData {
   writeCalls: ToolCall[];
   readCalls: ToolCall[];
   skillCalls: ToolCall[];
+  mcpCalls: ToolCall[];
 }
 
 type ChecksConfig = Record<string, unknown>;
@@ -103,6 +105,7 @@ async function parseTranscript(filepath: string): Promise<TranscriptData> {
   const writeCalls: ToolCall[] = [];
   const readCalls: ToolCall[] = [];
   const skillCalls: ToolCall[] = [];
+  const mcpCalls: ToolCall[] = [];
 
   const content = await Bun.file(filepath).text();
   const lines = content.split("\n");
@@ -145,10 +148,26 @@ async function parseTranscript(filepath: string): Promise<TranscriptData> {
       else if (name === "Write") writeCalls.push(entry);
       else if (name === "Read") readCalls.push(entry);
       else if (name === "Skill") skillCalls.push(entry);
+      else if (name.startsWith("mcp__")) mcpCalls.push(entry);
     }
   }
 
-  return { toolCalls, taskCalls, agentCalls, bashCalls, writeCalls, readCalls, skillCalls };
+  return { toolCalls, taskCalls, agentCalls, bashCalls, writeCalls, readCalls, skillCalls, mcpCalls };
+}
+
+/**
+ * Return MCP calls whose tool name ends with the given suffix (case-insensitive).
+ * For example, getMcpCallsBySuffix(mcpCalls, "create_session") matches
+ * mcp__plugin_dev_claudish__create_session and
+ * mcp__plugin_code-analysis_claudish__create_session.
+ */
+function getMcpCallsBySuffix(mcpCalls: ToolCall[], suffix: string): ToolCall[] {
+  const lower = suffix.toLowerCase();
+  return mcpCalls.filter(
+    (mc) =>
+      mc.tool.toLowerCase().endsWith(`__${lower}`) ||
+      mc.tool.toLowerCase() === lower
+  );
 }
 
 function getClaudishBashCalls(bashCalls: ToolCall[]): ToolCall[] {
@@ -180,14 +199,107 @@ function extractModelValues(claudishCalls: ToolCall[]): string[] {
   return models;
 }
 
+function extractMcpCreateSessionModels(mcpCalls: ToolCall[]): string[] {
+  const createSessionCalls = getMcpCallsBySuffix(mcpCalls, "create_session");
+  const models: string[] = [];
+  for (const mc of createSessionCalls) {
+    const model = mc.input["model"] as string | undefined;
+    if (model) models.push(model);
+  }
+  return models;
+}
+
 function runChecks(
   checks: ChecksConfig,
-  { toolCalls, taskCalls, agentCalls, bashCalls, writeCalls, readCalls, skillCalls }: TranscriptData
+  { toolCalls, taskCalls, agentCalls, bashCalls, writeCalls, readCalls, skillCalls, mcpCalls }: TranscriptData
 ): CheckResult[] {
   const results: CheckResult[] = [];
   const claudishCalls = getClaudishBashCalls(bashCalls);
 
-  // ---- Task checks (internal model) ----
+  // ---- MCP channel tool checks (delegate v2.0.0+) ----
+
+  // Check: mcp_tool_called
+  // Checks that at least one MCP tool call matching the given suffix was made.
+  if ("mcp_tool_called" in checks) {
+    const suffix = checks["mcp_tool_called"] as string;
+    const matching = getMcpCallsBySuffix(mcpCalls, suffix);
+    const passed = matching.length > 0;
+    results.push({
+      check: "mcp_tool_called",
+      passed,
+      detail: passed
+        ? `${matching.length} MCP call(s) matching "${suffix}" found (e.g. ${matching[0].tool})`
+        : `No MCP tool call matching suffix "${suffix}" found in transcript. Available MCP tools: ${[...new Set(mcpCalls.map((m) => m.tool))].join(", ") || "none"}`,
+    });
+  }
+
+  // Check: mcp_create_session_model
+  // Checks that a create_session call was made with the exact model parameter specified.
+  if ("mcp_create_session_model" in checks) {
+    const expectedModel = checks["mcp_create_session_model"] as string;
+    const allModels = extractMcpCreateSessionModels(mcpCalls);
+    const found = allModels.some((m) => m === expectedModel);
+    results.push({
+      check: "mcp_create_session_model",
+      passed: found,
+      detail: found
+        ? `create_session called with exact model "${expectedModel}"`
+        : allModels.length > 0
+          ? `Expected model "${expectedModel}" not found in create_session calls. Actual models: ${JSON.stringify(allModels)}`
+          : `Expected model "${expectedModel}" not found. No create_session calls with a model parameter found.`,
+    });
+  }
+
+  // Check: mcp_tool_called_send_input
+  // Checks that send_input was called at least once (for interactive session tests).
+  if (checks["mcp_tool_called_send_input"]) {
+    const matching = getMcpCallsBySuffix(mcpCalls, "send_input");
+    const passed = matching.length > 0;
+    results.push({
+      check: "mcp_tool_called_send_input",
+      passed,
+      detail: passed
+        ? `${matching.length} send_input MCP call(s) found`
+        : "No send_input MCP tool call found",
+    });
+  }
+
+  // Check: mcp_tool_called_get_output
+  // Checks that get_output was called at least once (for session completion tests).
+  if (checks["mcp_tool_called_get_output"]) {
+    const matching = getMcpCallsBySuffix(mcpCalls, "get_output");
+    const passed = matching.length > 0;
+    results.push({
+      check: "mcp_tool_called_get_output",
+      passed,
+      detail: passed
+        ? `${matching.length} get_output MCP call(s) found`
+        : "No get_output MCP tool call found",
+    });
+  }
+
+  // Check: no_capability_discovery_subagent
+  // Checks that NO Task/Agent call to dev:researcher exists (capability discovery removed).
+  if (checks["no_capability_discovery_subagent"]) {
+    const allSubagentCalls = [...taskCalls, ...agentCalls];
+    const discoveryAgents: string[] = [];
+    for (const tc of allSubagentCalls) {
+      const agent = (tc.input["subagent_type"] as string) ?? "";
+      if (agent === "dev:researcher") {
+        discoveryAgents.push(agent);
+      }
+    }
+    const passed = discoveryAgents.length === 0;
+    results.push({
+      check: "no_capability_discovery_subagent",
+      passed,
+      detail: passed
+        ? "No capability discovery subagent calls (dev:researcher) found"
+        : `Found ${discoveryAgents.length} dev:researcher Task/Agent call(s) — capability discovery should be removed`,
+    });
+  }
+
+  // ---- Task checks (internal model / /team) ----
 
   // Check: task_agent_is
   if ("task_agent_is" in checks) {
@@ -312,11 +424,24 @@ function runChecks(
   }
 
   // Check: no_predigest
+  // No Read/Grep/Glob/WebSearch on project files before the first model call.
+  // First model call is: first create_session MCP call, first Task/Agent call, or first
+  // Bash claudish call — whichever appears earliest.
   if (checks["no_predigest"]) {
     let firstModelOrder = 999999;
+
+    // MCP create_session calls (delegate v2.0.0+)
+    const createSessionCalls = getMcpCallsBySuffix(mcpCalls, "create_session");
+    if (createSessionCalls.length > 0) {
+      firstModelOrder = Math.min(firstModelOrder, createSessionCalls[0].order);
+    }
+
+    // Task/Agent calls (internal model / /team)
     if (taskCalls.length > 0) {
       firstModelOrder = Math.min(firstModelOrder, taskCalls[0].order);
     }
+
+    // Bash claudish calls (legacy / /team)
     if (claudishCalls.length > 0) {
       firstModelOrder = Math.min(firstModelOrder, claudishCalls[0].order);
     }
@@ -345,7 +470,7 @@ function runChecks(
     });
   }
 
-  // ---- Bash+claudish checks (external models) ----
+  // ---- Bash+claudish checks (retained for /team compatibility) ----
 
   // Check: bash_has_claudish
   if (checks["bash_has_claudish"]) {
@@ -465,7 +590,8 @@ function runChecks(
     });
   }
 
-  // ---- No provider prefix check ----
+  // ---- Provider prefix checks ----
+  // These checks inspect both Bash --model values and MCP create_session model params.
 
   // Check: no_provider_prefix_in_model
   if (checks["no_provider_prefix_in_model"]) {
@@ -481,6 +607,7 @@ function runChecks(
     ];
     const violations: string[] = [];
 
+    // Check Bash --model values
     for (const bc of claudishCalls) {
       const cmd = (bc.input["command"] as string) ?? "";
       const modelMatch = cmd.match(/--model\s+(\S+)/);
@@ -488,12 +615,25 @@ function runChecks(
         const modelId = modelMatch[1];
         const slashViolation = forbiddenSlashPrefixes.find((p) => modelId.startsWith(p));
         if (slashViolation) {
-          violations.push(`${modelId} (has slash prefix "${slashViolation}")`);
+          violations.push(`${modelId} (bash: slash prefix "${slashViolation}")`);
         } else {
           const shortcutViolation = forbiddenShortcutPrefixes.find((p) => modelId.startsWith(p));
           if (shortcutViolation) {
-            violations.push(`${modelId} (has shortcut prefix "${shortcutViolation}")`);
+            violations.push(`${modelId} (bash: shortcut prefix "${shortcutViolation}")`);
           }
+        }
+      }
+    }
+
+    // Check MCP create_session model params
+    for (const modelId of extractMcpCreateSessionModels(mcpCalls)) {
+      const slashViolation = forbiddenSlashPrefixes.find((p) => modelId.startsWith(p));
+      if (slashViolation) {
+        violations.push(`${modelId} (mcp: slash prefix "${slashViolation}")`);
+      } else {
+        const shortcutViolation = forbiddenShortcutPrefixes.find((p) => modelId.startsWith(p));
+        if (shortcutViolation) {
+          violations.push(`${modelId} (mcp: shortcut prefix "${shortcutViolation}")`);
         }
       }
     }
@@ -503,7 +643,7 @@ function runChecks(
       check: "no_provider_prefix_in_model",
       passed,
       detail: passed
-        ? "No provider prefixes (slash or shortcut) in --model values"
+        ? "No provider prefixes (slash or shortcut) in model values"
         : `Provider prefixes found: ${JSON.stringify(violations)}`,
     });
   }
@@ -517,6 +657,7 @@ function runChecks(
     ];
     const violations: string[] = [];
 
+    // Check Bash --model values
     for (const bc of claudishCalls) {
       const cmd = (bc.input["command"] as string) ?? "";
       const modelMatch = cmd.match(/--model\s+(\S+)/);
@@ -524,8 +665,16 @@ function runChecks(
         const modelId = modelMatch[1];
         const violation = forbiddenShortcuts.find((p) => modelId.startsWith(p));
         if (violation) {
-          violations.push(`${modelId} (has shortcut prefix "${violation}")`);
+          violations.push(`${modelId} (bash: shortcut prefix "${violation}")`);
         }
+      }
+    }
+
+    // Check MCP create_session model params
+    for (const modelId of extractMcpCreateSessionModels(mcpCalls)) {
+      const violation = forbiddenShortcuts.find((p) => modelId.startsWith(p));
+      if (violation) {
+        violations.push(`${modelId} (mcp: shortcut prefix "${violation}")`);
       }
     }
 
@@ -534,7 +683,7 @@ function runChecks(
       check: "no_shortcut_prefix_in_model",
       passed,
       detail: passed
-        ? "No shortcut prefixes (mm@, g@, oai@, etc.) in --model values"
+        ? "No shortcut prefixes (mm@, g@, oai@, etc.) in model values"
         : `Shortcut prefixes found: ${JSON.stringify(violations)}`,
     });
   }
@@ -757,7 +906,7 @@ function runChecks(
     }
   }
 
-  // ---- Session checks ----
+  // ---- Session checks (retained for /team; not used by delegate v2.0.0+) ----
 
   // Check: session_dir_pattern
   if ("session_dir_pattern" in checks) {
@@ -796,34 +945,40 @@ function runChecks(
     });
   }
 
-  // ---- v2.6.0 model discovery checks ----
+  // ---- Model discovery checks ----
 
   // Check: no_top_models_discovery
-  // Scan ALL bash_calls for `claudish` invocations with discovery flags.
-  // Only flag commands where `claudish` is the program being called with a discovery flag.
-  // Do NOT match `--models` in non-claudish contexts (e.g., session setup bash variables).
+  // Checks both Bash claudish discovery flags and MCP list_models calls.
   if (checks["no_top_models_discovery"]) {
-    const discoveryPattern = /claudish\s+.*--(top-models|free|list-models)/;
     const violations: string[] = [];
+
+    // Check Bash claudish discovery flags
+    const discoveryPattern = /claudish\s+.*--(top-models|free|list-models)/;
     for (const bc of bashCalls) {
       const cmd = (bc.input["command"] as string) ?? "";
       if (discoveryPattern.test(cmd)) {
         const match = cmd.match(discoveryPattern);
-        violations.push(`"${match?.[1]}" in: ${cmd.slice(0, 100)}`);
+        violations.push(`bash: "--${match?.[1]}" in: ${cmd.slice(0, 100)}`);
       }
     }
+
+    // Check MCP list_models calls
+    const listModelsCalls = getMcpCallsBySuffix(mcpCalls, "list_models");
+    for (const mc of listModelsCalls) {
+      violations.push(`mcp: ${mc.tool} called`);
+    }
+
     const passed = violations.length === 0;
     results.push({
       check: "no_top_models_discovery",
       passed,
       detail: passed
-        ? "No model discovery commands (claudish --top-models/--free/--list-models) found"
+        ? "No model discovery commands (claudish --top-models/--free/--list-models or MCP list_models) found"
         : `Model discovery commands found: ${JSON.stringify(violations)}`,
     });
   }
 
   // Check: bash_claudish_model_exact
-  // Verify an exact model ID string appears in a --model flag (exact equality, not substring).
   if ("bash_claudish_model_exact" in checks) {
     const expectedModel = checks["bash_claudish_model_exact"] as string;
     const allModelValues = extractModelValues(claudishCalls);
@@ -840,7 +995,6 @@ function runChecks(
   }
 
   // Check: bash_claudish_all_models_in
-  // Verify ALL --model values in claudish commands are from the allowed set (whitelist).
   if ("bash_claudish_all_models_in" in checks) {
     const allowedModels = checks["bash_claudish_all_models_in"] as string[];
     const allowedSet = new Set(allowedModels);
@@ -872,7 +1026,7 @@ function runChecks(
 
 async function main() {
   if (process.argv.length < 4) {
-    console.error("Usage: bun autotest/team/analyze-transcript.ts <transcript.jsonl> <checks_json>");
+    console.error("Usage: bun autotest/delegate/analyze-transcript.ts <transcript.jsonl> <checks_json>");
     process.exit(1);
   }
 
@@ -895,6 +1049,10 @@ async function main() {
       agent_calls: data.agentCalls.length,
       bash_calls: data.bashCalls.length,
       claudish_calls: getClaudishBashCalls(data.bashCalls).length,
+      mcp_calls: data.mcpCalls.length,
+      mcp_create_session_calls: getMcpCallsBySuffix(data.mcpCalls, "create_session").length,
+      mcp_send_input_calls: getMcpCallsBySuffix(data.mcpCalls, "send_input").length,
+      mcp_get_output_calls: getMcpCallsBySuffix(data.mcpCalls, "get_output").length,
       write_calls: data.writeCalls.length,
       read_calls: data.readCalls.length,
       skill_calls: data.skillCalls.length,

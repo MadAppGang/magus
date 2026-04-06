@@ -1,0 +1,30 @@
+{
+  "name": "stats",
+  "version": "0.1.0",
+  "description": "Session analytics and productivity insights for Claude Code",
+  "author": {
+    "name": "MadAppGang",
+    "email": "i@madappgang.com"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/MadAppGang/magus",
+  "tags": [
+    "analytics",
+    "productivity",
+    "statistics",
+    "insights",
+    "session-tracking"
+  ],
+  "commands": [
+    "./commands/report.md",
+    "./commands/dashboard.md",
+    "./commands/clear.md",
+    "./commands/config.md",
+    "./commands/help.md"
+  ],
+  "skills": "./skills/",
+  "hooks": "./hooks/hooks.json",
+  "compatibility": {
+    "claudeCode": ">=0.1.0"
+  }
+}

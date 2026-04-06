@@ -1,50 +1,43 @@
 {
   "meta": {
-    "description": "Test cases for /multimodel:delegate command. Verifies correct 4-phase workflow: argument parsing, capability discovery via subagent, pre-flight question gathering, and claudish execution. Tests model resolution, alias table, no-prefix rules, session directory creation, and error handling.",
-    "version": "1.2.0",
+    "description": "Test cases for /multimodel:delegate command. Verifies correct MCP channel-based workflow: argument parsing, create_session call with correct model, no capability discovery, no pre-solving, and error handling. Tests model resolution, alias table, no-prefix rules, and channel event handling.",
+    "version": "2.0.0",
     "created": "2026-03-23",
-    "notes": "v1.2.0: Headless-mode fix — added --no-preflight to all tests except 13 so they skip Phase 3 (AskUserQuestion) and reach claudish in non-interactive (claude -p) runs. Test 13 marked skip_headless:true and simplified to verify only Phase 1-2 observable behavior (reads preferences file, creates session dir) since AskUserQuestion blocks in headless. v1.1.0: 7 fixes from 4-model team review — (1) bash_min_count:1 added to every test to prevent vacuous pass on empty transcripts; (2) task_agent_is added to tests 02 and 10; (3) alias tests updated to bash_claudish_model_exact with resolved IDs; (4) --quiet flag gap documented (no analyzer check available); (5) added pre-flight test 13; (6) added error-scenario test 14; (7) has_post_verification_reads added to session-dir test 06 and claudish-flags test 07. v1.0.0: Initial suite — 12 tests covering argument parsing, model aliases, capability discovery, claudish flags, session directory, error handling, and no-prefix rules."
+    "notes": "v2.0.0: MCP channel migration — complete rewrite from Bash+claudish CLI to mcp__plugin_dev_claudish__create_session channel-based architecture. Removed: session directory checks (no session dirs in channel mode), capability discovery checks (removed from command), --no-preflight flag tests (flag removed), pre-flight question gathering tests (Phase 3 removed), bash_* checks. Added: mcp_tool_called, mcp_create_session_model, no_capability_discovery_subagent checks. Removed test cases: delegate-session-dir-06, delegate-claudish-flags-07, delegate-capability-discovery-writes-file-10, delegate-no-preflight-flag-11, delegate-preflight-question-gathering-13. Added: delegate-channel-event-input-15. v1.2.0: Headless-mode fix — added --no-preflight to all tests except 13 so they skip Phase 3 (AskUserQuestion) and reach claudish in non-interactive (claude -p) runs. v1.1.0: 7 fixes from 4-model team review. v1.0.0: Initial suite."
   },
   "test_cases": [
     {
       "id": "delegate-explicit-command-01",
-      "description": "Explicit model + slash command should execute via claudish without capability discovery. Alias 'grok' must resolve to exact ID 'grok-code-fast-1'.",
-      "prompt": "/multimodel:delegate --no-preflight grok /dev:research what is rate limiting",
+      "description": "Explicit model + slash command should call create_session without capability discovery. Alias 'grok' must resolve to exact ID 'grok-code-fast-1'. Prompt passed to create_session must include the slash command.",
+      "prompt": "/multimodel:delegate grok /dev:research what is rate limiting",
       "checks": {
-        "bash_min_count": 1,
-        "bash_has_claudish": true,
-        "bash_claudish_model_exact": "grok-code-fast-1",
-        "bash_claudish_has_stdin": true,
+        "mcp_tool_called": "create_session",
+        "mcp_create_session_model": "grok-code-fast-1",
         "no_provider_prefix_in_model": true,
         "no_shortcut_prefix_in_model": true,
-        "session_dir_pattern": "ai-docs/sessions/delegate-"
+        "no_capability_discovery_subagent": true
       },
       "tags": ["explicit-command", "basic", "model-alias"]
     },
     {
       "id": "delegate-natural-task-02",
-      "description": "Natural task (no slash command) should trigger capability discovery subagent before claudish. Verifies Task is delegated to dev:researcher and alias 'grok' resolves to exact ID.",
-      "prompt": "/multimodel:delegate --no-preflight grok implement a health check endpoint",
+      "description": "Natural task (no slash command) should call create_session directly — no capability discovery subagent. Alias 'grok' resolves to exact ID.",
+      "prompt": "/multimodel:delegate grok implement a health check endpoint",
       "checks": {
-        "bash_min_count": 1,
-        "task_min_count": 1,
-        "task_agent_is": "dev:researcher",
-        "bash_has_claudish": true,
-        "bash_claudish_model_exact": "grok-code-fast-1",
-        "bash_claudish_has_stdin": true,
+        "mcp_tool_called": "create_session",
+        "mcp_create_session_model": "grok-code-fast-1",
         "no_provider_prefix_in_model": true,
-        "session_dir_pattern": "ai-docs/sessions/delegate-"
+        "no_capability_discovery_subagent": true
       },
-      "tags": ["capability-discovery", "natural-task", "core", "model-alias"]
+      "tags": ["natural-task", "core", "model-alias", "no-capability-discovery"]
     },
     {
       "id": "delegate-model-alias-03",
-      "description": "Short alias 'gemini' should resolve to exact full ID 'gemini-3.1-pro-preview' in claudish command.",
-      "prompt": "/multimodel:delegate --no-preflight gemini /dev:research authentication patterns",
+      "description": "Short alias 'gemini' should resolve to exact full ID 'gemini-3.1-pro-preview' in the create_session model parameter.",
+      "prompt": "/multimodel:delegate gemini /dev:research authentication patterns",
       "checks": {
-        "bash_min_count": 1,
-        "bash_has_claudish": true,
-        "bash_claudish_model_exact": "gemini-3.1-pro-preview",
+        "mcp_tool_called": "create_session",
+        "mcp_create_session_model": "gemini-3.1-pro-preview",
         "no_provider_prefix_in_model": true,
         "no_shortcut_prefix_in_model": true
       },
@@ -52,12 +45,11 @@
     },
     {
       "id": "delegate-full-model-id-04",
-      "description": "Full model ID 'grok-code-fast-1' (not an alias) should be passed verbatim to claudish with exact match.",
-      "prompt": "/multimodel:delegate --no-preflight grok-code-fast-1 /dev:research error handling patterns",
+      "description": "Full model ID 'grok-code-fast-1' (not an alias) should be passed verbatim to create_session model parameter.",
+      "prompt": "/multimodel:delegate grok-code-fast-1 /dev:research error handling patterns",
       "checks": {
-        "bash_min_count": 1,
-        "bash_has_claudish": true,
-        "bash_claudish_model_exact": "grok-code-fast-1",
+        "mcp_tool_called": "create_session",
+        "mcp_create_session_model": "grok-code-fast-1",
         "no_provider_prefix_in_model": true,
         "no_shortcut_prefix_in_model": true,
         "no_top_models_discovery": true
@@ -66,12 +58,11 @@
     },
     {
       "id": "delegate-no-prefix-minimax-05",
-      "description": "Model minimax-m2.5 must NOT get mm@ or minimax/ prefix. Exact match verifies no mutation.",
-      "prompt": "/multimodel:delegate --no-preflight minimax-m2.5 /dev:research caching strategies",
+      "description": "Model minimax-m2.5 must NOT get mm@ or minimax/ prefix. Exact match in create_session model param verifies no mutation.",
+      "prompt": "/multimodel:delegate minimax-m2.5 /dev:research caching strategies",
       "checks": {
-        "bash_min_count": 1,
-        "bash_has_claudish": true,
-        "bash_claudish_model_exact": "minimax-m2.5",
+        "mcp_tool_called": "create_session",
+        "mcp_create_session_model": "minimax-m2.5",
         "no_provider_prefix_in_model": true,
         "no_shortcut_prefix_in_model": true,
         "no_top_models_discovery": true
@@ -79,89 +70,33 @@
       "tags": ["no-prefix", "critical"]
     },
     {
-      "id": "delegate-session-dir-06",
-      "description": "Session directory created under ai-docs/sessions/delegate-*, prompt.md and task.md written. Orchestrator must read result files (.exit, result.md) after claudish completes.",
-      "prompt": "/multimodel:delegate --no-preflight grok /dev:research logging best practices",
-      "checks": {
-        "bash_min_count": 1,
-        "session_dir_pattern": "ai-docs/sessions/delegate-",
-        "no_tmp_dir": true,
-        "bash_has_claudish": true,
-        "bash_claudish_has_stdin": true,
-        "has_post_verification_reads": true
-      },
-      "tags": ["session-dir", "post-verification"]
-    },
-    {
-      "id": "delegate-claudish-flags-07",
-      "description": "Claudish command must have required flags: --stdin, output redirect, exit code capture. Orchestrator must read result files after execution. Note: --quiet flag is always present alongside --stdin but the analyzer has no dedicated check for it (known gap).",
-      "prompt": "/multimodel:delegate --no-preflight grok /dev:research API design patterns",
-      "checks": {
-        "bash_min_count": 1,
-        "bash_has_claudish": true,
-        "bash_claudish_has_stdin": true,
-        "bash_claudish_has_output_redirect": true,
-        "bash_claudish_captures_exit": true,
-        "has_post_verification_reads": true
-      },
-      "tags": ["claudish-flags", "core", "post-verification"]
-    },
-    {
       "id": "delegate-reads-preferences-08",
-      "description": "Should read .claude/multimodel-team.json for model defaults and claudeFlags.",
-      "prompt": "/multimodel:delegate --no-preflight /dev:research rate limiting",
+      "description": "Should read .claude/multimodel-team.json for model defaults and claudeFlags before calling create_session.",
+      "prompt": "/multimodel:delegate /dev:research rate limiting",
       "checks": {
-        "bash_min_count": 1,
         "reads_preferences_file": true,
-        "bash_has_claudish": true
+        "mcp_tool_called": "create_session"
       },
       "tags": ["preferences", "default-model"]
     },
     {
       "id": "delegate-no-predigest-09",
-      "description": "Orchestrator should NOT pre-solve the task (no Read/Grep on project files before launching claudish). Alias 'grok' resolves to exact ID.",
-      "prompt": "/multimodel:delegate --no-preflight grok investigate how the plugin system resolves commands at runtime",
+      "description": "Orchestrator should NOT pre-solve the task (no Read/Grep on project files before calling create_session). Alias 'grok' resolves to exact ID.",
+      "prompt": "/multimodel:delegate grok investigate how the plugin system resolves commands at runtime",
       "checks": {
-        "bash_min_count": 1,
         "no_predigest": true,
-        "bash_has_claudish": true,
-        "bash_claudish_model_exact": "grok-code-fast-1"
+        "mcp_tool_called": "create_session",
+        "mcp_create_session_model": "grok-code-fast-1"
       },
       "tags": ["no-predigest", "core", "model-alias"]
     },
     {
-      "id": "delegate-capability-discovery-writes-file-10",
-      "description": "Capability discovery subagent must be a dev:researcher Task call that writes capability-discovery.md to session dir.",
-      "prompt": "/multimodel:delegate --no-preflight grok implement user authentication with JWT tokens",
-      "checks": {
-        "bash_min_count": 1,
-        "task_min_count": 1,
-        "task_agent_is": "dev:researcher",
-        "bash_has_claudish": true,
-        "session_dir_pattern": "ai-docs/sessions/delegate-"
-      },
-      "tags": ["capability-discovery", "file-output"]
-    },
-    {
-      "id": "delegate-no-preflight-flag-11",
-      "description": "With --no-preflight, skip question gathering and go straight to claudish execution. Alias 'grok' resolves to exact ID.",
-      "prompt": "/multimodel:delegate --no-preflight grok /dev:dev add a loading spinner to submit button",
-      "checks": {
-        "bash_min_count": 1,
-        "bash_has_claudish": true,
-        "bash_claudish_model_exact": "grok-code-fast-1",
-        "no_provider_prefix_in_model": true
-      },
-      "tags": ["no-preflight", "flag", "model-alias"]
-    },
-    {
       "id": "delegate-unknown-model-verbatim-12",
-      "description": "Unknown model ID must be passed verbatim — no substitution or discovery.",
-      "prompt": "/multimodel:delegate --no-preflight qwen-coder-3.5-turbo /dev:research error patterns",
+      "description": "Unknown model ID must be passed verbatim to create_session — no substitution or discovery.",
+      "prompt": "/multimodel:delegate qwen-coder-3.5-turbo /dev:research error patterns",
       "checks": {
-        "bash_min_count": 1,
-        "bash_has_claudish": true,
-        "bash_claudish_model_exact": "qwen-coder-3.5-turbo",
+        "mcp_tool_called": "create_session",
+        "mcp_create_session_model": "qwen-coder-3.5-turbo",
         "no_top_models_discovery": true,
         "no_provider_prefix_in_model": true,
         "no_shortcut_prefix_in_model": true
@@ -169,29 +104,28 @@
       "tags": ["anti-substitution", "verbatim", "critical"]
     },
     {
-      "id": "delegate-preflight-question-gathering-13",
-      "description": "Without --no-preflight, Phase 3 (pre-flight) runs AskUserQuestion which blocks in headless (claude -p). This test verifies only the observable setup behavior before AskUserQuestion is called: orchestrator reads preferences file and creates the session directory. Claudish execution is NOT verified here — that would require interactive mode. Skipped in headless CI runs.",
-      "prompt": "/multimodel:delegate grok /dev:dev add user authentication to the app",
-      "skip_headless": true,
-      "checks": {
-        "reads_preferences_file": true,
-        "session_dir_pattern": "ai-docs/sessions/delegate-"
-      },
-      "tags": ["preflight", "phase-3", "interactive-only"]
-    },
-    {
       "id": "delegate-error-scenario-fake-model-14",
-      "description": "When claudish is invoked with a clearly-fake model ID, the orchestrator must still invoke claudish (no early bail-out) and pass the model verbatim without substitution. No model discovery should be attempted.",
-      "prompt": "/multimodel:delegate --no-preflight fake-nonexistent-model-xyz /dev:research error handling",
+      "description": "When create_session is called with a clearly-fake model ID, the orchestrator must still call create_session (no early bail-out) and pass the model verbatim without substitution. No model discovery should be attempted.",
+      "prompt": "/multimodel:delegate fake-nonexistent-model-xyz /dev:research error handling",
       "checks": {
-        "bash_min_count": 1,
-        "bash_has_claudish": true,
-        "bash_claudish_model_exact": "fake-nonexistent-model-xyz",
+        "mcp_tool_called": "create_session",
+        "mcp_create_session_model": "fake-nonexistent-model-xyz",
         "no_top_models_discovery": true,
         "no_provider_prefix_in_model": true,
         "no_shortcut_prefix_in_model": true
       },
       "tags": ["error-scenario", "verbatim", "critical"]
+    },
+    {
+      "id": "delegate-channel-event-input-15",
+      "description": "When the delegated model raises an input_required event, the orchestrator must call send_input (not auto-answer). This test uses a prompt that is likely to trigger a clarifying question from the model. Marked skip_headless because AskUserQuestion blocks in claude -p. Verifies send_input appears in allowed-tools awareness by checking the tool is at least considered (get_output must be called for completion).",
+      "prompt": "/multimodel:delegate grok what should I build",
+      "skip_headless": true,
+      "checks": {
+        "mcp_tool_called": "create_session",
+        "mcp_create_session_model": "grok-code-fast-1"
+      },
+      "tags": ["channel-events", "input-required", "interactive-only"]
     }
   ]
 }

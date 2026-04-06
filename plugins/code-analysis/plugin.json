@@ -37,5 +37,17 @@
     "./skills/mnemex-search",
     "./skills/mnemex-orchestration",
     "./skills/investigate"
-  ]
+  ],
+  "hooks": "./hooks/hooks.json",
+  "conventions": {
+    "gitignore": {
+      "project": [".mnemex/"],
+      "global": [".claudemem/", ".claude/.coaching/"]
+    },
+    "claudemd": {
+      "section": "code-analysis",
+      "template": "./templates/claude-md-conventions.md",
+      "version": "1.0.0"
+    }
+  }
 }

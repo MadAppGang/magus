@@ -277,6 +277,405 @@ describe('validatePluginManifest', () => {
     });
   });
 
+  describe('conventions field validation', () => {
+    const baseManifest = {
+      name: 'test-plugin',
+      version: '1.0.0',
+      description: 'A test plugin',
+    };
+
+    it('should accept manifest without conventions (backwards compatible)', () => {
+      const result = validatePluginManifest(baseManifest);
+      expect(result.valid).toBe(true);
+    });
+
+    it('should accept manifest with valid gitignore conventions', () => {
+      const manifest = {
+        ...baseManifest,
+        conventions: {
+          gitignore: {
+            project: ['.mnemex/'],
+            global: ['.claudemem/', '.claude/.coaching/'],
+          },
+        },
+      };
+
+      const result = validatePluginManifest(manifest);
+      expect(result.valid).toBe(true);
+      if (result.valid) {
+        expect(result.data.conventions?.gitignore?.project).toEqual(['.mnemex/']);
+        expect(result.data.conventions?.gitignore?.global).toEqual(['.claudemem/', '.claude/.coaching/']);
+      }
+    });
+
+    it('should accept manifest with valid claudemd conventions', () => {
+      const manifest = {
+        ...baseManifest,
+        conventions: {
+          claudemd: {
+            section: 'test-plugin',
+            template: './templates/claude-md-conventions.md',
+            version: '1.0.0',
+          },
+        },
+      };
+
+      const result = validatePluginManifest(manifest);
+      expect(result.valid).toBe(true);
+      if (result.valid) {
+        expect(result.data.conventions?.claudemd?.section).toBe('test-plugin');
+      }
+    });
+
+    it('should accept manifest with both gitignore and claudemd conventions', () => {
+      const manifest = {
+        ...baseManifest,
+        conventions: {
+          gitignore: {
+            project: ['.mnemex/'],
+          },
+          claudemd: {
+            section: 'test-plugin',
+            template: './templates/claude-md-conventions.md',
+            version: '1.0.0',
+          },
+        },
+      };
+
+      const result = validatePluginManifest(manifest);
+      expect(result.valid).toBe(true);
+    });
+
+    it('should accept empty conventions object', () => {
+      const manifest = {
+        ...baseManifest,
+        conventions: {},
+      };
+
+      const result = validatePluginManifest(manifest);
+      expect(result.valid).toBe(true);
+    });
+
+    it('should accept gitignore with only project entries', () => {
+      const manifest = {
+        ...baseManifest,
+        conventions: {
+          gitignore: {
+            project: ['.mnemex/', '.cache/'],
+          },
+        },
+      };
+
+      const result = validatePluginManifest(manifest);
+      expect(result.valid).toBe(true);
+    });
+
+    it('should accept gitignore with only global entries', () => {
+      const manifest = {
+        ...baseManifest,
+        conventions: {
+          gitignore: {
+            global: ['.claudemem/'],
+          },
+        },
+      };
+
+      const result = validatePluginManifest(manifest);
+      expect(result.valid).toBe(true);
+    });
+
+    it('should reject non-object conventions', () => {
+      const manifest = {
+        ...baseManifest,
+        conventions: 'invalid',
+      };
+
+      const result = validatePluginManifest(manifest);
+      expect(result.valid).toBe(false);
+      if (!result.valid) {
+        expect(result.errors).toContain('Plugin "conventions" must be an object if provided');
+      }
+    });
+
+    it('should reject array conventions', () => {
+      const manifest = {
+        ...baseManifest,
+        conventions: ['invalid'],
+      };
+
+      const result = validatePluginManifest(manifest);
+      expect(result.valid).toBe(false);
+      if (!result.valid) {
+        expect(result.errors).toContain('Plugin "conventions" must be an object if provided');
+      }
+    });
+
+    it('should reject non-object gitignore', () => {
+      const manifest = {
+        ...baseManifest,
+        conventions: {
+          gitignore: 'invalid',
+        },
+      };
+
+      const result = validatePluginManifest(manifest);
+      expect(result.valid).toBe(false);
+      if (!result.valid) {
+        expect(result.errors).toContain('Plugin "conventions.gitignore" must be an object if provided');
+      }
+    });
+
+    it('should reject non-array gitignore.project', () => {
+      const manifest = {
+        ...baseManifest,
+        conventions: {
+          gitignore: {
+            project: '.mnemex/',
+          },
+        },
+      };
+
+      const result = validatePluginManifest(manifest);
+      expect(result.valid).toBe(false);
+      if (!result.valid) {
+        expect(result.errors).toContain('Plugin "conventions.gitignore.project" must be a string array if provided');
+      }
+    });
+
+    it('should reject non-string entries in gitignore.project', () => {
+      const manifest = {
+        ...baseManifest,
+        conventions: {
+          gitignore: {
+            project: ['.mnemex/', 42],
+          },
+        },
+      };
+
+      const result = validatePluginManifest(manifest);
+      expect(result.valid).toBe(false);
+      if (!result.valid) {
+        expect(result.errors).toContain('Plugin "conventions.gitignore.project" entries must be strings');
+      }
+    });
+
+    it('should reject non-array gitignore.global', () => {
+      const manifest = {
+        ...baseManifest,
+        conventions: {
+          gitignore: {
+            global: { path: '.claudemem/' },
+          },
+        },
+      };
+
+      const result = validatePluginManifest(manifest);
+      expect(result.valid).toBe(false);
+      if (!result.valid) {
+        expect(result.errors).toContain('Plugin "conventions.gitignore.global" must be a string array if provided');
+      }
+    });
+
+    it('should reject non-string entries in gitignore.global', () => {
+      const manifest = {
+        ...baseManifest,
+        conventions: {
+          gitignore: {
+            global: [true],
+          },
+        },
+      };
+
+      const result = validatePluginManifest(manifest);
+      expect(result.valid).toBe(false);
+      if (!result.valid) {
+        expect(result.errors).toContain('Plugin "conventions.gitignore.global" entries must be strings');
+      }
+    });
+
+    it('should reject non-object claudemd', () => {
+      const manifest = {
+        ...baseManifest,
+        conventions: {
+          claudemd: 'invalid',
+        },
+      };
+
+      const result = validatePluginManifest(manifest);
+      expect(result.valid).toBe(false);
+      if (!result.valid) {
+        expect(result.errors).toContain('Plugin "conventions.claudemd" must be an object if provided');
+      }
+    });
+
+    it('should reject claudemd without required section', () => {
+      const manifest = {
+        ...baseManifest,
+        conventions: {
+          claudemd: {
+            template: './templates/test.md',
+            version: '1.0.0',
+          },
+        },
+      };
+
+      const result = validatePluginManifest(manifest);
+      expect(result.valid).toBe(false);
+      if (!result.valid) {
+        expect(result.errors).toContain('Plugin "conventions.claudemd.section" is required and must be a non-empty string');
+      }
+    });
+
+    it('should reject claudemd.section with invalid characters', () => {
+      const manifest = {
+        ...baseManifest,
+        name: 'Test_Plugin',
+        conventions: {
+          claudemd: {
+            section: 'Test_Plugin',
+            template: './templates/test.md',
+            version: '1.0.0',
+          },
+        },
+      };
+
+      const result = validatePluginManifest(manifest);
+      expect(result.valid).toBe(false);
+      if (!result.valid) {
+        expect(result.errors.some((e) => e.includes('must match'))).toBe(true);
+      }
+    });
+
+    it('should reject claudemd.section that does not match plugin name', () => {
+      const manifest = {
+        ...baseManifest,
+        conventions: {
+          claudemd: {
+            section: 'different-name',
+            template: './templates/test.md',
+            version: '1.0.0',
+          },
+        },
+      };
+
+      const result = validatePluginManifest(manifest);
+      expect(result.valid).toBe(false);
+      if (!result.valid) {
+        expect(result.errors.some((e) => e.includes('must equal the plugin name'))).toBe(true);
+      }
+    });
+
+    it('should reject claudemd without required template', () => {
+      const manifest = {
+        ...baseManifest,
+        conventions: {
+          claudemd: {
+            section: 'test-plugin',
+            version: '1.0.0',
+          },
+        },
+      };
+
+      const result = validatePluginManifest(manifest);
+      expect(result.valid).toBe(false);
+      if (!result.valid) {
+        expect(result.errors).toContain('Plugin "conventions.claudemd.template" is required and must be a non-empty string');
+      }
+    });
+
+    it('should reject claudemd.template not starting with ./', () => {
+      const manifest = {
+        ...baseManifest,
+        conventions: {
+          claudemd: {
+            section: 'test-plugin',
+            template: 'templates/test.md',
+            version: '1.0.0',
+          },
+        },
+      };
+
+      const result = validatePluginManifest(manifest);
+      expect(result.valid).toBe(false);
+      if (!result.valid) {
+        expect(result.errors).toContain('Plugin "conventions.claudemd.template" must be a relative path starting with "./"');
+      }
+    });
+
+    it('should reject claudemd without required version', () => {
+      const manifest = {
+        ...baseManifest,
+        conventions: {
+          claudemd: {
+            section: 'test-plugin',
+            template: './templates/test.md',
+          },
+        },
+      };
+
+      const result = validatePluginManifest(manifest);
+      expect(result.valid).toBe(false);
+      if (!result.valid) {
+        expect(result.errors).toContain('Plugin "conventions.claudemd.version" is required and must be a non-empty string');
+      }
+    });
+
+    it('should reject claudemd.version with invalid semver', () => {
+      const manifest = {
+        ...baseManifest,
+        conventions: {
+          claudemd: {
+            section: 'test-plugin',
+            template: './templates/test.md',
+            version: 'v1.0',
+          },
+        },
+      };
+
+      const result = validatePluginManifest(manifest);
+      expect(result.valid).toBe(false);
+      if (!result.valid) {
+        expect(result.errors).toContain('Plugin "conventions.claudemd.version" must follow semver format (X.Y.Z)');
+      }
+    });
+
+    it('should accept claudemd.version with prerelease tag', () => {
+      const manifest = {
+        ...baseManifest,
+        conventions: {
+          claudemd: {
+            section: 'test-plugin',
+            template: './templates/test.md',
+            version: '1.0.0-beta.1',
+          },
+        },
+      };
+
+      const result = validatePluginManifest(manifest);
+      expect(result.valid).toBe(true);
+    });
+
+    it('should collect multiple convention errors', () => {
+      const manifest = {
+        ...baseManifest,
+        conventions: {
+          gitignore: 'wrong',
+          claudemd: {
+            section: '',
+            template: 'no-dot-slash',
+            version: 'bad',
+          },
+        },
+      };
+
+      const result = validatePluginManifest(manifest);
+      expect(result.valid).toBe(false);
+      if (!result.valid) {
+        expect(result.errors.length).toBeGreaterThanOrEqual(3);
+      }
+    });
+  });
+
   describe('edge cases', () => {
     it('should accept empty string name (but that should be caught by other validation)', () => {
       const manifest = {

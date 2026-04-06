@@ -1,9 +1,9 @@
 {
   "meta": {
-    "description": "Test cases for /multimodel:team command orchestration. Verifies correct model invocation: internal via Task({resolved_agent}), external via Bash(claudish). Tests dynamic agent routing, parallel launch, session dir, vote template, no pre-digestion, model verification, and claudish v5.3.0 flag passthrough.",
-    "version": "2.6.0",
+    "description": "Test cases for /multimodel:team command orchestration. Verifies correct model invocation: internal via Task({resolved_agent}), external via mcp__plugin_dev_claudish__team MCP tool. Tests dynamic agent routing, parallel launch, session dir, vote template, no pre-digestion, model verification, and claude_flags passthrough.",
+    "version": "3.0.0",
     "created": "2026-02-11",
-    "notes": "v2.6.0: Added 6 anti-substitution and failure-path tests — unknown model verbatim passthrough (rule-0), no discovery when --models explicit, multi-unknown verbatim, alias-no-override for full IDs, alias positive regression, and failure-no-recovery (rule-6). v2.5.0: Added shortcut-prefix detection (mm@, g@, oai@, etc.) and claudish-usage skill loading tests. v2.4.0: Flag passthrough tests now use mixed internal+chatgpt models (validates both Task and Bash paths). v2.3.0: Added flag passthrough tests for claudish v5.3.0 — claudeFlags from preferences injected into claudish commands. v2.2.0: Dynamic agent routing — task keywords determine subagent_type from context_detection table."
+    "notes": "v3.0.0: Migrated from Bash+claudish CLI to MCP tool architecture. External models now use mcp__plugin_dev_claudish__team (one blocking call), not individual Bash+claudish per model. Removed bash_* checks; added mcp_tool_called, mcp_team_models_contain, mcp_team_models_exact, mcp_team_has_claude_flags, mcp_team_no_claude_flags checks. Removed test cases for Bash mechanics (flags, exit capture, prompt file writing, verification reads, skill loading). v2.6.0: Added 6 anti-substitution and failure-path tests — unknown model verbatim passthrough (rule-0), no discovery when --models explicit, multi-unknown verbatim, alias-no-override for full IDs, alias positive regression, and failure-no-recovery (rule-6). v2.5.0: Added shortcut-prefix detection (mm@, g@, oai@, etc.). v2.4.0: Flag passthrough tests now use mixed internal+chatgpt models. v2.3.0: Added flag passthrough tests. v2.2.0: Dynamic agent routing — task keywords determine subagent_type from context_detection table."
   },
   "model_aliases": {
     "grok": "grok-code-fast-1",
@@ -17,7 +17,7 @@
   "test_cases": [
     {
       "id": "team-agent-internal",
-      "description": "Internal-only model should use Task with dynamically resolved agent, no Bash claudish",
+      "description": "Internal-only model should use Task with dynamically resolved agent, no MCP team tool call",
       "prompt": "/multimodel:team --models internal --no-memory Review the plugin.json structure in the dev plugin",
       "checks": {
         "task_agent_is": "dev:researcher",
@@ -29,27 +29,23 @@
     },
     {
       "id": "team-agent-external",
-      "description": "External model should use Bash+claudish (not Task with PROXY_MODE)",
+      "description": "External model should use team MCP tool (not Task with PROXY_MODE)",
       "prompt": "/multimodel:team --models grok --no-memory Review the plugin.json structure in the dev plugin",
       "checks": {
-        "bash_has_claudish": true,
-        "bash_claudish_model_contains": "grok",
-
-        "bash_claudish_has_stdin": true,
+        "mcp_tool_called": "team",
+        "mcp_team_models_contain": "grok",
         "no_proxy_mode_in_tasks": true
       },
-      "tags": ["agent-selection", "external", "bash-claudish"]
+      "tags": ["agent-selection", "external", "mcp-tool"]
     },
     {
       "id": "team-parallel-mixed",
-      "description": "Mixed internal+external: internal=Task, external=Bash+claudish, all parallel",
+      "description": "Mixed internal+external: internal=Task, external=team MCP tool, both issued in parallel",
       "prompt": "/multimodel:team --models internal,grok --no-memory Check if CLAUDE.md has proper formatting",
       "checks": {
         "internal_uses_task": true,
-        "external_uses_bash": true,
-        "bash_has_claudish": true,
+        "mcp_tool_called": "team",
         "task_agent_is": "dev:researcher",
-        "bash_run_in_background": true,
         "run_in_background": true
       },
       "tags": ["parallel", "mixed-models", "agent-routing"]
@@ -76,26 +72,22 @@
     },
     {
       "id": "team-multi-external",
-      "description": "Multiple external models should all use Bash+claudish with correct model IDs",
+      "description": "Multiple external models should be passed to team MCP tool in a single call with all model IDs",
       "prompt": "/multimodel:team --models grok,gemini --no-memory Review the multimodel plugin structure",
       "checks": {
-        "bash_has_claudish": true,
-        "bash_min_count": 2,
-
-        "bash_claudish_has_stdin": true,
-        "bash_run_in_background": true,
-        "no_proxy_mode_in_tasks": true,
-        "no_proxy_mode_in_bash": true
+        "mcp_tool_called": "team",
+        "mcp_team_models_contain": "grok",
+        "no_proxy_mode_in_tasks": true
       },
-      "tags": ["multi-external", "bash-claudish"]
+      "tags": ["multi-external", "mcp-tool"]
     },
     {
       "id": "team-model-alias-grok",
-      "description": "Alias 'grok' should resolve to model containing 'grok' in Bash claudish command without any prefix",
+      "description": "Alias 'grok' should resolve to model containing 'grok' in team MCP tool models param without any prefix",
       "prompt": "/multimodel:team --models grok --no-memory Check plugin version numbers",
       "checks": {
-        "bash_claudish_model_contains": "grok",
-        "bash_has_claudish": true,
+        "mcp_tool_called": "team",
+        "mcp_team_models_contain": "grok",
         "no_provider_prefix_in_model": true,
         "no_shortcut_prefix_in_model": true
       },
@@ -103,11 +95,11 @@
     },
     {
       "id": "team-model-alias-gemini",
-      "description": "Alias 'gemini' should resolve to model containing 'gemini' in Bash claudish command without any prefix",
+      "description": "Alias 'gemini' should resolve to model containing 'gemini' in team MCP tool models param without any prefix",
       "prompt": "/multimodel:team --models gemini --no-memory Check plugin version numbers",
       "checks": {
-        "bash_claudish_model_contains": "gemini",
-        "bash_has_claudish": true,
+        "mcp_tool_called": "team",
+        "mcp_team_models_contain": "gemini",
         "no_provider_prefix_in_model": true,
         "no_shortcut_prefix_in_model": true
       },
@@ -126,75 +118,31 @@
     },
     {
       "id": "team-background-launch",
-      "description": "All model calls (Task and Bash) should use run_in_background for parallel execution",
+      "description": "Task (internal) call should use run_in_background for parallel execution with MCP team tool",
       "prompt": "/multimodel:team --models internal,grok --no-memory Review code quality of plugin.json files",
       "checks": {
         "run_in_background": true,
-        "bash_run_in_background": true,
+        "mcp_tool_called": "team",
         "task_agent_is": "dev:researcher"
       },
       "tags": ["parallel", "background", "agent-routing"]
     },
     {
-      "id": "team-bash-claudish-flags",
-      "description": "Claudish Bash command should have all required flags: --stdin, --quiet, output redirect",
-      "prompt": "/multimodel:team --models grok --no-memory Quick review of README",
-      "checks": {
-        "bash_has_claudish": true,
-
-        "bash_claudish_has_stdin": true,
-        "bash_claudish_has_output_redirect": true
-      },
-      "tags": ["bash-claudish", "flags"]
-    },
-    {
-      "id": "team-exit-code-capture",
-      "description": "Bash claudish command should capture exit code to .exit file",
-      "prompt": "/multimodel:team --models grok --no-memory Check formatting of CLAUDE.md",
-      "checks": {
-        "bash_has_claudish": true,
-        "bash_claudish_captures_exit": true
-      },
-      "tags": ["bash-claudish", "exit-code"]
-    },
-    {
       "id": "team-no-proxy-mode",
-      "description": "PROXY_MODE should be completely absent from all Task prompts and Bash commands",
+      "description": "PROXY_MODE should be completely absent from all Task prompts",
       "prompt": "/multimodel:team --models internal,grok --no-memory Review plugin structure",
       "checks": {
-        "no_proxy_mode_in_tasks": true,
-        "no_proxy_mode_in_bash": true
+        "no_proxy_mode_in_tasks": true
       },
       "tags": ["no-proxy-mode"]
     },
     {
-      "id": "team-vote-prompt-file",
-      "description": "Orchestrator should write vote prompt to a file before launching external models",
-      "prompt": "/multimodel:team --models grok --no-memory Quick check on plugin versions",
-      "checks": {
-        "vote_prompt_file_written": true,
-        "bash_has_claudish": true
-      },
-      "tags": ["vote-prompt-file"]
-    },
-    {
-      "id": "team-verification-reads",
-      "description": "After model runs complete, orchestrator should read .exit and result files",
-      "prompt": "/multimodel:team --models internal,grok --no-memory Review CLAUDE.md formatting",
-      "checks": {
-        "has_post_verification_reads": true,
-        "internal_uses_task": true,
-        "external_uses_bash": true
-      },
-      "tags": ["verification"]
-    },
-    {
       "id": "team-no-provider-prefix",
-      "description": "Bare model names should NOT get provider prefixes added (e.g., minimax-m2.5 stays minimax-m2.5, not minimax/minimax-m2.5 or mm@minimax-m2.5)",
+      "description": "Bare model names should NOT get provider prefixes added (e.g., minimax-m2.5 stays minimax-m2.5, not minimax/minimax-m2.5 or mm@minimax-m2.5) in team MCP tool models param",
       "prompt": "/multimodel:team --models minimax-m2.5 --no-memory Quick check on README structure",
       "checks": {
-        "bash_has_claudish": true,
-        "bash_claudish_model_contains": "minimax-m2.5",
+        "mcp_tool_called": "team",
+        "mcp_team_models_contain": "minimax-m2.5",
         "no_provider_prefix_in_model": true,
         "no_shortcut_prefix_in_model": true
       },
@@ -202,14 +150,13 @@
     },
     {
       "id": "team-no-provider-prefix-multi",
-      "description": "Multiple bare model names should all be passed without provider prefixes (slash or shortcut)",
+      "description": "Multiple bare model names should all be passed without provider prefixes to team MCP tool",
       "prompt": "/multimodel:team --models minimax-m2.5,kimi-k2.5 --no-memory Check plugin versions",
       "checks": {
-        "bash_has_claudish": true,
-        "bash_min_count": 2,
+        "mcp_tool_called": "team",
+        "mcp_team_models_exact": ["minimax-m2.5", "kimi-k2.5"],
         "no_provider_prefix_in_model": true,
-        "no_shortcut_prefix_in_model": true,
-        "bash_run_in_background": true
+        "no_shortcut_prefix_in_model": true
       },
       "tags": ["no-prefix", "multi-external", "critical"]
     },
@@ -219,7 +166,7 @@
       "prompt": "/multimodel:team --no-memory Check if README has all required sections",
       "checks": {
         "reads_preferences_file": true,
-        "bash_has_claudish": true
+        "mcp_tool_called": "team"
       },
       "tags": ["default-models", "preferences", "critical"]
     },
@@ -245,70 +192,68 @@
     },
     {
       "id": "team-flag-passthrough-effort",
-      "description": "When claudeFlags contains --effort high, it should appear in claudish command (mixed internal+external)",
+      "description": "When claudeFlags contains --effort high, it should appear in team MCP tool claude_flags param (mixed internal+external)",
       "prompt": "/multimodel:team --models internal,chatgpt --no-memory Quick review of README formatting",
       "setup": {
         "claudeFlags": "--effort high"
       },
       "checks": {
         "internal_uses_task": true,
-        "bash_has_claudish": true,
-        "bash_claudish_has_stdin": true,
-        "bash_claudish_has_passthrough_flags": "--effort",
+        "mcp_tool_called": "team",
+        "mcp_team_has_claude_flags": "--effort",
         "run_in_background": true
       },
-      "tags": ["flag-passthrough", "claudish-v5.3.0", "mixed-models"]
+      "tags": ["flag-passthrough", "mcp-tool", "mixed-models"]
     },
     {
       "id": "team-flag-passthrough-permission-mode",
-      "description": "When claudeFlags contains --permission-mode plan, it should appear in claudish command (mixed internal+external)",
+      "description": "When claudeFlags contains --permission-mode plan, it should appear in team MCP tool claude_flags param (mixed internal+external)",
       "prompt": "/multimodel:team --models internal,chatgpt --no-memory Check plugin version numbers",
       "setup": {
         "claudeFlags": "--permission-mode plan"
       },
       "checks": {
         "internal_uses_task": true,
-        "bash_has_claudish": true,
-        "bash_claudish_has_passthrough_flags": "--permission-mode",
+        "mcp_tool_called": "team",
+        "mcp_team_has_claude_flags": "--permission-mode",
         "run_in_background": true
       },
-      "tags": ["flag-passthrough", "claudish-v5.3.0", "mixed-models"]
+      "tags": ["flag-passthrough", "mcp-tool", "mixed-models"]
     },
     {
       "id": "team-flag-passthrough-multiple",
-      "description": "Multiple passthrough flags should all appear in claudish command (mixed internal+external)",
+      "description": "Multiple passthrough flags should all appear in team MCP tool claude_flags param (mixed internal+external)",
       "prompt": "/multimodel:team --models internal,chatgpt --no-memory Review the error handling patterns",
       "setup": {
         "claudeFlags": "--effort high --max-budget-usd 0.50"
       },
       "checks": {
         "internal_uses_task": true,
-        "bash_has_claudish": true,
-        "bash_claudish_has_passthrough_flags": "--effort",
+        "mcp_tool_called": "team",
+        "mcp_team_has_claude_flags": "--effort",
         "run_in_background": true
       },
-      "tags": ["flag-passthrough", "claudish-v5.3.0", "mixed-models"]
+      "tags": ["flag-passthrough", "mcp-tool", "mixed-models"]
     },
     {
       "id": "team-flag-passthrough-none",
-      "description": "When no claudeFlags configured, no passthrough flags should appear (mixed internal+external regression test)",
+      "description": "When no claudeFlags configured, claude_flags should be absent from team MCP tool call (mixed internal+external regression test)",
       "prompt": "/multimodel:team --models internal,chatgpt --no-memory Quick check on README",
       "checks": {
         "internal_uses_task": true,
-        "bash_has_claudish": true,
-        "bash_claudish_has_stdin": true,
-        "bash_claudish_no_passthrough_flags": true,
+        "mcp_tool_called": "team",
+        "mcp_team_no_claude_flags": true,
         "run_in_background": true
       },
       "tags": ["flag-passthrough", "regression", "mixed-models"]
     },
     {
       "id": "team-no-shortcut-prefix-gemini",
-      "description": "gemini-3.1-pro-preview should NOT get shortcut prefix like g@ or google@",
+      "description": "gemini-3.1-pro-preview should NOT get shortcut prefix like g@ or google@ in team MCP tool models param",
       "prompt": "/multimodel:team --models gemini-3.1-pro-preview --no-memory Quick check on README structure",
       "checks": {
-        "bash_has_claudish": true,
-        "bash_claudish_model_contains": "gemini-3.1-pro-preview",
+        "mcp_tool_called": "team",
+        "mcp_team_models_contain": "gemini-3.1-pro-preview",
         "no_provider_prefix_in_model": true,
         "no_shortcut_prefix_in_model": true
       },
@@ -316,47 +261,35 @@
     },
     {
       "id": "team-no-shortcut-prefix-multi",
-      "description": "Multiple models with potential shortcut collisions (gemini, kimi, glm) should all use bare names",
+      "description": "Multiple models with potential shortcut collisions (gemini, kimi, glm) should all use bare names in team MCP tool models param",
       "prompt": "/multimodel:team --models gemini-3.1-pro-preview,kimi-k2.5,glm-5 --no-memory Check plugin versions",
       "checks": {
-        "bash_has_claudish": true,
-        "bash_min_count": 3,
+        "mcp_tool_called": "team",
+        "mcp_team_models_exact": ["gemini-3.1-pro-preview", "kimi-k2.5", "glm-5"],
         "no_provider_prefix_in_model": true,
-        "no_shortcut_prefix_in_model": true,
-        "bash_run_in_background": true
+        "no_shortcut_prefix_in_model": true
       },
       "tags": ["no-prefix", "shortcut-prefix", "multi-external", "critical"]
     },
     {
       "id": "team-no-shortcut-prefix-gpt",
-      "description": "gpt-5.3-codex should NOT get oai@ or openai@ prefix",
+      "description": "gpt-5.3-codex should NOT get oai@ or openai@ prefix in team MCP tool models param",
       "prompt": "/multimodel:team --models gpt-5.3-codex --no-memory Review the README formatting",
       "checks": {
-        "bash_has_claudish": true,
-        "bash_claudish_model_contains": "gpt",
+        "mcp_tool_called": "team",
+        "mcp_team_models_contain": "gpt",
         "no_provider_prefix_in_model": true,
         "no_shortcut_prefix_in_model": true
       },
       "tags": ["no-prefix", "shortcut-prefix", "critical"]
     },
     {
-      "id": "team-loads-claudish-skill",
-      "description": "Model should load claudish-usage skill via Skill tool before running claudish commands",
-      "prompt": "/multimodel:team --models grok-code-fast-1 --no-memory Quick check on plugin structure",
-      "checks": {
-        "bash_has_claudish": true,
-        "loads_claudish_skill": true,
-        "no_provider_prefix_in_model": true
-      },
-      "tags": ["skill-loading", "claudish-usage", "critical"]
-    },
-    {
       "id": "team-no-substitution-unknown-model",
-      "description": "Unknown model ID (not in alias table) must be passed verbatim — no substitution to a 'similar' model",
+      "description": "Unknown model ID (not in alias table) must be passed verbatim to team MCP tool — no substitution to a 'similar' model",
       "prompt": "/multimodel:team --models gpt-5.4 --no-memory Quick check on README structure",
       "checks": {
-        "bash_has_claudish": true,
-        "bash_claudish_model_exact": "gpt-5.4",
+        "mcp_tool_called": "team",
+        "mcp_team_models_exact": ["gpt-5.4"],
         "no_top_models_discovery": true,
         "no_provider_prefix_in_model": true,
         "no_shortcut_prefix_in_model": true
@@ -365,28 +298,24 @@
     },
     {
       "id": "team-no-discovery-with-explicit-models",
-      "description": "When --models is explicit, claudish --top-models must NOT be called. Both models must appear verbatim.",
+      "description": "When --models is explicit, list_models must NOT be called. Both models must appear verbatim in team MCP tool.",
       "prompt": "/multimodel:team --models minimax-m2.5,glm-5 --no-memory Review plugin version numbers",
       "checks": {
-        "bash_has_claudish": true,
+        "mcp_tool_called": "team",
         "no_top_models_discovery": true,
-        "bash_claudish_all_models_in": ["minimax-m2.5", "glm-5"],
-        "bash_min_count": 2,
-        "bash_run_in_background": true,
+        "mcp_team_models_exact": ["minimax-m2.5", "glm-5"],
         "no_provider_prefix_in_model": true
       },
       "tags": ["anti-substitution", "no-discovery", "rule-0", "critical"]
     },
     {
       "id": "team-verbatim-multi-unknown",
-      "description": "Multiple unknown model IDs (not in alias table) must all be passed verbatim with no substitution",
+      "description": "Multiple unknown model IDs (not in alias table) must all be passed verbatim to team MCP tool with no substitution",
       "prompt": "/multimodel:team --models gpt-5.4,qwen3.5-plus-02-15 --no-memory Check README formatting",
       "checks": {
-        "bash_has_claudish": true,
-        "bash_claudish_all_models_in": ["gpt-5.4", "qwen3.5-plus-02-15"],
-        "bash_min_count": 2,
+        "mcp_tool_called": "team",
+        "mcp_team_models_exact": ["gpt-5.4", "qwen3.5-plus-02-15"],
         "no_top_models_discovery": true,
-        "bash_run_in_background": true,
         "no_provider_prefix_in_model": true,
         "no_shortcut_prefix_in_model": true
       },
@@ -397,9 +326,8 @@
       "description": "Full model ID 'kimi-k2.5' must NOT be alias-resolved via 'kimi' alias (alias table maps 'kimi' → 'kimi-k2.5' but user already provides the full ID)",
       "prompt": "/multimodel:team --models kimi-k2.5 --no-memory Review the README",
       "checks": {
-        "bash_has_claudish": true,
-        "bash_claudish_model_exact": "kimi-k2.5",
-        "bash_claudish_all_models_in": ["kimi-k2.5"],
+        "mcp_tool_called": "team",
+        "mcp_team_models_exact": ["kimi-k2.5"],
         "no_top_models_discovery": true,
         "no_provider_prefix_in_model": true
       },
@@ -410,8 +338,8 @@
       "description": "Short alias 'grok' must still resolve to 'grok-code-fast-1' after alias table scoping changes",
       "prompt": "/multimodel:team --models grok --no-memory Check plugin versions",
       "checks": {
-        "bash_has_claudish": true,
-        "bash_claudish_model_contains": "grok",
+        "mcp_tool_called": "team",
+        "mcp_team_models_contain": "grok",
         "no_provider_prefix_in_model": true,
         "no_shortcut_prefix_in_model": true
       },
@@ -419,13 +347,13 @@
     },
     {
       "id": "team-failure-no-recovery",
-      "description": "When a model fails (nonexistent model), orchestrator must NOT run --top-models, substitute, or retry. Should report failure and proceed with remaining models.",
+      "description": "When a model fails (nonexistent model), orchestrator must NOT run list_models, substitute, or retry. Should report failure and proceed with remaining models.",
       "prompt": "/multimodel:team --models internal,fake-nonexistent-model-xyz --no-memory Quick check on README",
       "checks": {
         "internal_uses_task": true,
-        "bash_has_claudish": true,
+        "mcp_tool_called": "team",
         "no_top_models_discovery": true,
-        "bash_claudish_model_exact": "fake-nonexistent-model-xyz",
+        "mcp_team_models_contain": "fake-nonexistent-model-xyz",
         "no_provider_prefix_in_model": true,
         "run_in_background": true
       },

@@ -43,5 +43,12 @@
   ],
   "compatibility": {
     "claudeCode": ">=0.1.0"
+  },
+  "conventions": {
+    "claudemd": {
+      "section": "gtd",
+      "template": "./templates/claude-md-conventions.md",
+      "version": "1.0.0"
+    }
   }
 }

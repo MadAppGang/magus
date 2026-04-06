@@ -94,6 +94,45 @@ export {
   clearPluginCache,
 } from './services/local-marketplace.js';
 
+// Services - Convention Management
+export {
+  // Gitignore operations
+  ensureGitignoreEntries,
+  removeGitignoreEntries,
+  checkGitignoreEntries,
+  // CLAUDE.md operations
+  parseClaudeMdContent,
+  parseClaudeMdSections,
+  injectClaudeMdSection,
+  removeClaudeMdSection,
+  listClaudeMdSections,
+  // Global gitignore
+  resolveGlobalGitignorePath,
+  // Convention aggregation
+  resolvePluginConventions,
+  readConventionTemplate,
+  // End-to-end convention application
+  applyConventions,
+  removeConventions,
+  // Types
+  type ParsedSection,
+  type ParseError,
+  type ParseResult,
+  type ConventionLogger,
+} from './services/conventions-manager.js';
+
+// Services - Doctor (convention audit)
+export {
+  checkProject,
+  runDoctor,
+  fixDoctorIssues,
+  type CheckStatus,
+  type DoctorCheck,
+  type ProjectDoctorResult,
+  type DoctorResult,
+  type DoctorLogger,
+} from './services/doctor.js';
+
 // Services - Settings Management
 export {
   // Settings read/write

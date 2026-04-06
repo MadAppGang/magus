@@ -1,72 +1,106 @@
 #!/usr/bin/env bun
 /**
  * Injects iTerm2 triggers for Claude Code agent highlighting.
- * Matches patterns like: Skill(anything:agent-name) or plugin:agent-name
+ * Auto-discovers agents from plugin directories by reading `color:` frontmatter.
  *
  * Usage:
- *   1. Quit iTerm2 completely
- *   2. bun run item-highlight.ts
- *   3. Open iTerm2 — triggers are active
- *
- * To remove: bun run item-highlight.ts --remove
+ *   bun run item-highlight.ts                          # scan ./plugins + installed cache
+ *   bun run item-highlight.ts --dir /path/to/plugins   # scan custom directory
+ *   bun run item-highlight.ts --remove                 # remove all triggers
+ *   bun run item-highlight.ts --dry-run                # preview without writing
+ *   bun run item-highlight.ts --force                  # skip iTerm2 running check
  */
 
 import { existsSync, copyFileSync, unlinkSync } from "fs";
 import { homedir } from "os";
-import { join } from "path";
+import { join, dirname } from "path";
+import { Glob } from "bun";
 
-// ── Agent Color Map ──────────────────────────────────────────────────────────
+// ── Color Name → Hex Map ────────────────────────────────────────────────────
 
 interface AgentColor {
-  bg: string; // hex background
-  fg: string; // hex text
+  bg: string;
+  fg: string;
 }
 
-const AGENTS: Record<string, AgentColor> = {
-  // Build & Code
-  developer: { bg: "#2ea043", fg: "#ffffff" }, // Green
-  architect: { bg: "#1f6feb", fg: "#ffffff" }, // Blue
-
-  // Debug & Fix
-  debugger: { bg: "#da3633", fg: "#ffffff" }, // Red
-
-  // Research & Synthesis
-  researcher: { bg: "#8957e5", fg: "#ffffff" }, // Purple
-  synthesizer: { bg: "#bc8cff", fg: "#000000" }, // Light Purple
-
-  // Testing
-  "test-architect": { bg: "#d29922", fg: "#000000" }, // Yellow
-
-  // Infrastructure
-  devops: { bg: "#f0883e", fg: "#000000" }, // Orange
-
-  // UI
-  "ui-engineer": { bg: "#00b4d8", fg: "#000000" }, // Cyan
-  ui: { bg: "#3fb950", fg: "#000000" }, // Teal
-
-  // Documentation
-  "doc-writer": { bg: "#8b949e", fg: "#000000" }, // Gray
-  "doc-analyzer": { bg: "#6e7681", fg: "#ffffff" }, // Dark Gray
-  "doc-fixer": { bg: "#768390", fg: "#ffffff" }, // Mid Gray
-
-  // Spec & Planning
-  "spec-writer": { bg: "#d2a8ff", fg: "#000000" }, // Lavender
-  scribe: { bg: "#7ee787", fg: "#000000" }, // Light Green
-
-  // Discovery & Detection
-  "skill-discovery": { bg: "#79c0ff", fg: "#000000" }, // Light Blue
-  "stack-detector": { bg: "#ffa657", fg: "#000000" }, // Light Orange
-
-  // Review & Quality
-  reviewer: { bg: "#e3b341", fg: "#000000" }, // Gold
-  "code-reviewer": { bg: "#d4a72c", fg: "#000000" }, // Dark Gold
-  "code-simplifier": { bg: "#a5d6ff", fg: "#000000" }, // Pale Blue
-
-  // Investigation
-  detective: { bg: "#f778ba", fg: "#000000" }, // Pink
+/** Maps frontmatter color names to GitHub-inspired hex pairs */
+const COLOR_PALETTE: Record<string, AgentColor> = {
+  green:   { bg: "#2ea043", fg: "#ffffff" },
+  blue:    { bg: "#1f6feb", fg: "#ffffff" },
+  red:     { bg: "#da3633", fg: "#ffffff" },
+  orange:  { bg: "#f0883e", fg: "#000000" },
+  yellow:  { bg: "#d29922", fg: "#000000" },
+  purple:  { bg: "#8957e5", fg: "#ffffff" },
+  cyan:    { bg: "#00b4d8", fg: "#000000" },
+  magenta: { bg: "#db61a2", fg: "#ffffff" },
+  violet:  { bg: "#a371f7", fg: "#000000" },
+  pink:    { bg: "#f778ba", fg: "#000000" },
+  gray:    { bg: "#8b949e", fg: "#000000" },
+  gold:    { bg: "#e3b341", fg: "#000000" },
 };
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// ── Agent Discovery ─────────────────────────────────────────────────────────
+
+interface DiscoveredAgent {
+  name: string;
+  color: string;
+  plugin: string;
+  file: string;
+}
+
+/** Parse YAML frontmatter from a markdown file for name: and color: fields */
+function parseFrontmatter(content: string): { name?: string; color?: string } {
+  const match = content.match(/^---\n([\s\S]*?)\n---/);
+  if (!match) return {};
+  const yaml = match[1];
+  const name = yaml.match(/^name:\s*(.+)$/m)?.[1]?.trim();
+  const color = yaml.match(/^color:\s*(.+)$/m)?.[1]?.trim();
+  return { name, color };
+}
+
+/** Scan a directory for plugin agent .md files and extract name + color */
+async function discoverAgents(dir: string): Promise<DiscoveredAgent[]> {
+  const agents: DiscoveredAgent[] = [];
+  const glob = new Glob("*/agents/*.md");
+
+  for await (const path of glob.scan({ cwd: dir, absolute: false })) {
+    const fullPath = join(dir, path);
+    const content = await Bun.file(fullPath).text();
+    const { name, color } = parseFrontmatter(content);
+    if (!name || !color) continue;
+
+    const plugin = path.split("/")[0];
+    agents.push({ name, color, plugin, file: fullPath });
+  }
+
+  return agents;
+}
+
+/** Find all installed plugin cache directories */
+function getInstalledPluginDirs(): string[] {
+  const cacheDir = join(homedir(), ".claude/plugins/cache");
+  if (!existsSync(cacheDir)) return [];
+
+  const dirs: string[] = [];
+  const marketplaces = new Glob("*/*").scan({ cwd: cacheDir, onlyFiles: false });
+
+  // We need the versioned dirs: cache/<marketplace>/<plugin>/<version>/
+  // But we want unique plugin dirs (latest version only)
+  // Simpler: scan marketplace source dirs instead
+  const marketplaceSrc = join(homedir(), ".claude/plugins/marketplaces");
+  if (existsSync(marketplaceSrc)) {
+    for (const entry of new Glob("*").scanSync({ cwd: marketplaceSrc, onlyFiles: false })) {
+      const pluginsDir = join(marketplaceSrc, entry, "plugins");
+      if (existsSync(pluginsDir)) {
+        dirs.push(pluginsDir);
+      }
+    }
+  }
+
+  return dirs;
+}
+
+// ── iTerm2 Trigger Building ─────────────────────────────────────────────────
 
 const PLIST_PATH = join(
   homedir(),
@@ -74,7 +108,6 @@ const PLIST_PATH = join(
 );
 const MARKER = "claude-agent-trigger";
 
-/** Convert #rrggbb to iTerm2 P3 16-bit format: p3#RRRRGGGGBBBB */
 function hexToP3(hex: string): string {
   const h = hex.replace("#", "");
   const r = h.slice(0, 2);
@@ -107,7 +140,7 @@ function buildTrigger(agent: string, colors: AgentColor): Trigger {
   };
 }
 
-// ── Plist I/O (via `defaults` + Python for cfprefsd-safe read/write) ────────
+// ── Plist I/O ───────────────────────────────────────────────────────────────
 
 const DOMAIN = "com.googlecode.iterm2";
 const TMP_PLIST = "/tmp/iterm2_triggers_work.plist";
@@ -165,19 +198,15 @@ async function spawn(
 }
 
 async function readPlist(): Promise<any> {
-  // Export through cfprefsd (the authoritative preference source)
   await spawn(["defaults", "export", DOMAIN, TMP_PLIST]);
-  // Parse the exported XML plist with Python
   const text = await spawn(["python3", "-c", PY_READ, TMP_PLIST]);
   return JSON.parse(text);
 }
 
 async function writePlist(data: any): Promise<void> {
-  // Write modified plist to temp file
   await spawn(["python3", "-c", PY_WRITE, TMP_PLIST], {
     stdin: JSON.stringify(data),
   });
-  // Import through cfprefsd so changes are actually recognized
   await spawn(["defaults", "import", DOMAIN, TMP_PLIST]);
 }
 
@@ -190,14 +219,24 @@ function getDefaultProfile(data: any): any {
   process.exit(1);
 }
 
-// ── Main ─────────────────────────────────────────────────────────────────────
+// ── Main ────────────────────────────────────────────────────────────────────
 
 async function main() {
-  const removing = process.argv.includes("--remove");
-  const force = process.argv.includes("--force");
+  const args = process.argv.slice(2);
+  const removing = args.includes("--remove");
+  const force = args.includes("--force");
+  const dryRun = args.includes("--dry-run");
 
-  // Warn if iTerm2 is running (changes won't take effect until restart)
-  if (!force) {
+  // Custom --dir arguments
+  const customDirs: string[] = [];
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === "--dir" && args[i + 1]) {
+      customDirs.push(args[++i]);
+    }
+  }
+
+  // iTerm2 running check
+  if (!force && !dryRun) {
     try {
       const out = await spawn([
         "osascript",
@@ -212,56 +251,119 @@ async function main() {
         );
         process.exit(1);
       }
-    } catch {
-      // osascript unavailable — skip check
+    } catch {}
+  }
+
+  if (!removing) {
+    // ── Discover agents ──────────────────────────────────────
+    const scanDirs = customDirs.length > 0
+      ? customDirs
+      : [
+          // Local dev repo (if running from magus root)
+          join(dirname(new URL(import.meta.url).pathname), "plugins"),
+          // Installed plugin marketplace sources
+          ...getInstalledPluginDirs(),
+        ];
+
+    console.log("Scanning directories:");
+    for (const d of scanDirs) {
+      const exists = existsSync(d);
+      console.log(`  ${exists ? "+" : "-"} ${d}`);
     }
-  }
+    console.log();
 
-  // Backup
-  const backup = PLIST_PATH + ".bak";
-  if (!existsSync(backup)) {
-    copyFileSync(PLIST_PATH, backup);
-    console.log(`Backup saved to ${backup}`);
-  }
+    const allAgents: DiscoveredAgent[] = [];
+    for (const dir of scanDirs) {
+      if (!existsSync(dir)) continue;
+      const found = await discoverAgents(dir);
+      allAgents.push(...found);
+    }
 
-  const data = await readPlist();
-  const profile = getDefaultProfile(data);
+    // Deduplicate by agent name (first occurrence wins)
+    const seen = new Set<string>();
+    const unique: DiscoveredAgent[] = [];
+    for (const agent of allAgents) {
+      if (seen.has(agent.name)) continue;
+      seen.add(agent.name);
+      unique.push(agent);
+    }
 
-  const existing: Trigger[] = profile.Triggers ?? [];
-  const cleaned = existing.filter((t: any) => !t.name?.startsWith(MARKER));
+    // Resolve colors
+    const resolved: Array<{ name: string; colors: AgentColor; plugin: string }> = [];
+    const unknown: string[] = [];
 
-  if (removing) {
+    for (const agent of unique) {
+      const colors = COLOR_PALETTE[agent.color];
+      if (colors) {
+        resolved.push({ name: agent.name, colors, plugin: agent.plugin });
+      } else {
+        unknown.push(`${agent.name} (color: "${agent.color}" from ${agent.plugin})`);
+      }
+    }
+
+    if (unknown.length > 0) {
+      console.log(`Unknown colors (add to COLOR_PALETTE):`);
+      for (const u of unknown) console.log(`  ? ${u}`);
+      console.log();
+    }
+
+    console.log(`Discovered ${resolved.length} agents from ${scanDirs.length} directories:\n`);
+    for (const { name, colors, plugin } of resolved) {
+      console.log(`  ${colors.bg}  ${name} (${plugin})`);
+    }
+
+    if (dryRun) {
+      console.log("\n--dry-run: no changes written.");
+      return;
+    }
+
+    // ── Write triggers ─────────────────────────────────────
+    const backup = PLIST_PATH + ".bak";
+    if (!existsSync(backup)) {
+      copyFileSync(PLIST_PATH, backup);
+      console.log(`\nBackup saved to ${backup}`);
+    }
+
+    const data = await readPlist();
+    const profile = getDefaultProfile(data);
+
+    const existing: Trigger[] = profile.Triggers ?? [];
+    const cleaned = existing.filter((t: any) => !t.name?.startsWith(MARKER));
+
+    const newTriggers = resolved.map(({ name, colors }) =>
+      buildTrigger(name, colors),
+    );
+
+    profile.Triggers = [...cleaned, ...newTriggers];
+    await writePlist(data);
+
+    console.log(`\nInjected ${newTriggers.length} agent triggers into iTerm2.`);
+    console.log(`Kept ${cleaned.length} existing triggers.`);
+
+    console.log(`
+Test with:
+  echo "dev:developer"
+  echo "code-analysis:detective"
+  echo "seo:seo-researcher"
+
+To remove: bun run item-highlight.ts --remove`);
+  } else {
+    // ── Remove mode ────────────────────────────────────────
+    const backup = PLIST_PATH + ".bak";
+    if (!existsSync(backup)) {
+      copyFileSync(PLIST_PATH, backup);
+    }
+
+    const data = await readPlist();
+    const profile = getDefaultProfile(data);
+    const existing: Trigger[] = profile.Triggers ?? [];
+    const cleaned = existing.filter((t: any) => !t.name?.startsWith(MARKER));
+
     profile.Triggers = cleaned;
     await writePlist(data);
     console.log(`Removed ${existing.length - cleaned.length} agent triggers.`);
-    return;
   }
 
-  // Build new triggers
-  const newTriggers = Object.entries(AGENTS).map(([agent, colors]) =>
-    buildTrigger(agent, colors),
-  );
-
-  profile.Triggers = [...cleaned, ...newTriggers];
-  await writePlist(data);
-
-  console.log(`\nInjected ${newTriggers.length} agent triggers into iTerm2.`);
-  console.log(`Kept ${cleaned.length} existing triggers.\n`);
-
-  console.log("Color map:");
-  for (const [agent, { bg }] of Object.entries(AGENTS)) {
-    console.log(`  ${bg}  ${agent}`);
-  }
-
-  console.log(`
-Test with:
-  echo "Skill(code-analysis:architect)"
-  echo "dev:developer"
-  echo "Skill(test:debugger)"
-
-To remove: bun run item-highlight.ts --remove`);
-
-  // Cleanup temp file
   try { unlinkSync(TMP_PLIST); } catch {}
 }
 

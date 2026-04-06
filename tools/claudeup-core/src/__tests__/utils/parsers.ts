@@ -5,6 +5,8 @@
  * hooks config, and MCP server configurations.
  */
 
+import type { PluginConventions } from '../../types/index.js';
+
 /**
  * Parse YAML frontmatter from a markdown file
  *
@@ -265,6 +267,7 @@ export interface PluginManifest {
   skills?: string[];
   hooks?: string;
   mcpServers?: string;
+  conventions?: PluginConventions;
 }
 
 export function validatePluginManifest(
@@ -317,6 +320,79 @@ export function validatePluginManifest(
 
   if (m.skills !== undefined && !Array.isArray(m.skills)) {
     errors.push('Plugin "skills" must be an array if provided');
+  }
+
+  // Validate conventions field (optional)
+  if (m.conventions !== undefined) {
+    if (typeof m.conventions !== 'object' || m.conventions === null || Array.isArray(m.conventions)) {
+      errors.push('Plugin "conventions" must be an object if provided');
+    } else {
+      const conventions = m.conventions as Record<string, unknown>;
+
+      // Validate gitignore conventions
+      if (conventions.gitignore !== undefined) {
+        if (typeof conventions.gitignore !== 'object' || conventions.gitignore === null || Array.isArray(conventions.gitignore)) {
+          errors.push('Plugin "conventions.gitignore" must be an object if provided');
+        } else {
+          const gi = conventions.gitignore as Record<string, unknown>;
+
+          if (gi.project !== undefined) {
+            if (!Array.isArray(gi.project)) {
+              errors.push('Plugin "conventions.gitignore.project" must be a string array if provided');
+            } else {
+              for (const entry of gi.project) {
+                if (typeof entry !== 'string') {
+                  errors.push('Plugin "conventions.gitignore.project" entries must be strings');
+                  break;
+                }
+              }
+            }
+          }
+
+          if (gi.global !== undefined) {
+            if (!Array.isArray(gi.global)) {
+              errors.push('Plugin "conventions.gitignore.global" must be a string array if provided');
+            } else {
+              for (const entry of gi.global) {
+                if (typeof entry !== 'string') {
+                  errors.push('Plugin "conventions.gitignore.global" entries must be strings');
+                  break;
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // Validate claudemd conventions
+      if (conventions.claudemd !== undefined) {
+        if (typeof conventions.claudemd !== 'object' || conventions.claudemd === null || Array.isArray(conventions.claudemd)) {
+          errors.push('Plugin "conventions.claudemd" must be an object if provided');
+        } else {
+          const cmd = conventions.claudemd as Record<string, unknown>;
+
+          if (typeof cmd.section !== 'string' || !cmd.section) {
+            errors.push('Plugin "conventions.claudemd.section" is required and must be a non-empty string');
+          } else if (!/^[a-z0-9-]+$/.test(cmd.section)) {
+            errors.push('Plugin "conventions.claudemd.section" must match /^[a-z0-9-]+$/');
+          } else if (typeof m.name === 'string' && cmd.section !== m.name) {
+            errors.push(`Plugin "conventions.claudemd.section" must equal the plugin name ("${m.name}")`);
+          }
+
+          if (typeof cmd.template !== 'string' || !cmd.template) {
+            errors.push('Plugin "conventions.claudemd.template" is required and must be a non-empty string');
+          } else if (!cmd.template.startsWith('./')) {
+            errors.push('Plugin "conventions.claudemd.template" must be a relative path starting with "./"');
+          }
+
+          if (typeof cmd.version !== 'string' || !cmd.version) {
+            errors.push('Plugin "conventions.claudemd.version" is required and must be a non-empty string');
+          } else if (!/^\d+\.\d+\.\d+(-[\w.]+)?$/.test(cmd.version)) {
+            errors.push('Plugin "conventions.claudemd.version" must follow semver format (X.Y.Z)');
+          }
+        }
+      }
+    }
   }
 
   if (errors.length > 0) {

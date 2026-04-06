@@ -109,6 +109,35 @@ export interface InstalledPluginsRegistry {
   plugins: Record<string, InstalledPluginEntry[]>;
 }
 
+// Plugin conventions (declarative project hygiene management)
+
+/** Convention declarations for a plugin */
+export interface PluginConventions {
+  gitignore?: GitignoreConventions;
+  claudemd?: ClaudeMdConventions;
+}
+
+/** Gitignore entries a plugin needs */
+export interface GitignoreConventions {
+  /** Entries for project .gitignore (team-visible, committed) */
+  project?: string[];
+  /** Advisory entries for global gitignore (personal, not committed).
+   *  Resolved via `git config --global core.excludesfile`,
+   *  falling back to ~/.config/git/ignore if unset. */
+  global?: string[];
+}
+
+/** CLAUDE.md section injection config */
+export interface ClaudeMdConventions {
+  /** Section identifier used in markers: <!-- BEGIN magus:{section} -->
+   *  MUST equal the plugin's `name` field. */
+  section: string;
+  /** Path to markdown template, relative to plugin root */
+  template: string;
+  /** Semantic version of the template content */
+  version: string;
+}
+
 // Error codes for RPC communication
 export enum ErrorCode {
   PARSE_ERROR = -32700,

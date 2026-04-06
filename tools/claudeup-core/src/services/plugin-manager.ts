@@ -16,6 +16,7 @@
 
 import path from "node:path";
 import os from "node:os";
+import { existsSync } from "node:fs";
 import {
   getConfiguredMarketplaces,
   getEnabledPlugins,
@@ -57,6 +58,10 @@ import {
   parsePluginId,
 } from "../utils/string-utils.js";
 import { validatePluginId } from "../utils/validators.js";
+import {
+  applyConventions,
+  removeConventions,
+} from "./conventions-manager.js";
 
 // Export types for consumers
 export type { RefreshResult, ProgressCallback, RepairMarketplaceResult };
@@ -701,6 +706,19 @@ export async function saveInstalledPluginVersion(
     projectPath ? path.resolve(projectPath) : undefined,
   );
 
+  // Apply conventions if plugin declares them (non-blocking)
+  if (projectPath) {
+    try {
+      const pluginPath = await resolvePluginSourcePath(pluginId);
+      if (pluginPath) {
+        await applyConventions(pluginPath, projectPath);
+      }
+    } catch {
+      // Convention failure must NOT block plugin installation.
+      // Doctor command can repair later.
+    }
+  }
+
   // Trigger cache invalidation hook
   await cacheHooks.onPluginInstalled(pluginId);
 }
@@ -717,6 +735,19 @@ export async function removeInstalledPluginVersion(
 ): Promise<void> {
   // Validate plugin ID format
   validatePluginId(pluginId);
+
+  // Remove CLAUDE.md conventions before registry removal (non-blocking)
+  if (projectPath) {
+    try {
+      const parsed = parsePluginId(pluginId);
+      if (parsed) {
+        await removeConventions(parsed.pluginName, projectPath);
+      }
+    } catch {
+      // Convention removal failure must NOT block plugin uninstallation.
+      // Doctor command can repair later.
+    }
+  }
 
   if (projectPath) {
     const settings = await readSettings(projectPath);
@@ -775,6 +806,39 @@ export async function getLocalMarketplacesInfo(): Promise<
   Map<string, LocalMarketplace>
 > {
   return getLocalMarketplaces();
+}
+
+/**
+ * Resolve a plugin ID to its local filesystem source path.
+ * Uses the local marketplace cache to find the plugin's source directory.
+ *
+ * @param pluginId - Plugin ID (format: "plugin-name@marketplace-name")
+ * @returns Absolute path to plugin directory, or null if not found
+ */
+async function resolvePluginSourcePath(
+  pluginId: string,
+): Promise<string | null> {
+  const parsed = parsePluginId(pluginId);
+  if (!parsed) return null;
+
+  const { pluginName, marketplace: mpName } = parsed;
+  const localMarketplaces = await getLocalMarketplaces();
+  const localMp = localMarketplaces.get(mpName);
+  if (!localMp) return null;
+
+  const localPlugin = localMp.plugins.find((p) => p.name === pluginName);
+  if (!localPlugin?.source || typeof localPlugin.source !== "string") return null;
+
+  // source is a relative path like "./plugins/code-analysis"
+  // marketplace clone is at MARKETPLACES_DIR/mpName
+  const marketplacePath = path.join(MARKETPLACES_DIR, mpName);
+  const pluginPath = path.join(marketplacePath, localPlugin.source.replace("./", ""));
+
+  if (existsSync(pluginPath)) {
+    return pluginPath;
+  }
+
+  return null;
 }
 
 export interface RefreshAndRepairResult {

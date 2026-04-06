@@ -1,0 +1,77 @@
+{
+  "meta": {
+    "description": "Dev plugin UX improvement validation tests. Verifies /dev:help shows all 12 commands, /dev:audit exists and routes correctly, command descriptions reflect workflow value.",
+    "version": "1.0.0",
+    "created": "2026-03-21",
+    "notes": "v1.0: Tests P0 help fix, review→audit rename, grouped help layout, value-differentiated descriptions."
+  },
+  "test_cases": [
+    {
+      "id": "help-shows-all-commands-01",
+      "description": "Running /dev:help should display all 12 commands grouped into 4 workflow stages",
+      "prompt": "/dev:help",
+      "checks": {
+        "output_contains_all": [
+          "/dev:research",
+          "/dev:interview",
+          "/dev:architect",
+          "/dev:dev",
+          "/dev:debug",
+          "/dev:audit",
+          "/dev:investigate",
+          "/dev:doc",
+          "/dev:setup",
+          "/dev:learn",
+          "/dev:worktree",
+          "/dev:help"
+        ],
+        "output_contains_any": ["PLAN", "BUILD", "REVIEW", "CONFIGURE"],
+        "output_not_contains": ["1.1.0"]
+      },
+      "category": "help-fix",
+      "tags": ["help", "P0", "command-count"]
+    },
+    {
+      "id": "help-version-correct-01",
+      "description": "Help output should show version 2.2.0, not 1.1.0",
+      "prompt": "/dev:help",
+      "checks": {
+        "output_contains": "2.2.0",
+        "output_not_contains": "1.1.0"
+      },
+      "category": "help-fix",
+      "tags": ["help", "P0", "version"]
+    },
+    {
+      "id": "audit-command-exists-01",
+      "description": "/dev:audit should be recognized as a valid command and show scope selection",
+      "prompt": "/dev:audit",
+      "checks": {
+        "output_contains_any": ["Code quality", "UI", "Documentation", "Security", "scope", "review", "audit"],
+        "no_error_message": true
+      },
+      "category": "audit-rename",
+      "tags": ["audit", "P1", "rename"]
+    },
+    {
+      "id": "audit-disambiguation-01",
+      "description": "/dev:audit should mention the built-in /review as alternative for PR review",
+      "prompt": "/dev:audit What is the difference between this command and the built-in /review?",
+      "checks": {
+        "output_contains_any": ["built-in", "/review", "PR", "diff", "native"]
+      },
+      "category": "audit-rename",
+      "tags": ["audit", "P1", "disambiguation"]
+    },
+    {
+      "id": "review-deprecated-01",
+      "description": "/dev:review should still work (backward compat) but the command file has deprecation notice",
+      "prompt": "/dev:review",
+      "checks": {
+        "output_contains_any": ["Code quality", "UI", "Documentation", "Security", "scope", "review"]
+      },
+      "category": "backward-compat",
+      "tags": ["review", "deprecated", "backward-compat"]
+    }
+  ]
+}
