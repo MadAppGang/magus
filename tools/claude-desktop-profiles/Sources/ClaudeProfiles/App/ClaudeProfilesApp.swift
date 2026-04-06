@@ -9,7 +9,9 @@ struct ClaudeProfilesApp: App {
         WindowGroup {
             ContentView()
                 .environment(appState)
+                .preferredColorScheme(.dark)
         }
+        .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 800, height: 600)
     }
 }

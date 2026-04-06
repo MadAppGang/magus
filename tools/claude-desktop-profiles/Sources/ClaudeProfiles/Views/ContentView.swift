@@ -24,22 +24,32 @@ struct ContentView: View {
     }
 
     private var mainNavigationView: some View {
-        NavigationSplitView {
+        HStack(spacing: 0) {
             ProfileListView()
                 .environment(appState)
-        } detail: {
-            if let selectedID = appState.selectedProfileID,
-                let profile = appState.profiles.first(where: { $0.id == selectedID })
-            {
-                ProfileDetailView(profile: profile)
-                    .environment(appState)
-                    .id(profile.id)
-            } else {
-                EmptyStateView()
-                    .environment(appState)
+                .frame(width: 260)
+            
+            // Subtle separator line
+            Rectangle()
+                .fill(Color.black.opacity(0.2))
+                .frame(width: 1)
+                .ignoresSafeArea()
+            
+            Group {
+                if let selectedID = appState.selectedProfileID,
+                    let profile = appState.profiles.first(where: { $0.id == selectedID })
+                {
+                    ProfileDetailView(profile: profile)
+                        .environment(appState)
+                        .id(profile.id)
+                } else {
+                    EmptyStateView()
+                        .environment(appState)
+                }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .navigationTitle("Claude Profiles")
+        .ignoresSafeArea(.all, edges: .top)
     }
 
     private var claudeNotFoundView: some View {

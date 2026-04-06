@@ -23,18 +23,23 @@ struct ProfileDetailView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 24) {
+            VStack(spacing: 36) {
+                Spacer().frame(height: 20)
+                
                 headerSection
                 actionButtonsSection
-                infoSection
-
-                if needsUpdate {
-                    updateBanner
+                
+                VStack(spacing: 24) {
+                    if needsUpdate {
+                        updateBanner
+                    }
+                    infoSection
+                    dangerZoneSection
                 }
-
-                dangerZoneSection
+                .frame(maxWidth: 500)
             }
-            .padding(32)
+            .padding(40)
+            .frame(maxWidth: .infinity)
         }
         .background(ClaudeTheme.background)
         .confirmationDialog(
@@ -72,51 +77,49 @@ struct ProfileDetailView: View {
     ]
 
     private var headerSection: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 16) {
             Button {
                 showCustomize.toggle()
             } label: {
                 Image(systemName: profile.iconName)
-                    .font(.system(size: 48))
+                    .font(.system(size: 32))
                     .foregroundStyle(profileAccentColor)
-                    .frame(width: 80, height: 80)
+                    .frame(width: 72, height: 72)
                     .background(
-                        RoundedRectangle(cornerRadius: 20)
-                            .fill(profileAccentColor.opacity(0.12))
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(profileAccentColor.opacity(0.15))
                     )
-                    .overlay(alignment: .bottomTrailing) {
-                        Image(systemName: "pencil.circle.fill")
-                            .font(.system(size: 20))
-                            .foregroundStyle(ClaudeTheme.secondaryText)
-                            .background(Circle().fill(ClaudeTheme.background).padding(-2))
-                            .offset(x: 4, y: 4)
-                    }
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                    )
             }
             .buttonStyle(.plain)
             .popover(isPresented: $showCustomize, arrowEdge: .bottom) {
                 customizePopover
             }
 
-            Text(profile.name)
-                .font(.title)
-                .fontWeight(.semibold)
-                .foregroundStyle(ClaudeTheme.text)
+            VStack(spacing: 6) {
+                Text(profile.name)
+                    .font(.system(size: 28, weight: .semibold))
+                    .foregroundStyle(ClaudeTheme.text)
 
-            HStack(spacing: 8) {
-                Text("v\(profile.bundleVersion)")
-                    .font(.caption)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(
-                        Capsule()
-                            .fill(ClaudeTheme.border)
-                    )
-                    .foregroundStyle(ClaudeTheme.secondaryText)
+                HStack(spacing: 8) {
+                    Text("v\(profile.bundleVersion)")
+                        .font(.system(size: 13))
+                        .foregroundStyle(ClaudeTheme.secondaryText)
+                    
+                    Circle()
+                        .fill(ClaudeTheme.secondaryText.opacity(0.5))
+                        .frame(width: 4, height: 4)
 
-                StatusIndicator(isRunning: isRunning)
-                Text(isRunning ? "Running" : "Stopped")
-                    .font(.caption)
-                    .foregroundStyle(isRunning ? .green : ClaudeTheme.secondaryText)
+                    HStack(spacing: 6) {
+                        StatusIndicator(isRunning: isRunning)
+                        Text(isRunning ? "Running" : "Stopped")
+                            .font(.system(size: 13))
+                            .foregroundStyle(isRunning ? Color.green : ClaudeTheme.secondaryText)
+                    }
+                }
             }
         }
         .frame(maxWidth: .infinity)
@@ -175,6 +178,7 @@ struct ProfileDetailView: View {
         }
         .padding(16)
         .frame(width: 280)
+        .background(ClaudeTheme.cardBackground)
     }
 
     // MARK: - Action Buttons
@@ -185,76 +189,99 @@ struct ProfileDetailView: View {
                 Button {
                     terminateProfile()
                 } label: {
-                    Label("Stop", systemImage: "stop.fill")
-                        .frame(maxWidth: .infinity)
+                    HStack(spacing: 6) {
+                        Image(systemName: "stop.fill")
+                        Text("Stop Profile")
+                    }
+                    .font(.system(size: 14, weight: .medium))
+                    .frame(width: 160)
+                    .padding(.vertical, 10)
+                    .background(Color.red.opacity(0.1))
+                    .foregroundStyle(.red)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(.red)
-                .controlSize(.large)
+                .buttonStyle(.plain)
             } else {
                 Button {
                     appState.launchProfile(profile)
                 } label: {
-                    Label("Launch", systemImage: "play.fill")
-                        .frame(maxWidth: .infinity)
+                    HStack(spacing: 6) {
+                        Image(systemName: "play.fill")
+                        Text("Launch")
+                    }
+                    .font(.system(size: 14, weight: .medium))
+                    .frame(width: 160)
+                    .padding(.vertical, 10)
+                    .background(profileAccentColor)
+                    .foregroundStyle(.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(profileAccentColor)
-                .controlSize(.large)
+                .buttonStyle(.plain)
             }
         }
-        .padding(.horizontal, 20)
     }
 
     // MARK: - Info Section
 
     private var infoSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            infoRow(label: "Slug", value: profile.slug)
+        VStack(spacing: 0) {
+            infoRow(label: "Slug", value: profile.slug, isFirst: true)
             infoRow(label: "Bundle ID", value: profile.patchedBundleID)
             infoRow(label: "Data Directory", value: profile.dataDirectoryURL.path)
-            infoRow(
-                label: "Created",
-                value: profile.createdAt.formatted(date: .abbreviated, time: .shortened)
-            )
-            infoRow(label: "Version", value: profile.bundleVersion)
+            infoRow(label: "Created", value: profile.createdAt.formatted(date: .abbreviated, time: .shortened))
+            infoRow(label: "Version", value: profile.bundleVersion, isLast: true)
         }
-        .padding(.vertical, 8)
+        .background(ClaudeTheme.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(ClaudeTheme.border, lineWidth: 1)
+        )
     }
 
-    private func infoRow(label: String, value: String) -> some View {
-        HStack(alignment: .top) {
-            Text(label)
-                .font(.subheadline)
-                .foregroundStyle(ClaudeTheme.secondaryText)
-                .frame(width: 120, alignment: .leading)
+    private func infoRow(label: String, value: String, isFirst: Bool = false, isLast: Bool = false) -> some View {
+        VStack(spacing: 0) {
+            HStack(alignment: .top) {
+                Text(label)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(ClaudeTheme.secondaryText)
+                    .frame(width: 120, alignment: .leading)
 
-            Text(value)
-                .font(.subheadline)
-                .foregroundStyle(ClaudeTheme.text)
-                .textSelection(.enabled)
-                .lineLimit(1)
-                .truncationMode(.middle)
+                Text(value)
+                    .font(.system(size: 13))
+                    .foregroundStyle(ClaudeTheme.text)
+                    .textSelection(.enabled)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
 
-            Spacer()
+                Spacer()
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            
+            if !isLast {
+                Divider()
+                    .background(ClaudeTheme.border)
+                    .padding(.leading, 16)
+            }
         }
     }
 
     // MARK: - Update Banner
 
     private var updateBanner: some View {
-        HStack {
+        HStack(spacing: 12) {
             Image(systemName: "arrow.triangle.2.circlepath")
+                .font(.system(size: 16))
                 .foregroundStyle(ClaudeTheme.accent)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("Update Available")
-                    .font(.subheadline)
-                    .fontWeight(.medium)
+                    .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(ClaudeTheme.text)
 
                 Text("Source app version changed. Rebuild to apply.")
-                    .font(.caption)
+                    .font(.system(size: 13))
                     .foregroundStyle(ClaudeTheme.secondaryText)
             }
 
@@ -264,69 +291,79 @@ struct ProfileDetailView: View {
                 appState.rebuildProfile(profile)
             }
             .buttonStyle(.plain)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
+            .font(.system(size: 13, weight: .medium))
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
             .background(ClaudeTheme.accent.opacity(0.1))
             .foregroundStyle(ClaudeTheme.accent)
-            .clipShape(Capsule())
+            .clipShape(RoundedRectangle(cornerRadius: 6))
         }
         .padding(16)
         .background(ClaudeTheme.cardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(ClaudeTheme.border, lineWidth: 1)
+        )
     }
 
     // MARK: - Danger Zone
 
     private var dangerZoneSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Delete Profile")
-                        .font(.subheadline)
-                        .foregroundStyle(ClaudeTheme.text)
-                    Text("Removes the application bundle and all data.")
-                        .font(.caption)
-                        .foregroundStyle(ClaudeTheme.secondaryText)
-                }
-
-                Spacer()
-
-                Button("Delete") {
-                    showDeleteConfirmation = true
-                }
-                .buttonStyle(.plain)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(Color.red.opacity(0.1))
-                .foregroundStyle(.red)
-                .clipShape(Capsule())
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Delete Profile")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(ClaudeTheme.text)
+                Text("Removes the application bundle and all data.")
+                    .font(.system(size: 13))
+                    .foregroundStyle(ClaudeTheme.secondaryText)
             }
+
+            Spacer()
+
+            Button("Delete") {
+                showDeleteConfirmation = true
+            }
+            .buttonStyle(.plain)
+            .font(.system(size: 13, weight: .medium))
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(Color.red.opacity(0.1))
+            .foregroundStyle(.red)
+            .clipShape(RoundedRectangle(cornerRadius: 6))
         }
-        .padding(.top, 16)
+        .padding(16)
+        .background(ClaudeTheme.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.red.opacity(0.2), lineWidth: 1)
+        )
     }
 
     // MARK: - Progress Overlay
 
     private var progressOverlay: some View {
         ZStack {
-            Color.black.opacity(0.3)
+            Color.black.opacity(0.4)
                 .ignoresSafeArea()
 
             VStack(spacing: 16) {
                 ProgressView()
-                    .scaleEffect(1.5)
+                    .controlSize(.large)
 
                 if let step = appState.creationProgress {
                     Text(step.rawValue)
-                        .font(.subheadline)
-                        .foregroundStyle(ClaudeTheme.text)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(Color.white)
                 }
             }
             .padding(32)
             .background(
-                RoundedRectangle(cornerRadius: ClaudeTheme.cornerRadius)
+                RoundedRectangle(cornerRadius: 16)
                     .fill(ClaudeTheme.cardBackground)
-                    .shadow(color: .black.opacity(0.1), radius: 20)
+                    .shadow(color: .black.opacity(0.2), radius: 20)
             )
         }
     }

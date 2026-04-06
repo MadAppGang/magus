@@ -58,6 +58,7 @@ tasks:
       - cp "{{.BUILD_DIR}}/{{.CONFIG}}/{{.APP_NAME}}" "{{.CONTENTS}}/MacOS/{{.APP_NAME}}"
       - cp Info-task.plist "{{.CONTENTS}}/Info.plist"
       - cp AppIcon.icns "{{.CONTENTS}}/Resources/AppIcon.icns"
+      - cp Sources/ClaudeProfiles/Resources/MadAppGangLogo.png "{{.CONTENTS}}/Resources/MadAppGangLogo.png"
       - printf 'APPL????' > "{{.CONTENTS}}/PkgInfo"
       - echo "Built {{.APP_BUNDLE}}"
 
