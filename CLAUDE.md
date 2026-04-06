@@ -223,12 +223,18 @@ The workflow `.github/workflows/claudeup-release.yml` triggers on `tools/claudeu
 
 ### Diagnosing Plugin/Hook Failures
 When hooks fail, plugins don't load, or magus marketplace is missing:
-1. Check `~/.claude/plugins/marketplaces/magus/` exists (if missing: `claude plugin marketplace update magus`). **Known issue: marketplace clones can disappear (cause under investigation).**
+1. Check `~/.claude/plugins/marketplaces/magus/` exists (if missing: `claude plugin marketplace update magus`). **Known issue: Claude Code's `cacheMarketplaceFromGit()` deletes the marketplace directory during failed auto-update (see git-subdir migration section below).**
 2. Check `~/.claude/plugins/known_marketplaces.json` has a `magus` entry (this is the official registry, NOT `extraKnownMarketplaces`)
 3. Check `~/.claude/plugins/installed_plugins.json` has correct `installPath` entries pointing to cache
 4. Check `~/.claude/plugins/cache/magus/{plugin}/{version}/` directories exist (cache survives upgrades)
 5. Check both user (`~/.claude/settings.json`) and project (`.claude/settings.json`) have matching `enabledPlugins` and `installedPluginVersions`
 6. Known Claude Code bug: hook executor uses marketplace path instead of cache path for `CLAUDE_PLUGIN_ROOT` — contradicts official docs which say it should reference the "installation directory" (cache)
+
+### Marketplace directory deletion bug (git-subdir migration)
+Claude Code's marketplace refresh (`cacheMarketplaceFromGit()`) uses a non-atomic delete-then-clone pattern. If `git pull` fails, it deletes the entire marketplace directory and attempts a fresh clone. If the clone also fails (network, auth, timeout), the directory stays permanently deleted — breaking all plugins.
+Magus plugins now use `git-subdir` sources in `.claude-plugin/marketplace.json`, which causes the plugin loader to read from the immutable cache directory (`~/.claude/plugins/cache/magus/{plugin}/{version}/`) instead of the marketplace clone. Hooks survive marketplace deletion. Plugin *discovery* (shown in `/doctor`) still breaks — that requires an upstream Claude Code fix.
+See: `ai-docs/plugin-marketplace-bug-investigation.md` for full investigation including Claude Code source analysis, line numbers, and code snippets.
+Release workflow: run `scripts/release.sh` to sync shared deps and update marketplace.json SHAs before each push.
 
 ### Plugins With Hooks (7 plugins, all use `${CLAUDE_PLUGIN_ROOT}`)
 `dev` (Stop, SessionStart), `terminal` (PreToolUse:Bash), `code-analysis` (PreToolUse:Bash), `multimodel` (PreToolUse:Task,Bash), `gtd` (SessionStart, PreToolUse:TaskCreate, PostToolUse:TaskCreate/TaskUpdate, Stop), `seo` (SessionStart), `stats` (PreToolUse, PostToolUse, Stop, SessionStart)
@@ -256,4 +262,4 @@ When hooks fail, plugins don't load, or magus marketplace is missing:
 ---
 
 **Maintained by:** Jack Rudenko @ MadAppGang
-**Last Updated:** April 1, 2026
+**Last Updated:** April 6, 2026
