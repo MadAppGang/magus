@@ -8,16 +8,15 @@ import Observation
 @Observable
 final class ProcessMonitor: @unchecked Sendable {
     var runningProfiles: Set<String> = []
+    var defaultIsRunning = false
 
     private var timer: Timer?
     private static let bundleIDPrefix = "com.anthropic.claudefordesktop-"
+    private static let defaultBundleID = "com.anthropic.claudefordesktop"
     private static let pollingInterval: TimeInterval = 2.0
 
     func startMonitoring() {
-        // Perform initial check
         pollRunningApplications()
-
-        // Schedule repeating timer on main run loop
         let newTimer = Timer(
             timeInterval: Self.pollingInterval, repeats: true
         ) { [weak self] _ in
@@ -36,19 +35,23 @@ final class ProcessMonitor: @unchecked Sendable {
         #if canImport(AppKit)
         let apps = NSWorkspace.shared.runningApplications
         var slugs: Set<String> = []
+        var foundDefault = false
 
         for app in apps {
-            guard let bundleID = app.bundleIdentifier,
-                bundleID.hasPrefix(Self.bundleIDPrefix)
-            else { continue }
+            guard let bundleID = app.bundleIdentifier else { continue }
 
-            let slug = String(bundleID.dropFirst(Self.bundleIDPrefix.count))
-            if !slug.isEmpty {
-                slugs.insert(slug)
+            if bundleID == Self.defaultBundleID {
+                foundDefault = true
+            } else if bundleID.hasPrefix(Self.bundleIDPrefix) {
+                let slug = String(bundleID.dropFirst(Self.bundleIDPrefix.count))
+                if !slug.isEmpty {
+                    slugs.insert(slug)
+                }
             }
         }
 
         runningProfiles = slugs
+        defaultIsRunning = foundDefault
         #endif
     }
 

@@ -17,8 +17,7 @@ struct ProfileDetailView: View {
     }
 
     private var needsUpdate: Bool {
-        guard let sourceVersion = appState.sourceAppVersion() else { return false }
-        return profile.bundleVersion != sourceVersion
+        appState.needsUpdate(profile)
     }
 
     var body: some View {
@@ -34,7 +33,9 @@ struct ProfileDetailView: View {
                         updateBanner
                     }
                     infoSection
-                    dangerZoneSection
+                    if !profile.isDefault {
+                        dangerZoneSection
+                    }
                 }
                 .frame(maxWidth: 500)
             }
@@ -191,10 +192,10 @@ struct ProfileDetailView: View {
                 } label: {
                     HStack(spacing: 6) {
                         Image(systemName: "stop.fill")
-                        Text("Stop Profile")
+                        Text("Stop")
                     }
                     .font(.system(size: 14, weight: .medium))
-                    .frame(width: 160)
+                    .frame(width: 120)
                     .padding(.vertical, 10)
                     .background(Color.red.opacity(0.1))
                     .foregroundStyle(.red)
@@ -210,13 +211,33 @@ struct ProfileDetailView: View {
                         Text("Launch")
                     }
                     .font(.system(size: 14, weight: .medium))
-                    .frame(width: 160)
+                    .frame(width: 120)
                     .padding(.vertical, 10)
                     .background(profileAccentColor)
                     .foregroundStyle(.white)
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                 }
                 .buttonStyle(.plain)
+            }
+
+            if !profile.isDefault {
+                Button {
+                    appState.rebuildProfile(profile)
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                        Text("Update")
+                    }
+                    .font(.system(size: 14, weight: .medium))
+                    .frame(width: 120)
+                    .padding(.vertical, 10)
+                    .background(needsUpdate ? ClaudeTheme.accent.opacity(0.15) : Color.white.opacity(0.05))
+                    .foregroundStyle(needsUpdate ? ClaudeTheme.accent : ClaudeTheme.secondaryText)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                }
+                .buttonStyle(.plain)
+                .disabled(!needsUpdate)
+                .help(needsUpdate ? "Claude Desktop was updated — rebuild this profile" : "Profile is up to date")
             }
         }
     }

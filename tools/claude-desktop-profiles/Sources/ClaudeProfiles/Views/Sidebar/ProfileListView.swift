@@ -7,9 +7,28 @@ struct ProfileListView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // macOS traffic lights spacer
-            Spacer()
-                .frame(height: 38)
+            // macOS traffic lights spacer + logo
+            HStack {
+                Spacer()
+                Link(destination: URL(string: "https://madappgang.com")!) {
+                    if let nsImage = NSImage(named: "MadAppGangLogo.png") {
+                        Image(nsImage: nsImage)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(height: 16)
+                            .opacity(0.6)
+                    } else {
+                        Text("MadAppGang")
+                            .font(.caption2)
+                            .foregroundStyle(ClaudeTheme.secondaryText)
+                    }
+                }
+                .buttonStyle(.plain)
+                .help("Visit MadAppGang")
+                Spacer()
+            }
+            .frame(height: 38)
+            .padding(.top, 4)
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 4) {
@@ -20,7 +39,7 @@ struct ProfileListView: View {
                         .padding(.horizontal, 12)
                         .padding(.bottom, 4)
 
-                    ForEach(appState.profiles) { profile in
+                    ForEach(appState.allProfiles) { profile in
                         Button {
                             appState.selectedProfileID = profile.id
                         } label: {
@@ -58,23 +77,6 @@ struct ProfileListView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                 }
                 .buttonStyle(.plain)
-
-                Link(destination: URL(string: "https://madappgang.com")!) {
-                    if let nsImage = NSImage(named: "MadAppGangLogo.png") {
-                        Image(nsImage: nsImage)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(height: 20)
-                            .opacity(0.8)
-                    } else {
-                        Text("MadAppGang")
-                            .font(.caption)
-                            .foregroundStyle(ClaudeTheme.secondaryText)
-                    }
-                }
-                .buttonStyle(.plain)
-                .help("Visit MadAppGang")
-                .padding(.bottom, 4)
             }
             .padding(16)
         }

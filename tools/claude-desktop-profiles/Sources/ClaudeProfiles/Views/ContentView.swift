@@ -37,7 +37,7 @@ struct ContentView: View {
             
             Group {
                 if let selectedID = appState.selectedProfileID,
-                    let profile = appState.profiles.first(where: { $0.id == selectedID })
+                    let profile = appState.allProfiles.first(where: { $0.id == selectedID })
                 {
                     ProfileDetailView(profile: profile)
                         .environment(appState)

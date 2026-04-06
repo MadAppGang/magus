@@ -15,7 +15,10 @@ enum ProfileLauncher {
 
         let process = Process()
         process.executableURL = binaryURL
-        process.arguments = ["--user-data-dir=\(profile.userDataDirURL.path)"]
+        // Default profile uses the standard userData path (no --user-data-dir needed)
+        if !profile.isDefault {
+            process.arguments = ["--user-data-dir=\(profile.userDataDirURL.path)"]
+        }
         process.standardOutput = FileHandle.nullDevice
         process.standardError = FileHandle.nullDevice
 

@@ -20,6 +20,18 @@ final class AppState {
     private let bundleManager = BundleManager()
     let processMonitor = ProcessMonitor()
 
+    /// All profiles including the default (original Claude.app)
+    var allProfiles: [Profile] {
+        let defaultProfile = Profile.defaultProfile(version: sourceAppVersion() ?? "unknown")
+        return [defaultProfile] + profiles
+    }
+
+    func needsUpdate(_ profile: Profile) -> Bool {
+        guard !profile.isDefault else { return false }
+        guard let current = sourceAppVersion() else { return false }
+        return profile.bundleVersion != current
+    }
+
     func loadProfiles() {
         Task {
             do {
@@ -189,7 +201,10 @@ final class AppState {
     }
 
     func isRunning(_ profile: Profile) -> Bool {
-        processMonitor.runningProfiles.contains(profile.slug)
+        if profile.isDefault {
+            return processMonitor.defaultIsRunning
+        }
+        return processMonitor.runningProfiles.contains(profile.slug)
     }
 
     func sourceAppVersion() -> String? {
