@@ -43,7 +43,6 @@ Temporary Items
 .claude/sessions/
 .claude/worktrees/
 .claude/gtd/
-.claude/skills/
 
 # Plugin runtime state (coaching, logs)
 **/.claude/.coaching/
