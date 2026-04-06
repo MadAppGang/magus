@@ -23,7 +23,6 @@ import { defaultMarketplaces } from "../data/marketplaces.js";
 import {
 	updatePlugin,
 	addMarketplace,
-	updateMarketplace,
 	isClaudeAvailable,
 } from "../services/claude-cli.js";
 
@@ -88,10 +87,16 @@ async function getReferencedMarketplaces(
  * Check which referenced marketplaces are missing locally and auto-add them.
  * Only adds marketplaces with known repos (from defaultMarketplaces).
  *
- * Uses `marketplace update` (not `marketplace add`) for recovery because
- * `add` short-circuits when the marketplace is already declared in settings
- * — even if the directory was deleted. `update` detects the missing dir and
- * re-clones automatically.
+ * IMPORTANT: Only uses `marketplace add` (never `marketplace update`).
+ * Claude Code's `marketplace update` calls cacheMarketplaceFromGit() which
+ * deletes the marketplace directory before re-cloning. If the clone fails
+ * (network timeout, auth error), the directory stays permanently deleted
+ * and ALL plugins from that marketplace break. See:
+ * ai-docs/plugin-marketplace-bug-investigation.md
+ *
+ * Claude Code's own background autoupdate handles marketplace refreshing
+ * after session start — claudeup should only recover genuinely missing
+ * marketplaces, not trigger additional refresh cycles.
  */
 async function autoAddMissingMarketplaces(
 	projectPath?: string,
@@ -109,20 +114,13 @@ async function autoAddMissingMarketplaces(
 		if (!defaultMp?.source.repo) continue;
 
 		try {
-			// Try `marketplace update` first — it re-clones missing directories
-			await updateMarketplace(mpName);
+			await addMarketplace(defaultMp.source.repo);
 			added.push(mpName);
-		} catch {
-			// If update fails (marketplace not in settings yet), try add
-			try {
-				await addMarketplace(defaultMp.source.repo);
-				added.push(mpName);
-			} catch (error) {
-				console.warn(
-					`⚠ Failed to auto-add marketplace ${mpName}:`,
-					error instanceof Error ? error.message : "Unknown error",
-				);
-			}
+		} catch (error) {
+			console.warn(
+				`⚠ Failed to auto-add marketplace ${mpName}:`,
+				error instanceof Error ? error.message : "Unknown error",
+			);
 		}
 	}
 

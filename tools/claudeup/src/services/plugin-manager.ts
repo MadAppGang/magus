@@ -27,8 +27,6 @@ import {
 	isValidGitHubRepo,
 	parsePluginId,
 } from "../utils/string-utils.js";
-import { updateMarketplace } from "./claude-cli.js";
-
 // Cache for local marketplaces (session-level) - Promise-based to prevent race conditions
 let localMarketplacesPromise: Promise<Map<string, LocalMarketplace>> | null =
 	null;
@@ -619,9 +617,14 @@ const autoSyncedMarketplaces = new Set<string>();
 
 /**
  * If the remote manifest lists plugins that aren't in the local cache,
- * the local clone is stale. Silently run `claude plugin marketplace update`
- * to pull the latest, then invalidate the local cache so the next scan
- * picks up the new plugins.
+ * the local clone is stale. Log a warning but do NOT trigger a marketplace
+ * update from claudeup.
+ *
+ * Previously this called `updateMarketplace()` which invokes Claude Code's
+ * `cacheMarketplaceFromGit()` — a non-atomic delete-then-clone that can
+ * permanently delete the marketplace directory on clone failure.
+ * Claude Code's own background autoupdate handles marketplace refreshing
+ * after session start. See: ai-docs/plugin-marketplace-bug-investigation.md
  */
 async function autoSyncIfStale(
 	mpName: string,
@@ -634,19 +637,17 @@ async function autoSyncIfStale(
 	if (!localMp) return localMarketplaces;
 
 	const localNames = new Set(localMp.plugins.map((p) => p.name));
-	const hasMissing = remotePluginNames.some((name) => !localNames.has(name));
-	if (!hasMissing) return localMarketplaces;
+	const missingPlugins = remotePluginNames.filter(
+		(name) => !localNames.has(name),
+	);
+	if (missingPlugins.length === 0) return localMarketplaces;
 
 	autoSyncedMarketplaces.add(mpName);
-	try {
-		await updateMarketplace(mpName);
-		// Invalidate local cache so re-scan picks up new plugins
-		localMarketplacesPromise = null;
-		return getLocalMarketplaces();
-	} catch {
-		// Update failed (no network, CLI missing, etc.) — continue with stale data
-		return localMarketplaces;
-	}
+	// Log stale state but don't trigger update — Claude Code handles refresh
+	console.log(
+		`ℹ Marketplace ${mpName} is stale (missing: ${missingPlugins.join(", ")}). Claude Code will auto-update on next session start.`,
+	);
+	return localMarketplaces;
 }
 
 export interface RefreshAndRepairResult {
