@@ -1,4 +1,6 @@
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
+
+const TODAY = new Date().toISOString().slice(0, 10);
 import { mkdirSync, rmSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
@@ -193,8 +195,8 @@ describe("db", () => {
 
   test("getSessionSummary returns aggregate stats", () => {
     const db = openDb(dbPath);
-    insertSession(db, makeSession("s1", "/test/project", "2026-03-26"));
-    insertSession(db, makeSession("s2", "/test/project", "2026-03-26"));
+    insertSession(db, makeSession("s1", "/test/project", TODAY));
+    insertSession(db, makeSession("s2", "/test/project", TODAY));
 
     const summary = getSessionSummary(db, 7, "/test/project");
     expect(summary.session_count).toBe(2);
