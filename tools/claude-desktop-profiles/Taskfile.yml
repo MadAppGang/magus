@@ -1,0 +1,107 @@
+version: "3"
+
+vars:
+  APP_NAME: ClaudeProfiles
+  BUILD_DIR: .build
+  APP_BUNDLE: "{{.BUILD_DIR}}/{{.APP_NAME}}.app"
+  CONTENTS: "{{.APP_BUNDLE}}/Contents"
+
+tasks:
+  default:
+    desc: Build debug .app bundle
+    cmds:
+      - task: bundle
+
+  bundle:
+    desc: Build debug .app bundle
+    cmds:
+      - task: build
+      - task: package
+        vars: { CONFIG: debug }
+
+  release:
+    desc: Build optimized + codesigned .app bundle
+    cmds:
+      - task: build
+        vars: { CONFIG: release }
+      - task: package
+        vars: { CONFIG: release }
+      - codesign --force --sign - "{{.APP_BUNDLE}}"
+      - echo "Signed {{.APP_BUNDLE}}"
+
+  run:
+    desc: Build and launch the app
+    interactive: true
+    cmds:
+      - task: bundle
+      - "{{.APP_BUNDLE}}/Contents/MacOS/{{.APP_NAME}}"
+
+  build:
+    desc: Compile Swift sources
+    vars:
+      CONFIG: '{{.CONFIG | default "debug"}}'
+    cmds:
+      - swift build -c {{.CONFIG}}
+    sources:
+      - Sources/**/*.swift
+      - Package.swift
+    generates:
+      - "{{.BUILD_DIR}}/{{.CONFIG}}/{{.APP_NAME}}"
+
+  package:
+    desc: Package compiled binary into .app bundle
+    internal: true
+    vars:
+      CONFIG: '{{.CONFIG | default "debug"}}'
+    cmds:
+      - mkdir -p "{{.CONTENTS}}/MacOS" "{{.CONTENTS}}/Resources"
+      - cp "{{.BUILD_DIR}}/{{.CONFIG}}/{{.APP_NAME}}" "{{.CONTENTS}}/MacOS/{{.APP_NAME}}"
+      - cp Info-task.plist "{{.CONTENTS}}/Info.plist"
+      - cp AppIcon.icns "{{.CONTENTS}}/Resources/AppIcon.icns"
+      - printf 'APPL????' > "{{.CONTENTS}}/PkgInfo"
+      - echo "Built {{.APP_BUNDLE}}"
+
+  install:
+    desc: Release build and copy to /Applications
+    cmds:
+      - task: release
+      - cp -R "{{.APP_BUNDLE}}" "/Applications/{{.APP_NAME}}.app"
+      - echo "Installed to /Applications/{{.APP_NAME}}.app"
+
+  uninstall:
+    desc: Remove from /Applications
+    cmds:
+      - rm -rf "/Applications/{{.APP_NAME}}.app"
+      - echo "Removed from /Applications/"
+
+  xcode:
+    desc: Open project in Xcode
+    cmds:
+      - open ClaudeProfiles.xcodeproj
+
+  xcodebuild:
+    desc: Build via xcodebuild (produces .app in DerivedData)
+    cmds:
+      - xcodebuild -project ClaudeProfiles.xcodeproj -scheme ClaudeProfiles -configuration Debug build
+
+  xcodebuild-run:
+    desc: Build via xcodebuild and launch
+    vars:
+      DERIVED: ~/Library/Developer/Xcode/DerivedData
+    cmds:
+      - xcodebuild -project ClaudeProfiles.xcodeproj -scheme ClaudeProfiles -configuration Debug build
+      - open "$(find {{.DERIVED}}/ClaudeProfiles-*/Build/Products/Debug -name 'Claude Profiles.app' -maxdepth 1 | head -1)"
+
+  generate:
+    desc: Regenerate .xcodeproj from project.yml
+    cmds:
+      - xcodegen generate
+    sources:
+      - project.yml
+
+  clean:
+    desc: Remove all build artifacts
+    cmds:
+      - swift package clean
+      - rm -rf "{{.APP_BUNDLE}}"
+      - echo "Cleaned."

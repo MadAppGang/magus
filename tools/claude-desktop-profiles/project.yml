@@ -1,0 +1,30 @@
+name: ClaudeProfiles
+options:
+  bundleIdPrefix: com.madappgang
+  deploymentTarget:
+    macOS: "14.0"
+  xcodeVersion: "16.4"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    GENERATE_INFOPLIST_FILE: false
+
+targets:
+  ClaudeProfiles:
+    type: application
+    platform: macOS
+    sources:
+      - path: Sources/ClaudeProfiles
+    info:
+      path: Info.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.madappgang.ClaudeProfiles
+        PRODUCT_NAME: Claude Profiles
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_IDENTITY: "-"
+        INFOPLIST_FILE: Info.plist
+        ENABLE_HARDENED_RUNTIME: false

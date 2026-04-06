@@ -1,0 +1,8 @@
+.build/
+.task/
+.swiftpm/
+*.xcodeproj/
+AppIcon.iconset/
+.DS_Store
+.claude/
+.claudemem/
