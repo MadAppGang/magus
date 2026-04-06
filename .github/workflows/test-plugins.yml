@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - 'tools/claudeup-core/**'
+      - 'tools/pnpm-lock.yaml'
+      - 'tools/pnpm-workspace.yaml'
       - 'plugins/**'
       - 'shared/**'
       - 'tools/table/**'
@@ -15,6 +17,8 @@ on:
     branches: [main]
     paths:
       - 'tools/claudeup-core/**'
+      - 'tools/pnpm-lock.yaml'
+      - 'tools/pnpm-workspace.yaml'
       - 'plugins/**'
       - 'shared/**'
       - 'tools/table/**'
