@@ -1,0 +1,96 @@
+name: Claude Profiles Release
+
+on:
+  push:
+    tags:
+      - 'tools/claude-desktop-profiles/v*'
+
+jobs:
+  build-and-release:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Import signing certificate
+        env:
+          CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          CERT_PATH=$RUNNER_TEMP/certificate.p12
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          KEYCHAIN_PASSWORD=$(uuidgen)
+
+          echo "$CERTIFICATE_BASE64" | base64 --decode -o $CERT_PATH
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security import $CERT_PATH -P "$CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security list-keychain -d user -s $KEYCHAIN_PATH
+
+      - name: Extract version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#tools/claude-desktop-profiles/v}" >> $GITHUB_OUTPUT
+
+      - name: Build release
+        working-directory: tools/claude-desktop-profiles
+        run: |
+          swift build -c release
+          mkdir -p .build/ClaudeProfiles.app/Contents/{MacOS,Resources}
+          cp .build/release/ClaudeProfiles .build/ClaudeProfiles.app/Contents/MacOS/ClaudeProfiles
+          cp Info-task.plist .build/ClaudeProfiles.app/Contents/Info.plist
+          cp AppIcon.icns .build/ClaudeProfiles.app/Contents/Resources/AppIcon.icns
+          cp Sources/ClaudeProfiles/Resources/MadAppGangLogo.png .build/ClaudeProfiles.app/Contents/Resources/MadAppGangLogo.png
+          printf 'APPL????' > .build/ClaudeProfiles.app/Contents/PkgInfo
+
+      - name: Sign app
+        working-directory: tools/claude-desktop-profiles
+        run: |
+          codesign --force --options runtime \
+            --sign "Developer ID Application: MADAPPGANG PTY. LTD. (E85N35G3YB)" \
+            .build/ClaudeProfiles.app
+
+      - name: Create DMG
+        working-directory: tools/claude-desktop-profiles
+        run: |
+          mkdir -p .build/dmg
+          cp -R .build/ClaudeProfiles.app ".build/dmg/Claude Profiles.app"
+          ln -s /Applications .build/dmg/Applications
+          hdiutil create -volname "Claude Profiles" -srcfolder .build/dmg -ov -format UDZO \
+            ".build/ClaudeProfiles-${{ steps.version.outputs.version }}.dmg"
+          rm -rf .build/dmg
+          codesign --force \
+            --sign "Developer ID Application: MADAPPGANG PTY. LTD. (E85N35G3YB)" \
+            ".build/ClaudeProfiles-${{ steps.version.outputs.version }}.dmg"
+
+      - name: Notarize DMG
+        working-directory: tools/claude-desktop-profiles
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: |
+          xcrun notarytool submit \
+            ".build/ClaudeProfiles-${{ steps.version.outputs.version }}.dmg" \
+            --apple-id "$APPLE_ID" \
+            --team-id "E85N35G3YB" \
+            --password "$APPLE_APP_PASSWORD" \
+            --wait
+          xcrun stapler staple \
+            ".build/ClaudeProfiles-${{ steps.version.outputs.version }}.dmg"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            "tools/claude-desktop-profiles/.build/ClaudeProfiles-${{ steps.version.outputs.version }}.dmg" \
+            --title "Claude Profiles v${{ steps.version.outputs.version }}" \
+            --notes "Native macOS app for managing multiple isolated Claude Desktop profiles.
+
+          ## Install
+          1. Download the DMG
+          2. Drag **Claude Profiles** to Applications
+          3. Launch from Applications
+
+          Signed and notarized by MadAppGang."
