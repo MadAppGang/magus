@@ -5,6 +5,8 @@ vars:
   BUILD_DIR: .build
   APP_BUNDLE: "{{.BUILD_DIR}}/{{.APP_NAME}}.app"
   CONTENTS: "{{.APP_BUNDLE}}/Contents"
+  SIGN_IDENTITY: "Developer ID Application: MADAPPGANG PTY. LTD. (E85N35G3YB)"
+  TEAM_ID: E85N35G3YB
 
 tasks:
   default:
@@ -26,7 +28,7 @@ tasks:
         vars: { CONFIG: release }
       - task: package
         vars: { CONFIG: release }
-      - codesign --force --sign - "{{.APP_BUNDLE}}"
+      - codesign --force --options runtime --sign "{{.SIGN_IDENTITY}}" "{{.APP_BUNDLE}}"
       - echo "Signed {{.APP_BUNDLE}}"
 
   run:
@@ -101,7 +103,7 @@ tasks:
       - project.yml
 
   dmg:
-    desc: Create a DMG for distribution
+    desc: Create a signed DMG for distribution
     vars:
       VERSION:
         sh: /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" Info-task.plist
@@ -115,7 +117,19 @@ tasks:
       - ln -s /Applications "{{.DMG_DIR}}/Applications"
       - hdiutil create -volname "Claude Profiles" -srcfolder "{{.DMG_DIR}}" -ov -format UDZO "{{.BUILD_DIR}}/{{.DMG_NAME}}.dmg"
       - rm -rf "{{.DMG_DIR}}"
-      - echo "Created {{.BUILD_DIR}}/{{.DMG_NAME}}.dmg"
+      - codesign --force --sign "{{.SIGN_IDENTITY}}" "{{.BUILD_DIR}}/{{.DMG_NAME}}.dmg"
+      - echo "Created and signed {{.BUILD_DIR}}/{{.DMG_NAME}}.dmg"
+
+  notarize:
+    desc: Notarize the DMG with Apple (requires app-specific password)
+    vars:
+      VERSION:
+        sh: /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" Info-task.plist
+      DMG_NAME: "ClaudeProfiles-{{.VERSION}}"
+    cmds:
+      - xcrun notarytool submit "{{.BUILD_DIR}}/{{.DMG_NAME}}.dmg" --apple-id "${APPLE_ID}" --team-id "{{.TEAM_ID}}" --password "${APPLE_APP_PASSWORD}" --wait
+      - xcrun stapler staple "{{.BUILD_DIR}}/{{.DMG_NAME}}.dmg"
+      - echo "Notarized and stapled {{.BUILD_DIR}}/{{.DMG_NAME}}.dmg"
 
   clean:
     desc: Remove all build artifacts
