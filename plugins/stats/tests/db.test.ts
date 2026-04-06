@@ -1,4 +1,6 @@
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
+
+function today(): string { return new Date().toISOString().slice(0, 10); }
 import { mkdirSync, rmSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
@@ -35,7 +37,7 @@ describe("db", () => {
     }
   });
 
-  function makeSession(id: string, project = "/test/project", date = "2026-03-26"): SessionMetrics {
+  function makeSession(id: string, project = "/test/project", date = today()): SessionMetrics {
     return {
       session_id: id,
       date,
@@ -193,8 +195,8 @@ describe("db", () => {
 
   test("getSessionSummary returns aggregate stats", () => {
     const db = openDb(dbPath);
-    insertSession(db, makeSession("s1", "/test/project", "2026-03-26"));
-    insertSession(db, makeSession("s2", "/test/project", "2026-03-26"));
+    insertSession(db, makeSession("s1", "/test/project", today()));
+    insertSession(db, makeSession("s2", "/test/project", today()));
 
     const summary = getSessionSummary(db, 7, "/test/project");
     expect(summary.session_count).toBe(2);
@@ -228,7 +230,7 @@ describe("db", () => {
     insertToolCalls(db, metrics.tool_calls, "old-session");
 
     // Insert a recent session
-    const recent = makeSession("recent-session", "/test/project", "2026-03-26");
+    const recent = makeSession("recent-session", "/test/project", today());
     insertSession(db, recent);
 
     const { deletedCount } = deleteOldSessions(db, 90);
