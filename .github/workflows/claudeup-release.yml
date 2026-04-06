@@ -14,18 +14,19 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          registry-url: 'https://registry.npmjs.org'
+      - uses: actions/checkout@v5
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+          always-auth: true
 
       - name: Get version from tag
         id: version
@@ -52,9 +53,6 @@ jobs:
             exit 1
           fi
           echo "Version verified: $PKG_VERSION"
-
-      - name: Update npm for OIDC support
-        run: npm install -g npm@10
 
       - name: Publish to npm
         working-directory: tools/claudeup
