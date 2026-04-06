@@ -1,5 +1,4 @@
 import React from "react";
-import { useKeyboardHandler } from "../hooks/useKeyboardHandler";
 import type { Screen } from "../state/types.js";
 
 interface Tab {
@@ -19,33 +18,9 @@ const TABS: Tab[] = [
 
 interface TabBarProps {
 	currentScreen: Screen;
-	onTabChange?: (screen: Screen) => void;
 }
 
-export function TabBar({ currentScreen, onTabChange }: TabBarProps) {
-	// Handle number key shortcuts (1-5)
-	useKeyboardHandler((input, key) => {
-		if (!onTabChange) return;
-
-		// Number keys 1-5
-		const tabIndex = Number.parseInt(input, 10);
-		if (tabIndex >= 1 && tabIndex <= TABS.length) {
-			const tab = TABS[tabIndex - 1];
-			if (tab && tab.screen !== currentScreen) {
-				onTabChange(tab.screen);
-			}
-		}
-
-		// Tab key to cycle through tabs
-		if (key.tab) {
-			const currentIndex = TABS.findIndex((t) => t.screen === currentScreen);
-			const nextIndex = key.shift
-				? (currentIndex - 1 + TABS.length) % TABS.length
-				: (currentIndex + 1) % TABS.length;
-			onTabChange(TABS[nextIndex].screen);
-		}
-	});
-
+export function TabBar({ currentScreen }: TabBarProps) {
 	return (
 		<box flexDirection="row" gap={0}>
 			{TABS.map((tab, index) => {

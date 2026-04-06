@@ -13,9 +13,9 @@ interface MessageModalProps {
 }
 
 const variantConfig = {
-	info: { icon: "ℹ", color: "cyan" },
-	success: { icon: "✓", color: "green" },
-	error: { icon: "✗", color: "red" },
+	info: { icon: "ℹ", color: "#60A5FA" },
+	success: { icon: "✓", color: "#4ADE80" },
+	error: { icon: "✗", color: "#F87171" },
 } as const;
 
 export function MessageModal({
@@ -36,27 +36,27 @@ export function MessageModal({
 			flexDirection="column"
 			border
 			borderStyle="rounded"
-			borderColor={config.color}
-			backgroundColor="#1a1a2e"
-			paddingLeft={2}
-			paddingRight={2}
+			borderColor="#525252"
+			backgroundColor="#1C1C1E"
+			paddingLeft={3}
+			paddingRight={3}
 			paddingTop={1}
 			paddingBottom={1}
 			width={60}
 		>
-			<box>
+			<box marginBottom={1}>
 				<text fg={config.color}>{config.icon} </text>
-				<text>
+				<text fg="#EDEDED">
 					<strong>{title}</strong>
 				</text>
 			</box>
 
-			<box marginTop={1} marginBottom={1}>
-				<text>{message}</text>
+			<box marginBottom={1}>
+				<text fg="#A1A1AA">{message}</text>
 			</box>
 
-			<box>
-				<text fg="#666666">Press any key to continue</text>
+			<box marginTop={1}>
+				<text fg="#71717A">Press any key to continue</text>
 			</box>
 		</box>
 	);

@@ -3,9 +3,10 @@ import { useApp, useModal } from "../state/AppContext.js";
 import { useDimensions } from "../state/DimensionsContext.js";
 import { useKeyboard } from "../hooks/useKeyboard.js";
 import { ScreenLayout } from "../components/layout/index.js";
-import { ScrollableList } from "../components/ScrollableList.js";
+
 import { statusLineCategories } from "../../data/statuslines.js";
 import type { StatusLineConfig } from "../../types/index.js";
+import { ScrollableList } from "../components/ScrollableList.js";
 import {
 	setStatusLine,
 	getStatusLine,

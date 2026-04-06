@@ -24,9 +24,11 @@ const categoryRenderer: ItemRenderer<SettingsCategoryItem> = {
     const bg = isSelected ? theme.selection.bg : CATEGORY_BG[item.category];
 
     return (
-      <text bg={bg} fg="white">
-        <strong> {label} </strong>
-      </text>
+      <box width="100%">
+        <text bg={bg} fg="white">
+          <strong> {label} </strong>
+        </text>
+      </box>
     );
   },
 

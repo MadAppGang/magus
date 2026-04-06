@@ -94,12 +94,12 @@ export function formatValue(
   value: string | undefined,
 ): string {
   if (value === undefined || value === "") {
-    if (setting.defaultValue !== undefined) {
-      return setting.type === "boolean"
-        ? setting.defaultValue === "true"
-          ? "on"
-          : "off"
-        : setting.defaultValue || "default";
+    if (setting.type === "boolean" && setting.defaultValue !== undefined) {
+      return setting.defaultValue === "true" ? "on" : "off";
+    }
+    if (setting.type === "select" && setting.defaultValue !== undefined) {
+      const opt = setting.options?.find((o) => o.value === setting.defaultValue);
+      return opt ? opt.label : setting.defaultValue;
     }
     return "—";
   }
@@ -113,8 +113,8 @@ export function formatValue(
     return opt ? opt.label : value;
   }
 
-  if (value.length > 20) {
-    return value.slice(0, 20) + "...";
+  if (value.length > 12) {
+    return value.slice(0, 12) + "…";
   }
   return value;
 }

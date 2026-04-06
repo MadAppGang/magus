@@ -23,15 +23,15 @@ export function LoadingModal({ message }: LoadingModalProps) {
 			flexDirection="row"
 			border
 			borderStyle="rounded"
-			borderColor="cyan"
-			backgroundColor="#1a1a2e"
-			paddingLeft={2}
-			paddingRight={2}
+			borderColor="#525252"
+			backgroundColor="#1C1C1E"
+			paddingLeft={3}
+			paddingRight={3}
 			paddingTop={1}
 			paddingBottom={1}
 		>
-			<text fg="cyan">{SPINNER_FRAMES[frame]}</text>
-			<text> {message}</text>
+			<text fg="#A1A1AA">{SPINNER_FRAMES[frame]}</text>
+			<text fg="#EDEDED"> {message}</text>
 		</box>
 	);
 }

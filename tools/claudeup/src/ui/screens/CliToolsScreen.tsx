@@ -5,7 +5,7 @@ import { useApp, useModal } from "../state/AppContext.js";
 import { useDimensions } from "../state/DimensionsContext.js";
 import { useKeyboard } from "../hooks/useKeyboard.js";
 import { ScreenLayout } from "../components/layout/index.js";
-import { ScrollableList } from "../components/ScrollableList.js";
+
 import { cliTools } from "../../data/cli-tools.js";
 import {
 	renderCliToolRow,
@@ -13,6 +13,7 @@ import {
 	type CliToolStatus,
 	type InstallMethod,
 } from "../renderers/cliToolRenderers.js";
+import { ScrollableList } from "../components/ScrollableList.js";
 
 const execAsync = promisify(exec);
 
@@ -423,6 +424,7 @@ export function CliToolsScreen() {
 					selectedIndex={cliToolsState.selectedIndex}
 					renderItem={renderCliToolRow}
 					maxHeight={dimensions.listPanelHeight}
+					getKey={(status) => status.tool.name}
 				/>
 			}
 			detailPanel={renderCliToolDetail(selectedStatus)}

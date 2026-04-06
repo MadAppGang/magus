@@ -101,8 +101,10 @@ interface TextProps {
 }
 
 interface InputProps {
-	value: string;
-	onChange: (value: string) => void;
+	value?: string;
+	onChange?: (value: string) => void;
+	onInput?: (value: string) => void;
+	onSubmit?: ((value: string) => void) | undefined;
 	placeholder?: string;
 	focused?: boolean;
 	width?: number;
@@ -137,6 +139,9 @@ interface TabSelectProps {
 
 interface ScrollboxProps {
 	focused?: boolean;
+	height?: number | `${number}%` | "auto";
+	scrollY?: boolean;
+	scrollX?: boolean;
 	style?: {
 		rootOptions?: Record<string, unknown>;
 		wrapperOptions?: Record<string, unknown>;

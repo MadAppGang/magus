@@ -233,13 +233,8 @@ export const SETTINGS_CATALOG: SettingDefinition[] = [
 		description: "Adjust Claude's response style",
 		category: "workflow",
 		type: "select",
-		options: [
-			{ label: "Default", value: "" },
-			{ label: "Concise", value: "concise" },
-			{ label: "Explanatory", value: "explanatory" },
-			{ label: "Formal", value: "formal" },
-			{ label: "Minimal", value: "minimal" },
-		],
+		// Options populated dynamically from installed output-style plugins
+		options: [],
 		storage: { type: "setting", key: "outputStyle" },
 	},
 	{

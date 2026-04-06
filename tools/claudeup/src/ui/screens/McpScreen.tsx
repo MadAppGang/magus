@@ -3,7 +3,7 @@ import { useApp, useModal, useNavigation } from "../state/AppContext.js";
 import { useDimensions } from "../state/DimensionsContext.js";
 import { useKeyboard } from "../hooks/useKeyboard.js";
 import { ScreenLayout } from "../components/layout/index.js";
-import { ScrollableList } from "../components/ScrollableList.js";
+
 import {
 	getMcpServersByCategory,
 	getCategoryDisplayName,
@@ -21,6 +21,7 @@ import {
 	renderMcpDetail,
 	type McpListItem,
 } from "../renderers/mcpRenderers.js";
+import { ScrollableList } from "../components/ScrollableList.js";
 
 export function McpScreen() {
 	const { state, dispatch } = useApp();

@@ -31,27 +31,28 @@ export function ConfirmModal({
 			flexDirection="column"
 			border
 			borderStyle="rounded"
-			borderColor="yellow"
-			backgroundColor="#1a1a2e"
-			paddingLeft={2}
-			paddingRight={2}
+			borderColor="#525252"
+			backgroundColor="#1C1C1E"
+			paddingLeft={3}
+			paddingRight={3}
 			paddingTop={1}
 			paddingBottom={1}
 			width={60}
 		>
-			<text>
-				<strong>{title}</strong>
-			</text>
-			<box marginTop={1} marginBottom={1}>
-				<text>{message}</text>
-			</box>
-			<box>
-				<text>
-					<span fg="green">[Y]</span>
-					<span>es </span>
-					<span fg="red">[N]</span>
-					<span>o</span>
+			<box marginBottom={1}>
+				<text fg="#EDEDED">
+					<strong>{title}</strong>
 				</text>
+			</box>
+			<box marginBottom={1}>
+				<text fg="#A1A1AA">{message}</text>
+			</box>
+			<box marginTop={1}>
+				<text fg="#71717A">Press </text>
+				<text fg="#EDEDED">Y</text>
+				<text fg="#71717A"> to confirm • </text>
+				<text fg="#EDEDED">N</text>
+				<text fg="#71717A"> to cancel</text>
 			</box>
 		</box>
 	);

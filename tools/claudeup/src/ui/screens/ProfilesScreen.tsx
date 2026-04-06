@@ -3,7 +3,7 @@ import { useApp, useModal } from "../state/AppContext.js";
 import { useDimensions } from "../state/DimensionsContext.js";
 import { useKeyboard } from "../hooks/useKeyboard.js";
 import { ScreenLayout } from "../components/layout/index.js";
-import { ScrollableList } from "../components/ScrollableList.js";
+
 import {
 	listProfiles,
 	applyProfile,
@@ -31,6 +31,7 @@ import {
 	renderProfileDetail,
 	type ProfileListItem,
 } from "../renderers/profileRenderers.js";
+import { ScrollableList } from "../components/ScrollableList.js";
 
 export function ProfilesScreen() {
 	const { state, dispatch } = useApp();

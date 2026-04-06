@@ -3,19 +3,20 @@ import { useApp, useModal } from "../state/AppContext.js";
 import { useDimensions } from "../state/DimensionsContext.js";
 import { useKeyboard } from "../hooks/useKeyboard.js";
 import { ScreenLayout } from "../components/layout/index.js";
-import { ScrollableList } from "../components/ScrollableList.js";
 import {
 	SETTINGS_CATALOG,
 } from "../../data/settings-catalog.js";
 import {
 	readAllSettingsBothScopes,
 	writeSettingValue,
+	discoverOutputStyles,
 } from "../../services/settings-manager.js";
 import {
 	buildSettingsBrowserItems,
 	type SettingsBrowserItem,
 } from "../adapters/settingsAdapter.js";
 import { renderSettingRow, renderSettingDetail } from "../renderers/settingsRenderers.js";
+import { ScrollableList } from "../components/ScrollableList.js";
 
 export function SettingsScreen() {
 	const { state, dispatch } = useApp();
@@ -26,6 +27,12 @@ export function SettingsScreen() {
 	const fetchData = useCallback(async () => {
 		dispatch({ type: "SETTINGS_DATA_LOADING" });
 		try {
+			// Populate dynamic output style options from installed plugins
+			const outputStyleSetting = SETTINGS_CATALOG.find((s) => s.id === "output-style");
+			if (outputStyleSetting && outputStyleSetting.type === "select") {
+				outputStyleSetting.options = await discoverOutputStyles(state.projectPath);
+			}
+
 			const values = await readAllSettingsBothScopes(
 				SETTINGS_CATALOG,
 				state.projectPath,
@@ -95,22 +102,32 @@ export function SettingsScreen() {
 				await modal.message("Error", `Failed to update: ${error}`, "error");
 			}
 		} else {
-			const newValue = await modal.input(
-				`${setting.name} — ${scope}`,
-				setting.description,
-				currentValue || "",
-			);
-			if (newValue === null) return;
-			try {
-				await writeSettingValue(
-					setting,
-					newValue || undefined,
-					scope,
-					state.projectPath,
+			// String type: if already set, clear it; if unset, show input modal
+			if (currentValue !== undefined && currentValue !== "") {
+				try {
+					await writeSettingValue(setting, undefined, scope, state.projectPath);
+					await fetchData();
+				} catch (error) {
+					await modal.message("Error", `Failed to update: ${error}`, "error");
+				}
+			} else {
+				const newValue = await modal.input(
+					`${setting.name} — ${scope}`,
+					setting.description,
+					currentValue || setting.defaultValue || "",
 				);
-				await fetchData();
-			} catch (error) {
-				await modal.message("Error", `Failed to update: ${error}`, "error");
+				if (newValue === null) return;
+				try {
+					await writeSettingValue(
+						setting,
+						newValue || undefined,
+						scope,
+						state.projectPath,
+					);
+					await fetchData();
+				} catch (error) {
+					await modal.message("Error", `Failed to update: ${error}`, "error");
+				}
 			}
 		}
 	};

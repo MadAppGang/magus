@@ -3,10 +3,11 @@ import { useApp, useModal, useNavigation } from "../state/AppContext.js";
 import { useDimensions } from "../state/DimensionsContext.js";
 import { useKeyboard } from "../hooks/useKeyboard.js";
 import { ScreenLayout } from "../components/layout/index.js";
-import { ScrollableList } from "../components/ScrollableList.js";
+
 import { searchMcpServers, formatDate } from "../../services/mcp-registry.js";
 import { addMcpServer, setAllowMcp } from "../../services/claude-settings.js";
 import type { McpRegistryServer, McpServerConfig } from "../../types/index.js";
+import { ScrollableList } from "../components/ScrollableList.js";
 
 /**
  * Deduplicate servers by name, keeping only the latest version.
@@ -332,6 +333,7 @@ export function McpRegistryScreen() {
 						selectedIndex={mcpRegistry.selectedIndex}
 						renderItem={renderListItem}
 						maxHeight={dimensions.listPanelHeight}
+						getKey={(server) => server.name}
 					/>
 				)
 			}

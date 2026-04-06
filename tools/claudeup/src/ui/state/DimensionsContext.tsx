@@ -10,7 +10,7 @@ interface Dimensions {
 	contentHeight: number;
 	/** Available width for content (excluding borders, padding) */
 	contentWidth: number;
-	/** Available lines for ScrollableList in list panels */
+	/** Available lines for scrollbox in list panels */
 	listPanelHeight: number;
 }
 
@@ -52,9 +52,9 @@ function calculateDimensions(
 	// Calculate available content width (accounting for padding)
 	const contentWidth = Math.max(40, terminalWidth - 4);
 
-	// Calculate list panel height for ScrollableList
+	// Calculate list panel height for scrollbox
 	// ScreenLayout uses: panelHeight = contentHeight - 4 (header) - 1 (footer)
-	// The ScrollableList sits inside the panel
+	// The scrollbox sits inside the panel
 	const listPanelHeight = Math.max(
 		3,
 		contentHeight - SCREEN_HEADER_HEIGHT - SCREEN_FOOTER_HEIGHT,

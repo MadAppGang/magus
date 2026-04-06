@@ -1,3 +1,5 @@
+import * as fs from "fs";
+import * as path from "path";
 import {
 	readSettings,
 	writeSettings,
@@ -80,11 +82,6 @@ export async function writeSettingValue(
 			delete (settings as any).attribution;
 		}
 	} else if (setting.storage.type === "attribution-text") {
-		const attr = (settings as any).attribution;
-		// If attribution is explicitly disabled ({ commit: "", pr: "" }), do not overwrite it
-		if (attr && attr.commit === "" && attr.pr === "") {
-			return;
-		}
 		if (value && value.trim().length > 0) {
 			// Write custom text: commit gets a Co-Authored-By trailer + the text; pr gets the text
 			(settings as any).attribution = {
@@ -187,4 +184,88 @@ export async function readAllSettingsBothScopes(
 		});
 	}
 	return result;
+}
+
+/**
+ * Discover available output styles from installed plugins.
+ * Scans enabled plugins for outputStyles entries and *-output-style plugin names.
+ * Returns options suitable for a select setting.
+ */
+export async function discoverOutputStyles(
+	projectPath?: string,
+): Promise<Array<{ label: string; value: string }>> {
+	const styles: Array<{ label: string; value: string }> = [
+		{ label: "Default", value: "" },
+	];
+
+	const homeDir = process.env.HOME || process.env.USERPROFILE || "";
+	const cacheDir = path.join(homeDir, ".claude", "plugins", "cache");
+
+	// Collect enabled plugins from both scopes
+	const enabledPlugins = new Set<string>();
+	try {
+		const userSettings = await readGlobalSettings();
+		for (const [k, v] of Object.entries((userSettings as any).enabledPlugins || {})) {
+			if (v) enabledPlugins.add(k);
+		}
+	} catch {}
+	try {
+		const projSettings = await readSettings(projectPath);
+		for (const [k, v] of Object.entries((projSettings as any).enabledPlugins || {})) {
+			if (v) enabledPlugins.add(k);
+		}
+	} catch {}
+
+	const seen = new Set<string>();
+
+	for (const pluginId of enabledPlugins) {
+		const [pluginName, marketplace] = pluginId.split("@");
+
+		// Check if this is a dedicated output-style plugin (e.g. "explanatory-output-style")
+		if (pluginName.endsWith("-output-style")) {
+			const styleName = pluginName
+				.replace(/-output-style$/, "")
+				.split("-")
+				.map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+				.join(" ");
+			if (!seen.has(styleName)) {
+				seen.add(styleName);
+				styles.push({ label: styleName, value: styleName });
+			}
+			continue;
+		}
+
+		// Check plugin.json for outputStyles entries
+		if (!marketplace) continue;
+		const pluginDir = path.join(cacheDir, marketplace, pluginName);
+		try {
+			const versions = fs.readdirSync(pluginDir).sort();
+			const latest = versions[versions.length - 1];
+			if (!latest) continue;
+			const manifestPath = path.join(pluginDir, latest, "plugin.json");
+			const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
+			const outputStyles = manifest.outputStyles as string[] | undefined;
+			if (!outputStyles?.length) continue;
+
+			for (const stylePath of outputStyles) {
+				const fullPath = path.join(pluginDir, latest, stylePath);
+				try {
+					const content = fs.readFileSync(fullPath, "utf-8");
+					const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
+					if (fmMatch) {
+						const nameMatch = fmMatch[1].match(/^name:\s*(.+)$/m);
+						if (nameMatch) {
+							const name = nameMatch[1].trim();
+							if (!seen.has(name)) {
+								seen.add(name);
+								styles.push({ label: name, value: name });
+							}
+						}
+					}
+				} catch {}
+			}
+		} catch {}
+	}
+
+	return styles;
 }

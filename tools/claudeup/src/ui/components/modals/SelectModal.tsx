@@ -33,37 +33,40 @@ export function SelectModal({
 			flexDirection="column"
 			border
 			borderStyle="rounded"
-			borderColor="cyan"
-			backgroundColor="#1a1a2e"
-			paddingLeft={2}
-			paddingRight={2}
+			borderColor="#525252"
+			backgroundColor="#1C1C1E"
+			paddingLeft={3}
+			paddingRight={3}
 			paddingTop={1}
 			paddingBottom={1}
 			width={50}
 		>
-			<text>
-				<strong>{title}</strong>
-			</text>
-
-			<box marginTop={1} marginBottom={1}>
-				<text>{message}</text>
+			<box marginBottom={1}>
+				<text fg="#EDEDED">
+					<strong>{title}</strong>
+				</text>
 			</box>
 
-			<box flexDirection="column">
+			<box marginBottom={1}>
+				<text fg="#A1A1AA">{message}</text>
+			</box>
+
+			<box flexDirection="column" paddingLeft={1}>
 				{options.map((option, idx) => {
 					const isSelected = idx === selectedIndex;
-					const label = isSelected ? `> ${option.label}` : `  ${option.label}`;
 					return (
-						<text key={option.value} fg={isSelected ? "cyan" : "#666666"}>
-							{isSelected && <strong>{label}</strong>}
-							{!isSelected && label}
+						<text key={option.value} fg={isSelected ? "#F4F4F5" : "#A1A1AA"}>
+							<span fg={isSelected ? "#F4F4F5" : "#71717A"}>
+								{isSelected ? "❯ " : "  "}
+							</span>
+							{isSelected ? <strong>{option.label}</strong> : option.label}
 						</text>
 					);
 				})}
 			</box>
 
 			<box marginTop={1}>
-				<text fg="#666666">↑↓ Select • Enter • Esc</text>
+				<text fg="#71717A">↑↓ Select • ↵ Confirm • Esc Cancel</text>
 			</box>
 		</box>
 	);

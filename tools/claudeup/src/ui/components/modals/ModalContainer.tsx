@@ -11,6 +11,9 @@ import { LoadingModal } from "./LoadingModal.js";
  * Container that renders the active modal as an overlay
  * Handles ALL keyboard events when a modal is open to avoid
  * conflicts with multiple useKeyboard hooks in child components
+ *
+ * Input modal: Enter/Escape handled by OpenTUI <input> onSubmit + ModalContainer escape
+ * Select modal: keyboard fully handled here (index tracking + Enter/arrows)
  */
 export function ModalContainer() {
 	const { state } = useApp();
@@ -28,17 +31,30 @@ export function ModalContainer() {
 		}
 	}
 
-	// Handle ALL keyboard events for modals
+	// Handle keyboard events for modals
 	useKeyboard((key) => {
 		if (!modal) return;
 		if (modal.type === "loading") return;
 
 		// Escape — close any modal
-		if (key.name === "escape" || key.name === "q") {
+		if (key.name === "escape") {
 			if (modal.type === "confirm") modal.onCancel();
 			else if (modal.type === "input") modal.onCancel();
 			else if (modal.type === "select") modal.onCancel();
 			else if (modal.type === "message") modal.onDismiss();
+			return;
+		}
+
+		// 'q' to close — but NOT for input modals (need to type 'q')
+		if (key.name === "q" && modal.type !== "input") {
+			if (modal.type === "confirm") modal.onCancel();
+			else if (modal.type === "select") modal.onCancel();
+			else if (modal.type === "message") modal.onDismiss();
+			return;
+		}
+
+		// Input modal — let OpenTUI <input> handle Enter via onSubmit
+		if (modal.type === "input") {
 			return;
 		}
 
@@ -58,6 +74,13 @@ export function ModalContainer() {
 		if (modal.type === "message") {
 			if (key.name === "return" || key.name === "enter") {
 				modal.onDismiss();
+			}
+		}
+
+		// Confirm modal — Enter to confirm
+		if (modal.type === "confirm") {
+			if (key.name === "return" || key.name === "enter") {
+				modal.onConfirm();
 			}
 		}
 	});

@@ -1,9 +1,10 @@
 import React, { useMemo, useEffect } from "react";
 import { useApp } from "../state/AppContext.js";
 import { useDimensions } from "../state/DimensionsContext.js";
-import { ScrollableList } from "../components/ScrollableList.js";
+
 import { fuzzyFilter, highlightMatches } from "../../utils/fuzzy-search.js";
 import { useKeyboard } from "../hooks/useKeyboard.js";
+import { ScrollableList } from "../components/ScrollableList.js";
 
 interface ModelItem {
 	id: string;
@@ -423,7 +424,7 @@ export function ModelSelectorScreen() {
 					selectedIndex={modelSelector.selectedIndex}
 					renderItem={renderItem}
 					maxHeight={listHeight}
-					showScrollIndicators={false}
+					getKey={(item) => item.id}
 				/>
 			</box>
 
