@@ -193,8 +193,9 @@ describe("db", () => {
 
   test("getSessionSummary returns aggregate stats", () => {
     const db = openDb(dbPath);
-    insertSession(db, makeSession("s1", "/test/project", "2026-03-26"));
-    insertSession(db, makeSession("s2", "/test/project", "2026-03-26"));
+    const today = new Date().toISOString().slice(0, 10);
+    insertSession(db, makeSession("s1", "/test/project", today));
+    insertSession(db, makeSession("s2", "/test/project", today));
 
     const summary = getSessionSummary(db, 7, "/test/project");
     expect(summary.session_count).toBe(2);

@@ -26,7 +26,7 @@ import {
   removeClaudeMdSection,
 } from './conventions-manager.js';
 import { parsePluginId } from '../utils/string-utils.js';
-import type { PluginConventions, InstalledPluginEntry } from '../types/index.js';
+import type { PluginConventions } from '../types/index.js';
 
 // ============================================================
 // TYPES
