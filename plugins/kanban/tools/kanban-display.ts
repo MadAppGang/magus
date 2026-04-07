@@ -19,9 +19,9 @@
  *   --project <id>           Filter board by project ID
  *   --compact                Compact board display
  *   --mode simple|regular|modern   Board rendering mode (default: regular)
- *   --width <n>              Override terminal width
  */
 
+import { execSync } from "child_process";
 import {
   S,
   fg,
@@ -140,7 +140,7 @@ function wordWrap(text: string, maxWidth: number): string[] {
   return lines;
 }
 
-/** Resolve effective terminal width (respects --width override via COLUMNS env). */
+/** Resolve effective terminal width. */
 function getTermWidth(): number {
   return termW();
 }
@@ -892,15 +892,56 @@ function cmdAdded(taskId: string, title: string): void {
 
 // ── CLI Entry Point ──────────────────────────────────────────────────────────
 
+/**
+ * When running the "board" command without a TTY (e.g. from Claude Code's Bash tool)
+ * and tmux is available, re-exec ourselves inside a tmux split pane so we get a real
+ * TTY with proper terminal width. The pane waits for a keypress then closes.
+ */
+function maybeReopenInTmux(args: string[]): boolean {
+  if (args[0] !== "board") return false;
+  if (process.stdout.isTTY) return false;
+  if (!process.env.TMUX) return false;
+
+  // Determine split direction based on current pane count
+  let paneCount = 1;
+  try {
+    paneCount = parseInt(
+      execSync("tmux list-panes | wc -l", { stdio: ["pipe", "pipe", "pipe"] }).toString().trim(),
+      10,
+    ) || 1;
+  } catch { /* default to 1 */ }
+
+  const splitDir = paneCount <= 1 ? "-h" : paneCount <= 2 ? "-v" : "-h";
+  const splitSize = paneCount <= 2 ? "50%" : "40%";
+
+  // Re-invoke ourselves with the same args inside a tmux split pane
+  const script = process.argv[1];
+  const escapedArgs = args.map(a => `'${a.replace(/'/g, "'\\''")}'`).join(" ");
+  const cmd = `bun run '${script}' ${escapedArgs}; bash -c 'read -n1 -s -r'`;
+
+  try {
+    const paneId = execSync(
+      `tmux split-window ${splitDir} -l '${splitSize}' -P -F '#{pane_id}' "${cmd.replace(/"/g, '\\"')}"`,
+      { stdio: ["pipe", "pipe", "pipe"] },
+    ).toString().trim();
+    execSync(`tmux select-pane -t '${paneId}' -T 'kanban-board'`, { stdio: "ignore" });
+  } catch {
+    return false; // tmux split failed, fall through to inline rendering
+  }
+  return true;
+}
+
 function main(): void {
   const args = process.argv.slice(2);
   const command = args[0];
+
+  // If board command in non-TTY tmux context, reopen in a split pane and exit
+  if (maybeReopenInTmux(args)) return;
 
   let filePath = `${process.cwd()}/.claude/gtd/tasks.json`;
   let filterContext: string | undefined;
   let filterProject: string | undefined;
   let compact = false;
-  let widthOverride: number | undefined;
   let boardMode: "simple" | "regular" | "modern" = "regular";
 
   // Parse global options (non-positional)
@@ -911,26 +952,12 @@ function main(): void {
       case "--filter":  filterContext = args[++i]; break;
       case "--project": filterProject = args[++i]; break;
       case "--compact": compact = true; break;
-      case "--width":   widthOverride = parseInt(args[++i]); break;
       case "--mode": {
         const m = args[++i];
         if (m === "simple" || m === "regular" || m === "modern") boardMode = m;
         break;
       }
       default: positional.push(args[i]); break;
-    }
-  }
-
-  // Override terminal width if specified
-  if (widthOverride) {
-    // Override stdout.columns via Object.defineProperty so termW() picks it up
-    try {
-      Object.defineProperty(process.stdout, "columns", {
-        get: () => widthOverride,
-        configurable: true,
-      });
-    } catch {
-      process.env.COLUMNS = String(widthOverride);
     }
   }
 
@@ -998,8 +1025,7 @@ Options:
   --filter <@context>       Filter board by context
   --project <id>            Filter board by project ID
   --compact                 Compact board display
-  --mode simple|regular|modern  Board rendering mode (default: regular)
-  --width <n>               Override terminal width`);
+  --mode simple|regular|modern  Board rendering mode (default: regular)`);
       break;
   }
 }

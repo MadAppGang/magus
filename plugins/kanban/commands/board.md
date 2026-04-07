@@ -27,7 +27,7 @@ KANBAN_LIB="${CLAUDE_PLUGIN_ROOT}/hooks/kanban-lib.sh"
 bash -c "source \"${KANBAN_LIB}\" && CWD=\"${CWD}\" kanban_init"
 
 # Build display args
-DISPLAY_ARGS="board"
+DISPLAY_ARGS=""
 FILTER_CONTEXT=""   # e.g. "@code" or ""
 FILTER_PROJECT=""   # e.g. "5" (numeric ID) or ""
 COMPACT=false       # true if --compact
@@ -36,9 +36,10 @@ COMPACT=false       # true if --compact
 [ -n "$FILTER_PROJECT" ] && DISPLAY_ARGS="$DISPLAY_ARGS --project $FILTER_PROJECT"
 [ "$COMPACT" = "true" ] && DISPLAY_ARGS="$DISPLAY_ARGS --compact"
 
-TERM_WIDTH=$(tput cols 2>/dev/null || echo 80)
-bun run "${CLAUDE_PLUGIN_ROOT}/tools/kanban-display.ts" $DISPLAY_ARGS --file "$GTD_FILE" --width "$TERM_WIDTH"
+bun run "${CLAUDE_PLUGIN_ROOT}/tools/kanban-display.ts" board $DISPLAY_ARGS --file "$GTD_FILE"
 ```
+
+The display tool automatically opens in a tmux split pane when tmux is available. Any keypress closes the pane.
 
 ## After Showing the Board
 
