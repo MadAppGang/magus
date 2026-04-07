@@ -21,6 +21,8 @@ import { join } from "path";
 import { tmpdir } from "os";
 import { randomUUID } from "crypto";
 
+const TODAY = new Date().toISOString().slice(0, 10);
+
 // ──────────────────────────────────────────────────────────────────────────────
 // Imports from public API contracts only (lib/ public exports)
 // ──────────────────────────────────────────────────────────────────────────────
