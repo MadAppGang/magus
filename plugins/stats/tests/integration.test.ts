@@ -58,6 +58,21 @@ import type {
   SessionRow,
 } from "../lib/types.ts";
 
+/** Returns an ISO date string (YYYY-MM-DD) for N days ago, defaulting to yesterday. */
+function recentDate(daysAgo = 1): string {
+  const d = new Date();
+  d.setDate(d.getDate() - daysAgo);
+  return d.toISOString().slice(0, 10);
+}
+
+/** Returns an ISO timestamp for N days ago at a given time offset in minutes. */
+function recentTimestamp(daysAgo = 1, offsetMinutes = 0): string {
+  const d = new Date();
+  d.setDate(d.getDate() - daysAgo);
+  d.setHours(10, offsetMinutes, 0, 0);
+  return d.toISOString();
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 // Shared test helpers
 // ──────────────────────────────────────────────────────────────────────────────
@@ -71,7 +86,7 @@ function makeTempDir(): string {
 function makeSession(
   id: string,
   project = "/test/project",
-  date = "2026-03-26",
+  date = recentDate(),
   overrides: Partial<SessionMetrics> = {}
 ): SessionMetrics {
   return {
@@ -113,7 +128,7 @@ function makeSessionRow(
 ): SessionRow {
   return {
     id,
-    date: "2026-03-26",
+    date: recentDate(),
     project: "/test/project",
     duration_sec: 600,
     total_tool_calls: 10,
@@ -123,7 +138,7 @@ function makeSessionRow(
     testing_calls: 1,
     delegation_calls: 1,
     other_calls: 1,
-    created_at: "2026-03-26T10:00:00.000Z",
+    created_at: recentTimestamp(),
     ...overrides,
   };
 }
@@ -378,8 +393,8 @@ describe("Database: schema, CRUD, retention, queries", () => {
     const db = openDb(dbPath);
 
     // Insert 2 sessions with known tool counts
-    insertSession(db, makeSession("s1", "/test/project", "2026-03-26"));
-    insertSession(db, makeSession("s2", "/test/project", "2026-03-26"));
+    insertSession(db, makeSession("s1", "/test/project", recentDate()));
+    insertSession(db, makeSession("s2", "/test/project", recentDate()));
     insertToolCalls(db, makeSession("s1").tool_calls, "s1");
     insertToolCalls(db, makeSession("s2").tool_calls, "s2");
 
@@ -454,14 +469,14 @@ describe("Database: schema, CRUD, retention, queries", () => {
 
   test("getTopTools returns tools ranked by call count", () => {
     const db = openDb(dbPath);
-    insertSession(db, makeSession("s1", "/test/project", "2026-03-26"));
+    insertSession(db, makeSession("s1", "/test/project", recentDate()));
 
     const calls: ToolCallRecord[] = [
-      { tool_name: "Read", duration_ms: 10, success: true, activity_category: "research", timestamp: "2026-03-26T10:00:00.000Z" },
-      { tool_name: "Read", duration_ms: 20, success: true, activity_category: "research", timestamp: "2026-03-26T10:01:00.000Z" },
-      { tool_name: "Read", duration_ms: 15, success: true, activity_category: "research", timestamp: "2026-03-26T10:02:00.000Z" },
-      { tool_name: "Write", duration_ms: 30, success: true, activity_category: "coding", timestamp: "2026-03-26T10:03:00.000Z" },
-      { tool_name: "Bash", duration_ms: 100, success: true, activity_category: "other", timestamp: "2026-03-26T10:04:00.000Z" },
+      { tool_name: "Read", duration_ms: 10, success: true, activity_category: "research", timestamp: recentTimestamp(1, 0) },
+      { tool_name: "Read", duration_ms: 20, success: true, activity_category: "research", timestamp: recentTimestamp(1, 1) },
+      { tool_name: "Read", duration_ms: 15, success: true, activity_category: "research", timestamp: recentTimestamp(1, 2) },
+      { tool_name: "Write", duration_ms: 30, success: true, activity_category: "coding", timestamp: recentTimestamp(1, 3) },
+      { tool_name: "Bash", duration_ms: 100, success: true, activity_category: "other", timestamp: recentTimestamp(1, 4) },
     ];
     insertToolCalls(db, calls, "s1");
 

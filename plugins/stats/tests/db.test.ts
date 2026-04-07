@@ -17,6 +17,13 @@ import {
 } from "../lib/db.ts";
 import type { SessionMetrics, ToolCallRecord } from "../lib/types.ts";
 
+/** Returns an ISO date string (YYYY-MM-DD) for N days ago, defaulting to yesterday. */
+function recentDate(daysAgo = 1): string {
+  const d = new Date();
+  d.setDate(d.getDate() - daysAgo);
+  return d.toISOString().slice(0, 10);
+}
+
 describe("db", () => {
   let tempDir: string;
   let dbPath: string;
@@ -35,7 +42,7 @@ describe("db", () => {
     }
   });
 
-  function makeSession(id: string, project = "/test/project", date = "2026-03-26"): SessionMetrics {
+  function makeSession(id: string, project = "/test/project", date = recentDate()): SessionMetrics {
     return {
       session_id: id,
       date,
@@ -193,8 +200,8 @@ describe("db", () => {
 
   test("getSessionSummary returns aggregate stats", () => {
     const db = openDb(dbPath);
-    insertSession(db, makeSession("s1", "/test/project", "2026-03-26"));
-    insertSession(db, makeSession("s2", "/test/project", "2026-03-26"));
+    insertSession(db, makeSession("s1", "/test/project", recentDate()));
+    insertSession(db, makeSession("s2", "/test/project", recentDate()));
 
     const summary = getSessionSummary(db, 7, "/test/project");
     expect(summary.session_count).toBe(2);
