@@ -1,0 +1,53 @@
+{
+  "name": "code-analysis",
+  "version": "5.1.0",
+  "description": "Deep code investigation with mnemex MCP server. v5.0.1: Renamed mnemex CLI tool.",
+  "author": {
+    "name": "Jack Rudenko",
+    "email": "i@madappgang.com",
+    "company": "MadAppGang"
+  },
+  "license": "MIT",
+  "keywords": [
+    "code-analysis",
+    "codebase",
+    "investigation",
+    "architecture",
+    "patterns",
+    "debugging",
+    "code-navigation",
+    "semantic-search",
+    "mnemex",
+    "mcp",
+    "ast",
+    "structural-analysis"
+  ],
+  "category": "development",
+  "mcpServers": "./.mcp.json",
+  "agents": [
+    "./agents/codebase-detective.md"
+  ],
+  "commands": [
+    "./commands/analyze.md",
+    "./commands/help.md",
+    "./commands/setup.md"
+  ],
+  "skills": [
+    "./skills/deep-analysis",
+    "./skills/mnemex-search",
+    "./skills/mnemex-orchestration",
+    "./skills/investigate"
+  ],
+  "hooks": "./hooks/hooks.json",
+  "conventions": {
+    "gitignore": {
+      "project": [".mnemex/"],
+      "global": [".claudemem/", ".claude/.coaching/"]
+    },
+    "claudemd": {
+      "section": "code-analysis",
+      "template": "./templates/claude-md-conventions.md",
+      "version": "1.0.0"
+    }
+  }
+}

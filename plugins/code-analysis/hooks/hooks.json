@@ -1,0 +1,17 @@
+{
+  "description": "Block force-adding private/ephemeral paths to git",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "^Bash$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/block-git-add-private.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

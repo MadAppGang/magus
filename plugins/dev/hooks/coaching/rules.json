@@ -1,0 +1,414 @@
+[
+  {
+    "id": "grep-instead-of-mnemex",
+    "audience": "claude",
+    "signal": {
+      "tool": "Bash",
+      "command_pattern": "\\b(grep|rg|ag|ack)\\b",
+      "min_count": 3
+    },
+    "category": "search-efficiency",
+    "priority": 1,
+    "suggestion": "You ran {count} grep/rg searches this session. For faster semantic code exploration:\n  `mnemex --agent map \"your concept\"` -- understands intent, not just text\n  `mnemex --agent symbol \"SymbolName\"` -- direct AST symbol lookup\n  Skill: use the Skill tool with `code-analysis:mnemex-search`",
+    "suppress_after_sessions": 10
+  },
+  {
+    "id": "tmp-path-usage",
+    "audience": "claude",
+    "signal": {
+      "any_tool": true,
+      "content_pattern": "/tmp/"
+    },
+    "category": "session-hygiene",
+    "priority": 1,
+    "suggestion": "Session files detected in /tmp/ -- these are cleared on reboot. Use persistent paths:\n  `ai-docs/sessions/{task-slug}-{timestamp}-{random}/` for research artifacts\n  `.claude/.coaching/` for plugin state\n  See: CLAUDE.md Session Directories section",
+    "suppress_after_sessions": 10
+  },
+  {
+    "id": "skill-invoked-as-task",
+    "audience": "claude",
+    "signal": {
+      "tool": "Task",
+      "input_key": "subagent_type",
+      "value_in": [
+        "code-analysis:mnemex-search",
+        "code-analysis:mnemex-orchestration",
+        "code-analysis:investigate",
+        "code-analysis:deep-analysis",
+        "dev:db-branching",
+        "terminal:terminal-interaction",
+        "terminal:tui-navigation-patterns",
+        "terminal:tdd-workflow",
+        "terminal:workspace-setup",
+        "terminal:framework-signals",
+        "multimodel:claudish-usage",
+        "multimodel:multi-model-validation",
+        "multimodel:task-orchestration",
+        "multimodel:quality-gates",
+        "multimodel:session-isolation",
+        "multimodel:agent-enforcement",
+        "multimodel:error-recovery",
+        "multimodel:task-external-models",
+        "dev:test-driven-development",
+        "dev:worktree-lifecycle",
+        "dev:systematic-debugging",
+        "dev:verification-before-completion",
+        "dev:agent-coordination-discipline",
+        "designer:compare",
+        "designer:ui-analyse",
+        "designer:ui-design-review",
+        "browser-use:core-api",
+        "browser-use:web-scraping",
+        "browser-use:navigation-patterns",
+        "browser-use:debug-ui"
+      ]
+    },
+    "category": "api-correctness",
+    "priority": 1,
+    "suggestion": "'{subagent_type}' is a Skill, not an agent -- using Task causes a triple failure cascade.\n  Use the Skill tool instead: Skill({ \"skill\": \"{subagent_type}\" })\n  See: CLAUDE.md Skill Routing table",
+    "suppress_after_sessions": 10
+  },
+  {
+    "id": "excessive-reads-before-delegation",
+    "audience": "claude",
+    "signal": {
+      "tool": "Read",
+      "min_count_before_first_task": 5
+    },
+    "category": "delegation-efficiency",
+    "priority": 2,
+    "suggestion": "You read {count} files before delegating to an agent (pre-digestion anti-pattern).\n  For investigation tasks, give agents the raw problem -- they investigate independently.\n  Pre-digested context reduces multi-model diversity. See: MEMORY.md 'Raw Task vs Pre-Digested Context'",
+    "suppress_after_sessions": 5
+  },
+  {
+    "id": "wrong-agent-for-task",
+    "audience": "claude",
+    "signal": {
+      "tool": "Task",
+      "prompt_patterns": {
+        "research|compare|sources": "dev:researcher",
+        "implement|create|build|write": "dev:developer",
+        "understand|investigate|trace|analyze": "code-analysis:detective",
+        "debug|error|root cause": "dev:debugger",
+        "transcribe|whisper|subtitle|srt|fcpxml|final\\s+cut": "video-editing:transcriber",
+        "generate.*image|create.*image|image.*generation|dall-e|midjourney|gemini.*image": "nanobanana:image-generator",
+        "design.*review|pixel.*diff|figma|matches.*design|ui.*review": "designer:design-review",
+        "create.*agent|build.*agent|new.*command|agent.*development": "agentdev:developer",
+        "seo|keyword.*research|meta.*tag|search.*ranking|content.*brief": "seo:researcher"
+      }
+    },
+    "category": "delegation-efficiency",
+    "priority": 2,
+    "suggestion": "Task prompt matched '{pattern}' pattern but used '{actual}' agent.\n  Consider '{recommended}' -- it is optimized for this task type.\n  See: CLAUDE.md Task Routing table",
+    "suppress_after_sessions": 5
+  },
+  {
+    "id": "single-model-critical-review",
+    "audience": "human",
+    "signal": {
+      "tool": "Task",
+      "prompt_pattern": "\\b(code\\s+review|architecture\\s+review|security\\s+audit|code\\s+audit)\\b",
+      "no_bash_pattern": "claudish"
+    },
+    "category": "quality-assurance",
+    "priority": 3,
+    "suggestion": "Code review performed by a single model. Consider multi-model consensus:\n  `/team` command -- gets independent perspectives from 3+ models\n  Multi-model review has documented 3-5x better issue detection vs single-model",
+    "suppress_after_sessions": 5
+  },
+  {
+    "id": "plugin-command-gap",
+    "audience": "human",
+    "signal": {
+      "bash_patterns": [
+        {
+          "pattern": "curl.*github\\.com|open.*github\\.com",
+          "plugin": "gh CLI",
+          "command": "gh pr list, gh issue create, gh repo view"
+        },
+        {
+          "pattern": "\\bkeyword.*seo\\b|\\bmeta.*tag\\b|\\bbacklink\\b",
+          "plugin": "seo plugin",
+          "command": "/seo:analyze"
+        }
+      ]
+    },
+    "category": "plugin-discovery",
+    "priority": 4,
+    "suggestion": "Detected manual {plugin} operations. The {plugin} could automate this:\n  `{command}`",
+    "suppress_after_sessions": 3
+  },
+  {
+    "id": "skipped-multi-model-review",
+    "audience": "human",
+    "signal": {
+      "feature_session_agents": ["dev:architect", "dev:developer"],
+      "requires_ask_user_or_claudish": true
+    },
+    "category": "quality-assurance",
+    "priority": 2,
+    "suggestion": "Feature development session detected (dev:architect + dev:developer) but multi-model review was skipped.\n  Phase 3 and Phase 5 of /dev:feature require model selection via AskUserQuestion and external reviews via claudish.\n  Next time, ensure model selection is not skipped -- multi-model review catches 3-5x more issues than single-model.",
+    "suppress_after_sessions": 10
+  },
+  {
+    "id": "no-background-tasks",
+    "audience": "claude",
+    "signal": {
+      "tool": "Task",
+      "min_sequential": 2
+    },
+    "category": "performance",
+    "priority": 4,
+    "suggestion": "Detected {count} sequential Task calls that may be parallelizable.\n  If tasks are independent, add `run_in_background: true` to all but the last:\n  Task({ subagent_type: \"...\", run_in_background: true, ... })\n  Parallel execution can reduce total time significantly.",
+    "suppress_after_sessions": 3
+  },
+  {
+    "id": "bash-instead-of-terminal-run",
+    "audience": "claude",
+    "signal": {
+      "tool": "Bash",
+      "command_pattern": "\\b(npm\\s+test|bun\\s+test|go\\s+test|cargo\\s+test|pytest|jest|vitest|npm\\s+run\\s+dev|bun\\s+run\\s+dev|bun\\s+dev|npm\\s+start)\\b",
+      "min_count": 3
+    },
+    "category": "plugin-discovery",
+    "priority": 2,
+    "suggestion": "You ran {count} test/dev-server commands via Bash. These work better with the terminal plugin:\n  `/terminal:run npm test` -- real TTY, proper rendering, captured output\n  `/terminal:watch npm run dev` -- long-running with 'ready' detection\n  `/terminal:repl psql` -- interactive database shells\n  Terminal plugin provides screen-aware output, keystroke injection, and split-pane TDD loops.",
+    "suppress_after_sessions": 5
+  },
+  {
+    "id": "webfetch-instead-of-browser-use",
+    "audience": "claude",
+    "signal": {
+      "tool": "WebFetch",
+      "min_count": 3
+    },
+    "category": "plugin-discovery",
+    "priority": 3,
+    "suggestion": "You called WebFetch {count} times this session. For JavaScript-heavy SPAs, form interactions, or structured scraping, the browser-use plugin gives full browser control:\n  `mcp__browser-use__browser_navigate` -- navigate with full JS rendering\n  `mcp__browser-use__browser_extract_content` -- structured extraction\n  `mcp__browser-use__browser_screenshot` -- capture live screenshots\n  Skills: `browser-use:web-scraping`, `browser-use:navigation-patterns`",
+    "suppress_after_sessions": 5
+  },
+  {
+    "id": "claudish-in-main-bash",
+    "audience": "claude",
+    "signal": {
+      "tool": "Bash",
+      "command_pattern": "\\bclaudish\\b",
+      "min_count": 1
+    },
+    "category": "api-correctness",
+    "priority": 1,
+    "suggestion": "claudish was run directly in a Bash call. This pollutes the context window with 10K+ tokens.\n  Always run claudish inside a sub-agent via the Task tool with run_in_background: true.\n  Read the skill first: Skill({ \"skill\": \"multimodel:claudish-usage\" })\n  Pattern: Task({ subagent_type: \"dev:developer\", run_in_background: true, prompt: \"run: claudish ...\" })",
+    "suppress_after_sessions": 10
+  },
+  {
+    "id": "direct-settings-json-edit",
+    "audience": "human",
+    "signal": {
+      "tool": "Write",
+      "command_pattern": "\\.claude/settings(\\.local)?\\.json"
+    },
+    "category": "plugin-discovery",
+    "priority": 3,
+    "suggestion": "You edited .claude/settings.json directly. claudeup provides an interactive TUI for this:\n  `npx claudeup` -- add marketplaces, install plugins, configure MCP servers, set up statusline\n  No install needed -- just run `pnpx claudeup` or `npm install -g claudeup`\n  Much safer than manual JSON editing (validates structure, avoids syntax errors).",
+    "suppress_after_sessions": 5
+  },
+  {
+    "id": "bash-ffmpeg-without-plugin",
+    "audience": "claude",
+    "signal": {
+      "bash_patterns": [
+        {
+          "pattern": "\\bffmpeg\\b",
+          "plugin": "video-editing plugin",
+          "command": "/video-editing:video-edit"
+        },
+        {
+          "pattern": "\\bwhisper\\b",
+          "plugin": "video-editing plugin",
+          "command": "/video-editing:transcribe"
+        }
+      ]
+    },
+    "category": "plugin-discovery",
+    "priority": 3,
+    "suggestion": "Detected raw {plugin} CLI usage. The {plugin} provides structured workflows:\n  `{command}` -- orchestrated with multi-agent coordination, error handling, and format management\n  Skills: `video-editing:ffmpeg-core`, `video-editing:transcription`, `video-editing:final-cut-pro`",
+    "suppress_after_sessions": 5
+  },
+  {
+    "id": "no-mnemex-during-investigation",
+    "audience": "claude",
+    "signal": {
+      "tool": "Grep",
+      "min_count": 5,
+      "absent_tool_prefix": "mcp__mnemex__"
+    },
+    "category": "search-efficiency",
+    "priority": 1,
+    "suggestion": "You ran {count} Grep searches with no mnemex calls. For codebase investigation, mnemex provides semantic understanding:\n  Skill({ \"skill\": \"code-analysis:mnemex-search\" }) -- before any mnemex usage\n  `/code-analysis:setup` -- index your codebase for AST-aware search\n  `mnemex callers <function>` -- find all callers without grep\n  `mnemex map <concept>` -- semantic concept search across the codebase",
+    "suppress_after_sessions": 7
+  },
+  {
+    "id": "sequential-reads-suggest-mnemex",
+    "audience": "claude",
+    "signal": {
+      "tool": "Read",
+      "min_sequential": 8
+    },
+    "category": "search-efficiency",
+    "priority": 2,
+    "suggestion": "You read {count} files sequentially -- a common sign of manual codebase tracing. mnemex can map this automatically:\n  `mnemex dependency-graph <module>` -- visualize module dependencies\n  `mnemex callers <function>` -- all callers in one call\n  `mnemex callees <function>` -- all callees in one call\n  Skill({ \"skill\": \"code-analysis:investigate\" }) -- routes to the right investigation mode",
+    "suppress_after_sessions": 5
+  },
+  {
+    "id": "suggest-claudeup-for-plugin-install",
+    "audience": "human",
+    "signal": {
+      "bash_patterns": [
+        {
+          "pattern": "/plugin\\s+marketplace\\s+add|/plugin\\s+install",
+          "plugin": "claudeup TUI installer",
+          "command": "npx claudeup"
+        }
+      ]
+    },
+    "category": "plugin-discovery",
+    "priority": 3,
+    "suggestion": "You used /plugin commands to install plugins. claudeup provides a full interactive TUI for this:\n  `npx claudeup` -- browse and install plugins, configure MCP servers, set up statusline\n  Features: marketplace browsing, MCP server registry, statusline presets\n  No installation needed: `pnpx claudeup` works immediately.",
+    "suppress_after_sessions": 5
+  },
+  {
+    "id": "suggest-claudish-for-external-models",
+    "audience": "human",
+    "signal": {
+      "tool": "Task",
+      "prompt_pattern": "\\b(grok|gemini|gpt-[0-9]|openrouter|mistral|deepseek|llama|qwen|minimax|kimi|glm)\\b",
+      "no_bash_pattern": "claudish"
+    },
+    "category": "plugin-discovery",
+    "priority": 3,
+    "suggestion": "External model names detected in task prompts but claudish was not used. claudish lets Claude Code run any model via OpenRouter:\n  Install: `npm install -g claudish`\n  Set: `OPENROUTER_API_KEY=your-key`\n  Use `/team` command for parallel multi-model reviews\n  See: `multimodel:claudish-usage` skill for invocation patterns",
+    "suppress_after_sessions": 5
+  },
+  {
+    "id": "designer-review-after-ui-implementation",
+    "audience": "claude",
+    "signal": {
+      "feature_session_agents": ["dev:frontend"],
+      "requires_ask_user_or_claudish": false,
+      "absent_agent": "designer:design-review"
+    },
+    "category": "quality-assurance",
+    "priority": 3,
+    "suggestion": "UI implementation detected (dev:frontend) but no design review was performed.\n  `/designer:review` -- pixel-diff comparison against Figma or reference screenshots\n  `/designer:ui` -- Gemini multimodal accessibility and usability review\n  Catching design drift early prevents rework. designer:compare shows pixel-level differences.",
+    "suppress_after_sessions": 5
+  },
+  {
+    "id": "agentdev-workflow-bypassed",
+    "audience": "claude",
+    "signal": {
+      "tool": "Write",
+      "command_pattern": "/(agents|commands)/[^/]+\\.md$"
+    },
+    "category": "quality-assurance",
+    "priority": 2,
+    "suggestion": "Agent or command file written directly without agentdev workflow. This skips design validation and quality review:\n  `/agentdev:develop` -- full cycle: architect -> plan -> implement -> review\n  Without this, agents often have schema violations, missing XML standards, or poor skill boundaries.\n  Use `agentdev:reviewer` skill or agentdev:reviewer agent to validate existing files.",
+    "suppress_after_sessions": 5
+  },
+  {
+    "id": "conductor-missing-for-multi-session-feature",
+    "audience": "human",
+    "signal": {
+      "feature_session_agents": ["dev:developer"],
+      "min_agent_count": 5,
+      "absent_bash_pattern": "conductor"
+    },
+    "category": "plugin-discovery",
+    "priority": 4,
+    "suggestion": "Complex feature session detected (5+ developer tasks) without Conductor tracking.\n  `/conductor:new-track` -- create a hierarchical plan with spec, phases, and TDD commits\n  `/conductor:status` -- see progress across all tracks\n  `/conductor:revert` -- logical undo at track/phase/task level (not just git)\n  Conductor maintains context across sessions so you never lose 'where we left off'.",
+    "suppress_after_sessions": 3
+  },
+  {
+    "id": "nanobanana-not-suggested-for-images",
+    "audience": "claude",
+    "signal": {
+      "bash_patterns": [
+        {
+          "pattern": "\\b(midjourney|dall-e|dalle|stable[-\\s]diffusion|leonardo\\.ai)\\b",
+          "plugin": "nanobanana plugin",
+          "command": "/nanobanana:generate"
+        }
+      ]
+    },
+    "category": "plugin-discovery",
+    "priority": 4,
+    "suggestion": "External image generation tool mentioned ({plugin} reference). The nanobanana plugin provides image generation directly in Claude Code:\n  `/nanobanana:generate \"description\"` -- text-to-image via Gemini 3 Pro Image\n  `/nanobanana:style` -- create reusable style templates for consistent outputs\n  `/nanobanana:edit` -- modify existing images with natural language\n  Requires: `GEMINI_API_KEY` environment variable.",
+    "suppress_after_sessions": 3
+  },
+  {
+    "id": "seo-plugin-for-web-content",
+    "audience": "human",
+    "signal": {
+      "bash_patterns": [
+        {
+          "pattern": "\\b(ahrefs|semrush|moz\\.com|google.*search.*console|google.*analytics|serp)\\b",
+          "plugin": "seo plugin",
+          "command": "/seo:start"
+        }
+      ]
+    },
+    "category": "plugin-discovery",
+    "priority": 4,
+    "suggestion": "SEO tool references detected. The seo plugin provides a full autonomous SEO toolkit:\n  `/seo:start` -- interactive workflow router for any SEO goal\n  `/seo:research` -- keyword research with multi-agent orchestration\n  `/seo:optimize` -- content optimization with E-E-A-T validation\n  `/seo:audit` -- technical SEO: crawlability, Core Web Vitals, schema markup\n  `~80% autonomy` with AUTO GATEs for self-correction.",
+    "suppress_after_sessions": 3
+  },
+  {
+    "id": "browser-use-for-playwright-selenium",
+    "audience": "claude",
+    "signal": {
+      "bash_patterns": [
+        {
+          "pattern": "\\b(playwright|selenium|puppeteer|cypress)\\b",
+          "plugin": "browser-use plugin",
+          "command": "mcp__browser-use__browser_navigate"
+        }
+      ]
+    },
+    "category": "plugin-discovery",
+    "priority": 3,
+    "suggestion": "Browser automation framework detected ({plugin} reference). The browser-use plugin provides 18 MCP tools directly in Claude Code:\n  `mcp__browser-use__browser_navigate` -- navigate URLs\n  `mcp__browser-use__browser_click` -- click elements\n  `mcp__browser-use__browser_extract_content` -- extract structured content\n  `mcp__browser-use__browser_screenshot` -- capture screenshots\n  Skills: `browser-use:web-scraping`, `browser-use:debug-ui`",
+    "suppress_after_sessions": 5
+  },
+  {
+    "id": "dev-setup-missing-routing-table",
+    "audience": "human",
+    "signal": {
+      "tool": "Write",
+      "command_pattern": "CLAUDE\\.md$"
+    },
+    "category": "plugin-discovery",
+    "priority": 4,
+    "suggestion": "CLAUDE.md was written manually. The dev plugin can scaffold a complete project context:\n  `/dev:setup` -- interactive setup: task routing table, agent delegation rules, stack detection\n  `/dev:help` -- shows detected stack and all available commands\n  A proper CLAUDE.md with routing table significantly improves agent delegation accuracy.",
+    "suppress_after_sessions": 3
+  },
+  {
+    "id": "tui-via-bash-instead-of-terminal",
+    "audience": "claude",
+    "signal": {
+      "bash_patterns": [
+        {
+          "pattern": "\\b(lazygit|htop|btop|k9s|tig|ncdu|ranger|bpytop|gitui)\\b",
+          "plugin": "terminal plugin",
+          "command": "/terminal:tui"
+        },
+        {
+          "pattern": "\\bpsql\\b|\\bmongosh\\b|\\bredis-cli\\b|\\bmysql\\b",
+          "plugin": "terminal plugin",
+          "command": "/terminal:repl"
+        }
+      ]
+    },
+    "category": "plugin-discovery",
+    "priority": 2,
+    "suggestion": "TUI application or database shell invoked via Bash -- these require a real TTY to render correctly.\n  `/terminal:tui {app}` -- full-screen TUI navigation with keystroke injection\n  `/terminal:repl {shell}` -- database REPLs with proper prompt detection and clean exit\n  The terminal plugin uses ht-mcp for isolated PTY sessions and tmux-mcp for workspace layouts.",
+    "suppress_after_sessions": 5
+  }
+]

@@ -1,0 +1,31 @@
+{
+  "name": "statusline",
+  "version": "2.1.0",
+  "description": "Colorful adaptive statusline \u2014 native rate limits, worktree detection, provider-aware model display, vim mode, diff stats, compaction count, and 4 themes.",
+  "author": {
+    "name": "Jack Rudenko",
+    "email": "i@madappgang.com",
+    "company": "MadAppGang"
+  },
+  "license": "MIT",
+  "keywords": [
+    "statusline",
+    "worktree",
+    "context",
+    "plan-limits",
+    "customization",
+    "themes"
+  ],
+  "category": "utility",
+  "commands": [
+    "./commands/install.md",
+    "./commands/uninstall.md",
+    "./commands/customize.md"
+  ],
+  "skills": [
+    "./skills/statusline-customization"
+  ],
+  "compatibility": {
+    "claudeCode": ">=0.1.0"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "claudish": {
+    "command": "claudish",
+    "args": ["--mcp"],
+    "env": {
+      "OPENROUTER_API_KEY": "${OPENROUTER_API_KEY}"
+    }
+  }
+}

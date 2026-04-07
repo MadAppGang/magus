@@ -1,0 +1,6 @@
+{
+  "tmux": {
+    "command": "tmux-mcp",
+    "args": ["-shell-type", "zsh", "-scope", "agentic"]
+  }
+}

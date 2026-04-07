@@ -1,0 +1,27 @@
+{
+  "description": "Agentdev: debug capture hooks for tool invocation tracking",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use.sh",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/post-tool-use.sh",
+            "timeout": 3
+          }
+        ]
+      }
+    ]
+  }
+}

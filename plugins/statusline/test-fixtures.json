@@ -1,0 +1,135 @@
+{
+  "description": "Real-world statusline JSON test fixtures for regression testing. Note: MEM section is dynamic (depends on live process) and not included in expected_sections.",
+  "usage": "cat plugins/statusline/test-fixtures.json | jq -r '.fixtures[N].input' | bash plugins/statusline/scripts/statusline.sh",
+  "fixtures": [
+    {
+      "name": "short-form-low-usage",
+      "description": "Low context, low cost, low plan usage — everything in short form",
+      "input": {
+        "model": {"display_name": "Claude Opus 4.6", "id": "claude-opus-4-6-20251101"},
+        "cost": {"total_cost_usd": 0.42, "total_duration_ms": 120000, "total_lines_added": 12, "total_lines_removed": 3},
+        "context_window": {"used_percentage": 25, "context_window_size": 200000, "current_usage": 50000, "total_input_tokens": 50000, "remaining_percentage": 75},
+        "cwd": "/Users/jack/mag/magus",
+        "session_id": "test-short",
+        "rate_limits": {"five_hour": {"used_percentage": 12, "resets_at": "2026-03-20T22:00:00Z"}, "seven_day": {"used_percentage": 8, "resets_at": "2026-03-27T00:00:00Z"}},
+        "exceeds_200k_tokens": false
+      },
+      "expected_sections": ["* Opus", "main", "$0.42", "2m0s", "+12/-3", "25%", "5h:12%", "7d:8%"]
+    },
+    {
+      "name": "full-form-high-usage",
+      "description": "High context (72%), high plan usage (98%/45%), worktree, agent, vim — everything expanded",
+      "input": {
+        "model": {"display_name": "Claude Opus 4.6", "id": "claude-opus-4-6-20251101"},
+        "session_name": "statusline",
+        "agent": {"name": "developer"},
+        "cost": {"total_cost_usd": 5.67, "total_duration_ms": 3720000, "total_lines_added": 142, "total_lines_removed": 38},
+        "context_window": {"used_percentage": 72, "context_window_size": 200000, "current_usage": 144000, "total_input_tokens": 144000, "remaining_percentage": 28},
+        "cwd": "/Users/jack/mag/magus",
+        "session_id": "test-full",
+        "rate_limits": {"five_hour": {"used_percentage": 98, "resets_at": "2026-03-20T17:00:00Z"}, "seven_day": {"used_percentage": 45, "resets_at": "2026-03-27T00:00:00Z"}},
+        "worktree": {"name": "statusline", "branch": "statusline", "path": "/Users/jack/mag/magus/.worktrees/statusline"},
+        "exceeds_200k_tokens": false,
+        "vim": {"mode": "INSERT"}
+      },
+      "expected_sections": ["* Opus", "statusline", "→developer", "wt:statusline", " I ", "$5.67", "1h2m", "+142/-38", "████", "72%", "144k/200k", "5h:98%", "7d:45%"]
+    },
+    {
+      "name": "critical-usage-200k",
+      "description": "Near rate limit with 200k+ context — real scenario from 2026-03-20 session",
+      "input": {
+        "model": {"display_name": "Claude Opus 4.6", "id": "claude-opus-4-6-20251101"},
+        "session_name": "terminal-plugin",
+        "cost": {"total_cost_usd": 98.26, "total_duration_ms": 18480000, "total_lines_added": 241, "total_lines_removed": 66},
+        "context_window": {"used_percentage": 33, "context_window_size": 1000000, "current_usage": 330000, "total_input_tokens": 330217, "remaining_percentage": 67},
+        "cwd": "/Users/jack/mag/magus",
+        "session_id": "test-critical",
+        "rate_limits": {"five_hour": {"used_percentage": 98, "resets_at": "2026-03-20T17:00:00Z"}, "seven_day": {"used_percentage": 58, "resets_at": "2026-03-21T10:00:00Z"}},
+        "exceeds_200k_tokens": true
+      },
+      "expected_sections": ["* Opus", "terminal-plugin", "$98.26", "5h8m", "+241/-66", "33%", "200k+", "5h:98%", "7d:58%"]
+    },
+    {
+      "name": "openrouter-grok",
+      "description": "Claudish session via xAI/Grok on OpenRouter",
+      "input": {
+        "model": {"display_name": "Grok 3 Mini", "id": "x-ai/grok-3-mini"},
+        "cost": {"total_cost_usd": 0.08, "total_duration_ms": 45000, "total_lines_added": 5, "total_lines_removed": 0},
+        "context_window": {"used_percentage": 10, "context_window_size": 131072, "current_usage": 13107, "total_input_tokens": 13107, "remaining_percentage": 90},
+        "cwd": "/Users/jack/mag/magus",
+        "session_id": "test-grok",
+        "exceeds_200k_tokens": false
+      },
+      "expected_sections": ["xai@grok-3-mini", "$0.08", "45s", "10%"]
+    },
+    {
+      "name": "openrouter-gemini",
+      "description": "Claudish session via Google/Gemini on OpenRouter",
+      "input": {
+        "model": {"display_name": "Gemini 2.5 Pro", "id": "google/gemini-2.5-pro"},
+        "cost": {"total_cost_usd": 0.15, "total_duration_ms": 90000, "total_lines_added": 20, "total_lines_removed": 5},
+        "context_window": {"used_percentage": 5, "context_window_size": 1000000, "current_usage": 50000, "total_input_tokens": 50000, "remaining_percentage": 95},
+        "cwd": "/Users/jack/mag/magus",
+        "session_id": "test-gemini",
+        "exceeds_200k_tokens": false
+      },
+      "expected_sections": ["ggl@gemini-2.5-pro", "$0.15", "1m30s", "5%"]
+    },
+    {
+      "name": "no-rate-limits",
+      "description": "Fresh session with no rate_limits in JSON (triggers API fallback)",
+      "input": {
+        "model": {"display_name": "Claude Sonnet 4.6", "id": "claude-sonnet-4-6-20251101"},
+        "cost": {"total_cost_usd": 0.01, "total_duration_ms": 5000},
+        "context_window": {"used_percentage": 2, "context_window_size": 200000, "current_usage": 4000, "total_input_tokens": 4000, "remaining_percentage": 98},
+        "cwd": "/Users/jack/mag/magus",
+        "session_id": "test-fresh",
+        "exceeds_200k_tokens": false
+      },
+      "expected_sections": ["* Sonnet", "$0.01", "5s", "2%"]
+    },
+    {
+      "name": "context-85-compacted",
+      "description": "High context with compaction warning and critical usage",
+      "input": {
+        "model": {"display_name": "Claude Opus 4.6", "id": "claude-opus-4-6-20251101"},
+        "cost": {"total_cost_usd": 12.50, "total_duration_ms": 7200000, "total_lines_added": 300, "total_lines_removed": 80},
+        "context_window": {"used_percentage": 85, "context_window_size": 200000, "current_usage": 170000, "total_input_tokens": 170000, "remaining_percentage": 15},
+        "cwd": "/Users/jack/mag/magus",
+        "session_id": "test-compact",
+        "rate_limits": {"five_hour": {"used_percentage": 72, "resets_at": "2026-03-20T20:00:00Z"}, "seven_day": {"used_percentage": 35, "resets_at": "2026-03-25T00:00:00Z"}},
+        "exceeds_200k_tokens": false
+      },
+      "expected_sections": ["* Opus", "$12.50", "2h0m", "+300/-80", "85%", "170k/200k", "⚡", "5h:72%", "7d:35%"]
+    },
+    {
+      "name": "vim-normal-mode",
+      "description": "Vim in normal mode",
+      "input": {
+        "model": {"display_name": "Claude Opus 4.6", "id": "claude-opus-4-6-20251101"},
+        "cost": {"total_cost_usd": 1.00, "total_duration_ms": 300000},
+        "context_window": {"used_percentage": 40, "context_window_size": 200000, "current_usage": 80000, "total_input_tokens": 80000, "remaining_percentage": 60},
+        "cwd": "/Users/jack/mag/magus",
+        "session_id": "test-vim",
+        "vim": {"mode": "NORMAL"},
+        "exceeds_200k_tokens": false
+      },
+      "expected_sections": ["* Opus", " N ", "$1.00", "5m0s", "40%"]
+    },
+    {
+      "name": "rate-limited-100pct",
+      "description": "Fully rate-limited (100%) — countdown should be prominently visible with red background highlight",
+      "input": {
+        "model": {"display_name": "Claude Opus 4.6", "id": "claude-opus-4-6-20251101"},
+        "cost": {"total_cost_usd": 45.00, "total_duration_ms": 14400000, "total_lines_added": 500, "total_lines_removed": 120},
+        "context_window": {"used_percentage": 15, "context_window_size": 200000, "current_usage": 30000, "total_input_tokens": 30000, "remaining_percentage": 85},
+        "cwd": "/Users/jack/mag/magus",
+        "session_id": "test-ratelimit",
+        "rate_limits": {"five_hour": {"used_percentage": 100, "resets_at": "2026-03-20T19:30:00Z"}, "seven_day": {"used_percentage": 85, "resets_at": "2026-03-25T00:00:00Z"}},
+        "exceeds_200k_tokens": false
+      },
+      "expected_sections": ["* Opus", "$45.00", "4h0m", "+500/-120", "15%", "5h:100%", "7d:85%"],
+      "notes": "5h countdown uses red bg highlight (rate-limited), 7d countdown uses orange/bold (critical but not rate-limited)"
+    }
+  ]
+}

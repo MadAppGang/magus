@@ -1,0 +1,57 @@
+{
+  "name": "seo",
+  "version": "1.7.0",
+  "description": "Highly autonomous SEO toolkit (~80% autonomy) with AUTO GATEs, self-correction loops, and multi-model validation. Features autonomous keyword research, quality-gate progression, E-E-A-T self-assessment, and data-driven performance analysis. Includes interactive /seo:start entry point, content optimization, technical audits, and analytics integrations (GA4, GSC).",
+  "author": {
+    "name": "Jack Rudenko",
+    "email": "i@madappgang.com",
+    "company": "MadAppGang"
+  },
+  "license": "MIT",
+  "keywords": [
+    "seo",
+    "content-optimization",
+    "keyword-research",
+    "serp-analysis",
+    "technical-seo",
+    "content-strategy",
+    "google-analytics",
+    "search-console",
+    "performance-analysis"
+  ],
+  "category": "content",
+  "agents": [
+    "./agents/analyst.md",
+    "./agents/researcher.md",
+    "./agents/writer.md",
+    "./agents/editor.md",
+    "./agents/data-analyst.md"
+  ],
+  "commands": [
+    "./commands/start.md",
+    "./commands/research.md",
+    "./commands/optimize.md",
+    "./commands/brief.md",
+    "./commands/audit.md",
+    "./commands/review.md",
+    "./commands/alternatives.md",
+    "./commands/performance.md",
+    "./commands/setup-analytics.md"
+  ],
+  "skills": [
+    "./skills/keyword-cluster-builder",
+    "./skills/content-optimizer",
+    "./skills/content-brief",
+    "./skills/technical-audit",
+    "./skills/serp-analysis",
+    "./skills/schema-markup",
+    "./skills/link-strategy",
+    "./skills/analytics-interpretation",
+    "./skills/performance-correlation",
+    "./skills/data-extraction-patterns",
+    "./skills/quality-gate.md",
+    "./skills/autonomous-keyword-research.md"
+  ],
+  "hooks": "./hooks/hooks.json",
+  "mcpServers": "./mcp-servers/mcp-config.json"
+}

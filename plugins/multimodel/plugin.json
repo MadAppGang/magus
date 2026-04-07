@@ -1,0 +1,41 @@
+{
+  "name": "multimodel",
+  "version": "3.1.2",
+  "description": "Multi-model collaboration, orchestration, and workflow patterns. v3.0.0: MCP-first \u2014 all skills updated to reference claudish MCP tools (team, create_session) instead of Bash+CLI. Dead code removed.",
+  "author": {
+    "name": "MadAppGang",
+    "email": "i@madappgang.com"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/MadAppGang/magus",
+  "tags": [
+    "multimodel",
+    "voting",
+    "parallel",
+    "consensus",
+    "claudish",
+    "grok",
+    "gemini",
+    "gpt",
+    "minimax",
+    "glm",
+    "collaboration",
+    "orchestration",
+    "multi-agent",
+    "workflow",
+    "quality-gates",
+    "hooks",
+    "routing",
+    "performance-tracking",
+    "cost-optimization"
+  ],
+  "hooks": "./hooks/hooks.json",
+  "skills": "./skills/",
+  "commands": [
+    "./commands/team.md",
+    "./commands/delegate.md"
+  ],
+  "compatibility": {
+    "claudeCode": ">=0.1.0"
+  }
+}

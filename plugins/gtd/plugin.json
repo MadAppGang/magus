@@ -1,0 +1,54 @@
+{
+  "name": "gtd",
+  "version": "2.0.1",
+  "description": "GTD (Getting Things Done) workflow integration for Claude Code. Canonical five-step workflow (Capture, Clarify, Organize, Reflect, Engage) with six lists, sequential task IDs, boxed terminal display, and real-time sync via hooks.",
+  "author": {
+    "name": "Jack Rudenko",
+    "email": "i@madappgang.com",
+    "company": "MadAppGang"
+  },
+  "license": "MIT",
+  "keywords": [
+    "gtd",
+    "getting-things-done",
+    "productivity",
+    "task-management",
+    "capture",
+    "inbox",
+    "next-actions",
+    "waiting-for",
+    "someday-maybe",
+    "weekly-review",
+    "workflow",
+    "hooks",
+    "session-context"
+  ],
+  "category": "productivity",
+  "hooks": "./hooks/hooks.json",
+  "agents": [
+    "./agents/gtd-reviewer.md"
+  ],
+  "commands": [
+    "./commands/help.md",
+    "./commands/capture.md",
+    "./commands/engage.md",
+    "./commands/clarify.md",
+    "./commands/next.md",
+    "./commands/review.md",
+    "./commands/status.md"
+  ],
+  "skills": [
+    "./skills/gtd-capture",
+    "./skills/gtd-review"
+  ],
+  "compatibility": {
+    "claudeCode": ">=0.1.0"
+  },
+  "conventions": {
+    "claudemd": {
+      "section": "gtd",
+      "template": "./templates/claude-md-conventions.md",
+      "version": "1.0.0"
+    }
+  }
+}

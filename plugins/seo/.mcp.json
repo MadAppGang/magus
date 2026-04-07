@@ -1,0 +1,18 @@
+{
+  "google-analytics": {
+    "command": "npx",
+    "args": ["-y", "mcp-server-google-analytics"],
+    "env": {
+      "GOOGLE_APPLICATION_CREDENTIALS": "${GOOGLE_APPLICATION_CREDENTIALS}",
+      "GA_PROPERTY_ID": "${GA_PROPERTY_ID}"
+    }
+  },
+  "google-search-console": {
+    "command": "npx",
+    "args": ["-y", "mcp-server-gsc"],
+    "env": {
+      "GOOGLE_APPLICATION_CREDENTIALS": "${GOOGLE_APPLICATION_CREDENTIALS}",
+      "GSC_SITE_URL": "${GSC_SITE_URL}"
+    }
+  }
+}

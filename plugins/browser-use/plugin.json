@@ -1,0 +1,42 @@
+{
+  "name": "browser-use",
+  "version": "1.1.2",
+  "description": "Full-platform browser automation for Claude Code. v1.1.2: Re-fix oneOf schema rejection (browser-use#4211) lost in v1.1.0 rewrite \u2014 sanitize upstream tool schemas to strip oneOf/allOf/anyOf rejected by Claude API. 19 MCP tools, 5 skills.",
+  "author": {
+    "name": "Jack Rudenko",
+    "email": "i@madappgang.com",
+    "company": "MadAppGang"
+  },
+  "license": "MIT",
+  "keywords": [
+    "browser",
+    "automation",
+    "scraping",
+    "testing",
+    "accessibility",
+    "browser-use",
+    "cdp",
+    "dom",
+    "vision",
+    "cloud",
+    "captcha",
+    "debugging"
+  ],
+  "category": "development",
+  "setup": {
+    "pip": [
+      "browser-use",
+      "mcp"
+    ]
+  },
+  "mcpServers": "./.mcp.json",
+  "agents": [],
+  "commands": [],
+  "skills": [
+    "./skills/core-api",
+    "./skills/navigation-patterns",
+    "./skills/web-scraping",
+    "./skills/debug-ui",
+    "./skills/hybrid-debugging"
+  ]
+}

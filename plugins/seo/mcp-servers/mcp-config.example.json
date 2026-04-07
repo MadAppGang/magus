@@ -1,0 +1,35 @@
+{
+  "_comment": "Copy this to mcp-config.json and configure your credentials",
+  "_claudeup": "RECOMMENDED: Run 'npx claudeup' and navigate to SEO & Analytics",
+
+  "google-analytics": {
+    "command": "npx",
+    "args": ["-y", "mcp-server-google-analytics"],
+    "env": {
+      "GOOGLE_APPLICATION_CREDENTIALS": "/path/to/service-account.json",
+      "GA_PROPERTY_ID": "properties/123456789"
+    },
+    "_setup": [
+      "1. Create Service Account in Google Cloud Console",
+      "2. Enable Analytics Data API",
+      "3. Grant Service Account 'Viewer' access to GA4 property",
+      "4. Download JSON credentials file",
+      "5. Set GOOGLE_APPLICATION_CREDENTIALS to path of JSON file"
+    ]
+  },
+
+  "google-search-console": {
+    "command": "npx",
+    "args": ["-y", "mcp-server-gsc"],
+    "env": {
+      "GOOGLE_APPLICATION_CREDENTIALS": "/path/to/service-account.json",
+      "GSC_SITE_URL": "https://example.com"
+    },
+    "_setup": [
+      "1. Use same Service Account as GA4 (shared auth)",
+      "2. Add Service Account email as user in Search Console",
+      "3. Grant 'Full' permission level",
+      "4. Point to JSON credentials file"
+    ]
+  }
+}

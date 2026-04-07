@@ -1,0 +1,929 @@
+#!/usr/bin/env bun
+/**
+ * Workflow Coaching Analyzer
+ *
+ * Parses a Claude Code session transcript (JSONL), applies rule-based
+ * detectors, and writes top-3 coaching suggestions to the output file.
+ *
+ * Usage:
+ *   bun analyzer.ts \
+ *     --transcript /path/to/transcript.jsonl \
+ *     --session-id <uuid> \
+ *     --rules /path/to/rules.json \
+ *     --state /path/to/state.json \
+ *     --output /path/to/recommendations.md \
+ *     --history-dir /path/to/history/
+ */
+
+import {
+  existsSync,
+  readFileSync,
+  writeFileSync,
+  mkdirSync,
+  rmSync,
+  statSync,
+  readdirSync,
+  unlinkSync,
+  renameSync,
+} from "fs";
+import { join } from "path";
+
+// =============================================================================
+// TYPES
+// =============================================================================
+
+interface ToolCall {
+  tool: string;
+  input: Record<string, unknown>;
+  order: number;
+}
+
+interface RuleSignal {
+  tool?: string;
+  command_pattern?: string;
+  min_count?: number;
+  any_tool?: boolean;
+  content_pattern?: string;
+  input_key?: string;
+  value_in?: string[];
+  min_count_before_first_task?: number;
+  prompt_patterns?: Record<string, string>;
+  prompt_pattern?: string;
+  no_bash_pattern?: string;
+  bash_patterns?: Array<{ pattern: string; plugin: string; command: string }>;
+  min_sequential?: number;
+  // New signal fields for medium-complexity rules
+  absent_tool_prefix?: string;
+  feature_session_agents?: string[];
+  requires_ask_user_or_claudish?: boolean;
+  absent_agent?: string;
+  min_agent_count?: number;
+  absent_bash_pattern?: string;
+}
+
+interface Rule {
+  id: string;
+  audience: "human" | "claude";
+  signal: RuleSignal;
+  category: string;
+  priority: number;
+  suggestion: string;
+  suppress_after_sessions: number;
+}
+
+interface RuleState {
+  last_shown_session?: number;
+  shown_count?: number;
+  suppress_until_count?: number;
+}
+
+// Fix 8: Separate _session_count from rules record for type safety
+interface CoachingState {
+  _session_count: number;
+  rules: Record<string, RuleState>;
+}
+
+interface MatchedSuggestion {
+  id: string;
+  audience: "human" | "claude";
+  category: string;
+  priority: number;
+  suggestion: string;
+  suppress_after_sessions: number;
+}
+
+// =============================================================================
+// STAGE 2: SESSION CLASSIFIER TYPES
+// =============================================================================
+
+interface LearningSignals {
+  corrections: { count: number; phrases: string[] };
+  explicitRules: { count: number; phrases: string[] };
+  repeatedPatterns: number;
+  failedAttempts: number;
+  messageCount: number;
+  toolCallCount: number;
+}
+
+interface QueueEntry {
+  session_id: string;
+  transcript_path: string;
+  queued_at: string;
+  cwd: string;
+  tool_call_count: number;
+  rule_based_signals: string[];
+  learning_signals: LearningSignals;
+  learning_score: number;
+}
+
+// =============================================================================
+// ATOMIC WRITES (Fix 1)
+// =============================================================================
+
+function atomicWriteFileSync(filePath: string, content: string): void {
+  const tmpPath = filePath + ".tmp";
+  writeFileSync(tmpPath, content);
+  renameSync(tmpPath, filePath); // Atomic on POSIX
+}
+
+// =============================================================================
+// TRANSCRIPT PARSING
+// =============================================================================
+
+function parseToolCalls(transcriptPath: string): ToolCall[] {
+  const toolCalls: ToolCall[] = [];
+
+  const content = readFileSync(transcriptPath, "utf-8");
+  const lines = content.split("\n").filter((l) => l.trim());
+
+  for (const line of lines) {
+    let obj: Record<string, unknown>;
+    try {
+      obj = JSON.parse(line);
+    } catch {
+      continue;
+    }
+
+    if (obj.type !== "assistant") continue;
+
+    const message = obj.message as Record<string, unknown> | undefined;
+    if (!message) continue;
+
+    const contentBlocks = message.content as
+      | Array<Record<string, unknown>>
+      | undefined;
+    if (!Array.isArray(contentBlocks)) continue;
+
+    for (const block of contentBlocks) {
+      if (block.type === "tool_use") {
+        toolCalls.push({
+          tool: (block.name as string) || "",
+          input: (block.input as Record<string, unknown>) || {},
+          order: toolCalls.length,
+        });
+      }
+    }
+  }
+
+  return toolCalls;
+}
+
+// =============================================================================
+// USER MESSAGE PARSING (Stage 2)
+// =============================================================================
+
+function parseUserMessages(transcriptPath: string): string[] {
+  const messages: string[] = [];
+  const content = readFileSync(transcriptPath, "utf-8");
+  const lines = content.split("\n").filter((l) => l.trim());
+
+  for (const line of lines) {
+    let obj: Record<string, unknown>;
+    try {
+      obj = JSON.parse(line);
+    } catch {
+      continue;
+    }
+    if (obj.type !== "human") continue;
+    const message = obj.message as Record<string, unknown> | undefined;
+    if (!message) continue;
+    const contentBlocks = message.content;
+    if (typeof contentBlocks === "string") {
+      messages.push(contentBlocks);
+    } else if (Array.isArray(contentBlocks)) {
+      for (const block of contentBlocks as Record<string, unknown>[]) {
+        if (block.type === "text" && typeof block.text === "string") {
+          messages.push(block.text);
+        }
+      }
+    }
+  }
+  return messages;
+}
+
+// =============================================================================
+// STATE MANAGEMENT
+// =============================================================================
+
+function loadState(statePath: string): CoachingState {
+  if (!existsSync(statePath)) return { _session_count: 0, rules: {} };
+  try {
+    const raw = JSON.parse(readFileSync(statePath, "utf-8")) as Record<
+      string,
+      unknown
+    >;
+    // Support both new format (Fix 8) and legacy flat format
+    if (raw.rules && typeof raw.rules === "object") {
+      return raw as unknown as CoachingState;
+    }
+    // Migrate legacy flat format
+    const { _session_count, ...rest } = raw;
+    return {
+      _session_count: ((_session_count as number) ?? 0),
+      rules: rest as Record<string, RuleState>,
+    };
+  } catch {
+    return { _session_count: 0, rules: {} };
+  }
+}
+
+function saveState(statePath: string, state: CoachingState): void {
+  atomicWriteFileSync(statePath, JSON.stringify(state, null, 2));
+}
+
+function isSuppressed(ruleId: string, state: CoachingState): boolean {
+  const ruleState = state.rules[ruleId];
+  if (!ruleState) return false;
+  const suppressUntil = ruleState.suppress_until_count ?? 0;
+  const currentCount = state._session_count;
+  return currentCount < suppressUntil;
+}
+
+// =============================================================================
+// RULE ENGINE
+// =============================================================================
+
+function applyRules(
+  toolCalls: ToolCall[],
+  rules: Rule[],
+  state: CoachingState
+): MatchedSuggestion[] {
+  // Low-signal session guard
+  if (toolCalls.length < 10) return [];
+
+  const results: MatchedSuggestion[] = [];
+
+  // Pre-computed aggregates
+  const bashCalls = toolCalls.filter((tc) => tc.tool === "Bash");
+  const taskCalls = toolCalls.filter((tc) => tc.tool === "Task");
+  const readCalls = toolCalls.filter((tc) => tc.tool === "Read");
+  const grepCalls = toolCalls.filter((tc) => tc.tool === "Grep");
+  const webFetchCalls = toolCalls.filter((tc) => tc.tool === "WebFetch");
+
+  const sortedRules = [...rules].sort(
+    (a, b) => (a.priority ?? 99) - (b.priority ?? 99)
+  );
+
+  for (const rule of sortedRules) {
+    if (isSuppressed(rule.id, state)) continue;
+
+    let matched = false;
+    const substitutions: Record<string, string> = {};
+    const signal = rule.signal;
+
+    switch (rule.id) {
+      case "grep-instead-of-mnemex": {
+        const grepPattern = /\b(grep|rg|ag|ack)\b/;
+        const bashGrepCalls = bashCalls.filter((c) =>
+          grepPattern.test(String(c.input.command ?? ""))
+        );
+        const nativeSearchCalls = toolCalls.filter(
+          (tc) => tc.tool === "Grep" || tc.tool === "Glob"
+        );
+        const totalSearchCalls = bashGrepCalls.length + nativeSearchCalls.length;
+        if (totalSearchCalls >= (signal.min_count ?? 3)) {
+          matched = true;
+          substitutions.count = String(totalSearchCalls);
+        }
+        break;
+      }
+
+      case "tmp-path-usage": {
+        const tmpCalls = toolCalls.filter((tc) =>
+          JSON.stringify(tc.input).includes("/tmp/")
+        );
+        if (tmpCalls.length > 0) matched = true;
+        break;
+      }
+
+      case "skill-invoked-as-task": {
+        const knownSkills = signal.value_in ?? [];
+        const badTasks = taskCalls.filter((tc) =>
+          knownSkills.includes(String(tc.input.subagent_type ?? ""))
+        );
+        if (badTasks.length > 0) {
+          matched = true;
+          substitutions.subagent_type = String(
+            badTasks[0].input.subagent_type ?? ""
+          );
+        }
+        break;
+      }
+
+      case "excessive-reads-before-delegation": {
+        const firstTaskOrder =
+          taskCalls.length > 0 ? taskCalls[0].order : Infinity;
+        const readsBeforeTask = readCalls.filter(
+          (r) => r.order < firstTaskOrder
+        );
+        const minCount = signal.min_count_before_first_task ?? 5;
+        if (readsBeforeTask.length >= minCount) {
+          matched = true;
+          substitutions.count = String(readsBeforeTask.length);
+        }
+        break;
+      }
+
+      case "wrong-agent-for-task": {
+        // Fix 2: Add ambiguity check — only fire when exactly ONE pattern matches
+        const routing = signal.prompt_patterns ?? {};
+        for (const task of taskCalls) {
+          const prompt = String(task.input.prompt ?? "").toLowerCase();
+          const actual = String(task.input.subagent_type ?? "");
+
+          // Count how many patterns match this prompt
+          const matches: Array<{ pattern: string; recommended: string }> = [];
+          for (const [patternStr, recommended] of Object.entries(routing)) {
+            const patterns = patternStr.split("|");
+            if (patterns.some((p) => prompt.includes(p))) {
+              matches.push({ pattern: patternStr, recommended });
+            }
+          }
+
+          // Only fire if exactly ONE pattern matches (unambiguous) and agent differs
+          if (matches.length === 1 && actual !== matches[0].recommended) {
+            matched = true;
+            substitutions.pattern = matches[0].pattern;
+            substitutions.actual = actual;
+            substitutions.recommended = matches[0].recommended;
+            break;
+          }
+        }
+        break;
+      }
+
+      case "single-model-critical-review": {
+        // Fix 5: Require "code review" or "audit" (not just "review") to avoid false positives
+        const reviewPattern =
+          /\b(code\s+review|architecture\s+review|security\s+audit|code\s+audit)\b/i;
+        const reviewTasks = taskCalls.filter((tc) =>
+          reviewPattern.test(String(tc.input.prompt ?? ""))
+        );
+        const claudishCalls = bashCalls.filter((c) =>
+          String(c.input.command ?? "").includes("claudish")
+        );
+        if (reviewTasks.length > 0 && claudishCalls.length === 0) {
+          matched = true;
+        }
+        break;
+      }
+
+      case "plugin-command-gap":
+      case "bash-ffmpeg-without-plugin":
+      case "suggest-claudeup-for-plugin-install":
+      case "nanobanana-not-suggested-for-images":
+      case "seo-plugin-for-web-content":
+      case "browser-use-for-playwright-selenium":
+      case "tui-via-bash-instead-of-terminal": {
+        const bashPatterns = signal.bash_patterns ?? [];
+        outerLoop: for (const c of bashCalls) {
+          const cmd = String(c.input.command ?? "");
+          for (const pat of bashPatterns) {
+            if (new RegExp(pat.pattern).test(cmd)) {
+              matched = true;
+              substitutions.plugin = pat.plugin;
+              substitutions.command = pat.command;
+              break outerLoop;
+            }
+          }
+        }
+        break;
+      }
+
+      case "skipped-multi-model-review": {
+        // Detect /dev:feature sessions that skipped multi-model review.
+        // Signal: has dev:architect AND dev:developer Task calls (feature session)
+        // but NO AskUserQuestion calls AND NO claudish Bash calls.
+        const architectTasks = taskCalls.filter(
+          (tc) => String(tc.input.subagent_type ?? "") === "dev:architect"
+        );
+        const developerTasks = taskCalls.filter(
+          (tc) => String(tc.input.subagent_type ?? "") === "dev:developer"
+        );
+        const askUserCalls = toolCalls.filter(
+          (tc) => tc.tool === "AskUserQuestion"
+        );
+        const claudishReviewCalls = bashCalls.filter((c) =>
+          String(c.input.command ?? "").includes("claudish")
+        );
+
+        // Only fire if this looks like a /dev:feature session (both agents present)
+        // AND the user was never asked about model selection
+        // AND no claudish calls were made for external reviews
+        if (
+          architectTasks.length > 0 &&
+          developerTasks.length > 0 &&
+          askUserCalls.length === 0 &&
+          claudishReviewCalls.length === 0
+        ) {
+          matched = true;
+        }
+        break;
+      }
+
+      case "no-background-tasks": {
+        let sequential = 0;
+        for (let i = 0; i < taskCalls.length - 1; i++) {
+          const a = taskCalls[i];
+          const b = taskCalls[i + 1];
+          if (
+            !a.input.run_in_background &&
+            !b.input.run_in_background &&
+            b.order - a.order <= 2
+          ) {
+            sequential++;
+          }
+        }
+        if (sequential >= (signal.min_sequential ?? 2)) {
+          matched = true;
+          substitutions.count = String(sequential + 1);
+        }
+        break;
+      }
+
+      case "bash-instead-of-terminal-run": {
+        const terminalPattern = new RegExp(signal.command_pattern ?? "");
+        const matchingCalls = bashCalls.filter((c) =>
+          terminalPattern.test(String(c.input.command ?? ""))
+        );
+        if (matchingCalls.length >= (signal.min_count ?? 3)) {
+          matched = true;
+          substitutions.count = String(matchingCalls.length);
+        }
+        break;
+      }
+
+      case "webfetch-instead-of-browser-use": {
+        if (webFetchCalls.length >= (signal.min_count ?? 3)) {
+          matched = true;
+          substitutions.count = String(webFetchCalls.length);
+        }
+        break;
+      }
+
+      case "claudish-in-main-bash": {
+        const claudishPattern = new RegExp(signal.command_pattern ?? "");
+        const claudishCalls = bashCalls.filter((c) =>
+          claudishPattern.test(String(c.input.command ?? ""))
+        );
+        if (claudishCalls.length >= (signal.min_count ?? 1)) {
+          matched = true;
+        }
+        break;
+      }
+
+      case "direct-settings-json-edit":
+      case "agentdev-workflow-bypassed":
+      case "dev-setup-missing-routing-table": {
+        // Detect Write calls whose file_path matches command_pattern
+        const writeCalls = toolCalls.filter((tc) => tc.tool === "Write");
+        const filePattern = new RegExp(signal.command_pattern ?? "");
+        const matchingWrite = writeCalls.find((tc) =>
+          filePattern.test(String(tc.input.file_path ?? ""))
+        );
+        if (matchingWrite) {
+          matched = true;
+        }
+        break;
+      }
+
+      case "no-mnemex-during-investigation": {
+        // Fire when Grep count >= min_count AND no mcp__mnemex__* tool calls exist
+        const minCount = signal.min_count ?? 5;
+        const absentPrefix = signal.absent_tool_prefix ?? "";
+        const hasMnemex = toolCalls.some((tc) =>
+          absentPrefix ? tc.tool.startsWith(absentPrefix) : false
+        );
+        if (grepCalls.length >= minCount && !hasMnemex) {
+          matched = true;
+          substitutions.count = String(grepCalls.length);
+        }
+        break;
+      }
+
+      case "sequential-reads-suggest-mnemex": {
+        // Count sequential Read calls (adjacent with no gaps of more than 2 orders)
+        let sequential = 0;
+        for (let i = 0; i < readCalls.length - 1; i++) {
+          const a = readCalls[i];
+          const b = readCalls[i + 1];
+          if (b.order - a.order <= 2) {
+            sequential++;
+          }
+        }
+        if (sequential >= (signal.min_sequential ?? 8)) {
+          matched = true;
+          substitutions.count = String(sequential + 1);
+        }
+        break;
+      }
+
+      case "suggest-claudish-for-external-models": {
+        const externalPattern = new RegExp(signal.prompt_pattern ?? "", "i");
+        const noBashPat = signal.no_bash_pattern;
+        const matchingTasks = taskCalls.filter((tc) =>
+          externalPattern.test(String(tc.input.prompt ?? ""))
+        );
+        const claudishUsed = noBashPat
+          ? bashCalls.some((c) =>
+              String(c.input.command ?? "").includes(noBashPat)
+            )
+          : false;
+        if (matchingTasks.length > 0 && !claudishUsed) {
+          matched = true;
+        }
+        break;
+      }
+
+      case "designer-review-after-ui-implementation": {
+        // Signal: dev:frontend Task present AND no designer:design-review Task
+        const frontendTasks = taskCalls.filter(
+          (tc) => String(tc.input.subagent_type ?? "") === "dev:frontend"
+        );
+        const absentAgent = signal.absent_agent ?? "";
+        const designerTasks = absentAgent
+          ? taskCalls.filter(
+              (tc) => String(tc.input.subagent_type ?? "") === absentAgent
+            )
+          : [];
+        if (frontendTasks.length > 0 && designerTasks.length === 0) {
+          matched = true;
+        }
+        break;
+      }
+
+      case "conductor-missing-for-multi-session-feature": {
+        // Signal: dev:developer Tasks >= min_agent_count AND no conductor Bash calls
+        const developerTasks = taskCalls.filter(
+          (tc) => String(tc.input.subagent_type ?? "") === "dev:developer"
+        );
+        const minAgentCount = signal.min_agent_count ?? 5;
+        const absentBashPat = signal.absent_bash_pattern ?? "";
+        const conductorUsed = absentBashPat
+          ? bashCalls.some((c) =>
+              String(c.input.command ?? "").includes(absentBashPat)
+            )
+          : false;
+        if (developerTasks.length >= minAgentCount && !conductorUsed) {
+          matched = true;
+        }
+        break;
+      }
+    }
+
+    if (matched) {
+      // Apply substitutions to suggestion template
+      let suggestionText = rule.suggestion;
+      for (const [key, val] of Object.entries(substitutions)) {
+        suggestionText = suggestionText.replaceAll(`{${key}}`, val);
+      }
+      results.push({
+        id: rule.id,
+        audience: rule.audience ?? "claude",
+        category: rule.category,
+        priority: rule.priority ?? 99,
+        suggestion: suggestionText,
+        suppress_after_sessions: rule.suppress_after_sessions,
+      });
+    }
+  }
+
+  return results;
+}
+
+// =============================================================================
+// STAGE 2: LEARNING SIGNAL EXTRACTION AND SCORING
+// =============================================================================
+
+const CORRECTION_PATTERN =
+  /\b(no[,.]\s|wrong|instead|not that|we always|we use|don't use|never use)\b/i;
+const EXPLICIT_RULE_PATTERN =
+  /\b(in this project|our convention|we always|the rule is|we never|always use|never use)\b/i;
+const LEARNING_SCORE_THRESHOLD = 5;
+
+function extractLearningSignals(
+  transcriptPath: string,
+  toolCalls: ToolCall[]
+): LearningSignals {
+  const userMessages = parseUserMessages(transcriptPath);
+
+  // Corrections: user messages with correction language
+  const correctionPhrases: string[] = [];
+  for (const msg of userMessages) {
+    if (CORRECTION_PATTERN.test(msg)) {
+      // Extract the matched phrase for evidence
+      const match = msg.match(CORRECTION_PATTERN);
+      if (match) correctionPhrases.push(match[0]);
+    }
+  }
+
+  // Explicit rules: user messages with convention language
+  const explicitRulePhrases: string[] = [];
+  for (const msg of userMessages) {
+    if (EXPLICIT_RULE_PATTERN.test(msg)) {
+      const match = msg.match(EXPLICIT_RULE_PATTERN);
+      if (match) explicitRulePhrases.push(match[0]);
+    }
+  }
+
+  // Repeated patterns: group correction phrases by similarity (same keyword = same topic)
+  // Count topics that appear 2+ times
+  const topicCounts: Record<string, number> = {};
+  for (const phrase of correctionPhrases) {
+    const key = phrase.toLowerCase().trim();
+    topicCounts[key] = (topicCounts[key] ?? 0) + 1;
+  }
+  const repeatedPatterns = Object.values(topicCounts).filter(
+    (count) => count >= 2
+  ).length;
+
+  // Failed attempts: consecutive Bash/Grep calls where first has an error response
+  // Heuristic: look for adjacent Bash calls with notably different commands
+  // (indicates the first approach failed and a different one was tried)
+  let failedAttempts = 0;
+  const actionTools = toolCalls.filter(
+    (tc) => tc.tool === "Bash" || tc.tool === "Grep"
+  );
+  for (let i = 0; i < actionTools.length - 1; i++) {
+    const a = actionTools[i];
+    const b = actionTools[i + 1];
+    // If two adjacent Bash calls use completely different commands (retry heuristic)
+    if (
+      a.tool === "Bash" &&
+      b.tool === "Bash" &&
+      b.order - a.order <= 2
+    ) {
+      const cmdA = String(a.input.command ?? "").split(/\s+/)[0];
+      const cmdB = String(b.input.command ?? "").split(/\s+/)[0];
+      if (cmdA !== cmdB && cmdA !== "" && cmdB !== "") {
+        failedAttempts++;
+      }
+    }
+  }
+
+  return {
+    corrections: { count: correctionPhrases.length, phrases: correctionPhrases },
+    explicitRules: {
+      count: explicitRulePhrases.length,
+      phrases: explicitRulePhrases,
+    },
+    repeatedPatterns,
+    failedAttempts,
+    messageCount: userMessages.length,
+    toolCallCount: toolCalls.length,
+  };
+}
+
+function computeLearningScore(signals: LearningSignals): number {
+  return (
+    signals.corrections.count * 3 +
+    signals.explicitRules.count * 4 +
+    signals.repeatedPatterns * 3 +
+    signals.failedAttempts * 2 +
+    Math.min(signals.messageCount / 10, 5) -
+    (signals.toolCallCount < 10 ? 10 : 0) // noise penalty
+  );
+}
+
+// =============================================================================
+// OUTPUT FORMATTING
+// =============================================================================
+
+function formatRecommendations(
+  suggestions: MatchedSuggestion[],
+  sessionId: string
+): string {
+  if (suggestions.length === 0) return "";
+
+  const humanSuggestions = suggestions.filter((s) => s.audience === "human");
+  const claudeSuggestions = suggestions.filter((s) => s.audience === "claude");
+
+  const lines: string[] = [];
+
+  // Human section
+  lines.push("[human]");
+  lines.push(`session: ${sessionId.substring(0, 8)}`);
+  lines.push(`count: ${humanSuggestions.length}`);
+  lines.push("");
+  for (let i = 0; i < humanSuggestions.length; i++) {
+    lines.push(`${i + 1}. ${humanSuggestions[i].suggestion}`);
+  }
+  lines.push("");
+
+  // Claude section
+  lines.push("[claude]");
+  lines.push(`count: ${claudeSuggestions.length}`);
+  lines.push("");
+  for (let i = 0; i < claudeSuggestions.length; i++) {
+    lines.push(`${i + 1}. ${claudeSuggestions[i].suggestion}`);
+  }
+  lines.push("");
+
+  return lines.join("\n");
+}
+
+// =============================================================================
+// ARGUMENT PARSING
+// =============================================================================
+
+function parseArgs(argv: string[]): Record<string, string> {
+  const args: Record<string, string> = {};
+  for (let i = 2; i < argv.length; i++) {
+    const arg = argv[i];
+    if (arg.startsWith("--") && i + 1 < argv.length) {
+      const key = arg.slice(2);
+      args[key] = argv[i + 1];
+      i++;
+    }
+  }
+  return args;
+}
+
+// =============================================================================
+// MAIN
+// =============================================================================
+
+function main(): void {
+  const args = parseArgs(process.argv);
+
+  const transcriptPath = args.transcript;
+  const sessionId = args["session-id"];
+  const rulesPath = args.rules;
+  const statePath = args.state;
+  const outputPath = args.output;
+  const historyDir = args["history-dir"];
+  const queueDir = args["queue-dir"]; // optional: Stage 2 learning queue
+
+  // Validate required args
+  const missing: string[] = [];
+  if (!transcriptPath) missing.push("--transcript");
+  if (!sessionId) missing.push("--session-id");
+  if (!rulesPath) missing.push("--rules");
+  if (!statePath) missing.push("--state");
+  if (!outputPath) missing.push("--output");
+  if (missing.length > 0) {
+    process.stderr.write(`Missing required arguments: ${missing.join(", ")}\n`);
+    process.exit(1);
+  }
+
+  // Validate sessionId format (defense-in-depth: Claude Code generates UUIDs)
+  if (sessionId && !/^[a-f0-9-]+$/i.test(sessionId)) {
+    process.stderr.write("Invalid session ID format\n");
+    process.exit(1);
+  }
+
+  // Opt-out check (also checked in shell, but defense in depth)
+  const coachingEnv = (process.env.WORKFLOW_COACHING ?? "on").toLowerCase();
+  if (["off", "false", "0", "disabled"].includes(coachingEnv)) {
+    if (existsSync(outputPath)) rmSync(outputPath);
+    process.exit(0);
+  }
+
+  // Fix 6: File size guard — skip transcripts > 50MB to prevent memory issues
+  const stats = statSync(transcriptPath);
+  if (stats.size > 50 * 1024 * 1024) {
+    process.stderr.write(
+      `Transcript too large (${Math.round(stats.size / 1024 / 1024)}MB > 50MB), skipping\n`
+    );
+    process.exit(0);
+  }
+
+  // Load rules
+  let rules: Rule[];
+  try {
+    rules = JSON.parse(readFileSync(rulesPath, "utf-8")) as Rule[];
+  } catch (e) {
+    process.stderr.write(`Failed to load rules: ${e}\n`);
+    process.exit(1);
+  }
+
+  // Load state (Fix 8: uses structured CoachingState)
+  const state = loadState(statePath);
+  const sessionCount = state._session_count + 1;
+  state._session_count = sessionCount;
+
+  // Parse transcript
+  let toolCalls: ToolCall[];
+  try {
+    toolCalls = parseToolCalls(transcriptPath);
+  } catch (e) {
+    process.stderr.write(`Failed to parse transcript: ${e}\n`);
+    process.exit(0); // Non-fatal: transcript parse failure -> silent exit
+  }
+
+  // Low-signal session guard: skip analysis entirely for short sessions.
+  // Preserves existing recommendations from previous high-signal sessions.
+  if (toolCalls.length < 10) {
+    saveState(statePath, state); // Still increment session count
+    process.exit(0);
+  }
+
+  // Session deduplication guard: if this session was already analyzed, skip.
+  // Prevents double processing when hooks fire twice (settings.json + plugin hooks.json).
+  if (historyDir) {
+    const historyFile = join(historyDir, `session-${sessionId.substring(0, 8)}.md`);
+    if (existsSync(historyFile)) {
+      saveState(statePath, state); // Still increment session count
+      process.exit(0);
+    }
+  }
+
+  // Apply rules
+  const suggestions = applyRules(toolCalls, rules, state);
+
+  // Take top 3 by priority (split into human/claude buckets, take top from each)
+  const humanSuggestions = suggestions
+    .filter((s) => s.audience === "human")
+    .sort((a, b) => a.priority - b.priority)
+    .slice(0, 3);
+  const claudeSuggestions = suggestions
+    .filter((s) => s.audience === "claude")
+    .sort((a, b) => a.priority - b.priority)
+    .slice(0, 3);
+  const top3 = [...humanSuggestions, ...claudeSuggestions];
+
+  // Update suppression state for shown suggestions (Fix 8: use state.rules[])
+  for (const s of top3) {
+    const ruleState: RuleState = state.rules[s.id] ?? {};
+    ruleState.last_shown_session = sessionCount;
+    ruleState.shown_count = (ruleState.shown_count ?? 0) + 1;
+    ruleState.suppress_until_count = sessionCount + s.suppress_after_sessions;
+    state.rules[s.id] = ruleState;
+  }
+
+  saveState(statePath, state);
+
+  // Format and write recommendations
+  const content = formatRecommendations(top3, sessionId);
+
+  if (content) {
+    atomicWriteFileSync(outputPath, content); // Fix 1: atomic write
+
+    // Archive to history directory (optional)
+    if (historyDir) {
+      mkdirSync(historyDir, { recursive: true });
+      const historyPath = join(
+        historyDir,
+        `session-${sessionId.substring(0, 8)}.md`
+      );
+      const historyContent =
+        `# Session ${sessionId}\n\nDate: ${new Date().toISOString()}\n\n` +
+        content;
+      atomicWriteFileSync(historyPath, historyContent); // Fix 1: atomic write
+
+      // History TTL cleanup — keep last 50 files, sorted by modification time
+      try {
+        const files = readdirSync(historyDir)
+          .filter((f) => f.startsWith("session-"))
+          .map((f) => ({
+            name: f,
+            mtime: statSync(join(historyDir, f)).mtimeMs,
+          }))
+          .sort((a, b) => b.mtime - a.mtime);
+        for (const f of files.slice(50)) {
+          unlinkSync(join(historyDir, f.name));
+        }
+      } catch {
+        // Ignore cleanup errors
+      }
+    }
+  } else {
+    // No new suggestions — preserve existing recommendations.
+    // Deleting here would cause a race condition if the hook fires twice
+    // (e.g., from dual registration in settings.json + plugin hooks.json).
+  }
+
+  // Stage 2: Session Classifier — compute learning score and queue for LLM analysis
+  // Runs after Stage 1 output is written; failures are non-fatal (graceful degradation)
+  if (queueDir) {
+    try {
+      // Opt-out check for learning pipeline
+      const learningEnv = (process.env.WORKFLOW_LEARNING ?? "on").toLowerCase();
+      if (!["off", "false", "0", "disabled"].includes(learningEnv)) {
+        const learningSignals = extractLearningSignals(transcriptPath, toolCalls);
+        const learningScore = computeLearningScore(learningSignals);
+
+        if (learningScore >= LEARNING_SCORE_THRESHOLD) {
+          mkdirSync(queueDir, { recursive: true });
+          const ruleBasedSignals = top3.map((s) => s.id);
+          const entry: QueueEntry = {
+            session_id: sessionId,
+            transcript_path: transcriptPath,
+            queued_at: new Date().toISOString(),
+            cwd: args.cwd ?? "",
+            tool_call_count: toolCalls.length,
+            rule_based_signals: ruleBasedSignals,
+            learning_signals: learningSignals,
+            learning_score: learningScore,
+          };
+          const queueFilePath = join(queueDir, `${sessionId}.json`);
+          atomicWriteFileSync(queueFilePath, JSON.stringify(entry, null, 2));
+        }
+      }
+    } catch {
+      // Stage 2 failure is non-fatal — coaching output is already written
+    }
+  }
+}
+
+main();

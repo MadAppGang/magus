@@ -1,0 +1,93 @@
+---
+name: agent-enforcement
+description: |
+  Multi-agent orchestration enforcement for /team command. Validates session directory paths
+  and ensures /team Tasks use a valid agent from the routing whitelist.
+  Use when debugging /team orchestration failures.
+triggers:
+  - "team enforcement"
+  - "agent selection"
+  - "orchestration failure"
+user-invocable: false
+---
+
+# Agent Enforcement Skill
+
+## Overview
+
+Two-layer defense against orchestration violations in `/team`:
+
+1. **PreToolUse hook** (`hooks/enforce-team-rules.sh`) — runtime violation blocker
+2. **Model upgrade** (`team.md: model: opus`) — better instruction following
+
+## How /team Invokes Models
+
+| Model Type | Method | Tool | Reliability |
+|------------|--------|------|-------------|
+| Internal (Claude) | Task({resolved_agent}) | Task tool | High (same process) |
+| External (Grok, Gemini, etc.) | claudish MCP tools (team/create_session) | MCP | 100% (deterministic) |
+
+External models are called via claudish MCP tools — no Bash invocation needed.
+
+## Hook Rules (enforce-team-rules.sh)
+
+The PreToolUse hook intercepts Task and Bash tool calls at runtime:
+
+| Rule | Condition | Action |
+|------|-----------|--------|
+| 1 | /team Task with wrong agent | DENY (must be in agent whitelist) |
+| 2 | /tmp/ in Task prompt | DENY |
+
+### Layer 1: PreToolUse Hook
+
+Detects /team workflows by vote template pattern in Task prompts. Blocks:
+
+- **Wrong agent for /team Tasks:** Only agents in the whitelist are allowed: `dev:researcher`, `dev:debugger`, `dev:developer`, `dev:architect`, `dev:test-architect`, `dev:devops`, `dev:ui`
+- **Insecure paths:** No `/tmp/` paths in Task prompts (use `ai-docs/sessions/`)
+
+### Layer 2: model: opus
+
+The `/team` command uses `model: opus` (Opus 4.6) which follows complex XML instructions
+much more reliably than Sonnet (~90% vs ~33% compliance).
+
+## Agent Selection for Task Delegation
+
+| Task Type | Primary Agent | Alternatives |
+|-----------|--------------|--------------|
+| Investigation | dev:researcher | dev:debugger |
+| Review | dev:researcher | frontend:reviewer |
+| Architecture | dev:architect | frontend:architect, agentdev:architect |
+| Implementation | dev:developer | frontend:developer, agentdev:developer |
+| Testing | dev:test-architect | frontend:test-architect |
+| DevOps | dev:devops | — |
+| UI/Design | dev:ui | frontend:designer, frontend:ui-developer |
+
+## Agent Resolution
+
+The `/team` command resolves the agent dynamically from the context detection table in `team.md`
+based on task keywords (e.g., "debug" → `dev:debugger`, "review" → `dev:researcher`).
+The hook enforces a whitelist of all valid agents.
+
+Methods:
+- **Internal models** — Task(agent) via Task tool
+- **External models** — `team` MCP tool (handles parallel execution internally)
+
+## Validation
+
+Run the test suite to verify enforcement:
+
+```bash
+cd autotest/team && bash run-tests.sh
+```
+
+## Troubleshooting
+
+**Hook blocking legitimate calls:**
+The hook triggers on /team vote template patterns in Task prompts and claudish in Bash commands.
+Normal Task usage (without vote templates) is never affected.
+
+**resolve-agents.sh not found:**
+The `/team` command uses its own built-in logic. The hook still provides runtime protection.
+
+**Hook behavior:**
+The hook skips existence checks (`which claudish`, `command -v claudish`).

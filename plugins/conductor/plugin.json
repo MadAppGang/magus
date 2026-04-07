@@ -1,0 +1,40 @@
+{
+  "name": "conductor",
+  "version": "2.1.3",
+  "description": "Context-Driven Development workflow for Claude Code. Manages project context (product.md, tech-stack.md, workflow.md) and guides structured development through: Context -> Spec & Plan -> Implement. Features TDD workflow (Red/Green/Refactor), Phase Completion Protocol with verification reports, Git Notes audit trail, comprehensive styleguides, emergency procedures, and deployment workflow.",
+  "author": {
+    "name": "MadAppGang",
+    "email": "i@madappgang.com"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/MadAppGang/magus",
+  "tags": [
+    "workflow",
+    "context",
+    "planning",
+    "task-tracking",
+    "git-aware",
+    "orchestration",
+    "project-management",
+    "development-workflow"
+  ],
+  "commands": [
+    "./commands/setup.md",
+    "./commands/new-track.md",
+    "./commands/implement.md",
+    "./commands/status.md",
+    "./commands/revert.md",
+    "./commands/help.md"
+  ],
+  "skills": [
+    "./skills/setup",
+    "./skills/new-track",
+    "./skills/implement",
+    "./skills/status",
+    "./skills/revert",
+    "./skills/help"
+  ],
+  "compatibility": {
+    "claudeCode": ">=0.1.0"
+  }
+}

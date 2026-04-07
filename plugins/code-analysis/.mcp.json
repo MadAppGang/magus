@@ -1,0 +1,16 @@
+{
+  "mnemex": {
+    "command": "mnemex",
+    "args": ["--mcp"],
+    "env": {
+      "MNEMEX_LSP": "true"
+    }
+  },
+  "claudish": {
+    "command": "claudish",
+    "args": ["--mcp"],
+    "env": {
+      "OPENROUTER_API_KEY": "${OPENROUTER_API_KEY}"
+    }
+  }
+}
