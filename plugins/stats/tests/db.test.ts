@@ -17,8 +17,6 @@ import {
 } from "../lib/db.ts";
 import type { SessionMetrics, ToolCallRecord } from "../lib/types.ts";
 
-const TODAY = new Date().toISOString().slice(0, 10);
-
 describe("db", () => {
   let tempDir: string;
   let dbPath: string;
