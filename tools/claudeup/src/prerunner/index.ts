@@ -17,6 +17,7 @@ import {
 	readGlobalSettings,
 	writeGlobalSettings,
 	saveGlobalInstalledPluginVersion,
+	gapFillInstalledPluginVersions,
 } from "../services/claude-settings.js";
 import { parsePluginId } from "../utils/string-utils.js";
 import { defaultMarketplaces } from "../data/marketplaces.js";
@@ -252,6 +253,24 @@ export async function prerunClaude(
 			console.log(
 				`✓ Added tmux-claude-continuity hooks to ~/.claude/settings.json`,
 			);
+		}
+
+		// STEP 0.7: Gap-fill installedPluginVersions across scopes
+		// When a plugin is updated at project/local scope, global may lag behind.
+		// Sync the highest version from any scope up to global so Claude Code
+		// resolves the latest cached plugin paths at session startup.
+		try {
+			const gapFilled = await gapFillInstalledPluginVersions(process.cwd());
+			if (gapFilled.length > 0) {
+				console.log(
+					`✓ Synced ${gapFilled.length} plugin version(s) to global:`,
+				);
+				for (const { pluginId, oldVersion, newVersion } of gapFilled) {
+					console.log(`  - ${pluginId}: ${oldVersion} → ${newVersion}`);
+				}
+			}
+		} catch {
+			// Non-fatal: gap-fill is best-effort
 		}
 
 		// STEP 1: Check if we should update (time-based cache, or forced)

@@ -1,6 +1,7 @@
 import fs from "fs-extra";
 import path from "node:path";
 import os from "node:os";
+import semver from "semver";
 import type {
 	ClaudeSettings,
 	ClaudeLocalSettings,
@@ -542,6 +543,97 @@ export async function saveGlobalInstalledPluginVersion(
 
 	// Update registry for user scope
 	await updateInstalledPluginsRegistry(pluginId, version, "user");
+}
+
+/**
+ * Gap-fill: ensure global installedPluginVersions is at least as high as
+ * project and local scopes. When a plugin is updated at project scope,
+ * global may lag behind, causing Claude Code to resolve stale cache paths.
+ *
+ * @returns Array of { pluginId, oldVersion, newVersion } for plugins that were bumped
+ */
+export async function gapFillInstalledPluginVersions(
+	projectPath?: string,
+): Promise<Array<{ pluginId: string; oldVersion: string; newVersion: string }>> {
+	const globalVersions = await getGlobalInstalledPluginVersions();
+
+	// Collect versions from project and local scopes
+	const allVersions: Record<string, string[]> = {};
+
+	// Start with global versions
+	for (const [id, ver] of Object.entries(globalVersions)) {
+		allVersions[id] = [ver];
+	}
+
+	// Add project scope versions
+	if (projectPath) {
+		try {
+			const settings = await readSettings(projectPath);
+			for (const [id, ver] of Object.entries(
+				settings.installedPluginVersions || {},
+			)) {
+				if (!allVersions[id]) allVersions[id] = [];
+				allVersions[id].push(ver);
+			}
+		} catch {
+			/* skip unreadable */
+		}
+
+		// Add local scope versions
+		try {
+			const localSettings = await readLocalSettings(projectPath);
+			for (const [id, ver] of Object.entries(
+				localSettings.installedPluginVersions || {},
+			)) {
+				if (!allVersions[id]) allVersions[id] = [];
+				allVersions[id].push(ver);
+			}
+		} catch {
+			/* skip unreadable */
+		}
+	}
+
+	// Find plugins where global needs bumping
+	const bumped: Array<{
+		pluginId: string;
+		oldVersion: string;
+		newVersion: string;
+	}> = [];
+
+	for (const [pluginId, versions] of Object.entries(allVersions)) {
+		// Filter to valid semver versions and sort descending
+		const valid = versions.filter((v) => semver.valid(v));
+		if (valid.length === 0) continue;
+
+		const highest = valid.sort((a, b) => semver.rcompare(a, b))[0];
+		const globalVer = globalVersions[pluginId];
+
+		// If global is missing, invalid semver, or lower than the highest, bump it
+		if (
+			!globalVer ||
+			!semver.valid(globalVer) ||
+			semver.lt(globalVer, highest)
+		) {
+			bumped.push({
+				pluginId,
+				oldVersion: globalVer || "(missing)",
+				newVersion: highest,
+			});
+		}
+	}
+
+	// Apply bumps in a single write
+	if (bumped.length > 0) {
+		const settings = await readGlobalSettings();
+		settings.installedPluginVersions =
+			settings.installedPluginVersions || {};
+		for (const { pluginId, newVersion } of bumped) {
+			settings.installedPluginVersions[pluginId] = newVersion;
+		}
+		await writeGlobalSettings(settings);
+	}
+
+	return bumped;
 }
 
 export async function removeGlobalInstalledPluginVersion(
