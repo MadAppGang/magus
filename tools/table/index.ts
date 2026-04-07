@@ -14,6 +14,8 @@
  *   Output:     print
  */
 
+import { execSync } from "child_process";
+
 // ── ANSI helpers ─────────────────────────────────────────────────────────────
 
 export const S = {
@@ -54,11 +56,64 @@ export function fg(style: string, text: string): string {
 
 // ── Text utilities ────────────────────────────────────────────────────────────
 
-/** Terminal width. Checks stdout, COLUMNS env var, defaults to 80. */
+/**
+ * Terminal width detection chain.
+ *
+ * Tries, in order:
+ *   1. process.stdout.columns (works when stdout is a TTY)
+ *   2. $COLUMNS env var (set by some shells / wrappers)
+ *   3. tmux pane_width (most accurate when inside a tmux pane)
+ *   4. Parent process TTY via stty (works when our own stdout is piped)
+ *   5. Fallback to 120 (reasonable default for modern terminals)
+ *
+ * Every shell-out is wrapped in try/catch so failures fall through silently.
+ */
 export function termW(): number {
-  return process.stdout.columns
-    || (process.env.COLUMNS ? parseInt(process.env.COLUMNS) : 0)
-    || 80;
+  // 1. Direct stdout columns
+  if (process.stdout.columns && process.stdout.columns > 0) {
+    return process.stdout.columns;
+  }
+
+  // 2. $COLUMNS env var
+  const envCols = process.env.COLUMNS ? parseInt(process.env.COLUMNS, 10) : 0;
+  if (envCols > 0) return envCols;
+
+  // 3. tmux pane width (only when TMUX env is set)
+  if (process.env.TMUX) {
+    try {
+      const w = parseInt(
+        execSync("tmux display-message -p '#{pane_width}'", { stdio: ["pipe", "pipe", "pipe"] })
+          .toString()
+          .trim(),
+        10,
+      );
+      if (w > 0) return w;
+    } catch { /* not in tmux or tmux unavailable */ }
+  }
+
+  // 4. Parent process TTY via stty
+  try {
+    const ppid = process.ppid ?? process.env.PPID;
+    if (ppid) {
+      const ttyName = execSync(`ps -o tty= -p ${ppid}`, { stdio: ["pipe", "pipe", "pipe"] })
+        .toString()
+        .trim();
+      if (ttyName && ttyName !== "?" && ttyName !== "??") {
+        const devPath = ttyName.startsWith("/dev/") ? ttyName : `/dev/${ttyName}`;
+        const sttyOut = execSync(`stty size < ${devPath}`, {
+          stdio: ["pipe", "pipe", "pipe"],
+          shell: "/bin/sh",
+        })
+          .toString()
+          .trim();
+        const cols = parseInt(sttyOut.split(/\s+/)[1], 10);
+        if (cols > 0) return cols;
+      }
+    }
+  } catch { /* no parent TTY or stty failed */ }
+
+  // 5. Fallback
+  return 120;
 }
 
 /** Remove all ANSI escape codes from text. */
