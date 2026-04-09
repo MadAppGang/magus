@@ -36,7 +36,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: 10
 
       - name: Get pnpm store directory
         shell: bash
@@ -52,7 +52,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: tools/claudeup-core
-        run: pnpm install
+        run: pnpm install --ignore-workspace
 
       - name: Run type check
         working-directory: tools/claudeup-core
@@ -103,11 +103,11 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: 10
 
       - name: Install dependencies
         working-directory: tools/claudeup-core
-        run: pnpm install
+        run: pnpm install --ignore-workspace
 
       - name: Verify marketplace sync
         working-directory: tools/claudeup-core
