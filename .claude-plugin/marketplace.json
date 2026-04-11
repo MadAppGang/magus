@@ -18,7 +18,7 @@
         "url": "MadAppGang/magus",
         "path": "plugins/code-analysis",
         "ref": "main",
-        "sha": "af9911e626dd1406295b20c8e4d80f52ff3d8266"
+        "sha": "6053b7d375250b0e14fc968f8ef44cccbd614e9a"
       },
       "description": "Deep code investigation with mnemex MCP server. v5.0.1: Renamed mnemex CLI tool.",
       "version": "5.1.0",
@@ -52,7 +52,7 @@
         "url": "MadAppGang/magus",
         "path": "plugins/multimodel",
         "ref": "main",
-        "sha": "af9911e626dd1406295b20c8e4d80f52ff3d8266"
+        "sha": "6053b7d375250b0e14fc968f8ef44cccbd614e9a"
       },
       "description": "Multi-model collaboration, orchestration, and workflow patterns. v3.1.2: Fix internal model leaked to claudish \u2014 filter sentinel before external dispatch.",
       "version": "3.1.2",
@@ -87,7 +87,7 @@
         "url": "MadAppGang/magus",
         "path": "plugins/agentdev",
         "ref": "main",
-        "sha": "af9911e626dd1406295b20c8e4d80f52ff3d8266"
+        "sha": "6053b7d375250b0e14fc968f8ef44cccbd614e9a"
       },
       "description": "Create, implement, and review Claude Code agents and commands with multi-model validation, LLM performance tracking, and session-based artifact isolation. v1.6.1: Fix manifest schema \u2014 agents paths, hooks format.",
       "version": "1.6.1",
@@ -118,7 +118,7 @@
         "url": "MadAppGang/magus",
         "path": "plugins/seo",
         "ref": "main",
-        "sha": "af9911e626dd1406295b20c8e4d80f52ff3d8266"
+        "sha": "6053b7d375250b0e14fc968f8ef44cccbd614e9a"
       },
       "description": "Highly autonomous SEO toolkit (~80% autonomy) with AUTO GATEs, self-correction loops, and multi-model validation. v1.6.5: Command parameter fixes.",
       "version": "1.7.0",
@@ -148,7 +148,7 @@
         "url": "MadAppGang/magus",
         "path": "plugins/video-editing",
         "ref": "main",
-        "sha": "af9911e626dd1406295b20c8e4d80f52ff3d8266"
+        "sha": "6053b7d375250b0e14fc968f8ef44cccbd614e9a"
       },
       "description": "Professional video editing toolkit with FFmpeg operations, Whisper transcription, and Apple Final Cut Pro project generation. v1.1.1: Marketplace rename to magus. Features intelligent video analysis, automated transcription with timing sync, FCPXML timeline creation.",
       "version": "1.1.3",
@@ -179,7 +179,7 @@
         "url": "MadAppGang/magus",
         "path": "plugins/nanobanana",
         "ref": "main",
-        "sha": "af9911e626dd1406295b20c8e4d80f52ff3d8266"
+        "sha": "6053b7d375250b0e14fc968f8ef44cccbd614e9a"
       },
       "description": "AI image generation and editing using Google Gemini 3 Pro Image API. v2.3.1: Marketplace rename to magus. Simple Node.js CLI with markdown styles and batch generation.",
       "version": "2.4.0",
@@ -208,7 +208,7 @@
         "url": "MadAppGang/magus",
         "path": "plugins/conductor",
         "ref": "main",
-        "sha": "af9911e626dd1406295b20c8e4d80f52ff3d8266"
+        "sha": "6053b7d375250b0e14fc968f8ef44cccbd614e9a"
       },
       "description": "Context-Driven Development workflow inspired by Gemini Conductor. v2.1.3: Fix manifest schema \u2014 commands paths, add skills registration.",
       "version": "2.1.3",
@@ -239,7 +239,7 @@
         "url": "MadAppGang/magus",
         "path": "plugins/dev",
         "ref": "main",
-        "sha": "af9911e626dd1406295b20c8e4d80f52ff3d8266"
+        "sha": "6053b7d375250b0e14fc968f8ef44cccbd614e9a"
       },
       "description": "Universal development assistant. v2.6.0: self-learning Stop hook \u2014 automated session learning with LLM classifier, background daemon, /dev:learn --apply/--prune.",
       "version": "2.7.0",
@@ -288,7 +288,7 @@
         "url": "MadAppGang/magus",
         "path": "plugins/statusline",
         "ref": "main",
-        "sha": "af9911e626dd1406295b20c8e4d80f52ff3d8266"
+        "sha": "6053b7d375250b0e14fc968f8ef44cccbd614e9a"
       },
       "description": "Adaptive statusline \u2014 always-visible bars, background highlights for critical states, provider-aware model display, vim mode, diff stats, compaction count, memory usage. v2.1.0: Prominent reset countdowns when rate-limited, process memory display.",
       "version": "2.1.0",
@@ -316,7 +316,7 @@
         "url": "MadAppGang/magus",
         "path": "plugins/browser-use",
         "ref": "main",
-        "sha": "af9911e626dd1406295b20c8e4d80f52ff3d8266"
+        "sha": "6053b7d375250b0e14fc968f8ef44cccbd614e9a"
       },
       "description": "Full-platform browser automation for Claude Code. v1.1.0: Thin wrapper over built-in BrowserUseServer \u2014 63% less code. Fix TCC downloads_path, per-PID Chrome profiles, graceful shutdown. 19 MCP tools, 5 skills.",
       "version": "1.1.1",
@@ -348,7 +348,7 @@
         "url": "MadAppGang/magus",
         "path": "plugins/designer",
         "ref": "main",
-        "sha": "af9911e626dd1406295b20c8e4d80f52ff3d8266"
+        "sha": "6053b7d375250b0e14fc968f8ef44cccbd614e9a"
       },
       "description": "UI design validation with pixel-diff comparison engine. v0.2.0: Design review agent, visual comparison, style guide creation, browser-use optional integration. 6 skills.",
       "version": "0.3.0",
@@ -380,7 +380,7 @@
         "url": "MadAppGang/magus",
         "path": "plugins/terminal",
         "ref": "main",
-        "sha": "af9911e626dd1406295b20c8e4d80f52ff3d8266"
+        "sha": "6053b7d375250b0e14fc968f8ef44cccbd614e9a"
       },
       "description": "Interactive terminal integration for Claude Code. v4.0.0: agentic-first rewrite \u2014 single Go tmux-mcp binary replaces ht-mcp + npm tmux-mcp. New agentic tools (start-and-watch, watch-pane, run-in-repl, pane-state) eliminate all polling loops. 5 skills, 9 commands, 1 agent.",
       "version": "4.0.2",
@@ -409,7 +409,7 @@
         "url": "MadAppGang/magus",
         "path": "plugins/gtd",
         "ref": "main",
-        "sha": "af9911e626dd1406295b20c8e4d80f52ff3d8266"
+        "sha": "6053b7d375250b0e14fc968f8ef44cccbd614e9a"
       },
       "description": "GTD (Getting Things Done) workflow integration. v2.0.0: Canonical GTD terminology (Clarify, Engage), sequential task IDs (#1, #2), boxed terminal display, reference list, Bun display tool. Real-time sync via hooks, 7 commands, 2 skills.",
       "version": "2.0.1",
@@ -440,10 +440,10 @@
         "url": "MadAppGang/magus",
         "path": "plugins/kanban",
         "ref": "main",
-        "sha": "af9911e626dd1406295b20c8e4d80f52ff3d8266"
+        "sha": "6053b7d375250b0e14fc968f8ef44cccbd614e9a"
       },
-      "description": "Kanban board view for task management. v1.2.0: Word-wrapped titles, full-width boards, even column distribution. Visual board with 5 columns, task dependencies (cycle-safe), priority indicators, WIP limits. Shares tasks.json with GTD plugin \u2014 works standalone or alongside GTD.",
-      "version": "1.2.0",
+      "description": "Kanban board view for task management. v1.3.0: Auto-open board in tmux split pane with real TTY, smart terminal width detection chain (stdout/COLUMNS/tmux/parent-TTY/120), remove --width hack. Visual board with 5 columns, task dependencies (cycle-safe), priority indicators, WIP limits. Shares tasks.json with GTD plugin \u2014 works standalone or alongside GTD.",
+      "version": "1.3.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -470,7 +470,7 @@
         "url": "MadAppGang/magus",
         "path": "plugins/autopilot",
         "ref": "main",
-        "sha": "af9911e626dd1406295b20c8e4d80f52ff3d8266"
+        "sha": "6053b7d375250b0e14fc968f8ef44cccbd614e9a"
       },
       "description": "Autonomous task execution with Linear integration. Picks tasks from Linear, routes to agents via tag-to-command mapping, generates proof-of-work artifacts, and handles feedback loops.",
       "version": "0.2.4",
@@ -500,7 +500,7 @@
         "url": "MadAppGang/magus",
         "path": "plugins/instantly",
         "ref": "main",
-        "sha": "af9911e626dd1406295b20c8e4d80f52ff3d8266"
+        "sha": "6053b7d375250b0e14fc968f8ef44cccbd614e9a"
       },
       "description": "Cold email outreach toolkit with Instantly.ai MCP integration. Campaign analytics, sequence building, A/B testing, lead management, and auto-optimization.",
       "version": "1.0.6",
