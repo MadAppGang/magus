@@ -2,7 +2,7 @@ name: Test Plugins
 
 on:
   push:
-    branches: [main]
+    branches: [main, fix/ci-type-errors-and-stale-test-date]
     paths:
       - 'tools/claudeup-core/**'
       - 'tools/pnpm-lock.yaml'
@@ -14,7 +14,7 @@ on:
       - 'scripts/sync-shared-deps.sh'
       - '.github/workflows/test-plugins.yml'
   pull_request:
-    branches: [main]
+    branches: [main, fix/ci-type-errors-and-stale-test-date]
     paths:
       - 'tools/claudeup-core/**'
       - 'tools/pnpm-lock.yaml'
