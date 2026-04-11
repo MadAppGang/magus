@@ -54,7 +54,7 @@
         "ref": "main",
         "sha": "af9911e626dd1406295b20c8e4d80f52ff3d8266"
       },
-      "description": "Multi-model collaboration, orchestration, and workflow patterns. v3.1.2: Fix internal model leaked to claudish \u2014 filter sentinel before external dispatch.",
+      "description": "Multi-model collaboration, orchestration, and workflow patterns. v3.1.2: Fix internal model leaked to claudish — filter sentinel before external dispatch.",
       "version": "3.1.2",
       "author": {
         "name": "Jack Rudenko",
@@ -89,7 +89,7 @@
         "ref": "main",
         "sha": "af9911e626dd1406295b20c8e4d80f52ff3d8266"
       },
-      "description": "Create, implement, and review Claude Code agents and commands with multi-model validation, LLM performance tracking, and session-based artifact isolation. v1.6.1: Fix manifest schema \u2014 agents paths, hooks format.",
+      "description": "Create, implement, and review Claude Code agents and commands with multi-model validation, LLM performance tracking, and session-based artifact isolation. v1.6.1: Fix manifest schema — agents paths, hooks format.",
       "version": "1.6.1",
       "author": {
         "name": "Jack Rudenko",
@@ -210,7 +210,7 @@
         "ref": "main",
         "sha": "af9911e626dd1406295b20c8e4d80f52ff3d8266"
       },
-      "description": "Context-Driven Development workflow inspired by Gemini Conductor. v2.1.3: Fix manifest schema \u2014 commands paths, add skills registration.",
+      "description": "Context-Driven Development workflow inspired by Gemini Conductor. v2.1.3: Fix manifest schema — commands paths, add skills registration.",
       "version": "2.1.3",
       "author": {
         "name": "Jack Rudenko",
@@ -241,7 +241,7 @@
         "ref": "main",
         "sha": "af9911e626dd1406295b20c8e4d80f52ff3d8266"
       },
-      "description": "Universal development assistant. v2.6.0: self-learning Stop hook \u2014 automated session learning with LLM classifier, background daemon, /dev:learn --apply/--prune.",
+      "description": "Universal development assistant. v2.6.0: self-learning Stop hook — automated session learning with LLM classifier, background daemon, /dev:learn --apply/--prune.",
       "version": "2.7.0",
       "author": {
         "name": "Jack Rudenko",
@@ -290,7 +290,7 @@
         "ref": "main",
         "sha": "af9911e626dd1406295b20c8e4d80f52ff3d8266"
       },
-      "description": "Adaptive statusline \u2014 always-visible bars, background highlights for critical states, provider-aware model display, vim mode, diff stats, compaction count, memory usage. v2.1.0: Prominent reset countdowns when rate-limited, process memory display.",
+      "description": "Adaptive statusline — always-visible bars, background highlights for critical states, provider-aware model display, vim mode, diff stats, compaction count, memory usage. v2.1.0: Prominent reset countdowns when rate-limited, process memory display.",
       "version": "2.1.0",
       "author": {
         "name": "Jack Rudenko",
@@ -318,8 +318,8 @@
         "ref": "main",
         "sha": "af9911e626dd1406295b20c8e4d80f52ff3d8266"
       },
-      "description": "Full-platform browser automation for Claude Code. v1.1.0: Thin wrapper over built-in BrowserUseServer \u2014 63% less code. Fix TCC downloads_path, per-PID Chrome profiles, graceful shutdown. 19 MCP tools, 5 skills.",
-      "version": "1.1.1",
+      "description": "Full-platform browser automation for Claude Code. v1.1.2: Re-fix oneOf schema rejection (browser-use#4211) lost in v1.1.0 rewrite — sanitize upstream tool schemas to strip oneOf/allOf/anyOf rejected by Claude API. 19 MCP tools, 5 skills.",
+      "version": "1.1.2",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -382,7 +382,7 @@
         "ref": "main",
         "sha": "af9911e626dd1406295b20c8e4d80f52ff3d8266"
       },
-      "description": "Interactive terminal integration for Claude Code. v4.0.0: agentic-first rewrite \u2014 single Go tmux-mcp binary replaces ht-mcp + npm tmux-mcp. New agentic tools (start-and-watch, watch-pane, run-in-repl, pane-state) eliminate all polling loops. 5 skills, 9 commands, 1 agent.",
+      "description": "Interactive terminal integration for Claude Code. v4.0.0: agentic-first rewrite — single Go tmux-mcp binary replaces ht-mcp + npm tmux-mcp. New agentic tools (start-and-watch, watch-pane, run-in-repl, pane-state) eliminate all polling loops. 5 skills, 9 commands, 1 agent.",
       "version": "4.0.2",
       "author": {
         "name": "Jack Rudenko",
@@ -442,7 +442,7 @@
         "ref": "main",
         "sha": "af9911e626dd1406295b20c8e4d80f52ff3d8266"
       },
-      "description": "Kanban board view for task management. v1.2.0: Word-wrapped titles, full-width boards, even column distribution. Visual board with 5 columns, task dependencies (cycle-safe), priority indicators, WIP limits. Shares tasks.json with GTD plugin \u2014 works standalone or alongside GTD.",
+      "description": "Kanban board view for task management. v1.2.0: Word-wrapped titles, full-width boards, even column distribution. Visual board with 5 columns, task dependencies (cycle-safe), priority indicators, WIP limits. Shares tasks.json with GTD plugin — works standalone or alongside GTD.",
       "version": "1.2.0",
       "author": {
         "name": "Jack Rudenko",

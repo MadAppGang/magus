@@ -68,10 +68,14 @@ function makeTempDir(): string {
   return dir;
 }
 
+const TODAY = new Date().toISOString().slice(0, 10);
+const YESTERDAY = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+const TWO_DAYS_AGO = new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10);
+
 function makeSession(
   id: string,
   project = "/test/project",
-  date = "2026-03-26",
+  date = TODAY,
   overrides: Partial<SessionMetrics> = {}
 ): SessionMetrics {
   return {
@@ -113,7 +117,7 @@ function makeSessionRow(
 ): SessionRow {
   return {
     id,
-    date: "2026-03-26",
+    date: TODAY,
     project: "/test/project",
     duration_sec: 600,
     total_tool_calls: 10,
@@ -123,7 +127,7 @@ function makeSessionRow(
     testing_calls: 1,
     delegation_calls: 1,
     other_calls: 1,
-    created_at: "2026-03-26T10:00:00.000Z",
+    created_at: `${TODAY}T10:00:00.000Z`,
     ...overrides,
   };
 }
@@ -378,8 +382,8 @@ describe("Database: schema, CRUD, retention, queries", () => {
     const db = openDb(dbPath);
 
     // Insert 2 sessions with known tool counts
-    insertSession(db, makeSession("s1", "/test/project", "2026-03-26"));
-    insertSession(db, makeSession("s2", "/test/project", "2026-03-26"));
+    insertSession(db, makeSession("s1", "/test/project", TODAY));
+    insertSession(db, makeSession("s2", "/test/project", TODAY));
     insertToolCalls(db, makeSession("s1").tool_calls, "s1");
     insertToolCalls(db, makeSession("s2").tool_calls, "s2");
 
@@ -412,7 +416,7 @@ describe("Database: schema, CRUD, retention, queries", () => {
     // Old session (well beyond 90 days)
     insertSession(db, makeSession("old", "/test/project", "2024-01-01"));
     // Recent session
-    insertSession(db, makeSession("recent", "/test/project", "2026-03-26"));
+    insertSession(db, makeSession("recent", "/test/project", TODAY));
 
     const { deletedCount } = deleteOldSessions(db, 90);
 
@@ -443,7 +447,7 @@ describe("Database: schema, CRUD, retention, queries", () => {
 
   test("deleteOldSessions returns 0 when no sessions are old enough", () => {
     const db = openDb(dbPath);
-    insertSession(db, makeSession("recent", "/test/project", "2026-03-26"));
+    insertSession(db, makeSession("recent", "/test/project", TODAY));
 
     const { deletedCount } = deleteOldSessions(db, 90);
 
@@ -454,14 +458,14 @@ describe("Database: schema, CRUD, retention, queries", () => {
 
   test("getTopTools returns tools ranked by call count", () => {
     const db = openDb(dbPath);
-    insertSession(db, makeSession("s1", "/test/project", "2026-03-26"));
+    insertSession(db, makeSession("s1", "/test/project", TODAY));
 
     const calls: ToolCallRecord[] = [
-      { tool_name: "Read", duration_ms: 10, success: true, activity_category: "research", timestamp: "2026-03-26T10:00:00.000Z" },
-      { tool_name: "Read", duration_ms: 20, success: true, activity_category: "research", timestamp: "2026-03-26T10:01:00.000Z" },
-      { tool_name: "Read", duration_ms: 15, success: true, activity_category: "research", timestamp: "2026-03-26T10:02:00.000Z" },
-      { tool_name: "Write", duration_ms: 30, success: true, activity_category: "coding", timestamp: "2026-03-26T10:03:00.000Z" },
-      { tool_name: "Bash", duration_ms: 100, success: true, activity_category: "other", timestamp: "2026-03-26T10:04:00.000Z" },
+      { tool_name: "Read", duration_ms: 10, success: true, activity_category: "research", timestamp: `${TODAY}T10:00:00.000Z` },
+      { tool_name: "Read", duration_ms: 20, success: true, activity_category: "research", timestamp: `${TODAY}T10:01:00.000Z` },
+      { tool_name: "Read", duration_ms: 15, success: true, activity_category: "research", timestamp: `${TODAY}T10:02:00.000Z` },
+      { tool_name: "Write", duration_ms: 30, success: true, activity_category: "coding", timestamp: `${TODAY}T10:03:00.000Z` },
+      { tool_name: "Bash", duration_ms: 100, success: true, activity_category: "other", timestamp: `${TODAY}T10:04:00.000Z` },
     ];
     insertToolCalls(db, calls, "s1");
 
@@ -484,10 +488,10 @@ describe("Database: schema, CRUD, retention, queries", () => {
   test("getDurationTrend returns daily data in ASC date order", () => {
     const db = openDb(dbPath);
 
-    // Insert sessions on different dates
-    insertSession(db, makeSession("s1", "/test/project", "2026-03-24"));
-    insertSession(db, makeSession("s2", "/test/project", "2026-03-25"));
-    insertSession(db, makeSession("s3", "/test/project", "2026-03-26"));
+    // Insert sessions on different dates (all within the 14-day window)
+    insertSession(db, makeSession("s1", "/test/project", TWO_DAYS_AGO));
+    insertSession(db, makeSession("s2", "/test/project", YESTERDAY));
+    insertSession(db, makeSession("s3", "/test/project", TODAY));
 
     const trend = getDurationTrend(db, 14, "/test/project");
 
