@@ -318,8 +318,8 @@
         "ref": "main",
         "sha": "af9911e626dd1406295b20c8e4d80f52ff3d8266"
       },
-      "description": "Full-platform browser automation for Claude Code. v1.1.0: Thin wrapper over built-in BrowserUseServer \u2014 63% less code. Fix TCC downloads_path, per-PID Chrome profiles, graceful shutdown. 19 MCP tools, 5 skills.",
-      "version": "1.1.1",
+      "description": "Full-platform browser automation for Claude Code. v1.1.2: Re-fix oneOf schema rejection (browser-use#4211) lost in v1.1.0 rewrite — sanitize upstream tool schemas to strip oneOf/allOf/anyOf rejected by Claude API. 19 MCP tools, 5 skills.",
+      "version": "1.1.2",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
