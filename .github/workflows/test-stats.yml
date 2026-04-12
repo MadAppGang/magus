@@ -2,12 +2,10 @@ name: Test Stats Plugin
 
 on:
   push:
-    branches: [main, fix/ci-type-errors-and-stale-test-date]
     paths:
       - 'plugins/stats/**'
       - '.github/workflows/test-stats.yml'
   pull_request:
-    branches: [main, fix/ci-type-errors-and-stale-test-date]
     paths:
       - 'plugins/stats/**'
       - '.github/workflows/test-stats.yml'
