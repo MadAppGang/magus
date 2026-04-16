@@ -59,7 +59,7 @@ Before marking any phase complete:
 
 1. Run checkpoint verification:
    ```bash
-   ${PLUGIN_PATH}/scripts/checkpoint-verifier.sh phase{N} ${SESSION_PATH}
+   ${CLAUDE_PLUGIN_ROOT}/scripts/checkpoint-verifier.sh phase{N} ${SESSION_PATH}
    ```
 
 2. If check passes, mark task complete:
@@ -121,7 +121,7 @@ OUTER LOOP: Before starting Phase 3
 
 1. Start iteration:
    ```bash
-   node ${PLUGIN_PATH}/scripts/outer-loop-enforcer.js start-iteration ${SESSION_PATH}
+   node ${CLAUDE_PLUGIN_ROOT}/scripts/outer-loop-enforcer.js start-iteration ${SESSION_PATH}
    ```
 
 2. Check exit code:
@@ -132,7 +132,7 @@ OUTER LOOP: After Phase 7 completes
 
 1. Record result:
    ```bash
-   node ${PLUGIN_PATH}/scripts/outer-loop-enforcer.js record-result ${SESSION_PATH} <PASS|FAIL> "reason" [score]
+   node ${CLAUDE_PLUGIN_ROOT}/scripts/outer-loop-enforcer.js record-result ${SESSION_PATH} <PASS|FAIL> "reason" [score]
    ```
 
 2. If PASS: Proceed to Phase 8
@@ -142,7 +142,7 @@ OUTER LOOP: Before Phase 8
 
 1. Verify Phase 7 passed:
    ```bash
-   node ${PLUGIN_PATH}/scripts/outer-loop-enforcer.js check-can-complete ${SESSION_PATH}
+   node ${CLAUDE_PLUGIN_ROOT}/scripts/outer-loop-enforcer.js check-can-complete ${SESSION_PATH}
    ```
 
 2. If exit code 1: BLOCKED - cannot proceed to Phase 8
@@ -167,7 +167,7 @@ PHASE 7: After creating result.md
 
 1. Run criteria enforcer:
    ```bash
-   node ${PLUGIN_PATH}/scripts/validation-criteria-enforcer.js ${SESSION_PATH}
+   node ${CLAUDE_PLUGIN_ROOT}/scripts/validation-criteria-enforcer.js ${SESSION_PATH}
    ```
 
 2. Review generated report:
@@ -251,7 +251,7 @@ Session: ai-docs/sessions/dev-feature-login-20260204-143022
   **Step 1: Run Checkpoint Verification**
 
   ```bash
-  ${PLUGIN_PATH}/scripts/checkpoint-verifier.sh phase{N} ${SESSION_PATH}
+  ${CLAUDE_PLUGIN_ROOT}/scripts/checkpoint-verifier.sh phase{N} ${SESSION_PATH}
   ```
 
   If exit code != 0: STOP. Fix missing artifacts first.
@@ -501,5 +501,5 @@ When phase completion is blocked:
 
 ---
 
-**Scripts Location:** `${PLUGIN_ROOT}/plugins/dev/scripts/`
-**Hooks Config:** `${PLUGIN_ROOT}/plugins/dev/hooks/feature-enforcement.json`
+**Scripts Location:** `${CLAUDE_PLUGIN_ROOT}/scripts/`
+**Hooks Config:** `${CLAUDE_PLUGIN_ROOT}/hooks/hooks.json` (PreToolUse section)

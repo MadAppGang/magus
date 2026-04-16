@@ -408,7 +408,7 @@
     },
     "category": "plugin-discovery",
     "priority": 2,
-    "suggestion": "TUI application or database shell invoked via Bash -- these require a real TTY to render correctly.\n  `/terminal:tui {app}` -- full-screen TUI navigation with keystroke injection\n  `/terminal:repl {shell}` -- database REPLs with proper prompt detection and clean exit\n  The terminal plugin uses ht-mcp for isolated PTY sessions and tmux-mcp for workspace layouts.",
+    "suggestion": "TUI application or database shell invoked via Bash -- these require a real TTY to render correctly.\n  `/terminal:tui {app}` -- full-screen TUI navigation with keystroke injection\n  `/terminal:repl {shell}` -- database REPLs with proper prompt detection and clean exit\n  The terminal plugin uses tmux-mcp for isolated agentic tmux sessions and workspace layouts.",
     "suppress_after_sessions": 5
   }
 ]

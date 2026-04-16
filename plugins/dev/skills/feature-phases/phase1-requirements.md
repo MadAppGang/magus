@@ -228,31 +228,41 @@ Write iteration config to ${SESSION_PATH}/iteration-config.json:
 
 If claudish is available (check with `which claudish`):
 
-Use AskUserQuestion with multiSelect: true:
-  question: "Select models for multi-model reviews (Phase 3 plan review + Phase 5 code review)"
-  header: "Review Models"
-  options:
-    - label: "grok [PAID]"
-      description: "Fast, coding specialist"
-    - label: "gemini [PAID]"
-      description: "Advanced reasoning, 1M context"
-    - label: "qwen [PAID]"
-      description: "Multimodal, 262K context"
-    - label: "devstral-2512:free [FREE]"
-      description: "Dev-focused, free tier"
-    - label: "Internal Claude only"
-      description: "No external models (faster, less thorough)"
+**Read available aliases** from `shared/model-aliases.json` (`shortAliases` keys):
+```bash
+available=$(jq -r '.shortAliases | keys | join(", ")' shared/model-aliases.json)
+```
+
+**Ask the user** for a comma-separated list of models. AskUserQuestion is NOT used here because the options list often exceeds the widget's maxItems:4 cap. Instead ask as free-form:
+
+```
+Which models should review plan + code?
+
+Available aliases (from shared/model-aliases.json):
+  {available}
+  (plus "internal" — always included)
+
+Type a comma-separated list (e.g. "grok, gemini, qwen") or "internal" for no external review.
+```
+
+**Parse the response** using `multimodel:claudish-usage` skill's "Model Alias Resolution" procedure:
+1. Split on comma, trim whitespace
+2. For each name: resolve via ALIAS_TABLE (shortAliases first, then knownModels exact match, then fuzzy match)
+3. Unknown names: warn and skip, do NOT guess
+4. Always include "internal" (set `includeInternal: true`)
 
 Store selection in ${SESSION_PATH}/iteration-config.json under `selectedModels`:
 ```json
 {
   "selectedModels": {
     "configured": true,
-    "models": ["grok", "qwen"],
+    "models": ["grok-4.20-beta", "gemini-3.1-pro-preview", "qwen3-235b-a22b-2507"],
     "includeInternal": true
   }
 }
 ```
+
+Note: `models` array stores RESOLVED full model IDs (from ALIAS_TABLE), not the short aliases the user typed. This way Phases 3 and 5 pass IDs directly to `claudish team()` without re-resolving.
 
 If claudish is NOT available:
   Set selectedModels.configured = true, selectedModels.models = [],

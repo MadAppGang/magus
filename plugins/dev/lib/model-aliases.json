@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "generatedAt": "2026-03-29T23:16:28.153Z",
+  "generatedAt": "2026-04-10T01:47:51.570Z",
   "shortAliases": {
     "grok": "grok-4.20-beta",
     "gemini": "gemini-3.1-pro-preview",
@@ -121,8 +121,8 @@
       "maxOutputTokens": 128000,
       "status": "active",
       "capabilities": {
-        "vision": true,
-        "thinking": true,
+        "vision": false,
+        "thinking": false,
         "tools": true,
         "streaming": true
       }
@@ -153,27 +153,27 @@
       }
     },
     "glm-5-turbo": {
-      "displayName": "Z.ai: GLM 5 Turbo",
+      "displayName": "glm-5-turbo",
       "provider": "z-ai",
       "contextWindow": 202752,
       "maxOutputTokens": 131072,
       "status": "active",
       "capabilities": {
         "vision": false,
-        "thinking": true,
+        "thinking": false,
         "tools": true,
         "streaming": true
       }
     },
     "kimi-k2.5": {
-      "displayName": "MoonshotAI: Kimi K2.5",
+      "displayName": "kimi-k2.5",
       "provider": "moonshotai",
       "contextWindow": 262144,
       "maxOutputTokens": 65535,
       "status": "active",
       "capabilities": {
         "vision": true,
-        "thinking": true,
+        "thinking": false,
         "tools": true,
         "streaming": true
       }
@@ -217,27 +217,27 @@
       }
     },
     "minimax-m2.5": {
-      "displayName": "MiniMax: MiniMax M2.5",
+      "displayName": "MiniMax: MiniMax M2.5 (free)",
       "provider": "minimax",
       "contextWindow": 196608,
-      "maxOutputTokens": 65536,
+      "maxOutputTokens": 196608,
       "status": "active",
       "capabilities": {
         "vision": false,
-        "thinking": true,
+        "thinking": false,
         "tools": true,
         "streaming": true
       }
     },
     "glm-5": {
-      "displayName": "Z.ai: GLM 5",
+      "displayName": "glm-5",
       "provider": "z-ai",
       "contextWindow": 80000,
       "maxOutputTokens": 131072,
       "status": "active",
       "capabilities": {
         "vision": false,
-        "thinking": true,
+        "thinking": false,
         "tools": true,
         "streaming": true
       }
@@ -249,8 +249,8 @@
       "maxOutputTokens": 128000,
       "status": "active",
       "capabilities": {
-        "vision": true,
-        "thinking": true,
+        "vision": false,
+        "thinking": false,
         "tools": true,
         "streaming": true
       }
@@ -298,6 +298,7 @@
       "displayName": "Claude Sonnet 4.6",
       "provider": "anthropic",
       "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
       "status": "active",
       "capabilities": {
         "vision": true,

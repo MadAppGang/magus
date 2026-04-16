@@ -189,7 +189,7 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
       MANDATORY: Before executing ANY phase, load its instruction file using the Read tool.
 
       Phase instruction files are located at:
-      ${PLUGIN_PATH}/skills/feature-phases/phase{N}-{name}.md
+      ${CLAUDE_PLUGIN_ROOT}/skills/feature-phases/phase{N}-{name}.md
 
       Files:
       - phase0-init.md
@@ -340,7 +340,7 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
 
       1. **Run checkpoint verification:**
          ```bash
-         ${PLUGIN_PATH}/scripts/checkpoint-verifier.sh phase{N} ${SESSION_PATH}
+         ${CLAUDE_PLUGIN_ROOT}/scripts/checkpoint-verifier.sh phase{N} ${SESSION_PATH}
          ```
          If this fails, DO NOT mark phase complete. Fix missing artifacts first.
 
@@ -403,16 +403,29 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
   </critical_constraints>
 
   <workflow>
-    <!-- Phase instructions are loaded dynamically from skills/feature-phases/*.md -->
-    <!-- The orchestrator reads each phase file before executing it -->
-    <!-- See <phase_loading_protocol> above -->
+    **CRITICAL: Phase instructions are loaded dynamically. Before executing each phase below,
+    you MUST call Read("${CLAUDE_PLUGIN_ROOT}/skills/feature-phases/phase{N}-{name}.md") first.
+    See <phase_loading_protocol> above.**
 
     <outer_validation_loop>
       **OUTER LOOP: Wraps Phases 3-7 (ENFORCED via scripts)**
 
       Read iteration config from ${SESSION_PATH}/iteration-config.json
 
-      **MANDATORY ENFORCEMENT CALLS:**
+      **MANDATORY IMPERATIVE INSTRUCTIONS — execute these as real tool calls, not pseudocode:**
+
+      1. Before each iteration: invoke Bash `node ${CLAUDE_PLUGIN_ROOT}/scripts/outer-loop-enforcer.js start-iteration ${SESSION_PATH}` and check exit code (2 = max iterations, escalate).
+      2. For EACH phase in the iteration, invoke the Read tool with these EXACT paths before executing the phase:
+         - Read("${CLAUDE_PLUGIN_ROOT}/skills/feature-phases/phase3-planning.md")
+         - Read("${CLAUDE_PLUGIN_ROOT}/skills/feature-phases/phase4-implementation.md")
+         - Read("${CLAUDE_PLUGIN_ROOT}/skills/feature-phases/phase5-review.md")
+         - Read("${CLAUDE_PLUGIN_ROOT}/skills/feature-phases/phase6-testing.md")
+         - Read("${CLAUDE_PLUGIN_ROOT}/skills/feature-phases/phase7-validation.md")
+      3. After each phase, invoke Bash `${CLAUDE_PLUGIN_ROOT}/scripts/checkpoint-verifier.sh phase{N} ${SESSION_PATH}` before marking the phase complete.
+      4. After Phase 7: invoke Bash `node ${CLAUDE_PLUGIN_ROOT}/scripts/outer-loop-enforcer.js record-result ${SESSION_PATH} <PASS|FAIL> "reason" [score]`.
+      5. Before Phase 8: invoke Bash `node ${CLAUDE_PLUGIN_ROOT}/scripts/outer-loop-enforcer.js check-can-complete ${SESSION_PATH}` and verify exit code 0.
+
+      **Loop structure reference (pseudocode — do NOT execute as code, use it as a control-flow diagram for the imperative instructions above):**
 
       ```
       outer_iteration = 0
@@ -420,7 +433,7 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
 
       while (true):
         // ENFORCEMENT: Start iteration tracking
-        // Run: node ${PLUGIN_PATH}/scripts/outer-loop-enforcer.js start-iteration ${SESSION_PATH}
+        // Run: node ${CLAUDE_PLUGIN_ROOT}/scripts/outer-loop-enforcer.js start-iteration ${SESSION_PATH}
         // If exit code 2: Max iterations reached, must escalate to user
 
         outer_iteration++
@@ -433,18 +446,18 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
 
         // Execute Phases 3-7 (each with checkpoint verification before completion)
         // For EACH phase: Read phase file first, then execute
-        Read ${PLUGIN_PATH}/skills/feature-phases/phase3-planning.md → execute_phase_3()
-        Read ${PLUGIN_PATH}/skills/feature-phases/phase4-implementation.md → execute_phase_4()
-        Read ${PLUGIN_PATH}/skills/feature-phases/phase5-review.md → execute_phase_5()
-        Read ${PLUGIN_PATH}/skills/feature-phases/phase6-testing.md → execute_phase_6()
-        Read ${PLUGIN_PATH}/skills/feature-phases/phase7-validation.md → validation_result = execute_phase_7()
+        Read ${CLAUDE_PLUGIN_ROOT}/skills/feature-phases/phase3-planning.md → execute_phase_3()
+        Read ${CLAUDE_PLUGIN_ROOT}/skills/feature-phases/phase4-implementation.md → execute_phase_4()
+        Read ${CLAUDE_PLUGIN_ROOT}/skills/feature-phases/phase5-review.md → execute_phase_5()
+        Read ${CLAUDE_PLUGIN_ROOT}/skills/feature-phases/phase6-testing.md → execute_phase_6()
+        Read ${CLAUDE_PLUGIN_ROOT}/skills/feature-phases/phase7-validation.md → validation_result = execute_phase_7()
 
         // ENFORCEMENT: Record Phase 7 result
-        // Run: node ${PLUGIN_PATH}/scripts/outer-loop-enforcer.js record-result ${SESSION_PATH} <PASS|FAIL> "reason" [score]
+        // Run: node ${CLAUDE_PLUGIN_ROOT}/scripts/outer-loop-enforcer.js record-result ${SESSION_PATH} <PASS|FAIL> "reason" [score]
 
         if validation_result == PASS:
           // ENFORCEMENT: Verify can proceed to Phase 8
-          // Run: node ${PLUGIN_PATH}/scripts/outer-loop-enforcer.js check-can-complete ${SESSION_PATH}
+          // Run: node ${CLAUDE_PLUGIN_ROOT}/scripts/outer-loop-enforcer.js check-can-complete ${SESSION_PATH}
           // If exit code 1: Cannot proceed - Phase 7 result not PASS
           break
 
@@ -981,8 +994,8 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
   <strategy scenario="Phase file not found">
     <recovery>
       If Read tool cannot find phase instruction file:
-      1. Log error: "Phase file not found: ${PLUGIN_PATH}/skills/feature-phases/phase{N}-{name}.md"
-      2. Check PLUGIN_PATH: echo $CLAUDE_PLUGIN_ROOT
+      1. Log error: "Phase file not found: ${CLAUDE_PLUGIN_ROOT}/skills/feature-phases/phase{N}-{name}.md"
+      2. Check CLAUDE_PLUGIN_ROOT: echo $CLAUDE_PLUGIN_ROOT
       3. Try alternative: Read using absolute path from CLAUDE_PLUGIN_ROOT env var
       4. If still fails: Proceed with built-in knowledge for that phase (degraded mode)
       5. Log warning in session-meta.json: "Phase {N} ran without instruction file"

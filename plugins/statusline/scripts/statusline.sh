@@ -362,8 +362,10 @@ if [ -n "$SESSION_ID" ] && [ "${TOTAL_INPUT_TOKENS:-0}" -gt 0 ] 2>/dev/null; the
   printf '%s %s\n' "$TOTAL_INPUT_TOKENS" "$COMPACTION_COUNT" > "$TOKEN_CACHE"
 fi
 
-# ── Plan usage fallback (API poll when native fields absent) ──
-if [ -z "$FIVE_HR" ] && [ -z "$SEVEN_DAY" ]; then
+# ── Plan usage fallback (API poll when native fields absent OR resets missing) ──
+# Claude Code's native rate_limits input provides used_percentage but omits resets_at,
+# so fetch from OAuth API whenever percentages or reset timestamps are missing.
+if { [ -z "$FIVE_HR" ] && [ -z "$SEVEN_DAY" ]; } || { [ -z "$FIVE_HR_RESET" ] && [ -z "$SEVEN_DAY_RESET" ]; }; then
   USAGE_CACHE="$HOME/.claude/.statusline-usage-cache.json"
   CACHE_TTL=60
   NEED_REFRESH=0
@@ -398,11 +400,12 @@ if [ -z "$FIVE_HR" ] && [ -z "$SEVEN_DAY" ]; then
     ) &
   fi
 
+  # Only fill missing fields — don't clobber fresh native values with stale cache data
   if [ -f "$USAGE_CACHE" ]; then
-    FIVE_HR=$(jq -r '.five_hour.utilization // empty' "$USAGE_CACHE" 2>/dev/null | cut -d. -f1)
-    SEVEN_DAY=$(jq -r '.seven_day.utilization // empty' "$USAGE_CACHE" 2>/dev/null | cut -d. -f1)
-    FIVE_HR_RESET=$(jq -r '.five_hour.resets_at // empty' "$USAGE_CACHE" 2>/dev/null)
-    SEVEN_DAY_RESET=$(jq -r '.seven_day.resets_at // empty' "$USAGE_CACHE" 2>/dev/null)
+    [ -z "$FIVE_HR" ]         && FIVE_HR=$(jq -r '.five_hour.utilization // empty' "$USAGE_CACHE" 2>/dev/null | cut -d. -f1)
+    [ -z "$SEVEN_DAY" ]       && SEVEN_DAY=$(jq -r '.seven_day.utilization // empty' "$USAGE_CACHE" 2>/dev/null | cut -d. -f1)
+    [ -z "$FIVE_HR_RESET" ]   && FIVE_HR_RESET=$(jq -r '.five_hour.resets_at // empty' "$USAGE_CACHE" 2>/dev/null)
+    [ -z "$SEVEN_DAY_RESET" ] && SEVEN_DAY_RESET=$(jq -r '.seven_day.resets_at // empty' "$USAGE_CACHE" 2>/dev/null)
   fi
 fi
 
@@ -556,7 +559,7 @@ if [ "$SHOW_CONTEXT_BAR" = "true" ]; then
 
   # Compaction indicator with count
   COMPACT_IND=""
-  if [ "${COMPACTION_COUNT:-0}" -gt 0 ] 2>/dev/null; then
+  if [ "${COMPACTION_COUNT:-0}" -gt 1 ] 2>/dev/null; then
     COMPACT_IND=" ${C_MAGENTA}${B}⟳×${COMPACTION_COUNT}${R}"
   fi
 

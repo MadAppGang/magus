@@ -96,7 +96,7 @@ Match group 1 is the file path, match group 2 is the line number. For Jest/Vites
 - The watcher pane is created once at the start of the TDD session and left running until the user is done.
 - `mcp__tmux__watch-pane` observes non-destructively. The watcher keeps running between `watch-pane` calls.
 - Do not send Ctrl+C to the watcher pane mid-session. This destroys watch mode and requires re-setup.
-- If two Claude agents are working on the same project, they share the single existing watcher — neither creates a second one. Check for an existing watcher pane before creating a new one.
+- If two Claude agents are working on the same project, they share the single existing watcher — neither creates a second one. Use `list-panes` on the window to find a pane whose `currentCommand` is the test runner (e.g. `bun`, `node`, `vitest`, `jest`), then call `watch-pane` on it instead of creating a new watcher.
 - At teardown (IDLE state), send Ctrl+C to the watcher pane, then kill the pane with `mcp__tmux__kill-pane`.
 
 ## Worked Example — Jest/Vitest End-to-End

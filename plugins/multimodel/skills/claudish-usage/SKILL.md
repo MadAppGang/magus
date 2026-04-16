@@ -62,10 +62,21 @@ Step 2: RESOLVE (Magus alias table lookup)
   "gemini"         → "gemini"
   "gpt-5.4"        → not in table → pass through as-is
 
+Step 2.5: VERIFY (claudish search_models — for NON-ALIAS models only)
+  If Step 2 did NOT resolve via ALIAS_TABLE (the name passed through as-is),
+  you MUST call `search_models` MCP tool with the exact name as query BEFORE
+  calling create_session or team.
+  - search_models returns results → use the top match's model ID
+  - search_models returns nothing  → STOP and ask the user
+  Skip this step for alias-resolved models (they are already verified).
+  "gpt-5.4"              → search_models("gpt-5.4") → found → proceed
+  "kimi-k2-thinking"     → search_models("kimi-k2-thinking") → found → proceed
+  "gpt-42-omega"         → search_models("gpt-42-omega") → nothing → ask user
+  "grolk"                → search_models("grolk") → nothing → ask user
+
 Step 3: ROUTE (Claudish)
   Full model ID → correct provider API endpoint
   "grok-4.20-beta"       → xAI API
-  "gemini" → Google API
   "gpt-5.4"              → OpenAI API
 ```
 
@@ -79,9 +90,12 @@ Step 3: ROUTE (Claudish)
 ### Alias Lookup
 
 For each model name after Step 1 interpretation:
-- If `ALIAS_TABLE[name]` exists → use the mapped value
-- Otherwise → pass name to claudish as-is (claudish handles the rest)
+- If `ALIAS_TABLE[name]` exists → use the mapped value → proceed to Step 3
+- Otherwise → call `search_models(query=name)` to verify the model exists (Step 2.5):
+  - If found → use the matched model ID → proceed to Step 3
+  - If not found → ask the user which model to use. NEVER send an unverified name to claudish.
 - Special: `"internal"` is never sent to claudish — it means host Claude model
+- **NOTE:** `list_models` returns a curated subset, NOT the full catalog. A model missing from `list_models` may still exist — always verify with `search_models` before concluding unavailability.
 
 ### Interpreting User Intent (Step 1)
 
@@ -114,9 +128,11 @@ When uncertain, list ALIAS_TABLE keys and ask the user to pick.
 ### Rules
 
 - Claude Code interprets intent but ONLY maps to keys that exist in ALIAS_TABLE
-- NEVER invent a model ID — if no alias matches, pass the user's text through or ask
+- For non-alias model names: ALWAYS call `search_models` to verify before sending to claudish
+- If `search_models` finds nothing: ask the user. NEVER send an unverified model to claudish
+- If a requested name looks like a typo (similar to a known alias/model but slightly off): ask the user to confirm rather than auto-correcting silently
 - NEVER add provider prefixes — claudish handles routing
-- NEVER validate model IDs — claudish will error if invalid
+- NEVER rely solely on `list_models` for availability — it returns a curated subset, not the full catalog
 - User `customAliases` always override global `shortAliases` on key conflict
 
 ## 🤖 Agent Selection Guide

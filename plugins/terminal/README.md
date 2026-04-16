@@ -1,6 +1,6 @@
-# Terminal Plugin v2.1.0
+# Terminal Plugin v3.0.1
 
-Claude gets eyes and hands in the terminal. Screen reading, keystroke injection, TUI navigation, and tmux workspace orchestration — via `ht-mcp` and `tmux-mcp`.
+Claude gets eyes and hands in the terminal. Screen reading, keystroke injection, TUI navigation, and tmux workspace orchestration — via `tmux-mcp`.
 
 Think of it this way: `chrome-devtools-mcp` gives Claude eyes and hands in the browser. This plugin gives Claude the same in the terminal.
 
@@ -11,11 +11,9 @@ Think of it this way: `chrome-devtools-mcp` gives Claude eyes and hands in the b
 ### 1. Install dependencies
 
 ```bash
-# ht-mcp — headless PTY sessions
-brew tap memextech/tap && brew install ht-mcp
-
-# tmux-mcp — connect to existing tmux sessions (requires tmux)
-# installed automatically via npx when first used
+# tmux-mcp — Go binary that connects to tmux sessions (requires tmux)
+# See https://github.com/MadAppGang/tmux-mcp for install instructions
+brew install tmux
 ```
 
 ### 2. Enable the plugin
@@ -122,7 +120,6 @@ Read-only observation. No keystrokes, no kills, no modifications.
 
 ```
 /terminal:observe                    # list all active sessions
-/terminal:observe abc-1234-uuid      # snapshot a specific ht-mcp session
 /terminal:observe tmux:dev:0.0       # read a pane from the dev tmux session
 ```
 
@@ -166,20 +163,19 @@ Supported applications:
 
 ---
 
-## Two backends: ht-mcp and tmux-mcp
+## Backend: tmux-mcp
 
-| Scenario | Backend |
-|----------|---------|
-| Fresh isolated task — create, run, destroy | ht-mcp |
-| Already inside tmux — split panes, side panels | tmux-mcp |
-| Read scrollback history beyond 40 lines | tmux-mcp |
-| Monitor a developer's live session | tmux-mcp |
-| Zero external dependencies | ht-mcp |
-| Multi-pane dashboard layouts | tmux-mcp |
+All terminal operations run through `tmux-mcp` (a Go binary from [github.com/MadAppGang/tmux-mcp](https://github.com/MadAppGang/tmux-mcp)). It creates isolated agentic tmux sessions for fresh tasks and attaches to the developer's live tmux session when `$TMUX_PANE` is set.
 
-Claude detects which to use automatically. If `$TMUX_PANE` is set, it uses tmux-mcp for pane operations. Otherwise it creates an isolated ht-mcp session.
+| Scenario | How tmux-mcp handles it |
+|----------|-------------------------|
+| Fresh isolated task — create, run, destroy | New agentic-scope tmux session |
+| Already inside tmux — split panes, side panels | Splits in the current session |
+| Read scrollback history | `capture-pane` with history range |
+| Monitor a developer's live session | Attach read-only to existing pane |
+| Multi-pane dashboard layouts | Native tmux layout commands |
 
-**40-line rule**: ht-mcp snapshots show a 120×40 grid — exactly what a human sees on screen, no scrollback. Claude uses `| tail -40`, `LIMIT`, or tee-to-file for longer output.
+**Snapshot rule**: Pane snapshots show what a human sees on screen. For longer output, Claude uses `| tail -N`, `LIMIT` in SQL, tee-to-file, or `capture-pane` with an explicit history range.
 
 ---
 
@@ -189,7 +185,7 @@ Five skills teach Claude the full terminal interaction protocol.
 
 ### `terminal:terminal-interaction`
 
-The core reference. Covers the complete ht-mcp and tmux-mcp tool APIs, pane detection and splitting, the tee-to-file pattern for output longer than 40 lines, desktop notifications for long builds, approval gates for destructive commands, and parallel multi-session patterns.
+The core reference. Covers the complete tmux-mcp tool API, pane detection and splitting, the tee-to-file pattern for long output, desktop notifications for long builds, approval gates for destructive commands, and parallel multi-session patterns.
 
 ### `terminal:tui-navigation-patterns`
 
@@ -238,11 +234,10 @@ Also covers ambient monitoring with `watch` and `entr`, session startup scripts,
 
 | Requirement | Install |
 |-------------|---------|
-| ht-mcp | `brew tap memextech/tap && brew install ht-mcp` |
-| tmux (for pane splitting) | `brew install tmux` |
-| tmux-mcp | Installed automatically via `npx -y tmux-mcp` |
+| tmux | `brew install tmux` (macOS) · `apt-get install tmux` (Debian/Ubuntu) |
+| tmux-mcp (Go binary) | See [github.com/MadAppGang/tmux-mcp](https://github.com/MadAppGang/tmux-mcp) |
 
-tmux is optional. Without it, Claude uses isolated ht-mcp sessions for everything. With tmux, Claude can split your existing pane, observe your running processes, and build multi-pane dashboards.
+With tmux and tmux-mcp installed, Claude can create isolated agentic sessions, split your existing pane, observe your running processes, and build multi-pane dashboards.
 
 ---
 
@@ -250,25 +245,25 @@ tmux is optional. Without it, Claude uses isolated ht-mcp sessions for everythin
 
 ### Commands hang with no output
 
-The ht-mcp session may not have started. Check:
+The tmux-mcp session may not have started. Check:
 
 ```bash
-# Verify ht-mcp is installed and on PATH
-which ht-mcp
+# Verify tmux-mcp is installed and on PATH
+which tmux-mcp
 
 # Verify the MCP server is registered
 claude mcp list
 ```
 
-If `ht-mcp` is not listed, re-install: `brew tap memextech/tap && brew install ht-mcp`.
+If `tmux` is not listed, re-install the `tmux-mcp` binary (see [github.com/MadAppGang/tmux-mcp](https://github.com/MadAppGang/tmux-mcp)) and restart Claude Code.
 
 ### Pane splits appear in the wrong window
 
-Claude uses `$TMUX_PANE` to detect the current pane, which is always correct — it's set by tmux at shell creation and never changes. If a split appeared in an unexpected window, the shell running Claude Code may not be inside tmux. Verify with `echo $TMUX_PANE` — if empty, you are not in a tmux pane and Claude will use an isolated ht-mcp session instead.
+Claude uses `$TMUX_PANE` to detect the current pane, which is always correct — it's set by tmux at shell creation and never changes. If a split appeared in an unexpected window, the shell running Claude Code may not be inside tmux. Verify with `echo $TMUX_PANE` — if empty, you are not in a tmux pane and Claude will create a new agentic-scope tmux session instead.
 
 ### Database queries return partial results
 
-The 40-line snapshot limit applies. For large result sets, Claude adds `LIMIT 40` automatically via `/terminal:repl`. For queries you run manually, add `LIMIT` explicitly or use tmux-mcp (`capture-pane`) which can read scrollback history.
+Pane snapshots show only the visible screen. For large result sets, Claude adds `LIMIT` automatically via `/terminal:repl`. For queries you run manually, add `LIMIT` explicitly or use `capture-pane` with a history range to read scrollback.
 
 ### `watch` command not found on macOS
 
@@ -290,7 +285,7 @@ Then retry `/terminal:watch "bun run dev"`.
 
 ### Mouse/scroll stops working in iTerm2 after using terminal plugin
 
-TUI apps (htop, lazygit, vim) and ht-mcp sessions enable mouse reporting via escape sequences. If a session exits without cleaning up, iTerm2 shows a banner asking "should I stop mouse reporting?" — choosing "Yes" silently disables mouse reporting for that tab (and all future tabs via `NoSyncTurnOffMouseReportingOnHostChange`).
+TUI apps (htop, lazygit, vim) and tmux-mcp sessions enable mouse reporting via escape sequences. If a session exits without cleaning up, iTerm2 shows a banner asking "should I stop mouse reporting?" — choosing "Yes" silently disables mouse reporting for that tab (and all future tabs via `NoSyncTurnOffMouseReportingOnHostChange`).
 
 **Symptoms**: Scrolling moves the entire iTerm2 buffer instead of scrolling inside tmux. Mouse clicks don't register in tmux panes. New tabs work fine.
 

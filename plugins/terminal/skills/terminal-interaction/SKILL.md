@@ -63,50 +63,6 @@ Two real failures: (1) The agent listed sessions, saw window @30 marked `active:
 **If `$TMUX_PANE` is set**: You're in tmux. Use it directly for splits.
 **If it's empty or unset**: Use `execute-command` with `headless: true` for isolated tasks, or `create-session` for a new tmux session.
 
-### Helper Pane Reuse (check BEFORE splitting)
-
-Before creating a new split pane, check if a helper pane already exists from a previous split. Panes we create are labeled `claude-helper` so they can be identified:
-
-```bash
-# Check for existing helper panes in the current window
-tmux list-panes -F '#{pane_id} #{pane_title}' | grep claude-helper
-```
-
-- **If a helper pane exists**: Reuse it. Send the new command there instead of splitting again.
-- **If it doesn't exist** (user closed it, or first time): Create a new split and label it.
-
-### Split Ordering Strategy
-
-When creating helper panes, follow this layout progression to keep the workspace organized:
-
-```
-Step 1 — First helper pane (split current pane with vertical divider → helper on RIGHT):
-┌─────────────┬─────────────┐
-│             │   helper-1  │
-│    user     │  (RIGHT)    │
-│             │             │
-└─────────────┴─────────────┘
-direction: "horizontal" on user's pane
-
-Step 2 — Second helper (split RIGHT pane with horizontal divider → stacked right):
-┌─────────────┬─────────────┐
-│             │   helper-1  │
-│    user     ├─────────────┤
-│             │   helper-2  │
-└─────────────┴─────────────┘
-direction: "vertical" on helper-1's pane
-
-Step 3 — Third helper (split LEFT pane with horizontal divider → stacked left):
-┌─────────────┬─────────────┐
-│    user     │   helper-1  │
-├─────────────┼─────────────┤
-│   helper-3  │   helper-2  │
-└─────────────┴─────────────┘
-direction: "vertical" on user's pane
-```
-
-The first split is always `direction: "horizontal"` (vertical divider, helper on right). Subsequent splits use `direction: "vertical"` (horizontal divider) to subdivide.
-
 ### Layout Presets and Pane Labels
 
 After creating panes, apply a built-in tmux layout preset and label each pane for visibility:
@@ -142,15 +98,14 @@ Bash: tmux select-pane -t {pane_id3} -T "App Logs"
 
 ```
 1. Bash: echo "$TMUX_PANE"                                          → "%57"
-2. Bash: tmux list-panes -F '#{pane_id} #{pane_title}' | grep claude-helper
-   → If found "%66 claude-helper": reuse %66, skip to step 5
-3. mcp__tmux__split-pane({ paneId: "%57", direction: "horizontal" }) → new pane "%66"
-4. Bash: tmux select-pane -t %66 -T "claude-helper"                 → label it
-5. mcp__tmux__send-keys({ paneId: "%66", keys: "bun test --watch", literal: true })
+2. mcp__tmux__split-pane({ paneId: "%57", direction: "horizontal" }) → pane "%66" (or reuses idle pane)
+3. mcp__tmux__send-keys({ paneId: "%66", keys: "bun test --watch", literal: true })
    mcp__tmux__send-keys({ paneId: "%66", keys: "Enter", literal: false })
 ```
 
-**Never call `list-sessions`/`list-windows`/`list-panes` just to find your own pane.** Detection + reuse check + split is 2-4 Bash calls at most.
+`split-pane` automatically reuses an existing idle pane in the window if available. No manual reuse check needed.
+
+**Never call `list-sessions`/`list-windows`/`list-panes` just to find your own pane.** Detection + split is 2 calls at most.
 
 **Common mistake**: Creating a new tmux session (`create-session`) when the user says "here" or "in this window." If you're in tmux, always split — never create a detached session.
 
@@ -501,33 +456,25 @@ Parse output for pass/fail. Done.
 // Step 1: Detect current pane (CRITICAL — never skip, never use list-windows or display-message without -t)
 Bash: echo "$TMUX_PANE"                                       → "%57"
 
-// Step 2: Check for existing helper pane to reuse
-Bash: tmux list-panes -F '#{pane_id} #{pane_title}' | grep claude-helper
-// → If found (e.g., "%66 claude-helper"): skip to Step 5
-
-// Step 3: Split the current pane (first split = vertical divider, helper on RIGHT)
+// Step 2: Split (auto-reuses idle pane if one exists)
 mcp__tmux__split-pane({ paneId: "%57", direction: "horizontal" })
-                                                               → new pane "%66"
+                                                               → pane "%66" (reused: false)
 
-// Step 4: Label the new pane so we can find it later
-Bash: tmux select-pane -t %66 -T "claude-helper"
-
-// Step 5: Launch process in the helper pane
+// Step 3: Launch process in the helper pane
 mcp__tmux__send-keys({ paneId: "%66", keys: "bun test --watch", literal: true })
 mcp__tmux__send-keys({ paneId: "%66", keys: "Enter", literal: false })
 
-// Step 6: Monitor via capture-pane or event-driven watch-pane
+// Step 4: Monitor via capture-pane or event-driven watch-pane
 mcp__tmux__capture-pane({ paneId: "%66" })                    → current screen
 
-// Cleanup: when done, close only the pane you created
+// Cleanup: when done, close only the pane you created (skip if reused)
 mcp__tmux__kill-pane({ paneId: "%66" })
 ```
 
 **Key rules:**
 - Always detect pane with `echo "$TMUX_PANE"`, never `display-message -p` without `-t` or `list-windows` active flag
-- Always check for existing `claude-helper` pane before splitting
+- `split-pane` automatically reuses idle panes -- no manual check needed
 - First split is `direction: "horizontal"` (helper appears on right)
-- Label created panes with `tmux select-pane -t <id> -T "claude-helper"`
 
 ### Example G: Desktop Notification on Long Command Completion
 
