@@ -1,6 +1,6 @@
 {
   "name": "kanban",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Kanban board view for task management. Works with the same tasks.json as the GTD plugin. Provides board visualization, task dependencies, status flow, and optional MCP sync.",
   "author": { "name": "Jack Rudenko", "email": "i@madappgang.com", "company": "MadAppGang" },
   "license": "MIT",

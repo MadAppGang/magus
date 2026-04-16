@@ -897,38 +897,156 @@ function cmdAdded(taskId: string, title: string): void {
  * and tmux is available, re-exec ourselves inside a tmux split pane so we get a real
  * TTY with proper terminal width. The pane waits for a keypress then closes.
  */
+
+// Recognised interactive shells (via `pane_current_command`) for idle-pane reuse.
+// Exact-equality match against this set; tmux truncates `pane_current_command`
+// to ~17 chars on macOS, which is fine — no realistic binary collides on equality.
+const SHELL_NAMES: ReadonlySet<string> = new Set([
+  "zsh", "-zsh", "bash", "-bash", "fish", "sh", "-sh",
+  "dash", "ksh", "-ksh", "csh", "-csh", "tcsh", "-tcsh",
+]);
+
+/**
+ * Find an existing pane previously titled 'kanban-board' (see line that sets
+ * pane title after split-window). Returns its id or null. Board re-invocations
+ * prefer this over splitting again — killing any stale foreground and re-running
+ * keeps the board in its existing slot instead of accumulating panes.
+ */
+function findExistingBoardPane(selfPaneId: string): string | null {
+  try {
+    const raw = execSync(
+      `tmux list-panes -s -F '#{pane_id}|#{pane_title}|#{pane_dead}'`,
+      { stdio: ["pipe", "pipe", "pipe"] },
+    ).toString();
+    for (const line of raw.split("\n")) {
+      if (!line.trim()) continue;
+      const [paneId, title, dead] = line.split("|");
+      if (!paneId || paneId === selfPaneId) continue;
+      if (dead !== "0") continue;
+      if (title === "kanban-board") return paneId;
+    }
+  } catch { /* ignore */ }
+  return null;
+}
+
+/**
+ * Apply the 6-point idle-pane predicate and return the first pane id matching.
+ * Returns null if none found. Only called when KANBAN_REUSE_IDLE=1.
+ */
+function findIdleReusePane(selfPaneId: string): string | null {
+  try {
+    const listFmt =
+      "#{pane_id}|#{pane_active}|#{pane_dead}|#{pane_in_mode}|" +
+      "#{pane_input_off}|#{pane_current_command}";
+    const raw = execSync(
+      `tmux list-panes -t '${selfPaneId}' -F '${listFmt}'`,
+      { stdio: ["pipe", "pipe", "pipe"] },
+    ).toString();
+    for (const line of raw.split("\n")) {
+      if (!line.trim()) continue;
+      const [paneId, active, dead, inMode, inputOff, cmd] = line.split("|");
+      if (!paneId || paneId === selfPaneId) continue;
+      if (active !== "0") continue;        // don't hijack active pane
+      if (dead !== "0") continue;          // dead pane
+      if (inMode !== "0") continue;        // copy/choose mode etc
+      if (inputOff !== "0") continue;      // input disabled
+      if (!SHELL_NAMES.has(cmd || "")) continue;
+      return paneId;
+    }
+  } catch { /* ignore — fall through to split */ }
+  return null;
+}
+
 function maybeReopenInTmux(args: string[]): boolean {
   if (args[0] !== "board") return false;
   if (process.stdout.isTTY) return false;
   if (!process.env.TMUX) return false;
+  // Internal test hook; not user-facing. Forces inline render even when TMUX is set.
+  // NOT documented in board.md. See autotest/kanban-tmux/ for usage.
+  if (process.env.KANBAN_NO_TMUX === "1") return false;
 
-  // Determine split direction based on current pane count
-  let paneCount = 1;
-  try {
-    paneCount = parseInt(
-      execSync("tmux list-panes | wc -l", { stdio: ["pipe", "pipe", "pipe"] }).toString().trim(),
-      10,
-    ) || 1;
-  } catch { /* default to 1 */ }
+  // Fix B — capture origin pane ID up-front; every tmux call below uses `-t '${selfPaneId}'`
+  // so split lands in the correct pane even if the user switches windows mid-execution.
+  const selfPaneId = process.env.TMUX_PANE;
+  if (!selfPaneId) return false;
 
-  const splitDir = paneCount <= 1 ? "-h" : paneCount <= 2 ? "-v" : "-h";
-  const splitSize = paneCount <= 2 ? "50%" : "40%";
-
-  // Re-invoke ourselves with the same args inside a tmux split pane
+  // Re-invoke ourselves with the same args inside a tmux split/reused pane.
+  // Wrap in `exec bash` so that when the board finishes and the read returns,
+  // the pane drops to an interactive shell instead of exiting — keeps the pane
+  // alive for Fix E (refresh-existing) on subsequent invocations.
   const script = process.argv[1];
   const escapedArgs = args.map(a => `'${a.replace(/'/g, "'\\''")}'`).join(" ");
-  const cmd = `bun run '${script}' ${escapedArgs}; bash -c 'read -n1 -s -r'`;
+  const cmd = `bun run '${script}' ${escapedArgs}; read -n1 -s -r; exec bash`;
 
   try {
-    const paneId = execSync(
-      `tmux split-window ${splitDir} -l '${splitSize}' -P -F '#{pane_id}' "${cmd.replace(/"/g, '\\"')}"`,
+    // Fix E — if a previous kanban-board pane is still around, reuse it.
+    // Kill its foreground process (reader waiting for keypress, or a still-running
+    // render), clear the screen, and send the board command fresh. Prevents a new
+    // split-window pane from accumulating on every re-invocation.
+    {
+      const existing = findExistingBoardPane(selfPaneId);
+      if (existing) {
+        try {
+          execSync(`tmux send-keys -t '${existing}' C-c`, { stdio: "ignore" });
+          execSync(`tmux send-keys -t '${existing}' q`, { stdio: "ignore" });
+          execSync(`tmux send-keys -t '${existing}' " clear" Enter`, { stdio: "ignore" });
+        } catch { /* best-effort; fall through to re-render regardless */ }
+        const sendCmd = cmd.replace(/'/g, "'\\''");
+        execSync(`tmux send-keys -t '${existing}' '${sendCmd}' Enter`, {
+          stdio: ["pipe", "pipe", "pipe"],
+        });
+        console.log(`Kanban board opened in tmux pane (${existing}) [refreshed]. Press any key in pane to close.`);
+        return true;
+      }
+    }
+
+    // Fix D — optional idle-pane reuse, gated by env var (OFF by default in v1.4.0).
+    if (process.env.KANBAN_REUSE_IDLE === "1") {
+      const target = findIdleReusePane(selfPaneId);
+      if (target) {
+        const sendCmd = cmd.replace(/'/g, "'\\''");
+        execSync(`tmux send-keys -t '${target}' '${sendCmd}' Enter`, {
+          stdio: ["pipe", "pipe", "pipe"],
+        });
+        // Fix A — confirmation to stdout (Bash tool sees this).
+        console.log(`Kanban board opened in tmux pane (${target}) [reused]. Press any key in pane to close.`);
+        return true;
+      }
+    }
+
+    // Fix C — split direction chosen by whether origin fills its window.
+    //   pane_width == window_width  → -h (side-by-side). Origin is the only column,
+    //                                      so split horizontally: kanban gets its own column.
+    //   pane_width  < window_width  → -v (stack). Origin already shares the window with
+    //                                      a neighbour; stacking preserves each column's
+    //                                      width and yields |neighbour|origin/kanban|.
+    const geomOut = execSync(
+      `tmux display-message -p -t '${selfPaneId}' '#{pane_width} #{window_width}'`,
       { stdio: ["pipe", "pipe", "pipe"] },
     ).toString().trim();
-    execSync(`tmux select-pane -t '${paneId}' -T 'kanban-board'`, { stdio: "ignore" });
-  } catch {
-    return false; // tmux split failed, fall through to inline rendering
+    const parts = geomOut.split(/\s+/).map(n => parseInt(n, 10));
+    const paneW = Number.isFinite(parts[0]) ? parts[0] : 1;
+    const winW = Number.isFinite(parts[1]) ? parts[1] : 1;
+    const splitDir = paneW >= winW ? "-h" : "-v";
+
+    // Fix B — -t always targets the origin pane captured at function entry.
+    // Use single-quote escape (matches send-keys path above) so outer /bin/sh -c
+    // does NOT evaluate $VAR or backticks in `cmd` before tmux consumes it.
+    const sqCmd = cmd.replace(/'/g, "'\\''");
+    const newPane = execSync(
+      `tmux split-window -t '${selfPaneId}' ${splitDir} -l '40%' ` +
+      `-P -F '#{pane_id}' -- '${sqCmd}'`,
+      { stdio: ["pipe", "pipe", "pipe"] },
+    ).toString().trim();
+    execSync(`tmux select-pane -t '${newPane}' -T 'kanban-board'`, { stdio: "ignore" });
+
+    // Fix A — confirmation to stdout so Claude Code's Bash tool sees non-empty output.
+    console.log(`Kanban board opened in tmux split pane (${newPane}). Press any key in pane to close.`);
+    return true;
+  } catch (err) {
+    console.error(`kanban-display: tmux split failed (${(err as Error).message}); rendering inline.`);
+    return false;
   }
-  return true;
 }
 
 function main(): void {
