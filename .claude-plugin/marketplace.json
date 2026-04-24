@@ -236,8 +236,8 @@
     {
       "name": "statusline",
       "source": "./plugins/statusline",
-      "description": "Adaptive statusline \u2014 always-visible bars, background highlights for critical states, provider-aware model display, vim mode, diff stats, compaction count, memory usage. v2.1.1: Fix missing reset countdowns when Claude Code supplies native rate limits without resets_at.",
-      "version": "2.1.1",
+      "description": "Adaptive statusline \u2014 always-visible bars, background highlights for critical states, provider-aware model display, vim mode, diff stats, compaction count, memory usage. v2.1.2: Split diff section into session (\u2728 +A/-D from Claude Code cost telemetry) and git (\u25cf +A/-D from `git diff --shortstat`) chips, so users can tell the difference instead of seeing stale session totals on a clean worktree.",
+      "version": "2.1.2",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -258,8 +258,8 @@
     {
       "name": "browser-use",
       "source": "./plugins/browser-use",
-      "description": "Full-platform browser automation for Claude Code. v1.1.0: Thin wrapper over built-in BrowserUseServer \u2014 63% less code. Fix TCC downloads_path, per-PID Chrome profiles, graceful shutdown. 19 MCP tools, 5 skills.",
-      "version": "1.1.1",
+      "description": "Full-platform browser automation for Claude Code. v1.1.2: Re-fix oneOf schema rejection lost in the v1.1.0 rewrite \u2014 sanitize upstream tool schemas by stripping oneOf/allOf/anyOf, restoring Haiku/Explore subagent compatibility. 19 MCP tools, 5 skills.",
+      "version": "1.1.2",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
