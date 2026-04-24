@@ -56,22 +56,17 @@ interface Dependencies {
 interface Task {
   id: string;
   subject: string;
-  list: string;
+  status: string | null;
+  priority?: string | null;
   context: string[];
-  parentId: string | null;
-  energy: string | null;
+  dependencies?: Dependencies | null;
+  subtasks?: Subtask[] | null;
   timeEstimate: number | null;
-  waitingOn: string | null;
   dueDate: string | null;
   created: string;
   modified: string;
   completed: string | null;
   notes: string;
-  // Kanban v3.0 fields (all optional)
-  kanbanStatus?: string | null;
-  priority?: string | null;
-  dependencies?: Dependencies | null;
-  subtasks?: Subtask[] | null;
 }
 
 interface KanbanConfig {
@@ -82,8 +77,6 @@ interface KanbanConfig {
 interface TaskStore {
   version: string;
   nextId: number;
-  lastReview: string | null;
-  activeTaskId: string | null;
   kanban?: KanbanConfig;
   tasks: Task[];
 }
@@ -670,11 +663,9 @@ function cmdBoard(
 ): void {
   const wipLimit = store.kanban?.wipLimit ?? 3;
 
-  // Select tasks on the board (kanbanStatus set, not completed).
-  // GTD and kanban are independent lists: tasks appear here only when
-  // kanbanStatus is explicitly set (via /kanban:add or /kanban:move).
+  // Select tasks on the board (status set, not completed).
   let boardTasks = store.tasks.filter(
-    t => t.completed === null && t.kanbanStatus != null
+    t => t.completed === null && t.status != null
   );
 
   // Apply filters
@@ -682,9 +673,7 @@ function cmdBoard(
     boardTasks = boardTasks.filter(t => t.context.includes(filter));
   }
   if (projectId) {
-    boardTasks = boardTasks.filter(
-      t => t.parentId === projectId || t.id === projectId
-    );
+    boardTasks = boardTasks.filter(t => t.id === projectId);
   }
 
   const terminalWidth = getTermWidth();
@@ -705,7 +694,7 @@ function cmdBoard(
       def.key,
       allBoardTasks.filter(t => {
         const raw = boardTasks.find(r => r.id === t.id);
-        return raw?.kanbanStatus === def.key;
+        return raw?.status === def.key;
       })
     );
   }
@@ -777,10 +766,10 @@ function cmdShow(store: TaskStore, taskId: string): void {
   lines.push("");
 
   // Status
-  const statusStr = task.kanbanStatus
-    ? `${fg(S.cyan, task.kanbanStatus)}`
+  const statusStr = task.status
+    ? `${fg(S.cyan, task.status)}`
     : fg(S.gray, "(not on board)");
-  lines.push(`${fg(S.gray, "Status:")} ${statusStr}   ${fg(S.gray, "List:")} ${task.list}`);
+  lines.push(`${fg(S.gray, "Status:")} ${statusStr}`);
 
   // Context
   if (task.context && task.context.length > 0) {
@@ -854,7 +843,7 @@ function cmdShow(store: TaskStore, taskId: string): void {
   lines.push("");
   lines.push(fg(S.gray, `Created: ${task.created.slice(0, 10)}  Modified: ${task.modified.slice(0, 10)}`));
 
-  const colDef = COLUMN_DEFS.find(c => c.key === task.kanbanStatus) ?? COLUMN_DEFS[1];
+  const colDef = COLUMN_DEFS.find(c => c.key === task.status) ?? COLUMN_DEFS[1];
   print(renderBox({
     title: `#${task.id}`,
     titleBg: colDef.titleBg,
@@ -1078,7 +1067,7 @@ function main(): void {
   // If board command in non-TTY tmux context, reopen in a split pane and exit
   if (maybeReopenInTmux(args)) return;
 
-  let filePath = `${process.cwd()}/.claude/gtd/tasks.json`;
+  let filePath = `${process.cwd()}/.claude/kanban/tasks.json`;
   let filterContext: string | undefined;
   let filterProject: string | undefined;
   let compact = false;

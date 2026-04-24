@@ -26,7 +26,7 @@ TASK_ID="<numeric id>"      # the task to unblock
 BLOCKER_ID=""               # specific blocker to remove (or empty to remove all)
 
 CWD=$(pwd)
-GTD_FILE="${CWD}/.claude/gtd/tasks.json"
+KANBAN_FILE="${CWD}/.claude/kanban/tasks.json"
 KANBAN_LIB="${CLAUDE_PLUGIN_ROOT}/hooks/kanban-lib.sh"
 
 # Perform unblock

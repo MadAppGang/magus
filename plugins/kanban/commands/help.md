@@ -43,20 +43,18 @@ echo -e "
 \033[90m│\033[0m    \033[90m--priority high\033[0m          Filter by priority level                      \033[90m│\033[0m
 \033[90m│\033[0m                                                                              \033[90m│\033[0m
 \033[90m│\033[0m  \033[97mData\033[0m                                                                      \033[90m│\033[0m
-\033[90m│\033[0m  Shared store: \033[90m.claude/gtd/tasks.json\033[0m (same as GTD plugin)               \033[90m│\033[0m
+\033[90m│\033[0m  Store: \033[90m.claude/kanban/tasks.json\033[0m (kanban-only, independent)            \033[90m│\033[0m
 \033[90m│\033[0m                                                                              \033[90m│\033[0m
 \033[90m│\033[0m  \033[97mColumns\033[0m: backlog → todo → in-progress → review → done                    \033[90m│\033[0m
 \033[90m│\033[0m  \033[97mPriorities\033[0m: \033[91m⚡U\033[0m urgent  \033[93m⚡H\033[0m high  \033[90m·M\033[0m medium  \033[90m·L\033[0m low              \033[90m│\033[0m
 \033[90m│\033[0m  \033[97mWIP Limit\033[0m: 3 tasks max in-progress (configurable in tasks.json)          \033[90m│\033[0m
 \033[90m└────────────────────────────────────────────────────────────────────────────────┘\033[0m
-
-\033[90mGTD tasks with kanbanStatus set appear automatically on the board.\033[0m
 "
 ```
 
 ## After Displaying
 
 Briefly explain:
-- The kanban board shares the same `tasks.json` as the GTD plugin — any task captured via `/gtd:capture` can be placed on the board with `/kanban:add` or by setting `kanbanStatus` via `/kanban:move`
+- Tasks live in `.claude/kanban/tasks.json` with an independent kanban-only schema. Upgrading from v1.5.x: legacy tasks in `.claude/gtd/tasks.json` are not auto-migrated — re-add with `/kanban:add`.
 - The workflow: `backlog → todo → in-progress → review → done`
 - Dependency tracking: use `/kanban:block` to prevent tasks from starting before blockers are resolved

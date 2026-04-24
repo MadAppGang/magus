@@ -4,7 +4,7 @@
 #   source "$(dirname "$0")/kanban-lib.sh"
 #
 # All functions use $CWD variable for project root.
-# Shares tasks.json with the GTD plugin.
+# Independent task store at .claude/kanban/tasks.json.
 # Requires: jq
 
 # ── Guards ──────────────────────────────────────────────────────────────────
@@ -17,17 +17,16 @@ fi
 # ── Paths ────────────────────────────────────────────────────────────────────
 
 kanban_dir() {
-  echo "${CWD}/.claude/gtd"
+  echo "${CWD}/.claude/kanban"
 }
 
 kanban_tasks_file() {
-  echo "${CWD}/.claude/gtd/tasks.json"
+  echo "${CWD}/.claude/kanban/tasks.json"
 }
 
 # ── Init ─────────────────────────────────────────────────────────────────────
 
-# kanban_init — create tasks.json with v3.0 kanban schema if not exists
-# Compatible with GTD plugin: both use the same file
+# kanban_init — create tasks.json with v4.0 kanban-only schema if not exists
 kanban_init() {
   local dir
   dir=$(kanban_dir)
@@ -37,10 +36,8 @@ kanban_init() {
   if [ ! -f "$file" ]; then
     cat > "$file" <<'EOF'
 {
-  "version": "3.0",
+  "version": "4.0",
   "nextId": 1,
-  "lastReview": null,
-  "activeTaskId": null,
   "kanban": {
     "columns": ["backlog", "todo", "in-progress", "review", "done"],
     "wipLimit": 3
@@ -48,15 +45,6 @@ kanban_init() {
   "tasks": []
 }
 EOF
-  else
-    # Upgrade: add kanban field if missing (backward compat with v2.0 stores)
-    local has_kanban
-    has_kanban=$(jq '.kanban // empty' "$file")
-    if [ -z "$has_kanban" ]; then
-      local tmp="${file}.tmp.$$"
-      jq '.kanban = {"columns": ["backlog","todo","in-progress","review","done"],"wipLimit": 3} | .version = "3.0"' \
-        "$file" > "$tmp" && mv "$tmp" "$file"
-    fi
   fi
 }
 
@@ -69,7 +57,7 @@ kanban_read() {
   if [ -f "$file" ]; then
     cat "$file"
   else
-    printf '{"version":"3.0","nextId":1,"lastReview":null,"activeTaskId":null,"kanban":{"columns":["backlog","todo","in-progress","review","done"],"wipLimit":3},"tasks":[]}\n'
+    printf '{"version":"4.0","nextId":1,"kanban":{"columns":["backlog","todo","in-progress","review","done"],"wipLimit":3},"tasks":[]}\n'
   fi
 }
 
@@ -101,7 +89,7 @@ kanban_new_id() {
 
 # ── Kanban Operations ─────────────────────────────────────────────────────────
 
-# kanban_move <id> <status> — set kanbanStatus on a task
+# kanban_move <id> <status> — set status on a task
 # Returns: 0 on success, 1 if task not found
 kanban_move() {
   local id="$1"
@@ -120,7 +108,7 @@ kanban_move() {
   now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
   local tmp="${file}.tmp.$$"
   jq --arg id "$id" --arg status "$status" --arg now "$now" \
-    '(.tasks[] | select(.id == $id)) |= (.kanbanStatus = $status | .modified = $now)' \
+    '(.tasks[] | select(.id == $id)) |= (.status = $status | .modified = $now)' \
     "$file" > "$tmp" && mv "$tmp" "$file"
   return 0
 }

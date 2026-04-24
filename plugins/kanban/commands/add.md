@@ -27,7 +27,7 @@ PRIORITY=""         # urgent | high | medium | low (or empty)
 CONTEXT_TAG=""      # e.g. "@code" or ""
 
 CWD=$(pwd)
-GTD_FILE="${CWD}/.claude/gtd/tasks.json"
+KANBAN_FILE="${CWD}/.claude/kanban/tasks.json"
 KANBAN_LIB="${CLAUDE_PLUGIN_ROOT}/hooks/kanban-lib.sh"
 
 # Ensure store exists
@@ -37,7 +37,7 @@ bash -c "source \"${KANBAN_LIB}\" && CWD=\"${CWD}\" kanban_init"
 ID=$(bash -c "source \"${KANBAN_LIB}\" && CWD=\"${CWD}\" kanban_new_id")
 NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-# Build task JSON — new fields are optional (null by default)
+# Build task JSON (kanban-only schema v4.0)
 TASK=$(jq -n \
   --arg id "$ID" \
   --arg subject "$TITLE" \
@@ -48,26 +48,22 @@ TASK=$(jq -n \
   '{
     id: $id,
     subject: $subject,
-    list: "next",
+    status: $status,
+    priority: (if $priority != "" then $priority else null end),
     context: (if $context != "" then [$context] else [] end),
-    parentId: null,
-    energy: null,
+    dependencies: null,
+    subtasks: null,
     timeEstimate: null,
-    waitingOn: null,
     dueDate: null,
     created: $created,
     modified: $created,
     completed: null,
-    notes: "",
-    kanbanStatus: $status,
-    priority: (if $priority != "" then $priority else null end),
-    dependencies: null,
-    subtasks: null
+    notes: ""
   }')
 
 # Atomic append
-TMP="${GTD_FILE}.tmp.$$"
-jq --argjson task "$TASK" '.tasks += [$task]' "$GTD_FILE" > "$TMP" && mv "$TMP" "$GTD_FILE"
+TMP="${KANBAN_FILE}.tmp.$$"
+jq --argjson task "$TASK" '.tasks += [$task]' "$KANBAN_FILE" > "$TMP" && mv "$TMP" "$KANBAN_FILE"
 
 # Display confirmation
 bun run "${CLAUDE_PLUGIN_ROOT}/tools/kanban-display.ts" added "$ID" "$TITLE"

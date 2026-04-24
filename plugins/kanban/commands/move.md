@@ -23,14 +23,14 @@ TASK_ID="<numeric id>"   # strip leading #
 NEW_STATUS="<status>"    # backlog | todo | in-progress | review | done
 
 CWD=$(pwd)
-GTD_FILE="${CWD}/.claude/gtd/tasks.json"
+KANBAN_FILE="${CWD}/.claude/kanban/tasks.json"
 KANBAN_LIB="${CLAUDE_PLUGIN_ROOT}/hooks/kanban-lib.sh"
 
 # Check for blockers before moving to in-progress
 if [ "$NEW_STATUS" = "in-progress" ]; then
   BLOCKERS=$(jq -r --arg id "$TASK_ID" \
     '.tasks[] | select(.id == $id) | .dependencies.blockedBy // [] | .[]' \
-    "$GTD_FILE" 2>/dev/null)
+    "$KANBAN_FILE" 2>/dev/null)
 
   if [ -n "$BLOCKERS" ]; then
     # Check if any blockers are incomplete
@@ -39,7 +39,7 @@ if [ "$NEW_STATUS" = "in-progress" ]; then
        (.tasks[] | select(.id == $id) | .dependencies.blockedBy // []) as $blockers |
        $blockers[] as $bid |
        ($all[] | select(.id == $bid and .completed == null) | .id)' \
-      "$GTD_FILE" 2>/dev/null)
+      "$KANBAN_FILE" 2>/dev/null)
 
     if [ -n "$OPEN_BLOCKERS" ]; then
       echo "Warning: Task #${TASK_ID} has open blockers: $(echo $OPEN_BLOCKERS | tr '\n' ' '). Moving anyway (soft block)."
@@ -57,7 +57,7 @@ if [ $RESULT -ne 0 ]; then
 fi
 
 # Get task title for confirmation
-TITLE=$(jq -r --arg id "$TASK_ID" '.tasks[] | select(.id == $id) | .subject' "$GTD_FILE")
+TITLE=$(jq -r --arg id "$TASK_ID" '.tasks[] | select(.id == $id) | .subject' "$KANBAN_FILE")
 
 # Display confirmation
 bun run "${CLAUDE_PLUGIN_ROOT}/tools/kanban-display.ts" moved "$TASK_ID" "$NEW_STATUS" "$TITLE"
@@ -70,7 +70,7 @@ if [ "$NEW_STATUS" = "done" ]; then
       (.dependencies.blockedBy // [] | contains([$id])) and
       (.dependencies.blockedBy // [] | map(. != $id) | all(. == false) or length == 1)
     ) | "#\(.id) \(.subject)"' \
-    "$GTD_FILE" 2>/dev/null)
+    "$KANBAN_FILE" 2>/dev/null)
 
   if [ -n "$UNBLOCKED" ]; then
     echo ""

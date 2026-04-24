@@ -20,7 +20,7 @@ Run this Bash command to display the kanban board:
 
 ```bash
 CWD=$(pwd)
-GTD_FILE="${CWD}/.claude/gtd/tasks.json"
+KANBAN_FILE="${CWD}/.claude/kanban/tasks.json"
 KANBAN_LIB="${CLAUDE_PLUGIN_ROOT}/hooks/kanban-lib.sh"
 
 # Ensure tasks store exists with kanban schema
@@ -36,7 +36,7 @@ COMPACT=false       # true if --compact
 [ -n "$FILTER_PROJECT" ] && DISPLAY_ARGS="$DISPLAY_ARGS --project $FILTER_PROJECT"
 [ "$COMPACT" = "true" ] && DISPLAY_ARGS="$DISPLAY_ARGS --compact"
 
-bun run "${CLAUDE_PLUGIN_ROOT}/tools/kanban-display.ts" board $DISPLAY_ARGS --file "$GTD_FILE"
+bun run "${CLAUDE_PLUGIN_ROOT}/tools/kanban-display.ts" board $DISPLAY_ARGS --file "$KANBAN_FILE"
 ```
 
 The display tool automatically opens in a tmux split pane when tmux is available. Any keypress closes the pane.
@@ -46,4 +46,4 @@ The display tool automatically opens in a tmux split pane when tmux is available
 - Point out any columns that exceed the WIP limit (default 3 tasks in-progress)
 - Mention tasks that are blocked (have unresolved blockers) with `⛔` indicator
 - Suggest `/kanban:move #id <status>` to move a highlighted task
-- If board is empty: "Add tasks with `/kanban:add \"title\"` or use `/gtd:capture` and they'll appear here once clarified."
+- If board is empty: "Add tasks with `/kanban:add \"title\"`."

@@ -25,14 +25,14 @@ SHOW_READY=false     # true if --ready
 PRIORITY_FILTER=""   # e.g. "high" or ""
 
 CWD=$(pwd)
-GTD_FILE="${CWD}/.claude/gtd/tasks.json"
+KANBAN_FILE="${CWD}/.claude/kanban/tasks.json"
 KANBAN_LIB="${CLAUDE_PLUGIN_ROOT}/hooks/kanban-lib.sh"
 
 # Build jq filter
-JQ_FILTER='.tasks[] | select(.completed == null and .kanbanStatus != null)'
+JQ_FILTER='.tasks[] | select(.completed == null and .status != null)'
 
 if [ -n "$STATUS_FILTER" ]; then
-  JQ_FILTER="${JQ_FILTER} | select(.kanbanStatus == \"${STATUS_FILTER}\")"
+  JQ_FILTER="${JQ_FILTER} | select(.status == \"${STATUS_FILTER}\")"
 fi
 
 if [ -n "$PRIORITY_FILTER" ]; then
@@ -47,7 +47,7 @@ if [ "$SHOW_READY" = "true" ]; then
   # Ready = on board + has no open blockers
   JQ_FILTER='.tasks as $all |
     .tasks[] |
-    select(.completed == null and .kanbanStatus != null) |
+    select(.completed == null and .status != null) |
     . as $t |
     select(
       (($t.dependencies.blockedBy // []) | length == 0) or
@@ -61,10 +61,10 @@ jq -r "[$JQ_FILTER] |
   .[] |
   \"  \" +
   (if .priority == \"urgent\" then \"⚡U \" elif .priority == \"high\" then \"⚡H \" elif .priority == \"medium\" then \"·M \" elif .priority == \"low\" then \"·L \" else \"   \" end) +
-  \"[\" + (.kanbanStatus // \"none\") + \"] \" +
+  \"[\" + (.status // \"none\") + \"] \" +
   \"#\" + .id + \" \" + .subject +
   (if (.dependencies.blockedBy // []) | length > 0 then \" ⛔\" else \"\" end)" \
-  "$GTD_FILE"
+  "$KANBAN_FILE"
 ```
 
 ## After Listing
