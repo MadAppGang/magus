@@ -131,6 +131,9 @@ If selectedModels.configured = false OR models is empty:
              Return brief summary"
 
 ### Step 3.8: User Approval Gate
+
+**PRESET CHECK:** If `./dev-preset.json` exists in cwd and has `automation: "autonomous"` AND multi-model consensus is non-critical (no CRITICAL issues in consolidated review), skip this widget and auto-approve. Read the preset now if you haven't already this session. If CRITICAL issues were found, still escalate to user (autonomous mode doesn't override critical consensus).
+
 Use AskUserQuestion to present architecture summary with consensus analysis (if multi-model).
 Options:
 1. Approve plan and proceed

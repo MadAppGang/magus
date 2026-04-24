@@ -1,0 +1,21 @@
+{
+  "_session_count": 1,
+  "learnings": {
+    "a28f3722be288af2": {
+      "rule_text": "Avoid excessive sleep commands between file operations",
+      "first_seen_session": "f1626ff0-9b38-423d-aca4-162ad803ed45",
+      "last_reinforced_session": "f1626ff0-9b38-423d-aca4-162ad803ed45",
+      "times_seen": 1,
+      "staged_to_claude_md": false,
+      "staged_session": null
+    },
+    "d404568a8f0b35d3": {
+      "rule_text": "Delegate tasks sooner rather than excessive file reading",
+      "first_seen_session": "f1626ff0-9b38-423d-aca4-162ad803ed45",
+      "last_reinforced_session": "f1626ff0-9b38-423d-aca4-162ad803ed45",
+      "times_seen": 1,
+      "staged_to_claude_md": false,
+      "staged_session": null
+    }
+  }
+}

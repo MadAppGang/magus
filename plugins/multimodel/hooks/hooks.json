@@ -1,5 +1,5 @@
 {
-  "description": "Multi-model orchestration enforcement - validates /team agent whitelist, session directory rules, and model name resolution",
+  "description": "Multi-model orchestration enforcement - validates /team agent whitelist and session directory rules",
   "hooks": {
     "PreToolUse": [
       {
@@ -18,26 +18,6 @@
           {
             "type": "command",
             "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/enforce-team-rules.sh\"",
-            "timeout": 10
-          }
-        ]
-      },
-      {
-        "matcher": "mcp__plugin_code-analysis_claudish__team",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/validate-model-names.sh\"",
-            "timeout": 10
-          }
-        ]
-      },
-      {
-        "matcher": "mcp__plugin_code-analysis_claudish__create_session",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/validate-model-names.sh\"",
             "timeout": 10
           }
         ]

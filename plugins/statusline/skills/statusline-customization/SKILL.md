@@ -46,6 +46,7 @@ All fields are optional. Missing fields use defaults shown above.
 | `duration` | Magenta | Session duration in minutes/seconds |
 | `context_bar` | Green→Red gradient | Visual bar + token count (90k/200k) + compaction indicator (⟳) |
 | `plan_limits` | Teal→Red gradient | Dual bar: top=5h, bottom=7d plan usage with reset countdowns |
+| `diff` | Cyan+green/red | Two independent chips rendered side-by-side: `✨ +A/-D` shows lines Claude has added/removed *in this conversation*; `● +A/-D` shows uncommitted lines from `git diff --shortstat` in the current worktree. Each chip is hidden when its counts are zero; the git chip is also hidden when cwd is not a git repo. The whole section is hidden when both sides are zero. |
 
 ### Plan Limits Bar Characters
 

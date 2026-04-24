@@ -4,6 +4,16 @@
 
 **Iteration limit:** 3 rounds of questions
 
+**PRESET MODE:** Before each AskUserQuestion widget below, check whether `./dev-preset.json` exists. If you haven't already loaded it this session, Read it now. If the preset has the relevant key set, use that value and SKIP the widget. This lets automated runners (autotest, CI) bypass interactive gates so `claude -p` can complete Full depth end-to-end.
+
+**SELF-SUFFICIENCY:** Each PRESET CHECK below must be able to proceed whether or not the preset was loaded earlier. If in doubt, Read `./dev-preset.json` at the top of the relevant step — the file is small and the cost is negligible compared to firing a widget that will cause auto-downgrade.
+
+**SUB-WIDGET PRESET KEYS:** When `validation` is `"real-browser-test"` or `"screenshot-comparison"`, additional sub-widgets fire (Test URL, Dev Server, Expected Result, Design File). The preset schema covers them with these optional keys — all skip their widget when present:
+- `test_url`: string (e.g. `"http://localhost:3000"`)
+- `dev_server`: string (e.g. `"bun run dev"`)
+- `expected_result`: string (e.g. `"Redirect to another page"`)
+- `design_file`: string path (e.g. `"designs/feature.png"`) — only used when `validation: "screenshot-comparison"`
+
 ## Steps
 
 ### Step 1.1: Mark phase as in_progress
@@ -30,6 +40,8 @@ Requirements Loop (max 3 rounds):
 
 ### Step 1b: Validation Criteria
 
+**PRESET CHECK:** If preset `validation` is set (e.g. `"unit-tests-only"`), use that value and SKIP this widget. Also skip the conditional Test URL / Dev Server / Expected Result sub-widgets that follow if validation type is "unit-tests-only".
+
 Ask how to verify this feature ACTUALLY works:
 
 ```yaml
@@ -50,6 +62,9 @@ AskUserQuestion:
 ```
 
 If user selects browser test or screenshot:
+
+**PRESET CHECK:** For each of the three questions below, if the corresponding preset key is set (`test_url`, `dev_server`, `expected_result`), use that value and SKIP that question from the widget. If all three are preset, skip the widget entirely.
+
 ```yaml
 AskUserQuestion:
   questions:
@@ -83,6 +98,9 @@ AskUserQuestion:
 ```
 
 If user selects screenshot comparison:
+
+**PRESET CHECK:** If preset `design_file` is set, use that value and SKIP the widget below.
+
 ```yaml
 AskUserQuestion:
   questions:
@@ -98,6 +116,8 @@ AskUserQuestion:
 ```
 
 ### Step 1c: Iteration Limits
+
+**PRESET CHECK (Retry Limit):** If preset `retry_limit` is set (number or "infinite"), use that value and SKIP the Retry Limit widget below.
 
 Ask user for preferred retry behavior:
 
@@ -117,6 +137,8 @@ AskUserQuestion:
         - label: "Infinite"
           description: "Keep going until it works! (Ctrl+C to stop)"
 ```
+
+**PRESET CHECK (Advanced):** If preset `advanced` is set (e.g. `"defaults"`), use that value and SKIP the Advanced widget below.
 
 Optional advanced question:
 ```yaml
@@ -158,6 +180,9 @@ Smoke test (actually call the tools):
 3. If both succeed: Tools validated
 
 If any tool fails:
+
+**PRESET CHECK:** If preset `tool_issue` is set (e.g. `"skip-real-validation"`), use that value and SKIP this widget.
+
 ```yaml
 AskUserQuestion:
   questions:
@@ -226,6 +251,8 @@ Write iteration config to ${SESSION_PATH}/iteration-config.json:
 
 ### Step 1f: Multi-Model Review Configuration (P1b — UPFRONT MODEL SELECTION)
 
+**PRESET CHECK:** If preset `review_models` is set (array of alias strings, e.g. `["internal","grok","gemini"]`), use that list and SKIP the free-form prompt below. Resolve each alias exactly as documented in the parse step.
+
 If claudish is available (check with `which claudish`):
 
 **Read available aliases** from `shared/model-aliases.json` (`shortAliases` keys):
@@ -269,6 +296,9 @@ If claudish is NOT available:
   selectedModels.includeInternal = true (internal only, no external)
 
 ### Step 1.7: User Approval Gate
+
+**PRESET CHECK:** If `automation: "autonomous"` was set in the preset, skip this widget and auto-approve (autonomous mode implies upfront approval of all defaults). Still write the summary to the session log for auditability.
+
 Use AskUserQuestion to present summary of:
 - Requirements overview
 - Validation method selected

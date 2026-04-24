@@ -358,8 +358,8 @@
     {
       "name": "kanban",
       "source": "./plugins/kanban",
-      "description": "Kanban board view for task management. v1.4.0: Fixed silent stdout (Claude's Bash tool now sees confirmation); split targets origin pane via $TMUX_PANE so it survives window switches; split direction is side-by-side when origin fills the window, stacked when there's already a neighbor; existing kanban-board panes are refreshed in place instead of accumulating; optional idle-pane reuse via KANBAN_REUSE_IDLE=1. Visual board with 5 columns, task dependencies (cycle-safe), priority indicators, WIP limits. Shares tasks.json with GTD plugin \u2014 works standalone or alongside GTD.",
-      "version": "1.4.0",
+      "description": "Kanban board view for task management. v1.5.0: Empty board now shows a clear hint instead of a silent zero-grid (new --empty-style terse|stable flag); spawned tmux pane self-titles to close a race that could create duplicate splits under concurrent invocations. v1.4.0: silent-stdout fix, origin-pane targeting via $TMUX_PANE, geometry-aware split direction, refresh-in-place for existing panes, optional idle-pane reuse via KANBAN_REUSE_IDLE=1. Visual board with 5 columns, task dependencies (cycle-safe), priority indicators, WIP limits. Shares tasks.json with GTD plugin \u2014 independent lists, independent lifecycles.",
+      "version": "1.5.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",

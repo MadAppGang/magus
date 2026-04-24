@@ -66,15 +66,20 @@ When the user says "open on a side", "split terminal", "show alongside", "run be
 1. DETECT CURRENT PANE (never use list-windows active flag)
    Bash: echo "$TMUX_PANE"                             → "%57" (your actual pane)
 
-2. SPLIT PANE (auto-reuses idle pane if one exists in the window)
-   mcp__tmux__split-pane({ paneId: "%57", direction: "horizontal" })
-                                                        → pane "%66" (reused: false)
+2. CHECK FOR EXISTING HELPER PANE (reuse if possible)
+   Bash: tmux list-panes -F '#{pane_id} #{pane_title}' | grep claude-helper
+   → If found "%66 claude-helper": skip to step 4
 
-3. RUN IN HELPER PANE
+3. SPLIT PANE (never create-session for side panels)
+   mcp__tmux__split-pane({ paneId: "%57", direction: "horizontal" })
+                                                        → new pane "%66"
+   Bash: tmux select-pane -t %66 -T "claude-helper"    → label it for reuse
+
+4. RUN IN HELPER PANE
    mcp__tmux__send-keys({ paneId: "%66", keys: "htop", literal: true })
    mcp__tmux__send-keys({ paneId: "%66", keys: "Enter", literal: false })
 
-4. MONITOR (point-in-time read or event-driven)
+5. MONITOR (point-in-time read or event-driven)
    mcp__tmux__capture-pane({ paneId: "%66" })           → read screen
    OR for event-driven: mcp__tmux__watch-pane({
      paneId: "%66",
@@ -82,14 +87,15 @@ When the user says "open on a side", "split terminal", "show alongside", "run be
      timeout: 120
    }) → WatchResult when done or idle
 
-5. CLEANUP (only the pane you created — skip if reused)
+6. CLEANUP (only the pane you created)
    mcp__tmux__kill-pane({ paneId: "%66" })
 ```
 
 **CRITICAL RULES:**
 - ALWAYS use `echo "$TMUX_PANE"` to find the user's pane. `$TMUX_PANE` is set by tmux at shell creation and is stable for the pane's lifetime — it never races with user focus changes. NEVER use `tmux display-message -p` without `-t` (returns the focused pane, not yours) or `list-windows` active flag.
-- `split-pane` automatically reuses idle panes in the same window — no manual check needed.
+- ALWAYS check for existing `claude-helper` pane before splitting — reuse it instead of spawning duplicates.
 - First split is ALWAYS `direction: "horizontal"` (creates vertical divider, helper on right).
+- After splitting, ALWAYS label with `tmux select-pane -t <id> -T "claude-helper"`.
 - NEVER `create-session` when user asked for a side panel.
 
 For open-ended monitoring (e.g., user said "run beside me" and wants it to stay up), skip `watch-pane` and just confirm launch with `capture-pane` once.

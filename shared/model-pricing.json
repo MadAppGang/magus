@@ -1,0 +1,51 @@
+{
+  "_comment_source": "Anthropic published pricing — per million tokens, input/output. Source: https://www.anthropic.com/pricing (retrieved 2026-04-17). Values here are conservative upper-bounds used by the cost_per_case Braintrust scorer (advisory only, does NOT gate CI). Update alongside model-aliases.json updates.",
+  "_comment_unit": "USD per 1M tokens",
+  "_schema": {
+    "input_usd_per_mtok": "number",
+    "output_usd_per_mtok": "number",
+    "source": "string (URL or note)"
+  },
+  "models": {
+    "claude-sonnet-4-6": {
+      "input_usd_per_mtok": 3.0,
+      "output_usd_per_mtok": 15.0,
+      "source": "Anthropic pricing page — Sonnet 4.x tier"
+    },
+    "claude-sonnet-4-20250514": {
+      "input_usd_per_mtok": 3.0,
+      "output_usd_per_mtok": 15.0,
+      "source": "Anthropic pricing page — Sonnet 4.x tier"
+    },
+    "claude-haiku-4-5": {
+      "input_usd_per_mtok": 1.0,
+      "output_usd_per_mtok": 5.0,
+      "source": "Anthropic pricing page — Haiku 4.x tier (conservative upper bound)"
+    },
+    "claude-opus-4-7": {
+      "input_usd_per_mtok": 15.0,
+      "output_usd_per_mtok": 75.0,
+      "source": "Anthropic pricing page — Opus 4.x tier"
+    },
+    "internal": {
+      "input_usd_per_mtok": 3.0,
+      "output_usd_per_mtok": 15.0,
+      "source": "Native claude (plan-default) — assume Sonnet 4.x tier"
+    },
+    "internal:sonnet": {
+      "input_usd_per_mtok": 3.0,
+      "output_usd_per_mtok": 15.0,
+      "source": "Native claude with sonnet alias"
+    },
+    "internal:haiku": {
+      "input_usd_per_mtok": 1.0,
+      "output_usd_per_mtok": 5.0,
+      "source": "Native claude with haiku alias"
+    },
+    "internal:opus": {
+      "input_usd_per_mtok": 15.0,
+      "output_usd_per_mtok": 75.0,
+      "source": "Native claude with opus alias"
+    }
+  }
+}

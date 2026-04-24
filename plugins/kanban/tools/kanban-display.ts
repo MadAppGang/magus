@@ -19,6 +19,7 @@
  *   --project <id>           Filter board by project ID
  *   --compact                Compact board display
  *   --mode simple|regular|modern   Board rendering mode (default: regular)
+ *   --empty-style terse|stable     Empty-board display (default: stable)
  */
 
 import { execSync } from "child_process";
@@ -664,11 +665,14 @@ function cmdBoard(
   filter?: string,
   projectId?: string,
   _compact?: boolean,
-  mode: "simple" | "regular" | "modern" = "regular"
+  mode: "simple" | "regular" | "modern" = "regular",
+  emptyStyle: "terse" | "stable" = "stable"
 ): void {
   const wipLimit = store.kanban?.wipLimit ?? 3;
 
-  // Select tasks on the board (kanbanStatus set, not completed)
+  // Select tasks on the board (kanbanStatus set, not completed).
+  // GTD and kanban are independent lists: tasks appear here only when
+  // kanbanStatus is explicitly set (via /kanban:add or /kanban:move).
   let boardTasks = store.tasks.filter(
     t => t.completed === null && t.kanbanStatus != null
   );
@@ -684,6 +688,14 @@ function cmdBoard(
   }
 
   const terminalWidth = getTermWidth();
+
+  // Empty-state branch: no tasks on the board after filtering.
+  // terse = hint only (compact, no grid); stable = grid + hint (layout steady).
+  const emptyHint = `Empty. Use /kanban:add "title" to create your first task.`;
+  if (boardTasks.length === 0 && emptyStyle === "terse") {
+    print(fg(S.gray, emptyHint));
+    return;
+  }
 
   // Build normalized BoardTask list and column map
   const allBoardTasks: BoardTask[] = boardTasks.map(toBoardTask);
@@ -736,6 +748,9 @@ function cmdBoard(
 
   print(header);
   print(board);
+  if (boardTasks.length === 0) {
+    print(fg(S.gray, emptyHint));
+  }
 }
 
 function cmdShow(store: TaskStore, taskId: string): void {
@@ -973,10 +988,17 @@ function maybeReopenInTmux(args: string[]): boolean {
   // Re-invoke ourselves with the same args inside a tmux split/reused pane.
   // Wrap in `exec bash` so that when the board finishes and the read returns,
   // the pane drops to an interactive shell instead of exiting — keeps the pane
-  // alive for Fix E (refresh-existing) on subsequent invocations.
+  // alive for Fix F (refresh-existing) on subsequent invocations.
+  //
+  // Fix G (self-title) — the spawned pane titles itself from inside before
+  // running bun. Closes the race where an external `select-pane -T` (below)
+  // is a separate tmux round-trip: a sibling /kanban:board invocation could
+  // run findExistingBoardPane() in the gap and miss the untitled new pane,
+  // creating a duplicate split. Self-titling sets the title before the shell
+  // yields control, so the pane is discoverable immediately.
   const script = process.argv[1];
   const escapedArgs = args.map(a => `'${a.replace(/'/g, "'\\''")}'`).join(" ");
-  const cmd = `bun run '${script}' ${escapedArgs}; read -n1 -s -r; exec bash`;
+  const cmd = `tmux select-pane -T 'kanban-board' 2>/dev/null; bun run '${script}' ${escapedArgs}; read -n1 -s -r; exec bash`;
 
   try {
     // Fix E — if a previous kanban-board pane is still around, reuse it.
@@ -1061,6 +1083,7 @@ function main(): void {
   let filterProject: string | undefined;
   let compact = false;
   let boardMode: "simple" | "regular" | "modern" = "regular";
+  let emptyStyle: "terse" | "stable" = "stable";
 
   // Parse global options (non-positional)
   const positional: string[] = [];
@@ -1075,6 +1098,11 @@ function main(): void {
         if (m === "simple" || m === "regular" || m === "modern") boardMode = m;
         break;
       }
+      case "--empty-style": {
+        const s = args[++i];
+        if (s === "terse" || s === "stable") emptyStyle = s;
+        break;
+      }
       default: positional.push(args[i]); break;
     }
   }
@@ -1083,7 +1111,7 @@ function main(): void {
 
   switch (command) {
     case "board":
-      cmdBoard(store, filterContext, filterProject, compact, boardMode);
+      cmdBoard(store, filterContext, filterProject, compact, boardMode, emptyStyle);
       break;
 
     case "show": {
@@ -1143,7 +1171,8 @@ Options:
   --filter <@context>       Filter board by context
   --project <id>            Filter board by project ID
   --compact                 Compact board display
-  --mode simple|regular|modern  Board rendering mode (default: regular)`);
+  --mode simple|regular|modern  Board rendering mode (default: regular)
+  --empty-style terse|stable    Empty-board display (default: stable)`);
       break;
   }
 }

@@ -41,6 +41,9 @@ which claudish
 ```
 
 ### Step 0.6: Worktree option
+
+**PRESET CHECK:** If preset `workspace` is set (e.g. `"current"` or `"new-directory"`), use that value and SKIP this widget.
+
 Ask about workspace isolation:
 
 Use AskUserQuestion:

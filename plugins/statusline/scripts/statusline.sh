@@ -545,9 +545,44 @@ if [ "$SHOW_MEMORY" = "true" ]; then
 fi
 
 # ── 9. Diff stats ─────────────────────────────────────────
-if [ "$SHOW_DIFF" = "true" ] && { [ "${LINES_ADDED:-0}" -gt 0 ] || [ "${LINES_REMOVED:-0}" -gt 0 ]; } 2>/dev/null; then
-  DIFF_SECTION="${C_GREEN}+${LINES_ADDED}${R}${C_GRAY}/${R}${C_RED}-${LINES_REMOVED}${R}"
-  append_section "$DIFF_SECTION"
+# Two independent signals, rendered as icon-prefixed chips:
+#   ✨ +N/-M  — lines Claude edited/wrote in this conversation (.cost.total_lines_*)
+#   ● +N/-M  — uncommitted tracked changes in the worktree (git diff --shortstat)
+# Each chip appears only when its counts are non-zero.
+# The git chip is also omitted when cwd is not in a git repository.
+if [ "$SHOW_DIFF" = "true" ]; then
+  # Git-side stats: read uncommitted tracked changes from `git diff --shortstat`.
+  # Silently yields zeros when cwd is not a git repo OR git is not on PATH.
+  GIT_LINES_ADDED=0
+  GIT_LINES_REMOVED=0
+  if [ -n "$CWD" ] && cd "$CWD" 2>/dev/null && git rev-parse --git-dir >/dev/null 2>&1; then
+    GIT_SHORTSTAT=$(git diff --shortstat 2>/dev/null)
+    # Format: " N files changed, A insertions(+), D deletions(-)"
+    # Either insertions or deletions may be absent.
+    GIT_LINES_ADDED=$(printf '%s' "$GIT_SHORTSTAT" | sed -n 's/.*[^0-9]\([0-9][0-9]*\) insertion.*/\1/p')
+    GIT_LINES_REMOVED=$(printf '%s' "$GIT_SHORTSTAT" | sed -n 's/.*[^0-9]\([0-9][0-9]*\) deletion.*/\1/p')
+    GIT_LINES_ADDED=${GIT_LINES_ADDED:-0}
+    GIT_LINES_REMOVED=${GIT_LINES_REMOVED:-0}
+  fi
+
+  DIFF_SECTION=""
+
+  # Session chip (AI edits so far this conversation)
+  if [ "${LINES_ADDED:-0}" -gt 0 ] 2>/dev/null || [ "${LINES_REMOVED:-0}" -gt 0 ] 2>/dev/null; then
+    DIFF_SECTION="${C_CYAN}✨${R} ${C_GREEN}+${LINES_ADDED:-0}${R}${C_GRAY}/${R}${C_RED}-${LINES_REMOVED:-0}${R}"
+  fi
+
+  # Git chip (uncommitted worktree diff)
+  if [ "$GIT_LINES_ADDED" -gt 0 ] 2>/dev/null || [ "$GIT_LINES_REMOVED" -gt 0 ] 2>/dev/null; then
+    GIT_CHIP="${C_YELLOW}●${R} ${C_GREEN}+${GIT_LINES_ADDED}${R}${C_GRAY}/${R}${C_RED}-${GIT_LINES_REMOVED}${R}"
+    if [ -n "$DIFF_SECTION" ]; then
+      DIFF_SECTION="${DIFF_SECTION}  ${GIT_CHIP}"
+    else
+      DIFF_SECTION="$GIT_CHIP"
+    fi
+  fi
+
+  [ -n "$DIFF_SECTION" ] && append_section "$DIFF_SECTION"
 fi
 
 # ── 10. Context bar (always visible, adaptive width) ──────

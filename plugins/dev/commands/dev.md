@@ -72,6 +72,37 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
   <scope_selection>
     **MANDATORY: Before starting any phase, determine depth and automation level.**
 
+    **Step 0 — Check for preset file (autotest/CI bypass):**
+
+    Before asking any question, Read `./dev-preset.json` from the current working directory.
+    If the file exists, parse it and use its values for depth, automation, and downstream widget answers (validation, retry_limit, advanced, tool_issue, review_models, escalation). A preset suppresses the corresponding AskUserQuestion widget in that phase; values that aren't set in the preset still prompt normally.
+
+    Preset file schema:
+    ```json
+    {
+      "depth": "quick|standard|full",
+      "automation": "interactive|guided|autonomous",
+      "workspace": "current|new-directory",
+      "validation": "unit-tests-only|real-browser-test|screenshot-comparison|api-endpoint-test",
+      "test_url": "http://localhost:3000",
+      "dev_server": "bun run dev",
+      "expected_result": "Redirect to another page",
+      "design_file": "designs/feature.png",
+      "retry_limit": 3,
+      "advanced": "defaults|custom",
+      "tool_issue": "skip-real-validation|wait|cancel",
+      "review_models": ["internal", "grok", "gemini"],
+      "escalation": "accept-current-state|add-iterations|infinite|manual|cancel"
+    }
+    ```
+    `test_url`, `dev_server`, `expected_result` are consulted when `validation` is `real-browser-test` or `screenshot-comparison` (Phase 1 sub-widgets). `design_file` is consulted when `validation` is `screenshot-comparison`. When `validation` is `unit-tests-only`, these keys are unused.
+
+    If preset file is absent: proceed with AskUserQuestion as normal (no behavior change for interactive users).
+
+    Why: `claude -p` (non-interactive mode) has no AskUserQuestion client. Without a preset, the model rationally shrinks the workflow to avoid widgets, which reads as "Full-depth auto-downgrades to Standard." The preset file lets automated runners (autotest, CI) bypass every widget while keeping the interactive experience unchanged.
+
+    Record `preset_loaded: true` (and the parsed preset object) in session config so downstream phases skip their own widgets.
+
     Two independent axes control the build process:
 
     **AXIS 1 — DEPTH (what phases run):**
@@ -106,6 +137,8 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
     - Default: Guided
 
     **If auto-inference cannot determine, ask both:**
+
+    **PRESET CHECK (both widgets):** If `dev-preset.json` was loaded and has `depth` set, use that value and SKIP the Build Depth widget. Likewise for `automation`.
 
     ```yaml
     AskUserQuestion:
@@ -577,6 +610,8 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
 
   <outer_loop_escalation>
     **When outer loop limit reached:**
+
+    **PRESET CHECK:** Read `./dev-preset.json` from cwd if you haven't already this session. If preset `escalation` is set (e.g. `"accept-current-state"`, `"add-iterations"`, `"infinite"`, `"manual"`, `"cancel"`), use that value and SKIP the widget. Autonomous-mode runs that hit the iteration limit should typically set `escalation: "accept-current-state"` to finalize with a validation_override flag rather than hang waiting for input that can't arrive.
 
     ```yaml
     AskUserQuestion:
