@@ -1,6 +1,6 @@
 {
   "name": "code-analysis",
-  "version": "5.1.0",
+  "version": "5.2.0",
   "description": "Deep code investigation with mnemex MCP server. v5.0.1: Renamed mnemex CLI tool.",
   "author": {
     "name": "Jack Rudenko",
@@ -41,8 +41,13 @@
   "hooks": "./hooks/hooks.json",
   "conventions": {
     "gitignore": {
-      "project": [".mnemex/"],
-      "global": [".claudemem/", ".claude/.coaching/"]
+      "project": [
+        ".mnemex/"
+      ],
+      "global": [
+        ".claudemem/",
+        ".claude/.coaching/"
+      ]
     },
     "claudemd": {
       "section": "code-analysis",
