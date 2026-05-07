@@ -1,11 +1,7 @@
 ---
 name: browser-use-integration
 version: 1.0.0
-description: |
-  Optional integration patterns for the browser-use plugin (browser-use@magus).
-  Provides detection pattern and screenshot capture workflow for URL-based references.
-  Use when designer agents need browser screenshot capture and claude-in-chrome is unavailable.
-  This is a SKILL (use Skill tool), NOT an agent.
+description: Detects the browser-use@magus plugin and captures screenshots of URL-based references. Use when designer agents need browser screenshot capture and claude-in-chrome is unavailable.
 user-invocable: false
 ---
 

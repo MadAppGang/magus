@@ -1,6 +1,7 @@
 ---
 name: debug-localization
 description: 3-strategy fault localization with context budget enforcement — stack trace grep, keyword search, AST expansion. Used by /dev:debug standard path and /dev:fix.
+disable-model-invocation: true
 keywords: [fault-localization, stack-trace, grep, BM25, keyword-search, AST, context-budget, mnemex, debug, localization-report]
 created: 2026-03-24
 updated: 2026-03-24

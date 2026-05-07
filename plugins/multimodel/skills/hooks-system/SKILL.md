@@ -1,6 +1,7 @@
 ---
 name: hooks-system
-description: Comprehensive lifecycle hook patterns for Claude Code workflows. Use when configuring PreToolUse, PostToolUse, UserPromptSubmit, Stop, or SubagentStop hooks. Covers hook matchers, command hooks, prompt hooks, validation, metrics, auto-formatting, and security patterns. Trigger keywords - "hooks", "PreToolUse", "PostToolUse", "lifecycle", "tool matcher", "hook template", "auto-format", "security hook", "validation hook".
+description: Comprehensive lifecycle hook patterns for Claude Code workflows. Use when configuring PreToolUse, PostToolUse, UserPromptSubmit, Stop, or SubagentStop hooks. Covers hook matchers, command hooks, prompt hooks, validation, metrics, auto-formatting, and security patterns.
+disable-model-invocation: true
 version: 0.1.0
 tags: [orchestration, hooks, lifecycle, PreToolUse, PostToolUse, UserPromptSubmit, validation, security]
 keywords: [hooks, lifecycle, pre-tool, post-tool, user-prompt, session-start, stop, subagent, notification, permission, validation, auto-format, security, metrics]

@@ -1,6 +1,6 @@
 ---
 name: browser-debugging
-description: Systematically tests UI functionality, validates design fidelity with AI visual analysis, monitors console output, tracks network requests, and provides debugging reports using Chrome Extension MCP tools. Use after implementing UI features, for design validation, when investigating console errors, for regression testing, or when user mentions testing, browser bugs, console errors, or UI verification.
+description: Tests UI in a real browser, validates design fidelity with AI vision, monitors console, and tracks network via Chrome MCP. Use when verifying UI features, investigating browser bugs, or console errors.
 user-invocable: false
 ---
 

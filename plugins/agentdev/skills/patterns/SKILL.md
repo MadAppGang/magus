@@ -1,6 +1,7 @@
 ---
 name: patterns
 description: Common agent patterns and templates for Claude Code. Use when implementing agents to follow proven patterns for Tasks integration, quality checks, and external model invocation via claudish CLI.
+disable-model-invocation: true
 user-invocable: false
 ---
 plugin: agentdev

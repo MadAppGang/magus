@@ -1,6 +1,6 @@
 ---
 name: navigation-patterns
-description: URL navigation, multi-tab orchestration, session creation and management, back/forward navigation, browser profile persistence, session export/import for authentication reuse. Trigger keywords - navigate to, open URL, multiple tabs, session, browser profile, tab switch, browser history, back button.
+description: URL navigation, multi-tab orchestration, session creation and management, back/forward navigation, browser profile persistence, session export/import for authentication reuse.
 version: 1.0.0
 tags: [browser, navigation, tabs, session, profile, url, multi-tab, authentication]
 keywords: [navigate to, open url, new tab, tab, session, back, forward, browser profile, cookies, authentication, session persistence, multi-tab, switch tab, close tab, profile, user data dir]

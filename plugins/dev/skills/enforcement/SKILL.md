@@ -1,6 +1,6 @@
 ---
 name: phase-enforcement
-description: Evidence-based phase completion enforcement for /dev:feature. Use when orchestrating 8-phase feature development to ensure artifacts exist before phase completion, validation criteria are addressed, outer loops are enforced, and show-your-work requirements are met.
+description: Enforces evidence-based phase completion for /dev:feature — artifacts, validation criteria, outer loops, show-your-work. Use when orchestrating 8-phase feature development with quality gates.
 version: 1.0.0
 tags: [orchestration, enforcement, validation, quality-gates, evidence]
 keywords: [phase-completion, artifacts, evidence, validation-criteria, outer-loop, checkpoint, enforcement, quality-gate]

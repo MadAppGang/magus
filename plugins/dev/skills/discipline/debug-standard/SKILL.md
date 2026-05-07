@@ -1,6 +1,7 @@
 ---
 name: debug-standard
 description: Enhanced standard debug workflow — 6-phase orchestration with 3-strategy localization, self-critique, and agent delegation. Loaded by /dev:debug for the standard scope.
+disable-model-invocation: true
 keywords: [debugging, root-cause, localization, fault-isolation, self-critique, regression, agent-delegation, standard-debug]
 plugin: dev
 type: discipline

@@ -1,6 +1,6 @@
 ---
 name: mnemex-search
-description: "mnemex MCP and CLI expert — PRIMARY TOOL for semantic code search AND structural analysis. Available as MCP tools (direct invocation) or CLI via Bash (--agent flag). This is a SKILL (use Skill tool), NOT an agent. AST tree navigation with map, symbol, callers, callees, context commands. PageRank ranking. Workflow: Map structure first, then search semantically, analyze callers before modifying."
+description: Performs semantic code search and AST analysis via mnemex MCP/CLI — map, symbol, callers, callees, context, PageRank. Use when searching code, mapping a codebase, or auditing callers before refactor.
 allowed-tools: Bash, Task, AskUserQuestion
 user-invocable: false
 ---

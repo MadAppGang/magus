@@ -1,10 +1,7 @@
 ---
 name: ui-analyse
 version: 2.0.0
-description: |
-  UI visual analysis patterns using Gemini 3 Pro Preview multimodal capabilities.
-  Analysis-only - no code changes. Use dev:frontend-implement for applying improvements.
-  Includes prompting patterns and severity guidelines.
+description: Analyzes UI visually using Gemini 3 Pro — prompting patterns, severity guidelines, analysis-only. Use when reviewing UI visuals; pair with dev:frontend-implement to apply.
 user-invocable: false
 ---
 

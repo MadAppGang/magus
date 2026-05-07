@@ -1,6 +1,6 @@
 ---
 name: tdd-workflow
-description: Red-Green-Refactor state machine for TDD with terminal test watchers. Use when running tests in watch mode, iterating on failing tests, or managing the edit-save-watch cycle. Trigger on "TDD", "watch mode", "failing test", "fix the test", "red green", "test loop", "bun test --watch", "jest --watch", "vitest", "cargo watch", "pytest-watch".
+description: Drives a Red-Green-Refactor state machine for TDD with terminal test watchers. Use when running TDD in watch mode or iterating on failing tests with jest, vitest, cargo watch, or pytest-watch.
 version: 2.0.0
 tags: [terminal, tdd, testing, watch-mode, red-green-refactor, state-machine]
 keywords: [TDD, test driven, red green refactor, watch mode, failing test, bun test, jest watch, vitest watch, cargo watch, pytest watch, fix test, test loop, watcher, test watcher]

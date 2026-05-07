@@ -1,6 +1,6 @@
 ---
 name: error-recovery
-description: Handle errors, timeouts, and failures in multi-agent workflows. Use when dealing with external model timeouts, API failures, partial success, user cancellation, or graceful degradation. Trigger keywords - "error", "failure", "timeout", "retry", "fallback", "cancelled", "graceful degradation", "recovery", "partial success".
+description: Handle errors, timeouts, and failures in multi-agent workflows. Use when dealing with external model timeouts, API failures, partial success, user cancellation, or graceful degradation.
 version: 1.2.0
 tags: [orchestration, error-handling, retry, fallback, timeout, recovery, escalation]
 keywords: [error, failure, timeout, retry, fallback, graceful-degradation, cancellation, recovery, partial-success, resilience, escalation, report-to-user]

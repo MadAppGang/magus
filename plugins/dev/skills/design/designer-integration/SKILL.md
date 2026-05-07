@@ -1,10 +1,7 @@
 ---
 name: designer-integration
 version: 1.0.0
-description: |
-  Optional integration patterns for the designer plugin (designer@magus).
-  Provides detection pattern and delegation workflows for pixel-level design validation.
-  Use when dev:frontend agent or dev:browser-debugging skill needs design validation.
+description: Detects the designer@magus plugin and delegates pixel-level design validation. Use when dev:frontend or dev:browser-debugging needs design comparison or AI semantic UI analysis.
 user-invocable: false
 ---
 

@@ -1,6 +1,7 @@
 ---
 name: quality-gates
-description: Implement quality gates, user approval, iteration loops, and test-driven development. Use when validating with users, implementing feedback loops, classifying issue severity, running test-driven loops, or building multi-iteration workflows. Trigger keywords - "approval", "user validation", "iteration", "feedback loop", "severity", "test-driven", "TDD", "quality gate", "consensus".
+description: Implement quality gates, user approval, iteration loops, and test-driven development. Use when validating with users, implementing feedback loops, classifying issue severity, running test-driven loops, or building multi-iteration workflows.
+disable-model-invocation: true
 version: 0.1.0
 tags: [orchestration, quality-gates, approval, iteration, feedback, severity, test-driven, TDD]
 keywords: [approval, validation, iteration, feedback-loop, severity, test-driven, TDD, quality-gate, consensus, user-approval]

@@ -1,9 +1,6 @@
 ---
 name: tailwindcss
-description: |
-  TailwindCSS v4 patterns with CSS-first configuration using @theme, @source, and modern CSS features.
-  Covers design tokens, CSS variables, container queries, dark mode, and Vite integration.
-  Use when configuring Tailwind, defining design tokens, or leveraging modern CSS with Tailwind utilities.
+description: Provides TailwindCSS v4 patterns with CSS-first @theme and @source config, design tokens, container queries, dark mode, and Vite integration. Use when configuring Tailwind or defining design tokens.
 user-invocable: false
 ---
 

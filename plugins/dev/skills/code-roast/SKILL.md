@@ -1,6 +1,6 @@
 ---
 name: code-roast
-description: code-roast — Roast code with severity-graded sins, cite file:line, offer redemption. Use when user says "roast", "find sins", "code quality roast", "shame my code", "roast this", "code sins", "what's wrong with this code" (humorous tone). This is a SKILL (use Skill tool), NOT an agent.
+description: Roasts code with severity-graded sins, cites file:line, and offers redemption in a humorous tone. Use when the user asks to roast code, find sins, shame my code, or get a code quality roast.
 version: 1.0.0
 tags: [dev, quality, roast, humor, code-review, sins, anti-patterns]
 keywords: [roast, sins, shame, code-quality, anti-patterns, code-review, humor, savage]

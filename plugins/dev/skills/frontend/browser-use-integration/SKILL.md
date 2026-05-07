@@ -1,11 +1,7 @@
 ---
 name: browser-use-integration
 version: 1.0.0
-description: |
-  Optional integration patterns for the browser-use plugin (browser-use@magus).
-  Provides detection pattern and automated browser workflows for frontend development.
-  Use when dev:frontend agent or dev:browser-debugging skill needs headless browser automation.
-  This is a SKILL (use Skill tool), NOT an agent.
+description: Detects the browser-use@magus plugin and runs headless browser automation for frontend workflows. Use when dev:frontend or dev:browser-debugging needs navigation, clicking, or web scraping.
 user-invocable: false
 ---
 

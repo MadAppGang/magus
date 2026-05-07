@@ -9,6 +9,7 @@ description: |
   (combining capability context + pre-answered questions + task into a single --stdin prompt).
   Use when implementing cross-model command delegation, when a command needs to route tasks
   to external models, or when designing headless claudish workflows.
+disable-model-invocation: true
 tags: [delegate, capability-discovery, preflight, claudish, external-model, prompt-assembly]
 keywords: [delegate, capability discovery, preflight questions, command delegation, claudish stdin]
 plugin: multimodel

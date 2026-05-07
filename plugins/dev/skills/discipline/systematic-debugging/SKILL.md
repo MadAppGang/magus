@@ -1,6 +1,7 @@
 ---
 name: systematic-debugging
 description: "Use when debugging failures, errors, or unexpected behavior. Covers root cause investigation, data flow tracing, hypothesis-driven debugging, and fix verification to prevent trial-and-error approaches."
+disable-model-invocation: true
 keywords: [debugging, root-cause, trace-data-flow, divergence, hypothesis, fix-verification, stack-trace, error-analysis, profiling, logging, TypeError, null-undefined, race-condition, promise-not-awaited, validation-failed, wrong-condition, env-var, stale-cache, format-changed, early-return, service-not-running]
 created: 2026-01-20
 updated: 2026-01-20

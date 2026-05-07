@@ -1,6 +1,6 @@
 ---
 name: tui-progress
-description: Create terminal progress displays for long-running scripts — multi-phase progress bars, real-time stats, ETA, speed tracking, background colors for status. Use when building import scripts, migration scripts, sync workers, batch processors, or any CLI tool that needs live progress visualization. Trigger keywords - "progress bar", "TUI progress", "import script", "migration progress", "batch progress", "show progress", "live stats", "sync progress display".
+description: Builds terminal progress displays with multi-phase bars, ETA, speed, and status colors. Use when writing import scripts, migrations, batch processors, or CLI tools needing a live progress bar.
 version: 0.1.0
 tags: [dev, tui, progress, terminal, cli]
 keywords: [progress, tui, terminal, import, migration, batch, sync, display, stats]

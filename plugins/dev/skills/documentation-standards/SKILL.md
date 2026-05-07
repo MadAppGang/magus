@@ -2,6 +2,7 @@
 name: documentation-standards
 version: 1.0.0
 description: Use when writing README files, API documentation, user guides, or technical documentation following industry standards from Google, Microsoft, and GitLab style guides.
+disable-model-invocation: true
 keywords:
   - documentation
   - README

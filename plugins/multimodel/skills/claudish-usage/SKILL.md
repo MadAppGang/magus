@@ -1,6 +1,6 @@
 ---
 name: claudish-usage
-description: Guide for using Claudish — both via MCP tools (preferred for orchestration) and CLI (for direct usage). In orchestration workflows (/team, /delegate), use claudish MCP tools (team, create_session) — not Bash+CLI. For direct user-facing tasks, the CLI remains the primary interface. Use when user mentions external AI models, Claudish, OpenRouter, or alternative models.
+description: Routes Claudish between MCP tools (team, create_session for /team and /delegate) and the CLI for direct usage. Use when the user mentions claudish, OpenRouter, or external AI models.
 user-invocable: false
 ---
 

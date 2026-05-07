@@ -1,6 +1,7 @@
 ---
 name: schemas
 description: YAML frontmatter schemas for Claude Code agents and commands. Use when creating or validating agent/command files.
+disable-model-invocation: true
 user-invocable: false
 ---
 plugin: agentdev

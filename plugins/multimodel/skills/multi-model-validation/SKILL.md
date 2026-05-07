@@ -1,6 +1,6 @@
 ---
 name: multi-model-validation
-description: Run multiple AI models in parallel for 3-5x speedup with ENFORCED performance statistics tracking. Use when validating with Grok, Gemini, GPT-5, DeepSeek, MiniMax, Kimi, GLM via claudish MCP tools for code review, consensus analysis, or multi-expert validation. External models run via `team` MCP tool (not Bash+CLI). Includes dynamic model discovery via `shared/model-aliases.json`, session-based workspaces, and Pattern 7-8 for tracking model performance. Trigger keywords - "grok", "gemini", "gpt-5", "deepseek", "minimax", "kimi", "glm", "claudish", "multiple models", "parallel review", "external AI", "consensus", "multi-model", "model performance", "statistics", "free models".
+description: Runs the same task across multiple AI models in parallel and aggregates verdicts. Use when the user wants a second opinion, multi-expert validation, or consensus from Grok, Gemini, GPT-5, or Kimi.
 version: 3.4.0
 tags: [orchestration, claudish, parallel, consensus, multi-model, grok, gemini, external-ai, statistics, performance, free-models, minimax, kimi, glm]
 keywords: [grok, gemini, gpt-5, deepseek, claudish, parallel, consensus, multi-model, external-ai, proxy, openrouter, statistics, performance, quality-score, execution-time, free-models, top-models, minimax, kimi, glm, mmax, zhipu]

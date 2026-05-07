@@ -1,6 +1,7 @@
 ---
 name: xml-standards
 description: XML tag structure patterns for Claude Code agents and commands. Use when designing or implementing agents to ensure proper XML structure following Anthropic best practices.
+disable-model-invocation: true
 user-invocable: false
 ---
 plugin: agentdev

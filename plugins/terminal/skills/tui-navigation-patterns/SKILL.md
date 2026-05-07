@@ -1,6 +1,6 @@
 ---
 name: tui-navigation-patterns
-description: Key sequences and navigation patterns for common TUI applications. Use when navigating vim, nano, htop, less, psql, lazygit, k9s, tig, btop, or other terminal user interfaces. Also triggers on database shell navigation, git TUI operations, and system monitoring.
+description: Provides key sequences and navigation patterns for common TUI apps. Use when navigating vim, nano, htop, less, psql, lazygit, k9s, tig, btop, or sending keystrokes to a database shell.
 version: 3.0.0
 tags: [terminal, tui, navigation, keys, vim, nano, htop, git-tui, database-shell, system-monitor]
 keywords: [vim, nano, htop, btop, less, psql, lazygit, tig, k9s, docker, mongosh, redis-cli, turso, key sequence, navigation, escape, git tui, stage commit, database shell, system monitor, process manager, file editor, terminal editor]

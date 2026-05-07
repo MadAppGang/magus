@@ -1,7 +1,7 @@
 ---
 name: bunjs
 version: 2.0.0
-description: Use when building Bun.js/Hono applications, implementing HTTP endpoints, setting up Prisma/SQLite, writing Zod validation, or using Bun's test runner. See bunjs-architecture for layered patterns, bunjs-production for deployment.
+description: Provides Bun.js/Hono patterns — HTTP endpoints, Prisma/SQLite, Zod validation, Bun test. Use when building a Bun.js service or wiring Hono routes with Prisma.
 keywords:
   - Bun
   - Hono

@@ -1,10 +1,7 @@
 ---
 name: design-references
 version: 1.0.0
-description: |
-  Predefined design system references for UI reviews. Includes Material Design 3,
-  Apple Human Interface Guidelines, Tailwind UI, Ant Design, and Shadcn/ui.
-  Use when conducting design reviews against established design systems.
+description: Provides design system references — Material 3, Apple HIG, Tailwind UI, Ant Design, Shadcn/ui. Use when reviewing UI against an established design system.
 user-invocable: false
 ---
 

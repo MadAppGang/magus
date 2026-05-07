@@ -1,6 +1,6 @@
 ---
 name: task-complexity-router
-description: Complexity-based task routing for optimal model selection and cost efficiency. Use when deciding which model tier to use, analyzing task complexity, optimizing API costs, or implementing tiered routing. Trigger keywords - "routing", "complexity", "model selection", "tier", "cost optimization", "haiku", "sonnet", "opus", "task analysis".
+description: Routes tasks to model tiers (haiku/sonnet/opus) based on complexity. Use when picking a model tier, analyzing task complexity, or optimizing API cost.
 version: 0.1.0
 tags: [orchestration, routing, complexity, model-selection, cost-optimization, tiered]
 keywords: [routing, complexity, model-selection, tier, cost, haiku, sonnet, opus, optimization, task-analysis]

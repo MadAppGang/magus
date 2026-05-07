@@ -1,6 +1,6 @@
 ---
 name: shadcn-ui
-description: shadcn/ui component library patterns. Covers CLI usage, installation, component categories, theming with CSS variables, dark mode setup, and integration with React Hook Form + Zod. Use when adding UI components, setting up design systems, or implementing forms with shadcn/ui.
+description: Provides shadcn/ui patterns — CLI install, theming via CSS variables, dark mode, React Hook Form + Zod forms. Use when adding UI components, setting up design systems, or wiring shadcn forms.
 user-invocable: false
 ---
 

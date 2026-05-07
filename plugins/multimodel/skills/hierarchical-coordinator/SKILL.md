@@ -1,6 +1,7 @@
 ---
 name: hierarchical-coordinator
-description: Prevent goal drift in long-running multi-agent workflows using a coordinator agent that validates outputs against original objectives at checkpoints. Use when orchestrating 3+ agents, multi-phase features, complex implementations, or any workflow where agents may lose sight of original requirements. Trigger keywords - "hierarchical", "coordinator", "anti-drift", "checkpoint", "validation", "goal-alignment", "decomposition", "phase-gate", "shared-state", "drift detection".
+description: Prevent goal drift in long-running multi-agent workflows using a coordinator agent that validates outputs against original objectives at checkpoints. Use when orchestrating 3+ agents, multi-phase features, complex implementations, or any workflow where agents may lose sight of original requirements.
+disable-model-invocation: true
 version: 0.1.0
 tags: [orchestration, hierarchical, coordinator, anti-drift, checkpoint, validation]
 keywords: [hierarchical, coordinator, anti-drift, checkpoint, validation, goal-alignment, decomposition, phase-gate, shared-state]

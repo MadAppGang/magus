@@ -1,6 +1,6 @@
 ---
 name: web-scraping
-description: Structured data extraction from web pages — pagination patterns, dynamic SPAs, authenticated scraping, rate limiting, anti-bot handling, JSON/CSV output. Trigger keywords - scrape, extract data, web scraping, paginate, collect data from, crawl, next page, infinite scroll.
+description: Structured data extraction from web pages — pagination patterns, dynamic SPAs, authenticated scraping, rate limiting, anti-bot handling, JSON/CSV output.
 version: 1.0.0
 tags: [scraping, extraction, pagination, spa, authentication, rate-limiting, structured-data, json, csv]
 keywords: [scrape, extract data, collect data, paginate, next page, infinite scroll, spa, dynamic content, login, authenticated, rate limit, anti-bot, structured data, json, csv, crawl, harvest]

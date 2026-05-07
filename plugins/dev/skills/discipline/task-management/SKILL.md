@@ -1,6 +1,7 @@
 ---
 name: task-management
 description: "Use when orchestrating multi-phase workflows to manage Claude Code Tasks with optional GTD plugin integration for cross-session persistence. Covers phase tracking, stale task cleanup, and GTD-aware workflow patterns."
+disable-model-invocation: true
 keywords: [task-management, tasks, gtd, workflow, phase-tracking, persistence, cross-session, cleanup]
 created: 2026-03-21
 updated: 2026-03-21

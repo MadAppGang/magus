@@ -1,6 +1,7 @@
 ---
 name: mcp-standards
-description: MCP server standardization patterns for Claude Code plugins. Use when implementing MCP servers, designing tool interfaces, configuring MCP transports, or standardizing MCP naming conventions. Trigger keywords - "MCP", "MCP server", "MCP tools", "MCP transport", "tool naming", "MCP configuration".
+description: MCP server standardization patterns for Claude Code plugins. Use when implementing MCP servers, designing tool interfaces, configuring MCP transports, or standardizing MCP naming conventions.
+disable-model-invocation: true
 version: 0.1.0
 tags: [dev, mcp, standards, server, tools, protocol]
 keywords: [mcp, server, tools, transport, naming, configuration, protocol, stdio, http]

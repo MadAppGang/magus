@@ -1,12 +1,8 @@
 ---
 name: compare
 namespace: designer
-description: >
-  SKILL (use Skill tool, NOT Task tool). Provides the compare.ts CLI invocation
-  pattern, semantic comparison prompt template, severity thresholds, and model
-  selection guide for UI design comparison. Use when any agent needs to invoke
-  the designer pixel-diff pipeline or AI semantic analysis outside the full
-  design-review agent workflow.
+description: Provides the compare.ts CLI invocation pattern, semantic comparison prompt template, severity thresholds, and model selection guide for UI design comparison.
+disable-model-invocation: true
 user-invocable: false
 ---
 

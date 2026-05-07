@@ -1,6 +1,7 @@
 ---
 name: yaml-agent-format
-description: YAML format for Claude Code agent definitions as alternative to markdown. Use when creating agents with YAML, converting markdown agents to YAML, or validating YAML agent schemas. Trigger keywords - "YAML agent", "agent YAML", "YAML format", "agent schema", "YAML definition", "convert to YAML".
+description: YAML format for Claude Code agent definitions as alternative to markdown. Use when creating agents with YAML, converting markdown agents to YAML, or validating YAML agent schemas.
+disable-model-invocation: true
 version: 0.1.0
 tags: [agentdev, yaml, agent, format, schema, definition]
 keywords: [yaml, agent, format, schema, definition, conversion, validation, frontmatter]

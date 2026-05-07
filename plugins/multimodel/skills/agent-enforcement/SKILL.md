@@ -4,6 +4,7 @@ description: |
   Multi-agent orchestration enforcement for /team command. Validates session directory paths
   and ensures /team Tasks use a valid agent from the routing whitelist.
   Use when debugging /team orchestration failures.
+disable-model-invocation: true
 triggers:
   - "team enforcement"
   - "agent selection"

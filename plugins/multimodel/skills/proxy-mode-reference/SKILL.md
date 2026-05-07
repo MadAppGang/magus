@@ -2,6 +2,7 @@
 name: proxy-mode-reference
 version: 3.0.0
 description: Reference guide for using external AI models via claudish MCP tools and CLI. Orchestration workflows (/team, /delegate) use MCP tools. Direct usage uses CLI. Includes model routing and error handling patterns.
+disable-model-invocation: true
 keywords: [external-models, multi-model, claudish, mcp, team, create-session, routing-prefixes, minimax, kimi, glm, gemini, openai]
 plugin: multimodel
 updated: 2026-03-29

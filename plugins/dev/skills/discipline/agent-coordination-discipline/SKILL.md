@@ -1,6 +1,7 @@
 ---
 name: agent-coordination-discipline
 description: "Use when deciding whether to launch an agent, selecting which agent to use, or coordinating multiple agents. Covers delegation criteria, external-model patterns, task isolation, and agent selection strategies."
+disable-model-invocation: true
 keywords: [agent-coordination, external-model, task-isolation, delegation-criteria, multi-agent, external-model, claudish, orchestration, agent-selection, Task-tool, developer-agent, architect-agent, grok-code-fast, sonnet-4-5, thinking-budget]
 created: 2026-01-20
 updated: 2026-01-20

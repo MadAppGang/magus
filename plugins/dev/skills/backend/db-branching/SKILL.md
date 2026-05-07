@@ -1,6 +1,6 @@
 ---
 name: db-branching
-description: "Automatic database branching for isolated schema development with git worktrees. Supports Neon (recommended), Turso, and Supabase. Creates branch-per-worktree isolation so schema changes never hit production. Use when creating worktrees that involve database schema modifications."
+description: "Branches Neon, Turso, or Supabase databases per git worktree for isolated schema work. Use when creating a worktree that modifies the database schema, or when the user mentions Neon, Turso, or Prisma migrations."
 keywords:
   - neon
   - turso

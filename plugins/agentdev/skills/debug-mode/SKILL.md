@@ -1,9 +1,6 @@
 ---
 name: debug-mode
-description: |
-  Enable, disable, and manage debug mode for agentdev sessions.
-  Records all tool invocations, skill activations, hook triggers, and agent delegations to JSONL.
-  Use when debugging agent behavior, optimizing workflows, or analyzing session performance.
+description: Manages agentdev debug mode — records tool, skill, hook, and agent events to JSONL. Use when debugging agent behavior, optimizing workflows, or analyzing session performance.
 user-invocable: false
 ---
 plugin: agentdev

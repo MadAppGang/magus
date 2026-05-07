@@ -1,6 +1,6 @@
 ---
 name: workspace-setup
-description: Tmux workspace orchestration — session construction, dashboard layouts, ambient monitoring, and multi-host pane sync. Use when setting up project workspaces, creating multi-pane dashboards, running watch/entr monitors, or synchronizing commands across panes. Trigger on "workspace", "dashboard", "layout", "setup session", "project session", "monitor", "watch", "entr", "side by side dashboard", "multi-pane", "synchronize panes".
+description: Orchestrates tmux workspaces — sessions, dashboard layouts, watch/entr monitors, synced panes. Use when setting up a project session, building a multi-pane dashboard, or syncing panes.
 version: 2.0.0
 tags: [terminal, tmux, workspace, dashboard, layout, monitoring, watch, entr, session-management]
 keywords: [workspace, tmux session, dashboard, layout, monitor, watch, entr, project setup, multi-pane, synchronize, sync panes, named session, window, archetype]

@@ -1,6 +1,7 @@
 ---
 name: model-tracking-protocol
-description: MANDATORY tracking protocol for multi-model validation. Creates structured tracking tables BEFORE launching models, tracks progress during execution, and ensures complete results presentation. Use when running 2+ external AI models in parallel. Trigger keywords - "multi-model", "parallel review", "external models", "consensus", "model tracking".
+description: MANDATORY tracking protocol for multi-model validation. Creates structured tracking tables BEFORE launching models, tracks progress during execution, and ensures complete results presentation. Use when running 2+ external AI models in parallel.
+disable-model-invocation: true
 version: 1.0.0
 tags: [orchestration, tracking, multi-model, statistics, mandatory]
 keywords: [tracking, mandatory, pre-launch, statistics, consensus, results, failures]

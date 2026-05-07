@@ -1,6 +1,6 @@
 ---
 name: audit
-description: On-demand security and code quality audit. Use when checking for vulnerabilities, security issues, code smells, or compliance problems. Trigger keywords - "audit", "security check", "vulnerability scan", "code quality", "compliance", "security audit".
+description: On-demand security and code quality audit. Use when checking for vulnerabilities, security issues, code smells, or compliance problems.
 version: 0.1.0
 tags: [dev, audit, security, quality, compliance]
 keywords: [audit, security, vulnerability, code-quality, compliance, scan, check]

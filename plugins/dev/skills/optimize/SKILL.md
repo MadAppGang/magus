@@ -1,6 +1,6 @@
 ---
 name: optimize
-description: On-demand performance and optimization analysis. Use when identifying bottlenecks, improving build times, reducing bundle size, or optimizing code performance. Trigger keywords - "optimize", "performance", "bottleneck", "bundle size", "build time", "speed up".
+description: On-demand performance and optimization analysis. Use when identifying bottlenecks, improving build times, reducing bundle size, or optimizing code performance.
 version: 0.1.0
 tags: [dev, optimize, performance, bottleneck, bundle]
 keywords: [optimize, performance, bottleneck, bundle-size, build-time, speed, profiling]
