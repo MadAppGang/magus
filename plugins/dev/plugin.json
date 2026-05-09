@@ -1,7 +1,7 @@
 {
   "name": "dev",
-  "version": "2.8.0",
-  "description": "Universal development assistant. v2.6.0: self-learning Stop hook — automated session learning with LLM classifier, background daemon, pending-learnings queue, /dev:learn --apply/--prune.",
+  "version": "2.9.0",
+  "description": "Universal development assistant. v2.9.0: declared mnemex + claudish as dependencies (extracted into dedicated runtime plugins).",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",
@@ -40,7 +40,10 @@
     "vision"
   ],
   "category": "development",
-  "mcpServers": "./.mcp.json",
+  "dependencies": [
+    { "name": "claudish", "version": "~1.0" },
+    { "name": "mnemex", "version": "~1.0" }
+  ],
   "hooks": "./hooks/hooks.json",
   "agents": [
     "./agents/stack-detector.md",

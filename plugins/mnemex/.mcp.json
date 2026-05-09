@@ -1,0 +1,9 @@
+{
+  "mnemex": {
+    "command": "mnemex",
+    "args": ["--mcp"],
+    "env": {
+      "MNEMEX_LSP": "true"
+    }
+  }
+}

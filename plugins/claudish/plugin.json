@@ -1,0 +1,25 @@
+{
+  "name": "claudish",
+  "version": "1.0.0",
+  "description": "Claudish MCP runtime — external model proxy with team voting, async sessions, and channel notifications. Required by code-analysis, dev, multimodel, designer, agentdev, and seo plugins.",
+  "author": {
+    "name": "Jack Rudenko",
+    "email": "i@madappgang.com",
+    "company": "MadAppGang"
+  },
+  "license": "MIT",
+  "keywords": [
+    "claudish",
+    "mcp",
+    "external-models",
+    "openrouter",
+    "team",
+    "voting",
+    "channels",
+    "multi-model",
+    "orchestration",
+    "runtime"
+  ],
+  "category": "infrastructure",
+  "mcpServers": "./.mcp.json"
+}

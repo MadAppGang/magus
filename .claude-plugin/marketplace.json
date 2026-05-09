@@ -7,15 +7,15 @@
   },
   "metadata": {
     "description": "Curated collection of Claude Code plugins for modern full-stack development with LLM performance tracking and E2E skill testing",
-    "version": "7.4.1",
+    "version": "7.5.0",
     "pluginRoot": "./plugins"
   },
   "plugins": [
     {
       "name": "code-analysis",
       "source": "./plugins/code-analysis",
-      "description": "FEAT: save uncommitted work from multiple sessions; FIX: rewrite descriptions to Anthropic's pattern, strip trigger tails",
-      "version": "5.2.0",
+      "description": "Extracted mnemex + claudish MCP servers into dedicated runtime plugins (declared via dependencies)",
+      "version": "5.3.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -40,10 +40,60 @@
       "strict": true
     },
     {
+      "name": "claudish",
+      "source": "./plugins/claudish",
+      "description": "Claudish MCP runtime \u2014 external model proxy with team voting, async sessions, and channel notifications. Required by code-analysis, dev, multimodel, designer, agentdev, seo.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Jack Rudenko",
+        "email": "i@madappgang.com",
+        "company": "MadAppGang"
+      },
+      "category": "infrastructure",
+      "keywords": [
+        "claudish",
+        "mcp",
+        "external-models",
+        "openrouter",
+        "team",
+        "voting",
+        "channels",
+        "multi-model",
+        "orchestration",
+        "runtime"
+      ],
+      "strict": true
+    },
+    {
+      "name": "mnemex",
+      "source": "./plugins/mnemex",
+      "description": "Mnemex MCP runtime \u2014 semantic code search and AST analysis with PageRank. Required by code-analysis and dev.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Jack Rudenko",
+        "email": "i@madappgang.com",
+        "company": "MadAppGang"
+      },
+      "category": "infrastructure",
+      "keywords": [
+        "mnemex",
+        "mcp",
+        "semantic-search",
+        "ast",
+        "code-navigation",
+        "callers",
+        "callees",
+        "pagerank",
+        "structural-analysis",
+        "runtime"
+      ],
+      "strict": true
+    },
+    {
       "name": "multimodel",
       "source": "./plugins/multimodel",
-      "description": "FIX: rewrite descriptions to Anthropic's pattern, strip trigger tails; FIX: exclude 25 internal skills from listing budget",
-      "version": "3.1.3",
+      "description": "Declared claudish as a dependency (extracted into a dedicated runtime plugin)",
+      "version": "3.2.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -71,8 +121,8 @@
     {
       "name": "agentdev",
       "source": "./plugins/agentdev",
-      "description": "FIX: rewrite descriptions to Anthropic's pattern, strip trigger tails; FIX: exclude 25 internal skills from listing budget",
-      "version": "1.6.2",
+      "description": "Declared claudish as a dependency (extracted into a dedicated runtime plugin)",
+      "version": "1.7.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -96,8 +146,8 @@
     {
       "name": "seo",
       "source": "./plugins/seo",
-      "description": "Highly autonomous SEO toolkit (~80% autonomy) with AUTO GATEs, self-correction loops, and multi-model validation. v1.6.5: Command parameter fixes.",
-      "version": "1.7.0",
+      "description": "Declared claudish as a dependency (extracted into a dedicated runtime plugin)",
+      "version": "1.8.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -193,8 +243,8 @@
     {
       "name": "dev",
       "source": "./plugins/dev",
-      "description": "FEAT: extend preset schema with sub-widget keys, drop B2 CI from plan; FEAT: preset-file bypass for AskUserQuestion widgets (Fix A); FEAT: save uncommitted work from multiple sessions; FEAT: migrate to git-subdir sources for immutable plugin loading; \u2026",
-      "version": "2.8.0",
+      "description": "Declared mnemex + claudish as dependencies (extracted into dedicated runtime plugins)",
+      "version": "2.9.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -284,8 +334,8 @@
     {
       "name": "designer",
       "source": "./plugins/designer",
-      "description": "FIX: rewrite descriptions to Anthropic's pattern, strip trigger tails; FIX: exclude 25 internal skills from listing budget",
-      "version": "0.3.1",
+      "description": "Declared claudish as a dependency (extracted into a dedicated runtime plugin)",
+      "version": "0.4.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",

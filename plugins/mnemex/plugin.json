@@ -1,0 +1,25 @@
+{
+  "name": "mnemex",
+  "version": "1.0.0",
+  "description": "Mnemex MCP runtime — semantic code search and AST analysis with PageRank. Required by code-analysis and dev plugins.",
+  "author": {
+    "name": "Jack Rudenko",
+    "email": "i@madappgang.com",
+    "company": "MadAppGang"
+  },
+  "license": "MIT",
+  "keywords": [
+    "mnemex",
+    "mcp",
+    "semantic-search",
+    "ast",
+    "code-navigation",
+    "callers",
+    "callees",
+    "pagerank",
+    "structural-analysis",
+    "runtime"
+  ],
+  "category": "infrastructure",
+  "mcpServers": "./.mcp.json"
+}

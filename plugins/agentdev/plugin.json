@@ -1,6 +1,6 @@
 {
   "name": "agentdev",
-  "version": "1.6.2",
+  "version": "1.7.0",
   "description": "Create, implement, and review Claude Code agents and commands with multi-model validation, LLM performance tracking, and session-based artifact isolation. Full-cycle development workflow with design, implementation, and quality review agents. Session isolation prevents file collisions across workflows.",
   "author": {
     "name": "MadAppGang",
@@ -21,6 +21,9 @@
     "performance-tracking",
     "session-isolation",
     "debug-mode"
+  ],
+  "dependencies": [
+    { "name": "claudish", "version": "~1.0" }
   ],
   "agents": [
     "./agents/architect.md",

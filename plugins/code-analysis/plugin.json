@@ -1,7 +1,7 @@
 {
   "name": "code-analysis",
-  "version": "5.2.0",
-  "description": "Deep code investigation with mnemex MCP server. v5.0.1: Renamed mnemex CLI tool.",
+  "version": "5.3.0",
+  "description": "Deep code investigation. v5.3.0: extracted mnemex + claudish MCP servers into dedicated runtime plugins (declared via dependencies).",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",
@@ -23,7 +23,10 @@
     "structural-analysis"
   ],
   "category": "development",
-  "mcpServers": "./.mcp.json",
+  "dependencies": [
+    { "name": "mnemex", "version": "~1.0" },
+    { "name": "claudish", "version": "~1.0" }
+  ],
   "agents": [
     "./agents/codebase-detective.md"
   ],
