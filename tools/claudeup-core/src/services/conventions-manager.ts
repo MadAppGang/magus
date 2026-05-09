@@ -14,7 +14,6 @@
  */
 
 import { readFile, writeFile, stat, rename, unlink, open } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { dirname, basename, join, resolve } from 'node:path';
 import { homedir } from 'node:os';

@@ -32,7 +32,6 @@ import { tmpdir } from 'node:os';
 import {
   // Gitignore operations
   ensureGitignoreEntries,
-  removeGitignoreEntries,
   checkGitignoreEntries,
   // CLAUDE.md operations
   parseClaudeMdSections,
