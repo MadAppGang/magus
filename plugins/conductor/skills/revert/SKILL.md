@@ -1,228 +1,109 @@
 ---
 name: revert
-description: Git-aware logical undo at track, phase, or task level with confirmation gates
+description: "Performs git-aware logical undo of development work at track, phase, or task granularity with impact preview and confirmation gates. Creates revert commits while preserving history, then validates plan.md consistency. Use when the user asks to undo, roll back, or revert completed work from a Conductor track, phase, or task."
 version: 1.0.0
 tags: [conductor, revert, undo, git, rollback]
-keywords: [revert, undo, rollback, git, track, phase, task]
 user-invocable: false
 ---
-plugin: conductor
-updated: 2026-01-20
 
-<role>
-  <identity>Safe Revert Specialist</identity>
-  <expertise>
-    - Git history analysis and reversal
-    - Logical grouping of commits by track/phase/task
-    - State validation after reversal
-    - Safe rollback with confirmation gates
-  </expertise>
-  <mission>
-    Enable safe, logical rollback of development work at meaningful
-    granularity (track/phase/task) while maintaining git history integrity
-    and project consistency.
-  </mission>
-</role>
+## Workflow
 
-<instructions>
-  <critical_constraints>
-    <todowrite_requirement>
-      You MUST use Tasks to track the revert workflow.
+Track the revert using these 5 phases. Mark each "in_progress" when starting, "completed" when done. Only one phase active at a time.
 
-      **Before starting**, create todo list with these 5 phases:
-      1. Scope Selection - Identify what to revert (track/phase/task)
-      2. Impact Analysis - Find commits, files, status changes
-      3. User Confirmation - Present impact and get approval
-      4. Execution - Create revert commits and update files
-      5. Validation - Verify consistency and report results
+### Phase 1 — Scope Selection
 
-      **Update continuously**:
-      - Mark "in_progress" when starting each phase
-      - Mark "completed" immediately after finishing
-      - Keep only ONE phase "in_progress" at a time
-    </todowrite_requirement>
+- Ask what to revert: Track, Phase, or Task
+- Narrow down: which track, which phase, or which task
 
-    <confirmation_required>
-      ALWAYS require explicit user confirmation before:
-      - Reverting any commits
-      - Modifying plan.md status
-      - Deleting track files
+### Phase 2 — Impact Analysis
 
-      Show exactly what will be changed BEFORE doing it.
-    </confirmation_required>
+- Read metadata.json to find related commits
+- List all commits, affected files, and plan.md status changes
 
-    <non_destructive_default>
-      Default to creating revert commits, not force-pushing.
-      Preserve git history unless user explicitly requests otherwise.
-    </non_destructive_default>
+### Phase 3 — User Confirmation
 
-    <state_validation>
-      After any revert:
-      1. Verify plan.md matches git state
-      2. Verify metadata.json is consistent
-      3. Run project quality checks
-      4. Report any inconsistencies
-    </state_validation>
-  </critical_constraints>
+- Present the impact preview (see template below)
+- Require explicit approval before proceeding
+- If declined, abort with no changes
 
-  <core_principles>
-    <principle name="Logical Grouping" priority="critical">
-      Revert by logical units (track/phase/task), not raw commits.
-      A task might have multiple commits - revert them together.
-    </principle>
+### Phase 4 — Execution
 
-    <principle name="Preview Before Action" priority="critical">
-      Show user exactly what will be reverted before doing it.
-      List commits, files, status changes.
-    </principle>
+- Create revert commits for each original commit
+- Update plan.md statuses back to `[ ]`
+- Update metadata.json to reflect the revert
 
-    <principle name="Graceful Degradation" priority="high">
-      If full revert fails, offer partial revert options.
-      Never leave project in inconsistent state.
-    </principle>
-  </core_principles>
+### Phase 5 — Validation
 
-  <workflow>
-    <phase number="1" name="Scope Selection">
-      <step>Ask: What to revert? [Track, Phase, Task]</step>
-      <step>If Track: Ask which track</step>
-      <step>If Phase: Ask which track, which phase</step>
-      <step>If Task: Ask which track, which task</step>
-    </phase>
+- Verify plan.md matches git state
+- Verify metadata.json is consistent
+- Run project quality checks and report results
 
-    <phase number="2" name="Impact Analysis">
-      <step>Read metadata.json to find related commits</step>
-      <step>List all commits that will be reverted</step>
-      <step>List all files that will be affected</step>
-      <step>List status changes in plan.md</step>
-    </phase>
+## Critical Constraints
 
-    <phase number="3" name="User Confirmation">
-      <step>Present impact analysis to user</step>
-      <step>Ask for explicit confirmation</step>
-      <step>If declined, abort with no changes</step>
-    </phase>
+- **Confirmation required**: Always get explicit user confirmation before reverting commits, modifying plan.md, or deleting track files. Show exactly what will change first.
+- **Non-destructive default**: Create revert commits, not force pushes. Preserve git history unless the user explicitly requests otherwise.
+- **Graceful degradation**: If full revert fails, offer partial revert options. Never leave the project in an inconsistent state.
+- **Logical grouping**: Revert by logical units (track/phase/task), not raw commits. A task may have multiple commits — revert them together.
 
-    <phase number="4" name="Execution">
-      <step>Create revert commits for each original commit</step>
-      <step>Update plan.md statuses back to [ ]</step>
-      <step>Update metadata.json to reflect revert</step>
-      <step>Remove completed tasks from history</step>
-    </phase>
+## Revert Levels
 
-    <phase number="5" name="Validation">
-      <step>Verify git state matches plan.md</step>
-      <step>Run project quality checks</step>
-      <step>Report final state to user</step>
-    </phase>
-  </workflow>
-</instructions>
+**Task** — Reverts a single task's commits. Updates that task to `[ ]`. Preserves other tasks in the phase.
 
-<knowledge>
-  <revert_levels>
-    **Task Level:**
-    - Reverts single task's commits
-    - Updates task status to [ ]
-    - Preserves other tasks in phase
+**Phase** — Reverts all tasks in a phase. Resets all their statuses to `[ ]`. Preserves other phases.
 
-    **Phase Level:**
-    - Reverts all tasks in phase
-    - Updates all task statuses to [ ]
-    - Preserves other phases
+**Track** — Reverts the entire track. Optionally deletes track files. Updates tracks.md index.
 
-    **Track Level:**
-    - Reverts entire track
-    - Optionally deletes track files
-    - Updates tracks.md index
-  </revert_levels>
+## Commit Identification
 
-  <commit_identification>
-    Find commits for a task using:
-    1. metadata.json commit array
-    2. Git log searching for "[{track_id}]" pattern
-    3. Git notes with task references
-  </commit_identification>
+Find commits for a task using:
+1. `metadata.json` commit array
+2. Git log searching for `[{track_id}]` pattern
+3. Git notes with task references
 
-  <revert_strategies>
-    **Safe Revert (Default):**
-    - Create revert commits
-    - Preserves full history
-    - Can be undone
+## Revert Strategies
 
-    **Hard Reset (Requires explicit request):**
-    - Reset branch to before commits
-    - Loses history (unless pushed)
-    - Cannot be easily undone
-  </revert_strategies>
-</knowledge>
+**Safe revert (default)** — Creates revert commits. Preserves full history. Can be undone.
 
-<examples>
-  <example name="Revert Single Task">
-    <user_request>Undo task 2.3</user_request>
-    <correct_approach>
-      1. Identify track with task 2.3
-      2. Find commits for task 2.3 from metadata.json
-      3. Show impact:
-         "Will revert 2 commits:
-          - abc123: [feature_auth] Implement login form
-          - def456: [feature_auth] Add login validation
-          Files affected: src/login.tsx, src/auth.ts"
-      4. Ask confirmation
-      5. Create revert commits
-      6. Update plan.md: 2.3 [x] -> [ ]
-      7. Update metadata.json
-      8. Validate state
-    </correct_approach>
-  </example>
+**Hard reset (requires explicit request)** — Resets branch to before commits. Loses history unless pushed. Cannot be easily undone.
 
-  <example name="Revert Entire Phase">
-    <user_request>Roll back Phase 2 of the auth feature</user_request>
-    <correct_approach>
-      1. Find all tasks in Phase 2
-      2. Find all commits for those tasks
-      3. Show impact:
-         "Will revert 8 commits affecting Phase 2 (5 tasks):
-          - 2.1 Implement password hashing (2 commits)
-          - 2.2 Create login endpoint (3 commits)
-          - 2.3 Create registration endpoint (3 commits)
-          Files affected: 12 files"
-      4. Ask confirmation: "This will undo significant work. Proceed?"
-      5. Create revert commits in reverse order
-      6. Update all Phase 2 task statuses to [ ]
-      7. Update metadata.json
-      8. Validate state
-    </correct_approach>
-  </example>
-</examples>
+## Examples
 
-<formatting>
-  <impact_preview_template>
+**Revert single task** — User says "Undo task 2.3":
+1. Identify the track containing task 2.3
+2. Find commits from metadata.json
+3. Show impact: "Will revert 2 commits: abc123 Implement login form, def456 Add login validation. Files: src/login.tsx, src/auth.ts"
+4. Get confirmation, create revert commits
+5. Update plan.md (2.3 `[x]` → `[ ]`) and metadata.json, then validate
+
+**Revert entire phase** — User says "Roll back Phase 2 of auth feature":
+1. Find all Phase 2 tasks and their commits
+2. Show impact: "Will revert 8 commits across 5 tasks affecting 12 files"
+3. Get confirmation, create revert commits in reverse order
+4. Reset all Phase 2 statuses to `[ ]`, update metadata.json, validate
+
+## Impact Preview Template
+
+```
 ## Revert Impact Analysis
 
 **Scope:** {Task/Phase/Track} {identifier}
-
 **Commits to Revert:** {N}
-{#each commit}
 - {short_sha}: {message}
-{/each}
 
 **Files Affected:** {N}
-{#each file}
 - {filepath}
-{/each}
 
 **Status Changes in plan.md:**
-{#each task}
 - {task_id}: [x] -> [ ]
-{/each}
 
-**WARNING:** This action will create {N} revert commits.
-Git history will be preserved.
+**WARNING:** This will create {N} revert commits. Git history will be preserved.
 
 Proceed with revert? [Yes/No]
-  </impact_preview_template>
+```
 
-  <completion_template>
+## Completion Template
+
+```
 ## Revert Complete
 
 **Reverted:** {scope} {identifier}
@@ -233,7 +114,4 @@ Proceed with revert? [Yes/No]
 - Plan.md: Consistent
 - Git State: Clean
 - Quality Checks: PASS
-
-The {scope} has been reverted. You can re-implement or abandon this work.
-  </completion_template>
-</formatting>
+```
