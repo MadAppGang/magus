@@ -18,6 +18,8 @@ import {
 import type { SessionMetrics, ToolCallRecord } from "../lib/types.ts";
 
 describe("db", () => {
+  const TODAY = new Date().toISOString().slice(0, 10);
+
   let tempDir: string;
   let dbPath: string;
 
@@ -35,7 +37,7 @@ describe("db", () => {
     }
   });
 
-  function makeSession(id: string, project = "/test/project", date = "2026-03-26"): SessionMetrics {
+  function makeSession(id: string, project = "/test/project", date = TODAY): SessionMetrics {
     return {
       session_id: id,
       date,
@@ -229,7 +231,7 @@ describe("db", () => {
     insertToolCalls(db, metrics.tool_calls, "old-session");
 
     // Insert a recent session
-    const recent = makeSession("recent-session", "/test/project", "2026-03-26");
+    const recent = makeSession("recent-session", "/test/project", TODAY);
     insertSession(db, recent);
 
     const { deletedCount } = deleteOldSessions(db, 90);
