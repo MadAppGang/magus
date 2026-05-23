@@ -416,7 +416,7 @@ describe("Database: schema, CRUD, retention, queries", () => {
     // Old session (well beyond 90 days)
     insertSession(db, makeSession("old", "/test/project", "2024-01-01"));
     // Recent session
-    insertSession(db, makeSession("recent", "/test/project", "2026-03-26"));
+    insertSession(db, makeSession("recent", "/test/project", TODAY));
 
     const { deletedCount } = deleteOldSessions(db, 90);
 
@@ -447,7 +447,7 @@ describe("Database: schema, CRUD, retention, queries", () => {
 
   test("deleteOldSessions returns 0 when no sessions are old enough", () => {
     const db = openDb(dbPath);
-    insertSession(db, makeSession("recent", "/test/project", "2026-03-26"));
+    insertSession(db, makeSession("recent", "/test/project", TODAY));
 
     const { deletedCount } = deleteOldSessions(db, 90);
 
