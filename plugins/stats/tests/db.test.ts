@@ -17,6 +17,8 @@ import {
 } from "../lib/db.ts";
 import type { SessionMetrics, ToolCallRecord } from "../lib/types.ts";
 
+const TODAY = new Date().toISOString().slice(0, 10);
+
 describe("db", () => {
   let tempDir: string;
   let dbPath: string;
@@ -229,7 +231,7 @@ describe("db", () => {
     insertToolCalls(db, metrics.tool_calls, "old-session");
 
     // Insert a recent session
-    const recent = makeSession("recent-session", "/test/project", "2026-03-26");
+    const recent = makeSession("recent-session", "/test/project", TODAY);
     insertSession(db, recent);
 
     const { deletedCount } = deleteOldSessions(db, 90);
