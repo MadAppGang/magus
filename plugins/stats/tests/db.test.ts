@@ -17,6 +17,8 @@ import {
 } from "../lib/db.ts";
 import type { SessionMetrics, ToolCallRecord } from "../lib/types.ts";
 
+const TODAY = new Date().toISOString().slice(0, 10);
+
 describe("db", () => {
   let tempDir: string;
   let dbPath: string;
@@ -35,7 +37,7 @@ describe("db", () => {
     }
   });
 
-  function makeSession(id: string, project = "/test/project", date = "2026-03-26"): SessionMetrics {
+  function makeSession(id: string, project = "/test/project", date = TODAY): SessionMetrics {
     return {
       session_id: id,
       date,
@@ -48,14 +50,14 @@ describe("db", () => {
           duration_ms: 50,
           success: true,
           activity_category: "research",
-          timestamp: "2026-03-26T10:00:00.000Z",
+          timestamp: `${date}T10:00:00.000Z`,
         },
         {
           tool_name: "Write",
           duration_ms: 30,
           success: true,
           activity_category: "coding",
-          timestamp: "2026-03-26T10:01:00.000Z",
+          timestamp: `${date}T10:01:00.000Z`,
         },
       ],
       activity_counts: {
@@ -228,8 +230,8 @@ describe("db", () => {
     insertSession(db, metrics);
     insertToolCalls(db, metrics.tool_calls, "old-session");
 
-    // Insert a recent session
-    const recent = makeSession("recent-session", "/test/project", "2026-03-26");
+    // Insert a recent session using TODAY so this test never becomes a time-bomb
+    const recent = makeSession("recent-session", "/test/project", TODAY);
     insertSession(db, recent);
 
     const { deletedCount } = deleteOldSessions(db, 90);
