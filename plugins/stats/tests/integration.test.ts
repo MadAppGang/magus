@@ -58,6 +58,8 @@ import type {
   SessionRow,
 } from "../lib/types.ts";
 
+// Rolling date constants — tests that use 7- or 14-day rolling windows must
+// stay within those windows to get non-empty query results.
 const TODAY = new Date().toISOString().split("T")[0];
 const YESTERDAY = new Date(Date.now() - 86_400_000).toISOString().split("T")[0];
 const TWO_DAYS_AGO = new Date(Date.now() - 2 * 86_400_000).toISOString().split("T")[0];
@@ -384,8 +386,8 @@ describe("Database: schema, CRUD, retention, queries", () => {
     // Insert 2 sessions with known tool counts
     insertSession(db, makeSession("s1", "/test/project", TODAY));
     insertSession(db, makeSession("s2", "/test/project", TODAY));
-    insertToolCalls(db, makeSession("s1", "/test/project", TODAY).tool_calls, "s1");
-    insertToolCalls(db, makeSession("s2", "/test/project", TODAY).tool_calls, "s2");
+    insertToolCalls(db, makeSession("s1").tool_calls, "s1");
+    insertToolCalls(db, makeSession("s2").tool_calls, "s2");
 
     const summary = getSessionSummary(db, 7, "/test/project");
 
@@ -416,7 +418,7 @@ describe("Database: schema, CRUD, retention, queries", () => {
     // Old session (well beyond 90 days)
     insertSession(db, makeSession("old", "/test/project", "2024-01-01"));
     // Recent session
-    insertSession(db, makeSession("recent", "/test/project", TODAY));
+    insertSession(db, makeSession("recent", "/test/project", "2026-03-26"));
 
     const { deletedCount } = deleteOldSessions(db, 90);
 
@@ -447,7 +449,7 @@ describe("Database: schema, CRUD, retention, queries", () => {
 
   test("deleteOldSessions returns 0 when no sessions are old enough", () => {
     const db = openDb(dbPath);
-    insertSession(db, makeSession("recent", "/test/project", TODAY));
+    insertSession(db, makeSession("recent", "/test/project", "2026-03-26"));
 
     const { deletedCount } = deleteOldSessions(db, 90);
 
