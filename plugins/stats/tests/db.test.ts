@@ -228,8 +228,8 @@ describe("db", () => {
     insertSession(db, metrics);
     insertToolCalls(db, metrics.tool_calls, "old-session");
 
-    // Insert a recent session
-    const recent = makeSession("recent-session", "/test/project", "2026-03-26");
+    // Insert a recent session — use rolling today so this never becomes a time bomb
+    const recent = makeSession("recent-session", "/test/project", new Date().toISOString().split("T")[0]);
     insertSession(db, recent);
 
     const { deletedCount } = deleteOldSessions(db, 90);
