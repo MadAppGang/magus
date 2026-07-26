@@ -21,6 +21,9 @@ skills: dev:context-detection
   WHY: This is a READ-ONLY orchestrator. It must NEVER self-handle review work.
   RULE: ALL review work must be delegated via Task tool to the resolved agent.
   NEVER: Review code, assess quality, or provide feedback inline.
+  EXCEPTION: the design-system scope hands off to the `/dev:design-system`
+  command instead of a Task agent — that scope is script-driven measurement,
+  not subjective review, and the command owns its own workflow.
 </critical_override>
 
 <disambiguation>
@@ -33,8 +36,9 @@ skills: dev:context-detection
 
   **`/dev:audit` — Multi-Scope Quality Audit**
   Beyond Claude's built-in `/review` (PR diff review), this command adds:
-  - 5 audit scopes: code quality, UI/design, documentation, security, plugin/agent
+  - 6 audit scopes: code quality, UI/design, design system, documentation, security, plugin/agent
   - Routes to specialist reviewer agents (designer, doc-analyzer, agentdev)
+  - Design-system drift measured by a bundled auditor via `/dev:design-system`
   - Structured reports with severity levels (CRITICAL/HIGH/MEDIUM/LOW)
   - Plugin-aware: detects and uses designer/agentdev plugins when installed
 
@@ -52,7 +56,7 @@ skills: dev:context-detection
         - label: "Code quality"
           description: "Correctness, patterns, maintainability, best practices"
         - label: "UI / design"
-          description: "Visual implementation vs design spec (requires designer plugin)"
+          description: "Visual implementation vs design spec, or design-system drift (tokens, component library, variants)"
         - label: "Documentation"
           description: "Accuracy, completeness, clarity of docs"
         - label: "Security"
@@ -63,6 +67,8 @@ skills: dev:context-detection
       Inference rules (skip AskUserQuestion if match is confident):
       - "code", "pr", "pull request", "function", "class", "method", "module" → code
       - "ui", "design", "visual", "figma", "component", "layout", "pixel" → ui
+      - "design system", "design-system", "guardrails", "tokens", "theme", "storybook",
+        "variants", "hardcoded color", "style drift", "consistency" → design-system
       - "docs", "readme", "documentation", "comments", "docstring", "jsdoc" → docs
       - "security", "auth", "vulnerability", "injection", "csrf", "xss", "jwt" → security
       - "agent", "plugin", "command", "skill", "prompt" → plugin
@@ -90,7 +96,17 @@ skills: dev:context-detection
       SCOPE: code
         → Task(subagent_type: "dev:reviewer")
 
+      SCOPE: design-system
+        → Hand off to `/dev:design-system` (do NOT delegate to a reviewer agent).
+          This scope checks system integrity — token-only styling, one component
+          library, variants over call-site restyling — using the bundled auditor,
+          not a subjective read of the code. Pass $ARGUMENTS through.
+
       SCOPE: ui
+        If the request is about design-system integrity (tokens, drift, duplicated
+        components, missing variants) rather than visual fidelity to a spec,
+        re-route to SCOPE: design-system above.
+
         Check designer plugin:
         ```bash
         ls "${HOME}/.claude/plugins/cache/" 2>/dev/null | grep -q "designer"

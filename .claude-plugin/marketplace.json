@@ -243,8 +243,8 @@
     {
       "name": "dev",
       "source": "./plugins/dev",
-      "description": "New frontend/design-system-guardrails skill: single-source-of-truth UI rules (design tokens, one Storybook library, variants over call-site restyling) with a bundled drift-audit script and lint config templates.",
-      "version": "2.11.0",
+      "description": "New /dev:design-system command validates any project against the design-system guardrails \u2014 token-only styling, one component library, variants over call-site restyling. The bundled drift auditor is now bun/TypeScript, covered by 33 tests, and no longer false-positives on Tailwind variant selectors, CSS id selectors, or icon components.",
+      "version": "2.12.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -383,7 +383,7 @@
       "name": "terminal",
       "source": "./plugins/terminal",
       "description": "Pane-occupancy safety: PreToolUse:Bash hook (bun/TS) blocks raw tmux send-keys/kill-pane/split-window into non-shell panes (sibling claude sessions, REPLs); skills document the foreground-check rule and split-pane idle-reuse (reused:true) contract",
-      "version": "4.1.0",
+      "version": "4.1.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",

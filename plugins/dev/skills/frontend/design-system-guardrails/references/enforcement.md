@@ -70,7 +70,8 @@ Exempt the token definition files (`tokens.css`, `app.css` with `@theme`) — th
 
 ## CI gates
 
-1. **Audit script** (`scripts/audit_ui.py`, bundled): zero-dependency scan for hardcoded colors, arbitrary values, inline styles, appearance-overrides on components, and library components missing stories. Exits non-zero on errors → works as a CI step and a pre-commit hook. Run on changed paths for fast PR feedback, full repo nightly.
+1. **Audit script** (`scripts/audit-ui.ts`, bundled, run with `bun`): dependency-free scan for hardcoded colors, arbitrary values, inline styles, appearance-overrides on components, and library components missing stories. Exits non-zero on errors → works as a CI step and a pre-commit hook. Run on changed paths for fast PR feedback, full repo nightly.
+   It distinguishes Tailwind *variant selectors* (`data-[state=open]:`, `has-[…]:`, `supports-[…]:`) from *arbitrary values* (`w-[347px]`), so a correct shadcn/ui codebase reports clean. Layout primitives and components imported from icon packages (lucide, heroicons, tabler…) are exempt from the appearance-override check — className is their documented API. Widen the exemption with `--layout-components A,B,C`.
 2. **Story tests**: Storybook Vitest addon / test-runner executes every story + play functions + axe a11y in CI.
 3. **Visual regression**: Chromatic (or Playwright screenshots) on every story; the PR check stays pending until diffs are approved. This catches what static analysis can't — including "someone restyled it downstream".
 4. **Story coverage**: no canonical tool — the audit script's missing-story check covers it; alternatively a danger.js rule ("new file in `components/ui` without sibling `.stories.*` → fail").
