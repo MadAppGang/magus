@@ -1,17 +1,17 @@
 ---
 name: core-api
-description: Reference for the 18 Browser Use MCP tools — parameters, return formats, session lifecycle. Use when invoking browser-use MCP tools, navigating, clicking, typing, or extracting page content.
-version: 1.0.0
-tags: [browser, mcp, tools, api, reference, navigate, click, type, extract, screenshot, session]
-keywords: [browser_navigate, browser_click, browser_type, browser_get_state, browser_extract_content, browser_get_html, browser_screenshot, browser_scroll, browser_go_back, browser_list_tabs, browser_switch_tab, browser_close_tab, browser_list_sessions, browser_close_session, retry_with_browser_use_agent, browser_export_session, browser_import_session, browser_run_script]
+description: Reference for the 24 Browser Use MCP tools — parameters, return formats, session lifecycle. Use when invoking browser-use MCP tools, navigating, clicking, typing, evaluating JS, sending keys, or extracting page content.
+version: 1.1.0
+tags: [browser, mcp, tools, api, reference, navigate, click, type, evaluate, keyboard, extract, screenshot, session]
+keywords: [browser_navigate, browser_click, browser_type, browser_get_state, browser_extract_content, browser_get_html, browser_screenshot, browser_scroll, browser_go_back, browser_list_tabs, browser_switch_tab, browser_close_tab, browser_list_sessions, browser_close_session, retry_with_browser_use_agent, browser_export_session, browser_import_session, browser_run_script, browser_evaluate, browser_press_key, browser_keyboard, browser_focus, browser_doctor]
 plugin: browser-use
-updated: 2026-03-03
+updated: 2026-06-03
 user-invocable: false
 ---
 
 # Browser Use Core API
 
-Complete reference for all 18 MCP tools exposed by the Browser Use plugin. All tools are accessed via `mcp__browser-use__<tool_name>`.
+Complete reference for all 24 MCP tools exposed by the Browser Use plugin. All tools are accessed via `mcp__browser-use__<tool_name>`.
 
 ---
 
@@ -36,7 +36,17 @@ Complete reference for all 18 MCP tools exposed by the Browser Use plugin. All t
 | `retry_with_browser_use_agent` | Autonomous LLM agent for complex tasks | No (creates session) |
 | `browser_export_session` | Export cookies + localStorage to JSON file | Yes |
 | `browser_import_session` | Restore session from exported JSON file | No (creates session) |
-| `browser_run_script` | Execute a saved Python automation script | No |
+| `browser_run_script` | Run a standalone Python script as a subprocess (own browser) | No |
+| `browser_evaluate` | **Run JS in the live page** and return its result (CDP) | No (uses current) |
+| `browser_press_key` | Press a key/shortcut (e.g. `Meta+a`, `Enter`, `Escape`) | No (uses current) |
+| `browser_keyboard` | Batch keys + insert literal text via CDP | No (uses current) |
+| `browser_focus` | Focus any element by CSS selector (incl. hidden inputs) | No (uses current) |
+| `browser_doctor` | Preflight: Python / deps / Chromium / API keys | No |
+
+> **Editing a code editor (Monaco/CodeMirror/contenteditable)?** Those expose no
+> indexable input, so `browser_type` cannot reach them. Use `browser_evaluate`
+> (e.g. `monaco.editor.getModels()[0].setValue('...')`), or `browser_focus` the
+> hidden input then `browser_keyboard`. See §9.
 
 ---
 
@@ -141,6 +151,13 @@ Get the current DOM state with a numbered element map. This is the primary way t
 
 **When to use**: After every navigation or interaction to see the updated DOM state. Always call `get_state` before `click` or `type` to verify the correct element index.
 
+> ⚠️ **Indices are snapshot-scoped and NOT stable across calls.** The same DOM
+> element can get a different `index` on each `get_state` (the map is rebuilt
+> every call). Never cache an index from one snapshot and reuse it later — always
+> `get_state` immediately before the `*_by_index` call that consumes it. To avoid
+> index churn entirely, target elements by CSS selector: `browser_focus`
+> (§3.22) + `browser_keyboard` (§3.21), or `browser_evaluate` (§3.19).
+
 ---
 
 ### 3.3 `browser_click`
@@ -188,7 +205,14 @@ Type text into an input element identified by its index.
 {"success": true, "element": "input[name=q]", "typed": "search query"}
 ```
 
-**When to use**: Filling text inputs, search boxes, password fields, textareas. Does not clear existing content — call `browser_click` on the element first, then Ctrl+A to select all if clearing is needed.
+**When to use**: Filling text inputs, search boxes, password fields, textareas that **appear in `get_state`'s index list**. Does not clear existing content — to clear first, `browser_focus` the field then `browser_keyboard(keys=["Meta+a","Delete"])` (`Control+a` on Linux/Windows).
+
+> **Limitation — index-only.** `browser_type` can only target an element that
+> has an `index` in `get_state`'s `selector_map`. Code editors (Monaco,
+> CodeMirror, ProseMirror, contenteditable) use a hidden/synthetic input that
+> never appears there, so there is no index to pass. For those, use
+> `browser_evaluate` (§3.19) to set the value directly, or `browser_focus`
+> (§3.22) + `browser_keyboard` (§3.21).
 
 **Example**:
 ```
@@ -487,12 +511,21 @@ Restore a previously exported session (cookies, localStorage) into a new browser
 
 ### 3.18 `browser_run_script`
 
-Execute a Python automation script from the project's `browser-scripts/` directory.
+Run a **standalone** Python automation script as a subprocess.
+
+> ⚠️ **This does NOT run JavaScript, and does NOT share the live browser
+> session.** The subprocess gets a fresh Python interpreter that must
+> independently have `browser-use`/`playwright` installed, and it would drive its
+> **own, separate** browser — it cannot touch the page the other tools control.
+> To run JS in the live page, use **`browser_evaluate`** (§3.19). The tool now
+> **fails fast** if `script_path` is not a readable `.py` file (passing inline JS
+> used to hang for the full timeout) and adds a `hint` when the subprocess hits
+> `ModuleNotFoundError`. Run **`browser_doctor`** (§3.23) to see what's installed.
 
 **Parameters**:
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `script_path` | string | Yes | Path to `.py` script file |
+| `script_path` | string | Yes | Path to a readable `.py` script file on disk |
 | `args` | array | No | CLI arguments to pass to the script |
 | `timeout_seconds` | integer | No | Max execution time (default: 300) |
 
@@ -507,6 +540,112 @@ Execute a Python automation script from the project's `browser-scripts/` directo
 
 ---
 
+### 3.19 `browser_evaluate`
+
+**Run JavaScript in the live page** the other tools are driving, and return its
+result. This is the in-page eval escape hatch (CDP `Runtime.evaluate`): read or
+mutate the DOM, call framework hooks, read `localStorage`, and **drive code
+editors that expose no normal input** (Monaco, CodeMirror). Operates on the
+current session — no `session_id` needed.
+
+**Parameters**:
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `script` | string | Yes | JS to evaluate. Expression (`document.title`) **or** statements ending in `return ...` (auto-wrapped in a function). A returned Promise is awaited. Result must be JSON-serializable. |
+
+**Returns**: `{"result": <value>}`, or `{"error": "JavaScript exception", "detail": "..."}` if the JS throws.
+
+**Example — set a Monaco editor's text (the canonical use case)**:
+```
+mcp__browser-use__browser_evaluate(
+  script="return monaco.editor.getModels()[0].setValue('graph TD; A-->B')"
+)
+```
+
+---
+
+### 3.20 `browser_press_key`
+
+Press a single key or keyboard shortcut in the live page (CDP
+`Input.dispatchKeyEvent`, sending a keyDown+keyUp pair).
+
+**Parameters**:
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `key` | string | Yes | Key/shortcut. Modifiers via `+`: `Meta+a` (Cmd+A), `Control+a`, `Shift+ArrowDown`. Named keys: `Enter`, `Escape`, `Tab`, `Backspace`, `Delete`, `Arrow{Up,Down,Left,Right}`, `Home`, `End`, `PageUp`, `PageDown`. |
+| `count` | integer | No | Times to press (default 1). |
+
+**Returns**: `{"pressed": "Enter", "count": 1}`
+
+> **Edit shortcuts work in the real editor.** `Meta+`/`Control+` plus
+> `a`/`c`/`v`/`x`/`z`/`y` map to the browser's `selectAll`/`copy`/`paste`/`cut`/
+> `undo`/`redo` commands (a synthetic modifier press alone does NOT trigger these
+> — the CDP edit-command is attached for you). So `Meta+a` then `Delete` clears a
+> field, and `Meta+a` then `browser_keyboard(text=...)` replaces its contents.
+
+---
+
+### 3.21 `browser_keyboard`
+
+Send a batch of shortcuts and/or insert literal text, in order. Keys are pressed
+first, then `text` is inserted via CDP `Input.insertText` (the reliable way to
+type into a focused field or editor without needing an index).
+
+**Parameters**:
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `keys` | array | No | Shortcuts pressed in order, e.g. `["Meta+a","Delete"]`. |
+| `text` | string | No | Literal text inserted after the keys. |
+
+Provide at least one of `keys` / `text`.
+
+**Returns**: `{"keys": ["Meta+a","Delete"], "text_inserted": true}`
+
+**Example — clear a field and type new text**:
+```
+mcp__browser-use__browser_focus(selector="textarea.inputarea")
+mcp__browser-use__browser_keyboard(keys=["Meta+a"], text="new content")
+```
+
+---
+
+### 3.22 `browser_focus`
+
+Focus any DOM element by CSS selector — including the hidden/synthetic inputs
+that code editors use (e.g. Monaco's `textarea.inputarea`), which never appear in
+`get_state`'s index list. Pair with `browser_keyboard`/`browser_press_key`.
+
+**Parameters**:
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `selector` | string | Yes | CSS selector of the element to focus. |
+
+**Returns**: `{"focused": true, "selector": "..."}`, or `{"focused": false, "error": "No element matched ..."}`.
+
+---
+
+### 3.23 `browser_doctor`
+
+Preflight diagnosis of the plugin's environment — turns silent failures (a 300s
+`run_script` hang, `ModuleNotFoundError`, missing Chromium) into a one-call
+report. Pure inspection; never spawns a browser. Takes no arguments.
+
+**Returns**:
+```json
+{
+  "python_version": "3.11.x",
+  "python_executable": "/usr/bin/python3",
+  "browser_use": {"installed": true, "version": "0.12.5"},
+  "mcp": {"installed": true, "version": "..."},
+  "playwright": {"installed": false, "version": null},
+  "chromium_present": true,
+  "chromium_path": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+  "api_keys": {"ANTHROPIC_API_KEY": true, "OPENAI_API_KEY": false, "BROWSER_USE_API_KEY": false}
+}
+```
+
+---
+
 ## 4. Tool Selection Guide
 
 | Problem | Use This Tool |
@@ -515,6 +654,12 @@ Execute a Python automation script from the project's `browser-scripts/` directo
 | Find what's clickable on a page | `browser_get_state` |
 | Click a link or button | `browser_click` (by index from `get_state`) |
 | Type into a form field | `browser_type` (by index from `get_state`) |
+| Type into a code editor (Monaco/CodeMirror) | `browser_evaluate` (`setValue`) or `browser_focus` + `browser_keyboard` |
+| Run JavaScript in the live page | `browser_evaluate` |
+| Press Enter / Escape / Tab / arrows | `browser_press_key` |
+| Select-all + clear a field | `browser_focus` + `browser_keyboard(keys=["Meta+a","Delete"])` |
+| Focus a hidden/synthetic input | `browser_focus` (by CSS selector) |
+| Diagnose missing deps / why a tool fails | `browser_doctor` |
 | Extract specific data semantically | `browser_extract_content` |
 | Get raw HTML for parsing | `browser_get_html` |
 | Take a screenshot | `browser_screenshot` |
@@ -542,3 +687,7 @@ Execute a Python automation script from the project's `browser-scripts/` directo
 | Agent hits `max_steps` | Task too complex or poorly described | Increase `max_steps` or rewrite the task description with more specific goals |
 | Screenshot returns empty/blank | Page not finished rendering | Add a `browser_scroll(direction="down", amount=1)` to trigger rendering, then screenshot |
 | `browser_type` has no effect | Input not focused | Call `browser_click` on the input first, then `browser_type` |
+| Can't type into Monaco/CodeMirror | Editor has no indexable input | Use `browser_evaluate` (`setValue`) or `browser_focus` + `browser_keyboard` — not `browser_type` |
+| `browser_run_script` hangs ~300s | Passed inline JS / a stream as `script_path` | Pass a real `.py` file; to run JS in the page use `browser_evaluate` |
+| `ModuleNotFoundError` in `run_script` | Subprocess interpreter lacks the deps | `run_script` doesn't share this env or browser; install deps in that interpreter — run `browser_doctor` to check |
+| Cached element `index` clicks the wrong thing | Indices are snapshot-scoped | Re-`get_state` immediately before use, or target by selector (`browser_focus`/`browser_evaluate`) |

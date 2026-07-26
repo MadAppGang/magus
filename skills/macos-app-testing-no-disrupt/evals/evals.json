@@ -1,0 +1,24 @@
+{
+  "skill_name": "macos-app-testing-no-disrupt",
+  "evals": [
+    {
+      "id": 0,
+      "name": "screenshot-app-while-user-working",
+      "prompt": "I'm in the middle of writing a doc and I do NOT want you taking over my screen. There's a Mac app called 'Notes' open somewhere on my desktop. Can you grab a screenshot of its window and tell me what note is currently showing? Don't make it pop to the front, I'm using my other windows.",
+      "expected_output": "Agent captures the Notes window WITHOUT foregrounding it — uses screencapture -l with a CGWindowList window-id lookup (or the bundled capture-window.sh), NOT computer-use screenshot/activate. Reads back the captured PNG and reports the note content. Confirms (or at least doesn't disturb) that focus stayed on the user's app.",
+      "files": []
+    },
+    {
+      "id": 1,
+      "prompt": "I just added a 'dark mode toggle' to my SwiftUI menu-bar app and I want to confirm it actually persists the setting when toggled. The app writes its prefs to ~/Library/Application Support/MyApp/prefs.json. I'm working on the machine right now so please verify it without hijacking my mouse or bringing windows to the front. The app's process is called 'MyApp'.",
+      "expected_output": "Agent verifies primarily by side effect (baseline-read prefs.json, instructs the user to toggle, diff the file for the persisted key) rather than driving the GUI. If a screenshot is used, it's via the focus-free window-id capture. Explicitly avoids pkill, activate, and foregrounding. Hands the actual click to the user.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Testing a dev build of a Mac app I'm building. It's NOT installed in /Applications — I'm running it straight from the build folder. I need to see whether its main window renders the new sidebar correctly, but I'm pair-working at this machine so don't steal my focus. How do you screenshot it?",
+      "expected_output": "Agent recognizes that an un-bundled / non-/Applications dev build can't be targeted by the computer-use allowlist, and that capture-by-window-id works regardless of bundle/location. Uses screencapture -l on the window id (no foregrounding). Does NOT claim it must be moved to /Applications just to screenshot it.",
+      "files": []
+    }
+  ]
+}

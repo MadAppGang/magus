@@ -1,7 +1,7 @@
 {
   "name": "dev",
-  "version": "2.9.0",
-  "description": "Universal development assistant. v2.9.0: declared mnemex + claudish as dependencies (extracted into dedicated runtime plugins).",
+  "version": "2.11.0",
+  "description": "Universal development assistant. v2.11.0: new frontend/design-system-guardrails skill — single-source-of-truth UI rules (design tokens, one Storybook library, variants over call-site restyling) with a bundled drift-audit script and ESLint/Stylelint config templates.",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",
@@ -97,6 +97,7 @@
     "./skills/frontend/shadcn-ui",
     "./skills/frontend/tailwindcss",
     "./skills/frontend/css-modules",
+    "./skills/frontend/design-system-guardrails",
     "./skills/frontend/frontend-implement",
     "./skills/design/designer-integration",
     "./skills/backend/api-design",

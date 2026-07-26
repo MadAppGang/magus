@@ -25,11 +25,15 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 ```bash
 # Via uv (recommended)
-uv pip install browser-use
+uv pip install 'browser-use>=0.13.1'
 
 # Or via pip
-pip install browser-use
+pip install 'browser-use>=0.13.1'
 ```
+
+Version 0.13.1+ is required: the plugin relies on `BrowserSession.kill()`
+semantics, the `channel='chromium'` profile field, `use_cloud` cloud-browser
+support, and `ChatBrowserUse` (bu-latest) — all verified against 0.13.1.
 
 ### 4. Chromium Browser
 
@@ -91,7 +95,7 @@ python3 -c "import browser_use; print(f'browser-use {browser_use.__version__}')"
 | Dependency | Minimum Version |
 |-----------|-----------------|
 | Python | 3.11 |
-| browser-use | 0.12.0 |
+| browser-use | 0.13.1 |
 | mcp | 1.0.0 |
 | Chromium | Latest (auto-installed) |
 | Bun | 1.0+ (for hooks/cloud scripts) |

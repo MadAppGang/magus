@@ -1,0 +1,17 @@
+description: "agent fixes the divide bug"
+runner: claude-code
+
+runner_config:
+  model: claude-haiku-4-5-20251001
+
+tests:
+  - name: fix-divide
+    fixture: ./testdata/repo
+    prompt: |
+      There's a bug in calc.go where Divide panics when the divisor is
+      zero. Fix it so it returns an error instead.
+    assert:
+      - type: llm-rubric
+        value: The agent fixed the divide-by-zero bug correctly and wrote good, idiomatic Go code.
+      - type: trajectory:step-count
+        threshold: 5

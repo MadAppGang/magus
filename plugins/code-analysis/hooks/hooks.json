@@ -1,5 +1,4 @@
 {
-  "description": "Block force-adding private/ephemeral paths to git",
   "hooks": {
     "PreToolUse": [
       {

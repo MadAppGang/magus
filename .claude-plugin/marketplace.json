@@ -7,7 +7,7 @@
   },
   "metadata": {
     "description": "Curated collection of Claude Code plugins for modern full-stack development with LLM performance tracking and E2E skill testing",
-    "version": "7.5.0",
+    "version": "7.6.0",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -243,8 +243,8 @@
     {
       "name": "dev",
       "source": "./plugins/dev",
-      "description": "Declared mnemex + claudish as dependencies (extracted into dedicated runtime plugins)",
-      "version": "2.9.0",
+      "description": "New frontend/design-system-guardrails skill: single-source-of-truth UI rules (design tokens, one Storybook library, variants over call-site restyling) with a bundled drift-audit script and lint config templates.",
+      "version": "2.11.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -284,6 +284,28 @@
       "strict": true
     },
     {
+      "name": "go",
+      "source": "./plugins/go",
+      "description": "Go development toolkit. Ships the go-tui skill for building colorful, graph-and-badge-heavy terminal UIs with the Charm stack (Bubble Tea, Lip Gloss, Bubbles, ntcharts), plus a verified color-accurate screenshot workflow (tmux capture \u2192 aha \u2192 headless Chrome \u2192 PNG) so you can see and critique a running TUI in full color.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Jack Rudenko",
+        "email": "i@madappgang.com",
+        "company": "MadAppGang"
+      },
+      "category": "development",
+      "keywords": [
+        "go",
+        "golang",
+        "tui",
+        "bubbletea",
+        "charm",
+        "lipgloss",
+        "terminal-ui"
+      ],
+      "strict": true
+    },
+    {
       "name": "statusline",
       "source": "./plugins/statusline",
       "description": "Adaptive statusline \u2014 always-visible bars, background highlights for critical states, provider-aware model display, vim mode, diff stats, compaction count, memory usage. v2.1.2: Split diff section into session (\u2728 +A/-D from Claude Code cost telemetry) and git (\u25cf +A/-D from `git diff --shortstat`) chips, so users can tell the difference instead of seeing stale session totals on a clean worktree.",
@@ -308,8 +330,8 @@
     {
       "name": "browser-use",
       "source": "./plugins/browser-use",
-      "description": "FIX: rewrite descriptions to Anthropic's pattern, strip trigger tails",
-      "version": "1.1.3",
+      "description": "Full-platform browser automation for Claude Code. Live-page JS eval, keyboard/focus primitives, and env preflight; configurable agent LLM (Anthropic/OpenAI/OpenAI-compatible/Browser Use BU3); dual local/cloud browsers, orphaned-Chrome reaping, and Playwright's bundled Chromium so your real Chrome is never hijacked. 26 MCP tools, 6 skills.",
+      "version": "1.4.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -360,8 +382,8 @@
     {
       "name": "terminal",
       "source": "./plugins/terminal",
-      "description": "FIX: rewrite descriptions to Anthropic's pattern, strip trigger tails; DOCS: clean stale ht-mcp references after v4.0.0 rewrite",
-      "version": "4.0.3",
+      "description": "Pane-occupancy safety: PreToolUse:Bash hook (bun/TS) blocks raw tmux send-keys/kill-pane/split-window into non-shell panes (sibling claude sessions, REPLs); skills document the foreground-check rule and split-pane idle-reuse (reused:true) contract",
+      "version": "4.1.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -450,6 +472,31 @@
         "email-sequences",
         "deliverability",
         "sales-automation"
+      ],
+      "strict": true
+    },
+    {
+      "name": "madbench",
+      "source": "./plugins/madbench",
+      "description": "Toolkit for madbench, MadAppGang's Go harness for benchmarking agentic coding tools. Ships the madbench-evals skill: author bench YAML, design checks, scaffold red-state testdata, run/validate benches, tune expectations, debug failing checks.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Jack Rudenko",
+        "email": "i@madappgang.com",
+        "company": "MadAppGang"
+      },
+      "category": "development",
+      "keywords": [
+        "madbench",
+        "evals",
+        "benchmarking",
+        "agent-testing",
+        "assertions",
+        "checks",
+        "llm-judge",
+        "testdata",
+        "harness",
+        "go"
       ],
       "strict": true
     }

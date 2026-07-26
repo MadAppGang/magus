@@ -5,7 +5,7 @@ version: 2.0.0
 tags: [terminal, tmux, workspace, dashboard, layout, monitoring, watch, entr, session-management]
 keywords: [workspace, tmux session, dashboard, layout, monitor, watch, entr, project setup, multi-pane, synchronize, sync panes, named session, window, archetype]
 plugin: terminal
-updated: 2026-03-25
+updated: 2026-06-04
 user-invocable: false
 ---
 
@@ -78,6 +78,8 @@ Four named archetypes derived from real developer tmux sessions. Users can reque
 
 For the TDD archetype's full state machine, see `terminal:tdd-workflow`.
 
+> **CRITICAL when building multi-pane grids: `split-pane` now reuses idle shell siblings.** If you split twice from the **same source pane** in a row, the second `split-pane` may **reuse the idle pane the first split just created** (response has `"reused": true`) instead of making a new one — collapsing a 4-pane grid into 3. To guarantee a fresh pane, **start each pane's process (send-keys) before the next split**, so the just-created pane is no longer an idle shell and won't be reused. Build order becomes: split → send-keys to fill it → split again. Always check `reused` in each split response; if `true` and unexpected, that pane was recycled. (See terminal-interaction §1c.)
+
 ### Archetype A: Web Dev Cockpit
 
 3 panes, main-vertical layout.
@@ -147,17 +149,20 @@ Construction:
 Construction:
 
 ```
+// NOTE: fill each pane BEFORE the next split from the same source, so the
+// just-created idle shell pane is not silently reused (see §2 CRITICAL note).
 1. Bash: PANE=$(echo "$TMUX_PANE")
 2. mcp__tmux__split-pane({ paneId: PANE, direction: "horizontal" })       → top-right
-3. mcp__tmux__split-pane({ paneId: PANE, direction: "vertical" })         → bottom-left
-4. mcp__tmux__split-pane({ paneId: top-right, direction: "vertical" })    → bottom-right
-5. mcp__tmux__send-keys({ paneId: PANE, keys: "k9s\n", literal: false })
-6. mcp__tmux__send-keys({ paneId: top-right, keys: "kubectl logs -f {pod}\n", literal: false })
-7. mcp__tmux__send-keys({ paneId: bottom-left, keys: "watch -n2 kubectl top pods\n", literal: false })
-8. mcp__tmux__send-keys({ paneId: bottom-right, keys: "tail -f deploy.log\n", literal: false })
+3. mcp__tmux__send-keys({ paneId: top-right, keys: "kubectl logs -f {pod}\n", literal: false })  // fill before next split
+4. mcp__tmux__split-pane({ paneId: PANE, direction: "vertical" })         → bottom-left (PANE still a shell, but top-right is now busy)
+5. mcp__tmux__send-keys({ paneId: bottom-left, keys: "watch -n2 kubectl top pods\n", literal: false })
+6. mcp__tmux__split-pane({ paneId: top-right, direction: "vertical" })    → bottom-right (top-right is busy → guaranteed new pane)
+7. mcp__tmux__send-keys({ paneId: bottom-right, keys: "tail -f deploy.log\n", literal: false })
+8. mcp__tmux__send-keys({ paneId: PANE, keys: "k9s\n", literal: false })
 9. Bash: tmux select-layout -t {window} tiled
 10. Bash: tmux set-option pane-border-status top
 11. Bash: tmux select-pane labels: "k9s Pods", "Pod Logs", "Metrics", "Deploy"
+// Check `reused` in each split response; if true unexpectedly, a pane was recycled — adjust order.
 ```
 
 ### Archetype D: TDD Red-Green Loop

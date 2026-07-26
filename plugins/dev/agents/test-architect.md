@@ -101,6 +101,21 @@ tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Edit, Bash, Glob,
           - Performance requirements (if specified)
           - Security requirements (if specified)
         </step>
+        <step>
+          If the target is Go, check for the `go@magus` plugin's curated
+          knowledge base (bundled next to this plugin). Locate it relative to
+          this plugin's root — this glob covers both install topologies:
+          ```bash
+          ls "${CLAUDE_PLUGIN_ROOT}/../go/knowledge/roles/tester" 2>/dev/null \
+            || ls "${CLAUDE_PLUGIN_ROOT}"/../../go/*/knowledge/roles/tester 2>/dev/null
+          ```
+          - **If found**: read `knowledge/roles/tester/best-practices.md` and
+            `knowledge/references/testing-patterns.md` and design Go tests to
+            those patterns (table-driven tests, `TestXxx`, subtests, etc.).
+          - **If NOT found**: tell the user once, then continue with generic
+            test design — "💡 A curated Go testing knowledge base ships in the
+            `go` plugin: `/plugin install go@magus`." Do not block on it.
+        </step>
         <step>Mark PHASE 1 as completed</step>
       </steps>
       <quality_gate>Test scenarios identified from requirements</quality_gate>

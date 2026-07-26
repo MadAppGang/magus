@@ -305,6 +305,48 @@ function processAdminData(data) { /* admin logic */ }
 5. **Fail Secure**: Default to denying access on errors
 6. **Secrets Management**: Never hardcode secrets, use environment variables
 
+## Language-Specific Knowledge Bases (cross-plugin)
+
+These universal patterns are language-agnostic. When the task targets a specific
+language, a companion plugin may ship a **curated, production-grade knowledge base**
+for it. Prefer that knowledge over generic patterns when it exists.
+
+### Go — the `go` plugin's knowledge base
+
+If the task involves Go, check whether the `go@magus` plugin is installed alongside
+this one and read its knowledge base. It is bundled as plain files next to the `dev`
+plugin, so locate it relative to this plugin's root (`${CLAUDE_PLUGIN_ROOT}`), which
+covers both install topologies:
+
+```bash
+# Both layouts: installed cache (…/cache/magus/go/<version>/) and local source
+# (…/plugins/go/). Run from inside an agent that knows ${CLAUDE_PLUGIN_ROOT}:
+ls "${CLAUDE_PLUGIN_ROOT}/../go/knowledge/roles" 2>/dev/null \
+  || ls "${CLAUDE_PLUGIN_ROOT}"/../../go/*/knowledge/roles 2>/dev/null
+```
+
+**If found**, read the files matching your role and task before writing Go:
+- `knowledge/roles/<role>/best-practices.md` — role guidance (`developer`,
+  `architect`, `tester`, `code-reviewer`)
+- `knowledge/roles/<role>/implementation-references.md` — index into the references
+- `knowledge/references/*.md` — production-code patterns (error handling, concurrency,
+  interface design, context usage, testing, http-api, etc.)
+- `knowledge/uber-go-style-guide.md`, `knowledge/100-go-mistakes.md`,
+  `knowledge/go-proverbs.md` — style and pitfalls
+
+Apply this Go knowledge in preference to the generic patterns above. The role names
+map to dev agents: developer→`dev:developer`, architect→`dev:architect`,
+tester→`dev:test-architect`, code-reviewer→`dev:reviewer`.
+
+**If NOT found** and the task is Go-heavy, tell the user once, then proceed with the
+generic patterns:
+
+> 💡 A curated Go knowledge base (Uber style guide, 100 Go Mistakes, production
+> patterns) is available in the `go` plugin. Install it for higher-quality Go work:
+> `/plugin install go@magus`
+
+Do not block on this — it is an enhancement, not a requirement.
+
 ---
 
 *Universal patterns applicable to all technology stacks*

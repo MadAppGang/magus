@@ -1,6 +1,6 @@
 {
   "name": "terminal",
-  "version": "4.0.3",
+  "version": "4.1.0",
   "description": "Interactive terminal integration for Claude Code. v4.0.0: agentic-first rewrite — single tmux-mcp Go binary replaces ht-mcp + npm tmux-mcp, new agentic tools (start-and-watch, watch-pane, run-in-repl, pane-state) eliminate all polling loops. 5 skills, 9 commands, 1 agent.",
   "author": {
     "name": "Jack Rudenko",

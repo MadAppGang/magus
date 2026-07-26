@@ -108,6 +108,21 @@ tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Glob, Grep, Bash
           Identify language/framework from file extensions and content.
           This informs which language-specific patterns to check.
         </step>
+        <step>
+          If reviewing Go, check for the `go@magus` plugin's curated knowledge
+          base (bundled next to this plugin). Locate it relative to this
+          plugin's root — this glob covers both install topologies:
+          ```bash
+          ls "${CLAUDE_PLUGIN_ROOT}/../go/knowledge/roles/code-reviewer" 2>/dev/null \
+            || ls "${CLAUDE_PLUGIN_ROOT}"/../../go/*/knowledge/roles/code-reviewer 2>/dev/null
+          ```
+          - **If found**: read `knowledge/roles/code-reviewer/best-practices.md`
+            and the relevant `knowledge/references/*.md` + `uber-go-style-guide.md`
+            + `100-go-mistakes.md`, and review against those Go-specific patterns.
+          - **If NOT found**: tell the user once, then continue with generic
+            review — "💡 A curated Go review knowledge base ships in the `go`
+            plugin: `/plugin install go@magus`." Do not block on it.
+        </step>
         <step>Mark PHASE 1 as completed</step>
       </steps>
     </phase>

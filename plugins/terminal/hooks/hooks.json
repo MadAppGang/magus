@@ -1,5 +1,5 @@
 {
-  "description": "Terminal safety hooks: prevent destructive tmux operations from Claude Code sessions.",
+  "description": "Terminal safety hooks: block tmux kill-server and raw tmux send-keys/kill-pane/split-window into panes whose foreground is not a shell (e.g. a sibling claude session or a REPL).",
   "hooks": {
     "PreToolUse": [
       {
@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/block-tmux-kill.sh",
+            "command": "bun ${CLAUDE_PLUGIN_ROOT}/hooks/block-tmux-kill.ts",
             "timeout": 5
           }
         ]

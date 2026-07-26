@@ -1,0 +1,23 @@
+{
+  "skill_name": "go-tui",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Build me a Go terminal dashboard that shows fake system stats — CPU, memory, and disk usage as bars, plus a little log panel on the side. Make it look good, colorful. Single main.go is fine. I want to actually run it.",
+      "expected_output": "A compiling Go Bubble Tea (v2, charm.land) program with gradient/colored usage meters, a multi-panel layout (stats + logs), semantic color, and a help/quit binding. Builds with `go build` and runs.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "I'm building a log viewer TUI in Go. I need a severity-over-time heatmap like gonzo has — rows for ERROR/WARN/INFO, columns are time buckets, cell brightness = how many logs in that bucket, each row colored by severity. Show me how to render that with lipgloss.",
+      "expected_output": "A correct heatmap-row renderer using a shade ramp scaled to magnitude, per-severity foreground color, joined vertically into a grid. Uses lipgloss v2 color API correctly (color.Color values). Compiles.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "I have a Bubble Tea app and I want to see what it actually looks like with colors — not just the text. How do I screenshot a running TUI so I can check the colors and layout are right?",
+      "expected_output": "Explains the capture-with-colors workflow: run in a headless tmux pane, `tmux capture-pane -p -e`, convert ANSI to a PNG (via the bundled ansi-to-png.ts / aha + headless Chrome), then view the image. Mentions the -e flag and the headless socket/pane-id gotcha.",
+      "files": []
+    }
+  ]
+}

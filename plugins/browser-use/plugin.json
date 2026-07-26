@@ -1,7 +1,7 @@
 {
   "name": "browser-use",
-  "version": "1.1.3",
-  "description": "Full-platform browser automation for Claude Code. v1.1.2: Re-fix oneOf schema rejection (browser-use#4211) lost in v1.1.0 rewrite — sanitize upstream tool schemas to strip oneOf/allOf/anyOf rejected by Claude API. 19 MCP tools, 5 skills.",
+  "version": "1.4.0",
+  "description": "Full-platform browser automation for Claude Code. v1.4.0 unifies live-page control and a configurable agent brain: in-page JS eval (browser_evaluate), keyboard primitives (browser_press_key/browser_keyboard), selector focus (browser_focus), and env preflight (browser_doctor) — unblocking code editors (Monaco/CodeMirror) and keyboard-driven UX, with run_script that fails fast instead of hanging; plus pick the LLM per project via .claude/settings.json or per task via browser_set_agent_model across Anthropic, OpenAI, any OpenAI-compatible endpoint (Kimi/GLM/Moonshot/Zhipu), and Browser Use BU3 (defaults to claude-sonnet-5), dual local/cloud browsers (browser_start_cloud_session), a Chrome-proliferation fix (session.kill() shutdown + orphan reaper), and a Chromium channel that never hijacks your real Chrome. 26 MCP tools, 6 skills.",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",
@@ -37,6 +37,7 @@
     "./skills/navigation-patterns",
     "./skills/web-scraping",
     "./skills/debug-ui",
-    "./skills/hybrid-debugging"
+    "./skills/hybrid-debugging",
+    "./skills/agent-model"
   ]
 }
