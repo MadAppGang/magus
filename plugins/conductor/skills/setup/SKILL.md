@@ -1,171 +1,141 @@
 ---
 name: setup
-description: Initialize Conductor with product.md, tech-stack.md, and workflow.md
+description: "Initializes the Conductor project orchestration system by guiding the user through interactive Q&A to create product.md, tech-stack.md, workflow.md, and code style guides. Use when the user asks to set up Conductor, initialize a new project workspace, bootstrap project configuration, or start a new development environment."
 version: 1.1.0
 tags: [conductor, setup, initialization, context, project]
-keywords: [conductor setup, initialize, project context, greenfield, brownfield]
 user-invocable: false
 ---
-plugin: conductor
-updated: 2026-01-20
 
-<role>
-  <identity>Project Context Architect</identity>
-  <expertise>
-    - Project initialization and context gathering
-    - Interactive Q&A for requirements elicitation
-    - State management and resume capability
-    - Greenfield vs Brownfield project handling
-  </expertise>
-  <mission>
-    Guide users through structured project initialization, creating
-    comprehensive context artifacts that serve as the foundation for
-    all future development work.
-  </mission>
-</role>
+## Critical Constraints
 
-<instructions>
-  <critical_constraints>
-    <todowrite_requirement>
-      You MUST use Tasks to track setup progress:
-      1. Check for existing conductor/ directory
-      2. Determine project type (Greenfield/Brownfield)
-      3. Create product.md through Q&A
-      4. Create product-guidelines.md
-      5. Create tech-stack.md through Q&A
-      6. Create code styleguides
-      7. Copy workflow.md template
-      8. Finalize setup
-    </todowrite_requirement>
+- **Task tracking**: Use Tasks to track setup progress through all phases
+- **Sequential questions**: Ask one question at a time; wait for the answer before continuing
+- **Maximum 5 questions per section**; always include a "Type your own answer" option
+- **Save state after each answer** to `conductor/setup_state.json` for resume capability
 
-    <resume_capability>
-      Check for conductor/setup_state.json FIRST.
-      If exists with status != "complete":
-      1. Load saved answers
-      2. Resume from last incomplete section
-      3. Show user what was already collected
-    </resume_capability>
+### Resume Capability
 
-    <question_protocol>
-      - Ask questions SEQUENTIALLY (one at a time)
-      - Maximum 5 questions per section
-      - Always include "Type your own answer" option
-      - Use AskUserQuestion with appropriate question types
-      - Save state after EACH answer (for resume)
-    </question_protocol>
+Check for `conductor/setup_state.json` **before starting**. If it exists with `status != "complete"`:
 
-    <validation_first>
-      Before any operation:
-      1. Check if conductor/ already exists
-      2. If complete setup exists, ask: "Re-initialize or abort?"
-      3. Respect .gitignore patterns
-    </validation_first>
-  </critical_constraints>
+1. Load saved answers
+2. Resume from last incomplete section
+3. Show user what was already collected
 
-  <core_principles>
-    <principle name="Single Question Flow" priority="critical">
-      Never ask multiple questions at once.
-      Wait for answer before asking next question.
-    </principle>
+### Pre-flight Validation
 
-    <principle name="State Persistence" priority="critical">
-      Save progress after each answer.
-      Enable resume from any interruption point.
-    </principle>
+1. Check if `conductor/` directory already exists
+2. If a complete setup exists, ask: "Re-initialize or abort?"
+3. Respect `.gitignore` patterns
 
-    <principle name="Context Quality" priority="high">
-      Gather enough context to be useful.
-      Don't overwhelm with excessive questions.
-    </principle>
-  </core_principles>
+## Workflow
 
-  <workflow>
-    <phase number="1" name="Validation">
-      <step>Check if conductor/ directory exists</step>
-      <step>If exists, check setup_state.json for resume</step>
-      <step>If complete setup exists, confirm re-initialization</step>
-      <step>Initialize Tasks with setup phases</step>
-    </phase>
+### Phase 1: Validation
 
-    <phase number="2" name="Project Type Detection">
-      <step>Check for existing code files (src/, package.json, etc.)</step>
-      <step>Ask user: Greenfield (new) or Brownfield (existing)?</step>
-      <step>For Brownfield: Scan existing code for context</step>
-    </phase>
+1. Check if `conductor/` directory exists
+2. If exists, check `setup_state.json` for resume
+3. If complete setup exists, confirm re-initialization
+4. Initialize Tasks with setup phases
 
-    <phase number="3" name="Product Context">
-      <step>Ask: What is this project about? (1-2 sentences)</step>
-      <step>Ask: Who is the target audience?</step>
-      <step>Ask: What are the 3 main goals?</step>
-      <step>Ask: Any constraints or requirements?</step>
-      <step>Generate product.md from answers</step>
-    </phase>
+### Phase 2: Project Type Detection
 
-    <phase number="4" name="Technical Context">
-      <step>Ask: Primary programming language(s)?</step>
-      <step>Ask: Key frameworks/libraries?</step>
-      <step>Ask: Database/storage preferences?</step>
-      <step>Ask: Deployment target?</step>
-      <step>Generate tech-stack.md from answers</step>
-    </phase>
+1. Check for existing code files (`src/`, `package.json`, etc.)
+2. Ask user: new project or existing codebase?
+3. For existing projects: scan existing code for context
 
-    <phase number="5" name="Guidelines">
-      <step>Ask: Any specific coding conventions?</step>
-      <step>Ask: Testing requirements?</step>
-      <step>Generate product-guidelines.md</step>
-      <step>Generate code_styleguides/general.md (always)</step>
-      <step>Generate language-specific styleguides based on tech stack:
-        - TypeScript/JavaScript → typescript.md, javascript.md
-        - Web projects → html-css.md
-        - Python → python.md
-        - Go → go.md
-      </step>
-    </phase>
+### Phase 3: Product Context
 
-    <phase number="6" name="Finalization">
-      <step>Copy workflow.md template</step>
-      <step>Create empty tracks.md</step>
-      <step>Mark setup_state.json as complete</step>
-      <step>Present summary to user</step>
-    </phase>
-  </workflow>
-</instructions>
+1. Ask: What is this project about? (1-2 sentences)
+2. Ask: Who is the target audience?
+3. Ask: What are the 3 main goals?
+4. Ask: Any constraints or requirements?
+5. Generate `conductor/product.md` from answers
 
-<knowledge>
-  <greenfield_vs_brownfield>
-    **Greenfield (New Project):**
-    - No existing code to analyze
-    - More questions needed about vision
-    - Focus on future architecture
+### Phase 4: Technical Context
 
-    **Brownfield (Existing Project):**
-    - Scan existing files for context
-    - Infer tech stack from package.json, requirements.txt, etc.
-    - Focus on documenting current state
-  </greenfield_vs_brownfield>
+1. Ask: Primary programming language(s)?
+2. Ask: Key frameworks/libraries?
+3. Ask: Database/storage preferences?
+4. Ask: Deployment target?
+5. Generate `conductor/tech-stack.md` from answers
 
-  <question_types>
-    **Additive (Multi-Select):**
-    - "Which frameworks are you using?" [React, Vue, Angular, Other]
-    - User can select multiple
+### Phase 5: Guidelines
 
-    **Exclusive (Single-Select):**
-    - "Primary language?" [TypeScript, Python, Go, Other]
-    - User picks one
+1. Ask: Any specific coding conventions?
+2. Ask: Testing requirements?
+3. Generate `conductor/product-guidelines.md`
+4. Generate `conductor/code_styleguides/general.md` (always)
+5. Generate language-specific styleguides based on tech stack:
+   - TypeScript/JavaScript: `typescript.md`, `javascript.md`
+   - Web projects: `html-css.md`
+   - Python: `python.md`
+   - Go: `go.md`
 
-    **Open-Ended:**
-    - "Describe your project in 1-2 sentences"
-    - Free text response
-  </question_types>
+### Phase 6: Finalization
 
-  <state_file_schema>
+1. Copy `workflow.md` template
+2. Create empty `tracks.md`
+3. Mark `setup_state.json` as complete
+4. Present summary to user
+
+## Artifact Validation
+
+After generating each artifact, verify it contains the required sections:
+
+- **product.md**: Must include `## Overview`, `## Target Audience`, `## Goals`, `## Constraints`
+- **tech-stack.md**: Must include `## Languages`, `## Frameworks`, `## Storage`, `## Deployment`
+- **product-guidelines.md**: Must include `## Coding Conventions`, `## Testing Requirements`
+
+If any section is missing, re-prompt the user for the missing information before writing the file.
+
+## Artifact Templates
+
+### product.md
+
+```markdown
+# {Project Name}
+
+## Overview
+{1-2 sentence description from user}
+
+## Target Audience
+{audience answer}
+
+## Goals
+1. {goal 1}
+2. {goal 2}
+3. {goal 3}
+
+## Constraints
+{constraints or "None specified"}
+```
+
+### tech-stack.md
+
+```markdown
+# Tech Stack
+
+## Languages
+- {primary language}
+
+## Frameworks
+- {framework list}
+
+## Storage
+- {database/storage choice or "TBD"}
+
+## Deployment
+- {deployment target or "TBD"}
+```
+
+## State File Schema
+
 ```json
 {
-  "status": "in_progress" | "complete",
+  "status": "in_progress | complete",
   "startedAt": "ISO-8601",
   "lastUpdated": "ISO-8601",
-  "projectType": "greenfield" | "brownfield",
-  "currentSection": "product" | "tech" | "guidelines",
+  "projectType": "greenfield | brownfield",
+  "currentSection": "product | tech | guidelines",
   "answers": {
     "product": {
       "description": "...",
@@ -179,44 +149,30 @@ updated: 2026-01-20
   }
 }
 ```
-  </state_file_schema>
-</knowledge>
 
-<examples>
-  <example name="New Project Setup">
-    <user_request>I want to set up Conductor for my new project</user_request>
-    <correct_approach>
-      1. Check for existing conductor/ - not found
-      2. Ask: "Is this a new project (Greenfield) or existing codebase (Brownfield)?"
-      3. User: "New project"
-      4. Begin product context questions (one at a time)
-      5. Save each answer to setup_state.json
-      6. After all sections, generate artifacts
-      7. Present summary with next steps
-    </correct_approach>
-  </example>
+## Examples
 
-  <example name="Resume Interrupted Setup">
-    <user_request>Continue setting up Conductor</user_request>
-    <correct_approach>
-      1. Check conductor/setup_state.json - found, status: "in_progress"
-      2. Load previous answers from state
-      3. Show: "Resuming setup. You've completed: Product Context"
-      4. Continue from Technical Context section
-      5. Complete remaining sections
-    </correct_approach>
-  </example>
-</examples>
+**New Project Setup**: User says "I want to set up Conductor for my new project"
 
-<formatting>
-  <communication_style>
-    - Friendly, guiding tone
-    - Clear progress indicators
-    - Explain why each question matters
-    - Confirm understanding before proceeding
-  </communication_style>
+1. Check for existing `conductor/` — not found
+2. Ask: "Is this a new project or an existing codebase?"
+3. User: "New project"
+4. Begin product context questions (one at a time)
+5. Save each answer to `setup_state.json`
+6. After all sections, generate artifacts and validate required sections
+7. Present summary with next steps
 
-  <completion_template>
+**Resume Interrupted Setup**: User says "Continue setting up Conductor"
+
+1. Check `conductor/setup_state.json` — found, status: `in_progress`
+2. Load previous answers from state
+3. Show: "Resuming setup. You've completed: Product Context"
+4. Continue from Technical Context section
+5. Complete remaining sections
+
+## Completion Template
+
+```
 ## Conductor Setup Complete
 
 **Project:** {project_name}
@@ -226,7 +182,7 @@ updated: 2026-01-20
 - conductor/product.md - Project vision and goals
 - conductor/product-guidelines.md - Standards and conventions
 - conductor/tech-stack.md - Technical preferences
-- conductor/workflow.md - Development workflow (comprehensive)
+- conductor/workflow.md - Development workflow
 - conductor/tracks.md - Track index (empty)
 - conductor/code_styleguides/general.md - General coding principles
 - conductor/code_styleguides/{language}.md - Language-specific guides
@@ -235,7 +191,4 @@ updated: 2026-01-20
 1. Review generated artifacts and adjust as needed
 2. Use `conductor:new-track` to plan your first feature
 3. Use `conductor:implement` to execute the plan
-
-Your project is now ready for Context-Driven Development!
-  </completion_template>
-</formatting>
+```
