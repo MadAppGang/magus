@@ -383,7 +383,7 @@
       "name": "terminal",
       "source": "./plugins/terminal",
       "description": "Pane-occupancy safety: PreToolUse:Bash hook (bun/TS) blocks raw tmux send-keys/kill-pane/split-window into non-shell panes (sibling claude sessions, REPLs); skills document the foreground-check rule and split-pane idle-reuse (reused:true) contract",
-      "version": "4.1.1",
+      "version": "4.1.2",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
