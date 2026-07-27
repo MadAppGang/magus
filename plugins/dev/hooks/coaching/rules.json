@@ -314,19 +314,6 @@
     "suppress_after_sessions": 5
   },
   {
-    "id": "conductor-missing-for-multi-session-feature",
-    "audience": "human",
-    "signal": {
-      "feature_session_agents": ["dev:developer"],
-      "min_agent_count": 5,
-      "absent_bash_pattern": "conductor"
-    },
-    "category": "plugin-discovery",
-    "priority": 4,
-    "suggestion": "Complex feature session detected (5+ developer tasks) without Conductor tracking.\n  `/conductor:new-track` -- create a hierarchical plan with spec, phases, and TDD commits\n  `/conductor:status` -- see progress across all tracks\n  `/conductor:revert` -- logical undo at track/phase/task level (not just git)\n  Conductor maintains context across sessions so you never lose 'where we left off'.",
-    "suppress_after_sessions": 3
-  },
-  {
     "id": "nanobanana-not-suggested-for-images",
     "audience": "claude",
     "signal": {

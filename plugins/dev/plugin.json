@@ -1,6 +1,6 @@
 {
   "name": "dev",
-  "version": "2.12.0",
+  "version": "2.12.1",
   "description": "Universal development assistant. v2.12.0: new /dev:design-system command validates a project against the design-system guardrails; the bundled drift auditor is now bun/TypeScript and no longer false-positives on Tailwind variant selectors, CSS id selectors, or icon components.",
   "author": {
     "name": "Jack Rudenko",

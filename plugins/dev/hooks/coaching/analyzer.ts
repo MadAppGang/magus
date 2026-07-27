@@ -57,8 +57,6 @@ interface RuleSignal {
   feature_session_agents?: string[];
   requires_ask_user_or_claudish?: boolean;
   absent_agent?: string;
-  min_agent_count?: number;
-  absent_bash_pattern?: string;
 }
 
 interface Rule {
@@ -547,24 +545,6 @@ function applyRules(
             )
           : [];
         if (frontendTasks.length > 0 && designerTasks.length === 0) {
-          matched = true;
-        }
-        break;
-      }
-
-      case "conductor-missing-for-multi-session-feature": {
-        // Signal: dev:developer Tasks >= min_agent_count AND no conductor Bash calls
-        const developerTasks = taskCalls.filter(
-          (tc) => String(tc.input.subagent_type ?? "") === "dev:developer"
-        );
-        const minAgentCount = signal.min_agent_count ?? 5;
-        const absentBashPat = signal.absent_bash_pattern ?? "";
-        const conductorUsed = absentBashPat
-          ? bashCalls.some((c) =>
-              String(c.input.command ?? "").includes(absentBashPat)
-            )
-          : false;
-        if (developerTasks.length >= minAgentCount && !conductorUsed) {
           matched = true;
         }
         break;

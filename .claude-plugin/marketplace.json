@@ -7,7 +7,7 @@
   },
   "metadata": {
     "description": "Curated collection of Claude Code plugins for modern full-stack development with LLM performance tracking and E2E skill testing",
-    "version": "7.6.0",
+    "version": "8.0.0",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -42,7 +42,7 @@
     {
       "name": "claudish",
       "source": "./plugins/claudish",
-      "description": "Claudish MCP runtime \u2014 external model proxy with team voting, async sessions, and channel notifications. Required by code-analysis, dev, multimodel, designer, agentdev, seo.",
+      "description": "Claudish MCP runtime \u2014 external model proxy with team voting, async sessions, and channel notifications. Required by code-analysis, dev, multimodel, designer, agentdev, seo. Dual-published to magus and magus-marketing because seo depends on it.",
       "version": "1.0.0",
       "author": {
         "name": "Jack Rudenko",
@@ -144,107 +144,10 @@
       "strict": true
     },
     {
-      "name": "seo",
-      "source": "./plugins/seo",
-      "description": "Declared claudish as a dependency (extracted into a dedicated runtime plugin)",
-      "version": "1.8.0",
-      "author": {
-        "name": "Jack Rudenko",
-        "email": "i@madappgang.com",
-        "company": "MadAppGang"
-      },
-      "category": "content",
-      "keywords": [
-        "seo",
-        "content-optimization",
-        "keyword-research",
-        "serp-analysis",
-        "technical-seo",
-        "content-strategy",
-        "google-analytics",
-        "search-console",
-        "performance-analysis"
-      ],
-      "strict": true
-    },
-    {
-      "name": "video-editing",
-      "source": "./plugins/video-editing",
-      "description": "FIX: rewrite descriptions to Anthropic's pattern, strip trigger tails",
-      "version": "1.1.4",
-      "author": {
-        "name": "Jack Rudenko",
-        "email": "i@madappgang.com",
-        "company": "MadAppGang"
-      },
-      "category": "media",
-      "keywords": [
-        "video",
-        "ffmpeg",
-        "transcription",
-        "whisper",
-        "final-cut-pro",
-        "fcpxml",
-        "timeline",
-        "audio",
-        "editing",
-        "subtitles"
-      ],
-      "strict": true
-    },
-    {
-      "name": "nanobanana",
-      "source": "./plugins/nanobanana",
-      "description": "AI image generation and editing using Google Gemini 3 Pro Image API. v2.3.1: Marketplace rename to magus. Simple Node.js CLI with markdown styles and batch generation.",
-      "version": "2.4.0",
-      "author": {
-        "name": "Jack Rudenko",
-        "email": "i@madappgang.com",
-        "company": "MadAppGang"
-      },
-      "category": "media",
-      "keywords": [
-        "image-generation",
-        "ai-art",
-        "gemini",
-        "text-to-image",
-        "image-editing",
-        "style-transfer",
-        "nano-banana",
-        "google-ai"
-      ],
-      "strict": true
-    },
-    {
-      "name": "conductor",
-      "source": "./plugins/conductor",
-      "description": "Context-Driven Development workflow inspired by Gemini Conductor. v2.1.3: Fix manifest schema \u2014 commands paths, add skills registration.",
-      "version": "2.1.3",
-      "author": {
-        "name": "Jack Rudenko",
-        "email": "i@madappgang.com",
-        "company": "MadAppGang"
-      },
-      "category": "workflow",
-      "keywords": [
-        "conductor",
-        "workflow",
-        "context-driven",
-        "tdd",
-        "planning",
-        "task-tracking",
-        "git-aware",
-        "project-management",
-        "phase-protocol",
-        "gemini-conductor"
-      ],
-      "strict": true
-    },
-    {
       "name": "dev",
       "source": "./plugins/dev",
-      "description": "New /dev:design-system command validates any project against the design-system guardrails \u2014 token-only styling, one component library, variants over call-site restyling. The bundled drift auditor is now bun/TypeScript, covered by 33 tests, and no longer false-positives on Tailwind variant selectors, CSS id selectors, or icon components.",
-      "version": "2.12.0",
+      "description": "Dropped the conductor-missing coaching rule \u2014 the conductor plugin is retired, so the suggestion pointed at commands that no longer ship. The /dev:design-system command validates any project against the design-system guardrails: token-only styling, one component library, variants over call-site restyling.",
+      "version": "2.12.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -302,6 +205,38 @@
         "charm",
         "lipgloss",
         "terminal-ui"
+      ],
+      "strict": true
+    },
+    {
+      "name": "dingo",
+      "source": "./plugins/dingo",
+      "description": "BETA \u2014 Dingo language skills: idiomatic Result/Option types, error propagation (?), enums, pattern matching, lambdas, and safe navigation, with compiler-verified patterns. Interfaces may still change.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Jack Rudenko",
+        "email": "i@madappgang.com",
+        "company": "MadAppGang"
+      },
+      "category": "language",
+      "keywords": [
+        "beta",
+        "dingo",
+        "golang",
+        "go",
+        "meta-language",
+        "transpiler",
+        "error-handling",
+        "result-type",
+        "option-type",
+        "enums",
+        "sum-types",
+        "pattern-matching",
+        "lambdas",
+        "safe-navigation",
+        "null-coalescing",
+        "code-review",
+        "best-practices"
       ],
       "strict": true
     },
@@ -448,30 +383,6 @@
         "workflow",
         "gtd",
         "visual"
-      ],
-      "strict": true
-    },
-    {
-      "name": "instantly",
-      "source": "./plugins/instantly",
-      "description": "Cold email outreach toolkit with Instantly.ai MCP integration. Campaign analytics, sequence building, A/B testing, lead management, and auto-optimization.",
-      "version": "1.0.6",
-      "author": {
-        "name": "Jack Rudenko",
-        "email": "i@madappgang.com",
-        "company": "MadAppGang"
-      },
-      "category": "productivity",
-      "keywords": [
-        "instantly",
-        "cold-email",
-        "outreach",
-        "email-campaigns",
-        "lead-generation",
-        "ab-testing",
-        "email-sequences",
-        "deliverability",
-        "sales-automation"
       ],
       "strict": true
     },

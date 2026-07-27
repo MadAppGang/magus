@@ -82,6 +82,9 @@ These aren't "best practices" from blog posts. This is the **battle-tested playb
 ```bash
 # Step 1: Add marketplace globally (one-time setup)
 /plugin marketplace add MadAppGang/magus
+
+# Optional: marketing & content plugins (SEO, image generation, video, cold email)
+/plugin marketplace add MadAppGang/magus-marketing
 ```
 
 Then add to your project's `.claude/settings.json`:
@@ -243,6 +246,17 @@ Each developer on your team does this once:
 ```
 
 This registers the Magus marketplace in your Claude Code installation. You only need to do this once, and it works for all your projects.
+
+Magus ships on three channels. Core development plugins live in `magus`; add the others only
+if you need them:
+
+| Marketplace | Contains |
+|---|---|
+| `MadAppGang/magus` | Core development plugins — dev, code-analysis, terminal, designer, browser-use, and more |
+| `MadAppGang/magus-marketing` | SEO, AI image generation, video editing, cold email outreach |
+| `MadAppGang/magus-alpha` | Experimental plugins with evolving interfaces |
+
+Plugin IDs carry the marketplace, so enable them as `seo@magus-marketing`, not `seo@magus`.
 
 #### Step 2: Enable Plugins in Your Project
 
