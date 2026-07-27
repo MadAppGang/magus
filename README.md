@@ -112,15 +112,16 @@ This repository contains production-ready plugins designed for modern web develo
 
 #### 🔍 Code Analysis
 
-**Version:** 1.1.0 | **Category:** Development | **Model:** Sonnet
+**Version:** 5.3.0 | **Category:** Development | **Marketplace:** `magus`
 
-Deep code investigation and analysis toolkit for understanding complex codebases with semantic search capabilities.
+Deep code investigation and analysis toolkit for understanding complex codebases, backed by
+AST-level structural search.
 
 **Highlights:**
-- **codebase-detective agent** - Investigates code patterns, relationships, and architecture
-- **2 Skills** - Deep analysis + semantic code search expert guidance
-- **MCP Integration** - Optimal usage of claude-context for 40% token reduction
-- **Deep analysis** - Understands code relationships across multiple files
+- **`code-analysis:detective` agent** - Investigates code patterns, relationships, and architecture
+- **4 Skills** - `mnemex-search`, `mnemex-orchestration`, `investigate`, `deep-analysis`
+- **MCP Integration** - Semantic search and AST analysis via the `mnemex` runtime plugin
+  (declared as a dependency), with PageRank-ranked symbol maps and caller/callee tracing
 - **Pattern discovery** - Identifies usage patterns and architectural decisions
 - **Bug investigation** - Tracks down issues across the codebase
 
@@ -128,40 +129,38 @@ Deep code investigation and analysis toolkit for understanding complex codebases
 
 ---
 
-#### 🎯 Orchestration (Skills-Only Plugin)
+#### 🎯 Multimodel - Orchestration & Multi-Model Voting
 
-**Version:** 0.1.0 | **Category:** Development | **Type:** Skills Plugin
+**Version:** 3.2.0 | **Category:** Development | **Marketplace:** `magus`
 
-Shared multi-agent coordination and workflow orchestration patterns for complex Claude Code workflows. Battle-tested patterns extracted from 100+ days of production use.
+Multi-agent coordination and multi-model orchestration. Run the same task across several AI
+models in parallel, collect independent verdicts, and route work by complexity. Requires the
+`claudish` runtime plugin (declared as a dependency).
 
-**Highlights:**
-- **5 Comprehensive Skills** - Multi-agent coordination, multi-model validation, quality gates, TodoWrite orchestration, error recovery
-- **Skills-Only Architecture** - Pure knowledge plugin (no agents/commands) for context-efficient loading
-- **Skill Bundles** - Pre-configured combinations (core, advanced, testing, complete)
-- **4-Message Pattern** - Proven workflow for true parallel execution (3-5x speedup)
-- **Consensus Analysis** - Prioritize issues by cross-model agreement
-- **Battle-Tested** - 100+ days production validation, 6,774 lines of documentation
-- **Zero Dependencies** - Standalone, can be used by any plugin
+**Commands:**
+- `/multimodel:team` - Blind voting across models in parallel; aggregates APPROVE/REJECT verdicts
+- `/multimodel:delegate` - Hand a task to one external model running a full Claude Code session
 
-**The Skills:**
-1. **multi-agent-coordination** - Parallel vs sequential execution, agent selection, sub-agent delegation
-2. **multi-model-validation** - Run multiple AI models (Grok, Gemini, GPT-5) in parallel via Claudish
-3. **quality-gates** - User approval gates, iteration loops, severity classification, test-driven development
-4. **todowrite-orchestration** - Phase tracking for complex multi-step workflows
-5. **error-recovery** - Timeout handling, API failures, partial success, graceful degradation
+**Key skills** (17 total under `plugins/multimodel/skills/`):
+- **claudish-usage** - Model routing and provider backends. Read before ANY `claudish` command
+- **multi-agent-coordination** - Parallel vs sequential execution, agent selection, delegation
+- **multi-model-validation** - Run multiple models in parallel and compare findings
+- **task-complexity-router** - Match task complexity to the right model tier
+- **task-orchestration** - Phase tracking for complex multi-step workflows
+- **quality-gates** - Approval gates, iteration loops, severity classification
+- **error-recovery** - Timeouts, API failures, partial success, graceful degradation
 
 **Usage:**
 ```yaml
 # In your agent or command frontmatter
 skills: multimodel:multi-model-validation, multimodel:quality-gates
-
-# Or use skill bundles
-skills: multimodel:complete  # All 5 skills
 ```
 
-**Perfect for:** Plugin developers, complex multi-phase workflows, multi-model validation, parallel execution patterns, test-driven development loops, production-grade error handling
+**Perfect for:** complex multi-phase workflows, multi-model validation, parallel execution
+patterns, production-grade error handling
 
-👉 **[Read the complete guide](./plugins/orchestration/README.md)** for detailed patterns and examples
+> Model IDs come from `shared/model-aliases.json` — pass bare aliases (`grok`, `gemini`, `gpt`)
+> and let claudish route them. Never add provider prefixes.
 
 ---
 
@@ -390,7 +389,7 @@ Fetches your Figma component, adapts it to your codebase, installs dependencies,
 - **[Development Guide](./docs/development-guide.md)** - How to create plugins
 - **[Contributing Guide](./docs/contributing.md)** - How to contribute to the marketplace
 - **[Marketplace Reference](./docs/marketplace-reference.md)** - Technical schemas and structure
-- **[Version Validation](./docs/VALIDATION.md)** - Automated version validation system (prevents marketplace/plugin version mismatches)
+- **[Version Validation](./docs/validation.md)** - Automated version validation system (prevents marketplace/plugin version mismatches)
 
 ### Technical Documentation
 
@@ -398,8 +397,6 @@ For architecture and implementation details, see the **[ai-docs](./ai-docs/)** d
 
 - **[TEAM_CONFIG_ARCHITECTURE.md](./ai-docs/TEAM_CONFIG_ARCHITECTURE.md)** - Team-first configuration
 - **[DYNAMIC_MCP_GUIDE.md](./ai-docs/DYNAMIC_MCP_GUIDE.md)** - MCP server configuration patterns
-- **[COMPLETE_PLUGIN_SUMMARY.md](./ai-docs/COMPLETE_PLUGIN_SUMMARY.md)** - Complete plugin inventory
-- **[SEMANTIC_SEARCH_SKILL_SUMMARY.md](./ai-docs/SEMANTIC_SEARCH_SKILL_SUMMARY.md)** - Semantic search skill design
 
 ---
 
@@ -407,11 +404,14 @@ For architecture and implementation details, see the **[ai-docs](./ai-docs/)** d
 
 ### Current Focus
 
-- ✅ Dev plugin (v1.35.1 - universal dev assistant, 47 skills)
-- ✅ Code Analysis plugin (v3.2.3 - semantic search with claudemem)
-- ✅ Multimodel plugin (v2.5.0 - multi-model orchestration)
-- ✅ Terminal plugin (v2.0.0 - intent-level terminal commands)
-- ✅ Statusline plugin (v1.4.1 - worktree-aware statusline)
+- ✅ Dev plugin (v2.12.1 - universal dev assistant, design-system guardrails)
+- ✅ Code Analysis plugin (v5.3.0 - semantic search and AST analysis via mnemex)
+- ✅ Multimodel plugin (v3.2.0 - multi-model orchestration and blind voting)
+- ✅ Terminal plugin (v4.1.2 - intent-level terminal, tmux-mcp, pane safety)
+- ✅ Statusline plugin (v2.1.2 - adaptive, worktree-aware statusline)
+- ✅ Marketplace split (magus v8.0.0 - marketing plugins moved to `magus-marketing`)
+
+See [ROADMAP.md](./ROADMAP.md) for per-plugin forward-looking items.
 
 ### Future Plugins
 
@@ -437,8 +437,6 @@ For technical details and architecture, see the **[ai-docs](./ai-docs/)** direct
 - **[DYNAMIC_MCP_GUIDE.md](./ai-docs/DYNAMIC_MCP_GUIDE.md)** - Dynamic MCP server configuration patterns
 
 #### Reference
-- **[COMPLETE_PLUGIN_SUMMARY.md](./ai-docs/COMPLETE_PLUGIN_SUMMARY.md)** - Complete plugin inventory
-- **[FINAL_SUMMARY.md](./ai-docs/FINAL_SUMMARY.md)** - Project overview and statistics
 
 ---
 
