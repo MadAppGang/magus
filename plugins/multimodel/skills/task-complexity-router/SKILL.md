@@ -1,6 +1,6 @@
 ---
 name: task-complexity-router
-description: Routes tasks to model tiers (haiku/sonnet/opus) based on complexity. Use when picking a model tier, analyzing task complexity, or optimizing API cost.
+description: Routes tasks to model tiers (haiku/sonnet/opus) by complexity. Use for model selection, complexity routing, picking a tier, or optimizing API cost.
 version: 0.1.0
 tags: [orchestration, routing, complexity, model-selection, cost-optimization, tiered]
 keywords: [routing, complexity, model-selection, tier, cost, haiku, sonnet, opus, optimization, task-analysis]

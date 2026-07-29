@@ -1,12 +1,6 @@
 ---
 name: verification-before-completion
-description: "Requires evidence-based proof before claiming a task is complete. Use when claiming completion, marking items done, or when the user mentions verifying, testing, or making sure it works."
-keywords: [completion, done, working, ready, verification, evidence, test-output, grep-verification, ci-cd, build-logs, git-diff, screenshot, should-work, probably-works, seems-to, rationalization, todo-complete]
-created: 2026-01-20
-updated: 2026-01-20
-plugin: dev
-type: discipline
-difficulty: beginner
+description: Requires evidence before claiming done. Use when marking work complete, or on mention of verifying, testing, or making sure it works.
 user-invocable: false
 ---
 

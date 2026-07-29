@@ -2,7 +2,7 @@
 name: debug
 description: "Structured debugging — routes to quick patch (inline), standard debug (skill), or production-grade fix (/dev:fix)"
 allowed-tools: Task, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep, Write, Edit, Skill
-skills: dev:debug-shared-init, dev:debug-localization, dev:context-detection, dev:debugging-strategies, dev:systematic-debugging, dev:testing-strategies, dev:verification-before-completion
+skills: dev:context-detection, dev:debugging-strategies, dev:systematic-debugging, dev:testing-strategies, dev:verification-before-completion
 ---
 
 <role>
@@ -66,7 +66,7 @@ skills: dev:debug-shared-init, dev:debug-localization, dev:context-detection, de
 
   Decision:
   - "Quick patch" → execute the Quick-Patch Workflow below
-  - "Standard debug" → load dev:debug-standard skill via Skill tool and follow it exactly
+  - "Standard debug" → load dev:systematic-debugging and follow workflow.md exactly
   - "Production-grade fix" → output: "Scope: Production-grade fix. Run `/dev:fix {bug description}` for the full TDD + review workflow." then STOP
 </scope_selection>
 
@@ -74,14 +74,14 @@ skills: dev:debug-shared-init, dev:debug-localization, dev:context-detection, de
   Execute this workflow inline when scope = Quick patch.
 
   **Phase 0: Initialize**
-  - Invoke dev:debug-shared-init skill for session setup (prefix: "dev-debug-quickfix")
+  - Follow dev:systematic-debugging → session-setup.md for session setup (prefix: "dev-debug-quickfix")
   - Parse flags from $ARGUMENTS:
     - --review: opt-in multimodel patch quality vote at Phase 4
     - --tdd: write RED test before applying patch
     - --interactive: approval gate before PATCH phase
 
   **Phase 1: REPRODUCE**
-  - Use context from debug-shared-init
+  - Use context from session-setup.md
   - If reproduction steps were provided in $ARGUMENTS, attempt reproduction via Bash
   - Document reproduction result in session
 
@@ -148,7 +148,7 @@ skills: dev:debug-shared-init, dev:debug-localization, dev:context-detection, de
      - Options: "Upgrade to Standard debug" / "Proceed with quick-patch (narrow to highest-confidence candidate)"
 
   2. If user chooses upgrade:
-     - Load dev:debug-standard skill via Skill tool
+     - Load dev:systematic-debugging (see workflow.md)
      - Resume from Phase 2 (Localize) using already-gathered context
      - Do NOT restart from scratch
 
@@ -170,7 +170,7 @@ skills: dev:debug-shared-init, dev:debug-localization, dev:context-detection, de
   **Commit**: {hash}
   **Session**: {SESSION_PATH}
 
-  **Standard debug completion**: handled by the dev:debug-standard skill (not here).
+  **Standard debug completion**: handled by dev:systematic-debugging → workflow.md (not here).
 
   **Production-grade**: not applicable — routed to /dev:fix.
 </completion_messages>

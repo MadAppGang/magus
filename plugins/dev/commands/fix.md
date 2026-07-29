@@ -2,7 +2,7 @@
 name: fix
 description: "Production-grade TDD bug fix — dual multimodel review gates, deployment monitoring, and full validation"
 allowed-tools: Task, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep, Write, Edit, Skill, mcp__plugin_claudish__team, mcp__plugin_claudish__run_prompt
-skills: dev:debug-shared-init, dev:debug-localization, dev:context-detection, dev:systematic-debugging, dev:test-driven-development, dev:testing-strategies, dev:verification-before-completion, multimodel:error-recovery, multimodel:quality-gates
+skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-development, dev:testing-strategies, dev:verification-before-completion, multimodel:error-recovery, multimodel:quality-gates
 ---
 
 <role>
@@ -18,8 +18,7 @@ skills: dev:debug-shared-init, dev:debug-localization, dev:context-detection, de
   <mission>
     Orchestrate systematic production-grade bug fixes using a full 8-phase state machine with
     dual multimodel review gates. Always: REPRODUCE → LOCALIZE → PLAN → PATCH → VALIDATE →
-    REVIEW-B → MONITOR → DOCUMENT. Use dev:debug-shared-init for session setup and
-    dev:debug-localization for 3-strategy fault localization. For quick debugging, use /dev:debug.
+    REVIEW-B → MONITOR → DOCUMENT. Use dev:systematic-debugging for session setup, localization and workflow. For quick debugging, use /dev:debug.
   </mission>
 </role>
 
@@ -128,13 +127,12 @@ skills: dev:debug-shared-init, dev:debug-localization, dev:context-detection, de
       <step name="load-skills">
         Invoke the following skills via the Skill tool to load their patterns before
         any delegation or localization work:
-        - Skill("dev:debug-shared-init") — session setup, stack detection, reproduction, bug report schema
-        - Skill("dev:debug-localization") — 3-strategy localization methodology and context budget rules
+        - Skill("dev:systematic-debugging") — session setup, localization, workflow (see session-setup.md, localization.md)
         Apply these patterns throughout all phases below.
       </step>
 
       <step name="session-dir">
-        Create session directory (pattern from dev:debug-shared-init skill):
+        Create session directory (pattern in dev:systematic-debugging → session-setup.md):
         ```bash
         SESSION_BASE="dev-fix-$(date +%Y%m%d-%H%M%S)-$(head -c4 /dev/urandom | xxd -p)"
         SESSION_PATH="ai-docs/sessions/${SESSION_BASE}"
@@ -167,7 +165,7 @@ skills: dev:debug-shared-init, dev:debug-localization, dev:context-detection, de
       <step>Mark PHASE 1 as in_progress</step>
 
       <step name="stack-detect">
-        Launch dev:stack-detector (pattern from dev:debug-shared-init skill):
+        Launch dev:stack-detector (pattern in dev:systematic-debugging → session-setup.md):
         ```
         SESSION_PATH: ${SESSION_PATH}
 
@@ -204,7 +202,7 @@ skills: dev:debug-shared-init, dev:debug-localization, dev:context-detection, de
       </step>
 
       <step name="bug-report">
-        Write ${SESSION_PATH}/bug-report.md (schema from dev:debug-shared-init skill):
+        Write ${SESSION_PATH}/bug-report.md (schema in dev:systematic-debugging → session-setup.md):
         ```markdown
         # Bug Report
 
@@ -251,7 +249,7 @@ skills: dev:debug-shared-init, dev:debug-localization, dev:context-detection, de
       <step>Mark PHASE 2 as in_progress</step>
 
       <step>
-        Apply the dev:debug-localization skill methodology — run all three strategies in order.
+        Apply dev:systematic-debugging → localization.md — run all three strategies in order.
         Do not skip a strategy unless explicitly blocked (e.g., no stack trace for Strategy A).
       </step>
 
@@ -297,7 +295,7 @@ skills: dev:debug-shared-init, dev:debug-localization, dev:context-detection, de
       </step>
 
       <step name="context-budget">
-        **Context budget enforcement** (from dev:debug-localization skill):
+        **Context budget enforcement** (dev:systematic-debugging → localization.md):
         - Estimate: total_chars = sum of all candidate context text; estimated_tokens = total_chars / 4
         - If estimated_tokens > 10,000:
           Sort by confidence HIGH > MEDIUM > LOW
@@ -308,7 +306,7 @@ skills: dev:debug-shared-init, dev:debug-localization, dev:context-detection, de
       </step>
 
       <step>
-        Write ${SESSION_PATH}/localization.md (schema from dev:debug-localization skill):
+        Write ${SESSION_PATH}/localization.md (schema in dev:systematic-debugging → localization.md):
         ```markdown
         # Localization Report
 
@@ -986,7 +984,7 @@ skills: dev:debug-shared-init, dev:debug-localization, dev:context-detection, de
   <example name="Go nil pointer with monitoring — production-grade (auto-inferred from 'production' + 'critical')">
     <user_request>/dev:fix production panic: runtime error: invalid memory address in handlers/users.go:142 — critical</user_request>
     <execution>
-      PHASE 0: No flags; establish dev-fix-{ts}-{rand} session; load dev:debug-shared-init + dev:debug-localization skills
+      PHASE 0: No flags; establish dev-fix-{ts}-{rand} session; load dev:systematic-debugging
       PHASE 1 (REPRODUCE): stack-detector → Go; reproduce via: go test -run TestGetUser ./handlers/...
       PHASE 2 (LOCALIZE):
         Strategy A: handlers/users.go:142 — HIGH — direct stack frame

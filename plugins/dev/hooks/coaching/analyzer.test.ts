@@ -849,9 +849,11 @@ describe("Double-Execution Guard", () => {
 
   it("second run with same session ID preserves recommendations and increments session_count to 2", () => {
     // This exercises the session-ID dedup guard (Fix 3) at the unit test level.
-    // First run: produces recommendations and writes history file.
-    // Second run with SAME session ID: dedup guard detects history file, saves state
-    // (incrementing session_count), then exits early without overwriting recommendations.md.
+    // Stop fires once per assistant response, so the same session produces many
+    // invocations. A repeat firing with no new tool calls is a duplicate of the
+    // same turn: it must not overwrite recommendations, and it must not count as
+    // another session — `suppress_after_sessions` windows are measured in
+    // sessions, and counting turns would expire them almost immediately.
     const sessionId = "deadbeef99887766";
     const transcript = generateTranscript([
       { tool: "Bash", input: { command: "grep -r 'foo' src/" } },
@@ -881,9 +883,57 @@ describe("Double-Execution Guard", () => {
     expect(recsAfterSecondRun).toContain("mnemex");
     expect(recsAfterSecondRun).toBe(recsAfterFirstRun);
 
-    // session_count is 2 because the dedup guard still increments it before exiting
+    // Still one session. The same session seen twice is one session.
     const stateAfterSecond = readState(testDir);
-    expect(stateAfterSecond!._session_count).toBe(2);
+    expect(stateAfterSecond!._session_count).toBe(1);
+  });
+
+  it("counts each distinct session once, however many times Stop fires", () => {
+    const transcript = generateTranscript([
+      { tool: "Bash", input: { command: "grep -r 'foo' src/" } },
+      { tool: "Bash", input: { command: "grep -r 'bar' lib/" } },
+      { tool: "Bash", input: { command: "grep -r 'baz' tests/" } },
+    ]);
+    const transcriptPath = writeTranscript(testDir, transcript);
+
+    for (const id of ["1111111111111111", "2222222222222222"]) {
+      runAnalyzer(transcriptPath, id, testDir); // first Stop of the session
+      runAnalyzer(transcriptPath, id, testDir); // a later Stop, same turn
+      runAnalyzer(transcriptPath, id, testDir);
+    }
+
+    expect(readState(testDir)!._session_count).toBe(2);
+  });
+
+  it("analyzes a later turn of the same session once the transcript grows", () => {
+    // The old guard skipped every Stop after the first, so a long session was
+    // only ever analyzed as its own opening prefix.
+    const sessionId = "abcabcabcabcabca";
+
+    const early = generateTranscript(
+      Array.from({ length: 3 }, (_, i) => ({
+        tool: "Bash",
+        input: { command: `grep -r 'q${i}' src/` },
+      })),
+    );
+    const transcriptPath = writeTranscript(testDir, early);
+    runAnalyzer(transcriptPath, sessionId, testDir);
+    const analyzedEarly = readState(testDir)!._analyzed?.[sessionId];
+    expect(analyzedEarly).toBeGreaterThan(0);
+
+    // The session continues: more tool calls land in the same transcript.
+    const later = generateTranscript(
+      Array.from({ length: 12 }, (_, i) => ({
+        tool: "Bash",
+        input: { command: `grep -r 'q${i}' src/` },
+      })),
+    );
+    writeTranscript(testDir, later);
+    runAnalyzer(transcriptPath, sessionId, testDir);
+
+    // It re-analyzed rather than skipping, and still counts as one session.
+    expect(readState(testDir)!._analyzed?.[sessionId]).toBeGreaterThan(analyzedEarly!);
+    expect(readState(testDir)!._session_count).toBe(1);
   });
 
   it("second run with all rules suppressed does NOT delete recommendations", () => {

@@ -1,6 +1,5 @@
 ---
 name: frontend-implement
-version: 1.0.0
 description: Implements UI improvements from designer:ui-analyse or /designer:ui review docs, applying Anti-AI design rules and visual verification. Use when applying review findings as code.
 user-invocable: false
 ---

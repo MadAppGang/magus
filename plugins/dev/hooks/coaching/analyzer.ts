@@ -79,7 +79,19 @@ interface RuleState {
 interface CoachingState {
   _session_count: number;
   rules: Record<string, RuleState>;
+  /**
+   * sessionId → tool-call count at the last analysis of that session.
+   *
+   * `Stop` fires when Claude finishes a *response*, not when a session ends, so
+   * one session produces many Stop events. This lets us tell a genuinely new
+   * turn (transcript grew) from a duplicate firing of the same one (it did
+   * not), and lets `_session_count` count sessions rather than turns.
+   */
+  _analyzed?: Record<string, number>;
 }
+
+/** Cap on remembered sessions, so `_analyzed` cannot grow without bound. */
+const ANALYZED_HISTORY_LIMIT = 200;
 
 interface MatchedSuggestion {
   id: string;
@@ -119,9 +131,12 @@ interface QueueEntry {
 // =============================================================================
 
 function atomicWriteFileSync(filePath: string, content: string): void {
-  const tmpPath = filePath + ".tmp";
+  // The temp name carries the PID. A fixed ".tmp" is shared state: two analyzers
+  // running in one project would write the same scratch file and rename each
+  // other's half-written content into place.
+  const tmpPath = `${filePath}.tmp.${process.pid}`;
   writeFileSync(tmpPath, content);
-  renameSync(tmpPath, filePath); // Atomic on POSIX
+  renameSync(tmpPath, filePath); // rename(2) is atomic on POSIX
 }
 
 // =============================================================================
@@ -170,6 +185,21 @@ function parseToolCalls(transcriptPath: string): ToolCall[] {
 // USER MESSAGE PARSING (Stage 2)
 // =============================================================================
 
+/**
+ * True for a transcript record carrying something the user actually typed.
+ *
+ * Claude Code writes user turns as `type: "user"`. This previously tested for
+ * `"human"`, which never appears in a real transcript, so every parser built on
+ * it silently returned nothing. `"human"` is still accepted for older fixtures.
+ *
+ * Note that `type: "user"` also covers tool results being fed back to the model.
+ * Those carry `tool_result` content blocks and no `text` block, so the block
+ * filter below drops them without needing a special case.
+ */
+export function isUserRecord(obj: Record<string, unknown>): boolean {
+  return obj.type === "user" || obj.type === "human";
+}
+
 function parseUserMessages(transcriptPath: string): string[] {
   const messages: string[] = [];
   const content = readFileSync(transcriptPath, "utf-8");
@@ -182,7 +212,7 @@ function parseUserMessages(transcriptPath: string): string[] {
     } catch {
       continue;
     }
-    if (obj.type !== "human") continue;
+    if (!isUserRecord(obj)) continue;
     const message = obj.message as Record<string, unknown> | undefined;
     if (!message) continue;
     const contentBlocks = message.content;
@@ -227,6 +257,17 @@ function loadState(statePath: string): CoachingState {
 
 function saveState(statePath: string, state: CoachingState): void {
   atomicWriteFileSync(statePath, JSON.stringify(state, null, 2));
+}
+
+/**
+ * Keep `_analyzed` bounded. Entries are only needed while a session is still
+ * producing Stop events, so dropping the oldest is safe: the worst case for a
+ * revived ancient session is one redundant analysis.
+ */
+function pruneAnalyzed(state: CoachingState): void {
+  const entries = Object.entries(state._analyzed ?? {});
+  if (entries.length <= ANALYZED_HISTORY_LIMIT) return;
+  state._analyzed = Object.fromEntries(entries.slice(-ANALYZED_HISTORY_LIMIT));
 }
 
 function isSuppressed(ruleId: string, state: CoachingState): boolean {
@@ -778,8 +819,17 @@ function main(): void {
 
   // Load state (Fix 8: uses structured CoachingState)
   const state = loadState(statePath);
-  const sessionCount = state._session_count + 1;
-  state._session_count = sessionCount;
+  state._analyzed ??= {};
+
+  // Count a *session* once, on first sight. Stop fires per response, so
+  // incrementing here unconditionally counted turns and duplicate hook firings
+  // as sessions — which made every `suppress_after_sessions` window expire
+  // roughly a turn later instead of a session later.
+  const firstSightOfSession = !(sessionId in state._analyzed);
+  if (firstSightOfSession) {
+    state._session_count += 1;
+  }
+  const sessionCount = state._session_count;
 
   // Parse transcript
   let toolCalls: ToolCall[];
@@ -793,19 +843,27 @@ function main(): void {
   // Low-signal session guard: skip analysis entirely for short sessions.
   // Preserves existing recommendations from previous high-signal sessions.
   if (toolCalls.length < 10) {
-    saveState(statePath, state); // Still increment session count
+    state._analyzed[sessionId] = toolCalls.length;
+    pruneAnalyzed(state);
+    saveState(statePath, state);
     process.exit(0);
   }
 
-  // Session deduplication guard: if this session was already analyzed, skip.
-  // Prevents double processing when hooks fire twice (settings.json + plugin hooks.json).
-  if (historyDir) {
-    const historyFile = join(historyDir, `session-${sessionId.substring(0, 8)}.md`);
-    if (existsSync(historyFile)) {
-      saveState(statePath, state); // Still increment session count
-      process.exit(0);
-    }
+  // Duplicate-firing guard.
+  //
+  // This previously skipped whenever a history file existed for the session,
+  // which meant the first qualifying turn suppressed analysis of every later
+  // turn — so a long session was only ever analyzed as its own opening prefix.
+  // Compare against the transcript size we last analyzed instead: identical
+  // back-to-back Stop events (two hook registrations firing for one response)
+  // see no growth and skip, while a genuinely new turn is analyzed.
+  const analyzedAt = state._analyzed[sessionId];
+  if (analyzedAt !== undefined && toolCalls.length <= analyzedAt) {
+    saveState(statePath, state);
+    process.exit(0);
   }
+  state._analyzed[sessionId] = toolCalls.length;
+  pruneAnalyzed(state);
 
   // Apply rules
   const suggestions = applyRules(toolCalls, rules, state);
@@ -905,4 +963,6 @@ function main(): void {
   }
 }
 
-main();
+// Run only when executed directly. Without this guard, importing anything from
+// this module (e.g. isUserRecord) executes the CLI and exits on missing argv.
+if (import.meta.main) main();

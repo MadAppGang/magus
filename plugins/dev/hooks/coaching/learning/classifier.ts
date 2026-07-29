@@ -71,32 +71,85 @@ export function parseClassifierResponse(response: string): ClassifierResult {
 
   const parsed = JSON.parse(jsonStr) as Record<string, unknown>;
 
-  // Validate and add IDs
+  // Every field below is attacker-shaped: it is whatever an LLM emitted. The
+  // previous implementation cast the object to `Learning` and trusted it, so an
+  // out-of-range `line_cost` (negative, NaN, enormous) flowed into
+  // `checkBudget`'s `current + newLineCost <= 200` arithmetic, and an unknown
+  // `type` or `confidence` silently defeated the routing rules that gate what
+  // becomes persistent.
   const rawLearnings = (parsed.learnings ?? []) as Record<string, unknown>[];
-  const learnings: Learning[] = rawLearnings.map((l) => {
-    const ruleText = String(l.rule_text ?? "");
-    const hash = createHash("sha256")
-      .update(ruleText)
-      .digest("hex")
-      .slice(0, 8);
-    return {
+  const learnings: Learning[] = [];
+
+  for (const l of Array.isArray(rawLearnings) ? rawLearnings : []) {
+    const ruleText = String(l.rule_text ?? "").trim();
+    // A learning with no text cannot be applied, deduped, or reviewed.
+    if (!ruleText || ruleText.length > MAX_RULE_TEXT_CHARS) continue;
+
+    const type = oneOf(l.type, LEARNING_TYPES);
+    const confidence = oneOf(l.confidence, CONFIDENCES);
+    const scope = oneOf(l.scope, SCOPES);
+    // Reject rather than coerce: an unrecognised enum means the classifier
+    // returned something we do not understand, and guessing "correction" would
+    // route an unknown thing through a rule written for a known one.
+    if (!type || !confidence || !scope) continue;
+
+    const hash = createHash("sha256").update(ruleText).digest("hex").slice(0, 8);
+
+    learnings.push({
       id: `learning-${hash}`,
-      type: l.type ?? "correction",
-      confidence: l.confidence ?? "LOW",
-      is_project_specific: Boolean(l.is_project_specific ?? false),
-      scope: l.scope ?? "discard",
+      type,
+      confidence,
+      is_project_specific: l.is_project_specific === true,
+      scope,
       rule_text: ruleText,
-      evidence: String(l.evidence ?? ""),
-      subsection: String(l.subsection ?? "Conventions"),
-      line_cost: Number(l.line_cost ?? 1),
-    } as Learning;
-  });
+      evidence: String(l.evidence ?? "").slice(0, MAX_EVIDENCE_CHARS),
+      subsection: String(l.subsection ?? "Conventions").slice(0, MAX_SUBSECTION_CHARS),
+      line_cost: clampLineCost(l.line_cost),
+    });
+  }
 
   return {
     learnings,
-    session_quality: (parsed.session_quality as "high" | "medium" | "low") ?? "low",
-    summary: String(parsed.summary ?? "No summary"),
+    session_quality: oneOf(parsed.session_quality, SESSION_QUALITIES) ?? "low",
+    summary: String(parsed.summary ?? "No summary").slice(0, MAX_SUMMARY_CHARS),
   };
+}
+
+const LEARNING_TYPES = [
+  "correction",
+  "explicit_rule",
+  "repeated_pattern",
+  "failed_attempt",
+  "delegation_pattern",
+  "user_frustration",
+  "user_praise",
+] as const;
+const CONFIDENCES = ["HIGH", "MEDIUM", "LOW"] as const;
+const SCOPES = ["claude_md", "memory", "coaching", "discard"] as const;
+const SESSION_QUALITIES = ["high", "medium", "low"] as const;
+
+const MAX_RULE_TEXT_CHARS = 500;
+const MAX_EVIDENCE_CHARS = 1000;
+const MAX_SUBSECTION_CHARS = 100;
+const MAX_SUMMARY_CHARS = 2000;
+/** A single learning may never claim more than this share of the line budget. */
+const MAX_LINE_COST = 10;
+
+/** Returns the value when it is a member of `allowed`, else undefined. */
+function oneOf<T extends readonly string[]>(
+  value: unknown,
+  allowed: T,
+): T[number] | undefined {
+  return typeof value === "string" && (allowed as readonly string[]).includes(value)
+    ? (value as T[number])
+    : undefined;
+}
+
+/** Coerce line_cost into [1, MAX_LINE_COST]; NaN and Infinity become 1. */
+function clampLineCost(value: unknown): number {
+  const n = Math.round(Number(value));
+  if (!Number.isFinite(n)) return 1;
+  return Math.min(Math.max(n, 1), MAX_LINE_COST);
 }
 
 // Cheap classifier tier. Uses the "-latest" alias deliberately: it tracks the

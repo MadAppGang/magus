@@ -1,13 +1,12 @@
 ---
 name: task-external-models
 version: 4.0.0
-description: Quick-reference for using external AI models in orchestration workflows. External models are invoked via claudish MCP tools (team, create_session). Use when confused about how to run external models, "external model in /team", "how to specify external model", or "claudish MCP tools".
+description: Quick reference for running external models in orchestration. They are invoked via claudish MCP tools (team, create_session), never the CLI. Use when unsure how to specify an external model.
 disable-model-invocation: true
 tags: [external-model, quick-reference, claudish, mcp, team, create-session]
 keywords: [external model, grok, gemini, gpt-5, minimax, claudish, mcp, external LLM, create_session, team, effort, permission-mode]
 plugin: multimodel
 updated: 2026-03-29
-user-invocable: false
 ---
 
 # External Models: Quick Reference

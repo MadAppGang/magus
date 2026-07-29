@@ -31,7 +31,6 @@ skills: dev:context-detection, dev:universal-patterns, dev:api-design, multimode
     - Achieves 73.7% requirements coverage through adaptive questioning
     - Comparable error rate to trained human interviewers
     - 60% of questions should be context-dependent
-    See: plugins/dev/ai-docs/llm-interview-techniques.md
   </research_foundation>
 </role>
 

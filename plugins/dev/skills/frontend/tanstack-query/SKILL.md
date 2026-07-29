@@ -1,7 +1,7 @@
 ---
 name: tanstack-query
 description: Provides TanStack Query v5 patterns for query keys, mutations, optimistic updates, and MSW testing. Use when working on server state, data fetching, cache invalidation, or useQuery/useMutation hooks.
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # TanStack Query v5 - Complete Guide

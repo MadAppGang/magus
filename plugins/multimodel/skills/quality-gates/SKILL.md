@@ -7,7 +7,6 @@ tags: [orchestration, quality-gates, approval, iteration, feedback, severity, te
 keywords: [approval, validation, iteration, feedback-loop, severity, test-driven, TDD, quality-gate, consensus, user-approval]
 plugin: multimodel
 updated: 2026-01-20
-user-invocable: false
 ---
 
 # Quality Gates

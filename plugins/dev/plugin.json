@@ -1,6 +1,6 @@
 {
   "name": "dev",
-  "version": "2.12.1",
+  "version": "3.0.0",
   "description": "Universal development assistant. Detects the project stack and routes work to specialist agents for architecture, implementation, debugging, review and research, enforcing design-system guardrails on every UI change.",
   "author": {
     "name": "Jack Rudenko",
@@ -14,7 +14,6 @@
     "language-agnostic",
     "auto-detection",
     "multi-stack",
-    "self-improving",
     "learning",
     "preferences",
     "interview",
@@ -41,8 +40,14 @@
   ],
   "category": "development",
   "dependencies": [
-    { "name": "claudish", "version": "~1.0" },
-    { "name": "mnemex", "version": "~1.0" }
+    {
+      "name": "claudish",
+      "version": "~1.0"
+    },
+    {
+      "name": "mnemex",
+      "version": "~1.0"
+    }
   ],
   "hooks": "./hooks/hooks.json",
   "agents": [
@@ -56,11 +61,9 @@
     "./agents/devops.md",
     "./agents/researcher.md",
     "./agents/synthesizer.md",
-    "./agents/doc-writer.md",
-    "./agents/doc-analyzer.md",
-    "./agents/doc-fixer.md",
     "./agents/reviewer.md",
-    "./agents/test-architect.md"
+    "./agents/test-architect.md",
+    "./agents/docs.md"
   ],
   "commands": [
     "./commands/help.md",
@@ -73,14 +76,10 @@
     "./commands/investigate.md",
     "./commands/audit.md",
     "./commands/design-system.md",
-    "./commands/review.md",
     "./commands/doc.md",
     "./commands/learn.md",
     "./commands/setup.md",
     "./commands/worktree.md"
-  ],
-  "outputStyles": [
-    "./output-styles/self-improving.md"
   ],
   "skills": [
     "./skills/context-detection",
@@ -119,14 +118,11 @@
     "./skills/discipline/verification-before-completion",
     "./skills/discipline/test-driven-development",
     "./skills/discipline/systematic-debugging",
-    "./skills/discipline/debug-shared-init",
-    "./skills/discipline/debug-localization",
-    "./skills/discipline/debug-standard",
     "./skills/discipline/agent-coordination-discipline",
     "./skills/discipline/worktree-lifecycle",
     "./skills/discipline/task-management",
     "./skills/plugin-sdk-patterns",
-    "./skills/audit",
+    "./skills/security-audit",
     "./skills/code-roast",
     "./skills/optimize",
     "./skills/test-coverage",

@@ -1,19 +1,7 @@
 ---
 name: error-handling
-version: 1.0.0
 description: Use when implementing custom error classes, error middleware, structured logging, retry logic, or graceful shutdown patterns in backend applications.
-keywords:
-  - error handling
-  - custom errors
-  - error middleware
-  - logging
-  - retry logic
-  - graceful shutdown
-  - error responses
-  - debugging
-plugin: dev
-updated: 2026-01-20
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Error Handling Patterns

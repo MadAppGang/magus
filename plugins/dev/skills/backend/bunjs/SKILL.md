@@ -1,21 +1,7 @@
 ---
 name: bunjs
-version: 2.0.0
 description: Provides Bun.js/Hono patterns — HTTP endpoints, Prisma/SQLite, Zod validation, Bun test. Use when building a Bun.js service or wiring Hono routes with Prisma.
-keywords:
-  - Bun
-  - Hono
-  - TypeScript
-  - Prisma
-  - Zod
-  - SQLite
-  - PostgreSQL
-  - Bun test
-  - WebSocket
-  - file operations
-plugin: dev
-updated: 2026-01-20
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Bun.js Backend Patterns

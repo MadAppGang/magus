@@ -475,22 +475,40 @@ describe("parseClassifierResponse()", () => {
     expect(() => parseClassifierResponse("not json at all")).toThrow();
   });
 
-  it("fills in defaults for missing learning fields", () => {
+  it("rejects a learning missing its classification fields rather than defaulting them", () => {
+    // Defaulting an absent `type` to "correction" invented a classification the
+    // model never made, and the routing rules then treated it as though it had.
+    // A learning that does not say what it is cannot be routed safely.
     const minimalResp = JSON.stringify({
       learnings: [{ rule_text: "Do something" }],
       session_quality: "medium",
       summary: "minimal",
     });
 
-    const result = parseClassifierResponse(minimalResp);
-    const l = result.learnings[0];
+    expect(parseClassifierResponse(minimalResp).learnings).toHaveLength(0);
+  });
 
+  it("keeps a fully classified learning and normalises only its bounded fields", () => {
+    const resp = JSON.stringify({
+      learnings: [
+        {
+          rule_text: "Do something",
+          type: "correction",
+          confidence: "LOW",
+          scope: "discard",
+        },
+      ],
+      session_quality: "medium",
+      summary: "minimal",
+    });
+
+    const l = parseClassifierResponse(resp).learnings[0];
     expect(l.type).toBe("correction");
     expect(l.confidence).toBe("LOW");
     expect(l.is_project_specific).toBe(false);
     expect(l.scope).toBe("discard");
-    expect(l.subsection).toBe("Conventions");
-    expect(l.line_cost).toBe(1);
+    expect(l.subsection).toBe("Conventions"); // absent → safe default
+    expect(l.line_cost).toBe(1); // absent → minimum
   });
 });
 

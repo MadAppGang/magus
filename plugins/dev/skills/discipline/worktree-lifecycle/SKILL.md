@@ -1,13 +1,6 @@
 ---
 name: worktree-lifecycle
-description: "Use when starting isolated feature work or before executing implementation plans. Manages full worktree lifecycle from creation through cleanup with safety checks and error recovery."
-disable-model-invocation: true
-keywords: [worktree, git, isolation, feature-branch, parallel-development, workspace, cleanup, lifecycle, worktrees]
-created: 2026-02-11
-updated: 2026-02-11
-plugin: dev
-type: discipline
-difficulty: intermediate
+description: Manages git worktrees end to end — create, use, clean up, with safety checks. Use when starting isolated feature work or before executing a plan.
 user-invocable: false
 ---
 

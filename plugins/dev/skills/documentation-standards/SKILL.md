@@ -1,19 +1,6 @@
 ---
 name: documentation-standards
-version: 1.0.0
 description: Use when writing README files, API documentation, user guides, or technical documentation following industry standards from Google, Microsoft, and GitLab style guides.
-disable-model-invocation: true
-keywords:
-  - documentation
-  - README
-  - technical writing
-  - API docs
-  - style guides
-  - Markdown
-  - documentation best practices
-plugin: dev
-updated: 2026-01-20
-research_source: 73+ authoritative sources with 98% factual integrity
 user-invocable: false
 ---
 
@@ -305,7 +292,7 @@ Before starting, ensure you have:
 ## Anti-Slop Writing Rules
 
 These rules eliminate AI-detectable writing patterns and enforce professional technical writing standards.
-Every doc-writer and doc-fixer agent MUST apply these rules. The doc-analyzer agent MUST check for violations.
+dev:docs MUST apply these rules in write and fix modes, and check for violations in analyze mode.
 
 ### Rule S1: Banned Words and Phrases
 

@@ -7,6 +7,7 @@
 
 import { readFileSync } from "fs";
 import type { QueueEntry, SessionSummary } from "./types";
+import { isUserRecord } from "../analyzer";
 
 // Correction/rule patterns (same as analyzer.ts Stage 2)
 const CORRECTION_PATTERN =
@@ -34,7 +35,7 @@ export function summarizeTranscript(entry: QueueEntry): SessionSummary {
     }
 
     // Extract user messages
-    if (obj.type === "human") {
+    if (isUserRecord(obj)) {
       const message = obj.message as Record<string, unknown> | undefined;
       if (!message) continue;
       const contentBlocks = message.content;

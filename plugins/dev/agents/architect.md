@@ -1,7 +1,6 @@
 ---
 name: architect
 description: Language-agnostic architecture planning for system design and trade-off analysis
-model: opus
 tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Bash, Glob, Grep
 skills: dev:universal-patterns
 ---

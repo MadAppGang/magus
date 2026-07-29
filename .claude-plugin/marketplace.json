@@ -138,7 +138,7 @@
       "name": "multimodel",
       "source": "./plugins/multimodel",
       "description": "Multi-model collaboration and orchestration. Runs a task across several AI models in parallel and aggregates their blind APPROVE/REJECT votes, or delegates it to one model running a full Claude Code session.",
-      "version": "3.3.0",
+      "version": "3.3.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -199,7 +199,7 @@
       "name": "dev",
       "source": "./plugins/dev",
       "description": "Universal development assistant. Detects the project stack and routes work to specialist agents for architecture, implementation, debugging, review and research, enforcing design-system guardrails on every UI change.",
-      "version": "2.12.1",
+      "version": "3.0.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -283,7 +283,7 @@
       "name": "go",
       "source": "./plugins/go",
       "description": "Go development toolkit. Ships the go-tui skill for building Charm-stack terminal UIs (Bubble Tea, Lip Gloss, Bubbles, ntcharts), with a colour-accurate screenshot workflow for reviewing a running TUI.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -438,7 +438,7 @@
       "name": "designer",
       "source": "./plugins/designer",
       "description": "UI design validation. Compares a rendered screen against its reference by pixel diff, then reviews the result for spacing, hierarchy and design-system consistency.",
-      "version": "0.4.1",
+      "version": "0.4.2",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -479,7 +479,7 @@
       "name": "terminal",
       "source": "./plugins/terminal",
       "description": "Intent-level terminal control over tmux. Runs interactive commands, dev servers, test watchers, REPLs and TUI apps, and refuses to send keys into a pane that already has a process in the foreground.",
-      "version": "4.1.2",
+      "version": "4.1.3",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",

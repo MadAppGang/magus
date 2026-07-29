@@ -38,7 +38,7 @@ skills: dev:documentation-standards, multimodel:quality-gates
 
       **Tasks Ownership Rules:**
       - You (the orchestrator) OWN the Tasks list exclusively
-      - Sub-agents (doc-writer, doc-analyzer, doc-fixer) MUST NOT modify Tasks
+      - The dev:docs sub-agent MUST NOT modify Tasks
       - Sub-agents report progress via their return messages only
       - Use 1-based phase numbering (Phase 1, 2, 3...)
       - Maintain exactly ONE todo in_progress at any time
@@ -64,7 +64,7 @@ skills: dev:documentation-standards, multimodel:quality-gates
       1. Show preview of changes to user
       2. Use AskUserQuestion: "Ready to apply {fix_count} fixes to {file_count} files.
          Preview: {summary}. Proceed? (yes/no)"
-      3. Wait for explicit confirmation before delegating to doc-fixer
+      3. Wait for explicit confirmation before running dev:docs in fix mode
 
       Before GENERATE overwrites existing files:
       1. Check if target file exists
@@ -74,14 +74,14 @@ skills: dev:documentation-standards, multimodel:quality-gates
 
     <delegation_rules>
       **Agent Delegation:**
-      - README generation: doc-writer agent
-      - API documentation: doc-writer agent
-      - Tutorial creation: doc-writer agent
-      - Changelog generation: doc-writer agent
-      - Quality analysis: doc-analyzer agent
-      - Anti-pattern detection: doc-analyzer agent
-      - Issue fixing: doc-fixer agent
-      - Voice/style transformation: doc-fixer agent
+      - README generation: dev:docs (mode=write)
+      - API documentation: dev:docs (mode=write)
+      - Tutorial creation: dev:docs (mode=write)
+      - Changelog generation: dev:docs (mode=write)
+      - Quality analysis: dev:docs (mode=analyze)
+      - Anti-pattern detection: dev:docs (mode=analyze)
+      - Issue fixing: dev:docs (mode=fix)
+      - Voice/style transformation: dev:docs (mode=fix)
     </delegation_rules>
   </critical_constraints>
 
@@ -178,7 +178,7 @@ skills: dev:documentation-standards, multimodel:quality-gates
           - If exists, use AskUserQuestion for overwrite confirmation
           - If "backup", copy existing to {filename}.bak before proceeding
 
-          Launch doc-writer agent via Task:
+          Launch dev:docs (mode=write) via Task:
           Prompt: "SESSION_PATH: ${SESSION_PATH}
 
                    Read skill: ${CLAUDE_PLUGIN_ROOT}/skills/documentation-standards/SKILL.md
@@ -197,7 +197,7 @@ skills: dev:documentation-standards, multimodel:quality-gates
         </step>
         <step>
           **If ANALYZE:**
-          Launch doc-analyzer agent via Task:
+          Launch dev:docs (mode=analyze) via Task:
           Prompt: "SESSION_PATH: ${SESSION_PATH}
 
                    Read skill: ${CLAUDE_PLUGIN_ROOT}/skills/documentation-standards/SKILL.md
@@ -217,10 +217,10 @@ skills: dev:documentation-standards, multimodel:quality-gates
         <step>
           **If FIX:**
           First analyze (if not already done), then show preview:
-          1. Launch doc-analyzer to get analysis report
+          1. Launch dev:docs (mode=analyze) to get the report
           2. Present summary to user with AskUserQuestion:
              "Analysis found {issue_count} issues. Ready to fix. Proceed? (yes/no)"
-          3. Only if confirmed, launch doc-fixer agent via Task:
+          3. Only if confirmed, launch dev:docs (mode=fix) via Task:
 
           Prompt: "SESSION_PATH: ${SESSION_PATH}
 
@@ -239,7 +239,7 @@ skills: dev:documentation-standards, multimodel:quality-gates
         </step>
         <step>
           **If VALIDATE:**
-          Launch doc-analyzer in validation mode via Task:
+          Launch dev:docs (mode=analyze) via Task:
           Prompt: "SESSION_PATH: ${SESSION_PATH}
 
                    Read skill: ${CLAUDE_PLUGIN_ROOT}/skills/documentation-standards/SKILL.md
@@ -265,13 +265,13 @@ skills: dev:documentation-standards, multimodel:quality-gates
       <steps>
         <step>Mark PHASE 5 as in_progress</step>
         <step>
-          If GENERATE, launch doc-analyzer to validate:
+          If GENERATE, launch dev:docs (mode=analyze) to validate:
           - Score generated documentation
           - Check against anti-patterns
           - Verify best practices applied
         </step>
         <step>
-          If score < 42/52, launch doc-fixer to improve:
+          If score < 42/52, launch dev:docs (mode=fix) to improve:
           - Fix critical issues
           - Re-validate
         </step>
@@ -316,7 +316,7 @@ skills: dev:documentation-standards, multimodel:quality-gates
     <execution>
       1. Detect action: GENERATE, type: README
       2. Gather context: package.json, src/, existing docs
-      3. Launch doc-writer with README template
+      3. Launch dev:docs (mode=write) with the README template
       4. Validate generated README (score 48/52)
       5. Report: README.md created at project root
     </execution>
@@ -327,7 +327,7 @@ skills: dev:documentation-standards, multimodel:quality-gates
     <execution>
       1. Detect action: ANALYZE
       2. Find all .md files in docs/
-      3. Launch doc-analyzer with 52-point checklist
+      3. Launch dev:docs (mode=analyze) with the 52-point checklist
       4. Report quality score: 34/52
          - Anti-patterns: 3 (stale docs, missing troubleshooting, passive voice)
          - Recommendations: Fix passive voice, add troubleshooting section
@@ -341,7 +341,7 @@ skills: dev:documentation-standards, multimodel:quality-gates
       2. Analyze README.md first (score: 30/52)
       3. Ask user: "Found 8 issues. Proceed with fixes? (yes/no)"
       4. User confirms: yes
-      5. Launch doc-fixer with analysis
+      5. Launch dev:docs (mode=fix) with the analysis
       6. Apply fixes: passive -> active voice, add quick start
       7. Re-validate: score improved to 46/52
       8. Report: 5 issues fixed, 2 remaining (need manual attention)
@@ -353,7 +353,7 @@ skills: dev:documentation-standards, multimodel:quality-gates
     <execution>
       1. Detect action: VALIDATE
       2. Find all documentation files
-      3. Launch doc-analyzer in validation mode
+      3. Launch dev:docs (mode=analyze)
       4. Check examples, links, best practices
       5. Report: PASS with 48/52 score
          - 2 broken links found

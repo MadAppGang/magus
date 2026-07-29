@@ -1,19 +1,7 @@
 ---
 name: dingo
-version: 1.0.0
 description: Use when working with Dingo meta-language for Go, implementing optionals/results, using generics shortcuts, or transpiling .dingo files to .go while maintaining Go compatibility.
-keywords:
-  - Dingo
-  - Go
-  - meta-language
-  - transpiler
-  - optionals
-  - results
-  - generics
-  - Go tooling
-plugin: dev
-updated: 2026-01-20
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Dingo Language Patterns

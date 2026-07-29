@@ -1,13 +1,7 @@
 ---
 name: plugin-sdk-patterns
-description: Unified patterns and templates for creating consistent Claude Code plugins. Use when creating new plugins, designing plugin architecture, implementing builder patterns, or standardizing plugin structure.
+description: Patterns and templates for building Claude Code plugins. Use for plugin development — creating a plugin, skill and agent templates, plugin architecture, or standardizing structure.
 disable-model-invocation: true
-version: 0.1.0
-tags: [dev, plugin, sdk, patterns, templates, builder, architecture]
-keywords: [plugin, sdk, patterns, templates, builder, architecture, structure, manifest, frontmatter]
-plugin: dev
-updated: 2026-01-28
-user-invocable: false
 ---
 
 # Plugin SDK Patterns

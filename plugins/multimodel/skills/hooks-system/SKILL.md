@@ -1,13 +1,12 @@
 ---
 name: hooks-system
-description: Comprehensive lifecycle hook patterns for Claude Code workflows. Use when configuring PreToolUse, PostToolUse, UserPromptSubmit, Stop, or SubagentStop hooks. Covers hook matchers, command hooks, prompt hooks, validation, metrics, auto-formatting, and security patterns.
+description: Lifecycle hook patterns — PreToolUse, PostToolUse, UserPromptSubmit, Stop, SubagentStop. Use when configuring hooks, writing validation, auto-format on save, stdin payloads, exit-2 blocking, or debugging a hook.
 disable-model-invocation: true
 version: 0.1.0
 tags: [orchestration, hooks, lifecycle, PreToolUse, PostToolUse, UserPromptSubmit, validation, security]
 keywords: [hooks, lifecycle, pre-tool, post-tool, user-prompt, session-start, stop, subagent, notification, permission, validation, auto-format, security, metrics]
 plugin: multimodel
 updated: 2026-01-28
-user-invocable: false
 ---
 
 # Hooks System
@@ -169,10 +168,11 @@ Hooks are configured in `.claude/settings.json` under the `"hooks"` key:
 }
 ```
 
-**Script: scripts/protect-files.js**
+**Script: hooks/protect-files.ts**
 
-```javascript
-#!/usr/bin/env node
+```typescript
+#!/usr/bin/env bun
+import { readFileSync } from "node:fs";
 
 const PROTECTED_PATTERNS = [
   /\.env$/,
@@ -184,18 +184,23 @@ const PROTECTED_PATTERNS = [
   /\.key$/
 ];
 
-const args = process.argv.slice(2);
-const filePath = args[0] || '';
+// Hooks receive their payload as JSON on stdin — never argv, never an env var.
+let filePath = "";
+try {
+  const payload = JSON.parse(readFileSync("/dev/stdin", "utf-8"));
+  filePath = payload.tool_input?.file_path ?? "";
+} catch {
+  process.exit(0); // unparseable input → fail open, never block on our own bug
+}
 
 const isProtected = PROTECTED_PATTERNS.some(pattern => pattern.test(filePath));
 
 if (isProtected) {
-  console.error(`❌ BLOCKED: Cannot modify protected file: ${filePath}`);
-  process.exit(1);
+  console.log(`BLOCKED: cannot modify protected file: ${filePath}`);
+  process.exit(2); // 2 blocks the call; stdout is surfaced to the model
 }
 
-console.log(`✅ File write allowed: ${filePath}`);
-process.exit(0);
+process.exit(0); // silence = allow
 ```
 
 **When to Use:**
@@ -301,18 +306,23 @@ const DANGEROUS_COMMANDS = [
   />\s*\/dev\/sd/             // redirect to disk
 ];
 
-const args = process.argv.slice(2);
-const command = args.join(' ');
+// Payload arrives as JSON on stdin.
+let command = "";
+try {
+  const payload = JSON.parse(readFileSync("/dev/stdin", "utf-8"));
+  command = payload.tool_input?.command ?? "";
+} catch {
+  process.exit(0); // fail open
+}
 
 const isDangerous = DANGEROUS_COMMANDS.some(pattern => pattern.test(command));
 
 if (isDangerous) {
-  console.error(`❌ BLOCKED: Dangerous command detected: ${command}`);
-  console.error('This command could cause data loss or system damage.');
-  process.exit(1);
+  console.log(`BLOCKED: dangerous command detected: ${command}`);
+  console.log('This command could cause data loss or system damage.');
+  process.exit(2);
 }
 
-console.log(`✅ Command allowed: ${command}`);
 process.exit(0);
 ```
 
@@ -709,7 +719,8 @@ process.exit(0);
 
 1. **PreToolUse hooks run first**
    - Can modify tool input
-   - Can block execution (exit code != 0)
+   - Can block execution (**exit code 2** — any other non-zero code is a hook
+     *error*, which is logged and the tool still runs)
    - If blocked, tool never executes
 
 2. **Tool executes**
@@ -826,7 +837,12 @@ This creates a **fully automated quality pipeline** with zero manual interventio
 - ✅ **Set appropriate timeouts** - Hooks should complete quickly (5-30 seconds)
 - ✅ **Log hook activity** - Track what hooks are doing for debugging
 - ✅ **Use specific matchers** - Avoid `.*` matcher when possible (reduces overhead)
-- ✅ **Exit with proper codes** - Exit 0 for success, non-zero for failure
+- ✅ **Exit with proper codes** - Exit 0 to allow, **exit 2 to block**. Any other
+  non-zero code is a hook *error*: it is logged and the tool runs anyway, so
+  `exit 1` silently fails open when you meant to block.
+- ✅ **Read the payload from stdin** - never `process.argv`, never an env var
+- ✅ **Fail open on bad input** - if the payload will not parse, `exit 0`; a hook
+  bug must never block the user's work
 - ✅ **Make hooks idempotent** - Safe to run multiple times
 - ✅ **Test hooks independently** - Run hook scripts manually before adding to config
 - ✅ **Use continueOnError wisely** - False for critical validation, true for nice-to-have
@@ -1029,20 +1045,25 @@ const SECRETS_PATTERNS = [
   /github_pat_[a-zA-Z0-9]{82}/          // GitHub PAT
 ];
 
-const args = process.argv.slice(2);
-const filePath = args[0];
-const content = fs.readFileSync(filePath, 'utf-8');
+// Payload arrives as JSON on stdin. Inspect the content being written —
+// reading the file from disk would miss the write that has not happened yet.
+let content = "";
+try {
+  const payload = JSON.parse(readFileSync("/dev/stdin", "utf-8"));
+  content = payload.tool_input?.content ?? "";
+} catch {
+  process.exit(0); // fail open
+}
 
 const foundSecret = SECRETS_PATTERNS.find(pattern => pattern.test(content));
 
 if (foundSecret) {
-  console.error('❌ BLOCKED: File contains potential secrets');
-  console.error(`Pattern matched: ${foundSecret}`);
-  console.error('Remove secrets before writing to file.');
-  process.exit(1);
+  console.log('BLOCKED: content contains a potential secret');
+  console.log(`Pattern matched: ${foundSecret}`);
+  console.log('Remove the secret before writing.');
+  process.exit(2);
 }
 
-console.log('✅ No secrets detected');
 process.exit(0);
 ```
 
@@ -1226,14 +1247,14 @@ if (isProtected) {
   // Missing process.exit()
 }
 
-// ✅ Correct - explicit exit codes
+// ✅ Correct - exit 2 blocks, and stdout explains why
 if (isProtected) {
-  console.error('File protected');
-  process.exit(1);  // Non-zero = failure
+  console.log('BLOCKED: file is protected');
+  process.exit(2);  // 2 = block the tool call
 }
 
 console.log('File allowed');
-process.exit(0);  // Zero = success
+process.exit(0);  // Zero = allow
 ```
 
 ---

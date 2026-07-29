@@ -373,7 +373,9 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
 
       1. **Run checkpoint verification:**
          ```bash
-         ${CLAUDE_PLUGIN_ROOT}/scripts/checkpoint-verifier.sh phase{N} ${SESSION_PATH}
+         (Artifacts are enforced automatically by the PreToolUse hook on
+         TaskUpdate — hooks/phase-completion-validator.ts. It blocks the
+         transition if the phase's artifacts are missing or unsubstantiated.)
          ```
          If this fails, DO NOT mark phase complete. Fix missing artifacts first.
 
@@ -447,16 +449,17 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
 
       **MANDATORY IMPERATIVE INSTRUCTIONS — execute these as real tool calls, not pseudocode:**
 
-      1. Before each iteration: invoke Bash `node ${CLAUDE_PLUGIN_ROOT}/scripts/outer-loop-enforcer.js start-iteration ${SESSION_PATH}` and check exit code (2 = max iterations, escalate).
+      1. Before each iteration: invoke Bash `bun ${CLAUDE_PLUGIN_ROOT}/scripts/outer-loop.ts start-iteration ${SESSION_PATH}` and check exit code (2 = max iterations, escalate).
       2. For EACH phase in the iteration, invoke the Read tool with these EXACT paths before executing the phase:
          - Read("${CLAUDE_PLUGIN_ROOT}/skills/feature-phases/phase3-planning.md")
          - Read("${CLAUDE_PLUGIN_ROOT}/skills/feature-phases/phase4-implementation.md")
          - Read("${CLAUDE_PLUGIN_ROOT}/skills/feature-phases/phase5-review.md")
          - Read("${CLAUDE_PLUGIN_ROOT}/skills/feature-phases/phase6-testing.md")
          - Read("${CLAUDE_PLUGIN_ROOT}/skills/feature-phases/phase7-validation.md")
-      3. After each phase, invoke Bash `${CLAUDE_PLUGIN_ROOT}/scripts/checkpoint-verifier.sh phase{N} ${SESSION_PATH}` before marking the phase complete.
-      4. After Phase 7: invoke Bash `node ${CLAUDE_PLUGIN_ROOT}/scripts/outer-loop-enforcer.js record-result ${SESSION_PATH} <PASS|FAIL> "reason" [score]`.
-      5. Before Phase 8: invoke Bash `node ${CLAUDE_PLUGIN_ROOT}/scripts/outer-loop-enforcer.js check-can-complete ${SESSION_PATH}` and verify exit code 0.
+      3. Mark the phase complete. The PreToolUse hook validates its artifacts
+         and blocks the update if they are missing — no manual check needed.
+      4. After Phase 7: invoke Bash `bun ${CLAUDE_PLUGIN_ROOT}/scripts/outer-loop.ts record-result ${SESSION_PATH} <PASS|FAIL> "reason" [score]`.
+      5. Before Phase 8: invoke Bash `bun ${CLAUDE_PLUGIN_ROOT}/scripts/outer-loop.ts check-can-complete ${SESSION_PATH}` and verify exit code 0.
 
       **Loop structure reference (pseudocode — do NOT execute as code, use it as a control-flow diagram for the imperative instructions above):**
 
@@ -466,7 +469,7 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
 
       while (true):
         // ENFORCEMENT: Start iteration tracking
-        // Run: node ${CLAUDE_PLUGIN_ROOT}/scripts/outer-loop-enforcer.js start-iteration ${SESSION_PATH}
+        // Run: bun ${CLAUDE_PLUGIN_ROOT}/scripts/outer-loop.ts start-iteration ${SESSION_PATH}
         // If exit code 2: Max iterations reached, must escalate to user
 
         outer_iteration++
@@ -486,11 +489,11 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
         Read ${CLAUDE_PLUGIN_ROOT}/skills/feature-phases/phase7-validation.md → validation_result = execute_phase_7()
 
         // ENFORCEMENT: Record Phase 7 result
-        // Run: node ${CLAUDE_PLUGIN_ROOT}/scripts/outer-loop-enforcer.js record-result ${SESSION_PATH} <PASS|FAIL> "reason" [score]
+        // Run: bun ${CLAUDE_PLUGIN_ROOT}/scripts/outer-loop.ts record-result ${SESSION_PATH} <PASS|FAIL> "reason" [score]
 
         if validation_result == PASS:
           // ENFORCEMENT: Verify can proceed to Phase 8
-          // Run: node ${CLAUDE_PLUGIN_ROOT}/scripts/outer-loop-enforcer.js check-can-complete ${SESSION_PATH}
+          // Run: bun ${CLAUDE_PLUGIN_ROOT}/scripts/outer-loop.ts check-can-complete ${SESSION_PATH}
           // If exit code 1: Cannot proceed - Phase 7 result not PASS
           break
 

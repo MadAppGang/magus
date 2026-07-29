@@ -1,26 +1,6 @@
 ---
 name: db-branching
-description: "Branches Neon, Turso, or Supabase databases per git worktree for isolated schema work. Use when creating a worktree that modifies the database schema, or when the user mentions Neon, Turso, or Prisma migrations."
-keywords:
-  - neon
-  - turso
-  - supabase
-  - database
-  - branching
-  - worktree
-  - prisma
-  - drizzle
-  - schema
-  - isolation
-  - postgresql
-  - sqlite
-  - copy-on-write
-  - database-branch
-plugin: dev
-type: backend
-difficulty: intermediate
-created: 2026-02-16
-updated: 2026-02-16
+description: Branches Neon, Turso, or Supabase per git worktree for isolated schema work. Use when a worktree changes the schema, or on mention of Neon, Turso, Prisma.
 user-invocable: false
 ---
 

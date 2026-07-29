@@ -877,7 +877,7 @@ describe("E2E-10: Concurrent daemon — fresh lock prevents double processing", 
 // =============================================================================
 
 describe("E2E-11: Coaching augmentation — recommendations.md format", () => {
-  it("appends MEDIUM-confidence correction to [claude] section with evidence comment", async () => {
+  it("appends MEDIUM-confidence correction to the visible [human] section, never [claude]", async () => {
     const recsPath = join(coachingDir, "recommendations.md");
     writeFileSync(recsPath, "[human]\nsession: abcd1234\ncount: 0\n\n[claude]\ncount: 0\n\n");
 
@@ -899,9 +899,15 @@ describe("E2E-11: Coaching augmentation — recommendations.md format", () => {
     const content = readFileSync(recsPath, "utf-8");
     expect(content).toContain("Always use pnpm, never npm");
 
+    // Model-generated guesses land in [human], which SessionStart prints to the
+    // user verbatim. The [claude] section is injected as a silent behavioural
+    // directive, so putting unreviewed classifier output there made it standing
+    // policy the user could neither see nor audit.
+    const humanIdx = content.indexOf("[human]");
     const claudeIdx = content.indexOf("[claude]");
     const ruleIdx = content.indexOf("Always use pnpm, never npm");
-    expect(ruleIdx).toBeGreaterThan(claudeIdx);
+    expect(ruleIdx).toBeGreaterThan(humanIdx);
+    expect(ruleIdx).toBeLessThan(claudeIdx);
     expect(content).toContain("<!-- evidence:");
   });
 

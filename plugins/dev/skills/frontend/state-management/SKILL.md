@@ -1,19 +1,7 @@
 ---
 name: state-management
-version: 1.0.0
 description: Use when choosing state management solutions, implementing global stores (Zustand, Pinia), managing server state (TanStack Query), or handling URL state in frontend applications across React and Vue.
-keywords:
-  - state management
-  - Zustand
-  - Pinia
-  - TanStack Query
-  - server state
-  - global state
-  - URL state
-  - React context
-plugin: dev
-updated: 2026-01-20
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Frontend State Management

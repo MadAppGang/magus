@@ -1,7 +1,7 @@
 ---
 name: css-modules
 description: Provides CSS Modules patterns with Lightning CSS, PostCSS, *.module.css, TypeScript, and Vite. Use when scoping component styles, building complex animations, or migrating legacy CSS.
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # CSS Modules

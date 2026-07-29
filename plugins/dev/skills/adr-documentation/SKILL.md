@@ -1,12 +1,7 @@
 ---
 name: adr-documentation
 description: Architecture Decision Records (ADR) documentation practice. Use when documenting architectural decisions, recording technical trade-offs, creating decision logs, or establishing architectural patterns.
-version: 0.1.0
-tags: [dev, adr, architecture, decisions, documentation, trade-offs]
-keywords: [adr, architecture, decision, record, trade-offs, documentation, rationale, alternatives]
-plugin: dev
-updated: 2026-01-28
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # ADR Documentation

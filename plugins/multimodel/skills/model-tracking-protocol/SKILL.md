@@ -7,7 +7,6 @@ tags: [orchestration, tracking, multi-model, statistics, mandatory]
 keywords: [tracking, mandatory, pre-launch, statistics, consensus, results, failures]
 plugin: multimodel
 updated: 2026-01-20
-user-invocable: false
 ---
 
 # Model Tracking Protocol

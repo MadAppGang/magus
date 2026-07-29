@@ -1,7 +1,7 @@
 ---
 name: tanstack-router
 description: Provides TanStack Router patterns — file-based routes, typed params/search, layouts, loaders. Use when setting up routes, implementing navigation, or configuring route loaders.
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # TanStack Router Patterns

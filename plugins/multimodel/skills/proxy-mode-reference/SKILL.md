@@ -6,7 +6,6 @@ disable-model-invocation: true
 keywords: [external-models, multi-model, claudish, mcp, team, create-session, routing-prefixes, minimax, kimi, glm, gemini, openai]
 plugin: multimodel
 updated: 2026-03-29
-user-invocable: false
 ---
 
 # External Models via Claudish — Reference Guide

@@ -1,6 +1,6 @@
 ---
 name: go-tui
-description: Builds and debugs colorful Go TUIs with the Charm stack (Bubble Tea, Lip Gloss, Bubbles, ntcharts) plus color screenshots. Use when building a Go terminal app, dashboard, or full-screen CLI, or when the user mentions Bubble Tea, charmbracelet, or TUI screenshots.
+description: Build, review, or debug Go terminal UIs with the Charm stack — Bubble Tea, Lip Gloss, Bubbles, ntcharts. Use for any Go TUI, dashboard, or full-screen CLI, including colour-accurate screenshots.
 disable-model-invocation: true
 ---
 

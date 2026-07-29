@@ -5,7 +5,6 @@ disable-model-invocation: true
 keywords: [session-isolation, artifact-isolation, file-collision, concurrent-sessions, sequential-workflows, session-directory, multi-artifact, session-metadata]
 plugin: multimodel
 updated: 2026-01-20
-user-invocable: false
 ---
 
 # Session Isolation Pattern

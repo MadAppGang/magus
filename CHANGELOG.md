@@ -4,6 +4,56 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [dev 3.0.0] - 2026-07-30
+
+**Breaking.** `/dev:review` removed (it self-deprecated with "removed in v3.0.0").
+`doc-writer`, `doc-analyzer` and `doc-fixer` are replaced by `dev:docs` with a
+`mode` parameter. Three debug skills are folded into `dev:systematic-debugging`.
+The skill named `audit` is now `security-audit` — it collided with the
+`/dev:audit` command, which is why it had zero consumers.
+
+### Hooks now run, and are tested
+
+`phase-completion-validator.js` read `process.env.CLAUDE_TOOL_INPUT`, a variable
+Claude Code does not set, so it exited 0 without validating on every `TaskUpdate`
+since it shipped. It also blocked with `exit 1` — a hook *error*, which lets the
+tool through — so it could not have blocked even had it parsed its input. Ported
+to bun/TypeScript reading stdin, blocking with exit 2, with 29 tests. Its unescaped
+`sessionPath` → `execSync` is gone. `outer-loop-enforcer.js` became
+`scripts/outer-loop.ts` with the same exit codes and 16 tests, clearing the last
+`.js` from the plugin.
+
+### Coaching repaired
+
+The learning parser matched `type: "human"`; real transcripts use `"user"`, so it
+had never seen a single user message — and every fixture used `"human"`, so the
+suite was green while the feature had never run. `Stop` was treated as
+end-of-session when it fires per response, so a long session was only ever
+analysed as its own opening prefix. MEDIUM-confidence classifier output became a
+silent behavioural directive with no approval step; it now goes to the visible
+channel. Classifier output is validated instead of cast, so an out-of-range
+`line_cost` can no longer poison the CLAUDE.md budget. The daemon lock is
+`O_CREAT|O_EXCL` rather than check-then-act.
+
+### Always-on context: 15,143 → 5,568 chars per turn
+
+Cut from metadata, not knowledge — skill and agent bodies load on demand and cost
+nothing at rest. Agent descriptions 6,905 → 2,589 (three of fifteen agents held
+71% of it in `<example>` XML). Skill listing 8,238 → 3,811. Seven skills carried
+`disable-model-invocation` while an agent preloaded them; that flag also blocks
+preloading, so those preloads were dead. 190 inert frontmatter keys removed.
+
+### Guardrails
+
+Budget gate rewritten in bun/TypeScript with a per-plugin ceiling — it previously
+passed at 2.06× the real cap. New `autotest/skill-discovery` suite: of 542
+pre-existing eval cases, none asserted a skill is *reachable*. A written
+agent-vs-command-vs-skill rule in `CONTRIBUTING.md`.
+
+Full review: `ai-docs/dev-plugin-team-review-2026-07-29.md`.
+
+---
+
 ## [Marketplace 8.1.0] - 2026-07-29
 
 ### Changed

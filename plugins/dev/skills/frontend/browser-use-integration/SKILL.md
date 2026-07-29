@@ -1,8 +1,7 @@
 ---
 name: browser-use-integration
-version: 1.0.0
 description: Detects the browser-use@magus plugin and runs headless browser automation for frontend workflows. Use when dev:frontend or dev:browser-debugging needs navigation, clicking, or web scraping.
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Browser-Use Plugin Integration (dev)

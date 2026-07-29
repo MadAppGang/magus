@@ -1,12 +1,7 @@
 ---
 name: test-coverage
 description: On-demand test coverage analysis. Use when identifying untested code, finding test gaps, measuring coverage metrics, or improving test quality.
-version: 0.1.0
-tags: [dev, testing, coverage, quality, gaps]
-keywords: [test-coverage, coverage, gaps, untested, metrics, testing, quality]
-plugin: dev
-updated: 2026-01-28
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Test Coverage Skill

@@ -19,6 +19,9 @@ import {
   renameSync,
   unlinkSync,
   statSync,
+  openSync,
+  writeSync,
+  closeSync,
 } from "fs";
 import { join } from "path";
 import type { QueueEntry, DaemonState, ClassifierResult, Learning } from "./types";
@@ -51,27 +54,48 @@ export function atomicWrite(path: string, content: string): void {
 
 const LOCK_STALE_MS = 10 * 60 * 1000; // 10 minutes
 
+/**
+ * Acquire the daemon lock, or return false if another daemon holds it.
+ *
+ * Creation is `openSync(path, "wx")` — O_CREAT|O_EXCL, which the kernel
+ * guarantees is atomic. The previous implementation tested `existsSync` and
+ * then wrote, so two daemons starting in the same millisecond both saw no lock
+ * and both proceeded, each processing the same queue entries and the loser
+ * marking an already-successful item failed.
+ *
+ * The staleness reaper is kept: a daemon killed mid-run would otherwise leave a
+ * lock nothing ever clears.
+ */
 export function acquireLock(lockPath: string): boolean {
-  if (existsSync(lockPath)) {
+  for (let attempt = 0; attempt < 2; attempt++) {
     try {
-      const stat = statSync(lockPath);
-      const ageMs = Date.now() - stat.mtimeMs;
-      if (ageMs < LOCK_STALE_MS) {
-        // Lock is fresh — another daemon is running
-        return false;
+      const fd = openSync(lockPath, "wx");
+      try {
+        writeSync(fd, String(process.pid));
+      } finally {
+        closeSync(fd);
       }
-    } catch {
-      // Can't stat — assume stale
-    }
-    // Stale lock — remove and proceed
-    try {
-      unlinkSync(lockPath);
-    } catch {
-      // Ignore
+      return true;
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== "EEXIST") return false;
+
+      // Someone holds it. Reap only if it is provably stale, then retry once.
+      let stale = false;
+      try {
+        stale = Date.now() - statSync(lockPath).mtimeMs >= LOCK_STALE_MS;
+      } catch {
+        // Vanished between open and stat — treat as free and retry.
+        stale = true;
+      }
+      if (!stale) return false;
+      try {
+        unlinkSync(lockPath);
+      } catch {
+        // Another daemon reaped it first; the retry will race fairly for it.
+      }
     }
   }
-  writeFileSync(lockPath, String(process.pid));
-  return true;
+  return false;
 }
 
 export function releaseLock(lockPath: string): void {

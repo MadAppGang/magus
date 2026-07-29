@@ -83,7 +83,7 @@ describe("routeLearnings()", () => {
     expect(routed.pendingClaudeMd).toHaveLength(1);
   });
 
-  it("routes MEDIUM confidence correction to coachingClaude and memoryFeedback", () => {
+  it("routes MEDIUM confidence correction to the VISIBLE human section, not silent directives", () => {
     const result = makeResult([
       {
         type: "correction",
@@ -94,21 +94,39 @@ describe("routeLearnings()", () => {
 
     const routed = routeLearnings(result);
 
-    expect(routed.coachingClaude).toHaveLength(1);
+    expect(routed.coachingHuman).toHaveLength(1);
     expect(routed.memoryFeedback).toHaveLength(1);
     // Same learning object appears in both
-    expect(routed.coachingClaude[0]).toBe(routed.memoryFeedback[0]);
+    expect(routed.coachingHuman[0]).toBe(routed.memoryFeedback[0]);
     expect(routed.pendingClaudeMd).toHaveLength(0);
     expect(routed.discarded).toHaveLength(0);
   });
 
-  it("routes MEDIUM confidence explicit_rule to coachingClaude and memoryFeedback", () => {
+  it("routes MEDIUM confidence explicit_rule to the visible human section", () => {
     const result = makeResult([
       { type: "explicit_rule", confidence: "MEDIUM", is_project_specific: false },
     ]);
     const routed = routeLearnings(result);
-    expect(routed.coachingClaude).toHaveLength(1);
+    expect(routed.coachingHuman).toHaveLength(1);
     expect(routed.memoryFeedback).toHaveLength(1);
+  });
+
+  it("never routes classifier output into the silent [claude] directive channel", () => {
+    // Model-generated guesses must not become standing policy the user cannot
+    // see. Only rules.json — deterministic and human-authored — feeds [claude].
+    const everyCombination = makeResult([
+      { type: "correction", confidence: "HIGH", is_project_specific: true },
+      { type: "correction", confidence: "MEDIUM", is_project_specific: true },
+      { type: "correction", confidence: "MEDIUM", is_project_specific: false },
+      { type: "explicit_rule", confidence: "HIGH", is_project_specific: true },
+      { type: "explicit_rule", confidence: "MEDIUM", is_project_specific: false },
+      { type: "failed_attempt", confidence: "HIGH", is_project_specific: false },
+      { type: "failed_attempt", confidence: "MEDIUM", is_project_specific: false },
+      { type: "user_praise", confidence: "HIGH", is_project_specific: true },
+      { type: "user_frustration", confidence: "LOW", is_project_specific: false },
+    ]);
+
+    expect(routeLearnings(everyCombination).coachingClaude).toHaveLength(0);
   });
 
   it("routes failed_attempt (MEDIUM) to coachingHuman", () => {
@@ -195,11 +213,11 @@ describe("routeLearnings()", () => {
 
     const routed = routeLearnings(result);
 
-    expect(routed.pendingClaudeMd).toHaveLength(1);
-    expect(routed.coachingClaude).toHaveLength(1);
-    expect(routed.memoryFeedback).toHaveLength(1);
-    expect(routed.coachingHuman).toHaveLength(1);
-    expect(routed.discarded).toHaveLength(1);
+    expect(routed.pendingClaudeMd).toHaveLength(1); // HIGH + project-specific
+    expect(routed.coachingClaude).toHaveLength(0); // nothing silent
+    expect(routed.memoryFeedback).toHaveLength(1); // the MEDIUM correction
+    expect(routed.coachingHuman).toHaveLength(2); // MEDIUM correction + failed_attempt
+    expect(routed.discarded).toHaveLength(1); // LOW
   });
 
   it("returns all empty buckets when learnings array is empty", () => {

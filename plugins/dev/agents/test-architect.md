@@ -1,7 +1,6 @@
 ---
 name: test-architect
 description: Black box test architect that creates tests from requirements only
-model: opus
 tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Edit, Bash, Glob, Grep
 ---
 

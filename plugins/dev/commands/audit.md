@@ -37,7 +37,7 @@ skills: dev:context-detection
   **`/dev:audit` — Multi-Scope Quality Audit**
   Beyond Claude's built-in `/review` (PR diff review), this command adds:
   - 6 audit scopes: code quality, UI/design, design system, documentation, security, plugin/agent
-  - Routes to specialist reviewer agents (designer, doc-analyzer)
+  - Routes to specialist reviewer agents (designer, dev:docs)
   - Design-system drift measured by a bundled auditor via `/dev:design-system`
   - Structured reports with severity levels (CRITICAL/HIGH/MEDIUM/LOW)
   - Plugin-aware: detects and uses the designer plugin when installed
@@ -117,7 +117,7 @@ skills: dev:context-detection
                      For pixel-diff comparison, install designer@magus."
 
       SCOPE: docs
-        → Task(subagent_type: "dev:doc-analyzer")
+        → Task(subagent_type: "dev:docs", mode: "analyze")
 
       SCOPE: security
         → Task(subagent_type: "dev:reviewer")

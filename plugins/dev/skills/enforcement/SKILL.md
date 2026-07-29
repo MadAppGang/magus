@@ -1,288 +1,81 @@
 ---
 name: phase-enforcement
-description: Enforces evidence-based phase completion for /dev:feature — artifacts, validation criteria, outer loops, show-your-work. Use when orchestrating 8-phase feature development with quality gates.
-version: 1.0.0
-tags: [orchestration, enforcement, validation, quality-gates, evidence]
-keywords: [phase-completion, artifacts, evidence, validation-criteria, outer-loop, checkpoint, enforcement, quality-gate]
-plugin: dev
-updated: 2026-02-04
+description: Evidence-based phase completion for /dev:dev — artifacts, validation criteria, outer loops. Use when orchestrating phased feature work with gates.
 user-invocable: false
 ---
 
 # Phase Completion Enforcement
 
-**Version:** 1.0.0
-**Purpose:** Mechanical enforcement of phase completion requirements for /dev:feature
-**Status:** Production Ready
+Prevents a phase being marked done with nothing behind it.
 
-## Overview
+There are two mechanisms, and the difference between them matters:
 
-This skill provides **mechanical enforcement** (not just prompt-based instructions) for the 8-phase feature development workflow. It prevents:
+| | Enforced by | Runs |
+|---|---|---|
+| **Artifact gate** | `hooks/phase-completion-validator.ts` | The runtime, on every `TaskUpdate` |
+| **Outer loop** | `scripts/outer-loop.ts` | The orchestrator, between phases |
 
-1. **Claiming completion without proof** - Artifacts must exist
-2. **Skipping documentation** - Required files per phase
-3. **Ignoring validation criteria** - Phase 1 criteria must map to Phase 7 results
-4. **Bypassing retry logic** - Outer loop enforced with state tracking
-5. **Shipping without tests** - Phase 6 requires test files
-6. **Faking completion when blocked** - Graceful degradation with honest status
-7. **Hiding actual results** - Show-your-work requirement
-8. **Missing automated checks** - Checkpoint verification at boundaries
+The first is real enforcement — Claude Code invokes it whether or not anyone
+remembers to. The second is bookkeeping the command drives itself.
 
-## Enforcement Components
+## 1. Artifact gate (automatic)
 
-### 1. Phase Completion Validator
+Registered as `PreToolUse` on `TaskUpdate` in `hooks/hooks.json`. It receives the
+payload on stdin and exits **2** to block, with the reason on stdout.
 
-**Script:** `scripts/phase-completion-validator.js`
+It checks three things:
 
-**How it works:**
-- Runs as PreToolUse hook on TaskUpdate
-- Detects phase from task subject (e.g., "Phase 3: Planning")
-- Checks required artifacts exist for that phase
-- Blocks completion if artifacts missing or empty
+1. **The phase's required artifacts exist**, at a minimum size.
+2. **They contain what they claim to** — `architecture.md` has to read like
+   architecture, not be 500 bytes of placeholder.
+3. **Evidence, where presence proves nothing.** Phase 4 requires the working tree
+   to have actually changed. Phase 6 requires a test file among those changes —
+   not merely that some test exists somewhere in the repo. Phase 5 requires the
+   review to state `PASS`, `FAIL` or `CONDITIONAL`, not just to contain a heading
+   with the word "verdict" in it.
 
-**Required Artifacts per Phase:**
+| Phase | Required artifacts | Evidence check |
+|-------|-------------------|----------------|
+| 1 | requirements.md, validation-criteria.md, iteration-config.json | — |
+| 3 | architecture.md, plan-review consolidated + claude-internal | — |
+| 4 | implementation-log.md | working tree changed |
+| 5 | reviews/code-review/consolidated.md | verdict is PASS/FAIL/CONDITIONAL |
+| 6 | tests/test-plan.md | a test file was added or modified |
+| 7 | validation/result.md | records a PASS/FAIL status |
+| 8 | report.md | — |
 
-| Phase | Required Artifacts | Custom Checks |
-|-------|-------------------|---------------|
-| 1 | requirements.md, validation-criteria.md, iteration-config.json | Config has required fields |
-| 3 | architecture.md | Plan reviews exist |
-| 4 | implementation-log.md | Git changes detected |
-| 5 | reviews/code-review/consolidated.md | Has PASS/FAIL verdict |
-| 6 | tests/test-plan.md | Test files created |
-| 7 | validation/result.md | Has PASS/FAIL status + evidence |
-| 8 | report.md | Phase 7 PASSED |
+It also blocks *starting* a phase whose predecessor is incomplete: 4 needs 3, 5
+and 6 need 4, 7 needs 6.
 
-**Usage in orchestrator:**
+**It allows whenever it is unsure** — no session directory, several sessions open
+at once, an unparseable payload, any internal error. It exists to catch a phase
+marked done with nothing behind it, not to police ambiguity.
 
-```markdown
-Before marking any phase complete:
+## 2. Outer loop (orchestrator-driven)
 
-1. Run checkpoint verification:
-   ```bash
-   ${CLAUDE_PLUGIN_ROOT}/scripts/checkpoint-verifier.sh phase{N} ${SESSION_PATH}
-   ```
-
-2. If check passes, mark task complete:
-   ```
-   TaskUpdate(taskId: X, status: "completed")
-   ```
-
-3. If check fails, DO NOT mark complete. Fix missing artifacts first.
-```
-
----
-
-### 2. Outer Loop Enforcer
-
-**Script:** `scripts/outer-loop-enforcer.js`
-
-**How it works:**
-- Tracks iteration state in session-meta.json
-- Blocks Phase 8 unless Phase 7 PASSED
-- Detects regression (score getting worse)
-- Handles escalation when max iterations reached
-
-**Commands:**
+`scripts/outer-loop.ts` tracks iteration count, Phase 7 results, and the resume
+checkpoint in `<session>/session-meta.json`.
 
 ```bash
-# Start new iteration (call before Phase 3)
-node outer-loop-enforcer.js start-iteration ${SESSION_PATH}
-
-# Record Phase 7 result
-node outer-loop-enforcer.js record-result ${SESSION_PATH} PASS "All checks passed" 95
-
-# Check if Phase 8 can proceed
-node outer-loop-enforcer.js check-can-complete ${SESSION_PATH}
-
-# Get current status
-node outer-loop-enforcer.js get-status ${SESSION_PATH}
+bun ${CLAUDE_PLUGIN_ROOT}/scripts/outer-loop.ts start-iteration    ${SESSION_PATH}
+bun ${CLAUDE_PLUGIN_ROOT}/scripts/outer-loop.ts record-result      ${SESSION_PATH} PASS "all checks passed" 95
+bun ${CLAUDE_PLUGIN_ROOT}/scripts/outer-loop.ts check-can-complete ${SESSION_PATH}
+bun ${CLAUDE_PLUGIN_ROOT}/scripts/outer-loop.ts get-status         ${SESSION_PATH}
 ```
 
-**Session state tracking:**
+Exit codes: `0` proceed · `1` blocked (Phase 8 without a passing Phase 7) ·
+`2` escalate (iteration budget exhausted).
 
-```json
-{
-  "outerLoop": {
-    "currentIteration": 2,
-    "maxIterations": 3,
-    "mode": "limited",
-    "phase7Results": [
-      {"iteration": 1, "status": "FAIL", "reason": "Button color mismatch", "score": 78},
-      {"iteration": 2, "status": "PASS", "reason": "All checks passed", "score": 94}
-    ]
-  }
-}
-```
+It reports a regression when a score falls between iterations, and in infinite
+mode notifies every `notifyEvery` iterations. `iteration-config.json` from Phase 1
+sets `maxIterations` (a number, or `"infinite"`) and `notifyEvery`.
 
-**Usage in orchestrator:**
+## Integration with /dev:dev
 
-```markdown
-OUTER LOOP: Before starting Phase 3
+Before Phase 3, call `start-iteration` and check for exit 2. After Phase 7, call
+`record-result`. Before Phase 8, call `check-can-complete` and require exit 0.
+Marking phases complete needs no manual verification step — the hook does it.
 
-1. Start iteration:
-   ```bash
-   node ${CLAUDE_PLUGIN_ROOT}/scripts/outer-loop-enforcer.js start-iteration ${SESSION_PATH}
-   ```
-
-2. Check exit code:
-   - 0: Proceed with iteration
-   - 2: Max iterations reached, escalate to user
-
-OUTER LOOP: After Phase 7 completes
-
-1. Record result:
-   ```bash
-   node ${CLAUDE_PLUGIN_ROOT}/scripts/outer-loop-enforcer.js record-result ${SESSION_PATH} <PASS|FAIL> "reason" [score]
-   ```
-
-2. If PASS: Proceed to Phase 8
-3. If FAIL: Loop back to Phase 3 (start-iteration will be called again)
-
-OUTER LOOP: Before Phase 8
-
-1. Verify Phase 7 passed:
-   ```bash
-   node ${CLAUDE_PLUGIN_ROOT}/scripts/outer-loop-enforcer.js check-can-complete ${SESSION_PATH}
-   ```
-
-2. If exit code 1: BLOCKED - cannot proceed to Phase 8
-```
-
----
-
-### 3. Validation Criteria Enforcer
-
-**Script:** `scripts/validation-criteria-enforcer.js`
-
-**How it works:**
-- Parses validation-criteria.md from Phase 1
-- Parses validation/result.md from Phase 7
-- Matches criteria to results using fuzzy matching
-- Blocks if >20% criteria unaddressed
-
-**Usage in orchestrator:**
-
-```markdown
-PHASE 7: After creating result.md
-
-1. Run criteria enforcer:
-   ```bash
-   node ${CLAUDE_PLUGIN_ROOT}/scripts/validation-criteria-enforcer.js ${SESSION_PATH}
-   ```
-
-2. Review generated report:
-   ${SESSION_PATH}/validation/criteria-mapping.md
-
-3. If unaddressed criteria found:
-   - Update result.md to address them
-   - Or document why they couldn't be tested
-```
-
-**Output format:**
-
-```markdown
-# Validation Criteria Mapping Report
-
-## Summary
-- Total Criteria: 5
-- Matched: 4
-- Unmatched: 1
-- Coverage: 80%
-
-## Criteria Mapping
-| Line | Criterion | Result | Evidence |
-|------|-----------|--------|----------|
-| 12 | "Navigate to test URL" | PASS | screenshot-before.png |
-| 13 | "Fill email field" | PASS | action-log.md line 5 |
-| 14 | "Click login button" | PASS | action-log.md line 8 |
-| 15 | "Redirect to dashboard" | PASS | screenshot-after.png |
-
-## ⚠️ Unaddressed Criteria
-- Line 16: "Show error for invalid password"
-```
-
----
-
-### 4. Checkpoint Verifier
-
-**Script:** `scripts/checkpoint-verifier.sh`
-
-**How it works:**
-- Bash script for fast automated checks
-- Runs at phase boundaries
-- Verifies files exist and have content
-- Checks git state for implementation phase
-
-**Usage:**
-
-```bash
-# Before completing Phase 4
-./checkpoint-verifier.sh phase4 ${SESSION_PATH}
-
-# Before completing Phase 7
-./checkpoint-verifier.sh phase7 ${SESSION_PATH}
-```
-
-**Example output:**
-
-```
-📋 Checkpoint Verification: phase4
-─────────────────────────────────────
-Session: ai-docs/sessions/dev-feature-login-20260204-143022
-
-✅ Implementation Log: implementation-log.md (1234 bytes)
-✅ Code Changes: 8 files with changes
-✅ Implementation Log: Has structured progress
-
-─────────────────────────────────────
-✅ Checkpoint passed
-```
-
----
-
-## Integration with /dev:feature
-
-### Phase Transition Protocol
-
-**MANDATORY: Before marking ANY phase as completed:**
-
-```markdown
-<phase_completion_protocol>
-  **Step 1: Run Checkpoint Verification**
-
-  ```bash
-  ${CLAUDE_PLUGIN_ROOT}/scripts/checkpoint-verifier.sh phase{N} ${SESSION_PATH}
-  ```
-
-  If exit code != 0: STOP. Fix missing artifacts first.
-
-  **Step 2: Show Evidence Summary**
-
-  Display 3-5 lines of actual results:
-  ```
-  ## Phase {N} Evidence
-  - Artifact: ${SESSION_PATH}/{artifact}.md (exists, 1234 bytes)
-  - Key result: {actual output from phase}
-  - Evidence: {file paths to screenshots, logs, etc.}
-  ```
-
-  **Step 3: Map to Original Criteria** (for Phase 7)
-
-  ```
-  From validation-criteria.md:
-  - [x] Criterion 1 → Verified (evidence file)
-  - [x] Criterion 2 → Verified (screenshot)
-  - [ ] Criterion 3 → Skipped (reason documented)
-  ```
-
-  **Step 4: Mark Task Complete**
-
-  Only if Steps 1-3 pass:
-  ```
-  TaskUpdate(taskId: X, status: "completed")
-  ```
-</phase_completion_protocol>
-```
 
 ### Show-Your-Work Requirement
 
@@ -372,134 +165,10 @@ The payment timeout test failure needs investigation before Phase 6 can complete
 2. Verify token encryption roundtrip
 ```
 
----
+## Removed in v3.0.0
 
----
-
-### 5. Failure Report Generator
-
-**Script:** `scripts/failure-report-generator.js`
-
-**How it works:**
-- Auto-generated when phase completion is blocked
-- Documents what was expected vs what happened
-- Lists all attempted approaches and their errors
-- Provides manual testing steps as fallback
-- Includes workarounds and suggestions
-
-**When generated:**
-- Phase completion validator blocks a phase
-- Validation criteria enforcer finds gaps
-- Outer loop reaches max iterations
-- Any enforcement script fails
-
-**Report structure:**
-
-```markdown
-# {Phase Name} - Failure Report
-
-**Generated:** 2026-02-04T10:30:00Z
-**Session:** ai-docs/sessions/dev-feature-login-20260204
-**Phase:** phase7
-
-## Expected Artifacts
-- ❌ `validation/result.md`
-- ❌ `validation/screenshot-before.png`
-- ❌ `validation/screenshot-after.png`
-
-## Attempted Approaches
-
-### Attempt 1: browser_test
-**What was tried:** Chrome MCP navigation to localhost:3000
-**Error:** Tool mcp__chrome-devtools__navigate_page not available
-**Timestamp:** 2026-02-04T10:25:00Z
-
-## Failure Analysis
-
-### Common Failure Reasons
-- **chrome_mcp_unavailable**: Chrome MCP tools not available or not responding
-- **server_not_starting**: Dev server fails to start
-- **page_not_loading**: Test URL not accessible
-
-## Suggestions for Resolution
-1. Verify Chrome MCP is properly configured in .claude/settings.json
-2. Check if dev server is running: curl http://localhost:3000
-3. Try using different browser automation: mcp__claude-in-chrome instead
-4. Consider unit tests + manual verification as fallback
-
-## Manual Testing Steps
-1. Start dev server: npm run dev (or bun run dev)
-2. Open browser to test URL (e.g., http://localhost:3000)
-3. Take screenshot of initial state
-4. Perform test actions (fill forms, click buttons)
-5. Take screenshot of result state
-6. Verify expected behavior occurred
-7. Document results in validation/result.md
-
-## Workarounds
-
-### If Browser Automation Unavailable
-1. Run validation manually in browser
-2. Take screenshots with system screenshot tool
-3. Save screenshots to `validation/` directory
-4. Create `validation/result.md` with manual observations
-
-### Minimal result.md Template
-[template provided]
-
-## Next Steps
-1. **Fix and Retry**: Address the issues above and re-run the phase
-2. **Manual Completion**: Follow manual steps and create artifacts manually
-3. **Skip with Justification**: Create `phase7-skip-reason.md` explaining why
-4. **Escalate to User**: Ask user for guidance via AskUserQuestion
-```
-
-**Usage in orchestrator:**
-
-When phase completion is blocked:
-
-```markdown
-1. Failure report auto-generated at:
-   ${SESSION_PATH}/failures/phase{N}-failure-report.md
-
-2. Read report and either:
-   a. Fix issues and retry
-   b. Follow manual testing steps
-   c. Create skip-reason.md with justification
-   d. Escalate to user with AskUserQuestion
-
-3. If manually completing:
-   - Create required artifacts following templates in report
-   - Re-run phase completion validator
-```
-
----
-
-## Summary Table
-
-| Enforcement | What It Prevents |
-|-------------|-----------------|
-| Phase completion validator | Claiming "done" without proof |
-| Mandatory artifacts | Skipping documentation |
-| Validation criteria enforcer | Collecting criteria but ignoring them |
-| Outer loop enforcer | Skipping retry logic |
-| Phase 6 test check | Shipping without tests |
-| Graceful degradation | Faking completion when blocked |
-| Show-your-work | Hiding actual results |
-| Checkpoint verification | Automated sanity checks |
-| **Failure report generator** | **Silent failures without guidance** |
-
----
-
-## Implementation Priority
-
-1. **HIGH**: Evidence-based completion + Show-your-work (fixes core trust problem)
-2. **HIGH**: Validation criteria enforcement (ensures Phase 1 work is used)
-3. **MEDIUM**: Phase 6 test enforcement (ensures quality)
-4. **MEDIUM**: Graceful degradation (enables honest status)
-5. **LOW**: Checkpoint verification (nice automation, but manual review works)
-
----
-
-**Scripts Location:** `${CLAUDE_PLUGIN_ROOT}/scripts/`
-**Hooks Config:** `${CLAUDE_PLUGIN_ROOT}/hooks/hooks.json` (PreToolUse section)
+`checkpoint-verifier.sh` checked the same artifacts the hook now checks, but only
+when the orchestrator remembered to run it. `validation-criteria-enforcer.js` and
+`failure-report-generator.js` had no callers at all. An enforcement mechanism the
+enforced party has to opt into is a suggestion with an exit code attached; the
+hook is the real thing.

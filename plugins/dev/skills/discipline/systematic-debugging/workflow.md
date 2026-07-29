@@ -1,13 +1,3 @@
----
-name: debug-standard
-description: Enhanced standard debug workflow — 6-phase orchestration with 3-strategy localization, self-critique, and agent delegation. Loaded by /dev:debug for the standard scope.
-disable-model-invocation: true
-keywords: [debugging, root-cause, localization, fault-isolation, self-critique, regression, agent-delegation, standard-debug]
-plugin: dev
-type: discipline
-user-invocable: false
----
-
 # Standard Debug Workflow
 
 The "middle path" — thorough systematic debugging with 3-strategy fault localization,
@@ -36,7 +26,7 @@ echo "Session: ${SESSION_BASE}"
 echo "Path: ${SESSION_PATH}"
 ```
 
-Invoke the `dev:debug-shared-init` skill for:
+See `session-setup.md` for:
 1. Stack detection via `dev:stack-detector` agent — saves `${SESSION_PATH}/context.json`
 2. Reproduction attempt (if bug description includes reproduction steps)
 3. Bug report written to `${SESSION_PATH}/bug-report.md`
@@ -100,7 +90,7 @@ self-critique.
 
 ### Step 2a — Fault Localization
 
-Invoke the `dev:debug-localization` skill. This skill applies three complementary
+See `localization.md`. It applies three complementary
 strategies and produces `${SESSION_PATH}/localization.md`.
 
 **Strategy A — Stack trace grep:**

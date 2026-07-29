@@ -1,12 +1,7 @@
 ---
-name: audit
-description: On-demand security and code quality audit. Use when checking for vulnerabilities, security issues, code smells, or compliance problems.
-version: 0.1.0
-tags: [dev, audit, security, quality, compliance]
-keywords: [audit, security, vulnerability, code-quality, compliance, scan, check]
-plugin: dev
-updated: 2026-01-28
-user-invocable: false
+name: security-audit
+description: Security and code-quality audit — vulnerability scanning, OWASP categories, secret detection, dependency checks, compliance. Use to check for security issues or scan before a release.
+disable-model-invocation: true
 ---
 
 # Audit Skill

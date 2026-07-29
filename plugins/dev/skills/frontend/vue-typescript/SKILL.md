@@ -1,19 +1,7 @@
 ---
 name: vue-typescript
-version: 1.0.0
 description: Provides Vue 3 + TypeScript patterns — Composition API, script setup, Pinia, Vue Router, composables. Use when building Vue apps or wiring reactive state.
-keywords:
-  - Vue 3
-  - TypeScript
-  - Composition API
-  - Pinia
-  - Vue Router
-  - composables
-  - reactive
-  - script setup
-plugin: dev
-updated: 2026-01-20
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Vue 3 + TypeScript Patterns

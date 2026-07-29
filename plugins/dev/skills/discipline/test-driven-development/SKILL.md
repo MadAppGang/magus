@@ -1,12 +1,6 @@
 ---
 name: test-driven-development
-description: "Enforces the RED-GREEN-REFACTOR cycle: write failing test, make it pass, improve design. Use when writing production code, when the user mentions TDD, test-first, or wants verified behavior."
-keywords: [TDD, test-driven, red-green-refactor, failing-test, unit-test, integration-test, test-first, jest, vitest, pytest, bun-test, go-test, test-coverage, test-cases, behavior-verification, implementation-without-tests]
-created: 2026-01-20
-updated: 2026-01-20
-plugin: dev
-type: discipline
-difficulty: beginner
+description: RED-GREEN-REFACTOR — write a failing test, make it pass, refactor. Use when writing production code, or on mention of TDD or test-first.
 user-invocable: false
 ---
 

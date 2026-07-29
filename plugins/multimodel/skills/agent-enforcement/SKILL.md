@@ -9,7 +9,6 @@ triggers:
   - "team enforcement"
   - "agent selection"
   - "orchestration failure"
-user-invocable: false
 ---
 
 # Agent Enforcement Skill

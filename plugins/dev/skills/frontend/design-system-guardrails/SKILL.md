@@ -1,6 +1,6 @@
 ---
 name: design-system-guardrails
-description: Enforces single-source-of-truth UI — design tokens for styles, one Storybook library, variants over call-site restyling. Use when writing or reviewing UI components, screens, styles, or themes.
+description: Enforces single-source-of-truth UI — tokens for styles, one component library, variants over call-site restyling. Use before writing or reviewing any UI.
 user-invocable: false
 ---
 

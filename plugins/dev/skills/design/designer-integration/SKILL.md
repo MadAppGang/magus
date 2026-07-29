@@ -1,8 +1,7 @@
 ---
 name: designer-integration
-version: 1.0.0
 description: Detects the designer@magus plugin and delegates pixel-level design validation. Use when dev:frontend or dev:browser-debugging needs design comparison or AI semantic UI analysis.
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Designer Plugin Integration

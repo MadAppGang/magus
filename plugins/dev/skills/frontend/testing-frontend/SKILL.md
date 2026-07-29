@@ -1,19 +1,7 @@
 ---
 name: testing-frontend
-version: 1.0.0
 description: Use when writing component tests, testing user interactions, mocking APIs, or setting up Vitest/React Testing Library/Vue Test Utils for frontend applications.
-keywords:
-  - frontend testing
-  - Vitest
-  - React Testing Library
-  - Vue Test Utils
-  - component testing
-  - user event testing
-  - mocking
-  - accessibility testing
-plugin: dev
-updated: 2026-01-20
-user-invocable: false
+disable-model-invocation: true
 ---
 
 # Frontend Testing Patterns

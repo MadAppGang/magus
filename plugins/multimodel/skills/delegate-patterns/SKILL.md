@@ -1,20 +1,12 @@
 ---
 name: delegate-patterns
 version: 1.0.0
-description: |
-  Patterns for delegating plugin commands and tasks to external models via claudish.
-  Covers capability discovery (reading installed plugin manifests to find best-fit skills,
-  agents, and commands), pre-flight question gathering (predicting and batch-asking
-  interactive questions before non-interactive claudish execution), and prompt assembly
-  (combining capability context + pre-answered questions + task into a single --stdin prompt).
-  Use when implementing cross-model command delegation, when a command needs to route tasks
-  to external models, or when designing headless claudish workflows.
+description: Delegating plugin commands and tasks to external models via claudish — capability discovery, pre-flight question gathering, and prompt assembly. Use when routing work to an external model.
 disable-model-invocation: true
 tags: [delegate, capability-discovery, preflight, claudish, external-model, prompt-assembly]
 keywords: [delegate, capability discovery, preflight questions, command delegation, claudish stdin]
 plugin: multimodel
 updated: 2026-03-22
-user-invocable: false
 ---
 
 # Delegate Patterns
