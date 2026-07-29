@@ -1,7 +1,7 @@
 {
   "name": "claudish",
   "version": "1.0.0",
-  "description": "Claudish MCP runtime — external model proxy with team voting, async sessions, and channel notifications. Required by code-analysis, dev, multimodel, designer, agentdev, and seo plugins.",
+  "description": "MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting across models, manages async sessions, and streams channel notifications. Required by code-analysis, dev, multimodel, designer and seo.",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",

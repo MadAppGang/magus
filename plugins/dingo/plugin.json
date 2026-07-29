@@ -1,7 +1,7 @@
 {
   "name": "dingo",
   "version": "1.0.0",
-  "description": "BETA — Dingo language skills for AI agents. Write idiomatic Dingo code with Result/Option types, error propagation (?), enums, pattern matching, lambdas, safe navigation, and 12 total features. Compiler-verified patterns. Interfaces may still change.",
+  "description": "BETA — Dingo language toolkit. Idiomatic Result and Option types, error propagation, enums, pattern matching, lambdas and safe navigation, with compiler-verified patterns. Interfaces may still change.",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",

@@ -26,7 +26,7 @@ Session 2 (API): writes ai-docs/plan-review-grok.md  <-- OVERWRITES!
 Use unique session folders to isolate artifacts:
 
 ```
-ai-docs/sessions/agentdev-seo-20260105-143022-a3f2/
+ai-docs/sessions/plugin-seo-20260105-143022-a3f2/
 ├── session-meta.json      # Session tracking
 ├── design.md              # Primary artifact
 ├── reviews/
@@ -141,8 +141,8 @@ fi
 
 ```json
 {
-  "session_id": "agentdev-seo-20260105-143022-a3f2",
-  "type": "agentdev",
+  "session_id": "plugin-seo-20260105-143022-a3f2",
+  "type": "plugin",
   "target": "SEO agent improvements",
   "started_at": "2026-01-05T14:30:22Z",
   "completed_at": "2026-01-05T15:45:30Z",
@@ -162,7 +162,6 @@ fi
 
 | Plugin | Command | Session Pattern |
 |--------|---------|-----------------|
-| **agentdev** | `/develop` | `agentdev-{target}-{timestamp}-{random}` |
 | **frontend** | `/review`, `/implement` | `review-{timestamp}-{random}` |
 | **seo** | `/review`, `/alternatives` | `seo-review-{timestamp}-{random}` |
 | **multimodel** | `/team` | `team-{task-slug}-{timestamp}-{random}` |

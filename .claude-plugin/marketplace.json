@@ -7,14 +7,14 @@
   },
   "metadata": {
     "description": "Curated collection of Claude Code plugins for modern full-stack development with LLM performance tracking and E2E skill testing",
-    "version": "8.0.0",
+    "version": "8.1.0",
     "pluginRoot": "./plugins"
   },
   "plugins": [
     {
       "name": "code-analysis",
       "source": "./plugins/code-analysis",
-      "description": "Extracted mnemex + claudish MCP servers into dedicated runtime plugins (declared via dependencies)",
+      "description": "Codebase investigation and semantic search. Maps architecture, traces callers and callees, and ranks symbols by PageRank through the mnemex AST engine, with a read-only detective agent for deep dives.",
       "version": "5.3.1",
       "author": {
         "name": "Jack Rudenko",
@@ -37,12 +37,43 @@
         "ast",
         "structural-analysis"
       ],
-      "strict": true
+      "strict": true,
+      "releases": [
+        {
+          "version": "5.3.1",
+          "date": "2026-07-29",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "Pointers to the deleted shared/model-aliases.json replaced with live-catalog resolution, and\u2026"
+        },
+        {
+          "version": "5.3.0",
+          "date": "2026-05-09",
+          "summary": "Extracted mnemex + claudish from its .mcp.json. Now declares both as dependencies per\u2026"
+        },
+        {
+          "version": "1.3.3",
+          "date": "2025-11-26",
+          "kinds": [
+            "Fixed"
+          ],
+          "summary": "Path Cleanup - Removed all hardcoded absolute paths from skill documentation"
+        },
+        {
+          "version": "1.3.2",
+          "date": "2025-11-25",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "Removed hardcoded model settings from codebase-detective"
+        }
+      ]
     },
     {
       "name": "claudish",
       "source": "./plugins/claudish",
-      "description": "Claudish MCP runtime \u2014 external model proxy with team voting, async sessions, and channel notifications. Required by code-analysis, dev, multimodel, designer, agentdev, seo. Dual-published to magus and magus-marketing because seo depends on it.",
+      "description": "MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting across models, manages async sessions, and streams channel notifications. Required by code-analysis, dev, multimodel, designer and seo.",
       "version": "1.0.0",
       "author": {
         "name": "Jack Rudenko",
@@ -62,12 +93,19 @@
         "orchestration",
         "runtime"
       ],
-      "strict": true
+      "strict": true,
+      "releases": [
+        {
+          "version": "1.0.0",
+          "date": "2026-05-09",
+          "summary": "Dedicated runtime plugin for the Claudish MCP server. Owns the command: \"claudish\", args:\u2026"
+        }
+      ]
     },
     {
       "name": "mnemex",
       "source": "./plugins/mnemex",
-      "description": "Mnemex MCP runtime \u2014 semantic code search and AST analysis with PageRank. Required by code-analysis and dev.",
+      "description": "MCP runtime for semantic code search and AST analysis, ranking symbols by PageRank. Required by code-analysis and dev.",
       "version": "1.0.0",
       "author": {
         "name": "Jack Rudenko",
@@ -87,12 +125,19 @@
         "structural-analysis",
         "runtime"
       ],
-      "strict": true
+      "strict": true,
+      "releases": [
+        {
+          "version": "1.0.0",
+          "date": "2026-05-09",
+          "summary": "Dedicated runtime plugin for the Mnemex MCP server. Owns the command: \"mnemex\", args: [\"--mcp\"]\u2026"
+        }
+      ]
     },
     {
       "name": "multimodel",
       "source": "./plugins/multimodel",
-      "description": "Declared claudish as a dependency (extracted into a dedicated runtime plugin)",
+      "description": "Multi-model collaboration and orchestration. Runs a task across several AI models in parallel and aggregates their blind APPROVE/REJECT votes, or delegates it to one model running a full Claude Code session.",
       "version": "3.3.0",
       "author": {
         "name": "Jack Rudenko",
@@ -116,37 +161,44 @@
         "routing",
         "quality-gates"
       ],
-      "strict": true
-    },
-    {
-      "name": "agentdev",
-      "source": "./plugins/agentdev",
-      "description": "Declared claudish as a dependency (extracted into a dedicated runtime plugin)",
-      "version": "1.7.1",
-      "author": {
-        "name": "Jack Rudenko",
-        "email": "i@madappgang.com",
-        "company": "MadAppGang"
-      },
-      "category": "development",
-      "keywords": [
-        "agents",
-        "commands",
-        "development",
-        "multi-model",
-        "claudish",
-        "quality-review",
-        "xml-standards",
-        "orchestration",
-        "debug-mode",
-        "session-recording"
-      ],
-      "strict": true
+      "strict": true,
+      "releases": [
+        {
+          "version": "3.3.0",
+          "date": "2026-07-29",
+          "kinds": [
+            "Changed",
+            "Fixed"
+          ],
+          "summary": "Model resolution is now live"
+        },
+        {
+          "version": "3.2.0",
+          "date": "2026-05-09",
+          "summary": "Declared claudish as a dependencies entry (was an implicit dependency consumed via\u2026"
+        },
+        {
+          "version": "3.1.2",
+          "date": "2026-04-06",
+          "kinds": [
+            "Fixed"
+          ],
+          "summary": "\"internal\" sentinel leaked to claudish \u2014 added CRITICAL instruction to filter \"internal\" from\u2026"
+        },
+        {
+          "version": "3.1.1",
+          "date": "2026-04-04",
+          "kinds": [
+            "Fixed"
+          ],
+          "summary": "delegate/team commands inherit parent tools and model \u2014 removed hardcoded allowed-tools and\u2026"
+        }
+      ]
     },
     {
       "name": "dev",
       "source": "./plugins/dev",
-      "description": "Dropped the conductor-missing coaching rule \u2014 the conductor plugin is retired, so the suggestion pointed at commands that no longer ship. The /dev:design-system command validates any project against the design-system guardrails: token-only styling, one component library, variants over call-site restyling.",
+      "description": "Universal development assistant. Detects the project stack and routes work to specialist agents for architecture, implementation, debugging, review and research, enforcing design-system guardrails on every UI change.",
       "version": "2.12.1",
       "author": {
         "name": "Jack Rudenko",
@@ -184,12 +236,53 @@
         "framer-motion",
         "awwwards"
       ],
-      "strict": true
+      "strict": true,
+      "releases": [
+        {
+          "version": "2.12.1",
+          "date": "2026-07-27",
+          "kinds": [
+            "Removed"
+          ],
+          "summary": "Dropped the conductor-missing-for-multi-session-feature coaching rule"
+        },
+        {
+          "version": "2.12.0",
+          "date": "2026-07-26",
+          "kinds": [
+            "Added",
+            "Changed",
+            "Fixed"
+          ],
+          "summary": "/dev:design-system command \u2014 validates a project against the five design-system guardrails\u2026"
+        },
+        {
+          "version": "2.11.0",
+          "date": "2026-07-26",
+          "kinds": [
+            "Added"
+          ],
+          "summary": "frontend/design-system-guardrails skill: enforces single-source-of-truth UI \u2014 design tokens as\u2026"
+        },
+        {
+          "version": "2.9.0",
+          "date": "2026-05-09",
+          "summary": "Extracted claudish from its .mcp.json (previously the only entry). Now declares claudish +\u2026"
+        },
+        {
+          "version": "1.35.1",
+          "date": "2026-03-02",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "Coaching box formatting - Workflow coaching suggestions now use visual insight-style boxes (\u2605\u2026"
+        }
+      ]
     },
     {
       "name": "go",
       "source": "./plugins/go",
-      "description": "Go development toolkit. Ships the go-tui skill for building colorful, graph-and-badge-heavy terminal UIs with the Charm stack (Bubble Tea, Lip Gloss, Bubbles, ntcharts), plus a verified color-accurate screenshot workflow (tmux capture \u2192 aha \u2192 headless Chrome \u2192 PNG) so you can see and critique a running TUI in full color.",
+      "description": "Go development toolkit. Ships the go-tui skill for building Charm-stack terminal UIs (Bubble Tea, Lip Gloss, Bubbles, ntcharts), with a colour-accurate screenshot workflow for reviewing a running TUI.",
       "version": "0.1.0",
       "author": {
         "name": "Jack Rudenko",
@@ -206,12 +299,22 @@
         "lipgloss",
         "terminal-ui"
       ],
-      "strict": true
+      "strict": true,
+      "releases": [
+        {
+          "version": "0.1.0",
+          "date": "2026-06-03",
+          "kinds": [
+            "Added"
+          ],
+          "summary": "First release. Ships the go-tui skill for building colourful, graph-and-badge-heavy terminal\u2026"
+        }
+      ]
     },
     {
       "name": "dingo",
       "source": "./plugins/dingo",
-      "description": "BETA \u2014 Dingo language skills: idiomatic Result/Option types, error propagation (?), enums, pattern matching, lambdas, and safe navigation, with compiler-verified patterns. Interfaces may still change.",
+      "description": "BETA \u2014 Dingo language toolkit. Idiomatic Result and Option types, error propagation, enums, pattern matching, lambdas and safe navigation, with compiler-verified patterns. Interfaces may still change.",
       "version": "1.0.0",
       "author": {
         "name": "Jack Rudenko",
@@ -238,12 +341,19 @@
         "code-review",
         "best-practices"
       ],
-      "strict": true
+      "strict": true,
+      "releases": [
+        {
+          "version": "1.0.0",
+          "date": "2026-07-27",
+          "summary": "Published to magus, marked beta. It had a complete manifest and skill but no marketplace entry,\u2026"
+        }
+      ]
     },
     {
       "name": "statusline",
       "source": "./plugins/statusline",
-      "description": "Adaptive statusline \u2014 always-visible bars, background highlights for critical states, provider-aware model display, vim mode, diff stats, compaction count, memory usage. v2.1.2: Split diff section into session (\u2728 +A/-D from Claude Code cost telemetry) and git (\u25cf +A/-D from `git diff --shortstat`) chips, so users can tell the difference instead of seeing stale session totals on a clean worktree.",
+      "description": "Adaptive statusline. Always-visible usage bars, background highlights for critical states, provider-aware model display, vim mode, separate session and git diff chips, compaction count, memory usage and rate-limit reset countdowns.",
       "version": "2.1.2",
       "author": {
         "name": "Jack Rudenko",
@@ -260,12 +370,30 @@
         "themes",
         "reset-countdown"
       ],
-      "strict": true
+      "strict": true,
+      "releases": [
+        {
+          "version": "2.1.2",
+          "date": "2026-04-24",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "Split the diff section into two chips \u2014 session (\u2728 +A/-D, from Claude Code's cost telemetry)\u2026"
+        },
+        {
+          "version": "2.1.1",
+          "date": "2026-04-16",
+          "kinds": [
+            "Fixed"
+          ],
+          "summary": "Reset countdowns missing when rate-limited \u2014 Claude Code's native rate_limits input supplies\u2026"
+        }
+      ]
     },
     {
       "name": "browser-use",
       "source": "./plugins/browser-use",
-      "description": "Full-platform browser automation for Claude Code. Live-page JS eval, keyboard/focus primitives, and env preflight; configurable agent LLM (Anthropic/OpenAI/OpenAI-compatible/Browser Use BU3); dual local/cloud browsers, orphaned-Chrome reaping, and Playwright's bundled Chromium so your real Chrome is never hijacked. 26 MCP tools, 6 skills.",
+      "description": "Full-platform browser automation. Live-page JS eval, keyboard and focus primitives, environment preflight, and a configurable agent LLM, across dual local and cloud browsers backed by Playwright's own Chromium so your real Chrome is never hijacked. 26 MCP tools, 6 skills.",
       "version": "1.4.0",
       "author": {
         "name": "Jack Rudenko",
@@ -286,12 +414,30 @@
         "cloud",
         "debugging"
       ],
-      "strict": true
+      "strict": true,
+      "releases": [
+        {
+          "version": "1.4.0",
+          "date": "2026-07-26",
+          "kinds": [
+            "Added"
+          ],
+          "summary": "Two disjoint feature sets merged into one release: in-page JS eval, keyboard, focus and\u2026"
+        },
+        {
+          "version": "1.3.0",
+          "date": "2026-07-12",
+          "kinds": [
+            "Added"
+          ],
+          "summary": "Configurable agent-brain LLM"
+        }
+      ]
     },
     {
       "name": "designer",
       "source": "./plugins/designer",
-      "description": "Declared claudish as a dependency (extracted into a dedicated runtime plugin)",
+      "description": "UI design validation. Compares a rendered screen against its reference by pixel diff, then reviews the result for spacing, hierarchy and design-system consistency.",
       "version": "0.4.1",
       "author": {
         "name": "Jack Rudenko",
@@ -312,12 +458,27 @@
         "style-guide",
         "design-system"
       ],
-      "strict": true
+      "strict": true,
+      "releases": [
+        {
+          "version": "0.4.1",
+          "date": "2026-07-29",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "Pointers to the deleted shared/model-aliases.json replaced with live-catalog resolution, and\u2026"
+        },
+        {
+          "version": "0.4.0",
+          "date": "2026-05-09",
+          "summary": "Declared claudish as a dependencies entry (was an implicit dependency consumed via\u2026"
+        }
+      ]
     },
     {
       "name": "terminal",
       "source": "./plugins/terminal",
-      "description": "Pane-occupancy safety: PreToolUse:Bash hook (bun/TS) blocks raw tmux send-keys/kill-pane/split-window into non-shell panes (sibling claude sessions, REPLs); skills document the foreground-check rule and split-pane idle-reuse (reused:true) contract",
+      "description": "Intent-level terminal control over tmux. Runs interactive commands, dev servers, test watchers, REPLs and TUI apps, and refuses to send keys into a pane that already has a process in the foreground.",
       "version": "4.1.2",
       "author": {
         "name": "Jack Rudenko",
@@ -335,12 +496,31 @@
         "headless",
         "repl"
       ],
-      "strict": true
+      "strict": true,
+      "releases": [
+        {
+          "version": "4.1.2",
+          "date": "2026-07-26",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "Track tmux-mcp v1.6.2"
+        },
+        {
+          "version": "4.1.0",
+          "date": "2026-06-04",
+          "kinds": [
+            "Added",
+            "Changed"
+          ],
+          "summary": "Pane-occupancy safety guard in the PreToolUse:Bash hook. Beyond the existing tmux kill-server\u2026"
+        }
+      ]
     },
     {
       "name": "gtd",
       "source": "./plugins/gtd",
-      "description": "GTD (Getting Things Done) workflow integration. v2.0.0: Canonical GTD terminology (Clarify, Engage), sequential task IDs (#1, #2), boxed terminal display, reference list, Bun display tool. Real-time sync via hooks, 7 commands, 2 skills.",
+      "description": "Getting Things Done workflow. Capture, clarify, organise, reflect and engage over a task store that hooks keep in sync with the session in real time.",
       "version": "2.0.1",
       "author": {
         "name": "Jack Rudenko",
@@ -360,12 +540,22 @@
         "hooks",
         "real-time-sync"
       ],
-      "strict": true
+      "strict": true,
+      "releases": [
+        {
+          "version": "2.0.0",
+          "date": "2026-03-23",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "Canonical GTD terminology \u2014 \"Clarify\" and \"Engage\" replace the previous stage names"
+        }
+      ]
     },
     {
       "name": "kanban",
       "source": "./plugins/kanban",
-      "description": "Kanban board view for task management. v1.6.0 (breaking): Kanban decouples from GTD \u2014 independent store at .claude/kanban/tasks.json with a kanban-only schema (status field, no GTD overlay). Legacy tasks in .claude/gtd/tasks.json are NOT auto-migrated; re-add via /kanban:add. Visual board with 5 columns, task dependencies (cycle-safe), priority indicators, WIP limits.",
+      "description": "Kanban board for task management. Five columns, cycle-safe task dependencies, priority indicators and WIP limits, over a task store independent of GTD.",
       "version": "1.6.0",
       "author": {
         "name": "Jack Rudenko",
@@ -384,12 +574,22 @@
         "gtd",
         "visual"
       ],
-      "strict": true
+      "strict": true,
+      "releases": [
+        {
+          "version": "1.6.0",
+          "date": "2026-04-24",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "BREAKING \u2014 kanban decouples from GTD"
+        }
+      ]
     },
     {
       "name": "madbench",
       "source": "./plugins/madbench",
-      "description": "Toolkit for madbench, MadAppGang's Go harness for benchmarking agentic coding tools. Ships the madbench-evals skill: author bench YAML, design checks, scaffold red-state testdata, run/validate benches, tune expectations, debug failing checks.",
+      "description": "Toolkit for madbench, MadAppGang's Go harness for benchmarking agentic coding tools. Ships the madbench-evals skill: author bench YAML, design checks, scaffold red-state testdata, run and validate benches, tune expectations, and debug failing checks.",
       "version": "0.1.1",
       "author": {
         "name": "Jack Rudenko",
@@ -409,7 +609,17 @@
         "harness",
         "go"
       ],
-      "strict": true
+      "strict": true,
+      "releases": [
+        {
+          "version": "0.1.1",
+          "date": "2026-07-29",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "Pointers to the deleted shared/model-aliases.json replaced with live-catalog resolution, and\u2026"
+        }
+      ]
     }
   ]
 }

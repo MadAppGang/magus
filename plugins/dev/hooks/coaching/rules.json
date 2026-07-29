@@ -93,7 +93,6 @@
         "transcribe|whisper|subtitle|srt|fcpxml|final\\s+cut": "video-editing:transcriber",
         "generate.*image|create.*image|image.*generation|dall-e|midjourney|gemini.*image": "image-generate:image-generator",
         "design.*review|pixel.*diff|figma|matches.*design|ui.*review": "designer:design-review",
-        "create.*agent|build.*agent|new.*command|agent.*development": "agentdev:developer",
         "seo|keyword.*research|meta.*tag|search.*ranking|content.*brief": "seo:researcher"
       }
     },
@@ -299,18 +298,6 @@
     "category": "quality-assurance",
     "priority": 3,
     "suggestion": "UI implementation detected (dev:frontend) but no design review was performed.\n  `/designer:review` -- pixel-diff comparison against Figma or reference screenshots\n  `/designer:ui` -- Gemini multimodal accessibility and usability review\n  Catching design drift early prevents rework. designer:compare shows pixel-level differences.",
-    "suppress_after_sessions": 5
-  },
-  {
-    "id": "agentdev-workflow-bypassed",
-    "audience": "claude",
-    "signal": {
-      "tool": "Write",
-      "command_pattern": "/(agents|commands)/[^/]+\\.md$"
-    },
-    "category": "quality-assurance",
-    "priority": 2,
-    "suggestion": "Agent or command file written directly without agentdev workflow. This skips design validation and quality review:\n  `/agentdev:develop` -- full cycle: architect -> plan -> implement -> review\n  Without this, agents often have schema violations, missing XML standards, or poor skill boundaries.\n  Use `agentdev:reviewer` skill or agentdev:reviewer agent to validate existing files.",
     "suppress_after_sessions": 5
   },
   {

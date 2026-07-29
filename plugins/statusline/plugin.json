@@ -1,7 +1,7 @@
 {
   "name": "statusline",
   "version": "2.1.2",
-  "description": "Colorful adaptive statusline \u2014 native rate limits, worktree detection, provider-aware model display, vim mode, session+git diff chips, compaction count, and 4 themes.",
+  "description": "Adaptive statusline. Always-visible usage bars, background highlights for critical states, provider-aware model display, vim mode, separate session and git diff chips, compaction count, memory usage and rate-limit reset countdowns.",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",

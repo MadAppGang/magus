@@ -1,7 +1,7 @@
 {
   "name": "dev",
   "version": "2.12.1",
-  "description": "Universal development assistant. v2.12.0: new /dev:design-system command validates a project against the design-system guardrails; the bundled drift auditor is now bun/TypeScript and no longer false-positives on Tailwind variant selectors, CSS id selectors, or icon components.",
+  "description": "Universal development assistant. Detects the project stack and routes work to specialist agents for architecture, implementation, debugging, review and research, enforcing design-system guardrails on every UI change.",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",

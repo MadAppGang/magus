@@ -41,7 +41,7 @@ skills: dev:context-detection
         - label: "Security"
           description: "Vulnerability scan, auth patterns, input validation"
         - label: "Plugin or agent"
-          description: "Quality of Claude Code agent design or command (requires agentdev plugin)"
+          description: "Quality of Claude Code agent design or command"
 
       Inference rules (skip AskUserQuestion if match is confident):
       - "code", "pr", "pull request", "function", "class", "method", "module" → code
@@ -92,14 +92,9 @@ skills: dev:context-detection
           injection points, sensitive data exposure, dependency vulnerabilities."
 
       SCOPE: plugin
-        Check agentdev plugin:
-        ```bash
-        ls "${HOME}/.claude/plugins/cache/" 2>/dev/null | grep -q "agentdev"
-        ```
-        If present → Task(subagent_type: "agentdev:agent-reviewer")
-        If absent  → Task(subagent_type: "dev:reviewer")
-                     with note: "Agentdev plugin not installed. Reviewing from general code perspective.
-                     For specialized agent/plugin quality review, install agentdev@magus."
+        → Task(subagent_type: "dev:reviewer")
+          with note: "Review Claude Code agent/plugin quality — description clarity,
+          schema/frontmatter correctness, skill boundaries, and command structure."
 
       For ALL scopes, include in the Task description:
       - Review target: {$ARGUMENTS}

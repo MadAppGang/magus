@@ -57,8 +57,8 @@ much more reliably than Sonnet (~90% vs ~33% compliance).
 |-----------|--------------|--------------|
 | Investigation | dev:researcher | dev:debugger |
 | Review | dev:researcher | frontend:reviewer |
-| Architecture | dev:architect | frontend:architect, agentdev:architect |
-| Implementation | dev:developer | frontend:developer, agentdev:developer |
+| Architecture | dev:architect | frontend:architect |
+| Implementation | dev:developer | frontend:developer |
 | Testing | dev:test-architect | frontend:test-architect |
 | DevOps | dev:devops | — |
 | UI/Design | dev:ui | frontend:designer, frontend:ui-developer |

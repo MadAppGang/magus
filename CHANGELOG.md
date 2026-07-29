@@ -4,6 +4,33 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Marketplace 8.1.0] - 2026-07-29
+
+### Changed
+- **Plugin descriptions now describe the plugin, not the last release.** `description` was
+  the only free-text field claudeup renders, so every release overwrote it with that
+  release's notes — `multimodel` read "Declared claudish as a dependency" where its purpose
+  belonged. All 19 descriptions rewritten in `marketplace.json` and each `plugin.json`.
+  No plugin versions bumped: nothing functional changed, and claudeup reads the description
+  straight from the manifest.
+
+### Added
+- **A `releases` array on every plugin entry** — the last 5 releases, each with version,
+  date, change categories and a one-line summary. Generated from CHANGELOG.md by
+  `scripts/generate-releases.ts`; never hand-edited. The generator resolves a release
+  through a heading that names a plugin *or* a bullet inside a channel-wide entry that
+  names one, so a multi-plugin release stays written up once.
+- Backfilled CHANGELOG entries for 11 versions whose only record was the description field.
+  `gtd` v2.0.1 is the one version still without an entry — the generator warns rather than
+  inventing one.
+
+### Fixed
+- `validate-versions.js` (already in the pre-commit hook) now rejects descriptions shaped
+  like release notes and enforces description parity between `marketplace.json` and
+  `plugin.json`, which are read by claudeup and Claude Code respectively.
+
+---
+
 ## [multimodel 3.3.0] - 2026-07-29
 
 ### Changed
@@ -18,13 +45,6 @@
 
 ### Why
 `shared/model-aliases.json` was a committed snapshot refreshed from a `queryPluginDefaults` endpoint that had been seeded once and never updated. It stamped every response with a fresh `generatedAt`, so it looked healthy for four months while serving dead IDs. Nine of twenty-three referenced models were decommissioned, including the `grok` alias itself. Fuzzy matching then converted a miss into a confident wrong answer: `kimi3` resolved to `kimi-k2.5`.
-
----
-
-## [agentdev 1.7.1] - 2026-07-29
-
-### Changed
-- Pointers to the deleted `shared/model-aliases.json` replaced with live-catalog resolution, and concrete model IDs in illustrative examples replaced with placeholders. Behaviour is otherwise unchanged; a patch release so claudeup actually ships the updated guidance.
 
 ---
 
@@ -46,6 +66,18 @@
 
 ### Changed
 - Pointers to the deleted `shared/model-aliases.json` replaced with live-catalog resolution, and concrete model IDs in illustrative examples replaced with placeholders. Behaviour is otherwise unchanged; a patch release so claudeup actually ships the updated guidance.
+
+---
+
+## [Marketplace 8.1.0] - 2026-07-29
+
+### Removed
+
+- **BREAKING** — Removed the `agentdev` plugin (agent/plugin authoring workflow: design →
+  implement → review). Its marketplace entry and `plugins/agentdev/` are deleted. `agentdev`
+  depended on `claudish`; nothing depended on `agentdev`, so the removal is dependency-safe.
+  Users who had it enabled should drop `agentdev@magus` from `enabledPlugins`. Recoverable
+  from git history.
 
 ---
 
@@ -86,6 +118,42 @@
 ```
 
 `conductor@magus` has no replacement — remove it from `enabledPlugins`.
+
+---
+
+## [dev 2.12.1] - 2026-07-27
+
+### Removed
+- **Dropped the `conductor-missing-for-multi-session-feature` coaching rule.** The `conductor`
+  plugin was retired in Marketplace 8.0.0, so the suggestion pointed at commands that no longer
+  ship.
+
+---
+
+## [browser-use 1.4.0] - 2026-07-26
+
+### Added
+- **Two disjoint feature sets merged into one release**: in-page JS eval, keyboard, focus and
+  environment-doctor tools, alongside cloud sessions and a configurable agent LLM. 26 MCP tools
+  (16 built-in + 10 custom) across 6 skills.
+
+---
+
+## [terminal 4.1.2] - 2026-07-26
+
+### Changed
+- Track `tmux-mcp` v1.6.2.
+
+---
+
+## [browser-use 1.3.0] - 2026-07-12
+
+### Added
+- **Configurable agent-brain LLM.** Explicit model selection replaces the hardcoded rule
+  (`BROWSER_USE_API_KEY` → bu-latest, else config OpenAI key → gpt-4o-mini, else unassigned).
+  Providers: Anthropic, OpenAI, OpenAI-compatible (via `base_url`), and Browser Use.
+- Precedence: the `browser_set_agent_model` override beats `.claude/settings.json`
+  (local > project > user), which beats the legacy BU3 path.
 
 ---
 
@@ -140,6 +208,16 @@ Incident 2026-06-03: an agent drove raw `tmux` and sent keystrokes into a pane w
 
 ---
 
+## [go 0.1.0] - 2026-06-03
+
+### Added
+- **First release.** Ships the `go-tui` skill for building colourful, graph-and-badge-heavy
+  terminal UIs on the Charm stack (Bubble Tea, Lip Gloss, Bubbles, ntcharts), plus a verified
+  colour-accurate screenshot workflow (tmux capture → aha → headless Chrome → PNG) so a running
+  TUI can be seen and critiqued.
+
+---
+
 ## [Marketplace 7.5.0] - 2026-05-09
 
 ### Added
@@ -171,6 +249,27 @@ Decision documented in `magus-src` and `claudish` repos. Research session: `clau
 
 ---
 
+## [statusline 2.1.2] - 2026-04-24
+
+### Changed
+- **Split the diff section into two chips** — session (`✨ +A/-D`, from Claude Code's cost
+  telemetry) and git (`● +A/-D`, from `git diff --shortstat`). A stale session total on a clean
+  worktree previously read as uncommitted work.
+
+---
+
+## [kanban 1.6.0] - 2026-04-24
+
+### Changed
+- **BREAKING — kanban decouples from GTD.** Independent store at `.claude/kanban/tasks.json`
+  with a kanban-only schema (a `status` field, no GTD overlay).
+
+### Migration notes
+Legacy tasks in `.claude/gtd/tasks.json` are **not** auto-migrated. Re-add them with
+`/kanban:add`.
+
+---
+
 ## [Statusline 2.1.1] - 2026-04-16
 
 ### Fixed
@@ -190,6 +289,15 @@ Decision documented in `magus-src` and `claudish` repos. Research session: `clau
 
 ### Fixed
 - **delegate/team commands inherit parent tools and model** — removed hardcoded `allowed-tools` and `model: opus` from both commands. Previously, delegate couldn't load the `claudish-usage` skill for alias resolution, causing heuristic file searches instead of deterministic lookups.
+
+---
+
+## [gtd 2.0.0] - 2026-03-23
+
+### Changed
+- **Canonical GTD terminology** — "Clarify" and "Engage" replace the previous stage names.
+- Sequential task IDs (`#1`, `#2`) in place of opaque identifiers, plus a boxed terminal
+  display, a reference list, and a Bun display tool.
 
 ---
 
@@ -217,24 +325,6 @@ Decision documented in `magus-src` and `claudish` repos. Research session: `clau
 ### Added
 - **NEW Plugin: Agent Development (agentdev)** - Create Claude Code agents with multi-model validation
 - 5 plugins now available in marketplace
-
----
-
-## [Agent Development 1.0.0] - 2025-11-26
-
-### Added
-- **3 Specialized Agents**:
-  - `agentdev:architect` - Design agents with comprehensive planning (Opus)
-  - `agentdev:developer` - Implement agents with perfect XML/YAML (Sonnet)
-  - `agentdev:reviewer` - Review agents for quality compliance (Opus)
-- **1 Orchestration Command**:
-  - `/develop` - Full-cycle development: design → plan review → implement → quality review → iterate
-- **3 Reusable Skills**:
-  - `agentdev:xml-standards` - XML tag structure patterns
-  - `agentdev:patterns` - Common agent patterns (proxy mode, TodoWrite, quality checks)
-  - `agentdev:schemas` - YAML frontmatter schemas
-- **Multi-Model Validation** - Parallel external reviews via Claudish
-- **Depends on Multimodel** - Uses `multimodel:multi-model-validation`, `multimodel:quality-gates`
 
 ---
 

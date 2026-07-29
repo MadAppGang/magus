@@ -5,7 +5,7 @@ external-model proxy that exposes tools (`team`, `create_session`, `list_models`
 etc.) for orchestrating multi-model workflows from Claude Code.
 
 This plugin is a **runtime dependency**. Other plugins (`code-analysis`, `dev`,
-`multimodel`, `designer`, `agentdev`, `seo`) declare it via the `dependencies`
+`multimodel`, `designer`, `seo`) declare it via the `dependencies`
 field in their `plugin.json` and consume its tools through standard MCP.
 
 ## Why this plugin exists
@@ -70,7 +70,6 @@ This is a runtime dependency of:
   `/team`, model orchestration
 - `multimodel` — `/team` and `/delegate` slash commands
 - `designer` — UI review with multi-model validation
-- `agentdev` — agent development workflows
 - `seo` — multi-model content review
 
 If you are installing Magus, this plugin is auto-installed when any of the

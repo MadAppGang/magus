@@ -1,7 +1,7 @@
 {
   "name": "mnemex",
   "version": "1.0.0",
-  "description": "Mnemex MCP runtime — semantic code search and AST analysis with PageRank. Required by code-analysis and dev plugins.",
+  "description": "MCP runtime for semantic code search and AST analysis, ranking symbols by PageRank. Required by code-analysis and dev.",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",

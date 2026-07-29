@@ -1,7 +1,7 @@
 {
   "name": "go",
   "version": "0.1.0",
-  "description": "Go development toolkit. Includes the go-tui skill for building colorful, graph-heavy terminal UIs with the Charm stack (Bubble Tea, Lip Gloss, Bubbles, ntcharts) and a verified color-accurate screenshot workflow for visually critiquing a running TUI.",
+  "description": "Go development toolkit. Ships the go-tui skill for building Charm-stack terminal UIs (Bubble Tea, Lip Gloss, Bubbles, ntcharts), with a colour-accurate screenshot workflow for reviewing a running TUI.",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",

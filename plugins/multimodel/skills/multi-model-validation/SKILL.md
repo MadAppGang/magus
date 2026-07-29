@@ -1637,7 +1637,6 @@ In your finalization phase, show:
 | Plugin | Command | Usage |
 |--------|---------|-------|
 | **frontend** | `/review` | Full implementation with historical tracking |
-| **agentdev** | `/develop` | Plan review + quality review tracking |
 
 ---
 

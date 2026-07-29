@@ -160,7 +160,7 @@ through different provider accounts (e.g. OpenAI direct vs Codex subscription).
 | Task Type | Recommended Agent | Alternatives | Notes |
 |-----------|----------------------|--------------|-------|
 | **Investigation** | `dev:researcher` | `code-analysis:detective` | For finding bugs, tracing issues |
-| **Code review** | `agentdev:reviewer` | `frontend:reviewer` | Check if plugin has review agent |
+| **Code review** | `frontend:reviewer` | `code-analysis:detective` | Check if plugin has review agent |
 | **Architecture** | `dev:architect` | `frontend:architect` | Design and planning tasks |
 | **Implementation** | `dev:developer` | `frontend:developer` | Building features |
 | **Testing** | `dev:test-architect` | — | Test strategy and coverage |

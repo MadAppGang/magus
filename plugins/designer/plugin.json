@@ -1,7 +1,7 @@
 {
   "name": "designer",
   "version": "0.4.1",
-  "description": "UI design validation, review, and style management. Pixel-diff comparison, AI semantic analysis, and design system workflows.",
+  "description": "UI design validation. Compares a rendered screen against its reference by pixel diff, then reviews the result for spacing, hierarchy and design-system consistency.",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",

@@ -1,7 +1,7 @@
 {
   "name": "kanban",
   "version": "1.6.0",
-  "description": "Kanban board for task management. Independent task store at .claude/kanban/tasks.json with board visualization, task dependencies, status flow, and optional MCP sync.",
+  "description": "Kanban board for task management. Five columns, cycle-safe task dependencies, priority indicators and WIP limits, over a task store independent of GTD.",
   "author": { "name": "Jack Rudenko", "email": "i@madappgang.com", "company": "MadAppGang" },
   "license": "MIT",
   "category": "productivity",

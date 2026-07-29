@@ -59,7 +59,7 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
   - Architecture/planning → dev:architect agent (subagent_type: "dev:architect")
   - Plan review (external models via claudish) → dev:architect agent
   - Implementation → dev:developer agent (subagent_type: "dev:developer")
-  - Code review (external models via claudish) → agentdev:agent-reviewer or dev:architect agent
+  - Code review (external models via claudish) → dev:architect agent
   - Test creation → dev:test-architect agent (subagent_type: "dev:test-architect")
   - Real validation → Orchestrator (Chrome MCP tools directly)
 

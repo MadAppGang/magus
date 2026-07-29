@@ -471,7 +471,6 @@ function applyRules(
       }
 
       case "direct-settings-json-edit":
-      case "agentdev-workflow-bypassed":
       case "dev-setup-missing-routing-table": {
         // Detect Write calls whose file_path matches command_pattern
         const writeCalls = toolCalls.filter((tc) => tc.tool === "Write");
