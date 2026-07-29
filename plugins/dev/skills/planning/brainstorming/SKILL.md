@@ -24,13 +24,13 @@ dependencies:
     - Edit
     - Glob
   models:
-    # Read shared/model-aliases.json for current model IDs. Run /update-models to refresh.
+    # Read the live catalog (list_models) for current model IDs.
     primary:
       - internal  # Claude (embedded)
     explorers:
-      # Use models from shared/model-aliases.json → teams.code or teams.review
+      # Use models from `list_models` — pick current models for the task
       fallback_chain:
-        - (models from shared/model-aliases.json teams.code)
+        - (models resolved from `list_models` for code)
 parameters:
   exploration_models: 3
   chunk_size: 250
@@ -96,12 +96,12 @@ skill install superpowers:writing-plans
 export OPENROUTER_API_KEY=your-key
 
 # 3. Configure models in ~/.claude/settings.json
-# Use model IDs from shared/model-aliases.json (run /update-models to refresh)
+# Use model IDs from the live catalog (list_models)
 {
   "brainstorming": {
     "primary_model": "internal",
     "explorer_models": [
-      "(model alias from shared/model-aliases.json shortAliases or teams.code)"
+      "(model resolved from list_models)"
     ]
   }
 }
@@ -185,11 +185,11 @@ async function exploreWithFallback(
   prompt: string,
   role: "explorer"
 ): Promise<ModelResult> {
-  // Use model IDs from shared/model-aliases.json → teams.code or teams.review
-  // Run /update-models to refresh available models
+  // Use model IDs from `list_models` — pick current models for the task
+  //
   const fallbackModels = role === "explorer"
-    ? [/* models from shared/model-aliases.json teams.code */]
-    : ["internal" /* plus models from teams.review */];
+    ? [/* models resolved from `list_models` for code */]
+    : ["internal" /* plus models from list_models */];
 
   for (const model of fallbackModels) {
     try {
@@ -219,18 +219,18 @@ async function exploreWithFallback(
 // const result3 = await Task({ model: "sonnet", ... });
 
 // CORRECT: Parallel (3-5x faster)
-// Use model IDs from shared/model-aliases.json → teams.code (run /update-models to refresh)
+// Use model IDs from `list_models` (live catalog), filtered for code
 const [result1, result2, result3] = await Promise.all([
   Task({
-    model: "(fast_coding role from shared/model-aliases.json)",
+    model: "(fast_coding role — resolve from list_models)",
     prompt: generateExplorerPrompt(problem, "fast_code")
   }),
   Task({
-    model: "(reasoning role from shared/model-aliases.json)",
+    model: "(reasoning role — resolve from list_models)",
     prompt: generateExplorerPrompt(problem, "balanced")
   }),
   Task({
-    model: "(model from teams.code in shared/model-aliases.json)",
+    model: "(model resolved from list_models)",
     prompt: generateExplorerPrompt(problem, "thorough")
   })
 ]);
@@ -504,12 +504,12 @@ Which approach best fits your requirements?
 ```typescript
 // Complete Phase 1 parallel exploration
 async function runParallelExploration(problem: string): Promise<Approach[]> {
-  // Use model IDs from shared/model-aliases.json → teams.code
-  // Run /update-models to refresh available models
+  // Use model IDs from `list_models` (live catalog), filtered for code
+  //
   const explorerModels = [
     // fast_coding role — fast, code-focused
     // reasoning role — balanced, creative
-    // another model from teams.code — thorough
+    // another model from list_models — thorough
   ];
 
   const prompts = explorerModels.map(model =>
@@ -628,9 +628,9 @@ BRAINSTORM_MIN_MODELS=2  # Minimum models for valid consensus
   "brainstorming": {
     "primary": ["internal"],
     "explorers": {
-      // Use model IDs from shared/model-aliases.json (run /update-models to refresh)
-      "primary_chain": ["(model from teams.code)", "(model from teams.code)"],
-      "fallback_chain": ["(model from teams.review)", "(model from teams.review)"]
+      // Use model IDs from the live catalog (list_models)
+      "primary_chain": ["(another model from list_models)", "(another model from list_models)"],
+      "fallback_chain": ["(model from list_models)", "(model from list_models)"]
     },
     "thresholds": {
       "auto_gate": 95,

@@ -21,7 +21,7 @@ reads config and accepts an override. The judgment lives here.
    `~/.claude/settings.json` → `<project>/.claude/settings.json` →
    `<project>/.claude/settings.local.json` (local wins).
 3. **Legacy** — if `BROWSER_USE_API_KEY` is set and nothing above, Browser Use's `bu-latest`.
-4. **Default** — `anthropic` / `claude-sonnet-5` (uses `ANTHROPIC_API_KEY`, already available).
+4. **Default** — `anthropic` / `LATEST_SONNET_MODEL` (uses `ANTHROPIC_API_KEY`, already available).
 
 ## Providers
 
@@ -32,16 +32,16 @@ reads config and accepts an override. The judgment lives here.
 | `openai_compatible` | Kimi, GLM, Moonshot, Zhipu, or any OpenAI-compatible endpoint | your choice | **required** |
 | `browser_use` | Browser Use's hosted BU3 models (`bu-latest`, `bu-2-0`) | `BROWSER_USE_API_KEY` | not needed |
 
-Current Anthropic vision models: `claude-sonnet-5` (default; best multi-step + vision),
-`claude-opus-4-8` (hardest reasoning), `claude-haiku-4-5` (cheapest/fastest). Confirm live ids
+Current Anthropic vision models: `LATEST_SONNET_MODEL` (default; best multi-step + vision),
+`LATEST_OPUS_MODEL` (hardest reasoning), `LATEST_HAIKU_MODEL` (cheapest/fastest). Confirm live ids
 against the `claude-api` skill before quoting one — do not rely on memory.
 
 ## Picking a model for the task
 
-- **Simple scrape / read one page** → cheap+fast is fine: `claude-haiku-4-5`, or a cheap
+- **Simple scrape / read one page** → cheap+fast is fine: `LATEST_HAIKU_MODEL`, or a cheap
   `openai_compatible` model.
-- **Multi-step form fill, navigation, recovering from popups** → `claude-sonnet-5` (default).
-- **Login / auth flows, ambiguous pages, hard reasoning** → `claude-sonnet-5` or `claude-opus-4-8`.
+- **Multi-step form fill, navigation, recovering from popups** → `LATEST_SONNET_MODEL` (default).
+- **Login / auth flows, ambiguous pages, hard reasoning** → `LATEST_SONNET_MODEL` or `LATEST_OPUS_MODEL`.
 - **CAPTCHA / stealth / anti-bot** → a cloud session (`browser_start_cloud_session`) with
   `browser_use` / `bu-latest`, which is tuned for it.
 - If the user names a model or provider (Kimi, GLM, "the cheap one", "smartest"), honor it.
@@ -53,7 +53,7 @@ of this skill. Read the task, recommend, then apply one of the two ways below.
 
 **Ephemeral (this session, reverts next launch)** — call the tool:
 ```
-browser_set_agent_model(provider="anthropic", model="claude-sonnet-5")
+browser_set_agent_model(provider="anthropic", model="LATEST_SONNET_MODEL")
 browser_set_agent_model(provider="openai_compatible", model="moonshot-v1-128k",
                         base_url="https://api.moonshot.cn/v1", api_key_env="MOONSHOT_API_KEY")
 ```

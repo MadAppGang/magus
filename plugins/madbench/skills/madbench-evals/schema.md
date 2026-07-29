@@ -131,7 +131,7 @@ runner_config:
   float64, exactly `true`/`false` → bool, `on`/`off`/`yes`/`no` stay STRINGS,
   empty/`null`/`~` → error.
 - `runner_config.model` always accepts modelspec notation (`opus-4.8` →
-  `claude-opus-4-8`; unparseable strings pass verbatim).
+  `LATEST_OPUS_MODEL`; unparseable strings pass verbatim).
 
 ## The Eval file (RUNNABLE — `docs/eval-file.md`)
 

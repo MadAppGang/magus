@@ -170,7 +170,7 @@ patterns, production-grade error handling
 
 Run Claude Code with any OpenRouter model via local Anthropic API proxy. **100% VERIFIED** - Routes to real OpenRouter models, NOT Anthropic.
 
-**Model selection** is managed via `shared/model-aliases.json` — a curated database synced from Firebase with 18+ provider collectors. Run `/update-models` to refresh. Use short aliases like `grok`, `gemini`, `gpt` — claudish resolves providers automatically.
+**Model selection** resolves against claudish's live catalog via the `list_models` and `search_models` MCP tools — a curated database fed by 18+ provider collectors and cached for 24 hours, so it never needs a manual sync. Name a family like `grok`, `gemini` or `gpt` and claudish resolves the current model and provider automatically.
 
 **Features:**
 - 🎯 **Interactive Model Selector** - Beautiful terminal UI when no model specified
@@ -194,7 +194,7 @@ claudish "implement user authentication"
 claudish --model grok "add tests"
 
 # Or full model ID
-claudish --model grok-4.20-beta "your task"
+claudish --model grok-4.5 "your task"
 
 # Disable auto-approve
 claudish --no-auto-approve "make changes"

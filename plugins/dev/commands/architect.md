@@ -399,7 +399,7 @@ skills: dev:task-management, dev:context-detection, dev:universal-patterns, mult
         <step>Mark PHASE 6 as in_progress</step>
         <step>
           **Select Review Models** (AskUserQuestion, multiSelect):
-          - models resolved from shared/model-aliases.json shortAliases
+          - models resolved from `list_models` (live catalog)
           - Or skip external validation
         </step>
         <step>

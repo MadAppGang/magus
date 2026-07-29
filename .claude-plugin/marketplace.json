@@ -15,7 +15,7 @@
       "name": "code-analysis",
       "source": "./plugins/code-analysis",
       "description": "Extracted mnemex + claudish MCP servers into dedicated runtime plugins (declared via dependencies)",
-      "version": "5.3.0",
+      "version": "5.3.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -93,7 +93,7 @@
       "name": "multimodel",
       "source": "./plugins/multimodel",
       "description": "Declared claudish as a dependency (extracted into a dedicated runtime plugin)",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -122,7 +122,7 @@
       "name": "agentdev",
       "source": "./plugins/agentdev",
       "description": "Declared claudish as a dependency (extracted into a dedicated runtime plugin)",
-      "version": "1.7.0",
+      "version": "1.7.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -292,7 +292,7 @@
       "name": "designer",
       "source": "./plugins/designer",
       "description": "Declared claudish as a dependency (extracted into a dedicated runtime plugin)",
-      "version": "0.4.0",
+      "version": "0.4.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -390,7 +390,7 @@
       "name": "madbench",
       "source": "./plugins/madbench",
       "description": "Toolkit for madbench, MadAppGang's Go harness for benchmarking agentic coding tools. Ships the madbench-evals skill: author bench YAML, design checks, scaffold red-state testdata, run/validate benches, tune expectations, debug failing checks.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",

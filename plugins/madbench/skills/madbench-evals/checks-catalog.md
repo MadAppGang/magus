@@ -95,14 +95,14 @@ Judge entries are **model specs** (`pkg/modelspec`) — a SHORT string or a LONG
 
 ```yaml
 judges:
-  default: opus-4.8              # bare short form → anthropic (canonicalized claude-opus-4-8)
+  default: opus-4.8              # bare short form → anthropic (canonicalized LATEST_OPUS_MODEL)
   providers:
     fast: haiku-4.5              # short: provider inferred by model prefix
     ds:   deepseek/deepseek-chat # short: explicit provider/model (separator is /)
     or-qwen:                     # long form: full control (gateways, params)
       transport: openai          # wire format: anthropic | openai (`type:` alias ok)
       endpoint: https://openrouter.ai/api/v1   # (`base_url:` alias ok)
-      model: qwen/qwen3-235b     # literal — long-form model is never split or canonicalized
+      model: qwen/LATEST_QWEN_MODEL     # literal — long-form model is never split or canonicalized
       api_key_env: OPENROUTER_API_KEY
       params: { temperature: 0.0, max_tokens: 1024 }  # sent on the wire; unknown keys stored-not-sent
 ```
@@ -113,24 +113,24 @@ judges:
   `glm`(ZAI_API_KEY) · `minimax`(MINIMAX_API_KEY) · `kimi`(MOONSHOT_API_KEY) ·
   `deepseek`(DEEPSEEK_API_KEY) · `mistral`(MISTRAL_API_KEY) · `qwen`(DASHSCOPE_API_KEY)
   plus two gateways: `openrouter`(OPENROUTER_API_KEY, default `openrouter/auto`) ·
-  `ollama`(OLLAMA_API_KEY, ollama.com cloud, default `gpt-oss:20b-cloud`).
+  `ollama`(OLLAMA_API_KEY, ollama.com cloud, default `LOCAL_MODEL`).
   Aliases work (`google/…`, `moonshot/…`, `xai/…`); only anthropic uses the anthropic
   wire — everything else is OpenAI-compatible.
 - Gateways have no prefix inference — reach them explicitly
-  (`openrouter/anthropic/claude-sonnet-5`, `ollama/qwen3-coder:480b-cloud`; after the
+  (`openrouter/anthropic/LATEST_SONNET_MODEL`, `ollama/LOCAL_MODEL`; after the
   first `/` the model is literal, slashes/`:tags` included). A bare provider key is
   also valid short form (`default: openrouter` → the auto-router). Local Ollama: long
   form with `endpoint: http://localhost:11434/v1`.
 - Bare short form infers the provider from the model prefix (opus/sonnet/haiku→anthropic,
   gpt-→openai, gemini-, grok-, glm-, minimax-, kimi-, deepseek-, mistral-, qwen-…);
   no match is an ERROR (never guessed) — use `provider/model` or long form.
-  Anthropic short ids canonicalize: `opus-4.8` → `claude-opus-4-8`.
+  Anthropic short ids canonicalize: `opus-4.8` → `LATEST_OPUS_MODEL`.
 - Key VALUES never go in YAML — only env var names; unset env → provider silently
   skipped (run-start error if it was the explicit `default:`). Named env vars are
   forwarded to the sandbox redacted-from-capture.
 - `judges.default:` may name a declared id OR be a bare spec (auto-declared).
 - Per-check overrides on any AI check (each falls back to suite default → provider
-  default): `args: { judge: or-qwen, model: claude-opus-4-8, temperature: 0.0, max_tokens: 512 }`.
+  default): `args: { judge: or-qwen, model: LATEST_OPUS_MODEL, temperature: 0.0, max_tokens: 512 }`.
 
 The judge grades **FinalOutput + rubric only** (a correct-but-terse answer fails a
 rubric demanding explanation — write rubrics about the answer, not the working). It's

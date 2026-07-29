@@ -247,13 +247,12 @@ CLAUDISH_EXIT=$?
 Read the vision model from the centralized config — do not detect providers via env vars:
 
 ```
-Read: shared/model-aliases.json → roles.designer_review.modelId → VISION_MODEL
+Pick a vision-capable model from list_models (claudish MCP) → VISION_MODEL
 ```
 
 If the file is missing or the key is absent, set `SEMANTIC_SKIP=true` and log:
 ```
-WARN: shared/model-aliases.json missing or roles.designer_review not set.
-      Run /update-models to regenerate it. Semantic analysis skipped.
+WARN: Could not reach the claudish model catalog (list_models). Semantic analysis skipped.
 ```
 
 ---

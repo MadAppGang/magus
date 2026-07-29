@@ -588,11 +588,11 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
   <model_selection>
     **Recommended models for validation:**
 
-    Read `shared/model-aliases.json` for current model IDs. Run `/update-models` to refresh.
+    Resolve current model IDs with `list_models` (claudish MCP).
 
-    - Code review team: see `teams.code` in `shared/model-aliases.json`
-    - Architecture review team: see `teams.architecture`
-    - Fast coding role: see `roles.fast_coding`
+    - Code review team: resolve a code team from `list_models`
+    - Architecture review team: resolve an architecture team from `list_models`
+    - Fast coding role: pick a Fast variant from `list_models`
     - Reasoning role: see `roles.reasoning` and `roles.reasoning_premium`
 
     Always include:
@@ -602,8 +602,8 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
     Models are stored in iteration-config.json and reused in Phases 3 and 5.
 
     **Model Discovery:**
-    - Read `shared/model-aliases.json` → `teams` section for curated review teams
-    - Use short aliases from `shortAliases` (e.g. `grok`, `gemini`, `gpt`)
+    - Resolve a review team via `multimodel:claudish-usage` → Model Alias Resolution (`list_models`)
+    - Name a family (e.g. grok, gemini, gpt) and resolve it via `list_models`
     - Merge with historical performance data (if available)
     - Present to user with quality/speed/cost metrics
   </model_selection>
@@ -790,7 +790,7 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
         - [✓] Smoke test passed
 
         Model Selection (Step 1f):
-        - Selected: (models from shared/model-aliases.json → teams.code)
+        - Selected: (models from `list_models` (live catalog), filtered for code)
         - Stored in iteration-config.json
 
         User approves
@@ -859,7 +859,7 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
         Validation: Real browser + Screenshot comparison
         Reference: designs/login.png
         Outer loop: 3 iterations
-        Models: qwen/qwen3-coder:free (stored in config)
+        Models: qwen/LATEST_FREE_CODING_MODEL (stored in config)
 
       OUTER LOOP: Iteration 1/3
 

@@ -59,7 +59,7 @@ For best visual analysis of UI screenshots, use these models via Claudish:
 
 | Model | Strengths | Cost | Best For |
 |-------|-----------|------|----------|
-| **qwen3-vl-30b-a3b-instruct** | Good balance, MoE architecture | ~$0.04/1M input | Quick checks, multiple iterations |
+| **LATEST_VISION_MODEL** | Good balance, MoE architecture | ~$0.04/1M input | Quick checks, multiple iterations |
 | **gemini-lite** | Ultrafast, very cheap | ~$0.01/1M input | High-volume testing |
 
 ### Tier 3: Free Options

@@ -45,79 +45,98 @@ Direct CLI usage (user debugging, testing models)? → CLI is fine
 
 All commands that use external models (/team, /delegate, /dev:fix, etc.) MUST resolve model names through this three-step chain before calling claudish.
 
+**The catalog is live, never committed.** Model IDs come from the `list_models` /
+`search_models` MCP tools, which claudish serves from its own Firebase-backed
+catalog with a 24-hour cache. There is no model-aliases file in this repo, and
+you must not resolve model IDs from memory — training data carries dead IDs.
+
 ### Three-Step Resolution Chain
 
 ```
 Step 1: INTERPRET (Claude Code LLM)
-  User says anything → Claude infers which alias key they mean
-  "use Elon's model"     → "grok"
-  "the Google one"       → "gemini"
-  "fast coding model"    → "grok" (fast_coding role)
-  "grok"                 → "grok" (exact match)
-  "gpt-5.4"              → "gpt-5.4" (not an alias — pass through)
+  User says anything → Claude infers what family/capability they mean
+  "use Elon's model"     → xAI family
+  "the Google one"       → Google family
+  "kimi3"                → Moonshot family, major version 3
+  "latest gpt"           → OpenAI family, newest version
 
-Step 2: RESOLVE (Magus alias table lookup)
-  ALIAS_TABLE[key] → full model ID
-  "grok"           → "grok-4.20-beta"
-  "gemini"         → "gemini"
-  "gpt-5.4"        → not in table → pass through as-is
+Step 2: RESOLVE (live catalog lookup — list_models / search_models)
+  Family/intent → an ID that EXISTS in the live catalog right now
+  xAI family             → whatever grok-* the catalog currently lists
+  "kimi3"                → kimi-k3   (matched in the catalog, not guessed)
+  "latest gpt"           → highest gpt-* version the catalog lists
 
 Step 3: ROUTE (Claudish)
-  Full model ID → correct provider API endpoint
-  "grok-4.20-beta"       → xAI API
-  "gemini" → Google API
-  "gpt-5.4"              → OpenAI API
+  Live model ID → correct provider API endpoint
 ```
 
-### Building the ALIAS_TABLE
+### Resolving a model name
 
-1. Read `shared/model-aliases.json` → extract `shortAliases` object
-2. Read `.claude/multimodel-team.json` → extract `customAliases` object (may be absent)
-3. Merge: `ALIAS_TABLE = { ...shortAliases, ...customAliases }` — user overrides global
-4. If `shared/model-aliases.json` doesn't exist → tell user: "Run `/update-models`"
+1. Call `list_models` first — it is cheap, cached, and returns the current
+   recommended set with pricing, capabilities and access prefixes.
+2. If the user's request isn't covered there, call `search_models` with the
+   family name (e.g. `search_models("kimi")`) to see every live variant.
+3. Check `.claude/multimodel-team.json` → `customAliases` for a user-defined
+   shorthand. A custom alias always wins on key conflict — but if it maps to an
+   ID the catalog no longer lists, say so instead of using it silently.
+4. `"internal"` is never sent to claudish — it means the host Claude model.
 
-### Alias Lookup
+### Version intent is a hard constraint, not a hint
 
-For each model name after Step 1 interpretation:
-- If `ALIAS_TABLE[name]` exists → use the mapped value
-- Otherwise → pass name to claudish as-is (claudish handles the rest)
-- Special: `"internal"` is never sent to claudish — it means host Claude model
+When the user names a version — `kimi3`, `gpt-5.6`, `sonnet 5` — that version is
+a **requirement**. Resolve it against the catalog and use what you find.
+
+- If the exact version exists → use it.
+- If it does not exist → **say so and show the live alternatives.** Ask which
+  one they want.
+- **NEVER** fall back to a lower version because its name is closer as a string.
+  `kimi3` resolving to `kimi-k3` is a bug, not a near-miss: string distance
+  cannot tell a version bump from a typo, and silently downgrading a model is
+  worse than erroring.
 
 ### Interpreting User Intent (Step 1)
 
-Claude Code uses its language understanding to map natural language to alias keys.
-The ALIAS_TABLE keys are the ONLY valid targets for interpretation. Examples:
-
-| User says | Claude infers alias | Why |
+| User says | Resolve by | Notes |
 |---|---|---|
-| "grok" | "grok" | Exact alias match |
-| "use gemini for this" | "gemini" | Direct name mention |
-| "Elon's AI" / "xAI model" | "grok" | Company/person association |
-| "Google's model" | "gemini" | Company association |
-| "OpenAI's model" | "gpt" | Company association |
-| "the cheap one" | Check `roles.free_tier` | Cost-based intent |
-| "something fast for coding" | Check `roles.fast_coding` | Capability-based intent |
-| "minimax-m2.7" | Not an alias → pass through | Already a full model ID |
+| "grok" | `search_models("grok")` | Take the current flagship, not a remembered ID |
+| "Elon's AI" / "xAI model" | `search_models("grok")` | Company association |
+| "Google's model" | `search_models("gemini")` | Company association |
+| "the cheap one" | `list_models` → Quick picks → Budget | Cost intent |
+| "something fast for coding" | `list_models` → Fast variants | Capability intent |
+| "biggest context" | `list_models` → Quick picks → Large context | Capability intent |
+| "kimi3" | `search_models("kimi")`, require major v3 | Version is a constraint |
+| "LATEST_MINIMAX_MODEL" | Verify it's in the catalog, then pass through | Already a full ID |
 
-When uncertain, list ALIAS_TABLE keys and ask the user to pick.
+When uncertain, show the live candidates and ask the user to pick. Listing real
+options is always better than guessing one.
+
+### Backend selectors (`provider@model`)
+
+`list_models` reports an **Access** line such as `` `oai@LATEST_GPT_MODEL` ·
+`cx@LATEST_GPT_MODEL` ``. These are backend selectors — the same model reachable
+through different provider accounts (e.g. OpenAI direct vs Codex subscription).
+
+- If the user names one (`cx@LATEST_GPT_MODEL`), pass it through **verbatim**.
+- If they don't, pass the bare model ID and let claudish pick the backend.
+- Do not invent a prefix that `list_models` did not report for that model.
 
 ### Responsibility Boundaries
 
 | Responsibility | Owner |
 |---|---|
-| Understanding user intent → alias key | **Claude Code** (LLM heuristic) |
-| Alias key → full model ID | **Magus** (ALIAS_TABLE lookup) |
+| Understanding user intent → family/capability | **Claude Code** (LLM heuristic) |
+| Which model IDs exist right now | **Claudish** (live catalog, 24h cache) |
 | User custom aliases | **Magus** (`.claude/multimodel-team.json` `customAliases`) |
-| Full model ID → API endpoint | **Claudish** (provider routing) |
-| API keys, vendor prefixes, fallbacks | **Claudish** |
+| Model ID → API endpoint | **Claudish** (provider routing) |
+| API keys, backend fallbacks | **Claudish** |
 
 ### Rules
 
-- Claude Code interprets intent but ONLY maps to keys that exist in ALIAS_TABLE
-- NEVER invent a model ID — if no alias matches, pass the user's text through or ask
-- NEVER add provider prefixes — claudish handles routing
-- NEVER validate model IDs — claudish will error if invalid
-- User `customAliases` always override global `shortAliases` on key conflict
+- ALWAYS resolve against the live catalog; NEVER from memory or a committed file
+- NEVER invent a model ID — if nothing matches, show live options and ask
+- NEVER silently downgrade to an older version than the user asked for
+- NEVER invent provider prefixes — only pass through ones the catalog reports
+- User `customAliases` override, but flag any that the catalog no longer lists
 
 ## 🤖 Agent Selection Guide
 
@@ -269,14 +288,14 @@ Claudish (Claude-ish) is a proxy tool that:
 
 | Prefix | Backend | Required API Key | Example Model ID |
 |--------|---------|------------------|------------------|
-| (none) | OpenRouter | `OPENROUTER_API_KEY` | `anthropic/claude-3.5-sonnet` |
-| `or/` | OpenRouter (explicit) | `OPENROUTER_API_KEY` | `google/gemini-3-pro-preview` |
-| `g/` `gemini/` `google/` | Google Gemini Direct | `GEMINI_API_KEY` | `g/gemini-2.0-flash` |
-| `oai/` `openai/` | OpenAI Direct | `OPENAI_API_KEY` | `oai/gpt-4o` |
-| `ollama/` `ollama:` | Ollama (local) | None | `ollama/llama3.2` |
-| `lmstudio/` | LM Studio (local) | None | `lmstudio/qwen2.5-coder` |
-| `vllm/` | vLLM (local) | None | `vllm/mistral-7b` |
-| `mlx/` | MLX (local) | None | `mlx/llama-3.2-3b` |
+| (none) | OpenRouter | `OPENROUTER_API_KEY` | `anthropic/LATEST_SONNET_MODEL` |
+| `or/` | OpenRouter (explicit) | `OPENROUTER_API_KEY` | `google/LATEST_GEMINI_MODEL` |
+| `g/` `gemini/` `google/` | Google Gemini Direct | `GEMINI_API_KEY` | `g/LATEST_GEMINI_MODEL` |
+| `oai/` `openai/` | OpenAI Direct | `OPENAI_API_KEY` | `oai/LATEST_GPT_MODEL` |
+| `ollama/` `ollama:` | Ollama (local) | None | `ollama/LOCAL_MODEL` |
+| `lmstudio/` | LM Studio (local) | None | `lmstudio/LOCAL_MODEL` |
+| `vllm/` | vLLM (local) | None | `vllm/LOCAL_MODEL` |
+| `mlx/` | MLX (local) | None | `mlx/LOCAL_MODEL` |
 | `http://...` | Custom endpoint | None | `http://192.168.1.50:8000/model` |
 
 ### ⚠️ Prefix Collision Warning
@@ -285,7 +304,7 @@ Claudish (Claude-ish) is a proxy tool that:
 
 | Model ID | Claudish Routes To | Problem | Fix |
 |----------|-------------------|---------|-----|
-| `google/gemini-3-pro-preview` | Google Gemini Direct | Needs `GEMINI_API_KEY`, different API | Use `gemini` |
+| `google/LATEST_GEMINI_MODEL` | Google Gemini Direct | Needs `GEMINI_API_KEY`, different API | Use `gemini` |
 | `gemini` | Google Gemini Direct | Needs `GEMINI_API_KEY`, different API | Use `gemini` |
 | `gpt` | OpenAI Direct | Needs `OPENAI_API_KEY`, different API | Use `gpt` |
 | `gpt` | OpenAI Direct | Needs `OPENAI_API_KEY`, different API | Use `gpt` |
@@ -295,12 +314,12 @@ Claudish (Claude-ish) is a proxy tool that:
 These OpenRouter model IDs are SAFE to use without the `or/` prefix:
 
 - `grok` - No `x-ai/` prefix in claudish
-- `anthropic/claude-3.5-sonnet` - No `anthropic/` prefix in claudish
+- `anthropic/LATEST_SONNET_MODEL` - No `anthropic/` prefix in claudish
 - `deepseek/deepseek-chat` - No `deepseek/` prefix in claudish
 - `minimax` - No `minimax/` prefix in claudish
-- `qwen/qwen3-coder:free` - No `qwen/` prefix in claudish
-- `mistralai/devstral-2512:free` - No `mistralai/` prefix in claudish
-- `moonshotai/kimi-k2-thinking` - No `moonshotai/` prefix in claudish
+- `qwen/LATEST_FREE_CODING_MODEL` - No `qwen/` prefix in claudish
+- `mistralai/LATEST_FREE_CODING_MODEL` - No `mistralai/` prefix in claudish
+- `moonshotai/LATEST_KIMI_MODEL` - No `moonshotai/` prefix in claudish
 
 ### When to Use `or/` Prefix
 
@@ -312,7 +331,7 @@ These OpenRouter model IDs are SAFE to use without the `or/` prefix:
 **Examples:**
 ```bash
 # WRONG - Routes to Google Gemini Direct (needs GEMINI_API_KEY)
-claudish --model google/gemini-3-pro-preview
+claudish --model google/LATEST_GEMINI_MODEL
 
 # CORRECT - Use alias instead
 claudish --model gemini
@@ -372,18 +391,19 @@ claudish --version
 
 ### Step 2: Get Available Models
 
+In orchestration, use the MCP tools — `list_models` for the current recommended
+set (with pricing, capabilities and access prefixes) and `search_models` for
+every live variant in a family. Both are served from claudish's catalog with a
+24-hour cache, so they are always current without a manual sync step.
+
+For direct CLI use:
+
 ```bash
-# Read the local model aliases file (synced from Firebase via /update-models)
-cat shared/model-aliases.json
-
-# Shows shortAliases (short names → full IDs), roles, teams, and knownModels sections
-# Run /update-models to refresh from the queryPluginDefaults Firebase API
-
-# Search available models (still works, fetches from OpenRouter API)
+# Search available models
 claudish --models gemini
 claudish --models "grok code"
 
-# Force update from OpenRouter API
+# Force a catalog refresh (otherwise the 24h cache applies)
 claudish --models --force-update
 ```
 
@@ -431,7 +451,7 @@ git diff | claudish --stdin --model gpt "Review these changes"
    - Context: 128K
    - Best for: Complex implementations, architecture decisions
 
-5. **qwen/qwen3-vl-235b-a22b-instruct** - Alibaba's Qwen (vision-language)
+5. **qwen/LATEST_VISION_MODEL** - Alibaba's Qwen (vision-language)
    - Category: vision
    - Context: 32K
    - Best for: UI/visual tasks, design implementation
@@ -439,7 +459,7 @@ git diff | claudish --stdin --model gpt "Review these changes"
 **Get Latest Models:**
 ```bash
 # Read the authoritative model aliases file (primary source)
-cat shared/model-aliases.json
+# list_models  (claudish MCP — live catalog, 24h cache)
 
 # Search for specific models (fetches from OpenRouter API)
 claudish --models grok
@@ -789,7 +809,7 @@ claudish --model gpt "refactor authentication system to use OAuth2"
 
 ```bash
 # Vision-language model for UI tasks
-claudish --model qwen/qwen3-vl-235b-a22b-instruct "implement dashboard from figma design"
+claudish --model qwen/LATEST_VISION_MODEL "implement dashboard from figma design"
 ```
 
 ### Workflow 4: Code Review with Gemini
@@ -818,7 +838,7 @@ done
 | `--model <model>` | OpenRouter model to use | `--model grok` |
 | `--stdin` | Read prompt from stdin | `git diff \| claudish --stdin --model grok` |
 | `--models` | List all models or search | `claudish --models` or `claudish --models gemini` |
-| `--top-models` | ~~Show top recommended models~~ (deprecated — use `shared/model-aliases.json`) | `cat shared/model-aliases.json` |
+| `--top-models` | ~~Show top recommended models~~ (deprecated — use the live catalog (`list_models`)) | `# list_models  (claudish MCP — live catalog, 24h cache)` |
 | `--json` | JSON output (implies --quiet) | `claudish --json "task"` |
 | `--help-ai` | Print AI agent usage guide | `claudish --help-ai` |
 
@@ -917,7 +937,7 @@ Model 'invalid/model' not found
 **Fix:**
 ```bash
 # Check available models in the aliases file
-cat shared/model-aliases.json
+# list_models  (claudish MCP — live catalog, 24h cache)
 
 # Or search via OpenRouter API
 claudish --models
@@ -976,7 +996,7 @@ cat /tmp/result.md
 
 **Fast Coding:** `grok`
 **Complex Reasoning:** `gemini` or `gpt`
-**Vision/UI:** `qwen/qwen3-vl-235b-a22b-instruct`
+**Vision/UI:** `qwen/LATEST_VISION_MODEL`
 
 ### 3. ✅ Use --json for Automation
 
@@ -1007,11 +1027,11 @@ await Task({
 
 **How:**
 ```bash
-# Run /update-models command to sync from Firebase queryPluginDefaults API
-# This writes to shared/model-aliases.json
+# Models resolve live via the claudish list_models MCP tool (24h cache)
+# This writes to the live catalog (list_models)
 
 # Then read the authoritative list:
-cat shared/model-aliases.json
+# list_models  (claudish MCP — live catalog, 24h cache)
 
 # Search for specific models via OpenRouter (supplemental)
 claudish --models deepseek
@@ -1124,16 +1144,16 @@ COST=$(claudish --json --model grok "task" | jq -r '.total_cost_usd')
 const MODELS = ["grok", "gpt"];
 ```
 
-**Right:**
-```typescript
-// Read from the authoritative model aliases file
-const aliases = JSON.parse(await Bun.file("shared/model-aliases.json").text());
-const models = Object.keys(aliases.knownModels);
+**Right:** resolve from the live catalog at call time.
+
+```
+list_models()                  → current recommended set
+search_models({ query: "kimi" }) → every live variant in a family
 ```
 
 ### ✅ Do Accept Custom Models From Users
 
-**Problem:** User provides a custom model ID that's not in `shared/model-aliases.json`
+**Problem:** User provides a custom model ID that's not in the live catalog (`list_models`)
 
 **Wrong (rejecting custom models):**
 ```typescript
@@ -1147,7 +1167,7 @@ if (!availableModels.includes(userModel)) {
 
 **Right (accept any valid model ID):**
 ```typescript
-// Claudish accepts ANY valid OpenRouter model ID, even if not in shared/model-aliases.json
+// Claudish accepts ANY valid OpenRouter model ID, even if not in the live catalog (list_models)
 const userModel = "custom/provider/model-123";
 
 // Validate it's a non-empty string with provider format
@@ -1201,8 +1221,8 @@ const model = prefs.preferredModel || defaultModel;
 ```typescript
 // In a multi-step workflow, ask once
 if (!process.env.CLAUDISH_MODEL) {
-  const aliases = JSON.parse(await Bun.file("shared/model-aliases.json").text());
-  const models = Object.entries(aliases.knownModels).map(([id, info]) => ({ id, ...(info as object) }));
+  // Live catalog — call the claudish list_models MCP tool, never a local file.
+  const models = await listModels(); // [{ id, pricing, context, capabilities }, ...]
 
   const response = await AskUserQuestion({
     question: "Select model (or enter custom model ID):",
@@ -1231,7 +1251,7 @@ await Bash(`claudish --model ${model} "task 2"`);
 1. ✅ **Accept any model ID** user provides (unless obviously malformed)
 2. ✅ **Don't filter** based on your "shortlist" - let Claudish handle validation
 3. ✅ **Offer to set CLAUDISH_MODEL** environment variable for session persistence
-4. ✅ **Explain** that `shared/model-aliases.json` contains curated model recommendations (run `/update-models` to refresh)
+4. ✅ **Explain** that the live catalog (`list_models`) contains curated model recommendations
 5. ✅ **Validate format** (should contain "/") but not restrict to known models
 6. ❌ **Never reject** a user's custom model with "not in my shortlist"
 
@@ -1311,9 +1331,8 @@ async function reviewCodeWithMultipleModels(files: string[]) {
  * Usage: /implement-with-model "feature description"
  */
 async function implementWithModel(featureDescription: string) {
-  // Step 1: Get available models from the authoritative aliases file
-  const aliases = JSON.parse(await Bun.file("shared/model-aliases.json").text());
-  const models = Object.entries(aliases.knownModels).map(([id, info]) => ({ id, ...(info as object) }));
+  // Step 1: Get available models from the live catalog (claudish list_models MCP tool)
+  const models = await listModels(); // [{ id, pricing, context, capabilities }, ...]
 
   // Step 2: Let user select model
   const selectedModel = await promptUserForModel(models);
@@ -1375,7 +1394,7 @@ Include:
 **Symptoms:** Unexpected API costs
 
 **Solutions:**
-1. Use budget-friendly models (check pricing in `shared/model-aliases.json` or with `claudish --models`)
+1. Use budget-friendly models (check pricing in the live catalog (`list_models`) or with `claudish --models`)
 2. Enable cost tracking: `--cost-tracker`
 3. Use --json to monitor costs: `claudish --json "task" | jq '.total_cost_usd'`
 

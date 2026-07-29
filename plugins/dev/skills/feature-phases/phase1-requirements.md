@@ -255,9 +255,9 @@ Write iteration config to ${SESSION_PATH}/iteration-config.json:
 
 If claudish is available (check with `which claudish`):
 
-**Read available aliases** from `shared/model-aliases.json` (`shortAliases` keys):
+**Read available aliases** from `list_models` (claudish MCP):
 ```bash
-available=$(jq -r '.shortAliases | keys | join(", ")' shared/model-aliases.json)
+available=$(# call list_models (claudish MCP) and list the returned model families)
 ```
 
 **Ask the user** for a comma-separated list of models. AskUserQuestion is NOT used here because the options list often exceeds the widget's maxItems:4 cap. Instead ask as free-form:
@@ -265,7 +265,7 @@ available=$(jq -r '.shortAliases | keys | join(", ")' shared/model-aliases.json)
 ```
 Which models should review plan + code?
 
-Available aliases (from shared/model-aliases.json):
+Available aliases (from the live catalog (list_models)):
   {available}
   (plus "internal" — always included)
 
@@ -274,7 +274,7 @@ Type a comma-separated list (e.g. "grok, gemini, qwen") or "internal" for no ext
 
 **Parse the response** using `multimodel:claudish-usage` skill's "Model Alias Resolution" procedure:
 1. Split on comma, trim whitespace
-2. For each name: resolve via ALIAS_TABLE (shortAliases first, then knownModels exact match, then fuzzy match)
+2. For each name: resolve via the live catalog (`list_models`, then `search_models` for the family)
 3. Unknown names: warn and skip, do NOT guess
 4. Always include "internal" (set `includeInternal: true`)
 
@@ -283,7 +283,7 @@ Store selection in ${SESSION_PATH}/iteration-config.json under `selectedModels`:
 {
   "selectedModels": {
     "configured": true,
-    "models": ["grok-4.20-beta", "gemini-3.1-pro-preview", "qwen3-235b-a22b-2507"],
+    "models": ["LATEST_GROK_MODEL", "LATEST_GEMINI_MODEL", "LATEST_QWEN_MODEL"],
     "includeInternal": true
   }
 }

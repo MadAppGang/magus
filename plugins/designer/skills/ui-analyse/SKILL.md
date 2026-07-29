@@ -22,8 +22,8 @@ This skill provides patterns for analyzing UI designs visually using Gemini 3 Pr
 
 ## Model Selection
 
-Read `shared/model-aliases.json` → `roles.designer_review.modelId` for the design review model.
-If the file doesn't exist, tell the user to run `/update-models`.
+Pick a vision-capable model from `list_models` (claudish MCP) for the design review model.
+If `list_models` is unavailable, report that the claudish MCP server is not reachable.
 
 ## Analysis Patterns
 
@@ -211,7 +211,7 @@ The `/designer:ui` command uses this skill when:
 
 When used via `/designer:ui`:
 1. Command detects analysis intent
-2. Reads model from shared/model-aliases.json → roles.designer_review.modelId
+2. Reads model from a vision-capable model from list_models (claudish MCP)
 3. Runs visual analysis with Gemini
 4. Writes review to: `${SESSION_PATH}/reviews/design-review/gemini.md`
 5. Presents summary to user
@@ -222,7 +222,7 @@ If no Gemini provider is available:
 1. Note in output: "Visual verification unavailable - manual review recommended"
 2. Proceed with text-based analysis if component code is available
 3. Use code analysis to infer potential issues
-4. Recommend user run `/update-models` and configure model aliases for full visual analysis
+4. Report that the claudish MCP server is unreachable, so no vision model could be resolved
 
 ## Best Practices
 

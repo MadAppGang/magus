@@ -369,7 +369,7 @@ function applyRules(
       case "plugin-command-gap":
       case "bash-ffmpeg-without-plugin":
       case "suggest-claudeup-for-plugin-install":
-      case "nanobanana-not-suggested-for-images":
+      case "image-generate-not-suggested-for-images":
       case "seo-plugin-for-web-content":
       case "browser-use-for-playwright-selenium":
       case "tui-via-bash-instead-of-terminal": {

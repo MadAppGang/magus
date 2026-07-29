@@ -194,7 +194,7 @@ When enabled, hooks will BLOCK execution if tracking is not set up, rather than 
 | 4 | gemini | Google | pending | - | - | - | - | - | - |
 | 5 | gpt | OpenAI | pending | - | - | - | - | - | - |
 | 6 | devstral | Mistral | pending | - | - | - | - | FREE | - |
-| 7 | deepseek-r1 | DeepSeek | pending | - | - | - | - | - | - |
+| 7 | LATEST_DEEPSEEK_MODEL | DeepSeek | pending | - | - | - | - | - | - |
 | 8 | claude-sonnet | Anthropic | pending | - | - | - | - | - | - |
 ```
 
@@ -372,7 +372,7 @@ Always include this in final results:
 |-------|---------|--------------|--------|
 | grok | API 500 | Yes - retry later | Check OpenRouter status |
 | gemini | Timeout | Yes - extend limit | Use 180s timeout |
-| deepseek-r1 | Auth Error | No - check key | Verify API key valid |
+| LATEST_DEEPSEEK_MODEL | Auth Error | No - check key | Verify API key valid |
 ```
 
 ### Writing Failures to Session Directory

@@ -439,7 +439,7 @@ Log to performance tracking:
   {
     "task": "Implement user authentication",
     "tier": 2,
-    "model": "claude-sonnet-4-5",
+    "model": "LATEST_SONNET_MODEL",
     "tokens_in": 1500,
     "tokens_out": 3000,
     "cost": 0.0495,
@@ -732,7 +732,7 @@ Task 2: "Format all code"
 Task 3: "Add JSDoc to UserService"
   Keywords: "add" (+1), "simple" (implied)
   Routing: Tier 1 (Haiku)
-  Model: claude-haiku-4-5
+  Model: LATEST_HAIKU_MODEL
   Cost: $0.004
   Time: 2s
 
@@ -740,7 +740,7 @@ Task 4: "Implement user profile page"
   Keywords: "implement" (+2)
   Context: Multiple files (component, styles, API)
   Routing: Tier 2 (Sonnet)
-  Model: claude-sonnet-4-5
+  Model: LATEST_SONNET_MODEL
   Cost: $0.030
   Time: 8s
 
@@ -748,7 +748,7 @@ Task 5: "Fix pagination bug"
   Keywords: "fix" (+1), "bug" (+2)
   Context: Requires debugging
   Routing: Tier 2 (Sonnet)
-  Model: claude-sonnet-4-5
+  Model: LATEST_SONNET_MODEL
   Cost: $0.025
   Time: 7s
 
@@ -756,7 +756,7 @@ Task 6: "Security audit of auth system"
   Keywords: "security" (+3), "audit" (+3)
   Context: Critical, system-wide
   Routing: Tier 3 (Opus)
-  Model: claude-opus-4-5
+  Model: LATEST_OPUS_MODEL
   Cost: $0.150
   Time: 25s
 
@@ -917,7 +917,7 @@ After each task:
   {
     "task": "Implement profile page",
     "tier": 2,
-    "model": "claude-sonnet-4-5",
+    "model": "LATEST_SONNET_MODEL",
     "tokens_in": 1200,
     "tokens_out": 2800,
     "cost": 0.0456,

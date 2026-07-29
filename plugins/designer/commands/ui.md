@@ -335,16 +335,15 @@ skills: designer:ui-analyse, dev:frontend-implement, multimodel:multi-model-vali
 
       <steps>
         <step>Read vision model from centralized config:
-          Read `shared/model-aliases.json` → `roles.designer_review.modelId` and store as MODEL.
+          Pick a vision-capable model from `list_models` (claudish MCP) and store as MODEL.
           If the file or key is missing, stop with:
-          "ERROR: shared/model-aliases.json not found or missing roles.designer_review.
-           Run /update-models to regenerate it."
+          "ERROR: Could not reach the claudish model catalog (list_models). "
         </step>
 
         <step>Store MODEL for Phase 4 — will be used with claudish `run_prompt` MCP tool</step>
       </steps>
 
-      <quality_gate>MODEL resolved from shared/model-aliases.json</quality_gate>
+      <quality_gate>MODEL resolved from the live catalog (list_models)</quality_gate>
     </phase>
 
     <phase number="3" name="Review Configuration">

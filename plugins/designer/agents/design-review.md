@@ -445,11 +445,10 @@ skills:
       <objective>Run optional AI vision comparison to categorize what differs</objective>
       <steps>
         <step>Resolve vision model from centralized config:
-          Read `shared/model-aliases.json` → `roles.designer_review.modelId` → VISION_MODEL.
+          Pick a vision-capable model from `list_models` (claudish MCP) → VISION_MODEL.
           If the file is missing or the key is absent:
             Set SEMANTIC_DIFF = { "skipped": true } and log:
-            "WARN: shared/model-aliases.json missing or roles.designer_review not set.
-             Run /update-models to regenerate it. Semantic analysis skipped."
+            "WARN: Could not reach the claudish model catalog (list_models). Semantic analysis skipped."
             Then skip to Phase 6.
         </step>
 
@@ -677,7 +676,7 @@ skills:
   </severity_thresholds>
 
   <vision_model_priority>
-    Read `shared/model-aliases.json` → `roles.designer_review.modelId` for the configured
+    Pick a vision-capable model from `list_models` (claudish MCP) for the configured
     vision model. If absent, skip semantic analysis and produce a pixel-only report.
   </vision_model_priority>
 

@@ -56,8 +56,8 @@ External AI models are invoked via **claudish MCP tools**. No Bash invocation ne
 | `send_input` | Answer a question from an interactive session |
 | `list_sessions` | List active and completed sessions |
 | `cancel_session` | Stop a running session |
-| `list_models` | List available external models (supplemental — prefer `shared/model-aliases.json`) |
-| `search_models` | Search for models by capability (supplemental — prefer `shared/model-aliases.json`) |
+| `list_models` | **Authoritative** — current recommended models, pricing, access prefixes |
+| `search_models` | **Authoritative** — every live variant in a model family |
 | `compare_models` | Compare model capabilities |
 | `run_prompt` | One-shot prompt to a single model (no session lifecycle) |
 | `report_error` | Report failures to claudish developers |
@@ -125,9 +125,9 @@ failed           → get_output(session_id) → report error → stop
 
 ## Model IDs
 
-> **Note:** Model IDs change frequently. Read `shared/model-aliases.json` for the current authoritative list (synced from Firebase via `/update-models`). The `list_models` MCP tool and `claudish --models` are available as supplemental sources but `shared/model-aliases.json` is the primary reference.
+> **Note:** Model IDs change frequently — so resolve them live. `list_models` (and `search_models` for a specific family) is the authoritative source; claudish serves it from its own catalog with a 24-hour cache. There is no model-aliases file in this repo, and model IDs must never be recalled from memory: training data carries dead IDs. See `multimodel:claudish-usage` → "Model Alias Resolution".
 
-> **IMPORTANT: Pass model names EXACTLY as the user provides them.** Do NOT add provider prefixes (like `minimax/`, `openai/`, `google/`). The claudish MCP server handles routing and provider detection internally.
+> **IMPORTANT: Pass model names EXACTLY as the user provides them.** Do NOT invent provider prefixes (like `minimax/`, `openai/`, `google/`) — claudish handles routing internally. The one exception is a backend selector that `list_models` itself reports on a model's **Access** line (e.g. `cx@LATEST_GPT_MODEL`): if the user asks for that backend, pass it through verbatim.
 
 ---
 

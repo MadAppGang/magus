@@ -6,7 +6,7 @@
  */
 
 import { execSync } from "child_process";
-import { writeFileSync, unlinkSync, readFileSync } from "fs";
+import { writeFileSync, unlinkSync } from "fs";
 import { join } from "path";
 import { createHash } from "crypto";
 import type { SessionSummary, ClassifierResult, Learning } from "./types";
@@ -99,14 +99,11 @@ export function parseClassifierResponse(response: string): ClassifierResult {
   };
 }
 
+// Cheap classifier tier. Uses the "-latest" alias deliberately: it tracks the
+// current Haiku, so this ID cannot go stale the way a pinned snapshot does.
+// One ID, no fallback — a fallback is where staleness hides.
 function getClassifierModel(): string {
-  try {
-    const aliasesPath = join(__dirname, "../../../lib/model-aliases.json");
-    const aliases = JSON.parse(readFileSync(aliasesPath, "utf-8"));
-    return aliases.roles?.coaching_classifier?.modelId ?? "claude-sonnet-4-20250514";
-  } catch {
-    return "claude-sonnet-4-20250514";
-  }
+  return "claude-haiku-latest";
 }
 
 export async function classifySession(

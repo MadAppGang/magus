@@ -4,6 +4,51 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [multimodel 3.3.0] - 2026-07-29
+
+### Changed
+- **Model resolution is now live.** `/team`, `/delegate` and every dependent command resolve IDs through claudish's `list_models` / `search_models` MCP tools instead of a committed snapshot. `shared/model-aliases.json` is deleted along with its two synced copies.
+- **A version the user names is a hard constraint.** If `kimi3` or `gpt-5.6` is not in the catalog, the command says so and shows live alternatives. It must never fall back to a lower version because the name is a closer string match.
+- `task-external-models` inverted: `list_models`/`search_models` are marked **authoritative**; they were previously demoted to "supplemental — prefer `shared/model-aliases.json`".
+- Backend selectors (`cx@gpt-5.6-sol`) are passed through verbatim when the user asks for one and the catalog reports it.
+- `/update-models` **deleted**. The catalog self-refreshes, so there was nothing left to sync.
+
+### Fixed
+- Concrete model IDs purged from every context-injected doc (112 occurrences across 26 files) and replaced with self-describing placeholders (`LATEST_GPT_MODEL`, `LATEST_IMAGE_MODEL`). A literal ID in an example is copyable — the model pattern-matches it instead of resolving live.
+
+### Why
+`shared/model-aliases.json` was a committed snapshot refreshed from a `queryPluginDefaults` endpoint that had been seeded once and never updated. It stamped every response with a fresh `generatedAt`, so it looked healthy for four months while serving dead IDs. Nine of twenty-three referenced models were decommissioned, including the `grok` alias itself. Fuzzy matching then converted a miss into a confident wrong answer: `kimi3` resolved to `kimi-k2.5`.
+
+---
+
+## [agentdev 1.7.1] - 2026-07-29
+
+### Changed
+- Pointers to the deleted `shared/model-aliases.json` replaced with live-catalog resolution, and concrete model IDs in illustrative examples replaced with placeholders. Behaviour is otherwise unchanged; a patch release so claudeup actually ships the updated guidance.
+
+---
+
+## [code-analysis 5.3.1] - 2026-07-29
+
+### Changed
+- Pointers to the deleted `shared/model-aliases.json` replaced with live-catalog resolution, and concrete model IDs in illustrative examples replaced with placeholders. Behaviour is otherwise unchanged; a patch release so claudeup actually ships the updated guidance.
+
+---
+
+## [designer 0.4.1] - 2026-07-29
+
+### Changed
+- Pointers to the deleted `shared/model-aliases.json` replaced with live-catalog resolution, and concrete model IDs in illustrative examples replaced with placeholders. Behaviour is otherwise unchanged; a patch release so claudeup actually ships the updated guidance.
+
+---
+
+## [madbench 0.1.1] - 2026-07-29
+
+### Changed
+- Pointers to the deleted `shared/model-aliases.json` replaced with live-catalog resolution, and concrete model IDs in illustrative examples replaced with placeholders. Behaviour is otherwise unchanged; a patch release so claudeup actually ships the updated guidance.
+
+---
+
 ## [Marketplace 8.0.0] - 2026-07-27
 
 ### Changed

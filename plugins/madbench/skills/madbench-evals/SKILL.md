@@ -110,7 +110,7 @@ scenario needs:
 
 ```yaml
 runner_config:
-  model: claude-haiku-4-5-20251001
+  model: LATEST_HAIKU_MODEL
   args: ["--permission-mode", "acceptEdits"]   # agent writes/edits files
   # bypassPermissions — agent also runs commands (go test, npm…)
   # (omit) default    — read-only benches only

@@ -25,7 +25,7 @@ args:
 
 ## Phase 1: Parse and Resolve
 
-**Step 1a — Load alias table:** Follow the `multimodel:claudish-usage` skill → "Model Alias Resolution" procedure to build ALIAS_TABLE from `shared/model-aliases.json` + `.claude/multimodel-team.json` `customAliases`.
+**Step 1a — Load alias table:** Follow the `multimodel:claudish-usage` skill → "Model Alias Resolution" procedure to build ALIAS_TABLE from the live catalog (`list_models`) + `.claude/multimodel-team.json` `customAliases`.
 
 **Step 1b — Parse arguments** left-to-right:
 - First token with no `/` or `--` prefix → MODEL_ARG
@@ -108,7 +108,7 @@ Model: {MODEL} | Session: {SESSION_ID}
   </preferences_schema>
 
   <argument_parsing_examples>
-    Aliases below are illustrative — actual resolution comes from `shared/model-aliases.json` → `shortAliases`.
+    Aliases below are illustrative — actual resolution comes from `list_models` (live catalog).
 
     `grok implement authentication`
     → MODEL=(resolved from aliases file via "grok" shortAlias), TASK="implement authentication"

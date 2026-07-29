@@ -153,9 +153,8 @@ skills: multimodel:multi-model-validation, multimodel:quality-gates, multimodel:
         <step>Record start time: `PHASE1_5_START=$(date +%s)`</step>
         <step>
           **Select Models** (AskUserQuestion, multiSelect: true):
-          Read `shared/model-aliases.json` → `teams.review` for available models.
-          Default: first two models from `teams.review` after `internal`.
-          Run `/update-models` to refresh the model list.
+          Resolve the review team via `multimodel:claudish-usage` → Model Alias Resolution (`list_models`) for available models.
+          Default: `internal` plus the first two models from `list_models`.
 
           **Show Historical Performance** (if ai-docs/llm-performance.json exists):
           Read and display avg time, success rate, quality for each model.
@@ -169,9 +168,9 @@ skills: multimodel:multi-model-validation, multimodel:quality-gates, multimodel:
           1. Write review prompt to ${SESSION_PATH}/reviews/plan-review/prompt.md
           2. Launch external models via claudish MCP team tool:
           ```
-          # Use models from shared/model-aliases.json → teams.review
+          # Use models from `list_models` (live catalog), filtered for review
           team(mode="run", path=${SESSION_PATH}/reviews/plan-review,
-            models=[(models from shared/model-aliases.json teams.review)],
+            models=[(models resolved from `list_models` for review)],
             input=contents_of_prompt.md, timeout=180)
           ```
 
@@ -192,7 +191,7 @@ Save findings to: ${SESSION_PATH}/reviews/plan-review/internal.md`
           # For each model that completed:
           track_model_performance "{model_id}" "{status}" "{duration}" "{issues_found}" "{quality_score}"
 
-          # Example (use model IDs from shared/model-aliases.json → teams.review):
+          # Example (use model IDs from `list_models` (live catalog), filtered for review):
           track_model_performance "(model-id)" "success" 45 3 85
           track_model_performance "(model-id)" "success" 38 2 90
           ```
@@ -294,7 +293,7 @@ Save findings to: ${SESSION_PATH}/reviews/plan-review/internal.md`
           ```bash
           # Track each model's performance
           track_model_performance "claude-embedded" "success" $LOCAL_DURATION $LOCAL_ISSUES $LOCAL_QUALITY
-          # Use model IDs from shared/model-aliases.json → teams.review
+          # Use model IDs from `list_models` (live catalog), filtered for review
           track_model_performance "(model-id)" "success" $MODEL_DURATION $MODEL_ISSUES $MODEL_QUALITY
           # ... for each model
 
@@ -364,8 +363,8 @@ Save findings to: ${SESSION_PATH}/reviews/plan-review/internal.md`
           | Model                     | Time   | Issues | Quality | Status    |
           |---------------------------|--------|--------|---------|-----------|
           | claude-embedded           | 32s    | 5      | 92%     | ✓         |
-          | (model from teams.review) | 45s    | 4      | 88%     | ✓         |
-          | (model from teams.review) | 38s    | 3      | 90%     | ✓         |
+          | (model from list_models) | 45s    | 4      | 88%     | ✓         |
+          | (model from list_models) | 38s    | 3      | 90%     | ✓         |
 
           ### Session Summary
           - Parallel Speedup: 2.4x
@@ -376,11 +375,11 @@ Save findings to: ${SESSION_PATH}/reviews/plan-review/internal.md`
           | Model                     | Avg Time | Runs | Success% | Avg Quality |
           |---------------------------|----------|------|----------|-------------|
           | claude-embedded           | 35s      | 8    | 100%     | 90%         |
-          | (model from teams.review) | 48s      | 6    | 83%      | 85%         |
-          | (model from teams.review) | 42s      | 7    | 100%     | 88%         |
+          | (model from list_models) | 48s      | 6    | 83%      | 85%         |
+          | (model from list_models) | 42s      | 7    | 100%     | 88%         |
 
           ### Recommendations
-          ✓ Top performers: claude-embedded, (model from shared/model-aliases.json → teams.review)
+          ✓ Top performers: claude-embedded, (model from `list_models` (live catalog), filtered for review)
           ```
         </step>
         <step>Present final summary</step>
@@ -399,7 +398,7 @@ Save findings to: ${SESSION_PATH}/reviews/plan-review/internal.md`
 <error_recovery>
   <strategy name="External Model Failure">
     1. Check claudish MCP tools are available
-    2. Check model IDs are valid (use shared/model-aliases.json)
+    2. Check model IDs are valid (use the live catalog (list_models))
     3. Offer to skip external reviews
   </strategy>
 
@@ -415,12 +414,11 @@ Save findings to: ${SESSION_PATH}/reviews/plan-review/internal.md`
 </error_recovery>
 
 <recommended_models>
-  Available models and aliases are listed in `shared/model-aliases.json`.
-  Run `/update-models` to refresh.
+  Available models and aliases are listed in the live catalog (`list_models`).
 
-  **Default** (2 models): first two entries from `teams.review` after `internal`
-  **Comprehensive** (4 models): first four entries from `teams.review` after `internal`
-  **Code-focused**: use `teams.code` from `shared/model-aliases.json`
+  **Default** (2 models): `internal` plus the first two models from `list_models`
+  **Comprehensive** (4 models): `internal` plus the first four models from `list_models`
+  **Code-focused**: resolve a code team from `list_models`
 </recommended_models>
 
 <examples>

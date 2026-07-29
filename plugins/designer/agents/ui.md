@@ -237,13 +237,13 @@ skills:
          - Use `mcp__figma__get_images` to export screenshots
 
       2. **Vision model via claudish MCP** (if image provided):
-         Read `shared/model-aliases.json` → `roles.designer_review.modelId` to get the
+         Pick a vision-capable model from `list_models` (claudish MCP) to get the
          configured vision model. Pass that model ID to the claudish `run_prompt` MCP tool for image analysis.
 
       3. **Error** (no access method available):
          ```bash
          echo "ERROR: No design access method available"
-         echo "Need: Figma MCP or a configured vision model in shared/model-aliases.json"
+         echo "Need: Figma MCP or a configured vision model in the live catalog (list_models)"
          ```
 
       Use the selected method for all design analysis.
@@ -319,7 +319,7 @@ skills:
         - Store file structure for later use
       </step>
       <step>**ELSE IF Image available**:
-        - Read `shared/model-aliases.json` → `roles.designer_review.modelId` to get VISION_MODEL
+        - Pick a vision-capable model from `list_models` (claudish MCP) to get VISION_MODEL
         - Vision model will be invoked via claudish `run_prompt` MCP tool
       </step>
       <step>**ELSE**:
@@ -704,7 +704,7 @@ Overall Match: X/10
       1. Detect Figma URL: Extract fileKey=XYZ789, nodeId=45-1234
       2. Check MCP: mcp__figma__get_file_nodes NOT available
       3. Notify: "Figma MCP not available. Falling back to screenshot analysis."
-      4. Setup: Read `shared/model-aliases.json` → `roles.designer_review.modelId` for VISION_MODEL
+      4. Setup: Pick a vision-capable model from `list_models` (claudish MCP) for VISION_MODEL
       5. Request: Ask user for screenshot of the Figma design
       6. Analyze: Send screenshot to Gemini with usability-focused prompt
       7. Apply: Nielsen's heuristics checklist (estimated values)
@@ -717,7 +717,7 @@ Overall Match: X/10
     <user_request>Review this dashboard screenshot for usability issues</user_request>
     <correct_approach>
       1. Validate: Check image file exists (no Figma URL detected)
-      2. Setup: Read `shared/model-aliases.json` → `roles.designer_review.modelId` for VISION_MODEL
+      2. Setup: Pick a vision-capable model from `list_models` (claudish MCP) for VISION_MODEL
       3. Analyze: Send to vision model via claudish `run_prompt` MCP tool with usability-focused prompt and image
       4. Apply: Nielsen's heuristics checklist
       5. Report: Structure by severity
@@ -732,7 +732,7 @@ Overall Match: X/10
     <user_request>Check if this form meets WCAG AA standards</user_request>
     <correct_approach>
       1. Validate: Check form screenshot exists
-      2. Setup: Read `shared/model-aliases.json` → `roles.designer_review.modelId` for VISION_MODEL
+      2. Setup: Pick a vision-capable model from `list_models` (claudish MCP) for VISION_MODEL
       3. Analyze: Send with accessibility-focused prompt
       4. Apply: WCAG AA checklist
       5. Report: Structure by WCAG criterion

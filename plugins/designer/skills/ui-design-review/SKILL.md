@@ -23,15 +23,15 @@ This skill provides prompting patterns, checklists, and templates for conducting
 
 ## Model Selection
 
-Read `shared/model-aliases.json` → `roles.designer_review.modelId` for the design review model.
-If the file doesn't exist, tell the user to run `/update-models`.
+Pick a vision-capable model from `list_models` (claudish MCP) for the design review model.
+If `list_models` is unavailable, report that the claudish MCP server is not reachable.
 
 ## Passing Images to Claudish
 
 ### Method 1: Image File Path (Recommended)
 
 ```bash
-# GEMINI_MODEL: read from shared/model-aliases.json → roles.designer_review.modelId
+# GEMINI_MODEL: read from a vision-capable model from list_models (claudish MCP)
 # Pass image file directly with --image flag
 npx claudish --model "$GEMINI_MODEL" --image "$IMAGE_PATH" --quiet --auto-approve <<< "$ANALYSIS_PROMPT"
 

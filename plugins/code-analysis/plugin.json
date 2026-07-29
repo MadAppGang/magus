@@ -1,6 +1,6 @@
 {
   "name": "code-analysis",
-  "version": "5.3.0",
+  "version": "5.3.1",
   "description": "Deep code investigation. v5.3.0: extracted mnemex + claudish MCP servers into dedicated runtime plugins (declared via dependencies).",
   "author": {
     "name": "Jack Rudenko",
@@ -24,8 +24,14 @@
   ],
   "category": "development",
   "dependencies": [
-    { "name": "mnemex", "version": "~1.0" },
-    { "name": "claudish", "version": "~1.0" }
+    {
+      "name": "mnemex",
+      "version": "~1.0"
+    },
+    {
+      "name": "claudish",
+      "version": "~1.0"
+    }
   ],
   "agents": [
     "./agents/codebase-detective.md"

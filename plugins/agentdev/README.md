@@ -65,7 +65,7 @@ The `/develop` command uses external AI models via [Claudish](https://github.com
 - **Plan Review** - Validate design before implementation
 - **Implementation Review** - Quality check with multiple perspectives
 
-Available models are resolved from `shared/model-aliases.json` aliases (e.g. `grok`, `gemini`, `deepseek`). Run `/update-models` to refresh from the curated database.
+Available models are resolved from the live catalog via `list_models` (families such as grok, gemini, deepseek).
 
 ## License
 

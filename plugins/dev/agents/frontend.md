@@ -304,7 +304,7 @@ skills:
       <provider_detection>
         Before visual analysis, resolve the vision model from centralized config:
 
-        Read `shared/model-aliases.json` → `roles.designer_review.modelId` → GEMINI_MODEL.
+        Pick a vision-capable model from `list_models` (claudish MCP) → GEMINI_MODEL.
 
         If the file is missing or the key is absent:
         - Set GEMINI_MODEL="" and PROVIDER="none"

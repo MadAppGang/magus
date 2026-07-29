@@ -91,7 +91,7 @@
         "understand|investigate|trace|analyze": "code-analysis:detective",
         "debug|error|root cause": "dev:debugger",
         "transcribe|whisper|subtitle|srt|fcpxml|final\\s+cut": "video-editing:transcriber",
-        "generate.*image|create.*image|image.*generation|dall-e|midjourney|gemini.*image": "nanobanana:image-generator",
+        "generate.*image|create.*image|image.*generation|dall-e|midjourney|gemini.*image": "image-generate:image-generator",
         "design.*review|pixel.*diff|figma|matches.*design|ui.*review": "designer:design-review",
         "create.*agent|build.*agent|new.*command|agent.*development": "agentdev:developer",
         "seo|keyword.*research|meta.*tag|search.*ranking|content.*brief": "seo:researcher"
@@ -314,20 +314,20 @@
     "suppress_after_sessions": 5
   },
   {
-    "id": "nanobanana-not-suggested-for-images",
+    "id": "image-generate-not-suggested-for-images",
     "audience": "claude",
     "signal": {
       "bash_patterns": [
         {
           "pattern": "\\b(midjourney|dall-e|dalle|stable[-\\s]diffusion|leonardo\\.ai)\\b",
-          "plugin": "nanobanana plugin",
-          "command": "/nanobanana:generate"
+          "plugin": "image-generate plugin",
+          "command": "/image-generate:generate"
         }
       ]
     },
     "category": "plugin-discovery",
     "priority": 4,
-    "suggestion": "External image generation tool mentioned ({plugin} reference). The nanobanana plugin provides image generation directly in Claude Code:\n  `/nanobanana:generate \"description\"` -- text-to-image via Gemini 3 Pro Image\n  `/nanobanana:style` -- create reusable style templates for consistent outputs\n  `/nanobanana:edit` -- modify existing images with natural language\n  Requires: `GEMINI_API_KEY` environment variable.",
+    "suggestion": "External image generation tool mentioned ({plugin} reference). The image-generate plugin provides image generation directly in Claude Code:\n  `/image-generate:generate \"description\"` -- text-to-image via Gemini 3 Pro Image\n  `/image-generate:style` -- create reusable style templates for consistent outputs\n  `/image-generate:edit` -- modify existing images with natural language\n  Requires: `GEMINI_API_KEY` environment variable.",
     "suppress_after_sessions": 3
   },
   {

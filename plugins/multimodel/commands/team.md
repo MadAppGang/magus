@@ -21,7 +21,7 @@ args:
 
 ## Step 1: Setup
 
-**Step 1a — Load alias table:** Follow the `multimodel:claudish-usage` skill → "Model Alias Resolution" procedure to build ALIAS_TABLE from `shared/model-aliases.json` + `.claude/multimodel-team.json` `customAliases`.
+**Step 1a — Load alias table:** Follow the `multimodel:claudish-usage` skill → "Model Alias Resolution" procedure to build ALIAS_TABLE from the live catalog (`list_models`) + `.claude/multimodel-team.json` `customAliases`.
 
 **Step 1b — Parse args:**
 Parse: `defaultModels`, `contextPreferences`, `agentPreferences`, `defaultThreshold`, `claudeFlags` from prefs.
@@ -31,8 +31,9 @@ Parse command args: task, `--models`, `--threshold`, `--no-memory`. If no task: 
 1. `--models` flag provided → resolve each via ALIAS_TABLE
 2. `contextPreferences` keyword matching task → resolve each via ALIAS_TABLE
 3. `defaultModels` from prefs → resolve each via ALIAS_TABLE, announce "Using saved models: {list}"
-4. None matched → read `shared/model-aliases.json` → `teams` section for task-type defaults
-5. Still nothing → AskUserQuestion listing available aliases from ALIAS_TABLE
+4. None matched → compose a team from `list_models`: take `internal` plus 2–4 current
+   models from different providers, picked for the task type (see table below)
+5. Still nothing → AskUserQuestion listing the models `list_models` currently returns
 
 **Resolve threshold:** unset/"majority" → 50%, "supermajority" → 67%, "unanimous" → 100%
 
@@ -123,14 +124,17 @@ If any models FAILED in the verification table:
 **Model alias resolution** — see `multimodel:claudish-usage` skill → "Model Alias Resolution" section. ALIAS_TABLE built in Step 1a. NEVER resolve from memory. NEVER add provider prefixes.
 
 **Context detection:**
-| Context | Keywords | Default Models | Agent |
-|---------|----------|----------------|-------|
-| debug | debug, error, bug, fix, trace | Read `shared/model-aliases.json` → `teams.debug` | dev:debugger |
-| research | research, investigate, analyze, explore | Read `shared/model-aliases.json` → `teams.research` | dev:researcher |
-| coding | implement, build, create, code, develop | Read `shared/model-aliases.json` → `teams.code` | dev:developer |
-| review | review, audit, check, validate, verify | Read `shared/model-aliases.json` → `teams.review` | dev:researcher |
-| architecture | architecture, design, plan, system, refactor | Read `shared/model-aliases.json` → `teams.architecture` | dev:architect |
-| testing | test, coverage, unit test, integration, e2e | Read `shared/model-aliases.json` → `teams.code` | dev:test-architect |
+Default models come from `contextPreferences[context]` when set. Otherwise compose
+from `list_models` using the criterion below — always current, never hardcoded.
+
+| Context | Keywords | Pick from `list_models` | Agent |
+|---------|----------|-------------------------|-------|
+| debug | debug, error, bug, fix, trace | reasoning-capable, mixed providers | dev:debugger |
+| research | research, investigate, analyze, explore | large-context + reasoning | dev:researcher |
+| coding | implement, build, create, code, develop | Fast variants, tools-capable | dev:developer |
+| review | review, audit, check, validate, verify | flagships from 3+ distinct providers | dev:researcher |
+| architecture | architecture, design, plan, system, refactor | most capable / reasoning | dev:architect |
+| testing | test, coverage, unit test, integration, e2e | Fast variants, tools-capable | dev:test-architect |
 
 **Preferences** (`.claude/multimodel-team.json`): `defaultModels[]`, `defaultThreshold`, `claudeFlags`,
 `contextPreferences{context:[models]}`, `agentPreferences{context:"agent"}`. All fields optional.

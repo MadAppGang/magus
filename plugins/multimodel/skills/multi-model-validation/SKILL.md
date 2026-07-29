@@ -30,7 +30,7 @@ Multi-model validation is the practice of running multiple AI models (Grok, Gemi
 **Key Innovations:**
 
 1. **Context-Aware Preferences** (NEW v3.3.0) - Automatically use saved model preferences per task type (debug/research/coding/review) from `.claude/multimodel-team.json`
-2. **Dynamic Model Discovery** (v3.0) - Read `shared/model-aliases.json` for current available models (synced from Firebase via `/update-models`)
+2. **Dynamic Model Discovery** (v3.0) - Read the live catalog (`list_models`) for current available models (live, 24h cache)
 3. **Session-Based Workspaces** (v3.0) - Each validation session gets a unique directory to prevent conflicts
 4. **4-Message Pattern** - Ensures true parallel execution by using only Task tool calls in a single message
 5. **Pattern 7-8** - Statistics collection and data-driven model recommendations
@@ -69,7 +69,7 @@ cat .claude/multimodel-team.json 2>/dev/null
    → Proceed with validation
 
    IF EMPTY/MISSING (first time for this context):
-   → Read: shared/model-aliases.json (shortAliases, roles, knownModels)
+   → Call: list_models (claudish MCP — current models, pricing, capabilities)
    → Ask user to select models (AskUserQuestion)
    → Save to contextPreferences[context]
    → Proceed with validation
@@ -105,7 +105,7 @@ Task: "Debug the API timeout"
 Task: "Debug this error, use different models"
 → Detected: "different models" override trigger
 → ASK: "Which models for debug tasks?"
-→ User selects: gemini, gpt-5-codex
+→ User selects: gemini, LATEST_GPT_MODEL
 → UPDATE contextPreferences.debug
 → Run with new models
 ```
@@ -191,28 +191,21 @@ echo "Directory: $SESSION_DIR"
 
 **Dynamic Model Discovery:**
 
-**NEVER hardcode model lists.** Models change frequently — new ones appear, old ones deprecate, pricing updates. Instead, read `shared/model-aliases.json` for current available models:
+**NEVER hardcode model lists.** Models change frequently — new ones appear, old ones deprecate, pricing updates. Instead, read the live catalog (`list_models`) for current available models:
 
-```bash
-# Read the authoritative model aliases file (synced from Firebase via /update-models)
-cat shared/model-aliases.json
+Call the `list_models` MCP tool (claudish). It returns the current recommended
+set — model IDs, pricing, context window, capabilities, and the `provider@model`
+access prefixes — served from claudish’s catalog with a 24-hour cache.
 
-# Contains:
-#   shortAliases: short name → full model ID mapping
-#   roles: role-based model assignments (coding, review, research, etc.)
-#   teams: pre-configured model sets for common workflows
-#   knownModels: full model registry with metadata
-
-# Run /update-models to refresh from Firebase queryPluginDefaults API
-```
+For every live variant in one family, call `search_models` with the family name.
 
 **Recommended Free Models for Code Review:**
 
 | Model | Provider | Context | Capabilities | Why Good |
 |-------|----------|---------|--------------|----------|
-| `qwen/qwen3-coder:free` | Qwen | 262K | Tools ✓ | Coding-specialized, large context |
-| `mistralai/devstral-2512:free` | Mistral | 262K | Tools ✓ | Dev-focused, excellent for code |
-| `qwen/qwen3-235b-a22b:free` | Qwen | 131K | Tools ✓ Reasoning ✓ | Massive 235B model, reasoning |
+| `qwen/LATEST_FREE_CODING_MODEL` | Qwen | 262K | Tools ✓ | Coding-specialized, large context |
+| `mistralai/LATEST_FREE_CODING_MODEL` | Mistral | 262K | Tools ✓ | Dev-focused, excellent for code |
+| `qwen/LATEST_FREE_REASONING_MODEL` | Qwen | 131K | Tools ✓ Reasoning ✓ | Massive 235B model, reasoning |
 
 **Model Selection Flow (Learn and Reuse):**
 
@@ -241,7 +234,7 @@ cat shared/model-aliases.json
      → Go to step 6
 
    IF models empty OR force_ask:
-     → Read: shared/model-aliases.json
+     → Read: the live catalog (list_models)
      → AskUserQuestion with multiSelect
      → Save user selection to contextPreferences[context]
      → Go to step 6
@@ -294,8 +287,8 @@ Claudish routes to different backends based on model ID prefix:
 - `google/gemini-*` ✅ (use `g/` for Gemini Direct)
 - `deepseek/deepseek-chat` ✅
 - `minimax/*` ✅ (use `mmax/` for MiniMax Direct)
-- `qwen/qwen3-coder:free` ✅
-- `mistralai/devstral-2512:free` ✅
+- `qwen/LATEST_FREE_CODING_MODEL` ✅
+- `mistralai/LATEST_FREE_CODING_MODEL` ✅
 - `moonshotai/*` ✅ (use `kimi/` for Kimi Direct)
 - `z-ai/glm-*` ✅ (use `glm/` for GLM Direct)
 - `openai/*` ✅ (use `oai/` for OpenAI Direct)
@@ -324,7 +317,7 @@ AskUserQuestion({
     header: "Models",
     multiSelect: true,
     options: [
-      // Top paid (from shared/model-aliases.json + historical data)
+      // Top paid (from the live catalog (list_models) + historical data)
       {
         label: "grok ⚡",
         description: "$0.85/1M | Quality: 87% | Avg: 42s | Fast + accurate"
@@ -333,13 +326,13 @@ AskUserQuestion({
         label: "gemini",
         description: "$7.00/1M | Quality: 91% | Avg: 55s | High accuracy"
       },
-      // Free models (from shared/model-aliases.json knownModels — filter by free)
+      // Free models — filter the list_models result by pricing
       {
-        label: "qwen/qwen3-coder:free 🆓",
+        label: "qwen/LATEST_FREE_CODING_MODEL 🆓",
         description: "FREE | Quality: 82% | 262K context | Coding-specialized"
       },
       {
-        label: "mistralai/devstral-2512:free 🆓",
+        label: "mistralai/LATEST_FREE_CODING_MODEL 🆓",
         description: "FREE | 262K context | Dev-focused, new model"
       }
     ]
@@ -377,7 +370,7 @@ load_session_models() {
 
 # Usage:
 # After AskUserQuestion returns selected models
-save_session_models "$SESSION_DIR" "grok" "qwen/qwen3-coder:free"
+save_session_models "$SESSION_DIR" "grok" "qwen/LATEST_FREE_CODING_MODEL"
 
 # Later in the session, retrieve the selection
 MODELS=$(load_session_models "$SESSION_DIR")
@@ -470,7 +463,7 @@ Message 1: Preparation (Session Setup + Model Discovery)
   Bash: git diff > "$SESSION_DIR/code-context.md"
 
   # Discover available models
-  Bash: cat shared/model-aliases.json  # Read shortAliases, roles, teams, knownModels
+  MCP:  list_models   # current models, pricing, capabilities
 
   # User selects models via AskUserQuestion (see Pattern 0)
 
@@ -481,7 +474,7 @@ Message 2: Parallel Execution (single message)
              Return only brief summary."
   ---
   claudish team(mode="run", path=$SESSION_DIR,
-    models=["grok", "qwen3-coder:free", "gpt", "devstral-2512:free"],
+    models=["grok", "LATEST_FREE_CODING_MODEL", "gpt", "LATEST_FREE_REASONING_MODEL"],
     input=REVIEW_PROMPT, timeout=180)
 
   All 5 models execute simultaneously (Task for internal + team MCP for externals!)
@@ -510,9 +503,9 @@ Message 4: Present Results + Update Statistics
   # Track performance for each model (see Pattern 7)
   track_model_performance "claude-embedded" "success" 32 8 95
   track_model_performance "grok" "success" 45 6 87
-  track_model_performance "qwen/qwen3-coder:free" "success" 52 5 82
+  track_model_performance "qwen/LATEST_FREE_CODING_MODEL" "success" 52 5 82
   track_model_performance "gpt" "success" 68 7 89
-  track_model_performance "mistralai/devstral-2512:free" "success" 48 5 84
+  track_model_performance "mistralai/LATEST_FREE_CODING_MODEL" "success" 48 5 84
 
   # Record session summary
   record_session_stats 5 5 0 68 245 3.6
@@ -532,9 +525,9 @@ Message 4: Present Results + Update Statistics
    |--------------------------------|------|--------|---------|--------|
    | claude-embedded                | 32s  | 8      | 95%     | FREE   |
    | grok          | 45s  | 6      | 87%     | $0.002 |
-   | qwen/qwen3-coder:free          | 52s  | 5      | 82%     | FREE   |
+   | qwen/LATEST_FREE_CODING_MODEL          | 52s  | 5      | 82%     | FREE   |
    | gpt        | 68s  | 7      | 89%     | $0.015 |
-   | mistralai/devstral-2512:free   | 48s  | 5      | 84%     | FREE   |
+   | mistralai/LATEST_FREE_CODING_MODEL   | 48s  | 5      | 84%     | FREE   |
 
    Parallel Speedup: 3.6x (245s sequential → 68s parallel)
 
@@ -1090,8 +1083,8 @@ Instead of keyword matching, use semantic similarity:
       "totalCost": 0.12,
       "trend": "improving"
     },
-    "qwen-qwen3-coder-free": {
-      "modelId": "qwen/qwen3-coder:free",
+    "LATEST_FREE_CODING_MODEL": {
+      "modelId": "LATEST_FREE_CODING_MODEL",
       "provider": "Qwen",
       "isFree": true,
       "pricing": "FREE",
@@ -1118,7 +1111,7 @@ Instead of keyword matching, use semantic similarity:
   ],
   "recommendations": {
     "topPaid": ["grok", "gemini"],
-    "topFree": ["qwen/qwen3-coder:free", "mistralai/devstral-2512:free"],
+    "topFree": ["qwen/LATEST_FREE_CODING_MODEL", "mistralai/LATEST_FREE_CODING_MODEL"],
     "bestValue": ["grok"],
     "avoid": [],
     "lastGenerated": "2025-12-12T10:45:00Z"
@@ -1301,8 +1294,8 @@ track_model_performance "grok" "success" 45 6 87 0.002 false
 track_model_performance "gpt" "success" 68 7 89 0.015 false
 
 # Free models (cost=0, is_free=true)
-track_model_performance "qwen/qwen3-coder:free" "success" 52 5 82 0 true
-track_model_performance "mistralai/devstral-2512:free" "success" 48 5 84 0 true
+track_model_performance "qwen/LATEST_FREE_CODING_MODEL" "success" 52 5 82 0 true
+track_model_performance "mistralai/LATEST_FREE_CODING_MODEL" "success" 48 5 84 0 true
 
 # Embedded Claude (always free)
 track_model_performance "claude-embedded" "success" 32 8 95 0 true
@@ -1445,10 +1438,10 @@ Use accumulated performance data to recommend:
 Instead of just displaying recommendations, use AskUserQuestion with multiSelect to let users interactively choose:
 
 ```typescript
-// Build options from shared/model-aliases.json + historical data
-const aliases = JSON.parse(await Bun.file("shared/model-aliases.json").text());
-const paidModels = Object.entries(aliases.knownModels).filter(([, info]: [string, any]) => !info.free);
-const freeModels = Object.entries(aliases.knownModels).filter(([, info]: [string, any]) => info.free);
+// Build options from the live catalog (claudish list_models MCP tool) + history
+const catalog    = await listModels();   // [{ id, pricing, context, capabilities }, ...]
+const paidModels = catalog.filter((m) => m.pricing?.average > 0);
+const freeModels = catalog.filter((m) => !m.pricing?.average);
 const history = loadPerformanceHistory();        // ai-docs/llm-performance.json
 
 // Merge and build AskUserQuestion options
@@ -1469,11 +1462,11 @@ AskUserQuestion({
       },
       // Top free models
       {
-        label: "qwen/qwen3-coder:free 🆓",
+        label: "qwen/LATEST_FREE_CODING_MODEL 🆓",
         description: "FREE | Quality: 82% | 262K | Coding-specialized"
       },
       {
-        label: "mistralai/devstral-2512:free 🆓",
+        label: "mistralai/LATEST_FREE_CODING_MODEL 🆓",
         description: "FREE | Quality: 84% | 262K | Dev-focused"
       }
       // Note: Models to AVOID are simply not shown in options
@@ -1495,14 +1488,14 @@ AskUserQuestion({
 **After Selection - Save to Session:**
 
 ```bash
-# User selected: grok, qwen3-coder:free
+# User selected: grok, LATEST_FREE_CODING_MODEL
 # Save for session persistence
 save_session_models "$SESSION_DIR" "${USER_SELECTED_MODELS[@]}"
 
 # Now $SESSION_DIR/selected-models.txt contains:
 # claude-embedded
 # grok
-# qwen/qwen3-coder:free
+# qwen/LATEST_FREE_CODING_MODEL
 ```
 
 **Warning Display (separate from selection):**
@@ -1559,13 +1552,12 @@ generate_shortlist "free-only"  # Zero-cost validation
 
 ```
 Workflow:
-1. Read `shared/model-aliases.json` → Get current models (shortAliases, roles, knownModels)
-   Run `/update-models` first if the file is stale or missing
+1. Call `list_models` (claudish MCP) → current models, pricing, capabilities
 2. Load ai-docs/llm-performance.json → Get historical performance
 3. Merge data:
    - New models (no history): Mark as "🆕 New"
    - Known models: Show performance metrics
-   - Deprecated models: Filter out (not in knownModels)
+   - Deprecated models: Filter out (absent from the live catalog)
 4. Generate recommendations
 5. Present to user with AskUserQuestion
 ```
@@ -1776,14 +1768,13 @@ Message 1: Session Setup + Model Discovery
   Output: Session: review-20251212-143052-a3f2
 
   # Discover available models
-  Bash: cat shared/model-aliases.json
+  MCP:  list_models   # claudish — live catalog, 24h cache
   Output:
-    shortAliases, roles, teams, knownModels sections
-    (Run /update-models to refresh from Firebase if stale)
+    current model IDs with pricing, context, capabilities, access prefixes
 
   # Load historical performance
   Bash: cat ai-docs/llm-performance.json | jq '.models | keys'
-  Output: ["claude-embedded", "x-ai-grok", "qwen-qwen3-coder-free"]
+  Output: ["claude-embedded", "x-ai-grok", "LATEST_FREE_CODING_MODEL"]
 
   # Prepare code context
   Bash: git diff > "$SESSION_DIR/code-context.md"
@@ -1798,8 +1789,8 @@ Message 2: Model Selection (AskUserQuestion with multiSelect)
       options: [
         { label: "grok ⚡", description: "$0.85/1M | Quality: 87% | Avg: 42s" },
         { label: "gemini", description: "$7.00/1M | New model, no history" },
-        { label: "qwen/qwen3-coder:free 🆓", description: "FREE | Quality: 82% | Coding-specialized" },
-        { label: "mistralai/devstral-2512:free 🆓", description: "FREE | Dev-focused, new model" }
+        { label: "qwen/LATEST_FREE_CODING_MODEL 🆓", description: "FREE | Quality: 82% | Coding-specialized" },
+        { label: "mistralai/LATEST_FREE_CODING_MODEL 🆓", description: "FREE | Dev-focused, new model" }
       ]
     }]
   })
@@ -1807,18 +1798,18 @@ Message 2: Model Selection (AskUserQuestion with multiSelect)
   # User selects via interactive UI:
   # ☑ grok
   # ☐ gemini
-  # ☑ qwen/qwen3-coder:free
-  # ☑ mistralai/devstral-2512:free
+  # ☑ qwen/LATEST_FREE_CODING_MODEL
+  # ☑ mistralai/LATEST_FREE_CODING_MODEL
 
   # Save selection to session for later use
-  save_session_models "$SESSION_DIR" "grok" "qwen/qwen3-coder:free" "mistralai/devstral-2512:free"
+  save_session_models "$SESSION_DIR" "grok" "qwen/LATEST_FREE_CODING_MODEL" "mistralai/LATEST_FREE_CODING_MODEL"
 
   # Session now has:
   # $SESSION_DIR/selected-models.txt containing:
   # claude-embedded (always)
   # grok
-  # qwen/qwen3-coder:free
-  # mistralai/devstral-2512:free
+  # qwen/LATEST_FREE_CODING_MODEL
+  # mistralai/LATEST_FREE_CODING_MODEL
 
 Message 3: Parallel Execution (single message)
   Task: senior-code-reviewer
@@ -1826,7 +1817,7 @@ Message 3: Parallel Execution (single message)
              Write to $SESSION_DIR/claude-review.md"
   ---
   claudish team(mode="run", path=$SESSION_DIR,
-    models=["grok", "qwen3-coder:free", "devstral-2512:free"],
+    models=["grok", "LATEST_FREE_CODING_MODEL", "LATEST_FREE_REASONING_MODEL"],
     input=REVIEW_PROMPT, timeout=180)
 
   All 4 execute simultaneously (Task for internal + team MCP for externals)!
@@ -1839,8 +1830,8 @@ Message 4: Auto-Consolidation + Statistics Update
   # Track performance
   track_model_performance "claude-embedded" "success" 32 8 95 0 true
   track_model_performance "grok" "success" 45 6 87 0.002 false
-  track_model_performance "qwen/qwen3-coder:free" "success" 52 5 82 0 true
-  track_model_performance "mistralai/devstral-2512:free" "success" 48 5 84 0 true
+  track_model_performance "qwen/LATEST_FREE_CODING_MODEL" "success" 52 5 82 0 true
+  track_model_performance "mistralai/LATEST_FREE_CODING_MODEL" "success" 48 5 84 0 true
 
   record_session_stats 4 4 0 52 177 3.4 0.002 3
 
@@ -1857,8 +1848,8 @@ Message 5: Present Results
    |------------------------------|------|--------|---------|--------|
    | claude-embedded              | 32s  | 8      | 95%     | FREE   |
    | grok        | 45s  | 6      | 87%     | $0.002 |
-   | qwen/qwen3-coder:free        | 52s  | 5      | 82%     | FREE   |
-   | mistralai/devstral-2512:free | 48s  | 5      | 84%     | FREE   |
+   | qwen/LATEST_FREE_CODING_MODEL        | 52s  | 5      | 82%     | FREE   |
+   | mistralai/LATEST_FREE_CODING_MODEL | 48s  | 5      | 84%     | FREE   |
 
    Session Stats:
    - Parallel Speedup: 3.4x (177s → 52s)
@@ -1886,7 +1877,7 @@ Message 2: Parallel Execution
   Task: senior-code-reviewer (internal)
   Bash: claudish --model grok (external)
   Bash: claudish --model gemini (external)
-  Bash: claudish --model gpt-5-codex (external)
+  Bash: claudish --model LATEST_GPT_CODING_MODEL (external)
 
 Message 3: Error Recovery (error-recovery skill)
   results = await Promise.allSettled([...]);
@@ -2053,7 +2044,7 @@ declare -A MODEL_START_TIMES
 # Before launching each Task
 MODEL_START_TIMES["claude-embedded"]=$(date +%s)
 MODEL_START_TIMES["grok"]=$(date +%s)
-MODEL_START_TIMES["qwen/qwen3-coder:free"]=$(date +%s)
+MODEL_START_TIMES["qwen/LATEST_FREE_CODING_MODEL"]=$(date +%s)
 
 # After each TaskOutput returns, calculate duration
 model_completed() {
@@ -2120,7 +2111,7 @@ declare -A MODEL_DURATIONS
 # Record start times BEFORE launching Tasks
 MODEL_START_TIMES["claude-embedded"]=$SESSION_START
 MODEL_START_TIMES["grok"]=$SESSION_START
-MODEL_START_TIMES["qwen/qwen3-coder:free"]=$SESSION_START
+MODEL_START_TIMES["qwen/LATEST_FREE_CODING_MODEL"]=$SESSION_START
 
 # Launch all Tasks in parallel (Message 2)
 # ... Task calls here ...
@@ -2136,7 +2127,7 @@ record_completion() {
 # Call as each completes
 record_completion "claude-embedded"
 record_completion "grok"
-record_completion "qwen/qwen3-coder:free"
+record_completion "qwen/LATEST_FREE_CODING_MODEL"
 
 # === STATISTICS PHASE ===
 # Calculate totals
@@ -2154,7 +2145,7 @@ SPEEDUP=$(echo "scale=1; $SEQUENTIAL_TIME / $PARALLEL_TIME" | bc)
 # Track each model
 track_model_performance "claude-embedded" "success" "${MODEL_DURATIONS[claude-embedded]}" 8 95 0 true
 track_model_performance "grok" "success" "${MODEL_DURATIONS[grok]}" 6 87 0.002 false
-track_model_performance "qwen/qwen3-coder:free" "success" "${MODEL_DURATIONS[qwen/qwen3-coder:free]}" 5 82 0 true
+track_model_performance "qwen/LATEST_FREE_CODING_MODEL" "success" "${MODEL_DURATIONS[qwen/LATEST_FREE_CODING_MODEL]}" 5 82 0 true
 
 # Record session
 record_session_stats 3 3 0 $PARALLEL_TIME $SEQUENTIAL_TIME $SPEEDUP 0.002 2
@@ -2173,7 +2164,7 @@ Your final message to the user **MUST** include this table:
 |---------------------------|-------|--------|---------|--------|--------|
 | claude-embedded           | 32s   | 8      | 95%     | FREE   | ✅     |
 | grok     | 45s   | 6      | 87%     | $0.002 | ✅     |
-| qwen/qwen3-coder:free     | 52s   | 5      | 82%     | FREE   | ✅     |
+| qwen/LATEST_FREE_CODING_MODEL     | 52s   | 5      | 82%     | FREE   | ✅     |
 
 ## Session Statistics
 
@@ -2263,9 +2254,9 @@ Master this skill and you can validate any implementation with multiple AI persp
 **Version 3.0 Additions:**
 - **Pattern 0: Session Setup and Model Discovery**
   - Unique session directories (`ai-docs/sessions/review-{slug}-{timestamp}-{hash}`)
-  - Dynamic model discovery via `shared/model-aliases.json` (synced via `/update-models`)
+  - Dynamic model discovery via `list_models` (live, 24h cache)
   - Always include internal reviewer (safety net)
-  - Recommended free models: qwen3-coder, devstral-2512, qwen3-235b
+  - Recommended free models: LATEST_QWEN_CODING_MODEL, LATEST_FREE_CODING_MODEL, LATEST_QWEN_MODEL
 - **Pattern 8: Data-Driven Model Selection**
   - Historical performance tracking in `ai-docs/llm-performance.json`
   - Per-model metrics: speed, cost, quality, success rate, trend

@@ -131,7 +131,7 @@ Override auto-detection in `.claude/settings.json`:
       },
       "multiModelReview": {
         "enabled": true,
-        "models": ["(model aliases from shared/model-aliases.json)"]
+        "models": ["(model aliases from the live catalog (list_models))"]
       }
     }
   }
@@ -235,11 +235,11 @@ When Claudish CLI is installed, you can use external AI models for:
 
 **Supported models:**
 
-Available models and aliases are listed in `shared/model-aliases.json`. Run `/update-models` to refresh.
+Available models and aliases are listed in the live catalog (`list_models`).
 
-- Fast coding models: see `roles.fast_coding` in `shared/model-aliases.json`
+- Fast coding models: resolve the fast_coding role from `list_models`
 - Reasoning models: see `roles.reasoning` and `roles.reasoning_premium`
-- Code review teams: see `teams.code` and `teams.review`
+- Code review teams: resolve review teams from `list_models`
 
 See: https://github.com/MadAppGang/claudish
 

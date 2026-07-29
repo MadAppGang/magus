@@ -10,7 +10,7 @@ Set via top-level `runner:`; per-run override with `madbench run --runner <name>
 runner: claude-code
 runner_config:
   binary: claude                      # default "claude" (must be on PATH)
-  model: claude-haiku-4-5-20251001    # → --model
+  model: LATEST_HAIKU_MODEL    # → --model
   system_prompt: "..."                # → --system-prompt (optional)
   args: ["--permission-mode", "acceptEdits"]   # appended verbatim
 ```
@@ -65,8 +65,8 @@ runner: magmux
 runner_config:
   mode: interactive
   providers:
-    haiku:  { runner: claude-code, config: { model: claude-haiku-4-5-20251001 } }
-    sonnet: { runner: claude-code, config: { model: claude-sonnet-5 } }
+    haiku:  { runner: claude-code, config: { model: LATEST_HAIKU_MODEL } }
+    sonnet: { runner: claude-code, config: { model: LATEST_SONNET_MODEL } }
 cases:
   - name: compare
     providers: [haiku, sonnet]      # fan out; composites (compare/select-best) see all sessions

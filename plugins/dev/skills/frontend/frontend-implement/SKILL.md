@@ -74,7 +74,7 @@ Output as structured data for implementation."
 
 **Model Resolution**:
 
-Read `shared/model-aliases.json` → `roles.designer_review.modelId` and assign to
+Pick a vision-capable model from `list_models` (claudish MCP) and assign to
 `GEMINI_MODEL`. If the key is absent or the file does not exist, set `GEMINI_MODEL=""`
 to fall back to text-only mode.
 

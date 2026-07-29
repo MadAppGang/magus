@@ -118,8 +118,8 @@ mnemex status             # Check index
 
 **Embedding Models:**
 - `voyage/voyage-code-3` - Best quality (default) - $0.180/1M
-- `qwen/qwen3-embedding-8b` - Best balanced - $0.010/1M
-- `qwen/qwen3-embedding-0.6b` - Best value - $0.002/1M
+- `qwen/LATEST_EMBEDDING_MODEL` - Best balanced - $0.010/1M
+- `qwen/LATEST_EMBEDDING_MODEL` - Best value - $0.002/1M
 
 **Benefits:**
 - Tree-sitter AST parsing (preserves code structure)
