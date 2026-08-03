@@ -25,7 +25,8 @@ user-invocable: false
     "cost": true,          // Session cost ($X.XX)
     "duration": true,      // Session duration (Xm Xs)
     "context_bar": true,   // Context window usage bar
-    "plan_limits": true    // Plan limit bars with reset countdowns
+    "plan_limits": true,   // Plan limit bars with reset countdowns (master switch)
+    "claudish_plan": true  // Provider plan bars when the session is routed via claudish
   },
   "context_bar_width": 12, // Width of context bar in chars (8-20)
   "plan_bar_width": 10,    // Width of plan limit bar in chars (6-16)
@@ -45,7 +46,8 @@ All fields are optional. Missing fields use defaults shown above.
 | `cost` | Yellow | Cumulative session cost in USD |
 | `duration` | Magenta | Session duration in minutes/seconds |
 | `context_bar` | Green→Red gradient | Visual bar + token count (90k/200k) + compaction indicator (⟳) |
-| `plan_limits` | Teal→Red gradient | Dual bar: top=5h, bottom=7d plan usage with reset countdowns |
+| `plan_limits` | Teal→Red gradient | Dual bar: top=5h, bottom=7d plan usage with reset countdowns. **Anthropic only** — suppressed entirely when the session is routed through claudish (see below) |
+| `claudish_plan` | Teal→Red gradient | The ACTIVE provider's plan windows when routed through claudish. Same `id:NN% ↻countdown` style as `plan_limits`, with an arbitrary number of windows. Requires `plan_limits` to also be on |
 | `diff` | Cyan+green/red | Two independent chips rendered side-by-side: `✨ +A/-D` shows lines Claude has added/removed *in this conversation*; `● +A/-D` shows uncommitted lines from `git diff --shortstat` in the current worktree. Each chip is hidden when its counts are zero; the git chip is also hidden when cwd is not a git repo. The whole section is hidden when both sides are zero. |
 
 ### Plan Limits Bar Characters
@@ -64,6 +66,36 @@ After each percentage, a countdown shows when the limit resets:
 - `↻now` — resetting now
 
 Example: `█▄▄------- 5h:18% ↻1h40m 7d:35% ↻3d12h`
+
+### Claudish sessions (non-Anthropic providers)
+
+When Claude Code runs behind [claudish](https://github.com/MadAppGang/claudish), requests go to
+a Qwen / GLM / Kimi / OpenRouter account — **not** the Anthropic one. Anthropic's `5h:`/`7d:`
+numbers would then describe an account the session is not spending, so the whole `plan_limits`
+segment is suppressed, and the background poll of `api.anthropic.com/api/oauth/usage` is skipped
+(it would also leave a stale `~/.claude/.statusline-usage-cache.json` behind for real Anthropic
+sessions to read).
+
+Detection is env-based: the session is treated as claudish-routed when **either**
+`CLAUDISH_ACTIVE_MODEL_NAME` or `CLAUDISH_TOKEN_FILE` is non-empty. Native Anthropic sessions
+set neither and are completely unaffected.
+
+In its place, `claudish_plan` renders the ACTIVE provider's plan windows, read from the JSON
+file at `$CLAUDISH_TOKEN_FILE` (claudish >= 7.29):
+
+```json
+{ "plan": { "label": "GLM Coding Plan",
+            "windows": [ { "id": "5h", "used_pct": 78, "resets_at": "2026-08-03T18:00:00Z" } ] } }
+```
+
+- Any number of windows, any `id` strings — nothing assumes `5h`/`7d`.
+- Same styling as `plan_limits`: teal→red gradient, red background highlight at ≥80%,
+  `↻countdown` from `resets_at`, bar colored by the most-consumed window.
+- `label` renders dim ahead of the bar when present.
+- When the `plan` key is absent (the case for every provider today), **nothing** is rendered —
+  no placeholder and no dangling separator.
+
+Example: `GLM Coding Plan ███████--- 5h:78% ↻48m 7d:16% ↻6d3h`
 
 ### Context Bar Token Count
 

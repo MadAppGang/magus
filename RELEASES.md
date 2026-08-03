@@ -4,6 +4,56 @@
 > The complete history across every plugin and channel lives in `RELEASES.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## Statusline Plugin v2.2.0 (2026-08-03)
+
+**Tag:** `plugins/statusline/v2.2.0`
+
+### Overview
+
+**claudish-aware plan limits.** When a session is proxied through [claudish](https://github.com/MadAppGang/claudish) to a non-Anthropic provider, the statusline no longer reports Anthropic plan usage — those percentages describe an account the session is not spending. In its place, the active provider's own plan windows render when claudish exposes them.
+
+### What's New
+
+- **Routing detection** — `CLAUDISH_ACTIVE_MODEL_NAME` or `CLAUDISH_TOKEN_FILE` in the environment is sufficient proof the session is routed. Either variable alone flips the statusline into claudish mode; `CLAUDISH_ACTIVE_MODEL_NAME` is always exported, `CLAUDISH_TOKEN_FILE` from claudish 7.29.
+- **Provider plan segment** — when `CLAUDISH_TOKEN_FILE` carries a `plan` block, it renders in the same visual language as the Anthropic segment: one bar coloured by the most-consumed window, per-window `id:pct%` labels, `↻` reset countdowns, and the same ≥80% critical highlight.
+
+  ```json
+  "plan": {
+    "label": "GLM Coding Plan",
+    "windows": [ { "id": "5h", "used_pct": 78, "resets_at": "2026-08-03T18:00:00Z" } ]
+  }
+  ```
+
+  The window list is arbitrary-length with arbitrary ids — a provider may expose one window, three, or none, and nothing in the renderer assumes `5h`/`7d`.
+- **`.sections.claudish_plan`** (default `true`) — hides the new segment on its own. The existing `.sections.plan_limits` still suppresses all plan output, claudish or not.
+
+### What's Changed
+
+- **Both Anthropic sources are cut when routed**, not just one. The native `.rate_limits` fields are blanked, *and* the `api.anthropic.com/api/oauth/usage` fallback poll is gated independently.
+
+### Why
+
+The two suppressions have to be independent, and that is the whole subtlety of this release. The fallback poll exists to cover the case where Claude Code's native fields are missing — so blanking those fields is precisely the condition that *triggers* it. Suppressing only the fields would have produced the exact bug it was meant to fix, with an added network round-trip.
+
+Skipping the poll matters for a second reason: it writes `~/.claude/.statusline-usage-cache.json`. Letting a claudish session poll would leave a cache entry that the user's *real* Anthropic sessions later read as their own usage.
+
+Degradation is silent by design. No provider ships the `plan` block today, so the common case renders **nothing** — no placeholder, no dangling separator. The claudish session simply shows no plan segment rather than a wrong one.
+
+### Compatibility
+
+Non-claudish sessions are byte-identical against all 9 shipped fixtures. The routing check is the only new branch on that path, and it is false whenever neither variable is set.
+
+### Updated Files
+
+- `plugins/statusline/scripts/statusline.sh`
+- `plugins/statusline/commands/customize.md`
+- `plugins/statusline/skills/statusline-customization/SKILL.md`
+- `plugins/statusline/plugin.json`
+
+---
+
+---
+
 ## Code Analysis Plugin v4.0.0 (2026-03-03)
 
 **Tag:** `plugins/code-analysis/v4.0.0`

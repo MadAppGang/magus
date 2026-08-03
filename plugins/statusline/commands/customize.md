@@ -26,7 +26,8 @@ allowed-tools: Read, Write, Edit, Bash, AskUserQuestion
         "cost": true,
         "duration": true,
         "context_bar": true,
-        "plan_limits": true
+        "plan_limits": true,
+        "claudish_plan": true
       },
       "context_bar_width": 12,
       "plan_bar_width": 10,
@@ -46,8 +47,9 @@ allowed-tools: Read, Write, Edit, Bash, AskUserQuestion
       worktree    ✓ on
       cost        ✓ on
       duration    ✓ on
-      context_bar ✓ on
-      plan_limits ✓ on
+      context_bar   ✓ on
+      plan_limits   ✓ on
+      claudish_plan ✓ on
 
     Bar Widths:
       context_bar_width: 12

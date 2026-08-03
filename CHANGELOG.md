@@ -4,6 +4,21 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Statusline 2.2.0] - 2026-08-03
+
+### Added
+
+- **claudish-routed session detection** — `CLAUDISH_ACTIVE_MODEL_NAME` or `CLAUDISH_TOKEN_FILE` in the environment is sufficient proof that the session is proxied to a non-Anthropic provider; either variable alone flips the statusline into claudish mode.
+- **Provider plan usage segment** — when `CLAUDISH_TOKEN_FILE` exposes a `plan` block, the active provider's own windows render in place of the Anthropic ones, in the same visual style: one bar coloured by the most-consumed window, per-window `id:pct%` labels, `↻` reset countdowns, and the same ≥80% critical highlight. The window list is arbitrary-length with arbitrary ids — nothing assumes `5h`/`7d`. No provider ships the block today, so the segment renders **nothing** in the common case: no placeholder, no dangling separator.
+- **`.sections.claudish_plan` config key** (default `true`) to hide the new segment on its own. The existing `.sections.plan_limits` still suppresses plan output entirely, claudish or not.
+
+### Changed
+
+- **Anthropic plan limits are suppressed on claudish-routed sessions** — those percentages describe an Anthropic account the session is not spending. Both sources are cut: the native `.rate_limits` fields are blanked, and the `api.anthropic.com/api/oauth/usage` fallback poll is gated *independently*, because blanking the fields alone would have been read as "data missing" and triggered the poll. Skipping the poll also stops it writing `.statusline-usage-cache.json`, which would otherwise leave a stale cache for the user's real Anthropic sessions to read.
+- Non-claudish sessions are byte-identical against all 9 shipped fixtures — the routing check is the only new branch on that path.
+
+---
+
 ## [dev 3.0.0] - 2026-07-30
 
 **Breaking.** `/dev:review` removed (it self-deprecated with "removed in v3.0.0").

@@ -23,6 +23,7 @@ SHOW_COST=true
 SHOW_DURATION=true
 SHOW_CONTEXT_BAR=true
 SHOW_PLAN_LIMITS=true
+SHOW_CLAUDISH_PLAN=true
 SHOW_DIFF=true
 SHOW_VIM=true
 SHOW_AGENT=true
@@ -42,6 +43,7 @@ if [ -f "$CONFIG_FILE" ] && command -v jq >/dev/null 2>&1; then
     "SHOW_DURATION=\(d(.sections.duration; true))",
     "SHOW_CONTEXT_BAR=\(d(.sections.context_bar; true))",
     "SHOW_PLAN_LIMITS=\(d(.sections.plan_limits; true))",
+    "SHOW_CLAUDISH_PLAN=\(d(.sections.claudish_plan; true))",
     "SHOW_DIFF=\(d(.sections.diff; true))",
     "SHOW_VIM=\(d(.sections.vim; true))",
     "SHOW_AGENT=\(d(.sections.agent; true))",
@@ -254,6 +256,25 @@ eval "$(printf '%s' "$input" | jq -r '
   "VIM_MODE=\(s(.vim.mode) | @sh)"
 ' 2>/dev/null)"
 
+# ── claudish routing detection ────────────────────────────
+# claudish proxies Claude Code to a non-Anthropic provider (Qwen/GLM/Kimi/...).
+# It exports CLAUDISH_ACTIVE_MODEL_NAME (always) and CLAUDISH_TOKEN_FILE
+# (claudish >= 7.29); either alone is sufficient proof. When routed, the
+# session spends the PROVIDER's subscription, so every Anthropic plan number
+# below describes an account this session is not touching.
+CLAUDISH_ROUTED=0
+if [ -n "${CLAUDISH_ACTIVE_MODEL_NAME:-}" ] || [ -n "${CLAUDISH_TOKEN_FILE:-}" ]; then
+  CLAUDISH_ROUTED=1
+  # Drop Claude Code's native rate_limits. Blanking here (rather than gating the
+  # renderer) also means the reset countdowns below cost nothing, and section 11's
+  # own emptiness check keeps the separator logic honest — no dangling "|".
+  # The API poll is gated separately: blanking alone would TRIGGER it.
+  FIVE_HR=""
+  SEVEN_DAY=""
+  FIVE_HR_RESET=""
+  SEVEN_DAY_RESET=""
+fi
+
 # ── Shorten model name (with provider detection) ─────────
 MODEL_PREFIX=""
 case "$MODEL_ID" in
@@ -365,7 +386,12 @@ fi
 # ── Plan usage fallback (API poll when native fields absent OR resets missing) ──
 # Claude Code's native rate_limits input provides used_percentage but omits resets_at,
 # so fetch from OAuth API whenever percentages or reset timestamps are missing.
-if { [ -z "$FIVE_HR" ] && [ -z "$SEVEN_DAY" ]; } || { [ -z "$FIVE_HR_RESET" ] && [ -z "$SEVEN_DAY_RESET" ]; }; then
+#
+# Skipped entirely under claudish: the poll asks api.anthropic.com about the
+# Anthropic account, which this session is not spending, and it WRITES
+# .statusline-usage-cache.json — so letting it run would also leave a stale cache
+# for the user's real Anthropic sessions to read.
+if [ "$CLAUDISH_ROUTED" -eq 0 ] && { { [ -z "$FIVE_HR" ] && [ -z "$SEVEN_DAY" ]; } || { [ -z "$FIVE_HR_RESET" ] && [ -z "$SEVEN_DAY_RESET" ]; }; }; then
   USAGE_CACHE="$HOME/.claude/.statusline-usage-cache.json"
   CACHE_TTL=60
   NEED_REFRESH=0
@@ -712,6 +738,98 @@ if [ "$SHOW_PLAN_LIMITS" = "true" ] && { [ -n "$FIVE_HR" ] || [ -n "$SEVEN_DAY" 
     fi
 
     append_section "${PBAR} ${FH_LABEL} ${SD_LABEL}"
+  fi
+fi
+
+# ── 12. claudish provider plan limits ─────────────────────
+# Replacement for section 11 when the session is proxied: the ACTIVE provider's
+# own plan windows, read from claudish's per-session token file.
+#
+# Shape (claudish writes this; absent on every provider today, so the common
+# case must render NOTHING — no placeholder, no dangling separator):
+#   "plan": { "label": "GLM Coding Plan",
+#             "windows": [ { "id": "5h", "used_pct": 78,
+#                            "resets_at": "2026-08-03T18:00:00Z" } ] }
+#
+# The window list is arbitrary-length with arbitrary ids — a provider may expose
+# one window, three, or none, and nothing here assumes "5h"/"7d".
+if [ "$SHOW_PLAN_LIMITS" = "true" ] && [ "$SHOW_CLAUDISH_PLAN" = "true" ] \
+   && [ "$CLAUDISH_ROUTED" -eq 1 ] && [ -n "${CLAUDISH_TOKEN_FILE:-}" ] \
+   && [ -f "$CLAUDISH_TOKEN_FILE" ] && command -v jq >/dev/null 2>&1; then
+
+  CL_PLAN_LABEL=$(jq -r '.plan.label // empty' "$CLAUDISH_TOKEN_FILE" 2>/dev/null)
+  # One TSV row per window: id, integer percent, resets_at.
+  CL_PLAN_ROWS=$(jq -r '
+    (.plan.windows // [])[]
+    | select(type == "object")
+    | select(.used_pct != null)
+    | [ (.id // "?"), (.used_pct | tostring | split(".")[0]), (.resets_at // "") ]
+    | @tsv
+  ' "$CLAUDISH_TOKEN_FILE" 2>/dev/null)
+
+  if [ -n "$CL_PLAN_ROWS" ]; then
+    CL_LABELS=""
+    CL_MAX_PCT=0
+
+    # Heredoc, not a pipe: a piped `while read` runs in a subshell and would
+    # discard CL_LABELS/CL_MAX_PCT on exit.
+    CL_TAB=$(printf '\t')
+    while IFS="$CL_TAB" read -r w_id w_pct w_reset; do
+      [ -z "$w_id" ] && continue
+      # Skip anything non-numeric rather than let arithmetic below explode.
+      case "$w_pct" in ''|*[!0-9]*) continue ;; esac
+
+      [ "$w_pct" -gt "$CL_MAX_PCT" ] 2>/dev/null && CL_MAX_PCT=$w_pct
+
+      W_C=$(plan_color_for_pct "$w_pct")
+      # Same critical highlight rule as the Anthropic labels (≥80%).
+      if [ "$w_pct" -ge 80 ] 2>/dev/null; then
+        W_LABEL="\033[41m${B}\033[97m ${w_id}:${w_pct}%% ${R}"
+      else
+        W_LABEL="${W_C}${D}${w_id}${R}${W_C}:${w_pct}%%${R}"
+      fi
+
+      if [ -n "$w_reset" ]; then
+        W_CD=$(countdown "$w_reset")
+        if [ -n "$W_CD" ]; then
+          if [ "$w_pct" -ge 100 ] 2>/dev/null; then
+            W_LABEL="${W_LABEL} \033[41m${B}\033[97m ↻${W_CD} ${R}"
+          elif [ "$w_pct" -ge 80 ] 2>/dev/null; then
+            W_LABEL="${W_LABEL} ${C_ORANGE}${B}↻${W_CD}${R}"
+          else
+            W_LABEL="${W_LABEL} ${C_GRAY}${D}↻${W_CD}${R}"
+          fi
+        fi
+      fi
+
+      if [ -n "$CL_LABELS" ]; then
+        CL_LABELS="${CL_LABELS} ${W_LABEL}"
+      else
+        CL_LABELS="$W_LABEL"
+      fi
+    done <<CLAUDISH_PLAN_EOF
+$CL_PLAN_ROWS
+CLAUDISH_PLAN_EOF
+
+    if [ -n "$CL_LABELS" ]; then
+      # One bar for the most-consumed window — the Anthropic segment likewise
+      # colors its bar by the max of its two series, and an N-series overlay
+      # would not generalize to an arbitrary window count.
+      if [ "$CL_MAX_PCT" -gt 40 ] 2>/dev/null; then
+        CL_W=$PLAN_BAR_WIDTH
+      else
+        CL_W=5
+      fi
+      CL_F=$((CL_MAX_PCT * CL_W / 100))
+      [ "$CL_F" -gt "$CL_W" ] && CL_F=$CL_W
+      CL_E=$((CL_W - CL_F))
+      CL_BAR_C=$(plan_color_for_pct "$CL_MAX_PCT")
+      CL_BAR="${CL_BAR_C}$(repeat_char "$CL_F" '█')${R}${C_GRAY}${D}$(repeat_char "$CL_E" '-')${R}"
+
+      CL_SECTION="${CL_BAR} ${CL_LABELS}"
+      [ -n "$CL_PLAN_LABEL" ] && CL_SECTION="${C_GRAY}${D}${CL_PLAN_LABEL}${R} ${CL_SECTION}"
+      append_section "$CL_SECTION"
+    fi
   fi
 fi
 
