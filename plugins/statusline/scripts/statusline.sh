@@ -1,5 +1,5 @@
 #!/bin/bash
-# Claude Code Status Line — colorful worktree-aware status with plan limits, reset countdowns & memory usage
+# Claude Code Status Line — colorful worktree-aware status with plan limits, reset countdowns & process RAM usage
 # Receives JSON session data via stdin
 # Part of statusline plugin (MadAppGang/magus)
 
@@ -28,6 +28,9 @@ SHOW_DIFF=true
 SHOW_VIM=true
 SHOW_AGENT=true
 SHOW_SESSION_NAME=true
+# Config key `.sections.memory` toggles the segment labelled `RAM` in the output.
+# The key keeps its original `memory` name for back-compat — renaming it would
+# break every existing ~/.claude/statusline-config.json.
 SHOW_MEMORY=true
 CTX_BAR_WIDTH=12
 PLAN_BAR_WIDTH=10
@@ -584,7 +587,11 @@ if [ "$SHOW_DURATION" = "true" ]; then
   append_section "${C_MAGENTA}${DURATION}${R}"
 fi
 
-# ── 8. Memory usage ──────────────────────────────────────
+# ── 8. RAM usage (Claude Code process resident set) ──────
+# Rendered as `RAM 1.1G`. The label is deliberately "RAM", not "MEM": in this
+# product's context "memory" reads as LLM/agentic memory (MEMORY.md, mnemex)
+# rather than process RAM. The config key stays `memory` / SHOW_MEMORY for
+# back-compat with existing ~/.claude/statusline-config.json files.
 if [ "$SHOW_MEMORY" = "true" ]; then
   CLAUDE_PID=""
   if [ -n "$SESSION_ID" ]; then
@@ -608,15 +615,19 @@ if [ "$SHOW_MEMORY" = "true" ]; then
     MEM_KB=$(ps -o rss= -p "$CLAUDE_PID" 2>/dev/null | tr -d ' ')
     if [ -n "$MEM_KB" ] && [ "$MEM_KB" -gt 0 ] 2>/dev/null; then
       MEM_FMT=$(fmt_mem "$MEM_KB")
-      append_section "${C_CYAN}${D}MEM:${MEM_FMT}${R}"
+      append_section "${C_CYAN}${D}RAM ${MEM_FMT}${R}"
     fi
   fi
 fi
 
 # ── 9. Diff stats ─────────────────────────────────────────
 # Two independent signals, rendered as icon-prefixed chips:
-#   ✨ +N/-M  — lines Claude edited/wrote in this conversation (.cost.total_lines_*)
+#   🤖 +N/-M  — lines Claude edited/wrote in this conversation (.cost.total_lines_*)
 #   ⎇ +N/-M  — uncommitted tracked changes in the worktree (git diff --shortstat)
+# The two glyphs pair semantically: 🤖 (U+1F916) = lines the AI wrote, ⎇ = uncommitted
+# git changes. The previous ✨ was decorative and carried no meaning; the robot says
+# "this came from the agent". 🤖 is double-width, exactly as ✨ was, so the chip's
+# column alignment is unchanged.
 # The git chip uses U+2387 (BRANCHING), plain Unicode — deliberately NOT a Powerline
 # branch glyph (U+E0A0), which lives in the private use area and needs a Nerd Font.
 # Each chip appears only when its counts are non-zero.
@@ -640,7 +651,7 @@ if [ "$SHOW_DIFF" = "true" ]; then
 
   # Session chip (AI edits so far this conversation)
   if [ "${LINES_ADDED:-0}" -gt 0 ] 2>/dev/null || [ "${LINES_REMOVED:-0}" -gt 0 ] 2>/dev/null; then
-    DIFF_SECTION="${C_CYAN}✨${R} ${C_GREEN}+${LINES_ADDED:-0}${R}${C_GRAY}/${R}${C_RED}-${LINES_REMOVED:-0}${R}"
+    DIFF_SECTION="${C_CYAN}🤖${R} ${C_GREEN}+${LINES_ADDED:-0}${R}${C_GRAY}/${R}${C_RED}-${LINES_REMOVED:-0}${R}"
   fi
 
   # Git chip (uncommitted worktree diff)

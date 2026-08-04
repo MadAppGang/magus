@@ -4,6 +4,36 @@
 > The complete history across every plugin and channel lives in `RELEASES.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## Statusline Plugin v2.3.1 (2026-08-04)
+
+**Tag:** `plugins/statusline/v2.3.1`
+
+### Overview
+
+Two label changes, no behaviour change. `MEM:1.1G` becomes **`RAM 1.1G`**, and the Claude-edits diff chip becomes **🤖**. Both are about the same thing: making a glance at the statusline unambiguous.
+
+### What's Changed
+
+- **`MEM:` → `RAM `.** The number is the resident set of the Claude Code process and always has been — but in this product's context the word "memory" reads as LLM/agentic memory (MEMORY.md, mnemex, conversation recall) rather than RAM. The segment now renders `RAM 1.1G`: the label, one space, the value, no colon.
+
+  Deliberately **no emoji or glyph** was added. A brain would deepen exactly the ambiguity being fixed, and a neutral glyph reintroduces the "what does this mean?" question that an explicit three-letter word already answers. Dim-cyan styling, placement, and the value itself are untouched.
+
+- **`✨ +N/-M` → `🤖 +N/-M`** for the Claude-edits chip. The two diff chips now pair semantically: 🤖 (U+1F916) is what the agent wrote in this conversation, `⎇` is what is uncommitted in git. The sparkle was decorative and carried no meaning of its own. Both glyphs are East Asian Wide, so column alignment is byte-for-byte unchanged; colour, `+N/-M` formatting, and the hide-when-zero rule are untouched.
+
+### Compatibility
+
+The config key stays **`.sections.memory`** (`SHOW_MEMORY`) even though the label now reads `RAM`. Renaming it to `ram` would silently break every existing `~/.claude/statusline-config.json` that disables the segment, and the key is not what a user reads on screen. A comment in the script records the intentional mismatch.
+
+All 9 shipped fixtures render correctly; no logic path changed.
+
+### Upgrading
+
+`/statusline:install` deploys a **copy** of the script to `~/.claude/statusline-command.sh`. Updating the plugin does not update that copy — re-run `/statusline:install` to pick this release up.
+
+---
+
+---
+
 ## Statusline Plugin v2.3.0 (2026-08-04)
 
 **Tag:** `plugins/statusline/v2.3.0`

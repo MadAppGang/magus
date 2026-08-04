@@ -4,6 +4,16 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Statusline 2.3.1] - 2026-08-04
+
+### Changed
+
+- **The memory segment is now labelled `RAM`, not `MEM:`** — it renders `RAM 1.1G`. In this product's context "memory" reads as LLM/agentic memory (MEMORY.md, mnemex) rather than the Claude Code process's resident set, which is what the number has always measured. The label is the whole fix: no emoji or glyph, because a brain would deepen the ambiguity and a neutral glyph reintroduces the "what does this mean" question an explicit word answers. Value, colour, and placement are unchanged.
+- **The Claude-edits chip is now `🤖 +N/-M`** (U+1F916 ROBOT FACE) instead of `✨ +N/-M`. The two diff chips now pair semantically — 🤖 is what the agent wrote, `⎇` is what is uncommitted in git — where the sparkle was decorative and carried no meaning. Both glyphs are East Asian Wide, so column alignment is unchanged; colour, `+N/-M` formatting, and the hide-when-zero behaviour are untouched.
+- The config key stays **`.sections.memory`** despite the `RAM` label. Renaming it to `ram` would silently break every existing `~/.claude/statusline-config.json`, and the key is not what the user reads on screen.
+
+---
+
 ## [Statusline 2.3.0] - 2026-08-04
 
 ### Fixed

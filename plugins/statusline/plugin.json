@@ -1,7 +1,7 @@
 {
   "name": "statusline",
-  "version": "2.3.0",
-  "description": "Adaptive statusline. Always-visible usage bars, background highlights for critical states, provider-aware model display, vim mode, separate session and git diff chips, compaction count, memory usage and rate-limit reset countdowns. Suppresses Anthropic plan limits on claudish-routed sessions and renders the active provider's plan usage instead.",
+  "version": "2.3.1",
+  "description": "Adaptive statusline. Always-visible usage bars, background highlights for critical states, provider-aware model display, vim mode, separate session and git diff chips, compaction count, process RAM usage and rate-limit reset countdowns. Suppresses Anthropic plan limits on claudish-routed sessions and renders the active provider's plan usage instead.",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",
