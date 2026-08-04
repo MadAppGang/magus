@@ -48,7 +48,7 @@ All fields are optional. Missing fields use defaults shown above.
 | `context_bar` | Green→Red gradient | Visual bar + token count (90k/200k) + compaction indicator (⟳) |
 | `plan_limits` | Teal→Red gradient | Dual bar: top=5h, bottom=7d plan usage with reset countdowns. **Anthropic only** — suppressed entirely when the session is routed through claudish (see below) |
 | `claudish_plan` | Teal→Red gradient | The ACTIVE provider's plan windows when routed through claudish. Same `id:NN% ↻countdown` style as `plan_limits`, with an arbitrary number of windows. Requires `plan_limits` to also be on |
-| `diff` | Cyan+green/red | Two independent chips rendered side-by-side: `✨ +A/-D` shows lines Claude has added/removed *in this conversation*; `● +A/-D` shows uncommitted lines from `git diff --shortstat` in the current worktree. Each chip is hidden when its counts are zero; the git chip is also hidden when cwd is not a git repo. The whole section is hidden when both sides are zero. |
+| `diff` | Cyan+green/red | Two independent chips rendered side-by-side: `✨ +A/-D` shows lines Claude has added/removed *in this conversation*; `⎇ +A/-D` (U+2387, plain Unicode — no Nerd Font needed) shows uncommitted lines from `git diff --shortstat` in the current worktree. Each chip is hidden when its counts are zero; the git chip is also hidden when cwd is not a git repo. The whole section is hidden when both sides are zero. |
 
 ### Plan Limits Bar Characters
 

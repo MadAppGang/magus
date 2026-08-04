@@ -4,6 +4,23 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Statusline 2.3.0] - 2026-08-04
+
+### Fixed
+
+- **`MEM:` measured the statusline script instead of Claude Code.** `find_claude_pid()` walked up the process tree matching any command containing `claude`, and the statusline is invoked as `bash ~/.claude/statusline-command.sh` — that path contains "claude", so it matched at depth 0 and returned the script's own shell. The segment reported ~2–3 MB and had never once shown Claude Code's memory. Measured on the same machine, same moment: `MEM:2M` before, `MEM:1.0G` after.
+- The matcher now identifies the Claude Code **entrypoint** from `argv[0]`, not from a substring of the whole command line: basename exactly `claude` (covers `claude`, `/usr/local/bin/claude`, `ClaudeCode.app/Contents/MacOS/claude`, and the agent-SDK binary), any command containing `@anthropic-ai/claude-code` (npm install, where `argv[0]` is the interpreter), or the native installer's versioned launcher `.../share/claude/versions/<version>`. Paths that merely contain "claude" — `~/.claude/shell-snapshots/…`, `statusline-command.sh` — are rejected, as is `op run … -- claude …`, which is a launcher rather than Claude itself. The walk continues upward past every rejection, keeping the existing 10-level depth cap.
+- **When no Claude Code process is an ancestor, the segment is omitted** rather than falling back to whatever process happens to be nearby.
+- **The PID cache self-heals.** `~/.claude/.statusline-pid-cache-<session>` entries written by earlier versions hold the wrong PID, and PIDs get recycled; the cached value is now re-validated against the entrypoint test on every render, not merely checked for liveness.
+- **`fmt_mem` printed `1.10G`** for the top ~6 KB of every gigabyte — the tenths digit was `remainder / 104857`, which reaches 10. It is now `remainder * 10 / 1GB`.
+- **Walking more than one level exposed a zsh bug** that would have blanked the segment outright: a bare `local ppid` re-declared on the second loop iteration makes zsh echo `ppid=<value>` to stdout, concatenating it into the function's result. Declared-and-assigned in one statement; verified identical output under both `bash` and `zsh`.
+
+### Changed
+
+- **The uncommitted-changes chip is now `⎇ +N/-M`** (U+2387 BRANCHING) instead of `● +N/-M`, so it reads as git rather than as a generic dot. Plain Unicode — deliberately not the Powerline branch glyph (U+E0A0), which is a private-use codepoint requiring a Nerd Font. Colour and `+N/-M` formatting are unchanged, and the `✨` Claude-edits chip is untouched so the two stay visually distinct.
+
+---
+
 ## [Statusline 2.2.0] - 2026-08-03
 
 ### Added

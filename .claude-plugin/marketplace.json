@@ -354,7 +354,7 @@
       "name": "statusline",
       "source": "./plugins/statusline",
       "description": "Adaptive statusline. Always-visible usage bars, background highlights for critical states, provider-aware model display, vim mode, separate session and git diff chips, compaction count, memory usage and rate-limit reset countdowns. Suppresses Anthropic plan limits on claudish-routed sessions and renders the active provider's plan usage instead.",
-      "version": "2.2.0",
+      "version": "2.3.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -372,6 +372,15 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "2.3.0",
+          "date": "2026-08-04",
+          "kinds": [
+            "Fixed",
+            "Changed"
+          ],
+          "summary": "MEM: measured the statusline script instead of Claude Code"
+        },
         {
           "version": "2.2.0",
           "date": "2026-08-03",

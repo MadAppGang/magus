@@ -4,6 +4,53 @@
 > The complete history across every plugin and channel lives in `RELEASES.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## Statusline Plugin v2.3.0 (2026-08-04)
+
+**Tag:** `plugins/statusline/v2.3.0`
+
+### Overview
+
+**The `MEM:` segment has never shown Claude Code's memory.** It was measuring the statusline script's own shell. On the machine this was found on it reported `MEM:2M` while Claude Code was using 1.09 GB — and the fix changes that reading to `MEM:1.0G`. Alongside it, the uncommitted-changes chip gets a glyph that reads as git.
+
+### What's Fixed
+
+- **`MEM:` measured the wrong process.** `find_claude_pid()` walked up the process tree matching any command containing `claude`. The statusline runs as `bash ~/.claude/statusline-command.sh` — that path contains "claude" — so the very first process examined matched, and the function returned the script's own shell every time. The segment reported 2–3 MB from the day it shipped.
+
+  ```
+  before:  … | MEM:2M   | ✨ +128/-34  ● +159/-21 | …
+  after:   … | MEM:1.0G | ✨ +128/-34  ⎇ +159/-21 | …
+  ```
+
+- **The matcher now identifies the entrypoint, not a substring.** It reads `argv[0]` and accepts three shapes, all verified against live processes:
+
+  | Shape | Example |
+  |---|---|
+  | basename exactly `claude` | `claude --dangerously-skip-permissions`, `/Users/x/.local/bin/claude --resume …`, `…/ClaudeCode.app/Contents/MacOS/claude`, `…/claude-agent-sdk-darwin-arm64/claude` |
+  | command contains `@anthropic-ai/claude-code` | `node …/@anthropic-ai/claude-code/cli.js` — npm install, where `argv[0]` is the interpreter |
+  | native versioned launcher | `/Users/x/.local/share/claude/versions/2.1.220 --session-id …` — `argv[0]` has no "claude" basename at all |
+
+  Rejected: `/bin/zsh -c source ~/.claude/shell-snapshots/…`, `bash ~/.claude/statusline-command.sh`, and `op run … -- claude …` (a launcher wrapping Claude, not Claude). A rejection continues the walk upward instead of ending it, under the same 10-level depth cap as before.
+
+- **No Claude Code ancestor now means no segment.** Previously unreachable, since something always matched; the fallback is explicitly "render nothing" rather than "report whatever is nearby".
+
+- **The PID cache self-heals.** `~/.claude/.statusline-pid-cache-<session>` files written by 2.2.0 and earlier contain the wrong PID. Liveness was the only check, so a wrong-but-alive PID persisted for the life of the session. The cached value is now re-tested against the entrypoint criteria on every render, so existing caches heal on the next paint with no user action.
+
+- **`fmt_mem` could print `1.10G`.** The tenths digit was `(kb % 1GB) / 104857`, which evaluates to 10 in the top ~6 KB of every gigabyte. Now `(kb % 1GB) * 10 / 1GB`, which cannot exceed 9. Verified: 1048576 KB → `1.0G`, 250000 KB → `244M`, 2097151 KB → `1.9G` (was `1.10G`).
+
+- **A latent zsh bug, exposed by walking further.** A bare `local ppid` re-declared on the second loop iteration makes zsh echo `ppid=<value>` to stdout, which was concatenated into the function's return value and blanked the segment. Never visible before, because the old matcher returned at depth 0 and never reached a second iteration. Declared-and-assigned in one statement; output verified identical under `bash` and `zsh`.
+
+### What's Changed
+
+- **The uncommitted-changes chip is `⎇ +N/-M`**, previously `● +N/-M`. A yellow filled circle carried no meaning; U+2387 (BRANCHING) reads as git at a glance. It is plain Unicode, deliberately not the Powerline branch glyph U+E0A0 — that lives in the Unicode private use area and renders as a blank box without a Nerd Font. Colour and number formatting are unchanged, and the `✨` Claude-edits chip is untouched, so the two chips remain easy to tell apart side by side.
+
+### Upgrading
+
+`/statusline:install` deploys a **copy** of the script to `~/.claude/statusline-command.sh`. Updating the plugin does not update that copy — re-run `/statusline:install` to pick this release up.
+
+---
+
+---
+
 ## Statusline Plugin v2.2.0 (2026-08-03)
 
 **Tag:** `plugins/statusline/v2.2.0`

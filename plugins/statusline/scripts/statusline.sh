@@ -189,10 +189,11 @@ fmt_tokens() {
 fmt_mem() {
   local kb=$1
   if [ "$kb" -ge 1048576 ] 2>/dev/null; then
-    # GB range
+    # GB range. The tenths digit is (remainder * 10 / 1GB) — NOT remainder/104857,
+    # which rounds up to 10 in the top ~6 KB of every gigabyte and prints "1.10G".
     local gb=$((kb / 1048576))
-    local remainder=$(( (kb % 1048576) / 104857 ))
-    printf "%d.%dG" "$gb" "$remainder"
+    local tenths=$(( (kb % 1048576) * 10 / 1048576 ))
+    printf "%d.%dG" "$gb" "$tenths"
   elif [ "$kb" -ge 1024 ] 2>/dev/null; then
     # MB range
     local mb=$((kb / 1024))
@@ -202,25 +203,65 @@ fmt_mem() {
   fi
 }
 
-# Find the main Claude/node process PID by walking up the process tree
+# Is this command line a Claude Code ENTRYPOINT process?
+#
+# A substring test for "claude" is not good enough: the statusline itself runs as
+# `bash ~/.claude/statusline-command.sh` (and under a shell snapshot in
+# `~/.claude/shell-snapshots/`), so "claude" appears in the path of the very first
+# process we look at. The old matcher therefore always matched at depth 0 and
+# measured the statusline script's own shell — a few megabytes — never Claude Code.
+#
+# Match on argv[0] instead, which is the executable actually being run:
+#   claude / /usr/local/bin/claude / .../ClaudeCode.app/Contents/MacOS/claude   → basename "claude"
+#   /Users/x/.local/share/claude/versions/2.1.220 --session-id ...              → native versioned launcher
+#   node .../@anthropic-ai/claude-code/cli.js                                   → npm install; argv[0] is the interpreter
+# and reject anything where "claude" only shows up inside a path:
+#   /bin/zsh -c source ~/.claude/shell-snapshots/snapshot-zsh-....sh            → basename "zsh"
+#   bash ~/.claude/statusline-command.sh                                        → basename "bash"
+#   op run --environment ... -- claude --dangerously-skip-permissions           → basename "op" (a launcher, not Claude)
+is_claude_entrypoint() {
+  local cmd=$1
+  [ -n "$cmd" ] || return 1
+
+  # argv[0] is the first whitespace-delimited token; its basename is the executable.
+  local argv0=${cmd%% *}
+  case "${argv0##*/}" in
+    claude) return 0 ;;
+  esac
+
+  # npm/bun install: the interpreter runs the package's entry script.
+  case "$cmd" in
+    *@anthropic-ai/claude-code*) return 0 ;;
+  esac
+
+  # Native installer: argv[0] is a bare version directory under .../share/claude/versions/.
+  case "$argv0" in
+    */claude/versions/*) return 0 ;;
+  esac
+
+  return 1
+}
+
+# Find the Claude Code process PID by walking up the process tree from this script.
+# Returns nothing (exit 1) when no Claude Code entrypoint is an ancestor — the caller
+# then omits the memory segment rather than reporting some unrelated process.
 find_claude_pid() {
   local pid=$$
   local max_depth=10
   local depth=0
-  while [ "$pid" -gt 1 ] && [ "$depth" -lt "$max_depth" ] 2>/dev/null; do
-    local cmd
-    cmd=$(ps -o command= -p "$pid" 2>/dev/null)
-    case "$cmd" in
-      *claude*|*Claude*)
-        # Found a claude process — return its PID
-        printf '%s' "$pid"
-        return 0
-        ;;
-    esac
-    # Walk to parent
-    local ppid
-    ppid=$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d ' ')
-    [ -z "$ppid" ] || [ "$ppid" = "$pid" ] && break
+  while [ "$pid" -gt 1 ] 2>/dev/null && [ "$depth" -lt "$max_depth" ]; do
+    if is_claude_entrypoint "$(ps -o command= -p "$pid" 2>/dev/null)"; then
+      printf '%s' "$pid"
+      return 0
+    fi
+    # Walk to parent; stop if it is missing or self-referential.
+    # Declare-and-assign in one statement: a bare `local ppid` re-declared on the
+    # second iteration makes zsh echo "ppid=<value>" onto stdout, which would end up
+    # concatenated into this function's result.
+    local ppid=$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d ' ')
+    if [ -z "$ppid" ] || [ "$ppid" = "$pid" ]; then
+      break
+    fi
     pid=$ppid
     depth=$((depth + 1))
   done
@@ -549,8 +590,10 @@ if [ "$SHOW_MEMORY" = "true" ]; then
   if [ -n "$SESSION_ID" ]; then
     PID_CACHE="$HOME/.claude/.statusline-pid-cache-${SESSION_ID}"
     CLAUDE_PID=$(cat "$PID_CACHE" 2>/dev/null)
-    # Verify cached PID is still alive
-    if [ -n "$CLAUDE_PID" ] && ! kill -0 "$CLAUDE_PID" 2>/dev/null; then
+    # Re-validate the cached PID: it must still be alive AND still be a Claude Code
+    # entrypoint. Liveness alone is not enough — caches written by older versions of
+    # this script hold the statusline's own shell PID, and PIDs get recycled.
+    if [ -n "$CLAUDE_PID" ] && ! is_claude_entrypoint "$(ps -o command= -p "$CLAUDE_PID" 2>/dev/null)"; then
       CLAUDE_PID=""
       rm -f "$PID_CACHE"
     fi
@@ -573,7 +616,9 @@ fi
 # ── 9. Diff stats ─────────────────────────────────────────
 # Two independent signals, rendered as icon-prefixed chips:
 #   ✨ +N/-M  — lines Claude edited/wrote in this conversation (.cost.total_lines_*)
-#   ● +N/-M  — uncommitted tracked changes in the worktree (git diff --shortstat)
+#   ⎇ +N/-M  — uncommitted tracked changes in the worktree (git diff --shortstat)
+# The git chip uses U+2387 (BRANCHING), plain Unicode — deliberately NOT a Powerline
+# branch glyph (U+E0A0), which lives in the private use area and needs a Nerd Font.
 # Each chip appears only when its counts are non-zero.
 # The git chip is also omitted when cwd is not in a git repository.
 if [ "$SHOW_DIFF" = "true" ]; then
@@ -600,7 +645,7 @@ if [ "$SHOW_DIFF" = "true" ]; then
 
   # Git chip (uncommitted worktree diff)
   if [ "$GIT_LINES_ADDED" -gt 0 ] 2>/dev/null || [ "$GIT_LINES_REMOVED" -gt 0 ] 2>/dev/null; then
-    GIT_CHIP="${C_YELLOW}●${R} ${C_GREEN}+${GIT_LINES_ADDED}${R}${C_GRAY}/${R}${C_RED}-${GIT_LINES_REMOVED}${R}"
+    GIT_CHIP="${C_YELLOW}⎇${R} ${C_GREEN}+${GIT_LINES_ADDED}${R}${C_GRAY}/${R}${C_RED}-${GIT_LINES_REMOVED}${R}"
     if [ -n "$DIFF_SECTION" ]; then
       DIFF_SECTION="${DIFF_SECTION}  ${GIT_CHIP}"
     else
