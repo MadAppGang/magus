@@ -353,8 +353,8 @@
     {
       "name": "statusline",
       "source": "./plugins/statusline",
-      "description": "Adaptive statusline. Always-visible usage bars, background highlights for critical states, provider-aware model display, vim mode, separate session and git diff chips, compaction count, process RAM usage and rate-limit reset countdowns. Suppresses Anthropic plan limits on claudish-routed sessions and renders the active provider's plan usage instead.",
-      "version": "2.3.1",
+      "description": "Adaptive statusline. Always-visible usage bars, critical-state highlights, provider-aware model display, vim mode, session and git diff chips, compaction count, RAM usage, reset countdowns, opt-in Nerd Font icons. On claudish sessions it swaps Anthropic's plan limits for the routed provider's.",
+      "version": "2.4.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -372,6 +372,15 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "2.4.0",
+          "date": "2026-08-04",
+          "kinds": [
+            "Added",
+            "Changed"
+          ],
+          "summary": "icons.nerd_font \u2014 opt-in Nerd Font glyphs"
+        },
         {
           "version": "2.3.1",
           "date": "2026-08-04",
@@ -405,14 +414,6 @@
             "Changed"
           ],
           "summary": "Split the diff section into two chips \u2014 session (\u2728 +A/-D, from Claude Code's cost telemetry)\u2026"
-        },
-        {
-          "version": "2.1.1",
-          "date": "2026-04-16",
-          "kinds": [
-            "Fixed"
-          ],
-          "summary": "Reset countdowns missing when rate-limited \u2014 Claude Code's native rate_limits input supplies\u2026"
         }
       ]
     },

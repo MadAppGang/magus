@@ -4,6 +4,75 @@
 > The complete history across every plugin and channel lives in `RELEASES.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## Statusline Plugin v2.4.0 (2026-08-04)
+
+**Tag:** `plugins/statusline/v2.4.0`
+
+### Overview
+
+Two changes. Nerd Font icons become available as an **opt-in** — the RAM segment can render `󰍛 1.1G` instead of `RAM 1.1G` — and in a linked worktree the branch chip stops duplicating the worktree chip.
+
+### Nerd Font icons — new `icons` config group
+
+```json
+{ "sections": { }, "icons": { "nerd_font": false } }
+```
+
+A new top-level group alongside `sections`, parsed the same way, **`false` by default**. Turn it on and the RAM segment renders `󰍛 1.1G` (U+F035B, nf-md-memory). Exactly one space separates glyph from value either way, so `󰍛 1.1G` and `RAM 1.1G` are spaced identically and nothing else about the segment moves.
+
+The plugin's existing stance — no Nerd Font glyphs — is unchanged by default, and unchanged entirely for every other segment. `⎇` (U+2387), `↻`, `🤖`, `⟳` and `⚡` were chosen precisely because they are plain Unicode or emoji that render in any modern font; they are not governed by this key and none of them converts in this release.
+
+### Why the install flow asks instead of detecting
+
+`/statusline:install` gains a probe: it scans `~/Library/Fonts`, `/Library/Fonts` and `/System/Library/Fonts` for filenames matching `nerd|NF-|powerline`. It takes ~17 ms and needs nothing installed — deliberately not `fc-list`, which is usually absent on macOS. No match and the question never appears; `false` is written and the install continues.
+
+A match is **not** treated as an answer, because Nerd Font coverage is partial and varies by font. Measured on a machine with 0xProto Nerd Font installed:
+
+| Codepoint | Set | Result |
+|---|---|---|
+| `U+F035B` nf-md-memory | Material Design | renders |
+| `U+F2DB` nf-fa-microchip | Font Awesome | **blank** |
+| `U+F4BC` nf-oct-cpu | Octicons | **blank** |
+
+Blank, not tofu — which is the worse failure, because a segment that silently vanishes reads as a bug rather than as a missing glyph. So the install prints a sample line **containing the real glyph** and asks the user to confirm they can see it, offering "a box, or blank space" as an explicit answer so nobody skimming for a box says yes to an empty gap. Only Material Design (`nf-md-*`) glyphs are used, as the best-covered set.
+
+The answer is merged into `~/.claude/statusline-config.json` — existing keys such as `sections` and `theme` are preserved, never overwritten. That file is read from `$HOME` for both project- and global-scoped installs.
+
+Adding a glyph to another segment is a two-line change: declare it in the icon table at the top of the helpers, then call `icon_or "$ICON_X" "TEXT"` at the render site. No inline `$ICONS_NERD_FONT` branches.
+
+### Branch and worktree chips no longer duplicate
+
+In a linked worktree, both chips rendered — and a worktree directory is conventionally named after its branch, so they said the same thing twice:
+
+```
+* Opus | worktree-mcp-failed-auth |  wt:mcp-failed-auth  | ...
+         \___ branch chip ______/    \___ worktree chip _/
+```
+
+Now:
+
+| Where you are | What renders |
+|---|---|
+| Main worktree | Branch chip only — unchanged |
+| Linked worktree | Worktree chip only |
+| Linked worktree, `sections.worktree: false` | Branch chip returns |
+
+The branch chip is suppressed by whether the worktree chip is **actually rendered**, not merely by being inside a worktree. That is what makes the third row work: a user who has turned the worktree chip off must not lose both chips and end up with no git context at all. Both `sections.branch` and `sections.worktree` are honoured exactly as before, and neither chip's colour or formatting changed.
+
+**Information trade-off, worth knowing before you upgrade:** when a worktree's directory name differs from its branch — worktree `mcp-failed-auth` checked out on `feature/xyz` — you now see only the directory name, and the branch name is hidden. That is the intended behaviour, but it is a real loss of information in that case. Set `sections.worktree: false` to get the branch name back instead.
+
+### Compatibility
+
+Existing config files keep working untouched: `icons` is a separate group, so a file containing only `sections` behaves exactly as it did, and an absent `icons.nerd_font` resolves to `false` through the same `d(v; fallback)` helper every other key uses. No key was renamed.
+
+### Upgrading
+
+`/statusline:install` deploys a **copy** of the script to `~/.claude/statusline-command.sh`. Updating the plugin does not update that copy — re-run `/statusline:install` to pick this release up. Re-running it is also how you get asked the Nerd Font question.
+
+---
+
+---
+
 ## Statusline Plugin v2.3.1 (2026-08-04)
 
 **Tag:** `plugins/statusline/v2.3.1`

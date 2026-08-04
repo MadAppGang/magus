@@ -28,28 +28,112 @@ user-invocable: false
     "plan_limits": true,   // Plan limit bars with reset countdowns (master switch)
     "claudish_plan": true  // Provider plan bars when the session is routed via claudish
   },
+  "icons": {
+    "nerd_font": false     // Opt in to Nerd Font glyphs (RAM → 󰍛). Default OFF
+  },
   "context_bar_width": 12, // Width of context bar in chars (8-20)
   "plan_bar_width": 10,    // Width of plan limit bar in chars (6-16)
   "theme": "default"       // Color theme name
 }
 ```
 
-All fields are optional. Missing fields use defaults shown above.
+All fields are optional. Missing fields use defaults shown above. `sections` and
+`icons` are independent groups — setting one never affects the other.
 
 ## Sections Reference
 
 | Section | Color | Description |
 |---------|-------|-------------|
 | `model` | Cyan (bold) | Shortened model name with `*` prefix |
-| `branch` | Green | Current git branch or short commit hash |
-| `worktree` | Orange (bold) | `wt:name` — only shown when inside a linked worktree |
+| `branch` | Green | Current git branch or short commit hash. **Hidden while the worktree chip is showing** — see below |
+| `worktree` | Orange (bold) | `wt:name` — only shown when inside a linked worktree. Replaces the branch chip rather than sitting next to it |
 | `cost` | Yellow | Cumulative session cost in USD |
 | `duration` | Magenta | Session duration in minutes/seconds |
 | `context_bar` | Green→Red gradient | Visual bar + token count (90k/200k) + compaction indicator (⟳) |
 | `plan_limits` | Teal→Red gradient | Dual bar: top=5h, bottom=7d plan usage with reset countdowns. **Anthropic only** — suppressed entirely when the session is routed through claudish (see below) |
 | `claudish_plan` | Teal→Red gradient | The ACTIVE provider's plan windows when routed through claudish. Same `id:NN% ↻countdown` style as `plan_limits`, with an arbitrary number of windows. Requires `plan_limits` to also be on |
 | `diff` | Cyan+green/red | Two independent chips rendered side-by-side: `🤖 +A/-D` (U+1F916) shows lines Claude has added/removed *in this conversation*; `⎇ +A/-D` (U+2387, plain Unicode — no Nerd Font needed) shows uncommitted lines from `git diff --shortstat` in the current worktree. The glyphs pair semantically — 🤖 is what the agent wrote, ⎇ is what is uncommitted in git. Each chip is hidden when its counts are zero; the git chip is also hidden when cwd is not a git repo. The whole section is hidden when both sides are zero. |
-| `memory` | Dim cyan | `RAM 1.1G` — resident memory of the Claude Code process. Labelled **RAM**, not MEM, so it is not misread as LLM/agentic memory. The config key stays `memory` for back-compat. |
+| `memory` | Dim cyan | `RAM 1.1G` — resident memory of the Claude Code process. Labelled **RAM**, not MEM, so it is not misread as LLM/agentic memory. The config key stays `memory` for back-compat. Renders as `󰍛 1.1G` when `icons.nerd_font` is on. |
+
+### Branch and worktree: exactly one chip
+
+A worktree directory is conventionally named after its branch, so rendering both chips
+printed the same string twice:
+
+```
+* Opus | worktree-mcp-failed-auth |  wt:mcp-failed-auth  | ...
+         \___ branch chip ______/    \___ worktree chip _/
+```
+
+The rule:
+
+| Where you are | What renders |
+|---|---|
+| Main worktree | Branch chip only (no worktree chip has ever rendered here) |
+| Linked worktree | Worktree chip only — the branch chip is suppressed |
+| Linked worktree, `sections.worktree: false` | Branch chip returns |
+
+The branch chip is suppressed by whether the worktree chip is **actually rendered**, not
+merely by being inside a worktree. That is what makes the third row work: a user who
+turned the worktree chip off must not lose both and end up with no git context at all.
+
+**Trade-off:** when a worktree's directory name differs from its branch — worktree
+`mcp-failed-auth` checked out on `feature/xyz` — only the directory name is shown and
+the branch is hidden. Set `sections.worktree: false` to get the branch name back.
+
+Both keys are honoured exactly as before, and neither chip's colour or formatting changed.
+
+## Icons (Nerd Font opt-in)
+
+```json
+{ "icons": { "nerd_font": false } }
+```
+
+**Default: `false`.** When on, segments that have a glyph render it instead of their
+text label. One space separates glyph and value either way, so the two forms are
+spaced identically:
+
+| Segment | `nerd_font: false` | `nerd_font: true` | Codepoint |
+|---|---|---|---|
+| `memory` | `RAM 1.1G` | `󰍛 1.1G` | `U+F035B` (nf-md-memory) |
+
+Nothing else changes. `⎇`, `↻`, `🤖`, `⟳` and `⚡` are plain Unicode or emoji, render
+in any modern font, and are always on — they are not governed by this key.
+
+### Why it is opt-in, and why "I have a Nerd Font" is not enough
+
+Nerd Font glyphs live in the Unicode private use areas, so an unpatched font renders
+them as tofu (□) or as **blank space** — a segment that silently vanishes.
+
+Coverage is also **partial and varies by font**. Measured on a machine with 0xProto
+Nerd Font installed:
+
+| Codepoint | Set | Result |
+|---|---|---|
+| `U+F035B` nf-md-memory | Material Design | renders |
+| `U+F2DB` nf-fa-microchip | Font Awesome | **blank** |
+| `U+F4BC` nf-oct-cpu | Octicons | **blank** |
+
+So the presence of a patched font in `~/Library/Fonts` cannot decide this — only the
+user looking at the specific glyph can. `/statusline:install` probes the font
+directories by filename (`nerd|NF-|powerline`; `fc-list` is not used, it is usually
+absent on macOS), and when it finds something it prints the real glyph in a sample
+line and asks the user to confirm they see an icon rather than a box or a gap. No
+patched font found means the question is skipped and `false` is written.
+
+Only Material Design (`nf-md-*`) glyphs are used, as the best-covered set.
+
+### Adding a glyph to another segment
+
+`scripts/statusline.sh` has an icon table near the top of the helpers:
+
+```bash
+ICON_RAM='󰍛'  # U+F035B nf-md-memory
+```
+
+Add the pair there, then call `icon_or "$ICON_X" "TEXT"` at the render site. Do not
+branch on `$ICONS_NERD_FONT` inline — the helper keeps the fallback and the glyph in
+one place, and keeps the single-space rule uniform.
 
 ### Plan Limits Bar Characters
 

@@ -29,11 +29,17 @@ allowed-tools: Read, Write, Edit, Bash, AskUserQuestion
         "plan_limits": true,
         "claudish_plan": true
       },
+      "icons": {
+        "nerd_font": false
+      },
       "context_bar_width": 12,
       "plan_bar_width": 10,
       "theme": "default"
     }
     ```
+
+    Preserve any keys the file already has that are not listed here — merge, never
+    replace the file wholesale.
   </step>
 
   <step number="2" name="Show current config">
@@ -56,6 +62,7 @@ allowed-tools: Read, Write, Edit, Bash, AskUserQuestion
       plan_bar_width:    10
 
     Theme: default
+    Nerd Font icons: off
     ```
   </step>
 
@@ -66,7 +73,8 @@ allowed-tools: Read, Write, Edit, Bash, AskUserQuestion
       1. "Toggle sections" — turn individual sections on/off
       2. "Change theme" — switch between default, monochrome, minimal, neon
       3. "Change bar widths" — adjust context bar or plan bar width
-      4. "Reset to defaults" — restore all settings to defaults
+      4. "Nerd Font icons" — render the RAM segment as a glyph instead of a label
+      5. "Reset to defaults" — restore all settings to defaults
 
     Based on choice:
 
@@ -82,6 +90,23 @@ allowed-tools: Read, Write, Edit, Bash, AskUserQuestion
     **Change bar widths:** Use AskUserQuestion:
     - "Context bar width" — then ask for number (8-20, default 12)
     - "Plan bar width" — then ask for number (6-16, default 10)
+
+    **Nerd Font icons:** print the sample line below — it carries the real glyph,
+    so the user is judging what they will actually get, not a description of it:
+
+    ```
+    With icons:     󰍛 1.1G
+    Without icons:  RAM 1.1G
+    ```
+
+    Then use AskUserQuestion:
+    - question: "In the line above, do you see a RAM-stick icon before `1.1G`?"
+    - options: "Yes, I see an icon" → `icons.nerd_font: true`;
+      "No — a box, or blank space" → `icons.nerd_font: false`
+
+    Offer "blank space" explicitly: a missing Nerd Font glyph frequently renders as
+    nothing at all rather than as tofu, and Nerd Font coverage is partial — a user
+    whose font resolves other glyphs may still get a gap for this one.
 
     **Reset to defaults:** Restore the default config from step 1.
   </step>

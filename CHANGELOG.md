@@ -4,6 +4,24 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Statusline 2.4.0] - 2026-08-04
+
+### Added
+
+- **`icons.nerd_font` — opt-in Nerd Font glyphs.** A new top-level config group, parsed exactly like `sections` with the same `d(v; fallback)` helper, and **`false` by default**: `{ "sections": { … }, "icons": { "nerd_font": false } }`. When on, the RAM segment renders `󰍛 1.1G` (U+F035B, nf-md-memory) instead of `RAM 1.1G`. Exactly one space separates glyph from value either way, so the two forms are spaced identically and nothing else about the segment moves.
+- **The plugin's no-Nerd-Font stance is unchanged by default.** Powerline and PUA codepoints need a patched font and render as tofu otherwise, which is why `⎇` (U+2387), `↻`, `🤖`, `⟳` and `⚡` were chosen: they are plain Unicode or emoji, render in any modern font, and are **not** governed by this key. No other segment converts in this release.
+- **`/statusline:install` now probes for a patched font and asks.** It scans `~/Library/Fonts`, `/Library/Fonts` and `/System/Library/Fonts` for filenames matching `nerd|NF-|powerline` — ~17 ms, no dependencies, and deliberately not `fc-list`, which is usually absent on macOS. No match means the question is skipped entirely and `false` is written. A match means the sample line is printed **containing the real glyph** and the user is asked to confirm they see an icon rather than a box or a gap. The answer is merged into `~/.claude/statusline-config.json`, never written over it.
+- **Why the font inventory alone cannot decide it:** Nerd Font coverage is **partial and varies by font**. Measured on a machine with 0xProto Nerd Font installed, `U+F035B` (nf-md-memory) renders while `U+F2DB` (nf-fa-microchip) and `U+F4BC` (nf-oct-cpu) come out as **blank space** — not tofu, which is worse, because a segment that silently vanishes looks like a bug rather than a missing glyph. Only Material Design (`nf-md-*`) glyphs are used, as the best-covered set, and "blank space" is offered as an explicit answer in the prompt so a user skimming for a box does not answer yes to an empty gap.
+- The glyph is declared in an icon table with an `icon_or "$ICON_X" "TEXT"` helper rather than an inline branch, so a future segment opts in through the same key without duplicating the fallback rule.
+
+### Changed
+
+- **In a linked worktree, only the worktree chip renders — the branch chip is suppressed.** A worktree directory is conventionally named after its branch, so both chips printed essentially the same string twice: `* Opus | worktree-mcp-failed-auth | wt:mcp-failed-auth | …`. In the main worktree nothing changes: `WORKTREE_NAME` is empty there, so the branch chip renders as it always has.
+- The suppression is gated on whether the worktree chip is **actually rendered** (`sections.worktree` on **and** a worktree name present), not merely on being inside a worktree. That distinction is the point: a user with `sections.worktree: false` still gets their branch chip, instead of losing both and seeing no git context at all. Both `sections.branch` and `sections.worktree` are honoured exactly as before, and neither chip's colour or formatting changed.
+- **Known trade-off:** when a worktree's directory name differs from its branch — worktree `mcp-failed-auth` checked out on `feature/xyz` — only the directory name is shown and the branch name is hidden. `sections.worktree: false` brings the branch back.
+
+---
+
 ## [Statusline 2.3.1] - 2026-08-04
 
 ### Changed

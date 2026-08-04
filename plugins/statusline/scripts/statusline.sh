@@ -35,6 +35,15 @@ SHOW_MEMORY=true
 CTX_BAR_WIDTH=12
 PLAN_BAR_WIDTH=10
 THEME="default"
+# ── Icons ────────────────────────────────────────────────
+# `icons.nerd_font` is OPT-IN and defaults to false. Nerd Font glyphs live in the
+# Unicode private use areas, so an unpatched font renders them as tofu (□) or, worse,
+# as blank space — a segment that silently vanishes. Coverage is also PARTIAL and
+# varies by font: on a machine with 0xProto Nerd Font installed, U+F035B (nf-md-memory)
+# renders while U+F2DB (nf-fa-microchip) and U+F4BC (nf-oct-cpu) come out blank. So
+# "the user has a Nerd Font" is NOT sufficient to enable this — /statusline:install
+# renders the actual glyph and asks the user to confirm they can see it.
+ICONS_NERD_FONT=false
 
 if [ -f "$CONFIG_FILE" ] && command -v jq >/dev/null 2>&1; then
   eval "$(jq -r '
@@ -52,6 +61,7 @@ if [ -f "$CONFIG_FILE" ] && command -v jq >/dev/null 2>&1; then
     "SHOW_AGENT=\(d(.sections.agent; true))",
     "SHOW_SESSION_NAME=\(d(.sections.session_name; true))",
     "SHOW_MEMORY=\(d(.sections.memory; true))",
+    "ICONS_NERD_FONT=\(d(.icons.nerd_font; false))",
     "CTX_BAR_WIDTH=\(d(.context_bar_width; 12))",
     "PLAN_BAR_WIDTH=\(d(.plan_bar_width; 10))",
     "THEME=\(d(.theme; "default"))"
@@ -108,6 +118,31 @@ apply_theme() {
   esac
 }
 apply_theme
+
+# ── Icon table ────────────────────────────────────────────
+# One entry per segment that has BOTH a Nerd Font glyph and a plain-text fallback.
+# Add new pairs here and call `icon_or "$ICON_X" "TEXT"` at the render site — do not
+# branch on $ICONS_NERD_FONT inline.
+#
+# Only Material Design (`nf-md-*`) glyphs are used: they are the best-covered set
+# across patched fonts. Font Awesome (`nf-fa-*`) and Octicons (`nf-oct-*`) codepoints
+# were measured rendering as BLANK on 0xProto Nerd Font, which is indistinguishable
+# from a broken segment.
+#
+# Glyphs that are plain Unicode or emoji (⎇ U+2387, ↻ U+21BB, 🤖 U+1F916, ⟳ U+27F3, ⚡)
+# are NOT in this table: they render in any modern font and are always on.
+ICON_RAM='󰍛'  # U+F035B nf-md-memory
+
+# Return the Nerd Font glyph when the user has opted in, else the plain-text label.
+# Callers always follow the result with exactly one space, so `󰍛 1.1G` and `RAM 1.1G`
+# are spaced identically.
+icon_or() {
+  if [ "$ICONS_NERD_FONT" = "true" ]; then
+    printf '%s' "$1"
+  else
+    printf '%s' "$2"
+  fi
+}
 
 # ── Helpers ───────────────────────────────────────────────
 color_for_pct() {
@@ -522,13 +557,31 @@ if [ "$SHOW_AGENT" = "true" ] && [ -n "$AGENT_NAME" ]; then
   append_section "${C_CYAN}→${AGENT_NAME}${R}"
 fi
 
-# ── 3. Git branch (background highlight) ─────────────────
-if [ "$SHOW_BRANCH" = "true" ] && [ -n "$BRANCH" ]; then
+# ── 3+4. Git branch / worktree name — exactly ONE chip ───
+# In a linked worktree the two chips said the same thing twice, because a worktree
+# directory is conventionally named after its branch:
+#   * Opus | worktree-mcp-failed-auth | wt:mcp-failed-auth | …
+# So: linked worktree → worktree chip only; main worktree → branch chip only
+# (WORKTREE_NAME is empty there, so no worktree chip has ever rendered).
+#
+# The branch chip is suppressed by whether the worktree chip is ACTUALLY RENDERED,
+# not merely by WORKTREE_NAME being set. With `sections.worktree: false` the worktree
+# chip is off, so the branch chip must come back — gating on WORKTREE_NAME alone would
+# leave that user with no git context at all.
+#
+# Trade-off, deliberate: when a worktree's directory name differs from its branch
+# (worktree `mcp-failed-auth` checked out on `feature/xyz`), only the directory name is
+# shown and the branch is hidden.
+WORKTREE_CHIP=0
+if [ "$SHOW_WORKTREE" = "true" ] && [ -n "$WORKTREE_NAME" ]; then
+  WORKTREE_CHIP=1
+fi
+
+if [ "$SHOW_BRANCH" = "true" ] && [ -n "$BRANCH" ] && [ "$WORKTREE_CHIP" -eq 0 ]; then
   append_section "\033[48;5;22m\033[97m ${BRANCH} ${R}"
 fi
 
-# ── 4. Worktree name (background highlight) ──────────────
-if [ "$SHOW_WORKTREE" = "true" ] && [ -n "$WORKTREE_NAME" ]; then
+if [ "$WORKTREE_CHIP" -eq 1 ]; then
   append_section "\033[48;5;130m${B}\033[97m wt:${WORKTREE_NAME} ${R}"
 fi
 
@@ -588,10 +641,11 @@ if [ "$SHOW_DURATION" = "true" ]; then
 fi
 
 # ── 8. RAM usage (Claude Code process resident set) ──────
-# Rendered as `RAM 1.1G`. The label is deliberately "RAM", not "MEM": in this
-# product's context "memory" reads as LLM/agentic memory (MEMORY.md, mnemex)
-# rather than process RAM. The config key stays `memory` / SHOW_MEMORY for
-# back-compat with existing ~/.claude/statusline-config.json files.
+# Rendered as `RAM 1.1G`, or `󰍛 1.1G` when `icons.nerd_font` is on. The text label
+# is deliberately "RAM", not "MEM": in this product's context "memory" reads as
+# LLM/agentic memory (MEMORY.md, mnemex) rather than process RAM. The config key
+# stays `memory` / SHOW_MEMORY for back-compat with existing
+# ~/.claude/statusline-config.json files.
 if [ "$SHOW_MEMORY" = "true" ]; then
   CLAUDE_PID=""
   if [ -n "$SESSION_ID" ]; then
@@ -615,7 +669,8 @@ if [ "$SHOW_MEMORY" = "true" ]; then
     MEM_KB=$(ps -o rss= -p "$CLAUDE_PID" 2>/dev/null | tr -d ' ')
     if [ -n "$MEM_KB" ] && [ "$MEM_KB" -gt 0 ] 2>/dev/null; then
       MEM_FMT=$(fmt_mem "$MEM_KB")
-      append_section "${C_CYAN}${D}RAM ${MEM_FMT}${R}"
+      RAM_LABEL=$(icon_or "$ICON_RAM" "RAM")
+      append_section "${C_CYAN}${D}${RAM_LABEL} ${MEM_FMT}${R}"
     fi
   fi
 fi
