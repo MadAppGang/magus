@@ -147,7 +147,7 @@ tools: Read, Write, Glob, Grep
     2. {next steps}
 
     ---
-    *Ready for: /dev:feature {feature_name}*
+    *Ready for: /dev:dev {feature_name}*
     ```
   </tasks_structure>
 </instructions>

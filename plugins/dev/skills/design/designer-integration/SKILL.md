@@ -41,7 +41,7 @@ When designer is available, delegate pixel-level validation from `dev:frontend`:
 
 ```
 Task(
-  subagent_type: "designer:review",
+  subagent_type: "designer:design-review",
   prompt: "Compare reference design at {REFERENCE_PATH} against implementation at {IMPL_URL}. Viewport: 1440x900."
 )
 ```
@@ -56,8 +56,8 @@ Or use the designer:review command directly:
 
 | dev Component | Without designer | With designer |
 |--------------|-----------------|---------------|
-| `dev:frontend` agent | Manual Chrome MCP screenshots | Delegate to `designer:review` |
-| `dev:browser-debugging` skill | Manual visual check | `designer:review` for diff report |
+| `dev:frontend` agent | Manual Chrome MCP screenshots | Delegate to `designer:design-review` agent |
+| `dev:browser-debugging` skill | Manual visual check | `designer:design-review` agent for diff report |
 | Any UI implementation | Describe visual issues | Structured pixel-diff + semantic report |
 
 ## Output Format

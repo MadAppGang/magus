@@ -112,5 +112,5 @@ For automated browser testing and headless screenshot capture, install the brows
 Without browser-use, you can still:
 - Use claude-in-chrome for screenshot capture (requires Chrome extension)
 - Use Gemini with manually provided screenshots for visual analysis
-- Use designer:review for pixel-diff validation (requires designer plugin)
+- Use the designer:design-review agent for pixel-diff validation (requires designer plugin)
 ```

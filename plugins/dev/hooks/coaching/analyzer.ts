@@ -430,7 +430,7 @@ function applyRules(
       }
 
       case "skipped-multi-model-review": {
-        // Detect /dev:feature sessions that skipped multi-model review.
+        // Detect /dev:dev sessions that skipped multi-model review.
         // Signal: has dev:architect AND dev:developer Task calls (feature session)
         // but NO AskUserQuestion calls AND NO claudish Bash calls.
         const architectTasks = taskCalls.filter(
@@ -446,7 +446,7 @@ function applyRules(
           String(c.input.command ?? "").includes("claudish")
         );
 
-        // Only fire if this looks like a /dev:feature session (both agents present)
+        // Only fire if this looks like a /dev:dev session (both agents present)
         // AND the user was never asked about model selection
         // AND no claudish calls were made for external reviews
         if (

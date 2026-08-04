@@ -94,7 +94,7 @@ allowed-tools: Read, Write, Edit, Bash, Glob, AskUserQuestion
     ## Dev Plugin Setup Complete
 
     **Added to CLAUDE.md:**
-    - Task Routing table (6 agent delegation rules + 5 skill routing rules)
+    - Task Routing table (5 agent delegation rules + 5 skill routing rules)
 
     **What this does:**
     - Routes complex tasks to specialized agents automatically

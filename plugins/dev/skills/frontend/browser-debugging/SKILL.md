@@ -617,14 +617,14 @@ claude /plugin list 2>/dev/null | grep -q "designer" && echo "available" || echo
 ```
 
 **Pattern: Delegate pixel-diff to designer**
-- Use `designer:review` agent for structured diff reports (pixel + AI semantic)
+- Use `designer:design-review` agent for structured diff reports (pixel + AI semantic)
 - Use manual Chrome MCP screenshot comparison only when designer is not installed
-- Prefer `designer:review` for Figma-to-implementation validation
+- Prefer `designer:design-review` for Figma-to-implementation validation
 
 ```
 # When designer is available, replace manual visual comparison with:
 Task(
-  subagent_type: "designer:review",
+  subagent_type: "designer:design-review",
   prompt: "Compare reference at {REFERENCE_PATH} against implementation at {IMPL_URL}. Viewport: 1440x900."
 )
 ```

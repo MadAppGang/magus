@@ -51,7 +51,7 @@ allowed-tools: Read, Write, Edit, AskUserQuestion, Bash
           1. Show the learning with evidence
           2. Read current CLAUDE.md
           3. Find or create `## Learned Preferences` section
-          4. Find or create the appropriate subsection (Code Style, Project Structure, Tools &amp; Commands, Conventions, Workflow)
+          4. Find or create the appropriate subsection (Code Style, Project Structure, Tools & Commands, Conventions, Workflow)
           5. Check the current line count in the `## Learned Preferences` section against the 200-line budget before adding. Skip any learning that would exceed budget and warn the user.
           6. Add the learning as a single line with metadata comment:
              ```markdown
@@ -85,7 +85,7 @@ allowed-tools: Read, Write, Edit, AskUserQuestion, Bash
           Read CLAUDE.md and extract all lines in the `## Learned Preferences` section.
           Parse metadata comments to get dates, session IDs, and sources.
           A metadata comment has the format:
-          `&lt;!-- learned: {YYYY-MM-DD} session: {session_id_first_8} source: {type} --&gt;`
+          `<!-- learned: {YYYY-MM-DD} session: {session_id_first_8} source: {type} -->`
           Pair each comment with the rule line immediately following it.
         </step>
         <step>

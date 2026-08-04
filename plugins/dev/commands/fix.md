@@ -1,7 +1,7 @@
 ---
 name: fix
 description: "Production-grade TDD bug fix — dual multimodel review gates, deployment monitoring, and full validation"
-allowed-tools: Task, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep, Write, Edit, Skill, mcp__plugin_claudish__team, mcp__plugin_claudish__run_prompt
+allowed-tools: Task, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep, Write, Edit, Skill, mcp__plugin_claudish_claudish__team, mcp__plugin_claudish_claudish__run_prompt
 skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-development, dev:testing-strategies, dev:verification-before-completion, multimodel:error-recovery, multimodel:quality-gates
 ---
 

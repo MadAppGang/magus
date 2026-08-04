@@ -340,9 +340,9 @@ skills: dev:context-detection, dev:universal-patterns, dev:api-design, multimode
           1. Functional Requirements - % complete, gaps
           2. Non-Functional Requirements - % complete, gaps
           3. User Experience - % complete, gaps
-          4. Edge Cases &amp; Errors - % complete, gaps
+          4. Edge Cases & Errors - % complete, gaps
           5. Integration Points - % complete, gaps
-          6. Constraints &amp; Trade-offs - % complete, gaps
+          6. Constraints & Trade-offs - % complete, gaps
           7. Technical Preferences - % complete, gaps
 
           Initial coverage: 0% for all if no existing spec."
@@ -443,7 +443,7 @@ skills: dev:context-detection, dev:universal-patterns, dev:api-design, multimode
           g. Update checkpoint in session-meta.json (via scribe)
 
           h. Check completion criteria:
-             - All categories at &gt;= 70% coverage?
+             - All categories at >= 70% coverage?
              - User signals "that's enough"?
              - Max rounds reached?
 
@@ -466,7 +466,7 @@ skills: dev:context-detection, dev:universal-patterns, dev:api-design, multimode
         </step>
         <step>Mark PHASE 2 as completed</step>
       </steps>
-      <quality_gate>All categories &gt;= 70% OR user approves to proceed</quality_gate>
+      <quality_gate>All categories >= 70% OR user approves to proceed</quality_gate>
     </phase>
 
     <phase number="3" name="Asset Collection">
@@ -503,7 +503,7 @@ skills: dev:context-detection, dev:universal-patterns, dev:api-design, multimode
              - Apple HIG
              - Tailwind UI / Shadcn
              - Ant Design
-             - Custom (will use /dev:create-style)
+             - Custom (will use the designer plugin's /designer:create-style)
              - None / TBD
 
           4. **Example Apps / Inspiration**
@@ -658,7 +658,7 @@ skills: dev:context-detection, dev:universal-patterns, dev:api-design, multimode
           ### Figma Designs
           {Links from assets}
 
-          ## Edge Cases &amp; Error Handling
+          ## Edge Cases & Error Handling
 
           ### Error Scenarios
           {From interview - categorized}
@@ -740,7 +740,7 @@ skills: dev:context-detection, dev:universal-patterns, dev:api-design, multimode
       <quality_gate>User approves specification</quality_gate>
     </phase>
 
-    <phase number="5" name="Task Breakdown &amp; Next Steps">
+    <phase number="5" name="Task Breakdown & Next Steps">
       <objective>Create implementation plan and propose next commands</objective>
       <steps>
         <step>Mark PHASE 5 as in_progress</step>
@@ -791,8 +791,8 @@ skills: dev:context-detection, dev:universal-patterns, dev:api-design, multimode
           - /dev:dev {feature_name} - "To start implementing"
 
           If design assets collected:
-          - /dev:create-style - "To configure project design style"
-          - /dev:ui-design - "To review UI against design system"
+          - /designer:create-style - "To configure project design style" (designer plugin)
+          - /designer:ui - "To review UI against design system" (designer plugin)
 
           If complex architecture:
           - /dev:architect {topic} - "For detailed technical design"
@@ -828,8 +828,8 @@ skills: dev:context-detection, dev:universal-patterns, dev:api-design, multimode
       - "What feature request would you refuse, even if users asked for it?"
 
       **5 Whys triggers:**
-      - When user says "users need X" -&gt; "Why do they need X specifically?"
-      - When user describes workflow -&gt; "Why that order? What breaks if different?"
+      - When user says "users need X" -> "Why do they need X specifically?"
+      - When user describes workflow -> "Why that order? What breaks if different?"
     </category>
 
     <category name="Non-Functional Requirements" priority="high" min_questions="3">
@@ -871,7 +871,7 @@ skills: dev:context-detection, dev:universal-patterns, dev:api-design, multimode
       - "You mentioned [user type]. How do they typically arrive at this screen?"
     </category>
 
-    <category name="Edge Cases &amp; Errors" priority="high" min_questions="3">
+    <category name="Edge Cases & Errors" priority="high" min_questions="3">
       **Goal:** Uncover failure modes and recovery strategies
 
       **Non-obvious questions:**
@@ -909,7 +909,7 @@ skills: dev:context-detection, dev:universal-patterns, dev:api-design, multimode
       - "Who owns [external system]? What's the SLA?"
     </category>
 
-    <category name="Constraints &amp; Trade-offs" priority="high" min_questions="3">
+    <category name="Constraints & Trade-offs" priority="high" min_questions="3">
       **Goal:** Understand boundaries and decision drivers
 
       **Non-obvious questions:**
@@ -954,7 +954,7 @@ skills: dev:context-detection, dev:universal-patterns, dev:api-design, multimode
 
     **Rules:**
     - min_questions_per_category: Defined per category (typically 3)
-    - Category complete: Coverage &gt;= 70% AND user confirms no more needs
+    - Category complete: Coverage >= 70% AND user confirms no more needs
     - Questions count if they elicit substantive answers
     - Follow-up questions count toward same category
 
@@ -962,10 +962,10 @@ skills: dev:context-detection, dev:universal-patterns, dev:api-design, multimode
     - Functional Requirements: min_questions = 3
     - Questions answered with substance: 2
     - Coverage = (2 / 3) * 100 = 66.7%
-    - Status: Not complete (&lt; 70%)
+    - Status: Not complete (< 70%)
 
     **Completion criteria:**
-    - All 7 categories &gt;= 70% coverage
+    - All 7 categories >= 70% coverage
     - OR user explicitly approves proceeding with gaps
   </coverage_calculation>
 
@@ -988,7 +988,7 @@ skills: dev:context-detection, dev:universal-patterns, dev:api-design, multimode
     Why? "Users need to see changes immediately"
     Why? "They're collaborating on the same document"
     Why? "Multiple editors at once, need to avoid conflicts"
-    -&gt; Root: Conflict resolution is the real requirement, not just real-time
+    -> Root: Conflict resolution is the real requirement, not just real-time
 
     **When to stop:**
     - Reached business justification
@@ -1108,7 +1108,7 @@ skills: dev:context-detection, dev:universal-patterns, dev:api-design, multimode
         Round 3: Integration authentication (5 Whys applied)
           Q: "How will the mobile app authenticate with the API?"
           Q: "Why JWT specifically? Have you considered alternatives?"
-          -&gt; Reveals: Need for refresh tokens, session management
+          -> Reveals: Need for refresh tokens, session management
 
         Rounds 4-6: Edge cases, UX details, trade-offs
 
@@ -1142,18 +1142,18 @@ skills: dev:context-detection, dev:universal-patterns, dev:api-design, multimode
         Round 3: Collaboration (5 Whys on "team features")
           Q: "You want team features. Why is collaboration important?"
           Q: "What's the cost if team members can't see each other's tasks?"
-          -&gt; Reveals: Accountability and workload balancing are real needs
+          -> Reveals: Accountability and workload balancing are real needs
 
         Rounds 4-8: Notifications, integrations, mobile, offline support...
 
       PHASE 3: No existing assets, offer ultrathink for tech stack
         Ultrathink recommends: React + Bun + SQLite (for simplicity)
-        User requests Figma-first, offer /dev:create-style
+        User requests Figma-first, offer the designer plugin's /designer:create-style
 
       PHASE 4: Generate complete spec from scratch
         (Delegated to spec-writer agent)
 
-      PHASE 5: Create phased task breakdown (MVP -&gt; V1 -&gt; V2)
+      PHASE 5: Create phased task breakdown (MVP -> V1 -> V2)
     </execution>
   </example>
 
@@ -1267,9 +1267,9 @@ skills: dev:context-detection, dev:universal-patterns, dev:api-design, multimode
 - Functional Requirements: {%}
 - Non-Functional Requirements: {%}
 - User Experience: {%}
-- Edge Cases &amp; Errors: {%}
+- Edge Cases & Errors: {%}
 - Integration Points: {%}
-- Constraints &amp; Trade-offs: {%}
+- Constraints & Trade-offs: {%}
 
 **Question Quality Metrics (LLMREI):**
 | Type | Count | % | Target |
@@ -1283,8 +1283,8 @@ skills: dev:context-detection, dev:universal-patterns, dev:api-design, multimode
 (Target: ≥60% context-dependent questions)
 
 **Assets Collected**:
-- API Spec: {yes/no} -&gt; {path}
-- Figma Designs: {yes/no} -&gt; {link}
+- API Spec: {yes/no} -> {path}
+- Figma Designs: {yes/no} -> {link}
 - Design System: {selected}
 - Tech Recommendations: {provided/not requested}
 
@@ -1303,7 +1303,7 @@ skills: dev:context-detection, dev:universal-patterns, dev:api-design, multimode
 **Recommended Next Steps**:
 1. `/dev:dev {feature_name}` - Start implementation
 {if design_assets}
-2. `/dev:create-style` - Configure project design style
+2. `/designer:create-style` (designer plugin) - Configure project design style
 {end}
 {if complex_architecture}
 2. `/dev:architect {topic}` - Detailed technical design

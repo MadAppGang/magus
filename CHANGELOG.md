@@ -77,7 +77,53 @@
 
 ---
 
+## [dev 3.0.1] - 2026-08-02
+
+Housekeeping pass (R11 from the 2026-07-29 review) plus everything a first sweep of it
+missed — every fix below was checked against the live repo and, where relevant, live
+Claude Code docs, not just read off the diff that introduced it.
+
+### Fixed
+
+- `${PLUGIN_ROOT}` → `${CLAUDE_PLUGIN_ROOT}` across `agents/stack-detector.md` and
+  `skills/context-detection/SKILL.md` (105 lines). Confirmed against
+  `code.claude.com/docs/en/plugins-reference` that substitution is documented to resolve
+  "anywhere the placeholder appears" in skill and agent content, so this was a real
+  path-resolution bug, not cosmetic. A first pass caught one instance in `developer.md`
+  and left the rest — including a line in context-detection that told agents to use the
+  wrong token and called it CRITICAL.
+- `plugin.json` `dependencies` was missing `multimodel`, even though `architect.md` and
+  `interview.md` reference `multimodel:quality-gates` — install-time dependency
+  resolution now matches what the bundled skills actually use.
+- `/dev:feature`, `/dev:implement`, `designer:review` (agent-delegation contexts),
+  `mcp__plugin_claudish__*`, and stray HTML entities (`&amp;`, `&lt;`, `&gt;`) cleaned up
+  across agents, commands, hooks and skills — all renamed or removed in the v3.0.0 merge
+  but left behind as stale text in prose, examples and coaching strings.
+- `docs.md`'s own scoring checklist said "42-Point" while listing 52 points (42 base + 10
+  anti-slop); `help.md`'s version, command count and dependency list had drifted from
+  `plugin.json`; `worktree.md` checked for `.neon-branch.json` when
+  `db-branching/SKILL.md` has used the provider-agnostic `.db-branch.json` throughout.
+- `CLAUDE.md`'s plugin table and `docs/dev-plugin-consolidation.md` (a pre-implementation
+  planning doc, version-drifted since v1.4x) still cited pre-rename terminology and stale
+  versions; the latter is now marked historical.
+
+### Known gaps (not in this release)
+
+`agents/frontend.md` still contains real Tailwind arbitrary-value examples beyond the
+now-corrected rule statement — the full rewrite is a separate, larger item.
+`tools/autopilot-server`'s Linear tag→command mapping still routes `@test`/`@refactor`/
+`@implement` to commands removed in the v3.0.0 rename, and `@ui`/`@frontend` to a
+`frontend` plugin that no longer exists — pre-existing, not touched here.
+
+---
+
 ## [dev 3.0.0] - 2026-07-30
+
+### Changed
+
+- **Hooks now run and are tested, and per-turn context is cut 15,143 → 5,568 chars.**
+  `/dev:review` removed; three doc agents merged into `dev:docs`; the shell-injection
+  and silent-directive bugs below are fixed.
 
 **Breaking.** `/dev:review` removed (it self-deprecated with "removed in v3.0.0").
 `doc-writer`, `doc-analyzer` and `doc-fixer` are replaced by `dev:docs` with a

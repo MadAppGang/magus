@@ -78,14 +78,14 @@ tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Glob, Grep, Bash
           }
         ],
         "bundled_skill_paths": [
-          "${PLUGIN_ROOT}/skills/core/universal-patterns/SKILL.md",
-          "${PLUGIN_ROOT}/skills/core/testing-strategies/SKILL.md",
-          "${PLUGIN_ROOT}/skills/frontend/react-typescript/SKILL.md",
-          "${PLUGIN_ROOT}/skills/frontend/state-management/SKILL.md",
-          "${PLUGIN_ROOT}/skills/frontend/testing-frontend/SKILL.md",
-          "${PLUGIN_ROOT}/skills/backend/golang/SKILL.md",
-          "${PLUGIN_ROOT}/skills/backend/api-design/SKILL.md",
-          "${PLUGIN_ROOT}/skills/backend/database-patterns/SKILL.md"
+          "${CLAUDE_PLUGIN_ROOT}/skills/core/universal-patterns/SKILL.md",
+          "${CLAUDE_PLUGIN_ROOT}/skills/core/testing-strategies/SKILL.md",
+          "${CLAUDE_PLUGIN_ROOT}/skills/frontend/react-typescript/SKILL.md",
+          "${CLAUDE_PLUGIN_ROOT}/skills/frontend/state-management/SKILL.md",
+          "${CLAUDE_PLUGIN_ROOT}/skills/frontend/testing-frontend/SKILL.md",
+          "${CLAUDE_PLUGIN_ROOT}/skills/backend/golang/SKILL.md",
+          "${CLAUDE_PLUGIN_ROOT}/skills/backend/api-design/SKILL.md",
+          "${CLAUDE_PLUGIN_ROOT}/skills/backend/database-patterns/SKILL.md"
         ],
         "quality_checks": {
           "frontend": [
@@ -109,7 +109,7 @@ tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Glob, Grep, Bash
       ```
 
       CRITICAL:
-      - Use ${PLUGIN_ROOT} placeholder for bundled skill paths (expanded at runtime)
+      - Use ${CLAUDE_PLUGIN_ROOT} placeholder for bundled skill paths (expanded at runtime)
       - Use relative paths for discovered project skills (from project root)
       - discovered_skills contains REAL skills found in the target project
       - bundled_skill_paths contains skills from the dev plugin
@@ -293,7 +293,7 @@ tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Glob, Grep, Bash
             "mode": "frontend" | "backend" | "fullstack",
             "stacks": array of detected stack names,
             "discovered_skills": array of {name, description, path, source, categories},
-            "bundled_skill_paths": array of ${PLUGIN_ROOT}/skills/... paths,
+            "bundled_skill_paths": array of ${CLAUDE_PLUGIN_ROOT}/skills/... paths,
             "quality_checks": object with frontend/backend arrays,
             "frameworks": object with versions
           }
@@ -401,28 +401,28 @@ tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Glob, Grep, Bash
 
   <bundled_skill_path_mapping>
     Core skills (ALWAYS included):
-    - ${PLUGIN_ROOT}/skills/core/universal-patterns/SKILL.md
-    - ${PLUGIN_ROOT}/skills/core/testing-strategies/SKILL.md
-    - ${PLUGIN_ROOT}/skills/core/debugging-strategies/SKILL.md
+    - ${CLAUDE_PLUGIN_ROOT}/skills/core/universal-patterns/SKILL.md
+    - ${CLAUDE_PLUGIN_ROOT}/skills/core/testing-strategies/SKILL.md
+    - ${CLAUDE_PLUGIN_ROOT}/skills/core/debugging-strategies/SKILL.md
 
     Frontend skills:
-    - ${PLUGIN_ROOT}/skills/frontend/react-typescript/SKILL.md
-    - ${PLUGIN_ROOT}/skills/frontend/vue-typescript/SKILL.md
-    - ${PLUGIN_ROOT}/skills/frontend/state-management/SKILL.md
-    - ${PLUGIN_ROOT}/skills/frontend/testing-frontend/SKILL.md
+    - ${CLAUDE_PLUGIN_ROOT}/skills/frontend/react-typescript/SKILL.md
+    - ${CLAUDE_PLUGIN_ROOT}/skills/frontend/vue-typescript/SKILL.md
+    - ${CLAUDE_PLUGIN_ROOT}/skills/frontend/state-management/SKILL.md
+    - ${CLAUDE_PLUGIN_ROOT}/skills/frontend/testing-frontend/SKILL.md
 
     Backend skills:
-    - ${PLUGIN_ROOT}/skills/backend/api-design/SKILL.md
-    - ${PLUGIN_ROOT}/skills/backend/database-patterns/SKILL.md
-    - ${PLUGIN_ROOT}/skills/backend/auth-patterns/SKILL.md
-    - ${PLUGIN_ROOT}/skills/backend/error-handling/SKILL.md
+    - ${CLAUDE_PLUGIN_ROOT}/skills/backend/api-design/SKILL.md
+    - ${CLAUDE_PLUGIN_ROOT}/skills/backend/database-patterns/SKILL.md
+    - ${CLAUDE_PLUGIN_ROOT}/skills/backend/auth-patterns/SKILL.md
+    - ${CLAUDE_PLUGIN_ROOT}/skills/backend/error-handling/SKILL.md
 
     Language-specific:
-    - ${PLUGIN_ROOT}/skills/backend/golang/SKILL.md
-    - ${PLUGIN_ROOT}/skills/backend/dingo/SKILL.md
-    - ${PLUGIN_ROOT}/skills/backend/bunjs/SKILL.md
-    - ${PLUGIN_ROOT}/skills/backend/python/SKILL.md
-    - ${PLUGIN_ROOT}/skills/backend/rust/SKILL.md
+    - ${CLAUDE_PLUGIN_ROOT}/skills/backend/golang/SKILL.md
+    - ${CLAUDE_PLUGIN_ROOT}/skills/backend/dingo/SKILL.md
+    - ${CLAUDE_PLUGIN_ROOT}/skills/backend/bunjs/SKILL.md
+    - ${CLAUDE_PLUGIN_ROOT}/skills/backend/python/SKILL.md
+    - ${CLAUDE_PLUGIN_ROOT}/skills/backend/rust/SKILL.md
   </bundled_skill_path_mapping>
 
   <discovered_skill_locations>
@@ -490,11 +490,11 @@ tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Glob, Grep, Bash
         "mode": "frontend",
         "stacks": ["react-typescript"],
         "bundled_skill_paths": [
-          "${PLUGIN_ROOT}/skills/core/universal-patterns/SKILL.md",
-          "${PLUGIN_ROOT}/skills/core/testing-strategies/SKILL.md",
-          "${PLUGIN_ROOT}/skills/frontend/react-typescript/SKILL.md",
-          "${PLUGIN_ROOT}/skills/frontend/state-management/SKILL.md",
-          "${PLUGIN_ROOT}/skills/frontend/testing-frontend/SKILL.md"
+          "${CLAUDE_PLUGIN_ROOT}/skills/core/universal-patterns/SKILL.md",
+          "${CLAUDE_PLUGIN_ROOT}/skills/core/testing-strategies/SKILL.md",
+          "${CLAUDE_PLUGIN_ROOT}/skills/frontend/react-typescript/SKILL.md",
+          "${CLAUDE_PLUGIN_ROOT}/skills/frontend/state-management/SKILL.md",
+          "${CLAUDE_PLUGIN_ROOT}/skills/frontend/testing-frontend/SKILL.md"
         ],
         "quality_checks": {
           "frontend": ["bun run format", "bun run lint", "bun run typecheck", "bun test"]
@@ -516,11 +516,11 @@ tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Glob, Grep, Bash
         "mode": "backend",
         "stacks": ["golang"],
         "bundled_skill_paths": [
-          "${PLUGIN_ROOT}/skills/core/universal-patterns/SKILL.md",
-          "${PLUGIN_ROOT}/skills/core/testing-strategies/SKILL.md",
-          "${PLUGIN_ROOT}/skills/backend/golang/SKILL.md",
-          "${PLUGIN_ROOT}/skills/backend/api-design/SKILL.md",
-          "${PLUGIN_ROOT}/skills/backend/database-patterns/SKILL.md"
+          "${CLAUDE_PLUGIN_ROOT}/skills/core/universal-patterns/SKILL.md",
+          "${CLAUDE_PLUGIN_ROOT}/skills/core/testing-strategies/SKILL.md",
+          "${CLAUDE_PLUGIN_ROOT}/skills/backend/golang/SKILL.md",
+          "${CLAUDE_PLUGIN_ROOT}/skills/backend/api-design/SKILL.md",
+          "${CLAUDE_PLUGIN_ROOT}/skills/backend/database-patterns/SKILL.md"
         ],
         "quality_checks": {
           "backend": ["go fmt ./...", "go vet ./...", "golangci-lint run", "go test ./..."]
@@ -543,12 +543,12 @@ tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Glob, Grep, Bash
         "mode": "backend",
         "stacks": ["dingo", "golang"],
         "bundled_skill_paths": [
-          "${PLUGIN_ROOT}/skills/core/universal-patterns/SKILL.md",
-          "${PLUGIN_ROOT}/skills/core/testing-strategies/SKILL.md",
-          "${PLUGIN_ROOT}/skills/backend/dingo/SKILL.md",
-          "${PLUGIN_ROOT}/skills/backend/golang/SKILL.md",
-          "${PLUGIN_ROOT}/skills/backend/api-design/SKILL.md",
-          "${PLUGIN_ROOT}/skills/backend/database-patterns/SKILL.md"
+          "${CLAUDE_PLUGIN_ROOT}/skills/core/universal-patterns/SKILL.md",
+          "${CLAUDE_PLUGIN_ROOT}/skills/core/testing-strategies/SKILL.md",
+          "${CLAUDE_PLUGIN_ROOT}/skills/backend/dingo/SKILL.md",
+          "${CLAUDE_PLUGIN_ROOT}/skills/backend/golang/SKILL.md",
+          "${CLAUDE_PLUGIN_ROOT}/skills/backend/api-design/SKILL.md",
+          "${CLAUDE_PLUGIN_ROOT}/skills/backend/database-patterns/SKILL.md"
         ],
         "quality_checks": {
           "backend": [
@@ -576,14 +576,14 @@ tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Glob, Grep, Bash
         "mode": "fullstack",
         "stacks": ["react-typescript", "golang"],
         "bundled_skill_paths": [
-          "${PLUGIN_ROOT}/skills/core/universal-patterns/SKILL.md",
-          "${PLUGIN_ROOT}/skills/core/testing-strategies/SKILL.md",
-          "${PLUGIN_ROOT}/skills/frontend/react-typescript/SKILL.md",
-          "${PLUGIN_ROOT}/skills/frontend/state-management/SKILL.md",
-          "${PLUGIN_ROOT}/skills/frontend/testing-frontend/SKILL.md",
-          "${PLUGIN_ROOT}/skills/backend/golang/SKILL.md",
-          "${PLUGIN_ROOT}/skills/backend/api-design/SKILL.md",
-          "${PLUGIN_ROOT}/skills/backend/database-patterns/SKILL.md"
+          "${CLAUDE_PLUGIN_ROOT}/skills/core/universal-patterns/SKILL.md",
+          "${CLAUDE_PLUGIN_ROOT}/skills/core/testing-strategies/SKILL.md",
+          "${CLAUDE_PLUGIN_ROOT}/skills/frontend/react-typescript/SKILL.md",
+          "${CLAUDE_PLUGIN_ROOT}/skills/frontend/state-management/SKILL.md",
+          "${CLAUDE_PLUGIN_ROOT}/skills/frontend/testing-frontend/SKILL.md",
+          "${CLAUDE_PLUGIN_ROOT}/skills/backend/golang/SKILL.md",
+          "${CLAUDE_PLUGIN_ROOT}/skills/backend/api-design/SKILL.md",
+          "${CLAUDE_PLUGIN_ROOT}/skills/backend/database-patterns/SKILL.md"
         ],
         "quality_checks": {
           "frontend": ["cd frontend && bun run format && bun run lint && bun run typecheck && bun test"],
@@ -623,9 +623,9 @@ tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Glob, Grep, Bash
           }
         ],
         "bundled_skill_paths": [
-          "${PLUGIN_ROOT}/skills/core/universal-patterns/SKILL.md",
-          "${PLUGIN_ROOT}/skills/core/testing-strategies/SKILL.md",
-          "${PLUGIN_ROOT}/skills/frontend/react-typescript/SKILL.md"
+          "${CLAUDE_PLUGIN_ROOT}/skills/core/universal-patterns/SKILL.md",
+          "${CLAUDE_PLUGIN_ROOT}/skills/core/testing-strategies/SKILL.md",
+          "${CLAUDE_PLUGIN_ROOT}/skills/frontend/react-typescript/SKILL.md"
         ],
         "quality_checks": {
           "frontend": ["bun run format", "bun run lint", "bun run typecheck", "bun test"]

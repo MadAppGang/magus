@@ -574,65 +574,65 @@ fullstack (react + go):
 
 ## Skill Path Generation
 
-Convert detected stacks to skill file paths using ${PLUGIN_ROOT} placeholder:
+Convert detected stacks to skill file paths using ${CLAUDE_PLUGIN_ROOT} placeholder:
 
 ```bash
 generate_skill_paths() {
   local stacks=("$@")
   local skill_paths=(
     # Core skills (ALWAYS)
-    '${PLUGIN_ROOT}/skills/core/universal-patterns/SKILL.md'
-    '${PLUGIN_ROOT}/skills/core/testing-strategies/SKILL.md'
-    '${PLUGIN_ROOT}/skills/core/debugging-strategies/SKILL.md'
+    '${CLAUDE_PLUGIN_ROOT}/skills/core/universal-patterns/SKILL.md'
+    '${CLAUDE_PLUGIN_ROOT}/skills/core/testing-strategies/SKILL.md'
+    '${CLAUDE_PLUGIN_ROOT}/skills/core/debugging-strategies/SKILL.md'
   )
 
   for stack in "${stacks[@]}"; do
     case "$stack" in
       react-typescript)
         skill_paths+=(
-          '${PLUGIN_ROOT}/skills/frontend/react-typescript/SKILL.md'
-          '${PLUGIN_ROOT}/skills/frontend/state-management/SKILL.md'
-          '${PLUGIN_ROOT}/skills/frontend/testing-frontend/SKILL.md'
+          '${CLAUDE_PLUGIN_ROOT}/skills/frontend/react-typescript/SKILL.md'
+          '${CLAUDE_PLUGIN_ROOT}/skills/frontend/state-management/SKILL.md'
+          '${CLAUDE_PLUGIN_ROOT}/skills/frontend/testing-frontend/SKILL.md'
         )
         ;;
       vue-typescript)
         skill_paths+=(
-          '${PLUGIN_ROOT}/skills/frontend/vue-typescript/SKILL.md'
-          '${PLUGIN_ROOT}/skills/frontend/state-management/SKILL.md'
-          '${PLUGIN_ROOT}/skills/frontend/testing-frontend/SKILL.md'
+          '${CLAUDE_PLUGIN_ROOT}/skills/frontend/vue-typescript/SKILL.md'
+          '${CLAUDE_PLUGIN_ROOT}/skills/frontend/state-management/SKILL.md'
+          '${CLAUDE_PLUGIN_ROOT}/skills/frontend/testing-frontend/SKILL.md'
         )
         ;;
       golang)
         skill_paths+=(
-          '${PLUGIN_ROOT}/skills/backend/golang/SKILL.md'
-          '${PLUGIN_ROOT}/skills/backend/api-design/SKILL.md'
-          '${PLUGIN_ROOT}/skills/backend/database-patterns/SKILL.md'
+          '${CLAUDE_PLUGIN_ROOT}/skills/backend/golang/SKILL.md'
+          '${CLAUDE_PLUGIN_ROOT}/skills/backend/api-design/SKILL.md'
+          '${CLAUDE_PLUGIN_ROOT}/skills/backend/database-patterns/SKILL.md'
         )
         ;;
       dingo)
         skill_paths+=(
-          '${PLUGIN_ROOT}/skills/backend/dingo/SKILL.md'
-          '${PLUGIN_ROOT}/skills/backend/golang/SKILL.md'
-          '${PLUGIN_ROOT}/skills/backend/api-design/SKILL.md'
-          '${PLUGIN_ROOT}/skills/backend/database-patterns/SKILL.md'
+          '${CLAUDE_PLUGIN_ROOT}/skills/backend/dingo/SKILL.md'
+          '${CLAUDE_PLUGIN_ROOT}/skills/backend/golang/SKILL.md'
+          '${CLAUDE_PLUGIN_ROOT}/skills/backend/api-design/SKILL.md'
+          '${CLAUDE_PLUGIN_ROOT}/skills/backend/database-patterns/SKILL.md'
         )
         ;;
       rust)
         skill_paths+=(
-          '${PLUGIN_ROOT}/skills/backend/rust/SKILL.md'
-          '${PLUGIN_ROOT}/skills/backend/api-design/SKILL.md'
+          '${CLAUDE_PLUGIN_ROOT}/skills/backend/rust/SKILL.md'
+          '${CLAUDE_PLUGIN_ROOT}/skills/backend/api-design/SKILL.md'
         )
         ;;
       python)
         skill_paths+=(
-          '${PLUGIN_ROOT}/skills/backend/python/SKILL.md'
-          '${PLUGIN_ROOT}/skills/backend/api-design/SKILL.md'
+          '${CLAUDE_PLUGIN_ROOT}/skills/backend/python/SKILL.md'
+          '${CLAUDE_PLUGIN_ROOT}/skills/backend/api-design/SKILL.md'
         )
         ;;
       bunjs)
         skill_paths+=(
-          '${PLUGIN_ROOT}/skills/backend/bunjs/SKILL.md'
-          '${PLUGIN_ROOT}/skills/backend/api-design/SKILL.md'
+          '${CLAUDE_PLUGIN_ROOT}/skills/backend/bunjs/SKILL.md'
+          '${CLAUDE_PLUGIN_ROOT}/skills/backend/api-design/SKILL.md'
         )
         ;;
     esac
@@ -643,7 +643,7 @@ generate_skill_paths() {
 }
 ```
 
-**CRITICAL:** Always use `${PLUGIN_ROOT}` placeholder, NOT hardcoded paths. This placeholder is expanded at runtime to the actual plugin directory.
+**CRITICAL:** Always use `${CLAUDE_PLUGIN_ROOT}` placeholder, NOT hardcoded paths. This placeholder is expanded at runtime to the actual plugin directory.
 
 ---
 
@@ -706,11 +706,11 @@ project/
   "mode": "frontend",
   "stacks": ["react-typescript"],
   "skill_paths": [
-    "${PLUGIN_ROOT}/skills/core/universal-patterns/SKILL.md",
-    "${PLUGIN_ROOT}/skills/core/testing-strategies/SKILL.md",
-    "${PLUGIN_ROOT}/skills/frontend/react-typescript/SKILL.md",
-    "${PLUGIN_ROOT}/skills/frontend/state-management/SKILL.md",
-    "${PLUGIN_ROOT}/skills/frontend/testing-frontend/SKILL.md"
+    "${CLAUDE_PLUGIN_ROOT}/skills/core/universal-patterns/SKILL.md",
+    "${CLAUDE_PLUGIN_ROOT}/skills/core/testing-strategies/SKILL.md",
+    "${CLAUDE_PLUGIN_ROOT}/skills/frontend/react-typescript/SKILL.md",
+    "${CLAUDE_PLUGIN_ROOT}/skills/frontend/state-management/SKILL.md",
+    "${CLAUDE_PLUGIN_ROOT}/skills/frontend/testing-frontend/SKILL.md"
   ]
 }
 ```
@@ -733,11 +733,11 @@ project/
   "mode": "backend",
   "stacks": ["golang"],
   "skill_paths": [
-    "${PLUGIN_ROOT}/skills/core/universal-patterns/SKILL.md",
-    "${PLUGIN_ROOT}/skills/core/testing-strategies/SKILL.md",
-    "${PLUGIN_ROOT}/skills/backend/golang/SKILL.md",
-    "${PLUGIN_ROOT}/skills/backend/api-design/SKILL.md",
-    "${PLUGIN_ROOT}/skills/backend/database-patterns/SKILL.md"
+    "${CLAUDE_PLUGIN_ROOT}/skills/core/universal-patterns/SKILL.md",
+    "${CLAUDE_PLUGIN_ROOT}/skills/core/testing-strategies/SKILL.md",
+    "${CLAUDE_PLUGIN_ROOT}/skills/backend/golang/SKILL.md",
+    "${CLAUDE_PLUGIN_ROOT}/skills/backend/api-design/SKILL.md",
+    "${CLAUDE_PLUGIN_ROOT}/skills/backend/database-patterns/SKILL.md"
   ]
 }
 ```
@@ -762,14 +762,14 @@ project/
   "mode": "fullstack",
   "stacks": ["react-typescript", "golang"],
   "skill_paths": [
-    "${PLUGIN_ROOT}/skills/core/universal-patterns/SKILL.md",
-    "${PLUGIN_ROOT}/skills/core/testing-strategies/SKILL.md",
-    "${PLUGIN_ROOT}/skills/frontend/react-typescript/SKILL.md",
-    "${PLUGIN_ROOT}/skills/frontend/state-management/SKILL.md",
-    "${PLUGIN_ROOT}/skills/frontend/testing-frontend/SKILL.md",
-    "${PLUGIN_ROOT}/skills/backend/golang/SKILL.md",
-    "${PLUGIN_ROOT}/skills/backend/api-design/SKILL.md",
-    "${PLUGIN_ROOT}/skills/backend/database-patterns/SKILL.md"
+    "${CLAUDE_PLUGIN_ROOT}/skills/core/universal-patterns/SKILL.md",
+    "${CLAUDE_PLUGIN_ROOT}/skills/core/testing-strategies/SKILL.md",
+    "${CLAUDE_PLUGIN_ROOT}/skills/frontend/react-typescript/SKILL.md",
+    "${CLAUDE_PLUGIN_ROOT}/skills/frontend/state-management/SKILL.md",
+    "${CLAUDE_PLUGIN_ROOT}/skills/frontend/testing-frontend/SKILL.md",
+    "${CLAUDE_PLUGIN_ROOT}/skills/backend/golang/SKILL.md",
+    "${CLAUDE_PLUGIN_ROOT}/skills/backend/api-design/SKILL.md",
+    "${CLAUDE_PLUGIN_ROOT}/skills/backend/database-patterns/SKILL.md"
   ],
   "quality_checks": {
     "frontend": ["cd frontend && bun run format", "..."],
@@ -802,12 +802,12 @@ project/
   "mode": "backend",
   "stacks": ["dingo", "golang"],
   "skill_paths": [
-    "${PLUGIN_ROOT}/skills/core/universal-patterns/SKILL.md",
-    "${PLUGIN_ROOT}/skills/core/testing-strategies/SKILL.md",
-    "${PLUGIN_ROOT}/skills/backend/dingo/SKILL.md",
-    "${PLUGIN_ROOT}/skills/backend/golang/SKILL.md",
-    "${PLUGIN_ROOT}/skills/backend/api-design/SKILL.md",
-    "${PLUGIN_ROOT}/skills/backend/database-patterns/SKILL.md"
+    "${CLAUDE_PLUGIN_ROOT}/skills/core/universal-patterns/SKILL.md",
+    "${CLAUDE_PLUGIN_ROOT}/skills/core/testing-strategies/SKILL.md",
+    "${CLAUDE_PLUGIN_ROOT}/skills/backend/dingo/SKILL.md",
+    "${CLAUDE_PLUGIN_ROOT}/skills/backend/golang/SKILL.md",
+    "${CLAUDE_PLUGIN_ROOT}/skills/backend/api-design/SKILL.md",
+    "${CLAUDE_PLUGIN_ROOT}/skills/backend/database-patterns/SKILL.md"
   ],
   "quality_checks": {
     "backend": [
@@ -831,7 +831,7 @@ The stack-detector agent implements this skill:
 
 1. Reads this skill file for detection patterns
 2. Applies detection algorithm
-3. Generates skill paths using ${PLUGIN_ROOT}
+3. Generates skill paths using ${CLAUDE_PLUGIN_ROOT}
 4. Writes result to ${SESSION_PATH}/context.json
 5. Returns summary to orchestrator
 
@@ -845,8 +845,8 @@ Prompt: |
   SESSION_PATH: ${SESSION_PATH}
 
   Read these skills before implementing:
-  - ${PLUGIN_ROOT}/skills/frontend/react-typescript/SKILL.md
-  - ${PLUGIN_ROOT}/skills/frontend/testing-frontend/SKILL.md
+  - ${CLAUDE_PLUGIN_ROOT}/skills/frontend/react-typescript/SKILL.md
+  - ${CLAUDE_PLUGIN_ROOT}/skills/frontend/testing-frontend/SKILL.md
 
   Then implement: Create user profile component
 ```
@@ -871,4 +871,4 @@ Agents use Read tool to load skill files:
 - Multi-stack detection support
 - Framework-specific patterns for React, Vue, Go, Rust, Python, Bun
 - Quality check mapping
-- Skill path generation with ${PLUGIN_ROOT}
+- Skill path generation with ${CLAUDE_PLUGIN_ROOT}

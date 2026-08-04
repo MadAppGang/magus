@@ -387,7 +387,7 @@ Ready for review.
     </code_context_validation>
 
     <scoring_system>
-      **42-Point Quality Checklist:**
+      **52-Point Quality Checklist:**
 
       Content Quality (8 points):
       - [ ] No over-marketing (1pt)

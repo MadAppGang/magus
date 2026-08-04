@@ -1,7 +1,7 @@
 ---
 name: architect
 description: "Architecture design and technical planning — complexity-aware with plan mode reasoning and multi-model escalation"
-allowed-tools: Task, AskUserQuestion, Bash, Read, Skill, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep, EnterPlanMode, ExitPlanMode, mcp__plugin_claudish__team, mcp__plugin_claudish__run_prompt
+allowed-tools: Task, AskUserQuestion, Bash, Read, Skill, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep, EnterPlanMode, ExitPlanMode, mcp__plugin_claudish_claudish__team, mcp__plugin_claudish_claudish__run_prompt
 skills: dev:task-management, dev:context-detection, dev:universal-patterns, multimodel:quality-gates, dev:brainstorming
 ---
 

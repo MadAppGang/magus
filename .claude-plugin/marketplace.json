@@ -199,7 +199,7 @@
       "name": "dev",
       "source": "./plugins/dev",
       "description": "Universal development assistant. Detects the project stack and routes work to specialist agents for architecture, implementation, debugging, review and research, enforcing design-system guardrails on every UI change.",
-      "version": "3.0.0",
+      "version": "3.0.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -239,6 +239,22 @@
       "strict": true,
       "releases": [
         {
+          "version": "3.0.1",
+          "date": "2026-08-02",
+          "kinds": [
+            "Fixed"
+          ],
+          "summary": "${PLUGIN_ROOT} \u2192 ${CLAUDE_PLUGIN_ROOT} across agents/stack-detector.md and\u2026"
+        },
+        {
+          "version": "3.0.0",
+          "date": "2026-07-30",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "Hooks now run and are tested, and per-turn context is cut 15,143 \u2192 5,568 chars"
+        },
+        {
           "version": "2.12.1",
           "date": "2026-07-27",
           "kinds": [
@@ -263,19 +279,6 @@
             "Added"
           ],
           "summary": "frontend/design-system-guardrails skill: enforces single-source-of-truth UI \u2014 design tokens as\u2026"
-        },
-        {
-          "version": "2.9.0",
-          "date": "2026-05-09",
-          "summary": "Extracted claudish from its .mcp.json (previously the only entry). Now declares claudish +\u2026"
-        },
-        {
-          "version": "1.35.1",
-          "date": "2026-03-02",
-          "kinds": [
-            "Changed"
-          ],
-          "summary": "Coaching box formatting - Workflow coaching suggestions now use visual insight-style boxes (\u2605\u2026"
         }
       ]
     },

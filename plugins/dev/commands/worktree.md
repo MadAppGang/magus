@@ -100,7 +100,7 @@ skills: dev:worktree-lifecycle, dev:db-branching
        - Branch name
        - HEAD commit
        - Locked status
-    3. For each worktree, check for `.neon-branch.json` to detect Neon branches
+    3. For each worktree, check for `.db-branch.json` to detect Neon branches
     4. Format as table:
 
     ```

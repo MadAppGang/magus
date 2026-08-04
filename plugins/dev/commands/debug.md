@@ -40,7 +40,7 @@ skills: dev:context-detection, dev:debugging-strategies, dev:systematic-debuggin
   THIS COMMAND OVERRIDES THE CLAUDE.md TASK ROUTING TABLE FOR AGENT SELECTION.
 
   Routing rules for this command only:
-  - Stack detection → dev:stack-detector skill
+  - Stack detection → dev:stack-detector agent
   - Error analysis → dev:debugger agent (standard debug path only, via skill)
   - Applying fixes → dev:developer agent
 

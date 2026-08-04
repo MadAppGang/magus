@@ -788,13 +788,13 @@ skills: dev:bunjs-production
 
       # 4. Deploy to specific environment
       # Development
-      firebase use myapp-dev &amp;&amp; firebase deploy --only hosting:dev
+      firebase use myapp-dev && firebase deploy --only hosting:dev
 
       # Staging
-      firebase use myapp-staging &amp;&amp; firebase deploy --only hosting:staging
+      firebase use myapp-staging && firebase deploy --only hosting:staging
 
       # Production
-      firebase use myapp-prod &amp;&amp; firebase deploy --only hosting:prod
+      firebase use myapp-prod && firebase deploy --only hosting:prod
 
       # 5. Preview channels for PRs
       firebase hosting:channel:deploy pr-123 --expires 7d --project myapp-staging

@@ -405,7 +405,7 @@ fi
 
 ## Orchestrator Integration
 
-### `/dev:feature` Integration
+### `/dev:dev` Integration (standard/full depth)
 
 **Phase 0** (after session init):
 - Add AskUserQuestion: "Create isolated worktree?"
@@ -416,7 +416,7 @@ fi
 - If worktree created: Ask cleanup options (PR, merge, keep, discard)
 - Execute Phase 6 with chosen option
 
-### `/dev:implement` Integration
+### `/dev:dev` Integration (quick depth)
 
 **Phase 1** (lightweight version):
 - Add AskUserQuestion: "Use isolated worktree?"

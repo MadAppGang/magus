@@ -259,7 +259,7 @@ tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Glob, Grep, Bash
           findings, keeping the most impactful ones as individual entries.
         </step>
         <step>
-          Present report using the output format in &lt;formatting&gt; section.
+          Present report using the output format in <formatting> section.
         </step>
         <step>Save review to session path (if provided in prompt)</step>
         <step>Mark ALL tasks as completed</step>

@@ -297,8 +297,8 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
       - Skip quality gates
       - Exceed iteration limits without user approval
       - Pass large content through Task prompts
-      - Claim completion without screenshot evidence (full lifecycle only)
-      - Accept "should work" or "tests pass" as proof (full lifecycle only)
+      - Claim completion without screenshot evidence (full depth only)
+      - Accept "should work" or "tests pass" as proof (full depth only)
     </orchestrator_role>
 
     <real_validation_principle>
@@ -714,10 +714,10 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
 </orchestration>
 
 <examples>
-  <example name="Focused Implementation (auto-inferred)">
+  <example name="Standard Implementation (auto-inferred)">
     <user_request>/dev:dev Add a loading spinner to the submit button</user_request>
     <execution>
-      SCOPE SELECTION: Auto-inferred → Focused (single component, clear deliverable)
+      SCOPE SELECTION: Auto-inferred → Standard (single component, clear deliverable)
 
       PHASE 0: Create session dev-build-20260317-143022-a3f2
         Read: phase0-init.md → execute
@@ -738,7 +738,7 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
       PHASE 8: Completion
         Read: phase8-completion.md → execute
         Duration: ~8 minutes
-        Mode: Focused implementation
+        Mode: Standard
     </execution>
   </example>
 
@@ -747,7 +747,7 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
     <execution>
       SCOPE SELECTION: Auto-inference → ambiguous (keyword "auth", multiple components)
       Ask user: "How much process do you need?"
-      User selects: "Full lifecycle"
+      User selects: "Full"
 
       PHASE 0: Create session dev-build-auth-20260317-143022-b5e8
         Read: phase0-init.md → execute
@@ -761,14 +761,14 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
 
       PHASE 8: Completion
         Duration: 45 minutes
-        Mode: Full lifecycle
+        Mode: Full
     </execution>
   </example>
 
-  <example name="Full Lifecycle with Real Validation Pass on First Try">
+  <example name="Full Depth with Real Validation Pass on First Try">
     <user_request>/dev:dev Add login page with email/password</user_request>
     <execution>
-      SCOPE SELECTION: "Full lifecycle" selected by user
+      SCOPE SELECTION: "Full" selected by user
 
       PHASE 0: Create session dev-build-login-20260105-143022-a3f2
         Read: phase0-init.md → execute
@@ -852,10 +852,10 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
     </execution>
   </example>
 
-  <example name="Full Lifecycle with Validation Loop (2 iterations)">
+  <example name="Full Depth with Validation Loop (2 iterations)">
     <user_request>/dev:dev Add login page matching design</user_request>
     <execution>
-      SCOPE SELECTION: "Full lifecycle" selected by user
+      SCOPE SELECTION: "Full" selected by user
 
       PHASE 1: Setup
         Read: phase1-requirements.md → execute
@@ -1044,8 +1044,8 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
 <formatting>
   <communication_style>
     - Show clear progress through phases
-    - Display build mode prominently: "Mode: Focused implementation" or "Mode: Full lifecycle"
-    - Display outer loop progress: "OUTER LOOP: Iteration 2/3" (full lifecycle only)
+    - Display build mode prominently: "Mode: Standard" or "Mode: Full"
+    - Display outer loop progress: "OUTER LOOP: Iteration 2/3" (full depth only)
     - Display inner loop counts: "Review iteration 2/3"
     - Show validation convergence: "78% → 85% → 91%"
     - Highlight real validation results with evidence
@@ -1061,23 +1061,23 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
 ## Build Complete
 
 **Feature**: {feature_name}
-**Mode**: {Focused implementation | Full lifecycle}
+**Mode**: {Standard | Full}
 **Stack**: {detected_stack}
 **Duration**: {total_time}
 **Session**: ${SESSION_PATH}
 
-{If full lifecycle}
+{If full depth}
 **Outer Loop Iterations**: {outer_iterations}/{max_iterations}
 {/If}
 
 **Phases Completed**:
-{If focused}
+{If standard}
 - [x] Stack Detection
 - [x] Planning (single-model)
 - [x] Implementation
 - [x] Unit Testing
 {/If}
-{If full lifecycle}
+{If full depth}
 - [x] Requirements + Validation Setup
 - [x] Research ({status})
 - [x] Planning ({model_count} models, {iterations} iterations)
@@ -1088,7 +1088,7 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
 - [x] Report generated
 {/If}
 
-{If full lifecycle}
+{If full depth}
 **Real Validation Results**:
 | Check | Result |
 |-------|--------|
@@ -1107,9 +1107,9 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
 - Implementation: All checks pass
 - Review: {verdict} (CRITICAL: {count}, HIGH: {count})
 - Unit Tests: {passing}/{total} passing
-{If full lifecycle}- **Real Validation: PASSED**{/If}
+{If full depth}- **Real Validation: PASSED**{/If}
 
-{If full lifecycle}
+{If full depth}
 **Model Performance** (if multi-model):
 | Model | Time | Issues | Quality | Status |
 |-------|------|--------|---------|--------|
@@ -1118,12 +1118,12 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
 
 **Artifacts**:
 - Requirements: ${SESSION_PATH}/requirements.md
-{If full lifecycle}
+{If full depth}
 - Validation Config: ${SESSION_PATH}/validation-criteria.md
 {/If}
 - Architecture: ${SESSION_PATH}/architecture.md
 - Implementation Log: ${SESSION_PATH}/implementation-log.md
-{If full lifecycle}
+{If full depth}
 - Reviews: ${SESSION_PATH}/reviews/
 - Tests: ${SESSION_PATH}/tests/
 - **Validation Evidence**: ${SESSION_PATH}/validation/
@@ -1132,12 +1132,12 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
 
 **Next Steps**:
 1. Review implementation changes
-{If full lifecycle}
+{If full depth}
 2. Review validation screenshots
 3. Deploy to staging environment
 4. Monitor for issues
 {/If}
 
-{If full lifecycle}**This feature has been VERIFIED to work with real browser testing!**{/If}
+{If full depth}**This feature has been VERIFIED to work with real browser testing!**{/If}
   </completion_message>
 </formatting>

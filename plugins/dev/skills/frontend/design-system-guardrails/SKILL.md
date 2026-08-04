@@ -119,7 +119,7 @@ Duplication is almost always a **discovery failure**. Two minutes of searching b
 
 Check the **diff you produced**, not the whole repo:
 
-- [ ] No hex/`rgb()`/`hsl()`/`oklch()` literals, no Tailwind arbitrary values, no inline `style` (run `bun scripts/audit-ui.ts <path>` if available — it checks exactly this)
+- [ ] No hex/`rgb()`/`hsl()`/`oklch()` literals, no Tailwind arbitrary values, no inline `style` (run `bun ${CLAUDE_PLUGIN_ROOT}/skills/frontend/design-system-guardrails/scripts/audit-ui.ts <path>` if available — it checks exactly this)
 - [ ] No component defined outside the library; no styled raw HTML elements in app code
 - [ ] Every new or changed variant/state has a story
 - [ ] Call sites pass only layout styling to components (margin/placement/width — nothing visual)
@@ -137,11 +137,11 @@ Do this in order — tokens before components, components before screens:
 1. **Tokens**: one theme file. With Tailwind v4, use an `@theme` block and wipe defaults (`--color-*: initial`) so only your semantic tokens compile into utilities. Without Tailwind, a single CSS custom-properties file. → `references/design-tokens.md`
 2. **Library + Storybook**: `src/components/ui/` (or a package), Storybook with a `Foundations / Components / Recipes / Snowflakes` hierarchy, stories colocated with components. → `references/storybook-structure.md`
 3. **Component pattern**: variants encoded with CVA (or equivalent), no outer margins, layout primitives (`Stack`, `Grid`, `Box`). → `references/component-patterns.md`
-4. **Guardrails**: drop in the ESLint/Stylelint configs from `assets/`, add `scripts/audit-ui.ts` to CI, add story/visual tests. → `references/enforcement.md`
+4. **Guardrails**: drop in the ESLint/Stylelint configs from `assets/`, add `${CLAUDE_PLUGIN_ROOT}/skills/frontend/design-system-guardrails/scripts/audit-ui.ts` to CI, add story/visual tests. → `references/enforcement.md`
 
 ## Auditing an existing app
 
-1. Run `bun scripts/audit-ui.ts <repo-path>` — it reports hardcoded colors, arbitrary values, inline styles, appearance overrides on components, and library components missing stories.
+1. Run `bun ${CLAUDE_PLUGIN_ROOT}/skills/frontend/design-system-guardrails/scripts/audit-ui.ts <repo-path>` — it reports hardcoded colors, arbitrary values, inline styles, appearance overrides on components, and library components missing stories.
 2. Migrate in this order: (1) extract tokens from the most-repeated hardcoded values, (2) consolidate the most-duplicated component (usually Button or Card) into the library with variants + stories, (3) sweep screens to replace one-offs, (4) turn on lint rules to lock it in.
 3. Don't aim for 100% overnight — lock in the rules for **new code first** (lint on changed files), then pay down existing drift.
 
@@ -155,7 +155,7 @@ Read these when the task goes deeper than the rules above (if a file is missing,
 - `references/storybook-structure.md` — Storybook hierarchy, story conventions per component, recipes section, interaction/visual/a11y testing, agent-oriented docs
 - `references/component-patterns.md` — CVA reference implementation, state handling, the className policy, layout primitives, framework-agnostic equivalents
 - `references/enforcement.md` — complete ESLint/Stylelint configurations, CI gates, governance & promotion process, adoption metrics
-- `scripts/audit-ui.ts` — dependency-free repo audit, run with `bun` (CI-ready: exits non-zero on errors, `--json` for tooling). Covered by `scripts/audit-ui.test.ts`.
+- `scripts/audit-ui.ts` (run via `bun ${CLAUDE_PLUGIN_ROOT}/skills/frontend/design-system-guardrails/scripts/audit-ui.ts`) — dependency-free repo audit (CI-ready: exits non-zero on errors, `--json` for tooling). Covered by `scripts/audit-ui.test.ts`.
 - `assets/eslint.guardrails.example.mjs`, `assets/stylelint.guardrails.example.cjs` — drop-in lint config templates
 
 **Framework note**: the five rules are framework-agnostic. Examples here use React + Tailwind as the reference implementation; in Vue/Svelte/Angular apply the same rules with the equivalent mechanisms (props for variants, CSS custom properties for tokens, Storybook supports all of them).

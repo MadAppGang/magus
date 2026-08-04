@@ -50,7 +50,7 @@ skills: dev:context-detection
       <objective>Present formatted help output</objective>
       <steps>
         <step>Show plugin header and detected stack</step>
-        <step>List all 12 available commands with descriptions</step>
+        <step>List all 14 available commands with descriptions</step>
         <step>Show recommended skills based on detected stack</step>
         <step>Provide configuration examples</step>
         <step>Show usage examples</step>
@@ -63,7 +63,7 @@ skills: dev:context-detection
 <output_format>
 ## Dev Plugin Help
 
-**Version:** 2.5.0
+**Version:** 3.0.0
 **Detected Stack:** {detected_stack}
 **Mode:** {frontend | backend | fullstack}
 
@@ -92,6 +92,7 @@ skills: dev:context-detection
 | `/dev:audit` | Multi-scope quality audit (code, UI, docs, security, plugins) |
 | `/dev:investigate` | Read-only code investigation — architecture, implementation, bug origins |
 | `/dev:doc` | Documentation — generate, analyze, fix, or validate |
+| `/dev:design-system` | Validate UI against design-system guardrails via audit-ui.ts — reports token/component drift |
 
 **CONFIGURE**
 
@@ -220,11 +221,12 @@ Backend:
 ### Dependencies
 
 **Required:**
-- **orchestration@magus** (^0.8.0) - Multi-model validation and quality gates
+- **claudish@magus** (~1.0) - External model routing via MCP tools
+- **mnemex@magus** (~1.0) - Semantic code search and AST analysis
+- **multimodel@magus** - Team voting and multi-model review skills
 
 **Optional:**
 - **code-analysis@magus** - Semantic code search for better context
-- **multimodel@magus** - External AI model reviews via claudish MCP tools
 
 ### Multi-Model Validation
 
@@ -276,7 +278,7 @@ See: https://github.com/MadAppGang/claudish
       - bun run typecheck
       - bun test
 
-      Shows all 12 commands with React-specific examples
+      Shows all 14 commands with React-specific examples
     </output>
   </example>
 
@@ -301,7 +303,7 @@ See: https://github.com/MadAppGang/claudish
       - golangci-lint run
       - go test ./...
 
-      Shows all 12 commands with Go-specific examples
+      Shows all 14 commands with Go-specific examples
     </output>
   </example>
 
