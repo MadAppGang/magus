@@ -4,6 +4,51 @@
 > The complete history across every plugin and channel lives in `RELEASES.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## Statusline Plugin v2.5.0 (2026-08-04)
+
+**Tag:** `plugins/statusline/v2.5.0`
+
+### Overview
+
+`RAM` now reports the whole Claude Code process tree instead of the entrypoint alone. The number you see will go up — on the machine this was developed on, from `RAM 1.2G` to `RAM 1.5G` — because the old figure was never the whole picture.
+
+### Claude Code is not one process
+
+The segment ran `ps -o rss= -p "$CLAUDE_PID"`: the resident set of the entrypoint, and nothing else. But Claude Code forks helpers, and MCP servers and tools run as its children. Two trees measured on the same machine, same moment:
+
+| Tree | Entrypoint alone | Whole tree | Understated by |
+|---|---|---|---|
+| Interactive session (`claude`, with MCP servers attached) | 1300144 KB | 1587984 KB | 1.2× |
+| Agent-SDK session (`claude` → `bg-pty-host` → `bg-spare`) | 320880 KB | 870832 KB | **2.7×** |
+
+The gap is not a fixed ratio — it depends on how many helpers and MCP servers a session has running — which is exactly why it cannot be corrected with a multiplier and has to be measured.
+
+The second tree also shows why depth matters: `bg-spare` is a child of `bg-pty-host`, not of the entrypoint. Summing only direct children would have missed 293 MB of the 850 MB.
+
+### How it is measured
+
+One `ps -eo pid,ppid,rss` snapshot, then a breadth-first walk from `CLAUDE_PID` inside a single `awk`. Not a `ps` per process: this runs on every prompt, and a fork per descendant is not a cost worth paying for a status line. The root is included, the walk recurses to arbitrary depth, and a `seen[]` set guards against cycles and against a process reparenting mid-snapshot, so no PID is ever counted twice.
+
+Verified against an independently written ancestor-chasing implementation over the same snapshot — both produce 1587984 KB — and against a hand-summed three-process tree, exact to the kilobyte.
+
+### The number is a slight overestimate, on purpose
+
+Summing RSS double-counts memory shared between the processes, mapped shared libraries most of all. A true proportional-set-size figure needs per-process page-table introspection that macOS does not expose cheaply to a shell script running on every prompt.
+
+That trade-off is accepted deliberately. The segment exists to answer *"what is Claude Code costing me in RAM"*, and for that question the whole tree is the honest answer and one process is not. It is documented in the script so the next reader does not mistake the overcount for a bug.
+
+### Fails soft
+
+If the tree walk returns nothing — an unknown PID, a `ps` that fails — the segment falls back to the entrypoint's own RSS, exactly as before. If that is empty too, nothing renders. A memory reading is never worth breaking the status line over.
+
+### Unchanged
+
+`fmt_mem` and the `find_claude_pid` entrypoint matcher are untouched; both were fixed in 2.3.0 and are correct. The `RAM` label, the `sections.memory` config key, the `icons.nerd_font` glyph, the colour, and the placement are all as they were.
+
+---
+
+---
+
 ## Statusline Plugin v2.4.0 (2026-08-04)
 
 **Tag:** `plugins/statusline/v2.4.0`

@@ -306,6 +306,60 @@ find_claude_pid() {
   return 1
 }
 
+# Sum resident set size (KB) across a PID and every descendant of it.
+#
+# Claude Code is not one process. The entrypoint forks helpers — on a real session
+# here: main 680M plus two children at 249M and 252M, so ~1180M actual against a
+# 680M single-process reading. Reporting only the entrypoint understates what the
+# tool costs by roughly half, which is the opposite of what this segment is for.
+#
+# Takes ONE `ps -eo pid,ppid,rss` snapshot and walks the tree inside awk. Spawning
+# a `ps` per process would cost a fork per descendant on every statusline render,
+# which runs on every prompt.
+#
+# CAVEAT: summing RSS double-counts memory shared between the processes — mapped
+# shared libraries most of all — so the figure is a slight OVERESTIMATE, not a
+# precise proportional-set-size measurement. That is the accepted trade-off: this
+# segment answers "what is Claude Code costing me in RAM", where the whole tree is
+# the honest answer, rather than "how big is one process", where it is not. Getting
+# a true PSS needs per-process page-table introspection that macOS does not expose
+# cheaply to a shell script running on every prompt.
+#
+# Prints nothing when the root PID is not in the snapshot; the caller falls back.
+tree_rss_kb() {
+  local root=$1
+  [ -n "$root" ] || return 1
+  ps -eo pid,ppid,rss 2>/dev/null | awk -v root="$root" '
+    # Skip the header and any malformed row.
+    $1 !~ /^[0-9]+$/ { next }
+    {
+      rss[$1] = $3
+      kids[$2] = kids[$2] " " $1
+    }
+    END {
+      if (!(root in rss)) exit 0   # unknown PID → print nothing, caller falls back
+      # Breadth-first walk from root. seen[] is the cycle/visited guard: a PID is
+      # counted at most once even if ps reports a parent loop (or a PID reparents
+      # mid-snapshot), so the sum can never runaway or double-count a process.
+      total = rss[root] + 0
+      seen[root] = 1
+      queue[0] = root
+      n = 1
+      for (i = 0; i < n; i++) {
+        k = split(kids[queue[i]], c, " ")
+        for (j = 1; j <= k; j++) {
+          if (c[j] != "" && !(c[j] in seen)) {
+            seen[c[j]] = 1
+            total += rss[c[j]] + 0
+            queue[n++] = c[j]
+          }
+        }
+      }
+      print total
+    }
+  '
+}
+
 # ── Extract session data (single jq call) ─────────────────
 eval "$(printf '%s' "$input" | jq -r '
   def s(v): if v == null then "" else (v | tostring) end;
@@ -640,12 +694,17 @@ if [ "$SHOW_DURATION" = "true" ]; then
   append_section "${C_MAGENTA}${DURATION}${R}"
 fi
 
-# ── 8. RAM usage (Claude Code process resident set) ──────
+# ── 8. RAM usage (Claude Code process tree, resident set) ──────
 # Rendered as `RAM 1.1G`, or `󰍛 1.1G` when `icons.nerd_font` is on. The text label
 # is deliberately "RAM", not "MEM": in this product's context "memory" reads as
 # LLM/agentic memory (MEMORY.md, mnemex) rather than process RAM. The config key
 # stays `memory` / SHOW_MEMORY for back-compat with existing
 # ~/.claude/statusline-config.json files.
+#
+# The figure covers the entrypoint AND all its descendants (see tree_rss_kb) —
+# Claude Code runs several processes, and the entrypoint alone is about half the
+# real total. Falls back to the single-process RSS if the tree walk comes back
+# empty, and renders nothing if that is empty too.
 if [ "$SHOW_MEMORY" = "true" ]; then
   CLAUDE_PID=""
   if [ -n "$SESSION_ID" ]; then
@@ -666,7 +725,11 @@ if [ "$SHOW_MEMORY" = "true" ]; then
     fi
   fi
   if [ -n "$CLAUDE_PID" ]; then
-    MEM_KB=$(ps -o rss= -p "$CLAUDE_PID" 2>/dev/null | tr -d ' ')
+    MEM_KB=$(tree_rss_kb "$CLAUDE_PID" | tr -d ' ')
+    # Fail soft: an empty or zero tree walk falls back to the entrypoint alone.
+    if [ -z "$MEM_KB" ] || ! [ "$MEM_KB" -gt 0 ] 2>/dev/null; then
+      MEM_KB=$(ps -o rss= -p "$CLAUDE_PID" 2>/dev/null | tr -d ' ')
+    fi
     if [ -n "$MEM_KB" ] && [ "$MEM_KB" -gt 0 ] 2>/dev/null; then
       MEM_FMT=$(fmt_mem "$MEM_KB")
       RAM_LABEL=$(icon_or "$ICON_RAM" "RAM")

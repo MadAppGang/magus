@@ -354,7 +354,7 @@
       "name": "statusline",
       "source": "./plugins/statusline",
       "description": "Adaptive statusline. Always-visible usage bars, critical-state highlights, provider-aware model display, vim mode, session and git diff chips, compaction count, RAM usage, reset countdowns, opt-in Nerd Font icons. On claudish sessions it swaps Anthropic's plan limits for the routed provider's.",
-      "version": "2.4.0",
+      "version": "2.5.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -372,6 +372,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "2.5.0",
+          "date": "2026-08-04",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "RAM now reports the whole Claude Code process tree, not just the entrypoint"
+        },
         {
           "version": "2.4.0",
           "date": "2026-08-04",
@@ -406,14 +414,6 @@
             "Changed"
           ],
           "summary": "claudish-routed session detection \u2014 CLAUDISH_ACTIVE_MODEL_NAME or CLAUDISH_TOKEN_FILE in the\u2026"
-        },
-        {
-          "version": "2.1.2",
-          "date": "2026-04-24",
-          "kinds": [
-            "Changed"
-          ],
-          "summary": "Split the diff section into two chips \u2014 session (\u2728 +A/-D, from Claude Code's cost telemetry)\u2026"
         }
       ]
     },

@@ -53,7 +53,7 @@ All fields are optional. Missing fields use defaults shown above. `sections` and
 | `plan_limits` | Teal→Red gradient | Dual bar: top=5h, bottom=7d plan usage with reset countdowns. **Anthropic only** — suppressed entirely when the session is routed through claudish (see below) |
 | `claudish_plan` | Teal→Red gradient | The ACTIVE provider's plan windows when routed through claudish. Same `id:NN% ↻countdown` style as `plan_limits`, with an arbitrary number of windows. Requires `plan_limits` to also be on |
 | `diff` | Cyan+green/red | Two independent chips rendered side-by-side: `🤖 +A/-D` (U+1F916) shows lines Claude has added/removed *in this conversation*; `⎇ +A/-D` (U+2387, plain Unicode — no Nerd Font needed) shows uncommitted lines from `git diff --shortstat` in the current worktree. The glyphs pair semantically — 🤖 is what the agent wrote, ⎇ is what is uncommitted in git. Each chip is hidden when its counts are zero; the git chip is also hidden when cwd is not a git repo. The whole section is hidden when both sides are zero. |
-| `memory` | Dim cyan | `RAM 1.1G` — resident memory of the Claude Code process. Labelled **RAM**, not MEM, so it is not misread as LLM/agentic memory. The config key stays `memory` for back-compat. Renders as `󰍛 1.1G` when `icons.nerd_font` is on. |
+| `memory` | Dim cyan | `RAM 1.1G` — resident memory of the Claude Code process **tree**: the entrypoint plus every descendant, summed. Labelled **RAM**, not MEM, so it is not misread as LLM/agentic memory. Summing RSS double-counts shared libraries, so the figure is a slight overestimate. The config key stays `memory` for back-compat. Renders as `󰍛 1.1G` when `icons.nerd_font` is on. |
 
 ### Branch and worktree: exactly one chip
 
