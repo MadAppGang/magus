@@ -1,0 +1,14 @@
+{
+  "name": "http-service-skill",
+  "private": true,
+  "description": "Package boundary for the http-service skill: one bun install serves assets/ and its tests. Not published.",
+  "type": "module",
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.0",
+    "typescript": "^5.9.0"
+  }
+}

@@ -1,5 +1,5 @@
 ---
-name: opentui-tui
+name: tui
 description: Build, review, or debug OpenTUI terminal UIs — React JSX or core constructs, Yoga flexbox, gradient meters, colour screenshots. Any Bun/TypeScript TUI. Only Bun is tested; Node/Deno at own risk.
 disable-model-invocation: true
 ---
@@ -42,7 +42,7 @@ all**, and `setCellWithAlphaBlending` is *compositing*, not interpolation. That 
 it in; never retype it** — the 0.80 heat floor, 24 ramp steps and `>128` ink threshold degrade silently.
 
 ```bash
-SKILL="${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/skills/opentui-tui}"; SKILL="${SKILL:-PASTE_THE_DIR_THIS_SKILL_MD_WAS_READ_FROM}"  # that var is UNSET in a Bash tool (MEASURED) — so paste. `:?` would ABORT the block and copy nothing
+SKILL="${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/skills/tui}"; SKILL="${SKILL:-PASTE_THE_DIR_THIS_SKILL_MD_WAS_READ_FROM}"  # that var is UNSET in a Bash tool (MEASURED) — so paste. `:?` would ABORT the block and copy nothing
 bun init -y                              # FROM EMPTY this is step 1: package.json, tsconfig, typescript + @types/bun — `tsc` and `"types": ["bun"]` below need both. Creates NO src/
 bun add @opentui/core @opentui/react react && bun add -d @types/react   # the shims import from core
 mkdir -p src; if [ -d "$SKILL/assets" ]; then cp -r "$SKILL/assets/theme" src/theme && cp -r "$SKILL/assets/runtime" src/runtime  # `cp -r` needs src/; copy BOTH — theme = tokens/color/text/widgets + 2 tests, runtime = shutdown + test + env.d.ts
@@ -167,7 +167,7 @@ can `Read`. **Prerequisites: `aha` (`brew install aha` / `apt-get install aha`),
 
 ```bash
 OUT=$(mktemp -d); SOCK=otui-$$; SESS=tui-$$   # unique per run: a fixed dir, socket or session collides with a parallel capture
-SKILL="${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/skills/opentui-tui}"; SKILL="${SKILL:-PASTE_THE_DIR_THIS_SKILL_MD_WAS_READ_FROM}"   # as above
+SKILL="${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/skills/tui}"; SKILL="${SKILL:-PASTE_THE_DIR_THIS_SKILL_MD_WAS_READ_FROM}"   # as above
 shot() { local A="$OUT/${1}x${2}.ansi"   # ${1}x${2} cells → a $3-pixel PNG. `-f /dev/null` on EVERY invocation, never just
   tmux -f /dev/null -L "$SOCK" new-session -d -s "$SESS" -x "$1" -y "$2" "bun run src/index.tsx"   # new-session: a .tmux.conf
   for _ in $(seq 40); do sleep 0.25; tmux -f /dev/null -L "$SOCK" capture-pane -p -e -t "$SESS" >"$A" 2>/dev/null && grep -q $'\x1b' "$A" && break; done   # that auto-creates sessions spawns ALL of them,

@@ -28,7 +28,7 @@ starts a fresh one that does read that file.
 
 ```bash
 OUT=$(mktemp -d); SOCK=otui-$$; SESS=tui-$$   # never fixed names: a parallel run collides, and a reused scratch dir hands back a stale PNG that looks fresh
-SKILL="${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/skills/opentui-tui}"; SKILL="${SKILL:-PASTE_THE_DIR_THIS_SKILL_WAS_READ_FROM}"
+SKILL="${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/skills/tui}"; SKILL="${SKILL:-PASTE_THE_DIR_THIS_SKILL_WAS_READ_FROM}"
 shot() {                                   # $1 cols × $2 rows → a $3-pixel PNG. Non-zero if the capture is worthless.
   local A="$OUT/${1}x${2}.ansi"
   tmux -f /dev/null -L "$SOCK" new-session -d -s "$SESS" -x "$1" -y "$2" "bun run src/index.tsx" || return 1

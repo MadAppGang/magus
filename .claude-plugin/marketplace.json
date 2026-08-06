@@ -373,8 +373,8 @@
     {
       "name": "bunjs",
       "source": "./plugins/bunjs",
-      "description": "Bun and TypeScript toolkit. Ships the opentui-tui skill for OpenTUI terminal UIs \u2014 React JSX intrinsics, Yoga flexbox layout, gradient meters and colour-accurate screenshots \u2014 with copyable theme and shutdown code. Only Bun is tested; Node and Deno at your own risk.",
-      "version": "0.1.0",
+      "description": "Bun and TypeScript toolkit. Eight task-shaped skills \u2014 project setup, HTTP services, errors and resilience, testing, security, production, performance and OpenTUI terminal UIs \u2014 each shipping copyable code verified against Bun. Only Bun is tested; Node and Deno at your own risk.",
+      "version": "0.2.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -385,16 +385,33 @@
         "bun",
         "bunjs",
         "typescript",
+        "http",
+        "api",
+        "error-handling",
+        "resilience",
+        "testing",
+        "security",
+        "production",
+        "docker",
+        "performance",
+        "benchmarking",
+        "project-structure",
         "tui",
         "opentui",
         "terminal-ui",
-        "react",
-        "dashboard",
-        "flexbox",
-        "screenshot"
+        "node-best-practices"
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "0.2.0",
+          "date": "2026-08-06",
+          "kinds": [
+            "Added",
+            "Changed"
+          ],
+          "summary": "Seven new skills, split by the problem an agent is in rather than by book chapter \u2014\u2026"
+        },
         {
           "version": "0.1.0",
           "date": "2026-07-30",

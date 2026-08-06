@@ -115,6 +115,22 @@ magus-src and are shipped by no `distTargets`, so nothing published to any chann
 
 ---
 
+## [bunjs 0.2.0] - 2026-08-06
+
+### Added
+
+- **Seven new skills, split by the problem an agent is in rather than by book chapter** — `project-setup`, `http-service`, `errors`, `testing`, `security`, `production`, `performance`. The split is deliberate: a book's table of contents is organised for sequential reading, while a skill set is accessed at random under a specific failure, so mirroring [nodebestpractices](https://github.com/goldbergyoni/nodebestpractices)' eight chapters would have produced a "Code Style" skill nobody loads and buried "I'm writing a Dockerfile" in chapter 8. That repository is the reference, credited in the plugin README with a chapter→skill mapping; its chapters 1 and 3 both land in `project-setup`, and 5 and 8 both in `production`.
+- **Every non-obvious claim was measured against Bun 1.3.10, not recalled**, and where a measurement contradicted the folklore the measurement is what shipped. `Bun.file().text()` was **not** faster than `node:fs/promises readFile` for 1 MiB whole-file reads in either of two runs (0.124/0.133 vs 0.112/0.097 ms/op); the repeatable win is `.bytes()` skipping UTF-8 decode. `performance` reports this rather than the usual "Bun natives are faster" claim.
+- **Eight silent-failure traps found by probing, documented where each bites.** The worst is `bunfig.toml`'s `coverageThreshold`: the keys are **plural only**, so `{ line = 0.99 }`, `{ function = 0.99 }` and `{ statement = 0.99 }` are silently ignored — no error, no warning, `exit 0` against 33% actual coverage, and CI green with the gate dead. Also: `bun:sqlite` without `{ strict: true }` returns `[]` for a misspelled parameter instead of throwing; a `{ GET, POST }` route map falls through to `fetch()` rather than answering 405; `server.reload({ routes })` replaces the entire route table; a `"/*"` wildcard populates no params; an unhandled rejection does not terminate the process; `spyOn` calls through to the original by default; and `JSON.stringify(new Error("x"))` is `{}`.
+- **Copyable, tested assets in every skill.** `errors` ships the `AppError` hierarchy, centralized handler and `withTimeout`/`retry`/`CircuitBreaker`; `security` ships enumeration-safe login, token handling and a rate limiter whose key cannot be forged; `http-service` ships middleware, `AsyncLocalStorage` request context and response helpers; `testing` ships a component-test harness and controllable fake upstream; `production` ships a JSON logger, health checks, shutdown ordering and a multi-stage Dockerfile; `project-setup` ships a typed env parser; `performance` ships a benchmark harness that calibrates against the measured ~42 ns clock granularity and refuses to call a difference inside the noise band a win. **362 tests pass across the eight skill packages with `tsc --noEmit` clean in each.**
+- **All eight skills carry `disable-model-invocation: true` and one `/bunjs:<name>` command each.** The marketplace-wide skill listing was already at 11,797 of its 12,000-char ceiling against Claude Code's real 8,000-char runtime cap, so a listing-eligible description here would have broken the budget gate. The plugin spends zero listing characters; the commands and a CLAUDE.md routing row are how the skills are found.
+
+### Changed
+
+- **BREAKING: the `opentui-tui` skill is renamed to `tui`**, so the command is now **`/bunjs:tui`** and `/bunjs:opentui-tui` no longer resolves. Its 119 tests still pass unchanged. The rename makes the naming consistent across the eight skills — inside a plugin already called `bunjs`, a product prefix on each folder is redundant.
+
+---
+
 ## [Statusline 2.5.0] - 2026-08-04
 
 ### Changed

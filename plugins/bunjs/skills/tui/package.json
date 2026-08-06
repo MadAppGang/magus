@@ -1,7 +1,7 @@
 {
-  "name": "opentui-tui-skill",
+  "name": "tui-skill",
   "private": true,
-  "description": "Package boundary for the opentui-tui skill: one bun install serves assets/ and its tests. Not published.",
+  "description": "Package boundary for the tui skill: one bun install serves assets/ and its tests. Not published.",
   "type": "module",
   "scripts": {
     "test": "bun test",

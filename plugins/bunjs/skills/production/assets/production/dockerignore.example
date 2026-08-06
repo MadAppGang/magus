@@ -1,0 +1,34 @@
+# Copy to `.dockerignore` at the repo root.
+#
+# This is a SEPARATE list from .gitignore and people update only one. The consequence of
+# the gap is real: `COPY . .` with a stray .env ships production credentials inside the
+# image, and deleting it in a later layer does NOT remove it from the image.
+
+node_modules
+dist
+coverage
+
+.env
+.env.*
+!.env.example
+
+.git
+.github
+.gitignore
+
+*.test.ts
+*.spec.ts
+__tests__
+
+Dockerfile*
+docker-compose*
+.dockerignore
+
+README.md
+docs
+*.md
+
+.vscode
+.idea
+.DS_Store
+*.log

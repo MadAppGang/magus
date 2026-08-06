@@ -1,7 +1,7 @@
 {
   "name": "bunjs",
-  "version": "0.1.0",
-  "description": "Bun and TypeScript toolkit. Ships the opentui-tui skill for OpenTUI terminal UIs — React JSX intrinsics, Yoga flexbox layout, gradient meters and colour-accurate screenshots — with copyable theme and shutdown code. Only Bun is tested; Node and Deno at your own risk.",
+  "version": "0.2.0",
+  "description": "Bun and TypeScript toolkit. Eight task-shaped skills — project setup, HTTP services, errors and resilience, testing, security, production, performance and OpenTUI terminal UIs — each shipping copyable code verified against Bun. Only Bun is tested; Node and Deno at your own risk.",
   "author": { "name": "Jack Rudenko", "email": "i@madappgang.com", "company": "MadAppGang" },
   "license": "MIT",
   "homepage": "https://github.com/MadAppGang/magus",
@@ -10,15 +10,32 @@
     "bun",
     "bunjs",
     "typescript",
+    "http",
+    "api",
+    "error-handling",
+    "resilience",
+    "testing",
+    "security",
+    "production",
+    "docker",
+    "performance",
+    "benchmarking",
+    "project-structure",
     "tui",
     "opentui",
     "terminal-ui",
-    "react",
-    "dashboard",
-    "flexbox",
-    "screenshot"
+    "node-best-practices"
   ],
-  "skills": ["./skills/opentui-tui"],
+  "skills": [
+    "./skills/project-setup",
+    "./skills/http-service",
+    "./skills/errors",
+    "./skills/testing",
+    "./skills/security",
+    "./skills/production",
+    "./skills/performance",
+    "./skills/tui"
+  ],
   "commands": ["./commands"],
   "compatibility": { "claudeCode": ">=0.1.0" }
 }
