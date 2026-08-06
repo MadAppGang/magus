@@ -18,7 +18,7 @@ The bar is **more colour, more graphs, less text**; the failure mode is not ugli
 
 | You have… | Default to… | Not… |
 |---|---|---|
-| a bounded value (%, ratio, 0–100) | a **gradient meter** — one colour per cell across the fill | a bare number, or a flat one-colour bar |
+| a bounded value (a percentage — **`pct` is 0–100, never 0–1**) | a **gradient meter** — one colour per cell across the fill | a bare number, or a flat one-colour bar |
 | a time series / recent history | a **sparkline** (`▁▂▃▄▅▆▇█`) | the latest number alone |
 | a category distribution | a **bar chart** or stacked bar, coloured per category | a list of `name: count` lines |
 | counts over time × category | a **heat row** per category, brightness = magnitude | a table of numbers |
@@ -43,8 +43,8 @@ it in; never retype it** — the 0.80 heat floor, 24 ramp steps and `>128` ink t
 
 ```bash
 SKILL="${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/skills/tui}"; SKILL="${SKILL:-PASTE_THE_DIR_THIS_SKILL_MD_WAS_READ_FROM}"  # that var is UNSET in a Bash tool (MEASURED) — so paste. `:?` would ABORT the block and copy nothing
-bun init -y                              # FROM EMPTY this is step 1: package.json, tsconfig, typescript + @types/bun — `tsc` and `"types": ["bun"]` below need both. Creates NO src/
-bun add @opentui/core @opentui/react react && bun add -d @types/react   # the shims import from core
+bun init -y                              # FROM EMPTY this is step 1: package.json, typescript + @types/bun — `tsc` and `"types": ["bun"]` below need both. Creates NO src/. It ALSO writes a tsconfig.json you MUST overwrite with the block below — its defaults carry no `jsxImportSource`, so nothing renders
+bun add @opentui/core @opentui/react react && bun add -d @types/react   # the shims import from core. UNPINNED, so you get `latest` — 0.5.1 as of 2026-08-06, not the 0.4.5 this skill's own package.json pins. Both run clean; only the `--compile` row cares (versions-and-builds.md)
 mkdir -p src; if [ -d "$SKILL/assets" ]; then cp -r "$SKILL/assets/theme" src/theme && cp -r "$SKILL/assets/runtime" src/runtime  # `cp -r` needs src/; copy BOTH — theme = tokens/color/text/widgets + 2 tests, runtime = shutdown + test + env.d.ts
 else echo "SKILL is still the placeholder — paste the real dir above, re-run these 2 lines; the install already ran"; fi
 ```
@@ -52,7 +52,7 @@ else echo "SKILL is still the placeholder — paste the real dir above, re-run t
 Three test files ship — two under `theme/`, `shutdown.test.ts` under `runtime/` — so copying only `theme/` leaves the
 teardown suite behind; `color.ts` imports `./tokens`, `widgets.tsx` imports both, the tests all four, and `opentui-env.d.ts`
 must fall inside your `tsconfig.json` `include`. **Leave the relative imports as they are** — in `src/theme/` they
-resolve untouched (MEASURED in a bare `bun init`: `diff -qr` identical, `tsc` clean, 63/63 pass); `@/theme/…` is 9×TS2307.
+resolve untouched (MEASURED in a bare `bun init`: `diff -qr` identical, `tsc` clean, 119/119 pass); `@/theme/…` is 9×TS2307.
 
 ## Two API surfaces — never blend them
 
@@ -153,7 +153,8 @@ unpainted hole a screenshot fails you for. MEASURED: 30 rows filled that side pa
 
 ## Shipping it: pick your pin by artifact
 
-**Run from source, or a plain npm package → 0.4.x**, what the docs describe and `bun create tui` installs. **A standalone
+**Run from source, or a plain npm package → 0.4.x or 0.5.x.** An unpinned `bun add` gives **0.5.1** today
+(2026-08-06); 0.4.5 and 0.5.1 both run clean, so take the default unless you need the compile row. **A standalone
 `bun build --compile` binary → 0.1.107, and no `--external`** — it leaves the binary unable to resolve the module. The
 costliest mistake is `bun add @opentui/core@latest` then `--compile`, so **re-test 0.4.x `--compile` before accepting
 that downgrade**: MEASURED 2026-07-30, 0.4.5 compiles fine and the *binary* exits 1 resolving its native library inside
@@ -186,7 +187,7 @@ shot 80 24 720x480 && shot 145 45 1300x900 && ls -l "$OUT"/*.png   # BOTH sizes 
 
 ## Best practices
 
-- **One `<text>` per row, or `<span>`s inside ONE `<text>`** — sibling `<text>`s in a box paint over each other at (0,0), five sightings across three apps (`react-patterns.md`).
+- **One `<text>` per row, or `<span>`s inside ONE `<text>`** — the safe default, and the only composable one. Sibling `<text>`s are **legal and lay out normally**; they overprint at (0,0) only when the box is too short for them (five sightings, all height starvation — the ten-configuration table is `react-patterns.md:73`). A `<span>` outside a `<text>` is a different and unconditional failure: it **renders an error page instead of your UI** — `Component of type "span" must be created inside of a text node` — while the process stays alive, exits 0 and writes NOTHING to stderr, so `tsc`, `bun test` and `check-surface` all stay green. Only the screenshot catches it.
 - **Pin `height` only on rows that overprint, in `main-screen` mode**; fixed heights everywhere clip content and defeat `flexGrow`. Use `key={phase}` when the tree changes *shape* — in-place reconciliation tears the panel.
 - **Poll a mutable store on an interval** instead of `setState` per event once a producer outpaces the frame rate, and hoist ramps and parsed colours out of render and out of per-cell loops (`app-architecture.md`). **Theme by plain module import** — zero `ThemeProvider`/`useTheme` hits across three apps, one theme per process.
 - **Acceptance:** `bun test`, `bunx tsc --noEmit` (the local `typescript` `bun init` installs), `bun run "$SKILL/scripts/check-surface.ts" .`, **plus a colour screenshot** for any visual change. Both scripts need that absolute prefix — the skill lives in a read-only plugin cache, never your cwd — and `${CLAUDE_PLUGIN_ROOT}` is **unset inside a Bash tool call** (MEASURED `CLAUDE_PLUGIN_ROOT=[<UNSET>]`), so paste that directory over the placeholder the blocks above carry. Never `${VAR:?…}` in a recipe: it aborts, it does not warn.

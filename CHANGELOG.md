@@ -4,6 +4,42 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [bunjs 0.2.1] - 2026-08-06
+
+### Fixed
+
+- **Nine false claims in the `tui` skill, found by six models each building its eval #1
+  dashboard for real and screenshotting it.** The code was never the problem — every gate
+  passed in all six builds. The prose was wrong.
+- `bun add @opentui/core @opentui/react react` resolves **0.5.1** today, not the 0.4.x the
+  skill taught. `versions-and-builds.md` claimed "`latest` is 0.4.5". Run-from-source is now
+  measured clean on both; the `--compile` rows are marked **unverified at 0.5.x** rather than
+  silently extended to a version nobody tested.
+- A `<span>` outside a `<text>` does not crash — it **renders an error page while the process
+  stays alive, exits 0 and writes nothing to stderr**, so `tsc`, `bun test` and `check-surface`
+  all stay green on a dead UI. Two of six models hit it independently. SKILL.md now says so.
+- SKILL.md contradicted its own reference on sibling `<text>`: it stated they overprint
+  unconditionally, while `react-patterns.md:73` — a section titled "Overprint is height
+  starvation — NOT sibling count" — says they are legal. The router carried the myth.
+- `Meter`'s `pct` is 0–100; the visual-mapping table said "%, ratio, 0–100", and "ratio"
+  invited 0–1. One model lost a capture round to it.
+- The bootstrap never said to overwrite the `tsconfig.json` that `bun init` writes — its
+  defaults carry no `jsxImportSource`, so nothing renders.
+- Route B needs no upstream change to hit the mandated capture sizes: its pane lives on the
+  `mcp-headless` socket the doc already reaches, so one `resize-window` call does it.
+  **`resize-window`, not `resize-pane`** — the latter is a silent no-op on a lone pane
+  (measured), returning success while the pane stays 200×50.
+- Oversize PNG padding renders opaque black, not transparent as claimed, and must not be read
+  as an unpainted hole.
+- The stale `63/63 pass` measurement is now `119/119`, the real count.
+
+### Why
+
+The skill's whole premise is MEASURED-not-remembered. Claims that decay silently cost more
+here than in a skill that never made the promise.
+
+---
+
 ## [Multimodel 3.4.0] - 2026-08-06
 
 ### Added

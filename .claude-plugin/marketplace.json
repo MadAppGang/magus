@@ -374,7 +374,7 @@
       "name": "bunjs",
       "source": "./plugins/bunjs",
       "description": "Bun and TypeScript toolkit. Eight task-shaped skills \u2014 project setup, HTTP services, errors and resilience, testing, security, production, performance and OpenTUI terminal UIs \u2014 each shipping copyable code verified against Bun. Only Bun is tested; Node and Deno at your own risk.",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -403,6 +403,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "0.2.1",
+          "date": "2026-08-06",
+          "kinds": [
+            "Fixed"
+          ],
+          "summary": "Nine false claims in the tui skill, found by six models each building its eval #1 dashboard for\u2026"
+        },
         {
           "version": "0.2.0",
           "date": "2026-08-06",

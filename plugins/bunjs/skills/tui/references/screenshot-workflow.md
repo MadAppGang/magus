@@ -44,6 +44,21 @@ shot 80 24 720x480 && shot 145 45 1300x900 && ls -l "$OUT"/*.png   # narrow AND 
 
 ## Route B — the terminal MCP's headless server
 
+> **Route B sets no geometry of its own — resize the pane yourself.** `create-headless` takes
+> only `name`/`command` and `start-and-watch` takes no size, so the pane comes up at the
+> server's default (MEASURED 2026-08-06: 200×50). Nothing upstream needs changing — the pane
+> lives on the `mcp-headless` socket this file already reaches, so one Bash line hits the
+> mandated sizes:
+>
+> ```bash
+> tmux -f /dev/null -L mcp-headless resize-window -t %0 -x 80 -y 24   # then re-capture
+> ```
+>
+> **`resize-window`, not `resize-pane`.** MEASURED: `resize-pane -x 80 -y 24` on a lone pane
+> filling its window is a silent no-op — it returns success and the pane stays 200×50.
+> `resize-window` actually resizes, and a running OpenTUI app reflows. Route B's
+> `screenshot-pane` is otherwise the nicer instrument: it returns a viewable PNG directly.
+
 If a headless pane already exists (`mcp__tmux__create-headless` → `mcp__tmux__start-and-watch`
 with a `pattern` that only appears once the first frame is drawn), capture it from Bash on
 **its** socket, `mcp-headless`:
@@ -104,7 +119,9 @@ Capture **one narrow (80×24) and one wide** — `shot 80 24 … && shot 145 45 
 one alone. Responsive breakage — truncated panels, wrapped headers, meters that overflow — only
 shows at the edges. `ansi-to-png.ts` takes an optional `WIDTHxHEIGHT` in CSS pixels; a monospace
 cell is roughly 9×20 px, so 80×24 ≈ `720x480` and a 145×45 dashboard ≈ `1300x900`. **Oversize is
-harmless** — the extra area renders transparent.
+costs you nothing but a black band** — the extra area renders as OPAQUE BLACK, not transparent
+(MEASURED 2026-08-06: both captures carry a solid black band below the footer). Harmless, but do
+not read that band as an unpainted hole in your layout — check where the footer row is first.
 
 ## Notes & gotchas
 

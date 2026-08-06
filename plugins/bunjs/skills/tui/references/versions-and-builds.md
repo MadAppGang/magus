@@ -6,6 +6,14 @@
 and nothing here keeps. Treat the stamp as an expiry date: re-run the recipe at the bottom (~2 min)
 before trusting a row.
 
+> **Re-measured 2026-08-06 — `latest` has moved to 0.5.1.** An unpinned
+> `bun add @opentui/core @opentui/react react` now resolves **0.5.1** (react 19.2.8), not 0.4.5.
+> The **run-from-source row still holds**: six independent clean-scratch builds on 0.5.1 gave
+> 119/119 asset tests, `tsc --noEmit` clean, and a rendered colour frame at 80×24 and 145×45.
+> The `--compile` rows below are **unverified at 0.5.x** — they were measured against 0.4.5 and
+> 0.1.107 only, so treat the compiled-binary guidance as untested on the version you will install
+> by default.
+
 ## Pick your pin by the artifact you are shipping
 
 Read the row for the thing you ship — applying the "npm package" row to `--compile` is the mistake
@@ -13,7 +21,7 @@ this table exists to prevent.
 
 | Artifact you ship | Pin | `--external`? | Measured evidence |
 |---|---|---|---|
-| **Run from source** — `bun run src/index.tsx`, or a plain npm package | 0.4.x, what the docs describe | n/a | 0.4.5 runs, exit 0 |
+| **Run from source** — `bun run src/index.tsx`, or a plain npm package | 0.4.x or 0.5.x — an unpinned `bun add` gives **0.5.1** today | n/a | 0.4.5 runs, exit 0; 0.5.1 runs, exit 0 (2026-08-06, 6 builds) |
 | **npm launcher / JS bundle**, deps resolved adjacently via `optionalDependencies` | 0.4.x | **yes** — but only because the platform packages ship alongside | external binary run *beside* its `node_modules`: exit 0 |
 | **Standalone compiled binary** — `bun build --compile` | **0.1.107** | **NO** — externalising makes the binary unable to resolve the module | compiles **and launches**: exit 0, 66,534,800 B |
 
@@ -56,7 +64,8 @@ Because the install is host-filtered, `bun build --compile --target=bun-linux-x6
 
 ## 0.1.x is an abandoned line — the trade-off, stated
 
-Pointing you at 0.1.107 for a compiled binary costs something real. `latest` is **0.4.5**, and 0.2.0
+Pointing you at 0.1.107 for a compiled binary costs something real. `latest` is **0.5.1** (2026-08-06;
+it was 0.4.5 when the compile rows above were measured), and 0.2.0
 shipped the *same day* as 0.1.107 — the line is terminal, not merely quiet, which also makes "re-test on
 every bump" unactionable. **The docs site describes 0.4.x and states no version number anywhere**, so docs
 and a 0.1.x pin disagree in silence: a copied example that "should work" may not exist in your pin, so check

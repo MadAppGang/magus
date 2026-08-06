@@ -1,6 +1,6 @@
 {
   "name": "bunjs",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Bun and TypeScript toolkit. Eight task-shaped skills — project setup, HTTP services, errors and resilience, testing, security, production, performance and OpenTUI terminal UIs — each shipping copyable code verified against Bun. Only Bun is tested; Node and Deno at your own risk.",
   "author": { "name": "Jack Rudenko", "email": "i@madappgang.com", "company": "MadAppGang" },
   "license": "MIT",
