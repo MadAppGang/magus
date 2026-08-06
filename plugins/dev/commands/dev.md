@@ -599,7 +599,13 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
     - Reasoning role: see `roles.reasoning` and `roles.reasoning_premium`
 
     Always include:
-    - Internal Claude (embedded, FREE)
+    - `internal` — the current host session model. Do not name a vendor or claim it
+      is free; the host is whatever model is running this session.
+
+    Store the catalog's `id`, never a routing address. `openrouterId`
+    (`moonshotai/kimi-k3`) and Access routes (`kc@kimi-k3`) sit beside the identity in
+    the same record, and storing either pins the provider and bypasses
+    subscription-aware routing. A stored ID contains no `@` and no `/`.
 
     **Selection happens ONCE in Phase 1 Step 1f (upfront)**
     Models are stored in iteration-config.json and reused in Phases 3 and 5.

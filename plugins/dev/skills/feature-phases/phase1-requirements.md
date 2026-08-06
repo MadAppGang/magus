@@ -289,7 +289,16 @@ Store selection in ${SESSION_PATH}/iteration-config.json under `selectedModels`:
 }
 ```
 
-Note: `models` array stores RESOLVED full model IDs (from ALIAS_TABLE), not the short aliases the user typed. This way Phases 3 and 5 pass IDs directly to `claudish team()` without re-resolving.
+Note: `models` stores the RESOLVED model IDs from the live catalog, not the short
+aliases the user typed. Phases 3 and 5 pass them straight to `claudish team()`.
+
+**Store the catalog's `id`, never a routing address.** A catalog record carries
+addresses next to the identity — `openrouterId` (`moonshotai/kimi-k3`) and Access
+routes (`kc@kimi-k3`) — and storing either pins the provider, bypassing the
+subscription-aware routing and fallback that the bare `id` gets. A stored ID must
+contain no `@` and no `/`: `kimi-k3`, not `moonshotai/kimi-k3`. Store an address only
+when the user explicitly asked to pin that backend. See `multimodel:claudish-usage` →
+"Identity vs routing address".
 
 If claudish is NOT available:
   Set selectedModels.configured = true, selectedModels.models = [],

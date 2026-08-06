@@ -110,15 +110,28 @@ a **requirement**. Resolve it against the catalog and use what you find.
 When uncertain, show the live candidates and ask the user to pick. Listing real
 options is always better than guessing one.
 
-### Backend selectors (`provider@model`)
+### Identity vs routing address
 
-`list_models` reports an **Access** line such as `` `oai@LATEST_GPT_MODEL` ·
-`cx@LATEST_GPT_MODEL` ``. These are backend selectors — the same model reachable
-through different provider accounts (e.g. OpenAI direct vs Codex subscription).
+Every catalog record carries the model's **identity** and several **addresses** for
+reaching it. Only the identity is the model. Addresses live in sibling fields, so it is
+easy to copy the wrong one out of the same record:
 
-- If the user names one (`cx@LATEST_GPT_MODEL`), pass it through **verbatim**.
-- If they don't, pass the bare model ID and let claudish pick the backend.
-- Do not invent a prefix that `list_models` did not report for that model.
+| In the record | Example | What it is |
+|---|---|---|
+| `id` | `kimi-k3` | **the identity — this is the model** |
+| `openrouterId` | `moonshotai/kimi-k3` | an address: route via OpenRouter |
+| Access line | `kimi@kimi-k3` · `kc@kimi-k3` | addresses: same model, different accounts |
+
+**Bare means no `@` AND no `/`.** `moonshotai/kimi-k3` is not a bare ID — the vendor
+slug is a route, not part of the name. Both prefix forms pin the request to one
+provider and bypass the subscription-aware backend selection and fallback that passing
+`id` gives you. `z-ai/glm-5.2` is as wrong as `gc@glm-5.2`, for the same reason.
+
+- If the user names an address (`cx@LATEST_GPT_MODEL`), pass it through **verbatim**.
+- Otherwise pass `id`, and let claudish pick the backend.
+- Never assemble an address yourself, and never substitute one field for another —
+  "the catalog reports it" is not a licence to send it, because the catalog reports
+  every address too.
 
 ### Responsibility Boundaries
 
@@ -135,7 +148,10 @@ through different provider accounts (e.g. OpenAI direct vs Codex subscription).
 - ALWAYS resolve against the live catalog; NEVER from memory or a committed file
 - NEVER invent a model ID — if nothing matches, show live options and ask
 - NEVER silently downgrade to an older version than the user asked for
-- NEVER invent provider prefixes — only pass through ones the catalog reports
+- ALWAYS send the catalog's `id`. NEVER send an address (`vendor/model`,
+  `provider@model`) where a model belongs — not even one the catalog reports, since it
+  reports `openrouterId` and every Access route alongside `id`. An address goes through
+  only when the user named it themselves
 - User `customAliases` override, but flag any that the catalog no longer lists
 
 ## 🤖 Agent Selection Guide

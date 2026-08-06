@@ -138,7 +138,7 @@
       "name": "multimodel",
       "source": "./plugins/multimodel",
       "description": "Multi-model collaboration and orchestration. Runs a task across several AI models in parallel and aggregates their blind APPROVE/REJECT votes, or delegates it to one model running a full Claude Code session.",
-      "version": "3.3.1",
+      "version": "3.3.2",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -163,6 +163,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "3.3.2",
+          "date": "2026-08-06",
+          "kinds": [
+            "Fixed"
+          ],
+          "summary": "A routing address is not a model identity"
+        },
         {
           "version": "3.3.0",
           "date": "2026-07-29",
@@ -199,7 +207,7 @@
       "name": "dev",
       "source": "./plugins/dev",
       "description": "Universal development assistant. Detects the project stack and routes work to specialist agents for architecture, implementation, debugging, review and research, enforcing design-system guardrails on every UI change.",
-      "version": "3.0.1",
+      "version": "3.0.2",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -239,6 +247,14 @@
       "strict": true,
       "releases": [
         {
+          "version": "3.0.2",
+          "date": "2026-08-06",
+          "kinds": [
+            "Fixed"
+          ],
+          "summary": "Phase 1 Step 1f stores the catalog's id, never a routing address"
+        },
+        {
           "version": "3.0.1",
           "date": "2026-08-02",
           "kinds": [
@@ -271,14 +287,6 @@
             "Fixed"
           ],
           "summary": "/dev:design-system command \u2014 validates a project against the five design-system guardrails\u2026"
-        },
-        {
-          "version": "2.11.0",
-          "date": "2026-07-26",
-          "kinds": [
-            "Added"
-          ],
-          "summary": "frontend/design-system-guardrails skill: enforces single-source-of-truth UI \u2014 design tokens as\u2026"
         }
       ]
     },

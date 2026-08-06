@@ -4,6 +4,59 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [multimodel 3.3.2] - 2026-08-06
+
+### Fixed
+
+- **A routing address is not a model identity.** Agents were storing `moonshotai/kimi-k3`
+  as the model ID while stating, in their own summaries, that it was "bare, unprefixed (no
+  `kc@`/`kimi@` backend selector)". That is the catalog record's `openrouterId`, sitting
+  directly beside `id` in the same object. The old rule — *"NEVER invent provider prefixes
+  — only pass through ones the catalog reports"* — permitted it, because the catalog does
+  report `openrouterId`; and its `@`-only examples taught the pattern, so a `/` never
+  registered as a prefix at all. Storing either form pins the provider and bypasses the
+  subscription-aware routing and fallback the user asked for.
+- "Backend selectors (`provider@model`)" becomes "Identity vs routing address", tabling
+  `id` / `openrouterId` / Access line side by side. Bare now means no `@` **and** no `/`,
+  stated with the concrete pair: `z-ai/glm-5.2` is as wrong as `gc@glm-5.2`.
+- The permission clause is closed: "the catalog reports it" is explicitly not a licence to
+  send it, since the catalog reports every address alongside the identity.
+
+### Why
+
+Measured, not assumed. `benches/model-selection` runs real Claude Code against a real
+plugin tree and varies only which copy is installed. Five runs per setup on
+claude-sonnet-5: the published plugin stored a routing address in 4/5 runs; with this
+wording, 5/5 stored the identity (Fisher exact, one-sided p ~= 0.02).
+
+A single pair of runs did not show the effect — one post-fix run had treatment *and*
+control passing, which reads as success and is not, since the control carries none of the
+fix. Only repeated trials separated it from run-to-run variance.
+
+---
+
+## [dev 3.0.2] - 2026-08-06
+
+### Fixed
+
+- **Phase 1 Step 1f stores the catalog's `id`, never a routing address.** A stored model ID
+  must contain no `@` and no `/`: `kimi-k3`, not `moonshotai/kimi-k3`. Storing an address
+  pins the provider and bypasses subscription-aware routing — and Step 1f's selection is
+  reused in Phases 3 and 5, so one bad entry propagates through every later review.
+- Dropped a dangling reference to `ALIAS_TABLE` in the same note. That concept was deleted
+  when model resolution moved to the live catalog; the instruction still named it.
+- **`internal` is the current host session model.** `dev.md` hard-coded "Internal Claude
+  (embedded, FREE)", conflating execution location, vendor, and billing. During the
+  incident that produced this work the host was GPT-5.6 Sol, so the summary was reporting a
+  vendor and a price that were both wrong.
+
+### Why
+
+See `multimodel 3.3.2` — same defect, measured by the same bench. Both plugins had to
+change: the skill defines the rule, Step 1f is where the value gets written down.
+
+---
+
 ## [Marketplace 8.2.0] - 2026-08-06
 
 ### Added
