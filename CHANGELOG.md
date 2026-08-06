@@ -228,6 +228,26 @@ now-corrected rule statement — the full rewrite is a separate, larger item.
 
 ---
 
+## [terminal 4.1.4] - 2026-07-30
+
+### Changed
+
+- Tracks `github.com/MadAppGang/tmux-mcp@v1.6.3`, up from `v1.6.2`.
+
+---
+
+## [designer 0.4.2] - 2026-07-30
+
+### Changed
+
+- **Description rewritten to say what the plugin is, not what a release did.** It read
+  "UI design validation, review, and style management. Pixel-diff comparison, AI semantic
+  analysis, and design system workflows." — a feature list. It now states the actual
+  behaviour: compares a rendered screen against its reference by pixel diff, then reviews
+  the result for spacing, hierarchy and design-system consistency.
+
+---
+
 ## [bunjs 0.1.0] - 2026-07-30
 
 ### Added
@@ -354,6 +374,28 @@ Full review: `ai-docs/dev-plugin-team-review-2026-07-29.md`.
 
 ### Changed
 - Pointers to the deleted `shared/model-aliases.json` replaced with live-catalog resolution, and concrete model IDs in illustrative examples replaced with placeholders. Behaviour is otherwise unchanged; a patch release so claudeup actually ships the updated guidance.
+
+---
+
+## [terminal 4.1.3] - 2026-07-29
+
+### Fixed
+
+- **`framework-signals` was unreachable by any path.** It carried both
+  `disable-model-invocation: true` and `user-invocable: false`. The first removes
+  auto-matching *and* subagent preloading; the second removes it from the `/` menu —
+  together they leave no way to invoke the skill at all. Dropping `user-invocable: false`
+  restores `/terminal:framework-signals` and costs nothing in listing budget, since
+  `disable-model-invocation` already keeps it out.
+
+---
+
+## [go 0.1.1] - 2026-07-29
+
+### Changed
+
+- **`go-tui` description rewritten to the compliant form.** Leads with the capability and
+  covers review and debugging alongside building, rather than opening with a tool list.
 
 ---
 
@@ -591,6 +633,19 @@ Legacy tasks in `.claude/gtd/tasks.json` are **not** auto-migrated. Re-add them 
 
 ### Fixed
 - **delegate/team commands inherit parent tools and model** — removed hardcoded `allowed-tools` and `model: opus` from both commands. Previously, delegate couldn't load the `claudish-usage` skill for alias resolution, causing heuristic file searches instead of deterministic lookups.
+
+---
+
+## [gtd 2.0.1] - 2026-03-29
+
+### Changed
+
+- **`gtd-capture` and `gtd-review` no longer appear in the `/` menu.** Both are triggered
+  by the workflow rather than typed by a user, so they were taking up slash-palette space
+  for nothing. Part of a marketplace-wide pass that set `user-invocable: false` on 125
+  such skills. Note this does **not** reduce the skill listing budget — only
+  `disable-model-invocation: true` does that — and pairing the two flags makes a skill
+  unreachable entirely, which is what `terminal 4.1.3` and `agentdev 1.7.1` later repaired.
 
 ---
 
