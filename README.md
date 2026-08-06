@@ -159,8 +159,9 @@ skills: multimodel:multi-model-validation, multimodel:quality-gates
 **Perfect for:** complex multi-phase workflows, multi-model validation, parallel execution
 patterns, production-grade error handling
 
-> Model IDs come from `shared/model-aliases.json` — pass bare aliases (`grok`, `gemini`, `gpt`)
-> and let claudish route them. Never add provider prefixes.
+> Model IDs come from claudish's live catalog (`list_models` / `search_models`) — pass the
+> bare model ID and let claudish route it. Never add provider prefixes, and never resolve
+> an ID from memory or a committed file.
 
 ---
 

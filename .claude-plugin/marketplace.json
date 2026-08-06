@@ -138,7 +138,7 @@
       "name": "multimodel",
       "source": "./plugins/multimodel",
       "description": "Multi-model collaboration and orchestration. Runs a task across several AI models in parallel and aggregates their blind APPROVE/REJECT votes, or delegates it to one model running a full Claude Code session.",
-      "version": "3.3.2",
+      "version": "3.4.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -163,6 +163,15 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "3.4.0",
+          "date": "2026-08-06",
+          "kinds": [
+            "Added",
+            "Fixed"
+          ],
+          "summary": "scripts/resolve-models.ts \u2014 preference resolution is now code, not prose"
+        },
         {
           "version": "3.3.2",
           "date": "2026-08-06",
@@ -192,14 +201,6 @@
             "Fixed"
           ],
           "summary": "\"internal\" sentinel leaked to claudish \u2014 added CRITICAL instruction to filter \"internal\" from\u2026"
-        },
-        {
-          "version": "3.1.1",
-          "date": "2026-04-04",
-          "kinds": [
-            "Fixed"
-          ],
-          "summary": "delegate/team commands inherit parent tools and model \u2014 removed hardcoded allowed-tools and\u2026"
         }
       ]
     },

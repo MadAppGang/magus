@@ -4,6 +4,30 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Multimodel 3.4.0] - 2026-08-06
+
+### Added
+
+- **`scripts/resolve-models.ts` — preference resolution is now code, not prose.** It verifies every model-bearing field against the live catalog, drops dead IDs individually, computes provenance, and prints a receipt the command emits verbatim. `scripts/lib/preferences.ts` holds the pure logic under 26 unit tests covering all-live, all-dead, mixed, missing dates, conflicting dates, absent file, corrupt file, and unreachable catalog. Call `list_models` first and pass the IDs in — routing stays claudish's job.
+- `benchmarks/multimodel-model-staleness/` — a madbench bench over five stale-preference scenarios, run against the plugin's real procedure at `HEAD` versus the working tree. `build-instructions.ts` extracts both variants from the actual skill files, so the comparison measures the plugin rather than a paraphrase of it.
+
+### Fixed
+
+- **Saved model preferences are verified on every path, not just `customAliases`.** `multi-model-validation` routed a non-empty `contextPreferences[context]` straight to "Use those models directly → DO NOT ask user", and called `list_models` **only** in the `IF EMPTY` branch. `claudish-usage` did require catalog-verification — but only for `customAliases`. A preferences file found in the wild had `customAliases: {}` and six decommissioned IDs sitting in `defaultModels`, which no path checked. Dead IDs are now dropped and named; the run continues on the survivors, and stops only when nothing survives.
+- **The disclosure is the measured count, not a timestamp.** The plugin now reports `9 of 10 saved model IDs are no longer in the live catalog — …`, derived from the comparison it just performed, so it cannot be silently wrong. Any age claim is sourced from filesystem `mtime` and labelled as such; when `lastUpdated` disagrees with the newest `history[].date` both are named as `freshness metadata inconsistent`.
+- **An unreachable catalog is reported as unverified, never as "all live".** Passing no catalog previously rendered "all N saved model IDs are still in the live catalog" — asserting a check that had not run.
+- **A dead entry invalidates that entry, never the request.** A stale `kimi3 → kimi-k2.5` alias still resolves to `kimi-k3` when the catalog lists it.
+
+### Why
+
+Age and validity are different properties, and no timestamp on this file supports a TTL. The real file that motivated this reports **three mutually contradictory freshness signals**: `lastUpdated` says 157 days, its own `history[0].date` says 8 days, and filesystem `mtime` says 7 days. A TTL on any of them passes the file — while 9 of its 10 model IDs are decommissioned. Only the catalog comparison gets it right.
+
+The benchmark pins the pair a TTL cannot straddle: `fresh-timestamp-dead-models` (recently written, every ID dead) passes any age gate, and `old-timestamp-live-models` (157 days old, every ID live) fails one.
+
+**Why the resolver rather than more prose.** Over 30 benchmark runs at Sonnet class, the shipped instructions disclosed staleness **0 of 15 times**; the best rewritten prose managed **14 of 15**. Successive rewrites also traded one failure for another — an emphatic "untrusted" framing induced the agent to abandon runs with live models available, and a clause meant to prevent that suppressed the disclosure instead. "Always report this" is an output invariant, not a judgement call, and no finite sample of a stochastic process can establish "every time". The prose remains as explanation and as the fallback for paths the resolver does not cover.
+
+---
+
 ## [multimodel 3.3.2] - 2026-08-06
 
 ### Fixed

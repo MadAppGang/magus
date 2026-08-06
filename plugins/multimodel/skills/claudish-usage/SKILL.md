@@ -81,6 +81,87 @@ Step 3: ROUTE (Claudish)
    ID the catalog no longer lists, say so instead of using it silently.
 4. `"internal"` is never sent to claudish — it means the host Claude model.
 
+### Use the resolver — do not do this by hand
+
+`scripts/resolve-models.ts` performs the whole check and prints the disclosure.
+Call `list_models` first, then hand it the IDs:
+
+```bash
+bun "${CLAUDE_PLUGIN_ROOT}/scripts/resolve-models.ts" \
+  --catalog "<comma-separated ids from list_models>" [--context review] [--json]
+```
+
+It verifies every model-bearing field, drops dead IDs individually, computes
+provenance, and emits a receipt — **print that receipt verbatim.** Exit `3` means
+nothing survived; `0` means proceed with what it selected.
+
+Doing this in your head is what the rest of this section explains, and it is the
+fallback for paths the resolver does not cover. Measured over 30 benchmark runs,
+prose alone produced the disclosure at best 14/15 times; the resolver produces it
+every time, because it is code.
+
+### Verify every field of the preferences file
+
+`customAliases` is not the only place a dead ID hides, and in practice it is the
+least likely — a file found in the wild had `customAliases: {}` and six
+decommissioned IDs sitting in `defaultModels`. **Verify every ID you take from
+this file against the live catalog, whichever field it came from:**
+
+| Field | Verify? |
+|---|---|
+| `defaultModels` | yes |
+| `contextPreferences[*]` | yes |
+| `customAliases` values | yes |
+
+No field is exempt. Drop each ID the catalog does not list, name the dropped IDs
+in your reply, and **carry on with the survivors.**
+
+**A dead entry invalidates that entry, never the request.** Resolving is the next
+step, not a fallback:
+
+- A stale `customAliases` mapping means *the alias* is wrong. If the user named a
+  version, resolve that intent against the catalog and use what you find —
+  `kimi3` with a dead `kimi3 → kimi-k2.5` alias still resolves to `kimi-k3` when
+  the catalog lists it.
+- Dead entries in `defaultModels` or `contextPreferences[*]` mean *those entries*
+  are wrong. Run with whatever survives.
+
+Returning "no models" is correct only when the catalog genuinely offers nothing
+that satisfies the request. Refusing a run while a live model sits in the catalog
+is the same failure as using a dead one — it just fails in the other direction.
+
+### Report what the check found, not what the file claims
+
+When you report your model choice, **state the result of the catalog check**:
+
+> `3 of 7 saved model IDs are no longer in the catalog: grok-4.20-beta, gpt-5.4, kimi-k2.5`
+
+Report it every run, including when nothing was dropped — `all 5 saved IDs are
+still live` is the same disclosure with a different value.
+
+That count is derived from the comparison you just performed, so it **cannot be
+silently wrong**. It is the disclosure that matters: the user's question is "are
+my models alive and what did you actually use", not "what date is in my file".
+
+### File age is secondary, and `lastUpdated` cannot carry it
+
+If you state an age, take it from the **file's modification time** and say so:
+`preferences file modified 12 days ago (filesystem mtime)`.
+
+- **Never present `lastUpdated` as the file's age.** It is declared metadata and
+  is not maintained by every write path — a file has been seen reporting March
+  while its own `history[0].date` said July. Quoting it as an age is false
+  precision.
+- If `lastUpdated` and the newest `history[].date` disagree, report
+  `freshness metadata inconsistent` and name both. Do not pick the newer one.
+- If no trustworthy source exists, `freshness unknown` is a complete answer.
+- `mtime` has its own limits — a checkout or copy resets it — which is exactly
+  why the source is always labelled.
+
+**Age never gates.** It never rejects a model (a 157-day-old file whose IDs are
+all live is fine — use it) and never approves one (a file written today can be
+entirely dead). Catalog membership is what decides; age is context for the human.
+
 ### Version intent is a hard constraint, not a hint
 
 When the user names a version — `kimi3`, `gpt-5.6`, `sonnet 5` — that version is
