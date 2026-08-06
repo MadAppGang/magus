@@ -1,0 +1,24 @@
+{
+  "name": "bunjs",
+  "version": "0.1.0",
+  "description": "Bun and TypeScript toolkit. Ships the opentui-tui skill for OpenTUI terminal UIs — React JSX intrinsics, Yoga flexbox layout, gradient meters and colour-accurate screenshots — with copyable theme and shutdown code. Only Bun is tested; Node and Deno at your own risk.",
+  "author": { "name": "Jack Rudenko", "email": "i@madappgang.com", "company": "MadAppGang" },
+  "license": "MIT",
+  "homepage": "https://github.com/MadAppGang/magus",
+  "category": "development",
+  "keywords": [
+    "bun",
+    "bunjs",
+    "typescript",
+    "tui",
+    "opentui",
+    "terminal-ui",
+    "react",
+    "dashboard",
+    "flexbox",
+    "screenshot"
+  ],
+  "skills": ["./skills/opentui-tui"],
+  "commands": ["./commands"],
+  "compatibility": { "claudeCode": ">=0.1.0" }
+}

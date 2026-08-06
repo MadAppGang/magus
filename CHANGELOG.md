@@ -4,6 +4,40 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Marketplace 8.2.0] - 2026-08-06
+
+### Added
+
+- **Session artifacts are now defined, and agents are told to stop citing them.** `CLAUDE.md`
+  gains a "Session Artifacts vs Durable Docs" section naming three session-scoped paths —
+  `.mnemex/` (rebuildable semantic index, routinely 500 MB+), `ai-docs/sessions/` (per-run
+  scratch from `/team`, `/multimodel:delegate`, `/dev:dev`, autotest), and
+  `**/.claude/.coaching/` (dev-plugin learning queue and circuit-breaker state). All three
+  were already git-ignored; ignoring a path stops it being committed but does nothing to
+  stop an agent reading it and quoting it as settled fact. The rules close that gap: never
+  cite a session artifact as authority, never mine another session's artifacts for context,
+  never `git add` them, and never let them block worktree cleanup.
+- **A promotion rule with a destination table.** Output worth surviving must be moved out
+  *during* the session that produced it — a decision or trade-off a human revisits goes to
+  `docs/` (`docs/plans/` for design docs), a mechanism or gotcha an agent needs later goes
+  to `ai-docs/` root, and a run that only confirmed what was already known goes nowhere.
+  Promotion is rewriting, not `mv`: a raw dump carries the session's stale model IDs and
+  dead paths, which is the exact rot the existing ai-docs caveat warns about.
+- Mirrored into `AGENTS.md` for Codex, annotated in both directory trees, and cross-linked
+  from Learned Preferences rather than restated there.
+
+### Why
+
+Uncommitted session output is invisible by construction: it lives only in ignored paths, so
+nobody discovers it later and nobody promotes it. The failure mode is the reverse of losing
+it — an agent *finds* week-old scratch, reads one model's mid-investigation opinion, and
+launders it into a durable doc as a decision the project never made.
+
+No plugin versions bumped: `CLAUDE.md` and `AGENTS.md` are consumed by agents working in
+magus-src and are shipped by no `distTargets`, so nothing published to any channel changed.
+
+---
+
 ## [Statusline 2.5.0] - 2026-08-04
 
 ### Changed
@@ -114,6 +148,28 @@ now-corrected rule statement — the full rewrite is a separate, larger item.
 `tools/autopilot-server`'s Linear tag→command mapping still routes `@test`/`@refactor`/
 `@implement` to commands removed in the v3.0.0 rename, and `@ui`/`@frontend` to a
 `frontend` plugin that no longer exists — pre-existing, not touched here.
+
+---
+
+## [bunjs 0.1.0] - 2026-07-30
+
+### Added
+
+- New plugin `bunjs`, shipping the `opentui-tui` skill for OpenTUI terminal UIs in Bun and
+  TypeScript — the Bun counterpart to `go-tui`, holding the same aesthetic bar.
+- The aesthetic contract lives in SKILL.md, not a reference: a default-visual mapping table
+  (bounded value → gradient meter, series → sparkline, status → badge), three rules, and a
+  negative control — a single-colour bar or bare numbers on the first screenshot is a failure.
+- `assets/theme/` and `assets/runtime/` ship as tested, copyable code because OpenTUI has no
+  colour interpolation, no `darken`/`lighten` and no string-width helper at all: 10 colour and
+  cell-width shims, five single-row widgets, and one idempotent `installShutdown`. 119 tests.
+- A version and build matrix keyed by the **artifact** you ship, measured rather than recalled:
+  0.4.x to run from source, 0.1.107 with no `--external` for a standalone `--compile` binary.
+- `scripts/check-surface.ts` lints the shipped prose as well as the code, so a snippet mixing
+  the core construct DSL with React intrinsics cannot ship. `scripts/ansi-to-png.ts` is a
+  byte-identical copy of `go-tui`'s, held there by a pre-commit `diff -q`.
+- Discovery without listing cost: the skill carries `disable-model-invocation: true` and
+  contributes 0 chars to the skill listing budget, with `/bunjs:opentui-tui` as its entry point.
 
 ---
 

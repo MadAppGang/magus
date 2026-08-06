@@ -1,0 +1,29 @@
+{
+  "skill_name": "opentui-tui",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Build me a Bun terminal dashboard with fake system stats — CPU, memory and disk as bars, a recent-latency trend, a status chip per service, and a log panel. Make it look good and colourful. I want to actually run it.",
+      "expected_output": "A runnable OpenTUI React app (`bun run src/index.tsx`). Bounded values render as PER-CELL gradient meters (one colour per column, >= 12 distinct colours across a 40-wide fill), history as a sparkline, status as a badge with dark ink on a saturated fill, and prose confined to the log panel. Multi-panel flexbox layout using `gap`, not spacer boxes. Colours come from a theme module (tokens/ramps), never hex literals in components. One `<text>` per row or `<span>`s inside one `<text>` — no sibling `<text>`s relying on flex. Clean teardown wired through `installShutdown`.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "I'm writing my OpenTUI app in React and pasted this from an example I found: an <ascii_font> tag, and a Box({ flexDirection: 'row' }, Text({ content: 'hi' })) call sitting next to my JSX. Nothing renders. Fix it and tell me the rule.",
+      "expected_output": "Rewrites to React intrinsics only: `<ascii-font>` (kebab-case — the underscore spelling is Solid's and does not exist in the React binding), and `<box flexDirection=\"row\"><text>hi</text></box>` with the value as children rather than a `content` prop. States the invariant: never mix the core construct DSL with JSX intrinsic rendering in one file or snippet. Notes that IMPORTING from `@opentui/core` is not a violation, and names the legitimate bridge sites (entry bootstrap, theme colour maths, test harness, custom-renderable registration via `extend()`). Does not emit a mixed snippet anywhere in the answer, and does not claim the compiler would have caught this — an unknown kebab tag typechecks clean.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "I need to ship my OpenTUI app as a single standalone binary people can download and run. Which version should I pin, and what's the build command?",
+      "expected_output": "Answers by ARTIFACT: a standalone `bun build --compile` binary needs the 0.1.107 pin, with NO `--external` (externalising leaves the binary unable to resolve the module off-disk). Reports the measurement rather than a slogan: 0.4.5 compiles successfully and the binary then exits 1 at launch inside native-library path resolution under `/$bunfs/root/` — so 'it does not compile' is wrong in mechanism. Recommends re-testing 0.4.x `--compile` FIRST, since one upstream bug is all that separates the two, and discloses that 0.1.x is an abandoned line (terminal at 0.1.107) with a heavier install. States that nothing cross-compiles — build each target on its own native runner. Does not recommend 0.1.x for a run-from-source or npm-launcher artifact.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "My OpenTUI app wrecks my terminal when I hit Ctrl+C — no cursor, no echo, and my prompt looks dead. I already set exitOnCtrlC to false and it still happens.",
+      "expected_output": "Identifies the cause: teardown never ran, so the terminal is left in raw mode inside the alternate screen (recovery: `reset` or `stty sane`), and OpenTUI deliberately does not clean up on `process.exit` or an unhandled error. Explains that `exitOnCtrlC: false` alone does not stop Ctrl+C because SIGINT remains in the renderer's signal set — and that the set must therefore be narrowed AT CONSTRUCTION, by passing `exitSignals` without SIGINT to `createCliRenderer`, because the field is private afterwards. Prescribes one idempotent teardown covering all five exit paths (quit key, SIGINT, SIGTERM, normal completion, uncaughtException/unhandledRejection): guard flag, `root.unmount()`, `renderer.destroy()`, and `process.exit(code)` only on the signal path. Points at the shipped `assets/runtime/shutdown.ts` instead of hand-rolling it, and bans `process.exit()` anywhere else.",
+      "files": []
+    }
+  ]
+}
