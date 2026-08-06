@@ -2,8 +2,22 @@
 
 Bun and TypeScript toolkit for Claude Code. Install from the `magus` marketplace.
 
-Eight skills, split by **the problem you are in**, not by book chapter — so an agent loads the one
-that matches the moment, and nothing else.
+**Start here: `/bunjs:bun <what you want to do>`.**
+
+```
+/bunjs:bun lets create a todo app
+```
+
+That is the index skill. It knows all eight of the others and loads **none** of them — it names
+the one or two a task actually needs, then reads only those. Opening all eight is ~4,000 lines,
+which defeats the point.
+
+It routes on what the task will make you write, not on the words used: *"add login"* → `security`,
+*"it's slow"* → `performance`. Chains stop where the task stops — a fresh app is
+`project-setup` → `http-service` → `errors`, with `testing` added once there is something to test
+and `production` once it is being shipped.
+
+The eight are split by **the problem you are in**, not by book chapter:
 
 | Skill | Command | Load it when |
 |---|---|---|
@@ -16,9 +30,26 @@ that matches the moment, and nothing else.
 | **`performance`** | `/bunjs:performance` | something is slow, or you are benchmarking — profiling, the optimisation order, measured fast paths |
 | **`tui`** | `/bunjs:tui` | building or reviewing a terminal UI — OpenTUI, Yoga flexbox, gradient meters, colour-accurate screenshots |
 
-Every skill carries `disable-model-invocation: true`, so **the commands above are how they get
-found**. That is deliberate: Claude Code's skill listing is capped at 8,000 characters
+The eight carry `disable-model-invocation: true` and never appear in the model's skill listing;
+**only the `bun` index is listed**, at 187 characters. That is the whole point — one findable
+entry costs a fraction of nine visible ones, and it is what the discovery measurements below
+pointed at. That is deliberate: Claude Code's skill listing is capped at 8,000 characters
 marketplace-wide, and this plugin spends none of it.
+
+**There are two discovery paths, and they are for different actors.**
+
+| Path | Who uses it | Status |
+|---|---|---|
+| `/bunjs:<name>` command | a **human** typing it | works — the command instructs the model to read `SKILL.md` |
+| A `CLAUDE.md` row naming **a file to read** | the **model**, unprompted | works — **measured** |
+| A `CLAUDE.md` row saying *"invoke the Skill tool"* | — | **does not work** — measured |
+
+That last row is not a hypothetical. `evals/skill-discovery/` is a madbench experiment that ran
+this: a routing row phrased as *"invoke it with the Skill tool"* was ignored (the Skill tool never
+fires for these skills, even when a prompt orders it by name), while the identical row phrased as
+*"read `.claude/skills/security/SKILL.md`"* got the skill read, its assets copied in, and its
+guidance applied. A model cannot invoke a slash command, so **a routing row must name a path, not
+a command.**
 
 ## Why these claims are trustworthy
 
@@ -56,6 +87,25 @@ plugin pass, with `tsc --noEmit` clean in every skill package.**
 | `performance` | benchmark harness with calibration and honest comparison | 18 |
 
 Each skill package is self-contained: `cd plugins/bunjs/skills/<name> && bun install && bun test`.
+
+## Does an agent actually reach these skills?
+
+`evals/skill-discovery/` is a [madbench](https://github.com/MadAppGang/madbench) experiment that
+measures it rather than assuming. Cells differ by exactly one file; a generator refuses to build
+unless that is true.
+
+| Cell | `SkillReached` |
+|---|---|
+| skill unlisted, no routing row | 0 |
+| skill unlisted, row says *"invoke the Skill tool"* | **0** |
+| skill unlisted, row says *"read the file"* | **1** |
+| skill listed (flag removed), no row | **1** |
+
+Two traps it had to survive, both documented in `evals/skill-discovery/README.md`: madbench's
+`skill-used` check counts Skill-tool calls only — and the agent reaches these skills with `Read`
+and `Bash` instead, so that check can never fire; and the obvious code fingerprints
+(`Bun.password`, `timingSafeEqual`) score **identically with and without the skill**, because the
+model writes them from general knowledge. Both would have produced a confident wrong answer.
 
 ## Reference
 

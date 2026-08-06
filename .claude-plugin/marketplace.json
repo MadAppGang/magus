@@ -373,8 +373,8 @@
     {
       "name": "bunjs",
       "source": "./plugins/bunjs",
-      "description": "Bun and TypeScript toolkit. Eight task-shaped skills \u2014 project setup, HTTP services, errors and resilience, testing, security, production, performance and OpenTUI terminal UIs \u2014 each shipping copyable code verified against Bun. Only Bun is tested; Node and Deno at your own risk.",
-      "version": "0.2.1",
+      "description": "Bun and TypeScript toolkit. A `/bunjs:bun` index routes any task to the right one of eight task-shaped skills \u2014 setup, HTTP, errors, testing, security, production, performance, TUI \u2014 each shipping copyable code verified against Bun. Only Bun is tested.",
+      "version": "0.3.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -399,10 +399,30 @@
         "tui",
         "opentui",
         "terminal-ui",
-        "node-best-practices"
+        "node-best-practices",
+        "router",
+        "skill-index"
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "0.3.0",
+          "date": "2026-08-07",
+          "kinds": [
+            "Added",
+            "Changed"
+          ],
+          "summary": "/bunjs:bun \u2014 an index skill that knows the other eight without loading them"
+        },
+        {
+          "version": "0.2.2",
+          "date": "2026-08-06",
+          "kinds": [
+            "Fixed",
+            "Added"
+          ],
+          "summary": "The skill-discovery claim shipped in 0.2.0 was wrong, and a bench now proves it"
+        },
         {
           "version": "0.2.1",
           "date": "2026-08-06",

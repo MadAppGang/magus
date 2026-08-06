@@ -4,6 +4,42 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [bunjs 0.3.0] - 2026-08-07
+
+### Added
+
+- **`/bunjs:bun` — an index skill that knows the other eight without loading them.** One entry point, and the only listed skill the plugin has: it names which one or two files a task needs and nothing else. Opening all eight is roughly 4,000 lines, which defeats the purpose of an index; two is normal, five means the task should be split. It routes on **what the task will make you write**, not on the words used — "add login" resolves to `security`, "it's slow" to `performance`, though neither names a skill.
+- **Chains that stop where the task stops.** A fresh app is `project-setup` → `http-service` → `errors`; `testing` waits until there is something to test and `production` until it is being shipped. Reading the whole set upfront buys guidance that cannot be acted on yet.
+
+### Changed
+
+- **The index is deliberately the plugin's only listed skill.** The other eight keep `disable-model-invocation`, so the plugin's entire listing cost is the index's **187-character** description instead of the ~1,400 that nine visible skills would take. This is the shape the discovery work in 0.2.2 pointed at: one cheap, findable entry rather than eight invisible ones reachable only by a routing row.
+
+### Notes
+
+- **The marketplace listing is now at 11,984 of its 12,000-character ceiling — 16 characters spare.** The index consumed nearly all remaining headroom, so **no further listed skill can be added anywhere in the marketplace** until existing descriptions are shortened. `bun scripts/skill-budget-check.ts` fails the build if one is. The real Claude Code runtime cap is 8,000, which this total has exceeded for some time; over it, descriptions are dropped silently, least-invoked first.
+
+---
+
+## [bunjs 0.2.2] - 2026-08-06
+
+### Fixed
+
+- **The skill-discovery claim shipped in 0.2.0 was wrong, and a bench now proves it.** The plugin README and the repo `CLAUDE.md` routing table both said a routing row plus the `/bunjs:<name>` commands were how these skills get found. Measured (`plugins/bunjs/evals/skill-discovery/`, claude-sonnet-5, cells differing by exactly one file): a row phrased *"invoke it with the Skill tool"* → **not reached**; the identical row phrased *"read the file"* → **reached**; the skill listed with the flag removed → **reached**. The row failed because it prescribed an action that cannot be taken — the Skill tool never fires for these skills, even when a prompt orders it by name. A canary probe confirms `CLAUDE.md` **is** loaded under `claude -p`, so this was a phrasing failure and not an unread file.
+- **All eight routing rows now name a file to read** (`plugins/bunjs/skills/<name>/SKILL.md`) instead of `/bunjs:<name>`. A model cannot invoke a slash command, so the commands are documented as the **human** path — which is all they ever were. This is the difference between guidance an agent can act on and guidance it silently ignores.
+
+### Added
+
+- **`plugins/bunjs/evals/skill-discovery/` — a madbench suite that measures discovery rather than assuming it.** Testdata is seeded red (`bun test` exits 1 until real work happens) and asserts behaviour only, never naming argon2id, so the measurement is not handed its own answer. `sync-testdata.sh` regenerates every variant from the real skill and **refuses to build unless each differs from the baseline by exactly the one intended file**; the variants are gitignored because a committed copy would drift from the skill it is meant to test.
+- **Two controls that stopped the bench reporting a confident wrong answer.** `instrument-probe.yaml` shows madbench's `skill-used` check counts Skill-tool calls only — even when *explicitly ordered* to invoke the skill by name it returned 0, while the transcript showed the skill fully consumed via `Read` and `Bash` (assets copied into `src/`, `makeDummyHash`/`authenticate` imported, the skill's own acceptance greps run). A check that cannot pass is not evidence. Separately, the obvious code fingerprints (`Bun.password`, `timingSafeEqual`) scored **0.75 / 0.75 / 0.50** across cells — identical with and without the skill, and *lowest* in the cell that actually reached it — so they are kept as instrumentation and must never be read as proof of skill influence.
+
+### Notes
+
+- Incidental madbench finding: `threshold: 0.0` is indistinguishable from unset and falls back to the `1.0` default, silently gating an `assert-set` intended as pure instrumentation. Use `0.01`.
+- **n=1 per cell.** The contrasts are large and mechanistically explained, but `madbench madbench.yaml --repeat 5` before treating any of it as settled. The bench installs the skill as a **project** skill, so whether `Skill(bunjs:<name>)` fires for a **plugin** skill carrying the same flag remains untested.
+
+---
+
 ## [bunjs 0.2.1] - 2026-08-06
 
 ### Fixed

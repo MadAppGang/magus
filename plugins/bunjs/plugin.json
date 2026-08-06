@@ -1,8 +1,12 @@
 {
   "name": "bunjs",
-  "version": "0.2.1",
-  "description": "Bun and TypeScript toolkit. Eight task-shaped skills — project setup, HTTP services, errors and resilience, testing, security, production, performance and OpenTUI terminal UIs — each shipping copyable code verified against Bun. Only Bun is tested; Node and Deno at your own risk.",
-  "author": { "name": "Jack Rudenko", "email": "i@madappgang.com", "company": "MadAppGang" },
+  "version": "0.3.0",
+  "description": "Bun and TypeScript toolkit. A `/bunjs:bun` index routes any task to the right one of eight task-shaped skills \u2014 setup, HTTP, errors, testing, security, production, performance, TUI \u2014 each shipping copyable code verified against Bun. Only Bun is tested.",
+  "author": {
+    "name": "Jack Rudenko",
+    "email": "i@madappgang.com",
+    "company": "MadAppGang"
+  },
   "license": "MIT",
   "homepage": "https://github.com/MadAppGang/magus",
   "category": "development",
@@ -24,9 +28,12 @@
     "tui",
     "opentui",
     "terminal-ui",
-    "node-best-practices"
+    "node-best-practices",
+    "router",
+    "skill-index"
   ],
   "skills": [
+    "./skills/bun",
     "./skills/project-setup",
     "./skills/http-service",
     "./skills/errors",
@@ -36,6 +43,10 @@
     "./skills/performance",
     "./skills/tui"
   ],
-  "commands": ["./commands"],
-  "compatibility": { "claudeCode": ">=0.1.0" }
+  "commands": [
+    "./commands"
+  ],
+  "compatibility": {
+    "claudeCode": ">=0.1.0"
+  }
 }
