@@ -44,7 +44,7 @@ marketplace-wide, and this plugin spends none of it.
 | A `CLAUDE.md` row naming **a file to read** | the **model**, unprompted | works — **measured** |
 | A `CLAUDE.md` row saying *"invoke the Skill tool"* | — | **does not work** — measured |
 
-That last row is not a hypothetical. `evals/skill-discovery/` is a madbench experiment that ran
+That last row is not a hypothetical. `benches/skill-index/` (IDX-1) in magus-src is a madbench experiment that ran
 this: a routing row phrased as *"invoke it with the Skill tool"* was ignored (the Skill tool never
 fires for these skills, even when a prompt orders it by name), while the identical row phrased as
 *"read `.claude/skills/security/SKILL.md`"* got the skill read, its assets copied in, and its
@@ -90,7 +90,7 @@ Each skill package is self-contained: `cd plugins/bunjs/skills/<name> && bun ins
 
 ## Does an agent actually reach these skills?
 
-`evals/skill-discovery/` is a [madbench](https://github.com/MadAppGang/madbench) experiment that
+`benches/skill-index/` (IDX-1) in magus-src is a [madbench](https://github.com/MadAppGang/madbench) experiment that
 measures it rather than assuming. Cells differ by exactly one file; a generator refuses to build
 unless that is true.
 
@@ -101,7 +101,7 @@ unless that is true.
 | skill unlisted, row says *"read the file"* | **1** |
 | skill listed (flag removed), no row | **1** |
 
-Two traps it had to survive, both documented in `evals/skill-discovery/README.md`: madbench's
+Two traps it had to survive, both documented in the `benches/skill-index/` README in magus-src: madbench's
 `skill-used` check counts Skill-tool calls only — and the agent reaches these skills with `Read`
 and `Bash` instead, so that check can never fire; and the obvious code fingerprints
 (`Bun.password`, `timingSafeEqual`) score **identically with and without the skill**, because the

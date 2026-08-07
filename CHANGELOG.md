@@ -4,6 +4,19 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [bunjs 0.3.1] - 2026-08-07
+
+### Changed
+
+- **The discovery bench moved out of the plugin to `benches/skill-index/` (IDX-1), where every madbench eval in this repo belongs.** It was shipped inside `plugins/bunjs/evals/skill-discovery/`, which put a measurement harness into the distributed plugin and left it out of the one index that answers "what do we measure, and at which revision". Benches are versioned so a result can be cited later — bench prompts and graders change, and *"IDX-1 said the routing row failed"* is meaningless without the version that produced it. The plugin now ships only the plugin; `benches/README.md` carries the index row.
+- **The bench README now records results and a changelog**, per the same convention: what each cell isolates, what it returned, on which date and model, and what changed between bench versions.
+
+### Added
+
+- **The `--harness mock` negative control the `benches/` rules require**, now run and recorded: **0 passed, 3 failed**. Every setup must fail against a no-op agent, or the bench is not measuring the agent. This should be re-run after any check edit.
+
+---
+
 ## [bunjs 0.3.0] - 2026-08-07
 
 ### Added

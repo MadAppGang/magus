@@ -374,7 +374,7 @@
       "name": "bunjs",
       "source": "./plugins/bunjs",
       "description": "Bun and TypeScript toolkit. A `/bunjs:bun` index routes any task to the right one of eight task-shaped skills \u2014 setup, HTTP, errors, testing, security, production, performance, TUI \u2014 each shipping copyable code verified against Bun. Only Bun is tested.",
-      "version": "0.3.0",
+      "version": "0.3.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -405,6 +405,15 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "0.3.1",
+          "date": "2026-08-07",
+          "kinds": [
+            "Changed",
+            "Added"
+          ],
+          "summary": "The discovery bench moved out of the plugin to benches/skill-index/ (IDX-1), where every\u2026"
+        },
         {
           "version": "0.3.0",
           "date": "2026-08-07",
@@ -439,14 +448,6 @@
             "Changed"
           ],
           "summary": "Seven new skills, split by the problem an agent is in rather than by book chapter \u2014\u2026"
-        },
-        {
-          "version": "0.1.0",
-          "date": "2026-07-30",
-          "kinds": [
-            "Added"
-          ],
-          "summary": "New plugin bunjs, shipping the opentui-tui skill for OpenTUI terminal UIs in Bun and TypeScript\u2026"
         }
       ]
     },
