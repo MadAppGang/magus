@@ -76,6 +76,30 @@ its own schema:
 const schema = `test_${process.env.BUN_WORKER_ID ?? crypto.randomUUID().slice(0, 8)}`;
 ```
 
+## Clean-up: after-all is usually right, after-each is stricter
+
+Two viable strategies, and the trade is real.
+
+| Strategy | Speed | Isolation |
+|---|---|---|
+| **after-all** — truncate once per file | fast | relies on tests not colliding |
+| **after-each** — truncate between tests | slower | a test cannot see another's rows |
+
+**Prefer after-all**, and make it safe by ensuring **each test acts on its own records**.
+Unique data per test — `builderFor`'s sequence counter, `seededRandom` for unique emails —
+removes the collisions after-each exists to prevent, and does it without paying truncation
+on every test.
+
+Switch to after-each when tests genuinely share records (a "list all users" endpoint is the
+classic), or when a failure leaves state that would confuse the next test. Diagnosing a
+cross-test leak costs more than the truncation ever did, so if you are unsure, start with
+after-each and relax it once the suite is stable.
+
+**Pre-seed only metadata and context** — countries, plans, feature flags, the fixed
+reference data every test assumes. Never pre-seed the records a test acts on: a shared
+`user_1` couples every test to a row none of them own, and the first test to modify it
+breaks the rest in a way that looks like flakiness.
+
 ## Assert against the database, not only the response
 
 A `201` proves the handler answered, not that anything persisted. The valuable assertion reads
@@ -92,6 +116,22 @@ expect(row?.created_at).not.toBeNull();     // catches a missing DEFAULT
 
 This is what catches the class of bug where the handler builds the response from its input instead
 of from what was stored.
+
+### Reading back: public API or direct query?
+
+Two defensible positions, and it is worth choosing deliberately rather than mixing.
+
+- **Read back through the public API** (`GET /users/:id`). Keeps the test decoupled from
+  schema, so a column rename does not touch it. Blind spot: if read and write share the
+  same bug, the test agrees with itself.
+- **Query the database directly**. Catches the class this skill cares about most — a
+  handler that builds its response from its *input* rather than from what was stored, so
+  the API reports success over a write that never happened.
+
+**Use the API for the common case and a direct query when the write itself is the risk** —
+anything involving money, permissions, or a field with a `DEFAULT` you depend on. The
+direct query is the stricter check; it is also the one that breaks on a schema change, so
+spend it where it earns its keep.
 
 ## Test the constraints you rely on
 
@@ -124,6 +164,24 @@ const transfer = db.transaction((from: string, to: string, amount: number) => {
 
 Test the failure path explicitly. A transaction that silently does not roll back is invisible until
 it corrupts production data.
+
+## Infrastructure
+
+Run the **real** database engine you run in production; a different engine is a different
+set of constraints, types and failure modes. Docker Compose is the usual way — bring it up
+in a global setup so the cost is paid once for the whole suite, not per file.
+
+Two details that matter more than they look:
+
+- **Leave it running locally, tear it down only in CI.** A developer re-running one test
+  should not wait for a container to boot; a CI runner must not leak one.
+- **Put the data directory on a RAM disk** (`tmpfs`) and disable durability
+  (`fsync=off`, `synchronous_commit=off` for Postgres). Test databases do not need to
+  survive a power cut, and disk sync is most of the wall time.
+
+For anything with portable SQL, `bun:sqlite` at `:memory:` skips all of this — a fresh
+real database per file, zero setup, no container. Use it where the SQL allows and keep
+Docker for the cases that need engine fidelity.
 
 ## Migrations
 

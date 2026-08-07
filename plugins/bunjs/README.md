@@ -112,6 +112,14 @@ model writes them from general knowledge. Both would have produced a confident w
 These skills lean on the community's accumulated Node.js practice, adapted to Bun and verified
 against it:
 
+**[goldbergyoni/nodejs-testing-best-practices](https://github.com/goldbergyoni/nodejs-testing-best-practices)**
+— the testing-specific companion. The `testing` skill takes its **five backend exit doors**
+(response · state change · external calls · message queue · observability), its
+deny-by-default network isolation, its data clean-up and pre-seeding rules, and its message
+queue guidance. Where it and this plugin disagreed — clean-up timing, and whether to read
+state back through the public API or a direct query — the skill states both positions and
+the trade rather than silently picking one.
+
 **[goldbergyoni/nodebestpractices](https://github.com/goldbergyoni/nodebestpractices)** — the
 Node.js Best Practices repository. Its eight chapters map onto these skills as follows:
 

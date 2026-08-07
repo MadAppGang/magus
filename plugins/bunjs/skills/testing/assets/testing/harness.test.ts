@@ -1,5 +1,5 @@
 import { describe, test, expect, afterEach } from "bun:test";
-import { startTestServer, startFakeUpstream, fakeClock, type TestServer } from "./harness";
+import { startTestServer, startFakeUpstream, fakeClock, denyOutgoing, type TestServer } from "./harness";
 
 const open: TestServer[] = [];
 const track = <T extends TestServer>(s: T): T => (open.push(s), s);
@@ -151,5 +151,80 @@ describe("fakeClock", () => {
     expect(clock.sleeps).toEqual([1000, 2000]);
     expect(clock.now()).toBe(3000);
     expect(realElapsedMs).toBeLessThan(50); // 3 simulated seconds, no wall-clock cost
+  });
+});
+
+describe("denyOutgoing", () => {
+  test("blocks an un-allowed request and names the URL", () => {
+    const restore = denyOutgoing();
+    try {
+      expect(() => fetch("https://api.stripe.com/v1/charges")).toThrow(/blocked https:\/\/api\.stripe\.com/);
+    } finally {
+      restore();
+    }
+  });
+
+  test("permits an allow-listed origin, so a fake upstream still works", async () => {
+    const up = track(startFakeUpstream());
+    const restore = denyOutgoing({ allow: [up.url] });
+    try {
+      const res = await fetch(`${up.url}/ok`);
+      expect(res.status).toBe(200);
+    } finally {
+      restore();
+    }
+  });
+
+  test("a Request object cannot slip past the allow-list", () => {
+    // The naive implementation only inspects string inputs; a Request would bypass it.
+    const restore = denyOutgoing();
+    try {
+      expect(() => fetch(new Request("https://evil.test/exfil"))).toThrow(/evil\.test/);
+    } finally {
+      restore();
+    }
+  });
+
+  test("a URL object is normalised too", () => {
+    const restore = denyOutgoing();
+    try {
+      expect(() => fetch(new URL("https://evil.test/exfil"))).toThrow(/evil\.test/);
+    } finally {
+      restore();
+    }
+  });
+
+  test("accepts a RegExp rule", async () => {
+    const up = track(startFakeUpstream());
+    const restore = denyOutgoing({ allow: [/^http:\/\/localhost:\d+/] });
+    try {
+      expect((await fetch(`${up.url}/x`)).status).toBe(200);
+    } finally {
+      restore();
+    }
+  });
+
+  test("onDenied observes the attempt instead of throwing", () => {
+    const seen: string[] = [];
+    const restore = denyOutgoing({ onDenied: (u) => seen.push(u) });
+    try {
+      expect(() => fetch("https://api.example.test/v1")).toThrow();
+      expect(seen).toEqual(["https://api.example.test/v1"]);
+    } finally {
+      restore();
+    }
+  });
+
+  test("restore puts the original fetch back, even after nesting", async () => {
+    const before = globalThis.fetch;
+    const outer = denyOutgoing();
+    const inner = denyOutgoing();
+    inner();
+    outer();
+    expect(globalThis.fetch).toBe(before);
+
+    // And the real fetch works again.
+    const up = track(startFakeUpstream());
+    expect((await fetch(`${up.url}/`)).status).toBe(200);
   });
 });

@@ -208,7 +208,7 @@
       "name": "dev",
       "source": "./plugins/dev",
       "description": "Universal development assistant. Detects the project stack and routes work to specialist agents for architecture, implementation, debugging, review and research, enforcing design-system guardrails on every UI change.",
-      "version": "3.0.2",
+      "version": "3.1.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -248,6 +248,16 @@
       "strict": true,
       "releases": [
         {
+          "version": "3.1.0",
+          "date": "2026-08-07",
+          "kinds": [
+            "Added",
+            "Changed",
+            "Fixed"
+          ],
+          "summary": "An architecture knowledge base for dev:architect, which had none"
+        },
+        {
           "version": "3.0.2",
           "date": "2026-08-06",
           "kinds": [
@@ -278,16 +288,6 @@
             "Removed"
           ],
           "summary": "Dropped the conductor-missing-for-multi-session-feature coaching rule"
-        },
-        {
-          "version": "2.12.0",
-          "date": "2026-07-26",
-          "kinds": [
-            "Added",
-            "Changed",
-            "Fixed"
-          ],
-          "summary": "/dev:design-system command \u2014 validates a project against the five design-system guardrails\u2026"
         }
       ]
     },
@@ -374,7 +374,7 @@
       "name": "bunjs",
       "source": "./plugins/bunjs",
       "description": "Bun and TypeScript toolkit. A `/bunjs:bun` index routes any task to the right one of eight task-shaped skills \u2014 setup, HTTP, errors, testing, security, production, performance, TUI \u2014 each shipping copyable code verified against Bun. Only Bun is tested.",
-      "version": "0.3.1",
+      "version": "0.4.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -405,6 +405,15 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "0.4.0",
+          "date": "2026-08-07",
+          "kinds": [
+            "Added",
+            "Changed"
+          ],
+          "summary": "The five backend exit doors, from nodejs-testing-best-practices"
+        },
         {
           "version": "0.3.1",
           "date": "2026-08-07",
@@ -439,15 +448,6 @@
             "Fixed"
           ],
           "summary": "Nine false claims in the tui skill, found by six models each building its eval #1 dashboard for\u2026"
-        },
-        {
-          "version": "0.2.0",
-          "date": "2026-08-06",
-          "kinds": [
-            "Added",
-            "Changed"
-          ],
-          "summary": "Seven new skills, split by the problem an agent is in rather than by book chapter \u2014\u2026"
         }
       ]
     },

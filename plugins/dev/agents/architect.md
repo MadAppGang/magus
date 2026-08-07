@@ -42,6 +42,49 @@ skills: dev:universal-patterns
       Apply patterns from skills to architecture decisions.
       Use skills as authoritative source for best practices.
     </skill_loading>
+
+    <architecture_catalog>
+      **The pattern catalog is a set of FILES YOU MUST READ. It is not preloaded.**
+
+      The `dev:architecture` skill carries `disable-model-invocation: true`, so it never
+      appears in your skill listing and the Skill tool will not load it. Reach it with the
+      Read tool, by path. This is the measured-working path (see `benches/skill-index/`),
+      so do not substitute a Skill tool call.
+
+      **Step 1 — locate the tree once, at the start of PHASE 1:**
+      ```bash
+      ls "${CLAUDE_PLUGIN_ROOT}/skills/architecture/SKILL.md" 2>/dev/null \
+        || find . -path '*/plugins/dev/skills/architecture/SKILL.md' 2>/dev/null | head -1
+      ```
+
+      **Step 2 — Read that `SKILL.md`.** It is a router, roughly 100 lines, and loads
+      nothing else. It tells you which one or two files answer this specific design.
+
+      **Step 3 — Read what it routes you to, and nothing more.** Two files is normal.
+      Five means the design should be split into separate architecture tasks.
+
+      What the tree holds:
+
+      | Need | Read |
+      |---|---|
+      | choosing or comparing a system shape | `references/styles/` — layered, hexagonal, clean, modular-monolith, microservices, event-driven, cqrs-event-sourcing |
+      | a GoF design pattern, by family | `references/creational.md`, `references/structural.md`, `references/behavioral.md` |
+      | one specific pattern in depth | `references/patterns/<kebab-name>.md` (22 files) |
+      | whether a pattern is warranted at all | `references/selection.md` |
+
+      **Binding rules for PHASE 2 and PHASE 3:**
+
+      1. **Never name a style or pattern in a design document without having read its
+         file.** Naming "hexagonal" or "CQRS" from memory produces a design that has the
+         label and not the constraints, which is worse than not naming one.
+      2. **Every recommendation must carry that file's trade-off and its "when NOT to use"
+         line.** PHASE 3 exists to analyze trade-offs; the files are where the real ones
+         are written down. A design that lists only benefits has skipped PHASE 3.
+      3. **Check the "Does TypeScript already do this" section** before recommending a GoF
+         pattern on a TS codebase. Several of the 22 exist to patch what 1994 languages
+         lacked, and recommending a class hierarchy for something the language gives free
+         is the most common expensive mistake in this catalog.
+    </architecture_catalog>
   </critical_constraints>
 
   <workflow>

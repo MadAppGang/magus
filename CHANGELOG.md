@@ -4,6 +4,82 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [dev 3.1.0] - 2026-08-07
+
+### Added
+
+- **An architecture knowledge base for `dev:architect`, which had none.** New
+  `dev:architecture` skill: a 125-line router over 7 architectural styles (layered,
+  hexagonal, clean, modular monolith, microservices, event-driven, CQRS + event sourcing)
+  and all 22 GoF design patterns, plus three tested TypeScript modules with 25 tests.
+- Each pattern file carries intent, the force it answers, structure, TypeScript, trade-offs,
+  a **"Does TypeScript already do this"** section, when NOT to use it, and its relations.
+  Several GoF patterns are 1994 workarounds the language now provides outright.
+- `references/selection.md` — choosing by force rather than by name, the overuse smells,
+  and the standard criticism of pattern-driven design.
+
+### Changed
+
+- `dev:universal-patterns` now routes to the deep tree instead of competing with it. It is
+  what `dev:architect` preloads, which is how the catalog reaches the agent at all.
+- `/dev:architect` gained an `agent_dispatch` contract. All five "Launch architect agent"
+  sites named a prompt but no tool, so they read as an instruction to work inline — the
+  behaviour the command's own `orchestrator_role` forbids. Each is now an explicit `Task`
+  call with `subagent_type: dev:architect`.
+- `CLAUDE.md` gained four routing rows phrased as **read this file**, the form
+  `benches/skill-index/` IDX-1 measured as working for skills that carry
+  `disable-model-invocation`.
+
+### Fixed
+
+- **CQS was being mistaken for CQRS.** `universal-patterns` taught Command Query Separation
+  (a method either mutates or returns) while nothing in the repo covered Command Query
+  Responsibility Segregation (separate read and write models, often separate stores). An
+  architect holding only the first will report that a system already does the second.
+- **`UNI-02` and `UNI-09` contradicted each other in practice.** The sin registry says use
+  Strategy for a 5+ branch switch, and calls Strategy with 1-2 implementations overkill.
+  Both are right; neither stated the threshold. `selection.md` now does, and notes the count
+  is only a proxy for the real question: does adding the next case edit existing code.
+
+### Why
+
+An audit of 379 markdown files found nothing at all on hexagonal, modular monolith, or
+CQRS, and 17 of the 22 GoF patterns unmentioned anywhere. The remaining five appeared only
+as failure modes in `code-roast`'s sin registry — the repo documented how five patterns
+break and taught none of them. Meanwhile `dev:architect` ran on roughly seven informally
+described patterns and no worked code.
+
+### Migration notes
+
+Costs **zero** skill-listing budget: the skill carries `disable-model-invocation`, so
+listing-eligible skills stay at 77 and eligible chars stay at 11,984/12,000. That flag also
+blocks *agent preloading*, which is why the catalog is reached by reading a path rather than
+by a `skills:` frontmatter entry — the latter would fail silently.
+
+Overlap was reconciled, not duplicated: `dev:bunjs-architecture` keeps Bun-specific
+layering, and `code-roast`'s `sin-registry.md` remains the single maintained failure
+inventory, cited as `UNI-01`…`UNI-15` rather than restated.
+
+---
+
+## [bunjs 0.4.0] - 2026-08-07
+
+### Added
+
+- **The five backend exit doors, from [nodejs-testing-best-practices](https://github.com/goldbergyoni/nodejs-testing-best-practices).** *"Assert on outcomes, not interactions"* is good advice that never tells you when you are done; this does. A request can affect the world through exactly five doors — response, state change, external calls, message queue, observability — so for any feature you ask which it opens and assert each. Most suites assert the response and stop, while doors 2 and 3 are where the expensive bugs live: a handler returning `201` while writing nothing, or charging a customer twice. It also makes the inverse a test — *"this must not send an email"* is an assertion that a door stayed **shut**.
+- **`denyOutgoing({ allow })` in the shipped harness — fail-closed network isolation, with 7 tests.** Stubbing dependencies as you find them fails **open**: the call you forgot is the one nobody stubbed, and it reaches a real API from CI. This throws on anything not allow-listed, naming the URL. One test exists specifically because the naive implementation inspects only string inputs and a `Request` object slips past silently.
+- **`references/external-services.md`** — exit doors 3 and 4: asserting the request you sent rather than only the reply, corner cases over a happy default, why a real fake server beats an HTTP interceptor, provider contracts and schema drift, and message queues (fake broker by default, await instead of poll, and testing **acknowledgement** — nack/redelivery, idempotency on duplicate, dead-letter routing — since those are the paths that lose or duplicate messages).
+- **Assert the whole response object**, not field by field — one assertion that also catches an *unexpected extra field*, such as a leaked `passwordHash`, which per-field checks never will.
+- **Infrastructure guidance**: real engine over a fake, Docker Compose in global setup, left running locally and torn down only in CI, with the data directory on a RAM disk and durability disabled — test databases do not need to survive a power cut, and disk sync is most of the wall time.
+- **Cover features, not functions**, and **write the tests during coding, not after** — "after" reliably becomes "never", and tests written afterwards are shaped by the implementation, so they assert what the code *does* rather than what it *should*.
+
+### Changed
+
+- **Two places this plugin disagreed with that guide are now stated as trades rather than silently resolved.** Clean-up: after-all is faster and usually right *provided each test acts on its own records*, after-each is stricter — with the advice to start strict and relax once stable. Reading state back: the public API keeps tests decoupled from schema but shares a bug between read and write paths, while a direct query catches a handler that builds its response from its input rather than from what was stored. Use the API by default, query directly where the write itself is the risk.
+- **Pre-seed only metadata and context** — never the records a test acts on. A shared `user_1` couples every test to a row none of them own, and the first test to modify it breaks the rest in a way that looks like flakiness.
+
+---
+
 ## [bunjs 0.3.1] - 2026-08-07
 
 ### Changed

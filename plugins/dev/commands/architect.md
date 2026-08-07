@@ -145,13 +145,55 @@ skills: dev:task-management, dev:context-detection, dev:universal-patterns, mult
       5. Track progress per the skill's phase task patterns
     </todowrite_requirement>
 
+    <agent_dispatch>
+      **Every phase that says "Launch the architect agent" is a `Task` tool call. Not
+      inline work, not a Skill call, not prose you write yourself.**
+
+      This is the command's entire reason to exist: it triages, gates, and sequences,
+      while the `dev:architect` agent does the architecture in its own context window.
+      Doing the analysis inline defeats that and blows this session's context.
+
+      **The call, exactly:**
+
+      ```
+      Task(
+        subagent_type: "dev:architect",
+        description:   "<3-5 words, e.g. 'Analyze auth requirements'>",
+        prompt:        "<the fenced block given in that phase, with ${…} substituted>"
+      )
+      ```
+
+      **Rules:**
+
+      1. **`subagent_type` is always `dev:architect`.** Never `general-purpose`, never
+         `Plan`, never a fresh agent.
+      2. **Substitute every `${…}` and `{…}` placeholder before sending.** The subagent
+         has none of your context, so an unsubstituted `${SESSION_PATH}` reaches it as
+         literal text and it writes to the wrong place, or nowhere.
+      3. **Always include the resolved architecture catalog path** (see
+         the `architecture_catalog` block) in the prompt, so the agent reads the styles and
+         pattern files rather than rediscovering them or answering from memory.
+      4. **Always include `SESSION_PATH`.** Phases hand off through files on disk; the
+         agent's return text is a summary, not the artifact.
+      5. **Independent phases go in ONE message** as parallel `Task` calls. Phase 2
+         (requirements) must finish first because Phase 3 reads its output, but where a
+         phase spawns several agents they run concurrently.
+      6. **Read the agent's output before the phase's user gate.** The AskUserQuestion in
+         that phase summarizes what the agent produced; asking before reading means
+         summarizing something you have not seen.
+
+      If the `Task` tool is unavailable, say so and stop. Do not silently fall back to
+      doing the architecture inline — the user asked for the agent.
+    </agent_dispatch>
+
     <orchestrator_role>
       **You are an ORCHESTRATOR, not IMPLEMENTER.**
 
       **You MUST:**
       - Assess complexity before choosing approach
       - Use EnterPlanMode for moderate/complex problems
-      - Delegate architecture work to architect agent
+      - Delegate architecture work to the `dev:architect` agent via the `Task` tool,
+        per the `agent_dispatch` block — this is mandatory, not a preference
       - Offer /team escalation for complex/retry scenarios
       - Produce comprehensive documentation
       - Consider multiple alternatives
@@ -162,7 +204,48 @@ skills: dev:task-management, dev:context-detection, dev:universal-patterns, mult
       - Skip complexity triage
       - Skip trade-off analysis
       - Ignore existing patterns or previous sessions
+      - Name an architectural style or design pattern you have not read the file for
     </orchestrator_role>
+
+    <architecture_catalog>
+      **The pattern catalog is FILES YOU READ, not a skill you invoke.**
+
+      `dev:architecture` carries `disable-model-invocation: true`, so it is absent from
+      your skill listing and the Skill tool will not load it. Use Read, by path. This is
+      the measured-working route (`benches/skill-index/`); a Skill tool call silently
+      does nothing.
+
+      **Locate it once, during PHASE 0:**
+      ```bash
+      ls "${CLAUDE_PLUGIN_ROOT}/skills/architecture/SKILL.md" 2>/dev/null \
+        || find . -path '*/plugins/dev/skills/architecture/SKILL.md' 2>/dev/null | head -1
+      ```
+
+      Read that `SKILL.md`. It is a ~100-line router that loads nothing else and names the
+      one or two files this specific design needs.
+
+      | Need | It routes you to |
+      |---|---|
+      | choosing or comparing a system shape | `references/styles/` — layered, hexagonal, clean, modular-monolith, microservices, event-driven, cqrs-event-sourcing |
+      | a GoF pattern by family | `references/{creational,structural,behavioral}.md` |
+      | one pattern in depth | `references/patterns/<kebab-name>.md` (22 files) |
+      | whether a pattern is warranted at all | `references/selection.md` |
+
+      **Where this binds the workflow:**
+
+      - **Alternatives phase** — when you present 2-3 approaches, each named style must come
+        from a file you read. Comparing "layered vs microservices" without reading
+        `modular-monolith.md` skips the option that is usually correct.
+      - **Trade-offs phase** — each file has a trade-off table and a "when NOT to use"
+        section. Use them. A trade-off analysis listing only upsides has not happened.
+      - **Delegation** — when you dispatch to the `dev:architect` agent, pass the resolved
+        catalog path in the prompt so the agent does not re-discover it.
+
+      **Do not duplicate what already exists.** For Bun-specific layering, defer to
+      `dev:bunjs-architecture`. For how these patterns fail in review, the maintained
+      inventory is `dev:code-roast`'s `sin-registry.md` (`UNI-01`…`UNI-15`). Cite those IDs
+      rather than restating them.
+    </architecture_catalog>
   </critical_constraints>
 
   <workflow>
@@ -225,7 +308,11 @@ skills: dev:task-management, dev:context-detection, dev:universal-patterns, mult
       <steps>
         <step>Mark PHASE 2 as in_progress</step>
         <step>
-          Launch architect agent:
+          **Launch the architect agent** — `Task` tool, `subagent_type: "dev:architect"`,
+          per the `agent_dispatch` block. Substitute every placeholder and append the resolved
+          architecture catalog path. Do NOT perform this analysis inline.
+
+          Prompt:
           ```
           SESSION_PATH: ${SESSION_PATH}
           DETECTED_STACK: {stack}
@@ -267,10 +354,16 @@ skills: dev:task-management, dev:context-detection, dev:universal-patterns, mult
           **If /team was used in triage:**
           - Read the multi-model brainstorming results
           - Use the consensus approaches as the basis for alternatives
-          - Launch architect agent to formalize and expand on the /team output
+          - **Launch the architect agent** (`Task`, `subagent_type: "dev:architect"`) to
+            formalize and expand on the /team output. Pass the /team consensus in the
+            prompt — the subagent cannot see those results otherwise.
 
           **Otherwise:**
-          Launch architect agent:
+          **Launch the architect agent** — `Task` tool, `subagent_type: "dev:architect"`,
+          per the `agent_dispatch` block. Substitute every placeholder and append the resolved
+          architecture catalog path. Do NOT perform this analysis inline.
+
+          Prompt:
           ```
           SESSION_PATH: ${SESSION_PATH}
 
@@ -301,7 +394,11 @@ skills: dev:task-management, dev:context-detection, dev:universal-patterns, mult
       <steps>
         <step>Mark PHASE 4 as in_progress</step>
         <step>
-          Launch architect agent:
+          **Launch the architect agent** — `Task` tool, `subagent_type: "dev:architect"`,
+          per the `agent_dispatch` block. Substitute every placeholder and append the resolved
+          architecture catalog path. Do NOT perform this analysis inline.
+
+          Prompt:
           ```
           SESSION_PATH: ${SESSION_PATH}
 
@@ -348,7 +445,11 @@ skills: dev:task-management, dev:context-detection, dev:universal-patterns, mult
       <steps>
         <step>Mark PHASE 5 as in_progress</step>
         <step>
-          Launch architect agent:
+          **Launch the architect agent** — `Task` tool, `subagent_type: "dev:architect"`,
+          per the `agent_dispatch` block. Substitute every placeholder and append the resolved
+          architecture catalog path. Do NOT perform this analysis inline.
+
+          Prompt:
           ```
           SESSION_PATH: ${SESSION_PATH}
           SELECTED_APPROACH: {approach}

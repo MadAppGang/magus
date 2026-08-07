@@ -161,3 +161,59 @@ export function fakeClock(startMs = 1_700_000_000_000) {
     },
   };
 }
+
+/**
+ * Deny every outgoing HTTP request that is not explicitly allowed.
+ *
+ * A component test is only isolated if it *cannot* reach the world. Without this, a
+ * forgotten call silently hits a real API: the suite becomes slow, nondeterministic and
+ * dependent on someone else's uptime — and, the part that actually hurts, it can write to
+ * a real system from CI.
+ *
+ * The usual approach — stub each dependency as you discover it — fails OPEN: the call you
+ * forgot is precisely the one nobody stubbed. This fails CLOSED. Anything not on the
+ * allow-list throws with the offending URL named, so an unexpected dependency surfaces the
+ * first time it appears rather than as a flake months later.
+ *
+ * Pair with `startFakeUpstream()` and allow only that server's origin.
+ */
+export interface DenyOutgoingOptions {
+  /** Origins or URL patterns that may still be called — typically your fake upstream. */
+  allow?: ReadonlyArray<string | RegExp>;
+  /** Called instead of throwing, for tests that assert on the attempt itself. */
+  onDenied?: (url: string) => void;
+}
+
+export function denyOutgoing(options: DenyOutgoingOptions = {}): () => void {
+  const { allow = [], onDenied } = options;
+  const original = globalThis.fetch;
+
+  const permitted = (url: string): boolean =>
+    allow.some((rule) => (typeof rule === "string" ? url.startsWith(rule) : rule.test(url)));
+
+  const guarded = ((input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+    // `input` may be a string, URL or Request. Normalise before matching, or a Request
+    // object slips past the allow-list entirely.
+    const url =
+      typeof input === "string" ? input : input instanceof URL ? input.href : (input as Request).url;
+
+    if (!permitted(url)) {
+      onDenied?.(url);
+      throw new Error(
+        `denyOutgoing: blocked ${url}\n` +
+          `  This test tried to reach the network. Point it at a fake upstream, or add the ` +
+          `origin to denyOutgoing({ allow: [...] }) if the call is genuinely intended.`,
+      );
+    }
+    return original(input, init);
+  }) as typeof fetch;
+
+  globalThis.fetch = guarded;
+
+  // Restore the ORIGINAL rather than whatever is current: nested installs must unwind
+  // cleanly, and a test that throws midway must not leave the guard installed for the
+  // rest of the file.
+  return () => {
+    globalThis.fetch = original;
+  };
+}

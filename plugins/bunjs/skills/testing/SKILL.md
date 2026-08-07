@@ -37,6 +37,36 @@ Reserve isolated unit tests for genuinely algorithmic code: pricing rules, parse
 machines, backoff policy. Those have many input combinations and no I/O, which is exactly when
 isolation pays.
 
+## The five exit doors — what "assert enough" actually means
+
+"Assert on outcomes, not interactions" is good advice that does not tell you when you are
+done. This does. A backend request can only affect the world through **five** doors, so
+for any feature, ask which it opens and assert on each:
+
+| # | Exit door | Assert |
+|---|---|---|
+| 1 | **Response** | status, body, headers — the whole object, not one field |
+| 2 | **State change** | the row that was written, deleted or left alone |
+| 3 | **External calls** | the outgoing request you made, and its shape |
+| 4 | **Message queue** | the message published, and its payload |
+| 5 | **Observability** | the log line or metric an operator will page on |
+
+Most suites assert door 1 and stop. Doors 2 and 3 are where the expensive bugs live — a
+handler that returns `201` while writing nothing, or that charges the customer twice. Door
+5 is almost never tested and is what you rely on at 3am.
+
+Ask the inverse too: **which doors should stay shut?** "This request must not send an
+email" is a test, and `denyOutgoing()` is how you enforce it.
+
+**Assert the whole response object**, not field by field:
+
+```ts
+expect({ status: res.status, body: res.body }).toEqual({ status: 201, body: { id: expect.any(String), email: "a@b.c" } });
+```
+
+One assertion, and it catches an **unexpected extra field** — a leaked `passwordHash`,
+an internal id — which a series of per-field checks never will.
+
 ## Copy the harness in
 
 **30 tests ship with this code and pass** (`bun test`, `tsc --noEmit` clean, Bun 1.3.10).
@@ -55,6 +85,7 @@ else echo "SKILL is still the placeholder — paste the real dir above and re-ru
 | `builderFor<T>()` | complete valid objects; tests state only their deviation |
 | `seededRandom(seed)` | reproducible pseudo-random data |
 | `waitFor(cond)` | poll until true, instead of guessing a sleep duration |
+| `denyOutgoing({allow})` | fail-closed network isolation — anything not allow-listed throws |
 
 **Pass the same config object your production entrypoint passes.** Export a `makeServerOptions()`
 from your app and feed it to both; if the test builds a different config, it is testing a
@@ -172,4 +203,5 @@ interacts badly with timers.
 |---|---|
 | `references/bun-test-api.md` | you need the exact surface — matchers, lifecycle, `test.each/if/failing`, CLI flags, all MEASURED on 1.3.10 |
 | `references/test-strategy.md` | deciding what to test at which level, test doubles policy, what not to test, mutation testing |
+| `references/external-services.md` | the service under test calls an API or publishes to a queue — isolation, deny-by-default, contracts, network chaos, MQ testing |
 | `references/database-testing.md` | tests that touch a real database: isolation, transactions, migrations, `bun:sqlite` in-memory |

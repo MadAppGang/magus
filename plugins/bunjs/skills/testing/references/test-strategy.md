@@ -19,6 +19,36 @@ rather than on call sequences.
 The trap at the top is E2E: slow, flaky, and when one fails you still have to go find out why.
 Keep a handful for the journeys that lose money if broken (signup, checkout), not a suite.
 
+## Cover features, not functions
+
+Aim a test at a thing a user can do, not at a thing you happened to extract.
+
+```
+✗ "createUser() returns a user"          tracks your file layout
+✓ "signing up with a taken email is rejected with 409"   tracks the product
+```
+
+Function-shaped tests have to be rewritten every time you rename or split a function,
+which is why suites rot during refactors — the tests were coupled to structure rather than
+behaviour. Feature-shaped tests survive the refactor and fail only when behaviour changes,
+which is the entire point.
+
+The practical tell: if renaming an internal function breaks tests without changing what
+the service does, those tests are coupled to the wrong thing.
+
+## Write the tests during, not after
+
+"After" reliably becomes "never" — the feature works, the pressure is off, the next ticket
+is open. Worse, tests written afterwards are shaped by the implementation you just wrote,
+so they assert what the code *does* rather than what it *should*, and pass over bugs that
+are baked into both.
+
+You do not need strict TDD to get the benefit. Writing the component test alongside the
+handler is enough: it forces the API to be usable before it is finished, and every seam
+you needed for testability gets built in rather than retrofitted.
+
+The one place strict test-first genuinely pays is **bug fixes** — see the end of this file.
+
 ## Test doubles: prefer the real thing, then a fake, then a mock
 
 1. **Real** — pure logic, `bun:sqlite` in-memory, your own modules. Free fidelity.

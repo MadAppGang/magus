@@ -383,61 +383,23 @@ Fetches your Figma component, adapts it to your codebase, installs dependencies,
 ### For Users
 
 - **[Troubleshooting](./docs/troubleshooting.md)** - Common issues and solutions
-- **[Advanced Usage](./docs/advanced-usage.md)** - Advanced configuration and workflows
+- **[Advanced Usage](./docs/advanced-usage.md)** - Installation methods, configuration, and workflows
 
 ### For Developers
 
-- **[Development Guide](./docs/development-guide.md)** - How to create plugins
-- **[Contributing Guide](./docs/contributing.md)** - How to contribute to the marketplace
-- **[Marketplace Reference](./docs/marketplace-reference.md)** - Technical schemas and structure
-- **[Version Validation](./docs/validation.md)** - Automated version validation system (prevents marketplace/plugin version mismatches)
-
-### Technical Documentation
-
-For architecture and implementation details, see the **[ai-docs](./ai-docs/)** directory:
-
-- **[TEAM_CONFIG_ARCHITECTURE.md](./ai-docs/TEAM_CONFIG_ARCHITECTURE.md)** - Team-first configuration
-- **[DYNAMIC_MCP_GUIDE.md](./ai-docs/DYNAMIC_MCP_GUIDE.md)** - MCP server configuration patterns
+- **[Local Development](./docs/local-development.md)** - Test and debug plugins locally
+- **[Development Guide](./docs/development-guide.md)** - Create Claude Code plugins for Magus
+- **[Marketplace Reference](./docs/marketplace-reference.md)** - Marketplace structure, schemas, and configuration
+- **[Contributing Guide](./docs/contributing.md)** - How to submit plugins
+- **[Version Validation](./docs/validation.md)** - Plugin version validation system (prevents marketplace/plugin version mismatches)
 
 ---
 
-## 📋 Roadmap
-
-### Current Focus
-
-- ✅ Dev plugin (v2.12.1 - universal dev assistant, design-system guardrails)
-- ✅ Code Analysis plugin (v5.3.0 - semantic search and AST analysis via mnemex)
-- ✅ Multimodel plugin (v3.2.0 - multi-model orchestration and blind voting)
-- ✅ Terminal plugin (v4.1.2 - intent-level terminal, tmux-mcp, pane safety)
-- ✅ Statusline plugin (v2.1.2 - adaptive, worktree-aware statusline)
-- ✅ Marketplace split (magus v8.0.0 - marketing plugins moved to `magus-marketing`)
-
-See [ROADMAP.md](./ROADMAP.md) for per-plugin forward-looking items.
-
-### Future Plugins
-
-- **Testing Tools**: E2E testing, visual regression, performance testing
-- **UI Components**: Design system tools, component generators
-- **Backend Development**: Node.js, API design, database tools
-- **DevOps**: Docker, Kubernetes, CI/CD automation
-- **Documentation**: Auto-generate docs, API reference, guides
-
-### Community Requests
+## 💡 Plugin Requests
 
 Have a plugin idea? [Open an issue](https://github.com/MadAppGang/magus/issues) with the `plugin-request` label.
 
----
-## 📖 Detailed Documentation
-
-### Technical Documentation
-
-For technical details and architecture, see the **[ai-docs](./ai-docs/)** directory:
-
-#### Architecture & Configuration
-- **[TEAM_CONFIG_ARCHITECTURE.md](./ai-docs/TEAM_CONFIG_ARCHITECTURE.md)** - Team-first configuration, shareable config vs private secrets
-- **[DYNAMIC_MCP_GUIDE.md](./ai-docs/DYNAMIC_MCP_GUIDE.md)** - Dynamic MCP server configuration patterns
-
-#### Reference
+Planned work and candidate plugins live in [ROADMAP.md](./ROADMAP.md). This README describes what ships today.
 
 ---
 

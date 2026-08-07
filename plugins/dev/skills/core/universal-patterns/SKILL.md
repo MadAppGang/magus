@@ -10,7 +10,42 @@ user-invocable: false
 
 Language-agnostic development patterns and best practices applicable across all technology stacks.
 
-## Architecture Patterns
+## The deep catalog lives next door — read it for any real design decision
+
+**This file is the quick reference.** It carries enough to keep everyday code honest. It is
+deliberately shallow on architecture, and it contains **none** of the 22 GoF design
+patterns.
+
+For anything beyond a reminder — choosing a style, comparing two, or picking a design
+pattern — **read the `architecture` skill's index**, then follow where it routes you:
+
+```
+<dev-plugin-root>/skills/architecture/SKILL.md
+```
+
+Locate it relative to this plugin's root, which covers both the installed-cache and
+local-source layouts:
+
+```bash
+ls "${CLAUDE_PLUGIN_ROOT}/skills/architecture/SKILL.md" 2>/dev/null \
+  || ls "$(dirname "$(dirname "$(pwd)")")"/plugins/dev/skills/architecture/SKILL.md 2>/dev/null
+```
+
+That index routes in two steps: **altitude first** (is this about system shape or class
+collaboration), then the specific file. What it covers, none of which is below:
+
+| Tier | Files | Contents |
+|---|---|---|
+| Architectural styles | `references/styles/*.md` | layered, hexagonal (ports and adapters), clean, modular monolith, microservices, event-driven, CQRS + event sourcing |
+| GoF categories | `references/{creational,structural,behavioral}.md` | the shared framing for each family |
+| GoF patterns | `references/patterns/*.md` | all 22, with TypeScript, trade-offs, and when not to use each |
+| Selection | `references/selection.md` | how to choose, overuse smells, and where TypeScript already gives you the pattern free |
+
+**Do not answer an architecture question from the summaries below when the deep file
+exists.** The summaries omit the trade-offs and the failure modes, which are the parts that
+decide whether the choice is right.
+
+## Architecture Patterns (summary — see the `architecture` skill for the real treatment)
 
 ### Layered Architecture
 
