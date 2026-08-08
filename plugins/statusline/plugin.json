@@ -1,30 +1,25 @@
 {
   "name": "statusline",
-  "version": "2.5.0",
-  "description": "Adaptive statusline. Always-visible usage bars, critical-state highlights, provider-aware model display, vim mode, session and git diff chips, compaction count, RAM usage, reset countdowns, opt-in Nerd Font icons. On claudish sessions it swaps Anthropic's plan limits for the routed provider's.",
+  "version": "3.0.0",
+  "description": "Deprecated redirect. The statusline now ships inside setup@magus as /setup:statusline-install, -uninstall and -customize. This plugin keeps the /statusline:* commands resolving for one release so no existing install breaks silently, and is removed after that.",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",
     "company": "MadAppGang"
   },
   "license": "MIT",
+  "homepage": "https://github.com/MadAppGang/magus",
   "keywords": [
     "statusline",
-    "worktree",
-    "context",
-    "plan-limits",
-    "claudish",
-    "customization",
-    "themes"
+    "deprecated",
+    "migration",
+    "setup"
   ],
   "category": "utility",
   "commands": [
     "./commands/install.md",
     "./commands/uninstall.md",
     "./commands/customize.md"
-  ],
-  "skills": [
-    "./skills/statusline-customization"
   ],
   "compatibility": {
     "claudeCode": ">=0.1.0"

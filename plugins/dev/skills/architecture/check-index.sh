@@ -15,6 +15,15 @@ note() { printf '  %s\n' "$1"; }
 
 echo "=== architecture skill index check ==="
 
+# Groups the refactoring router marks "not yet written". Section 4b separately asserts this
+# advertisement matches disk, so this cannot become a way to hide a genuinely broken link.
+UNWRITTEN_GROUPS=""
+if [ -f references/refactoring.md ]; then
+  UNWRITTEN_GROUPS=$(grep -E '^\| `(composing|moving|data|conditionals|calls|generalization)`' references/refactoring.md \
+    | grep 'not yet written' \
+    | sed -E 's|.*refactoring/techniques/([a-z-]+\.md).*|\1|' | tr '\n' ' ')
+fi
+
 # --- 1. Every referenced path resolves -------------------------------------------------
 # Collect `styles/x.md`, `patterns/x.md`, `references/x.md`, `../styles/x.md` style refs
 # from every markdown file, resolve them relative to the referring file, and check.
@@ -23,13 +32,21 @@ echo "1. referenced paths resolve"
 missing=0
 while IFS= read -r src; do
   dir=$(dirname "$src")
-  grep -oE '(\.\./)*(references/)?(styles/|patterns/)?[a-z0-9-]+\.md' "$src" 2>/dev/null \
+  # The directory alternation must list EVERY subdirectory under references/, and must allow
+  # nesting (refactoring/techniques/x.md is two deep). An earlier version hard-coded only
+  # `styles/|patterns/`, which silently truncated `refactoring/techniques/composing-methods.md`
+  # down to `composing-methods.md` and then reported it MISSING against the wrong directory.
+  grep -oE '(\.\./)*(references/)?((styles|patterns|refactoring|techniques)/)*[a-z0-9-]+\.md' "$src" 2>/dev/null \
   | sort -u \
   | while IFS= read -r ref; do
       # Deliberate cross-plugin references. These live outside this tree by design:
       # sin-registry.md is dev:code-roast's maintained failure inventory, which the
       # "when NOT to use" sections cite rather than duplicate.
       case "$ref" in sin-registry.md) continue ;; esac
+      # Technique groups the refactoring router itself advertises as not yet written.
+      # Derived from that table, never hard-coded: when a group is written and its status
+      # flips to "written", this exemption disappears and the link is enforced again.
+      case " $UNWRITTEN_GROUPS " in *" $(basename "$ref") "*) continue ;; esac
       # STRICT: resolve only relative to the referring file. A root-relative fallback
       # would mask exactly the bug this catches -- a leaf writing `references/x.md`
       # when it already lives inside references/.
@@ -78,6 +95,46 @@ for p in "${expected[@]}"; do
   fi
 done
 [ "$rfail" -eq 0 ] && note "OK — every pattern reachable from its leaf"
+
+# --- 4b. Refactoring tier: all 22 smells indexed, technique groups honest --------------
+echo
+echo "4b. refactoring tier"
+rfail=0
+if [ -f references/refactoring.md ]; then
+  smells=(
+    "Long Method" "Large Class" "Primitive Obsession" "Long Parameter List" "Data Clumps"
+    "Alternative Classes" "Refused Bequest" "Switch Statements" "Temporary Field"
+    "Divergent Change" "Parallel Inheritance" "Shotgun Surgery"
+    "Comments" "Duplicate Code" "Data Class" "Dead Code" "Lazy Class" "Speculative Generality"
+    "Feature Envy" "Inappropriate Intimacy" "Message Chains" "Middle Man"
+  )
+  missing_smells=0
+  for s in "${smells[@]}"; do
+    grep -qF "$s" references/refactoring.md || { note "MISSING SMELL  $s"; missing_smells=1; rfail=1; fail=1; }
+  done
+  # Incomplete Library Class is the 23rd row (Fowler groups it under Couplers); count the table.
+  rows=$(grep -cE '^\| \*\*(Bloater|OO Abuser|Change Preventer|Dispensable|Coupler)\*\*' references/refactoring.md)
+  if [ "$rows" -lt 22 ]; then
+    note "COUNT    smell table has $rows rows, expected >= 22"; rfail=1; fail=1
+  fi
+  [ "$missing_smells" -eq 0 ] && [ "$rows" -ge 22 ] && note "OK — $rows smell rows, all 22 named smells present"
+
+  # Every group the router advertises as "written" must exist; every one advertised as
+  # "not yet written" must NOT exist. A stale status line is worse than no status line.
+  while IFS='|' read -r _ _ path _ status _; do
+    p=$(echo "$path" | tr -d ' `'); st=$(echo "$status" | tr -d ' *')
+    case "$p" in refactoring/techniques/*.md) ;; *) continue ;; esac
+    if [ "$st" = "written" ] && [ ! -f "references/$p" ]; then
+      note "ADVERTISED-MISSING  references/$p marked written but absent"; rfail=1; fail=1
+    fi
+    if [ "$st" = "notyetwritten" ] && [ -f "references/$p" ]; then
+      note "STALE-STATUS  references/$p exists but is marked not yet written"; rfail=1; fail=1
+    fi
+  done < <(grep -E '^\| `(composing|moving|data|conditionals|calls|generalization)`' references/refactoring.md)
+  [ "$rfail" -eq 0 ] && note "OK — technique-group status lines match what is on disk"
+else
+  note "SKIP — references/refactoring.md not present"
+fi
 
 # --- 5. The index stays an index -------------------------------------------------------
 echo

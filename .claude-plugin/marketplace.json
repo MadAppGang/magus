@@ -7,7 +7,7 @@
   },
   "metadata": {
     "description": "Curated collection of Claude Code plugins for modern full-stack development with LLM performance tracking and E2E skill testing",
-    "version": "8.2.0",
+    "version": "9.0.0",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -208,7 +208,7 @@
       "name": "dev",
       "source": "./plugins/dev",
       "description": "Universal development assistant. Detects the project stack and routes work to specialist agents for architecture, implementation, debugging, review and research, enforcing design-system guardrails on every UI change.",
-      "version": "3.1.0",
+      "version": "3.2.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -248,6 +248,16 @@
       "strict": true,
       "releases": [
         {
+          "version": "3.2.0",
+          "date": "2026-08-08",
+          "kinds": [
+            "Added",
+            "Changed",
+            "Fixed"
+          ],
+          "summary": "A refactoring altitude in dev:architecture, behind a behaviour-preservation contract"
+        },
+        {
           "version": "3.1.0",
           "date": "2026-08-07",
           "kinds": [
@@ -280,14 +290,6 @@
             "Changed"
           ],
           "summary": "Hooks now run and are tested, and per-turn context is cut 15,143 \u2192 5,568 chars"
-        },
-        {
-          "version": "2.12.1",
-          "date": "2026-07-27",
-          "kinds": [
-            "Removed"
-          ],
-          "summary": "Dropped the conductor-missing-for-multi-session-feature coaching rule"
         }
       ]
     },
@@ -452,10 +454,72 @@
       ]
     },
     {
+      "name": "setup",
+      "source": "./plugins/setup",
+      "description": "Project setup jobs in one plugin. Investigates a repository and provisions it \u2014 plugins, tools, framework best-practice references, and a seeded knowledge base \u2014 then installs the adaptive statusline and indexes every skill reachable from the project into browsable markdown.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Jack Rudenko",
+        "email": "i@madappgang.com",
+        "company": "MadAppGang"
+      },
+      "category": "utility",
+      "keywords": [
+        "setup",
+        "provisioning",
+        "onboarding",
+        "bootstrap",
+        "statusline",
+        "skill-index",
+        "knowledge-base",
+        "claude-md",
+        "stack-detection"
+      ],
+      "strict": true,
+      "releases": [
+        {
+          "version": "1.0.0",
+          "date": "2026-08-06",
+          "summary": "One plugin for project setup jobs. /setup:project investigates a repository \u2014 stack, package\u2026"
+        }
+      ]
+    },
+    {
+      "name": "style",
+      "source": "./plugins/style",
+      "description": "Communication style presets for a project. Ships composable rule blocks governing tone, terminology, phrasing, and how information is presented, then writes the chosen combination into CLAUDE.md as one managed section that can be re-applied without duplicating.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Jack Rudenko",
+        "email": "i@madappgang.com",
+        "company": "MadAppGang"
+      },
+      "category": "utility",
+      "keywords": [
+        "style",
+        "voice",
+        "tone",
+        "communication",
+        "writing",
+        "terminology",
+        "claude-md",
+        "presets",
+        "conventions"
+      ],
+      "strict": true,
+      "releases": [
+        {
+          "version": "1.0.0",
+          "date": "2026-08-06",
+          "summary": "Nine composable communication style presets \u2014 direct, explanatory, terse, evidence-first,\u2026"
+        }
+      ]
+    },
+    {
       "name": "statusline",
       "source": "./plugins/statusline",
-      "description": "Adaptive statusline. Always-visible usage bars, critical-state highlights, provider-aware model display, vim mode, session and git diff chips, compaction count, RAM usage, reset countdowns, opt-in Nerd Font icons. On claudish sessions it swaps Anthropic's plan limits for the routed provider's.",
-      "version": "2.5.0",
+      "description": "Deprecated redirect. The statusline now ships inside setup@magus as /setup:statusline-install, -uninstall and -customize. This plugin keeps the /statusline:* commands resolving for one release so no existing install breaks silently, and is removed after that.",
+      "version": "3.0.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -464,15 +528,17 @@
       "category": "utility",
       "keywords": [
         "statusline",
-        "worktree",
-        "context",
-        "plan-limits",
-        "customization",
-        "themes",
-        "reset-countdown"
+        "deprecated",
+        "migration",
+        "setup"
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "3.0.0",
+          "date": "2026-08-06",
+          "summary": "Now a deprecation shim. The statusline moved into setup@magus as /setup:statusline-install,\u2026"
+        },
         {
           "version": "2.5.0",
           "date": "2026-08-04",
@@ -506,15 +572,6 @@
             "Changed"
           ],
           "summary": "MEM: measured the statusline script instead of Claude Code"
-        },
-        {
-          "version": "2.2.0",
-          "date": "2026-08-03",
-          "kinds": [
-            "Added",
-            "Changed"
-          ],
-          "summary": "claudish-routed session detection \u2014 CLAUDISH_ACTIVE_MODEL_NAME or CLAUDISH_TOKEN_FILE in the\u2026"
         }
       ]
     },

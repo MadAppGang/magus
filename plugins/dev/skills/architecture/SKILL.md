@@ -24,6 +24,7 @@ The single most common mistake is answering at the wrong altitude. Both tiers us
 |---|---|---|
 | how a whole system or service is *shaped*: what depends on what, where the boundaries sit, how services talk | **Style** | `references/styles/` — Step 2 |
 | how a handful of classes *collaborate*: how to construct this, how to vary that behaviour, how to decouple these two | **Design pattern** | `references/` category leaf — Step 3 |
+| **changing existing code without changing what it does** — it is hard to edit, hard to test, or the same edit keeps recurring | **Refactoring** | `references/refactoring.md` — Step 4 |
 | which of the two you even need | either | `references/selection.md` first |
 
 A test that resolves it fast: **if the answer changes your directory layout or your deploy
@@ -94,6 +95,19 @@ mistake is implementing a class hierarchy for something the language gives you f
 **A pattern is a response to a force that is already present.** Applying one to code that
 does not yet feel the force adds indirection and buys nothing. `references/selection.md`
 covers the overuse smells and the standard criticism of pattern-driven design.
+
+## Step 4: refactoring existing code
+
+Read `references/refactoring.md`. It is smell-first: you arrive with a symptom ("this
+function is 400 lines", "this change touched nine files"), not a technique name. It indexes
+all **22 code smells** against checkable signals, and routes to a technique group.
+
+**It is not a to-do list.** Refactoring preserves observable behaviour by definition, so it
+requires mutation-sensitive tests over the range *first*, and it earns its cost only against
+a named pending edit. That file carries the gates and the hard stops; apply them.
+
+Coverage today: the smell index is complete, and **1 of 6 technique groups is written**
+(`composing-methods`, 9 techniques). The other five are listed there as not yet written.
 
 ## Copyable, tested code
 

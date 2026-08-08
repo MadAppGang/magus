@@ -1,71 +1,60 @@
 ---
-name: uninstall-statusline
-description: Remove the statusline from Claude Code (project or global)
+name: uninstall
+description: Deprecated — the statusline moved to setup@magus. Removes the statusline, then points at /setup:statusline-uninstall.
 allowed-tools: Read, Write, Edit, Bash, AskUserQuestion
 ---
 
 <role>
-  <identity>Status Line Uninstaller</identity>
-  <mission>
-    Detect where the statusline is installed and remove it cleanly.
-  </mission>
+  <identity>Statusline Migration Shim</identity>
+  <mission>Remove an installed statusline and report where the command moved.</mission>
 </role>
 
+<context>
+  Uninstall is the one shim command that works fully on its own: removing a
+  statusline touches only `.claude/statusline-command.sh` and the `statusLine`
+  key in `settings.json`. Neither lives in a plugin, so no plugin file is
+  needed to undo the install.
+
+  This shim is removed in the next release. Use `/setup:statusline-uninstall`.
+</context>
+
 <instructions>
-  Execute ALL steps in a SINGLE response. Do NOT pause for confirmation.
-
-  <step number="1" name="Detect installations">
-    Check both locations for existing installations:
-
-    1. **Project:** Check if `.claude/statusline-command.sh` exists in the current project root
-    2. **Global:** Check if `~/.claude/statusline-command.sh` exists
-
-    If neither exists, inform the user that no statusline installation was found and stop.
+  <step number="1" name="Announce the move">
+    > `/statusline:uninstall` is deprecated — use `/setup:statusline-uninstall`
+    > from `setup@magus`. Removing the statusline now; this shim is removed
+    > next release.
   </step>
 
   <step number="2" name="Choose scope">
-    If both project and global installations exist, use AskUserQuestion:
-    - question: "Statusline found in both project and global. Which should be removed?"
-    - options:
-      1. "Project only" — remove from this project
-      2. "Global only" — remove from ~/.claude/
-      3. "Both" — remove from both locations
+    Ask with AskUserQuestion which install to remove, and check both before
+    asking so you can say which actually exist:
 
-    If only one exists, proceed with that one automatically.
-  </step>
-
-  <step number="3" name="Remove script files">
-    For each selected scope:
-    1. Delete the `statusline-command.sh` file using Bash `rm`
-  </step>
-
-  <step number="4" name="Remove settings">
-    For each selected scope:
-    1. Read the corresponding `settings.json`
-    2. Remove the `statusLine` field (preserve all other fields)
-    3. Write back the updated settings
-  </step>
-
-  <step number="5" name="Config file">
-    Use AskUserQuestion:
-    - question: "Remove statusline config file (~/.claude/statusline-config.json) too?"
-    - options:
-      1. "Keep it" — preserves your customizations for later reinstall
-      2. "Remove it" — clean uninstall
-
-    If "Remove it", delete the config file.
-    Also mention that the usage cache file (~/.claude/.statusline-usage-cache.json) can be removed manually if desired.
-  </step>
-
-  <step number="6" name="Report">
-    Show a summary:
+    ```bash
+    ls .claude/statusline-command.sh ~/.claude/statusline-command.sh 2>/dev/null
     ```
-    Statusline removed!
 
-    Removed from: {project|global|both}
-    Config: {kept|removed}
+    If only one exists, skip the question and remove that one. If neither
+    exists, report that nothing is installed and stop.
+  </step>
 
-    Restart Claude Code to apply changes.
+  <step number="3" name="Remove">
+    For the chosen scope:
+    1. Delete `statusline-command.sh`.
+    2. Read the matching `settings.json`, delete the `statusLine` key, and
+       write it back. Preserve every other key exactly — this file holds the
+       user's permissions and enabled plugins.
+
+    If `settings.json` does not parse as JSON, stop and say so rather than
+    rewriting it. A corrupted settings file is worse than a leftover key.
+  </step>
+
+  <step number="4" name="Report">
+    Name every file changed or deleted, and confirm `statusLine` is gone:
+
+    ```bash
+    grep -c statusLine <settings-path>
     ```
+
+    Expect `0`. The statusline disappears at the next session start.
   </step>
 </instructions>

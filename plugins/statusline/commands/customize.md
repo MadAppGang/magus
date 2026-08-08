@@ -1,136 +1,58 @@
 ---
-name: customize-statusline
-description: Interactively configure statusline sections, theme, and bar widths
+name: customize
+description: Deprecated — the statusline moved to setup@magus. Redirects to /setup:statusline-customize.
 allowed-tools: Read, Write, Edit, Bash, AskUserQuestion
 ---
 
 <role>
-  <identity>Status Line Customizer</identity>
+  <identity>Statusline Migration Shim</identity>
   <mission>
-    Provide an interactive editor for statusline configuration. Read current
-    config, show it, let the user tweak settings, then save and redeploy.
+    Keep `/statusline:customize` working during the deprecation window by
+    delegating to the real command in setup@magus.
   </mission>
 </role>
 
+<context>
+  Customisation reads the statusline script to know which sections exist, and
+  that script now lives in `setup@magus`. This shim cannot do the job alone.
+
+  Removed in the next release. Use `/setup:statusline-customize`.
+</context>
+
 <instructions>
-  Execute ALL steps in a SINGLE response. Do NOT pause for confirmation between steps.
-
-  <step number="1" name="Load config">
-    Read `~/.claude/statusline-config.json`. If it doesn't exist, use these defaults:
-    ```json
-    {
-      "sections": {
-        "model": true,
-        "branch": true,
-        "worktree": true,
-        "cost": true,
-        "duration": true,
-        "context_bar": true,
-        "plan_limits": true,
-        "claudish_plan": true
-      },
-      "icons": {
-        "nerd_font": false
-      },
-      "context_bar_width": 12,
-      "plan_bar_width": 10,
-      "theme": "default"
-    }
-    ```
-
-    Preserve any keys the file already has that are not listed here — merge, never
-    replace the file wholesale.
+  <step number="1" name="Announce the move">
+    > `/statusline:customize` is deprecated — use `/setup:statusline-customize`
+    > from `setup@magus`. This shim is removed next release.
   </step>
 
-  <step number="2" name="Show current config">
-    Display the current configuration as a formatted table:
-    ```
-    Current Statusline Configuration
-    ─────────────────────────────────
-    Sections:
-      model       ✓ on
-      branch      ✓ on
-      worktree    ✓ on
-      cost        ✓ on
-      duration    ✓ on
-      context_bar   ✓ on
-      plan_limits   ✓ on
-      claudish_plan ✓ on
-
-    Bar Widths:
-      context_bar_width: 12
-      plan_bar_width:    10
-
-    Theme: default
-    Nerd Font icons: off
-    ```
-  </step>
-
-  <step number="3" name="Ask what to change">
-    Use AskUserQuestion:
-    - question: "What would you like to customize?"
-    - options:
-      1. "Toggle sections" — turn individual sections on/off
-      2. "Change theme" — switch between default, monochrome, minimal, neon
-      3. "Change bar widths" — adjust context bar or plan bar width
-      4. "Nerd Font icons" — render the RAM segment as a glyph instead of a label
-      5. "Reset to defaults" — restore all settings to defaults
-
-    Based on choice:
-
-    **Toggle sections:** Use AskUserQuestion with multiSelect:true listing all 7 sections.
-    Sections the user selects get TOGGLED (on→off, off→on). Show updated state.
-
-    **Change theme:** Use AskUserQuestion with the 4 theme options:
-    - "default" — warm/cool ANSI palette (cyan, green, yellow, orange, red)
-    - "monochrome" — white/gray only
-    - "minimal" — muted dim ANSI colors
-    - "neon" — bright 256-color palette
-
-    **Change bar widths:** Use AskUserQuestion:
-    - "Context bar width" — then ask for number (8-20, default 12)
-    - "Plan bar width" — then ask for number (6-16, default 10)
-
-    **Nerd Font icons:** print the sample line below — it carries the real glyph,
-    so the user is judging what they will actually get, not a description of it:
-
-    ```
-    With icons:     󰍛 1.1G
-    Without icons:  RAM 1.1G
-    ```
-
-    Then use AskUserQuestion:
-    - question: "In the line above, do you see a RAM-stick icon before `1.1G`?"
-    - options: "Yes, I see an icon" → `icons.nerd_font: true`;
-      "No — a box, or blank space" → `icons.nerd_font: false`
-
-    Offer "blank space" explicitly: a missing Nerd Font glyph frequently renders as
-    nothing at all rather than as tofu, and Nerd Font coverage is partial — a user
-    whose font resolves other glyphs may still get a gap for this one.
-
-    **Reset to defaults:** Restore the default config from step 1.
-  </step>
-
-  <step number="4" name="Save config">
-    Write the updated configuration to `~/.claude/statusline-config.json` with
-    proper JSON formatting.
-  </step>
-
-  <step number="5" name="Redeploy script">
-    Check if the statusline is currently installed:
-    - Project: `.claude/statusline-command.sh`
-    - Global: `~/.claude/statusline-command.sh`
-
-    For each installed location, read the latest script from
-    `${CLAUDE_PLUGIN_ROOT}/scripts/statusline.sh` and overwrite the installed copy
-    so the new config takes effect.
-  </step>
-
-  <step number="6" name="Preview">
-    Run a test to preview the new look:
+  <step number="2" name="Locate setup">
     ```bash
-    echo '{"model":{"display_name":"Claude Opus 4.6"},"cost":{"total_cost_usd":1.23,"total_duration_ms":180000},"context_window":{"used_percentage":45},"cwd":"'$(pwd)'"}' | bash <installed-script-path>
+    bash "${CLAUDE_PLUGIN_ROOT}/scripts/locate-setup.sh"
     ```
-    Show the rendered output to the user.
+  </step>
+
+  <step number="3a" name="Setup found — delegate">
+    Read `<setup-root>/commands/statusline-customize.md` and execute it
+    exactly, substituting the located setup root for `${CLAUDE_PLUGIN_ROOT}`.
+
+    Do not reimplement it. The customiser knows the section list, the themes,
+    and the config file shape; a second copy here would go stale immediately.
+  </step>
+
+  <step number="3b" name="Setup missing — stop and instruct">
+    Do not guess at the configuration. Without the script you cannot know
+    which sections exist, and writing a config with invented section names
+    produces a statusline that silently drops them.
+
+    ```bash
+    claude plugin install setup@magus
+    ```
+
+    Tell the user to run that, restart the session, then run
+    `/setup:statusline-customize`.
+  </step>
+
+  <step number="4" name="Report">
+    State which path ran and, if 3a, what changed.
   </step>
 </instructions>

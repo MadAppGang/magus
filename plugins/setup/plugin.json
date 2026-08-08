@@ -1,0 +1,37 @@
+{
+  "name": "setup",
+  "version": "1.0.0",
+  "description": "Project setup jobs in one plugin. Investigates a repository and provisions it — plugins, tools, framework best-practice references, and a seeded knowledge base — then installs the adaptive statusline and indexes every skill reachable from the project into browsable markdown.",
+  "author": {
+    "name": "Jack Rudenko",
+    "email": "i@madappgang.com",
+    "company": "MadAppGang"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/MadAppGang/magus",
+  "keywords": [
+    "setup",
+    "provisioning",
+    "onboarding",
+    "bootstrap",
+    "statusline",
+    "skill-index",
+    "knowledge-base",
+    "claude-md",
+    "stack-detection"
+  ],
+  "category": "utility",
+  "commands": [
+    "./commands/project.md",
+    "./commands/statusline-install.md",
+    "./commands/statusline-uninstall.md",
+    "./commands/statusline-customize.md"
+  ],
+  "skills": [
+    "./skills/index-skills",
+    "./skills/statusline-customization"
+  ],
+  "compatibility": {
+    "claudeCode": ">=0.1.0"
+  }
+}

@@ -4,6 +4,67 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [dev 3.2.0] - 2026-08-08
+
+### Added
+
+- **A refactoring altitude in `dev:architecture`, behind a behaviour-preservation contract.**
+  Styles answer "how is the system shaped", patterns answer "how do these classes
+  collaborate", and this answers "how do I change existing code without changing what it
+  does". `references/refactoring.md` indexes all **22 code smells** smell-first, plus
+  `techniques/composing-methods.md` covering 9 techniques.
+- **Smells are keyed to checkable signals, not adjectives** — arity ≥ 4, ≥ 4 locals live
+  across the intended cut point, `git log` co-change sets, bidirectional import, accessor
+  chain depth ≥ 3. This is what stops "every codebase matches some smell" from generating
+  unrequested work.
+- **A counterweight: three gates and nine hard stops.** Including one that the specification
+  missed entirely — the catalogue contains its own inverses (Middle Man ⇄ Message Chains,
+  Lazy Class ⇄ Large Class, Data Class ⇄ Feature Envy are duals), so applying one produces
+  the other and the code oscillates across successive refactors.
+- **A paradigm-fit section.** Fowler's catalogue assumes mutable OO; much TypeScript is not.
+  **Data Class is usually the target state**, not a smell. An exhaustive `switch` over a
+  discriminated union closed by `assertNever` is not the Switch Statements smell — the
+  exhaustiveness check already buys what polymorphism was for. Temporary Field does not apply
+  to `readonly` data constructed once.
+
+### Changed
+
+- `check-index.sh` gains section 4b: asserts all 22 smells are present, and that each
+  technique group's advertised status matches disk — a group marked *written* must exist, one
+  marked *not yet written* must not. A stale status line is worse than none.
+- `SKILL.md` gains the refactoring altitude in its Step 1 routing table (139/140 lines).
+
+### Fixed
+
+- **`check-index.sh` reported false MISSINGs for any nested reference.** The regex hard-coded
+  `styles/|patterns/`, so `refactoring/techniques/composing-methods.md` was truncated to a
+  bare filename and resolved against the wrong directory. Found by the `dev:docs` agent
+  during authoring and verified by direct test.
+
+### Why
+
+`dev:architect` gained a pattern catalogue in 3.1.0 but still had nothing for changing code
+that already exists — the most common engineering task. Built by seven independent producers
+working blind (five external models via claudish, plus `dev:architect` and `dev:docs`) and
+merged: structure and smell table from the architect, gates and postconditions from docs.
+
+### Migration notes
+
+**Licensing is why every word is original.** refactoring.guru is licensed CC BY-NC-ND 4.0
+(NonCommercial, NoDerivatives); this repo is MIT and publishes to public marketplaces, so its
+prose and examples cannot ship here. Only Fowler's technique and smell *names* are used, as
+standard terminology, with attribution. This was not a theoretical concern: **measured across
+the seven producers, three of five external models reproduced canonical catalogue examples
+despite an explicit binding instruction not to** (28, 15 and 6 fingerprint hits for
+`printOwing`, Don/John/Kent, `basePrice`). Both merged candidates scored zero.
+
+Coverage is deliberately honest: the smell index is complete, **1 of 6 technique groups is
+written** (9 of 68 techniques). The router states this and section 4b enforces that the status
+lines match disk, so it cannot rot silently. Costs zero listing budget — 11,984/12,000
+unchanged.
+
+---
+
 ## [dev 3.1.0] - 2026-08-07
 
 ### Added
@@ -162,6 +223,79 @@ inventory, cited as `UNI-01`…`UNI-15` rather than restated.
 
 The skill's whole premise is MEASURED-not-remembered. Claims that decay silently cost more
 here than in a skill that never made the promise.
+
+---
+
+## [Marketplace 9.0.0] - 2026-08-06
+
+### Added
+
+- **`setup` v1.0.0**: one plugin for project setup jobs. `/setup:project` investigates a
+  repository — stack, package manager, the exact test and lint commands, CI, what is
+  already configured — then provisions it behind an approval gate: plugins through the
+  `claude plugin` CLI, MCP servers, framework references, and a seeded knowledge base. It
+  invokes `/dev:setup` and `/code-analysis:setup` rather than reimplementing them, and
+  never hand-edits Claude Code-owned plugin state.
+  `/setup:index-skills` walks every skill reachable from a project and writes a markdown
+  index carrying each one's per-turn listing cost. Scope is detected from the directory,
+  not its name: a plugin-source repo indexes `plugins/*/skills/**`; anything else indexes
+  `.claude/skills`, the `~/.claude/skills` autodiscovery directory, and every installed
+  plugin, counting cached-but-not-enabled plugins as zero because they cost nothing.
+  It emits two indexes with different jobs. The full `SKILLS.md` is a reference document
+  read on demand. `--claude-md` splices a ~4.5 KB block into CLAUDE.md between
+  `<!-- skill-index:begin -->` markers, naming every skill the model cannot reliably
+  discover on its own. The budget it measures against is `context_tokens x 4 x
+  skillListingBudgetFraction`, verified against the 2.1.223 binary — there is no 8,000 hard
+  cap, and it is global across every installed skill rather than per-plugin. 8,000 is only
+  what the formula yields at the 200,000-token fallback, so `--context` and `--fraction`
+  let the corpus be measured against a specific model: this marketplace's 13,022 chars
+  overflow at 200k (about 47 of 77 descriptions survive) and fit at 1M. That portability
+  gap is the argument for the block — it reads identically on every model, and 74 of these
+  skills also carry `user-invocable: false`, so a shortened description leaves them with no
+  fallback at all. Re-running replaces the block; a file with one marker and not the other
+  is refused rather than guessed at.
+  `--tiered` splits it into two levels: CLAUDE.md gets one row per topic group naming what
+  it covers, and `.claude/skill-index/<group>.md` holds that group's invocation strings and
+  full descriptions. The grouping unit is the `skills/` subdirectory where a plugin uses
+  one, because `dev`'s 48 skills span `frontend/` and `backend/` and one row cannot route
+  to both. Measured here: 2,825 chars always-loaded against the flat index's 4,455, plus
+  44,430 chars of descriptions that were previously in no index. `--topic-max` is what makes
+  it pay — enumerating every skill at level 1 costs 3,986, a 10% saving that would not
+  justify the extra read. Groups below `--threshold` stay inline, since for a one-skill
+  plugin the pointer costs more than the name.
+  Each skill is marked by how it can be reached — listed, `*` slash-only, `^` preloaded,
+  or `!` unreachable. The last is a defect detector: a skill carrying both
+  `disable-model-invocation` and `user-invocable: false` while no command or agent names
+  it cannot be invoked at all, and a manifest entry does not count, because registering a
+  skill is not routing to it.
+- **`style` v1.0.0**: nine composable communication style presets — `direct`,
+  `explanatory`, `terse`, `evidence-first`, `plain-language`, `no-slop`, `structured`,
+  `calibrated`, `terminology`. They sit on two axes: pick exactly one verbosity preset,
+  combine modifiers freely. `/style:apply` writes the chosen set into CLAUDE.md between
+  `<!-- style:begin -->` markers, so re-applying replaces the block rather than appending
+  a second, contradictory voice section.
+
+### Changed
+
+- **`statusline` v3.0.0**: now a deprecation shim. The statusline moved into `setup@magus`
+  as `/setup:statusline-install`, `-uninstall` and `-customize`. The `/statusline:*`
+  commands still resolve for this release — install and customize locate the setup plugin
+  root across both the cache and directory marketplace layouts and delegate to it, and
+  uninstall works standalone because it only touches `.claude/statusline-command.sh` and
+  the `statusLine` settings key. `statusline.sh` now exists in exactly one place;
+  duplicating a thousand-line script across two plugins guarantees drift.
+- `statusline-customization` gained `disable-model-invocation: true`, returning 125 chars
+  to the shared skill listing budget. It previously carried only `user-invocable: false`,
+  which frees nothing — that flag hides a skill from the `/` menu and leaves it in the
+  per-turn listing.
+
+### Migration notes
+
+An already-installed statusline is unaffected by the move. `/setup:statusline-install`
+copies the script to `.claude/statusline-command.sh` and points `settings.json` at that
+copy, so nothing in a working install references the plugin cache. What changes is the
+plugin id: install `setup@magus`, switch to the `/setup:statusline-*` commands, and drop
+`"statusline@magus": true` from `enabledPlugins` once the shim is removed next release.
 
 ---
 

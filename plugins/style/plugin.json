@@ -1,0 +1,34 @@
+{
+  "name": "style",
+  "version": "1.0.0",
+  "description": "Communication style presets for a project. Ships composable rule blocks governing tone, terminology, phrasing, and how information is presented, then writes the chosen combination into CLAUDE.md as one managed section that can be re-applied without duplicating.",
+  "author": {
+    "name": "Jack Rudenko",
+    "email": "i@madappgang.com",
+    "company": "MadAppGang"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/MadAppGang/magus",
+  "keywords": [
+    "style",
+    "voice",
+    "tone",
+    "communication",
+    "writing",
+    "terminology",
+    "claude-md",
+    "presets",
+    "conventions"
+  ],
+  "category": "utility",
+  "commands": [
+    "./commands/apply.md",
+    "./commands/list.md"
+  ],
+  "skills": [
+    "./skills/style-presets"
+  ],
+  "compatibility": {
+    "claudeCode": ">=0.1.0"
+  }
+}
