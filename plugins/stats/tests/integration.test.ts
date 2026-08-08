@@ -376,10 +376,11 @@ describe("Database: schema, CRUD, retention, queries", () => {
 
   test("getSessionSummary returns correct averages and totals", () => {
     const db = openDb(dbPath);
+    const todayDate = new Date().toISOString().slice(0, 10);
 
     // Insert 2 sessions with known tool counts
-    insertSession(db, makeSession("s1", "/test/project", "2026-03-26"));
-    insertSession(db, makeSession("s2", "/test/project", "2026-03-26"));
+    insertSession(db, makeSession("s1", "/test/project", todayDate));
+    insertSession(db, makeSession("s2", "/test/project", todayDate));
     insertToolCalls(db, makeSession("s1").tool_calls, "s1");
     insertToolCalls(db, makeSession("s2").tool_calls, "s2");
 
@@ -408,11 +409,12 @@ describe("Database: schema, CRUD, retention, queries", () => {
 
   test("deleteOldSessions removes sessions beyond retention window", () => {
     const db = openDb(dbPath);
+    const todayDate = new Date().toISOString().slice(0, 10);
 
     // Old session (well beyond 90 days)
     insertSession(db, makeSession("old", "/test/project", "2024-01-01"));
     // Recent session
-    insertSession(db, makeSession("recent", "/test/project", "2026-03-26"));
+    insertSession(db, makeSession("recent", "/test/project", todayDate));
 
     const { deletedCount } = deleteOldSessions(db, 90);
 
@@ -443,7 +445,8 @@ describe("Database: schema, CRUD, retention, queries", () => {
 
   test("deleteOldSessions returns 0 when no sessions are old enough", () => {
     const db = openDb(dbPath);
-    insertSession(db, makeSession("recent", "/test/project", "2026-03-26"));
+    const todayDate = new Date().toISOString().slice(0, 10);
+    insertSession(db, makeSession("recent", "/test/project", todayDate));
 
     const { deletedCount } = deleteOldSessions(db, 90);
 
@@ -454,14 +457,15 @@ describe("Database: schema, CRUD, retention, queries", () => {
 
   test("getTopTools returns tools ranked by call count", () => {
     const db = openDb(dbPath);
-    insertSession(db, makeSession("s1", "/test/project", "2026-03-26"));
+    const todayDate = new Date().toISOString().slice(0, 10);
+    insertSession(db, makeSession("s1", "/test/project", todayDate));
 
     const calls: ToolCallRecord[] = [
-      { tool_name: "Read", duration_ms: 10, success: true, activity_category: "research", timestamp: "2026-03-26T10:00:00.000Z" },
-      { tool_name: "Read", duration_ms: 20, success: true, activity_category: "research", timestamp: "2026-03-26T10:01:00.000Z" },
-      { tool_name: "Read", duration_ms: 15, success: true, activity_category: "research", timestamp: "2026-03-26T10:02:00.000Z" },
-      { tool_name: "Write", duration_ms: 30, success: true, activity_category: "coding", timestamp: "2026-03-26T10:03:00.000Z" },
-      { tool_name: "Bash", duration_ms: 100, success: true, activity_category: "other", timestamp: "2026-03-26T10:04:00.000Z" },
+      { tool_name: "Read", duration_ms: 10, success: true, activity_category: "research", timestamp: `${todayDate}T10:00:00.000Z` },
+      { tool_name: "Read", duration_ms: 20, success: true, activity_category: "research", timestamp: `${todayDate}T10:01:00.000Z` },
+      { tool_name: "Read", duration_ms: 15, success: true, activity_category: "research", timestamp: `${todayDate}T10:02:00.000Z` },
+      { tool_name: "Write", duration_ms: 30, success: true, activity_category: "coding", timestamp: `${todayDate}T10:03:00.000Z` },
+      { tool_name: "Bash", duration_ms: 100, success: true, activity_category: "other", timestamp: `${todayDate}T10:04:00.000Z` },
     ];
     insertToolCalls(db, calls, "s1");
 
@@ -484,10 +488,12 @@ describe("Database: schema, CRUD, retention, queries", () => {
   test("getDurationTrend returns daily data in ASC date order", () => {
     const db = openDb(dbPath);
 
-    // Insert sessions on different dates
-    insertSession(db, makeSession("s1", "/test/project", "2026-03-24"));
-    insertSession(db, makeSession("s2", "/test/project", "2026-03-25"));
-    insertSession(db, makeSession("s3", "/test/project", "2026-03-26"));
+    // Insert sessions on recent dates (within the 14-day query window)
+    const d = (daysAgo: number) =>
+      new Date(Date.now() - daysAgo * 86400000).toISOString().slice(0, 10);
+    insertSession(db, makeSession("s1", "/test/project", d(4)));
+    insertSession(db, makeSession("s2", "/test/project", d(2)));
+    insertSession(db, makeSession("s3", "/test/project", d(0)));
 
     const trend = getDurationTrend(db, 14, "/test/project");
 
