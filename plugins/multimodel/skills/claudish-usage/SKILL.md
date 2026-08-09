@@ -257,13 +257,13 @@ provider and bypass the subscription-aware backend selection and fallback that p
 | Task Type | Recommended Agent | Alternatives | Notes |
 |-----------|----------------------|--------------|-------|
 | **Investigation** | `dev:researcher` | `code-analysis:detective` | For finding bugs, tracing issues |
-| **Code review** | `frontend:reviewer` | `code-analysis:detective` | Check if plugin has review agent |
-| **Architecture** | `dev:architect` | `frontend:architect` | Design and planning tasks |
-| **Implementation** | `dev:developer` | `frontend:developer` | Building features |
+| **Code review** | `dev:reviewer` | `code-analysis:detective` | Security, correctness, maintainability passes |
+| **Architecture** | `dev:architect` | — | Design and planning tasks |
+| **Implementation** | `dev:developer` | — | Building features |
 | **Testing** | `dev:test-architect` | — | Test strategy and coverage |
 | **Debugging** | `dev:debugger` | — | Error analysis and tracing |
-| **Documentation** | `dev:researcher` | — | Simple task, researcher works |
-| **UI/Design** | `dev:ui` | `frontend:designer` | Visual and UX tasks |
+| **Documentation** | `dev:docs` | `dev:researcher` | Writing or auditing documentation |
+| **UI/Design** | `dev:frontend` | `designer` plugin | Visual and UX tasks |
 
 ### Step 3: Agent Creation Offer (When No Agent Exists)
 

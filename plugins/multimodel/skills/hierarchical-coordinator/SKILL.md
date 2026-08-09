@@ -2,11 +2,6 @@
 name: hierarchical-coordinator
 description: Prevents goal drift in long multi-agent runs by validating outputs against the original objective at checkpoints. Use when orchestrating 3+ agents or multi-phase work.
 disable-model-invocation: true
-version: 0.1.0
-tags: [orchestration, hierarchical, coordinator, anti-drift, checkpoint, validation]
-keywords: [hierarchical, coordinator, anti-drift, checkpoint, validation, goal-alignment, decomposition, phase-gate, shared-state]
-plugin: multimodel
-updated: 2026-01-28
 ---
 
 # Hierarchical Coordinator

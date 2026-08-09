@@ -138,7 +138,7 @@ skills: dev:task-management, dev:context-detection, dev:universal-patterns, mult
 
       At workflow start:
       1. Check if GTD plugin is active (`.claude/gtd/tasks.json` exists)
-      2. If active: suggest `/gtd:work` to set active task before creating phase tasks
+      2. If active: suggest `/gtd:engage` to set active task before creating phase tasks
       3. Clean up any stale tasks from previous workflows
       4. Create phase tasks upfront for: Triage, Initialize, Plan Mode (if applicable),
          Requirements, Alternatives, Trade-offs, Detailed Design, Validation, Finalization

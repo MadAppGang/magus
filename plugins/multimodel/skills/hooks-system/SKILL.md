@@ -2,11 +2,6 @@
 name: hooks-system
 description: Lifecycle hook patterns — PreToolUse, PostToolUse, UserPromptSubmit, Stop, SubagentStop. Use when configuring hooks, writing validation, auto-format on save, stdin payloads, exit-2 blocking, or debugging a hook.
 disable-model-invocation: true
-version: 0.1.0
-tags: [orchestration, hooks, lifecycle, PreToolUse, PostToolUse, UserPromptSubmit, validation, security]
-keywords: [hooks, lifecycle, pre-tool, post-tool, user-prompt, session-start, stop, subagent, notification, permission, validation, auto-format, security, metrics]
-plugin: multimodel
-updated: 2026-01-28
 ---
 
 # Hooks System

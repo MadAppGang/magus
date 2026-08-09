@@ -54,16 +54,27 @@ Files live at `refactoring/techniques/<name>.md`; the last column uses the short
 | Short name | File | Techniques | Status |
 |---|---|---|---|
 | `composing` | `refactoring/techniques/composing-methods.md` | 9 | **written** |
-| `moving` | `refactoring/techniques/moving-features.md` | 8 | **not yet written** |
-| `data` | `refactoring/techniques/organizing-data.md` | 16 | **not yet written** |
-| `conditionals` | `refactoring/techniques/simplifying-conditionals.md` | 8 | **not yet written** |
-| `calls` | `refactoring/techniques/simplifying-method-calls.md` | 14 | **not yet written** |
-| `generalization` | `refactoring/techniques/dealing-with-generalization.md` | 13 | **not yet written** |
+| `moving` | `refactoring/techniques/moving-features.md` | 8 | **written** |
+| `conditionals` | `refactoring/techniques/simplifying-conditionals.md` | 8 | **written** |
+| `data` | `refactoring/techniques/organizing-data.md` | 15 | **written** |
+| `calls` | `refactoring/techniques/simplifying-method-calls.md` | 14 | **written** |
+| `generalization` | `refactoring/techniques/dealing-with-generalization.md` | 12 | **written** |
 
-**Only `composing` exists.** The smell index below is complete and routes correctly; five of
-the six destination files are not written yet. When a row points at a missing file, the smell
-identification, the signal, and the ordering still apply — you are on your own for the
-mechanics. Do not invent a citation to a file you could not read.
+Counts are the 1st-edition catalogue as published: **66 techniques across the six groups**, not
+68. Where a technique file additionally covers a 2nd-edition addition (for example `Introduce
+Special Case`, which `conditionals` folds into its entry 7), that material is labelled as such
+and folded into an existing entry — it never becomes a numbered entry of its own, because the
+count column and the file's `## N.` headings must agree. `check-index.sh` enforces that.
+
+When a row points at a file marked *not yet written*, the smell identification, the signal,
+and the ordering above still apply — you are on your own for the mechanics. Do not invent a
+citation to a file you could not read.
+
+**Catalogue edition.** Names here follow Fowler's *Refactoring* 1st edition (1999), which is
+what the smell table and every technique file use. The 2nd edition (2018) renames some
+(Move Method → Move Function) and adds others (Introduce Special Case, Slide Statements,
+Replace Loop with Pipeline). Where a technique file covers a 2nd-edition addition it says so
+in that entry.
 
 | Group | Smell | Signal you can check | Start with |
 |---|---|---|---|

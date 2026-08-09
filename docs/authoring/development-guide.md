@@ -4,7 +4,7 @@ Complete guide to creating Claude Code plugins for the Magus marketplace.
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 Creating a new plugin takes about 15 minutes. Follow these steps:
 
@@ -90,7 +90,7 @@ your-plugin-name/
 
 ---
 
-## 📋 Plugin Development Best Practices
+## Plugin Development Best Practices
 
 ### Agents
 
@@ -230,7 +230,7 @@ Claude should invoke this Skill when:
 
 ---
 
-## ✅ Quality Standards
+## Quality Standards
 
 All contributions must meet these standards:
 
@@ -264,7 +264,7 @@ All contributions must meet these standards:
 
 ---
 
-## 🎯 Plugin Categories
+## Plugin Categories
 
 When creating a plugin, choose the appropriate category:
 
@@ -279,15 +279,15 @@ When creating a plugin, choose the appropriate category:
 
 ---
 
-## 📚 Further Reading
+## Further Reading
 
 - **[Marketplace Reference](./marketplace-reference.md)** - Technical schema and structure
 - **[Contributing Guide](./contributing.md)** - How to submit your plugin
-- **[Advanced Usage](./advanced-usage.md)** - Advanced configuration options
+- **[Advanced Usage](../guides/advanced-usage.md)** - Advanced configuration options
 
 ---
 
-## 🆘 Need Help?
+## Need Help?
 
 - **Questions**: Open an issue with `question` label
 - **Ideas**: Open an issue with `plugin-idea` label

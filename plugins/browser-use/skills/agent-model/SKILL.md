@@ -1,9 +1,6 @@
 ---
 name: agent-model
-description: Choose the browser-use agent brain LLM per task. Use when picking a model or provider for retry_with_browser_use_agent or a cloud session, or when the user mentions a slow, cheap, or smart model, Kimi, GLM, Anthropic, OpenAI, or bu-latest.
-version: 1.0.0
-plugin: browser-use
-updated: 2026-07-12
+description: Picks the browser-use agent brain LLM per task. Use when choosing a model for retry_with_browser_use_agent or a cloud session, or the user mentions a cheap, slow, or smart model.
 user-invocable: false
 ---
 

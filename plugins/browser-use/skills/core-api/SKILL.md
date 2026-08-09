@@ -1,17 +1,12 @@
 ---
 name: core-api
-description: Reference for the 24 Browser Use MCP tools — parameters, return formats, session lifecycle. Use when invoking browser-use MCP tools, navigating, clicking, typing, evaluating JS, sending keys, or extracting page content.
-version: 1.1.0
-tags: [browser, mcp, tools, api, reference, navigate, click, type, evaluate, keyboard, extract, screenshot, session]
-keywords: [browser_navigate, browser_click, browser_type, browser_get_state, browser_extract_content, browser_get_html, browser_screenshot, browser_scroll, browser_go_back, browser_list_tabs, browser_switch_tab, browser_close_tab, browser_list_sessions, browser_close_session, retry_with_browser_use_agent, browser_export_session, browser_import_session, browser_run_script, browser_evaluate, browser_press_key, browser_keyboard, browser_focus, browser_doctor]
-plugin: browser-use
-updated: 2026-06-03
+description: Reference for the Browser Use MCP tools — parameters, returns, session lifecycle. Use when navigating, clicking, typing, evaluating JS, or extracting page content.
 user-invocable: false
 ---
 
 # Browser Use Core API
 
-Complete reference for all 24 MCP tools exposed by the Browser Use plugin. All tools are accessed via `mcp__browser-use__<tool_name>`.
+Reference for the MCP tools exposed by the Browser Use plugin: the upstream Browser Use set plus ten Magus-specific additions. All are accessed via `mcp__browser-use__<tool_name>`. The authoritative list is whatever the server registers at runtime, so check there rather than counting this table.
 
 ---
 

@@ -1,11 +1,6 @@
 ---
 name: multi-model-validation
 description: Runs the same task across multiple AI models in parallel and aggregates verdicts. Use when the user wants a second opinion, multi-expert validation, or consensus from Grok, Gemini, GPT-5, or Kimi.
-version: 3.4.0
-tags: [orchestration, claudish, parallel, consensus, multi-model, grok, gemini, external-ai, statistics, performance, free-models, minimax, kimi, glm]
-keywords: [grok, gemini, gpt-5, deepseek, claudish, parallel, consensus, multi-model, external-ai, proxy, openrouter, statistics, performance, quality-score, execution-time, free-models, top-models, minimax, kimi, glm, mmax, zhipu]
-plugin: multimodel
-updated: 2026-01-20
 user-invocable: false
 ---
 
@@ -187,7 +182,7 @@ echo "Directory: $SESSION_DIR"
 - ✅ Traceable - can associate files with a specific session
 - ✅ Session ID can be used for tracking in statistics
 - ✅ Parallel sessions don't conflict
-- ✅ Aligned with `dev:feature` session pattern
+- ✅ Aligned with the `dev:dev` session pattern
 - ✅ Committed to git for audit trail (unlike `/tmp/`)
 
 > **⚠️ Do NOT use `/tmp/` for session directories.** Files in `/tmp/` are not

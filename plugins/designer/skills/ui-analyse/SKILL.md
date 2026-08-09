@@ -1,6 +1,5 @@
 ---
 name: ui-analyse
-version: 2.0.0
 description: Analyzes UI visually using Gemini 3 Pro — prompting patterns, severity guidelines, analysis-only. Use when reviewing UI visuals; pair with dev:frontend-implement to apply.
 user-invocable: false
 ---

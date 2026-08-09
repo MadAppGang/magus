@@ -1,26 +1,6 @@
 ---
 name: dingo-developer
-version: 1.0.0
 description: Generates and reviews Dingo meta-language code with Go boundary handling. Use when the user mentions Dingo, .di files, or Dingo-to-Go transpilation.
-keywords:
-  - dingo
-  - go
-  - meta-language
-  - transpiler
-  - result
-  - option
-  - enum
-  - match
-  - guard
-  - error propagation
-  - safe navigation
-  - null coalescing
-  - lambdas
-  - generics
-  - tuples
-  - code review
-plugin: dingo
-updated: 2026-03-28
 ---
 
 # Dingo Developer

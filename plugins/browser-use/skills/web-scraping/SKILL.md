@@ -1,11 +1,6 @@
 ---
 name: web-scraping
 description: Structured data extraction from web pages — pagination patterns, dynamic SPAs, authenticated scraping, rate limiting, anti-bot handling, JSON/CSV output.
-version: 1.0.0
-tags: [scraping, extraction, pagination, spa, authentication, rate-limiting, structured-data, json, csv]
-keywords: [scrape, extract data, collect data, paginate, next page, infinite scroll, spa, dynamic content, login, authenticated, rate limit, anti-bot, structured data, json, csv, crawl, harvest]
-plugin: browser-use
-updated: 2026-03-03
 user-invocable: false
 ---
 
@@ -300,7 +295,7 @@ Watch for these signals in `browser_get_state` responses:
 - URL change to `/challenge`, `/captcha`, `/blocked`
 - `selector_map` dominated by CAPTCHA widgets
 
-**On bot detection**: Stop scraping. Consider using Browser Use Cloud mode (`/browser-use:cloud`) which includes stealth mode, proxy rotation, and CAPTCHA handling.
+**On bot detection**: Stop scraping. Consider a cloud session (`browser_start_cloud_session`), which includes stealth mode, proxy rotation, and CAPTCHA handling. See the `browser-use:agent-model` skill for picking its brain model.
 
 ---
 

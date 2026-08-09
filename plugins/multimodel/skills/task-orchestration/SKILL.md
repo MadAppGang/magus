@@ -1,11 +1,6 @@
 ---
 name: task-orchestration
 description: Track progress in multi-phase workflows with Tasks system. Use when orchestrating 5+ phase commands, managing iteration loops, tracking parallel tasks, or providing real-time progress visibility.
-version: 2.0.0
-tags: [orchestration, tasks, progress, tracking, workflow, multi-phase]
-keywords: [phase-tracking, progress, workflow, multi-step, multi-phase, tasks, tracking, status, visibility]
-plugin: multimodel
-updated: 2026-01-31
 user-invocable: false
 ---
 

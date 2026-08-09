@@ -2,11 +2,6 @@
 name: performance-tracking
 description: Track agent, skill, and model performance metrics for optimization. Use when measuring agent success rates, tracking model latency, analyzing routing effectiveness, or optimizing cost-per-task.
 disable-model-invocation: true
-version: 0.1.0
-tags: [orchestration, performance, metrics, tracking, agent-performance, optimization]
-keywords: [performance, metrics, tracking, agent, skill, success-rate, latency, cost, optimization, history, routing]
-plugin: multimodel
-updated: 2026-01-28
 ---
 
 # Performance Tracking

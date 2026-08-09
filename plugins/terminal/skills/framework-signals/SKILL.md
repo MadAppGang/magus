@@ -1,11 +1,6 @@
 ---
 name: framework-signals
 description: Provides pass/fail/running/idle output markers for 15+ test, build, and deploy tools. Use when monitoring terminal output for jest, vitest, pytest, go test, cargo, webpack, vite, or vercel.
-version: 2.0.0
-tags: [terminal, testing, build, deploy, signals, markers, output-parsing]
-keywords: [jest, vitest, cargo watch, pytest, go test, bun test, webpack, vite, gradle, make, fly deploy, vercel, railway, pass, fail, running, idle, watcher, test output, build output]
-plugin: terminal
-updated: 2026-06-04
 disable-model-invocation: true
 ---
 

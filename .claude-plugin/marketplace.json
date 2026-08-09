@@ -208,7 +208,7 @@
       "name": "dev",
       "source": "./plugins/dev",
       "description": "Universal development assistant. Detects the project stack and routes work to specialist agents for architecture, implementation, debugging, review and research, enforcing design-system guardrails on every UI change.",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -248,6 +248,16 @@
       "strict": true,
       "releases": [
         {
+          "version": "3.3.0",
+          "date": "2026-08-09",
+          "kinds": [
+            "Added",
+            "Changed",
+            "Fixed"
+          ],
+          "summary": "The refactoring catalogue is complete: all 66 techniques across six groups, 9,032 lines. v3.2.0\u2026"
+        },
+        {
           "version": "3.2.0",
           "date": "2026-08-08",
           "kinds": [
@@ -282,14 +292,6 @@
             "Fixed"
           ],
           "summary": "${PLUGIN_ROOT} \u2192 ${CLAUDE_PLUGIN_ROOT} across agents/stack-detector.md and\u2026"
-        },
-        {
-          "version": "3.0.0",
-          "date": "2026-07-30",
-          "kinds": [
-            "Changed"
-          ],
-          "summary": "Hooks now run and are tested, and per-turn context is cut 15,143 \u2192 5,568 chars"
         }
       ]
     },
@@ -578,7 +580,7 @@
     {
       "name": "browser-use",
       "source": "./plugins/browser-use",
-      "description": "Full-platform browser automation. Live-page JS eval, keyboard and focus primitives, environment preflight, and a configurable agent LLM, across dual local and cloud browsers backed by Playwright's own Chromium so your real Chrome is never hijacked. 26 MCP tools, 6 skills.",
+      "description": "Full-platform browser automation. Live-page JS eval, keyboard and focus primitives, environment preflight, and a configurable agent LLM, across dual local and cloud browsers backed by Playwright's own Chromium so your real Chrome is never hijacked. Ten Magus-specific tools on top of the upstream Browser Use MCP set, plus 6 skills.",
       "version": "1.4.0",
       "author": {
         "name": "Jack Rudenko",

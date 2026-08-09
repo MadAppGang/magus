@@ -701,7 +701,7 @@ Always test new features in isolated test projects before using in production pr
 
 Update relevant documentation:
 - `README.md` - If adding new features
-- `docs/development-guide.md` - If changing workflows
+- `userdocs/authoring/development-guide.md` - If changing workflows
 - `DEPENDENCIES.md` - If adding new dependencies
 - `ai-docs/` - If changing architecture
 

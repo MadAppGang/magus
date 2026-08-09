@@ -1,11 +1,6 @@
 ---
 name: hybrid-debugging
 description: Combines Browser Use (DOM, clicks, screenshots) with claude-in-chrome (console, network, JS) for full-spectrum debugging. Use when investigating console errors or network requests.
-version: 1.0.0
-tags: [hybrid, debugging, claude-in-chrome, browser-use, console, network, javascript, integration]
-keywords: [hybrid debugging, console errors, network requests, javascript errors, combined tools, browser use and chrome, debug workflow, tool combination, claude-in-chrome, console log, fetch, xhr, api trace, gif recording]
-plugin: browser-use
-updated: 2026-03-03
 user-invocable: false
 ---
 

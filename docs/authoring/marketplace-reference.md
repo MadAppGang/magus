@@ -4,7 +4,7 @@ Technical reference for Claude Code plugin marketplace structure, schemas, and c
 
 ---
 
-## 📁 Marketplace Structure
+## Marketplace Structure
 
 ### Directory Layout
 
@@ -43,7 +43,7 @@ plugins/
 
 ---
 
-## 📋 Marketplace Schema
+## Marketplace Schema
 
 ### marketplace.json
 
@@ -117,7 +117,7 @@ The `marketplace.json` file in `.claude-plugin/` directory defines the marketpla
 
 ---
 
-## 🔧 Plugin Schema
+## Plugin Schema
 
 ### plugin.json
 
@@ -171,7 +171,7 @@ Each plugin must have a `plugin.json` manifest in its root directory.
 
 ---
 
-## 🎯 Plugin Categories
+## Plugin Categories
 
 Choose the most appropriate category for your plugin:
 
@@ -188,7 +188,7 @@ Choose the most appropriate category for your plugin:
 
 ---
 
-## 🌐 MCP Server Configuration
+## MCP Server Configuration
 
 ### Inline Configuration
 
@@ -267,7 +267,7 @@ Reference an external MCP configuration file:
 
 ---
 
-## 📦 Agent Configuration
+## Agent Configuration
 
 ### Agent Frontmatter
 
@@ -303,7 +303,7 @@ Agent instructions go here...
 
 ---
 
-## 🎮 Command Configuration
+## Command Configuration
 
 ### Command Frontmatter
 
@@ -329,7 +329,7 @@ Command workflow goes here...
 
 ---
 
-## 🎨 Skill Configuration
+## Skill Configuration
 
 ### Skill Frontmatter
 
@@ -357,7 +357,7 @@ Skill instructions go here...
 
 ---
 
-## 🔢 Semantic Versioning
+## Semantic Versioning
 
 Follow semantic versioning (semver) for all versions:
 
@@ -390,7 +390,7 @@ Follow semantic versioning (semver) for all versions:
 
 ---
 
-## ✅ Validation
+## Validation
 
 ### marketplace.json Validation
 
@@ -416,7 +416,7 @@ Required validation checks:
 
 ---
 
-## 📖 Examples
+## Examples
 
 ### Minimal Plugin
 
@@ -476,15 +476,15 @@ Complete plugin with all components:
 
 ---
 
-## 🔗 Related Documentation
+## Related Documentation
 
 - **[Development Guide](./development-guide.md)** - How to create plugins
 - **[Contributing Guide](./contributing.md)** - How to contribute
-- **[Advanced Usage](./advanced-usage.md)** - Advanced configuration
+- **[Advanced Usage](../guides/advanced-usage.md)** - Advanced configuration
 
 ---
 
-## 📞 Questions?
+## Questions?
 
 - **Issues**: [GitHub Issues](https://github.com/MadAppGang/magus/issues)
 - **Email**: [i@madappgang.com](mailto:i@madappgang.com)

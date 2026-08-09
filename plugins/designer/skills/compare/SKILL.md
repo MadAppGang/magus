@@ -1,6 +1,5 @@
 ---
 name: compare
-namespace: designer
 description: Provides the compare.ts CLI invocation pattern, semantic comparison prompt template, severity thresholds, and model selection guide for UI design comparison.
 disable-model-invocation: true
 ---

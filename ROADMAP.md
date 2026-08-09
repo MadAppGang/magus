@@ -1,6 +1,6 @@
 # Magus Roadmap
 
-> Living roadmap for the magus plugin marketplace. Per-plugin entries with current shipped version and known in-flight work, plus cross-cutting initiatives and explicit unresolved decisions. Backed by source citations — items without citations are owner-populate placeholders. Updated as work lands. **Last refreshed: 2026-05-28.**
+> Living roadmap for the magus plugin marketplace. Per-plugin entries with known in-flight work, plus cross-cutting initiatives and explicit unresolved decisions. Backed by source citations — items without citations are owner-populate placeholders. Updated as work lands. **Last refreshed: 2026-05-28.**
 >
 > Reading order:
 > 1. **Status legend** — what the badges mean
@@ -87,14 +87,27 @@ Source marketplace.json uses Magus-only fields (`targetMetadata`, `distTargets`)
 
 ### CC-9 · Documentation drift (CLAUDE.md / AGENTS.md) ✅ DONE
 
-Resolved at magus v8.0.0. CLAUDE.md and AGENTS.md were restructured around the three
-distribution channels with plugin versions regenerated from `marketplace.json`. Fixed in the
-same pass: AGENTS.md's four broken skill references (`code-analysis:claudemem-search` →
-`mnemex-search`, `claudemem-orchestration` → `mnemex-orchestration`, the nonexistent
-`architect-detective` → `investigate`, and `code-analysis:claudish-usage` → `multimodel:`),
-its `.Codex-plugin/` find-replace artifacts, and its unrunnable `--model Codex-sonnet-4-6`
-examples. `docs/` no longer references the retired `frontend` plugin. Retired-plugin mentions
-in `RELEASES.md`/`CHANGELOG.md` are left as historical record.
+First addressed at magus v8.0.0, then **regressed and fixed properly on 2026-08-08**.
+
+The v8.0.0 pass restructured both files around the three distribution channels and
+hand-corrected the versions. Because nothing gated them, they drifted again: 39 wrong
+version numbers, three plugins that never existed (`Agent Development` in both files at two
+different versions, `Nanobanana` in AGENTS.md), and `bunjs` missing from AGENTS.md entirely.
+
+<!-- doc-refs: off -->
+The v8.0.0 pass also fixed AGENTS.md's four broken skill references
+(`code-analysis:claudemem-search` → `mnemex-search`, `claudemem-orchestration` →
+`mnemex-orchestration`, the nonexistent `architect-detective` → `investigate`, and
+`code-analysis:claudish-usage` → `multimodel:`), its `.Codex-plugin/` find-replace
+artifacts, and its unrunnable `--model Codex-sonnet-4-6` examples.
+<!-- doc-refs: on -->
+
+The 2026-08-08 fix removed the version columns outright rather than regenerating them:
+`marketplace.json` is the authority and `validate-versions.js` already gates it, so a second
+copy could only ever be wrong. `scripts/check-doc-plugin-lists.ts` now enforces the plugin
+names and rejects a version column growing back, and `scripts/check-doc-references.ts`
+validates every plugin/agent/skill/command reference across the repo. Retired-plugin
+mentions in `RELEASES.md`/`CHANGELOG.md` are left as historical record.
 
 **Standing risk:** this drifts every release because nothing regenerates it. The plugin
 tables are hand-maintained against `marketplace.json`. A `scripts/` check that diffs the
@@ -112,39 +125,47 @@ Plugin discovery in `/doctor` still breaks during Claude Code's `cacheMarketplac
 
 ## Per-plugin roadmap
 
-Listed in `.claude-plugin/marketplace.json` order. Each section: current shipped version, in-flight items, surfaced/undecided items.
+Listed in `.claude-plugin/marketplace.json` order. Each section: in-flight items and
+surfaced/undecided items.
 
-### code-analysis (current: v5.3.0)
+**No version numbers here.** They belong in `.claude-plugin/marketplace.json`, which is the
+authority and is gated by `scripts/validate-versions.js`. These headings used to carry a
+`(current: vX.Y.Z)` label; 11 of 17 had drifted, `dev` by two minor versions, and this file
+is published to users. `scripts/check-doc-plugin-lists.ts` now rejects the label.
+
+### code-analysis
 
 - 🟡 **CC-1** · `PreToolUse:^Bash$` hook ("Block accidental `git add` of private files") needs Bun adapter and Codex generated-plugin trust gate before shipping for Codex
 - ⚪ **CC-3** · `mnemex-*` skill cluster consolidation (2 entries → 1 router) deferred to T3
 - ⚪ **CC-1** · Desktop UI plugin browse path still needs validation; Codex marketplace already includes 17 plugins
 
-### claudish (current: v1.0.0, runtime plugin, new in v7.5.0)
+### claudish (runtime plugin, new in v7.5.0)
 
 - 🟡 **CC-1** · Codex MCP smoke harness: end-to-end claudish session polling + Codex-native MCP progress/elicitation/reporting must be recorded before claiming Codex parity (research complete, smoke not committed)
 - ⚪ Backward-compat shim: `--channels plugin:code-analysis@magus` kept as alias for new canonical `--channels plugin:claudish@magus`. Long-term shim removal unscheduled.
 - ⚪ Marketplace registration for non-magus consumers (Codex manifests have no `dependencies` field; `claudish@magus-codex` install must be driven explicitly)
 
-### mnemex (current: v1.0.0, runtime plugin, new in v7.5.0)
+### mnemex (runtime plugin, new in v7.5.0)
 
 - 🟡 **CC-1** · System-wide `mnemex` executable must be installed/repaired by claudeup before installing/validating `mnemex@magus-codex` (KI-CODEX-009)
 
-### multimodel (current: v3.2.0)
+### multimodel
 
 - 🟡 **CC-1** · `PreToolUse:Task` / `PreToolUse:Bash` hooks need Codex redesign — Codex has no `Task` hookable tool; switch to `SubagentStart` / `SubagentStop`
-- 🔴 `agent-enforcement` skill uses unrecognized `triggers:` frontmatter (silently ignored)
-- ⚪ **CC-3** · Skill router consolidations deferred to T3: `multimodel:orchestration` (delegate-patterns + hierarchical-coordinator + multi-agent-coordination + task-orchestration → 1); `multimodel:claudish` (3 → 1)
+- ✅ `agent-enforcement`'s unrecognized `triggers:` frontmatter removed 2026-08-08, along with 8 other unread keys (`version`, `updated`, `plugin`, `keywords`, `tags`, `namespace`, `globs`, `skills`) across 56 skill files. Only keys the matcher actually reads remain
+<!-- doc-refs: off -->
+- ⚪ **CC-3** · Skill router consolidations deferred to T3 (names below are proposed, not yet created): `multimodel:orchestration` (delegate-patterns + hierarchical-coordinator + multi-agent-coordination + task-orchestration → 1); `multimodel:claudish` (3 → 1)
+<!-- doc-refs: on -->
 
-### seo (current: v1.8.0)
+### seo
 
 - 🟡 **CC-1** · `SessionStart` hook needs Antigravity first-run `PreInvocation` shim before shipping
 
-### video-editing (current: v1.1.4)
+### video-editing
 
 - ➖ No in-flight signal found in plan docs or sessions — owner to populate
 
-### image-generate (current: v2.4.0)
+### image-generate
 
 - ➖ No in-flight signal found in plan docs or sessions — owner to populate
 
@@ -154,16 +175,20 @@ Listed in `.claude-plugin/marketplace.json` order. Each section: current shipped
   deleted; the `conductor-missing-for-multi-session-feature` coaching rule was dropped with it.
   Source recoverable from git history.
 
-### dev (current: v2.9.0)
+### dev
 
 - 🟡 **CC-1** · `SessionStart`, `PreToolUse`, `Stop`, `TaskUpdate` hooks need cross-harness redesign (Codex has no TaskCreate/TaskUpdate hook parity)
 - 🟡 **CC-1** · Transcript-based coaching hook: transcript field availability needs fixture validation for Codex + Antigravity before shipping
 - 🟢 **CC-5** · TodoWrite → Tasks migration: **HIGH priority, 29 files** (12 commands + 14 agents + 3 discipline skills) — see Decisions Needed for the CC-1 conflict
-- 🟢 `dev:loop` E2E test suite — two-layer architecture (deterministic unit + claudish 6-model integration, 30 cases). Approved 2026-02-28; implementation status unverified
+<!-- doc-refs: off -->
+- 🟢 E2E test suite for the feature-development loop — two-layer architecture (deterministic unit + claudish 6-model integration, 30 cases). Approved 2026-02-28 against the then-current `/dev:loop`, which v3.0.0 folded into `/dev:dev`; the plan needs retargeting before implementation. Status unverified
+<!-- doc-refs: on -->
 - 🟡 Phase instruction file loading enforcement in `/dev:dev` Full depth (commit `e030c2e`) — active development
-- ⚪ **CC-3** · `dev:discipline` skill router consolidation (8 → 1) deferred to T3
+<!-- doc-refs: off -->
+- ⚪ **CC-3** · `dev:discipline` skill router consolidation (8 → 1) deferred to T3 — proposed name, not yet created
+<!-- doc-refs: on -->
 
-### bunjs (current: v0.1.0)
+### bunjs
 
 - 🔴 **Highest priority** · The six data widgets accept no layout props while `Panel` does. `Meter`, `Sparkline`, `HeatRow` and `StackedBar` take a numeric `width` and expose no `flexShrink` / `minWidth`; `Panel` got a `PanelLayout` forwarding pass and they did not. A row one column over budget inside the `flexDirection="row"` composition the aesthetics reference prescribes makes Yoga squeeze the FIRST child, rendering a badge as a single 1-column cell of coloured background. **That is invisible in `captureCharFrame()`** — a 1-column bg stub reads as a space — so every automated test the skill ships still passes; only a raw-ANSI dump reveals it. Fix shape: forward `flexShrink={0}` / `minWidth` on the data widgets exactly as `Panel` does, so an over-budget row fails loudly (overflow) instead of silently mangling its first child.
 - 🔴 `scripts/check-surface.ts:118` warns on every ordinary app project: it prints `WARNING 0 fenced blocks found — extraction may be broken` over a normal `bun init` tree, whose `README.md`/`CLAUDE.md` carry no ts fences. SKILL.md lists the script under Acceptance for app projects, so the noise lands exactly where it is recommended. Fix shape: a `--docs` mode scoping the "scanned nothing" alarm to markdown expected to hold snippets, keeping exit-2 for the skill's own tree where it is the correct guard.
@@ -173,36 +198,36 @@ Listed in `.claude-plugin/marketplace.json` order. Each section: current shipped
 - 🔴 CI job `test-bunjs-skill` written but not committed (~12 lines in `.github/workflows/test-plugins.yml`: `working-directory: plugins/bunjs/skills/opentui-tui`, then install / test / typecheck / check-surface). Withheld because the render tests drive the real native Zig renderer — green on macOS arm64, UNVERIFIED on `ubuntu-latest` — and committing it blind risks turning repo CI red. Add it when someone can watch one run.
 - **Provenance:** all six found and confirmed during the v0.1.0 build (two fresh-consumer builds, three code reviews, one execution verifier) and consciously deferred; none blocks release. Whether `dev`'s four `bunjs*` skills migrate here is a separate open question — see **D-6**.
 
-### statusline (current: v2.1.2)
+### statusline
 
 - ➖ No in-flight signal found beyond shipped bugfixes (reset countdowns, diff chip split, memory display) — owner to populate
 
-### browser-use (current: v1.1.3)
+### browser-use
 
 - 🟡 **CC-1** · Python/pip `browser-use` upstream runtime treated as external dep; validate install/doctor output
 
-### designer (current: v0.4.0)
+### designer
 
 - ➖ No in-flight signal found beyond skill-budget T1.1 (already shipped) — owner to populate
 
-### terminal (current: v4.0.3)
+### terminal
 
 - 🟡 **CC-1** · `PreToolUse:^Bash$` destructive-tmux-kill-server hook needs Bun adapter and Codex generated-plugin trust gate
 - ⚪ **CC-3** · `terminal:run` skill router consolidation (5 → 1) deferred to T3
 
-### gtd (current: v2.0.1)
+### gtd
 
 - 🟡 **CC-1** · GTD task workflow has no Codex parity — `TaskCreate`/`TaskUpdate` hooks must be redesigned; generator must fail if Codex artifacts require Claude-only task tools. Codex smoke for task-heavy workflow required.
 
-### kanban (current: v1.6.0)
+### kanban
 
 - ⚪ Legacy `.claude/gtd/tasks.json` migration helper — currently NOT auto-migrated by design (users re-add via `/kanban:add`). Auto-migration helper undecided.
 
-### instantly (current: v1.0.6)
+### instantly
 
 - 🟡 **CC-1** · `SessionStart` hook needs Antigravity first-run `PreInvocation` shim before shipping
 
-### autolinear (current: v0.3.0, magus-alpha)
+### autolinear (magus-alpha)
 
 - 🟡 Autonomous webhook-triggered pickup — receiver wired but queue → Claude Code dispatch is a TODO stub
 - 🟡 **CC-1** · `SessionStart` hook (Linear/webhook readiness) + `PreToolUse:Task` (Linear state before delegation) need Codex redesign

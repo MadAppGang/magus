@@ -1,10 +1,6 @@
 ---
 name: statusline-customization
 description: Configuration reference and troubleshooting for the statusline plugin — sections, themes, bar widths, and script architecture
-globs:
-  - "**/statusline*"
-  - "**/.claude/settings.json"
-  - "**/statusline-config.json"
 user-invocable: false
 disable-model-invocation: true
 ---
@@ -256,7 +252,7 @@ brew install jq
 ### Config not taking effect
 - Verify JSON syntax: `jq . ~/.claude/statusline-config.json`
 - After changing config, the script picks it up on next render (no restart needed)
-- To redeploy the script itself after a plugin update, run `/statusline:install-statusline`
+- To redeploy the script itself after a plugin update, run `/setup:statusline-install`
 
 ### Script not executable
 ```bash

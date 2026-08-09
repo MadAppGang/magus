@@ -5,10 +5,6 @@ description: |
   and ensures /team Tasks use a valid agent from the routing whitelist.
   Use when debugging /team orchestration failures.
 disable-model-invocation: true
-triggers:
-  - "team enforcement"
-  - "agent selection"
-  - "orchestration failure"
 ---
 
 # Agent Enforcement Skill
@@ -42,7 +38,7 @@ The PreToolUse hook intercepts Task and Bash tool calls at runtime:
 
 Detects /team workflows by vote template pattern in Task prompts. Blocks:
 
-- **Wrong agent for /team Tasks:** Only agents in the whitelist are allowed: `dev:researcher`, `dev:debugger`, `dev:developer`, `dev:architect`, `dev:test-architect`, `dev:devops`, `dev:ui`
+- **Wrong agent for /team Tasks:** Only agents in the whitelist are allowed: `dev:researcher`, `dev:debugger`, `dev:developer`, `dev:architect`, `dev:test-architect`, `dev:devops`, `dev:frontend`
 - **Insecure paths:** No `/tmp/` paths in Task prompts (use `ai-docs/sessions/`)
 
 ### Layer 2: model: opus
@@ -55,12 +51,12 @@ much more reliably than Sonnet (~90% vs ~33% compliance).
 | Task Type | Primary Agent | Alternatives |
 |-----------|--------------|--------------|
 | Investigation | dev:researcher | dev:debugger |
-| Review | dev:researcher | frontend:reviewer |
-| Architecture | dev:architect | frontend:architect |
-| Implementation | dev:developer | frontend:developer |
-| Testing | dev:test-architect | frontend:test-architect |
+| Review | dev:reviewer | code-analysis:detective |
+| Architecture | dev:architect | — |
+| Implementation | dev:developer | — |
+| Testing | dev:test-architect | — |
 | DevOps | dev:devops | — |
-| UI/Design | dev:ui | frontend:designer, frontend:ui-developer |
+| UI/Design | dev:frontend | — |
 
 ## Agent Resolution
 

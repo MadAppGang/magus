@@ -4,7 +4,7 @@ We welcome contributions from the community! This guide will help you submit hig
 
 ---
 
-## 🚀 Quick Contribution Process
+## Quick Contribution Process
 
 ### 1. Fork this Repository
 
@@ -99,7 +99,7 @@ Tested with:
 
 ---
 
-## 📋 Contribution Guidelines
+## Contribution Guidelines
 
 ### Be Specific
 
@@ -161,7 +161,7 @@ Plugins should solve specific, well-defined problems. Avoid vague or overly broa
 
 ---
 
-## 🎯 Plugin Ideas We're Looking For
+## Plugin Ideas We're Looking For
 
 ### High Priority
 
@@ -225,7 +225,7 @@ Plugins should solve specific, well-defined problems. Avoid vague or overly broa
 
 ---
 
-## 🔍 Review Process
+## Review Process
 
 ### What We Look For
 
@@ -265,7 +265,7 @@ Plugins should solve specific, well-defined problems. Avoid vague or overly broa
 
 ---
 
-## 🎨 Code Style
+## Code Style
 
 Follow these conventions:
 
@@ -292,7 +292,7 @@ Follow these conventions:
 
 ---
 
-## 🚫 What We Don't Accept
+## What We Don't Accept
 
 **Rejected contributions:**
 
@@ -307,7 +307,7 @@ Follow these conventions:
 
 ---
 
-## 💡 Tips for Successful Contributions
+## Tips for Successful Contributions
 
 ### Start Small
 
@@ -330,7 +330,7 @@ Not sure about something? Open an issue or ask in your PR. We're here to help!
 
 ---
 
-## 📞 Getting Help
+## Getting Help
 
 ### Before Contributing
 
@@ -352,7 +352,7 @@ Not sure about something? Open an issue or ask in your PR. We're here to help!
 
 ---
 
-## 🙏 Recognition
+## Recognition
 
 Contributors will be:
 - ✅ Listed in plugin README as authors
@@ -362,7 +362,7 @@ Contributors will be:
 
 ---
 
-## 📜 Code of Conduct
+## Code of Conduct
 
 Be respectful, collaborative, and professional:
 
@@ -373,7 +373,7 @@ Be respectful, collaborative, and professional:
 
 ---
 
-## 🎯 Contribution Checklist
+## Contribution Checklist
 
 Before submitting your PR, verify:
 

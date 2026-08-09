@@ -2,9 +2,6 @@
 name: session-isolation
 description: Use when orchestrating workflows that generate multiple files (designs, reviews, reports) to prevent file collisions across concurrent or sequential sessions with unique session directories.
 disable-model-invocation: true
-keywords: [session-isolation, artifact-isolation, file-collision, concurrent-sessions, sequential-workflows, session-directory, multi-artifact, session-metadata]
-plugin: multimodel
-updated: 2026-01-20
 ---
 
 # Session Isolation Pattern

@@ -4,7 +4,7 @@ Common issues and solutions for Magus.
 
 ---
 
-## 🚨 Common Issues
+## Common Issues
 
 ### Plugin Not Loading
 
@@ -129,7 +129,7 @@ Plugin loads but features don't work (e.g., Figma import fails, API calls fail)
 **1. Check Required Variables**
 
 See plugin documentation for required variables:
-- [Terminal Plugin Dependencies](../plugins/terminal/DEPENDENCIES.md)
+- [Terminal Plugin Dependencies](../../plugins/terminal/DEPENDENCIES.md)
 - Check plugin's README.md
 
 **2. Set Environment Variables**
@@ -528,7 +528,7 @@ Run `scripts/skill-budget-check.ts` for current totals and the per-skill offende
 
 ---
 
-## 🔍 Debugging Steps
+## Debugging Steps
 
 ### Systematic Debugging
 
@@ -572,7 +572,7 @@ Check Claude Code logs for error messages (location varies by OS)
 
 ---
 
-## 📝 Getting Help
+## Getting Help
 
 ### Before Asking for Help
 
@@ -614,13 +614,13 @@ Gather this information:
 - Include all information listed above
 
 **Documentation**
-- [Development Guide](./development-guide.md)
-- [Development Guide](./development-guide.md)
+- [Development Guide](../authoring/development-guide.md)
+- [Development Guide](../authoring/development-guide.md)
 - [Advanced Usage](./advanced-usage.md)
 
 ---
 
-## 💡 Prevention Tips
+## Prevention Tips
 
 ### Avoid Common Mistakes
 
@@ -640,7 +640,7 @@ Gather this information:
 
 ---
 
-## 🆘 Emergency Recovery
+## Emergency Recovery
 
 ### Plugin Completely Broken
 
@@ -704,12 +704,12 @@ rm -rf .claude/settings.json
 
 ---
 
-## 📖 Related Documentation
+## Related Documentation
 
-- **[Quick Start](../README.md#quick-start)** - Installation guide
+- **[Quick Start](../../README.md#quick-start)** - Installation guide
 - **[Advanced Usage](./advanced-usage.md)** - Advanced configuration
-- **[Development Guide](./development-guide.md)** - Plugin development
-- **[Development Guide](./development-guide.md)** - Complete user guide
+- **[Development Guide](../authoring/development-guide.md)** - Plugin development
+- **[Development Guide](../authoring/development-guide.md)** - Complete user guide
 
 ---
 

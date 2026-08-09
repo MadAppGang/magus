@@ -1,9 +1,6 @@
 ---
 name: madbench-evals
 description: Authors, runs, and debugs madbench evals — bench YAML, checks, red-state testdata, expectation tuning. Use when creating or reviewing a madbench.yaml, choosing checks, or debugging a failing bench.
-version: 0.1.0
-plugin: madbench
-updated: 2026-07-10
 user-invocable: false
 ---
 

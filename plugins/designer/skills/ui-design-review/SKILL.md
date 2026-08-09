@@ -1,6 +1,5 @@
 ---
 name: ui-design-review
-version: 1.0.0
 description: |
   Prompting patterns and review templates for UI design analysis with Gemini multimodal capabilities.
   Use when conducting design reviews, accessibility audits, or design system validation.

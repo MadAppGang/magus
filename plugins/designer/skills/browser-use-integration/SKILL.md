@@ -1,6 +1,5 @@
 ---
 name: browser-use-integration
-version: 1.0.0
 description: Detects the browser-use@magus plugin and captures screenshots of URL-based references. Use when designer agents need browser screenshot capture and claude-in-chrome is unavailable.
 user-invocable: false
 ---

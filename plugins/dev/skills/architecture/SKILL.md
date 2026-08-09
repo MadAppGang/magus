@@ -106,8 +106,9 @@ all **22 code smells** against checkable signals, and routes to a technique grou
 requires mutation-sensitive tests over the range *first*, and it earns its cost only against
 a named pending edit. That file carries the gates and the hard stops; apply them.
 
-Coverage today: the smell index is complete, and **1 of 6 technique groups is written**
-(`composing-methods`, 9 techniques). The other five are listed there as not yet written.
+Coverage: **complete.** All 22 smells indexed, and all **66 techniques** across the six
+groups written — composing (9), moving (8), conditionals (8), data (15), calls (14),
+generalization (12).
 
 ## Copyable, tested code
 

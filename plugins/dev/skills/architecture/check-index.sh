@@ -132,6 +132,44 @@ if [ -f references/refactoring.md ]; then
     fi
   done < <(grep -E '^\| `(composing|moving|data|conditionals|calls|generalization)`' references/refactoring.md)
   [ "$rfail" -eq 0 ] && note "OK — technique-group status lines match what is on disk"
+
+  # Each written group must contain EXACTLY the number of `## N. Technique` entries its
+  # status row advertises, and the entries must be numbered 1..N with no gaps.
+  #
+  # This check exists because the counts were wrong once: Generalization was published here
+  # as 13 and Organizing Data as 16, against a real 12 and 15. Both authoring agents then
+  # invented a technique to fill the slot -- and invented DIFFERENT ones. A presence-only
+  # loop passes that; an equality check does not.
+  cfail=0
+  while IFS='|' read -r _ _ path count status _; do
+    p=$(echo "$path" | tr -d ' `'); c=$(echo "$count" | tr -d ' '); st=$(echo "$status" | tr -d ' *')
+    case "$p" in refactoring/techniques/*.md) ;; *) continue ;; esac
+    [ "$st" = "written" ] || continue
+    [ -f "references/$p" ] || continue
+    actual=$(grep -cE '^## [0-9]+\. ' "references/$p")
+    if [ "$actual" -ne "$c" ]; then
+      note "COUNT    references/$p has $actual entries, status row says $c"; cfail=1; fail=1
+    fi
+    # Numbering must be dense and ascending: 1..N.
+    expected_seq=$(seq 1 "$actual" | tr '\n' ' ')
+    actual_seq=$(grep -oE '^## [0-9]+\.' "references/$p" | grep -oE '[0-9]+' | tr '\n' ' ')
+    if [ "$expected_seq" != "$actual_seq" ]; then
+      note "NUMBERING references/$p entries are not numbered 1..$actual"; cfail=1; fail=1
+    fi
+  done < <(grep -E '^\| `(composing|moving|data|conditionals|calls|generalization)`' references/refactoring.md)
+  [ "$cfail" -eq 0 ] && note "OK — every written group's entry count matches its status row"
+
+  # No technique may appear in two groups. Fowler assigns each exactly one home, and a
+  # miscounted group is the situation that produces a duplicate.
+  dupes=$(grep -hoE '^## [0-9]+\. .*' references/refactoring/techniques/*.md 2>/dev/null \
+    | sed -E 's/^## [0-9]+\. //' | sort | uniq -d)
+  if [ -n "$dupes" ]; then
+    note "DUPLICATE technique appears in more than one group:"
+    echo "$dupes" | while read -r d; do note "    $d"; done
+    fail=1
+  else
+    note "OK — no technique appears in two groups"
+  fi
 else
   note "SKIP — references/refactoring.md not present"
 fi

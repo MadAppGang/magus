@@ -4,6 +4,64 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [dev 3.3.0] - 2026-08-09
+
+### Added
+
+- **The refactoring catalogue is complete: all 66 techniques across six groups**, 9,032 lines.
+  v3.2.0 shipped the smell index plus one group; this adds the other five — Moving Features
+  (8), Simplifying Conditionals (8), Organizing Data (15), Simplifying Method Calls (14),
+  Dealing with Generalization (12).
+- Every technique carries the smell it resolves, **preconditions stated as checkable
+  conditions** rather than advice, numbered mechanics, TypeScript before/after, a stated
+  postcondition, a gain/cost table, and a "when NOT to".
+- **Blast radius is made falsifiable in Simplifying Method Calls.** Each technique is
+  classified compiler-enumerated or silent, with the actual TypeScript diagnostic code —
+  and every code was confirmed by compiling a probe against tsc 6.0.2. The sharp case is
+  `Add Parameter` *with a default*: it compiles at every existing call site unchanged, so
+  the compiler will not tell you where the new behaviour now applies.
+
+### Changed
+
+- `check-index.sh` gains two rules, both negative-control proven: every written group's
+  entry count must match its status row, and **no technique heading may appear in two group
+  files**. The second exists because a double-assignment was invisible to every prior check.
+
+### Fixed
+
+- **Two phantom technique references shipped in v3.2.0.** `organizing-data.md`'s tables
+  numbered *sixteen* techniques including a `Replace Record with Data Class` that has no
+  section, so every table reference from slot 6 onward pointed one position off the real
+  headings; ~30 in-text references renumbered. `dealing-with-generalization.md` carried
+  eight references to a technique 13 belonging to the other file. `check-index.sh` could not
+  see either — it counts headings, not the references that point at them.
+
+### Why
+
+`dev:architect` could choose an architecture and a design pattern but had nothing for
+changing code that already exists. Written by ten in-repo agents and ten external models
+across five providers, working blind, then merged with verification.
+
+### Migration notes
+
+**Licensing.** refactoring.guru is CC BY-NC-ND 4.0 (NonCommercial, NoDerivatives) and this
+repo is MIT and published publicly, so only Fowler's technique and smell *names* are used —
+standard terminology — with all text and examples original and attributed. Measured, not
+asserted: every one of the ten external drafts was grepped for canonical specimens before
+being read as a source, and all six shipped files return zero.
+
+**A cross-provider judge panel ranked confidently and ranked wrong.** It rated one draft's
+blast-radius table the standout of the field; compiling its claims showed it cites `TS2341`
+for a private constructor (probe: `TS2673`) and `TS2551`/`TS2339` for a deleted free
+function (probe: `TS2304`). It was rejected. Two other comparisons returned "nothing worth
+taking" — `simplifying-conditionals.md` already beat the judge-preferred draft on the axis
+it was praised for, and `moving-features.md` took nothing from three independent drafts.
+
+Costs zero skill-listing budget; `SKILL.md` sits at 140 lines against a 140 ceiling, so the
+next addition must buy its space.
+
+---
+
 ## [dev 3.2.0] - 2026-08-08
 
 ### Added

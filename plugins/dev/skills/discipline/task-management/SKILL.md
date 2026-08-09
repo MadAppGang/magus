@@ -34,12 +34,12 @@ Route to the appropriate workflow section based on the result.
 
 ### At Workflow Start
 
-The GTD plugin hooks intercept all TaskCreate calls and auto-sync tasks to `.claude/gtd/tasks.json`. When there is an active GTD task (set via `/gtd:work <task-id>`), every phase task you create is automatically linked as a subtask — no manual metadata needed.
+The GTD plugin hooks intercept all TaskCreate calls and auto-sync tasks to `.claude/gtd/tasks.json`. When there is an active GTD task (set via `/gtd:engage <task-id>`), every phase task you create is automatically linked as a subtask — no manual metadata needed.
 
 **Recommended opening sequence:**
 
 1. Check for an existing active GTD task by reading the session context or asking the user.
-2. If no active task is set, suggest: "Run `/gtd:work <topic>` to link these phase tasks as subtasks of a GTD project. This makes them persist across sessions."
+2. If no active task is set, suggest: "Run `/gtd:engage <topic>` to link these phase tasks as subtasks of a GTD project. This makes them persist across sessions."
 3. If the user already has an active GTD task, inform them: "Phase tasks will auto-link as subtasks of your active GTD task. The hooks handle sync automatically."
 
 **Note:** You do not need to set `gtdParent` metadata manually. The `PreToolUse(TaskCreate)` hook injects it when an active task exists.
@@ -141,7 +141,7 @@ pending → in_progress → completed
 
 | Situation | Action |
 |-----------|--------|
-| Starting workflow, GTD active, no active task | Suggest `/gtd:work <topic>` |
+| Starting workflow, GTD active, no active task | Suggest `/gtd:engage <topic>` |
 | Starting workflow, GTD active, active task set | Inform: subtasks will auto-link |
 | Starting workflow, GTD inactive | Use native tasks; suggest GTD install |
 | Stale tasks found in TaskList | Offer to delete; create fresh ones |

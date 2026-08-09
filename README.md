@@ -380,18 +380,21 @@ Fetches your Figma component, adapts it to your codebase, installs dependencies,
 
 ## 📚 Documentation
 
+Start at the **[documentation home](./docs/index.md)**.
+
 ### For Users
 
-- **[Troubleshooting](./docs/troubleshooting.md)** - Common issues and solutions
-- **[Advanced Usage](./docs/advanced-usage.md)** - Installation methods, configuration, and workflows
+- **[Plugin Catalog](./docs/plugins/index.md)** - Every plugin, what it does, and which channel it ships on
+- **[Advanced Usage](./docs/guides/advanced-usage.md)** - Installation methods, configuration, and workflows
+- **[Troubleshooting](./docs/guides/troubleshooting.md)** - Common issues and solutions
 
-### For Developers
+### For Plugin Authors
 
-- **[Local Development](./docs/local-development.md)** - Test and debug plugins locally
-- **[Development Guide](./docs/development-guide.md)** - Create Claude Code plugins for Magus
-- **[Marketplace Reference](./docs/marketplace-reference.md)** - Marketplace structure, schemas, and configuration
-- **[Contributing Guide](./docs/contributing.md)** - How to submit plugins
-- **[Version Validation](./docs/validation.md)** - Plugin version validation system (prevents marketplace/plugin version mismatches)
+- **[Development Guide](./docs/authoring/development-guide.md)** - Create Claude Code plugins for Magus
+- **[Local Development](./docs/authoring/local-development.md)** - Test and debug plugins locally
+- **[Marketplace Reference](./docs/authoring/marketplace-reference.md)** - Marketplace structure, schemas, and configuration
+- **[Contributing Guide](./docs/authoring/contributing.md)** - How to submit plugins
+- **[Version Validation](./docs/authoring/validation.md)** - Plugin version validation system (prevents marketplace/plugin version mismatches)
 
 ---
 

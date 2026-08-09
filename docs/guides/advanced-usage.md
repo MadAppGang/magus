@@ -4,7 +4,7 @@ Advanced installation methods, configuration options, and workflows for Magus.
 
 ---
 
-## 📚 Table of Contents
+## Table of Contents
 
 - [Global Plugin Installation](#global-plugin-installation)
 - [Local Development](#local-development)
@@ -15,7 +15,7 @@ Advanced installation methods, configuration options, and workflows for Magus.
 
 ---
 
-## 🌍 Global Plugin Installation
+## Global Plugin Installation
 
 ### Overview
 
@@ -73,7 +73,7 @@ Global installation makes plugins available in **all projects** without per-proj
 
 ---
 
-## 💻 Local Development
+## Local Development
 
 ### Overview
 
@@ -180,7 +180,7 @@ cat /path/to/claude-code/plugins/dev/agents/your-agent.md
 
 ---
 
-## 📁 Project-Specific Marketplace
+## Project-Specific Marketplace
 
 ### Overview
 
@@ -230,7 +230,7 @@ Add marketplace to `.claude/settings.json`:
 
 ---
 
-## 🔢 Version Management
+## Version Management
 
 ### Specifying Versions in Marketplace
 
@@ -294,7 +294,7 @@ cat .claude-plugin/marketplace.json | grep version
 
 ---
 
-## 🔄 Plugin Updates
+## Plugin Updates
 
 ### Updating Marketplace
 
@@ -364,7 +364,7 @@ For local development changes:
 
 ---
 
-## ⚙️ Custom Configuration
+## Custom Configuration
 
 ### Environment Variables
 
@@ -451,7 +451,7 @@ Some plugins support additional configuration in `.claude/settings.json`:
 
 ---
 
-## 🎯 Best Practices
+## Best Practices
 
 ### For Individual Developers
 
@@ -476,7 +476,7 @@ Some plugins support additional configuration in `.claude/settings.json`:
 
 ---
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Marketplace Issues
 
@@ -552,16 +552,16 @@ echo $FIGMA_ACCESS_TOKEN
 
 ---
 
-## 📖 Related Documentation
+## Related Documentation
 
-- **[Quick Start](../README.md#quick-start)** - Basic installation
-- **[Development Guide](./development-guide.md)** - Create plugins
-- **[Marketplace Reference](./marketplace-reference.md)** - Technical reference
+- **[Quick Start](../../README.md#quick-start)** - Basic installation
+- **[Development Guide](../authoring/development-guide.md)** - Create plugins
+- **[Marketplace Reference](../authoring/marketplace-reference.md)** - Technical reference
 - **[Troubleshooting](./troubleshooting.md)** - Common issues
 
 ---
 
-## 📞 Need Help?
+## Need Help?
 
 - **GitHub Issues**: [Report a problem](https://github.com/MadAppGang/magus/issues)
 - **Email**: [i@madappgang.com](mailto:i@madappgang.com)

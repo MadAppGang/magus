@@ -1,11 +1,6 @@
 ---
 name: multi-agent-coordination
 description: Coordinate multiple agents in parallel or sequential workflows. Use when running agents simultaneously, delegating to sub-agents, switching between specialized agents, or managing agent selection.
-version: 0.1.0
-tags: [orchestration, multi-agent, parallel, sequential, delegation, coordination]
-keywords: [parallel, sequential, delegate, sub-agent, agent-switching, multi-agent, task-decomposition, coordination]
-plugin: multimodel
-updated: 2026-01-20
 user-invocable: false
 ---
 

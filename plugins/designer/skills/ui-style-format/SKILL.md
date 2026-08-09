@@ -1,6 +1,5 @@
 ---
 name: ui-style-format
-version: 1.0.0
 description: Specifies the UI design style file format and schema for .claude/design-style.md and .claude/design-references/. Use when creating, validating, or parsing project design styles.
 user-invocable: false
 ---

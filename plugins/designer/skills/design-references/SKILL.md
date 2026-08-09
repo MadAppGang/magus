@@ -1,6 +1,5 @@
 ---
 name: design-references
-version: 1.0.0
 description: Provides design system references — Material 3, Apple HIG, Tailwind UI, Ant Design, Shadcn/ui. Use when reviewing UI against an established design system.
 user-invocable: false
 ---

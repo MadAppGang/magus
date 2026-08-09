@@ -1,11 +1,6 @@
 ---
 name: debug-ui
 description: Visual UI debugging — screenshot capture and analysis, responsive layout checking at multiple viewport sizes, CSS validation via DOM state, visual regression detection, before/after state comparison.
-version: 1.0.0
-tags: [debugging, ui, visual, css, responsive, screenshot, layout, regression, mobile, desktop]
-keywords: [debug ui, visual bug, layout issue, responsive, screenshot, css, visual regression, broken layout, mobile view, desktop view, css validation, element position, overlap, overflow, hidden, z-index, viewport]
-plugin: browser-use
-updated: 2026-03-03
 user-invocable: false
 ---
 

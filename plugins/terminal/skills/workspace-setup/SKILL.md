@@ -1,11 +1,6 @@
 ---
 name: workspace-setup
 description: Orchestrates tmux workspaces — sessions, dashboard layouts, watch/entr monitors, synced panes. Use when setting up a project session, building a multi-pane dashboard, or syncing panes.
-version: 2.0.0
-tags: [terminal, tmux, workspace, dashboard, layout, monitoring, watch, entr, session-management]
-keywords: [workspace, tmux session, dashboard, layout, monitor, watch, entr, project setup, multi-pane, synchronize, sync panes, named session, window, archetype]
-plugin: terminal
-updated: 2026-06-04
 user-invocable: false
 ---
 
@@ -300,5 +295,8 @@ Send one command to N panes simultaneously — useful for deploying to multiple 
 
 ## Notes
 
+<!-- doc-refs: off -->
 - **CI/Deploy monitoring** (Fly.io, Vercel, Railway rollback protocol) is planned for a future `terminal:ci-deploy` skill. Deferred pending live verification of platform output strings.
+<!-- doc-refs: on -->
+
 - **pane-border-status** uses 1 line per pane and may conflict with Catppuccin or other tmux themes. Check `tmux show-options -g pane-border-status` before enabling; ask the user if they have a custom theme.

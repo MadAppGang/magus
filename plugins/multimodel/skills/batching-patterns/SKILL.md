@@ -1,11 +1,6 @@
 ---
 name: batching-patterns
 description: Batches related operations into single messages for maximum parallelism. Use when launching multiple agents, reading many files, or removing sequential execution bottlenecks.
-version: 0.1.0
-tags: [orchestration, batching, parallel, performance, golden-rule, single-message]
-keywords: [batching, parallel, single-message, golden-rule, concurrent, performance, anti-pattern, sequential, optimization]
-plugin: multimodel
-updated: 2026-01-28
 user-invocable: false
 ---
 

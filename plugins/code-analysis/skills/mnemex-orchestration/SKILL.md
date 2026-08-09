@@ -1,10 +1,7 @@
 ---
 name: mnemex-orchestration
 description: Use when orchestrating multi-agent code analysis with mnemex. Run mnemex once, share output across parallel agents. Enables parallel investigation, consensus analysis, and role-based command mapping.
-updated: 2026-01-20
-keywords: mnemex, orchestration, multi-agent, parallel-execution, consensus
 allowed-tools: Bash, Task, Read, Write, AskUserQuestion
-skills: multimodel:multi-model-validation
 user-invocable: false
 ---
 
