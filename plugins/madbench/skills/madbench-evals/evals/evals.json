@@ -5,57 +5,59 @@
       "id": 0,
       "name": "author-bugfix-bench",
       "prompt": "I'm using madbench (the Go harness for benchmarking agentic coding tools, repo at /Users/jack/mag/madbench). Create a complete madbench eval that tests whether a coding agent can fix a failing JSON-parsing bug in a small Go repo. I want the bench YAML plus the seeded testdata — set it up in the output directory so I could run `madbench run` on it directly with claude-code as the harness.",
-      "expected_output": "A runnable bench dir: madbench.yaml (canonical field names, claude-code runner with acceptEdits or bypassPermissions, exec check running go test, anti-cheat guards, trajectory check, sane cost/latency expectations) plus testdata/ seeded red (failing test exercising a real JSON-parsing bug).",
+      "expected_output": "A runnable bench dir: madbench.yaml (canonical field names, claude-code harness with acceptEdits or bypassPermissions, exec check running go test, anti-cheat guards, a session:* check, sane cost/latency expectations) plus testdata/ seeded red (failing test exercising a real JSON-parsing bug).",
       "files": [],
       "assertions": [
         "bench-yaml-loads: `madbench list <outputs>/madbench.yaml` exits 0 and lists the bench",
-        "permission-mode-set: runner_config.args contains --permission-mode acceptEdits or bypassPermissions (required for a write task in --print mode)",
+        "preflight-clean: `madbench preflight <outputs>/madbench.yaml` exits 0 — no retired sandbox level, no missing testdata path",
+        "permission-mode-set: harness_config.args (or the runner_config alias) contains --permission-mode acceptEdits or bypassPermissions (required for a write task in --print mode)",
         "outcome-graded-by-exec: at least one exec check runs go test (or equivalent) with expected_exit 0",
         "testdata-seeded-red: running `go test ./...` in the pristine testdata dir FAILS (agent must do real work)",
-        "anti-cheat-guard-present: a grep/exec guard on the test file or a trajectory check proves the honest path",
-        "canonical-field-names: uses cases:/testdata: (not legacy tests:/fixture:)"
+        "anti-cheat-guard-present: a grep/exec guard on the test file or a session:* check proves the honest path",
+        "canonical-field-names: uses the canonical spellings harness:/harness_config:/scenarios:/checks:/testdata: and session:* check types — not the legacy aliases runner:/runner_config:/cases:/tests:/assert:/fixture:/trajectory:*",
+        "valid-sandbox-level: any sandbox: value is none|workspace|home|container under the `level:` key (never the retired `process`, never a `mode:` key)"
       ]
     },
     {
       "id": 1,
       "name": "debug-silent-noop",
       "prompt": "My madbench bench keeps failing and I can't see why. The exec check runs `go test ./...` and the agent's transcript says it wrote the fix and everything passes, but the file never actually changes and the check fails every run. Here's my bench file — what's wrong?",
-      "expected_output": "Diagnosis names the missing --permission-mode (acceptEdits/bypassPermissions) in runner_config.args: in --print mode un-approved Write/Edit tool calls silently no-op. Provides the corrected runner_config.",
+      "expected_output": "Diagnosis names the missing --permission-mode (acceptEdits/bypassPermissions) in the harness config's args: in --print mode un-approved Write/Edit tool calls silently no-op. Provides the corrected harness_config.",
       "files": ["files/debug-silent-noop/madbench.yaml"],
       "assertions": [
-        "root-cause-is-permission-mode: diagnosis names the missing --permission-mode (acceptEdits or bypassPermissions) in runner_config.args as the primary cause",
+        "root-cause-is-permission-mode: diagnosis names the missing --permission-mode (acceptEdits or bypassPermissions) in the harness config's args as the primary cause",
         "explains-silent-noop: explains that in --print/non-interactive mode un-approved Write/Edit tool calls silently no-op while the agent claims success",
-        "corrected-config-provided: shows the corrected runner_config YAML with the permission-mode args"
+        "corrected-config-provided: shows the corrected harness_config (or runner_config alias) YAML with the permission-mode args"
       ]
     },
     {
       "id": 2,
       "name": "review-weak-bench",
       "prompt": "Can you review this madbench.yaml and suggest better checks? It feels flaky — sometimes it passes, sometimes it doesn't, and I'm not confident it's actually measuring whether the agent fixed the bug.",
-      "expected_output": "Review catches: legacy aliases (tests:/fixture:), missing permission mode, judge-only outcome grading (should add exec go test + anti-cheat greps), trajectory:step-count exact-match misuse (needs args.lte/gte), vague rubric. Proposes a concrete improved YAML.",
+      "expected_output": "Review catches: legacy aliases (runner:/tests:/fixture:/assert:, and the trajectory:* check prefix), missing permission mode, judge-only outcome grading (should add exec go test + anti-cheat greps), step-count exact-match misuse (needs args.lte/gte), vague rubric. Proposes a concrete improved YAML in canonical spellings.",
       "files": ["files/review-weak-bench/madbench.yaml"],
       "assertions": [
-        "flags-missing-permission-mode: review identifies that runner_config lacks --permission-mode for a write task",
+        "flags-missing-permission-mode: review identifies that the harness config lacks --permission-mode for a write task",
         "flags-judge-only-grading: review identifies llm-rubric as the sole outcome check and proposes a deterministic exec check (go test)",
-        "flags-step-count-misuse: review identifies trajectory:step-count threshold:5 as exact-match and proposes args.lte/args.gte",
-        "flags-legacy-aliases: review flags tests:/fixture: and proposes canonical cases:/testdata:",
-        "proposes-anti-cheat: improved version includes an anti-cheat guard (grep on test file or trajectory proof of editing)",
+        "flags-step-count-misuse: review identifies the step-count check's threshold:5 as EXACT match and proposes args.lte/args.gte",
+        "flags-legacy-aliases: review flags the legacy spellings runner:/tests:/fixture:/assert: AND the trajectory:* check prefix, proposing the canonical harness:/scenarios:/testdata:/checks: and session:*",
+        "proposes-anti-cheat: improved version includes an anti-cheat guard (grep on test file or a session:* check proving the agent edited)",
         "improved-yaml-provided: a concrete improved YAML is included in the review"
       ]
     },
     {
       "id": 3,
-      "name": "matrix-trap",
+      "name": "no-cross-product",
       "prompt": "I have a madbench bench file and I want to run it across models claude-haiku-4-5 and claude-sonnet-5, each at temperature 0.0 and 0.2 — so 4 combinations. Set up a madbench matrix/eval file that runs all of them.",
-      "expected_output": "Answer produces a runnable Eval file: bench: pointing at a bench with params:/{{model}} placeholders, models: definitions in modelspec notation, and explicit runs: entries (one per combination) — NO matrix: key (strict decoding rejects it; there is no cross-product). Notes temperature must be a declared bench param flowing to a real knob (claude-code has no temperature runner_config key — args passthrough only).",
+      "expected_output": "Answer produces a runnable Eval file: bench: pointing at a bench with params:/{{model}} placeholders, models: definitions in modelspec notation, and explicit runs: entries (one per combination) — no cross-product key of any kind (strict decoding rejects unknown top-level keys; only description/bench/models/runs are legal). Notes temperature must be a declared bench param flowing to a real knob (claude-code has no temperature harness_config key — args passthrough only).",
       "files": [],
       "assertions": [
-        "produces-eval-file: answer delivers an Eval file (bench:/models:/runs:) that madbench runs directly — not N copied bench files, not a matrix",
-        "no-matrix-key: no matrix: key anywhere; if mentioned, correctly stated as rejected by strict decoding (no cross-product exists)",
+        "produces-eval-file: answer delivers an Eval file (bench:/models:/runs:) that madbench runs directly — not N copied bench files, not a cross-product",
+        "no-cross-product-key: no cross-product key anywhere; if the user's requested spelling is mentioned, it is correctly stated as rejected by strict decoding (only description/bench/models/runs are legal top-level keys)",
         "explicit-runs-entries: every model/param combination is an explicit runs: entry overriding only what changes",
         "models-in-modelspec: model definitions use modelspec notation (short form or provider/model), resolved via the models: block",
-        "temperature-not-plumbed: answer notes temperature is not a claude-code runner_config key (CLI args passthrough only) rather than presenting the temp axis as guaranteed",
-        "eval-actually-varies-model: each runs: entry genuinely varies the model (via {{model}} param into runner_config.model); a providers: fan-out under runner: claude-code does NOT qualify"
+        "temperature-not-plumbed: answer notes temperature is not a claude-code harness_config key (CLI args passthrough only) rather than presenting the temp axis as guaranteed",
+        "eval-actually-varies-model: each runs: entry genuinely varies the model (via {{model}} param into harness_config.model); a providers: fan-out under harness: claude-code does NOT qualify"
       ]
     }
   ]

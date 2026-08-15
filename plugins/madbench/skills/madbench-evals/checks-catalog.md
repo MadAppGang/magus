@@ -1,8 +1,8 @@
 # madbench checks catalog
 
 Every check returns `Result{Pass, Score ∈ [0,1] higher-is-better, Reason, Evidence}`.
-Raw metric values (ms, USD, risk) live in `Evidence`. Source: `pkg/eval/builtin/*`
-(one file per family), `pkg/eval/{llmjudge,script,http,wasm,subprocess,gosrc}/`.
+Raw metric values (ms, USD, risk) live in `Evidence`. Source: `pkg/check/builtin/*`
+(one file per family), `pkg/check/{llmjudge,script,http,wasm,subprocess,gosrc}/`.
 
 **Availability in a default build**: only the Logic builtins and `exec` are
 unconditionally available. AI checks register only when `ANTHROPIC_API_KEY` resolves
@@ -51,17 +51,47 @@ pass (a lenient parser would wrap any text in implicit `<html><body>`).
 `bleu` · `rouge-n` (`args.n`) · `gleu`. (`meteor`, `perplexity`, `perplexity-score`
 are stubs that error, pointing to the subprocess transport.)
 
-### Trajectory (inspects the agent's Actions)
+### Session (grades what the agent DID)
 
-| Type | Usage |
-|---|---|
-| `trajectory:tool-used` | `value:` = tool name (string or list) |
-| `trajectory:tool-args-match` | `value:` = tool name, `args.args:` = expected args map |
-| `trajectory:tool-sequence` | `value:` = ordered tool list (subsequence match) |
-| `trajectory:step-count` | **`args.lte: N` / `args.gte: N`** — bare `threshold`/default is EXACT match |
-| `skill-used` | `value:` = skill name (checks `Skill` tool calls) |
+Canonical prefix is **`session:`**. The pre-rename `trajectory:` spelling is still
+registered as an accepted alias so old bench files keep loading — **never write it in
+a new file.**
 
-`trajectory:goal-success` errors by design — use `llm-rubric` instead.
+**What each one reads is the whole game.** A `Session` carries two views of the run,
+and they are not interchangeable:
+
+- **`Session.Actions`** — the **authoritative** event stream. Everything the agent
+  did, in order, including subagent lifecycle rows.
+- **`Session.Calls`** — a **lossy derived view** built by `DeriveCalls`. Only
+  `tool_call` and `mcp_call` kinds survive; subagent lifecycle rows and assistant
+  messages are deliberately excluded.
+
+| Type | Reads | Usage |
+|---|---|---|
+| `session:tool-used` | `Calls` | `value:` = tool name (string or list) |
+| `session:tool-args-match` | `Calls` | `value:` = tool name, `args.args:` = expected args map |
+| `session:tool-sequence` | `Calls` | `value:` = ordered tool list (subsequence match) |
+| `session:step-count` | `Metrics.StepCount` | **`args.lte: N` / `args.gte: N`** — bare `threshold`/default is EXACT match |
+| `session:subagent-used` | **`Actions`** | passes if any subagent spawn row was captured |
+| `session:subagent-count` | **`Actions`** | `value:` = minimum spawn count (positive integer) |
+| `skill-used` | `Calls` | `value:` = skill name — **known broken, see below** |
+
+`session:subagent-used` / `session:subagent-count` read `Actions` precisely *because*
+subagent rows are excluded from `Calls`. They already answer "did this agent delegate,
+and how much?" — reach for them before writing a probe to discover it yourself.
+
+**`skill-used` is known-broken today — it can never pass against claude-code.**
+The check scans `Session.Calls` for a call named `Skill`. But the claude-code parser
+turns a `Skill` tool_use into an **`ActionSkill`** event, and `DeriveCalls` collects
+only `ActionToolCall` and `ActionMCPCall` — so `ActionSkill` never reaches `Calls` and
+the loop finds nothing, **no matter what the agent did** (upstream madbench issue #17;
+fix in flight). Do not use it as evidence, and never conclude that an agent skipped a
+skill because this check failed. To check skill use today, read
+`session.actions[] | select(.kind=="skill")` out of the report JSON yourself.
+
+`session:goal-success` is registered but **always errors by design** — its constructor
+returns the error rather than a check. It exists to tell you to route the question
+through `llm-rubric` instead.
 
 ### Composites (children under nested `assert:`)
 
@@ -151,7 +181,7 @@ goes in Evidence.
 ### exec — run a command against the post-run workspace
 
 Code-kind in the vocabulary (docs/vocabulary.md) even though it's implemented as a
-builtin (`pkg/eval/builtin/exec.go`) — the grader is *your command*, not a matcher.
+builtin (`pkg/check/builtin/exec.go`) — the grader is *your command*, not a matcher.
 Deterministic, and the workhorse outcome check for coding benches.
 
 ```yaml
@@ -218,9 +248,9 @@ POSTs the same `madbench/v1` envelope; expects a `Result` JSON back.
 
 ## Choosing well
 
-- Grade **outcomes** with exec (tests pass), **process** with trajectory (used Edit,
-  ≤N steps), **content** with string/structured, **judgment** with one focused
+- Grade **outcomes** with exec (tests pass), **process** with Session checks (used
+  Edit, ≤N steps), **content** with string/structured, **judgment** with one focused
   `llm-rubric` — not five overlapping ones.
 - Every exec-graded bench needs anti-cheat guards (grep that the test file survived,
-  trajectory proof the agent edited).
+  plus a Session check proving the agent edited).
 - Prefer `metric:` names for anything referenced in `derivedMetrics`.

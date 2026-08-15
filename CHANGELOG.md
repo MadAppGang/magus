@@ -4,6 +4,58 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Marketplace 9.0.3] - 2026-08-16
+
+### Changed
+
+- Republished so the catalogue carries the corrected `madbench` skill. A plugin bump alone
+  does not move an installed copy: the marketplace version is the only signal claudeup has
+  that a catalogue changed at all, so shipping different content under 9.0.2 would have been
+  invisible to every installed copy — the same-version content drift this repo already
+  documents as un-updatable.
+
+---
+
+## [madbench 0.1.2] - 2026-08-16
+
+### Fixed
+
+- **The skill taught identifiers a current madbench rejects**, and several benches were
+  written against it before anyone noticed. Session checks were renamed `session:*` on
+  2026-08-07; the skill still said `trajectory:*` in 13 places and `session:` in none. The
+  alias still loads, which is exactly why this survived: an old file runs on a new binary,
+  so nothing screams. Only the reverse breaks.
+- **Sandbox levels were documented as `process (default) | container`.** The real set is
+  `none | workspace | home | container`, default `home`, and the pre-2026-08 spellings are
+  *refused* rather than aliased — so a bench copied from this skill did not merely misbehave,
+  it failed to load.
+- `session:subagent-used` and `session:subagent-count` went unmentioned, so someone wrote a
+  72-line probe to discover what they already answer.
+
+### Added
+
+- **A "before you write YAML" checklist**, naming the four mistakes that cost whole sessions
+  rather than seconds: `prompt:` not `input:` (there is no `input:` alias, and a bench file is
+  decoded leniently, so the agent runs with an *empty* prompt and you are billed); `config:`
+  not `args:` for ts/js/python checks; `timeout:` takes a duration string; a bench's name IS
+  its `description:`.
+- **The check registry documented by what each check reads** — `Calls` is a lossy derived
+  view, `Actions` is authoritative. That distinction is the root cause of the skill-used bug.
+- The `list` / `preflight` split: `list` proves a file parses, `preflight` proves it could
+  run. Using `list` as a pre-run check gives a false all-clear on exactly the errors above.
+- Both shipped example benches now pass preflight against genuinely red testdata, and
+  `madbench demo` is documented as the offline path — no keys, no spend.
+- Guidance that a discovery prompt cannot prove a capability claim: showing a check is broken
+  needs a prompt that *orders* the action, and a conclusion drawn from source you did not
+  build is a conclusion about a different binary (`go version -m "$(command -v madbench)"`).
+
+### Why
+
+Without the version bump the corrected skill reaches nobody: the installed cache already
+holds 0.1.1, so it considers itself current and the fix sits in git.
+
+---
+
 ## [Marketplace 9.0.2] - 2026-08-15
 
 ### Changed

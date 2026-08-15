@@ -6,7 +6,7 @@ Authors, runs, and debugs madbench evals — bench YAML, checks, red-state testd
 
 Part of [`madbench`](./madbench.md).
 
-**4 reference documents, about 614 lines.**
+**4 reference documents, about 822 lines.**
 
 The skill itself does not contain them. It reads your question and names the one or two
 worth opening — which is the point, because loading everything below to answer one
@@ -16,10 +16,10 @@ question would cost more than the answer is worth.
 
 | Document | Covers | Lines |
 |---|---|---|
-| [`checks-catalog.md`](https://github.com/MadAppGang/magus/blob/main/plugins/madbench/skills/madbench-evals/checks-catalog.md) | madbench checks catalog | 227 |
-| [`debugging.md`](https://github.com/MadAppGang/magus/blob/main/plugins/madbench/skills/madbench-evals/debugging.md) | Debugging madbench benches | 86 |
-| [`runners-and-sandbox.md`](https://github.com/MadAppGang/magus/blob/main/plugins/madbench/skills/madbench-evals/runners-and-sandbox.md) | Runners (harnesses), permission modes, sandbox | 140 |
-| [`schema.md`](https://github.com/MadAppGang/magus/blob/main/plugins/madbench/skills/madbench-evals/schema.md) | madbench bench file schema (`Suite`) | 161 |
+| [`checks-catalog.md`](https://github.com/MadAppGang/magus/blob/main/plugins/madbench/skills/madbench-evals/checks-catalog.md) | madbench checks catalog | 257 |
+| [`debugging.md`](https://github.com/MadAppGang/magus/blob/main/plugins/madbench/skills/madbench-evals/debugging.md) | Debugging madbench benches | 184 |
+| [`runners-and-sandbox.md`](https://github.com/MadAppGang/magus/blob/main/plugins/madbench/skills/madbench-evals/runners-and-sandbox.md) | Runners (harnesses), permission modes, sandbox | 195 |
+| [`schema.md`](https://github.com/MadAppGang/magus/blob/main/plugins/madbench/skills/madbench-evals/schema.md) | madbench bench file schema (`Suite`) | 186 |
 
 ## Reading these
 

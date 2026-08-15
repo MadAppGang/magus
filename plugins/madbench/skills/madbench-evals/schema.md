@@ -20,15 +20,37 @@ token_estimate: 4000000          # tokens gauge — informational only
 cases: [...]                     # the Scenarios (alias: tests)
 ```
 
-Legacy aliases auto-normalized on load: `tests` → `cases`, `defaultTest` → `defaultCase`,
-`fixture` → `testdata`. Emit canonical names; flag aliases in review.
+### Canonical keys vs. accepted aliases
+
+The dictionary rename made several familiar keys into **aliases**. Everything in the
+right column still loads — nothing here is broken — but **emit the canonical name in
+new files**, and flag aliases in review:
+
+| Canonical (write this) | Accepted alias (still loads) |
+|---|---|
+| `harness:` | `runner:` |
+| `harness_config:` | `runner_config:` |
+| `scenarios:` | `cases:` · `tests:` |
+| `checks:` | `assert:` |
+| `defaultScenario:` | `defaultCase:` · `defaultTest:` |
+| `testdata:` | `fixture:` |
+| `session:*` check types | `trajectory:*` |
+
+> **Note:** the YAML examples in these reference files still show the alias spellings
+> in places. Both load identically; prefer the canonical column when authoring.
+
+**Sandbox levels are the exception — those retired spellings are REFUSED, not
+aliased.** `sandbox: process` / `machine` / `docker` are hard load errors. See
+`runners-and-sandbox.md`.
 
 ## `defaults:` (CaseDefaults)
 
 ```yaml
 defaults:
-  sandbox: process           # "process" (default) | "container"
-  timeout: 120s              # duration string
+  sandbox: home              # none | workspace | home | container — default home
+  timeout: 120s              # duration STRING — `120` and `"120"` both silently
+                             # fall back to the 120s default (ParseDuration rejects
+                             # a bare number; nothing errors). Always write a unit.
   capture: log               # "log" | "proxy" | "log+proxy"
   bun: "1.3.4"               # pin Bun version for ts/js checks
   python: "3.12"             # pin Python for python checks
@@ -45,7 +67,9 @@ cases:
       ...
     vars: { requiredWord: managed }  # interpolated + visible to Code checks
     testdata: ./testdata/repo      # dir copied fresh into sandbox WorkDir per run
-    sandbox: { mode: container, image: "...", network: none, env: {...} }  # per-case override
+    sandbox: { level: container, image: "...", network: none, env: {...} }  # per-case override
+    # ^ the key is `level:`. There is NO `mode:` key — `sandbox: {mode: container}`
+    #   is silently dropped, passes preflight, and runs at the default `home` level.
     timeout: 120s
     capture: log
     bun: "1.3.4"
@@ -57,7 +81,7 @@ cases:
     lockfile_required: true
     options:
       transform: "..."
-      disableDefaultAsserts: false # skip defaultCase asserts for this case
+      disableDefaultChecks: false  # skip defaultScenario checks (alias: disableDefaultAsserts)
     assert: [...]                  # the Checks — see below
 ```
 
@@ -69,7 +93,7 @@ cases:
 ```yaml
 - type: contains          # required — check type (see checks-catalog.md)
   value: "func FizzBuzz"  # main argument: string / list / schema map / number
-  args: { cmd: [...] }    # structured params (exec cmd, trajectory bounds, …)
+  args: { cmd: [...] }    # structured params (exec cmd, session:step-count bounds, …)
   config: { ... }         # extra config (http url, script config object)
   weight: 2.0             # contribution in weighted composites (default 1.0)
   threshold: 0.7          # this check's pass bar — the Expectation
@@ -154,7 +178,8 @@ runs:                            # each entry = one full bench run
   bench rows (model badge + param chips) and as `── <name>` group headers in Console
   output; JSON rows carry `bench:`.
 - Strict decoding: ONLY `description`/`bench`/`models`/`runs` are legal top-level
-  keys. There is **no `matrix:`** — a matrix key (or any typo) is an unknown-field
-  error. To run across several models/params, write explicit `runs:` entries.
+  keys. **There is no cross-product** — a `matrix:` key (or any typo) is an
+  unknown-field error. To run across several models/params, write explicit `runs:`
+  entries.
 - `--repeat N` repeats all runs (flake detection; the old `--runs` flag is a
   deprecated alias).

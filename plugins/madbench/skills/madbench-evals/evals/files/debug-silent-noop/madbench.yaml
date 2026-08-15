@@ -5,7 +5,7 @@ runner_config:
   model: claude-haiku-4-5-20251001
 
 defaults:
-  sandbox: process
+  sandbox: home
   timeout: 120s
   capture: log
 

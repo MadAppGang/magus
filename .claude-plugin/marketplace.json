@@ -7,7 +7,7 @@
   },
   "metadata": {
     "description": "Curated collection of Claude Code plugins for modern full-stack development with LLM performance tracking and E2E skill testing",
-    "version": "9.0.2",
+    "version": "9.0.3",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -816,7 +816,7 @@
       "name": "madbench",
       "source": "./plugins/madbench",
       "description": "Toolkit for madbench, MadAppGang's Go harness for benchmarking agentic coding tools. Ships the madbench-evals skill: author bench YAML, design checks, scaffold red-state testdata, run and validate benches, tune expectations, and debug failing checks.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -837,6 +837,15 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "0.1.2",
+          "date": "2026-08-16",
+          "kinds": [
+            "Fixed",
+            "Added"
+          ],
+          "summary": "The skill taught identifiers a current madbench rejects, and several benches were written\u2026"
+        },
         {
           "version": "0.1.1",
           "date": "2026-07-29",
