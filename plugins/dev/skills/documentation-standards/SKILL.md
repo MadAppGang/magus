@@ -1,6 +1,6 @@
 ---
 name: documentation-standards
-description: Use when writing README files, API documentation, user guides, or technical documentation following industry standards from Google, Microsoft, and GitLab style guides.
+description: "15 ranked documentation practices, 7 templates and anti-slop writing rules. Use when writing or reviewing a README, API reference, guide or changelog, even if the user only says \"document this\"."
 user-invocable: false
 ---
 

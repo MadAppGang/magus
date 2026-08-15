@@ -2,6 +2,7 @@
 name: db-branching
 description: Branches Neon, Turso, or Supabase per git worktree for isolated schema work. Use when a worktree changes the schema, or on mention of Neon, Turso, Prisma.
 user-invocable: false
+disable-model-invocation: true
 ---
 
 # Database Branching for Worktrees

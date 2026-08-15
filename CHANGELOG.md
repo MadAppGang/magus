@@ -4,6 +4,121 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Marketplace 9.0.1] - 2026-08-15
+
+### Fixed
+
+- **`dev` v4.0.1**: could not be installed, at 4.0.0 or at 3.3.0. It required
+  `multimodel "~3.3"` — which means `>=3.3.0 <3.4.0` — so multimodel's routine
+  3.3 → 3.4 minor bump made the constraint unsatisfiable, and installing produced
+  `Dependency "multimodel@magus" is installed at 3.4.0, which does not satisfy:
+  ~3.3`. claudeup was right to refuse; the declared range was wrong. The 4.0.0
+  release did not touch it, so the break survived a major version.
+- **`multimodel` v3.4.1**: dependency range on `claudish` widened from `~1.0` to
+  `^1.0`. Preventive — every inter-plugin dependency used a tilde range, so each
+  was one minor release away from the break above; `dev` was simply the first to
+  trip. Caret ranges allow minor bumps and break only on a major.
+- **`code-analysis` v5.3.2**: same widening, on `mnemex` and `claudish`.
+- **`designer` v0.4.3**: same widening, on `claudish`.
+- **`seo` v1.8.2**: same widening, on `claudish`.
+- The unlisted `stats` plugin got the same treatment on `mnemex`.
+
+### Added
+
+- `scripts/validate-versions.js` now checks every declared dependency range
+  against the version the marketplace actually ships, and fails the release when
+  one cannot be satisfied. Nothing checked this before, which is why a plugin
+  that could not be installed passed every gate and reached users — twice, since
+  it also survived the `dev` 4.0.0 release. Verified by restoring the broken
+  range and confirming the gate reproduces the exact user-facing error.
+
+---
+
+## [dev 4.0.0] - 2026-08-15
+
+### Changed
+
+- **The skill library is organised by how a skill is reached, not by subject matter.**
+  49 skills became 43, and 22 model-discoverable ones became 9. `dev` now emits **1,941
+  listing characters instead of 3,270**, taking the marketplace from 11,756 to 10,427 and
+  its headroom from 144 characters to 1,573. Listing budget is charged globally, on every
+  turn, in every project, while relevance is local — so `backend/` and `frontend/` grouped
+  by the one property with no relationship to cost.
+- **The nine that stay listed are the ones whose absence changes what you get** rather than
+  how fast: `context-detection`, `universal-patterns`, `design-system-guardrails`,
+  `systematic-debugging`, `testing-strategies`, `test-driven-development`,
+  `verification-before-completion`, `worktree-lifecycle`, `documentation-standards`. Every
+  description rewritten capability-first, since truncation eats the tail.
+- **Twelve skills are now `disable-model-invocation: true`**, and every consumer that
+  preloaded one was converted in the same change. That flag blocks subagent preloading as
+  well as listing, so hiding a preloaded skill silently starves its consumer while every
+  gate stays green. The acceptance test is `bun scripts/dev-skill-inventory.ts dev`: no
+  hidden skill may remain in `dev`'s own obligation list. It does not.
+- **The `frontend` agent stopped preloading four stack playbooks.** It was injecting ~2,700
+  lines — react 703, tailwind 586, shadcn 931, frontend-implement 332 — into *every* run,
+  so on a Vue or plain-CSS task three quarters was dead context. They are now a read-table
+  in the agent body, with `design-system-guardrails` still preloaded as the safety net.
+
+### Removed
+
+- **`debugging-strategies`** → `systematic-debugging/references/techniques.md`. It restated
+  the same four-phase method in different words, and `/dev:debug` preloaded **both**, so
+  one idea arrived twice under two vocabularies.
+- **`test-coverage`** → `testing-strategies/references/coverage.md`; that skill already
+  claimed coverage gates in its own description.
+- **`golang-performance`** → `golang/references/performance.md`; a per-language performance
+  split is accidental — every language would need one.
+- **`tanstack-query`** → `state-management/references/tanstack-query.md`. Server cache is
+  state, and three skills were claiming it.
+- **`agent-coordination-discipline`** → `task-management/references/agent-coordination.md`.
+- **`adr-documentation`** → `architecture/references/adr.md`; nobody asks for an ADR cold.
+
+**Breaking:** `/dev:debugging-strategies`, `/dev:test-coverage`, `/dev:golang-performance`,
+`/dev:tanstack-query`, `/dev:agent-coordination-discipline` and `/dev:adr-documentation` no
+longer resolve. Their content survives at the paths above. The twelve newly-hidden skills
+remain invocable by name.
+
+### Why
+
+Grew incrementally, organised by nothing in particular. A seven-way multi-model panel was
+run to design the replacement; the reasoning, the alternatives and what was deliberately
+not done are in `docs/plans/2026-08-15-dev-skill-reorganisation.md`.
+
+Two things that panel exposed are worth recording. The inventory handed to the models had a
+parser bug — it read the frontmatter's closing `---` as a skill named `--` and stripped
+namespaces, filing five `multimodel:` skills under `dev`. Only the two participants that
+read the repository caught it; the other five reasoned correctly from a false premise and
+the judges ranked them on how gracefully they accommodated it. Convergence across six
+providers did not detect a defect in their shared input.
+
+Not done, deliberately: retiring `dev`'s `bunjs*` and `dingo` copies to the sibling plugins
+that own that knowledge. The panel recommends it, but `ROADMAP.md:321` records it as an
+already-considered deferral, and it needs a cross-plugin dependency decision. The folder
+restructure is also deferred — 49 enumerated paths plus 188 references is churn better done
+as one scripted, gate-verified change.
+
+### Added
+
+- `skills/skill-authoring/` — the repo's own standard for writing and reviewing skills,
+  synthesised from two authoring guidelines, with `references/visibility.md`,
+  `references/routing-eval.md` and `scripts/check-skill.ts`. The script validates what a
+  machine can decide: description ceiling, third person, dead frontmatter keys
+  (`triggers:`, `tags:`, `keywords:` are silently ignored by the matcher), unreferenced
+  `references/`, unreachable skills. It passes its own checks.
+- `scripts/dev-skill-inventory.ts` — every skill with its listing cost, reachability and
+  preload consumers, which is the graph any reorganisation has to respect.
+
+### Fixed
+
+- `scripts/check-doc-references.ts` no longer scans `ai-docs/sessions/`. That directory is
+  git-ignored per-run scratch which routinely names skills a run *proposed*, so it failed
+  the build over files nobody will read again. The deliberate `ai-docs/` policy is unchanged.
+- `plugins/dev/README.md` claimed 48 skills, advertised `/dev:tanstack-query`, and restated
+  the 8,000-character figure as a hard cap. The budget is `context × 4 × 0.01`; 8,000 is its
+  value at the 200k fallback, not a ceiling.
+
+---
+
 ## [dev 3.3.0] - 2026-08-09
 
 ### Added

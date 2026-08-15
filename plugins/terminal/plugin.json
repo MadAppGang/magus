@@ -1,6 +1,6 @@
 {
   "name": "terminal",
-  "version": "4.1.4",
+  "version": "4.1.5",
   "description": "Intent-level terminal control over tmux. Runs interactive commands, dev servers, test watchers, REPLs and TUI apps, and refuses to send keys into a pane that already has a process in the foreground.",
   "author": {
     "name": "Jack Rudenko",
@@ -45,7 +45,7 @@
   ],
   "setup": {
     "go": [
-      "github.com/MadAppGang/tmux-mcp@v1.6.3"
+      "github.com/MadAppGang/tmux-mcp@v1.7.0"
     ],
     "required": [
       "tmux"

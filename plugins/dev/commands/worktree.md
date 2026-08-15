@@ -2,7 +2,7 @@
 name: worktree
 description: Manage git worktrees - create isolated workspaces, list active worktrees, and clean up. Supports automatic Neon DB branching for schema isolation.
 allowed-tools: Bash, Read, Write, Edit, AskUserQuestion, Glob, Grep
-skills: dev:worktree-lifecycle, dev:db-branching
+skills: dev:worktree-lifecycle
 ---
 
 <role>
@@ -268,3 +268,9 @@ skills: dev:worktree-lifecycle, dev:db-branching
     - Highlight safety warnings
   </communication_style>
 </formatting>
+
+**Database branching.** Read
+`${CLAUDE_PLUGIN_ROOT}/skills/backend/db-branching/SKILL.md` **only when the worktree
+will change the schema** — a migration, a Prisma/Drizzle model edit, or the user naming
+Neon, Turso or Supabase. Most worktrees touch no schema, and it was preloaded into all
+of them.

@@ -555,8 +555,7 @@ echo $FIGMA_ACCESS_TOKEN
 ## Related Documentation
 
 - **[Quick Start](../../README.md#quick-start)** - Basic installation
-- **[Development Guide](../authoring/development-guide.md)** - Create plugins
-- **[Marketplace Reference](../authoring/marketplace-reference.md)** - Technical reference
+- **[Plugin catalog](../plugins/index.md)** - What each plugin provides
 - **[Troubleshooting](./troubleshooting.md)** - Common issues
 
 ---

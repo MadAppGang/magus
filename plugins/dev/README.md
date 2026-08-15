@@ -56,22 +56,33 @@ cause), `architect` (system design), `synthesizer` (consolidating findings),
 
 ## Skills
 
-48 skills: 22 auto-matched, 26 reference material you summon by name
-(`/dev:golang`, `/dev:tanstack-query`, …).
+43 skills: **9 auto-matched, 34 reference material** reached by name or by a
+`Read` from the skill that needs them.
 
-That split is deliberate. Claude Code injects a listing of every auto-matchable
-skill into **every turn**, capped at 1% of the context window — 8,000 characters,
-shared across all installed plugins. Reference skills set
-`disable-model-invocation: true`, which keeps them off that listing while leaving
-them one slash command away. Their bodies load only when actually used.
+That split is deliberate, and the ratio is the point. Claude Code injects a
+listing of every auto-matchable skill into **every turn**, budgeted at
+`context × 4 × 0.01` characters — about 8,000 on a 200k-token model, more on a
+larger one — and that budget is shared across every installed plugin, not
+per-plugin. Over budget it shortens descriptions rather than dropping skills, so
+an oversized corpus degrades matching for everything the user has installed.
 
-Groups: `core/` (universal patterns, testing, debugging) · `frontend/` (React,
-Vue, Tailwind, shadcn, TanStack, CSS modules, browser debugging, design-system
-guardrails) · `backend/` (Go, Bun, Python, Rust, Dingo, API design, auth,
-databases, DB branching) · `discipline/` (TDD, systematic debugging,
-verification, worktree lifecycle, task management) · plus documentation
-standards, ADRs, MCP standards, plugin SDK patterns, audit, optimize, test
-coverage, code roast, brainstorming.
+The nine listed skills are the ones whose *absence changes what you get* rather
+than how fast: stack detection, universal patterns, design-system guardrails,
+systematic debugging, testing strategies, TDD, verification-before-completion,
+worktree lifecycle, documentation standards.
+
+Everything else — every stack playbook, every language, every catalogue — sets
+`disable-model-invocation: true`. It costs nothing until something opens it.
+
+Groups: `core/` · `frontend/` · `backend/` · `discipline/` · `planning/` ·
+`design/` · `enforcement/`, plus architecture, documentation standards, MCP
+standards, plugin SDK patterns, security audit, optimize and code roast at the
+top level.
+
+> **Hiding a skill that an agent preloads silently starves that agent.**
+> `disable-model-invocation: true` blocks preloading as well as listing. Check
+> `bun scripts/dev-skill-inventory.ts dev` before changing any visibility flag,
+> and see `skills/skill-authoring/references/visibility.md`.
 
 ## Hooks
 

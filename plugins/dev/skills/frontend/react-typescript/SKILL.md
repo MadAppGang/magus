@@ -2,6 +2,7 @@
 name: react-typescript
 description: React 19 + TypeScript patterns — components, hooks, TanStack Query, Zod forms, error boundaries. Use when building React apps or wiring state.
 user-invocable: false
+disable-model-invocation: true
 ---
 
 # React + TypeScript Patterns

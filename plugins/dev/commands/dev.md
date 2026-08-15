@@ -1,8 +1,8 @@
 ---
 name: dev
-description: "Feature development workflow — adaptive depth (quick/standard/full) and automation (interactive/guided/autonomous)"
+description: "Builds a feature through an 8-phase workflow, delegating each phase to a specialist agent. Depth picks how many phases run, automation how often it stops to ask."
 allowed-tools: Task, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep, mcp__chrome-devtools__navigate_page, mcp__chrome-devtools__take_screenshot, mcp__chrome-devtools__take_snapshot, mcp__chrome-devtools__click, mcp__chrome-devtools__fill, mcp__chrome-devtools__new_page, mcp__chrome-devtools__select_page, mcp__chrome-devtools__list_pages
-skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, dev:worktree-lifecycle, multimodel:multi-model-validation, multimodel:quality-gates, multimodel:model-tracking-protocol
+skills: dev:context-detection, dev:universal-patterns, dev:worktree-lifecycle, multimodel:multi-model-validation, multimodel:quality-gates, multimodel:model-tracking-protocol
 ---
 
 <role>
@@ -1147,3 +1147,10 @@ skills: dev:context-detection, dev:universal-patterns, dev:phase-enforcement, de
 {If full depth}**This feature has been VERIFIED to work with real browser testing!**{/If}
   </completion_message>
 </formatting>
+
+**Phase gates.** Read
+`${CLAUDE_PLUGIN_ROOT}/skills/enforcement/SKILL.md` before starting
+phase 1 of a Standard or Full run. Quick depth (0 → 4 → done) has no gates to enforce.
+
+This command is already the only consumer of that skill and already reads its phase
+files this way — see the `skills/feature-phases/phase{N}-{name}.md` reads below.

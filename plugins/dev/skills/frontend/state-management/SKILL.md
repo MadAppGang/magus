@@ -419,3 +419,10 @@ set({
 ---
 
 *State management patterns for frontend applications*
+
+## Reference files
+
+- Read `references/tanstack-query.md` when the state in question is server cache —
+  fetching, caching, invalidation, optimistic updates. It was the separate
+  `tanstack-query` skill until 2026-08-15. Server cache is state, and having it
+  separate meant three skills claimed it.

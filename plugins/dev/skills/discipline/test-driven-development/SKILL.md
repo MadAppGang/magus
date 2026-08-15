@@ -1,6 +1,6 @@
 ---
 name: test-driven-development
-description: RED-GREEN-REFACTOR — write a failing test, make it pass, refactor. Use when writing production code, or on mention of TDD or test-first.
+description: "RED-GREEN-REFACTOR: write a failing test, watch it fail, make it pass, refactor. Use before writing any production code or bug fix, or on mention of TDD or test-first, even if the user asked only for the implementation."
 user-invocable: false
 ---
 

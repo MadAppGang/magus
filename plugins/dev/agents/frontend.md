@@ -15,11 +15,30 @@ tools:
   - mcp__plugin_claudish_claudish__run_prompt
 skills:
   - dev:design-system-guardrails
-  - dev:react-typescript
-  - dev:tailwindcss
-  - dev:shadcn-ui
-  - dev:frontend-implement
 ---
+
+<stack-playbooks>
+  design-system-guardrails is preloaded above because it applies to EVERY task here —
+  its absence changes what you produce, not just how fast.
+
+  The four stack playbooks are NOT preloaded. They used to be, and it cost ~2,700 lines
+  injected into every run: react-typescript (703) + tailwindcss (586) + shadcn-ui (931)
+  + frontend-implement (332). On a Vue or plain-CSS task three quarters of that was dead
+  context. Read the one or two the task actually calls for:
+
+  | Read this file | When the task involves |
+  |---|---|
+  | ${CLAUDE_PLUGIN_ROOT}/skills/frontend/react-typescript/SKILL.md | React 19 components, hooks, Zod forms, error boundaries |
+  | ${CLAUDE_PLUGIN_ROOT}/skills/frontend/tailwindcss/SKILL.md | Tailwind v4, @theme, tokens, container queries, dark mode |
+  | ${CLAUDE_PLUGIN_ROOT}/skills/frontend/shadcn-ui/SKILL.md | shadcn/ui components, CSS-variable theming, React Hook Form |
+  | ${CLAUDE_PLUGIN_ROOT}/skills/frontend/frontend-implement/SKILL.md | applying design-review findings, or UI that looks AI-generated |
+
+  Others available the same way, none preloaded:
+  vue-typescript, css-modules, state-management, tanstack-router, testing-frontend,
+  browser-debugging.
+
+  Reading two is normal. Reading all four means the task should have been split.
+</stack-playbooks>
 
 <role>
   <identity>Frontend Engineer</identity>

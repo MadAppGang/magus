@@ -2,7 +2,7 @@
 name: architect
 description: "Architecture design and technical planning — complexity-aware with plan mode reasoning and multi-model escalation"
 allowed-tools: Task, AskUserQuestion, Bash, Read, Skill, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep, EnterPlanMode, ExitPlanMode, mcp__plugin_claudish_claudish__team, mcp__plugin_claudish_claudish__run_prompt
-skills: dev:task-management, dev:context-detection, dev:universal-patterns, multimodel:quality-gates, dev:brainstorming
+skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates
 ---
 
 <role>
@@ -717,3 +717,13 @@ skills: dev:task-management, dev:context-detection, dev:universal-patterns, mult
 Ready for implementation with /dev:dev
   </completion_message>
 </formatting>
+
+**Read these when the phase calls for them, not up front:**
+
+| Read this file | When |
+|---|---|
+| `${CLAUDE_PLUGIN_ROOT}/skills/planning/brainstorming/SKILL.md` | exploring more than one approach before committing to a shape |
+| `${CLAUDE_PLUGIN_ROOT}/skills/discipline/task-management/SKILL.md` | the plan becomes multi-phase work that needs tracking |
+
+Both were preloaded until 2026-08-15. Neither applies to a single-question architecture
+call, which is most of them.

@@ -1,6 +1,6 @@
 ---
 name: mnemex-orchestration
-description: Use when orchestrating multi-agent code analysis with mnemex. Run mnemex once, share output across parallel agents. Enables parallel investigation, consensus analysis, and role-based command mapping.
+description: Runs mnemex once and shares its output across parallel agents, with role-based command mapping and session lifecycle handling. Use when orchestrating multi-agent code analysis.
 allowed-tools: Bash, Task, Read, Write, AskUserQuestion
 user-invocable: false
 ---

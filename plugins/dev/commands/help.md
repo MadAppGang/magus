@@ -389,7 +389,7 @@ See: https://github.com/MadAppGang/claudish
     bunjs: "Bun runtime backend patterns with Hono framework"
     universal-patterns: "Language-agnostic development patterns (always loaded)"
     testing-strategies: "Universal testing approaches across stacks (always loaded)"
-    debugging-strategies: "Cross-language debugging techniques (always loaded)"
+    debugging-strategies: "Debugging technique catalogue; method is in systematic-debugging (always loaded)"
     state-management: "State management strategies (TanStack Query, Zustand)"
     testing-frontend: "Frontend testing with Vitest and React Testing Library"
     api-design: "RESTful API design patterns and best practices"

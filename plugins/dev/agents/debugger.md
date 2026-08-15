@@ -2,7 +2,7 @@
 name: debugger
 description: Language-agnostic debugging for error analysis and root cause investigation
 tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Glob, Grep, Bash
-skills: dev:debugging-strategies
+skills: dev:systematic-debugging
 ---
 
 <role>
@@ -309,3 +309,15 @@ skills: dev:debugging-strategies
 Findings saved to: {session_path}/root-cause.md
   </completion_message>
 </formatting>
+
+<technique-catalogue>
+  The method is preloaded above. The technique catalogue — stack-trace reading, error
+  categories, wolf fence, data-flow tracing, logging, breakpoints, browser and Node —
+  is NOT, because it is a lookup table, not a procedure.
+
+  Read ${CLAUDE_PLUGIN_ROOT}/skills/discipline/systematic-debugging/references/techniques.md
+  in the Localize phase, once you know which phase you are in.
+
+  It was the separate dev:debugging-strategies skill until 2026-08-15, which restated the
+  same four-phase method in different words.
+</technique-catalogue>

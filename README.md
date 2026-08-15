@@ -382,19 +382,14 @@ Fetches your Figma component, adapts it to your codebase, installs dependencies,
 
 Start at the **[documentation home](./docs/index.md)**.
 
-### For Users
+### Using the plugins
 
-- **[Plugin Catalog](./docs/plugins/index.md)** - Every plugin, what it does, and which channel it ships on
+- **[Plugin Catalog](./docs/plugins/index.md)** - Every plugin, with its commands, subagents and skills
 - **[Advanced Usage](./docs/guides/advanced-usage.md)** - Installation methods, configuration, and workflows
 - **[Troubleshooting](./docs/guides/troubleshooting.md)** - Common issues and solutions
 
-### For Plugin Authors
-
-- **[Development Guide](./docs/authoring/development-guide.md)** - Create Claude Code plugins for Magus
-- **[Local Development](./docs/authoring/local-development.md)** - Test and debug plugins locally
-- **[Marketplace Reference](./docs/authoring/marketplace-reference.md)** - Marketplace structure, schemas, and configuration
-- **[Contributing Guide](./docs/authoring/contributing.md)** - How to submit plugins
-- **[Version Validation](./docs/authoring/validation.md)** - Plugin version validation system (prevents marketplace/plugin version mismatches)
+Writing a plugin is a separate tutorial; those guides live in `docs/authoring/` and are not
+part of the user documentation.
 
 ---
 

@@ -2,6 +2,7 @@
 name: task-management
 description: Manages Claude Code Tasks across multi-phase workflows — phase tracking, stale cleanup, optional GTD persistence. Use when orchestrating phased work.
 user-invocable: false
+disable-model-invocation: true
 ---
 
 # Task Management
@@ -154,3 +155,9 @@ pending → in_progress → completed
 - **agent-coordination-discipline:** Multi-agent phases may have simultaneous in_progress tasks.
 - **worktree-lifecycle:** Worktree creation and teardown are discrete phases; track each as a task.
 - **verification-before-completion:** The final phase task should not be marked completed until all verification gates pass.
+
+## Reference files
+
+- Read `references/agent-coordination.md` when work is split across parallel agents
+  rather than sequential phases. It was the separate `agent-coordination-discipline`
+  skill until 2026-08-15 — hidden, with no consumers, so nothing could reach it.

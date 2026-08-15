@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 504" width="880" height="504" role="img" aria-label="The four modes of /dev:doc, detected from the request">
+  <title>The four modes of /dev:doc, detected from the request</title>
+  <defs>
+    <marker id="arw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#98a1b3"/>
+    </marker>
+  </defs>
+  <rect x="0.5" y="0.5" width="879" height="503" rx="12" fill="#fbfbfd" stroke="#e8eaf0"/>
+  <path d="M 461.5 78 L 461.5 130" fill="none" stroke="#98a1b3" stroke-width="1.6" marker-end="url(#arw)"/>
+  <path d="M 461.5 166 L 461.5 200 L 160 200 L 160 234" fill="none" stroke="#98a1b3" stroke-width="1.6" marker-end="url(#arw)"/>
+  <text x="310.75" y="194" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#5d6779" text-anchor="middle" paint-order="stroke" stroke="#fbfbfd" stroke-width="3.5" stroke-linejoin="round">create, write</text>
+  <path d="M 461.5 166 L 461.5 200 L 361 200 L 361 234" fill="none" stroke="#98a1b3" stroke-width="1.6" marker-end="url(#arw)"/>
+  <text x="411.25" y="194" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#5d6779" text-anchor="middle" paint-order="stroke" stroke="#fbfbfd" stroke-width="3.5" stroke-linejoin="round">score, audit</text>
+  <path d="M 461.5 166 L 461.5 200 L 562 200 L 562 234" fill="none" stroke="#98a1b3" stroke-width="1.6" marker-end="url(#arw)"/>
+  <text x="511.75" y="194" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#5d6779" text-anchor="middle" paint-order="stroke" stroke="#fbfbfd" stroke-width="3.5" stroke-linejoin="round">fix, improve</text>
+  <path d="M 461.5 166 L 461.5 200 L 763 200 L 763 234" fill="none" stroke="#98a1b3" stroke-width="1.6" marker-end="url(#arw)"/>
+  <text x="612.25" y="194" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#5d6779" text-anchor="middle" paint-order="stroke" stroke="#fbfbfd" stroke-width="3.5" stroke-linejoin="round">verify</text>
+  <path d="M 160 286 L 160 312 L 461.5 312 L 461.5 338" fill="none" stroke="#98a1b3" stroke-width="1.6" marker-end="url(#arw)"/>
+  <path d="M 361 286 L 361 312 L 461.5 312 L 461.5 338" fill="none" stroke="#98a1b3" stroke-width="1.6" marker-end="url(#arw)"/>
+  <path d="M 562 286 L 562 312 L 461.5 312 L 461.5 338" fill="none" stroke="#98a1b3" stroke-width="1.6" marker-end="url(#arw)"/>
+  <path d="M 763 286 L 763 312 L 461.5 312 L 461.5 338" fill="none" stroke="#98a1b3" stroke-width="1.6" marker-end="url(#arw)"/>
+  <path d="M 461.5 374 L 461.5 442" fill="none" stroke="#98a1b3" stroke-width="1.6" marker-end="url(#arw)"/>
+  <rect x="353.5" y="26" width="216" height="52" rx="9" fill="#eef2ff" stroke="#a5b1e8" stroke-width="1.5"/>
+  <text x="461.5" y="48" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#26307a" text-anchor="middle">/dev:doc</text>
+  <text x="461.5" y="65" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#77808f" text-anchor="middle">what you want done</text>
+  <polygon points="365.5,130 557.5,130 569.5,148 557.5,166 365.5,166 353.5,148" fill="#fff8e8" stroke="#e2bd63" stroke-width="1.5"/>
+  <text x="461.5" y="152" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#5c4409" text-anchor="middle">Detect the action</text>
+  <rect x="69" y="234" width="182" height="52" rx="9" fill="#ffffff" stroke="#d3d8e2" stroke-width="1.5"/>
+  <text x="160" y="256" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#1c2230" text-anchor="middle">GENERATE</text>
+  <text x="160" y="273" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#77808f" text-anchor="middle">new docs from a template</text>
+  <rect x="270" y="234" width="182" height="52" rx="9" fill="#ffffff" stroke="#d3d8e2" stroke-width="1.5"/>
+  <text x="361" y="256" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#1c2230" text-anchor="middle">ANALYZE</text>
+  <text x="361" y="273" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#77808f" text-anchor="middle">score + anti-patterns</text>
+  <rect x="471" y="234" width="182" height="52" rx="9" fill="#ffffff" stroke="#d3d8e2" stroke-width="1.5"/>
+  <text x="562" y="256" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#1c2230" text-anchor="middle">FIX</text>
+  <text x="562" y="273" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#77808f" text-anchor="middle">analyse, then ask first</text>
+  <rect x="672" y="234" width="182" height="52" rx="9" fill="#ffffff" stroke="#d3d8e2" stroke-width="1.5"/>
+  <text x="763" y="256" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#1c2230" text-anchor="middle">VALIDATE</text>
+  <text x="763" y="273" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#77808f" text-anchor="middle">examples · links · claims</text>
+  <rect x="353.5" y="338" width="216" height="36" rx="9" fill="#ffffff" stroke="#d3d8e2" stroke-width="1.5"/>
+  <text x="461.5" y="360" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#1c2230" text-anchor="middle">Quality gate</text>
+  <rect x="353.5" y="442" width="216" height="36" rx="9" fill="#ecf7f0" stroke="#82c39a" stroke-width="1.5"/>
+  <text x="461.5" y="464" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#155232" text-anchor="middle">Report</text>
+</svg>

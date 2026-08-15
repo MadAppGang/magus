@@ -2,6 +2,7 @@
 name: phase-enforcement
 description: Evidence-based phase completion for /dev:dev — artifacts, validation criteria, outer loops. Use when orchestrating phased feature work with gates.
 user-invocable: false
+disable-model-invocation: true
 ---
 
 # Phase Completion Enforcement

@@ -1,6 +1,6 @@
 ---
 name: worktree-lifecycle
-description: Manages git worktrees end to end — create, use, clean up, with safety checks. Use when starting isolated feature work or before executing a plan.
+description: "Creates, uses and cleans up git worktrees with safety checks. Use before isolated, risky or parallel feature work, or on mention of worktree, experiment or prototype."
 user-invocable: false
 ---
 

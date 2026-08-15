@@ -1,7 +1,8 @@
 ---
 name: brainstorming
-description: "Collaborative ideation and planning with resilient multi-model exploration, consensus scoring, and adaptive confidence-based validation"
+description: "Explores solution approaches in parallel across models, scores confidence, validates the chosen plan. Use when planning an approach or asked to brainstorm."
 user-invocable: false
+disable-model-invocation: true
 ---
 
 # Brainstorming v2.0: Resilient Multi-Model Planning

@@ -7,27 +7,43 @@ content and outreach, and `magus-alpha` for experimental work.
 ## Start here
 
 ```bash
-/plugin marketplace add MadAppGang/magus
+bun add -g claudeup
+claudeup
 ```
 
-Then enable the plugins you want in your project's `.claude/settings.json`. Plugin IDs
-carry the marketplace, so a marketing plugin is `seo@magus-marketing`, not `seo@magus`.
+That is it. **[claudeup](./guides/install.md)** lists the Magus marketplaces, registers
+whichever you pick, and installs the plugins along with the MCP servers, binaries, skills
+and CLI tools they depend on.
 
-## Using the plugins
+## Guides
 
-- **[Plugin catalog](./plugins/index.md)** — every plugin, what it does, and which channel it ships on
-- **[Advanced Usage](./guides/advanced-usage.md)** — global and project-scoped installs, version pinning, updates, custom configuration
-- **[Troubleshooting](./guides/troubleshooting.md)** — plugins not loading, hooks not firing, missing marketplace, stale caches
+- **[Installing Magus](./guides/install.md)** — claudeup, marketplaces, enabling plugins
+- **[Teams and profiles](./guides/teams.md)** — one committed manifest, one command per teammate
+- **[Building a feature](./guides/dev-build.md)** — `/dev:dev`, depth, and presets
+- **[Fixing a bug](./guides/dev-debug.md)** — `/dev:fix`, reproduced first, reviewed twice
+- **[Designing before you build](./guides/dev-architect.md)** — `/dev:architect` and plan mode
+- **[Understanding code](./guides/dev-investigate.md)** — `/dev:investigate`, read-only
+- **[Documentation](./guides/dev-doc.md)** — `/dev:doc` and its four modes
+- **[Isolated worktrees](./guides/dev-worktree.md)** — `/dev:worktree` with database branching
+- **[multimodel](./guides/multimodel.md)** — a blind vote across models, or handing a whole
+  task to one
+- **[code-analysis](./guides/code-analysis.md)** — asking questions about code you didn't write
+- **[bunjs](./guides/bunjs.md)** — one command, and the eight skills behind it
+- **[Advanced Usage](./guides/advanced-usage.md)** — global and project-scoped installs, version
+  pinning, updates, custom configuration
+- **[Troubleshooting](./guides/troubleshooting.md)** — plugins not loading, hooks not firing,
+  missing marketplace, stale caches
 
-## Building plugins
+## What is available
 
-- **[Plugin Development Guide](./authoring/development-guide.md)** — manifest layout, agents, commands, skills, MCP servers
-- **[Local Development](./authoring/local-development.md)** — run a plugin from a local marketplace and debug it before publishing
-- **[Marketplace Reference](./authoring/marketplace-reference.md)** — every field in `marketplace.json` and `plugin.json`
-- **[Contributing a Plugin](./authoring/contributing.md)** — how to submit to the marketplace
-- **[Version Validation](./authoring/validation.md)** — the check that keeps versions in agreement
+- **[Plugins](./plugins/index.md)** — three marketplaces, and what each carries. Follow a
+  plugin's name for its commands, subagents and skills.
 
 ## Release history
 
 Each channel ships a `CHANGELOG.md` and `RELEASES.md` scoped to the plugins you can
 actually install from it.
+
+---
+
+Writing a plugin rather than using one? That is a separate tutorial and does not live here.

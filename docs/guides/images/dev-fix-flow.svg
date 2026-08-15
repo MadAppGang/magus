@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 812.2 936" width="812.2" height="936" role="img" aria-label="The /dev:fix pipeline: reproduce first, two review gates, and where it loops back">
+  <title>The /dev:fix pipeline: reproduce first, two review gates, and where it loops back</title>
+  <defs>
+    <marker id="arw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#98a1b3"/>
+    </marker>
+  </defs>
+  <rect x="0.5" y="0.5" width="811.2" height="935" rx="12" fill="#fbfbfd" stroke="#e8eaf0"/>
+  <path d="M 458 52 L 570.2 52" fill="none" stroke="#98a1b3" stroke-width="1.6" marker-end="url(#arw)"/>
+  <text x="514.1" y="45" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#5d6779" text-anchor="middle" paint-order="stroke" stroke="#fbfbfd" stroke-width="3.5" stroke-linejoin="round">cannot reproduce</text>
+  <path d="M 350 78 L 350 130" fill="none" stroke="#98a1b3" stroke-width="1.6" marker-end="url(#arw)"/>
+  <path d="M 350 182 L 350 234" fill="none" stroke="#98a1b3" stroke-width="1.6" marker-end="url(#arw)"/>
+  <path d="M 350 286 L 350 338" fill="none" stroke="#98a1b3" stroke-width="1.6" marker-end="url(#arw)"/>
+  <path d="M 350 390 L 350 442" fill="none" stroke="#98a1b3" stroke-width="1.6" marker-end="url(#arw)"/>
+  <text x="350" y="420" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#5d6779" text-anchor="middle" paint-order="stroke" stroke="#fbfbfd" stroke-width="3.5" stroke-linejoin="round">approved</text>
+  <path d="M 350 494 L 350 546" fill="none" stroke="#98a1b3" stroke-width="1.6" marker-end="url(#arw)"/>
+  <path d="M 350 598 L 350 650" fill="none" stroke="#98a1b3" stroke-width="1.6" marker-end="url(#arw)"/>
+  <text x="350" y="628" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#5d6779" text-anchor="middle" paint-order="stroke" stroke="#fbfbfd" stroke-width="3.5" stroke-linejoin="round">green</text>
+  <path d="M 350 702 L 350 754" fill="none" stroke="#98a1b3" stroke-width="1.6" marker-end="url(#arw)"/>
+  <text x="350" y="732" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#5d6779" text-anchor="middle" paint-order="stroke" stroke="#fbfbfd" stroke-width="3.5" stroke-linejoin="round">approved</text>
+  <path d="M 350 806 L 350 858" fill="none" stroke="#98a1b3" stroke-width="1.6" marker-end="url(#arw)"/>
+  <path d="M 242 364 L 208 364 L 208 260 L 242 260" fill="none" stroke="#98a1b3" stroke-width="1.6" marker-end="url(#arw)"/>
+  <text x="201" y="315" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#5d6779" text-anchor="end" paint-order="stroke" stroke="#fbfbfd" stroke-width="3.5" stroke-linejoin="round">wrong theory</text>
+  <path d="M 242 572 L 208 572 L 208 468 L 242 468" fill="none" stroke="#98a1b3" stroke-width="1.6" marker-end="url(#arw)"/>
+  <text x="201" y="523" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#5d6779" text-anchor="end" paint-order="stroke" stroke="#fbfbfd" stroke-width="3.5" stroke-linejoin="round">still failing</text>
+  <path d="M 242 676 L 146 676 L 146 468 L 242 468" fill="none" stroke="#98a1b3" stroke-width="1.6" marker-end="url(#arw)"/>
+  <text x="139" y="575" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#5d6779" text-anchor="end" paint-order="stroke" stroke="#fbfbfd" stroke-width="3.5" stroke-linejoin="round">patch rejected</text>
+  <rect x="242" y="26" width="216" height="52" rx="9" fill="#eef2ff" stroke="#a5b1e8" stroke-width="1.5"/>
+  <text x="350" y="48" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#26307a" text-anchor="middle">1 · REPRODUCE</text>
+  <text x="350" y="65" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#77808f" text-anchor="middle">a failing case, or stop</text>
+  <rect x="570.2" y="26" width="176" height="52" rx="9" fill="#fdeeee" stroke="#dd9494" stroke-width="1.5"/>
+  <text x="658.2" y="48" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#7a2626" text-anchor="middle">No reproduction,</text>
+  <text x="658.2" y="64" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#7a2626" text-anchor="middle">no fix</text>
+  <rect x="242" y="130" width="216" height="52" rx="9" fill="#ffffff" stroke="#d3d8e2" stroke-width="1.5"/>
+  <text x="350" y="152" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#1c2230" text-anchor="middle">2 · LOCALIZE</text>
+  <text x="350" y="169" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#77808f" text-anchor="middle">3 strategies, context-budgeted</text>
+  <rect x="242" y="234" width="216" height="52" rx="9" fill="#ffffff" stroke="#d3d8e2" stroke-width="1.5"/>
+  <text x="350" y="256" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#1c2230" text-anchor="middle">3 · PLAN</text>
+  <text x="350" y="273" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#77808f" text-anchor="middle">dev:debugger finds root cause</text>
+  <polygon points="254,338 446,338 458,364 446,390 254,390 242,364" fill="#fdf0e6" stroke="#dd9c5f" stroke-width="1.5"/>
+  <text x="350" y="360" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#71400f" text-anchor="middle">Gate A</text>
+  <text x="350" y="377" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#77808f" text-anchor="middle">other models vote on the theory</text>
+  <rect x="242" y="442" width="216" height="52" rx="9" fill="#ffffff" stroke="#d3d8e2" stroke-width="1.5"/>
+  <text x="350" y="464" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#1c2230" text-anchor="middle">4 · PATCH</text>
+  <text x="350" y="481" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#77808f" text-anchor="middle">dev:developer · RED → GREEN</text>
+  <rect x="242" y="546" width="216" height="52" rx="9" fill="#ffffff" stroke="#d3d8e2" stroke-width="1.5"/>
+  <text x="350" y="568" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#1c2230" text-anchor="middle">5 · VALIDATE</text>
+  <text x="350" y="585" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#77808f" text-anchor="middle">full suite + quality checks</text>
+  <polygon points="254,650 446,650 458,676 446,702 254,702 242,676" fill="#fdf0e6" stroke="#dd9c5f" stroke-width="1.5"/>
+  <text x="350" y="672" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#71400f" text-anchor="middle">Gate B</text>
+  <text x="350" y="689" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#77808f" text-anchor="middle">vote on the finished patch</text>
+  <rect x="242" y="754" width="216" height="52" rx="9" fill="#ffffff" stroke="#d3d8e2" stroke-width="1.5"/>
+  <text x="350" y="776" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#1c2230" text-anchor="middle">7 · MONITOR</text>
+  <text x="350" y="793" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#77808f" text-anchor="middle">optional deployment watch</text>
+  <rect x="242" y="858" width="216" height="52" rx="9" fill="#ecf7f0" stroke="#82c39a" stroke-width="1.5"/>
+  <text x="350" y="880" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#155232" text-anchor="middle">8 · DOCUMENT</text>
+  <text x="350" y="897" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#77808f" text-anchor="middle">fix-report.md + commit</text>
+</svg>

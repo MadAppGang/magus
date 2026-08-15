@@ -1,7 +1,8 @@
 ---
 name: frontend-implement
-description: Implements UI improvements from designer:ui-analyse or /designer:ui review docs, applying Anti-AI design rules and visual verification. Use when applying review findings as code.
+description: Rewrites generic-looking UI by five anti-generic rules — asymmetry, texture, typography, motion, colour. Use when applying design-review fixes, or UI looks AI-generated.
 user-invocable: false
+disable-model-invocation: true
 ---
 
 # Frontend Implementation Skill

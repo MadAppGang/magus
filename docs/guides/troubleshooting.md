@@ -129,7 +129,7 @@ Plugin loads but features don't work (e.g., Figma import fails, API calls fail)
 **1. Check Required Variables**
 
 See plugin documentation for required variables:
-- [Terminal Plugin Dependencies](../../plugins/terminal/DEPENDENCIES.md)
+- [Terminal Plugin Dependencies](https://github.com/MadAppGang/magus/blob/main/plugins/terminal/DEPENDENCIES.md)
 - Check plugin's README.md
 
 **2. Set Environment Variables**
@@ -479,11 +479,30 @@ skillListingBudgetFraction (currently 1%) in settings.json.
 
 #### What this means
 
-Claude Code 2.1.105+ enforces a budget on the skill listing it injects into the system prompt at the start of each turn. The budget is `min(skillListingBudgetFraction × context_tokens × 4, 8000)` characters with an **8,000-char hard cap that binds for any model with ≥200k context**. When the corpus exceeds the budget, lower-priority skill descriptions get dropped from the listing.
+Claude Code injects a listing of your skills into every turn, and that listing has a budget:
 
-Magus ships ~125 skills. With aggressive disable-model-invocation flags + tight descriptions, the listing-eligible portion is ~98 skills × ~155 chars = ~15,200 chars. **Roughly half fit per turn at default settings.**
+```
+budget = context_tokens × 4 × skillListingBudgetFraction     (fraction defaults to 0.01)
+```
 
-The dropped skills are still installed and still invocable via `/skill-name`. They just don't auto-trigger from natural language until you've used them — Claude Code prioritizes "most-used" skills via a 7-day-half-life formula.
+**The budget scales with the model's context window.** 8,000 characters is what the formula
+yields at the 200,000-token fallback, so it is the conservative floor, not a ceiling — a
+1M-context model gets 40,000. The budget is also **global across every installed skill**,
+from every plugin and marketplace, not partitioned per plugin.
+
+Over budget, the listing does not error and does not drop skills outright. It switches to
+priority mode and **shortens descriptions** to fit.
+
+That is the failure you actually see. The matcher can only match on the text that survived,
+so a skill whose description got trimmed quietly stops auto-triggering — same skill, same
+install, different behaviour because something else was added.
+
+With every Magus plugin installed, 77 skills are listing-eligible and cost about 11,700
+characters. On a 200k-context model at the default fraction, that is over the ~8,000 floor,
+so some descriptions get shortened.
+
+Nothing is uninstalled or broken. See [How skills get found](./skill-visibility.md) for what
+decides which skills are in the listing at all.
 
 #### Solutions, in order of preference
 
@@ -506,7 +525,9 @@ Each disabled plugin's skills leave the corpus entirely.
 { "skillListingBudgetFraction": 0.05 }
 ```
 
-This raises the budget from 1% to 5% (~8k extra tokens per turn). On models with **<200k context**, this gives more room. On 1M-context models, the 8,000-char hard cap binds — raising the fraction past ~0.2% buys nothing.
+This raises the fraction from 1% to 5%. Because the budget is `context × 4 × fraction` with
+no ceiling, raising it genuinely raises the budget on every model — Claude Code's own
+over-budget warning suggests exactly this.
 
 **Trade-off:** every turn pays ~8k more tokens for skill metadata. Over a 90-turn session that's ~720k tokens spent on skill listings. Use rate limits faster.
 
@@ -520,7 +541,7 @@ This env var overrides everything with an absolute char count. Useful for one-of
 
 #### What Magus does to mitigate
 
-- **Library/internal skills** (~28 of them) are flagged `disable-model-invocation: true` — they leave the listing budget but stay invocable via `/skill-name`.
+- **Library and reference skills** (53 of them) carry `disable-model-invocation: true`, so they cost nothing per turn. 51 stay invocable as `/plugin:skill`; 2 are loaded by the one command that needs them.
 - **All descriptions** follow Anthropic's official 200-char third-person + "Use when…" pattern.
 - **CI guardrail** (`scripts/skill-budget-check.ts`) blocks regressions on every release.
 
@@ -614,8 +635,7 @@ Gather this information:
 - Include all information listed above
 
 **Documentation**
-- [Development Guide](../authoring/development-guide.md)
-- [Development Guide](../authoring/development-guide.md)
+- [Plugin catalog](../plugins/index.md)
 - [Advanced Usage](./advanced-usage.md)
 
 ---
@@ -708,8 +728,7 @@ rm -rf .claude/settings.json
 
 - **[Quick Start](../../README.md#quick-start)** - Installation guide
 - **[Advanced Usage](./advanced-usage.md)** - Advanced configuration
-- **[Development Guide](../authoring/development-guide.md)** - Plugin development
-- **[Development Guide](../authoring/development-guide.md)** - Complete user guide
+- **[Plugin catalog](../plugins/index.md)** - What each plugin provides
 
 ---
 

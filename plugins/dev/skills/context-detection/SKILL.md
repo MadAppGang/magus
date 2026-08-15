@@ -1,6 +1,6 @@
 ---
 name: context-detection
-description: Detects the project stack from files and configs, then auto-loads matching skills. Use when identifying the stack or handling multi-stack repos.
+description: "Detects the project stack from its config files, then names the one or two dev skill files to read for this task — it loads none of them. Use at the start of any coding task, or on an unfamiliar or multi-stack repo."
 allowed-tools: Bash(node *)
 user-invocable: false
 ---

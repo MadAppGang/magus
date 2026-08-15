@@ -1,6 +1,6 @@
 ---
 name: testing-strategies
-description: Use when writing tests, setting up test frameworks, implementing mocking strategies, or establishing testing best practices (unit, integration, E2E) across any technology stack.
+description: "Testing pyramid, AAA structure, test doubles, fixtures, assertions and coverage targets, in any language. Use when writing, reviewing or setting up tests. Do not use for the write-test-first loop — that is test-driven-development."
 user-invocable: false
 ---
 
@@ -380,3 +380,9 @@ it('test 2', () => { counter++; expect(counter).toBe(1); });
 ---
 
 *Testing strategies applicable to all technology stacks*
+
+## Reference files
+
+- Read `references/coverage.md` when setting a coverage target, gating CI on coverage,
+  or deciding what is worth measuring. It was the separate `test-coverage` skill until
+  2026-08-15; this skill already claimed coverage gates, so the two competed.

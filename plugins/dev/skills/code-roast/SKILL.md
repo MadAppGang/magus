@@ -2,6 +2,7 @@
 name: code-roast
 description: Roasts code with severity-graded sins, cites file and line, offers redemption. Use when the user asks to roast code, find sins, or shame my code.
 user-invocable: false
+disable-model-invocation: true
 ---
 
 # Code Roast Skill

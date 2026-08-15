@@ -1,6 +1,6 @@
 ---
 name: verification-before-completion
-description: Requires evidence before claiming done. Use when marking work complete, or on mention of verifying, testing, or making sure it works.
+description: "Requires fresh evidence — command output, a test run, a screenshot — before any completion claim. Use when marking work done, saying something is fixed, or before committing, even when the change looks obviously correct."
 user-invocable: false
 ---
 

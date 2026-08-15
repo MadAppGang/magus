@@ -1,6 +1,6 @@
 ---
 name: universal-patterns
-description: Use when implementing language-agnostic patterns like layered architecture, dependency injection, error handling, or code organization principles across any technology stack.
+description: "Code organization, error handling, data flow, naming and anti-patterns in any language. Use while writing or reviewing everyday code. Do not use to choose a system shape or a design pattern — read the architecture skill instead."
 user-invocable: false
 ---
 

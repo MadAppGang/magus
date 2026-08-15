@@ -1,7 +1,8 @@
 ---
 name: api-design
-description: Use when designing REST or GraphQL APIs, defining endpoints, implementing pagination/filtering, handling API versioning, or establishing API documentation with OpenAPI/Swagger.
+description: Covers REST and GraphQL design — pagination, filtering, versioning, auth, rate limiting, OpenAPI. Use when designing endpoints or an API contract.
 user-invocable: false
+disable-model-invocation: true
 ---
 
 # API Design Patterns

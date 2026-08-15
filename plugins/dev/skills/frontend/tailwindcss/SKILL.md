@@ -2,6 +2,7 @@
 name: tailwindcss
 description: TailwindCSS v4 patterns — CSS-first @theme, design tokens, container queries, dark mode. Use when configuring Tailwind or defining tokens.
 user-invocable: false
+disable-model-invocation: true
 ---
 
 # TailwindCSS v4 Patterns

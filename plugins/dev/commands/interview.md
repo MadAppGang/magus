@@ -2,7 +2,7 @@
 name: interview
 description: Comprehensive specification interview with intelligent requirements elicitation
 allowed-tools: Task, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep
-skills: dev:context-detection, dev:universal-patterns, dev:api-design, multimodel:quality-gates, multimodel:task-orchestration
+skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates, multimodel:task-orchestration
 ---
 
 <role>
@@ -1312,3 +1312,7 @@ skills: dev:context-detection, dev:universal-patterns, dev:api-design, multimode
 Ready to build!
   </completion_message>
 </formatting>
+
+**API design.** Read `${CLAUDE_PLUGIN_ROOT}/skills/backend/api-design/SKILL.md` when the
+interview turns to endpoints, an API contract, pagination, versioning or OpenAPI. It was
+preloaded into every interview until 2026-08-15, including interviews with no API in them.

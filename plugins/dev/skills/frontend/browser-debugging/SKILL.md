@@ -2,6 +2,7 @@
 name: browser-debugging
 description: Tests UI in a real browser via Chrome MCP — visual fidelity, console, network. Use when verifying UI, chasing browser bugs, or console errors.
 user-invocable: false
+disable-model-invocation: true
 ---
 
 # Browser Debugging

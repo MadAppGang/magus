@@ -2,6 +2,7 @@
 name: bunjs-production
 description: Provides Bun.js production patterns — Docker, AWS ECS/Fargate, Redis caching, security hardening, CI/CD. Use when deploying or operationalizing a Bun.js service.
 user-invocable: false
+disable-model-invocation: true
 ---
 
 # Bun.js Production Deployment Patterns

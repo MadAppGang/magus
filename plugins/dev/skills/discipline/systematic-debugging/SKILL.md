@@ -1,6 +1,6 @@
 ---
 name: systematic-debugging
-description: Root-cause debugging — trace data flow, form hypotheses, verify the fix. Use when debugging failures, errors, or unexpected behaviour.
+description: "Root-cause debugging — reproduce, localize, explain, verify — with depth routing and a technique catalogue for stack traces, wolf fence and data-flow tracing. Use when anything errors, crashes or misbehaves, even on a bare pasted trace."
 user-invocable: false
 ---
 
@@ -50,9 +50,13 @@ Full walkthrough with output schemas: `workflow.md`.
 | `workflow.md` | The phase-by-phase standard workflow with report schemas |
 | `localization.md` | Three fault-localization strategies — stack-trace grep, BM25 keyword search, AST context expansion — plus context-budget rules and the large-codebase path |
 | `session-setup.md` | Session directory layout, stack detection, reproduction capture, bug-report schema. Shared by `/dev:debug` and `/dev:fix`. |
+| `references/techniques.md` | The technique catalogue — stack-trace reading, error categories, wolf fence, data-flow tracing, logging, breakpoints, plus browser and Node.js specifics |
+
+**Read `references/techniques.md` in the Localize phase**, when you know which phase you
+are in and need the concrete move. It is a catalogue, not a method — reading it first
+invites picking a technique before you have a hypothesis.
 
 ## Related
 
-- `dev:debugging-strategies` — language-specific techniques (Go, Python, JS, Rust)
 - `dev:browser-debugging` — anything involving a browser, console, or network tab
 - `dev:test-driven-development` — writing the failing test that pins the bug

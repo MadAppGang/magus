@@ -2,7 +2,7 @@
 name: debug
 description: "Structured debugging — routes to quick patch (inline), standard debug (skill), or production-grade fix (/dev:fix)"
 allowed-tools: Task, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep, Write, Edit, Skill
-skills: dev:context-detection, dev:debugging-strategies, dev:systematic-debugging, dev:testing-strategies, dev:verification-before-completion
+skills: dev:context-detection, dev:systematic-debugging, dev:testing-strategies, dev:verification-before-completion
 ---
 
 <role>
@@ -182,3 +182,9 @@ skills: dev:context-detection, dev:debugging-strategies, dev:systematic-debuggin
   - `/dev:debug --downgrade "weird test failure"` → --downgrade flag → **Standard debug directly**
   - `/dev:debug --tdd "cart total calculates wrong when discount applied"` → no stack trace but simple cause → **Quick patch with TDD path**
 </examples>
+
+**Technique catalogue.** Read
+`${CLAUDE_PLUGIN_ROOT}/skills/discipline/systematic-debugging/references/techniques.md`
+in the Localize phase. It was a separate preloaded skill until 2026-08-15; this command
+loaded it alongside `dev:systematic-debugging`, so the same four-phase method arrived
+twice under two vocabularies.

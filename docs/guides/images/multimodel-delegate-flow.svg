@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 671.2 608.8" width="671.2" height="608.8" role="img" aria-label="How /multimodel:delegate runs a task in another model's session and brings its questions back to you">
+  <title>How /multimodel:delegate runs a task in another model's session and brings its questions back to you</title>
+  <defs>
+    <marker id="arw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#98a1b3"/>
+    </marker>
+  </defs>
+  <rect x="0.5" y="0.5" width="670.2" height="607.8" rx="12" fill="#fbfbfd" stroke="#e8eaf0"/>
+  <path d="M 160 78 L 160 130" fill="none" stroke="#98a1b3" stroke-width="1.6" marker-end="url(#arw)"/>
+  <path d="M 160 182 L 160 234" fill="none" stroke="#98a1b3" stroke-width="1.6" marker-end="url(#arw)"/>
+  <path d="M 160 286 L 160 338" fill="none" stroke="#98a1b3" stroke-width="1.6" marker-end="url(#arw)"/>
+  <path d="M 268 356 L 309.6 356 L 309.6 364 L 351.2 364" fill="none" stroke="#98a1b3" stroke-width="1.6" marker-end="url(#arw)"/>
+  <text x="309.6" y="354" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#5d6779" text-anchor="middle" paint-order="stroke" stroke="#fbfbfd" stroke-width="3.5" stroke-linejoin="round">input_required</text>
+  <path d="M 160 374 L 160 514.8" fill="none" stroke="#98a1b3" stroke-width="1.6" marker-end="url(#arw)"/>
+  <text x="160" y="448.4" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#5d6779" text-anchor="middle" paint-order="stroke" stroke="#fbfbfd" stroke-width="3.5" stroke-linejoin="round">completed</text>
+  <path d="M 160 374 L 160 444.4 L 468.2 444.4 L 468.2 514.8" fill="none" stroke="#98a1b3" stroke-width="1.6" marker-end="url(#arw)"/>
+  <text x="314.1" y="438.4" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#5d6779" text-anchor="middle" paint-order="stroke" stroke="#fbfbfd" stroke-width="3.5" stroke-linejoin="round">failed</text>
+  <rect x="52" y="26" width="216" height="52" rx="9" fill="#eef2ff" stroke="#a5b1e8" stroke-width="1.5"/>
+  <text x="160" y="48" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#26307a" text-anchor="middle">/multimodel:delegate</text>
+  <text x="160" y="65" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#77808f" text-anchor="middle">model · command · task</text>
+  <rect x="52" y="130" width="216" height="52" rx="9" fill="#ffffff" stroke="#d3d8e2" stroke-width="1.5"/>
+  <text x="160" y="152" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#1c2230" text-anchor="middle">Parse and resolve</text>
+  <text x="160" y="169" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#77808f" text-anchor="middle">against the live catalog</text>
+  <rect x="35" y="234" width="250" height="52" rx="9" fill="#ffffff" stroke="#d3d8e2" stroke-width="1.5"/>
+  <text x="160" y="256" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#1c2230" text-anchor="middle">claudish create_session</text>
+  <text x="160" y="273" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#77808f" text-anchor="middle">a full session, your plugins loaded</text>
+  <polygon points="64,338 256,338 268,356 256,374 64,374 52,356" fill="#fff8e8" stroke="#e2bd63" stroke-width="1.5"/>
+  <text x="160" y="360" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#5c4409" text-anchor="middle">Channel event</text>
+  <rect x="351.2" y="338" width="234" height="52" rx="9" fill="#ffffff" stroke="#d3d8e2" stroke-width="1.5"/>
+  <text x="468.2" y="360" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#1c2230" text-anchor="middle">It asks you a question</text>
+  <text x="468.2" y="377" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#77808f" text-anchor="middle">you answer · send_input · it resumes</text>
+  <rect x="52" y="514.8" width="216" height="52" rx="9" fill="#ecf7f0" stroke="#82c39a" stroke-width="1.5"/>
+  <text x="160" y="536.8" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#155232" text-anchor="middle">get_output</text>
+  <text x="160" y="553.8" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#77808f" text-anchor="middle">the result</text>
+  <rect x="351.2" y="514.8" width="234" height="68" rx="9" fill="#fdeeee" stroke="#dd9494" stroke-width="1.5"/>
+  <text x="468.2" y="536.8" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#7a2626" text-anchor="middle">Reported verbatim,</text>
+  <text x="468.2" y="552.8" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#7a2626" text-anchor="middle">and it stops</text>
+  <text x="468.2" y="569.8" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#77808f" text-anchor="middle">no retry, no substitution</text>
+</svg>
