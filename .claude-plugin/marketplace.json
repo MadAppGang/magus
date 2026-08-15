@@ -681,7 +681,7 @@
       "name": "terminal",
       "source": "./plugins/terminal",
       "description": "Intent-level terminal control over tmux. Runs interactive commands, dev servers, test watchers, REPLs and TUI apps, and refuses to send keys into a pane that already has a process in the foreground.",
-      "version": "4.1.5",
+      "version": "4.1.6",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",

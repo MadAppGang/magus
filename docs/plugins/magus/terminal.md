@@ -7,7 +7,7 @@ Intent-level terminal control over tmux. Runs interactive commands, dev servers,
 
 | | |
 |---|---|
-| Version | `4.1.5` |
+| Version | `4.1.6` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 9 |
 | Subagents | 1 |
