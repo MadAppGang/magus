@@ -19,11 +19,19 @@
  *
  * The index reports each skill's listing cost because that number is the
  * scarce resource. Claude Code injects the description of every
- * model-invocable skill into every turn, capped at
- * min(fraction x context x 4, 8000) chars. Over budget, descriptions are
- * dropped least-invoked-first — silently. A skill carrying
- * `disable-model-invocation: true` costs nothing and stays reachable by
- * explicit /invocation, which is why the summary separates the two.
+ * model-invocable skill into every turn, budgeted at
+ * `context x 4 x skillListingBudgetFraction` (fraction defaults to 0.01).
+ *
+ * There is NO 8,000-char cap and no Math.min — verified against the 2.1.223
+ * binary, where tBt() reads `(contextTokens ?? 200000) * 4 * fraction` and
+ * floors it. 8,000 is simply what the formula yields at the 200,000-token
+ * FALLBACK, so it is the conservative floor, not a ceiling; a 1M-context model
+ * gets 40,000. Over budget the listing SHORTENS descriptions rather than
+ * dropping skills, so the failure mode is a skill whose trigger words were
+ * silently truncated away — indistinguishable from a badly written one.
+ *
+ * A skill carrying `disable-model-invocation: true` costs nothing and stays
+ * reachable by explicit /invocation, which is why the summary separates the two.
  */
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";

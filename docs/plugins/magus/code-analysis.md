@@ -7,7 +7,7 @@ Codebase investigation and semantic search. Maps architecture, traces callers an
 
 | | |
 |---|---|
-| Version | `5.3.1` |
+| Version | `5.3.2` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 3 |
 | Subagents | 1 |

@@ -4,6 +4,22 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Marketplace 9.0.2] - 2026-08-15
+
+### Changed
+
+- Republished so the catalogue carries `dev` v4.0.1 alongside the skill
+  reorganisation from v4.0.0, the four other dependency-range fixes from 9.0.1,
+  and the `skill-authoring` routing documentation that landed on main after that
+  publish. The 21 plugin pages under `userdocs/plugins/` are regenerated from the
+  manifest, so they name the shipped versions rather than the previous ones.
+
+  Version bumped rather than republished in place: the marketplace version is the
+  only signal claudeup has that a catalogue changed, so re-pushing different
+  content under 9.0.1 would have been invisible to every installed copy.
+
+---
+
 ## [Marketplace 9.0.1] - 2026-08-15
 
 ### Fixed
