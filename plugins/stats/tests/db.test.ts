@@ -54,14 +54,14 @@ describe("db", () => {
           duration_ms: 50,
           success: true,
           activity_category: "research",
-          timestamp: "2026-03-26T10:00:00.000Z",
+          timestamp: `${date}T10:00:00.000Z`,
         },
         {
           tool_name: "Write",
           duration_ms: 30,
           success: true,
           activity_category: "coding",
-          timestamp: "2026-03-26T10:01:00.000Z",
+          timestamp: `${date}T10:01:00.000Z`,
         },
       ],
       activity_counts: {
