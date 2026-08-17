@@ -1,7 +1,7 @@
 ---
 name: tui
 description: Launch and navigate TUI (terminal user interface) applications like vim, lazygit, htop, k9s, tig. Delegates to the tui-navigator agent for multi-step interaction.
-allowed-tools: mcp__tmux__create-headless, mcp__tmux__start-and-watch, mcp__tmux__watch-pane, mcp__tmux__send-keys, mcp__tmux__capture-pane, mcp__tmux__pane-state, mcp__tmux__kill-session, mcp__tmux__resize-pane
+allowed-tools: mcp__tmux__create-headless, mcp__tmux__start-and-watch, mcp__tmux__watch-pane, mcp__tmux__send-keys, mcp__tmux__capture-pane, mcp__tmux__pane-state, mcp__tmux__kill-session, mcp__tmux__close-pane
 ---
 
 # /terminal:tui
@@ -93,7 +93,7 @@ Detect which app is running from `capture-pane` content:
 
 ## Notes
 
-- Headless sessions have no fixed terminal size — use `resize-pane` if the app requires a specific size
+- Headless sessions have no fixed terminal size. `resize-pane` is not available at this plugin's tool scope — if the app needs a specific size, run it in a visible pane (`slot: 1`) instead
 - For simple commands (not full-screen TUI), use `/terminal:run` instead
 - For database REPLs, use `/terminal:repl` instead (better prompt detection)
 - For long-running processes, use `/terminal:watch` instead

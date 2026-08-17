@@ -680,8 +680,8 @@
     {
       "name": "terminal",
       "source": "./plugins/terminal",
-      "description": "Intent-level terminal control over tmux. Runs interactive commands, dev servers, test watchers, REPLs and TUI apps, and refuses to send keys into a pane that already has a process in the foreground.",
-      "version": "4.1.6",
+      "description": "Intent-level terminal control over tmux. Runs interactive commands, dev servers, test watchers, REPLs and TUI apps in a helper pane that the server places and owns, so an agent never targets the user's own session.",
+      "version": "4.2.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -700,6 +700,15 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "4.2.0",
+          "date": "2026-08-15",
+          "kinds": [
+            "Changed",
+            "Fixed"
+          ],
+          "summary": "Agents no longer manage panes. tmux-mcp v1.7.1 reads the pane it was launched in and keeps a\u2026"
+        },
         {
           "version": "4.1.4",
           "date": "2026-07-30",

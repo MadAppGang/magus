@@ -2,6 +2,7 @@
 name: workspace-setup
 description: Orchestrates tmux workspaces — sessions, dashboard layouts, watch/entr monitors, synced panes. Use when setting up a project session, building a multi-pane dashboard, or syncing panes.
 user-invocable: false
+disable-model-invocation: true
 ---
 
 # Workspace Setup
@@ -12,37 +13,37 @@ Tmux workspace orchestration: session construction, dashboard archetypes, ambien
 
 ## 1. Session Workspace Construction
 
-One tmux session per project, named windows per concern. This pattern covers session creation, window setup, and hand-off to the user.
+One tmux session per project, named windows per concern.
+
+> **Windows are not in the agentic MCP scope.** `create-window`, `kill-window`,
+> `resize-pane` and `rename-session` exist in the tmux-mcp binary but are hidden at
+> `-scope agentic`, which is what this plugin ships. Building a multi-**window** session is
+> therefore a Bash job — use the startup script below, which is what you should be handing
+> the user anyway. Multi-**pane** work needs no Bash at all; see §2.
 
 ### Session Construction Tool Sequence
 
 ```
-1. Bash: tmux display-message -p '#{session_name}'          → check current session
-2. mcp__tmux__list-sessions()                               → scan list for session named "project"
-   // find-session was removed in Go binary; filter client-side
-   // if sessions.sessions.find(s => s.name === "project") → session exists
-3. [if not found] mcp__tmux__create-session({ name: "project" })
-4. mcp__tmux__create-window({ sessionId: "project" })       → window "server"
-5. mcp__tmux__create-window({ sessionId: "project" })       → window "tests"
-6. mcp__tmux__create-window({ sessionId: "project" })       → window "git"
-7. mcp__tmux__send-keys for each window: cd to project root, start process
-8. Report: "Workspace ready. Switch with: tmux switch-client -t project"
+1. mcp__tmux__list-sessions()                          → scan for a session named "project"
+   // find-session was removed from the Go binary; filter client-side
+2. [if not found] mcp__tmux__create-session({ name: "project" })
+3. Windows: generate the startup script below and let the user run it —
+   window creation is not available at this scope.
+4. Report: "Workspace ready. Switch with: tmux switch-client -t project"
 ```
 
 ### Four Hand-Off Patterns
 
-Choose based on user context:
-
 | Pattern | When to use | How |
 |---------|-------------|-----|
-| A: Leave detached | Long background job | Create session -d, give attach command |
+| A: Leave detached | Long background job | Create session, give the attach command |
 | B: Non-destructive inspect | User already in a session | `capture-pane` without touching anything |
 | C: Background build | User wants to keep working | `tmux new-session -d -s "build-job" "make all"` |
-| D: New window | User wants to stay in current session | `create-window` in user's session |
+| D: Extra pane here | User wants to stay where they are | A numbered slot — §2 |
 
 ### Session Startup Script Artifact
 
-Generate this script and leave it for the user to re-run. Replace `myproject` and the path with the actual project values.
+Generate this and leave it for the user to re-run. Replace `myproject` and the path.
 
 ```bash
 #!/bin/bash
@@ -60,24 +61,29 @@ tmux attach-session -t "$SESSION"
 
 ### Detection Signals
 
-- `mcp__tmux__list-sessions()` — returns all sessions; filter by name client-side
-- `tmux list-windows -a` — reveals window names across all sessions
-- `#{session_name}` format string in `display-message` — confirm current session
-- `tmux has-session -t {name}` exits 0 if session exists, non-zero if not
+- `mcp__tmux__list-sessions()` — all sessions; filter by name client-side
+- `mcp__tmux__list-windows({ sessionId })` — windows in a session you already located
+- `tmux has-session -t {name}` exits 0 if the session exists
 
 ---
 
 ## 2. Dashboard Archetypes
 
-Four named archetypes derived from real developer tmux sessions. Users can request by archetype name. Apply layout presets with `tmux select-layout` after creating panes (Bash tool required — tmux-mcp does not expose `select-layout`).
+Four archetypes derived from real developer sessions. Users can ask for one by name.
+
+**Build dashboards with numbered slots.** Each slot is a distinct pane, created on first use
+and returned unchanged on every call after that. You do not split, you do not pass a
+direction, and you do not order the calls defensively — slot 2 is never slot 1, by
+construction. Panes are titled `agent`, `agent:2` … automatically.
+
+> Slot placement: 1 is beside you, 2 stacks under 1, 3 goes bottom-left, 4 and up subdivide
+> the largest pane the server owns. If you need a specific visual arrangement beyond that,
+> apply a tmux layout preset afterwards (below) — that is the one part of this the MCP
+> surface does not cover.
 
 For the TDD archetype's full state machine, see `terminal:tdd-workflow`.
 
-> **CRITICAL when building multi-pane grids: `split-pane` now reuses idle shell siblings.** If you split twice from the **same source pane** in a row, the second `split-pane` may **reuse the idle pane the first split just created** (response has `"reused": true`) instead of making a new one — collapsing a 4-pane grid into 3. To guarantee a fresh pane, **start each pane's process (send-keys) before the next split**, so the just-created pane is no longer an idle shell and won't be reused. Build order becomes: split → send-keys to fill it → split again. Always check `reused` in each split response; if `true` and unexpected, that pane was recycled. (See terminal-interaction §1c.)
-
 ### Archetype A: Web Dev Cockpit
-
-3 panes, main-vertical layout.
 
 ```
 ┌──────────────────┬──────────────┐
@@ -88,28 +94,19 @@ For the TDD archetype's full state machine, see `terminal:tdd-workflow`.
 └──────────────────┴──────────────┘
 ```
 
-Construction:
-
 ```
-1. Bash: PANE=$(echo "$TMUX_PANE")
-2. mcp__tmux__split-pane({ paneId: PANE, direction: "horizontal", size: "40%" }) → right
-3. mcp__tmux__split-pane({ paneId: right, direction: "vertical" })               → log
-4. mcp__tmux__send-keys({ paneId: PANE, keys: "bun run dev\n", literal: false })
-5. mcp__tmux__start-and-watch({
-     paneId: right,
+1. mcp__tmux__send-keys({ slot: 1, keys: "bun run dev", enter: true })
+2. mcp__tmux__start-and-watch({
+     slot: 2,
      command: "bun test --watch",
      pattern: "press a to rerun|Waiting for file changes|Waiting\\.\\.\\.",
+     triggers: "exit,error",
      timeout: 30
-   }) → WatchResult (confirms watcher initialized)
-6. mcp__tmux__send-keys({ paneId: log, keys: "tail -f logs/app.log\n", literal: false })
-7. Bash: tmux select-layout -t {window} main-vertical
-8. Bash: tmux set-option pane-border-status top
-9. Bash: tmux select-pane -t {PANE} -T "Server" (and right="Tests", log="Logs")
+   })                                          → confirms the watcher came up
+3. mcp__tmux__send-keys({ slot: 3, keys: "tail -f logs/app.log", enter: true })
 ```
 
 ### Archetype B: Data Pipeline Monitor
-
-3 panes, even-horizontal layout.
 
 ```
 ┌──────────────┬──────────────┬──────────────┐
@@ -117,21 +114,13 @@ Construction:
 └──────────────┴──────────────┴──────────────┘
 ```
 
-Construction:
-
 ```
-1. Bash: PANE=$(echo "$TMUX_PANE")
-2. mcp__tmux__split-pane({ paneId: PANE, direction: "horizontal" })  → mid
-3. mcp__tmux__split-pane({ paneId: mid, direction: "horizontal" })   → right
-4. mcp__tmux__send-keys for each pane: ingestion / transform / DB monitor commands
-5. Bash: tmux select-layout -t {window} even-horizontal
-6. Bash: tmux set-option pane-border-status top
-7. Bash: tmux select-pane -t {PANE} -T "Ingestion", mid="Transform", right="DB Monitor"
+1. mcp__tmux__send-keys({ slot: 1, keys: "<ingestion command>", enter: true })
+2. mcp__tmux__send-keys({ slot: 2, keys: "<transform command>", enter: true })
+3. mcp__tmux__send-keys({ slot: 3, keys: "<db monitor command>", enter: true })
 ```
 
 ### Archetype C: DevOps Pod Dashboard
-
-4 panes, tiled layout.
 
 ```
 ┌────────────────┬────────────────┐
@@ -141,77 +130,71 @@ Construction:
 └────────────────┴────────────────┘
 ```
 
-Construction:
-
 ```
-// NOTE: fill each pane BEFORE the next split from the same source, so the
-// just-created idle shell pane is not silently reused (see §2 CRITICAL note).
-1. Bash: PANE=$(echo "$TMUX_PANE")
-2. mcp__tmux__split-pane({ paneId: PANE, direction: "horizontal" })       → top-right
-3. mcp__tmux__send-keys({ paneId: top-right, keys: "kubectl logs -f {pod}\n", literal: false })  // fill before next split
-4. mcp__tmux__split-pane({ paneId: PANE, direction: "vertical" })         → bottom-left (PANE still a shell, but top-right is now busy)
-5. mcp__tmux__send-keys({ paneId: bottom-left, keys: "watch -n2 kubectl top pods\n", literal: false })
-6. mcp__tmux__split-pane({ paneId: top-right, direction: "vertical" })    → bottom-right (top-right is busy → guaranteed new pane)
-7. mcp__tmux__send-keys({ paneId: bottom-right, keys: "tail -f deploy.log\n", literal: false })
-8. mcp__tmux__send-keys({ paneId: PANE, keys: "k9s\n", literal: false })
-9. Bash: tmux select-layout -t {window} tiled
-10. Bash: tmux set-option pane-border-status top
-11. Bash: tmux select-pane labels: "k9s Pods", "Pod Logs", "Metrics", "Deploy"
-// Check `reused` in each split response; if true unexpectedly, a pane was recycled — adjust order.
+1. mcp__tmux__send-keys({ slot: 1, keys: "k9s", enter: true })
+2. mcp__tmux__send-keys({ slot: 2, keys: "kubectl logs -f {pod}", enter: true })
+3. mcp__tmux__send-keys({ slot: 3, keys: "watch -n2 kubectl top pods", enter: true })
+4. mcp__tmux__send-keys({ slot: 4, keys: "tail -f deploy.log", enter: true })
 ```
 
 ### Archetype D: TDD Red-Green Loop
 
-3 panes, main-horizontal layout.
-
 ```
 ┌────────────────────────────────────┐
-│    editor / code (Bash)            │
+│    editor / code                   │
 ├──────────────────────┬─────────────┤
 │   test watcher       │  coverage   │
 └──────────────────────┴─────────────┘
 ```
 
-Construction:
-
 ```
-1. Bash: PANE=$(echo "$TMUX_PANE")
-2. mcp__tmux__split-pane({ paneId: PANE, direction: "vertical", size: "30%" })    → watcher
-3. mcp__tmux__split-pane({ paneId: watcher, direction: "horizontal", size: "40%" }) → coverage
-4. mcp__tmux__start-and-watch({
-     paneId: watcher,
+1. mcp__tmux__start-and-watch({
+     slot: 1,
      command: "bun test --watch",
      pattern: "press a to rerun|Waiting for file changes|Waiting\\.\\.\\.",
+     triggers: "exit,error",
      timeout: 30
-   }) → WatchResult (confirms watcher is up)
-5. mcp__tmux__send-keys({ paneId: coverage, keys: "bun test --coverage\n", literal: false })
-6. Bash: tmux select-layout -t {window} main-horizontal
-7. Bash: tmux set-option pane-border-status top
-8. Bash: tmux select-pane labels: "Editor", "Test Watcher", "Coverage"
-9. Focus returns to PANE (editor position)
+   })
+2. mcp__tmux__send-keys({ slot: 2, keys: "bun test --coverage", enter: true })
 ```
+
+### Optional: layout presets
+
+tmux-mcp does not expose `select-layout` or `pane-border-status`, so these are Bash. They are
+cosmetic — the dashboard works without them, and you should skip them if the user has a custom
+tmux theme.
+
+```bash
+tmux select-layout main-vertical      # or even-horizontal, tiled, main-horizontal
+tmux set-option pane-border-status top
+```
+
+Check `tmux show-options -g pane-border-status` first; if it is already set, leave it alone.
 
 ### Dashboard Read Mode
 
-For a point-in-time status snapshot, `capture-pane` is correct:
+For a point-in-time snapshot:
 
 ```
-mcp__tmux__capture-pane({ paneId: server_pane, lines: 50 })  → parse server status
-mcp__tmux__capture-pane({ paneId: test_pane, lines: 50 })    → parse test results
-mcp__tmux__capture-pane({ paneId: log_pane, lines: 50 })     → scan for errors
-→ Synthesize: "Server: running :3000. Tests: 47 passed. Logs: no errors."
+mcp__tmux__capture-pane({ slot: 1, lines: 50 })   → parse server status
+mcp__tmux__capture-pane({ slot: 2, lines: 50 })   → parse test results
+mcp__tmux__capture-pane({ slot: 3, lines: 50 })   → scan for errors
+→ "Server: running :3000. Tests: 47 passed. Logs: no errors."
 ```
 
-For event-driven monitoring (wait until anything interesting happens):
+For event-driven monitoring, block until something interesting happens:
 
 ```
-// Monitor the most active pane for errors or process exit
-mcp__tmux__watch-pane({
-  paneId: server_pane,
-  triggers: "error,exit,idle:30",
-  timeout: 120
-}) → WatchResult  // fires on error, process exit, or 30s of no activity
+mcp__tmux__watch-pane({ slot: 1, triggers: "error,exit,idle:30", timeout: 120 })
 ```
+
+### Tearing a dashboard down
+
+```
+mcp__tmux__close-pane({ slot: "all" })
+```
+
+Kills the panes the server created and merely interrupts any it adopted from the user.
 
 ---
 
@@ -222,9 +205,9 @@ Two sub-patterns: `watch` for polling status monitors, `entr` for file-change-tr
 ### watch Setup / Read / Teardown
 
 ```
-SETUP:    mcp__tmux__split-pane → send 'watch -n2 kubectl get pods\n' (literal: false) → label "claude-monitor"
-READ:     mcp__tmux__capture-pane (non-disruptive — watch keeps running)
-TEARDOWN: mcp__tmux__send-keys({ keys: "C-c", literal: false }) → mcp__tmux__kill-pane
+SETUP:    mcp__tmux__send-keys({ slot: 2, keys: "watch -n2 kubectl get pods", enter: true })
+READ:     mcp__tmux__capture-pane({ slot: 2 })   (non-disruptive — watch keeps running)
+TEARDOWN: mcp__tmux__close-pane({ slot: 2 })     (interrupts, then releases or kills)
 ```
 
 ### Common watch Patterns

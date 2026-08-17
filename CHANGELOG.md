@@ -56,6 +56,37 @@ holds 0.1.1, so it considers itself current and the fix sits in git.
 
 ---
 
+## [terminal 4.2.0] - 2026-08-15
+
+### Changed
+
+- Agents no longer manage panes. `tmux-mcp` v1.7.1 reads the pane it was launched in and keeps a numbered helper pane per window, so "run this beside me" is one call with no pane argument: `send-keys({keys, enter:true})`. Eleven tools accept an optional `slot` (1–64) or explicit `paneId`, defaulting to slot 1.
+- Rewrote the pane-management rules in `terminal-interaction` — §1b, §1c, §3, §4 and Example F. Removes all nine raw-`tmux` prescriptions, the `claude-helper` label convention, the split-ordering diagrams and the layout-preset block. 711 lines to 651.
+- Rebuilt the four `workspace-setup` dashboard archetypes on slots. Each slot is a distinct pane by construction, so the "fill each pane before the next split or reuse collapses your grid" choreography is gone — Archetype C drops from 11 ordered steps to 4 independent calls.
+- Converted `tdd-workflow` and the `tui-navigator` agent to slots; teardown now uses `close-pane`, which kills panes the server created and only interrupts panes it adopted from the user.
+- Plugin description now states what the safety property actually is: helper panes are placed and owned by the server, so an agent never targets the user's own session.
+- Applied `dev` v4.0.0's "group skills by how they are reached" principle: `workspace-setup` is hidden (`disable-model-invocation`) and reached by a read-row in `terminal-interaction` and the `tui-navigator` agent. Terminal's listing cost drops 751 → 567 chars. `tdd-workflow` stays listed — it is a discipline — and the two skills `tui-navigator` preloads stay listed, since hiding a preloaded skill silently starves its consumer.
+
+### Fixed
+
+- `workspace-setup`'s session sequence called `mcp__tmux__create-window` three times — a tool not reachable at the `-scope agentic` this plugin ships, so that workflow could not run. Window creation now routes to the startup script the skill already generated.
+- `§3` claimed `start-and-watch` and `watch-pane` return `-32601: requires task augmentation` on Claude Code. Both were verified working; they are synchronous blocking calls, and §1's decision table named them as the primary tool for three of its eight rows.
+- `§4`'s tool table was titled "20 Tools", listed 22, and the shipped scope exposed 19 — documenting four tools unreachable at that scope while omitting `screenshot-pane`. Regenerated from a live `tools/list` probe; now 20, verified against published v1.7.1.
+- `commands/tui.md` and `commands/session.md` granted `resize-pane` and `rename-session` in `allowed-tools`; neither is reachable at this scope.
+- The occupancy rule listed `split-pane` among its guarded verbs, so an agent obeying it had to refuse "split this window" — the source pane's foreground is `claude` — while Example F performed that split anyway.
+
+### Why
+
+Documentation drift had made the skill unfollowable: its own rules required two capabilities the server did not expose (pane self-location, pane labeling), so an agent following them correctly could not stay on MCP tools and fell back to raw `tmux`. Moving pane management into the server removes the need rather than documenting around it. Design note: `docs/plans/2026-08-13-tmux-mcp-intent-level-panes.md`.
+
+### Migration notes
+
+- Requires `tmux-mcp` v1.7.1; the pin in `plugin.json` is updated and the binary upgrades with the plugin.
+- Explicit `paneId` keeps working on every tool and answers exactly as before, so nothing existing breaks.
+- A helper pane may be one the user left idle rather than a fresh split. It inherits their environment, and unsubmitted input in that pane concatenates with the first command sent. No slot number avoids this; `headless: true` is the only clean-context guarantee.
+
+---
+
 ## [Marketplace 9.0.2] - 2026-08-15
 
 ### Changed

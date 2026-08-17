@@ -13,7 +13,7 @@
  */
 
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { basename, join } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 
 const MAX_DESC = 250; // this repo's ceiling, enforced in CI by scripts/skill-budget-check.ts
 const PORTABLE_DESC = 1024; // Agent Skills open standard
@@ -87,6 +87,32 @@ else {
   if (name !== basename(dir)) warnings.push(`name "${name}" does not match its folder "${basename(dir)}"`);
 }
 
+// ---- where does this skill live? --------------------------------------------
+//
+// Find the plugin root by walking up to the directory holding plugin.json, rather than
+// assuming a fixed depth. Skills live at BOTH depths in this repo — grouped
+// (dev/skills/backend/api-design/) and flat (terminal/skills/workspace-setup/).
+//
+// A null result means the skill is NOT inside a plugin — the three under the repo root
+// `skills/`. Claude Code does not discover those (it loads plugin skills, ~/.claude/skills
+// and a project's .claude/skills), so they never enter a listing and pay no budget. Every
+// rule below that exists to control listing cost is therefore advisory for them.
+function pluginRoot(from: string): string | null {
+  let cur = resolve(from);
+  for (let i = 0; i < 6; i++) {
+    if (existsSync(join(cur, "plugin.json"))) return cur;
+    const up = dirname(cur);
+    if (up === cur) break;
+    cur = up;
+  }
+  return null;
+}
+
+const root = pluginRoot(dir);
+const paysBudget = root !== null;
+const budgetRule = (msg: string) =>
+  paysBudget ? errors.push(msg) : warnings.push(`${msg} — advisory: outside a plugin, so it pays no listing budget`);
+
 // ---- description -----------------------------------------------------------
 const desc = fields.description?.replace(/^["']|["']$/g, "").replace(/^[|>][-+]?\s*/, "").trim();
 const hidden = fields["disable-model-invocation"] === "true";
@@ -94,11 +120,16 @@ const hidden = fields["disable-model-invocation"] === "true";
 if (!desc) {
   errors.push("no description — the skill can never be model-invoked");
 } else {
-  if (desc.length > PORTABLE_DESC) errors.push(`description ${desc.length} chars, over the portable ${PORTABLE_DESC} limit`);
-  else if (desc.length > MAX_DESC) errors.push(`description ${desc.length} chars, over this repo's ${MAX_DESC} ceiling`);
+  if (desc.length > PORTABLE_DESC) budgetRule(`description ${desc.length} chars, over the portable ${PORTABLE_DESC} limit`);
+  else if (desc.length > MAX_DESC) budgetRule(`description ${desc.length} chars, over this repo's ${MAX_DESC} ceiling`);
 
   if (/[<>]/.test(desc)) errors.push("description contains < or > — fails validation");
-  if (/\b(I |I'll|you can use|we )/i.test(desc)) errors.push("description is not third person");
+
+  // Test person on the skill's OWN wording, with quoted spans removed. A description that
+  // lists the phrases a skill listens for — `Detects "I need to", "we should" …` — is
+  // third person about first-person input, and matching inside the quotes flags it wrongly.
+  const unquoted = desc.replace(/"[^"]*"|'[^']*'|`[^`]*`/g, " ");
+  if (/\b(I |I'll|you can use|we )/i.test(unquoted)) errors.push("description is not third person");
   for (const p of VAGUE) if (p.test(desc)) warnings.push(`description opens vaguely: "${desc.slice(0, 40)}…"`);
   if (/^use when/i.test(desc)) warnings.push("description leads with the trigger — lead with the capability, it survives truncation");
   if (/\b(step 1|first,|then,)\b/i.test(desc)) warnings.push("description looks like workflow steps — those get followed instead of the body");
@@ -107,17 +138,36 @@ if (!desc) {
 }
 
 // A hidden skill still pays nothing, but a listed one that nothing routes to is a trap.
+//
+// The previous version resolved agents/ and commands/ at a hardcoded three levels up.
+// That is right for a grouped skill and wrong for a flat one, where it lands on plugins/ —
+// a directory with no agents/ or commands/ at all — so the reference list came back empty
+// and every hidden flat skill reported unreachable no matter what pointed at it.
 if (hidden && fields["user-invocable"] === "false") {
-  const refs = ["agents", "commands"].flatMap((sub) => {
-    const p = join(dir, "..", "..", "..", sub);
-    if (!existsSync(p)) return [];
-    try {
-      return readdirSync(p).filter((f) => f.endsWith(".md")).map((f) => readFileSync(join(p, f), "utf8"));
-    } catch {
-      return [];
-    }
-  });
-  if (name && !refs.some((t) => t.includes(name))) {
+  // Sibling skills route to hidden skills too — the entry-point skill naming a file to
+  // read is a legitimate route, not just agents and commands.
+  const refs = root
+    ? ["agents", "commands", "skills"].flatMap((sub) => {
+        const p = join(root, sub);
+        if (!existsSync(p)) return [];
+        try {
+          return readdirSync(p, { recursive: true, encoding: "utf8" })
+            .filter((f) => f.endsWith(".md") && !f.includes(`${name}/`))
+            .map((f) => {
+              try {
+                return readFileSync(join(p, f), "utf8");
+              } catch {
+                return "";
+              }
+            });
+        } catch {
+          return [];
+        }
+      })
+    : [];
+  if (!root) {
+    warnings.push("could not locate the plugin root — reachability not checked");
+  } else if (name && !refs.some((t) => t.includes(name))) {
     errors.push(`hidden AND user-invocable:false AND nothing references "${name}" — unreachable`);
   }
 }
