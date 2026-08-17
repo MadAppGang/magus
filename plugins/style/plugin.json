@@ -1,7 +1,7 @@
 {
   "name": "style",
-  "version": "1.0.0",
-  "description": "Communication style presets for a project. Ships composable rule blocks governing tone, terminology, phrasing, and how information is presented, then writes the chosen combination into CLAUDE.md as one managed section that can be re-applied without duplicating.",
+  "version": "2.0.0",
+  "description": "Communication style presets for a project. Ships composable rule blocks governing tone, terminology, phrasing, and how information is presented, then composes the chosen combination into one native Claude Code output style and activates it.",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",

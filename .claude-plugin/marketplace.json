@@ -7,7 +7,7 @@
   },
   "metadata": {
     "description": "Curated collection of Claude Code plugins for modern full-stack development with LLM performance tracking and E2E skill testing",
-    "version": "9.0.3",
+    "version": "9.1.0",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -491,8 +491,8 @@
     {
       "name": "style",
       "source": "./plugins/style",
-      "description": "Communication style presets for a project. Ships composable rule blocks governing tone, terminology, phrasing, and how information is presented, then writes the chosen combination into CLAUDE.md as one managed section that can be re-applied without duplicating.",
-      "version": "1.0.0",
+      "description": "Communication style presets for a project. Ships composable rule blocks governing tone, terminology, phrasing, and how information is presented, then composes the chosen combination into one native Claude Code output style and activates it.",
+      "version": "2.0.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -512,6 +512,16 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "2.0.0",
+          "date": "2026-08-16",
+          "kinds": [
+            "Changed",
+            "Added",
+            "Fixed"
+          ],
+          "summary": "Presets now compose into a native Claude Code output style instead of a CLAUDE.md block"
+        },
         {
           "version": "1.0.0",
           "date": "2026-08-06",
@@ -680,8 +690,8 @@
     {
       "name": "terminal",
       "source": "./plugins/terminal",
-      "description": "Intent-level terminal control over tmux. Runs interactive commands, dev servers, test watchers, REPLs and TUI apps in a helper pane that the server places and owns, so an agent never targets the user's own session.",
-      "version": "4.2.0",
+      "description": "Intent-level terminal control over tmux. Runs interactive commands, dev servers, test watchers, REPLs and TUI apps, and refuses to send keys into a pane that already has a process in the foreground.",
+      "version": "4.1.6",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -700,15 +710,6 @@
       ],
       "strict": true,
       "releases": [
-        {
-          "version": "4.2.0",
-          "date": "2026-08-15",
-          "kinds": [
-            "Changed",
-            "Fixed"
-          ],
-          "summary": "Agents no longer manage panes. tmux-mcp v1.7.1 reads the pane it was launched in and keeps a\u2026"
-        },
         {
           "version": "4.1.4",
           "date": "2026-07-30",

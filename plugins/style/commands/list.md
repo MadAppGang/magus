@@ -1,6 +1,6 @@
 ---
 name: list
-description: Show the available communication style presets, their axis, and which are currently applied
+description: Show the available communication style presets, importable output styles, and what is currently composed
 allowed-tools: Read, Bash, Glob
 skills:
   - style:style-presets
@@ -12,52 +12,33 @@ skills:
 </role>
 
 <instructions>
-  <step number="1" name="Read the presets">
+  <step number="1" name="Print the catalogue">
     ```bash
-    ls ${CLAUDE_PLUGIN_ROOT}/styles/*.md
+    bun ${CLAUDE_PLUGIN_ROOT}/scripts/compose-style.ts --list
     ```
-    Read each file's frontmatter: `name`, `axis`, `summary`, `conflicts`,
-    and `template` if present.
+
+    Add `--global` to inspect the user scope instead of the project. The
+    script groups by axis so the pick-exactly-one rule is visible, marks what
+    is currently applied, and lists importable styles found in
+    `~/.claude/output-styles` and `.claude/output-styles`.
+
+    Relay its output. Do not re-derive the list by globbing yourself — the
+    script is the one that knows how selection is enforced.
   </step>
 
-  <step number="2" name="Read what is applied">
-    Read CLAUDE.md in the project root. Look for the managed block:
+  <step number="2" name="Report what is active">
+    Read the `outputStyle` key from the target settings file
+    (`.claude/settings.json`, or `~/.claude/settings.json` with `--global`).
 
-    ```
-    <!-- style:begin -->
-    ...
-    <!-- style:end -->
-    ```
+    - If it names the generated style, the composed set shown above is live.
+    - If it names something else, say so: the composed file exists but is not
+      active, and `/style:apply` will activate it.
+    - If it is unset, no output style is active and Claude Code is running its
+      default system prompt.
 
-    The line immediately after `<!-- style:begin -->` records the applied set:
-    `<!-- presets: direct, no-slop, evidence-first -->`. If there is no managed
-    block, nothing is applied.
-
-    Also check for style rules written *outside* the managed block — a project
-    that already has hand-written voice rules should be told, because
-    `/style:apply` will not touch them and they may contradict a preset.
-  </step>
-
-  <step number="3" name="Report">
-    Print one table. Mark applied presets, and group by axis so the
-    pick-exactly-one rule is visible:
-
-    ```
-    VERBOSITY — pick exactly one
-      [x] direct        Answer first, no preamble or postamble.
-      [ ] explanatory   Teach the reasoning alongside the work.
-      [ ] terse         Minimum viable words.
-
-    MODIFIERS — combine freely
-      [x] no-slop       Banned vocabulary and punctuation tics.
-      [ ] evidence-first ...
-    ```
-
-    Then state, in one line, where the applied block lives and how many lines
-    of CLAUDE.md it occupies. CLAUDE.md is loaded on every turn, so its size is
-    a running cost the user should be able to see.
-
-    If any style rules exist outside the managed block, list them and say they
-    are unmanaged.
+    Also check for a legacy `<!-- style:begin -->` block in CLAUDE.md. If one
+    is there, those rules are applied *in addition to* the output style and
+    are probably duplicated — name it and point at `/style:apply`, which
+    offers to remove it.
   </step>
 </instructions>

@@ -3,11 +3,11 @@
 
 # style
 
-Communication style presets for a project. Ships composable rule blocks governing tone, terminology, phrasing, and how information is presented, then writes the chosen combination into CLAUDE.md as one managed section that can be re-applied without duplicating.
+Communication style presets for a project. Ships composable rule blocks governing tone, terminology, phrasing, and how information is presented, then composes the chosen combination into one native Claude Code output style and activates it.
 
 | | |
 |---|---|
-| Version | `1.0.0` |
+| Version | `2.0.0` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 2 |
 | Subagents | 0 |
@@ -34,14 +34,14 @@ Prefer to do it by hand? [Installing Magus](../../guides/install.md) has the man
 
 | Command | What it does |
 |---|---|
-| `/style:apply` | Choose communication style presets and write them into CLAUDE.md as one managed, re-appliable section |
-| `/style:list` | Show the available communication style presets, their axis, and which are currently applied |
+| `/style:apply` | Compose communication style presets, plus any output styles already on the machine, into one native Claude Code output style |
+| `/style:list` | Show the available communication style presets, importable output styles, and what is currently composed |
 
 ## Skills
 
 | Skill | What it covers |
 |---|---|
-| `style:style-presets` | Reference for the communication style presets — the axis model, what each preset governs, how the managed CLAUDE.md block works, and how to add a preset. |
+| `style:style-presets` | Reference for the communication style presets — the axis model, what each preset governs, how composition into a native output style works, and how to add a preset. |
 
 ## Source
 

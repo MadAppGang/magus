@@ -32,8 +32,8 @@ Plugin IDs carry the marketplace, so these are `name@magus`.
 | [`mnemex`](./mnemex.md) | 1.0.0 | MCP runtime for semantic code search and AST analysis, ranking symbols by PageRank. Required by code-analysis and dev. |
 | [`multimodel`](./multimodel.md) | 3.4.1 | Multi-model collaboration and orchestration. Runs a task across several AI models in parallel and aggregates their blind APPROVE/REJECT votes, or delegates it to one model running a full Claude Code session. |
 | [`setup`](./setup.md) | 1.0.0 | Project setup jobs in one plugin. Investigates a repository and provisions it — plugins, tools, framework best-practice references, and a seeded knowledge base — then installs the adaptive statusline and indexes every skill reachable from the project into browsable markdown. |
-| [`style`](./style.md) | 1.0.0 | Communication style presets for a project. Ships composable rule blocks governing tone, terminology, phrasing, and how information is presented, then writes the chosen combination into CLAUDE.md as one managed section that can be re-applied without duplicating. |
-| [`terminal`](./terminal.md) | 4.2.0 | Intent-level terminal control over tmux. Runs interactive commands, dev servers, test watchers, REPLs and TUI apps in a helper pane that the server places and owns, so an agent never targets the user's own session. |
+| [`style`](./style.md) | 2.0.0 | Communication style presets for a project. Ships composable rule blocks governing tone, terminology, phrasing, and how information is presented, then composes the chosen combination into one native Claude Code output style and activates it. |
+| [`terminal`](./terminal.md) | 4.1.6 | Intent-level terminal control over tmux. Runs interactive commands, dev servers, test watchers, REPLs and TUI apps, and refuses to send keys into a pane that already has a process in the foreground. |
 
 Turn any of them on from the Plugins tab. To give a team the same set, press `s` to save
 your selection as a profile and commit it — see [Teams and profiles](../../guides/teams.md).

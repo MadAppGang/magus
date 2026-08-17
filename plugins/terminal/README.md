@@ -165,7 +165,7 @@ Supported applications:
 
 ## Backend: tmux-mcp
 
-All terminal operations run through `tmux-mcp` (a Go binary from [github.com/MadAppGang/tmux-mcp](https://github.com/MadAppGang/tmux-mcp)). It creates isolated agentic tmux sessions for fresh tasks, and for work beside you it reads the pane it was launched in and manages a helper pane there itself — Claude never names or locates a pane.
+All terminal operations run through `tmux-mcp` (a Go binary from [github.com/MadAppGang/tmux-mcp](https://github.com/MadAppGang/tmux-mcp)). It creates isolated agentic tmux sessions for fresh tasks and attaches to the developer's live tmux session when `$TMUX_PANE` is set.
 
 | Scenario | How tmux-mcp handles it |
 |----------|-------------------------|
@@ -259,9 +259,7 @@ If `tmux` is not listed, re-install the `tmux-mcp` binary (see [github.com/MadAp
 
 ### Pane splits appear in the wrong window
 
-The tmux-mcp server places helper panes in the pane it was launched in, which it reads at startup — so it cannot race with you switching windows. If a split appeared somewhere unexpected, the shell running Claude Code is probably not inside tmux. Verify with `echo $TMUX_PANE` — if it is empty, you are not in a tmux pane and Claude will use an isolated headless session instead.
-
-Note that a helper pane may be one you left open and idle rather than a fresh split. Claude will not kill such a pane when it finishes — it interrupts the command and leaves the pane where it found it.
+Claude uses `$TMUX_PANE` to detect the current pane, which is always correct — it's set by tmux at shell creation and never changes. If a split appeared in an unexpected window, the shell running Claude Code may not be inside tmux. Verify with `echo $TMUX_PANE` — if empty, you are not in a tmux pane and Claude will create a new agentic-scope tmux session instead.
 
 ### Database queries return partial results
 

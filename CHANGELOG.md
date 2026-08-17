@@ -4,6 +4,103 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Marketplace 9.1.0] - 2026-08-18
+
+### Changed
+
+- Catalogue bump carrying **`style` v2.0.0**, which composes communication presets into a
+  native Claude Code output style instead of a managed `CLAUDE.md` block, and ships
+  `capture-builtin.ts` for pulling the built-in styles out of the harness so they compose
+  too.
+
+### Why
+
+- The marketplace version is the only signal claudeup has that a catalogue changed. A plugin
+  bump alone does not move an installed copy — shipping `style` 2.0.0 under 9.0.3 would have
+  been invisible to every installation, which is the same-version content drift 9.0.3 itself
+  was published to correct.
+
+---
+
+## [style 2.0.0] - 2026-08-16
+
+### Changed
+
+- **Presets now compose into a native Claude Code output style instead of a CLAUDE.md
+  block.** `/style:apply` writes `.claude/output-styles/composed.md` and sets
+  `"outputStyle"` in `.claude/settings.json`. An output style is wired into the *identity*
+  sentence of the system prompt — "helps users according to your Output Style below" rather
+  than "with software engineering tasks" — so the rules carry the weight of what the model
+  is, not of project context it was handed.
+- All file work moved to `scripts/compose-style.ts`, covered by 25 tests. The command used
+  to instruct the model through seven steps of marker-splicing and `grep -c` verification;
+  every one of those steps was deterministic and belongs in code.
+- `/style:list` reads the same script rather than globbing on its own, so what it prints and
+  what `/style:apply` enforces cannot drift.
+
+### Added
+
+- **`scripts/capture-builtin.ts` — built-in output styles become importable files.**
+  `Explanatory`, `Learning` and `Proactive` ship inside the Claude Code binary, so there was
+  nothing for `compose-style.ts` to read and no way to run one alongside project rules. The
+  script puts a transparent proxy in front of the Anthropic API, runs one `claude -p` round
+  trip with the style active, and records the system prompt Claude Code actually sent to
+  `~/.claude/output-styles/builtin-<name>.md`. `--discover` lists what Anthropic ships today,
+  `--all` captures every one, `--check` exits non-zero when a capture is stale or a built-in
+  was never captured. Captures stay on the user's machine and are never committed here: the
+  text is Anthropic's, and it changes on their release schedule rather than ours. Method and
+  failure modes: `ai-docs/claude-code-builtin-output-style-extraction.md`.
+- **Output styles already on the machine are composable.** `~/.claude/output-styles/*.md`
+  and `.claude/output-styles/*.md` are discovered and offered alongside the presets, so a
+  hand-written voice file and these presets end up in one file instead of competing for the
+  single active slot. Imports are ordered before presets: an imported style is a whole
+  personality, a preset is a specific rule, and specific-after-broad means the rule refines
+  rather than gets buried.
+- `keep-coding-instructions: true` on every generated style. Omitting it makes Claude Code
+  drop its own coding-discipline block from the system prompt — no premature abstraction, no
+  error handling for impossible cases, verify UI changes in a browser. A plugin about how to
+  communicate must not switch off how code gets written.
+- The `terminology` template preset is materialised to `.claude/output-styles/terminology.md`
+  and imported, rather than copied verbatim. A template body is worthless until filled from
+  the codebase; the script now refuses it as a preset instead of shipping an empty table.
+
+### Fixed
+
+- The generated `description` is quoted. It contains `": "`, which unquoted parses as a
+  nested YAML mapping and breaks the frontmatter.
+- **Provenance moved out of the body and into frontmatter.** Claude Code splits an output
+  style into `{frontmatter, content}` and only `content` becomes the prompt, so the three
+  `<!-- style:… -->` marker lines were charged on every request — including a sentence
+  addressed to a human editor sitting inside the model's own instructions. They are now
+  `style-presets:` / `style-imports:` / `generated-by:` keys, which a human still reads when
+  opening the file and the model never sees. The markers were inherited from 1.x, where they
+  delimited a region of a user-owned CLAUDE.md; nothing delimits anything now that the whole
+  file is generated.
+
+### Migration notes
+
+- 1.x wrote a `<!-- style:begin -->` block into `CLAUDE.md`. That block still applies if left
+  in place, duplicating whatever the output style now says. `/style:apply` detects it and
+  offers to remove it; it never removes it silently, because CLAUDE.md is the user's file.
+- `outputStyle` lands in `.claude/settings.json`, so it reaches teammates only if that file
+  is committed. 1.x reached them through `CLAUDE.md`, which usually already was.
+- Built-in styles (`Explanatory`, `Learning`, `Proactive`) are not imported — they ship
+  inside the Claude Code binary rather than on disk, so there is no file to read. Composing
+  replaces whichever style was active, built-ins included. The text is obtainable by other
+  means; what is rejected is keeping a *copy*, which goes stale on Anthropic's release
+  schedule rather than ours.
+
+### Why
+
+- Claude Code activates exactly one output style at a time; its resolver returns a single
+  object. Nine composable presets therefore cannot be nine output styles, or picking two
+  would be impossible. Composition has to happen before the harness sees it, which is what
+  the script does.
+- `force-for-plugin: true` would let this plugin override the user's own `/output-style`
+  choice. It is deliberately never set, and the command carries a rule saying so.
+
+---
+
 ## [Marketplace 9.0.3] - 2026-08-16
 
 ### Changed
@@ -53,37 +150,6 @@
 
 Without the version bump the corrected skill reaches nobody: the installed cache already
 holds 0.1.1, so it considers itself current and the fix sits in git.
-
----
-
-## [terminal 4.2.0] - 2026-08-15
-
-### Changed
-
-- Agents no longer manage panes. `tmux-mcp` v1.7.1 reads the pane it was launched in and keeps a numbered helper pane per window, so "run this beside me" is one call with no pane argument: `send-keys({keys, enter:true})`. Eleven tools accept an optional `slot` (1–64) or explicit `paneId`, defaulting to slot 1.
-- Rewrote the pane-management rules in `terminal-interaction` — §1b, §1c, §3, §4 and Example F. Removes all nine raw-`tmux` prescriptions, the `claude-helper` label convention, the split-ordering diagrams and the layout-preset block. 711 lines to 651.
-- Rebuilt the four `workspace-setup` dashboard archetypes on slots. Each slot is a distinct pane by construction, so the "fill each pane before the next split or reuse collapses your grid" choreography is gone — Archetype C drops from 11 ordered steps to 4 independent calls.
-- Converted `tdd-workflow` and the `tui-navigator` agent to slots; teardown now uses `close-pane`, which kills panes the server created and only interrupts panes it adopted from the user.
-- Plugin description now states what the safety property actually is: helper panes are placed and owned by the server, so an agent never targets the user's own session.
-- Applied `dev` v4.0.0's "group skills by how they are reached" principle: `workspace-setup` is hidden (`disable-model-invocation`) and reached by a read-row in `terminal-interaction` and the `tui-navigator` agent. Terminal's listing cost drops 751 → 567 chars. `tdd-workflow` stays listed — it is a discipline — and the two skills `tui-navigator` preloads stay listed, since hiding a preloaded skill silently starves its consumer.
-
-### Fixed
-
-- `workspace-setup`'s session sequence called `mcp__tmux__create-window` three times — a tool not reachable at the `-scope agentic` this plugin ships, so that workflow could not run. Window creation now routes to the startup script the skill already generated.
-- `§3` claimed `start-and-watch` and `watch-pane` return `-32601: requires task augmentation` on Claude Code. Both were verified working; they are synchronous blocking calls, and §1's decision table named them as the primary tool for three of its eight rows.
-- `§4`'s tool table was titled "20 Tools", listed 22, and the shipped scope exposed 19 — documenting four tools unreachable at that scope while omitting `screenshot-pane`. Regenerated from a live `tools/list` probe; now 20, verified against published v1.7.1.
-- `commands/tui.md` and `commands/session.md` granted `resize-pane` and `rename-session` in `allowed-tools`; neither is reachable at this scope.
-- The occupancy rule listed `split-pane` among its guarded verbs, so an agent obeying it had to refuse "split this window" — the source pane's foreground is `claude` — while Example F performed that split anyway.
-
-### Why
-
-Documentation drift had made the skill unfollowable: its own rules required two capabilities the server did not expose (pane self-location, pane labeling), so an agent following them correctly could not stay on MCP tools and fell back to raw `tmux`. Moving pane management into the server removes the need rather than documenting around it. Design note: `docs/plans/2026-08-13-tmux-mcp-intent-level-panes.md`.
-
-### Migration notes
-
-- Requires `tmux-mcp` v1.7.1; the pin in `plugin.json` is updated and the binary upgrades with the plugin.
-- Explicit `paneId` keeps working on every tool and answers exactly as before, so nothing existing breaks.
-- A helper pane may be one the user left idle rather than a fresh split. It inherits their environment, and unsubmitted input in that pane concatenates with the first command sent. No slot number avoids this; `headless: true` is the only clean-context guarantee.
 
 ---
 

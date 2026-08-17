@@ -1,11 +1,12 @@
 # Style
 
 Communication style presets for a project. Composable rule blocks governing tone,
-terminology, phrasing, and how information is presented, written into `CLAUDE.md` as one
-managed section that can be re-applied without duplicating itself.
+terminology, phrasing, and how information is presented, composed into **one native Claude
+Code output style** and activated for you.
 
-The managed-block part is the design: applying a different combination rewrites the same
-block rather than appending a second set of contradictory instructions.
+Claude Code runs exactly one output style at a time. That is the reason this plugin
+composes rather than shipping nine separate styles: with nine, picking two would be
+impossible.
 
 ## Install
 
@@ -21,8 +22,8 @@ block rather than appending a second set of contradictory instructions.
 
 | Command | What it does |
 |---|---|
-| `/style:list` | Show the available presets and what each one changes |
-| `/style:apply [preset,preset,...]` | Write the chosen combination into `CLAUDE.md`. `--global` for user scope, `--dry-run` to preview |
+| `/style:list` | Show the presets, importable output styles, and what is currently composed |
+| `/style:apply [preset,preset,...]` | Compose and activate. `--global` for user scope, `--dry-run` to preview |
 
 ```
 /style:list
@@ -32,7 +33,7 @@ block rather than appending a second set of contradictory instructions.
 
 ## Presets
 
-One **verbosity axis** — pick at most one of `direct`, `explanatory`, or `terse` — plus any
+One **verbosity axis** — pick exactly one of `direct`, `explanatory`, or `terse` — plus any
 number of free modifiers:
 
 | Preset | Effect |
@@ -45,13 +46,65 @@ number of free modifiers:
 | `calibrated` | State confidence honestly; no false certainty |
 | `plain-language` | Prefer plain words over jargon |
 | `structured` | Headings, tables, and lists over long paragraphs |
-| `terminology` | Enforce project-specific vocabulary |
+| `terminology` | Enforce project-specific vocabulary, filled in from your codebase |
 
 Combining two verbosity presets is the one thing that does not compose. Everything else
 stacks.
 
-## The managed block
+## What gets written
 
-`/style:apply` writes between `<!-- style:begin -->` and `<!-- style:end -->` markers in
-`CLAUDE.md`. Edit outside those markers freely; anything inside is rewritten on the next
-apply. Use `--dry-run` if you want to see the block before it lands.
+```
+.claude/output-styles/composed.md    the composed rules (generated — do not hand-edit)
+.claude/settings.json                "outputStyle": "composed"
+```
+
+`--global` writes to `~/.claude/` instead. Re-running rewrites the same file; it never
+accumulates.
+
+`outputStyle` lands in `.claude/settings.json`, so it reaches teammates only if you commit
+that file.
+
+## Importing styles you already have
+
+Output styles you wrote yourself are composable too. `/style:apply` finds them in
+`~/.claude/output-styles/` and `.claude/output-styles/` and offers them alongside the
+presets, so your own voice rules and these presets end up in one file instead of competing
+for the single active slot.
+
+Built-in styles (`Explanatory`, `Learning`, `Proactive`) ship inside the Claude Code binary
+rather than on disk, so there is no file to import until you capture one:
+
+```bash
+bun scripts/capture-builtin.ts --discover   # what Anthropic ships today
+bun scripts/capture-builtin.ts --all        # capture every built-in
+bun scripts/capture-builtin.ts --check      # what fell behind after an upgrade
+```
+
+Each capture runs one real `claude -p` round trip behind a transparent proxy and records the
+system prompt Claude Code actually sent, writing
+`~/.claude/output-styles/builtin-<name>.md`. From there it imports like any other style, so
+`Explanatory` and your own presets can finally be active at the same time.
+
+Captures are per machine and stamped with the Claude Code version they came from. **Re-run
+`--check` after every upgrade** — it exits non-zero when a capture is stale, and lists
+built-ins that exist but were never captured, which is how a newly introduced style gets
+noticed. Nothing is committed to this repo: the text is Anthropic's, and it changes on their
+release schedule, not ours.
+
+Composing replaces whichever style was active, built-ins included.
+
+## Coding rules stay on
+
+The generated style sets `keep-coding-instructions: true`. Without that flag Claude Code
+drops its own coding-discipline rules from the system prompt — no premature abstraction, no
+error handling for impossible cases, verify UI changes in a browser. A plugin about how to
+*communicate* has no business switching off how code gets written.
+
+This plugin also never sets `force-for-plugin`, which would override your own
+`/output-style` choice.
+
+## Upgrading from 1.x
+
+1.x wrote a `<!-- style:begin -->` block into `CLAUDE.md`. 2.0 writes an output style
+instead. If the old block is still there, its rules are applied twice — `/style:apply`
+detects it and offers to remove it.

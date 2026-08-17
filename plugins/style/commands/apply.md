@@ -1,6 +1,6 @@
 ---
 name: apply
-description: Choose communication style presets and write them into CLAUDE.md as one managed, re-appliable section
+description: Compose communication style presets, plus any output styles already on the machine, into one native Claude Code output style
 argument-hint: "[preset,preset,...] [--global] [--dry-run]"
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion
 skills:
@@ -8,168 +8,133 @@ skills:
 ---
 
 <role>
-  <identity>Style Applier</identity>
+  <identity>Style Composer</identity>
   <mission>
-    Compose a set of communication style rules and write them into CLAUDE.md
-    as a single managed block that can be re-applied any number of times
-    without ever duplicating itself.
+    Turn a chosen set of communication rules into ONE native Claude Code
+    output style, and activate it.
   </mission>
 </role>
 
 <context>
-  CLAUDE.md is loaded into context on every turn. Style rules written there
-  are a permanent running cost, which is why these presets are short and why
-  this command writes one bounded block instead of scattering rules.
+  Claude Code activates exactly one output style at a time. This plugin's
+  model is compositional — one verbosity preset plus any number of modifiers,
+  plus any output styles the user already wrote — so the composition has to
+  happen before the harness sees it.
 
-  The block is delimited so a second run replaces it rather than appending a
-  near-duplicate. Appending is the failure mode that makes a project's
-  CLAUDE.md grow to three contradictory voice sections.
+  `scripts/compose-style.ts` does all of the file work: discovery, conflict
+  enforcement, composition, writing the style, setting `outputStyle`, and
+  verifying the result by re-reading it. Your job is the part a script cannot
+  do — deciding what belongs in the set, and filling the template preset from
+  this codebase.
 </context>
 
 <constraints>
-  <rule id="one-block">
-    All applied presets live between `<!-- style:begin -->` and
-    `<!-- style:end -->`. Re-applying REPLACES everything between the markers.
-    Never append a second block, and never write style rules outside it.
+  <rule id="script-writes">
+    Never hand-write the style file or edit `settings.json` yourself. Every
+    write goes through `compose-style.ts`. It is tested; ad-hoc file surgery
+    is not.
   </rule>
-  <rule id="preserve-outside">
-    Content outside the markers is the user's. Do not reformat it, reorder it,
-    or move the block relative to it.
+  <rule id="no-force">
+    Never add `force-for-plugin` to any style file. It overrides the user's
+    own `/output-style` choice, which is the opposite of what this plugin is
+    for.
+  </rule>
+  <rule id="keep-coding">
+    Never remove `keep-coding-instructions: true` from a generated style.
+    Without it Claude Code drops its own coding-discipline rules from the
+    system prompt, and a plugin about how to *communicate* has no business
+    switching off how to write code. The script sets it; leave it alone.
   </rule>
   <rule id="one-verbosity">
-    Exactly one preset with `axis: verbosity` may be applied. `direct`,
-    `explanatory`, and `terse` contradict each other; applying two produces
-    rules that cancel out.
-  </rule>
-  <rule id="verbatim-copy">
-    Copy preset bodies verbatim from `${CLAUDE_PLUGIN_ROOT}/styles/<name>.md`
-    — everything after the closing frontmatter delimiter. Do not paraphrase,
-    summarise, or "improve" them on the way in. The exception is a preset
-    marked `template: true`, which is filled in at step 4.
+    Exactly one preset with `axis: verbosity`. `direct`, `explanatory`, and
+    `terse` contradict each other. The script rejects two; do not work around
+    it.
   </rule>
 </constraints>
 
 <instructions>
-  <step number="1" name="Load presets">
+  <step number="1" name="Discover">
     ```bash
-    ls ${CLAUDE_PLUGIN_ROOT}/styles/*.md
+    bun ${CLAUDE_PLUGIN_ROOT}/scripts/compose-style.ts --list --json
     ```
 
-    Read every file. Record `name`, `axis`, `summary`, `conflicts`, and
-    `template` from each frontmatter, and keep the body after the frontmatter
-    for step 5.
+    This returns the shipped presets (with `axis`, `summary`, `conflicts`,
+    `template`), every importable output style found in
+    `~/.claude/output-styles` and `.claude/output-styles`, and whatever is
+    currently applied. Use `applied` as the default selection.
+
+    Add `--global` to target the user scope instead of the project.
   </step>
 
-  <step number="2" name="Read the current state">
-    Read the target CLAUDE.md:
-    - default: `CLAUDE.md` in the project root
-    - `--global`: `~/.claude/CLAUDE.md`
-
-    If it does not exist, note that you will create it.
-
-    If a `<!-- style:begin -->` block exists, parse the
-    `<!-- presets: ... -->` line for the currently applied set and offer it as
-    the default selection.
-  </step>
-
-  <step number="3" name="Choose presets">
+  <step number="2" name="Choose">
     If the arguments name presets explicitly (`/style:apply direct,no-slop`),
-    use those and skip the questions. Reject an unknown name with an error
-    that lists the valid set — never near-match a typo to a real preset.
+    use those and skip the questions.
 
-    Otherwise ask two questions in one AskUserQuestion call:
+    Otherwise ask in one AskUserQuestion call:
 
     1. **Verbosity** (single select, required) — `direct`, `explanatory`,
-       `terse`. Use each preset's `summary` as the option description.
-       Recommend `direct`.
+       `terse`, using each preset's `summary` as the description. Recommend
+       `direct`.
     2. **Modifiers** (multiSelect) — every preset with `axis: modifier`.
        Recommend `no-slop` and `evidence-first`.
-
-    Enforce the one-verbosity rule here. If the arguments name two verbosity
-    presets, stop and say which conflict.
+    3. **Import existing styles** (multiSelect) — only ask this if
+       `importable` is non-empty. These are styles the user already wrote;
+       default to none selected, since importing one is a deliberate act.
   </step>
 
-  <step number="4" name="Fill templates">
-    Only for selected presets with `template: true`.
+  <step number="3" name="Materialize the template preset">
+    Only if `terminology` was chosen. It ships an empty table that is worthless
+    unless filled from the actual codebase, so the script refuses it as a
+    preset and it goes in as an import instead.
 
-    `terminology` carries an empty table that is worthless unless filled from
-    the actual codebase. Populate it:
+    Fill it:
 
-    - Grep for the same concept under different names. Real signals: a model
-      named one thing and its table named another; `user`/`account`/`member`
-      used interchangeably; `fetch`/`get`/`load` on sibling functions.
+    - Grep for one concept under different names. Real signals: a model named
+      one thing and its table named another; `user`/`account`/`member` used
+      interchangeably; `fetch`/`get`/`load` on sibling functions.
     - Read the README and any `docs/` glossary for the domain's own words.
     - Propose at most six rows. Six enforceable rules beat twenty aspirational
       ones.
 
-    Show the proposed rows and confirm before writing. If you find nothing
-    worth a row, drop the table and keep only the prose rules — do not ship an
-    empty table with a placeholder comment in it.
+    Show the rows and confirm. Then write the filled body — frontmatter plus
+    the `###` section, no `axis`/`conflicts`/`template` keys — to
+    `.claude/output-styles/terminology.md` and add `project:terminology` to
+    the import list.
+
+    If you find nothing worth a row, say so and drop it. Never ship an empty
+    table with a placeholder in it.
   </step>
 
-  <step number="5" name="Compose the block">
-    Build exactly this, verbosity preset first, then modifiers in the order
-    selected:
-
-    ```markdown
-    <!-- style:begin -->
-    <!-- presets: direct, no-slop, evidence-first -->
-    ## Communication style
-
-    Applied by `/style:apply`. Re-run it to change this section; edits between
-    the markers are overwritten.
-
-    <body of each selected preset, verbatim, separated by a blank line>
-    <!-- style:end -->
-    ```
-
-    Each preset body already opens with its own `###` heading, so they nest
-    correctly under the `##`.
-  </step>
-
-  <step number="6" name="Write">
-    If the arguments contain `--dry-run`, print the composed block and the
-    diff, write nothing, and stop.
-
-    Otherwise:
-    - **Existing block:** replace everything between the markers, inclusive.
-      Touch nothing else in the file.
-    - **No block, file exists:** append it at the end of the file, after one
-      blank line.
-    - **No file:** create it with a `# Project Context` heading, then the
-      block.
-
-    Use Edit for the replace case with the marker lines included in the match,
-    so a partial overlap cannot corrupt the file.
-  </step>
-
-  <step number="7" name="Verify and report">
-    Confirm the file has exactly one block:
-
+  <step number="4" name="Compose">
     ```bash
-    grep -c 'style:begin' <target>
-    grep -c 'style:end' <target>
+    bun ${CLAUDE_PLUGIN_ROOT}/scripts/compose-style.ts \
+      --presets <comma,separated> \
+      --import <comma,separated> \
+      [--global] [--dry-run] [--drop-claude-md-block]
     ```
 
-    Both must print `1`. If either prints more, you appended instead of
-    replacing — fix it before reporting.
+    On `--dry-run`, print what it shows and stop.
 
-    Report:
+    **The legacy CLAUDE.md block.** If the report says a legacy
+    `<!-- style:begin -->` block is present, those rules are now duplicated —
+    once in CLAUDE.md and once in the output style. Ask whether to remove it,
+    and re-run with `--drop-claude-md-block` if yes. Do not remove it silently;
+    it is in a file the user owns.
 
-    ```
-    STYLE APPLIED
-    ════════════════════════════════════════
-    Target:     <path>
-    Verbosity:  <preset>
-    Modifiers:  <presets, or none>
-    Block size: <N> lines, <M> chars (loaded every turn)
-    Changed:    created | replaced | appended
-    ════════════════════════════════════════
-    ```
+    The script exits non-zero and writes nothing on an unknown preset, two
+    verbosity presets, a declared conflict, or failed verification. If it
+    fails, fix the selection — do not write the files by hand.
+  </step>
 
-    Close with one line: the rules take effect in the next session, or
-    immediately on the next turn if the harness re-reads CLAUDE.md. If any
-    style rules exist outside the managed block, name them and say they are
-    unmanaged and may contradict what was just applied.
+  <step number="5" name="Report">
+    Relay the script's report, then close with:
+
+    - The style takes effect in the next session, or on `/output-style` reload.
+    - Which style it replaced, if the user had one active. **Built-in styles
+      (Explanatory, Learning, Proactive) are not imported** — they ship inside
+      the Claude Code binary rather than on disk, so there is no file to read
+      — so if one was active, say plainly that it is now switched off.
+    - For the project scope: `outputStyle` landed in `.claude/settings.json`,
+      so it reaches teammates only if that file is committed.
   </step>
 </instructions>

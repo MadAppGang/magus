@@ -1,7 +1,7 @@
 ---
 name: session
 description: Manage terminal sessions -- create, list, or close tmux and headless sessions.
-allowed-tools: mcp__tmux__create-session, mcp__tmux__create-headless, mcp__tmux__list-sessions, mcp__tmux__kill-session, mcp__tmux__kill-headless-server, mcp__tmux__close-pane
+allowed-tools: mcp__tmux__create-session, mcp__tmux__create-headless, mcp__tmux__list-sessions, mcp__tmux__kill-session, mcp__tmux__kill-headless-server, mcp__tmux__rename-session
 ---
 
 # /terminal:session
