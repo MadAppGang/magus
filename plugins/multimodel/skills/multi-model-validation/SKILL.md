@@ -264,47 +264,20 @@ For every live variant in one family, call `search_models` with the family name.
 - "update model preferences"
 - "select new models"
 
-### ⚠️ Prefix Collision Awareness
+### Routing is Claudish's
 
-**CRITICAL:** When using claudish, be aware of model ID prefix routing.
+**Send the `id` from `list_models`. Never build an address.** Claudish owns backend
+selection, credentials and fallback; this repo implements none of it.
 
-Claudish routes to different backends based on model ID prefix:
+A prefix/backend/key table used to sit here. It is deleted — it had drifted to the wrong
+separator (`/` where claudish uses `@`), listed alias env vars as if canonical, covered a
+third of the providers, and marked models "collision-free" that had since gained a direct
+provider. A second copy in `claudish-usage` had drifted differently, which is the point:
+restating claudish's routing anywhere in this repo guarantees two versions of the truth and
+no way to tell which is stale.
 
-| Prefix | Backend | Required Key |
-|--------|---------|--------------|
-| (none) | OpenRouter | `OPENROUTER_API_KEY` |
-| `g/` `gemini/` | Google Gemini API | `GEMINI_API_KEY` |
-| `oai/` | OpenAI Direct API | `OPENAI_API_KEY` |
-| `mmax/` `mm/` | MiniMax Direct API | `MINIMAX_API_KEY` |
-| `kimi/` `moonshot/` | Kimi Direct API | `KIMI_API_KEY` |
-| `glm/` `zhipu/` | GLM Direct API | `GLM_API_KEY` |
-| `ollama/` | Ollama (local) | None |
-| `lmstudio/` | LM Studio (local) | None |
-| `vllm/` | vLLM (local) | None |
-| `mlx/` | MLX (local) | None |
-
-**Collision-Free Models (safe for OpenRouter):**
-- `grok` ✅
-- `google/gemini-*` ✅ (use `g/` for Gemini Direct)
-- `deepseek/deepseek-chat` ✅
-- `minimax/*` ✅ (use `mmax/` for MiniMax Direct)
-- `qwen/LATEST_FREE_CODING_MODEL` ✅
-- `mistralai/LATEST_FREE_CODING_MODEL` ✅
-- `moonshotai/*` ✅ (use `kimi/` for Kimi Direct)
-- `z-ai/glm-*` ✅ (use `glm/` for GLM Direct)
-- `openai/*` ✅ (use `oai/` for OpenAI Direct)
-- `anthropic/claude-*` ✅
-
-**Direct API prefixes for cost savings:**
-| OpenRouter Model | Direct API Prefix | API Key Required |
-|------------------|-------------------|------------------|
-| `openai/gpt-*` | `oai/gpt-*` | `OPENAI_API_KEY` |
-| `google/gemini-*` | `g/gemini-*` | `GEMINI_API_KEY` |
-| `minimax/*` | `mmax/*` | `MINIMAX_API_KEY` |
-| `moonshotai/*` | `kimi/*` | `KIMI_API_KEY` |
-| `z-ai/glm-*` | `glm/*` | `GLM_API_KEY` |
-
-**Rule:** OpenRouter models work without prefix. Use direct API prefixes for cost savings when you have the corresponding API key.
+If a model will not route, that is a claudish bug — report it with `report_error`. Do not
+work around it by choosing a different prefix here.
 
 **Interactive Model Selection (AskUserQuestion with multiSelect):**
 

@@ -377,99 +377,50 @@ Claudish (Claude-ish) is a proxy tool that:
 - Reduce costs with cheaper models for simple tasks
 - Access models with specialized capabilities
 
-## Claudish Multi-Backend Routing
+## Routing is Claudish's, not ours
 
-**CRITICAL:** Claudish supports MULTIPLE backends, not just OpenRouter. The model ID prefix determines which backend processes your request.
+**Magus implements no routing.** Not provider prefixes, not fallback chains, not API-key
+detection, not pre-flight reachability checks. Send the catalog's `id` (see "Identity vs
+routing address" above) and let claudish resolve it. That is the whole contract.
 
-### Backend Routing Table
+This section used to hold a provider/prefix/env-var table and a routing troubleshooting
+guide. Both are deleted, for two reasons:
 
-| Prefix | Backend | Required API Key | Example Model ID |
-|--------|---------|------------------|------------------|
-| (none) | OpenRouter | `OPENROUTER_API_KEY` | `anthropic/LATEST_SONNET_MODEL` |
-| `or/` | OpenRouter (explicit) | `OPENROUTER_API_KEY` | `google/LATEST_GEMINI_MODEL` |
-| `g/` `gemini/` `google/` | Google Gemini Direct | `GEMINI_API_KEY` | `g/LATEST_GEMINI_MODEL` |
-| `oai/` `openai/` | OpenAI Direct | `OPENAI_API_KEY` | `oai/LATEST_GPT_MODEL` |
-| `ollama/` `ollama:` | Ollama (local) | None | `ollama/LOCAL_MODEL` |
-| `lmstudio/` | LM Studio (local) | None | `lmstudio/LOCAL_MODEL` |
-| `vllm/` | vLLM (local) | None | `vllm/LOCAL_MODEL` |
-| `mlx/` | MLX (local) | None | `mlx/LOCAL_MODEL` |
-| `http://...` | Custom endpoint | None | `http://192.168.1.50:8000/model` |
+1. **Ownership.** The Responsibility Boundaries table above assigns "Model ID → API
+   endpoint" and "API keys, backend fallbacks" to Claudish. A routing guide here
+   contradicts that and invites plugin code to compensate for provider behaviour.
+2. **Drift.** The deleted table had gone stale and was teaching wrong routing — `or/` when
+   the separator is `@`, and "no `deepseek/` prefix in claudish" after `deepseek` became a
+   provider. Anything restated here decays the same way.
 
-### ⚠️ Prefix Collision Warning
+**A model that will not route is a claudish bug, not a magus workaround.** Do not add
+retry, probe, or fallback logic to a command, agent, or skill in this repo to route around
+it. Report it instead — `report_error` via the claudish MCP server, which anonymises paths
+and keys.
 
-**CRITICAL:** Some OpenRouter model IDs START with prefixes that claudish interprets as direct API routing!
-
-| Model ID | Claudish Routes To | Problem | Fix |
-|----------|-------------------|---------|-----|
-| `google/LATEST_GEMINI_MODEL` | Google Gemini Direct | Needs `GEMINI_API_KEY`, different API | Use `gemini` |
-| `gemini` | Google Gemini Direct | Needs `GEMINI_API_KEY`, different API | Use `gemini` |
-| `gpt` | OpenAI Direct | Needs `OPENAI_API_KEY`, different API | Use `gpt` |
-| `gpt` | OpenAI Direct | Needs `OPENAI_API_KEY`, different API | Use `gpt` |
-
-### Safe Model IDs (No Collision)
-
-These OpenRouter model IDs are SAFE to use without the `or/` prefix:
-
-- `grok` - No `x-ai/` prefix in claudish
-- `anthropic/LATEST_SONNET_MODEL` - No `anthropic/` prefix in claudish
-- `deepseek/deepseek-chat` - No `deepseek/` prefix in claudish
-- `minimax` - No `minimax/` prefix in claudish
-- `qwen/LATEST_FREE_CODING_MODEL` - No `qwen/` prefix in claudish
-- `mistralai/LATEST_FREE_CODING_MODEL` - No `mistralai/` prefix in claudish
-- `moonshotai/LATEST_KIMI_MODEL` - No `moonshotai/` prefix in claudish
-
-### When to Use `or/` Prefix
-
-**ALWAYS use `or/` prefix when:**
-1. The OpenRouter model ID starts with `google/`, `openai/`, `g/`, `oai/`
-2. You want to GUARANTEE OpenRouter routing regardless of model ID
-3. You're unsure if the model ID might collide
-
-**Examples:**
-```bash
-# WRONG - Routes to Google Gemini Direct (needs GEMINI_API_KEY)
-claudish --model google/LATEST_GEMINI_MODEL
-
-# CORRECT - Use alias instead
-claudish --model gemini
-
-# SAFE - No collision (x-ai/ is not a routing prefix)
-claudish --model grok
-```
+Diagnostics (`claudish --probe`, `claudish --help`) are claudish's own tools; run them when
+investigating, but do not encode their output as procedure here.
 
 ## Requirements
 
-### System Requirements
-- **OpenRouter API Key** - Required (set as `OPENROUTER_API_KEY` environment variable)
-- **Claudish CLI** - Install with: `npm install -g claudish` or `bun install -g claudish`
-- **Claude Code** - Must be installed
+- **Claudish CLI** — `bun install -g claudish` (or `npm install -g claudish`)
+- **Claude Code** — must be installed
 
-### Environment Variables
+**Credentials are Claudish's, and are deliberately not listed here.** There is no single
+required key: which providers a model can reach, and which env var each one reads, is
+claudish's routing concern and changes most releases. An earlier version of this section
+named three providers out of roughly two dozen, called OpenRouter "required" when it is
+not, and used a `/` separator that has never been correct — the exact drift that made this
+skill teach wrong routing.
+
+The authoritative, always-current list is the ENVIRONMENT VARIABLES section of:
 
 ```bash
-# OpenRouter (required for most models)
-export OPENROUTER_API_KEY='sk-or-v1-...'
-
-# Google Gemini Direct (optional - for g/gemini/google/ prefixed models)
-export GEMINI_API_KEY='AIza...'
-
-# OpenAI Direct (optional - for oai/openai/ prefixed models)
-export OPENAI_API_KEY='sk-...'
-
-# Note: Ollama, LM Studio, vLLM, MLX backends don't need API keys
-
-# Optional (but recommended)
-export ANTHROPIC_API_KEY='sk-ant-api03-placeholder'  # Prevents Claude Code dialog
-
-# Optional - default model
-export CLAUDISH_MODEL='grok'  # or ANTHROPIC_MODEL
+claudish --help
 ```
 
-**Get OpenRouter API Key:**
-1. Visit https://openrouter.ai/keys
-2. Sign up (free tier available)
-3. Create API key
-4. Set as environment variable
+If a model fails for want of a credential, that is a claudish diagnosis. Do not add key
+checks or provider detection to this repo.
 
 ## Quick Start Guide
 

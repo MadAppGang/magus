@@ -4,6 +4,56 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Marketplace 9.1.1] - 2026-08-18
+
+### Changed
+
+- Republished so the catalogue carries `multimodel` 3.5.0. The plugin bump alone does not
+  move an installed copy — the marketplace version is the only signal claudeup has that a
+  catalogue changed at all, so the corrected skills would otherwise reach nobody.
+
+---
+
+## [multimodel 3.5.0] - 2026-08-18
+
+### Removed
+
+- Deleted every provider/prefix/API-key routing table from the plugin's skills. Routing,
+  credentials and backend fallback belong to claudish; this repo restating them produced
+  two contradictory copies and no way to tell which was stale.
+- `claudish-usage`: dropped the backend routing table, prefix-collision warning, "safe
+  model IDs" list, the `--probe` pre-flight procedure, the failure-signature table, and the
+  environment-variable section.
+- `multi-model-validation`: dropped a second, independently drifted copy of the same
+  prefix → backend → key table.
+
+### Fixed
+
+- Both skills taught the wrong separator: `or/`, `g/`, `oai/` where claudish uses `@`
+  (`or@`, `g@`, `oai@`). Nothing in the repo caught it because the tables were hand-written
+  from a snapshot.
+- `claudish-usage` claimed `deepseek/` and `mistralai/` were not provider prefixes; both are
+  providers now, so the "safe without a prefix" advice was wrong for them.
+- `multi-model-validation` listed alias environment variables as canonical
+  (`KIMI_API_KEY`, `GLM_API_KEY` — actually `MOONSHOT_API_KEY` and `ZHIPU_API_KEY`) and
+  covered roughly a third of the available providers.
+- `Requirements` claimed an OpenRouter key was required. It is not — many models route
+  through other providers entirely.
+
+### Why
+
+A `/team` run lost 3 of 10 slots to provisioning failures. Investigating them showed the
+routing documentation here had drifted far enough to misdirect the diagnosis, and that the
+correct fix for each failure lived in claudish, not in this repo. Rather than refresh the
+tables — which is what let them rot in the first place — they are removed and replaced with
+the ownership rule plus a pointer to `claudish --help`, which reads live state and cannot
+go stale.
+
+Provider-side defects found during the investigation were reported upstream to claudish
+separately; none of them are fixable here.
+
+---
+
 ## [Marketplace 9.1.0] - 2026-08-18
 
 ### Changed

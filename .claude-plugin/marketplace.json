@@ -7,7 +7,7 @@
   },
   "metadata": {
     "description": "Curated collection of Claude Code plugins for modern full-stack development with LLM performance tracking and E2E skill testing",
-    "version": "9.1.0",
+    "version": "9.1.1",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -143,7 +143,7 @@
       "name": "multimodel",
       "source": "./plugins/multimodel",
       "description": "Multi-model collaboration and orchestration. Runs a task across several AI models in parallel and aggregates their blind APPROVE/REJECT votes, or delegates it to one model running a full Claude Code session.",
-      "version": "3.4.1",
+      "version": "3.5.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -168,6 +168,15 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "3.5.0",
+          "date": "2026-08-18",
+          "kinds": [
+            "Removed",
+            "Fixed"
+          ],
+          "summary": "Deleted every provider/prefix/API-key routing table from the plugin's skills. Routing,\u2026"
+        },
         {
           "version": "3.4.1",
           "date": "2026-08-15",
@@ -198,11 +207,6 @@
             "Fixed"
           ],
           "summary": "Model resolution is now live"
-        },
-        {
-          "version": "3.2.0",
-          "date": "2026-05-09",
-          "summary": "Declared claudish as a dependencies entry (was an implicit dependency consumed via\u2026"
         }
       ]
     },
