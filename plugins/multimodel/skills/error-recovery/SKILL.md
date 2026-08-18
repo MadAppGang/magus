@@ -390,10 +390,10 @@ In multi-model workflows, it's common for some models to succeed while others fa
 
 ```
 const results = await Promise.allSettled([
-  Task({ subagent: "reviewer", model: "claude" }),
-  Task({ subagent: "reviewer", model: "grok" }),
-  Task({ subagent: "reviewer", model: "gemini" }),
-  Task({ subagent: "reviewer", model: "gpt-5" })
+  Agent({ subagent: "reviewer", model: "claude" }),
+  Agent({ subagent: "reviewer", model: "grok" }),
+  Agent({ subagent: "reviewer", model: "gemini" }),
+  Agent({ subagent: "reviewer", model: "gpt-5" })
 ]);
 
 const successful = results.filter(r => r.status === 'fulfilled');

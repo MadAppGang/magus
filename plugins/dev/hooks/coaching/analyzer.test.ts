@@ -317,7 +317,7 @@ describe("Rule: tmp-path-usage", () => {
 describe("Rule: skill-invoked-as-task", () => {
   it("TEST-09: Task with code-analysis:mnemex-search subagent_type triggers rule", () => {
     const transcript = generateTranscript([
-      { tool: "Task", input: { subagent_type: "code-analysis:mnemex-search", prompt: "search for auth patterns" } },
+      { tool: "Agent", input: { subagent_type: "code-analysis:mnemex-search", prompt: "search for auth patterns" } },
     ]);
     const transcriptPath = writeTranscript(testDir, transcript);
     runAnalyzer(transcriptPath, "aaaabbbbccccdddd", testDir);
@@ -329,7 +329,7 @@ describe("Rule: skill-invoked-as-task", () => {
 
   it("TEST-10: Task with dev:developer subagent_type does NOT trigger skill rule", () => {
     const transcript = generateTranscript([
-      { tool: "Task", input: { subagent_type: "dev:developer", prompt: "implement the feature" } },
+      { tool: "Agent", input: { subagent_type: "dev:developer", prompt: "implement the feature" } },
     ]);
     const transcriptPath = writeTranscript(testDir, transcript);
     runAnalyzer(transcriptPath, "aaaabbbbccccdddd", testDir);
@@ -342,7 +342,7 @@ describe("Rule: skill-invoked-as-task", () => {
 
   it("Task with dev:db-branching (known skill) triggers skill-invoked-as-task", () => {
     const transcript = generateTranscript([
-      { tool: "Task", input: { subagent_type: "dev:db-branching", prompt: "set up db branching" } },
+      { tool: "Agent", input: { subagent_type: "dev:db-branching", prompt: "set up db branching" } },
     ]);
     const transcriptPath = writeTranscript(testDir, transcript);
     runAnalyzer(transcriptPath, "aaaabbbbccccdddd", testDir);
@@ -361,7 +361,7 @@ describe("Rule: excessive-reads-before-delegation", () => {
         { tool: "Read", input: { file_path: "/project/file3.ts" } },
         { tool: "Read", input: { file_path: "/project/file4.ts" } },
         { tool: "Read", input: { file_path: "/project/file5.ts" } },
-        { tool: "Task", input: { subagent_type: "dev:developer", prompt: "implement feature" } },
+        { tool: "Agent", input: { subagent_type: "dev:developer", prompt: "implement feature" } },
       ],
       // Use false + manual filler to keep reads BEFORE task
       false
@@ -377,7 +377,7 @@ describe("Rule: excessive-reads-before-delegation", () => {
     for (let i = 1; i <= 5; i++) {
       lines.push(JSON.stringify({ type: "assistant", message: { content: [{ type: "tool_use", name: "Read", input: { file_path: `/project/file${i}.ts` } }] } }));
     }
-    lines.push(JSON.stringify({ type: "assistant", message: { content: [{ type: "tool_use", name: "Task", input: { subagent_type: "dev:developer", prompt: "implement feature" } }] } }));
+    lines.push(JSON.stringify({ type: "assistant", message: { content: [{ type: "tool_use", name: "Agent", input: { subagent_type: "dev:developer", prompt: "implement feature" } }] } }));
 
     const transcriptPath = writeTranscript(testDir, lines.join("\n"));
     runAnalyzer(transcriptPath, "aaaabbbbccccdddd", testDir);
@@ -395,7 +395,7 @@ describe("Rule: excessive-reads-before-delegation", () => {
     for (let i = 1; i <= 4; i++) {
       lines.push(JSON.stringify({ type: "assistant", message: { content: [{ type: "tool_use", name: "Read", input: { file_path: `/project/file${i}.ts` } }] } }));
     }
-    lines.push(JSON.stringify({ type: "assistant", message: { content: [{ type: "tool_use", name: "Task", input: { subagent_type: "dev:developer", prompt: "implement feature" } }] } }));
+    lines.push(JSON.stringify({ type: "assistant", message: { content: [{ type: "tool_use", name: "Agent", input: { subagent_type: "dev:developer", prompt: "implement feature" } }] } }));
 
     const transcriptPath = writeTranscript(testDir, lines.join("\n"));
     runAnalyzer(transcriptPath, "aaaabbbbccccdddd", testDir);
@@ -409,7 +409,7 @@ describe("Rule: excessive-reads-before-delegation", () => {
 describe("Rule: wrong-agent-for-task", () => {
   it("TEST-13: Task prompt matching 'research' pattern with non-researcher agent triggers rule", () => {
     const transcript = generateTranscript([
-      { tool: "Task", input: { subagent_type: "dev:developer", prompt: "research the best database options and compare them" } },
+      { tool: "Agent", input: { subagent_type: "dev:developer", prompt: "research the best database options and compare them" } },
     ]);
     const transcriptPath = writeTranscript(testDir, transcript);
     runAnalyzer(transcriptPath, "aaaabbbbccccdddd", testDir);
@@ -420,7 +420,7 @@ describe("Rule: wrong-agent-for-task", () => {
 
   it("Task prompt matching 'implement' pattern with correct dev:developer agent does NOT trigger rule", () => {
     const transcript = generateTranscript([
-      { tool: "Task", input: { subagent_type: "dev:developer", prompt: "implement the authentication module" } },
+      { tool: "Agent", input: { subagent_type: "dev:developer", prompt: "implement the authentication module" } },
     ]);
     const transcriptPath = writeTranscript(testDir, transcript);
     runAnalyzer(transcriptPath, "aaaabbbbccccdddd", testDir);
@@ -436,7 +436,7 @@ describe("Rule: wrong-agent-for-task", () => {
 describe("Rule: single-model-critical-review", () => {
   it("TEST-14: Task with 'code review' prompt without claudish triggers rule", () => {
     const transcript = generateTranscript([
-      { tool: "Task", input: { subagent_type: "dev:developer", prompt: "please do a code review of this PR" } },
+      { tool: "Agent", input: { subagent_type: "dev:developer", prompt: "please do a code review of this PR" } },
     ]);
     const transcriptPath = writeTranscript(testDir, transcript);
     runAnalyzer(transcriptPath, "aaaabbbbccccdddd", testDir);
@@ -447,7 +447,7 @@ describe("Rule: single-model-critical-review", () => {
 
   it("TEST-15: Task with 'code review' prompt WITH claudish Bash call does NOT trigger rule", () => {
     const transcript = generateTranscript([
-      { tool: "Task", input: { subagent_type: "dev:developer", prompt: "please do a code review of this PR" } },
+      { tool: "Agent", input: { subagent_type: "dev:developer", prompt: "please do a code review of this PR" } },
       { tool: "Bash", input: { command: "claudish --model claude-sonnet-4-5 < review-prompt.md" } },
     ]);
     const transcriptPath = writeTranscript(testDir, transcript);
@@ -460,7 +460,7 @@ describe("Rule: single-model-critical-review", () => {
 
   it("Task with 'architecture review' prompt without claudish triggers rule", () => {
     const transcript = generateTranscript([
-      { tool: "Task", input: { subagent_type: "dev:developer", prompt: "please do an architecture review of the auth module" } },
+      { tool: "Agent", input: { subagent_type: "dev:developer", prompt: "please do an architecture review of the auth module" } },
     ]);
     const transcriptPath = writeTranscript(testDir, transcript);
     runAnalyzer(transcriptPath, "aaaabbbbccccdddd", testDir);
@@ -484,16 +484,16 @@ describe("Rule: plugin-command-gap", () => {
 });
 
 describe("Rule: no-background-tasks", () => {
-  it("TEST-17: 3 sequential non-background Task calls trigger rule", () => {
-    // Build transcript with 3 consecutive Task calls (no filler between them to keep order adjacent)
+  it("TEST-17: 3 sequential non-background Agent calls trigger rule", () => {
+    // Build transcript with 3 consecutive Agent calls (no filler between them to keep order adjacent)
     const lines: string[] = [];
     // 7 Write fillers first (Write does not trigger search rules)
     for (let i = 0; i < 7; i++) {
       lines.push(JSON.stringify({ type: "assistant", message: { content: [{ type: "tool_use", name: "Write", input: { file_path: `/project/f${i}.ts`, content: "x" } }] } }));
     }
-    // 3 consecutive Task calls
+    // 3 consecutive Agent calls
     for (let i = 0; i < 3; i++) {
-      lines.push(JSON.stringify({ type: "assistant", message: { content: [{ type: "tool_use", name: "Task", input: { subagent_type: "dev:developer", prompt: `task ${i}` } }] } }));
+      lines.push(JSON.stringify({ type: "assistant", message: { content: [{ type: "tool_use", name: "Agent", input: { subagent_type: "dev:developer", prompt: `task ${i}` } }] } }));
     }
     const transcriptPath = writeTranscript(testDir, lines.join("\n"));
     runAnalyzer(transcriptPath, "aaaabbbbccccdddd", testDir);
@@ -502,15 +502,15 @@ describe("Rule: no-background-tasks", () => {
     expect(recs).toContain("run_in_background");
   });
 
-  it("TEST-18: Task calls with run_in_background: true do NOT trigger no-background-tasks rule", () => {
+  it("TEST-18: Agent calls with run_in_background: true do NOT trigger no-background-tasks rule", () => {
     const lines: string[] = [];
     // 7 Write fillers (not Glob/Grep to avoid search rules)
     for (let i = 0; i < 7; i++) {
       lines.push(JSON.stringify({ type: "assistant", message: { content: [{ type: "tool_use", name: "Write", input: { file_path: `/project/f${i}.ts`, content: "x" } }] } }));
     }
-    // 3 consecutive Task calls all with run_in_background
+    // 3 consecutive Agent calls all with run_in_background
     for (let i = 0; i < 3; i++) {
-      lines.push(JSON.stringify({ type: "assistant", message: { content: [{ type: "tool_use", name: "Task", input: { subagent_type: "dev:developer", prompt: `task ${i}`, run_in_background: true } }] } }));
+      lines.push(JSON.stringify({ type: "assistant", message: { content: [{ type: "tool_use", name: "Agent", input: { subagent_type: "dev:developer", prompt: `task ${i}`, run_in_background: true } }] } }));
     }
     const transcriptPath = writeTranscript(testDir, lines.join("\n"));
     runAnalyzer(transcriptPath, "aaaabbbbccccdddd", testDir);
@@ -642,12 +642,12 @@ describe("Top-3 Cap", () => {
     lines.push(JSON.stringify({ type: "assistant", message: { content: [{ type: "tool_use", name: "Bash", input: { command: "cat /tmp/result.txt" } }] } }));
 
     // Skill as Task (triggers skill-invoked-as-task)
-    lines.push(JSON.stringify({ type: "assistant", message: { content: [{ type: "tool_use", name: "Task", input: { subagent_type: "code-analysis:mnemex-search", prompt: "find auth patterns" } }] } }));
+    lines.push(JSON.stringify({ type: "assistant", message: { content: [{ type: "tool_use", name: "Agent", input: { subagent_type: "code-analysis:mnemex-search", prompt: "find auth patterns" } }] } }));
 
     // 3 sequential non-background Tasks (triggers no-background-tasks)
-    lines.push(JSON.stringify({ type: "assistant", message: { content: [{ type: "tool_use", name: "Task", input: { subagent_type: "dev:developer", prompt: "impl task A" } }] } }));
-    lines.push(JSON.stringify({ type: "assistant", message: { content: [{ type: "tool_use", name: "Task", input: { subagent_type: "dev:developer", prompt: "impl task B" } }] } }));
-    lines.push(JSON.stringify({ type: "assistant", message: { content: [{ type: "tool_use", name: "Task", input: { subagent_type: "dev:developer", prompt: "impl task C" } }] } }));
+    lines.push(JSON.stringify({ type: "assistant", message: { content: [{ type: "tool_use", name: "Agent", input: { subagent_type: "dev:developer", prompt: "impl task A" } }] } }));
+    lines.push(JSON.stringify({ type: "assistant", message: { content: [{ type: "tool_use", name: "Agent", input: { subagent_type: "dev:developer", prompt: "impl task B" } }] } }));
+    lines.push(JSON.stringify({ type: "assistant", message: { content: [{ type: "tool_use", name: "Agent", input: { subagent_type: "dev:developer", prompt: "impl task C" } }] } }));
 
     // 2 more Write filler to reach 10 (Write doesn't trigger search rules)
     lines.push(JSON.stringify({ type: "assistant", message: { content: [{ type: "tool_use", name: "Write", input: { file_path: "/project/a.ts", content: "x" } }] } }));
@@ -675,9 +675,9 @@ describe("Priority Ordering", () => {
     lines.push(JSON.stringify({ type: "assistant", message: { content: [{ type: "tool_use", name: "Bash", input: { command: "cat /tmp/artifact.md" } }] } }));
 
     // 3 sequential Tasks — priority 4
-    lines.push(JSON.stringify({ type: "assistant", message: { content: [{ type: "tool_use", name: "Task", input: { subagent_type: "dev:developer", prompt: "task A" } }] } }));
-    lines.push(JSON.stringify({ type: "assistant", message: { content: [{ type: "tool_use", name: "Task", input: { subagent_type: "dev:developer", prompt: "task B" } }] } }));
-    lines.push(JSON.stringify({ type: "assistant", message: { content: [{ type: "tool_use", name: "Task", input: { subagent_type: "dev:developer", prompt: "task C" } }] } }));
+    lines.push(JSON.stringify({ type: "assistant", message: { content: [{ type: "tool_use", name: "Agent", input: { subagent_type: "dev:developer", prompt: "task A" } }] } }));
+    lines.push(JSON.stringify({ type: "assistant", message: { content: [{ type: "tool_use", name: "Agent", input: { subagent_type: "dev:developer", prompt: "task B" } }] } }));
+    lines.push(JSON.stringify({ type: "assistant", message: { content: [{ type: "tool_use", name: "Agent", input: { subagent_type: "dev:developer", prompt: "task C" } }] } }));
 
     // 6 Write fillers (Write does not trigger search rules)
     for (let i = 0; i < 6; i++) {

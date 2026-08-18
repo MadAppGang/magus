@@ -1,7 +1,7 @@
 ---
 name: investigate
 description: "Read-only code investigation — architecture traces, implementation analysis, bug origin tracking with specialist agents"
-allowed-tools: Task, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet
+allowed-tools:  Agent, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet
 skills: dev:context-detection
 ---
 
@@ -19,7 +19,7 @@ skills: dev:context-detection
 <critical_override>
   THIS COMMAND OVERRIDES THE CLAUDE.md TASK ROUTING TABLE.
   WHY: This is a READ-ONLY orchestrator. It must NEVER self-handle investigation work.
-  RULE: ALL investigation must be delegated via Task tool to the resolved agent.
+  RULE: ALL investigation must be delegated via Agent tool to the resolved agent.
   NEVER: Read files, trace code, or analyze architecture inline.
   NOTE: No autonomy question — investigation is inherently read-only and non-destructive.
 </critical_override>
@@ -70,9 +70,10 @@ skills: dev:context-detection
         test-audit    → mode: testing, skill: code-analysis:investigate
         comprehensive → mode: comprehensive, skill: code-analysis:deep-analysis
 
-      Launch Task:
+      Launch the agent:
 
-      Task(
+      Agent(
+        run_in_background: false,
         description: """
           Investigate: {$ARGUMENTS}
 
@@ -116,7 +117,8 @@ skills: dev:context-detection
 
       If user accepts fallback:
 
-      Task(
+      Agent(
+        run_in_background: false,
         description: """
           Investigate: {$ARGUMENTS}
           Note: code-analysis plugin unavailable. Use text search and file reading only.

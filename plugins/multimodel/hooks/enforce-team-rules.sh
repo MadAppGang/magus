@@ -8,7 +8,7 @@ set -u
 # Protocol: reads JSON from stdin, writes JSON to fd3 (or stdout)
 #
 # Rules enforced:
-#   1. /team Task calls must use a valid agent from whitelist (vote template detection)
+#   1. /team Agent calls must use a valid agent from whitelist (vote template detection)
 #   2. Session files must not use /tmp/ paths
 #
 # Logging:
@@ -50,7 +50,7 @@ deny() {
 }
 
 # --------------------------------------------------------------------------
-# RULE: Task tool validation
+# RULE: Agent tool validation
 # --------------------------------------------------------------------------
 if [ "${TOOL_NAME}" = "Task" ]; then
   # Parse directly from raw INPUT to avoid multi-line JSON issues

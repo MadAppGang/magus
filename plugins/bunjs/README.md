@@ -42,14 +42,28 @@ marketplace-wide, and this plugin spends none of it.
 |---|---|---|
 | `/bunjs:<name>` command | a **human** typing it | works — the command instructs the model to read `SKILL.md` |
 | A `CLAUDE.md` row naming **a file to read** | the **model**, unprompted | works — **measured** |
-| A `CLAUDE.md` row saying *"invoke the Skill tool"* | — | **does not work** — measured |
+| A `CLAUDE.md` row saying *"invoke the Skill tool"* | the **model**, unprompted | works too — **re-measured 2026-08-18** |
 
-That last row is not a hypothetical. `benches/skill-index/` (IDX-1) in magus-src is a madbench experiment that ran
-this: a routing row phrased as *"invoke it with the Skill tool"* was ignored (the Skill tool never
-fires for these skills, even when a prompt orders it by name), while the identical row phrased as
-*"read `.claude/skills/security/SKILL.md`"* got the skill read, its assets copied in, and its
-guidance applied. A model cannot invoke a slash command, so **a routing row must name a path, not
-a command.**
+**Correction.** That last row used to read *"does not work — measured"*, on the strength of
+IDX-1 reporting that the Skill tool never fires for these skills. Re-measured at `--repeat 8`
+on Sonnet 5 (24/24 pass, flake rate 0):
+
+| routing row | `disable-model-invocation` | Skill tool fired |
+|---|---|---|
+| none | yes | **0/8** |
+| *"invoke it with the Skill tool"* | yes | **8/8** |
+| none | no | **8/8** |
+
+The original finding came from madbench's `skill-used` check returning 0 — a check that at
+the time **could not pass for any agent in any setup**, because it read a derived view that
+never contains skill rows (fixed upstream as madbench#26). A check that cannot fire is not
+evidence of absence.
+
+What IDX-1 does establish, and this is the part worth keeping: **without a routing row the
+flag hides the skill completely (0/8), and a row reaches it (8/8).** The row is what matters.
+Naming a path is still the better default — it is the one phrasing that works regardless of
+whether the reader can invoke the tool — but it is a preference now, not a measured
+constraint.
 
 ## Why these claims are trustworthy
 
@@ -94,18 +108,24 @@ Each skill package is self-contained: `cd plugins/bunjs/skills/<name> && bun ins
 measures it rather than assuming. Cells differ by exactly one file; a generator refuses to build
 unless that is true.
 
-| Cell | `SkillReached` |
-|---|---|
-| skill unlisted, no routing row | 0 |
-| skill unlisted, row says *"invoke the Skill tool"* | **0** |
-| skill unlisted, row says *"read the file"* | **1** |
-| skill listed (flag removed), no row | **1** |
+Current numbers, `--repeat 8` on Sonnet 5, 24/24 pass, flake rate 0 (2026-08-18):
 
-Two traps it had to survive, both documented in the `benches/skill-index/` README in magus-src: madbench's
-`skill-used` check counts Skill-tool calls only — and the agent reaches these skills with `Read`
-and `Bash` instead, so that check can never fire; and the obvious code fingerprints
-(`Bun.password`, `timingSafeEqual`) score **identically with and without the skill**, because the
-model writes them from general knowledge. Both would have produced a confident wrong answer.
+| Cell | Skill tool fired | `SkillReached` |
+|---|---|---|
+| skill unlisted, no routing row | 0/8 | 0 |
+| skill unlisted, row says *"invoke the Skill tool"* | **8/8** | **1** |
+| skill listed (flag removed), no row | **8/8** | **1** |
+
+The `"invoke the Skill tool"` row previously showed **0** here. That was an artifact: madbench's
+`skill-used` check read a derived view that never contains skill rows, so it could not pass for
+any agent in any setup (fixed upstream as madbench#26). The row works.
+
+Two traps it had to survive, both documented in the `benches/skill-index/` README in magus-src.
+The first is that artifact — **a check that cannot fire reads exactly like a feature that does
+not work**, and it stood as a measured finding for eleven days. The second is that the obvious
+code fingerprints (`Bun.password`, `timingSafeEqual`) score **identically with and without the
+skill**, because the model writes them from general knowledge. Both produced a confident wrong
+answer; only one was caught at the time.
 
 ## Reference
 

@@ -1,7 +1,7 @@
 ---
 name: audit
 description: "Structured quality audit — routes to specialist reviewers for code, UI, docs, security, or plugin quality"
-allowed-tools: Task, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet
+allowed-tools:  Agent, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet
 skills: dev:context-detection
 ---
 
@@ -19,7 +19,7 @@ skills: dev:context-detection
 <critical_override>
   THIS COMMAND OVERRIDES THE CLAUDE.md TASK ROUTING TABLE.
   WHY: This is a READ-ONLY orchestrator. It must NEVER self-handle review work.
-  RULE: ALL review work must be delegated via Task tool to the resolved agent.
+  RULE: ALL review work must be delegated via Agent tool to the resolved agent.
   NEVER: Review code, assess quality, or provide feedback inline.
   EXCEPTION: the design-system scope hands off to the `/dev:design-system`
   command instead of a Task agent — that scope is script-driven measurement,
@@ -91,45 +91,47 @@ skills: dev:context-detection
     </step>
 
     <step number="3" name="Route and Delegate">
-      Route based on scope and plugin availability:
+      **design-system does not delegate.** Hand off to `/dev:design-system`, passing
+      $ARGUMENTS through. That scope checks system integrity — token-only styling, one
+      component library, variants over call-site restyling — with the bundled auditor,
+      not a subjective read of the code. Stop here for that scope.
 
-      SCOPE: code
-        → Task(subagent_type: "dev:reviewer")
+      **ui may re-route.** If the request is about design-system integrity (tokens,
+      drift, duplicated components, missing variants) rather than visual fidelity to a
+      spec, treat it as design-system above.
 
-      SCOPE: design-system
-        → Hand off to `/dev:design-system` (do NOT delegate to a reviewer agent).
-          This scope checks system integrity — token-only styling, one component
-          library, variants over call-site restyling — using the bundled auditor,
-          not a subjective read of the code. Pass $ARGUMENTS through.
+      Otherwise pick the agent from the scope:
 
-      SCOPE: ui
-        If the request is about design-system integrity (tokens, drift, duplicated
-        components, missing variants) rather than visual fidelity to a spec,
-        re-route to SCOPE: design-system above.
+      | Scope | Agent | Extra prompt content |
+      |---|---|---|
+      | code | `dev:reviewer` | — |
+      | ui, designer installed | `designer:design-review` | — |
+      | ui, designer absent | `dev:reviewer` | "Designer plugin not installed. Reviewing UI from code perspective only. For pixel-diff comparison, install designer@magus." |
+      | docs | `dev:docs` | `mode: "analyze"` |
+      | security | `dev:reviewer` | "Check OWASP top 10, auth bypass risks, injection points, sensitive data exposure, dependency vulnerabilities." |
+      | plugin | `dev:reviewer` | "Review Claude Code agent/plugin quality — description clarity, schema/frontmatter correctness, skill boundaries, and command structure." |
 
-        Check designer plugin:
-        ```bash
-        ls "${HOME}/.claude/plugins/cache/" 2>/dev/null | grep -q "designer"
-        ```
-        If present → Task(subagent_type: "designer:design-review")
-        If absent  → Task(subagent_type: "dev:reviewer")
-                     with note: "Designer plugin not installed. Reviewing UI from code perspective only.
-                     For pixel-diff comparison, install designer@magus."
+      Designer presence check:
+      ```bash
+      ls "${HOME}/.claude/plugins/cache/" 2>/dev/null | grep -q "designer"
+      ```
 
-      SCOPE: docs
-        → Task(subagent_type: "dev:docs", mode: "analyze")
+      Then dispatch exactly once:
+      ```
+      Agent(
+        subagent_type: "{agent from the table}",
+        run_in_background: false,
+        description: "...",
+        prompt: "..."
+      )
+      ```
 
-      SCOPE: security
-        → Task(subagent_type: "dev:reviewer")
-          with security focus: "Check OWASP top 10, auth bypass risks,
-          injection points, sensitive data exposure, dependency vulnerabilities."
+      `run_in_background: false` is required. This command reports the agent's findings
+      back to the user in the same turn, and a background spawn returns a launch receipt
+      rather than the report. Background also narrows the agent's tool set, so the same
+      reviewer resolves differently.
 
-      SCOPE: plugin
-        → Task(subagent_type: "dev:reviewer")
-          with note: "Review Claude Code agent/plugin quality — description clarity,
-          schema/frontmatter correctness, skill boundaries, and command structure."
-
-      For ALL scopes, include in the Task description:
+      Include in the Agent description:
       - Review target: {$ARGUMENTS}
       - Review scope: {scope}
       - Review style: {style}

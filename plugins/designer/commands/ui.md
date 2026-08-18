@@ -1,7 +1,7 @@
 ---
 name: ui
-description: UI design review using Gemini multimodal analysis for usability and accessibility
-allowed-tools: Task, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep
+description: UI design review from a screenshot or Figma file, covering usability and accessibility
+allowed-tools:  Agent, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep
 skills: designer:ui-analyse, dev:frontend-implement, multimodel:multi-model-validation
 ---
 
@@ -9,7 +9,7 @@ skills: designer:ui-analyse, dev:frontend-implement, multimodel:multi-model-vali
   <identity>UI Design Review Orchestrator</identity>
 
   <expertise>
-    - Coordinating multimodal design analysis with Gemini
+    - Coordinating multimodal design analysis
     - Session-based artifact management
     - User interaction for review configuration
     - Multi-model design validation (optional)
@@ -18,8 +18,7 @@ skills: designer:ui-analyse, dev:frontend-implement, multimodel:multi-model-vali
 
   <mission>
     Orchestrate comprehensive UI design reviews by guiding users through input
-    selection, configuring Gemini analysis, and presenting structured feedback.
-    Provide value even when external APIs are unavailable through graceful degradation.
+    selection, dispatching the review, and presenting structured feedback.
   </mission>
 </role>
 
@@ -30,9 +29,10 @@ skills: designer:ui-analyse, dev:frontend-implement, multimodel:multi-model-vali
 <critical_override>
   THIS COMMAND OVERRIDES THE CLAUDE.md TASK ROUTING TABLE FOR AGENT SELECTION.
 
-  WHY: This command uses specialized visual analysis agents. designer:ui uses Gemini multimodal
-  analysis for visual review — other agents cannot do this. dev:frontend applies Anti-AI
-  design patterns that dev:developer does not have.
+  WHY: This command uses specialized visual analysis agents. designer:ui carries the
+  usability, WCAG and design-system checklists that turn a screenshot into a severity-ranked
+  review — other agents cannot do this. dev:frontend applies Anti-AI design patterns that
+  dev:developer does not have.
 
   AGENT RULES FOR THIS COMMAND:
   - Design analysis/review → designer:ui agent (subagent_type: "designer:ui")
@@ -52,7 +52,7 @@ skills: designer:ui-analyse, dev:frontend-implement, multimodel:multi-model-vali
       You are an ORCHESTRATOR, not an IMPLEMENTER or REVIEWER.
 
       **You MUST:**
-      - Use Task tool to delegate ALL design reviews to designer:ui agent
+      - Use Agent tool to delegate ALL design reviews to designer:ui agent
       - Use Bash to check API keys and run Claudish
       - Use Read/Glob to find design references
       - Use Tasks to track workflow progress
@@ -90,11 +90,10 @@ skills: designer:ui-analyse, dev:frontend-implement, multimodel:multi-model-vali
     </todowrite_requirement>
 
     <graceful_degradation>
-      If neither GEMINI_API_KEY nor OPENROUTER_API_KEY available:
-      - Explain the situation clearly
-      - Provide setup instructions
-      - Offer to describe the design verbally for basic feedback
-      - Exit gracefully if user chooses not to configure
+      If no image can be read and no Figma access is configured:
+      - Say which input was missing
+      - Ask for a screenshot path, or Figma MCP setup
+      - Exit gracefully. Do not produce a review of a screen nobody looked at.
     </graceful_degradation>
   </critical_constraints>
 
@@ -330,20 +329,21 @@ skills: designer:ui-analyse, dev:frontend-implement, multimodel:multi-model-vali
       <quality_gate>Valid design reference(s) identified, component path validated (if applicable)</quality_gate>
     </phase>
 
-    <phase number="2" name="Model Configuration">
-      <objective>Resolve the vision model and check claudish availability</objective>
+    <phase number="2" name="Image Availability">
+      <objective>Confirm there is something to look at</objective>
 
       <steps>
-        <step>Read vision model from centralized config:
-          Pick a vision-capable model from `list_models` (claudish MCP) and store as MODEL.
-          If the file or key is missing, stop with:
-          "ERROR: Could not reach the claudish model catalog (list_models). "
+        <step>Verify the design reference resolves to a readable image file, or to a
+          Figma URL with Figma MCP available. `designer:ui` reads the image itself —
+          there is no vision model to configure and no API key to check.
         </step>
 
-        <step>Store MODEL for Phase 4 — will be used with claudish `run_prompt` MCP tool</step>
+        <step>If neither is available, stop with:
+          "ERROR: no image file and no Figma access. Supply a screenshot path."
+        </step>
       </steps>
 
-      <quality_gate>MODEL resolved from the live catalog (list_models)</quality_gate>
+      <quality_gate>A readable image path, or Figma MCP reachable</quality_gate>
     </phase>
 
     <phase number="3" name="Review Configuration">
@@ -383,7 +383,7 @@ skills: designer:ui-analyse, dev:frontend-implement, multimodel:multi-model-vali
     <phase number="4" name="Execute Analysis">
       <objective>Run design analysis through designer:ui agent</objective>
 
-      <!-- Note: Phase 4 uses the 'designer:ui' agent for Gemini multimodal visual analysis.
+      <!-- Note: Phase 4 uses the 'designer:ui' agent for visual analysis.
            Phase 6 uses the 'dev:frontend' agent which specializes in code implementation with Anti-AI design rules. -->
 
       <steps>
@@ -398,17 +398,16 @@ skills: designer:ui-analyse, dev:frontend-implement, multimodel:multi-model-vali
 
           **Review Type**: {selected_review_type}
           **Focus Areas**: {user_focus_areas}
-          **Model**: {selected_gemini_model}
 
           Use the designer:ui-analyse skill for visual analysis patterns and severity guidelines.
-          Detect Gemini provider and use for visual analysis.
-          Write your review to: ${SESSION_PATH}/reviews/design-review/gemini.md
+          Read the image before reviewing it.
+          Write your review to: ${SESSION_PATH}/reviews/design-review/ui.md
 
           Return a brief summary (top 3 issues) when complete.
           ```
         </step>
 
-        <step>Launch designer:ui agent with Task tool</step>
+        <step>Launch designer:ui agent with Agent tool</step>
 
         <step>Wait for completion and capture summary</step>
 
@@ -601,7 +600,7 @@ skills: designer:ui-analyse, dev:frontend-implement, multimodel:multi-model-vali
           Use the dev:frontend-implement skill for Anti-AI design patterns and implementation workflows.
 
           1. Read the full review document for complete context
-          2. Detect Gemini provider for visual verification (if available)
+          2. Read the screenshot again after the change, to verify visually
           3. Apply the Anti-AI design rules (no generic grids, add texture/depth)
           4. Implement ONLY the improvements identified in the review
           5. Preserve existing functionality
@@ -610,7 +609,7 @@ skills: designer:ui-analyse, dev:frontend-implement, multimodel:multi-model-vali
           ```
         </step>
 
-        <step>Launch dev:frontend agent via Task tool:
+        <step>Launch dev:frontend agent via Agent tool:
           ```
           Task: dev:frontend
 
@@ -705,14 +704,6 @@ skills: designer:ui-analyse, dev:frontend-implement, multimodel:multi-model-vali
 </orchestration>
 
 <error_recovery>
-  <strategy scenario="No API keys available">
-    <recovery>
-      Explain requirements clearly, provide setup instructions for both
-      Gemini Direct and OpenRouter. Offer verbal-only analysis as fallback.
-      Exit gracefully if user chooses not to configure.
-    </recovery>
-  </strategy>
-
   <strategy scenario="Image file not found">
     <recovery>
       Show error with provided path. Ask user to verify path or provide
@@ -721,18 +712,12 @@ skills: designer:ui-analyse, dev:frontend-implement, multimodel:multi-model-vali
     </recovery>
   </strategy>
 
-  <strategy scenario="Gemini API error">
+  <strategy scenario="Image unreadable (corrupt, unsupported format, too large)">
     <recovery>
-      Log error details. If rate limit, suggest waiting. If auth error,
-      verify API key. If content policy, suggest different image.
-      Offer retry or fallback to verbal analysis.
-    </recovery>
-  </strategy>
-
-  <strategy scenario="Claudish MCP unavailable">
-    <recovery>
-      The claudish MCP server should be loaded automatically with the multimodel plugin.
-      If unavailable, check that the multimodel plugin is enabled in .claude/settings.json.
+      Report the failure with the path and what Read returned. Do not review the
+      screen from its filename or its surrounding code — say the image could not be
+      read and stop. A confident review of an unseen screen is the worst outcome
+      available here.
     </recovery>
   </strategy>
 
@@ -841,7 +826,7 @@ skills: designer:ui-analyse, dev:frontend-implement, multimodel:multi-model-vali
     <execution>
       **PHASE 0**: Create session ui-design-20260105-143022-a3f2
       **PHASE 1**: User provides screenshots/dashboard.png
-      **PHASE 2**: GEMINI_API_KEY found, use gemini
+      **PHASE 2**: screenshots/dashboard.png readable
       **PHASE 3**: User selects "Quick usability check"
       **PHASE 4**: Launch designer:ui agent
       **PHASE 5**: Present top 3 issues, link to full report
@@ -860,14 +845,14 @@ skills: designer:ui-analyse, dev:frontend-implement, multimodel:multi-model-vali
     </execution>
   </example>
 
-  <example name="No API Key Graceful Degradation">
+  <example name="Nothing to Look At">
     <user_request>/designer:ui</user_request>
     <execution>
       **PHASE 0**: Create session
-      **PHASE 1**: User provides image path
-      **PHASE 2**: No API keys found, show setup instructions
-      **User**: "I'll configure later"
-      **Exit**: "No problem! Run /designer:ui again after setting GEMINI_API_KEY or OPENROUTER_API_KEY."
+      **PHASE 1**: User provides a component path, no screenshot
+      **PHASE 2**: No readable image, no Figma URL
+      **Exit**: "I can read the component source, but a visual review needs a
+                 screenshot. Render the component and pass me the image path."
     </execution>
   </example>
 
@@ -877,9 +862,9 @@ skills: designer:ui-analyse, dev:frontend-implement, multimodel:multi-model-vali
       **PHASE 0**: Create session ui-design-20260122-143022-a3f2
       **PHASE 0.5**: Detect intent -> REVIEW_AND_IMPLEMENT (trigger: "improve")
       **PHASE 1**: User provides src/components/Toast.tsx, path validated
-      **PHASE 2**: GEMINI_API_KEY found
+      **PHASE 2**: rendered screenshot supplied and readable
       **PHASE 3**: Auto-select "Comprehensive review" (implementation mode)
-      **PHASE 4**: Launch designer:ui agent with Gemini analysis
+      **PHASE 4**: Launch designer:ui agent
       **PHASE 5**: Present findings:
         - Score: 6/10
         - Issue 1: Flat design, no depth

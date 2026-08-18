@@ -51,6 +51,8 @@ interface Preset {
   kind: "preset";
   id: string;
   name: string;
+  /** Display name for lists; the slug in `name` stays the selection key. */
+  title: string;
   axis: "verbosity" | "modifier";
   summary: string;
   conflicts: string[];
@@ -160,6 +162,7 @@ export function discoverPresets(pluginRoot: string): Preset[] {
       kind: "preset" as const,
       id: name,
       name,
+      title: frontmatter.title || "",
       axis,
       summary: frontmatter.summary || "",
       conflicts: splitList(frontmatter.conflicts),
@@ -286,6 +289,49 @@ function describe(sources: Source[]): string {
   return `"${clipped.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 }
 
+/**
+ * The shared integrity block. Appended to EVERY composition, unconditionally.
+ *
+ * A composed style is arbitrary instruction text assembled from several
+ * sources, and the user's own imported styles are not reviewed by anyone. We
+ * cannot detect prompt injection in them and will not pretend to. What we can
+ * do is state, at the end of the prompt, the things style is never allowed to
+ * change — so a rule that says "be brief" cannot be read as licence to trim a
+ * command, and a rule that says "no hedging" cannot be read as licence to drop
+ * a warning.
+ *
+ * It lives in the BODY, not the frontmatter, because only the body reaches the
+ * model. That is a real cost paid on every request, and it is the exception to
+ * the "provenance goes in frontmatter" rule below: provenance is for the human
+ * reading the file, this is for the model reading the prompt.
+ *
+ * It goes LAST for the same reason imports come first — specific-after-broad,
+ * so later text refines earlier text rather than being buried by it.
+ *
+ * Mirrored verbatim in claudeup's `src/services/styles-manager.ts`; a parity
+ * test there reads THIS file and fails if the two drift. Edit both together.
+ */
+export const INTEGRITY_BLOCK = `## Style limits
+
+These rules override everything above. Style decides how an answer is worded;
+it never decides what is true.
+
+- Never reword, shorten, or tidy code, commands, file paths, identifiers, error
+  text, log output, or numbers to fit a style rule. Reproduce them exactly,
+  including the parts that read badly.
+- A brevity rule may cut prose. It may never cut a flag from a command, a
+  segment from a path, a digit from a figure, or the line of a stack trace that
+  names the failure.
+- Quote real output rather than paraphrasing it. When it is too long to
+  include, quote the part that decides the answer and say what was left out.
+- Never soften or drop a security warning, a data-loss risk, or a caveat that
+  would change what the reader does next. State it plainly, even under a rule
+  that bans hedging.
+- Ask before any destructive or irreversible action and name exactly what would
+  be lost. No verbosity or brevity rule suppresses that confirmation.
+- Say when something is unverified, failing, or unknown. A rule against filler
+  bans padding, not honesty.`;
+
 export function composeStyleFile(styleName: string, sources: Source[]): string {
   const presets = sources.filter((source): source is Preset => source.kind === "preset");
   const imports = sources.filter((source): source is Imported => source.kind === "imported");
@@ -320,6 +366,11 @@ export function composeStyleFile(styleName: string, sources: Source[]): string {
       lines.push(preset.body, "");
     }
   }
+
+  // Unconditional, and last. A composition with no sources still gets it —
+  // there is no selection for which "do not rewrite an error message" stops
+  // applying.
+  lines.push(INTEGRITY_BLOCK, "");
 
   return `${lines.join("\n").replace(/\n{3,}/g, "\n\n").trimEnd()}\n`;
 }
@@ -435,13 +486,13 @@ function main(): number {
     console.log("VERBOSITY — pick exactly one");
     for (const preset of presets.filter((entry) => entry.axis === "verbosity")) {
       console.log(
-        `  [${mark(preset.name, appliedPresets)}] ${preset.name.padEnd(16)}${preset.summary}`,
+        `  [${mark(preset.name, appliedPresets)}] ${preset.name.padEnd(16)}${preset.title ? `${preset.title}. ` : ""}${preset.summary}`,
       );
     }
     console.log("\nMODIFIERS — combine freely");
     for (const preset of presets.filter((entry) => entry.axis === "modifier")) {
       console.log(
-        `  [${mark(preset.name, appliedPresets)}] ${preset.name.padEnd(16)}${preset.summary}`,
+        `  [${mark(preset.name, appliedPresets)}] ${preset.name.padEnd(16)}${preset.title ? `${preset.title}. ` : ""}${preset.summary}`,
       );
     }
     console.log("\nIMPORTABLE OUTPUT STYLES — already on this machine");

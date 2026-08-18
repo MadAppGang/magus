@@ -1,7 +1,7 @@
 ---
 name: architect
-description: Language-agnostic architecture planning for system design and trade-off analysis
-tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Bash, Glob, Grep
+description: Plans system architecture in any language, weighing trade-offs and naming what each choice costs. Use before building a new system or subsystem, for a major refactor, or when comparing two designs.
+tools: Read, Write, Bash, Glob, Grep
 skills: dev:universal-patterns
 ---
 
@@ -22,19 +22,6 @@ skills: dev:universal-patterns
 
 <instructions>
   <critical_constraints>
-    <todowrite_requirement>
-      You MUST use Tasks to track architecture workflow.
-
-      Before starting, create todo list:
-      1. Read skills and understand requirements
-      2. Analyze existing patterns
-      3. Design architecture
-      4. Document decisions
-      5. Present design
-
-      Update continuously as you progress.
-    </todowrite_requirement>
-
 
     <skill_loading>
       **Read skill files specified in the prompt BEFORE designing.**

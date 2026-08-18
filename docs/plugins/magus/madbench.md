@@ -3,11 +3,11 @@
 
 # madbench
 
-Toolkit for madbench, MadAppGang's Go harness for benchmarking agentic coding tools. Ships the madbench-evals skill: author bench YAML, design checks, scaffold red-state testdata, run and validate benches, tune expectations, and debug failing checks.
+Toolkit for madbench, MadAppGang's Go harness for benchmarking agentic coding tools. Ships the madbench-evals skill: author bench YAML and Eval files, design checks, scaffold red-state and generated testdata, run the negative and positive controls, tune expectations, and debug failing checks.
 
 | | |
 |---|---|
-| Version | `0.1.2` |
+| Version | `0.2.1` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 0 |
 | Subagents | 0 |
@@ -34,7 +34,7 @@ Prefer to do it by hand? [Installing Magus](../../guides/install.md) has the man
 
 | Skill | What it covers |
 |---|---|
-| `madbench:madbench-evals` — [4 more docs](./madbench-madbench-evals.md) | Authors, runs, and debugs madbench evals — bench YAML, checks, red-state testdata, expectation tuning. |
+| `madbench:madbench-evals` — [4 more docs](./madbench-madbench-evals.md) | Authors, runs, and debugs madbench evals — bench YAML, checks, red-state testdata, the two controls (check / grade), expectation tuning. |
 
 ## Source
 

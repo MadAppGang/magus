@@ -1,6 +1,6 @@
 ---
 name: spec-writer
-description: Synthesizes comprehensive specifications from interview sessions. Reads interview log, assets, and context to produce structured spec.md and tasks.md documents.
+description: Synthesizes a specification from an interview session, reading the log, assets and context to produce spec.md and tasks.md. Use when an interview has finished and its answers need turning into a buildable spec.
 tools: Read, Write, Glob, Grep
 ---
 

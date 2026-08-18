@@ -62,7 +62,7 @@ allowed-tools: Read, Write, Edit, Bash, Glob, AskUserQuestion
 
     ## Task Routing - Agent Delegation
 
-    IMPORTANT: For complex tasks, prefer delegating to specialized agents via the Task tool rather than handling inline. Delegated agents run in dedicated context windows with sustained focus, producing higher quality results.
+    IMPORTANT: For complex tasks, prefer delegating to specialized agents via the Agent tool rather than handling inline. Delegated agents run in dedicated context windows with sustained focus, producing higher quality results.
 
     | Task Pattern | Delegate To | Trigger |
     |---|---|---|
@@ -74,9 +74,9 @@ allowed-tools: Read, Write, Edit, Bash, Glob, AskUserQuestion
 
     Key distinction: If the task asks to IMPLEMENT/CREATE/BUILD -> `dev:developer`. If the task asks to UNDERSTAND/ANALYZE/TRACE -> `code-analysis:detective`.
 
-    ### Skill Routing (Skill tool, NOT Task tool)
+    ### Skill Routing (Skill tool, NOT Agent tool)
 
-    NOTE: Skills use the `Skill` tool, NOT the `Task` tool. The `namespace:name` format is shared by both agents and skills — check which tool to use before invoking.
+    NOTE: Skills use the `Skill` tool, NOT the `Agent` tool. The `namespace:name` format is shared by both agents and skills — check which tool to use before invoking.
 
     | Need | Invoke Skill | When |
     |---|---|---|

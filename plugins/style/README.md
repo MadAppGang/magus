@@ -42,6 +42,7 @@ number of free modifiers:
 | `explanatory` | Teach as you go, more context per step |
 | `terse` | Shortest useful output |
 | `no-slop` | Bans filler, hype, and AI vocabulary |
+| `asd-ste100` | ASD-STE100 Simplified Technical English: sentences that survive one read |
 | `evidence-first` | Claims must carry a citation, command output, or file reference |
 | `calibrated` | State confidence honestly; no false certainty |
 | `plain-language` | Prefer plain words over jargon |

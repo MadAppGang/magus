@@ -532,7 +532,7 @@ updated: 2026-01-28
     </when_to_delegate>
 
     <how_to_delegate>
-      Use Task tool with clear instructions and context.
+      Use Agent tool with clear instructions and context.
     </how_to_delegate>
   </delegation>
 </instructions>
@@ -580,7 +580,7 @@ updated: 2026-01-28
 
 **Error Recovery**: Handle failures gracefully and inform the user.
 
-**Delegation**: Use Task tool for specialized subtasks.
+**Delegation**: Use Agent tool for specialized subtasks.
 
 ## Hooks Configuration Template
 

@@ -1,6 +1,6 @@
 ---
 name: scribe
-description: Lightweight file writer for interview sessions. Appends Q&A to interview log, updates checkpoints, and maintains session state. Designed for fast, reliable file operations.
+description: Appends Q&A to an interview log, updates checkpoints and maintains session state — a small, fast file writer. Use when recording an interview turn, not for analysis or synthesis.
 tools: Read, Write, Bash
 ---
 

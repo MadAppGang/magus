@@ -20,13 +20,13 @@ Every tool call within a single message executes in parallel (when no dependenci
 
 ```
 Sequential (5 separate messages):
-  Message 1: Task(agent-1)  →  2 min
-  Message 2: Task(agent-2)  →  2 min (waits for agent-1!)
+  Message 1: Agent(agent-1)  →  2 min
+  Message 2: Agent(agent-2)  →  2 min (waits for agent-1!)
   Message 3-5: ...           →  2 min each
   Total: ~10 minutes (serial)
 
 Batched (1 message):
-  Message 1: Task(agent-1) + Task(agent-2) + ... + Task(agent-5)
+  Message 1: Agent(agent-1) + Agent(agent-2) + ... + Agent(agent-5)
   Total: ~2 minutes (parallel, limited by slowest agent)
   Speedup: 5x
 ```
@@ -45,14 +45,14 @@ Claude Code has a simple execution model:
 
 ```
 Same tool type in one message = PARALLEL
-  Task(A) + Task(B) + Task(C)  →  All run simultaneously
+  Agent(A) + Agent(B) + Agent(C)  →  All run simultaneously
 
 Different tool types in one message = SEQUENTIAL (often)
-  TaskCreate(...) + Task(A) + Bash(...)  →  May run one at a time
+  TaskCreate(...) + Agent(A) + Bash(...)  →  May run one at a time
 
 Separate messages = ALWAYS SEQUENTIAL
-  Message 1: Task(A)  →  completes first
-  Message 2: Task(B)  →  starts only after A finishes
+  Message 1: Agent(A)  →  completes first
+  Message 2: Agent(B)  →  starts only after A finishes
 ```
 
 **Why Same Tool Type Signals Independence:**
@@ -69,13 +69,13 @@ The most impactful tool to batch -- each agent runs for minutes.
 
 ```
 ❌ Sequential (3 separate messages):
-  Message 1: Task(security-reviewer)   → 3 min
-  Message 2: Task(perf-reviewer)       → 2 min (waits!)
-  Message 3: Task(a11y-reviewer)       → 2 min (waits!)
+  Message 1: Agent(security-reviewer)   → 3 min
+  Message 2: Agent(perf-reviewer)       → 2 min (waits!)
+  Message 3: Agent(a11y-reviewer)       → 2 min (waits!)
   Total: ~7 minutes
 
 ✅ Batched (1 message):
-  Task(security-reviewer) + Task(perf-reviewer) + Task(a11y-reviewer)
+  Agent(security-reviewer) + Agent(perf-reviewer) + Agent(a11y-reviewer)
   Total: ~3 minutes (3 agents parallel)
   Speedup: 2.3x
 ```
@@ -153,10 +153,10 @@ The canonical batching template from multi-agent-coordination:
 ```
 Message 1: Preparation (Bash/Write only)
   - Create directories, write context files, validate inputs
-  - NO Task calls, NO Tasks
+  - NO Agent calls, NO Tasks
 
 Message 2: Parallel Execution (Task only)
-  - ALL agents in SINGLE message, ONLY Task calls
+  - ALL agents in SINGLE message, ONLY Agent calls
   - Same tool type = true parallel execution
 
 Message 3: Consolidation (Task only)
@@ -175,12 +175,12 @@ Message 4: Present Results
 ### Anti-Pattern 1: Sequential Task Launches
 
 ```
-❌ Message 1: Task(agent-1)     // 2 min
-❌ Message 2: Task(agent-2)     // 2 min (waits for agent-1!)
-❌ Message 3: Task(agent-3)     // 2 min (waits for agent-2!)
+❌ Message 1: Agent(agent-1)     // 2 min
+❌ Message 2: Agent(agent-2)     // 2 min (waits for agent-1!)
+❌ Message 3: Agent(agent-3)     // 2 min (waits for agent-2!)
    Total: 6 minutes
 
-✅ Message 1: Task(agent-1) + Task(agent-2) + Task(agent-3)  // All parallel!
+✅ Message 1: Agent(agent-1) + Agent(agent-2) + Agent(agent-3)  // All parallel!
    Total: 2 minutes (3x speedup)
 ```
 
@@ -189,13 +189,13 @@ Message 4: Present Results
 ```
 ❌ Mixed Tools (sequential):
   TaskCreate({...})             // Tool type A
-  Task(security-reviewer)       // Tool type B
+  Agent(security-reviewer)       // Tool type B
   Bash("echo 'starting'")      // Tool type C
-  Task(perf-reviewer)           // Tool type B
+  Agent(perf-reviewer)           // Tool type B
 
 ✅ Separated (parallel execution):
   Message 1: TaskCreate({...}) + Bash("echo 'starting'")   // Preparation
-  Message 2: Task(security-reviewer) + Task(perf-reviewer) // Execution (parallel)
+  Message 2: Agent(security-reviewer) + Agent(perf-reviewer) // Execution (parallel)
 ```
 
 ### Anti-Pattern 3: Individual Tasks Calls
@@ -246,8 +246,8 @@ If all four are "no," operations are independent -- batch them.
 
 ```
 CORRECT - Sequential:
-  Message 1: Task(architect)   → writes plan.md
-  Message 2: Task(developer)   → reads plan.md (depends on Message 1)
+  Message 1: Agent(architect)   → writes plan.md
+  Message 2: Agent(developer)   → reads plan.md (depends on Message 1)
 
 CORRECT - Chained:
   Bash("npm install && npm run build && npm run test")
@@ -312,16 +312,16 @@ Message 1: Preparation
   Bash("mkdir -p ai-docs/reviews")
   Write("ai-docs/review-context.md", code_context)
 
-Message 2: Parallel Execution (5 Task calls)
-  Task(security-reviewer)      → ai-docs/reviews/security.md
-  Task(performance-reviewer)   → ai-docs/reviews/performance.md
-  Task(accessibility-reviewer) → ai-docs/reviews/accessibility.md
-  Task(code-quality-reviewer)  → ai-docs/reviews/quality.md
-  Task(architecture-reviewer)  → ai-docs/reviews/architecture.md
+Message 2: Parallel Execution (5 Agent calls)
+  Agent(security-reviewer)      → ai-docs/reviews/security.md
+  Agent(performance-reviewer)   → ai-docs/reviews/performance.md
+  Agent(accessibility-reviewer) → ai-docs/reviews/accessibility.md
+  Agent(code-quality-reviewer)  → ai-docs/reviews/quality.md
+  Agent(architecture-reviewer)  → ai-docs/reviews/architecture.md
   ALL 5 execute simultaneously
 
 Message 3: Consolidation
-  Task(review-consolidator) → ai-docs/consolidated-review.md
+  Agent(review-consolidator) → ai-docs/consolidated-review.md
 
 Message 4: Present Results
   Sequential: 5 * 2 min = 10 min  |  Batched: ~4 min  |  2.5x speedup
@@ -353,12 +353,12 @@ Message 1 - Preparation (batch reads + setup):
   + Read("package.json") + Glob("**/*.test.ts")
 
 Message 2 - Planning (depends on Message 1):
-  Task(architect) → ai-docs/feature/plan.md
+  Agent(architect) → ai-docs/feature/plan.md
 
 Message 3 - Implementation (3 agents parallel, depends on Message 2):
-  Task(backend-developer) → src/feature/api.ts
-  Task(frontend-developer) → src/feature/ui.tsx
-  Task(test-developer) → tests/feature/
+  Agent(backend-developer) → src/feature/api.ts
+  Agent(frontend-developer) → src/feature/ui.tsx
+  Agent(test-developer) → tests/feature/
 
 Message 4 - Validation (3 checks parallel, depends on Message 3):
   Bash("npm run test -- tests/feature/")
@@ -366,7 +366,7 @@ Message 4 - Validation (3 checks parallel, depends on Message 3):
   Bash("npm run typecheck")
 
 Message 5 - Review (depends on Message 4):
-  Task(code-reviewer)
+  Agent(code-reviewer)
 
 Total: 5 messages (minimum for dependency chain)
 Without batching: 10+ messages  |  Speedup: 2-3x
@@ -377,7 +377,7 @@ Without batching: 10+ messages  |  Speedup: 2-3x
 ## Troubleshooting
 
 **Parallel agents executing sequentially?**
-Mixed tool types in execution message. Use ONLY Task calls.
+Mixed tool types in execution message. Use ONLY Agent calls.
 
 **File reads arriving one at a time?**
 Each Read in separate message. Batch all Reads into one message.

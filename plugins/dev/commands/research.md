@@ -1,7 +1,7 @@
 ---
 name: research
 description: Multi-source research with convergence-based finalization and parallel exploration
-allowed-tools: Task, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep
+allowed-tools:  Agent, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep
 skills: dev:context-detection, multimodel:task-orchestration
 ---
 
@@ -71,7 +71,7 @@ skills: dev:context-detection, multimodel:task-orchestration
       **You are an ORCHESTRATOR, not RESEARCHER.**
 
       **You MUST:**
-      - Use Task tool to delegate ALL research to agents
+      - Use Agent tool to delegate ALL research to agents
       - Use Tasks to track research pipeline
       - Enforce convergence criteria between iterations
       - Use file-based communication between agents
@@ -550,7 +550,7 @@ skills: dev:context-detection, multimodel:task-orchestration
   </forbidden_tools>
 
   <parallel_execution_pattern>
-    **Single message with multiple Task calls executes in parallel:**
+    **Single message with multiple Agent calls executes in parallel:**
 
     Task: researcher
       Prompt: "Sub-question 1..."

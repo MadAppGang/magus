@@ -1,7 +1,7 @@
 {
   "name": "bunjs",
-  "version": "0.4.0",
-  "description": "Bun and TypeScript toolkit. A `/bunjs:bun` index routes any task to the right one of eight task-shaped skills \u2014 setup, HTTP, errors, testing, security, production, performance, TUI \u2014 each shipping copyable code verified against Bun. Only Bun is tested.",
+  "version": "0.4.1",
+  "description": "Bun and TypeScript toolkit. A `/bunjs:bun` index routes any task to the right one of eight task-shaped skills — setup, HTTP, errors, testing, security, production, performance, TUI — each shipping copyable code verified against Bun. Only Bun is tested.",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",

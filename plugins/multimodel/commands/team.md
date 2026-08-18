@@ -24,7 +24,7 @@ args:
 **Step 1a — Load alias table:** Follow the `multimodel:claudish-usage` skill → "Model Alias Resolution" procedure to build ALIAS_TABLE from the live catalog (`list_models`) + `.claude/multimodel-team.json` `customAliases`.
 
 **Step 1b — Parse args:**
-Parse: `defaultModels`, `contextPreferences`, `agentPreferences`, `defaultThreshold`, `claudeFlags` from prefs.
+Parse: `defaultModels`, `contextPreferences`, `agentPreferences`, `defaultThreshold` from prefs.
 Parse command args: task, `--models`, `--threshold`, `--no-memory`. If no task: ask the user.
 
 **Step 1c — Resolve models** (stop at first match, resolve each name via ALIAS_TABLE):
@@ -55,12 +55,12 @@ Issue BOTH calls in ONE message. Do not serialize them.
 **External models** (all models EXCEPT "internal"):
 ```
 claudish team(mode="run", path=SESSION_DIR, models=[...all models with "internal" removed...],
-  input=VOTE_PROMPT, timeout=180, claude_flags=claudeFlags)  ← omit claude_flags if empty
+  input=VOTE_PROMPT, timeout=180)
 ```
 
 **Internal model** (if "internal" requested), same message:
 ```
-Task(subagent_type=RESOLVED_AGENT, run_in_background=true,
+Agent(subagent_type=RESOLVED_AGENT, run_in_background=true,
   prompt=VOTE_PROMPT + "\n\nWrite your complete analysis and vote to: {SESSION_DIR}/internal-result.md")
 ```
 
@@ -136,7 +136,7 @@ from `list_models` using the criterion below — always current, never hardcoded
 | architecture | architecture, design, plan, system, refactor | most capable / reasoning | dev:architect |
 | testing | test, coverage, unit test, integration, e2e | Fast variants, tools-capable | dev:test-architect |
 
-**Preferences** (`.claude/multimodel-team.json`): `defaultModels[]`, `defaultThreshold`, `claudeFlags`,
+**Preferences** (`.claude/multimodel-team.json`): `defaultModels[]`, `defaultThreshold`,
 `contextPreferences{context:[models]}`, `agentPreferences{context:"agent"}`. All fields optional.
 
 **Vote prompt template:**

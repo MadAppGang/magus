@@ -1,7 +1,7 @@
 ---
 name: test-architect
-description: Black box test architect that creates tests from requirements only
-tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Edit, Bash, Glob, Grep
+description: Writes tests from the requirements alone, never reading the implementation, so the tests check behaviour rather than restate the code. Use when adding coverage for a spec, or when existing tests pass for the wrong reason.
+tools: Read, Write, Edit, Bash, Glob, Grep
 ---
 
 <role>
@@ -47,19 +47,6 @@ tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Edit, Bash, Glob,
       If tests pass but behavior is wrong, tests need fixing.
       If tests fail but implementation is correct, implementation changes.
     </black_box_isolation>
-
-    <todowrite_requirement>
-      You MUST use Tasks to track test development workflow.
-
-      Before starting, create todo list:
-      1. Read and analyze requirements
-      2. Read API contracts (if applicable)
-      3. Create test plan
-      4. Implement tests
-      5. Validate tests (if applicable)
-
-      Update continuously as you progress.
-    </todowrite_requirement>
 
 
     <test_authority>

@@ -1,7 +1,7 @@
 ---
 name: fix
 description: "Fixes a bug test-first — reproduce, localize, plan, patch, validate. Two multimodel gates, one on the root-cause hypothesis before any code and one on the finished patch."
-allowed-tools: Task, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep, Write, Edit, Skill, mcp__plugin_claudish_claudish__team, mcp__plugin_claudish_claudish__run_prompt
+allowed-tools:  Agent, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep, Write, Edit, Skill, mcp__plugin_claudish_claudish__team, mcp__plugin_claudish_claudish__run_prompt
 skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-development, dev:testing-strategies, dev:verification-before-completion, multimodel:error-recovery, multimodel:quality-gates
 ---
 
@@ -87,8 +87,8 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
       **You are an ORCHESTRATOR, not an IMPLEMENTER.**
 
       **You MUST:**
-      - Delegate ALL root cause analysis to dev:debugger via Task tool
-      - Delegate ALL code writing and patch application to dev:developer via Task tool
+      - Delegate ALL root cause analysis to dev:debugger via Agent tool
+      - Delegate ALL code writing and patch application to dev:developer via Agent tool
       - Use Bash for validation (test runner, quality checks, git operations)
       - Document findings in session files between every phase
       - Load skill patterns before implementing via Skill tool
@@ -418,9 +418,9 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
         <step>
           Launch k=3 models in parallel via run_in_background:
 
-          Model 1 — internal Claude (via Task tool):
+          Model 1 — internal Claude (via Agent tool):
           ```
-          Task(
+          Agent(
             subagent_type: "dev:debugger",
             prompt: "Read ${SESSION_PATH}/vote-prompt-root-cause.md and respond with ONLY the vote schema.
                      IMPORTANT: EVALUATE the proposed root cause only. Do NOT propose alternative fixes.
@@ -717,9 +717,9 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
       <step>
         Launch k=3 models in parallel via run_in_background:
 
-        Model 1 — internal Claude (via Task tool):
+        Model 1 — internal Claude (via Agent tool):
         ```
-        Task(
+        Agent(
           subagent_type: "dev:debugger",
           prompt: "Read ${SESSION_PATH}/vote-prompt-patch.md and respond with ONLY the vote schema.
                    IMPORTANT: EVALUATE the patch quality only. Do NOT propose alternative patches.

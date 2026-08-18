@@ -1,7 +1,7 @@
 ---
 name: mnemex-search
 description: Performs semantic code search and AST analysis via mnemex MCP/CLI — map, symbol, callers, callees, context, PageRank. Use when searching code, mapping a codebase, or auditing callers before refactor.
-allowed-tools: Bash, Task, AskUserQuestion
+allowed-tools: Bash, Agent, AskUserQuestion
 user-invocable: false
 ---
 

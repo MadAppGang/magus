@@ -1,7 +1,7 @@
 ---
 name: deep-analysis
 description: Runs a multi-perspective codebase audit using all mnemex AST commands with PageRank and chain-of-thought reasoning. Use when asked for a deep analysis, full codebase review, or comprehensive audit.
-allowed-tools: Bash, Task, Read, AskUserQuestion
+allowed-tools: Bash, Agent, Read, AskUserQuestion
 model: opus
 user-invocable: false
 ---

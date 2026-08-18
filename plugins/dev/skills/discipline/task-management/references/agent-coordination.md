@@ -12,7 +12,7 @@ territory while costing separate listing budget.
 ## When to Use
 
 Use this skill when:
-- Considering launching an agent with the Task tool
+- Considering launching an agent with the Agent tool
 - Evaluating whether a task requires agent delegation
 - Selecting between different agent types or external models
 - Coordinating multiple agents in a workflow
@@ -47,13 +47,13 @@ Does the task require:
 ├─ 2-3 sequential tool calls?
 │  └─ ✗ NO AGENT - Use tools directly in sequence
 ├─ Multi-step investigation with branching logic?
-│  └─ ✓ AGENT - Task tool with developer/architect agent
+│  └─ ✓ AGENT - Agent tool with developer/architect agent
 ├─ External model expertise (Grok, DeepSeek, etc.)?
 │  └─ ✓ AGENT - external-model pattern with model specification
 ├─ Parallel exploration of multiple code paths?
-│  └─ ✓ AGENT - Multiple Task calls with coordination
+│  └─ ✓ AGENT - Multiple Agent calls with coordination
 └─ High-risk change needing isolation?
-   └─ ✓ AGENT - Task tool with sandbox/review focus
+   └─ ✓ AGENT - Agent tool with sandbox/review focus
 ```
 
 ### 2. Task Isolation Requirements
@@ -113,7 +113,7 @@ team(mode="run", path=SESSION_DIR,
 
 ### Parallel Work
 **Trigger:** Multiple independent tasks that can run simultaneously
-**Agent:** Multiple Task calls with result aggregation
+**Agent:** Multiple Agent calls with result aggregation
 **Example:** "Analyze frontend performance (Task 1) while auditing API security (Task 2)"
 
 ### Risk Isolation
@@ -264,7 +264,7 @@ Success Criteria:
 
 **Example:**
 ```
-result = Task("external-model: grok\n\nRefactor 10 components for React 19...")
+result = Agent("external-model: grok\n\nRefactor 10 components for React 19...")
 
 if (result.contains("Refactored successfully")) {
   // Apply changes to codebase
@@ -373,7 +373,7 @@ Constraints:
 ## Enforcement Mechanism
 
 **Detection:**
-1. Before Task tool call, check if task description includes success criteria
+1. Before Agent tool call, check if task description includes success criteria
 2. Before external-model, verify model name is explicitly specified
 3. Before agent launch, confirm native tools were attempted first
 4. After agent completes, verify result is validated before use

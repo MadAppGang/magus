@@ -120,10 +120,10 @@ When the ui agent performs a review:
 1. **Load Style**: Read `.claude/design-style.md`
 2. **Load References**: List `.claude/design-references/`
 3. **Match Components**: Find relevant reference images for review target
-4. **Comparative Analysis**: Pass reference image + target to Gemini
+4. **Comparative Analysis**: `Read` the reference, then `Read` the target
 5. **Validate Tokens**: Check colors, typography, spacing against style
 
-### Gemini Prompt with References
+### Comparison Prompt with References
 
 ```
 Compare this implementation screenshot against the project design reference.

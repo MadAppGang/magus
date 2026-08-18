@@ -1,6 +1,6 @@
 ---
 name: madbench-evals
-description: Authors, runs, and debugs madbench evals — bench YAML, checks, red-state testdata, expectation tuning. Use when creating or reviewing a madbench.yaml, choosing checks, or debugging a failing bench.
+description: Authors, runs, and debugs madbench evals — bench YAML, checks, red-state testdata, the two controls (check / grade), expectation tuning. Use when writing or reviewing a madbench.yaml or Eval file, choosing checks, or debugging a failing bench.
 user-invocable: false
 ---
 
@@ -11,10 +11,14 @@ You write a **bench file** (`madbench.yaml` / `*.madbench.yaml`), point it at a 
 and model, give it scenarios with seeded testdata, and grade the agent's work with checks.
 
 Reference files (read on demand, not upfront):
-- `schema.md` — full bench YAML schema, every field, aliases, case-directory format
-- `checks-catalog.md` — every check type by family with params and examples
-- `runners-and-sandbox.md` — harness configs, permission modes, sandbox, env
-- `debugging.md` — error→cause map, report-JSON analysis, expectation tuning
+- `schema.md` — full bench YAML schema, every field, aliases, case-directory format,
+  plus `image:` · `generate:` · the Eval file and its `control:` block
+- `checks-catalog.md` — every check type by family with params and examples, incl.
+  thread/agent scoping, path matchers, and `model:current`
+- `runners-and-sandbox.md` — harness configs, permission modes, sandbox, env,
+  `agent_env:` vs `plugins:`, and the full CLI
+- `debugging.md` — error→cause map, the two controls, report-JSON analysis,
+  expectation tuning
 
 ## Step 0 — check what you actually have
 
@@ -35,24 +39,44 @@ drew about check behavior was about a program that was not running.
 If the revision is older than a rename you are relying on, rebuild:
 `cd <madbench repo> && go build -o /tmp/mb ./cmd/madbench` and use `/tmp/mb`.
 
-## Before you write YAML — the five silent killers
+## Before you write YAML — what strict decoding catches, and the two it cannot
 
-Bench files are decoded **leniently**: an unknown key is dropped without a word,
-and `madbench list` validates almost nothing (it checks YAML shape and the bench/
-scenario names — not check types, not sandbox levels, not testdata paths). So a
-typo does not fail loudly; it changes what runs. These five cost whole sessions:
+**Bench files are strictly decoded (since v0.10.0).** An unknown key is a hard load
+error naming the file, line and type — the same treatment Eval files always had. Three
+of the five typos that used to cost whole sessions now cost a second:
 
-| Write this | Not this | What actually happens |
+```
+Error: loading bench.yaml: parsing bench.yaml: yaml: unmarshal errors:
+  line 5: field input not found in type madbench.ScenarioSpec
+```
+
+| You wrote | Now |
+|---|---|
+| `input:` instead of `prompt:` | **load error** — `field input not found in type madbench.ScenarioSpec`. It used to be dropped silently and run the agent with an EMPTY prompt, billing you (4 errored sessions in one audit). |
+| top-level `name:` instead of `description:` | **load error** — `field name not found in type madbench.BenchSpec`. (`name:` **is** valid one level down, on a scenario.) |
+| `sandbox: {mode: …}` instead of `{level: …}` | **load error** — `field mode not found in type madbench.sandboxYAML`. It used to pass preflight clean and run at the default `home` level — a silent *isolation downgrade*. |
+
+**Two are still silent, and knowing *why* tells you where else to look.**
+
+| Write this | Not this | Why it still slips through |
 |---|---|---|
-| `prompt:` | `input:` | There is **no `input:` alias**. It is silently dropped and the agent runs with an **EMPTY prompt — and you get billed.** This caused 4 errored sessions in one audit. |
-| `config:` | `args:` (on `ts`/`js`/`python`) | Those script shims bind `config` as a parameter (`config = assertion.get("config")`). `args` is only reachable as `assertion.args` — your config silently never arrives. |
-| `timeout: 600s` | `timeout: 600` or `"600"` | `timeout:` is a **duration string**. Both bare-int and quoted-int decode to `"600"`, `time.ParseDuration` rejects it, and the timeout **silently falls back to the 120s default** — no error either way. |
-| `description:` | `name:` (at bench top level) | A bench has **no top-level `name:` key** — the bench's name *is* its `description:`. A stray `name:` is dropped silently. (`name:` **is** valid one level down, on a scenario.) |
-| `sandbox: {level: …}` | `sandbox: {mode: …}` | There is **no `mode:` key**. `sandbox: {mode: container}` is dropped, **passes `preflight` clean**, and runs at the default `home` level — you believe you are containerized and you are not. A silent *isolation downgrade*. |
+| `timeout: 600s` | `timeout: 600` or `"600"` | The field's **type is `string`**, so `600` decodes fine — strict decoding checks key names, not value semantics. `time.ParseDuration` then rejects `"600"` and the timeout **silently falls back to 120s**. Always write a unit. |
+| `config:` | `args:` (on `ts`/`js`/`python`) | `args:` is a **real field** on a check spec — it is the right key for `exec`, `session:*` and most others. On the script shims it is simply the wrong one: they bind `config` as a parameter, so your config arrives as `assertion.args` and nothing reads it. |
 
-Verify with `madbench preflight` (see Step 5) — it catches far more than `list` does.
-But note the last row: preflight cannot flag a key that does not exist, so lenient
-decoding is still your problem. Grep your own file for these five before you spend.
+**And strict decoding stops at the `harness_config:` boundary.** That key is an untyped
+map handed to the harness, so nothing validates inside it:
+
+```yaml
+harness_config:
+  model: claude-haiku-4-5-20251001
+  temperature: 0.2        # ← loads clean, preflights clean, is NEVER read
+```
+
+`claude-code` reads exactly six keys — `binary`, `model`, `system_prompt`, `args`,
+`agent_env`, `plugins` — and ignores everything else without a word. There is no
+`temperature` key (pass CLI flags through `args:`, and only if your installed `claude`
+accepts them). So: trust the loader for the bench structure, and read
+`runners-and-sandbox.md` for what the harness actually consumes.
 
 ## Vocabulary (use these words)
 
@@ -84,8 +108,10 @@ a new file.
 each entry one full bench run overriding only the params it changes. **There is no
 cross-product** — a `matrix:` key does not exist and strict decoding rejects it (as it
 does any unknown top-level key). To run across several models/params, write explicit
-`runs:` entries. Details + bench-side `params:`/`{{name}}`
-placeholders: `schema.md`.
+`runs:` entries. Add **`control:`** to declare what those runs may differ by: madbench
+diffs every run against the baseline before any spend and stops a confounded pair,
+which is the difference between an A/B and two runs that happen to disagree. Details +
+bench-side `params:`/`{{name}}` placeholders: `schema.md`.
 
 ## The scoring contract
 
@@ -126,8 +152,8 @@ otherwise a green-from-the-start bench proves nothing.
 
 Order of preference:
 1. **Deterministic** — `exec` (run the tests! Code-kind, builtin-implemented),
-   `session:*` (did it use Write/Edit?), string/structured Logic matchers.
-   Deterministic, free, fast.
+   `session:*` (did it use Write/Edit? read that file? invoke that skill? spawn that
+   subagent?), string/structured Logic matchers. Deterministic, free, fast.
 2. **AI** (`llm-rubric`, `factuality`, …) — only for genuine judgment calls (explanation
    quality, tone). Needs `ANTHROPIC_API_KEY`; default threshold 0.7.
 3. **Code** (`ts`/`js`/`python`, `custom:wasm`, `custom:exec`) — custom logic beyond
@@ -143,14 +169,36 @@ Pair the main exec with greps that pin down the honest path, e.g.
 - type: exec        # anti-cheat: test file still contains its cases
   args: { cmd: [sh, -c, 'test "$(grep -c "\"FizzBuzz\"" fizzbuzz_test.go)" -ge 4'] }
 - type: any-of      # agent actually edited, didn't just talk
-  assert:
+  checks:
     - { type: session:tool-used, value: "Write" }
     - { type: session:tool-used, value: "Edit" }
 ```
 
 Combine with composites (`assert-set` weighted ratio, `any-of`, `select-best`,
-`compare`) — children nest under `assert:`, `weight:` defaults to 1.0. Full catalog
+`compare`) — children nest under `checks:` (`assert:` is the alias), `weight:`
+defaults to 1.0. Full catalog
 and params: `checks-catalog.md`.
+
+### 3b. Four keys that widened what a bench can ask (v0.10.0)
+
+Each one closes a gap benches used to hand-roll. Full shapes in `schema.md`;
+`runners-and-sandbox.md` covers the harness half.
+
+| Key | Where | Asks |
+|---|---|---|
+| `image:` | Scenario | *answer about this picture* — paths delivered in the same first user message as the prompt, so they are seen before the agent does anything. Not testdata: `testdata:` seeds the tree and grades whether the agent opened a file. `claude-code` only. |
+| `generate:` | Scenario | *solve this, don't grep it* — a program run once per run, before the workspace exists. Its stdout `NAME=VALUE` lines reach the **grader** as check vars; madbench then **refuses the run** if any of those values is findable in the workspace, in the prompt, or in the report. |
+| `plugins:` | `harness_config` | *run against this plugin registry* — stages a user-scoped registry the CLI discovers on its own, instead of hand-writing `known_marketplaces.json`. Composes with `agent_env:`. |
+| `control:` | **Eval file** | *what may these runs differ by* — declares the varying paths; madbench diffs every run against the baseline before any spend and **stops a confounded pair**, reporting the per-run diff and size delta. |
+
+Two consequences worth internalising before you reach for `generate:`:
+
+- **The expectation must be derived, not planted.** "Find the row where…" fails the leak
+  assertion, because the answer is literally in the file. Sums, counts and checksums pass
+  — computing them *is* the task.
+- **Per-run means per Eval `runs:` entry.** `--repeat N` deliberately reuses one staged
+  tree, so a repeat re-measures the *same* task and the spread it reports is the agent's,
+  not the data's.
 
 ### 4. Configure the runner — permission mode is the #1 gotcha
 
@@ -174,37 +222,52 @@ Details and magmux multi-provider config: `runners-and-sandbox.md`.
 
 ```bash
 madbench list bench.yaml                        # proves it PARSES — not that it runs
-madbench preflight bench.yaml                   # proves it COULD RUN — always do this
+madbench preflight bench.yaml                   # proves it COULD RUN
+madbench check bench.yaml                       # NEGATIVE control: every cell must fail
 madbench demo                                   # offline emulated bench: no keys, no spend
 madbench bench.yaml --harness mock              # dry-run your YAML offline
-madbench run bench.yaml --report-json out.json  # the real run
-madbench run bench.yaml --ui                    # live TUI dashboard
+madbench bench.yaml --report-json out.json      # the real run (bare command IS run)
+madbench bench.yaml --ui                        # live TUI dashboard
+madbench grade out.json                         # POSITIVE control: re-grade offline
 madbench bench.yaml --repeat 5                  # flake detection (bypasses --ui)
 madbench bench.yaml --param model=opus-4.8      # override a declared bench param
 madbench my-models.eval.yaml                    # Eval file: runs the bench per runs: entry
 ```
 
-**`list` proves a file parses; `preflight` proves it could run.** Do not use `list` as
-your pre-run check — it gives a confident exit 0 on a bench that cannot start, which is
-a false all-clear on exactly the errors you most want caught. A file with a retired
-`sandbox: process` level lists happily and then refuses to run.
+**Preflight is automatic.** Every run preflights first and refuses to start if anything
+blocks (`preflight: nothing was run, no spend`). `--skip-preflight` opts out. Running
+`madbench preflight` by hand is still worth it while authoring — it is the fastest way
+to see the whole dependency picture without committing to a run.
 
-**So: `madbench preflight` before every real run.** It checks every harness binary, API
-key, runtime and daemon the run needs, *and* resolves sandbox levels and `testdata:`
-paths — so it catches a stale testdata directory or a retired sandbox level before
-you spend a cent. `list` catches none of that:
+**`list` proves a file parses; `preflight` proves it could run.** Never use `list` as
+your gate — it gives a confident exit 0 on a bench that cannot start:
 
 | | `list` | `preflight` | real run |
 |---|---|---|---|
-| YAML parses, bench + scenario names | yes | yes | yes |
+| YAML parses, unknown keys, bench + scenario names | yes | yes | yes |
 | Retired `sandbox:` level | **no** | yes | yes |
 | Missing `testdata:` directory | **no** | yes | yes |
 | Harness binary / API key present | **no** | yes | yes |
-| Unknown check `type:` | **no** | **no** | yes (at evaluate time) |
+| **Unknown check `type:`** | **no** | **yes** | yes |
+| **Missing `file://` grader file** | **no** | **yes** | yes |
+| **`image:` missing / wrong format / harness can't carry it** | **no** | **yes** | yes |
+| A check that grades nothing | no | no | no — use `madbench check` |
 
-An unknown check `type` still fails only at **run** time
-(`unknown string assertion: <name>`), so do one real run — or one `--harness mock`
-run — before shipping. Exit code is non-zero if anything failed or errored.
+The last two preflight rows are newer than most bench files. A check whose `value:
+file://…` grader had been deleted used to preflight clean and fail at grading time, and
+an unknown check `type:` used to survive until evaluate time — both are blocking now.
+
+**The two controls.** Preflight asks *can this run*; the controls ask *does this bench
+measure anything*:
+
+- **`madbench check`** runs under the mock harness and requires **every cell to fail**,
+  reporting a **per-cell tally** — a cell that passes against a harness that did nothing
+  is grading nothing. Exit 0 = control holds, 1 = a cell wrongly passed or could not be
+  graded, 3 = nothing graded.
+- **`madbench grade <report.json>`** re-grades a recorded Session offline — no harness,
+  no sandbox, no spend — and checks every verdict reproduces. It re-runs the evaluators
+  against the stored Session; it does not replay stored verdicts, so a bench whose
+  grading is non-deterministic shows up as DIVERGED.
 
 `madbench demo` runs a built-in four-scenario bench against an offline harness that
 emulates a real agent: no network, no API keys, no spend. Use it to see what a
@@ -223,9 +286,10 @@ authoritative event stream, `calls` its lossy tool-call view. Full key map in
 ## Workflow: reviewing an existing bench
 
 Check, in order:
-1. **Runs at all?** `madbench list`, then one real run.
+1. **Runs at all?** `madbench preflight` (not `list`), then `madbench check`.
 2. **Permission mode** matches what scenarios require (write → `acceptEdits`+).
-3. **Red-state testdata** — would a no-op agent fail this bench?
+3. **Red-state testdata** — would a no-op agent fail this bench? `madbench check`
+   answers this per cell; do not eyeball it.
 4. **Deterministic core** — at least one Logic check; AI judges only where judgment is
    genuinely needed (a bench graded only by `llm-rubric` is flaky and expensive).
 5. **Anti-cheat guards** present for exec-graded work.
@@ -248,9 +312,21 @@ Check, in order:
   `runners-and-sandbox.md`.
 - `session:step-count` bounds go in `args.lte:` / `args.gte:` — `threshold:` means
   exact match here.
-- **`session:*` checks do not all read the same thing**, and picking the wrong one is
-  why `skill-used` can never pass today. See the table in `checks-catalog.md` before
-  choosing one.
+- **`session:*` checks do not all read the same thing** — some read the authoritative
+  `Actions` stream, some the lossy derived `Calls` view. See the table in
+  `checks-catalog.md` before choosing one. (`session:skill-used` was broken by exactly
+  this and **works as of v0.10.0** — it reads `Actions` now.)
+- **`session:step-count` counts the MAIN thread only**, on both capture paths. Before
+  v0.10.0 the on-disk path folded a subagent's calls in while stream-json did not, so
+  the same bench meant different things depending on how it was captured. If you want a
+  subagent's work counted, scope a `session:tool-used` with `args.thread:` instead.
+- **`latency` and `cost` ERROR when the harness reported no metrics** — they no longer
+  score a perfect 1.00 on absent data. Under `--harness mock` they error rather than
+  pass, which is why `madbench check` reports them as "could not grade" instead of
+  counting them.
+- **An `image:` bench cannot be negative-controlled**, because the mock harness is not
+  `ImageCapable`: `madbench check` refuses with *harness "mock" cannot deliver an image*.
+  Grade the rest of the bench under mock and keep the image cell's proof to a real run.
 - `assert-set` threshold defaults to **1.0** (all children must pass); set e.g. `0.66`
   for 2-of-3.
 - `exec` has no shell: `value:` is whitespace-split. Use `cmd: [sh, -c, '…']` for

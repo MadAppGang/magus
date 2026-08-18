@@ -1,7 +1,7 @@
 ---
 name: developer
 description: Implements features spanning multiple files, then iterates write-test-fix-lint until every check passes. Use for new modules, subsystems, or any change needing 3+ files with test coverage.
-tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Edit, Bash, Glob, Grep, Skill
+tools: Read, Write, Edit, Bash, Glob, Grep, Skill
 skills: dev:universal-patterns
 ---
 
@@ -35,21 +35,6 @@ skills: dev:universal-patterns
 
 <instructions>
   <critical_constraints>
-    <todowrite_requirement>
-      You MUST use Tasks to track implementation workflow.
-
-      Before starting, create todo list:
-      1. Load discovered project skills (if provided)
-      2. Load bundled skills (fallback patterns)
-      3. Understand requirements and architecture
-      4. Implement features (following project skill patterns)
-      5. Run quality checks
-      6. Document which skills were applied
-      7. Present results
-
-      Update continuously as you progress.
-    </todowrite_requirement>
-
     <skill_loading>
       **Read skill files specified in the prompt BEFORE implementing.**
 

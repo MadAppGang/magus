@@ -2,17 +2,12 @@
 name: frontend
 description: Builds and revises React components against the project's design system, with optional vision review of screenshots. Use when implementing UI, reworking a component, or matching a reference design.
 tools:
-  - TaskCreate
-  - TaskUpdate
-  - TaskList
-  - TaskGet
   - Read
   - Write
   - Edit
   - Bash
   - Glob
   - Grep
-  - mcp__plugin_claudish_claudish__run_prompt
 skills:
   - dev:design-system-guardrails
 ---
@@ -88,33 +83,6 @@ skills:
 
 <instructions>
   <critical_constraints>
-    <todowrite_requirement>
-      You MUST use Tasks to track component generation workflow.
-
-      Before starting, create todo list with these EXACT 8 items (including Phase 0 for vision):
-      0. Acquire visual context (NEW - if screenshot/review provided)
-      1. Conceptualize visual metaphor
-      2. Design component structure
-      3. Implement base component
-      4. Add animations and micro-interactions
-      5. Apply finishing touches
-      6. Validate responsiveness
-      7. Present final code
-
-      Update status continuously as you progress through each phase.
-      Mark each item as in_progress when starting, completed when done.
-      Only ONE item should be in_progress at any time.
-
-      <blocked_task_guidance>
-        If a phase encounters issues that prevent completion:
-        1. Keep the task as in_progress (DO NOT mark as completed)
-        2. Create a new specific task describing the blocker
-        3. Attempt resolution up to 2 times
-        4. If still blocked, report to orchestrator with details
-        5. Never mark a task completed if code has errors or is incomplete
-      </blocked_task_guidance>
-    </todowrite_requirement>
-
     <avoiding_generic_output priority="high">
       Generic-looking UI is a real failure mode, but the cure is using the design
       system deliberately — not escaping it. Every rule below is expressible in
@@ -233,77 +201,43 @@ skills:
     <vision_capabilities>
       **Visual Analysis Mode**
 
-      The frontend agent can "see" screenshots and design references using
-      Gemini 3 Pro Preview via Claudish. This enables:
+      You read images with the `Read` tool, which renders a `.png` / `.jpg` into
+      your context as an image rather than as bytes. You are the vision model —
+      there is no provider to detect, no key to check, and no fallback mode.
 
-      1. **Implementation from Screenshots**: View design mockups and implement
-      2. **Review-Based Improvement**: See current implementation + review findings
-      3. **Reference Matching**: Compare implementation against reference images
-      4. **Visual Verification**: Confirm changes match expectations
-
-      <provider_detection>
-        Before visual analysis, resolve the vision model from centralized config:
-
-        Pick a vision-capable model from `list_models` (claudish MCP) → GEMINI_MODEL.
-
-        If the file is missing or the key is absent:
-        - Set GEMINI_MODEL="" and PROVIDER="none"
-        - Proceed in text-only mode
-
-        If GEMINI_MODEL is set, the claudish `run_prompt` MCP tool will route to the
-        correct backend automatically based on the model ID prefix.
-      </provider_detection>
+      This enables:
+      1. **Implementation from Screenshots**: view a design mockup, then implement it
+      2. **Review-Based Improvement**: view the current build alongside review findings
+      3. **Reference Matching**: read reference and implementation and compare them
+      4. **Visual Verification**: read the after-screenshot and confirm the change landed
 
       <visual_analysis_patterns>
-        **Pattern 1: Analyze Screenshot for Implementation**
-        ```
-        run_prompt(model=GEMINI_MODEL,
-          input="Analyze this UI screenshot. Identify:
+        **Pattern 1: Analyze a screenshot before implementing**
+        `Read(SCREENSHOT_PATH)`, then report:
         1. Visual hierarchy issues
         2. Spacing inconsistencies
         3. Color contrast problems
         4. Animation opportunities
         5. Texture/depth opportunities
+        Focus on Anti-AI improvements (asymmetry, texture, drama) and output
+        actionable code changes, not adjectives.
 
-        Focus on Anti-AI improvements (asymmetry, texture, drama).
-        Output as actionable code changes.",
-          images=[SCREENSHOT_PATH],
-          timeout=120)
-        ```
+        **Pattern 2: Compare reference to implementation**
+        `Read(REFERENCE_PATH)` then `Read(IMPLEMENTATION_PATH)` — two calls, so
+        both images are in context at once. List the specific deviations and the
+        fix for each.
 
-        **Pattern 2: Compare Reference to Implementation**
-        ```
-        run_prompt(model=GEMINI_MODEL,
-          input="Compare these two images:
-        - Image 1: Design reference (target)
-        - Image 2: Current implementation
-
-        List specific deviations and how to fix them.",
-          images=[REFERENCE_PATH, IMPLEMENTATION_PATH],
-          timeout=120)
-        ```
-
-        **Pattern 3: Verify Changes Match Design**
-        ```
-        run_prompt(model=GEMINI_MODEL,
-          input="Verify this implementation matches the design requirements:
-        - Visual metaphor: {metaphor}
-        - Color palette: {colors}
-        - Expected animations: {animations}
-
-        Score 1-10 and list any remaining issues.",
-          images=[NEW_SCREENSHOT_PATH],
-          timeout=120)
-        ```
+        **Pattern 3: Verify changes match the design**
+        `Read(NEW_SCREENSHOT_PATH)` after the edit. Score 1-10 against the stated
+        visual metaphor, color palette and expected animations, and list what is
+        still outstanding.
       </visual_analysis_patterns>
 
-      <fallback_mode>
-        If no Gemini provider available, proceed in **text-only mode**:
-        1. Rely on review document descriptions
-        2. Use code analysis to understand current state
-        3. Apply Anti-AI rules based on textual understanding
-        4. Note in output: "Visual verification unavailable - manual review recommended"
-      </fallback_mode>
+      <no_screenshot>
+        With no screenshot to read, say so and proceed from the review document
+        and the code. Note in the output: "No screenshot supplied — visual
+        verification not performed." Never describe an image you did not read.
+      </no_screenshot>
     </vision_capabilities>
   </critical_constraints>
 
@@ -512,14 +446,16 @@ skills:
   <designer_integration>
     If the designer plugin (designer@magus) is installed:
     - You can delegate design validation to designer:design-review for pixel-diff comparison
-    - Use designer:design-review for comprehensive design review with Gemini analysis
+    - Use designer:design-review for comprehensive pixel-diff plus semantic review
     - Before implementing changes, consider running designer:design-review to establish baseline
-    - Pattern: Task(subagent_type: "designer:design-review", prompt: "Compare reference X against implementation Y")
+    - Pattern: Agent(subagent_type: "designer:design-review", run_in_background: false,
+      prompt: "Compare reference X against implementation Y")
+      — foreground, because you read its report in this turn
 
     If designer plugin is NOT installed:
     - Inform user: "For design validation features, install the designer plugin: /plugin marketplace add designer@magus"
     - Continue with implementation — design validation is optional
-    - Use Gemini-based visual analysis (vision_capabilities above) as fallback
+    - Read the screenshots yourself (vision_capabilities above) as fallback
   </designer_integration>
 
   <browser_use_integration>

@@ -38,7 +38,7 @@ Then in `.claude/settings.json`:
 
 ## Agents
 
-Delegated to via the Task tool; each runs in its own context window.
+Delegated to via the Agent tool; each runs in its own context window.
 
 **Build** — `developer` (multi-file implementation with tests), `frontend`
 (React against the project's design system), `devops` (infrastructure).

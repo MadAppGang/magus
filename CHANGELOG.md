@@ -4,6 +4,88 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Marketplace 9.2.0] - 2026-08-18
+
+Agent-tooling correctness, and the first results from benching our own instruction text
+against a real harness. Every behavioural claim below was measured on a madbench v0.10.0
+binary, not inferred.
+
+### Changed
+
+- **`seo` v2.0.0**: BREAKING — five agents lost their plugin-name prefix, so their
+  addresses changed (`seo:seo-writer` → `seo:writer`, and four more). Anything naming an
+  old address stops resolving.
+- **`instantly` v2.0.0**: BREAKING — three agents lost their plugin-name prefix
+  (`instantly:instantly-campaign-analyst` → `instantly:campaign-analyst`, and two more).
+- **`designer` v0.5.0**: BREAKING — `ui-design-review` is gone, merged into `ui-analyse`,
+  which absorbed its POUR-organised WCAG pass, design-system consistency check and depth
+  tiers. Two skills differing mainly in name were two chances to pick the wrong one.
+- **`dev` v4.1.0**: agents no longer request tools the runtime removes from them, and the
+  instruction blocks ordering them to use those tools are gone. An agent told to use a
+  tool it cannot see does not fail loudly — it improvises.
+- **`multimodel` v3.6.0**: same tool-and-instruction correction across its agents.
+- **`code-analysis` v5.4.0**: same tool-and-instruction correction across its agents.
+- **`video-editing` v1.2.0**: same tool-and-instruction correction across its agents.
+- **`autolinear` v0.4.0**: same tool-and-instruction correction across its agents.
+- **`gtd` v2.1.0**: same tool-and-instruction correction for `gtd-reviewer`.
+- **`image-generate` v3.1.0**: the style command dispatches its subagent explicitly and
+  passes a `CONFIRMED: <op> <path>` token, closing a confirmation loop that could
+  silently skip the confirm step.
+
+### Fixed
+
+- **`bunjs` v0.4.1**: the index's own paths sent agents to files that do not exist.
+  `skills/bun/SKILL.md` routed with `skills/<name>/SKILL.md`, described as resolving
+  against the plugin root. Agents resolve a relative path in a SKILL.md against the
+  directory holding that file — measured across 74 reads with zero counterexamples —
+  which yields `skills/bun/skills/<name>/SKILL.md`, a path in no layout. In
+  `benches/skill-router/` (RTR-1, `--repeat 8`, Sonnet 5) **13 of 18 graded sessions
+  followed it into a dead end**; nine recovered by searching, four gave up, and those
+  four were every routing failure in the run. Now `../<name>/SKILL.md`, correct in both
+  the plugin and project-skill layouts. Re-measured after the fix: dead-path reads
+  **25 → 0**, correct-path reads **49 → 99**, Recall **14/18 → 24/24**, flake rate 0.
+- **`madbench` v0.2.1**: four skill corrections that only a run reveals —
+  `session:step-count` takes one bound and silently drops `gte` when given both;
+  `session:file-read` counts every Read *call*, failed ones included; a skill's recorded
+  name is not stable (the same project skill appeared as `security` **and** `bun:security`
+  within one run), so never gate on `session:skill-used` alone; and composites do not nest.
+
+### Why
+
+`benches/` asks whether the wording we ship produces the behaviour we intended. Two
+entries above are cases where it did not, and neither was visible to review — the `bunjs`
+sentence is unambiguous to a human reader and was ambiguous to 72% of actual readers. For
+an instruction, that second number is the only one that counts.
+
+### Migration notes
+
+The three BREAKING entries change addresses, not behaviour. If a `CLAUDE.md`, workflow or
+script of yours names `seo:seo-*`, `instantly:instantly-*`, or `designer:ui-design-review`,
+update it to the new address. Nothing inside this repository referenced the old ones.
+
+---
+
+## [style 2.1.0] - 2026-08-18
+
+### Added
+
+- **`asd-ste100` preset** (modifier), shown as **"ASD-STE100 Simplified Technical English"** —
+  the standard distilled to
+  nine checkable rules: 20/25-word sentence caps split by instruction vs description,
+  three modals (must/can/will — "should" is a bug report against the sentence), one word
+  one meaning, condition before command, grammar words kept. Written for a tired reader
+  who reads each sentence once, and written *in* its own style, so the file demonstrates
+  the rules it states. ~35 lines against the 341-line skill it distils; found via
+  `AminBlg/SimpleEnglish` (MIT), rules restated from the public standard.
+- **A fixed "Style limits" trailer on every composition**: never reword code, commands,
+  file paths, error text, or numbers for style; quote real output rather than paraphrase;
+  security warnings and destructive-action confirmations override every style rule.
+  Appended by the plugin's `compose-style.ts` and claudeup's composer alike, held
+  identical by a parity test. Existing compositions re-hash, so claudeup reports one
+  "project style changed — press a to re-apply".
+
+---
+
 ## [Marketplace 9.1.1] - 2026-08-18
 
 ### Changed

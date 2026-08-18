@@ -1,7 +1,7 @@
 ---
 name: interview
 description: Comprehensive specification interview with intelligent requirements elicitation
-allowed-tools: Task, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep
+allowed-tools: Agent, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep
 skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates, multimodel:task-orchestration
 ---
 
@@ -12,7 +12,7 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates,
     - Non-obvious, context-aware questioning strategies
     - Progressive deepening from breadth to depth
     - Technical specification writing
-    - Task breakdown and planning
+    - Agent breakdown and planning
     - Technology stack analysis and recommendations
     - Asset collection and organization
     - LLMREI research-based interview optimization
@@ -45,7 +45,7 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates,
       3. PHASE 2: Deep interview loop
       4. PHASE 3: Asset collection
       5. PHASE 4: Spec synthesis
-      6. PHASE 5: Task breakdown and next steps
+      6. PHASE 5: Agent breakdown and next steps
 
       Update continuously as you progress.
       Mark only ONE task as in_progress at a time.
@@ -72,7 +72,7 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates,
     <session_path_requirement>
       **CRITICAL: SESSION_PATH Passing**
 
-      Every Task delegation MUST start with SESSION_PATH prefix:
+      Every Agent delegation MUST start with SESSION_PATH prefix:
       ```
       SESSION_PATH: ${SESSION_PATH}
 
@@ -244,7 +244,7 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates,
         <step>
           Write session-meta.json (via scribe agent):
 
-          Task: scribe
+          Agent: scribe
           Prompt: "SESSION_PATH: ${SESSION_PATH}
 
           Create session-meta.json with:
@@ -280,7 +280,7 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates,
         <step>
           Initialize interview log (via scribe agent):
 
-          Task: scribe
+          Agent: scribe
           Prompt: "SESSION_PATH: ${SESSION_PATH}
 
           Create interview-log.md with header:
@@ -308,7 +308,7 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates,
         <step>
           Launch stack-detector agent:
 
-          Task: stack-detector
+          Agent: stack-detector
           Prompt: "SESSION_PATH: ${SESSION_PATH}
 
           Detect ALL technology stacks in this project.
@@ -333,7 +333,7 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates,
         <step>
           Create interview focus areas document (via scribe agent):
 
-          Task: scribe
+          Agent: scribe
           Prompt: "SESSION_PATH: ${SESSION_PATH}
 
           Create focus-areas.md with categories:
@@ -350,7 +350,7 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates,
         <step>
           Update checkpoint in session-meta.json:
 
-          Task: scribe
+          Agent: scribe
           Prompt: "SESSION_PATH: ${SESSION_PATH}
 
           Update session-meta.json checkpoint to phase: 1, round: 0"
@@ -412,7 +412,7 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates,
 
           e. Record answers in interview log (via scribe agent):
 
-             Task: scribe
+             Agent: scribe
              Prompt: "SESSION_PATH: ${SESSION_PATH}
 
              Append to interview-log.md:
@@ -534,7 +534,7 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates,
         <step>
           Compile assets document (via scribe agent):
 
-          Task: scribe
+          Agent: scribe
           Prompt: "SESSION_PATH: ${SESSION_PATH}
 
           Create assets.md with:
@@ -584,7 +584,7 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates,
         <step>
           Delegate spec generation to spec-writer agent:
 
-          Task: spec-writer
+          Agent: spec-writer
           Prompt: "SESSION_PATH: ${SESSION_PATH}
 
           Read all interview materials from ${SESSION_PATH}:
@@ -740,7 +740,7 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates,
       <quality_gate>User approves specification</quality_gate>
     </phase>
 
-    <phase number="5" name="Task Breakdown & Next Steps">
+    <phase number="5" name="Agent Breakdown & Next Steps">
       <objective>Create implementation plan and propose next commands</objective>
       <steps>
         <step>Mark PHASE 5 as in_progress</step>
@@ -754,7 +754,7 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates,
         <step>
           Generate task breakdown (via scribe agent):
 
-          Task: scribe
+          Agent: scribe
           Prompt: "SESSION_PATH: ${SESSION_PATH}
 
           Create tasks.md with:
@@ -762,21 +762,21 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates,
           # Implementation Tasks
 
           ## Phase 1: Foundation
-          - [ ] Task 1: {description} [S/M/L]
-          - [ ] Task 2: {description} [S/M/L]
+          - [ ] Agent 1: {description} [S/M/L]
+          - [ ] Agent 2: {description} [S/M/L]
 
           ## Phase 2: Core Features
-          - [ ] Task 3: {description} [S/M/L]
+          - [ ] Agent 3: {description} [S/M/L]
 
           ## Phase 3: Integration
-          - [ ] Task 4: {description} [S/M/L]
+          - [ ] Agent 4: {description} [S/M/L]
 
           ## Phase 4: Polish
-          - [ ] Task 5: {description} [S/M/L]
+          - [ ] Agent 5: {description} [S/M/L]
 
           ## Dependencies
-          - Task 3 depends on Task 1, 2
-          - Task 4 depends on Task 3
+          - Agent 3 depends on Agent 1, 2
+          - Agent 4 depends on Agent 3
 
           ## Estimated Total Effort
           - Small tasks: N
@@ -1290,7 +1290,7 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates,
 
 **Artifacts Created**:
 - Specification: ${SESSION_PATH}/spec.md
-- Task Breakdown: ${SESSION_PATH}/tasks.md
+- Agent Breakdown: ${SESSION_PATH}/tasks.md
 - Interview Log: ${SESSION_PATH}/interview-log.md
 - Assets: ${SESSION_PATH}/assets.md
 

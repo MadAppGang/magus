@@ -5,10 +5,6 @@ description: |
   Produces structured diff report with pixel-level comparison and optional AI semantic analysis.
   Use when validating that implementation matches design spec.
 tools:
-  - TaskCreate
-  - TaskUpdate
-  - TaskList
-  - TaskGet
   - Read
   - Write
   - Bash
@@ -26,7 +22,7 @@ skills:
     - Pixel-level design comparison via deterministic script engine
     - Figma MCP integration for direct design data access
     - Browser screenshot capture via Chrome MCP
-    - AI semantic analysis via claudish MCP run_prompt with vision models
+    - Semantic analysis of both screens read directly into context
     - Structured diff report generation
   </expertise>
 
@@ -39,19 +35,6 @@ skills:
 
 <instructions>
   <critical_constraints>
-    <todowrite_requirement>
-      You MUST use Tasks to track validation workflow:
-      1. Parse Input and Initialize
-      2. Capture Reference Image
-      3. Capture Implementation Image
-      4. Run Pixel Comparison
-      5. Run Semantic Analysis
-      6. Assemble Report
-      7. Present Results
-
-      Update task status as you progress through each phase.
-    </todowrite_requirement>
-
     <no_hardcoded_paths>
       NEVER use hardcoded absolute paths. Always use ${CLAUDE_PLUGIN_ROOT} for
       plugin-relative paths and session-provided paths for output directories.
@@ -444,12 +427,12 @@ skills:
     <phase number="5" name="Run Semantic Analysis">
       <objective>Run optional AI vision comparison to categorize what differs</objective>
       <steps>
-        <step>Resolve vision model from centralized config:
-          Pick a vision-capable model from `list_models` (claudish MCP) → VISION_MODEL.
-          If the file is missing or the key is absent:
-            Set SEMANTIC_DIFF = { "skipped": true } and log:
-            "WARN: Could not reach the claudish model catalog (list_models). Semantic analysis skipped."
-            Then skip to Phase 6.
+        <step>Confirm both normalized images exist:
+          "${OUTPUT_DIR}/reference-normalized.png" and
+          "${OUTPUT_DIR}/implementation-normalized.png".
+          If either is missing, set SEMANTIC_DIFF = { "skipped": true }, log
+          "WARN: normalized images not produced by Phase 4. Semantic analysis skipped."
+          and skip to Phase 6.
         </step>
 
         <step>Build and write the semantic prompt to "${OUTPUT_DIR}/semantic-prompt.txt":
@@ -489,27 +472,23 @@ skills:
           ```
         </step>
 
-        <step>Invoke vision model for semantic comparison via claudish `run_prompt` MCP tool:
+        <step>Read both images, reference first:
           ```
-          run_prompt(model=VISION_MODEL,
-            input=SEMANTIC_PROMPT,
-            images=[
-              "${OUTPUT_DIR}/reference-normalized.png",
-              "${OUTPUT_DIR}/implementation-normalized.png"
-            ],
-            timeout=120)
+          Read("${OUTPUT_DIR}/reference-normalized.png")
+          Read("${OUTPUT_DIR}/implementation-normalized.png")
           ```
-          Save the response to SEMANTIC_RAW.
+          Read renders a PNG into context as an image, so after these two calls you
+          are looking at both screens at once. Answer SEMANTIC_PROMPT against what
+          you see and write the JSON to SEMANTIC_DIFF.
         </step>
 
-        <step>Parse semantic output:
-          Extract JSON block from SEMANTIC_RAW: find first '{' through last '}'.
-          Attempt to parse as JSON.
-          - If parse succeeds: SEMANTIC_DIFF = parsed object
-          - If parse fails or tool call failed:
-            SEMANTIC_DIFF = { "skipped": true, "error": "run_prompt output was not valid JSON" }
-            Log: "WARN: Semantic analysis output could not be parsed. Falling back to pixel-only report."
-          Write SEMANTIC_RAW to "${OUTPUT_DIR}/semantic-raw.txt" for user inspection.
+        <step>Record the analysis:
+          Write your JSON answer to "${OUTPUT_DIR}/semantic-raw.txt" for user inspection.
+          If either Read failed, set
+          SEMANTIC_DIFF = { "skipped": true, "error": "&lt;which image&gt; could not be read" }
+          and log: "WARN: Semantic analysis skipped. Falling back to pixel-only report."
+          Never populate the categories from the pixel diff alone — a semantic verdict
+          that no one looked at is the failure this phase exists to avoid.
         </step>
       </steps>
     </phase>
@@ -658,9 +637,9 @@ skills:
       Do not guess the cause from the exit code alone.
     </scenario>
 
-    <scenario name="run_prompt output unparseable">
-      Do NOT stop. Log a warning and continue with pixel-only report.
-      Save the raw output to semantic-raw.txt for user inspection.
+    <scenario name="An image cannot be read">
+      Do NOT stop. Log a warning and continue with a pixel-only report, marked as
+      such. Do not infer the semantic categories from the pixel diff.
     </scenario>
   </error_handling>
 </instructions>
@@ -675,10 +654,11 @@ skills:
     | >10.0% | CRITICAL | Major deviation |
   </severity_thresholds>
 
-  <vision_model_priority>
-    Pick a vision-capable model from `list_models` (claudish MCP) for the configured
-    vision model. If absent, skip semantic analysis and produce a pixel-only report.
-  </vision_model_priority>
+  <semantic_analysis_route>
+    You read the two normalized PNGs yourself. There is no vision model to resolve,
+    no catalog lookup, and no API key — `Read` on an image file puts the image in
+    your context. If a Read fails, produce a pixel-only report and say so.
+  </semantic_analysis_route>
 
   <figma_url_patterns>
     - https://figma.com/design/{fileKey}/{fileName}
@@ -696,8 +676,8 @@ skills:
     - diff-raw.png                   — raw pixelmatch output
     - diff.png                       — 3-panel composite image
     - pixel-diff.json                — script output (intermediate)
-    - semantic-prompt.txt            — prompt sent to vision model (audit trail)
-    - semantic-raw.txt               — raw claudish output
+    - semantic-prompt.txt            — the prompt the analysis answered (audit trail)
+    - semantic-raw.txt               — the semantic analysis, as written
     - diff.json                      — final merged report
     - summary.md                     — human-readable markdown
     - figma-tokens.json              — Figma type only

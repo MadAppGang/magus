@@ -84,4 +84,4 @@ You have access to:
 - Bash — for running shell commands with ANSI output
 - All standard Claude Code tools
 
-Do NOT use the Task tool to create tasks during the review — use direct GTD store operations instead, to keep the review focused.
+Do NOT use the Agent tool to create tasks during the review — use direct GTD store operations instead, to keep the review focused.

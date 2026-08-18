@@ -7,11 +7,11 @@ UI design validation. Compares a rendered screen against its reference by pixel 
 
 | | |
 |---|---|
-| Version | `0.4.3` |
+| Version | `0.5.0` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 3 |
 | Subagents | 2 |
-| Skills | 6 |
+| Skills | 5 |
 | MCP server | no |
 | Hooks | no |
 
@@ -34,7 +34,6 @@ Prefer to do it by hand? [Installing Magus](../../guides/install.md) has the man
 
 - Use when designer agents need browser screenshot capture and claude-in-chrome is unavailable — `browser-use-integration`
 - Use when reviewing UI against an established design system — `design-references`
-- Use when reviewing UI visuals; pair with dev:frontend-implement to apply — `ui-analyse`
 - Use when creating, validating, or parsing project design styles — `ui-style-format`
 
 ## Commands
@@ -43,16 +42,16 @@ Prefer to do it by hand? [Installing Magus](../../guides/install.md) has the man
 |---|---|
 | `/designer:create-style` | \| |
 | `/designer:review` | Compare a reference design against an implementation. Accepts Figma URL, image file, or browser URL as reference. |
-| `/designer:ui` | UI design review using Gemini multimodal analysis for usability and accessibility |
+| `/designer:ui` | UI design review from a screenshot or Figma file, covering usability and accessibility |
 
 ## Subagents
 
-Dispatched with the Task tool, each in its own context window.
+Dispatched with the Agent tool, each in its own context window.
 
 | Agent | What it does |
 |---|---|
 | `designer:design-review` | \| |
-| `designer:ui` | UI design review, usability analysis, accessibility checks, and Figma implementation help |
+| `designer:ui` | Reviews a screen for usability, WCAG accessibility and design-system consistency, reading the screenshot directly. |
 
 ## Skills
 
@@ -67,8 +66,7 @@ Dispatched with the Task tool, each in its own context window.
 |---|---|---|
 | ● | `designer:browser-use-integration` | Detects the browser-use@magus plugin and captures screenshots of URL-based references. Use when designer agents need browser screenshot capture and claude-in-chrome is unavailable. |
 | ● | `designer:design-references` | Provides design system references — Material 3, Apple HIG, Tailwind UI, Ant Design, Shadcn/ui. Use when reviewing UI against an established design system. |
-| ● | `designer:ui-analyse` | Analyzes UI visually using Gemini 3 Pro — prompting patterns, severity guidelines, analysis-only. Use when reviewing UI visuals; pair with dev:frontend-implement to apply. |
-| ● | `designer:ui-design-review` | \| |
+| ● | `designer:ui-analyse` | Reviews a UI screenshot — usability, WCAG, design-system consistency, design-vs-implementation diff. Prompting patterns, depth tiers and severity guidelines. Analysis only; |
 | ● | `designer:ui-style-format` | Specifies the UI design style file format and schema for .claude/design-style.md and .claude/design-references/. Use when creating, validating, or parsing project design styles. |
 | ○ | `designer:compare` | Provides the compare.ts CLI invocation pattern, semantic comparison prompt template, severity thresholds, and model selection guide for UI design comparison. |
 

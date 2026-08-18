@@ -6,10 +6,15 @@
 bench with a retired `sandbox: process` level prints the bench and exits 0 — a
 confident all-clear on a file that cannot start. Never use `list` as the pre-run gate.
 
-**Run `madbench preflight <bench>` before every real run.** It resolves every harness
-binary, API key, runtime, daemon, sandbox level and `testdata:` path the run needs —
-so a stale testdata directory or a retired sandbox level costs you a second instead of
-a billed run.
+**Preflight runs automatically** before every run and blocks it, printing `preflight:
+nothing was run, no spend`. `--skip-preflight` opts out. Running it by hand while
+authoring is still the fastest way to see the whole dependency picture: it resolves
+every harness binary, API key, runtime, daemon, sandbox level, `testdata:` path,
+`file://` grader, **unknown check type** and `image:` the run needs.
+
+**Then run `madbench check <bench>`.** Preflight asks *can this run*; `check` asks *does
+this bench measure anything*. They catch disjoint problems and a green preflight says
+nothing about the second question.
 
 **`madbench demo` exists.** It runs a built-in four-scenario bench against an offline
 harness that emulates a real agent over wall-clock time: no network, no API keys, no
@@ -30,6 +35,12 @@ program.
 | Message | Cause / fix |
 |---|---|
 | `loading <path>: parsing <path>: yaml: line N: …` | YAML syntax/type error — fix at the line:col shown |
+| `field <key> not found in type madbench.BenchSpec` / `.ScenarioSpec` / `.sandboxYAML` | **Strict decoding (v0.10.0).** An unknown key at that level. Common: `input:`→`prompt:`, top-level `name:`→`description:`, `sandbox: {mode:}`→`{level:}`. Check the alias table in `schema.md` before assuming the key is wrong |
+| `unknown check type "<name>"` from **preflight** | typo'd `type:` — now caught before any spend rather than at evaluate time |
+| `grader ts: stat …: no such file or directory` | a check's `value: file://…` grader is missing; a relative `file://` resolves against the **bench file's** directory |
+| `harness "mock" cannot deliver an image ...` | only `claude-code` is `ImageCapable`. You cannot run — or `madbench check` — an `image:` bench under mock |
+| `generate:` refusals naming a value | the generated secret was findable in the workspace, the prompt, or the report. The expectation must be **derived** (sums, counts, checksums), not planted in a file |
+| `CONFOUNDED` / an Eval stopped before spend | `control:` found a run differing by a path not in `varies:`. Read the printed diff — the undeclared file is your confound |
 | `no madbench.yaml or madbench.yml in <dir>` | bare `madbench` with no discoverable file — pass a path |
 | `unknown string assertion: <name>` / `unknown assertion type: %q` (at RUN time) | check `type:` typo — `madbench list` does NOT catch this; see checks-catalog.md. CAUTION: an AI check without `ANTHROPIC_API_KEY` produces the SAME unknown-type error (see below) |
 | `assert-set: child "<type>": <err>` | error inside a composite child — fix the child |
@@ -53,54 +64,90 @@ program.
 | Exec test check passes but work looks wrong | Agent cheated (deleted/weakened the test). Add anti-cheat greps + `session:*` guards. |
 | `contains`/`regex` fails though the code is correct and on disk | String/structured checks read ONLY the agent's final message (`Session.FinalOutput`), never files or tool output. Grade files with `exec` (grep/test), not `contains`. |
 | `latency`/`cost` fail intermittently on healthy runs | Expectation too tight — ~2.6× run-to-run cost variance is normal. Tighten only to 1.5–2× observed max. |
-| `session:step-count` fails unexpectedly | It defaults to EXACT match — use `args.lte:`/`args.gte:` |
+| `session:step-count` fails unexpectedly | It defaults to EXACT match — use `args.lte:`/`args.gte:`. Also: it counts the **main thread only** (v0.10.0, both capture paths). Before that the on-disk path folded a subagent's calls in while stream-json did not, so an old expectation tuned against a subagent-spawning bench will now read lower |
+| `session:skill-used` never passes | If the bench sets `harness_config.agent_env`, it **cannot** pass: `--bare` stops advertising skills, so an agent never invokes one spontaneously. Use `plugins:` instead, or drop the check. (The check itself was broken before v0.10.0 — it scanned `Calls`, which never receives `ActionSkill`; it reads `Actions` now.) |
+| a `session:*` check fails on a path that is obviously right | The WorkDir is a per-run tmpdir and macOS reports `/private/var/…` where the sandbox stored `/var/…`. Use `session:file-read` (which compares through `internal/hostpath`) or a `glob:`/`suffix:` matcher — never a hand-built absolute literal |
 | `assert-set` fails though most children pass | Its threshold defaults to 1.0 (all) — set a ratio like 0.66 |
 | exec with pipes/quotes behaves oddly | No shell — `value:` is whitespace-split. Use `cmd: [sh, -c, '…']` |
 | ts/js/python check can't find deps | Deps resolve from nearest `package.json`/`pyproject.toml` project root; add lockfile or set `defaults.bun`/`defaults.python` |
-| `--ui` didn't open with `--repeat 3` | By design: multi-run bypasses the TUI (`--runs` is the deprecated alias) |
+| `--ui` didn't open with `--repeat 3` | By design: multi-run bypasses the TUI (`--runs` still works, warns; checked 2026-08-14) |
 | Score looks inverted (high toxicity = high score?) | Contract: Score is normalized [0,1] higher-is-better; raw risk is in `Evidence` |
 
-## Negative controls — how they lie to you
+## The two controls
 
-Running the bench under `--harness mock` is the standard negative control: the mock
-harness just echoes the prompt, so a bench that actually measures anything must fail
-**every** cell. Two traps make a broken control look healthy.
+A bench that passes tells you nothing until you know it *can* fail, and that its
+verdicts are reproducible. Both questions now have a command; neither needs jq.
 
-### The exit code is not the control — the per-cell tally is
-
-`--harness mock` must fail every cell. But the process exit code is non-zero if **any**
-cell fails, so the obvious wrapper — "run under mock, assert non-zero exit" — reports a
-healthy control while any number of cells sail through. A bench with 9 failing cells
-and 1 passing one gives exactly the same exit code as one with 10 failing cells.
-
-**Count the cells.** Take the tally from the report JSON, not from `$?`:
+### `madbench check` — the negative control
 
 ```bash
-madbench bench.yaml --harness mock --report-json mock.json
-jq -r '.results[] | "\(.scenario_id)\t\(.status)"' mock.json   # every row must say "fail"
-jq '[.results[] | select(.status != "fail")] | length' mock.json  # MUST be 0
-jq -r '.summary | "passed=\(.passed) failed=\(.failed) errors=\(.errors)"' mock.json
+madbench check bench.yaml            # --verbose to list every cell
 ```
 
-Then name every passing cell and explain it before you trust the bench.
-
-### `latency` and `cost` necessarily pass under mock — they are not evidence
-
-They read `Metrics.Latency` / `Metrics.Cost` raw, and under the mock harness both are
-**0** — so both check types pass with a **perfect 1.00 score** every time, while the
-metrics block prints `cost n/a`:
+The mock harness echoes the prompt and does nothing else, so every graded cell must
+fail. **The exit code was never the control — the per-cell tally is.** A process exit is
+non-zero if *any* cell fails, so the obvious wrapper ("run under mock, assert non-zero
+exit") reports a healthy control while any number of cells sail through: 9-fail-1-pass
+and 10-fail give the identical exit code. `check` counts cells:
 
 ```
- latency-guard PASS  1.00 ###### 0.0s
-   Logic   latency ≤ 60s        1.00 >= 0.00
-   Logic   cost ≤ $0.10         1.00 >= 0.00
+  1/3 cells failed as required · 2 errored (could not grade) · 0 wrongly passed
+
+  COULD NOT GRADE (2) — these cells proved nothing either way:
+    implement-add · cost
+      cost: not reported by this session; the ≤$0.1000 bound graded nothing
+
+  the control does NOT hold: 2 cells could not be graded, so they never showed they can fail.
 ```
 
-This is correct behavior, not a bug — **do not file it as one**. But it has two
-consequences: a `latency`/`cost` pass under mock is not evidence of anything, so
-**do not count those cells** in a negative control; and these checks are *runaway
-guards*, there to bound pathological behavior on a real run, never to demonstrate
-that the bench measures the task.
+**Errored ≠ failed**, and folding the two together is how a broken control looks
+healthy. A cell that errored graded nothing, so it demonstrated neither soundness nor
+rot; `check` gives it its own bucket and refuses to call the control held.
+
+Exit: 0 = holds · 1 = a cell wrongly passed or could not be graded · 3 = nothing graded.
+
+**Two benches it cannot control.** An `image:` bench — the mock is not `ImageCapable`, so
+`check` refuses with *harness "mock" cannot deliver an image*. And any bench at
+`sandbox: none`, unless you pass `--allow-host-writes`: the mock writes nothing, but the
+checks run for real, and at level `none` an `exec` check is a command executed in the
+directory you are sitting in.
+
+### `madbench grade` — the positive control
+
+```bash
+madbench bench.yaml --report-json out.json   # the paid run, once
+madbench grade out.json                      # re-grade it, free, forever
+```
+
+Re-grades the recorded Session offline and checks every verdict reproduces. It **re-runs
+the evaluators**; it does not replay stored verdicts — so a non-deterministic grader
+shows up as **DIVERGED** rather than quietly agreeing with itself.
+
+This is the cheapest thing in the workflow: one paid capture becomes a permanent offline
+regression test for your *grading*, replacing unit tests that hand-build approximate
+Sessions.
+
+Two categories are **SKIPPED with a stated reason**, never silently passed: WorkDir-reading
+checks (`exec`, `custom:exec`, file-loading script graders — the sandbox tree is deleted
+when the run ends) and judge-backed checks (re-grading spends on a live judge, and a
+non-deterministic verdict cannot be a control). A cell whose re-grade errors is reported
+as "could not re-grade", never as reproduced.
+
+### `latency` and `cost` no longer pass on absent data
+
+They used to read `Metrics.Latency`/`.Cost` raw and score a **perfect 1.00** under mock,
+where both are 0, while the metrics block printed `cost n/a` — green ticks that meant
+nothing. **Fixed in v0.10.0:** they now error when the session reported no metrics.
+
+```
+errored  latency   0.00  latency: not reported by this session; the ≤60000ms bound graded nothing
+errored  cost      0.00  cost: not reported by this session; the ≤$0.1000 bound graded nothing
+```
+
+Error rather than fail is deliberate: missing evidence is not "too expensive". These are
+still *runaway guards* for real runs, never evidence that a bench measures its task — so
+`madbench check` reporting them under COULD NOT GRADE is the expected, correct outcome
+for a bench that carries them, not a defect in your bench.
 
 ### A discovery prompt cannot prove a capability claim
 
@@ -124,6 +171,7 @@ this table rather than guessing — several are not what you would predict:
 | check type / its YAML | `.results[].checks[].type` · `.results[].checks[].spec` |
 | observed cost/latency | `.results[].session.metrics` |
 | run tally | `.summary` → `{total, passed, failed, errors, skipped}` |
+| per-run control diff (Eval with `control:`) | `.control` → changed paths + size deltas per run |
 
 A `session` object holds exactly these keys (`pkg/harness/harness.go`, `Session`):
 `final_output` · **`actions`** · **`calls`** · `files_changed` · `metrics` ·
@@ -176,7 +224,12 @@ or racy testdata. Fix by adding deterministic checks or loosening Expectations.
   aliases; rewrite them anyway (table in `schema.md`).
 - A valid sandbox level: `none`/`workspace`/`home`/`container`, spelled under `level:`.
 - Expectations backed by observed runs.
-- A negative control counted per cell, with `latency`/`cost` cells excluded.
+- A negative control run as `madbench check` — per cell, not by exit code. `latency`/
+  `cost` cells land in COULD NOT GRADE, which is correct and expected.
+- The verdicts reproduce: `madbench grade` on a stored report from a real run.
+- Session checks asking the **narrowest true question**: `args.thread: main` where the
+  claim is about the agent under test, `session:file-read` instead of a sentinel token
+  injected into the thing being measured.
 - `metric:` names for scores used in `derivedMetrics`.
 - Don't rely on case-level `threshold:` as a gate — it's parsed for promptfoo
   compatibility but NOT enforced by the engine (v1). Gate with per-check

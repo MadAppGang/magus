@@ -294,7 +294,7 @@ function applyRules(
 
   // Pre-computed aggregates
   const bashCalls = toolCalls.filter((tc) => tc.tool === "Bash");
-  const taskCalls = toolCalls.filter((tc) => tc.tool === "Task");
+  const taskCalls = toolCalls.filter((tc) => tc.tool === "Agent");
   const readCalls = toolCalls.filter((tc) => tc.tool === "Read");
   const grepCalls = toolCalls.filter((tc) => tc.tool === "Grep");
   const webFetchCalls = toolCalls.filter((tc) => tc.tool === "WebFetch");
@@ -431,7 +431,7 @@ function applyRules(
 
       case "skipped-multi-model-review": {
         // Detect /dev:dev sessions that skipped multi-model review.
-        // Signal: has dev:architect AND dev:developer Task calls (feature session)
+        // Signal: has dev:architect AND dev:developer Agent calls (feature session)
         // but NO AskUserQuestion calls AND NO claudish Bash calls.
         const architectTasks = taskCalls.filter(
           (tc) => String(tc.input.subagent_type ?? "") === "dev:architect"

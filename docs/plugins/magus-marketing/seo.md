@@ -7,7 +7,7 @@ SEO analysis and optimisation. Audits content and technical SEO, proposes and ap
 
 | | |
 |---|---|
-| Version | `1.8.2` |
+| Version | `2.0.0` |
 | Marketplace | [`magus-marketing`](./index.md) |
 | Commands | 9 |
 | Subagents | 5 |
@@ -55,15 +55,15 @@ Prefer to do it by hand? [Installing Magus](../../guides/install.md) has the man
 
 ## Subagents
 
-Dispatched with the Task tool, each in its own context window.
+Dispatched with the Agent tool, each in its own context window.
 
 | Agent | What it does |
 |---|---|
-| `seo:seo-analyst` | SERP analysis expert for search intent, competitive intelligence, and ranking opportunities |
-| `seo:seo-data-analyst` | Analytics specialist for GA4 and Google Search Console performance interpretation |
-| `seo:seo-editor` | Senior SEO editor and quality gate for content approval with E-E-A-T scoring |
-| `seo:seo-researcher` | Keyword research specialist for expansion, clustering, and content gap analysis |
-| `seo:seo-writer` | SEO content writer that creates optimized articles from briefs with E-E-A-T focus |
+| `seo:analyst` | Reads the SERP for a query — who ranks, what intent they serve, where the gap is. Use when deciding what to write about, sizing up competitors, or checking whether a keyword is winnable. |
+| `seo:data-analyst` | Interprets GA4 and Google Search Console data, correlating traffic and ranking movement with what changed. |
+| `seo:editor` | Reviews draft content against E-E-A-T and the brief, returning a scored approve or reject with the specific edits needed. |
+| `seo:researcher` | Expands a seed topic into keywords, clusters them by intent, and finds the gaps a site does not yet cover. Use when planning what to write, before a brief exists. |
+| `seo:writer` | Writes a full article from a content brief, optimized for search and for E-E-A-T. Use when a brief exists and the draft needs producing, not when the topic or angle is still undecided. |
 
 ## Skills
 

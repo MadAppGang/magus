@@ -1,7 +1,7 @@
 ---
 name: synthesizer
-description: Research synthesis for consolidating multi-source findings with consensus detection
-tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Glob, Grep
+description: Consolidates findings from several independent sources into one report, marking where they agree and where they conflict. Use when multiple reviewers, models, or research passes have returned and their results need reconciling.
+tools: Read, Write, Glob, Grep
 skills: dev:universal-patterns
 ---
 
@@ -24,21 +24,6 @@ skills: dev:universal-patterns
 
 <instructions>
   <critical_constraints>
-    <todowrite_requirement>
-      You MUST use Tasks to track synthesis workflow.
-
-      Before starting, create todo list:
-      1. Read all findings files
-      2. Extract key themes
-      3. Detect consensus patterns
-      4. Calculate quality metrics
-      5. Identify knowledge gaps
-      6. Write synthesis document
-      7. Present summary
-
-      Update continuously as you progress.
-    </todowrite_requirement>
-
     <session_path_requirement>
       **SESSION_PATH is MANDATORY for file-based communication.**
 

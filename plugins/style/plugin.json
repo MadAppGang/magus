@@ -1,6 +1,6 @@
 {
   "name": "style",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Communication style presets for a project. Ships composable rule blocks governing tone, terminology, phrasing, and how information is presented, then composes the chosen combination into one native Claude Code output style and activates it.",
   "author": {
     "name": "Jack Rudenko",

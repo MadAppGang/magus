@@ -51,7 +51,7 @@ This is NOT optional. If you skip this, your multi-model validation is INCOMPLET
 ### Checklist (Copy and Complete)
 
 ```
-PRE-LAUNCH VERIFICATION (complete before Task calls):
+PRE-LAUNCH VERIFICATION (complete before Agent calls):
 
 [ ] 1. SESSION_ID created: ________________________
 [ ] 2. SESSION_DIR created: ________________________
@@ -79,7 +79,7 @@ Without pre-launch setup, you will:
 
 ```bash
 #!/bin/bash
-# Run this BEFORE launching any Task calls
+# Run this BEFORE launching any Agent calls
 
 # 1. Create unique session
 SESSION_ID="review-$(date +%Y%m%d-%H%M%S)-$(head -c 4 /dev/urandom | xxd -p)"
@@ -616,7 +616,7 @@ verify_output_complete() {
 
 **Prevention:**
 - Always run pre-launch script FIRST
-- Create `$SESSION_DIR/tracking.md` before Task calls
+- Create `$SESSION_DIR/tracking.md` before Agent calls
 - Populate table as models complete
 
 **Detection:** SubagentStop hook warns if no tracking found
@@ -759,7 +759,7 @@ git diff > "$SESSION_DIR/code-context.md"
 echo "Pre-launch complete. Session: $SESSION_ID"
 
 # ============================================================================
-# PHASE 2: MODEL EXECUTION (Parallel Task calls)
+# PHASE 2: MODEL EXECUTION (Parallel Agent calls)
 # ============================================================================
 
 # Record start times for each model
@@ -768,7 +768,7 @@ MODEL_START_TIMES["grok"]=$(date +%s)
 MODEL_START_TIMES["qwen"]=$(date +%s)
 
 # Launch all models in single message (parallel execution)
-# (These would be actual Task calls in practice)
+# (These would be actual Agent calls in practice)
 echo "Launching 3 models in parallel..."
 
 # ============================================================================
@@ -868,7 +868,7 @@ rm -f /tmp/.claude-multi-model-active
 # ... setup code ...
 
 # Launch 4 models
-# ... Task calls ...
+# ... Agent calls ...
 
 # Model 1: Success
 update_model_status "claude" "success" 32 8 95

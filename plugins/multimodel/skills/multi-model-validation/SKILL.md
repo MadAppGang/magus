@@ -27,7 +27,7 @@ Multi-model validation is the practice of running multiple AI models (Grok, Gemi
 1. **Context-Aware Preferences** (NEW v3.3.0) - Automatically use saved model preferences per task type (debug/research/coding/review) from `.claude/multimodel-team.json`
 2. **Dynamic Model Discovery** (v3.0) - Read the live catalog (`list_models`) for current available models (live, 24h cache)
 3. **Session-Based Workspaces** (v3.0) - Each validation session gets a unique directory to prevent conflicts
-4. **4-Message Pattern** - Ensures true parallel execution by using only Task tool calls in a single message
+4. **4-Message Pattern** - Ensures true parallel execution by using only Agent tool calls in a single message
 5. **Pattern 7-8** - Statistics collection and data-driven model recommendations
 
 This skill is extracted from the `/review` command and generalized for use in any multi-model workflow.
@@ -394,7 +394,7 @@ This pattern is **CRITICAL** for achieving true parallel execution with multiple
 
 Claude Code executes tools **sequentially by default** when different tool types are mixed in the same message. To achieve true parallelism, you MUST:
 1. Use ONLY one tool type per message
-2. Ensure all Task calls are in a single message
+2. Ensure all Agent calls are in a single message
 3. Separate preparation (Bash) from execution (Task) from presentation
 
 **The Pattern:**
@@ -404,12 +404,12 @@ Message 1: Preparation (Bash Only)
   - Create workspace directories
   - Validate inputs (check if claudish installed)
   - Write context files (code to review, design reference, etc.)
-  - NO Task calls
+  - NO Agent calls
   - NO Tasks calls
 
 Message 2: Parallel Execution (Task Only)
   - Launch ALL AI models in SINGLE message
-  - ONLY Task tool calls
+  - ONLY Agent tool calls
   - Separate each Task with --- delimiter
   - Each Task is independent (no dependencies)
   - All execute simultaneously
@@ -521,7 +521,7 @@ Message 4: Present Results + Update Statistics
 
 **Single Message, Multiple Tasks:**
 
-The key to parallel execution is putting ALL Task calls in a **single message** with the `---` delimiter:
+The key to parallel execution is putting ALL Agent calls in a **single message** with the `---` delimiter:
 
 ```
 ✅ CORRECT - Parallel Execution:
@@ -624,7 +624,7 @@ directly — no Bash invocation needed. This is 100% reliable.
 **For /team (parallel multi-model):**
 ```
 team(mode="run", path=SESSION_DIR, models=["grok", "gemini"],
-  input=VOTE_PROMPT, timeout=180, claude_flags=claudeFlags)
+  input=VOTE_PROMPT, timeout=180)
 ```
 
 The `team` tool runs all models in parallel internally and returns structured per-model results
@@ -649,7 +649,7 @@ team(mode="run", path=SESSION_DIR, models=["grok", "gemini"],
   input=VOTE_PROMPT, timeout=180)
 
 # ✅ CORRECT: Internal model via Task
-Task({
+Agent({
   subagent_type: "dev:researcher",  // or dev:debugger, dev:architect, etc. — resolved from task type
   description: "Internal Claude review",
   run_in_background: true,
@@ -796,8 +796,9 @@ const successful = results.filter(r => r.status === 'fulfilled');
 
 if (successful.length >= 2) {
   // Auto-trigger consolidation (DON'T wait for user to ask)
-  const consolidated = await Task({
-    subagent_type: "senior-code-reviewer",
+  const consolidated = await Agent({
+    subagent_type: "dev:reviewer",
+    run_in_background: false,     // formatResults() consumes the return value
     description: "Consolidate reviews",
     prompt: `Consolidate ${successful.length} reviews and apply consensus analysis`
   });
@@ -1584,7 +1585,7 @@ In your finalization phase, show:
 <phase name="External Review">
   <steps>
     <step>Record start time: PHASE_START=$(date +%s)</step>
-    <step>Run external models in parallel (single message, multiple Task calls)</step>
+    <step>Run external models in parallel (single message, multiple Agent calls)</step>
     <step>
       After completion, track each model:
       track_model_performance "{model}" "{status}" "{duration}" "{issues}" "{quality}"
@@ -1898,18 +1899,18 @@ Message 5: Present Results
 
 Cause: Mixed tool types in Message 2
 
-Solution: Use ONLY Task calls in Message 2
+Solution: Use ONLY Agent calls in Message 2
 
 ```
 ❌ Wrong:
   Message 2:
     TaskCreate({...})
-    Task({...})
-    Task({...})
+    Agent({...})
+    Agent({...})
 
 ✅ Correct:
   Message 1: TaskCreate({...}) (separate message)
-  Message 2: Task({...}); Task({...}) (only Task)
+  Message 2: Agent({...}); Agent({...}) (only Task)
 ```
 
 ---
@@ -1976,7 +1977,7 @@ Solution: Use range-based estimates, bias toward high end
 
 Real-world feedback showed that agents often:
 - ❌ Forget to instrument timing
-- ❌ Skip statistics because Task tool doesn't return timing
+- ❌ Skip statistics because Agent tool doesn't return timing
 - ❌ Get caught up in execution and forget the statistics phase
 - ❌ Present results without performance data
 
@@ -2087,7 +2088,7 @@ MODEL_START_TIMES["grok"]=$SESSION_START
 MODEL_START_TIMES["qwen/LATEST_FREE_CODING_MODEL"]=$SESSION_START
 
 # Launch all Tasks in parallel (Message 2)
-# ... Task calls here ...
+# ... Agent calls here ...
 
 # === COMPLETION PHASE ===
 # After TaskOutput returns for each model
@@ -2192,7 +2193,7 @@ verify_statistics_complete() {
 | Mistake | Fix |
 |---------|-----|
 | "I'll track timing later" | Record start time BEFORE launching |
-| "Task tool doesn't return timing" | Use bash timestamps around Task calls |
+| "Agent tool doesn't return timing" | Use bash timestamps around Agent calls |
 | "Too complex with parallel agents" | Use associative arrays for per-model times |
 | "Forgot to call track_model_performance" | Add to checklist, verify file updated |
 | "Presented results without table" | Use required output template |
@@ -2205,7 +2206,7 @@ Multi-model validation achieves 3-5x speedup and consensus-based prioritization 
 
 - **Pattern 0: Session Setup** (NEW v3.0) - Unique session directories, dynamic model discovery
 - **Pattern 1: 4-Message Pattern** - True parallel execution
-- **Pattern 2: Parallel Architecture** - Single message, multiple Task calls
+- **Pattern 2: Parallel Architecture** - Single message, multiple Agent calls
 - **Pattern 3: Proxy Mode** - Blocking execution via Claudish
 - **Pattern 4: Cost Transparency** - Estimate before, report after
 - **Pattern 5: Auto-Consolidation** - Triggered when N ≥ 2 complete

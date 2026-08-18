@@ -1,7 +1,7 @@
 ---
 name: investigate
 description: Routes code investigation to the right mnemex AST workflow — architecture (map/PageRank), implementation (callers/callees), tests, or debugging. Use when asked to investigate, trace, or analyze code.
-allowed-tools: Bash, Task, Read, AskUserQuestion
+allowed-tools: Bash, Agent, Read, AskUserQuestion
 user-invocable: false
 ---
 

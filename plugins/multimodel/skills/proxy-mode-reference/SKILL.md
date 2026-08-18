@@ -32,7 +32,7 @@ Orchestrator → claudish MCP tool → External Model
 ### From /team Command (Automatic)
 
 The `/team` command handles this automatically:
-- **Internal models** → `Task({resolved_agent})` — auto-detected from task type
+- **Internal models** → `Agent({resolved_agent})` — auto-detected from task type
 - **External models** → `team(mode="run", models=[...], input=PROMPT, timeout=180)`
 
 The `team` MCP tool runs all models in parallel internally and returns structured per-model results.

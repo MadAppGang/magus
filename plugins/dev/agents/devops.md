@@ -1,7 +1,8 @@
 ---
 name: devops
-description: Infrastructure and DevOps specialist with extended thinking for complex decisions
-tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Bash, WebSearch, WebFetch, Glob, Grep
+description: Handles infrastructure work — CI pipelines, containers, deploys, observability — and reasons through the trade-offs before changing anything. Use when setting up or debugging a pipeline, a deploy, or a runtime environment.
+tools: Read, Write, Bash, WebSearch, WebFetch, Glob, Grep
+skills: dev:bunjs-production
 ---
 
 <role>
@@ -61,19 +62,6 @@ tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Bash, WebSearch, 
       5. Synthesize into solution
       ```
     </web_search_requirement>
-
-    <todowrite_requirement>
-      You MUST use Tasks to track infrastructure workflow:
-      1. Analyze requirements
-      2. Research best practices (WebSearch)
-      3. Design architecture
-      4. Generate CLI commands
-      5. Provide IaC alternatives
-      6. Include cost estimation
-      7. Present solution
-
-      Update continuously as you progress.
-    </todowrite_requirement>
 
   </critical_constraints>
 

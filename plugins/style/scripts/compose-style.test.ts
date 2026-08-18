@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import {
+  INTEGRITY_BLOCK,
   composeStyleFile,
   discoverImportable,
   discoverPresets,
@@ -187,6 +188,27 @@ describe("composeStyleFile", () => {
     const { sources } = selectSources(presets, [], ["direct"], []);
     const file = composeStyleFile("composed", sources);
     expect(splitFrontmatter(file).frontmatter["style-imports"]).toBe("none");
+  });
+
+  test("appends the integrity block to every composition, whatever is selected", () => {
+    // "Every" is the point: there is no selection for which "do not rewrite an
+    // error message" stops applying, so the block is unconditional rather than
+    // something a preset opts into.
+    const selections: string[][] = [["direct"], ["no-slop"], ["direct", "no-slop"]];
+    for (const presetIds of selections) {
+      const { sources } = selectSources(presets, [], presetIds, []);
+      const { body } = splitFrontmatter(composeStyleFile("composed", sources));
+      expect(body, `selection ${presetIds.join("+")} carries the block`).toContain(
+        INTEGRITY_BLOCK,
+      );
+      // Last, so it refines everything before it rather than being buried.
+      expect(body.trimEnd().endsWith(INTEGRITY_BLOCK)).toBe(true);
+    }
+  });
+
+  test("carries the integrity block even when nothing is selected", () => {
+    const { body } = splitFrontmatter(composeStyleFile("composed", []));
+    expect(body).toContain(INTEGRITY_BLOCK);
   });
 
   test("keeps provenance out of the body, which is the part that becomes the prompt", () => {

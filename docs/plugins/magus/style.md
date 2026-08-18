@@ -7,7 +7,7 @@ Communication style presets for a project. Ships composable rule blocks governin
 
 | | |
 |---|---|
-| Version | `2.0.0` |
+| Version | `2.1.0` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 2 |
 | Subagents | 0 |

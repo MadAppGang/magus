@@ -7,7 +7,7 @@ Video editing toolkit. Drives FFmpeg for cutting and encoding, Whisper for trans
 
 | | |
 |---|---|
-| Version | `1.1.4` |
+| Version | `1.2.0` |
 | Marketplace | [`magus-marketing`](./index.md) |
 | Commands | 3 |
 | Subagents | 3 |
@@ -35,6 +35,9 @@ Prefer to do it by hand? [Installing Magus](../../guides/install.md) has the man
 - Use when planning or executing video or audio processing tasks — `ffmpeg-core`
 - Use when generating or reading FCP projects — `final-cut-pro`
 - Use when transcribing audio or video, or generating subtitles — `transcription`
+- Use when assembling clips into an editable timeline, or when a cut needs handing to an editor in Final Cut — `timeline-builder`
+- Use when a recording needs subtitles, a searchable transcript, or timed captions — `transcriber`
+- Use when a media file needs cutting, joining, re-encoding, or an audio track pulled out of it — `video-processor`
 
 ## Commands
 
@@ -46,13 +49,13 @@ Prefer to do it by hand? [Installing Magus](../../guides/install.md) has the man
 
 ## Subagents
 
-Dispatched with the Task tool, each in its own context window.
+Dispatched with the Agent tool, each in its own context window.
 
 | Agent | What it does |
 |---|---|
-| `video-editing:timeline-builder` | Create Final Cut Pro projects, timelines, and multicam sequences |
-| `video-editing:transcriber` | Transcribe audio/video with Whisper to SRT, VTT, JSON, or TXT |
-| `video-editing:video-processor` | Process video/audio files using FFmpeg (trim, concat, convert, extract) |
+| `video-editing:timeline-builder` | Builds Final Cut Pro projects, timelines and multicam sequences as FCPXML. Use when assembling clips into an editable timeline, or when a cut needs handing to an editor in Final Cut. |
+| `video-editing:transcriber` | Transcribes audio and video with Whisper, emitting SRT, VTT, JSON or TXT. Use when a recording needs subtitles, a searchable transcript, or timed captions. |
+| `video-editing:video-processor` | Processes video and audio with FFmpeg — trim, concatenate, convert, extract streams. Use when a media file needs cutting, joining, re-encoding, or an audio track pulled out of it. |
 
 ## Skills
 

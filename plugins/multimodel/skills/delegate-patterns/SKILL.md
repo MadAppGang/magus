@@ -25,8 +25,9 @@ comes back to the main context.
 **Implementation**:
 
 ```
-Task({
+Agent({
   subagent_type: "dev:researcher",
+  run_in_background: false,
   description: "Capability discovery for delegate command",
   prompt: "
     Analyze the user's task and find the best-fit capabilities from installed plugins.

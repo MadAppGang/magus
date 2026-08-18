@@ -138,7 +138,7 @@ async function exploreWithFallback(
 
   for (const model of fallbackModels) {
     try {
-      const result = await Task({
+      const result = await Agent({
         model: model,
         prompt: prompt,
         timeout_ms: 120000  // 2 minute timeout
@@ -159,22 +159,22 @@ async function exploreWithFallback(
 
 ```typescript
 // WRONG: Sequential (slow)
-// const result1 = await Task({ model: "grok", ... });
-// const result2 = await Task({ model: "gemini", ... });
-// const result3 = await Task({ model: "sonnet", ... });
+// const result1 = await Agent({ model: "grok", ... });
+// const result2 = await Agent({ model: "gemini", ... });
+// const result3 = await Agent({ model: "sonnet", ... });
 
 // CORRECT: Parallel (3-5x faster)
 // Use model IDs from `list_models` (live catalog), filtered for code
 const [result1, result2, result3] = await Promise.all([
-  Task({
+  Agent({
     model: "(fast_coding role — resolve from list_models)",
     prompt: generateExplorerPrompt(problem, "fast_code")
   }),
-  Task({
+  Agent({
     model: "(reasoning role — resolve from list_models)",
     prompt: generateExplorerPrompt(problem, "balanced")
   }),
-  Task({
+  Agent({
     model: "(model resolved from list_models)",
     prompt: generateExplorerPrompt(problem, "thorough")
   })
@@ -472,7 +472,7 @@ Format as JSON array.`
 
   // LAUNCH ALL MODELS IN PARALLEL
   const taskPromises = explorerModels.map((model, index) =>
-    Task({
+    Agent({
       model: model,
       prompt: prompts[index],
       timeout_ms: 120000,

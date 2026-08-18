@@ -7,7 +7,7 @@ Getting Things Done workflow. Capture, clarify, organise, reflect and engage ove
 
 | | |
 |---|---|
-| Version | `2.0.1` |
+| Version | `2.1.0` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 7 |
 | Subagents | 1 |
@@ -44,7 +44,7 @@ Prefer to do it by hand? [Installing Magus](../../guides/install.md) has the man
 
 ## Subagents
 
-Dispatched with the Task tool, each in its own context window.
+Dispatched with the Agent tool, each in its own context window.
 
 | Agent | What it does |
 |---|---|

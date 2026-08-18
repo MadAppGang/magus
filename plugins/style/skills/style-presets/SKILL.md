@@ -24,7 +24,7 @@ Presets sit on one of two axes, and the axis decides how they combine.
 | Axis | Rule | Presets |
 |---|---|---|
 | `verbosity` | pick **exactly one** — they contradict each other | `direct`, `explanatory`, `terse` |
-| `modifier` | combine freely | `evidence-first`, `plain-language`, `no-slop`, `structured`, `calibrated`, `terminology` |
+| `modifier` | combine freely | `evidence-first`, `plain-language`, `no-slop`, `asd-ste100`, `structured`, `calibrated`, `terminology` |
 
 The one-verbosity rule is not a style preference. `terse` says "do not explain
 unless asked" and `explanatory` says "explain the specific choice"; applied
@@ -45,6 +45,7 @@ orthogonal and stack cleanly.
 | `evidence-first` | Commands and real output behind every claim; negative controls |
 | `plain-language` | Jargon glosses, concrete nouns, active voice, reader impact |
 | `no-slop` | Banned vocabulary, banned connectives, em dashes, formatting tics |
+| `asd-ste100` | "ASD-STE100 Simplified Technical English": 20/25-word sentence caps, three modals (must/can/will), one word one meaning |
 | `structured` | Table vs list vs paragraph, headings, backticks, `file:line` |
 | `calibrated` | Confidence matching evidence, "I don't know", correction discipline |
 | `terminology` | One name per concept; `template: true`, filled from the codebase |

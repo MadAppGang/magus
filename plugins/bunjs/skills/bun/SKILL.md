@@ -13,18 +13,39 @@ point of an index. Two is normal. Five means the task should be split.
 
 ## The eight
 
-Paths resolve against **this plugin's own directory** — the tree this file was loaded from.
+Each path is **relative to the directory holding this file** — the other skills are its
+sibling directories, which is true both when this ships as a plugin
+(`plugins/bunjs/skills/<name>/`) and when it is installed as a project skill
+(`.claude/skills/<name>/`).
+
+This used to read `skills/<name>/SKILL.md`, described as resolving against the plugin
+ROOT. Nothing resolves it that way. MEASURED in `benches/skill-router/` (RTR-1,
+`--repeat 8`, Sonnet 5), classifying all 74 skill-file reads:
+
+| how the path was resolved | reads | result |
+|---|---|---|
+| against **the directory holding the SKILL.md** | 25 | dead — `skills/bun/skills/<name>/` |
+| straight to the real location | 49 | works |
+| against the **harness CWD** | **0** | never attempted |
+
+Relative paths in a SKILL.md are resolved against **that file's own directory**, with no
+counterexamples. There is no reader for whom "the plugin's own directory" is a location —
+the only thing an agent knows is where the file it just read lives. So `../<name>/` is
+not a preference here, it is the only spelling that lands.
+
+13 of 18 graded sessions followed the old path into the dead end. Nine recovered by
+searching; **four gave up, and those four were every Recall failure in the run.**
 
 | Read this | When the task is about | Ships |
 |---|---|---|
-| `skills/project-setup/SKILL.md` | starting or restructuring a project, folder layout, strict tsconfig, typed env config, workspaces, linting | env parser + 24 tests |
-| `skills/http-service/SKILL.md` | an HTTP server or JSON API — `Bun.serve` routes, middleware, request context, response shape, streaming | middleware + 38 tests |
-| `skills/errors/SKILL.md` | error handling, validation boundaries, retry, timeout, circuit breaker, "make it fail gracefully" | AppError + 53 tests |
-| `skills/testing/SKILL.md` | writing or fixing tests, `bun:test`, doubles, coverage gating, flaky tests | harness + 30 tests |
-| `skills/security/SKILL.md` | auth, passwords, tokens, injection, rate limiting, CORS, headers, secrets, security review | guards + 51 tests |
-| `skills/production/SKILL.md` | shipping — graceful shutdown, structured logging, health checks, Docker, signals, CI | logger + 29 tests |
-| `skills/performance/SKILL.md` | something is slow, benchmarking, event-loop blocking, profiling | bench harness + 18 tests |
-| `skills/tui/SKILL.md` | a terminal UI — OpenTUI, dashboards, full-screen CLI | theme + 119 tests |
+| `../project-setup/SKILL.md` | starting or restructuring a project, folder layout, strict tsconfig, typed env config, workspaces, linting | env parser + 24 tests |
+| `../http-service/SKILL.md` | an HTTP server or JSON API — `Bun.serve` routes, middleware, request context, response shape, streaming | middleware + 38 tests |
+| `../errors/SKILL.md` | error handling, validation boundaries, retry, timeout, circuit breaker, "make it fail gracefully" | AppError + 53 tests |
+| `../testing/SKILL.md` | writing or fixing tests, `bun:test`, doubles, coverage gating, flaky tests | harness + 30 tests |
+| `../security/SKILL.md` | auth, passwords, tokens, injection, rate limiting, CORS, headers, secrets, security review | guards + 51 tests |
+| `../production/SKILL.md` | shipping — graceful shutdown, structured logging, health checks, Docker, signals, CI | logger + 29 tests |
+| `../performance/SKILL.md` | something is slow, benchmarking, event-loop blocking, profiling | bench harness + 18 tests |
+| `../tui/SKILL.md` | a terminal UI — OpenTUI, dashboards, full-screen CLI | theme + 119 tests |
 
 ## Routing
 

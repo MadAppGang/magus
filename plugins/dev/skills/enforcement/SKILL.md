@@ -84,7 +84,7 @@ Marking phases complete needs no manual verification step — the hook does it.
 
 ```markdown
 I'll run the tests now.
-[Task tool call to run tests]
+[Agent tool call to run tests]
 Tests passed! Moving to next phase.
 ```
 

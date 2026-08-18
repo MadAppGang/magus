@@ -252,7 +252,7 @@ provider and bypass the subscription-aware backend selection and fallback that p
 ### Step 2: Agent Type Selection Matrix
 
 > **Note:** In orchestration workflows, external models are invoked via claudish MCP tools (team, create_session).
-> The agent is resolved by the orchestrator and set via Task tool for internal models. External models receive context through the vote prompt.
+> The agent is resolved by the orchestrator and set via Agent tool for internal models. External models receive context through the vote prompt.
 
 | Task Type | Recommended Agent | Alternatives | Notes |
 |-----------|----------------------|--------------|-------|
@@ -349,7 +349,7 @@ When used with the `/team` command for multi-model blind voting:
 **External models are invoked via the `team` MCP tool:**
 ```
 claudish team(mode="run", path=SESSION_DIR, models=["grok", "gemini"],
-  input=VOTE_PROMPT, timeout=180, claude_flags=claudeFlags)
+  input=VOTE_PROMPT, timeout=180)
 ```
 
 The `team` tool runs all models in parallel internally and returns structured per-model results.
@@ -530,8 +530,23 @@ claudish --model grok "create button component"
 claudish --model grok --stdin < multi-phase-workflow.md
 ```
 
-> **Note:** The `--agent` flag was removed in claudish v4.5.1. Agent specialization
-> is now handled through the vote prompt content or Claude Code's own agent system.
+**Running an external model AS an agent:**
+```bash
+claudish --model grok --agent dev:architect "design the payment service"
+```
+
+`--agent` is a Claude Code flag, not a claudish one. Claudish forwards any flag it does
+not recognise straight through, and its own `--help` gives `--agent` as the worked
+example under `CLAUDE CODE FLAG PASSTHROUGH`. Verified against claudish 7.48.0 and
+`claude --agent <agent>` ("Agent for the current session. Overrides the 'agent'
+setting.").
+
+> **Correction (2026-08-13).** This section previously claimed "The `--agent` flag was
+> removed in claudish v4.5.1. Agent specialization is now handled through the vote
+> prompt content." **Both halves were wrong**, and the error propagated: it is why
+> `/team` and `/delegate` were run without an agent and why an investigation concluded
+> external models "cannot take an agent at all". Do not restore that text. If you think
+> a flag is gone, run `claudish --help` before writing it down.
 
 ## Best Practice: File-Based Sub-Agent Pattern
 
@@ -687,7 +702,7 @@ function extractIssueCount(review: string): { critical: number; medium: number; 
 
 ## Sub-Agent Delegation Pattern
 
-When running Claudish from an agent, use the Task tool to create a sub-agent:
+When running Claudish from an agent, use the Agent tool to create a sub-agent:
 
 ### Pattern 1: Simple Task Delegation
 
@@ -696,8 +711,8 @@ When running Claudish from an agent, use the Task tool to create a sub-agent:
  * Example: Delegate implementation to Grok via Claudish
  */
 async function implementFeatureWithGrok(featureDescription: string) {
-  // Use Task tool to create sub-agent
-  const result = await Task({
+  // Use Agent tool to create sub-agent
+  const result = await Agent({
     subagent_type: "general-purpose",
     description: "Implement feature with Grok",
     prompt: `
@@ -758,7 +773,7 @@ Keep analysis concise (under 1000 words).
   await Write({ file_path: instructionFile, content: instruction });
 
   // Delegate to sub-agent
-  const result = await Task({
+  const result = await Agent({
     subagent_type: "general-purpose",
     description: "Analyze codebase with Gemini",
     prompt: `
@@ -806,8 +821,9 @@ async function compareModels(task: string, models: string[]) {
     const resultFile = `/tmp/claudish-${model.replace('/', '-')}-${timestamp}.md`;
 
     // Run task with each model
-    await Task({
+    await Agent({
       subagent_type: "general-purpose",
+      run_in_background: false,       // the loop reads resultFile straight after
       description: `Run task with ${model}`,
       prompt: `
 Use Claudish to run this task with ${model}:
@@ -886,7 +902,7 @@ done
 | `--model <model>` | OpenRouter model to use | `--model grok` |
 | `--stdin` | Read prompt from stdin | `git diff \| claudish --stdin --model grok` |
 | `--models` | List all models or search | `claudish --models` or `claudish --models gemini` |
-| `--top-models` | ~~Show top recommended models~~ (deprecated — use the live catalog (`list_models`)) | `# list_models  (claudish MCP — live catalog, 24h cache)` |
+| `--models-top` | Curated recommended models (flagship + fast). The old `--top-models` spelling is gone — checked against `claudish --help` 7.48.0 on 2026-08-14. Prefer `list_models` (MCP), which is the live catalog. | `claudish --models-top` |
 | `--json` | JSON output (implies --quiet) | `claudish --json "task"` |
 | `--help-ai` | Print AI agent usage guide | `claudish --help-ai` |
 
@@ -1062,8 +1078,9 @@ COST=$(claudish --json "task" | jq -r '.total_cost_usd')
 
 **How:**
 ```typescript
-await Task({
+await Agent({
   subagent_type: "general-purpose",
+  run_in_background: false,
   description: "Task with Claudish",
   prompt: "Use claudish --model grok '...' and return summary only"
 });
@@ -1118,8 +1135,9 @@ const result = await Bash("claudish --json --model gpt-5 'refactor'");
 **RIGHT - Always use sub-agents:**
 ```typescript
 // ✅ ALWAYS DO THIS - Delegate to sub-agent
-const result = await Task({
+const result = await Agent({
   subagent_type: "general-purpose", // or specific agent
+  run_in_background: false,         // `result` is the report, not a launch receipt
   description: "Implement feature with Grok",
   prompt: `
 Use Claudish to implement the feature with Grok model.
@@ -1136,8 +1154,9 @@ Keep response under 300 tokens.
 });
 
 // ✅ Even better - Use specialized agent if available
-const result = await Task({
-  subagent_type: "backend-developer", // or frontend-dev, etc.
+const result = await Agent({
+  subagent_type: "dev:developer", // any registered agent; see /dev:help for the list
+  run_in_background: false,
   description: "Implement with external model",
   prompt: `
 Use Claudish with grok model to implement authentication.

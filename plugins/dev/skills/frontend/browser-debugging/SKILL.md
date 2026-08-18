@@ -624,8 +624,9 @@ claude /plugin list 2>/dev/null | grep -q "designer" && echo "available" || echo
 
 ```
 # When designer is available, replace manual visual comparison with:
-Task(
+Agent(
   subagent_type: "designer:design-review",
+  run_in_background: false,   # you read the diff report in this turn
   prompt: "Compare reference at {REFERENCE_PATH} against implementation at {IMPL_URL}. Viewport: 1440x900."
 )
 ```

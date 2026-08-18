@@ -90,11 +90,11 @@ Message 1: Preparation (Bash Only)
   - Create workspace directories
   - Validate inputs
   - Write context files
-  - NO Task calls, NO Tasks
+  - NO Agent calls, NO Tasks
 
 Message 2: Parallel Execution (Task Only)
   - Launch ALL agents in SINGLE message
-  - ONLY Task tool calls
+  - ONLY Agent tool calls
   - Each Task is independent
   - All execute simultaneously
 
@@ -112,20 +112,20 @@ Message 4: Present Results
 ```
 ❌ WRONG - Executes Sequentially:
   await TaskCreate({...});  // Tool 1
-  await Task({...});       // Tool 2 - waits for Tasks
+  await Agent({...});       // Tool 2 - waits for Tasks
   await Bash({...});       // Tool 3 - waits for Task
-  await Task({...});       // Tool 4 - waits for Bash
+  await Agent({...});       // Tool 4 - waits for Bash
 
 ✅ CORRECT - Executes in Parallel:
-  await Task({...});  // Task 1
-  await Task({...});  // Task 2
-  await Task({...});  // Task 3
+  await Agent({...});  // Task 1
+  await Agent({...});  // Task 2
+  await Agent({...});  // Task 3
   // All execute simultaneously
 ```
 
 **Why Mixing Fails:**
 
-Claude Code sees different tool types and assumes there are dependencies between them, forcing sequential execution. Using a single tool type (all Task calls) signals that operations are independent and can run in parallel.
+Claude Code sees different tool types and assumes there are dependencies between them, forcing sequential execution. Using a single tool type (all Agent calls) signals that operations are independent and can run in parallel.
 
 ---
 
@@ -293,7 +293,7 @@ via claudish MCP tools. Sub-agents do NOT invoke claudish directly.
   1. Uses `team` MCP tool with model list and vote prompt
   2. team tool runs all external models in parallel internally
   3. Results returned as structured per-model responses
-  4. Sub-agents only handle internal Claude work via Task tool
+  4. Sub-agents only handle internal Claude work via Agent tool
 
 /delegate command:
   1. Uses `create_session` MCP tool with model and prompt
@@ -500,7 +500,7 @@ Step 2: Sequential Agent Delegation (multi-agent-coordination)
 Message 1: Preparation
   - Write code context to ai-docs/code-review-context.md
 
-Message 2: Parallel Execution (3 Task calls in single message)
+Message 2: Parallel Execution (3 Agent calls in single message)
   Task: senior-code-reviewer
     Prompt: "Review ai-docs/code-review-context.md for security issues"
   ---
@@ -635,17 +635,17 @@ Step 3: User validation
 
 Cause: Mixed tool types in same message
 
-Solution: Use 4-Message Pattern with ONLY Task calls in Message 2
+Solution: Use 4-Message Pattern with ONLY Agent calls in Message 2
 
 ```
 ❌ Wrong:
   await TaskCreate({...});
-  await Task({...});
-  await Task({...});
+  await Agent({...});
+  await Agent({...});
 
 ✅ Correct:
   Message 1: await Bash({...});  (prep only)
-  Message 2: await Task({...}); await Task({...}); (parallel)
+  Message 2: await Agent({...}); await Agent({...}); (parallel)
 ```
 
 ---

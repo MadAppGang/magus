@@ -1,7 +1,7 @@
 ---
 name: mnemex-orchestration
 description: Runs mnemex once and shares its output across parallel agents, with role-based command mapping and session lifecycle handling. Use when orchestrating multi-agent code analysis.
-allowed-tools: Bash, Task, Read, Write, AskUserQuestion
+allowed-tools: Bash, Agent, Read, Write, AskUserQuestion
 user-invocable: false
 ---
 
@@ -58,18 +58,18 @@ echo "$SESSION_ID" > "$SESSION_DIR/session-id.txt"
 After running mnemex, distribute to mode-specific agents:
 
 ```
-# Parallel Execution (ONLY Task calls - per 4-Message Pattern)
-Task: code-analysis:investigate (architecture mode)
+# Parallel Execution (ONLY Agent calls - per 4-Message Pattern)
+Agent: code-analysis:investigate (architecture mode)
   Prompt: "Analyze architecture from $SESSION_DIR/structure-map.md.
            Focus on layer boundaries and design patterns.
            Write findings to $SESSION_DIR/architect-analysis.md"
 ---
-Task: code-analysis:investigate (testing mode)
+Agent: code-analysis:investigate (testing mode)
   Prompt: "Analyze test gaps from $SESSION_DIR/test-gaps.md.
            Prioritize coverage recommendations.
            Write findings to $SESSION_DIR/tester-analysis.md"
 ---
-Task: code-analysis:investigate (implementation mode)
+Agent: code-analysis:investigate (implementation mode)
   Prompt: "Analyze dead code from $SESSION_DIR/dead-code.md.
            Identify cleanup opportunities.
            Write findings to $SESSION_DIR/developer-analysis.md"
@@ -80,7 +80,7 @@ All 3 execute simultaneously (3x speedup!)
 ### Pattern 3: Consolidation with Deep Analysis
 
 ```
-Task: code-analysis:deep-analysis
+Agent: code-analysis:deep-analysis
   Prompt: "Consolidate analyses from:
            - $SESSION_DIR/architect-analysis.md
            - $SESSION_DIR/tester-analysis.md

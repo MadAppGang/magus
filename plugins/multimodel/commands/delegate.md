@@ -29,15 +29,37 @@ args:
 
 **Step 1b — Parse arguments** left-to-right:
 - First token with no `/` or `--` prefix → MODEL_ARG
-- Token starting with `/` and containing `:` → EXPLICIT_COMMAND
+- Token starting with `/` and containing `:` → resolve it before deciding what it is:
+  - matches a **command or skill** → EXPLICIT_COMMAND (inlined into the prompt)
+  - matches an **agent** (`plugins/<ns>/agents/*.md` frontmatter `name:`) → EXPLICIT_AGENT
+  - matches neither → say so and ask; do not inline an unresolvable token
 - Remaining tokens → TASK_DESCRIPTION
+
+**An agent is not slash-invocable, and the ambiguity bites.** A name can be both:
+<!-- doc-refs: off -->
+`dev:architect` is an agent AND a command, so `/dev:architect` resolves. `dev:reviewer`
+is agent-only, so `/dev:reviewer` silently does not — it is named here as the
+counter-example, which is why this passage is exempt from the reference gate.
+<!-- doc-refs: on -->
+Resolving the token tells you which you have. Agents travel by flag, not by prompt
+text — see Step 1d.
 
 **Step 1c — Resolve MODEL** (in order, resolve each via ALIAS_TABLE):
 1. MODEL_ARG if parsed → resolve via ALIAS_TABLE
 2. `preferences.defaultModels[0]` → resolve via ALIAS_TABLE, announce "Using saved model: {id}"
 3. AskUserQuestion: "Which model?" — list available aliases from ALIAS_TABLE
 
-Read `claudeFlags` from preferences (pass to create_session if non-empty).
+**Step 1d — Build CLAUDE_FLAGS.** Start from `preferences.claudeFlags` (may be empty),
+then append `--agent {EXPLICIT_AGENT}` if an agent was parsed.
+
+`--agent` is a **Claude Code** flag (`claude --agent <agent>`, "Agent for the current
+session"). Claudish does not implement it; it forwards any flag it does not recognise
+straight through, and its own `--help` gives `--agent` as the worked example under
+`CLAUDE CODE FLAG PASSTHROUGH`. Verified on claudish 7.48.0.
+
+This is the **only** route that gives the external model the real agent: its system
+prompt, its frontmatter tools, its preloaded skills, its reference tree. Naming the
+agent in the prompt gets you a role description and none of that.
 
 ## Phase 2: Execute via Channel
 
@@ -47,7 +69,7 @@ Call the claudish `create_session` MCP tool:
 - model: MODEL
 - prompt: TASK_PROMPT
 - timeout_seconds: 300
-- claude_flags: claudeFlags (omit if empty)
+- claude_flags: CLAUDE_FLAGS from Step 1d (omit if empty)
 
 Store the returned `session_id` as SESSION_ID.
 

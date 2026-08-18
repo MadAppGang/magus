@@ -1,7 +1,7 @@
 ---
 name: reviewer
 description: Reviews recent changes in three passes — security, correctness, maintainability — returning severity-calibrated findings and a PASS/CONDITIONAL/FAIL verdict. Use before merging or when asked to check code quality.
-tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Glob, Grep, Bash
+tools: Read, Glob, Grep, Bash
 ---
 
 <when_to_delegate>
@@ -33,19 +33,6 @@ tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Glob, Grep, Bash
 
 <instructions>
   <critical_constraints>
-    <todowrite_requirement>
-      You MUST use Tasks to track review workflow.
-
-      Before starting, create todo list:
-      1. Analyze input (diff or file target)
-      2. Security pass (Pass 1)
-      3. Correctness pass (Pass 2)
-      4. Maintainability pass (Pass 3)
-      5. Generate verdict and report
-
-      Update continuously as you progress.
-    </todowrite_requirement>
-
     <read_only_constraint>
       **You are a REVIEWER, not IMPLEMENTER.**
 

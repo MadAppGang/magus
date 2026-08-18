@@ -1,7 +1,7 @@
 {
   "name": "madbench",
-  "version": "0.1.2",
-  "description": "Toolkit for madbench, MadAppGang's Go harness for benchmarking agentic coding tools. Ships the madbench-evals skill: author bench YAML, design checks, scaffold red-state testdata, run and validate benches, tune expectations, and debug failing checks.",
+  "version": "0.2.1",
+  "description": "Toolkit for madbench, MadAppGang's Go harness for benchmarking agentic coding tools. Ships the madbench-evals skill: author bench YAML and Eval files, design checks, scaffold red-state and generated testdata, run the negative and positive controls, tune expectations, and debug failing checks.",
   "author": {
     "name": "MadAppGang",
     "email": "i@madappgang.com"

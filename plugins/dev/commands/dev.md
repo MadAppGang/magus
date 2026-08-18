@@ -1,7 +1,7 @@
 ---
 name: dev
 description: "Builds a feature through an 8-phase workflow, delegating each phase to a specialist agent. Depth picks how many phases run, automation how often it stops to ask."
-allowed-tools: Task, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep, mcp__chrome-devtools__navigate_page, mcp__chrome-devtools__take_screenshot, mcp__chrome-devtools__take_snapshot, mcp__chrome-devtools__click, mcp__chrome-devtools__fill, mcp__chrome-devtools__new_page, mcp__chrome-devtools__select_page, mcp__chrome-devtools__list_pages
+allowed-tools: Agent, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep, mcp__chrome-devtools__navigate_page, mcp__chrome-devtools__take_screenshot, mcp__chrome-devtools__take_snapshot, mcp__chrome-devtools__click, mcp__chrome-devtools__fill, mcp__chrome-devtools__new_page, mcp__chrome-devtools__select_page, mcp__chrome-devtools__list_pages
 skills: dev:context-detection, dev:universal-patterns, dev:worktree-lifecycle, multimodel:multi-model-validation, multimodel:quality-gates, multimodel:model-tracking-protocol
 ---
 
@@ -284,7 +284,7 @@ skills: dev:context-detection, dev:universal-patterns, dev:worktree-lifecycle, m
       **You are an ORCHESTRATOR, not IMPLEMENTER.**
 
       **You MUST:**
-      - Use Task tool to delegate ALL work to agents
+      - Use Agent tool to delegate ALL work to agents
       - Use Tasks to track build progress
       - Enforce quality gates between phases (standard + full depth)
       - Respect depth and automation selections throughout
@@ -296,7 +296,7 @@ skills: dev:context-detection, dev:universal-patterns, dev:worktree-lifecycle, m
       - Write or edit ANY code files directly
       - Skip quality gates
       - Exceed iteration limits without user approval
-      - Pass large content through Task prompts
+      - Pass large content through Agent prompts
       - Claim completion without screenshot evidence (full depth only)
       - Accept "should work" or "tests pass" as proof (full depth only)
     </orchestrator_role>
@@ -325,7 +325,7 @@ skills: dev:context-detection, dev:universal-patterns, dev:worktree-lifecycle, m
       - Agents write detailed output to ${SESSION_PATH}/*.md
       - Agents return BRIEF summary (max 3 lines) to orchestrator
       - Orchestrator reads files for next phase
-      - No large content in Task prompts
+      - No large content in Agent prompts
 
       **Why:**
       - Prevents context pollution
@@ -414,7 +414,7 @@ skills: dev:context-detection, dev:universal-patterns, dev:worktree-lifecycle, m
       **Anti-pattern (BLOCKED):**
       ```
       I'll run the tests now.
-      [Task tool call]
+      [Agent tool call]
       Tests passed! Moving on.
       ```
 
@@ -518,7 +518,7 @@ skills: dev:context-detection, dev:universal-patterns, dev:worktree-lifecycle, m
 
 <orchestration>
   <allowed_tools>
-    - Task (delegate to agents)
+    - Agent (delegate to agents)
     - AskUserQuestion (user input, model selection with multiSelect)
     - Bash (git commands, test execution, quality checks, dev server)
     - Read (read files, review outputs, load phase instruction files)
@@ -542,15 +542,15 @@ skills: dev:context-detection, dev:universal-patterns, dev:worktree-lifecycle, m
   </forbidden_tools>
 
   <parallel_execution_pattern>
-    **Single message with multiple Task calls executes in parallel:**
+    **Single message with multiple Agent calls executes in parallel:**
 
-    Task: {agent1}
+    Agent: {agent1}
       Prompt: "..."
     ---
-    Task: {agent2}
+    Agent: {agent2}
       Prompt: "..."
     ---
-    Task: {agent3}
+    Agent: {agent3}
       Prompt: "..."
 
     All 3 execute SIMULTANEOUSLY (3x speedup)
@@ -561,7 +561,7 @@ skills: dev:context-detection, dev:universal-patterns, dev:worktree-lifecycle, m
     - Multi-model code review (Phase 5)
 
     **Remember:**
-    - Each Task must write to unique output file
+    - Each Agent must write to unique output file
     - No dependencies between parallel tasks
     - Wait for ALL to complete before consolidation
   </parallel_execution_pattern>

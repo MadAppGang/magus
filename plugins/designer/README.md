@@ -40,9 +40,8 @@ Everything else compares against that file.
 | Skill | Covers |
 |---|---|
 | `designer:ui-style-format` | Schema for `.claude/design-style.md` and the design-system files |
-| `designer:ui-design-review` | The review protocol: what to check and in what order |
 | `designer:design-references` | Material 3, Apple HIG, Tailwind UI, Ant Design, Shadcn/ui |
-| `designer:ui-analyse` | Prompting patterns and severity guidelines for visual analysis |
+| `designer:ui-analyse` | The review protocol: prompting patterns, depth tiers, severity guidelines |
 | `designer:browser-use-integration` | Capturing screenshots of URL references via the browser-use plugin |
 
 `designer:compare` is a library skill holding the `compare.ts` CLI invocation pattern. It is

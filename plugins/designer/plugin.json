@@ -1,6 +1,6 @@
 {
   "name": "designer",
-  "version": "0.4.3",
+  "version": "0.5.0",
   "description": "UI design validation. Compares a rendered screen against its reference by pixel diff, then reviews the result for spacing, hierarchy and design-system consistency.",
   "author": {
     "name": "Jack Rudenko",
@@ -42,7 +42,6 @@
     "./skills/ui-analyse",
     "./skills/design-references",
     "./skills/ui-style-format",
-    "./skills/ui-design-review",
     "./skills/browser-use-integration"
   ],
   "compatibility": {

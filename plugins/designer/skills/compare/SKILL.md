@@ -10,10 +10,9 @@ This skill documents how to use the designer plugin's comparison engine from
 any agent context. It covers:
 
 1. The `compare.ts` CLI invocation pattern
-2. The semantic comparison prompt template (via claudish)
+2. The semantic comparison prompt template
 3. Severity thresholds reference
-4. Model selection guide
-5. Tips for reducing false positives
+4. Tips for reducing false positives
 
 ---
 
@@ -150,9 +149,8 @@ Always read `pixel-diff.json` after the Bash call. Use the `success` field to br
 
 ## 2. Semantic Comparison Prompt Template
 
-Use this prompt when invoking claudish for AI semantic analysis. It asks the
-vision model to categorize differences across 7 UI categories and output
-structured JSON.
+Answer this prompt yourself, after reading both normalized images. It categorizes
+differences across 7 UI categories and outputs structured JSON.
 
 ### Prompt Template
 
@@ -189,7 +187,7 @@ Output as JSON:
 }
 ```
 
-### claudish Invocation
+### Running It
 
 ```bash
 # Write prompt to file for auditability
@@ -197,24 +195,30 @@ cat > "${OUTPUT_DIR}/semantic-prompt.txt" << 'PROMPT'
 Compare these two UI screenshots:
 ... (full prompt text above)
 PROMPT
-
-# Run vision comparison
-npx claudish --model "${VISION_MODEL}" \
-  --image "${OUTPUT_DIR}/reference-normalized.png" \
-  --image "${OUTPUT_DIR}/implementation-normalized.png" \
-  --quiet --auto-approve < "${OUTPUT_DIR}/semantic-prompt.txt" \
-> "${OUTPUT_DIR}/semantic-raw.txt" 2>/dev/null
-CLAUDISH_EXIT=$?
 ```
 
-### Parsing the Output
+Then read both images, reference first, and answer:
 
-```bash
-# Extract JSON block from raw output
-# Agent should find first '{' through last '}' and attempt JSON.parse()
-# If parse fails or CLAUDISH_EXIT != 0:
-#   SEMANTIC_DIFF = { "skipped": true, "error": "claudish output was not valid JSON" }
 ```
+Read("${OUTPUT_DIR}/reference-normalized.png")
+Read("${OUTPUT_DIR}/implementation-normalized.png")
+```
+
+`Read` renders a PNG into context as an image, so after these two calls both screens
+are in front of you. Write your JSON answer to `${OUTPUT_DIR}/semantic-raw.txt` and
+set SEMANTIC_DIFF from it.
+
+If either Read fails, set
+`SEMANTIC_DIFF = { "skipped": true, "error": "<which image> could not be read" }`
+and produce a pixel-only report. Do not derive the semantic categories from the
+pixel diff — a category verdict nobody looked at is exactly what this step exists
+to prevent.
+
+> **Correction (2026-08-14).** This section previously invoked
+> `npx claudish --model "$VISION_MODEL" --image ref.png --image impl.png`.
+> **`claudish` has no `--image` flag** (`claudish --help`, 7.48.0); unknown flags are
+> forwarded to `claude`, which has none either. The comparison ran on the prompt text
+> with neither screenshot attached. Do not restore it.
 
 ---
 
@@ -240,17 +244,13 @@ CLAUDISH_EXIT=$?
 
 ---
 
-## 4. Model Selection Guide
+## 4. Preconditions for Semantic Analysis
 
-Read the vision model from the centralized config — do not detect providers via env vars:
+There is no model to select. The only precondition is that both normalized PNGs
+exist and are readable. If either is missing, set `SEMANTIC_SKIP=true` and log:
 
 ```
-Pick a vision-capable model from list_models (claudish MCP) → VISION_MODEL
-```
-
-If the file is missing or the key is absent, set `SEMANTIC_SKIP=true` and log:
-```
-WARN: Could not reach the claudish model catalog (list_models). Semantic analysis skipped.
+WARN: normalized images not produced. Semantic analysis skipped.
 ```
 
 ---

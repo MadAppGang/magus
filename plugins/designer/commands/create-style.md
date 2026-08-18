@@ -46,7 +46,7 @@ skills:
       - Use Bash for file operations in `.claude/` directory
 
       **You MUST NOT:**
-      - Use Task tool (this is not an orchestrator)
+      - Use Agent tool (this is not an orchestrator)
       - Modify any source code files outside `.claude/` directory
       - Make assumptions about user preferences
 

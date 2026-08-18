@@ -28,7 +28,7 @@
     "id": "skill-invoked-as-task",
     "audience": "claude",
     "signal": {
-      "tool": "Task",
+      "tool": "Agent",
       "input_key": "subagent_type",
       "value_in": [
         "code-analysis:mnemex-search",
@@ -56,7 +56,6 @@
         "dev:agent-coordination-discipline",
         "designer:compare",
         "designer:ui-analyse",
-        "designer:ui-design-review",
         "browser-use:core-api",
         "browser-use:web-scraping",
         "browser-use:navigation-patterns",
@@ -84,7 +83,7 @@
     "id": "wrong-agent-for-task",
     "audience": "claude",
     "signal": {
-      "tool": "Task",
+      "tool": "Agent",
       "prompt_patterns": {
         "research|compare|sources": "dev:researcher",
         "implement|create|build|write": "dev:developer",
@@ -105,7 +104,7 @@
     "id": "single-model-critical-review",
     "audience": "human",
     "signal": {
-      "tool": "Task",
+      "tool": "Agent",
       "prompt_pattern": "\\b(code\\s+review|architecture\\s+review|security\\s+audit|code\\s+audit)\\b",
       "no_bash_pattern": "claudish"
     },
@@ -152,12 +151,12 @@
     "id": "no-background-tasks",
     "audience": "claude",
     "signal": {
-      "tool": "Task",
+      "tool": "Agent",
       "min_sequential": 2
     },
     "category": "performance",
     "priority": 4,
-    "suggestion": "Detected {count} sequential Task calls that may be parallelizable.\n  If tasks are independent, add `run_in_background: true` to all but the last:\n  Task({ subagent_type: \"...\", run_in_background: true, ... })\n  Parallel execution can reduce total time significantly.",
+    "suggestion": "Detected {count} sequential Agent calls that may be parallelizable.\n  If tasks are independent, add `run_in_background: true` to all but the last:\n  Agent({ subagent_type: \"...\", run_in_background: true, ... })\n  Parallel execution can reduce total time significantly.",
     "suppress_after_sessions": 3
   },
   {
@@ -195,7 +194,7 @@
     },
     "category": "api-correctness",
     "priority": 1,
-    "suggestion": "claudish was run directly in a Bash call. This pollutes the context window with 10K+ tokens.\n  Always run claudish inside a sub-agent via the Task tool with run_in_background: true.\n  Read the skill first: Skill({ \"skill\": \"multimodel:claudish-usage\" })\n  Pattern: Task({ subagent_type: \"dev:developer\", run_in_background: true, prompt: \"run: claudish ...\" })",
+    "suggestion": "claudish was run directly in a Bash call. This pollutes the context window with 10K+ tokens.\n  Always run claudish inside a sub-agent via the Agent tool with run_in_background: true.\n  Read the skill first: Skill({ \"skill\": \"multimodel:claudish-usage\" })\n  Pattern: Agent({ subagent_type: \"dev:developer\", run_in_background: true, prompt: \"run: claudish ...\" })",
     "suppress_after_sessions": 10
   },
   {
@@ -278,7 +277,7 @@
     "id": "suggest-claudish-for-external-models",
     "audience": "human",
     "signal": {
-      "tool": "Task",
+      "tool": "Agent",
       "prompt_pattern": "\\b(grok|gemini|gpt-[0-9]|openrouter|mistral|deepseek|llama|qwen|minimax|kimi|glm)\\b",
       "no_bash_pattern": "claudish"
     },

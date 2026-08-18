@@ -11,21 +11,73 @@ with `madbench <paths...> --harness <name>`.
 runner: claude-code
 runner_config:
   binary: claude                      # default "claude" (must be on PATH)
-  model: LATEST_HAIKU_MODEL    # → --model
+  model: LATEST_HAIKU_MODEL           # → --model
   system_prompt: "..."                # → --system-prompt (optional)
   args: ["--permission-mode", "acceptEdits"]   # appended verbatim
+  agent_env: ./envs/fixed             # a whole .claude folder, copied → --bare
+  plugins:                            # a plugin REGISTRY staged into ~/.claude
+    - id: dev@magus
+      path: ~/.claude/plugins/cache/magus/dev/3.3.0
 ```
 
-madbench always adds `--print --verbose --output-format stream-json --input-format text
---session-id <uuid>` and pipes the prompt via stdin. Fails at run time (not load time)
-if `claude` isn't on PATH.
+madbench always adds `--print --verbose --output-format stream-json --session-id <uuid>`
+and pipes the prompt via stdin. Fails at run time (not load time) if `claude` isn't on
+PATH.
 
-The runner reads ONLY `binary`, `model`, `system_prompt`, and `args` from
-`runner_config` — **every other key is silently ignored**. There is no `temperature`
-key (pass CLI flags via `args:`, and only if the installed `claude` build accepts
-them), and the `repo`/`k`/`temp`/`max-tok` keys seen in `examples/tui-demo` are
-mock-runner dashboard chips, not real claude-code config. Don't promise a model/param axis on a
-knob the runner never reads.
+**`--input-format` is conditional.** It is `text` (raw prompt on stdin, byte for byte
+what it always was) unless the Scenario declares `image:`, which flips that Scenario to
+`--input-format stream-json` so the first user message can be a content-block array.
+Undocumented in the CLI and worth knowing: **`--input-format stream-json` requires
+`--output-format stream-json`** — madbench has always passed the output half, so the
+coupling is satisfied for free.
+
+The runner reads exactly **six** keys — `binary`, `model`, `system_prompt`, `args`,
+`agent_env`, `plugins` — and **every other key is silently ignored**. Strict decoding
+does not help here: `harness_config:` is an untyped map, so an unknown key inside it is
+not a load error. There is no `temperature` key (pass CLI flags via `args:`, and only if
+the installed `claude` build accepts them), and the `repo`/`k`/`temp`/`max-tok` keys seen
+in `examples/tui-demo` are mock-runner dashboard chips, not real claude-code config.
+Don't promise a model/param axis on a knob the runner never reads.
+
+#### `agent_env:` and `plugins:` — two different questions
+
+They **compose**; neither replaces the other. Declaring neither changes nothing —
+isolation is opt-in.
+
+| | asks | mechanism |
+|---|---|---|
+| `agent_env:` | what `.claude` **is** | a whole folder, copied verbatim, loaded via `--bare` + `--plugin-dir` |
+| `plugins:` | what `.claude` **registers** | a user-scoped registry madbench owns the shape of, which the CLI discovers on its own |
+
+```yaml
+harness_config:
+  plugins:
+    - id:   benchproof@madbench-proof     # <plugin>@<marketplace>
+      path: ./marketplace/plugins/benchproof   # the plugin FOLDER
+      marketplace: ./marketplace          # only when path is not inside a registry
+```
+
+Three facts `plugins:` encodes so a bench never has to rediscover them: entries must be
+**user-scoped**, `known_marketplaces.json` must be **copied, not synthesized**, and a
+cache directory's **name is not its version**.
+
+**Two consequences that decide which key you want:**
+
+- **`plugins:` alone adds no flags at all** — no `--bare`, no `--plugin-dir`. That is the
+  point: `--bare` turns plugin *discovery* off, and discovery reading the staged registry
+  is exactly what the key exists to exercise. Passing `--plugin-dir` too would let a run
+  pass even when the registry silently failed to resolve.
+- **Skills behave differently under each.** Under `plugins:` they are advertised
+  normally, so `session:skill-used` can fire. Under `agent_env:`, `--bare` stops
+  advertising skills altogether — only an explicit `/<skill>` in the prompt resolves, an
+  agent never invokes one spontaneously, and **`session:skill-used` can never fire, so do
+  not write one**. A top-level `skills/` directory in an agent_env is never loaded at all;
+  madbench hard-errors rather than run a bench whose skills were silently ignored (put
+  them at `plugins/<plugin>/skills/<skill>/SKILL.md`).
+- **Auth changes under `agent_env:`.** `--bare` reads `ANTHROPIC_API_KEY` or an
+  `apiKeyHelper` in the env's own `settings.json`. It **never** reads OAuth or the
+  keychain, so a `CLAUDE_CODE_OAUTH_TOKEN` that works for every other bench authenticates
+  nothing here. Preflight has a dedicated blocking check for exactly this.
 
 **HOME is load-bearing for metrics.** Sandbox level `home` (the default) sets
 `HOME=<workDir>`; the harness reads the child's session telemetry JSONL from
@@ -89,7 +141,9 @@ entries (see schema.md / docs/eval-file.md) — or `runner: magmux`.
 ```bash
 madbench                      # discover madbench.yaml in cwd and run
 madbench <paths...>           # explicit run — the bare command IS the run command
-madbench preflight <paths...> # binaries, keys, runtimes, sandbox levels, testdata paths
+madbench preflight <paths...> # binaries, keys, runtimes, sandbox levels, testdata, graders
+madbench check <paths...>     # NEGATIVE control: mock harness, every cell must FAIL
+madbench grade <report|id>    # POSITIVE control: re-grade a recorded Session offline
 madbench demo                 # built-in offline emulated bench: no keys, no spend
 madbench list <paths...>      # proves it PARSES only — never the pre-run gate
 madbench init [dir]           # scaffold a starter madbench.yaml (mock harness)
@@ -99,15 +153,71 @@ madbench report               # read stored reports: list, show, compare, trend
 `madbench run <paths...>` still works but is **deprecated** — it prints a deprecation
 notice on every invocation. Use the bare command.
 
-Flags: `--report-json <f>` · `--report-junit <f>` (skipped when `--repeat`>1) ·
-`--concurrency <n>` (default 4) · **`--harness <name>`** (override all benches) ·
+**Preflight runs automatically** before every run and blocks it (`preflight: nothing was
+run, no spend`); `--skip-preflight` opts out.
+
+### `madbench check` — the negative control
+
+Runs the bench under the mock harness and requires **every graded cell to fail**. The
+mock echoes the prompt and does nothing else, so a check that still passes against it is
+grading nothing — and would keep passing if the agent under test regressed to doing
+nothing at all.
+
+```
+  1/3 cells failed as required · 2 errored (could not grade) · 0 wrongly passed
+
+  COULD NOT GRADE (2) — these cells proved nothing either way:
+    implement-add · cost
+      cost: not reported by this session; the ≤$0.1000 bound graded nothing
+```
+
+The report is a **per-cell tally** — one line per (scenario, check) pair, which no other
+surface counts — plus, by name, every cell that wrongly passed. `--verbose` lists all
+cells. An **errored** cell is not counted as having failed as required: it graded
+nothing, so it demonstrated neither soundness nor rot, and it gets its own bucket.
+
+Exit: **0** = control holds · **1** = a cell wrongly passed, or could not be graded ·
+**3** = nothing was graded. A bench declaring `sandbox: none` still needs
+`--allow-host-writes` — the mock writes nothing, but the checks run for real, and at
+level `none` an `exec` check is a command executed in the directory you are sitting in.
+
+### `madbench grade` — the positive control
+
+Re-grades the Sessions recorded in a report and checks every verdict reproduces: no
+harness, no sandbox, no spend. Both on-disk shapes are accepted — the bare report from
+`--report-json` and the stored envelope from `--report-dir` (by path or run id).
+
+It **re-runs the evaluators** against the stored Session; it does not replay stored
+verdicts. So a bench whose grading is non-deterministic reports **DIVERGED**, which is
+the point.
+
+Two things a stored report cannot replay are **SKIPPED with a stated reason** rather than
+silently passed: checks that read the run's WorkDir (`exec`, `custom:exec`, file-loading
+script graders — the sandbox tree was deleted when the run ended), and judge-backed
+checks (re-grading means spending on a live judge, and a non-deterministic verdict cannot
+be a control). A cell whose re-grade errors is reported as "could not re-grade", never as
+reproduced.
+
+Exit: **0** = every re-graded cell reproduced · **1** = at least one diverged or could
+not be re-graded · **3** = nothing was re-graded.
+
+### Flags
+
+`--report-json <f>` · `--report-junit <f>` (skipped when `--repeat`>1) ·
+`--report-dir <d>` (versioned report per invocation, enabling `madbench report` history) ·
+`--report <id>` (open a stored report read-only in the dashboard; requires `--ui`, runs
+nothing) · `--concurrency <n>` (default 4) · **`--harness <name>`** (override all
+benches) · **`--sandbox <level>`** (override the sandbox level for all benches) ·
 `--param key=value` (override a declared bench param, repeatable) ·
+`--run <name>` (run only these Eval runs by name, repeatable — selects WHICH runs;
+`--repeat` sets how many times each executes) ·
 `--repeat <n>` (repeat for flake detection; >1 bypasses `--ui`; `--runs` deprecated alias) ·
-`--ui` (live TUI, single-run only — report flags are still honored and written on
-quit) · `--plain` (append-only progress lines) · `--allow-host-writes` (consent for
-sandbox level `none`) · `--env-file <f>` / `--no-env`. Exit code non-zero if any
-scenario failed or errored. `madbench init` refuses to overwrite an existing file
-(prints "<path> already exists" and exits cleanly — not an error).
+`--skip-preflight` · `--ui` (live TUI, single-run only — report flags are still honored
+and written on quit) · `--plain` (append-only progress lines) · `--allow-host-writes`
+(consent for sandbox level `none`) · `--no-update-check` · `--env-file <f>` / `--no-env`.
+Exit code non-zero if any scenario failed or errored. `madbench init` refuses to
+overwrite an existing file (prints "<path> already exists" and exits cleanly — not an
+error).
 
 **There is no `--runner` flag** — it was renamed to `--harness` and the old spelling is
 a hard `unknown flag: --runner` error, not an alias.
@@ -189,6 +299,14 @@ your-bench/
     └── ...
 ```
 
-Seed red (failing test / missing symbol / real bug), verify red manually by running the
-exec command in the testdata dir before trusting the bench. Each scenario gets a fresh
-copy, so scenarios can't contaminate each other.
+Seed red (failing test / missing symbol / real bug), then **prove it with `madbench
+check`** rather than by eye — it is the per-cell tally that tells you whether every check
+can fail, and manual inspection routinely misses the one cell that cannot.
+
+Each scenario gets a fresh copy, so scenarios can't contaminate each other.
+
+**When the answer must be unguessable, use `generate:`** instead of committing it. A
+generator runs once per run before the workspace exists, prints `NAME=VALUE` on stdout,
+and madbench routes that value to the **grader only** — refusing the run if it is
+findable in the workspace (symlink targets included), the prompt, or the report. Full
+mechanics and the `image: generated:<name>` composition: `schema.md`.

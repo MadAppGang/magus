@@ -40,11 +40,16 @@ fi
 When designer is available, delegate pixel-level validation from `dev:frontend`:
 
 ```
-Task(
+Agent(
   subagent_type: "designer:design-review",
+  run_in_background: false,
   prompt: "Compare reference design at {REFERENCE_PATH} against implementation at {IMPL_URL}. Viewport: 1440x900."
 )
 ```
+
+`run_in_background: false` is required, not stylistic. You need the diff report back
+in this turn; a background spawn returns a launch receipt instead, and background is
+the default when the field is omitted.
 
 Or use the designer:review command directly:
 ```bash

@@ -1,7 +1,7 @@
 ---
 name: architect
 description: "Architecture design and technical planning — complexity-aware with plan mode reasoning and multi-model escalation"
-allowed-tools: Task, AskUserQuestion, Bash, Read, Skill, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep, EnterPlanMode, ExitPlanMode, mcp__plugin_claudish_claudish__team, mcp__plugin_claudish_claudish__run_prompt
+allowed-tools: Agent, AskUserQuestion, Bash, Read, Skill, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep, EnterPlanMode, ExitPlanMode, mcp__plugin_claudish_claudish__team, mcp__plugin_claudish_claudish__run_prompt
 skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates
 ---
 
@@ -146,7 +146,7 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates
     </todowrite_requirement>
 
     <agent_dispatch>
-      **Every phase that says "Launch the architect agent" is a `Task` tool call. Not
+      **Every phase that says "Launch the architect agent" is a `Agent` tool call. Not
       inline work, not a Skill call, not prose you write yourself.**
 
       This is the command's entire reason to exist: it triages, gates, and sequences,
@@ -156,10 +156,11 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates
       **The call, exactly:**
 
       ```
-      Task(
-        subagent_type: "dev:architect",
-        description:   "<3-5 words, e.g. 'Analyze auth requirements'>",
-        prompt:        "<the fenced block given in that phase, with ${…} substituted>"
+      Agent(
+        subagent_type:      "dev:architect",
+        run_in_background:  false,
+        description:        "<3-5 words, e.g. 'Analyze auth requirements'>",
+        prompt:             "<the fenced block given in that phase, with ${…} substituted>"
       )
       ```
 
@@ -167,6 +168,11 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates
 
       1. **`subagent_type` is always `dev:architect`.** Never `general-purpose`, never
          `Plan`, never a fresh agent.
+      1b. **`run_in_background: false` is mandatory on every phase call.** Omitting it
+         means background, which is the default. A background spawn returns a launch
+         receipt instead of the agent's report, so rule 6 below has nothing to read and
+         the phase gate summarizes work you never saw. Background also narrows the
+         agent's tool set, so the same definition resolves differently.
       2. **Substitute every `${…}` and `{…}` placeholder before sending.** The subagent
          has none of your context, so an unsubstituted `${SESSION_PATH}` reaches it as
          literal text and it writes to the wrong place, or nowhere.
@@ -175,14 +181,14 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates
          pattern files rather than rediscovering them or answering from memory.
       4. **Always include `SESSION_PATH`.** Phases hand off through files on disk; the
          agent's return text is a summary, not the artifact.
-      5. **Independent phases go in ONE message** as parallel `Task` calls. Phase 2
+      5. **Independent phases go in ONE message** as parallel `Agent` calls. Phase 2
          (requirements) must finish first because Phase 3 reads its output, but where a
          phase spawns several agents they run concurrently.
       6. **Read the agent's output before the phase's user gate.** The AskUserQuestion in
          that phase summarizes what the agent produced; asking before reading means
          summarizing something you have not seen.
 
-      If the `Task` tool is unavailable, say so and stop. Do not silently fall back to
+      If the `Agent` tool is unavailable, say so and stop. Do not silently fall back to
       doing the architecture inline — the user asked for the agent.
     </agent_dispatch>
 
@@ -192,7 +198,7 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates
       **You MUST:**
       - Assess complexity before choosing approach
       - Use EnterPlanMode for moderate/complex problems
-      - Delegate architecture work to the `dev:architect` agent via the `Task` tool,
+      - Delegate architecture work to the `dev:architect` agent via the `Agent` tool,
         per the `agent_dispatch` block — this is mandatory, not a preference
       - Offer /team escalation for complex/retry scenarios
       - Produce comprehensive documentation
@@ -308,7 +314,7 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates
       <steps>
         <step>Mark PHASE 2 as in_progress</step>
         <step>
-          **Launch the architect agent** — `Task` tool, `subagent_type: "dev:architect"`,
+          **Launch the architect agent** — `Agent` tool, `subagent_type: "dev:architect"`,
           per the `agent_dispatch` block. Substitute every placeholder and append the resolved
           architecture catalog path. Do NOT perform this analysis inline.
 
@@ -354,12 +360,12 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates
           **If /team was used in triage:**
           - Read the multi-model brainstorming results
           - Use the consensus approaches as the basis for alternatives
-          - **Launch the architect agent** (`Task`, `subagent_type: "dev:architect"`) to
+          - **Launch the architect agent** (`Agent`, `subagent_type: "dev:architect"`) to
             formalize and expand on the /team output. Pass the /team consensus in the
             prompt — the subagent cannot see those results otherwise.
 
           **Otherwise:**
-          **Launch the architect agent** — `Task` tool, `subagent_type: "dev:architect"`,
+          **Launch the architect agent** — `Agent` tool, `subagent_type: "dev:architect"`,
           per the `agent_dispatch` block. Substitute every placeholder and append the resolved
           architecture catalog path. Do NOT perform this analysis inline.
 
@@ -394,7 +400,7 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates
       <steps>
         <step>Mark PHASE 4 as in_progress</step>
         <step>
-          **Launch the architect agent** — `Task` tool, `subagent_type: "dev:architect"`,
+          **Launch the architect agent** — `Agent` tool, `subagent_type: "dev:architect"`,
           per the `agent_dispatch` block. Substitute every placeholder and append the resolved
           architecture catalog path. Do NOT perform this analysis inline.
 
@@ -445,7 +451,7 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates
       <steps>
         <step>Mark PHASE 5 as in_progress</step>
         <step>
-          **Launch the architect agent** — `Task` tool, `subagent_type: "dev:architect"`,
+          **Launch the architect agent** — `Agent` tool, `subagent_type: "dev:architect"`,
           per the `agent_dispatch` block. Substitute every placeholder and append the resolved
           architecture catalog path. Do NOT perform this analysis inline.
 

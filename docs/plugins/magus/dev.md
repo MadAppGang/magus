@@ -7,7 +7,7 @@ Universal development assistant. Detects the project stack and routes work to sp
 
 | | |
 |---|---|
-| Version | `4.0.1` |
+| Version | `4.1.0` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 14 |
 | Subagents | 13 |
@@ -149,23 +149,23 @@ Step-by-step, one guide per job:
 
 ## Subagents
 
-Dispatched with the Task tool, each in its own context window.
+Dispatched with the Agent tool, each in its own context window.
 
 | Agent | What it does |
 |---|---|
-| `dev:architect` | Language-agnostic architecture planning for system design and trade-off analysis |
-| `dev:debugger` | Language-agnostic debugging for error analysis and root cause investigation |
+| `dev:architect` | Plans system architecture in any language, weighing trade-offs and naming what each choice costs. |
+| `dev:debugger` | Traces an error to its root cause across files, in any language, and reports the evidence for the diagnosis. |
 | `dev:developer` | Implements features spanning multiple files, then iterates write-test-fix-lint until every check passes. Use for new modules, subsystems, or any change needing 3+ files with test coverage. |
-| `dev:devops` | Infrastructure and DevOps specialist with extended thinking for complex decisions |
+| `dev:devops` | Handles infrastructure work — CI pipelines, containers, deploys, observability — and reasons through the trade-offs before changing anything. |
 | `dev:docs` | Writes, analyses, and fixes documentation. Pass mode=write\|analyze\|fix. Use for READMEs, API docs, tutorials, changelogs, or a documentation quality audit. |
 | `dev:frontend` | Builds and revises React components against the project's design system, with optional vision review of screenshots. |
 | `dev:researcher` | Multi-round web research with convergence detection — searches 10+ sources, assesses their quality, and returns a cited report. |
 | `dev:reviewer` | Reviews recent changes in three passes — security, correctness, maintainability — returning severity-calibrated findings and a PASS/CONDITIONAL/FAIL verdict. |
-| `dev:scribe` | Lightweight file writer for interview sessions. Appends Q&A to interview log, updates checkpoints, and maintains session state. Designed for fast, reliable file operations. |
-| `dev:spec-writer` | Synthesizes comprehensive specifications from interview sessions. Reads interview log, assets, and context to produce structured spec.md and tasks.md documents. |
-| `dev:stack-detector` | Analyzes project to detect technology stack and discover real Claude Code skills |
-| `dev:synthesizer` | Research synthesis for consolidating multi-source findings with consensus detection |
-| `dev:test-architect` | Black box test architect that creates tests from requirements only |
+| `dev:scribe` | Appends Q&A to an interview log, updates checkpoints and maintains session state — a small, fast file writer. Use when recording an interview turn, not for analysis or synthesis. |
+| `dev:spec-writer` | Synthesizes a specification from an interview session, reading the log, assets and context to produce spec.md and tasks.md. |
+| `dev:stack-detector` | Identifies a project's languages, frameworks, package managers and test runners, and reports which installed skills apply to it. |
+| `dev:synthesizer` | Consolidates findings from several independent sources into one report, marking where they agree and where they conflict. |
+| `dev:test-architect` | Writes tests from the requirements alone, never reading the implementation, so the tests check behaviour rather than restate the code. |
 
 ## Skills
 

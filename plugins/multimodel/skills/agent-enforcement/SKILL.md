@@ -20,7 +20,7 @@ Two-layer defense against orchestration violations in `/team`:
 
 | Model Type | Method | Tool | Reliability |
 |------------|--------|------|-------------|
-| Internal (Claude) | Task({resolved_agent}) | Task tool | High (same process) |
+| Internal (Claude) | Agent({resolved_agent}) | Agent tool | High (same process) |
 | External (Grok, Gemini, etc.) | claudish MCP tools (team/create_session) | MCP | 100% (deterministic) |
 
 External models are called via claudish MCP tools — no Bash invocation needed.
@@ -65,7 +65,7 @@ based on task keywords (e.g., "debug" → `dev:debugger`, "review" → `dev:rese
 The hook enforces a whitelist of all valid agents.
 
 Methods:
-- **Internal models** — Task(agent) via Task tool
+- **Internal models** — Agent(agent) via Agent tool
 - **External models** — `team` MCP tool (handles parallel execution internally)
 
 ## Validation

@@ -7,7 +7,7 @@ Autonomous Linear to Claude Code bridge. Picks up issues labelled @autolinear, r
 
 | | |
 |---|---|
-| Version | `0.3.0` |
+| Version | `0.4.0` |
 | Marketplace | [`magus-alpha`](./index.md) |
 | Commands | 5 |
 | Subagents | 3 |
@@ -30,6 +30,10 @@ For a team, press `s` to save your plugins as a profile and commit it. Everyone 
 
 Prefer to do it by hand? [Installing Magus](../../guides/install.md) has the manual path.
 
+## When to reach for it
+
+- Use when a reviewer has commented on an autolinear issue and the work needs another pass — `feedback-processor`
+
 ## Commands
 
 | Command | What it does |
@@ -42,13 +46,13 @@ Prefer to do it by hand? [Installing Magus](../../guides/install.md) has the man
 
 ## Subagents
 
-Dispatched with the Task tool, each in its own context window.
+Dispatched with the Agent tool, each in its own context window.
 
 | Agent | What it does |
 |---|---|
-| `autolinear:feedback-processor` | Handles Linear comment feedback and triggers iterative refinement |
-| `autolinear:proof-generator` | Generates proof-of-work artifacts for task validation |
-| `autolinear:task-executor` | Main agent that executes picked-up Linear tasks using ReAct pattern |
+| `autolinear:feedback-processor` | Reads Linear comment feedback on an in-flight task and turns it into a concrete revision plan. Use when a reviewer has commented on an autolinear issue and the work needs another pass. |
+| `autolinear:proof-generator` | Generates proof-of-work artifacts — diffs, test output, screenshots — that show a Linear task was actually done. |
+| `autolinear:task-executor` | Executes a picked-up Linear issue end to end, reasoning and acting in a loop until the acceptance criteria are met. |
 
 ## Skills
 

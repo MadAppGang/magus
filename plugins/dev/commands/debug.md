@@ -1,7 +1,7 @@
 ---
 name: debug
 description: "Structured debugging — routes to quick patch (inline), standard debug (skill), or production-grade fix (/dev:fix)"
-allowed-tools: Task, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep, Write, Edit, Skill
+allowed-tools: Agent, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep, Write, Edit, Skill
 skills: dev:context-detection, dev:systematic-debugging, dev:testing-strategies, dev:verification-before-completion
 ---
 

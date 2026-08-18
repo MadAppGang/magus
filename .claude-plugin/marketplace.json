@@ -15,7 +15,7 @@
       "name": "code-analysis",
       "source": "./plugins/code-analysis",
       "description": "Codebase investigation and semantic search. Maps architecture, traces callers and callees, and ranks symbols by PageRank through the mnemex AST engine, with a read-only detective agent for deep dives.",
-      "version": "5.3.2",
+      "version": "5.4.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -39,6 +39,11 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "5.4.0",
+          "date": "2026-08-18",
+          "summary": "Same tool-and-instruction correction across its agents"
+        },
         {
           "version": "5.3.2",
           "date": "2026-08-15",
@@ -64,14 +69,6 @@
             "Fixed"
           ],
           "summary": "Path Cleanup - Removed all hardcoded absolute paths from skill documentation"
-        },
-        {
-          "version": "1.3.2",
-          "date": "2025-11-25",
-          "kinds": [
-            "Changed"
-          ],
-          "summary": "Removed hardcoded model settings from codebase-detective"
         }
       ]
     },
@@ -143,7 +140,7 @@
       "name": "multimodel",
       "source": "./plugins/multimodel",
       "description": "Multi-model collaboration and orchestration. Runs a task across several AI models in parallel and aggregates their blind APPROVE/REJECT votes, or delegates it to one model running a full Claude Code session.",
-      "version": "3.5.0",
+      "version": "3.6.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -168,6 +165,11 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "3.6.0",
+          "date": "2026-08-18",
+          "summary": "Same tool-and-instruction correction across its agents"
+        },
         {
           "version": "3.5.0",
           "date": "2026-08-18",
@@ -198,15 +200,6 @@
             "Fixed"
           ],
           "summary": "A routing address is not a model identity"
-        },
-        {
-          "version": "3.3.0",
-          "date": "2026-07-29",
-          "kinds": [
-            "Changed",
-            "Fixed"
-          ],
-          "summary": "Model resolution is now live"
         }
       ]
     },
@@ -214,7 +207,7 @@
       "name": "dev",
       "source": "./plugins/dev",
       "description": "Universal development assistant. Detects the project stack and routes work to specialist agents for architecture, implementation, debugging, review and research, enforcing design-system guardrails on every UI change.",
-      "version": "4.0.1",
+      "version": "4.1.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -254,6 +247,11 @@
       "strict": true,
       "releases": [
         {
+          "version": "4.1.0",
+          "date": "2026-08-18",
+          "summary": "Agents no longer request tools the runtime removes from them, and the instruction blocks\u2026"
+        },
+        {
           "version": "4.0.1",
           "date": "2026-08-15",
           "summary": "Could not be installed, at 4.0.0 or at 3.3.0. It required multimodel \"~3.3\" \u2014 which means\u2026"
@@ -288,16 +286,6 @@
             "Fixed"
           ],
           "summary": "A refactoring altitude in dev:architecture, behind a behaviour-preservation contract"
-        },
-        {
-          "version": "3.1.0",
-          "date": "2026-08-07",
-          "kinds": [
-            "Added",
-            "Changed",
-            "Fixed"
-          ],
-          "summary": "An architecture knowledge base for dev:architect, which had none"
         }
       ]
     },
@@ -384,7 +372,7 @@
       "name": "bunjs",
       "source": "./plugins/bunjs",
       "description": "Bun and TypeScript toolkit. A `/bunjs:bun` index routes any task to the right one of eight task-shaped skills \u2014 setup, HTTP, errors, testing, security, production, performance, TUI \u2014 each shipping copyable code verified against Bun. Only Bun is tested.",
-      "version": "0.4.0",
+      "version": "0.4.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -415,6 +403,11 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "0.4.1",
+          "date": "2026-08-18",
+          "summary": "The index's own paths sent agents to files that do not exist. skills/bun/SKILL.md routed with\u2026"
+        },
         {
           "version": "0.4.0",
           "date": "2026-08-07",
@@ -450,14 +443,6 @@
             "Added"
           ],
           "summary": "The skill-discovery claim shipped in 0.2.0 was wrong, and a bench now proves it"
-        },
-        {
-          "version": "0.2.1",
-          "date": "2026-08-06",
-          "kinds": [
-            "Fixed"
-          ],
-          "summary": "Nine false claims in the tui skill, found by six models each building its eval #1 dashboard for\u2026"
         }
       ]
     },
@@ -496,7 +481,7 @@
       "name": "style",
       "source": "./plugins/style",
       "description": "Communication style presets for a project. Ships composable rule blocks governing tone, terminology, phrasing, and how information is presented, then composes the chosen combination into one native Claude Code output style and activates it.",
-      "version": "2.0.0",
+      "version": "2.1.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -516,6 +501,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "2.1.0",
+          "date": "2026-08-18",
+          "kinds": [
+            "Added"
+          ],
+          "summary": "asd-ste100 preset (modifier), shown as \"ASD-STE100 Simplified Technical English\" \u2014 the standard\u2026"
+        },
         {
           "version": "2.0.0",
           "date": "2026-08-16",
@@ -641,7 +634,7 @@
       "name": "designer",
       "source": "./plugins/designer",
       "description": "UI design validation. Compares a rendered screen against its reference by pixel diff, then reviews the result for spacing, hierarchy and design-system consistency.",
-      "version": "0.4.3",
+      "version": "0.5.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -663,6 +656,11 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "0.5.0",
+          "date": "2026-08-18",
+          "summary": "BREAKING \u2014 ui-design-review is gone, merged into ui-analyse, which absorbed its POUR-organised\u2026"
+        },
         {
           "version": "0.4.3",
           "date": "2026-08-15",
@@ -753,7 +751,7 @@
       "name": "gtd",
       "source": "./plugins/gtd",
       "description": "Getting Things Done workflow. Capture, clarify, organise, reflect and engage over a task store that hooks keep in sync with the session in real time.",
-      "version": "2.0.1",
+      "version": "2.1.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -774,6 +772,11 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "2.1.0",
+          "date": "2026-08-18",
+          "summary": "Same tool-and-instruction correction for gtd-reviewer"
+        },
         {
           "version": "2.0.1",
           "date": "2026-03-29",
@@ -829,8 +832,8 @@
     {
       "name": "madbench",
       "source": "./plugins/madbench",
-      "description": "Toolkit for madbench, MadAppGang's Go harness for benchmarking agentic coding tools. Ships the madbench-evals skill: author bench YAML, design checks, scaffold red-state testdata, run and validate benches, tune expectations, and debug failing checks.",
-      "version": "0.1.2",
+      "description": "Toolkit for madbench, MadAppGang's Go harness for benchmarking agentic coding tools. Ships the madbench-evals skill: author bench YAML and Eval files, design checks, scaffold red-state and generated testdata, run the negative and positive controls, tune expectations, and debug failing checks.",
+      "version": "0.2.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -851,6 +854,11 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "0.2.1",
+          "date": "2026-08-18",
+          "summary": "Four skill corrections that only a run reveals \u2014 session:step-count takes one bound and\u2026"
+        },
         {
           "version": "0.1.2",
           "date": "2026-08-16",

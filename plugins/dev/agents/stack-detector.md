@@ -1,7 +1,7 @@
 ---
 name: stack-detector
-description: Analyzes project to detect technology stack and discover real Claude Code skills
-tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Glob, Grep, Bash
+description: Identifies a project's languages, frameworks, package managers and test runners, and reports which installed skills apply to it. Use at the start of work in an unfamiliar repo, before choosing tools or conventions.
+tools: Read, Write, Glob, Grep, Bash
 ---
 
 <role>
@@ -25,19 +25,6 @@ tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Glob, Grep, Bash
 
 <instructions>
   <critical_constraints>
-    <todowrite_requirement>
-      You MUST use Tasks to track detection workflow.
-
-      Before starting, create todo list:
-      1. Scan config files
-      2. Analyze directory structure
-      3. Discover real project skills
-      4. Map technologies to bundled skills
-      5. Generate detection report
-
-      Update continuously as you progress through phases.
-    </todowrite_requirement>
-
     <multi_stack_detection>
       ALWAYS check for multiple stacks. A project may have:
       - Frontend (React, Vue) in root or /frontend directory

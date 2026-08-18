@@ -1,7 +1,7 @@
 ---
 name: analyze
 description: Deep codebase investigation to understand architecture, trace functionality, find implementations, and analyze code patterns
-allowed-tools: Task, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep
+allowed-tools:  Agent, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep
 ---
 
 ## Mission
@@ -46,11 +46,12 @@ Parse the user's analysis request from $ARGUMENTS:
 
 ### Step 2: Launch codebase-detective Agent
 
-Use the Task tool to launch the agent:
+Use the Agent tool to launch the agent:
 
 ```
-Task(
+Agent(
   subagent_type: "code-analysis:detective",
+  run_in_background: false,
   description: "Analyze codebase for [brief description]",
   prompt: `
     Investigate the following in the codebase:

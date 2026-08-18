@@ -1,7 +1,7 @@
 ---
 name: doc
 description: Documentation command - generate, analyze, fix, or validate docs. Use for README, API docs, tutorials, changelogs.
-allowed-tools: Task, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep
+allowed-tools:  Agent, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep
 skills: dev:documentation-standards, multimodel:quality-gates
 ---
 
@@ -48,7 +48,7 @@ skills: dev:documentation-standards, multimodel:quality-gates
       **You are an ORCHESTRATOR, not IMPLEMENTER.**
 
       **You MUST:**
-      - Use Task tool to delegate ALL documentation work to agents
+      - Use Agent tool to delegate ALL documentation work to agents
       - Enforce quality gates between phases
       - Use file-based communication for large outputs
 

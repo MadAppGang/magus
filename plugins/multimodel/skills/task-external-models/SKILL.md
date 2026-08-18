@@ -29,9 +29,16 @@ cat .claude/multimodel-team.json 2>/dev/null
 External AI models are invoked via **claudish MCP tools**. No Bash invocation needed.
 
 **In /team orchestration:**
-- **Internal model** (Claude) → `Task(subagent_type: "{RESOLVED_AGENT}")` — agent auto-detected from task type
+- **Internal model** (Claude) → `Agent(subagent_type: "{RESOLVED_AGENT}", run_in_background: true)`
+  — agent auto-detected from task type. Background is deliberate here and is the one
+  place it is: the internal reviewer must run *alongside* the external panel, not
+  block it. It writes its vote to `{SESSION_DIR}/internal-result.md`, which Step 3
+  reads. Every other dispatch in this plugin consumes a return value and must be
+  foreground.
 - **External models** (Grok, Gemini, etc.) → `claudish team(mode="run", models=[...], input=PROMPT, timeout=180)`
-- `claude_flags` comes from `claudeFlags` in `.claude/multimodel-team.json`
+- **`team` takes no `claude_flags`.** Its parameters are `mode, path, input, models,
+  judges, timeout` — nothing else reaches Claude Code. `claudeFlags` from
+  `.claude/multimodel-team.json` applies to `create_session` only.
 
 **For single-model delegation (/delegate):**
 - `create_session(model, prompt, timeout_seconds, claude_flags)` → returns session_id
@@ -64,14 +71,14 @@ The `/team` command uses the `team` MCP tool for all external models in a single
 
 ```
 claudish team(mode="run", path=SESSION_DIR, models=[...externals...],
-  input=VOTE_PROMPT, timeout=180, claude_flags=claudeFlags)
+  input=VOTE_PROMPT, timeout=180)
 ```
 
 Internal models (Claude) run via Task in the **same message** for true parallelism:
 
 ```javascript
 // Internal model via Task (agent resolved from task keywords)
-Task({
+Agent({
   subagent_type: "{RESOLVED_AGENT}",
   description: "Internal Claude vote",
   run_in_background: true,
@@ -82,7 +89,7 @@ Task({
 // The team tool runs all models in parallel internally
 claudish team(mode="run", path=SESSION_DIR,
   models=["grok", "gemini"],
-  input=VOTE_PROMPT, timeout=180, claude_flags=claudeFlags)
+  input=VOTE_PROMPT, timeout=180)
 ```
 
 ---

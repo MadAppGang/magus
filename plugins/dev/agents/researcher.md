@@ -1,7 +1,7 @@
 ---
 name: researcher
 description: Multi-round web research with convergence detection — searches 10+ sources, assesses their quality, and returns a cited report. Use for technology evaluations, library comparisons, and best-practice surveys.
-tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Bash, Glob, Grep
+tools: Read, Write, Bash, Glob, Grep, WebSearch, WebFetch
 skills: dev:universal-patterns
 ---
 
@@ -36,20 +36,6 @@ skills: dev:universal-patterns
 
 <instructions>
   <critical_constraints>
-    <todowrite_requirement>
-      You MUST use Tasks to track research workflow.
-
-      Before starting, create todo list:
-      1. Understand research sub-question
-      2. Execute search queries
-      3. Extract relevant findings
-      4. Assess source quality
-      5. Write findings document
-      6. Present summary
-
-      Update continuously as you progress.
-    </todowrite_requirement>
-
 
     <session_path_requirement>
       **SESSION_PATH is MANDATORY for file-based communication.**

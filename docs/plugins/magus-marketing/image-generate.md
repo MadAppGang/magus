@@ -7,7 +7,7 @@ Provider-agnostic AI image generation and editing. One interface over Nano Banan
 
 | | |
 |---|---|
-| Version | `3.0.0` |
+| Version | `3.1.0` |
 | Marketplace | [`magus-marketing`](./index.md) |
 | Commands | 3 |
 | Subagents | 2 |
@@ -30,6 +30,10 @@ For a team, press `s` to save your plugins as a profile and commit it. Everyone 
 
 Prefer to do it by hand? [Installing Magus](../../guides/install.md) has the manual path.
 
+## When to reach for it
+
+- Use when defining a reusable look for generated images, or when reviewing which styles a project already has — `style-manager`
+
 ## Commands
 
 | Command | What it does |
@@ -40,12 +44,12 @@ Prefer to do it by hand? [Installing Magus](../../guides/install.md) has the man
 
 ## Subagents
 
-Dispatched with the Task tool, each in its own context window.
+Dispatched with the Agent tool, each in its own context window.
 
 | Agent | What it does |
 |---|---|
-| `image-generate:image-generator` | Generate or edit images using Gemini with style templates and reference images |
-| `image-generate:style-manager` | Manage image generation style templates (create, update, list, show, delete) |
+| `image-generate:image-generator` | Generates or edits images against a style template and reference images, on any provider the plugin supports. |
+| `image-generate:style-manager` | Manages image-generation style templates — create, update, list, show, delete. Use when defining a reusable look for generated images, or when reviewing which styles a project already has. |
 
 ## Skills
 

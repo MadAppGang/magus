@@ -2,11 +2,11 @@
 
 # `madbench:madbench-evals`
 
-Authors, runs, and debugs madbench evals — bench YAML, checks, red-state testdata, expectation tuning.
+Authors, runs, and debugs madbench evals — bench YAML, checks, red-state testdata, the two controls (check / grade), expectation tuning.
 
 Part of [`madbench`](./madbench.md).
 
-**4 reference documents, about 822 lines.**
+**4 reference documents, about 1,354 lines.**
 
 The skill itself does not contain them. It reads your question and names the one or two
 worth opening — which is the point, because loading everything below to answer one
@@ -16,10 +16,10 @@ question would cost more than the answer is worth.
 
 | Document | Covers | Lines |
 |---|---|---|
-| [`checks-catalog.md`](https://github.com/MadAppGang/magus/blob/main/plugins/madbench/skills/madbench-evals/checks-catalog.md) | madbench checks catalog | 257 |
-| [`debugging.md`](https://github.com/MadAppGang/magus/blob/main/plugins/madbench/skills/madbench-evals/debugging.md) | Debugging madbench benches | 184 |
-| [`runners-and-sandbox.md`](https://github.com/MadAppGang/magus/blob/main/plugins/madbench/skills/madbench-evals/runners-and-sandbox.md) | Runners (harnesses), permission modes, sandbox | 195 |
-| [`schema.md`](https://github.com/MadAppGang/magus/blob/main/plugins/madbench/skills/madbench-evals/schema.md) | madbench bench file schema (`Suite`) | 186 |
+| [`checks-catalog.md`](https://github.com/MadAppGang/magus/blob/main/plugins/madbench/skills/madbench-evals/checks-catalog.md) | madbench checks catalog | 452 |
+| [`debugging.md`](https://github.com/MadAppGang/magus/blob/main/plugins/madbench/skills/madbench-evals/debugging.md) | Debugging madbench benches | 237 |
+| [`runners-and-sandbox.md`](https://github.com/MadAppGang/magus/blob/main/plugins/madbench/skills/madbench-evals/runners-and-sandbox.md) | Runners (harnesses), permission modes, sandbox | 313 |
+| [`schema.md`](https://github.com/MadAppGang/magus/blob/main/plugins/madbench/skills/madbench-evals/schema.md) | madbench bench file schema (`BenchSpec`) | 352 |
 
 ## Reading these
 

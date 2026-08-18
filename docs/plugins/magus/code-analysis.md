@@ -7,7 +7,7 @@ Codebase investigation and semantic search. Maps architecture, traces callers an
 
 | | |
 |---|---|
-| Version | `5.3.2` |
+| Version | `5.4.0` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 3 |
 | Subagents | 1 |
@@ -48,7 +48,7 @@ Prefer to do it by hand? [Installing Magus](../../guides/install.md) has the man
 
 ## Subagents
 
-Dispatched with the Task tool, each in its own context window.
+Dispatched with the Agent tool, each in its own context window.
 
 | Agent | What it does |
 |---|---|
