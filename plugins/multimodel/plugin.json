@@ -1,6 +1,6 @@
 {
   "name": "multimodel",
-  "version": "3.7.1",
+  "version": "3.8.0",
   "description": "Multi-model collaboration and orchestration. Runs a task across several AI models in parallel and aggregates their blind APPROVE/REJECT votes, or delegates it to one model running a full Claude Code session.",
   "author": {
     "name": "MadAppGang",

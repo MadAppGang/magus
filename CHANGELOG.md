@@ -4,6 +4,60 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [multimodel 3.8.0] - 2026-08-19
+
+### Fixed
+
+- **`/multimodel:delegate` broke on an ordinary preferences file.** Step 1c took
+  `defaultModels[0]` with no `internal` filter, and `internal` — the host Claude model — is
+  never dispatchable. `/team` has carried that filter as a CRITICAL rule all along; this
+  command did not. Any configuration listing `internal` first, including this repository's
+  own, resolved the model to `internal` and handed it to claudish, which cannot run it. Now
+  takes the first entry that is not `internal`. Found by a repo-reading reviewer on a
+  six-model panel; no bench had caught it, because the bench stages a workspace with no
+  preferences file at all.
+
+### Added
+
+- **A deterministic model fallback for non-interactive sessions.** With no model named and
+  no usable preference, Step 1c ended at an `AskUserQuestion` that does not exist under
+  `claude -p`, so the command stalled. New Step 1c.4 takes the first non-`internal` entry
+  from the live `list_models` catalogue, **announces it with the override syntax**, and
+  proceeds; Step 1c.5 fails legibly when the catalogue is unreachable.
+
+  Ordered **after** the interactive question, not before — a single delegation has no other
+  votes to balance a wrong pick, so an interactive user is still asked. The announcement is
+  what makes this a documented default rather than a silent substitution.
+
+- **`input_required` handles the same dead end.** Phase 3 forwarded it through
+  AskUserQuestion too, so a delegated session that asks a question under `-p` would hang on
+  an answer that cannot arrive. Fixing only Step 1c would have converted a free
+  pre-dispatch stall into a **paid session stranded mid-flight**. It now cancels the session
+  and reports the question.
+
+- **One rule line separating the two concepts**: *resolution may default when nothing was
+  named; recovery never substitutes a named model.* `NO AUTO-RECOVERY` is unchanged for the
+  case it was written for.
+
+### Why
+
+Measured, not assumed. An 80-session benchmark (`benches/claudish-agent-routing`, two plugin
+versions, `--repeat 20`) had `/team` dispatch **40/40** and `/delegate` **2/40**. The
+asymmetry turned out to be provenance drift — `/team`'s fallback predates the live-catalogue
+migration and `/delegate` never had an equivalent, with no design note defending the
+difference.
+
+The decisive detail is what the stalled agents did: two of them **invented a model argument**,
+both recording `Model resolved: gemini → gemini-3.6-flash` against a prompt containing no
+such word. An unspecified dead end produced fabrication, not caution.
+
+Re-measured after the change, same 80-session design: `new` dispatched **20/20** against
+`stale` **0/20** (Fisher p = 7.3 × 10⁻¹²), with 15 of 20 taking the strongest route — the
+real agent definition rather than its name — against 1 in 40 before. Mean routing score
+0.02 → 0.85.
+
+---
+
 ## [Marketplace 9.3.1] - 2026-08-19
 
 Housekeeping release shipping metadata and documentation drift for five plugins whose

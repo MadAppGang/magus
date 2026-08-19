@@ -19,8 +19,14 @@ args:
 ## Rules
 
 - **NO AUTO-RECOVERY** — on failure, report verbatim and stop. No retries, no substitution.
+  **Resolution may default when nothing was named; recovery never substitutes a named
+  model.** Picking a model the user did not specify is a documented, announced default
+  (Step 1c.4). Swapping a model the user *did* specify, after it failed, is substitution
+  and stays forbidden.
 - **NO PRE-SOLVING** — do not read project files before launching. The external model investigates itself.
-- **FORWARD input_required TO USER** — always use AskUserQuestion. Never auto-answer.
+- **FORWARD input_required TO USER** — use AskUserQuestion whenever it is available. Never
+  auto-answer. Where it is unavailable (`claude -p`), see Phase 3 — cancel the session and
+  report the question rather than hanging on an answer that cannot arrive.
 - **NEVER add provider prefixes** — no "openai/", "google/", "mm@", "or@". Claudish resolves internally.
 
 ## Phase 1: Parse and Resolve
@@ -46,8 +52,42 @@ text — see Step 1d.
 
 **Step 1c — Resolve MODEL** (in order, resolve each via ALIAS_TABLE):
 1. MODEL_ARG if parsed → resolve via ALIAS_TABLE
-2. `preferences.defaultModels[0]` → resolve via ALIAS_TABLE, announce "Using saved model: {id}"
-3. AskUserQuestion: "Which model?" — list available aliases from ALIAS_TABLE
+2. **First entry of `preferences.defaultModels` that is not `internal`** → resolve via
+   ALIAS_TABLE, announce "Using saved model: {id}"
+3. AskUserQuestion: "Which model?" — list available aliases from ALIAS_TABLE.
+   Use this whenever the tool is available.
+4. **No model named, no usable preference, and AskUserQuestion unavailable**
+   (a non-interactive `claude -p` session) → take the first entry of the `list_models`
+   recommended set that is not `internal`. Announce, as its own line, before dispatch:
+
+   > No model specified or saved; delegating to **{id}** (live-catalog default).
+   > Pin one with `defaultModels`, or pass `/multimodel:delegate <model> <task>`.
+
+   Then proceed. Do not stall.
+5. Catalogue unreachable → stop with exactly:
+   `No model named and the model catalogue is unreachable. Pass one explicitly:`
+   `/multimodel:delegate <model> <task>`
+
+**Why step 2 skips `internal`.** It means the host Claude model and is never dispatchable
+(`claudish-usage` §"`internal` is never sent to claudish"). `/team` filters it as a CRITICAL
+rule; this command did not, and `defaultModels[0]` is `internal` in an ordinary
+configuration — including this repository's own `.claude/multimodel-team.json`. Unfiltered,
+step 2 resolved MODEL to `internal` and handed it to claudish, which cannot run it. That
+broke the normal configured path interactively, and no bench caught it because the bench
+stages a workspace with no preferences file at all.
+
+**Why step 4 comes AFTER the question, not before.** A single delegation has no other votes
+to balance a wrong pick, so an interactive user must still be asked. Step 4 exists only
+where asking is impossible. Ordering it earlier would fire a default ahead of every
+interactive question — which `/team` can afford, having composed a diversified panel, and
+this command cannot.
+
+**Why a default here is not "auto-recovery".** The rule below forbids substituting after a
+failure. Choosing when the user named nothing is a different act, and the announcement is
+what keeps them different: a silent pick is the anti-pattern, an announced one is a
+documented default with the override syntax attached. Measured 2026-08-19: with no default
+specified, agents facing this dead end did not stop — two of them invented a model argument
+(`Model resolved: gemini → gemini-3.6-flash`) from a prompt containing no such word.
 
 **Step 1d — Build CLAUDE_FLAGS.** Start from `preferences.claudeFlags` (may be empty),
 then append `--agent {EXPLICIT_AGENT}` if an agent was parsed.
@@ -75,13 +115,21 @@ Store the returned `session_id` as SESSION_ID.
 
 ## Phase 3: React to Channel Events
 
+**The second dead end, and why it is fixed in the same change as Step 1c.4.** Step 1c.4
+makes a non-interactive session reach dispatch. That moves the interactivity problem
+downstream rather than removing it: `input_required` also forwards through
+AskUserQuestion, so a delegated session that asks a question under `claude -p` would hang
+on an answer that cannot arrive — turning a free pre-dispatch stall into a **paid session
+stranded mid-flight**. Cancelling and reporting the question keeps the failure cheap and
+legible.
+
 Channel events arrive as: `<channel source="claudish" session_id="..." event="...">content</channel>`
 
 | Event | Action |
 |-------|--------|
 | `session_started` | Log: "Delegating to {MODEL}..." |
 | `tool_executing` | Log: "{MODEL}: executing {content}" |
-| `input_required` | Forward `content` to user via AskUserQuestion → call `send_input(SESSION_ID, answer)` → resume waiting |
+| `input_required` | **AskUserQuestion available** → forward `content` → `send_input(SESSION_ID, answer)` → resume waiting. **Unavailable** (`claude -p`) → `cancel_session(SESSION_ID)`, then report: `The delegated session asked a question and this session cannot answer it. Question: {content}. Re-run interactively, or restate the task so it needs no clarification.` Stop. |
 | `completed` | Call `get_output(SESSION_ID, tail_lines=200)` → proceed to Phase 4 |
 | `failed` | Call `get_output(SESSION_ID)` → report error (first 20 lines) → see Error Reporting below → stop |
 
@@ -126,7 +174,13 @@ Model: {MODEL} | Session: {SESSION_ID}
       "claudeFlags": "--effort high --max-budget-usd 0.50"
     }
     ```
-    For delegation: `defaultModels[0]` is the default (single model). `claudeFlags` passed as `claude_flags`.
+    For delegation: the first non-`internal` entry of `defaultModels` is the default
+    (single model). `claudeFlags` is passed through as `claude_flags`.
+
+    **`claudeFlags` is also the cost guard.** It reaches Claude Code unmodified, so
+    `--max-budget-usd 0.50` caps a delegated session's spend. Step 1c.4 can pick a model
+    the user did not name; setting a budget here bounds what that can cost. No separate
+    budget mechanism is needed or should be added.
   </preferences_schema>
 
   <argument_parsing_examples>

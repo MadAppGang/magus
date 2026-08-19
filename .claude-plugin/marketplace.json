@@ -147,7 +147,7 @@
       "name": "multimodel",
       "source": "./plugins/multimodel",
       "description": "Multi-model collaboration and orchestration. Runs a task across several AI models in parallel and aggregates their blind APPROVE/REJECT votes, or delegates it to one model running a full Claude Code session.",
-      "version": "3.7.1",
+      "version": "3.8.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -173,6 +173,15 @@
       "strict": true,
       "releases": [
         {
+          "version": "3.8.0",
+          "date": "2026-08-19",
+          "kinds": [
+            "Fixed",
+            "Added"
+          ],
+          "summary": "/multimodel:delegate broke on an ordinary preferences file"
+        },
+        {
           "version": "3.7.1",
           "date": "2026-08-19",
           "summary": "Deep-analyst no longer instructs a team call with require_pattern \u2014 the claudish tool has no\u2026"
@@ -195,11 +204,6 @@
             "Fixed"
           ],
           "summary": "Deleted every provider/prefix/API-key routing table from the plugin's skills. Routing,\u2026"
-        },
-        {
-          "version": "3.4.1",
-          "date": "2026-08-15",
-          "summary": "Dependency range on claudish widened from ~1.0 to ^1.0. Preventive \u2014 every inter-plugin\u2026"
         }
       ]
     },
