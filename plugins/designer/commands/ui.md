@@ -389,8 +389,7 @@ skills: designer:ui-analyse, dev:frontend-implement, multimodel:multi-model-vali
       <steps>
         <step>Construct task prompt based on configuration:
           ```
-          Task: designer:ui
-
+          Agent: designer:ui
           SESSION_PATH: ${SESSION_PATH}
           SKILLS: designer:ui-analyse
 
@@ -572,8 +571,7 @@ skills: designer:ui-analyse, dev:frontend-implement, multimodel:multi-model-vali
           If dev plugin is not installed, provide implementation recommendations instead.
 
           ```
-          Task: dev:frontend
-
+          Agent: dev:frontend
           SESSION_PATH: ${SESSION_PATH}
           SKILLS: dev:frontend-implement
 
@@ -611,8 +609,7 @@ skills: designer:ui-analyse, dev:frontend-implement, multimodel:multi-model-vali
 
         <step>Launch dev:frontend agent via Agent tool:
           ```
-          Task: dev:frontend
-
+          Agent: dev:frontend
           {delegation_prompt}
           ```
         </step>

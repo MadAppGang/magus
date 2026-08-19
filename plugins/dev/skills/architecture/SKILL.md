@@ -106,9 +106,9 @@ all **22 code smells** against checkable signals, and routes to a technique grou
 requires mutation-sensitive tests over the range *first*, and it earns its cost only against
 a named pending edit. That file carries the gates and the hard stops; apply them.
 
-Coverage: **complete.** All 22 smells indexed, and all **66 techniques** across the six
-groups written — composing (9), moving (8), conditionals (8), data (15), calls (14),
-generalization (12).
+Coverage: **complete.** All 22 smells indexed; all **66 techniques** written — composing (9),
+moving (8), conditionals (8), data (15), calls (14), generalization (12). Every technique and
+pattern has a verified real-world citation in `references/real-world-examples.md`.
 
 ## Copyable, tested code
 

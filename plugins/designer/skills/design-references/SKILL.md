@@ -398,8 +398,7 @@ The ui agent will check for style in this order:
 ### Review with Specific Reference
 
 ```
-Task: ui
-
+Agent: designer:ui
 Review this dashboard screenshot against Material Design 3 guidelines.
 
 Design Reference: material-3
@@ -412,8 +411,7 @@ Write review to: ${SESSION_PATH}/reviews/design-review/gemini.md
 ### Combining Project Style + Reference
 
 ```
-Task: ui
-
+Agent: designer:ui
 Review using:
 - Project Style: .claude/design-style.md (brand colors, custom tokens)
 - Base Reference: shadcn-ui (component patterns, accessibility)

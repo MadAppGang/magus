@@ -72,8 +72,7 @@ agent: design-review
   Delegate to the designer:design-review agent with all parsed parameters:
 
   ```
-  Task: designer:design-review
-
+  Agent: designer:design-review
   Run a UI design comparison with the following parameters:
 
   REFERENCE_SOURCE: {REFERENCE_SOURCE}

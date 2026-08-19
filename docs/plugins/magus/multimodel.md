@@ -7,10 +7,10 @@ Multi-model collaboration and orchestration. Runs a task across several AI model
 
 | | |
 |---|---|
-| Version | `3.6.0` |
+| Version | `3.7.0` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 2 |
-| Subagents | 0 |
+| Subagents | 1 |
 | Skills | 17 |
 | MCP server | no |
 | Hooks | yes |
@@ -48,6 +48,14 @@ Prefer to do it by hand? [Installing Magus](../../guides/install.md) has the man
 |---|---|
 | `/multimodel:delegate` | \| |
 | `/multimodel:team` | \| |
+
+## Subagents
+
+Dispatched with the Agent tool, each in its own context window.
+
+| Agent | What it does |
+|---|---|
+| `multimodel:deep-analyst` | Orchestrates a multi-source deep investigation — parallel web research, local code and data evidence, and optional independent passes by subagents or external models — then consolidates ever… |
 
 ## Skills
 

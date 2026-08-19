@@ -67,8 +67,24 @@ history.push(state);
 ```
 
 **Option 2 is the one to reach for.** With immutable state, every previous value is already
-a memento, and undo is `history.pop()`. This is how Redux time-travel debugging works, and
-it removes the pattern entirely.
+a memento, and undo is `history.pop()`. It removes the pattern entirely.
+
+**Do not cite Redux DevTools as an example of this.** It is Command, not Memento: the action
+log is the source of truth, and `recomputeStates()` re-runs the reducer over that log to
+rebuild each state. Jumping to a point moves an index into the derived cache. Redux's own
+undo guide cites Command and never uses the word "memento". The same holds for every major
+JS undo implementation checked — ProseMirror stores inverted steps, Yjs stores reverse
+operations, Excalidraw stores deltas.
+
+**Real snapshot-based examples do exist**, and they say so:
+- **Spring Web Flow** — *"State management employs the GOF Memento pattern"*; API is
+  `createMessagesMemento()` / `restoreMessages()`, and it names the caretaker role. Apache-2.0.
+- **`pdfarranger`** explains the trade-off that decides between the two:
+  *"The memento pattern is simpler than the command pattern. Here the memory cost of memento
+  is affordable because we only store snapshots of the GtkListStore object, not of the whole
+  PDF files."* Snapshots win when the snapshot is small. GPL-3.0 — read, do not copy.
+- `redux-undo` (MIT) genuinely stores past/present/future state values, but never claims the
+  pattern. Shape without a citation.
 
 ## Trade-offs
 

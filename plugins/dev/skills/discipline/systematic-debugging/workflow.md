@@ -102,7 +102,9 @@ Extract error-related symbols (function names, identifiers, error strings) from 
 error message and `error-analysis.md` hypotheses. Grep codebase for each symbol.
 Produces candidates even when no stack trace is available.
 
-**Strategy C — Git bisect / recent-change scan:**
+**Strategy D — Git bisect / recent-change scan:**
+(A, B and C are defined in `localization.md`; C there is AST Context Expansion. This is an
+additional strategy, not a replacement — do not renumber it.)
 Run `git log --oneline -20` and check whether any recent commits touch the candidate
 files identified in Phase 1. If git history points to a specific change, include it
 as a high-confidence candidate.
@@ -118,7 +120,7 @@ as a high-confidence candidate.
 ## Strategy B — Keyword Search
 {symbol list searched, files matched}
 
-## Strategy C — Recent Change Scan
+## Strategy D — Recent Change Scan
 {commits inspected, relevant changes found or "No recent changes to candidate files"}
 
 ## Combined Candidate List

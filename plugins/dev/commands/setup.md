@@ -71,6 +71,10 @@ allowed-tools: Read, Write, Edit, Bash, Glob, AskUserQuestion
     | Investigation: READ-ONLY codebase analysis, tracing, understanding | `code-analysis:detective` | Only when task is to UNDERSTAND code, not to WRITE new code |
     | Debugging: error analysis, root cause investigation | `dev:debugger` | Non-obvious bugs or multi-file root cause |
     | Architecture: system design, trade-off analysis | `dev:architect` | New systems or major refactors |
+    | Code review before merge: security, correctness, maintainability | `dev:reviewer` | Reviewing a diff or a branch |
+    | Documentation: write, analyse or repair READMEs, API docs, changelogs | `dev:docs` | Any documentation task |
+    | UI implementation against the design system | `dev:frontend` | Building or reworking a component or screen |
+    | Tests written from requirements, without reading the implementation | `dev:test-architect` | Black-box test creation |
 
     Key distinction: If the task asks to IMPLEMENT/CREATE/BUILD -> `dev:developer`. If the task asks to UNDERSTAND/ANALYZE/TRACE -> `code-analysis:detective`.
 
@@ -94,7 +98,7 @@ allowed-tools: Read, Write, Edit, Bash, Glob, AskUserQuestion
     ## Dev Plugin Setup Complete
 
     **Added to CLAUDE.md:**
-    - Task Routing table (5 agent delegation rules + 5 skill routing rules)
+    - Task Routing table (9 agent delegation rules + 5 skill routing rules)
 
     **What this does:**
     - Routes complex tasks to specialized agents automatically

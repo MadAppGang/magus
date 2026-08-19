@@ -66,9 +66,9 @@ skills: dev:context-detection
       Map scope to investigation mode:
         architecture  → mode: architecture, skill: code-analysis:investigate
         implementation → mode: implementation, skill: code-analysis:investigate
-        bug-hunt      → mode: debugging, skill: code-analysis:investigate
-        test-audit    → mode: testing, skill: code-analysis:investigate
-        comprehensive → mode: comprehensive, skill: code-analysis:deep-analysis
+        bug-hunt      → mode: bug, skill: code-analysis:investigate
+        test-audit    → mode: test, skill: code-analysis:investigate
+        comprehensive → skill: code-analysis:deep-analysis (no mode parameter — it has none)
 
       Launch the agent:
 
@@ -90,11 +90,12 @@ skills: dev:context-detection
             architectural patterns, PageRank analysis of core abstractions.
           - implementation: entry points, call chains, data transformations,
             exact file/line evidence for each claim.
-          - debugging: error origins, failure conditions, blast radius,
+          - bug: error origins, failure conditions, blast radius,
             reproduction steps, root cause identification.
-          - testing: what is tested, what is not, coverage gaps,
+          - test: what is tested, what is not, coverage gaps,
             risky untested paths, test quality assessment.
-          - comprehensive: all 4 modes above, synthesized into unified report
+          - (comprehensive scope routes to code-analysis:deep-analysis, which takes no
+            mode) all 4 modes above, synthesized into unified report
             with cross-cutting observations.
         """,
         subagent_type: "code-analysis:detective"

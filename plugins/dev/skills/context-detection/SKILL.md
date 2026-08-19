@@ -840,7 +840,7 @@ The stack-detector agent implements this skill:
 Commands read context.json and pass skill paths to implementation agents:
 
 ```
-Task: universal-developer
+Agent: dev:developer
 Prompt: |
   SESSION_PATH: ${SESSION_PATH}
 

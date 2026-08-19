@@ -465,9 +465,12 @@ function applyRules(
         for (let i = 0; i < taskCalls.length - 1; i++) {
           const a = taskCalls[i];
           const b = taskCalls[i + 1];
+          // Explicit `false` only. Omitting run_in_background means BACKGROUND (the default
+          // since Claude Code 2.1.198), so `!a.input.run_in_background` treated every
+          // parameterless dispatch as foreground and fired this rule permanently.
           if (
-            !a.input.run_in_background &&
-            !b.input.run_in_background &&
+            a.input.run_in_background === false &&
+            b.input.run_in_background === false &&
             b.order - a.order <= 2
           ) {
             sequential++;

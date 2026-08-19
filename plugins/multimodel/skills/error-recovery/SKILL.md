@@ -1013,7 +1013,7 @@ Step 3: Fallback Strategy (error-recovery)
   Use: ui-developer (embedded)
 
 Step 4: Execution (multi-agent-coordination)
-  Task: ui-developer
+  Agent: dev:frontend
 ```
 
 ---

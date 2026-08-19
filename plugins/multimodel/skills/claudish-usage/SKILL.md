@@ -1349,7 +1349,7 @@ create_session(model="grok", prompt=TASK, timeout_seconds=300)
 
 ```typescript
 /**
- * Agent: code-reviewer (using Claudish with multiple models)
+ * Agent: dev:reviewer (using Claudish with multiple models)
  */
 async function reviewCodeWithMultipleModels(files: string[]) {
   const models = [

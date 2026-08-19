@@ -103,27 +103,27 @@ team(mode="run", path=SESSION_DIR,
 
 ### Multi-Step Investigation
 **Trigger:** Task requires 5+ tool calls with conditional branching
-**Agent:** developer, architect
+**Delegate to:** dev:developer, dev:architect
 **Example:** "Trace data flow through 3 layers to find where user.email becomes null"
 
 ### External Model Expertise
 **Trigger:** Need specialized model capabilities (code speed, vision, reasoning)
-**Agent:** external-model with specific model
+**Delegate to:** an external model via claudish (see multimodel:claudish-usage)
 **Example:** "Use Grok Code Fast to refactor 15 files for consistency in < 2 minutes"
 
 ### Parallel Work
 **Trigger:** Multiple independent tasks that can run simultaneously
-**Agent:** Multiple Agent calls with result aggregation
+**Delegate to:** multiple Agent calls with result aggregation
 **Example:** "Analyze frontend performance (Task 1) while auditing API security (Task 2)"
 
 ### Risk Isolation
 **Trigger:** High-risk changes needing review before merging to main workflow
-**Agent:** review-focused agent with checkpoint
+**Delegate to:** dev:reviewer with a checkpoint
 **Example:** "Evaluate if this database migration will cause downtime"
 
 ### Skill Gaps
 **Trigger:** Current agent lacks specific skill that another agent has
-**Agent:** specialist agent (security, performance, accessibility)
+**Delegate to:** a specialist (dev:reviewer for security, dev:frontend for accessibility)
 **Example:** "Launch accessibility agent to audit ARIA compliance"
 
 ## When NOT to Use Agents

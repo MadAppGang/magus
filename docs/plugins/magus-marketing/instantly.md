@@ -7,7 +7,7 @@ Cold email outreach toolkit built on the Instantly.ai MCP. Campaign analytics, s
 
 | | |
 |---|---|
-| Version | `2.0.0` |
+| Version | `2.0.1` |
 | Marketplace | [`magus-marketing`](./index.md) |
 | Commands | 5 |
 | Subagents | 3 |

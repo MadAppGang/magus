@@ -71,8 +71,9 @@ CI=true {test_runner_command} {test_args_from_bug_description}
 ```
 
 Interpretation rules:
-- Exit code 0 with test failure output — bug confirmed reproducible
-- Exit code non-zero (process error) — runner misconfigured; check `context.json`
+- Exit code non-zero with test failure output — bug confirmed reproducible
+- Exit code 0 (suite green) — bug NOT reproduced by this command; refine the args
+- Exit code 127 / a compile or import error — the runner itself is broken; check `context.json`
 - No matching test output — bug not yet covered by tests; proceed to localization
 
 Do not block on failed reproduction. If no reproduction steps are present in the bug

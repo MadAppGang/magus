@@ -7,7 +7,7 @@ Universal development assistant. Detects the project stack and routes work to sp
 
 | | |
 |---|---|
-| Version | `4.1.0` |
+| Version | `4.3.0` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 14 |
 | Subagents | 13 |
@@ -189,7 +189,7 @@ Dispatched with the Agent tool, each in its own context window.
 | ● | `dev:universal-patterns` | Code organization, error handling, data flow, naming and anti-patterns in any language. Use while writing or reviewing everyday code. |
 | ● | `dev:verification-before-completion` | Requires fresh evidence — command output, a test run, a screenshot — before any completion claim. |
 | ● | `dev:worktree-lifecycle` | Creates, uses and cleans up git worktrees with safety checks. Use before isolated, risky or parallel feature work, or on mention of worktree, experiment or prototype. |
-| ○ | `dev:architecture` — [41 more docs](./dev-architecture.md) | Router for architecture knowledge — 7 architectural styles (layered, hexagonal, clean, modular monolith, microservices, event-driven, CQRS) and the 22 GoF design patterns. |
+| ○ | `dev:architecture` — [42 more docs](./dev-architecture.md) | Router for architecture knowledge — 7 architectural styles (layered, hexagonal, clean, modular monolith, microservices, event-driven, CQRS) and the 22 GoF design patterns. |
 | ○ | `dev:auth-patterns` | Use when implementing authentication (JWT, sessions, OAuth), authorization (RBAC, ABAC), password hashing, MFA, or security best practices for backend services. |
 | ○ | `dev:browser-use-integration` | Detects the browser-use@magus plugin and runs headless browser automation for frontend workflows. Use when dev:frontend or dev:browser-debugging needs navigation, clicking, or web scraping. |
 | ○ | `dev:bunjs` | Provides Bun.js/Hono patterns — HTTP endpoints, Prisma/SQLite, Zod validation, Bun test. Use when building a Bun.js service or wiring Hono routes with Prisma. |

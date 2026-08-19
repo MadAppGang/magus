@@ -149,7 +149,7 @@ Step 2: Initialize Tasks (all phases visible upfront)
   [ ] CHECKPOINT 4: Final alignment validation
 
 Step 3: Execute Phase 1
-  Task: specialist-agent
+  Agent: <specialist-agent>
     Prompt: "Read ai-docs/coordinator-context.md for requirements.
              Execute Phase 1 deliverables."
     Output: [phase 1 artifacts]
@@ -282,7 +282,7 @@ MINOR_DRIFT:
         Correction: [specific instructions for next agent]"
 
   2. Provide corrective context to next phase agent:
-     Task: next-specialist
+     Agent: <next-specialist>
        Prompt: "Read ai-docs/coordinator-context.md for requirements.
                 Read ai-docs/correction-phase-N.md for corrections.
                 Execute Phase N+1 WITH corrections applied."
@@ -296,7 +296,7 @@ MAJOR_DRIFT:
         Specific re-run instructions: [detailed guidance]"
 
   2. Re-run the same phase with corrective instructions:
-     Task: same-specialist
+     Agent: <same-specialist>
        Prompt: "Read ai-docs/coordinator-context.md for requirements.
                 Read ai-docs/correction-phase-N.md for corrections.
                 RE-DO Phase N following correction guidance."
@@ -413,7 +413,7 @@ After Checkpoint 1:
      - Maintain v1 API contract"
 
   Phase 2 agent reads this file before starting:
-    Task: developer
+    Agent: dev:developer
       Prompt: "Read ai-docs/coordinator-context.md for requirements.
                Read ai-docs/phase-1-findings.md for architecture context.
                Implement pagination per architecture plan."
@@ -626,25 +626,25 @@ CONDITIONAL (Phase depends on checkpoint result):
 Task: "Add user authentication with JWT"
 
 Phase 1: Architecture Planning
-  Agent: architect
+  Agent: dev:architect
   Input: User requirements
   Output: ai-docs/auth-architecture.md
   Checkpoint: Does plan cover all auth requirements?
 
 Phase 2: Implementation
-  Agent: developer
+  Agent: dev:developer
   Input: Architecture plan
   Output: src/auth/*.ts files
   Checkpoint: Does implementation match architecture?
 
 Phase 3: Testing
-  Agent: tester
+  Agent: dev:test-architect
   Input: Implementation files
   Output: tests/auth/*.test.ts files
   Checkpoint: Do tests cover all auth requirements?
 
 Phase 4: Code Review
-  Agent: reviewer
+  Agent: dev:reviewer
   Input: All source and test files
   Output: ai-docs/auth-review.md
   Checkpoint: Does review focus on auth requirements?
@@ -656,31 +656,31 @@ Phase 4: Code Review
 Task: "Migrate database from MySQL to PostgreSQL"
 
 Phase 1: Impact Analysis
-  Agent: analyst
+  Agent: code-analysis:detective
   Input: Current codebase
   Output: ai-docs/migration-impact.md
   Checkpoint: Are all affected files identified?
 
 Phase 2: Schema Migration
-  Agent: developer
+  Agent: dev:developer
   Input: Impact analysis
   Output: migration scripts, new schema files
   Checkpoint: Does schema preserve all data relationships?
 
 Phase 3: Code Migration
-  Agent: developer
+  Agent: dev:developer
   Input: Schema changes, impact analysis
   Output: Updated source files
   Checkpoint: Do code changes align with schema migration?
 
 Phase 4: Testing
-  Agent: tester
+  Agent: dev:test-architect
   Input: Migrated code
   Output: Test suite for new database layer
   Checkpoint: Do tests verify data integrity post-migration?
 
 Phase 5: Validation
-  Agent: reviewer
+  Agent: dev:reviewer
   Input: All migration artifacts
   Output: Migration validation report
   Checkpoint: Final alignment with migration requirements
@@ -692,20 +692,20 @@ Phase 5: Validation
 Task: "Review authentication module for security issues"
 
 Phase 1: Context Gathering
-  Agent: analyst
+  Agent: code-analysis:detective
   Input: Auth module source files
   Output: ai-docs/review-context.md
   Checkpoint: Is all relevant code captured?
 
 Phase 2: Parallel Review (3 agents simultaneously)
-  Agent A: security-reviewer (focus: vulnerabilities)
-  Agent B: code-reviewer (focus: quality)
-  Agent C: architecture-reviewer (focus: design)
+  Agent A: dev:reviewer (focus: vulnerabilities)
+  Agent B: dev:reviewer (focus: quality)
+  Agent C: dev:architect (focus: design)
   Output: 3 review reports
   Checkpoint: Do all reviews address auth security?
 
 Phase 3: Consolidation
-  Agent: coordinator (self)
+  Performed by: the coordinator itself (no dispatch)
   Input: 3 review reports + original requirements
   Output: Consolidated review with consensus
   Checkpoint: Final report covers all security requirements
@@ -824,7 +824,7 @@ Tasks:
 ---
 
 Step 1: PHASE 1 - Architecture Planning
-  Task: architect
+  Agent: dev:architect
     Prompt: "Read ai-docs/coordinator-context.md.
              Design pagination architecture for products endpoint."
     Output: ai-docs/pagination-architecture.md
@@ -850,7 +850,7 @@ Step 2: CHECKPOINT 1
 ---
 
 Step 3: PHASE 2 - Implementation
-  Task: developer
+  Agent: dev:developer
     Prompt: "Read ai-docs/coordinator-context.md.
              Read ai-docs/phase-1-findings.md.
              Implement pagination per architecture plan."
@@ -883,7 +883,7 @@ Step 4: CHECKPOINT 2
 ---
 
 Step 5: PHASE 3 - Testing
-  Task: tester
+  Agent: dev:test-architect
     Prompt: "Read ai-docs/coordinator-context.md.
              Read ai-docs/phase-2-findings.md.
              Write tests for pagination implementation."
@@ -907,7 +907,7 @@ Step 6: CHECKPOINT 3
 ---
 
 Step 7: PHASE 4 - Code Review
-  Task: reviewer
+  Agent: dev:reviewer
     Prompt: "Read ai-docs/coordinator-context.md.
              Review pagination implementation and tests."
     Output: ai-docs/pagination-review.md
@@ -964,7 +964,7 @@ Tasks:
 ---
 
 Step 1: PHASE 1 - Context Gathering
-  Task: analyst
+  Agent: code-analysis:detective
     Output: ai-docs/auth-review-context.md (all auth DB queries)
 
   CHECKPOINT 1: ALIGNED (all auth queries captured)
@@ -1046,17 +1046,17 @@ Tasks:
 ---
 
 PHASE 1: Impact Analysis
-  Agent: analyst
+  Agent: code-analysis:detective
   Output: 8 files affected, 3 payment providers, 45 tests
   CHECKPOINT 1: ALIGNED
 
 PHASE 2: Interface Design
-  Agent: architect
+  Agent: dev:architect
   Output: PaymentStrategy interface + provider contracts
   CHECKPOINT 2: ALIGNED
 
 PHASE 3: Implementation
-  Agent: developer
+  Agent: dev:developer
   Output: Refactored files with Strategy pattern
   CHECKPOINT 3:
     Criterion 1: PaymentStrategy interface defined        [MET]
@@ -1075,17 +1075,17 @@ PHASE 3: Implementation
                  Pure refactoring only: same behavior, new structure."
 
   PHASE 3 (Re-run):
-    Agent: developer (with correction)
+    Agent: dev:developer (with correction)
     Output: Clean refactoring without behavior changes
     CHECKPOINT 3 (Re-validate): ALIGNED
 
 PHASE 4: Test Validation
-  Agent: tester
+  Agent: dev:test-architect
   Output: All 45 tests pass, no behavior changes detected
   CHECKPOINT 4: ALIGNED
 
 PHASE 5: Final Review
-  Agent: reviewer
+  Agent: dev:reviewer
   Output: Clean Strategy pattern implementation
   CHECKPOINT 5: ALIGNED
 

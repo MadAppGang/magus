@@ -278,7 +278,7 @@ Store performance metrics in `.claude/agent-performance.json`:
 Execution Flow:
 
 1. Agent executes task
-   Task: ui-developer
+   Agent: dev:frontend
    Input: "Implement login form component"
    Result: Success
    Confidence: 0.90
@@ -318,7 +318,7 @@ Execution Flow:
 Failure Flow:
 
 1. Agent fails task
-   Task: backend-developer
+   Agent: dev:developer
    Input: "Implement complex payment flow"
    Result: Failure (error, timeout, or low quality)
    Confidence: 0.65
@@ -420,7 +420,7 @@ Routing Flow:
    Task: "Implement user profile page"
    Analysis: Medium complexity (multiple components, state management)
    Selected tier: 2
-   Agent: ui-developer
+   Agent: dev:frontend
    Model: sonnet
 
 2. Record routing decision
@@ -1116,7 +1116,7 @@ Phase Execution Tracking:
 Quality Gate Decision:
 
 1. Agent completes task
-   Agent: ui-developer
+   Agent: dev:frontend
    Task: "Implement dashboard component"
    Confidence: 0.75
 

@@ -442,7 +442,7 @@ Message 1: Preparation (Session Setup + Model Discovery)
   # User selects models via AskUserQuestion (see Pattern 0)
 
 Message 2: Parallel Execution (single message)
-  Task: senior-code-reviewer
+  Agent: dev:reviewer
     Prompt: "Review $SESSION_DIR/code-context.md for security issues.
              Write detailed review to $SESSION_DIR/claude-review.md
              Return only brief summary."
@@ -456,7 +456,7 @@ Message 2: Parallel Execution (single message)
 Message 3: Auto-Consolidation
   (Automatically triggered - don't wait for user to request)
 
-  Task: senior-code-reviewer
+  Agent: dev:reviewer
     Prompt: "Consolidate 5 code reviews from:
              - $SESSION_DIR/claude-review.md
              - $SESSION_DIR/grok-review.md
@@ -526,13 +526,13 @@ The key to parallel execution is putting ALL Agent calls in a **single message**
 ```
 ✅ CORRECT - Parallel Execution:
 
-Task: agent1
+Agent: <agent-1>
   Prompt: "Task 1 instructions"
 ---
-Task: agent2
+Agent: <agent-2>
   Prompt: "Task 2 instructions"
 ---
-Task: agent3
+Agent: <agent-3>
   Prompt: "Task 3 instructions"
 
 All 3 execute simultaneously.
@@ -544,14 +544,11 @@ All 3 execute simultaneously.
 ❌ WRONG - Sequential Execution:
 
 Message 1:
-  Task: agent1
-
+  Agent: <agent-1>
 Message 2:
-  Task: agent2
-
+  Agent: <agent-2>
 Message 3:
-  Task: agent3
-
+  Agent: <agent-3>
 Each task waits for previous to complete (3x slower).
 ```
 
@@ -648,7 +645,7 @@ create_session(model="grok", prompt=TASK_PROMPT, timeout_seconds=300)
 team(mode="run", path=SESSION_DIR, models=["grok", "gemini"],
   input=VOTE_PROMPT, timeout=180)
 
-# ✅ CORRECT: Internal model via Task
+# ✅ CORRECT: Internal model via Agent
 Agent({
   subagent_type: "dev:researcher",  // or dev:debugger, dev:architect, etc. — resolved from task type
   description: "Internal Claude review",
@@ -846,7 +843,7 @@ if (successful.length >= 2) {
 Consolidation agent needs paths to ALL review files within the session directory:
 
 ```
-Task: senior-code-reviewer
+Agent: dev:reviewer
   Prompt: "Consolidate reviews from these files:
            - $SESSION_DIR/claude-review.md
            - $SESSION_DIR/grok-review.md
@@ -1786,7 +1783,7 @@ Message 2: Model Selection (AskUserQuestion with multiSelect)
   # mistralai/LATEST_FREE_CODING_MODEL
 
 Message 3: Parallel Execution (single message)
-  Task: senior-code-reviewer
+  Agent: dev:reviewer
     Prompt: "Review $SESSION_DIR/code-context.md.
              Write to $SESSION_DIR/claude-review.md"
   ---
@@ -1798,7 +1795,7 @@ Message 3: Parallel Execution (single message)
 
 Message 4: Auto-Consolidation + Statistics Update
   # Consolidate
-  Task: senior-code-reviewer
+  Agent: dev:reviewer
     Prompt: "Consolidate 4 reviews from $SESSION_DIR/*.md"
 
   # Track performance
@@ -1870,7 +1867,7 @@ Message 3: Error Recovery (error-recovery skill)
      Proceeding with consolidation using 2 reviews."
 
 Message 4: Auto-Consolidation
-  Task: senior-code-reviewer
+  Agent: dev:reviewer
     Prompt: "Consolidate 2 reviews from:
              - ai-docs/reviews/claude-review.md
              - ai-docs/reviews/gpt5-review.md

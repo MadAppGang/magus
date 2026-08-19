@@ -4,6 +4,126 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Marketplace 9.3.0] - 2026-08-19
+
+Marketplace-wide agent-dispatch integrity release. A 5-member team panel
+(4 external flagships + the internal reviewer) rejected the first cut and its
+findings drove the final round; every fix below was re-verified after remediation.
+
+### Added
+
+- **`multimodel` v3.7.0**: new `deep-analyst` agent — multi-source deep investigation
+  running parallel web, local-repo and delegated lanes (subagents + external models via
+  claudish), consolidating into one source-cited report with agreements and conflicts
+  marked. Also: the team-rules hook enforces again (its guard still tested the retired
+  `Task` tool name after the matcher moved to `Agent`, so it fired and matched nothing),
+  its whitelist now lists the 13 real dev agents (`dev:ui` removed), and the /tmp rule is
+  scoped to vote-shaped prompts instead of denying every dispatch that names the harness
+  scratchpad. New marketplace gate: `scripts/check-agent-dispatch.ts` (release.sh Step
+  1b2) resolves every `Agent:` spec and `subagent_type` literal against declared agent
+  names — hardened against bullets, bold, `Agent A:` forms, trailing tails and CamelCase
+  fakes after the panel's fixture attack.
+
+### Fixed
+
+- **`dev` v4.3.0**: reproduction exit codes corrected in `/dev:fix` AND the
+  systematic-debugging skill it loads (non-zero = reproduced; exit 127 = broken runner —
+  branch restored); `run_in_background` restored on the k=3 vote fan-out (it is a
+  documented Agent parameter; removing it would have serialized the votes); the debugger
+  persists via Bash heredoc (it has no Write grant, and backgrounded agents return launch
+  receipts); `/dev:doc` auto-fix now honours its own approval gate; `/dev:investigate`
+  passes mode strings the target skill actually accepts (`bug`, `test`); `/dev:setup`'s
+  routing table gains dev:reviewer/docs/frontend/test-architect; `/dev:help` stops
+  hardcoding a stale version; the Strategy C name collision in systematic-debugging is
+  resolved (workflow's becomes D); `check-index.sh` scans fence-aware (tracks fence
+  character and length, reports unclosed fences instead of silently swallowing the rest
+  of the file); the coaching no-background rule fires only on explicit
+  `run_in_background: false` (omitted means background since Claude Code 2.1.198 —
+  TEST-17b added, proven to be the only test that catches the regression); dispatch
+  guidance in task-management relabelled so prose stops looking dispatch-shaped.
+- **`code-analysis` v5.4.1**: four skill-as-agent dispatches corrected in
+  mnemex-orchestration — `investigate` and `deep-analysis` are skills; the dispatches now
+  target `code-analysis:detective` (with the skill named in the prompt) and
+  `dev:synthesizer` for consolidation.
+- **`designer` v0.5.1**: dispatch specs namespaced (`Agent: designer:ui`,
+  `designer:design-review`) in commands and the design-references skill.
+- **`seo` v2.0.1**: dispatch specs in alternatives/performance/review namespaced to
+  `seo:analyst`, `seo:writer`, `seo:editor`, `seo:data-analyst`.
+- **`video-editing` v1.2.1**: six dead `Task:` dispatch specs across
+  transcribe/create-fcp-project/video-edit migrated to namespaced `Agent:` form
+  (`video-editing:transcriber`, `video-editing:timeline-builder`,
+  `video-editing:video-processor`).
+- **`instantly` v2.0.1**: sequence and ab-test dispatch prose migrated from the retired
+  `Task` tool name to `Agent`.
+- **`autolinear` v0.4.1**: run command dispatch specs namespaced
+  (`autolinear:task-executor`, `autolinear:proof-generator`).
+
+### Why
+
+96+ dispatch sites used bare agent names, 18 named agents that do not exist anywhere,
+and one dispatched a skill as an agent. Bare names resolve by search across every
+installed plugin — one `~/.claude/skills/` auto-load away from running the wrong agent —
+and dead names fail only at runtime, in someone else's session. The panel also caught
+the remediation's own regression (a blanket `analyst` remap put the SEO SERP analyst on
+four codebase-analysis call sites; now `code-analysis:detective`) and a userdocs leak:
+the catalog generator walked `.claude/.coaching` and `node_modules`, publishing links to
+untracked local state. The generator now excludes local dirt, and the regenerated
+catalog dropped the dirt-derived page (never in git).
+
+---
+
+## [dev 4.2.0] - 2026-08-19
+
+### Added
+
+- **Every one of the 88 entries in the architecture tree now cites real code** — 22 GoF
+  patterns and 66 refactoring techniques, each mapped to a merged pull request or a
+  maintainer's own words, in the new `references/real-world-examples.md`. Each was verified
+  by opening the artifact: merge status from the API, diff read, licence decoded from the
+  actual file rather than trusted from metadata.
+- Sources are marked for reuse. GitHub's licence field was wrong on 4 of 11 repositories
+  checked, and two projects relicensed *after* the commit cited, so licences are read at the
+  merge ref. Anything we can cite but not copy is flagged.
+- Method notes for extending the set: search the code shape *after* a change, never the
+  catalogue name. Eight refactoring names have had their vocabulary captured by other
+  domains — "flag" by command-line arguments, "push down" by database optimisation, "hydrate"
+  by server-side rendering, and five more — so searching them returns noise, not absence.
+
+### Fixed
+
+- **`memento.md` described how Redux time-travel works, and was wrong.** It replays the
+  action log through the reducer; it does not store snapshots. Redux's own undo guide cites
+  Command, and never uses the word "memento".
+- **`mediator.md` asserted Redux and Zustand as mediators with no source.** Redux's docs use
+  "middleware" 31 times and "mediator" zero; for Zustand there is no source at all.
+- **`decorator.md` and `chain-of-responsibility.md` gave the same example two verdicts.**
+  Both now agree, and both record that middleware is arguably its own pattern, descended from
+  Intercepting Filter. The claim that Wikipedia and refactoring.guru use incompatible tests
+  does not survive reading either page — each concedes the other's position.
+- **`decorator.md` called TypeScript's `@decorator` "unrelated to the GoF pattern".** TC39's
+  proposal explicitly claims it; Python's PEP 318, where the syntax originated, explicitly
+  disclaims it; TypeScript takes no position. Softened to reflect the disagreement.
+- **`refactoring.md` contradicted itself on catalogue edition**, citing the 1999 book in one
+  section and the 2018 book in another. Fowler published a fate table for all 68
+  first-edition refactorings — 29 kept, 28 replaced, 11 absent. Ten of our names are ones he
+  dropped; three more carry server-side redirects to their successors. Recorded, with the
+  caveat that he never explained why, so any causal story is inference.
+
+### Why
+
+Every worked example in this tree was one we invented. That is correct for teaching a single
+technique in isolation and wrong for teaching judgement: a reader learns the mechanics but
+never sees the technique in code they recognise. Real examples also proved the text wrong in
+four places, which invented ones never would have.
+
+Worth recording: seven techniques were declared "verified absent" by agents that had genuinely
+searched — Bridge, Abstract Factory, Memento, Hide Method, Replace Parameter with Query,
+Remove Control Flag, Replace Delegation with Inheritance. All seven were later found. Bridge
+sat in Java's AWT the whole time, unlabelled: `"Bridge pattern"` appears zero times in all of
+OpenJDK. An absence verdict is a hypothesis about vocabulary, not about the world.
+
+---
+
 ## [Marketplace 9.2.0] - 2026-08-18
 
 Agent-tooling correctness, and the first results from benching our own instruction text

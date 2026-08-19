@@ -59,17 +59,17 @@ After running mnemex, distribute to mode-specific agents:
 
 ```
 # Parallel Execution (ONLY Agent calls - per 4-Message Pattern)
-Agent: code-analysis:investigate (architecture mode)
+Agent: code-analysis:detective (run the code-analysis:investigate skill, architecture mode)
   Prompt: "Analyze architecture from $SESSION_DIR/structure-map.md.
            Focus on layer boundaries and design patterns.
            Write findings to $SESSION_DIR/architect-analysis.md"
 ---
-Agent: code-analysis:investigate (testing mode)
+Agent: code-analysis:detective (run the code-analysis:investigate skill, testing mode)
   Prompt: "Analyze test gaps from $SESSION_DIR/test-gaps.md.
            Prioritize coverage recommendations.
            Write findings to $SESSION_DIR/tester-analysis.md"
 ---
-Agent: code-analysis:investigate (implementation mode)
+Agent: code-analysis:detective (run the code-analysis:investigate skill, implementation mode)
   Prompt: "Analyze dead code from $SESSION_DIR/dead-code.md.
            Identify cleanup opportunities.
            Write findings to $SESSION_DIR/developer-analysis.md"
@@ -80,7 +80,7 @@ All 3 execute simultaneously (3x speedup!)
 ### Pattern 3: Consolidation with Deep Analysis
 
 ```
-Agent: code-analysis:deep-analysis
+Agent: dev:synthesizer   # deep-analysis is a SKILL, not an agent; consolidation is synthesis
   Prompt: "Consolidate analyses from:
            - $SESSION_DIR/architect-analysis.md
            - $SESSION_DIR/tester-analysis.md

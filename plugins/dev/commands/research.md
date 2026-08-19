@@ -260,7 +260,7 @@ skills: dev:context-detection, multimodel:task-orchestration
         <step>
           Launch researcher agents IN PARALLEL (single message, multiple Tasks):
 
-          Task: researcher
+          Agent: dev:researcher
             Prompt: "SESSION_PATH: ${SESSION_PATH}
 
                      Sub-question: {sub_question_1}
@@ -275,12 +275,12 @@ skills: dev:context-detection, multimodel:task-orchestration
                      Save findings to: ${SESSION_PATH}/findings/explorer-1.md
                      Return brief summary (3-5 key findings)"
           ---
-          Task: researcher
+          Agent: dev:researcher
             Prompt: "SESSION_PATH: ${SESSION_PATH}
                      Sub-question: {sub_question_2}
                      ..."
           ---
-          Task: researcher
+          Agent: dev:researcher
             Prompt: "SESSION_PATH: ${SESSION_PATH}
                      Sub-question: {sub_question_3}
                      ..."
@@ -552,13 +552,13 @@ skills: dev:context-detection, multimodel:task-orchestration
   <parallel_execution_pattern>
     **Single message with multiple Agent calls executes in parallel:**
 
-    Task: researcher
+    Agent: dev:researcher
       Prompt: "Sub-question 1..."
     ---
-    Task: researcher
+    Agent: dev:researcher
       Prompt: "Sub-question 2..."
     ---
-    Task: researcher
+    Agent: dev:researcher
       Prompt: "Sub-question 3..."
 
     All 3 execute SIMULTANEOUSLY (3x speedup)

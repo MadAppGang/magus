@@ -6,7 +6,7 @@ Router for architecture knowledge — 7 architectural styles (layered, hexagonal
 
 Part of [`dev`](./dev.md).
 
-**41 reference documents, about 13,589 lines.**
+**42 reference documents, about 14,081 lines.**
 
 The skill itself does not contain them. It reads your question and names the one or two
 worth opening — which is the point, because loading everything below to answer one
@@ -19,7 +19,8 @@ question would cost more than the answer is worth.
 | [`adr.md`](https://github.com/MadAppGang/magus/blob/main/plugins/dev/skills/architecture/references/adr.md) | Architecture decision records | 927 |
 | [`behavioral.md`](https://github.com/MadAppGang/magus/blob/main/plugins/dev/skills/architecture/references/behavioral.md) | Behavioral patterns | 108 |
 | [`creational.md`](https://github.com/MadAppGang/magus/blob/main/plugins/dev/skills/architecture/references/creational.md) | Creational patterns | 83 |
-| [`refactoring.md`](https://github.com/MadAppGang/magus/blob/main/plugins/dev/skills/architecture/references/refactoring.md) | Refactoring index | 192 |
+| [`real-world-examples.md`](https://github.com/MadAppGang/magus/blob/main/plugins/dev/skills/architecture/references/real-world-examples.md) | Real-world examples | 399 |
+| [`refactoring.md`](https://github.com/MadAppGang/magus/blob/main/plugins/dev/skills/architecture/references/refactoring.md) | Refactoring index | 225 |
 | [`selection.md`](https://github.com/MadAppGang/magus/blob/main/plugins/dev/skills/architecture/references/selection.md) | Choosing a pattern, and when not to | 142 |
 | [`structural.md`](https://github.com/MadAppGang/magus/blob/main/plugins/dev/skills/architecture/references/structural.md) | Structural patterns | 97 |
 
@@ -31,16 +32,16 @@ question would cost more than the answer is worth.
 | [`adapter.md`](https://github.com/MadAppGang/magus/blob/main/plugins/dev/skills/architecture/references/patterns/adapter.md) | Adapter | 91 |
 | [`bridge.md`](https://github.com/MadAppGang/magus/blob/main/plugins/dev/skills/architecture/references/patterns/bridge.md) | Bridge | 87 |
 | [`builder.md`](https://github.com/MadAppGang/magus/blob/main/plugins/dev/skills/architecture/references/patterns/builder.md) | Builder | 93 |
-| [`chain-of-responsibility.md`](https://github.com/MadAppGang/magus/blob/main/plugins/dev/skills/architecture/references/patterns/chain-of-responsibility.md) | Chain of Responsibility | 89 |
+| [`chain-of-responsibility.md`](https://github.com/MadAppGang/magus/blob/main/plugins/dev/skills/architecture/references/patterns/chain-of-responsibility.md) | Chain of Responsibility | 103 |
 | [`command.md`](https://github.com/MadAppGang/magus/blob/main/plugins/dev/skills/architecture/references/patterns/command.md) | Command | 103 |
 | [`composite.md`](https://github.com/MadAppGang/magus/blob/main/plugins/dev/skills/architecture/references/patterns/composite.md) | Composite | 98 |
-| [`decorator.md`](https://github.com/MadAppGang/magus/blob/main/plugins/dev/skills/architecture/references/patterns/decorator.md) | Decorator | 99 |
+| [`decorator.md`](https://github.com/MadAppGang/magus/blob/main/plugins/dev/skills/architecture/references/patterns/decorator.md) | Decorator | 118 |
 | [`facade.md`](https://github.com/MadAppGang/magus/blob/main/plugins/dev/skills/architecture/references/patterns/facade.md) | Facade | 82 |
 | [`factory-method.md`](https://github.com/MadAppGang/magus/blob/main/plugins/dev/skills/architecture/references/patterns/factory-method.md) | Factory Method | 93 |
 | [`flyweight.md`](https://github.com/MadAppGang/magus/blob/main/plugins/dev/skills/architecture/references/patterns/flyweight.md) | Flyweight | 96 |
 | [`iterator.md`](https://github.com/MadAppGang/magus/blob/main/plugins/dev/skills/architecture/references/patterns/iterator.md) | Iterator | 96 |
-| [`mediator.md`](https://github.com/MadAppGang/magus/blob/main/plugins/dev/skills/architecture/references/patterns/mediator.md) | Mediator | 97 |
-| [`memento.md`](https://github.com/MadAppGang/magus/blob/main/plugins/dev/skills/architecture/references/patterns/memento.md) | Memento | 102 |
+| [`mediator.md`](https://github.com/MadAppGang/magus/blob/main/plugins/dev/skills/architecture/references/patterns/mediator.md) | Mediator | 108 |
+| [`memento.md`](https://github.com/MadAppGang/magus/blob/main/plugins/dev/skills/architecture/references/patterns/memento.md) | Memento | 118 |
 | [`observer.md`](https://github.com/MadAppGang/magus/blob/main/plugins/dev/skills/architecture/references/patterns/observer.md) | Observer | 107 |
 | [`prototype.md`](https://github.com/MadAppGang/magus/blob/main/plugins/dev/skills/architecture/references/patterns/prototype.md) | Prototype | 92 |
 | [`proxy.md`](https://github.com/MadAppGang/magus/blob/main/plugins/dev/skills/architecture/references/patterns/proxy.md) | Proxy | 93 |

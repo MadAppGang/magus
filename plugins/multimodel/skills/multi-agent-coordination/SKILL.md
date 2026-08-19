@@ -37,18 +37,18 @@ Use sequential execution when there are **dependencies** between agents:
 
 ```
 Phase 1: Architecture Planning
-  Task: api-architect
+  Agent: dev:architect
     Output: ai-docs/architecture-plan.md
     Wait for completion ✓
 
 Phase 2: Implementation (depends on Phase 1)
-  Task: backend-developer
+  Agent: dev:developer
     Input: Read ai-docs/architecture-plan.md
     Output: src/auth.ts, src/routes.ts
     Wait for completion ✓
 
 Phase 3: Testing (depends on Phase 2)
-  Task: test-architect
+  Agent: dev:test-architect
     Input: Read src/auth.ts, src/routes.ts
     Output: tests/auth.test.ts
 ```
@@ -65,15 +65,15 @@ Use parallel execution when agents are **independent**:
 ```
 Single Message with Multiple Task Calls:
 
-Task: designer
+Agent: designer:design-review
   Prompt: Validate UI against Figma design
   Output: ai-docs/design-review.md
 ---
-Task: ui-manual-tester
+Agent: designer:design-review
   Prompt: Test UI in browser for usability
   Output: ai-docs/testing-report.md
 ---
-Task: senior-code-reviewer
+Agent: dev:reviewer
   Prompt: Review code quality and patterns
   Output: ai-docs/code-review.md
 
@@ -184,7 +184,7 @@ Some workflows benefit from **adaptive agent selection** based on context:
 Example: UI Development with External Validation
 
 Base Implementation:
-  Task: ui-developer
+  Agent: dev:frontend
     Prompt: Implement navbar component from design
 
 User requests external validation:
@@ -220,7 +220,7 @@ Step 1: Write instructions to file
     Content: "Design authentication system with JWT tokens..."
 
 Step 2: Delegate to agent with file reference
-  Task: api-architect
+  Agent: dev:architect
     Prompt: "Read instructions from ai-docs/architecture-instructions.md
              and create architecture plan."
 
@@ -248,7 +248,7 @@ Step 5: Orchestrator reads output file if needed
 ```
 ❌ WRONG - Context Pollution:
 
-Task: api-architect
+Agent: dev:architect
   Prompt: "Design authentication system with:
     - JWT tokens with refresh token rotation
     - Email/password login with bcrypt hashing
@@ -378,18 +378,18 @@ Phase 1: Break into sub-systems
   - Payment integration
 
 Phase 2: Delegate each sub-system to separate agent
-  Task: backend-developer
+  Agent: dev:developer
     Instruction file: ai-docs/product-catalog-requirements.md
     Output file: ai-docs/product-catalog-implementation.md
 
-  Task: backend-developer
+  Agent: dev:developer
     Instruction file: ai-docs/shopping-cart-requirements.md
     Output file: ai-docs/shopping-cart-implementation.md
 
   ... (6 parallel agent invocations)
 
 Phase 3: Integration agent
-  Task: backend-developer
+  Agent: dev:developer
     Instruction: "Integrate 6 sub-systems. Read output files:
                   ai-docs/*-implementation.md"
     Output: ai-docs/integration-plan.md
@@ -501,7 +501,7 @@ Message 1: Preparation
   - Write code context to ai-docs/code-review-context.md
 
 Message 2: Parallel Execution (3 Agent calls in single message)
-  Task: senior-code-reviewer
+  Agent: dev:reviewer
     Prompt: "Review ai-docs/code-review-context.md for security issues"
   ---
   Task: codex-code-reviewer claudish CLI: grok
@@ -513,7 +513,7 @@ Message 2: Parallel Execution (3 Agent calls in single message)
   All 3 execute simultaneously (3x faster than sequential)
 
 Message 3: Auto-Consolidation
-  Task: senior-code-reviewer
+  Agent: dev:reviewer
     Prompt: "Consolidate 3 reviews from:
              - ai-docs/claude-review.md
              - ai-docs/grok-review.md
@@ -548,7 +548,7 @@ Phase 1: Architecture Planning
   Write: ai-docs/payment-requirements.md
     "Integrate Stripe payment processing with webhook support..."
 
-  Task: api-architect
+  Agent: dev:architect
     Prompt: "Read ai-docs/payment-requirements.md
              Create architecture plan"
     Output: ai-docs/payment-architecture.md
@@ -557,7 +557,7 @@ Phase 1: Architecture Planning
   Wait for completion ✓
 
 Phase 2: Implementation (depends on Phase 1)
-  Task: backend-developer
+  Agent: dev:developer
     Prompt: "Read ai-docs/payment-architecture.md
              Implement payment integration"
     Output: src/payment.ts, src/webhooks.ts
@@ -566,7 +566,7 @@ Phase 2: Implementation (depends on Phase 1)
   Wait for completion ✓
 
 Phase 3: Testing (depends on Phase 2)
-  Task: test-architect
+  Agent: dev:test-architect
     Prompt: "Write tests for src/payment.ts and src/webhooks.ts"
     Output: tests/payment.test.ts, tests/webhooks.test.ts
     Return: "Test suite complete. 20 tests covering payment flows."
@@ -574,7 +574,7 @@ Phase 3: Testing (depends on Phase 2)
   Wait for completion ✓
 
 Phase 4: Code Review (depends on Phase 3)
-  Task: senior-code-reviewer
+  Agent: dev:reviewer
     Prompt: "Review payment integration implementation"
     Output: ai-docs/payment-review.md
     Return: "Review complete. 2 MEDIUM issues found."
@@ -602,21 +602,21 @@ Step 1: Ask user preference
   "Do you want external AI validation? (Yes/No)"
 
 Step 2a: If user says NO (speed mode)
-  Task: designer
+  Agent: designer:design-review
     Prompt: "Validate navbar against Figma design"
     Output: ai-docs/design-review.md
     Return: "Design validation complete. PASS with 2 minor suggestions."
 
 Step 2b: If user says YES (quality mode)
   Message 1: Parallel Validation
-    Task: designer
+    Agent: designer:design-review
       Prompt: "Validate navbar against Figma design"
     ---
     Task: designer claudish CLI: design-review-codex
       Prompt: "Validate navbar against Figma design"
 
   Message 2: Consolidate
-    Task: designer
+    Agent: designer:design-review
       Prompt: "Consolidate 2 design reviews. Prioritize by consensus."
       Output: ai-docs/design-review-consolidated.md
       Return: "Consolidated review complete. Both agree on 1 CRITICAL issue."
@@ -658,13 +658,13 @@ Solution: Use file-based delegation + brief summaries
 
 ```
 ❌ Wrong:
-  Task: agent
+  Agent: <agent-n>
     Prompt: "[1000 lines of inline requirements]"
   Return: "[500 lines of full output]"
 
 ✅ Correct:
   Write: ai-docs/requirements.md
-  Task: agent
+  Agent: <agent-n>
     Prompt: "Read ai-docs/requirements.md"
   Return: "Complete. See ai-docs/output.md"
 ```

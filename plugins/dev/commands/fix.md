@@ -187,8 +187,10 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
         CI=true {test_runner_command} {test_args_from_bug_description}
         ```
         Interpretation:
-        - Exit code 0 with test failure output → bug confirmed reproducible
-        - Exit code non-zero (process error) → runner misconfigured; check context.json
+        - Exit code non-zero with test failure output → bug confirmed reproducible
+        - Exit code 0 (suite green) → bug NOT reproduced by this command; refine the args or proceed to localization
+        - Exit code 127, or a compile/import error before any test ran → the runner itself is
+          broken; check context.json. Do NOT read this as a reproduction.
         - No matching test output → bug not yet covered by tests; proceed to localization
         If no reproduction steps are present, skip this step.
       </step>
@@ -345,7 +347,8 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
       <step>Mark PHASE 3 as in_progress</step>
 
       <step name="debugger-delegation">
-        Launch dev:debugger with full localized context:
+        Launch dev:debugger with full localized context. It has Bash but not Write, so it
+        persists its analysis with a heredoc rather than the Write tool.
         ```
         SESSION_PATH: ${SESSION_PATH}
 
@@ -356,7 +359,8 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
         Localization report: {contents of localization.md}
         Code excerpts (top candidates, max 10K tokens total): {line-range excerpts from localization}
 
-        Required output in ${SESSION_PATH}/root-cause.md:
+        Write EXACTLY this structure to ${SESSION_PATH}/root-cause.md using a Bash heredoc
+        (you have Bash, not Write — do not attempt the Write tool):
 
         # Root Cause Analysis
         ## Root Cause (one sentence)
@@ -380,7 +384,7 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
         ```
       </step>
 
-      <step>Read ${SESSION_PATH}/root-cause.md to verify structure is complete before review gate</step>
+      <step>Read ${SESSION_PATH}/root-cause.md and verify the structure is complete before the review gate</step>
 
       <review_gate name="Phase A — Root Cause Consensus" condition="unless SKIP_REVIEW=true">
         <step>
@@ -425,7 +429,10 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
             prompt: "Read ${SESSION_PATH}/vote-prompt-root-cause.md and respond with ONLY the vote schema.
                      IMPORTANT: EVALUATE the proposed root cause only. Do NOT propose alternative fixes.
                      Do NOT investigate further. Just vote on what is already proposed.
-                     Save your vote to: ${SESSION_PATH}/claude-vote-root-cause.md",
+                     Persist the vote to ${SESSION_PATH}/claude-vote-root-cause.md with a Bash
+                     heredoc (you have Bash but not Write; a backgrounded agent returns a launch
+                     receipt, so a returned message would not reach the orchestrator).",
+            description: "vote on root cause",
             run_in_background: true
           )
           ```
@@ -441,7 +448,7 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
 
         <step>
           After all background tasks complete, read results:
-          - ${SESSION_PATH}/claude-vote-root-cause.md (from Task)
+          - ${SESSION_PATH}/claude-vote-root-cause.md (written by dev:debugger via Bash)
           - External model results from `team` tool structured response
         </step>
 
@@ -724,7 +731,10 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
           prompt: "Read ${SESSION_PATH}/vote-prompt-patch.md and respond with ONLY the vote schema.
                    IMPORTANT: EVALUATE the patch quality only. Do NOT propose alternative patches.
                    Do NOT investigate further. Just vote on the patch as presented.
-                   Save your vote to: ${SESSION_PATH}/claude-vote-patch.md",
+                   Persist the vote to ${SESSION_PATH}/claude-vote-patch.md with a Bash heredoc
+                   (you have Bash but not Write; a backgrounded agent returns a launch receipt,
+                   so a returned message would not reach the orchestrator).",
+          description: "vote on patch",
           run_in_background: true
         )
         ```
@@ -740,7 +750,7 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
 
       <step>
         After all background tasks complete, read results:
-        - ${SESSION_PATH}/claude-vote-patch.md (from Task)
+        - ${SESSION_PATH}/claude-vote-patch.md (written by dev:debugger via Bash)
         - External model results from `team` tool structured response
       </step>
 

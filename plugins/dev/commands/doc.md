@@ -160,7 +160,7 @@ skills: dev:documentation-standards, multimodel:quality-gates
           - Test files (for examples)
         </step>
         <step>
-          Launch stack-detector agent via Task:
+          Launch stack-detector agent via Agent:
           Prompt: "SESSION_PATH: ${SESSION_PATH}
                    Detect technology stack. Save to ${SESSION_PATH}/context.json"
         </step>
@@ -178,7 +178,7 @@ skills: dev:documentation-standards, multimodel:quality-gates
           - If exists, use AskUserQuestion for overwrite confirmation
           - If "backup", copy existing to {filename}.bak before proceeding
 
-          Launch dev:docs (mode=write) via Task:
+          Launch dev:docs (mode=write) via Agent:
           Prompt: "SESSION_PATH: ${SESSION_PATH}
 
                    Read skill: ${CLAUDE_PLUGIN_ROOT}/skills/documentation-standards/SKILL.md
@@ -197,7 +197,7 @@ skills: dev:documentation-standards, multimodel:quality-gates
         </step>
         <step>
           **If ANALYZE:**
-          Launch dev:docs (mode=analyze) via Task:
+          Launch dev:docs (mode=analyze) via Agent:
           Prompt: "SESSION_PATH: ${SESSION_PATH}
 
                    Read skill: ${CLAUDE_PLUGIN_ROOT}/skills/documentation-standards/SKILL.md
@@ -220,7 +220,7 @@ skills: dev:documentation-standards, multimodel:quality-gates
           1. Launch dev:docs (mode=analyze) to get the report
           2. Present summary to user with AskUserQuestion:
              "Analysis found {issue_count} issues. Ready to fix. Proceed? (yes/no)"
-          3. Only if confirmed, launch dev:docs (mode=fix) via Task:
+          3. Only if confirmed, launch dev:docs (mode=fix) via Agent:
 
           Prompt: "SESSION_PATH: ${SESSION_PATH}
 
@@ -239,7 +239,7 @@ skills: dev:documentation-standards, multimodel:quality-gates
         </step>
         <step>
           **If VALIDATE:**
-          Launch dev:docs (mode=analyze) via Task:
+          Launch dev:docs (mode=analyze) via Agent:
           Prompt: "SESSION_PATH: ${SESSION_PATH}
 
                    Read skill: ${CLAUDE_PLUGIN_ROOT}/skills/documentation-standards/SKILL.md
@@ -271,7 +271,9 @@ skills: dev:documentation-standards, multimodel:quality-gates
           - Verify best practices applied
         </step>
         <step>
-          If score < 42/52, launch dev:docs (mode=fix) to improve:
+          If score < 42/52, show the findings and ASK before repairing. Only on explicit
+          confirmation, launch dev:docs (mode=fix) to improve — the approval gate above
+          applies to every fix-mode launch, including this one:
           - Fix critical issues
           - Re-validate
         </step>

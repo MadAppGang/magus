@@ -34,7 +34,7 @@ If selectedModels.models is empty: internal Claude only (no external models).
 ### Step 5.5: Launch parallel reviews
 Launch PARALLEL reviews (single message, multiple Tasks):
 
-Task: reviewer
+Agent: dev:reviewer
   Prompt: "Review code changes in ${SESSION_PATH}/code-changes.diff
            Focus on: security, performance, code quality, best practices
            Write review to ${SESSION_PATH}/reviews/code-review/claude-internal.md

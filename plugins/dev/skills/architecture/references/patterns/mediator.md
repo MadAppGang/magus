@@ -62,9 +62,20 @@ bus.addEventListener("email:changed", updateSubmitState);
 ```
 
 **The trade is discoverability for decoupling.** An explicit mediator has the rules in one
-readable method; a bus scatters them across subscribers but removes the central class. State
-managers (Redux, Zustand) and framework stores are mediators at application scale: components
-talk to the store, never to each other.
+readable method; a bus scatters them across subscribers but removes the central class.
+
+**On the popular "Redux/Zustand are mediators" claim: it is not supported.** Redux's own
+documentation uses "middleware" 31 times and "mediator" zero. For Zustand there is no source
+at all. The one public statement is patterns.dev, which names Redux *middleware* — not the
+store — and hedges: *"mediator dressed up as a pipeline."* Its own discriminator is worth
+keeping: **if the middle thing makes decisions it is a mediator; if it only routes messages
+without inspecting them it is a bus.** By that test most event emitters are buses.
+
+Mediator is the thinnest-evidenced pattern in this tree. Wikipedia's article names **no real
+implementation** — only invented examples — where its Chain of Responsibility article names
+Cocoa. The one library claiming it in its own words is `@foblex/mediator` (MIT):
+*"implements the mediator pattern, providing a centralized way to handle requests."*
+Norvig filed Mediator under "invisible or simpler in a dynamic language" in 1996.
 
 ## Trade-offs
 

@@ -70,11 +70,36 @@ When a row points at a file marked *not yet written*, the smell identification, 
 and the ordering above still apply — you are on your own for the mechanics. Do not invent a
 citation to a file you could not read.
 
-**Catalogue edition.** Names here follow Fowler's *Refactoring* 1st edition (1999), which is
-what the smell table and every technique file use. The 2nd edition (2018) renames some
-(Move Method → Move Function) and adds others (Introduce Special Case, Slide Statements,
-Replace Loop with Pipeline). Where a technique file covers a 2nd-edition addition it says so
-in that entry.
+**Catalogue edition — read this before citing a name.** Every name in this tree is from
+Fowler's *Refactoring* **1st edition (1999)**. Modern material tracks the **2nd edition
+(2018)**, and the two disagree substantially.
+
+Fowler published the authoritative reconciliation: `martinfowler.com/articles/refactoring-2nd-changes.html`
+tables all 68 first-edition refactorings with an explicit fate — **29 kept, 28 replaced,
+11 absent**. Cite that table, not his prose, which says "all but 10" against a table listing 11.
+
+**Ten of our entries name a refactoring Fowler dropped**: Hide Method, Extract Interface,
+Form Template Method, Replace Delegation with Inheritance, Introduce Foreign Method,
+Introduce Local Extension, Replace Array with Object, Duplicate Observed Data, and both
+Association techniques. Their pages survive on his site as orphans, unlinked from the index.
+Three more were **renamed with a server-side 301**, which is the strongest evidence available:
+Remove Assignments to Parameters → Split Variable, Replace Method with Method Object →
+Replace Function with Command, Consolidate Duplicate Conditional Fragments → Slide Statements.
+Common renames: Extract/Inline Method → Function, Inline Temp → Inline Variable, Split
+Temporary Variable → Split Variable, Move Method → Move Function, Introduce Null Object →
+Introduce Special Case, Replace Magic Number → Replace Magic Literal.
+
+**Fowler never said why.** His article promises to "extend this article to discuss some of
+these in the future" and never did — so any causal story about a deletion is inference, and
+should be labelled as such.
+
+Two consequences worth knowing. The practitioner catalogues **never followed him** — all ten
+deleted techniques are still live, linked pages on refactoring.guru, which is where the drift
+comes from. And deleted ≠ dead: Fowler dropped Form Template Method, and Kerievsky's
+*Refactoring to Patterns* still carries it; he dropped Replace Array with Object, and the
+TypeScript Handbook independently advises it.
+
+We also **omit Encapsulate Downcast**, the eleventh absent entry, which is not in this tree.
 
 | Group | Smell | Signal you can check | Start with |
 |---|---|---|---|
@@ -185,7 +210,15 @@ came to land, the change is no longer the change.
 
 ## Attribution and scope
 
-Technique and smell names are Martin Fowler's (*Refactoring*, 2nd ed., 2018) and are standard
-terminology. **All text and code in this tree is original to this repository.** refactoring.guru
-is useful further reading and is licensed CC BY-NC-ND 4.0 — read it, never copy from it into this
-MIT repository. Once structure is settled, `selection.md` decides whether a pattern is warranted.
+Technique and smell names are Martin Fowler's, from *Refactoring* **1st edition (1999)** — see
+"Catalogue edition" above for what the 2nd edition renamed and dropped. **All text and code in
+this tree is original to this repository.**
+
+**Licensing of the sources.** refactoring.guru is CC BY-NC-ND 4.0 and refactoring.com and
+martinfowler.com carry **no licence statement at all** (default all-rights-reserved) — read
+them, never copy from them into this MIT repository. `real-world-examples.md` records the
+licence of every cited project, verified by decoding the actual file: GitHub's licence field
+was wrong on 4 of 11 repositories checked, and two projects relicensed *after* the commit we
+cite, so licences there are read at the merge ref rather than at HEAD.
+
+Once structure is settled, `selection.md` decides whether a pattern is warranted.

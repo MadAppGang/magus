@@ -491,15 +491,37 @@ describe("Rule: no-background-tasks", () => {
     for (let i = 0; i < 7; i++) {
       lines.push(JSON.stringify({ type: "assistant", message: { content: [{ type: "tool_use", name: "Write", input: { file_path: `/project/f${i}.ts`, content: "x" } }] } }));
     }
-    // 3 consecutive Agent calls
+    // 3 consecutive FOREGROUND Agent calls. run_in_background must be an explicit false:
+    // omitting it means background (the default since 2.1.198), which is already parallel
+    // and must NOT trigger this rule.
     for (let i = 0; i < 3; i++) {
-      lines.push(JSON.stringify({ type: "assistant", message: { content: [{ type: "tool_use", name: "Agent", input: { subagent_type: "dev:developer", prompt: `task ${i}` } }] } }));
+      lines.push(JSON.stringify({ type: "assistant", message: { content: [{ type: "tool_use", name: "Agent", input: { subagent_type: "dev:developer", prompt: `task ${i}`, run_in_background: false } }] } }));
     }
     const transcriptPath = writeTranscript(testDir, lines.join("\n"));
     runAnalyzer(transcriptPath, "aaaabbbbccccdddd", testDir);
     const recs = readRecommendations(testDir);
     expect(recs).not.toBeNull();
     expect(recs).toContain("run_in_background");
+  });
+
+  it("TEST-17b: Agent calls that OMIT run_in_background do NOT trigger the rule", () => {
+    // The discriminating case. Omitting run_in_background means background (default since
+    // Claude Code 2.1.198), so these calls are already parallel and the rule must stay quiet.
+    // A `!input.run_in_background` gate reads undefined as foreground and fires permanently;
+    // this test is what catches that. TEST-17 cannot -- `!false` and `=== false` agree there.
+    const lines: string[] = [];
+    for (let i = 0; i < 7; i++) {
+      lines.push(JSON.stringify({ type: "assistant", message: { content: [{ type: "tool_use", name: "Write", input: { file_path: `/project/f${i}.ts`, content: "x" } }] } }));
+    }
+    for (let i = 0; i < 3; i++) {
+      lines.push(JSON.stringify({ type: "assistant", message: { content: [{ type: "tool_use", name: "Agent", input: { subagent_type: "dev:developer", prompt: `task ${i}` } }] } }));
+    }
+    const transcriptPath = writeTranscript(testDir, lines.join("\n"));
+    runAnalyzer(transcriptPath, "aaaabbbbccccdddd", testDir);
+    const recs = readRecommendations(testDir);
+    if (recs !== null) {
+      expect(recs).not.toContain("run_in_background");
+    }
   });
 
   it("TEST-18: Agent calls with run_in_background: true do NOT trigger no-background-tasks rule", () => {
@@ -674,10 +696,10 @@ describe("Priority Ordering", () => {
     // /tmp/ path — priority 1
     lines.push(JSON.stringify({ type: "assistant", message: { content: [{ type: "tool_use", name: "Bash", input: { command: "cat /tmp/artifact.md" } }] } }));
 
-    // 3 sequential Tasks — priority 4
-    lines.push(JSON.stringify({ type: "assistant", message: { content: [{ type: "tool_use", name: "Agent", input: { subagent_type: "dev:developer", prompt: "task A" } }] } }));
-    lines.push(JSON.stringify({ type: "assistant", message: { content: [{ type: "tool_use", name: "Agent", input: { subagent_type: "dev:developer", prompt: "task B" } }] } }));
-    lines.push(JSON.stringify({ type: "assistant", message: { content: [{ type: "tool_use", name: "Agent", input: { subagent_type: "dev:developer", prompt: "task C" } }] } }));
+    // 3 sequential (explicitly foreground) Agent calls — priority 4
+    lines.push(JSON.stringify({ type: "assistant", message: { content: [{ type: "tool_use", name: "Agent", input: { subagent_type: "dev:developer", prompt: "task A", run_in_background: false } }] } }));
+    lines.push(JSON.stringify({ type: "assistant", message: { content: [{ type: "tool_use", name: "Agent", input: { subagent_type: "dev:developer", prompt: "task B", run_in_background: false } }] } }));
+    lines.push(JSON.stringify({ type: "assistant", message: { content: [{ type: "tool_use", name: "Agent", input: { subagent_type: "dev:developer", prompt: "task C", run_in_background: false } }] } }));
 
     // 6 Write fillers (Write does not trigger search rules)
     for (let i = 0; i < 6; i++) {

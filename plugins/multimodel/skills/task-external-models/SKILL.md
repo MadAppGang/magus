@@ -74,10 +74,10 @@ claudish team(mode="run", path=SESSION_DIR, models=[...externals...],
   input=VOTE_PROMPT, timeout=180)
 ```
 
-Internal models (Claude) run via Task in the **same message** for true parallelism:
+Internal models (Claude) run via Agent in the **same message** for true parallelism:
 
 ```javascript
-// Internal model via Task (agent resolved from task keywords)
+// Internal model via Agent (agent resolved from task keywords)
 Agent({
   subagent_type: "{RESOLVED_AGENT}",
   description: "Internal Claude vote",

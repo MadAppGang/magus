@@ -628,8 +628,8 @@ verify_output_complete() {
 **What went wrong:**
 ```bash
 # Launched models without recording start time
-Task: reviewer1
-Task: reviewer2
+Agent: <reviewer-1>
+Agent: <reviewer-2>
 # No SESSION_START, cannot calculate duration!
 ```
 

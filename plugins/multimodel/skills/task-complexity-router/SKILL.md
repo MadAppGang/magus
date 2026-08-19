@@ -596,7 +596,7 @@ Routing Decision:
   If balance: Use Claude Haiku (best quality/cost/speed)
 
 Implementation:
-  Task: task-executor
+  Agent: <task-executor>
     Model: grok
     Prompt: "Add JSDoc comments to all functions in UserService.ts"
     claudish: grok

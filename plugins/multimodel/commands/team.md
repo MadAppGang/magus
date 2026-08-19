@@ -61,13 +61,17 @@ claudish team(mode="run", path=SESSION_DIR, models=[...all models with "internal
 **Internal model** (if "internal" requested), same message:
 ```
 Agent(subagent_type=RESOLVED_AGENT, run_in_background=true,
-  prompt=VOTE_PROMPT + "\n\nWrite your complete analysis and vote to: {SESSION_DIR}/internal-result.md")
+  prompt=VOTE_PROMPT + "\n\nPersist your complete analysis and vote to {SESSION_DIR}/internal-result.md
+          using a Bash heredoc. Several vote agents (dev:debugger, dev:reviewer) are granted
+          Read/Glob/Grep/Bash and NOT Write, so the Write tool will not be available; and a
+          backgrounded agent returns a launch receipt, so a returned message would not reach
+          the orchestrator either. The file is the handoff.")
 ```
 
 ## Step 3: Parse Votes
 
 - From `team` tool response: extract per-model results (status, output, errors)
-- From internal Task: Read `{SESSION_DIR}/internal-result.md`
+- From the internal Agent: Read `{SESSION_DIR}/internal-result.md`
 
 Parse vote blocks: `/\`\`\`vote\s*\n([\s\S]*?)\n\s*\`\`\`/` → VERDICT, CONFIDENCE, SUMMARY, KEY_ISSUES
 

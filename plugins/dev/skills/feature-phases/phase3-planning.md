@@ -99,7 +99,7 @@ If selectedModels.configured = true and selectedModels.models is non-empty:
 
   b. Launch PARALLEL plan reviews (SINGLE message, multiple Tasks):
 
-     Task: architect
+     Agent: dev:architect
        Prompt: "Review ${SESSION_PATH}/architecture.md for issues.
                 Write review to ${SESSION_PATH}/reviews/plan-review/claude-internal.md
                 Return brief summary"
@@ -124,7 +124,7 @@ If selectedModels.configured = true and selectedModels.models is non-empty:
 If selectedModels.configured = false OR models is empty:
   Show warning: "No external models configured. Review will use internal Claude only."
   Launch architect for internal review only:
-  Task: architect
+  Agent: dev:architect
     Prompt: "Review ${SESSION_PATH}/architecture.md for issues.
              Write review to ${SESSION_PATH}/reviews/plan-review/claude-internal.md
              Also write to ${SESSION_PATH}/reviews/plan-review/consolidated.md

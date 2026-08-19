@@ -32,13 +32,36 @@ echo "1. referenced paths resolve"
 missing=0
 while IFS= read -r src; do
   dir=$(dirname "$src")
-  # The directory alternation must list EVERY subdirectory under references/, and must allow
-  # nesting (refactoring/techniques/x.md is two deep). An earlier version hard-coded only
-  # `styles/|patterns/`, which silently truncated `refactoring/techniques/composing-methods.md`
-  # down to `composing-methods.md` and then reported it MISSING against the wrong directory.
-  grep -oE '(\.\./)*(references/)?((styles|patterns|refactoring|techniques)/)*[a-z0-9-]+\.md' "$src" 2>/dev/null \
+  # Fenced blocks are stripped before scanning: example ADRs and worked snippets carry
+  # illustrative paths (adr.md ships `docs/typescript-setup.md`) that are not references.
+  # This tracks the opening fence's CHARACTER and LENGTH, because a naive toggle gets three
+  # cases wrong: ~~~ fences are missed entirely; a ````-wrapped example containing ``` has
+  # its toggle inverted, leaking fenced content back in; and an unbalanced fence silently
+  # swallows the rest of the file -- a checker that stops checking without saying so.
+  awk '
+    {
+      if (match($0, /^[[:space:]]*(```+|~~~+)/)) {
+        m = substr($0, RSTART, RLENGTH); sub(/^[[:space:]]*/, "", m)
+        ch = substr(m, 1, 1); len = length(m)
+        if (!inf) { inf = 1; fch = ch; flen = len; next }
+        else if (ch == fch && len >= flen) { inf = 0; next }
+      }
+      if (!inf) print
+    }
+    END { if (inf) print "__UNCLOSED_FENCE__" }
+  ' "$src" 2>/dev/null \
+  | grep -oE '__UNCLOSED_FENCE__|[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)*\.md' \
   | sort -u \
   | while IFS= read -r ref; do
+      if [ "$ref" = "__UNCLOSED_FENCE__" ]; then
+        printf '  UNCLOSED FENCE in %s -- scan stopped early; rest of file NOT checked\n' "$src"
+        continue
+      fi
+      # Capture whole tokens, then filter. An earlier regex excluded uppercase, so
+      # `ADR-0001-use-postgresql-database.md` clipped to `-0001-...` and was reported MISSING
+      # against a path nobody wrote. Every real reference here is lowercase kebab; every
+      # uppercase token is a doc pointer (CLAUDE.md, AGENTS.md, ADR templates).
+      case "$ref" in *[A-Z]*) continue ;; esac
       # Deliberate cross-plugin references. These live outside this tree by design:
       # sin-registry.md is dev:code-roast's maintained failure inventory, which the
       # "when NOT to use" sections cite rather than duplicate.
@@ -46,7 +69,7 @@ while IFS= read -r src; do
       # Technique groups the refactoring router itself advertises as not yet written.
       # Derived from that table, never hard-coded: when a group is written and its status
       # flips to "written", this exemption disappears and the link is enforced again.
-      case " $UNWRITTEN_GROUPS " in *" $(basename "$ref") "*) continue ;; esac
+      case " $UNWRITTEN_GROUPS " in *" $(basename -- "$ref") "*) continue ;; esac
       # STRICT: resolve only relative to the referring file. A root-relative fallback
       # would mask exactly the bug this catches -- a leaf writing `references/x.md`
       # when it already lives inside references/.

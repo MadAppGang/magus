@@ -107,7 +107,7 @@ skills: dev:context-detection
       | code | `dev:reviewer` | — |
       | ui, designer installed | `designer:design-review` | — |
       | ui, designer absent | `dev:reviewer` | "Designer plugin not installed. Reviewing UI from code perspective only. For pixel-diff comparison, install designer@magus." |
-      | docs | `dev:docs` | `mode: "analyze"` |
+      | docs | `dev:docs` | "mode=analyze" — state it in the prompt body; `mode` is not an Agent parameter and is silently dropped if passed as one. |
       | security | `dev:reviewer` | "Check OWASP top 10, auth bypass risks, injection points, sensitive data exposure, dependency vulnerabilities." |
       | plugin | `dev:reviewer` | "Review Claude Code agent/plugin quality — description clarity, schema/frontmatter correctness, skill boundaries, and command structure." |
 

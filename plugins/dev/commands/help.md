@@ -63,7 +63,7 @@ skills: dev:context-detection
 <output_format>
 ## Dev Plugin Help
 
-**Version:** 3.0.0
+**Version:** read from `${CLAUDE_PLUGIN_ROOT}/plugin.json` — never hardcode it here
 **Detected Stack:** {detected_stack}
 **Mode:** {frontend | backend | fullstack}
 

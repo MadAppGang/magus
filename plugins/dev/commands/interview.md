@@ -244,7 +244,7 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates,
         <step>
           Write session-meta.json (via scribe agent):
 
-          Agent: scribe
+          Agent: dev:scribe
           Prompt: "SESSION_PATH: ${SESSION_PATH}
 
           Create session-meta.json with:
@@ -280,7 +280,7 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates,
         <step>
           Initialize interview log (via scribe agent):
 
-          Agent: scribe
+          Agent: dev:scribe
           Prompt: "SESSION_PATH: ${SESSION_PATH}
 
           Create interview-log.md with header:
@@ -308,7 +308,7 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates,
         <step>
           Launch stack-detector agent:
 
-          Agent: stack-detector
+          Agent: dev:stack-detector
           Prompt: "SESSION_PATH: ${SESSION_PATH}
 
           Detect ALL technology stacks in this project.
@@ -333,7 +333,7 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates,
         <step>
           Create interview focus areas document (via scribe agent):
 
-          Agent: scribe
+          Agent: dev:scribe
           Prompt: "SESSION_PATH: ${SESSION_PATH}
 
           Create focus-areas.md with categories:
@@ -350,7 +350,7 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates,
         <step>
           Update checkpoint in session-meta.json:
 
-          Agent: scribe
+          Agent: dev:scribe
           Prompt: "SESSION_PATH: ${SESSION_PATH}
 
           Update session-meta.json checkpoint to phase: 1, round: 0"
@@ -412,7 +412,7 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates,
 
           e. Record answers in interview log (via scribe agent):
 
-             Agent: scribe
+             Agent: dev:scribe
              Prompt: "SESSION_PATH: ${SESSION_PATH}
 
              Append to interview-log.md:
@@ -525,7 +525,7 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates,
         <step>
           If Figma link provided:
           - Leverage existing design analysis skills from dev plugin
-          - Reference figma-analysis patterns if available
+          - If designer@magus is installed, hand design assets to /designer:ui
 
           If API spec path provided:
           - Leverage existing api-design skill
@@ -534,7 +534,7 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates,
         <step>
           Compile assets document (via scribe agent):
 
-          Agent: scribe
+          Agent: dev:scribe
           Prompt: "SESSION_PATH: ${SESSION_PATH}
 
           Create assets.md with:
@@ -584,7 +584,7 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates,
         <step>
           Delegate spec generation to spec-writer agent:
 
-          Agent: spec-writer
+          Agent: dev:spec-writer
           Prompt: "SESSION_PATH: ${SESSION_PATH}
 
           Read all interview materials from ${SESSION_PATH}:
@@ -754,7 +754,7 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates,
         <step>
           Generate task breakdown (via scribe agent):
 
-          Agent: scribe
+          Agent: dev:scribe
           Prompt: "SESSION_PATH: ${SESSION_PATH}
 
           Create tasks.md with:

@@ -4,7 +4,7 @@ set -u
 # enforce-team-rules.sh
 # PreToolUse hook for /team workflow enforcement and claudish usage logging
 #
-# Intercepted tools: Task, Bash
+# Intercepted tools: Agent, Bash
 # Protocol: reads JSON from stdin, writes JSON to fd3 (or stdout)
 #
 # Rules enforced:
@@ -52,14 +52,14 @@ deny() {
 # --------------------------------------------------------------------------
 # RULE: Agent tool validation
 # --------------------------------------------------------------------------
-if [ "${TOOL_NAME}" = "Task" ]; then
+if [ "${TOOL_NAME}" = "Agent" ]; then
   # Parse directly from raw INPUT to avoid multi-line JSON issues
   SUBAGENT=$(echo "${INPUT}" | jq -r '.tool_input.subagent_type // empty' 2>/dev/null || true)
   PROMPT=$(echo "${INPUT}" | jq -r '.tool_input.prompt // empty' 2>/dev/null || true)
 
   # RULE 1: /team workflow enforcement (detect by vote block pattern in prompt)
   # Whitelist of valid agents for /team (matches context_detection in team.md)
-  VALID_AGENTS="dev:researcher dev:debugger dev:developer dev:architect dev:test-architect dev:devops dev:ui"
+  VALID_AGENTS="dev:architect dev:debugger dev:developer dev:devops dev:docs dev:frontend dev:researcher dev:reviewer dev:scribe dev:spec-writer dev:stack-detector dev:synthesizer dev:test-architect"
 
   if echo "${PROMPT}" | grep -q "Team Vote: Independent Review Request\|VERDICT:.*APPROVE\|Required Vote Format"; then
     if [ -n "${SUBAGENT}" ]; then
@@ -76,9 +76,14 @@ if [ "${TOOL_NAME}" = "Task" ]; then
     fi
   fi
 
-  # RULE 3: No /tmp/ paths in Task prompts (session directory enforcement)
-  if echo "${PROMPT}" | grep -q "/tmp/"; then
-    deny "BLOCKED: Task prompt contains /tmp/ path. Use ai-docs/sessions/ for session files."
+  # RULE 3: /team session files belong in ai-docs/sessions/, not /tmp/.
+  # SCOPED to vote-shaped prompts, exactly like RULE 1. Unscoped, this denies every
+  # ordinary delegation that names the harness scratchpad (which lives under /private/tmp/),
+  # i.e. it blocks normal subagent use rather than enforcing a /team convention.
+  if echo "${PROMPT}" | grep -q "Team Vote: Independent Review Request\|VERDICT:.*APPROVE\|Required Vote Format"; then
+    if echo "${PROMPT}" | grep -q "/tmp/"; then
+      deny "BLOCKED: /team prompt contains a /tmp/ path. Use ai-docs/sessions/ for session files."
+    fi
   fi
 
   allow

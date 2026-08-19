@@ -61,6 +61,14 @@ function chain(mws: Middleware[], final: Handler): Handler {
 Prefer this. It composes, it is testable per middleware, and it needs no base class. Every
 Bun and Express server is built this way.
 
+**Middleware is arguably its own pattern, not this one.** *Node.js Design Patterns* files it
+here — behavioral, beside Chain of Responsibility — and says its Node form "has become such a
+standard that it can be considered a pattern of its own"; elsewhere it calls it "the Node.js
+incarnation of the **Intercepting Filter** pattern and the Chain of Responsibility pattern."
+The lineage is servlet filters → Rack → Connect → Express. GoF's own Chain chapter never
+mentions Decorator; that contrast was added to Wikipedia by an editor in 2017, uncited.
+For non-middleware examples that self-identify, see `../real-world-examples.md`.
+
 ## Trade-offs
 
 | Gain | Cost |
@@ -81,8 +89,14 @@ Bun and Express server is built this way.
 ## Relations
 
 - **Decorator** (`decorator.md`) has the same shape; decorators always delegate, chain
-  handlers may stop. `withAuth` short-circuiting a middleware stack is technically a chain
-  link, not a decorator.
+  handlers may stop. `withAuth` short-circuiting a middleware stack is a chain link, not a
+  decorator — `decorator.md` says the same, and access control also overlaps Proxy.
+  **The two most-read references do not conflict here, contrary to a common claim.**
+  Wikipedia states the strict "exactly one handler" test and then concedes *"many
+  implementations (such as loggers, or UI event handling, or servlet filters in Java) allow
+  several elements in the chain to take responsibility"*; refactoring.guru states the loose
+  "may halt the flow" test and concedes the strict reading is *"a bit more canonical"*. Same
+  position from opposite ends.
 - **Composite** (`composite.md`) trees often use a chain to bubble a request from a leaf up
   through its parents.
 - **Command** (`command.md`) is frequently what travels along the chain.

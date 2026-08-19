@@ -467,7 +467,7 @@ Step 5: Extract Structured Feedback
     Severity: LOW
 
 Step 6: Launch Fixing Agent
-  Task: ui-developer
+  Agent: dev:frontend
     Prompt: "Fix user-reported issues:
 
              1. Button color: Change from #10B981 to #2563EB
@@ -534,7 +534,7 @@ Phase 4: User Acceptance
 
 ```
 Step 1: Write Tests First
-  Task: test-architect
+  Agent: dev:test-architect
     Prompt: "Write comprehensive tests for authentication feature.
              Requirements: [link to requirements]
              Implementation: [link to code]"
@@ -553,7 +553,7 @@ Step 3: Check Test Results
     → Analyze failure (continue to Step 4)
 
 Step 4: Analyze Test Failure
-  Task: test-architect
+  Agent: dev:test-architect
     Prompt: "Analyze test failure output:
 
              [test failure logs]
@@ -570,7 +570,7 @@ Step 4: Analyze Test Failure
     recommendation: Specific fix needed
 
 Step 5a: If TEST_ISSUE (test is wrong)
-  Task: test-architect
+  Agent: dev:test-architect
     Prompt: "Fix test based on analysis:
              [analysis from Step 4]"
 
@@ -581,7 +581,7 @@ Step 5a: If TEST_ISSUE (test is wrong)
 Step 5b: If IMPLEMENTATION_ISSUE (code is wrong)
   Provide structured feedback to developer:
 
-  Task: backend-developer
+  Agent: dev:developer
     Prompt: "Fix implementation based on test failure:
 
              Test Failure:
@@ -795,7 +795,7 @@ Step 3c: User says CANCEL
 
 ```
 Iteration 1:
-  Task: designer
+  Agent: designer:design-review
     Prompt: "Validate navbar against Figma design"
     Output: ai-docs/design-review-1.md
     Assessment: NEEDS IMPROVEMENT
@@ -803,28 +803,28 @@ Iteration 1:
       - Button color: #3B82F6 (expected #2563EB)
       - Spacing: 8px (expected 16px)
 
-  Task: ui-developer
+  Agent: dev:frontend
     Prompt: "Fix issues from ai-docs/design-review-1.md"
     Changes: Updated button color, increased spacing
 
   Result: Continue to Iteration 2
 
 Iteration 2:
-  Task: designer
+  Agent: designer:design-review
     Prompt: "Re-validate navbar"
     Output: ai-docs/design-review-2.md
     Assessment: NEEDS IMPROVEMENT
     Issues:
       - Border radius: 8px (expected 4px)
 
-  Task: ui-developer
+  Agent: dev:frontend
     Prompt: "Fix border radius issue"
     Changes: Reduced border radius to 4px
 
   Result: Continue to Iteration 3
 
 Iteration 3:
-  Task: designer
+  Agent: designer:design-review
     Prompt: "Re-validate navbar"
     Output: ai-docs/design-review-3.md
     Assessment: PASS ✓
@@ -851,19 +851,19 @@ Summary:
 Phase 2.5: Test-Driven Development Loop
 
 Iteration 1:
-  Task: test-architect
+  Agent: dev:test-architect
     Prompt: "Write tests for authentication feature"
     Output: tests/auth.test.ts (20 tests)
 
   Bash: bun test tests/auth.test.ts
     Result: 5 failed, 15 passed
 
-  Task: test-architect
+  Agent: dev:test-architect
     Prompt: "Analyze test failures"
     Verdict: IMPLEMENTATION_ISSUE
     Analysis: "Missing JWT expiration validation"
 
-  Task: backend-developer
+  Agent: dev:developer
     Prompt: "Add JWT expiration validation"
     Changes: Updated TokenService.verify()
 
@@ -874,12 +874,12 @@ Iteration 2:
   Bash: bun test tests/auth.test.ts
     Result: 2 failed, 18 passed
 
-  Task: test-architect
+  Agent: dev:test-architect
     Prompt: "Analyze test failures"
     Verdict: TEST_ISSUE
     Analysis: "Mock database not reset between tests"
 
-  Task: test-architect
+  Agent: dev:test-architect
     Prompt: "Fix test setup"
     Changes: Added beforeEach cleanup
 

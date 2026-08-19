@@ -31,7 +31,7 @@ a. Determine if phases are independent or dependent:
 b. If independent phases:
    Launch in PARALLEL (single message, multiple Tasks):
 
-   Task: developer
+   Agent: dev:developer
      Prompt: "SESSION_PATH: ${SESSION_PATH}
 
               Read architecture: ${SESSION_PATH}/architecture.md
@@ -64,7 +64,7 @@ b. If independent phases:
               Log progress to ${SESSION_PATH}/implementation-log.md
               Return brief summary (max 3 lines)"
    ---
-   Task: developer
+   Agent: dev:developer
      ... (for each parallel phase)
 
 c. If dependent phases:
