@@ -4,6 +4,44 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Marketplace 9.3.1] - 2026-08-19
+
+Housekeeping release shipping metadata and documentation drift for five plugins whose
+content moved on main without a version bump — dist repos are force-rebuilt from the
+whole tree on every publish, so this content already sat in them at the old version
+numbers, invisible to updaters, which only react to a version change. Two more plugins
+(`multimodel`, `madbench`) join with fixes the release gates themselves demanded.
+
+### Fixed
+
+- **`multimodel` v3.7.1**: `deep-analyst` no longer instructs a `team` call with
+  `require_pattern` — the claudish tool has no such parameter (accepts mode, path, input,
+  models, judges, timeout), so the call as written would be rejected. The output-shape
+  mandate moves into the `input` prompt and the agent validates returned slots itself;
+  caught by the new plugin rule catalog gate (MC-01) in release.sh Step 1df.
+- **`browser-use` v1.4.1**: concrete model IDs purged from context-injected skill docs —
+  `agent-model` now names placeholder roles (`LATEST_SONNET_MODEL` etc.) and defers live
+  IDs to the `claude-api` skill instead of hardcoding names that go stale in context.
+
+### Changed
+
+- **`claudish` v1.0.1**: durable plugin description separated from release notes; stale
+  `agentdev` references purged from README and description (that plugin was retired).
+- **`mnemex` v1.0.1**: description rewritten as a durable capability statement instead of
+  release-note phrasing.
+- **`dingo` v1.0.1**: description rewritten; `dingo-developer` skill frontmatter slimmed
+  to matcher-read fields only (unread `keywords:`, `version`, `plugin`, `updated` dropped).
+- **`browser-use` v1.4.1**: new README — install, `browser_doctor` preflight, the ten
+  Magus tools and six skills tabulated; trailing keyword lists dropped from five skills'
+  frontmatter (the matcher never read them).
+- **`kanban` v1.6.1**: new README — five columns, cycle-safe dependencies, WIP limits,
+  priority indicators, install and command reference.
+- **`madbench` v0.2.2**: the `--runs` deprecated-alias claim in the runners-and-sandbox
+  reference now carries a dated live verification against `madbench --help` (2026-08-19),
+  closing the EX-01 unverified-CLI-claim warning.
+
+---
+
 ## [Marketplace 9.3.0] - 2026-08-19
 
 Marketplace-wide agent-dispatch integrity release. A 5-member team panel

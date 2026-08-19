@@ -211,7 +211,7 @@ benches) · **`--sandbox <level>`** (override the sandbox level for all benches)
 `--param key=value` (override a declared bench param, repeatable) ·
 `--run <name>` (run only these Eval runs by name, repeatable — selects WHICH runs;
 `--repeat` sets how many times each executes) ·
-`--repeat <n>` (repeat for flake detection; >1 bypasses `--ui`; `--runs` deprecated alias) ·
+`--repeat <n>` (repeat for flake detection; >1 bypasses `--ui`; `--runs` deprecated alias — verified against `--help` 2026-08-19) ·
 `--skip-preflight` · `--ui` (live TUI, single-run only — report flags are still honored
 and written on quit) · `--plain` (append-only progress lines) · `--allow-host-writes`
 (consent for sandbox level `none`) · `--no-update-check` · `--env-file <f>` / `--no-env`.

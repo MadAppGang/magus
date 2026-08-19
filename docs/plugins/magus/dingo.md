@@ -7,7 +7,7 @@ BETA — Dingo language toolkit. Idiomatic Result and Option types, error propag
 
 | | |
 |---|---|
-| Version | `1.0.0` |
+| Version | `1.0.1` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 0 |
 | Subagents | 0 |

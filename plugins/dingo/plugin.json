@@ -1,6 +1,6 @@
 {
   "name": "dingo",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "BETA — Dingo language toolkit. Idiomatic Result and Option types, error propagation, enums, pattern matching, lambdas and safe navigation, with compiler-verified patterns. Interfaces may still change.",
   "author": {
     "name": "Jack Rudenko",

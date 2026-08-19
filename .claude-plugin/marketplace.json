@@ -7,7 +7,7 @@
   },
   "metadata": {
     "description": "Curated collection of Claude Code plugins for modern full-stack development with LLM performance tracking and E2E skill testing",
-    "version": "9.3.0",
+    "version": "9.3.1",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -73,7 +73,7 @@
       "name": "claudish",
       "source": "./plugins/claudish",
       "description": "MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting across models, manages async sessions, and streams channel notifications. Required by code-analysis, dev, multimodel, designer and seo.",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -95,6 +95,11 @@
       "strict": true,
       "releases": [
         {
+          "version": "1.0.1",
+          "date": "2026-08-19",
+          "summary": "Durable plugin description separated from release notes; stale agentdev references purged from\u2026"
+        },
+        {
           "version": "1.0.0",
           "date": "2026-05-09",
           "summary": "Dedicated runtime plugin for the Claudish MCP server. Owns the command: \"claudish\", args:\u2026"
@@ -105,7 +110,7 @@
       "name": "mnemex",
       "source": "./plugins/mnemex",
       "description": "MCP runtime for semantic code search and AST analysis, ranking symbols by PageRank. Required by code-analysis and dev.",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -127,6 +132,11 @@
       "strict": true,
       "releases": [
         {
+          "version": "1.0.1",
+          "date": "2026-08-19",
+          "summary": "Description rewritten as a durable capability statement instead of release-note phrasing"
+        },
+        {
           "version": "1.0.0",
           "date": "2026-05-09",
           "summary": "Dedicated runtime plugin for the Mnemex MCP server. Owns the command: \"mnemex\", args: [\"--mcp\"]\u2026"
@@ -137,7 +147,7 @@
       "name": "multimodel",
       "source": "./plugins/multimodel",
       "description": "Multi-model collaboration and orchestration. Runs a task across several AI models in parallel and aggregates their blind APPROVE/REJECT votes, or delegates it to one model running a full Claude Code session.",
-      "version": "3.7.0",
+      "version": "3.7.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -163,6 +173,11 @@
       "strict": true,
       "releases": [
         {
+          "version": "3.7.1",
+          "date": "2026-08-19",
+          "summary": "Deep-analyst no longer instructs a team call with require_pattern \u2014 the claudish tool has no\u2026"
+        },
+        {
           "version": "3.7.0",
           "date": "2026-08-19",
           "summary": "New deep-analyst agent \u2014 multi-source deep investigation running parallel web, local-repo and\u2026"
@@ -185,15 +200,6 @@
           "version": "3.4.1",
           "date": "2026-08-15",
           "summary": "Dependency range on claudish widened from ~1.0 to ^1.0. Preventive \u2014 every inter-plugin\u2026"
-        },
-        {
-          "version": "3.4.0",
-          "date": "2026-08-06",
-          "kinds": [
-            "Added",
-            "Fixed"
-          ],
-          "summary": "scripts/resolve-models.ts \u2014 preference resolution is now code, not prose"
         }
       ]
     },
@@ -321,7 +327,7 @@
       "name": "dingo",
       "source": "./plugins/dingo",
       "description": "BETA \u2014 Dingo language toolkit. Idiomatic Result and Option types, error propagation, enums, pattern matching, lambdas and safe navigation, with compiler-verified patterns. Interfaces may still change.",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -349,6 +355,11 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "1.0.1",
+          "date": "2026-08-19",
+          "summary": "Description rewritten; dingo-developer skill frontmatter slimmed to matcher-read fields only\u2026"
+        },
         {
           "version": "1.0.0",
           "date": "2026-07-27",
@@ -578,7 +589,7 @@
       "name": "browser-use",
       "source": "./plugins/browser-use",
       "description": "Full-platform browser automation. Live-page JS eval, keyboard and focus primitives, environment preflight, and a configurable agent LLM, across dual local and cloud browsers backed by Playwright's own Chromium so your real Chrome is never hijacked. Ten Magus-specific tools on top of the upstream Browser Use MCP set, plus 6 skills.",
-      "version": "1.4.0",
+      "version": "1.4.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -600,6 +611,11 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "1.4.1",
+          "date": "2026-08-19",
+          "summary": "Concrete model IDs purged from context-injected skill docs \u2014 agent-model now names placeholder\u2026"
+        },
         {
           "version": "1.4.0",
           "date": "2026-07-26",
@@ -787,7 +803,7 @@
       "name": "kanban",
       "source": "./plugins/kanban",
       "description": "Kanban board for task management. Five columns, cycle-safe task dependencies, priority indicators and WIP limits, over a task store independent of GTD.",
-      "version": "1.6.0",
+      "version": "1.6.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -808,6 +824,11 @@
       "strict": true,
       "releases": [
         {
+          "version": "1.6.1",
+          "date": "2026-08-19",
+          "summary": "New README \u2014 five columns, cycle-safe dependencies, WIP limits, priority indicators, install\u2026"
+        },
+        {
           "version": "1.6.0",
           "date": "2026-04-24",
           "kinds": [
@@ -821,7 +842,7 @@
       "name": "madbench",
       "source": "./plugins/madbench",
       "description": "Toolkit for madbench, MadAppGang's Go harness for benchmarking agentic coding tools. Ships the madbench-evals skill: author bench YAML and Eval files, design checks, scaffold red-state and generated testdata, run the negative and positive controls, tune expectations, and debug failing checks.",
-      "version": "0.2.1",
+      "version": "0.2.2",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -842,6 +863,11 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "0.2.2",
+          "date": "2026-08-19",
+          "summary": "The --runs deprecated-alias claim in the runners-and-sandbox reference now carries a dated live\u2026"
+        },
         {
           "version": "0.2.1",
           "date": "2026-08-18",

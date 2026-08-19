@@ -1,6 +1,6 @@
 {
   "name": "mnemex",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "MCP runtime for semantic code search and AST analysis, ranking symbols by PageRank. Required by code-analysis and dev.",
   "author": {
     "name": "Jack Rudenko",

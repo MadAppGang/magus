@@ -1,6 +1,6 @@
 {
   "name": "kanban",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "description": "Kanban board for task management. Five columns, cycle-safe task dependencies, priority indicators and WIP limits, over a task store independent of GTD.",
   "author": { "name": "Jack Rudenko", "email": "i@madappgang.com", "company": "MadAppGang" },
   "license": "MIT",

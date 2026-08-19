@@ -18,7 +18,7 @@ Plugin IDs carry the marketplace, so these are `name@magus-marketing`.
 
 | Plugin | Version | What it does |
 |---|---|---|
-| [`claudish`](./claudish.md) | 1.0.0 | MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting across models, manages async sessions, and streams channel notifications. Required by code-analysis, dev, multimodel, designer and seo. |
+| [`claudish`](./claudish.md) | 1.0.1 | MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting across models, manages async sessions, and streams channel notifications. Required by code-analysis, dev, multimodel, designer and seo. |
 | [`image-generate`](./image-generate.md) | 3.1.0 | Provider-agnostic AI image generation and editing. One interface over Nano Banana Pro, 2 and 2 Lite (Google), GPT Image 2 (OpenAI) and Seedream (ByteDance), with per-model sizing and a background advisory when the pinned models go stale. |
 | [`instantly`](./instantly.md) | 2.0.1 | Cold email outreach toolkit built on the Instantly.ai MCP. Campaign analytics, sequence building, A/B testing, lead management and auto-optimisation. |
 | [`seo`](./seo.md) | 2.0.1 | SEO analysis and optimisation. Audits content and technical SEO, proposes and applies fixes through self-correction loops, and gates each stage on explicit approval. |

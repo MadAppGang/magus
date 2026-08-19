@@ -1,6 +1,6 @@
 {
   "name": "claudish",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting across models, manages async sessions, and streams channel notifications. Required by code-analysis, dev, multimodel, designer and seo.",
   "author": {
     "name": "Jack Rudenko",

@@ -124,12 +124,14 @@ tools: Read, Write, Glob, Grep, Bash, WebSearch, WebFetch, Agent, mcp__plugin_cl
     External models — via claudish MCP, never Bash+CLI:
     ```
     team(mode="run", path=SESSION_PATH, models=[...resolved live...],
-         input=<subquestion prompt>, timeout=600,
-         require_pattern=<shape the answer must match>)
+         input=<subquestion prompt, stating the output shape it must
+                return>, timeout=600)
     ```
-    Set `require_pattern` whenever you mandate an output shape — exit 0 is
-    not a success oracle. Zero-byte or timed-out slots are reported as
-    FAILED in the final report, with the evidence path.
+    The tool has no shape parameter, so mandate the output shape inside
+    `input` and validate each returned slot against it yourself — exit 0
+    is not a success oracle. Zero-byte, timed-out, or shape-violating
+    slots are reported as FAILED in the final report, with the evidence
+    path.
   </phase>
 
   <phase number="4" name="Consolidate">
