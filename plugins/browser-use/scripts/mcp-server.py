@@ -15,11 +15,21 @@ the latest upstream `main`:
     ~/Downloads (browser-use#4548, STILL OPEN; present on latest main).
   - user_data_dir → PID-isolated profile. Upstream uses a fixed profile dir, so
     concurrent sessions hit SingletonLock (browser-use#4548, STILL OPEN).
-  - Force Playwright's bundled Chromium (channel='chromium') so we never hijack
-    the user's real Chrome.app.
-  - Graceful shutdown (atexit + SIGTERM/SIGINT) + profile cleanup, and reap
-    orphaned session profiles (and their Chrome processes) on startup. Upstream
-    has none (stale locks + ~50MB profile leak). Still absent on latest main.
+  - Resolve Playwright's bundled Chromium ourselves and pass executable_path, so
+    we never hijack the user's real Chrome.app. channel='chromium' alone does NOT
+    achieve this: upstream treats it as a soft preference and, when its stale
+    macOS globs miss Playwright's renamed bundle, silently falls through to
+    /Applications/Google Chrome.app. executable_path is honoured before any glob
+    runs. A Chromium we cannot resolve is now a hard error, never a fall-back.
+  - Graceful shutdown (atexit + SIGTERM/SIGINT) + profile cleanup. Upstream has
+    none (stale locks + ~50MB profile leak). Still absent on latest main.
+  - Self-maintenance while the server runs, not only at its process boundaries:
+    the profile directory is freed whenever the last browser dies (including via
+    upstream's 10-minute idle sweep), orphaned profiles are reaped every cycle
+    rather than only at startup, and a server whose parent `claude` was SIGKILLed
+    takes itself down. main() also has to START upstream's cleanup loop: it is
+    spawned only by BrowserUseServer.run(), which we bypass to own stdio wiring,
+    so before this nothing here ever expired an idle session.
   - Suppress the macOS Python "rocket" dock icon. Still absent on latest main.
   - Support cloud browsers (BROWSER_USE_CLOUD env or browser_start_cloud_session).
   - Configurable agent LLM (settings.json "browser-use".agentModel, the
@@ -86,6 +96,7 @@ if "--test" in sys.argv:
 
 import asyncio
 import atexit
+import glob
 import importlib
 import json
 import logging
@@ -249,6 +260,220 @@ def _build_llm(choice: LLMChoice) -> Any:
         kwargs["temperature"] = choice.temperature
 
     return chat_cls(**kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Chromium binary resolution + PID-scoped profile directories
+# ---------------------------------------------------------------------------
+#
+# Upstream treats channel='chromium' as a SOFT preference: when its per-platform
+# glob table goes stale (macOS still globs the pre-rename `Chromium.app` bundle
+# Playwright no longer ships) `_find_installed_browser_path` silently falls
+# through to whatever browser it can find — on a Mac, the user's real
+# /Applications/Google Chrome.app, which hijacks the com.google.Chrome
+# single-instance slot. So we resolve the binary ourselves and hand upstream an
+# explicit `executable_path`, which it honours before any glob runs. Nothing here
+# can *silently* select the user's own Chrome: a missing Chromium is a hard error
+# naming the install command. Only an explicit CHROME_EXECUTABLE_PATH can point
+# at a real Chrome, and that is the user saying so out loud.
+
+_PLAYWRIGHT_INSTALL_CMD = "python3 -m playwright install chromium"
+
+# Current Playwright cache layouts. The macOS pattern globs the .app bundle
+# rather than naming "Google Chrome for Testing", so the next upstream rename
+# cannot reintroduce this bug.
+_CHROMIUM_GLOBS = {
+    "darwin": "chromium-*/chrome-mac*/*.app/Contents/MacOS/*",
+    "linux": "chromium-*/chrome-linux*/chrome",
+    "win32": "chromium-*/chrome-win*/chrome.exe",
+}
+
+# Profile directories embed upstream's 'browser-use-user-data-dir-' marker on
+# purpose. Setting executable_path makes BrowserProfile._copy_profile()'s
+# is_chrome check true (every Playwright chromium binary has "chrome" in its
+# path), and it then relocates user_data_dir into tempfile.mkdtemp() — invisible
+# to the startup reaper. Upstream returns early when this marker appears
+# anywhere in the path, so carrying it keeps the directory ours.
+_SESSION_PROFILE_PREFIX = "browser-use-user-data-dir-session-"
+
+# Every profile-directory naming convention the reaper knows how to sweep,
+# current one first. New directories are only ever created under
+# _SESSION_PROFILE_PREFIX; "session-" is the pre-1.5.0 name, kept here because a
+# server SIGKILLed before it could clean up leaves ~50MB behind under it and no
+# other code path will ever remove it.
+#
+# The two can never double-match the same directory: Path.glob() anchors its
+# pattern at the start of the entry name, so "session-*" does not match
+# "browser-use-user-data-dir-session-1". The kill side is safe for a stronger
+# reason — _process_owns_profile_dir compares whole directory names, and
+# "session-1" != "browser-use-user-data-dir-session-1" — so sweeping the old
+# name cannot reach a browser owned by the current one, not even at the
+# identical PID.
+_REAPABLE_PROFILE_PREFIXES = (_SESSION_PROFILE_PREFIX, "session-")
+
+
+def _session_profile_dir(pid: int) -> Path:
+    """The PID-scoped Chrome profile directory for `pid`."""
+    return (
+        Path.home()
+        / ".config"
+        / "browseruse"
+        / "profiles"
+        / f"{_SESSION_PROFILE_PREFIX}{pid}"
+    )
+
+
+def _remove_session_profile_dir(pid: int) -> None:
+    """
+    Remove the PID-scoped Chrome profile directory. Best-effort, never raises.
+
+    Callers must first establish that no browser is running on it — pulling the
+    profile out from under a live Chrome corrupts it. Otherwise the directory is
+    disposable by design: it is PID-scoped, costs ~50MB, holds nothing worth
+    keeping (persistent state is saved with browser_export_session), and the next
+    browser action recreates it empty.
+    """
+    import shutil
+
+    try:
+        profile_dir = _session_profile_dir(pid)
+        if profile_dir.exists():
+            shutil.rmtree(profile_dir, ignore_errors=True)
+    except Exception:
+        pass
+
+
+def _exit_process(code: int) -> None:
+    """
+    Terminate this process immediately. Callers run cleanup first.
+
+    os._exit rather than sys.exit because the only caller runs inside an asyncio
+    task, where SystemExit would kill the task and leave the process running —
+    exactly the lingering server this is meant to end.
+    """
+    os._exit(code)
+
+
+def _platform_key() -> str:
+    """Map sys.platform onto the three Playwright cache layouts."""
+    if sys.platform == "darwin":
+        return "darwin"
+    if sys.platform.startswith("win"):
+        return "win32"
+    return "linux"
+
+
+def _playwright_cache_root() -> Path:
+    """Playwright's browser cache root, honouring PLAYWRIGHT_BROWSERS_PATH."""
+    override = os.environ.get("PLAYWRIGHT_BROWSERS_PATH")
+    if override:
+        return Path(override).expanduser()
+
+    key = _platform_key()
+    if key == "darwin":
+        return Path.home() / "Library" / "Caches" / "ms-playwright"
+    if key == "win32":
+        local_app_data = os.environ.get("LOCALAPPDATA")
+        base = Path(local_app_data) if local_app_data else Path.home() / "AppData" / "Local"
+        return base / "ms-playwright"
+    return Path.home() / ".cache" / "ms-playwright"
+
+
+def _chromium_revision(path: Path) -> int:
+    """
+    Parse the integer revision out of a `chromium-<rev>` path component.
+
+    Sorting on this instead of the raw string is load-bearing: upstream does
+    matches.sort() then matches[-1], which picks chromium-999 over chromium-1234
+    the moment the revision number changes digit width.
+    """
+    for part in path.parts:
+        match = re.fullmatch(r"chromium-(\d+)", part)
+        if match:
+            return int(match.group(1))
+    return -1
+
+
+def _resolve_chromium_binary() -> str:
+    """
+    Return the Chromium executable to launch, or raise RuntimeError.
+
+    Order:
+      1. CHROME_EXECUTABLE_PATH — the explicit user override. It must name an
+         existing FILE; a missing path or a directory is an error, never a
+         silent fall-back. The directory check matters on macOS, where
+         `/Applications/Google Chrome.app` is a plausible-looking value that
+         exists but is a bundle, not the binary two levels inside it.
+      2. Playwright's browser cache (PLAYWRIGHT_BROWSERS_PATH, else the
+         per-platform default root), newest revision by integer comparison.
+      3. Nothing found — raise, naming `python3 -m playwright install chromium`.
+
+    No branch can *silently* select the user's real Chrome — a loud, actionable
+    error beats a hijacked browser. CHROME_EXECUTABLE_PATH can still name one,
+    because that is the user asking for it explicitly; we warn on stderr when it
+    resolves outside Playwright's cache so the choice is never invisible.
+    """
+    override = os.environ.get("CHROME_EXECUTABLE_PATH")
+    if override:
+        candidate = Path(override).expanduser()
+        if candidate.is_dir():
+            raise RuntimeError(
+                f"CHROME_EXECUTABLE_PATH points at a directory, not an executable: "
+                f"{override} — on macOS the binary lives inside the bundle, e.g. "
+                "'<Bundle>.app/Contents/MacOS/<Name>'."
+            )
+        if candidate.is_file():
+            # An override outside Playwright's cache is legitimate but easy to
+            # set by accident — .env.example used to ship the user's real Chrome
+            # as its example value. Say so rather than hijacking in silence.
+            if "ms-playwright" not in str(candidate):
+                print(
+                    f"browser-use MCP: CHROME_EXECUTABLE_PATH={candidate} is not a "
+                    "Playwright Chromium. Automation will drive this browser; on macOS "
+                    "a real Chrome.app also takes over its single-instance slot. "
+                    "Unset the variable to use Playwright's bundled Chromium.",
+                    file=sys.stderr,
+                )
+            return str(candidate)
+        raise RuntimeError(
+            f"CHROME_EXECUTABLE_PATH points at a path that does not exist: {override} — "
+            "fix it, or unset it to use Playwright's bundled Chromium "
+            f"({_PLAYWRIGHT_INSTALL_CMD})."
+        )
+
+    root = _playwright_cache_root()
+    pattern = _CHROMIUM_GLOBS[_platform_key()]
+    matches = [Path(p) for p in glob.glob(str(root / pattern))]
+    matches = [p for p in matches if p.is_file()]
+    if matches:
+        matches.sort(key=lambda p: (_chromium_revision(p), str(p)))
+        return str(matches[-1])
+
+    raise RuntimeError(
+        f"No Playwright Chromium found under {root} (looked for {pattern!r}). "
+        f"Install it with: {_PLAYWRIGHT_INSTALL_CMD}. "
+        "Alternatively set CHROME_EXECUTABLE_PATH to a Chromium build of your "
+        "choice. The plugin refuses to fall back to a browser it did not resolve "
+        "explicitly, because that silently hijacks your real Chrome."
+    )
+
+
+def _apply_chromium_executable_path(profile_data: dict[str, Any]) -> None:
+    """
+    Pin the resolved Chromium onto a profile — but only when it is ours to pin.
+
+    Called AFTER the user's config has been merged, so the checks see effective
+    values: a deliberate `channel: "chrome"` or a user-supplied executable_path
+    both opt out, and cloud sessions have no local binary at all.
+    """
+    if profile_data.get("use_cloud"):
+        return
+    if profile_data.get("executable_path"):
+        return
+    channel = profile_data.get("channel")
+    if str(getattr(channel, "value", channel)).lower() != "chromium":
+        return
+    profile_data["executable_path"] = _resolve_chromium_binary()
 
 
 # ---------------------------------------------------------------------------
@@ -544,6 +769,10 @@ class MagusBrowserServer(BrowserUseServer):
         # Per-session agent-LLM override set via browser_set_agent_model. When
         # None, the resolver falls back to settings.json config then _DEFAULT_LLM.
         self._session_llm_override: LLMChoice | None = None
+        # The `claude` process that spawned us. os.getppid() changes the instant
+        # the kernel reparents us, which is how the maintenance sweep notices a
+        # SIGKILLed parent — see _exit_if_parent_died().
+        self._parent_pid = os.getppid()
 
     def _extend_list_tools(self) -> None:
         """
@@ -598,8 +827,11 @@ class MagusBrowserServer(BrowserUseServer):
 
         Plus two Magus extensions:
 
-        3. channel='chromium': launch Playwright's bundled Chromium instead of the
-           user's real /Applications/Google Chrome.app (stops link-hijack/focus-steal).
+        3. executable_path: launch the Chromium we resolved from Playwright's cache
+           instead of the user's real /Applications/Google Chrome.app (stops
+           link-hijack/focus-steal). channel='chromium' is set too, but on its own
+           it is only a soft preference upstream ignores when its globs miss —
+           executable_path is what actually pins the binary.
 
         4. BROWSER_USE_CLOUD=true: run against a remote Browser Use cloud browser
            instead of any local browser (requires BROWSER_USE_API_KEY).
@@ -633,11 +865,13 @@ class MagusBrowserServer(BrowserUseServer):
                 "downloads_path": str(Path.home() / ".config" / "browseruse" / "downloads"),
                 "wait_between_actions": 0.5,
                 "keep_alive": True,
-                "user_data_dir": f"~/.config/browseruse/profiles/session-{pid}",
+                "user_data_dir": str(_session_profile_dir(pid)),
                 "device_scale_factor": 1.0,
                 "disable_security": False,
                 "headless": headless_env or False,
-                # Playwright's bundled Chromium — never the user's real Chrome.app
+                # Playwright's bundled Chromium — never the user's real Chrome.app.
+                # channel alone is only a soft preference; executable_path below
+                # is what actually pins the binary.
                 "channel": "chromium",
                 # Config file values override our defaults (user intentional config wins)
                 **profile_config,
@@ -648,6 +882,10 @@ class MagusBrowserServer(BrowserUseServer):
 
         for key, value in kwargs.items():
             profile_data[key] = value
+
+        # After every merge, so the guards see the EFFECTIVE channel and any
+        # user-supplied executable_path.
+        _apply_chromium_executable_path(profile_data)
 
         profile = BrowserProfile(**profile_data)
         self.browser_session = BrowserSession(browser_profile=profile)
@@ -849,14 +1087,20 @@ class MagusBrowserServer(BrowserUseServer):
                 "downloads_path": str(Path.home() / ".config" / "browseruse" / "downloads"),
                 "wait_between_actions": 0.5,
                 "keep_alive": True,
-                "user_data_dir": f"~/.config/browseruse/profiles/session-{pid}",
+                "user_data_dir": str(_session_profile_dir(pid)),
                 "device_scale_factor": 1.0,
                 "disable_security": False,
                 "headless": headless_env or False,
-                # Playwright's bundled Chromium — never the user's real Chrome.app
+                # Playwright's bundled Chromium — never the user's real Chrome.app.
+                # channel alone is only a soft preference; executable_path below
+                # is what actually pins the binary.
                 "channel": "chromium",
                 **profile_config,
             }
+
+            # After the merge, so the guards see the EFFECTIVE channel and any
+            # user-supplied executable_path.
+            _apply_chromium_executable_path(profile_data)
 
             profile = BrowserProfile(**profile_data)
             session = BrowserSession(browser_profile=profile)
@@ -1386,7 +1630,6 @@ class MagusBrowserServer(BrowserUseServer):
         """
         import importlib.util
         import platform
-        import shutil
 
         def _module(name: str) -> dict[str, Any]:
             spec = importlib.util.find_spec(name)
@@ -1399,22 +1642,18 @@ class MagusBrowserServer(BrowserUseServer):
                     info["version"] = None
             return info
 
-        # Chromium/Chrome discovery: PATH, then common macOS app bundle.
-        chromium_path = (
-            shutil.which("chromium")
-            or shutil.which("chromium-browser")
-            or shutil.which("google-chrome")
-            or shutil.which("google-chrome-stable")
-            or os.environ.get("CHROME_EXECUTABLE_PATH")
-        )
-        if not chromium_path and sys.platform == "darwin":
-            for candidate in (
-                "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-                "/Applications/Chromium.app/Contents/MacOS/Chromium",
-            ):
-                if Path(candidate).exists():
-                    chromium_path = candidate
-                    break
+        # Report exactly what the launcher would use — same resolver, so the
+        # doctor and the browser can never disagree. PATH discovery is
+        # deliberately not consulted: it is how the user's real Chrome used to
+        # win over their explicit CHROME_EXECUTABLE_PATH.
+        chromium_path: str | None = None
+        chromium_error: str | None = None
+        chromium_source = "env" if os.environ.get("CHROME_EXECUTABLE_PATH") else "playwright"
+        try:
+            chromium_path = _resolve_chromium_binary()
+        except Exception as exc:  # diagnostics must never raise
+            chromium_source = "error"
+            chromium_error = str(exc)
 
         report = {
             "python_version": platform.python_version(),
@@ -1424,6 +1663,10 @@ class MagusBrowserServer(BrowserUseServer):
             "playwright": _module("playwright"),
             "chromium_present": chromium_path is not None,
             "chromium_path": chromium_path,
+            # Where chromium_path came from: "env" (CHROME_EXECUTABLE_PATH),
+            # "playwright" (bundled cache), or "error" (nothing resolvable).
+            "chromium_source": chromium_source,
+            "chromium_error": chromium_error,
             "api_keys": {
                 "ANTHROPIC_API_KEY": bool(os.environ.get("ANTHROPIC_API_KEY")),
                 "OPENAI_API_KEY": bool(os.environ.get("OPENAI_API_KEY")),
@@ -1431,6 +1674,100 @@ class MagusBrowserServer(BrowserUseServer):
             },
         }
         return json.dumps(report, indent=2)
+
+    # ------------------------------------------------------------------
+    # Automatic cleanup — runs while the server lives, not only at exit
+    #
+    # An MCP server outlives its browsers by days. Upstream kills a session's
+    # Chrome after session_timeout_minutes (10) of inactivity, but every
+    # disk-and-process cleanup this plugin owned fired at a PROCESS boundary:
+    # _shutdown_sync at exit, _reap_orphaned_profiles at startup. So an idle
+    # browser died and left its ~50MB profile behind, orphans of dead servers
+    # waited for some future server to start, and a SIGKILLed parent stranded
+    # everything. The three overrides below move that work onto upstream's
+    # existing 120s cleanup cadence (main() starts the loop).
+    # ------------------------------------------------------------------
+
+    def _has_live_browser_session(self) -> bool:
+        """True while any browser session this server owns may still be running."""
+        if getattr(self, "browser_session", None) is not None:
+            return True
+        try:
+            return bool(getattr(self, "active_sessions", {}))
+        except Exception:
+            return True  # Cannot tell — assume live and keep the profile dir.
+
+    def _release_profile_dir_if_idle(self) -> None:
+        """
+        Free the PID-scoped profile directory once the last browser is gone.
+
+        Deliberately conservative: a close that errored leaves the session
+        tracked, so this does nothing and the directory survives until either a
+        later successful close or process exit.
+        """
+        if self._has_live_browser_session():
+            return
+        _remove_session_profile_dir(os.getpid())
+
+    async def _close_session(self, session_id: str) -> str:
+        """
+        Close one session upstream's way, then free the profile dir if it was the last.
+
+        Every path that kills a browser lands here — browser_close_session,
+        browser_close_all_sessions (which loops over this), and the idle sweep.
+        """
+        result = await super()._close_session(session_id)
+        self._release_profile_dir_if_idle()
+        return result
+
+    async def _cleanup_expired_sessions(self) -> None:
+        """
+        Upstream's 120s idle sweep, extended with this plugin's own maintenance.
+
+        Upstream closes sessions idle longer than session_timeout_minutes; the
+        override adds the two jobs that otherwise ran once per process lifetime.
+        Never raises: it runs inside upstream's cleanup_loop, and taking that
+        loop down would silently disable every periodic behaviour here.
+        """
+        try:
+            await super()._cleanup_expired_sessions()
+        except Exception:
+            pass  # Maintenance below must still run if a session refuses to close.
+
+        _reap_orphaned_profiles()
+        self._exit_if_parent_died()
+
+    def _exit_if_parent_died(self) -> None:
+        """
+        Exit when the `claude` process that spawned us is gone.
+
+        A SIGKILLed parent leaves us reparented to init: nobody reads our stdio,
+        nobody signals us, and our Chrome plus profile directory would survive
+        indefinitely. Comparing os.getppid() against the value captured at
+        startup catches both reparenting to init and to a subreaper, and needs
+        no process scan and no name matching.
+
+        Shutdown goes through _shutdown_sync so the browser is killed and the
+        profile directory removed before the process ends.
+        """
+        try:
+            if os.getppid() == self._parent_pid:
+                return
+        except Exception:
+            return  # Cannot tell — never exit on a guess.
+
+        print(
+            f"browser-use MCP: parent process {self._parent_pid} is gone — "
+            "shutting down and removing this session's Chrome profile",
+            file=sys.stderr,
+        )
+        try:
+            sys.stderr.flush()
+        except Exception:
+            pass
+
+        self._shutdown_sync()
+        _exit_process(0)
 
     # ------------------------------------------------------------------
     # Graceful shutdown
@@ -1475,11 +1812,6 @@ class MagusBrowserServer(BrowserUseServer):
         Kills Chrome for the primary session AND every tracked session, then
         removes the PID-scoped profile directory.
         """
-        pid = os.getpid()
-        profile_dir = (
-            Path.home() / ".config" / "browseruse" / "profiles" / f"session-{pid}"
-        )
-
         # Collect every session: primary + all tracked (import/cloud) sessions.
         sessions: list[Any] = []
         primary = getattr(self, "browser_session", None)
@@ -1496,17 +1828,10 @@ class MagusBrowserServer(BrowserUseServer):
         for session in sessions:
             self._kill_session_sync(session)
 
-        # Remove the entire PID-scoped profile directory.
-        # This is safe — each session gets its own dir, and persistent state should
-        # be exported via browser_export_session before closing. Leaving stale dirs
-        # causes unbounded disk growth (~50MB per Chrome profile).
-        import shutil
-
-        try:
-            if profile_dir.exists():
-                shutil.rmtree(profile_dir, ignore_errors=True)
-        except Exception:
-            pass
+        # Every browser this server owns is now dead, so the PID-scoped profile
+        # directory has no reader left. Leaving stale dirs causes unbounded disk
+        # growth (~50MB per Chrome profile).
+        _remove_session_profile_dir(os.getpid())
 
 
 # ---------------------------------------------------------------------------
@@ -1532,15 +1857,139 @@ def _install_shutdown_handlers(server: MagusBrowserServer) -> None:
 # Startup reaper — clean up profiles (and Chrome) left by dead MCP servers
 # ---------------------------------------------------------------------------
 
+# Both spellings Chrome accepts for the switch, in both the '--flag' and '-flag'
+# forms its POSIX command-line parser takes.
+_USER_DATA_DIR_FLAGS = ("--user-data-dir", "-user-data-dir")
+
+# The two path segments every profile directory this plugin creates sits under.
+_PROFILE_PATH_ANCHOR = ("browseruse", "profiles")
+
+
+def _cmdline_user_data_dirs(cmdline: Any) -> list[str]:
+    """
+    Every --user-data-dir VALUE in one process command line.
+
+    Handles both spellings Chrome accepts:
+        --user-data-dir=/path/to/dir    (one argument — what browser-use emits)
+        --user-data-dir /path/to/dir    (value in the following argument)
+
+    Returns raw strings; normalising and comparing them is the caller's job.
+    NEVER raises and never inspects anything but the arguments: a command line
+    belongs to an arbitrary process on the machine and is untrusted input.
+    """
+    values: list[str] = []
+    try:
+        args = [arg for arg in (cmdline or []) if isinstance(arg, str)]
+    except Exception:
+        return values
+
+    for index, arg in enumerate(args):
+        for flag in _USER_DATA_DIR_FLAGS:
+            if arg.startswith(f"{flag}="):
+                values.append(arg[len(flag) + 1:])
+                break
+            if arg == flag:
+                if index + 1 < len(args):
+                    values.append(args[index + 1])
+                break
+    return values
+
+
+def _profile_dir_key(raw: Any) -> tuple[str, ...]:
+    """
+    Comparison key for one directory path: its segments, normalised.
+
+    Collapses trailing separators, '.', '..' and repeated separators, and
+    resolves symlinks, so every spelling of the same directory produces the same
+    key. BOTH sides of a profile comparison go through this, which is what makes
+    '/p/x/', '/p/./x' and '/p/y/../x' compare equal to '/p/x'.
+
+    Returns () for anything unusable. NEVER raises — see _cmdline_user_data_dirs.
+    """
+    if not isinstance(raw, (str, Path)):
+        return ()
+    text = str(raw)
+    if not text:
+        return ()
+    try:
+        return Path(os.path.realpath(text)).parts
+    except Exception:
+        try:
+            return Path(os.path.normpath(text)).parts
+        except Exception:
+            return ()
+
+
+def _process_owns_profile_dir(cmdline: Any, entry: Path) -> bool:
+    """
+    True when `cmdline` runs a browser on EXACTLY the profile directory `entry`.
+
+    The comparison is against the VALUE of a --user-data-dir argument, as a
+    normalised path — never a substring of the command line.
+
+    That distinction is the whole point. Profile directory names end in the PID
+    that created them, so one name is a PREFIX of another's:
+
+        marker  'browseruse/profiles/session-123'
+        cmdline '--user-data-dir=.../browseruse/profiles/session-1234'
+
+    A substring test matches, so reaping the DEAD server 123 terminated the
+    browser of the LIVE server 1234 — the user lost a browser mid-task with no
+    error. Both naming conventions carry the collision, since both end in
+    digits, and v1.6.0's move to the 120s cleanup cadence made it recurring.
+
+    A value matches on either of two exact-equality rules:
+      * it names the directory being swept, by full normalised path; or
+      * its last three segments are 'browseruse/profiles/<that directory name>',
+        which is the canonical location under $HOME that a browser launched by
+        this plugin records, and which stays comparable when the reaper is
+        pointed at an override directory.
+
+    Neither rule can match the user's own Chrome: its profile lives under
+    Library/Application Support (or the platform equivalent) and its name is
+    never one of ours.
+
+    A relative value is skipped rather than normalised: it belongs to the other
+    process's working directory, which is not knowable from here, and resolving
+    it against the reaper's own cwd would invent a path. Nothing this plugin
+    launches is affected — user_data_dir is built from Path.home().
+    """
+    entry_key = _profile_dir_key(entry)
+    try:
+        anchored = _PROFILE_PATH_ANCHOR + (entry.name,)
+    except Exception:
+        return False
+
+    for value in _cmdline_user_data_dirs(cmdline):
+        try:
+            if not os.path.isabs(value):
+                continue
+        except Exception:
+            continue
+        key = _profile_dir_key(value)
+        if not key:
+            continue
+        if key == entry_key or key[-3:] == anchored:
+            return True
+    return False
+
+
 def _reap_orphaned_profiles(base_dir: Path | None = None) -> None:
     """
-    Reap session-{pid} profile directories whose owning MCP server is dead.
+    Reap PID-scoped profile directories whose owning MCP server is dead.
 
-    For each ~/.config/browseruse/profiles/session-{pid} dir where {pid} is no
-    longer a live process: terminate any process whose cmdline contains the
-    EXACT --user-data-dir substring 'browseruse/profiles/session-{pid}' (a
-    targeted match — never name-based, never touches the user's real Chrome,
-    whose cmdline has no browseruse path), then rmtree the directory.
+    Sweeps every naming convention in _REAPABLE_PROFILE_PREFIXES — the current
+    'browser-use-user-data-dir-session-{pid}' and the pre-1.5.0 'session-{pid}',
+    which a SIGKILLed server can still have left on disk. One pass, one code
+    path: the PID parse, the liveness check, the kill marker and the rmtree all
+    derive from whichever prefix matched the directory in hand.
+
+    For each ~/.config/browseruse/profiles/{prefix}{pid} dir where {pid} is no
+    longer a live process: terminate any process whose --user-data-dir ARGUMENT
+    names exactly that directory (see _process_owns_profile_dir — a path
+    equality, never a substring, never name-based, and never a reach for the
+    user's real Chrome, whose profile is not one of ours), then rmtree the
+    directory.
 
     The 'default' profile dir and dirs of live PIDs are never touched.
     Best-effort: never raises (called before server startup).
@@ -1561,35 +2010,38 @@ def _reap_orphaned_profiles(base_dir: Path | None = None) -> None:
             return
 
         reaped: list[str] = []
-        for entry in sorted(profiles_dir.glob("session-*")):
-            if not entry.is_dir():
-                continue
-            pid_str = entry.name[len("session-"):]
-            if not pid_str.isdigit():
-                continue
-            pid = int(pid_str)
-            if pid == os.getpid() or psutil.pid_exists(pid):
-                continue  # owner still alive (or it's us) — leave it alone
+        for prefix in _REAPABLE_PROFILE_PREFIXES:
+            for entry in sorted(profiles_dir.glob(f"{prefix}*")):
+                if not entry.is_dir():
+                    continue
+                pid_str = entry.name[len(prefix):]
+                if not pid_str.isdigit():
+                    continue
+                pid = int(pid_str)
+                if pid == os.getpid() or psutil.pid_exists(pid):
+                    continue  # owner still alive (or it's us) — leave it alone
 
-            # Owner is dead: kill any Chrome still running on this exact profile.
-            marker = f"browseruse/profiles/session-{pid}"
-            for proc in psutil.process_iter(["pid", "cmdline"]):
-                try:
-                    cmdline = proc.info.get("cmdline") or []
-                    if not any(marker in arg for arg in cmdline):
-                        continue
-                    proc.terminate()
+                # Owner is dead: kill any Chrome still running on this exact
+                # profile. _process_owns_profile_dir compares the --user-data-dir
+                # ARGUMENT as a normalised path, so a directory whose name merely
+                # extends this one's digits is not a match — and every kill still
+                # targets an explicit PID whose command line was read first.
+                for proc in psutil.process_iter(["pid", "cmdline"]):
                     try:
-                        proc.wait(timeout=2)
-                    except psutil.TimeoutExpired:
-                        proc.kill()
-                except (psutil.NoSuchProcess, psutil.AccessDenied):
-                    continue
-                except Exception:
-                    continue
+                        if not _process_owns_profile_dir(proc.info.get("cmdline"), entry):
+                            continue
+                        proc.terminate()
+                        try:
+                            proc.wait(timeout=2)
+                        except psutil.TimeoutExpired:
+                            proc.kill()
+                    except (psutil.NoSuchProcess, psutil.AccessDenied):
+                        continue
+                    except Exception:
+                        continue
 
-            shutil.rmtree(entry, ignore_errors=True)
-            reaped.append(entry.name)
+                shutil.rmtree(entry, ignore_errors=True)
+                reaped.append(entry.name)
 
         if reaped:
             print(
@@ -1611,6 +2063,12 @@ async def main() -> None:
 
     server = MagusBrowserServer()
     _install_shutdown_handlers(server)
+
+    # Upstream starts this loop in BrowserUseServer.run(), which we bypass to own
+    # the stdio wiring — so nothing started it and the idle sweep never ran here.
+    # It is also what drives _cleanup_expired_sessions(): the orphan reaper and
+    # the parent-death check hang off that same 120s cadence.
+    await server._start_cleanup_task()
 
     async with mcp.server.stdio.stdio_server() as (read_stream, write_stream):
         await server.server.run(

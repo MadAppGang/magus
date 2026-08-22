@@ -4,6 +4,108 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [browser-use 1.7.0] - 2026-08-22
+
+### Fixed
+
+- **The orphan reaper could terminate the wrong browser.** It decided what to kill with a
+  substring test against the process cmdline, and profile directory names end in a PID, so one
+  name is a string prefix of another's: sweeping a dead server at PID `123` matched — and
+  terminated — the live browser of PID `1234`. Both naming conventions were affected. It now
+  extracts the `--user-data-dir` argument and compares normalised paths for equality, handling
+  both `--user-data-dir=<path>` and `--user-data-dir <path>`, trailing slashes and `..`
+  segments, and ignoring non-absolute values. This hazard predates v1.6.0, but moving the
+  reaper onto a 120-second cadence turned a rare collision into a recurring one.
+
+### Added
+
+- **The reaper sweeps profile directories created before v1.5.0.** v1.5.0 renamed the
+  convention to `browser-use-user-data-dir-session-<pid>`, so a `session-<pid>` directory left
+  by an older server that was killed before it could clean up after itself had nothing left
+  that would ever remove it — roughly 50MB stranded permanently. The reaper is now generalised
+  over both names in a single pass, with the same guards: dead owner only, `default` never
+  touched, non-numeric suffixes skipped.
+- **CI now runs the browser-use test suites.** `test-plugins.yml` validated shared deps, the
+  marketplace format and the multimodel resolver, but never executed a single browser-use test
+  — the suite that guards which browser binary gets launched. Blocking the `browser_use` import
+  locally produces 13 errors and a failure, so the new job installs the dependency for real. It
+  skips `playwright install`: every binary-resolution test builds a fake Playwright cache in a
+  temp directory.
+
+---
+
+## [browser-use 1.6.0] - 2026-08-22
+
+### Fixed
+
+- **The idle-cleanup loop was never running.** `browser_use`'s MCP server starts it from
+  `BrowserUseServer.run()`, and this plugin's `main()` bypasses `run()` to own its stdio
+  wiring — so `_start_cleanup_task` was never called. Sessions never expired, browsers were
+  never closed after going idle, and a `session_id` stayed valid for the multi-day life of the
+  server. `main()` now starts the loop, so the upstream 10-minute idle timeout takes effect.
+- **Profile directories are freed when the browser dies, not only at process exit.** Removal
+  used to live solely in `_shutdown_sync`, so a browser closed mid-session left its profile
+  behind — around 50MB each — until the Claude Code session ended, which can be days. The
+  directory is now released as soon as the last browser session for that server is closed, and
+  never while a session is still live.
+- **The orphan reaper runs periodically, not only at startup.** On a machine where no new
+  server launches, nothing was ever swept. It now runs on the same 120-second cleanup cadence,
+  still matching only the exact `--user-data-dir` of a dead owner and still sparing live PIDs
+  and the `default` profile.
+
+### Added
+
+- **The server exits when its parent process dies.** A `claude` session killed with SIGKILL
+  used to strand its MCP server, which then never ran shutdown, so its browser and profile
+  directory survived indefinitely. The server compares `os.getppid()` against the value
+  captured at startup and, on reparenting, runs the full shutdown path before exiting.
+
+### Changed
+
+- **Cookies and login state in an idle browser are now discarded after 10 idle minutes**,
+  rather than persisting for the life of the session. Call `browser_export_session` when a
+  login completes rather than at the end of a workflow.
+
+---
+
+## [browser-use 1.5.0] - 2026-08-22
+
+### Fixed
+
+- **The plugin no longer launches your real Chrome.** It resolves Playwright's Chromium
+  itself and pins it as `executable_path`, which upstream honours ahead of its own binary
+  search. Previously the plugin only expressed the preference as `channel="chromium"`, which
+  upstream treats as a soft hint: its macOS patterns still glob for the `Chromium.app`
+  bundle Playwright renamed to `Google Chrome for Testing.app`, so every candidate missed and
+  the search fell through to `/Applications/Google Chrome.app`. On macOS that takes over the
+  `com.google.Chrome` single-instance slot, so clicking your own Chrome icon reopened the
+  automation window instead of your profile. The fall-through was latent on Linux and Windows
+  too, for any machine without Playwright's Chromium installed.
+- **A browser is never chosen implicitly.** With no Chromium installed the server now raises
+  an error naming `python3 -m playwright install chromium` instead of silently substituting
+  whatever browser it can find.
+- **`browser_doctor` and the launcher can no longer disagree.** The doctor reports the
+  resolver's own output plus its provenance (`chromium_source`: `env` / `playwright` /
+  `error`). Its previous search ranked your explicit `CHROME_EXECUTABLE_PATH` last, behind
+  four `PATH` lookups, then fell back to `/Applications/Google Chrome.app`.
+- Newest Chromium is selected by integer revision, so `chromium-1234` beats `chromium-999`.
+
+### Changed
+
+- **`CHROME_EXECUTABLE_PATH` is now the launch override, not a hint.** Set it and that exact
+  binary is launched. It must name an existing file — a path that does not exist, or a
+  directory such as `/Applications/Google Chrome.app` rather than the binary inside the
+  bundle, is an error rather than a silent fall-back. An override outside Playwright's cache
+  logs a stderr advisory, so automation driving your real browser is never invisible.
+  `.env.example` previously offered the real-Chrome path as its example value.
+- **Session profile directories are now named
+  `~/.config/browseruse/profiles/browser-use-user-data-dir-session-<pid>`.** Pinning
+  `executable_path` makes upstream copy the profile into a temp directory, which would blind
+  the orphan reaper that cleans up browsers left by dead sessions; the new name suppresses
+  that copy. Profile directories left by an earlier version are not reaped.
+
+---
+
 ## [setup 1.1.0] - 2026-08-22
 
 ### Fixed

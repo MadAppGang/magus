@@ -554,7 +554,7 @@
       "name": "browser-use",
       "source": "./plugins/browser-use",
       "description": "Full-platform browser automation. Live-page JS eval, keyboard and focus primitives, environment preflight, and a configurable agent LLM, across dual local and cloud browsers backed by Playwright's own Chromium so your real Chrome is never hijacked. Ten Magus-specific tools on top of the upstream Browser Use MCP set, plus 6 skills.",
-      "version": "1.4.1",
+      "version": "1.7.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -577,6 +577,34 @@
       "strict": true,
       "releases": [
         {
+          "version": "1.7.0",
+          "date": "2026-08-22",
+          "kinds": [
+            "Fixed",
+            "Added"
+          ],
+          "summary": "The orphan reaper could terminate the wrong browser"
+        },
+        {
+          "version": "1.6.0",
+          "date": "2026-08-22",
+          "kinds": [
+            "Fixed",
+            "Added",
+            "Changed"
+          ],
+          "summary": "The idle-cleanup loop was never running"
+        },
+        {
+          "version": "1.5.0",
+          "date": "2026-08-22",
+          "kinds": [
+            "Fixed",
+            "Changed"
+          ],
+          "summary": "The plugin no longer launches your real Chrome"
+        },
+        {
           "version": "1.4.1",
           "date": "2026-08-19",
           "summary": "Concrete model IDs purged from context-injected skill docs \u2014 agent-model now names placeholder\u2026"
@@ -588,14 +616,6 @@
             "Added"
           ],
           "summary": "Two disjoint feature sets merged into one release: in-page JS eval, keyboard, focus and\u2026"
-        },
-        {
-          "version": "1.3.0",
-          "date": "2026-07-12",
-          "kinds": [
-            "Added"
-          ],
-          "summary": "Configurable agent-brain LLM"
         }
       ]
     },

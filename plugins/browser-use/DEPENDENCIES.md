@@ -32,17 +32,21 @@ pip install 'browser-use>=0.13.1'
 ```
 
 Version 0.13.1+ is required: the plugin relies on `BrowserSession.kill()`
-semantics, the `channel='chromium'` profile field, `use_cloud` cloud-browser
-support, and `ChatBrowserUse` (bu-latest) — all verified against 0.13.1.
+semantics, the `executable_path` profile field (which upstream honours ahead of
+its own browser discovery), `use_cloud` cloud-browser support, and
+`ChatBrowserUse` (bu-latest) — all verified against 0.13.1.
 
 ### 4. Chromium Browser
 
+The plugin launches the newest Chromium in Playwright's cache and refuses to fall
+back to any other browser, so this install is required, not optional:
+
 ```bash
-# Install Chromium for browser-use
-python3 -c "from browser_use.browser.session import BrowserSession; import asyncio; asyncio.run(BrowserSession().start())"
-# Or if browser-use CLI is available:
-uvx browser-use[cli] install
+python3 -m playwright install chromium
 ```
+
+This is the exact command the server names when it cannot find a Chromium. To use
+a different build instead, set `CHROME_EXECUTABLE_PATH` to its binary.
 
 ### 5. MCP SDK
 

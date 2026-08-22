@@ -28,11 +28,33 @@ v1.2.0 (dual local/cloud + lifecycle fixes):
     - _shutdown_sync must use session.kill() / _local_browser_watchdog._subprocess
       (under keep_alive=True only kill() terminates Chrome; the old
       session._browser/._process probing was dead code on browser-use 0.13.1).
-    - _reap_orphaned_profiles() must remove session-{pid} dirs of dead PIDs
+    - _reap_orphaned_profiles() must remove PID-scoped profile dirs of dead PIDs
       (and only those) on startup.
-    - Local sessions must force channel='chromium' (Playwright's bundled
-      Chromium, never the user's real Chrome.app).
+    - Local sessions must launch Playwright's bundled Chromium, never the user's
+      real Chrome.app (see the REGRESSION note below for why channel='chromium'
+      is not enough on its own).
     - BROWSER_USE_CLOUD=true must build a use_cloud profile without local paths.
+
+REGRESSION (dev-fix-20260822-browser-chrome-hijack):
+    channel='chromium' is only a SOFT preference upstream: when its stale macOS
+    globs miss Playwright's renamed bundle, _find_installed_browser_path falls
+    through to the user's real /Applications/Google Chrome.app, hijacking the
+    macOS single-instance slot for com.google.Chrome.  The server must resolve
+    the binary itself (_resolve_chromium_binary) and pass executable_path, which
+    upstream honours before any glob runs.  Setting executable_path in turn trips
+    upstream's _copy_profile is_chrome check, so the profile-directory convention
+    must embed the 'browser-use-user-data-dir-' marker to keep user_data_dir out
+    of a temp dir and visible to the reaper.
+
+Automatic self-cleanup (dev-fix-20260822-browser-chrome-hijack, follow-up):
+    Every cleanup path used to fire at a PROCESS boundary — _shutdown_sync at
+    exit, _reap_orphaned_profiles at startup — while an MCP server lives for
+    days.  The server must instead maintain itself on upstream's 120s cleanup
+    cadence: free the PID-scoped profile dir whenever the LAST browser dies
+    (never while one is live), reap orphans of dead servers every cycle, and
+    exit when the parent `claude` is SIGKILLed.  And main() must START that
+    cadence — upstream spawns it only from BrowserUseServer.run(), which main()
+    bypasses to own the stdio wiring.
 
 Configurable agent LLM (profiles-inference-redirect):
     - _build_llm() dispatches to the right Chat* class per provider, forwarding
@@ -107,6 +129,9 @@ class _StubBrowserUseServer:
     a no-op that sets just the attributes MagusBrowserServer expects.
     """
 
+    # Upstream's default idle timeout (browser_use/mcp/server.py:190).
+    session_timeout_minutes = 10
+
     def __init__(self, *args, **kwargs):
         self.config = {}
         self.browser_session = None
@@ -116,11 +141,15 @@ class _StubBrowserUseServer:
         self.file_system = None
         self._telemetry = MagicMock()
         self._start_time = time.time()
+        self._cleanup_task = None
+        self.cleanup_task_starts = 0
         # MagusBrowserServer._extend_list_tools() accesses self.server.request_handlers
         # and calls @self.server.list_tools() as a decorator.
         mock_server = MagicMock()
         mock_server.request_handlers = {}
         mock_server.list_tools.return_value = lambda fn: fn
+        # main() awaits server.server.run(...) — a bare MagicMock is not awaitable.
+        mock_server.run = AsyncMock(return_value=None)
         self.server = mock_server
 
     async def _execute_tool(self, tool_name, arguments):
@@ -130,6 +159,67 @@ class _StubBrowserUseServer:
     def _track_session(self, session):
         """No-op session tracker."""
         pass
+
+    # ------------------------------------------------------------------
+    # Session lifecycle — faithful transcription of upstream's semantics
+    # (browser_use/mcp/server.py:1143-1229, browser-use 0.13.x).  The Magus
+    # subclass overrides these, so the stub must behave like the real parent
+    # or the overrides would be tested against a fiction.  A static check
+    # (TestAutoCleanupStaticChecks) asserts the overrides still delegate.
+    # ------------------------------------------------------------------
+
+    async def _close_session(self, session_id):
+        if session_id not in self.active_sessions:
+            return f"Session {session_id} not found"
+
+        session_data = self.active_sessions[session_id]
+        session = session_data["session"]
+        try:
+            if hasattr(session, "kill"):
+                await session.kill()
+            elif hasattr(session, "close"):
+                await session.close()
+
+            del self.active_sessions[session_id]
+
+            if self.browser_session and self.browser_session.id == session_id:
+                self.browser_session = None
+                self.tools = None
+
+            return f"Successfully closed session {session_id}"
+        except Exception as exc:
+            return f"Error closing session {session_id}: {exc}"
+
+    async def _close_all_sessions(self):
+        if not self.active_sessions:
+            return "No active sessions to close"
+
+        closed_count = 0
+        for session_id in list(self.active_sessions.keys()):
+            result = await self._close_session(session_id)
+            if "Successfully closed" in result:
+                closed_count += 1
+
+        self.browser_session = None
+        self.tools = None
+        return f"Closed {closed_count} sessions"
+
+    async def _cleanup_expired_sessions(self):
+        current_time = time.time()
+        timeout_seconds = self.session_timeout_minutes * 60
+
+        expired = [
+            session_id
+            for session_id, session_data in self.active_sessions.items()
+            if current_time - session_data["last_activity"] > timeout_seconds
+        ]
+        for session_id in expired:
+            await self._close_session(session_id)
+
+    async def _start_cleanup_task(self):
+        """Upstream spawns cleanup_loop() here; the stub just records the call."""
+        self.cleanup_task_starts += 1
+        self._cleanup_task = "started"
 
 
 def _install_stubs() -> dict:
@@ -372,6 +462,7 @@ class TestDownloadsPathAvoidsTCC(unittest.TestCase):
         mock_session.start = AsyncMock(return_value=None)
 
         with (
+            _hermetic_chromium_cache(),
             patch.object(_mod, "BrowserProfile", CapturingProfile),
             patch.object(_mod, "BrowserSession", MagicMock(return_value=mock_session)),
             patch.object(_mod, "get_default_profile", return_value={}),
@@ -400,6 +491,7 @@ class TestDownloadsPathAvoidsTCC(unittest.TestCase):
         mock_session.start = AsyncMock(return_value=None)
 
         with (
+            _hermetic_chromium_cache(),
             patch.object(_mod, "BrowserProfile", CapturingProfile),
             patch.object(_mod, "BrowserSession", MagicMock(return_value=mock_session)),
             patch.object(_mod, "get_default_profile", return_value={}),
@@ -442,6 +534,7 @@ class TestUserDataDirIncludesPid(unittest.TestCase):
         mock_session.start = AsyncMock(return_value=None)
 
         with (
+            _hermetic_chromium_cache(),
             patch.object(_mod, "BrowserProfile", CapturingProfile),
             patch.object(_mod, "BrowserSession", MagicMock(return_value=mock_session)),
             patch.object(_mod, "get_default_profile", return_value={}),
@@ -469,6 +562,7 @@ class TestUserDataDirIncludesPid(unittest.TestCase):
         mock_session.start = AsyncMock(return_value=None)
 
         with (
+            _hermetic_chromium_cache(),
             patch.object(_mod, "BrowserProfile", CapturingProfile),
             patch.object(_mod, "BrowserSession", MagicMock(return_value=mock_session)),
             patch.object(_mod, "get_default_profile", return_value={}),
@@ -512,6 +606,7 @@ class TestConcurrentServersGetDifferentUserDataDirs(unittest.TestCase):
             mock_session.start = AsyncMock(return_value=None)
 
             with (
+                _hermetic_chromium_cache(),
                 patch.object(_mod, "BrowserProfile", CapturingProfile),
                 patch.object(_mod, "BrowserSession", MagicMock(return_value=mock_session)),
                 patch.object(_mod, "get_default_profile", return_value={}),
@@ -748,7 +843,7 @@ class TestShutdownHandlers(unittest.TestCase):
 
 class TestShutdownCleansProfileDir(unittest.TestCase):
     """
-    BUG FIX: _shutdown_sync must remove the entire session-{pid} profile
+    BUG FIX: _shutdown_sync must remove the entire PID-scoped profile
     directory, not just SingletonLock.  Without this, stale Chrome profiles
     (~50MB each) accumulate indefinitely in ~/.config/browseruse/profiles/.
     """
@@ -760,9 +855,9 @@ class TestShutdownCleansProfileDir(unittest.TestCase):
         import tempfile
         tmp = Path(tempfile.mkdtemp())
         pid = os.getpid()
-        # _shutdown_sync builds: Path.home() / ".config" / "browseruse" / "profiles" / f"session-{pid}"
-        # So create matching structure under tmp
-        profile_dir = tmp / ".config" / "browseruse" / "profiles" / f"session-{pid}"
+        # _shutdown_sync builds Path.home()/".config"/"browseruse"/"profiles"/
+        # f"{_NEW_SESSION_PREFIX}{pid}" — create the matching structure under tmp.
+        profile_dir = tmp / ".config" / "browseruse" / "profiles" / f"{_NEW_SESSION_PREFIX}{pid}"
         profile_dir.mkdir(parents=True)
         # Create some files to simulate a Chrome profile
         (profile_dir / "SingletonLock").write_text("dummy")
@@ -795,7 +890,7 @@ class TestShutdownCleansProfileDir(unittest.TestCase):
         server.browser_session = None
 
         import tempfile
-        # tmp exists but has no .config/browseruse/profiles/session-{pid} inside
+        # tmp exists but holds no .config/browseruse/profiles/<prefix>{pid} inside
         tmp = Path(tempfile.mkdtemp())
         original_home = Path.home
 
@@ -804,7 +899,7 @@ class TestShutdownCleansProfileDir(unittest.TestCase):
 
         try:
             Path.home = staticmethod(fake_home)
-            # Should not raise even though session-{pid} doesn't exist
+            # Should not raise even though the profile dir doesn't exist
             server._shutdown_sync()
         finally:
             Path.home = original_home
@@ -1145,6 +1240,11 @@ class TestChromiumChannel(unittest.TestCase):
     Local sessions must pass channel='chromium' so browser-use launches
     Playwright's bundled Chromium instead of the user's real Chrome.app
     (which caused macOS link-hijack / focus-steal).
+
+    The setting alone does not achieve that — see TestProfileCarriesResolvedBinary
+    for the executable_path that does. It is still asserted here because a user
+    config may deliberately override it, which is what opts a profile out of our
+    binary resolution.
     """
 
     def _captured_profile(self):
@@ -1159,6 +1259,7 @@ class TestChromiumChannel(unittest.TestCase):
         mock_session.start = AsyncMock(return_value=None)
 
         with (
+            _hermetic_chromium_cache(),
             patch.object(_mod, "BrowserProfile", CapturingProfile),
             patch.object(_mod, "BrowserSession", MagicMock(return_value=mock_session)),
             patch.object(_mod, "get_default_profile", return_value={}),
@@ -1191,6 +1292,7 @@ class TestChromiumChannel(unittest.TestCase):
         mock_session.start = AsyncMock(return_value=None)
 
         with (
+            _hermetic_chromium_cache(),
             patch.object(_mod, "BrowserProfile", CapturingProfile),
             patch.object(_mod, "BrowserSession", MagicMock(return_value=mock_session)),
             patch.object(_mod, "get_default_profile", return_value={"channel": "chrome"}),
@@ -1815,9 +1917,9 @@ class TestStartCloudSessionTool(unittest.TestCase):
 
 class TestReapOrphanedProfiles(unittest.TestCase):
     """
-    _reap_orphaned_profiles(base_dir=...) must remove session-{pid} dirs whose
-    PID is dead, and must never touch: the 'default' dir, dirs of live PIDs,
-    or dirs whose suffix isn't a PID.
+    _reap_orphaned_profiles(base_dir=...) must remove PID-scoped profile dirs
+    whose PID is dead, and must never touch: the 'default' dir, dirs of live
+    PIDs, or dirs whose suffix isn't a PID.
     """
 
     @staticmethod
@@ -1838,10 +1940,10 @@ class TestReapOrphanedProfiles(unittest.TestCase):
             dead_pid = self._find_dead_pid()
             live_pid = os.getpid()
 
-            dead_dir = tmp / f"session-{dead_pid}"
-            live_dir = tmp / f"session-{live_pid}"
+            dead_dir = tmp / f"{_NEW_SESSION_PREFIX}{dead_pid}"
+            live_dir = tmp / f"{_NEW_SESSION_PREFIX}{live_pid}"
             default_dir = tmp / "default"
-            weird_dir = tmp / "session-notapid"
+            weird_dir = tmp / f"{_NEW_SESSION_PREFIX}notapid"
 
             for d in (dead_dir, live_dir, default_dir, weird_dir):
                 d.mkdir(parents=True)
@@ -1925,6 +2027,1833 @@ class TestShutdownStaticChecks(unittest.TestCase):
             self.shutdown_src,
             "Shutdown must kill tracked sessions too, not just the primary one",
         )
+
+
+# ---------------------------------------------------------------------------
+# Test 13: Chromium binary resolution — helpers
+#
+# REGRESSION: browser-use launched the user's real Chrome instead of Playwright's
+# Chromium — /dev:fix session dev-fix-20260822-browser-chrome-hijack
+#
+# Why these tests do NOT use the CapturingProfile pattern for the profile guard:
+# CapturingProfile substitutes BrowserProfile with a kwargs recorder, so no real
+# profile is ever constructed, model_post_init never runs, and no binary is ever
+# resolved. That is precisely why 90 tests passed while the bug was live. The
+# resolver tests below assert the RESOLVED BINARY PATH, and the _copy_profile
+# guard constructs a REAL BrowserProfile.
+# ---------------------------------------------------------------------------
+
+import contextlib  # noqa: E402
+import io  # noqa: E402
+import shutil as _shutil  # noqa: E402
+import tempfile as _tempfile  # noqa: E402
+
+# The profile-directory convention that keeps upstream's _copy_profile() from
+# relocating our user_data_dir into tempfile.mkdtemp() once executable_path is
+# set (profile.py returns early when this marker appears in the path).
+_NEW_SESSION_PREFIX = "browser-use-user-data-dir-session-"
+
+# The pre-1.5.0 convention. A server SIGKILLed before it could clean up left one
+# of these behind at ~50MB, and the reaper must still sweep it.
+_OLD_SESSION_PREFIX = "session-"
+
+# The one path that must never come back from binary resolution.
+_HIJACK_PATH_FRAGMENT = "Google Chrome.app"
+
+
+def _current_platform_key() -> str:
+    """Map sys.platform onto the three Playwright cache layouts."""
+    if sys.platform == "darwin":
+        return "darwin"
+    if sys.platform.startswith("win"):
+        return "win32"
+    return "linux"
+
+
+def _make_fake_chromium(
+    cache_root: Path,
+    revision: int,
+    platform_key: str,
+    mac_dir: str = "chrome-mac-arm64",
+    mac_bundle: str = "Google Chrome for Testing",
+) -> Path:
+    """
+    Create one fake Playwright chromium install under cache_root and return the
+    binary path.  Layouts mirror what Playwright actually ships today:
+
+        darwin: chromium-<rev>/chrome-mac-arm64/<Bundle>.app/Contents/MacOS/<Bundle>
+        linux : chromium-<rev>/chrome-linux/chrome
+        win32 : chromium-<rev>/chrome-win/chrome.exe
+    """
+    rev_dir = cache_root / f"chromium-{revision}"
+    if platform_key == "darwin":
+        binary = rev_dir / mac_dir / f"{mac_bundle}.app" / "Contents" / "MacOS" / mac_bundle
+    elif platform_key == "win32":
+        binary = rev_dir / "chrome-win" / "chrome.exe"
+    else:
+        binary = rev_dir / "chrome-linux" / "chrome"
+    binary.parent.mkdir(parents=True, exist_ok=True)
+    binary.write_text("#!/bin/sh\nexit 0\n")
+    binary.chmod(0o755)
+    return binary
+
+
+@contextlib.contextmanager
+def _chromium_env(cache_root=None, chrome_executable=None):
+    """
+    Deterministic environment for binary resolution: both env vars are cleared
+    first so a developer's real shell cannot leak in, then set as requested.
+    patch.dict restores deletions as well as additions on exit.
+    """
+    with patch.dict(os.environ, {}):
+        os.environ.pop("CHROME_EXECUTABLE_PATH", None)
+        os.environ.pop("PLAYWRIGHT_BROWSERS_PATH", None)
+        if cache_root is not None:
+            os.environ["PLAYWRIGHT_BROWSERS_PATH"] = str(cache_root)
+        if chrome_executable is not None:
+            os.environ["CHROME_EXECUTABLE_PATH"] = str(chrome_executable)
+        yield
+
+
+@contextlib.contextmanager
+def _captured_streams():
+    """
+    Collect stdout and stderr separately for the duration of the block.
+
+    Both streams matter for the resolver's CHROME_EXECUTABLE_PATH advisory: it
+    must reach stderr, and it must NOT reach stdout — MCP speaks JSON-RPC over
+    stdout, so a stray print there corrupts the protocol for every tool call.
+    """
+    out, err = io.StringIO(), io.StringIO()
+    with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+        yield out, err
+
+
+@contextlib.contextmanager
+def _hermetic_chromium_cache():
+    """
+    A throwaway Playwright cache containing exactly one Chromium build.
+
+    Every test that reaches _init_browser_session now resolves a real binary, so
+    without this it would pass or fail on whether the developer's machine happens
+    to have Playwright installed — and error on a fresh CI runner. Points
+    PLAYWRIGHT_BROWSERS_PATH at the fixture so the real ~/Library/Caches or
+    ~/.cache copy is never touched.
+    """
+    cache = Path(_tempfile.mkdtemp(prefix="magus-chromium-fixture-")).resolve()
+    try:
+        _make_fake_chromium(cache, 1234, _current_platform_key())
+        with _chromium_env(cache_root=cache):
+            yield cache
+    finally:
+        _shutil.rmtree(cache, ignore_errors=True)
+
+
+def _capture_profile_kwargs(profile_config=None) -> dict:
+    """Run _init_browser_session and return the kwargs handed to BrowserProfile."""
+    server = _make_server()
+    captured: dict = {}
+
+    class CapturingProfile:
+        def __init__(self, **kwargs):
+            captured.update(kwargs)
+
+    mock_session = MagicMock()
+    mock_session.start = AsyncMock(return_value=None)
+
+    with (
+        patch.object(_mod, "BrowserProfile", CapturingProfile),
+        patch.object(_mod, "BrowserSession", MagicMock(return_value=mock_session)),
+        patch.object(_mod, "get_default_profile", return_value=profile_config or {}),
+        patch.object(_mod, "get_default_llm", return_value={}),
+    ):
+        server._track_session = MagicMock()
+        asyncio.run(server._init_browser_session())
+
+    return captured
+
+
+class _TempDirMixin(unittest.TestCase):
+    """Temp directories that clean themselves up, resolved to their real path."""
+
+    def _tmpdir(self) -> Path:
+        tmp = Path(_tempfile.mkdtemp(prefix="magus-chromium-test-")).resolve()
+        self.addCleanup(_shutil.rmtree, tmp, ignore_errors=True)
+        return tmp
+
+    def _resolver(self):
+        """
+        Return mcp-server.py's _resolve_chromium_binary, or fail with the reason.
+
+        The function does not exist yet — that is the point of the RED step.
+        """
+        fn = getattr(_mod, "_resolve_chromium_binary", None)
+        if fn is None:
+            self.fail(
+                "mcp-server.py must define _resolve_chromium_binary(): binary selection "
+                "cannot be delegated to upstream, whose channel='chromium' is only a soft "
+                "preference and silently falls through to /Applications/Google Chrome.app"
+            )
+        return fn
+
+
+# ---------------------------------------------------------------------------
+# Test 13a: _resolve_chromium_binary — never returns the user's real Chrome
+# ---------------------------------------------------------------------------
+
+class TestResolveChromiumBinary(_TempDirMixin):
+    """
+    Binary resolution must be owned by mcp-server.py, assert on the RESOLVED
+    PATH (not on a profile setting), and have no code path that can return the
+    user's real Chrome.
+    """
+
+    def test_empty_playwright_cache_raises_instead_of_using_real_chrome(self):
+        """
+        THE regression test for this bug: an empty Playwright cache must be a
+        loud, actionable error — never a silent fall-through to the user's Chrome.
+
+        # REGRESSION: browser-use launched the user's real Chrome instead of
+        # Playwright's Chromium — /dev:fix session dev-fix-20260822-browser-chrome-hijack
+        """
+        resolve = self._resolver()
+
+        empty_cache = self._tmpdir()  # exists, contains no chromium-* at all
+
+        # A path that looks exactly like the user's real Chrome — the binary
+        # upstream's prioritized+rest loop degrades to when every glob misses.
+        decoy_root = self._tmpdir()
+        decoy = decoy_root / "Applications" / "Google Chrome.app" / "Contents" / "MacOS" / "Google Chrome"
+        decoy.parent.mkdir(parents=True, exist_ok=True)
+        decoy.write_text("#!/bin/sh\nexit 0\n")
+        decoy.chmod(0o755)
+
+        with _chromium_env(cache_root=empty_cache):
+            with self.assertRaises(RuntimeError) as ctx:
+                resolved = resolve()
+                # Only reached when it did NOT raise. Name the hijack explicitly
+                # before the context manager reports "RuntimeError not raised".
+                self.assertNotIn(
+                    _HIJACK_PATH_FRAGMENT,
+                    str(resolved),
+                    "_resolve_chromium_binary() returned the user's real Chrome "
+                    f"({resolved!r}) when Playwright's cache was empty. This is the "
+                    "macOS single-instance hijack: it steals the com.google.Chrome "
+                    "slot so the user's own Chrome icon reopens the automation window.",
+                )
+
+        self.assertIn(
+            "playwright install",
+            str(ctx.exception).lower(),
+            "The error must name the remedy (python3 -m playwright install chromium). "
+            f"Got: {str(ctx.exception)!r}",
+        )
+
+    def test_resolves_binary_under_playwright_cache_on_every_layout(self):
+        """
+        Happy path across all three current Playwright layouts.  The macOS cases
+        include a differently-named .app bundle to prove the resolver globs the
+        bundle instead of hardcoding 'Google Chrome for Testing' — hardcoding is
+        what went stale upstream and caused this bug.
+
+        # REGRESSION: browser-use launched the user's real Chrome instead of
+        # Playwright's Chromium — /dev:fix session dev-fix-20260822-browser-chrome-hijack
+        """
+        resolve = self._resolver()
+
+        cases = [
+            (
+                "darwin",
+                {"mac_dir": "chrome-mac-arm64", "mac_bundle": "Google Chrome for Testing"},
+                "chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/"
+                "Google Chrome for Testing",
+            ),
+            (
+                # Wildcard-friendly: a bundle Playwright has never shipped under
+                # this name. A hardcoded bundle name fails here.
+                "darwin",
+                {"mac_dir": "chrome-mac", "mac_bundle": "Chromium Nightly"},
+                "chrome-mac/Chromium Nightly.app/Contents/MacOS/Chromium Nightly",
+            ),
+            ("linux", {}, "chrome-linux/chrome"),
+            ("win32", {}, "chrome-win/chrome.exe"),
+        ]
+
+        for platform_key, layout_kwargs, expected_suffix in cases:
+            with self.subTest(platform=platform_key, layout=expected_suffix):
+                cache = self._tmpdir()
+                expected = _make_fake_chromium(cache, 1234, platform_key, **layout_kwargs)
+
+                with _chromium_env(cache_root=cache), patch.object(sys, "platform", platform_key):
+                    resolved = str(resolve())
+
+                self.assertTrue(
+                    resolved.startswith(str(cache)),
+                    f"Resolved binary must live under the Playwright cache {str(cache)!r}. "
+                    f"Got: {resolved!r}",
+                )
+                self.assertIn(
+                    expected_suffix,
+                    resolved.replace("\\", "/"),
+                    f"Expected the {platform_key} layout binary {str(expected)!r}. "
+                    f"Got: {resolved!r}",
+                )
+                self.assertNotIn(
+                    _HIJACK_PATH_FRAGMENT,
+                    resolved,
+                    f"Resolution must never return the user's real Chrome. Got: {resolved!r}",
+                )
+
+    def test_revisions_are_ordered_numerically_not_lexicographically(self):
+        """
+        chromium-1234 beats chromium-999.  Upstream does matches.sort() then
+        matches[-1], which picks the older build the moment the revision number
+        changes digit width.
+
+        # REGRESSION: browser-use launched the user's real Chrome instead of
+        # Playwright's Chromium — /dev:fix session dev-fix-20260822-browser-chrome-hijack
+        """
+        resolve = self._resolver()
+
+        cache = self._tmpdir()
+        _make_fake_chromium(cache, 999, "linux")
+        _make_fake_chromium(cache, 1234, "linux")
+
+        with _chromium_env(cache_root=cache), patch.object(sys, "platform", "linux"):
+            resolved = str(resolve())
+
+        self.assertIn(
+            "chromium-1234",
+            resolved,
+            "Revision 1234 is newer than 999 and must win. A lexicographic sort() "
+            f"picks 'chromium-999'. Got: {resolved!r}",
+        )
+        self.assertNotIn("chromium-999", resolved, f"Got the older revision: {resolved!r}")
+
+    def test_chrome_executable_path_env_wins_over_playwright_cache(self):
+        """
+        CHROME_EXECUTABLE_PATH is documented as the browser override, so an
+        existing file it names must be returned ahead of any cache hit.
+
+        # REGRESSION: browser-use launched the user's real Chrome instead of
+        # Playwright's Chromium — /dev:fix session dev-fix-20260822-browser-chrome-hijack
+        """
+        resolve = self._resolver()
+
+        cache = self._tmpdir()
+        _make_fake_chromium(cache, 1234, _current_platform_key())
+
+        override_dir = self._tmpdir()
+        override = override_dir / "my-chromium"
+        override.write_text("#!/bin/sh\nexit 0\n")
+        override.chmod(0o755)
+
+        with _chromium_env(cache_root=cache, chrome_executable=override):
+            resolved = resolve()
+
+        self.assertEqual(
+            str(Path(resolved).resolve()),
+            str(override.resolve()),
+            "CHROME_EXECUTABLE_PATH must take precedence over the Playwright cache. "
+            f"Got: {resolved!r}",
+        )
+
+    def test_chrome_executable_path_pointing_nowhere_raises(self):
+        """
+        A bad CHROME_EXECUTABLE_PATH must be a hard error naming the bad value —
+        never a silent fall-through to cache discovery or to the user's Chrome.
+
+        # REGRESSION: browser-use launched the user's real Chrome instead of
+        # Playwright's Chromium — /dev:fix session dev-fix-20260822-browser-chrome-hijack
+        """
+        resolve = self._resolver()
+
+        cache = self._tmpdir()
+        _make_fake_chromium(cache, 1234, _current_platform_key())
+
+        bogus = self._tmpdir() / "no-such-chromium-binary"
+        self.assertFalse(bogus.exists(), "precondition: the override must not exist")
+
+        with _chromium_env(cache_root=cache, chrome_executable=bogus):
+            with self.assertRaises(RuntimeError) as ctx:
+                resolved = resolve()
+                self.fail(
+                    "A nonexistent CHROME_EXECUTABLE_PATH must raise, not silently fall "
+                    f"back. Got: {resolved!r}"
+                )
+
+        self.assertIn(
+            str(bogus),
+            str(ctx.exception),
+            f"The error must name the bad value {str(bogus)!r}. Got: {str(ctx.exception)!r}",
+        )
+
+    def test_chrome_executable_path_pointing_at_a_directory_raises(self):
+        """
+        A directory is not an executable, and exists() cannot tell them apart.
+
+        This is the macOS trap: `/Applications/Google Chrome.app` is the obvious
+        thing to type into CHROME_EXECUTABLE_PATH — it exists, it is what Finder
+        shows, and it is a bundle DIRECTORY whose binary sits two levels inside at
+        Contents/MacOS/. An exists()-only check accepts it and hands upstream a
+        path no browser can be launched from, so the failure surfaces later and
+        somewhere else. The resolver requires is_file() and says so.
+
+        # REGRESSION: browser-use launched the user's real Chrome instead of
+        # Playwright's Chromium — /dev:fix session dev-fix-20260822-browser-chrome-hijack
+        """
+        resolve = self._resolver()
+
+        cache = self._tmpdir()
+        _make_fake_chromium(cache, 1234, _current_platform_key())
+
+        # A local stand-in for /Applications/Google Chrome.app, complete with the
+        # binary inside it. Built in a temp dir on purpose: the test must not
+        # depend on the machine running it having a real Chrome installed.
+        bundle = self._tmpdir() / "Applications" / "Google Chrome.app"
+        (bundle / "Contents" / "MacOS").mkdir(parents=True, exist_ok=True)
+        inner = bundle / "Contents" / "MacOS" / "Google Chrome"
+        inner.write_text("#!/bin/sh\nexit 0\n")
+        inner.chmod(0o755)
+        self.assertTrue(bundle.is_dir(), "precondition: the override must BE a directory")
+
+        with _chromium_env(cache_root=cache, chrome_executable=bundle):
+            with self.assertRaises(RuntimeError) as ctx:
+                resolved = resolve()
+                self.fail(
+                    "A CHROME_EXECUTABLE_PATH naming a directory must raise. It must not "
+                    "be returned as if it were an executable, and it must not silently "
+                    f"fall through to the Playwright cache either. Got: {resolved!r}"
+                )
+
+        message = str(ctx.exception)
+        self.assertIn(
+            str(bundle),
+            message,
+            f"The error must name the offending path {str(bundle)!r}. Got: {message!r}",
+        )
+        self.assertIn(
+            "directory",
+            message.lower(),
+            "The error must diagnose it AS a directory and point at the binary inside "
+            "the bundle. Dropping the is_dir() check would send this path to the "
+            "'does not exist' branch, which raises the same RuntimeError while telling "
+            f"the user something false and unactionable. Got: {message!r}",
+        )
+
+    def test_override_outside_playwright_cache_warns_but_still_returns(self):
+        """
+        An override that is not a Playwright Chromium is legitimate — it is the
+        user asking for that browser out loud — but it must never be invisible:
+        .env.example once shipped the user's real Chrome as its example value, and
+        on macOS driving a real Chrome.app also seizes its single-instance slot.
+
+        The advisory is an advisory. It must not become a refusal, so the path is
+        still returned; and it goes to stderr, never stdout, because stdout
+        carries MCP's JSON-RPC.
+
+        # REGRESSION: browser-use launched the user's real Chrome instead of
+        # Playwright's Chromium — /dev:fix session dev-fix-20260822-browser-chrome-hijack
+        """
+        resolve = self._resolver()
+
+        cache = self._tmpdir()
+        _make_fake_chromium(cache, 1234, _current_platform_key())
+
+        override = self._tmpdir() / "Google Chrome"
+        override.write_text("#!/bin/sh\nexit 0\n")
+        override.chmod(0o755)
+        self.assertNotIn(
+            "ms-playwright",
+            str(override),
+            "precondition: the override must live outside Playwright's cache",
+        )
+
+        with _chromium_env(cache_root=cache, chrome_executable=override):
+            with _captured_streams() as (out, err):
+                resolved = resolve()
+
+        self.assertEqual(
+            str(Path(resolved).resolve()),
+            str(override.resolve()),
+            "The advisory must not turn into a refusal — an explicit override is still "
+            f"honoured and returned. Got: {resolved!r}",
+        )
+
+        warning = err.getvalue()
+        self.assertIn(
+            "CHROME_EXECUTABLE_PATH",
+            warning,
+            "The advisory must name the variable responsible so the user knows what to "
+            f"unset. stderr was: {warning!r}",
+        )
+        self.assertIn(
+            str(override),
+            warning,
+            f"The advisory must name the path it resolved to. stderr was: {warning!r}",
+        )
+        self.assertIn(
+            "playwright",
+            warning.lower(),
+            "The advisory must say what this is NOT (a Playwright Chromium) — that is "
+            f"the whole point of the warning. stderr was: {warning!r}",
+        )
+        self.assertEqual(
+            out.getvalue(),
+            "",
+            "The advisory must go to stderr only. stdout carries MCP's JSON-RPC, so a "
+            f"print there breaks every tool call. stdout was: {out.getvalue()!r}",
+        )
+
+    def test_override_inside_playwright_cache_returns_silently(self):
+        """
+        The mirror case: an override that IS a bundled Playwright Chromium is the
+        expected browser, so warning about it would train the user to ignore the
+        warning that matters.
+
+        # REGRESSION: browser-use launched the user's real Chrome instead of
+        # Playwright's Chromium — /dev:fix session dev-fix-20260822-browser-chrome-hijack
+        """
+        resolve = self._resolver()
+
+        # 'ms-playwright' in the path is how the resolver tells a bundled Chromium
+        # from the user's own browser, so the fixture cache must be named for it.
+        cache = self._tmpdir() / "ms-playwright"
+        cache.mkdir(parents=True)
+        binary = _make_fake_chromium(cache, 1234, _current_platform_key())
+
+        with _chromium_env(cache_root=cache, chrome_executable=binary):
+            with _captured_streams() as (out, err):
+                resolved = resolve()
+
+        self.assertEqual(
+            str(Path(resolved).resolve()),
+            str(binary.resolve()),
+            f"The override must still be returned unchanged. Got: {resolved!r}",
+        )
+        self.assertEqual(
+            err.getvalue(),
+            "",
+            "An override that already IS a Playwright Chromium must resolve silently — "
+            "warning on the normal case is how a warning stops being read. stderr was: "
+            f"{err.getvalue()!r}",
+        )
+        self.assertEqual(
+            out.getvalue(),
+            "",
+            f"Nothing may ever reach stdout. stdout was: {out.getvalue()!r}",
+        )
+
+
+# ---------------------------------------------------------------------------
+# Test 13b: _copy_profile guard — REAL BrowserProfile, no CapturingProfile
+# ---------------------------------------------------------------------------
+
+class TestCopyProfileKeepsUserDataDir(_TempDirMixin):
+    """
+    Setting executable_path trips upstream's is_chrome check (profile.py: the
+    path contains 'chrome' on every platform), which relocates user_data_dir
+    into tempfile.mkdtemp() and blinds the reaper.  Upstream returns early when
+    'browser-use-user-data-dir-' appears in the path, so our profile-directory
+    convention must embed that marker.
+
+    This is deliberate coupling to an upstream implementation detail, pinned
+    here so an upstream marker change fails loudly instead of silently
+    re-breaking the reaper.  It MUST construct a real BrowserProfile —
+    _copy_profile runs in model_post_init, at construction, not at launch.
+    """
+
+    def test_real_profile_keeps_user_data_dir_under_browseruse_profiles(self):
+        """
+        # REGRESSION: browser-use launched the user's real Chrome instead of
+        # Playwright's Chromium — /dev:fix session dev-fix-20260822-browser-chrome-hijack
+        """
+        try:
+            from browser_use.browser.profile import BrowserProfile as RealBrowserProfile
+        except Exception as err:  # not installed in this environment
+            self.skipTest(f"browser_use is not importable: {err}")
+
+        cache = self._tmpdir()
+        fake_binary = _make_fake_chromium(cache, 1234, _current_platform_key())
+        self.assertIn(
+            "chrome",
+            str(fake_binary).lower(),
+            "precondition: every Playwright chromium binary contains 'chrome', which is "
+            "what trips upstream's is_chrome check",
+        )
+
+        # Take the plugin's ACTUAL user_data_dir convention rather than restating
+        # it, so this test tracks mcp-server.py instead of a copy of it.
+        with _chromium_env(cache_root=cache):
+            captured = _capture_profile_kwargs()
+        user_data_dir = captured.get("user_data_dir")
+        self.assertTrue(user_data_dir, f"profile must set user_data_dir. Got: {captured!r}")
+
+        profiles_root = str(Path.home() / ".config" / "browseruse" / "profiles")
+        temp_root = os.path.realpath(_tempfile.gettempdir())
+
+        profile = RealBrowserProfile(
+            user_data_dir=user_data_dir,
+            channel="chromium",
+            executable_path=str(fake_binary),
+            headless=True,
+        )
+        resolved = str(profile.user_data_dir)
+
+        try:
+            self.assertTrue(
+                resolved.startswith(profiles_root),
+                "user_data_dir must stay under ~/.config/browseruse/profiles/ after "
+                "executable_path is set, otherwise upstream's _copy_profile() relocates it "
+                "to a temp dir the reaper cannot see. Our convention must embed the "
+                f"'{_NEW_SESSION_PREFIX}' marker. Started as {user_data_dir!r}, "
+                f"became {resolved!r}",
+            )
+            self.assertFalse(
+                resolved.startswith(temp_root),
+                f"user_data_dir must NOT be relocated into a temp dir. Got: {resolved!r}",
+            )
+        finally:
+            # Upstream may have created a temp profile dir behind our back.
+            if (
+                not resolved.startswith(profiles_root)
+                and "browser-use-user-data-dir-" in Path(resolved).name
+                and Path(resolved).is_dir()
+            ):
+                _shutil.rmtree(resolved, ignore_errors=True)
+
+
+# ---------------------------------------------------------------------------
+# Test 13c: reaper round-trip over the renamed profile-directory prefix
+# ---------------------------------------------------------------------------
+
+class TestReaperHandlesNewProfilePrefix(_TempDirMixin):
+    """
+    The prefix rename has six code sites in mcp-server.py; the two the reaper
+    owns are the glob and the PID parse (entry.name[len("session-"):]), plus the
+    cmdline marker used to kill leftover Chrome.  Update the glob alone and the
+    PID parse yields a non-digit string, so the reaper skips every directory —
+    a silent no-op.  This test fails for either omission.
+    """
+
+    def test_dead_pid_dir_is_found_parsed_and_its_chrome_terminated(self):
+        """
+        # REGRESSION: browser-use launched the user's real Chrome instead of
+        # Playwright's Chromium — /dev:fix session dev-fix-20260822-browser-chrome-hijack
+        """
+        import psutil
+
+        tmp = self._tmpdir()
+        dead_pid = TestReapOrphanedProfiles._find_dead_pid()
+        live_pid = os.getpid()
+
+        dead_dir = tmp / f"{_NEW_SESSION_PREFIX}{dead_pid}"
+        live_dir = tmp / f"{_NEW_SESSION_PREFIX}{live_pid}"
+        default_dir = tmp / "default"
+        weird_dir = tmp / f"{_NEW_SESSION_PREFIX}notapid"
+        for d in (dead_dir, live_dir, default_dir, weird_dir):
+            d.mkdir(parents=True)
+            (d / "SingletonLock").write_text("dummy")
+
+        # Chrome still running on the dead session's profile — must be terminated.
+        orphan_chrome = MagicMock(name="orphan_chrome")
+        orphan_chrome.info = {
+            "pid": 4242,
+            "cmdline": [
+                "/fake/chromium",
+                f"--user-data-dir={Path.home()}/.config/browseruse/profiles/"
+                f"{_NEW_SESSION_PREFIX}{dead_pid}",
+            ],
+        }
+        # The user's own Chrome — no browseruse path, must never be touched.
+        users_chrome = MagicMock(name="users_chrome")
+        users_chrome.info = {
+            "pid": 4243,
+            "cmdline": ["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"],
+        }
+
+        with patch.object(psutil, "process_iter", return_value=[orphan_chrome, users_chrome]):
+            _mod._reap_orphaned_profiles(base_dir=tmp)
+
+        self.assertFalse(
+            dead_dir.exists(),
+            f"Dead-PID dir {dead_dir.name!r} must be reaped under the "
+            f"'{_NEW_SESSION_PREFIX}' convention. Either the glob still matches only "
+            "'session-*', or the PID parse still strips only len('session-') characters "
+            "and produced a non-digit string.",
+        )
+        self.assertTrue(live_dir.exists(), "Live-PID dir must survive")
+        self.assertTrue(default_dir.exists(), "'default' dir must survive")
+        self.assertTrue(weird_dir.exists(), "Non-PID-suffixed dir must survive")
+
+        orphan_chrome.terminate.assert_called_once_with()
+        users_chrome.terminate.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# Test 13e: the reaper also sweeps the pre-1.5.0 'session-<pid>' convention
+# ---------------------------------------------------------------------------
+
+class TestReaperSweepsBothProfilePrefixes(_TempDirMixin):
+    """
+    v1.5.0 renamed the profile convention from 'session-<pid>' to
+    'browser-use-user-data-dir-session-<pid>' and the reaper's glob moved with
+    it.  A directory written by a pre-1.5.0 server whose owner was SIGKILLed
+    before it could clean up is therefore matched by nothing: it sits on disk at
+    ~50MB with no code path that will ever remove it.
+
+    The reaper must sweep BOTH names, and must derive the PID parse, the
+    liveness check, the cmdline kill marker and the rmtree from whichever prefix
+    matched — one code path, not two.
+    """
+
+    @staticmethod
+    def _chrome(pid: int, profile_name: str) -> MagicMock:
+        """A fake Chrome running on ~/.config/browseruse/profiles/<profile_name>."""
+        proc = MagicMock(name=f"chrome-{profile_name}")
+        proc.info = {
+            "pid": pid,
+            "cmdline": [
+                "/fake/chromium",
+                f"--user-data-dir={Path.home()}/.config/browseruse/profiles/"
+                f"{profile_name}",
+            ],
+        }
+        return proc
+
+    def test_glob_prefixes_cannot_double_match_the_same_directory(self):
+        """
+        The whole design rests on glob() anchoring at the start of the entry
+        name: if 'session-*' also matched 'browser-use-user-data-dir-session-1',
+        sweeping two prefixes would visit that directory twice and parse a PID
+        of 'browser-use-user-data-dir-session-1' the second time.
+        """
+        tmp = self._tmpdir()
+        for name in (
+            f"{_OLD_SESSION_PREFIX}1",
+            f"{_NEW_SESSION_PREFIX}1",
+            "default",
+        ):
+            (tmp / name).mkdir()
+
+        self.assertEqual(
+            sorted(p.name for p in tmp.glob(f"{_OLD_SESSION_PREFIX}*")),
+            [f"{_OLD_SESSION_PREFIX}1"],
+            "glob('session-*') must not also match the new prefix — it anchors "
+            "at the start of the name.",
+        )
+        self.assertEqual(
+            sorted(p.name for p in tmp.glob(f"{_NEW_SESSION_PREFIX}*")),
+            [f"{_NEW_SESSION_PREFIX}1"],
+        )
+
+    def test_old_prefix_dir_with_dead_owner_is_reaped(self):
+        import psutil
+
+        tmp = self._tmpdir()
+        dead_pid = TestReapOrphanedProfiles._find_dead_pid()
+        dead_dir = tmp / f"{_OLD_SESSION_PREFIX}{dead_pid}"
+        dead_dir.mkdir()
+        (dead_dir / "SingletonLock").write_text("dummy")
+
+        with patch.object(psutil, "process_iter", return_value=[]):
+            _mod._reap_orphaned_profiles(base_dir=tmp)
+
+        self.assertFalse(
+            dead_dir.exists(),
+            f"A pre-1.5.0 '{_OLD_SESSION_PREFIX}<pid>' dir whose owner is dead must be "
+            "reaped. Nothing else on the machine will ever remove it, so it "
+            "leaks ~50MB forever.",
+        )
+
+    def test_old_prefix_dir_with_live_owner_is_spared(self):
+        import psutil
+
+        tmp = self._tmpdir()
+        live_dir = tmp / f"{_OLD_SESSION_PREFIX}{os.getpid()}"
+        live_dir.mkdir()
+        (live_dir / "SingletonLock").write_text("dummy")
+
+        with patch.object(psutil, "process_iter", return_value=[]):
+            _mod._reap_orphaned_profiles(base_dir=tmp)
+
+        self.assertTrue(
+            live_dir.exists(),
+            "The liveness guard must apply to the old prefix too — pulling the "
+            "profile out from under a running Chrome corrupts it.",
+        )
+
+    def test_old_prefix_guards_default_and_non_numeric_suffixes(self):
+        import psutil
+
+        tmp = self._tmpdir()
+        default_dir = tmp / "default"
+        weird_dir = tmp / f"{_OLD_SESSION_PREFIX}notanumber"
+        for d in (default_dir, weird_dir):
+            d.mkdir()
+            (d / "SingletonLock").write_text("dummy")
+
+        with patch.object(psutil, "process_iter", return_value=[]):
+            _mod._reap_orphaned_profiles(base_dir=tmp)
+
+        self.assertTrue(
+            default_dir.exists(),
+            "'default' is the user's shared profile and must never be parsed, "
+            "matched or removed under any prefix.",
+        )
+        self.assertTrue(
+            weird_dir.exists(),
+            "'session-notanumber' must still be skipped by the isdigit() guard "
+            "— the PID parse has to strip the prefix that actually matched.",
+        )
+
+    def test_old_prefix_sweep_never_kills_a_same_pid_new_prefix_browser(self):
+        """
+        The dangerous case. Both conventions end in '<pid>', so any test looser
+        than 'these are the same directory' lets the old-prefix sweep reach a
+        browser owned by the new-prefix directory at the same PID.
+
+        Whole directory names must be compared:
+        'session-4242' != 'browser-use-user-data-dir-session-4242'.
+        """
+        import psutil
+
+        tmp = self._tmpdir()
+        pid = TestReapOrphanedProfiles._find_dead_pid()
+
+        old_dir = tmp / f"{_OLD_SESSION_PREFIX}{pid}"
+        old_dir.mkdir()
+        (old_dir / "SingletonLock").write_text("dummy")
+
+        # Same numeric suffix, different convention: this browser belongs to the
+        # new-prefix directory and is none of the old-prefix sweep's business.
+        new_prefix_chrome = self._chrome(7001, f"{_NEW_SESSION_PREFIX}{pid}")
+        # Same PID under the OLD convention: this one IS ours and must die.
+        old_prefix_chrome = self._chrome(7002, f"{_OLD_SESSION_PREFIX}{pid}")
+        # The user's own Chrome — no browseruse path anywhere.
+        users_chrome = MagicMock(name="users_chrome")
+        users_chrome.info = {
+            "pid": 7003,
+            "cmdline": ["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"],
+        }
+
+        with patch.object(
+            psutil,
+            "process_iter",
+            return_value=[new_prefix_chrome, old_prefix_chrome, users_chrome],
+        ):
+            _mod._reap_orphaned_profiles(base_dir=tmp)
+
+        new_prefix_chrome.terminate.assert_not_called()
+        new_prefix_chrome.kill.assert_not_called()
+        old_prefix_chrome.terminate.assert_called_once_with()
+        users_chrome.terminate.assert_not_called()
+        self.assertFalse(old_dir.exists(), "The old-prefix dir must still be reaped")
+
+    def test_both_prefixes_are_swept_in_a_single_pass(self):
+        import psutil
+
+        tmp = self._tmpdir()
+        dead_pid = TestReapOrphanedProfiles._find_dead_pid()
+        live_pid = os.getpid()
+
+        old_dead = tmp / f"{_OLD_SESSION_PREFIX}{dead_pid}"
+        new_dead = tmp / f"{_NEW_SESSION_PREFIX}{dead_pid}"
+        old_live = tmp / f"{_OLD_SESSION_PREFIX}{live_pid}"
+        new_live = tmp / f"{_NEW_SESSION_PREFIX}{live_pid}"
+        default_dir = tmp / "default"
+        for d in (old_dead, new_dead, old_live, new_live, default_dir):
+            d.mkdir()
+            (d / "SingletonLock").write_text("dummy")
+
+        old_chrome = self._chrome(7101, f"{_OLD_SESSION_PREFIX}{dead_pid}")
+        new_chrome = self._chrome(7102, f"{_NEW_SESSION_PREFIX}{dead_pid}")
+
+        with patch.object(
+            psutil, "process_iter", return_value=[old_chrome, new_chrome]
+        ):
+            _mod._reap_orphaned_profiles(base_dir=tmp)
+
+        self.assertFalse(old_dead.exists(), "Old-prefix orphan must be reaped")
+        self.assertFalse(new_dead.exists(), "New-prefix orphan must be reaped")
+        self.assertTrue(old_live.exists(), "Old-prefix live dir must survive")
+        self.assertTrue(new_live.exists(), "New-prefix live dir must survive")
+        self.assertTrue(default_dir.exists(), "'default' must survive")
+
+        old_chrome.terminate.assert_called_once_with()
+        new_chrome.terminate.assert_called_once_with()
+
+    def test_source_declares_the_prefixes_as_a_tuple_not_a_special_case(self):
+        """
+        The reaper must iterate a declared tuple of known prefixes. A second
+        hand-rolled loop over 'session-' would drift from the first the next
+        time the convention changes.
+        """
+        source = (Path(__file__).parent / "mcp-server.py").read_text()
+        self.assertIn(
+            "_REAPABLE_PROFILE_PREFIXES",
+            source,
+            "mcp-server.py must declare the known profile prefixes in one tuple.",
+        )
+        prefixes = getattr(_mod, "_REAPABLE_PROFILE_PREFIXES", None)
+        self.assertIsInstance(
+            prefixes, tuple, "_REAPABLE_PROFILE_PREFIXES must be a tuple"
+        )
+        self.assertEqual(
+            list(prefixes),
+            [_NEW_SESSION_PREFIX, _OLD_SESSION_PREFIX],
+            "Current convention first, then the pre-1.5.0 name.",
+        )
+
+
+# ---------------------------------------------------------------------------
+# Test 13f: the reaper matches the --user-data-dir ARGUMENT, not a substring
+# ---------------------------------------------------------------------------
+
+class TestReaperMatchesUserDataDirArgument(_TempDirMixin):
+    """
+    The reaper decided what to terminate with a plain substring test against the
+    whole command line:
+
+        marker = f"browseruse/profiles/{entry.name}"
+        if not any(marker in arg for arg in cmdline): continue
+        proc.terminate()
+
+    Every profile directory ends in a PID, so one directory's marker is a PREFIX
+    of another's name:
+
+        marker  'browseruse/profiles/session-123'
+        cmdline '--user-data-dir=~/.config/browseruse/profiles/session-1234'
+                -> substring match: True
+
+    Sweeping the dead PID 123 therefore terminated the browser of the LIVE
+    server 1234.  The user lost a browser mid-task, with no error anywhere.
+    Both naming conventions are affected, because both end in digits.
+
+    v1.6.0 moved the reaper off startup and onto upstream's 120s cleanup
+    cadence, which turns a rare collision into a recurring one.
+
+    The match must be on the VALUE of a --user-data-dir argument, compared as a
+    normalised path, for both spellings Chrome accepts.
+    """
+
+    @staticmethod
+    def _proc(pid: int, cmdline: list, label: str = "chrome") -> MagicMock:
+        proc = MagicMock(name=f"{label}-{pid}")
+        proc.info = {"pid": pid, "cmdline": list(cmdline)}
+        return proc
+
+    @staticmethod
+    def _home_profile(profile_name: str) -> str:
+        """The canonical path a browser launched by this plugin records."""
+        return f"{Path.home()}/.config/browseruse/profiles/{profile_name}"
+
+    def _orphan_dir(self, prefix: str) -> tuple:
+        """A profiles dir holding one orphan directory under `prefix`."""
+        tmp = self._tmpdir()
+        dead_pid = TestReapOrphanedProfiles._find_dead_pid()
+        entry = tmp / f"{prefix}{dead_pid}"
+        entry.mkdir()
+        (entry / "SingletonLock").write_text("dummy")
+        return tmp, entry, dead_pid
+
+    def _sweep(self, base_dir: Path, processes: list) -> None:
+        import psutil
+
+        with patch.object(psutil, "process_iter", return_value=processes):
+            _mod._reap_orphaned_profiles(base_dir=base_dir)
+
+    # -- the exact bug -----------------------------------------------------
+
+    def test_new_prefix_sweep_spares_a_browser_whose_pid_extends_its_digits(self):
+        """
+        THE BUG. Dead PID 123's sweep must not touch the live PID 1234's browser.
+        """
+        tmp, entry, dead_pid = self._orphan_dir(_NEW_SESSION_PREFIX)
+
+        # A LIVE server whose PID merely starts with the dead one's digits.
+        live_browser = self._proc(
+            8001,
+            [
+                "/fake/chromium",
+                f"--user-data-dir={self._home_profile(f'{_NEW_SESSION_PREFIX}{dead_pid}4')}",
+            ],
+            label="live-browser",
+        )
+
+        self._sweep(tmp, [live_browser])
+
+        live_browser.terminate.assert_not_called()
+        live_browser.kill.assert_not_called()
+        self.assertEqual(
+            live_browser.terminate.call_count,
+            0,
+            f"Reaping the dead PID {dead_pid} terminated the browser of the LIVE "
+            f"server {dead_pid}4, whose profile name merely EXTENDS the dead "
+            "one's digits. The user loses a browser mid-task with no error. "
+            "Match the --user-data-dir value as a path, not as a substring.",
+        )
+        self.assertFalse(entry.exists(), "The orphan dir itself must still be reaped")
+
+    def test_old_prefix_sweep_spares_a_browser_whose_pid_extends_its_digits(self):
+        """Same collision under the pre-1.5.0 'session-<pid>' convention."""
+        tmp, entry, dead_pid = self._orphan_dir(_OLD_SESSION_PREFIX)
+
+        live_browser = self._proc(
+            8002,
+            [
+                "/fake/chromium",
+                f"--user-data-dir={self._home_profile(f'{_OLD_SESSION_PREFIX}{dead_pid}4')}",
+            ],
+            label="live-browser",
+        )
+
+        self._sweep(tmp, [live_browser])
+
+        self.assertEqual(
+            live_browser.terminate.call_count,
+            0,
+            f"Reaping '{_OLD_SESSION_PREFIX}{dead_pid}' terminated the browser on "
+            f"'{_OLD_SESSION_PREFIX}{dead_pid}4'. Both conventions end in digits, "
+            "so both carry the prefix collision.",
+        )
+        live_browser.kill.assert_not_called()
+        self.assertFalse(entry.exists(), "The orphan dir itself must still be reaped")
+
+    def test_space_separated_spelling_spares_a_longer_pid_too(self):
+        """The collision must not survive in the '--user-data-dir <path>' form."""
+        tmp, entry, dead_pid = self._orphan_dir(_NEW_SESSION_PREFIX)
+
+        live_browser = self._proc(
+            8003,
+            [
+                "/fake/chromium",
+                "--user-data-dir",
+                self._home_profile(f"{_NEW_SESSION_PREFIX}{dead_pid}4"),
+            ],
+            label="live-browser",
+        )
+
+        self._sweep(tmp, [live_browser])
+
+        self.assertEqual(live_browser.terminate.call_count, 0)
+        live_browser.kill.assert_not_called()
+        self.assertFalse(entry.exists())
+
+    # -- the legitimate case still works -----------------------------------
+
+    def test_the_dead_owners_own_browser_is_still_terminated(self):
+        """Killing the orphan's own browser is the whole point of the sweep."""
+        tmp, entry, dead_pid = self._orphan_dir(_NEW_SESSION_PREFIX)
+
+        orphan_browser = self._proc(
+            8004,
+            ["/fake/chromium", f"--user-data-dir={self._home_profile(entry.name)}"],
+            label="orphan-browser",
+        )
+
+        self._sweep(tmp, [orphan_browser])
+
+        orphan_browser.terminate.assert_called_once_with()
+        self.assertFalse(entry.exists())
+
+    def test_the_swept_directorys_own_full_path_matches(self):
+        """
+        base_dir is a documented parameter: a browser recorded with the path the
+        reaper is actually walking must be matched by that path, not only by the
+        canonical one under $HOME.
+        """
+        tmp, entry, dead_pid = self._orphan_dir(_NEW_SESSION_PREFIX)
+
+        orphan_browser = self._proc(
+            8005,
+            ["/fake/chromium", f"--user-data-dir={entry}"],
+            label="orphan-browser",
+        )
+
+        self._sweep(tmp, [orphan_browser])
+
+        orphan_browser.terminate.assert_called_once_with()
+
+    def test_space_separated_user_data_dir_is_matched(self):
+        """Chrome accepts '--user-data-dir <path>'; the value is the NEXT arg."""
+        tmp, entry, dead_pid = self._orphan_dir(_NEW_SESSION_PREFIX)
+
+        orphan_browser = self._proc(
+            8006,
+            ["/fake/chromium", "--user-data-dir", self._home_profile(entry.name)],
+            label="orphan-browser",
+        )
+
+        self._sweep(tmp, [orphan_browser])
+
+        orphan_browser.terminate.assert_called_once_with()
+
+    def test_a_dangling_user_data_dir_flag_is_not_a_match(self):
+        """'--user-data-dir' as the last argument has no value to compare."""
+        tmp, entry, dead_pid = self._orphan_dir(_NEW_SESSION_PREFIX)
+
+        proc = self._proc(8007, ["/fake/chromium", "--user-data-dir"], label="dangling")
+
+        self._sweep(tmp, [proc])
+
+        proc.terminate.assert_not_called()
+        proc.kill.assert_not_called()
+
+    # -- normalisation -----------------------------------------------------
+
+    def test_a_trailing_slash_on_the_cmdline_value_still_matches(self):
+        tmp, entry, dead_pid = self._orphan_dir(_NEW_SESSION_PREFIX)
+
+        orphan_browser = self._proc(
+            8008,
+            ["/fake/chromium", f"--user-data-dir={self._home_profile(entry.name)}/"],
+            label="orphan-browser",
+        )
+
+        self._sweep(tmp, [orphan_browser])
+
+        orphan_browser.terminate.assert_called_once_with()
+
+    def test_dot_dot_segments_in_the_cmdline_value_still_match(self):
+        """Both sides must be normalised the same way before comparing."""
+        tmp, entry, dead_pid = self._orphan_dir(_NEW_SESSION_PREFIX)
+
+        noisy = (
+            f"{Path.home()}/.config/browseruse/profiles/../profiles/./{entry.name}"
+        )
+        orphan_browser = self._proc(
+            8009, ["/fake/chromium", f"--user-data-dir={noisy}"], label="orphan-browser"
+        )
+
+        self._sweep(tmp, [orphan_browser])
+
+        orphan_browser.terminate.assert_called_once_with()
+
+    def test_a_trailing_slash_does_not_reopen_the_collision(self):
+        tmp, entry, dead_pid = self._orphan_dir(_NEW_SESSION_PREFIX)
+
+        live_browser = self._proc(
+            8010,
+            [
+                "/fake/chromium",
+                f"--user-data-dir={self._home_profile(f'{_NEW_SESSION_PREFIX}{dead_pid}4')}/",
+            ],
+            label="live-browser",
+        )
+
+        self._sweep(tmp, [live_browser])
+
+        self.assertEqual(live_browser.terminate.call_count, 0)
+        live_browser.kill.assert_not_called()
+
+    # -- everything else on the machine is untouchable ---------------------
+
+    def test_the_users_own_chrome_is_never_terminated(self):
+        """No browseruse path anywhere: not ours, under any matching rule."""
+        tmp, entry, dead_pid = self._orphan_dir(_NEW_SESSION_PREFIX)
+
+        users_chrome = self._proc(
+            8011,
+            [
+                "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+                f"--user-data-dir={Path.home()}/Library/Application Support/Google/Chrome",
+            ],
+            label="users-chrome",
+        )
+
+        self._sweep(tmp, [users_chrome])
+
+        users_chrome.terminate.assert_not_called()
+        users_chrome.kill.assert_not_called()
+
+    def test_the_profile_path_in_another_flag_is_not_a_kill_signal(self):
+        """
+        Only --user-data-dir says 'this process is running ON that profile'. A
+        path that merely appears somewhere else in the command line does not.
+        """
+        tmp, entry, dead_pid = self._orphan_dir(_NEW_SESSION_PREFIX)
+
+        log_reader = self._proc(
+            8012,
+            [
+                "/fake/chromium",
+                f"--log-file={self._home_profile(entry.name)}/chrome_debug.log",
+                f"--user-data-dir={self._home_profile('default')}",
+            ],
+            label="other-flag",
+        )
+
+        self._sweep(tmp, [log_reader])
+
+        log_reader.terminate.assert_not_called()
+        log_reader.kill.assert_not_called()
+
+    def test_a_relative_user_data_dir_is_never_matched(self):
+        """
+        A relative --user-data-dir is resolved against the OWNING process's
+        working directory, which the reaper does not know. Normalising it
+        against the reaper's own cwd invents a path and can manufacture a match
+        for a directory that is not ours — so a non-absolute value is skipped.
+
+        Nothing this plugin launches can be affected: user_data_dir is built
+        from Path.home() and is always absolute.
+        """
+        tmp, entry, dead_pid = self._orphan_dir(_NEW_SESSION_PREFIX)
+
+        someone_elses = self._proc(
+            8018,
+            ["/fake/chromium", f"--user-data-dir=browseruse/profiles/{entry.name}"],
+            label="relative-path",
+        )
+
+        self._sweep(tmp, [someone_elses])
+
+        someone_elses.terminate.assert_not_called()
+        someone_elses.kill.assert_not_called()
+
+    def test_a_malformed_cmdline_never_raises_and_never_matches(self):
+        """cmdline is untrusted input read from an arbitrary process."""
+        tmp, entry, dead_pid = self._orphan_dir(_NEW_SESSION_PREFIX)
+
+        weird = [
+            self._proc(8013, [], label="empty"),
+            self._proc(8014, ["--user-data-dir="], label="empty-value"),
+            self._proc(8015, ["--user-data-dir", ""], label="empty-next"),
+            self._proc(8016, [None, 42, "--user-data-dir"], label="non-strings"),
+        ]
+        no_cmdline = MagicMock(name="no-cmdline")
+        no_cmdline.info = {"pid": 8017, "cmdline": None}
+        weird.append(no_cmdline)
+
+        self._sweep(tmp, weird)
+
+        for proc in weird:
+            proc.terminate.assert_not_called()
+            proc.kill.assert_not_called()
+        self.assertFalse(entry.exists(), "The sweep must still complete")
+
+
+# ---------------------------------------------------------------------------
+# Test 13d: the profile build actually carries the resolver's output
+# ---------------------------------------------------------------------------
+
+class TestProfileCarriesResolvedBinary(_TempDirMixin):
+    """
+    channel='chromium' alone is a soft preference upstream ignores when its
+    globs miss.  The profile must carry an explicit executable_path, which
+    upstream honours before any glob runs.
+    """
+
+    def test_profile_includes_executable_path_that_is_not_the_users_chrome(self):
+        """
+        # REGRESSION: browser-use launched the user's real Chrome instead of
+        # Playwright's Chromium — /dev:fix session dev-fix-20260822-browser-chrome-hijack
+        """
+        cache = self._tmpdir()
+        _make_fake_chromium(cache, 1234, _current_platform_key())
+
+        with _chromium_env(cache_root=cache):
+            captured = _capture_profile_kwargs()
+
+        executable_path = captured.get("executable_path")
+        self.assertIsNotNone(
+            executable_path,
+            "Local profiles must set executable_path from _resolve_chromium_binary(). "
+            "Without it, channel='chromium' is only a soft preference and upstream "
+            "falls through to /Applications/Google Chrome.app. "
+            f"Profile kwargs were: {sorted(captured)!r}",
+        )
+        self.assertNotIn(
+            _HIJACK_PATH_FRAGMENT,
+            str(executable_path),
+            f"executable_path must never be the user's real Chrome. Got: {executable_path!r}",
+        )
+        self.assertTrue(
+            str(executable_path).startswith(str(cache)),
+            "executable_path must come from the Playwright cache named by "
+            f"PLAYWRIGHT_BROWSERS_PATH ({str(cache)!r}). Got: {executable_path!r}",
+        )
+
+
+# ---------------------------------------------------------------------------
+# Test 13e: browser_doctor reports WHERE the binary came from, and survives
+# the resolver raising
+# ---------------------------------------------------------------------------
+
+class TestDoctorReportsChromiumResolution(_TempDirMixin, unittest.IsolatedAsyncioTestCase):
+    """
+    The doctor exists to diagnose exactly the failure this bug produced, so
+    chromium_path alone is not enough: a path with no provenance cannot tell the
+    user whether their CHROME_EXECUTABLE_PATH won or Playwright's cache did.
+
+    The old doctor ran its own shutil.which() chain with the env override LAST,
+    so it could confidently report a browser the launcher would never use.  It
+    now calls _resolve_chromium_binary(), the same function the launcher calls,
+    and reports chromium_source / chromium_error alongside the path.  Nothing
+    else in the suite locks those two fields, so without this class a refactor
+    could drop them and stay green.
+    """
+
+    async def _doctor(self) -> dict:
+        """Run browser_doctor and return its parsed report."""
+        return json.loads(await _make_server()._handle_doctor({}))
+
+    async def test_doctor_reports_playwright_source_for_a_cache_hit(self):
+        """
+        # REGRESSION: browser-use launched the user's real Chrome instead of
+        # Playwright's Chromium — /dev:fix session dev-fix-20260822-browser-chrome-hijack
+        """
+        resolve = self._resolver()
+
+        with _hermetic_chromium_cache() as cache:
+            expected = resolve()
+            data = await self._doctor()
+
+        self.assertEqual(
+            data["chromium_path"],
+            expected,
+            "The doctor must report the launcher's own resolution. Reporting a "
+            "separately-discovered browser is what let it show "
+            "/Applications/Google Chrome.app as healthy. "
+            f"Expected {expected!r}, got {data['chromium_path']!r}",
+        )
+        self.assertTrue(
+            data["chromium_present"],
+            f"A resolvable binary means chromium_present is true. Report: {data!r}",
+        )
+        self.assertEqual(
+            data["chromium_source"],
+            "playwright",
+            "With no CHROME_EXECUTABLE_PATH set, the binary came from Playwright's "
+            f"cache ({str(cache)!r}) and must be labelled 'playwright'. "
+            f"Got: {data.get('chromium_source')!r}",
+        )
+        self.assertIsNone(
+            data["chromium_error"],
+            f"A successful resolution carries no error. Got: {data['chromium_error']!r}",
+        )
+
+    async def test_doctor_reports_env_source_when_the_override_is_set(self):
+        """
+        # REGRESSION: browser-use launched the user's real Chrome instead of
+        # Playwright's Chromium — /dev:fix session dev-fix-20260822-browser-chrome-hijack
+        """
+        cache = self._tmpdir()
+        _make_fake_chromium(cache, 1234, _current_platform_key())
+
+        override = self._tmpdir() / "my-chromium"
+        override.write_text("#!/bin/sh\nexit 0\n")
+        override.chmod(0o755)
+
+        with _chromium_env(cache_root=cache, chrome_executable=override):
+            # The override sits outside Playwright's cache, so the resolver prints
+            # its advisory; swallow it to keep the suite's own output readable.
+            # The advisory's content is pinned by TestResolveChromiumBinary.
+            with _captured_streams():
+                data = await self._doctor()
+
+        self.assertEqual(
+            data["chromium_source"],
+            "env",
+            "CHROME_EXECUTABLE_PATH was set and won, so the report must say the binary "
+            f"came from the environment, not the cache. Got: {data.get('chromium_source')!r}",
+        )
+        self.assertEqual(
+            str(Path(data["chromium_path"]).resolve()),
+            str(override.resolve()),
+            f"The reported path must be the override. Got: {data['chromium_path']!r}",
+        )
+        self.assertTrue(data["chromium_present"], f"Report: {data!r}")
+        self.assertIsNone(
+            data["chromium_error"],
+            f"A successful resolution carries no error. Got: {data['chromium_error']!r}",
+        )
+
+    async def test_doctor_survives_a_resolution_failure(self):
+        """
+        The case the doctor exists for.  'No Chromium anywhere' is precisely when
+        a user runs browser_doctor, so a resolver RuntimeError must be caught and
+        REPORTED, never propagated — a diagnostic that dies of the fault it was
+        called to diagnose tells the user nothing.
+
+        # REGRESSION: browser-use launched the user's real Chrome instead of
+        # Playwright's Chromium — /dev:fix session dev-fix-20260822-browser-chrome-hijack
+        """
+        empty_cache = self._tmpdir()  # exists, contains no chromium-* at all
+
+        with _chromium_env(cache_root=empty_cache):
+            try:
+                data = await self._doctor()
+            except Exception as exc:  # noqa: BLE001 — the point is that nothing escapes
+                self.fail(
+                    "browser_doctor must not raise when Chromium cannot be resolved; it "
+                    f"must report the failure. Got {type(exc).__name__}: {exc}"
+                )
+
+        self.assertFalse(
+            data["chromium_present"],
+            f"Nothing was resolvable, so chromium_present must be false. Report: {data!r}",
+        )
+        self.assertIsNone(
+            data["chromium_path"],
+            "There is no path to report — a placeholder here would read as a working "
+            f"browser. Got: {data['chromium_path']!r}",
+        )
+        self.assertEqual(
+            data["chromium_source"],
+            "error",
+            "A failed resolution is its own source; labelling it 'playwright' would "
+            f"claim a cache hit that never happened. Got: {data.get('chromium_source')!r}",
+        )
+        self.assertTrue(
+            data["chromium_error"],
+            "chromium_error must carry the resolver's message — it is the only thing "
+            f"telling the user what to do next. Got: {data['chromium_error']!r}",
+        )
+        self.assertIn(
+            "playwright install",
+            str(data["chromium_error"]).lower(),
+            "The reported error must name the remedy (python3 -m playwright install "
+            f"chromium). Got: {data['chromium_error']!r}",
+        )
+
+
+# ---------------------------------------------------------------------------
+# Test 14: the server cleans up after itself WHILE IT RUNS, not only at exit
+#
+# Shipped state: every cleanup path fired exactly once, at a process boundary.
+# _shutdown_sync (atexit / SIGTERM) was the only thing that removed the ~50MB
+# PID-scoped profile dir, and _reap_orphaned_profiles ran only from main().
+# An MCP server lives for days, so:
+#   - upstream's 10-minute idle sweep killed Chrome and left the profile behind;
+#   - orphans of dead servers were never swept unless a NEW server started;
+#   - a SIGKILLed parent stranded the server, its Chrome and its profile forever.
+# Measured: 38 live plugin servers, 0 Chrome processes, one 74MB profile per PID.
+#
+# Worse, main() bypasses upstream's BrowserUseServer.run() to own the stdio
+# wiring — and run() is the only caller of _start_cleanup_task(), so the idle
+# sweep never ran here at all.
+# ---------------------------------------------------------------------------
+
+
+def _fake_browser_session(session_id: str, kill_error: BaseException | None = None):
+    """A BrowserSession stand-in whose kill() is awaitable (and can fail)."""
+    session = MagicMock(name=f"session-{session_id}")
+    session.id = session_id
+    session.kill = AsyncMock(side_effect=kill_error) if kill_error else AsyncMock(return_value=None)
+    return session
+
+
+def _track(server, *sessions, last_activity=None):
+    """Register sessions the way upstream's _track_session does."""
+    now = time.time()
+    for session in sessions:
+        server.active_sessions[session.id] = {
+            "session": session,
+            "created_at": now,
+            "last_activity": now if last_activity is None else last_activity,
+            "url": None,
+        }
+
+
+_IDLE_LONGER_THAN_TIMEOUT = 3600  # seconds; upstream's timeout is 10 minutes
+
+
+@contextlib.contextmanager
+def _fake_home(create_profile_dir: bool = True):
+    """
+    A throwaway HOME containing this process's PID-scoped profile directory.
+
+    Everything under test resolves the profile dir through Path.home(), so
+    redirecting it keeps the developer's real ~/.config/browseruse untouched —
+    these tests delete directories and must never reach a live one.
+    """
+    tmp = Path(_tempfile.mkdtemp(prefix="magus-profile-home-")).resolve()
+    profile_dir = (
+        tmp / ".config" / "browseruse" / "profiles" / f"{_NEW_SESSION_PREFIX}{os.getpid()}"
+    )
+    if create_profile_dir:
+        profile_dir.mkdir(parents=True)
+        (profile_dir / "Cookies").write_text("dummy")
+        (profile_dir / "SingletonLock").write_text("dummy")
+        (profile_dir / "Default").mkdir()
+
+    original_home = Path.home
+    try:
+        Path.home = staticmethod(lambda: tmp)
+        yield tmp, profile_dir
+    finally:
+        Path.home = original_home
+        _shutil.rmtree(tmp, ignore_errors=True)
+
+
+class _FakeStdioServer:
+    """Async context manager standing in for mcp.server.stdio.stdio_server()."""
+
+    async def __aenter__(self):
+        return (MagicMock(name="read_stream"), MagicMock(name="write_stream"))
+
+    async def __aexit__(self, *exc_info):
+        return False
+
+
+# ---------------------------------------------------------------------------
+# Test 14a: the profile directory is freed when the last browser dies
+# ---------------------------------------------------------------------------
+
+class TestProfileDirFreedWhenBrowserDies(unittest.TestCase):
+    """
+    Killing Chrome must also free its profile directory — at whichever moment
+    the browser actually dies, not merely at process exit.  Never while a
+    browser is still running on it.
+    """
+
+    def test_profile_dir_removed_when_last_session_is_closed(self):
+        server = _make_server()
+        session = _fake_browser_session("s1")
+        server.browser_session = session
+        _track(server, session)
+
+        with _fake_home() as (_, profile_dir):
+            result = asyncio.run(server._close_session("s1"))
+            survived = profile_dir.exists()
+
+        self.assertIn("Successfully closed", result)
+        self.assertFalse(
+            survived,
+            "The last browser session was closed, so nothing is running on the "
+            "PID-scoped profile dir — it must be removed there and then. Waiting "
+            "for process exit leaks ~50MB for the multi-day life of the server.",
+        )
+
+    def test_profile_dir_survives_while_another_session_is_live(self):
+        server = _make_server()
+        first = _fake_browser_session("s1")
+        second = _fake_browser_session("s2")
+        server.browser_session = first
+        _track(server, first, second)
+
+        with _fake_home() as (_, profile_dir):
+            asyncio.run(server._close_session("s1"))
+            survived = profile_dir.exists()
+
+        self.assertTrue(
+            survived,
+            "Session s2 is still running on this profile directory. Removing it "
+            "would pull the profile out from under a live Chrome.",
+        )
+
+    def test_idle_sweep_frees_profile_dir(self):
+        """The 10-minute idle path kills Chrome — the profile must go with it."""
+        server = _make_server()
+        session = _fake_browser_session("idle")
+        server.browser_session = session
+        _track(server, session, last_activity=time.time() - _IDLE_LONGER_THAN_TIMEOUT)
+
+        with (
+            _fake_home() as (_, profile_dir),
+            patch.object(_mod, "_reap_orphaned_profiles", MagicMock()),
+        ):
+            asyncio.run(server._cleanup_expired_sessions())
+            survived = profile_dir.exists()
+
+        self.assertNotIn("idle", server.active_sessions, "Upstream must have closed it")
+        self.assertFalse(
+            survived,
+            "Upstream's idle sweep killed the browser after 10 idle minutes but "
+            "left its profile dir on disk. That is the leak: 38 servers x 74MB.",
+        )
+
+    def test_idle_sweep_keeps_profile_dir_when_a_session_is_still_active(self):
+        server = _make_server()
+        expired = _fake_browser_session("expired")
+        active = _fake_browser_session("active")
+        server.browser_session = active
+        _track(server, expired, last_activity=time.time() - _IDLE_LONGER_THAN_TIMEOUT)
+        _track(server, active)
+
+        with (
+            _fake_home() as (_, profile_dir),
+            patch.object(_mod, "_reap_orphaned_profiles", MagicMock()),
+        ):
+            asyncio.run(server._cleanup_expired_sessions())
+            survived = profile_dir.exists()
+
+        self.assertNotIn("expired", server.active_sessions)
+        self.assertIn("active", server.active_sessions)
+        self.assertTrue(
+            survived,
+            "One session expired but another is still driving a browser on this "
+            "profile directory — it must survive.",
+        )
+
+    def test_failed_close_keeps_profile_dir(self):
+        """
+        A close that errors leaves the session tracked, so the browser may well
+        still be alive.  Removing the directory under it is the one unsafe move.
+        """
+        server = _make_server()
+        session = _fake_browser_session("stuck", kill_error=RuntimeError("kill timed out"))
+        server.browser_session = session
+        _track(server, session)
+
+        with _fake_home() as (_, profile_dir):
+            result = asyncio.run(server._close_session("stuck"))
+            survived = profile_dir.exists()
+
+        self.assertIn("Error closing session", result)
+        self.assertIn("stuck", server.active_sessions)
+        self.assertTrue(
+            survived,
+            "kill() failed, so Chrome may still be running on this profile. The "
+            "directory must not be removed on a failed close.",
+        )
+
+    def test_close_all_sessions_frees_profile_dir(self):
+        server = _make_server()
+        first = _fake_browser_session("s1")
+        second = _fake_browser_session("s2")
+        server.browser_session = first
+        _track(server, first, second)
+
+        with _fake_home() as (_, profile_dir):
+            asyncio.run(server._close_all_sessions())
+            survived = profile_dir.exists()
+
+        self.assertFalse(
+            survived,
+            "browser_close_all_sessions killed every browser this server owns; "
+            "the profile dir must be freed with the last one.",
+        )
+
+
+# ---------------------------------------------------------------------------
+# Test 14b: the orphan reaper runs on a timer, not only at startup
+# ---------------------------------------------------------------------------
+
+class TestPeriodicOrphanReaping(unittest.TestCase):
+    """
+    _reap_orphaned_profiles only ever ran from main().  On a machine where no
+    new server starts, nothing is ever swept — orphaned profiles and any Chrome
+    stranded by a dead server sit there indefinitely.
+    """
+
+    def test_cleanup_cycle_invokes_the_reaper(self):
+        server = _make_server()
+        reaper = MagicMock()
+
+        with patch.object(_mod, "_reap_orphaned_profiles", reaper):
+            asyncio.run(server._cleanup_expired_sessions())
+
+        reaper.assert_called_once_with()
+
+    def test_periodic_sweep_spares_live_pids_and_the_default_profile(self):
+        """The timer must reuse the reaper's guards, not a looser copy of them."""
+        import psutil
+
+        server = _make_server()
+        dead_pid = TestReapOrphanedProfiles._find_dead_pid()
+
+        with _fake_home(create_profile_dir=False) as (home, _):
+            profiles = home / ".config" / "browseruse" / "profiles"
+            dead_dir = profiles / f"{_NEW_SESSION_PREFIX}{dead_pid}"
+            live_dir = profiles / f"{_NEW_SESSION_PREFIX}{os.getpid()}"
+            default_dir = profiles / "default"
+            weird_dir = profiles / f"{_NEW_SESSION_PREFIX}notapid"
+            for directory in (dead_dir, live_dir, default_dir, weird_dir):
+                directory.mkdir(parents=True)
+                (directory / "SingletonLock").write_text("dummy")
+
+            # No real process scan: this test must never touch a live process.
+            with patch.object(psutil, "process_iter", return_value=[]):
+                asyncio.run(server._cleanup_expired_sessions())
+
+            results = {
+                "dead": dead_dir.exists(),
+                "live": live_dir.exists(),
+                "default": default_dir.exists(),
+                "weird": weird_dir.exists(),
+            }
+
+        self.assertFalse(
+            results["dead"],
+            "A profile dir whose owning server is dead must be reaped by the "
+            "periodic sweep, without waiting for some future server to start.",
+        )
+        self.assertTrue(results["live"], "A live PID's profile dir must survive")
+        self.assertTrue(results["default"], "The 'default' profile dir must never be touched")
+        self.assertTrue(results["weird"], "A non-PID-suffixed dir must survive")
+
+    def test_main_starts_the_cleanup_loop(self):
+        """
+        main() bypasses upstream's run(), which is the ONLY caller of
+        _start_cleanup_task().  Without an explicit start here, every periodic
+        behaviour in this file is dead code.
+        """
+        started: list = []
+
+        async def recording_start(self):
+            started.append(self)
+
+        with (
+            patch.object(_mod, "_reap_orphaned_profiles", MagicMock()),
+            patch.object(_mod, "_install_shutdown_handlers", MagicMock()),
+            patch.object(_mod.MagusBrowserServer, "_start_cleanup_task", recording_start),
+            patch.object(
+                _mod.mcp.server.stdio,
+                "stdio_server",
+                MagicMock(return_value=_FakeStdioServer()),
+            ),
+        ):
+            asyncio.run(_mod.main())
+
+        self.assertEqual(
+            len(started),
+            1,
+            "main() must start the periodic cleanup loop exactly once. Upstream "
+            "starts it in BrowserUseServer.run(), which main() does not call.",
+        )
+
+
+# ---------------------------------------------------------------------------
+# Test 14c: exit when the parent claude process dies
+# ---------------------------------------------------------------------------
+
+class TestParentDeathShutdown(unittest.TestCase):
+    """
+    A SIGKILLed `claude` leaves the server reparented to init: nobody reads its
+    stdio, nobody signals it, and its Chrome plus ~50MB profile survive forever.
+    os.getppid() changes the instant the kernel reparents us — that is the whole
+    signal, and it needs no process scan and no name matching.
+    """
+
+    def _require(self, name: str):
+        attr = getattr(_mod, name, None)
+        if attr is None:
+            self.fail(
+                f"mcp-server.py must define {name}(): parent-death shutdown has to go "
+                "through a module-level seam so it can be exercised without killing "
+                "the test runner."
+            )
+        return attr
+
+    def test_parent_pid_is_captured_at_startup(self):
+        server = _make_server()
+        captured = getattr(server, "_parent_pid", None)
+        if captured is None:
+            self.fail(
+                "MagusBrowserServer must capture os.getppid() at startup — after "
+                "reparenting there is nothing left to compare against."
+            )
+        self.assertEqual(captured, os.getppid())
+
+    def test_reparented_server_shuts_down_and_exits(self):
+        self._require("_exit_process")
+        server = _make_server()
+
+        with (
+            patch.object(_mod, "_reap_orphaned_profiles", MagicMock()),
+            patch.object(server, "_shutdown_sync", MagicMock()) as shutdown,
+            patch.object(_mod, "_exit_process", MagicMock()) as exit_process,
+            patch.object(os, "getppid", return_value=1),
+        ):
+            asyncio.run(server._cleanup_expired_sessions())
+
+        shutdown.assert_called_once_with()
+        self.assertEqual(
+            exit_process.call_args_list,
+            [call(0)],
+            "A reparented server must take itself down through the existing "
+            "shutdown path (killing Chrome, removing the profile dir) and then "
+            "exit — otherwise it lingers with nobody to clean up after it.",
+        )
+
+    def test_live_parent_does_not_shut_down(self):
+        self._require("_exit_process")
+        server = _make_server()
+        parent_pid = server._parent_pid
+
+        with (
+            patch.object(_mod, "_reap_orphaned_profiles", MagicMock()),
+            patch.object(server, "_shutdown_sync", MagicMock()) as shutdown,
+            patch.object(_mod, "_exit_process", MagicMock()) as exit_process,
+            patch.object(os, "getppid", return_value=parent_pid),
+        ):
+            asyncio.run(server._cleanup_expired_sessions())
+
+        shutdown.assert_not_called()
+        exit_process.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# Test 14d: static guards on the cleanup wiring
+# ---------------------------------------------------------------------------
+
+class TestAutoCleanupStaticChecks(unittest.TestCase):
+    """
+    The overrides above are tested against a transcription of upstream's
+    behaviour (_StubBrowserUseServer).  These checks pin the two things that
+    transcription cannot prove: that the overrides still DELEGATE to the real
+    parent, and that no cleanup path resorts to a pattern-based process kill.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        import ast
+
+        source = (Path(__file__).parent / "mcp-server.py").read_text()
+        cls.source = source
+        tree = ast.parse(source)
+
+        cls.methods: dict = {}
+        cls.functions: dict = {}
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ClassDef) and node.name == "MagusBrowserServer":
+                for item in node.body:
+                    if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                        cls.methods[item.name] = ast.get_source_segment(source, item) or ""
+        for item in tree.body:
+            if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                cls.functions[item.name] = ast.get_source_segment(source, item) or ""
+
+    def _method(self, name: str) -> str:
+        src = self.methods.get(name)
+        if not src:
+            self.fail(f"MagusBrowserServer must override {name}()")
+        return src
+
+    def test_close_session_override_delegates_to_super(self):
+        self.assertIn(
+            "super()._close_session",
+            self._method("_close_session"),
+            "The override must delegate: upstream is what actually kills the "
+            "browser and untracks the session.",
+        )
+
+    def test_cleanup_cycle_override_delegates_to_super(self):
+        self.assertIn(
+            "super()._cleanup_expired_sessions",
+            self._method("_cleanup_expired_sessions"),
+            "The override must delegate: upstream is what expires idle sessions.",
+        )
+
+    def test_main_awaits_the_cleanup_task(self):
+        self.assertIn(
+            "_start_cleanup_task",
+            self.functions.get("main", ""),
+            "main() bypasses upstream's run(), so it must start the periodic "
+            "cleanup loop itself.",
+        )
+
+    def test_no_pattern_based_process_kill(self):
+        for banned in ("pkill", "killall", "kill -9"):
+            self.assertNotIn(
+                banned,
+                self.source,
+                f"{banned!r} kills by name/pattern and would reach processes this "
+                "server does not own. Every kill must target an explicit PID.",
+            )
 
 
 # ---------------------------------------------------------------------------

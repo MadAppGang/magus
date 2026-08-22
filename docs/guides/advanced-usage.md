@@ -378,9 +378,16 @@ export FIGMA_ACCESS_TOKEN="your-token"
 export APIDOG_API_TOKEN="your-token"
 
 # Optional
-export CHROME_EXECUTABLE_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+export CHROME_EXECUTABLE_PATH="$HOME/Library/Caches/ms-playwright/chromium-1234/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
 export CODEX_API_KEY="your-key"
 ```
+
+Leave `CHROME_EXECUTABLE_PATH` unset unless you need a specific browser build: the
+`browser-use` plugin otherwise finds the newest Chromium in Playwright's own cache.
+When it is set, that exact binary is what launches — so pointing it at
+`/Applications/Google Chrome.app` drives your real Chrome, which on macOS takes over
+the `com.google.Chrome` single-instance slot and makes your own Chrome icon reopen the
+automation window.
 
 **In project .env file:**
 

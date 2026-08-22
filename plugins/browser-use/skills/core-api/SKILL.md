@@ -72,6 +72,29 @@ Sessions are created implicitly on the first `browser_navigate` call. The return
 
 **Rule**: Every code path must close the session. If an error occurs mid-workflow, still call `browser_close_session` before returning.
 
+### Automatic cleanup — the browser does not wait for you
+
+The server cleans up after itself while it runs, so a forgotten session costs
+disk and a stray Chrome for minutes, not for the days a Claude Code session can
+last:
+
+| Trigger | What happens |
+|---|---|
+| `browser_close_session` / `browser_close_all_sessions` | Chrome is killed; once the last session is gone, this session's Chrome profile directory is deleted |
+| **10 minutes with no tool call on a session** | Same thing, automatically — the session is closed, Chrome killed, and the profile deleted if it was the last one |
+| Every 2 minutes | Profiles left behind by servers that have died are swept, along with any Chrome still running on them |
+| The `claude` process dies | The server notices it has been reparented, kills Chrome, deletes the profile, and exits |
+
+**Consequence you must plan for**: cookies, localStorage and login state live in
+that profile directory, so they do **not** survive the 10-minute idle timeout.
+Save anything you want to keep with `browser_export_session` as soon as you have
+it — right after a login flow completes, not at the end of the workflow. A later
+`browser_navigate` starts from a clean profile and needs
+`browser_import_session` to get back in.
+
+Nothing here is recoverable by waiting: a closed session's `session_id` is dead,
+and `browser_navigate` creates a new one.
+
 ---
 
 ## 3. Tool Reference (Full Schema)
@@ -483,7 +506,12 @@ Export a live browser session's cookies and localStorage to a JSON file for late
 {"success": true, "path": "~/.browser-use/sessions/github.json", "cookies_count": 12}
 ```
 
-**When to use**: After completing a login flow, to save the authenticated state. Import in the next session to skip login.
+**When to use**: The moment a login flow completes — not at the end of the
+workflow. Cookies and localStorage live in the session's Chrome profile
+directory, which is deleted when the browser is closed, including by the
+10-minute idle timeout (see [Automatic cleanup](#automatic-cleanup--the-browser-does-not-wait-for-you)).
+Exporting is what makes authenticated state outlive the browser; import it in the
+next session to skip login.
 
 ---
 
@@ -625,6 +653,15 @@ Preflight diagnosis of the plugin's environment — turns silent failures (a 300
 `run_script` hang, `ModuleNotFoundError`, missing Chromium) into a one-call
 report. Pure inspection; never spawns a browser. Takes no arguments.
 
+`chromium_path` is produced by the same resolver the launcher uses, so the doctor
+and the browser can never disagree. `chromium_source` says where it came from:
+
+| `chromium_source` | Meaning |
+|---|---|
+| `playwright` | Newest build in Playwright's cache — the normal case |
+| `env` | `CHROME_EXECUTABLE_PATH` named it explicitly |
+| `error` | Nothing resolvable; `chromium_error` carries the message, `chromium_path` is `null` |
+
 **Returns**:
 ```json
 {
@@ -634,10 +671,18 @@ report. Pure inspection; never spawns a browser. Takes no arguments.
   "mcp": {"installed": true, "version": "..."},
   "playwright": {"installed": false, "version": null},
   "chromium_present": true,
-  "chromium_path": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+  "chromium_path": "~/Library/Caches/ms-playwright/chromium-1234/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing",
+  "chromium_source": "playwright",
+  "chromium_error": null,
   "api_keys": {"ANTHROPIC_API_KEY": true, "OPENAI_API_KEY": false, "BROWSER_USE_API_KEY": false}
 }
 ```
+
+A `chromium_path` under `/Applications/Google Chrome.app` is never reported
+unless `CHROME_EXECUTABLE_PATH` asked for it: launching the user's real Chrome
+steals the macOS `com.google.Chrome` single-instance slot, so an unresolvable
+Chromium is reported as an error instead of quietly falling back to it. The fix
+is `python3 -m playwright install chromium`.
 
 ---
 
@@ -676,6 +721,7 @@ report. Pure inspection; never spawns a browser. Takes no arguments.
 | Error | Cause | Fix |
 |-------|-------|-----|
 | `"session_not_found"` | Stale `session_id` or typo | Call `browser_list_sessions` to see active sessions |
+| `"session_not_found"` after a long pause | The session idled out after 10 minutes and was closed automatically | Start a new one with `browser_navigate`. Its login state went with the profile — `browser_import_session` if you exported it |
 | `"element index N not in selector_map"` | Element index is stale | Call `browser_get_state` again — DOM may have changed |
 | `"browser_navigate" returns status 403` | Site blocking headless browser | Try `retry_with_browser_use_agent` with `use_vision=True`, or use Browser Use Cloud |
 | No elements in `selector_map` | Page still loading | Call `browser_get_state` again; SPAs need time to render |
