@@ -7,7 +7,7 @@
   },
   "metadata": {
     "description": "Curated collection of Claude Code plugins for modern full-stack development with LLM performance tracking and E2E skill testing",
-    "version": "9.3.1",
+    "version": "10.0.0",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -477,55 +477,6 @@
           "version": "1.0.0",
           "date": "2026-08-06",
           "summary": "One plugin for project setup jobs. /setup:project investigates a repository \u2014 stack, package\u2026"
-        }
-      ]
-    },
-    {
-      "name": "style",
-      "source": "./plugins/style",
-      "description": "Communication style presets for a project. Ships composable rule blocks governing tone, terminology, phrasing, and how information is presented, then composes the chosen combination into one native Claude Code output style and activates it.",
-      "version": "2.1.0",
-      "author": {
-        "name": "Jack Rudenko",
-        "email": "i@madappgang.com",
-        "company": "MadAppGang"
-      },
-      "category": "utility",
-      "keywords": [
-        "style",
-        "voice",
-        "tone",
-        "communication",
-        "writing",
-        "terminology",
-        "claude-md",
-        "presets",
-        "conventions"
-      ],
-      "strict": true,
-      "releases": [
-        {
-          "version": "2.1.0",
-          "date": "2026-08-18",
-          "kinds": [
-            "Added"
-          ],
-          "summary": "asd-ste100 preset (modifier), shown as \"ASD-STE100 Simplified Technical English\" \u2014 the standard\u2026"
-        },
-        {
-          "version": "2.0.0",
-          "date": "2026-08-16",
-          "kinds": [
-            "Changed",
-            "Added",
-            "Fixed"
-          ],
-          "summary": "Presets now compose into a native Claude Code output style instead of a CLAUDE.md block"
-        },
-        {
-          "version": "1.0.0",
-          "date": "2026-08-06",
-          "summary": "Nine composable communication style presets \u2014 direct, explanatory, terse, evidence-first,\u2026"
         }
       ]
     },

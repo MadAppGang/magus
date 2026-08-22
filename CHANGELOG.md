@@ -4,6 +4,44 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Marketplace 10.0.0] - 2026-08-22
+
+### Removed
+
+- **BREAKING** — Retired the `style` plugin. Its ten communication style presets moved into
+  claudeup (`tools/claudeup/src/data/styles/*.md`), where they are compiled into the binary
+  and always present. The marketplace entry and `plugins/style/` are deleted; `/style:apply`
+  and `/style:list` no longer exist. Remove `style@magus` from `enabledPlugins` and use the
+  claudeup Styles tab (`9`) instead.
+
+- **BREAKING** — Three composer capabilities go with it, and have no replacement:
+
+  | Gone | What it did |
+  |---|---|
+  | `--global` | wrote the generated style and `outputStyle` under `~/.claude` instead of the project |
+  | `--dry-run` | printed the composition without writing anything |
+  | `--list --json`, apply `--json` | machine-readable output for scripting a composition |
+
+  The Styles tab covers the interactive path and nothing else — `claudeup` has no `style` CLI verb,
+  so there is no headless or agent-invocable way to author a composition any more. Composing for
+  user scope, previewing before writing, and driving composition from a script are all unavailable;
+  if you scripted against the `--json` interfaces, that automation stops working and no flag
+  restores it. Headless *use* is unaffected: the committed `.claude/style.json` and the profile
+  manifest's `outputStyle` still apply a style that was authored interactively.
+
+### Why
+
+  claudeup never shipped presets of its own: it discovered the plugin's `styles/*.md` on
+  disk, so the Styles tab was empty for anyone without the plugin installed, and the same
+  composition algorithm existed twice — `plugins/style/scripts/compose-style.ts` and
+  `tools/claudeup/src/services/styles-manager.ts`. The split also had a failure mode with
+  no owner: `/style:apply` wrote `outputStyle` live into `settings.json` and recorded it
+  nowhere else, while `claudeup install` rebuilds that file from the profile manifest —
+  so with a profile active, a style applied through the plugin was erased on the next
+  install. One implementation, one copy of the presets, one place that records the choice.
+
+---
+
 ## [multimodel 3.8.0] - 2026-08-19
 
 ### Fixed
@@ -277,27 +315,6 @@ update it to the new address. Nothing inside this repository referenced the old 
 
 ---
 
-## [style 2.1.0] - 2026-08-18
-
-### Added
-
-- **`asd-ste100` preset** (modifier), shown as **"ASD-STE100 Simplified Technical English"** —
-  the standard distilled to
-  nine checkable rules: 20/25-word sentence caps split by instruction vs description,
-  three modals (must/can/will — "should" is a bug report against the sentence), one word
-  one meaning, condition before command, grammar words kept. Written for a tired reader
-  who reads each sentence once, and written *in* its own style, so the file demonstrates
-  the rules it states. ~35 lines against the 341-line skill it distils; found via
-  `AminBlg/SimpleEnglish` (MIT), rules restated from the public standard.
-- **A fixed "Style limits" trailer on every composition**: never reword code, commands,
-  file paths, error text, or numbers for style; quote real output rather than paraphrase;
-  security warnings and destructive-action confirmations override every style rule.
-  Appended by the plugin's `compose-style.ts` and claudeup's composer alike, held
-  identical by a parity test. Existing compositions re-hash, so claudeup reports one
-  "project style changed — press a to re-apply".
-
----
-
 ## [Marketplace 9.1.1] - 2026-08-18
 
 ### Changed
@@ -363,85 +380,6 @@ separately; none of them are fixable here.
   bump alone does not move an installed copy — shipping `style` 2.0.0 under 9.0.3 would have
   been invisible to every installation, which is the same-version content drift 9.0.3 itself
   was published to correct.
-
----
-
-## [style 2.0.0] - 2026-08-16
-
-### Changed
-
-- **Presets now compose into a native Claude Code output style instead of a CLAUDE.md
-  block.** `/style:apply` writes `.claude/output-styles/composed.md` and sets
-  `"outputStyle"` in `.claude/settings.json`. An output style is wired into the *identity*
-  sentence of the system prompt — "helps users according to your Output Style below" rather
-  than "with software engineering tasks" — so the rules carry the weight of what the model
-  is, not of project context it was handed.
-- All file work moved to `scripts/compose-style.ts`, covered by 25 tests. The command used
-  to instruct the model through seven steps of marker-splicing and `grep -c` verification;
-  every one of those steps was deterministic and belongs in code.
-- `/style:list` reads the same script rather than globbing on its own, so what it prints and
-  what `/style:apply` enforces cannot drift.
-
-### Added
-
-- **`scripts/capture-builtin.ts` — built-in output styles become importable files.**
-  `Explanatory`, `Learning` and `Proactive` ship inside the Claude Code binary, so there was
-  nothing for `compose-style.ts` to read and no way to run one alongside project rules. The
-  script puts a transparent proxy in front of the Anthropic API, runs one `claude -p` round
-  trip with the style active, and records the system prompt Claude Code actually sent to
-  `~/.claude/output-styles/builtin-<name>.md`. `--discover` lists what Anthropic ships today,
-  `--all` captures every one, `--check` exits non-zero when a capture is stale or a built-in
-  was never captured. Captures stay on the user's machine and are never committed here: the
-  text is Anthropic's, and it changes on their release schedule rather than ours. Method and
-  failure modes: `ai-docs/claude-code-builtin-output-style-extraction.md`.
-- **Output styles already on the machine are composable.** `~/.claude/output-styles/*.md`
-  and `.claude/output-styles/*.md` are discovered and offered alongside the presets, so a
-  hand-written voice file and these presets end up in one file instead of competing for the
-  single active slot. Imports are ordered before presets: an imported style is a whole
-  personality, a preset is a specific rule, and specific-after-broad means the rule refines
-  rather than gets buried.
-- `keep-coding-instructions: true` on every generated style. Omitting it makes Claude Code
-  drop its own coding-discipline block from the system prompt — no premature abstraction, no
-  error handling for impossible cases, verify UI changes in a browser. A plugin about how to
-  communicate must not switch off how code gets written.
-- The `terminology` template preset is materialised to `.claude/output-styles/terminology.md`
-  and imported, rather than copied verbatim. A template body is worthless until filled from
-  the codebase; the script now refuses it as a preset instead of shipping an empty table.
-
-### Fixed
-
-- The generated `description` is quoted. It contains `": "`, which unquoted parses as a
-  nested YAML mapping and breaks the frontmatter.
-- **Provenance moved out of the body and into frontmatter.** Claude Code splits an output
-  style into `{frontmatter, content}` and only `content` becomes the prompt, so the three
-  `<!-- style:… -->` marker lines were charged on every request — including a sentence
-  addressed to a human editor sitting inside the model's own instructions. They are now
-  `style-presets:` / `style-imports:` / `generated-by:` keys, which a human still reads when
-  opening the file and the model never sees. The markers were inherited from 1.x, where they
-  delimited a region of a user-owned CLAUDE.md; nothing delimits anything now that the whole
-  file is generated.
-
-### Migration notes
-
-- 1.x wrote a `<!-- style:begin -->` block into `CLAUDE.md`. That block still applies if left
-  in place, duplicating whatever the output style now says. `/style:apply` detects it and
-  offers to remove it; it never removes it silently, because CLAUDE.md is the user's file.
-- `outputStyle` lands in `.claude/settings.json`, so it reaches teammates only if that file
-  is committed. 1.x reached them through `CLAUDE.md`, which usually already was.
-- Built-in styles (`Explanatory`, `Learning`, `Proactive`) are not imported — they ship
-  inside the Claude Code binary rather than on disk, so there is no file to read. Composing
-  replaces whichever style was active, built-ins included. The text is obtainable by other
-  means; what is rejected is keeping a *copy*, which goes stale on Anthropic's release
-  schedule rather than ours.
-
-### Why
-
-- Claude Code activates exactly one output style at a time; its resolver returns a single
-  object. Nine composable presets therefore cannot be nine output styles, or picking two
-  would be impossible. Composition has to happen before the harness sees it, which is what
-  the script does.
-- `force-for-plugin: true` would let this plugin override the user's own `/output-style`
-  choice. It is deliberately never set, and the command carries a rule saying so.
 
 ---
 
