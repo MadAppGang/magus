@@ -18,7 +18,8 @@ What is proven, against processes that really exist:
      `--user-data-dir` argument names exactly that directory.
   3. Closing the session through the server kills the browser AND frees the
      directory.
-  4. SIGTERM on the server kills the browser AND removes the directory.
+  4. SIGTERM on the server kills the browser AND removes the directory, and the
+     server then exits rather than lingering with its cleanup done.
   5. A newly started server's reaper terminates a REAL orphaned browser — one
      whose owning server was SIGKILLed and is genuinely gone.
   6. That same reaper does NOT touch a browser owned by a LIVE server, including
@@ -103,6 +104,37 @@ def _playwright_cache_root() -> Path:
     if sys.platform == "darwin":
         return Path.home() / "Library" / "Caches" / "ms-playwright"
     return Path.home() / ".cache" / "ms-playwright"
+
+
+def _exe_of(pid: int, required: bool = False, attempts: int = 5) -> str | None:
+    """
+    The executable path of `pid`, or None once it is gone.
+
+    Reading it is inherently racy: psutil resolves /proc/<pid>/exe on Linux, so a
+    process that exits between the check and the read raises FileNotFoundError
+    rather than NoSuchProcess. Chrome reaps helper processes constantly, so this
+    fires in normal operation — it failed a CI run on a helper, not on anything
+    the test was asserting about.
+
+    `required=True` retries briefly before giving up, for a process the caller
+    genuinely expects to be alive (the main browser). Everything else is
+    best-effort and simply drops out of the result.
+    """
+    import psutil
+
+    for attempt in range(attempts if required else 1):
+        try:
+            return psutil.Process(pid).exe()
+        except (psutil.NoSuchProcess, psutil.AccessDenied, FileNotFoundError, OSError):
+            if not required:
+                return None
+            if attempt == attempts - 1:
+                raise AssertionError(
+                    f"could not read the executable path of pid {pid}; the process "
+                    "the test expects to be running is gone"
+                )
+            time.sleep(0.2)
+    return None
 
 
 def _playwright_chromium() -> str | None:
@@ -208,6 +240,27 @@ def _wait_until(predicate, timeout: float, interval: float = 0.25) -> bool:
             return True
         time.sleep(interval)
     return bool(predicate())
+
+
+def _describe_survivors(profile_dir: Path, limit: int = 40) -> str:
+    """
+    What is still inside `profile_dir`, or '<gone>'. Never raises.
+
+    A profile that survived shutdown is not one bug but a choice of two, and the
+    contents tell them apart: a full Chrome profile means the removal never ran,
+    while a handful of files (a stray journal, one directory) means it ran and
+    lost a race with something still writing. Without this, a CI failure reports
+    only that the path exists.
+    """
+    try:
+        if not profile_dir.exists():
+            return "<gone>"
+        names = sorted(str(p.relative_to(profile_dir)) for p in profile_dir.rglob("*"))
+    except Exception as exc:  # pragma: no cover - diagnostics must not fail a run
+        return f"<unreadable: {exc}>"
+    shown = ", ".join(names[:limit]) or "<empty directory>"
+    suffix = f" (+{len(names) - limit} more)" if len(names) > limit else ""
+    return f"{len(names)} entries: {shown}{suffix}"
 
 
 def _user_data_dir_args(pid: int) -> list[str]:
@@ -534,13 +587,15 @@ class TestServerOwnedBrowserLifecycle(unittest.TestCase):
         browser_pid = server.launch_browser()
         tree = _own_tree(server.pid)
         cls.observations["browser_pid"] = browser_pid
-        cls.observations["browser_exe"] = psutil.Process(browser_pid).exe()
+        cls.observations["browser_exe"] = _exe_of(browser_pid, required=True)
+        # Chrome spawns and reaps helper processes continuously, so
+        # `pid_exists(pid)` followed by `Process(pid).exe()` is a race: on Linux
+        # the second call reads /proc/<pid>/exe and raises FileNotFoundError for
+        # a helper that died in between. Observed on CI. Drop what vanished
+        # rather than failing the run over it — the assertion cares about which
+        # binaries ran, not about catching every short-lived helper.
         cls.observations["descendant_exes"] = sorted(
-            {
-                psutil.Process(pid).exe()
-                for pid in tree
-                if psutil.pid_exists(pid)
-            }
+            {exe for exe in (_exe_of(pid) for pid in tree) if exe}
         )
         cls.observations["user_data_dir_args"] = _user_data_dir_args(browser_pid)
         cls.observations["profile_dir"] = server.profile_dir
@@ -579,11 +634,15 @@ class TestServerOwnedBrowserLifecycle(unittest.TestCase):
 
         tree_2 = _own_tree(server.pid)
         server.signal(signal.SIGTERM)
+        # The server's own exit is part of the wait, not a separate check after
+        # it: shutdown removes the directory microseconds before os._exit(0), so
+        # sampling the two independently is a race the harness would lose.
         _wait_until(
             lambda: (
                 not _alive(browser_pid_2)
                 and not any(_alive(p) for p in tree_2)
                 and not server.profile_dir.exists()
+                and server.proc.poll() is not None
             ),
             timeout=45.0,
         )
@@ -591,6 +650,11 @@ class TestServerOwnedBrowserLifecycle(unittest.TestCase):
         cls.observations["tree_alive_after_sigterm"] = [p for p in tree_2 if _alive(p)]
         cls.observations["profile_dir_exists_after_sigterm"] = server.profile_dir.exists()
         cls.observations["server_exited_after_sigterm"] = server.proc.poll() is not None
+        # What is left when this fails is the whole diagnosis: a directory that
+        # rmtree emptied and something wrote back into looks nothing like one it
+        # never touched. Recording it here is the only chance — the temp HOME is
+        # deleted at class teardown.
+        cls.observations["profile_dir_survivors"] = _describe_survivors(server.profile_dir)
 
     def test_launched_binary_is_playwright_chromium(self):
         """The browser must come from Playwright's cache — the resolver's whole job."""
@@ -667,7 +731,15 @@ class TestServerOwnedBrowserLifecycle(unittest.TestCase):
         )
         self.assertFalse(
             self.observations["profile_dir_exists_after_sigterm"],
-            f"{self.observations['profile_dir']} survived SIGTERM of its server",
+            f"{self.observations['profile_dir']} survived SIGTERM of its server; "
+            f"what is left: {self.observations['profile_dir_survivors']}",
+        )
+        # Cleanup is bounded, so it may delay the exit but must never prevent it.
+        # A server that cleaned up perfectly and then stayed resident is the bug
+        # os._exit(0) exists to prevent, and it would otherwise pass this class.
+        self.assertTrue(
+            self.observations["server_exited_after_sigterm"],
+            "the server cleaned up but never exited after SIGTERM",
         )
 
 

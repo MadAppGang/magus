@@ -18,7 +18,7 @@ Plugin IDs carry the marketplace, so these are `name@magus`.
 
 | Plugin | Version | What it does |
 |---|---|---|
-| [`browser-use`](./browser-use.md) | 1.7.1 | Full-platform browser automation. Live-page JS eval, keyboard and focus primitives, environment preflight, and a configurable agent LLM, across dual local and cloud browsers backed by Playwright's own Chromium so your real Chrome is never hijacked. Ten Magus-specific tools on top of the upstream Browser Use MCP set, plus 6 skills. |
+| [`browser-use`](./browser-use.md) | 1.7.2 | Full-platform browser automation. Live-page JS eval, keyboard and focus primitives, environment preflight, and a configurable agent LLM, across dual local and cloud browsers backed by Playwright's own Chromium so your real Chrome is never hijacked. Ten Magus-specific tools on top of the upstream Browser Use MCP set, plus 6 skills. |
 | [`bunjs`](./bunjs.md) | 0.4.1 | Bun and TypeScript toolkit. A `/bunjs:bun` index routes any task to the right one of eight task-shaped skills — setup, HTTP, errors, testing, security, production, performance, TUI — each shipping copyable code verified against Bun. Only Bun is tested. |
 | [`claudish`](./claudish.md) | 1.0.1 | MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting across models, manages async sessions, and streams channel notifications. Required by code-analysis, dev, multimodel, designer and seo. |
 | [`code-analysis`](./code-analysis.md) | 5.4.1 | Codebase investigation and semantic search. Maps architecture, traces callers and callees, and ranks symbols by PageRank through the mnemex AST engine, with a read-only detective agent for deep dives. |

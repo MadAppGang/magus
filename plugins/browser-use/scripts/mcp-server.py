@@ -323,24 +323,107 @@ def _session_profile_dir(pid: int) -> Path:
     )
 
 
-def _remove_session_profile_dir(pid: int) -> None:
+# Every wait on the shutdown path is bounded by one of these. _shutdown_sync
+# runs from a signal handler and from atexit, so it may never block until Chrome
+# decides to cooperate — but it also may not race ahead of it (see
+# _kill_session_sync). Each is a ceiling, not a delay: every wait ends on its
+# condition, so a measured Linux shutdown spends 22-110ms killing the browser
+# tree (13-37ms before this waiting existed) and ~3ms removing the directory.
+_KILL_TERM_TIMEOUT = 2.0       # SIGTERM -> the browser process itself is gone
+_KILL_TREE_TIMEOUT = 2.0       # ...and every helper process it forked with it
+_PROFILE_REMOVE_TIMEOUT = 2.0  # rmtree -> the directory is verifiably gone
+# The same removal from inside the event loop, where a retry blocks the server
+# and a later idle sweep will try again anyway.
+_PROFILE_RELEASE_TIMEOUT = 0.5
+
+
+def _process_is_gone(proc: Any) -> bool:
+    """
+    True when `proc` can no longer touch the filesystem. Never raises.
+
+    A zombie counts as gone: it holds no descriptors and runs no code. Nothing
+    on this path reaps anything — Chrome's helpers are forked from its zygote
+    rather than by us, and the browser child is left to the interpreter's exit a
+    few microseconds later — so treating a zombie as alive would spend the whole
+    wait budget on a process that is already incapable of writing anything.
+    """
+    try:
+        import psutil
+
+        if not proc.is_running():
+            return True
+        return proc.status() == psutil.STATUS_ZOMBIE
+    except Exception:
+        return True  # Cannot see it — there is nothing left to wait for.
+
+
+def _wait_for_processes_gone(procs: Any, timeout: float) -> list:
+    """
+    Poll until every process in `procs` is gone, or `timeout` elapses.
+
+    Returns the processes still alive at the end — empty when they all died.
+    Bounded by construction and best-effort: it never raises, and a process it
+    cannot inspect is treated as gone.
+    """
+    try:
+        survivors = [proc for proc in procs if proc is not None]
+    except Exception:
+        return []
+
+    deadline = time.monotonic() + max(0.0, timeout)
+    while survivors:
+        survivors = [proc for proc in survivors if not _process_is_gone(proc)]
+        if not survivors or time.monotonic() >= deadline:
+            break
+        time.sleep(0.02)
+    return survivors
+
+
+def _remove_session_profile_dir(
+    pid: int, timeout: float = _PROFILE_REMOVE_TIMEOUT
+) -> bool:
     """
     Remove the PID-scoped Chrome profile directory. Best-effort, never raises.
+
+    Returns True once the directory is verifiably gone.
 
     Callers must first establish that no browser is running on it — pulling the
     profile out from under a live Chrome corrupts it. Otherwise the directory is
     disposable by design: it is PID-scoped, costs ~50MB, holds nothing worth
     keeping (persistent state is saved with browser_export_session), and the next
     browser action recreates it empty.
+
+    The removal is VERIFIED and retried inside a bounded window rather than
+    fired once and assumed. shutil.rmtree(ignore_errors=True) reports nothing,
+    and the failure it hides is PERMANENT: rmtree walks bottom-up, so one file
+    written into a directory it has already scanned makes the closing rmdir fail
+    with ENOTEMPTY, that error is swallowed, and ~50MB survives for the life of
+    the machine. A single unlucky millisecond is enough. Ordering the removal
+    after the browser's death (see _kill_session_sync) is what stops the writer
+    existing at all; this loop is the backstop for the case where one does.
     """
     import shutil
 
-    try:
-        profile_dir = _session_profile_dir(pid)
-        if profile_dir.exists():
+    profile_dir: Path | None = None
+    deadline = time.monotonic() + max(0.0, timeout)
+    while True:
+        try:
+            profile_dir = _session_profile_dir(pid)
+            if not profile_dir.exists():
+                return True
             shutil.rmtree(profile_dir, ignore_errors=True)
+            if not profile_dir.exists():
+                return True
+        except Exception:
+            pass
+        if time.monotonic() >= deadline:
+            break
+        time.sleep(0.05)
+
+    try:
+        return profile_dir is not None and not profile_dir.exists()
     except Exception:
-        pass
+        return False
 
 
 def _exit_process(code: int) -> None:
@@ -1704,10 +1787,22 @@ class MagusBrowserServer(BrowserUseServer):
         Deliberately conservative: a close that errored leaves the session
         tracked, so this does nothing and the directory survives until either a
         later successful close or process exit.
+
+        This path cannot wait for the browser TREE the way shutdown does:
+        upstream clears _local_browser_watchdog._subprocess as it closes the
+        session, so by the time we get here there is no handle left to poll. It
+        relies on the removal's own verify-and-retry instead, and that is enough
+        here — a helper still flushing is gone within milliseconds, and the 120s
+        idle sweep tries again regardless.
+
+        The retry budget is a fraction of the shutdown one. This runs inside the
+        event loop (from _close_session and the idle sweep), so its retries block
+        the whole server, and unlike shutdown it gets another attempt later.
+        Shutdown has exactly one.
         """
         if self._has_live_browser_session():
             return
-        _remove_session_profile_dir(os.getpid())
+        _remove_session_profile_dir(os.getpid(), timeout=_PROFILE_RELEASE_TIMEOUT)
 
     async def _close_session(self, session_id: str) -> str:
         """
@@ -1780,7 +1875,50 @@ class MagusBrowserServer(BrowserUseServer):
 
         Under keep_alive=True, session.stop()/close() are NO-OPS on Chrome —
         only session.kill() actually terminates the browser (browser-use 0.13.1).
+
+        Returns only once the browser process AND every helper it forked is
+        gone, or the bounded wait expires. That ordering is load-bearing, and
+        waiting on the browser alone is not enough.
+
+        Chrome's network service runs as
+        '--type=utility --utility-sub-type=network.mojom.NetworkService'. On
+        Linux it is forked from the zygote, so it is a GRANDCHILD of the browser
+        and outlives it by a few milliseconds, flushing SQLite stores that live
+        INSIDE the profile directory ('Trust Tokens', 'Shared Dictionary/db',
+        'Network/Cookies') on its way out. Remove the directory in that window
+        and the flush puts a file back into a directory rmtree has already
+        scanned; the closing rmdir fails ENOTEMPTY, ignore_errors=True swallows
+        it, and the profile is stranded for good.
+
+        Measured against real Chrome, instrumented at the moment the removal
+        began. Linux, 6 shutdowns: a helper was still alive in 4 of them, and in
+        3 of those it was the network service with profile files open. macOS,
+        same instrumentation, 5 shutdowns: the whole tree was already dead every
+        time, because there the browser does not exit until its children have.
+        That is why this only ever failed in Linux CI, and why it failed
+        intermittently there — 2 full-suite runs in 13.
         """
+        # Snapshot the browser process and every helper it forked BEFORE anything
+        # kills it. Two reasons, both fatal to a snapshot taken later: a dead
+        # browser's children are reparented to init and can no longer be reached
+        # from this handle, and upstream's on_BrowserKillEvent sets
+        # _local_browser_watchdog._subprocess = None as it closes the session
+        # (local_browser_watchdog.py:71), so on the path where session.kill()
+        # SUCCEEDS there would be no handle left to read at all.
+        proc: Any = None
+        tree: list[Any] = []
+        try:
+            watchdog = getattr(session, "_local_browser_watchdog", None)
+            proc = getattr(watchdog, "_subprocess", None) if watchdog is not None else None
+            if proc is not None:
+                tree = [proc]
+                try:
+                    tree.extend(proc.children(recursive=True))
+                except Exception:
+                    pass
+        except Exception:
+            proc = None
+
         # Preferred path: run the async kill() to completion.
         try:
             asyncio.run(asyncio.wait_for(session.kill(), timeout=5))
@@ -1795,22 +1933,33 @@ class MagusBrowserServer(BrowserUseServer):
         # This is a TARGETED single-process kill via the session's own psutil
         # handle — never a pattern/name-based kill.
         try:
-            watchdog = getattr(session, "_local_browser_watchdog", None)
-            proc = getattr(watchdog, "_subprocess", None) if watchdog is not None else None
-            if proc is not None and proc.is_running():
+            if proc is None:
+                return
+
+            if proc.is_running():
                 proc.terminate()
-                try:
-                    proc.wait(timeout=2)
-                except Exception:
-                    proc.kill()
+                if _wait_for_processes_gone([proc], _KILL_TERM_TIMEOUT):
+                    proc.kill()  # Still up after the grace period.
+
+            # Nothing can reap the helpers for us — they are not our children —
+            # so this polls rather than waits, and it is bounded either way.
+            _wait_for_processes_gone(tree, _KILL_TREE_TIMEOUT)
         except Exception:
             pass
 
     def _shutdown_sync(self) -> None:
         """
         Best-effort synchronous cleanup on process exit.
-        Kills Chrome for the primary session AND every tracked session, then
-        removes the PID-scoped profile directory.
+        Kills Chrome for the primary session AND every tracked session, waits
+        for each browser tree to actually be gone, then removes the PID-scoped
+        profile directory.
+
+        The order matters more than the speed: a removal that overtakes a still
+        flushing Chrome helper leaves the directory behind permanently, because
+        this runs once and the process exits immediately afterwards. Every wait
+        is bounded (see _kill_session_sync and _remove_session_profile_dir), so
+        a browser that refuses to die delays shutdown by seconds at most and
+        never hangs it.
         """
         # Collect every session: primary + all tracked (import/cloud) sessions.
         sessions: list[Any] = []
@@ -1825,12 +1974,16 @@ class MagusBrowserServer(BrowserUseServer):
         except Exception:
             pass
 
+        # Each kill returns once that session's browser tree is gone, or once
+        # its own bound expires — so one browser that refuses to die cannot stop
+        # the others from being killed.
         for session in sessions:
             self._kill_session_sync(session)
 
-        # Every browser this server owns is now dead, so the PID-scoped profile
-        # directory has no reader left. Leaving stale dirs causes unbounded disk
-        # growth (~50MB per Chrome profile).
+        # Every browser this server owns is now confirmed dead, so nothing is
+        # left to write into the PID-scoped profile directory while it is being
+        # removed. Leaving stale dirs causes unbounded disk growth (~50MB per
+        # Chrome profile).
         _remove_session_profile_dir(os.getpid())
 
 
@@ -2054,6 +2207,11 @@ def _reap_orphaned_profiles(base_dir: Path | None = None) -> None:
                     except Exception:
                         continue
 
+                # One shot on purpose, unlike the shutdown path. This runs
+                # before the server accepts its first request and again on every
+                # 120s sweep, so a dir that resists a racing Chrome flush is
+                # retried by the next pass; retrying here would put an unbounded
+                # multiple of that budget in front of server startup.
                 shutil.rmtree(entry, ignore_errors=True)
                 reaped.append(entry.name)
 

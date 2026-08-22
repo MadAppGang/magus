@@ -4,6 +4,33 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [browser-use 1.7.2] - 2026-08-22
+
+### Fixed
+
+- **Shutdown left the profile directory behind on Linux.** Cleanup terminated the browser
+  process and waited only for that one PID, but Chrome's network service is forked from the
+  zygote and is a *grandchild* of the browser, so it outlives it by milliseconds — still
+  flushing `Default/Trust Tokens`, `Default/Shared Dictionary/db` and `Network/Cookies` into
+  the directory being deleted. `rmtree` walks bottom-up, so a file written back into a
+  directory it had already scanned made the closing `rmdir` fail with `ENOTEMPTY`, which
+  `ignore_errors=True` swallowed, and `os._exit` followed immediately with nothing left to
+  retry. A one-millisecond race became a permanent ~50MB leak. macOS never showed it, because
+  there the browser process does not exit until its children have.
+
+  Shutdown now snapshots the browser's whole process tree *before* anything kills it — upstream
+  clears the subprocess handle on kill, so the snapshot has to come first — then waits, with a
+  bound, for the tree to be gone. Removal verifies the directory is actually gone and retries
+  within its own bounded window instead of trusting a silent `rmtree`. Every wait ends on its
+  condition; measured shutdown cost went from 13-37ms to 22-110ms.
+
+  Measured on Linux before the fix: a helper was still alive in 4 of 6 shutdowns, and in 3 of 6
+  a live process held files inside the directory when removal began — every one of them the
+  network service. On macOS, 0 of 5. The full suite failed 2 runs in 13 before the fix and 0 in
+  36 after.
+
+---
+
 ## [browser-use 1.7.1] - 2026-08-22
 
 ### Fixed

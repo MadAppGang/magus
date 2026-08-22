@@ -56,6 +56,16 @@ Automatic self-cleanup (dev-fix-20260822-browser-chrome-hijack, follow-up):
     cadence — upstream spawns it only from BrowserUseServer.run(), which main()
     bypasses to own the stdio wiring.
 
+Shutdown ordering (Linux-only profile leak, found by the E2E lifecycle suite):
+    _kill_session_sync returned as soon as the BROWSER process was gone, and
+    _shutdown_sync removed the profile directory immediately afterwards.  On
+    Linux Chrome's network service is forked from the zygote, outlives the
+    browser, and is still flushing SQLite stores inside that directory — so the
+    removal raced a live writer, rmtree hit ENOTEMPTY, ignore_errors=True
+    swallowed it, and os._exit(0) meant nothing ever retried.  Shutdown must now
+    wait (bounded) for the whole browser TREE, and the removal must verify it
+    worked instead of assuming it did.
+
 Configurable agent LLM (profiles-inference-redirect):
     - _build_llm() dispatches to the right Chat* class per provider, forwarding
       temperature/base_url/api_key by the provider's rules.
@@ -71,6 +81,7 @@ import json
 import os
 import signal
 import sys
+import threading
 import time
 import unittest
 from pathlib import Path
@@ -906,6 +917,336 @@ class TestShutdownCleansProfileDir(unittest.TestCase):
 
         import shutil
         shutil.rmtree(tmp, ignore_errors=True)
+
+
+# ---------------------------------------------------------------------------
+# Test 6b: shutdown must not overtake a browser that is still dying
+#
+# BUG (Linux-only, ~1 run in 6): the E2E lifecycle suite failed with
+# "…/browser-use-user-data-dir-session-<pid> survived SIGTERM of its server",
+# and the directory was still there 45s later.
+#
+# Root cause, measured against real Chrome on Linux: _kill_session_sync returned
+# as soon as the BROWSER process was gone, but Chrome's network service
+# ('--type=utility --utility-sub-type=network.mojom.NetworkService') is forked
+# from the zygote — a grandchild of the browser — and outlives it, flushing
+# SQLite stores that live inside the profile directory ('Trust Tokens',
+# 'Shared Dictionary/db', 'Network/Cookies').  Removing the directory in that
+# window loses the race: rmtree walks bottom-up, the flush puts a file back into
+# a directory it already scanned, the closing rmdir fails ENOTEMPTY, and
+# ignore_errors=True swallows it.  os._exit(0) follows immediately, so nothing
+# ever retries.  On macOS the whole tree was already dead every time, which is
+# why it only ever failed in Linux CI.
+#
+# Two independent guarantees, tested separately below:
+#   1. ordering  — the removal waits for the browser TREE, not just the browser
+#   2. verifying — the removal checks it actually worked, and retries if not
+# ---------------------------------------------------------------------------
+
+class _FakeChromeProcess:
+    """
+    psutil.Process stand-in for one Chrome process, with a real lifetime.
+
+    `lifetime` is how long the process stays alive after terminate() — the
+    helper-outlives-the-browser window that the real bug happens inside.
+    `writes_to` makes it behave like Chrome's network service: while it is
+    alive it keeps putting a file back into the profile directory, which is what
+    turns a premature rmtree into a permanent leak.
+    """
+
+    def __init__(self, pid, lifetime=0.0, writes_to=None, children=()):
+        self.pid = pid
+        self.lifetime = lifetime
+        self.writes_to = writes_to
+        self._children = list(children)
+        self._death = None  # monotonic deadline, set by terminate()/kill()
+        self._writer = None
+        self.terminated = False
+        self.killed = False
+
+    # -- psutil surface -------------------------------------------------
+    def children(self, recursive=False):
+        return list(self._children)
+
+    def is_running(self):
+        return self._death is None or time.monotonic() < self._death
+
+    def status(self):
+        return "running"
+
+    def terminate(self):
+        self.terminated = True
+        for child in self._children:
+            child.terminate()
+        if self._death is None:
+            self._death = time.monotonic() + self.lifetime
+            self._start_writing()
+
+    def kill(self):
+        self.killed = True
+        for child in self._children:
+            child.kill()
+        self._death = time.monotonic()
+
+    def wait(self, timeout=None):
+        deadline = time.monotonic() + (timeout if timeout is not None else 0)
+        while self.is_running():
+            if time.monotonic() >= deadline:
+                raise TimeoutError(f"pid {self.pid} still running")
+            time.sleep(0.01)
+        return 0
+
+    # -- the profile-directory writer -----------------------------------
+    #
+    # A real helper flushes on its own schedule, so this runs on its own thread
+    # rather than piggybacking on somebody polling is_running(). That is the
+    # whole point: the writer is invisible to code that only watches the browser
+    # process.
+    def _start_writing(self):
+        if self.writes_to is None:
+            return
+
+        def flush_until_dead():
+            while self.is_running():
+                try:
+                    target = Path(self.writes_to) / "Default"
+                    target.mkdir(parents=True, exist_ok=True)
+                    (target / "Trust Tokens-journal").write_text("flush")
+                except Exception:
+                    pass
+                time.sleep(0.01)
+
+        self._writer = threading.Thread(target=flush_until_dead, daemon=True)
+        self._writer.start()
+
+    def join(self, timeout=5.0):
+        """Stop the writer and wait for it, so no test leaks a live thread."""
+        self.kill()
+        if self._writer is not None:
+            self._writer.join(timeout=timeout)
+
+
+def _session_with_browser_tree(proc):
+    """A BrowserSession stand-in whose watchdog exposes `proc` as its browser."""
+    session = MagicMock(name="session")
+    session.kill = AsyncMock(return_value=None)
+    session._local_browser_watchdog._subprocess = proc
+    return session
+
+
+class TestShutdownWaitsForTheBrowserTree(unittest.TestCase):
+    """
+    _shutdown_sync must not remove the profile directory until every process
+    that could still write into it is gone.
+    """
+
+    def _home_with_profile(self):
+        """A throwaway HOME holding this PID's profile dir. Returns that dir."""
+        import shutil
+        import tempfile
+
+        tmp = Path(tempfile.mkdtemp(prefix="magus-shutdown-order-"))
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
+        profile_dir = (
+            tmp / ".config" / "browseruse" / "profiles"
+            / f"{_NEW_SESSION_PREFIX}{os.getpid()}"
+        )
+        (profile_dir / "Default").mkdir(parents=True)
+        (profile_dir / "Local State").write_text("dummy")
+
+        original_home = Path.home
+        Path.home = staticmethod(lambda: tmp)
+        self.addCleanup(lambda: setattr(Path, "home", original_home))
+        return profile_dir
+
+    def test_profile_dir_is_removed_even_when_a_helper_outlives_the_browser(self):
+        """
+        The exact Linux failure: the browser exits immediately, one helper keeps
+        writing into the profile directory for a moment longer.  Shutdown must
+        still end with the directory gone.
+        """
+        profile_dir = self._home_with_profile()
+
+        # The network service: still alive, still flushing, after the browser
+        # process it was forked from has gone.
+        helper = _FakeChromeProcess(
+            pid=424242, lifetime=0.4, writes_to=profile_dir
+        )
+        self.addCleanup(helper.join)
+        browser = _FakeChromeProcess(pid=424241, lifetime=0.0, children=[helper])
+
+        server = _make_server()
+        server.browser_session = _session_with_browser_tree(browser)
+
+        server._shutdown_sync()
+        helper_still_writing = helper.is_running()
+
+        # Observe the way the E2E suite does: once the whole browser tree is
+        # really gone. A directory that looks removed for a millisecond and is
+        # then written back is exactly what "survived SIGTERM" means on CI.
+        deadline = time.monotonic() + 5.0
+        while helper.is_running() and time.monotonic() < deadline:
+            time.sleep(0.01)
+        helper.join()
+
+        self.assertTrue(browser.terminated, "the browser process must be terminated")
+        self.assertFalse(
+            profile_dir.exists(),
+            f"{profile_dir} survived shutdown. The helper wrote back into it "
+            "after the removal ran, so the removal lost the race — exactly the "
+            "Linux CI failure.",
+        )
+        self.assertFalse(
+            helper_still_writing,
+            "_shutdown_sync returned while a Chrome helper was still alive and "
+            "still flushing into the profile directory. The removal must wait "
+            "for the whole browser tree, not just the browser process.",
+        )
+
+    def test_shutdown_is_bounded_when_the_browser_never_dies(self):
+        """
+        A browser that ignores SIGTERM must not hang the signal handler.  Every
+        wait is a ceiling, so shutdown finishes and the process still exits.
+        """
+        profile_dir = self._home_with_profile()
+
+        immortal = _FakeChromeProcess(pid=424243, lifetime=3600.0)
+        server = _make_server()
+        server.browser_session = _session_with_browser_tree(immortal)
+
+        started = time.monotonic()
+        server._shutdown_sync()
+        elapsed = time.monotonic() - started
+
+        self.assertTrue(immortal.killed, "SIGTERM grace expired: it must be killed")
+        ceiling = (
+            _mod._KILL_TERM_TIMEOUT + _mod._KILL_TREE_TIMEOUT
+            + _mod._PROFILE_REMOVE_TIMEOUT + 2.0
+        )
+        self.assertLess(
+            elapsed,
+            ceiling,
+            f"_shutdown_sync took {elapsed:.1f}s. It runs inside a signal "
+            "handler — every wait on this path must be bounded.",
+        )
+
+    def test_one_unkillable_session_does_not_block_the_others(self):
+        """Cleanup stays best-effort: a session that explodes is not fatal."""
+        profile_dir = self._home_with_profile()
+
+        exploding = MagicMock(name="exploding-session")
+        exploding.kill = AsyncMock(side_effect=RuntimeError("boom"))
+        type(exploding)._local_browser_watchdog = property(
+            lambda self: (_ for _ in ()).throw(RuntimeError("no watchdog"))
+        )
+
+        healthy_proc = _FakeChromeProcess(pid=424244, lifetime=0.0)
+        healthy = _session_with_browser_tree(healthy_proc)
+
+        server = _make_server()
+        server.browser_session = exploding
+        server.active_sessions = {
+            "bad": {"session": exploding},
+            "good": {"session": healthy},
+        }
+
+        server._shutdown_sync()  # must not raise
+
+        self.assertTrue(
+            healthy_proc.terminated,
+            "a session that failed to kill must not stop the next one",
+        )
+        self.assertFalse(profile_dir.exists(), "the profile dir must still be freed")
+
+
+class TestProfileDirRemovalIsVerified(unittest.TestCase):
+    """
+    _remove_session_profile_dir must confirm the directory is gone, not assume
+    it.  shutil.rmtree(ignore_errors=True) returns the same None whether it
+    removed everything or hit ENOTEMPTY and gave up half way.
+    """
+
+    def _home_with_profile(self):
+        import shutil
+        import tempfile
+
+        tmp = Path(tempfile.mkdtemp(prefix="magus-remove-verify-"))
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
+        profile_dir = (
+            tmp / ".config" / "browseruse" / "profiles"
+            / f"{_NEW_SESSION_PREFIX}{os.getpid()}"
+        )
+        profile_dir.mkdir(parents=True)
+        (profile_dir / "Local State").write_text("dummy")
+
+        original_home = Path.home
+        Path.home = staticmethod(lambda: tmp)
+        self.addCleanup(lambda: setattr(Path, "home", original_home))
+        return profile_dir
+
+    def test_a_swallowed_rmtree_failure_is_retried(self):
+        """
+        First attempt silently leaves the directory (what ignore_errors=True does
+        on ENOTEMPTY). The removal must notice and try again.
+        """
+        import shutil
+
+        profile_dir = self._home_with_profile()
+        real_rmtree = shutil.rmtree
+        attempts = []
+
+        def flaky_rmtree(path, *args, **kwargs):
+            attempts.append(str(path))
+            if len(attempts) == 1:
+                return  # swallowed failure: nothing removed, nothing raised
+            return real_rmtree(path, *args, **kwargs)
+
+        with patch.object(shutil, "rmtree", flaky_rmtree):
+            removed = _mod._remove_session_profile_dir(os.getpid())
+
+        self.assertGreater(
+            len(attempts),
+            1,
+            "the first rmtree removed nothing and reported nothing; a "
+            "single-shot removal leaks the profile permanently",
+        )
+        self.assertTrue(removed, "_remove_session_profile_dir must report success")
+        self.assertFalse(profile_dir.exists(), f"{profile_dir} must be gone")
+
+    def test_removal_gives_up_within_its_budget(self):
+        """A directory that can never be removed must not block shutdown."""
+        import shutil
+
+        profile_dir = self._home_with_profile()
+
+        with patch.object(shutil, "rmtree", lambda *a, **k: None):
+            started = time.monotonic()
+            removed = _mod._remove_session_profile_dir(os.getpid(), timeout=0.3)
+            elapsed = time.monotonic() - started
+
+        self.assertFalse(removed, "it must report the directory is still there")
+        self.assertTrue(profile_dir.exists())
+        self.assertLess(
+            elapsed, 3.0, f"the retry loop ran for {elapsed:.1f}s — it must be bounded"
+        )
+
+    def test_missing_directory_reports_success_immediately(self):
+        """Nothing to remove is the successful case, not a retry loop."""
+        import shutil
+        import tempfile
+
+        tmp = Path(tempfile.mkdtemp(prefix="magus-remove-missing-"))
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
+        original_home = Path.home
+        Path.home = staticmethod(lambda: tmp)
+        self.addCleanup(lambda: setattr(Path, "home", original_home))
+
+        started = time.monotonic()
+        removed = _mod._remove_session_profile_dir(os.getpid())
+        elapsed = time.monotonic() - started
+
+        self.assertTrue(removed)
+        self.assertLess(elapsed, 1.0, "an absent directory must return at once")
 
 
 # ---------------------------------------------------------------------------
