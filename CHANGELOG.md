@@ -41,6 +41,19 @@
 
 ---
 
+## [dev 4.4.2] - 2026-08-22
+
+### Changed
+
+- **`/dev:release` settles authorization once, up front — never mid-run.** If the request
+  says "release yourself" (or `--auto`), the run goes to completion with every
+  irreversible step reported; otherwise the command asks one question before starting
+  and then runs on that answer. Mid-run stops are now only failed gates and consistency
+  incidents, never permission. The PR remains the durable record, not a second approval.
+  Replaces the 4.4.1 pre-authorization wording, which still allowed a merge-time gate.
+
+---
+
 ## [dev 4.4.1] - 2026-08-22
 
 ### Added

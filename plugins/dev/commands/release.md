@@ -26,9 +26,12 @@ skills: dev:context-detection
   2. THE TESTED CANDIDATE IS THE RELEASED CANDIDATE. Changing versions, changelogs,
      generated files, or lockfiles after tests ran means the tested candidate is no longer
      the candidate being released. Any post-test mutation returns the flow to PREPARE.
-  3. THE HUMAN GATE IS A REVIEWABLE DIFF. Approval happens on a PR (or, headless, on the
-     exact prepared diff), before merge — because when CI publishes on merge, merge IS the
-     production boundary. Review offered after merge is theatre.
+  3. ONE HUMAN DECISION, MADE UP FRONT. Authorization is settled BEFORE the pipeline
+     starts (see <authorization>), never mid-run. If the user said "release yourself",
+     run to completion without stopping; if they did not, ask once, right away, before
+     doing anything. A release that blocks in the middle waiting for a click is the
+     failure mode this rule exists to prevent. The PR stays as the durable, reviewable
+     record — it is not a second approval step.
   4. EVERY SIDE EFFECT IS A PREDICATE + ACTION. Before acting, check whether the effect
      already exists: absent → do it; present and matching → skip and say so; present but
      DIFFERENT → hard stop, this is a consistency incident, never a retry.
@@ -55,6 +58,26 @@ skills: dev:context-detection
     REPORT exist: anything worth keeping must leave the worktree as a committed file
     BEFORE the merge, or it never will.
 </worktree_context>
+
+<authorization>
+  FIRST THING, BEFORE ANY PHASE RUNS — settle who decides, once:
+
+  - The user's request already says it ("release yourself", "merge and release without
+    asking", "--auto", or equivalent) → AUTONOMOUS MODE for this whole run. Do not ask
+    again at any point. Report every irreversible step as it happens.
+  - It does not → ask ONE question now, before starting: "Run this release end to end
+    myself (merge + tag + publish without stopping), or stop before the irreversible
+    steps for your go-ahead?" Their answer sets the mode for the run. Then start.
+  - Never introduce a new approval question in the middle of the pipeline. The only
+    legitimate mid-run stops are NOT approvals: a preflight gate that failed, or a
+    consistency incident (golden rule 4: something exists but differs). Those stop the
+    run because proceeding would be wrong, not because permission is missing.
+  - Authorization covers this run only. It does not carry over to the next invocation.
+
+  In autonomous mode the version bump and changelog text are decided by the agent and
+  reported, not approved. If the user wants to shape them, that is the moment to say
+  so — before the run, as part of the one question above.
+</authorization>
 
 <phase_0_detect>
   Identify the stack (use dev:context-detection) and the project's release machinery,
@@ -111,15 +134,17 @@ skills: dev:context-detection
   - Print the blast radius: what version, which packages/artifacts, which registries,
     which tags, which CI workflows will fire.
 
-  GATE: every gate green AND the user has approved the version and the blast radius.
+  GATE: every gate green. The version and blast radius are REPORTED; they were
+  authorized up front (see <authorization>), so this is not a stop.
 </phase_1_preflight>
 
 <phase_2_prepare>
   Reversible writes only. No tag. No publish.
 
   - Draft the changelog entry (Keep a Changelog shape: Added/Changed/Fixed/…, dated,
-    human-readable impact — not a commit-subject dump). Show it to the user for edits.
-    This entry is the release-intent artifact; without it there is no release.
+    human-readable impact — not a commit-subject dump). In autonomous mode write it and
+    report it; otherwise it was shaped in the up-front exchange. This entry is the
+    release-intent artifact; without it there is no release.
   - Write the version through the ecosystem's own tool with tagging DISABLED:
     npm version --no-git-tag-version, cargo set-version, uv version, poetry version —
     or plain file edits where no tool exists. Update every place the version lives
@@ -149,17 +174,18 @@ skills: dev:context-detection
     changelog entry as the body. Never commit release metadata straight to the default
     branch unless the project's documented process says to.
 
-  GATE: PR CI green AND explicit human approval of the diff.
-  - Offer a code review on the diff here (Agent → dev:reviewer, or the project's review
-    command). The review must COMPLETE and its findings be surfaced; it blocks only
-    through the human's decision on critical findings. An agent approving its own
-    release is a log line, not a gate.
-  - Solo-maintainer fast path: gh pr merge --auto --squash after approval makes this
-    near-zero friction. The gate is the review, not the waiting.
+  GATE: PR CI green. Not a second approval — the human decided up front. The PR is the
+  durable record of what shipped, and CI is the mechanical gate.
+  - Run a code review on the diff here (Agent → dev:reviewer, or the project's review
+    command) and surface its findings in the PR. It does not block on its own; a
+    critical, evidence-backed finding is reported as a preflight-class failure (the
+    run stops because proceeding would be wrong), everything else is noted and the
+    run continues. An agent approving its own release is a log line, not a gate.
 </phase_2_prepare>
 
 <phase_3_merge_and_tag>
-  - Merge only on the user's say-so (or their pre-authorized auto-merge-on-green).
+  - Merge as soon as CI is green. In autonomous mode this is automatic; in gated mode
+    the go-ahead was collected up front, so it is still not a question asked here.
   - Resolve the MERGE COMMIT SHA on the default branch. All tags point there — never at
     the branch head that CI did not validate.
   - Create an annotated tag and push it as an EXPLICIT ref:
@@ -191,8 +217,8 @@ skills: dev:context-detection
 </phase_3_merge_and_tag>
 
 <phase_4_publish>
-  Irreversible. Confirm each step with the user before executing unless they explicitly
-  pre-authorized the whole publish ("release without asking").
+  Irreversible. Report each step as it executes. Do not ask — authorization was settled
+  before the run started; the only stops here are consistency incidents.
 
   - If CI owns publishing (tag-triggered or merge-triggered workflow): do NOT publish
     locally in parallel — two publishers race. Watch the run to completion
@@ -276,12 +302,7 @@ skills: dev:context-detection
     files.
   - Never resolve "version already exists on the registry" by silently bumping — surface
     it; the user decides whether it is a resume (skip) or a collision (stop).
-  - Ask before every irreversible action unless the user pre-authorized the batch.
-  - PRE-AUTHORIZATION: when the user says at invocation (or at any gate) words to the
-    effect of "release yourself", "merge and release without asking", or passes an
-    --auto style argument, that is batch pre-authorization: proceed through the merge
-    and publish gates without stopping to ask, while still REPORTING each irreversible
-    step as it happens and still hard-stopping on any consistency incident (a predicate
-    that finds existing-but-different state). Pre-authorization covers this release
-    run only — it does not carry over to the next invocation.
+  - Never ask for approval mid-run. Authorization is settled once, before the pipeline
+    starts (<authorization>). Mid-run stops are for failed gates and consistency
+    incidents only — never for permission.
 </safety>

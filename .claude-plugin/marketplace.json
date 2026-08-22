@@ -211,7 +211,7 @@
       "name": "dev",
       "source": "./plugins/dev",
       "description": "Universal development assistant. Detects the project stack and routes work to specialist agents for architecture, implementation, debugging, review and research, enforcing design-system guardrails on every UI change.",
-      "version": "4.4.1",
+      "version": "4.4.2",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -251,6 +251,14 @@
       "strict": true,
       "releases": [
         {
+          "version": "4.4.2",
+          "date": "2026-08-22",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "/dev:release settles authorization once, up front \u2014 never mid-run"
+        },
+        {
           "version": "4.4.1",
           "date": "2026-08-22",
           "kinds": [
@@ -279,11 +287,6 @@
             "Fixed"
           ],
           "summary": "Every one of the 88 entries in the architecture tree now cites real code \u2014 22 GoF patterns and\u2026"
-        },
-        {
-          "version": "4.1.0",
-          "date": "2026-08-18",
-          "summary": "Agents no longer request tools the runtime removes from them, and the instruction blocks\u2026"
         }
       ]
     },
