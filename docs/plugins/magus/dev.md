@@ -7,9 +7,9 @@ Universal development assistant. Detects the project stack and routes work to sp
 
 | | |
 |---|---|
-| Version | `4.3.0` |
+| Version | `4.4.0` |
 | Marketplace | [`magus`](./index.md) |
-| Commands | 14 |
+| Commands | 15 |
 | Subagents | 13 |
 | Skills | 43 |
 | MCP server | no |
@@ -143,6 +143,7 @@ Step-by-step, one guide per job:
 | `/dev:interview` | Comprehensive specification interview with intelligent requirements elicitation |
 | `/dev:investigate` | Read-only code investigation — architecture traces, implementation analysis, bug origin tracking with specialist agents |
 | `/dev:learn` | Analyze session for learnable patterns, apply pending learnings (--apply), or prune stale preferences (--prune) |
+| `/dev:release` | Releases the current project through a phased pipeline — preflight gates, version+changelog PR, merge, tag, publish, verify against the public registry. |
 | `/dev:research` | Multi-source research with convergence-based finalization and parallel exploration |
 | `/dev:setup` | Set up project CLAUDE.md with task routing table and agent delegation rules |
 | `/dev:worktree` | Manage git worktrees - create isolated workspaces, list active worktrees, and clean up. Supports automatic Neon DB branching for schema isolation. |

@@ -4,6 +4,32 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [dev 4.4.0] - 2026-08-22
+
+### Added
+
+- **`/dev:release` — a phased release command for any project.** Takes finished work from
+  "code is written" to "version live and verified": read-only preflight (worktree residue,
+  three-way dependency check, credential rehearsal, blast radius), version + changelog on a
+  release PR, merge as the approval boundary, explicit-ref tagging on the merge SHA,
+  CI-owned publishing, then verification against the public registry rather than local
+  state. Detects the project's own release machinery first (documented process,
+  release-please/changesets/goreleaser/cargo-release, release CI) and drives it instead of
+  reimplementing it. Built for worktree-based work: promotes gitignored session knowledge
+  into `docs/` and `ai-docs/` before the worktree is reaped, and ends every run with a
+  "safe to remove this worktree" verdict. Resume after partial failure recomputes state
+  from the remotes — every side effect is a predicate + action pair, so a re-run skips
+  what exists, does what is missing, and hard-stops on anything that exists but differs.
+
+### Why
+
+- Designed from a three-reviewer research pass (unanimous REJECT of the naive
+  commit→test→push→merge→release sketch) over release-please, changesets,
+  semantic-release, cargo-release, npm staged/trusted publishing, SLSA and Keep a
+  Changelog; the full design record is `docs/plans/2026-08-22-release-skill-redesign.md`.
+
+---
+
 ## [browser-use 1.7.0] - 2026-08-22
 
 ### Fixed
