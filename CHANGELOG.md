@@ -4,6 +4,43 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [browser-use 1.7.1] - 2026-08-22
+
+### Fixed
+
+- **The server survived SIGTERM.** Its signal handler ran cleanup and then called `sys.exit(0)`,
+  which raises `SystemExit` on the main thread and waits for every non-daemon thread — and the
+  MCP stdio reader is parked in a blocking `read()` that a signal does not interrupt. Chrome
+  died, the profile directory went, and the server itself stayed resident forever. Under Claude
+  Code the stdin pipe usually closes at the same moment, which hid it; a bare SIGTERM stranded
+  one server per session. Found by the new lifecycle suite, which had to force-kill every server
+  it started.
+- **The reaper no longer follows a symlink out of the profiles directory.** Ownership is decided
+  by resolved-path equality, so a symlink planted in the profiles directory and named
+  `<prefix><dead-pid>` made a browser running on the link's *target* compare equal — the user's
+  real Chrome included. The directory contents were safe, because `rmtree` refuses a top-level
+  symlink, but the process would have been terminated. Symlinked entries are now skipped.
+- **Profile ownership is decided by full path equality alone.** The matcher also accepted a
+  value whose last three segments were `browseruse/profiles/<name>`, which matched a browser
+  under a different `$HOME` — another account, a container mount — running the same profile
+  name. That rule existed only so the test fixtures could sweep a temp directory while building
+  command lines under `$HOME`; the fixtures now use the directory they actually sweep, which is
+  what production looks like.
+
+### Added
+
+- **A browser lifecycle test suite that uses a real browser.** Everything guarding cleanup was
+  mocked — `psutil.process_iter` patched, PIDs invented, no browser ever launched. The new
+  suite starts real MCP servers and real Chromium processes and asserts the binary is
+  Playwright's rather than the user's Chrome, the profile directory is created and named
+  correctly, closing a session and terminating a server both reclaim it, the reaper kills a
+  genuinely orphaned browser, and it spares one belonging to a live server — including the
+  PID-prefix collision, with real processes rather than a patched process table. 11 tests, ~55
+  seconds, and it fails the run if it leaks a process. It runs in CI against a real Chromium,
+  and a skipped run is treated as a failure.
+
+---
+
 ## [dev 4.4.1] - 2026-08-22
 
 ### Added

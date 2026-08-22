@@ -305,7 +305,7 @@ _SESSION_PROFILE_PREFIX = "browser-use-user-data-dir-session-"
 # The two can never double-match the same directory: Path.glob() anchors its
 # pattern at the start of the entry name, so "session-*" does not match
 # "browser-use-user-data-dir-session-1". The kill side is safe for a stronger
-# reason — _process_owns_profile_dir compares whole directory names, and
+# reason — _process_owns_profile_dir compares whole normalised paths, and
 # "session-1" != "browser-use-user-data-dir-session-1" — so sweeping the old
 # name cannot reach a browser owned by the current one, not even at the
 # identical PID.
@@ -1844,7 +1844,13 @@ def _install_shutdown_handlers(server: MagusBrowserServer) -> None:
 
     def _handle_signal(signum: int, frame: Any) -> None:
         server._shutdown_sync()
-        sys.exit(0)
+        # _exit_process, not sys.exit. SystemExit unwinds the main thread and
+        # then waits for every non-daemon thread — and the MCP stdio reader is
+        # parked in a blocking read() that a signal does not interrupt. Cleanup
+        # ran, Chrome died, the profile went, and the server itself stayed
+        # resident forever. Cleanup is already complete on this line, so there
+        # is nothing left for interpreter shutdown to do.
+        _exit_process(0)
 
     for sig in (signal.SIGTERM, signal.SIGINT):
         try:
@@ -1860,9 +1866,6 @@ def _install_shutdown_handlers(server: MagusBrowserServer) -> None:
 # Both spellings Chrome accepts for the switch, in both the '--flag' and '-flag'
 # forms its POSIX command-line parser takes.
 _USER_DATA_DIR_FLAGS = ("--user-data-dir", "-user-data-dir")
-
-# The two path segments every profile directory this plugin creates sits under.
-_PROFILE_PATH_ANCHOR = ("browseruse", "profiles")
 
 
 def _cmdline_user_data_dirs(cmdline: Any) -> list[str]:
@@ -1938,26 +1941,32 @@ def _process_owns_profile_dir(cmdline: Any, entry: Path) -> bool:
     error. Both naming conventions carry the collision, since both end in
     digits, and v1.6.0's move to the 120s cleanup cadence made it recurring.
 
-    A value matches on either of two exact-equality rules:
-      * it names the directory being swept, by full normalised path; or
-      * its last three segments are 'browseruse/profiles/<that directory name>',
-        which is the canonical location under $HOME that a browser launched by
-        this plugin records, and which stays comparable when the reaper is
-        pointed at an override directory.
+    There is exactly ONE rule: the value must name `entry` itself, by full
+    normalised path. Same directory, or not ours.
 
-    Neither rule can match the user's own Chrome: its profile lives under
-    Library/Application Support (or the platform equivalent) and its name is
-    never one of ours.
+    An earlier version also accepted a value whose last three segments were
+    'browseruse/profiles/<entry name>'. That is a name test wearing a path's
+    clothes: it matches that suffix under ANY root — a second user account's
+    $HOME, a container's mounted rootfs, a restored backup — and profile names
+    collide freely, being '<prefix><pid>' with PIDs that repeat across boots,
+    accounts and namespaces. It could therefore terminate a browser this server
+    does not own, which is the same class of bug as the substring match, reached
+    by a different route. It existed only to keep test fixtures comparable when
+    the reaper was pointed at an override directory; the fixtures now build
+    cmdlines under the directory they sweep, as production does.
+
+    The rule cannot match the user's own Chrome: its profile lives under
+    Library/Application Support (or the platform equivalent), never inside a
+    profiles directory we sweep.
 
     A relative value is skipped rather than normalised: it belongs to the other
     process's working directory, which is not knowable from here, and resolving
-    it against the reaper's own cwd would invent a path. Nothing this plugin
-    launches is affected — user_data_dir is built from Path.home().
+    it against the reaper's own cwd would invent a path — and can manufacture a
+    match for a directory that is not ours. Nothing this plugin launches is
+    affected — user_data_dir is built from Path.home() and is always absolute.
     """
     entry_key = _profile_dir_key(entry)
-    try:
-        anchored = _PROFILE_PATH_ANCHOR + (entry.name,)
-    except Exception:
+    if not entry_key:
         return False
 
     for value in _cmdline_user_data_dirs(cmdline):
@@ -1966,10 +1975,7 @@ def _process_owns_profile_dir(cmdline: Any, entry: Path) -> bool:
                 continue
         except Exception:
             continue
-        key = _profile_dir_key(value)
-        if not key:
-            continue
-        if key == entry_key or key[-3:] == anchored:
+        if _profile_dir_key(value) == entry_key:
             return True
     return False
 
@@ -2012,6 +2018,14 @@ def _reap_orphaned_profiles(base_dir: Path | None = None) -> None:
         reaped: list[str] = []
         for prefix in _REAPABLE_PROFILE_PREFIXES:
             for entry in sorted(profiles_dir.glob(f"{prefix}*")):
+                # A symlink is never one of ours. Ownership is decided by
+                # realpath equality, so a link planted here and named
+                # '<prefix><dead-pid>' would make a browser running on its
+                # TARGET compare equal — the user's real Chrome included — and
+                # we would terminate a process we do not own. rmtree refuses a
+                # top-level symlink, so the data was safe; the kill was not.
+                if entry.is_symlink():
+                    continue
                 if not entry.is_dir():
                     continue
                 pid_str = entry.name[len(prefix):]

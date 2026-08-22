@@ -1,6 +1,6 @@
 {
   "name": "browser-use",
-  "version": "1.7.0",
+  "version": "1.7.1",
   "description": "Full-platform browser automation. Live-page JS eval, keyboard and focus primitives, environment preflight, and a configurable agent LLM, across dual local and cloud browsers backed by Playwright's own Chromium so your real Chrome is never hijacked. Ten Magus-specific tools on top of the upstream Browser Use MCP set, plus 6 skills.",
   "author": {
     "name": "Jack Rudenko",

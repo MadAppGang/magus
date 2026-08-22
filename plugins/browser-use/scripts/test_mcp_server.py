@@ -2655,15 +2655,14 @@ class TestReaperHandlesNewProfilePrefix(_TempDirMixin):
             d.mkdir(parents=True)
             (d / "SingletonLock").write_text("dummy")
 
-        # Chrome still running on the dead session's profile — must be terminated.
+        # Chrome still running on the dead session's profile — must be
+        # terminated. The cmdline names the directory being swept, which is what
+        # production looks like: browser-use records the same absolute path the
+        # reaper then walks.
         orphan_chrome = MagicMock(name="orphan_chrome")
         orphan_chrome.info = {
             "pid": 4242,
-            "cmdline": [
-                "/fake/chromium",
-                f"--user-data-dir={Path.home()}/.config/browseruse/profiles/"
-                f"{_NEW_SESSION_PREFIX}{dead_pid}",
-            ],
+            "cmdline": ["/fake/chromium", f"--user-data-dir={dead_dir}"],
         }
         # The user's own Chrome — no browseruse path, must never be touched.
         users_chrome = MagicMock(name="users_chrome")
@@ -2708,16 +2707,18 @@ class TestReaperSweepsBothProfilePrefixes(_TempDirMixin):
     """
 
     @staticmethod
-    def _chrome(pid: int, profile_name: str) -> MagicMock:
-        """A fake Chrome running on ~/.config/browseruse/profiles/<profile_name>."""
-        proc = MagicMock(name=f"chrome-{profile_name}")
+    def _chrome(pid: int, profile_dir: Path) -> MagicMock:
+        """
+        A fake Chrome running on `profile_dir`, named by its absolute path.
+
+        The path is the one the sweep is actually walking, which is what a real
+        browser records: browser-use passes the user_data_dir it was given, and
+        the reaper walks that same directory.
+        """
+        proc = MagicMock(name=f"chrome-{profile_dir.name}")
         proc.info = {
             "pid": pid,
-            "cmdline": [
-                "/fake/chromium",
-                f"--user-data-dir={Path.home()}/.config/browseruse/profiles/"
-                f"{profile_name}",
-            ],
+            "cmdline": ["/fake/chromium", f"--user-data-dir={profile_dir}"],
         }
         return proc
 
@@ -2826,10 +2827,11 @@ class TestReaperSweepsBothProfilePrefixes(_TempDirMixin):
         (old_dir / "SingletonLock").write_text("dummy")
 
         # Same numeric suffix, different convention: this browser belongs to the
-        # new-prefix directory and is none of the old-prefix sweep's business.
-        new_prefix_chrome = self._chrome(7001, f"{_NEW_SESSION_PREFIX}{pid}")
+        # new-prefix directory beside it and is none of the old-prefix sweep's
+        # business — same parent, different directory.
+        new_prefix_chrome = self._chrome(7001, tmp / f"{_NEW_SESSION_PREFIX}{pid}")
         # Same PID under the OLD convention: this one IS ours and must die.
-        old_prefix_chrome = self._chrome(7002, f"{_OLD_SESSION_PREFIX}{pid}")
+        old_prefix_chrome = self._chrome(7002, old_dir)
         # The user's own Chrome — no browseruse path anywhere.
         users_chrome = MagicMock(name="users_chrome")
         users_chrome.info = {
@@ -2866,8 +2868,8 @@ class TestReaperSweepsBothProfilePrefixes(_TempDirMixin):
             d.mkdir()
             (d / "SingletonLock").write_text("dummy")
 
-        old_chrome = self._chrome(7101, f"{_OLD_SESSION_PREFIX}{dead_pid}")
-        new_chrome = self._chrome(7102, f"{_NEW_SESSION_PREFIX}{dead_pid}")
+        old_chrome = self._chrome(7101, old_dead)
+        new_chrome = self._chrome(7102, new_dead)
 
         with patch.object(
             psutil, "process_iter", return_value=[old_chrome, new_chrome]
@@ -2944,9 +2946,18 @@ class TestReaperMatchesUserDataDirArgument(_TempDirMixin):
         return proc
 
     @staticmethod
-    def _home_profile(profile_name: str) -> str:
-        """The canonical path a browser launched by this plugin records."""
-        return f"{Path.home()}/.config/browseruse/profiles/{profile_name}"
+    def _profile_path(base_dir: Path, profile_name: str) -> str:
+        """
+        The path recorded by a browser launched on `base_dir`/`profile_name`.
+
+        Production sees ONE directory here: browser-use is handed the
+        user_data_dir the server built, and the reaper later walks that same
+        directory. Building the cmdline under the base_dir being swept is
+        therefore the faithful pairing. Naming a path under $HOME while the
+        sweep walks a temp directory is a combination that never occurs, and
+        asserting on it once forced a looser rule into the kill path.
+        """
+        return f"{base_dir}/{profile_name}"
 
     def _orphan_dir(self, prefix: str) -> tuple:
         """A profiles dir holding one orphan directory under `prefix`."""
@@ -2976,7 +2987,7 @@ class TestReaperMatchesUserDataDirArgument(_TempDirMixin):
             8001,
             [
                 "/fake/chromium",
-                f"--user-data-dir={self._home_profile(f'{_NEW_SESSION_PREFIX}{dead_pid}4')}",
+                f"--user-data-dir={self._profile_path(tmp, f'{_NEW_SESSION_PREFIX}{dead_pid}4')}",
             ],
             label="live-browser",
         )
@@ -3003,7 +3014,7 @@ class TestReaperMatchesUserDataDirArgument(_TempDirMixin):
             8002,
             [
                 "/fake/chromium",
-                f"--user-data-dir={self._home_profile(f'{_OLD_SESSION_PREFIX}{dead_pid}4')}",
+                f"--user-data-dir={self._profile_path(tmp, f'{_OLD_SESSION_PREFIX}{dead_pid}4')}",
             ],
             label="live-browser",
         )
@@ -3029,7 +3040,7 @@ class TestReaperMatchesUserDataDirArgument(_TempDirMixin):
             [
                 "/fake/chromium",
                 "--user-data-dir",
-                self._home_profile(f"{_NEW_SESSION_PREFIX}{dead_pid}4"),
+                self._profile_path(tmp, f"{_NEW_SESSION_PREFIX}{dead_pid}4"),
             ],
             label="live-browser",
         )
@@ -3048,7 +3059,7 @@ class TestReaperMatchesUserDataDirArgument(_TempDirMixin):
 
         orphan_browser = self._proc(
             8004,
-            ["/fake/chromium", f"--user-data-dir={self._home_profile(entry.name)}"],
+            ["/fake/chromium", f"--user-data-dir={self._profile_path(tmp, entry.name)}"],
             label="orphan-browser",
         )
 
@@ -3060,8 +3071,8 @@ class TestReaperMatchesUserDataDirArgument(_TempDirMixin):
     def test_the_swept_directorys_own_full_path_matches(self):
         """
         base_dir is a documented parameter: a browser recorded with the path the
-        reaper is actually walking must be matched by that path, not only by the
-        canonical one under $HOME.
+        reaper is actually walking must be matched by that path. Full path
+        equality is the ONLY rule, so this is the one that has to hold.
         """
         tmp, entry, dead_pid = self._orphan_dir(_NEW_SESSION_PREFIX)
 
@@ -3075,13 +3086,77 @@ class TestReaperMatchesUserDataDirArgument(_TempDirMixin):
 
         orphan_browser.terminate.assert_called_once_with()
 
+    def test_a_symlinked_base_dir_still_matches_the_real_path(self):
+        """
+        The reaper reaches its entries through base_dir, so pointing it at a
+        symlink to the profiles directory yields '<link>/<name>' while the
+        browser recorded the real '<dir>/<name>'. Both sides go through the same
+        realpath normalisation, which is what keeps an override directory
+        comparable — and is the whole job the deleted last-three-segments rule
+        claimed to do.
+        """
+        tmp, entry, dead_pid = self._orphan_dir(_NEW_SESSION_PREFIX)
+
+        link = self._tmpdir() / "profiles-link"
+        link.symlink_to(tmp, target_is_directory=True)
+
+        orphan_browser = self._proc(
+            8019,
+            ["/fake/chromium", f"--user-data-dir={entry}"],
+            label="orphan-browser",
+        )
+
+        self._sweep(link, [orphan_browser])
+
+        orphan_browser.terminate.assert_called_once_with()
+        self.assertFalse(entry.exists(), "The orphan dir itself must still be reaped")
+
+    def test_a_symlinked_entry_is_never_reaped(self):
+        """
+        A symlink PLANTED in the profiles directory must be skipped outright.
+
+        Ownership is decided by realpath equality, so a link named
+        '<prefix><dead-pid>' pointing anywhere makes a browser running on the
+        LINK'S TARGET compare equal — including the user's real Chrome. The
+        directory contents survive (rmtree refuses a top-level symlink), but the
+        kill does not: we would terminate a browser we do not own.
+
+        Skipping symlinked entries closes it. It does not weaken
+        test_a_symlinked_base_dir_still_matches_the_real_path above: there the
+        symlink is base_dir itself and the entry's own final component is a real
+        directory, which is the case that legitimately needs realpath.
+        """
+        tmp = self._tmpdir()
+        dead_pid = TestReapOrphanedProfiles._find_dead_pid()
+        target = self._tmpdir() / "someone-elses-profile"
+        target.mkdir()
+
+        planted = tmp / f"{_NEW_SESSION_PREFIX}{dead_pid}"
+        planted.symlink_to(target, target_is_directory=True)
+
+        # A browser legitimately running on the link's target, owned by nobody here.
+        foreign_browser = self._proc(
+            8020,
+            ["/fake/chromium", f"--user-data-dir={target}"],
+            label="foreign-browser",
+        )
+
+        self._sweep(tmp, [foreign_browser])
+
+        foreign_browser.terminate.assert_not_called()
+        self.assertTrue(
+            planted.is_symlink(),
+            "The planted link must be left alone, not followed and reaped",
+        )
+        self.assertTrue(target.is_dir(), "The link's target must be untouched")
+
     def test_space_separated_user_data_dir_is_matched(self):
         """Chrome accepts '--user-data-dir <path>'; the value is the NEXT arg."""
         tmp, entry, dead_pid = self._orphan_dir(_NEW_SESSION_PREFIX)
 
         orphan_browser = self._proc(
             8006,
-            ["/fake/chromium", "--user-data-dir", self._home_profile(entry.name)],
+            ["/fake/chromium", "--user-data-dir", self._profile_path(tmp, entry.name)],
             label="orphan-browser",
         )
 
@@ -3107,7 +3182,7 @@ class TestReaperMatchesUserDataDirArgument(_TempDirMixin):
 
         orphan_browser = self._proc(
             8008,
-            ["/fake/chromium", f"--user-data-dir={self._home_profile(entry.name)}/"],
+            ["/fake/chromium", f"--user-data-dir={self._profile_path(tmp, entry.name)}/"],
             label="orphan-browser",
         )
 
@@ -3119,9 +3194,7 @@ class TestReaperMatchesUserDataDirArgument(_TempDirMixin):
         """Both sides must be normalised the same way before comparing."""
         tmp, entry, dead_pid = self._orphan_dir(_NEW_SESSION_PREFIX)
 
-        noisy = (
-            f"{Path.home()}/.config/browseruse/profiles/../profiles/./{entry.name}"
-        )
+        noisy = f"{tmp}/../{tmp.name}/./{entry.name}"
         orphan_browser = self._proc(
             8009, ["/fake/chromium", f"--user-data-dir={noisy}"], label="orphan-browser"
         )
@@ -3137,7 +3210,7 @@ class TestReaperMatchesUserDataDirArgument(_TempDirMixin):
             8010,
             [
                 "/fake/chromium",
-                f"--user-data-dir={self._home_profile(f'{_NEW_SESSION_PREFIX}{dead_pid}4')}/",
+                f"--user-data-dir={self._profile_path(tmp, f'{_NEW_SESSION_PREFIX}{dead_pid}4')}/",
             ],
             label="live-browser",
         )
@@ -3178,8 +3251,8 @@ class TestReaperMatchesUserDataDirArgument(_TempDirMixin):
             8012,
             [
                 "/fake/chromium",
-                f"--log-file={self._home_profile(entry.name)}/chrome_debug.log",
-                f"--user-data-dir={self._home_profile('default')}",
+                f"--log-file={self._profile_path(tmp, entry.name)}/chrome_debug.log",
+                f"--user-data-dir={self._profile_path(tmp, 'default')}",
             ],
             label="other-flag",
         )
@@ -3201,16 +3274,31 @@ class TestReaperMatchesUserDataDirArgument(_TempDirMixin):
         """
         tmp, entry, dead_pid = self._orphan_dir(_NEW_SESSION_PREFIX)
 
-        someone_elses = self._proc(
-            8018,
-            ["/fake/chromium", f"--user-data-dir=browseruse/profiles/{entry.name}"],
-            label="relative-path",
-        )
+        # Stand the REAPER in the directory it is sweeping, which is where a
+        # naive normalisation does the damage: without the isabs guard,
+        # './<name>' resolves against THIS process's cwd straight onto the swept
+        # entry, and a browser that never named our directory is terminated.
+        self.addCleanup(os.chdir, os.getcwd())
+        os.chdir(tmp)
 
-        self._sweep(tmp, [someone_elses])
+        someone_elses = [
+            self._proc(
+                8018,
+                ["/fake/chromium", f"--user-data-dir=browseruse/profiles/{entry.name}"],
+                label="relative-path",
+            ),
+            self._proc(
+                8020,
+                ["/fake/chromium", f"--user-data-dir=./{entry.name}"],
+                label="relative-onto-cwd",
+            ),
+        ]
 
-        someone_elses.terminate.assert_not_called()
-        someone_elses.kill.assert_not_called()
+        self._sweep(tmp, someone_elses)
+
+        for proc in someone_elses:
+            proc.terminate.assert_not_called()
+            proc.kill.assert_not_called()
 
     def test_a_malformed_cmdline_never_raises_and_never_matches(self):
         """cmdline is untrusted input read from an arbitrary process."""
@@ -3232,6 +3320,142 @@ class TestReaperMatchesUserDataDirArgument(_TempDirMixin):
             proc.terminate.assert_not_called()
             proc.kill.assert_not_called()
         self.assertFalse(entry.exists(), "The sweep must still complete")
+
+
+# ---------------------------------------------------------------------------
+# Test 13g: the reaper never reaches a browser under a DIFFERENT root
+# ---------------------------------------------------------------------------
+
+class TestReaperNeverReachesAnotherHome(_TempDirMixin):
+    """
+    Ownership used to be accepted on EITHER of two rules: full path equality
+    with the directory being swept, or the value's last three segments being
+    'browseruse/profiles/<that directory name>'.
+
+    The second rule is not an ownership proof.  It matches any absolute path on
+    the machine that ends in those three segments — a second user account's
+    ~/.config/browseruse/profiles/<name>, a container's mounted rootfs, a
+    restored backup — as long as the profile directory NAME matches.  Those
+    names collide readily: they are '<prefix><pid>', and PIDs repeat across
+    boots, across accounts and inside containers, so the collision needs no bad
+    luck at all.
+
+    Sweeping OUR orphan could therefore terminate a browser owned by someone
+    else — the same class of bug as the substring match, reached by a different
+    route.  Ownership is full normalised path equality with the directory being
+    swept, and nothing else.
+    """
+
+    @staticmethod
+    def _proc(pid: int, cmdline: list, label: str = "chrome") -> MagicMock:
+        proc = MagicMock(name=f"{label}-{pid}")
+        proc.info = {"pid": pid, "cmdline": list(cmdline)}
+        return proc
+
+    def _orphan(self, prefix: str) -> tuple:
+        """A profiles dir holding one dead-owner orphan directory."""
+        tmp = self._tmpdir()
+        dead_pid = TestReapOrphanedProfiles._find_dead_pid()
+        entry = tmp / f"{prefix}{dead_pid}"
+        entry.mkdir()
+        (entry / "SingletonLock").write_text("dummy")
+        return tmp, entry
+
+    def _sweep(self, base_dir: Path, processes: list) -> None:
+        import psutil
+
+        with patch.object(psutil, "process_iter", return_value=processes):
+            _mod._reap_orphaned_profiles(base_dir=base_dir)
+
+    def test_new_prefix_sweep_spares_the_same_name_under_another_home(self):
+        """
+        THE HAZARD. Another account's browser, same profile directory NAME,
+        different $HOME: not ours, must not be touched.
+        """
+        tmp, entry = self._orphan(_NEW_SESSION_PREFIX)
+
+        stranger = self._proc(
+            8101,
+            [
+                "/fake/chromium",
+                f"--user-data-dir=/some/other/home/.config/browseruse/profiles/{entry.name}",
+            ],
+            label="another-users-browser",
+        )
+
+        self._sweep(tmp, [stranger])
+
+        self.assertEqual(
+            stranger.terminate.call_count,
+            0,
+            "The reaper terminated a browser running under a DIFFERENT root "
+            f"(/some/other/home/.config/browseruse/profiles/{entry.name}) that "
+            f"merely shares the swept directory's NAME. {entry} is not that "
+            "directory. Ownership must be full normalised path equality.",
+        )
+        stranger.kill.assert_not_called()
+        self.assertFalse(entry.exists(), "The orphan dir itself must still be reaped")
+
+    def test_old_prefix_sweep_spares_the_same_name_under_another_root(self):
+        """Same hazard under the pre-1.5.0 convention, via a container mount."""
+        tmp, entry = self._orphan(_OLD_SESSION_PREFIX)
+
+        stranger = self._proc(
+            8102,
+            [
+                "/fake/chromium",
+                "--user-data-dir=/mnt/containers/app/root/.config/browseruse/"
+                f"profiles/{entry.name}",
+            ],
+            label="container-browser",
+        )
+
+        self._sweep(tmp, [stranger])
+
+        self.assertEqual(
+            stranger.terminate.call_count,
+            0,
+            "A container mount holding the same profile name is a different "
+            "directory and a different process namespace. Both naming "
+            "conventions carry this collision, because both end in a PID.",
+        )
+        stranger.kill.assert_not_called()
+        self.assertFalse(entry.exists(), "The orphan dir itself must still be reaped")
+
+    def test_the_swept_directorys_own_browser_is_still_terminated(self):
+        """
+        The rule must stay useful: the browser actually running on the swept
+        directory still dies, under either prefix, while the same-name stranger
+        beside it survives the same sweep.
+        """
+        for prefix in (_NEW_SESSION_PREFIX, _OLD_SESSION_PREFIX):
+            with self.subTest(prefix=prefix):
+                tmp, entry = self._orphan(prefix)
+
+                ours = self._proc(
+                    8103,
+                    ["/fake/chromium", f"--user-data-dir={entry}"],
+                    label="ours",
+                )
+                stranger = self._proc(
+                    8104,
+                    [
+                        "/fake/chromium",
+                        "--user-data-dir=/some/other/home/.config/browseruse/"
+                        f"profiles/{entry.name}",
+                    ],
+                    label="stranger",
+                )
+
+                self._sweep(tmp, [ours, stranger])
+
+                ours.terminate.assert_called_once_with()
+                self.assertEqual(
+                    stranger.terminate.call_count,
+                    0,
+                    "Only the browser on the swept directory itself is ours.",
+                )
+                self.assertFalse(entry.exists())
 
 
 # ---------------------------------------------------------------------------

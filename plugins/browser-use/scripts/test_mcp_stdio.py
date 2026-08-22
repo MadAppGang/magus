@@ -98,5 +98,70 @@ class TestRealStdioSubprocess(unittest.IsolatedAsyncioTestCase):
             self.assertTrue(hasattr(result, "tools"))
 
 
+@unittest.skipUnless(_HAVE_DEPS, "browser_use / mcp not installed")
+class TestSigtermActuallyExits(unittest.TestCase):
+    """
+    SIGTERM must end the process, not just run its cleanup.
+
+    `_handle_signal` used to finish with `sys.exit(0)`, which raises SystemExit
+    on the main thread and then waits for every non-daemon thread. The MCP stdio
+    reader sits blocked in read(), so the interpreter never got to exit: cleanup
+    ran correctly and the server stayed resident forever.
+
+    Under Claude Code the stdin pipe usually closes at the same moment, which
+    hides it — but a bare SIGTERM leaves the server alive, and a machine
+    accumulates one stranded server per session that ended that way. Found by
+    the E2E lifecycle suite, which had to force-kill the servers it started.
+    """
+
+    def test_server_exits_within_a_few_seconds_of_sigterm(self):
+        import os
+        import signal
+        import subprocess
+        import time
+
+        # stdin stays OPEN on purpose. Closing it would let the reader thread
+        # finish on EOF and mask the bug this test exists to catch.
+        proc = subprocess.Popen(
+            [sys.executable, str(_SERVER_PATH)],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        self.addCleanup(self._force_kill, proc)
+
+        # Let it finish booting before signalling it.
+        deadline = time.monotonic() + 20
+        while time.monotonic() < deadline:
+            if proc.poll() is not None:
+                self.fail(f"server exited during startup, rc={proc.returncode}")
+            time.sleep(0.25)
+            if time.monotonic() > deadline - 17:
+                break
+
+        proc.send_signal(signal.SIGTERM)
+
+        try:
+            proc.wait(timeout=15)
+        except subprocess.TimeoutExpired:
+            self.fail(
+                "server did not exit within 15s of SIGTERM — cleanup ran but the "
+                "process stayed resident, which is how servers accumulate. The "
+                "signal handler must terminate the process rather than raise "
+                "SystemExit and wait on the blocked stdio reader thread."
+            )
+
+    @staticmethod
+    def _force_kill(proc):
+        if proc.poll() is None:
+            proc.kill()
+            proc.wait(timeout=5)
+        for stream in (proc.stdin, proc.stdout, proc.stderr):
+            try:
+                stream and stream.close()
+            except Exception:
+                pass
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
