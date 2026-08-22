@@ -453,7 +453,7 @@
       "name": "setup",
       "source": "./plugins/setup",
       "description": "Project setup jobs in one plugin. Investigates a repository and provisions it \u2014 plugins, tools, framework best-practice references, and a seeded knowledge base \u2014 then installs the adaptive statusline and indexes every skill reachable from the project into browsable markdown.",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -473,6 +473,16 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "1.1.0",
+          "date": "2026-08-22",
+          "kinds": [
+            "Fixed",
+            "Added",
+            "Changed"
+          ],
+          "summary": "The plan-limits section reappears, along with both reset countdowns and the token count. Three\u2026"
+        },
         {
           "version": "1.0.0",
           "date": "2026-08-06",

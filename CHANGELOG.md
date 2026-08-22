@@ -4,6 +4,93 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [setup 1.1.0] - 2026-08-22
+
+### Fixed
+
+- The plan-limits section reappears, along with both reset countdowns and the token
+  count. Three separate breakages, all from Claude Code's status JSON changing shape
+  under a script that still assumed the old one:
+  - `rate_limits.*.used_percentage` is now a float (`56.99999999999999`). Every
+    downstream `[ -ge ]` and `$(( ))` is integer-only, so each one failed with
+    "integer expression expected" — **and the script still exited 0**, so the entire
+    allowance window simply stopped rendering with no visible error. Rounded at the
+    jq boundary now.
+  - `context_window.current_usage` is now an object of token buckets, not a number.
+    `tostring` turned it into `{input_tokens:2,…}`, which reached arithmetic and
+    killed the `797k/1M` display. Summed from the three input buckets now; output
+    tokens are excluded because they are not resident in the window.
+  - `rate_limits.*.resets_at` is now a Unix epoch integer, not ISO 8601. Parsing it as
+    ISO returned nothing, silently dropping both `↻` countdowns. Both forms accepted.
+- The statusline stops wrapping terminals that had room. The wide-glyph count used a
+  bracket expression, `${s//[🤖⚡]/}`, which looks like a character class and is a
+  **byte** class: it deletes any byte occurring in either glyph's UTF-8 encoding. 🤖 is
+  `F0 9F A4 96` and ⚡ is `E2 9A A1`, and `█` `░` `▀` all begin `E2` — so every block
+  character in a bar was eaten and counted as double-width. The context bar measured 43
+  columns instead of 30 and the plan bar 59 instead of 48, splitting lines on
+  180-column terminals. Each wide glyph is now removed with its own full-string
+  pattern.
+- Statusline chips are readable on light terminals again. Every chip paired a fixed
+  256-cube background with `\033[97m`, a base-16 palette slot the terminal profile is
+  free to redefine — iTerm2's light profile maps it to `#3C3835`, a near-black. The
+  worktree chip rendered near-black on `#AF5F00` (2.1:1) and the branch chip near-black
+  on `#005F00` (**1.04:1, invisible**). Every colour in the script is now a 256-cube
+  index, fixed on both halves of every pair, and all of them clear WCAG AA.
+- A `%` in a branch or worktree name no longer corrupts the line. Output went through
+  `printf "$OUT"`, so the string was its own format spec and `feat/100%-cov` rendered
+  as `feat/100 ov`. Output is now `printf '%b'`, and the percentage segments write a
+  literal `%` instead of escaping it.
+
+### Added
+
+- Light/dark appearance detection, resolved per render: `appearance` config →
+  `$STATUSLINE_APPEARANCE` → `~/.config/tmux/theme` → tmux session-scope `COLORFGBG` →
+  macOS `AppleInterfaceStyle` → dark. The forking probes are cached 30s.
+- Wrapping to the terminal width, splitting on section boundaries. `$COLUMNS` carries
+  the live width, and Claude Code prints every line the command emits. `wrap: "off"`
+  keeps one line; `max_lines` caps the rows, default 0 for no cap.
+- `plugins/setup/scripts/test-statusline.ts` runs every fixture through the script in
+  both appearances at three widths and asserts each fixture's `expected_sections`.
+  The fixtures already existed and nothing executed them, which is how the three
+  parsing bugs above shipped together. It fails on non-empty stderr specifically,
+  because all three exited 0 while printing errors. It also unit-tests `display_width`
+  against known strings, because over-measuring breaks nothing visibly — the
+  bracket-set bug passed a full render sweep untouched.
+- `layout` config key: `auto` (default) keeps the line count minimal and uses the
+  labelled gutter only when it costs no extra row, `aligned` always uses it once
+  wrapping starts, `compact` never does.
+- The worktree chip is tinted from its own name, out of an 18-colour palette per
+  appearance. It was one fixed brown for every session since v2.0.0, which made the
+  field naming the session the least distinguishable thing on screen with 20 worktrees
+  open. The colour is stable across panes and restarts. Names can still collide: 18
+  buckets is a palette, not a hash space.
+
+### Changed
+
+- The light palette is muted rather than near-black. The first cut used 22/23/94/124/90
+  at 6-13:1 on cream and read as harsh; the segments now sit near 3.5-4.8:1, with cost
+  and critical red held at the top of that band because they carry the numbers that
+  matter.
+- Bar fills use a separate vivid ramp from the text around them. Context runs
+  green → amber → orange → red, plan bars keep a cool teal → blue → orange → red so the
+  two stay distinguishable at a glance. A `█` run is a wide solid block, so saturation
+  reads there without the glare it causes on thin text strokes — the percentage label
+  beside each bar keeps the muted colour, since that is the part you read rather than
+  scan.
+
+### Why
+
+An OSC 11 background query cannot work here: the statusline child has no controlling
+terminal. stdin, stdout and stderr are all pipes and `/dev/tty` reports "Device not
+configured", so there is nowhere to send the query and nothing to read back. Detection
+is out-of-band instead.
+
+The `$COLORFGBG` environment variable is deliberately never read. Claude Code inherits
+it once at launch and freezes it — measured stuck at `15;0` (dark) through an entire
+light session. tmux refreshes its own copy on each client attach, so tmux is asked.
+
+---
+
 ## [Marketplace 10.0.0] - 2026-08-22
 
 ### Removed

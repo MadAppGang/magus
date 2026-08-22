@@ -30,12 +30,145 @@ disable-model-invocation: true
   },
   "context_bar_width": 12, // Width of context bar in chars (8-20)
   "plan_bar_width": 10,    // Width of plan limit bar in chars (6-16)
-  "theme": "default"       // Color theme name
+  "theme": "default",      // Color theme name
+  "appearance": "auto",    // "auto" | "light" | "dark" — see Appearance below
+  "wrap": "auto",          // "auto" wraps to the terminal width, "off" forces one line
+  "max_lines": 0,          // Cap on wrapped rows; 0 means no cap
+  "layout": "auto"         // "auto" | "aligned" | "compact" — see Wrapping below
 }
 ```
 
 All fields are optional. Missing fields use defaults shown above. `sections` and
 `icons` are independent groups — setting one never affects the other.
+
+`theme` and `appearance` are orthogonal: `theme` picks the palette's character
+(default / minimal / neon / monochrome), `appearance` picks whether that palette is
+drawn for a light or a dark terminal.
+
+## Appearance
+
+The statusline resolves light vs dark at render time, because the same colours cannot
+work on both. Resolution order, first hit wins:
+
+1. `appearance` in this config, when set to `light` or `dark`
+2. `$STATUSLINE_APPEARANCE` — per-pane override without touching the config
+3. `~/.config/tmux/theme` containing `light` or `dark` — an explicit user pin
+4. tmux's session-scope `COLORFGBG`, read via `tmux show-environment`
+5. macOS `AppleInterfaceStyle`
+6. `dark`
+
+**The `$COLORFGBG` environment variable is deliberately never read.** Claude Code
+inherits it once at launch and freezes it, so it reports whichever profile was active
+when the session started — measured stuck at `15;0` (dark) through an entire light
+session. tmux refreshes its own copy on every client attach via `update-environment`,
+which is why step 4 asks tmux rather than the environment.
+
+Steps 4 and 5 fork, so their verdict is cached in `~/.claude/.statusline-appearance`
+for 30 seconds. Steps 1-3 are free and run on every render.
+
+### Why colours are all 256-cube indices
+
+Every colour in the script is written as `38;5;N` / `48;5;N` with N in 16-255, and
+never as a base-16 code (`30-37`, `40-47`, `90-97`, `100-107`).
+
+Base-16 codes are **palette slots**: the terminal profile decides what RGB each one
+means. Cube indices 16-231 are **fixed RGB** on every profile. Mixing the two breaks
+silently — the chips used to pair a fixed background with `\033[97m`, and iTerm2's
+light profile maps that slot to `#3C3835`, a near-black. The worktree chip rendered
+near-black on `#AF5F00` (2.1:1) and the branch chip near-black on `#005F00` (1.04:1,
+effectively invisible). Both pairs are now fixed on both halves and clear WCAG AA.
+
+If you add a segment, use a cube index. A base-16 code will look correct on your
+profile and break on someone else's.
+
+### Bars are vivid, text is muted
+
+Four colour functions, deliberately not shared:
+
+| Function | Used for | Character |
+|---|---|---|
+| `color_for_pct` | the context `%` label | muted, meant to be read |
+| `bar_color_for_pct` | the context `█` fill | vivid green → amber → orange → red |
+| `plan_color_for_pct` | the `5h:`/`7d:` labels | muted |
+| `plan_bar_color_for_pct` | the plan `█` fill | vivid teal → blue → orange → red |
+
+A bar fill is a solid block several columns wide, so saturation reads there without the
+glare it causes on thin text strokes. On a light ground the fills sit around 2.4-3.4:1,
+below the threshold used for text — that is intended. A bar is a magnitude you scan;
+the number beside it carries the precision, and that number keeps the muted colour.
+
+The plan bars hold a cool hue family rather than reusing the context ramp, so the two
+bars stay distinguishable when both are on the same row.
+
+### Worktree chip colours
+
+The `wt:` chip is tinted from its own name, drawn from an 18-colour palette per
+appearance (`WT_PALETTE` in `apply_theme`). The same worktree gets the same colour in
+every pane and across restarts, so the chip is recognisable without reading it. The
+hash is pure bash, so it adds no fork to a per-turn render.
+
+Two worktrees can land on the same tint — 18 buckets is a palette, not a hash space,
+and with a dozen worktrees open a collision is likely. The name is still spelled out
+in the chip. Widen `WT_PALETTE` if it bothers you; every entry must keep 4.5:1 against
+`BADGE_FG` for its appearance.
+
+## Wrapping
+
+When the rendered width exceeds the terminal, the statusline splits across rows at
+section boundaries. Claude Code prints every line the command emits, so extra rows
+cost only vertical space.
+
+Width comes from `$COLUMNS`, which Claude Code injects per render from the live
+terminal size — it is absent from the `claude` process's own environment, so it
+tracks resizes rather than freezing at launch.
+
+`max_lines` defaults to `0` (no cap) on purpose. A hard two-line cap reads tidier and
+is not: at 90 columns it produces a 161-column second row that the terminal soft-wraps
+anyway, giving the same height with ragged, mid-section breaks. A section is never
+split internally, so a single segment wider than the terminal still overflows.
+
+### `layout` — fewest lines vs aligned columns
+
+These two goals genuinely conflict. Giving each bar its own labelled row lines their
+left edges up, and usually costs a row that packing them together would not.
+
+| `layout` | Behaviour |
+|---|---|
+| `auto` (default) | Fewest lines. The gutter is used only when it adds no row. |
+| `aligned` | Gutter whenever wrapping starts, even at the cost of a row. |
+| `compact` | Never use the gutter. |
+
+Both layouts are built every render and compared by line count, so `auto` can never be
+taller than `compact`. In practice `auto` rarely shows the gutter, because packing both
+bars onto one shared row is usually a line cheaper. Set `aligned` if you want the
+columns and are happy to spend the row:
+
+```
+                                            auto (2 rows)
+* Opus | wt:x | $39.78 | 1h27m | 󰍛 1.3G | 🤖 +1115/-209
+██░░░░ 35% 1M+ | █▀▀▀▀▀---- 5h:64% ↻2h10m 7d:18%
+
+                                         aligned (3 rows)
+* Opus | wt:x | $39.78 | 1h27m | 󰍛 1.3G | 🤖 +1115/-209
+ctx   ██░░░░ 35% 1M+
+plan  █▀▀▀▀▀---- 5h:64% ↻2h10m 7d:18% ↻1d6h
+```
+
+Packed rows are **not** indented into the gutter, because they cannot be: Claude Code
+strips leading whitespace from every line it renders. Measured — six leading spaces and
+six leading U+00A0 both came back flush against an unindented line, while a line
+starting with a letter kept its position.
+
+### Measuring width
+
+`display_width` strips SGR escapes and counts columns, treating 🤖 and ⚡ as two.
+
+**Never widen it with a bracket expression.** `${s//[🤖⚡]/}` reads as a character class
+and is a byte class: it deletes any byte occurring in either encoding. `█` `░` `▀` all
+share 🤖's and ⚡'s `E2` lead byte, so bars measured roughly double and the statusline
+wrapped 180-column terminals. Add each glyph as its own full-string replacement, and
+add a case to the `display_width` unit tests in `test-statusline.ts` — over-measuring
+produces no error and no visible breakage, so only a unit test catches it.
 
 ## Sections Reference
 

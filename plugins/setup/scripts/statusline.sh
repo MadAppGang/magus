@@ -35,6 +35,22 @@ SHOW_MEMORY=true
 CTX_BAR_WIDTH=12
 PLAN_BAR_WIDTH=10
 THEME="default"
+# `appearance` picks the light-on-dark or dark-on-light variant of $THEME.
+# "auto" resolves it from the terminal at render time — see resolve_appearance().
+APPEARANCE="auto"
+# Wrap onto extra lines when the rendered width exceeds the terminal. Claude Code
+# prints every line the command emits, so this costs nothing but vertical space.
+# `wrap: "off"` restores the old single-line behaviour; `max_lines` caps the row
+# count, and 0 means no cap.
+WRAP="auto"
+MAX_LINES=0
+# Fewest lines and aligned columns are in genuine tension: giving each bar its own
+# labelled row lines their left edges up, and usually costs a row that packing them
+# together would not. `layout` picks which one wins.
+#   auto    — fewest lines; use the gutter only when it costs nothing (default)
+#   aligned — always use the gutter once wrapping starts, even at the cost of a row
+#   compact — never use the gutter
+LAYOUT="auto"
 # ── Icons ────────────────────────────────────────────────
 # `icons.nerd_font` is OPT-IN and defaults to false. Nerd Font glyphs live in the
 # Unicode private use areas, so an unpatched font renders them as tofu (□) or, worse,
@@ -64,60 +80,190 @@ if [ -f "$CONFIG_FILE" ] && command -v jq >/dev/null 2>&1; then
     "ICONS_NERD_FONT=\(d(.icons.nerd_font; false))",
     "CTX_BAR_WIDTH=\(d(.context_bar_width; 12))",
     "PLAN_BAR_WIDTH=\(d(.plan_bar_width; 10))",
-    "THEME=\(d(.theme; "default"))"
+    "THEME=\(d(.theme; "default"))",
+    "APPEARANCE=\(d(.appearance; "auto"))",
+    "WRAP=\(d(.wrap; "auto"))",
+    "MAX_LINES=\(d(.max_lines; 0))",
+    "LAYOUT=\(d(.layout; "auto"))"
   ' "$CONFIG_FILE" 2>/dev/null)"
 fi
 
+# ── Appearance detection (light vs dark terminal) ─────────
+# The statusline child has NO controlling terminal: stdin, stdout and stderr are
+# all pipes and /dev/tty is "Device not configured". So an OSC 11 background-colour
+# query is impossible — there is nowhere to send it and nothing to read back from.
+# Everything below is therefore an out-of-band signal, cheapest and most trustworthy
+# first.
+#
+# $COLORFGBG is deliberately NOT consulted from the environment. Claude Code inherits
+# it once at launch and freezes it; on this machine it sat at "15;0" (dark) through an
+# entire light session. tmux's session-scope copy is refreshed by `update-environment`
+# on every client attach, so that one is asked instead.
+APPEARANCE_CACHE="$HOME/.claude/.statusline-appearance"
+
+resolve_appearance() {
+  case "$APPEARANCE" in
+    light|dark) printf '%s' "$APPEARANCE"; return ;;
+  esac
+
+  # Env override — lets a single pane differ without touching the config file.
+  case "${STATUSLINE_APPEARANCE:-}" in
+    light|dark) printf '%s' "$STATUSLINE_APPEARANCE"; return ;;
+  esac
+
+  # An explicit user pin. Free to read, and it outranks every guess below because
+  # it is the only signal that records an actual decision rather than an inference.
+  if [ -r "$HOME/.config/tmux/theme" ]; then
+    case "$(cat "$HOME/.config/tmux/theme" 2>/dev/null)" in
+      light) printf 'light'; return ;;
+      dark)  printf 'dark';  return ;;
+    esac
+  fi
+
+  # The remaining probes each fork, so their verdict is cached. 30s is short enough
+  # that flipping the terminal profile shows up almost immediately and long enough
+  # that a burst of renders costs one fork, not one per render.
+  if [ -r "$APPEARANCE_CACHE" ]; then
+    local cache_age now_s
+    now_s=$(date +%s)
+    cache_age=$((now_s - $(stat -f %m "$APPEARANCE_CACHE" 2>/dev/null || stat -c %Y "$APPEARANCE_CACHE" 2>/dev/null || echo 0)))
+    if [ "$cache_age" -lt 30 ] 2>/dev/null; then
+      case "$(cat "$APPEARANCE_CACHE" 2>/dev/null)" in
+        light) printf 'light'; return ;;
+        dark)  printf 'dark';  return ;;
+      esac
+    fi
+  fi
+
+  local result=""
+
+  # tmux session-scope COLORFGBG. Format is "<fg>;<bg>"; the trailing field is the
+  # background slot, low numbers dark and high numbers light.
+  if [ -n "${TMUX:-}" ] && command -v tmux >/dev/null 2>&1; then
+    local cfb bg
+    cfb=$(tmux show-environment COLORFGBG 2>/dev/null | cut -d= -f2-)
+    bg="${cfb##*;}"
+    case "$bg" in
+      7|15) result="light" ;;
+      0|1|2|3|4|5|6|8|9|10|11|12|13|14) result="dark" ;;
+    esac
+  fi
+
+  # macOS system appearance, last because it describes the OS chrome and not the
+  # terminal profile — a light profile inside a Dark-mode desktop reports "Dark".
+  if [ -z "$result" ] && command -v defaults >/dev/null 2>&1; then
+    if defaults read -g AppleInterfaceStyle >/dev/null 2>&1; then
+      result="dark"
+    else
+      result="light"
+    fi
+  fi
+
+  [ -n "$result" ] || result="dark"
+  printf '%s\n' "$result" > "$APPEARANCE_CACHE" 2>/dev/null
+  printf '%s' "$result"
+}
+
+APPEARANCE_RESOLVED=$(resolve_appearance)
+
 # ── Theme colors ─────────────────────────────────────────
+# EVERY colour below is a 256-cube index (16-255) via 38;5;N / 48;5;N, and NEVER a
+# base-16 code (30-37, 40-47, 90-97, 100-107). That distinction is the whole reason
+# the chips used to be unreadable:
+#
+#   * base-16 codes are PALETTE SLOTS. The terminal profile decides what RGB each
+#     one means. iTerm2's "Light" profile here maps `Ansi 15` — which `\033[97m`
+#     selects — to #3C3835, a near-black. So "bold bright white" rendered as BLACK.
+#   * cube indices 16-231 are FIXED RGB. `48;5;130` is #AF5F00 on every profile.
+#
+# The chips paired the two: a fixed brown background with a foreground the light
+# profile had quietly turned near-black, giving #3C3835 on #AF5F00 — a contrast
+# ratio of 2.1:1. The branch chip was worse: #3C3835 on #005F00 is 1.04:1, which is
+# invisible, not merely hard to read. Both now clear WCAG AA (4.5:1) in both
+# appearances, because both halves of every pair are fixed.
+fg() { printf '\\033[38;5;%sm' "$1"; }
+bg() { printf '\\033[48;5;%sm' "$1"; }
+
 apply_theme() {
   B='\033[1m'
-  D='\033[2m'
   R='\033[0m'
+  # The dim attribute is rendered by blending toward the background, so on a light
+  # ground it erases text rather than de-emphasising it. De-emphasis on light comes
+  # from C_GRAY alone.
+  if [ "$APPEARANCE_RESOLVED" = "light" ]; then D=''; else D='\033[2m'; fi
 
-  case "$THEME" in
-    monochrome)
-      C_CYAN='\033[97m'
-      C_GREEN='\033[37m'
-      C_YELLOW='\033[37m'
-      C_RED='\033[97m'
-      C_MAGENTA='\033[37m'
-      C_WHITE='\033[97m'
-      C_GRAY='\033[90m'
-      C_ORANGE='\033[97m'
-      ;;
-    minimal)
-      C_CYAN='\033[36m'
-      C_GREEN='\033[32m'
-      C_YELLOW='\033[33m'
-      C_RED='\033[31m'
-      C_MAGENTA='\033[35m'
-      C_WHITE='\033[37m'
-      C_GRAY='\033[90m'
-      C_ORANGE='\033[33m'
-      ;;
-    neon)
-      C_CYAN='\033[38;5;51m'
-      C_GREEN='\033[38;5;46m'
-      C_YELLOW='\033[38;5;226m'
-      C_RED='\033[38;5;196m'
-      C_MAGENTA='\033[38;5;201m'
-      C_WHITE='\033[38;5;231m'
-      C_GRAY='\033[38;5;240m'
-      C_ORANGE='\033[38;5;208m'
-      ;;
-    *)  # default — warm/cool palette
-      C_CYAN='\033[96m'
-      C_GREEN='\033[92m'
-      C_YELLOW='\033[93m'
-      C_RED='\033[91m'
-      C_MAGENTA='\033[95m'
-      C_WHITE='\033[97m'
-      C_GRAY='\033[90m'
-      C_ORANGE='\033[38;5;208m'
-      ;;
-  esac
+  if [ "$APPEARANCE_RESOLVED" = "light" ]; then
+    # Muted mid-darks, not near-blacks. The first pass here used 22/23/94/124/90 and
+    # read as harsh: those clear 6-13:1 on #FBF1C7 cream, which is far more contrast
+    # than a status line needs and makes every segment shout. These sit at roughly
+    # 3.5-4.8:1 — legible without the glare. The two signal colours (cost, critical
+    # red) stay at the top of that band because they carry the numbers that matter.
+    case "$THEME" in
+      monochrome) C_CYAN=$(fg 238); C_GREEN=$(fg 245); C_YELLOW=$(fg 245)
+                  C_RED=$(fg 238);  C_MAGENTA=$(fg 245); C_WHITE=$(fg 236)
+                  C_GRAY=$(fg 248); C_ORANGE=$(fg 238) ;;
+      minimal)    C_CYAN=$(fg 66);  C_GREEN=$(fg 65);  C_YELLOW=$(fg 137)
+                  C_RED=$(fg 131);  C_MAGENTA=$(fg 96); C_WHITE=$(fg 240)
+                  C_GRAY=$(fg 248); C_ORANGE=$(fg 173) ;;
+      neon)       C_CYAN=$(fg 37);  C_GREEN=$(fg 35);  C_YELLOW=$(fg 172)
+                  C_RED=$(fg 196);  C_MAGENTA=$(fg 163); C_WHITE=$(fg 236)
+                  C_GRAY=$(fg 245); C_ORANGE=$(fg 202) ;;
+      *)          C_CYAN=$(fg 30);  C_GREEN=$(fg 65);  C_YELLOW=$(fg 130)
+                  C_RED=$(fg 160);  C_MAGENTA=$(fg 96); C_WHITE=$(fg 238)
+                  C_GRAY=$(fg 245); C_ORANGE=$(fg 166) ;;
+    esac
+    # Chips invert on light: a pale tint carries dark text, rather than a saturated
+    # block carrying white.
+    BADGE_FG=$(fg 238)
+    BG_BRANCH=$(bg 151)   # #afd7af pale green
+    BG_ALERT=$(bg 217)    # #ffafaf pale red
+    # Worktree chips are tinted per name — see pick_wt_bg. Pale enough that #444444
+    # text clears 7:1 on every one of them.
+    WT_PALETTE=(223 194 189 224 230 195 225 187 152 218 151 222 158 183 217 229 153 216)
+    BG_VIM_INSERT=$(bg 151); BG_VIM_NORMAL=$(bg 153)
+    BG_VIM_VISUAL=$(bg 183); BG_VIM_REPLACE=$(bg 217); BG_VIM_OTHER=$(bg 252)
+  else
+    case "$THEME" in
+      monochrome) C_CYAN=$(fg 231); C_GREEN=$(fg 250); C_YELLOW=$(fg 250)
+                  C_RED=$(fg 231);  C_MAGENTA=$(fg 250); C_WHITE=$(fg 231)
+                  C_GRAY=$(fg 244); C_ORANGE=$(fg 231) ;;
+      minimal)    C_CYAN=$(fg 73);  C_GREEN=$(fg 71);  C_YELLOW=$(fg 179)
+                  C_RED=$(fg 167);  C_MAGENTA=$(fg 139); C_WHITE=$(fg 252)
+                  C_GRAY=$(fg 244); C_ORANGE=$(fg 173) ;;
+      neon)       C_CYAN=$(fg 51);  C_GREEN=$(fg 46);  C_YELLOW=$(fg 226)
+                  C_RED=$(fg 196);  C_MAGENTA=$(fg 201); C_WHITE=$(fg 231)
+                  C_GRAY=$(fg 240); C_ORANGE=$(fg 208) ;;
+      *)          C_CYAN=$(fg 80);  C_GREEN=$(fg 77);  C_YELLOW=$(fg 221)
+                  C_RED=$(fg 203);  C_MAGENTA=$(fg 176); C_WHITE=$(fg 231)
+                  C_GRAY=$(fg 244); C_ORANGE=$(fg 208) ;;
+    esac
+    BADGE_FG=$(fg 231)    # #ffffff fixed white, NOT \033[97m
+    BG_BRANCH=$(bg 22)    # #005f00 — 12.4:1
+    BG_ALERT=$(bg 160)    # #d70000 —  5.4:1
+    # Saturated enough that #ffffff clears 4.5:1 on every one of them.
+    WT_PALETTE=(130 22 24 53 88 58 23 90 94 25 55 28 61 89 29 95 54 18)
+    BG_VIM_INSERT=$(bg 28);  BG_VIM_NORMAL=$(bg 25)
+    BG_VIM_VISUAL=$(bg 90);  BG_VIM_REPLACE=$(bg 124); BG_VIM_OTHER=$(bg 240)
+  fi
 }
 apply_theme
+
+# ── Per-worktree chip colour ──────────────────────────────
+# The chip used to be a single fixed brown for every session. With ~20 worktrees open
+# at once that made the one field naming the session the least distinguishable thing
+# on screen. Tinting it by name gives each worktree a stable colour that is the same
+# in every pane and across restarts, so the chip becomes recognisable at a glance
+# rather than something you have to read.
+#
+# Pure-bash so it costs no fork: statusline renders on every turn.
+pick_wt_bg() {
+  local s="$1" i h=0 ord
+  for (( i = 0; i < ${#s}; i++ )); do
+    printf -v ord '%d' "'${s:$i:1}"
+    h=$(( (h * 31 + ord) % 1000003 ))
+  done
+  bg "${WT_PALETTE[$(( h % ${#WT_PALETTE[@]} ))]}"
+}
 
 # ── Icon table ────────────────────────────────────────────
 # One entry per segment that has BOTH a Nerd Font glyph and a plain-text fallback.
@@ -154,12 +300,62 @@ color_for_pct() {
   fi
 }
 
+# Bar FILLS get the vivid ramp; labels keep the muted one above. A `█` run is a solid
+# block several columns wide, so saturation reads there without the glare it causes on
+# thin text strokes — which is the whole reason the two are separate functions. On a
+# light ground these sit around 2.4-3.4:1, deliberately below the text threshold: they
+# are a magnitude you scan, not a value you read, and the number beside them is what
+# carries the precision.
+bar_color_for_pct() {
+  local p=$1
+  if [ "$APPEARANCE_RESOLVED" = "light" ]; then
+    if [ "$p" -lt 40 ]; then   fg 34    # vivid green
+    elif [ "$p" -lt 70 ]; then fg 172   # vivid amber
+    elif [ "$p" -lt 90 ]; then fg 202   # vivid orange
+    else                       fg 196   # vivid red
+    fi
+  else
+    if [ "$p" -lt 40 ]; then   fg 46
+    elif [ "$p" -lt 70 ]; then fg 226
+    elif [ "$p" -lt 90 ]; then fg 208
+    else                       fg 196
+    fi
+  fi
+}
+
+# Plan bars keep a cool hue family so they stay distinguishable from the context bar
+# at a glance, rather than both ramping through the same green-to-red.
+plan_bar_color_for_pct() {
+  local p=$1
+  if [ "$APPEARANCE_RESOLVED" = "light" ]; then
+    if [ "$p" -lt 50 ]; then   fg 37    # vivid teal
+    elif [ "$p" -lt 75 ]; then fg 32    # vivid blue
+    elif [ "$p" -lt 90 ]; then fg 202   # vivid orange
+    else                       fg 196   # vivid red
+    fi
+  else
+    if [ "$p" -lt 50 ]; then   fg 51
+    elif [ "$p" -lt 75 ]; then fg 33
+    elif [ "$p" -lt 90 ]; then fg 208
+    else                       fg 196
+    fi
+  fi
+}
+
 plan_color_for_pct() {
   local p=$1
-  if [ "$p" -lt 50 ]; then   printf '%s' '\033[36m'       # teal
-  elif [ "$p" -lt 75 ]; then printf '%s' '\033[34m'       # blue
-  elif [ "$p" -lt 90 ]; then printf '%s' '\033[38;5;172m' # orange
-  else                       printf '%s' '\033[31m'       # red
+  if [ "$APPEARANCE_RESOLVED" = "light" ]; then
+    if [ "$p" -lt 50 ]; then   fg 66    # muted teal
+    elif [ "$p" -lt 75 ]; then fg 61    # muted indigo
+    elif [ "$p" -lt 90 ]; then fg 166   # orange
+    else                       fg 160   # red
+    fi
+  else
+    if [ "$p" -lt 50 ]; then   fg 73    # teal
+    elif [ "$p" -lt 75 ]; then fg 68    # blue
+    elif [ "$p" -lt 90 ]; then fg 172   # orange
+    else                       fg 203   # red
+    fi
   fi
 }
 
@@ -174,18 +370,28 @@ countdown() {
   local reset_ts="$1"
   [ -z "$reset_ts" ] && return
 
-  # Strip fractional seconds and timezone suffix for parsing
-  local clean="${reset_ts%%.*}"
-  clean="${clean%%Z}"
-  clean="${clean%%+*}"
-
-  # macOS date -jf; fall back to GNU date -d
-  # API returns UTC timestamps — parse in UTC to avoid local timezone offset
   local reset_epoch
-  reset_epoch=$(TZ=UTC date -jf "%Y-%m-%dT%H:%M:%S" "$clean" +%s 2>/dev/null)
-  if [ -z "$reset_epoch" ]; then
-    reset_epoch=$(date -d "$reset_ts" +%s 2>/dev/null)
-  fi
+
+  # Claude Code sends resets_at as a Unix epoch integer; the plan-limits API sends an
+  # ISO 8601 string. Both reach here, so accept both. An all-digits value is already
+  # an epoch and needs no date(1) at all — parsing it as ISO silently returned nothing,
+  # which is why the ↻ countdowns stopped appearing.
+  case "$reset_ts" in
+    ''|*[!0-9]*)
+      # Strip fractional seconds and timezone suffix for parsing
+      local clean="${reset_ts%%.*}"
+      clean="${clean%%Z}"
+      clean="${clean%%+*}"
+
+      # macOS date -jf; fall back to GNU date -d
+      # API returns UTC timestamps — parse in UTC to avoid local timezone offset
+      reset_epoch=$(TZ=UTC date -jf "%Y-%m-%dT%H:%M:%S" "$clean" +%s 2>/dev/null)
+      if [ -z "$reset_epoch" ]; then
+        reset_epoch=$(date -d "$reset_ts" +%s 2>/dev/null)
+      fi
+      ;;
+    *) reset_epoch="$reset_ts" ;;
+  esac
   [ -z "$reset_epoch" ] && return
 
   local now diff h m
@@ -365,6 +571,22 @@ eval "$(printf '%s' "$input" | jq -r '
   def s(v): if v == null then "" else (v | tostring) end;
   def n(v): if v == null then "0" else (v | tostring) end;
   def b(v): if v == true then "true" else "false" end;
+  # Everything downstream compares with `[ -ge ]` and `$(( ))`, which are integer-only.
+  # Claude Code sends percentages as floats — `56.99999999999999` — and every one of
+  # those tests then fails with "integer expression expected", taking the whole plan
+  # section down silently. Round at the boundary so the rest of the script keeps its
+  # integer assumption.
+  def i(v): if v == null then "" else (v | tonumber | round | tostring) end;
+  # `context_window.current_usage` used to be a number and is now an object of token
+  # buckets. `tostring` on it produced `{input_tokens:2,...}`, which reached arithmetic
+  # and errored. Context occupancy is the three INPUT buckets; output_tokens is not
+  # resident in the window.
+  def usage(v):
+    if v == null then "0"
+    elif (v | type) == "object" then
+      ([v.input_tokens, v.cache_creation_input_tokens, v.cache_read_input_tokens]
+       | map(numbers) | add // 0 | tostring)
+    else (v | tostring) end;
   "MODEL=\(s(.model.display_name) | @sh)",
   "MODEL_ID=\(s(.model.id) | @sh)",
   "COST=\(n(.cost.total_cost_usd))",
@@ -372,11 +594,11 @@ eval "$(printf '%s' "$input" | jq -r '
   "CWD=\(s(.cwd) | @sh)",
   "DURATION_MS=\(n(.cost.total_duration_ms))",
   "CTX_MAX_TOKENS=\(n(.context_window.context_window_size))",
-  "CURRENT_USAGE=\(n(.context_window.current_usage))",
+  "CURRENT_USAGE=\(usage(.context_window.current_usage))",
   "TOTAL_INPUT_TOKENS=\(n(.context_window.total_input_tokens))",
   "SESSION_ID=\(s(.session_id) | @sh)",
-  "FIVE_HR=\(s(.rate_limits.five_hour.used_percentage) | @sh)",
-  "SEVEN_DAY=\(s(.rate_limits.seven_day.used_percentage) | @sh)",
+  "FIVE_HR=\(i(.rate_limits.five_hour.used_percentage) | @sh)",
+  "SEVEN_DAY=\(i(.rate_limits.seven_day.used_percentage) | @sh)",
   "FIVE_HR_RESET=\(s(.rate_limits.five_hour.resets_at) | @sh)",
   "SEVEN_DAY_RESET=\(s(.rate_limits.seven_day.resets_at) | @sh)",
   "WORKTREE_NAME_NATIVE=\(s(.worktree.name) | @sh)",
@@ -582,15 +804,26 @@ fi
 SEP="${C_GRAY}|${R}"
 
 # ── Build output (section-gated with smart separators) ────
-OUT=""
-NEED_SEP=0
+# Sections are collected rather than concatenated, because the wrapper at the bottom
+# has to split on section boundaries. Splitting a pre-joined string would cut through
+# the middle of an escape sequence and leak `[38;5;80m` into the visible output.
+#
+# SECTION_LABELS runs parallel to SECTIONS. A non-empty label marks a section that
+# gets its OWN line with a padded gutter when the statusline wraps, so that every
+# labelled section's content starts at the same column. Only the bars carry one:
+# they are the wide, visually heavy rows, and lining their left edges up is what
+# turns a ragged wrap into something scannable. An empty label means "pack me".
+SECTIONS=()
+SECTION_LABELS=()
 
 append_section() {
-  if [ "$NEED_SEP" -eq 1 ]; then
-    OUT="${OUT} ${SEP} "
-  fi
-  OUT="${OUT}$1"
-  NEED_SEP=1
+  SECTIONS+=("$1")
+  SECTION_LABELS+=("")
+}
+
+append_labeled_section() {
+  SECTION_LABELS+=("$1")
+  SECTIONS+=("$2")
 }
 
 # ── 1. Model name (+ session name if present) ─────────────
@@ -632,23 +865,23 @@ if [ "$SHOW_WORKTREE" = "true" ] && [ -n "$WORKTREE_NAME" ]; then
 fi
 
 if [ "$SHOW_BRANCH" = "true" ] && [ -n "$BRANCH" ] && [ "$WORKTREE_CHIP" -eq 0 ]; then
-  append_section "\033[48;5;22m\033[97m ${BRANCH} ${R}"
+  append_section "${BG_BRANCH}${BADGE_FG} ${BRANCH} ${R}"
 fi
 
 if [ "$WORKTREE_CHIP" -eq 1 ]; then
-  append_section "\033[48;5;130m${B}\033[97m wt:${WORKTREE_NAME} ${R}"
+  append_section "$(pick_wt_bg "$WORKTREE_NAME")${B}${BADGE_FG} wt:${WORKTREE_NAME} ${R}"
 fi
 
 # ── 5. Vim mode (if active) ───────────────────────────────
 if [ "$SHOW_VIM" = "true" ] && [ -n "$VIM_MODE" ]; then
   case "$VIM_MODE" in
-    INSERT)  VIM_CH="I"; VIM_BG='\033[42m' ;;   # green bg
-    NORMAL)  VIM_CH="N"; VIM_BG='\033[44m' ;;   # blue bg
-    VISUAL)  VIM_CH="V"; VIM_BG='\033[45m' ;;   # magenta bg
-    REPLACE) VIM_CH="R"; VIM_BG='\033[41m' ;;   # red bg
-    *)       VIM_CH="${VIM_MODE:0:1}"; VIM_BG='\033[100m' ;; # gray bg
+    INSERT)  VIM_CH="I"; VIM_BG="$BG_VIM_INSERT" ;;
+    NORMAL)  VIM_CH="N"; VIM_BG="$BG_VIM_NORMAL" ;;
+    VISUAL)  VIM_CH="V"; VIM_BG="$BG_VIM_VISUAL" ;;
+    REPLACE) VIM_CH="R"; VIM_BG="$BG_VIM_REPLACE" ;;
+    *)       VIM_CH="${VIM_MODE:0:1}"; VIM_BG="$BG_VIM_OTHER" ;;
   esac
-  append_section "${VIM_BG}${B}\033[97m ${VIM_CH} ${R}"
+  append_section "${VIM_BG}${B}${BADGE_FG} ${VIM_CH} ${R}"
 fi
 
 # ── 6. Cost (adaptive) ────────────────────────────────────
@@ -787,7 +1020,8 @@ fi
 
 # ── 10. Context bar (always visible, adaptive width) ──────
 if [ "$SHOW_CONTEXT_BAR" = "true" ]; then
-  BAR_COLOR=$(color_for_pct "$PCT")
+  BAR_COLOR=$(color_for_pct "$PCT")       # the % label — muted, meant to be read
+  BAR_FILL=$(bar_color_for_pct "$PCT")    # the █ run — vivid, meant to be scanned
   CTX_USED_TOKENS="${CURRENT_USAGE:-0}"
   CTX_USED_FMT=$(fmt_tokens "$CTX_USED_TOKENS")
   CTX_MAX_FMT=$(fmt_tokens "$CTX_MAX_TOKENS")
@@ -818,12 +1052,12 @@ if [ "$SHOW_CONTEXT_BAR" = "true" ]; then
 
   # Percentage label — background highlight when critical (≥80%)
   if [ "${PCT:-0}" -ge 80 ] 2>/dev/null; then
-    PCT_LABEL="\033[41m${B}\033[97m ${PCT}%% ${R}"
+    PCT_LABEL="${BG_ALERT}${B}${BADGE_FG} ${PCT}% ${R}"
   else
-    PCT_LABEL="${BAR_COLOR}${PCT}%%${R}"
+    PCT_LABEL="${BAR_COLOR}${PCT}%${R}"
   fi
 
-  CTX_SECTION="${BAR_COLOR}$(repeat_char "$CTX_F" '█')${C_GRAY}$(repeat_char "$CTX_E" '░')${R} ${PCT_LABEL}"
+  CTX_SECTION="${BAR_FILL}$(repeat_char "$CTX_F" '█')${C_GRAY}$(repeat_char "$CTX_E" '░')${R} ${PCT_LABEL}"
 
   # Token count in full form
   if [ "${PCT:-0}" -gt 50 ] 2>/dev/null && [ -n "$CTX_USED_FMT" ] && [ -n "$CTX_MAX_FMT" ]; then
@@ -838,7 +1072,7 @@ if [ "$SHOW_CONTEXT_BAR" = "true" ]; then
 
   CTX_SECTION="${CTX_SECTION}${EXCEEDS_IND}"
 
-  append_section "$CTX_SECTION"
+  append_labeled_section "ctx" "$CTX_SECTION"
 fi
 
 # ── 11. Plan limits (always bar, adaptive width) ──────────
@@ -871,20 +1105,20 @@ if [ "$SHOW_PLAN_LIMITS" = "true" ] && { [ -n "$FIVE_HR" ] || [ -n "$SEVEN_DAY" 
 
     MAX_P=$FIVE_HR
     [ "${SEVEN_DAY:-0}" -gt "$MAX_P" ] && MAX_P=$SEVEN_DAY
-    P_COLOR=$(plan_color_for_pct "$MAX_P")
+    P_COLOR=$(plan_bar_color_for_pct "$MAX_P")
 
     PBAR="${P_COLOR}$(repeat_char "$N_BOTH" '█')$(repeat_char "$N_MID" "$MID_CH")${R}${C_GRAY}${D}$(repeat_char "$N_EMPTY" '-')${R}"
 
     # 5h label — background highlight when critical (≥80%)
     if [ "${FIVE_HR:-0}" -ge 80 ] 2>/dev/null; then
-      FH_LABEL="\033[41m${B}\033[97m 5h:${FIVE_HR}%% ${R}"
+      FH_LABEL="${BG_ALERT}${B}${BADGE_FG} 5h:${FIVE_HR}% ${R}"
     else
-      FH_LABEL="${FH_C}${D}5h${R}${FH_C}:${FIVE_HR}%%${R}"
+      FH_LABEL="${FH_C}${D}5h${R}${FH_C}:${FIVE_HR}%${R}"
     fi
     if [ -n "$FIVE_HR_CD" ]; then
       if [ "${FIVE_HR:-0}" -ge 100 ] 2>/dev/null; then
         # Rate-limited: countdown is primary info — red background highlight
-        FH_LABEL="${FH_LABEL} \033[41m${B}\033[97m ↻${FIVE_HR_CD} ${R}"
+        FH_LABEL="${FH_LABEL} ${BG_ALERT}${B}${BADGE_FG} ↻${FIVE_HR_CD} ${R}"
       elif [ "${FIVE_HR:-0}" -ge 80 ] 2>/dev/null; then
         # Critical: orange/yellow countdown — visible but not alarming
         FH_LABEL="${FH_LABEL} ${C_ORANGE}${B}↻${FIVE_HR_CD}${R}"
@@ -895,14 +1129,14 @@ if [ "$SHOW_PLAN_LIMITS" = "true" ] && { [ -n "$FIVE_HR" ] || [ -n "$SEVEN_DAY" 
 
     # 7d label — background highlight when critical (≥80%)
     if [ "${SEVEN_DAY:-0}" -ge 80 ] 2>/dev/null; then
-      SD_LABEL="\033[41m${B}\033[97m 7d:${SEVEN_DAY}%% ${R}"
+      SD_LABEL="${BG_ALERT}${B}${BADGE_FG} 7d:${SEVEN_DAY}% ${R}"
     else
-      SD_LABEL="${SD_C}${D}7d${R}${SD_C}:${SEVEN_DAY}%%${R}"
+      SD_LABEL="${SD_C}${D}7d${R}${SD_C}:${SEVEN_DAY}%${R}"
     fi
     if [ -n "$SEVEN_DAY_CD" ]; then
       if [ "${SEVEN_DAY:-0}" -ge 100 ] 2>/dev/null; then
         # Rate-limited: countdown is primary info — red background highlight
-        SD_LABEL="${SD_LABEL} \033[41m${B}\033[97m ↻${SEVEN_DAY_CD} ${R}"
+        SD_LABEL="${SD_LABEL} ${BG_ALERT}${B}${BADGE_FG} ↻${SEVEN_DAY_CD} ${R}"
       elif [ "${SEVEN_DAY:-0}" -ge 80 ] 2>/dev/null; then
         # Critical: orange/yellow countdown — visible but not alarming
         SD_LABEL="${SD_LABEL} ${C_ORANGE}${B}↻${SEVEN_DAY_CD}${R}"
@@ -911,7 +1145,7 @@ if [ "$SHOW_PLAN_LIMITS" = "true" ] && { [ -n "$FIVE_HR" ] || [ -n "$SEVEN_DAY" 
       fi
     fi
 
-    append_section "${PBAR} ${FH_LABEL} ${SD_LABEL}"
+    append_labeled_section "plan" "${PBAR} ${FH_LABEL} ${SD_LABEL}"
   fi
 fi
 
@@ -958,16 +1192,16 @@ if [ "$SHOW_PLAN_LIMITS" = "true" ] && [ "$SHOW_CLAUDISH_PLAN" = "true" ] \
       W_C=$(plan_color_for_pct "$w_pct")
       # Same critical highlight rule as the Anthropic labels (≥80%).
       if [ "$w_pct" -ge 80 ] 2>/dev/null; then
-        W_LABEL="\033[41m${B}\033[97m ${w_id}:${w_pct}%% ${R}"
+        W_LABEL="${BG_ALERT}${B}${BADGE_FG} ${w_id}:${w_pct}% ${R}"
       else
-        W_LABEL="${W_C}${D}${w_id}${R}${W_C}:${w_pct}%%${R}"
+        W_LABEL="${W_C}${D}${w_id}${R}${W_C}:${w_pct}%${R}"
       fi
 
       if [ -n "$w_reset" ]; then
         W_CD=$(countdown "$w_reset")
         if [ -n "$W_CD" ]; then
           if [ "$w_pct" -ge 100 ] 2>/dev/null; then
-            W_LABEL="${W_LABEL} \033[41m${B}\033[97m ↻${W_CD} ${R}"
+            W_LABEL="${W_LABEL} ${BG_ALERT}${B}${BADGE_FG} ↻${W_CD} ${R}"
           elif [ "$w_pct" -ge 80 ] 2>/dev/null; then
             W_LABEL="${W_LABEL} ${C_ORANGE}${B}↻${W_CD}${R}"
           else
@@ -997,14 +1231,148 @@ CLAUDISH_PLAN_EOF
       CL_F=$((CL_MAX_PCT * CL_W / 100))
       [ "$CL_F" -gt "$CL_W" ] && CL_F=$CL_W
       CL_E=$((CL_W - CL_F))
-      CL_BAR_C=$(plan_color_for_pct "$CL_MAX_PCT")
+      CL_BAR_C=$(plan_bar_color_for_pct "$CL_MAX_PCT")
       CL_BAR="${CL_BAR_C}$(repeat_char "$CL_F" '█')${R}${C_GRAY}${D}$(repeat_char "$CL_E" '-')${R}"
 
       CL_SECTION="${CL_BAR} ${CL_LABELS}"
-      [ -n "$CL_PLAN_LABEL" ] && CL_SECTION="${C_GRAY}${D}${CL_PLAN_LABEL}${R} ${CL_SECTION}"
-      append_section "$CL_SECTION"
+      # The provider's own plan name becomes the gutter label when wrapped, so it
+      # reads as a row heading rather than a prefix glued to the bar. Falls back to
+      # "plan" when claudish gives no label.
+      append_labeled_section "${CL_PLAN_LABEL:-plan}" "$CL_SECTION"
     fi
   fi
 fi
 
-printf "${OUT}\n"
+# ── Wrap to the terminal width ────────────────────────────
+# Claude Code prints every line the command emits, each indented 2 columns — verified
+# by feeding it a 3-line script and reading the rendered pane back. So going multi-line
+# needs no cooperation from the host beyond emitting more newlines.
+#
+# $COLUMNS carries the LIVE terminal width. Claude Code injects it per render: it is
+# absent from the claude process's own environment (`ps -Ewww`) yet present in this
+# child at the current pane width, so it tracks resizes rather than freezing at launch.
+shopt -s extglob
+
+# Columns the string occupies once printf has eaten the escapes. Escapes are still in
+# their literal `\033[…m` two-character-backslash form here, which is why the pattern
+# matches a literal backslash.
+#
+# 🤖 (U+1F916) and ⚡ (U+26A1) carry emoji presentation and take two columns each;
+# every other non-ASCII character the script emits (→ ↑ ↻ ⟳ ⎇ █ ░ ▀) is one column.
+# Nerd Font glyphs are counted as one, which is how iTerm2 renders the Material
+# Design range — worst case that under-counts a segment by a column, which costs a
+# slightly early wrap and never a broken escape.
+# Each wide glyph is removed with its own FULL-STRING pattern, never a bracket set.
+# `${s//[🤖⚡]/}` looks like a character class and is a BYTE class: it deletes any byte
+# appearing in the UTF-8 encoding of either glyph. 🤖 is F0 9F A4 96 and ⚡ is E2 9A A1,
+# and █ ░ ▀ all begin E2 — so every block character in a bar was being eaten and
+# counted as double-width. The context bar measured 43 columns instead of 30 and the
+# plan bar 59 instead of 48, which made the wrapper split lines on wide terminals that
+# had room to spare.
+# >>> display_width  (test-statusline.ts extracts between these markers — keep them)
+display_width() {
+  local stripped="${1//\\033\[*([0-9;])m/}"
+  local n=${#stripped} w=${#stripped} t
+  t=${stripped//🤖/}; w=$(( w + n - ${#t} ))
+  t=${stripped//⚡/}; w=$(( w + n - ${#t} ))
+  printf '%s' "$w"
+}
+# <<< display_width
+
+TERM_COLS=${COLUMNS:-80}
+# 2 for Claude Code's indent, 1 so a full-width line cannot trip the terminal's own
+# auto-wrap and split an escape sequence across rows.
+BUDGET=$((TERM_COLS - 3))
+[ "$BUDGET" -lt 20 ] && BUDGET=20
+
+SEP_WIDTH=3   # " | "
+
+# Widths are computed once; display_width forks nothing but the loop runs per render.
+SEC_W=()
+for section in "${SECTIONS[@]}"; do
+  SEC_W+=("$(display_width "$section")")
+done
+
+# Both layouts get built and `layout` decides between them. Under the default `auto`
+# the gutter is worth a column of labels but NOT an extra ROW, so it is taken only when
+# it does not increase the line count. In practice that means it rarely fires: packing
+# both bars onto one shared row is usually a line cheaper than giving each its own.
+# `layout: "aligned"` is the opt-in for people who want the columns lined up and are
+# happy to spend the row.
+
+# ── Layout A: plain greedy, no labels ──
+PLAIN=()
+CUR=""
+CUR_W=0
+for idx in "${!SECTIONS[@]}"; do
+  w=${SEC_W[$idx]}
+  if [ -z "$CUR" ]; then
+    CUR="${SECTIONS[$idx]}"; CUR_W=$w
+  elif [ "$WRAP" = "off" ] || [ $((CUR_W + SEP_WIDTH + w)) -le "$BUDGET" ] \
+       || { [ "$MAX_LINES" -gt 0 ] 2>/dev/null && [ "${#PLAIN[@]}" -ge $((MAX_LINES - 1)) ]; }; then
+    CUR="${CUR} ${SEP} ${SECTIONS[$idx]}"; CUR_W=$((CUR_W + SEP_WIDTH + w))
+  else
+    PLAIN+=("$CUR"); CUR="${SECTIONS[$idx]}"; CUR_W=$w
+  fi
+done
+[ -n "$CUR" ] && PLAIN+=("$CUR")
+
+LINES=("${PLAIN[@]}")
+
+# ── Layout B: labelled gutter, one row per labelled section ──
+# Only attempted when A already needed more than one row. On a wide terminal A is a
+# single line and nothing beats that.
+if [ "$WRAP" != "off" ] && [ "$LAYOUT" != "compact" ] && [ "${#PLAIN[@]}" -gt 1 ]; then
+  GUTTER_W=0
+  for label in "${SECTION_LABELS[@]}"; do
+    [ -n "$label" ] && [ "${#label}" -gt "$GUTTER_W" ] && GUTTER_W=${#label}
+  done
+  [ "$GUTTER_W" -gt 0 ] && GUTTER_W=$((GUTTER_W + 2))
+
+  if [ "$GUTTER_W" -gt 0 ]; then
+    # Packed rows are NOT indented into the gutter, because they cannot be: Claude Code
+    # strips leading whitespace from every line it renders. Measured — six leading
+    # spaces and six leading U+00A0 both came back flush against an unindented line,
+    # while a line starting with a letter kept its position. So the labelled rows align
+    # with each other and the packed rows sit flush left above them, as a heading.
+    #
+    # The gutter is charged against the budget, or the labelled rows overflow by
+    # exactly its width.
+    INNER=$((BUDGET - GUTTER_W))
+    [ "$INNER" -lt 16 ] && INNER=16
+
+    GUT=()
+    CUR=""
+    CUR_W=0
+    for idx in "${!SECTIONS[@]}"; do
+      w=${SEC_W[$idx]}
+      label="${SECTION_LABELS[$idx]}"
+      if [ -n "$label" ]; then
+        [ -n "$CUR" ] && { GUT+=("$CUR"); CUR=""; CUR_W=0; }
+        GUT+=("$(printf "%s%-${GUTTER_W}s%s" "${C_GRAY}${D}" "$label" "${R}")${SECTIONS[$idx]}")
+        continue
+      fi
+      if [ -z "$CUR" ]; then
+        CUR="${SECTIONS[$idx]}"; CUR_W=$w
+      elif [ $((CUR_W + SEP_WIDTH + w)) -le "$INNER" ]; then
+        CUR="${CUR} ${SEP} ${SECTIONS[$idx]}"; CUR_W=$((CUR_W + SEP_WIDTH + w))
+      else
+        GUT+=("$CUR"); CUR="${SECTIONS[$idx]}"; CUR_W=$w
+      fi
+    done
+    [ -n "$CUR" ] && GUT+=("$CUR")
+
+    if [ "$LAYOUT" = "aligned" ] || [ "${#GUT[@]}" -le "${#PLAIN[@]}" ]; then
+      LINES=("${GUT[@]}")
+    fi
+  fi
+fi
+
+for line in "${LINES[@]}"; do
+  # %b, not the line as a format string. `printf "$line"` treated a branch name
+  # containing `%` as a conversion spec, so a branch like `feat/100%-coverage`
+  # rendered as garbage or swallowed the rest of the line. %b expands the \033
+  # escapes and treats every `%` as a literal, which is also why the percentage
+  # segments above now write a single `%` rather than escaping it as `%%`.
+  printf '%b\n' "$line"
+done
