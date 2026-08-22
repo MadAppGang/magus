@@ -4,6 +4,23 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [dev 4.4.1] - 2026-08-22
+
+### Added
+
+- **`/dev:release` learned the two rules its first live run exposed.** Tag collision:
+  when a local tag of the release name already exists pointing elsewhere (tags are shared
+  across worktrees, so a sibling session's prepared batch collides), origin decides — if
+  origin lacks the tag, push the correct annotated tag via a temp ref without touching the
+  sibling's local tag and report the retarget command; if origin holds it at a different
+  SHA, the number is burned: renumber to the next free version and re-release, never
+  force-retag. Version-collision rule stated generally: first-to-origin wins the number.
+  Pre-authorization: "release yourself" / "--auto" at invocation now counts as batch
+  approval for the merge and publish gates — each irreversible step is still reported,
+  and consistency incidents still hard-stop; the authorization covers that run only.
+
+---
+
 ## [dev 4.4.0] - 2026-08-22
 
 ### Added

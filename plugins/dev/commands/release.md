@@ -166,6 +166,26 @@ skills: dev:context-detection
       git tag -a vX.Y.Z -m "..." <merge-sha>
       git push origin refs/tags/vX.Y.Z
     NEVER git push --tags — it pushes every local tag the machine has ever accumulated.
+  - TAG COLLISION (local tag of this name already exists, pointing elsewhere — common
+    with shared-across-worktrees tags, where a sibling session prepared its own batch):
+    ORIGIN DECIDES. Check git ls-remote --tags origin <tag>:
+    * origin does NOT have the tag → your merged release owns the name. Push your
+      annotated tag WITHOUT touching the sibling's local tag, via a temp ref:
+        git tag -a tmp-<name> -m "..." <merge-sha>
+        git push origin refs/tags/tmp-<name>:refs/tags/<real-tag-name>
+        git tag -d tmp-<name>
+      Then report the stale local tag loudly (it now lies vs origin, and it poisons
+      any tooling that infers "commits since last tag") with the retarget command:
+        git tag -f <real-tag-name> <merge-sha>
+      — but leave executing that to the user, who knows the sibling session's state.
+    * origin HAS the tag at YOUR merge SHA → predicate satisfied, skip.
+    * origin HAS the tag at a DIFFERENT SHA → the version number is BURNED. Never
+      delete or force-push the tag. Renumber: bump your release to the next free
+      version, update manifests + changelog + PR, and run the release again.
+  - VERSION-COLLISION RULE (the general form): first-to-origin wins the number. A
+    release that loses the race renumbers to a higher version and re-releases; it
+    never fights over the tag or ships different content under a taken number —
+    same-version content drift is invisible to installed clients forever.
   - If any file changed between the tested candidate and merge (rebase, conflict
     resolution, "one more fix"), golden rule 2 applies: back to PREPARE.
 </phase_3_merge_and_tag>
@@ -257,4 +277,11 @@ skills: dev:context-detection
   - Never resolve "version already exists on the registry" by silently bumping — surface
     it; the user decides whether it is a resume (skip) or a collision (stop).
   - Ask before every irreversible action unless the user pre-authorized the batch.
+  - PRE-AUTHORIZATION: when the user says at invocation (or at any gate) words to the
+    effect of "release yourself", "merge and release without asking", or passes an
+    --auto style argument, that is batch pre-authorization: proceed through the merge
+    and publish gates without stopping to ask, while still REPORTING each irreversible
+    step as it happens and still hard-stopping on any consistency incident (a predicate
+    that finds existing-but-different state). Pre-authorization covers this release
+    run only — it does not carry over to the next invocation.
 </safety>
