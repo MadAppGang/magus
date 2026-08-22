@@ -4,6 +4,35 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [madbench 0.2.3] - 2026-08-22
+
+### Fixed
+
+- **`madbench list` catches a retired `sandbox:` level now, and the skill said it did not.**
+  Level validation moved upstream out of the configurator and into the loader
+  (`validateSandboxLevels`, called from `finishBenchSpec`), so every command that reads a bench
+  file refuses `process`, `machine`, `docker` and any unknown spelling identically — `list`
+  included. The `list` vs `preflight` capability table still marked that row **no** for `list`,
+  advising the opposite of what the tool does. The surrounding rule is unchanged and still
+  correct: `list` is not your gate, because it misses everything else in that table.
+- **`debugging.md` opened on the same invalidated example** — "`madbench list` on a bench with a
+  retired `sandbox: process` level prints the bench and exits 0". It now names failures `list`
+  genuinely misses: a `testdata:` directory that is gone, a harness binary that is not
+  installed, a check `type:` that does not exist.
+- **The skill's eval suite named a path that exists on one machine.** Eval 0's prompt sent the
+  agent to `repo at /Users/jack/mag/madbench`, so the scenario was unreproducible for every
+  other user, and it told them to run the deprecated `madbench run` rather than the bare
+  command. Both corrected.
+
+### Added
+
+- **The load-vs-machine boundary, stated once under the table** so it survives the next upstream
+  change. Anything that makes a bench file malformed — an unknown key, a bad metric declaration,
+  a retired `sandbox:` level — is a load error every command refuses. Anything about this
+  machine — binaries, keys, images — is preflight's job alone.
+
+---
+
 ## [browser-use 1.7.2] - 2026-08-22
 
 ### Fixed

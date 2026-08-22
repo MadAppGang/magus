@@ -245,13 +245,19 @@ your gate — it gives a confident exit 0 on a bench that cannot start:
 | | `list` | `preflight` | real run |
 |---|---|---|---|
 | YAML parses, unknown keys, bench + scenario names | yes | yes | yes |
-| Retired `sandbox:` level | **no** | yes | yes |
+| Retired `sandbox:` level | yes | yes | yes |
 | Missing `testdata:` directory | **no** | yes | yes |
 | Harness binary / API key present | **no** | yes | yes |
 | **Unknown check `type:`** | **no** | **yes** | yes |
 | **Missing `file://` grader file** | **no** | **yes** | yes |
 | **`image:` missing / wrong format / harness can't carry it** | **no** | **yes** | yes |
 | A check that grades nothing | no | no | no — use `madbench check` |
+
+**Where the line falls.** Anything that makes a bench file **malformed** — an unknown
+key, a bad metric declaration, a retired `sandbox:` level — is a **load** error, and
+every command refuses it identically. Anything about **this machine** — binaries, keys,
+images — is preflight's job alone. That is why the sandbox row reads yes across the
+board while the rest do not.
 
 The last two preflight rows are newer than most bench files. A check whose `value:
 file://…` grader had been deleted used to preflight clean and fail at grading time, and

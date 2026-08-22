@@ -834,7 +834,7 @@
       "name": "madbench",
       "source": "./plugins/madbench",
       "description": "Toolkit for madbench, MadAppGang's Go harness for benchmarking agentic coding tools. Ships the madbench-evals skill: author bench YAML and Eval files, design checks, scaffold red-state and generated testdata, run the negative and positive controls, tune expectations, and debug failing checks.",
-      "version": "0.2.2",
+      "version": "0.2.3",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -855,6 +855,15 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "0.2.3",
+          "date": "2026-08-22",
+          "kinds": [
+            "Fixed",
+            "Added"
+          ],
+          "summary": "madbench list catches a retired sandbox: level now, and the skill said it did not"
+        },
         {
           "version": "0.2.2",
           "date": "2026-08-19",

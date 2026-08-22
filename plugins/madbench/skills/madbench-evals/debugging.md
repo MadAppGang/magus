@@ -3,8 +3,13 @@
 ## Before you debug anything
 
 **`list` proves a file parses; `preflight` proves it could run.** `madbench list` on a
-bench with a retired `sandbox: process` level prints the bench and exits 0 — a
-confident all-clear on a file that cannot start. Never use `list` as the pre-run gate.
+bench whose `testdata:` directory is gone, whose harness binary is not installed, or
+whose check `type:` does not exist prints the bench and exits 0 — a confident all-clear
+on a file that cannot start. Never use `list` as the pre-run gate.
+
+What `list` *does* catch is anything that makes the file **malformed** — an unknown key,
+a bad metric declaration, a retired `sandbox:` level. Those are load errors, so every
+command refuses them identically. Machine-specific problems are preflight's alone.
 
 **Preflight runs automatically** before every run and blocks it, printing `preflight:
 nothing was run, no spend`. `--skip-preflight` opts out. Running it by hand while

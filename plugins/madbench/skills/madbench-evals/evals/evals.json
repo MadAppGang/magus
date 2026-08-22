@@ -4,7 +4,7 @@
     {
       "id": 0,
       "name": "author-bugfix-bench",
-      "prompt": "I'm using madbench (the Go harness for benchmarking agentic coding tools, repo at /Users/jack/mag/madbench). Create a complete madbench eval that tests whether a coding agent can fix a failing JSON-parsing bug in a small Go repo. I want the bench YAML plus the seeded testdata — set it up in the output directory so I could run `madbench run` on it directly with claude-code as the harness.",
+      "prompt": "I'm using madbench (MadAppGang's Go harness for benchmarking agentic coding tools). Create a complete madbench eval that tests whether a coding agent can fix a failing JSON-parsing bug in a small Go repo. I want the bench YAML plus the seeded testdata — set it up in the output directory so I could run `madbench` on it directly with claude-code as the harness.",
       "expected_output": "A runnable bench dir: madbench.yaml (canonical field names, claude-code harness with acceptEdits or bypassPermissions, exec check running go test, anti-cheat guards, a session:* check, sane cost/latency expectations) plus testdata/ seeded red (failing test exercising a real JSON-parsing bug), validated with `madbench preflight` and `madbench check`.",
       "files": [],
       "assertions": [
