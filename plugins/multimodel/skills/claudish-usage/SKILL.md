@@ -79,7 +79,11 @@ Step 3: ROUTE (Claudish)
 3. Check `.claude/multimodel-team.json` → `customAliases` for a user-defined
    shorthand. A custom alias always wins on key conflict — but if it maps to an
    ID the catalog no longer lists, say so instead of using it silently.
-4. `"internal"` is never sent to claudish — it means the host Claude model.
+4. `"internal"` and `"default"` select the host Claude tier, and `"opus"`/`"sonnet"`/
+   `"haiku"` a specific one. They ARE sent to claudish and run through its native
+   passthrough on the user's own subscription — no API key, no provider prefix, no
+   translation. They are not catalog IDs, so `list_models` will not list them and a
+   catalog check must not reject them. Requires `claudish >= 7.65.0`.
 
 ### Use the resolver — do not do this by hand
 
@@ -251,8 +255,11 @@ provider and bypass the subscription-aware backend selection and fallback that p
 
 ### Step 2: Agent Type Selection Matrix
 
-> **Note:** In orchestration workflows, external models are invoked via claudish MCP tools (team, create_session).
-> The agent is resolved by the orchestrator and set via Agent tool for internal models. External models receive context through the vote prompt.
+> **Note:** In orchestration workflows, every model — native Claude and external alike — is
+> invoked via claudish MCP tools (`team`, `create_session`). The orchestrator resolves the
+> agent and passes it as the tool's first-class `agent` argument, so each child runs with
+> that agent's system prompt and tool allowlist. It applies to EVERY child in the run; there
+> is no per-model form, and no need to smuggle the role into the prompt text.
 
 | Task Type | Recommended Agent | Alternatives | Notes |
 |-----------|----------------------|--------------|-------|
@@ -346,14 +353,17 @@ Decision:
 
 When used with the `/team` command for multi-model blind voting:
 
-**External models are invoked via the `team` MCP tool:**
-```
-claudish team(mode="run", path=SESSION_DIR, models=["grok", "gemini"],
-  input=VOTE_PROMPT, timeout=180)
-```
+**Every model is invoked via the `team` MCP tool — native slots included:**
+````
+claudish team(mode="run", path=SESSION_DIR, models=["internal", "grok", "gemini"],
+  input=VOTE_PROMPT, timeout=180,
+  require_pattern="```vote", agent=RESOLVED_AGENT)
+````
 
 The `team` tool runs all models in parallel internally and returns structured per-model results.
-The agent role is communicated through the vote prompt content.
+The agent role travels as the `agent` argument — it does not have to be described in the vote
+prompt — and `require_pattern` reports any slot that answered without the required shape as
+FAILED instead of succeeded.
 
 ## Overview
 

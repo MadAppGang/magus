@@ -42,7 +42,14 @@ Agent: dev:reviewer
 ---
 claudish team(mode="run", path=${SESSION_PATH}/reviews/code-review,
   models=[...selectedModels.models],
-  input=contents_of_prompt.md, timeout=180)
+  input=contents_of_prompt.md, timeout=180,
+  min_output_bytes=400)
+
+`min_output_bytes` floors the external slots. The review prompt mandates topics but no
+machine-checkable format, so `require_pattern` has nothing to match; 400 bytes is well
+below any real review, so it catches only a slot that returned nothing or a stub. Without
+it a slot that exited 0 having produced nothing joins the consensus count as a reviewer
+that found no issues.
 
 ### Step 5.6: Consolidate reviews
 Consolidate reviews with consensus analysis:
@@ -89,4 +96,10 @@ TaskUpdate(taskId: {phase5_task_id}, status: "completed")
 
 ## Quality Gate
 Review verdict PASS or CONDITIONAL with user approval.
-Required artifact: ${SESSION_PATH}/reviews/code-review/consolidated.md (with verdict)
+Required artifacts:
+- ${SESSION_PATH}/reviews/code-review/consolidated.md (with verdict)
+- ${SESSION_PATH}/reviews/code-review/claude-internal.md
+
+Both are enforced by `phase-completion-validator`. The internal review is listed because
+step 5.5 writes it and nothing used to check it: a `dev:reviewer` that returned without
+persisting anything left the phase passing on the consolidation alone.

@@ -77,7 +77,18 @@ export const PHASE_ARTIFACTS: Record<string, PhaseSpec> = {
   },
   phase5: {
     name: "Code Review",
-    required: [{ file: "reviews/code-review/consolidated.md", minSize: 200 }],
+    required: [
+      { file: "reviews/code-review/consolidated.md", minSize: 200 },
+      // Phase 5 writes this in step 5.5 exactly as phase 3 does, but only phase 3
+      // required it — so a reviewer that produced nothing cleared the gate on the
+      // consolidation alone, and the consolidation is written by a different agent
+      // that cannot tell an absent review from an empty one.
+      {
+        file: "reviews/code-review/claude-internal.md",
+        minSize: 100,
+        patterns: [/review|analysis|issue|concern|recommendation/i],
+      },
+    ],
     evidence: "reviewReachedVerdict",
   },
   phase6: {

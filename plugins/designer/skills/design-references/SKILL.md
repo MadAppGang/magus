@@ -406,6 +406,8 @@ Design Reference: material-3
 Image: screenshots/dashboard.png
 
 Write review to: ${SESSION_PATH}/reviews/design-review/gemini.md
+(Verify via the channel `completed`/`failed` events and `get_output`, then confirm the
+file exists. claudish writes no `.exit` file, so any check for one can never fire.)
 ```
 
 ### Combining Project Style + Reference

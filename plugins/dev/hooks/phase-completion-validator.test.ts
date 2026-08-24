@@ -33,6 +33,13 @@ function satisfying(phase: string): Record<string, string> {
       };
     case "phase4":
       return { [`${SESSION}/implementation-log.md`]: "Completed " + pad(200) };
+    case "phase5":
+      return {
+        [`${SESSION}/reviews/code-review/consolidated.md`]:
+          "## Verdict\n\nCONDITIONAL " + pad(200),
+        [`${SESSION}/reviews/code-review/claude-internal.md`]:
+          "review " + pad(100),
+      };
     case "phase6":
       return { [`${SESSION}/tests/test-plan.md`]: pad(100) };
     default:
@@ -173,13 +180,19 @@ describe("evidence checks — presence is not proof", () => {
   });
 
   test("phase 5 passes with a real verdict token", () => {
-    const files = {
-      [`${SESSION}/reviews/code-review/consolidated.md`]:
-        "## Verdict\n\nCONDITIONAL " + "x".repeat(200),
-    };
     expect(
-      evaluate({ subject: "Phase 5", status: "completed" }, fakeDeps(files)),
+      evaluate(
+        { subject: "Phase 5", status: "completed" },
+        fakeDeps(satisfying("phase5")),
+      ),
     ).toBeNull();
+  });
+
+  test("phase 5 blocks when the internal review was never written", () => {
+    const files = satisfying("phase5");
+    delete files[`${SESSION}/reviews/code-review/claude-internal.md`];
+    const msg = evaluate({ subject: "Phase 5", status: "completed" }, fakeDeps(files));
+    expect(msg).toContain("missing reviews/code-review/claude-internal.md");
   });
 
   test("phase 6 blocks when no test file was touched, despite tests existing in repo", () => {

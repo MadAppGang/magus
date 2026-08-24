@@ -191,8 +191,11 @@ create_session(model="grok", prompt=PROMPT, timeout_seconds=30)
 #   - Other → general failure
 
 # Via team MCP tool (timeout per model)
-team(mode="run", models=["grok"], input=PROMPT, timeout=30)
-# Check per-model status in structured response
+team(mode="run", models=["grok"], input=PROMPT, timeout=30,
+  require_pattern=<regex for the shape PROMPT mandates>)
+# Check per-model status in structured response. A slot reported EMPTY with reason
+# shape_mismatch is a FAILURE to recover from, not a short answer to accept — the
+# model finished without producing the required shape.
 ```
 
 ---

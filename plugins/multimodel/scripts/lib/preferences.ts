@@ -30,7 +30,11 @@
  *    unlike a timestamp it cannot be silently wrong.
  */
 
-/** The sentinel meaning "the host Claude model" — never sent to claudish, never validated. */
+/**
+ * The name selecting the host Claude tier. It IS runnable by claudish (>= 7.65.0), via the
+ * native passthrough — what it is not is a *catalog* ID, so it must skip catalog validation
+ * rather than be dropped as stale.
+ */
 export const INTERNAL = "internal";
 
 export type Prefs = {
@@ -98,7 +102,9 @@ function daysBetween(from: Date, to: Date): number {
 
 /**
  * Verify a list of model IDs against the catalog.
- * `internal` always survives — it denotes the host model, not a claudish model.
+ * `internal` always survives — not because claudish cannot run it (since 7.65.0 it can),
+ * but because it names the host tier rather than a catalog entry, so the catalog can never
+ * confirm it and "absent from the catalog" must not be read as "stale".
  */
 function verify(ids: string[] | undefined, catalog: Set<string>): FieldVerdict {
   const kept: string[] = [];

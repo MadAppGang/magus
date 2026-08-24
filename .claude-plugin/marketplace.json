@@ -147,7 +147,7 @@
       "name": "multimodel",
       "source": "./plugins/multimodel",
       "description": "Multi-model collaboration and orchestration. Runs a task across several AI models in parallel and aggregates their blind APPROVE/REJECT votes, or delegates it to one model running a full Claude Code session.",
-      "version": "3.8.0",
+      "version": "3.9.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -172,6 +172,15 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "3.9.0",
+          "date": "2026-08-24",
+          "kinds": [
+            "Fixed",
+            "Changed"
+          ],
+          "summary": "The internal reviewer's vote was never validated - it now runs as a team slot under require_pattern"
+        },
         {
           "version": "3.8.0",
           "date": "2026-08-19",
@@ -211,7 +220,7 @@
       "name": "dev",
       "source": "./plugins/dev",
       "description": "Universal development assistant. Detects the project stack and routes work to specialist agents for architecture, implementation, debugging, review and research, enforcing design-system guardrails on every UI change.",
-      "version": "4.4.2",
+      "version": "4.5.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -250,6 +259,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "4.5.0",
+          "date": "2026-08-24",
+          "kinds": [
+            "Fixed"
+          ],
+          "summary": "Phase 5 wrote an internal review that nothing checked"
+        },
         {
           "version": "4.4.2",
           "date": "2026-08-22",
@@ -630,7 +647,7 @@
       "name": "designer",
       "source": "./plugins/designer",
       "description": "UI design validation. Compares a rendered screen against its reference by pixel diff, then reviews the result for spacing, hierarchy and design-system consistency.",
-      "version": "0.5.1",
+      "version": "0.5.2",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -652,6 +669,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "0.5.2",
+          "date": "2026-08-24",
+          "kinds": [
+            "Fixed"
+          ],
+          "summary": "Verified an external review succeeded by reading a .exit file claudish never writes"
+        },
         {
           "version": "0.5.1",
           "date": "2026-08-19",

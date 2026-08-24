@@ -733,7 +733,10 @@ Overall Match: X/10
                    Write review to: ${SESSION_PATH}/reviews/design-review/gemini.md",
            timeout_seconds=300)
          ```
-      3. Read result file and .exit file to verify success
+      3. Verify success from the channel events, NOT from a `.exit` file — claudish
+         writes none, so a check for one can never fire. `create_session` reports
+         `completed` or `failed`; on `completed` call `get_output(session_id)` and
+         confirm the review file was actually written before using it.
       4. Continue orchestration workflow
     </correct_approach>
   </example>

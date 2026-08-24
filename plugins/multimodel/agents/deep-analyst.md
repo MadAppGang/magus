@@ -121,17 +121,24 @@ tools: Read, Write, Glob, Grep, Bash, WebSearch, WebFetch, Agent, mcp__plugin_cl
     an agent without Write and without Bash cannot persist, and must run
     foreground instead.
 
-    External models — via claudish MCP, never Bash+CLI:
+    Models — via claudish MCP, never Bash+CLI. Native Claude names
+    (`internal`, `default`, `opus`, `sonnet`, `haiku`) are ordinary slots
+    and belong in `models` beside the external ones:
     ```
     team(mode="run", path=SESSION_PATH, models=[...resolved live...],
          input=<subquestion prompt, stating the output shape it must
-                return>, timeout=600)
+                return>, timeout=600,
+         require_pattern=<regex for that shape>, agent="dev:researcher")
     ```
-    The tool has no shape parameter, so mandate the output shape inside
-    `input` and validate each returned slot against it yourself — exit 0
-    is not a success oracle. Zero-byte, timed-out, or shape-violating
-    slots are reported as FAILED in the final report, with the evidence
-    path.
+    State the shape in `input` AND pin it with `require_pattern` (needs
+    claudish >= 7.65.0): a slot that finished without producing that shape
+    is reported FAILED — state EMPTY, reason `shape_mismatch` — instead of
+    counted as a success. Exit 0 is not a success oracle: it is 0 on API
+    errors and on a child that ignored the format. Earlier plugin versions
+    hand-validated each slot here because the parameter did not exist; it
+    does now, and the tool applies it to native slots too. Zero-byte,
+    timed-out, or shape-violating slots still go into the final report as
+    FAILED, with the evidence path.
   </phase>
 
   <phase number="4" name="Consolidate">

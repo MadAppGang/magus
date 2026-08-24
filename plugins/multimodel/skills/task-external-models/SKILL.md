@@ -29,16 +29,23 @@ cat .claude/multimodel-team.json 2>/dev/null
 External AI models are invoked via **claudish MCP tools**. No Bash invocation needed.
 
 **In /team orchestration:**
-- **Internal model** (Claude) → `Agent(subagent_type: "{RESOLVED_AGENT}", run_in_background: true)`
-  — agent auto-detected from task type. Background is deliberate here and is the one
-  place it is: the internal reviewer must run *alongside* the external panel, not
-  block it. It writes its vote to `{SESSION_DIR}/internal-result.md`, which Step 3
-  reads. Every other dispatch in this plugin consumes a return value and must be
-  foreground.
-- **External models** (Grok, Gemini, etc.) → `claudish team(mode="run", models=[...], input=PROMPT, timeout=180)`
-- **`team` takes no `claude_flags`.** Its parameters are `mode, path, input, models,
-  judges, timeout` — nothing else reaches Claude Code. `claudeFlags` from
-  `.claude/multimodel-team.json` applies to `create_session` only.
+- **Every model, native and external, in ONE `team` call** →
+  `claudish team(mode="run", models=[...], input=PROMPT, timeout=180, require_pattern=..., agent=...)`.
+  Native Claude names (`internal`, `default`, `opus`, `sonnet`, `haiku`) are ordinary
+  slots and belong in `models` alongside the external ones — they run on the user's own
+  Claude subscription through claudish's native passthrough. There is no separate `Agent`
+  dispatch and no `internal-result.md` handoff file. Requires `claudish >= 7.65.0`.
+- **`team` DOES take `claude_flags`, and a first-class `agent`.** Its parameters are
+  `mode, path, input, models, judges, timeout, require_pattern, min_output_bytes,
+  agent, claude_flags`. Prefer the dedicated `agent`; an `--agent` placed inside
+  `claude_flags` is ignored when `agent` is also set. Both apply to EVERY child in the
+  run — there is no per-model form. `claude_flags` is split on whitespace, so a flag
+  VALUE containing spaces cannot be expressed through it.
+- **Pass `require_pattern` whenever the prompt mandates an output shape** — for a voting
+  panel that is the vote-fence marker (three backticks immediately followed by `vote`).
+  Without it, a model that exits 0 having never produced the block is reported as having
+  succeeded. This is the guarantee the old background-`Agent` path could not offer,
+  because claudish never saw that slot at all.
 
 **For single-model delegation (/delegate):**
 - `create_session(model, prompt, timeout_seconds, claude_flags)` → returns session_id
@@ -67,30 +74,19 @@ External AI models are invoked via **claudish MCP tools**. No Bash invocation ne
 
 ## /team Execution Pattern
 
-The `/team` command uses the `team` MCP tool for all external models in a single call:
+The `/team` command dispatches the whole panel in a single `team` MCP call. The tool
+parallelises the models internally, so there is nothing to issue alongside it:
 
-```
-claudish team(mode="run", path=SESSION_DIR, models=[...externals...],
-  input=VOTE_PROMPT, timeout=180)
-```
-
-Internal models (Claude) run via Agent in the **same message** for true parallelism:
-
-```javascript
-// Internal model via Agent (agent resolved from task keywords)
-Agent({
-  subagent_type: "{RESOLVED_AGENT}",
-  description: "Internal Claude vote",
-  run_in_background: true,
-  prompt: "{VOTE_PROMPT}\n\nWrite to: {SESSION_DIR}/internal-result.md"
-})
-
-// External models — single MCP tool call handles all
-// The team tool runs all models in parallel internally
+````
 claudish team(mode="run", path=SESSION_DIR,
-  models=["grok", "gemini"],
-  input=VOTE_PROMPT, timeout=180)
-```
+  models=["internal", "grok", "gemini"],
+  input=VOTE_PROMPT, timeout=180,
+  require_pattern="```vote", agent=RESOLVED_AGENT)
+````
+
+`"internal"` sits in that array like any other model. Because it goes through the tool, it
+is covered by `require_pattern`: a native reviewer that answers without a vote block is
+reported FAILED (state EMPTY, reason `shape_mismatch`) rather than silently counted.
 
 ---
 

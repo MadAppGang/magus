@@ -382,6 +382,10 @@ Why?
 ✓ Consistent behavior (same model every time)
 
 The internal reviewer should NEVER be optional - it's your safety net.
+
+Seat it INSIDE the team call, as a model named "internal" — not as a separate Agent.
+Riding in the call is what puts it under require_pattern, so a safety net that produced
+no verdict is reported FAILED rather than silently counted as one more approval.
 ```
 
 ---
@@ -407,12 +411,12 @@ Message 1: Preparation (Bash Only)
   - NO Agent calls
   - NO Tasks calls
 
-Message 2: Parallel Execution (Task Only)
-  - Launch ALL AI models in SINGLE message
-  - ONLY Agent tool calls
-  - Separate each Task with --- delimiter
-  - Each Task is independent (no dependencies)
-  - All execute simultaneously
+Message 2: Parallel Execution (ONE team call)
+  - Every model — native Claude and external alike — in a single `team` MCP call
+  - The tool parallelises them internally; nothing is dispatched alongside it
+  - Pass require_pattern whenever the prompt mandates an output shape
+  - (A pure-Agent fan-out with no external models still obeys the
+     one-tool-type-per-message rule above)
 
 Message 3: Auto-Consolidation (Task Only)
   - Automatically triggered when N ≥ 2 models complete
@@ -441,28 +445,24 @@ Message 1: Preparation (Session Setup + Model Discovery)
 
   # User selects models via AskUserQuestion (see Pattern 0)
 
-Message 2: Parallel Execution (single message)
-  Agent: dev:reviewer
-    Prompt: "Review $SESSION_DIR/code-context.md for security issues.
-             Write detailed review to $SESSION_DIR/claude-review.md
-             Return only brief summary."
-  ---
+Message 2: Parallel Execution (ONE team call)
   claudish team(mode="run", path=$SESSION_DIR,
-    models=["grok", "LATEST_FREE_CODING_MODEL", "gpt", "LATEST_FREE_REASONING_MODEL"],
-    input=REVIEW_PROMPT, timeout=180)
+    models=["internal", "grok", "LATEST_FREE_CODING_MODEL", "gpt", "LATEST_FREE_REASONING_MODEL"],
+    input=REVIEW_PROMPT, timeout=180,
+    require_pattern=<the shape REVIEW_PROMPT mandates>, agent="dev:reviewer")
 
-  All 5 models execute simultaneously (Task for internal + team MCP for externals!)
+  All 5 models execute simultaneously — the team tool parallelises them internally.
+  "internal" is a slot like any other, so the native reviewer is covered by
+  require_pattern instead of running as an unvalidated background Agent.
 
 Message 3: Auto-Consolidation
   (Automatically triggered - don't wait for user to request)
 
   Agent: dev:reviewer
-    Prompt: "Consolidate 5 code reviews from:
-             - $SESSION_DIR/claude-review.md
-             - $SESSION_DIR/grok-review.md
-             - $SESSION_DIR/qwen-coder-review.md
-             - $SESSION_DIR/gpt5-review.md
-             - $SESSION_DIR/devstral-review.md
+    Prompt: "Consolidate the 5 reviews the team run wrote into $SESSION_DIR.
+             They are $SESSION_DIR/response-*.md — one per model, named by
+             ANONYMOUS id rather than by model, because the vote is blind.
+             Do not try to attribute a file to a model before the verdict is in.
 
              Apply consensus analysis:
              - Issues flagged by ALL 5 → UNANIMOUS (VERY HIGH confidence)
@@ -611,21 +611,34 @@ Do NOT consolidate until ALL tasks complete:
 
 ---
 
-### Pattern 3: External Model Invocation via claudish MCP
+### Pattern 3: Model Invocation via claudish MCP
 
-**How External Models Are Invoked:**
+**How models are invoked:**
 
-External AI models are invoked via claudish MCP tools. The orchestrator calls MCP tools
-directly — no Bash invocation needed. This is 100% reliable.
+Every model — native Claude and external alike — is invoked via claudish MCP tools. The
+orchestrator calls the MCP tools directly; no Bash invocation is needed. This is 100%
+reliable.
 
 **For /team (parallel multi-model):**
-```
-team(mode="run", path=SESSION_DIR, models=["grok", "gemini"],
-  input=VOTE_PROMPT, timeout=180)
-```
+````
+team(mode="run", path=SESSION_DIR, models=["internal", "grok", "gemini"],
+  input=VOTE_PROMPT, timeout=180,
+  require_pattern="```vote", agent=RESOLVED_AGENT)
+````
 
 The `team` tool runs all models in parallel internally and returns structured per-model results
 including status, output, and errors.
+
+**Native Claude names are ordinary slots.** `internal` and `default` select the host tier,
+`opus`/`sonnet`/`haiku` a specific one. They belong in `models` beside the external names and
+run on the user's own Claude subscription through claudish's native passthrough — no API key,
+no provider prefix, no translation. Requires `claudish >= 7.65.0`.
+
+**`require_pattern` is what turns exit 0 into a real success check.** A slot that finished
+without producing the required shape is reported FAILED (state EMPTY, reason
+`shape_mismatch`) instead of counted as a success. Exit code 0 also occurs on API errors and
+on a child that simply ignored the format, so without this the panel can report a verdict it
+never actually received.
 
 **For single-model delegation:**
 ```
@@ -640,19 +653,24 @@ create_session(model="grok", prompt=TASK_PROMPT, timeout_seconds=300)
 
 ### Correct Pattern Example
 
-```
-// ✅ CORRECT: External models via team MCP tool
-team(mode="run", path=SESSION_DIR, models=["grok", "gemini"],
-  input=VOTE_PROMPT, timeout=180)
+````
+// ✅ CORRECT: every model in ONE team call — native slots included
+team(mode="run", path=SESSION_DIR,
+  models=["internal", "grok", "gemini"],
+  input=VOTE_PROMPT, timeout=180,
+  require_pattern="```vote", agent="dev:researcher")
+````
 
-# ✅ CORRECT: Internal model via Agent
-Agent({
-  subagent_type: "dev:researcher",  // or dev:debugger, dev:architect, etc. — resolved from task type
-  description: "Internal Claude review",
-  run_in_background: true,
-  prompt: "Review the design plan...\n\nWrite to: session/internal-result.md"
-})
 ```
+// ❌ WRONG: splitting the native reviewer out into a background Agent
+Agent({ subagent_type: "dev:researcher", run_in_background: true,
+        prompt: "Review the design plan...\n\nWrite to: session/internal-result.md" })
+```
+
+The split was necessary only while claudish could not run a native model name; since
+v7.65.0 it can. It costs a real guarantee: nothing validates what that Agent writes to
+`internal-result.md`, so a reviewer that produced no verdict is silently counted as having
+given one. Inside the `team` call the same reviewer is covered by `require_pattern`.
 
 ---
 
@@ -1783,15 +1801,12 @@ Message 2: Model Selection (AskUserQuestion with multiSelect)
   # mistralai/LATEST_FREE_CODING_MODEL
 
 Message 3: Parallel Execution (single message)
-  Agent: dev:reviewer
-    Prompt: "Review $SESSION_DIR/code-context.md.
-             Write to $SESSION_DIR/claude-review.md"
-  ---
   claudish team(mode="run", path=$SESSION_DIR,
-    models=["grok", "LATEST_FREE_CODING_MODEL", "LATEST_FREE_REASONING_MODEL"],
-    input=REVIEW_PROMPT, timeout=180)
+    models=["internal", "grok", "LATEST_FREE_CODING_MODEL", "LATEST_FREE_REASONING_MODEL"],
+    input=REVIEW_PROMPT, timeout=180,
+    require_pattern=<the shape REVIEW_PROMPT mandates>, agent="dev:reviewer")
 
-  All 4 execute simultaneously (Task for internal + team MCP for externals)!
+  All 4 execute simultaneously — one team call parallelises them internally.
 
 Message 4: Auto-Consolidation + Statistics Update
   # Consolidate
@@ -1845,10 +1860,10 @@ Message 1: Preparation
   (same as Example 1)
 
 Message 2: Parallel Execution
-  Task: senior-code-reviewer (internal)
-  Bash: claudish --model grok (external)
-  Bash: claudish --model gemini (external)
-  Bash: claudish --model LATEST_GPT_CODING_MODEL (external)
+  claudish team(mode="run", path=$SESSION_DIR,
+    models=["internal", "grok", "gemini", "LATEST_GPT_CODING_MODEL"],
+    input=REVIEW_PROMPT, timeout=180,
+    require_pattern=<the shape REVIEW_PROMPT mandates>, agent="dev:reviewer")
 
 Message 3: Error Recovery (error-recovery skill)
   results = await Promise.allSettled([...]);

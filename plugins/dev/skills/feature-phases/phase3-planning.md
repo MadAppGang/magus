@@ -106,7 +106,13 @@ If selectedModels.configured = true and selectedModels.models is non-empty:
      ---
      claudish team(mode="run", path=${SESSION_PATH}/reviews/plan-review,
        models=[{model1}, {model2}, ...],
-       input=contents_of_prompt.md, timeout=180)
+       input=contents_of_prompt.md, timeout=180,
+       min_output_bytes=400)
+
+     `min_output_bytes` floors the external slots — the prompt mandates topics but no
+     machine-checkable format, so `require_pattern` has nothing to match. A slot that
+     exited 0 having produced nothing would otherwise enter the consensus count as a
+     reviewer that found no issues, which reads as agreement.
 
   c. Wait for all reviews to complete
 

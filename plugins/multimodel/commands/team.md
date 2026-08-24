@@ -37,41 +37,48 @@ Parse command args: task, `--models`, `--threshold`, `--no-memory`. If no task: 
 
 **Resolve threshold:** unset/"majority" → 50%, "supermajority" → 67%, "unanimous" → 100%
 
-**Resolve agent** (only if "internal" in model list): match task keywords to context detection table,
-check `agentPreferences[context]` first, else table default, else `dev:researcher`.
-Announce: "Agent: {RESOLVED_AGENT}"
+**Resolve agent** (always — it applies to the whole panel): match task keywords to the
+context detection table, check `agentPreferences[context]` first, else table default, else
+`dev:researcher`. Announce: "Agent: {RESOLVED_AGENT}"
 
-**Session directory** (for internal model output): `Bash: SESSION_DIR="$(pwd)/ai-docs/sessions/team-$(date +%Y%m%d-%H%M%S)" && mkdir -p "$SESSION_DIR" && echo "$SESSION_DIR"`
+It is passed to `team` as the `agent` argument and applies to EVERY model in the run,
+native and external alike; there is no per-model form. For a blind panel that is the
+correct shape — every voter reviews by the same method, so a vote difference reflects the
+model rather than the prompt.
+
+**Session directory** (the `team` tool's session path): `Bash: SESSION_DIR="$(pwd)/ai-docs/sessions/team-$(date +%Y%m%d-%H%M%S)" && mkdir -p "$SESSION_DIR" && echo "$SESSION_DIR"`
 
 **Build vote prompt** using the template below with `{TASK}` substituted.
 Unless `--no-memory`, save resolved models to `defaultModels` in the preferences file.
 
-## Step 2: Execute (single message, parallel)
+## Step 2: Execute
 
-Issue BOTH calls in ONE message. Do not serialize them.
+ONE `team` call. The tool parallelises every model internally — native and external alike —
+so there is no second dispatch to issue alongside it.
 
-**CRITICAL:** "internal" is NOT a real model — never pass it to claudish. Filter it out first.
+````
+claudish team(mode="run", path=SESSION_DIR,
+  models=[...ALL resolved models, "internal" included...],
+  input=VOTE_PROMPT, timeout=180,
+  require_pattern="```vote", agent=RESOLVED_AGENT)
+````
 
-**External models** (all models EXCEPT "internal"):
-```
-claudish team(mode="run", path=SESSION_DIR, models=[...all models with "internal" removed...],
-  input=VOTE_PROMPT, timeout=180)
-```
+**Native Claude names are ordinary slots.** `internal` and `default` select the host tier;
+`opus`/`sonnet`/`haiku` select a specific one. They belong in `models` alongside the
+external models, and run on the user's own Claude subscription through claudish's native
+passthrough — no API key, no translation. Requires `claudish >= 7.65.0`.
 
-**Internal model** (if "internal" requested), same message:
-```
-Agent(subagent_type=RESOLVED_AGENT, run_in_background=true,
-  prompt=VOTE_PROMPT + "\n\nPersist your complete analysis and vote to {SESSION_DIR}/internal-result.md
-          using a Bash heredoc. Several vote agents (dev:debugger, dev:reviewer) are granted
-          Read/Glob/Grep/Bash and NOT Write, so the Write tool will not be available; and a
-          backgrounded agent returns a launch receipt, so a returned message would not reach
-          the orchestrator either. The file is the handoff.")
-```
+**`require_pattern` is not optional — it is the point.** It is why the native reviewer goes
+through this call rather than a background `Agent`: a slot that exits 0 having never
+produced a vote block is reported FAILED (state EMPTY, reason `shape_mismatch`) instead of
+being silently counted as a success. Exit code 0 is not a success oracle — it is also 0 on
+an API error, and on a child that simply ignored the required format. Nothing validated the
+old `Agent` path, so a reviewer that never voted passed unnoticed.
 
 ## Step 3: Parse Votes
 
-- From `team` tool response: extract per-model results (status, output, errors)
-- From the internal Agent: Read `{SESSION_DIR}/internal-result.md`
+- From `team` tool response: extract per-model results (status, output, errors) — for
+  every model, native slots included. There is no separate handoff file to read.
 
 Parse vote blocks: `/\`\`\`vote\s*\n([\s\S]*?)\n\s*\`\`\`/` → VERDICT, CONFIDENCE, SUMMARY, KEY_ISSUES
 
@@ -80,14 +87,16 @@ Calculate verdict:
 - `approval% = APPROVE / (APPROVE + REJECT) * 100`
 - ≥ threshold → APPROVED; < (100 - threshold) → REJECTED; else → SPLIT
 
-Failed models: show as FAILED in table, proceed with remaining. No retry, no substitution. See Error Reporting below.
+Failed models: show as FAILED in table, proceed with remaining. No retry, no substitution.
+A slot reported EMPTY with reason `shape_mismatch` answered but produced no vote block —
+report it FAILED; do not go hunting for a verdict in its prose. See Error Reporting below.
 
 ## Step 4: Present Results
 
 **Verification table:**
 ```
 | Model | Method | Status | Output | Notes |
-| {model} | team MCP / Task | OK/FAILED | {size} | {error} |
+| {model} | team MCP | OK/FAILED | {size} | {error} |
 ```
 
 **Verdict:**

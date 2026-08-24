@@ -95,9 +95,16 @@ create_session(model="grok",
 **For multi-model parallel tasks:**
 ```
 team(mode="run", path=SESSION_DIR,
-  models=["grok", "gemini"],
-  input=PROMPT, timeout=180)
+  models=["internal", "grok", "gemini"],
+  input=PROMPT, timeout=180,
+  require_pattern=<regex for the shape PROMPT mandates>)
 ```
+
+Native Claude names (`internal`, `default`, `opus`, `sonnet`, `haiku`) are ordinary slots
+and belong in `models` beside the external ones. Always pass `require_pattern` when the
+prompt mandates a shape, or `min_output_bytes` when it does not: exit code 0 is not a
+success oracle, so without one of them a slot that produced nothing is reported as having
+succeeded.
 
 ## When to Use Agents
 

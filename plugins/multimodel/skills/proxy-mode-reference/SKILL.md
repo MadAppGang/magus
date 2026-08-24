@@ -32,10 +32,14 @@ Orchestrator → claudish MCP tool → External Model
 ### From /team Command (Automatic)
 
 The `/team` command handles this automatically:
-- **Internal models** → `Agent({resolved_agent})` — auto-detected from task type
-- **External models** → `team(mode="run", models=[...], input=PROMPT, timeout=180)`
+- **Every model, native and external** → one `team(mode="run", models=[...], input=PROMPT,
+  timeout=180, require_pattern=..., agent=...)` call. Native Claude names (`internal`,
+  `default`, `opus`, `sonnet`, `haiku`) are ordinary slots in that `models` array; the
+  resolved agent travels as the `agent` argument and applies to every child in the run.
 
 The `team` MCP tool runs all models in parallel internally and returns structured per-model results.
+Because the native reviewer goes through the tool, `require_pattern` covers it too — a slot
+that never produced the required shape is reported FAILED rather than silently succeeding.
 
 ### From /delegate Command
 
@@ -81,13 +85,14 @@ run_prompt(model="grok", prompt="Review this code for security issues")
 create_session(model="grok", prompt=TASK_PROMPT, timeout_seconds=300)
 ```
 
-### Parallel External Models (in /team)
+### Parallel Models (in /team)
 
-```
-// Single MCP tool call handles all external models in parallel
-team(mode="run", path=SESSION_DIR, models=["grok", "gemini"],
-  input=VOTE_PROMPT, timeout=180)
-```
+````
+// Single MCP tool call handles every model in parallel — native slots included
+team(mode="run", path=SESSION_DIR, models=["internal", "grok", "gemini"],
+  input=VOTE_PROMPT, timeout=180,
+  require_pattern="```vote", agent=RESOLVED_AGENT)
+````
 
 ### Verifying Results
 
@@ -103,7 +108,8 @@ team(mode="run", path=SESSION_DIR, models=["grok", "gemini"],
 Bash("claudish --model grok --stdin < task.md > result.md")
 
 ✅ CORRECT — use MCP tools in orchestration workflows
-team(mode="run", models=["grok"], input=PROMPT, timeout=180)
+team(mode="run", models=["grok"], input=PROMPT, timeout=180,
+  require_pattern=<regex for the shape PROMPT mandates>)
 ```
 
 ## Error Escalation Protocol

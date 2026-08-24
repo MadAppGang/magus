@@ -442,14 +442,25 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
           claudish team(mode="run", path=${SESSION_PATH},
             models=[models resolved from `list_models` for review],
             input=contents_of_vote-prompt-root-cause.md,
-            timeout=180)
+            timeout=180,
+            require_pattern="VERDICT:")
           ```
+
+          `require_pattern` pins the vote schema at the tool: a model that finished
+          without emitting a `VERDICT:` line is reported FAILED (state EMPTY, reason
+          `shape_mismatch`) rather than returning prose for the parse step to interpret.
+          Exit code 0 is not a success oracle — it is also 0 on an API error.
         </step>
 
         <step>
           After all background tasks complete, read results:
           - ${SESSION_PATH}/claude-vote-root-cause.md (written by dev:debugger via Bash)
           - External model results from `team` tool structured response
+
+          **The internal vote is the one `require_pattern` does not cover.** It is an
+          `Agent`, so nothing checks that the file was written or that it holds a
+          verdict. A missing or malformed file MUST fall through the ABSTAIN rule below —
+          never treat an absent internal vote as agreement with the others.
         </step>
 
         <step>
@@ -744,14 +755,25 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
         claudish team(mode="run", path=${SESSION_PATH},
           models=[models resolved from `list_models` for review],
           input=contents_of_vote-prompt-patch.md,
-          timeout=180)
+          timeout=180,
+          require_pattern="VERDICT:")
         ```
+
+        `require_pattern` pins the vote schema at the tool: a model that finished without
+        emitting a `VERDICT:` line is reported FAILED (state EMPTY, reason
+        `shape_mismatch`) instead of handing prose to the parse step. Exit code 0 is not
+        a success oracle — it is also 0 on an API error.
       </step>
 
       <step>
         After all background tasks complete, read results:
         - ${SESSION_PATH}/claude-vote-patch.md (written by dev:debugger via Bash)
         - External model results from `team` tool structured response
+
+        **The internal vote is the one `require_pattern` does not cover.** It is an
+        `Agent`, so nothing checks the file was written or holds a verdict. A missing or
+        malformed file MUST fall through the ABSTAIN rule below — an absent internal vote
+        is never agreement.
       </step>
 
       <step>

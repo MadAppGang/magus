@@ -168,13 +168,30 @@ The `/team` command creates a session for multi-model blind voting:
 
 ```
 ai-docs/sessions/team-stats-validation-20260209-143022-a3f2/
-├── task.md                 # Raw task description (shared by all models)
-├── grok-result.md          # Grok's investigation findings
-├── gemini-result.md        # Gemini's investigation findings
-├── deepseek-result.md      # DeepSeek's investigation findings
-├── internal-result.md      # Internal Claude's findings
-└── verdict.md              # Aggregated verdict with vote breakdown
+├── input.md                # The task/vote prompt every model receives
+├── manifest.json           # anonymous id → model (the de-anonymiser) + shuffleOrder
+├── status.json             # per-slot state, updated as the run proceeds
+├── work/01/ .. work/NN/    # one scratch dir per slot, by anonymous id
+├── response-01.md          # one response per model, named by ANONYMOUS id
+├── response-02.md
+├── response-03.md
+├── errors/01.log           # stderr, written only for a slot that failed
+├── judging/                # judge prompts and votes (run-and-judge mode)
+└── verdict.md              # aggregated verdict with vote breakdown
 ```
+
+The `team` tool owns this layout — do not invent filenames for it.
+
+**Responses are named by anonymous id, never by model.** That is the mechanism of the
+blind vote, not a cosmetic choice: `response-03.md` reveals nothing about who wrote it,
+and only `manifest.json` can map it back. A layout like `grok-result.md` /
+`gemini-result.md` — which earlier versions of this document showed — de-anonymises the
+panel before the verdict and must not be reintroduced.
+
+**Native Claude is one of these slots.** `internal` goes in the `models` array and gets a
+`response-NN.md` like everyone else. A separate `internal-result.md` written by a
+background Agent is the OLD split, and it sits outside the anonymised set and outside
+`require_pattern` — an unvalidated reviewer beside validated ones.
 
 **Key difference from other plugins:** Team sessions contain results from
 multiple AI models investigating the same task independently. Each model

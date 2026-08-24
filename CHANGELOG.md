@@ -4,6 +4,133 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [designer 0.5.2] - 2026-08-24
+
+### Fixed
+
+- **An external design review was verified by reading a file claudish never writes.**
+  `agents/ui.md` and `skills/design-references/SKILL.md` both instructed "Read result
+  file and .exit file to verify success". `.exit` files belong to a pre-MCP claudish;
+  the current source writes none anywhere, so that half of the check could never fire
+  and a failed review was distinguishable only by the result file being absent. Both now
+  verify from `create_session`'s `completed`/`failed` channel events plus `get_output`,
+  then confirm the review file exists.
+
+---
+
+## [dev 4.5.0] - 2026-08-24
+
+### Fixed
+
+- **Phase 5 wrote an internal review that nothing checked.** Step 5.5 persists
+  `reviews/code-review/claude-internal.md` exactly as phase 3 does, but only phase 3
+  listed it in `PHASE_ARTIFACTS`. A `dev:reviewer` that returned without persisting left
+  the phase passing on `consolidated.md` alone — and the consolidation is written by a
+  different agent, which cannot distinguish an absent review from an empty one. Phase 5
+  now requires it at the same `minSize` and `patterns` as phase 3.
+
+  **This tightens a gate.** A phase-5 session that genuinely produced no internal review
+  will now be blocked where it previously completed. The guard was mutation-tested:
+  removing the requirement turns the new test red, so it is checking what it claims to.
+
+- **`/dev:fix`'s two vote panels accepted a vote that was never cast.** Both `team` calls
+  now pass `require_pattern="VERDICT:"`, so a model that finished without emitting the
+  vote schema is reported FAILED rather than handing prose to the parse step. The parse
+  step's "malformed → ABSTAIN" rule was the only guard, and it depended on the
+  orchestrator remembering to apply it.
+
+  The internal vote is an `Agent` and is still not covered by `require_pattern` — both
+  read-results steps now say so explicitly, because an absent internal vote must fall
+  through to ABSTAIN and must never be counted as agreement.
+
+- **Phase 3 and phase 5 `team` calls now pass `min_output_bytes=400`.** A slot that
+  exited 0 having produced nothing previously entered the consensus count as a reviewer
+  that found no issues — which reads as agreement.
+
+- **The `agent-coordination` reference snippet taught the unguarded call.** It showed a
+  bare `team(...)` with no shape check and no native slot; both fixed, since a reference
+  is what the unguarded form gets copied from.
+
+---
+
+## [multimodel 3.9.0] - 2026-08-24
+
+### Fixed
+
+- **The internal reviewer's vote was never validated.** `/team` dispatched it as a
+  background `Agent` writing `{SESSION_DIR}/internal-result.md`, and nothing checked that
+  file. A reviewer that answered without producing a vote block was counted as having
+  voted — so the one slot on the panel that could fail silently was the slot this plugin
+  calls "your safety net". It now runs as a slot inside the `team` call, covered by
+  `require_pattern`. Measured both directions: a native slot that votes reports
+  `1 done, COMPLETED`; one that does not reports `1 failed, EMPTY, reason shape_mismatch`.
+
+- **"`internal` is NOT a real model — never pass it to claudish" was right about the
+  symptom and wrong about the cause.** `internal` and `default` are Claude Code
+  *selectors*, not model IDs: Claude Code rejects them while accepting the tier they
+  select. claudish never translated the selector, so `--model internal` failed, and `/team`
+  grew a CRITICAL rule to turn a cryptic failure into a clear one. That guard also rejected
+  `opus`, which works, and threw for the WHOLE models array, so one native name killed an
+  entire run. claudish 7.65.0 normalises the selector at its `--model` boundary. Verified
+  against the published binary: `claudish --model internal -y --stdin --quiet` exits 0,
+  where before 7.65.0 it exited 1 with `[claude-code:unrecognized_model]`.
+
+### Changed
+
+- **One `team` call instead of two dispatches.** Step 2 no longer issues an `Agent`
+  alongside the tool — the tool parallelises every model internally. The
+  `internal-result.md` handoff is gone, and with it the ceremony that existed only to
+  coordinate two mechanisms.
+
+- **`agent` and `require_pattern` travel as tool arguments.** Since claudish 7.65.0 both
+  `team` and `create_session` take a first-class `agent`, plus a `claude_flags`
+  passthrough. `/delegate` passes `agent` directly instead of appending `--agent` to
+  `claude_flags`. `agent` applies to EVERY child in a run; there is no per-model form,
+  which for a blind panel is the correct shape — every voter reviews by the same method,
+  so a vote difference reflects the model rather than the prompt.
+
+- **`/delegate` still skips `internal` when choosing an UNNAMED default, for a different
+  reason.** Not "it cannot run": it can, and `/multimodel:delegate internal <task>` works.
+  `defaultModels` is the `/team` panel roster, so honouring its `internal` here would send
+  a bare `/multimodel:delegate <task>` to the model the caller is already running. The
+  behaviour is unchanged; only its stated rationale was wrong.
+
+- **The session layout in `session-isolation` matched no released version.** It showed
+  `grok-result.md` / `gemini-result.md`; `team` writes `response-{ID}.md` named by
+  ANONYMOUS id, with `manifest.json` holding the mapping. Naming a response after its model
+  de-anonymises the panel before the verdict, so that diagram was not merely stale.
+
+- **`MCP_SCHEMAS` in `scripts/lib/plugin-rules.ts` was four parameters behind claudish.**
+  Rule MC-01 pins the `team` / `create_session` / `run_prompt` parameter sets, and its copy
+  stopped at claudish 7.48.0 — so it rejected `require_pattern` and `agent` as invented and
+  failed correct instructions. Updated to 7.65.0, with a note that a failure there may be
+  the table's fault rather than the call's. MC-01's self-test changed too: it used
+  `claude_flags` as its example of an invalid `team` parameter, which `team` now accepts,
+  so the rule would have quietly stopped firing.
+
+- **`deep-analyst` hand-validated each returned slot because the parameter did not exist.**
+  3.7.1 removed `require_pattern` from its `team` call for exactly that reason. Restored.
+
+- **Two skill examples still showed an unguarded call.** `proxy-mode-reference`'s
+  "✅ CORRECT" line and `error-recovery`'s retry snippet both passed no shape check —
+  and a snippet labelled CORRECT is exactly what gets copied. Both now pass
+  `require_pattern`, and the error-recovery note says a slot reported EMPTY with reason
+  `shape_mismatch` is a failure to recover from, not a short answer to accept.
+
+### Why
+
+Reported from a live `/team` run that announced it was dispatching "the internal reviewer,
+which claudish can't run and so goes as a parallel agent" — in a session whose
+`require_pattern` demanded a vote block, which the internal slot was structurally exempt
+from. Exit code 0 is not a success oracle: it is 0 on API errors and on a child that simply
+never followed the format, which is why the shape check has to reach every slot rather than
+all-but-one.
+
+Evidence, measured commands and the git archaeology on the claudish guard are in the
+claudish repo at `ai-docs/reports/native-team-slots.md`, shipped in v7.65.0.
+
+---
+
 ## [madbench 0.2.3] - 2026-08-22
 
 ### Fixed

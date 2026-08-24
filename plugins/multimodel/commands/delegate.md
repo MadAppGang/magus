@@ -68,13 +68,20 @@ text — see Step 1d.
    `No model named and the model catalogue is unreachable. Pass one explicitly:`
    `/multimodel:delegate <model> <task>`
 
-**Why step 2 skips `internal`.** It means the host Claude model and is never dispatchable
-(`claudish-usage` §"`internal` is never sent to claudish"). `/team` filters it as a CRITICAL
-rule; this command did not, and `defaultModels[0]` is `internal` in an ordinary
-configuration — including this repository's own `.claude/multimodel-team.json`. Unfiltered,
-step 2 resolved MODEL to `internal` and handed it to claudish, which cannot run it. That
-broke the normal configured path interactively, and no bench caught it because the bench
-stages a workspace with no preferences file at all.
+**Why step 2 skips `internal`.** Not because it cannot run: since `claudish >= 7.65.0` it
+can, and an explicit `/multimodel:delegate internal <task>` (step 1, MODEL_ARG) works and is
+meant to. The skip governs what an UNNAMED default should be. `defaultModels` is the `/team`
+panel roster, where `internal` means "seat the host model on the panel", and it is
+`defaultModels[0]` in an ordinary configuration — including this repository's own
+`.claude/multimodel-team.json`. Honouring it here would send a bare
+`/multimodel:delegate <task>` to the model the caller is already running, when the reason to
+delegate is a second opinion from a different one. Asked for by name, it runs; inherited
+silently, it is not what was wanted.
+
+The skip predates that reasoning: it was added when `internal` reaching claudish was a hard
+failure, which no bench caught because the bench stages a workspace with no preferences file
+at all. That failure is fixed. The skip stays on the ground above — a policy about defaults,
+not a capability limit.
 
 **Why step 4 comes AFTER the question, not before.** A single delegation has no other votes
 to balance a wrong pick, so an interactive user must still be asked. Step 4 exists only
@@ -89,17 +96,23 @@ documented default with the override syntax attached. Measured 2026-08-19: with 
 specified, agents facing this dead end did not stop — two of them invented a model argument
 (`Model resolved: gemini → gemini-3.6-flash`) from a prompt containing no such word.
 
-**Step 1d — Build CLAUDE_FLAGS.** Start from `preferences.claudeFlags` (may be empty),
-then append `--agent {EXPLICIT_AGENT}` if an agent was parsed.
+**Step 1d — Build CLAUDE_FLAGS and AGENT.** CLAUDE_FLAGS is `preferences.claudeFlags`
+(may be empty). Keep the parsed agent OUT of it and pass it as `create_session`'s
+first-class `agent` argument instead (claudish >= 7.65.0). `agent` is equivalent to
+putting `--agent <name>` in `claude_flags` and wins over one placed there, so setting both
+is redundant rather than harmful.
 
-`--agent` is a **Claude Code** flag (`claude --agent <agent>`, "Agent for the current
-session"). Claudish does not implement it; it forwards any flag it does not recognise
-straight through, and its own `--help` gives `--agent` as the worked example under
-`CLAUDE CODE FLAG PASSTHROUGH`. Verified on claudish 7.48.0.
+Underneath, `--agent` is a **Claude Code** flag (`claude --agent <agent>`, "Agent for the
+current session"). Claudish does not implement it; it forwards any flag it does not
+recognise straight through, and its own `--help` gives `--agent` as the worked example
+under `CLAUDE CODE FLAG PASSTHROUGH`. Verified on claudish 7.48.0.
 
-This is the **only** route that gives the external model the real agent: its system
-prompt, its frontmatter tools, its preloaded skills, its reference tree. Naming the
-agent in the prompt gets you a role description and none of that.
+Either route hands the external model the REAL agent — its system prompt, its frontmatter
+tools, its preloaded skills, its reference tree. Naming the agent in the prompt text gets
+you a role description and none of that.
+
+**One trap in `claude_flags`:** it is split on whitespace, so a flag whose VALUE contains a
+space (`--append-system-prompt "two words"`) cannot be expressed through it at all.
 
 ## Phase 2: Execute via Channel
 
@@ -109,6 +122,7 @@ Call the claudish `create_session` MCP tool:
 - model: MODEL
 - prompt: TASK_PROMPT
 - timeout_seconds: 300
+- agent: EXPLICIT_AGENT from Step 1d (omit if no agent was parsed)
 - claude_flags: CLAUDE_FLAGS from Step 1d (omit if empty)
 
 Store the returned `session_id` as SESSION_ID.
@@ -162,7 +176,11 @@ Model: {MODEL} | Session: {SESSION_ID}
   <model_aliases>
     See `multimodel:claudish-usage` skill → "Model Alias Resolution" for the full procedure.
     ALIAS_TABLE built in Phase 1a. NEVER resolve from memory. NEVER add prefixes.
-    Special: `internal` means host Claude model — never sent to claudish.
+    Special: `internal` / `default` select the host Claude tier, `opus`/`sonnet`/`haiku`
+    a specific one. They ARE sent to claudish and run through its native passthrough —
+    no API key, no provider prefix. They are not catalog IDs, so `list_models` will not
+    list them and a catalog check must not reject them. Step 1c.2 skips them only when
+    choosing an UNNAMED default; named explicitly, they run.
   </model_aliases>
 
   <preferences_schema>
