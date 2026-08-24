@@ -7,7 +7,7 @@ UI design validation. Compares a rendered screen against its reference by pixel 
 
 | | |
 |---|---|
-| Version | `0.5.1` |
+| Version | `0.5.2` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 3 |
 | Subagents | 2 |

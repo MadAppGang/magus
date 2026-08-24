@@ -179,7 +179,7 @@
             "Fixed",
             "Changed"
           ],
-          "summary": "The internal reviewer's vote was never validated - it now runs as a team slot under require_pattern"
+          "summary": "The internal reviewer's vote was never validated"
         },
         {
           "version": "3.8.0",
@@ -204,15 +204,6 @@
           "version": "3.6.0",
           "date": "2026-08-18",
           "summary": "Same tool-and-instruction correction across its agents"
-        },
-        {
-          "version": "3.5.0",
-          "date": "2026-08-18",
-          "kinds": [
-            "Removed",
-            "Fixed"
-          ],
-          "summary": "Deleted every provider/prefix/API-key routing table from the plugin's skills. Routing,\u2026"
         }
       ]
     },
@@ -295,15 +286,6 @@
           "version": "4.3.0",
           "date": "2026-08-19",
           "summary": "Reproduction exit codes corrected in /dev:fix AND the systematic-debugging skill it loads\u2026"
-        },
-        {
-          "version": "4.2.0",
-          "date": "2026-08-19",
-          "kinds": [
-            "Added",
-            "Fixed"
-          ],
-          "summary": "Every one of the 88 entries in the architecture tree now cites real code \u2014 22 GoF patterns and\u2026"
         }
       ]
     },
@@ -675,7 +657,7 @@
           "kinds": [
             "Fixed"
           ],
-          "summary": "Verified an external review succeeded by reading a .exit file claudish never writes"
+          "summary": "An external design review was verified by reading a file claudish never writes"
         },
         {
           "version": "0.5.1",
@@ -699,14 +681,6 @@
             "Changed"
           ],
           "summary": "Description rewritten to say what the plugin is, not what a release did"
-        },
-        {
-          "version": "0.4.1",
-          "date": "2026-07-29",
-          "kinds": [
-            "Changed"
-          ],
-          "summary": "Pointers to the deleted shared/model-aliases.json replaced with live-catalog resolution, and\u2026"
         }
       ]
     },
