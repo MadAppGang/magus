@@ -3,11 +3,11 @@
 
 # terminal
 
-Intent-level terminal control over tmux. Runs interactive commands, dev servers, test watchers, REPLs and TUI apps, and refuses to send keys into a pane that already has a process in the foreground.
+Intent-level terminal control over tmux. Runs interactive commands, dev servers, test watchers, REPLs and TUI apps in a helper pane that the server places and owns, so an agent never targets the user's own session.
 
 | | |
 |---|---|
-| Version | `4.1.7` |
+| Version | `4.2.0` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 9 |
 | Subagents | 1 |
@@ -66,6 +66,7 @@ Dispatched with the Agent tool, each in its own context window.
 |---|---|
 | ● | Claude can reach for it on its own |
 | ○ | You invoke it by name |
+| ▸ | A command loads it for you — you never name it |
 
 [Why a skill lands in one row or another](../../guides/skill-visibility.md)
 
@@ -74,8 +75,8 @@ Dispatched with the Agent tool, each in its own context window.
 | ● | `terminal:tdd-workflow` | Drives a Red-Green-Refactor state machine for TDD with terminal test watchers. Use when running TDD in watch mode or iterating on failing tests with jest, vitest, cargo watch, or pytest-watc… |
 | ● | `terminal:terminal-interaction` | Provides tmux-mcp tool API patterns for interactive terminal access. Use when running interactive commands, starting dev servers, watching test output, querying databases, or splitting panes… |
 | ● | `terminal:tui-navigation-patterns` | Provides key sequences and navigation patterns for common TUI apps. Use when navigating vim, nano, htop, less, psql, lazygit, k9s, tig, btop, or sending keystrokes to a database shell. |
-| ● | `terminal:workspace-setup` | Orchestrates tmux workspaces — sessions, dashboard layouts, watch/entr monitors, synced panes. Use when setting up a project session, building a multi-pane dashboard, or syncing panes. |
 | ○ | `terminal:framework-signals` | Provides pass/fail/running/idle output markers for 15+ test, build, and deploy tools. Use when monitoring terminal output for jest, vitest, pytest, go test, cargo, webpack, vite, or vercel. |
+| ▸ | `terminal:workspace-setup` | Orchestrates tmux workspaces — sessions, dashboard layouts, watch/entr monitors, synced panes. Use when setting up a project session, building a multi-pane dashboard, or syncing panes. |
 
 ## MCP server
 

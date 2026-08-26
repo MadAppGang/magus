@@ -13,7 +13,7 @@
  */
 
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { basename, join } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 
 const MAX_DESC = 250; // this repo's ceiling, enforced in CI by scripts/skill-budget-check.ts
 const PORTABLE_DESC = 1024; // Agent Skills open standard
@@ -107,30 +107,54 @@ if (!desc) {
 }
 
 // A hidden skill still pays nothing, but a listed one that nothing routes to is a trap.
-if (hidden && fields["user-invocable"] === "false") {
-  // Skills nest at varying depth — plugins/<p>/skills/<s> but also
-  // plugins/<p>/skills/<group>/<s>. Walk up looking for the plugin root
-  // rather than assuming a fixed number of levels; a hardcoded ".." count
-  // silently resolved to plugins/commands and made every hidden skill at
-  // the shallow depth look unreachable.
-  const refs: string[] = [];
-  let root = dir;
-  for (let up = 0; up < 5; up++) {
-    root = join(root, "..");
-    for (const sub of ["agents", "commands"]) {
-      const p = join(root, sub);
-      if (!existsSync(p)) continue;
-      try {
-        for (const f of readdirSync(p)) {
-          if (f.endsWith(".md")) refs.push(readFileSync(join(p, f), "utf8"));
-        }
-      } catch {
-        // unreadable directory is not a reference
-      }
-    }
-    if (existsSync(join(root, "plugin.json")) || existsSync(join(root, ".claude-plugin"))) break;
+//
+// Find the plugin root by walking up to the directory holding the manifest — either
+// plugin.json or .claude-plugin/plugin.json — rather than assuming a fixed depth.
+// Skills live at BOTH depths in this repo — grouped
+// (dev/skills/backend/api-design/) and flat (terminal/skills/workspace-setup/) — so a
+// hardcoded "../../.." resolves to plugins/ for every flat skill, finds no agents/ or
+// commands/ directory, and reports each one unreachable regardless of what references it.
+function pluginRoot(from: string): string | null {
+  let cur = resolve(from);
+  for (let i = 0; i < 6; i++) {
+    // Both manifest locations. Every plugin here moved to .claude-plugin/plugin.json,
+    // so checking only the root location returns null for all of them — which turns
+    // the reachability error below into a warning that can never fire.
+    if (existsSync(join(cur, "plugin.json"))) return cur;
+    if (existsSync(join(cur, ".claude-plugin", "plugin.json"))) return cur;
+    const up = dirname(cur);
+    if (up === cur) break;
+    cur = up;
   }
-  if (name && !refs.some((t) => t.includes(name))) {
+  return null;
+}
+
+if (hidden && fields["user-invocable"] === "false") {
+  const root = pluginRoot(dir);
+  // Sibling skills route to hidden skills too — the entry-point skill naming a file to
+  // read is a legitimate route, not just agents and commands.
+  const refs = root
+    ? ["agents", "commands", "skills"].flatMap((sub) => {
+        const p = join(root, sub);
+        if (!existsSync(p)) return [];
+        try {
+          return readdirSync(p, { recursive: true, encoding: "utf8" })
+            .filter((f) => f.endsWith(".md") && !f.includes(`${name}/`))
+            .map((f) => {
+              try {
+                return readFileSync(join(p, f), "utf8");
+              } catch {
+                return "";
+              }
+            });
+        } catch {
+          return [];
+        }
+      })
+    : [];
+  if (!root) {
+    warnings.push("could not locate the plugin root — reachability not checked");
+  } else if (name && !refs.some((t) => t.includes(name))) {
     errors.push(`hidden AND user-invocable:false AND nothing references "${name}" — unreachable`);
   }
 }

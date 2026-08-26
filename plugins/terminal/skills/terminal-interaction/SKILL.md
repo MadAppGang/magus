@@ -24,7 +24,7 @@ The Go tmux-mcp binary provides two layers of tools. Choose based on whether you
 | Check if process is alive/blocked | `pane-state` | Kernel-level, no screen scraping |
 | One-shot command (non-interactive) | `execute-command headless:true` | Sync, auto-cleanup |
 | Long interactive session | `create-headless` + `start-and-watch` | Manual lifecycle |
-| Split pane side-by-side | `split-pane` + `send-keys` | Layout unchanged |
+| Run something beside the user | `send-keys` with no pane | Server places it — §1b |
 | Observe existing session | `capture-pane` | Read-only, no change |
 
 **Layer 2 (agentic) tools**: `start-and-watch`, `watch-pane`, `run-in-repl`, `pane-state`, `write-to-display`
@@ -34,168 +34,135 @@ The Go tmux-mcp binary provides two layers of tools. Choose based on whether you
 
 ---
 
-## 1b. Current Pane Detection (CRITICAL — Do This First)
+## 1b. Run something beside the user
 
-**Before splitting or creating anything**, find your actual current pane using the environment variable:
+You do not manage panes. Say what you want to run; the server places it.
 
-```bash
-echo "$TMUX_PANE"
+```
+mcp__tmux__send-keys({ keys: "npm run dev", enter: true })
+→ { "paneId": "%81", "slot": 1, "created": true }
 ```
 
-This returns the pane ID (e.g., `%57`) where the Bash tool is actually running. `$TMUX_PANE` is set by tmux at shell creation, is stable for the pane's lifetime, and is correctly inherited by subprocesses — it never queries mutable server state, so it cannot race with user focus changes.
+No pane id, no split, no detection. The server resolves **the helper pane** — slot 1, beside
+you in the user's window — creating it if it is not already there.
 
-### Why other detection methods fail
+Every pane-taking tool resolves the same way: an explicit `paneId` wins verbatim, then `slot`,
+then with neither, **slot 1**.
 
-| Method | Reliability | Problem |
-|--------|-------------|---------|
-| `$TMUX_PANE` env var | **Always correct** | Set at shell creation, stable, no server round-trip |
-| `tmux display-message -t "$TMUX_PANE" -p '#{pane_id}'` | **Always correct** | Equivalent but unnecessary round-trip |
-| `tmux display-message -p` (no `-t`) | **Unreliable — NEVER use** | Returns whichever pane has focus. If the user switches tmux windows during agent spin-up delay, this returns the wrong pane. |
-| `list-windows` active flag | **Unreliable — NEVER use** | "active" means most recently selected window in the session, NOT the one the user is looking at. Same class of race condition. |
+### Read `created` — it is how you find out your process died
 
-Two real failures: (1) The agent listed sessions, saw window @30 marked `active: true`, split a pane there — but the user was in window @50. (2) A subagent ran `tmux display-message -p '#{pane_id}'` during its 2-5 second spin-up delay — the user had switched windows, so the split appeared in the wrong window. `$TMUX_PANE` is immune to both.
+`created: true` means the pane is new *to that slot*. If you started a dev server in the helper
+pane and a later call comes back `created: true`, the user closed that pane and your process
+went with it. An agent that ignores this field keeps reporting a server that stopped ten
+minutes ago.
 
-**If `$TMUX_PANE` is set**: You're in tmux. Use it directly for splits.
-**If it's empty or unset**: Use `execute-command` with `headless: true` for isolated tasks, or `create-session` for a new tmux session.
+It is also `true` when the server adopted an idle pane instead of making one — so read it as
+"new to this slot", not "I made a pane".
 
-### Helper Pane Reuse (check BEFORE splitting)
+**On reuse the field is absent, not `false`.** A reused pane answers `{ "paneId": "%81",
+"slot": 1 }`. Test for `created === true`, never for `created === false`.
 
-Before creating a new split pane, check if a helper pane already exists from a previous split. Panes we create are labeled `claude-helper` so they can be identified:
+### More than one pane
 
-```bash
-# Check for existing helper panes in the current window
-tmux list-panes -F '#{pane_id} #{pane_title}' | grep claude-helper
+Ask for a numbered slot. Integers 1–64. You choose the number, and that is what lets you
+address the same pane again on the next call.
+
+```
+mcp__tmux__send-keys({ slot: 2, keys: "bun test --watch", enter: true })
+mcp__tmux__capture-pane({ slot: 2 })
 ```
 
-- **If a helper pane exists**: Reuse it (after the occupancy check below). Send the new command there instead of splitting again.
-- **If it doesn't exist** (user closed it, or first time): Create a new split and label it.
+The server decides placement — slot 2 stacks under slot 1, slot 3 goes bottom-left. You never
+pass a direction. Panes are titled `agent`, `agent:2` and so on, so the user can see whose they
+are.
 
-> Note: `split-pane` *also* auto-reuses an idle shell sibling on its own (§1c). This manual `claude-helper` check is still useful because it works across windows and lets you label/track your pane — but the two mechanisms cooperate, so you won't get duplicate helper panes if you rely on either.
+### Cleanup
 
-### Occupancy Safety — NEVER send to / kill / split into an occupied pane (check BEFORE acting)
+`close-pane({ slot: 2 })` when a task is finished, or `close-pane({ slot: "all" })` at the end
+of a session. It kills panes the server created and only interrupts panes it adopted from the
+user. Offer it as a courtesy — panes outlive the session otherwise — not as a required step.
 
-**Ownership (the `claude-helper` label) and occupancy (the foreground process) are two different safety questions. The label tells you the pane is *yours*; the foreground process tells you it's *safe to write to right now*. Check both.**
+`kill-pane` still exists and still requires an explicit `paneId`. It is the blunt instrument;
+prefer `close-pane`.
 
-> **Failure mode in one line:** `send-keys` feeds the pane's **foreground process** — if that's `claude`, a REPL (`psql`, `python`, `node`), or an editor (`vim`), your "shell command" becomes **input to that program**. Targeting a pane running `claude` injects your keystrokes as a prompt to a sibling agent — indistinguishable, to that agent, from the user typing.
+### When there is no tmux
 
-**Mandatory guard — before any `send-keys`, `run-in-repl`, `split-pane`, or `kill-pane` on a pane you did not just create:**
+The call fails and names the alternative: `headless: true` for an isolated one-shot, or
+`create-headless` for a session you will drive over several calls. Do not invent a pane.
+
+`slot` together with `headless: true` is an error — a headless pane lives on a separate tmux
+socket with no relation to the user's window.
+
+---
+
+## 1c. What the helper pane guarantees, and what it does not
+
+**A slot is never your own pane.** The server enforces this, so a call that names no pane
+cannot feed your keystrokes into your own session. This is the reason to prefer the no-pane
+form over an explicit `paneId`.
+
+**A slot may be a pane the user was using.** When no helper exists, the server may *adopt* an
+idle pane the user left open — same user, shell in the foreground. This is deliberate and
+cannot be turned off. Two consequences follow, and neither is hypothetical:
+
+- **Unsubmitted input concatenates with your command.** tmux cannot see the shell's line
+  buffer. If the user typed `rm -rf /data/` and never pressed Enter, the pane looks perfectly
+  idle, and your command joins onto the end of theirs. **No slot number avoids this** —
+  adoption sits ahead of creation in every slot's resolution, so a high slot number is exactly
+  as likely to adopt as slot 1.
+- **The environment is the user's.** A shell inside a virtualenv, a container exec session, or
+  one with `AWS_PROFILE=production` exported passes every check — right user, at a prompt,
+  doing nothing. Your commands then run in that context.
+
+If you need a pane with no inherited context, the only guarantees are `headless: true` or a
+`paneId` you already trust.
+
+### Explicit `paneId` bypasses all of it
+
+`mcp__tmux__send-keys` and `mcp__tmux__kill-pane` have **no occupancy guard** on that path —
+they write to, or kill, exactly the pane you name. Before targeting a pane you did not get from
+slot resolution:
 
 ```
 mcp__tmux__pane-state({ paneId: "%66" })
-→ { foregroundCmd: "zsh", isAlive: true, waitingForInput: true }
+→ { foregroundCmd: "zsh", isAlive: true }
 ```
 
-Proceed ONLY if `foregroundCmd` is a **bare shell** (`zsh`, `bash`, `fish`, `sh`, `dash`) **or** the pane is one you created and labeled `claude-helper`. Otherwise **STOP** — do not send, do not kill, do not split into it.
+Proceed only if `foregroundCmd` is a bare shell (`zsh`, `bash`, `fish`, `sh`, `dash`).
 
 | `foregroundCmd` | Action |
 |---|---|
-| `zsh` / `bash` / `fish` / `sh` / `dash` | ✅ Safe — a real shell prompt is waiting for a command |
-| `claude` | 🛑 **OFF-LIMITS** — another agent session. Keystrokes become its prompt; killing ends its turn. Never send, split into, or kill. |
-| `vim` / `nvim` / `nano` / `less` / `htop` / `psql` / `python` / `node` / `irb` / `mongosh` / any REPL or TUI | 🛑 STOP — keystrokes are interpreted by that program, not the shell |
+| `zsh` / `bash` / `fish` / `sh` / `dash` | ✅ Safe — a shell prompt is waiting |
+| `claude` | 🛑 **OFF-LIMITS** — another agent session. Your keystrokes become its prompt; killing it ends its turn |
+| `vim` / `nvim` / `less` / `htop` / `psql` / `python` / `node` / any REPL or TUI | 🛑 STOP — keystrokes go to that program, not a shell |
 
-**Rules that follow from this:**
-- **Always create, never reuse-by-guess.** For a preview or scratch process, create a *new* pane with an explicit fresh shell (`split-pane` then a labeled `exec zsh` pane), label it `claude-helper`, and only ever send to that labeled pane. Never `send-keys`/`kill-pane` a pane you found by guessing its ID.
-- **Anchor target selection to facts, not focus.** Use `$TMUX_PANE` for "where am I" and the `claude-helper` label for "which pane is mine." Never pick a target by `display-message -p` (no `-t`) or the `list-windows` active flag — those return whatever the user last focused and race with focus changes (this is how the wrong pane gets picked).
-- **Know where the backstops are — they do NOT cover MCP `send-keys`/`kill-pane`.** Coverage today: raw `tmux send-keys`/`kill-pane`/`split-window` is guarded by this plugin's PreToolUse:Bash hook (it refuses a non-shell target); `mcp__tmux__split-pane` is guarded by server-side idle-shell reuse (§1c, it never returns an occupied pane). But `mcp__tmux__send-keys` and `mcp__tmux__kill-pane` have **no occupancy guard** — they write to / kill exactly the `paneId` you pass, with no foreground check. So on the MCP send/kill path the manual `pane-state.foregroundCmd` check above is the **only** protection and is mandatory. Prefer MCP tools for their other safeguards, but never assume they vet the target's occupancy for you.
+The raw-`tmux` path is guarded by this plugin's PreToolUse:Bash hook, which refuses a non-shell
+target. The MCP path is not. That asymmetry is why the no-pane form is the default.
 
-### `split-pane` auto-reuses idle shell panes (`reused: true`)
+### Two mistakes worth naming
 
-`mcp__tmux__split-pane` is **idempotent-ish**: before creating a new split it scans the source pane's sibling panes in the *same window* and, if it finds a genuinely idle one, returns **that** pane instead of splitting again. This stops agent loops from piling up dozens of empty panes.
+- **Do not call `list-sessions`/`list-windows`/`list-panes` to locate your own pane.** You never
+  need your own pane — that is the server's job now. Those tools are for inspecting *other*
+  sessions.
+- **`display-message` is not a query.** It is a status-bar notification (`message`, `duration`),
+  unrelated to `tmux display-message -p`. Reaching for it to read pane state is a dead end.
 
-```jsonc
-// New pane created (no idle sibling found):
-{ "paneId": "%5", "windowId": "@1" }
-// Existing idle sibling reused (NOTE the flag):
-{ "paneId": "%3", "windowId": "@1", "reused": true }
-```
+---
 
-A sibling is reused **only when all three hold**: it is alive, the OS reports it `waitingForInput`, **and** its foreground process is a bare shell (`zsh`/`bash`/`fish`/`sh`/`dash`/…). The source pane is always excluded.
+## 1d. The rest of this plugin
 
-**Why this is also a safety net:** the shell-foreground gate means `split-pane` will **never** hand you back a pane running `claude`, a REPL, or `vim` — even if that pane briefly looks input-waiting (`cat`, a busy-loop). This is the MCP-path complement to the occupancy guard above: the raw-`tmux` path is guarded by the Bash hook, the MCP `split-pane` path is guarded by this reuse rule.
+Two skills carry the bulk of this plugin's reference material and are **not** in your skill
+listing — they cost nothing until you open them. They are files to **read**, not skills to
+invoke: the Skill tool does not fire for them.
 
-**What this means for you:**
-- **Always read `reused` in the response.** If `true`, the pane may hold prior scrollback — send `clear` + Enter first if you need a clean slate.
-- **The manual `claude-helper` check (§1b above) is still worth doing** (it's cross-window and zero-cost), but if you skip it, `split-pane` will *not* duplicate an idle helper sibling — it reuses it. The two mechanisms cooperate; they don't conflict.
-- **To force a genuinely distinct pane** (side-by-side panels that must coexist): start the long-running process in the first pane *before* splitting again, so that pane is no longer an idle shell and won't be reused. See Example F.
+| Read this file | When the task involves |
+|---|---|
+| `${CLAUDE_PLUGIN_ROOT}/skills/framework-signals/SKILL.md` | Deciding whether a test run, build or deploy passed — the pass/fail/running/idle markers for jest, vitest, pytest, cargo, go test, webpack, vite, and the deploy platforms |
+| `${CLAUDE_PLUGIN_ROOT}/skills/workspace-setup/SKILL.md` | Building a multi-pane dashboard, a `watch`/`entr` monitor, or a synchronised multi-host session |
 
-### Split Ordering Strategy
-
-When creating helper panes, follow this layout progression to keep the workspace organized:
-
-```
-Step 1 — First helper pane (split current pane with vertical divider → helper on RIGHT):
-┌─────────────┬─────────────┐
-│             │   helper-1  │
-│    user     │  (RIGHT)    │
-│             │             │
-└─────────────┴─────────────┘
-direction: "horizontal" on user's pane
-
-Step 2 — Second helper (split RIGHT pane with horizontal divider → stacked right):
-┌─────────────┬─────────────┐
-│             │   helper-1  │
-│    user     ├─────────────┤
-│             │   helper-2  │
-└─────────────┴─────────────┘
-direction: "vertical" on helper-1's pane
-
-Step 3 — Third helper (split LEFT pane with horizontal divider → stacked left):
-┌─────────────┬─────────────┐
-│    user     │   helper-1  │
-├─────────────┼─────────────┤
-│   helper-3  │   helper-2  │
-└─────────────┴─────────────┘
-direction: "vertical" on user's pane
-```
-
-The first split is always `direction: "horizontal"` (vertical divider, helper on right). Subsequent splits use `direction: "vertical"` (horizontal divider) to subdivide.
-
-### Layout Presets and Pane Labels
-
-After creating panes, apply a built-in tmux layout preset and label each pane for visibility:
-
-```bash
-# Apply a built-in layout preset (requires Bash tool — not yet in tmux-mcp)
-Bash: tmux select-layout -t {window_id} main-vertical
-
-# Enable visible pane borders with title bar (1 line per pane)
-Bash: tmux set-option -t {window_id} pane-border-status top
-
-# Label each pane
-Bash: tmux select-pane -t {pane_id}  -T "Dev Server"
-Bash: tmux select-pane -t {pane_id2} -T "Test Watcher"
-Bash: tmux select-pane -t {pane_id3} -T "App Logs"
-```
-
-**Layout presets**:
-
-| Preset | Best for |
-|--------|----------|
-| `even-horizontal` | 2–3 side-by-side panes of equal width |
-| `even-vertical` | Log monitoring stacks (panes top-to-bottom) |
-| `main-horizontal` | Editor on top, shell(s) below |
-| `main-vertical` | Editor on left, side panels on right |
-| `tiled` | 4-pane dashboards (2×2 grid) |
-
-**Save and restore layout**: `tmux display-message -p '#{window_layout}'` returns the current layout string; pass that string back to `select-layout` to restore it.
-
-**Caveat**: Enabling `pane-border-status` adds 1 line per pane and may conflict with Catppuccin or other tmux theme plugins. Check `tmux show-options -g pane-border-status` first; if it is already set, leave it alone. Ask the user before enabling if they have a custom tmux theme.
-
-### Quick example: User says "split this window" or "run X beside me"
-
-```
-1. Bash: echo "$TMUX_PANE"                                          → "%57"
-2. Bash: tmux list-panes -F '#{pane_id} #{pane_title}' | grep claude-helper
-   → If found "%66 claude-helper": reuse %66, skip to step 5
-3. mcp__tmux__split-pane({ paneId: "%57", direction: "horizontal" }) → new pane "%66"
-4. Bash: tmux select-pane -t %66 -T "claude-helper"                 → label it
-5. mcp__tmux__send-keys({ paneId: "%66", keys: "bun test --watch", literal: true })
-   mcp__tmux__send-keys({ paneId: "%66", keys: "Enter", literal: false })
-```
-
-**Never call `list-sessions`/`list-windows`/`list-panes` just to find your own pane.** Detection + reuse check + split is 2-4 Bash calls at most.
-
-**Common mistake**: Creating a new tmux session (`create-session`) when the user says "here" or "in this window." If you're in tmux, always split — never create a detached session.
+Two more are in your listing and you will be offered them normally: `tdd-workflow` (the
+Red-Green-Refactor state machine) and `tui-navigation-patterns` (key sequences for vim,
+htop, lazygit, psql, k9s and friends).
 
 ---
 
@@ -209,16 +176,28 @@ The server key in `.mcp.json` is `tmux`. This produces tool name prefix `mcp__tm
 
 ---
 
-## 3. MCP Task Tools — start-and-watch and watch-pane
+## 3. Monitoring tools — start-and-watch and watch-pane
 
-`start-and-watch` and `watch-pane` are MCP Task tools. They behave differently from regular tools:
+Both are **synchronous and blocking**. The call returns when a readiness pattern matches, a
+named trigger fires, or the timeout expires — with the pane's state in the result. There is no
+task id, no progress stream to subscribe to, and no polling loop to write.
 
-1. The tool call returns immediately with a task ID (non-blocking at the protocol level).
-2. While running, the tool sends `notifications/progress` messages. Each contains `progress` (elapsed seconds), `total` (timeout), and `message` (e.g., `"[5% +2s] 12 new lines"`).
-3. When a trigger fires (pattern matched, exit, error, timeout), the tool sends a final notification with `progress=-1, total=-1` as sentinel values. The `message` field contains the full WatchResult JSON.
-4. The task result also contains the WatchResult via `WithModelImmediateResponse`.
+```
+mcp__tmux__start-and-watch({ command: "npm run dev", pattern: "listening on|ready in" })
+→ { event: "pattern:listening on", elapsed: 2.0, output: "…", paneState: {…} }
 
-**From the skill author's perspective**: The tool call blocks until a trigger fires — equivalent to a synchronous call with real-time streaming side effects. No manual polling loop is needed.
+mcp__tmux__watch-pane({ slot: 1, triggers: "idle:3,pattern:PASS|FAIL" })
+→ { event: "idle:3", detail: "No new output for 3s", elapsed: 3.0, paneState: {…} }
+```
+
+- **`start-and-watch`** — start a command and block until it signals readiness. With no
+  `paneId` or `slot` it uses slot 1, in the window the user is looking at.
+- **`watch-pane`** — monitor a pane that already exists. Triggers: `idle:N`, `pattern:REGEX`,
+  `exit`, `error`, `user_input`, `bell`, `shell`.
+
+> **Pair the success pattern with the failure paths.** A `pattern` that matches only the happy
+> path stays silent through a crash, and silence is indistinguishable from "still running".
+> Add `exit,error` to `triggers`, or an `Error|Traceback|FAILED` pattern.
 
 ### WatchResult Structure
 
@@ -250,14 +229,6 @@ The server key in `.mcp.json` is `tmux`. This produces tool name prefix `mcp__tm
 | `"shell"` | Shell prompt returned (process exited to shell) | Confirmed completion |
 | `"timeout"` | No trigger fired in timeout_secs | Report; save paneId for continued monitoring |
 
-### MCP Task Tool Limitation (Claude Code MCP Client)
-
-**Known limitation (as of March 2026)**: Claude Code's MCP client does not yet support the MCP Tasks API.
-Calling `start-and-watch` or `watch-pane` returns error `-32601: requires task augmentation`.
-This will be resolved when Claude Code implements `tasks/create` per the MCP specification.
-Until then, use `execute-command` (synchronous) for one-shot commands, or `send-keys` + `capture-pane`
-for monitoring. These tools ARE registered and WILL work once the client adds Tasks support.
-
 ### REPL Startup — create-headless vs execute-command
 
 **REPL startup**: Do NOT use `execute-command` to start REPLs (python3, psql, node, etc.). `execute-command` is synchronous — it waits for the command to exit, and REPLs never exit on their own. This causes an indefinite hang.
@@ -279,53 +250,45 @@ mcp__tmux__kill-session({ sessionId: "headless:$0" })
 
 ---
 
-## 4. tmux-mcp Complete API (20 Tools)
+## 4. Tool reference (20 tools, `-scope agentic`)
 
-### Layer 2 Agentic Tools
+This is the shipped scope. The structural primitives — `create-window`, `kill-window`,
+`resize-pane`, `rename-session` — exist in the binary but are **deliberately hidden** here. If
+you find yourself wanting one, that is a signal you are managing tmux layout instead of
+expressing intent.
 
-| Tool | Type | Primary Use |
-|------|------|-------------|
-| `mcp__tmux__start-and-watch` | MCP Task (async) | Start command, wait for readiness pattern |
-| `mcp__tmux__watch-pane` | MCP Task (async) | Monitor existing pane for change/exit |
-| `mcp__tmux__run-in-repl` | Sync | Send input to REPL, get structured output |
-| `mcp__tmux__pane-state` | Sync | OS-level process info (pid, alive, waiting) |
-| `mcp__tmux__write-to-display` | Sync | Write status message to Claude's pane |
-| `mcp__tmux__display-message` | Sync | Show message in tmux status bar |
+**Eleven tools accept `paneId` (verbatim) or `slot` (resolved), and default to slot 1 when
+given neither:** `send-keys`, `run-in-repl`, `execute-command`, `split-pane`, `capture-pane`,
+`screenshot-pane`, `pane-state`, `watch-pane`, `start-and-watch`, `write-to-display`,
+`close-pane`. `slot` is an integer 1–64 and cannot be combined with `headless: true`.
 
-### Layer 1 Primitive Tools
+The two exceptions are deliberate: `display-message` targets no pane at all (it writes to the
+status bar), and `kill-pane` still **requires** an explicit `paneId` — there must exist no
+argument-less call that destroys something.
 
-| Tool | Parameters | Description |
-|------|-----------|-------------|
-| `mcp__tmux__execute-command` | `command` (string), `headless` (bool), `paneId` (string) | Run command synchronously; returns `{ output, exitCode }` |
-| `mcp__tmux__create-headless` | `name` (string, optional) | Create isolated headless session; returns `{ paneId, sessionId }` |
-| `mcp__tmux__list-sessions` | none | List all sessions (regular + headless) |
-| `mcp__tmux__list-windows` | `sessionId` (string) | List windows in session |
-| `mcp__tmux__list-panes` | `windowId` (string) | List panes in window |
-| `mcp__tmux__capture-pane` | `paneId` (string), `lines` (int, optional), `colors` (bool, optional) | Read screen content of pane |
-| `mcp__tmux__send-keys` | `paneId` (string), `keys` (string), `literal` (bool, default true) | Send keystrokes to pane |
-| `mcp__tmux__create-session` | `name` (string, optional) | Create new visible tmux session |
-| `mcp__tmux__create-window` | `sessionId` (string) | Create new window |
-| `mcp__tmux__split-pane` | `paneId` (string), `direction` (optional), `size` (optional) | Split pane. **Reuses an idle shell sibling** in the same window if one exists — response then includes `"reused": true` (see §1c) |
-| `mcp__tmux__kill-session` | `sessionId` (string) | Terminate session |
-| `mcp__tmux__kill-headless-server` | none | Terminate all headless sessions at once |
-| `mcp__tmux__kill-window` | `windowId` (string) | Close window |
-| `mcp__tmux__kill-pane` | `paneId` (string) | Close pane |
-| `mcp__tmux__resize-pane` | `paneId` (string), dimensions | Resize pane |
-| `mcp__tmux__rename-session` | `sessionId` (string), `name` (string) | Rename session |
+| Do this | Tools |
+|---|---|
+| Run / drive a pane | `send-keys` · `run-in-repl` · `execute-command` · `split-pane` |
+| Observe a pane | `capture-pane` · `screenshot-pane` · `pane-state` · `watch-pane` · `start-and-watch` |
+| Show something to the user | `write-to-display` · `display-message` *(status-bar notice — not a query)* |
+| Finish with a pane | `close-pane` *(owner-aware)* · `kill-pane` *(blunt, explicit `paneId` only)* |
+| Sessions and inspection | `list-sessions` · `list-windows` · `list-panes` · `create-session` · `kill-session` · `create-headless` · `kill-headless-server` |
 
-**Note on `send-keys`**:
-- `literal: true` (default) — text is sent byte-for-byte; plain text typing.
-- `literal: false` — text is interpreted as tmux key names. Required for control sequences.
+**Notes that change what you do:**
 
-**Note on `capture-pane`**: Use `lines` parameter to retrieve scrollback history beyond the visible viewport. Example: `capture-pane({ paneId: "%3", lines: 200 })` returns the last 200 lines.
+- **`send-keys`** — `literal: true` (default) sends text byte-for-byte; `literal: false`
+  interprets tmux key names (`C-c`, `Enter`, `Escape`, `Up`). `enter: true` appends Enter, so
+  one call replaces the old type-then-Enter pair.
+- **`execute-command`** — synchronous; returns `{ output, exitCode }`. With `headless: true` it
+  runs in an isolated auto-created session that is destroyed afterwards. **Never use it to
+  start a REPL** — it waits for exit, and REPLs do not exit.
+- **`capture-pane`** — `lines: N` reaches into scrollback beyond the visible viewport.
+- **`list-panes`/`list-windows`/`list-sessions`** — for inspecting *other* sessions. Not for
+  locating yourself; you never need to.
+- **`kill-session`** — never kill a session you did not create.
 
-**Note on `execute-command`**: When `headless: true` is set, the command runs in an auto-created isolated session that is destroyed after completion. Output and exit code are returned synchronously in the same call. No session tracking needed.
-
-**Removed tools** (do not use — not in Go binary):
-- `find-session` → replaced by `list-sessions` + client-side name filtering
-- `get-command-result` → `execute-command` is now synchronous; no polling needed
-
----
+**Removed** (not in the Go binary): `find-session` → use `list-sessions` plus client-side
+filtering. `get-command-result` → `execute-command` is synchronous.
 
 ## 5. send-keys Parameter Guide
 
@@ -449,7 +412,8 @@ For long-running processes, `start-and-watch` or `watch-pane` replace polling lo
 
 **A repainting shell prompt breaks output diffing.** If the prompt redraws every second (e.g. powerlevel10k with a right-aligned clock), `watch-pane`/`start-and-watch` see "new output" on every poll — `idle:N` triggers never fire and pattern matching gets noisy. For deterministic monitoring, watch panes with a static prompt (or watch a headless pane, which has a plain prompt).
 
-For comprehensive framework-specific pass/fail/running/idle markers, see `terminal:framework-signals`.
+For comprehensive framework-specific pass/fail/running/idle markers, **read**
+`${CLAUDE_PLUGIN_ROOT}/skills/framework-signals/SKILL.md`.
 
 ---
 
@@ -540,45 +504,47 @@ Parse output for pass/fail. Done.
 6. mcp__tmux__kill-session({ sessionId: "headless:$0" })
 ```
 
-### Example F: Split Current Window (Side-by-Side)
+### Example F: Run something beside the user
 
-**Use when**: User says "run it here", "split pane", "beside me", "in this window", "show alongside".
+**Use when**: the user says "run it here", "beside me", "in this window", "show alongside".
 
 ```
-// Step 1: Detect current pane (CRITICAL — never skip, never use list-windows or display-message without -t)
-Bash: echo "$TMUX_PANE"                                       → "%57"
+// Start it. No pane id, no split, no detection.
+mcp__tmux__send-keys({ keys: "bun test --watch", enter: true })
+→ { paneId: "%89", slot: 1, created: true }
 
-// Step 2: Check for existing helper pane to reuse
-Bash: tmux list-panes -F '#{pane_id} #{pane_title}' | grep claude-helper
-// → If found (e.g., "%66 claude-helper"): skip to Step 5
+// Read it back — either a snapshot…
+mcp__tmux__capture-pane({ slot: 1 })
 
-// Step 3: Split the current pane (first split = vertical divider, helper on RIGHT)
-mcp__tmux__split-pane({ paneId: "%57", direction: "horizontal" })
-                                  → { paneId: "%66" }                 // new pane
-                                  → { paneId: "%66", reused: true }   // existing idle shell sibling reused
-// If reused:true, the pane may hold old scrollback — clear it before use:
-//   send-keys({ paneId: "%66", keys: "clear", enter: true })
+// …or block until something happens.
+mcp__tmux__watch-pane({ slot: 1, triggers: "idle:3,pattern:PASS|FAIL" })
+→ { event: "pattern:PASS|FAIL", detail: "…", paneState: {…} }
 
-// Step 4: Label the new pane so we can find it later
-Bash: tmux select-pane -t %66 -T "claude-helper"
+// Let go of it when the task is done.
+mcp__tmux__close-pane({ slot: 1 })
+```
 
-// Step 5: Launch process in the helper pane
-mcp__tmux__send-keys({ paneId: "%66", keys: "bun test --watch", literal: true })
-mcp__tmux__send-keys({ paneId: "%66", keys: "Enter", literal: false })
+If instead you want to *start a process and know when it is ready*, one call does the whole
+thing — it opens the pane, runs the command, and blocks until the pattern matches:
 
-// Step 6: Monitor via capture-pane or event-driven watch-pane
-mcp__tmux__capture-pane({ paneId: "%66" })                    → current screen
-
-// Cleanup: when done, close only the pane you created
-mcp__tmux__kill-pane({ paneId: "%66" })
+```
+mcp__tmux__start-and-watch({ command: "npm run dev", pattern: "listening on|ready in",
+                             triggers: "exit,error" })
+→ { event: "pattern:listening on", elapsed: 2.1, paneState: {…} }
 ```
 
 **Key rules:**
-- Always detect pane with `echo "$TMUX_PANE"`, never `display-message -p` without `-t` or `list-windows` active flag
-- Always check for existing `claude-helper` pane before splitting
-- **Before reusing a found pane or sending to any pane you did not just create, check `pane-state.foregroundCmd` (§1b "Occupancy Safety"). Only act on a bare shell or your own `claude-helper` pane — a pane running `claude`/a REPL is off-limits.**
-- First split is `direction: "horizontal"` (helper appears on right)
-- Label created panes with `tmux select-pane -t <id> -T "claude-helper"`
+
+- **Name no pane.** That is what makes the call safe — slot resolution can never return your own
+  session's pane.
+- **Check `created` on every response.** `created: true` on a slot you were already using means
+  the user closed that pane and your process died with it (§1b).
+- **Pass no direction.** Placement is the server's job. Slot 2 stacks under slot 1, slot 3 goes
+  bottom-left.
+- **`close-pane`, not `kill-pane`.** `close-pane` kills panes the server made and merely
+  interrupts panes it borrowed from the user. `kill-pane` cannot tell the difference.
+- **The pane may be one the user left open** — see §1c for what that means for unsubmitted input
+  and inherited environment. It is not avoidable by choosing a different slot.
 
 ### Example G: Desktop Notification on Long Command Completion
 
@@ -667,7 +633,8 @@ if result.waitingForInput and "password" in capture-pane output:
 ```
 // For database migrations: ALWAYS confirm with user before proceeding
 // For SSH: use pane-state to detect password prompt → stop and report
-// For deployments: use start-and-watch with deploy-specific patterns from terminal:framework-signals
+// For deployments: use start-and-watch with deploy-specific patterns — read
+// ${CLAUDE_PLUGIN_ROOT}/skills/framework-signals/SKILL.md
 ```
 
 ---
@@ -678,7 +645,7 @@ if result.waitingForInput and "password" in capture-pane output:
 2. **Confirm destructive operations**: Database migrations, `DROP TABLE`, production deployments — always confirm with user.
 3. **Never kill user's tmux sessions**: When using tmux-mcp to observe existing sessions, use `capture-pane` only. Do NOT call `kill-session` on sessions you did not create.
 4. **Clean up headless sessions**: Use `kill-session` or `kill-headless-server` when done. Headless sessions persist until explicitly killed.
-5. **Never send to / kill an occupied pane**: Before `send-keys`/`run-in-repl`/`kill-pane`/`split-pane` on a pane you did not just create, check `pane-state.foregroundCmd`. Act only on a bare shell (`zsh`/`bash`/`fish`/`sh`/`dash`) or your own `claude-helper` pane. `send-keys` feeds the pane's foreground process — if that's `claude`/a REPL, your command becomes input to it. A pane whose foreground is `claude` is a sibling agent: off-limits to send, split, or kill. See §1b "Occupancy Safety."
+5. **Never send to / kill a pane you named yourself without checking it**: Slot-resolved panes are safe and need no check. But before `send-keys`/`run-in-repl`/`kill-pane` on a pane you reached by explicit `paneId`, check `pane-state.foregroundCmd` and act only on a bare shell (`zsh`/`bash`/`fish`/`sh`/`dash`). `send-keys` feeds the pane's foreground process — if that is `claude` or a REPL, your command becomes input to it. A pane whose foreground is `claude` is a sibling agent: off-limits to send to or kill. See §1c.
 
 ---
 
