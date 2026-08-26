@@ -7,7 +7,7 @@
   },
   "metadata": {
     "description": "Curated collection of Claude Code plugins for modern full-stack development with LLM performance tracking and E2E skill testing",
-    "version": "10.1.0",
+    "version": "10.2.0",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -15,7 +15,7 @@
       "name": "code-analysis",
       "source": "./plugins/code-analysis",
       "description": "Codebase investigation and semantic search. Maps architecture, traces callers and callees, and ranks symbols by PageRank through the mnemex AST engine, with a read-only detective agent for deep dives.",
-      "version": "5.4.2",
+      "version": "5.4.3",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -40,6 +40,11 @@
       "strict": true,
       "releases": [
         {
+          "version": "5.4.3",
+          "date": "2026-08-26",
+          "summary": "References updated to claudish:claudish-usage"
+        },
+        {
           "version": "5.4.2",
           "date": "2026-08-26",
           "summary": "Plugin manifest moved to .claude-plugin/plugin.json, the only location Claude Code's runtime\u2026"
@@ -58,14 +63,6 @@
           "version": "5.3.2",
           "date": "2026-08-15",
           "summary": "Same widening, on mnemex and claudish"
-        },
-        {
-          "version": "5.3.1",
-          "date": "2026-07-29",
-          "kinds": [
-            "Changed"
-          ],
-          "summary": "Pointers to the deleted shared/model-aliases.json replaced with live-catalog resolution, and\u2026"
         }
       ]
     },
@@ -73,7 +70,7 @@
       "name": "claudish",
       "source": "./plugins/claudish",
       "description": "MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting across models, manages async sessions, and streams channel notifications. Required by code-analysis, dev, multimodel, designer and seo.",
-      "version": "1.0.2",
+      "version": "1.1.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -94,6 +91,11 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "1.1.0",
+          "date": "2026-08-26",
+          "summary": "Ships the claudish-usage skill and the model resolver. Both moved out of multimodel, which\u2026"
+        },
         {
           "version": "1.0.2",
           "date": "2026-08-26",
@@ -152,7 +154,7 @@
       "name": "multimodel",
       "source": "./plugins/multimodel",
       "description": "Multi-model collaboration and orchestration. Runs a task across several AI models in parallel and aggregates their blind APPROVE/REJECT votes, or delegates it to one model running a full Claude Code session.",
-      "version": "3.9.1",
+      "version": "3.10.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -177,6 +179,11 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "3.10.0",
+          "date": "2026-08-26",
+          "summary": "The run monitor mis-counted every turn that straddled a poll, and could report a healthy model\u2026"
+        },
         {
           "version": "3.9.1",
           "date": "2026-08-26",
@@ -204,11 +211,6 @@
           "version": "3.7.1",
           "date": "2026-08-19",
           "summary": "Deep-analyst no longer instructs a team call with require_pattern \u2014 the claudish tool has no\u2026"
-        },
-        {
-          "version": "3.7.0",
-          "date": "2026-08-19",
-          "summary": "New deep-analyst agent \u2014 multi-source deep investigation running parallel web, local-repo and\u2026"
         }
       ]
     },
@@ -216,7 +218,7 @@
       "name": "dev",
       "source": "./plugins/dev",
       "description": "Universal development assistant. Detects the project stack and routes work to specialist agents for architecture, implementation, debugging, review and research, enforcing design-system guardrails on every UI change.",
-      "version": "4.6.0",
+      "version": "4.6.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -256,6 +258,11 @@
       "strict": true,
       "releases": [
         {
+          "version": "4.6.1",
+          "date": "2026-08-26",
+          "summary": "The claudish-in-main-bash coaching rule advised running claudish inside a sub-agent via the\u2026"
+        },
+        {
           "version": "4.6.0",
           "date": "2026-08-26",
           "summary": "Registered skills go from 9 to 43 \u2014 the 34 nested under skills/<category>/<name>/ had been\u2026"
@@ -283,14 +290,6 @@
             "Added"
           ],
           "summary": "/dev:release learned the two rules its first live run exposed"
-        },
-        {
-          "version": "4.4.0",
-          "date": "2026-08-22",
-          "kinds": [
-            "Added"
-          ],
-          "summary": "/dev:release \u2014 a phased release command for any project"
         }
       ]
     },

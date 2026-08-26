@@ -611,7 +611,7 @@ skills: dev:context-detection, dev:universal-patterns, dev:worktree-lifecycle, m
     Models are stored in iteration-config.json and reused in Phases 3 and 5.
 
     **Model Discovery:**
-    - Resolve a review team via `multimodel:claudish-usage` → Model Alias Resolution (`list_models`)
+    - Resolve a review team via `claudish:claudish-usage` → Model Alias Resolution (`list_models`)
     - Name a family (e.g. grok, gemini, gpt) and resolve it via `list_models`
     - Merge with historical performance data (if available)
     - Present to user with quality/speed/cost metrics

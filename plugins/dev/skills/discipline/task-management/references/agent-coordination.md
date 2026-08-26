@@ -115,7 +115,7 @@ succeeded.
 
 ### External Model Expertise
 **Trigger:** Need specialized model capabilities (code speed, vision, reasoning)
-**Delegate to:** an external model via claudish (see multimodel:claudish-usage)
+**Delegate to:** an external model via claudish (see claudish:claudish-usage)
 **Example:** "Use Grok Code Fast to refactor 15 files for consistency in < 2 minutes"
 
 ### Parallel Work

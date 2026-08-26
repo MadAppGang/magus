@@ -6,4 +6,4 @@ Codebase investigation with mnemex MCP for semantic code search and AST analysis
 
 External model selection uses the centralized the live catalog (`list_models`) system.
 
-See `multimodel:claudish-usage` skill → "Model Alias Resolution" for the resolution procedure.
+See `claudish:claudish-usage` skill → "Model Alias Resolution" for the resolution procedure.

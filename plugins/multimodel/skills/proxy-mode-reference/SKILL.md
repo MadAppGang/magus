@@ -1,6 +1,6 @@
 ---
 name: proxy-mode-reference
-description: Reference guide for using external AI models via claudish MCP tools and CLI. Orchestration workflows (/team, /delegate) use MCP tools. Direct usage uses CLI. Includes model routing and error handling patterns.
+description: Reference for running models through the claudish MCP tools — team, create_session, run_prompt. Covers model routing, native Claude slots, require_pattern shape checks, and error handling. Use when working on /team, /delegate, or any claudish call.
 disable-model-invocation: true
 ---
 
@@ -47,27 +47,28 @@ that never produced the required shape is reported FAILED rather than silently s
 - React to channel events: `completed` → `get_output(session_id)`
 - On `input_required` → forward to user → `send_input(session_id, answer)`
 
-### Direct CLI Usage (for non-orchestration tasks)
+### Outside /team and /delegate
 
-```bash
-# Pattern
-claudish --model {MODEL_ID} --stdin --quiet < prompt-file.md > result.md
+Still MCP — no path here shells out to the CLI.
 
-# Examples
-claudish --model grok --stdin --quiet < task.md > grok-result.md
-claudish --model gemini --stdin --quiet < task.md > gemini-result.md
-```
+- One-shot completion, no session lifecycle → `run_prompt(model, prompt, system_prompt, max_tokens)`
+- One model with tools and a working directory → `create_session(...)` → `get_output(session_id)`
+
+See "Correct Usage Patterns" below for both.
 
 ## Model Routing
 
 Claudish handles all model routing internally. Pass bare model names — claudish auto-resolves them to the best available provider.
 
-```bash
-# Just use bare model names — claudish handles the rest
-claudish --model grok --stdin --quiet < task.md > result.md
-claudish --model gemini --stdin --quiet < task.md > result.md
-claudish --model gpt --stdin --quiet < task.md > result.md
 ```
+// Bare model names, in whichever MCP tool fits the task
+team(mode="run", path=SESSION_DIR, models=["grok", "gemini", "gpt"], input=PROMPT, timeout=180)
+run_prompt(model="grok", prompt=PROMPT)
+create_session(model="gemini", prompt=PROMPT, timeout_seconds=300)
+```
+
+Native Claude names (`internal`/`default`, `opus`/`sonnet`/`haiku`/`claude-*`) are ordinary
+entries — they go in the same `models` array, or in `model`, exactly like the rest.
 
 Do NOT add provider prefixes (`x-ai/`, `google/`, `openai/`, `minimax/`, etc.) — claudish manages provider detection and routing automatically since v5.4.0.
 
@@ -75,24 +76,40 @@ Do NOT add provider prefixes (`x-ai/`, `google/`, `openai/`, `minimax/`, etc.) �
 
 ## Correct Usage Patterns
 
-### Single External Model (via MCP)
+### Single Model (via MCP)
 
 ```
-// One-shot prompt
+// One-shot prompt — no session, no tools
 run_prompt(model="grok", prompt="Review this code for security issues")
 
-// Session-based (for longer tasks)
-create_session(model="grok", prompt=TASK_PROMPT, timeout_seconds=300)
+// Session-based (for longer tasks) — full parameters:
+//   model, prompt, timeout_seconds, agent, claude_flags, work_dir
+create_session(model="grok", prompt=TASK_PROMPT, timeout_seconds=300,
+  agent=RESOLVED_AGENT, work_dir=WORK_DIR)
+→ get_output(session_id)
 ```
 
-### Parallel Models (in /team)
+### Parallel Panel (in /team)
 
 ````
-// Single MCP tool call handles every model in parallel — native slots included
+// Single MCP tool call runs the whole panel in parallel — native and external alike
 team(mode="run", path=SESSION_DIR, models=["internal", "grok", "gemini"],
   input=VOTE_PROMPT, timeout=180,
   require_pattern="```vote", agent=RESOLVED_AGENT)
 ````
+
+Full parameter set: `mode, path, models, judges, input, timeout, require_pattern,
+min_output_bytes, agent, claude_flags`. `agent` and `claude_flags` apply to every child in
+the run — there is no per-model form.
+
+**Set `require_pattern` whenever the prompt mandates an output shape.** It is what makes a
+slot that exits 0 without producing that shape report FAILED (state EMPTY, reason
+`shape_mismatch`) instead of succeeding.
+
+**Reading the results:** the tool writes each slot to `response-NN.md` in the session
+directory and maps slot IDs to model names in `manifest.json`. IDs are shuffled, so
+responses can be read blind before the mapping is consulted. Never expect hand-named files
+like `grok-result.md` — the tool does not produce them.
 
 ### Verifying Results
 
@@ -104,11 +121,11 @@ team(mode="run", path=SESSION_DIR, models=["internal", "grok", "gemini"],
 ### Mistake 1: Using Bash+CLI in orchestration
 
 ```
-❌ WRONG — bypasses MCP structured I/O and error handling
-Bash("claudish --model grok --stdin < task.md > result.md")
+❌ WRONG — shelling out bypasses MCP structured I/O, per-slot status, and require_pattern
+Bash("claudish ...")
 
 ✅ CORRECT — use MCP tools in orchestration workflows
-team(mode="run", models=["grok"], input=PROMPT, timeout=180,
+team(mode="run", path=SESSION_DIR, models=["grok"], input=PROMPT, timeout=180,
   require_pattern=<regex for the shape PROMPT mandates>)
 ```
 
@@ -118,7 +135,7 @@ team(mode="run", models=["grok"], input=PROMPT, timeout=180,
 
 ### Rules
 
-1. **If claudish exits with non-zero exit code or empty output:** STOP and report the exact error (from stderr log) to the user before trying any alternative.
+1. **If a slot reports FAILED, or returns empty output:** STOP and report the exact error to the user before trying any alternative — from the per-model result object for `team`, or the `failed` channel event for `create_session`.
 2. **Never silently substitute a different model** than the user requested. If the user asked for Gemini, don't silently launch GPT-5 instead.
 3. **Never silently retry with a different provider prefix.** If `or@google/gemini` fails, don't silently try `g@gemini` without telling the user.
 4. **Report all attempts made** so the user understands what was tried and can make an informed decision.
@@ -129,7 +146,7 @@ team(mode="run", models=["grok"], input=PROMPT, timeout=180,
 "{Model} failed — {error category}.
 
 Attempts:
-1. {command tried} — {exact error from stderr}
+1. {tool call made} — {exact error from the result or channel event}
 
 Options:
 (1) {Fix suggestion}
@@ -180,11 +197,11 @@ See also: `multimodel:error-recovery` skill, Pattern 0 (User Escalation).
 
 ## Troubleshooting
 
-### "claudish: command not found"
-**Fix:** `npm install -g claudish`
+### claudish MCP tools are unavailable
+**Fix:** The plugin's `.mcp.json` starts the server by running the claudish CLI, so it must be installed: `npm install -g claudish`. Restart the session so the MCP server registers.
 
 ### "OPENROUTER_API_KEY not set"
 **Fix:** `export OPENROUTER_API_KEY=your-key`
 
-### Non-zero exit code
-**Fix:** Check stderr log for error details. Common causes: rate limits, invalid model ID, API key issues.
+### A slot reported FAILED
+**Fix:** Read the error from the per-model result (`team`) or the `failed` channel event (`create_session`). Common causes: rate limits, invalid model ID, API key issues.

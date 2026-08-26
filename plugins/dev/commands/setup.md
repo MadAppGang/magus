@@ -88,7 +88,7 @@ allowed-tools: Read, Write, Edit, Bash, Glob, AskUserQuestion
     | Multi-agent mnemex orchestration | `code-analysis:mnemex-orchestration` | Parallel mnemex across agents |
     | Codebase investigation (architecture/implementation/debugging/testing) | `code-analysis:investigate` | Mode-based investigation routing |
     | Deep multi-perspective analysis | `code-analysis:deep-analysis` | Comprehensive codebase investigation |
-    | Claudish CLI usage, model routing, provider backends | `multimodel:claudish-usage` | Before ANY `claudish` command — bare model names, no prefixes |
+    | Claudish MCP tools — `team`, `create_session`, `run_prompt` — and model resolution | `claudish:claudish-usage` | Before ANY claudish call. MCP tools only; the CLI is for the four read-only diagnostics (`--probe`, `--help`, `--version`, `--models`) and never runs a task |
     ```
   </step>
 

@@ -25,6 +25,7 @@ The single most common mistake is answering at the wrong altitude. Both tiers us
 | how a whole system or service is *shaped*: what depends on what, where the boundaries sit, how services talk | **Style** | `references/styles/` — Step 2 |
 | how a handful of classes *collaborate*: how to construct this, how to vary that behaviour, how to decouple these two | **Design pattern** | `references/` category leaf — Step 3 |
 | **changing existing code without changing what it does** — it is hard to edit, hard to test, or the same edit keeps recurring | **Refactoring** | `references/refactoring.md` — Step 4 |
+| **recording a decision** so the trade-off survives the people who made it | **ADR** | `references/adr.md` |
 | which of the two you even need | either | `references/selection.md` first |
 
 A test that resolves it fast: **if the answer changes your directory layout or your deploy

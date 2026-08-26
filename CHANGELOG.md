@@ -4,6 +4,79 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Marketplace 10.2.0] - 2026-08-26
+
+### Fixed
+
+- **`multimodel` v3.10.0**: the run monitor mis-counted every turn that straddled a
+  poll, and could report a healthy model STALLED. It fed the parser each newly-read
+  slice of the debug log, but a turn is a request line plus a later completion line —
+  claudish writes lines as they happen and the monitor polls every 3s, so a split is
+  the normal case. The request half counted as a retry forever, the completion half
+  was discarded, and three phantom retries trip `RETRY_STALL_COUNT`. It now derives
+  from the whole log rather than accumulating per slice, so split-vs-whole equality
+  holds by construction. Measured ~9.5ms/MB, linear.
+- **`multimodel` v3.10.0**: eight further parser and monitor bugs. An unclosed JSON
+  block swallowed the rest of the log; multi-line JSON joining stopped at the first
+  *nested* `}`, silently dropping every field after it; a second `Tool calls:` line
+  overwrote the first; `time_to_first_tool_ms` reported the containing turn's
+  duration rather than elapsed-from-start; clock skew summed negative durations into
+  the totals; `--models ","` monitored nothing and exited 0 with
+  `"all_completed": true`; a rotated or truncated log was skipped forever; and a
+  model reconnecting to a second log file was read from the first file's offset.
+- **`dev` v4.6.1**: the `claudish-in-main-bash` coaching rule advised running
+  claudish inside a sub-agent via the Agent tool — coaching a banned pattern at the
+  moment someone hit it. `/dev:setup` carried the same stale routing row and *writes
+  it into a user's CLAUDE.md*, so it would have reseeded the rule into every
+  provisioned repo. The `architecture` skill never routed to
+  `references/adr.md`, leaving 926 lines off the listing by design and off every
+  read path by accident.
+
+### Changed
+
+- **`claudish` v1.1.0**: ships the `claudish-usage` skill and the model resolver.
+  Both moved out of `multimodel`, which repairs a dead reference: `seo` publishes to
+  `magus-marketing` and cites the skill, but `multimodel` publishes only to `magus`,
+  so on that channel `seo` pointed at a skill that was not installed. The resolver
+  had to move with it — the documented command is
+  `bun "${CLAUDE_PLUGIN_ROOT}/scripts/resolve-models.ts"`, and `CLAUDE_PLUGIN_ROOT`
+  expands to the owning plugin's root.
+- **`claudish` v1.1.0**: `claudish-usage` is rewritten MCP-only, 1518 → 812 lines.
+  The CLI is no longer a supported way to run a model anywhere in the marketplace.
+  Seven CLI references remain, all four read-only diagnostics — `--probe`, `--help`,
+  `--version`, `--models`.
+- **`multimodel` v3.10.0**: `claudish-usage` and `resolve-models.ts` now come from
+  the `claudish` plugin. Its dependency floor moves from `^1.0` to `^1.1`, because
+  claudish 1.0.2 does not carry them. Six skills that still described the old
+  "internal → Agent, external → team MCP" split were corrected.
+- **`code-analysis` v5.4.3**, **`seo` v2.1.2**: references updated to
+  `claudish:claudish-usage`.
+
+### Why
+
+Two parsers read the same claudish debug log — one drives a live `/team` run's stall
+detection, the other reports a bench's metrics — and nothing kept them in step. A
+parse fix landed in one copy only would make them disagree about the same file.
+`scripts/check-parser-sync.ts` fences the shared logic with markers and requires that
+region byte-identical; whole-file comparison is impossible because one copy has a
+CLI the other must not have. Wired into pre-commit and `release.sh` step 1dc.
+
+`tests/integration/skills/` imported `yaml`, which was absent from `package.json`.
+Four of five files died at import and 113 of 147 tests stopped being *counted* — not
+failed, absent. Behind that the suite had rotted to 21 failures. `plugins/multimodel/`
+had zero test files; `autotest/monitor/` was 28 pass / 28 fail against a hardcoded
+path to a checkout that does not exist. Now 147, 89 and 67 respectively, with
+`.github/workflows/test-skills.yml` enforcing size floors — the historic failure was
+a suite that got smaller while staying green, and `bun test` exits 0 for that.
+
+### Migration notes
+
+Run `bun scripts/install-hooks.ts` after pulling: `pre-commit` gained the parser-sync
+check. `core.hooksPath` lives in the shared `.git/config` and applies to every
+worktree at once.
+
+---
+
 ## [Marketplace 10.1.0] - 2026-08-26
 
 ### Fixed

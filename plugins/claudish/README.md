@@ -42,6 +42,27 @@ Tools exposed via the `claudish` MCP server:
 Tool gating via `CLAUDISH_MCP_TOOLS` env var: `all` (default), `low-level`,
 `agentic`, `channel`.
 
+## Skills
+
+| Skill | Covers |
+|---|---|
+| `claudish:claudish-usage` | Which MCP tool fits which task, model alias resolution against the live catalog, identity versus routing address, and the preferences-file trust rules |
+
+Read it before any claudish work. It is the single place the resolution procedure
+lives — every consumer plugin points here rather than restating it, because a second
+copy of claudish's routing rules guarantees two versions of the truth and no way to
+tell which one is stale.
+
+**Models are run through the MCP tools, never the CLI.** The skill teaches `team`,
+`create_session` and `run_prompt`; the binary's only remaining role is as the runtime
+the MCP server launches, plus four read-only diagnostics (`--probe`, `--help`,
+`--version`, `--models`) for investigating that runtime. No workflow shells out.
+
+The skill lives here rather than in `multimodel` because it documents the claudish
+runtime, and because this plugin ships to both the `magus` and `magus-marketing`
+marketplaces. `multimodel` ships only to `magus`, so a marketing-channel consumer
+such as `seo` pointed at a skill that was never installed alongside it.
+
 ## Channel notifications (optional)
 
 Claudish emits `notifications/claude/channel` events during long-running model

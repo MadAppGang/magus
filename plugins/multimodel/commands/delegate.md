@@ -31,7 +31,7 @@ args:
 
 ## Phase 1: Parse and Resolve
 
-**Step 1a — Load alias table:** Follow the `multimodel:claudish-usage` skill → "Model Alias Resolution" procedure to build ALIAS_TABLE from the live catalog (`list_models`) + `.claude/multimodel-team.json` `customAliases`.
+**Step 1a — Load alias table:** Follow the `claudish:claudish-usage` skill → "Model Alias Resolution" procedure to build ALIAS_TABLE from the live catalog (`list_models`) + `.claude/multimodel-team.json` `customAliases`.
 
 **Step 1b — Parse arguments** left-to-right:
 - First token with no `/` or `--` prefix → MODEL_ARG
@@ -174,7 +174,7 @@ Model: {MODEL} | Session: {SESSION_ID}
 
 <knowledge>
   <model_aliases>
-    See `multimodel:claudish-usage` skill → "Model Alias Resolution" for the full procedure.
+    See `claudish:claudish-usage` skill → "Model Alias Resolution" for the full procedure.
     ALIAS_TABLE built in Phase 1a. NEVER resolve from memory. NEVER add prefixes.
     Special: `internal` / `default` select the host Claude tier, `opus`/`sonnet`/`haiku`
     a specific one. They ARE sent to claudish and run through its native passthrough —

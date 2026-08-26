@@ -64,7 +64,7 @@ cat .claude/multimodel-team.json 2>/dev/null
    → Call: list_models (claudish MCP) and KEEP ONLY the saved IDs it still lists
      Saved preferences are user policy, not a catalog snapshot — they go stale
      silently. This applies to defaultModels and contextPreferences alike; see
-     multimodel:claudish-usage → "Every field of the preferences file is untrusted"
+     claudish:claudish-usage → "Every field of the preferences file is untrusted"
    → Name every dropped ID in your reply
    → DO NOT ask the user to re-pick while at least one saved ID survives
    → If NOTHING survives, say so and offer live alternatives

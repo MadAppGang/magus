@@ -41,7 +41,7 @@
         "terminal:tdd-workflow",
         "terminal:workspace-setup",
         "terminal:framework-signals",
-        "multimodel:claudish-usage",
+        "claudish:claudish-usage",
         "multimodel:multi-model-validation",
         "multimodel:task-orchestration",
         "multimodel:quality-gates",
@@ -194,7 +194,7 @@
     },
     "category": "api-correctness",
     "priority": 1,
-    "suggestion": "claudish was run directly in a Bash call. This pollutes the context window with 10K+ tokens.\n  Always run claudish inside a sub-agent via the Agent tool with run_in_background: true.\n  Read the skill first: Skill({ \"skill\": \"multimodel:claudish-usage\" })\n  Pattern: Agent({ subagent_type: \"dev:developer\", run_in_background: true, prompt: \"run: claudish ...\" })",
+    "suggestion": "claudish was run from a Bash call. Models are run through the claudish MCP tools, never the CLI — shelling out loses structured per-slot status and pollutes the context window.\n  Use: team (a panel in one call), create_session (one model doing work), run_prompt (one answer).\n  Read the skill first: Skill({ \"skill\": \"claudish:claudish-usage\" })\n  The only permitted CLI invocations are the read-only diagnostics --probe, --help, --version, --models, and none of them may run a task.",
     "suppress_after_sessions": 10
   },
   {
@@ -283,7 +283,7 @@
     },
     "category": "plugin-discovery",
     "priority": 3,
-    "suggestion": "External model names detected in task prompts but claudish was not used. claudish lets Claude Code run any model via OpenRouter:\n  Install: `npm install -g claudish`\n  Set: `OPENROUTER_API_KEY=your-key`\n  Use `/team` command for parallel multi-model reviews\n  See: `multimodel:claudish-usage` skill for invocation patterns",
+    "suggestion": "External model names detected in task prompts but claudish was not used. claudish lets Claude Code run any catalogued model, through its MCP tools:\n  Install the runtime: `npm install -g claudish`\n  Set: `OPENROUTER_API_KEY=your-key`\n  Use `/team` for parallel multi-model reviews, `/multimodel:delegate` for one model\n  See: `claudish:claudish-usage` skill for which MCP tool fits which task",
     "suppress_after_sessions": 5
   },
   {

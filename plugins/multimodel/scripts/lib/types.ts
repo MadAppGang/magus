@@ -42,6 +42,15 @@ export interface Totals {
   unique_tools: string[];
   cost_usd: number | null;
   model: string | null;
+  /**
+   * How many elapsed-time measurements the log's own timestamps contradicted:
+   * a turn whose completion is stamped before its request, a session whose
+   * last timestamped line precedes its first, a tool call stamped before the
+   * session started. Each is reported as null rather than as a negative
+   * "elapsed" time, and this count is what tells a consumer that a total is
+   * short because something was unmeasurable — not because it was zero.
+   */
+  clock_inconsistencies: number;
 }
 
 export interface Metrics {

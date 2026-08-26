@@ -21,7 +21,7 @@ args:
 
 ## Step 1: Setup
 
-**Step 1a — Load alias table:** Follow the `multimodel:claudish-usage` skill → "Model Alias Resolution" procedure to build ALIAS_TABLE from the live catalog (`list_models`) + `.claude/multimodel-team.json` `customAliases`.
+**Step 1a — Load alias table:** Follow the `claudish:claudish-usage` skill → "Model Alias Resolution" procedure to build ALIAS_TABLE from the live catalog (`list_models`) + `.claude/multimodel-team.json` `customAliases`.
 
 **Step 1b — Parse args:**
 Parse: `defaultModels`, `contextPreferences`, `agentPreferences`, `defaultThreshold` from prefs.
@@ -134,7 +134,7 @@ If any models FAILED in the verification table:
 
 ## Knowledge
 
-**Model alias resolution** — see `multimodel:claudish-usage` skill → "Model Alias Resolution" section. ALIAS_TABLE built in Step 1a. NEVER resolve from memory. NEVER add provider prefixes.
+**Model alias resolution** — see `claudish:claudish-usage` skill → "Model Alias Resolution" section. ALIAS_TABLE built in Step 1a. NEVER resolve from memory. NEVER add provider prefixes.
 
 **Context detection:**
 Default models come from `contextPreferences[context]` when set. Otherwise compose

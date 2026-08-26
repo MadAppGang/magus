@@ -43,16 +43,18 @@ file: a snapshot in this repo once went four months stale and silently resolved 
 
 Name a family like `grok`, `gemini`, or `gpt` and claudish resolves the current model.
 
-Read `multimodel:claudish-usage` before any claudish work. It is the single place the
-resolution procedure lives.
+Read `claudish:claudish-usage` before any claudish work. It is the single place the
+resolution procedure lives. It ships with the **claudish** plugin, not this one, because
+claudish is published to both `magus` and `magus-marketing` while this plugin is
+`magus`-only — a consumer on the marketing channel could not otherwise reach it.
 
 ## Skills
 
-Seventeen skills covering orchestration. The ones you are most likely to want:
+Sixteen skills covering orchestration. The ones you are most likely to want:
 
 | Skill | Covers |
 |---|---|
-| `multimodel:claudish-usage` | Model routing and provider backends. Read before ANY claudish command |
+| `claudish:claudish-usage` | Model routing and provider backends. Read before ANY claudish command. Ships with the claudish plugin |
 | `multimodel:multi-agent-coordination` | Parallel vs sequential execution, agent selection, delegation |
 | `multimodel:multi-model-validation` | Running a task across models and comparing findings |
 | `multimodel:task-complexity-router` | Matching task complexity to the right model tier |
@@ -63,4 +65,6 @@ Seventeen skills covering orchestration. The ones you are most likely to want:
 ## In agent and command workflows
 
 Use the claudish **MCP tools** (`team`, `create_session`, `run_prompt`), not `Bash` plus the
-claudish CLI. CLI invocations belong only in the `claudish-usage` skill's own documentation.
+claudish CLI. The only CLI references that belong anywhere are diagnostics with no MCP
+equivalent — `claudish --probe`, `--help`, `--version`, `--models` — and they live in
+`claudish:claudish-usage`. Never shell out to run a model.

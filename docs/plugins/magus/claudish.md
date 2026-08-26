@@ -7,11 +7,11 @@ MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, ru
 
 | | |
 |---|---|
-| Version | `1.0.2` |
+| Version | `1.1.0` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 0 |
 | Subagents | 0 |
-| Skills | 0 |
+| Skills | 1 |
 | MCP server | yes |
 | Hooks | no |
 
@@ -32,6 +32,12 @@ For a team, press `s` to save your plugins as a profile and commit it. Everyone 
 `claudeup install` — see [Teams and profiles](../../guides/teams.md).
 
 Prefer to do it by hand? [Installing Magus](../../guides/install.md) has the manual path.
+
+## Skills
+
+| Skill | What it covers |
+|---|---|
+| `claudish:claudish-usage` | Runs models through the claudish MCP tools — team, create_session, run_prompt — and resolves model IDs against the live catalog. |
 
 ## MCP server
 

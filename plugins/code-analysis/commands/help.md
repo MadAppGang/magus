@@ -91,7 +91,7 @@ Present the following help information to the user:
 | Comprehensive multi-dimensional audit | `code-analysis:deep-analysis` |
 | mnemex commands guidance | `code-analysis:mnemex-search` |
 | Parallel multi-agent orchestration | `code-analysis:mnemex-orchestration` |
-| Claudish CLI usage | `multimodel:claudish-usage` |
+| Claudish MCP tools and model resolution | `claudish:claudish-usage` |
 
 **Integration Patterns:**
 - Use `investigate` for targeted single-dimension analysis

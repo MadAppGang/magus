@@ -272,7 +272,7 @@ Available aliases (from the live catalog (list_models)):
 Type a comma-separated list (e.g. "grok, gemini, qwen") or "internal" for no external review.
 ```
 
-**Parse the response** using `multimodel:claudish-usage` skill's "Model Alias Resolution" procedure:
+**Parse the response** using `claudish:claudish-usage` skill's "Model Alias Resolution" procedure:
 1. Split on comma, trim whitespace
 2. For each name: resolve via the live catalog (`list_models`, then `search_models` for the family)
 3. Unknown names: warn and skip, do NOT guess
@@ -297,7 +297,7 @@ addresses next to the identity — `openrouterId` (`moonshotai/kimi-k3`) and Acc
 routes (`kc@kimi-k3`) — and storing either pins the provider, bypassing the
 subscription-aware routing and fallback that the bare `id` gets. A stored ID must
 contain no `@` and no `/`: `kimi-k3`, not `moonshotai/kimi-k3`. Store an address only
-when the user explicitly asked to pin that backend. See `multimodel:claudish-usage` →
+when the user explicitly asked to pin that backend. See `claudish:claudish-usage` →
 "Identity vs routing address".
 
 If claudish is NOT available:

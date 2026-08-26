@@ -43,8 +43,11 @@ const PROGRESS_INTERVAL_MS = 15_000;
 
 interface MonitorState {
   state: ProcessState;
-  byteOffset: number;
-  partialLineBuffer: string;
+  /**
+   * Size of the debug log at the last read. Purely a "has it changed?"
+   * watermark — the parse always consumes the whole file, never a slice.
+   */
+  lastLogSize: number;
   lastActivityTime: number | null;
   firstActivityTime: number | null;
   turnsCompleted: number;
@@ -116,91 +119,107 @@ function findDebugLog(sessionDir: string, slug: string): string {
   }
 }
 
-interface ReadResult {
+interface LogSnapshot {
+  /** The whole log up to its last complete line — "" when nothing changed. */
   content: string;
-  newOffset: number;
-  newPartialBuffer: string;
+  /** File size at read time, to be stored as the next watermark. */
+  size: number;
+  /** True when the file changed since the watermark. */
+  changed: boolean;
 }
 
-async function readNewBytes(
+/**
+ * Read the debug log in full, skipping the read entirely when it has not
+ * changed since `lastSize`.
+ *
+ * The whole file, not a slice: `parseDebugLogContent` is stateful across lines
+ * (a turn is a request line plus a later completion line), so a slice
+ * containing only one half of a turn parses to nonsense — see
+ * `applyLogSnapshot`.
+ *
+ * A trailing partial line is still dropped, because claudish holds the file
+ * open and the monitor can read it mid-write. That line is not buffered: the
+ * next read re-reads it from the file, complete.
+ */
+async function readLogSnapshot(
   logPath: string,
-  offset: number,
-  partialBuffer: string
-): Promise<ReadResult> {
+  lastSize: number
+): Promise<LogSnapshot> {
   if (!logPath || !existsSync(logPath)) {
-    return { content: "", newOffset: offset, newPartialBuffer: partialBuffer };
+    return { content: "", size: lastSize, changed: false };
   }
 
   try {
     const file = Bun.file(logPath);
     const size = file.size;
-    if (size <= offset) {
-      return {
-        content: "",
-        newOffset: offset,
-        newPartialBuffer: partialBuffer,
-      };
+    // `!==`, not `<=`: a rotated or truncated log shrinks, and that is a
+    // change the monitor must pick up rather than skip forever.
+    if (size === lastSize) {
+      return { content: "", size: lastSize, changed: false };
     }
 
-    const newChunk = await file.slice(offset, size).text();
-    const combined = partialBuffer + newChunk;
+    const whole = await file.text();
+    const lastNewline = whole.lastIndexOf("\n");
+    const content = lastNewline >= 0 ? whole.slice(0, lastNewline + 1) : "";
 
-    // Buffer incomplete last line — hold it for the next read
-    let newPartialBuffer = "";
-    let content = combined;
-    if (!combined.endsWith("\n")) {
-      const lastNewline = combined.lastIndexOf("\n");
-      if (lastNewline >= 0) {
-        content = combined.slice(0, lastNewline + 1);
-        newPartialBuffer = combined.slice(lastNewline + 1);
-      } else {
-        // No newline at all — entire chunk is a partial line, buffer it all
-        content = "";
-        newPartialBuffer = combined;
-      }
-    }
-
-    return { content, newOffset: size, newPartialBuffer };
+    return { content, size, changed: true };
   } catch {
-    return { content: "", newOffset: offset, newPartialBuffer: partialBuffer };
+    return { content: "", size: lastSize, changed: false };
   }
 }
 
-function inferStateFromMetrics(
-  modelState: MonitorState,
-  content: string
-): void {
+/**
+ * Derive every log-driven metric for one model from the whole log so far.
+ *
+ * Replaces, never accumulates. Each poll re-derives the counters from a
+ * complete parse, so a turn whose request and completion arrive in different
+ * polls is counted exactly once — and an in-flight turn, which the parser
+ * reports as a retry until its completion line lands, stops being a retry the
+ * moment it finishes instead of staying counted forever.
+ */
+function applyLogSnapshot(modelState: MonitorState, content: string): void {
   const metrics = parseDebugLogContent(content);
   const { turns } = metrics;
   if (turns.length === 0) return;
 
+  let turnsCompleted = 0;
+  let retries = 0;
+  let consecutiveRetries = 0;
+  let tokensSoFar = 0;
+  const toolCalls = new Set<string>();
+
   for (const turn of turns) {
     if (turn.retry) {
-      modelState.retries++;
-      modelState.consecutiveRetries++;
+      retries++;
+      consecutiveRetries++;
     } else {
-      // Completed turn
-      modelState.turnsCompleted++;
-      modelState.consecutiveRetries = 0;
-      modelState.inApiCall = false;
+      // Completed turn — breaks any run of retries before it
+      turnsCompleted++;
+      consecutiveRetries = 0;
 
-      // Accumulate completion tokens
+      // Completion tokens only: the prompt is resent every turn
       if (turn.tokens) {
-        modelState.tokensSoFar += turn.tokens.completion;
+        tokensSoFar += turn.tokens.completion;
       }
     }
 
-    // Accumulate tool names
     for (const tool of turn.tool_calls) {
-      modelState.toolCalls.add(tool);
+      toolCalls.add(tool);
     }
   }
 
-  // State inference from last turn in chunk
+  modelState.turnsCompleted = turnsCompleted;
+  modelState.retries = retries;
+  modelState.consecutiveRetries = consecutiveRetries;
+  modelState.tokensSoFar = tokensSoFar;
+  modelState.toolCalls = toolCalls;
+
+  // State inference from the last turn in the log
   const lastTurn = turns[turns.length - 1];
 
   if (!lastTurn.retry) {
     // Completed turn — back to ACTIVE awaiting next turn or exit
+    modelState.inApiCall = false;
     if (!isTerminal(modelState.state)) {
       modelState.state = "ACTIVE";
     }
@@ -216,7 +235,7 @@ function inferStateFromMetrics(
   }
 
   // Consecutive retries stall
-  if (modelState.consecutiveRetries >= RETRY_STALL_COUNT) {
+  if (consecutiveRetries >= RETRY_STALL_COUNT) {
     if (!isTerminal(modelState.state)) {
       if (modelState.inApiCall) modelState.stall_during_api_call = true;
       modelState.state = "STALLED";
@@ -568,6 +587,46 @@ function emitProgress(
 // CLI entry point
 // ---------------------------------------------------------------------------
 
+function printUsage(): void {
+  console.log(
+    "Usage: bun monitor.ts --session-dir <path> --models <slug1,slug2,...> --timeout <seconds>"
+  );
+  console.log("");
+  console.log("Options:");
+  console.log("  --session-dir <path>      Session directory path (required)");
+  console.log(
+    "  --models <slug1,slug2>    Comma-separated model slugs (required)"
+  );
+  console.log("  --timeout <seconds>       Maximum wait time (default: 180)");
+  console.log("  --poll-interval <ms>      Poll interval ms (default: 3000)");
+  console.log("  --stall-threshold <ms>    Stall threshold ms (default: 30000)");
+}
+
+/**
+ * Read a flag that must be a positive whole number of ms/seconds.
+ *
+ * Absent means "use the default"; present-but-unusable is a usage error. The
+ * old `parseInt(x, 10) || DEFAULT` turned `--timeout typo` into a silent
+ * three-minute watch and `--timeout 0` into the default, so the caller was
+ * told nothing about a value the monitor had quietly replaced.
+ */
+function positiveIntFlag(
+  name: string,
+  raw: string | undefined,
+  fallback: number
+): number {
+  if (raw === undefined) return fallback;
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value <= 0) {
+    console.error(
+      `[monitor] ${name} must be a positive whole number, got: ${JSON.stringify(raw)}`
+    );
+    printUsage();
+    process.exit(1);
+  }
+  return value;
+}
+
 if (import.meta.main) {
   const { values } = parseArgs({
     args: Bun.argv.slice(2),
@@ -583,22 +642,7 @@ if (import.meta.main) {
   });
 
   if (values.help || !values["session-dir"] || !values.models) {
-    console.log(
-      "Usage: bun monitor.ts --session-dir <path> --models <slug1,slug2,...> --timeout <seconds>"
-    );
-    console.log("");
-    console.log("Options:");
-    console.log("  --session-dir <path>      Session directory path (required)");
-    console.log(
-      "  --models <slug1,slug2>    Comma-separated model slugs (required)"
-    );
-    console.log("  --timeout <seconds>       Maximum wait time (default: 180)");
-    console.log(
-      "  --poll-interval <ms>      Poll interval ms (default: 3000)"
-    );
-    console.log(
-      "  --stall-threshold <ms>    Stall threshold ms (default: 30000)"
-    );
+    printUsage();
     process.exit(values.help ? 0 : 1);
   }
 
@@ -607,11 +651,30 @@ if (import.meta.main) {
     .models!.split(",")
     .map((s: string) => s.trim())
     .filter(Boolean) as string[];
-  const timeoutSec = parseInt(values.timeout!, 10) || 180;
-  const pollIntervalMs =
-    parseInt(values["poll-interval"] ?? "", 10) || POLL_INTERVAL_MS;
-  const stallThresholdMs =
-    parseInt(values["stall-threshold"] ?? "", 10) || STALL_THRESHOLD_MS;
+
+  // A list that resolves to no models is a usage error, not an empty watch.
+  // `--models ,` passes the presence check above, and every later "are they all
+  // done?" question over an empty list answers yes — so the monitor used to
+  // exit 0 with all_completed=true for a run it had never looked at.
+  if (slugs.length === 0) {
+    console.error(
+      `[monitor] --models named no model slugs, got: ${JSON.stringify(values.models)}`
+    );
+    printUsage();
+    process.exit(1);
+  }
+
+  const timeoutSec = positiveIntFlag("--timeout", values.timeout, 180);
+  const pollIntervalMs = positiveIntFlag(
+    "--poll-interval",
+    values["poll-interval"],
+    POLL_INTERVAL_MS
+  );
+  const stallThresholdMs = positiveIntFlag(
+    "--stall-threshold",
+    values["stall-threshold"],
+    STALL_THRESHOLD_MS
+  );
 
   // Session ID from directory basename
   const sessionId = sessionDir.split("/").pop() ?? sessionDir;
@@ -621,8 +684,7 @@ if (import.meta.main) {
   for (const slug of slugs) {
     models.set(slug, {
       state: "STARTING",
-      byteOffset: 0,
-      partialLineBuffer: "",
+      lastLogSize: 0,
       lastActivityTime: null,
       firstActivityTime: null,
       turnsCompleted: 0,
@@ -690,22 +752,25 @@ if (import.meta.main) {
         // Discover debug log
         const logPath = findDebugLog(sessionDir, slug);
         if (logPath) {
+          // A model that reconnects writes a second log; the watermark from the
+          // old file says nothing about the new one, so force a read. Only on a
+          // real switch — on first discovery there is no prior file.
+          if (modelState.debugLogPath && logPath !== modelState.debugLogPath) {
+            modelState.lastLogSize = -1;
+          }
           modelState.debugLogPath = logPath;
         }
 
-        // Read new bytes incrementally
+        // Read the whole log, skipping the read when it has not changed
         const resolvedPath = logPath || modelState.debugLogPath;
-        const { content, newOffset, newPartialBuffer } = await readNewBytes(
+        const { content, size, changed } = await readLogSnapshot(
           resolvedPath,
-          modelState.byteOffset,
-          modelState.partialLineBuffer
+          modelState.lastLogSize
         );
 
-        const hadNewBytes = newOffset > modelState.byteOffset;
-        modelState.byteOffset = newOffset;
-        modelState.partialLineBuffer = newPartialBuffer;
+        modelState.lastLogSize = size;
 
-        if (hadNewBytes) {
+        if (changed) {
           const now = Date.now();
           if (modelState.firstActivityTime === null) {
             modelState.firstActivityTime = now;
@@ -725,9 +790,9 @@ if (import.meta.main) {
             modelState.state = "ACTIVE";
           }
 
-          // Parse new content and update state
+          // Re-derive metrics and state from the whole log
           if (content.trim().length > 0) {
-            inferStateFromMetrics(modelState, content);
+            applyLogSnapshot(modelState, content);
           }
         }
 

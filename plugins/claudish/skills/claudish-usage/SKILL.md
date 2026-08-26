@@ -1,0 +1,815 @@
+---
+name: claudish-usage
+description: Runs models through the claudish MCP tools — team, create_session, run_prompt — and resolves model IDs against the live catalog. Use when the user mentions claudish, OpenRouter, or external AI models.
+user-invocable: false
+---
+
+# Claudish Usage Skill
+
+**Purpose:** How agents run models — external and native — through the claudish MCP tools
+**Status:** Production Ready
+
+## Everything runs through the MCP tools
+
+There is no CLI tier and no "direct usage" tier. **Every model run goes through a claudish
+MCP tool** — one model or a panel, external or native, inside `/team` and `/delegate` or
+anywhere else. `Bash("claudish ...")` is not a fallback, not a shortcut for a small task,
+and not acceptable "just this once".
+
+| You need | Tool |
+|---|---|
+| A panel of models on one prompt, in parallel | `team` |
+| One model, long task, its own tools and working directory | `create_session` |
+| One model, one completion, no tools and no session | `run_prompt` |
+| What models exist right now | `list_models`, `search_models` |
+| Capability comparison between models | `compare_models` |
+| Report a failure to claudish's developers | `report_error` |
+
+Two properties are why: MCP sessions run in their own process, so a model's transcript
+never enters your context window; and every tool returns a **structured per-slot result**
+with status and errors, so a failure is data you can act on rather than text you have to
+parse. Both are lost the moment you shell out.
+
+The only CLI that survives is a set of four read-only diagnostics — see
+"Diagnostics: the only CLI left". They investigate the runtime. They never run a task.
+
+## Quick Start
+
+### Step 1: Install the runtime (once)
+
+```bash
+npm install -g claudish     # or: bun add -g claudish
+```
+
+This installs the **runtime**, not a way to run tasks. The plugin's `.mcp.json` starts the
+MCP server by launching this binary with `--mcp`, so it must be on `PATH` or the tools
+below do not exist at all. Restart the session after installing so the server registers.
+
+### Step 2: Find out what models exist right now
+
+```
+list_models()                      → current recommended set, pricing, capabilities, access lines
+search_models({ query: "kimi" })   → every live variant in one family
+```
+
+Never skip this. Model IDs from memory are dead IDs — see "Model Alias Resolution".
+
+### Step 3: Run something
+
+```
+// One completion, no tools, no session lifecycle
+run_prompt(model="grok", prompt="Review this diff for security issues")
+
+// A real Claude Code session with tools, in a working directory
+create_session(model="grok", prompt=TASK_PROMPT, timeout_seconds=300,
+  agent="dev:developer", work_dir=WORK_DIR)
+→ watch channel events → get_output(session_id)
+
+// A whole panel in one call, run in parallel internally
+team(mode="run", path=SESSION_DIR, models=["internal", "grok", "gemini"],
+  input=PROMPT, timeout=180, require_pattern="```vote", agent="dev:researcher")
+```
+
+## Model Alias Resolution
+
+All commands that use external models (/team, /delegate, /dev:fix, etc.) MUST resolve model names through this three-step chain before calling claudish.
+
+**The catalog is live, never committed.** Model IDs come from the `list_models` /
+`search_models` MCP tools, which claudish serves from its own Firebase-backed
+catalog with a 24-hour cache. There is no model-aliases file in this repo, and
+you must not resolve model IDs from memory — training data carries dead IDs.
+
+### Three-Step Resolution Chain
+
+```
+Step 1: INTERPRET (Claude Code LLM)
+  User says anything → Claude infers what family/capability they mean
+  "use Elon's model"     → xAI family
+  "the Google one"       → Google family
+  "kimi3"                → Moonshot family, major version 3
+  "latest gpt"           → OpenAI family, newest version
+
+Step 2: RESOLVE (live catalog lookup — list_models / search_models)
+  Family/intent → an ID that EXISTS in the live catalog right now
+  xAI family             → whatever grok-* the catalog currently lists
+  "kimi3"                → kimi-k3   (matched in the catalog, not guessed)
+  "latest gpt"           → highest gpt-* version the catalog lists
+
+Step 3: ROUTE (Claudish)
+  Live model ID → correct provider API endpoint
+```
+
+### Resolving a model name
+
+1. Call `list_models` first — it is cheap, cached, and returns the current
+   recommended set with pricing, capabilities and access prefixes.
+2. If the user's request isn't covered there, call `search_models` with the
+   family name (e.g. `search_models("kimi")`) to see every live variant.
+3. Check `.claude/multimodel-team.json` → `customAliases` for a user-defined
+   shorthand. A custom alias always wins on key conflict — but if it maps to an
+   ID the catalog no longer lists, say so instead of using it silently.
+4. `"internal"` and `"default"` select the host Claude tier, and `"opus"`/`"sonnet"`/
+   `"haiku"` a specific one. They ARE sent to claudish and run through its native
+   passthrough on the user's own subscription — no API key, no provider prefix, no
+   translation. They are not catalog IDs, so `list_models` will not list them and a
+   catalog check must not reject them. Requires `claudish >= 7.65.0`.
+
+### Use the resolver — do not do this by hand
+
+`resolve-models.ts` performs the whole check and prints the disclosure. It ships **in this
+plugin**, beside this skill, so `${CLAUDE_PLUGIN_ROOT}` resolves to it on every channel
+claudish publishes to. Call `list_models` first, then hand it the IDs:
+
+```bash
+bun "${CLAUDE_PLUGIN_ROOT}/scripts/resolve-models.ts" \
+  --catalog "<comma-separated ids from list_models>" [--context review] [--json]
+```
+
+It verifies every model-bearing field, drops dead IDs individually, computes
+provenance, and emits a receipt — **print that receipt verbatim.** Exit `3` means
+nothing survived; `0` means proceed with what it selected.
+
+Doing this in your head is what the rest of this section explains. That is the fallback for
+paths the resolver does not cover, and for channels where `multimodel` is not installed
+(`seo` consumes claudish without it). Measured over 30 benchmark runs, prose alone produced
+the disclosure at best 14/15 times; the resolver produces it every time, because it is code.
+
+### Verify every field of the preferences file
+
+**Every field of the preferences file is untrusted.** `customAliases` is not the only place
+a dead ID hides, and in practice it is the least likely — a file found in the wild had
+`customAliases: {}` and six decommissioned IDs sitting in `defaultModels`. **Verify every
+ID you take from this file against the live catalog, whichever field it came from:**
+
+| Field | Verify? |
+|---|---|
+| `defaultModels` | yes |
+| `contextPreferences[*]` | yes |
+| `customAliases` values | yes |
+
+No field is exempt. Drop each ID the catalog does not list, name the dropped IDs
+in your reply, and **carry on with the survivors.**
+
+**A dead entry invalidates that entry, never the request.** Resolving is the next
+step, not a fallback:
+
+- A stale `customAliases` mapping means *the alias* is wrong. If the user named a
+  version, resolve that intent against the catalog and use what you find —
+  `kimi3` with a dead `kimi3 → kimi-k2.5` alias still resolves to `kimi-k3` when
+  the catalog lists it.
+- Dead entries in `defaultModels` or `contextPreferences[*]` mean *those entries*
+  are wrong. Run with whatever survives.
+
+Returning "no models" is correct only when the catalog genuinely offers nothing
+that satisfies the request. Refusing a run while a live model sits in the catalog
+is the same failure as using a dead one — it just fails in the other direction.
+
+### Report what the check found, not what the file claims
+
+When you report your model choice, **state the result of the catalog check**:
+
+> `3 of 7 saved model IDs are no longer in the catalog: grok-4.20-beta, gpt-5.4, kimi-k2.5`
+
+Report it every run, including when nothing was dropped — `all 5 saved IDs are
+still live` is the same disclosure with a different value.
+
+That count is derived from the comparison you just performed, so it **cannot be
+silently wrong**. It is the disclosure that matters: the user's question is "are
+my models alive and what did you actually use", not "what date is in my file".
+
+### File age is secondary, and `lastUpdated` cannot carry it
+
+If you state an age, take it from the **file's modification time** and say so:
+`preferences file modified 12 days ago (filesystem mtime)`.
+
+- **Never present `lastUpdated` as the file's age.** It is declared metadata and
+  is not maintained by every write path — a file has been seen reporting March
+  while its own `history[0].date` said July. Quoting it as an age is false
+  precision.
+- If `lastUpdated` and the newest `history[].date` disagree, report
+  `freshness metadata inconsistent` and name both. Do not pick the newer one.
+- If no trustworthy source exists, `freshness unknown` is a complete answer.
+- `mtime` has its own limits — a checkout or copy resets it — which is exactly
+  why the source is always labelled.
+
+**Age never gates.** It never rejects a model (a 157-day-old file whose IDs are
+all live is fine — use it) and never approves one (a file written today can be
+entirely dead). Catalog membership is what decides; age is context for the human.
+
+### Version intent is a hard constraint, not a hint
+
+When the user names a version — `kimi3`, `gpt-5.6`, `sonnet 5` — that version is
+a **requirement**. Resolve it against the catalog and use what you find.
+
+- If the exact version exists → use it.
+- If it does not exist → **say so and show the live alternatives.** Ask which
+  one they want.
+- **NEVER** fall back to a lower version because its name is closer as a string.
+  `kimi3` resolving to `kimi-k3` is a bug, not a near-miss: string distance
+  cannot tell a version bump from a typo, and silently downgrading a model is
+  worse than erroring.
+
+### Interpreting User Intent (Step 1)
+
+| User says | Resolve by | Notes |
+|---|---|---|
+| "grok" | `search_models("grok")` | Take the current flagship, not a remembered ID |
+| "Elon's AI" / "xAI model" | `search_models("grok")` | Company association |
+| "Google's model" | `search_models("gemini")` | Company association |
+| "the cheap one" | `list_models` → Quick picks → Budget | Cost intent |
+| "something fast for coding" | `list_models` → Fast variants | Capability intent |
+| "biggest context" | `list_models` → Quick picks → Large context | Capability intent |
+| "kimi3" | `search_models("kimi")`, require major v3 | Version is a constraint |
+| "LATEST_MINIMAX_MODEL" | Verify it's in the catalog, then pass through | Already a full ID |
+
+When uncertain, show the live candidates and ask the user to pick. Listing real
+options is always better than guessing one.
+
+### Identity vs routing address
+
+Every catalog record carries the model's **identity** and several **addresses** for
+reaching it. Only the identity is the model. Addresses live in sibling fields, so it is
+easy to copy the wrong one out of the same record:
+
+| In the record | Example | What it is |
+|---|---|---|
+| `id` | `kimi-k3` | **the identity — this is the model** |
+| `openrouterId` | `moonshotai/kimi-k3` | an address: route via OpenRouter |
+| Access line | `kimi@kimi-k3` · `kc@kimi-k3` | addresses: same model, different accounts |
+
+**Bare means no `@` AND no `/`.** `moonshotai/kimi-k3` is not a bare ID — the vendor
+slug is a route, not part of the name. Both prefix forms pin the request to one
+provider and bypass the subscription-aware backend selection and fallback that passing
+`id` gives you. `z-ai/glm-5.2` is as wrong as `gc@glm-5.2`, for the same reason.
+
+- If the user names an address (`cx@LATEST_GPT_MODEL`), pass it through **verbatim**.
+- Otherwise pass `id`, and let claudish pick the backend.
+- Never assemble an address yourself, and never substitute one field for another —
+  "the catalog reports it" is not a licence to send it, because the catalog reports
+  every address too.
+
+### Responsibility Boundaries
+
+| Responsibility | Owner |
+|---|---|
+| Understanding user intent → family/capability | **Claude Code** (LLM heuristic) |
+| Which model IDs exist right now | **Claudish** (live catalog, 24h cache) |
+| User custom aliases | **Magus** (`.claude/multimodel-team.json` `customAliases`) |
+| Model ID → API endpoint | **Claudish** (provider routing) |
+| API keys, backend fallbacks | **Claudish** |
+
+### Rules
+
+- ALWAYS resolve against the live catalog; NEVER from memory or a committed file
+- NEVER invent a model ID — if nothing matches, show live options and ask
+- NEVER silently downgrade to an older version than the user asked for
+- ALWAYS send the catalog's `id`. NEVER send an address (`vendor/model`,
+  `provider@model`) where a model belongs — not even one the catalog reports, since it
+  reports `openrouterId` and every Access route alongside `id`. An address goes through
+  only when the user named it themselves
+- User `customAliases` override, but flag any that the catalog no longer lists
+
+## MCP Tool Reference
+
+Parameter names below are verified against claudish 7.65.0. Use them exactly.
+
+### `team` — a panel of models, one call
+
+```
+team(mode, path, models, judges, input, timeout,
+     require_pattern, min_output_bytes, agent, claude_flags)
+```
+
+| Parameter | What it does |
+|---|---|
+| `mode` | `"run"` · `"judge"` · `"run-and-judge"` · `"status"` |
+| `path` | Session directory. **Must be within the current working directory.** |
+| `models` | The panel. Native names are **ordinary entries** — see below. |
+| `judges` | Models that judge the collected responses (`judge` / `run-and-judge`) |
+| `input` | The prompt every slot receives |
+| `timeout` | Seconds, per slot |
+| `require_pattern` | Regex the response MUST match, or the slot is reported FAILED |
+| `min_output_bytes` | Floor below which a response counts as empty |
+| `agent` | Subagent every child runs as. Applies to EVERY child — there is no per-model form. |
+| `claude_flags` | Any other Claude Code flags, space-separated. An `--agent` here loses to `agent`. |
+
+**Native names are ordinary slots.** `internal` / `default` select the host Claude tier;
+`opus` / `sonnet` / `haiku` / `claude-*` select a specific one. They go in the same `models`
+array as Grok and Gemini and run on the user's Claude subscription through the native
+passthrough — no API key, no translation. Because they go through the tool, they are
+covered by `require_pattern` like every other slot.
+
+**`require_pattern` is the success oracle, not the exit code.** A slot that exits 0 having
+never produced the shape the prompt demanded is reported FAILED (state EMPTY, reason
+`shape_mismatch`). Set it whenever the prompt mandates an output shape. Omitting it is how
+a vote-less response gets counted as a vote.
+
+**Reading the results.** The tool writes each slot to `response-NN.md` in the session
+directory and maps slot ID to model name in `manifest.json`. IDs are shuffled, so responses
+can be read blind before the mapping is consulted. **Never write an example naming a file
+like `grok-result.md`** — the tool does not produce those, and a workflow that expects one
+reads nothing.
+
+### `create_session` — one model, full session
+
+```
+create_session(model, prompt, timeout_seconds, agent, claude_flags, work_dir)
+  → session_id
+```
+
+The child runs a full Claude Code session — plugins, skills, tools, its own working
+directory — in its own process. Its transcript never reaches your context window. This is
+the tool that replaces every hand-rolled instruction-file-plus-result-file pattern.
+
+Lifecycle, driven by channel events:
+
+| Event | What you do |
+|---|---|
+| `session_started` | Note the `session_id`; report "Delegating to {MODEL}…" |
+| `tool_executing` | Optional progress line |
+| `input_required` | `AskUserQuestion` → `send_input(session_id, answer)` |
+| `completed` | `get_output(session_id)` (`tail_lines` to trim) |
+| `failed` / `timeout` | `get_diagnostics(session_id)` → report → stop |
+| — | `cancel_session(session_id)` to stop it; `list_sessions()` to see all |
+
+### `run_prompt` — one completion, no session
+
+```
+run_prompt(model, prompt, system_prompt, max_tokens)
+```
+
+No tools, no working directory, no lifecycle. Use it when you want an opinion, not work.
+
+### Catalog and reporting
+
+```
+list_models()                 // current recommended set — call this first, always
+search_models(query)          // every live variant in a family
+compare_models(...)           // capability comparison
+preflight()                   // runtime readiness check
+report_error(error_type, model, stderr_snippet, session_path, additional_context)
+```
+
+## Choosing between the tools
+
+```
+Does the task need a panel of independent opinions?
+    → team(mode="run", ...) with require_pattern
+
+Does it need one model to DO work — read files, write code, run commands?
+    → create_session(...) → get_output(session_id)
+
+Do you just need one model's answer to one question?
+    → run_prompt(...)
+
+Do you need to know what models exist?
+    → list_models() / search_models(query)
+```
+
+Task size is not a factor in that choice, and never was. A "simple" prompt and a
+multi-phase workflow both go through the same tools; a long prompt is just a long `prompt`
+or `input` argument. There is no size at which shelling out becomes correct.
+
+## 🤖 Agent Selection Guide
+
+### Step 1: Find the Right Agent
+
+**When user requests Claudish task, follow this process:**
+
+1. **Check for existing agents** that suit the task type
+2. **If no suitable agent exists:**
+   - Suggest creating a new agent for this task type
+   - Offer to proceed with the generic `general-purpose` agent if user declines
+3. **If user declines agent creation:**
+   - Proceed with `general-purpose` and say so
+
+### Step 2: Agent Type Selection Matrix
+
+> **Note:** Every model — native and external — is invoked via claudish MCP tools (`team`,
+> `create_session`). The orchestrator resolves the agent and passes it in the tool's `agent`
+> parameter, which applies to every child in the run. Task context still travels in the prompt.
+
+| Task Type | Recommended Agent | Alternatives | Notes |
+|-----------|----------------------|--------------|-------|
+| **Investigation** | `dev:researcher` | `code-analysis:detective` | For finding bugs, tracing issues |
+| **Code review** | `dev:reviewer` | `code-analysis:detective` | Security, correctness, maintainability passes |
+| **Architecture** | `dev:architect` | — | Design and planning tasks |
+| **Implementation** | `dev:developer` | — | Building features |
+| **Testing** | `dev:test-architect` | — | Test strategy and coverage |
+| **Debugging** | `dev:debugger` | — | Error analysis and tracing |
+| **Documentation** | `dev:docs` | `dev:researcher` | Writing or auditing documentation |
+| **UI/Design** | `dev:frontend` | `designer` plugin | Visual and UX tasks |
+
+### Step 3: Agent Creation Offer (When No Agent Exists)
+
+**Template response:**
+```
+I notice you want to use [Model Name] for [task type].
+
+RECOMMENDATION: Create a specialized [task type] agent.
+
+This would:
+✅ Provide better task-specific guidance
+✅ Reusable for future [task type] tasks
+✅ Optimized prompting for [Model Name]
+
+Options:
+1. Create specialized agent (recommended) - takes 2-3 minutes
+2. Use generic general-purpose agent - works but less optimized
+
+Which would you prefer?
+```
+
+### Step 4: Common Agents by Plugin
+
+**Frontend Plugin:**
+- `typescript-frontend-dev` - Use for UI implementation with external models
+- `frontend-architect` - Use for architecture planning with external models
+- `senior-code-reviewer` - Use for code review (can delegate to external models)
+- `test-architect` - Use for test planning/implementation
+
+**Bun Backend Plugin:**
+- `backend-developer` - Use for API implementation with external models
+- `api-architect` - Use for API design with external models
+
+**Code Analysis Plugin:**
+- `codebase-detective` - Use for investigation tasks with external models
+
+**No Plugin:**
+- `general-purpose` - Default fallback for any task
+
+### Step 5: Example Agent Selection
+
+**Example 1: User says "use Grok to implement authentication"**
+```
+Task: Code implementation (authentication)
+
+Decision:
+1. Resolve "grok" via list_models / search_models
+2. Pick the agent: implementation → dev:developer
+3. create_session(model=<resolved id>, prompt=TASK,
+     timeout_seconds=300, agent="dev:developer", work_dir=REPO)
+4. On completed → get_output(session_id) → summarise
+```
+
+**Example 2: User says "ask GPT-5 to review my API design"**
+```
+Task: Code review (API design)
+
+Decision:
+1. Resolve the GPT family via search_models("gpt") — a named version is a hard constraint
+2. Pick the agent: review → dev:reviewer
+3. One reviewer → create_session(model=<resolved id>, prompt=REVIEW_PROMPT,
+                    agent="dev:reviewer", timeout_seconds=300)
+   A panel       → team(mode="run", path=SESSION_DIR, models=[...],
+                    input=REVIEW_PROMPT, timeout=180, agent="dev:reviewer")
+```
+
+**Example 3: User says "use Gemini to refactor this component"**
+```
+Task: Refactoring (component)
+
+Decision:
+1. Resolve "gemini" via search_models("gemini")
+2. No specialised refactoring agent exists → offer to create one
+3. User declines → agent="dev:frontend", else "general-purpose"
+4. create_session(model=<resolved id>, prompt=TASK, agent=<chosen>, work_dir=REPO)
+```
+
+## Team Mode Integration
+
+When used with the `/team` command for multi-model blind voting, every model — native and
+external — is invoked through the `team` MCP tool in a single call:
+
+```
+team(mode="run", path=SESSION_DIR, models=["internal", "grok", "gemini"],
+  input=VOTE_PROMPT, timeout=180, require_pattern="```vote", agent=RESOLVED_AGENT)
+```
+
+The tool runs all slots in parallel internally and returns structured per-model results.
+The agent is passed in `agent`; the task context travels in `input`. Responses land in
+`response-NN.md` with `manifest.json` holding the slot-to-model mapping, so they can be
+read blind.
+
+## Overview
+
+**Claudish** is an external-model runtime: it runs Claude Code against any model a provider
+catalog offers (Grok, GPT-5, MiniMax, Gemini, Kimi, …) by proxying through a local
+Anthropic-API-compatible server, and it exposes that capability to Claude Code as an **MCP
+server**. Magus talks to the MCP server. It does not talk to the binary.
+
+Claudish:
+- ✅ Runs Claude Code with **any catalogued model**, not just Anthropic's
+- ✅ Supports **multiple backends** (OpenRouter, Gemini Direct, OpenAI Direct, Ollama, …)
+- ✅ Runs native Claude tiers through a passthrough on the user's own subscription
+- ✅ Supports 100% of Claude Code features inside a session
+- ✅ Tracks cost and returns it in the session record
+- ✅ Enables multi-model workflows via `team`
+
+**Use Cases:**
+- Run tasks with different models (fast coding, deep reasoning, vision)
+- Compare model performance on the same task
+- Reduce cost by routing simple tasks to cheaper models
+- Reach models with specialised capabilities
+
+## Routing is Claudish's, not ours
+
+**Magus implements no routing.** Not provider prefixes, not fallback chains, not API-key
+detection, not pre-flight reachability checks. Send the catalog's `id` (see "Identity vs
+routing address" above) and let claudish resolve it. That is the whole contract.
+
+This section used to hold a provider/prefix/env-var table and a routing troubleshooting
+guide. Both are deleted, for two reasons:
+
+1. **Ownership.** The Responsibility Boundaries table above assigns "Model ID → API
+   endpoint" and "API keys, backend fallbacks" to Claudish. A routing guide here
+   contradicts that and invites plugin code to compensate for provider behaviour.
+2. **Drift.** The deleted table had gone stale and was teaching wrong routing — `or/` when
+   the separator is `@`, and "no `deepseek/` prefix in claudish" after `deepseek` became a
+   provider. Anything restated here decays the same way.
+
+**A model that will not route is a claudish bug, not a magus workaround.** Do not add
+retry, probe, or fallback logic to a command, agent, or skill in this repo to route around
+it. Report it instead — `report_error` via the claudish MCP server, which anonymises paths
+and keys.
+
+## Requirements
+
+- **Claudish binary on `PATH`** — `npm install -g claudish` (or `bun add -g claudish`).
+  It is the runtime the MCP server runs inside; without it there are no tools.
+- **Claude Code** — must be installed.
+
+**Credentials are Claudish's, and are deliberately not listed here.** There is no single
+required key: which providers a model can reach, and which env var each one reads, is
+claudish's routing concern and changes most releases. An earlier version of this section
+named three providers out of roughly two dozen, called OpenRouter "required" when it is
+not, and used a `/` separator that has never been correct — the exact drift that made this
+skill teach wrong routing.
+
+The authoritative, always-current list is the ENVIRONMENT VARIABLES section of
+`claudish --help` (a diagnostic — see below).
+
+If a model fails for want of a credential, that is a claudish diagnosis. Do not add key
+checks or provider detection to this repo.
+
+## Diagnostics: the only CLI left
+
+Exactly four CLI invocations remain permitted, and **only for investigating the runtime.**
+They are read-only, they produce no work, and none of them may appear in a workflow that is
+trying to accomplish a task:
+
+| Command | Answers |
+|---|---|
+| `claudish --probe <models> --json` | Every hop the router would take for these IDs, and where it breaks |
+| `claudish --help` | Flags, and the authoritative ENVIRONMENT VARIABLES list |
+| `claudish --version` | Which runtime is installed |
+| `claudish --models [query]` | Ad-hoc catalog lookup **while debugging the catalog itself** |
+
+**These are for a human debugging session, not for orchestration.** In particular,
+`--models` is NOT how a workflow discovers models — `list_models` and `search_models` are,
+because they return structured records the workflow can act on. Reaching for `--models` in
+a task is the CLI habit sneaking back in through the one door left open.
+
+Anything not on this list — `--model`, `--stdin`, `--json`, `--agent`, `--port`,
+`--interactive`, `--quiet` — has an MCP equivalent above and must be used through it.
+
+Do not encode a diagnostic's output as procedure in this repo. It describes claudish's
+behaviour at one moment; restating it here is how the routing table went stale.
+
+## Delegation Patterns
+
+### Pattern 1: One model does a piece of work
+
+```
+// Resolve first (list_models / search_models), then:
+create_session(model=RESOLVED_ID, prompt=TASK_PROMPT, timeout_seconds=300,
+  agent="dev:developer", work_dir=REPO_PATH)
+→ session_started : report "Delegating to {MODEL}…"
+→ input_required  : AskUserQuestion → send_input(session_id, answer)
+→ completed       : get_output(session_id, tail_lines=200) → summarise for the user
+→ failed/timeout  : get_diagnostics(session_id) → report → stop
+```
+
+The session's own transcript stays out of your context — that is the point, and it is why
+no instruction file, no result file and no `/tmp` scratch is involved. Do not reintroduce
+them.
+
+### Pattern 2: A long or structured prompt
+
+Put it in the `prompt` (or `input`) argument. There is no command-line length limit to work
+around, because there is no command line.
+
+```
+PROMPT = "# Code Review Task\n"
+       + "\n## Files\n"      + files.map(f => "- " + f).join("\n")
+       + "\n\n## Criteria\nCorrectness, maintainability, performance, security"
+       + "\n\n## Required output shape\nEnd with a fenced `review` block containing "
+       + "VERDICT and ISSUES."
+
+create_session(model=RESOLVED_ID, prompt=PROMPT, timeout_seconds=300,
+  agent="dev:reviewer", work_dir=REPO_PATH)
+```
+
+If the prompt mandates a shape, run it through `team` instead with
+`require_pattern="```review"` so a shapeless response is reported FAILED rather than
+accepted.
+
+### Pattern 3: Several models on the same prompt
+
+One `team` call. Not a loop, not one session per model — the tool parallelises internally
+and returns one structured result set.
+
+```
+team(mode="run", path=SESSION_DIR, models=["internal", "grok", "gemini"],
+  input=PROMPT, timeout=180, require_pattern="```review", agent="dev:reviewer")
+```
+
+Read `response-NN.md` for the responses and `manifest.json` for the slot-to-model mapping.
+Per-slot status comes back in the tool result: check every one.
+
+## Failure Handling
+
+Failures arrive as **structured data**, not as text on stderr. There are exactly two shapes.
+
+### From `team`: the per-model result object
+
+Each slot reports its own status. Read every one — a run where three of five slots came
+back is a partial success you must disclose, not a success.
+
+| What you see | What it means |
+|---|---|
+| status `failed` | The slot errored. The result carries the error. |
+| state EMPTY, reason `shape_mismatch` | The slot exited 0 but never matched `require_pattern`. Treat as failed. |
+| below `min_output_bytes` | Effectively empty. Treat as failed. |
+
+Show failed slots as FAILED in your results table, proceed with the survivors, and name
+what failed. No retry, no substitution.
+
+### From `create_session`: the channel event
+
+| Event | Meaning | Next call |
+|---|---|---|
+| `failed` | The child exited with an error | `get_diagnostics(session_id)` |
+| `timeout` | It hit `timeout_seconds` and was killed | `get_diagnostics(session_id)` |
+| `completed` with empty or surprising output | Suspect a silent failure | `get_diagnostics(session_id)` |
+
+`get_diagnostics` returns the child's stderr, upstream error bodies, recent event frames,
+the resolved model chain, and paths to the full records — with no re-run and no debug flag.
+
+### The escalation rule: STOP and REPORT
+
+Never silently substitute. If the user asked for Gemini and Gemini failed, do not quietly
+run GPT-5, and do not quietly fall back to the embedded Claude.
+
+```
+"{Model} failed.
+
+What happened:
+1. Tool: {team | create_session}
+   Error: {error from the result object or the failed channel event}
+
+Options:
+(1) Retry the same model
+(2) Use a different model
+(3) Skip this model, continue with the others
+(4) Cancel
+(5) Report this error to claudish developers
+
+Which do you prefer?"
+```
+
+On (5), call `report_error(error_type, model, stderr_snippet, session_path,
+additional_context)`. `error_type` is one of `provider_failure`, `adapter_error`,
+`stream_error`, `team_failure`. **Consent is required** — always ask first. Data is
+sanitised (keys, paths, emails stripped) before sending.
+
+## Best Practices
+
+### 1. ✅ Resolve models live, every run
+
+Call `list_models` before you name a model, and `search_models` for a specific family.
+Never a remembered ID, never a committed list.
+
+### 2. ✅ Choose the tool by task shape, not task size
+
+Panel → `team`. Work → `create_session`. An answer → `run_prompt`. Size never makes
+shelling out correct.
+
+### 3. ✅ Set `require_pattern` whenever the prompt demands a shape
+
+It is the only thing standing between "exited 0" and "actually produced a vote".
+
+### 4. ✅ Pass the agent in the `agent` parameter
+
+Not in the prompt, and not via `claude_flags` — an `--agent` in `claude_flags` loses to
+`agent`. It applies to every child in the run; there is no per-model form.
+
+### 5. ✅ Let sessions carry the context
+
+A `create_session` child runs in its own process, so its transcript costs you nothing.
+Summarise its `get_output` for the user rather than pasting it.
+
+### 6. ✅ Check every slot's status before you believe a result
+
+Structured per-slot status is the reason to use these tools. Ignoring it throws away the
+advantage.
+
+## Anti-Patterns (Avoid These)
+
+### ❌ Don't Ignore Model Selection
+
+**Wrong:** taking whatever the default is for every task.
+
+**Right:** pick for the task — fast variants for iteration, reasoning models for analysis,
+large-context models for whole-repo work — and resolve the choice against `list_models`.
+
+### ❌ Don't Hardcode Model Lists
+
+**Wrong:**
+```typescript
+const MODELS = ["grok", "gpt"];
+```
+
+**Right:** resolve from the live catalog at call time.
+
+```
+list_models()                    → current recommended set
+search_models({ query: "kimi" }) → every live variant in a family
+```
+
+### ✅ Do Accept Custom Models From Users
+
+**Problem:** the user provides a model ID that `list_models` does not return.
+
+**Wrong (rejecting it):**
+```typescript
+const shortlist = ["grok", "gpt"];
+if (!shortlist.includes(userModel)) {
+  throw new Error("Model not in my shortlist"); // ❌ DON'T DO THIS
+}
+```
+
+**Right:** pass it to the tool and let claudish validate it.
+
+```
+create_session(model=userModel, prompt=TASK, timeout_seconds=300)
+```
+
+Users legitimately have access to beta models, private fine-tunes, newly released models
+not yet in the recommended set, and regional or enterprise endpoints. Say that the ID is
+not in the recommended set if it is not, then run it anyway — claudish decides whether it
+resolves.
+
+### ❌ Don't Skip Error Handling
+
+```
+// On a `failed` channel event → STOP and REPORT
+// "Grok failed: {error content}. Options: (1) Retry, (2) Different model, (3) Skip, (4) Cancel"
+// On `completed` → get_output(session_id)
+```
+
+**❌ NEVER do silent fallback.** If `create_session` fails for Gemini, do not silently run
+with the embedded Claude instead. Report the failure and let the user decide.
+
+## Troubleshooting
+
+### The claudish MCP tools are not available
+
+The plugin's `.mcp.json` starts the server by launching the claudish binary, so the binary
+must be installed (`npm install -g claudish`) and on `PATH`. Restart the session so the MCP
+server registers. Confirm with `claudish --version`.
+
+### A slot reported FAILED, or came back empty
+
+Read the error from the per-model result (`team`) or call `get_diagnostics` (`create_session`).
+Common causes: rate limits, an ID the catalog no longer lists, a missing credential for that
+provider. An empty response that exited 0 usually means `require_pattern` did its job.
+
+### A model will not route
+
+`claudish --probe <models> --json` shows every hop and where it breaks. A 401 there can mean
+"this provider does not carry this model", not "your key is wrong". Whatever it shows, the
+fix belongs in claudish — `report_error`, not a workaround here.
+
+### The response is slow, or costs more than expected
+
+Pick a different model — resolve alternatives with `list_models`, which carries pricing and
+capability data, and check context sizes there rather than assuming. Cost per session comes
+back in the session record; you do not need to parse anything to get it.
+
+### Context window exceeded inside a session
+
+Use a larger-context model from `list_models`, or split the task into several
+`create_session` calls. Do not try to trim by moving work into files — the session already
+keeps its own transcript out of your context.
+
+## Additional Resources
+
+- Claudish GitHub: https://github.com/MadAppGang/claudish
+- Install the runtime: `npm install -g claudish`
+- OpenRouter: https://openrouter.ai · Models: https://openrouter.ai/models
+
+---
+
+**Maintained by:** MadAppGang
+**Last Updated:** August 22, 2026
