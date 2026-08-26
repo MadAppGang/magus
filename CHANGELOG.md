@@ -4,6 +4,97 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Marketplace 10.1.0] - 2026-08-26
+
+### Fixed
+
+- **`dev` v4.6.0**: registered skills go from 9 to 43 — the 34 nested under
+  `skills/<category>/<name>/` had been unreachable for eight months, answering `Unknown skill`,
+  the same string a skill that was never written returns. Agents (13) and commands (15) unchanged.
+
+- **`code-analysis` v5.4.2, `multimodel` v3.9.1, `seo` v2.1.1, `designer` v0.5.3,
+  `terminal` v4.1.7, `gtd` v2.1.1, `kanban` v1.6.2, `browser-use` v1.7.3**: plugin manifest moved
+  to `.claude-plugin/plugin.json`, the only location Claude Code's runtime loader reads. Component
+  counts are unchanged — none of these nested their skills — but the manifest is now actually read.
+
+- **`setup` v1.1.1, `statusline` v3.0.1, `go` v0.1.2, `dingo` v1.0.2, `madbench` v0.2.4,
+  `image-generate` v3.1.1, `video-editing` v1.2.2, `instantly` v2.0.2, `autolinear` v0.4.2,
+  `claudish` v1.0.2**: the same manifest move, with no change to what each registers.
+
+- **`bunjs` v0.4.2**: the same manifest move, and additionally dropped a `["./commands"]`
+  declaration — the default directory by another spelling, which would have registered zero
+  commands once the manifest was actually read.
+
+- **The manifest location was the whole bug.** Every plugin kept `plugin.json` at the plugin root,
+  which is read at install time only. With no manifest at the location the runtime reads, the
+  loader falls back to a convention scan that reaches exactly one level under `skills/`. An
+  enumerated nested path in the root manifest was real and simply never seen.
+
+- **Moving the file was only half of it — the move alone silently broke agents**, taking `dev` from
+  13 to 0. Once a manifest is actually read, a field naming a **default** location REPLACES the
+  auto-scan instead of adding to it: `agents`, `commands` and `hooks` each register zero (`hooks`
+  also reports `Duplicate hooks file detected`). `skills` is the documented exception and is
+  additive, which is the only reason nested paths can work at all. 18 manifests were trimmed of
+  declarations naming default paths.
+
+- **`tools/magus-harness` would have shipped a Claude manifest inside every Codex plugin.**
+  `codex-dist.ts` excluded the old manifest path from the output copy — a check that fails
+  silently. Fixed, plus a guard in `codex-plugin-spec.ts` that rejects a `.claude-plugin/` directory
+  in Codex output. Its own test fixture still wrote the pre-move shape, so the build threw `ENOENT`
+  the first time it ran; fixture corrected, and the silent half now has an assertion.
+
+- **`skills/release/scripts/apply.ts` overwrote the marketplace `description` with the release
+  note.** CLAUDE.md documented this as already fixed; it was not. Preparing this release, it
+  proposed replacing dev's description with `"FIX: move every manifest to .claude-plugin/…"`. It
+  also drifts `marketplace.json` out of parity with `plugin.json`, which `validate-versions.js`
+  fails. Versions only now — release notes keep their three legitimate homes: the commit subject,
+  the tag message, and this file.
+
+- **`scripts/check-skill-reachability.ts` encoded a rule this release disproves.** It treated every
+  `depth > 1` skill as unregistered, stating the failure happens "even when plugin.json enumerates
+  the nested path explicitly" — true only while the enumerating manifest sat where the runtime never
+  reads it. The rule is now what the loader does: depth 1 registers by auto-scan, deeper registers
+  **iff** `.claude-plugin/plugin.json` enumerates the path. `UNREGISTERED` drops 34 to 0, which
+  makes `--strict` gateable for the first time.
+
+### Added
+
+- `scripts/check-plugin-registration.ts` — installs this repo as a real local marketplace into an
+  isolated `CLAUDE_CONFIG_DIR` and compares registered components against disk, per plugin. 20/20
+  pass. It takes counts from `claude plugin details` but gates the verdict on `claude plugin list`,
+  because those two answer different questions.
+
+### Why
+
+  This was documented, not discovered. Anthropic's plugins reference carries a warning naming the
+  exact mistake, and CLAUDE.md has said the same since January. The rule was written down twice and
+  shipped against for eight months, because everything kept working: every routing row in CLAUDE.md
+  names a **file to read**, and reading a file needs no skill registry. Those rows survived
+  precisely the failure they pointed into.
+
+  The trap that cost three retractions on the `dependencies` question alone: `claude plugin details`
+  reports what a manifest **declares** and will list every component of a plugin that failed to
+  load, while `claude plugin list` reports what actually **loaded**. Never verify loading with
+  `details`.
+
+### Migration notes
+
+  **The real per-turn skill listing cost went up, and that was predicted.** Those 34 skills were
+  already charged to `skill-budget-check.ts` while never reaching a listing; registering them turned
+  1,530 theoretical chars into real ones. The corpus now costs **10,329 chars** against a runtime
+  budget of 8,000 at 200k context — over by 2,329, so descriptions are shortened to fit until the
+  corpus is trimmed. A larger context window raises the budget (`context × 4 × 0.01`), so it fits
+  from 259k tokens up.
+
+  Nothing to do on upgrade. `dev` depends on `claudish`, `mnemex` and `multimodel` — an unsatisfied
+  dependency makes the **whole plugin** fail to load, so ship them together.
+
+  `mnemex` is deliberately absent from this release: v1.0.2 is already claimed by in-flight work on
+  another branch. It has no components (README and manifest only), so the move is cosmetic for it
+  and nothing is withheld by waiting.
+
+---
+
 ## [designer 0.5.2] - 2026-08-24
 
 ### Fixed

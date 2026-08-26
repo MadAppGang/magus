@@ -1,6 +1,6 @@
 {
   "name": "code-analysis",
-  "version": "5.4.1",
+  "version": "5.4.2",
   "description": "Codebase investigation and semantic search. Maps architecture, traces callers and callees, and ranks symbols by PageRank through the mnemex AST engine, with a read-only detective agent for deep dives.",
   "author": {
     "name": "Jack Rudenko",
@@ -33,21 +33,12 @@
       "version": "^1.0"
     }
   ],
-  "agents": [
-    "./agents/codebase-detective.md"
-  ],
-  "commands": [
-    "./commands/analyze.md",
-    "./commands/help.md",
-    "./commands/setup.md"
-  ],
   "skills": [
     "./skills/deep-analysis",
     "./skills/mnemex-search",
     "./skills/mnemex-orchestration",
     "./skills/investigate"
   ],
-  "hooks": "./hooks/hooks.json",
   "conventions": {
     "gitignore": {
       "project": [

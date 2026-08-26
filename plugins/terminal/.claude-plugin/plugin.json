@@ -1,6 +1,6 @@
 {
   "name": "terminal",
-  "version": "4.1.6",
+  "version": "4.1.7",
   "description": "Intent-level terminal control over tmux. Runs interactive commands, dev servers, test watchers, REPLs and TUI apps, and refuses to send keys into a pane that already has a process in the foreground.",
   "author": {
     "name": "Jack Rudenko",
@@ -22,20 +22,6 @@
     "test-watcher"
   ],
   "category": "development",
-  "agents": [
-    "./agents/tui-navigator.md"
-  ],
-  "commands": [
-    "./commands/run.md",
-    "./commands/watch.md",
-    "./commands/observe.md",
-    "./commands/repl.md",
-    "./commands/tui.md",
-    "./commands/help.md",
-    "./commands/session.md",
-    "./commands/snapshot.md",
-    "./commands/send.md"
-  ],
   "skills": [
     "./skills/terminal-interaction",
     "./skills/tui-navigation-patterns",
@@ -51,6 +37,5 @@
       "tmux"
     ]
   },
-  "hooks": "./hooks/hooks.json",
   "mcpServers": "./.mcp.json"
 }

@@ -7,7 +7,7 @@ SEO analysis and optimisation. Audits content and technical SEO, proposes and ap
 
 | | |
 |---|---|
-| Version | `2.1.0` |
+| Version | `2.1.1` |
 | Marketplace | [`magus-marketing`](./index.md) |
 | Commands | 9 |
 | Subagents | 5 |

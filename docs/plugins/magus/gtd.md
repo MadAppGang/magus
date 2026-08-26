@@ -7,7 +7,7 @@ Getting Things Done workflow. Capture, clarify, organise, reflect and engage ove
 
 | | |
 |---|---|
-| Version | `2.1.0` |
+| Version | `2.1.1` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 7 |
 | Subagents | 1 |

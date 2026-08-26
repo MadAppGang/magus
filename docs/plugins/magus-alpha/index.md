@@ -18,7 +18,7 @@ Plugin IDs carry the marketplace, so these are `name@magus-alpha`.
 
 | Plugin | Version | What it does |
 |---|---|---|
-| [`autolinear`](./autolinear.md) | 0.4.1 | Autonomous Linear to Claude Code bridge. Picks up issues labelled @autolinear, routes them to agents by tag, captures proof-of-work, and drives each issue from Todo to Done with reviewer feedback loops. Alpha: manual /autolinear:run is end to end; webhook pickup stops at a dispatch stub. |
+| [`autolinear`](./autolinear.md) | 0.4.2 | Autonomous Linear to Claude Code bridge. Picks up issues labelled @autolinear, routes them to agents by tag, captures proof-of-work, and drives each issue from Todo to Done with reviewer feedback loops. Alpha: manual /autolinear:run is end to end; webhook pickup stops at a dispatch stub. |
 
 Turn any of them on from the Plugins tab. To give a team the same set, press `s` to save
 your selection as a profile and commit it — see [Teams and profiles](../../guides/teams.md).

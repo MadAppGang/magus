@@ -7,7 +7,7 @@ Provider-agnostic AI image generation and editing. One interface over Nano Banan
 
 | | |
 |---|---|
-| Version | `3.1.0` |
+| Version | `3.1.1` |
 | Marketplace | [`magus-marketing`](./index.md) |
 | Commands | 3 |
 | Subagents | 2 |

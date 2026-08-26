@@ -7,8 +7,16 @@
  *
  *   1. Validate: working tree clean, every proposed tag is unused,
  *      every plugin.json + marketplace.json entry exists.
- *   2. Update plugins/<name>/plugin.json version + description.
- *   3. Update .claude-plugin/marketplace.json plugin entry (version + description).
+ *   2. Update plugins/<name>/.claude-plugin/plugin.json version.
+ *   3. Update .claude-plugin/marketplace.json plugin entry version.
+ *
+ * VERSIONS ONLY — a release never touches `description`. The proposal's
+ * `description` is the release NOTE, and it belongs in the commit subject, the tag
+ * message, and CHANGELOG.md (from which generate-releases.ts fills the `releases`
+ * field). `description` answers "what is this plugin", changes rarely, and is
+ * written by a human. This script used to assign the release note over it, which is
+ * why claudeup's plugin panel once showed a changelog line where the plugin's
+ * purpose belonged. validate-versions.js rejects that shape on every commit.
  *   4. git add + commit (single commit for the batch).
  *   5. git tag for each plugin (plugins/<name>/v<X.Y.Z>).
  *   6. git push origin main --tags.
@@ -101,9 +109,9 @@ function validate(proposal: ReleaseProposal, opts: { skipPush: boolean }): void 
 
   // Every plugin dir + plugin.json must exist
   for (const p of proposal.plugins) {
-    const manifest = join(SRC_ROOT, "plugins", p.name, "plugin.json");
+    const manifest = join(SRC_ROOT, "plugins", p.name, ".claude-plugin", "plugin.json");
     if (!existsSync(manifest)) {
-      die(`plugins/${p.name}/plugin.json not found`);
+      die(`plugins/${p.name}/.claude-plugin/plugin.json not found`);
     }
   }
   console.log("  ✓ all plugin manifests found");
@@ -149,11 +157,11 @@ function validate(proposal: ReleaseProposal, opts: { skipPush: boolean }): void 
 // ─── File mutations ───────────────────────────────────────────────────────────
 
 function updatePluginManifest(p: PluginProposal, dryRun: boolean): void {
-  const path = join(SRC_ROOT, "plugins", p.name, "plugin.json");
+  const path = join(SRC_ROOT, "plugins", p.name, ".claude-plugin", "plugin.json");
   const manifest = readJson<Record<string, unknown>>(path);
   const before = manifest.version;
   manifest.version = p.proposedVersion;
-  console.log(`  plugins/${p.name}/plugin.json: ${before} → ${p.proposedVersion}`);
+  console.log(`  plugins/${p.name}/.claude-plugin/plugin.json: ${before} → ${p.proposedVersion}`);
   if (!dryRun) writeJsonPreserving(path, manifest);
 }
 
@@ -166,7 +174,10 @@ function updateMarketplaceEntry(p: PluginProposal, dryRun: boolean): void {
   if (!entry) die(`marketplace entry for ${p.name} vanished between validate and apply`);
   const versionBefore = entry.version;
   entry.version = p.proposedVersion;
-  entry.description = p.description;
+  // Deliberately NOT `entry.description = p.description`. See the header note: the
+  // durable description and the release note are different fields with different
+  // authors, and assigning one over the other also drifts marketplace.json out of
+  // parity with plugin.json, which validate-versions.js fails on.
   console.log(`  marketplace.json[${p.name}]: v${versionBefore} → v${p.proposedVersion}`);
   if (!dryRun) writeJsonPreserving(path, mp);
 }

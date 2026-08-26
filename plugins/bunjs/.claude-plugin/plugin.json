@@ -1,6 +1,6 @@
 {
   "name": "bunjs",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Bun and TypeScript toolkit. A `/bunjs:bun` index routes any task to the right one of eight task-shaped skills — setup, HTTP, errors, testing, security, production, performance, TUI — each shipping copyable code verified against Bun. Only Bun is tested.",
   "author": {
     "name": "Jack Rudenko",
@@ -42,9 +42,6 @@
     "./skills/production",
     "./skills/performance",
     "./skills/tui"
-  ],
-  "commands": [
-    "./commands"
   ],
   "compatibility": {
     "claudeCode": ">=0.1.0"

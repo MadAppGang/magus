@@ -7,7 +7,7 @@
   },
   "metadata": {
     "description": "Curated collection of Claude Code plugins for modern full-stack development with LLM performance tracking and E2E skill testing",
-    "version": "10.0.0",
+    "version": "10.1.0",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -15,7 +15,7 @@
       "name": "code-analysis",
       "source": "./plugins/code-analysis",
       "description": "Codebase investigation and semantic search. Maps architecture, traces callers and callees, and ranks symbols by PageRank through the mnemex AST engine, with a read-only detective agent for deep dives.",
-      "version": "5.4.1",
+      "version": "5.4.2",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -40,6 +40,11 @@
       "strict": true,
       "releases": [
         {
+          "version": "5.4.2",
+          "date": "2026-08-26",
+          "summary": "Plugin manifest moved to .claude-plugin/plugin.json, the only location Claude Code's runtime\u2026"
+        },
+        {
           "version": "5.4.1",
           "date": "2026-08-19",
           "summary": "Four skill-as-agent dispatches corrected in mnemex-orchestration \u2014 investigate and\u2026"
@@ -61,11 +66,6 @@
             "Changed"
           ],
           "summary": "Pointers to the deleted shared/model-aliases.json replaced with live-catalog resolution, and\u2026"
-        },
-        {
-          "version": "5.3.0",
-          "date": "2026-05-09",
-          "summary": "Extracted mnemex + claudish from its .mcp.json. Now declares both as dependencies per\u2026"
         }
       ]
     },
@@ -73,7 +73,7 @@
       "name": "claudish",
       "source": "./plugins/claudish",
       "description": "MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting across models, manages async sessions, and streams channel notifications. Required by code-analysis, dev, multimodel, designer and seo.",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -94,6 +94,11 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "1.0.2",
+          "date": "2026-08-26",
+          "summary": "The same manifest move, with no change to what each registers"
+        },
         {
           "version": "1.0.1",
           "date": "2026-08-19",
@@ -147,7 +152,7 @@
       "name": "multimodel",
       "source": "./plugins/multimodel",
       "description": "Multi-model collaboration and orchestration. Runs a task across several AI models in parallel and aggregates their blind APPROVE/REJECT votes, or delegates it to one model running a full Claude Code session.",
-      "version": "3.9.0",
+      "version": "3.9.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -172,6 +177,11 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "3.9.1",
+          "date": "2026-08-26",
+          "summary": "Plugin manifest moved to .claude-plugin/plugin.json, the only location Claude Code's runtime\u2026"
+        },
         {
           "version": "3.9.0",
           "date": "2026-08-24",
@@ -199,11 +209,6 @@
           "version": "3.7.0",
           "date": "2026-08-19",
           "summary": "New deep-analyst agent \u2014 multi-source deep investigation running parallel web, local-repo and\u2026"
-        },
-        {
-          "version": "3.6.0",
-          "date": "2026-08-18",
-          "summary": "Same tool-and-instruction correction across its agents"
         }
       ]
     },
@@ -211,7 +216,7 @@
       "name": "dev",
       "source": "./plugins/dev",
       "description": "Universal development assistant. Detects the project stack and routes work to specialist agents for architecture, implementation, debugging, review and research, enforcing design-system guardrails on every UI change.",
-      "version": "4.5.0",
+      "version": "4.6.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -251,6 +256,11 @@
       "strict": true,
       "releases": [
         {
+          "version": "4.6.0",
+          "date": "2026-08-26",
+          "summary": "Registered skills go from 9 to 43 \u2014 the 34 nested under skills/<category>/<name>/ had been\u2026"
+        },
+        {
           "version": "4.5.0",
           "date": "2026-08-24",
           "kinds": [
@@ -281,11 +291,6 @@
             "Added"
           ],
           "summary": "/dev:release \u2014 a phased release command for any project"
-        },
-        {
-          "version": "4.3.0",
-          "date": "2026-08-19",
-          "summary": "Reproduction exit codes corrected in /dev:fix AND the systematic-debugging skill it loads\u2026"
         }
       ]
     },
@@ -293,7 +298,7 @@
       "name": "go",
       "source": "./plugins/go",
       "description": "Go development toolkit. Ships the go-tui skill for building Charm-stack terminal UIs (Bubble Tea, Lip Gloss, Bubbles, ntcharts), with a colour-accurate screenshot workflow for reviewing a running TUI.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -311,6 +316,11 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "0.1.2",
+          "date": "2026-08-26",
+          "summary": "The same manifest move, with no change to what each registers"
+        },
         {
           "version": "0.1.1",
           "date": "2026-07-29",
@@ -333,7 +343,7 @@
       "name": "dingo",
       "source": "./plugins/dingo",
       "description": "BETA \u2014 Dingo language toolkit. Idiomatic Result and Option types, error propagation, enums, pattern matching, lambdas and safe navigation, with compiler-verified patterns. Interfaces may still change.",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -362,6 +372,11 @@
       "strict": true,
       "releases": [
         {
+          "version": "1.0.2",
+          "date": "2026-08-26",
+          "summary": "The same manifest move, with no change to what each registers"
+        },
+        {
           "version": "1.0.1",
           "date": "2026-08-19",
           "summary": "Description rewritten; dingo-developer skill frontmatter slimmed to matcher-read fields only\u2026"
@@ -377,7 +392,7 @@
       "name": "bunjs",
       "source": "./plugins/bunjs",
       "description": "Bun and TypeScript toolkit. A `/bunjs:bun` index routes any task to the right one of eight task-shaped skills \u2014 setup, HTTP, errors, testing, security, production, performance, TUI \u2014 each shipping copyable code verified against Bun. Only Bun is tested.",
-      "version": "0.4.1",
+      "version": "0.4.2",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -409,6 +424,11 @@
       "strict": true,
       "releases": [
         {
+          "version": "0.4.2",
+          "date": "2026-08-26",
+          "summary": "The same manifest move, and additionally dropped a [\"./commands\"] declaration \u2014 the default\u2026"
+        },
+        {
           "version": "0.4.1",
           "date": "2026-08-18",
           "summary": "The index's own paths sent agents to files that do not exist. skills/bun/SKILL.md routed with\u2026"
@@ -439,15 +459,6 @@
             "Changed"
           ],
           "summary": "/bunjs:bun \u2014 an index skill that knows the other eight without loading them"
-        },
-        {
-          "version": "0.2.2",
-          "date": "2026-08-06",
-          "kinds": [
-            "Fixed",
-            "Added"
-          ],
-          "summary": "The skill-discovery claim shipped in 0.2.0 was wrong, and a bench now proves it"
         }
       ]
     },
@@ -455,7 +466,7 @@
       "name": "setup",
       "source": "./plugins/setup",
       "description": "Project setup jobs in one plugin. Investigates a repository and provisions it \u2014 plugins, tools, framework best-practice references, and a seeded knowledge base \u2014 then installs the adaptive statusline and indexes every skill reachable from the project into browsable markdown.",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -475,6 +486,11 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "1.1.1",
+          "date": "2026-08-26",
+          "summary": "The same manifest move, with no change to what each registers"
+        },
         {
           "version": "1.1.0",
           "date": "2026-08-22",
@@ -496,7 +512,7 @@
       "name": "statusline",
       "source": "./plugins/statusline",
       "description": "Deprecated redirect. The statusline now ships inside setup@magus as /setup:statusline-install, -uninstall and -customize. This plugin keeps the /statusline:* commands resolving for one release so no existing install breaks silently, and is removed after that.",
-      "version": "3.0.0",
+      "version": "3.0.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -511,6 +527,11 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "3.0.1",
+          "date": "2026-08-26",
+          "summary": "The same manifest move, with no change to what each registers"
+        },
         {
           "version": "3.0.0",
           "date": "2026-08-06",
@@ -540,15 +561,6 @@
             "Changed"
           ],
           "summary": "The memory segment is now labelled RAM, not MEM: \u2014 it renders RAM 1.1G. In this product's\u2026"
-        },
-        {
-          "version": "2.3.0",
-          "date": "2026-08-04",
-          "kinds": [
-            "Fixed",
-            "Changed"
-          ],
-          "summary": "MEM: measured the statusline script instead of Claude Code"
         }
       ]
     },
@@ -556,7 +568,7 @@
       "name": "browser-use",
       "source": "./plugins/browser-use",
       "description": "Full-platform browser automation. Live-page JS eval, keyboard and focus primitives, environment preflight, and a configurable agent LLM, across dual local and cloud browsers backed by Playwright's own Chromium so your real Chrome is never hijacked. Ten Magus-specific tools on top of the upstream Browser Use MCP set, plus 6 skills.",
-      "version": "1.7.2",
+      "version": "1.7.3",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -578,6 +590,11 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "1.7.3",
+          "date": "2026-08-26",
+          "summary": "Plugin manifest moved to .claude-plugin/plugin.json, the only location Claude Code's runtime\u2026"
+        },
         {
           "version": "1.7.2",
           "date": "2026-08-22",
@@ -613,15 +630,6 @@
             "Changed"
           ],
           "summary": "The idle-cleanup loop was never running"
-        },
-        {
-          "version": "1.5.0",
-          "date": "2026-08-22",
-          "kinds": [
-            "Fixed",
-            "Changed"
-          ],
-          "summary": "The plugin no longer launches your real Chrome"
         }
       ]
     },
@@ -629,7 +637,7 @@
       "name": "designer",
       "source": "./plugins/designer",
       "description": "UI design validation. Compares a rendered screen against its reference by pixel diff, then reviews the result for spacing, hierarchy and design-system consistency.",
-      "version": "0.5.2",
+      "version": "0.5.3",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -652,6 +660,11 @@
       "strict": true,
       "releases": [
         {
+          "version": "0.5.3",
+          "date": "2026-08-26",
+          "summary": "Plugin manifest moved to .claude-plugin/plugin.json, the only location Claude Code's runtime\u2026"
+        },
+        {
           "version": "0.5.2",
           "date": "2026-08-24",
           "kinds": [
@@ -673,14 +686,6 @@
           "version": "0.4.3",
           "date": "2026-08-15",
           "summary": "Same widening, on claudish"
-        },
-        {
-          "version": "0.4.2",
-          "date": "2026-07-30",
-          "kinds": [
-            "Changed"
-          ],
-          "summary": "Description rewritten to say what the plugin is, not what a release did"
         }
       ]
     },
@@ -688,7 +693,7 @@
       "name": "terminal",
       "source": "./plugins/terminal",
       "description": "Intent-level terminal control over tmux. Runs interactive commands, dev servers, test watchers, REPLs and TUI apps, and refuses to send keys into a pane that already has a process in the foreground.",
-      "version": "4.1.6",
+      "version": "4.1.7",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -707,6 +712,11 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "4.1.7",
+          "date": "2026-08-26",
+          "summary": "Plugin manifest moved to .claude-plugin/plugin.json, the only location Claude Code's runtime\u2026"
+        },
         {
           "version": "4.1.4",
           "date": "2026-07-30",
@@ -746,7 +756,7 @@
       "name": "gtd",
       "source": "./plugins/gtd",
       "description": "Getting Things Done workflow. Capture, clarify, organise, reflect and engage over a task store that hooks keep in sync with the session in real time.",
-      "version": "2.1.0",
+      "version": "2.1.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -767,6 +777,11 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "2.1.1",
+          "date": "2026-08-26",
+          "summary": "Plugin manifest moved to .claude-plugin/plugin.json, the only location Claude Code's runtime\u2026"
+        },
         {
           "version": "2.1.0",
           "date": "2026-08-18",
@@ -794,7 +809,7 @@
       "name": "kanban",
       "source": "./plugins/kanban",
       "description": "Kanban board for task management. Five columns, cycle-safe task dependencies, priority indicators and WIP limits, over a task store independent of GTD.",
-      "version": "1.6.1",
+      "version": "1.6.2",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -815,6 +830,11 @@
       "strict": true,
       "releases": [
         {
+          "version": "1.6.2",
+          "date": "2026-08-26",
+          "summary": "Plugin manifest moved to .claude-plugin/plugin.json, the only location Claude Code's runtime\u2026"
+        },
+        {
           "version": "1.6.1",
           "date": "2026-08-19",
           "summary": "New README \u2014 five columns, cycle-safe dependencies, WIP limits, priority indicators, install\u2026"
@@ -833,7 +853,7 @@
       "name": "madbench",
       "source": "./plugins/madbench",
       "description": "Toolkit for madbench, MadAppGang's Go harness for benchmarking agentic coding tools. Ships the madbench-evals skill: author bench YAML and Eval files, design checks, scaffold red-state and generated testdata, run the negative and positive controls, tune expectations, and debug failing checks.",
-      "version": "0.2.3",
+      "version": "0.2.4",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -854,6 +874,11 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "0.2.4",
+          "date": "2026-08-26",
+          "summary": "The same manifest move, with no change to what each registers"
+        },
         {
           "version": "0.2.3",
           "date": "2026-08-22",
@@ -881,14 +906,6 @@
             "Added"
           ],
           "summary": "The skill taught identifiers a current madbench rejects, and several benches were written\u2026"
-        },
-        {
-          "version": "0.1.1",
-          "date": "2026-07-29",
-          "kinds": [
-            "Changed"
-          ],
-          "summary": "Pointers to the deleted shared/model-aliases.json replaced with live-catalog resolution, and\u2026"
         }
       ]
     }

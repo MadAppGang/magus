@@ -7,7 +7,7 @@ Bun and TypeScript toolkit. A `/bunjs:bun` index routes any task to the right on
 
 | | |
 |---|---|
-| Version | `0.4.1` |
+| Version | `0.4.2` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 9 |
 | Subagents | 0 |

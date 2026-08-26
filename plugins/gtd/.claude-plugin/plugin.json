@@ -1,6 +1,6 @@
 {
   "name": "gtd",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "Getting Things Done workflow. Capture, clarify, organise, reflect and engage over a task store that hooks keep in sync with the session in real time.",
   "author": {
     "name": "Jack Rudenko",
@@ -24,19 +24,6 @@
     "session-context"
   ],
   "category": "productivity",
-  "hooks": "./hooks/hooks.json",
-  "agents": [
-    "./agents/gtd-reviewer.md"
-  ],
-  "commands": [
-    "./commands/help.md",
-    "./commands/capture.md",
-    "./commands/engage.md",
-    "./commands/clarify.md",
-    "./commands/next.md",
-    "./commands/review.md",
-    "./commands/status.md"
-  ],
   "skills": [
     "./skills/gtd-capture",
     "./skills/gtd-review"

@@ -110,7 +110,7 @@ function lastTagFor(plugin: string): string | null {
 
 function currentVersion(plugin: string): string {
   const manifest = readJson<{ version: string }>(
-    join(SRC_ROOT, "plugins", plugin, "plugin.json")
+    join(SRC_ROOT, "plugins", plugin, ".claude-plugin", "plugin.json")
   );
   return manifest.version;
 }

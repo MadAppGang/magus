@@ -1,6 +1,6 @@
 {
   "name": "statusline",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "Deprecated redirect. The statusline now ships inside setup@magus as /setup:statusline-install, -uninstall and -customize. This plugin keeps the /statusline:* commands resolving for one release so no existing install breaks silently, and is removed after that.",
   "author": {
     "name": "Jack Rudenko",
@@ -16,11 +16,6 @@
     "setup"
   ],
   "category": "utility",
-  "commands": [
-    "./commands/install.md",
-    "./commands/uninstall.md",
-    "./commands/customize.md"
-  ],
   "compatibility": {
     "claudeCode": ">=0.1.0"
   }

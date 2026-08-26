@@ -105,7 +105,12 @@ not patch around the problem.
 
 If validation passes, it:
 1. Updates `plugins/<name>/plugin.json` version for each plugin
-2. Updates `marketplace.json` entry (version + description) for each plugin
+2. Updates `marketplace.json` entry **version** for each plugin — never the
+   `description`. That field says what the plugin *is* and is written by a human;
+   the proposal's `description` is the release *note* and goes to the commit
+   subject, the tag message, and CHANGELOG.md. Release notes reach the marketplace
+   through `bun scripts/generate-releases.ts`, which fills the separate `releases`
+   field from CHANGELOG.md.
 3. Creates one commit for the whole batch (`release(<name>): vX.Y.Z` for a single
    plugin, `release: <name> vX.Y.Z, <other> vA.B.C` for a batch)
 4. Creates one tag per plugin: `plugins/<name>/v<X.Y.Z>`

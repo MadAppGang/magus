@@ -7,7 +7,7 @@ Toolkit for madbench, MadAppGang's Go harness for benchmarking agentic coding to
 
 | | |
 |---|---|
-| Version | `0.2.3` |
+| Version | `0.2.4` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 0 |
 | Subagents | 0 |

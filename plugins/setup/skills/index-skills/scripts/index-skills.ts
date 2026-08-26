@@ -257,7 +257,7 @@ function detectScope(root: string): Scope {
   const pluginsDir = join(root, "plugins");
   try {
     for (const e of readdirSync(pluginsDir, { withFileTypes: true })) {
-      if (e.isDirectory() && existsSync(join(pluginsDir, e.name, "plugin.json"))) return "repo";
+      if (e.isDirectory() && existsSync(join(pluginsDir, e.name, ".claude-plugin", "plugin.json"))) return "repo";
     }
   } catch {
     /* no plugins/ — not a source repo */

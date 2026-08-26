@@ -7,7 +7,7 @@ Kanban board for task management. Five columns, cycle-safe task dependencies, pr
 
 | | |
 |---|---|
-| Version | `1.6.1` |
+| Version | `1.6.2` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 8 |
 | Subagents | 0 |

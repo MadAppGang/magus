@@ -1,6 +1,6 @@
 {
   "name": "dev",
-  "version": "4.5.0",
+  "version": "4.6.0",
   "description": "Universal development assistant. Detects the project stack and routes work to specialist agents for architecture, implementation, debugging, review and research, enforcing design-system guardrails on every UI change.",
   "author": {
     "name": "Jack Rudenko",
@@ -52,39 +52,6 @@
       "name": "multimodel",
       "version": "^3.3"
     }
-  ],
-  "hooks": "./hooks/hooks.json",
-  "agents": [
-    "./agents/stack-detector.md",
-    "./agents/developer.md",
-    "./agents/debugger.md",
-    "./agents/architect.md",
-    "./agents/frontend.md",
-    "./agents/scribe.md",
-    "./agents/spec-writer.md",
-    "./agents/devops.md",
-    "./agents/researcher.md",
-    "./agents/synthesizer.md",
-    "./agents/reviewer.md",
-    "./agents/test-architect.md",
-    "./agents/docs.md"
-  ],
-  "commands": [
-    "./commands/help.md",
-    "./commands/debug.md",
-    "./commands/fix.md",
-    "./commands/dev.md",
-    "./commands/architect.md",
-    "./commands/research.md",
-    "./commands/interview.md",
-    "./commands/investigate.md",
-    "./commands/audit.md",
-    "./commands/design-system.md",
-    "./commands/doc.md",
-    "./commands/learn.md",
-    "./commands/setup.md",
-    "./commands/worktree.md",
-    "./commands/release.md"
   ],
   "skills": [
     "./skills/context-detection",
