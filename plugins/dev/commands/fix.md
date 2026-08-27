@@ -442,10 +442,14 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
           ```
           claudish team(mode="run", path=${SESSION_PATH},
             models=[models resolved from `list_models` for review],
-            input=contents_of_vote-prompt-root-cause.md,
-            timeout=180,
+            input_file=${SESSION_PATH}/vote-prompt-root-cause.md,
             require_pattern="VERDICT:")
           ```
+
+          **`run` starts the panel and returns immediately — it does NOT return the reviews.** Poll `claudish team(mode="status", path=<same path>)` until no slot in `models` has `state === "RUNNING"`, then read each answer from `response-<slot>.md` in that directory. The `slots` map in the `run` response gives the model-name-to-slot-id mapping. Full procedure: `claudish:claudish-usage` → "The three-step lifecycle". Requires claudish >= 8.0.0.
+
+          Do NOT pass `timeout` — it was removed from the schema and is silently
+          ignored, so a leftover one reads as a deadline while enforcing nothing.
 
           `require_pattern` pins the vote schema at the tool: a model that finished
           without emitting a `VERDICT:` line is reported FAILED (state EMPTY, reason
@@ -456,7 +460,9 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
         <step>
           After all background tasks complete, read results:
           - ${SESSION_PATH}/claude-vote-root-cause.md (written by dev:debugger via Bash)
-          - External model results from `team` tool structured response
+          - External model votes from `${SESSION_PATH}/response-<slot>.md`, once
+            `team(mode="status")` reports every slot out of `RUNNING`. They are **not**
+            in the `run` response — that returns before any model has answered.
 
           **The internal vote is the one `require_pattern` does not cover.** It is an
           `Agent`, so nothing checks that the file was written or that it holds a
@@ -755,10 +761,14 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
         ```
         claudish team(mode="run", path=${SESSION_PATH},
           models=[models resolved from `list_models` for review],
-          input=contents_of_vote-prompt-patch.md,
-          timeout=180,
+          input_file=${SESSION_PATH}/vote-prompt-patch.md,
           require_pattern="VERDICT:")
         ```
+
+        **`run` starts the panel and returns immediately — it does NOT return the reviews.** Poll `claudish team(mode="status", path=<same path>)` until no slot in `models` has `state === "RUNNING"`, then read each answer from `response-<slot>.md` in that directory. The `slots` map in the `run` response gives the model-name-to-slot-id mapping. Full procedure: `claudish:claudish-usage` → "The three-step lifecycle". Requires claudish >= 8.0.0.
+
+        Do NOT pass `timeout` — it was removed from the schema and is silently ignored,
+        so a leftover one reads as a deadline while enforcing nothing.
 
         `require_pattern` pins the vote schema at the tool: a model that finished without
         emitting a `VERDICT:` line is reported FAILED (state EMPTY, reason
@@ -769,7 +779,9 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
       <step>
         After all background tasks complete, read results:
         - ${SESSION_PATH}/claude-vote-patch.md (written by dev:debugger via Bash)
-        - External model results from `team` tool structured response
+        - External model votes from `${SESSION_PATH}/response-<slot>.md`, once
+          `team(mode="status")` reports every slot out of `RUNNING`. They are **not** in
+          the `run` response — that returns before any model has answered.
 
         **The internal vote is the one `require_pattern` does not cover.** It is an
         `Agent`, so nothing checks the file was written or holds a verdict. A missing or
@@ -780,7 +792,9 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
       <step>
         Parse votes with fault tolerance:
         - Extract VERDICT, REGRESSION_RISK, PATCH_SCOPE_ASSESSMENT (case-insensitive)
-        - Malformed output or failed model in team results → treat as ABSTAIN with CONFIDENCE=0
+        - Malformed output, or a slot whose `status.models[<slot>].state` is FAILED or
+          EMPTY → treat as ABSTAIN with CONFIDENCE=0. A slot still `RUNNING` at your poll
+          ceiling is also an ABSTAIN, and must be reported as still running, not crashed.
         - Count APPROVE, REJECT, ABSTAIN
 
         Report votes in tabular form:

@@ -15,7 +15,7 @@
       "name": "code-analysis",
       "source": "./plugins/code-analysis",
       "description": "Read-only codebase investigation and code search behind one stable tool surface. Finds code by meaning or structure, traces callers, callees and blast radius, and dispatches a detective agent for deep dives. The search engine is named in project settings and is swappable.",
-      "version": "7.0.0",
+      "version": "7.1.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -37,6 +37,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "7.1.0",
+          "date": "2026-08-28",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "Requires claudish ^2.0 (was ^1.0). claudish 2.0.0 rewrote its team contract for the\u2026"
+        },
         {
           "version": "7.0.0",
           "date": "2026-08-27",
@@ -67,11 +75,6 @@
             "Fixed"
           ],
           "summary": "The plugin now owns its search interface instead of borrowing one"
-        },
-        {
-          "version": "5.4.1",
-          "date": "2026-08-19",
-          "summary": "Four skill-as-agent dispatches corrected in mnemex-orchestration \u2014 investigate and\u2026"
         }
       ]
     },
@@ -79,7 +82,7 @@
       "name": "claudish",
       "source": "./plugins/claudish",
       "description": "MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting across models, manages async sessions, and streams channel notifications. Required by code-analysis, dev, multimodel, designer and seo.",
-      "version": "1.1.0",
+      "version": "2.0.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -100,6 +103,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "2.0.0",
+          "date": "2026-08-28",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "BREAKING \u2014 the team contract in claudish:claudish-usage is rewritten for claudish 8.0.0"
+        },
         {
           "version": "1.1.0",
           "date": "2026-08-26",
@@ -171,7 +182,7 @@
       "name": "multimodel",
       "source": "./plugins/multimodel",
       "description": "Multi-model collaboration and orchestration. Runs a task across several AI models in parallel and aggregates their blind APPROVE/REJECT votes, or delegates it to one model running a full Claude Code session.",
-      "version": "3.10.0",
+      "version": "4.0.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -196,6 +207,15 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "4.0.0",
+          "date": "2026-08-28",
+          "kinds": [
+            "Changed",
+            "Added"
+          ],
+          "summary": "BREAKING \u2014 /multimodel:team polls instead of waiting, and needs claudish >= 8.0.0"
+        },
         {
           "version": "3.10.0",
           "date": "2026-08-26",
@@ -223,11 +243,6 @@
             "Added"
           ],
           "summary": "/multimodel:delegate broke on an ordinary preferences file"
-        },
-        {
-          "version": "3.7.1",
-          "date": "2026-08-19",
-          "summary": "Deep-analyst no longer instructs a team call with require_pattern \u2014 the claudish tool has no\u2026"
         }
       ]
     },
@@ -235,7 +250,7 @@
       "name": "dev",
       "source": "./plugins/dev",
       "description": "Universal development assistant. Detects the project stack and routes work to specialist agents for architecture, implementation, debugging, review and research, enforcing design-system guardrails on every UI change.",
-      "version": "5.0.0",
+      "version": "6.0.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -275,6 +290,15 @@
       "strict": true,
       "releases": [
         {
+          "version": "6.0.0",
+          "date": "2026-08-28",
+          "kinds": [
+            "Changed",
+            "Fixed"
+          ],
+          "summary": "BREAKING \u2014 every team call in dev polls for completion and needs claudish >= 8.0.0"
+        },
+        {
           "version": "5.0.0",
           "date": "2026-08-28",
           "kinds": [
@@ -301,14 +325,6 @@
             "Fixed"
           ],
           "summary": "Phase 5 wrote an internal review that nothing checked"
-        },
-        {
-          "version": "4.4.2",
-          "date": "2026-08-22",
-          "kinds": [
-            "Changed"
-          ],
-          "summary": "/dev:release settles authorization once, up front \u2014 never mid-run"
         }
       ]
     },
@@ -655,7 +671,7 @@
       "name": "designer",
       "source": "./plugins/designer",
       "description": "UI design validation. Compares a rendered screen against its reference by pixel diff, then reviews the result for spacing, hierarchy and design-system consistency.",
-      "version": "0.5.3",
+      "version": "0.6.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -678,6 +694,14 @@
       "strict": true,
       "releases": [
         {
+          "version": "0.6.0",
+          "date": "2026-08-28",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "Requires claudish ^2.0 (was ^1.0), for the same reason as code-analysis 7.1.0: the marketplace\u2026"
+        },
+        {
           "version": "0.5.3",
           "date": "2026-08-26",
           "summary": "Plugin manifest moved to .claude-plugin/plugin.json, the only location Claude Code's runtime\u2026"
@@ -699,11 +723,6 @@
           "version": "0.5.0",
           "date": "2026-08-18",
           "summary": "BREAKING \u2014 ui-design-review is gone, merged into ui-analyse, which absorbed its POUR-organised\u2026"
-        },
-        {
-          "version": "0.4.3",
-          "date": "2026-08-15",
-          "summary": "Same widening, on claudish"
         }
       ]
     },

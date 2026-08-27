@@ -190,12 +190,20 @@ create_session(model="grok", prompt=PROMPT, timeout_seconds=30)
 #   - Content contains "401" → API key issue
 #   - Other → general failure
 
-# Via team MCP tool (timeout per model)
-team(mode="run", models=["grok"], input=PROMPT, timeout=30,
+# Via team MCP tool. There is NO per-model timeout any more — the parameter was
+# removed, and passing one is silently ignored. You bound the wait yourself by
+# bounding the poll loop.
+team(mode="run", path=SESSION_DIR, models=["grok"], input_file=INPUT_MD,
   require_pattern=<regex for the shape PROMPT mandates>)
-# Check per-model status in structured response. A slot reported EMPTY with reason
+team(mode="status", path=SESSION_DIR)   # poll until no slot has state === "RUNNING"
+# Check per-model status in the SETTLED status response, not the run response — run
+# returns before any model has answered. A slot reported EMPTY with reason
 # shape_mismatch is a FAILURE to recover from, not a short answer to accept — the
 # model finished without producing the required shape.
+#
+# Before treating a quiet slot as hung, read idle_seconds_by_slot together with
+# activity_by_slot: 90s idle in "tool_executing" is a build or test suite and is
+# normal; 90s idle in "running" is a model that stopped mid-answer.
 ```
 
 ---

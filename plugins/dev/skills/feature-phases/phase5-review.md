@@ -32,7 +32,13 @@ Display: "Code review using same models as plan review: {model list}"
 If selectedModels.models is empty: internal Claude only (no external models).
 
 ### Step 5.5: Launch parallel reviews
-Launch PARALLEL reviews (single message, multiple Tasks):
+
+First write the external reviewers' prompt to
+`${SESSION_PATH}/reviews/code-review/prompt.md` — same review brief as the internal
+reviewer below (the diff to read, and the focus areas). `input_file` names that path, so
+the file must exist before the call.
+
+Then launch PARALLEL reviews (single message, multiple Tasks):
 
 Agent: dev:reviewer
   Prompt: "Review code changes in ${SESSION_PATH}/code-changes.diff
@@ -42,7 +48,7 @@ Agent: dev:reviewer
 ---
 claudish team(mode="run", path=${SESSION_PATH}/reviews/code-review,
   models=[...selectedModels.models],
-  input=contents_of_prompt.md, timeout=180,
+  input_file=${SESSION_PATH}/reviews/code-review/prompt.md,
   min_output_bytes=400)
 
 `min_output_bytes` floors the external slots. The review prompt mandates topics but no
@@ -51,9 +57,17 @@ below any real review, so it catches only a slot that returned nothing or a stub
 it a slot that exited 0 having produced nothing joins the consensus count as a reviewer
 that found no issues.
 
+**`run` does not wait.** Before consolidating, poll
+`claudish team(mode="status", path=${SESSION_PATH}/reviews/code-review)` until no slot in
+`models` has `state === "RUNNING"`. Bound the loop and report anything still running;
+`idle_seconds_by_slot` with `activity_by_slot` tells a slow test suite apart from a wedged
+slot. Full procedure: `claudish:claudish-usage` → "The three-step lifecycle". Requires
+claudish >= 8.0.0.
+
 ### Step 5.6: Consolidate reviews
 Consolidate reviews with consensus analysis:
-- Read all review files
+- Read all review files — the internal one at `claude-internal.md`, and each external one
+  at `${SESSION_PATH}/reviews/code-review/response-<slot>.md`
 - Apply consensus (unanimous, strong, majority, divergent)
 - Prioritize by consensus level and severity
 - Write ${SESSION_PATH}/reviews/code-review/consolidated.md

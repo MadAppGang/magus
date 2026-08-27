@@ -4,6 +4,121 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [code-analysis 7.1.0] - 2026-08-28
+
+### Changed
+- Requires `claudish ^2.0` (was `^1.0`). `claudish` 2.0.0 rewrote its `team` contract for
+  the non-blocking claudish 8.x runtime, and the marketplace ships one `claudish` at a
+  time — leaving the range at `^1.0` would have made this plugin unresolvable and
+  therefore uninstallable. Nothing in `code-analysis` itself changed.
+
+---
+
+## [designer 0.6.0] - 2026-08-28
+
+### Changed
+- Requires `claudish ^2.0` (was `^1.0`), for the same reason as `code-analysis` 7.1.0: the
+  marketplace ships a single `claudish`, now 2.0.0, and a `^1.0` range no longer resolves.
+  Nothing in `designer` itself changed.
+
+---
+
+## [multimodel 4.0.0] - 2026-08-28
+
+### Changed
+- **BREAKING — `/multimodel:team` polls instead of waiting, and needs claudish >= 8.0.0.**
+  `team(mode:"run")` no longer blocks: it starts the panel and returns a slot map. The
+  command gained Step 2b, which polls `team(mode:"status")` until no slot has
+  `state === "RUNNING"`, and Step 3 now reads each vote from `response-<slot>.md` instead
+  of from the `run` response. Against 8.x the old shape parsed a response with no votes in
+  it and reported INCONCLUSIVE on every run.
+- The vote prompt is written to `input.md` and passed as `input_file`. A vote prompt is
+  100+ lines, and an inline `input` echoed all of it verbatim in the user's terminal,
+  burying the model list, the agent and the shape check inside the tool call.
+- `timeout` removed from every call. It was dropped from the tool schema, and because the
+  schema does not set `additionalProperties: false` a leftover one is **silently ignored**
+  rather than rejected — the call still read as though it set a deadline.
+- Step 2c is new: decide about a quiet slot from `idle_seconds_by_slot` read together with
+  `activity_by_slot`. The panel deliberately does **not** auto-cancel. It reports a slot as
+  still running at the 30-minute poll ceiling and lets the user decide.
+- `agents/deep-analyst.md` and the `proxy-mode-reference`, `task-external-models`,
+  `multi-model-validation` and `error-recovery` skills updated to the same contract.
+
+### Added
+- `skills/hooks-system/SKILL.md` documents the `ExitPlanMode` gate — the
+  `PostToolUse:ExitPlanMode` hook that resumes a pipeline once the user approves a plan.
+  Written alongside `dev` 5.0.0 but never shipped, because `multimodel` was not bumped
+  for it at the time.
+
+### Why
+A `team` slot is a full Claude Code session and can legitimately work for a long time. The
+old shape held the MCP call open for the whole run, and a real run was aborted at exactly
+1800s of client idle timeout. The deadline meant to bound it was worse: its only progress
+signal was token flow, which stops during a local tool call, so a model running a test
+suite looked identical to a hung one and three of five actively-working slots were killed.
+Nothing terminates a slot on a timer now — the caller polls, looks at the evidence, and
+decides.
+
+### Migration notes
+Requires **claudish >= 8.0.0** (`bun add -g claudish`). This version does not work against
+7.67.x: `input_file` does not exist there and `run` still blocks. `mode:"run-and-judge"`
+still blocks and remains a drop-in for a vote panel that would rather not poll, at the cost
+of the 1800s idle abort.
+
+---
+
+## [claudish 2.0.0] - 2026-08-28
+
+### Changed
+- **BREAKING — the `team` contract in `claudish:claudish-usage` is rewritten for claudish
+  8.0.0.** The skill now documents `run` as non-blocking and carries "The three-step
+  lifecycle" — start, poll `status` until settled, read `response-<slot>.md` — as the one
+  place that procedure is written. Every other plugin's `team` call site points here rather
+  than repeating it.
+- Parameter table corrected: `timeout` removed, `input_file` and `slot` added, `mode` gains
+  `"cancel"`. A note records that a leftover `timeout` is silently ignored, not rejected,
+  because the schema does not set `additionalProperties: false`.
+- New guidance on telling a stuck slot from a busy one: `idle_seconds_by_slot` and
+  `activity_by_slot` are only meaningful read together. 90s idle in `tool_executing` is a
+  build; 90s idle in `running` is a model that stopped mid-answer.
+- Failure table gains `cancelled` (your decision, not a crash) and `RUNNING` at the poll
+  ceiling (not a failure), alongside `shape_mismatch` and `nonzero_exit`.
+- Three new best practices: poll to completion, never read results from the `run` response,
+  and pass long prompts as `input_file`.
+
+### Migration notes
+Requires **claudish >= 8.0.0**. The skill states that as a hard floor, because a workflow
+written to it starts a run and reads nothing on 7.x.
+
+---
+
+## [dev 6.0.0] - 2026-08-28
+
+### Changed
+- **BREAKING — every `team` call in `dev` polls for completion and needs claudish >= 8.0.0.**
+  `/dev:fix` (both multimodel vote gates), `feature-phases/phase3-planning`,
+  `feature-phases/phase5-review` and `task-management/references/agent-coordination` all
+  called `team(mode:"run")` and then read results the call no longer returns. Each now
+  polls `team(mode:"status")` until no slot is `RUNNING` and reads answers from
+  `response-<slot>.md`.
+- `/dev:fix` passes `input_file` pointing at the vote-prompt file it already wrote, instead
+  of inlining that file's contents. Its ABSTAIN rule now covers a slot still `RUNNING` at
+  the poll ceiling, which must be reported as still running rather than crashed.
+- Phase 3 and Phase 5 pass `input_file` and name the review files explicitly as
+  `response-<slot>.md` at consolidation time.
+
+### Fixed
+- `phase5-review.md` referenced a `prompt.md` that no step ever wrote. The inline `input`
+  hid the gap; naming the path via `input_file` would have turned it into a hard error, so
+  Step 5.5 now writes that file first.
+
+### Migration notes
+Requires **claudish >= 8.0.0**. `timeout` is gone from all four call sites — it is silently
+ignored by the 8.x schema rather than rejected, so leaving it in would have read as a
+deadline that nothing enforced.
+
+---
+
 ## [dev 5.0.0] - 2026-08-28
 
 ### Fixed

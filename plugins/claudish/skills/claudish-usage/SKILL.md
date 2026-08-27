@@ -65,9 +65,10 @@ create_session(model="grok", prompt=TASK_PROMPT, timeout_seconds=300,
   agent="dev:developer", work_dir=WORK_DIR)
 → watch channel events → get_output(session_id)
 
-// A whole panel in one call, run in parallel internally
+// A whole panel. `run` STARTS it and returns immediately — it does not wait.
 team(mode="run", path=SESSION_DIR, models=["internal", "grok", "gemini"],
-  input=PROMPT, timeout=180, require_pattern="```vote", agent="dev:researcher")
+  input_file=SESSION_DIR + "/input.md", require_pattern="```vote", agent="dev:researcher")
+→ poll team(mode="status", path=SESSION_DIR) until settled → read response-NN.md
 ```
 
 ## Model Alias Resolution
@@ -112,7 +113,8 @@ Step 3: ROUTE (Claudish)
    `"haiku"` a specific one. They ARE sent to claudish and run through its native
    passthrough on the user's own subscription — no API key, no provider prefix, no
    translation. They are not catalog IDs, so `list_models` will not list them and a
-   catalog check must not reject them. Requires `claudish >= 7.65.0`.
+   catalog check must not reject them. Requires `claudish >= 8.0.0` — native names have
+   been runnable since 7.65.0, but the `team` contract in this skill needs 8.0.0.
 
 ### Use the resolver — do not do this by hand
 
@@ -271,27 +273,42 @@ provider and bypass the subscription-aware backend selection and fallback that p
 
 ## MCP Tool Reference
 
-Parameter names below are verified against claudish 7.65.0. Use them exactly.
+Parameter names below are verified against claudish 8.0.0. Use them exactly.
 
-### `team` — a panel of models, one call
+### `team` — a panel of models, started in one call
+
+**`run` starts the panel and returns immediately. It does not wait for the models, and
+their answers are not in its response.** You start the run, poll `status` until it settles,
+then read each slot's answer off disk. Requires **claudish >= 8.0.0**.
 
 ```
-team(mode, path, models, judges, input, timeout,
-     require_pattern, min_output_bytes, agent, claude_flags)
+team(mode, path, models, judges, input, input_file,
+     require_pattern, min_output_bytes, agent, claude_flags, slot)
 ```
 
 | Parameter | What it does |
 |---|---|
-| `mode` | `"run"` · `"judge"` · `"run-and-judge"` · `"status"` |
+| `mode` | `"run"` · `"status"` · `"cancel"` · `"judge"` · `"run-and-judge"` |
 | `path` | Session directory. **Must be within the current working directory.** |
 | `models` | The panel. Native names are **ordinary entries** — see below. |
 | `judges` | Models that judge the collected responses (`judge` / `run-and-judge`) |
-| `input` | The prompt every slot receives |
-| `timeout` | Seconds, per slot |
+| `input` | The prompt every slot receives, inline |
+| `input_file` | The same prompt, read from a file. **Prefer this.** Passing both is a hard error. |
 | `require_pattern` | Regex the response MUST match, or the slot is reported FAILED |
 | `min_output_bytes` | Floor below which a response counts as empty |
 | `agent` | Subagent every child runs as. Applies to EVERY child — there is no per-model form. |
 | `claude_flags` | Any other Claude Code flags, space-separated. An `--agent` here loses to `agent`. |
+| `slot` | `cancel` only — cancel one slot instead of the whole run |
+
+**There is no `timeout` any more, and passing one is silently ignored.** The schema does
+not set `additionalProperties: false`, so a leftover `timeout=180` raises no error — it
+just does nothing, while the call still reads as though it set a deadline. Nothing
+terminates a slot on a timer; see "Deciding whether a quiet slot is stuck" below.
+
+**Prefer `input_file` over `input`.** A panel prompt is routinely 100+ lines, and an inline
+`input` echoes the whole thing verbatim in the user's terminal, burying every other
+argument in the call. Write the prompt to `<path>/input.md` first, then name that file. The
+path must be inside the working directory.
 
 **Native names are ordinary slots.** `internal` / `default` select the host Claude tier;
 `opus` / `sonnet` / `haiku` / `claude-*` select a specific one. They go in the same `models`
@@ -304,11 +321,118 @@ never produced the shape the prompt demanded is reported FAILED (state EMPTY, re
 `shape_mismatch`). Set it whenever the prompt mandates an output shape. Omitting it is how
 a vote-less response gets counted as a vote.
 
-**Reading the results.** The tool writes each slot to `response-NN.md` in the session
-directory and maps slot ID to model name in `manifest.json`. IDs are shuffled, so responses
-can be read blind before the mapping is consulted. **Never write an example naming a file
-like `grok-result.md`** — the tool does not produce those, and a workflow that expects one
-reads nothing.
+#### The three-step lifecycle
+
+**Every caller of `mode="run"` follows these three steps.** There is no shortcut that skips
+step 2 — a workflow that reads results straight out of the `run` response reads nothing.
+
+**Step 1 — start the run.**
+
+```
+team(mode="run", path=SESSION_DIR,
+  models=[...resolved models, native names included...],
+  input_file=`${SESSION_DIR}/input.md`,
+  require_pattern=<regex for the shape the prompt mandates>,
+  agent=RESOLVED_AGENT)
+```
+
+It returns a slot map, not results:
+
+```json
+{
+  "started": true,
+  "team_session_id": "team-20260827-0015",
+  "session_path": "/abs/path/to/SESSION_DIR",
+  "slots": { "gpt-5.6-sol": "01", "grok-4.6": "02", "internal": "03" },
+  "next": { "status": "...", "cancel": "...", "judge": "..." }
+}
+```
+
+`slots` maps each display model name to its anonymised slot id. Keep it — that id addresses
+everything else on disk for that model:
+
+| Path | Contents |
+|---|---|
+| `<session_path>/response-<slot>.md` | the model's answer — parse it from here |
+| `<session_path>/stats/<slot>.json` | tokens, cost, tool counts |
+| `<session_path>/errors/<slot>.log` | stderr and diagnostics, on failure |
+| `<session_path>/errors/<slot>-upstream.jsonl` | raw provider error bodies, when any |
+
+**Step 2 — poll until the run settles.**
+
+```
+team(mode="status", path=SESSION_PATH)
+```
+
+```json
+{
+  "startedAt": "...",
+  "models": {
+    "01": { "state": "COMPLETED", "exitCode": 0, "outputSize": 10988 },
+    "02": { "state": "RUNNING",   "exitCode": null }
+  },
+  "idle_seconds_by_slot": { "02": 94 },
+  "activity_by_slot":     { "02": "tool_executing" },
+  "summary": "<rendered result card — present ONLY once the run has settled>"
+}
+```
+
+**Settled means no slot in `models` has `state === "RUNNING"`.** That is the loop
+condition, and it is the only one.
+
+`summary` is the rendered result card the old blocking `run` used to return — `N/M
+succeeded`, `reason=shape_mismatch`, and the rest. A workflow that matched on that text
+keeps working; it just reads it from a settled `status` instead.
+
+**Bound the loop and fail loudly.** There is no server-side deadline any more, so an
+unbounded poll is an unbounded wait. Pick a wall-clock ceiling that suits the work, and on
+hitting it report what is still running rather than looping on.
+
+**Step 3 — read the answers off disk.** For each entry in the `slots` map from step 1, read
+`<session_path>/response-<slot>.md`. Slot ids are shuffled, so responses can be read blind
+before the mapping is consulted. **Never write an example naming a file like
+`grok-result.md`** — the tool does not produce those, and a workflow that expects one reads
+nothing.
+
+A slot whose `models[<slot>].state` is `FAILED` or `EMPTY` produced no usable answer;
+`error.reason` says why.
+
+#### Deciding whether a quiet slot is stuck
+
+Nothing cancels on your behalf. `status` gives you two fields for this, and they are only
+meaningful **read together**:
+
+- `idle_seconds_by_slot` — seconds since that slot's child last wrote anything.
+- `activity_by_slot` — `running`, `tool_executing`, `waiting_for_input`, or a terminal state.
+
+Ninety seconds of silence in `tool_executing` is a build or a test suite, and is completely
+normal. The same ninety seconds in `running` is a model that stopped mid-answer. The reaper
+this replaced had no activity signal at all, which is exactly why it killed slots that were
+working: in one real session it killed three of five actively-working slots, because its
+only progress signal was token flow — and token flow stops during a local tool call. A
+model running `go test ./...` looked identical to a hung one.
+
+To cancel, do it deliberately:
+
+```
+team(mode="cancel", path=SESSION_PATH, slot="02")   # one slot
+team(mode="cancel", path=SESSION_PATH)              # the whole run
+```
+
+A cancelled slot records `error.reason === "cancelled"`, which is distinct from
+`nonzero_exit`. Report it as a decision, not a crash.
+
+**Default: do not cancel automatically.** Report the slot as still running and let the user
+decide. Losing a vote to an impatient auto-cancel is the same failure the old deadline
+caused.
+
+#### `run-and-judge` — the blocking alternative
+
+`mode="run-and-judge"` still blocks and still returns the verdict, so a panel that would
+rather not poll can use it as a drop-in. The trade is that it holds the MCP tool call open
+for the whole run, which is the shape that hit the client's 1800s idle abort. It also only
+fits work that wants a judging stage — **a plain generation call has no blocking
+equivalent and must poll.**
 
 ### `create_session` — one model, full session
 
@@ -355,6 +479,7 @@ report_error(error_type, model, stderr_snippet, session_path, additional_context
 ```
 Does the task need a panel of independent opinions?
     → team(mode="run", ...) with require_pattern
+      → poll team(mode="status", ...) until settled → read response-<slot>.md
 
 Does it need one model to DO work — read files, write code, run commands?
     → create_session(...) → get_output(session_id)
@@ -462,7 +587,8 @@ Decision:
 3. One reviewer → create_session(model=<resolved id>, prompt=REVIEW_PROMPT,
                     agent="dev:reviewer", timeout_seconds=300)
    A panel       → team(mode="run", path=SESSION_DIR, models=[...],
-                    input=REVIEW_PROMPT, timeout=180, agent="dev:reviewer")
+                    input_file=SESSION_DIR + "/input.md", agent="dev:reviewer")
+                    → poll status until settled → read response-NN.md
 ```
 
 **Example 3: User says "use Gemini to refactor this component"**
@@ -479,17 +605,19 @@ Decision:
 ## Team Mode Integration
 
 When used with the `/team` command for multi-model blind voting, every model — native and
-external — is invoked through the `team` MCP tool in a single call:
+external — is started through the `team` MCP tool in a single call. Write the vote prompt
+to `input.md` first, then:
 
 ```
 team(mode="run", path=SESSION_DIR, models=["internal", "grok", "gemini"],
-  input=VOTE_PROMPT, timeout=180, require_pattern="```vote", agent=RESOLVED_AGENT)
+  input_file=`${SESSION_DIR}/input.md`, require_pattern="```vote", agent=RESOLVED_AGENT)
 ```
 
-The tool runs all slots in parallel internally and returns structured per-model results.
-The agent is passed in `agent`; the task context travels in `input`. Responses land in
-`response-NN.md` with `manifest.json` holding the slot-to-model mapping, so they can be
-read blind.
+**That call starts the panel and returns a slot map. It does not return votes.** Poll
+`team(mode="status", path=SESSION_DIR)` until no slot is `RUNNING`, then read each vote from
+`response-<slot>.md`. The `slots` map in the `run` response gives the model-name-to-slot-id
+mapping, so responses can still be read blind. Full procedure: **The three-step lifecycle**
+under `team` above.
 
 ## Overview
 
@@ -535,9 +663,14 @@ and keys.
 
 ## Requirements
 
-- **Claudish binary on `PATH`** — `npm install -g claudish` (or `bun add -g claudish`).
+- **Claudish >= 8.0.0 on `PATH`** — `bun add -g claudish` (or `npm install -g claudish`).
   It is the runtime the MCP server runs inside; without it there are no tools.
 - **Claude Code** — must be installed.
+
+**8.0.0 is a hard floor for `team`, not a preference.** In 7.67.x and earlier, `run`
+blocked and returned the results, and there was no `input_file`. A workflow written to
+this skill will start a run and read nothing on 7.x, and one written for 7.x reports
+INCONCLUSIVE on every panel against 8.x. Check with `claudish --version`.
 
 **Credentials are Claudish's, and are deliberately not listed here.** There is no single
 required key: which providers a model can reach, and which env var each one reads, is
@@ -616,16 +749,17 @@ accepted.
 
 ### Pattern 3: Several models on the same prompt
 
-One `team` call. Not a loop, not one session per model — the tool parallelises internally
-and returns one structured result set.
+One `team` call starts them all. Not a loop, not one session per model — the tool
+parallelises internally. The call returns a slot map immediately; you poll, then read.
 
 ```
 team(mode="run", path=SESSION_DIR, models=["internal", "grok", "gemini"],
-  input=PROMPT, timeout=180, require_pattern="```review", agent="dev:reviewer")
+  input_file=`${SESSION_DIR}/input.md`, require_pattern="```review", agent="dev:reviewer")
 ```
 
-Read `response-NN.md` for the responses and `manifest.json` for the slot-to-model mapping.
-Per-slot status comes back in the tool result: check every one.
+Then poll `team(mode="status", path=SESSION_DIR)` until no slot is `RUNNING`, and read
+`response-<slot>.md` for each slot in the `run` response's `slots` map. Per-slot status
+comes back in `status.models`: check every one. See **The three-step lifecycle** above.
 
 ## Failure Handling
 
@@ -636,11 +770,17 @@ Failures arrive as **structured data**, not as text on stderr. There are exactly
 Each slot reports its own status. Read every one — a run where three of five slots came
 back is a partial success you must disclose, not a success.
 
+Read them from `status.models[<slot>]` once the run has settled — not from the `run`
+response, which returns before any slot has finished.
+
 | What you see | What it means |
 |---|---|
-| status `failed` | The slot errored. The result carries the error. |
+| state `FAILED` | The slot errored. `error.reason` carries the cause. |
 | state EMPTY, reason `shape_mismatch` | The slot exited 0 but never matched `require_pattern`. Treat as failed. |
+| reason `nonzero_exit` | The child process died. Check `errors/<slot>.log`. |
+| reason `cancelled` | **You** cancelled it. Report it as a decision, not a crash. |
 | below `min_output_bytes` | Effectively empty. Treat as failed. |
+| state `RUNNING` at your poll ceiling | Not a failure. Report it as still running and let the user decide. |
 
 Show failed slots as FAILED in your results table, proceed with the survivors, and name
 what failed. No retry, no substitution.
@@ -712,7 +852,19 @@ Summarise its `get_output` for the user rather than pasting it.
 ### 6. ✅ Check every slot's status before you believe a result
 
 Structured per-slot status is the reason to use these tools. Ignoring it throws away the
-advantage.
+advantage. For `team` that status lives in a **settled** `status` response, never in the
+`run` response.
+
+### 7. ✅ Poll `team` to completion; never read results from the `run` response
+
+`run` returns before any model has answered. A workflow that parses its response finds no
+results and reports whatever its empty-case is — for a vote panel, INCONCLUSIVE on every
+run. Poll `status` until no slot is `RUNNING`, bound the loop, then read off disk.
+
+### 8. ✅ Write long prompts to `input.md` and pass `input_file`
+
+An inline `input` echoes the entire prompt verbatim in the user's terminal, burying the
+model list, the agent and the shape check inside a wall of text.
 
 ## Anti-Patterns (Avoid These)
 

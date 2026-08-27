@@ -30,14 +30,18 @@ External AI models are invoked via **claudish MCP tools**. No Bash invocation ne
 
 **In /team orchestration:**
 - **Every model, native and external, in ONE `team` call** →
-  `claudish team(mode="run", models=[...], input=PROMPT, timeout=180, require_pattern=..., agent=...)`.
+  `claudish team(mode="run", models=[...], input_file=..., require_pattern=..., agent=...)`.
   Native Claude names (`internal`, `default`, `opus`, `sonnet`, `haiku`) are ordinary
   slots and belong in `models` alongside the external ones — they run on the user's own
   Claude subscription through claudish's native passthrough. There is no separate `Agent`
-  dispatch and no `internal-result.md` handoff file. Requires `claudish >= 7.65.0`.
+  dispatch and no `internal-result.md` handoff file. Requires `claudish >= 8.0.0`.
+- **That call starts the panel; it does not return answers.** Poll
+  `team(mode="status", path=SESSION_DIR)` until no slot has `state === "RUNNING"`, then
+  read each answer from `response-<slot>.md`. Full procedure: `claudish:claudish-usage` → "The three-step lifecycle". Requires claudish >= 8.0.0.
 - **`team` DOES take `claude_flags`, and a first-class `agent`.** Its parameters are
-  `mode, path, input, models, judges, timeout, require_pattern, min_output_bytes,
-  agent, claude_flags`. Prefer the dedicated `agent`; an `--agent` placed inside
+  `mode, path, input, input_file, models, judges, require_pattern, min_output_bytes,
+  agent, claude_flags, slot`. There is no `timeout` — it was removed, and passing one is
+  silently ignored. Prefer the dedicated `agent`; an `--agent` placed inside
   `claude_flags` is ignored when `agent` is also set. Both apply to EVERY child in the
   run — there is no per-model form. `claude_flags` is split on whitespace, so a flag
   VALUE containing spaces cannot be expressed through it.
@@ -74,15 +78,25 @@ External AI models are invoked via **claudish MCP tools**. No Bash invocation ne
 
 ## /team Execution Pattern
 
-The `/team` command dispatches the whole panel in a single `team` MCP call. The tool
-parallelises the models internally, so there is nothing to issue alongside it:
+The `/team` command starts the whole panel in a single `team` MCP call. The tool
+parallelises the models internally, so there is nothing to issue alongside it. Write the
+vote prompt to `input.md` first, then:
 
 ````
 claudish team(mode="run", path=SESSION_DIR,
   models=["internal", "grok", "gemini"],
-  input=VOTE_PROMPT, timeout=180,
+  input_file=`${SESSION_DIR}/input.md`,
   require_pattern="```vote", agent=RESOLVED_AGENT)
 ````
+
+**That returns a slot map, not votes.** Poll until settled, then read each vote off disk:
+
+````
+claudish team(mode="status", path=SESSION_DIR)   // until no slot is RUNNING
+// → read `${SESSION_DIR}/response-<slot>.md` for each slot in the run response's `slots`
+````
+
+Full procedure: `claudish:claudish-usage` → "The three-step lifecycle". Requires claudish >= 8.0.0.
 
 `"internal"` sits in that array like any other model. Because it goes through the tool, it
 is covered by `require_pattern`: a native reviewer that answers without a vote block is

@@ -32,14 +32,17 @@ Orchestrator → claudish MCP tool → External Model
 ### From /team Command (Automatic)
 
 The `/team` command handles this automatically:
-- **Every model, native and external** → one `team(mode="run", models=[...], input=PROMPT,
-  timeout=180, require_pattern=..., agent=...)` call. Native Claude names (`internal`,
+- **Every model, native and external** → one `team(mode="run", models=[...],
+  input_file=..., require_pattern=..., agent=...)` call. Native Claude names (`internal`,
   `default`, `opus`, `sonnet`, `haiku`) are ordinary slots in that `models` array; the
   resolved agent travels as the `agent` argument and applies to every child in the run.
+- **Then it polls.** `run` starts the panel and returns a slot map; it does not return
+  votes. `/team` polls `team(mode="status", path=SESSION_DIR)` until no slot is `RUNNING`,
+  then reads each vote from `response-<slot>.md`.
 
-The `team` MCP tool runs all models in parallel internally and returns structured per-model results.
-Because the native reviewer goes through the tool, `require_pattern` covers it too — a slot
-that never produced the required shape is reported FAILED rather than silently succeeding.
+The `team` MCP tool runs all models in parallel internally. Because the native reviewer
+goes through the tool, `require_pattern` covers it too — a slot that never produced the
+required shape is reported FAILED rather than silently succeeding. Full procedure: `claudish:claudish-usage` → "The three-step lifecycle". Requires claudish >= 8.0.0.
 
 ### From /delegate Command
 
@@ -62,7 +65,7 @@ Claudish handles all model routing internally. Pass bare model names — claudis
 
 ```
 // Bare model names, in whichever MCP tool fits the task
-team(mode="run", path=SESSION_DIR, models=["grok", "gemini", "gpt"], input=PROMPT, timeout=180)
+team(mode="run", path=SESSION_DIR, models=["grok", "gemini", "gpt"], input_file=INPUT_MD)
 run_prompt(model="grok", prompt=PROMPT)
 create_session(model="gemini", prompt=PROMPT, timeout_seconds=300)
 ```
@@ -92,15 +95,24 @@ create_session(model="grok", prompt=TASK_PROMPT, timeout_seconds=300,
 ### Parallel Panel (in /team)
 
 ````
-// Single MCP tool call runs the whole panel in parallel — native and external alike
+// Single MCP tool call STARTS the whole panel — native and external alike.
+// It returns a slot map immediately; it does not wait and does not return votes.
 team(mode="run", path=SESSION_DIR, models=["internal", "grok", "gemini"],
-  input=VOTE_PROMPT, timeout=180,
+  input_file=`${SESSION_DIR}/input.md`,
   require_pattern="```vote", agent=RESOLVED_AGENT)
+
+// Then poll to completion, and read the answers off disk.
+team(mode="status", path=SESSION_DIR)   // until no slot has state === "RUNNING"
 ````
 
-Full parameter set: `mode, path, models, judges, input, timeout, require_pattern,
-min_output_bytes, agent, claude_flags`. `agent` and `claude_flags` apply to every child in
-the run — there is no per-model form.
+Full parameter set: `mode, path, models, judges, input, input_file, require_pattern,
+min_output_bytes, agent, claude_flags, slot`. `agent` and `claude_flags` apply to every
+child in the run — there is no per-model form.
+
+**`timeout` is gone.** It was removed from the schema, and because the schema does not set
+`additionalProperties: false` a leftover one is silently ignored rather than rejected.
+Nothing terminates a slot on a timer; you poll, read `idle_seconds_by_slot` alongside
+`activity_by_slot`, and decide. Full procedure: `claudish:claudish-usage` → "The three-step lifecycle". Requires claudish >= 8.0.0.
 
 **Set `require_pattern` whenever the prompt mandates an output shape.** It is what makes a
 slot that exits 0 without producing that shape report FAILED (state EMPTY, reason
@@ -125,8 +137,9 @@ like `grok-result.md` — the tool does not produce them.
 Bash("claudish ...")
 
 ✅ CORRECT — use MCP tools in orchestration workflows
-team(mode="run", path=SESSION_DIR, models=["grok"], input=PROMPT, timeout=180,
+team(mode="run", path=SESSION_DIR, models=["grok"], input_file=INPUT_MD,
   require_pattern=<regex for the shape PROMPT mandates>)
+team(mode="status", path=SESSION_DIR)   // poll until settled, then read response-<slot>.md
 ```
 
 ## Error Escalation Protocol
@@ -135,7 +148,7 @@ team(mode="run", path=SESSION_DIR, models=["grok"], input=PROMPT, timeout=180,
 
 ### Rules
 
-1. **If a slot reports FAILED, or returns empty output:** STOP and report the exact error to the user before trying any alternative — from the per-model result object for `team`, or the `failed` channel event for `create_session`.
+1. **If a slot reports FAILED, or returns empty output:** STOP and report the exact error to the user before trying any alternative — from `status.models[<slot>]` on a settled `team` run, or the `failed` channel event for `create_session`. A slot still `RUNNING` at your poll ceiling is not a failure: report it as still running. A slot with `error.reason === "cancelled"` is your own decision, not an error to escalate.
 2. **Never silently substitute a different model** than the user requested. If the user asked for Gemini, don't silently launch GPT-5 instead.
 3. **Never silently retry with a different provider prefix.** If `or@google/gemini` fails, don't silently try `g@gemini` without telling the user.
 4. **Report all attempts made** so the user understands what was tried and can make an informed decision.

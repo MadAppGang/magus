@@ -96,9 +96,15 @@ create_session(model="grok",
 ```
 team(mode="run", path=SESSION_DIR,
   models=["internal", "grok", "gemini"],
-  input=PROMPT, timeout=180,
+  input_file=`${SESSION_DIR}/input.md`,
   require_pattern=<regex for the shape PROMPT mandates>)
 ```
+
+**That call starts the panel and returns a slot map; it does not return answers.** Poll
+`team(mode="status", path=SESSION_DIR)` until no slot is `RUNNING`, then read each answer
+from `response-<slot>.md`. There is no `timeout` parameter any more — passing one is
+silently ignored. Full procedure: `claudish:claudish-usage` → "The three-step lifecycle".
+Requires claudish >= 8.0.0.
 
 Native Claude names (`internal`, `default`, `opus`, `sonnet`, `haiku`) are ordinary slots
 and belong in `models` beside the external ones. Always pass `require_pattern` when the

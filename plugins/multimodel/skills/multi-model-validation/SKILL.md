@@ -445,15 +445,25 @@ Message 1: Preparation (Session Setup + Model Discovery)
 
   # User selects models via AskUserQuestion (see Pattern 0)
 
-Message 2: Parallel Execution (ONE team call)
+Message 2: Start the panel (ONE team call)
+  Bash: write REVIEW_PROMPT to "$SESSION_DIR/input.md"
+
   claudish team(mode="run", path=$SESSION_DIR,
     models=["internal", "grok", "LATEST_FREE_CODING_MODEL", "gpt", "LATEST_FREE_REASONING_MODEL"],
-    input=REVIEW_PROMPT, timeout=180,
+    input_file="$SESSION_DIR/input.md",
     require_pattern=<the shape REVIEW_PROMPT mandates>, agent="dev:reviewer")
 
   All 5 models execute simultaneously — the team tool parallelises them internally.
   "internal" is a slot like any other, so the native reviewer is covered by
   require_pattern instead of running as an unvalidated background Agent.
+
+  This call RETURNS IMMEDIATELY with a slots map. It does not carry the reviews.
+
+Message 2b: Poll to completion
+  claudish team(mode="status", path=$SESSION_DIR)
+  # repeat until no slot in `models` has state === "RUNNING"
+  # bound the loop; read idle_seconds_by_slot with activity_by_slot before
+  # concluding a quiet slot is stuck
 
 Message 3: Auto-Consolidation
   (Automatically triggered - don't wait for user to request)
@@ -619,20 +629,27 @@ Every model — native Claude and external alike — is invoked via claudish MCP
 orchestrator calls the MCP tools directly; no Bash invocation is needed. This is 100%
 reliable.
 
-**For /team (parallel multi-model):**
+**For /team (parallel multi-model):** write the vote prompt to `input.md`, start the
+panel, poll it to completion, then read the votes off disk.
 ````
 team(mode="run", path=SESSION_DIR, models=["internal", "grok", "gemini"],
-  input=VOTE_PROMPT, timeout=180,
+  input_file=`${SESSION_DIR}/input.md`,
   require_pattern="```vote", agent=RESOLVED_AGENT)
+  // → { started: true, slots: { "grok": "01", "gemini": "02", "internal": "03" }, ... }
+
+team(mode="status", path=SESSION_DIR)   // until no slot has state === "RUNNING"
+  // → read `${SESSION_DIR}/response-<slot>.md` for each slot
 ````
 
-The `team` tool runs all models in parallel internally and returns structured per-model results
-including status, output, and errors.
+The `team` tool runs all models in parallel internally. **`run` does not wait and does not
+return the answers** — it starts the slots and hands back the slot map. Per-model status
+(`state`, `exitCode`, `outputSize`, `error.reason`) comes from a settled `status` response.
+There is no `timeout` parameter any more, and passing one is silently ignored. Full procedure: `claudish:claudish-usage` → "The three-step lifecycle". Requires claudish >= 8.0.0.
 
 **Native Claude names are ordinary slots.** `internal` and `default` select the host tier,
 `opus`/`sonnet`/`haiku` a specific one. They belong in `models` beside the external names and
 run on the user's own Claude subscription through claudish's native passthrough — no API key,
-no provider prefix, no translation. Requires `claudish >= 7.65.0`.
+no provider prefix, no translation.
 
 **`require_pattern` is what turns exit 0 into a real success check.** A slot that finished
 without producing the required shape is reported FAILED (state EMPTY, reason
@@ -648,7 +665,8 @@ create_session(model="grok", prompt=TASK_PROMPT, timeout_seconds=300)
 ```
 
 **Verification:**
-- `team` tool: Check each model's status field in the structured response
+- `team` tool: check `status.models[<slot>].state` on a SETTLED `status` response — never
+  the `run` response, which returns before any model has answered
 - `create_session`: The `completed` channel event confirms success; `failed` provides error details
 
 ### Correct Pattern Example
@@ -657,8 +675,11 @@ create_session(model="grok", prompt=TASK_PROMPT, timeout_seconds=300)
 // ✅ CORRECT: every model in ONE team call — native slots included
 team(mode="run", path=SESSION_DIR,
   models=["internal", "grok", "gemini"],
-  input=VOTE_PROMPT, timeout=180,
+  input_file=`${SESSION_DIR}/input.md`,
   require_pattern="```vote", agent="dev:researcher")
+
+// …then poll, then read the votes from response-<slot>.md
+team(mode="status", path=SESSION_DIR)
 ````
 
 ```
@@ -1800,13 +1821,18 @@ Message 2: Model Selection (AskUserQuestion with multiSelect)
   # qwen/LATEST_FREE_CODING_MODEL
   # mistralai/LATEST_FREE_CODING_MODEL
 
-Message 3: Parallel Execution (single message)
+Message 3: Start the panel (single message)
+  Bash: write REVIEW_PROMPT to "$SESSION_DIR/input.md"
+
   claudish team(mode="run", path=$SESSION_DIR,
     models=["internal", "grok", "LATEST_FREE_CODING_MODEL", "LATEST_FREE_REASONING_MODEL"],
-    input=REVIEW_PROMPT, timeout=180,
+    input_file="$SESSION_DIR/input.md",
     require_pattern=<the shape REVIEW_PROMPT mandates>, agent="dev:reviewer")
 
   All 4 execute simultaneously — one team call parallelises them internally.
+  The call returns a slots map immediately; poll before consolidating:
+
+  claudish team(mode="status", path=$SESSION_DIR)  # until no slot is RUNNING
 
 Message 4: Auto-Consolidation + Statistics Update
   # Consolidate
@@ -1859,20 +1885,26 @@ Message 5: Present Results
 Message 1: Preparation
   (same as Example 1)
 
-Message 2: Parallel Execution
+Message 2: Start the panel
+  Bash: write REVIEW_PROMPT to "$SESSION_DIR/input.md"
+
   claudish team(mode="run", path=$SESSION_DIR,
     models=["internal", "grok", "gemini", "LATEST_GPT_CODING_MODEL"],
-    input=REVIEW_PROMPT, timeout=180,
+    input_file="$SESSION_DIR/input.md",
     require_pattern=<the shape REVIEW_PROMPT mandates>, agent="dev:reviewer")
 
-Message 3: Error Recovery (error-recovery skill)
-  results = await Promise.allSettled([...]);
+Message 3: Poll, then Error Recovery (error-recovery skill)
+  claudish team(mode="status", path=$SESSION_DIR)  # until no slot is RUNNING
 
-  Results:
-    - Claude: Success ✓
-    - Grok: Timeout after 30s ✗
-    - Gemini: API 500 error ✗
-    - GPT-5: Success ✓
+  Settled status.models:
+    - slot 01 (Claude): COMPLETED ✓
+    - slot 02 (Grok):   FAILED, error.reason = nonzero_exit ✗
+    - slot 03 (Gemini): FAILED, error.reason = nonzero_exit (API 500) ✗
+    - slot 04 (GPT-5):  COMPLETED ✓
+
+  Note there is no "timeout" reason any more — nothing kills a slot on a timer. A
+  slot that is still RUNNING when you hit your poll ceiling is reported as still
+  running, and cancelling it is YOUR decision (error.reason = "cancelled").
 
   successful.length = 2 (Claude + GPT-5)
   2 ≥ 2 ✓ (threshold met, can proceed)

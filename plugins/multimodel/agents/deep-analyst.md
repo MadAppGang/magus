@@ -125,13 +125,24 @@ tools: Read, Write, Glob, Grep, Bash, WebSearch, WebFetch, Agent, mcp__plugin_cl
     (`internal`, `default`, `opus`, `sonnet`, `haiku`) are ordinary slots
     and belong in `models` beside the external ones:
     ```
+    # 1. Write the subquestion prompt — stating the output shape it must
+    #    return — to SESSION_PATH/input.md, then:
     team(mode="run", path=SESSION_PATH, models=[...resolved live...],
-         input=<subquestion prompt, stating the output shape it must
-                return>, timeout=600,
+         input_file=`${SESSION_PATH}/input.md`,
          require_pattern=<regex for that shape>, agent="dev:researcher")
+
+    # 2. `run` returns a slot map and does NOT wait. Poll until settled:
+    team(mode="status", path=SESSION_PATH)   # until no slot is RUNNING
+
+    # 3. Read each answer from SESSION_PATH/response-<slot>.md
     ```
-    State the shape in `input` AND pin it with `require_pattern` (needs
-    claudish >= 7.65.0): a slot that finished without producing that shape
+    There is no `timeout` parameter any more, and passing one is silently
+    ignored — bound the poll loop instead, and read `idle_seconds_by_slot`
+    with `activity_by_slot` before calling a quiet slot hung. Full
+    procedure: `claudish:claudish-usage` → "The three-step lifecycle".
+
+    State the shape in the prompt AND pin it with `require_pattern` (needs
+    claudish >= 8.0.0): a slot that finished without producing that shape
     is reported FAILED — state EMPTY, reason `shape_mismatch` — instead of
     counted as a success. Exit 0 is not a success oracle: it is 0 on API
     errors and on a child that ignored the format. Earlier plugin versions

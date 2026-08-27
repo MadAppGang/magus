@@ -162,7 +162,7 @@ If selectedModels.configured = true and selectedModels.models is non-empty:
      ---
      claudish team(mode="run", path=${SESSION_PATH}/reviews/plan-review,
        models=[{model1}, {model2}, ...],
-       input=contents_of_prompt.md, timeout=180,
+       input_file=${SESSION_PATH}/reviews/plan-review/prompt.md,
        min_output_bytes=400)
 
      `min_output_bytes` floors the external slots — the prompt mandates topics but no
@@ -170,10 +170,19 @@ If selectedModels.configured = true and selectedModels.models is non-empty:
      exited 0 having produced nothing would otherwise enter the consensus count as a
      reviewer that found no issues, which reads as agreement.
 
-  c. Wait for all reviews to complete
+  c. Wait for all reviews to complete.
+
+     For the `team` slots that means **polling**, not waiting on the call:
+     `claudish team(mode="status", path=${SESSION_PATH}/reviews/plan-review)` until no
+     slot in `models` has `state === "RUNNING"`. `run` returned as soon as it started
+     them. Bound the loop and report anything still running rather than looping forever;
+     `idle_seconds_by_slot` and `activity_by_slot` tell a slow build apart from a wedged
+     slot. Full procedure: `claudish:claudish-usage` → "The three-step lifecycle".
+     Requires claudish >= 8.0.0.
 
   d. Consolidate reviews with blinded voting:
-     - Read all review files
+     - Read all review files — the internal one at `claude-internal.md`, and each
+       external one at `${SESSION_PATH}/reviews/plan-review/response-<slot>.md`
      - Apply consensus analysis (unanimous, strong, majority, divergent)
      - Prioritize issues by consensus and severity
      - Write ${SESSION_PATH}/reviews/plan-review/consolidated.md
