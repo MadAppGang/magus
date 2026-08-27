@@ -4,7 +4,7 @@ description: |
   Interactive wizard to create and update project design style guides.
   Supports reference image capture, style updates, and visual reference management.
   Actions: create, update, capture, add-reference, remove-reference, list-references
-allowed-tools: AskUserQuestion, Bash, Read, Write, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep
+allowed-tools: AskUserQuestion, Bash, Read, Write, Glob, Grep
 skills:
   - designer:design-references
   - designer:ui-style-format

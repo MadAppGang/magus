@@ -1,7 +1,7 @@
 ---
 name: architect
 description: "Architecture design and technical planning — complexity-aware with plan mode reasoning and multi-model escalation"
-allowed-tools: Agent, AskUserQuestion, Bash, Read, Skill, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep, EnterPlanMode, ExitPlanMode, mcp__plugin_claudish_claudish__team, mcp__plugin_claudish_claudish__run_prompt
+allowed-tools: Agent, AskUserQuestion, Bash, Read, Skill, Glob, Grep, EnterPlanMode, ExitPlanMode, mcp__plugin_claudish_claudish__team, mcp__plugin_claudish_claudish__run_prompt
 skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates
 ---
 
@@ -134,7 +134,9 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates
 
   <critical_constraints>
     <todowrite_requirement>
-      Load and follow the `dev:task-management` skill for all task tracking.
+      **Read** `${CLAUDE_PLUGIN_ROOT}/skills/discipline/task-management/SKILL.md` for phase
+      tracking. It is a nested skill carrying `disable-model-invocation`, so the Skill
+      tool cannot reach it — naming the file is the route that works.
 
       At workflow start:
       1. Check if GTD plugin is active (`.claude/gtd/tasks.json` exists)

@@ -4,8 +4,8 @@
 
 ## Steps
 
-### Step 0.1: Mark phase as in_progress
-TaskUpdate(taskId: {phase0_task_id}, status: "in_progress")
+### Step 0.1: Announce the phase
+Say, in one line: **Phase 0 — starting.**
 
 ### Step 0.2: Generate session ID
 Extract feature name from user request.
@@ -78,8 +78,10 @@ If user selects worktree:
 If user selects current directory:
   Continue as normal (no changes to existing behavior)
 
-### Step 0.7: Mark phase as completed
-TaskUpdate(taskId: {phase0_task_id}, status: "completed")
+### Step 0.7: Announce the phase complete
+Say, in one line: **Phase 0 — complete**, naming the artifacts you wrote.
+Do this only once those files exist; the Stop hook verifies them and will block
+the turn if they do not.
 
 ## Quality Gate
 Session created, SESSION_PATH set, validation directory created

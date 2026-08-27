@@ -4,6 +4,8 @@ import { join } from "node:path";
 import {
   detectPhase,
   evaluate,
+  evaluateStop,
+  PHASE_ARTIFACTS,
   resolveSession,
   type Deps,
 } from "./phase-completion-validator.ts";
@@ -298,5 +300,77 @@ describe("process contract", () => {
     expect(r.status).toBe(2);
     expect(r.stdout).toContain("BLOCKED");
     expect(r.stdout).toContain("architecture.md");
+  });
+});
+
+
+// ── evaluateStop: the live gate ────────────────────────────────────────────────
+//
+// The PreToolUse:TaskUpdate gate is dead on current models (the tool no longer exists),
+// so this is the one that actually fires. These tests exist to prove it CAN fail —
+// a gate that cannot fail is not a gate, and the one it replaced spent months in that
+// state without anyone noticing.
+
+describe("evaluateStop", () => {
+  const STOP_SESSION = "/tmp/dev-feature-stop";
+
+  /** Deps where `present` names the artifact files that exist, each 4 KB. */
+  const depsWith = (present: string[]): Deps => ({
+    sizeOf: (path) => (present.some((f) => path.endsWith(f)) ? 4096 : null),
+    read: (path) =>
+      present.some((f) => path.endsWith(f))
+        // Must satisfy every phase's content patterns, or a COMPLETE phase reads as
+        // partial and the "does not block" tests fail for the wrong reason.
+        ? "# artifact\n\nstatus: PASS\n\nmodel review analysis: issue, concern,\n" +
+          "verdict, recommendation, requirement, criteria, acceptance, risk,\n" +
+          "architecture, component, test, coverage, scenario, evidence, summary\n\n" +
+          "## Section\n\n- item\n"
+        : null,
+    sessions: () => [STOP_SESSION],
+    dirtyPaths: () => ["src/thing.ts", "src/thing.test.ts"],
+  });
+
+  test("no session at all → allow (not every turn is a /dev:dev run)", () => {
+    const deps = { ...depsWith([]), sessions: () => [] };
+    expect(evaluateStop(deps)).toBeNull();
+  });
+
+  test("no artifacts anywhere → allow (nothing was started)", () => {
+    expect(evaluateStop(depsWith([]))).toBeNull();
+  });
+
+  test("several open sessions → allow rather than guess which one", () => {
+    const deps = {
+      ...depsWith([]),
+      sessions: () => ["/tmp/dev-feature-a", "/tmp/dev-feature-b"],
+    };
+    expect(evaluateStop(deps)).toBeNull();
+  });
+
+  test("A HALF-DONE PHASE BLOCKS — the whole point of the gate", () => {
+    // Phase 3 declares more than one required artifact; supplying exactly one makes it
+    // partial, which is a phase begun and abandoned.
+    const phase3 = PHASE_ARTIFACTS["phase3"];
+    expect(phase3.required.length).toBeGreaterThan(1);
+
+    const message = evaluateStop(depsWith([phase3.required[0].file]));
+    expect(message).not.toBeNull();
+    expect(message).toContain("INCOMPLETE PHASE");
+    expect(message).toContain(phase3.name);
+    expect(message).toContain(STOP_SESSION);
+  });
+
+  test("a fully complete phase does not block", () => {
+    const phase3 = PHASE_ARTIFACTS["phase3"];
+    const all = phase3.required.map((a) => a.file);
+    const message = evaluateStop(depsWith(all));
+    // Any complaint must not be about phase3; other phases are absent, not partial.
+    if (message !== null) expect(message).not.toContain(phase3.name);
+  });
+
+  test("the block names what is missing, not just that something is", () => {
+    const phase3 = PHASE_ARTIFACTS["phase3"];
+    const message = evaluateStop(depsWith([phase3.required[0].file]));
+    expect(message).toContain(phase3.required[1].file);
   });
 });

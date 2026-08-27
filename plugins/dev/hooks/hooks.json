@@ -1,5 +1,5 @@
 {
-  "description": "Workflow coaching: analyze session transcript on Stop, inject suggestions on SessionStart. Note: Stop hook here is the first plugin-based Stop hook in this ecosystem; it uses the same double-nested hooks array schema as SessionStart (validated pattern from code-analysis plugin).",
+  "description": "Workflow coaching: analyze session transcript on Stop, inject suggestions on SessionStart. Plan mode is carried by two hooks, because it has two moments that matter: UserPromptSubmit tells /dev:dev to ENTER plan mode at the architecture phase, and PostToolUse:ExitPlanMode tells it to RESUME at Phase 4 once the user approves. Both are hooks rather than text in dev.md because DPM-1 measured the in-command version reaching the model zero times in five sessions. The phase-artifact gate runs on Stop (--stop); its old PreToolUse:TaskUpdate trigger was DELETED, not kept as a fallback, because the task-list tools no longer exist on Opus 4.8 / Sonnet 5 and newer and a registration that cannot fire only advertises enforcement that is not happening.",
   "hooks": {
     "Stop": [
       {
@@ -8,6 +8,15 @@
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/hooks/stop-coaching.sh",
             "timeout": 30
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun ${CLAUDE_PLUGIN_ROOT}/hooks/phase-completion-validator.ts --stop",
+            "timeout": 10
           }
         ]
       }
@@ -23,14 +32,25 @@
         ]
       }
     ],
-    "PreToolUse": [
+    "UserPromptSubmit": [
       {
-        "matcher": "TaskUpdate",
         "hooks": [
           {
             "type": "command",
-            "command": "bun ${CLAUDE_PLUGIN_ROOT}/hooks/phase-completion-validator.ts",
-            "timeout": 10
+            "command": "bun ${CLAUDE_PLUGIN_ROOT}/hooks/plan-mode-protocol.ts",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "ExitPlanMode",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun ${CLAUDE_PLUGIN_ROOT}/hooks/resume-after-plan.ts",
+            "timeout": 5
           }
         ]
       }

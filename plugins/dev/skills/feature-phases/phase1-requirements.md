@@ -16,8 +16,8 @@
 
 ## Steps
 
-### Step 1.1: Mark phase as in_progress
-TaskUpdate(taskId: {phase1_task_id}, status: "in_progress")
+### Step 1.1: Announce the phase
+Say, in one line: **Phase 1 — starting.**
 
 ### Step 1.2: Read user's initial feature request from $ARGUMENTS
 
@@ -321,7 +321,7 @@ Options:
 3. Cancel feature development
 
 ### Step 1.8: Mark phase as completed
-If approved: TaskUpdate(taskId: {phase1_task_id}, status: "completed")
+If approved: say **Phase 1 — complete**, naming the artifacts you wrote
 
 ## Quality Gate
 User approves requirements.md, validation-criteria.md, and iteration-config.json

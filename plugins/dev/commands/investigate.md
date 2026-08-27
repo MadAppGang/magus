@@ -1,7 +1,7 @@
 ---
 name: investigate
 description: "Read-only code investigation — architecture traces, implementation analysis, bug origin tracking with specialist agents"
-allowed-tools:  Agent, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet
+allowed-tools:  Agent, AskUserQuestion, Bash, Read
 skills: dev:context-detection
 ---
 

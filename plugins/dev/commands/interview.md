@@ -1,7 +1,7 @@
 ---
 name: interview
 description: Comprehensive specification interview with intelligent requirements elicitation
-allowed-tools: Agent, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep
+allowed-tools: Agent, AskUserQuestion, Bash, Read, Glob, Grep
 skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates, multimodel:task-orchestration
 ---
 

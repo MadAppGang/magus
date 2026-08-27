@@ -4,6 +4,52 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [dev 5.0.0] - 2026-08-28
+
+### Fixed
+- The phase-artifact gate could not fire at all. It was registered as `PreToolUse` on
+  `TaskUpdate`, and that tool was removed from Opus 4.8 / Sonnet 5 / Fable 5 / Mythos 5
+  and newer in Claude Code 2.1.233 — verified with a control (`--model claude-sonnet-5`
+  reports no, `claude-sonnet-4-6` reports yes), not read from the changelog. The gate
+  moves to `Stop`, which does fire, and is **advisory** rather than blocking: the first
+  version exited 2, which on `Stop` means "refuse to stop" and spun a session that was
+  idle-waiting on a background agent.
+- 147 dead tool entries removed from 37 files across 10 plugins. `allowed-tools` is a
+  permission grant, so they did nothing — but they told every reader that these commands
+  use a workflow they cannot use, and `/dev:dev` carried "You MUST use Tasks" against an
+  absent tool.
+
+### Added
+- `/dev:dev` drives plan mode across both of its moments, via two hooks.
+  `UserPromptSubmit` carries the enter/adopt protocol when `/dev:dev` is invoked;
+  `PostToolUse` matched on `ExitPlanMode` resumes the pipeline at Phase 4 once the user
+  approves. Measured interactive, no tool fence: **0/5 without the hooks vs 5/5 with**,
+  Fisher one-sided p = 0.004, flake 0.
+- Validated live end to end: `Entered plan mode` at Phase 3, then after "Yes, and use
+  auto mode", `Phase 3 — complete. Artifacts: architecture.md.` / `Phase 4 — starting.`
+  with no further prompting.
+
+### Changed
+- Phase progress is reported in one line of text (`**Phase N — starting.**` /
+  `**Phase N — complete.**` naming artifacts) instead of task-tool calls. The artifacts
+  are now the record: a task marked completed was a claim, a file on disk is evidence.
+- `skills/discipline/task-management/SKILL.md` rewritten — it taught the removed API.
+
+### Why
+An earlier attempt put the same protocol text inside `dev.md` and it reached the model
+**zero times in five sessions**. Plan mode re-injects its reminder on every turn while a
+slash command is expanded once, so by the architecture phase the reminder has been
+repeated five times and the command file zero. Plan mode did not out-rank the command; it
+out-lasted it. Placement, not wording, is what changed the result.
+
+### Migration notes
+The `PreToolUse:TaskUpdate` registration is deleted rather than kept as a fallback. Any
+tooling that matched on it, or that parsed the old `TaskUpdate(...)` progress lines, needs
+updating. Plan mode applies at Standard and Full depth only — Quick is `0 → 4 → done` with
+no Phase 3.
+
+---
+
 ## [code-analysis 7.0.0] - 2026-08-27
 
 ### Removed

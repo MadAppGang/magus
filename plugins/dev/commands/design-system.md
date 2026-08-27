@@ -1,7 +1,7 @@
 ---
 name: design-system
 description: "Validate a project against the design-system guardrails — token-only styling, one component library, variants over call-site restyling. Reports drift by rule, and can fix it or scaffold the guardrails."
-allowed-tools: Bash, Read, Write, Edit, Glob, Grep, AskUserQuestion, Skill, TaskCreate, TaskUpdate, TaskList, TaskGet
+allowed-tools: Bash, Read, Write, Edit, Glob, Grep, AskUserQuestion, Skill
 skills: dev:design-system-guardrails
 argument-hint: "[path] [--changed] [--fix] [--setup] [--strict]"
 ---

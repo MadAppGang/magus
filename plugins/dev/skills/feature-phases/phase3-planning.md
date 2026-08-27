@@ -27,8 +27,8 @@ The second gate (Step 3.12) is the existing consensus gate, unchanged.
 
 ## Steps
 
-### Step 3.1: Mark phase as in_progress
-TaskUpdate(taskId: {phase3_task_id}, status: "in_progress")
+### Step 3.1: Announce the phase
+Say, in one line: **Phase 3 — starting.**
 
 ### Step 3.2: Read iteration config
 ```bash
@@ -217,8 +217,10 @@ cannot see. The shift+tab cycle from `default` is `acceptEdits → plan → bypa
 (if available) → auto (if available)`, so the user always has a one-keystroke path and
 keeps the decision.
 
-### Step 3.13: Mark phase as completed
-TaskUpdate(taskId: {phase3_task_id}, status: "completed")
+### Step 3.13: Announce the phase complete
+Say, in one line: **Phase 3 — complete**, naming the artifacts you wrote.
+Do this only once those files exist; the Stop hook verifies them and reports
+if a phase was started and left half done.
 
 ## Quality Gate
 Design approved via ExitPlanMode AND plan approved by consensus AND user.

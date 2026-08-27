@@ -21,7 +21,9 @@ remembers to. The second is bookkeeping the command drives itself.
 
 ## 1. Artifact gate (automatic)
 
-Registered as `PreToolUse` on `TaskUpdate` in `hooks/hooks.json`. It receives the
+Registered as a `Stop` hook in `hooks/hooks.json`, invoked with `--stop`. It was a
+`PreToolUse` on `TaskUpdate` until the task-list tools were removed from current
+models, which left it unable to fire at all. It receives the
 payload on stdin and exits **2** to block, with the reason on stdout.
 
 It checks three things:

@@ -1,7 +1,7 @@
 ---
 name: audit
 description: "Structured quality audit — routes to specialist reviewers for code, UI, docs, security, or plugin quality"
-allowed-tools:  Agent, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet
+allowed-tools:  Agent, AskUserQuestion, Bash, Read
 skills: dev:context-detection
 ---
 

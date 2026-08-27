@@ -1,163 +1,88 @@
 ---
 name: task-management
-description: Manages Claude Code Tasks across multi-phase workflows — phase tracking, stale cleanup, optional GTD persistence. Use when orchestrating phased work.
+description: Tracks phases across a multi-phase workflow in text, and explains why the task-list tools are gone. Use when orchestrating phased work.
 user-invocable: false
 disable-model-invocation: true
 ---
 
-# Task Management
+# Phase Tracking
 
-**Purpose:** Manage Claude Code Tasks in multi-phase workflows, with optional GTD plugin integration for cross-session persistence.
+**There are no task-list tools.** `TaskCreate`, `TaskUpdate`, `TaskList`, `TaskGet` and
+`TodoWrite` were removed from Opus 4.8, Sonnet 5, Fable 5, Mythos 5 and newer in Claude
+Code 2.1.233. Verified with a control rather than taken from the changelog:
 
-## When to Use
-
-Apply this skill whenever you run an orchestrator command that tracks workflow phases:
-- `/dev:architect` — architecture design phases
-- `/dev:dev` — feature implementation phases
-- `/dev:debug` — debugging investigation phases
-- `/dev:research` — research and synthesis phases
-- `/dev:interview` — requirements elicitation phases
-- `/dev:doc` — documentation workflow phases
-
-## GTD Detection
-
-Before creating phase tasks, check if the GTD plugin is installed:
-
-```bash
-[ -f ".claude/gtd/tasks.json" ] && echo "GTD_ACTIVE" || echo "GTD_INACTIVE"
+```console
+$ claude -p "is a tool named TaskCreate available to you?" --model claude-sonnet-5
+no
+$ claude -p "is a tool named TaskCreate available to you?" --model claude-sonnet-4-6
+yes
 ```
 
-Route to the appropriate workflow section based on the result.
+This file used to teach the opposite — create a task per phase, flip it to `in_progress`,
+flip it to `completed`. Every one of those calls was unmakeable on the models this repo
+runs, so the instruction was silently dropped along with whatever else shared the
+sentence. **Do not add them back.**
 
----
+## What to do instead
 
-## GTD-Aware Workflow (when GTD is active)
-
-### At Workflow Start
-
-The GTD plugin hooks intercept all TaskCreate calls and auto-sync tasks to `.claude/gtd/tasks.json`. When there is an active GTD task (set via `/gtd:engage <task-id>`), every phase task you create is automatically linked as a subtask — no manual metadata needed.
-
-**Recommended opening sequence:**
-
-1. Check for an existing active GTD task by reading the session context or asking the user.
-2. If no active task is set, suggest: "Run `/gtd:engage <topic>` to link these phase tasks as subtasks of a GTD project. This makes them persist across sessions."
-3. If the user already has an active GTD task, inform them: "Phase tasks will auto-link as subtasks of your active GTD task. The hooks handle sync automatically."
-
-**Note:** You do not need to set `gtdParent` metadata manually. The `PreToolUse(TaskCreate)` hook injects it when an active task exists.
-
-### During Workflow
-
-- Create and update phase tasks normally using TaskCreate/TaskUpdate/TaskList/TaskGet.
-- The hooks sync status changes (completed, deleted, in_progress) back to the GTD store automatically.
-- Tasks with a GTD parent go to the `next` list; tasks without one go to `inbox`.
-
-### At Workflow End
-
-Offer to capture outcomes as GTD next actions:
-- "Want me to capture next steps as GTD tasks? Run `/gtd:capture` to add follow-up actions."
-- If the architecture/design produced actionable items, suggest creating them via `/gtd:capture`.
-
-### Cross-Session Resume
-
-When resuming a session, the GTD `SessionStart` hook displays the active task and its subtask state. You do not need `CLAUDE_CODE_TASK_LIST_ID` or any environment variable — the GTD file store handles persistence.
-
----
-
-## Fallback Workflow (when GTD is not installed)
-
-Use native TaskCreate/TaskUpdate for session-scoped phase tracking. Tasks are ephemeral and exist only for the current session.
-
-**Best practices without GTD:**
-
-- Follow the Phase Task Patterns section below for creating and updating tasks.
-- Refer to `multimodel:task-orchestration` patterns for multi-agent coordination.
-- Suggest to the user at workflow end: "Install the GTD plugin (`/plugin marketplace add MadAppGang/magus` then enable `gtd@magus`) for persistent cross-session task tracking."
-
----
-
-## Session Hygiene
-
-Before creating phase tasks for the current workflow, check for stale tasks from previous workflows:
+Report each transition in **one line of text**, and make the artifacts the record:
 
 ```
-TaskList → review any pending or in_progress tasks
+**Phase 3 — starting.**
+...work...
+**Phase 3 — complete.** Artifacts: architecture.md, reviews/plan-review/consolidated.md
 ```
 
-**If stale tasks exist** (pending or in_progress but clearly from a different workflow):
+Two lines per phase. No state to keep, nothing to go stale, and it reads the same to a
+human watching the run.
 
-1. Inform the user: "Found stale tasks from a previous workflow: [list subjects]. Clean them up?"
-2. If confirmed, delete stale tasks with `TaskUpdate { status: "deleted" }`.
-3. Then create fresh phase tasks for the current workflow.
+## The artifacts ARE the task list
 
-**Heuristic for identifying stale tasks:** Tasks whose subjects reference a different feature, system, or topic than the current request are likely stale. When in doubt, ask the user.
+This is the substantive change, not a cosmetic one. A task marked `completed` was only a
+claim; a file on disk is evidence. Phase state now lives in `${SESSION_PATH}`, and the
+phase's required artifacts are its definition of done — see `dev:enforcement`.
 
----
+| question | old answer | now |
+|---|---|---|
+| which phase am I in? | `TaskList` | the last `**Phase N — starting**` line you wrote |
+| is phase N done? | its task status | its artifacts exist and are non-trivial |
+| what enforces it? | `PreToolUse:TaskUpdate` | the `Stop` hook, which still fires |
 
-## Phase Task Patterns
+## The gate
 
-### Creation Rules
-
-- Create ALL phase tasks upfront before starting work on any phase.
-- Use descriptive subjects in imperative form: `"PHASE {N}: {action verb} {object}"`
-  - Examples: `"PHASE 0: Triage complexity"`, `"PHASE 3: Analyze trade-offs"`
-- Set `activeForm` for the spinner: `"{action}ing {object}"`
-  - Examples: `"Triaging complexity"`, `"Analyzing trade-offs"`
-- Mark exactly ONE task `in_progress` at a time.
-- Mark tasks `completed` immediately after finishing each phase — do not batch.
-
-### Parallel Work Exception
-
-When running parallel sub-agents (e.g., multi-model review in Phase 6 of architect), multiple tasks may be `in_progress` simultaneously. This is the intended exception to the one-in-progress rule.
-
-### Standard Phase Subjects
-
-For `/dev:architect`:
-```
-PHASE 0: Triage complexity
-PHASE 1: Initialize session
-PHASE 2: Plan mode reasoning      (conditional: moderate/complex only)
-PHASE 3: Analyze requirements
-PHASE 4: Generate alternatives
-PHASE 5: Analyze trade-offs
-PHASE 6: Create detailed design
-PHASE 7: Validate architecture    (optional)
-PHASE 8: Finalize documentation
-```
-
-Adapt phase names to match the actual workflow being executed.
-
-### Update Lifecycle
+`hooks/phase-completion-validator.ts --stop` runs when the turn ends. It resolves the
+session, and blocks the turn if any phase has **some but not all** of its artifacts — a
+phase begun and abandoned:
 
 ```
-pending → in_progress → completed
+BLOCKED: a /dev:dev phase was started and left incomplete.
+  - Multi-Model Planning (phase3): missing reviews/plan-review/consolidated.md
+Session: ai-docs/sessions/dev-feature-x
+Finish the artifacts, or write a skip-reason.md saying why the phase was abandoned.
 ```
 
-- Set `in_progress` BEFORE starting any work on a phase.
-- Set `completed` AFTER all steps in a phase are done.
-- Use `deleted` for phases that are skipped or no longer applicable (e.g., Plan Mode phase for a simple problem).
+A phase with **none** of its artifacts was never started and is not a finding. A phase
+with all of them is finished. Only a mix is a problem.
 
----
+Its predecessor was a `PreToolUse` hook on `TaskUpdate`, which meant it could not fire at
+all once the tool disappeared — the command text kept promising enforcement that had
+stopped happening. If you change the trigger again, check the new one actually fires:
+a gate that cannot fail is indistinguishable from no gate.
 
-## Quick Reference
+## Abandoning a phase on purpose
 
-| Situation | Action |
-|-----------|--------|
-| Starting workflow, GTD active, no active task | Suggest `/gtd:engage <topic>` |
-| Starting workflow, GTD active, active task set | Inform: subtasks will auto-link |
-| Starting workflow, GTD inactive | Use native tasks; suggest GTD install |
-| Stale tasks found in TaskList | Offer to delete; create fresh ones |
-| Phase complete | Immediately mark `completed` |
-| Parallel agents running | Allow multiple `in_progress` |
-| Workflow complete, GTD active | Offer `/gtd:capture` for next actions |
+Legitimate — skipping browser validation with no browser, for instance. Write
+`${SESSION_PATH}/phase{N}/skip-reason.md` saying why. The point is that the decision is
+recorded, not that every phase runs.
 
-## Integration with Other Skills
+## GTD persistence
 
-- **agent-coordination-discipline:** Multi-agent phases may have simultaneous in_progress tasks.
-- **worktree-lifecycle:** Worktree creation and teardown are discrete phases; track each as a task.
-- **verification-before-completion:** The final phase task should not be marked completed until all verification gates pass.
+**Currently inert.** The `gtd` plugin syncs tasks to `.claude/gtd/tasks.json` through
+`PreToolUse:TaskCreate` and `PostToolUse:TaskCreate/TaskUpdate` hooks. Those matchers name
+tools that no longer exist, so none of the three fires on a current model and nothing
+syncs. This is a known gap in `gtd`, not something to work around from here.
 
-## Reference files
+## Parallel agents
 
-- Read `references/agent-coordination.md` when work is split across parallel agents
-  rather than sequential phases. It was the separate `agent-coordination-discipline`
-  skill until 2026-08-15 — hidden, with no consumers, so nothing could reach it.
+When work is split across concurrent agents rather than sequential phases, read
+[`references/agent-coordination.md`](./references/agent-coordination.md).

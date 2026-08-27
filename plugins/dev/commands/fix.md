@@ -1,7 +1,7 @@
 ---
 name: fix
 description: "Fixes a bug test-first — reproduce, localize, plan, patch, validate. Two multimodel gates, one on the root-cause hypothesis before any code and one on the finished patch."
-allowed-tools:  Agent, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep, Write, Edit, Skill, mcp__plugin_claudish_claudish__team, mcp__plugin_claudish_claudish__run_prompt
+allowed-tools:  Agent, AskUserQuestion, Bash, Read, Glob, Grep, Write, Edit, Skill, mcp__plugin_claudish_claudish__team, mcp__plugin_claudish_claudish__run_prompt
 skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-development, dev:testing-strategies, dev:verification-before-completion, multimodel:error-recovery, multimodel:quality-gates
 ---
 

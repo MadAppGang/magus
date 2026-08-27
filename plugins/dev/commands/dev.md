@@ -1,7 +1,7 @@
 ---
 name: dev
 description: "Builds a feature through an 8-phase workflow, delegating each phase to a specialist agent. Depth picks how many phases run, automation how often it stops to ask."
-allowed-tools: Agent, AskUserQuestion, Bash, Read, EnterPlanMode, ExitPlanMode, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep, mcp__chrome-devtools__navigate_page, mcp__chrome-devtools__take_screenshot, mcp__chrome-devtools__take_snapshot, mcp__chrome-devtools__click, mcp__chrome-devtools__fill, mcp__chrome-devtools__new_page, mcp__chrome-devtools__select_page, mcp__chrome-devtools__list_pages
+allowed-tools: Agent, AskUserQuestion, Bash, Read, EnterPlanMode, ExitPlanMode, Glob, Grep, mcp__chrome-devtools__navigate_page, mcp__chrome-devtools__take_screenshot, mcp__chrome-devtools__take_snapshot, mcp__chrome-devtools__click, mcp__chrome-devtools__fill, mcp__chrome-devtools__new_page, mcp__chrome-devtools__select_page, mcp__chrome-devtools__list_pages
 skills: dev:context-detection, dev:universal-patterns, dev:worktree-lifecycle, multimodel:multi-model-validation, multimodel:quality-gates, multimodel:model-tracking-protocol
 ---
 
@@ -47,6 +47,24 @@ skills: dev:context-detection, dev:universal-patterns, dev:worktree-lifecycle, m
   *For quick help without structure, just ask Claude directly.*
 </value_banner>
 
+<plan_mode_protocol>
+  Plan mode and this command compete for the same turn, and plan mode wins by default:
+  its system reminder is re-injected on EVERY turn while this file is expanded once.
+
+  **The protocol itself is delivered by a hook**, not from here — see
+  hooks/plan-mode-protocol.ts, registered on UserPromptSubmit. It fires when /dev:dev is
+  invoked and injects the adopt/announce rules as their own context block.
+
+  This is deliberate and was measured. An earlier revision carried the full protocol
+  inline at this spot. DPM-1 found that across five sessions on the fixed tree, none of
+  its language reached the model and the fixed tree was indistinguishable from the tree
+  without it. Adding text to the once-expanded channel is fighting on the wrong axis.
+  **Do not move the protocol back into this file.**
+
+  The one rule worth repeating here, because it is the whole point: if plan mode is
+  active, SAY SO before Step 0 and adopt it as Phase 3. Never run silently.
+</plan_mode_protocol>
+
 <critical_override>
   THIS COMMAND OVERRIDES THE CLAUDE.md TASK ROUTING TABLE FOR AGENT SELECTION.
 
@@ -66,11 +84,35 @@ skills: dev:context-detection, dev:universal-patterns, dev:worktree-lifecycle, m
   DO NOT substitute agents across phases. Each phase has specific agent requirements.
   DO NOT use code-analysis:detective for any phase (READ-ONLY, cannot write code).
   DO NOT use dev:researcher for any phase (research only, not in this workflow).
+
+  PRECEDENCE WHILE PLAN MODE IS ACTIVE: the agent rules above still name WHICH
+  agent runs each phase, but none of them may write. Delegate read-only work only
+  — dev:architect and dev:stack-detector explore and report; dev:developer and
+  dev:test-architect do not run at all until after ExitPlanMode. This resolves the
+  conflict rather than leaving both instruction sets reading as absolute.
 </critical_override>
 
 <instructions>
   <scope_selection>
     **MANDATORY: Before starting any phase, determine depth and automation level.**
+
+    **Step 0a — Plan mode check (BEFORE the preset read):**
+
+    Follow <plan_mode_protocol> above. Announce the branch you took in one line.
+    Do this first: if plan mode is active, the preset's `depth` and `automation`
+    still apply, but Phases 0-3 run read-only and the session directory is not
+    created until after ExitPlanMode.
+
+    **Step 0b — Task tool preflight:**
+
+    There are no task-list tools. TaskCreate/TaskUpdate/TaskList/TaskGet and TodoWrite
+    were removed from Opus 4.8, Sonnet 5, Fable 5, Mythos 5 and newer in Claude Code
+    2.1.233 — verified with a control, not read from the changelog. Report every phase
+    transition in ONE LINE of text instead: "**Phase N — starting.**" and "**Phase N —
+    complete.**" naming the artifacts.
+
+    The artifact gate still exists and still blocks: it moved to the Stop hook, which
+    fires when the turn ends and refuses it if a phase was started and left half done.
 
     **Step 0 — Check for preset file (autotest/CI bypass):**
 
@@ -395,10 +437,12 @@ skills: dev:context-detection, dev:universal-patterns, dev:worktree-lifecycle, m
          - [ ] Criterion 3 → Skipped (reason documented)
          ```
 
-      4. **Only then mark task complete:**
+      4. **Only then say the phase is complete:**
          ```
-         TaskUpdate(taskId: X, status: "completed")
+         **Phase {N} — complete.** Artifacts: {paths you wrote}
          ```
+         There is no task tool to call. The Stop hook re-checks the artifacts when the
+         turn ends and blocks it if a phase was started and left half done.
 
       **If artifacts cannot be produced:**
       - Failure report auto-generated at: ${SESSION_PATH}/failures/phase{N}-failure-report.md

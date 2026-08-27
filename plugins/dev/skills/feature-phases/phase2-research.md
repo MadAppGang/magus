@@ -4,8 +4,8 @@
 
 ## Steps
 
-### Step 2.1: Mark phase as in_progress
-TaskUpdate(taskId: {phase2_task_id}, status: "in_progress")
+### Step 2.1: Announce the phase
+Say, in one line: **Phase 2 — starting.**
 
 ### Step 2.2: Analyze requirements for research needs
 - External APIs or libraries
@@ -26,8 +26,10 @@ If not needed:
   a. Skip this phase
   b. Log: "Research phase skipped - no external dependencies"
 
-### Step 2.4: Mark phase as completed
-TaskUpdate(taskId: {phase2_task_id}, status: "completed")
+### Step 2.4: Announce the phase complete
+Say, in one line: **Phase 2 — complete**, naming the artifacts you wrote.
+Do this only once those files exist; the Stop hook verifies them and will block
+the turn if they do not.
 
 ## Quality Gate
 Research complete or explicitly skipped

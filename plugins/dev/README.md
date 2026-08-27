@@ -90,7 +90,7 @@ top level.
 |---|---|
 | `SessionStart` | Surfaces workflow coaching from previous sessions |
 | `Stop` | Analyses the session and queues learnings |
-| `PreToolUse:TaskUpdate` | Blocks a `/dev:dev` phase marked complete without its artifacts |
+| `Stop` | Blocks the turn when a `/dev:dev` phase was started and left without its artifacts |
 
 The phase gate exits **2** to block, with the reason on stdout. It allows
 whenever it is unsure — no session directory, several open at once, unparseable

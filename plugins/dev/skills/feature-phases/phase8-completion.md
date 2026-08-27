@@ -4,8 +4,8 @@
 
 ## Steps
 
-### Step 8.1: Mark phase as in_progress
-TaskUpdate(taskId: {phase8_task_id}, status: "in_progress")
+### Step 8.1: Announce the phase
+Say, in one line: **Phase 8 — starting.**
 
 ### Step 8.2: Verify Phase 7 passed
 - Read ${SESSION_PATH}/validation/result-iteration-{latest}.md

@@ -1,7 +1,7 @@
 ---
 name: ui
 description: UI design review from a screenshot or Figma file, covering usability and accessibility
-allowed-tools:  Agent, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep
+allowed-tools:  Agent, AskUserQuestion, Bash, Read, Glob, Grep
 skills: designer:ui-analyse, dev:frontend-implement, multimodel:multi-model-validation
 ---
 

@@ -235,7 +235,7 @@
       "name": "dev",
       "source": "./plugins/dev",
       "description": "Universal development assistant. Detects the project stack and routes work to specialist agents for architecture, implementation, debugging, review and research, enforcing design-system guardrails on every UI change.",
-      "version": "4.6.1",
+      "version": "5.0.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -275,6 +275,16 @@
       "strict": true,
       "releases": [
         {
+          "version": "5.0.0",
+          "date": "2026-08-28",
+          "kinds": [
+            "Fixed",
+            "Added",
+            "Changed"
+          ],
+          "summary": "The phase-artifact gate could not fire at all. It was registered as PreToolUse on TaskUpdate,\u2026"
+        },
+        {
           "version": "4.6.1",
           "date": "2026-08-26",
           "summary": "The claudish-in-main-bash coaching rule advised running claudish inside a sub-agent via the\u2026"
@@ -299,14 +309,6 @@
             "Changed"
           ],
           "summary": "/dev:release settles authorization once, up front \u2014 never mid-run"
-        },
-        {
-          "version": "4.4.1",
-          "date": "2026-08-22",
-          "kinds": [
-            "Added"
-          ],
-          "summary": "/dev:release learned the two rules its first live run exposed"
         }
       ]
     },

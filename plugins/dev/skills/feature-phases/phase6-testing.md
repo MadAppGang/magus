@@ -6,8 +6,8 @@
 
 ## Steps
 
-### Step 6.1: Mark phase as in_progress
-TaskUpdate(taskId: {phase6_task_id}, status: "in_progress")
+### Step 6.1: Announce the phase
+Say, in one line: **Phase 6 — starting.**
 
 ### Step 6.2: Read iteration config
 ```bash
@@ -96,8 +96,10 @@ Track iteration history in ${SESSION_PATH}/tests/iteration-history.md:
 - Failure analysis
 - Fixes applied
 
-### Step 6.8: Mark phase as completed
-TaskUpdate(taskId: {phase6_task_id}, status: "completed")
+### Step 6.8: Announce the phase complete
+Say, in one line: **Phase 6 — complete**, naming the artifacts you wrote.
+Do this only once those files exist; the Stop hook verifies them and will block
+the turn if they do not.
 
 ## Quality Gate
 All unit tests pass OR user approves with known failures.

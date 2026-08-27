@@ -46,7 +46,17 @@ launcher runs from source under Bun, so the install still works.
 **Update through claudeup, not your package manager:**
 
 ```bash
-claudeup update
+claudeup upgrade
+```
+
+Two verbs, the same split every package manager uses. `claudeup upgrade` advances
+**claudeup itself**. `claudeup update` advances **your dependencies** — it installs
+whatever your active profile declares but this machine is missing, and moves every
+`"latest"` plugin, CLI tool and skill to its newest published version.
+
+```bash
+claudeup update           # install what's missing, advance what's behind
+claudeup update --check   # report only; exits 1 if anything is out of date
 ```
 
 ## 2. Pick your path

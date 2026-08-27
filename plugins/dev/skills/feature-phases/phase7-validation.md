@@ -4,8 +4,8 @@
 
 ## Steps
 
-### Step 7.1: Mark phase as in_progress
-TaskUpdate(taskId: {phase7_task_id}, status: "in_progress")
+### Step 7.1: Announce the phase
+Say, in one line: **Phase 7 — starting.**
 
 ### Step 7.2: Read validation config
 Read validation config from ${SESSION_PATH}/validation-criteria.md
@@ -185,8 +185,10 @@ if [ -n "$DEV_SERVER_PID" ]; then
 fi
 ```
 
-### Step 7.11: Mark phase as completed
-TaskUpdate(taskId: {phase7_task_id}, status: "completed")
+### Step 7.11: Announce the phase complete
+Say, in one line: **Phase 7 — complete**, naming the artifacts you wrote.
+Do this only once those files exist; the Stop hook verifies them and will block
+the turn if they do not.
 
 ## Quality Gate
 All validation checks pass with screenshot evidence.

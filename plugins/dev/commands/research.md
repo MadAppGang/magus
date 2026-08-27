@@ -1,7 +1,7 @@
 ---
 name: research
 description: Multi-source research with convergence-based finalization and parallel exploration
-allowed-tools:  Agent, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep
+allowed-tools:  Agent, AskUserQuestion, Bash, Read, Glob, Grep
 skills: dev:context-detection, multimodel:task-orchestration
 ---
 

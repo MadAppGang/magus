@@ -6,7 +6,7 @@
  * in `<session>/session-meta.json`. This is state, not enforcement: the command
  * invokes it between phases and reads the exit code. Real gating of phase
  * completion lives in hooks/phase-completion-validator.ts, which the runtime
- * calls on every TaskUpdate whether or not anyone remembers to.
+ * calls when the turn ends, whether or not anyone remembers to.
  *
  * Ported from outer-loop-enforcer.js — same on-disk shape and exit codes, so
  * existing sessions keep working.

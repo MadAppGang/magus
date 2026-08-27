@@ -319,6 +319,77 @@ export function evaluate(
   ].join("\n");
 }
 
+/**
+ * Stop-event decision: is any phase HALF DONE?
+ *
+ * WHY THIS EXISTS ALONGSIDE `evaluate`.
+ *
+ * `evaluate` runs on `PreToolUse:TaskUpdate` and refuses to let a phase be marked
+ * complete without its artifacts. That trigger is dead. `TaskCreate/Update/List/Get` and
+ * `TodoWrite` were removed from Opus 4.8, Sonnet 5, Fable 5, Mythos 5 and newer in Claude
+ * Code 2.1.233, so the tool is never called and the hook never fires. Measured with a
+ * control rather than read from the changelog:
+ *
+ *   --model claude-sonnet-5   -> TaskCreate available? no
+ *   --model claude-sonnet-4-6 -> TaskCreate available? yes
+ *
+ * The gate was therefore inert on every model this repo actually runs, while the command
+ * text still promised it was enforced.
+ *
+ * WHAT REPLACED IT. `Stop` still fires, so the check moved there — but a Stop hook cannot
+ * see "the agent is marking phase 3 complete", because no such event exists any more. It
+ * can only see the artifacts on disk. So the question changes shape:
+ *
+ *   evaluate      "you are claiming this phase is done — is it?"
+ *   evaluateStop  "you are ending the turn — is any phase half done?"
+ *
+ * A PARTIAL phase is the signal. A phase with none of its artifacts was never started; a
+ * phase with all of them finished. One with SOME is a phase that was begun and abandoned,
+ * which is exactly the shape of the failure this file was written to catch.
+ *
+ * Every uncertain path still returns null. This blocks a turn, which is disruptive, so it
+ * fires only when the evidence is unambiguous.
+ */
+export function evaluateStop(deps: Deps, sessionOverride?: string): string | null {
+  const resolved = resolveSession(deps.sessions(), sessionOverride);
+  if (resolved === null) return null; // no session -> not a /dev:dev run
+  if ("ambiguous" in resolved) return null; // several open -> refuse to guess
+
+  const sessionPath = resolved.path;
+  const partial: string[] = [];
+
+  for (const [phase, spec] of Object.entries(PHASE_ARTIFACTS)) {
+    if (spec.required.length === 0) continue;
+
+    // Presence is counted from the FILES, never from the error list. One artifact can
+    // produce several errors — missing, too small, and a content pattern that did not
+    // match are separate strings — so `errors.length` does not correspond to artifacts
+    // and cannot stand in for "how many are there". The first version of this loop
+    // compared `errors.length === spec.required.length` to mean "none present", and a
+    // unit test caught it scoring a COMPLETE phase as abandoned: every file existed, two
+    // content patterns failed, and the arithmetic happened to line up.
+    const present = spec.required.filter(
+      (a) => deps.sizeOf(join(sessionPath, a.file)) !== null,
+    ).length;
+    if (present === 0) continue; // never started
+
+    const errors = checkArtifacts(spec, sessionPath, deps);
+    if (errors.length === 0) continue; // finished
+
+    partial.push(`  - ${spec.name} (${phase}): ${errors.join("; ")}`);
+  }
+
+  if (partial.length === 0) return null;
+
+  return [
+    `INCOMPLETE PHASE: a /dev:dev phase was started and left without its artifacts.`,
+    ...partial,
+    `Session: ${sessionPath}`,
+    `Finish the artifacts, or write a skip-reason.md saying why the phase was abandoned.`,
+    `(Advisory: this does not block the turn. If the phase is still in progress, ignore it.)`,
+  ].join("\n");
+}
+
 // ── Entry point ─────────────────────────────────────────────────────────────
 
 function liveDeps(cwd: string): Deps {
@@ -368,6 +439,56 @@ function main(): void {
   if (!input) allow(); // no or unparseable payload → allow
 
   const cwd = input.cwd ?? process.cwd();
+
+  // `--stop` is the live path.
+  //
+  // ADVISORY, NOT BLOCKING — and that is a correction, not a preference.
+  //
+  // The first version called `deny()`, which is the PreToolUse convention: write the
+  // reason to stdout and exit 2. Run live, it produced this on EVERY turn of a healthy
+  // /dev:dev run:
+  //
+  //   ⎿ Stop hook error: [bun .../phase-completion-validator.ts --stop]: No stderr output
+  //
+  // Two distinct faults, and the second is the one that matters.
+  //
+  // 1. Wrong stream. A Stop hook's exit-2 reason is read from STDERR, not stdout, so the
+  //    message vanished and Claude Code reported an empty hook error.
+  //
+  // 2. Wrong trigger. `Stop` fires at the end of EVERY assistant turn, including while
+  //    work is still in progress — the observed run fired it five times while the agent
+  //    was legitimately waiting on a subagent. Mid-run, a phase in progress is PARTIAL by
+  //    definition, so "some artifacts but not all" cannot distinguish "being worked on"
+  //    from "abandoned". The information simply is not present at Stop time.
+  //
+  // That is the same class of error this hook was rewritten to fix. The old
+  // PreToolUse:TaskUpdate trigger could never fire; this one fired constantly and wrongly.
+  // A gate is only as good as the moment it is attached to.
+  //
+  // So it now REPORTS instead of blocking: the model sees the incomplete phase and can
+  // act, and a long-running turn is never interrupted. Enforcement was traded for
+  // correctness deliberately — a blocking gate that fires on healthy runs gets disabled by
+  // whoever hits it first, which is worse than an advisory one that is right.
+  if (process.argv.includes("--stop")) {
+    let stopMessage: string | null = null;
+    try {
+      stopMessage = evaluateStop(liveDeps(cwd), process.env.CLAUDE_SESSION_PATH);
+    } catch {
+      process.exit(0); // any internal error → stay silent
+    }
+    if (stopMessage) {
+      process.stdout.write(
+        JSON.stringify({
+          hookSpecificOutput: {
+            hookEventName: "Stop",
+            additionalContext: stopMessage,
+          },
+        }),
+      );
+    }
+    process.exit(0);
+  }
+
   const subject = input.toolInput.subject;
   const status = input.toolInput.status;
 

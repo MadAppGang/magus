@@ -6,8 +6,8 @@
 
 ## Steps
 
-### Step 4.1: Mark phase as in_progress
-TaskUpdate(taskId: {phase4_task_id}, status: "in_progress")
+### Step 4.1: Announce the phase
+Say, in one line: **Phase 4 — starting.**
 
 ### Step 4.2: Read architecture
 Read implementation phases from ${SESSION_PATH}/architecture.md
@@ -84,8 +84,10 @@ Track all progress in ${SESSION_PATH}/implementation-log.md:
 - Issues encountered
 - Outer loop iteration number
 
-### Step 4.7: Mark phase as completed
-TaskUpdate(taskId: {phase4_task_id}, status: "completed")
+### Step 4.7: Announce the phase complete
+Say, in one line: **Phase 4 — complete**, naming the artifacts you wrote.
+Do this only once those files exist; the Stop hook verifies them and will block
+the turn if they do not.
 
 ## Quality Gate
 All stacks implemented, quality checks pass

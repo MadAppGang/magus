@@ -1,7 +1,7 @@
 ---
 name: help
 description: Show dev plugin help, detected stack, and available commands
-allowed-tools:  Agent, TaskCreate, TaskUpdate, TaskList, TaskGet, Bash, Read, Glob, Grep
+allowed-tools:  Agent, Bash, Read, Glob, Grep
 skills: dev:context-detection
 ---
 

@@ -6,8 +6,8 @@
 
 ## Steps
 
-### Step 5.1: Mark phase as in_progress
-TaskUpdate(taskId: {phase5_task_id}, status: "in_progress")
+### Step 5.1: Announce the phase
+Say, in one line: **Phase 5 — starting.**
 
 ### Step 5.2: Read iteration config
 ```bash
@@ -91,8 +91,10 @@ If max iterations reached and still FAIL:
       3. Cancel feature development
       4. Take manual control"
 
-### Step 5.9: Mark phase as completed
-TaskUpdate(taskId: {phase5_task_id}, status: "completed")
+### Step 5.9: Announce the phase complete
+Say, in one line: **Phase 5 — complete**, naming the artifacts you wrote.
+Do this only once those files exist; the Stop hook verifies them and will block
+the turn if they do not.
 
 ## Quality Gate
 Review verdict PASS or CONDITIONAL with user approval.
