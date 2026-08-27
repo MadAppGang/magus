@@ -82,7 +82,7 @@ skills: dev:context-detection
 
           RULES:
           - This is READ-ONLY analysis. Do not modify any files.
-          - Use mnemex MCP tools for semantic code navigation.
+          - Use the code-analysis MCP tools (mcp__plugin_code-analysis_ca__*) for semantic code navigation.
           - Produce a clear investigation report with findings and evidence.
 
           FOCUS BY MODE:
@@ -105,7 +105,7 @@ skills: dev:context-detection
     <step number="3b" name="Degradation (code-analysis absent)">
       Inform the user:
 
-      "Deep investigation requires the **code-analysis** plugin (mnemex MCP tools for AST analysis).
+      "Deep investigation requires the **code-analysis** plugin (mcp__plugin_code-analysis_ca__* tools for semantic and structural analysis).
 
       To install:
       1. Run: `/plugin marketplace add MadAppGang/magus`

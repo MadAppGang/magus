@@ -98,7 +98,7 @@ input — because a gate that misfires is worse than one that misses.
 
 Coaching writes to two channels. `[human]` suggestions are printed to you
 verbatim in a `★ Coaching` box. `[claude]` entries are agent-directed tool advice
-("prefer `mnemex` over repeated greps") that would read as noise if shown to you.
+("prefer `code_search` over repeated greps") that would read as noise if shown to you.
 Model-generated learnings only ever reach the human channel; nothing becomes a
 standing directive without your approval through `/dev:learn --apply`.
 
@@ -110,7 +110,7 @@ standing directive without your approval through `/dev:learn --apply`.
 
 ## Requirements
 
-Claude Code ≥ 0.1.0. Depends on `claudish` (~1.0) and `mnemex` (~1.0).
+Claude Code ≥ 0.1.0. Depends on `claudish` (~1.0) and `multimodel` (~3.3).
 Hooks and scripts run on `bun`.
 
 ## Development

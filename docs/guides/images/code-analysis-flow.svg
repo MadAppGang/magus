@@ -1,37 +1,44 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 562 624" width="562" height="624" role="img" aria-label="How /code-analysis:analyze traces a question, with and without an index">
-  <title>How /code-analysis:analyze traces a question, with and without an index</title>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 637.8 650" width="637.8" height="650" role="img" aria-label="How /code-analysis:analyze routes a question, and why a structural tool is sometimes absent">
+  <title>How /code-analysis:analyze routes a question, and why a structural tool is sometimes absent</title>
   <defs>
     <marker id="arw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#98a1b3"/>
     </marker>
   </defs>
-  <rect x="0.5" y="0.5" width="561" height="623" rx="12" fill="#fbfbfd" stroke="#e8eaf0"/>
+  <rect x="0.5" y="0.5" width="636.8" height="649" rx="12" fill="#fbfbfd" stroke="#e8eaf0"/>
   <path d="M 294 78 L 294 130" fill="none" stroke="#98a1b3" stroke-width="1.6" marker-end="url(#arw)"/>
   <path d="M 294 182 L 294 234" fill="none" stroke="#98a1b3" stroke-width="1.6" marker-end="url(#arw)"/>
   <path d="M 294 270 L 294 304 L 160 304 L 160 338" fill="none" stroke="#98a1b3" stroke-width="1.6" marker-end="url(#arw)"/>
-  <text x="227" y="298" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#5d6779" text-anchor="middle" paint-order="stroke" stroke="#fbfbfd" stroke-width="3.5" stroke-linejoin="round">yes</text>
-  <path d="M 294 270 L 294 304 L 428 304 L 428 338" fill="none" stroke="#98a1b3" stroke-width="1.6" marker-end="url(#arw)"/>
-  <text x="361" y="298" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#5d6779" text-anchor="middle" paint-order="stroke" stroke="#fbfbfd" stroke-width="3.5" stroke-linejoin="round">no</text>
-  <path d="M 160 390 L 160 416 L 294 416 L 294 442" fill="none" stroke="#98a1b3" stroke-width="1.6" marker-end="url(#arw)"/>
-  <path d="M 428 390 L 428 416 L 294 416 L 294 442" fill="none" stroke="#98a1b3" stroke-width="1.6" marker-end="url(#arw)"/>
-  <path d="M 294 478 L 294 546" fill="none" stroke="#98a1b3" stroke-width="1.6" marker-end="url(#arw)"/>
+  <text x="227" y="298" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#5d6779" text-anchor="middle" paint-order="stroke" stroke="#fbfbfd" stroke-width="3.5" stroke-linejoin="round">meaning or structure</text>
+  <path d="M 294 270 L 294 304 L 454.8 304 L 454.8 338" fill="none" stroke="#98a1b3" stroke-width="1.6" marker-end="url(#arw)"/>
+  <text x="374.4" y="298" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#5d6779" text-anchor="middle" paint-order="stroke" stroke="#fbfbfd" stroke-width="3.5" stroke-linejoin="round">an exact string</text>
+  <path d="M 160 390 L 160 442" fill="none" stroke="#98a1b3" stroke-width="1.6" marker-end="url(#arw)"/>
+  <path d="M 329.8 468 L 304.9 468 L 304.9 484 L 280 484" fill="none" stroke="#98a1b3" stroke-width="1.6" marker-end="url(#arw)"/>
+  <path d="M 160 526 L 160 549 L 294 549 L 294 572" fill="none" stroke="#98a1b3" stroke-width="1.6" marker-end="url(#arw)"/>
+  <path d="M 579.8 364 L 613.8 364 L 613.8 598 L 419 598" fill="none" stroke="#98a1b3" stroke-width="1.6" marker-end="url(#arw)"/>
   <rect x="186" y="26" width="216" height="52" rx="9" fill="#eef2ff" stroke="#a5b1e8" stroke-width="1.5"/>
   <text x="294" y="48" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#26307a" text-anchor="middle">/code-analysis:analyze</text>
   <text x="294" y="65" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#77808f" text-anchor="middle">a question about the code</text>
   <rect x="169" y="130" width="250" height="52" rx="9" fill="#ffffff" stroke="#d3d8e2" stroke-width="1.5"/>
   <text x="294" y="152" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#1c2230" text-anchor="middle">code-analysis:detective</text>
-  <text x="294" y="169" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#77808f" text-anchor="middle">its own context window, read-only</text>
-  <polygon points="198,234 390,234 402,252 390,270 198,270 186,252" fill="#fff8e8" stroke="#e2bd63" stroke-width="1.5"/>
-  <text x="294" y="256" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#5c4409" text-anchor="middle">Is the repo indexed?</text>
-  <rect x="52" y="338" width="216" height="52" rx="9" fill="#ffffff" stroke="#d3d8e2" stroke-width="1.5"/>
-  <text x="160" y="360" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#1c2230" text-anchor="middle">mnemex</text>
-  <text x="160" y="377" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#77808f" text-anchor="middle">search · symbol · callers · impact</text>
-  <rect x="320" y="338" width="216" height="52" rx="9" fill="#ffffff" stroke="#d3d8e2" stroke-width="1.5"/>
-  <text x="428" y="360" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#1c2230" text-anchor="middle">grep · ripgrep · find</text>
-  <text x="428" y="377" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#77808f" text-anchor="middle">works, less precisely</text>
-  <rect x="169" y="442" width="250" height="36" rx="9" fill="#ffffff" stroke="#d3d8e2" stroke-width="1.5"/>
-  <text x="294" y="464" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#1c2230" text-anchor="middle">Trace imports and dependencies</text>
-  <rect x="186" y="546" width="216" height="52" rx="9" fill="#ecf7f0" stroke="#82c39a" stroke-width="1.5"/>
-  <text x="294" y="568" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#155232" text-anchor="middle">Location report</text>
-  <text x="294" y="585" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#77808f" text-anchor="middle">file:line · snippets · flow</text>
+  <text x="294" y="169" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#77808f" text-anchor="middle">its own context window · read-only</text>
+  <polygon points="181,234 407,234 419,252 407,270 181,270 169,252" fill="#fff8e8" stroke="#e2bd63" stroke-width="1.5"/>
+  <text x="294" y="256" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#5c4409" text-anchor="middle">What kind of question?</text>
+  <rect x="35" y="338" width="250" height="52" rx="9" fill="#ffffff" stroke="#d3d8e2" stroke-width="1.5"/>
+  <text x="160" y="360" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#1c2230" text-anchor="middle">code_search</text>
+  <text x="160" y="377" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#77808f" text-anchor="middle">always present · ask in plain words</text>
+  <rect x="329.8" y="338" width="250" height="52" rx="9" fill="#ffffff" stroke="#d3d8e2" stroke-width="1.5"/>
+  <text x="454.8" y="360" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#1c2230" text-anchor="middle">Read · Grep · Glob</text>
+  <text x="454.8" y="377" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#77808f" text-anchor="middle">always present</text>
+  <rect x="40" y="442" width="240" height="84" rx="9" fill="#ffffff" stroke="#d3d8e2" stroke-width="1.5"/>
+  <text x="160" y="464" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#1c2230" text-anchor="middle">find_dependencies</text>
+  <text x="160" y="480" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#1c2230" text-anchor="middle">find_dependents · call_tree</text>
+  <text x="160" y="496" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#1c2230" text-anchor="middle">find_implementations · impact</text>
+  <text x="160" y="513" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#77808f" text-anchor="middle">only when the engine supports them</text>
+  <rect x="329.8" y="442" width="250" height="52" rx="9" fill="#ffffff" stroke="#d3d8e2" stroke-width="1.5"/>
+  <text x="454.8" y="464" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#1c2230" text-anchor="middle">The configured engine</text>
+  <text x="454.8" y="481" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#77808f" text-anchor="middle">swappable · named in settings</text>
+  <rect x="169" y="572" width="250" height="52" rx="9" fill="#ecf7f0" stroke="#82c39a" stroke-width="1.5"/>
+  <text x="294" y="594" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#155232" text-anchor="middle">Location report</text>
+  <text x="294" y="611" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#77808f" text-anchor="middle">file:line · and which tool answered</text>
 </svg>

@@ -290,10 +290,11 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
       <step name="large-codebase">
         **Large codebase path** (if Grep returns >50 hits across >10 distinct files):
         ```
-        Skill("code-analysis:mnemex-search", args: "{error_signature}")
+        mcp__plugin_code-analysis_ca__code_search({ query: "{error_signature}" })
         ```
-        Append high-confidence mnemex results to candidate list with confidence MEDIUM.
-        mnemex results supplement, not replace, Strategy A/B results.
+        Append high-confidence results to the candidate list with confidence MEDIUM.
+        They supplement, not replace, Strategy A/B results.
+        An empty result is an answer — do not re-run it with a reworded query.
       </step>
 
       <step name="context-budget">
@@ -336,7 +337,7 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
       <step>Mark PHASE 2 as completed</step>
     </steps>
     <output>${SESSION_PATH}/localization.md</output>
-    <tools>Grep, Glob, Read (line-range), Skill (code-analysis:mnemex-search if needed)</tools>
+    <tools>Grep, Glob, Read (line-range), mcp__plugin_code-analysis_ca__code_search (if needed)</tools>
     <estimated_duration>2-5 minutes</estimated_duration>
   </phase>
 

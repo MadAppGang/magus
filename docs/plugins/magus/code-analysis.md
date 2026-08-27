@@ -3,16 +3,16 @@
 
 # code-analysis
 
-Codebase investigation and semantic search. Maps architecture, traces callers and callees, and ranks symbols by PageRank through the mnemex AST engine, with a read-only detective agent for deep dives.
+Read-only codebase investigation and code search behind one stable tool surface. Finds code by meaning or structure, traces callers, callees and blast radius, and dispatches a detective agent for deep dives. The search engine is named in project settings and is swappable.
 
 | | |
 |---|---|
-| Version | `5.4.3` |
+| Version | `7.0.0` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 3 |
 | Subagents | 1 |
-| Skills | 4 |
-| MCP server | no |
+| Skills | 3 |
+| MCP server | yes |
 | Hooks | yes |
 
 ## Install
@@ -35,16 +35,15 @@ Prefer to do it by hand? [Installing Magus](../../guides/install.md) has the man
 
 ## When to reach for it
 
-- Use when orchestrating multi-agent code analysis — `mnemex-orchestration`
-- Use this agent when you need to investigate, analyze, or understand patterns in a codebase — `detective`
+- Use when searching a codebase, locating a symbol, tracing callers, or about to open three or more files — `code-search`
 
 ## Commands
 
 | Command | What it does |
 |---|---|
-| `/code-analysis:analyze` | Deep codebase investigation to understand architecture, trace functionality, find implementations, and analyze code patterns |
-| `/code-analysis:code-analysis-help` | Show comprehensive help for the Code Analysis Plugin - lists agents, commands, skills, and usage examples |
-| `/code-analysis:setup` | Add mnemex MCP tools documentation to project CLAUDE.md and verify setup |
+| `/code-analysis:analyze` | Investigate a codebase read-only — understand architecture, trace how a feature works, locate an implementation, or track a bug to its origin |
+| `/code-analysis:help` | Show what the code-analysis plugin provides — its agent, commands, skills, tool surface, and which one to reach for |
+| `/code-analysis:setup` | Install and verify the ripgrep shim, check the code-analysis MCP server starts, and report the active search engine and its health |
 
 ## Subagents
 
@@ -52,16 +51,19 @@ Dispatched with the Agent tool, each in its own context window.
 
 | Agent | What it does |
 |---|---|
-| `code-analysis:detective` | Use this agent when you need to investigate, analyze, or understand patterns in a codebase. |
+| `code-analysis:detective` | Investigates a codebase read-only — locates implementations, traces how a feature works end to end, maps inbound and outbound dependencies, and tracks a bug to its origin. |
 
 ## Skills
 
 | Skill | What it covers |
 |---|---|
-| `code-analysis:deep-analysis` | Runs a multi-perspective codebase audit using all mnemex AST commands with PageRank and chain-of-thought reasoning. |
-| `code-analysis:investigate` | Routes code investigation to the right mnemex AST workflow — architecture (map/PageRank), implementation (callers/callees), tests, or debugging. |
-| `code-analysis:mnemex-orchestration` | Runs mnemex once and shares its output across parallel agents, with role-based command mapping and session lifecycle handling. Use when orchestrating multi-agent code analysis. |
-| `code-analysis:mnemex-search` | Performs semantic code search and AST analysis via mnemex MCP/CLI — map, symbol, callers, callees, context, PageRank. |
+| `code-analysis:code-search` | Finds code by meaning, structure or exact text, then reads only the spans returned. Use when searching a codebase, locating a symbol, tracing callers, or about to open three or more files. |
+| `code-analysis:deep-analysis` | Audits a codebase across seven dimensions, from architecture to code health, scoring each finding with evidence. |
+| `code-analysis:investigate` | Routes a code investigation to one of four modes — bug, test gap, architecture, implementation — and runs the query sequence that mode needs. |
+
+## MCP server
+
+This plugin runs an MCP server; its tools appear as `mcp__*` once the plugin is enabled.
 
 ## Hooks
 

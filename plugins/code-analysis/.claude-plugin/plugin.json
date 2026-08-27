@@ -1,7 +1,7 @@
 {
   "name": "code-analysis",
-  "version": "5.4.3",
-  "description": "Codebase investigation and semantic search. Maps architecture, traces callers and callees, and ranks symbols by PageRank through the mnemex AST engine, with a read-only detective agent for deep dives.",
+  "version": "7.0.0",
+  "description": "Read-only codebase investigation and code search behind one stable tool surface. Finds code by meaning or structure, traces callers, callees and blast radius, and dispatches a detective agent for deep dives. The search engine is named in project settings and is swappable.",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",
@@ -17,7 +17,6 @@
     "debugging",
     "code-navigation",
     "semantic-search",
-    "mnemex",
     "mcp",
     "ast",
     "structural-analysis"
@@ -25,20 +24,16 @@
   "category": "development",
   "dependencies": [
     {
-      "name": "mnemex",
-      "version": "^1.0"
-    },
-    {
       "name": "claudish",
       "version": "^1.0"
     }
   ],
   "skills": [
+    "./skills/code-search",
     "./skills/deep-analysis",
-    "./skills/mnemex-search",
-    "./skills/mnemex-orchestration",
     "./skills/investigate"
   ],
+  "mcpServers": "./.mcp.json",
   "conventions": {
     "gitignore": {
       "project": [
@@ -52,7 +47,7 @@
     "claudemd": {
       "section": "code-analysis",
       "template": "./templates/claude-md-conventions.md",
-      "version": "1.0.0"
+      "version": "2.0.0"
     }
   }
 }

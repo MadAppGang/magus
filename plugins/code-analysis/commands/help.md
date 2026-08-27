@@ -1,167 +1,107 @@
 ---
-name: code-analysis-help
-description: Show comprehensive help for the Code Analysis Plugin - lists agents, commands, skills, and usage examples
+name: help
+description: Show what the code-analysis plugin provides — its agent, commands, skills, tool surface, and which one to reach for
 allowed-tools: Read
 ---
 
-# Code Analysis Plugin Help
+# code-analysis help
 
-Present the following help information to the user:
+Present the following to the user.
 
 ---
 
-## Code Analysis Plugin v3.1.0
+## code-analysis
 
-**Deep code investigation using INDEXED MEMORY (mnemex). GREP/FIND FORBIDDEN.**
+Read-only investigation of code you did not write. Ask a question, get file:line locations and
+the flow between them.
 
-### Quick Start
-
-```bash
-/analyze How is authentication implemented in this app?
+```
+/code-analysis:analyze Where is user authentication handled?
 ```
 
 ---
 
-## Agents (1)
+## The tool surface
 
-| Agent | Description | Model |
-|-------|-------------|-------|
-| **codebase-detective** | Investigates codebases to understand patterns, trace flows, find implementations, analyze architecture, track bugs | Sonnet |
+| Tool | Present | Takes |
+|---|---|---|
+| `code_search` | always | `query` (free-form), `intent`, `scope` |
+| `find_dependencies`, `find_dependents`, `call_tree`, `find_implementations`, `impact` | only when the configured engine genuinely supports that operation | `symbol`, `depth` / `max_depth`, `scope` |
+| `Read`, `Grep`, `Glob` | always | — |
 
-### When to Use
+`code_search` is unconditional and infers intent from the query, so ask the real question.
+The structural tools appear only when the engine behind them can answer honestly — an absent
+tool means the engine cannot do it at all, never that it would be approximate.
 
-- Understanding how a feature works
-- Finding where specific logic is implemented
-- Tracing data flow through the application
-- Investigating bugs and their root causes
-- Analyzing code relationships and dependencies
+**Text search is the right tool for exact literals, occurrence counts and filename patterns.**
+That is routing, not a fallback. The only rule is that a report names the method it used.
+
+## The engine
+
+One engine at a time, named in project settings under a `code-analysis` block, read from your
+user settings, then the project's, then the project's local overrides. With none named,
+`code_search` runs on its own — a supported configuration, not a broken one.
+
+Run `/code-analysis:setup` to see which engine is active, whether it answered a probe, and what
+the remedy is when it did not. Engines document their own installation; this plugin does not
+install one for you.
 
 ---
 
-## Commands (2)
+## Agent (1)
 
-| Command | Description |
-|---------|-------------|
-| **/analyze** | Launch deep codebase investigation for a specific question |
-| **/help** | Show this help |
+| Agent | What it does |
+|---|---|
+| `code-analysis:detective` | Investigates read-only — locates implementations, traces a feature end to end, maps inbound and outbound dependencies, tracks a bug to its origin |
 
-### Examples
+Reach for it when you need to understand how a feature works, where logic lives, how data flows,
+or why something breaks. It runs in its own context window and never edits anything.
 
-```bash
-/analyze How does the payment processing work?
-/analyze Where are API endpoints defined?
-/analyze What's the authentication flow?
-/analyze Find all usages of the UserService class
+## Commands (3)
+
+| Command | What it does |
+|---|---|
+| `/code-analysis:analyze` | Dispatch the detective at one question |
+| `/code-analysis:setup` | Install and verify the ripgrep shim, check the server, report the engine |
+| `/code-analysis:help` | This |
+
+```
+/code-analysis:analyze How does the payment processing work?
+/code-analysis:analyze Where are API endpoints defined?
+/code-analysis:analyze Find every usage of the UserService class
 ```
 
----
+## Skills (3)
 
-## Skills (4)
+| Skill | What it does |
+|---|---|
+| `code-analysis:code-search` | The retrieval mechanics — classify the request, query, read only the returned spans |
+| `code-analysis:investigate` | One investigation routed to one of four modes: bug, test gap, architecture, implementation |
+| `code-analysis:deep-analysis` | A full audit across seven dimensions, each finding scored with evidence |
 
-| Skill | Description |
-|-------|-------------|
-| **investigate** | Code investigation with mode-based routing: architecture, implementation, testing, debugging |
-| **deep-analysis** | Comprehensive multi-dimensional audit with all mnemex AST commands |
-| **mnemex-search** | Expert guidance on mnemex CLI for semantic code search and AST analysis |
-| **mnemex-orchestration** | Parallel multi-agent mnemex orchestration patterns |
+### Which one
 
-### Which Skill Should I Use?
-
-| Your Question Contains... | Use This Skill | Mode |
-|--------------------------|----------------|------|
-| "debug", "error", "broken", "failing", "crash" | **investigate** | Bug Investigation |
-| "test", "coverage", "edge case", "mock" | **investigate** | Test Gap Analysis |
-| "architecture", "design", "structure", "layer" | **investigate** | Architecture Analysis |
-| "implementation", "how does", "code flow" | **investigate** | Implementation Tracing |
-| "comprehensive audit", "full review", "all dimensions" | **deep-analysis** | All dimensions |
-
-**Examples:**
-- "Why is login broken?" → investigate (Bug Investigation mode)
-- "What's tested?" → investigate (Test Gap Analysis mode)
-- "What's the architecture?" → investigate (Architecture Analysis mode)
-- "How does auth work?" → investigate (Implementation Tracing mode)
-- "Full codebase audit" → deep-analysis
-
-### Quick Reference
-
-| Scenario | Skill |
-|----------|-------|
-| General investigation | `code-analysis:investigate` |
-| Architecture, implementation, tests, bugs | `code-analysis:investigate` |
-| Comprehensive multi-dimensional audit | `code-analysis:deep-analysis` |
-| mnemex commands guidance | `code-analysis:mnemex-search` |
-| Parallel multi-agent orchestration | `code-analysis:mnemex-orchestration` |
-| Claudish MCP tools and model resolution | `claudish:claudish-usage` |
-
-**Integration Patterns:**
-- Use `investigate` for targeted single-dimension analysis
-- Use `deep-analysis` for comprehensive audits requiring all 7 dimensions
-- Use `mnemex-search` before any direct mnemex command usage
-
-### Semantic Code Search with mnemex
-
-For large codebases, use mnemex CLI:
-
-**Install:**
-```bash
-npm install -g claude-codemem
-mnemex init     # Configure OpenRouter API key
-mnemex --models # See available embedding models
-```
-
-**Usage:**
-```bash
-mnemex index              # Index codebase (once)
-mnemex search "auth flow" # Semantic search
-mnemex status             # Check index
-```
-
-**Embedding Models:**
-- `voyage/voyage-code-3` - Best quality (default) - $0.180/1M
-- `qwen/LATEST_EMBEDDING_MODEL` - Best balanced - $0.010/1M
-- `qwen/LATEST_EMBEDDING_MODEL` - Best value - $0.002/1M
-
-**Benefits:**
-- Tree-sitter AST parsing (preserves code structure)
-- Local LanceDB storage (no cloud dependency)
-- Find code by functionality, not just keywords
+| The request | Goes to |
+|---|---|
+| "debug", "error", "broken", "failing", "crash" | `code-analysis:investigate` — bug mode |
+| "test", "coverage", "edge case", "mock" | `code-analysis:investigate` — test gap mode |
+| "architecture", "design", "structure", "layer" | `code-analysis:investigate` — architecture mode |
+| "how does", "implementation", "data flow" | `code-analysis:investigate` — implementation mode |
+| "comprehensive", "full review", "audit every dimension" | `code-analysis:deep-analysis` |
+| about the query itself — what to ask, and what to read afterwards | `code-analysis:code-search` |
 
 ---
 
-## Use Cases
+## Where it helps
 
-| Scenario | How It Helps |
-|----------|--------------|
-| **New to codebase** | Understand architecture and patterns |
-| **Bug investigation** | Trace issues to root cause |
-| **Feature planning** | Find integration points |
-| **Code review** | Understand context of changes |
-| **Documentation** | Extract how things work |
+| Situation | What you get |
+|---|---|
+| New to a codebase | The shape of it, most central symbols first |
+| Bug investigation | The path from symptom back to origin |
+| Feature planning | The integration points, with their impact radius |
+| Code review | The context around the lines that changed |
 
----
+## More
 
-## Integration with Frontend Plugin
-
-The code-analysis plugin is recommended alongside frontend.
-The `/implement` command will suggest it for better codebase understanding.
-
----
-
-## Installation
-
-```bash
-# Add marketplace (one-time)
-/plugin marketplace add MadAppGang/magus
-
-# Install plugin
-/plugin install code-analysis@magus
-```
-
-**Optional**: For semantic code search, install mnemex: `npm install -g claude-codemem`
-
----
-
-## More Info
-
-- **Repo**: https://github.com/MadAppGang/magus
-- **Author**: Jack Rudenko @ MadAppGang
+- Repo: https://github.com/MadAppGang/magus
+- Author: Jack Rudenko @ MadAppGang

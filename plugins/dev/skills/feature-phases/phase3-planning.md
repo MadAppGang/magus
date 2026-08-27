@@ -1,8 +1,29 @@
 # Phase 3: Multi-Model Planning
 
-**Objective:** Design architecture with multi-model validation
+**Objective:** Design architecture under plan mode, get it approved, then validate it with multi-model review
 
 **Iteration limit:** Read from ${SESSION_PATH}/iteration-config.json (default: 2)
+
+## Why this phase has two gates
+
+Design happens under **plan mode**, so nothing can be written to the repo while the
+architecture is still being argued about. Plan mode permits exactly one write target —
+the session's plan file — so during design the agents **return** their work and the
+orchestrator stages it there. `ExitPlanMode` is the first gate: you approve a design
+before a single file exists.
+
+Everything file-bound runs *after* that gate, because it cannot run before it:
+
+- `claudish team` **requires** a `path` and writes each model's output into it. There is
+  no file-free mode. Multi-model review therefore cannot happen inside plan mode.
+- `dev:test-architect` may read `architecture.md` and nothing else (see
+  `<test_independence>` in `dev.md`). That file is the isolation boundary that keeps
+  tests black-box, so it has to exist as a file.
+- `phase-completion-validator.ts` refuses to mark this phase complete until
+  `architecture.md`, `reviews/plan-review/consolidated.md` and
+  `reviews/plan-review/claude-internal.md` all exist at their required sizes.
+
+The second gate (Step 3.12) is the existing consensus gate, unchanged.
 
 ## Steps
 
@@ -19,7 +40,18 @@ If outer_iteration > 1:
   Read previous validation feedback from ${SESSION_PATH}/validation/feedback-iteration-{N-1}.md
   Include in architect prompt: "Previous validation failed: {feedback}"
 
-### Step 3.4: Launch stack-detector agent
+### Step 3.4: Enter plan mode
+
+Call **EnterPlanMode**.
+
+This requires the user's consent, which is the point — from here until Step 3.8 the
+session cannot modify the repo. Note the plan file path from the plan-mode system
+message; Steps 3.6 and 3.7 write to it, and `ExitPlanMode` reads it.
+
+If the user declines plan mode, skip to Step 3.9 and run the phase file-based as
+before. Declining is a valid choice, not an error — say so and continue.
+
+### Step 3.5: Launch stack-detector agent (in-context)
 Prompt: "SESSION_PATH: ${SESSION_PATH}
 
          Detect ALL technology stacks AND discover real project skills.
@@ -34,15 +66,15 @@ Prompt: "SESSION_PATH: ${SESSION_PATH}
             - Parse ${SESSION_PATH}/requirements.md for keywords
             - Match to discovered skill categories
 
-         Save to ${SESSION_PATH}/context.json with:
+         **Plan mode is active — do NOT write context.json.**
+         Return the JSON as your final message instead, with:
          - detected_stack
          - discovered_skills (name, description, path, source, categories)
          - bundled_skill_paths"
-Output: ${SESSION_PATH}/context.json
+Output: returned JSON, held in orchestrator context
 
-### Step 3.5: Read context and display discovered skills
-Read ${SESSION_PATH}/context.json and identify auto-loaded skills.
-Display to orchestrator:
+### Step 3.6: Display discovered skills
+From the returned JSON, identify auto-loaded skills. Display to orchestrator:
 ```
 Discovered Skills ({count}):
 {for each skill}
@@ -51,21 +83,23 @@ Discovered Skills ({count}):
 {end}
 ```
 
-### Step 3.6: Launch architect agent
+### Step 3.7: Launch architect agent (in-context)
 Prompt: "SESSION_PATH: ${SESSION_PATH}
 
          Read requirements: ${SESSION_PATH}/requirements.md
          Read research: ${SESSION_PATH}/research.md (if exists)
-         Read context: ${SESSION_PATH}/context.json
          Read validation criteria: ${SESSION_PATH}/validation-criteria.md
 
+         DETECTED CONTEXT (from stack-detector, no file on disk yet):
+         {returned JSON from Step 3.5}
+
          **DISCOVERED PROJECT SKILLS** (read these first - project-specific patterns):
-         {for each skill in context.discovered_skills where auto_loaded == true}
+         {for each skill in discovered_skills where auto_loaded == true}
          - {skill.path} ({skill.name} - {skill.description})
          {end}
 
          **BUNDLED SKILLS** (fallback patterns):
-         {for each path in context.bundled_skill_paths}
+         {for each path in bundled_skill_paths}
          - {path}
          {end}
 
@@ -82,10 +116,32 @@ Prompt: "SESSION_PATH: ${SESSION_PATH}
          Include: component structure, data flow, API contracts,
          database schema (if applicable), testing strategy, implementation phases.
 
-         Write to ${SESSION_PATH}/architecture.md
-         Return brief summary (max 3 lines)"
+         **Plan mode is active — no output path is given, so do NOT call Write.**
+         Return the complete architecture document as your final message."
 
-### Step 3.7: Multi-model plan review (P1b — READ FROM CONFIG, NO RE-ASKING)
+Write the returned document into the plan file, under a `## Architecture` heading.
+
+### Step 3.8: GATE 1 — ExitPlanMode
+
+Call **ExitPlanMode**. The user approves or rejects the staged design.
+
+If rejected with feedback, stay in plan mode, re-run Step 3.7 with the feedback, and
+call ExitPlanMode again. Count these against `plan_revision_limit`.
+
+Nothing below this line runs until the design is approved.
+
+### Step 3.9: Materialise the approved design
+
+Now that writes are permitted again, persist what was approved:
+
+- `${SESSION_PATH}/context.json` ← the JSON returned in Step 3.5
+- `${SESSION_PATH}/architecture.md` ← the `## Architecture` section of the plan file
+
+These are the same files, with the same content, that this phase has always produced.
+Everything downstream — Phase 4, `dev:test-architect`, the completion validator — is
+unchanged and does not know planning happened under plan mode.
+
+### Step 3.10: Multi-model plan review (P1b — READ FROM CONFIG, NO RE-ASKING)
 
 Read model selection from ${SESSION_PATH}/iteration-config.json:
 ```bash
@@ -136,21 +192,36 @@ If selectedModels.configured = false OR models is empty:
              Also write to ${SESSION_PATH}/reviews/plan-review/consolidated.md
              Return brief summary"
 
-### Step 3.8: User Approval Gate
+### Step 3.11: GATE 2 — consensus approval
 
 **PRESET CHECK:** If `./dev-preset.json` exists in cwd and has `automation: "autonomous"` AND multi-model consensus is non-critical (no CRITICAL issues in consolidated review), skip this widget and auto-approve. Read the preset now if you haven't already this session. If CRITICAL issues were found, still escalate to user (autonomous mode doesn't override critical consensus).
 
-Use AskUserQuestion to present architecture summary with consensus analysis (if multi-model).
+Use AskUserQuestion to present the consensus analysis (if multi-model).
 Options:
 1. Approve plan and proceed
 2. Request specific changes
 3. Cancel feature development
 
-### Step 3.9: Mark phase as completed
+### Step 3.12: Offer to raise the permission mode
+
+Implementation is about to start, and it is edit-heavy. Tell the user once, in one
+line, that they can raise the permission mode before Phase 4:
+
+> Plan approved. Phase 4 writes a lot of files — **shift+tab** cycles the permission
+> mode if you want to stop approving each edit.
+
+**Suggest it, never set it.** A plugin cannot raise the mode for the user:
+`setMode: "bypassPermissions"` is rejected outright unless the session was launched
+with `--allow-dangerously-skip-permissions`, and `auto` depends on gates this command
+cannot see. The shift+tab cycle from `default` is `acceptEdits → plan → bypassPermissions
+(if available) → auto (if available)`, so the user always has a one-keystroke path and
+keeps the decision.
+
+### Step 3.13: Mark phase as completed
 TaskUpdate(taskId: {phase3_task_id}, status: "completed")
 
 ## Quality Gate
-Plan approved by consensus AND user.
+Design approved via ExitPlanMode AND plan approved by consensus AND user.
 Required artifacts:
 - ${SESSION_PATH}/architecture.md
 - ${SESSION_PATH}/reviews/plan-review/consolidated.md

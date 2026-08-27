@@ -111,11 +111,12 @@ skills: dev:universal-patterns
         <step>Read implementation requirements (plan or user request)</step>
         <step>Use Grep/Glob to find relevant existing code</step>
         <step>
-          If code-analysis plugin is loaded (mnemex MCP tools available):
-          - Use `symbol` MCP tool instead of Grep for known symbol names
-          - Use `callers` to map impact before modifying
-          - Use `map` for unfamiliar codebases instead of directory traversal
-          - Invoke Skill(code-analysis:mnemex-search) for comprehensive guidance
+          If the code-analysis plugin is loaded (`mcp__plugin_code-analysis_ca__*` tools present):
+          - Use `code_search` instead of Grep for a symbol name or a concept. Grep stays
+            right for a literal string, a count, or a filename pattern.
+          - Use `find_dependents` to map impact before modifying, when it is exposed
+          - An empty result is an answer. Do not reword and retry.
+          - Invoke Skill(code-analysis:code-search) for comprehensive guidance
         </step>
         <step>Review existing patterns and structure</step>
         <step>Map skill patterns to task requirements</step>
@@ -131,11 +132,6 @@ skills: dev:universal-patterns
           Create/modify files following skill patterns:
           - Use Write tool for new files
           - Use Edit tool for modifications (line-based changes)
-          If code-analysis plugin is loaded (mnemex MCP tools available):
-          - Prefer `edit_symbol` over Read+Edit for replacing function/class bodies
-          - Use `rename_symbol` with dryRun=true for rename operations
-          - Call `think` MCP tool before any `edit_symbol` call
-          - Call `restore_edit` if edit_symbol produces incorrect output
           - Follow naming conventions from skills
           - Apply architectural patterns from skills
         </step>

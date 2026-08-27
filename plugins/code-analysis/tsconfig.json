@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2023"],
+    // DO NOT "simplify" this to ["bun-types"] or ["node", "bun-types"]. Both break the
+    // build, and the error does not point at the cause.
+    //
+    // bun-types/overrides.d.ts merges into `NodeJS.Process` declaring exactly one
+    // overload per EventEmitter method — `removeListener(event: "memoryPressure", …)`.
+    // Pull the whole package and that becomes the only overload the compiler sees, so
+    // the stdio client's teardown hooks fail with:
+    //   TS2345: Argument of type '"exit"' is not assignable to parameter of type
+    //   '"memoryPressure"'
+    // Listing "node" alongside it does NOT restore them, in either order.
+    //
+    // So take only the two pieces of bun-types actually needed, and leave the overrides out:
+    //   bun-types/test    — declares the `bun:test` module, for *.test.ts
+    //   bun-types/globals — declares ImportMeta.dir, used to walk core/ in imports.test.ts
+    "types": ["node", "bun-types/test", "bun-types/globals"],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true
+  },
+  "include": ["mcp/**/*.ts"]
+}

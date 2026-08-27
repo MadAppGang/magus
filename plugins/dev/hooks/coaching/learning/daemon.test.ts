@@ -101,7 +101,7 @@ function makeQueueEntry(
     queued_at: new Date().toISOString(),
     cwd: "/project",
     tool_call_count: 15,
-    rule_based_signals: ["grep-instead-of-mnemex"],
+    rule_based_signals: ["grep-instead-of-code-search"],
     learning_signals: {
       corrections: { count: 2, phrases: ["no,", "wrong"] },
       explicitRules: { count: 1, phrases: ["we always"] },
@@ -356,14 +356,14 @@ describe("buildClassifierPrompt()", () => {
         by_tool: { Bash: 3 },
         failed_sequences: [{ first_cmd: "npm", second_cmd: "pnpm" }],
       },
-      rule_based_signals: ["grep-instead-of-mnemex"],
+      rule_based_signals: ["grep-instead-of-code-search"],
     };
 
     const parsed = JSON.parse(buildClassifierPrompt(summary)) as Record<string, unknown>;
     const session = parsed.session as Record<string, unknown>;
 
     expect(Array.isArray(session.user_messages)).toBe(true);
-    expect(session.rule_based_signals).toEqual(["grep-instead-of-mnemex"]);
+    expect(session.rule_based_signals).toEqual(["grep-instead-of-code-search"]);
     expect((session.tool_call_summary as Record<string, unknown>).total).toBe(3);
   });
 });
@@ -797,7 +797,7 @@ describe("runDaemon() integration", () => {
           confidence: "MEDIUM",
           is_project_specific: false,
           scope: "memory",
-          rule_text: "Try mnemex instead of grep",
+          rule_text: "Try code_search instead of grep",
           evidence: "switched tools",
           subsection: "Workflow",
           line_cost: 1,

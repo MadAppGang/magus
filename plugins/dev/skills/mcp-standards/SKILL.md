@@ -179,14 +179,28 @@ export const fetchTool = {
 
 ### Standard Pattern
 
+A standalone MCP server the user registers themselves:
+
 ```
-mcp__<plugin-name>__<tool-name>
+mcp__<server-name>__<tool-name>
+```
+
+A server **hosted by a plugin** — which is what every magus MCP server is — carries the
+plugin id and the server key from the plugin's `.mcp.json`:
+
+```
+mcp__plugin_<plugin-id>_<server-key>__<tool-name>
 ```
 
 **Components**:
 - `mcp__` - Universal prefix indicating MCP tool
-- `<plugin-name>` - Plugin identifier (matches plugin.json id)
+- `plugin_<plugin-id>_<server-key>` - Set by Claude Code for a plugin-hosted server. You
+  choose only `<server-key>`; the plugin id is already spent.
 - `<tool-name>` - Descriptive snake_case tool name
+
+**The full name has a 64-character ceiling**, so a long server key is paid on every tool
+forever. `code-analysis` picked the key `ca` for exactly this reason: `ca` leaves 34
+characters for tool names where `code-analysis` would leave 23.
 
 ### Real-World Examples
 
@@ -196,9 +210,9 @@ mcp__<plugin-name>__<tool-name>
 "mcp__frontend__figma_export_assets"   // Export Figma assets
 "mcp__frontend__lighthouse_audit"      // Run Lighthouse audit
 
-// Code Analysis Plugin
-"mcp__code-analysis__mnemex_search"       // Search codebase
-"mcp__code-analysis__mnemex_enrich"       // Enrich file context
+// Code Analysis Plugin (plugin-hosted, server key "ca")
+"mcp__plugin_code-analysis_ca__code_search"       // Search the codebase
+"mcp__plugin_code-analysis_ca__find_dependents"   // Callers of a symbol
 
 // Bun Backend Plugin
 "mcp__bun__apidog_sync"                // Sync with Apidog

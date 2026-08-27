@@ -114,14 +114,15 @@ This repository contains production-ready plugins designed for modern web develo
 
 **Version:** 5.3.0 | **Category:** Development | **Marketplace:** `magus`
 
-Deep code investigation and analysis toolkit for understanding complex codebases, backed by
-AST-level structural search.
+Read-only code investigation for understanding complex codebases, behind one stable tool
+surface that does not change when the search engine does.
 
 **Highlights:**
 - **`code-analysis:detective` agent** - Investigates code patterns, relationships, and architecture
-- **4 Skills** - `mnemex-search`, `mnemex-orchestration`, `investigate`, `deep-analysis`
-- **MCP Integration** - Semantic search and AST analysis via the `mnemex` runtime plugin
-  (declared as a dependency), with PageRank-ranked symbol maps and caller/callee tracing
+- **3 Skills** - `code-search`, `investigate`, `deep-analysis`
+- **MCP Integration** - `code_search` is always present; call-graph and blast-radius tools
+  appear only when the configured search engine genuinely supports them
+- **Swappable engine** - named in project settings, one at a time
 - **Pattern discovery** - Identifies usage patterns and architectural decisions
 - **Bug investigation** - Tracks down issues across the codebase
 

@@ -1,0 +1,6 @@
+{
+  "ca": {
+    "command": "bun",
+    "args": ["${CLAUDE_PLUGIN_ROOT}/mcp/server.ts"]
+  }
+}

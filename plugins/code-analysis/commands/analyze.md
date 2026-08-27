@@ -1,197 +1,126 @@
 ---
 name: analyze
-description: Deep codebase investigation to understand architecture, trace functionality, find implementations, and analyze code patterns
-allowed-tools:  Agent, AskUserQuestion, Bash, Read, TaskCreate, TaskUpdate, TaskList, TaskGet, Glob, Grep
+description: Investigate a codebase read-only — understand architecture, trace how a feature works, locate an implementation, or track a bug to its origin
+allowed-tools: Agent, AskUserQuestion, Bash, Read, Glob, Grep
 ---
 
 ## Mission
 
-Launch the codebase-detective agent to perform comprehensive code analysis, investigation, and navigation across complex codebases. This command helps understand how code works, find specific implementations, trace functionality flow, and analyze architectural patterns.
+Dispatch the `code-analysis:detective` agent at one question about this codebase. The answer
+comes back as file:line locations and the flow between them. Nothing is modified.
 
-## Analysis Request
+## Analysis request
 
 $ARGUMENTS
 
-## When to Use This Command
+## When to use it
 
-Use `/analyze` when you need to:
+- **Architecture** — how is authentication implemented, what does the data layer look like
+- **Location** — where is the user registration logic, which file handles payments
+- **Flow** — follow a request from endpoint to database
+- **Bugs** — why login fails, where an error originates
+- **Patterns** — where API calls are made, which components use a given store
+- **Dependencies** — what uses this service, what breaks if it changes
 
-- **Understand Architecture**: How is authentication implemented? What's the database layer structure?
-- **Find Implementations**: Where is the user registration logic? Which file handles payments?
-- **Trace Functionality**: Follow the flow from API endpoint to database
-- **Debug Issues**: Why isn't the login working? Where is this error coming from?
-- **Find Patterns**: Where are all the API calls made? What components use Redux?
-- **Analyze Dependencies**: What uses this service? Where is this utility imported?
+## Step 1 — read the request
 
-## How It Works
+Parse three things out of `$ARGUMENTS` before dispatching:
 
-This command launches the **codebase-detective** agent, which:
+1. **What do they want to understand?**
+2. **Which functionality** does it concern?
+3. **What is the context** — debugging, learning, or refactoring? The same question wants a
+   different answer in each.
 
-1. Uses semantic code search (mnemex CLI) when available
-2. Falls back to standard grep/find/rg tools when needed
-3. Traces imports and dependencies across files
-4. Analyzes code structure and patterns
-5. Provides exact file locations with line numbers
-6. Explains code relationships and flow
+**A specific question beats a broad one.** "Analyze the codebase" buys a tour; "where is the
+email validation logic" buys a file and a line number. If the request is broad enough that the
+investigation would be spent on orientation, narrow it first — ask which part matters, or state
+the narrower question you are about to answer and why.
 
-## Instructions
-
-### Step 1: Understand the Request
-
-Parse the user's analysis request from $ARGUMENTS:
-
-- What are they trying to understand?
-- What specific code/functionality are they looking for?
-- What's the context (debugging, learning, refactoring)?
-
-### Step 2: Launch codebase-detective Agent
-
-Use the Agent tool to launch the agent:
+## Step 2 — dispatch the detective
 
 ```
 Agent(
   subagent_type: "code-analysis:detective",
   run_in_background: false,
-  description: "Analyze codebase for [brief description]",
+  description: "Investigate [brief description]",
   prompt: `
     Investigate the following in the codebase:
 
-    [User's analysis request from $ARGUMENTS]
+    [the request, restated as one specific question]
 
+    Context: [debugging | learning | refactoring]
     Working directory: [current working directory]
 
-    Please provide:
-    1. Exact file locations with line numbers
-    2. Code snippets showing the implementation
-    3. Explanation of how the code works
-    4. Related files and dependencies
-    5. Code flow/architecture diagram if complex
+    Return:
+    1. Exact file:line locations
+    2. The code at those locations, quoted
+    3. How the mechanism works
+    4. Related files and dependencies, inbound and outbound
+    5. A flow diagram when the path crosses more than two or three hops
 
-    Use semantic search (mnemex CLI) if available, otherwise
-    use grep/ripgrep/find for pattern matching.
+    Name the method behind each finding, and say what the configured engine could not answer.
   `
 )
 ```
 
-### Step 3: Present Results
+**Do not tell the agent which retrieval tool to use.** It reads the tool list itself and routes
+per question — structural tools when the engine offers them, text search when the question is
+genuinely about an exact literal or a filename pattern. Prescribing a tool from here is how the
+command and the agent ended up contradicting each other.
 
-After the agent completes:
+## Step 3 — close the loop
 
-1. **Summarize Findings**: Key files, main implementation locations
-2. **Show Code Structure**: How components relate to each other
-3. **Provide Next Steps**: Suggestions for what to do with this information
-4. **Offer Follow-up**: Ask if they want deeper analysis of specific parts
+1. **Summarise** the key files and the main implementation site.
+2. **Show the relationships** — how the pieces connect, not just where they are.
+3. **Propose next steps** for what to do with the finding.
+4. **Offer to go deeper** on any one part.
 
-## Example Usage
+## Examples
 
-### Example 1: Finding Authentication Logic
-
-```
-User: /analyze Where is user authentication handled?
-
-Agent launches with prompt:
-"Find and explain the authentication implementation. Include:
-- Login endpoint/handler
-- Token generation/validation
-- Authentication middleware
-- Session management
-- Related security code"
-
-Results:
-- src/auth/login.handler.ts:23-67 (login endpoint)
-- src/middleware/auth.middleware.ts:12-45 (JWT validation)
-- src/services/token.service.ts:89-120 (token generation)
-```
-
-### Example 2: Tracing Bug
+### Finding authentication
 
 ```
-User: /analyze The user profile page shows "undefined" for email field
-
-Agent launches with prompt:
-"Trace the user profile email display issue:
-1. Find the profile page component
-2. Locate where email data is fetched
-3. Check how email is passed to the component
-4. Identify where 'undefined' might be introduced"
-
-Results:
-- Identified missing null check in ProfilePage.tsx:156
-- Found API returns 'e-mail' but code expects 'email'
-- Provided exact line numbers for the mismatch
+/code-analysis:analyze Where is user authentication handled?
 ```
 
-### Example 3: Understanding Architecture
+Comes back as: the login handler, the middleware that validates the token, the service that
+issues it — each with a file and a line range, plus the order they run in.
+
+### Tracing a bug
 
 ```
-User: /analyze How does the payment processing flow work?
-
-Agent launches with prompt:
-"Map out the complete payment processing flow:
-1. Entry point (API endpoint or UI trigger)
-2. Validation and business logic
-3. Payment gateway integration
-4. Database persistence
-5. Success/failure handling
-6. Related services and utilities"
-
-Results:
-- Flow diagram from checkout button to confirmation
-- 7 key files involved with their roles
-- External dependencies (Stripe SDK)
-- Error handling strategy
+/code-analysis:analyze The profile page shows "undefined" for the email field
 ```
 
-## Tips for Effective Analysis
+Comes back as: where the field is rendered, where the data is fetched, and the point between
+them where the shape stops matching — a file:line, not a theory.
 
-1. **Be Specific**: Instead of "analyze the codebase", ask "where is the email validation logic?"
-2. **Provide Context**: Mention if you're debugging, refactoring, or learning
-3. **Ask Follow-ups**: After initial results, drill deeper into specific files
-4. **Use for Navigation**: Get oriented in unfamiliar codebases quickly
-
-## Output Format
-
-The agent will provide:
+### Understanding a flow
 
 ```
-📍 Location Report: [What was analyzed]
-
-**Primary Files**:
-- path/to/main/file.ts:45-67 - [Brief description]
-- path/to/related/file.ts:23 - [Brief description]
-
-**Code Flow**:
-1. Entry point: [File:line]
-2. Processing: [File:line]
-3. Result: [File:line]
-
-**Related Components**:
-- [Component name] - [Purpose]
-- [Service name] - [Purpose]
-
-**How to Navigate**:
-[Commands to explore the code further]
-
-**Recommendations**:
-[Suggestions based on analysis]
+/code-analysis:analyze How does payment processing work?
 ```
 
-## Success Criteria
+Comes back as: entry point, validation, gateway call, persistence, failure handling — the files
+involved and what each contributes.
 
-The command is successful when:
+## Output shape
 
-1. ✅ User's question is fully answered with exact locations
-2. ✅ Code relationships and flow are clearly explained
-3. ✅ File paths and line numbers are provided
-4. ✅ User can navigate to the code and understand it
-5. ✅ Follow-up questions are anticipated and addressed
+```
+Location report: <what was investigated>
 
-## Notes
+Method            <which tools answered, and anything the engine could not do>
+Primary files     path/to/file.ts:45-67   <what happens there>
+Flow              entry -> processing -> result, a file:line per hop
+Related           <component or service> — <what it contributes>
+Caveats           <anything static analysis cannot see>
+Next steps        <what this makes possible>
+```
 
-- The codebase-detective agent is optimized for speed and accuracy
-- It will use the best available tools (mnemex search or grep/ripgrep)
-- Results include actionable next steps
-- Can handle complex, multi-file investigations
-- Excellent for onboarding to new codebases
-- mnemex requires OpenRouter API key (https://openrouter.ai)
-- Run `mnemex --models` to see embedding model options and pricing
+## Done when
+
+1. The question is answered with exact locations.
+2. The relationships and flow are explained, not just listed.
+3. Every finding names the method that produced it.
+4. The user can open the code and recognise what they were told.
+5. The obvious follow-up is already offered.

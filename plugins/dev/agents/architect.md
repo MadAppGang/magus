@@ -155,7 +155,17 @@ skills: dev:universal-patterns
       <steps>
         <step>Mark PHASE 4 as in_progress</step>
         <step>
-          Use Write tool to create architecture document:
+          **Output contract — the caller decides where this document goes.**
+
+          If the caller named an output path, Write the document there.
+
+          If the caller asked for an in-context return (no path given), do NOT
+          call Write. Return the whole document as your final message instead.
+          Callers running under plan mode need this: plan mode forbids every
+          write except the session's plan file, which only the orchestrator can
+          reach, so an architect that insists on writing cannot run there at all.
+
+          Either way the document is the same, and it contains:
 
           **1. Overview**
           - System purpose

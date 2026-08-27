@@ -1,0 +1,64 @@
+#!/bin/bash
+# rg — ripgrep shim for Claude Code's Grep tool.
+#
+# OWNER=code-analysis
+# VERSION=6.0.0
+#
+# The two lines above are the collision marker. `mnemex rg install` writes a file at the
+# same path, so /code-analysis:setup parses OWNER= out of this header to tell our shim
+# from mnemex's from a third party's, and refuses to clobber a foreign one silently.
+# VERSION is the code-analysis version that wrote the file, so a later build can decide
+# whether to upgrade it in place. Keep it in step with plugins/code-analysis/plugin.json.
+#
+# WHERE IT GOES: ~/.local/bin/rg, installed by /code-analysis:setup — never by this repo
+# and never automatically. ~/.local/bin sits ahead of Homebrew on PATH, so a real file
+# here is what the Grep tool's `Bun.which("rg")` finds, and its mere existence stops the
+# shell snapshot from defining a shadowing `rg` function that would beat PATH in Bash.
+#
+# WHY SHELL AND NOT BUN: this is exec'd once per Grep call, dozens of times per turn. A
+# bun process per call is the wrong cost model, and there is no logic here beyond argv
+# dispatch.
+#
+# WHY BASH AND NOT `#!/bin/sh` — DO NOT "PORTABILITY-FIX" THIS BACK. `exec -a` is a
+# bash/zsh extension, not POSIX. On Debian and Ubuntu `/bin/sh` IS dash, where
+# `exec -a foo /bin/echo hi` fails with `exec: -a: not found` and exit 127. Since this
+# file sits on PATH ahead of everything, a dash interpreter would not degrade search, it
+# would break EVERY Grep call outright — on macOS it only looks fine because /bin/sh is
+# bash in sh-mode. Claude Code's own generator branches on `ARGV0=` vs `exec -a` because
+# it defines a shell *function* inside whatever interactive shell the user happens to
+# run, so it does not get to choose its interpreter. This file has a shebang, so it does:
+# pinning bash makes `exec -a` always work and the zsh-only `ARGV0=` form unnecessary.
+#
+# WHAT IT DISPATCHES TO: Claude Code's own embedded ripgrep (14.1.1 rev fdb5e06cce,
+# features:+pcre2 with JIT). There is no system rg on this PATH to pass through to, and
+# shipping a native binary is precisely what blocks cross-compilation. Every argument is
+# forwarded verbatim — including -P / --pcre2, which the embedded build supports. A shim
+# that filtered a flag would change match semantics on the caller's behalf.
+#
+# NEVER ADD A `command rg` FALLBACK. Claude Code's own generator has one and is right to,
+# because it defines a shell *function* and `command` bypasses it. This file IS `rg` on
+# PATH, so `command rg` finds itself and recurses until the process dies.
+
+set -u
+
+# CLAUDE_CODE_EXECPATH names a versioned install directory the updater may garbage
+# collect, so the -x test is load-bearing rather than defensive. It is also injected only
+# for Bash-tool calls and never written to process.env, so it is usually UNSET here — this
+# shim runs as a child of the Grep tool, not of a Bash call.
+if [ -n "${CLAUDE_CODE_EXECPATH:-}" ] && [ -x "${CLAUDE_CODE_EXECPATH:-}" ]; then
+	bin="${CLAUDE_CODE_EXECPATH}"
+elif [ -x "${HOME:-}/.local/bin/claude" ]; then
+	bin="${HOME}/.local/bin/claude"
+else
+	echo "rg (code-analysis shim): no Claude Code binary to borrow ripgrep from." >&2
+	echo "  tried \$CLAUDE_CODE_EXECPATH = ${CLAUDE_CODE_EXECPATH:-<unset>}" >&2
+	echo "  tried ${HOME:-<HOME unset>}/.local/bin/claude" >&2
+	echo "  fix: reinstall Claude Code, or remove this shim and clear USE_BUILTIN_RIPGREP." >&2
+	exit 127
+fi
+
+# argv[0] must be `rg` for the multi-call binary to dispatch to ripgrep; a plain
+# `"$bin" --no-config "$@"` leaves argv[0] as the binary path and the dispatch never
+# fires. No subshell: this is the last statement, so replacing the process is both
+# correct and one fork cheaper than forking to exec.
+exec -a rg "$bin" --no-config "$@"

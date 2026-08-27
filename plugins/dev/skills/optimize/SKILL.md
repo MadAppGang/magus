@@ -629,11 +629,15 @@ Optimize bundle size and verify test coverage remains above 80%
 
 ### With Code Analysis
 
-Use enrichment for better context:
+Locate the code that actually runs hot before optimizing it:
 
 ```
-Enrich codebase with mnemex, then identify performance bottlenecks
+Use mcp__plugin_code-analysis_ca__code_search to find the request-handling hot path,
+then identify performance bottlenecks in it
 ```
+
+Once you have a symbol, `mcp__plugin_code-analysis_ca__call_tree` shows what it pulls in
+transitively — usually where the cost is, rather than in the function you started from.
 
 ## Best Practices
 

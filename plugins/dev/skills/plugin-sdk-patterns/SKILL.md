@@ -639,7 +639,8 @@ updated: 2026-01-28
 **tool_denial** (Priority 2-3):
 - Intercept tool calls and provide alternative results
 - Use for custom tool implementations
-- Example: mnemex integration
+- Example: the standalone `mnemex` plugin, intercepting a search tool call and answering
+  it from its own index instead
 
 **pre_response** (Priority 2):
 - Inject context before agent responds

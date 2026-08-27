@@ -23,30 +23,28 @@ to the same question.
 
 ### Step 2. It picks its tools
 
-![Flow diagram: a question goes to the detective agent, which uses the mnemex index when the repo has one and falls back to text search when it does not, then returns a location report](./images/code-analysis-flow.svg)
+![Flow diagram: a question goes to the detective agent, which searches structurally where the configured engine supports it and by text where the question is about an exact string, then returns a location report](./images/code-analysis-flow.svg)
 
-The detective runs in its own context window and has no ability to write. An investigation
-can't turn into a refactor you didn't ask for.
+The detective runs in its own context window and cannot write. An investigation can't turn
+into a refactor you didn't ask for.
 
 ### Step 3. Read the location report
 
 ```
-Location Report: [what was analyzed]
+Location report: [what was investigated]
 
-Primary files
-  path/to/file.ts:45-67    what it does there
-
-Code flow
-  1. Entry point       file:line
-  2. Processing        file:line
-  3. Result            file:line
-
-Related components
-Recommendations
+Method            which tools answered, and anything the engine couldn't do
+Primary files     path/to/file.ts:45-67    what happens there
+Flow              entry -> processing -> result, a file:line per hop
+Related           component or service — what it contributes
+Caveats           anything static analysis can't see
 ```
 
 File paths and line numbers, not descriptions. That's the difference between a tour and
 something you can act on.
+
+The **Method** line is worth reading. A location found by matching text and a location found
+by looking up a symbol carry different confidence, and the report says which you got.
 
 ### Step 4. Drill in
 
@@ -55,11 +53,12 @@ word.
 
 ---
 
-## Option: index the repo first
+## Option: configure a search engine
 
-You don't have to. It works either way. But the two paths don't answer equally well.
+You don't have to. It works either way — text search, file globs and reading are always
+available. But the two paths don't answer equally well.
 
-| You ask | Text search gives you | The index gives you |
+| You ask | Text search gives you | A search engine gives you |
 |---|---|---|
 | where is `createUser` defined | every file with that string in it | the definition, and how central it is |
 | what calls this | call sites, plus comments, plus the docs | the call graph |
@@ -67,7 +66,11 @@ You don't have to. It works either way. But the two paths don't answer equally w
 | where is auth handled | files with "auth" in them | files that *do* authentication, whatever they're called |
 
 That last row is the interesting one. A file called `session-guard.ts` with no occurrence of
-the word "auth" is invisible to grep and obvious to a semantic search.
+the word "auth" is invisible to grep and obvious to a search by meaning.
+
+**Only the operations an engine can genuinely do show up as tools.** If the one you configured
+has no call graph, the call-graph tools are simply absent rather than answering with a guess.
+So a missing tool tells you something true, and every tool present is one you can trust.
 
 ### To set it up
 
@@ -75,13 +78,19 @@ the word "auth" is invisible to grep and obvious to a semantic search.
 /code-analysis:setup
 ```
 
-It checks the setup and writes the mnemex tools into your project's `CLAUDE.md`.
+It reports which engine your project settings name, whether it answered, and what to do when
+it didn't. It also installs the search shim that lets the plugin improve ordinary text search,
+and offers to write the tool rules into your project's `CLAUDE.md`.
 
-Indexing needs an [OpenRouter](https://openrouter.ai) key for the embedding model. Run
-`mnemex --models` to see the choices and what they cost.
+The engine is named in `.claude/settings.json`, one at a time, so swapping it is a one-line
+change and nothing else in the plugin moves. Engines document their own installation — the
+plugin never installs one behind your back.
 
-The index lives in `.mnemex/`. It's specific to your machine and can be rebuilt any time, so
-put it in `.gitignore` and never commit it.
+With none configured, you still get search by query. That's a supported setup, not a broken
+one.
+
+Local index directories are specific to your machine and can be rebuilt any time, so put them
+in `.gitignore` and never commit them.
 
 ---
 

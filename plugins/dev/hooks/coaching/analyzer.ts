@@ -311,7 +311,7 @@ function applyRules(
     const signal = rule.signal;
 
     switch (rule.id) {
-      case "grep-instead-of-mnemex": {
+      case "grep-instead-of-code-search": {
         const grepPattern = /\b(grep|rg|ag|ack)\b/;
         const bashGrepCalls = bashCalls.filter((c) =>
           grepPattern.test(String(c.input.command ?? ""))
@@ -528,21 +528,21 @@ function applyRules(
         break;
       }
 
-      case "no-mnemex-during-investigation": {
-        // Fire when Grep count >= min_count AND no mcp__mnemex__* tool calls exist
+      case "no-code-search-during-investigation": {
+        // Fire when Grep count >= min_count AND no code-analysis facade tool calls exist
         const minCount = signal.min_count ?? 5;
         const absentPrefix = signal.absent_tool_prefix ?? "";
-        const hasMnemex = toolCalls.some((tc) =>
+        const hasCodeSearch = toolCalls.some((tc) =>
           absentPrefix ? tc.tool.startsWith(absentPrefix) : false
         );
-        if (grepCalls.length >= minCount && !hasMnemex) {
+        if (grepCalls.length >= minCount && !hasCodeSearch) {
           matched = true;
           substitutions.count = String(grepCalls.length);
         }
         break;
       }
 
-      case "sequential-reads-suggest-mnemex": {
+      case "sequential-reads-suggest-code-search": {
         // Count sequential Read calls (adjacent with no gaps of more than 2 orders)
         let sequential = 0;
         for (let i = 0; i < readCalls.length - 1; i++) {

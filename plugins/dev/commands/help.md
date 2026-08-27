@@ -222,11 +222,10 @@ Backend:
 
 **Required:**
 - **claudish@magus** (~1.0) - External model routing via MCP tools
-- **mnemex@magus** (~1.0) - Semantic code search and AST analysis
 - **multimodel@magus** - Team voting and multi-model review skills
 
 **Optional:**
-- **code-analysis@magus** - Semantic code search for better context
+- **code-analysis@magus** - Semantic code search and structural analysis for better context
 
 ### Multi-Model Validation
 

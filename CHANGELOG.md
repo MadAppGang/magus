@@ -4,6 +4,72 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [code-analysis 7.0.0] - 2026-08-27
+
+### Removed
+
+- **Four of the six engines, because four of them had never been run.** `claudectx`,
+  `cocoindex`, `codegraph` and `graphify` are no longer valid values for
+  `"code-analysis".engine`. No binary for any of them existed on the machines that
+  built them, so their tool names, argument shapes, result shapes and line bases came
+  from upstream documentation and nothing had ever checked them against a running
+  server. v6.0.0 advertised six switchable engines when two had been exercised; a user
+  who selected one of the four would have got a plausible-looking adapter failing in a
+  way nobody had ever seen. Selecting one now returns a `backend_unavailable` note
+  naming the engines this build does ship, and tier 0 keeps working. Deleted rather
+  than disabled — a disabled adapter is code that rots, and the whole cost of re-adding
+  one is the verification.
+
+### Changed
+
+- **The two that remain are verified against live servers.** `mcp/live-engines.test.ts`
+  spawns the real server and points it at a real `serena` (1.7.0) and a real `mnemex`
+  (0.31.2). serena lists `code_search`, `find_dependents`, `find_implementations` and
+  answers `withFileLock` in 5.4s with `src/lock.ts:2-4`; mnemex lists `code_search`,
+  `find_dependencies`, `find_dependents`, `call_tree`, `impact`. The two lists overlap
+  rather than nest, which is what distinguishes a capability gate that reads from one
+  that counts. **mnemex ships knowing it is broken without an embedding credential and
+  an index run** — measured, it indexed 0 files from a 2-file corpus and had produced
+  no output on a 217-file corpus after 20 minutes — and the facade's job in that state
+  is to say so rather than return an empty list that reads as "this codebase has no
+  matches". Skips are announced on stderr naming what went unverified.
+
+### Added
+
+- **A bad `engine` id now names the engines this build ships.** It was the only place a
+  user could learn what to type instead: the settings file has no schema, the tool list
+  looks identical to a correct tier-0 configuration, and the typo is silent everywhere
+  else. It never guesses a near match — resolving "serana" to "serena" by string
+  distance is the same class of error as picking a model by name similarity.
+- **`engines.<id>.callTimeoutMs`**, a per-engine MCP request deadline defaulting to
+  30 000 ms. One constant cannot serve both: serena answers a symbol lookup in ~6s, so
+  a 30s wait there means something is broken and must fail loudly, while mnemex
+  cold-starts and embeds over the network before it can answer at all. Rejected above
+  its ceiling rather than clamped, so the number in the settings file is always the
+  number in the timeout note.
+
+### Fixed
+
+- **An index built elsewhere reported every hit under the tree that built it.** mnemex
+  bakes absolute paths into `index.db`. `repairForeignPath` takes the longest trailing
+  run of segments that resolves under the project directory and declines otherwise,
+  leaving the honest `../` answer standing.
+- **The mnemex empty-index check fired on healthy indexes.** It read `lastIndexed`
+  alone, and mnemex reports that as `null` while carrying a real timestamp in
+  `indexDbLastIndexed`, so a fully indexed 216-file corpus was reported as never
+  indexed.
+- **The engine's child process inherited an empty environment.** `spec.env` now merges
+  over `process.env` instead of replacing it.
+
+### Migration notes
+
+Anyone with `"engine": "codegraph"` (or `claudectx`, `cocoindex`, `graphify`) in
+`.claude/settings.json` will see `code_search` alone plus a note naming `"mnemex"` and
+`"serena"`. Switch to one of those, or remove the `engine` key — tier 0 with no engine
+is a supported configuration.
+
+---
+
 ## [terminal 4.2.0] - 2026-08-27
 
 ### Changed
@@ -196,6 +262,114 @@ worktree at once.
   `mnemex` is deliberately absent from this release: v1.0.2 is already claimed by in-flight work on
   another branch. It has no components (README and manifest only), so the move is cosmetic for it
   and nothing is withheld by waiting.
+
+---
+
+## [dev 4.6.0] - 2026-08-26
+
+### Changed
+
+- **`/dev:dev` Phase 3 now designs the architecture under plan mode, behind an
+  `ExitPlanMode` gate.** Stack detection and the architect return their work in
+  context instead of writing it, the orchestrator stages the design in the session's
+  plan file, and you approve it before any file exists. `dev:architect` gained an
+  explicit output contract: write to a caller-supplied path, or return the document
+  when no path is given.
+
+- **Everything file-bound moved after that gate, because it cannot run before it.**
+  `claudish team` requires a `path` and writes each model's output into it, so
+  multi-model review has no file-free form; `dev:test-architect` may read
+  `architecture.md` and nothing else, which is the boundary keeping tests black-box;
+  and `phase-completion-validator.ts` still demands all three Phase 3 artifacts.
+  `context.json` and `architecture.md` are materialised from the approved design, then
+  review runs as before. Phases 4-8, the validator and test isolation are untouched.
+
+- **After approval, Phase 3 offers to raise the permission mode rather than raising
+  it.** A plugin cannot: `setMode: "bypassPermissions"` is rejected unless the session
+  was launched with `--allow-dangerously-skip-permissions`, and `auto` depends on gates
+  a command cannot see. The user gets a one-line shift+tab hint and keeps the decision.
+
+### Why
+
+Planning that can write to the repo is not planning. The gate that mattered — approve
+the design before code exists — was a convention Phase 3 asked the orchestrator to
+follow; it is now enforced by the harness.
+
+---
+
+## [multimodel 3.9.1] - 2026-08-26
+
+### Fixed
+
+- **`hooks-system` described `PermissionRequest` as read-only.** It is the only hook
+  event that can change the session's permission mode, via `updatedPermissions`, and
+  it can also allow or deny the call and rewrite tool input. The table row, the two
+  "PreToolUse is the only hook that can block" claims, and a "7 Hook Types" heading
+  above eight entries are all corrected.
+
+- **Added the `setMode` payload and its four constraints**, each measured against a
+  live session: `updatedPermissions` is read only on the `allow` branch; the trigger
+  must genuinely require permission (`echo` is auto-approved, so the hook never runs);
+  an entry in `permissions.allow` silently disables the hook; and `bypassPermissions`
+  cannot be granted this way. Clearing plan mode via `setMode: "default"` bypasses the
+  `ExitPlanMode` approval gate entirely, which the section now says plainly.
+
+---
+
+## [code-analysis 6.0.0] - 2026-08-22
+
+### Changed
+
+- **The plugin now owns its search interface instead of borrowing one.** A new MCP server
+  (key `ca`) exposes one always-present tool, `code_search`, plus five structural tools —
+  `find_dependencies`, `find_dependents`, `call_tree`, `find_implementations`, `impact` —
+  that appear **only when the configured engine genuinely supports them**. Absence means the
+  engine cannot answer that class of question, not that it would be approximate. Six engines
+  are supported behind one port; the engine is named in project settings and is swappable.
+
+  Measured on the live server: **1 tool and ~237 tokens per turn with no engine configured,
+  5 tools and ~835 with a graph engine**, against **33 tools and ~5,061 tokens** for the
+  surface this replaces. A 21x reduction in what enters every turn.
+
+- **Skills go 4 to 3** — `code-search`, `investigate`, `deep-analysis`. The listing budget
+  this plugin spends drops from 771 to 575 characters.
+
+- **The `detective` agent is read-only, and now says so.** It previously walked the user
+  through a rename mutation while being dispatched as read-only investigation.
+
+### Removed
+
+- **The `mnemex` dependency.** The plugin no longer requires any particular search engine.
+  `mnemex` remains installable on its own for anyone who wants its full tool surface.
+- **All mutation.** No rename, no edit, no index management, no persisted opinion.
+- **`mnemex-search` and `mnemex-orchestration`**, whose premises died with the coupling: one
+  manualled 33 tools with version gates, the other worked around expensive CLI invocation
+  that a resident server makes free.
+
+### Fixed
+
+- **An empty result no longer reads as "no matches".** The engine could report a healthy
+  index while holding zero files and return `{"results":[],"totalMatches":0}` with no error.
+  Four separate protections routed past that state. The adapter now checks indexed-file
+  count and last-indexed time, and attaches a machine-readable note to the answer.
+- **Guidance that authorised deleting code.** One rule read "low PageRank + dead = safe to
+  remove", on a signal that the same corpus elsewhere says has three meanings — entry point,
+  dead code, or a dynamic call. Replaced with the three-reading rule plus the export check.
+- **Fallback protocols that ended in a question no one could answer.** Three skills
+  terminated in an interactive prompt using a tool that does not exist inside a subagent,
+  which is where those skills run. They now return a BLOCKED result for the orchestrator.
+- **Documentation naming eight tools that never existed**, two wrong install commands, and
+  four contradictory rules about whether text search was permitted.
+
+---
+
+## [mnemex 1.0.2] - 2026-08-22
+
+### Changed
+
+- **Description corrected.** It claimed to be required by `code-analysis` and `dev`; neither
+  depends on it now. It is an optional engine behind the `code-analysis` facade, and remains
+  directly installable for its full tool surface.
 
 ---
 

@@ -310,16 +310,18 @@ npm install lodash@latest
 
 ### With Code Analysis Agent
 
-Use code-analysis enrichment before audit:
+Map the attack surface before the audit:
 
 ```
-First enrich the codebase with mnemex, then run security audit
+Use mcp__plugin_code-analysis_ca__code_search to locate every request entry point and
+auth check, then run the security audit over them
 ```
 
 This provides:
 - Context-aware vulnerability detection
 - Better false positive filtering
-- Dependency graph analysis
+- Caller tracing via `mcp__plugin_code-analysis_ca__find_dependents`, so you can tell a
+  reachable sink from an unreachable one
 
 ### With Test Architect Agent
 

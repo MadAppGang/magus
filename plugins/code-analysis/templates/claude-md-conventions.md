@@ -1,19 +1,23 @@
-## Code Analysis (mnemex)
+## Code Analysis
 
 ### Private Paths -- Do Not Commit
 
-- `.mnemex/` -- Machine-specific code index (vector DB, AST cache). Rebuilt per-machine via `mnemex index`.
-- `.claudemem/` -- Legacy code index (predecessor to mnemex). Same policy.
+- `.mnemex/` -- Local code index (vectors, AST cache). Machine-specific and rebuildable.
+- `.claudemem/` -- Local code index. Same policy.
 - `.claude/.coaching/` -- Per-user coaching state (recommendations, learning queue). Session-specific.
 
-These directories are in `.gitignore`. Never `git add -f` them.
+An index directory is machine-specific and rebuildable, so it belongs to the machine that
+built it and to no commit. These are in `.gitignore`. Never `git add -f` them.
 
-### Semantic Code Search
+### Code Search
 
-The mnemex MCP server provides semantic search, AST navigation, and refactoring tools.
-Use `ToolSearch` with query `"mnemex"` to discover available tools.
+The `code-analysis` MCP server exposes `code_search` — free-form `query`, optional `intent`,
+optional `scope` — plus `find_dependencies`, `find_dependents`, `call_tree`,
+`find_implementations` and `impact` when the configured search engine genuinely supports them.
 
-Key tools: `search` (semantic), `map` (architecture overview), `symbol` (definition + PageRank),
-`callers`/`callees` (call graph), `edit_symbol` (refactor by name).
+**Read the tool list; never assume a structural tool exists.** Absence means the engine cannot
+answer that class of question at all. `Read`, `Grep` and `Glob` are always available and are
+the right tool for exact literals, occurrence counts and filename patterns — name the method
+behind each finding.
 
-If MCP tools are unavailable, fall back to CLI: `mnemex --agent search "query"`.
+Run `/code-analysis:setup` to see which engine is active and whether it is healthy.

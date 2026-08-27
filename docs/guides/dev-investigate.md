@@ -12,7 +12,7 @@ You don't pick a mode. It reads how you asked.
 
 ## Step 2. It routes to the right kind of investigation
 
-![Flow diagram: a question is sorted into a mode, routed to one of two investigation skills, run by the read-only detective agent, and returned as findings with file and line evidence](./images/dev-investigate-flow.svg)
+![Flow diagram: a question is sorted into a mode, routed to one of two investigation skills, run by the read-only detective agent over search, file reading and whichever structural tools the configured engine supports, and returned as findings with file and line evidence](./images/dev-investigate-flow.svg)
 
 | You ask about | Mode |
 |---|---|

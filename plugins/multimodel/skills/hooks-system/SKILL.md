@@ -37,16 +37,61 @@ Claude Code provides 7 hook types that fire at different lifecycle stages:
 | **Stop** | Main session stops | Session metadata | Nothing (read-only) | Completion validation, cleanup, final reports |
 | **SubagentStop** | Sub-agent (Task) completes | Task metadata, output | Nothing (read-only) | Task metrics, result validation |
 | **Notification** | System notification | Notification data | Nothing (read-only) | Alert logging, external integrations |
-| **PermissionRequest** | Tool needs permission | Tool name, action | Nothing (read-only) | Custom approval workflows |
+| **PermissionRequest** | Tool needs permission | Tool name, input, suggestions | Allow/deny, tool input, **the session permission mode** | Custom approval workflows, auto-approving a known-safe command, switching the session into plan mode |
 
 **Key Concepts:**
 
-- **PreToolUse**: Only hook that can **block or modify** execution
+- **PreToolUse**: Blocks or rewrites a tool call, but **cannot** change the permission mode
+- **PermissionRequest**: Also blocks, and is the **only** hook that can change the session's permission mode
 - **PostToolUse**: Cannot modify output, but can trigger follow-up actions
 - **Matcher**: Regex pattern to filter which tools trigger the hook
 - **Hooks Array**: Commands to execute when hook fires (can run multiple)
 
 ---
+
+### Changing the permission mode from a hook
+
+`PermissionRequest` is the only hook event that can change the session's permission
+mode. It carries `updatedPermissions`, which no other event's output schema has.
+
+```json
+{
+  "hookSpecificOutput": {
+    "hookEventName": "PermissionRequest",
+    "decision": {
+      "behavior": "allow",
+      "updatedPermissions": [
+        { "type": "setMode", "mode": "plan", "destination": "session" }
+      ]
+    }
+  }
+}
+```
+
+Emit that on **stdout and exit 0**. The exit-2 convention that blocks a tool does not
+apply here — the `decision` object is the mechanism.
+
+Modes: `default`, `acceptEdits`, `plan`, `dontAsk`, `auto`, `bypassPermissions`.
+Destinations: `session` (in-memory), or `localSettings` / `userSettings` /
+`projectSettings` to persist as `permissions.defaultMode`.
+
+Four constraints, all measured against a live session rather than inferred:
+
+1. **`updatedPermissions` is read only on the `allow` branch.** The deny variant is
+   `{behavior, message?, interrupt?}` and has no permissions field, so you cannot
+   deny a call and change the mode in the same response.
+2. **The trigger must genuinely require permission.** Claude Code auto-approves safe
+   commands such as `echo`, and no permission request means the hook never runs.
+3. **An `allow` rule silently disables it.** With the trigger in `permissions.allow`
+   the hook never fires and the mode never changes, with no error anywhere.
+4. **`bypassPermissions` cannot be granted this way.** It is rejected unless the
+   session was launched with `--allow-dangerously-skip-permissions`, and it is never
+   persisted to disk.
+
+**Setting `plan` restricts the session; clearing it does not.** Emitting
+`setMode: "default"` from plan mode drops read-only enforcement with no
+`ExitPlanMode` call, no plan file and no user approval — it walks straight past the
+gate that exists to stop exactly that. Gate the clearing direction, or don't ship it.
 
 ## Hook Configuration in settings.json
 
@@ -1312,8 +1357,9 @@ if (fs.existsSync(testFile)) {
 
 Hooks enable proactive, policy-enforced development in Claude Code:
 
-- **7 Hook Types** - PreToolUse, PostToolUse, UserPromptSubmit, SessionStart, Stop, SubagentStop, Notification, PermissionRequest
-- **PreToolUse = Validation** - Only hook that can block execution
+- **8 hook types documented here** - PreToolUse, PostToolUse, UserPromptSubmit, SessionStart, Stop, SubagentStop, Notification, PermissionRequest. Claude Code exposes **29** events in total; this is the working subset, not the full list
+- **PreToolUse = Validation** - Blocks execution; cannot change permission mode
+- **PermissionRequest = Permissions** - Blocks, allows, and is the only hook that can set the mode
 - **PostToolUse = Automation** - Auto-format, metrics, notifications
 - **Matchers = Filtering** - Regex patterns to control when hooks fire
 - **Chains = Workflows** - Multiple hooks execute sequentially

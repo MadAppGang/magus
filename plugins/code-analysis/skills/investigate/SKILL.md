@@ -1,693 +1,207 @@
 ---
 name: investigate
-description: Routes code investigation to the right mnemex AST workflow — architecture (map/PageRank), implementation (callers/callees), tests, or debugging. Use when asked to investigate, trace, or analyze code.
-allowed-tools: Bash, Agent, Read, AskUserQuestion
+description: Routes a code investigation to one of four modes — bug, test gap, architecture, implementation — and runs the query sequence that mode needs. Use when asked to investigate, trace, or debug code.
+allowed-tools: Bash, Agent, Read, Grep, Glob
 user-invocable: false
 ---
 
-# Investigate Skill
+# Investigate
 
-Keyword-based routing to the appropriate investigation mode, each using mnemex AST commands optimized for that investigation type.
+One investigation, one mode. Pick the mode from the request, announce it, then run that
+mode's sequence. The retrieval mechanics live in the `code-search` skill; this skill is
+about which questions to ask and in what order.
 
 ## Routing
 
-| Mode | Keywords | Primary Commands |
-|------|----------|-----------------|
-| Bug Investigation | debug, error, broken, failing, crash | `context`, `callers`, `callees` |
-| Test Gap Analysis | test, coverage, edge case, mock | `callers` (test files), `test-gaps` |
-| Architecture Analysis | architecture, design, structure, layer | `map`, `dependency-graph` |
-| Implementation Tracing | how does, implementation, data flow (default) | `callers`, `callees`, `context` |
+| Mode | Trigger keywords | Question sequence |
+|---|---|---|
+| **Bug** | debug, error, broken, failing, crash | full context → inbound → outbound → transitive impact |
+| **Test gap** | test, coverage, edge case, mock | inbound filtered to test files → gap detection |
+| **Architecture** | architecture, design, structure, layer | structural map → centrality → dependency closure |
+| **Implementation** *(default)* | how does, implementation, data flow | locate → inbound → outbound → full context |
 
-Higher priority wins when multiple keywords match (Bug > Test > Architecture > Implementation).
+**Collision order: Bug > Test > Architecture > Implementation.** No keyword matches →
+Implementation.
 
----
+**Announce the routing before executing it** — print the query, the chosen mode, and the
+one-line reason. A wrong route is then correctable in one turn instead of after the
+investigation is spent.
 
-## SHARED SETUP (All Modes)
+## Discipline that applies to every mode
 
-### Verify mnemex
-
-```bash
-which mnemex && mnemex --version
-# Must be v0.3.0+
-```
-
-If not installed, use AskUserQuestion with options: Install via npm, Install via Homebrew, Cancel.
-
-### Check Index
-
-```bash
-mnemex --version && ls -la .mnemex/index.db 2>/dev/null
-```
-
-### Check Index Freshness
-
-```bash
-if [ ! -d ".mnemex" ] || [ ! -f ".mnemex/index.db" ]; then
-  # AskUserQuestion: [1] Create index now, [2] Cancel
-  exit 1
-fi
-
-STALE_COUNT=$(find . -type f \( -name "*.ts" -o -name "*.tsx" -o -name "*.js" -o -name "*.jsx" -o -name "*.py" -o -name "*.go" -o -name "*.rs" \) \
-  -newer .mnemex/index.db 2>/dev/null | grep -v "node_modules" | grep -v ".git" | grep -v "dist" | grep -v "build" | wc -l)
-STALE_COUNT=$((STALE_COUNT + 0))
-
-if [ "$STALE_COUNT" -gt 0 ]; then
-  if [[ "$OSTYPE" == "darwin"* ]]; then
-    INDEX_TIME=$(stat -f "%Sm" -t "%Y-%m-%d %H:%M" .mnemex/index.db 2>/dev/null)
-  else
-    INDEX_TIME=$(stat -c "%y" .mnemex/index.db 2>/dev/null | cut -d'.' -f1)
-  fi
-  INDEX_TIME=${INDEX_TIME:-"unknown time"}
-  STALE_SAMPLE=$(find . -type f \( -name "*.ts" -o -name "*.tsx" \) \
-    -newer .mnemex/index.db 2>/dev/null | grep -v "node_modules" | grep -v ".git" | head -5)
-
-  # AskUserQuestion: [1] Reindex now (Recommended), [2] Proceed with stale, [3] Cancel
-fi
-```
-
-### Index if Needed
-
-```bash
-mnemex index
-```
-
-### FALLBACK PROTOCOL (All Modes)
-
-```
-╔══════════════════════════════════════════════════════════════════════════════╗
-║   FALLBACK PROTOCOL (NEVER SILENT)                                          ║
-║   If mnemex fails OR returns irrelevant results:                          ║
-║   1. STOP — Do not silently switch to grep/find                              ║
-║   2. DIAGNOSE — Run mnemex status                                         ║
-║   3. COMMUNICATE — Tell user what happened                                   ║
-║   4. ASK — Use AskUserQuestion for next steps                                ║
-║   grep/find/Glob FORBIDDEN without explicit user approval                    ║
-╚══════════════════════════════════════════════════════════════════════════════╝
-```
-
-```typescript
-AskUserQuestion({
-  questions: [{
-    question: "mnemex failed or returned no relevant results. How should I proceed?",
-    header: "Investigation Issue",
-    multiSelect: false,
-    options: [
-      { label: "Reindex codebase", description: "Run mnemex index (~1-2 min)" },
-      { label: "Try different query", description: "Rephrase the search" },
-      { label: "Use grep (not recommended)", description: "Traditional search — loses AST analysis" },
-      { label: "Cancel", description: "Stop investigation" }
-    ]
-  }]
-})
-```
-
-### Never Truncate Output
-
-```
-FORBIDDEN: mnemex --agent map "q" | head -80
-FORBIDDEN: mnemex --agent callers X | tail -50
-FORBIDDEN: mnemex --agent search "x" | grep -m 10 "y"
-
-CORRECT: mnemex --agent map "query"
-CORRECT: mnemex --agent search "auth" -n 10        (built-in limit)
-CORRECT: mnemex --agent map "q" --tokens 2000      (token-limited)
-CORRECT: mnemex --agent context Func --max-depth 3  (depth-limited)
-```
+- **Never rank-truncate a result set.** Ranking already put the important results first;
+  cutting by line count deletes them. Narrow with `scope` instead.
+- **An error and an empty result look alike and mean opposite things.** Establish which one
+  you have before you report either.
+- **Name the method** behind every finding. Lexical search is the right tool for exact
+  strings, counts and filename patterns — using it is routing, not a fallback. Using it
+  without saying so is the defect.
+- **Blocked, never stalled.** A subagent has no tool for asking the user a question. If you
+  cannot proceed, do not wait for an answer that cannot arrive and do not decide on the
+  user's behalf: return a result beginning `BLOCKED:` naming what is missing and what would
+  unblock it, and let the dispatching orchestrator ask.
+- **Centrality is relative.** Treat it as tiers — core, key, ordinary, leaf — never as a
+  number to threshold. An absent centrality means unknown, not low.
 
 ---
 
-## Routing Workflow
+## Architecture mode
 
-### Phase 1: Detect Mode
+**Use when:** "what is the architecture", "how are the layers structured", "find the design
+patterns", "map the system".
 
-```bash
-INVESTIGATION_QUERY="${TASK_DESCRIPTION:-$USER_QUERY}"
-QUERY_LOWER=$(echo "$INVESTIGATION_QUERY" | tr '[:upper:]' '[:lower:]')
+The highest-centrality symbols *are* the architecture. Start there, and skip the leaves.
 
-if echo "$QUERY_LOWER" | grep -qE "debug|error|broken|failing|crash"; then
-  MODE="bug"
-  RATIONALE="Bug investigation requires call chain tracing"
-elif echo "$QUERY_LOWER" | grep -qE "test|coverage|edge case|mock"; then
-  MODE="test"
-  RATIONALE="Test analysis requires callers analysis for coverage gaps"
-elif echo "$QUERY_LOWER" | grep -qE "architecture|design|structure|layer"; then
-  MODE="architecture"
-  RATIONALE="Architecture requires PageRank analysis"
-else
-  MODE="implementation"
-  RATIONALE="Implementation tracing via callers/callees (default)"
-fi
+**Find the layers** by running the same structural query against three vocabulary families
+and reading the file distribution of the results:
+
+```
+code_search(query: "controller handler endpoint route")   # presentation
+code_search(query: "service business logic domain")       # business
+code_search(query: "repository persistence database query") # data
 ```
 
-### Phase 2: Announce Routing
+Boundaries and wiring show up under `interface contract abstract`, `inject provider module`
+and `config bootstrap initialize`.
 
-```bash
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Investigation Routing"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Query: $INVESTIGATION_QUERY"
-echo "Mode: $MODE"
-echo "Reason: $RATIONALE"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+**Find the patterns** the same way — the pattern names are in the source:
+
+```
+code_search(query: "factory create builder")
+code_search(query: "interface abstract contract")
+code_search(query: "event emit subscribe")
+code_search(query: "repository persist unit of work")
 ```
 
-### Phase 3: Execute Mode
+**Then take the closure.** Direct callers are one level; the blast radius of an
+architectural change is the transitive closure, grouped by depth.
 
-Proceed to the appropriate mode section below.
+```
+find_dependents(symbol: "PaymentService")
+impact(symbol: "PaymentService", max_depth: 3)
+```
+
+**Report:** detected pattern, core abstractions with their centrality tier and file:line,
+the layer diagram, the major flows, and the health indicators.
+
+### Persist what you derived
+
+Architecture knowledge is expensive to re-derive and cheap to record. Write it down once
+derived — as bullet summaries plus `file:line` pointers, **never pasted code**. Code goes
+stale on the next edit; pointers survive it.
 
 ---
 
-## Architecture Analysis
+## Implementation mode (default)
 
-**Use when:** "what's the architecture", "how are layers structured", "find design patterns", "map the system"
+**Use when:** "how does X work", "trace the data flow", "where is X defined".
 
-**Primary commands:** `map` (PageRank), `symbol`, `callers`, `callees`, `dependency-graph`
+1. **Locate** the symbol — exact span, kind, signature, export status.
+2. **Inbound edges** — every place that calls it. This is the impact of changing it.
+3. **Outbound edges** — everything it calls. These are its dependencies and the data-flow
+   path.
+4. **Full context** when the change is non-trivial: definition plus both directions at once.
 
-### Why `map` Works for Architecture
+Edge kind matters as much as edge existence: `call`, `import`, `extends` and `implements`
+have different blast radii. Say which kind an edge is when it changes the conclusion.
 
-- High-PageRank symbols = Core abstractions everything depends on
-- Symbol kinds organized by type (class, interface, function)
-- File distribution reveals layer structure
-- Dependency centrality shows which code is most connected
+**Direct callers are one level. `impact` is the transitive closure.** Refactoring decisions
+need the closure; a direct-caller count under-states the work every time.
 
-### Analyze
+**Before editing:** confirm the symbol resolves, confirm its current signature, think, then
+edit. Never grep → read → edit. Index-derived signatures are captured at index time and can
+lag the file — when the name is overloaded or generic, read the declaration at the returned
+span rather than trusting the summary.
 
-```bash
-# Get high-level architecture overview
-mnemex --agent map "architecture layers"
-mnemex --agent map  # Full map, sorted by importance
-
-# Map specific architectural concerns
-mnemex --agent map "service layer business logic"
-mnemex --agent map "repository data access"
-mnemex --agent map "controller API endpoints"
-mnemex --agent map "middleware request handling"
-```
-
-### Identify Layers
-
-```bash
-# Find interfaces/contracts (architectural boundaries)
-mnemex --agent map "interface contract abstract"
-# Dependency injection points
-mnemex --agent map "inject provider module"
-# Configuration and bootstrap
-mnemex --agent map "config bootstrap initialize"
-```
-
-### Identify Patterns
-
-```bash
-mnemex --agent map "factory create builder"
-mnemex --agent map "repository persist query"
-mnemex --agent map "event emit subscribe handler"
-```
-
-### Trace Dependencies
-
-```bash
-# For a core abstraction, see what depends on it
-mnemex --agent callers CoreService
-# See what it depends on
-mnemex --agent callees CoreService
-# Full transitive dependencies
-mnemex --agent dependency-graph CoreService
-```
-
-### Find Dead Code (v0.4.0+ Required)
-
-```bash
-DEAD_CODE=$(mnemex --agent dead-code)
-if [ -z "$DEAD_CODE" ]; then
-  echo "No dead code found — architecture is well-maintained"
-else
-  HIGH_PAGERANK=$(echo "$DEAD_CODE" | awk '$5 > 0.01')
-  LOW_PAGERANK=$(echo "$DEAD_CODE" | awk '$5 <= 0.01')
-
-  if [ -n "$HIGH_PAGERANK" ]; then
-    echo "WARNING: High-PageRank dead code found (possible broken references)"
-    echo "$HIGH_PAGERANK"
-  fi
-  if [ -n "$LOW_PAGERANK" ]; then
-    echo "Cleanup candidates (low PageRank):"
-    echo "$LOW_PAGERANK"
-  fi
-fi
-```
-
-High PageRank + dead = Something broke recently (investigate).
-Low PageRank + dead = Safe to remove.
-
-**Limitations:** Results labeled "Potentially Dead" require manual verification for dynamically imported modules, reflection-accessed code, and external API consumers.
-
-### Persist Architecture Findings
-
-Architecture knowledge is expensive to re-derive. Write findings to memory after deep investigation:
-
-```bash
-memory_write("auth/architecture", "AuthService is central (PageRank 0.092). Pattern: Service Layer → Repository → Database.")
-memory_write("project/conventions", "No direct DB access from controllers. All writes through Repository pattern.")
-memory_list()
-memory_read("auth/architecture")
-```
-
-### PageRank Reference
-
-| PageRank | Architectural Role | Action |
-|----------|--------------------|--------|
-| > 0.05 | Core abstraction | Analyze first — this IS the architecture |
-| 0.01–0.05 | Important component | Key building block |
-| 0.001–0.01 | Standard component | Normal code |
-| < 0.001 | Leaf/utility | Skip for architecture analysis |
-
-### Architecture Output Format
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                 ARCHITECTURE ANALYSIS                    │
-├─────────────────────────────────────────────────────────┤
-│  Pattern: [Detected pattern]                             │
-│  Core Abstractions (PageRank > 0.05):                   │
-│    - UserService (0.092) - Central business logic       │
-│    - Database (0.078) - Data access foundation          │
-│  Search Method: mnemex (AST + PageRank)               │
-└─────────────────────────────────────────────────────────┘
-
-Layer Structure:
-  PRESENTATION (src/controllers/)
-    └── UserController (0.034)
-          ↓
-  BUSINESS (src/services/)
-    └── UserService (0.092) HIGH PAGERANK
-          ↓
-  DATA (src/repositories/)
-    └── Database (0.078) HIGH PAGERANK
-```
-
-### Validate Architecture Results
-
-```bash
-RESULTS=$(mnemex --agent map "service layer business logic")
-EXIT_CODE=$?
-
-if [ "$EXIT_CODE" -ne 0 ]; then
-  DIAGNOSIS=$(mnemex status 2>&1)
-  # Use AskUserQuestion
-fi
-
-if [ -z "$RESULTS" ]; then
-  echo "WARNING: No symbols found — may be wrong query or index issue"
-fi
-
-HIGH_PR=$(echo "$RESULTS" | grep "pagerank:" | awk -F': ' '{if ($2 > 0.01) print}' | wc -l)
-if [ "$HIGH_PR" -eq 0 ]; then
-  # No architectural symbols found — use AskUserQuestion: Reindex, Broaden query, or Cancel
-fi
-```
+**Report:** primary location with `file:line`, inbound edges, outbound edges, and the
+end-to-end flow.
 
 ---
 
-## Implementation Tracing
+## Test gap mode
 
-**Use when:** "how does X work", "find implementation of", "trace data flow", "where is X defined"
+**Use when:** "what is tested", "find the coverage gaps", "audit test quality", "missing
+tests", "edge cases".
 
-**Primary commands:** `callers`, `callees`, `context`, `symbol`
+Tests appear in the graph as **callers of the code they test**. Zero test callers on code
+that has production callers is the high-priority case.
 
-### Why callers/callees Works for Implementation
+1. Take the inbound edges of each critical symbol.
+2. Classify each caller as test or production by path, using one pattern set:
 
-- `callers` = Every place that calls this code (impact of changes)
-- `callees` = Every function this code calls (its dependencies)
-- Exact file:line = Precise locations
-- Call kinds = call, import, extends, implements
+   ```
+   *.test.*  *.spec.*  __tests__/  tests/
+   *_test.go  *_test.py  test_*.py  src/test/java/  *_test.rs
+   ```
 
-### Trace
+3. **Report both counts.** Production callers > 0 and test callers = 0 is the finding worth
+   escalating; low-centrality untested code is not a gap worth reporting.
 
-```bash
-# Find where a function is defined
-mnemex --agent symbol processPayment
-# Get full context
-mnemex --agent context processPayment
+**The convention is incomplete, and the verdict must say so.** Filename matching misses
+integration tests in non-standard locations, inline test modules (Rust `#[cfg(test)]`),
+end-to-end suites that reach the code indirectly, and any language whose convention is not
+in the list above. A "0 test callers" result from filename matching alone is a hypothesis,
+not a coverage verdict.
 
-# What does this function call? (data flows OUT)
-mnemex --agent callees processPayment
-# Follow the chain
-mnemex --agent callees validateCard
-mnemex --agent callees chargeStripe
+**Two methods will disagree, and that is information.** Mock registration (`vi.mock`,
+`jest.mock`) and generated cases (`describe.each`) are call sites that AST edges miss but a
+reference-level lookup finds. When the two counts differ, report both rather than picking
+one.
 
-# Who calls this function? (usage patterns)
-mnemex --agent callers processPayment
-```
-
-### LSP Enrichment (Before Modifying)
-
-After locating a symbol, enrich with live type information before any edit:
-
-```bash
-hover("processPayment")   # Current type signature
-define("processPayment")  # Exact declaration for overloaded names
-```
-
-Safe-edit checkpoint: `symbol → hover → think → edit_symbol` (NOT Grep → Read → Edit)
-
-### Impact Analysis (v0.4.0+ Required)
-
-```bash
-# Before modifying ANY code, check full transitive impact
-IMPACT=$(mnemex --agent impact functionToChange)
-
-if [ -z "$IMPACT" ] || echo "$IMPACT" | grep -q "No callers"; then
-  echo "No static callers — verify dynamic usage patterns"
-else
-  echo "$IMPACT"
-fi
-```
-
-`callers` shows only direct callers (1 level). `impact` shows ALL transitive callers (full tree). Critical for refactoring decisions.
-
-### Implementation Output Format
-
-```
-┌─────────────────────────────────────────────────────────┐
-│              IMPLEMENTATION ANALYSIS                     │
-├─────────────────────────────────────────────────────────┤
-│  Symbol: processPayment                                  │
-│  Location: src/services/payment.ts:45-89                │
-│  PageRank: 0.034                                         │
-│  Search Method: mnemex (AST analysis)                │
-└─────────────────────────────────────────────────────────┘
-
-Data Flow (Callees):
-processPayment
-  ├── validateCard (src/validators/card.ts:12)
-  ├── getCustomer (src/services/customer.ts:34)
-  └── saveTransaction (src/repositories/transaction.ts:78)
-
-Usage (Callers):
-  ├── CheckoutController.submit (src/controllers/checkout.ts:45)
-  └── SubscriptionService.renew (src/services/subscription.ts:89)
-```
-
-### Validate Implementation Results
-
-```bash
-SYMBOL=$(mnemex --agent symbol PaymentService)
-EXIT_CODE=$?
-
-if [ "$EXIT_CODE" -ne 0 ] || [ -z "$SYMBOL" ] || echo "$SYMBOL" | grep -qi "not found\|error"; then
-  DIAGNOSIS=$(mnemex --version && ls -la .mnemex/index.db 2>&1)
-  # AskUserQuestion: [1] Reindex, [2] Try different name, [3] Cancel
-fi
-
-CALLERS=$(mnemex --agent callers PaymentService)
-if echo "$CALLERS" | grep -qi "error\|failed"; then
-  # AskUserQuestion
-fi
-```
+**Report:** framework, test file count, a per-function table of test callers, then the
+high-priority list (production callers, no test callers) and the medium list (few test
+callers, no error scenarios).
 
 ---
 
-## Test Gap Analysis
+## Bug mode
 
-**Use when:** "what's tested", "find test coverage", "audit test quality", "missing tests", "edge cases"
+**Use when:** "why is X broken", "find the bug source", "root cause analysis", "trace this
+error".
 
-**Primary commands:** `callers` (identify test files), `test-gaps`, `map "test spec"`
+**Trace backwards through callers to find the cause; trace forwards through callees to find
+the effect.** The full chain is the root-cause picture.
 
-### Why callers Works for Test Analysis
+1. Locate the symbol named in the error, and take its full context.
+2. Walk inbound edges outward — caller of the symbol, caller of that caller — until the
+   chain reaches something that explains the symptom.
+3. Walk outbound edges to see what the failure propagates into.
+4. Take the transitive impact for post-fix verification and regression scope.
 
-- Tests appear as callers of the functions they test
-- No test callers = coverage gap
-- Exact test-to-code mapping via AST
-- Filter callers by file path (*.test.ts, *.spec.ts)
+**Check the type boundary explicitly.** Mismatches between a symbol's actual signature and
+what its callers assume are a leading cause of runtime errors, and they are invisible in a
+call graph that only records that an edge exists. Read the declaration and read one caller.
 
-### Analyze Test Coverage
+**Error origin hunting:** map the error vocabulary (`throw error exception`), locate the
+error type, then take *its* inbound edges — whoever constructs it is where the condition is
+detected.
 
-```bash
-# Who calls this function? (test files will appear as callers)
-mnemex --agent callers processPayment
-# src/services/payment.test.ts:45 → This is a test caller
+**State mutation tracking:** locate the mutator (`set state update mutate`), then enumerate
+who calls it.
 
-# Map test infrastructure
-mnemex --agent map "test spec describe it"
-mnemex --agent map "test helper mock stub"
-mnemex --agent map "fixture factory builder"
-```
-
-### Automated Gap Detection (v0.4.0+ Required — Do This First)
-
-```bash
-GAPS=$(mnemex --agent test-gaps)
-
-if [ -z "$GAPS" ] || echo "$GAPS" | grep -q "No test gaps"; then
-  echo "Excellent test coverage! All high-importance code has tests."
-  echo "Optional: Check lower-importance code:"
-  mnemex --agent test-gaps --min-pagerank 0.005
-else
-  echo "Test Coverage Gaps Found:"
-  echo "$GAPS"
-fi
-
-# Focus on critical gaps only
-mnemex --agent test-gaps --min-pagerank 0.05
-```
-
-`test-gaps` automatically finds high-PageRank symbols with 0 test callers and returns a prioritized list.
-
-**Limitations:** Test detection relies on file naming patterns (`*.test.ts`, `*.spec.ts`, `*_test.go`). Integration tests in non-standard locations may not be detected.
-
-### LSP Reference Verification
-
-The `references` tool provides LSP-backed discovery — more complete than `callers` for test detection:
-
-```bash
-references("processPayment")
-# Includes mock setup files (vi.mock, jest.mock) that AST may miss
-# Includes dynamic test patterns (describe.each)
-```
-
-When `references` finds more than `callers`: add "LSP References" alongside "AST Callers" in output.
-
-### Manual Coverage Check (v0.3.0 compatible)
-
-```bash
-# For each critical function, check callers
-mnemex --agent callers authenticateUser
-mnemex --agent callers processPayment
-mnemex --agent callers saveToDatabase
-
-# Count test vs production callers
-TEST_CALLERS=$(echo "$CALLERS" | grep -E "\.test\.|\.spec\.|_test\." | wc -l)
-PROD_CALLERS=$(echo "$CALLERS" | grep -v -E "\.test\.|\.spec\.|_test\." | wc -l)
-
-if [ "$TEST_CALLERS" -eq 0 ]; then
-  echo "WARNING: No test coverage found for this function"
-fi
-```
-
-### Test Coverage Output Format
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                   TEST INFRASTRUCTURE                    │
-├─────────────────────────────────────────────────────────┤
-│  Framework: [Detected framework]                        │
-│  Test Files: N files (*.spec.ts, *.test.ts)             │
-│  Search Method: mnemex (callers analysis)            │
-└─────────────────────────────────────────────────────────┘
-
-Coverage by Function:
-| Function            | Test Callers | Coverage |
-|---------------------|--------------|----------|
-| authenticateUser    | 5 tests      | Good     |
-| calculateDiscount   | 0 tests      | NONE     |
-
-HIGH PRIORITY — No Test Callers:
-   calculateDiscount (PageRank: 0.034)
-   └── 4 production callers, 0 test callers
-
-MEDIUM PRIORITY — Few Test Callers:
-   sendEmail (PageRank: 0.021)
-   └── 1 test, no error scenarios
-```
-
-### Validate Test Results
-
-```bash
-CALLERS=$(mnemex --agent callers processPayment)
-EXIT_CODE=$?
-
-if [ "$EXIT_CODE" -ne 0 ]; then
-  DIAGNOSIS=$(mnemex status 2>&1)
-  # AskUserQuestion for recovery
-fi
-
-if echo "$CALLERS" | grep -qi "error\|failed"; then
-  # AskUserQuestion
-fi
-
-if [ -z "$(mnemex --agent map "test spec describe")" ]; then
-  echo "WARNING: No test infrastructure found"
-  # May indicate non-standard test locations or index gap
-fi
-```
+**Report:** symptom → the backwards call chain → root cause with `file:line` → the evidence
+that establishes it → the count of affected locations. Every step carries its evidence; a
+root cause asserted without a chain is a guess.
 
 ---
 
-## Bug Investigation
+## Reading "0 callers"
 
-**Use when:** "why is X broken", "find bug source", "root cause analysis", "trace error", "debug issue"
+**Zero inbound edges has three readings, and they are not interchangeable:**
 
-**Primary commands:** `context`, `callers`, `callees`, `impact`
+1. **Entry point** — expected and correct. CLI mains, HTTP handlers, exported public API,
+   test-only helpers.
+2. **Dead code** — genuinely unreachable.
+3. **A call the graph cannot see** — dynamic import, reflection, bracket dispatch, event or
+   callback registration, dependency-injection wiring, or a consumer in another repository.
 
-### Why `context` Works for Debugging
+**Never collapse the three.** Report which one you concluded and the evidence for it.
 
-- Symbol definition = Where the buggy code is
-- Callers = How we got here (trace backwards)
-- Callees = What happens next (trace forward)
-- Full call chain = Complete picture for root cause analysis
+**This skill does not authorise deletion.** A dead-code verdict needs all three of: zero
+inbound edges, low centrality, and **not exported** — an export is a public contract whose
+consumers may be outside this tree. Even with all three, the finding is labelled *requires
+manual review* until a human has checked it against the dynamic-dispatch list above.
 
-### Locate the Bug
-
-```bash
-# Find the function mentioned in error
-mnemex --agent symbol authenticate
-# Get full context (callers + callees)
-mnemex --agent context authenticate
-```
-
-### LSP Type Verification
-
-During debugging, verify types at the error boundary:
-
-```bash
-hover("authenticate")     # Verify return type matches callers' expectations
-define("authenticate")    # Identify exact overload being called
-references("authenticate") # All call sites (more complete than callers for dynamic dispatch)
-```
-
-Type mismatches between what `hover` shows (actual type) and what callers expect are a leading cause of runtime errors.
-
-### Trace Backwards (Root Cause)
-
-```bash
-mnemex --agent callers authenticate
-mnemex --agent callers LoginController
-mnemex --agent callers handleRequest
-```
-
-### Trace Forward (Effect)
-
-```bash
-mnemex --agent callees authenticate
-mnemex --agent callees updateSession
-```
-
-### Blast Radius Analysis (v0.4.0+ Required)
-
-```bash
-IMPACT=$(mnemex --agent impact buggyFunction)
-
-if [ -z "$IMPACT" ] || echo "$IMPACT" | grep -q "No callers"; then
-  echo "No static callers — bug is isolated (or dynamically called)"
-else
-  echo "$IMPACT"
-fi
-```
-
-Use for: post-fix verification, regression prevention, incident documentation.
-
-**Limitations:** Event-driven/callback architectures may have callers not visible to static analysis.
-
-### Error Origin Hunting
-
-```bash
-mnemex --agent map "throw error exception"
-mnemex --agent symbol AuthenticationError
-mnemex --agent callers AuthenticationError
-```
-
-### State Mutation Tracking
-
-```bash
-mnemex --agent map "set state update mutate"
-mnemex --agent symbol updateUserState
-mnemex --agent callers updateUserState
-```
-
-### Bug Investigation Output Format
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                    BUG INVESTIGATION                     │
-├─────────────────────────────────────────────────────────┤
-│  Symptom: [Error description]                            │
-│  Location: src/[file]:line                              │
-│  Actual Type: (from hover)                               │
-│  Expected Type: (from calling context)                   │
-│  Search Method: mnemex (AST call chain)              │
-└─────────────────────────────────────────────────────────┘
-
-Call Chain (backwards):
-SYMPTOM: [error]
-   └── src/components/Profile.tsx:45
-       ↑ CALLER
-   └── useUser hook (src/hooks/useUser.ts:23)
-       ↑ ROOT CAUSE FOUND HERE
-
-Root Cause:
-Location: src/mappers/user.ts:12
-Problem: [description]
-Evidence: [from callers/callees/context output]
-
-Impact:
-mnemex --agent callers [buggy function] shows N affected locations
-```
-
-### Validate Bug Investigation Results
-
-```bash
-CONTEXT=$(mnemex --agent context failingFunction)
-EXIT_CODE=$?
-
-if [ "$EXIT_CODE" -ne 0 ]; then
-  DIAGNOSIS=$(mnemex status 2>&1)
-  # AskUserQuestion
-fi
-
-if ! echo "$CONTEXT" | grep -q "\[symbol\]"; then
-  # Missing symbol section — function not found
-  # AskUserQuestion: Reindex, Different name, or Cancel
-fi
-
-# 0 callers could mean: entry point (expected), dead code, or dynamic call
-if echo "$CONTEXT" | grep -qi "error\|not found"; then
-  # AskUserQuestion
-fi
-```
-
----
-
-## Feedback Reporting (v0.8.0+)
-
-After completing investigation, report search feedback if `search` was used:
-
-```bash
-SEARCH_QUERY="your original query"
-HELPFUL_IDS=""
-UNHELPFUL_IDS=""
-
-# When reading a helpful result: HELPFUL_IDS="$HELPFUL_IDS,$result_id"
-# When reading an unhelpful result: UNHELPFUL_IDS="$UNHELPFUL_IDS,$result_id"
-
-if mnemex feedback --help 2>&1 | grep -qi "feedback"; then
-  timeout 5 mnemex feedback \
-    --query "$SEARCH_QUERY" \
-    --helpful "${HELPFUL_IDS#,}" \
-    --unhelpful "${UNHELPFUL_IDS#,}" 2>/dev/null || true
-fi
-```
-
----
-
-**Maintained by:** MadAppGang
-**Plugin:** code-analysis v5.0.0
-**Last Updated:** March 2026 (v5.0.0 - Consolidated from investigate + 4 specialist skills)
+**High centrality with zero callers means something broke recently** — a deleted call site,
+a botched merge — and is an investigation, not a cleanup. Low centrality with zero callers
+is a cleanup *candidate*, which is a proposal, not a verdict.

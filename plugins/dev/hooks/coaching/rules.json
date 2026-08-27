@@ -1,6 +1,6 @@
 [
   {
-    "id": "grep-instead-of-mnemex",
+    "id": "grep-instead-of-code-search",
     "audience": "claude",
     "signal": {
       "tool": "Bash",
@@ -9,7 +9,7 @@
     },
     "category": "search-efficiency",
     "priority": 1,
-    "suggestion": "You ran {count} grep/rg searches this session. For faster semantic code exploration:\n  `mnemex --agent map \"your concept\"` -- understands intent, not just text\n  `mnemex --agent symbol \"SymbolName\"` -- direct AST symbol lookup\n  Skill: use the Skill tool with `code-analysis:mnemex-search`",
+    "suggestion": "You ran {count} grep/rg searches this session. For faster semantic code exploration:\n  `mcp__plugin_code-analysis_ca__code_search({ query: \"your concept\" })` -- ask in your own words; it understands intent, not just text\n  Skill: use the Skill tool with `code-analysis:code-search`",
     "suppress_after_sessions": 10
   },
   {
@@ -31,8 +31,7 @@
       "tool": "Agent",
       "input_key": "subagent_type",
       "value_in": [
-        "code-analysis:mnemex-search",
-        "code-analysis:mnemex-orchestration",
+        "code-analysis:code-search",
         "code-analysis:investigate",
         "code-analysis:deep-analysis",
         "dev:db-branching",
@@ -232,20 +231,20 @@
     "suppress_after_sessions": 5
   },
   {
-    "id": "no-mnemex-during-investigation",
+    "id": "no-code-search-during-investigation",
     "audience": "claude",
     "signal": {
       "tool": "Grep",
       "min_count": 5,
-      "absent_tool_prefix": "mcp__mnemex__"
+      "absent_tool_prefix": "mcp__plugin_code-analysis_ca__"
     },
     "category": "search-efficiency",
     "priority": 1,
-    "suggestion": "You ran {count} Grep searches with no mnemex calls. For codebase investigation, mnemex provides semantic understanding:\n  Skill({ \"skill\": \"code-analysis:mnemex-search\" }) -- before any mnemex usage\n  `/code-analysis:setup` -- index your codebase for AST-aware search\n  `mnemex callers <function>` -- find all callers without grep\n  `mnemex map <concept>` -- semantic concept search across the codebase",
+    "suggestion": "You ran {count} Grep searches with no code_search calls. For codebase investigation, code-analysis answers semantically:\n  `mcp__plugin_code-analysis_ca__code_search({ query: \"<concept>\" })` -- ranked source locations for a concept or a symbol\n  `mcp__plugin_code-analysis_ca__code_search({ query: \"what calls <function>\", intent: \"dependents\" })` -- every caller, without grep\n  Skill({ \"skill\": \"code-analysis:code-search\" }) -- how to drive the tools\n  `/code-analysis:setup` -- configure the search engine for this project",
     "suppress_after_sessions": 7
   },
   {
-    "id": "sequential-reads-suggest-mnemex",
+    "id": "sequential-reads-suggest-code-search",
     "audience": "claude",
     "signal": {
       "tool": "Read",
@@ -253,7 +252,7 @@
     },
     "category": "search-efficiency",
     "priority": 2,
-    "suggestion": "You read {count} files sequentially -- a common sign of manual codebase tracing. mnemex can map this automatically:\n  `mnemex dependency-graph <module>` -- visualize module dependencies\n  `mnemex callers <function>` -- all callers in one call\n  `mnemex callees <function>` -- all callees in one call\n  Skill({ \"skill\": \"code-analysis:investigate\" }) -- routes to the right investigation mode",
+    "suggestion": "You read {count} files sequentially -- a common sign of manual codebase tracing. code-analysis can trace it in one call:\n  `mcp__plugin_code-analysis_ca__code_search({ query: \"what calls <symbol>\", intent: \"dependents\" })` -- always available\n  `mcp__plugin_code-analysis_ca__find_dependencies({ symbol: \"<symbol>\" })` -- outgoing edges, when the engine exposes it\n  `mcp__plugin_code-analysis_ca__call_tree({ symbol: \"<symbol>\" })` -- transitive call paths, not just direct edges\n  Skill({ \"skill\": \"code-analysis:investigate\" }) -- routes to the right investigation mode",
     "suppress_after_sessions": 5
   },
   {

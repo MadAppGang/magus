@@ -6,7 +6,7 @@ Root-cause debugging — reproduce, localize, explain, verify — with depth rou
 
 Part of [`dev`](./dev.md).
 
-**5 reference documents, about 1,822 lines.**
+**5 reference documents, about 1,826 lines.**
 
 The skill itself does not contain them. It reads your question and names the one or two
 worth opening — which is the point, because loading everything below to answer one
@@ -16,7 +16,7 @@ question would cost more than the answer is worth.
 
 | Document | Covers | Lines |
 |---|---|---|
-| [`localization.md`](https://github.com/MadAppGang/magus/blob/main/plugins/dev/skills/discipline/systematic-debugging/localization.md) | Fault Localization — 3-Strategy Methodology | 266 |
+| [`localization.md`](https://github.com/MadAppGang/magus/blob/main/plugins/dev/skills/discipline/systematic-debugging/localization.md) | Fault Localization — 3-Strategy Methodology | 270 |
 | [`method.md`](https://github.com/MadAppGang/magus/blob/main/plugins/dev/skills/discipline/systematic-debugging/method.md) | Systematic Debugging | 566 |
 | [`session-setup.md`](https://github.com/MadAppGang/magus/blob/main/plugins/dev/skills/discipline/systematic-debugging/session-setup.md) | Debug Shared Initialization | 167 |
 | [`workflow.md`](https://github.com/MadAppGang/magus/blob/main/plugins/dev/skills/discipline/systematic-debugging/workflow.md) | Standard Debug Workflow | 448 |

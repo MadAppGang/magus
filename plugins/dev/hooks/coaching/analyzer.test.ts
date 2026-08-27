@@ -5,8 +5,8 @@
  * Each test invokes analyzer.ts as a CLI process and asserts on output files.
  *
  * Implementation notes discovered during test analysis:
- * - grep-instead-of-mnemex counts Grep AND Glob native tool calls in addition to
- *   bash grep/rg/ag commands (both are search alternatives to mnemex)
+ * - grep-instead-of-code-search counts Grep AND Glob native tool calls in addition to
+ *   bash grep/rg/ag commands (both are search alternatives to semantic code_search)
  * - state.json uses structured format: { _session_count, rules: { ruleId: {...} } }
  * - Session ID must match /^[a-f0-9-]+$/i (UUID hex characters)
  * - single-model-critical-review fires on "code review", "architecture review",
@@ -46,7 +46,7 @@ function generateTranscript(toolCalls: ToolCallSpec[], enoughForSignal = true): 
   const lines: string[] = [];
 
   // Filler calls so we exceed the 10-call minimum (unless caller doesn't want that)
-  // IMPORTANT: Use Write tool (not Glob/Grep) to avoid triggering grep-instead-of-mnemex rule
+  // IMPORTANT: Use Write tool (not Glob/Grep) to avoid triggering grep-instead-of-code-search rule
   const fillerCount = enoughForSignal ? Math.max(0, 10 - toolCalls.length) : 0;
   for (let i = 0; i < fillerCount; i++) {
     lines.push(
@@ -247,7 +247,7 @@ describe("Low-Signal Guard", () => {
 // TEST GROUP: Rule Detection
 // ---------------------------------------------------------------------------
 
-describe("Rule: grep-instead-of-mnemex", () => {
+describe("Rule: grep-instead-of-code-search", () => {
   it("TEST-06: 3 Bash grep calls triggers the rule", () => {
     const transcript = generateTranscript([
       { tool: "Bash", input: { command: "grep -r 'foo' src/" } },
@@ -259,7 +259,7 @@ describe("Rule: grep-instead-of-mnemex", () => {
     const recs = readRecommendations(testDir);
     expect(recs).not.toBeNull();
     expect(recs).toContain("grep");
-    expect(recs).toContain("mnemex");
+    expect(recs).toContain("code_search");
   });
 
   it("TEST-07: 2 Bash grep calls does NOT trigger the rule", () => {
@@ -272,11 +272,11 @@ describe("Rule: grep-instead-of-mnemex", () => {
     const recs = readRecommendations(testDir);
     // May be null (no rules fire) or missing grep mention
     if (recs !== null) {
-      expect(recs).not.toContain("mnemex");
+      expect(recs).not.toContain("code_search");
     }
   });
 
-  it("rg and ag also count for grep-instead-of-mnemex", () => {
+  it("rg and ag also count for grep-instead-of-code-search", () => {
     const transcript = generateTranscript([
       { tool: "Bash", input: { command: "rg 'foo' src/" } },
       { tool: "Bash", input: { command: "ag 'bar' lib/" } },
@@ -286,7 +286,7 @@ describe("Rule: grep-instead-of-mnemex", () => {
     runAnalyzer(transcriptPath, "aaaabbbbccccdddd", testDir);
     const recs = readRecommendations(testDir);
     expect(recs).not.toBeNull();
-    expect(recs).toContain("mnemex");
+    expect(recs).toContain("code_search");
   });
 });
 
@@ -315,15 +315,15 @@ describe("Rule: tmp-path-usage", () => {
 });
 
 describe("Rule: skill-invoked-as-task", () => {
-  it("TEST-09: Task with code-analysis:mnemex-search subagent_type triggers rule", () => {
+  it("TEST-09: Task with code-analysis:code-search subagent_type triggers rule", () => {
     const transcript = generateTranscript([
-      { tool: "Agent", input: { subagent_type: "code-analysis:mnemex-search", prompt: "search for auth patterns" } },
+      { tool: "Agent", input: { subagent_type: "code-analysis:code-search", prompt: "search for auth patterns" } },
     ]);
     const transcriptPath = writeTranscript(testDir, transcript);
     runAnalyzer(transcriptPath, "aaaabbbbccccdddd", testDir);
     const recs = readRecommendations(testDir);
     expect(recs).not.toBeNull();
-    expect(recs).toContain("code-analysis:mnemex-search");
+    expect(recs).toContain("code-analysis:code-search");
     expect(recs).toContain("Skill");
   });
 
@@ -550,14 +550,14 @@ describe("Rule: no-background-tasks", () => {
 
 describe("Suppression", () => {
   it("TEST-19: suppressed rule is not shown even when transcript triggers it", () => {
-    // Write a state.json with grep-instead-of-mnemex suppressed
+    // Write a state.json with grep-instead-of-code-search suppressed
     // session_count will be incremented from 5 to 6; suppress_until_count: 13 > 6, so still suppressed
     // Use the new structured state format: { _session_count, rules: { ruleId: {...} } }
     const statePath = join(testDir, "state.json");
     writeFileSync(statePath, JSON.stringify({
       _session_count: 5,
       rules: {
-        "grep-instead-of-mnemex": {
+        "grep-instead-of-code-search": {
           last_shown_session: 3,
           shown_count: 1,
           suppress_until_count: 13,
@@ -592,7 +592,7 @@ describe("Suppression", () => {
     const recs = existsSync(outputPath) ? readFileSync(outputPath, "utf-8") : null;
     // grep rule should be suppressed
     if (recs !== null) {
-      expect(recs).not.toContain("mnemex");
+      expect(recs).not.toContain("code_search");
     }
   });
 
@@ -609,12 +609,12 @@ describe("Suppression", () => {
     expect(state).not.toBeNull();
     expect(state!._session_count).toBe(1);
 
-    // grep-instead-of-mnemex has suppress_after_sessions: 10
+    // grep-instead-of-code-search has suppress_after_sessions: 10
     // So suppress_until_count should be 1 + 10 = 11
     // State uses structured format: { rules: { ruleId: {...} } }
     const rules = state!.rules as Record<string, Record<string, unknown>>;
     expect(rules).toBeDefined();
-    const ruleState = rules["grep-instead-of-mnemex"];
+    const ruleState = rules["grep-instead-of-code-search"];
     expect(ruleState).toBeDefined();
     expect(ruleState.suppress_until_count).toBe(11);
     expect(ruleState.shown_count).toBe(1);
@@ -646,7 +646,7 @@ describe("Suppression", () => {
 describe("Top-3 Cap", () => {
   it("TEST-21: only top 3 suggestions shown when 4+ rules fire", () => {
     // Trigger 4 rules simultaneously:
-    // 1. grep-instead-of-mnemex (3 grep calls)
+    // 1. grep-instead-of-code-search (3 grep calls)
     // 2. tmp-path-usage (/tmp/ path)
     // 3. skill-invoked-as-task (Task with skill subagent_type)
     // 4. no-background-tasks (sequential Tasks, but combined with skill-invoked-as-task we need different Tasks)
@@ -655,7 +655,7 @@ describe("Top-3 Cap", () => {
 
     const lines: string[] = [];
 
-    // 3 grep calls (triggers grep-instead-of-mnemex)
+    // 3 grep calls (triggers grep-instead-of-code-search)
     lines.push(JSON.stringify({ type: "assistant", message: { content: [{ type: "tool_use", name: "Bash", input: { command: "grep -r 'foo' src/" } }] } }));
     lines.push(JSON.stringify({ type: "assistant", message: { content: [{ type: "tool_use", name: "Bash", input: { command: "grep -n 'bar' lib/" } }] } }));
     lines.push(JSON.stringify({ type: "assistant", message: { content: [{ type: "tool_use", name: "Bash", input: { command: "grep 'baz' tests/" } }] } }));
@@ -664,7 +664,7 @@ describe("Top-3 Cap", () => {
     lines.push(JSON.stringify({ type: "assistant", message: { content: [{ type: "tool_use", name: "Bash", input: { command: "cat /tmp/result.txt" } }] } }));
 
     // Skill as Task (triggers skill-invoked-as-task)
-    lines.push(JSON.stringify({ type: "assistant", message: { content: [{ type: "tool_use", name: "Agent", input: { subagent_type: "code-analysis:mnemex-search", prompt: "find auth patterns" } }] } }));
+    lines.push(JSON.stringify({ type: "assistant", message: { content: [{ type: "tool_use", name: "Agent", input: { subagent_type: "code-analysis:code-search", prompt: "find auth patterns" } }] } }));
 
     // 3 sequential non-background Tasks (triggers no-background-tasks)
     lines.push(JSON.stringify({ type: "assistant", message: { content: [{ type: "tool_use", name: "Agent", input: { subagent_type: "dev:developer", prompt: "impl task A" } }] } }));
@@ -852,7 +852,7 @@ describe("Double-Execution Guard", () => {
     runAnalyzer(transcriptPath, sessionId, testDir);
     const recsAfterFirstRun = readRecommendations(testDir);
     expect(recsAfterFirstRun).not.toBeNull();
-    expect(recsAfterFirstRun).toContain("mnemex");
+    expect(recsAfterFirstRun).toContain("code_search");
 
     // Verify history file was written by the first run
     const historyPath = join(testDir, "history", `session-${sessionId.substring(0, 8)}.md`);
@@ -864,7 +864,7 @@ describe("Double-Execution Guard", () => {
 
     // recommendations.md must still exist with the same content
     expect(recsAfterSecondRun).not.toBeNull();
-    expect(recsAfterSecondRun).toContain("mnemex");
+    expect(recsAfterSecondRun).toContain("code_search");
     // Content should not have been overwritten by a blank second run
     expect(recsAfterSecondRun).toBe(recsAfterFirstRun);
   });
@@ -902,7 +902,7 @@ describe("Double-Execution Guard", () => {
 
     // recommendations.md must still exist with the same content (dedup guard does not overwrite it)
     expect(recsAfterSecondRun).not.toBeNull();
-    expect(recsAfterSecondRun).toContain("mnemex");
+    expect(recsAfterSecondRun).toContain("code_search");
     expect(recsAfterSecondRun).toBe(recsAfterFirstRun);
 
     // Still one session. The same session seen twice is one session.
@@ -964,7 +964,7 @@ describe("Double-Execution Guard", () => {
     writeFileSync(statePath, JSON.stringify({
       _session_count: 50,
       rules: {
-        "grep-instead-of-mnemex": {
+        "grep-instead-of-code-search": {
           last_shown_session: 45,
           shown_count: 5,
           suppress_until_count: 100,
@@ -1009,7 +1009,7 @@ describe("Double-Execution Guard", () => {
 
     // Pre-create recommendations.md with content from a prior high-signal session
     const outputPath = join(testDir, "recommendations.md");
-    const existingContent = "# Previous coaching\n1. Use mnemex for semantic search\n";
+    const existingContent = "# Previous coaching\n1. Use code_search for semantic search\n";
     writeFileSync(outputPath, existingContent);
 
     // Use a high-signal transcript (10+ Write calls) that would normally fire rules

@@ -193,17 +193,21 @@ Java:     (public|private|protected|static).*\w+\s*\( / closing }
 
 **Action:**
 
-1. Invoke `code-analysis:mnemex-search` skill via the Skill tool:
+1. Search semantically instead of textually:
    ```
-   Skill("code-analysis:mnemex-search", args: "<error_signature>")
+   mcp__plugin_code-analysis_ca__code_search({ query: "<error_signature>" })
    ```
-   Pass the error message + primary failing symbol as the semantic search query.
+   Pass the error message + primary failing symbol as the query. It takes natural
+   language — you do not need to guess an identifier.
 
-2. Append high-confidence mnemex results to the candidate list with confidence MEDIUM.
+2. Append high-confidence results to the candidate list with confidence MEDIUM.
 
-3. Continue with Strategy C expansion on the mnemex-returned files.
+3. Continue with Strategy C expansion on the returned files.
 
-4. Do not abandon Strategy A or B results — mnemex results supplement, not replace.
+4. Do not abandon Strategy A or B results — these supplement, not replace.
+
+5. An empty result is an answer, not a failure. Do not reword the query and retry;
+   fall back to Strategy C over the Grep hits you already have.
 
 ---
 
@@ -252,7 +256,7 @@ Large codebase path: {invoked | not needed}
 | Read file at line range | `Read` | `offset: N`, `limit: M` |
 | Search symbol in codebase | `Grep` | `pattern`, `path`, `output_mode: "content"`, `context: 2` |
 | List files matching pattern | `Glob` | `pattern` |
-| Semantic search (large codebase) | `Skill("code-analysis:mnemex-search")` | error signature as args |
+| Semantic search (large codebase) | `mcp__plugin_code-analysis_ca__code_search` | `query`, optional `scope` |
 
 ---
 

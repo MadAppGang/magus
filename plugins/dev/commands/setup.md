@@ -84,8 +84,7 @@ allowed-tools: Read, Write, Edit, Bash, Glob, AskUserQuestion
 
     | Need | Invoke Skill | When |
     |---|---|---|
-    | Semantic code search, mnemex CLI usage, AST analysis | `code-analysis:mnemex-search` | Before using `mnemex` commands |
-    | Multi-agent mnemex orchestration | `code-analysis:mnemex-orchestration` | Parallel mnemex across agents |
+    | Semantic code search, symbol lookup, caller tracing | `code-analysis:code-search` | Before any `mcp__plugin_code-analysis_ca__*` call |
     | Codebase investigation (architecture/implementation/debugging/testing) | `code-analysis:investigate` | Mode-based investigation routing |
     | Deep multi-perspective analysis | `code-analysis:deep-analysis` | Comprehensive codebase investigation |
     | Claudish MCP tools — `team`, `create_session`, `run_prompt` — and model resolution | `claudish:claudish-usage` | Before ANY claudish call. MCP tools only; the CLI is for the four read-only diagnostics (`--probe`, `--help`, `--version`, `--models`) and never runs a task |

@@ -3,11 +3,11 @@
 
 # mnemex
 
-MCP runtime for semantic code search and AST analysis, ranking symbols by PageRank. Required by code-analysis and dev.
+MCP runtime for semantic code search and AST analysis, ranking symbols by PageRank. Optional engine behind the code-analysis facade, and usable directly for its full tool surface.
 
 | | |
 |---|---|
-| Version | `1.0.1` |
+| Version | `1.0.2` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 0 |
 | Subagents | 0 |

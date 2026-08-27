@@ -86,7 +86,7 @@ function makeHuman(text: string): string {
 /**
  * Build a transcript with correction + explicit rule messages for high-signal sessions.
  * Pads with Write tool calls to exceed the 10-call minimum guard.
- * Using Write (not Grep/Glob) avoids triggering grep-instead-of-mnemex rule.
+ * Using Write (not Grep/Glob) avoids triggering grep-instead-of-code-search rule.
  */
 function buildTranscript(opts: {
   corrections?: string[];
@@ -697,7 +697,7 @@ describe("E2E-07: WORKFLOW_LEARNING=off — no queue file, Stage 1 output intact
   });
 
   it("still writes recommendations.md (Stage 1) when WORKFLOW_LEARNING=off", () => {
-    // Transcript with grep calls to trigger grep-instead-of-mnemex rule in Stage 1
+    // Transcript with grep calls to trigger grep-instead-of-code-search rule in Stage 1
     const lines: string[] = [];
     for (let i = 0; i < 8; i++) {
       lines.push(makeAssistantTool("Write", { file_path: `/project/file${i}.ts`, content: "x" }));
@@ -772,7 +772,7 @@ describe("E2E-08: pending-learnings.json schema matches session-start-coaching.s
     mkdirSync(sessionCoachingDir, { recursive: true });
 
     // Session-start requires a recommendations.md with at least one item to produce output
-    writeFileSync(join(sessionCoachingDir, "recommendations.md"), "[human]\nsession: test1234\ncount: 1\n\n1. Consider using mnemex for code search.\n\n[claude]\ncount: 0\n\n");
+    writeFileSync(join(sessionCoachingDir, "recommendations.md"), "[human]\nsession: test1234\ncount: 1\n\n1. Consider using code_search for semantic code search.\n\n[claude]\ncount: 0\n\n");
 
     writeFileSync(join(sessionCoachingDir, "pending-learnings.json"), JSON.stringify([
       {
