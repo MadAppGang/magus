@@ -4,6 +4,172 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Marketplace 10.3.0] - 2026-08-29
+
+### Changed
+
+- **`madbench` v0.3.0**: the evals skill is rewritten from madbench v0.10.0 to **v0.23.0**,
+  thirteen releases of drift. Adds the `environment:*` family — eight checks that grade
+  whether a plugin actually loaded, its skills registered and its MCP server connected — plus
+  the full thirteen `session:*` types, `readout:`, `args.outcome`, `args.thread`, the matcher
+  prefixes, `repo:`/`setup:`/`follow_ups:`, and the current CLI.
+- **`madbench` v0.3.0**: the drive-mode guidance was wrong in a way that hung real runs. It
+  said benches run `claude --print` and to pass `--permission-mode acceptEdits`. `interactive:
+  true` has been the default since madbench v0.11.0, and `--print` **ignores
+  `--permission-mode` entirely**, so that flag never did anything on the path it was
+  recommended for. Interactively, `acceptEdits` parks Bash at an approval menu nobody can
+  answer.
+- **`dev` v6.0.1**: version archaeology removed from 18 files — fourteen notes explaining that
+  a skill had been folded into its owner on a given date, two `## Version History` sections, a
+  50-line v1.0-vs-v2.0 table, and two passages describing what a file "used to teach". A
+  cold-starting agent can neither reach nor act on any of it.
+- **`designer` v0.6.1**: the two dated correction blocks in `ui-analyse` and `compare` are now
+  present-tense rules. The constraint they carry is unchanged and load-bearing — `claudish`
+  has no `--image` flag, and an `[Image: …]` reference typed into a prompt is plain text, so
+  either route returns a fluent review of a screen the model never saw.
+- **`claudish` v2.0.1**: `claudish-usage` no longer narrates what earlier versions of the
+  skill contained. The prohibition survives as a present-tense rule — never document a
+  provider/prefix/env-var table or a routing troubleshooting guide in this repo, because
+  ownership sits with claudish and anything restated here drifts.
+- **`bunjs` v0.4.3**: the README's discovery table and the `bun` index state their measured
+  findings directly instead of narrating which earlier claim was retracted. The rule is
+  unchanged: relative paths in a `SKILL.md` resolve against that file's own directory.
+
+### Fixed
+
+- **The `MCP_SCHEMAS` snapshot in `scripts/lib/plugin-rules.ts` mirrored claudish 7.65.0**,
+  listing a `timeout` that 8.0.0 dropped and missing the `input_file` and `slot` it gained.
+  That produced **30 false `MC-01` errors** against correct instructions and blocked
+  `release.sh`. The rule's own note anticipated it: *"A failure here means the call is wrong OR
+  the table is stale — check the live tool definition before believing it."* The live
+  definition said the table.
+- A `Task tool` heading in `/dev:dev` that meant the **task-list** tools, not the Agent tool —
+  the one real finding among the 31.
+
+### Why
+
+`validate-plugins` reported 31 errors both at `HEAD` and after these changes, verified against
+a clean tree extracted with `git archive`, so none was introduced here. It now reports zero,
+and its self-test still confirms all 14 rules can fail.
+
+---
+
+## [madbench 0.3.0] - 2026-08-29
+
+### Changed
+
+- **The skill now mirrors madbench v0.23.0. It documented v0.10.0 — thirteen releases behind.**
+  All five reference files were rewritten against the `v0.23.0` tag and the constructor maps in
+  `pkg/check/builtin/`, not against the working tree of the madbench checkout, which was mid-branch
+  with uncommitted edits.
+- **The drive-mode guidance was wrong in a way that hangs a real run.** The skill said benches run
+  `claude --print` and told you to pass `--permission-mode acceptEdits` so the agent could write
+  files. Two things falsify that: `interactive: true` has been the default since v0.11.0, and
+  `--print` **ignores `--permission-mode` entirely** — so the flag never did anything on the path it
+  was recommended for. On the interactive path `acceptEdits` lets Write/Edit through but parks Bash
+  at an approval menu nobody can answer, so a bench written to the old text hits its first `go test`
+  and hangs to timeout. The correct interactive translation is `bypassPermissions`.
+- **The default scenario timeout is 300s, not 120s** — raised upstream on 2026-08-27 because 120s
+  was calibrated for `--print` and a cold-start interactive turn exceeds it.
+- The check catalog went from a partial listing to all **92 registered types** across twelve
+  families, with the per-family counts taken from source.
+
+### Added
+
+- **The `environment:*` family — 8 checks that grade what the agent was GIVEN**, not what it did:
+  `plugin-loaded`, `skill-registered`, `command-registered`, `agent-registered`, `mcp-connected`,
+  `tool-available`, `plugin-inventory`, `matches-expected`. This family did not exist when the skill
+  was written, and it answers the question this marketplace keeps getting wrong by hand — *did the
+  plugin actually load, are its skills registered, did its MCP server connect*. Documented with the
+  Expected-vs-Reported split that makes it trustworthy, and the `harness_config.environment` probe.
+- The Session family's full 13 types, including `tools-only` (allowlist fences), `tool-sequence`,
+  `turn-count`, `turn-step-count` and `image-sent`; the shared bound grammar (`lte`/`gte`/`eq`); and
+  the two scoping dimensions `args.thread` and `args.outcome`.
+- `readout:` (measure without gating), `transform:` (JS rewrite before one check), `inline:`, and
+  the `exact:`/`glob:`/`suffix:`/`contains:` matcher prefixes.
+- Scenario keys `repo:` (pinned third-party checkout), `setup:` vs `generate:`, `follow_ups:`,
+  `cwd:` and `staging_timeout:`; the Eval `control:` block and the `metrics:` source catalog.
+- The current CLI: the `report`, `keychain`, `update` and `version` commands, and ten flags
+  including `--report-dir`, `--concurrency`, `--theme`, `--env-file` and `--no-keychain`.
+- A sixth skill eval, `verify-the-plugin-actually-loaded`, covering the `environment:*` family.
+
+### Fixed
+
+- **The skill's own evals encoded the falsified model and would have graded the corrected skill as
+  wrong.** Eval 1 asserted that "in `--print` mode un-approved Write/Edit tool calls silently
+  no-op". It is now `debug-interactive-hang`, and carries an explicit assertion that an answer
+  resting on the silent-no-op story **fails**.
+- `madbench check` reports `latency` and `cost` as **NOT APPLICABLE UNDER MOCK** and excludes them
+  from its verdict; the skill said they land in a "could not grade" bucket. It now also explains
+  falsification as the way to prove a budget guard, and why a count ceiling is *not* exempt.
+- `madbench version` replaces the `go version -m` incantation for identifying the binary. There is
+  no `--version` flag.
+
+### Why
+
+Where upstream's own docs contradict themselves, this skill follows the source. `docs/checks.md`
+gives three different totals for the catalog, lists Session at 8 in a table whose body enumerates
+13, and lists Environment at 7 where the constructor map registers 8; `harness.md` says
+"eight keys. That is the entire schema" for a struct with nine. Every count here was counted from
+the constructor maps, and the disagreement is noted in the file so the next person does not
+"correct" it back.
+
+---
+
+## [dev 6.0.1] - 2026-08-29
+
+### Removed
+
+- **Version archaeology across 18 files.** Fourteen carried a note explaining that a skill had been
+  folded into its owner on a particular date; two `## Version History` sections and a 50-line
+  v1.0-vs-v2.0 comparison table sat at the end of skill files; two more explained what the file
+  "used to teach". None of it told a fresh context anything it could act on — the line above each
+  note already said what the file was for.
+- The `task-management` skill description no longer explains "why the task-list tools are gone". It
+  states what is true now: current models have no task-list tools. The verified control block that
+  proves it stays.
+
+### Why
+
+An agent starts every session cold and loads only the current text. A note about what a previous
+version said is unreachable context that costs listing budget and reading time, and it invites the
+reader to reason about a state that no longer exists.
+
+---
+
+## [designer 0.6.1] - 2026-08-29
+
+### Changed
+
+- The two dated `Correction (2026-08-14)` blocks in `ui-analyse` and `compare` are now present-tense
+  rules. The constraint they protect is unchanged and load-bearing: **`claudish` has no `--image`
+  flag**, unknown flags pass through to `claude` which has none either, and an `[Image: …]`
+  reference typed into a prompt is plain text. Either route returns a fluent review of a screen the
+  model never saw, and reports no error while doing it.
+
+---
+
+## [claudish 2.0.1] - 2026-08-29
+
+### Changed
+
+- `claudish-usage` no longer narrates what earlier versions of the skill contained. The prohibitions
+  survive as present-tense rules — never document a provider/prefix/env-var table or a routing
+  troubleshooting guide here, because ownership sits with claudish and anything restated drifts.
+
+---
+
+## [bunjs 0.4.3] - 2026-08-29
+
+### Changed
+
+- The README's discovery table and the `bun` index skill state their measured findings directly
+  instead of narrating which earlier claim was retracted. The rule that matters is unchanged:
+  relative paths in a `SKILL.md` resolve against **that file's own directory**, so `../<name>/` is
+  the only spelling that lands.
+
+---
+
 ## [code-analysis 7.1.0] - 2026-08-28
 
 ### Changed

@@ -862,13 +862,3 @@ Agents use Read tool to load skill files:
 4. Apply patterns during implementation
 ```
 
----
-
-## Version History
-
-### v1.0.0 (2026-01-05)
-- Initial release
-- Multi-stack detection support
-- Framework-specific patterns for React, Vue, Go, Rust, Python, Bun
-- Quality check mapping
-- Skill path generation with ${CLAUDE_PLUGIN_ROOT}

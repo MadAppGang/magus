@@ -7,7 +7,7 @@ Universal development assistant. Detects the project stack and routes work to sp
 
 | | |
 |---|---|
-| Version | `5.0.0` |
+| Version | `6.0.1` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 15 |
 | Subagents | 13 |
@@ -222,7 +222,7 @@ Dispatched with the Agent tool, each in its own context window.
 | ▸ | `dev:react-typescript` | React 19 + TypeScript patterns — components, hooks, TanStack Query, Zod forms, error boundaries. Use when building React apps or wiring state. |
 | ▸ | `dev:shadcn-ui` | shadcn/ui patterns — CLI install, CSS-variable theming, dark mode, React Hook Form + Zod. Use when adding UI components or wiring shadcn forms. |
 | ▸ | `dev:tailwindcss` | TailwindCSS v4 patterns — CSS-first @theme, design tokens, container queries, dark mode. Use when configuring Tailwind or defining tokens. |
-| ▸ | `dev:task-management` | Tracks phases across a multi-phase workflow in text, and explains why the task-list tools are gone. Use when orchestrating phased work. |
+| ▸ | `dev:task-management` | Tracks phases across a multi-phase workflow in text, since current models have no task-list tools. Use when orchestrating phased work. |
 | ! | `dev:phase-enforcement` | Evidence-based phase completion for /dev:dev — artifacts, validation criteria, outer loops. Use when orchestrating phased feature work with gates. |
 
 ## Hooks

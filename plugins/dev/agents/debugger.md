@@ -304,7 +304,4 @@ Findings saved to: {session_path}/root-cause.md
 
   Read ${CLAUDE_PLUGIN_ROOT}/skills/discipline/systematic-debugging/references/techniques.md
   in the Localize phase, once you know which phase you are in.
-
-  It was the separate dev:debugging-strategies skill until 2026-08-15, which restated the
-  same four-phase method in different words.
 </technique-catalogue>

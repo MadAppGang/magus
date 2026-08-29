@@ -2,9 +2,6 @@
 
 Reference for `dev:task-management`. Read when work is split across parallel agents rather than sequential phases.
 
-Was a standalone skill until 2026-08-15; folded because it duplicated its owner's
-territory while costing separate listing budget.
-
 # Agent Coordination Discipline
 
 **Iron Law:** "NO AGENT LAUNCH WITHOUT CLEAR DELEGATION CRITERIA"

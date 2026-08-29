@@ -1,351 +1,407 @@
-# madbench bench file schema (`BenchSpec`)
+# Bench and Eval file schema
 
-The runnable unit. Files named `madbench.yaml` / `madbench.yml` are auto-discovered in
-cwd; any `*.yaml` path can be passed explicitly. Source of truth:
-`pkg/madbench/benchspec.go`, loader in `internal/loader/loader.go`.
+Reference for `madbench:madbench-evals`. Every key of a bench file and an Eval file, its type
+and its default. Mirrors madbench **v0.23.0** (`pkg/madbench/benchspec.go`).
 
-**Bench files are strictly decoded (v0.10.0).** An unknown key is a load error naming
-the file, line and Go type — the treatment Eval files always had. See *Loading &
-validation behavior* below for exactly where strictness stops.
+**Both file kinds are strictly decoded at every nesting level** — scenario, check and sandbox
+block alike. An unknown key is a hard load error naming the file, line and type:
 
-## Top level
-
-```yaml
-description: "MB-1 my bench"     # the Bench name shown in reports/UI
-runner: claude-code              # harness: claude-code | mock | magmux
-runner_config: {...}             # runner-specific map — see runners-and-sandbox.md
-defaults: {...}                  # CaseDefaults inherited by every case
-defaultCase: {...}               # a Case merged into every case (alias: defaultTest)
-judges: {...}                    # AI-judge providers (multi-provider) — see checks-catalog.md
-derivedMetrics:                  # JS exprs over named check scores, post-run (goja)
-  - { name: Adjusted, value: "Consistency * 2" }
-budget: 10                       # USD gauge — informational only, NOT enforced
-token_estimate: 4000000          # tokens gauge — informational only
-cases: [...]                     # the Scenarios (alias: tests)
+```
+Error: loading bench.yaml: parsing bench.yaml: yaml: unmarshal errors:
+  line 5: field input not found in type madbench.ScenarioSpec
 ```
 
-### Canonical keys vs. accepted aliases
+---
 
-The dictionary rename made several familiar keys into **aliases**. Everything in the
-right column still loads — nothing here is broken — but **emit the canonical name in
-new files**, and flag aliases in review:
+## 1. Bench file — top level
 
-| Canonical (write this) | Accepted alias (still loads) |
+```yaml
+description: "what this bench measures"
+harness: claude-code
+harness_config: {…}          # see runners-and-sandbox.md
+models: {fast: haiku-4.5}    # named model definitions (modelspec union)
+params: {model: fast}        # the bench's interface — declared names + defaults
+judges: {…}                  # judge providers for AI checks
+metrics: [{…}]               # the report's numeric schema
+derivedMetrics: [{…}]        # JS expressions over named scores
+defaults: {…}                # scenario-level defaults
+defaultScenario: {…}         # a whole ScenarioSpec merged into every scenario
+budget: 1.50                 # informational gauge only — NOT enforced
+token_estimate: 200000       # informational gauge only — NOT enforced
+scenarios: [{…}]
+```
+
+| Key | Type | Notes |
+|---|---|---|
+| `description` | string | shown as the bench name in reports |
+| `harness` | string | e.g. `claude-code`, `mock`, `magmux` |
+| `harness_config` | map | handed to the adapter verbatim — **not validated by the loader** |
+| `models` | map[string]modelspec | named model definitions; same union as `judges:` |
+| `params` | map[string]any | declared names + defaults — **the bench's interface** |
+| `judges` | {default, providers} | judge providers for the 17 AI check types |
+| `metrics` | []MetricSpec | the report's numeric schema |
+| `derivedMetrics` | [{name, value}] | JS expression over named scores, e.g. `"Consistency * 2"` |
+| `defaults` | ScenarioDefaults | see §2 |
+| `defaultScenario` | ScenarioSpec | a whole scenario merged into every entry |
+| `budget` | float | **informational only, never enforced** |
+| `token_estimate` | int | **informational only, never enforced** |
+| `scenarios` | []ScenarioSpec | the work |
+
+### Accepted aliases
+
+All still load; the canonical spelling is on the left.
+
+| Canonical | Alias |
 |---|---|
 | `harness:` | `runner:` |
 | `harness_config:` | `runner_config:` |
 | `scenarios:` | `cases:` · `tests:` |
-| `checks:` | `assert:` |
 | `defaultScenario:` | `defaultCase:` · `defaultTest:` |
+| `checks:` | `assert:` |
 | `testdata:` | `fixture:` |
-| `session:*` check types | `trajectory:*` |
+| `session:*` check types | `trajectory:*`, and bare `skill-used` |
+| `disableDefaultChecks:` | `disableDefaultAsserts:` |
 
-> **Note:** the YAML examples in these reference files still show the alias spellings
-> in places. Both load identically; prefer the canonical column when authoring.
+Say **testdata**, never "fixture". Write `session:`, never `trajectory:`.
 
-**Sandbox levels are the exception — those retired spellings are REFUSED, not
-aliased.** `sandbox: process` / `machine` / `docker` are hard load errors. See
-`runners-and-sandbox.md`.
+---
 
-## `defaults:` (CaseDefaults)
+## 2. `defaults:` — scenario-level defaults
+
+| Key | Type | Default | Effect |
+|---|---|---|---|
+| `sandbox` | SandboxConfig or string | `home` | bare level, or the long form |
+| `interactive` | bool-ish | **true** | how the agent is driven — see runners-and-sandbox.md §3 |
+| `cwd` | string | *(root)* | where inside the workspace the agent starts |
+| `timeout` | string | `300s` | must carry a unit — see the gotcha below |
+| `capture` | string | `log` | `log` · `proxy` · `log+proxy` |
+| `staging_timeout` | string | | budget for `generate:`/`setup:` |
+| `bun` | string | | pin the Bun version for `ts`/`js` checks |
+| `python` | string | | pin the Python version for `python` checks |
+| `lockfile_required` | bool | false | demand `bun.lock` / `uv.lock` |
+
+---
+
+## 3. Scenario keys
 
 ```yaml
-defaults:
-  sandbox: home              # none | workspace | home | container — default home
-  timeout: 120s              # duration STRING — `120` and `"120"` both silently
-                             # fall back to the 120s default (ParseDuration rejects
-                             # a bare number; nothing errors). Always write a unit.
-  capture: log               # "log" | "proxy" | "log+proxy"
-  bun: "1.3.4"               # pin Bun version for ts/js checks
-  python: "3.12"             # pin Python for python checks
-  lockfile_required: false   # require bun.lock / uv.lock for managed deps
-```
-
-## `cases:` entries (Case / Scenario)
-
-```yaml
-cases:
-  - name: write-fizzbuzz          # ID (falls back to description)
-    description: "..."
-    prompt: |                      # the request sent to the Harness
-      ...
-    vars: { requiredWord: managed }  # interpolated + visible to Code checks
-    testdata: ./testdata/repo      # dir copied fresh into sandbox WorkDir per run
-    generate: ./generate.sh        # program run ONCE PER RUN before the workspace exists
-    image: ./chart.png             # picture(s) delivered WITH the prompt; or a list
-    sandbox: { level: container, image: "...", network: none, env: {...} }  # per-case override
-    # ^ the key is `level:`. There is NO `mode:` key — since v0.10.0 strict decoding
-    #   makes `sandbox: {mode: container}` a LOAD ERROR. It used to be dropped
-    #   silently, pass preflight, and run at the default `home` level.
-    timeout: 120s
+scenarios:
+  - description: "fix the failing test"
+    name: bugfix-add                 # stable id for --run filtering and reports
+    prompt: "The test fails. Fix it."
+    follow_ups:                      # interactive only — rejected with interactive: false
+      - "Now add a test for the negative case."
+    testdata: ./testdata/repo        # copied fresh into the sandbox
+    repo: {url: …, ref: …, path: …}  # third-party checkout, pinned
+    setup: ./stage.sh                # build testdata; keeps NO expectation
+    generate: ./gen.sh               # build testdata AND compute the answer
+    image: ./shots/dashboard.png     # delivered with the prompt
+    cwd: packages/api                # moves the AGENT only
+    vars: {reference: "…"}
+    sandbox: {level: container}
+    interactive: false
+    timeout: 600s
     capture: log
-    bun: "1.3.4"
+    staging_timeout: 120s
+    bun: "1.3.10"
     python: "3.12"
-    providers: [claude-haiku, gpt] # run once per provider → composites see all sessions
-    transform: "output.trim()"     # JS rewrite of output before checks (goja)
-    metadata: { any: tags }
-    threshold: 0.8                 # promptfoo compat — PARSED but NOT enforced by the engine (v1)
     lockfile_required: true
+    providers: [a, b]                # multi-provider fan-out
+    transform: "output.trim()"       # JS rewriting output before checks
+    metadata: {owner: platform}
+    threshold: 0.8                   # PARSED BUT NEVER EVALUATED — see §9
     options:
-      transform: "..."
-      disableDefaultChecks: false  # skip defaultScenario checks (alias: disableDefaultAsserts)
-    assert: [...]                  # the Checks — see below
+      transform: "…"
+      disableDefaultChecks: true
+    checks: [{…}]
 ```
 
-`defaultCase` merge semantics (promptfoo): scalars — case wins; `vars`/`metadata`/
-`options` deep-merge; `assert` lists concatenate default-first.
+| Key | Type | Notes |
+|---|---|---|
+| `description` | string | |
+| `name` | string | stable id |
+| `prompt` | string | **required** — written here, inherited from `defaultScenario:`, or read from a case directory's `input.md`. An explicit `prompt: ""` is a choice and is kept; never writing one is a **load error**, because an empty prompt otherwise reaches the agent and spends a real run on nothing |
+| `follow_ups` | []string | one send, one turn, one `Session.Turns` entry. **Rejected at load with `interactive: false`** |
+| `testdata` | string | directory copied fresh into the sandbox per scenario |
+| `repo` | {url, ref, path} | see §4 |
+| `setup` | string | staging program that keeps no expectation — §5 |
+| `generate` | string | staging program that computes the answer — §5 |
+| `image` | string or []string | delivered in the same first user message as the prompt — §6 |
+| `cwd` | string | relative only, no `..`; must exist after seeding. **Moves the agent only** |
+| `vars` | map | reachable as check `Vars` |
+| `sandbox` | SandboxConfig or string | overrides `defaults:` |
+| `interactive` | bool-ish | overrides `defaults:` |
+| `timeout` · `capture` · `staging_timeout` · `bun` · `python` · `lockfile_required` | | as `defaults:` |
+| `providers` | []string | multi-provider fan-out; makes `Sessions`/`Providers` plural |
+| `transform` | string | JS (goja) rewriting `output` before checks see it |
+| `metadata` | map | free-form, carried into the report |
+| `threshold` | float | **parsed, merged, and never read** — promptfoo compatibility |
+| `options` | {transform, disableDefaultChecks} | |
+| `checks` | []check.Spec | see `checks-catalog.md` |
 
-## `assert:` entries (AssertionSpec / Check)
+---
+
+## 4. `repo:` — a third-party checkout, pinned
 
 ```yaml
-- type: contains          # required — check type (see checks-catalog.md)
-  value: "func FizzBuzz"  # main argument: string / list / schema map / number
-  args: { cmd: [...] }    # structured params (exec cmd, session:step-count bounds, …)
-  config: { ... }         # extra config (http url, script config object)
-  weight: 2.0             # contribution in weighted composites (default 1.0)
-  threshold: 0.7          # this check's pass bar — the Expectation
-  metric: Consistency     # named score key (defaults to type)
-  assert: [...]           # CHILDREN — only for composite types
-  inline: "..."           # inline source for gosrc evaluators
-  transform: "..."        # per-assertion output rewrite (overrides case-level)
+repo: {url: https://github.com/go-chi/chi, ref: v5.1.0, path: middleware}
 ```
 
-## `image:` — asking about a picture
+The declarative form of "run the agent against somebody else's code". Vendoring that code
+makes the subject drift silently and bloats the repository; a `setup:` script shelling out to
+git works, but the pin then lives in a shell script nothing reads back, so the report cannot
+say what the agent ran against. This key can.
+
+**It COMPOSES with `testdata:` rather than replacing it**: the checkout is the base and
+`testdata:` is copied over it, so a bench can add its own `CLAUDE.md`, its own broken test or
+its own `.claude` tree to a repository it does not own. `generate:`/`setup:` stage on top of both.
+
+The workspace gets **no `.git`**, submodules are **not** initialized, and Git-LFS content is
+**not** fetched.
+
+---
+
+## 5. `setup:` vs `generate:` — two staging programs
+
+Both run **once per run, before the workspace is seeded**, on the host, with the staged tree
+as working directory, under the same `staging_timeout:`, with the same six environment names.
+Relative paths resolve against the bench file. The tree each leaves behind replaces
+`testdata:` as the seed source.
+
+| | `setup:` | `generate:` |
+|---|---|---|
+| keeps an expectation | **no** | **yes** — stdout `NAME=VALUE` lines |
+| stdout is | diagnostics | the run's **secrets**, read as check Vars |
+| leak assertion | none | **madbench refuses the run** if a printed value is findable in the staged tree, the prompt, or the report |
+| use for | a clone at a pinned SHA, an indexer, a per-run config, a code-navigation bench | a bench whose answer must be unguessable |
+
+**Declaring both on one scenario is refused** — both own the staged tree and both run before
+the workspace exists, so there is no order between them that is not a pipeline nobody asked for.
+
+Two consequences before reaching for `generate:`:
+
+- **The expectation must be derived, not planted.** "Find the row where…" fails the leak
+  assertion, because the answer is literally in the file. Sums, counts and checksums pass —
+  computing them *is* the task. An expected answer that IS a file path could never survive it;
+  that is what `setup:` is for.
+- **Per-run means per Eval `runs:` entry.** `--repeat N` deliberately reuses one staged tree,
+  so a repeat re-measures the *same* task and the spread it reports is the agent's, not the data's.
+
+---
+
+## 6. `image:` — asking about a picture
+
+Pictures delivered to the agent **alongside the prompt**, as part of the same first user
+message. Relative paths resolve against the bench file. An image that is missing, is a
+directory, or is not a format the model accepts **blocks at preflight**, before anything is spent.
+
+**An image is NOT testdata.** `testdata:` seeds the working tree, so the agent has to open a
+file to see it and could just as well ignore it; `image:` is in the message the model is
+answering, so it is seen before the agent does anything at all. A bench that wants both
+declares both.
+
+Declaring `image:` flips `--input-format` from `text` to `stream-json`. Verify delivery with
+`session:image-sent`, which grades transport, not comprehension.
+
+> **An `image:` bench cannot be negative-controlled.** The mock harness is not `ImageCapable`:
+> `madbench check` refuses with *harness "mock" cannot deliver an image*. Grade the rest of the
+> bench under mock and keep the image cell's proof to a real run.
+
+---
+
+## 7. `sandbox:` block
 
 ```yaml
-scenarios:
-  - name: reads-the-chart
-    prompt: "Which quarter had the steepest drop?"
-    image: ./revenue.png                     # or: image: [./before.png, ./after.png]
+sandbox:
+  level: container           # none | workspace | home | container (default home)
+  workdir: ./repo            # level `none` ONLY — rejected above it
+  image: node:22             # container only; XOR dockerfile
+  dockerfile: ./Dockerfile   # container only
+  network: none              # container only
+  user: root                 # container, Linux only
+  env: {CI: "1"}             # literal values — never secrets
+  share:
+    env: [GITHUB_TOKEN]           # forwarded BY NAME from resolved settings
+    secret_env: [MY_VENDOR_KEY]   # forwarded AND redacted from the Session
+    paths:
+      - {from: ~/.cache/uv, to: ~/.cache/uv, access: rw}
+      - {from: ./golden,    to: /opt/golden, access: copy}
+      - {from: /srv/corpus, to: /srv/corpus, access: ro}   # container only
 ```
 
-- The key is **singular `image:`** in both shapes. There is no `images:` — under strict
-  decoding it is a load error rather than a sibling that parses to nothing.
-- Paths resolve against the bench file, exactly as `testdata:` does.
-- **An image is not testdata.** `testdata:` seeds the working tree, so the agent must
-  open a file to see it — that grades whether it read a file. `image:` is in the message
-  the model is answering, so it is seen before the agent does anything. Declare both if
-  you want both.
-- `media_type` is **sniffed from the bytes, never the extension** — a `.png` that is
-  really a JPEG is the ordinary result of renaming, and declaring it wrong is an API
-  rejection mid-run. Accepted: `image/png`, `image/jpeg`, `image/gif`, `image/webp`.
-- Two gates fire before any spend: `preflight` (missing, a directory, or an unaccepted
-  format) and `harness.ImageCapable` at Configure (a harness that cannot carry one).
-  **Only `claude-code` is ImageCapable**, so an `image:` bench cannot be run under
-  `--harness mock` or negative-controlled with `madbench check`.
-- Transport detail worth knowing: `image:` flips the CLI to `--input-format stream-json`
-  for that Scenario only. A Scenario with no `image:` keeps the raw-text stdin it always
-  had, byte for byte.
+Levels, what each protects, and the retired spellings: `runners-and-sandbox.md` §4.
 
-## `generate:` — testdata whose answer is held out of the workspace
+---
 
-`testdata:` is copied **verbatim**, which is fine until the answer must be unguessable:
-anything you want the agent to find is also something it can grep for, so a bench whose
-expectation ships beside its data measures searching, not solving.
+## 8. `metrics:` and `derivedMetrics:`
+
+A check returns higher-is-better **utility** and *grades* a Scenario; a metric *measures* it
+and never grades.
 
 ```yaml
-scenarios:
-  - testdata: ./testdata      # optional static base, copied in first
-    generate: ./generate.sh   # runs with the staged tree as its cwd
+metrics:
+  - {name: cost,   source: session.cost,   aggregate: sum,  unit: usd,    better: lower}
+  - {name: steps,  source: session.steps,  aggregate: mean, unit: steps,  better: lower}
 ```
 
-| | |
-|---|---|
-| When | before seeding, before the run clock starts |
-| cwd | a fresh tree under `$TMPDIR/madbench-generated-*`, pre-populated with `testdata:` |
-| Environment | `MADBENCH=1`, `MADBENCH_TESTDATA_DIR`, `MADBENCH_IMAGE_DIR`, plus `PATH`/`HOME`/`LANG`/`TMPDIR` from the injected snapshot — **not** your shell |
-| stdout | the **secret channel**: `NAME=VALUE` lines, parsed strictly (a stray `echo` is an error, never a skip) |
-| stderr | diagnostics, **redacted first** — a debug line quoting the answer prints `[REDACTED]` |
-| Result | the staged tree **replaces** `testdata:` as the seed source |
+| Source | Scope | Reads |
+|---|---|---|
+| `session.latency` | scenario | `Metrics.Latency` |
+| `session.cost` | scenario | `Metrics.Cost` |
+| `session.tokens` | scenario | prompt + output tokens |
+| `session.prompt_tokens` / `session.output_tokens` | scenario | one side of the above |
+| `session.steps` | scenario | `Metrics.StepCount` — **main-thread tool calls, not turns** |
+| `session.turns` | scenario | one **exchange** — `prompt:` plus each `follow_ups:` entry |
+| `session.model_requests` | scenario | one **request→response**. **No fallback** — nothing in the Action stream reconstructs it |
+| `session.tool_calls` | scenario | `len(Session.Calls)` — **every** thread, so it exceeds `session.steps` when a subagent ran |
+| `session.steps.main` | scenario | the same number as `session.steps`, named for the threads it counts |
+| `session.steps.all` | scenario | the same as `session.tool_calls` — the whole job |
+| `session.steps.agent` + `key:` | scenario | one subagent's `SubagentRollup.ToolCalls`. An agent that never spawned is **missing**, not `0` |
+| `session.plugins_reported` | scenario | error-free entries in `Environment.Reported.Plugins` |
+| `session.plugins_failed` | scenario | entries carrying `errors` |
+| `session.skills_registered` | scenario | `len(Reported.Skills())`, loaded plugins only |
+| `check.score` | check | each Check's normalized score |
+| `check.pass_rate` | scenario | passed ÷ graded Checks |
+| `check.evidence` + `key:` | check | `Result.Evidence[key]`, numeric values only |
 
-Where a printed value goes is the whole point:
+`aggregate:` accepts `sum`, `mean`, `max`, `min`. Aliases: `add`/`total` → `sum`,
+`average`/`avg` → `mean`, `agg:` → `aggregate:`.
 
-- **The grader gets it**, as a check `Var` under that name — readable by `custom:gosrc`,
-  `ts`/`js`/`python`, `custom:exec`, `custom:http`, `custom:wasm`.
-- **The workspace does not.** madbench refuses the run if the value is findable as file
-  content or as a path, walking the staged tree the way the seeding copy will —
-  **symlink targets included**, since a link is just another name for content the copy
-  resolves and stages.
-- **The sandbox environment does not.** Unlike `share.secret_env`, a generated value is
-  never forwarded — an agent that can read its own environment would not have to do the
-  task.
-- **The prompt may not carry it either**, and **the report does not**.
+**"How many steps" is three questions** — main thread, whole job, one named subagent. Pick the
+one you mean; `session.steps` is the main thread.
 
-Two consequences: the expectation must be **derived, not planted** (a "find the row
-where…" bench fails the leak assertion; sums, counts and checksums pass, because
-computing them is the task), and **per-run means per Eval `runs:` entry** — `--repeat N`
-reuses one staged tree on purpose, so a repeat re-measures the *same* task.
+---
 
-**`image: generated:<name>`** composes the two: the generator writes the picture into
-`$MADBENCH_IMAGE_DIR` — a sibling directory that is **never seeded** — and the Scenario
-names it with the `generated:` prefix. The two directories must stay apart: the leak
-assertion compares bytes, and the answer to "what colour is this?" is pixels, so a
-swatch sitting in the working tree would pass every leak check ever written while
-handing the answer to any agent whose `Read` tool renders images.
+## 9. Eval files
 
-## Case-directory format
-
-Instead of YAML entries, a directory containing `assert.yaml` is loaded as one case:
-
-```
-my-case/
-├── assert.yaml    # a FULL Suite document (required) — not a bare assert: list
-├── input.md       # the prompt (optional)
-├── setup.sh       # listed in loader docs but NOT executed (comment-only, unwired)
-└── expected/      # likewise documented but not implemented
-```
-
-`assert.yaml` unmarshals into a complete `Suite` (`internal/loader/loader.go`
-`loadCaseDir`) — write it with the same top-level shape as a bench file. Don't rely
-on `setup.sh`/`expected/`: the loader mentions them but no code runs them yet.
-Passing a directory to `madbench` walks `.yaml`/`.yml` files and detects case dirs.
-
-## Loading & validation behavior
-
-- Parse: **strict decode (`KnownFields`)** → `NormalizeAliases()` → `testdata` resolved
-  relative to the YAML file's dir → `file://` values resolved → `defaultCase` merged
-  into each case.
-- **Unknown keys are load errors**, naming file, line and Go type:
-
-  ```
-  Error: loading bench.yaml: parsing bench.yaml: yaml: unmarshal errors:
-    line 5: field input not found in type madbench.ScenarioSpec
-  ```
-
-  Every accepted alias (`runner:`, `cases:`, `assert:`, `fixture:`, …) is a real struct
-  field with a yaml tag, so strict decoding does not break them.
-
-- **Where strictness stops — three real gaps:**
-
-  | Gap | Why | What still bites |
-  |---|---|---|
-  | `harness_config:` | an untyped map handed to the harness | `temperature: 0.2` loads clean, preflights clean, is never read |
-  | value *semantics* | strict decoding checks key **names**, not values | `timeout: 600` is a valid string; `ParseDuration` then rejects it and the timeout silently falls back to 120s |
-  | `vars:` / `metadata:` / check `args:` | open by design | a typo'd key inside them reaches your grader as a missing lookup |
-
-- **`x-` keys are the one exception — since v0.10.2.** A key whose name begins with
-  `x-` is accepted and ignored at every level, in bench files and Eval files alike.
-  On **v0.10.0 / v0.10.1** it is still a load error, so check your binary (Step 0)
-  before relying on it:
-
-  ```yaml
-  x-shared:                     # ← line 3: field x-shared not found in type madbench.BenchSpec
-    prompt: &build_auth |
-      ...
-  ```
-
-  `x-` is the extension-key convention — a key the consuming tool ignores by contract,
-  so anchors have somewhere to live (HTTP `X-` headers, OpenAPI "Specification
-  Extensions", Docker Compose `x-` fields, which document it for exactly this purpose).
-  `shared` is just a label; `x-` is the whole contract. The exemption is a **prefix, not
-  a substring** — `max-tokens:` is still an unknown-field error — and an `x-` key beside
-  a real typo still fails, naming only the typo.
-
-  This matters because anchors are the only way to guarantee two scenarios get a
-  **byte-identical** prompt, which is exactly what a controlled comparison needs. The
-  alternative is copy-paste, where one edited copy silently confounds the experiment —
-  an A/B measuring two variables and reporting one. An anchor cannot be declared
-  free-standing, so without an ignored key the definition has to live inside the first
-  scenario that uses it, making that scenario the master copy.
-
-  **The portable answer, correct on every version: declare the anchor on its first
-  real use** and alias it afterwards — YAML allows `&name` on any node:
-
-  ```yaml
-  scenarios:
-    - name: bare
-      prompt: &task |
-        Write src/auth.ts so that `bun test` passes.
-      checks: &grading
-        - { type: exec, args: { cmd: [bun, test] } }
-    - name: routed
-      prompt: *task        # byte-identical, guaranteed by the parser
-      checks: *grading
-  ```
-
-- Unknown check `type:` and a missing `file://` grader are **caught by `preflight`**
-  now, not deferred to evaluate time.
-- No file argument: discovers `madbench.yaml` then `madbench.yml` in cwd, else
-  `no madbench.yaml or madbench.yml in <dir>`.
-
-## Bench params + models (the bench's interface)
-
-Benches run standalone with defaults; callers override only what changes:
+An **Eval** runs the same **Bench** many times with different inputs. **There is no
+cross-product** — what you list is what runs.
 
 ```yaml
-models:                # optional: named model definitions (modelspec union, same as judges:)
-  fast: haiku-4.5
-params:                # optional: declared incoming params WITH defaults
-  model: fast          # default may reference a models: name or inline modelspec
-  temp: 0.0
-runner_config:
-  model: "{{model}}"   # {{name}} substitution works in any string value in the file
-  args: ["--temperature", "{{temp}}"]
-```
-
-- Effective value: incoming (Eval run entry / CLI `--param key=value`) > `params:` default.
-- Whole-string placeholder keeps the value's native type (`"{{temp}}"` → `0.0` float);
-  embedded placeholders stringify.
-- Strict both ways: placeholder without a declared param → load error; incoming param
-  not declared → load error. A null param value (YAML `null` default or empty) is a
-  load error too — params must carry values.
-- CLI `--param` typing is explicit, not YAML-1.1: strict int → int64, float →
-  float64, exactly `true`/`false` → bool, `on`/`off`/`yes`/`no` stay STRINGS,
-  empty/`null`/`~` → error.
-- `runner_config.model` always accepts modelspec notation (`opus-4.8` →
-  `LATEST_OPUS_MODEL`; unparseable strings pass verbatim).
-
-## The Eval file (RUNNABLE — `docs/eval-file.md`)
-
-Runs the same Bench across an explicit list of param sets. Detected by content
-(top-level `bench:`/`runs:`), any `.yaml` name works; `madbench <file>` runs it
-directly (no subcommand).
-
-```yaml
+# my-models.eval.yaml (any .yaml works — detection is by keys, not filename)
 description: "haiku vs opus"
-bench: ./mybench/madbench.yaml   # relative to this file; nesting an Eval → error
-models:                          # merged with the bench's models: (Eval wins)
+bench: ./mybench/madbench.yaml       # relative to THIS file
+models:
+  fast: haiku-4.5
   smart: opus-4.8
-control:                         # optional — what these runs may differ by
-  baseline: bare                 # defaults to the FIRST runs: entry
-  varies: [CLAUDE.md]            # the ONLY paths allowed to differ
-runs:                            # each entry = one full bench run
+metrics: [{name: cost, source: session.cost, aggregate: sum, unit: usd, better: lower}]
+control:
+  baseline: bare
+  varies: [CLAUDE.md]
+runs:
+  - name: fast-greedy
+    params: {model: fast, temp: 0.0}
   - name: smart
-    params: { model: smart }     # override ONLY what changes
-  - {}                           # bench as-is (defaults); name auto-derived
+    params: {model: smart}
+  - {}                               # the bench as-is
 ```
 
-- Expanded bench names: `"<eval description> · <run name>"` — these appear as TUI
-  bench rows (model badge + param chips) and as `── <name>` group headers in Console
-  output; JSON rows carry `bench:`.
-- Strict decoding: ONLY `description`/`bench`/`models`/`control`/`runs` are legal
-  top-level keys. **There is no cross-product** — a `matrix:` key (or any typo) is an
-  unknown-field error. To run across several models/params, write explicit `runs:`
-  entries.
-- `--repeat N` repeats all runs (flake detection; the old `--runs` flag is a
-  deprecated alias). `--run <name>` (repeatable) selects WHICH runs execute.
+Known keys are exactly `description`, `bench`, `models`, `metrics`, `control`, `runs`.
+**Anything else is an unknown-field error** — `matrix:` and `variations:` are not part of the
+format.
 
-### `control:` — making the comparison auditable
+| Error | Cause |
+|---|---|
+| unknown field | `matrix:`, `variations:`, or a typo |
+| missing `bench:` | required |
+| empty `runs:` | required |
+| duplicate-name | two entries resolving to the same name |
+| undeclared param | a run param the bench does not declare in `params:` |
+| eval-runs-eval | a `bench:` pointing at another Eval file |
+| unknown baseline | `control.baseline:` naming no declared run |
+| bad varies pattern | empty, absolute, or escaping the staged root |
 
-An A/B is only a measurement if the runs differ by the thing you meant. `control:`
-declares that axis, and madbench enforces it **before it provisions a sandbox or bills a
-model**: it walks every run's staged inputs (each scenario's `testdata:` root,
-`harness_config.agent_env`, `harness_config.system_prompt`), hashes them, and diffs each
-run against the baseline.
+An Eval's `metrics:` **replaces** the bench's own for all runs rather than merging — one
+declaration across the runs is what makes their numbers comparable.
 
+### Params and placeholders
+
+- **Effective value** per param: incoming override (Eval entry / CLI `--param`) > bench
+  `params:` default.
+- A param value that exactly matches a `models:` key resolves to that model's canonical id
+  before substitution. The Eval's `models:` wins over the bench's own on a name collision.
+- `harness_config.model` additionally accepts inline modelspec notation with zero declaration.
+
+`{{name}}` (whitespace-tolerant) is substituted anywhere a string appears: `harness_config`
+values including nested slices/maps, `prompt`, `testdata`, all three of `repo:`, `generate`,
+`setup`, `cwd`, `staging_timeout`, every `sandbox:` value, `transform`, `vars` values, and
+check `value:`/`inline:`/`transform:`/`args:`/`config:` recursively including nested children.
+
+- A value that is **exactly** one placeholder keeps the param's **native type**
+  (`temp: "{{temp}}"` → the float `0.0`).
+- An **embedded** placeholder renders as text (`"at {{temp}}"` → `"at 0"`).
+- Substitution runs **before** path resolution, so a param expanding to `./corpora/chi` still
+  resolves against the bench file.
+
+**Strictness both ways.** A placeholder naming a param that is neither declared nor supplied
+is a load error; an incoming param the bench does not declare is also a load error. The
+declaration IS the interface, so this catches typos on both sides.
+
+### `control:` — what the runs may differ by
+
+An Eval whose runs differ in their **instructions** is only interpretable if everything else
+is identical. `control:` declares that claim so madbench can check it.
+
+Before any sandbox is provisioned or any model billed, madbench walks each run's staged
+inputs — every scenario's `testdata:` root, `harness_config.agent_env`,
+`harness_config.system_prompt`, and for claude-code `harness_config.args` (one entry per argv
+position) and `harness_config.plugins` (each plugin folder's whole tree plus marketplace and
+registry metadata) — diffs them against the baseline, and:
+
+- **reports** the changed paths and byte delta, in the console's `── CONTROL` section and
+  under the report's `control` key;
+- **stops the Eval** when a run differs somewhere `varies:` does not cover, naming the path.
+  Nothing runs, nothing is spent;
+- **names a declaration that covered nothing** while the runs plainly differed — the shape of
+  a typo, since `varies: [plugin]` loads clean and matches nothing.
+
+The diff is reported with or without the block; only the guard is opt-in. `baseline:` defaults
+to the **first** `runs:` entry. Runs that stage the same root are not audited.
+
+### CLI
+
+```bash
+madbench list my-models.eval.yaml         # lists each expanded bench + scenarios
+madbench my-models.eval.yaml              # per-run results, then a side-by-side comparison
+madbench my-models.eval.yaml --run smart  # execute only the named run(s), repeatable
+madbench my-models.eval.yaml --repeat 5   # execute EACH run 5× to measure flake
+madbench --param temp=0.0 ./mybench/      # override a declared param
 ```
-── CONTROL ── 1 run(s) vs baseline `bare` · declared to vary: CLAUDE.md
 
-  routed controlled  1 file(s), +107 B
-    ~ CLAUDE.md  132 → 239 bytes  +107 B
+`--run` selects **which** runs execute; `--repeat` sets **how many times** each one does. They
+compose. `--param` splits on the FIRST `=`, so a value may contain `=`.
+
+There is no separate `run` subcommand and no file-kind flag: the bare command auto-detects a
+bench vs an Eval **by content**, and a directory expands every `*.yaml` in it.
+
+---
+
+## 10. Case directories
+
+A scenario can also be a **case directory** — `assert.yaml` plus optional `input.md`,
+`setup.sh`, `expected/` — discovered when a directory is passed to `madbench`.
+
+---
+
+## 11. Gotchas the loader cannot catch
+
+Strict decoding checks key **names**, not value **semantics**. These load clean and misbehave:
+
+| Write this | Not this | Why it slips through |
+|---|---|---|
+| `timeout: 600s` | `timeout: 600` or `"600"` | The field's **type is string**, so `600` decodes fine. `time.ParseDuration` then rejects `"600"` and the timeout **silently falls back to the default**. Always write a unit |
+| `config:` | `args:` on `ts`/`js`/`python` | `args:` is a **real field** on a check spec — the right key for `exec`, `session:*` and most others. On the script shims it is the wrong one: they bind `config` as a parameter, so your config arrives as `assertion.args` and nothing reads it |
+
+**And strict decoding stops at the `harness_config:` boundary.** That key is an untyped map
+handed to the adapter, so the loader validates nothing inside it:
+
+```yaml
+harness_config:
+  model: claude-haiku-4-5-20251001
+  temperature: 0.2        # ← loads clean, preflights clean, is NEVER read
 ```
 
-The diff and size delta land in the console and under a `control` key in
-`--report-json`. **An undeclared difference stops the Eval before any spend** — which is
-the point: benches used to hand-roll `diff -rq A B | grep -v CLAUDE.md → "CONFOUNDED"`,
-and a hand-rolled guard is one someone can forget to run.
-
-Why the size delta matters as much as the diff: a base file can move underneath you
-mid-session (one real case went 4,834 → 4,839 chars because a skill description was
-edited elsewhere). A statically-copied variant would have desynchronised in silence, and
-**that drift is the confound**.
+`claude-code` reads exactly nine keys and **silently ignores** everything else. There is no
+`temperature` key — pass CLI flags through `args:`, and only if your installed `claude`
+accepts them. A recognized key with the wrong *type* is a hard error; an unrecognized key is
+silence. See `runners-and-sandbox.md` §2.

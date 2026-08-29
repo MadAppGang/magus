@@ -384,5 +384,4 @@ it('test 2', () => { counter++; expect(counter).toBe(1); });
 ## Reference files
 
 - Read `references/coverage.md` when setting a coverage target, gating CI on coverage,
-  or deciding what is worth measuring. It was the separate `test-coverage` skill until
-  2026-08-15; this skill already claimed coverage gates, so the two competed.
+  or deciding what is worth measuring.

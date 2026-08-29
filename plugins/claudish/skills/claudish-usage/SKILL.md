@@ -646,15 +646,15 @@ Claudish:
 detection, not pre-flight reachability checks. Send the catalog's `id` (see "Identity vs
 routing address" above) and let claudish resolve it. That is the whole contract.
 
-This section used to hold a provider/prefix/env-var table and a routing troubleshooting
-guide. Both are deleted, for two reasons:
+**Never document a provider/prefix/env-var table or a routing troubleshooting guide here**,
+for two reasons:
 
 1. **Ownership.** The Responsibility Boundaries table above assigns "Model ID → API
    endpoint" and "API keys, backend fallbacks" to Claudish. A routing guide here
    contradicts that and invites plugin code to compensate for provider behaviour.
-2. **Drift.** The deleted table had gone stale and was teaching wrong routing — `or/` when
-   the separator is `@`, and "no `deepseek/` prefix in claudish" after `deepseek` became a
-   provider. Anything restated here decays the same way.
+2. **Drift.** Routing detail copied into this repo goes stale and starts teaching the wrong
+   thing — the backend separator is `@`, and which providers carry which models changes
+   most releases.
 
 **A model that will not route is a claudish bug, not a magus workaround.** Do not add
 retry, probe, or fallback logic to a command, agent, or skill in this repo to route around
@@ -667,17 +667,14 @@ and keys.
   It is the runtime the MCP server runs inside; without it there are no tools.
 - **Claude Code** — must be installed.
 
-**8.0.0 is a hard floor for `team`, not a preference.** In 7.67.x and earlier, `run`
-blocked and returned the results, and there was no `input_file`. A workflow written to
-this skill will start a run and read nothing on 7.x, and one written for 7.x reports
-INCONCLUSIVE on every panel against 8.x. Check with `claudish --version`.
+**8.0.0 is a hard floor for `team`, not a preference.** Below it, `run` blocks instead of
+returning a handle and `input_file` does not exist, so a workflow written to this skill
+starts a run and reads nothing. Check with `claudish --version`.
 
 **Credentials are Claudish's, and are deliberately not listed here.** There is no single
 required key: which providers a model can reach, and which env var each one reads, is
-claudish's routing concern and changes most releases. An earlier version of this section
-named three providers out of roughly two dozen, called OpenRouter "required" when it is
-not, and used a `/` separator that has never been correct — the exact drift that made this
-skill teach wrong routing.
+claudish's routing concern and changes most releases. Naming any of them here is how this
+skill ends up teaching wrong routing.
 
 The authoritative, always-current list is the ENVIRONMENT VARIABLES section of
 `claudish --help` (a diagnostic — see below).
@@ -724,8 +721,7 @@ create_session(model=RESOLVED_ID, prompt=TASK_PROMPT, timeout_seconds=300,
 ```
 
 The session's own transcript stays out of your context — that is the point, and it is why
-no instruction file, no result file and no `/tmp` scratch is involved. Do not reintroduce
-them.
+no instruction file, no result file and no `/tmp` scratch is involved. Do not add any.
 
 ### Pattern 2: A long or structured prompt
 

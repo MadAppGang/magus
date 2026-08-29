@@ -1,6 +1,6 @@
 ---
 name: task-management
-description: Tracks phases across a multi-phase workflow in text, and explains why the task-list tools are gone. Use when orchestrating phased work.
+description: Tracks phases across a multi-phase workflow in text, since current models have no task-list tools. Use when orchestrating phased work.
 user-invocable: false
 disable-model-invocation: true
 ---
@@ -17,11 +17,6 @@ no
 $ claude -p "is a tool named TaskCreate available to you?" --model claude-sonnet-4-6
 yes
 ```
-
-This file used to teach the opposite — create a task per phase, flip it to `in_progress`,
-flip it to `completed`. Every one of those calls was unmakeable on the models this repo
-runs, so the instruction was silently dropped along with whatever else shared the
-sentence. **Do not add them back.**
 
 ## What to do instead
 

@@ -26,20 +26,21 @@ to author and debug benches for it.
 
 - **Bench YAML** — structure of a `madbench.yaml`, what each field controls, and what
   strict decoding does and does not catch
-- **Checks** — designing assertions that fail for the right reason, including thread- and
-  agent-scoped Session checks, path matchers, and `model:current`
+- **Checks** — every registered type by family, designing assertions that fail for the right
+  reason: thread- and outcome-scoped Session checks, path matchers, `readout:`, the
+  `environment:*` family, and `model:current`
+- **Drive mode** — `interactive:` is the default, and permission modes mean different things
+  on the two paths. This is the single most expensive thing to get wrong
 - **Red-state testdata** — scaffolding a starting state where the check genuinely fails, so
-  a passing run means something; and `generate:` for when the answer must be unguessable
+  a passing run means something; `repo:` for a pinned third-party checkout, `setup:` for
+  staging, and `generate:` for when the answer must be unguessable
 - **Running and validating** — the two controls, `madbench check` (negative, per cell) and
   `madbench grade` (positive, offline)
 - **Tuning expectations** — when a bench is too strict, too loose, or measuring the wrong thing
 - **Debugging failing checks** — separating harness problems from subject problems
 
-Invoke it by name:
-
-```
-/madbench:madbench-evals
-```
+The reference files mirror madbench **v0.23.0**. Check yours with `madbench version` before
+trusting them.
 
 ## The rule worth knowing up front
 

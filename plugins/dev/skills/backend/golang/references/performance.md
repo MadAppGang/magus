@@ -2,9 +2,6 @@
 
 Reference for `dev:golang`. Read when profiling Go, chasing allocations, or tuning a hot path.
 
-Was a standalone skill until 2026-08-15; folded because it duplicated its owner's
-territory while costing separate listing budget.
-
 # Go Performance Optimization
 
 ## Overview

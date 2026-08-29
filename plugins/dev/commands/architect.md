@@ -733,5 +733,4 @@ Ready for implementation with /dev:dev
 | `${CLAUDE_PLUGIN_ROOT}/skills/planning/brainstorming/SKILL.md` | exploring more than one approach before committing to a shape |
 | `${CLAUDE_PLUGIN_ROOT}/skills/discipline/task-management/SKILL.md` | the plan becomes multi-phase work that needs tracking |
 
-Both were preloaded until 2026-08-15. Neither applies to a single-question architecture
-call, which is most of them.
+Neither applies to a single-question architecture call, which is most of them.

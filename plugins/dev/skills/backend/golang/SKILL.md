@@ -1488,8 +1488,7 @@ type storage interface { ... } // Define where used
 ## Reference files
 
 - Read `references/performance.md` when profiling Go, chasing allocations, or tuning a
-  hot path. It was the separate `golang-performance` skill until 2026-08-15; a
-  per-language performance split is accidental — every language would need one.
+  hot path.
 
 ## References
 

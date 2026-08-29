@@ -6,7 +6,7 @@ Router for architecture knowledge — 7 architectural styles (layered, hexagonal
 
 Part of [`dev`](./dev.md).
 
-**42 reference documents, about 14,081 lines.**
+**42 reference documents, about 14,078 lines.**
 
 The skill itself does not contain them. It reads your question and names the one or two
 worth opening — which is the point, because loading everything below to answer one
@@ -16,7 +16,7 @@ question would cost more than the answer is worth.
 
 | Document | Covers | Lines |
 |---|---|---|
-| [`adr.md`](https://github.com/MadAppGang/magus/blob/main/plugins/dev/skills/architecture/references/adr.md) | Architecture decision records | 927 |
+| [`adr.md`](https://github.com/MadAppGang/magus/blob/main/plugins/dev/skills/architecture/references/adr.md) | Architecture decision records | 924 |
 | [`behavioral.md`](https://github.com/MadAppGang/magus/blob/main/plugins/dev/skills/architecture/references/behavioral.md) | Behavioral patterns | 108 |
 | [`creational.md`](https://github.com/MadAppGang/magus/blob/main/plugins/dev/skills/architecture/references/creational.md) | Creational patterns | 83 |
 | [`real-world-examples.md`](https://github.com/MadAppGang/magus/blob/main/plugins/dev/skills/architecture/references/real-world-examples.md) | Real-world examples | 399 |

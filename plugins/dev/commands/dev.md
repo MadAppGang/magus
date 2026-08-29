@@ -103,7 +103,7 @@ skills: dev:context-detection, dev:universal-patterns, dev:worktree-lifecycle, m
     still apply, but Phases 0-3 run read-only and the session directory is not
     created until after ExitPlanMode.
 
-    **Step 0b — Task tool preflight:**
+    **Step 0b — task-list preflight:**
 
     There are no task-list tools. TaskCreate/TaskUpdate/TaskList/TaskGet and TodoWrite
     were removed from Opus 4.8, Sonnet 5, Fable 5, Mythos 5 and newer in Claude Code

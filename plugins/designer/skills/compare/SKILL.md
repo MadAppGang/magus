@@ -214,11 +214,9 @@ and produce a pixel-only report. Do not derive the semantic categories from the
 pixel diff — a category verdict nobody looked at is exactly what this step exists
 to prevent.
 
-> **Correction (2026-08-14).** This section previously invoked
-> `npx claudish --model "$VISION_MODEL" --image ref.png --image impl.png`.
-> **`claudish` has no `--image` flag** (`claudish --help`, 7.48.0); unknown flags are
-> forwarded to `claude`, which has none either. The comparison ran on the prompt text
-> with neither screenshot attached. Do not restore it.
+**Never route this through the claudish CLI.** `claudish` has no `--image` flag; unknown
+flags are forwarded to `claude`, which has none either, so the comparison runs on the
+prompt text with neither screenshot attached.
 
 ---
 

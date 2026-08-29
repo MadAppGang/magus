@@ -42,11 +42,10 @@ marketplace-wide, and this plugin spends none of it.
 |---|---|---|
 | `/bunjs:<name>` command | a **human** typing it | works — the command instructs the model to read `SKILL.md` |
 | A `CLAUDE.md` row naming **a file to read** | the **model**, unprompted | works — **measured** |
-| A `CLAUDE.md` row saying *"invoke the Skill tool"* | the **model**, unprompted | works too — **re-measured 2026-08-18** |
+| A `CLAUDE.md` row saying *"invoke the Skill tool"* | the **model**, unprompted | works too — **measured** |
 
-**Correction.** That last row used to read *"does not work — measured"*, on the strength of
-IDX-1 reporting that the Skill tool never fires for these skills. Re-measured at `--repeat 8`
-on Sonnet 5 (24/24 pass, flake rate 0):
+Measured in `benches/skill-index/` (IDX-1) at `--repeat 8` on Sonnet 5, 24/24 pass, flake
+rate 0:
 
 | routing row | `disable-model-invocation` | Skill tool fired |
 |---|---|---|
@@ -54,16 +53,9 @@ on Sonnet 5 (24/24 pass, flake rate 0):
 | *"invoke it with the Skill tool"* | yes | **8/8** |
 | none | no | **8/8** |
 
-The original finding came from madbench's `skill-used` check returning 0 — a check that at
-the time **could not pass for any agent in any setup**, because it read a derived view that
-never contains skill rows (fixed upstream as madbench#26). A check that cannot fire is not
-evidence of absence.
-
-What IDX-1 does establish, and this is the part worth keeping: **without a routing row the
-flag hides the skill completely (0/8), and a row reaches it (8/8).** The row is what matters.
-Naming a path is still the better default — it is the one phrasing that works regardless of
-whether the reader can invoke the tool — but it is a preference now, not a measured
-constraint.
+**Without a routing row the flag hides the skill completely (0/8); a row reaches it (8/8).**
+The row is what matters. Naming a path is the better default — it is the one phrasing that
+works regardless of whether the reader can invoke the tool.
 
 ## Why these claims are trustworthy
 

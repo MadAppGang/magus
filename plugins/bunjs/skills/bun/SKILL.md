@@ -18,23 +18,12 @@ sibling directories, which is true both when this ships as a plugin
 (`plugins/bunjs/skills/<name>/`) and when it is installed as a project skill
 (`.claude/skills/<name>/`).
 
-This used to read `skills/<name>/SKILL.md`, described as resolving against the plugin
-ROOT. Nothing resolves it that way. MEASURED in `benches/skill-router/` (RTR-1,
-`--repeat 8`, Sonnet 5), classifying all 74 skill-file reads:
-
-| how the path was resolved | reads | result |
-|---|---|---|
-| against **the directory holding the SKILL.md** | 25 | dead — `skills/bun/skills/<name>/` |
-| straight to the real location | 49 | works |
-| against the **harness CWD** | **0** | never attempted |
-
-Relative paths in a SKILL.md are resolved against **that file's own directory**, with no
-counterexamples. There is no reader for whom "the plugin's own directory" is a location —
-the only thing an agent knows is where the file it just read lives. So `../<name>/` is
-not a preference here, it is the only spelling that lands.
-
-13 of 18 graded sessions followed the old path into the dead end. Nine recovered by
-searching; **four gave up, and those four were every Recall failure in the run.**
+Relative paths in a SKILL.md are resolved against **that file's own directory** — MEASURED
+in `benches/skill-router/` (RTR-1, `--repeat 8`, Sonnet 5) over 74 skill-file reads, with
+no counterexamples. There is no reader for whom "the plugin's own directory" is a location;
+the only thing an agent knows is where the file it just read lives. So `../<name>/` is not
+a preference here, it is the only spelling that lands. A path that misses sends the reader
+into a dead end, and in that run the ones who did not recover were every Recall failure.
 
 | Read this | When the task is about | Ships |
 |---|---|---|

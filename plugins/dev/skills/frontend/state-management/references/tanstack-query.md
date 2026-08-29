@@ -2,9 +2,6 @@
 
 Reference for `dev:state-management`. Read when the state in question is server cache — fetching, caching, invalidation.
 
-Was a standalone skill until 2026-08-15; folded because it duplicated its owner's
-territory while costing separate listing budget.
-
 # TanStack Query v5 - Complete Guide
 
 

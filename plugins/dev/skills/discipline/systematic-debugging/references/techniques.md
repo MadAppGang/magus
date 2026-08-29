@@ -4,10 +4,6 @@ Reference for `dev:systematic-debugging`. The **method** — reproduce, localize
 verify — is in that skill's `SKILL.md`. This file is the **catalogue**: the concrete moves
 you make once you know which phase you are in.
 
-Was a separate skill until 2026-08-15. It restated the same four-phase method in
-different words, and `/dev:debug` preloaded both, so the duplicate arrived twice in one
-context under two vocabularies.
-
 ## Overview
 
 Language-agnostic debugging techniques and strategies applicable across all technology stacks.
@@ -18,11 +14,8 @@ Language-agnostic debugging techniques and strategies applicable across all tech
 the rule that no fix ships without a root cause, and depth routing for how much
 ceremony a given bug deserves.
 
-This file used to restate that as "The Scientific Method for Debugging" and a
-"Systematic Approach" list — the same four steps in different words. `/dev:debug`
-preloads both skills, so the duplicate was loaded twice into one context and gave two
-vocabularies for one idea. This file is the **technique catalogue**: the concrete
-moves you make once you know which phase you are in.
+This file is the **technique catalogue**: the concrete moves you make once you know
+which phase you are in.
 
 ## Error Analysis
 

@@ -1,24 +1,28 @@
 description: "MB-ADD-1 agent implements Add so the test passes"
-runner: claude-code
+harness: claude-code
 
-runner_config:
+harness_config:
   model: claude-haiku-4-5-20251001
+  args: ["--permission-mode", "acceptEdits"]
 
 defaults:
   sandbox: home
   timeout: 120s
   capture: log
 
-cases:
+scenarios:
   - name: implement-add
-    description: "Agent creates add.go so go test passes"
+    description: "Agent creates add.go, then runs the test to confirm"
     testdata: ./testdata/repo
     prompt: |
       The test in add_test.go calls Add(a, b int) int, which does not
-      exist yet. Create add.go in this package so 'go test ./...' passes.
-    assert:
+      exist yet. Create add.go in this package, then run 'go test ./...'
+      yourself and confirm it passes before you reply.
+    checks:
       - type: exec
         args:
           cmd: [go, test, ./...]
           expected_exit: 0
           timeout: 30s
+      - type: session:tool-used
+        value: Bash

@@ -5,61 +5,62 @@
       "id": 0,
       "name": "author-bugfix-bench",
       "prompt": "I'm using madbench (MadAppGang's Go harness for benchmarking agentic coding tools). Create a complete madbench eval that tests whether a coding agent can fix a failing JSON-parsing bug in a small Go repo. I want the bench YAML plus the seeded testdata — set it up in the output directory so I could run `madbench` on it directly with claude-code as the harness.",
-      "expected_output": "A runnable bench dir: madbench.yaml (canonical field names, claude-code harness with acceptEdits or bypassPermissions, exec check running go test, anti-cheat guards, a session:* check, sane cost/latency expectations) plus testdata/ seeded red (failing test exercising a real JSON-parsing bug), validated with `madbench preflight` and `madbench check`.",
+      "expected_output": "A runnable bench dir: madbench.yaml (canonical field names, claude-code harness, a drive mode chosen deliberately with permissions matched to it, exec check running go test, anti-cheat guards, a session:* check, sane cost/latency expectations) plus testdata/ seeded red (failing test exercising a real JSON-parsing bug), validated with `madbench preflight` and `madbench check`.",
       "files": [],
       "assertions": [
         "bench-yaml-loads: `madbench list <outputs>/madbench.yaml` exits 0 and lists the bench",
         "preflight-clean: `madbench preflight <outputs>/madbench.yaml` exits 0 — no retired sandbox level, no missing testdata path",
-        "permission-mode-set: harness_config.args (or the runner_config alias) contains --permission-mode acceptEdits or bypassPermissions (required for a write task in --print mode)",
+        "permissions-match-drive-mode: the bench is coherent about how it is driven. Either it leaves interactive at its default (true) and passes --permission-mode bypassPermissions, or it declares interactive: false explicitly. An interactive bench carrying acceptEdits for a task that runs commands is WRONG — Bash parks at an approval menu nobody can answer",
         "outcome-graded-by-exec: at least one exec check runs go test (or equivalent) with expected_exit 0",
         "testdata-seeded-red: running `go test ./...` in the pristine testdata dir FAILS (agent must do real work)",
         "anti-cheat-guard-present: a grep/exec guard on the test file or a session:* check proves the honest path",
-        "canonical-field-names: uses the canonical spellings harness:/harness_config:/scenarios:/checks:/testdata: and session:* check types — not the legacy aliases runner:/runner_config:/cases:/tests:/assert:/fixture:/trajectory:*",
+        "canonical-field-names: uses the canonical spellings harness:/harness_config:/scenarios:/checks:/testdata: and session:* check types — not the aliases runner:/runner_config:/cases:/tests:/assert:/fixture:/trajectory:*",
         "valid-sandbox-level: any sandbox: value is none|workspace|home|container under the `level:` key (never the retired `process`, never a `mode:` key)",
         "negative-control-is-madbench-check: the answer validates the bench with `madbench check` (the per-cell negative control), not with a hand-rolled `--harness mock` + jq recipe and not by asserting a non-zero exit code"
       ]
     },
     {
       "id": 1,
-      "name": "debug-silent-noop",
-      "prompt": "My madbench bench keeps failing and I can't see why. The exec check runs `go test ./...` and the agent's transcript says it wrote the fix and everything passes, but the file never actually changes and the check fails every run. Here's my bench file — what's wrong?",
-      "expected_output": "Diagnosis names the missing --permission-mode (acceptEdits/bypassPermissions) in the harness config's args: in --print mode un-approved Write/Edit tool calls silently no-op. Provides the corrected harness_config.",
+      "name": "debug-interactive-hang",
+      "prompt": "My madbench bench keeps timing out and I can't see why. The agent writes the file fine, but then it just sits there until the scenario times out and I get nothing back. Here's my bench file — what's wrong?",
+      "expected_output": "Diagnosis names the drive mode: interactive: true is the default, and on that path --permission-mode acceptEdits lets Write/Edit through but parks Bash at an approval menu nobody can answer, so the run hangs until the timeout. The fix is bypassPermissions (or an explicit interactive: false). Provides the corrected harness_config.",
       "files": [
         "files/debug-silent-noop/madbench.yaml"
       ],
       "assertions": [
-        "root-cause-is-permission-mode: diagnosis names the missing --permission-mode (acceptEdits or bypassPermissions) in the harness config's args as the primary cause",
-        "explains-silent-noop: explains that in --print/non-interactive mode un-approved Write/Edit tool calls silently no-op while the agent claims success",
-        "corrected-config-provided: shows the corrected harness_config (or runner_config alias) YAML with the permission-mode args"
+        "root-cause-is-drive-mode-plus-permissions: diagnosis identifies that interactive is the DEFAULT (true) and that acceptEdits on the interactive path blocks Bash at an unanswerable approval prompt — not that tools silently no-op",
+        "does-not-claim-print-no-ops: the answer does NOT claim that --print silently no-ops un-approved tool calls. --print ignores --permission-mode entirely; every tool is allowed because there is nobody to ask. An answer resting on the silent-no-op story fails this assertion",
+        "fix-is-bypass-or-explicit-print: the proposed fix is --permission-mode bypassPermissions, or declaring interactive: false deliberately — and it explains that bypassPermissions is not a widening of access on the interactive path, it is the access a --print run already had",
+        "corrected-config-provided: shows the corrected harness_config YAML"
       ]
     },
     {
       "id": 2,
       "name": "review-weak-bench",
       "prompt": "Can you review this madbench.yaml and suggest better checks? It feels flaky — sometimes it passes, sometimes it doesn't, and I'm not confident it's actually measuring whether the agent fixed the bug.",
-      "expected_output": "Review catches: legacy aliases (runner:/tests:/fixture:/assert:, and the trajectory:* check prefix), missing permission mode, judge-only outcome grading (should add exec go test + anti-cheat greps), step-count exact-match misuse (needs args.lte/gte), vague rubric. Proposes a concrete improved YAML in canonical spellings.",
+      "expected_output": "Review catches: aliases (runner:/tests:/fixture:/assert:, and the trajectory:* check prefix), no drive mode or permissions declared, judge-only outcome grading (should add exec go test + anti-cheat greps), step-count exact-match misuse (needs args.lte/gte), vague rubric. Proposes a concrete improved YAML in canonical spellings.",
       "files": [
         "files/review-weak-bench/madbench.yaml"
       ],
       "assertions": [
-        "flags-missing-permission-mode: review identifies that the harness config lacks --permission-mode for a write task",
+        "flags-drive-mode-and-permissions: review identifies that the bench declares neither interactive: nor a --permission-mode, so it runs interactively by default with whatever the CLI's default mode allows, and says what to declare instead",
         "flags-judge-only-grading: review identifies llm-rubric as the sole outcome check and proposes a deterministic exec check (go test)",
         "flags-step-count-misuse: review identifies the step-count check's threshold:5 as EXACT match and proposes args.lte/args.gte",
-        "flags-legacy-aliases: review flags the legacy spellings runner:/tests:/fixture:/assert: AND the trajectory:* check prefix, proposing the canonical harness:/scenarios:/testdata:/checks: and session:*",
+        "flags-aliases: review flags the spellings runner:/tests:/fixture:/assert: AND the trajectory:* check prefix, proposing the canonical harness:/scenarios:/testdata:/checks: and session:*",
         "proposes-anti-cheat: improved version includes an anti-cheat guard (grep on test file or a session:* check proving the agent edited)",
         "improved-yaml-provided: a concrete improved YAML is included in the review",
-        "no-stale-skill-used-claim: the review does NOT repeat the retired claim that session:skill-used can never pass (it reads Session.Actions and works since v0.10.0); if skill-used is discussed, it is described as working, with the agent_env/--bare caveat as the only case where it cannot fire"
+        "no-stale-skill-used-claim: the review does NOT claim that session:skill-used can never pass — it reads Session.Actions and works. If skill-used is discussed, it is described as working, with two accurate caveats available: the agent_env/--bare case where no skill is advertised, and that it grades the RESULT (an errored invocation fails) rather than the attempt"
       ]
     },
     {
       "id": 3,
       "name": "no-cross-product",
       "prompt": "I have a madbench bench file and I want to run it across models claude-haiku-4-5 and claude-sonnet-5, each at temperature 0.0 and 0.2 — so 4 combinations. Set up a madbench matrix/eval file that runs all of them.",
-      "expected_output": "Answer produces a runnable Eval file: bench: pointing at a bench with params:/{{model}} placeholders, models: definitions in modelspec notation, and explicit runs: entries (one per combination) — no cross-product key of any kind (strict decoding rejects unknown top-level keys; only description/bench/models/control/runs are legal). Notes temperature must be a declared bench param flowing to a real knob (claude-code has no temperature harness_config key — args passthrough only).",
+      "expected_output": "Answer produces a runnable Eval file: bench: pointing at a bench with params:/{{model}} placeholders, models: definitions in modelspec notation, and explicit runs: entries (one per combination) — no cross-product key of any kind (strict decoding rejects unknown top-level keys; only description/bench/models/metrics/control/runs are legal). Notes temperature must be a declared bench param flowing to a real knob (claude-code has no temperature harness_config key — args passthrough only).",
       "files": [],
       "assertions": [
         "produces-eval-file: answer delivers an Eval file (bench:/models:/runs:) that madbench runs directly — not N copied bench files, not a cross-product",
-        "no-cross-product-key: no cross-product key anywhere; if the user's requested spelling is mentioned, it is correctly stated as rejected by strict decoding (only description/bench/models/control/runs are legal top-level keys)",
+        "no-cross-product-key: no cross-product key anywhere; if the user's requested spelling is mentioned, it is correctly stated as rejected by strict decoding (only description/bench/models/metrics/control/runs are legal top-level keys)",
         "explicit-runs-entries: every model/param combination is an explicit runs: entry overriding only what changes",
         "models-in-modelspec: model definitions use modelspec notation (short form or provider/model), resolved via the models: block",
         "temperature-not-plumbed: answer notes temperature is not a claude-code harness_config key (CLI args passthrough only) rather than presenting the temp axis as guaranteed",
@@ -70,14 +71,29 @@
       "id": 4,
       "name": "negative-control-and-metric-checks",
       "prompt": "I want to prove my madbench bench actually measures something before I spend money on it. It has an exec check running go test, a contains check, and latency + cost guards. How do I run the negative control, and how do I read the result?",
-      "expected_output": "Answer directs to `madbench check <bench>` as the negative control and explains the PER-CELL tally rather than the exit code. Correctly states that latency/cost ERROR under the mock harness (\"not reported by this session\") rather than passing with a perfect 1.00, that an errored cell is not counted as having failed as required, and that this is the expected outcome for those guards rather than a defect. Mentions `madbench grade` as the positive control on a stored report.",
+      "expected_output": "Answer directs to `madbench check <bench>` as the negative control and explains the PER-CELL tally rather than the exit code. Correctly states that latency and cost are reported NOT APPLICABLE UNDER MOCK and left out of the verdict — they guard the budget, not the behavior — and that proving them takes falsification on a real run instead. Distinguishes an errored cell from a failed one. Mentions `madbench grade` as the positive control.",
       "files": [],
       "assertions": [
         "recommends-madbench-check: names `madbench check` as the negative control command, not a hand-rolled `--harness mock` invocation parsed with jq",
         "per-cell-not-exit-code: explains that the process exit code cannot serve as the control because it is non-zero if ANY cell fails, so a bench with one wrongly-passing cell is indistinguishable from a sound one; the per-cell tally is the control",
-        "latency-cost-error-not-pass: states that latency and cost ERROR when the session reported no metrics (the mock reports none) — NOT that they pass with score 1.00. An answer claiming they necessarily pass under mock, or that this is correct behavior not to be filed as a bug, is describing pre-v0.10.0 madbench and fails this assertion",
+        "latency-cost-not-applicable: states that latency and cost are reported NOT APPLICABLE under the mock and excluded from the verdict, because a run that did nothing spent nothing and took no time. An answer claiming they simply pass with a perfect 1.00 fails this assertion",
+        "falsification-for-budget-guards: explains that a budget guard is proved by falsification instead — an impossible threshold on one real run, then a generous one — and that both halves are needed because a hardwired-to-fail guard looks identical to a working one if you only see it say no",
         "errored-is-not-failed: explains that a cell which errored is reported in its own bucket and does NOT count as having failed as required, because it graded nothing",
         "mentions-grade-as-positive-control: names `madbench grade <report.json>` as the offline positive control that re-grades a recorded Session and checks the verdicts reproduce"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "verify-the-plugin-actually-loaded",
+      "prompt": "I'm benchmarking whether an agent uses a skill my plugin ships. The bench stages the plugin and the agent says it can't find the skill, but the bench scores clean. How do I make the bench prove the plugin actually loaded?",
+      "expected_output": "Answer routes to the environment:* check family and the environment probe. Names environment:matches-expected as the one-line default, plus environment:plugin-loaded / skill-registered / mcp-connected for specifics, and explains the Expected-vs-Reported split: Expected is madbench's own bookkeeping about what it staged, Reported is what the tool said, and only Reported can answer the question. Mentions harness_config.environment.require as the pre-spend gate.",
+      "files": [],
+      "assertions": [
+        "names-environment-family: answer reaches for environment:* checks (matches-expected, plugin-loaded, skill-registered, agent-registered, command-registered, mcp-connected, tool-available, plugin-inventory) rather than inventing a session:* or exec workaround",
+        "expected-vs-reported: explains that Environment.Expected is what madbench staged and Environment.Reported is what the tool itself said, and that a check passing against an empty Reported would report success for exactly this incident",
+        "nil-is-an-error: states that these checks ERROR rather than fail when nothing was captured (probe disabled, or a harness that reports no environment), and that erroring is the correct loud outcome",
+        "mentions-require-gate: names harness_config.environment.require as the gate that refuses the run before any spend when a staged plugin did not load, and notes the scenario is recorded as an ERROR not a FAIL because it never ran",
+        "correct-prefix: uses the environment: prefix, never env:"
       ]
     }
   ]

@@ -6,7 +6,7 @@ Root-cause debugging — reproduce, localize, explain, verify — with depth rou
 
 Part of [`dev`](./dev.md).
 
-**5 reference documents, about 1,826 lines.**
+**5 reference documents, about 1,819 lines.**
 
 The skill itself does not contain them. It reads your question and names the one or two
 worth opening — which is the point, because loading everything below to answer one
@@ -25,7 +25,7 @@ question would cost more than the answer is worth.
 
 | Document | Covers | Lines |
 |---|---|---|
-| [`techniques.md`](https://github.com/MadAppGang/magus/blob/main/plugins/dev/skills/discipline/systematic-debugging/references/techniques.md) | Debugging techniques | 375 |
+| [`techniques.md`](https://github.com/MadAppGang/magus/blob/main/plugins/dev/skills/discipline/systematic-debugging/references/techniques.md) | Debugging techniques | 368 |
 
 ## Reading these
 

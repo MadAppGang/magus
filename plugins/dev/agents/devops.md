@@ -952,7 +952,4 @@ Need help with any of these steps? Just ask!
   Read ${CLAUDE_PLUGIN_ROOT}/skills/backend/bunjs-production/SKILL.md when the target
   is a Bun/TypeScript service — Docker, ECS/Fargate, Redis caching, security hardening,
   CI/CD.
-
-  It was preloaded until 2026-08-15, which injected 989 lines of Bun specifics into every
-  DevOps task including the Terraform, Kubernetes and CI ones that have no Bun in them.
 </bun-production>

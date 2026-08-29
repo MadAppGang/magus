@@ -185,6 +185,4 @@ skills: dev:context-detection, dev:systematic-debugging, dev:testing-strategies,
 
 **Technique catalogue.** Read
 `${CLAUDE_PLUGIN_ROOT}/skills/discipline/systematic-debugging/references/techniques.md`
-in the Localize phase. It was a separate preloaded skill until 2026-08-15; this command
-loaded it alongside `dev:systematic-debugging`, so the same four-phase method arrived
-twice under two vocabularies.
+in the Localize phase.

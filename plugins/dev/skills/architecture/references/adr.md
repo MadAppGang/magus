@@ -2,9 +2,6 @@
 
 Reference for `dev:architecture`. Read when a decision is worth recording — the trade-off will be revisited.
 
-Was a standalone skill until 2026-08-15; folded because it duplicated its owner's
-territory while costing separate listing budget.
-
 # ADR Documentation
 
 ## Overview

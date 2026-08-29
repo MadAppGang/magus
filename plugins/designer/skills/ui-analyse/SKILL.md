@@ -25,24 +25,16 @@ step, and no "vision unavailable" fallback.
 Read one image per call. Call it twice to hold a reference and an implementation side
 by side — reference first, so "Image 1" and "Image 2" mean what the prompt says.
 
-> **Correction (2026-08-14).** This skill previously documented three ways to hand an
-> image to claudish, one of them labelled *Recommended*. **All three were fiction:**
->
-> | Method | Why it never worked |
-> |---|---|
-> | `claudish --model X --image PATH` | `claudish --help` (7.48.0) has no `--image`. Unknown flags pass through to `claude`, which has none either. |
-> | `[Image: data:image/png;base64,…]` in the prompt | A data URI typed into a text prompt is text. Nothing decodes it, and it burns the context window doing nothing. |
-> | `[Image: https://…]` in the prompt | A URL typed into a text prompt is text. Nothing fetches it. |
->
-> Each produced a fluent, confident review of a screen the model never saw — worse
-> than an error, because nothing reported it. These files were where the rest of the
-> designer plugin copied the pattern from. Do not restore any of them.
->
-> Claudish *can* carry images — it converts image blocks to `image_url` for the
-> provider, and describes them via a vision proxy when the target model has no vision
-> of its own. But that path runs through a **session** (see "A Second Opinion"
-> below), where the spawned Claude Code Reads the file. It is not reachable from a
-> CLI flag or from prompt text.
+**There is no CLI path for handing claudish an image.** `claudish` has no `--image` flag,
+and unknown flags pass straight through to `claude`, which has none either. An
+`[Image: data:image/png;base64,…]` or `[Image: https://…]` reference typed into a prompt is
+plain text — nothing decodes it, nothing fetches it. Either route returns a fluent,
+confident review of a screen the model never saw, and reports no error while doing it.
+
+Claudish *can* carry images — it converts image blocks to `image_url` for the provider, and
+describes them via a vision proxy when the target model has no vision of its own. That path
+runs through a **session** (see "A Second Opinion" below), where the spawned Claude Code
+Reads the file.
 
 ## When to Use
 

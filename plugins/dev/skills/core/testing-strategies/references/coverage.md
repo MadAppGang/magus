@@ -2,9 +2,6 @@
 
 Reference for `dev:testing-strategies`. Read when setting a coverage target, gating CI on coverage, or asked what to measure.
 
-Was a standalone skill until 2026-08-15; folded because it duplicated its owner's
-territory while costing separate listing budget.
-
 # Test Coverage Skill
 
 ## Overview

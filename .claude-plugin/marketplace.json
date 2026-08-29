@@ -7,7 +7,7 @@
   },
   "metadata": {
     "description": "Curated collection of Claude Code plugins for modern full-stack development with LLM performance tracking and E2E skill testing",
-    "version": "10.2.0",
+    "version": "10.3.0",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -82,7 +82,7 @@
       "name": "claudish",
       "source": "./plugins/claudish",
       "description": "MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting across models, manages async sessions, and streams channel notifications. Required by code-analysis, dev, multimodel, designer and seo.",
-      "version": "2.0.0",
+      "version": "2.0.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -103,6 +103,11 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "2.0.1",
+          "date": "2026-08-29",
+          "summary": "Claudish-usage no longer narrates what earlier versions of the skill contained. The prohibition\u2026"
+        },
         {
           "version": "2.0.0",
           "date": "2026-08-28",
@@ -125,11 +130,6 @@
           "version": "1.0.1",
           "date": "2026-08-19",
           "summary": "Durable plugin description separated from release notes; stale agentdev references purged from\u2026"
-        },
-        {
-          "version": "1.0.0",
-          "date": "2026-05-09",
-          "summary": "Dedicated runtime plugin for the Claudish MCP server. Owns the command: \"claudish\", args:\u2026"
         }
       ]
     },
@@ -250,7 +250,7 @@
       "name": "dev",
       "source": "./plugins/dev",
       "description": "Universal development assistant. Detects the project stack and routes work to specialist agents for architecture, implementation, debugging, review and research, enforcing design-system guardrails on every UI change.",
-      "version": "6.0.0",
+      "version": "6.0.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -290,6 +290,11 @@
       "strict": true,
       "releases": [
         {
+          "version": "6.0.1",
+          "date": "2026-08-29",
+          "summary": "Version archaeology removed from 18 files \u2014 fourteen notes explaining that a skill had been\u2026"
+        },
+        {
           "version": "6.0.0",
           "date": "2026-08-28",
           "kinds": [
@@ -317,14 +322,6 @@
           "version": "4.6.0",
           "date": "2026-08-26",
           "summary": "Registered skills go from 9 to 43 \u2014 the 34 nested under skills/<category>/<name>/ had been\u2026"
-        },
-        {
-          "version": "4.5.0",
-          "date": "2026-08-24",
-          "kinds": [
-            "Fixed"
-          ],
-          "summary": "Phase 5 wrote an internal review that nothing checked"
         }
       ]
     },
@@ -426,7 +423,7 @@
       "name": "bunjs",
       "source": "./plugins/bunjs",
       "description": "Bun and TypeScript toolkit. A `/bunjs:bun` index routes any task to the right one of eight task-shaped skills \u2014 setup, HTTP, errors, testing, security, production, performance, TUI \u2014 each shipping copyable code verified against Bun. Only Bun is tested.",
-      "version": "0.4.2",
+      "version": "0.4.3",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -458,6 +455,11 @@
       "strict": true,
       "releases": [
         {
+          "version": "0.4.3",
+          "date": "2026-08-29",
+          "summary": "The README's discovery table and the bun index state their measured findings directly instead\u2026"
+        },
+        {
           "version": "0.4.2",
           "date": "2026-08-26",
           "summary": "The same manifest move, and additionally dropped a [\"./commands\"] declaration \u2014 the default\u2026"
@@ -484,15 +486,6 @@
             "Added"
           ],
           "summary": "The discovery bench moved out of the plugin to benches/skill-index/ (IDX-1), where every\u2026"
-        },
-        {
-          "version": "0.3.0",
-          "date": "2026-08-07",
-          "kinds": [
-            "Added",
-            "Changed"
-          ],
-          "summary": "/bunjs:bun \u2014 an index skill that knows the other eight without loading them"
         }
       ]
     },
@@ -671,7 +664,7 @@
       "name": "designer",
       "source": "./plugins/designer",
       "description": "UI design validation. Compares a rendered screen against its reference by pixel diff, then reviews the result for spacing, hierarchy and design-system consistency.",
-      "version": "0.6.0",
+      "version": "0.6.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -693,6 +686,11 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "0.6.1",
+          "date": "2026-08-29",
+          "summary": "The two dated correction blocks in ui-analyse and compare are now present-tense rules. The\u2026"
+        },
         {
           "version": "0.6.0",
           "date": "2026-08-28",
@@ -718,11 +716,6 @@
           "version": "0.5.1",
           "date": "2026-08-19",
           "summary": "Dispatch specs namespaced (Agent: designer:ui, designer:design-review) in commands and the\u2026"
-        },
-        {
-          "version": "0.5.0",
-          "date": "2026-08-18",
-          "summary": "BREAKING \u2014 ui-design-review is gone, merged into ui-analyse, which absorbed its POUR-organised\u2026"
         }
       ]
     },
@@ -890,7 +883,7 @@
       "name": "madbench",
       "source": "./plugins/madbench",
       "description": "Toolkit for madbench, MadAppGang's Go harness for benchmarking agentic coding tools. Ships the madbench-evals skill: author bench YAML and Eval files, design checks, scaffold red-state and generated testdata, run the negative and positive controls, tune expectations, and debug failing checks.",
-      "version": "0.2.4",
+      "version": "0.3.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -911,6 +904,11 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "0.3.0",
+          "date": "2026-08-29",
+          "summary": "The evals skill is rewritten from madbench v0.10.0 to v0.23.0, thirteen releases of drift. Adds\u2026"
+        },
         {
           "version": "0.2.4",
           "date": "2026-08-26",
@@ -934,15 +932,6 @@
           "version": "0.2.1",
           "date": "2026-08-18",
           "summary": "Four skill corrections that only a run reveals \u2014 session:step-count takes one bound and\u2026"
-        },
-        {
-          "version": "0.1.2",
-          "date": "2026-08-16",
-          "kinds": [
-            "Fixed",
-            "Added"
-          ],
-          "summary": "The skill taught identifiers a current madbench rejects, and several benches were written\u2026"
         }
       ]
     }
