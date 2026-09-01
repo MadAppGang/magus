@@ -126,7 +126,11 @@ describe("evaluate — blocks a phase completed with nothing behind it", () => {
     );
     expect(msg).toContain("BLOCKED");
     expect(msg).toContain("missing architecture.md");
-    expect(msg).toContain("missing reviews/plan-review/consolidated.md");
+    // NOT the plan-review pair. Those are Full-depth artifacts behind a group,
+    // and nothing in this session touched either — so the run simply did not go
+    // that deep. Demanding them here is what made every Standard run look
+    // abandoned. The grouped-artifact tests below pin both halves of that rule.
+    expect(msg).not.toContain("reviews/plan-review/");
   });
 
   test("a file that exists but is too small still blocks", () => {
@@ -348,15 +352,18 @@ describe("evaluateStop", () => {
   });
 
   test("A HALF-DONE PHASE BLOCKS — the whole point of the gate", () => {
-    // Phase 3 declares more than one required artifact; supplying exactly one makes it
-    // partial, which is a phase begun and abandoned.
-    const phase3 = PHASE_ARTIFACTS["phase3"];
-    expect(phase3.required.length).toBeGreaterThan(1);
+    // Phase 5 declares two required artifacts and neither is depth-grouped, so
+    // supplying exactly one is unambiguously "begun and abandoned". Phase 3
+    // cannot express this any more: its second and third artifacts are Full-depth
+    // only, so a lone architecture.md is a COMPLETE Standard run.
+    const phase5 = PHASE_ARTIFACTS["phase5"];
+    expect(phase5.required.length).toBeGreaterThan(1);
+    expect(phase5.required.every((a) => a.group === undefined)).toBe(true);
 
-    const message = evaluateStop(depsWith([phase3.required[0].file]));
+    const message = evaluateStop(depsWith([phase5.required[0].file]));
     expect(message).not.toBeNull();
     expect(message).toContain("INCOMPLETE PHASE");
-    expect(message).toContain(phase3.name);
+    expect(message).toContain(phase5.name);
     expect(message).toContain(STOP_SESSION);
   });
 
@@ -369,8 +376,88 @@ describe("evaluateStop", () => {
   });
 
   test("the block names what is missing, not just that something is", () => {
-    const phase3 = PHASE_ARTIFACTS["phase3"];
-    const message = evaluateStop(depsWith([phase3.required[0].file]));
-    expect(message).toContain(phase3.required[1].file);
+    const phase5 = PHASE_ARTIFACTS["phase5"];
+    const message = evaluateStop(depsWith([phase5.required[0].file]));
+    expect(message).toContain(phase5.required[1].file);
+  });
+});
+
+/**
+ * The three defects this file could not previously express.
+ *
+ * All three made the hook fire on a CORRECTLY completed run, and one of them
+ * made that fire impossible to acknowledge. A Stop hook repeats every turn, so
+ * a false positive is not a one-off annoyance — it is a warning that trains
+ * people to ignore warnings.
+ */
+describe("depth groups, and the acknowledgement that had to work", () => {
+  const SESSION_PATH = "/tmp/dev-feature-depth";
+  const BODY =
+    "# artifact\n\nstatus: PASS\n\nmodel review analysis: issue, concern,\n" +
+    "verdict, recommendation, requirement, criteria, acceptance, risk,\n" +
+    "architecture, component, test, coverage, scenario, evidence, summary\n\n" +
+    "## Section\n\n- item\n";
+
+  const deps = (present: string[], dirty: string[] = []): Deps => ({
+    sizeOf: (path) => (present.some((f) => path.endsWith(f)) ? 4096 : null),
+    read: (path) => (present.some((f) => path.endsWith(f)) ? BODY : null),
+    sessions: () => [SESSION_PATH],
+    dirtyPaths: () => dirty,
+  });
+
+  test("a Standard run — architecture.md alone — is COMPLETE, not abandoned", () => {
+    // The false positive. `/dev:dev` Standard is specified as single-model, so
+    // it writes architecture.md and never `reviews/plan-review/*`. Requiring
+    // them made every Standard run report as a half-finished Full run.
+    expect(evaluateStop(deps(["architecture.md"]))).toBeNull();
+  });
+
+  test("but a Full run that wrote ONE review file is still caught", () => {
+    // The other half of the rule — the group is required as soon as anything in
+    // it exists, so genuinely abandoning the multi-model review still reports.
+    const message = evaluateStop(
+      deps(["architecture.md", "reviews/plan-review/consolidated.md"]),
+    );
+    expect(message).not.toBeNull();
+    expect(message).toContain("reviews/plan-review/claude-internal.md");
+  });
+
+  test("skip-reason.md actually suppresses, rather than being advice", () => {
+    // The advisory told the reader to write this file and then never read it,
+    // so the warning could not be acknowledged and repeated every turn. Found
+    // by writing the file and watching the identical message return.
+    const partial = deps([
+      "architecture.md",
+      "reviews/plan-review/consolidated.md",
+    ]);
+    expect(evaluateStop(partial)).not.toBeNull();
+
+    const acknowledged = deps([
+      "architecture.md",
+      "reviews/plan-review/consolidated.md",
+      "skip-reason.md",
+    ]);
+    expect(evaluateStop(acknowledged)).toBeNull();
+  });
+
+  test("the advice the message gives is advice the hook honours", () => {
+    // Pins message and behaviour together: if someone drops the skip-reason
+    // check, this fails rather than silently reverting to unsilenceable advice.
+    const message = evaluateStop(
+      deps(["architecture.md", "reviews/plan-review/consolidated.md"]),
+    );
+    expect(message).toContain("skip-reason.md");
+  });
+
+  test("an implementation log is judged by size, not by vocabulary", () => {
+    // The old check required /Phase|Step|Started|Completed|Created|Modified/,
+    // which scored a real 15KB log at zero because it said "Landed in its
+    // stated order" instead — while a shorter, emptier log containing "Step"
+    // passed. A completion gate must not reward wording.
+    const log = PHASE_ARTIFACTS["phase4"].required.find(
+      (a) => a.file === "implementation-log.md",
+    );
+    expect(log).toBeDefined();
+    expect(log?.patterns).toBeUndefined();
   });
 });

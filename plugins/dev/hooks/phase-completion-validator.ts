@@ -24,6 +24,25 @@ interface Artifact {
   file: string;
   minSize: number;
   patterns?: RegExp[];
+  /**
+   * Artifacts only a deeper run produces, checked as a set.
+   *
+   * A grouped artifact is required only when at least one member of its group
+   * is already on disk. That distinguishes the two cases this hook previously
+   * conflated:
+   *
+   *  - **Ran at a shallower depth.** `/dev:dev` Standard is specified as
+   *    single-model — "no multi-model vote" — so it never writes
+   *    `reviews/plan-review/*`. No member exists, so the group is not required.
+   *  - **Started the deeper work and abandoned it.** One review file exists and
+   *    its sibling does not, so the group IS required and the gap is reported.
+   *
+   * Deliberately derived from the files rather than from a stored depth: the
+   * session config is written by the command, and a hook that trusts it reports
+   * nothing at all for a run that died before writing it. The files are the
+   * evidence either way.
+   */
+  group?: string;
 }
 
 interface PhaseSpec {
@@ -52,26 +71,37 @@ export const PHASE_ARTIFACTS: Record<string, PhaseSpec> = {
     name: "Multi-Model Planning",
     required: [
       { file: "architecture.md", minSize: 500 },
+      // Full depth only — see `Artifact.group`. Standard is specified as
+      // single-model planning, so it writes `architecture.md` and neither of
+      // these, and demanding them made every Standard run look abandoned.
       {
         file: "reviews/plan-review/consolidated.md",
         minSize: 200,
         patterns: [/model|review|analysis|issue|concern|verdict/i],
+        group: "plan-review",
       },
       {
         file: "reviews/plan-review/claude-internal.md",
         minSize: 100,
         patterns: [/review|analysis|issue|concern|recommendation/i],
+        group: "plan-review",
       },
     ],
   },
   phase4: {
     name: "Implementation",
     required: [
-      {
-        file: "implementation-log.md",
-        minSize: 100,
-        patterns: [/Phase|Step|Started|Completed|Created|Modified/],
-      },
+      // No prose pattern. This used to require one of
+      // `Phase|Step|Started|Completed|Created|Modified`, which scored a real
+      // 15KB log — measured baseline, per-item changes, pasted command output,
+      // disclosed deviations — at ZERO because it was organised by item number
+      // and said "Landed in its stated order" instead. A shorter, emptier log
+      // containing the word "Step" passed. The check rewarded expected words
+      // over expected substance, which is the opposite of a completion gate's
+      // job. `minSize` plus the `implementationProducedChanges` evidence check
+      // below already answer "did this phase do anything", and they answer it
+      // from the working tree rather than from vocabulary.
+      { file: "implementation-log.md", minSize: 100 },
     ],
     evidence: "implementationProducedChanges",
   },
@@ -230,13 +260,32 @@ function runEvidence(
 
 // ── Core decision ───────────────────────────────────────────────────────────
 
+/** Groups with at least one member on disk — those the run actually attempted. */
+function attemptedGroups(
+  spec: PhaseSpec,
+  sessionPath: string,
+  deps: Deps,
+): Set<string> {
+  const attempted = new Set<string>();
+  for (const artifact of spec.required) {
+    if (!artifact.group) continue;
+    if (deps.sizeOf(join(sessionPath, artifact.file)) !== null) {
+      attempted.add(artifact.group);
+    }
+  }
+  return attempted;
+}
+
 function checkArtifacts(
   spec: PhaseSpec,
   sessionPath: string,
   deps: Deps,
 ): string[] {
   const errors: string[] = [];
+  const attempted = attemptedGroups(spec, sessionPath, deps);
   for (const artifact of spec.required) {
+    // A group nothing touched belongs to a depth this run did not execute.
+    if (artifact.group && !attempted.has(artifact.group)) continue;
     const full = join(sessionPath, artifact.file);
     const size = deps.sizeOf(full);
     if (size === null) {
@@ -356,6 +405,20 @@ export function evaluateStop(deps: Deps, sessionOverride?: string): string | nul
   if ("ambiguous" in resolved) return null; // several open -> refuse to guess
 
   const sessionPath = resolved.path;
+
+  // The advisory tells the reader to write `skip-reason.md`. Until this check
+  // existed it did not read it, so the escape hatch it recommended did nothing
+  // and the same advisory reappeared on the next turn — an unsilenceable
+  // warning, which trains people to ignore the ones that matter. A `Stop` hook
+  // repeats every turn, so an acknowledgement it cannot honour is worse than no
+  // advice at all.
+  //
+  // Any non-trivial content counts as the acknowledgement. This is a note to
+  // the next human, not a form to validate: policing its wording would recreate
+  // the same defect one level up.
+  const skipReason = deps.sizeOf(join(sessionPath, "skip-reason.md"));
+  if (skipReason !== null && skipReason >= 50) return null;
+
   const partial: string[] = [];
 
   for (const [phase, spec] of Object.entries(PHASE_ARTIFACTS)) {

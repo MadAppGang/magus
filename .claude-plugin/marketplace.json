@@ -250,7 +250,7 @@
       "name": "dev",
       "source": "./plugins/dev",
       "description": "Universal development assistant. Detects the project stack and routes work to specialist agents for architecture, implementation, debugging, review and research, enforcing design-system guardrails on every UI change.",
-      "version": "6.0.1",
+      "version": "6.0.2",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -290,6 +290,14 @@
       "strict": true,
       "releases": [
         {
+          "version": "6.0.2",
+          "date": "2026-08-31",
+          "kinds": [
+            "Fixed"
+          ],
+          "summary": "A Standard-depth run reported as abandoned"
+        },
+        {
           "version": "6.0.1",
           "date": "2026-08-29",
           "summary": "Version archaeology removed from 18 files \u2014 fourteen notes explaining that a skill had been\u2026"
@@ -317,11 +325,6 @@
           "version": "4.6.1",
           "date": "2026-08-26",
           "summary": "The claudish-in-main-bash coaching rule advised running claudish inside a sub-agent via the\u2026"
-        },
-        {
-          "version": "4.6.0",
-          "date": "2026-08-26",
-          "summary": "Registered skills go from 9 to 43 \u2014 the 34 nested under skills/<category>/<name>/ had been\u2026"
         }
       ]
     },

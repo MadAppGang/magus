@@ -4,6 +4,46 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [dev 6.0.2] - 2026-08-31
+
+### Fixed
+
+The phase-artifact gate fired on correctly-completed runs, and could not be acknowledged
+when it did. All three defects were found by running it, not by reading it.
+
+- **A Standard-depth run reported as abandoned.** `phase3` is named "Multi-Model Planning"
+  and required `architecture.md` *plus* both `reviews/plan-review/*` files. The
+  "never started" guard is `present === 0`, so on a Standard run `architecture.md` existed,
+  the guard missed, and the hook demanded two artifacts that Standard is *specified* never
+  to produce — it is single-model by definition. The hook could not tell "ran at a shallower
+  depth" from "gave up". Artifacts can now declare a `group`, required only when at least one
+  member already exists: no plan-review file means the depth was never run, one means the
+  other is genuinely missing. Derived from the files rather than a stored depth, because a
+  run that died before writing its config would otherwise be checked against nothing.
+- **`skip-reason.md` was advice the hook did not read.** The message told the reader to write
+  it; the string appeared exactly once in the file — inside that message. Writing it changed
+  nothing and the identical advisory returned next turn. On a `Stop` hook that means an
+  unsilenceable warning, which trains people to ignore the ones that matter. It is now
+  honoured, and a test pins the message and the behaviour together so they cannot drift apart
+  again.
+- **The implementation-log check rewarded vocabulary over substance.** It required one of
+  `Phase|Step|Started|Completed|Created|Modified`, and scored a real 15KB log — measured
+  baseline, per-item changes, pasted command output, disclosed deviations — at **zero**,
+  because it was organised by item number and said "Landed in its stated order". A shorter,
+  emptier log containing the word "Step" passed. The pattern is gone; `minSize` and the
+  existing `implementationProducedChanges` evidence check already answer "did this phase do
+  anything", and they answer it from the working tree.
+
+### Why
+
+Three tests in the existing suite used `phase3` as their "phase with several required
+artifacts" example and supplied only the first — which is precisely the shape that is now
+legitimate. They were retargeted onto `phase5`, whose two artifacts are ungrouped and so
+still express "begun and abandoned", rather than weakened. Five new tests cover the fixes,
+and each fails when its own fix is reverted.
+
+---
+
 ## [Marketplace 10.3.0] - 2026-08-29
 
 ### Changed
