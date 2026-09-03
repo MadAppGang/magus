@@ -638,11 +638,16 @@ Ready for review.
           - FAIL: <31 (<60%)
         </step>
         <step>
-          Write report to ${SESSION_PATH}/analysis-report.md:
-          - Summary score
+          Write report to ${SESSION_PATH}/analysis-report.md. `dev:synthesizer`
+          classifies the file by two lines and four headings, so they are the
+          contract, not a style:
+          - It opens, directly under its title, with `**Total Score**: N/52 (P%)`
+            and `**Verdict**: PASS|GOOD|NEEDS_WORK|FAIL` — the band from
+            "Determine verdict" above, the same two lines the return message carries
           - Category breakdown
-          - Anti-patterns detected
-          - Specific issues with line numbers
+          - Findings grouped under `### CRITICAL`, `### HIGH`, `### MEDIUM`,
+            `### LOW` — every anti-pattern detected, each keyed by `file:line`;
+            write `None.` under an empty band so the count is explicit
           - Source code verification results
           - Recommendations prioritized by impact
         </step>
@@ -713,8 +718,9 @@ Ready for review.
     <output>
 ## Documentation Quality Report
 
+**Total Score**: 33/52 (63%)
+**Verdict**: NEEDS_WORK
 **File**: README.md
-**Score**: 33/52 (63%) - NEEDS_WORK
 
 **Category Breakdown**:
 | Category | Score | Issues |
@@ -727,12 +733,21 @@ Ready for review.
 | Maintenance | 3/4 | Missing date |
 | Anti-Slop | 5/10 | Banned words, monotone rhythm |
 
-**Anti-Patterns Detected**:
-1. OVER_MARKETING (HIGH): Marketing text in first 40 lines
-2. MISSING_ERROR_RECOVERY (CRITICAL): No troubleshooting section
-3. PASSIVE_VOICE (MEDIUM): 23 instances of passive voice
-4. BANNED_WORDS (HIGH): 4 instances of "powerful", 2 of "seamlessly"
-5. MONOTONE_RHYTHM (MEDIUM): 5 groups of same-length consecutive sentences
+**Findings**:
+
+### CRITICAL
+1. MISSING_ERROR_RECOVERY — `README.md:1-180`: no Troubleshooting or Common Issues section anywhere in the file
+
+### HIGH
+1. OVER_MARKETING — `README.md:1-40`: marketing text before the quick start, which begins at line 45
+2. BANNED_WORDS — `README.md:3,7,12,58,91,104`: 4 instances of "powerful", 2 of "seamlessly"
+
+### MEDIUM
+1. PASSIVE_VOICE — `README.md:22-160`: 23 instances of passive voice
+2. MONOTONE_RHYTHM — `README.md:60-75,130-142`: 5 groups of same-length consecutive sentences
+
+### LOW
+None.
 
 **Recommendations** (by impact):
 1. Add troubleshooting section (CRITICAL)

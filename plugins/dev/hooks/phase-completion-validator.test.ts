@@ -41,6 +41,8 @@ function satisfying(phase: string): Record<string, string> {
           "## Verdict\n\nCONDITIONAL " + pad(200),
         [`${SESSION}/reviews/code-review/claude-internal.md`]:
           "review " + pad(100),
+        // The capture the reviewers read. Complete means it has bytes in it.
+        [`${SESSION}/code-changes.diff`]: "diff --git a/x b/x\n+x\n",
       };
     case "phase6":
       return { [`${SESSION}/tests/test-plan.md`]: pad(100) };
@@ -199,6 +201,31 @@ describe("evidence checks — presence is not proof", () => {
     delete files[`${SESSION}/reviews/code-review/claude-internal.md`];
     const msg = evaluate({ subject: "Phase 5", status: "completed" }, fakeDeps(files));
     expect(msg).toContain("missing reviews/code-review/claude-internal.md");
+  });
+
+  test("phase 5 blocks a PASS written over a 0-byte diff — a review that reviewed nothing", () => {
+    // Both review files present, a verdict stated, and the capture the
+    // reviewers read is empty. Until code-changes.diff became a required
+    // artifact this cleared the gate: three different capture designs each
+    // produced exactly this 0-byte file, and every one of them was passed.
+    const files = satisfying("phase5");
+    files[`${SESSION}/reviews/code-review/consolidated.md`] =
+      "## Verdict\n\nPASS " + "x".repeat(200);
+    files[`${SESSION}/code-changes.diff`] = "";
+    const msg = evaluate({ subject: "Phase 5", status: "completed" }, fakeDeps(files));
+    expect(msg).not.toBeNull(); // null here means the gate let it through
+    expect(msg).toContain("code-changes.diff is 0 bytes, expected at least 1");
+  });
+
+  test("phase 5 passes once the diff has a byte in it", () => {
+    // Exactly one byte — pins the floor as "has bytes", not a diff shape.
+    const files = satisfying("phase5");
+    files[`${SESSION}/reviews/code-review/consolidated.md`] =
+      "## Verdict\n\nPASS " + "x".repeat(200);
+    files[`${SESSION}/code-changes.diff`] = "+";
+    expect(
+      evaluate({ subject: "Phase 5", status: "completed" }, fakeDeps(files)),
+    ).toBeNull();
   });
 
   test("phase 6 blocks when no test file was touched, despite tests existing in repo", () => {

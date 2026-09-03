@@ -25,24 +25,13 @@ Use this skill when:
 
 ## Detection Pattern
 
-In agents (preferred — no subprocess): probe the MCP tool directly:
+Probe the MCP tool directly — no subprocess, no plugin listing. A tool that answers is
+the only presence check this skill makes:
 
 ```
 browser_use_available = try mcp__browser-use__browser_list_sessions()
   → success: browser-use is installed and MCP server is running
   → error/not found: browser-use not available → fall back to claude-in-chrome or manual
-```
-
-In skill scripts (bash fallback for informational checks):
-
-```bash
-# Check browser-use plugin availability
-browser_use_available=$(claude /plugin list 2>/dev/null | grep -c "browser-use" || echo "0")
-if [ "$browser_use_available" -gt "0" ]; then
-  echo "browser-use available — automated browser tools accessible"
-else
-  echo "browser-use not installed — use claude-in-chrome or manual screenshots"
-fi
 ```
 
 ## Integration Points
@@ -112,5 +101,5 @@ For automated browser testing and headless screenshot capture, install the brows
 Without browser-use, you can still:
 - Use claude-in-chrome for screenshot capture (requires Chrome extension)
 - Use Gemini with manually provided screenshots for visual analysis
-- Use the designer:design-review agent for pixel-diff validation (requires designer plugin)
+- Run /dev:audit with a UI scope for pixel-diff validation — it routes to the designer plugin when that is installed
 ```

@@ -753,8 +753,10 @@ declare -A MODEL_END_TIMES
 # 5. Create tracking marker
 echo "$SESSION_DIR" > /tmp/.claude-multi-model-active
 
-# 6. Write code context
-git diff > "$SESSION_DIR/code-context.md"
+# 6. Code context: NOT captured here. Every reviewer is handed TARGET: BRANCH —
+#    the dev:reviewer Agent beside the team call and each external slot alike —
+#    and runs dev's capture-review-surfaces.ts itself, in BRANCH mode. A range
+#    computed here would be one more hand-rolled diff, which no dispatcher may do.
 
 echo "Pre-launch complete. Session: $SESSION_ID"
 

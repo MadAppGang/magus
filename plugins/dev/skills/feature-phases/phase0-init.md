@@ -21,11 +21,24 @@ mkdir -p "${SESSION_PATH}/reviews/plan-review" "${SESSION_PATH}/reviews/code-rev
 ```
 
 ### Step 0.4: Write initial session-meta.json
+
+`repoPath` and `baselineCommit` are what Phase 5 reviews against. `repoPath` is
+**absolute** so later phases can use `git -C` instead of `cd` — a `cd` would
+relocate the relative `SESSION_PATH` with it, sending both the read and the write
+to a path that does not exist.
+
+```bash
+REPO_PATH=$(git rev-parse --show-toplevel)
+BASELINE_COMMIT=$(git rev-parse HEAD)
+```
+
 ```json
 {
   "sessionId": "{SESSION_ID}",
   "createdAt": "{timestamp}",
   "feature": "{feature_name}",
+  "repoPath": "{REPO_PATH}",
+  "baselineCommit": "{BASELINE_COMMIT}",
   "status": "in_progress",
   "checkpoint": {
     "lastCompletedPhase": "phase0",
@@ -34,6 +47,9 @@ mkdir -p "${SESSION_PATH}/reviews/plan-review" "${SESSION_PATH}/reviews/code-rev
   }
 }
 ```
+
+If the tree is already dirty at this point, say so in one line. The baseline cannot
+tell pre-session changes from session changes, so Phase 5 will review both.
 
 ### Step 0.5: Check Claudish availability
 ```bash
@@ -69,6 +85,16 @@ If user selects worktree:
      - Setup (dependency install, baseline tests)
      - Handoff (store metadata)
   4. Store worktree metadata in ${SESSION_PATH}/worktree-metadata.json
+  4b. **UPDATE `repoPath` and `baselineCommit` in session-meta.json** to the new
+      worktree. Step 0.4 wrote them before this worktree existed, so leaving them
+      makes Phase 5 review the wrong checkout:
+      ```bash
+      jq --arg r "${WORKTREE_PATH}" --arg b "$(git -C "${WORKTREE_PATH}" rev-parse HEAD)" \
+         '.repoPath = $r | .baselineCommit = $b' \
+         "${SESSION_PATH}/session-meta.json" > "${SESSION_PATH}/session-meta.tmp" \
+        && mv "${SESSION_PATH}/session-meta.tmp" "${SESSION_PATH}/session-meta.json"
+      ```
+      `SESSION_PATH` stays in the main worktree; only `repoPath` moves.
   5. Set WORKTREE_PATH for all subsequent agent delegations
   6. All dev:developer Task prompts include:
      "WORKTREE_PATH: ${WORKTREE_PATH}

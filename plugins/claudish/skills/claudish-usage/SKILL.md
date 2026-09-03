@@ -517,7 +517,7 @@ or `input` argument. There is no size at which shelling out becomes correct.
 | Task Type | Recommended Agent | Alternatives | Notes |
 |-----------|----------------------|--------------|-------|
 | **Investigation** | `dev:researcher` | `code-analysis:detective` | For finding bugs, tracing issues |
-| **Code review** | `dev:reviewer` | `code-analysis:detective` | Security, correctness, maintainability passes |
+| **Code review** | `dev:reviewer` | — | Security, correctness, maintainability passes |
 | **Architecture** | `dev:architect` | — | Design and planning tasks |
 | **Implementation** | `dev:developer` | — | Building features |
 | **Testing** | `dev:test-architect` | — | Test strategy and coverage |

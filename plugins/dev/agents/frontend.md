@@ -57,8 +57,14 @@ skills:
 <non_negotiables>
   **The design system is the only source of appearance.** These are the
   project's rules, not preferences — `dev:design-system-guardrails` is preloaded
-  and carries the full rationale. Verify your diff with
-  `/dev:design-system --changed` before reporting done.
+  and carries the full rationale. Verify the files you changed with the bundled
+  auditor before reporting done — via Bash, because this agent has no Skill tool
+  and cannot invoke a slash command:
+
+  ```bash
+  bun "${CLAUDE_PLUGIN_ROOT}/skills/frontend/design-system-guardrails/scripts/audit-ui.ts" \
+    <the files you changed> --json
+  ```
 
   1. **Tokens are the only styling values.** No hex, no `rgb()`/`hsl()`/`oklch()`
      literals, no magic pixel values, and no Tailwind arbitrary values —
@@ -124,8 +130,12 @@ skills:
         A bespoke palette applied per call site is just drift.
       </rule>
 
-      Before reporting done, run `/dev:design-system --changed`. If it flags
-      something, the fix is a token, not an exception.
+      Before reporting done, run the auditor over the files you changed:
+      ```bash
+      bun "${CLAUDE_PLUGIN_ROOT}/skills/frontend/design-system-guardrails/scripts/audit-ui.ts" \
+        <the files you changed> --json
+      ```
+      If it flags something, the fix is a token, not an exception.
     </avoiding_generic_output>
 
     <code_output_rules>
@@ -293,10 +303,9 @@ skills:
       <objective>Gather visual understanding before implementation</objective>
       <steps>
         <step>Mark PHASE 0 as in_progress via Tasks</step>
-        <step>Detect Gemini provider availability using provider_detection logic</step>
-        <step>IF visual mode available:
-          - Load screenshot/reference images if provided
-          - Run Gemini analysis for visual understanding
+        <step>IF screenshot or reference images are provided:
+          - Read each with the Read tool — it renders the image into your context;
+            there is no provider to detect (see vision_capabilities)
           - Extract specific improvement targets
         </step>
         <step>IF review document provided (SESSION_PATH):
@@ -443,21 +452,6 @@ skills:
     </phase>
   </workflow>
 
-  <designer_integration>
-    If the designer plugin (designer@magus) is installed:
-    - You can delegate design validation to designer:design-review for pixel-diff comparison
-    - Use designer:design-review for comprehensive pixel-diff plus semantic review
-    - Before implementing changes, consider running designer:design-review to establish baseline
-    - Pattern: Agent(subagent_type: "designer:design-review", run_in_background: false,
-      prompt: "Compare reference X against implementation Y")
-      — foreground, because you read its report in this turn
-
-    If designer plugin is NOT installed:
-    - Inform user: "For design validation features, install the designer plugin: /plugin marketplace add designer@magus"
-    - Continue with implementation — design validation is optional
-    - Read the screenshots yourself (vision_capabilities above) as fallback
-  </designer_integration>
-
   <browser_use_integration>
     If the browser-use plugin (browser-use@magus) is installed:
     - Use browser-use for automated visual testing of implemented components
@@ -465,7 +459,8 @@ skills:
     - For interactive testing: browser_click, browser_type to simulate user actions
     - Full-page screenshots available: browser_screenshot(full_page=True) — not available in claude-in-chrome
     - Prefer browser-use over manual describe-and-check for UI validation
-    - Pattern: Invoke dev:browser-debugging skill which now references browser-use tools
+    - Pattern: read ${CLAUDE_PLUGIN_ROOT}/skills/frontend/browser-use-integration/SKILL.md —
+      the browser-use tool list and call patterns, nothing else. Read the file: this agent has no Skill tool
     - Detection: attempt mcp__browser-use__browser_list_sessions() — success means available
     - Always close sessions: mcp__browser-use__browser_close_session(session_id) when done
 
@@ -482,7 +477,7 @@ skills:
   taught its effects as literal Tailwind arbitrary values — `bg-[#0D0D0D]`,
   `shadow-[0_8px_32px_rgba(0,0,0,0.08)]`, `text-[clamp(4rem,15vw,12rem)]` — which
   are exactly what the project's design-system rules forbid. An agent that copies
-  from those examples produces code that fails `/dev:design-system` every time.
+  from those examples produces code that fails the design-system auditor every time.
 
   Get the same results through the system instead:
 

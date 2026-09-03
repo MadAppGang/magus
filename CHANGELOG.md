@@ -4,6 +4,114 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [dev 6.1.0] - 2026-09-03
+
+### Added
+
+- **One capture script for every review diff.** `scripts/capture-review-surfaces.ts`
+  is now the only place a review range is computed. It emits three separate surfaces
+  (committed + staged since the baseline, unstaged, untracked) because any single
+  `git diff <range>` collapses endpoints — three successive hand-rolled forms each
+  produced a 0-byte capture over a mid-session commit. It never touches the index.
+  Modes: session (`--baseline`), branch (`--base`, auto-resolved), `--stat`,
+  `--name-only`, `--exclude-from`; an empty value flag exits 2. Every hand-rolled diff
+  range under `plugins/` now calls it.
+- **`/dev:audit` guide** at `userdocs/guides/dev-audit.md`: the six scopes, `--models`,
+  and what the consolidated report looks like whether one reviewer ran or four.
+- **The Phase 5 gate sees the capture.** `code-changes.diff` must be at least 1 byte; a
+  PASS over an empty diff is now reported by name instead of passing silently. The hook
+  stays advisory in Claude Code.
+- `scripts/check-review-contracts.test.ts` (30 ratchets over all of `plugins/`) and
+  `scripts/check-diff-ranges.test.ts` (32 scratch-repo tests), both in `check:all`, and
+  `benches/review-contract/`, a madbench bench that measures the reviewer contract on a
+  real model: treatment 8/8 + 8/8, control 1/8 + 0/8.
+
+### Changed
+
+- **`dev:reviewer` owns judgement and is dispatched by contract.** Dispatchers pass
+  `TARGET:` / `FOCUS:` / `OUTPUT:` / `MODELS:` and never restate its rules; the OWASP
+  list, severity scale and verdict thresholds live in `reviewer.md` alone (a contract
+  test fails on any second copy). CAPTURE mode reads the script's output, states which
+  surfaces it saw, and refuses a verdict over an empty capture.
+- **`dev:synthesizer` consolidates everywhere** — Phase 5, Phase 3, every `/dev:audit`
+  route, `/dev:fix` Phase B, the multimodel review skills. It reads reviews, never code;
+  accepts a severity-graded report, a design report by percentage, or a vote file;
+  applies whatever `THRESHOLDS:` rule it is handed in that rule's own vocabulary; and
+  passes a single review through unchanged plus its verdict line.
+- **Multimodel when available.** `MODELS:` is owned by the dispatcher. The internal
+  reviewer always runs; externals are additive when `which claudish` succeeds. Where
+  claudish is optional the reviewer is a separate `Agent(dev:reviewer)` beside the
+  `claudish team()` call.
+- `/dev:audit` is a pure router with six scopes on the menu; `/dev:help` lists them.
+- `/dev:fix` Phase B votes with `dev:reviewer` (the debugger no longer grades its own
+  patch); its verdict is mapped to a vote in the tally step, and the tally rule now
+  covers every panel size with three terminal words (STRONG / REJECT / DIVERGENT).
+- `dev:docs` reports open with `**Total Score**: N/52 (P%)` and a `**Verdict**:` line
+  under severity headings — the fields the synthesizer keys on.
+- `security-audit` skill cut from 581 to 141 lines: CVE commands, secret patterns by
+  value, the compliance checklist, and a reachability procedure; the judgement moved to
+  the reviewer.
+- `code-roast`, `db-branching` and `browser-debugging` keep `disable-model-invocation`
+  and drop `user-invocable: false`; the autotest and integration cases that expected the
+  Skill tool to reach them now assert the slash-only truth.
+
+### Fixed
+
+- `/dev:fix` staged pre-session dirty work and committed pre-staged paths with the fix.
+  Step 1a now snapshots the dirty set and tells the user; the commit step captures
+  `--name-only --exclude-from` that list and uses the same `--pathspec-from-file` list
+  for both `git add` and `git commit`. Reproduced and tested against a scratch repo.
+- `/dev:fix` Step 1a edited a `session-meta.json` nothing had created.
+- `dev:frontend` dispatched `Agent(` without the tool; its Gemini provider steps and the
+  designer-integration references are gone, and `designer-integration/` is deleted.
+- `/dev:design-system --changed` fell back to `HEAD~1` when the base could not resolve.
+- The designer presence check used a `claude plugin` form that does not exist.
+- `/review` → `/code-review` in the phase-5 skill and the audit command.
+- A dozen sentences that described code that no longer existed.
+
+---
+
+## [multimodel 4.0.1] - 2026-09-03
+
+### Fixed
+
+- **Both review skills consolidate through `dev:synthesizer`** and quote the reviewer's
+  thresholds by path instead of carrying six copies; `multi-model-validation` no longer
+  has the reviewer merge a set containing its own review, and Pattern 5 synthesizes at
+  N = 1 too.
+- `multi-agent-coordination`'s design panel pins `require_pattern` on the
+  `Diff Percentage` row every design review returns, not on `Overall Score`, which only a
+  run with a vision key writes; the sketch carries `THRESHOLDS:`; the `claude-internal`
+  output directory is created before the review runs.
+- Bare `git diff` captures in `multi-model-validation` and `model-tracking-protocol`
+  replaced by the `dev` capture script.
+- `agent-enforcement`'s Review row no longer names a detective as an alternative to the
+  reviewer.
+
+---
+
+## [designer 0.6.2] - 2026-09-03
+
+### Changed
+
+- **`designer:design-review` opens its returned text with the `Severity` and
+  `Diff Percentage` rows** from `summary.md`, so a caller's `require_pattern` has a line
+  every run writes, with or without a vision key.
+- `designer:ui` reviews only: `Edit` is removed from its tools and design-system integrity
+  is routed to `/dev:design-system`. `/designer:ui` inspects the tree with
+  `git status --short`; the browser-use-integration skill drops a stale reference.
+
+---
+
+## [claudish 2.0.2] - 2026-09-03
+
+### Changed
+
+- **The `claudish-usage` Review row names `dev:reviewer` only**; the detective is no
+  longer offered as an alternative reviewer.
+
+---
+
 ## [dev 6.0.2] - 2026-08-31
 
 ### Fixed

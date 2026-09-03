@@ -60,26 +60,54 @@ Use parallel execution when agents are **independent**:
 - Multiple AI models reviewing same code (Grok + Gemini + Claude)
 - Multiple feature implementations in separate files
 
-**Example: Multi-Perspective Validation**
+**Example: Multi-Perspective Validation — several reviewers, ONE target**
 
 ```
 Single Message with Multiple Task Calls:
 
-Agent: designer:design-review
-  Prompt: Validate UI against Figma design
-  Output: ai-docs/design-review.md
+Agent(
+  subagent_type: "dev:reviewer",
+  run_in_background: false,
+  description: "Code review",
+  prompt: "TARGET: BRANCH
+           FOCUS: code
+           OUTPUT: ai-docs/reviews/code.md
+           MODELS: none"
+)
 ---
-Agent: designer:design-review
-  Prompt: Test UI in browser for usability
-  Output: ai-docs/testing-report.md
+Agent(
+  subagent_type: "dev:reviewer",
+  run_in_background: false,
+  description: "Security review",
+  prompt: "TARGET: BRANCH
+           FOCUS: security
+           OUTPUT: ai-docs/reviews/security.md
+           MODELS: none"
+)
 ---
-Agent: dev:reviewer
-  Prompt: Review code quality and patterns
-  Output: ai-docs/code-review.md
+Agent(
+  subagent_type: "dev:reviewer",
+  run_in_background: false,
+  description: "Plugin-quality review",
+  prompt: "TARGET: BRANCH
+           FOCUS: plugin
+           OUTPUT: ai-docs/reviews/plugin.md
+           MODELS: none"
+)
 
 All three execute simultaneously (3x speedup!)
-Wait for all to complete, then consolidate results.
+Wait for all to complete, then hand the three output paths to `dev:synthesizer` on
+REVIEWS: with `dev:reviewer`'s scale on THRESHOLDS: — the three lines under 'Apply
+verdict thresholds' in that agent's file, read at dispatch time, never recalled —
+and the consolidated file on OUTPUT:. It consolidates; none of the three reviewers
+sees another's output. Without THRESHOLDS: it ends the report `VERDICT: none`.
 ```
+
+Review consolidation takes reviews of ONE target that share a location, a severity
+scale and a verdict vocabulary — here three `dev:reviewer` dispatches over the same
+`TARGET:`, differing only in `FOCUS:`. Heterogeneous specialist reports — a Figma design
+review, a browser usability test and a code review — share none of those; present them
+side by side through a coordination summary, never feed them to review consolidation.
 
 **The 4-Message Pattern for True Parallel Execution:**
 
@@ -99,8 +127,13 @@ Message 2: Parallel Execution (Task Only)
   - All execute simultaneously
 
 Message 3: Consolidation (Task Only)
-  - Launch consolidation agent
-  - Automatically triggered when N agents complete
+  - Launch `dev:synthesizer` with every output path on REVIEWS:, the scale of
+    the reviewer that wrote them on THRESHOLDS: (for `dev:reviewer`, the three
+    lines under 'Apply verdict thresholds' in its agent file, read at dispatch
+    time, never recalled) and the consolidated file on OUTPUT:
+  - It is given the reviews, never the code; no reviewer consolidates
+  - Automatically triggered when the agents complete — at N = 1 too, where it
+    passes the single review through with a `VERDICT:` line
 
 Message 4: Present Results
   - Show user final consolidated results
@@ -498,27 +531,53 @@ Step 2: Sequential Agent Delegation (multi-agent-coordination)
 
 ```
 Message 1: Preparation
-  - Write code context to ai-docs/code-review-context.md
+  - No code capture: every reviewer is handed TARGET: BRANCH and runs dev's
+    capture-review-surfaces.ts itself, in BRANCH mode
+  - Write the externals' brief once, to ai-docs/review-panel/prompt.md — the same
+    TARGET / FOCUS lines the internal reviewer gets, with MODELS: none (an external
+    is told nothing about the panel, and no reviewer launches other reviewers)
 
-Message 2: Parallel Execution (3 Agent calls in single message)
-  Agent: dev:reviewer
-    Prompt: "Review ai-docs/code-review-context.md for security issues"
+Message 2: Parallel Execution (the internal Agent call and the claudish MCP
+  `team` call in ONE message — never the claudish CLI, which does not run tasks)
+  Agent(
+    subagent_type: "dev:reviewer",
+    run_in_background: false,
+    description: "Security review",
+    prompt: "TARGET: BRANCH
+             FOCUS: security
+             OUTPUT: ai-docs/claude-review.md
+             MODELS: grok,gemini"
+  )
   ---
-  Task: codex-code-reviewer claudish CLI: grok
-    Prompt: "Review ai-docs/code-review-context.md for security issues"
-  ---
-  Task: codex-code-reviewer claudish CLI: gemini
-    Prompt: "Review ai-docs/code-review-context.md for security issues"
+  claudish team(mode="run", path="ai-docs/review-panel",
+    models=["grok", "gemini"],
+    agent="dev:reviewer",
+    input_file="ai-docs/review-panel/prompt.md",
+    require_pattern="\*\*Verdict\*\*: (PASS|CONDITIONAL|FAIL)",
+    min_output_bytes=400)
 
-  All 3 execute simultaneously (3x faster than sequential)
+  All 3 execute simultaneously (3x faster than sequential). `run` returns as soon
+  as the slots start: poll team(mode="status", path="ai-docs/review-panel") until
+  no slot has state RUNNING, then read ai-docs/review-panel/response-<slot>.md for
+  each slot that completed (procedure: claudish:claudish-usage → "The three-step
+  lifecycle").
 
 Message 3: Auto-Consolidation
-  Agent: dev:reviewer
-    Prompt: "Consolidate 3 reviews from:
-             - ai-docs/claude-review.md
-             - ai-docs/grok-review.md
-             - ai-docs/gemini-review.md
-             Prioritize by consensus."
+  # The synthesizer is given the three reviews and never the code.
+  Agent(
+    subagent_type: "dev:synthesizer",
+    run_in_background: false,
+    description: "Consolidate code reviews",
+    prompt: "REVIEWS: ai-docs/claude-review.md
+             ai-docs/review-panel/response-<slot>.md   (one line per slot that completed)
+             THRESHOLDS: <the three lines under 'Apply verdict thresholds' in
+                          dev:reviewer's agent file, read at dispatch time, never
+                          recalled>
+             OUTPUT: ai-docs/consolidated-review.md
+             Consolidate with consensus levels (unanimous / strong / majority / divergent).
+             Compute the verdict line from your counts against THRESHOLDS.
+             You are given reviews, never code. Do not review."
+  )
 
 Message 4: Present Results
   "Review complete. 3 models analyzed your code.
@@ -574,9 +633,14 @@ Phase 3: Testing (depends on Phase 2)
   Wait for completion ✓
 
 Phase 4: Code Review (depends on Phase 3)
-  Agent: dev:reviewer
-    Prompt: "Review payment integration implementation"
-    Output: ai-docs/payment-review.md
+  Agent(
+    subagent_type: "dev:reviewer",
+    run_in_background: false,
+    description: "Review payment integration",
+    prompt: "TARGET: src/payment.ts, src/webhooks.ts, tests/payment.test.ts, tests/webhooks.test.ts
+             FOCUS: code
+             OUTPUT: ai-docs/payment-review.md"
+  )
     Return: "Review complete. 2 MEDIUM issues found."
 
   Wait for completion ✓
@@ -598,31 +662,80 @@ Phase 4: Code Review (depends on Phase 3)
 **Execution:**
 
 ```
-Step 1: Ask user preference
+Step 1: Ask user preference, then make the directory both paths name (Bash only)
   "Do you want external AI validation? (Yes/No)"
+  mkdir -p ai-docs/design-panel/claude-internal
+  # design-review creates OUTPUT_DIR itself only when it was given none; a caller
+  # that names one creates it.
 
 Step 2a: If user says NO (speed mode)
-  Agent: designer:design-review
-    Prompt: "Validate navbar against Figma design"
-    Output: ai-docs/design-review.md
-    Return: "Design validation complete. PASS with 2 minor suggestions."
+  # designer:design-review reads no `Output:` line. It takes OUTPUT_DIR and writes
+  # its report, summary.md, into that directory beside the images and JSON it measured.
+  Agent(
+    subagent_type: "designer:design-review",
+    run_in_background: false,
+    description: "Design review: navbar",
+    prompt: "REFERENCE_SOURCE: <the Figma URL, image path or browser URL>
+             IMPL_SOURCE: <the implementation URL or image path>
+             OUTPUT_DIR: ai-docs/design-panel/claude-internal
+             This is READ-ONLY analysis of the two sources named. Write only under OUTPUT_DIR."
+  )
+  The review is ai-docs/design-panel/claude-internal/summary.md. N = 1 still goes
+  through dev:synthesizer — Message 2 below with that one path on REVIEWS: — which
+  passes the review through and appends the VERDICT: line, so the output has the
+  same shape as the quality mode's.
 
 Step 2b: If user says YES (quality mode)
-  Message 1: Parallel Validation
-    Agent: designer:design-review
-      Prompt: "Validate navbar against Figma design"
+  Message 1: Parallel Validation — the internal Agent call and the claudish MCP
+    `team` call in ONE message (never the claudish CLI, which does not run tasks)
+    Agent(
+      subagent_type: "designer:design-review",
+      run_in_background: false,
+      description: "Design review: navbar — internal",
+      prompt: "REFERENCE_SOURCE: <the Figma URL, image path or browser URL>
+               IMPL_SOURCE: <the implementation URL or image path>
+               OUTPUT_DIR: ai-docs/design-panel/claude-internal
+               This is READ-ONLY analysis of the two sources named. Write only under OUTPUT_DIR."
+    )
     ---
-    Task: designer claudish CLI: design-review-codex
-      Prompt: "Validate navbar against Figma design"
+    claudish team(mode="run", path="ai-docs/design-panel",
+      models=["<the model the user named, resolved against the live catalog>"],
+      agent="designer:design-review",
+      input_file="ai-docs/design-panel/prompt.md",
+      require_pattern="Diff [Pp]ercentage.*[0-9.]+%",
+      min_output_bytes=400)
+    require_pattern pins the Diff Percentage row — the line every design review
+    carries, with or without a vision key, and one of the two the synthesizer
+    keys on. Never pin "Overall Score": design-review writes it only when semantic
+    analysis ran, so a pixel-only slot the synthesizer would count is reported
+    FAILED before it reaches REVIEWS:.
+    prompt.md carries the same REFERENCE_SOURCE and IMPL_SOURCE lines; claudish
+    captures each slot's returned report itself. Poll team(mode="status",
+    path="ai-docs/design-panel") until no slot has state RUNNING; each completed
+    slot's review is ai-docs/design-panel/response-<slot>.md.
 
-  Message 2: Consolidate
-    Agent: designer:design-review
-      Prompt: "Consolidate 2 design reviews. Prioritize by consensus."
-      Output: ai-docs/design-review-consolidated.md
-      Return: "Consolidated review complete. Both agree on 1 CRITICAL issue."
+  Message 2: Consolidate — dev:synthesizer, never a reviewer
+    # It is given the reviews and never the screens or the code.
+    Agent(
+      subagent_type: "dev:synthesizer",
+      run_in_background: false,
+      description: "Consolidate design reviews",
+      prompt: "REVIEWS: ai-docs/design-panel/claude-internal/summary.md
+               ai-docs/design-panel/response-<slot>.md   (one line per slot that completed)
+               THRESHOLDS: <designer:design-review's own PASS | WARN | FAIL | CRITICAL
+                            scale — the four difference-percentage rows under
+                            severity_thresholds in that agent's file, read at
+                            dispatch time, never recalled>
+               OUTPUT: ai-docs/design-panel/consolidated.md
+               Consolidate with consensus levels (unanimous / strong / majority / divergent).
+               Compute the verdict line against THRESHOLDS and emit the word that
+               scale names — PASS, WARN, FAIL or CRITICAL, never a code-review word.
+               You are given reviews, never code. Do not review."
+    )
+    Return: "Consolidated review complete. Both agree on 1 CRITICAL issue."
 
 Step 3: User validation
-  Present consolidated review to user for approval
+  Present ai-docs/design-panel/consolidated.md to user for approval
 ```
 
 **Result:** Adaptive workflow based on user preference (speed vs quality)

@@ -7,11 +7,11 @@ Universal development assistant. Detects the project stack and routes work to sp
 
 | | |
 |---|---|
-| Version | `6.0.1` |
+| Version | `6.1.0` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 15 |
 | Subagents | 13 |
-| Skills | 43 |
+| Skills | 42 |
 | MCP server | no |
 | Hooks | yes |
 
@@ -165,7 +165,7 @@ Dispatched with the Agent tool, each in its own context window.
 | `dev:scribe` | Appends Q&A to an interview log, updates checkpoints and maintains session state — a small, fast file writer. Use when recording an interview turn, not for analysis or synthesis. |
 | `dev:spec-writer` | Synthesizes a specification from an interview session, reading the log, assets and context to produce spec.md and tasks.md. |
 | `dev:stack-detector` | Identifies a project's languages, frameworks, package managers and test runners, and reports which installed skills apply to it. |
-| `dev:synthesizer` | Consolidates findings from several independent sources into one report, marking where they agree and where they conflict. |
+| `dev:synthesizer` | Writes the one report a review gate reads, from one review or many: a single review passes through with its verdict, several merge with consensus per finding, against the thresholds it is ha… |
 | `dev:test-architect` | Writes tests from the requirements alone, never reading the implementation, so the tests check behaviour rather than restate the code. |
 
 ## Skills
@@ -192,13 +192,15 @@ Dispatched with the Agent tool, each in its own context window.
 | ● | `dev:worktree-lifecycle` | Creates, uses and cleans up git worktrees with safety checks. Use before isolated, risky or parallel feature work, or on mention of worktree, experiment or prototype. |
 | ○ | `dev:architecture` — [42 more docs](./dev-architecture.md) | Router for architecture knowledge — 7 architectural styles (layered, hexagonal, clean, modular monolith, microservices, event-driven, CQRS) and the 22 GoF design patterns. |
 | ○ | `dev:auth-patterns` | Use when implementing authentication (JWT, sessions, OAuth), authorization (RBAC, ABAC), password hashing, MFA, or security best practices for backend services. |
+| ○ | `dev:browser-debugging` | Tests UI in a real browser via Chrome MCP — visual fidelity, console, network. Use when verifying UI, chasing browser bugs, or console errors. |
 | ○ | `dev:browser-use-integration` | Detects the browser-use@magus plugin and runs headless browser automation for frontend workflows. Use when dev:frontend or dev:browser-debugging needs navigation, clicking, or web scraping. |
 | ○ | `dev:bunjs` | Provides Bun.js/Hono patterns — HTTP endpoints, Prisma/SQLite, Zod validation, Bun test. Use when building a Bun.js service or wiring Hono routes with Prisma. |
 | ○ | `dev:bunjs-apidog` | Use when creating OpenAPI specs for Bun.js APIs, integrating with Apidog, documenting endpoints with schemas, or automating API specification imports via Apidog REST API. |
 | ○ | `dev:bunjs-architecture` | Provides Bun.js clean architecture patterns — routes/controllers/services/repositories, camelCase conventions, Prisma schemas. |
+| ○ | `dev:code-roast` | Roasts code with severity-graded sins, cites file and line, offers redemption. Use when the user asks to roast code, find sins, or shame my code. |
 | ○ | `dev:css-modules` | Provides CSS Modules patterns with Lightning CSS, PostCSS, *.module.css, TypeScript, and Vite. Use when scoping component styles, building complex animations, or migrating legacy CSS. |
 | ○ | `dev:database-patterns` | Use when designing database schemas, implementing repository patterns, writing optimized queries, managing migrations, or working with indexes and transactions for SQL/NoSQL databases. |
-| ○ | `dev:designer-integration` | Detects the designer@magus plugin and delegates pixel-level design validation. Use when dev:frontend or dev:browser-debugging needs design comparison or AI semantic UI analysis. |
+| ○ | `dev:db-branching` | Branches Neon, Turso, or Supabase per git worktree for isolated schema work. Use when a worktree changes the schema, or on mention of Neon, Turso, Prisma. |
 | ○ | `dev:dingo` | Use when working with Dingo meta-language for Go, implementing optionals/results, using generics shortcuts, or transpiling .dingo files to .go while maintaining Go compatibility. |
 | ○ | `dev:error-handling` | Use when implementing custom error classes, error middleware, structured logging, retry logic, or graceful shutdown patterns in backend applications. |
 | ○ | `dev:golang` | Use when building Go backend services, implementing goroutines/channels, handling errors idiomatically, writing tests with testify, or following Go best practices for APIs/CLI tools. |
@@ -207,17 +209,14 @@ Dispatched with the Agent tool, each in its own context window.
 | ○ | `dev:plugin-sdk-patterns` | Patterns and templates for building Claude Code plugins. Use for plugin development — creating a plugin, skill and agent templates, plugin architecture, or standardizing structure. |
 | ○ | `dev:python` | Use when building FastAPI applications, implementing async endpoints, setting up Pydantic schemas, working with SQLAlchemy, or writing pytest tests for Python backend services. |
 | ○ | `dev:rust` | Use when building Axum applications, implementing type-safe handlers, working with SQLx, setting up error handling with thiserror, or writing Rust backend services. |
-| ○ | `dev:security-audit` | Security and code-quality audit — vulnerability scanning, OWASP categories, secret detection, dependency checks, compliance. Use to check for security issues or scan before a release. |
+| ○ | `dev:security-audit` | Procedures dev:reviewer runs under a security focus — dependency-CVE audit commands per package manager, committed-secret grep patterns, GDPR/HIPAA/SOC 2 checklists. |
 | ○ | `dev:state-management` | Use when choosing state management solutions, implementing global stores (Zustand, Pinia), managing server state (TanStack Query), or handling URL state in frontend applications across React… |
 | ○ | `dev:tanstack-router` | Provides TanStack Router patterns — file-based routes, typed params/search, layouts, loaders. Use when setting up routes, implementing navigation, or configuring route loaders. |
 | ○ | `dev:testing-frontend` | Use when writing component tests, testing user interactions, mocking APIs, or setting up Vitest/React Testing Library/Vue Test Utils for frontend applications. |
 | ○ | `dev:vue-typescript` | Provides Vue 3 + TypeScript patterns — Composition API, script setup, Pinia, Vue Router, composables. Use when building Vue apps or wiring reactive state. |
 | ▸ | `dev:api-design` | Covers REST and GraphQL design — pagination, filtering, versioning, auth, rate limiting, OpenAPI. Use when designing endpoints or an API contract. |
 | ▸ | `dev:brainstorming` | Explores solution approaches in parallel across models, scores confidence, validates the chosen plan. Use when planning an approach or asked to brainstorm. |
-| ▸ | `dev:browser-debugging` | Tests UI in a real browser via Chrome MCP — visual fidelity, console, network. Use when verifying UI, chasing browser bugs, or console errors. |
 | ▸ | `dev:bunjs-production` | Provides Bun.js production patterns — Docker, AWS ECS/Fargate, Redis caching, security hardening, CI/CD. Use when deploying or operationalizing a Bun.js service. |
-| ▸ | `dev:code-roast` | Roasts code with severity-graded sins, cites file and line, offers redemption. Use when the user asks to roast code, find sins, or shame my code. |
-| ▸ | `dev:db-branching` | Branches Neon, Turso, or Supabase per git worktree for isolated schema work. Use when a worktree changes the schema, or on mention of Neon, Turso, Prisma. |
 | ▸ | `dev:frontend-implement` | Rewrites generic-looking UI by five anti-generic rules — asymmetry, texture, typography, motion, colour. Use when applying design-review fixes, or UI looks AI-generated. |
 | ▸ | `dev:react-typescript` | React 19 + TypeScript patterns — components, hooks, TanStack Query, Zod forms, error boundaries. Use when building React apps or wiring state. |
 | ▸ | `dev:shadcn-ui` | shadcn/ui patterns — CLI install, CSS-variable theming, dark mode, React Hook Form + Zod. Use when adding UI components or wiring shadcn forms. |

@@ -29,7 +29,8 @@ Use this skill when:
 
 ## Detection Pattern
 
-In agents (preferred — no subprocess): attempt to call the MCP tool directly:
+Probe the MCP tools directly — no subprocess, no plugin listing. A tool that answers is
+the only presence check this skill makes:
 
 ```
 chrome_available = try mcp__claude-in-chrome__tabs_context_mcp()
@@ -39,18 +40,6 @@ chrome_available = try mcp__claude-in-chrome__tabs_context_mcp()
 browser_use_available = try mcp__browser-use__browser_list_sessions()
   → success: use Tier 2 (browser-use)
   → error: neither available → Tier 3 (error)
-```
-
-In skill scripts (bash fallback for informational checks):
-
-```bash
-# Check browser-use plugin availability
-browser_use_available=$(claude /plugin list 2>/dev/null | grep -c "browser-use" || echo "0")
-if [ "$browser_use_available" -gt "0" ]; then
-  echo "browser-use available — headless browser tools accessible"
-else
-  echo "browser-use not installed — screenshot capture unavailable"
-fi
 ```
 
 ## Screenshot Capture Pattern

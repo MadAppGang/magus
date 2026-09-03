@@ -617,7 +617,7 @@ skills: designer:ui-analyse, dev:frontend-implement, multimodel:multi-model-vali
         <step>Wait for dev:frontend completion (timeout: 10 minutes)</step>
 
         <step>Verify implementation:
-          - Check that target files were modified (use Bash: `git diff --name-only` or file timestamps)
+          - Check that target files were modified (use Bash: `git status --short` or file timestamps)
           - Read ${SESSION_PATH}/implementation-log.md if created
           - Confirm no errors reported by agent
         </step>

@@ -1,476 +1,140 @@
 ---
 name: security-audit
-description: Security and code-quality audit — vulnerability scanning, OWASP categories, secret detection, dependency checks, compliance. Use to check for security issues or scan before a release.
+description: Procedures dev:reviewer runs under a security focus — dependency-CVE audit commands per package manager, committed-secret grep patterns, GDPR/HIPAA/SOC 2 checklists. Use when auditing dependencies, hunting secrets, or checking compliance.
 disable-model-invocation: true
 ---
 
-# Audit Skill
+# Security Audit Procedures
 
-## Overview
+Procedures `dev:reviewer` runs under `FOCUS: security`, and a user reaches with
+`/dev:security-audit`. This file supplies what the reviewer lacks: the commands that
+query dependency vulnerability databases, the patterns that find committed secrets, and
+the compliance checklist. It carries no vulnerability taxonomy, no severity scale and no
+report format — the reviewer owns those (`agents/reviewer.md`, Phase 2 and Phase 5), and
+findings from these procedures are rated and reported with the reviewer's criteria like
+any other.
 
-The audit skill provides comprehensive on-demand security and code quality audits for your codebase. It identifies vulnerabilities, security issues, code smells, outdated dependencies, exposed secrets, and compliance problems across all supported technology stacks.
+Run every procedure over the review target — a capture, a branch, or named files — and
+report each finding with the file and line it came from.
 
-**When to Use**:
-- Security audits and vulnerability scans
-- Pre-deployment security checks
-- Compliance verification (GDPR, HIPAA, SOC2)
-- Code quality assessment
-- Dependency vulnerability scanning
-- Secret exposure detection
-- Third-party license compliance
+## 1. Dependency vulnerabilities
 
-**Technology Coverage**:
-- React/TypeScript/JavaScript projects
-- Go applications
-- Rust projects
-- Python codebases
-- Full-stack applications
-- Monorepos and microservices
+**What to check:** packages with published CVEs, unmaintained dependencies, license
+conflicts, transitive risk, version conflicts.
 
-## Audit Categories
+Run the auditor for each package manager present in the target:
 
-### 1. Security Vulnerabilities (OWASP Top 10)
+| Manifest | Command |
+|---|---|
+| `package.json` + `bun.lock` | `bun audit` |
+| `package.json` + `package-lock.json` | `npm audit --json` |
+| `package.json` + `yarn.lock` | `yarn npm audit --json` (Yarn 2+) or `yarn audit --json` |
+| `package.json` + `pnpm-lock.yaml` | `pnpm audit --json` |
+| `go.mod` | `go mod verify && govulncheck ./...` (`go install golang.org/x/vuln/cmd/govulncheck@latest`) |
+| `Cargo.toml` | `cargo audit` (`cargo install cargo-audit`) |
+| `requirements.txt` / `pyproject.toml` | `pip-audit` or `safety check` |
+| `Gemfile` | `bundle audit check --update` |
 
-**What Gets Checked**:
-- SQL injection vulnerabilities
-- Cross-site scripting (XSS)
-- Authentication and session management flaws
-- Security misconfigurations
-- Sensitive data exposure
-- XML external entities (XXE)
-- Broken access control
-- Cross-site request forgery (CSRF)
-- Using components with known vulnerabilities
-- Insufficient logging and monitoring
+If the tool is not installed, say so and name the install line. Do not guess at CVEs
+from memory, and do not report the dependency as clean.
 
-**Detection Methods**:
-- Static code analysis
-- Pattern matching for common vulnerabilities
-- Framework-specific security checks
-- API endpoint security validation
-- Input validation analysis
+For each vulnerability the tool reports, record:
 
-### 2. Dependency Vulnerabilities
+- package and installed version, the CVE or advisory id, and its CVSS score
+- whether a fixed version exists, and whether upgrading to it is breaking
+- whether the vulnerable code path is reachable from the target — a transitive
+  dependency the target never calls is a lower-priority finding than a direct one.
+  Establish it with Grep, which is a tool you have. Search the package name at its
+  import sites across the target's source, in the forms the stack uses:
+  JS/TS `from ['"]<pkg>|require\(['"]<pkg>`, Go `"<module>(/|")`, Rust
+  `<crate>::`, Python `^\s*(from|import)\s+<pkg>\b`. A direct import is reachable.
+  No import means the package arrives transitively — then grep the lockfile for the
+  direct dependency that pulls it in and name that one. Record the patterns you ran,
+  so the rating can be checked.
 
-**What Gets Checked**:
-- Outdated packages with known CVEs
-- Unmaintained dependencies
-- License compatibility issues
-- Transitive dependency risks
-- Version conflicts
-
-**Package Managers Supported**:
-- npm/yarn/pnpm (JavaScript/TypeScript)
-- go.mod (Go)
-- Cargo.toml (Rust)
-- requirements.txt/pyproject.toml (Python)
-- Gemfile (Ruby)
-
-**Tools Used**:
-- `npm audit` / `yarn audit` / `pnpm audit`
-- `go mod verify` + vulnerability databases
-- `cargo audit`
-- `pip-audit` / `safety`
-
-### 3. Exposed Secrets and Credentials
-
-**What Gets Detected**:
-- Hardcoded API keys and tokens
-- Database credentials
-- Private keys and certificates
-- OAuth tokens and secrets
-- AWS/GCP/Azure credentials
-- JWT secrets
-- Encryption keys
-
-**Detection Patterns**:
-- Regex patterns for common secret formats
-- Environment variable misuse
-- Configuration file analysis
-- Git history scanning (if requested)
-- Common secret naming patterns
-
-**False Positive Reduction**:
-- Ignore test fixtures and mocks
-- Respect `.gitignore` patterns
-- Check for proper environment variable usage
-- Validate against `.env.example` templates
-
-### 4. Code Quality Issues
-
-**What Gets Analyzed**:
-- Code complexity (cyclomatic complexity)
-- Code duplication
-- Dead code and unused exports
-- Large functions and files
-- Naming convention violations
-- Magic numbers and hardcoded values
-- Lack of error handling
-- Poor separation of concerns
-
-**Metrics Calculated**:
-- Cyclomatic complexity per function
-- Duplication percentage
-- Lines of code (LOC) per file/function
-- Comment-to-code ratio
-- Test-to-code ratio
-
-## Running Audits
-
-### Full Audit
-
-Run all audit categories:
+A recorded finding looks like:
 
 ```
-Please run a full security and quality audit of this codebase
-```
-
-The audit will:
-1. Scan all source files for vulnerabilities
-2. Check dependencies for known CVEs
-3. Search for exposed secrets
-4. Analyze code quality metrics
-5. Generate comprehensive report
-
-### Category-Specific Audits
-
-**Security Only**:
-```
-Run a security audit focusing on OWASP top 10 vulnerabilities
-```
-
-**Dependencies Only**:
-```
-Audit all dependencies for vulnerabilities and outdated packages
-```
-
-**Secrets Only**:
-```
-Scan for exposed secrets and credentials
-```
-
-**Code Quality Only**:
-```
-Analyze code quality and identify code smells
-```
-
-### Targeted Audits
-
-**Specific Directory**:
-```
-Audit the /src/auth directory for security issues
-```
-
-**Specific Files**:
-```
-Audit UserController.ts and AuthService.ts for vulnerabilities
-```
-
-**Pre-Deployment**:
-```
-Run pre-deployment audit checklist
-```
-
-## Audit Report Format
-
-### Severity Levels
-
-Reports classify findings by severity:
-
-- **CRITICAL**: Immediate security risk, exploitable vulnerability
-- **HIGH**: Significant security or quality issue
-- **MEDIUM**: Moderate issue that should be addressed
-- **LOW**: Minor issue or code smell
-- **INFO**: Informational finding, best practice suggestion
-
-### Report Structure
-
-```markdown
-# Security and Quality Audit Report
-
-**Generated**: 2026-01-28 14:32:00
-**Scope**: Full codebase audit
-**Files Scanned**: 247
-**Duration**: 8.3 seconds
-
-## Executive Summary
-
-- CRITICAL: 2 findings
-- HIGH: 5 findings
-- MEDIUM: 12 findings
-- LOW: 23 findings
-- INFO: 8 findings
-
-**Risk Score**: 7.2/10 (HIGH)
-
-## Critical Findings
-
-### [CRITICAL-001] SQL Injection Vulnerability
-**File**: src/database/queries.ts:42
-**Severity**: CRITICAL
-**Category**: Security - SQL Injection
-
-**Issue**: User input concatenated directly into SQL query without sanitization.
-
-**Code**:
-```typescript
-const query = `SELECT * FROM users WHERE email = '${email}'`;
-```
-
-**Impact**: Attacker can execute arbitrary SQL commands.
-
-**Recommendation**: Use parameterized queries or ORM.
-
-**Fix**:
-```typescript
-const query = db.prepare('SELECT * FROM users WHERE email = ?').bind(email);
-```
-
----
-
-### [CRITICAL-002] Exposed API Key
-**File**: src/config/api.ts:15
-**Severity**: CRITICAL
-**Category**: Security - Exposed Secret
-
-**Issue**: Hardcoded API key found in source code.
-
-**Code**:
-```typescript
-const STRIPE_SECRET_KEY = "sk_live_abc123xyz789";
-```
-
-**Impact**: Unauthorized access to Stripe account.
-
-**Recommendation**: Move to environment variable.
-
-**Fix**:
-```typescript
-const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
-```
-
-## High Priority Findings
-
-### [HIGH-001] Outdated Dependency with Known CVE
-**File**: package.json:23
-**Severity**: HIGH
-**Category**: Dependencies
-
-**Issue**: lodash@4.17.15 has known vulnerability (CVE-2021-23337)
-
-**CVE Details**:
-- CVE-2021-23337: Command injection in template
-- Published: 2021-02-15
-- CVSS Score: 7.2
-
-**Recommendation**: Upgrade to lodash@4.17.21 or higher
-
-**Fix**:
-```bash
-npm install lodash@latest
-```
-
-[... additional findings ...]
-
-## Compliance Checks
-
-### OWASP Top 10 Coverage
-- [FAIL] A1: Injection - 2 SQL injection vulnerabilities found
-- [PASS] A2: Broken Authentication
-- [FAIL] A3: Sensitive Data Exposure - 1 exposed secret
-- [PASS] A4: XML External Entities
-- [PASS] A5: Broken Access Control
-- [FAIL] A6: Security Misconfiguration - CORS too permissive
-- [PASS] A7: Cross-Site Scripting
-- [PASS] A8: Insecure Deserialization
-- [FAIL] A9: Using Components with Known Vulnerabilities - 3 outdated deps
-- [WARN] A10: Insufficient Logging - Limited audit logging
-
-**Overall**: 6/10 passing (60%)
-
-## Recommendations
-
-1. **Immediate Actions** (CRITICAL/HIGH):
-   - Fix SQL injection in queries.ts
-   - Remove hardcoded API key
-   - Upgrade vulnerable dependencies
-
-2. **Short Term** (MEDIUM):
-   - Improve error handling consistency
-   - Add input validation to all API endpoints
-   - Configure stricter CORS policy
-
-3. **Long Term** (LOW/INFO):
-   - Reduce code duplication (12% current)
-   - Refactor complex functions (8 functions >15 complexity)
-   - Improve test coverage (currently 67%)
-```
-
-## Integration with Dev Plugin
-
-### With Code Analysis Agent
-
-Map the attack surface before the audit:
-
-```
-Use mcp__plugin_code-analysis_ca__code_search to locate every request entry point and
-auth check, then run the security audit over them
-```
-
-This provides:
-- Context-aware vulnerability detection
-- Better false positive filtering
-- Caller tracing via `mcp__plugin_code-analysis_ca__find_dependents`, so you can tell a
-  reachable sink from an unreachable one
-
-### With Test Architect Agent
-
-Combine audit with test coverage:
-
-```
-Run audit and identify untested critical code paths
-```
-
-### With Optimize Skill
-
-Security-performance trade-offs:
-
-```
-Audit security implications of performance optimizations
-```
-
-## Best Practices
-
-### 1. Regular Audits
-
-**Recommended Schedule**:
-- Daily: Dependency vulnerability scans (CI/CD)
-- Weekly: Full security audit
-- Pre-deployment: Comprehensive audit
-- Post-incident: Targeted security review
-
-### 2. Incremental Audits
-
-For large codebases:
-
-```
-Audit files changed in the last 7 days
-```
-
-This focuses on recent changes and reduces noise.
-
-### 3. Baseline and Track
-
-**First Audit**:
-```
-Run full audit and establish security baseline
-```
-
-**Subsequent Audits**:
-```
-Run audit and compare against baseline
-```
-
-Track improvements over time.
-
-### 4. Prioritize by Risk
-
-Focus on:
-1. User-facing authentication code
-2. Payment processing
-3. Data storage and retrieval
-4. API endpoints with PII
-5. Third-party integrations
-
-### 5. Automate in CI/CD
-
-**GitHub Actions Example**:
-```yaml
-- name: Security Audit
-  run: |
-    npm audit --audit-level=high
-    # Run custom audit script
-```
-
-**Pre-commit Hook**:
-```bash
-#!/bin/bash
-# Scan staged files for secrets
-git diff --cached --name-only | xargs grep -E "(api_key|secret|password)"
-```
-
-## Examples
-
-### Example 1: Pre-Deployment Security Audit
-
-**Request**:
-```
-We're deploying to production tomorrow. Run a comprehensive security audit.
-```
-
-**Audit Process**:
-1. Scan all source files for OWASP top 10
-2. Check all dependencies for CVEs
-3. Search for exposed secrets
-4. Verify CORS and authentication config
-5. Check logging and monitoring setup
-
-**Report Highlights**:
-- 1 CRITICAL: Exposed database password
-- 2 HIGH: Outdated dependencies with CVEs
-- 5 MEDIUM: Missing input validation
-- Compliance: 8/10 OWASP categories passing
-
-**Outcome**: Deployment blocked until CRITICAL/HIGH fixed
-
-### Example 2: Dependency Vulnerability Scan
-
-**Request**:
-```
-Check all npm dependencies for known vulnerabilities
-```
-
-**Process**:
-1. Run `npm audit --json`
-2. Parse vulnerability reports
-3. Check for available fixes
-4. Identify breaking changes
-
-**Report**:
-```
-Found 3 vulnerabilities (1 high, 2 moderate)
-
 HIGH: axios@0.21.1 (CVE-2021-3749)
 - Fix available: axios@0.21.4
 - Breaking: No
 - Run: npm install axios@0.21.4
-
-MODERATE: glob-parent@5.1.1 (CVE-2020-28469)
-- Fix available: glob-parent@6.0.2
-- Breaking: Yes (ESM only)
-- Review: Migration guide needed
 ```
 
-### Example 3: Compliance Check (GDPR)
+## 2. Exposed secrets and credentials
 
-**Request**:
+**What to detect:** hardcoded API keys and tokens, database credentials, private keys
+and certificates, OAuth secrets, cloud-provider credentials (AWS, GCP, Azure), JWT
+secrets, encryption keys.
+
+Search every tracked text file with these patterns. `git grep -I` walks the whole index
+and skips binaries; it respects `.gitignore`, so an ignored `.env` never appears — the
+correct result for a file that is not committed. No directory is out of scope: a
+credential under `testdata/`, `__mocks__/`, `examples/` or in a `.example` file is
+compromised exactly like one under `src/`, so nothing here excludes a path. Suppression
+is by **value** only, as the last stage of a pipeline.
+
+```bash
+# Values that are placeholders wherever they sit — the only suppression allowed
+PLACEHOLDER='example|changeme|xxx+|dummy|placeholder|test-key|<[^>]*>'
+
+# Well-known secret formats — a match here is almost never a false positive
+git grep -nIE 'AKIA[0-9A-Z]{16}|sk_(live|test)_[0-9A-Za-z]{20,}|ghp_[0-9A-Za-z]{36}|xox[baprs]-[0-9A-Za-z-]{10,}|AIza[0-9A-Za-z_-]{35}|-----BEGIN (RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----'
+
+# Assignment-shaped secrets — needs a human read; the name is the signal, the value decides
+git grep -nIEi "(api[_-]?key|secret|passw(or)?d|token|private[_-]?key)[[:space:]]*[:=][[:space:]]*['\"][^'\"\$]{8,}['\"]" \
+  | grep -viE "['\"][^'\"]*(${PLACEHOLDER})[^'\"]*['\"]"
+
+# JWTs pasted into source
+git grep -nIE 'eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}'
+
+# Environment files that were committed anyway
+git ls-files | grep -E '(^|/)\.env(\.[a-z]+)?$' | grep -vE '\.(example|sample|template)$'
 ```
-Audit for GDPR compliance issues
+
+Also check:
+
+- **Environment variable misuse** — a secret read from `process.env` / `os.Getenv` and
+  then logged, returned in a response, or baked into a client bundle (`VITE_`,
+  `NEXT_PUBLIC_` and `REACT_APP_` prefixes ship to the browser).
+- **Configuration files** — `config/*.{json,yaml,toml}`, CI workflow files and
+  Dockerfiles, for inline credentials.
+- **Git history, when asked** — a secret removed in a later commit is still in the
+  repository: `git log -p --all -S'<the secret or its prefix>' -- . | head`. Report it as
+  exposed; rotation is the fix, not deletion.
+
+**False-positive reduction — by value, never by path:**
+
+- A value that is itself a placeholder — `example`, `changeme`, `xxx`, `dummy`,
+  `placeholder`, `test-key`, anything in angle brackets like `<your-key>` — is not a
+  finding, whichever file it sits in. That is the `PLACEHOLDER` stage above.
+- A real-looking value is a finding whichever file it sits in: a live key in a test, a
+  mock, testdata or a `.example` file is as exposed as one in `src/`. A directory
+  exclusion is how it stays exposed — do not add one.
+- Validate against `.env.example`: a variable named there and read from the environment
+  in code is the correct pattern — report only the places a literal was used instead.
+- Confirm the match is inside code or config, not a comment explaining what a key looks
+  like.
+
+## 3. Compliance checklist
+
+Run when the request names a regime, or when the target handles personal data.
+
+**GDPR** — check that the target has, or does not undermine:
+
+- a data retention policy, with deletion actually implemented, not just documented
+- user consent recorded before personal data is processed
+- right to erasure: an endpoint or job that removes a user's data on request
+- data export: a way for a user to obtain their data in a portable format
+- encryption at rest and in transit for personal data (TLS 1.2 or later; no plaintext
+  PII in logs or backups)
+- privacy policy references that point at the current policy
+- third-party data sharing that is disclosed and, where required, consented to
+
+Record the result per item, so the report reads:
+
 ```
-
-**Checks**:
-- Data retention policies
-- User consent mechanisms
-- Right to erasure implementation
-- Data export functionality
-- Encryption at rest and in transit
-- Privacy policy references
-- Third-party data sharing
-
-**Report**:
-```
-GDPR Compliance Audit
-
+GDPR
 [PASS] Data encryption at rest
 [FAIL] Missing data retention policy
 [FAIL] No user data export endpoint
@@ -479,103 +143,13 @@ GDPR Compliance Audit
 [PASS] TLS 1.3 enforced
 ```
 
-### Example 4: Code Quality Audit
+**HIPAA** and **SOC 2** requests: apply the same shape — access control, audit logging,
+encryption, retention, and breach-notification paths — and say plainly which controls
+you could verify from the code and which need evidence outside the repository.
 
-**Request**:
-```
-Identify code quality issues and technical debt
-```
+## Reporting
 
-**Analysis**:
-- Complexity: 8 functions exceed threshold
-- Duplication: 15% code duplication
-- Dead code: 23 unused exports
-- Large files: 4 files over 500 lines
-- Magic numbers: 47 instances
-
-**Top Issues**:
-```
-1. UserService.ts - Complexity 28 (threshold: 15)
-   Recommendation: Extract validation logic
-
-2. utils/helpers.ts - 234 lines duplicated in 3 files
-   Recommendation: Create shared utility module
-
-3. api/routes.ts - 847 lines (threshold: 500)
-   Recommendation: Split into feature-based modules
-```
-
-## Stack-Specific Audit Patterns
-
-### React/TypeScript
-
-**Security Focus**:
-- XSS via dangerouslySetInnerHTML
-- Insecure refs and DOM manipulation
-- Exposed environment variables in client code
-- CORS misconfigurations
-
-**Quality Focus**:
-- Prop types and TypeScript coverage
-- Component complexity
-- Hook dependencies
-- Re-render performance
-
-### Go
-
-**Security Focus**:
-- SQL injection in database/sql
-- Command injection in exec
-- Path traversal
-- Goroutine leaks
-
-**Quality Focus**:
-- Error handling consistency
-- Context propagation
-- Resource cleanup (defer)
-- Race conditions
-
-### Rust
-
-**Security Focus**:
-- Unsafe blocks
-- Integer overflow
-- Memory leaks in FFI
-- Dependency vulnerabilities
-
-**Quality Focus**:
-- Error propagation patterns
-- Clippy warnings
-- Documentation coverage
-- Panic usage
-
-## Audit Workflow Integration
-
-```
-[Developer] → Request audit
-    ↓
-[Audit Skill] → Scan codebase
-    ↓
-[Generate Report] → Categorize findings
-    ↓
-[Prioritize] → CRITICAL → HIGH → MEDIUM → LOW
-    ↓
-[Fix Critical] → Apply fixes
-    ↓
-[Re-audit] → Verify fixes
-    ↓
-[Update Baseline] → Track progress
-```
-
-## Conclusion
-
-The audit skill provides comprehensive security and quality analysis on-demand. Use it regularly to maintain code health, catch vulnerabilities early, and ensure compliance with industry standards.
-
-**Key Takeaways**:
-- Run audits frequently (daily in CI/CD)
-- Prioritize CRITICAL and HIGH findings
-- Establish baselines and track progress
-- Integrate with other dev skills for comprehensive analysis
-- Automate where possible
-
-For performance analysis, see the `optimize` skill. For test coverage gaps, see the `test-coverage` skill.
+Report through the reviewer's own format and severity criteria. This file adds
+procedures, not a scale: a committed live credential is rated by the reviewer's
+CRITICAL definition, an unpatched CVE by the reachability established above, and a
+compliance gap by the impact of the missing control.

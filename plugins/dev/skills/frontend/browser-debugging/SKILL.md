@@ -1,7 +1,6 @@
 ---
 name: browser-debugging
 description: Tests UI in a real browser via Chrome MCP — visual fidelity, console, network. Use when verifying UI, chasing browser bugs, or console errors.
-user-invocable: false
 disable-model-invocation: true
 ---
 
@@ -609,30 +608,10 @@ After fixing UI issues:
 
 ## Designer Plugin Integration (Optional)
 
-If the `designer` plugin is installed (`designer@magus`), use it for pixel-level
-design fidelity validation instead of manual screenshot comparison:
-
-```bash
-# Check if designer plugin is available
-claude /plugin list 2>/dev/null | grep -q "designer" && echo "available" || echo "not installed"
-```
-
-**Pattern: Delegate pixel-diff to designer**
-- Use `designer:design-review` agent for structured diff reports (pixel + AI semantic)
-- Use manual Chrome MCP screenshot comparison only when designer is not installed
-- Prefer `designer:design-review` for Figma-to-implementation validation
-
-```
-# When designer is available, replace manual visual comparison with:
-Agent(
-  subagent_type: "designer:design-review",
-  run_in_background: false,   # you read the diff report in this turn
-  prompt: "Compare reference at {REFERENCE_PATH} against implementation at {IMPL_URL}. Viewport: 1440x900."
-)
-```
-
-This is an optional enhancement — browser-debugging works without designer installed.
-If designer is not available, use the manual visual comparison patterns in Recipe 2 above.
+Pixel-level design fidelity validation belongs to the `designer` plugin, and the one
+place that checks for it and dispatches it is `/dev:audit` with a UI scope. This skill
+neither detects nor dispatches it: run `/dev:audit` for a pixel-diff report, and use
+the manual visual comparison patterns in Recipe 2 above when designer is not installed.
 
 ## Browser-Use Plugin Integration (Optional)
 
@@ -650,15 +629,6 @@ alternative browser automation path for scenarios where claude-in-chrome is unav
 browser_use_available = try mcp__browser-use__browser_list_sessions()
   → success: browser-use is available
   → error: browser-use not available → use claude-in-chrome only
-```
-
-**Detection** (bash fallback for scripts):
-```bash
-# Check browser-use availability
-browser_use_available=$(claude /plugin list 2>/dev/null | grep -c "browser-use" || echo "0")
-if [ "$browser_use_available" -gt "0" ]; then
-  echo "browser-use available — headless browser tools accessible"
-fi
 ```
 
 **Hybrid workflow**:
@@ -681,6 +651,5 @@ If browser-use is not available, use the claude-in-chrome-based patterns above.
 - **tanstack-router** - Navigation and routing
 - **shadcn-ui** - Component library usage
 - **testing-frontend** - Automated testing strategies
-- **designer-integration** - Optional designer plugin detection and delegation patterns
 - **browser-use:debug-ui** - Visual debugging with Browser Use (when claude-in-chrome unavailable)
 - **browser-use:hybrid-debugging** - Combined Browser Use + claude-in-chrome workflows

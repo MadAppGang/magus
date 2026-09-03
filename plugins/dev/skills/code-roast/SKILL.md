@@ -1,7 +1,6 @@
 ---
 name: code-roast
 description: Roasts code with severity-graded sins, cites file and line, offers redemption. Use when the user asks to roast code, find sins, or shame my code.
-user-invocable: false
 disable-model-invocation: true
 ---
 
@@ -38,16 +37,27 @@ Before starting, read the companion files for this skill:
 Determine what code to roast. In priority order:
 
 1. **User specified files/dirs** — if the user said "roast src/auth/", use that
-2. **Git diff** — if the user said "roast my changes" or "roast this PR", use `git diff` or `git diff main...HEAD`
-3. **Recent changes** — `git diff HEAD~5` for recent work
-4. **Full project scan** — if the user said "roast everything" or "roast the codebase"
+2. **Changes** — if the user said "roast my changes", "roast this PR" or "roast my recent
+   work", capture the review surfaces with the plugin's script. Never hand-roll a
+   `git diff` range here — three sites once did, and all three were wrong in different
+   ways:
+   ```bash
+   bun "${CLAUDE_PLUGIN_ROOT}/scripts/capture-review-surfaces.ts" \
+     --repo "$(git rev-parse --show-toplevel)"
+   ```
+   It prints one `##### SURFACE: <label> #####` block per surface — branch commits vs
+   base, staged, unstaged, untracked. The target is the set of files those patches touch
+   (`--stat` gives the list without the bodies). If it warns that no base branch
+   resolved, say the roast does not cover committed branch work. If it prints nothing,
+   there is nothing to roast — say so; do not widen to a range of your own.
+3. **Full project scan** — if the user said "roast everything" or "roast the codebase"
 
 For large scopes (>50 files), ask the user to narrow down:
 
 ```
 Use AskUserQuestion:
   "This codebase has {N} files. Want me to roast everything or focus on a specific area?"
-  Options: "Full scan", "Changed files only (git diff)", "Specific directory"
+  Options: "Full scan", "Changed files only", "Specific directory"
 ```
 
 **Output**: List of target files with language breakdown.

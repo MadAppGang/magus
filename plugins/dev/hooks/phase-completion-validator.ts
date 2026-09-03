@@ -118,6 +118,13 @@ export const PHASE_ARTIFACTS: Record<string, PhaseSpec> = {
         minSize: 100,
         patterns: [/review|analysis|issue|concern|recommendation/i],
       },
+      // The capture the review was run over. Without it a PASS written over a
+      // 0-byte capture satisfied this gate — the "reviewed nothing" case, and
+      // three different capture designs each produced exactly that file.
+      // Constraint: the verdict words and consolidated.md's path are
+      // string-matched elsewhere and are NOT changed here; this is additive.
+      // Advisory only: the Stop hook that consumes this REPORTS the empty diff, it does not block the turn.
+      { file: "code-changes.diff", minSize: 1 },
     ],
     evidence: "reviewReachedVerdict",
   },

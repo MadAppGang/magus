@@ -37,12 +37,18 @@ argument-hint: "[path] [--changed] [--fix] [--setup] [--strict]"
       - otherwise → validate and report only (read-only)
 
       SCOPE (default: whole repo):
-      - `--changed` → only files changed vs the base branch:
+      - `--changed` → only files changed vs the base branch. Use the plugin's
+        capture script rather than a hand-rolled range — it resolves the base,
+        includes staged, unstaged and **untracked** files, and never touches the
+        index:
         ```bash
-        BASE=$(git merge-base HEAD origin/HEAD 2>/dev/null || git merge-base HEAD main 2>/dev/null || echo HEAD~1)
-        git diff --name-only --diff-filter=ACMR "$BASE"...HEAD
+        bun "${CLAUDE_PLUGIN_ROOT}/scripts/capture-review-surfaces.ts" \
+          --repo "$(git rev-parse --show-toplevel)" --stat
         ```
-        Also include unstaged/staged work: `git diff --name-only HEAD`.
+        If it warns that no base branch resolved, say so in the report and audit
+        the working tree only. **Never fall back to `HEAD~1`** — that silently
+        audits one commit of a many-commit branch and presents it as the whole
+        change.
         Filter to auditable extensions (.tsx .jsx .ts .js .vue .svelte .astro .css .scss .less .html .mdx).
       - a path argument → scope to that path
       - otherwise → repo root

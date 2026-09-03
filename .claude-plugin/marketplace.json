@@ -82,7 +82,7 @@
       "name": "claudish",
       "source": "./plugins/claudish",
       "description": "MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting across models, manages async sessions, and streams channel notifications. Required by code-analysis, dev, multimodel, designer and seo.",
-      "version": "2.0.1",
+      "version": "2.0.2",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -103,6 +103,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "2.0.2",
+          "date": "2026-09-03",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "The claudish-usage Review row names dev:reviewer only; the detective is no longer offered as an\u2026"
+        },
         {
           "version": "2.0.1",
           "date": "2026-08-29",
@@ -125,11 +133,6 @@
           "version": "1.0.2",
           "date": "2026-08-26",
           "summary": "The same manifest move, with no change to what each registers"
-        },
-        {
-          "version": "1.0.1",
-          "date": "2026-08-19",
-          "summary": "Durable plugin description separated from release notes; stale agentdev references purged from\u2026"
         }
       ]
     },
@@ -182,7 +185,7 @@
       "name": "multimodel",
       "source": "./plugins/multimodel",
       "description": "Multi-model collaboration and orchestration. Runs a task across several AI models in parallel and aggregates their blind APPROVE/REJECT votes, or delegates it to one model running a full Claude Code session.",
-      "version": "4.0.0",
+      "version": "4.0.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -207,6 +210,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "4.0.1",
+          "date": "2026-09-03",
+          "kinds": [
+            "Fixed"
+          ],
+          "summary": "Both review skills consolidate through dev:synthesizer and quote the reviewer's thresholds by\u2026"
+        },
         {
           "version": "4.0.0",
           "date": "2026-08-28",
@@ -234,15 +245,6 @@
             "Changed"
           ],
           "summary": "The internal reviewer's vote was never validated"
-        },
-        {
-          "version": "3.8.0",
-          "date": "2026-08-19",
-          "kinds": [
-            "Fixed",
-            "Added"
-          ],
-          "summary": "/multimodel:delegate broke on an ordinary preferences file"
         }
       ]
     },
@@ -250,7 +252,7 @@
       "name": "dev",
       "source": "./plugins/dev",
       "description": "Universal development assistant. Detects the project stack and routes work to specialist agents for architecture, implementation, debugging, review and research, enforcing design-system guardrails on every UI change.",
-      "version": "6.0.2",
+      "version": "6.1.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -290,6 +292,16 @@
       "strict": true,
       "releases": [
         {
+          "version": "6.1.0",
+          "date": "2026-09-03",
+          "kinds": [
+            "Added",
+            "Changed",
+            "Fixed"
+          ],
+          "summary": "One capture script for every review diff"
+        },
+        {
           "version": "6.0.2",
           "date": "2026-08-31",
           "kinds": [
@@ -320,11 +332,6 @@
             "Changed"
           ],
           "summary": "The phase-artifact gate could not fire at all. It was registered as PreToolUse on TaskUpdate,\u2026"
-        },
-        {
-          "version": "4.6.1",
-          "date": "2026-08-26",
-          "summary": "The claudish-in-main-bash coaching rule advised running claudish inside a sub-agent via the\u2026"
         }
       ]
     },
@@ -667,7 +674,7 @@
       "name": "designer",
       "source": "./plugins/designer",
       "description": "UI design validation. Compares a rendered screen against its reference by pixel diff, then reviews the result for spacing, hierarchy and design-system consistency.",
-      "version": "0.6.1",
+      "version": "0.6.2",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -689,6 +696,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "0.6.2",
+          "date": "2026-09-03",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "designer:design-review opens its returned text with the Severity and Diff Percentage rows from\u2026"
+        },
         {
           "version": "0.6.1",
           "date": "2026-08-29",
@@ -714,11 +729,6 @@
             "Fixed"
           ],
           "summary": "An external design review was verified by reading a file claudish never writes"
-        },
-        {
-          "version": "0.5.1",
-          "date": "2026-08-19",
-          "summary": "Dispatch specs namespaced (Agent: designer:ui, designer:design-review) in commands and the\u2026"
         }
       ]
     },

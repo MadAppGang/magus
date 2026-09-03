@@ -355,7 +355,6 @@ MODELS=$(load_session_models "$SESSION_DIR")
 ```
 $SESSION_DIR/
 ├── selected-models.txt    # User's model selection (persists for session)
-├── code-context.md        # Code being reviewed
 ├── claude-review.md       # Internal review
 ├── grok-review.md         # External review (if selected)
 ├── qwen-coder-review.md   # External review (if selected)
@@ -383,9 +382,15 @@ Why?
 
 The internal reviewer should NEVER be optional - it's your safety net.
 
-Seat it INSIDE the team call, as a model named "internal" — not as a separate Agent.
-Riding in the call is what puts it under require_pattern, so a safety net that produced
-no verdict is reported FAILED rather than silently counted as one more approval.
+In the code-review panels `dev` dispatches — where claudish is optional — it is not a
+claudish slot. Launch it as its own
+`Agent(subagent_type: "dev:reviewer", run_in_background: false, …)` in the SAME message
+as the `team` call, carrying the contract lines — `TARGET: BRANCH`, `FOCUS:`, its own
+`OUTPUT:` path, and `MODELS:` naming the externals. Never seat it in that team's `models`
+list. Its return is in your hands: list its OUTPUT file on REVIEWS: whether or not it
+carries a `**Verdict**:` line — the synthesizer counts a file with no verdict as
+no-verdict, never as one more approval. (`/team` itself, where claudish is a hard
+dependency, seats it as the `internal` slot instead — Pattern 3 states the rule.)
 ```
 
 ---
@@ -407,22 +412,30 @@ Claude Code executes tools **sequentially by default** when different tool types
 Message 1: Preparation (Bash Only)
   - Create workspace directories
   - Validate inputs (check if claudish installed)
-  - Write context files (code to review, design reference, etc.)
+  - Write the brief (input.md) — never a pre-computed diff: every reviewer is
+    handed `TARGET: BRANCH` and captures its own surfaces through dev's
+    `capture-review-surfaces.ts`
   - NO Agent calls
   - NO Tasks calls
 
-Message 2: Parallel Execution (ONE team call)
-  - Every model — native Claude and external alike — in a single `team` MCP call
-  - The tool parallelises them internally; nothing is dispatched alongside it
+Message 2: Parallel Execution (the internal Agent call and ONE team call, same message)
+  - `Agent(subagent_type: "dev:reviewer", run_in_background: false, …)` — the
+    internal reviewer, always present, carrying the contract lines
+  - Every external model in a single `team` MCP call; the tool parallelises them
+    internally. In a dev-dispatched panel the internal reviewer is never a
+    `models` entry (Pattern 3 — `/team` itself seats it as the `internal` slot)
   - Pass require_pattern whenever the prompt mandates an output shape
   - (A pure-Agent fan-out with no external models still obeys the
      one-tool-type-per-message rule above)
 
 Message 3: Auto-Consolidation (Task Only)
-  - Automatically triggered when N ≥ 2 models complete
-  - Launch consolidation agent
-  - Pass all review file paths
-  - Apply consensus analysis
+  - Automatically triggered when the panel settles — at N = 1 too, where the
+    synthesizer passes the single review through with a `VERDICT:` line (Pattern 5)
+  - Launch `dev:synthesizer` — the only consolidator; it reads reviews, never code
+  - Pass every review file path on REVIEWS:, the three lines under 'Apply verdict
+    thresholds' in `dev:reviewer`'s agent file on THRESHOLDS: — read at dispatch
+    time, never recalled — and the consolidated file on OUTPUT: (Pattern 5)
+  - Consensus analysis is the synthesizer's; never send the reviews to dev:reviewer
 
 Message 4: Present Results
   - Show user prioritized issues
@@ -438,26 +451,41 @@ Message 1: Preparation (Session Setup + Model Discovery)
   # Create unique session workspace
   Bash: SESSION_ID="review-$(date +%Y%m%d-%H%M%S)-$(head -c 4 /dev/urandom | xxd -p)"
   Bash: SESSION_DIR="ai-docs/sessions/${SESSION_ID}" && mkdir -p "$SESSION_DIR"
-  Bash: git diff > "$SESSION_DIR/code-context.md"
+  # No code capture here. Every reviewer is handed TARGET: BRANCH and runs dev's
+  # capture-review-surfaces.ts itself, in BRANCH mode. A range computed here would
+  # be one more hand-rolled diff, which is the one thing no dispatcher may do.
 
   # Discover available models
   MCP:  list_models   # current models, pricing, capabilities
 
   # User selects models via AskUserQuestion (see Pattern 0)
 
-Message 2: Start the panel (ONE team call)
-  Bash: write REVIEW_PROMPT to "$SESSION_DIR/input.md"
+Message 2: Start the panel (the internal Agent call and ONE team call, same message)
+  Bash: write the brief to "$SESSION_DIR/input.md" — the contract lines every
+        external gets: TARGET: BRANCH / FOCUS: code / MODELS: none
 
+  Agent(
+    subagent_type: "dev:reviewer",
+    run_in_background: false,
+    description: "Internal code review",
+    prompt: "TARGET: BRANCH
+             FOCUS: code
+             OUTPUT: $SESSION_DIR/claude-review.md
+             MODELS: grok,LATEST_FREE_CODING_MODEL,gpt,LATEST_FREE_REASONING_MODEL"
+  )
+  ---
   claudish team(mode="run", path=$SESSION_DIR,
-    models=["internal", "grok", "LATEST_FREE_CODING_MODEL", "gpt", "LATEST_FREE_REASONING_MODEL"],
+    models=["grok", "LATEST_FREE_CODING_MODEL", "gpt", "LATEST_FREE_REASONING_MODEL"],
     input_file="$SESSION_DIR/input.md",
-    require_pattern=<the shape REVIEW_PROMPT mandates>, agent="dev:reviewer")
+    require_pattern="\*\*Verdict\*\*: (PASS|CONDITIONAL|FAIL)", agent="dev:reviewer")
 
-  All 5 models execute simultaneously — the team tool parallelises them internally.
-  "internal" is a slot like any other, so the native reviewer is covered by
-  require_pattern instead of running as an unvalidated background Agent.
+  All 5 reviewers run at once: the Agent is the always-present internal reviewer,
+  and the team tool parallelises the four externals internally. The internal
+  reviewer is never a `models` entry — its return is in your hands, and its OUTPUT
+  file goes on REVIEWS: whether or not it carries a `**Verdict**:` line; the
+  synthesizer counts a file with no verdict as no-verdict, never as approval.
 
-  This call RETURNS IMMEDIATELY with a slots map. It does not carry the reviews.
+  The team call RETURNS IMMEDIATELY with a slots map. It does not carry the reviews.
 
 Message 2b: Poll to completion
   claudish team(mode="status", path=$SESSION_DIR)
@@ -468,20 +496,30 @@ Message 2b: Poll to completion
 Message 3: Auto-Consolidation
   (Automatically triggered - don't wait for user to request)
 
-  Agent: dev:reviewer
-    Prompt: "Consolidate the 5 reviews the team run wrote into $SESSION_DIR.
-             They are $SESSION_DIR/response-*.md — one per model, named by
-             ANONYMOUS id rather than by model, because the vote is blind.
-             Do not try to attribute a file to a model before the verdict is in.
+  # The internal reviewer wrote $SESSION_DIR/claude-review.md. The team run wrote
+  # one file per external slot, $SESSION_DIR/response-NN.md, named by
+  # ANONYMOUS slot id rather than by model, because the vote is blind. Do not try
+  # to attribute a file to a model before the verdict is in. The synthesizer is
+  # the only consolidator: it is given the reviews and never the code, and no
+  # reviewer ever sees another reviewer's output.
 
-             Apply consensus analysis:
-             - Issues flagged by ALL 5 → UNANIMOUS (VERY HIGH confidence)
-             - Issues flagged by 4 → STRONG (HIGH confidence)
-             - Issues flagged by 3 → MAJORITY (MEDIUM confidence)
-             - Issues flagged by 1-2 → DIVERGENT (LOW confidence)
-
-             Prioritize by consensus level and severity.
-             Write to $SESSION_DIR/consolidated-review.md"
+  Agent(
+    subagent_type: "dev:synthesizer",
+    run_in_background: false,
+    description: "Consolidate code reviews",
+    prompt: "REVIEWS: $SESSION_DIR/claude-review.md
+             $SESSION_DIR/response-01.md
+             $SESSION_DIR/response-02.md
+             $SESSION_DIR/response-03.md
+             $SESSION_DIR/response-04.md
+             THRESHOLDS: <the three lines under 'Apply verdict thresholds' in
+                          dev:reviewer's agent file, read at dispatch time, never
+                          recalled>
+             OUTPUT: $SESSION_DIR/consolidated-review.md
+             Consolidate with consensus levels (unanimous / strong / majority / divergent).
+             Compute the verdict line from your counts against THRESHOLDS.
+             You are given reviews, never code. Do not review."
+  )
 
 Message 4: Present Results + Update Statistics
   # Track performance for each model (see Pattern 7)
@@ -610,8 +648,9 @@ Do NOT consolidate until ALL tasks complete:
   Launch: Task1, Task2, Task3, Task4 (parallel)
   Wait: All 4 complete
   Check: results.filter(r => r.status === 'fulfilled').length
-  If >= 2: Proceed with consolidation
-  If < 2: Offer retry or abort
+  If >= 1: Dispatch dev:synthesizer (a passthrough with a verdict at N = 1);
+           if any failed, also offer to retry them
+  If 0:    Offer retry or abort
 
 ❌ WRONG - Premature Consolidation:
   Launch: Task1, Task2, Task3, Task4
@@ -625,17 +664,36 @@ Do NOT consolidate until ALL tasks complete:
 
 **How models are invoked:**
 
-Every model — native Claude and external alike — is invoked via claudish MCP tools. The
-orchestrator calls the MCP tools directly; no Bash invocation is needed. This is 100%
-reliable.
+External models are invoked via claudish MCP tools. The orchestrator calls the MCP tools
+directly; no Bash invocation is needed. This is 100% reliable.
 
-**For /team (parallel multi-model):** write the vote prompt to `input.md`, start the
-panel, poll it to completion, then read the votes off disk.
+**Where the native reviewer sits — one rule.** It is a claudish `internal` slot when
+claudish is a hard dependency of the dispatcher, and a separate `Agent(…)` call when
+claudish is optional.
+
+- **`/team` itself** — the `multimodel` plugin declares claudish as a dependency, so
+  `internal` goes in the `models` list of the ONE `team` call and gets the same
+  `require_pattern` shape check as every external. That procedure lives in this
+  plugin's own `commands/team.md` (Step 2 onward) and is not restated here.
+- **The code-review panels `dev` dispatches** (`/dev:dev` Phase 5, `/dev:audit`,
+  `/dev:fix` Phase B) — claudish is optional there and the panel may be empty, so the
+  internal reviewer is an always-present
+  `Agent(subagent_type: "dev:reviewer", run_in_background: false, …)` issued in the
+  same message as the `team` call, carrying the contract lines. Every code-review
+  example in this skill is this case.
+
+**For a dev-dispatched code-review panel:** write the brief to `input.md`, start the
+internal Agent and the panel in one message, poll the panel to completion, then read
+the externals' reviews off disk.
 ````
-team(mode="run", path=SESSION_DIR, models=["internal", "grok", "gemini"],
+Agent(subagent_type: "dev:reviewer", run_in_background: false,
+  description: "Internal code review",
+  prompt: "TARGET: BRANCH\nFOCUS: code\nOUTPUT: ${SESSION_DIR}/claude-review.md\nMODELS: grok,gemini")
+---
+team(mode="run", path=SESSION_DIR, models=["grok", "gemini"],
   input_file=`${SESSION_DIR}/input.md`,
-  require_pattern="```vote", agent=RESOLVED_AGENT)
-  // → { started: true, slots: { "grok": "01", "gemini": "02", "internal": "03" }, ... }
+  require_pattern="\*\*Verdict\*\*: (PASS|CONDITIONAL|FAIL)", agent="dev:reviewer")
+  // → { started: true, slots: { "grok": "01", "gemini": "02" }, ... }
 
 team(mode="status", path=SESSION_DIR)   // until no slot has state === "RUNNING"
   // → read `${SESSION_DIR}/response-<slot>.md` for each slot
@@ -646,10 +704,11 @@ return the answers** — it starts the slots and hands back the slot map. Per-mo
 (`state`, `exitCode`, `outputSize`, `error.reason`) comes from a settled `status` response.
 There is no `timeout` parameter any more, and passing one is silently ignored. Full procedure: `claudish:claudish-usage` → "The three-step lifecycle". Requires claudish >= 8.0.0.
 
-**Native Claude names are ordinary slots.** `internal` and `default` select the host tier,
-`opus`/`sonnet`/`haiku` a specific one. They belong in `models` beside the external names and
-run on the user's own Claude subscription through claudish's native passthrough — no API key,
-no provider prefix, no translation.
+**In a dev-dispatched panel the internal reviewer is never a `models` entry.** It runs as
+the Agent above — on the host session, with the dev plugin loaded, so `TARGET: BRANCH`
+resolves through dev's own capture script — and its return is in the dispatcher's hands.
+Its file goes on REVIEWS: whether or not it carries a verdict line; the synthesizer counts
+a file with no verdict as no-verdict, never as one more approval.
 
 **`require_pattern` is what turns exit 0 into a real success check.** A slot that finished
 without producing the required shape is reported FAILED (state EMPTY, reason
@@ -672,26 +731,31 @@ create_session(model="grok", prompt=TASK_PROMPT, timeout_seconds=300)
 ### Correct Pattern Example
 
 ````
-// ✅ CORRECT: every model in ONE team call — native slots included
+// ✅ CORRECT (dev-dispatched panel): the internal reviewer as its own Agent, every external in ONE team call — same message
+Agent({ subagent_type: "dev:reviewer", run_in_background: false,
+        description: "Internal code review",
+        prompt: "TARGET: BRANCH\nFOCUS: code\nOUTPUT: ${SESSION_DIR}/claude-review.md\nMODELS: grok,gemini" })
 team(mode="run", path=SESSION_DIR,
-  models=["internal", "grok", "gemini"],
+  models=["grok", "gemini"],
   input_file=`${SESSION_DIR}/input.md`,
-  require_pattern="```vote", agent="dev:researcher")
+  require_pattern="\*\*Verdict\*\*: (PASS|CONDITIONAL|FAIL)", agent="dev:reviewer")
 
-// …then poll, then read the votes from response-<slot>.md
+// …then poll, then read the externals' reviews from response-<slot>.md
 team(mode="status", path=SESSION_DIR)
 ````
 
 ```
-// ❌ WRONG: splitting the native reviewer out into a background Agent
-Agent({ subagent_type: "dev:researcher", run_in_background: true,
-        prompt: "Review the design plan...\n\nWrite to: session/internal-result.md" })
+// ❌ WRONG: the native reviewer fired into the background, its file read by nobody
+Agent({ subagent_type: "dev:reviewer", run_in_background: true,
+        prompt: "Review the change...\n\nWrite to: session/internal-result.md" })
 ```
 
-The split was necessary only while claudish could not run a native model name; since
-v7.65.0 it can. It costs a real guarantee: nothing validates what that Agent writes to
-`internal-result.md`, so a reviewer that produced no verdict is silently counted as having
-given one. Inside the `team` call the same reviewer is covered by `require_pattern`.
+The internal reviewer runs `run_in_background: false` so that its return — and whether its
+OUTPUT file carries a `**Verdict**:` line — is in hand before the synthesizer is dispatched.
+It goes on REVIEWS: either way; the synthesizer counts a file with no verdict as no-verdict,
+never as approval. A background Agent's file is read by nobody until it is too late. (For
+`/team` itself the correct form is the `internal` slot — `commands/team.md`, per the rule
+above.)
 
 ---
 
@@ -822,27 +886,41 @@ If user says YES:
 
 **Automatic Trigger:**
 
-Consolidation should happen **automatically** when N ≥ 2 reviews complete:
+Consolidation happens **automatically** as soon as the panel settles — at N = 1 as well
+as N ≥ 2. `dev:synthesizer` is the only writer of the consolidated report; at N = 1 it
+passes the single review through unchanged and appends the `VERDICT:` line, so the
+output has one shape whatever N is:
 
 ```
 ✅ CORRECT - Auto-Trigger:
 
 const results = await Promise.allSettled([task1, task2, task3, task4, task5]);
 const successful = results.filter(r => r.status === 'fulfilled');
+const failed = results.length - successful.length;
 
-if (successful.length >= 2) {
-  // Auto-trigger consolidation (DON'T wait for user to ask)
+if (successful.length >= 1) {
+  // Auto-trigger consolidation (DON'T wait for user to ask). N = 1 is a passthrough with a verdict.
+  const reviewPaths = successful.map((r) => r.value.reviewFile); // one review file per slot
   const consolidated = await Agent({
-    subagent_type: "dev:reviewer",
+    subagent_type: "dev:synthesizer",
     run_in_background: false,     // formatResults() consumes the return value
-    description: "Consolidate reviews",
-    prompt: `Consolidate ${successful.length} reviews and apply consensus analysis`
+    description: "Consolidate code reviews",
+    prompt: `REVIEWS: ${reviewPaths.join("\n")}
+THRESHOLDS: <the three lines under 'Apply verdict thresholds' in dev:reviewer's agent file, read at dispatch time, never recalled>
+OUTPUT: ${SESSION_DIR}/consolidated-review.md
+Consolidate with consensus levels (unanimous / strong / majority / divergent).
+Compute the verdict line from your counts against THRESHOLDS.
+You are given reviews, never code. Do not review.`
   });
 
+  if (failed > 0) {
+    // An addition to the dispatch above, never a substitute for it
+    notifyUser(`${failed} of ${results.length} models failed. Retry them and re-consolidate?`);
+  }
   return formatResults(consolidated);
 } else {
-  // Too few successful reviews
-  notifyUser("Only 1 model succeeded. Retry failures or abort?");
+  // All failed — there is nothing to pass through
+  notifyUser("All models failed. Check logs and retry?");
 }
 
 ❌ WRONG - Wait for User:
@@ -853,6 +931,15 @@ const successful = results.filter(r => r.status === 'fulfilled');
 // Present results to user
 notifyUser("3 reviews complete. Would you like me to consolidate them?");
 // Waits for user to request consolidation...
+
+❌ WRONG - Skip the synthesizer at N = 1:
+
+if (successful.length >= 2) {
+  await consolidate();
+} else {
+  notifyUser("Only 1 model succeeded. See single review or retry?");
+  // The raw review carries no VERDICT: line and not the shape every other dispatcher reads
+}
 ```
 
 **Why Auto-Trigger:**
@@ -861,16 +948,22 @@ notifyUser("3 reviews complete. Would you like me to consolidate them?");
 - Faster workflow (no wait for user response)
 - Expected behavior (user assumes consolidation is part of workflow)
 
-**Minimum Threshold:**
+**N = 1 is a passthrough, not a skip:**
 
-Require **at least 2 successful reviews** for meaningful consensus:
+Consensus levels need at least two reviews; the consolidated report does not. At N = 1
+the synthesizer emits the single review unchanged — no `[CONSENSUS: …]` tags, nothing
+reworded — followed by the `VERDICT:` line computed from that review's own counts against
+THRESHOLDS, so the dispatcher still gets the one file its gate reads. The only dispatcher
+that skips the synthesizer at N = 1 is `/dev:fix` Phase B, whose output is a vote tally,
+and a single vote is its own tally:
 
 ```
-if (successful.length >= 2) {
-  // Proceed with consolidation
-} else if (successful.length === 1) {
-  // Only 1 review succeeded
-  notifyUser("Only 1 model succeeded. No consensus available. See single review or retry?");
+if (successful.length >= 1) {
+  // Dispatch dev:synthesizer: consolidation at N ≥ 2, passthrough with a verdict at N = 1
+  if (successful.length < results.length) {
+    // In addition, not instead
+    notifyUser("Some models failed. Retry the failures and re-consolidate?");
+  }
 } else {
   // All failed
   notifyUser("All models failed. Check logs and retry?");
@@ -879,16 +972,25 @@ if (successful.length >= 2) {
 
 **Pass All Review File Paths:**
 
-Consolidation agent needs paths to ALL review files within the session directory:
+`dev:synthesizer` needs the path of EVERY review file, one per `REVIEWS:` line. It
+reads the reviews and never the code, so the paths are all it gets:
 
 ```
-Agent: dev:reviewer
-  Prompt: "Consolidate reviews from these files:
-           - $SESSION_DIR/claude-review.md
-           - $SESSION_DIR/grok-review.md
-           - $SESSION_DIR/qwen-coder-review.md
-
-           Apply consensus analysis and prioritize issues."
+Agent(
+  subagent_type: "dev:synthesizer",
+  run_in_background: false,
+  description: "Consolidate code reviews",
+  prompt: "REVIEWS: $SESSION_DIR/claude-review.md
+           $SESSION_DIR/grok-review.md
+           $SESSION_DIR/qwen-coder-review.md
+           THRESHOLDS: <the three lines under 'Apply verdict thresholds' in
+                        dev:reviewer's agent file, read at dispatch time, never
+                        recalled>
+           OUTPUT: $SESSION_DIR/consolidated-review.md
+           Consolidate with consensus levels (unanimous / strong / majority / divergent).
+           Compute the verdict line from your counts against THRESHOLDS.
+           You are given reviews, never code. Do not review."
+)
 ```
 
 **Don't Inline Full Reviews:**
@@ -907,10 +1009,12 @@ Agent: dev:reviewer
            [500 lines of review content]"
 
 ✅ CORRECT - File Paths in Session Directory:
-  Prompt: "Read and consolidate reviews from:
-           - $SESSION_DIR/claude-review.md
-           - $SESSION_DIR/grok-review.md
-           - $SESSION_DIR/qwen-coder-review.md"
+  prompt: "REVIEWS: $SESSION_DIR/claude-review.md
+           $SESSION_DIR/grok-review.md
+           $SESSION_DIR/qwen-coder-review.md
+           THRESHOLDS: ...
+           OUTPUT: $SESSION_DIR/consolidated-review.md
+           ..."
 ```
 
 ---
@@ -1689,7 +1793,7 @@ Step 2: Error Handling (error-recovery)
   Model 5: Success
 
 Step 3: Partial Success Strategy (error-recovery)
-  3/5 models succeeded (≥ 2 threshold)
+  3/5 models succeeded (the synthesizer runs at N ≥ 1; at exactly 1 it passes through)
   Proceed with consolidation using 3 reviews
   Notify user: "2 models failed, proceeding with 3 reviews"
 
@@ -1732,7 +1836,7 @@ Step 3: User Sees Real-Time Progress
 - ✅ Use 4-Message Pattern for true parallel execution
 - ✅ Provide cost estimates BEFORE execution
 - ✅ Ask user approval for costs >$0.01
-- ✅ Auto-trigger consolidation when N ≥ 2 reviews complete
+- ✅ Auto-trigger `dev:synthesizer` when the panel settles — at N = 1 it is a passthrough with a verdict
 - ✅ Use blocking (synchronous) claudish execution
 - ✅ Write full output to files, return brief summaries
 - ✅ Prioritize by consensus level (unanimous → strong → majority → divergent)
@@ -1786,8 +1890,8 @@ Message 1: Session Setup + Model Discovery
   Bash: cat ai-docs/llm-performance.json | jq '.models | keys'
   Output: ["claude-embedded", "x-ai-grok", "LATEST_FREE_CODING_MODEL"]
 
-  # Prepare code context
-  Bash: git diff > "$SESSION_DIR/code-context.md"
+  # No code capture here: every reviewer is handed TARGET: BRANCH and runs dev's
+  # capture-review-surfaces.ts itself, in BRANCH mode.
 
 Message 2: Model Selection (AskUserQuestion with multiSelect)
   # Use AskUserQuestion tool with multiSelect: true
@@ -1821,23 +1925,49 @@ Message 2: Model Selection (AskUserQuestion with multiSelect)
   # qwen/LATEST_FREE_CODING_MODEL
   # mistralai/LATEST_FREE_CODING_MODEL
 
-Message 3: Start the panel (single message)
-  Bash: write REVIEW_PROMPT to "$SESSION_DIR/input.md"
+Message 3: Start the panel (the internal Agent call and ONE team call, same message)
+  Bash: write the brief to "$SESSION_DIR/input.md"   # TARGET: BRANCH / FOCUS: code / MODELS: none
 
+  Agent(
+    subagent_type: "dev:reviewer",
+    run_in_background: false,
+    description: "Internal code review",
+    prompt: "TARGET: BRANCH
+             FOCUS: code
+             OUTPUT: $SESSION_DIR/claude-review.md
+             MODELS: grok,LATEST_FREE_CODING_MODEL,LATEST_FREE_REASONING_MODEL"
+  )
+  ---
   claudish team(mode="run", path=$SESSION_DIR,
-    models=["internal", "grok", "LATEST_FREE_CODING_MODEL", "LATEST_FREE_REASONING_MODEL"],
+    models=["grok", "LATEST_FREE_CODING_MODEL", "LATEST_FREE_REASONING_MODEL"],
     input_file="$SESSION_DIR/input.md",
-    require_pattern=<the shape REVIEW_PROMPT mandates>, agent="dev:reviewer")
+    require_pattern="\*\*Verdict\*\*: (PASS|CONDITIONAL|FAIL)", agent="dev:reviewer")
 
-  All 4 execute simultaneously — one team call parallelises them internally.
-  The call returns a slots map immediately; poll before consolidating:
+  All 4 reviewers run at once — the Agent is the internal reviewer, and the team
+  call parallelises the three externals internally. The team call returns a slots
+  map immediately; poll before consolidating:
 
   claudish team(mode="status", path=$SESSION_DIR)  # until no slot is RUNNING
 
 Message 4: Auto-Consolidation + Statistics Update
-  # Consolidate
-  Agent: dev:reviewer
-    Prompt: "Consolidate 4 reviews from $SESSION_DIR/*.md"
+  # Consolidate — claude-review.md plus one response-NN.md per external slot; the
+  # synthesizer never sees the code
+  Agent(
+    subagent_type: "dev:synthesizer",
+    run_in_background: false,
+    description: "Consolidate code reviews",
+    prompt: "REVIEWS: $SESSION_DIR/claude-review.md
+             $SESSION_DIR/response-01.md
+             $SESSION_DIR/response-02.md
+             $SESSION_DIR/response-03.md
+             THRESHOLDS: <the three lines under 'Apply verdict thresholds' in
+                          dev:reviewer's agent file, read at dispatch time, never
+                          recalled>
+             OUTPUT: $SESSION_DIR/consolidated-review.md
+             Consolidate with consensus levels (unanimous / strong / majority / divergent).
+             Compute the verdict line from your counts against THRESHOLDS.
+             You are given reviews, never code. Do not review."
+  )
 
   # Track performance
   track_model_performance "claude-embedded" "success" 32 8 95 0 true
@@ -1885,41 +2015,60 @@ Message 5: Present Results
 Message 1: Preparation
   (same as Example 1)
 
-Message 2: Start the panel
-  Bash: write REVIEW_PROMPT to "$SESSION_DIR/input.md"
+Message 2: Start the panel (the internal Agent call and ONE team call, same message)
+  Bash: write the brief to "$SESSION_DIR/input.md"   # TARGET: BRANCH / FOCUS: code / MODELS: none
 
+  Agent(
+    subagent_type: "dev:reviewer",
+    run_in_background: false,
+    description: "Internal code review",
+    prompt: "TARGET: BRANCH
+             FOCUS: code
+             OUTPUT: $SESSION_DIR/claude-review.md
+             MODELS: grok,gemini,LATEST_GPT_CODING_MODEL"
+  )
+  ---
   claudish team(mode="run", path=$SESSION_DIR,
-    models=["internal", "grok", "gemini", "LATEST_GPT_CODING_MODEL"],
+    models=["grok", "gemini", "LATEST_GPT_CODING_MODEL"],
     input_file="$SESSION_DIR/input.md",
-    require_pattern=<the shape REVIEW_PROMPT mandates>, agent="dev:reviewer")
+    require_pattern="\*\*Verdict\*\*: (PASS|CONDITIONAL|FAIL)", agent="dev:reviewer")
 
 Message 3: Poll, then Error Recovery (error-recovery skill)
   claudish team(mode="status", path=$SESSION_DIR)  # until no slot is RUNNING
 
+  Internal reviewer: returned; $SESSION_DIR/claude-review.md carries a Verdict line ✓
   Settled status.models:
-    - slot 01 (Claude): COMPLETED ✓
-    - slot 02 (Grok):   FAILED, error.reason = nonzero_exit ✗
-    - slot 03 (Gemini): FAILED, error.reason = nonzero_exit (API 500) ✗
-    - slot 04 (GPT-5):  COMPLETED ✓
+    - slot 01 (Grok):   FAILED, error.reason = nonzero_exit ✗
+    - slot 02 (Gemini): FAILED, error.reason = nonzero_exit (API 500) ✗
+    - slot 03 (GPT-5):  COMPLETED ✓
 
   Note there is no "timeout" reason any more — nothing kills a slot on a timer. A
   slot that is still RUNNING when you hit your poll ceiling is reported as still
   running, and cancelling it is YOUR decision (error.reason = "cancelled").
 
   successful.length = 2 (Claude + GPT-5)
-  2 ≥ 2 ✓ (threshold met, can proceed)
+  2 ≥ 1 ✓ (the synthesizer runs; had only one survived it would pass that review through)
 
   Notify user:
     "2/4 models succeeded (Grok timeout, Gemini error).
      Proceeding with consolidation using 2 reviews."
 
 Message 4: Auto-Consolidation
-  Agent: dev:reviewer
-    Prompt: "Consolidate 2 reviews from:
-             - ai-docs/reviews/claude-review.md
-             - ai-docs/reviews/gpt5-review.md
-
-             Note: Only 2 models (Grok and Gemini failed)."
+  # The internal review plus the one COMPLETED slot have a review file; list exactly those.
+  Agent(
+    subagent_type: "dev:synthesizer",
+    run_in_background: false,
+    description: "Consolidate code reviews",
+    prompt: "REVIEWS: $SESSION_DIR/claude-review.md
+             $SESSION_DIR/response-03.md
+             THRESHOLDS: <the three lines under 'Apply verdict thresholds' in
+                          dev:reviewer's agent file, read at dispatch time, never
+                          recalled>
+             OUTPUT: $SESSION_DIR/consolidated-review.md
+             Consolidate with consensus levels (unanimous / strong / majority / divergent).
+             Compute the verdict line from your counts against THRESHOLDS.
+             You are given reviews, never code. Do not review."
+  )
 
 Message 5: Present Results
   "Multi-model review complete (2/4 models succeeded).
@@ -1930,7 +2079,7 @@ Message 5: Present Results
    3. [DIVERGENT] Rate limiting (GPT-5 only)
 
    Note: Grok and Gemini failed. Limited consensus data.
-   See ai-docs/consolidated-review.md for details."
+   See $SESSION_DIR/consolidated-review.md for details."
 ```
 
 **Result:** Graceful degradation, useful results despite failures
@@ -1981,7 +2130,7 @@ External model execution is handled by MCP tools (team/create_session), not by s
 
 Cause: Waiting for user to request it
 
-Solution: Auto-trigger when N ≥ 2 reviews complete
+Solution: Auto-trigger when the panel settles — at N = 1 too (Pattern 5)
 
 ```
 ❌ Wrong:
@@ -1991,8 +2140,8 @@ Solution: Auto-trigger when N ≥ 2 reviews complete
   }
 
 ✅ Correct:
-  if (results.length >= 2) {
-    // Auto-trigger, don't wait
+  if (results.length >= 1) {
+    // Auto-trigger, don't wait; N = 1 is a passthrough with a verdict
     await consolidate();
   }
 ```
@@ -2253,7 +2402,7 @@ Multi-model validation achieves 3-5x speedup and consensus-based prioritization 
 - **Pattern 2: Parallel Architecture** - Single message, multiple Agent calls
 - **Pattern 3: Proxy Mode** - Blocking execution via Claudish
 - **Pattern 4: Cost Transparency** - Estimate before, report after
-- **Pattern 5: Auto-Consolidation** - Triggered when N ≥ 2 complete
+- **Pattern 5: Auto-Consolidation** - Triggered when the panel settles; N = 1 is a passthrough with a verdict
 - **Pattern 6: Consensus Analysis** - unanimous → strong → majority → divergent
 - **Pattern 7: Statistics Collection** - Track speed, cost, quality per model
 - **Pattern 8: Data-Driven Selection** (NEW v3.0) - Intelligent model recommendations

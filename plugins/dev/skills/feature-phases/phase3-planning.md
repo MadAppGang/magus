@@ -143,36 +143,80 @@ unchanged and does not know planning happened under plan mode.
 
 ### Step 3.10: Multi-model plan review (P1b — READ FROM CONFIG, NO RE-ASKING)
 
-Read model selection from ${SESSION_PATH}/iteration-config.json:
+Read model selection from ${SESSION_PATH}/iteration-config.json and check for the
+claudish runtime:
 ```bash
 selected_models=$(cat ${SESSION_PATH}/iteration-config.json | jq '.selectedModels')
+which claudish >/dev/null 2>&1; claudish_present=$?
 ```
 
-If selectedModels.configured = true and selectedModels.models is non-empty:
-  Display: "Using pre-configured models: {model list}"
+- `selectedModels.configured = true`, `selectedModels.models` non-empty AND
+  `claudish_present` is 0 → externals run beside the internal review. Display:
+  "Using pre-configured models: {model list}".
+- Otherwise → internal review only. If models were configured but claudish is absent,
+  say so once. The internal review runs regardless; it is never optional.
 
-  a. Write plan review prompt to ${SESSION_PATH}/reviews/plan-review/prompt.md
+**The plan-review rule.** This phase owns its own verdict rule, because a plan has no
+code reviewer's thresholds to borrow — the architect's output is a design, not a diff:
 
-  b. Launch PARALLEL plan reviews (SINGLE message, multiple Tasks):
+> FAIL: any CRITICAL · CONDITIONAL: any HIGH · PASS: otherwise
 
-     Agent: dev:architect
-       Prompt: "Review ${SESSION_PATH}/architecture.md for issues.
-                Write review to ${SESSION_PATH}/reviews/plan-review/claude-internal.md
-                Return brief summary"
+It is stated here, quoted to every reviewer in the brief, and quoted to the synthesizer
+on `THRESHOLDS:`. Do not substitute `dev:reviewer`'s thresholds — those count HIGHs on
+a code-review scale that no plan reviewer was asked to use.
+
+  a. Write the brief to `${SESSION_PATH}/reviews/plan-review/prompt.md`. Every reviewer,
+     internal or external, gets this same text:
+
+     ```
+     Review the architecture at ${SESSION_PATH}/architecture.md against
+     ${SESSION_PATH}/requirements.md and ${SESSION_PATH}/validation-criteria.md.
+     Report findings; do not redesign.
+
+     Grade every finding:
+     - CRITICAL: the design cannot satisfy a requirement or validation criterion,
+       or carries a security, data-loss or data-integrity flaw
+     - HIGH: a component boundary, contract or data-flow decision that will produce
+       wrong behaviour or force a rewrite during implementation
+     - MEDIUM: a gap or ambiguity implementation will have to resolve on its own
+     - LOW: naming, structure, presentation
+
+     For each finding: **Location** (the section of architecture.md), **Problem**,
+     **Why problematic**, **Impact**, **Suggestion**. Group them under
+     `### CRITICAL Issues (n)`, `### HIGH Issues (n)`, `### MEDIUM Issues (n)`,
+     `### LOW Issues (n)`, then `### Positive Observations`, then
+     `### Verdict Details` with the four counts.
+
+     Open the review with `## Plan Review: {feature}` and a `**Verdict**:` line
+     computed by the plan-review rule — FAIL: any CRITICAL · CONDITIONAL: any HIGH ·
+     PASS: otherwise.
+
+     This is READ-ONLY analysis. Do not modify any files.
+     ```
+
+  b. Launch the internal review, foreground — and, when externals run, the `team`
+     call in the SAME message:
+
+     Agent(
+       subagent_type: "dev:architect",
+       run_in_background: false,
+       description: "Review the architecture",
+       prompt: "{the brief from step a, verbatim}
+                Write the review to ${SESSION_PATH}/reviews/plan-review/claude-internal.md
+                and return a brief summary."
+     )
      ---
      claudish team(mode="run", path=${SESSION_PATH}/reviews/plan-review,
        models=[{model1}, {model2}, ...],
        input_file=${SESSION_PATH}/reviews/plan-review/prompt.md,
+       require_pattern="\*\*Verdict\*\*: (PASS|CONDITIONAL|FAIL)",
        min_output_bytes=400)
 
-     `min_output_bytes` floors the external slots — the prompt mandates topics but no
-     machine-checkable format, so `require_pattern` has nothing to match. A slot that
-     exited 0 having produced nothing would otherwise enter the consensus count as a
-     reviewer that found no issues, which reads as agreement.
+     `require_pattern` is the line the brief mandates, so a slot that exited 0 with a
+     shapeless response is reported FAILED rather than entering the count as a reviewer
+     that found no issues — which reads as agreement. `min_output_bytes` floors the rest.
 
-  c. Wait for all reviews to complete.
-
-     For the `team` slots that means **polling**, not waiting on the call:
+  c. Externals only: wait by **polling**, not on the call —
      `claudish team(mode="status", path=${SESSION_PATH}/reviews/plan-review)` until no
      slot in `models` has `state === "RUNNING"`. `run` returned as soon as it started
      them. Bound the loop and report anything still running rather than looping forever;
@@ -180,32 +224,37 @@ If selectedModels.configured = true and selectedModels.models is non-empty:
      slot. Full procedure: `claudish:claudish-usage` → "The three-step lifecycle".
      Requires claudish >= 8.0.0.
 
-  d. Consolidate reviews with blinded voting:
-     - Read all review files — the internal one at `claude-internal.md`, and each
-       external one at `${SESSION_PATH}/reviews/plan-review/response-<slot>.md`
-     - Apply consensus analysis (unanimous, strong, majority, divergent)
-     - Prioritize issues by consensus and severity
-     - Write ${SESSION_PATH}/reviews/plan-review/consolidated.md
+  d. Consolidate — dispatch `dev:synthesizer`, always, one review or five. Never inline,
+     never the architect. `consolidated.md` is a required artifact of this phase, and the
+     synthesizer is the only thing that writes it; with one review it passes that review
+     through unchanged and appends the `VERDICT:` line.
 
-  e. If CRITICAL issues found:
-     - Launch architect to revise plan
-     - Re-review (max plan_revision_limit iterations total)
-     - If still critical after limit: Escalate to user
+     Agent(
+       subagent_type: "dev:synthesizer",
+       run_in_background: false,
+       description: "Consolidate plan reviews",
+       prompt: "REVIEWS: ${SESSION_PATH}/reviews/plan-review/claude-internal.md
+                ${SESSION_PATH}/reviews/plan-review/response-<slot>.md   (one line per slot that completed; none when no externals ran)
+                THRESHOLDS: FAIL: any CRITICAL · CONDITIONAL: any HIGH · PASS: otherwise
+                OUTPUT: ${SESSION_PATH}/reviews/plan-review/consolidated.md
+                Compute the verdict line from your counts against THRESHOLDS.
+                You are given reviews, never code. Do not review."
+     )
 
-If selectedModels.configured = false OR models is empty:
-  Show warning: "No external models configured. Review will use internal Claude only."
-  Launch architect for internal review only:
-  Agent: dev:architect
-    Prompt: "Review ${SESSION_PATH}/architecture.md for issues.
-             Write review to ${SESSION_PATH}/reviews/plan-review/claude-internal.md
-             Also write to ${SESSION_PATH}/reviews/plan-review/consolidated.md
-             Return brief summary"
+     The synthesizer writes `consolidated.md` ending in `VERDICT: PASS|CONDITIONAL|FAIL` —
+     the words this phase's rule names. Step e reads it.
+
+  e. Read the `VERDICT:` line. If FAIL (any CRITICAL):
+     - Launch the architect to revise the plan
+     - Re-run steps a-d (max plan_revision_limit iterations total)
+     - If still FAIL after the limit: escalate to the user
 
 ### Step 3.11: GATE 2 — consensus approval
 
-**PRESET CHECK:** If `./dev-preset.json` exists in cwd and has `automation: "autonomous"` AND multi-model consensus is non-critical (no CRITICAL issues in consolidated review), skip this widget and auto-approve. Read the preset now if you haven't already this session. If CRITICAL issues were found, still escalate to user (autonomous mode doesn't override critical consensus).
+**PRESET CHECK:** If `./dev-preset.json` exists in cwd and has `automation: "autonomous"` AND the consolidated verdict is not FAIL (no CRITICAL issues in `consolidated.md`), skip this widget and auto-approve. Read the preset now if you haven't already this session. If the verdict is FAIL, still escalate to user (autonomous mode doesn't override a critical finding).
 
-Use AskUserQuestion to present the consensus analysis (if multi-model).
+Use AskUserQuestion to present the consolidated review — its verdict and counts, with
+consensus levels when externals ran.
 Options:
 1. Approve plan and proceed
 2. Request specific changes

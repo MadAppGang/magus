@@ -51,7 +51,7 @@ much more reliably than Sonnet (~90% vs ~33% compliance).
 | Task Type | Primary Agent | Alternatives |
 |-----------|--------------|--------------|
 | Investigation | dev:researcher | dev:debugger |
-| Review | dev:reviewer | code-analysis:detective |
+| Review | dev:reviewer | — |
 | Architecture | dev:architect | — |
 | Implementation | dev:developer | — |
 | Testing | dev:test-architect | — |

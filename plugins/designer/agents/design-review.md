@@ -594,12 +594,24 @@ skills:
     <phase number="7" name="Present Results">
       <objective>Show a concise summary to the user</objective>
       <steps>
-        <step>Present the validation summary:
+        <step>Open the returned text with the two `## Pixel Diff Result` rows from
+          summary.md, verbatim and first:
+
+          ```
+          | Severity | **{severity}** |
+          | Diff Percentage | {diffPercentage}% |
+          ```
+
+          Then the summary:
           - Severity badge: PASS / WARN / FAIL / CRITICAL
           - Diff percentage
           - Top 3 semantic issues (if semantic analysis ran)
           - Path to diff.json, diff.png, and summary.md
           - Total run duration
+
+          Why the rows come first: a caller that runs this agent as a claudish slot
+          pins `require_pattern` on the returned text, not on summary.md. The rows
+          are the only lines every run writes, with or without a vision key.
         </step>
       </steps>
     </phase>

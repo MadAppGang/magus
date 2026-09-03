@@ -89,7 +89,7 @@ skills: dev:context-detection
 
 | Command | Description |
 |---------|-------------|
-| `/dev:audit` | Multi-scope quality audit (code, UI, docs, security, plugins) |
+| `/dev:audit` | Six-scope quality audit — code, UI, design system, docs, security, plugin; `--models a,b` adds external reviewers beside the internal one |
 | `/dev:investigate` | Read-only code investigation — architecture, implementation, bug origins |
 | `/dev:doc` | Documentation — generate, analyze, fix, or validate |
 | `/dev:design-system` | Validate UI against design-system guardrails via audit-ui.ts — reports token/component drift |
