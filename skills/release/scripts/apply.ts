@@ -1,14 +1,22 @@
 #!/usr/bin/env bun
 /**
- * apply.ts — Execute a confirmed release proposal.
+ * apply.ts — Execute a confirmed release proposal: bump the manifests and commit.
  *
- * Reads a release proposal (same shape as infer.ts output, possibly with
- * user-edited descriptions/versions) and performs the mechanical work:
+ * Reads a release proposal (infer.ts output, possibly with user-edited versions or
+ * descriptions) and performs the local, reversible part of a release:
  *
- *   1. Validate: working tree clean, every proposed tag is unused,
- *      every plugin.json + marketplace.json entry exists.
+ *   1. Validate: working tree clean; every plugin.json and marketplace.json entry
+ *      exists; no proposed tag exists locally or on origin.
  *   2. Update plugins/<name>/.claude-plugin/plugin.json version.
  *   3. Update .claude-plugin/marketplace.json plugin entry version.
+ *   4. git add + commit — one commit for the batch, on the CURRENT branch.
+ *
+ * It stops there. Nothing here pushes, tags, or publishes:
+ *   - the branch is pushed and merged through a PR, where CI runs the gates;
+ *   - tags go on the MERGE commit, after the merge, via tag.ts — one explicit ref
+ *     per tag, never `git push --tags`;
+ *   - publishing belongs to CI alone (.github/workflows/publish-dist.yml) and fires
+ *     on the merge because marketplace.json versions changed.
  *
  * VERSIONS ONLY — a release never touches `description`. The proposal's
  * `description` is the release NOTE, and it belongs in the commit subject, the tag
@@ -17,16 +25,6 @@
  * written by a human. This script used to assign the release note over it, which is
  * why claudeup's plugin panel once showed a changelog line where the plugin's
  * purpose belonged. validate-versions.js rejects that shape on every commit.
- *   4. git add + commit (single commit for the batch).
- *   5. git tag for each plugin (plugins/<name>/v<X.Y.Z>).
- *   6. git push origin main --tags.
- *   7. Run scripts/release.sh (syncs shared deps, bumps magus-alpha SHAs).
- *   8. Run scripts/publish-dist.sh (force-pushes to MadAppGang/magus dist repo).
- *
- * Stops at the first failure and prints a clear state report so the user
- * can either fix-and-release-a-patch OR roll back manually. The script
- * never attempts automatic rollback — half-rolled-back state is worse than
- * a known-broken state.
  *
  * Usage:
  *   bun run skills/release/scripts/apply.ts <proposal.json>
@@ -34,8 +32,7 @@
  *   bun run skills/release/scripts/apply.ts <proposal.json> --dry-run
  *
  * Flags:
- *   --dry-run    Print what would happen; no file writes, no git, no push.
- *   --skip-push  Do all local steps (commit + tag) but don't push/publish.
+ *   --dry-run    Print what would happen; no file writes, no git.
  */
 
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
@@ -96,14 +93,14 @@ function die(msg: string): never {
 
 // ─── Validation ───────────────────────────────────────────────────────────────
 
-function validate(proposal: ReleaseProposal, opts: { skipPush: boolean }): void {
+function validate(proposal: ReleaseProposal): void {
   console.log("── Validating ──────────────────────────────────");
 
   // Working tree clean
   const dirty = sh("git status --porcelain");
   if (dirty) {
     console.error(dirty);
-    die("working tree is not clean. Commit or stash before releasing.");
+    die("working tree is not clean. Commit the work first; a release commit carries versions only.");
   }
   console.log("  ✓ working tree clean");
 
@@ -116,20 +113,7 @@ function validate(proposal: ReleaseProposal, opts: { skipPush: boolean }): void 
   }
   console.log("  ✓ all plugin manifests found");
 
-  // No tag already exists for any proposed version
-  for (const p of proposal.plugins) {
-    const tag = `plugins/${p.name}/v${p.proposedVersion}`;
-    const exists = sh(`git tag --list '${tag}'`);
-    if (exists) {
-      die(
-        `tag ${tag} already exists. Either bump the proposed version ` +
-        `or delete the stale tag with: git tag -d ${tag} && git push origin :refs/tags/${tag}`
-      );
-    }
-  }
-  console.log("  ✓ all proposed tags are free");
-
-  // marketplace.json must have an entry for every plugin that declares targets
+  // marketplace.json must have an entry for every plugin
   const mpPath = join(SRC_ROOT, ".claude-plugin", "marketplace.json");
   const mp = readJson<{ plugins: Array<{ name: string }> }>(mpPath);
   const mpNames = new Set(mp.plugins.map(p => p.name));
@@ -137,21 +121,32 @@ function validate(proposal: ReleaseProposal, opts: { skipPush: boolean }): void 
     if (!mpNames.has(p.name)) {
       die(
         `${p.name} is not in .claude-plugin/marketplace.json. ` +
-        `Add it there first, or remove from the release proposal.`
+        `Add it there first, or remove it from the release proposal.`
       );
     }
   }
   console.log("  ✓ all plugins present in magus-src marketplace.json");
 
-  if (!opts.skipPush) {
-    // Remote reachable
-    try {
-      sh("git ls-remote --exit-code origin HEAD");
-      console.log("  ✓ origin reachable");
-    } catch {
-      die("origin is not reachable. Check network / SSH keys, or rerun with --skip-push.");
+  // Origin must answer: the tag predicate below is checked against it.
+  try {
+    sh("git ls-remote --exit-code origin HEAD");
+    console.log("  ✓ origin reachable");
+  } catch {
+    die("origin is not reachable. Check network / SSH keys.");
+  }
+
+  // No proposed tag may exist, locally or on origin. A tag on origin means the
+  // version number is taken: never delete or move a pushed tag — bump instead.
+  for (const p of proposal.plugins) {
+    const tag = `plugins/${p.name}/v${p.proposedVersion}`;
+    if (sh(`git tag --list '${tag}'`)) {
+      die(`tag ${tag} already exists locally. Bump the proposed version, or if it was never pushed, git tag -d ${tag}.`);
+    }
+    if (sh(`git ls-remote --tags origin 'refs/tags/${tag}'`)) {
+      die(`tag ${tag} already exists on origin — that version number is taken. Bump the proposed version.`);
     }
   }
+  console.log("  ✓ all proposed tags are free, locally and on origin");
 }
 
 // ─── File mutations ───────────────────────────────────────────────────────────
@@ -182,7 +177,7 @@ function updateMarketplaceEntry(p: PluginProposal, dryRun: boolean): void {
   if (!dryRun) writeJsonPreserving(path, mp);
 }
 
-// ─── Git + publish ────────────────────────────────────────────────────────────
+// ─── Commit ───────────────────────────────────────────────────────────────────
 
 function commitMessage(proposal: ReleaseProposal): string {
   const plugins = proposal.plugins;
@@ -196,37 +191,16 @@ function commitMessage(proposal: ReleaseProposal): string {
   return `${header}\n\n${body}`;
 }
 
-function gitCommitAndTag(proposal: ReleaseProposal, dryRun: boolean): void {
+function gitCommit(proposal: ReleaseProposal, dryRun: boolean): void {
   console.log("── Committing ──────────────────────────────────");
   sh("git add plugins/ .claude-plugin/marketplace.json", { dryRun });
   // Use a temp file for the message to avoid shell-escape pain with multi-line.
-  const msgFile = "/tmp/magus-release-msg.txt";
+  const msgFile = join(process.env.TMPDIR ?? "/tmp", "magus-release-msg.txt");
   const msg = commitMessage(proposal) +
     `\n\nCo-Authored-By: Magus <magus@madappgang.com>` +
     `\n\nCrafted with agentic harness Magus (https://github.com/MadAppGang/magus)`;
   if (!dryRun) writeFileSync(msgFile, msg);
   sh(`git commit -F ${msgFile}`, { dryRun });
-
-  console.log("── Tagging ─────────────────────────────────────");
-  for (const p of proposal.plugins) {
-    const tag = `plugins/${p.name}/v${p.proposedVersion}`;
-    const tagMsg = `${p.name} v${p.proposedVersion} — ${p.description.slice(0, 100)}`;
-    // Single-quote the message arg and escape any single quotes in the content
-    const safeMsg = tagMsg.replace(/'/g, `'\\''`);
-    sh(`git tag -a '${tag}' -m '${safeMsg}'`, { dryRun });
-    console.log(`  ✓ ${tag}`);
-  }
-}
-
-function pushAndPublish(dryRun: boolean): void {
-  console.log("── Pushing ─────────────────────────────────────");
-  sh("git push origin main --tags", { dryRun });
-
-  console.log("── Running scripts/release.sh (sync shared deps + alpha SHAs) ──");
-  sh("./scripts/release.sh", { dryRun });
-
-  console.log("── Running scripts/publish-dist.sh (force-push to dist repos) ──");
-  sh("./scripts/publish-dist.sh", { dryRun });
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
@@ -240,13 +214,10 @@ function main(): void {
   const args = process.argv.slice(2);
   const proposalPath = args.find(a => !a.startsWith("--"));
   if (!proposalPath) {
-    console.error(
-      "Usage: bun run apply.ts <proposal.json|-> [--dry-run] [--skip-push]"
-    );
+    console.error("Usage: bun run apply.ts <proposal.json|-> [--dry-run]");
     process.exit(2);
   }
   const dryRun = args.includes("--dry-run");
-  const skipPush = args.includes("--skip-push");
 
   const proposal = readProposal(proposalPath);
 
@@ -263,7 +234,7 @@ function main(): void {
   }
   console.log();
 
-  validate(proposal, { skipPush });
+  validate(proposal);
 
   console.log("\n── Applying changes ────────────────────────────");
   for (const p of proposal.plugins) {
@@ -271,19 +242,17 @@ function main(): void {
     updateMarketplaceEntry(p, dryRun);
   }
 
-  gitCommitAndTag(proposal, dryRun);
+  gitCommit(proposal, dryRun);
 
-  if (skipPush) {
-    console.log("\n[--skip-push] stopping before push. Local commit + tags created.");
-    console.log("To finish: git push origin main --tags && ./scripts/release.sh && ./scripts/publish-dist.sh");
-    return;
-  }
-
-  pushAndPublish(dryRun);
-
-  console.log("\n✓ Release complete.");
+  const branch = dryRun ? "<branch>" : sh("git rev-parse --abbrev-ref HEAD");
+  console.log("\n✓ Release commit created. Nothing has left this machine.");
+  console.log("\nNext:");
+  console.log(`  1. git push -u origin ${branch}; open a PR to main; merge when CI is green.`);
+  console.log("  2. Tag the MERGE commit and push each tag as an explicit ref:");
+  console.log(`       bun run skills/release/scripts/tag.ts ${proposalPath} <merge-sha>`);
+  console.log("  3. CI publishes every channel on the merge: gh run list --workflow publish-dist.yml");
   if (dryRun) {
-    console.log("(dry-run — no changes were actually made)");
+    console.log("\n(dry-run — no changes were actually made)");
   }
 }
 

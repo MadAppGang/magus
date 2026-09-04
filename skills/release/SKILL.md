@@ -1,41 +1,45 @@
 ---
 name: release
-description: Release one or more Magus plugins to the distribution repos (magus, magus-alpha, magus-marketing). Handles version inference from git history, marketplace.json updates, tagging, and force-push to lean dist repos. Use whenever the user says "release kanban", "release the dev plugin", "cut a new version of gtd", "bump kanban to 1.7", or hands you a batch like "release kanban and gtd". Also use for multi-plugin releases and for checking what a release would contain before committing.
+description: Release one or more Magus plugins. Infers the version bump from git history, bumps plugin.json and marketplace.json, commits, and after the PR merges tags the merge commit with one explicit ref per tag; CI publishes the dist repos. Use whenever the user says "release kanban", "release the dev plugin", "cut a new version of gtd", "bump kanban to 1.7", or hands you a batch like "release kanban and gtd". Also use to check what a release would contain before committing.
 ---
 
 # Magus Plugin Release
 
-Cut a new version of one or more plugins and publish them to the distribution
-repos that users install from.
+Cut a new version of one or more plugins. Merging the bump to `main` is what publishes
+them; nothing on a workstation ever pushes to a dist repo.
 
 ## Repo layout and why it matters
 
 - `magus-src` is the **source** repo. It carries `ai-docs/`, `autotest/`, `tools/`,
   `.claude/`, and other developer-only state. Users never install from here.
-- `magus`, `magus-alpha`, `magus-marketing` are the **lean dist repos**. They
-  contain only what users need at install time: `plugins/`, `shared/`, `skills/`,
-  and a transformed `marketplace.json` with string `source` paths. `publish-dist.sh`
-  force-rebuilds these from magus-src on every release — they have no independent
-  history worth preserving.
+- `magus`, `magus-alpha`, `magus-marketing` are the **lean dist repos**. They contain
+  only what users need at install time: `plugins/`, `shared/`, `skills/`, and a
+  transformed `marketplace.json` with string `source` paths.
+- **CI is the only publisher.** `.github/workflows/publish-dist.yml` fires on every
+  merge to `main` that changes a version in `marketplace.json`, clones both sides
+  fresh, and rebuilds each channel's dist repo with `.github/scripts/publish-dist.sh`.
+  That script exits unless it is running inside GitHub Actions and has no override.
+  To publish by hand: `gh workflow run publish-dist.yml`.
 
-Because dist repos are force-rebuilt, the skill never worries about their commit
-history. The only surface that needs careful handling is **magus-src**: the commit,
-the tag, the push.
+So the only surface this skill handles is **magus-src**: the version commit, the PR, and
+the tags on the merge commit.
 
 ## The pipeline
 
-Release is a two-phase split between **propose** (read-only, produces JSON) and
-**apply** (all side effects). The scripts do the mechanical work; your job is to
-make the judgment calls in between.
+Three scripts, three phases. `infer.ts` proposes (read-only), `apply.ts` commits the
+bump (local, reversible), `tag.ts` tags the merge (after CI has validated it).
 
 ```
 infer.ts ─┐
-          ├→  JSON proposal  ─→  [you + user review/edit]  ─→  apply.ts
- git log ─┘                                                         │
-                                                                    ├→ git commit + tag
-                                                                    ├→ git push
-                                                                    ├→ scripts/release.sh
-                                                                    └→ scripts/publish-dist.sh
+          ├→ JSON proposal ─→ [you + user review/edit] ─→ apply.ts ─→ bump + commit
+ git log ─┘                                                              │
+                                              git push branch, PR, merge ┘
+                                                                         │
+                                       CI: publish-dist.yml publishes ◄──┤
+                                                                         │
+                                 tag.ts <proposal> <merge-sha> ◄─────────┘
+                                   one annotated tag per plugin, pushed as an
+                                   explicit ref — never `git push --tags`
 ```
 
 ## When the user says "release X"
@@ -59,7 +63,10 @@ The output is a single JSON object on stdout. It contains, for each plugin:
   A plugin with `targets: ["magus"]` publishes there only; `targets: []` means
   magus-src-only (metadata update, no dist effect).
 - `commits` — raw commits since last tag, so you can sanity-check the inference.
-- `warnings` — reasons to pause (dirty tree, missing dist repo, no commits at all).
+- `warnings` — reasons to pause (dirty tree, no commits at all).
+
+The feature work must already be committed. Inference reads commits, so an uncommitted
+feature produces "no commits since last tag" and a patch bump for a minor change.
 
 ### Step 2 — review with the user
 
@@ -70,7 +77,7 @@ decisions they might want to override:
   commits don't follow conventions and a real feat was tagged `chore:`. Ask if the
   bump kind looks right.
 - **The description.** Synthesized descriptions get the facts right but are dry.
-  The user may want to rewrite for marketplace readability.
+  The user may want to rewrite for the commit subject and tag message.
 - **Whether to proceed at all.** Zero commits since last tag is usually not worth
   releasing. Surface it and let them decide.
 
@@ -88,20 +95,19 @@ Does this look right? Any versions or descriptions to change?
 ```
 
 If the user edits anything, rewrite the JSON to disk (e.g. `/tmp/release-proposal.json`)
-with their changes applied. The JSON is the contract between `infer.ts` and `apply.ts`.
+with their changes applied. The JSON is the contract between `infer.ts`, `apply.ts`
+and `tag.ts`.
 
-### Step 3 — apply
-
-Once confirmed, pass the JSON to the apply script:
+### Step 3 — apply: bump and commit
 
 ```bash
 bun run skills/release/scripts/apply.ts /tmp/release-proposal.json
 ```
 
-The apply script is strict: it validates up front that the working tree is clean,
-proposed tags don't exist, every plugin is present in `.claude-plugin/marketplace.json`,
-and the origin is reachable. **It will refuse to proceed if any of those are false**,
-not patch around the problem.
+The apply script is strict: it validates up front that the working tree is clean, that
+every plugin is present in `.claude-plugin/marketplace.json`, that origin is reachable,
+and that no proposed tag exists locally **or on origin**. It refuses rather than
+patching around any of those.
 
 If validation passes, it:
 1. Updates `plugins/<name>/plugin.json` version for each plugin
@@ -111,53 +117,74 @@ If validation passes, it:
    subject, the tag message, and CHANGELOG.md. Release notes reach the marketplace
    through `bun scripts/generate-releases.ts`, which fills the separate `releases`
    field from CHANGELOG.md.
-3. Creates one commit for the whole batch (`release(<name>): vX.Y.Z` for a single
-   plugin, `release: <name> vX.Y.Z, <other> vA.B.C` for a batch)
-4. Creates one tag per plugin: `plugins/<name>/v<X.Y.Z>`
-5. Pushes `main` and tags to origin
-6. Runs `scripts/release.sh` (syncs shared deps, bumps magus-alpha SHAs if present)
-7. Runs `scripts/publish-dist.sh` (force-pushes the lean build to `MadAppGang/magus`)
+3. Creates one commit for the whole batch on the current branch
+   (`release(<name>): vX.Y.Z` for a single plugin, `release: <name> vX.Y.Z, <other> vA.B.C`
+   for a batch)
+
+Then it stops and prints the next two steps. Nothing has left the machine.
+
+Before that commit, write the CHANGELOG entry (`## [<plugin> X.Y.Z] - YYYY-MM-DD`) and
+run the generators (`bun scripts/generate-releases.ts`, `bun scripts/generate-plugin-catalog.ts`,
+`./scripts/release.sh`) so their output is in the tree the PR carries. `apply.ts`
+requires a clean tree, so commit those first or fold the bump into that commit by hand.
+
+### Step 4 — push, PR, merge
+
+```bash
+git push -u origin <branch>
+gh pr create --base main --title "release: <name> vX.Y.Z" --body-file <changelog-entry>
+gh pr checks <n> --watch
+gh pr merge <n> --merge
+```
+
+The merge is the release: `publish-dist.yml` sees the version change and publishes
+every channel the plugins target. Watch it with `gh run list --workflow publish-dist.yml`;
+every `publish (<target>)` job must be green, and a missing token fails the job rather
+than skipping.
+
+### Step 5 — tag the merge commit
+
+```bash
+bun run skills/release/scripts/tag.ts /tmp/release-proposal.json \
+  "$(gh pr view <n> --json mergeCommit -q .mergeCommit.oid)"
+```
+
+One annotated tag per plugin, `plugins/<name>/v<X.Y.Z>`, at the merge commit, each
+pushed as `refs/tags/<tag>`. Every push is a predicate: a tag already on origin at the
+merge commit is skipped, one at any other commit stops the run — that version number
+is taken, and a pushed tag is never deleted or moved. Bump and release again instead.
 
 ### Useful flags
 
-- `--dry-run` — run validate + print every step without writing anything. Use when
-  the user wants to see the full plan before committing.
-- `--skip-push` — do the local commit + tag but don't push or publish. Useful if
-  the user wants to inspect the commit before it hits origin.
+- `apply.ts --dry-run` — validate and print every step without writing anything.
+- `tag.ts --dry-run` — show which tags would be created and pushed.
 
 ## Adding a new distribution target
 
 Distribution targets are declared per-plugin in the `distTargets` array on each
 plugin's entry in `magus-src/.claude-plugin/marketplace.json`. To publish a plugin
-to a new dist repo (e.g. `magus-marketing`), add its name to that plugin's
-`distTargets` array. The inference picks it up automatically; no skill code needs
-to change.
-
-Of course, the dist repo itself must exist and `scripts/publish-dist.sh` must
-know how to populate it — that's a separate concern handled in the publish-dist
-script, not the release skill.
+to a new dist repo, add its name to that plugin's `distTargets` array, create the
+dist repo, and add a row to the `matrix.target` list in
+`.github/workflows/publish-dist.yml`. The inference picks the target up automatically.
 
 ## Failure modes and recovery
 
-The apply script has no auto-rollback. When it fails partway, it stops and leaves
-everything in the state it reached. Recovery is driven by the user — two options
-depending on where the failure lands:
+`apply.ts` has no auto-rollback. When it fails partway, it stops and leaves everything
+in the state it reached. Everything it does is local:
 
-**Failed before push** (file writes done, commit maybe done, tag maybe done, nothing
-left the machine):
-- If the commit wasn't created: `git checkout -- plugins/ .claude-plugin/marketplace.json`
-- If the commit was created but tag wasn't: `git reset --hard HEAD~1`
-- If commit + tag both created: `git tag -d plugins/<name>/v<X.Y.Z>` then
-  `git reset --hard HEAD~1`
+- Files written but no commit: `git checkout -- plugins/ .claude-plugin/marketplace.json`
+- Commit created: `git reset --hard HEAD~1` (nothing was pushed)
 
-**Failed after push** (the commit and tag are on origin):
-- Don't try to delete them. History rewriting is destructive and the dist repos
-  may already be partially rebuilt.
-- Instead, fix forward: make another commit with the correction and release a new
-  patch version. `v1.6.1` is always safer than undoing `v1.6.0`.
+**After the merge** the commit is on `main` and CI may have published. Don't rewrite
+history. Fix forward: make another commit with the correction and release the next
+patch version. `v1.6.1` is always safer than undoing `v1.6.0`.
 
-Tell the user which state they're in (apply.ts prints clear markers before each
-phase) and let them pick. Do not attempt rollback silently.
+**A tag push failed partway**: rerun `tag.ts` with the same arguments. Tags already on
+origin at the merge commit are skipped; the missing ones are pushed.
+
+**A publish job failed**: read the run (`gh run view <id>`), fix the cause in a new
+commit, and either merge that (if it changes a version) or dispatch the workflow by
+hand: `gh workflow run publish-dist.yml`.
 
 ## Example invocations
 
@@ -166,6 +193,8 @@ Single plugin, let inference decide everything:
 bun run skills/release/scripts/infer.ts kanban > /tmp/prop.json
 # review with user, maybe edit /tmp/prop.json
 bun run skills/release/scripts/apply.ts /tmp/prop.json
+# push, PR, merge …
+bun run skills/release/scripts/tag.ts /tmp/prop.json <merge-sha>
 ```
 
 Batch release, pipe directly without intermediate file (only when the user has
@@ -175,7 +204,7 @@ bun run skills/release/scripts/infer.ts kanban gtd dev | \
   bun run skills/release/scripts/apply.ts -
 ```
 
-Dry run the whole pipeline to show the user what would happen:
+Dry run the bump to show the user what would happen:
 ```bash
 bun run skills/release/scripts/infer.ts kanban | \
   bun run skills/release/scripts/apply.ts - --dry-run
@@ -187,17 +216,22 @@ bun run skills/release/scripts/infer.ts kanban | \
   undercalls the bump. Read the proposed `commits` array before confirming — if you
   see a `fix(kanban): rewrote half the schema`, it's probably a minor or major.
 - **Don't bypass the validation.** If apply.ts refuses because the tree is dirty,
-  don't `git stash && apply && git stash pop` — the stashed changes can collide
-  with the release commit. Finish or revert the work first.
-- **A plugin missing from marketplace.json** (any dist repo's) is a legitimate state
-  — plugins can be magus-src-only during early development. `infer.ts` reports
-  `targets: []` and everything still works; `publish-dist.sh` just won't pick it up.
+  don't `git stash && apply && git stash pop` — the stash stack is shared across
+  every worktree and the stashed changes can collide with the release commit.
+  Finish or revert the work first.
+- **Tag the merge, not the branch.** `tag.ts` refuses a commit that is not on
+  `origin/main`. The branch head is what you tested; the merge commit is what shipped.
+- **A plugin missing from marketplace.json** is a legitimate state — plugins can be
+  magus-src-only during early development. `infer.ts` reports `targets: []` and
+  everything still works; CI just has nothing to publish for it.
 
 ## What this skill explicitly does not do
 
-- Run tests. The user is responsible for verifying the plugin works before releasing.
-- Update CHANGELOG.md or RELEASES.md. Those files are manual prose, not generated
+- Run tests. The user is responsible for verifying the plugin works before releasing;
+  `./scripts/release.sh` and `bun run check:all` are the gates.
+- Update CHANGELOG.md or RELEASES.md. Those files are written by hand, not generated
   from commits.
-- Rollback a pushed release. Use fix-forward (new patch version).
+- Publish. CI does, on the merge. Nothing here can reach a dist repo.
+- Roll back a merged release. Use fix-forward (new patch version).
 - Edit plugin manifests beyond `version`. Descriptions go in `marketplace.json`,
   not `plugin.json`.

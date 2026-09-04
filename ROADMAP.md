@@ -117,7 +117,7 @@ doc tables against the manifest would make it self-policing.
 
 Plugin discovery in `/doctor` still breaks during Claude Code's `cacheMarketplaceFromGit()` delete-then-clone race. Hooks survive it, because the loader reads content from the immutable cache. Discovery needs an upstream Claude Code fix; not tracked.
 
-**No workaround was ever shipped.** This item used to claim one ("git-subdir sources"). Magus uses plain string sources — all 20 of them — and `publish-dist.sh:306` converts `git-subdir` entries *away* on publish. Cache-reading is the loader's normal behaviour for every source type except `directory` marketplaces, so nothing was done to earn it. Corrected 2026-08-06.
+**No workaround was ever shipped.** This item used to claim one ("git-subdir sources"). Magus uses plain string sources — all 20 of them — and `.github/scripts/publish-dist.sh` converts `git-subdir` entries *away* on publish. Cache-reading is the loader's normal behaviour for every source type except `directory` marketplaces, so nothing was done to earn it. Corrected 2026-08-06.
 
 - **Source:** CLAUDE.md "Marketplace directory deletion bug" section
 
