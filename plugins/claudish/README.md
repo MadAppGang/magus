@@ -55,8 +55,8 @@ tell which one is stale.
 
 **Models are run through the MCP tools, never the CLI.** The skill teaches `team`,
 `create_session` and `run_prompt`; the binary's only remaining role is as the runtime
-the MCP server launches, plus four read-only diagnostics (`--probe`, `--help`,
-`--version`, `--models`) for investigating that runtime. No workflow shells out.
+the MCP server launches, plus three read-only diagnostics (`--help`, `--version`,
+`--models`) for investigating that runtime. No workflow shells out.
 
 The skill lives here rather than in `multimodel` because it documents the claudish
 runtime, and because this plugin ships to both the `magus` and `magus-marketing`

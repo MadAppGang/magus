@@ -193,7 +193,7 @@
     },
     "category": "api-correctness",
     "priority": 1,
-    "suggestion": "claudish was run from a Bash call. Models are run through the claudish MCP tools, never the CLI — shelling out loses structured per-slot status and pollutes the context window.\n  Use: team (a panel in one call), create_session (one model doing work), run_prompt (one answer).\n  Read the skill first: Skill({ \"skill\": \"claudish:claudish-usage\" })\n  The only permitted CLI invocations are the read-only diagnostics --probe, --help, --version, --models, and none of them may run a task.",
+    "suggestion": "claudish was run from a Bash call. Models are run through the claudish MCP tools, never the CLI — shelling out loses structured per-slot status and pollutes the context window.\n  Use: team (a panel in one call), create_session (one model doing work), run_prompt (one answer).\n  Read the skill first: Skill({ \"skill\": \"claudish:claudish-usage\" })\n  The only permitted CLI invocations are the read-only diagnostics --help, --version, --models, and none of them may run a task.",
     "suppress_after_sessions": 10
   },
   {

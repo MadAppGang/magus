@@ -66,5 +66,5 @@ Sixteen skills covering orchestration. The ones you are most likely to want:
 
 Use the claudish **MCP tools** (`team`, `create_session`, `run_prompt`), not `Bash` plus the
 claudish CLI. The only CLI references that belong anywhere are diagnostics with no MCP
-equivalent — `claudish --probe`, `--help`, `--version`, `--models` — and they live in
+equivalent — `claudish --help`, `--version`, `--models` — and they live in
 `claudish:claudish-usage`. Never shell out to run a model.

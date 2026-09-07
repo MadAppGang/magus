@@ -82,7 +82,7 @@
       "name": "claudish",
       "source": "./plugins/claudish",
       "description": "MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting across models, manages async sessions, and streams channel notifications. Required by code-analysis, dev, multimodel, designer and seo.",
-      "version": "2.0.2",
+      "version": "2.0.3",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -103,6 +103,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "2.0.3",
+          "date": "2026-09-07",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "Route probing is no longer offered to the agent"
+        },
         {
           "version": "2.0.2",
           "date": "2026-09-03",
@@ -128,11 +136,6 @@
           "version": "1.1.0",
           "date": "2026-08-26",
           "summary": "Ships the claudish-usage skill and the model resolver. Both moved out of multimodel, which\u2026"
-        },
-        {
-          "version": "1.0.2",
-          "date": "2026-08-26",
-          "summary": "The same manifest move, with no change to what each registers"
         }
       ]
     },
@@ -185,7 +188,7 @@
       "name": "multimodel",
       "source": "./plugins/multimodel",
       "description": "Multi-model collaboration and orchestration. Runs a task across several AI models in parallel and aggregates their blind APPROVE/REJECT votes, or delegates it to one model running a full Claude Code session.",
-      "version": "4.0.1",
+      "version": "4.0.2",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -210,6 +213,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "4.0.2",
+          "date": "2026-09-07",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "The README's permitted-CLI list drops --probe, matching claudish:claudish-usage"
+        },
         {
           "version": "4.0.1",
           "date": "2026-09-03",
@@ -236,15 +247,6 @@
           "version": "3.9.1",
           "date": "2026-08-26",
           "summary": "Plugin manifest moved to .claude-plugin/plugin.json, the only location Claude Code's runtime\u2026"
-        },
-        {
-          "version": "3.9.0",
-          "date": "2026-08-24",
-          "kinds": [
-            "Fixed",
-            "Changed"
-          ],
-          "summary": "The internal reviewer's vote was never validated"
         }
       ]
     },
@@ -252,7 +254,7 @@
       "name": "dev",
       "source": "./plugins/dev",
       "description": "Universal development assistant. Detects the project stack and routes work to specialist agents for architecture, implementation, debugging, review and research, enforcing design-system guardrails on every UI change.",
-      "version": "6.1.0",
+      "version": "6.1.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -292,6 +294,14 @@
       "strict": true,
       "releases": [
         {
+          "version": "6.1.1",
+          "date": "2026-09-07",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "The claudish coaching rule and /dev:setup's routing table drop --probe from the permitted\u2026"
+        },
+        {
           "version": "6.1.0",
           "date": "2026-09-03",
           "kinds": [
@@ -322,16 +332,6 @@
             "Fixed"
           ],
           "summary": "BREAKING \u2014 every team call in dev polls for completion and needs claudish >= 8.0.0"
-        },
-        {
-          "version": "5.0.0",
-          "date": "2026-08-28",
-          "kinds": [
-            "Fixed",
-            "Added",
-            "Changed"
-          ],
-          "summary": "The phase-artifact gate could not fire at all. It was registered as PreToolUse on TaskUpdate,\u2026"
         }
       ]
     },

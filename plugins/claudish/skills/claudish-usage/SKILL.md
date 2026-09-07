@@ -30,7 +30,7 @@ never enters your context window; and every tool returns a **structured per-slot
 with status and errors, so a failure is data you can act on rather than text you have to
 parse. Both are lost the moment you shell out.
 
-The only CLI that survives is a set of four read-only diagnostics — see
+The only CLI that survives is a set of three read-only diagnostics — see
 "Diagnostics: the only CLI left". They investigate the runtime. They never run a task.
 
 ## Quick Start
@@ -470,7 +470,6 @@ No tools, no working directory, no lifecycle. Use it when you want an opinion, n
 list_models()                 // current recommended set — call this first, always
 search_models(query)          // every live variant in a family
 compare_models(...)           // capability comparison
-preflight()                   // runtime readiness check
 report_error(error_type, model, stderr_snippet, session_path, additional_context)
 ```
 
@@ -684,13 +683,12 @@ checks or provider detection to this repo.
 
 ## Diagnostics: the only CLI left
 
-Exactly four CLI invocations remain permitted, and **only for investigating the runtime.**
+Exactly three CLI invocations remain permitted, and **only for investigating the runtime.**
 They are read-only, they produce no work, and none of them may appear in a workflow that is
 trying to accomplish a task:
 
 | Command | Answers |
 |---|---|
-| `claudish --probe <models> --json` | Every hop the router would take for these IDs, and where it breaks |
 | `claudish --help` | Flags, and the authoritative ENVIRONMENT VARIABLES list |
 | `claudish --version` | Which runtime is installed |
 | `claudish --models [query]` | Ad-hoc catalog lookup **while debugging the catalog itself** |
@@ -935,9 +933,13 @@ provider. An empty response that exited 0 usually means `require_pattern` did it
 
 ### A model will not route
 
-`claudish --probe <models> --json` shows every hop and where it breaks. A 401 there can mean
-"this provider does not carry this model", not "your key is wrong". Whatever it shows, the
-fix belongs in claudish — `report_error`, not a workaround here.
+Report it with `report_error` and pick a different model from `list_models`. Do not
+investigate the routing chain — routing is claudish's, and a caller that hands it a bare
+name has no business knowing which provider was tried.
+
+Note for the report, not for you to act on: a 401 from a provider often means "this
+provider does not carry this model" rather than "your key is wrong". Either way the fix
+belongs in claudish, never in a workaround here.
 
 ### The response is slow, or costs more than expected
 
