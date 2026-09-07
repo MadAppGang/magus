@@ -29,6 +29,18 @@ Prompt: "SESSION_PATH: ${SESSION_PATH}
          - Internal function details
          - Implementation patterns
 
+         **YOUR LOADOUT** (from context.agent_loadouts.test-architect.read in
+         ${SESSION_PATH}/context.json — at most 5, chosen for this agent and this task;
+         read them, mandatory first. These are guidance on HOW to test — testing strategy,
+         the stack's tester conventions — never implementation, so they sit inside the
+         black box):
+         {for each path in context.agent_loadouts.test-architect.read}
+         - {path}{if path in context.agent_loadouts.test-architect.mandatory} ← MANDATORY{end}
+         {end}
+         {if context.agent_loadouts.test-architect.note}
+         Note: {context.agent_loadouts.test-architect.note}
+         {end}
+
          Create comprehensive test plan based on requirements and API contracts.
 
          Write to ${SESSION_PATH}/tests/test-plan.md
@@ -39,6 +51,16 @@ Prompt: "SESSION_PATH: ${SESSION_PATH}
 
          Read test plan: ${SESSION_PATH}/tests/test-plan.md
 
+         **YOUR LOADOUT** (from context.agent_loadouts.test-architect.read in
+         ${SESSION_PATH}/context.json — the same list the plan was written against; read
+         them, mandatory first):
+         {for each path in context.agent_loadouts.test-architect.read}
+         - {path}{if path in context.agent_loadouts.test-architect.mandatory} ← MANDATORY{end}
+         {end}
+         {if context.agent_loadouts.test-architect.note}
+         Note: {context.agent_loadouts.test-architect.note}
+         {end}
+
          Implement tests for all scenarios in the plan.
          Tests must validate behavior from requirements, not implementation.
 
@@ -46,7 +68,8 @@ Prompt: "SESSION_PATH: ${SESSION_PATH}
 
 ### Step 6.5: Run tests
 Run tests using Bash:
-- Execute test command from ${SESSION_PATH}/context.json quality_checks
+- Execute `commands.test_runner_command` from ${SESSION_PATH}/context.json, then the
+  `commands.quality_checks` entries for the surfaces this feature touched
 - Capture output
 - Save to ${SESSION_PATH}/tests/test-results.md
 

@@ -13,7 +13,9 @@ Say, in one line: **Phase 4 — starting.**
 Read implementation phases from ${SESSION_PATH}/architecture.md
 
 ### Step 4.3: Read detected stack
-Read detected stack from ${SESSION_PATH}/context.json
+Read `repo.detected_stack` from ${SESSION_PATH}/context.json. The commands that check the
+work live under `commands.*` in the same document — schema at
+`${CLAUDE_PLUGIN_ROOT}/skills/context-detection/references/context-schema.md`.
 
 ### Step 4.4: Check for outer loop feedback
 If outer_iteration > 1:
@@ -29,7 +31,12 @@ a. Determine if phases are independent or dependent:
    - Dependent: Must run sequentially (one depends on another)
 
 b. If independent phases:
-   Launch in PARALLEL (single message, multiple Tasks):
+   Launch in PARALLEL (single message, multiple Tasks). **Route each phase to the agent
+   that owns its surface**: a phase whose files are components, screens, styles or themes
+   goes to `dev:frontend` (it preloads the design-system guardrails, and
+   `agent_loadouts.frontend` marks them MANDATORY); every other phase goes to
+   `dev:developer`. Each agent receives ITS OWN entry from `context.agent_loadouts` —
+   never the other's, and never one flat list.
 
    Agent: dev:developer
      Prompt: "SESSION_PATH: ${SESSION_PATH}
@@ -38,18 +45,18 @@ b. If independent phases:
               Read context: ${SESSION_PATH}/context.json
 
               **DISCOVERED PROJECT SKILLS** (read first - project patterns):
-              {for each skill in context.discovered_skills where auto_loaded == true}
+              {for each skill in context.discovered_skills — every project-local skill the detector found; there is no relevance flag}
               - {skill.path} ({skill.name})
               {end}
 
-              **BUNDLED SKILLS** (fallback):
-              {for each path in context.bundled_skill_paths}
-              - {path}
+              **YOUR LOADOUT** (from context.agent_loadouts.developer.read — at most 5,
+              chosen for this agent and this task; read them, mandatory first):
+              {for each path in context.agent_loadouts.developer.read}
+              - {path}{if path in context.agent_loadouts.developer.mandatory} ← MANDATORY{end}
               {end}
-
-              **FULL SKILL CATALOG** (invoke as needed):
-              Available: {context.discovered_skills.names}
-              Use Skill tool to load on-demand.
+              {if context.agent_loadouts.developer.note}
+              Note: {context.agent_loadouts.developer.note}
+              {end}
 
               {If outer_iteration > 1}
               PREVIOUS VALIDATION FAILED:
@@ -64,11 +71,46 @@ b. If independent phases:
               Log progress to ${SESSION_PATH}/implementation-log.md
               Return brief summary (max 3 lines)"
    ---
-   Agent: dev:developer
-     ... (for each parallel phase)
+   Agent: dev:frontend
+     Prompt: "SESSION_PATH: ${SESSION_PATH}
+
+              Read architecture: ${SESSION_PATH}/architecture.md
+              Read context: ${SESSION_PATH}/context.json
+
+              **DISCOVERED PROJECT SKILLS** (read first - project patterns):
+              {for each skill in context.discovered_skills — every project-local skill the detector found; there is no relevance flag}
+              - {skill.path} ({skill.name})
+              {end}
+
+              **YOUR LOADOUT** (from context.agent_loadouts.frontend.read — at most 5,
+              chosen for this agent and this task; read them, mandatory first. The
+              design-system guardrails are listed MANDATORY even though you preload them:
+              the marker is what the reviewer checks):
+              {for each path in context.agent_loadouts.frontend.read}
+              - {path}{if path in context.agent_loadouts.frontend.mandatory} ← MANDATORY{end}
+              {end}
+              {if context.agent_loadouts.frontend.note}
+              Note: {context.agent_loadouts.frontend.note}
+              {end}
+
+              {If outer_iteration > 1}
+              PREVIOUS VALIDATION FAILED:
+              {feedback from previous iteration}
+              Focus on fixing these specific issues.
+              {/If}
+
+              Implement phase: {phase_name}
+              PRIORITY: Follow discovered project patterns first.
+              Run quality checks before completing.
+
+              Log progress to ${SESSION_PATH}/implementation-log.md
+              Return brief summary (max 3 lines)"
+   ---
+   ... (one dispatch per parallel phase, each to the agent that owns its surface)
 
 c. If dependent phases:
-   Launch sequentially, waiting for each to complete
+   Launch sequentially, waiting for each to complete — same routing by surface, same
+   per-agent loadout as in (b)
 
 d. After each phase:
    - Verify quality checks passed

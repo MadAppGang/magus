@@ -50,7 +50,7 @@ skills: dev:universal-patterns
       - .claude/skills/auth-patterns/SKILL.md (auth-patterns)
 
       **BUNDLED SKILLS** (fallback):
-      - ${CLAUDE_PLUGIN_ROOT}/skills/backend/golang/SKILL.md
+      - ${CLAUDE_PLUGIN_ROOT}/knowledge/backend/golang.md
 
       **FULL SKILL CATALOG** (invoke as needed):
       Available: tdd-workflow, auth-patterns, api-design
@@ -146,7 +146,10 @@ skills: dev:universal-patterns
       <objective>Run quality checks and fix issues</objective>
       <steps>
         <step>Mark PHASE 4 as in_progress</step>
-        <step>Determine stack from context (read context.json if available)</step>
+        <step>Read `repo.detected_stack` from context.json if SESSION_PATH is set; the
+        check commands are `commands.lint_command`, `commands.typecheck_command`,
+        `commands.test_runner_command` and `commands.quality_checks` in the same
+        document. Skip any that is `null` — that means the repo has no such command.</step>
         <step>
           Run quality checks for stack using Bash:
 

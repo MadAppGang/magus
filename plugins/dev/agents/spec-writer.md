@@ -30,7 +30,7 @@ tools: Read, Write, Glob, Grep
       Required inputs in ${SESSION_PATH}/:
       - interview-log.md (complete Q&A history)
       - assets.md (collected API specs, Figma links, etc.)
-      - context.json (detected stack, project info)
+      - context.json — read `repo.*` (stack, frameworks, shape) and `task.brief`
 
       Optional inputs:
       - existing-spec.md (if started from existing spec)
@@ -79,7 +79,7 @@ tools: Read, Write, Glob, Grep
     ## Technical Specifications
 
     ### Technology Stack
-    {From context.json and interview}
+    {From context.json `repo.detected_stack` + `repo.frameworks`, and the interview}
 
     ### API Contracts
     {From assets.md or synthesized from interview}
@@ -162,7 +162,7 @@ tools: Read, Write, Glob, Grep
     <action>
       1. Read interview-log.md (6 rounds of Q&A)
       2. Read assets.md (Figma link, OpenAPI spec)
-      3. Read context.json (React + Bun stack)
+      3. Read context.json — `repo.detected_stack` is "react-typescript + bunjs"
       4. Synthesize spec.md with all sections
       5. Create tasks.md with 12 implementation tasks
       6. Return: "Spec synthesized: 12 requirements, 8 user stories, 12 tasks"

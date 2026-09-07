@@ -18,9 +18,9 @@ This skill covers layered architecture, clean code patterns, camelCase naming co
 - Planning implementation workflows
 
 **See also:**
-- **dev:bunjs** - Core Bun patterns, HTTP servers, basic database access
-- **dev:bunjs-production** - Production deployment, Docker, AWS, Redis
-- **dev:bunjs-apidog** - OpenAPI specifications and Apidog integration
+- `${CLAUDE_PLUGIN_ROOT}/knowledge/backend/bunjs.md` - Core Bun patterns, HTTP servers, basic database access
+- `${CLAUDE_PLUGIN_ROOT}/skills/backend/bunjs-production/SKILL.md` - Production deployment, Docker, AWS, Redis
+- `${CLAUDE_PLUGIN_ROOT}/knowledge/backend/bunjs-apidog.md` - OpenAPI specifications and Apidog integration
 
 ## Clean Architecture Principles
 
@@ -837,4 +837,4 @@ Before implementing any feature, ensure consistency with the existing codebase:
 
 ---
 
-*Clean architecture patterns for Bun.js TypeScript backend. For core patterns, see dev:bunjs. For production deployment, see dev:bunjs-production.*
+*Clean architecture patterns for Bun.js TypeScript backend. For core patterns, see `knowledge/backend/bunjs.md`. For production deployment, see `skills/backend/bunjs-production/SKILL.md`.*

@@ -70,6 +70,14 @@ export const PHASE_ARTIFACTS: Record<string, PhaseSpec> = {
   phase3: {
     name: "Multi-Model Planning",
     required: [
+      // Written in the same step as architecture.md, and until now checked by nothing at
+      // all: `context.json` was read by no code in the repo and named in no phase spec,
+      // so a Phase 3 that produced no context — or produced `{}` — cleared this gate and
+      // failed in Phase 4, where the missing loadout looks like an agent problem. Its
+      // SHAPE is gated separately by `bun scripts/check-context-schema.ts`; minSize only
+      // answers "did this phase produce anything", which is the question a completion
+      // gate can ask from disk.
+      { file: "context.json", minSize: 200 },
       { file: "architecture.md", minSize: 500 },
       // Full depth only — see `Artifact.group`. Standard is specified as
       // single-model planning, so it writes `architecture.md` and neither of

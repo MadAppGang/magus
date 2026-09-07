@@ -485,7 +485,7 @@ skill, and the bench scored clean.
 | type | Asserts | Config | Score |
 |---|---|---|---|
 | `environment:plugin-loaded` | the tool names `value` on **either** surface — `plugin list --json` or `system:init` — **and** it carries no errors | `value` (plugin id, `<plugin>@<marketplace>`) | 0/1 |
-| `environment:skill-registered` | `Reported.Skills()` contains `value`, counting **loaded plugins only** — a superset of skills and commands on a details-only path | `value` (e.g. `dev:golang`) | 0/1 |
+| `environment:skill-registered` | `Reported.Skills()` contains `value`, counting **loaded plugins only** — a superset of skills and commands on a details-only path | `value` (e.g. `dev:architecture`) | 0/1 |
 | `environment:command-registered` | `Reported.Commands()` contains `value`; **errors** when `plugin-cli` is the only source | `value` (e.g. `dev:architect`) | 0/1 |
 | `environment:agent-registered` | `Reported.Agents()` contains `value`, loaded plugins only | `value` (e.g. `dev:reviewer`) | 0/1 |
 | `environment:mcp-connected` | `system:init` reports server `value` with status `connected`; a server declared only by a plugin that did **not** load counts as absent | `value` (bare `claudish`, or `plugin:claudish:claudish`) | 0/1 |
@@ -503,7 +503,7 @@ checks:
 
   # Namespaced exactly as the tool namespaces it.
   - type: environment:skill-registered
-    value: dev:golang
+    value: dev:architecture
 
   - type: environment:mcp-connected
     value: claudish

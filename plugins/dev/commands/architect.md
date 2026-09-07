@@ -134,9 +134,9 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates
 
   <critical_constraints>
     <todowrite_requirement>
-      **Read** `${CLAUDE_PLUGIN_ROOT}/skills/discipline/task-management/SKILL.md` for phase
-      tracking. It is a nested skill carrying `disable-model-invocation`, so the Skill
-      tool cannot reach it — naming the file is the route that works.
+      **Read** `${CLAUDE_PLUGIN_ROOT}/knowledge/discipline/task-management.md` for phase
+      tracking. It is knowledge, not a skill — nothing registers `knowledge/`, so naming
+      the file is the only route and the Skill tool has nothing to reach.
 
       At workflow start:
       1. Check if GTD plugin is active (`.claude/gtd/tasks.json` exists)
@@ -275,9 +275,11 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates
           Detect project stack (all stacks for fullstack):
           ```
           SESSION_PATH: ${SESSION_PATH}
+          TASK: {architecture_request}
 
           Detect ALL technology stacks in this project.
-          Save to: ${SESSION_PATH}/context.json
+          Save to: ${SESSION_PATH}/context.json, conforming to context.json v2
+          (${CLAUDE_PLUGIN_ROOT}/skills/context-detection/references/context-schema.md).
           ```
         </step>
         <step>Gather context on existing architecture via Read/Grep</step>
@@ -323,7 +325,7 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates
           Prompt:
           ```
           SESSION_PATH: ${SESSION_PATH}
-          DETECTED_STACK: {stack}
+          DETECTED_STACK: {repo.detected_stack from context.json}
 
           Analyze requirements for: {architecture_request}
 
@@ -731,6 +733,6 @@ Ready for implementation with /dev:dev
 | Read this file | When |
 |---|---|
 | `${CLAUDE_PLUGIN_ROOT}/skills/planning/brainstorming/SKILL.md` | exploring more than one approach before committing to a shape |
-| `${CLAUDE_PLUGIN_ROOT}/skills/discipline/task-management/SKILL.md` | the plan becomes multi-phase work that needs tracking |
+| `${CLAUDE_PLUGIN_ROOT}/knowledge/discipline/task-management.md` | the plan becomes multi-phase work that needs tracking |
 
 Neither applies to a single-question architecture call, which is most of them.

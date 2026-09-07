@@ -7,6 +7,27 @@ user-invocable: false
 
 # Context Detection Skill
 
+## Scope: this skill maps EVIDENCE to STACK. It does not map stack to skill
+
+The line matters, and it is the whole reason this file was rewritten.
+
+| Question | Answered in |
+|---|---|
+| Which stacks is this repo built from, and what proves it? | **here** |
+| Which paths should agent X read for task Y? | [`references/loadout-rules.md`](references/loadout-rules.md) |
+| What shape does the emitted artifact take? | [`references/context-schema.md`](references/context-schema.md) |
+
+This file used to answer all three. It carried a bash `generate_skill_paths()` and a
+`map_stacks_to_skills()` table, and `plugins/dev/agents/stack-detector.md` carried the same
+mapping again in XML. Two hand-maintained copies, both loaded on nearly every `dev` entry
+point — this skill is preloaded by ten commands — so when one went stale, it went stale
+twice. A skill path that had never existed shipped in both.
+
+**Both copies are gone.** Stack→skill mapping now has exactly one home,
+`references/loadout-rules.md`, and skill paths are derived from the filesystem at detection
+time rather than recalled from a table. Do not reintroduce a table here, in any language,
+in any fence.
+
 ## Quick Start: Skill Discovery Script
 
 Run the helper script to discover ALL skills available to a project:
@@ -70,13 +91,14 @@ Detection follows a priority order from most explicit to most inferred:
 **Source:** File extension of current editing context
 
 ```yaml
+# extension -> stack id. Stack ids only; which SKILL a stack implies is not decided here.
 extension_mappings:
-  ".tsx": ["react-typescript", "testing-frontend"]
-  ".vue": ["vue-typescript", "testing-frontend"]
-  ".go": ["golang", "testing-strategies"]
-  ".dingo": ["dingo", "golang", "testing-strategies"]
-  ".rs": ["rust", "testing-strategies"]
-  ".py": ["python", "testing-strategies"]
+  ".tsx": ["react-typescript"]
+  ".vue": ["vue-typescript"]
+  ".go": ["golang"]
+  ".dingo": ["dingo", "golang"]   # Dingo transpiles to Go, so both
+  ".rs": ["rust"]
+  ".py": ["python"]
 ```
 
 **When to use:**
@@ -89,41 +111,42 @@ extension_mappings:
 **Source:** Project configuration files
 
 ```yaml
+# config file -> stack id + mode. No skill names: see references/loadout-rules.md.
 config_file_patterns:
-  package.json:
-    check: "dependencies.react exists"
-    skills: ["react-typescript", "state-management", "testing-frontend"]
+  package.json (react):
+    check: "dependencies.react or devDependencies.react exists"
+    stacks: ["react-typescript"]
     mode: "frontend"
 
-  package.json:
+  package.json (vue):
     check: "dependencies.vue exists"
-    skills: ["vue-typescript", "state-management", "testing-frontend"]
+    stacks: ["vue-typescript"]
     mode: "frontend"
 
   go.mod:
     check: "file exists"
-    skills: ["golang", "api-design", "database-patterns"]
+    stacks: ["golang"]
     mode: "backend"
 
   go.mod + *.dingo:
-    check: "go.mod exists AND any .dingo files present"
-    skills: ["dingo", "golang", "api-design", "database-patterns"]
+    check: "go.mod exists AND any .dingo file present"
+    stacks: ["dingo", "golang"]
     mode: "backend"
-    note: "Dingo projects always include golang skill since Dingo transpiles to Go"
+    note: "Dingo transpiles to Go, so a Dingo repo is also a Go repo"
 
   Cargo.toml:
     check: "file exists"
-    skills: ["rust", "api-design"]
+    stacks: ["rust"]
     mode: "backend"
 
   pyproject.toml:
     check: "file exists"
-    skills: ["python", "api-design"]
+    stacks: ["python"]
     mode: "backend"
 
   bun.lockb:
     check: "file exists AND no react/vue in package.json"
-    skills: ["bunjs", "api-design"]
+    stacks: ["bunjs"]
     mode: "backend"
 ```
 
@@ -140,19 +163,19 @@ config_file_patterns:
 directory_patterns:
   "src/routes/":
     indicator: "React Router structure"
-    skills: ["react-typescript"]
+    stacks: ["react-typescript"]
 
   "src/components/":
     indicator: "Component-based frontend"
-    skills: ["react-typescript", "vue-typescript"]
+    stacks: ["react-typescript", "vue-typescript"]
 
   "cmd/":
     indicator: "Go standard project layout"
-    skills: ["golang"]
+    stacks: ["golang"]
 
   "src/main.rs":
     indicator: "Rust binary crate"
-    skills: ["rust"]
+    stacks: ["rust"]
 
   "frontend/":
     indicator: "Separate frontend directory (fullstack)"
@@ -264,47 +287,12 @@ determine_mode() {
   fi
 }
 
-# Step 4: Map stacks to skills
-map_stacks_to_skills() {
-  local stacks=("$@")
-  local skills=(
-    # Core skills (ALWAYS included)
-    "universal-patterns"
-    "testing-strategies"
-    "debugging-strategies"
-  )
-
-  for stack in "${stacks[@]}"; do
-    case "$stack" in
-      react-typescript)
-        skills+=("react-typescript" "state-management" "testing-frontend")
-        ;;
-      vue-typescript)
-        skills+=("vue-typescript" "state-management" "testing-frontend")
-        ;;
-      golang)
-        skills+=("golang" "api-design" "database-patterns")
-        ;;
-      dingo)
-        skills+=("dingo" "golang" "api-design" "database-patterns")
-        ;;
-      rust)
-        skills+=("rust" "api-design")
-        ;;
-      python)
-        skills+=("python" "api-design")
-        ;;
-      bunjs)
-        skills+=("bunjs" "api-design")
-        ;;
-    esac
-  done
-
-  # Deduplicate
-  echo "${skills[@]}" | tr ' ' '\n' | sort -u
-}
-
-# Step 5: Complete detection
+# Step 4: Complete detection
+#
+# NOTE: there is deliberately no `map_stacks_to_skills` step here. Turning a stack list
+# into a reading list is NOT this file's job — see references/loadout-rules.md. A copy of
+# that mapping used to live right here, and a second copy lived in the stack-detector
+# agent; keeping them in sync failed, and a dead skill path shipped in both.
 detect_project_stack() {
   # Check explicit preference first
   local explicit_stack=$(jq -r '.pluginSettings.dev.stack // empty' .claude/settings.json 2>/dev/null)
@@ -321,16 +309,10 @@ detect_project_stack() {
     return 1
   fi
 
-  # Determine mode
   local mode=$(determine_mode "${detected_stacks[@]}")
 
-  # Map to skills
-  local skills=($(map_stacks_to_skills "${detected_stacks[@]}"))
-
-  # Output result
   echo "Detected: ${detected_stacks[*]}"
   echo "Mode: $mode"
-  echo "Skills: ${skills[*]}"
 }
 ```
 
@@ -572,78 +554,41 @@ fullstack (react + go):
 
 ---
 
-## Skill Path Generation
+## Skill path generation — not here
 
-Convert detected stacks to skill file paths using ${CLAUDE_PLUGIN_ROOT} placeholder:
+**There is no `generate_skill_paths()` in this file, and adding one back is a regression.**
 
-```bash
-generate_skill_paths() {
-  local stacks=("$@")
-  local skill_paths=(
-    # Core skills (ALWAYS)
-    '${CLAUDE_PLUGIN_ROOT}/skills/core/universal-patterns/SKILL.md'
-    '${CLAUDE_PLUGIN_ROOT}/skills/core/testing-strategies/SKILL.md'
-    '${CLAUDE_PLUGIN_ROOT}/skills/core/debugging-strategies/SKILL.md'
-  )
+Turning a stack list into a reading list happens in one place:
+[`references/loadout-rules.md`](references/loadout-rules.md). It holds the category→agent
+rules (R1-R9), the stack-gating-by-name rule, the task gates, and the per-agent cap. Paths
+are then **derived from the filesystem** — a directory with `SKILL.md` is a skill, one
+without is a category — rather than recalled from a table.
 
-  for stack in "${stacks[@]}"; do
-    case "$stack" in
-      react-typescript)
-        skill_paths+=(
-          '${CLAUDE_PLUGIN_ROOT}/skills/frontend/react-typescript/SKILL.md'
-          '${CLAUDE_PLUGIN_ROOT}/skills/frontend/state-management/SKILL.md'
-          '${CLAUDE_PLUGIN_ROOT}/skills/frontend/testing-frontend/SKILL.md'
-        )
-        ;;
-      vue-typescript)
-        skill_paths+=(
-          '${CLAUDE_PLUGIN_ROOT}/skills/frontend/vue-typescript/SKILL.md'
-          '${CLAUDE_PLUGIN_ROOT}/skills/frontend/state-management/SKILL.md'
-          '${CLAUDE_PLUGIN_ROOT}/skills/frontend/testing-frontend/SKILL.md'
-        )
-        ;;
-      golang)
-        skill_paths+=(
-          '${CLAUDE_PLUGIN_ROOT}/skills/backend/golang/SKILL.md'
-          '${CLAUDE_PLUGIN_ROOT}/skills/backend/api-design/SKILL.md'
-          '${CLAUDE_PLUGIN_ROOT}/skills/backend/database-patterns/SKILL.md'
-        )
-        ;;
-      dingo)
-        skill_paths+=(
-          '${CLAUDE_PLUGIN_ROOT}/skills/backend/dingo/SKILL.md'
-          '${CLAUDE_PLUGIN_ROOT}/skills/backend/golang/SKILL.md'
-          '${CLAUDE_PLUGIN_ROOT}/skills/backend/api-design/SKILL.md'
-          '${CLAUDE_PLUGIN_ROOT}/skills/backend/database-patterns/SKILL.md'
-        )
-        ;;
-      rust)
-        skill_paths+=(
-          '${CLAUDE_PLUGIN_ROOT}/skills/backend/rust/SKILL.md'
-          '${CLAUDE_PLUGIN_ROOT}/skills/backend/api-design/SKILL.md'
-        )
-        ;;
-      python)
-        skill_paths+=(
-          '${CLAUDE_PLUGIN_ROOT}/skills/backend/python/SKILL.md'
-          '${CLAUDE_PLUGIN_ROOT}/skills/backend/api-design/SKILL.md'
-        )
-        ;;
-      bunjs)
-        skill_paths+=(
-          '${CLAUDE_PLUGIN_ROOT}/skills/backend/bunjs/SKILL.md'
-          '${CLAUDE_PLUGIN_ROOT}/skills/backend/api-design/SKILL.md'
-        )
-        ;;
-    esac
-  done
+**Two trees, one rule set.** A plugin's reference manuals live in `knowledge/`, not
+`skills/`: `${CLAUDE_PLUGIN_ROOT}/knowledge/backend/golang.md`,
+`${CLAUDE_PLUGIN_ROOT}/knowledge/frontend/react-typescript.md`, and so on. The category
+names mirror `skills/` exactly, so R1-R9 apply to both without a second clause. Enumerate
+both when building a loadout — a stack-gated rule that only walks `skills/` now finds
+almost nothing, because most of what it used to name is knowledge.
 
-  # Print unique paths
-  printf '%s\n' "${skill_paths[@]}" | sort -u
-}
-```
+Why the function is gone rather than merely moved:
 
-**CRITICAL:** Always use `${CLAUDE_PLUGIN_ROOT}` placeholder, NOT hardcoded paths. This placeholder is expanded at runtime to the actual plugin directory.
+- It duplicated an XML block in `plugins/dev/agents/stack-detector.md`. Two hand-maintained
+  copies of one table is the shape that put a nonexistent skill path in both.
+- It was a hardcoded list of ~16 paths against a much larger tree, so every new skill was
+  invisible to it until someone remembered to edit two files.
+- It produced ONE flat list handed identically to every agent, which is precisely what
+  `agent_loadouts` replaces. A reviewer and a test architect should not be reading the same
+  five files.
+
+Two rules that survive it, and still bind:
+
+- **Always use the `${CLAUDE_PLUGIN_ROOT}` placeholder, never a hardcoded absolute path.** It
+  is expanded at runtime to the installed plugin directory, which differs per machine and
+  per version.
+- **`stat` every path before emitting it.** `bun scripts/check-plugin-paths.ts` gates the
+  paths written in plugin markdown; nothing gates a path a running agent invents, so the
+  detector verifies its own output and records each drop in `warnings`.
 
 ---
 
@@ -685,180 +630,151 @@ recovery:
 
 ---
 
-## Usage Examples
+## Detection Examples
 
-### Example 1: React Frontend
+Each example shows only what THIS skill produces: the `repo` block of `context.json` v2.
+None of them lists skill paths — that is `references/loadout-rules.md`'s output, derived
+per agent and per task, and a copy of it here is exactly the duplication this file shed.
 
-**Project Structure:**
+### Example 1: React frontend
+
 ```
 project/
 ├── package.json (with react: "^19.0.0")
-├── src/
-│   ├── routes/
-│   └── components/
-└── .tsx files
+├── src/routes/
+├── src/components/
+└── *.tsx
 ```
 
-**Detection Result:**
 ```json
 {
   "detected_stack": "react-typescript",
   "mode": "frontend",
   "stacks": ["react-typescript"],
-  "skill_paths": [
-    "${CLAUDE_PLUGIN_ROOT}/skills/core/universal-patterns/SKILL.md",
-    "${CLAUDE_PLUGIN_ROOT}/skills/core/testing-strategies/SKILL.md",
-    "${CLAUDE_PLUGIN_ROOT}/skills/frontend/react-typescript/SKILL.md",
-    "${CLAUDE_PLUGIN_ROOT}/skills/frontend/state-management/SKILL.md",
-    "${CLAUDE_PLUGIN_ROOT}/skills/frontend/testing-frontend/SKILL.md"
-  ]
+  "frameworks": { "react": "19.0.0" },
+  "shape": "single",
+  "evidence": [{ "claim": "react-typescript", "file": "package.json", "line": 12 }]
 }
 ```
 
-### Example 2: Go Backend
+### Example 2: Go backend
 
-**Project Structure:**
 ```
 project/
 ├── go.mod
-├── cmd/
-│   └── server/
+├── cmd/server/
 └── internal/
 ```
 
-**Detection Result:**
 ```json
 {
   "detected_stack": "golang",
   "mode": "backend",
   "stacks": ["golang"],
-  "skill_paths": [
-    "${CLAUDE_PLUGIN_ROOT}/skills/core/universal-patterns/SKILL.md",
-    "${CLAUDE_PLUGIN_ROOT}/skills/core/testing-strategies/SKILL.md",
-    "${CLAUDE_PLUGIN_ROOT}/skills/backend/golang/SKILL.md",
-    "${CLAUDE_PLUGIN_ROOT}/skills/backend/api-design/SKILL.md",
-    "${CLAUDE_PLUGIN_ROOT}/skills/backend/database-patterns/SKILL.md"
-  ]
+  "frameworks": { "go": "1.21" },
+  "shape": "single",
+  "evidence": [{ "claim": "golang", "file": "go.mod", "line": 3 }]
 }
 ```
 
 ### Example 3: Fullstack (React + Go)
 
-**Project Structure:**
 ```
 project/
-├── frontend/
-│   ├── package.json (with react)
-│   └── src/
+├── frontend/package.json (with react)
 ├── go.mod
 ├── cmd/
 └── internal/
 ```
 
-**Detection Result:**
 ```json
 {
   "detected_stack": "react-typescript + golang",
   "mode": "fullstack",
   "stacks": ["react-typescript", "golang"],
-  "skill_paths": [
-    "${CLAUDE_PLUGIN_ROOT}/skills/core/universal-patterns/SKILL.md",
-    "${CLAUDE_PLUGIN_ROOT}/skills/core/testing-strategies/SKILL.md",
-    "${CLAUDE_PLUGIN_ROOT}/skills/frontend/react-typescript/SKILL.md",
-    "${CLAUDE_PLUGIN_ROOT}/skills/frontend/state-management/SKILL.md",
-    "${CLAUDE_PLUGIN_ROOT}/skills/frontend/testing-frontend/SKILL.md",
-    "${CLAUDE_PLUGIN_ROOT}/skills/backend/golang/SKILL.md",
-    "${CLAUDE_PLUGIN_ROOT}/skills/backend/api-design/SKILL.md",
-    "${CLAUDE_PLUGIN_ROOT}/skills/backend/database-patterns/SKILL.md"
-  ],
-  "quality_checks": {
-    "frontend": ["cd frontend && bun run format", "..."],
-    "backend": ["go fmt ./...", "..."]
-  }
+  "frameworks": { "react": "19.0.0", "go": "1.21" },
+  "shape": "monorepo",
+  "evidence": [
+    { "claim": "react-typescript", "file": "frontend/package.json", "line": 14 },
+    { "claim": "golang", "file": "go.mod", "line": 3 }
+  ]
 }
 ```
 
-### Example 4: Dingo Backend
+### Example 4: Dingo backend
 
-**Project Structure:**
 ```
 project/
 ├── go.mod
-├── cmd/
-│   └── api/
-│       └── main.dingo
-├── internal/
-│   ├── handlers/
-│   │   └── user.dingo
-│   └── services/
-│       └── user.dingo
-└── .dingo/                  # Generated .go files (gitignored)
+├── cmd/api/main.dingo
+├── internal/handlers/user.dingo
+└── .dingo/                  # generated .go files, gitignored
 ```
 
-**Detection Result:**
 ```json
 {
   "detected_stack": "dingo + golang",
   "mode": "backend",
   "stacks": ["dingo", "golang"],
-  "skill_paths": [
-    "${CLAUDE_PLUGIN_ROOT}/skills/core/universal-patterns/SKILL.md",
-    "${CLAUDE_PLUGIN_ROOT}/skills/core/testing-strategies/SKILL.md",
-    "${CLAUDE_PLUGIN_ROOT}/skills/backend/dingo/SKILL.md",
-    "${CLAUDE_PLUGIN_ROOT}/skills/backend/golang/SKILL.md",
-    "${CLAUDE_PLUGIN_ROOT}/skills/backend/api-design/SKILL.md",
-    "${CLAUDE_PLUGIN_ROOT}/skills/backend/database-patterns/SKILL.md"
-  ],
-  "quality_checks": {
-    "backend": [
-      "dingo fmt",
-      "dingo go",
-      "go vet ./.dingo/...",
-      "golangci-lint run ./.dingo/...",
-      "go test ./.dingo/..."
-    ]
-  }
+  "frameworks": { "go": "1.21" },
+  "shape": "single",
+  "evidence": [
+    { "claim": "golang", "file": "go.mod", "line": 3 },
+    { "claim": "dingo", "file": "cmd/api/main.dingo", "line": 1 }
+  ]
 }
 ```
 
+`dingo` and `golang` appear together because Dingo transpiles to Go. That is a detection
+fact, so it belongs here; which SKILL each of them implies does not.
+
+**Every claim carries a citation.** A classification with no `evidence` entry cannot be
+argued with by the agent that receives it, and an unarguable wrong answer is the expensive
+kind.
+
 ---
 
-## Integration with Agents
+## Integration with agents
 
-### stack-detector Agent
+### `dev:stack-detector`
 
-The stack-detector agent implements this skill:
+The detector consumes this file for detection patterns, and two others for everything else:
 
-1. Reads this skill file for detection patterns
-2. Applies detection algorithm
-3. Generates skill paths using ${CLAUDE_PLUGIN_ROOT}
-4. Writes result to ${SESSION_PATH}/context.json
-5. Returns summary to orchestrator
+| Reads | For |
+|---|---|
+| this file | evidence → stack, mode, shape, quality-check defaults |
+| [`references/loadout-rules.md`](references/loadout-rules.md) | category → agent, stack gating, task gates, the per-agent cap |
+| [`references/context-schema.md`](references/context-schema.md) | the exact shape of the artifact it writes |
 
-### Orchestrator Commands
+It then writes `${SESSION_PATH}/context.json` and returns a summary. Under plan mode it
+writes nothing and returns the JSON instead.
 
-Commands read context.json and pass skill paths to implementation agents:
+### Orchestrator commands
+
+Commands read `context.json` and pass **that agent's own loadout** — never one flat list to
+everybody:
 
 ```
 Agent: dev:developer
 Prompt: |
   SESSION_PATH: ${SESSION_PATH}
 
-  Read these skills before implementing:
-  - ${CLAUDE_PLUGIN_ROOT}/skills/frontend/react-typescript/SKILL.md
-  - ${CLAUDE_PLUGIN_ROOT}/skills/frontend/testing-frontend/SKILL.md
+  Read before implementing (from context.json -> agent_loadouts.developer.read;
+  entries marked MANDATORY are not optional):
+  {for each path in agent_loadouts.developer.read}
+  - {path}{if mandatory} (MANDATORY){end}
+  {end}
 
-  Then implement: Create user profile component
+  Then implement: {task}
 ```
 
-### Implementation Agents
+Handing every agent the same list is what `agent_loadouts` exists to stop. A reviewer and a
+test architect need different files, and a flat list guarantees at least one of them is
+reading the wrong thing.
 
-Agents use Read tool to load skill files:
+### Implementation agents
 
-```
-1. Read skill file paths from prompt
-2. Use Read tool to load each skill
-3. Extract relevant patterns
-4. Apply patterns during implementation
-```
-
+1. Read the paths given in the prompt, mandatory ones first.
+2. Apply the patterns while implementing.
+3. A path that fails to open is a bug in the detector, not a reason to guess a replacement —
+   report it.

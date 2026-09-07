@@ -106,7 +106,7 @@ in the consumer's own body:
 ```markdown
 | Read this file | When the task involves |
 |---|---|
-| ${CLAUDE_PLUGIN_ROOT}/skills/frontend/react-typescript/SKILL.md | React components, hooks, Zod forms |
+| ${CLAUDE_PLUGIN_ROOT}/skills/architecture/SKILL.md | choosing an architectural style or a design pattern |
 ```
 
 Say "read this file", never "invoke this skill" — see IDX-1 in `benches/skill-index/`.

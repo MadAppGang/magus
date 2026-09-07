@@ -50,8 +50,10 @@ skills: dev:context-detection
       <objective>Present formatted help output</objective>
       <steps>
         <step>Show plugin header and detected stack</step>
-        <step>List all 14 available commands with descriptions</step>
-        <step>Show recommended skills based on detected stack</step>
+        <step>List the available commands with descriptions — read them off the `.md`
+        files in `${CLAUDE_PLUGIN_ROOT}/commands/`, never from a count written here</step>
+        <step>Show recommended skills based on detected stack, derived per
+        &lt;skill_descriptions&gt; below</step>
         <step>Provide configuration examples</step>
         <step>Show usage examples</step>
         <step>List dependencies</step>
@@ -63,7 +65,7 @@ skills: dev:context-detection
 <output_format>
 ## Dev Plugin Help
 
-**Version:** read from `${CLAUDE_PLUGIN_ROOT}/plugin.json` — never hardcode it here
+**Version:** read from `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json` — never hardcode it here
 **Detected Stack:** {detected_stack}
 **Mode:** {frontend | backend | fullstack}
 
@@ -380,20 +382,23 @@ See: https://github.com/MadAppGang/claudish
   </communication_style>
 
   <skill_descriptions>
-    react-typescript: "React 19 + TypeScript patterns with React Compiler and Actions"
-    vue-typescript: "Vue 3 + TypeScript with Composition API and Pinia"
-    golang: "Go language idioms, standard library, and testing patterns"
-    rust: "Rust patterns with Axum framework and SQLx"
-    python: "Python backend with FastAPI and SQLAlchemy patterns"
-    bunjs: "Bun runtime backend patterns with Hono framework"
-    universal-patterns: "Language-agnostic development patterns (always loaded)"
-    testing-strategies: "Universal testing approaches across stacks (always loaded)"
-    debugging-strategies: "Debugging technique catalogue; method is in systematic-debugging (always loaded)"
-    state-management: "State management strategies (TanStack Query, Zustand)"
-    testing-frontend: "Frontend testing with Vitest and React Testing Library"
-    api-design: "RESTful API design patterns and best practices"
-    database-patterns: "Database schema design and query optimization"
-    auth-patterns: "Authentication and authorization patterns (JWT, OAuth2)"
-    error-handling: "Backend error handling and logging strategies"
+    **Derive these. Never hand-maintain a list of them here.**
+
+    A skill's description already exists, in one place: the `description` field of its own
+    frontmatter. Restating it in this file makes a second home that has to be edited in
+    lockstep, and a second home that has to be edited is a second home that goes stale —
+    the copy that used to sit here named `debugging-strategies`, a skill deleted long
+    before, and it covered only a fraction of the skills on disk.
+
+    So, to show recommended skills: Glob every `SKILL.md` at any depth under
+    `${CLAUDE_PLUGIN_ROOT}/skills/`. For each hit, the skill's name is the directory
+    holding it and its description is the `description:` line of its YAML frontmatter.
+    Show the ones whose category matches the detected stack — the stack-gating rule (a
+    directory named exactly a stack id is loaded only for that stack) is written down
+    once, in
+    `${CLAUDE_PLUGIN_ROOT}/skills/context-detection/references/loadout-rules.md`.
+
+    For the whole marketplace rather than just `dev`, point the user at
+    `/setup:index-skills`, which reports every skill and what it costs per turn.
   </skill_descriptions>
 </formatting>

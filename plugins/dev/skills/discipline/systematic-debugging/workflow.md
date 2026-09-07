@@ -31,10 +31,11 @@ See `session-setup.md` for:
 2. Reproduction attempt (if bug description includes reproduction steps)
 3. Bug report written to `${SESSION_PATH}/bug-report.md`
 
-Read `${SESSION_PATH}/context.json` after the shared init completes. Extract:
-- `stack` — used for quality checks in Phase 3 and 4
-- `test_runner_command` and `full_suite_args` — used in Phase 4
-- `lint_command` and `typecheck_command` — used in Phase 4
+Read `${SESSION_PATH}/context.json` after the shared init completes. It is a
+[context.json v2](../../context-detection/references/context-schema.md) document; extract:
+- `repo.detected_stack` — used for quality checks in Phase 3 and 4
+- `commands.test_runner_command` and `commands.full_suite_args` — used in Phase 4
+- `commands.lint_command` and `commands.typecheck_command` — used in Phase 4
 
 ---
 
@@ -215,7 +216,7 @@ SESSION_PATH: ${SESSION_PATH}
 
 Read:
 - ${SESSION_PATH}/root-cause.md
-- ${SESSION_PATH}/context.json (for stack and quality check commands)
+- ${SESSION_PATH}/context.json (`repo.detected_stack` and `commands.*`)
 
 Implement the fix following these requirements:
 1. MINIMAL CHANGE — modify only what is necessary to fix the root cause
@@ -225,7 +226,7 @@ Implement the fix following these requirements:
 4. FOLLOW PROJECT CONVENTIONS — match the existing code style and patterns in the file
 
 After implementing:
-- Run quality checks for stack: {stack from context.json}
+- Run quality checks for stack: {repo.detected_stack from context.json}
   - react-typescript / bunjs: bun run format && bun run lint && bun run typecheck
   - golang: go fmt ./... && go vet ./...
   - rust: cargo fmt --check && cargo clippy -- -D warnings
@@ -250,7 +251,8 @@ After implementing:
 
 **Objective:** Confirm the fix resolves the original bug and introduces no regressions.
 
-Read `${SESSION_PATH}/context.json` to get `test_runner_command` and `full_suite_args`.
+Read `${SESSION_PATH}/context.json` to get `commands.test_runner_command` and
+`commands.full_suite_args`.
 
 **Step 4a — Reproduce the original bug (should now pass):**
 

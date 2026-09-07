@@ -293,26 +293,27 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
       </step>
 
       <step name="stack-detect">
-        Launch dev:stack-detector (pattern in dev:systematic-debugging → session-setup.md):
-        ```
-        SESSION_PATH: ${SESSION_PATH}
+        Launch dev:stack-detector with the agent prompt template in
+        ${CLAUDE_PLUGIN_ROOT}/skills/discipline/systematic-debugging/session-setup.md,
+        §2 "Stack Detection", **copied verbatim** — that file is the template's only home
+        and this step does not restate it. `{BUG_DESCRIPTION}` fills its `TASK:` block.
 
-        Detect technology stack, test runner, and test file patterns for this project.
-        Bug description for context: {BUG_DESCRIPTION}
+        The `TASK:` block is the brief. Without it the detector resolves `task.source` to
+        `command`, can only infer `bug_fix` from the command name at low confidence, and
+        builds a repo-derived loadout instead of one shaped by this bug. The earlier form of
+        this step said "Bug description for context:" and carried no `TASK:` line, so every
+        honest run classified the task as unknown.
 
-        Save results to: ${SESSION_PATH}/context.json
-        Include fields: stack, test_runner_command, full_suite_args, test_file_patterns,
-        lint_command, typecheck_command
-        ```
-        After agent completes, read ${SESSION_PATH}/context.json to extract
-        test_runner_command, full_suite_args, and stack for use in subsequent phases.
+        After the agent completes, read ${SESSION_PATH}/context.json and take
+        `commands.test_runner_command`, `commands.full_suite_args`, `repo.detected_stack`
+        and `agent_loadouts.debugger` for use in subsequent phases.
       </step>
 
       <step name="reproduce-attempt">
         If BUG_DESCRIPTION contains reproduction steps (a test path, command, or
         explicit reproduce: block), attempt reproduction immediately:
         ```bash
-        CI=true {test_runner_command} {test_args_from_bug_description}
+        CI=true {commands.test_runner_command} {test_args_from_bug_description}
         ```
         Interpretation:
         - Exit code non-zero with test failure output → bug confirmed reproducible
@@ -353,10 +354,10 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
         {absolute path to test file if a matching failing test was found, else "None found"}
 
         ## Test Runner
-        {value of test_runner_command from context.json}
+        {value of commands.test_runner_command from context.json}
 
         ## Stack
-        {value of stack from context.json}
+        {value of repo.detected_stack from context.json}
         ```
         All sections are required. Use exact sentinel strings for absent data.
       </step>
@@ -487,6 +488,16 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
         Stack trace: {from bug-report.md}
         Localization report: {contents of localization.md}
         Code excerpts (top candidates, max 10K tokens total): {line-range excerpts from localization}
+
+        **YOUR LOADOUT** (from context.agent_loadouts.debugger.read in
+        ${SESSION_PATH}/context.json — at most 5, chosen for this agent and this bug;
+        read them before analysing, mandatory first):
+        {for each path in context.agent_loadouts.debugger.read}
+        - {path}{if path in context.agent_loadouts.debugger.mandatory} ← MANDATORY{end}
+        {end}
+        {if context.agent_loadouts.debugger.note}
+        Note: {context.agent_loadouts.debugger.note}
+        {end}
 
         Write EXACTLY this structure to ${SESSION_PATH}/root-cause.md using a Bash heredoc
         (you have Bash, not Write — do not attempt the Write tool):
@@ -669,8 +680,8 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
         Write the smallest test that reproduces this bug. This is the RED step of TDD.
         Bug: {BUG_DESCRIPTION}
         Root cause: {contents of root-cause.md}
-        Test runner: {test_runner_command from context.json}
-        Stack: {stack from context.json}
+        Test runner: {commands.test_runner_command from context.json}
+        Stack: {repo.detected_stack from context.json}
 
         Requirements:
         - Use exact error message or assertion matching the stack trace in bug-report.md
@@ -687,7 +698,7 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
         **Step 4b — Verify RED**
 
         ```bash
-        CI=true {test_runner_command} $(cat ${SESSION_PATH}/test-path.txt)
+        CI=true {commands.test_runner_command} $(cat ${SESSION_PATH}/test-path.txt)
         ```
 
         The test MUST fail. Verify:
@@ -719,7 +730,7 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
         **Step 4d — Verify GREEN**
 
         ```bash
-        CI=true {test_runner_command} $(cat ${SESSION_PATH}/test-path.txt)
+        CI=true {commands.test_runner_command} $(cat ${SESSION_PATH}/test-path.txt)
         ```
 
         The test MUST pass. If it still fails: return to Step 4c with failure output.
@@ -780,7 +791,7 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
         **Step 5a — Full test suite**
 
         ```bash
-        CI=true {test_runner_command} {full_suite_args from context.json}
+        CI=true {commands.test_runner_command} {commands.full_suite_args from context.json}
         ```
 
         Required outcomes:
@@ -789,13 +800,16 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
       </step>
 
       <step name="5b-quality-checks">
-        **Step 5b — Stack quality checks** (commands from context.json):
+        **Step 5b — Stack quality checks**, read from context.json:
 
         ```bash
-        {lint_command}
-        {typecheck_command}
-        {format_check_command}
+        {commands.lint_command}
+        {commands.typecheck_command}
         ```
+
+        Then every entry in `commands.quality_checks` for the surfaces the patch
+        touched. Skip any command that is `null` — v2 uses `null` for "this repo has no
+        such command", which is not the same as an empty string.
       </step>
 
       <step name="5c-regression-handling">

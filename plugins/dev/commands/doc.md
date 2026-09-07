@@ -162,7 +162,11 @@ skills: dev:documentation-standards, multimodel:quality-gates
         <step>
           Launch stack-detector agent via Agent:
           Prompt: "SESSION_PATH: ${SESSION_PATH}
-                   Detect technology stack. Save to ${SESSION_PATH}/context.json"
+                   TASK: {doc_type} documentation for {target_path}
+
+                   Detect technology stack. Save to ${SESSION_PATH}/context.json,
+                   conforming to context.json v2
+                   (${CLAUDE_PLUGIN_ROOT}/skills/context-detection/references/context-schema.md)."
         </step>
         <step>Mark PHASE 3 as completed</step>
       </steps>

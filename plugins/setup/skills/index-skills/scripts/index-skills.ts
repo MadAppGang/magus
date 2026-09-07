@@ -207,7 +207,7 @@ function walkAll(dir: string, out: string[] = [], depth = 0): string[] {
  * `skills/`, else `<group>`.
  *
  * A container is a directory under `skills/` that holds no SKILL.md of its own
- * but holds skill directories. `dev/skills/frontend/react-typescript/SKILL.md`
+ * but holds skill directories. `dev/skills/frontend/design-system-guardrails/SKILL.md`
  * is depth 2 and yields `dev/frontend`; `bunjs/skills/errors/SKILL.md` is
  * depth 1 and yields `bunjs`.
  */

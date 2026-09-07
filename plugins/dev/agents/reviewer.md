@@ -101,7 +101,7 @@ tools: Read, Glob, Grep, Bash
           FOCUS:   code | security | plugin | ui-degraded   (absent = code)
                    code        → the full three-pass review
                    security    → skip Phase 4; additionally read
-                                 ${CLAUDE_PLUGIN_ROOT}/skills/security-audit/SKILL.md
+                                 ${CLAUDE_PLUGIN_ROOT}/knowledge/security-audit.md
                                  and run its dependency-CVE, secrets and compliance
                                  procedures over the target
                    plugin      → in Phase 3, also apply the plugin-quality checks:
@@ -222,7 +222,7 @@ tools: Read, Glob, Grep, Bash
         </step>
         <step>
           Under `FOCUS: security`, also run the procedures in
-          `${CLAUDE_PLUGIN_ROOT}/skills/security-audit/SKILL.md` — dependency
+          `${CLAUDE_PLUGIN_ROOT}/knowledge/security-audit.md` — dependency
           CVEs, committed secrets, the compliance checklist — over the target,
           and rate what they find with the same severity criteria as everything
           else. That file supplies procedures only; the severity scale and the

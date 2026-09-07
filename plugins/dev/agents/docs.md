@@ -129,7 +129,7 @@ skills:
       <objective>Understand what to document</objective>
       <steps>
         <step>Read documentation-standards skill at ${CLAUDE_PLUGIN_ROOT}/skills/documentation-standards/SKILL.md</step>
-        <step>Read context.json for stack information (if SESSION_PATH provided)</step>
+        <step>Read `repo.detected_stack` and `repo.frameworks` from context.json (if SESSION_PATH provided)</step>
         <step>Read source code files to document</step>
         <step>Identify documentation type from request</step>
       </steps>
@@ -378,7 +378,7 @@ Ready for review.
       **You MUST verify documentation against source code.**
 
       For accurate "No Feature Hallucination" and "API Signatures Correct" checks:
-      1. Read context.json for project structure (if SESSION_PATH provided)
+      1. Read `repo.*` from context.json for project structure (if SESSION_PATH provided)
       2. Use Glob to find relevant source files
       3. Read actual function/API implementations
       4. Cross-reference documentation claims with source code
@@ -465,9 +465,9 @@ Ready for review.
         <step>Identify documentation types (README, API, Tutorial, etc.)</step>
         <step>
           Read context.json for project structure (if SESSION_PATH provided):
-          - Available APIs/functions
-          - Dependencies
-          - Configuration options
+          - `repo.detected_stack`, `repo.shape` — what kind of project this is
+          - `repo.frameworks` — dependencies and their versions
+          - `commands.*` — the commands a reader would run
         </step>
         <step>
           Use Glob to find relevant source files:

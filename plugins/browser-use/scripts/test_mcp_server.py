@@ -127,6 +127,40 @@ def _make_stub(name: str) -> MagicMock:
 
 
 # ---------------------------------------------------------------------------
+# Fake MCP lowlevel Server — one SDK major's surface at a time
+#
+# mcp-server.py must run on mcp 1.x (existing installs) AND mcp 2.x (fresh
+# installs: browser-use >= 0.13.10 pins mcp==2.1.1). The two majors expose
+# different handler-registration surfaces, and the wrapper picks its branch with
+# hasattr(server, "add_request_handler"). These are the attribute names
+# mcp-server.py touches on each; `spec=` makes hasattr() honest, because a name
+# outside the list raises AttributeError instead of conjuring a child mock.
+# ---------------------------------------------------------------------------
+
+# mcp 1.x: public `request_handlers` dict + `@list_tools()` decorator.
+_MCP1_SURFACE = ("request_handlers", "list_tools", "run", "get_capabilities")
+# mcp 2.x: `add_request_handler` / `get_request_handler`; no decorator, no dict.
+_MCP2_SURFACE = ("add_request_handler", "get_request_handler", "run", "get_capabilities")
+
+
+def _make_fake_mcp_server(mcp_api: str) -> MagicMock:
+    """A stand-in for `mcp.server.lowlevel.Server` exposing ONE major's API."""
+    if mcp_api == "1.x":
+        fake = MagicMock(spec=list(_MCP1_SURFACE))
+        fake.request_handlers = {}
+        fake.list_tools.return_value = lambda fn: fn
+    elif mcp_api == "2.x":
+        fake = MagicMock(spec=list(_MCP2_SURFACE))
+        # No parent registered unless a test installs one.
+        fake.get_request_handler.return_value = None
+    else:
+        raise ValueError(f"unknown mcp_api {mcp_api!r}; expected '1.x' or '2.x'")
+    # main() awaits server.server.run(...) — a bare MagicMock is not awaitable.
+    fake.run = AsyncMock(return_value=None)
+    return fake
+
+
+# ---------------------------------------------------------------------------
 # Real stub base class — must be a genuine Python class so that:
 #   class MagusBrowserServer(BrowserUseServer): ...
 # creates a real class hierarchy that patch.object can modify.
@@ -154,14 +188,16 @@ class _StubBrowserUseServer:
         self._start_time = time.time()
         self._cleanup_task = None
         self.cleanup_task_starts = 0
-        # MagusBrowserServer._extend_list_tools() accesses self.server.request_handlers
-        # and calls @self.server.list_tools() as a decorator.
-        mock_server = MagicMock()
-        mock_server.request_handlers = {}
-        mock_server.list_tools.return_value = lambda fn: fn
-        # main() awaits server.server.run(...) — a bare MagicMock is not awaitable.
-        mock_server.run = AsyncMock(return_value=None)
-        self.server = mock_server
+        # MagusBrowserServer._extend_list_tools() branches on the installed MCP
+        # SDK's capability: `add_request_handler` present means the 2.x API,
+        # absent means 1.x. The fake exposes exactly ONE of those surfaces so
+        # the branch under test is the one the fake models — a bare MagicMock
+        # answers hasattr() for every name and would always look like 2.x.
+        self.server = _make_fake_mcp_server(self.mcp_api)
+
+    # Which MCP SDK major the fake `self.server` models. Tests that need the
+    # other one patch this on the class (see TestCustomToolsRegistered).
+    mcp_api = "1.x"
 
     async def _execute_tool(self, tool_name, arguments):
         """Default parent implementation (never reached in tests)."""
@@ -286,8 +322,15 @@ def _install_stubs() -> dict:
             self.method = method
             self.params = params
 
+    # mcp 2.x handlers return the result model itself (no ServerResult
+    # envelope); the wrapper builds one of these from parent + custom tools.
+    class _FakeListToolsResult:
+        def __init__(self, tools):
+            self.tools = list(tools)
+
     types_stub.Tool = _FakeTool
     types_stub.ListToolsRequest = _FakeListToolsRequest
+    types_stub.ListToolsResult = _FakeListToolsResult
     types_stub.TextContent = MagicMock(name="TextContent")
     types_stub.ImageContent = MagicMock(name="ImageContent")
 
@@ -655,53 +698,116 @@ class TestCustomToolsRegistered(unittest.TestCase):
     (browser_export_session, browser_import_session, browser_run_script,
     browser_start_cloud_session, browser_set_agent_model) beyond the 16
     built-in BrowserUseServer tools.
+
+    Every tool-list test runs against BOTH MCP SDK majors (`MCP_APIS`), because
+    mcp-server.py ships one file for both and each has its own registration
+    surface. The 2.x branch is the one a fresh install hits: browser-use
+    >= 0.13.10 pins mcp==2.1.1, and before this branch existed the server
+    crashed in __init__ on `Server.request_handlers`.
     """
 
-    def _get_tool_list(self, parent_tools=None):
+    MCP_APIS = ("1.x", "2.x")
+
+    def _make_server_for(self, mcp_api):
+        """A MagusBrowserServer whose fake MCP server exposes `mcp_api`'s surface."""
+        with patch.object(_StubBrowserUseServer, "mcp_api", mcp_api):
+            return _make_server()
+
+    def _get_tool_list(self, parent_tools=None, mcp_api="1.x"):
         """
-        Invoke the list_tools handler registered by _extend_list_tools().
+        Invoke the tools/list handler registered by _extend_list_tools() against
+        a fake MCP server exposing ONE SDK major's surface; return the tools it
+        advertises.
 
-        _extend_list_tools() calls @self.server.list_tools() which in our stub
-        just calls the decorator function — so the wrapped handler is stored as
-        server.list_tools.return_value's return_value.  We capture the actual
-        handler by intercepting the decorator call.
+        1.x: the parent handler lives in `request_handlers[ListToolsRequest]`,
+        takes the request model and returns a ServerResult whose `.root.tools`
+        is the list; our wrapper is registered through `@list_tools()`, so we
+        capture it by intercepting the decorator.
+        2.x: `get_request_handler("tools/list")` returns a HandlerEntry of
+        (params_type, handler); the handler is `(ctx, params) -> ListToolsResult`
+        and our wrapper is registered through `add_request_handler`, which we
+        replace with a recorder.
         """
-        server = _make_server()
-
-        # _extend_list_tools already ran in __init__; the wrapped coroutine was
-        # passed to server.list_tools()(handler).  Because our mock's
-        # list_tools() returns a lambda that returns the fn, the coroutine is
-        # available via server.server.list_tools.return_value.
-        # Easier: just re-call _extend_list_tools with a capturing mock.
-
-        captured_handler = {}
-
-        def capturing_decorator():
-            def registrar(fn):
-                captured_handler["fn"] = fn
-                return fn
-            return registrar
-
-        server.server.list_tools = capturing_decorator
-
         if parent_tools is None:
             parent_tools = []
+        server = self._make_server_for(mcp_api)
+        captured = {}
 
-        # parent_handler returns a mock result with .root.tools
-        mock_result = MagicMock()
-        mock_result.root.tools = parent_tools
+        if mcp_api == "1.x":
+            def capturing_decorator():
+                def registrar(fn):
+                    captured["fn"] = fn
+                    return fn
+                return registrar
 
-        parent_handler = AsyncMock(return_value=mock_result)
-        server.server.request_handlers = {
-            _mod.types.ListToolsRequest: parent_handler
-        }
+            server.server.list_tools = capturing_decorator
+            mock_result = MagicMock()
+            mock_result.root.tools = parent_tools
+            parent_handler = AsyncMock(return_value=mock_result)
+            server.server.request_handlers = {
+                _mod.types.ListToolsRequest: parent_handler
+            }
+
+            server._extend_list_tools()
+
+            handler = captured.get("fn")
+            self.assertIsNotNone(handler, "_extend_list_tools did not register a handler")
+            return asyncio.run(handler())
+
+        # 2.x
+        parent_handler = AsyncMock(
+            return_value=_mod.types.ListToolsResult(tools=parent_tools)
+        )
+        entry = MagicMock(name="HandlerEntry")
+        entry.params_type = object()  # opaque; must be handed back verbatim
+        entry.handler = parent_handler
+        server.server.get_request_handler.return_value = entry
+
+        def add_request_handler(method, params_type, handler):
+            captured.update(method=method, params_type=params_type, fn=handler)
+
+        server.server.add_request_handler = add_request_handler
 
         server._extend_list_tools()
 
-        handler = captured_handler.get("fn")
+        self.assertEqual(captured.get("method"), "tools/list")
+        self.assertIs(
+            captured.get("params_type"), entry.params_type,
+            "2.x wrapper must re-register with the parent's own params type",
+        )
+        handler = captured.get("fn")
         self.assertIsNotNone(handler, "_extend_list_tools did not register a handler")
+        ctx, params = object(), object()
+        result = asyncio.run(handler(ctx, params))
+        parent_handler.assert_awaited_once_with(ctx, params)
+        return result.tools
 
-        return asyncio.run(handler())
+    def test_branch_is_chosen_by_capability_not_version(self):
+        """The wrapper must pick the registration surface the server actually
+        has. A 1.x fake has no `add_request_handler`, so the decorator path
+        runs; a 2.x fake has no `list_tools`, so `add_request_handler` runs."""
+        one = self._make_server_for("1.x")
+        self.assertFalse(hasattr(one.server, "add_request_handler"))
+        self.assertTrue(one.server.list_tools.called, "1.x: @list_tools() not used")
+
+        two = self._make_server_for("2.x")
+        self.assertFalse(hasattr(two.server, "list_tools"))
+        two.server.add_request_handler.assert_called_once()
+        method, params_type, handler = two.server.add_request_handler.call_args.args
+        self.assertEqual(method, "tools/list")
+        self.assertTrue(asyncio.iscoroutinefunction(handler))
+
+    def test_mcp2_without_parent_handler_still_advertises_custom_tools(self):
+        """2.x with nothing registered for tools/list (get_request_handler ->
+        None) must still register our tools under the SDK's PaginatedRequestParams."""
+        server = self._make_server_for("2.x")
+        method, params_type, handler = server.server.add_request_handler.call_args.args
+        self.assertEqual(method, "tools/list")
+        self.assertIs(params_type, _mod.types.PaginatedRequestParams)
+        result = asyncio.run(handler(object(), object()))
+        names = [t.name for t in result.tools]
+        for expected in self.CUSTOM_TOOL_NAMES:
+            self.assertIn(expected, names)
 
     # The custom tools this wrapper adds on top of upstream's built-ins.
     CUSTOM_TOOL_NAMES = (
@@ -719,45 +825,69 @@ class TestCustomToolsRegistered(unittest.TestCase):
 
     def test_custom_tool_names_present(self):
         """list_tools must include all custom tool names."""
-        tools = self._get_tool_list(parent_tools=[])
-        names = [t.name for t in tools]
-        for expected in self.CUSTOM_TOOL_NAMES:
-            self.assertIn(
-                expected,
-                names,
-                f"Tool {expected!r} missing from list_tools. Got: {names}",
-            )
+        for mcp_api in self.MCP_APIS:
+            with self.subTest(mcp_api=mcp_api):
+                tools = self._get_tool_list(parent_tools=[], mcp_api=mcp_api)
+                names = [t.name for t in tools]
+                for expected in self.CUSTOM_TOOL_NAMES:
+                    self.assertIn(
+                        expected,
+                        names,
+                        f"Tool {expected!r} missing from list_tools. Got: {names}",
+                    )
 
     def test_total_tool_count_with_parent_tools(self):
         """Total tool count must be 16 built-in + all custom tools."""
-        # Simulate 16 built-in parent tools
         FakeTool = _mod.types.Tool
-        parent_tools = [FakeTool(name=f"builtin_{i}") for i in range(16)]
-        tools = self._get_tool_list(parent_tools=parent_tools)
         expected = 16 + len(self.CUSTOM_TOOL_NAMES)
-        self.assertGreaterEqual(
-            len(tools),
-            expected,
-            f"Expected >= {expected} tools (16 built-in + {len(self.CUSTOM_TOOL_NAMES)} custom). Got: {len(tools)}",
-        )
+        for mcp_api in self.MCP_APIS:
+            with self.subTest(mcp_api=mcp_api):
+                # Simulate 16 built-in parent tools
+                parent_tools = [FakeTool(name=f"builtin_{i}") for i in range(16)]
+                tools = self._get_tool_list(parent_tools=parent_tools, mcp_api=mcp_api)
+                self.assertGreaterEqual(
+                    len(tools),
+                    expected,
+                    f"Expected >= {expected} tools (16 built-in + "
+                    f"{len(self.CUSTOM_TOOL_NAMES)} custom). Got: {len(tools)}",
+                )
 
     def test_custom_tools_appended_after_parent(self):
         """Custom tools must be appended after built-in tools, not prepended."""
         FakeTool = _mod.types.Tool
-        parent_tools = [FakeTool(name="builtin_0")]
-        tools = self._get_tool_list(parent_tools=parent_tools)
         custom_names = set(self.CUSTOM_TOOL_NAMES)
-        last_custom_idx = max(
-            i for i, t in enumerate(tools) if t.name in custom_names
-        )
-        first_builtin_idx = next(
-            i for i, t in enumerate(tools) if t.name == "builtin_0"
-        )
-        self.assertLess(
-            first_builtin_idx,
-            last_custom_idx,
-            "Built-in tools must appear before custom tools in the list",
-        )
+        for mcp_api in self.MCP_APIS:
+            with self.subTest(mcp_api=mcp_api):
+                parent_tools = [FakeTool(name="builtin_0")]
+                tools = self._get_tool_list(parent_tools=parent_tools, mcp_api=mcp_api)
+                last_custom_idx = max(
+                    i for i, t in enumerate(tools) if t.name in custom_names
+                )
+                first_builtin_idx = next(
+                    i for i, t in enumerate(tools) if t.name == "builtin_0"
+                )
+                self.assertLess(
+                    first_builtin_idx,
+                    last_custom_idx,
+                    "Built-in tools must appear before custom tools in the list",
+                )
+
+    _BROWSER_CLICK_ONEOF_SCHEMA = {
+        "type": "object",
+        "properties": {"index": {"type": "integer"}},
+        "oneOf": [
+            {"required": ["index"]},
+            {"required": ["coordinate_x", "coordinate_y"]},
+        ],
+    }
+
+    def _assert_sanitized(self, schema):
+        self.assertNotIn("oneOf", schema, "sanitizer failed to strip oneOf")
+        for forbidden in ("allOf", "anyOf"):
+            self.assertNotIn(forbidden, schema)
+        # The rest of the schema must survive — we strip only the forbidden keys.
+        self.assertEqual(schema.get("type"), "object")
+        self.assertIn("index", schema.get("properties", {}))
 
     def test_sanitizer_strips_oneOf_regardless_of_version(self):
         """VERSION-INDEPENDENT proof the oneOf sanitizer works: inject a parent
@@ -768,25 +898,32 @@ class TestCustomToolsRegistered(unittest.TestCase):
         Guards against someone deleting the sanitizer assuming '#4211 is fixed'
         while the plugin still installs browser-use unpinned (0.12.5 ships it)."""
         FakeTool = _mod.types.Tool
-        offending = FakeTool(
-            name="browser_click",
-            inputSchema={
-                "type": "object",
-                "properties": {"index": {"type": "integer"}},
-                "oneOf": [
-                    {"required": ["index"]},
-                    {"required": ["coordinate_x", "coordinate_y"]},
-                ],
-            },
-        )
-        tools = self._get_tool_list(parent_tools=[offending])
+        for mcp_api in self.MCP_APIS:
+            with self.subTest(mcp_api=mcp_api):
+                offending = FakeTool(
+                    name="browser_click",
+                    inputSchema=dict(self._BROWSER_CLICK_ONEOF_SCHEMA),
+                )
+                tools = self._get_tool_list(parent_tools=[offending], mcp_api=mcp_api)
+                click = next(t for t in tools if t.name == "browser_click")
+                self._assert_sanitized(click.inputSchema)
+
+    def test_sanitizer_handles_mcp2_input_schema_attribute(self):
+        """mcp 2.x renamed the Tool field to `input_schema`; the camelCase
+        `inputSchema` survives only as the wire alias and is NOT an attribute
+        (pydantic does not expose aliases as attributes). A tool shaped like
+        2.x's must still be sanitized, or the oneOf ships on every fresh install."""
+
+        class _Mcp2ShapedTool:
+            def __init__(self, name, input_schema):
+                self.name = name
+                self.input_schema = input_schema
+
+        offending = _Mcp2ShapedTool("browser_click", dict(self._BROWSER_CLICK_ONEOF_SCHEMA))
+        self.assertFalse(hasattr(offending, "inputSchema"))
+        tools = self._get_tool_list(parent_tools=[offending], mcp_api="2.x")
         click = next(t for t in tools if t.name == "browser_click")
-        self.assertNotIn("oneOf", click.inputSchema, "sanitizer failed to strip oneOf")
-        for forbidden in ("allOf", "anyOf"):
-            self.assertNotIn(forbidden, click.inputSchema)
-        # The rest of the schema must survive — we strip only the forbidden keys.
-        self.assertEqual(click.inputSchema.get("type"), "object")
-        self.assertIn("index", click.inputSchema.get("properties", {}))
+        self._assert_sanitized(click.input_schema)
 
 
 # ---------------------------------------------------------------------------

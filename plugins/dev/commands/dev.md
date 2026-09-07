@@ -1193,7 +1193,7 @@ skills: dev:context-detection, dev:universal-patterns, dev:worktree-lifecycle, m
 </formatting>
 
 **Phase gates.** Read
-`${CLAUDE_PLUGIN_ROOT}/skills/enforcement/SKILL.md` before starting
+`${CLAUDE_PLUGIN_ROOT}/knowledge/enforcement.md` before starting
 phase 1 of a Standard or Full run. Quick depth (0 → 4 → done) has no gates to enforce.
 
 This command is already the only consumer of that skill and already reads its phase

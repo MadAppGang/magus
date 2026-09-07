@@ -23,14 +23,16 @@ skills:
 
   | Read this file | When the task involves |
   |---|---|
-  | ${CLAUDE_PLUGIN_ROOT}/skills/frontend/react-typescript/SKILL.md | React 19 components, hooks, Zod forms, error boundaries |
-  | ${CLAUDE_PLUGIN_ROOT}/skills/frontend/tailwindcss/SKILL.md | Tailwind v4, @theme, tokens, container queries, dark mode |
-  | ${CLAUDE_PLUGIN_ROOT}/skills/frontend/shadcn-ui/SKILL.md | shadcn/ui components, CSS-variable theming, React Hook Form |
+  | ${CLAUDE_PLUGIN_ROOT}/knowledge/frontend/react-typescript.md | React 19 components, hooks, Zod forms, error boundaries |
+  | ${CLAUDE_PLUGIN_ROOT}/knowledge/frontend/tailwindcss.md | Tailwind v4, @theme, tokens, container queries, dark mode |
+  | ${CLAUDE_PLUGIN_ROOT}/knowledge/frontend/shadcn-ui.md | shadcn/ui components, CSS-variable theming, React Hook Form |
   | ${CLAUDE_PLUGIN_ROOT}/skills/frontend/frontend-implement/SKILL.md | applying design-review findings, or UI that looks AI-generated |
 
-  Others available the same way, none preloaded:
-  vue-typescript, css-modules, state-management, tanstack-router, testing-frontend,
-  browser-debugging.
+  Others available the same way, none preloaded, all under
+  `${CLAUDE_PLUGIN_ROOT}/knowledge/frontend/`: `vue-typescript.md`, `css-modules.md`,
+  `state-management.md` (plus `state-management/tanstack-query.md` for server cache),
+  `tanstack-router.md`, `testing-frontend.md`. `browser-debugging` is still a skill, at
+  `${CLAUDE_PLUGIN_ROOT}/skills/frontend/browser-debugging/SKILL.md`.
 
   Reading two is normal. Reading all four means the task should have been split.
 </stack-playbooks>
@@ -459,7 +461,7 @@ skills:
     - For interactive testing: browser_click, browser_type to simulate user actions
     - Full-page screenshots available: browser_screenshot(full_page=True) — not available in claude-in-chrome
     - Prefer browser-use over manual describe-and-check for UI validation
-    - Pattern: read ${CLAUDE_PLUGIN_ROOT}/skills/frontend/browser-use-integration/SKILL.md —
+    - Pattern: read ${CLAUDE_PLUGIN_ROOT}/knowledge/frontend/browser-use-integration.md —
       the browser-use tool list and call patterns, nothing else. Read the file: this agent has no Skill tool
     - Detection: attempt mcp__browser-use__browser_list_sessions() — success means available
     - Always close sessions: mcp__browser-use__browser_close_session(session_id) when done
@@ -496,8 +498,11 @@ skills:
   cannot express the design, say so and propose the tokens to add.
 
   For framework mechanics — hooks, TanStack Query, Zod forms, error boundaries,
-  container queries, motion — the `dev:react-typescript`, `dev:tailwindcss` and
-  `dev:shadcn-ui` skills are preloaded and current.
+  container queries, motion — read
+  `${CLAUDE_PLUGIN_ROOT}/knowledge/frontend/react-typescript.md`,
+  `${CLAUDE_PLUGIN_ROOT}/knowledge/frontend/tailwindcss.md` or
+  `${CLAUDE_PLUGIN_ROOT}/knowledge/frontend/shadcn-ui.md`. None of the three is preloaded,
+  and none ever was — read the one the task calls for.
 </knowledge>
 
 

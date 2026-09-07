@@ -54,30 +54,38 @@ cause), `architect` (system design), `synthesizer` (consolidating findings),
 
 **Interview support** — `scribe`, `spec-writer`.
 
-## Skills
+## Skills and knowledge
 
-43 skills: **9 auto-matched, 34 reference material** reached by name or by a
-`Read` from the skill that needs them.
+Two trees, told apart by location alone.
 
-That split is deliberate, and the ratio is the point. Claude Code injects a
-listing of every auto-matchable skill into **every turn**, budgeted at
-`context × 4 × 0.01` characters — about 8,000 on a 200k-token model, more on a
-larger one — and that budget is shared across every installed plugin, not
-per-plugin. Over budget it shortens descriptions rather than dropping skills, so
-an oversized corpus degrades matching for everything the user has installed.
+`skills/` holds **procedures** — an ordered workflow with a checkable end state.
+Each is registered in `.claude-plugin/plugin.json`, reachable as `/dev:<name>`,
+and preloadable by an agent. `knowledge/` holds **reference manuals** — the stack
+playbooks, language guides and catalogues consulted at a decision point. Nothing
+registers `knowledge/`: it has no manifest entry, costs nothing against the
+skill-listing budget, and is reached by path and only by path.
 
-The nine listed skills are the ones whose *absence changes what you get* rather
-than how fast: stack detection, universal patterns, design-system guardrails,
+No counts here, on purpose — a hand-copied number drifts the first time a file
+moves. The manifest is the list of skills; `knowledge/README.md` is the index of
+manuals, one row per file with the question it answers.
+
+Within `skills/`, the split between auto-matched and hidden is deliberate. Claude
+Code injects a listing of every auto-matchable skill into **every turn**,
+budgeted at `context × 4 × 0.01` characters — about 8,000 on a 200k-token model,
+more on a larger one — and that budget is shared across every installed plugin,
+not per-plugin. Over budget it shortens descriptions rather than dropping skills,
+so an oversized corpus degrades matching for everything the user has installed.
+
+The listed skills are the ones whose *absence changes what you get* rather than
+how fast: stack detection, universal patterns, design-system guardrails,
 systematic debugging, testing strategies, TDD, verification-before-completion,
-worktree lifecycle, documentation standards.
+worktree lifecycle, documentation standards. Every other skill sets
+`disable-model-invocation: true` and costs nothing until `/dev:<name>` or a
+`Read` opens it.
 
-Everything else — every stack playbook, every language, every catalogue — sets
-`disable-model-invocation: true`. It costs nothing until something opens it.
-
-Groups: `core/` · `frontend/` · `backend/` · `discipline/` · `planning/` ·
-`design/` · `enforcement/`, plus architecture, documentation standards, MCP
-standards, plugin SDK patterns, security audit, optimize and code roast at the
-top level.
+Skills are grouped by category — `core/` · `frontend/` · `backend/` ·
+`discipline/` · `planning/` — with the routers and standalone workflows at the
+top level. `knowledge/` mirrors the same categories.
 
 > **Hiding a skill that an agent preloads silently starves that agent.**
 > `disable-model-invocation: true` blocks preloading as well as listing. Check

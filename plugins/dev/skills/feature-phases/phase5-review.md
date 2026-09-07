@@ -74,9 +74,11 @@ whether the `multimodel` plugin is installed.
 
 ### Step 5.5: Launch the reviews
 
-The internal reviewer always runs, foreground, with the contract lines and nothing
-else. It owns its own checklist, severity scale and thresholds; this phase does not
-restate them.
+The internal reviewer always runs, foreground, with the contract lines, its loadout from
+`context.json`, and nothing else. It owns its own checklist, severity scale and
+thresholds; this phase does not restate them. The loadout is repo knowledge to review
+*against* — `security-audit.md`, the stack's own patterns, an architecture leaf for a
+`refactor` or `new_subsystem` — chosen for this task by the detector; it is not review rules.
 
 ```
 Agent(
@@ -87,6 +89,17 @@ Agent(
            FOCUS: code
            OUTPUT: ${SESSION_PATH}/reviews/code-review/claude-internal.md
            MODELS: {ids from Step 5.4, or none}
+
+           **YOUR LOADOUT** (from context.agent_loadouts.reviewer.read in
+           ${SESSION_PATH}/context.json — at most 5, chosen for this agent and this task;
+           read them before the diff, mandatory first):
+           {for each path in context.agent_loadouts.reviewer.read}
+           - {path}{if path in context.agent_loadouts.reviewer.mandatory} ← MANDATORY{end}
+           {end}
+           {if context.agent_loadouts.reviewer.note}
+           Note: {context.agent_loadouts.reviewer.note}
+           {end}
+
            Persist the full report to OUTPUT with a Bash heredoc — you have Bash, not
            Write — then return a brief summary."
 )

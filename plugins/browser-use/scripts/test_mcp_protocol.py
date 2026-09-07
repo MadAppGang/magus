@@ -9,9 +9,26 @@ uses, minus the LLM and minus a subprocess. This catches dispatch, registration,
 schema, and result-serialization bugs that handler-level unit tests structurally
 cannot see.
 
-Tool of choice: the official `mcp` Python SDK's
-`mcp.shared.memory.create_connected_server_and_client_session` — no npx, no Node,
-no network, no Chrome. Runs in pytest in milliseconds.
+Transport: the official `mcp` Python SDK's in-memory streams — no npx, no Node,
+no network, no Chrome. Runs in milliseconds. Two SDK majors are in the field and
+this file must pass on both, because mcp-server.py ships one file for both:
+
+  - mcp 1.x ships `mcp.shared.memory.create_connected_server_and_client_session`,
+    which wires a lowlevel Server to a ClientSession and initializes it.
+  - mcp 2.x removed that helper. What remains public is
+    `mcp.shared.memory.create_client_server_memory_streams` (the stream pair),
+    `mcp.client.session.ClientSession`, and `Server.run(...)`. `_connect_mcp2`
+    below assembles those exactly the way the SDK's own in-process transport
+    does (mcp 2.1.1, mcp/client/_memory.py, `InMemoryTransport._connect`):
+    server in a task group, client session over the other ends, `initialize()`,
+    then EOF both write sides and give the server a bounded grace to exit.
+
+The choice is an import-try on the helper that vanished, which is the honest
+capability check here: it is the symbol itself that is or is not there.
+
+Field names differ between the majors too — 1.x models `Tool.inputSchema` and
+`CallToolResult.isError`; 2.x renamed them `input_schema` / `is_error` and kept
+the camelCase only as the wire alias — so the tests read them through `_attr`.
 
 Probe tool: `browser_doctor`, which exercises the full round-trip but needs no
 browser, so it stays deterministic and CI-safe. (Browser-dependent tools are
@@ -24,6 +41,7 @@ isn't importable, the whole module is skipped.
 import importlib.util
 import json
 import unittest
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 # Skip the entire module cleanly if the real deps aren't present.
@@ -34,6 +52,11 @@ _HAVE_DEPS = (
 
 _SERVER_PATH = Path(__file__).parent / "mcp-server.py"
 
+# How long the 2.x connector waits for the server task to exit on its own after
+# both write sides are closed, before cancelling it. Same value the SDK uses
+# (mcp/client/_memory.py, SERVER_SHUTDOWN_GRACE).
+_SERVER_SHUTDOWN_GRACE = 2.0
+
 
 def _load_real_server_module():
     """Import mcp-server.py with the REAL mcp/browser_use SDKs (no stubs)."""
@@ -43,18 +66,83 @@ def _load_real_server_module():
     return mod
 
 
+def _attr(model, *names):
+    """First attribute of `model` that exists among `names` (1.x vs 2.x field names)."""
+    for name in names:
+        if hasattr(model, name):
+            return getattr(model, name)
+    raise AttributeError(f"{type(model).__name__} has none of {names}")
+
+
+@asynccontextmanager
+async def _connect_mcp2(server):
+    """
+    mcp 2.x: an initialized ClientSession over in-memory streams to `server`.
+
+    Mirrors mcp 2.1.1's own `InMemoryTransport._connect` (mcp/client/_memory.py):
+    the server runs in a task group over one end of the stream pair, the client
+    session sits on the other, and teardown EOFs both write sides so a
+    well-behaved server exits on its own — cancellation is only the backstop.
+    """
+    import anyio
+    from mcp.client.session import ClientSession
+    from mcp.shared.memory import create_client_server_memory_streams
+
+    async with create_client_server_memory_streams() as (client_streams, server_streams):
+        client_read, client_write = client_streams
+        server_read, server_write = server_streams
+        server_done = anyio.Event()
+
+        async def run_server() -> None:
+            try:
+                await server.run(
+                    server_read,
+                    server_write,
+                    server.create_initialization_options(),
+                )
+            finally:
+                server_done.set()
+
+        async with anyio.create_task_group() as tg:
+            tg.start_soon(run_server)
+            try:
+                async with ClientSession(
+                    read_stream=client_read, write_stream=client_write
+                ) as session:
+                    await session.initialize()
+                    yield session
+            finally:
+                await client_write.aclose()
+                await server_write.aclose()
+                with anyio.move_on_after(_SERVER_SHUTDOWN_GRACE):
+                    await server_done.wait()
+                if not server_done.is_set():
+                    tg.cancel_scope.cancel()
+
+
+def _connect(server):
+    """
+    Async context manager yielding an initialized in-memory ClientSession.
+
+    mcp 1.x ships a helper that does the whole job; mcp 2.x removed it, and the
+    import-try is the capability check — the missing symbol IS the difference.
+    """
+    try:
+        from mcp.shared.memory import create_connected_server_and_client_session
+    except ImportError:
+        return _connect_mcp2(server)
+    return create_connected_server_and_client_session(server)
+
+
 @unittest.skipUnless(_HAVE_DEPS, "browser_use / mcp not installed")
 class TestRealMcpProtocol(unittest.IsolatedAsyncioTestCase):
     """End-to-end tests over the SDK's in-memory MCP transport."""
 
     async def _client(self):
-        """Yield an initialized in-memory ClientSession wired to the real server."""
-        from mcp.shared.memory import create_connected_server_and_client_session
+        """An initialized in-memory ClientSession wired to the real server."""
         mod = _load_real_server_module()
         server = mod.MagusBrowserServer()
-        # create_connected_server_and_client_session is an async context manager
-        # returning a connected ClientSession; we expose both for the test.
-        return create_connected_server_and_client_session(server.server)
+        return _connect(server.server)
 
     async def test_tools_list_includes_all_custom_tools_over_protocol(self):
         """tools/list over the real protocol must advertise all 5 new tools."""
@@ -82,7 +170,7 @@ class TestRealMcpProtocol(unittest.IsolatedAsyncioTestCase):
         async with await self._client() as client:
             result = await client.list_tools()
             for t in result.tools:
-                schema = t.inputSchema or {}
+                schema = _attr(t, "inputSchema", "input_schema") or {}
                 for forbidden in ("oneOf", "allOf", "anyOf"):
                     self.assertNotIn(
                         forbidden, schema,
@@ -93,7 +181,10 @@ class TestRealMcpProtocol(unittest.IsolatedAsyncioTestCase):
         """A real tools/call to browser_doctor must round-trip a JSON report."""
         async with await self._client() as client:
             result = await client.call_tool("browser_doctor", {})
-            self.assertFalse(result.isError, f"browser_doctor errored: {result}")
+            self.assertFalse(
+                _attr(result, "isError", "is_error"),
+                f"browser_doctor errored: {result}",
+            )
             # The handler returns a JSON string as TextContent.
             text = result.content[0].text
             data = json.loads(text)

@@ -91,7 +91,7 @@ else {
 //
 // Find the plugin root by walking up to the directory holding the manifest — either
 // plugin.json or .claude-plugin/plugin.json — rather than assuming a fixed depth.
-// Skills live at BOTH depths in this repo — grouped (dev/skills/backend/api-design/)
+// Skills live at BOTH depths in this repo — grouped (dev/skills/backend/db-branching/)
 // and flat (terminal/skills/workspace-setup/) — so a hardcoded "../../.." resolves to
 // plugins/ for every flat skill, finds no agents/ or commands/ directory, and reports
 // each one unreachable regardless of what references it.

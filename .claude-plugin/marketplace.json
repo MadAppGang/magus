@@ -254,7 +254,7 @@
       "name": "dev",
       "source": "./plugins/dev",
       "description": "Universal development assistant. Detects the project stack and routes work to specialist agents for architecture, implementation, debugging, review and research, enforcing design-system guardrails on every UI change.",
-      "version": "6.1.1",
+      "version": "7.0.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -294,6 +294,17 @@
       "strict": true,
       "releases": [
         {
+          "version": "7.0.0",
+          "date": "2026-09-07",
+          "kinds": [
+            "Removed",
+            "Added",
+            "Changed",
+            "Fixed"
+          ],
+          "summary": "BREAKING \u2014 context.json no longer carries bundled_skill_paths"
+        },
+        {
           "version": "6.1.1",
           "date": "2026-09-07",
           "kinds": [
@@ -323,15 +334,6 @@
           "version": "6.0.1",
           "date": "2026-08-29",
           "summary": "Version archaeology removed from 18 files \u2014 fourteen notes explaining that a skill had been\u2026"
-        },
-        {
-          "version": "6.0.0",
-          "date": "2026-08-28",
-          "kinds": [
-            "Changed",
-            "Fixed"
-          ],
-          "summary": "BREAKING \u2014 every team call in dev polls for completion and needs claudish >= 8.0.0"
         }
       ]
     },
@@ -605,7 +607,7 @@
       "name": "browser-use",
       "source": "./plugins/browser-use",
       "description": "Full-platform browser automation. Live-page JS eval, keyboard and focus primitives, environment preflight, and a configurable agent LLM, across dual local and cloud browsers backed by Playwright's own Chromium so your real Chrome is never hijacked. Ten Magus-specific tools on top of the upstream Browser Use MCP set, plus 6 skills.",
-      "version": "1.7.3",
+      "version": "1.7.4",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -627,6 +629,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "1.7.4",
+          "date": "2026-09-07",
+          "kinds": [
+            "Fixed"
+          ],
+          "summary": "The MCP server crashed on construction against mcp 2.x, so every fresh install got no browser\u2026"
+        },
         {
           "version": "1.7.3",
           "date": "2026-08-26",
@@ -657,16 +667,6 @@
             "Added"
           ],
           "summary": "The orphan reaper could terminate the wrong browser"
-        },
-        {
-          "version": "1.6.0",
-          "date": "2026-08-22",
-          "kinds": [
-            "Fixed",
-            "Added",
-            "Changed"
-          ],
-          "summary": "The idle-cleanup loop was never running"
         }
       ]
     },

@@ -18,6 +18,16 @@ Probe tool: `browser_doctor` — full subprocess round-trip, no Chrome, so it's
 deterministic and CI-safe. (Browser-driving behavior is verified live against
 real Chrome by scripts/manual-verify/.)
 
+Runs on both MCP SDK majors (1.x on existing installs, 2.x on fresh ones —
+browser-use >= 0.13.10 pins mcp==2.1.1). The SDK's `stdio_client` and
+`ClientSession` kept their shapes across the majors; only result field names
+moved (`isError` -> `is_error`), which `_attr` papers over. The two context
+managers are entered as PROPERLY NESTED `async with` blocks: on 2.x,
+`ClientSession.__aexit__` raises an ExceptionGroup when the body failed, and a
+hand-rolled `__aexit__` that ran the session exit first never reached the
+transport exit — leaving the server subprocess alive and the event loop
+waiting on it forever. A failing assertion must fail, not hang the CI job.
+
 Skipped if `browser_use` / `mcp` aren't importable.
 """
 
@@ -25,6 +35,7 @@ import importlib.util
 import json
 import sys
 import unittest
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 _HAVE_DEPS = (
@@ -35,13 +46,27 @@ _HAVE_DEPS = (
 _SERVER_PATH = Path(__file__).parent / "mcp-server.py"
 
 
+def _attr(model, *names):
+    """First attribute of `model` that exists among `names` (1.x vs 2.x field names)."""
+    for name in names:
+        if hasattr(model, name):
+            return getattr(model, name)
+    raise AttributeError(f"{type(model).__name__} has none of {names}")
+
+
 @unittest.skipUnless(_HAVE_DEPS, "browser_use / mcp not installed")
 class TestRealStdioSubprocess(unittest.IsolatedAsyncioTestCase):
     """Spawn the real server as a subprocess and talk to it over stdio."""
 
+    @asynccontextmanager
     async def _session(self):
         """Async context manager yielding an initialized ClientSession bound to
-        a freshly-spawned `python3 mcp-server.py` subprocess."""
+        a freshly-spawned `python3 mcp-server.py` subprocess.
+
+        Nested `async with`, deliberately: the transport's exit must run even
+        when the session's exit raises (it does on 2.x after a failed body),
+        or the subprocess is never reaped and the test hangs instead of failing.
+        """
         from mcp import ClientSession, StdioServerParameters
         from mcp.client.stdio import stdio_client
 
@@ -52,26 +77,15 @@ class TestRealStdioSubprocess(unittest.IsolatedAsyncioTestCase):
             # inherits the launching environment).
             env=None,
         )
-
-        class _Ctx:
-            async def __aenter__(self):
-                self._stdio_cm = stdio_client(params)
-                read, write = await self._stdio_cm.__aenter__()
-                self._sess_cm = ClientSession(read, write)
-                session = await self._sess_cm.__aenter__()
+        async with stdio_client(params) as (read, write):
+            async with ClientSession(read, write) as session:
                 await session.initialize()
-                return session
-
-            async def __aexit__(self, *exc):
-                await self._sess_cm.__aexit__(*exc)
-                await self._stdio_cm.__aexit__(*exc)
-
-        return _Ctx()
+                yield session
 
     async def test_subprocess_boots_and_lists_all_tools(self):
         """The shipped process must boot over stdio and advertise all 24 tools —
         proving the stdout guards / init hacks don't break JSON-RPC."""
-        async with await self._session() as session:
+        async with self._session() as session:
             result = await session.list_tools()
             names = {t.name for t in result.tools}
         for expected in (
@@ -83,9 +97,12 @@ class TestRealStdioSubprocess(unittest.IsolatedAsyncioTestCase):
 
     async def test_subprocess_call_browser_doctor(self):
         """A real tools/call over the subprocess must round-trip a JSON report."""
-        async with await self._session() as session:
+        async with self._session() as session:
             result = await session.call_tool("browser_doctor", {})
-            self.assertFalse(result.isError, f"browser_doctor errored: {result}")
+            self.assertFalse(
+                _attr(result, "isError", "is_error"),
+                f"browser_doctor errored: {result}",
+            )
             data = json.loads(result.content[0].text)
             for field in ("python_version", "browser_use", "chromium_present", "api_keys"):
                 self.assertIn(field, data)
@@ -93,7 +110,7 @@ class TestRealStdioSubprocess(unittest.IsolatedAsyncioTestCase):
     async def test_subprocess_stdout_is_clean_jsonrpc(self):
         """If the server leaked non-JSON to stdout, initialize()/list_tools()
         would fail to parse. Reaching a valid result IS the clean-stdout proof."""
-        async with await self._session() as session:
+        async with self._session() as session:
             result = await session.list_tools()
             self.assertTrue(hasattr(result, "tools"))
 

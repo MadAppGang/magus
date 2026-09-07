@@ -163,7 +163,8 @@ tools: Read, Write, Edit, Bash, Glob, Grep
       <steps>
         <step>Mark PHASE 3 as in_progress</step>
         <step>Read test plan from ${SESSION_PATH}/tests/test-plan.md</step>
-        <step>Detect test framework from context.json (if available)</step>
+        <step>Take the test framework from `commands.test_runner_command` and
+        `commands.test_file_patterns` in context.json (if SESSION_PATH is set)</step>
         <step>
           For each test scenario:
           - Write test code

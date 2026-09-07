@@ -62,15 +62,11 @@ Prompt: "SESSION_PATH: ${SESSION_PATH}
             - Enabled plugins from .claude/settings.json
             - .claude-plugin/*/skills/**/SKILL.md
 
-         3. Auto-load skills matching feature keywords:
-            - Parse ${SESSION_PATH}/requirements.md for keywords
-            - Match to discovered skill categories
+         3. Resolve the task from ${SESSION_PATH}/requirements.md and build a
+            per-agent loadout for the agents this feature will dispatch.
 
          **Plan mode is active — do NOT write context.json.**
-         Return the JSON as your final message instead, with:
-         - detected_stack
-         - discovered_skills (name, description, path, source, categories)
-         - bundled_skill_paths"
+         Return the complete context.json v2 document as your final message instead."
 Output: returned JSON, held in orchestrator context
 
 ### Step 3.6: Display discovered skills
@@ -94,13 +90,18 @@ Prompt: "SESSION_PATH: ${SESSION_PATH}
          {returned JSON from Step 3.5}
 
          **DISCOVERED PROJECT SKILLS** (read these first - project-specific patterns):
-         {for each skill in discovered_skills where auto_loaded == true}
+         {for each skill in discovered_skills — every project-local skill the detector found; there is no relevance flag}
          - {skill.path} ({skill.name} - {skill.description})
          {end}
 
-         **BUNDLED SKILLS** (fallback patterns):
-         {for each path in bundled_skill_paths}
-         - {path}
+         **ARCHITECTURE** {if architecture is not null}:
+         - {architecture.read[0]}  ← MANDATORY
+         Recommendation: {architecture.recommendation} — {architecture.why}
+         {end}
+
+         **YOUR LOADOUT** (from agent_loadouts.architect.read):
+         {for each path in agent_loadouts.architect.read}
+         - {path}{if path in agent_loadouts.architect.mandatory} ← MANDATORY{end}
          {end}
 
          {If outer_iteration > 1}

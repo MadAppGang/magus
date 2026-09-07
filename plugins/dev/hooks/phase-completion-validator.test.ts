@@ -29,6 +29,9 @@ function satisfying(phase: string): Record<string, string> {
   switch (phase) {
     case "phase3":
       return {
+        // Step 3.9 of phase3-planning writes context.json and architecture.md
+        // together, at every depth. Neither is depth-grouped.
+        [`${SESSION}/context.json`]: pad(400),
         [`${SESSION}/architecture.md`]: pad(600),
         [`${SESSION}/reviews/plan-review/consolidated.md`]: "verdict " + pad(300),
         [`${SESSION}/reviews/plan-review/claude-internal.md`]: "review " + pad(200),
@@ -432,18 +435,18 @@ describe("depth groups, and the acknowledgement that had to work", () => {
     dirtyPaths: () => dirty,
   });
 
-  test("a Standard run — architecture.md alone — is COMPLETE, not abandoned", () => {
+  test("a Standard run — context.json + architecture.md — is COMPLETE, not abandoned", () => {
     // The false positive. `/dev:dev` Standard is specified as single-model, so
-    // it writes architecture.md and never `reviews/plan-review/*`. Requiring
+    // it writes the Step 3.9 pair and never `reviews/plan-review/*`. Requiring
     // them made every Standard run report as a half-finished Full run.
-    expect(evaluateStop(deps(["architecture.md"]))).toBeNull();
+    expect(evaluateStop(deps(["context.json", "architecture.md"]))).toBeNull();
   });
 
   test("but a Full run that wrote ONE review file is still caught", () => {
     // The other half of the rule — the group is required as soon as anything in
     // it exists, so genuinely abandoning the multi-model review still reports.
     const message = evaluateStop(
-      deps(["architecture.md", "reviews/plan-review/consolidated.md"]),
+      deps(["context.json", "architecture.md", "reviews/plan-review/consolidated.md"]),
     );
     expect(message).not.toBeNull();
     expect(message).toContain("reviews/plan-review/claude-internal.md");
@@ -454,12 +457,14 @@ describe("depth groups, and the acknowledgement that had to work", () => {
     // so the warning could not be acknowledged and repeated every turn. Found
     // by writing the file and watching the identical message return.
     const partial = deps([
+      "context.json",
       "architecture.md",
       "reviews/plan-review/consolidated.md",
     ]);
     expect(evaluateStop(partial)).not.toBeNull();
 
     const acknowledged = deps([
+      "context.json",
       "architecture.md",
       "reviews/plan-review/consolidated.md",
       "skip-reason.md",
@@ -471,7 +476,7 @@ describe("depth groups, and the acknowledgement that had to work", () => {
     // Pins message and behaviour together: if someone drops the skip-reason
     // check, this fails rather than silently reverting to unsilenceable advice.
     const message = evaluateStop(
-      deps(["architecture.md", "reviews/plan-review/consolidated.md"]),
+      deps(["context.json", "architecture.md", "reviews/plan-review/consolidated.md"]),
     );
     expect(message).toContain("skip-reason.md");
   });
@@ -486,5 +491,31 @@ describe("depth groups, and the acknowledgement that had to work", () => {
     );
     expect(log).toBeDefined();
     expect(log?.patterns).toBeUndefined();
+  });
+});
+
+describe("phase 3 gates the session context", () => {
+  // `context.json` was written by Phase 3 from the beginning and checked by
+  // nothing: no code in the repo read it, and it was in no phase spec. So a run
+  // that produced an empty one, or none, cleared this gate and failed in Phase 4
+  // where a missing loadout reads as an agent problem rather than a Phase 3 one.
+  test("context.json is required, ungrouped, and size-gated", () => {
+    const ctx = PHASE_ARTIFACTS["phase3"].required.find((a) => a.file === "context.json");
+    expect(ctx).toBeDefined();
+    expect(ctx?.minSize).toBe(200);
+    // Ungrouped: every depth writes it, so it is never conditionally required.
+    expect(ctx?.group).toBeUndefined();
+    // No content patterns — shape is gated by `bun scripts/check-context-schema.ts`,
+    // which validates the v2 schema properly instead of grepping for words.
+    expect(ctx?.patterns).toBeUndefined();
+  });
+
+  test("a phase 3 with architecture.md but no context.json blocks", () => {
+    const msg = evaluate(
+      { subject: "Phase 3 planning", status: "completed" },
+      fakeDeps({ [`${SESSION}/architecture.md`]: "x".repeat(600) }),
+    );
+    expect(msg).toContain("BLOCKED");
+    expect(msg).toContain("missing context.json");
   });
 });

@@ -4,6 +4,175 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [browser-use 1.7.4] - 2026-09-07
+
+### Fixed
+
+- **The MCP server crashed on construction against mcp 2.x, so every fresh install got no
+  browser tools at all.** `browser-use 0.13.10` hard-pins `mcp==2.1.1`, and the 2.x
+  lowlevel `Server` removed the two things `MagusBrowserServer._extend_list_tools()` used
+  to graft the ten Magus tools onto upstream's list: the public `request_handlers` dict
+  (now private, keyed by method name instead of request type) and the `@list_tools()`
+  decorator. The first line of `__init__` therefore raised
+  `AttributeError: 'Server' object has no attribute 'request_handlers'`, the process died
+  before it had answered `initialize`, and Claude Code saw a server that closed stdout.
+  Existing installs were unaffected only because they still had mcp 1.x on disk; the
+  `Test Plugins` workflow, which installs `browser-use>=0.13.1` fresh, had been red on
+  `main` since the pin landed.
+
+  The wrapper now serves both SDK majors from the same file, choosing by capability —
+  `hasattr(server, "add_request_handler")` — never by version string. On 2.x it reads the
+  parent entry back with `get_request_handler("tools/list")` and re-registers the method
+  with the parent's own params type and a `(ctx, params) -> ListToolsResult` handler; on
+  1.x it keeps the decorator path unchanged. The oneOf/allOf/anyOf sanitiser follows the
+  field rename (`inputSchema` on 1.x, `input_schema` on 2.x) so the schema fix still lands
+  on fresh installs. Verified on mcp 1.26.0 and 2.1.1: the unit, protocol, stdio and
+  real-Chromium lifecycle suites all pass on both, and the pre-fix file still crashes on
+  2.1.1 under the same tests. The stdio harness also no longer hangs a CI job when an
+  assertion fails on 2.x — its two context managers are properly nested, so the server
+  subprocess is reaped even when the session exit raises.
+
+---
+
+## [dev 7.0.0] - 2026-09-07
+
+### Removed
+
+- **BREAKING — `context.json` no longer carries `bundled_skill_paths`.** The field is
+  deleted, not deprecated: `dev:stack-detector` never emits it, and it does not co-exist
+  with what replaces it. Anything reading that key now reads nothing. It was one flat
+  `string[]` fanned out identically to every dispatched agent; it is replaced by
+  `agent_loadouts.<agent>.read` — ordered, mandatory-first, capped at five paths, and
+  derived per agent and per task rather than per repo.
+- **BREAKING — 24 reference manuals left `plugins/dev/skills/` for `plugins/dev/knowledge/`;
+  the manifest went from 42 declared skills to 18.** Their old paths no longer resolve. The
+  Go, Python, Rust, Bun, React, Vue, Tailwind and shadcn/ui manuals, and the API-design,
+  auth, database, error-handling, MCP, optimisation and security-audit references, now sit
+  at `plugins/dev/knowledge/<category>/<topic>.md`. Anything naming an old
+  `plugins/dev/skills/{backend,frontend,discipline}/…/SKILL.md` path must be repointed, and
+  the slash routes those manifest entries carried — `/dev:security-audit`, `/dev:optimize`,
+  `/dev:mcp-standards` and the rest — went with them. `knowledge/` is reached by path,
+  carries no manifest entry and registers nothing — the arrangement `plugins/go/knowledge/`
+  has shipped under for several releases. Two of the moved files carry 6.1.0's content, not
+  6.0.2's: `knowledge/security-audit.md` is the rewritten procedures file (dependency-CVE
+  commands per package manager, committed-secret patterns, the compliance checklist — no
+  taxonomy and no severity scale, the reviewer owns those), which `dev:reviewer` now reads
+  at the new path under `FOCUS: security`; and `knowledge/frontend/browser-use-integration.md`
+  probes the MCP tool only, its `claude /plugin list` fallback gone. `designer-integration`
+  is not among the 24: 6.1.0 deleted that skill outright when the review surface was
+  decoupled, and nothing replaces it under `knowledge/` — the `designer@magus` presence
+  check lives in `dev:frontend` and `/dev:audit`, the two places that act on the answer.
+- The hardcoded stack→skill mapping is gone from both of the places that carried it: the
+  `<bundled_skill_path_mapping>` block in the `dev:stack-detector` agent and the
+  `generate_skill_paths()` bash function in `dev:context-detection`. Loadouts are now
+  derived from the filesystem, with the ten category→agent judgement calls in one file,
+  `plugins/dev/skills/context-detection/references/loadout-rules.md`.
+
+### Added
+
+- **`context.json` v2, with a schema and a gate.** The shape is specified at
+  `plugins/dev/skills/context-detection/references/context-schema.md` and enforced by
+  `bun scripts/check-context-schema.ts`, whose `--self-test` proves all 17 rules can fire
+  against 21 deliberately invalid documents. v2 adds task intent (`task.kind`,
+  `task.surfaces`, `task.confidence`), an MCP server inventory with provenance, and the
+  per-agent `agent_loadouts`. A v1 document is rejected. Phase 3 now lists `context.json`
+  in `PHASE_ARTIFACTS`, so an empty or missing one fails where the pipeline actually runs.
+- **`bun scripts/check-plugin-paths.ts`** — every `${CLAUDE_PLUGIN_ROOT}/…` and
+  `plugins/<p>/…` path named in plugin instruction text must exist on disk. It skips
+  fenced config examples, template placeholders and globs, but still reads live bash
+  fences, which is where the dead path below had been hiding. Wired into `pre-commit`
+  scoped to staged files and run repo-wide at release; `--self-test` proves all 6 rules
+  can fail. It scans `knowledge/` alongside `agents/`, `commands/` and `skills/` — a tree
+  reached by path only is exactly the one with no other gate. Relative links (the `./x.md` form,
+  a backticked `references/x.md`) are deliberately not checked: a rule resolving them
+  against the file's own directory was measured over the whole tree and produced 165
+  findings of which 3 were real, because the base of a relative path is not recoverable
+  from the text — agents write from the plugin root, a skill's sub-references from the
+  skill root, and a documentation skill teaches README layout with links that name nothing.
+- **`bun scripts/classify-skill-shape.ts`** — scores a directory as SKILL, KNOWLEDGE or
+  AMBIGUOUS by shape. Advisory: it proposes, a human moves the file. Deliberately not a
+  blocking gate while the ambiguous residue is untriaged.
+- `ai-docs/best-practices/` — a repo-internal curated shortlist of cross-cutting
+  approaches, each with its cost and a pointer into the shipping knowledge tree. Holds no
+  bodies and never publishes.
+- `repo.stacks: ["unknown"]` for a repo outside the detector's recognised set (Java, .NET,
+  …), stated in the schema and the agent, with a positive testdata document.
+  `commands.*` still come from the repo's own tooling in that case.
+
+### Changed
+
+- **Files under `plugins/dev/knowledge/` carry no skill frontmatter.** Each keeps a
+  `description:` line and nothing else; `name`, `disable-model-invocation`,
+  `user-invocable` and every other skill-only key are gone. Nothing had read them — the
+  skill loader never sees this directory — and a flag that reads as behaviour but is not
+  is worse than none. A knowledge file's name is its path. `classify-skill-shape.ts`
+  strips frontmatter before scoring, so no file changed bucket.
+- Loadout rules are R1–R9; the `design/` rule went with the category (6.1.0 deleted
+  `design/designer-integration`, the category's only member). `docs` is recorded as
+  preloading `documentation-standards` and is no longer handed it a second time.
+- Knowledge files no longer describe themselves as skills ("This skill covers…" is now
+  reference language), and the three frontmatter-less sub-references carry a
+  `description:`.
+
+### Fixed
+
+- **`dev:stack-detector` emitted cross-plugin paths as `plugins/<p>/…`, the layout of the
+  magus source tree** — on every customer install they failed `stat`, every MCP server got
+  `usage: null`, and a clean run produced 4+ warnings. Another plugin's file is now emitted
+  absolute under its installed root, resolved from `~/.claude/plugins/installed_plugins.json`
+  (`loadout-rules.md` → "Resolving another plugin's installed root"; never
+  `installedPluginVersions`). `context-schema.md` states the two legal path forms and
+  `check-context-schema.ts` rejects a repo-relative one (rule `PATH`).
+- **Project-local skills were never handed to any agent.** Phases 3 and 4 filtered
+  `discovered_skills` on an `auto_loaded` flag that neither the schema nor
+  `discover-skills.js` ever set, so the loop was always empty. They now list every
+  project-local skill the detector found; the schema item is
+  `{ name, description, path, source, categories }` and has no relevance flag.
+- `check-plugin-paths.ts` exempted whole json/yaml/toml fences, so a dead path in the
+  detector's own worked examples produced zero findings. Config fences now still check
+  tails under `/skills/`, `/knowledge/`, `/agents/`, `/commands/` (rule PP-07); server and
+  hook illustrations stay exempt.
+- `release.sh` runs `check-context-schema.ts --self-test` (step 1de2) and the
+  `check-context-schema` and `classify-skill-shape` unit suites (step 1dg). Before this,
+  no gate ran the validator this entry says enforces the schema.
+- `/dev:fix` dispatched the detector without a `TASK:` block, so an honest run classified
+  every bug as `unknown`. It now uses the `session-setup.md` template verbatim (the
+  template's only home), and the detector maps `task.source: command` to a kind —
+  `/dev:fix` → `bug_fix`, `/dev:doc` → `docs` — at low confidence.
+- The `frontend`, `test-architect`, `reviewer` and `debugger` loadouts are now read — phase 4
+  routes frontend-surface phases to `dev:frontend` with its own loadout, phase 5 hands the
+  reviewer its loadout beside the contract lines, phase 6 hands the test-architect its
+  loadout in both dispatches, `/dev:fix` hands the debugger its loadout.
+- `classify-skill-shape.ts --check` treated a non-numeric ceiling override as NaN and
+  passed; it now exits 2 naming the variable.
+- **A reference to a skill directory that does not exist shipped in four places.**
+  `core/debugging-strategies` was named by the `dev:stack-detector` agent and by
+  `dev:context-detection`, both of which load on nearly every `dev` entry point. It now
+  points at `discipline/systematic-debugging`. `/dev:help` also read
+  `${CLAUDE_PLUGIN_ROOT}/plugin.json`, which is not where a manifest lives; it reads
+  `.claude-plugin/plugin.json`.
+
+### Why
+
+The mapping had two hand-maintained homes that had to be edited together, so one stale
+entry went stale in two always-loaded files at once, and no gate could see a bare path
+inside a bash fence. The fix is structural rather than a correction: one home for the
+judgement, derivation for everything else, and a gate that reads the fences.
+
+### Migration notes
+
+**The skill-listing budget is unchanged — 9,967 eligible chars before and after, with
+`dev` at 1,941 both times.** Moving 24 files out of `skills/` freed nothing, because all
+24 already carried `disable-model-invocation: true` and so contributed zero to the listing.
+What changed is the count of files charged nothing (59 disabled before, 35 after); the
+eligible set is the same 61 skills. Verified by running `bun scripts/skill-budget-check.ts`
+against dev 6.1.1's tree and against this one. No budget win is claimed here.
+
+Consumers reading `bundled_skill_paths` must move to `agent_loadouts.<agent>.read`. There
+is no compatibility path and no fallback: the old field is absent, not empty.
+
+---
+
 ## [claudish 2.0.3] - 2026-09-07
 
 ### Changed

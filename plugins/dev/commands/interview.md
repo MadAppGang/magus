@@ -310,9 +310,11 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates,
 
           Agent: dev:stack-detector
           Prompt: "SESSION_PATH: ${SESSION_PATH}
+          TASK: {the feature or system being specified, from $ARGUMENTS}
 
           Detect ALL technology stacks in this project.
-          Save to: ${SESSION_PATH}/context.json"
+          Save to: ${SESSION_PATH}/context.json, conforming to context.json v2
+          (${CLAUDE_PLUGIN_ROOT}/skills/context-detection/references/context-schema.md)."
         </step>
         <step>
           Scan for existing assets in project:
@@ -1313,5 +1315,5 @@ Ready to build!
   </completion_message>
 </formatting>
 
-**API design.** Read `${CLAUDE_PLUGIN_ROOT}/skills/backend/api-design/SKILL.md` when the
+**API design.** Read `${CLAUDE_PLUGIN_ROOT}/knowledge/backend/api-design.md` when the
 interview turns to endpoints, an API contract, pagination, versioning or OpenAPI.

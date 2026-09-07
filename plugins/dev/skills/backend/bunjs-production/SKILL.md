@@ -20,9 +20,9 @@ This skill covers production deployment patterns for Bun.js TypeScript backend a
 - Preparing for production deployment
 
 **See also:**
-- **dev:bunjs** - Core Bun patterns, HTTP servers, database access
-- **dev:bunjs-architecture** - Layered architecture, camelCase conventions
-- **dev:bunjs-apidog** - OpenAPI specifications and Apidog integration
+- `${CLAUDE_PLUGIN_ROOT}/knowledge/backend/bunjs.md` - Core Bun patterns, HTTP servers, database access
+- `${CLAUDE_PLUGIN_ROOT}/skills/backend/bunjs-architecture/SKILL.md` - Layered architecture, camelCase conventions
+- `${CLAUDE_PLUGIN_ROOT}/knowledge/backend/bunjs-apidog.md` - OpenAPI specifications and Apidog integration
 
 ## Docker Multi-Stage Build
 
@@ -986,4 +986,4 @@ datasource db {
 
 ---
 
-*Production deployment patterns for Bun.js TypeScript backend. For core patterns, see dev:bunjs. For architecture, see dev:bunjs-architecture.*
+*Production deployment patterns for Bun.js TypeScript backend. For core patterns, see `knowledge/backend/bunjs.md`. For architecture, see `skills/backend/bunjs-architecture/SKILL.md`.*

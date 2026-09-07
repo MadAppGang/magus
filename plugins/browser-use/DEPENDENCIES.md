@@ -54,6 +54,20 @@ a different build instead, set `CHROME_EXECUTABLE_PATH` to its binary.
 uv pip install mcp
 ```
 
+You do not choose the SDK version — **browser-use pins `mcp` exactly**, so the
+line above only confirms what step 3 already resolved. `browser-use 0.13.1`
+pins `mcp==1.26.0`; **`browser-use >= 0.13.10` pins `mcp==2.1.1`**. That is why
+a fresh install lands on the 2.x SDK while an install from before September 2026
+still runs 1.x.
+
+**Both majors are supported by the same `mcp-server.py`.** mcp 2.x removed the
+1.x handler surface the server used to extend upstream's tool list
+(`Server.request_handlers`, `@Server.list_tools()`); the wrapper now detects
+which surface the installed SDK has — `hasattr(server, "add_request_handler")`
+— and registers its tools through that one. It branches on capability, never on
+a version string, so there is nothing to pin and no upgrade step: whichever mcp
+your browser-use brought along is the one the server runs on.
+
 ### 6. ANTHROPIC_API_KEY
 
 Required for the autonomous agent mode (`retry_with_browser_use_agent`).
@@ -96,10 +110,10 @@ python3 -c "import browser_use; print(f'browser-use {browser_use.__version__}')"
 
 ## Minimum Versions
 
-| Dependency | Minimum Version |
-|-----------|-----------------|
-| Python | 3.11 |
-| browser-use | 0.13.1 |
-| mcp | 1.0.0 |
-| Chromium | Latest (auto-installed) |
-| Bun | 1.0+ (for hooks/cloud scripts) |
+| Dependency | Minimum Version | Notes |
+|-----------|-----------------|-------|
+| Python | 3.11 | |
+| browser-use | 0.13.1 | pins the `mcp` version it needs |
+| mcp | 1.26.0 | 1.x and 2.x both supported; verified on 1.26.0 and 2.1.1 |
+| Chromium | Latest (auto-installed) | |
+| Bun | 1.0+ (for hooks/cloud scripts) | |

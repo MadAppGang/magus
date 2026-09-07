@@ -32,32 +32,53 @@ Delegate to the `dev:stack-detector` agent to detect the project's technology st
 test runner, and file patterns. Pass the session path and the bug description for
 context. The agent saves its output to `${SESSION_PATH}/context.json`.
 
-Agent prompt template:
+Agent prompt template — **this is its only home**. The commands that dispatch the detector
+point here and copy it verbatim rather than carrying a copy of their own, so an edit lands
+once:
 
 ```
 SESSION_PATH: ${SESSION_PATH}
 
-Detect technology stack, test runner, and test file patterns for this project.
-Bug description for context: {BUG_DESCRIPTION}
+TASK: {BUG_DESCRIPTION}
 
-Save results to: ${SESSION_PATH}/context.json
-Include fields: stack, test_runner_command, full_suite_args, test_file_patterns,
-lint_command, typecheck_command
+Detect the technology stack, test runner, and test file patterns for this project.
+Save results to: ${SESSION_PATH}/context.json, conforming to context.json v2 — the schema
+is ${CLAUDE_PLUGIN_ROOT}/skills/context-detection/references/context-schema.md. The calling
+command depends on repo.detected_stack, every commands.* field and agent_loadouts.debugger.
 ```
 
-After the agent completes, read `${SESSION_PATH}/context.json` to extract
-`test_runner_command`, `full_suite_args`, and `stack` for use in subsequent phases.
+The `TASK:` block is not decoration. It is the first source in the detector's brief
+resolution order; without it the detector falls through to `task.source: command`, infers
+the kind from the command name alone at low confidence, and builds a repo-derived loadout
+rather than one shaped by this bug.
 
-### context.json field reference
+After the agent completes, read `${SESSION_PATH}/context.json` and take
+`commands.test_runner_command`, `commands.full_suite_args`, `repo.detected_stack` and
+`agent_loadouts.debugger` for use in subsequent phases.
 
-| Field | Example | Usage |
-|---|---|---|
-| `stack` | `"react-typescript"` | Selects quality-check commands |
-| `test_runner_command` | `"bun test"` | Prefixed with `CI=true` for reproduction |
-| `full_suite_args` | `"--coverage"` | Appended for full-suite validation runs |
-| `test_file_patterns` | `["**/*.test.ts"]` | Used to scope grep searches to test files |
-| `lint_command` | `"bun run lint"` | Run during VALIDATE phase |
-| `typecheck_command` | `"bun run typecheck"` | Run during VALIDATE phase |
+### The schema is defined in one place — read it there
+
+The full field reference lives in
+`${CLAUDE_PLUGIN_ROOT}/skills/context-detection/references/context-schema.md`. **This file
+does not restate it.**
+
+That is not tidiness. A field table used to sit right here, a second copy sat in
+`/dev:fix`, and the detector's own declared output contained neither — three descriptions
+of one artifact, none of them authoritative, and they had already forked. The six fields
+this file asked for did not appear in the detector's output block at all.
+
+The four fields this phase actually uses:
+
+| Read | Used for |
+|---|---|
+| `repo.detected_stack` | selects the quality-check commands |
+| `commands.test_runner_command` | prefixed with `CI=true` to reproduce |
+| `commands.full_suite_args` | appended for the full-suite validation run |
+| `commands.test_file_patterns` | scopes grep searches to test files |
+
+`commands.lint_command` and `commands.typecheck_command` are read later, in VALIDATE. Any
+of them may be `null`, meaning the repo genuinely has no such command — `null` is not the
+same as an empty string, and it is not a detector failure.
 
 ---
 
@@ -67,7 +88,7 @@ If the bug description contains reproduction steps (a test path, command, or exp
 `reproduce:` block), attempt reproduction immediately after reading `context.json`:
 
 ```bash
-CI=true {test_runner_command} {test_args_from_bug_description}
+CI=true {commands.test_runner_command} {test_args_from_bug_description}
 ```
 
 Interpretation rules:
@@ -106,10 +127,10 @@ or "Not reproducible via automated test — see description"}
 {absolute path to test file if a matching failing test was found, else "None found"}
 
 ## Test Runner
-{value of test_runner_command from context.json}
+{value of commands.test_runner_command from context.json}
 
 ## Stack
-{value of stack from context.json}
+{value of repo.detected_stack from context.json}
 ```
 
 All sections are required. Use the exact literal strings shown above for absent data

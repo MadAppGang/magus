@@ -31,6 +31,12 @@ the latest upstream `main`:
     spawned only by BrowserUseServer.run(), which we bypass to own stdio wiring,
     so before this nothing here ever expired an idle session.
   - Suppress the macOS Python "rocket" dock icon. Still absent on latest main.
+  - Run on BOTH mcp SDK majors. Existing installs have mcp 1.x; a fresh
+    `pip install browser-use` resolves to >= 0.13.10, which hard-pins
+    `mcp==2.1.1`, and 2.x removed `Server.request_handlers` and
+    `@Server.list_tools()`. The tools/list extension branches on capability
+    (`hasattr(server, "add_request_handler")`), never on a version string —
+    see MagusBrowserServer._extend_list_tools.
   - Support cloud browsers (BROWSER_USE_CLOUD env or browser_start_cloud_session).
   - Configurable agent LLM (settings.json "browser-use".agentModel, the
     browser_set_agent_model tool, or the legacy BROWSER_USE_API_KEY shim).
@@ -834,18 +840,48 @@ _CUSTOM_TOOLS: list[types.Tool] = [
 # Thin-wrapper subclass
 # ---------------------------------------------------------------------------
 
+def _sanitize_tool_schemas(tools: list[Any]) -> None:
+    """
+    Strip top-level oneOf/allOf/anyOf from every tool's input schema, in place.
+
+    The Claude API rejects those keywords at the top level of a tool
+    input_schema, and a single offending tool (upstream's browser_click) breaks
+    ALL MCP tool registration for the session — not just browser-use's tools.
+
+    Status (verified 2026-06-03): browser-use#4211 was FIXED upstream in 0.12.6+
+    via merged PR #4212. But our plugin installs browser-use UNPINNED (see
+    plugin.json `setup`), and 0.12.5 (and earlier) still emits the oneOf —
+    confirmed by running the native server. So this stays: load-bearing on
+    browser-use <= 0.12.5, a harmless no-op on 0.12.6+. Cheap insurance against
+    an uncontrolled dependency version.
+
+    The schema lives under two attribute names: mcp 1.x models the field as
+    `Tool.inputSchema`; mcp 2.x renamed it `Tool.input_schema` and kept
+    `inputSchema` only as the wire alias (mcp_types/_types.py, class Tool), so
+    on 2.x the camelCase attribute does not exist. Both are the same dict, so
+    whichever one the installed SDK exposes is mutated in place.
+    """
+    for tool in tools:
+        for attr in ("inputSchema", "input_schema"):
+            schema = getattr(tool, attr, None)
+            if isinstance(schema, dict):
+                for key in ("oneOf", "allOf", "anyOf"):
+                    schema.pop(key, None)
+                break
+
+
 class MagusBrowserServer(BrowserUseServer):
     """
     Thin subclass of BrowserUseServer that:
     - Fixes downloads_path and user_data_dir (PID-isolated, avoids TCC / SingletonLock issues)
-    - Extends list_tools with 5 custom tools
-    - Overrides _execute_tool to dispatch the 5 custom tools, delegates rest to super()
+    - Extends tools/list with the custom tools, on mcp 1.x and 2.x alike
+    - Overrides _execute_tool to dispatch the custom tools, delegates rest to super()
     - Resolves a configurable agent LLM (settings.json / tool override / default)
     """
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         # super().__init__() calls _setup_handlers() internally, which registers
-        # the parent's list_tools handler. We capture that handler AFTER super().__init__
+        # the parent's tools/list handler. We capture that handler AFTER super().__init__
         # returns, then replace it with a wrapper that appends our custom tools.
         super().__init__(*args, **kwargs)
         self._extend_list_tools()
@@ -859,12 +895,36 @@ class MagusBrowserServer(BrowserUseServer):
 
     def _extend_list_tools(self) -> None:
         """
-        Replace the parent's registered list_tools handler with a wrapper that
-        appends our 5 custom tool definitions and sanitizes upstream schemas.
-        The MCP SDK stores a single handler per request type in
-        server.request_handlers; re-registering replaces it.
+        Replace the parent's registered tools/list handler with a wrapper that
+        appends our custom tool definitions and sanitizes upstream schemas.
+
+        Two MCP SDK majors are in the field and this one file must serve both:
+        existing installs run mcp 1.x, while a fresh `pip install browser-use`
+        resolves to >= 0.13.10, which hard-pins `mcp==2.1.1`. The 2.x lowlevel
+        Server dropped everything the 1.x version of this method used —
+        `Server.request_handlers` is private and keyed by method name, and
+        the `@Server.list_tools()` decorator is gone
+        (mcp/server/lowlevel/server.py in each release). Registering a method
+        twice replaces the earlier handler in both majors, which is the hook
+        this wrapper relies on.
+
+        The branch is chosen by capability, never by version string: a 1.x
+        point release that grows `add_request_handler` takes the 2.x path
+        because it can, and a `__version__` string cannot tell us that.
         """
-        # Capture the parent's handler from the MCP request_handlers dict.
+        if hasattr(self.server, "add_request_handler"):
+            self._extend_list_tools_mcp2()
+        else:
+            self._extend_list_tools_mcp1()
+
+    def _extend_list_tools_mcp1(self) -> None:
+        """
+        mcp 1.x: `Server.request_handlers` is a public dict keyed by request
+        TYPE whose values take the request model and return a `ServerResult`
+        envelope (`.root` is the `ListToolsResult`). `@Server.list_tools()`
+        registers a zero-argument `() -> list[Tool]` callable and wraps it
+        into that shape (mcp 1.26.0, mcp/server/lowlevel/server.py:434-465).
+        """
         parent_handler = self.server.request_handlers.get(types.ListToolsRequest)
 
         @self.server.list_tools()
@@ -873,26 +933,48 @@ class MagusBrowserServer(BrowserUseServer):
                 result = await parent_handler(
                     types.ListToolsRequest(method="tools/list", params=None)
                 )
-                parent_tools: list[types.Tool] = result.root.tools
+                parent_tools: list[types.Tool] = list(result.root.tools)
             else:
                 parent_tools = []
-            # Sanitize upstream schemas: the Claude API rejects oneOf/allOf/anyOf
-            # at the top level of a tool input_schema, and a single offending tool
-            # (upstream's browser_click) breaks ALL MCP tool registration for the
-            # session — not just browser-use's tools.
-            #
-            # Status (verified 2026-06-03): browser-use#4211 was FIXED upstream in
-            # 0.12.6+ via merged PR #4212. But our plugin installs browser-use
-            # UNPINNED (see plugin.json `setup`), and 0.12.5 (and earlier) still
-            # emits the oneOf — confirmed by running the native server. So this
-            # stays: load-bearing on browser-use <= 0.12.5, a harmless no-op on
-            # 0.12.6+. Cheap insurance against an uncontrolled dependency version.
-            for tool in parent_tools:
-                schema = tool.inputSchema
-                if isinstance(schema, dict):
-                    for key in ("oneOf", "allOf", "anyOf"):
-                        schema.pop(key, None)
+            _sanitize_tool_schemas(parent_tools)
             return parent_tools + _CUSTOM_TOOLS
+
+    def _extend_list_tools_mcp2(self) -> None:
+        """
+        mcp 2.x: handlers are registered by method NAME through
+        `Server.add_request_handler(method, params_type, handler)` and read
+        back with `Server.get_request_handler(method) -> HandlerEntry`, a
+        frozen dataclass of `(params_type, handler)`. A handler is
+        `async (ctx, params) -> result` and returns the result model itself —
+        no `ServerResult` envelope (mcp 2.1.1, mcp/server/lowlevel/server.py:
+        80-101 and 468-512). Upstream registers its list handler as
+        `add_request_handler('tools/list', types.PaginatedRequestParams, ...)`
+        (browser_use 0.13.10, browser_use/mcp/server.py:497), so we re-register
+        the same method with the parent's own params type and delegate to the
+        parent's handler with the same `(ctx, params)` we were given.
+        """
+        entry = self.server.get_request_handler("tools/list")
+        parent_handler = entry.handler if entry is not None else None
+        params_type = (
+            entry.params_type if entry is not None else types.PaginatedRequestParams
+        )
+
+        async def handle_list_tools(ctx: Any, params: Any) -> types.ListToolsResult:
+            if parent_handler is not None:
+                result = await parent_handler(ctx, params)
+                if isinstance(result, dict):
+                    # HandlerResult admits a plain dict; upstream returns the
+                    # model, but normalise so the sanitizer sees Tool objects.
+                    result = types.ListToolsResult.model_validate(result)
+                parent_tools: list[types.Tool] = (
+                    list(result.tools) if result is not None else []
+                )
+            else:
+                parent_tools = []
+            _sanitize_tool_schemas(parent_tools)
+            return types.ListToolsResult(tools=parent_tools + _CUSTOM_TOOLS)
+
+        self.server.add_request_handler("tools/list", params_type, handle_list_tools)
 
     async def _init_browser_session(
         self, allowed_domains: list[str] | None = None, **kwargs: Any

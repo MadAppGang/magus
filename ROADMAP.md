@@ -58,7 +58,7 @@ New runtime plugin: rule-library + reranker + background validators. Rule librar
 - **Scope:** new plugin `plugins/best-practice-gates/`; depends on claudish + mnemex + multimodel
 - **Acceptance gate:** madbench trajectory-replay of the two evidenced failures (R1 fork-vs-extend; R2 mock-coverage-as-validation) — control variant (no bpg) reproduces failure, treatment variant (bpg installed) catches and fixes. Per-rule madbench suites land in v1.1 alongside the starter rule pack.
 - **Claudeup integration:** plugin install via existing claudeup plugin flow; new "Rules" tab for browsing/toggling rule packs; static curated rule-pack manifest shipped with claudeup (real registry deferred to v1.1).
-- **Rule sources:** wraps select existing magus skills (e.g., `dev:verification-before-completion`, `dev:enforcement`) as validator prompts; receives software-architecture gates being authored in the user's cowork project as a downstream supplier (no schema/naming forced now).
+- **Rule sources:** wraps select existing magus skills (e.g., `dev:verification-before-completion`, `dev:code-roast`) as validator prompts; receives software-architecture gates being authored in the user's cowork project as a downstream supplier (no schema/naming forced now).
 - **Source:** `docs/plans/2026-05-28-best-practice-gates-design.md`
 
 ### CC-5 · Tasks system migration (TodoWrite → TaskCreate/Update/List/Get) 🟡
@@ -120,6 +120,13 @@ Plugin discovery in `/doctor` still breaks during Claude Code's `cacheMarketplac
 **No workaround was ever shipped.** This item used to claim one ("git-subdir sources"). Magus uses plain string sources — all 20 of them — and `.github/scripts/publish-dist.sh` converts `git-subdir` entries *away* on publish. Cache-reading is the loader's normal behaviour for every source type except `directory` marketplaces, so nothing was done to earn it. Corrected 2026-08-06.
 
 - **Source:** CLAUDE.md "Marketplace directory deletion bug" section
+
+### CC-11 · Skill → knowledge migration is gated on a behavioural eval 🔴
+
+`dev` 7.0.0 moved 24 reference manuals from `plugins/dev/skills/` to `plugins/dev/knowledge/`, reached by path through `agent_loadouts` instead of by skill registration. The set was chosen by a mechanical rule — zero preload edges **and** already `disable-model-invocation: true` — and ratified afterwards by `bun scripts/classify-skill-shape.ts`. Both are static reads of the file. Neither measures whether an agent still reaches and applies the content once it arrives as a loadout path. **Decision 2026-09-04: the 24 stay; no further moves — `dev`'s hybrid splits, or any other plugin — until a `benches/` eval exists and passes.** The classifier already names the candidates (`multimodel` ×8, `terminal` ×2, `bunjs` ×2, one each in `code-analysis`, `designer`, `gtd`); they wait.
+
+- **Scope:** dev first; then multimodel, terminal, bunjs, code-analysis, designer, gtd, go
+- **Source:** `docs/plans/2026-09-04-skill-knowledge-migration-eval.md` (axis, cells, checks, pre-declared outcomes); `plugins/dev/knowledge/README.md` for what moved; `bun scripts/classify-skill-shape.ts` for what would move next
 
 ---
 
@@ -187,6 +194,7 @@ is published to users. `scripts/check-doc-plugin-lists.ts` now rejects the label
 <!-- doc-refs: off -->
 - ⚪ **CC-3** · `dev:discipline` skill router consolidation (8 → 1) deferred to T3 — proposed name, not yet created
 <!-- doc-refs: on -->
+- 🔴 **CC-11** · Further skill → knowledge moves wait on the behavioural eval: the M4/M5 hybrid splits (`discipline/systematic-debugging`'s techniques catalogue, the `architecture/` leaves) and the two `[low]`-confidence moves already shipped (`discipline/task-management`, its `agent-coordination` reference). The 24 in 7.0.0 are kept as they stand — decided 2026-09-04
 
 ### bunjs
 
