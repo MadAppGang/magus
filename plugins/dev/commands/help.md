@@ -95,6 +95,7 @@ skills: dev:context-detection
 | `/dev:investigate` | Read-only code investigation — architecture, implementation, bug origins |
 | `/dev:doc` | Documentation — generate, analyze, fix, or validate |
 | `/dev:design-system` | Validate UI against design-system guardrails via audit-ui.ts — reports token/component drift |
+| `/dev:status` | Where am I — idea, decisions, done/verified vs not, blockers, PR state and whether the worktree can go |
 
 **CONFIGURE**
 

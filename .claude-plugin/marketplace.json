@@ -257,7 +257,7 @@
       "name": "dev",
       "source": "./plugins/dev",
       "description": "Universal development assistant. Detects the project stack and routes work to specialist agents for architecture, implementation, debugging, review and research, enforcing design-system guardrails on every UI change.",
-      "version": "7.0.1",
+      "version": "7.1.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -297,6 +297,14 @@
       "strict": true,
       "releases": [
         {
+          "version": "7.1.0",
+          "date": "2026-09-08",
+          "kinds": [
+            "Added"
+          ],
+          "summary": "/dev:status reconstructs where a session stands from evidence rather than memory: the opening\u2026"
+        },
+        {
           "version": "7.0.1",
           "date": "2026-09-08",
           "kinds": [
@@ -332,14 +340,6 @@
             "Fixed"
           ],
           "summary": "One capture script for every review diff"
-        },
-        {
-          "version": "6.0.2",
-          "date": "2026-08-31",
-          "kinds": [
-            "Fixed"
-          ],
-          "summary": "A Standard-depth run reported as abandoned"
         }
       ]
     },

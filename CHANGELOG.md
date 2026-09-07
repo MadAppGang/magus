@@ -4,6 +4,52 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [dev 7.1.0] - 2026-09-08
+
+### Added
+
+- `/dev:status` reconstructs where a session stands from evidence rather than memory: the
+  opening prompt, every AskUserQuestion decision with its rejected options, plan approvals
+  and edits, compaction points, each test/typecheck/build/commit/push that ran and whether it
+  passed, tool friction, commit-body `Decisions:/Remaining:/Tried:` trailers, the session's
+  task list, git state, and the pull request via `gh` (number taken from the transcript's own
+  `pr-link` record). The report separates done-and-verified (a pointer per claim) from
+  done-not-verified and not-done-with-a-reason, hoists blockers, and ends with a six-check
+  worktree gate — clean tree, pushed, PR merged, commits on the default branch, squash-merge
+  detection, no other live session — whose SAFE verdict offers removal through
+  `ExitWorktree` with no `discard_changes`, so nothing can be lost by construction.
+  `--handoff "<goal>"` appends a paste-ready resume prompt.
+- A `SessionStart` hook on `compact|resume` re-injects the same facts (decisions,
+  verification, blockers, git and PR truth, plus the head of the last `/dev:status` report)
+  into the fresh context, capped at 4,000 characters and silent when there is nothing to
+  report. Facts only, no `git fetch`, `gh` capped at 2 s, inside the 5 s hook budget.
+
+### Why
+
+- Compaction keeps "accomplished / in progress / files / next steps / constraints" and has
+  no slot for decisions, verified-vs-unverified, blocked-on or plan changes, so those are
+  exactly what a long session loses, and it happens without the user asking. The transcript
+  on disk is not compacted — Claude Code appends an `isCompactSummary` record and keeps every
+  earlier line — so the facts are recoverable, and `SessionStart(compact)` is the one event
+  that runs right after with its output injected. No `PreCompact` hook for that reason: a
+  snapshot before compaction would duplicate what the file already holds.
+- The popular alternatives cover one half each: handoff skills (REMvisual, agentops, Amp's
+  `/handoff`) capture narrative without git or PR truth; worktree-cleanup skills
+  (superpowers `finishing-a-development-branch`) read git without the session. gstack's
+  `Decisions/Remaining/Tried` trailers exist only in its continuous-checkpoint mode; the
+  collector reads them when present so those sessions get them for free.
+- Measured, not asserted: `benches/dev-status` (DST-1) starts every session with
+  `claude --worktree` so the command runs in a real Claude-managed worktree, and grades one
+  holistic metric. Run 2 on Sonnet 5, `--repeat 3`: 9/9 sessions ran the collector, stated
+  the verdict the seeded state implied (`SAFE` for a fresh worktree, `NOT_SAFE` for an
+  untracked file and for an unpushed commit), kept all eight report headings, and removed
+  nothing. Run 1 found and fixed two defects first: an empty worktree scored `UNKNOWN`
+  when `gh` was unavailable, and the plugin's own `.claude/.coaching/` state counted as a
+  dirty tree in a repository that does not gitignore it. The unit tests cover the
+  transcript-derived half over record shapes measured on Claude Code 2.1.263.
+
+---
+
 ## [terminal 5.0.1] - 2026-09-08
 
 ### Fixed
