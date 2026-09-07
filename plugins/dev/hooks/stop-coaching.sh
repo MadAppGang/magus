@@ -56,7 +56,7 @@ QUEUE_DIR="${COACHING_DIR}/learning-queue"
 
 # Run TypeScript analyzer via Bun
 # stderr redirected to /dev/null -- coaching failures are non-blocking
-bun "${CLAUDE_PLUGIN_ROOT}/hooks/coaching/analyzer.ts" \
+bun --env-file=/dev/null "${CLAUDE_PLUGIN_ROOT}/hooks/coaching/analyzer.ts" \
   --transcript "$TRANSCRIPT_PATH" \
   --session-id "$SESSION_ID" \
   --rules "${CLAUDE_PLUGIN_ROOT}/hooks/coaching/rules.json" \
@@ -74,7 +74,7 @@ if [ "$LEARNING" != "off" ] && [ "$LEARNING" != "false" ] && [ "$LEARNING" != "0
   if [ -d "$QUEUE_DIR" ] && ls "$QUEUE_DIR"/*.json >/dev/null 2>&1; then
     # Only spawn if no daemon is already running (check lock)
     if [ ! -f "$QUEUE_DIR/queue.lock" ]; then
-      nohup bun "${CLAUDE_PLUGIN_ROOT}/hooks/coaching/learning/daemon.ts" \
+      nohup bun --env-file=/dev/null "${CLAUDE_PLUGIN_ROOT}/hooks/coaching/learning/daemon.ts" \
         "$QUEUE_DIR" "$COACHING_DIR" \
         >/dev/null 2>&1 &
     fi

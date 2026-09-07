@@ -5,7 +5,7 @@ set -u
 # PreToolUse hook for /team workflow enforcement and claudish usage logging
 #
 # Intercepted tools: Agent, Bash
-# Protocol: reads JSON from stdin, writes JSON to fd3 (or stdout)
+# Protocol: reads JSON from stdin, writes the decision JSON to stdout
 #
 # Rules enforced:
 #   1. /team Agent calls must use a valid agent from whitelist (vote template detection)
@@ -26,7 +26,6 @@ TOOL_NAME=$(echo "${INPUT}" | jq -r '.tool_name // empty' 2>/dev/null || true)
 
 # If we can't parse, allow (never block due to own bugs)
 if [ -z "${TOOL_NAME}" ]; then
-  echo '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow"}}' >&3 2>/dev/null || \
   echo '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow"}}'
   exit 0
 fi
@@ -36,7 +35,7 @@ fi
 # --------------------------------------------------------------------------
 allow() {
   local json='{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow"}}'
-  echo "${json}" >&3 2>/dev/null || echo "${json}"
+  echo "${json}"
   exit 0
 }
 
@@ -45,7 +44,7 @@ deny() {
   local json
   json=$(jq -nc --arg reason "${reason}" \
     '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":$reason}}')
-  echo "${json}" >&3 2>/dev/null || echo "${json}"
+  echo "${json}"
   exit 0
 }
 

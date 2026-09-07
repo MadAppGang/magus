@@ -15,7 +15,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bun ${CLAUDE_PLUGIN_ROOT}/hooks/phase-completion-validator.ts --stop",
+            "command": "bun --env-file=/dev/null ${CLAUDE_PLUGIN_ROOT}/hooks/phase-completion-validator.ts --stop",
             "timeout": 10
           }
         ]
@@ -37,7 +37,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bun ${CLAUDE_PLUGIN_ROOT}/hooks/plan-mode-protocol.ts",
+            "command": "bun --env-file=/dev/null ${CLAUDE_PLUGIN_ROOT}/hooks/plan-mode-protocol.ts",
             "timeout": 5
           }
         ]
@@ -49,7 +49,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bun ${CLAUDE_PLUGIN_ROOT}/hooks/resume-after-plan.ts",
+            "command": "bun --env-file=/dev/null ${CLAUDE_PLUGIN_ROOT}/hooks/resume-after-plan.ts",
             "timeout": 5
           }
         ]

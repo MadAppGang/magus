@@ -4,6 +4,46 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [terminal 5.0.1] - 2026-09-08
+
+### Fixed
+
+- The `PreToolUse:Bash` hook no longer dies when the project's `.env` is a symlink to a
+  FIFO. Bun auto-loads `.env` from the cwd, follows the link, fails the read and exits 1
+  with nothing on stderr, which Claude Code reported as
+  `Failed with non-blocking status code: No stderr output` on every Bash call and left
+  the tmux guard silently off. The hook command now passes `--env-file=/dev/null`; a hook
+  never needs the project's env. `scripts/check-hook-commands.test.ts` gates every
+  bun-launched hook on that flag.
+
+---
+
+## [dev 7.0.1] - 2026-09-08
+
+### Fixed
+
+- Every bun launch in the plugin's hooks no longer exits 1 silently when the project's
+  `.env` is a symlink to a FIFO: the `Stop` phase-completion gate, the `UserPromptSubmit`
+  plan-mode protocol, the `PostToolUse:ExitPlanMode` resume, and the two launches inside
+  the `Stop` coaching wrapper (analyzer and learning daemon), which the wrapper's
+  `|| true` had been hiding. Same cause and same fix as `terminal 5.0.1`:
+  `--env-file=/dev/null` on every launch. The gate also reads shell wrappers, and CI's
+  `release-gates` job and `bun run check:all` run it.
+
+---
+
+## [multimodel 4.0.3] - 2026-09-08
+
+### Fixed
+
+- `enforce-team-rules.sh` printed `line 39: 3: Bad file descriptor` to stderr on every
+  Bash and Agent call. It tried to write its decision to fd 3 first, which Claude Code
+  never opens, and the `2>/dev/null` came too late to hide the failed redirect. The hook
+  now writes the decision to stdout only; the outcome was already `allow` on stdout, so
+  behaviour is unchanged and the noise is gone.
+
+---
+
 ## [terminal 5.0.0] - 2026-09-07
 
 ### Changed

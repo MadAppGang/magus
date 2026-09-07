@@ -1,6 +1,6 @@
 {
   "name": "terminal",
-  "version": "5.0.0",
+  "version": "5.0.1",
   "description": "Slot-addressed terminal control over tmux. Runs interactive commands, dev servers, test watchers, REPLs and TUI apps in numbered helper panes — beside the user or isolated from view — that the server places and owns, so an agent never holds a pane id or targets the user's own session.",
   "author": {
     "name": "Jack Rudenko",
