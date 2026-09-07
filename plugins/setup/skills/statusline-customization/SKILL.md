@@ -48,23 +48,47 @@ drawn for a light or a dark terminal.
 ## Appearance
 
 The statusline resolves light vs dark at render time, because the same colours cannot
-work on both. Resolution order, first hit wins:
+work on both. It follows the same six-step order as claudeup and tmux-setup, first hit
+wins:
 
-1. `appearance` in this config, when set to `light` or `dark`
-2. `$STATUSLINE_APPEARANCE` — per-pane override without touching the config
-3. `~/.config/tmux/theme` containing `light` or `dark` — an explicit user pin
-4. tmux's session-scope `COLORFGBG`, read via `tmux show-environment`
-5. macOS `AppleInterfaceStyle`
+1. `appearance` in this config, when set to `light` or `dark` (the script's own flag)
+2. `$STATUSLINE_APPEARANCE` — per-pane override without touching the config (its own
+   variable)
+3. `$TERM_THEME`
+4. OSC 11 probe — **no step**: the statusline child has no tty (stdin, stdout and stderr
+   are pipes), so there is nowhere to send a background-colour query
+5. `COLORFGBG` — inside tmux, the session-scope copy read via `tmux show-environment`;
+   outside tmux, the `$COLORFGBG` environment variable
 6. `dark`
 
-**The `$COLORFGBG` environment variable is deliberately never read.** Claude Code
-inherits it once at launch and freezes it, so it reports whichever profile was active
-when the session started — measured stuck at `15;0` (dark) through an entire light
-session. tmux refreshes its own copy on every client attach via `update-environment`,
-which is why step 4 asks tmux rather than the environment.
+**Only the exact lowercase words `light` and `dark` count** at steps 1-3. `Light`,
+`auto`, an empty value and unset are all "no opinion": the next step runs. No step ever
+prints a "could not detect" warning, including the dark default — it is a decision, not
+a failure.
 
-Steps 4 and 5 fork, so their verdict is cached in `~/.claude/.statusline-appearance`
-for 30 seconds. Steps 1-3 are free and run on every render.
+`TERM_THEME` is read from the process environment everywhere (here, in claudeup and in
+tmux-setup), never from a `.env` file. Set it in your shell profile and every tool
+agrees.
+
+`COLORFGBG` is `<fg>;<bg>` (a third field may exist; the **last** field is the
+background). Background `7` or `15` → light; `0`-`6`, `8`-`14` → dark; anything else,
+including a lone number with no `;`, is no opinion.
+
+**Inside tmux, the `$COLORFGBG` environment variable is deliberately not read.** Claude
+Code inherits it once at launch and freezes it, so it reports whichever profile was
+active when the session started — measured stuck at `15;0` (dark) through an entire
+light session. tmux refreshes its own session-scope copy on every client attach because
+tmux-setup's `tmux.conf` lists `COLORFGBG` in `update-environment` (a stock tmux does
+not), which is why step 5 asks tmux rather than the environment there. Outside tmux there
+is no refreshed copy, so the environment is read as-is: stale in the same way, but the
+best signal left before the default.
+
+Only the tmux query forks, so only its verdict (`light`, `dark`, or `none`) is cached, in
+`~/.claude/.statusline-tmux-colorfgbg` for 30 seconds. Every environment read is free and
+is never cached — a cached verdict would let one pane's `TERM_THEME` mask another's. The
+cache is one file per user rather than per tmux session, so two sessions attached from a
+light and a dark client can mask each other for up to 30 seconds; that is pre-existing
+behaviour and accepted.
 
 ### Why colours are all 256-cube indices
 

@@ -89,80 +89,103 @@ if [ -f "$CONFIG_FILE" ] && command -v jq >/dev/null 2>&1; then
 fi
 
 # ── Appearance detection (light vs dark terminal) ─────────
-# The statusline child has NO controlling terminal: stdin, stdout and stderr are
-# all pipes and /dev/tty is "Device not configured". So an OSC 11 background-colour
-# query is impossible — there is nowhere to send it and nothing to read back from.
-# Everything below is therefore an out-of-band signal, cheapest and most trustworthy
-# first.
+# One resolution order, shared with claudeup and tmux-setup, first answer wins:
 #
-# $COLORFGBG is deliberately NOT consulted from the environment. Claude Code inherits
-# it once at launch and freezes it; on this machine it sat at "15;0" (dark) through an
-# entire light session. tmux's session-scope copy is refreshed by `update-environment`
-# on every client attach, so that one is asked instead.
-APPEARANCE_CACHE="$HOME/.claude/.statusline-appearance"
+#   1. `appearance` config key            (the script's own flag)
+#   2. $STATUSLINE_APPEARANCE             (the script's own variable)
+#   3. $TERM_THEME
+#   4. OSC 11 probe — NO STEP HERE. The statusline child has no controlling
+#      terminal: stdin, stdout and stderr are all pipes and /dev/tty is "Device
+#      not configured", so there is nowhere to send a query and nothing to read.
+#   5. COLORFGBG — tmux's session-scope copy inside tmux, $COLORFGBG outside
+#   6. dark
+#
+# Only the exact lowercase words `light` and `dark` count at steps 1-3. Anything
+# else — `Light`, `auto`, empty, unset — is no opinion and the next step runs.
+# Nothing here prints a warning at any step: the dark default is a decision, not a
+# failure.
+#
+# Inside tmux, $COLORFGBG is deliberately NOT read from the environment. Claude Code
+# inherits it once at launch and freezes it; on this machine it sat at "15;0" (dark)
+# through an entire light session. tmux's session-scope copy is refreshed on every
+# client attach because tmux-setup's conf lists COLORFGBG in `update-environment`,
+# so that one is asked instead. Outside tmux there is no refreshed copy, so the
+# environment is read as-is: stale in the same way, but still the best signal left
+# before the default.
+#
+# The tmux query forks, so its verdict (light, dark, or none) is cached for 30s.
+# Environment reads are free and are never cached — a cached env verdict would let
+# one pane's TERM_THEME mask another's. The cache is one user-wide file, not one
+# per session, so two sessions attached from a light and a dark client can mask each
+# other for up to 30s; that is pre-existing behaviour and accepted.
+
+# >>> resolve_appearance  (test-statusline.ts extracts between these markers — keep them)
+TMUX_COLORFGBG_CACHE="$HOME/.claude/.statusline-tmux-colorfgbg"
+
+# Prints light|dark for a "<fg>;<bg>" (or "<fg>;<x>;<bg>") string; prints nothing
+# otherwise. A lone number is not a fg;bg pair, so it needs at least one ';'.
+parse_colorfgbg() {
+  case "$1" in
+    *\;*) ;;
+    *) return ;;
+  esac
+  local bg="${1##*;}"
+  case "$bg" in
+    7|15) printf 'light' ;;
+    0|1|2|3|4|5|6|8|9|10|11|12|13|14) printf 'dark' ;;
+  esac
+}
+
+# Prints light|dark|none from tmux's session-scope COLORFGBG, via the 30s cache.
+tmux_colorfgbg_verdict() {
+  if [ -r "$TMUX_COLORFGBG_CACHE" ]; then
+    local cache_age now_s
+    now_s=$(date +%s)
+    cache_age=$((now_s - $(stat -f %m "$TMUX_COLORFGBG_CACHE" 2>/dev/null || stat -c %Y "$TMUX_COLORFGBG_CACHE" 2>/dev/null || echo 0)))
+    if [ "$cache_age" -lt 30 ] 2>/dev/null; then
+      case "$(cat "$TMUX_COLORFGBG_CACHE" 2>/dev/null)" in
+        light) printf 'light'; return ;;
+        dark)  printf 'dark';  return ;;
+        none)  printf 'none';  return ;;
+      esac
+    fi
+  fi
+
+  local verdict=""
+  if command -v tmux >/dev/null 2>&1; then
+    verdict=$(parse_colorfgbg "$(tmux show-environment COLORFGBG 2>/dev/null | cut -d= -f2-)")
+  fi
+  [ -n "$verdict" ] || verdict="none"
+  printf '%s\n' "$verdict" > "$TMUX_COLORFGBG_CACHE" 2>/dev/null
+  printf '%s' "$verdict"
+}
 
 resolve_appearance() {
   case "$APPEARANCE" in
     light|dark) printf '%s' "$APPEARANCE"; return ;;
   esac
 
-  # Env override — lets a single pane differ without touching the config file.
   case "${STATUSLINE_APPEARANCE:-}" in
     light|dark) printf '%s' "$STATUSLINE_APPEARANCE"; return ;;
   esac
 
-  # An explicit user pin. Free to read, and it outranks every guess below because
-  # it is the only signal that records an actual decision rather than an inference.
-  if [ -r "$HOME/.config/tmux/theme" ]; then
-    case "$(cat "$HOME/.config/tmux/theme" 2>/dev/null)" in
-      light) printf 'light'; return ;;
-      dark)  printf 'dark';  return ;;
-    esac
+  case "${TERM_THEME:-}" in
+    light|dark) printf '%s' "$TERM_THEME"; return ;;
+  esac
+
+  local result
+  if [ -n "${TMUX:-}" ]; then
+    result=$(tmux_colorfgbg_verdict)
+  else
+    result=$(parse_colorfgbg "${COLORFGBG:-}")
   fi
+  case "$result" in
+    light|dark) printf '%s' "$result"; return ;;
+  esac
 
-  # The remaining probes each fork, so their verdict is cached. 30s is short enough
-  # that flipping the terminal profile shows up almost immediately and long enough
-  # that a burst of renders costs one fork, not one per render.
-  if [ -r "$APPEARANCE_CACHE" ]; then
-    local cache_age now_s
-    now_s=$(date +%s)
-    cache_age=$((now_s - $(stat -f %m "$APPEARANCE_CACHE" 2>/dev/null || stat -c %Y "$APPEARANCE_CACHE" 2>/dev/null || echo 0)))
-    if [ "$cache_age" -lt 30 ] 2>/dev/null; then
-      case "$(cat "$APPEARANCE_CACHE" 2>/dev/null)" in
-        light) printf 'light'; return ;;
-        dark)  printf 'dark';  return ;;
-      esac
-    fi
-  fi
-
-  local result=""
-
-  # tmux session-scope COLORFGBG. Format is "<fg>;<bg>"; the trailing field is the
-  # background slot, low numbers dark and high numbers light.
-  if [ -n "${TMUX:-}" ] && command -v tmux >/dev/null 2>&1; then
-    local cfb bg
-    cfb=$(tmux show-environment COLORFGBG 2>/dev/null | cut -d= -f2-)
-    bg="${cfb##*;}"
-    case "$bg" in
-      7|15) result="light" ;;
-      0|1|2|3|4|5|6|8|9|10|11|12|13|14) result="dark" ;;
-    esac
-  fi
-
-  # macOS system appearance, last because it describes the OS chrome and not the
-  # terminal profile — a light profile inside a Dark-mode desktop reports "Dark".
-  if [ -z "$result" ] && command -v defaults >/dev/null 2>&1; then
-    if defaults read -g AppleInterfaceStyle >/dev/null 2>&1; then
-      result="dark"
-    else
-      result="light"
-    fi
-  fi
-
-  [ -n "$result" ] || result="dark"
-  printf '%s\n' "$result" > "$APPEARANCE_CACHE" 2>/dev/null
-  printf '%s' "$result"
+  printf 'dark'
 }
+# <<< resolve_appearance
 
 APPEARANCE_RESOLVED=$(resolve_appearance)
 

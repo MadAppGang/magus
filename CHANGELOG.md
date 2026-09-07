@@ -44,6 +44,60 @@
 
 ---
 
+## [setup 1.2.0] - 2026-09-07
+
+### Changed
+
+- **Statusline resolves appearance in one order: config → `STATUSLINE_APPEARANCE` →
+  `TERM_THEME` → `COLORFGBG` → dark.** `resolve_appearance` in `scripts/statusline.sh` is
+  a flat six-step list: the config `appearance` value, then the two environment variables,
+  then no probe (the statusline has no tty), then `COLORFGBG` — read from the tmux session
+  environment when inside `$TMUX`, else from the process environment, parsed as
+  `fg;bg` with the last field as the background and at least one `;` required — then
+  dark. Only the exact lowercase words `light` and `dark` count at any step. Removed the
+  `~/.config/tmux/theme` pin and the macOS `AppleInterfaceStyle` step; the cache file is
+  now `~/.claude/.statusline-tmux-colorfgbg` (30 s, user-wide, so two sessions with
+  different themes can mask each other for up to 30 s). The `resolve_appearance` block is
+  unit-tested in isolation by `scripts/test-statusline.ts`, whose fixture sweep no longer
+  inherits the developer's environment (a claudish-routed shell's `CLAUDISH_*` variables
+  used to fail the plan-section fixtures); the `statusline-customization` skill's
+  Appearance section documents the six steps.
+- **`tools/tmux-setup`: tmux answers panes' OSC 10/11 consistently with `TERM_THEME`**
+  and exports it; new `scripts/term-theme.sh` hook. `tmux.conf` sets `window-style` to the
+  Catppuccin Latte pair (`fg=#4c4f69,bg=#eff1f5`) or Mocha pair (`fg=#cdd6f4,bg=#1e1e2e`)
+  from `TERM_THEME` at config load and publishes the value with `set-environment -g`;
+  `update-environment[50] TERM_THEME` and `[51] COLORFGBG` forward both from the
+  attaching client, and a `client-attached[50]` hook runs `term-theme.sh` to re-apply,
+  reset (client without the variable) or leave the server untouched (session never had
+  it). The hook passes `'#{session_id}'` single-quoted: unquoted, tmux expands it to `$0`,
+  which `run-shell`'s `sh -c` reads as the shell's own name, so the script silently
+  targeted a session called `sh`. Indexed options keep a `prefix + r` re-source
+  idempotent. `install.sh` copies the script; `scripts/verify-term-theme.ts` prints
+  `osc10= osc11= luminance= verdict=` from inside a pane. tmux-setup carries no version;
+  it ships from this entry.
+
+### Why
+
+Measured on tmux 3.7c: with the default `window-style` a pane's OSC 10/11 query gets no
+reply at all (0 bytes), so nothing inside tmux could learn the terminal's colours. Setting
+only a background is not enough: OpenTUI needs both OSC 10 (foreground) and OSC 11
+(background) answered to pick a palette, so both `fg` and `bg` are set in the pair. With
+the pair set, a pane reads `luminance=0.879 verdict=light` or `luminance=0.014
+verdict=dark`, and the exported `TERM_THEME` lets claudeup 6.3.0 and the statusline skip
+the probe entirely.
+
+### Migration notes
+
+- If the statusline turned dark on a light terminal, set `appearance: light` in the
+  statusline config, or `export TERM_THEME=light` in your shell. Only the exact words
+  `light` and `dark` count.
+- `~/.config/tmux/theme` is no longer read; delete it. The macOS appearance is no longer
+  consulted either.
+- `~/.claude/.statusline-appearance` is unused now (the cache moved to
+  `~/.claude/.statusline-tmux-colorfgbg`) and can be removed.
+
+---
+
 ## [terminal 5.0.0] - 2026-09-07
 
 ### Changed
