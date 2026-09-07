@@ -4,6 +4,75 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [terminal 5.0.0] - 2026-09-07
+
+### Changed
+
+- Every tool is addressed by `slot` and nothing else. tmux-mcp v2.0.0 serves one 13-tool surface; no request carries a pane, window or session id and no response returns one. The pin is `github.com/MadAppGang/tmux-mcp/v2@v2.0.0` and `.mcp.json` no longer passes `-scope` (the flag is gone from the binary).
+- `split-pane` is now `open-pane` (no `direction`, no `size`; `{slot, isolated}` → `{slot, created, isolated}`), and `display-message` is now `notify`.
+- Isolated work is a slot too: `isolated: true` on the call that first opens slot N replaces `create-headless` + `headless:%N`. It needs an explicit slot on every tool except the ephemeral `execute-command`, and a slot's kind is fixed until it is closed.
+- `created` is always present on the six creating tools and never on the four reading tools; `exited` and `timedOut` are always present. Reading tools error on a slot that was never opened instead of creating one.
+- The MCP server key is `mux`, so tools read `mcp__plugin_terminal_mux__*`; every `allowed-tools` and the agent's `tools` use that spelling, which is also the first time they match the runtime's names.
+- `/terminal:session` is now `/terminal:slots` (`list`, `close N`, `close all`); `/terminal:send`, `/terminal:observe` and `/terminal:snapshot` take a slot number (default 1).
+- `terminal-interaction` loses the explicit-`paneId` path and Example D; `tui-navigator` loses Pattern 3; `tui-navigation-patterns`' 71 id sites become slot calls; `workspace-setup` §1 and §4 become Bash hand-offs where they called session tools.
+- The Bash safety hook's advice names `open-pane` and `close-pane`; its blocking rules are unchanged.
+
+### Removed
+
+- Eight tools: `create-session`, `kill-session`, `list-sessions`, `list-windows`, `list-panes`, `create-headless`, `kill-headless-server`, `kill-pane`. `list-slots` replaces the only legitimate use of `list-panes`; `close-pane({slot})` replaces `kill-pane` and `kill-session`; `close-pane({slot:"all"})` replaces `kill-headless-server`.
+- Observing a pane the user is actively using. It needed an id the contract does not have. Run the process in a slot, or read its log from a file; adopting an *idle* user shell into a slot is unchanged.
+
+### Fixed
+
+- `scripts/check-terminal-contract.ts` (replaces `check-tmux-tool-table.ts`) fails the release on any id, `headless`, `-scope` or removed-tool mention in `plugins/terminal` or `autotest/terminal`, on any tool name outside the 13, and on a live `tools/list` that differs from them. It fails on the 4.2.0 tree. Wired into `release.sh` step 1b3 and `pre-commit` (static).
+- `tmux-mcp-bump.yml` writes `/vN` module paths for major ≥ 2 and refuses a major bump, which is a manual release.
+- The autotest suite exercised 19 cases on tools that no longer exist; rewritten on isolated slots.
+
+### Why
+
+v1.7.1 returned `paneId` on every call and told the model to reuse it; measured, the model learned `%73` from its first response and addressed it directly for the rest of the session. Decision record: `docs/plans/2026-09-03-terminal-slots-only-contract.md`; delivered contract and evidence: `docs/plans/2026-09-04-tmux-mcp-v2-evidence/`.
+
+### Migration notes
+
+- There is no compatibility path. A `paneId`, `windowId`, `sessionId` or `headless` argument is rejected with `paneId is not accepted; address the pane by slot`; a removed tool name is unknown.
+- Requires tmux-mcp v2.0.0; claudeup reinstalls the binary from the new pin. Run `bun scripts/install-hooks.ts` after pulling: `pre-commit` gained the contract check.
+
+---
+
+## [go 0.1.3] - 2026-09-07
+
+### Fixed
+
+- **`go-tui`'s screenshot loop taught tools the terminal plugin no longer has.**
+  `skills/go-tui/SKILL.md` and `references/screenshot-workflow.md` launched the app through
+  a headless-session tool and a pane id, then captured from Bash on the MCP server's own
+  socket by that id — none of which exists in the terminal plugin's slots-only contract
+  (tmux-mcp v2.0.0 rejects any id and has no such tool). The Bash route now runs the app on
+  a private per-run tmux socket (`-f /dev/null -L "$SOCK"`, torn down with `kill-window`),
+  and the MCP route is `mcp__plugin_terminal_mux__start-and-watch({ slot: 2, isolated: true,
+  command, pattern })` → `screenshot-pane({ slot: 2 })` → `close-pane({ slot: 2 })`. The two
+  files are now scanned by `scripts/check-terminal-contract.ts`, so they cannot drift again.
+
+---
+
+## [bunjs 0.4.4] - 2026-09-07
+
+### Fixed
+
+- **`tui`'s screenshot Route B named tools the terminal plugin no longer has.**
+  `skills/tui/SKILL.md` and `references/screenshot-workflow.md` described the MCP route
+  through a headless-session tool, a pane id and a Bash resize on the MCP server's own
+  socket — none of which exists in the terminal plugin's slots-only contract (tmux-mcp
+  v2.0.0 rejects any id and has no such tool). Route B is now
+  `mcp__plugin_terminal_mux__start-and-watch({ slot: 2, isolated: true, command, pattern })`
+  → `screenshot-pane({ slot: 2 })` → `close-pane({ slot: 2 })`, and states that the slot
+  tools set no geometry, so the two mandated sizes are Route A's job. Route A's teardown is
+  `kill-window` on the private socket (its only window, so the session and server end with
+  it — measured), and its positionals are written `${1}`/`${2}`/`${3}` so the contract gate,
+  which now scans both files, can tell a shell positional from a tmux id.
+
+---
+
 ## [browser-use 1.7.4] - 2026-09-07
 
 ### Fixed

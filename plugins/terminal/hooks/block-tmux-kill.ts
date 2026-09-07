@@ -24,9 +24,12 @@
  *     gone, unreachable server, malformed target), ALLOW — a guard that cannot
  *     see must never break a legitimate flow.
  *   - No override flag by design: target a shell pane, or have the user run the
- *     command themselves. NOTE: the MCP send-keys/kill-pane tools do NOT perform
- *     an occupancy check — they are not a guarded alternative to this path; only
- *     mcp__tmux__split-pane is occupancy-safe (it never returns an occupied pane).
+ *     command themselves. The guarded alternative is the MCP surface, which
+ *     addresses panes by slot and never hands out an id: open-pane, send-keys and
+ *     close-pane (`mcp__plugin_terminal_mux__*`) act only on slots the server
+ *     placed and owns, so they cannot reach a sibling agent's pane at all. This
+ *     hook exists for the raw `tmux … -t <target>` an agent types into Bash — the
+ *     one path where a pane id is still in play.
  */
 
 import { readFileSync } from "fs";
@@ -142,12 +145,13 @@ function blockMessage(target: string, fg: string): string {
     `splitting it disrupts that agent.`,
     ``,
     `Do this instead:`,
+    `  - Use the MCP tools, which address panes by slot and never expose an id:`,
+    `    mcp__plugin_terminal_mux__open-pane opens (or reuses) a helper slot the server`,
+    `    owns, mcp__plugin_terminal_mux__send-keys types into it, and`,
+    `    mcp__plugin_terminal_mux__close-pane closes it. None of them can reach this pane.`,
     `  - Target a pane whose foreground is a bare shell (zsh/bash/fish), or`,
-    `  - Create your own pane (mcp__tmux__split-pane reuses/creates a shell pane and`,
-    `    never returns an occupied one), label it 'claude-helper', and act only on that.`,
     `  - If you must act on this exact pane, ask the user to confirm and run the tmux`,
-    `    command themselves. (Note: mcp__tmux__send-keys / kill-pane do NOT check`,
-    `    occupancy — they would write to / kill this same pane with no guard.)`,
+    `    command themselves.`,
   ].join("\n");
 }
 

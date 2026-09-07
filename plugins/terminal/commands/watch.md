@@ -1,53 +1,52 @@
 ---
 name: watch
-description: Start a long-running process in a terminal session, monitor for readiness or failure, and report status. Use for dev servers, test watchers, log tailing, and build processes.
-allowed-tools: mcp__tmux__start-and-watch, mcp__tmux__watch-pane, mcp__tmux__capture-pane, mcp__tmux__pane-state, mcp__tmux__kill-session, mcp__tmux__kill-headless-server
+description: Starts a long-running process in a numbered slot, waits for readiness or failure, and reports the slot to check on later. Use for dev servers, test watchers, log tailing, and builds.
+allowed-tools: mcp__plugin_terminal_mux__start-and-watch, mcp__plugin_terminal_mux__watch-pane, mcp__plugin_terminal_mux__capture-pane, mcp__plugin_terminal_mux__pane-state, mcp__plugin_terminal_mux__close-pane, mcp__plugin_terminal_mux__list-slots
 ---
 
 # /terminal:watch
 
-Start a long-running process, monitor it for readiness or failure, and report the result. The session stays alive for later observation.
+Starts a long-running process, blocks until it is ready or fails, and reports which slot it runs in. The slot stays open for later observation.
 
 ## Usage
 
 ```
 /terminal:watch {command}
+/terminal:watch {command} --isolated
 ```
 
 ## Examples
 
 ```
 /terminal:watch "bun run dev"
-/terminal:watch "npm run dev"
-/terminal:watch "bun test --watch"
 /terminal:watch "npm test -- --watch"
-/terminal:watch "tail -f /var/log/app.log"
 /terminal:watch "docker-compose up"
-/terminal:watch "go run ./cmd/server"
+/terminal:watch "go run ./cmd/server" --isolated
 ```
+
+## Slot Choice
+
+- **Default: slot 1**, the visible helper pane beside the user. They can see the server log as it scrolls.
+- **`--isolated`: slot 2 or higher with `isolated: true`**, a pane the user does not see. Call `mcp__plugin_terminal_mux__list-slots` first when you may already hold slots (after context compaction) and pick a number not in the array.
+
+Report the result as **"running in slot N"** and remind the user to remember the slot number: `/terminal:observe N` and `/terminal:slots close N` address it later.
 
 ## What It Does
 
-1. **Starts** the given command via `start-and-watch`
-2. **Monitors** using a single blocking call — no polling loop required
-3. **Uses start-and-watch** — a single call that blocks until a readiness trigger fires,
-   sending progress notifications during the wait. No polling loop.
-4. **Reports** the status: ready, errored, or still starting
-5. **Keeps the session alive** — reports the pane ID for later use with `/terminal:observe`
-
-## Agentic Watch Strategy
-
-A single call to `start-and-watch` handles all monitoring:
+One blocking call starts the process and waits for a readiness signal; no polling loop.
 
 ```
-mcp__tmux__start-and-watch({
+mcp__plugin_terminal_mux__start-and-watch({
+  slot: 1,
   command: "<user_command>",
   pattern: "<readiness_regex>",
   triggers: "exit,error",
   mode: "quick",
   timeout: 60
-}) → WatchResult
+}) → { slot: 1, created: true, event, detail, elapsed, output, paneState }
 ```
+
+With `--isolated`, add `isolated: true` and use slot 2 or higher. `created: false` means the slot already existed and the command ran in it.
 
 ### Pattern Selection by Command Type
 
@@ -58,31 +57,24 @@ mcp__tmux__start-and-watch({
 | Test watcher (Vitest/Jest) | `"press a to rerun\|Waiting for file changes"` |
 | Bun test watcher | `"watch mode\|watching"` |
 | docker-compose up | `"healthy\|started"` |
-| Log tail | (no pattern needed — use paneId + watch-pane instead) |
+| Log tail | any line, then `watch-pane({ slot, triggers: "idle:5" })` |
 
-### Reading WatchResult
+### Reading the Result
 
-| event value | Meaning | Next action |
-|-------------|---------|-------------|
-| `"pattern:..."` | Readiness pattern matched | Report ready; save paneId |
-| `"error"` | Error output detected | Report error; show WatchResult.output |
-| `"exit"` | Process exited | Check exitCode in paneState |
-| `"timeout"` | No signal in timeout_secs | Report "still starting"; save paneId |
-
-### Lifecycle Difference from /terminal:run
-
-Unlike `/terminal:run`, this command does NOT close the session on success.
-The `paneId` returned in WatchResult is available for later `/terminal:observe` calls.
+| `event` | Meaning | Next action |
+|---------|---------|-------------|
+| `"pattern:…"` | Readiness pattern matched | Report "running in slot N" |
+| `"error"` | Error output detected | Report the error with `output` |
+| `"exit"` | Process exited | Check `paneState.isAlive`; report exit |
+| `"timeout"` | No signal within `timeout` | Report "still starting in slot N" |
 
 ## Error Handling
 
-- **Port conflict**: If `EADDRINUSE` detected in output, report the conflict and suggest alternatives
-- **Command not found**: Detected via `"error"` event — report and kill session
-- **Process hangs**: If `"timeout"` event fires, use `mcp__tmux__pane-state` to check process state
+- **Port conflict**: `EADDRINUSE` in `output` — report the conflict and suggest alternatives.
+- **Command not found**: arrives as `"error"` — report, then `mcp__plugin_terminal_mux__close-pane({ slot: N })`.
+- **Process hangs**: on `"timeout"`, `mcp__plugin_terminal_mux__pane-state({ slot: N })` shows whether it is alive or waiting for input.
 
 ## Notes
 
-- Best for processes that produce ongoing output (servers, watchers, log tailers)
-- For one-shot commands, use `/terminal:run` instead
-- Full output available in WatchResult — no line limit
-- Save the returned paneId for later `/terminal:observe` calls
+- Unlike `/terminal:run`, the slot is not closed on success; `/terminal:slots close N` closes it.
+- `/terminal:observe N` captures the slot later; `/terminal:slots` lists every slot you hold. One-shot commands: `/terminal:run`.

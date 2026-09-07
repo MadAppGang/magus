@@ -1,77 +1,56 @@
 ---
 name: snapshot
-description: Take a snapshot of a terminal pane to see its current screen content.
-allowed-tools: mcp__tmux__capture-pane, mcp__tmux__list-sessions, mcp__tmux__list-panes
+description: Captures the current screen of a slot as text, with optional scrollback, or renders it as an image. Use to read raw pane content from a slot this session opened.
+allowed-tools: mcp__plugin_terminal_mux__capture-pane, mcp__plugin_terminal_mux__screenshot-pane, mcp__plugin_terminal_mux__list-slots
 ---
 
 # /terminal:snapshot
 
-> **Advanced command** — For most tasks, use `/terminal:observe` instead. It lists sessions and takes snapshots automatically. Use this command only when you need raw pane capture access.
+> **Advanced command** — for most tasks, use `/terminal:observe` instead; it lists slots and captures them in one step. Use this command for raw capture control.
 
-Read the current screen content of an active tmux pane.
+Reads the current screen content of a slot exactly as a person would see it in that terminal.
 
 ## Usage
 
 ```
-/terminal:snapshot
-/terminal:snapshot {paneId}
+/terminal:snapshot [slot] [--lines N] [--visual]
 ```
 
-Pane IDs use the format `%N` (e.g., `%3`) or `headless:%N` (e.g., `headless:%0`).
-
-## What It Does
-
-Takes a `capture-pane` of an active tmux pane and returns the current content as text — exactly what a human would see looking at that terminal.
-
-All sessions are tmux panes. `capture-pane` returns pane content with optional scrollback via the `lines` parameter.
+- `slot` defaults to 1.
+- `--lines N` includes the last N lines of scrollback above the viewport.
+- `--visual` returns a rendered image of the pane instead of text.
 
 ## How to Use
 
-### Snapshot a specific pane
-
-If you know the pane ID:
+### Snapshot a slot
 
 ```
-/terminal:snapshot %3
-/terminal:snapshot headless:%0
+/terminal:snapshot 2
+→ mcp__plugin_terminal_mux__capture-pane({ slot: 2 })
+→ text content; structuredContent { "slot": 2 }
 ```
 
 ### Snapshot with scrollback
 
-To get more than the visible viewport:
-
 ```
-mcp__tmux__capture-pane({ paneId: "%3", lines: 200 })
-```
-
-Returns the last 200 lines of scrollback history plus the current viewport.
-
-### Snapshot without a known ID (list first)
-
-If you don't know the pane ID, the command will list available sessions first:
-
-```
-/terminal:snapshot
+/terminal:snapshot 1 --lines 200
+→ mcp__plugin_terminal_mux__capture-pane({ slot: 1, lines: 200 })
 ```
 
-This will:
-1. Call `mcp__tmux__list-sessions` to show all tmux sessions
-2. Call `mcp__tmux__list-panes` to enumerate panes
-3. Capture the most relevant pane
+### Visual snapshot
 
-## Examples
+```
+/terminal:snapshot 2 --visual
+→ mcp__plugin_terminal_mux__screenshot-pane({ slot: 2 })
+```
 
-**See what's running in a server pane**:
-After starting a dev server with `/terminal:watch`, use `/terminal:snapshot %3` to check current log output.
+Renders the pane as an image, useful for TUI layouts where text capture loses structure.
 
-**Debug a TUI application**:
-If you started vim, htop, or lazygit in a headless session, use snapshot to see the current screen state.
+## Errors
 
-**Monitor test results**:
-While a test watcher is running, snapshot the pane periodically to see updated results.
+A slot that was never opened is an error (`slot 2 does not exist; open it with open-pane or by running something in it`, per spec). `capture-pane` is a reading tool: it never creates a pane. `mcp__plugin_terminal_mux__list-slots` shows which slots exist.
 
 ## Notes
 
-- `capture-pane` has access to tmux scrollback history — use `lines: N` to read more than the visible viewport.
-- For output longer than the visible pane, use `lines: 200` or pipe command output to a temp file and `Read` it.
-- For persistent monitoring that waits for changes, use `/terminal:observe {paneId} --watch` instead.
+- For output longer than the viewport, `--lines 200`, or pipe the command's output to a file and `Read` it.
+- For monitoring that waits for a change, use `/terminal:observe {slot} --watch` instead.

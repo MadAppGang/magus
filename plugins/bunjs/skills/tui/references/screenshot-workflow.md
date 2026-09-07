@@ -8,7 +8,7 @@ You cannot judge a TUI from source, and a plain-text `capture-pane` strips the c
 `Read` and critique, closing the build → look → fix loop. Verified end-to-end this session.
 
 **Prerequisites:** `aha` (`brew install aha`, or `sudo apt-get install aha`), a
-**Chromium-family browser** (Chrome/Chromium/Brave/Edge) for the headless render, plus `tmux`
+**Chromium-family browser** (Chrome/Chromium/Brave/Edge) for the offscreen render, plus `tmux`
 and `bun`. `scripts/ansi-to-png.ts` finds `aha` and the browser cross-platform, renders at 2×
 scale, and is a byte-identical copy of `go-tui`'s — never edit it locally. `${CLAUDE_PLUGIN_ROOT}`
 is **unset inside a Bash tool call** (MEASURED), so paste the absolute dir this skill was read from over the placeholder below.
@@ -16,7 +16,7 @@ is **unset inside a Bash tool call** (MEASURED), so paste the absolute dir this 
 ## The pipeline
 
 App in a tmux pane → `capture-pane -p -e` (`-e` KEEPS the colour escapes) → `.ansi` file carrying SGR
-escapes → `scripts/ansi-to-png.ts` (aha → headless Chromium) → PNG → `Read` it → judge colour, density,
+escapes → `scripts/ansi-to-png.ts` (aha → Chromium, offscreen) → PNG → `Read` it → judge colour, density,
 alignment. The rendering half is bundled; the **capture** half is session-specific — the two routes below.
 
 ## Route A — a plain local tmux socket (how this was verified; no MCP needed)
@@ -29,53 +29,41 @@ starts a fresh one that does read that file.
 ```bash
 OUT=$(mktemp -d); SOCK=otui-$$; SESS=tui-$$   # never fixed names: a parallel run collides, and a reused scratch dir hands back a stale PNG that looks fresh
 SKILL="${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/skills/tui}"; SKILL="${SKILL:-PASTE_THE_DIR_THIS_SKILL_WAS_READ_FROM}"
-shot() {                                   # $1 cols × $2 rows → a $3-pixel PNG. Non-zero if the capture is worthless.
+shot() {                                   # ${1} cols × ${2} rows → a ${3}-pixel PNG. Non-zero if the capture is worthless.
   local A="$OUT/${1}x${2}.ansi"
-  tmux -f /dev/null -L "$SOCK" new-session -d -s "$SESS" -x "$1" -y "$2" "bun run src/index.tsx" || return 1
+  tmux -f /dev/null -L "$SOCK" new-session -d -s "$SESS" -x "${1}" -y "${2}" "bun run src/index.tsx" || return 1
   # Poll for a COLOURED frame instead of `sleep 2` — that covers both "hasn't drawn yet" and a recreate racing
-  # the session just killed (one measured blank capture). Bounded at 10s, so it can fail but never spin.
+  # the window just killed (one measured blank capture). Bounded at 10s, so it can fail but never spin.
   for _ in $(seq 40); do sleep 0.25; tmux -f /dev/null -L "$SOCK" capture-pane -p -e -t "$SESS" >"$A" 2>/dev/null && grep -q $'\x1b' "$A" && break; done
-  tmux -f /dev/null -L "$SOCK" kill-session -t "$SESS" 2>/dev/null
+  tmux -f /dev/null -L "$SOCK" kill-window -t "$SESS" 2>/dev/null   # its only window, so the session and the private server end with it
   grep -q $'\x1b' "$A" || { echo "NO ESC BYTES in $A — no -e, or it never drew"; return 1; }   # THE GATE: non-zero, so the chain below STOPS
-  bun run "$SKILL/scripts/ansi-to-png.ts" "$A" "$OUT/${1}x${2}.png" "$3"
+  bun run "$SKILL/scripts/ansi-to-png.ts" "$A" "$OUT/${1}x${2}.png" "${3}"
 }
 shot 80 24 720x480 && shot 145 45 1300x900 && ls -l "$OUT"/*.png   # narrow AND wide in one command, so neither can be skipped
 ```
 
-## Route B — the terminal MCP's headless server
+## Route B — the terminal MCP's isolated slot
 
-> **Route B sets no geometry of its own — resize the pane yourself.** `create-headless` takes
-> only `name`/`command` and `start-and-watch` takes no size, so the pane comes up at the
-> server's default (MEASURED 2026-08-06: 200×50). Nothing upstream needs changing — the pane
-> lives on the `mcp-headless` socket this file already reaches, so one Bash line hits the
-> mandated sizes:
->
-> ```bash
-> tmux -f /dev/null -L mcp-headless resize-window -t %0 -x 80 -y 24   # then re-capture
-> ```
->
-> **`resize-window`, not `resize-pane`.** MEASURED: `resize-pane -x 80 -y 24` on a lone pane
-> filling its window is a silent no-op — it returns success and the pane stays 200×50.
-> `resize-window` actually resizes, and a running OpenTUI app reflows. Route B's
-> `screenshot-pane` is otherwise the nicer instrument: it returns a viewable PNG directly.
+The terminal MCP runs apps in a numbered helper slot; `isolated: true` puts it where nobody
+can see it. Launch and wait for the first frame in one call, with a `pattern` that only
+appears once it is drawn:
 
-If a headless pane already exists (`mcp__tmux__create-headless` → `mcp__tmux__start-and-watch`
-with a `pattern` that only appears once the first frame is drawn), capture it from Bash on
-**its** socket, `mcp-headless`:
-
-```bash
-OUT=$(mktemp -d); tmux -f /dev/null -L mcp-headless capture-pane -p -e -t %0 > "$OUT/mcp.ansi"   # -f /dev/null even
-# here: if that server has exited, a bare client starts a replacement that reads your ~/.tmux.conf and auto-creates its sessions
+```
+mcp__plugin_terminal_mux__start-and-watch({ slot: 2, isolated: true, command: "bun run src/index.tsx", pattern: "<a panel title>", timeout: 15 })
+  → { slot: 2, created: true, event: "pattern:<…>", …, paneState: { isAlive: true, … } }
 ```
 
-> **0-byte trap.** The MCP hands you a pane id like `headless:%0`. The `headless:` prefix is
-> **MCP routing sugar, not part of the tmux name** — `-t headless:%0` from Bash gives
-> `can't find session: headless` and writes an **empty file**. Target the bare `%0`. Confirm
-> what is actually there:
-> `tmux -f /dev/null -L mcp-headless list-panes -a -F "#{session_name}:#{pane_id} #{pane_current_command}"`
+Then `mcp__plugin_terminal_mux__screenshot-pane({ slot: 2 })` returns a viewable PNG
+directly, rendered with full ANSI colour — the nicer instrument when you only have MCP
+access, with nothing to write to disk. `mcp__plugin_terminal_mux__capture-pane({ slot: 2,
+colors: true })` also returns the ANSI text with escapes intact, but you then have to land
+those ESC bytes in a file unmangled before `ansi-to-png.ts` can read it — prefer Route A
+for that. Close the slot when done: `mcp__plugin_terminal_mux__close-pane({ slot: 2 })`.
 
-`mcp__tmux__capture-pane({ paneId: "headless:%0", colors: true })` also returns ANSI with
-escapes intact, but you then have to land those ESC bytes in a file unmangled — prefer Bash.
+> **Route B sets no geometry of its own.** `start-and-watch` takes no size, so an isolated
+> pane comes up at the server's default (MEASURED 2026-08-06: 200×50), and the slot tools
+> give you no handle to resize it from Bash. The two mandated sizes are Route A's job: its
+> `-x`/`-y` on `new-session` are yours, and it never touches the MCP's server.
 
 ## `-e` is mandatory — the measured negative control
 
@@ -131,7 +119,9 @@ not read that band as an unpainted hole in your layout — check where the foote
 - **Braille (`⣿`) and block (`█▓▒░`) glyphs render** because Chromium has Unicode font
   fallback — the reason this HTML route beats naive terminal screenshotters.
 - **Never `kill-server`, and never drop `-L`/`-f /dev/null`.** Either reaches your interactive tmux;
-  `kill-session -t "$SESS"` on the private socket is the only teardown this loop ever needs.
+  `kill-window -t "$SESS"` on the private socket is the only teardown this loop ever needs — the
+  session holds one window, so the session and its private server end with it (MEASURED: the
+  socket reports no server afterwards), and the terminal plugin's Bash hook blocks `kill-server` anyway.
 - **No tmux at all?** Two fallbacks: run the app in your own terminal and look at it; or
   capture with `script -q "$OUT/tui.ansi" <cmd>` and feed that file to `ansi-to-png.ts`. The
   look-at-it loop is non-negotiable; the *instrument* is not.

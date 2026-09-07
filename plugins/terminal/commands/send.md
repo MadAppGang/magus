@@ -1,146 +1,110 @@
 ---
 name: send
-description: Send keystrokes or text to an active terminal session.
-allowed-tools: mcp__tmux__send-keys, mcp__tmux__capture-pane, mcp__tmux__pane-state, mcp__tmux__list-sessions
+description: Sends text or a named key to a slot and shows the result. Use for raw keystrokes when /terminal:run, /terminal:repl, or /terminal:tui do not fit.
+allowed-tools: mcp__plugin_terminal_mux__send-keys, mcp__plugin_terminal_mux__capture-pane, mcp__plugin_terminal_mux__pane-state, mcp__plugin_terminal_mux__list-slots
 ---
 
 # /terminal:send
 
-> **Advanced command** — For most tasks, use `/terminal:run` (one-shot commands), `/terminal:repl` (database/REPL queries), or `/terminal:tui` (TUI navigation) instead. Use this command only when you need to send raw keystrokes manually.
+> **Advanced command** — for most tasks, use `/terminal:run` (one-shot commands), `/terminal:repl` (database and REPL queries), or `/terminal:tui` (TUI navigation) instead. Use this command only to send raw keystrokes by hand.
 
-Send keystrokes or text input to an active terminal pane and see the result.
+Types text or a named key into a slot, then captures the pane to show what happened.
 
 ## Usage
 
 ```
-/terminal:send {paneId} {text or keys}
-/terminal:send {paneId} key:{KeyName}
+/terminal:send [slot] {text}
+/terminal:send [slot] key:{Name}
 ```
 
-Pane IDs use the format `%N` (e.g., `%3`) or `headless:%N` (e.g., `headless:%0`).
+`slot` defaults to 1, the visible helper pane beside the user. Slot 1 is never the user's own pane.
 
 ## send-keys Parameter Reference
 
 ```
-mcp__tmux__send-keys({ paneId: "%66", keys: "...", literal: ? })
+mcp__plugin_terminal_mux__send-keys({ slot: 1, keys: "...", literal: true, enter: false })
 
-  literal: true  (default) — text is sent byte-for-byte; special characters are NOT
-                             interpreted as key sequences. Use for typing commands.
-  literal: false           — text is interpreted as tmux key names. Use for:
-                             - Control sequences: "C-c", "C-d", "Escape", "Enter"
-                             - Arrow keys: "Up", "Down", "Left", "Right"
-                             - Function keys: "F1" through "F12"
-
-To type text AND execute (press Enter):
-  mcp__tmux__send-keys({ paneId, keys: "bun test --watch", literal: true })
-  mcp__tmux__send-keys({ paneId, keys: "Enter", literal: false })
+  literal: true  (default)  text is typed byte for byte; nothing is interpreted
+  literal: false            keys is a named key from the vocabulary below
+  enter: true               press Enter after the text (one call, not two)
 ```
 
-## What It Does
+`send-keys` is a creating tool: if the slot is not open yet, it opens it and returns `created: true`.
 
-Injects text or named keystrokes into an active terminal pane, then takes a `capture-pane` snapshot to show the result.
+```
+mcp__plugin_terminal_mux__send-keys({ slot: 1, keys: "bun test --watch", enter: true })
+→ { "slot": 1, "created": true }
+```
 
 ## How to Use
 
 ### Send plain text
 
-Send a command or text string to be typed in the terminal:
-
 ```
-/terminal:send %3 ls -la src/
-/terminal:send headless:%0 SELECT count(*) FROM users LIMIT 1;
+/terminal:send ls -la src/
+/terminal:send 2 SELECT count(*) FROM users LIMIT 1;
 ```
 
-The text will be sent as-is with `literal: true` — it does NOT automatically add Enter at the end.
+Sent with `literal: true`. Enter is not added; use `key:Enter` or `enter: true`.
 
-### Send named keys
+### Send a named key
 
-Use `key:` prefix for special keys (sent with `literal: false`):
-
-```
-/terminal:send %3 key:Enter
-/terminal:send %3 key:Escape
-/terminal:send %3 key:Tab
-/terminal:send %3 key:C-c
-```
-
-### Send text + Enter (run a command)
-
-To send text and execute it — two separate calls:
+`key:` maps to `literal: false`:
 
 ```
-/terminal:send %3 "ls -la"       ← literal: true
-/terminal:send %3 key:Enter      ← literal: false
+/terminal:send key:Enter
+/terminal:send 2 key:Escape
+/terminal:send 2 key:C-c
 ```
 
-### Navigate TUI applications
+### Run a command (text, then Enter)
 
 ```
-// In vim: enter insert mode
-/terminal:send headless:%0 key:i
-
-// In vim: save and quit
-/terminal:send headless:%0 ":wq"
-/terminal:send headless:%0 key:Enter
-
-// In htop: quit
-/terminal:send headless:%0 key:q
-
-// In lazygit: stage all, then commit
-/terminal:send headless:%0 key:a
-/terminal:send headless:%0 key:c
+/terminal:send "bun test --watch"
+/terminal:send key:Enter
 ```
 
-## Special Key Reference
+Or one call: `mcp__plugin_terminal_mux__send-keys({ slot: 1, keys: "bun test --watch", enter: true })`.
 
-| Key | tmux Name |
-|-----|-----------|
-| Enter | `Enter` |
-| Escape | `Escape` |
-| Tab | `Tab` |
-| Space | `Space` |
-| Ctrl+C | `C-c` |
-| Ctrl+D | `C-d` |
-| Ctrl+L | `C-l` |
-| Up arrow | `Up` |
-| Down arrow | `Down` |
-| Left arrow | `Left` |
-| Right arrow | `Right` |
-| Page Up | `PageUp` |
-| Page Down | `PageDown` |
-| F1–F12 | `F1` through `F12` |
+## Named Key Vocabulary
+
+These are the names the contract guarantees with `literal: false`. Anything else passes through to the tmux backend unmapped and is not portable.
+
+| Key | Name |
+|-----|------|
+| Enter, Escape, Tab, Space, Backspace | `Enter`, `Escape`, `Tab`, `Space`, `BSpace` |
+| Arrows | `Up`, `Down`, `Left`, `Right` |
+| Paging | `PageUp`, `PageDown`, `Home`, `End` |
+| Function keys | `F1` through `F12` |
+| Ctrl + x | `C-x` (for example `C-c`, `C-d`, `C-l`) |
+| Alt + x | `M-x` |
 
 ## Examples
 
-**Run a command in an open shell pane**:
+**Navigate vim in slot 2 to save changes**:
 ```
-/terminal:send %3 "bun test --watch"
-/terminal:send %3 key:Enter
-```
-
-**Navigate vim to save changes**:
-```
-/terminal:send headless:%0 key:Escape
-/terminal:send headless:%0 ":w"
-/terminal:send headless:%0 key:Enter
+/terminal:send 2 key:Escape
+/terminal:send 2 ":w"
+/terminal:send 2 key:Enter
 ```
 
 **Exit a REPL cleanly**:
 ```
-/terminal:send headless:%0 "\\q"        // psql
-/terminal:send headless:%0 key:Enter
-/terminal:send headless:%0 ".exit"      // Node.js
-/terminal:send headless:%0 key:Enter
-/terminal:send headless:%0 key:C-d      // Python / shell
+/terminal:send 2 "\\q"          psql
+/terminal:send 2 key:Enter
+/terminal:send 2 ".exit"        Node.js
+/terminal:send 2 key:Enter
+/terminal:send 2 key:C-d        Python or shell
 ```
 
-**Interrupt a stuck process**:
+**Interrupt a stuck process in slot 1**:
 ```
-/terminal:send %3 key:C-c
+/terminal:send key:C-c
 ```
 
 ## Notes
 
-- After sending keys, take a `capture-pane` snapshot to show the current pane state.
-- For TUI applications, there may be a brief render delay between sending a key and the screen updating. Use `watch-pane` with `idle:2` if you need to wait for the TUI to settle.
-- Find active pane IDs with `/terminal:session list`.
+- After sending, `mcp__plugin_terminal_mux__capture-pane({ slot })` shows the new pane state.
+- TUI apps redraw with a short delay; `watch-pane({ slot, triggers: "idle:2" })` waits for the screen to settle.
+- `mcp__plugin_terminal_mux__pane-state({ slot })` reports `waitingForInput`; if the prompt asks for a password, stop and tell the user.
+- `/terminal:slots` lists the slots you hold when the number is lost.

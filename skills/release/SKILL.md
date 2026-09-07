@@ -1,6 +1,6 @@
 ---
 name: release
-description: Release one or more Magus plugins. Infers the version bump from git history, bumps plugin.json and marketplace.json, commits, and after the PR merges tags the merge commit with one explicit ref per tag; CI publishes the dist repos. Use whenever the user says "release kanban", "release the dev plugin", "cut a new version of gtd", "bump kanban to 1.7", or hands you a batch like "release kanban and gtd". Also use to check what a release would contain before committing.
+description: Release one or more Magus plugins. Infers the version bump from git history, bumps plugin.json and marketplace.json, commits, and after the PR merges tags the merge commit with one explicit ref per tag; CI gates the PR and publishes the dist repos. Use whenever the user says "release kanban", "release the dev plugin", "cut a new version of gtd", "bump kanban to 1.7", or hands you a batch like "release kanban and gtd". Also use to check what a release would contain before committing.
 ---
 
 # Magus Plugin Release
@@ -20,6 +20,9 @@ them; nothing on a workstation ever pushes to a dist repo.
   fresh, and rebuilds each channel's dist repo with `.github/scripts/publish-dist.sh`.
   That script exits unless it is running inside GitHub Actions and has no override.
   To publish by hand: `gh workflow run publish-dist.yml`.
+- **CI is also the only gate runner.** The `release-gates` job in
+  `.github/workflows/test-plugins.yml` runs every release gate on the PR; there is no
+  local release script.
 
 So the only surface this skill handles is **magus-src**: the version commit, the PR, and
 the tags on the merge commit.
@@ -33,7 +36,11 @@ bump (local, reversible), `tag.ts` tags the merge (after CI has validated it).
 infer.ts ─┐
           ├→ JSON proposal ─→ [you + user review/edit] ─→ apply.ts ─→ bump + commit
  git log ─┘                                                              │
-                                              git push branch, PR, merge ┘
+                                                    git push branch, PR ┘
+                                                                         │
+                                CI: release-gates (test-plugins.yml) ◄──┤
+                                                                         │
+                                                          merge to main ┘
                                                                          │
                                        CI: publish-dist.yml publishes ◄──┤
                                                                          │
@@ -125,8 +132,9 @@ Then it stops and prints the next two steps. Nothing has left the machine.
 
 Before that commit, write the CHANGELOG entry (`## [<plugin> X.Y.Z] - YYYY-MM-DD`) and
 run the generators (`bun scripts/generate-releases.ts`, `bun scripts/generate-plugin-catalog.ts`,
-`./scripts/release.sh`) so their output is in the tree the PR carries. `apply.ts`
-requires a clean tree, so commit those first or fold the bump into that commit by hand.
+`./scripts/sync-shared-deps.sh`) so their output is in the tree the PR carries — CI only
+checks, never regenerates. `apply.ts` requires a clean tree, so commit those first or
+fold the bump into that commit by hand.
 
 ### Step 4 — push, PR, merge
 
@@ -136,6 +144,12 @@ gh pr create --base main --title "release: <name> vX.Y.Z" --body-file <changelog
 gh pr checks <n> --watch
 gh pr merge <n> --merge
 ```
+
+The `release-gates` job in `.github/workflows/test-plugins.yml` runs every release gate
+on the PR: manifest parity, skill budget, `generate-releases.ts --check`, the
+duplicated-file checks, doc references, the plugin rule catalog, the terminal contract
+(`scripts/check-terminal-contract.ts`), the unit suites, catalog and diagram freshness.
+A red job means a generator was not run or a check failed — fix it on the branch.
 
 The merge is the release: `publish-dist.yml` sees the version change and publishes
 every channel the plugins target. Watch it with `gh run list --workflow publish-dist.yml`;
@@ -227,8 +241,9 @@ bun run skills/release/scripts/infer.ts kanban | \
 
 ## What this skill explicitly does not do
 
-- Run tests. The user is responsible for verifying the plugin works before releasing;
-  `./scripts/release.sh` and `bun run check:all` are the gates.
+- Run tests or gates locally. The user is responsible for verifying the plugin works
+  before releasing; `bun run check:all` and pre-commit cover the cheap gates, and the
+  `release-gates` CI job runs all of them on the PR.
 - Update CHANGELOG.md or RELEASES.md. Those files are written by hand, not generated
   from commits.
 - Publish. CI does, on the merge. Nothing here can reach a dist repo.

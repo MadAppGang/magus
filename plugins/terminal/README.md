@@ -1,8 +1,10 @@
-# Terminal Plugin v3.0.1
+# Terminal Plugin
 
 Claude gets eyes and hands in the terminal. Screen reading, keystroke injection, TUI navigation, and tmux workspace orchestration — via `tmux-mcp`.
 
 Think of it this way: `chrome-devtools-mcp` gives Claude eyes and hands in the browser. This plugin gives Claude the same in the terminal.
+
+Every terminal operation is addressed by a **slot** — a small integer naming a helper pane the server places and owns. Slot 1 is the pane beside you; `isolated: true` opens a slot nobody can see. Claude never holds a pane id and never targets your own pane.
 
 ---
 
@@ -11,9 +13,8 @@ Think of it this way: `chrome-devtools-mcp` gives Claude eyes and hands in the b
 ### 1. Install dependencies
 
 ```bash
-# tmux-mcp — Go binary that connects to tmux sessions (requires tmux)
-# See https://github.com/MadAppGang/tmux-mcp for install instructions
 brew install tmux
+go install github.com/MadAppGang/tmux-mcp/v2@v2.0.0
 ```
 
 ### 2. Enable the plugin
@@ -45,8 +46,8 @@ Add to `.claude/settings.json`:
 - **Start dev servers and poll for readiness** — launch `bun run dev`, wait for "listening on port", report the URL
 - **Navigate full-screen TUI apps** — vim, nano, lazygit, htop, btop, k9s, tig, less
 - **Query database shells** — psql, mongosh, redis-cli, turso with proper prompt detection and LIMIT safety
-- **Observe running tmux sessions** — read any pane without disrupting it
-- **Run TDD loops** — split a pane for a test watcher, iterate red-green-refactor, read results with `capture-pane`
+- **List and read your own slots** — see what is running in each helper pane and capture its output
+- **Run TDD loops** — a test watcher in slot 1, iterate red-green-refactor, read results with `capture-pane`
 - **Build multi-pane dashboards** — dev server + test watcher + logs side by side
 - **Synchronize multi-host deploys** — send one command to N panes simultaneously
 
@@ -56,21 +57,21 @@ Add to `.claude/settings.json`:
 
 ### Intent commands (use these)
 
-| Command | When to use |
-|---------|-------------|
-| `/terminal:run {cmd}` | One-shot commands that need TTY, interactive prompts, or rendered output |
-| `/terminal:watch {cmd}` | Long-running processes — dev servers, test watchers, log tailing |
-| `/terminal:observe [id]` | Check on a running session without touching it |
-| `/terminal:repl {app}` | Interactive database shells and language REPLs |
-| `/terminal:tui {app}` | Full-screen TUI applications (vim, lazygit, htop, k9s) |
+| Command | When to use | Where it runs |
+|---------|-------------|---------------|
+| `/terminal:run {cmd}` | One-shot commands that need TTY, interactive prompts, or rendered output | Ephemeral isolated pane; nothing to close |
+| `/terminal:watch {cmd} [--isolated]` | Long-running processes — dev servers, test watchers, log tailing | Slot 1 beside you; `--isolated` → slot 2+ out of view |
+| `/terminal:observe [slot] [--watch]` | Check on a slot without touching it — read-only, no keystrokes, no closing | Lists your slots, then reads slot 1 or the one named |
+| `/terminal:repl {app} [query]` | Interactive database shells and language REPLs, with prompt detection and `LIMIT` safety | Isolated slot, closed when done |
+| `/terminal:tui {app} [--beside]` | Full-screen TUI applications (vim, lazygit, htop, k9s, tig, less) | Isolated slot; `--beside` → slot 1 |
 
 ### Advanced commands (manual control)
 
 | Command | When to use |
 |---------|-------------|
-| `/terminal:session` | Create, list, or close sessions manually |
-| `/terminal:snapshot` | Take a raw screenshot of a session |
-| `/terminal:send` | Inject raw keystrokes into a session |
+| `/terminal:slots [list \| close N \| close all]` | List the slots Claude holds, or close one or all of them |
+| `/terminal:snapshot [slot] [--lines N] [--visual]` | Raw text (or rendered PNG) snapshot of a slot |
+| `/terminal:send [slot] {text or key:Name}` | Inject raw keystrokes into a slot |
 | `/terminal:help` | Show all commands with quick examples |
 
 ### Which command should I use?
@@ -81,101 +82,39 @@ Add to `.claude/settings.json`:
 "Check on the server"           → /terminal:observe
 "Query the database"            → /terminal:repl psql $DATABASE_URL
 "Open lazygit to commit"        → /terminal:tui lazygit
-"Check CPU/memory"              → /terminal:tui htop
+"Check CPU/memory"              → /terminal:tui htop --beside
 "Edit a file in vim"            → /terminal:tui vim src/index.ts
-"Split terminal, run beside me" → just ask Claude — it splits your tmux pane
+"Run it beside me"              → just ask Claude — it uses slot 1, the pane beside you
+"What do you have open?"        → /terminal:slots list
 ```
 
----
-
-## Command details
-
-### `/terminal:run`
-
-Runs a command in an isolated headless terminal, captures output, closes the session automatically.
-
-```
-/terminal:run go test ./...
-/terminal:run "docker-compose up --build"
-/terminal:run "curl -s https://api.example.com/health | jq"
-```
-
-Use this instead of the Bash tool when the command needs a TTY, shows progress bars, or produces terminal-rendered output. For simple non-interactive commands, the Bash tool is faster.
-
-### `/terminal:watch`
-
-Starts a long-running process and polls for readiness or failure. The session stays alive for later inspection with `/terminal:observe`.
-
-```
-/terminal:watch "bun run dev"
-/terminal:watch "bun test --watch"
-/terminal:watch "docker-compose up"
-```
-
-Reports one of three outcomes: ready (with the URL or success marker), errored (with the error), or still starting (with a session ID to check later).
-
-### `/terminal:observe`
-
-Read-only observation. No keystrokes, no kills, no modifications.
-
-```
-/terminal:observe                    # list all active sessions
-/terminal:observe tmux:dev:0.0       # read a pane from the dev tmux session
-```
-
-Use this to check on a process started earlier, or to read a developer's running tmux environment.
-
-### `/terminal:repl`
-
-Opens an interactive shell, waits for the prompt, runs queries, and exits cleanly.
-
-```
-/terminal:repl psql $DATABASE_URL
-/terminal:repl "psql -d myapp" "SELECT count(*) FROM users"
-/terminal:repl mongosh $MONGO_URI
-/terminal:repl python3
-/terminal:repl "turso db shell mydb"
-```
-
-Handles prompt detection for psql (`=#`), mongosh (`>`), redis-cli (`127.0.0.1:6379>`), python3 (`>>>`), node (`>`), and others. Always adds `LIMIT` safety to database queries to fit within the 40-line snapshot window.
-
-### `/terminal:tui`
-
-Launches a full-screen TUI application and navigates it interactively.
-
-```
-/terminal:tui lazygit
-/terminal:tui vim src/api/handler.ts
-/terminal:tui htop
-/terminal:tui k9s
-/terminal:tui tig
-```
-
-Supported applications:
-
-| Application | Category |
-|-------------|----------|
-| vim / neovim, nano | Text editors |
-| lazygit, tig | Git TUIs |
-| htop, btop | System monitors |
-| k9s | Kubernetes TUI |
-| less, man | Pagers |
+Use `/terminal:run` instead of the Bash tool when the command needs a TTY, shows progress bars, or produces terminal-rendered output; for plain non-interactive commands, Bash is faster. `/terminal:watch` reports ready (with the URL or success marker), errored (with the error), or still starting (with the slot number to check later via `/terminal:observe`).
 
 ---
 
 ## Backend: tmux-mcp
 
-All terminal operations run through `tmux-mcp` (a Go binary from [github.com/MadAppGang/tmux-mcp](https://github.com/MadAppGang/tmux-mcp)). It creates isolated agentic tmux sessions for fresh tasks, and for work beside you it reads the pane it was launched in and manages a helper pane there itself — Claude never names or locates a pane.
+All terminal operations run through `tmux-mcp` v2 (a Go binary from [github.com/MadAppGang/tmux-mcp](https://github.com/MadAppGang/tmux-mcp)), registered as the MCP server `mux`. It exposes 13 tools, every one addressed by `slot`:
+
+| Kind | Tools | Behaviour |
+|------|-------|-----------|
+| Creating | `send-keys`, `run-in-repl`, `execute-command`, `start-and-watch`, `write-to-display`, `open-pane` | Open the slot on first use, reuse it after; always answer `created: true/false`; accept `isolated` |
+| Reading | `capture-pane`, `screenshot-pane`, `pane-state`, `watch-pane` | Read a slot that exists; error on one that was never opened |
+| Registry | `list-slots`, `close-pane` | What Claude holds; close one slot or `"all"` |
+| Notification | `notify` | One-way message to you |
 
 | Scenario | How tmux-mcp handles it |
 |----------|-------------------------|
-| Fresh isolated task — create, run, destroy | New agentic-scope tmux session |
-| Already inside tmux — split panes, side panels | Splits in the current session |
-| Read scrollback history | `capture-pane` with history range |
-| Monitor a developer's live session | Attach read-only to existing pane |
-| Multi-pane dashboard layouts | Native tmux layout commands |
+| Work beside you | Slot 1 is opened in your current tmux window, or adopted from an idle shell you left open |
+| Work out of view | `isolated: true` on slot 2+ opens a pane on a private tmux server with no window |
+| One-shot command | `execute-command` with `isolated: true` and no slot is ephemeral — no slot to close |
+| Not inside tmux | Only isolated slots are available; a visible call is an error that says so |
+| Read scrollback history | `capture-pane` with a `lines` count |
+| Multi-pane dashboard layouts | Slots 1, 2, 3 … placed by the server; layout commands via Bash |
 
-**Snapshot rule**: Pane snapshots show what a human sees on screen. For longer output, Claude uses `| tail -N`, `LIMIT` in SQL, tee-to-file, or `capture-pane` with an explicit history range.
+A slot's kind is fixed until it is closed, so an isolated slot stays isolated and a visible one stays visible.
+
+**Snapshot rule**: Pane snapshots show what a human sees on screen. For longer output, Claude uses `| tail -N`, `LIMIT` in SQL, tee-to-file, or `capture-pane` with a `lines` count.
 
 ---
 
@@ -183,47 +122,22 @@ All terminal operations run through `tmux-mcp` (a Go binary from [github.com/Mad
 
 Five skills teach Claude the full terminal interaction protocol.
 
-### `terminal:terminal-interaction`
-
-The core reference. Covers the complete tmux-mcp tool API, pane detection and splitting, the tee-to-file pattern for long output, desktop notifications for long builds, approval gates for destructive commands, and parallel multi-session patterns.
-
-### `terminal:tui-navigation-patterns`
-
-Key sequences for 15+ TUI applications: vim (modes, navigation, editing), nano, htop/btop, less/man, psql, mongosh, redis-cli, turso, lazygit, tig, k9s, Docker logs, Node/Bun/Python/Ruby REPLs. Includes prompt detection patterns for knowing when each app is ready.
-
-### `terminal:framework-signals`
-
-Pass/fail/running/idle output markers for 15+ frameworks. Claude reads these from terminal snapshots to know when commands complete and whether they succeeded.
-
-Covers: Jest, Vitest, Cargo watch, pytest-watch, Go test, Bun test, RSpec, Cargo build, Gradle, Webpack, Vite, Make, Fly.io, Vercel, Railway, act, docker-compose.
-
-### `terminal:tdd-workflow`
-
-Red-green-refactor state machine for TDD with a running test watcher. Defines the 5-state loop (RED → WAITING → GREEN → COMPILE_ERROR → IDLE), timing rules (never read results until the "change detected" signal appears), failure extraction regexes for Jest/Vitest/Cargo/pytest, and watcher lifecycle (one watcher per project, never restart it mid-session).
-
-### `terminal:workspace-setup`
-
-Tmux workspace orchestration. Four named dashboard archetypes:
-
-| Archetype | Layout |
-|-----------|--------|
-| **Web Dev Cockpit** | Dev server left, test watcher + logs right (main-vertical) |
-| **Data Pipeline Monitor** | Ingestion / transform / DB monitor side by side (even-horizontal) |
-| **DevOps Pod Dashboard** | k9s + pod logs + metrics + deploy output (2×2 tiled) |
-| **TDD Red-Green Loop** | Code editor top, watcher + coverage bottom (main-horizontal) |
-
-Also covers ambient monitoring with `watch` and `entr`, session startup scripts, and multi-host synchronize-panes for deploying to N hosts simultaneously.
+- **`terminal:terminal-interaction`** — the core reference: the 13-tool API, the slot convention, isolated slots, the tee-to-file pattern for long output, notifications for long builds, approval gates for destructive commands, and parallel multi-slot patterns.
+- **`terminal:tui-navigation-patterns`** — key sequences for 15+ TUI applications (vim, nano, htop/btop, less/man, psql, mongosh, redis-cli, turso, lazygit, tig, k9s, Docker logs, Node/Bun/Python/Ruby REPLs) with prompt detection patterns.
+- **`terminal:framework-signals`** — pass/fail/running/idle output markers for 15+ frameworks (Jest, Vitest, Cargo, pytest, Go test, Bun test, RSpec, Gradle, Webpack, Vite, Make, Fly.io, Vercel, Railway, act, docker-compose).
+- **`terminal:tdd-workflow`** — red-green-refactor state machine for TDD with a running test watcher: the 5-state loop, timing rules, failure extraction regexes, and watcher lifecycle.
+- **`terminal:workspace-setup`** — tmux workspace orchestration: four dashboard archetypes (Web Dev Cockpit, Data Pipeline Monitor, DevOps Pod Dashboard, TDD Red-Green Loop), ambient monitoring with `watch` and `entr`, startup scripts, and multi-host synchronize-panes.
 
 ---
 
 ## Agent
 
-**`terminal:tui-navigator`** handles multi-step interactive terminal workflows. Delegate to this agent when a task requires stateful screen-read-then-keystroke cycles: navigating TUI apps, multi-query REPL sessions, server lifecycle management, deployment monitoring, parallel test sessions, or splitting the current tmux pane to show something beside the user's workspace.
+**`terminal:tui-navigator`** handles multi-step interactive terminal workflows. Delegate to this agent when a task requires stateful screen-read-then-keystroke cycles: navigating TUI apps, multi-query REPL sessions, server lifecycle management, deployment monitoring, parallel test runs, or running something in the pane beside you.
 
 ```
 # Claude delegates automatically when you say things like:
 "Open lazygit and commit everything"
-"Start the dev server and watch tests in a split pane"
+"Start the dev server and watch tests beside me"
 "Query the production database for the last 5 failed payments"
 "Monitor the Fly.io deployment until it goes live"
 ```
@@ -235,9 +149,7 @@ Also covers ambient monitoring with `watch` and `entr`, session startup scripts,
 | Requirement | Install |
 |-------------|---------|
 | tmux | `brew install tmux` (macOS) · `apt-get install tmux` (Debian/Ubuntu) |
-| tmux-mcp (Go binary) | See [github.com/MadAppGang/tmux-mcp](https://github.com/MadAppGang/tmux-mcp) |
-
-With tmux and tmux-mcp installed, Claude can create isolated agentic sessions, split your existing pane, observe your running processes, and build multi-pane dashboards.
+| tmux-mcp v2.0.0 (Go binary) | `go install github.com/MadAppGang/tmux-mcp/v2@v2.0.0` — see [DEPENDENCIES.md](./DEPENDENCIES.md) |
 
 ---
 
@@ -245,59 +157,35 @@ With tmux and tmux-mcp installed, Claude can create isolated agentic sessions, s
 
 ### Commands hang with no output
 
-The tmux-mcp session may not have started. Check:
+The MCP server may not have started. Check `which tmux-mcp` and `claude mcp list`. If `mux` is not listed, re-install the `tmux-mcp` binary (see [DEPENDENCIES.md](./DEPENDENCIES.md)) and restart Claude Code.
 
-```bash
-# Verify tmux-mcp is installed and on PATH
-which tmux-mcp
+### Nothing appears beside me
 
-# Verify the MCP server is registered
-claude mcp list
-```
+Slot 1 is opened in the tmux window tmux-mcp was launched in, which it reads at startup. If nothing appeared, the shell running Claude Code is probably not inside tmux. Verify with `echo $TMUX_PANE` — if it is empty, you are not in a tmux pane, and only isolated panes are available: Claude runs the work out of view and reports the output.
 
-If `tmux` is not listed, re-install the `tmux-mcp` binary (see [github.com/MadAppGang/tmux-mcp](https://github.com/MadAppGang/tmux-mcp)) and restart Claude Code.
+A helper pane may be one you left open and idle rather than a fresh split. Claude will not kill such a pane when it finishes — `close-pane` interrupts the command and releases the pane where it found it.
 
-### Pane splits appear in the wrong window
+### Claude cannot see a pane I am using
 
-The tmux-mcp server places helper panes in the pane it was launched in, which it reads at startup — so it cannot race with you switching windows. If a split appeared somewhere unexpected, the shell running Claude Code is probably not inside tmux. Verify with `echo $TMUX_PANE` — if it is empty, you are not in a tmux pane and Claude will use an isolated headless session instead.
-
-Note that a helper pane may be one you left open and idle rather than a fresh split. Claude will not kill such a pane when it finishes — it interrupts the command and leaves the pane where it found it.
+That is by design. Claude can only read slots it holds, so a pane you are typing in is never readable or writable. Ask Claude to run the process in a slot, or to read its log file.
 
 ### Database queries return partial results
 
-Pane snapshots show only the visible screen. For large result sets, Claude adds `LIMIT` automatically via `/terminal:repl`. For queries you run manually, add `LIMIT` explicitly or use `capture-pane` with a history range to read scrollback.
+Pane snapshots show only the visible screen. For large result sets, Claude adds `LIMIT` automatically via `/terminal:repl`. For queries you run manually, add `LIMIT` explicitly or ask for `capture-pane` with a larger `lines` count.
 
 ### `watch` command not found on macOS
 
-macOS does not ship `watch` by default. Install via Homebrew:
-
-```bash
-brew install watch
-```
+macOS does not ship `watch` by default: `brew install watch`.
 
 ### Port already in use when starting a dev server
 
-`/terminal:watch` detects `EADDRINUSE` and reports it. Find the occupying process:
-
-```bash
-lsof -ti:3000 | xargs kill
-```
-
-Then retry `/terminal:watch "bun run dev"`.
+`/terminal:watch` detects `EADDRINUSE` and reports it. Find the occupying process with `lsof -ti:3000 | xargs kill`, then retry.
 
 ### Mouse/scroll stops working in iTerm2 after using terminal plugin
 
-TUI apps (htop, lazygit, vim) and tmux-mcp sessions enable mouse reporting via escape sequences. If a session exits without cleaning up, iTerm2 shows a banner asking "should I stop mouse reporting?" — choosing "Yes" silently disables mouse reporting for that tab (and all future tabs via `NoSyncTurnOffMouseReportingOnHostChange`).
+TUI apps (htop, lazygit, vim) enable mouse reporting via escape sequences. If one exits without cleaning up, iTerm2 asks "should I stop mouse reporting?" — choosing "Yes" silently disables mouse reporting for that tab and all future tabs.
 
-**Symptoms**: Scrolling moves the entire iTerm2 buffer instead of scrolling inside tmux. Mouse clicks don't register in tmux panes. New tabs work fine.
-
-**Quick fix** — re-enable mouse reporting in the affected tab:
-
-```bash
-printf '\e[?1000h\e[?1002h\e[?1006h'
-```
-
-**Permanent fix** — prevent iTerm2 from silently disabling mouse reporting:
+Quick fix for the affected tab: `printf '\e[?1000h\e[?1002h\e[?1006h'`. Permanent fix — stop iTerm2 from silently disabling it, then restart iTerm2 and choose "Keep" next time it asks:
 
 ```bash
 defaults write com.googlecode.iterm2 NoSyncTurnOffMouseReportingOnHostChange -bool false
@@ -305,9 +193,7 @@ defaults write com.googlecode.iterm2 NoSyncTurnOffFocusReportingOnHostChange -bo
 defaults write com.googlecode.iterm2 NoSyncNeverAskAboutMouseReportingFrustration -bool false
 ```
 
-After running these, restart iTerm2. Next time a TUI app exits uncleanly, iTerm2 will ask instead of silently disabling — choose "Keep" to preserve mouse reporting.
-
 ---
 
-**Terminal Plugin** · v3.0.1 · MIT License
+**Terminal Plugin** · MIT License
 [MadAppGang](https://madappgang.com) · [Jack Rudenko](mailto:i@madappgang.com)

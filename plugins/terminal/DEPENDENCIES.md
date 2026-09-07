@@ -4,15 +4,15 @@ This plugin requires one MCP server to be installed and available on your system
 
 ---
 
-## Required: tmux-mcp
+## Required: tmux-mcp v2.0.0
 
-**What it does**: tmux MCP server (Go binary). Connects Claude to tmux sessions — list sessions, capture pane content, send keys, create split-pane layouts, and manage isolated agentic terminal workspaces. The plugin's `.mcp.json` declares:
+**What it does**: tmux MCP server (Go binary). Gives Claude numbered helper slots — panes beside you in your tmux window, or isolated panes on a private server nobody sees — and runs commands, REPLs and TUI apps in them, captures their output, and closes them. Claude addresses every slot by number and never holds a pane id. The plugin's `.mcp.json` declares:
 
 ```json
 {
-  "tmux": {
+  "mux": {
     "command": "tmux-mcp",
-    "args": ["-shell-type", "zsh", "-scope", "agentic"]
+    "args": ["-shell-type", "zsh"]
   }
 }
 ```
@@ -22,49 +22,32 @@ This plugin requires one MCP server to be installed and available on your system
 
 ### Install
 
-Install the `tmux-mcp` Go binary from the MadAppGang repository (see release instructions at [github.com/MadAppGang/tmux-mcp](https://github.com/MadAppGang/tmux-mcp)). A typical flow:
-
 ```bash
-# Install tmux if not already installed (macOS)
+# tmux (macOS)
 brew install tmux
 
-# Install tmux (Ubuntu/Debian)
+# tmux (Ubuntu/Debian)
 sudo apt-get install tmux
 
-# Install the tmux-mcp Go binary — follow the upstream repo's install guide
-# (e.g. `go install github.com/MadAppGang/tmux-mcp@latest` or download a release)
+# tmux-mcp, the exact version this plugin is pinned to
+go install github.com/MadAppGang/tmux-mcp/v2@v2.0.0
 ```
 
 ### Verify
 
 ```bash
 which tmux-mcp
-tmux-mcp --version
+tmux-mcp --version   # v2.0.0
 ```
-
-**Why required**: tmux-mcp provides the full terminal interaction surface — it creates isolated agentic tmux sessions (`-scope agentic`), reads scrollback history, observes running processes, injects keystrokes into TUI applications, and builds multi-pane layouts. All terminal plugin commands route through these MCP tools.
 
 ---
 
 ## Verify It's Working
 
-After installation, confirm the MCP server is registered with Claude Code:
-
-```bash
-claude mcp list
-```
-
-You should see `tmux` in the list.
-
-To test it's functional, start a Claude Code session and try:
-
-```
-/terminal:session create
-/terminal:session tmux list
-```
+After installation, confirm the MCP server is registered with Claude Code with `claude mcp list`. You should see `mux` in the list. Then start a Claude Code session and run `/terminal:slots list` — an empty list means the server is up and Claude holds no slots yet.
 
 ---
 
 ## No Custom Code
 
-This plugin contains no custom code — it is a thin wrapper that adds skills, agents, and commands to teach Claude how to use tmux-mcp effectively. The heavy lifting (tmux session management, pane capture, keystroke injection) is handled entirely by the tmux-mcp Go binary.
+This plugin contains no custom code — it is a thin wrapper of skills, agents, and commands that teach Claude how to use tmux-mcp. Slot placement, pane capture, and keystroke injection are handled entirely by the tmux-mcp Go binary.

@@ -1,49 +1,40 @@
 ---
 name: workspace-setup
-description: Orchestrates tmux workspaces — sessions, dashboard layouts, watch/entr monitors, synced panes. Use when setting up a project session, building a multi-pane dashboard, or syncing panes.
+description: Orchestrates tmux workspaces — dashboards, watch/entr monitors, one command on many hosts — on numbered helper slots. Use for a multi-pane dashboard, an ambient monitor, a command across hosts, or a startup script for the user.
 user-invocable: false
 disable-model-invocation: true
 ---
 
 # Workspace Setup
 
-Tmux workspace orchestration: session construction, dashboard archetypes, ambient monitoring, and multi-host pane synchronization.
+Tmux workspace orchestration: startup scripts, dashboard archetypes, ambient monitoring, and one command across many hosts. Every tmux-mcp call addresses a **numbered helper slot** — a pane beside you in the user's window; the same number returns the same pane every time, and slot 1 is never your own pane. Windows and whole tmux sessions are not in this contract; where they are needed the step is marked `[Bash]`.
 
 ---
 
-## 1. Session Workspace Construction
+## 1. Project Startup Script
 
-One tmux session per project, named windows per concern.
-
-> **Windows are not in the agentic MCP scope.** `create-window`, `kill-window`,
-> `resize-pane` and `rename-session` exist in the tmux-mcp binary but are hidden at
-> `-scope agentic`, which is what this plugin ships. Building a multi-**window** session is
-> therefore a Bash job — use the startup script below, which is what you should be handing
-> the user anyway. Multi-**pane** work needs no Bash at all; see §2.
-
-### Session Construction Tool Sequence
+One tmux session per project, named windows per concern. Windows and sessions are not in this contract, so the deliverable is a **startup script** the user runs and re-runs themselves — not a sequence of tool calls.
 
 ```
-1. mcp__tmux__list-sessions()                          → scan for a session named "project"
-   // find-session was removed from the Go binary; filter client-side
-2. [if not found] mcp__tmux__create-session({ name: "project" })
-3. Windows: generate the startup script below and let the user run it —
-   window creation is not available at this scope.
-4. Report: "Workspace ready. Switch with: tmux switch-client -t project"
+1. [Bash] tmux has-session -t myproject 2>/dev/null     → exit 0 means it already exists
+2. [if missing] generate the script below and hand it over
+3. Report: "Workspace ready. Switch with: tmux switch-client -t myproject"
 ```
+
+`has-session` is the only detection signal you need. `mcp__plugin_terminal_mux__list-slots()` lists the helper panes *this agent* has open — never the user's windows or panes, which this contract does not enumerate.
 
 ### Four Hand-Off Patterns
 
 | Pattern | When to use | How |
 |---------|-------------|-----|
-| A: Leave detached | Long background job | Create session, give the attach command |
-| B: Non-destructive inspect | User already in a session | `capture-pane` without touching anything |
-| C: Background build | User wants to keep working | `tmux new-session -d -s "build-job" "make all"` |
+| A: Leave detached | Long background job | `[Bash] tmux new-session -d -s "<name>" "<cmd>"`, give the attach command |
+| B: Non-destructive inspect | User already in a workspace | `capture-pane` on a helper slot you opened; never their pane |
+| C: Background build | User wants to keep working | `[Bash] tmux new-session -d -s "build-job" "make all"` |
 | D: Extra pane here | User wants to stay where they are | A numbered slot — §2 |
 
-### Session Startup Script Artifact
+### Startup Script Artifact
 
-Generate this and leave it for the user to re-run. Replace `myproject` and the path.
+Generate this and leave it for the user to re-run. Replace `myproject` and the path. Use named variables only — no positional arguments.
 
 ```bash
 #!/bin/bash
@@ -59,12 +50,6 @@ tmux select-window -t "$SESSION:server"
 tmux attach-session -t "$SESSION"
 ```
 
-### Detection Signals
-
-- `mcp__tmux__list-sessions()` — all sessions; filter by name client-side
-- `mcp__tmux__list-windows({ sessionId })` — windows in a session you already located
-- `tmux has-session -t {name}` exits 0 if the session exists
-
 ---
 
 ## 2. Dashboard Archetypes
@@ -72,14 +57,11 @@ tmux attach-session -t "$SESSION"
 Four archetypes derived from real developer sessions. Users can ask for one by name.
 
 **Build dashboards with numbered slots.** Each slot is a distinct pane, created on first use
-and returned unchanged on every call after that. You do not split, you do not pass a
-direction, and you do not order the calls defensively — slot 2 is never slot 1, by
-construction. Panes are titled `agent`, `agent:2` … automatically.
-
-> Slot placement: 1 is beside you, 2 stacks under 1, 3 goes bottom-left, 4 and up subdivide
-> the largest pane the server owns. If you need a specific visual arrangement beyond that,
-> apply a tmux layout preset afterwards (below) — that is the one part of this the MCP
-> surface does not cover.
+and returned unchanged after that. You do not split, pass a direction, or order the calls
+defensively — slot 2 is never slot 1, by construction. Panes are titled `agent`, `agent:2` …
+automatically. Placement: 1 is beside you, 2 stacks under 1, 3 goes bottom-left, 4 and up
+subdivide the largest pane the server owns. For a specific arrangement beyond that, apply a
+tmux layout preset afterwards (below) — the one part of this the MCP surface does not cover.
 
 For the TDD archetype's full state machine, see `terminal:tdd-workflow`.
 
@@ -95,15 +77,15 @@ For the TDD archetype's full state machine, see `terminal:tdd-workflow`.
 ```
 
 ```
-1. mcp__tmux__send-keys({ slot: 1, keys: "bun run dev", enter: true })
-2. mcp__tmux__start-and-watch({
+1. mcp__plugin_terminal_mux__send-keys({ slot: 1, keys: "bun run dev", enter: true })
+2. mcp__plugin_terminal_mux__start-and-watch({
      slot: 2,
      command: "bun test --watch",
      pattern: "press a to rerun|Waiting for file changes|Waiting\\.\\.\\.",
      triggers: "exit,error",
      timeout: 30
    })                                          → confirms the watcher came up
-3. mcp__tmux__send-keys({ slot: 3, keys: "tail -f logs/app.log", enter: true })
+3. mcp__plugin_terminal_mux__send-keys({ slot: 3, keys: "tail -f logs/app.log", enter: true })
 ```
 
 ### Archetype B: Data Pipeline Monitor
@@ -115,9 +97,9 @@ For the TDD archetype's full state machine, see `terminal:tdd-workflow`.
 ```
 
 ```
-1. mcp__tmux__send-keys({ slot: 1, keys: "<ingestion command>", enter: true })
-2. mcp__tmux__send-keys({ slot: 2, keys: "<transform command>", enter: true })
-3. mcp__tmux__send-keys({ slot: 3, keys: "<db monitor command>", enter: true })
+1. mcp__plugin_terminal_mux__send-keys({ slot: 1, keys: "<ingestion command>", enter: true })
+2. mcp__plugin_terminal_mux__send-keys({ slot: 2, keys: "<transform command>", enter: true })
+3. mcp__plugin_terminal_mux__send-keys({ slot: 3, keys: "<db monitor command>", enter: true })
 ```
 
 ### Archetype C: DevOps Pod Dashboard
@@ -131,10 +113,10 @@ For the TDD archetype's full state machine, see `terminal:tdd-workflow`.
 ```
 
 ```
-1. mcp__tmux__send-keys({ slot: 1, keys: "k9s", enter: true })
-2. mcp__tmux__send-keys({ slot: 2, keys: "kubectl logs -f {pod}", enter: true })
-3. mcp__tmux__send-keys({ slot: 3, keys: "watch -n2 kubectl top pods", enter: true })
-4. mcp__tmux__send-keys({ slot: 4, keys: "tail -f deploy.log", enter: true })
+1. mcp__plugin_terminal_mux__send-keys({ slot: 1, keys: "k9s", enter: true })
+2. mcp__plugin_terminal_mux__send-keys({ slot: 2, keys: "kubectl logs -f {pod}", enter: true })
+3. mcp__plugin_terminal_mux__send-keys({ slot: 3, keys: "watch -n2 kubectl top pods", enter: true })
+4. mcp__plugin_terminal_mux__send-keys({ slot: 4, keys: "tail -f deploy.log", enter: true })
 ```
 
 ### Archetype D: TDD Red-Green Loop
@@ -148,14 +130,14 @@ For the TDD archetype's full state machine, see `terminal:tdd-workflow`.
 ```
 
 ```
-1. mcp__tmux__start-and-watch({
+1. mcp__plugin_terminal_mux__start-and-watch({
      slot: 1,
      command: "bun test --watch",
      pattern: "press a to rerun|Waiting for file changes|Waiting\\.\\.\\.",
      triggers: "exit,error",
      timeout: 30
    })
-2. mcp__tmux__send-keys({ slot: 2, keys: "bun test --coverage", enter: true })
+2. mcp__plugin_terminal_mux__send-keys({ slot: 2, keys: "bun test --coverage", enter: true })
 ```
 
 ### Optional: layout presets
@@ -176,22 +158,22 @@ Check `tmux show-options -g pane-border-status` first; if it is already set, lea
 For a point-in-time snapshot:
 
 ```
-mcp__tmux__capture-pane({ slot: 1, lines: 50 })   → parse server status
-mcp__tmux__capture-pane({ slot: 2, lines: 50 })   → parse test results
-mcp__tmux__capture-pane({ slot: 3, lines: 50 })   → scan for errors
+mcp__plugin_terminal_mux__capture-pane({ slot: 1, lines: 50 })   → parse server status
+mcp__plugin_terminal_mux__capture-pane({ slot: 2, lines: 50 })   → parse test results
+mcp__plugin_terminal_mux__capture-pane({ slot: 3, lines: 50 })   → scan for errors
 → "Server: running :3000. Tests: 47 passed. Logs: no errors."
 ```
 
 For event-driven monitoring, block until something interesting happens:
 
 ```
-mcp__tmux__watch-pane({ slot: 1, triggers: "error,exit,idle:30", timeout: 120 })
+mcp__plugin_terminal_mux__watch-pane({ slot: 1, triggers: "error,exit,idle:30", timeout: 120 })
 ```
 
 ### Tearing a dashboard down
 
 ```
-mcp__tmux__close-pane({ slot: "all" })
+mcp__plugin_terminal_mux__close-pane({ slot: "all" })
 ```
 
 Kills the panes the server created and merely interrupts any it adopted from the user.
@@ -202,12 +184,10 @@ Kills the panes the server created and merely interrupts any it adopted from the
 
 Two sub-patterns: `watch` for polling status monitors, `entr` for file-change-triggered reruns.
 
-### watch Setup / Read / Teardown
-
 ```
-SETUP:    mcp__tmux__send-keys({ slot: 2, keys: "watch -n2 kubectl get pods", enter: true })
-READ:     mcp__tmux__capture-pane({ slot: 2 })   (non-disruptive — watch keeps running)
-TEARDOWN: mcp__tmux__close-pane({ slot: 2 })     (interrupts, then releases or kills)
+SETUP:    mcp__plugin_terminal_mux__send-keys({ slot: 2, keys: "watch -n2 kubectl get pods", enter: true })
+READ:     mcp__plugin_terminal_mux__capture-pane({ slot: 2 })   (non-disruptive — watch keeps running)
+TEARDOWN: mcp__plugin_terminal_mux__close-pane({ slot: 2 })     (interrupts, then releases or kills)
 ```
 
 ### Common watch Patterns
@@ -220,13 +200,7 @@ watch -n1 'curl -s localhost:3000/health'  # health probe
 watch -n3 'docker stats --no-stream'  # container resources
 ```
 
-### watch Availability Check
-
-macOS ships `watch` only with Homebrew. Check before using:
-
-```bash
-which watch || which gwatch || echo "unavailable — use /terminal:watch poll loop"
-```
+macOS ships `watch` only with Homebrew: `which watch || which gwatch || echo "unavailable — use /terminal:watch poll loop"`.
 
 ### entr File-Change-Triggered Reruns
 
@@ -237,42 +211,37 @@ find . -name "*.py" | entr python main.py    # Python script
 ls src/**/*.rs | entr -r cargo test          # Rust tests
 ```
 
-### entr Flags
-
-| Flag | Effect |
-|------|--------|
-| `-r` | Restart child process (kill and rerun) on each change |
-| `-c` | Clear the screen before each run |
-| `-d` | Watch for new files added to the piped directory listing |
-
-### entr Availability Check
-
-```bash
-which entr 2>/dev/null && echo "entr available" || echo "entr not found — suggest: brew install entr"
-```
+Flags: `-r` restarts the child (kill and rerun) on each change, `-c` clears the screen first,
+`-d` also watches for new files in the piped listing. Availability:
+`which entr 2>/dev/null || echo "entr not found — suggest: brew install entr"`.
 
 ---
 
-## 4. Synchronize-Panes for Multi-Host DevOps
+## 4. One Command on N Hosts
 
-Send one command to N panes simultaneously — useful for deploying to multiple hosts or running the same command across a cluster.
+Run the same command on several hosts at once — a deploy across a cluster, a health check on every node. This is a **dedicated session built from Bash**, like §1, never your own window: `synchronize-panes` mirrors keystrokes into every pane of the window it is set on, your own included, so it has no place in the window you and the user share. Each pane runs the remote command as its initial process, so nothing is typed into anything after the panes exist.
 
-**Note**: Steps 5 and 7 require the Bash tool. tmux-mcp does not expose `set-window-option`. All other steps use tmux-mcp.
-
-### Tool Sequence
-
-```
-1. mcp__tmux__create-session({ name: "deploy-prod" })
-2. Split into N panes, one per host
-3. SSH into each pane individually (separate send-keys per pane)
-4. Wait for all panes to show shell prompt
-5. [Bash] tmux set-window-option -t deploy-prod:1 synchronize-panes on
-6. ONE mcp__tmux__send-keys call → dispatches to ALL panes simultaneously
-7. [Bash] tmux set-window-option -t deploy-prod:1 synchronize-panes off
-8. mcp__tmux__capture-pane each pane to verify all succeeded
+```bash
+# One pane per host; the command runs non-interactively over ssh.
+tmux new-session -d -s deploy -n run -x 200 -y 50
+tmux set-option -t deploy remain-on-exit on           # keep each pane's output after ssh exits
+tmux send-keys -t deploy:run "ssh host-1 '<deploy command>'" Enter
+for h in host-2 host-3; do
+  tmux split-window -t deploy:run "ssh $h '<deploy command>'"
+done
+tmux select-layout -t deploy:run tiled
 ```
 
-**tmux-mcp enhancement needed**: `set-window-option` would enable pure-MCP orchestration without the Bash workaround in steps 5 and 7.
+Then, still from Bash, wait for every pane to finish and read each one:
+
+```bash
+until [ "$(tmux list-panes -t deploy:run -F '#{pane_dead}' | grep -c 0)" -eq 0 ]; do sleep 2; done
+tmux list-panes -t deploy:run -F '#{pane_index} exit=#{pane_dead_status}'
+tmux capture-pane -p -t deploy:run.0     # and .1, .2 … — one per host
+tmux kill-session -t deploy
+```
+
+The first pane is opened with `send-keys` on a fresh shell (a session created with a command has no shell to return to), the rest with `split-window` carrying the command directly; both are raw `tmux` verbs the safety hook permits because their target is a bare shell or a new pane. A deploy that **prompts** on each host is not a job for mirroring at all: run it one host at a time in an isolated slot with `start-and-watch({ slot: 2, isolated: true, command: "ssh host-k", pattern: "\\$ " })` and `run-in-repl`, and read each answer before the next host.
 
 ---
 

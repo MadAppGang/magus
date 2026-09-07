@@ -107,29 +107,35 @@ A plain text capture strips the color that *is the point*. This pipeline turns a
 TUI into a color-accurate PNG** you can `Read`. Verified end-to-end.
 
 ```
-run TUI in headless tmux pane  →  capture WITH colors (-e)  →  ansi-to-png.ts  →  Read PNG  →  fix
+run TUI on a private tmux socket  →  capture WITH colors (-e)  →  ansi-to-png.ts  →  Read PNG  →  fix
 ```
 
 ```bash
-# 1. (terminal MCP) launch the app in a headless pane, wait for first frame:
-#    mcp__tmux__create-headless({ name: "tuidev" })          → paneId "headless:%0"
-#    mcp__tmux__start-and-watch({ paneId, command: "go run .", pattern: "<a panel title>" })
+# 1. run the app on a private tmux socket, at the size you want to judge:
+OUT=$(mktemp -d); SOCK=gotui-$$; SESS=tui-$$   # unique per run: a fixed name collides with a parallel capture
+tmux -f /dev/null -L "$SOCK" new-session -d -s "$SESS" -x 80 -y 24 "go run ."
 
-# 2. capture WITH color escapes from the headless socket (note: bare pane id %0, not headless:%0)
-tmux -L mcp-headless capture-pane -p -e -t %0 > /tmp/tui.ansi
+# 2. capture WITH color escapes once the first frame is drawn (poll — a fixed sleep races the draw):
+for _ in $(seq 40); do sleep 0.25; tmux -f /dev/null -L "$SOCK" capture-pane -p -e -t "$SESS" >"$OUT/tui.ansi" 2>/dev/null && grep -q $'\x1b' "$OUT/tui.ansi" && break; done
+tmux -f /dev/null -L "$SOCK" kill-window -t "$SESS"   # its only window: the session and the private server end with it
 
-# 3. render to a 2x color PNG (Bun + aha + headless Chrome)
-bun run scripts/ansi-to-png.ts /tmp/tui.ansi /tmp/tui.png 900x600
+# 3. render to a 2x color PNG (Bun + aha + a Chromium-family browser, offscreen):
+bun run scripts/ansi-to-png.ts "$OUT/tui.ansi" "$OUT/tui.png" 900x600
 
-# 4. Read("/tmp/tui.png") and judge: semantic color, alignment, density, no black gaps.
+# 4. Read("$OUT/tui.png") and judge: semantic color, alignment, density, no black gaps.
 #    Then fix the code and repeat. Capture one narrow (80x24) AND one wide size.
 ```
 
 Key gotchas (the rest are in `references/screenshot-workflow.md`):
-- **`-e` is mandatory** — it keeps the color; without it you get plain text.
-- The terminal MCP's headless pane is on socket **`mcp-headless`**; `headless:` in the MCP
-  pane id is routing sugar, so from Bash target the bare `%0`. Targeting `headless:%0`
-  yields an empty file.
+- **`-e` is mandatory** — it keeps the color; without it you get plain text. No `ESC` byte
+  in the file means the capture failed: render nothing from it, conclude nothing.
+- **`-f /dev/null` and `-L "$SOCK"` on every invocation.** A bare `tmux` reaches your
+  interactive server, and a `~/.tmux.conf` that auto-creates sessions would spawn them all.
+- Through the terminal MCP instead: `mcp__plugin_terminal_mux__start-and-watch({ slot: 2,
+  isolated: true, command: "go run .", pattern: "<a panel title>" })`, then
+  `mcp__plugin_terminal_mux__screenshot-pane({ slot: 2 })` returns a viewable PNG directly;
+  `mcp__plugin_terminal_mux__close-pane({ slot: 2 })` when done. The slot tools set no
+  geometry, so the Bash route above is the one for the two mandated sizes.
 - `scripts/ansi-to-png.ts` needs `aha` (`brew install aha`) and a Chromium-family browser;
   it detects both cross-platform and renders at 2× for crisp blocks/braille/gradients.
 

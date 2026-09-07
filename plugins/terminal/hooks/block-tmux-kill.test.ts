@@ -117,6 +117,16 @@ describe("evaluate — the decision gate", () => {
     expect(msg).toContain("sibling agent");
   });
 
+  test("the advice names the slot-addressed MCP tools, never a pane-id tool", () => {
+    const msg = evaluate("tmux -L default send-keys -t %34 'clear'", claude, yes) ?? "";
+    for (const tool of ["open-pane", "send-keys", "close-pane"]) {
+      expect(msg).toContain(`mcp__plugin_terminal_mux__${tool}`);
+    }
+    expect(msg).not.toContain("mcp__tmux__");
+    expect(msg).not.toContain("split-pane");
+    expect(msg).not.toContain("kill-pane");
+  });
+
   test("BLOCKS kill-pane on a claude pane (the kill step)", () => {
     expect(evaluate("tmux -L default kill-pane -t %34", claude, yes)).toContain("'claude'");
   });

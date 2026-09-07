@@ -89,10 +89,10 @@ Match group 1 is the file path, match group 2 is the line number. For Jest/Vites
 **Never restart the watcher between iterations. One watcher per project.**
 
 - The watcher pane is created once at the start of the TDD session and left running until the user is done.
-- `mcp__tmux__watch-pane` observes non-destructively. The watcher keeps running between `watch-pane` calls.
+- `mcp__plugin_terminal_mux__watch-pane` observes non-destructively. The watcher keeps running between `watch-pane` calls.
 - Do not send Ctrl+C to the watcher pane mid-session. This destroys watch mode and requires re-setup.
 - If two Claude agents are working on the same project, they share the single existing watcher — neither creates a second one. Check for an existing watcher pane before creating a new one.
-- At teardown (IDLE state), call `mcp__tmux__close-pane({ slot: 1 })` — it interrupts the watcher and then kills the pane, or releases it if it was one the user had left open.
+- At teardown (IDLE state), call `mcp__plugin_terminal_mux__close-pane({ slot: 1 })` — it interrupts the watcher and then kills the pane, or releases it if it was one the user had left open.
 
 ## Worked Example — Jest/Vitest End-to-End
 
@@ -101,7 +101,7 @@ This example shows the full loop from watcher start through a single RED-to-GREE
 ### Step 1: Start the Watcher (enter WAITING/IDLE)
 
 ```
-mcp__tmux__start-and-watch({
+mcp__plugin_terminal_mux__start-and-watch({
   slot: 1,
   command: "bun test --watch",
   pattern: "press a to rerun|Waiting for file changes|Waiting\\.\\.\\.",
@@ -115,7 +115,7 @@ mcp__tmux__start-and-watch({
 Once the user reports a failing test or the watcher shows a fail signal, read the current state:
 
 ```
-mcp__tmux__capture-pane({ slot: 1 })
+mcp__plugin_terminal_mux__capture-pane({ slot: 1 })
 → snapshot contains:
     FAIL src/utils/format.test.ts
     ● formatDate › returns ISO string
@@ -141,7 +141,7 @@ Locate the `formatDate` function and correct the date format. Use `Edit` to appl
 Do not read the watcher yet. Use `watch-pane` to block until the watcher notices the change:
 
 ```
-mcp__tmux__watch-pane({
+mcp__plugin_terminal_mux__watch-pane({
   slot: 1,
   triggers: "pattern:RUNS |pattern:Running|error",
   mode: "line",   // notify on every new line — fast response
@@ -161,7 +161,7 @@ Bash({ command: "touch /absolute/path/src/utils/format.ts" })
 ### Step 5: watch-pane for Final Result (RED or GREEN)
 
 ```
-mcp__tmux__watch-pane({
+mcp__plugin_terminal_mux__watch-pane({
   slot: 1,
   triggers: "pattern:Tests: \\d+ passed|pattern:Tests: \\d+ failed|pattern:FAIL |pattern:error\\[E|exit|error",
   mode: "bunch",   // notify every 10 lines — balanced for test output
@@ -183,7 +183,7 @@ Would you like to continue with another failing test, or stop here?"
 Leave the watcher pane running. If the user is done, send `Ctrl+C` to the watcher pane and kill it:
 
 ```
-mcp__tmux__close-pane({ slot: 1 })   // interrupts the watcher, then releases or kills the pane
+mcp__plugin_terminal_mux__close-pane({ slot: 1 })   // interrupts the watcher, then releases or kills the pane
 ```
 
 Report summary: "Session complete. 1 test fixed across 1 file."
@@ -193,7 +193,7 @@ Report summary: "Session complete. 1 test fixed across 1 file."
 If you need to verify the watcher is still running before calling watch-pane:
 
 ```
-mcp__tmux__pane-state({ slot: 1 })
+mcp__plugin_terminal_mux__pane-state({ slot: 1 })
 → { isAlive: true, foregroundCmd: "bun", waitingForInput: false }
 // isAlive: false → watcher crashed; recreate it
 // waitingForInput: true → watcher may be paused; check output

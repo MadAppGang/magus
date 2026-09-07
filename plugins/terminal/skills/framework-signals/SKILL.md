@@ -74,8 +74,8 @@ the `pattern` or `triggers` parameters of `start-and-watch` and `watch-pane`.
 ### Test watcher: wait for cycle completion
 
 ```
-mcp__tmux__watch-pane({
-  paneId: watcher_pane,
+mcp__plugin_terminal_mux__watch-pane({
+  slot: 1,
   triggers: "pattern:Tests: \\d+ passed|pattern:FAIL |pattern:test result: ok",
   timeout: 60
 })
@@ -84,7 +84,7 @@ mcp__tmux__watch-pane({
 ### Dev server: wait for ready
 
 ```
-mcp__tmux__start-and-watch({
+mcp__plugin_terminal_mux__start-and-watch({
   command: "npm run dev",
   pattern: "Local:.*http|listening on|ready in",
   mode: "quick",
@@ -95,7 +95,7 @@ mcp__tmux__start-and-watch({
 ### Build tool: wait for completion
 
 ```
-mcp__tmux__start-and-watch({
+mcp__plugin_terminal_mux__start-and-watch({
   command: "cargo build",
   pattern: "Finished|error\\[E",
   triggers: "exit",
@@ -106,8 +106,8 @@ mcp__tmux__start-and-watch({
 ### Test watcher initialization: wait for idle
 
 ```
-mcp__tmux__start-and-watch({
-  paneId: watcher_pane,
+mcp__plugin_terminal_mux__start-and-watch({
+  slot: 1,
   command: "bun test --watch",
   pattern: "press a to rerun|Waiting for file changes|Waiting\\.\\.\\.",
   mode: "medium",

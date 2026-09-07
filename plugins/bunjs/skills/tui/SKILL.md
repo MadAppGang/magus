@@ -169,12 +169,12 @@ can `Read`. **Prerequisites: `aha` (`brew install aha` / `apt-get install aha`),
 ```bash
 OUT=$(mktemp -d); SOCK=otui-$$; SESS=tui-$$   # unique per run: a fixed dir, socket or session collides with a parallel capture
 SKILL="${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/skills/tui}"; SKILL="${SKILL:-PASTE_THE_DIR_THIS_SKILL_MD_WAS_READ_FROM}"   # as above
-shot() { local A="$OUT/${1}x${2}.ansi"   # ${1}x${2} cells → a $3-pixel PNG. `-f /dev/null` on EVERY invocation, never just
-  tmux -f /dev/null -L "$SOCK" new-session -d -s "$SESS" -x "$1" -y "$2" "bun run src/index.tsx"   # new-session: a .tmux.conf
+shot() { local A="$OUT/${1}x${2}.ansi"   # ${1}x${2} cells → a ${3}-pixel PNG. `-f /dev/null` on EVERY invocation, never just
+  tmux -f /dev/null -L "$SOCK" new-session -d -s "$SESS" -x "${1}" -y "${2}" "bun run src/index.tsx"   # new-session: a .tmux.conf
   for _ in $(seq 40); do sleep 0.25; tmux -f /dev/null -L "$SOCK" capture-pane -p -e -t "$SESS" >"$A" 2>/dev/null && grep -q $'\x1b' "$A" && break; done   # that auto-creates sessions spawns ALL of them,
-  tmux -f /dev/null -L "$SOCK" kill-session -t "$SESS" 2>/dev/null   # and a client whose server died starts one that reads it. Poll for a COLOURED frame — a fixed sleep races the recreate
+  tmux -f /dev/null -L "$SOCK" kill-window -t "$SESS" 2>/dev/null   # and a client whose server died starts one that reads it. Poll for a COLOURED frame — a fixed sleep races the recreate
   grep -q $'\x1b' "$A" || { echo "NO ESC BYTES in $A — no -e, or it never drew. STOP: render nothing, conclude nothing"; return 1; }   # a gate EXITS; an echo does not
-  bun run "$SKILL/scripts/ansi-to-png.ts" "$A" "$OUT/${1}x${2}.png" "$3"   # colour census (`grep -o … | sort -u`): screenshot-workflow.md
+  bun run "$SKILL/scripts/ansi-to-png.ts" "$A" "$OUT/${1}x${2}.png" "${3}"   # colour census (`grep -o … | sort -u`): screenshot-workflow.md
 }
 shot 80 24 720x480 && shot 145 45 1300x900 && ls -l "$OUT"/*.png   # BOTH sizes in one command — the wide one is not optional
 ```
@@ -183,7 +183,8 @@ shot 80 24 720x480 && shot 145 45 1300x900 && ls -l "$OUT"/*.png   # BOTH sizes 
 **both** sizes — responsive breakage only shows at the edges, and a heat row of coloured *spaces* is invisible to a char frame.
 
 **`-e` is mandatory** — no `ESC` bytes means the capture failed, so draw no conclusions; gate with `grep -q`, never
-`grep -c`. Both routes in full, that gate's measured control, and the MCP `headless:%0` empty-file trap: `screenshot-workflow.md`.
+`grep -c`. Both routes in full — this one and the terminal MCP's isolated slot (`start-and-watch({ slot: 2, isolated: true, … })` →
+`screenshot-pane({ slot: 2 })`) — and that gate's measured control: `screenshot-workflow.md`.
 
 ## Best practices
 

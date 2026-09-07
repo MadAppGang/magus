@@ -6,70 +6,89 @@ user-invocable: false
 
 # TUI Navigation Patterns
 
-Key sequences and navigation patterns for common TUI applications. Use with `mcp__tmux__send-keys`.
+Key sequences and navigation patterns for common TUI applications. Use with
+`mcp__plugin_terminal_mux__send-keys`.
+
+## Slot convention
+
+Every tool addresses a pane by **slot**, an integer 1–64. The same number returns the same
+pane on every call; a slot is never the agent's own pane.
+
+- **Slot 1** is the visible helper pane beside the user. Use it when the user asked to see
+  the app, or when the app needs a fixed screen size (isolated panes have no window and no
+  fixed size — a layout-sensitive TUI belongs on slot 1).
+- **Slot 2 or higher with `isolated: true`** runs the app where nobody can see it. That is
+  the default for every example below: a REPL or editor the user did not ask to watch
+  should not appear beside them.
+- `isolated: true` needs an explicit slot on every tool. Omitting it produces:
+  `isolated needs a slot number, because a pane you cannot see must be addressable later`.
+- A slot's kind is fixed at creation. Reusing slot 2 without `isolated` after it was opened
+  isolated errors with `slot 2 is an isolated pane; close it or use another slot`.
+- Finish with `mcp__plugin_terminal_mux__close-pane({ slot: 2 })` →
+  `[{"slot":2,"action":"killed"}]`. Call `mcp__plugin_terminal_mux__list-slots` first when
+  you may already hold slots (after compaction); it returns a bare array, `[]` when empty.
+
+The lifecycle every TUI or REPL session below follows:
+
+```
+mcp__plugin_terminal_mux__start-and-watch({ slot: 2, isolated: true, command, pattern, timeout })
+  → { slot: 2, created: true, event: "pattern:…", detail, elapsed, output, paneState }
+mcp__plugin_terminal_mux__send-keys({ slot: 2, keys, literal })      // or run-in-repl for REPLs
+mcp__plugin_terminal_mux__capture-pane({ slot: 2 })                  // read the screen
+mcp__plugin_terminal_mux__close-pane({ slot: 2 })
+```
 
 ---
 
 ## send-keys Parameter Guide
 
-`mcp__tmux__send-keys` takes a single `keys` string (not an array). The `literal` flag controls interpretation:
+`mcp__plugin_terminal_mux__send-keys` takes a single `keys` string (not an array). The
+`literal` flag controls interpretation:
 
 ```
-mcp__tmux__send-keys({ paneId, keys, literal })
+mcp__plugin_terminal_mux__send-keys({ slot, keys, literal, enter })
 
   literal: true  (default) — text sent byte-for-byte; special chars NOT interpreted
            Use for: typing commands, text to insert, query strings
 
-  literal: false — text interpreted as tmux key names
+  literal: false — text interpreted as a named key
            Use for: control sequences, navigation keys, any non-printable key
 
+  enter: true — append an Enter keystroke after the keys (default false)
+
 Examples:
-  mcp__tmux__send-keys({ paneId: "headless:%0", keys: "Escape", literal: false })
-  mcp__tmux__send-keys({ paneId: "headless:%0", keys: ":wq", literal: true })
-  mcp__tmux__send-keys({ paneId: "headless:%0", keys: "Enter", literal: false })
-  mcp__tmux__send-keys({ paneId: "headless:%0", keys: "C-c", literal: false })
+  mcp__plugin_terminal_mux__send-keys({ slot: 2, keys: "Escape", literal: false })
+  mcp__plugin_terminal_mux__send-keys({ slot: 2, keys: ":wq", literal: true })
+  mcp__plugin_terminal_mux__send-keys({ slot: 2, keys: "Enter", literal: false })
+  mcp__plugin_terminal_mux__send-keys({ slot: 2, keys: "C-c", literal: false })
 ```
 
-**To type text then press Enter** (two options):
-```
-// Option A: two calls
-mcp__tmux__send-keys({ paneId, keys: "ls -la", literal: true })
-mcp__tmux__send-keys({ paneId, keys: "Enter", literal: false })
+Every call returns `{ slot, created }`; `created: true` means the slot was opened by this
+call, `false` means the pane already existed.
 
-// Option B: one call with \n (literal: false allows newline interpretation)
-mcp__tmux__send-keys({ paneId, keys: "ls -la\n", literal: false })
+**To type text then press Enter**, one call with `enter: true`:
+```
+mcp__plugin_terminal_mux__send-keys({ slot: 2, keys: "ls -la", enter: true })
 ```
 
-**Key name notation**: Go tmux-mcp uses tmux key names (not caret notation):
+**Named keys** (`literal: false`). This is the whole vocabulary the contract guarantees:
 
 | What you want | Keys string | literal |
 |--------------|-------------|---------|
 | Enter / Return | `"Enter"` | `false` |
 | Escape | `"Escape"` | `false` |
-| Space | `"Space"` | `false` |
 | Tab | `"Tab"` | `false` |
-| Arrow Up | `"Up"` | `false` |
-| Arrow Down | `"Down"` | `false` |
-| Arrow Left | `"Left"` | `false` |
-| Arrow Right | `"Right"` | `false` |
-| Page Up | `"PageUp"` | `false` |
-| Page Down | `"PageDown"` | `false` |
-| Home | `"Home"` | `false` |
-| End | `"End"` | `false` |
+| Space | `"Space"` | `false` |
+| Backspace | `"BSpace"` | `false` |
+| Arrow Up / Down / Left / Right | `"Up"`, `"Down"`, `"Left"`, `"Right"` | `false` |
+| Page Up / Page Down | `"PageUp"`, `"PageDown"` | `false` |
+| Home / End | `"Home"`, `"End"` | `false` |
 | F1–F12 | `"F1"`, `"F2"`, ..., `"F12"` | `false` |
-| Ctrl+C (interrupt) | `"C-c"` | `false` |
-| Ctrl+D (EOF / exit) | `"C-d"` | `false` |
-| Ctrl+L (clear screen) | `"C-l"` | `false` |
-| Ctrl+Z (suspend) | `"C-z"` | `false` |
-| Ctrl+X | `"C-x"` | `false` |
-| Ctrl+O | `"C-o"` | `false` |
-| Ctrl+W | `"C-w"` | `false` |
-| Ctrl+K | `"C-k"` | `false` |
-| Ctrl+U | `"C-u"` | `false` |
-| Ctrl+R | `"C-r"` | `false` |
-| Shift+F6 | `"S-F6"` | `false` |
-| Alt+x | `"M-x"` | `false` |
+| Ctrl+x (any letter) | `"C-x"` — e.g. `"C-c"`, `"C-d"`, `"C-l"`, `"C-z"` | `false` |
+| Alt+x (any letter) | `"M-x"` | `false` |
 | Type plain text | `"my text here"` | `true` (default) |
+
+Any other name passes through to tmux unmapped and is not portable.
 
 ---
 
@@ -87,11 +106,7 @@ These work in almost any terminal context:
 | Delete word before cursor | `"C-w"` | `false` |
 
 ```
-// Interrupt a stuck process
-mcp__tmux__send-keys({ paneId: "headless:%0", keys: "C-c", literal: false })
-
-// Exit a shell or REPL
-mcp__tmux__send-keys({ paneId: "headless:%0", keys: "C-d", literal: false })
+mcp__plugin_terminal_mux__send-keys({ slot: 2, keys: "C-c", literal: false })   // interrupt a stuck process
 ```
 
 ---
@@ -129,33 +144,23 @@ mcp__tmux__send-keys({ paneId: "headless:%0", keys: "C-d", literal: false })
 ### vim Workflow Example
 
 ```
-// Launch vim in headless session
-mcp__tmux__create-headless({ name: "vim-edit" }) → { paneId: "headless:%0" }
-mcp__tmux__start-and-watch({
-  paneId: "headless:%0",
+// Launch vim in an isolated slot
+mcp__plugin_terminal_mux__start-and-watch({
+  slot: 2,
+  isolated: true,
   command: "vim myfile.ts",
   pattern: "~",          // vim blank line tildes indicate loaded
   timeout: 10
 }) → WatchResult
 
-// Go to end of file
-mcp__tmux__send-keys({ paneId: "headless:%0", keys: "G", literal: false })
-// Enter insert mode on new line below
-mcp__tmux__send-keys({ paneId: "headless:%0", keys: "o", literal: false })
-// Type content
-mcp__tmux__send-keys({ paneId: "headless:%0", keys: "// Added by Claude", literal: true })
-// Return to normal mode
-mcp__tmux__send-keys({ paneId: "headless:%0", keys: "Escape", literal: false })
-// Save and quit
-mcp__tmux__send-keys({ paneId: "headless:%0", keys: ":wq", literal: true })
-mcp__tmux__send-keys({ paneId: "headless:%0", keys: "Enter", literal: false })
+mcp__plugin_terminal_mux__send-keys({ slot: 2, keys: "G", literal: true })        // end of file
+mcp__plugin_terminal_mux__send-keys({ slot: 2, keys: "o", literal: true })        // insert on new line below
+mcp__plugin_terminal_mux__send-keys({ slot: 2, keys: "// Added by Claude", literal: true })
+mcp__plugin_terminal_mux__send-keys({ slot: 2, keys: "Escape", literal: false })  // back to normal mode
+mcp__plugin_terminal_mux__send-keys({ slot: 2, keys: ":wq", enter: true })        // save and quit
 // Wait for shell prompt to return
-mcp__tmux__watch-pane({
-  paneId: "headless:%0",
-  triggers: "shell,idle:2",
-  timeout: 10
-}) → WatchResult
-mcp__tmux__kill-session({ sessionId: "headless:$0" })
+mcp__plugin_terminal_mux__watch-pane({ slot: 2, triggers: "shell,idle:2", timeout: 10 }) → WatchResult
+mcp__plugin_terminal_mux__close-pane({ slot: 2 })
 ```
 
 ---
@@ -176,23 +181,17 @@ nano is simpler than vim — no mode switching. Ctrl shortcuts are shown in the 
 
 ```
 // Edit a file in nano, save, and exit
-mcp__tmux__create-headless({ name: "nano-edit" }) → { paneId: "headless:%0" }
-mcp__tmux__start-and-watch({
-  paneId: "headless:%0",
-  command: "nano myfile.txt",
-  pattern: "GNU nano",
-  timeout: 10
-}) → WatchResult
+mcp__plugin_terminal_mux__start-and-watch({ slot: 2, isolated: true, command: "nano myfile.txt", pattern: "GNU nano", timeout: 10 })
 // Type some content
-mcp__tmux__send-keys({ paneId: "headless:%0", keys: "Hello from Claude", literal: true })
+mcp__plugin_terminal_mux__send-keys({ slot: 2, keys: "Hello from Claude", literal: true })
 // Save: Ctrl+O
-mcp__tmux__send-keys({ paneId: "headless:%0", keys: "C-o", literal: false })
+mcp__plugin_terminal_mux__send-keys({ slot: 2, keys: "C-o", literal: false })
 // Confirm filename with Enter
-mcp__tmux__send-keys({ paneId: "headless:%0", keys: "Enter", literal: false })
+mcp__plugin_terminal_mux__send-keys({ slot: 2, keys: "Enter", literal: false })
 // Exit: Ctrl+X
-mcp__tmux__send-keys({ paneId: "headless:%0", keys: "C-x", literal: false })
-mcp__tmux__watch-pane({ paneId: "headless:%0", triggers: "shell,idle:2", timeout: 10 })
-mcp__tmux__kill-session({ sessionId: "headless:$0" })
+mcp__plugin_terminal_mux__send-keys({ slot: 2, keys: "C-x", literal: false })
+mcp__plugin_terminal_mux__watch-pane({ slot: 2, triggers: "shell,idle:2", timeout: 10 })
+mcp__plugin_terminal_mux__close-pane({ slot: 2 })
 ```
 
 ---
@@ -228,18 +227,12 @@ System monitors. Read-only — never send destructive keys without user confirma
 
 ```
 // Read system stats from htop
-mcp__tmux__create-headless({ name: "htop" }) → { paneId: "headless:%0" }
-mcp__tmux__start-and-watch({
-  paneId: "headless:%0",
-  command: "htop",
-  pattern: "CPU\\[",   // htop CPU bar header
-  timeout: 10
-}) → WatchResult
-mcp__tmux__capture-pane({ paneId: "headless:%0" })  // read CPU/memory
+mcp__plugin_terminal_mux__start-and-watch({ slot: 2, isolated: true, command: "htop", pattern: "CPU\\[", timeout: 10 })  // pattern: CPU bar header
+mcp__plugin_terminal_mux__capture-pane({ slot: 2 })  // read CPU/memory
 // Quit cleanly
-mcp__tmux__send-keys({ paneId: "headless:%0", keys: "q", literal: true })
-mcp__tmux__watch-pane({ paneId: "headless:%0", triggers: "shell,idle:2", timeout: 5 })
-mcp__tmux__kill-session({ sessionId: "headless:$0" })
+mcp__plugin_terminal_mux__send-keys({ slot: 2, keys: "q", literal: true })
+mcp__plugin_terminal_mux__watch-pane({ slot: 2, triggers: "shell,idle:2", timeout: 5 })
+mcp__plugin_terminal_mux__close-pane({ slot: 2 })
 ```
 
 ---
@@ -260,20 +253,13 @@ mcp__tmux__kill-session({ sessionId: "headless:$0" })
 
 ```
 // Read a man page
-mcp__tmux__create-headless({ name: "man-curl" }) → { paneId: "headless:%0" }
-mcp__tmux__start-and-watch({
-  paneId: "headless:%0",
-  command: "man curl",
-  pattern: "CURL",
-  timeout: 10
-}) → WatchResult
+mcp__plugin_terminal_mux__start-and-watch({ slot: 2, isolated: true, command: "man curl", pattern: "CURL", timeout: 10 })
 // Search for "timeout"
-mcp__tmux__send-keys({ paneId: "headless:%0", keys: "/timeout", literal: true })
-mcp__tmux__send-keys({ paneId: "headless:%0", keys: "Enter", literal: false })
-mcp__tmux__capture-pane({ paneId: "headless:%0" })
+mcp__plugin_terminal_mux__send-keys({ slot: 2, keys: "/timeout", enter: true })
+mcp__plugin_terminal_mux__capture-pane({ slot: 2 })
 // Quit
-mcp__tmux__send-keys({ paneId: "headless:%0", keys: "q", literal: true })
-mcp__tmux__kill-session({ sessionId: "headless:$0" })
+mcp__plugin_terminal_mux__send-keys({ slot: 2, keys: "q", literal: true })
+mcp__plugin_terminal_mux__close-pane({ slot: 2 })
 ```
 
 ---
@@ -292,34 +278,21 @@ psql prompts: `=#` (normal), `-#` (command continuation)
 | Show current database | `SELECT current_database();` + Enter |
 | Cancel query | `C-c` (literal: false) |
 
-Prefer `run-in-repl` for psql interactions — it handles prompt detection and returns clean output:
+Prefer `run-in-repl` for psql interactions — it handles prompt detection and returns clean
+output. `exited` is always present in its response: `true` means the REPL process ended.
 
 ```
 // Connect and run queries using run-in-repl
-mcp__tmux__create-headless({ name: "psql" }) → { paneId: "headless:%0" }
-mcp__tmux__start-and-watch({
-  paneId: "headless:%0",
-  command: "psql $DATABASE_URL",
-  pattern: "=#",
-  timeout: 15
-}) → WatchResult
+mcp__plugin_terminal_mux__start-and-watch({ slot: 2, isolated: true, command: "psql $DATABASE_URL", pattern: "=#", timeout: 15 })
+  → WatchResult
 
 // Run query — output returned directly, no screen scraping
-mcp__tmux__run-in-repl({
-  paneId: "headless:%0",
-  input: "SELECT id, email FROM users ORDER BY id LIMIT 10;",
-  promptPattern: "=#",
-  timeout: 10
-}) → { output: "..." }
+mcp__plugin_terminal_mux__run-in-repl({ slot: 2, input: "SELECT id, email FROM users ORDER BY id LIMIT 10;", promptPattern: "=#", timeout: 10 })
+  → { slot: 2, created: false, output: "...", exited: false }
 
 // Quit cleanly
-mcp__tmux__run-in-repl({
-  paneId: "headless:%0",
-  input: "\\q",
-  promptPattern: "\\$",
-  timeout: 5
-})
-mcp__tmux__kill-session({ sessionId: "headless:$0" })
+mcp__plugin_terminal_mux__run-in-repl({ slot: 2, input: "\\q", promptPattern: "\\$", timeout: 5 })
+mcp__plugin_terminal_mux__close-pane({ slot: 2 })
 ```
 
 ---
@@ -336,26 +309,11 @@ mcp__tmux__kill-session({ sessionId: "headless:$0" })
 | Cancel | `C-c` (literal: false) |
 
 ```
-mcp__tmux__create-headless({ name: "mongosh" }) → { paneId: "headless:%0" }
-mcp__tmux__start-and-watch({
-  paneId: "headless:%0",
-  command: "mongosh $MONGO_URI",
-  pattern: ">",
-  timeout: 15
-}) → WatchResult
-mcp__tmux__run-in-repl({
-  paneId: "headless:%0",
-  input: "db.users.find({}).limit(5)",
-  promptPattern: ">",
-  timeout: 10
-}) → { output: "..." }
-mcp__tmux__run-in-repl({
-  paneId: "headless:%0",
-  input: ".exit",
-  promptPattern: "\\$",
-  timeout: 5
-})
-mcp__tmux__kill-session({ sessionId: "headless:$0" })
+mcp__plugin_terminal_mux__start-and-watch({ slot: 2, isolated: true, command: "mongosh $MONGO_URI", pattern: ">", timeout: 15 })
+mcp__plugin_terminal_mux__run-in-repl({ slot: 2, input: "db.users.find({}).limit(5)", promptPattern: ">", timeout: 10 })
+  → { slot: 2, created: false, output: "...", exited: false }
+mcp__plugin_terminal_mux__run-in-repl({ slot: 2, input: ".exit", promptPattern: "\\$", timeout: 5 })
+mcp__plugin_terminal_mux__close-pane({ slot: 2 })
 ```
 
 ---
@@ -374,26 +332,11 @@ mcp__tmux__kill-session({ sessionId: "headless:$0" })
 | Flush current db | `FLUSHDB` + Enter (destructive — confirm first) |
 
 ```
-mcp__tmux__create-headless({ name: "redis" }) → { paneId: "headless:%0" }
-mcp__tmux__start-and-watch({
-  paneId: "headless:%0",
-  command: "redis-cli",
-  pattern: "127\\.0\\.0\\.1:\\d+>",
-  timeout: 10
-}) → WatchResult
-mcp__tmux__run-in-repl({
-  paneId: "headless:%0",
-  input: "INFO server",
-  promptPattern: "127\\.0\\.0\\.1:\\d+>",
-  timeout: 10
-}) → { output: "..." }
-mcp__tmux__run-in-repl({
-  paneId: "headless:%0",
-  input: "quit",
-  promptPattern: "\\$",
-  timeout: 5
-})
-mcp__tmux__kill-session({ sessionId: "headless:$0" })
+mcp__plugin_terminal_mux__start-and-watch({ slot: 2, isolated: true, command: "redis-cli", pattern: "127\\.0\\.0\\.1:\\d+>", timeout: 10 })
+mcp__plugin_terminal_mux__run-in-repl({ slot: 2, input: "INFO server", promptPattern: "127\\.0\\.0\\.1:\\d+>", timeout: 10 })
+  → { slot: 2, created: false, output: "...", exited: false }
+mcp__plugin_terminal_mux__run-in-repl({ slot: 2, input: "quit", promptPattern: "\\$", timeout: 5 })
+mcp__plugin_terminal_mux__close-pane({ slot: 2 })
 ```
 
 ---
@@ -408,26 +351,11 @@ mcp__tmux__kill-session({ sessionId: "headless:$0" })
 | Run SQL | Type SQL query + Enter |
 
 ```
-mcp__tmux__create-headless({ name: "turso" }) → { paneId: "headless:%0" }
-mcp__tmux__start-and-watch({
-  paneId: "headless:%0",
-  command: "turso db shell mydb",
-  pattern: ">",
-  timeout: 15
-}) → WatchResult
-mcp__tmux__run-in-repl({
-  paneId: "headless:%0",
-  input: "SELECT * FROM users LIMIT 5;",
-  promptPattern: ">",
-  timeout: 10
-}) → { output: "..." }
-mcp__tmux__run-in-repl({
-  paneId: "headless:%0",
-  input: ".quit",
-  promptPattern: "\\$",
-  timeout: 5
-})
-mcp__tmux__kill-session({ sessionId: "headless:$0" })
+mcp__plugin_terminal_mux__start-and-watch({ slot: 2, isolated: true, command: "turso db shell mydb", pattern: ">", timeout: 15 })
+mcp__plugin_terminal_mux__run-in-repl({ slot: 2, input: "SELECT * FROM users LIMIT 5;", promptPattern: ">", timeout: 10 })
+  → { slot: 2, created: false, output: "...", exited: false }
+mcp__plugin_terminal_mux__run-in-repl({ slot: 2, input: ".quit", promptPattern: "\\$", timeout: 5 })
+mcp__plugin_terminal_mux__close-pane({ slot: 2 })
 ```
 
 ---
@@ -454,25 +382,18 @@ lazygit is a popular TUI for git. It uses a panel-based layout.
 | Switch panel | `"Tab"` | `false` |
 
 ```
-// Launch lazygit in headless session
-mcp__tmux__create-headless({ name: "lazygit" }) → { paneId: "headless:%0" }
-mcp__tmux__start-and-watch({
-  paneId: "headless:%0",
-  command: "lazygit",
-  pattern: "Commit list|Files|Branches",  // lazygit panel headers
-  timeout: 10
-}) → WatchResult
+// Launch lazygit in an isolated slot
+mcp__plugin_terminal_mux__start-and-watch({ slot: 2, isolated: true, command: "lazygit", pattern: "Commit list|Files|Branches", timeout: 10 })
 
 // Stage and commit changes
-mcp__tmux__send-keys({ paneId: "headless:%0", keys: "a", literal: true })   // stage all
-mcp__tmux__capture-pane({ paneId: "headless:%0" })  // verify staged
-mcp__tmux__send-keys({ paneId: "headless:%0", keys: "c", literal: true })   // open commit dialog
-mcp__tmux__send-keys({ paneId: "headless:%0", keys: "fix: update auth flow", literal: true })
-mcp__tmux__send-keys({ paneId: "headless:%0", keys: "Enter", literal: false })
-mcp__tmux__capture-pane({ paneId: "headless:%0" })  // verify commit created
-mcp__tmux__send-keys({ paneId: "headless:%0", keys: "q", literal: true })   // quit
-mcp__tmux__watch-pane({ paneId: "headless:%0", triggers: "shell,idle:2", timeout: 10 })
-mcp__tmux__kill-session({ sessionId: "headless:$0" })
+mcp__plugin_terminal_mux__send-keys({ slot: 2, keys: "a", literal: true })   // stage all
+mcp__plugin_terminal_mux__capture-pane({ slot: 2 })  // verify staged
+mcp__plugin_terminal_mux__send-keys({ slot: 2, keys: "c", literal: true })   // open commit dialog
+mcp__plugin_terminal_mux__send-keys({ slot: 2, keys: "fix: update auth flow", enter: true })
+mcp__plugin_terminal_mux__capture-pane({ slot: 2 })  // verify commit created
+mcp__plugin_terminal_mux__send-keys({ slot: 2, keys: "q", literal: true })   // quit
+mcp__plugin_terminal_mux__watch-pane({ slot: 2, triggers: "shell,idle:2", timeout: 10 })
+mcp__plugin_terminal_mux__close-pane({ slot: 2 })
 ```
 
 ---
@@ -521,19 +442,12 @@ tig is an ncurses-based git repository browser.
 
 ```
 // Follow container logs
-mcp__tmux__create-headless({ name: "docker-logs" }) → { paneId: "headless:%0" }
-mcp__tmux__start-and-watch({
-  paneId: "headless:%0",
-  command: "docker logs -f myapp",
-  pattern: "started|ready|listening",
-  triggers: "error,exit",
-  timeout: 30
-}) → WatchResult
+mcp__plugin_terminal_mux__start-and-watch({ slot: 2, isolated: true, command: "docker logs -f myapp", pattern: "started|ready|listening", triggers: "error,exit", timeout: 30 })
 // Read latest log lines via scrollback
-mcp__tmux__capture-pane({ paneId: "headless:%0", lines: 50 })
+mcp__plugin_terminal_mux__capture-pane({ slot: 2, lines: 50 })
 // Stop following
-mcp__tmux__send-keys({ paneId: "headless:%0", keys: "C-c", literal: false })
-mcp__tmux__kill-session({ sessionId: "headless:$0" })
+mcp__plugin_terminal_mux__send-keys({ slot: 2, keys: "C-c", literal: false })
+mcp__plugin_terminal_mux__close-pane({ slot: 2 })
 ```
 
 ---
@@ -549,26 +463,11 @@ mcp__tmux__kill-session({ sessionId: "headless:$0" })
 | Clear screen | `"C-l"` (literal: false) |
 
 ```
-mcp__tmux__create-headless({ name: "node-repl" }) → { paneId: "headless:%0" }
-mcp__tmux__start-and-watch({
-  paneId: "headless:%0",
-  command: "node",
-  pattern: "> ",
-  timeout: 10
-}) → WatchResult
-mcp__tmux__run-in-repl({
-  paneId: "headless:%0",
-  input: "1 + 1",
-  promptPattern: "> ",
-  timeout: 5
-}) → { output: "2" }
-mcp__tmux__run-in-repl({
-  paneId: "headless:%0",
-  input: ".exit",
-  promptPattern: "\\$",
-  timeout: 5
-})
-mcp__tmux__kill-session({ sessionId: "headless:$0" })
+mcp__plugin_terminal_mux__start-and-watch({ slot: 2, isolated: true, command: "node", pattern: "> ", timeout: 10 })
+mcp__plugin_terminal_mux__run-in-repl({ slot: 2, input: "1 + 1", promptPattern: "> ", timeout: 5 })
+  → { slot: 2, created: false, output: "1 + 1\n2", exited: false }
+mcp__plugin_terminal_mux__run-in-repl({ slot: 2, input: ".exit", promptPattern: "\\$", timeout: 5 })
+mcp__plugin_terminal_mux__close-pane({ slot: 2 })
 ```
 
 ---
@@ -583,6 +482,18 @@ mcp__tmux__kill-session({ sessionId: "headless:$0" })
 | Tab completion | `"Tab"` (literal: false) |
 | Help on object | `help(obj)` + Enter |
 
+Observed round trip:
+
+```
+mcp__plugin_terminal_mux__start-and-watch({ slot: 2, isolated: true, command: "python3", pattern: ">>>" })
+  → { slot: 2, created: true, event: "pattern:>>>", detail: "Ready — matched: >>>", elapsed: 0.51,
+      output: "…", paneState: { foregroundCmd: "Python", isAlive: true, waitingForInput: true, … } }
+mcp__plugin_terminal_mux__run-in-repl({ slot: 2, input: "1+1", promptPattern: ">>>" })
+  → { slot: 2, created: false, output: "1+1\n2", exited: false }
+mcp__plugin_terminal_mux__close-pane({ slot: 2 })
+  → [{ slot: 2, action: "killed" }]
+```
+
 ---
 
 ## irb (Ruby REPL)
@@ -596,7 +507,8 @@ mcp__tmux__kill-session({ sessionId: "headless:$0" })
 
 ## Application Detection Quick Reference
 
-Use this table to detect what application is running from a `capture-pane` snapshot:
+Use this table to detect what application is running from a `capture-pane` snapshot, or
+from the `foregroundCmd` field of `pane-state` / `list-slots`:
 
 | Prompt / Visual Pattern | Application |
 |------------------------|-------------|
@@ -621,7 +533,8 @@ Use this table to detect what application is running from a `capture-pane` snaps
 
 ## Prompt Detection (when waiting for app to be ready)
 
-Use `start-and-watch` with a `pattern` matching the app's ready state. For REPLs, then use `run-in-repl` for subsequent interactions — it handles prompt detection automatically.
+Use `start-and-watch` with a `pattern` matching the app's ready state. For REPLs, then use
+`run-in-repl` for subsequent interactions — it handles prompt detection automatically.
 
 | Application | `start-and-watch` pattern | `run-in-repl` promptPattern |
 |-------------|--------------------------|---------------------------|
@@ -639,4 +552,6 @@ Use `start-and-watch` with a `pattern` matching the app's ready state. For REPLs
 | Build complete | `"done in\|built in\|compiled"` | N/A |
 | Test complete | `"passed\|failed\|✓\|×"` | N/A |
 
-**For TUI apps**: After `start-and-watch` confirms the app is loaded, use `capture-pane` (fast, optimistic read) or `watch-pane` with `user_input` or `idle:N` trigger to wait for the app to settle before each subsequent keystroke.
+**For TUI apps**: After `start-and-watch` confirms the app is loaded, use `capture-pane`
+(fast, optimistic read) or `watch-pane` with `user_input` or `idle:N` trigger to wait for
+the app to settle before each subsequent keystroke.

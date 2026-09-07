@@ -6,7 +6,7 @@ Build, review, or debug OpenTUI terminal UIs — React JSX or core constructs, Y
 
 Part of [`bunjs`](./bunjs.md).
 
-**30 reference documents, about 1,753 lines.**
+**30 reference documents, about 1,743 lines.**
 
 The skill itself does not contain them. It reads your question and names the one or two
 worth opening — which is the point, because loading everything below to answer one
@@ -21,7 +21,7 @@ question would cost more than the answer is worth.
 | [`components-and-charts.md`](https://github.com/MadAppGang/magus/blob/main/plugins/bunjs/skills/tui/references/components-and-charts.md) | Components & Charts | 151 |
 | [`core-api.md`](https://github.com/MadAppGang/magus/blob/main/plugins/bunjs/skills/tui/references/core-api.md) | OpenTUI core API | 76 |
 | [`react-patterns.md`](https://github.com/MadAppGang/magus/blob/main/plugins/bunjs/skills/tui/references/react-patterns.md) | React patterns | 216 |
-| [`screenshot-workflow.md`](https://github.com/MadAppGang/magus/blob/main/plugins/bunjs/skills/tui/references/screenshot-workflow.md) | Screenshot Workflow — see your TUI in colour | 138 |
+| [`screenshot-workflow.md`](https://github.com/MadAppGang/magus/blob/main/plugins/bunjs/skills/tui/references/screenshot-workflow.md) | Screenshot Workflow — see your TUI in colour | 128 |
 | [`testing.md`](https://github.com/MadAppGang/magus/blob/main/plugins/bunjs/skills/tui/references/testing.md) | Testing OpenTUI TUIs | 111 |
 | [`versions-and-builds.md`](https://github.com/MadAppGang/magus/blob/main/plugins/bunjs/skills/tui/references/versions-and-builds.md) | Versions and builds — MEASURED, not remembered | 120 |
 

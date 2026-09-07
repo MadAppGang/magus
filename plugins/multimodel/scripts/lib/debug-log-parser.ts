@@ -19,7 +19,7 @@ import type { ToolCall, Tokens, OutputTurn, Totals, Metrics } from "./types.ts";
 // imports, file I/O, table formatting, CLI. Inside it they must not differ at
 // all: a parse fix landed in one copy only is how monitor.ts and the autotest
 // aggregator start reporting different numbers for the same debug log.
-// Enforced by scripts/check-parser-sync.ts (pre-commit, release.sh step 1dc).
+// Enforced by scripts/check-parser-sync.ts (pre-commit, and the release-gates CI job).
 // ============================================================================
 
 // --- Regex patterns for claudish debug log format ---

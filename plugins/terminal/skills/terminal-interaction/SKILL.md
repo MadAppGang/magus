@@ -1,6 +1,6 @@
 ---
 name: terminal-interaction
-description: Provides tmux-mcp tool API patterns for interactive terminal access. Use when running interactive commands, starting dev servers, watching test output, querying databases, or splitting panes.
+description: Slot-addressed tool patterns for interactive terminal access. Use when running interactive commands, starting dev servers, watching tests, querying databases, or working beside the user.
 user-invocable: false
 ---
 
@@ -8,659 +8,314 @@ user-invocable: false
 
 This skill teaches Claude how to use `tmux-mcp` for interactive terminal access: screen reading, keystroke injection, process monitoring, and TUI application navigation.
 
-**Analogy**: `chrome-devtools-mcp` gives Claude eyes and hands in the browser. `tmux-mcp` gives Claude eyes and hands in the terminal.
+## 1. Tool selection
 
----
+Every pane is addressed by a **slot** — an integer 1–64 — and by nothing else. You never hold a pane id; the server keeps the slot→pane map and places panes itself.
 
-## 1. Tool Selection Guide — Layer 1 vs Layer 2
+**The slot convention, obeyed by every command in this plugin:**
 
-The Go tmux-mcp binary provides two layers of tools. Choose based on whether your task involves waiting for a condition.
+- **Slot 1 is the visible helper beside the user**, in the window they are looking at. Omit `slot` and you get slot 1.
+- **Private work takes `isolated: true` on slot 2 or higher** — a pane nobody can see, on a private terminal server with no window.
+- **Call `list-slots` before choosing a number when you may already hold slots** (after compaction, or when resuming). Reusing a number reuses its pane.
 
-| Scenario | Primary Tool | Notes |
-|----------|-------------|-------|
-| Start command, wait for ready pattern | `start-and-watch` | Single call, no loop |
-| Watch existing pane for change/exit | `watch-pane` | Single call, no loop |
-| Multi-step REPL session | `run-in-repl` | Synchronous, prompt-aware |
-| Check if process is alive/blocked | `pane-state` | Kernel-level, no screen scraping |
-| One-shot command (non-interactive) | `execute-command headless:true` | Sync, auto-cleanup |
-| Long interactive session | `create-headless` + `start-and-watch` | Manual lifecycle |
-| Run something beside the user | `send-keys` with no pane | Server places it — §1b |
-| Observe existing session | `capture-pane` | Read-only, no change |
+| Scenario | Tool | Kind |
+|---|---|---|
+| One-shot command, nobody needs to watch | `execute-command` with `isolated: true`, no slot | creating (ephemeral) |
+| One-shot command beside the user | `execute-command` | creating |
+| Start a process, block until it is ready | `start-and-watch` | creating |
+| Type into a pane (commands, keys) | `send-keys` | creating |
+| Multi-step REPL session | `run-in-repl` | creating |
+| Show text to the user in a pane | `write-to-display` | creating |
+| Get a pane now, run something later | `open-pane` | creating |
+| Read the text of a slot | `capture-pane` | reading |
+| Render a slot as an image (colors, TUI layout) | `screenshot-pane` | reading |
+| Is the process alive / waiting for input | `pane-state` | reading |
+| Block until a slot changes, exits, or goes idle | `watch-pane` | reading |
+| Which slots do I hold | `list-slots` | registry |
+| Finish with a slot, or with all of them | `close-pane` | registry |
+| Transient message to the user (not a query) | `notify` | none |
 
-**Layer 2 (agentic) tools**: `start-and-watch`, `watch-pane`, `run-in-repl`, `pane-state`, `write-to-display`
-**Layer 1 (primitive) tools**: `execute-command`, `create-headless`, `capture-pane`, `send-keys`, `create-session`, `split-pane`, etc.
+**Decision rule**: if the task involves waiting — for readiness, for output to change, for a REPL to respond — use `start-and-watch`, `watch-pane` or `run-in-repl`. For structural operations (get a pane, send a keystroke, read current state) use the rest.
 
-**Decision rule**: If the task involves waiting — for a process to be ready, for output to change, for a REPL to respond — use a Layer 2 tool. For structural operations (create pane, send keystroke, read current state), use Layer 1.
+## 1b. Creating tools return `created`; reading tools never do
 
----
-
-## 1b. Run something beside the user
-
-You do not manage panes. Say what you want to run; the server places it.
-
-```
-mcp__tmux__send-keys({ keys: "npm run dev", enter: true })
-→ { "paneId": "%81", "slot": 1, "created": true }
-```
-
-No pane id, no split, no detection. The server resolves **the helper pane** — slot 1, beside
-you in the user's window — creating it if it is not already there.
-
-Every pane-taking tool resolves the same way: an explicit `paneId` wins verbatim, then `slot`,
-then with neither, **slot 1**.
-
-### Read `created` — it is how you find out your process died
-
-`created: true` means the pane is new *to that slot*. If you started a dev server in the helper
-pane and a later call comes back `created: true`, the user closed that pane and your process
-went with it. An agent that ignores this field keeps reporting a server that stopped ten
-minutes ago.
-
-It is also `true` when the server adopted an idle pane instead of making one — so read it as
-"new to this slot", not "I made a pane".
-
-**On reuse the field is absent, not `false`.** A reused pane answers `{ "paneId": "%81",
-"slot": 1 }`. Test for `created === true`, never for `created === false`.
-
-### More than one pane
-
-Ask for a numbered slot. Integers 1–64. You choose the number, and that is what lets you
-address the same pane again on the next call.
+The six **creating** tools (`send-keys`, `run-in-repl`, `execute-command`, `start-and-watch`, `write-to-display`, `open-pane`) open the slot if it is empty and answer with `created` **on every call** — `true` when the slot is new, `false` when the pane was reused:
 
 ```
-mcp__tmux__send-keys({ slot: 2, keys: "bun test --watch", enter: true })
-mcp__tmux__capture-pane({ slot: 2 })
+mcp__plugin_terminal_mux__send-keys({ keys: "npm run dev", enter: true })
+→ { "slot": 1, "created": true }
 ```
 
-The server decides placement — slot 2 stacks under slot 1, slot 3 goes bottom-left. You never
-pass a direction. Panes are titled `agent`, `agent:2` and so on, so the user can see whose they
-are.
+`created: true` on a slot you were already using means the user closed that pane and your process went with it. An agent that ignores the field keeps reporting a server that stopped ten minutes ago. It is also `true` when the server adopted an idle pane instead of making one — read it as "new to this slot", not "I made a pane".
 
-### Cleanup
+The four **reading** tools (`capture-pane`, `screenshot-pane`, `pane-state`, `watch-pane`) never return `created` and **error on a slot that was never opened** — they do not create one. Per spec: `slot 2 does not exist; open it with open-pane or by running something in it`. Open the slot with a creating tool first, or use `start-and-watch` to open and watch in one call.
 
-`close-pane({ slot: 2 })` when a task is finished, or `close-pane({ slot: "all" })` at the end
-of a session. It kills panes the server created and only interrupts panes it adopted from the
-user. Offer it as a courtesy — panes outlive the session otherwise — not as a required step.
+## 1c. Isolated slots
 
-`kill-pane` still exists and still requires an explicit `paneId`. It is the blunt instrument;
-prefer `close-pane`.
+`isolated: true` opens the pane where nobody can see it. Only creating tools accept it.
 
-### When there is no tmux
+- **It needs an explicit slot** on every tool except `execute-command`. Observed: `isolated needs a slot number, because a pane you cannot see must be addressable later`.
+- **`execute-command` with `isolated: true` and no slot is ephemeral**: the pane is created, the command runs, the pane is destroyed, and the answer is `{ output, exitCode, timedOut }` with no slot to track.
+- **A slot's kind is fixed at creation.** Asking for a visible pane on a slot holding an isolated one is an error, observed as `slot 2 is an isolated pane; close it or use another slot`. Close it first, or pick another number.
+- **`close-pane` does not take `isolated`.** Observed: `isolated is not accepted here; close-pane closes whichever kind of pane the slot holds, and slot: "all" closes both kinds`.
+- **Outside tmux there is no window for a visible pane.** Per spec the call fails with `no window to place a pane in: this server is not running inside tmux — use isolated: true`. Do not invent a pane; use an isolated slot.
 
-The call fails and names the alternative: `headless: true` for an isolated one-shot, or
-`create-headless` for a session you will drive over several calls. Do not invent a pane.
+## 1d. What a slot guarantees, and what it does not
 
-`slot` together with `headless: true` is an error — a headless pane lives on a separate tmux
-socket with no relation to the user's window.
+**A slot is never your own pane.** The server enforces this, so no call can feed keystrokes into your own session.
 
----
+**A visible slot may be a pane the user was using.** When no helper exists, the server may *adopt* an idle pane the user left open — same user, shell in the foreground. `list-slots` reports it as `origin: "adopted"`. This is deliberate and cannot be turned off. Two consequences follow, and neither is hypothetical:
 
-## 1c. What the helper pane guarantees, and what it does not
+- **Unsubmitted input concatenates with your command.** tmux cannot see the shell's line buffer. If the user typed `rm -rf /data/` and never pressed Enter, the pane looks perfectly idle, and your command joins onto the end of theirs. No slot number avoids this — adoption sits ahead of creation for every visible slot.
+- **The environment is the user's.** A shell inside a virtualenv, a container exec session, or one with `AWS_PROFILE=production` exported passes every check. Your commands then run in that context.
 
-**A slot is never your own pane.** The server enforces this, so a call that names no pane
-cannot feed your keystrokes into your own session. This is the reason to prefer the no-pane
-form over an explicit `paneId`.
+If you need a pane with no inherited context, `isolated: true` is the only guarantee.
 
-**A slot may be a pane the user was using.** When no helper exists, the server may *adopt* an
-idle pane the user left open — same user, shell in the foreground. This is deliberate and
-cannot be turned off. Two consequences follow, and neither is hypothetical:
+**You cannot read a pane the user is using.** No tool takes a pane id, so a pane that is not one of your slots is unreachable. Run the process in a slot instead, or read the log file it writes.
 
-- **Unsubmitted input concatenates with your command.** tmux cannot see the shell's line
-  buffer. If the user typed `rm -rf /data/` and never pressed Enter, the pane looks perfectly
-  idle, and your command joins onto the end of theirs. **No slot number avoids this** —
-  adoption sits ahead of creation in every slot's resolution, so a high slot number is exactly
-  as likely to adopt as slot 1.
-- **The environment is the user's.** A shell inside a virtualenv, a container exec session, or
-  one with `AWS_PROFILE=production` exported passes every check — right user, at a prompt,
-  doing nothing. Your commands then run in that context.
+**Ids are rejected, not ignored.** Any argument naming a pane, window or session fails the call — the observed answer is that the argument `is not accepted; address the pane by slot`. No response ever returns one either.
 
-If you need a pane with no inherited context, the only guarantees are `headless: true` or a
-`paneId` you already trust.
+## 1e. The rest of this plugin
 
-### Explicit `paneId` bypasses all of it
-
-`mcp__tmux__send-keys` and `mcp__tmux__kill-pane` have **no occupancy guard** on that path —
-they write to, or kill, exactly the pane you name. Before targeting a pane you did not get from
-slot resolution:
-
-```
-mcp__tmux__pane-state({ paneId: "%66" })
-→ { foregroundCmd: "zsh", isAlive: true }
-```
-
-Proceed only if `foregroundCmd` is a bare shell (`zsh`, `bash`, `fish`, `sh`, `dash`).
-
-| `foregroundCmd` | Action |
-|---|---|
-| `zsh` / `bash` / `fish` / `sh` / `dash` | ✅ Safe — a shell prompt is waiting |
-| `claude` | 🛑 **OFF-LIMITS** — another agent session. Your keystrokes become its prompt; killing it ends its turn |
-| `vim` / `nvim` / `less` / `htop` / `psql` / `python` / `node` / any REPL or TUI | 🛑 STOP — keystrokes go to that program, not a shell |
-
-The raw-`tmux` path is guarded by this plugin's PreToolUse:Bash hook, which refuses a non-shell
-target. The MCP path is not. That asymmetry is why the no-pane form is the default.
-
-### Two mistakes worth naming
-
-- **Do not call `list-sessions`/`list-windows`/`list-panes` to locate your own pane.** You never
-  need your own pane — that is the server's job now. Those tools are for inspecting *other*
-  sessions.
-- **`display-message` is not a query.** It is a status-bar notification (`message`, `duration`),
-  unrelated to `tmux display-message -p`. Reaching for it to read pane state is a dead end.
-
----
-
-## 1d. The rest of this plugin
-
-Two skills carry the bulk of this plugin's reference material and are **not** in your skill
-listing — they cost nothing until you open them. They are files to **read**, not skills to
-invoke: the Skill tool does not fire for them.
+Two skills carry the bulk of this plugin's reference material and are **not** in your skill listing — they cost nothing until you open them. They are files to **read**, not skills to invoke: the Skill tool does not fire for them.
 
 | Read this file | When the task involves |
 |---|---|
 | `${CLAUDE_PLUGIN_ROOT}/skills/framework-signals/SKILL.md` | Deciding whether a test run, build or deploy passed — the pass/fail/running/idle markers for jest, vitest, pytest, cargo, go test, webpack, vite, and the deploy platforms |
 | `${CLAUDE_PLUGIN_ROOT}/skills/workspace-setup/SKILL.md` | Building a multi-pane dashboard, a `watch`/`entr` monitor, or a synchronised multi-host session |
 
-Two more are in your listing and you will be offered them normally: `tdd-workflow` (the
-Red-Green-Refactor state machine) and `tui-navigation-patterns` (key sequences for vim,
-htop, lazygit, psql, k9s and friends).
+Two more are in your listing and you will be offered them normally: `tdd-workflow` (the Red-Green-Refactor state machine) and `tui-navigation-patterns` (key sequences for vim, htop, lazygit, psql, k9s and friends).
 
----
+## 2. Tool naming
 
-## 2. Tool Naming Convention
-
-The server key in `.mcp.json` is `tmux`. This produces tool name prefix `mcp__tmux__`:
-
-- `mcp__tmux__start-and-watch`, `mcp__tmux__watch-pane`, `mcp__tmux__run-in-repl`
-- `mcp__tmux__execute-command`, `mcp__tmux__create-headless`, `mcp__tmux__capture-pane`
-- `mcp__tmux__send-keys`, `mcp__tmux__list-sessions`, `mcp__tmux__kill-session`, etc.
-
----
+The server key in `.mcp.json` is `mux`, so every tool is `mcp__plugin_terminal_mux__<tool>`: `mcp__plugin_terminal_mux__start-and-watch`, `mcp__plugin_terminal_mux__capture-pane`, `mcp__plugin_terminal_mux__close-pane`, and so on. Prose may name a tool bare; a call never omits the prefix.
 
 ## 3. Monitoring tools — start-and-watch and watch-pane
 
-Both are **synchronous and blocking**. The call returns when a readiness pattern matches, a
-named trigger fires, or the timeout expires — with the pane's state in the result. There is no
-task id, no progress stream to subscribe to, and no polling loop to write.
+Both are **synchronous and blocking**. The call returns when a readiness pattern matches, a named trigger fires, or the timeout expires — with the pane's state in the result. There is no task id, no progress stream, and no polling loop to write.
 
-```
-mcp__tmux__start-and-watch({ command: "npm run dev", pattern: "listening on|ready in" })
-→ { event: "pattern:listening on", elapsed: 2.0, output: "…", paneState: {…} }
+- **`start-and-watch`** (creating) — start a command and block until it signals readiness. With no `slot` it uses slot 1, in the window the user is looking at.
+- **`watch-pane`** (reading) — monitor a slot that already exists. Triggers: `idle:N`, `pattern:REGEX`, `exit`, `error`, `user_input`, `bell`, `shell`. A slot that was never opened is an error.
 
-mcp__tmux__watch-pane({ slot: 1, triggers: "idle:3,pattern:PASS|FAIL" })
-→ { event: "idle:3", detail: "No new output for 3s", elapsed: 3.0, paneState: {…} }
-```
+> **Pair the success pattern with the failure paths.** A `pattern` that matches only the happy path stays silent through a crash, and silence is indistinguishable from "still running". Add `exit,error` to `triggers`, or an `Error|Traceback|FAILED` pattern.
 
-- **`start-and-watch`** — start a command and block until it signals readiness. With no
-  `paneId` or `slot` it uses slot 1, in the window the user is looking at.
-- **`watch-pane`** — monitor a pane that already exists. Triggers: `idle:N`, `pattern:REGEX`,
-  `exit`, `error`, `user_input`, `bell`, `shell`.
-
-> **Pair the success pattern with the failure paths.** A `pattern` that matches only the happy
-> path stays silent through a crash, and silence is indistinguishable from "still running".
-> Add `exit,error` to `triggers`, or an `Error|Traceback|FAILED` pattern.
-
-### WatchResult Structure
+**WatchResult**, observed from `start-and-watch({ slot: 2, isolated: true, command: "python3", pattern: ">>>" })`; `watch-pane` returns the same shape without `created`:
 
 ```json
 {
-  "paneId": "%6",
-  "event": "pattern:listening on",
-  "detail": "Ready — matched: Listening on port 3000",
-  "elapsed": 2.14,
-  "output": "Listening on port 3000\n...",
-  "paneState": {
-    "panePid": 12345,
-    "foregroundPid": 12347,
-    "foregroundCmd": "node",
-    "isAlive": true,
-    "waitingForInput": false
-  }
+  "slot": 2, "created": true,
+  "event": "pattern:>>>", "detail": "Ready — matched: >>>", "elapsed": 0.51,
+  "output": " python3\nPython 3.14.5 …\n>>>",
+  "paneState": { "panePid": 17134, "foregroundPid": 17146, "foregroundCmd": "Python",
+                 "isAlive": true, "waitingForInput": true }
 }
 ```
 
-### WatchResult event values
-
 | event value | Meaning | Next action |
-|-------------|---------|-------------|
-| `"pattern:<regex>"` | Readiness pattern matched | Report ready; save paneId for later calls |
-| `"exit"` | Process exited | Check exitCode via pane-state |
-| `"error"` | Error output detected | Report error; show WatchResult.output |
-| `"idle:N"` | No new output for N seconds | Process may be waiting; use pane-state |
-| `"shell"` | Shell prompt returned (process exited to shell) | Confirmed completion |
-| `"timeout"` | No trigger fired in timeout_secs | Report; save paneId for continued monitoring |
+|---|---|---|
+| `"pattern:<regex>"` | Readiness pattern matched | Report ready; keep the slot number for later calls |
+| `"exit"` | Process exited | Check with `pane-state` |
+| `"error"` | Error output detected | Report error; show `output` |
+| `"idle:N"` | No new output for N seconds | Process may be waiting; use `pane-state` |
+| `"shell"` | Shell prompt returned | Confirmed completion |
+| `"timeout"` | No trigger fired in `timeout` | Report; watch the same slot again |
 
-### REPL Startup — create-headless vs execute-command
+**Never start a REPL with `execute-command`.** It waits for the command to exit, and REPLs do not exit — the call hangs. Start it with `start-and-watch` and a prompt pattern, then drive it with `run-in-repl` (Example E).
 
-**REPL startup**: Do NOT use `execute-command` to start REPLs (python3, psql, node, etc.). `execute-command` is synchronous — it waits for the command to exit, and REPLs never exit on their own. This causes an indefinite hang.
+## 4. Tool reference (13 tools)
 
-Instead, use `create-headless` with the REPL as the session's initial command, then `run-in-repl` for interactions:
+| Tool | Kind | Arguments (required in bold) | Response |
+|---|---|---|---|
+| `send-keys` | creating | **keys**, literal (default true), enter (default false), slot, isolated | `{ slot, created }` |
+| `run-in-repl` | creating | **input**, **promptPattern**, timeout (default 10), slot, isolated | `{ slot, created, output, exited }` |
+| `execute-command` | creating | **command**, timeoutSeconds, slot, isolated | `{ slot, created, output, exitCode, timedOut }`; `isolated: true` with no slot: `{ output, exitCode, timedOut }` |
+| `start-and-watch` | creating | **command**, **pattern**, triggers (default `exit,error`), mode (default quick), timeout (default 60), slot, isolated | WatchResult (§3) |
+| `write-to-display` | creating | **text**, clear, slot, isolated | `{ slot, created }` |
+| `open-pane` | creating | slot, isolated | `{ slot, created, isolated }` |
+| `capture-pane` | reading | lines, colors, slot | pane text; structuredContent `{ slot }` |
+| `screenshot-pane` | reading | output (browser/html), theme (dark/light), slot | image or html; `{ slot }` |
+| `pane-state` | reading | slot | `{ slot, panePid, foregroundPid, foregroundCmd, isAlive, waitingForInput }` |
+| `watch-pane` | reading | triggers (default `exit,user_input,error`), mode (default medium), timeout (default 60), slot | WatchResult without `created` |
+| `close-pane` | registry | slot (integer or `"all"`, default 1) | array of `{ slot, action, detail? }` |
+| `list-slots` | registry | none | array of `{ slot, isolated, origin, foregroundCmd, isAlive }` |
+| `notify` | none | **message**, duration (default 3) | one-way; not a query |
 
-```
-// WRONG — hangs forever:
-mcp__tmux__execute-command({ command: "python3", headless: true })
-
-// CORRECT — python3 starts as the session's shell:
-mcp__tmux__create-headless({ name: "python-session", command: "python3" })
-→ { paneId: "headless:%0", sessionId: "headless:$0" }
-// python3 is now waiting at its REPL prompt in that pane
-mcp__tmux__run-in-repl({ paneId: "headless:%0", input: "1 + 1", promptPattern: ">>>" })
-→ { output: "2" }
-mcp__tmux__kill-session({ sessionId: "headless:$0" })
-```
-
----
-
-## 4. Tool reference (20 tools, `-scope agentic`)
-
-This is the shipped scope. The structural primitives — `create-window`, `kill-window`,
-`resize-pane`, `rename-session` — exist in the binary but are **deliberately hidden** here. If
-you find yourself wanting one, that is a signal you are managing tmux layout instead of
-expressing intent.
-
-**Eleven tools accept `paneId` (verbatim) or `slot` (resolved), and default to slot 1 when
-given neither:** `send-keys`, `run-in-repl`, `execute-command`, `split-pane`, `capture-pane`,
-`screenshot-pane`, `pane-state`, `watch-pane`, `start-and-watch`, `write-to-display`,
-`close-pane`. `slot` is an integer 1–64 and cannot be combined with `headless: true`.
-
-The two exceptions are deliberate: `display-message` targets no pane at all (it writes to the
-status bar), and `kill-pane` still **requires** an explicit `paneId` — there must exist no
-argument-less call that destroys something.
-
-| Do this | Tools |
-|---|---|
-| Run / drive a pane | `send-keys` · `run-in-repl` · `execute-command` · `split-pane` |
-| Observe a pane | `capture-pane` · `screenshot-pane` · `pane-state` · `watch-pane` · `start-and-watch` |
-| Show something to the user | `write-to-display` · `display-message` *(status-bar notice — not a query)* |
-| Finish with a pane | `close-pane` *(owner-aware)* · `kill-pane` *(blunt, explicit `paneId` only)* |
-| Sessions and inspection | `list-sessions` · `list-windows` · `list-panes` · `create-session` · `kill-session` · `create-headless` · `kill-headless-server` |
-
-**Notes that change what you do:**
-
-- **`send-keys`** — `literal: true` (default) sends text byte-for-byte; `literal: false`
-  interprets tmux key names (`C-c`, `Enter`, `Escape`, `Up`). `enter: true` appends Enter, so
-  one call replaces the old type-then-Enter pair.
-- **`execute-command`** — synchronous; returns `{ output, exitCode }`. With `headless: true` it
-  runs in an isolated auto-created session that is destroyed afterwards. **Never use it to
-  start a REPL** — it waits for exit, and REPLs do not exit.
+- **`exited` and `timedOut` are always present**, so test the value, never the presence.
+- **`close-pane`** kills panes the server created and only interrupts (`C-c`) panes it adopted from the user. Closing a slot that was never opened is not an error.
+- **`list-slots`** shows what *this agent* holds — not the user's panes, not another agent's.
+- **`notify`** tells you nothing about panes. To ask about the terminal, use `pane-state`, `list-slots` or `capture-pane`.
 - **`capture-pane`** — `lines: N` reaches into scrollback beyond the visible viewport.
-- **`list-panes`/`list-windows`/`list-sessions`** — for inspecting *other* sessions. Not for
-  locating yourself; you never need to.
-- **`kill-session`** — never kill a session you did not create.
 
-**Removed** (not in the Go binary): `find-session` → use `list-sessions` plus client-side
-filtering. `get-command-result` → `execute-command` is synchronous.
+## 5. send-keys keys and `literal`
 
-## 5. send-keys Parameter Guide
+`literal: true` (default) sends text byte-for-byte. `literal: false` interprets **named keys**: `Enter`, `Escape`, `Tab`, `Space`, `BSpace`, `Up`, `Down`, `Left`, `Right`, `PageUp`, `PageDown`, `Home`, `End`, `F1`–`F12`, `C-<x>` (control: `C-c` interrupt, `C-d` EOF, `C-l` clear, `C-z` suspend) and `M-<x>` (meta). Any other name passes through to tmux unmapped and is not part of the contract.
+
+`enter: true` appends Enter to literal text, so one call replaces the type-then-Enter pair:
 
 ```
-mcp__tmux__send-keys({ paneId, keys, literal })
-
-  literal: true  (default) — text is sent byte-for-byte; special characters are NOT
-                             interpreted as key sequences. Use for typing commands.
-  literal: false           — text is interpreted as tmux key names. Use for:
-                             - Control sequences: "C-c", "C-d", "Escape", "Enter"
-                             - Arrow keys: "Up", "Down", "Left", "Right"
-                             - Function keys: "F1" through "F12"
-
-To type text AND execute (press Enter):
-  mcp__tmux__send-keys({ paneId, keys: "bun test --watch", literal: true })
-  mcp__tmux__send-keys({ paneId, keys: "Enter", literal: false })
-  OR (single call):
-  mcp__tmux__send-keys({ paneId, keys: "bun test --watch\n", literal: false })
-
-Control key reference (all require literal: false):
-  Interrupt:   keys: "C-c"
-  EOF/exit:    keys: "C-d"
-  Clear:       keys: "C-l"
-  Suspend:     keys: "C-z"
-  Escape:      keys: "Escape"
-  Enter:       keys: "Enter"
-  Arrow keys:  keys: "Up", "Down", "Left", "Right"
+mcp__plugin_terminal_mux__send-keys({ slot: 1, keys: "bun test --watch", enter: true })
+→ { "slot": 1, "created": true }
+mcp__plugin_terminal_mux__send-keys({ slot: 1, keys: "C-c", literal: false })
 ```
 
-| What you want | Keys string | literal |
-|--------------|-------------|---------|
-| Type command text | `"ls -la src/"` | `true` (default) |
-| Press Enter | `"Enter"` | `false` |
-| Ctrl+C (interrupt) | `"C-c"` | `false` |
-| Ctrl+D (EOF / exit) | `"C-d"` | `false` |
-| Escape | `"Escape"` | `false` |
-| Arrow Up | `"Up"` | `false` |
-| Arrow Down | `"Down"` | `false` |
-| F1–F12 | `"F1"` … `"F12"` | `false` |
-
----
-
-## 6. Session Lifecycle
-
-### Headless Sessions (for isolated/ephemeral tasks)
+## 6. Slot lifecycle
 
 ```
-QUICK (auto-lifecycle):
-  mcp__tmux__execute-command({ command, headless: true })
-  → auto-creates session, runs command, returns { output, exitCode }, auto-destroys
-  No session ID to track. No cleanup needed.
+// Open, or get back, a pane. Same number → same pane (created: false the second time).
+mcp__plugin_terminal_mux__open-pane({ slot: 2 })
+→ { "slot": 2, "created": true, "isolated": false }
 
-MANUAL (for processes that outlive a single command):
-  mcp__tmux__create-headless({ name: "task-name" })
-  → { paneId: "headless:%0", sessionId: "headless:$0" }
-  → save paneId for subsequent tool calls
-  → cleanup: mcp__tmux__kill-session({ sessionId: "headless:$0" })
-             OR mcp__tmux__kill-headless-server()  ← clears all headless sessions
+// What do I hold? (here: an isolated python3 on slot 2)
+mcp__plugin_terminal_mux__list-slots()
+→ [ { "slot": 2, "isolated": true, "origin": "created", "foregroundCmd": "Python", "isAlive": true } ]
+
+// Finish with one slot…
+mcp__plugin_terminal_mux__close-pane({ slot: 2 })
+→ [ { "slot": 2, "action": "killed" } ]
+
+// …or with all of them, visible and isolated alike.
+mcp__plugin_terminal_mux__close-pane({ slot: "all" })
+mcp__plugin_terminal_mux__list-slots()
+→ []
 ```
 
-Headless sessions are isolated on a separate tmux socket (`mcp-headless`). They do not appear in the user's `tmux ls`. They persist until explicitly killed or `kill-headless-server` is called.
+- **After compaction, call `list-slots` before choosing a number.** Your memory of which slots are open is gone; the server's is not.
+- **The server decides placement.** Slot 2 stacks under slot 1, slot 3 goes bottom-left. You never pass a direction or a size. Panes are titled so the user can see whose they are.
+- **Cleanup is a courtesy, not a required step.** Panes outlive the session otherwise; offer `close-pane({ slot: "all" })` at the end.
 
-### Visible Sessions (for user-facing work)
-
-```
-mcp__tmux__create-session({ name: "project" })
-→ returns { sessionId: "$N" }
-→ user can attach with: tmux attach -t project
-→ cleanup: mcp__tmux__kill-session({ sessionId: "$N" })
-```
-
-**Never kill sessions you did not create.** When observing the user's existing sessions, use `capture-pane` only.
-
----
-
-## 7. Capturing Full Output
-
-`capture-pane` has access to tmux scrollback history:
+## 7. Capturing full output
 
 ```
-mcp__tmux__capture-pane({ paneId: "%3" })          → visible viewport
-mcp__tmux__capture-pane({ paneId: "%3", lines: 200 }) → last 200 lines of scrollback
+mcp__plugin_terminal_mux__capture-pane({ slot: 2 })              → visible viewport
+mcp__plugin_terminal_mux__capture-pane({ slot: 2, lines: 200 })  → last 200 lines of scrollback
 ```
 
-For very long output (build logs, test suites with hundreds of cases):
+For very long output (build logs, test suites with hundreds of cases), tee to a file and read that:
 
 ```
-mcp__tmux__execute-command({
-  command: "npm test 2>&1 | tee /tmp/claude-output.log",
-  headless: true
-})
+mcp__plugin_terminal_mux__execute-command({ command: "npm test 2>&1 | tee /tmp/claude-output.log", isolated: true })
 Read({ file_path: "/tmp/claude-output.log" })  → full output, unlimited lines
 ```
 
----
+**Output is plain text** — ANSI codes are stripped unless `colors: true`. Look for `✓` / `✗` / `PASS` / `FAIL` / `error:` / a spinner glyph (`⠋ ⠙ ⠸ ⠼ ⠴ ⠦ ⠧ ⠇ ⠏`), never "is this line red?". A spinner or progress bar means still running, not a result. `$` or `%` at the end of the last line means the shell prompt is back.
 
-## 7b. Output Parsing Rules
+## 8. Timing and race conditions
 
-`tmux capture-pane` returns **plain text** — ANSI escape codes are stripped by tmux before Claude sees them. Color is never available.
+**TUI apps need render time.** After sending keys to a TUI application, use `watch-pane` with a `user_input` or `idle:N` trigger to wait for the redraw before reading state.
 
-```
-CORRECT: look for ✓ / ✗ / PASS / FAIL / error: / warning: / ⠋ (spinner active)
-WRONG:   "is this line red?" — ANSI color is stripped; color state is unavailable
-```
+**`start-and-watch` snapshots its diff baseline *after* sending the command.** An instantaneous command (`echo done`) can finish before that snapshot, so its output never counts as "new" — the pattern never matches and you get a `timeout`. Make the output arrive *during* monitoring (`sleep 0.3 && echo done`), or watch a longer-lived process.
 
-**Spinner Unicode characters** indicate a process is still running: `⠋ ⠙ ⠸ ⠼ ⠴ ⠦ ⠧ ⠇ ⠏`
+**A repainting shell prompt breaks output diffing.** If the prompt redraws every second (powerlevel10k with a clock), `watch-pane` sees "new output" on every poll — `idle:N` never fires and pattern matching gets noisy. Watch a slot with a static prompt, or an isolated slot, which has a plain one.
 
-**Progress bar** `[=====>   ]` indicates an in-progress build. Neither the spinner nor progress bar is the final result — wait for the idle/completion marker.
+For framework-specific pass/fail/running/idle markers, **read** `${CLAUDE_PLUGIN_ROOT}/skills/framework-signals/SKILL.md`.
 
-**Prompt detection**: `$` or `%` at the end of a line indicates the command has returned to the shell prompt.
+## 9. Workflow examples
 
----
-
-## 8. Timing and Race Conditions
-
-**TUI apps need render time.** After sending keys to a TUI application, use `watch-pane` with a `user_input` or `idle:N` trigger to wait for the application to process input and redraw before reading state.
-
-For long-running processes, `start-and-watch` or `watch-pane` replace polling loops — they block until a trigger condition fires, streaming progress notifications as output arrives.
-
-**`start-and-watch` snapshots its diff baseline *after* sending the command.** An **instantaneous** command (`echo done`) can finish *before* that baseline snapshot, so its output lands in the baseline and never counts as "new" — the pattern never matches and you get a `timeout`. When watching a fast command, make the output arrive *during* monitoring: `sleep 0.3 && echo done`, or watch a longer-lived process.
-
-**A repainting shell prompt breaks output diffing.** If the prompt redraws every second (e.g. powerlevel10k with a right-aligned clock), `watch-pane`/`start-and-watch` see "new output" on every poll — `idle:N` triggers never fire and pattern matching gets noisy. For deterministic monitoring, watch panes with a static prompt (or watch a headless pane, which has a plain prompt).
-
-For comprehensive framework-specific pass/fail/running/idle markers, **read**
-`${CLAUDE_PLUGIN_ROOT}/skills/framework-signals/SKILL.md`.
-
----
-
-## 9. Workflow Examples
-
-### Example A: Simple Command Execution
+### Example A: one-shot command (ephemeral)
 
 ```
-mcp__tmux__execute-command({ command: "npm test", headless: true })
-→ returns { output, exitCode } synchronously
-Parse output for pass/fail. Done.
+mcp__plugin_terminal_mux__execute-command({ command: "npm test", isolated: true })
+→ { output, exitCode, timedOut }   // no slot: the pane is gone already
 ```
 
-### Example B: vim File Editing
+### Example B: vim in an isolated slot
 
 ```
-1. mcp__tmux__create-headless({ name: "vim-edit" }) → { paneId: "headless:%0" }
-2. mcp__tmux__start-and-watch({
-     paneId: "headless:%0",
-     command: "vim myfile.ts",
-     pattern: "~",           // vim blank line tilde indicates loaded
-     timeout: 10
-   }) → WatchResult
-3. // vim is now open; use send-keys for navigation
-4. mcp__tmux__send-keys({ paneId: "headless:%0", keys: "i", literal: false })
-5. mcp__tmux__send-keys({ paneId: "headless:%0", keys: "hello world", literal: true })
-6. mcp__tmux__send-keys({ paneId: "headless:%0", keys: "Escape", literal: false })
-7. mcp__tmux__send-keys({ paneId: "headless:%0", keys: ":wq", literal: true })
-8. mcp__tmux__send-keys({ paneId: "headless:%0", keys: "Enter", literal: false })
-9. // watch-pane: wait for shell prompt to return
-10. mcp__tmux__watch-pane({
-      paneId: "headless:%0",
-      triggers: "shell,idle:2",
-      timeout: 10
-    }) → WatchResult (event: "shell" = vim exited, shell regained)
-11. mcp__tmux__kill-session({ sessionId: "headless:$0" })
+mcp__plugin_terminal_mux__start-and-watch({ slot: 2, isolated: true, command: "vim myfile.ts", pattern: "~", timeout: 10 })
+→ WatchResult { slot: 2, created: true, event: "pattern:~", … }
+mcp__plugin_terminal_mux__send-keys({ slot: 2, keys: "i", literal: false })
+mcp__plugin_terminal_mux__send-keys({ slot: 2, keys: "hello world" })
+mcp__plugin_terminal_mux__send-keys({ slot: 2, keys: "Escape", literal: false })
+mcp__plugin_terminal_mux__send-keys({ slot: 2, keys: ":wq", enter: true })
+mcp__plugin_terminal_mux__watch-pane({ slot: 2, triggers: "shell,idle:2", timeout: 10 })
+→ WatchResult (event: "shell" = vim exited, shell regained)
+mcp__plugin_terminal_mux__close-pane({ slot: 2 })
 ```
 
-### Example C: Server Startup (was a polling loop)
+### Example C: dev server in slot 1, beside the user
 
 ```
-1. mcp__tmux__start-and-watch({
-     command: "bun run dev",
-     pattern: "Local:.*http|listening on|ready in",
-     mode: "quick",
-     timeout: 60
-   })
-   // paneId omitted → auto-creates session; headless=false → visible session
-   → WatchResult { event: "pattern:...", output: "...", paneId: "%N" }
-2. Save the returned paneId for later observation
-3. Report: "Server ready. Pane: %N"
+mcp__plugin_terminal_mux__start-and-watch({ command: "bun run dev", pattern: "Local:.*http|listening on|ready in", triggers: "exit,error", timeout: 60 })
+→ WatchResult { slot: 1, created: true, event: "pattern:…", … }
+Report: "Server running in slot 1."
+// Later: mcp__plugin_terminal_mux__watch-pane({ slot: 1, triggers: "error,idle:30" })
 ```
 
-### Example D: Read Existing tmux Session
+### Example E: database REPL in an isolated slot
 
 ```
-1. mcp__tmux__list-sessions()                              → find "dev" session
-2. mcp__tmux__list-windows({ sessionId: "dev" })          → list windows
-3. mcp__tmux__list-panes({ windowId: "dev:0" })           → list panes
-4. mcp__tmux__capture-pane({ paneId: "dev:0.0" })         → read terminal content
-5. Analyze output, report findings
-// Do NOT kill user's session — only observe
+mcp__plugin_terminal_mux__start-and-watch({ slot: 2, isolated: true, command: "psql $DATABASE_URL", pattern: "=#", timeout: 15 })
+→ WatchResult { slot: 2, created: true, event: "pattern:=#", paneState: { foregroundCmd: "psql", waitingForInput: true, … } }
+mcp__plugin_terminal_mux__run-in-repl({ slot: 2, input: "SELECT count(*) FROM users;", promptPattern: "=#", timeout: 10 })
+→ { "slot": 2, "created": false, "output": "…\n count\n-------\n 1247", "exited": false }
+mcp__plugin_terminal_mux__run-in-repl({ slot: 2, input: "\\q", promptPattern: "\\$", timeout: 5 })
+mcp__plugin_terminal_mux__close-pane({ slot: 2 })
+→ [ { "slot": 2, "action": "killed" } ]
 ```
 
-### Example E: Database REPL Query
-
-```
-1. mcp__tmux__create-headless({ name: "psql-session" }) → { paneId: "headless:%0" }
-2. mcp__tmux__start-and-watch({
-     paneId: "headless:%0",
-     command: "psql $DATABASE_URL",
-     pattern: "=#",
-     timeout: 15
-   }) → WatchResult (event confirms psql is ready)
-3. mcp__tmux__run-in-repl({
-     paneId: "headless:%0",
-     input: "SELECT count(*) FROM users LIMIT 10;",
-     promptPattern: "=#",
-     timeout: 10
-   }) → { output: " count\n-------\n 1247" }
-4. Parse output directly (no screen scraping needed)
-5. mcp__tmux__run-in-repl({
-     paneId: "headless:%0",
-     input: "\\q",
-     promptPattern: "\\$",
-     timeout: 5
-   })
-6. mcp__tmux__kill-session({ sessionId: "headless:$0" })
-```
-
-### Example F: Run something beside the user
+### Example F: run something beside the user
 
 **Use when**: the user says "run it here", "beside me", "in this window", "show alongside".
 
 ```
-// Start it. No pane id, no split, no detection.
-mcp__tmux__send-keys({ keys: "bun test --watch", enter: true })
-→ { paneId: "%89", slot: 1, created: true }
+// Start it. No slot needed: slot 1 is the pane beside the user.
+mcp__plugin_terminal_mux__send-keys({ keys: "bun test --watch", enter: true })
+→ { "slot": 1, "created": true }
 
-// Read it back — either a snapshot…
-mcp__tmux__capture-pane({ slot: 1 })
-
-// …or block until something happens.
-mcp__tmux__watch-pane({ slot: 1, triggers: "idle:3,pattern:PASS|FAIL" })
-→ { event: "pattern:PASS|FAIL", detail: "…", paneState: {…} }
+// Read it back — a snapshot, or block until something happens.
+mcp__plugin_terminal_mux__capture-pane({ slot: 1 })
+mcp__plugin_terminal_mux__watch-pane({ slot: 1, triggers: "idle:3,pattern:PASS|FAIL" })
+→ { slot: 1, event: "pattern:PASS|FAIL", detail: "…", paneState: {…} }
 
 // Let go of it when the task is done.
-mcp__tmux__close-pane({ slot: 1 })
+mcp__plugin_terminal_mux__close-pane({ slot: 1 })
 ```
 
-If instead you want to *start a process and know when it is ready*, one call does the whole
-thing — it opens the pane, runs the command, and blocks until the pattern matches:
+**Key rules:** name no pane, only a slot; check `created` on every creating response; pass no direction; the pane may be one the user left open (§1d) — no slot number avoids that, only `isolated: true` does.
+
+### Example G: tell the user a long command finished
 
 ```
-mcp__tmux__start-and-watch({ command: "npm run dev", pattern: "listening on|ready in",
-                             triggers: "exit,error" })
-→ { event: "pattern:listening on", elapsed: 2.1, paneState: {…} }
+mcp__plugin_terminal_mux__start-and-watch({ slot: 2, isolated: true, command: "npm run build", pattern: "built in|compiled successfully", triggers: "exit,error", timeout: 600 })
+mcp__plugin_terminal_mux__notify({ message: "Build complete" })
 ```
 
-**Key rules:**
+`notify` is one-way. It cannot tell you whether the build passed — read the WatchResult for that.
 
-- **Name no pane.** That is what makes the call safe — slot resolution can never return your own
-  session's pane.
-- **Check `created` on every response.** `created: true` on a slot you were already using means
-  the user closed that pane and your process died with it (§1b).
-- **Pass no direction.** Placement is the server's job. Slot 2 stacks under slot 1, slot 3 goes
-  bottom-left.
-- **`close-pane`, not `kill-pane`.** `close-pane` kills panes the server made and merely
-  interrupts panes it borrowed from the user. `kill-pane` cannot tell the difference.
-- **The pane may be one the user left open** — see §1c for what that means for unsubmitted input
-  and inherited environment. It is not avoidable by choosing a different slot.
+## 10. Error handling
 
-### Example G: Desktop Notification on Long Command Completion
+**Process stuck / command hangs**: `pane-state({ slot: 2 })` → `{ slot: 2, isAlive: true, waitingForInput: true, foregroundCmd: "psql", … }`. Recover with `send-keys({ slot: 2, keys: "C-c", literal: false })`, then `capture-pane({ slot: 2 })` to verify the prompt returned.
 
-**Use when**: A long-running build, test suite, or migration should alert the user when done, regardless of whether they are watching the terminal.
+**Port already in use**: `start-and-watch` returns `event: "error"` or output containing `EADDRINUSE`. Free the port (`execute-command({ command: "lsof -ti:3000 | xargs kill", isolated: true })`), try another port, or report to the user.
 
-```bash
-# Append to any long-running command:
-npm run build 2>&1 | tee /tmp/build.log && \
-  osascript -e 'display notification "Build complete" with title "Claude"' || \
-  osascript -e 'display notification "Build FAILED" with title "Claude" sound name "Basso"'
-```
+**TUI app stuck**: `watch-pane` fires `idle:N`, or `pane-state` shows `isAlive: true` but nothing draws. Try `C-c` (`literal: false`), then `q`, then `close-pane({ slot })`.
 
-**Cross-platform `notify()` function** (paste into the session before the long command):
-```bash
-notify() {
-  MSG="$1"
-  if command -v osascript &>/dev/null; then
-    osascript -e "display notification \"$MSG\" with title \"Claude\""
-  elif command -v notify-send &>/dev/null; then
-    notify-send "Claude" "$MSG"
-  elif [ -n "$TMUX" ]; then
-    tmux display-message "$MSG"
-  else
-    printf '\a'
-  fi
-}
-```
+**Password prompt**: `pane-state` shows `waitingForInput: true` and `capture-pane` output contains "password" → **STOP**. Never send credentials through `send-keys`; report to the user and let them authenticate.
 
-Then use it: `npm run build && notify "Build complete" || notify "Build FAILED"`
+**Slot not found**: a reading tool on a slot you never opened is an error, not an empty pane. `list-slots` shows what you hold; reopen with a creating tool. After compaction this is the common case.
 
----
+**Long-running process (SSH, migration, deploy)**: migrations — always confirm with the user first. SSH — detect the password prompt with `pane-state` and stop. Deployments — `start-and-watch` with deploy-specific patterns; read `${CLAUDE_PLUGIN_ROOT}/skills/framework-signals/SKILL.md`.
 
-## 10. Error Handling Patterns
+## 11. Safety guidelines
 
-### Process Stuck / Command Hangs
+1. **Never store credentials**: do not send passwords or API keys through `send-keys`. Use `pane-state` to detect password prompts and stop.
+2. **Confirm destructive operations**: database migrations, `DROP TABLE`, production deployments — always confirm with the user.
+3. **You cannot read a pane the user is using.** No tool takes a pane id. Run the process in a slot, or read its log file. Adopting an *idle* user shell into a slot is the one way user panes enter your reach, and the server does that, not you.
+4. **Close what you opened**: `close-pane({ slot })` or `close-pane({ slot: "all" })`. It only ever interrupts an adopted pane, never kills it.
+5. **Slots are the only address.** A slot can never be your own pane, and the server refuses any id you might pass. Check `pane-state.foregroundCmd` before sending into a slot you have not used this turn — after adoption or a user's intervention it may hold a REPL or an editor, and `send-keys` feeds whatever is in the foreground.
 
-```
-// Detect using pane-state — kernel-level, no screen scraping needed
-mcp__tmux__pane-state({ paneId })
-→ { isAlive: true, waitingForInput: true, foregroundCmd: "psql" }
+## 11b. Approval gate for destructive commands
 
-// Or detect via watch-pane idle trigger:
-// start-and-watch / watch-pane fires event: "timeout" when nothing happens in timeout_secs
+Before running any command that cannot be undone, Claude must **stop and confirm** with the user.
 
-// Recovery: send Ctrl+C
-mcp__tmux__send-keys({ paneId, keys: "C-c", literal: false })
-mcp__tmux__capture-pane({ paneId })  // verify prompt returned
-```
-
-### Port Already in Use
-
-```
-// Detect: start-and-watch output contains "EADDRINUSE" or "address already in use"
-// WatchResult.event will be "error" or "pattern:EADDRINUSE"
-// Recovery options:
-// 1. Find and kill the occupying process: execute-command({ command: "lsof -ti:3000 | xargs kill", headless: true })
-// 2. Try a different port
-// 3. Report to user for manual resolution
-```
-
-### TUI App Stuck
-
-```
-// Detection: watch-pane fires idle:N event (no new output for N seconds)
-// OR: pane-state shows waitingForInput: false but isAlive: true (spinning but not drawing)
-// Recovery sequence:
-mcp__tmux__send-keys({ paneId, keys: "C-c", literal: false })  // try interrupt first
-// If still stuck:
-mcp__tmux__send-keys({ paneId, keys: "q", literal: true })     // try quit command
-// If still stuck:
-mcp__tmux__kill-session({ sessionId })                          // force close session
-```
-
-### Password Prompt Detection
-
-```
-// Use pane-state to detect waiting + check output for "password":
-result = mcp__tmux__pane-state({ paneId })
-if result.waitingForInput and "password" in capture-pane output:
-  STOP — never send credentials through send-keys
-  Report to user, ask them to handle authentication
-```
-
-### Long-Running Process (SSH, Migration, Deploy)
-
-```
-// For database migrations: ALWAYS confirm with user before proceeding
-// For SSH: use pane-state to detect password prompt → stop and report
-// For deployments: use start-and-watch with deploy-specific patterns — read
-// ${CLAUDE_PLUGIN_ROOT}/skills/framework-signals/SKILL.md
-```
-
----
-
-## 11. Safety Guidelines
-
-1. **Never store credentials**: Do not send passwords or API keys through `send-keys`. Use `pane-state` to detect password prompts and stop.
-2. **Confirm destructive operations**: Database migrations, `DROP TABLE`, production deployments — always confirm with user.
-3. **Never kill user's tmux sessions**: When using tmux-mcp to observe existing sessions, use `capture-pane` only. Do NOT call `kill-session` on sessions you did not create.
-4. **Clean up headless sessions**: Use `kill-session` or `kill-headless-server` when done. Headless sessions persist until explicitly killed.
-5. **Never send to / kill a pane you named yourself without checking it**: Slot-resolved panes are safe and need no check. But before `send-keys`/`run-in-repl`/`kill-pane` on a pane you reached by explicit `paneId`, check `pane-state.foregroundCmd` and act only on a bare shell (`zsh`/`bash`/`fish`/`sh`/`dash`). `send-keys` feeds the pane's foreground process — if that is `claude` or a REPL, your command becomes input to it. A pane whose foreground is `claude` is a sibling agent: off-limits to send to or kill. See §1c.
-
----
-
-## 11b. Approval Gate for Destructive Commands
-
-Before running any command that cannot be undone, Claude must **stop and confirm** with the user. This mirrors Warp AI's mandatory human-confirmation model.
-
-**RPGAO loop** (universal protocol for any terminal action):
+**RPGAO loop** (for any terminal action):
 ```
 READ    → capture-pane to see current state
 PROPOSE → "I plan to run: {command}. Reason: {explanation}"
 GATE    → "Shall I proceed?" (ALWAYS for destructive; optional for safe commands)
 ACT     → send-keys or execute-command on user confirmation
-OBSERVE → use start-and-watch or watch-pane for completion signal
-→ Repeat from READ if failure
+OBSERVE → start-and-watch or watch-pane for the completion signal
+→ Repeat from READ on failure
 ```
 
 **Detect these patterns before running — STOP and confirm**:
@@ -675,4 +330,4 @@ OBSERVE → use start-and-watch or watch-pane for completion signal
 | Curl pipe to bash | `\bcurl\s+.*\|\s*bash\b` |
 | dd overwrite | `\bdd\s+.*\bof=` |
 
-The GATE step is always required for any pattern in the table above. For safe, reversible commands, PROPOSE + ACT is sufficient (no explicit GATE pause needed).
+The GATE step is always required for any pattern in the table above. For safe, reversible commands, PROPOSE + ACT is sufficient.

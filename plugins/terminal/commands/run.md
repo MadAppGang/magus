@@ -1,12 +1,12 @@
 ---
 name: run
-description: Run a command in an isolated terminal session, capture output, and auto-cleanup. Use instead of Bash when you need TTY, interactive prompts, or screen-rendered output.
-allowed-tools: mcp__tmux__execute-command, mcp__tmux__start-and-watch, mcp__tmux__capture-pane, mcp__tmux__pane-state, mcp__tmux__kill-session, mcp__tmux__send-keys
+description: Runs a command in an isolated terminal pane, returns its output and exit code, and closes the pane. Use instead of Bash when the command needs a TTY, answers interactive prompts, or renders screen output.
+allowed-tools: mcp__plugin_terminal_mux__execute-command, mcp__plugin_terminal_mux__start-and-watch, mcp__plugin_terminal_mux__capture-pane, mcp__plugin_terminal_mux__pane-state, mcp__plugin_terminal_mux__close-pane, mcp__plugin_terminal_mux__send-keys
 ---
 
 # /terminal:run
 
-Run a command in an isolated headless terminal, capture its output, and automatically clean up the session. This is the primary command for most terminal tasks.
+Runs one command in an isolated pane the user never sees, returns the output and exit code, and leaves nothing open. This is the default terminal command for one-shot work.
 
 ## Usage
 
@@ -18,70 +18,57 @@ Run a command in an isolated headless terminal, capture its output, and automati
 
 ```
 /terminal:run npm test
-/terminal:run bun test src/auth/
 /terminal:run go test ./... -v
-/terminal:run python3 -m pytest tests/
-/terminal:run docker-compose up --build
 /terminal:run "curl -s https://api.example.com/health | jq"
 ```
-
-## What It Does
-
-1. **Executes** the given command in an isolated headless session
-2. **Captures** the full output (no line limit — uses tee + file internally)
-3. **Reports** the results including exit code
-4. **Auto-cleans** the session on completion
-
-The user never needs to manage session IDs or lifecycle.
 
 ## When to Use /terminal:run vs Bash
 
 | Scenario | Use |
 |----------|-----|
 | Simple non-interactive command | Bash tool |
-| Command with colored/formatted output | `/terminal:run` |
+| Command with colored or formatted output | `/terminal:run` |
 | Command with interactive prompts | `/terminal:run` |
 | TUI-rendered output (progress bars, tables) | `/terminal:run` |
-| Commands needing a real TTY | `/terminal:run` |
 | Long-running continuous process | `/terminal:watch` instead |
 | Multi-step REPL session | `/terminal:repl` instead |
 
 ## Behavior
 
-### For all one-shot commands
+### One-shot commands (the default path)
 
 ```
-mcp__tmux__execute-command({ command: "<user_command>", headless: true })
+mcp__plugin_terminal_mux__execute-command({ command: "<user_command>", isolated: true })
+→ { output, exitCode, timedOut }
 ```
 
-Returns `{ output, exitCode }` synchronously. Session is auto-destroyed. No session management needed.
+With `isolated: true` and no `slot`, the pane is ephemeral: it opens, runs the command, and closes on its own. No slot number is held, so nothing needs cleaning up. Pass `timeoutSeconds` for commands that run longer than the default.
 
-### For commands with complex output or streaming status
+### Commands that need streaming status
+
+When the output should be watched as it arrives (a build with progress stages, a script that may hang), open an isolated slot and close it afterwards:
 
 ```
-mcp__tmux__start-and-watch({
+mcp__plugin_terminal_mux__start-and-watch({
+  slot: 2, isolated: true,
   command: "<user_command>",
-  pattern: "\\$",
+  pattern: "\\$ $",
   triggers: "exit,error",
-  mode: "medium",
-  headless: true,
   timeout: 120
-})
+}) → { slot: 2, created: true, event, detail, elapsed, output, paneState }
+
+mcp__plugin_terminal_mux__close-pane({ slot: 2 }) → [{ "slot": 2, "action": "killed" }]
 ```
 
-Use `WatchResult.output` for the results and `WatchResult.event` to distinguish success from error.
-
-`execute-command` returns full output — no line limit since it captures via tee to a temp file rather than a fixed-size viewport.
+`event` distinguishes success (`pattern:…`, `exit`) from `error` and `timeout`; `output` holds the transcript. Always close the slot, on every outcome.
 
 ## Error Handling
 
-- If the command hangs, use `mcp__tmux__pane-state` to check if it is waiting for input
-- If `WatchResult.event == "timeout"`, the command did not complete within the timeout — report and kill the session
-- For stuck processes, send `C-c` via `mcp__tmux__send-keys` with `literal: false`
+- Command appears hung: `mcp__plugin_terminal_mux__pane-state({ slot: 2 })` reports `waitingForInput`. If it is waiting on a password prompt, stop and tell the user.
+- `event == "timeout"`: report the partial output, then `close-pane({ slot: 2 })`.
+- Stuck process: `mcp__plugin_terminal_mux__send-keys({ slot: 2, keys: "C-c", literal: false })`, then close the slot.
 
 ## Notes
 
-- This command auto-manages the full session lifecycle — execute, capture, auto-cleanup
-- For watching long-running processes, use `/terminal:watch` instead
-- For interactive REPL sessions, use `/terminal:repl` instead
-- For TUI app navigation (vim, lazygit), use `/terminal:tui` instead
+- Slot 1 is the visible helper pane beside the user; this command never uses it.
+- Long-running processes: `/terminal:watch`. REPL sessions: `/terminal:repl`. TUI apps: `/terminal:tui`.

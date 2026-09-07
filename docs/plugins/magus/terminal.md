@@ -3,11 +3,11 @@
 
 # terminal
 
-Intent-level terminal control over tmux. Runs interactive commands, dev servers, test watchers, REPLs and TUI apps in a helper pane that the server places and owns, so an agent never targets the user's own session.
+Slot-addressed terminal control over tmux. Runs interactive commands, dev servers, test watchers, REPLs and TUI apps in numbered helper panes — beside the user or isolated from view — that the server places and owns, so an agent never holds a pane id or targets the user's own session.
 
 | | |
 |---|---|
-| Version | `4.2.0` |
+| Version | `5.0.0` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 9 |
 | Subagents | 1 |
@@ -32,25 +32,26 @@ Prefer to do it by hand? [Installing Magus](../../guides/install.md) has the man
 
 ## When to reach for it
 
-- use when — `help`
-- Use for dev servers, test watchers, log tailing, and build processes — `watch`
+- Use for psql, mongosh, redis-cli, python3, node, and other interactive shells — `repl`
+- Use for raw keystrokes when /terminal:run, /terminal:repl, or /terminal:tui do not fit — `send`
+- Use for dev servers, test watchers, log tailing, and builds — `watch`
 - Use when monitoring terminal output for jest, vitest, pytest, go test, cargo, webpack, vite, or vercel — `framework-signals`
+- Use when running interactive commands, starting dev servers, watching tests, querying databases, or working beside the user — `terminal-interaction`
 - Use when navigating vim, nano, htop, less, psql, lazygit, k9s, tig, btop, or sending keystrokes to a database shell — `tui-navigation-patterns`
-- Use when setting up a project session, building a multi-pane dashboard, or syncing panes — `workspace-setup`
 
 ## Commands
 
 | Command | What it does |
 |---|---|
-| `/terminal:help` | Show all available terminal plugin commands organized by use case, with guidance on which command to use when. |
-| `/terminal:observe` | Observe running terminal sessions without modifying them. List active sessions, capture pane content, check on dev servers or test watchers started earlier. |
-| `/terminal:repl` | Open an interactive REPL or database shell session. Handles prompt detection, query execution, and clean exit for psql, mongosh, redis-cli, python3, node, and other REPLs. |
-| `/terminal:run` | Run a command in an isolated terminal session, capture output, and auto-cleanup. Use instead of Bash when you need TTY, interactive prompts, or screen-rendered output. |
-| `/terminal:send` | Send keystrokes or text to an active terminal session. |
-| `/terminal:session` | Manage terminal sessions -- create, list, or close tmux and headless sessions. |
-| `/terminal:snapshot` | Take a snapshot of a terminal pane to see its current screen content. |
-| `/terminal:tui` | Launch and navigate TUI (terminal user interface) applications like vim, lazygit, htop, k9s, tig. Delegates to the tui-navigator agent for multi-step interaction. |
-| `/terminal:watch` | Start a long-running process in a terminal session, monitor for readiness or failure, and report status. Use for dev servers, test watchers, log tailing, and build processes. |
+| `/terminal:help` | Shows every terminal plugin command organized by use case, with guidance on which one to reach for and how slots work. |
+| `/terminal:observe` | Reads a slot without modifying it. Lists the slots you hold, captures a slot's recent output, or blocks until it exits, errors, or goes idle. |
+| `/terminal:repl` | Opens a REPL or database shell in an isolated slot, runs queries against its prompt, and closes the slot. Use for psql, mongosh, redis-cli, python3, node, and other interactive shells. |
+| `/terminal:run` | Runs a command in an isolated terminal pane, returns its output and exit code, and closes the pane. |
+| `/terminal:send` | Sends text or a named key to a slot and shows the result. Use for raw keystrokes when /terminal:run, /terminal:repl, or /terminal:tui do not fit. |
+| `/terminal:slots` | Lists the slots this session holds and closes one or all of them. Use to find a slot number after compaction, or to clean up panes left open by /terminal:watch, /terminal:repl, or /terminal:… |
+| `/terminal:snapshot` | Captures the current screen of a slot as text, with optional scrollback, or renders it as an image. Use to read raw pane content from a slot this session opened. |
+| `/terminal:tui` | Launches a TUI application such as vim, lazygit, htop, k9s, or tig in a slot and navigates it with keystrokes and screen reads. Delegates multi-step interaction to the tui-navigator agent. |
+| `/terminal:watch` | Starts a long-running process in a numbered slot, waits for readiness or failure, and reports the slot to check on later. Use for dev servers, test watchers, log tailing, and builds. |
 
 ## Subagents
 
@@ -73,10 +74,10 @@ Dispatched with the Agent tool, each in its own context window.
 | | Skill | What it covers |
 |---|---|---|
 | ● | `terminal:tdd-workflow` | Drives a Red-Green-Refactor state machine for TDD with terminal test watchers. Use when running TDD in watch mode or iterating on failing tests with jest, vitest, cargo watch, or pytest-watc… |
-| ● | `terminal:terminal-interaction` | Provides tmux-mcp tool API patterns for interactive terminal access. Use when running interactive commands, starting dev servers, watching test output, querying databases, or splitting panes… |
+| ● | `terminal:terminal-interaction` | Slot-addressed tool patterns for interactive terminal access. Use when running interactive commands, starting dev servers, watching tests, querying databases, or working beside the user. |
 | ● | `terminal:tui-navigation-patterns` | Provides key sequences and navigation patterns for common TUI apps. Use when navigating vim, nano, htop, less, psql, lazygit, k9s, tig, btop, or sending keystrokes to a database shell. |
 | ○ | `terminal:framework-signals` | Provides pass/fail/running/idle output markers for 15+ test, build, and deploy tools. Use when monitoring terminal output for jest, vitest, pytest, go test, cargo, webpack, vite, or vercel. |
-| ▸ | `terminal:workspace-setup` | Orchestrates tmux workspaces — sessions, dashboard layouts, watch/entr monitors, synced panes. Use when setting up a project session, building a multi-pane dashboard, or syncing panes. |
+| ▸ | `terminal:workspace-setup` | Orchestrates tmux workspaces — dashboards, watch/entr monitors, one command on many hosts — on numbered helper slots. |
 
 ## MCP server
 

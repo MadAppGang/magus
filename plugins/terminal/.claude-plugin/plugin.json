@@ -1,7 +1,7 @@
 {
   "name": "terminal",
-  "version": "4.2.0",
-  "description": "Intent-level terminal control over tmux. Runs interactive commands, dev servers, test watchers, REPLs and TUI apps in a helper pane that the server places and owns, so an agent never targets the user's own session.",
+  "version": "5.0.0",
+  "description": "Slot-addressed terminal control over tmux. Runs interactive commands, dev servers, test watchers, REPLs and TUI apps in numbered helper panes — beside the user or isolated from view — that the server places and owns, so an agent never holds a pane id or targets the user's own session.",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",
@@ -14,12 +14,13 @@
     "tui",
     "interactive",
     "tmux",
-    "headless",
     "run",
     "watch",
     "repl",
     "dev-server",
-    "test-watcher"
+    "test-watcher",
+    "slots",
+    "isolated"
   ],
   "category": "development",
   "skills": [
@@ -31,7 +32,7 @@
   ],
   "setup": {
     "go": [
-      "github.com/MadAppGang/tmux-mcp@v1.7.1"
+      "github.com/MadAppGang/tmux-mcp/v2@v2.0.0"
     ],
     "required": [
       "tmux"

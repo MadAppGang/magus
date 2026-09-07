@@ -1,5 +1,5 @@
 {
-  "description": "Terminal safety hooks: block tmux kill-server and raw tmux send-keys/kill-pane/split-window into panes whose foreground is not a shell (e.g. a sibling claude session or a REPL).",
+  "description": "Terminal safety hook: blocks tmux kill-server, and raw tmux verbs that type into, kill or split a pane whose foreground is not a shell (a sibling claude session, a REPL, an editor).",
   "hooks": {
     "PreToolUse": [
       {

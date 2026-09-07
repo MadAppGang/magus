@@ -247,7 +247,7 @@ function main(): void {
   const branch = dryRun ? "<branch>" : sh("git rev-parse --abbrev-ref HEAD");
   console.log("\n✓ Release commit created. Nothing has left this machine.");
   console.log("\nNext:");
-  console.log(`  1. git push -u origin ${branch}; open a PR to main; merge when CI is green.`);
+  console.log(`  1. git push -u origin ${branch}; open a PR to main; merge when CI (release-gates) is green.`);
   console.log("  2. Tag the MERGE commit and push each tag as an explicit ref:");
   console.log(`       bun run skills/release/scripts/tag.ts ${proposalPath} <merge-sha>`);
   console.log("  3. CI publishes every channel on the merge: gh run list --workflow publish-dist.yml");
