@@ -269,7 +269,7 @@ Nerd Font installed:
 | `U+F4BC` nf-oct-cpu | Octicons | **blank** |
 
 So the presence of a patched font in `~/Library/Fonts` cannot decide this — only the
-user looking at the specific glyph can. `/statusline:install` probes the font
+user looking at the specific glyph can. `/setup:statusline-install` probes the font
 directories by filename (`nerd|NF-|powerline`; `fc-list` is not used, it is usually
 absent on macOS), and when it finds something it prints the real glyph in a sample
 line and asks the user to confirm they see an icon rather than a box or a gap. No

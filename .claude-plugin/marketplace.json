@@ -7,7 +7,7 @@
   },
   "metadata": {
     "description": "Curated collection of Claude Code plugins for modern full-stack development with LLM performance tracking and E2E skill testing",
-    "version": "10.3.0",
+    "version": "11.0.0",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -518,7 +518,7 @@
       "name": "setup",
       "source": "./plugins/setup",
       "description": "Project setup jobs in one plugin. Investigates a repository and provisions it \u2014 plugins, tools, framework best-practice references, and a seeded knowledge base \u2014 then installs the adaptive statusline and indexes every skill reachable from the project into browsable markdown.",
-      "version": "1.2.0",
+      "version": "1.2.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -538,6 +538,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "1.2.1",
+          "date": "2026-09-08",
+          "kinds": [
+            "Fixed"
+          ],
+          "summary": "/setup:statusline-install closed by naming a command that has never existed"
+        },
         {
           "version": "1.2.0",
           "date": "2026-09-07",
@@ -565,62 +573,6 @@
           "version": "1.0.0",
           "date": "2026-08-06",
           "summary": "One plugin for project setup jobs. /setup:project investigates a repository \u2014 stack, package\u2026"
-        }
-      ]
-    },
-    {
-      "name": "statusline",
-      "source": "./plugins/statusline",
-      "description": "Deprecated redirect. The statusline now ships inside setup@magus as /setup:statusline-install, -uninstall and -customize. This plugin keeps the /statusline:* commands resolving for one release so no existing install breaks silently, and is removed after that.",
-      "version": "3.0.1",
-      "author": {
-        "name": "Jack Rudenko",
-        "email": "i@madappgang.com",
-        "company": "MadAppGang"
-      },
-      "category": "utility",
-      "keywords": [
-        "statusline",
-        "deprecated",
-        "migration",
-        "setup"
-      ],
-      "strict": true,
-      "releases": [
-        {
-          "version": "3.0.1",
-          "date": "2026-08-26",
-          "summary": "The same manifest move, with no change to what each registers"
-        },
-        {
-          "version": "3.0.0",
-          "date": "2026-08-06",
-          "summary": "Now a deprecation shim. The statusline moved into setup@magus as /setup:statusline-install,\u2026"
-        },
-        {
-          "version": "2.5.0",
-          "date": "2026-08-04",
-          "kinds": [
-            "Changed"
-          ],
-          "summary": "RAM now reports the whole Claude Code process tree, not just the entrypoint"
-        },
-        {
-          "version": "2.4.0",
-          "date": "2026-08-04",
-          "kinds": [
-            "Added",
-            "Changed"
-          ],
-          "summary": "icons.nerd_font \u2014 opt-in Nerd Font glyphs"
-        },
-        {
-          "version": "2.3.1",
-          "date": "2026-08-04",
-          "kinds": [
-            "Changed"
-          ],
-          "summary": "The memory segment is now labelled RAM, not MEM: \u2014 it renders RAM 1.1G. In this product's\u2026"
         }
       ]
     },

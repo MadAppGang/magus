@@ -144,7 +144,7 @@ allowed-tools: Read, Write, Edit, Bash, AskUserQuestion
       - Nerd Font icons: {on|off — no patched font found|off}
       - Config: ~/.claude/statusline-config.json
 
-    Use /statusline:customize-statusline to configure sections and themes.
+    Use /setup:statusline-customize to configure sections and themes.
     Restart Claude Code to see the new status line.
     ```
   </step>

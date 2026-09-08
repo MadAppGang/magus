@@ -4,6 +4,49 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [setup 1.2.1] - 2026-09-08
+
+### Fixed
+
+- **`/setup:statusline-install` closed by naming a command that has never existed.** Its
+  final hint read `/statusline:customize-statusline`, a transposition of two different
+  command names. It now names `/setup:statusline-customize`. This was wrong under both the
+  old and the new plugin, and with `statusline@magus` removed at Marketplace 11.0.0 it no
+  longer resolves to anything at all.
+- Two stale `/statusline:install` references inside this plugin — a comment in
+  `scripts/statusline.sh` and a line in the `statusline-customization` skill — now name
+  `/setup:statusline-install`.
+
+---
+
+## [Marketplace 11.0.0] - 2026-09-08
+
+### Removed
+
+- **`statusline@magus` is deleted.** The statusline ships from `setup@magus` and only from
+  there: `/setup:statusline-install`, `/setup:statusline-uninstall`,
+  `/setup:statusline-customize`. The `/statusline:*` command names no longer resolve, and
+  `"statusline@magus": true` in an `enabledPlugins` block is now an entry pointing at
+  nothing. The magus channel ships 15 plugins.
+
+### Changed
+
+- Two plugins ship alongside this removal and are required by it, not optional:
+  **`setup` 1.2.1** carries the command-name corrections, and **claudeup 6.3.1** repoints
+  every predefined profile. Each has its own entry below.
+
+### Why
+
+- The shim was introduced to hold the old command names for one release and was then carried
+  for twelve. A redirect that outlives its window stops being a migration aid and becomes a
+  second answer to "where does the statusline come from", which is the drift the move was
+  meant to end. Deleting it leaves one answer.
+- The profile bug is why this could not simply be deleted on its own. It predates the
+  removal and was shipping to every new claudeup user: the profiles installed a redirect and
+  never installed the plugin the redirect points at.
+
+---
+
 ## [dev 7.1.0] - 2026-09-08
 
 ### Added
@@ -2780,79 +2823,6 @@ magus-src and are shipped by no `distTargets`, so nothing published to any chann
 
 ---
 
-## [Statusline 2.5.0] - 2026-08-04
-
-### Changed
-
-- **`RAM` now reports the whole Claude Code process tree, not just the entrypoint.** The segment ran `ps -o rss= -p "$CLAUDE_PID"` — the resident set of one process — but Claude Code forks helpers, and MCP servers and tools run as its children. Measured on the same machine at the same moment: an interactive session read **1300144 KB** for the entrypoint against **1587984 KB** for its tree, and an agent-SDK session read **320880 KB** against **870832 KB** — understated **2.7×**. The gap is not a fixed ratio; it depends on how many helpers and MCP servers a session is running, which is why it cannot be corrected with a multiplier and has to be measured. Expect the displayed figure to go up, in some cases to roughly double: that is the correction, not a regression.
-- **The walk recurses to arbitrary depth, which is load-bearing.** In one measured tree the processes were `claude` → `bg-pty-host` → `bg-spare`; the deepest process held 293 MB of the 850 MB total, so summing only direct children would have missed a third of it.
-- **One `ps -eo pid,ppid,rss` snapshot, walked breadth-first inside a single `awk`.** Not a `ps` per process: this renders on every prompt, and a fork per descendant is not a cost worth paying for a status line. `CLAUDE_PID` itself is included, and a `seen[]` set guards against cycles and against a process reparenting mid-snapshot, so no PID is counted twice and the walk cannot run away. Verified against an independently written ancestor-chasing implementation over the same snapshot — both return 1587984 KB — and against a hand-summed three-process tree, exact to the kilobyte.
-- **Fails soft, in two steps.** If the tree walk yields nothing — unknown PID, `ps` unavailable — the segment falls back to the entrypoint's own RSS, exactly as before. If that is empty too, nothing renders. A memory reading is never worth breaking the status line over.
-- **The figure is a slight overestimate, deliberately.** Summing RSS double-counts memory shared between the processes, mapped shared libraries most of all; a true proportional-set-size measurement needs per-process page-table introspection that macOS does not expose cheaply to a shell script running on every prompt. The trade-off is accepted because the segment answers *"what is Claude Code costing me in RAM"*, where the whole tree is the honest answer, rather than *"how big is one process"*, where it is not. It is documented in the script so the overcount is not later mistaken for a bug.
-- **Unchanged:** `fmt_mem` and the `find_claude_pid` entrypoint matcher, both fixed in 2.3.0 and correct; the `RAM` label; the `sections.memory` config key; the `icons.nerd_font` glyph; the colour and placement. A minor bump rather than a patch because the number on screen changes meaning.
-
----
-
-## [Statusline 2.4.0] - 2026-08-04
-
-### Added
-
-- **`icons.nerd_font` — opt-in Nerd Font glyphs.** A new top-level config group, parsed exactly like `sections` with the same `d(v; fallback)` helper, and **`false` by default**: `{ "sections": { … }, "icons": { "nerd_font": false } }`. When on, the RAM segment renders `󰍛 1.1G` (U+F035B, nf-md-memory) instead of `RAM 1.1G`. Exactly one space separates glyph from value either way, so the two forms are spaced identically and nothing else about the segment moves.
-- **The plugin's no-Nerd-Font stance is unchanged by default.** Powerline and PUA codepoints need a patched font and render as tofu otherwise, which is why `⎇` (U+2387), `↻`, `🤖`, `⟳` and `⚡` were chosen: they are plain Unicode or emoji, render in any modern font, and are **not** governed by this key. No other segment converts in this release.
-- **`/statusline:install` now probes for a patched font and asks.** It scans `~/Library/Fonts`, `/Library/Fonts` and `/System/Library/Fonts` for filenames matching `nerd|NF-|powerline` — ~17 ms, no dependencies, and deliberately not `fc-list`, which is usually absent on macOS. No match means the question is skipped entirely and `false` is written. A match means the sample line is printed **containing the real glyph** and the user is asked to confirm they see an icon rather than a box or a gap. The answer is merged into `~/.claude/statusline-config.json`, never written over it.
-- **Why the font inventory alone cannot decide it:** Nerd Font coverage is **partial and varies by font**. Measured on a machine with 0xProto Nerd Font installed, `U+F035B` (nf-md-memory) renders while `U+F2DB` (nf-fa-microchip) and `U+F4BC` (nf-oct-cpu) come out as **blank space** — not tofu, which is worse, because a segment that silently vanishes looks like a bug rather than a missing glyph. Only Material Design (`nf-md-*`) glyphs are used, as the best-covered set, and "blank space" is offered as an explicit answer in the prompt so a user skimming for a box does not answer yes to an empty gap.
-- The glyph is declared in an icon table with an `icon_or "$ICON_X" "TEXT"` helper rather than an inline branch, so a future segment opts in through the same key without duplicating the fallback rule.
-
-### Changed
-
-- **In a linked worktree, only the worktree chip renders — the branch chip is suppressed.** A worktree directory is conventionally named after its branch, so both chips printed essentially the same string twice: `* Opus | worktree-mcp-failed-auth | wt:mcp-failed-auth | …`. In the main worktree nothing changes: `WORKTREE_NAME` is empty there, so the branch chip renders as it always has.
-- The suppression is gated on whether the worktree chip is **actually rendered** (`sections.worktree` on **and** a worktree name present), not merely on being inside a worktree. That distinction is the point: a user with `sections.worktree: false` still gets their branch chip, instead of losing both and seeing no git context at all. Both `sections.branch` and `sections.worktree` are honoured exactly as before, and neither chip's colour or formatting changed.
-- **Known trade-off:** when a worktree's directory name differs from its branch — worktree `mcp-failed-auth` checked out on `feature/xyz` — only the directory name is shown and the branch name is hidden. `sections.worktree: false` brings the branch back.
-
----
-
-## [Statusline 2.3.1] - 2026-08-04
-
-### Changed
-
-- **The memory segment is now labelled `RAM`, not `MEM:`** — it renders `RAM 1.1G`. In this product's context "memory" reads as LLM/agentic memory (MEMORY.md, mnemex) rather than the Claude Code process's resident set, which is what the number has always measured. The label is the whole fix: no emoji or glyph, because a brain would deepen the ambiguity and a neutral glyph reintroduces the "what does this mean" question an explicit word answers. Value, colour, and placement are unchanged.
-- **The Claude-edits chip is now `🤖 +N/-M`** (U+1F916 ROBOT FACE) instead of `✨ +N/-M`. The two diff chips now pair semantically — 🤖 is what the agent wrote, `⎇` is what is uncommitted in git — where the sparkle was decorative and carried no meaning. Both glyphs are East Asian Wide, so column alignment is unchanged; colour, `+N/-M` formatting, and the hide-when-zero behaviour are untouched.
-- The config key stays **`.sections.memory`** despite the `RAM` label. Renaming it to `ram` would silently break every existing `~/.claude/statusline-config.json`, and the key is not what the user reads on screen.
-
----
-
-## [Statusline 2.3.0] - 2026-08-04
-
-### Fixed
-
-- **`MEM:` measured the statusline script instead of Claude Code.** `find_claude_pid()` walked up the process tree matching any command containing `claude`, and the statusline is invoked as `bash ~/.claude/statusline-command.sh` — that path contains "claude", so it matched at depth 0 and returned the script's own shell. The segment reported ~2–3 MB and had never once shown Claude Code's memory. Measured on the same machine, same moment: `MEM:2M` before, `MEM:1.0G` after.
-- The matcher now identifies the Claude Code **entrypoint** from `argv[0]`, not from a substring of the whole command line: basename exactly `claude` (covers `claude`, `/usr/local/bin/claude`, `ClaudeCode.app/Contents/MacOS/claude`, and the agent-SDK binary), any command containing `@anthropic-ai/claude-code` (npm install, where `argv[0]` is the interpreter), or the native installer's versioned launcher `.../share/claude/versions/<version>`. Paths that merely contain "claude" — `~/.claude/shell-snapshots/…`, `statusline-command.sh` — are rejected, as is `op run … -- claude …`, which is a launcher rather than Claude itself. The walk continues upward past every rejection, keeping the existing 10-level depth cap.
-- **When no Claude Code process is an ancestor, the segment is omitted** rather than falling back to whatever process happens to be nearby.
-- **The PID cache self-heals.** `~/.claude/.statusline-pid-cache-<session>` entries written by earlier versions hold the wrong PID, and PIDs get recycled; the cached value is now re-validated against the entrypoint test on every render, not merely checked for liveness.
-- **`fmt_mem` printed `1.10G`** for the top ~6 KB of every gigabyte — the tenths digit was `remainder / 104857`, which reaches 10. It is now `remainder * 10 / 1GB`.
-- **Walking more than one level exposed a zsh bug** that would have blanked the segment outright: a bare `local ppid` re-declared on the second loop iteration makes zsh echo `ppid=<value>` to stdout, concatenating it into the function's result. Declared-and-assigned in one statement; verified identical output under both `bash` and `zsh`.
-
-### Changed
-
-- **The uncommitted-changes chip is now `⎇ +N/-M`** (U+2387 BRANCHING) instead of `● +N/-M`, so it reads as git rather than as a generic dot. Plain Unicode — deliberately not the Powerline branch glyph (U+E0A0), which is a private-use codepoint requiring a Nerd Font. Colour and `+N/-M` formatting are unchanged, and the `✨` Claude-edits chip is untouched so the two stay visually distinct.
-
----
-
-## [Statusline 2.2.0] - 2026-08-03
-
-### Added
-
-- **claudish-routed session detection** — `CLAUDISH_ACTIVE_MODEL_NAME` or `CLAUDISH_TOKEN_FILE` in the environment is sufficient proof that the session is proxied to a non-Anthropic provider; either variable alone flips the statusline into claudish mode.
-- **Provider plan usage segment** — when `CLAUDISH_TOKEN_FILE` exposes a `plan` block, the active provider's own windows render in place of the Anthropic ones, in the same visual style: one bar coloured by the most-consumed window, per-window `id:pct%` labels, `↻` reset countdowns, and the same ≥80% critical highlight. The window list is arbitrary-length with arbitrary ids — nothing assumes `5h`/`7d`. No provider ships the block today, so the segment renders **nothing** in the common case: no placeholder, no dangling separator.
-- **`.sections.claudish_plan` config key** (default `true`) to hide the new segment on its own. The existing `.sections.plan_limits` still suppresses plan output entirely, claudish or not.
-
-### Changed
-
-- **Anthropic plan limits are suppressed on claudish-routed sessions** — those percentages describe an Anthropic account the session is not spending. Both sources are cut: the native `.rate_limits` fields are blanked, and the `api.anthropic.com/api/oauth/usage` fallback poll is gated *independently*, because blanking the fields alone would have been read as "data missing" and triggered the poll. Skipping the poll also stops it writing `.statusline-usage-cache.json`, which would otherwise leave a stale cache for the user's real Anthropic sessions to read.
-- Non-claudish sessions are byte-identical against all 9 shipped fixtures — the routing check is the only new branch on that path.
-
----
-
 ## [dev 3.0.1] - 2026-08-02
 
 Housekeeping pass (R11 from the 2026-07-29 review) plus everything a first sweep of it
@@ -3258,15 +3228,6 @@ Decision documented in `magus-src` and `claudish` repos. Research session: `clau
 
 ---
 
-## [statusline 2.1.2] - 2026-04-24
-
-### Changed
-- **Split the diff section into two chips** — session (`✨ +A/-D`, from Claude Code's cost
-  telemetry) and git (`● +A/-D`, from `git diff --shortstat`). A stale session total on a clean
-  worktree previously read as uncommitted work.
-
----
-
 ## [kanban 1.6.0] - 2026-04-24
 
 ### Changed
@@ -3276,14 +3237,6 @@ Decision documented in `magus-src` and `claudish` repos. Research session: `clau
 ### Migration notes
 Legacy tasks in `.claude/gtd/tasks.json` are **not** auto-migrated. Re-add them with
 `/kanban:add`.
-
----
-
-## [Statusline 2.1.1] - 2026-04-16
-
-### Fixed
-- **Reset countdowns missing when rate-limited** — Claude Code's native `rate_limits` input supplies `used_percentage` but omits `resets_at`, so the OAuth API fallback (which provides both) was skipped and the `↻` countdown disappeared once limits climbed. Guard now triggers the fallback when reset timestamps are missing, and cache-backfill only fills empty fields so fresh native percentages aren't clobbered by stale cache values.
-- **Hide ⟳×1 compaction indicator** — first compaction is expected and not worth showing; indicator now only appears at ⟳×2+.
 
 ---
 

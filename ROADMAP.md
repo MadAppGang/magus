@@ -206,10 +206,6 @@ is published to users. `scripts/check-doc-plugin-lists.ts` now rejects the label
 - 🔴 CI job `test-bunjs-skill` written but not committed (~12 lines in `.github/workflows/test-plugins.yml`: `working-directory: plugins/bunjs/skills/opentui-tui`, then install / test / typecheck / check-surface). Withheld because the render tests drive the real native Zig renderer — green on macOS arm64, UNVERIFIED on `ubuntu-latest` — and committing it blind risks turning repo CI red. Add it when someone can watch one run.
 - **Provenance:** all six found and confirmed during the v0.1.0 build (two fresh-consumer builds, three code reviews, one execution verifier) and consciously deferred; none blocks release. Whether `dev`'s four `bunjs*` skills migrate here is a separate open question — see **D-6**.
 
-### statusline
-
-- ➖ No in-flight signal found beyond shipped bugfixes (reset countdowns, diff chip split, memory display) — owner to populate
-
 ### browser-use
 
 - 🟡 **CC-1** · Python/pip `browser-use` upstream runtime treated as external dep; validate install/doctor output
@@ -308,9 +304,9 @@ Items where the maintainer must choose before downstream work can proceed. Not j
 
 **The decision:** does dev/gtd ship the Tasks-migration changes as Claude-only features (with Codex distribution permanently lagging), or does the migration get rolled back / refactored to use a Codex-compatible mechanism?
 
-### D-2 · Four plugins with no in-flight roadmap
+### D-2 · Three plugins with no in-flight roadmap
 
-`video-editing`, `image-generate`, `statusline`, `designer` have shipped bugfixes recently but have no forward-looking roadmap items in any plan doc or session. Either they're in steady-state (correct → mark "maintained, no active roadmap") or they have unwritten direction (owner must populate). `conductor` was the fifth — resolved by retiring it at magus v8.0.0.
+`video-editing`, `image-generate`, `designer` have shipped bugfixes recently but have no forward-looking roadmap items in any plan doc or session. Either they're in steady-state (correct → mark "maintained, no active roadmap") or they have unwritten direction (owner must populate). `conductor` was the fourth — resolved by retiring it at magus v8.0.0.
 
 ### D-3 · claude-desktop-profiles Path 2 commitment
 

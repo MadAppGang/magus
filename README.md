@@ -312,7 +312,7 @@ Need more than one plugin? Just add more entries:
     "code-analysis@magus": true,
     "multimodel@magus": true,
     "terminal@magus": true,
-    "statusline@magus": true
+    "setup@magus": true
   }
 }
 ```

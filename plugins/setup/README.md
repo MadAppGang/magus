@@ -40,9 +40,3 @@ mark `disable-model-invocation`.
 
 It is explicit-invocation only. Nothing runs it for you.
 
-## The statusline moved here
-
-`statusline@magus` used to own this. As of setup v1.0.0 the statusline ships from this
-plugin and `statusline@magus` is a deprecated shim that keeps the old `/statusline:*`
-commands resolving for one release. If you are installing fresh, use `/setup:statusline-install`
-and do not enable `statusline@magus` at all.

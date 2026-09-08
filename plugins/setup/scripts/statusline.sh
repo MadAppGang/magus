@@ -57,7 +57,7 @@ LAYOUT="auto"
 # as blank space — a segment that silently vanishes. Coverage is also PARTIAL and
 # varies by font: on a machine with 0xProto Nerd Font installed, U+F035B (nf-md-memory)
 # renders while U+F2DB (nf-fa-microchip) and U+F4BC (nf-oct-cpu) come out blank. So
-# "the user has a Nerd Font" is NOT sufficient to enable this — /statusline:install
+# "the user has a Nerd Font" is NOT sufficient to enable this — /setup:statusline-install
 # renders the actual glyph and asks the user to confirm they can see it.
 ICONS_NERD_FONT=false
 
