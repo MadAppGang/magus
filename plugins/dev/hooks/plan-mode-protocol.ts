@@ -48,6 +48,33 @@ if (!/(^|\s)\/dev:dev(\s|$)/.test(prompt)) process.exit(0);
 
 writeDevRunMarker(input.cwd ?? process.cwd(), Date.now());
 
+const RESUME_INVOCATION = `<dev-resume-invocation>
+/dev:dev was invoked with --resume. This is a RESUME, not a new run. Follow the command's
+<resume_protocol> BEFORE Step 0: restore depth and automation from session-meta.json,
+derive the next phase from the artifacts on disk, and continue there. Do not enter plan
+mode unless the derived next phase is Phase 3 with no approved design in context — a plan
+carrying a <dev-flow> footer was approved already and is materialised as architecture.md,
+never re-planned. Say in one line which session and phase you are resuming.
+</dev-resume-invocation>`;
+
+/**
+ * Appended to the plan file before every ExitPlanMode. When the user approves with
+ * "Yes, clear context …", the plan text is the only thing that reaches the next
+ * context, and this footer is how that context learns it is inside a /dev:dev run.
+ * Same words in phase3-planning.md Step 3.7b; this copy is the one measured to arrive.
+ */
+const DEV_FLOW_FOOTER = `<dev-flow>
+This plan is Phase 3 of a /dev:dev run. Do not implement it directly — resume the
+pipeline first: Skill(skill: "dev:dev", args: "--resume {SESSION_ID, or omit it when not-created}")
+session:      {SESSION_ID, or not-created when plan mode was adopted before Phase 0}
+session_path: {SESSION_PATH, or -}
+feature:      {feature name}
+depth:        {quick|standard|full}
+automation:   {interactive|guided|autonomous}
+plan_file:    {this file's path}
+next:         Phase 3 Step 3.9 — write this plan to architecture.md, then continue
+</dev-flow>`;
+
 /**
  * The NOT-active branch leads, because that is the normal case and the requested feature.
  * The adopt branch is second: it handles the collision where plan mode was already on
@@ -77,9 +104,10 @@ Run Phases 0-2 normally. **Then, at Phase 3 (architecture), enter plan mode:**
   2. Write the design checklist into the plan file immediately. It is the only file plan
      mode lets you write and the only thing it re-reads every turn.
   3. Delegate read-only exploration to Agent(subagent_type: "dev:architect").
-  4. Call \`ExitPlanMode\` with the design. **Its dialog IS the Phase 3.8 approval gate** —
+  4. End the plan file with the <dev-flow> footer (below), filled in.
+  5. Call \`ExitPlanMode\` with the design. **Its dialog IS the Phase 3.8 approval gate** —
      do not also ask with AskUserQuestion.
-  5. Write architecture.md only AFTER it returns, never during. Then continue at Phase 4.
+  6. Write architecture.md only AFTER it returns, never during. Then continue at Phase 4.
 
 ── IF PLAN MODE IS ALREADY ACTIVE (adopt it) ─────────────────────────────────
 Say: "Plan mode is active. /dev:dev is adopting it as Phase 3."
@@ -87,8 +115,9 @@ Say: "Plan mode is active. /dev:dev is adopting it as Phase 3."
   1. The plan file IS the Phase 3 artifact. Do not re-derive an approved architecture.
   2. Run Phases 0-3 read-only. Write NOTHING except the plan file, and do not create the
      session directory yet.
-  3. Call \`ExitPlanMode\`. Its dialog is the Phase 3.8 gate; do not ask twice.
-  4. After it returns, copy the approved plan to \${SESSION_PATH}/architecture.md and
+  3. End the plan file with the <dev-flow> footer (below), \`session: not-created\`.
+  4. Call \`ExitPlanMode\`. Its dialog is the Phase 3.8 gate; do not ask twice.
+  5. After it returns, copy the approved plan to \${SESSION_PATH}/architecture.md and
      resume at Phase 4.
 
 ── BOTH BRANCHES ─────────────────────────────────────────────────────────────
@@ -99,13 +128,35 @@ proceed — that approval was the gate.
 Plan mode permits writing exactly ONE file, the plan file, so the phase artifact gates
 cannot be satisfied while it is active. Exit first; never route around a gate that is
 only temporarily unsatisfiable.
+
+── THE <dev-flow> FOOTER (both branches, before every ExitPlanMode) ──────────
+The plan-approval dialog can offer "Yes, clear context …" (settings key
+showClearContextOnPlanAccept). Choosing it DENIES ExitPlanMode, clears the conversation,
+and re-submits the plan text alone into a fresh context. Nothing you know now survives
+that except this file, so end it with:
+
+${DEV_FLOW_FOOTER}
+
+The SessionStart hook injects the run's on-disk state into that fresh context; the
+footer is what makes the plan itself say the same thing when there is no session
+directory yet, or when the hook is disabled.
 </dev-plan-mode-protocol>`;
+
+/**
+ * `--resume` is a different invocation: the design is on disk or in the plan being
+ * handed over, so entering plan mode again would plan the same thing twice. The full
+ * procedure is <resume_protocol> in dev.md — it sits at the top of the command, before
+ * Step 0, so it is read while the expansion is fresh. This block only stops the
+ * plan-mode protocol from firing over it. The marker above is still written: a resumed
+ * run whose next phase is 3 enters plan mode and needs the ExitPlanMode hint.
+ */
+const isResume = /(^|\s)\/dev:dev\s+--resume(\s|$)/.test(prompt);
 
 process.stdout.write(
   JSON.stringify({
     hookSpecificOutput: {
       hookEventName: "UserPromptSubmit",
-      additionalContext: PROTOCOL,
+      additionalContext: isResume ? RESUME_INVOCATION : PROTOCOL,
     },
   }),
 );

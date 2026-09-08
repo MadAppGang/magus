@@ -4,6 +4,60 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [dev 7.2.0] - 2026-09-08
+
+### Added
+
+- `/dev:dev` survives a cleared or compacted context. Claude Code's plan-approval dialog
+  can offer **"Yes, clear context …"** (settings key `showClearContextOnPlanAccept`); it
+  denies the `ExitPlanMode` call, clears the conversation and re-submits the plan text
+  alone, so the `PostToolUse:ExitPlanMode` resume hint never fired and the fresh context
+  implemented the plan as an ordinary request — Phases 4 to 8 and their gates gone. Three
+  pieces close it: the plan-mode protocol ends the plan file with a `<dev-flow>` footer
+  naming the run, its session, depth and automation; a `SessionStart` hook on
+  `clear|compact` (`hooks/resume-after-clear.ts`) reads the run's state from disk, derives
+  the next phase from the artifacts on disk, and orders `Skill(dev:dev, --resume <id>)`;
+  and a `<resume_protocol>` in `dev.md`, before Step 0, restores depth and automation from
+  `session-meta.json`, materialises an approved plan that never reached disk (Step 3.9 done
+  late) and continues at the first phase whose artifacts are incomplete. The same path
+  brings a run back after `/compact` and after auto-compaction.
+- `/dev:dev --resume [session-id]` is a real invocation: the protocol hook answers it with a
+  resume block instead of the plan-mode protocol, and the command never re-plans an
+  approved design.
+- `benches/dev-resume-after-clear/` (DRC-1) measures the handoff: the exact
+  auto-continuation Claude Code submits after a clear, against a session directory seeded
+  the way the clear leaves it. Sonnet 5, two runs × `--repeat 2`: the pinned pre-fix tree
+  4/4 ad hoc, the new tree without the footer 4/4 ad hoc (the control), the new tree with
+  it resumes and writes `architecture.md` before touching `src/`. The dialog itself is
+  outside madbench's reach (a follow-up is sent only after a turn ends); it was verified by
+  hand in an interactive session across one clear and one compaction.
+
+### Changed
+
+- Phase 0 records `depth` and `automation` in `session-meta.json`, and every "Phase N —
+  complete" updates the checkpoint, so a resumed run restores its selections instead of
+  asking again and reports where it stopped.
+- The user guide (`userdocs/guides/dev-build.md`) documents the clean-context option and
+  how to turn it on; this repository's `.claude/settings.json` turns it on.
+
+### Why
+
+- The mechanism, verified against the 2.1.263 binary and a live transcript, is written up
+  in `ai-docs/claude-code-clear-context-plan-approval.md`: `SessionStart` with source
+  `clear` is the one event that runs inside the clear, before the plan arrives, and the
+  plan text is the only user-visible thing that crosses. Hence a hook for the state and a
+  footer for the plan — belt and braces, because plan mode adopted before Phase 0 has no
+  session directory for the hook to read.
+- Re-invoking the command through the Skill tool, rather than "continuing" in place, is
+  deliberate: it re-expands the 46 KB of orchestrator rules that a clear or a compaction
+  destroys. The hook carries state, never rules.
+- The `compact|resume` hook that `/dev:status` added in 7.1.0 and this `clear|compact`
+  hook both fire on a compaction and do not overlap: one carries what the session decided
+  and verified, the other which `/dev:dev` phase to continue at, and each is silent when it
+  has nothing to say.
+
+---
+
 ## [setup 1.2.1] - 2026-09-08
 
 ### Fixed

@@ -122,9 +122,40 @@ Prompt: "SESSION_PATH: ${SESSION_PATH}
 
 Write the returned document into the plan file, under a `## Architecture` heading.
 
+### Step 3.7b: End the plan file with the `<dev-flow>` footer
+
+The approval dialog can offer **"Yes, clear context …"** (settings key
+`showClearContextOnPlanAccept`). Choosing it denies `ExitPlanMode`, clears the
+conversation, and re-submits the plan text alone into a fresh context. That context has
+never heard of this run; the footer is how the plan itself tells it. Append, filled in:
+
+```
+<dev-flow>
+This plan is Phase 3 of a /dev:dev run. Do not implement it directly — resume the
+pipeline first: Skill(skill: "dev:dev", args: "--resume {SESSION_ID}")
+session:      {SESSION_ID}
+session_path: {SESSION_PATH}
+feature:      {feature name}
+depth:        {quick|standard|full}
+automation:   {interactive|guided|autonomous}
+plan_file:    {this file's path}
+next:         Phase 3 Step 3.9 — write this plan to architecture.md, then continue
+</dev-flow>
+```
+
+The plan-mode protocol hook carries the same template, so it is present even when this
+file was never read. Write it once, after the `## Architecture` section, before every
+`ExitPlanMode` call — a revised plan keeps it at the end.
+
 ### Step 3.8: GATE 1 — ExitPlanMode
 
 Call **ExitPlanMode**. The user approves or rejects the staged design.
+
+If the user approves with **"Yes, clear context …"**, this conversation ends here and
+nothing below runs in it. The `SessionStart` hook (`hooks/resume-after-clear.ts`)
+injects the run's on-disk state into the fresh context, the plan arrives with its
+`<dev-flow>` footer, and `/dev:dev --resume` picks up at Step 3.9 — which is why 3.9
+must be able to run from the plan text alone.
 
 If rejected with feedback, stay in plan mode, re-run Step 3.7 with the feedback, and
 call ExitPlanMode again. Count these against `plan_revision_limit`.

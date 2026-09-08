@@ -55,6 +55,37 @@ Quick goes straight from stack detection to implementation. It skips the plannin
 entirely and builds from the plan already in your context, instead of planning the same
 thing twice.
 
+## Option: start implementation with a clean context
+
+Planning is the talkative part of a run. By the time the design is approved, the
+conversation is carrying every question, every draft and every subagent report from
+Phases 0 to 3, and none of it is needed to build. Claude Code can throw all of that away
+at the moment of approval and start implementation from the plan alone.
+
+Turn it on once, in `.claude/settings.json`:
+
+```json
+{
+  "showClearContextOnPlanAccept": true
+}
+```
+
+The approval dialog then gains a first option, **"Yes, clear context (N% used) and
+auto-accept edits"** (the exact wording follows your permission mode). Pick it and Claude
+Code clears the conversation, re-submits the approved plan, and `/dev:dev` carries on
+from where it stopped: it restores the depth and automation you chose, saves the plan as
+the architecture, and runs Phase 4 onward with the same gates as before. You see one line,
+"Resuming /dev:dev session … at …", and then the implementation phase starts.
+
+The same recovery runs after `/compact`, and after an automatic compaction on a long
+run. In every case the state is read back from the session directory under
+`ai-docs/sessions/`, not from memory. If you cleared by hand and change your mind, run
+`/dev:dev --resume` and it picks up the open session.
+
+**Percentage in the label.** It is how much of the context window the conversation is
+using. Clearing at 20% saves little; at 60% and above it is worth it, because everything
+that follows the plan gets that room back.
+
 ## Choosing the review models
 
 At standard and full depth, the plan and the finished code are reviewed by **other models**,

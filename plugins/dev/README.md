@@ -99,6 +99,9 @@ top level. `knowledge/` mirrors the same categories.
 | `SessionStart` | Surfaces workflow coaching from previous sessions |
 | `Stop` | Analyses the session and queues learnings |
 | `Stop` | Blocks the turn when a `/dev:dev` phase was started and left without its artifacts |
+| `UserPromptSubmit` | Injects the plan-mode protocol when `/dev:dev` is invoked; on `--resume`, the resume block instead |
+| `PostToolUse:ExitPlanMode` | Tells a `/dev:dev` run to continue at Phase 4 once the plan is approved |
+| `SessionStart` (`clear|compact`) | After a cleared or compacted context, reads the run state from disk and orders `/dev:dev --resume` — this is what makes the approval dialog's "Yes, clear context" option safe mid-run |
 
 The phase gate exits **2** to block, with the reason on stdout. It allows
 whenever it is unsure — no session directory, several open at once, unparseable

@@ -1,5 +1,5 @@
 {
-  "description": "Workflow coaching: analyze session transcript on Stop, inject suggestions on SessionStart. Plan mode is carried by two hooks, because it has two moments that matter: UserPromptSubmit tells /dev:dev to ENTER plan mode at the architecture phase, and PostToolUse:ExitPlanMode tells it to RESUME at Phase 4 once the user approves. Both are hooks rather than text in dev.md because DPM-1 measured the in-command version reaching the model zero times in five sessions. The phase-artifact gate runs on Stop (--stop); its old PreToolUse:TaskUpdate trigger was DELETED, not kept as a fallback, because the task-list tools no longer exist on Opus 4.8 / Sonnet 5 and newer and a registration that cannot fire only advertises enforcement that is not happening. SessionStart with matcher compact|resume re-injects session facts (decisions, verification, blockers, git and PR state) collected by scripts/status/, because the compaction summary has no slot for them; it is not a PreCompact hook because the transcript on disk keeps every pre-compaction line, so the facts are readable after the fact.",
+  "description": "Workflow coaching: analyze session transcript on Stop, inject suggestions on SessionStart. Plan mode is carried by two hooks, because it has two moments that matter: UserPromptSubmit tells /dev:dev to ENTER plan mode at the architecture phase, and PostToolUse:ExitPlanMode tells it to RESUME at Phase 4 once the user approves. Both are hooks rather than text in dev.md because DPM-1 measured the in-command version reaching the model zero times in five sessions. A third, SessionStart matched on clear|compact, catches the two ways that context can vanish mid-run: the plan-approval dialog's 'Yes, clear context' option (settings key showClearContextOnPlanAccept — it DENIES ExitPlanMode, so PostToolUse never fires, then clears and re-submits the plan text alone) and /compact or auto-compaction. It reads the run's state from disk and orders a re-invocation of /dev:dev --resume, whose <resume_protocol> re-expands the command and continues at the first phase whose artifacts are incomplete. The phase-artifact gate runs on Stop (--stop); its old PreToolUse:TaskUpdate trigger was DELETED, not kept as a fallback, because the task-list tools no longer exist on Opus 4.8 / Sonnet 5 and newer and a registration that cannot fire only advertises enforcement that is not happening. SessionStart with matcher compact|resume re-injects session facts (decisions, verification, blockers, git and PR state) collected by scripts/status/, because the compaction summary has no slot for them; it is not a PreCompact hook because the transcript on disk keeps every pre-compaction line, so the facts are readable after the fact. On a compaction both SessionStart hooks fire and do not overlap: status-reinject carries what the session decided and verified, resume-after-clear carries which /dev:dev phase to continue at, and each is silent when it has nothing to say.",
   "hooks": {
     "Stop": [
       {
@@ -37,6 +37,16 @@
           {
             "type": "command",
             "command": "bun --env-file=/dev/null ${CLAUDE_PLUGIN_ROOT}/hooks/status-reinject.ts",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun --env-file=/dev/null ${CLAUDE_PLUGIN_ROOT}/hooks/resume-after-clear.ts",
             "timeout": 5
           }
         ]

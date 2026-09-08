@@ -37,6 +37,8 @@ BASELINE_COMMIT=$(git rev-parse HEAD)
   "sessionId": "{SESSION_ID}",
   "createdAt": "{timestamp}",
   "feature": "{feature_name}",
+  "depth": "{quick|standard|full}",
+  "automation": "{interactive|guided|autonomous}",
   "repoPath": "{REPO_PATH}",
   "baselineCommit": "{BASELINE_COMMIT}",
   "status": "in_progress",
@@ -47,6 +49,10 @@ BASELINE_COMMIT=$(git rev-parse HEAD)
   }
 }
 ```
+
+`depth` and `automation` are the Step 0 selections. A run resumed after a cleared or
+compacted context (`<resume_protocol>` in dev.md) restores them from here instead of
+asking again.
 
 If the tree is already dirty at this point, say so in one line. The baseline cannot
 tell pre-session changes from session changes, so Phase 5 will review both.

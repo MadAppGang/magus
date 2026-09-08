@@ -65,6 +65,66 @@ skills: dev:context-detection, dev:universal-patterns, dev:worktree-lifecycle, m
   active, SAY SO before Step 0 and adopt it as Phase 3. Never run silently.
 </plan_mode_protocol>
 
+<resume_protocol>
+  **Resume runs BEFORE Step 0.** Any one of these triggers it:
+
+  1. `$ARGUMENTS` leads with `--resume`, optionally followed by a session id. The flag
+     elsewhere in a request ("add a --resume flag to the uploader") is a feature, not a
+     resume.
+  2. A `<dev-resume-after-clear>` block is in this conversation. The SessionStart hook
+     (hooks/resume-after-clear.ts) wrote it because the context was cleared or compacted
+     while a run was in progress.
+  3. The user's message is "Implement the following plan:" and the plan ends with a
+     `<dev-flow>` footer. That is the plan-approval dialog's "clear context" option
+     handing an approved Phase 3 design into a fresh context.
+
+  Say in one line: "Resuming /dev:dev session {id} at {phase}." Then:
+
+  a. **Locate the session.** In priority order: the id in `$ARGUMENTS`; the `session:`
+     line of the `<dev-flow>` footer; the session named by `<dev-resume-after-clear>`;
+     otherwise the single directory under `ai-docs/sessions/dev-feature-*` whose
+     session-meta.json says `status: in_progress`. Several candidates → AskUserQuestion,
+     never guess. If the footer says `session: not-created`, run Phase 0 now with the
+     footer's feature, depth and automation (plan mode is over, so writes are permitted),
+     then continue at step c.
+  b. **Restore the selections from disk, never by asking again.** `depth`, `automation`
+     and `feature` from session-meta.json; iteration limits and selected models from
+     iteration-config.json when it exists. A session-meta.json without depth or
+     automation predates this protocol: take them from the footer, and only if there is
+     no footer either, ask once.
+  c. **Materialise an approved plan that never reached disk — first, and with no tool
+     but Write.** If a plan with a `<dev-flow>` footer is in context and
+     `${SESSION_PATH}/architecture.md` is missing, write the plan's `## Architecture`
+     section (the whole plan when it has no such heading, footer excluded) to
+     `${SESSION_PATH}/architecture.md` before any other action. Then context.json: re-run
+     Phase 3 Step 3.5 (the stack-detector) when the Agent tool is available; when it is
+     not, write context.json yourself from the package manifests and the plan. A missing
+     delegation tool is not a blocker for this step and must never stop the resume —
+     measured: a run that paused here to "flag a blocker" left the approved plan on no
+     disk at all. That is Step 3.9 done late. Do not re-enter plan mode: the design was
+     approved, and ExitPlanMode was denied only so the clear could happen.
+  d. **Derive the next phase from artifacts, not from the checkpoint.** Walk the depth's
+     phase list (<scope_selection> → Depth → Phase mapping). The next phase is the first
+     whose required artifacts (the sets in hooks/phase-completion-validator.ts) are
+     missing or incomplete. A phase with some artifacts was interrupted: read what it
+     wrote (implementation-log.md, reviews/…) and finish it rather than redoing it. After
+     step c at Full depth the next work is Phase 3 Steps 3.10-3.13 (plan review and
+     consensus); at Standard it is Phase 4.
+  e. **Continue the normal pipeline from there.** Load the phase's instruction file
+     (<phase_loading_protocol>) and run to completion. Every rule in this command applies
+     unchanged: agent routing, file-based communication, evidence-based completion.
+
+  **Keep the checkpoint current from now on.** After every "**Phase N — complete.**" line:
+  ```bash
+  jq --arg done "phaseN" --arg next "phaseM" \
+     '.checkpoint.lastCompletedPhase = $done | .checkpoint.nextPhase = $next' \
+     "${SESSION_PATH}/session-meta.json" > "${SESSION_PATH}/session-meta.tmp" \
+    && mv "${SESSION_PATH}/session-meta.tmp" "${SESSION_PATH}/session-meta.json"
+  ```
+  The hook reports the checkpoint beside the artifacts; when they disagree, the
+  artifacts win.
+</resume_protocol>
+
 <critical_override>
   THIS COMMAND OVERRIDES THE CLAUDE.md TASK ROUTING TABLE FOR AGENT SELECTION.
 
@@ -217,6 +277,9 @@ skills: dev:context-detection, dev:universal-patterns, dev:worktree-lifecycle, m
     Quick depth:
     - Phase 0 (init) → Phase 4 (implementation, inline planning) → Done
     - No session directory needed. No agents except dev:developer.
+    - Quick never enters plan mode, so nothing consumes the run marker the protocol hook
+      wrote. Delete `.claude/.coaching/dev-run.json` when the run completes, or the next
+      `/clear` within six hours reads it as a run in progress.
     - Fastest path. Trust the developer agent.
 
     Standard depth:
@@ -443,6 +506,9 @@ skills: dev:context-detection, dev:universal-patterns, dev:worktree-lifecycle, m
          ```
          There is no task tool to call. The Stop hook re-checks the artifacts when the
          turn ends and blocks it if a phase was started and left half done.
+         Then update the checkpoint in session-meta.json (the jq line in
+         <resume_protocol>), so a run resumed after a cleared context reports where
+         it stopped.
 
       **If artifacts cannot be produced:**
       - Failure report auto-generated at: ${SESSION_PATH}/failures/phase{N}-failure-report.md

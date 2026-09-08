@@ -46,11 +46,25 @@ export function writeDevRunMarker(cwd: string, at: number): void {
  * and injecting "resume at Phase 4" there would be noise at best.
  */
 export function consumeDevRunMarker(cwd: string, now: number): boolean {
+  return readMarker(cwd, now, true);
+}
+
+/**
+ * Read the marker WITHOUT consuming it. The SessionStart hook on `compact` needs to know
+ * a run is in flight while leaving the marker for the ExitPlanMode hook, because a
+ * compaction during planning does not end plan mode.
+ */
+export function peekDevRunMarker(cwd: string, now: number): boolean {
+  return readMarker(cwd, now, false);
+}
+
+/** One reader for both: recent means younger than MAX_AGE_MS; malformed means false. */
+function readMarker(cwd: string, now: number, consume: boolean): boolean {
   try {
     const p = markerPath(cwd);
     if (!existsSync(p)) return false;
     const { startedAt } = JSON.parse(readFileSync(p, "utf8")) as { startedAt?: number };
-    rmSync(p, { force: true });
+    if (consume) rmSync(p, { force: true });
     if (typeof startedAt !== "number") return false;
     return now - startedAt < MAX_AGE_MS;
   } catch {

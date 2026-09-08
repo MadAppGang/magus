@@ -291,7 +291,8 @@ function attemptedGroups(
   return attempted;
 }
 
-function checkArtifacts(
+/** Exported for lib/dev-session-state.ts, which derives the resume point from the same evidence. */
+export function checkArtifacts(
   spec: PhaseSpec,
   sessionPath: string,
   deps: Deps,
