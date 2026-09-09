@@ -4,6 +4,96 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [dev 7.3.0] - 2026-09-09
+
+### Added
+
+- **`/dev:release` records how this project releases, in a committed `ai-docs/release.md`.**
+  Detection was thrown away at the end of every run: the next release re-derived the same
+  authority ladder, and anything a repo cannot state about itself — who authorises, which
+  stages a release passes through, what counts as healthy afterwards — was re-asked or
+  guessed each time. Phase 0 is now `<phase_0_playbook>` with four steps: ANALYSE (the
+  existing 4-rung ladder, unchanged and read-only) → RESOLVE → AUTHOR → REPORT. A playbook,
+  when present, is authority RUNG 0, above the documented-process rung, and every subsequent
+  release follows it.
+- Authoring is analyse → propose → decide → record, never a blank interview. Each proposal
+  shows the repo evidence it came from, so the user confirms a reading of their own
+  repository instead of answering a survey. Questions are batched into at most 2 rounds with
+  detected defaults pre-filled, the first round folded into the up-front question
+  `<authorization>` already asks, so the run stops at most once. Every proposal set ends with
+  a free-text "something else — describe it" option, because a closed menu is how a command
+  starts inventing infrastructure a project does not have. Autonomous mode holds no interview
+  at all: it writes what detection supports, marks the rest `unknown` with a TODO naming what
+  would settle it, and proceeds — an unwritten section costs the next run one question, a
+  blocked release costs the user the release.
+- `<phase_5b_monitor>`, between verify and report, executes exactly what the playbook's
+  `Deploy monitoring` section recorded and reports each result against the bound that section
+  set. It does not exist for a project whose section says `none`. The command carries **no
+  built-in platform model**: it knows no platform's log format, no provider's health-check
+  semantics, no vendor's "deploy succeeded" string, and never guesses at one. That guessing
+  is the trap this work had been parked over — `plugins/terminal/skills/workspace-setup/SKILL.md`
+  deferred CI and deploy monitoring "pending live verification of platform output strings". A
+  recorded instruction that cannot be executed as written is drift, not an invitation to
+  improvise. Monitoring observes and never rolls back; a failure makes the run PARTIAL and is
+  handed to `<recovery_policy>`.
+- `plugins/dev/knowledge/release-playbook.md` carries the playbook template, the
+  section-by-section authoring guidance, and five evidence→proposal tables (Stages, CI/CD,
+  Verification, Rollback, Deploy monitoring). It sits in knowledge rather than inline because
+  the command file is loaded whole on every invocation and would otherwise double in size;
+  knowledge is reached by path, registers nothing, and costs zero listing budget.
+- This repository's own `ai-docs/release.md`, written complete, with a row in
+  `ai-docs/README.md` so future agents read it as maintained rather than historical. Three of
+  its findings were checked live rather than recalled, and each records how: branch
+  protection cannot be enabled here at all (the API answers 403 on a private repository on
+  the free plan), so `release-gates` is advisory and the human merge is the only real gate on
+  the first hop; no monitoring SDK appears in any manifest, which is what makes
+  `Deploy monitoring: none` a finding instead of an assumption; and
+  `.github/workflows/tmux-mcp-bump.yml` is a second, human-free release path that would
+  otherwise make a release appearing without a PR unexplainable.
+
+### Changed
+
+- Stages thread through the pipeline. `<phase_4_publish>` publishes to the stage this run is
+  releasing to and no further, `<phase_5_verify>` verifies that stage on the surfaces the
+  playbook's `Verification` section names for it, and `<phase_6_report_or_resume>` states
+  which stage the release reached and what promotes it to the next. Where `Stages` is `none`
+  or absent, all three behave exactly as before.
+- Six never-rules in `<safety>`: never invent a release model the repo shows no evidence
+  for; never silently follow a playbook that contradicts detection; never block a release on
+  the playbook interview; never copy a version, a script name, or a gate list into the
+  playbook; never open a blank interview; never guess at a platform's log format, health
+  semantics or success strings. The last two are also stated where they apply — in step 0.3
+  and in `<phase_5b_monitor>` — but they are cross-cutting, and `<safety>` is the one place
+  a reader scans for constraints.
+
+### Why
+
+- Drift is two-tier on purpose. Where the playbook and detection differ only in detail,
+  detection wins for the run and step 0.4 names the difference; where they name different
+  publishers, authorities or stage paths, acting would mean acting on a model of the project
+  already known to be wrong — a consistency incident under golden rule 4, which stops the
+  run. A blanket hard stop would let one stale optional section block a release, which is the
+  thing the interview rule already refuses to do. The boundary carries an object test, because
+  a renamed file lands exactly on it: a pointer that no longer resolves is a detail when
+  detection finds the same artefact under a different name and the model is otherwise
+  unchanged, and an incident only when the model itself differs. Stopping a release over a
+  rename is the over-firing that makes a drift check worthless.
+- The `verified: YYYY-MM-DD @ <sha>` footer refreshes only on a drift-free run. It is the one
+  edit the command makes to the playbook unattended and it means exactly one thing: a release
+  ran against this file and it held. Stamping it over unresolved drift would destroy the
+  baseline the next drift check compares against. Content edits are proposed with their
+  evidence and never applied — the playbook holds the user's judgement about their own
+  project, and a command that rewrites it unattended becomes the drift it exists to catch.
+- The playbook points, it never copies. Versions, script names and gate lists live in
+  manifests and CI config, which are authority; the playbook records only what no file in the
+  repo states. This is the same rule as the plugin tables in `CLAUDE.md` deliberately carrying
+  no version numbers. The honest cost, stated in the file itself: for this repository it is a
+  fourth release surface beside the release skill, `RELEASE_PROCESS.md` and `CLAUDE.md`, and
+  it can rot. The pointer-not-copy rule, the footer and the drift check on every release are
+  the mitigations, not a proof that it cannot happen.
+
+---
+
 ## [dev 7.2.0] - 2026-09-08
 
 ### Added

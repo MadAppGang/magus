@@ -257,7 +257,7 @@
       "name": "dev",
       "source": "./plugins/dev",
       "description": "Universal development assistant. Detects the project stack and routes work to specialist agents for architecture, implementation, debugging, review and research, enforcing design-system guardrails on every UI change.",
-      "version": "7.2.0",
+      "version": "7.3.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -297,6 +297,15 @@
       "strict": true,
       "releases": [
         {
+          "version": "7.3.0",
+          "date": "2026-09-09",
+          "kinds": [
+            "Added",
+            "Changed"
+          ],
+          "summary": "/dev:release records how this project releases, in a committed ai-docs/release.md"
+        },
+        {
           "version": "7.2.0",
           "date": "2026-09-08",
           "kinds": [
@@ -331,14 +340,6 @@
             "Fixed"
           ],
           "summary": "BREAKING \u2014 context.json no longer carries bundled_skill_paths"
-        },
-        {
-          "version": "6.1.1",
-          "date": "2026-09-07",
-          "kinds": [
-            "Changed"
-          ],
-          "summary": "The claudish coaching rule and /dev:setup's routing table drop --probe from the permitted\u2026"
         }
       ]
     },

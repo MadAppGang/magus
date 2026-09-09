@@ -89,6 +89,7 @@ skill that once carried it was deleted in dev 6.1.0.
 | `enforcement.md` | How `/dev:dev` proves a phase is done — the artifact gate and the outer loop |
 | `mcp-standards.md` | MCP server patterns — tool interfaces, transports, tool naming |
 | `optimize.md` | Finding bottlenecks, build times, bundle size |
+| `release-playbook.md` | The per-project release playbook at `ai-docs/release.md` — its section schema, what belongs in each section, and the evidence-to-proposal tables that author one |
 | `security-audit.md` | The procedures `dev:reviewer` runs under `FOCUS: security` — dependency-CVE commands per package manager, committed-secret grep patterns, the GDPR/HIPAA/SOC 2 checklist. No taxonomy or severity scale: the reviewer owns those |
 
 ## Frontmatter here is `description` only

@@ -79,10 +79,15 @@ skills: dev:context-detection
   so — before the run, as part of the one question above.
 </authorization>
 
-<phase_0_detect>
-  Identify the stack (use dev:context-detection) and the project's release machinery,
-  in this order of authority:
+<phase_0_playbook>
+  0.1 ANALYSE — read-only. Identify the stack (use dev:context-detection) and the
+  project's release machinery, in this order of authority:
 
+  0. THIS PROJECT'S PLAYBOOK: `ai-docs/release.md`. It outranks everything below it,
+     because it records the judgement none of those files state — who authorises, what
+     order things happen in, what counts as done — and points at them for everything they
+     do state. Step 0.2 resolves it: present, it is authority rung 0; absent, 0.3 authors
+     it out of what rungs 1-4 turn up.
   1. A documented process: RELEASE.md, RELEASE_PROCESS.md, CONTRIBUTING.md release section,
      a release section in CLAUDE.md, a project release skill or slash command.
   2. Installed release tooling: release-please config, .changeset/, semantic-release config,
@@ -91,13 +96,78 @@ skills: dev:context-detection
   3. CI that releases: workflows triggered by tags, by version changes, or by release PRs.
   4. Bare ecosystem: package.json / Cargo.toml / pyproject.toml / go.mod + git tags.
 
-  RULE: the FIRST thing found is the authority. This command then becomes the checklist
+  RULE: the FIRST thing found is the authority. Rung 0 is resolved rather than detected —
+  0.2 does that — so rungs 1-4 are the detection ladder proper, and the first of THEM
+  found is both the detected authority and the thing the playbook is checked against.
+  This command then becomes the checklist
   wrapper around it — it fills the gaps (preflight, verification, resume) but never
   duplicates a step the project's own tooling owns. If the project documents its own
   process, follow that document and use the phases below only for what it does not cover.
 
-  Report what was detected and which mode applies before doing anything else.
-</phase_0_detect>
+  0.2 RESOLVE — `ai-docs/release.md` is this project's release playbook: it records what
+  no file in the repo states about itself — who authorises, which stages a release passes
+  through, what counts as healthy afterwards. When present it is authority RUNG 0, above
+  rung 1. It is a side effect like any other, so golden rule 4's shape decides:
+
+  | Playbook | Action |
+  |---|---|
+  | absent | author it — go to 0.3 |
+  | present, consistent with what 0.1 detected | rung 0 authority; follow it |
+  | present, CONTRADICTED by what 0.1 detected | REPORT THE DRIFT; never silently follow |
+
+  The drift check compares each playbook claim against 0.1's findings, taking the
+  `verified: YYYY-MM-DD @ <sha>` footer as the baseline — it dates the last run that
+  confirmed the file, so anything the repo changed since is what to look at first. A
+  claim naming a workflow, script, gate or registry that detection cannot find is drift.
+  Where the two differ only in detail, DETECTION WINS for this run and 0.4 names the
+  difference. Where they name DIFFERENT publishers, authorities or stage paths, acting
+  would mean acting on a model of the project already known to be wrong — that is a
+  consistency incident under golden rule 4, and it stops the run.
+
+  THE BOUNDARY BETWEEN THOSE TWO HAS AN OBJECT TEST, because a renamed file lands exactly
+  on it. A claim whose pointer no longer resolves is a DETAIL when detection finds the
+  SAME artefact under a different name and the release model is otherwise unchanged — same
+  publisher, same registry, same hops in the same order. Detection wins, 0.4 names it, and
+  the correction is proposed at report time, never applied mid-run. It is a consistency
+  incident only when the MODEL itself differs: a different publisher, a different registry,
+  or a stage path that no longer exists at all. Stopping a release because a file was
+  renamed, when the thing behind the name is demonstrably the same thing, is the
+  over-firing that makes a drift check worthless.
+
+  0.3 AUTHOR — write the playbook. Read
+  `${CLAUDE_PLUGIN_ROOT}/knowledge/release-playbook.md` for the template, the
+  section-by-section guidance, and the evidence→proposal tables; do not reconstruct any
+  of that from here. The rules that hold whatever it proposes:
+
+  - NEVER a blank interview. Propose only what 0.1 found evidence for, and show the
+    evidence beside each proposal so the user is confirming a reading of their repo,
+    not answering a survey.
+  - Batch the questions: at most 2 rounds, detected defaults pre-filled, so the user
+    mostly confirms. Fold the first round into the single up-front question
+    <authorization> already asks, so the run stops at most once.
+  - Every proposal set ends with a free-text "something else — describe it" option. A
+    closed menu is how a command starts inventing infrastructure a project does not have.
+  - AUTONOMOUS MODE: no interview at all. Write what detection supports, mark every
+    undetectable field `unknown` with a TODO naming what would settle it, and proceed.
+    The release NEVER blocks on this. An unwritten section costs the next run one
+    question; a blocked release costs the user the release.
+  - The playbook records JUDGEMENT. Point at the manifest, the workflow, the release
+    skill — never copy their contents in.
+
+  0.4 REPORT — before any other phase runs: what 0.1 detected and which authority rung
+  won; whether the playbook was found, authored, or written with `unknown` fields; what
+  it says about stages, dependencies, CI/CD, monitoring and verification; and every
+  drift, named individually. Then start Phase 1.
+
+  BOTH DRIFT TIERS REPORT, and they report the same three things per drift: the claim,
+  quoted closely enough to find the line in the file; what detection found instead; and
+  which side wins. They differ only in what follows. A DETAIL adds that detection wins for
+  this run, and carries the proposed correction to Phase 6. A CONSISTENCY INCIDENT adds
+  that the run STOPS here, names the claim that stopped it, and says why — proceeding
+  would mean releasing on a model of the project already known to be wrong. Never stop
+  without naming the claim: a halt the user cannot trace back to one line of the playbook
+  is indistinguishable from a crash, and it teaches them to disable the check.
+</phase_0_playbook>
 
 <phase_1_preflight>
   Read-only. Nothing is written in this phase.
@@ -220,6 +290,10 @@ skills: dev:context-detection
   Irreversible. Report each step as it executes. Do not ask — authorization was settled
   before the run started; the only stops here are consistency incidents.
 
+  - STAGE — where the playbook's `Stages` section names a promotion path, publish to the
+    stage this run is releasing to and NO further; the next hop is a separate act, gated
+    by whatever that section records for it. Where `Stages` is `none` or absent, there is
+    one stage and everything below is the whole of it.
   - If CI owns publishing (tag-triggered or merge-triggered workflow): do NOT publish
     locally in parallel — two publishers race. Watch the run to completion
     (gh run watch / gh run list --workflow <name>). A skipped or soft-failed publish job
@@ -238,6 +312,11 @@ skills: dev:context-detection
 <phase_5_verify>
   Verify against PUBLIC surfaces — origin, the registry, a clean client. Local state
   proves nothing after publish.
+
+  Verify the stage Phase 4 published to, on the surfaces the playbook's `Verification`
+  section names for it — a release that reached stage 1 of 3 is verified when stage 1
+  serves it, and claiming more is false. Where `Stages` is `none` or absent, that stage
+  is the release itself and everything below applies unchanged.
 
   Always:
   - git ls-remote --tags origin refs/tags/vX.Y.Z → exactly one ref, at the merge SHA.
@@ -260,9 +339,48 @@ skills: dev:context-detection
   X.Y.Z", not "all users can install it this second".
 </phase_5_verify>
 
+<phase_5b_monitor>
+  Runs ONLY when the playbook has a `Deploy monitoring` section whose value is not
+  `none`. No playbook, no section, or an explicit `none` → this phase does not exist for
+  this project. Say so in one line and go to REPORT.
+
+  Execute exactly what the playbook recorded — the run to watch, the endpoint to poll and
+  for how long, the query to check — and report each result against the bound it set.
+
+  THIS COMMAND CARRIES NO BUILT-IN PLATFORM MODEL. It knows no platform's log format, no
+  provider's health-check semantics, no vendor's "deploy succeeded" string, and it never
+  guesses at one. It monitors what the playbook wrote down and nothing else; a monitoring
+  step that is not recorded is a step that does not run. If a recorded instruction cannot
+  be executed as written — the workflow is gone, the endpoint is unreachable, the query
+  is not runnable here — that is drift (0.2's third case): report it and stop monitoring,
+  never improvise a substitute.
+
+  Monitoring observes; it does not roll back. A failure here makes the run PARTIAL and is
+  handed to <recovery_policy>, never acted on silently.
+</phase_5b_monitor>
+
 <phase_6_report_or_resume>
   Report: version, tag URL, release URL, registry URL, CI run URL, verification results.
   A partial failure is reported as PARTIAL — never as success with a footnote.
+
+  STAGE STATEMENT — where the playbook names stages: which stage this release reached,
+  and what promotes it to the next (the gate that section records for the hop, and who
+  runs it). A release that stopped at stage 1 of 3 is COMPLETE for this run and NOT live
+  everywhere; state both, in that order, so neither reads as the whole answer.
+
+  PLAYBOOK MAINTENANCE — the last thing the run does:
+  * refresh the `verified: YYYY-MM-DD @ <sha>` footer to today's date and the merge SHA,
+    but ONLY when the run found no drift. That footer is the one edit this command makes
+    to the playbook unattended, and it means exactly one thing: a release ran against
+    this file and it held. Stamping it over unresolved drift destroys the baseline the
+    next drift check needs.
+  * where the run learned something the playbook did not know — a stage that turned out
+    to carry a gate, a dependency check this project actually needs, a drift that
+    detection settled — PROPOSE the edit with the evidence that produced it. Never apply
+    it. The playbook holds the user's judgement about their own project; a command that
+    rewrites it unattended becomes the drift it exists to catch.
+  * a playbook authored in 0.3 with `unknown` fields lists them here, so the next run
+    already knows what its one question is.
 
   WORKTREE RESIDUE STATEMENT — the report's last section, mandatory when running from a
   worktree: list what remains in the worktree that the merge did NOT carry (uncommitted
@@ -305,4 +423,20 @@ skills: dev:context-detection
   - Never ask for approval mid-run. Authorization is settled once, before the pipeline
     starts (<authorization>). Mid-run stops are for failed gates and consistency
     incidents only — never for permission.
+  - Never invent a release model the repo shows no evidence for. Stages, environments,
+    promotion gates and monitoring are proposed only from something found in 0.1;
+    "something else — describe it" is where everything else comes from.
+  - Never open a blank interview. Every question in 0.3 carries the evidence from 0.1 that
+    produced it, so the user is confirming a reading of their own repo instead of
+    answering a survey about infrastructure they may not have.
+  - Never guess at a platform's log format, health semantics or success strings. Phase 5b
+    executes what the playbook recorded and nothing else; a recorded step that cannot be
+    executed as written is drift to report, never a prompt to improvise a substitute.
+  - Never silently follow a playbook that contradicts detection. Report the drift, name
+    which side won, and leave the file for the user to settle.
+  - Never block a release on the playbook interview. Unanswered is `unknown` plus a TODO,
+    and the pipeline continues.
+  - Never copy a version, a script name, or a gate list INTO the playbook. Manifests and
+    CI config are authority; the playbook points at them. A copied fact goes stale in
+    silence and turns the playbook into one more surface to maintain.
 </safety>
