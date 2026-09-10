@@ -1,6 +1,6 @@
 {
   "name": "code-analysis",
-  "version": "7.2.0",
+  "version": "7.2.1",
   "description": "Read-only codebase investigation and code search behind one stable tool surface. Finds code by meaning or structure, traces callers, callees and blast radius, and dispatches a detective agent for deep dives. The search engine is named in project settings and is swappable.",
   "author": {
     "name": "Jack Rudenko",

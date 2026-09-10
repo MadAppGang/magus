@@ -4,6 +4,55 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [code-analysis 7.2.1] - 2026-09-10
+
+### Fixed
+
+- **An unrecognised value-taking flag made the intercept hook deny a legitimate command and
+  tell the agent to search for the flag's value.** 7.2.0 fixed this for a list of flags
+  written from memory, which left the same defect live for every flag not on that list.
+  Measured against the shipped 7.2.0: `rg --engine auto handleRequest` suggested searching
+  for `auto`, `rg --sort path handleRequest` for `path`, `rg --colors never ...` for
+  `never`, `rg --pre filter ...` for `filter`, and `grep --devices skip ...` for `skip`.
+  Each of those denials also spends the session's entire `interceptBudget`, so the redirect
+  the lever exists for never fires afterwards.
+
+  The fix is structural, not a longer list: **when more than one candidate token survives,
+  the hook no longer guesses — it allows.** An unknown value-taking flag leaves two
+  candidates and falls out to ALLOW, the direction every other guard in the function already
+  takes. The flag list still exists and grew, but it is now an optimisation rather than the
+  thing correctness depends on. A missed redirect is strictly cheaper than a wrong one.
+
+- **`| head -n 20` defeated the trailing-pipe allowance.** The strip accepted `-n20` and
+  `-20` but not a separated count, which is the form agents actually write, so the `|`
+  survived and an ordinary "where is this symbol" search was allowed through as if it were a
+  transforming pipeline.
+
+### Changed
+
+- **Every test for this hook is now written by a model that cannot see its source.** The
+  suites were regenerated from a behaviour specification by an external model with no
+  filesystem access, and the previous hand-written ones were deleted.
+
+### Why
+
+- **A test written by the implementer restates the implementation.** 7.2.0's flag list and
+  7.2.0's tests were written by the same author in the same sitting, so the tests exercised
+  exactly the flags that had been remembered and could not discover the ones that had not.
+  They passed completely while five flags produced a wrong pattern in the shipped build.
+  Both defects above were found within minutes of handing the specification to a model that
+  had never seen the code.
+- Coverage went up, not down: 384 tests before, 389 after, with the hand-written suites
+  removed.
+
+### Migration notes
+
+- None. The hook is still off by default (`adoption.interceptBash`), so this changes nothing
+  for anyone who has not opted in. For those who have, it removes false denials; it adds
+  none.
+
+---
+
 ## [code-analysis 7.2.0] - 2026-09-10
 
 ### Added

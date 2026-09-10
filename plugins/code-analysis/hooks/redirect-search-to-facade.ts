@@ -114,6 +114,30 @@ const VALUE_TAKING_FLAGS = new Set([
   "--exclude-dir",
   "--name",
   "--path",
+  // Found by a blind test suite, not by this author. Each of these was producing a denial
+  // whose suggested query was the flag's value.
+  "--encoding",
+  "--engine",
+  "--sort",
+  "--sortr",
+  "--colors",
+  "--color",
+  "--pre",
+  "--devices",
+  "--directories",
+  "--binary-files",
+  "--label",
+  "-D",
+  "-M",
+  "--max-columns",
+  "--max-filesize",
+  "--iname",
+  "--regex",
+  "--maxdepth",
+  "--mindepth",
+  "--newermt",
+  "--user",
+  "--group",
 ]);
 
 /**
@@ -316,7 +340,11 @@ export function discoveryTarget(command: string, opts: DiscoveryOptions = {}): s
   // further commands, where a denial strands the rest.
   const stripped = command
     .replace(/\s*2>\s*(?:\/dev\/null|&1)\s*/gu, " ")
-    .replace(/\s*\|\s*(?:head|tail|sort|uniq)(?:\s+-\S+)*\s*$/u, " ")
+    // `-\S+` alone does not cover `| head -n 20`, where the count is a SEPARATE token —
+    // and that is the form agents actually write. Without the `\d+` alternative the strip
+    // failed, the `|` survived, and a plain "where is this symbol" search was allowed
+    // through as if it were a transforming pipeline. Found by a blind test suite.
+    .replace(/\s*\|\s*(?:head|tail|sort|uniq)(?:\s+(?:-\S+|\d+))*\s*$/u, " ")
     .replace(/\s*\|\s*grep\s+-v\s+\S+\s*$/u, " ")
     .trim();
 
@@ -374,6 +402,25 @@ export function discoveryTarget(command: string, opts: DiscoveryOptions = {}): s
     if (token.includes("/") || token.includes(".")) continue;
     candidates.push(token.replace(/^['"]|['"]$/gu, ""));
   }
+
+  // MORE THAN ONE SURVIVING CANDIDATE MEANS WE DO NOT KNOW WHICH ONE IS THE PATTERN, so
+  // allow. This is the structural half of the value-taking-flag problem, and it is what
+  // makes the list above safe to be incomplete.
+  //
+  // The list can only ever name the flags somebody remembered. Enumerating it from memory
+  // and then testing exactly the flags enumerated is circular: it cannot discover a flag
+  // that was forgotten. Measured, with the list alone and no rule here,
+  // `rg --engine auto handleRequest` returned `auto`, `rg --sort path handleRequest`
+  // returned `path`, `rg --colors never ...` returned `never`, `rg --pre filter ...`
+  // returned `filter`, and `grep --devices skip ...` returned `skip` — every one a denial
+  // that spends the session's whole `interceptBudget` telling the agent to search for a
+  // flag's value. The list did not shrink that class; it only moved which flags were in it.
+  //
+  // With this rule an unknown value-taking flag leaves two candidates and falls out to
+  // ALLOW, which is the direction every other guard in this function already takes. The
+  // cost is a false allow on `grep -rn saveSettings src` — a path with no `/` or `.` reads
+  // as a second candidate — and a missed redirect is strictly cheaper than a wrong one.
+  if (candidates.length > 1) return undefined;
 
   const pattern = candidates[0];
   if (pattern === undefined) return undefined;

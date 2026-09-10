@@ -15,7 +15,7 @@
       "name": "code-analysis",
       "source": "./plugins/code-analysis",
       "description": "Read-only codebase investigation and code search behind one stable tool surface. Finds code by meaning or structure, traces callers, callees and blast radius, and dispatches a detective agent for deep dives. The search engine is named in project settings and is swappable.",
-      "version": "7.2.0",
+      "version": "7.2.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -37,6 +37,15 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "7.2.1",
+          "date": "2026-09-10",
+          "kinds": [
+            "Fixed",
+            "Changed"
+          ],
+          "summary": "An unrecognised value-taking flag made the intercept hook deny a legitimate command and tell\u2026"
+        },
         {
           "version": "7.2.0",
           "date": "2026-09-10",
@@ -70,11 +79,6 @@
           "version": "5.4.3",
           "date": "2026-08-26",
           "summary": "References updated to claudish:claudish-usage"
-        },
-        {
-          "version": "5.4.2",
-          "date": "2026-08-26",
-          "summary": "Plugin manifest moved to .claude-plugin/plugin.json, the only location Claude Code's runtime\u2026"
         }
       ]
     },
