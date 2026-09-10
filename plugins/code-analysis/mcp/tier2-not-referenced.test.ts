@@ -69,6 +69,10 @@ const SKIP_DIRS = new Set([
   ".mnemex",
   ".claudemem",
   "results",
+  // madbench `--report-dir` output. A report records what an AGENT said and called,
+  // transcript included; grading it as authored instruction flagged 259 mentions in one
+  // 40 MB file, every one of them a tool the agent had been handed by the engine.
+  ".reports",
   "dist",
   "build",
   "coverage",
@@ -98,11 +102,31 @@ export function findTier2Names(file: string, text: string): Hit[] {
 // Corpus
 // ---------------------------------------------------------------------------
 
+/**
+ * THE SERVER'S OWN IMPLEMENTATION. Excluded because the rule is "nothing OUTSIDE this
+ * server", and this is the inside.
+ *
+ * It became load-bearing with codegraph. Every other engine's upstream tools have bare
+ * names — serena's `find_symbol`, mnemex's `search_code` — and the facade constructs the
+ * tier-2 name by prefixing the engine id, so the forbidden shape never appears in
+ * adapter source. codegraph's upstream tools are ALREADY prefixed with its own name:
+ * `codegraph_search`, `codegraph_callers`, `codegraph_impact`. Its adapter cannot call
+ * them without writing the shape, and the alternative — obfuscating the tool names it
+ * sends over the wire — would make the one file that must match the engine exactly the
+ * one file that is not allowed to say what the engine calls things.
+ *
+ * The gate keeps its whole reach over INSTRUCTION: `plugins/code-analysis/skills`,
+ * `commands` and `agents` are all still scanned, as are docs, benches and every other
+ * plugin. Only `mcp/` — the server — is inside.
+ */
+const SERVER_SOURCE = join("plugins", "code-analysis", "mcp") + sep;
+
 /** A test must be able to spell the forbidden shape in order to forbid it. Fixtures
  *  stand in for third-party payloads and are not instruction either. */
 function isScannable(path: string): boolean {
   if (path.endsWith(".test.ts")) return false;
   if (path.includes(`${sep}__fixtures__${sep}`)) return false;
+  if (relative(REPO_ROOT, path).startsWith(SERVER_SOURCE)) return false;
   return EXTENSIONS.some((extension) => path.endsWith(extension));
 }
 
@@ -160,7 +184,7 @@ function format(hits: readonly Hit[]): string {
 
 describe("the tier-2 check fires", () => {
   test("catches a passthrough name for every engine this plugin ships", () => {
-    expect(ENGINE_IDS.length).toBe(2);
+    expect(ENGINE_IDS.length).toBe(4);
     for (const id of ENGINE_IDS) {
       const hits = findTier2Names("SKILL.md", `Call ${id}_index_status before searching.`);
       expect(hits.map((hit) => hit.name)).toEqual([`${id}_index_status`]);
@@ -204,6 +228,29 @@ describe("the tier-2 check fires", () => {
 // ---------------------------------------------------------------------------
 
 describe("nothing outside this server names a tier-2 tool", () => {
+  /**
+   * The server exclusion is a hole in the gate, so its edges are asserted rather than
+   * trusted. It must swallow the adapter that has to name `codegraph_search`, and it
+   * must NOT swallow the skills, commands and agents sitting in the same plugin — those
+   * are instruction, and instruction is the whole point of the rule.
+   */
+  test("the server exclusion covers mcp/ and nothing else in the plugin", () => {
+    const inside = corpus("plugins").filter((file) =>
+      relative(REPO_ROOT, file).startsWith(join("plugins", "code-analysis", "mcp") + sep),
+    );
+    expect(inside).toEqual([]);
+
+    const stillScanned = corpus("plugins").filter((file) =>
+      relative(REPO_ROOT, file).startsWith(join("plugins", "code-analysis") + sep),
+    );
+    // The plugin's own instruction surface is still in the corpus. Asserted as a count
+    // so that deleting the last skill does not quietly turn this into a vacuous pass.
+    expect(stillScanned.length).toBeGreaterThan(0);
+    for (const file of stillScanned) {
+      expect(relative(REPO_ROOT, file)).not.toContain(join("code-analysis", "mcp") + sep);
+    }
+  });
+
   test("the corpus is real: every scanned root contributed files", () => {
     const counted = SCAN_DIRS.map((root) => ({ root, files: corpus(root).length }));
     // Named per root, so a root that vanished says WHICH one rather than just failing.

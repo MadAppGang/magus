@@ -4,6 +4,166 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [code-analysis 7.2.0] - 2026-09-10
+
+### Added
+
+- **Two more engines behind the facade — `codegraph` and `graphify` — each installed, run, and
+  measured against a live server.** They were part of the original six, deleted at v7.0.0
+  because they had been written from upstream documentation and never executed. They come back
+  on the terms v7.0.0 set and on no others: install the engine, read its real `tools/list`,
+  exercise every argument shape by round trip, and record what was measured in the adapter's own
+  header. Verified against **codegraph 1.6.0** and **graphify 0.9.50** on 2026-08-28.
+
+  `codegraph` declares **7 of 9** capabilities — everything except `knowledgeSearch` (it has no
+  document model: given four TypeScript files and one markdown file, `codegraph index` reported
+  "Indexed 4 files") and `findImplementations`. `graphify` declares **7 of 9** — everything
+  except `readSource` (it stores a graph, not a corpus, and `get_node` never returns a body) and
+  `impact` (no symbol-level blast radius exists; `get_pr_impact` is scoped to a GitHub pull
+  request, not a symbol).
+
+- **`CodeLocation.anchor`**, a new optional field saying whether a line points at a
+  **declaration** or a **reference**. It exists because the engines genuinely disagree: asked
+  what depends on `withFileLock`, codegraph answers `src/settings.ts:3` — the caller's
+  declaration — and graphify answers `src/settings.ts:4` — the call site. Both are correct
+  answers to different questions, so the port carries which one it got instead of normalising a
+  real number away. Absence means "unstated" and never "declaration": an adapter that cannot
+  tell must not guess.
+
+- **Live coverage for both engines in `live-engines.test.ts`**, including the anchor divergence
+  as a pair of assertions on one edge. The suite reaches each engine through its ephemeral
+  runner (`npx`, `uvx`) when no binary is on PATH, so verifying an engine no longer requires
+  installing it globally, and it announces which route it took rather than skipping quietly.
+
+- **`measured-shapes.test.ts`** — the parsers checked against payloads captured verbatim from
+  both live servers. codegraph and graphify answer in **markdown text, never JSON**, so two
+  adapters in this plugin parse prose. A fixture an author invents tests the author's idea of an
+  engine, which is what produced four unrun adapters in the first place.
+
+- **Three adoption levers, each switchable, each measurable — and every one of them OFF by
+  default.** `adoption.alwaysLoad` marks every tool `_meta: {"anthropic/alwaysLoad": true}` so
+  the host loads them eagerly; `adoption.instructions` sends an `instructions` string in the
+  `initialize` result; `adoption.interceptBash` arms the hook below, spending at most
+  `adoption.interceptBudget` denials per session (default 1). They are read through the same
+  three-layer settings merge as every other setting, so a project turns one on without touching
+  the plugin. A lever that half-enabled itself would be unmeasurable, so each is validated
+  rather than coerced.
+
+- **A `PreToolUse` hook — `redirect-search-to-facade.ts` — that denies a discovery-shaped shell
+  search once and names `code_search` instead.** It is deliberately the narrowest lever that
+  works: it redirects a bare identifier (`rg withFileLock`, `grep -rn saveSettings src/`), where
+  an index genuinely answers better by returning the declaration with its enclosing symbol. It
+  allows everything else on purpose — regex metacharacters, quoted phrases, `-c`/`-l` counting
+  and listing, `find -name '*.ts'`, pipelines, and anything not search-shaped. It is inert
+  unless `adoption.interceptBash` is set.
+
+### Fixed
+
+- **Two of design §4.3's open cells are closed, in opposite directions.** codegraph's
+  `findImplementations` was flagged as "the most likely cell to flip" — it does **not** flip:
+  against a real inheritance chain, codegraph's symbol lookup returns a location and nothing
+  else, and its caller query answers "No callers found" while two classes extend the type.
+  graphify's was an unverified inference and it **holds**: `implements` and `inherits` come back
+  as distinct edge types.
+
+- **The tier-2 name gate no longer fires on the server's own source.** codegraph's upstream tools
+  are already named `codegraph_*`, which is exactly the `<engineId>_<tool>` shape the gate
+  forbids outside the server — so its adapter could not name the tools it calls. The scan now
+  excludes `plugins/code-analysis/mcp/` only, and a new test asserts that hole is narrow: the
+  plugin's skills, commands and agents are still scanned, as is every other plugin.
+
+- **The intercept hook wrote a plaintext log of every shell command, for every user, opted in
+  or not.** `trace()` runs before the `adoption.interceptBash` gate, and when nothing named a
+  destination it fell back to a fixed path under `os.tmpdir()` — so every Bash tool call in
+  every project was appended to an unbounded, unrotated file, including any credential passed
+  inline (`curl -H 'Authorization: ...'`, `PGPASSWORD=... psql`). The function's own comment
+  claimed it was enabled only by an env var. There is now **no default destination**: naming
+  `adoption.traceFile` or `CA_HOOK_TRACE` is the whole switch, and the file is created `0600`
+  inside a `0700` directory.
+
+- **A flag's value was mistaken for the search pattern, denying legitimate commands.**
+  `grep -rn --exclude-dir node_modules handleRequest .` extracted `node_modules` and told the
+  agent to search for that; `rg -C 3 handleRequest` extracted `3`. The wasted denial also spent
+  the whole `interceptBudget`, so the redirect the lever exists for never fired afterwards.
+  Flags that take a separated value now consume it.
+
+- **A newline did not count as sequencing, so a multi-line block was denied whole.**
+  `rg foo` followed by `npm run build` and `bun test` lost the build and the tests, while the
+  denial named only the grep. `rg foo && ls` was already safe; the newline form now is too.
+
+- **The hook read one settings layer while the server merged three, making the documented
+  configuration silently inert.** Putting `engine` in `.claude/settings.json` and
+  `adoption.interceptBash` in `.claude/settings.local.json` — the split `/code-analysis:setup`
+  describes — left the hook with an `adoption` and no `engine`, so it failed its own engine
+  check and allowed everything, with no diagnostic. It now merges home, project and local
+  layers in the server's order.
+
+- **codegraph's `code_search` declared itself degraded on its healthy path.** `generalSearch`
+  passes no parsed rows by design, which `finish()` read as a failed parse and answered with
+  `backend_unavailable: the adapter's parser is behind the engine's output format` on every
+  successful call. That both teaches the agent to distrust the facade and drop back to Bash,
+  and jams the alarm so real format drift is indistinguishable from normal operation.
+
+### Removed
+
+- **The `claudish` dependency, which nothing ever used.** `code-analysis` contacts no model
+  provider: its MCP server shells out to whichever search engine project settings name, and
+  its agent and skills run on the host's own model. The declaration was residue — the plugin
+  once shipped the `claudish` MCP server inside its own `.mcp.json` for in-conversation model
+  queries, that server was extracted into a plugin of its own in May 2026, and a dependency
+  was declared in its place. Searching the plugin's entire history for a claudish tool
+  invocation returns no commit.
+
+### Why
+
+- **An unsatisfied dependency makes the CLI refuse to load the whole plugin, silently.** It
+  reports the cause only in `claude plugin list`, so the symptom is no error, no tools, and
+  every `code_search` call simply absent. Anyone installing `code-analysis` without
+  `claudish` got a plugin that appeared installed and did nothing.
+- **It was actively misleading in measurement.** The CS-1 bench stages both plugins for this
+  reason, and an independent cold-start test of the extracted bench found that a missing
+  `claudish` produces a facade call rate pinned at zero — *indistinguishable from that
+  bench's headline finding that agents do not call code-search modules*. A misconfigured
+  reader would have reproduced the result for entirely the wrong reason.
+- It also dragged `OPENROUTER_API_KEY` into the requirements of a plugin that never contacts
+  OpenRouter.
+
+- **The adoption levers ship OFF because forcing the tool measurably makes the agent worse.**
+  Measured across the CS-1 grid — three engines × three steering settings, 648 scenarios, on a
+  217-file corpus — an unsteered agent called the facade on **0 of 24 scenarios, on every pass,
+  on every engine**. Each engine's own documented steering mechanism produced zero calls too.
+  Arming the intercept hook does work, raising usage to roughly 47%, and correctness then falls
+  from **0.643 to 0.532** — a 17% relative drop, at 17% more cost, holding on all three engines
+  independently. A lever that defaulted to on would ship that regression to every user, so each
+  one is opt-in and this release changes no default behaviour. Method and full results:
+  `docs/research/2026-09-09-memory-layers-dossier.md`.
+
+### Migration notes
+
+- None. Removing a dependency only widens what installs. `claudish` remains a separate plugin
+  and is unaffected; install it if you want external models, which `dev`, `multimodel`,
+  `designer` and `seo` still declare for themselves.
+
+### Notes
+
+- Three upstream facts worth keeping, none of them in either project's documentation: `serve` is
+  a **hidden** subcommand in both engines (neither `--help` lists it); codegraph's own reference
+  claims an un-indexed workspace lists **no** tools, where it actually lists one and routes
+  per-project via a `projectPath` argument; and graphify's MCP server is an **optional extra** —
+  the README's `uv tool install graphifyy` produces a package that raises
+  `ImportError: mcp not installed`, so the spec must name `graphifyy[mcp]`. The PyPI package is
+  `graphifyy` with a double y; `graphify` on PyPI is a 404 and `graphify` on npm is an unrelated
+  random graph generator.
+
+- **codegraph and graphify are 1-based; serena is 0-based and deliberately passes that through.**
+  There is no shared line-base helper and there must not be one — it would corrupt an engine.
+
+- Still **four engines, not six**. `claudectx` and `cocoindex` stay deleted: both score zero of
+  the seven code operations, and `claudectx` additionally needs a running Milvus and an embedding
+  credential, so neither has been run.
+
+---
+
 ## [dev 7.3.0] - 2026-09-09
 
 ### Added

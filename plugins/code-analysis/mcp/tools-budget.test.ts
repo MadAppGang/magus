@@ -255,12 +255,13 @@ describe("tool-list budget", () => {
   }, 30_000);
 
   test("the complete tier-0+1 set — all six TOOLS — still fits under 1,200", async () => {
-    // Six tools, not six engines: tier 0 plus all five tier-1 descriptors. Neither
-    // shipped adapter declares all five tier-1 capabilities — mnemex is missing
-    // `findImplementations`, serena is missing three — so this set cannot be put on the
-    // wire today. It is measured from the same descriptors the server serialises,
-    // through the same encoder, so it is the ceiling that binds the day an engine does
-    // declare them all.
+    // Six tools, not six engines: tier 0 plus all five tier-1 descriptors. NO shipped
+    // adapter declares all five tier-1 capabilities, and the two newest narrow the gap
+    // without closing it — mnemex is missing `findImplementations`, serena is missing
+    // three, codegraph is missing `findImplementations`, graphify is missing `impact`.
+    // So this set still cannot be put on the wire by any single engine. It is measured
+    // from the same descriptors the server serialises, through the same encoder, so it
+    // is the ceiling that binds the day an engine does declare them all.
     const wire: WireTool[] = [TIER0_TOOL, ...Object.values(TIER1_TOOLS)]
       .filter((tool): tool is NonNullable<typeof tool> => tool !== undefined)
       .map((tool) => ({

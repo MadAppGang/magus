@@ -15,7 +15,7 @@
       "name": "code-analysis",
       "source": "./plugins/code-analysis",
       "description": "Read-only codebase investigation and code search behind one stable tool surface. Finds code by meaning or structure, traces callers, callees and blast radius, and dispatches a detective agent for deep dives. The search engine is named in project settings and is swappable.",
-      "version": "7.1.0",
+      "version": "7.2.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -37,6 +37,16 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "7.2.0",
+          "date": "2026-09-10",
+          "kinds": [
+            "Added",
+            "Fixed",
+            "Removed"
+          ],
+          "summary": "Two more engines behind the facade \u2014 codegraph and graphify \u2014 each installed, run, and measured\u2026"
+        },
         {
           "version": "7.1.0",
           "date": "2026-08-28",
@@ -65,16 +75,6 @@
           "version": "5.4.2",
           "date": "2026-08-26",
           "summary": "Plugin manifest moved to .claude-plugin/plugin.json, the only location Claude Code's runtime\u2026"
-        },
-        {
-          "version": "6.0.0",
-          "date": "2026-08-22",
-          "kinds": [
-            "Changed",
-            "Removed",
-            "Fixed"
-          ],
-          "summary": "The plugin now owns its search interface instead of borrowing one"
         }
       ]
     },

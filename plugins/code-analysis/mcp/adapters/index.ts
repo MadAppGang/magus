@@ -9,34 +9,50 @@
  * changes, which is the whole point of the port.
  *
  * ---------------------------------------------------------------------------------
- * TWO ENGINES, AND THE COUNT IS A CLAIM ABOUT VERIFICATION, NOT ABOUT AMBITION.
+ * FOUR ENGINES, AND THE COUNT IS A CLAIM ABOUT VERIFICATION, NOT ABOUT AMBITION.
  *
- * This table used to hold six. Four of them — `claudectx`, `cocoindex`, `codegraph`,
- * `graphify` — were written against upstream documentation and never once run: no
- * binary for any of them exists on the machines that built them, so their tool names,
- * argument shapes, result shapes and line bases were all unconfirmed. Shipping them
- * made the facade advertise six switchable engines when two had been exercised, and a
- * user who selected one of the four would have got a plausible adapter failing in a
- * way nobody had ever seen.
+ * This table held six, then two. The six were written against upstream documentation
+ * and four had never once been run: no binary for any of them existed on the machines
+ * that built them, so their tool names, argument shapes, result shapes and line bases
+ * were all unconfirmed. Shipping them made the facade advertise six switchable engines
+ * when two had been exercised, and a user who selected one of the four would have got
+ * a plausible adapter failing in a way nobody had ever seen. They were deleted rather
+ * than disabled, because a disabled adapter is still code that rots and the whole cost
+ * of re-adding one is the verification.
  *
- * They are removed rather than disabled: a disabled adapter is still code that rots,
- * and the whole cost of re-adding one is the verification, which no amount of keeping
- * the file does for you. Git history has them. Bringing one back means installing the
- * engine, reading its real `tools/list`, and recording in its header what was measured
- * — the shape serena's header now carries.
+ * TWO OF THE FOUR HAVE NOW BEEN PAID FOR, on the stated terms: installed, `tools/list`
+ * read from a running server, every argument shape exercised by a round trip, and the
+ * result recorded in the adapter's own header. `codegraph` and `graphify` are back on
+ * that basis and on no other. `claudectx` and `cocoindex` remain deleted — both score
+ * ZERO of the seven code operations (no symbol table, no edges), and claudectx also
+ * requires a running Milvus and an embedding credential, so neither has been run here.
  *
- * What remains is what has been run against a live server:
- *   mnemex — embedding + AST, 5 capabilities. KNOWN-BROKEN under a fresh sandbox HOME:
- *            its `index.db` bakes in absolute paths, so an index built elsewhere
- *            reports every hit under the tree that built it. `repairForeignPath` in
- *            the kit recovers the relative path where it can. Kept because it is the
- *            second engine the switch has to be provable against, and a facade with
- *            one engine is not a facade.
- *   serena — language-server symbols, 3 capabilities. Verified against 1.7.0.
+ * What the re-verification actually caught, none of which is in any of their docs:
+ *   - codegraph's docs say an un-indexed workspace lists NO tools. It lists one.
+ *   - `serve` is a HIDDEN subcommand in both; neither `--help` admits it exists.
+ *   - graphify's MCP server is an OPTIONAL EXTRA (`graphifyy[mcp]`); the README's own
+ *     install command produces a package that cannot serve MCP at all.
+ *   - codegraph and graphify are 1-BASED. serena is 0-BASED and passes that through.
+ *     There is deliberately no shared line-base helper: one would corrupt an engine.
+ *   - the two disagree on what a dependent's line MEANS — declaration vs call site —
+ *     which is why the port now carries `LineAnchor`.
+ *
+ * The four, and what each has been run against:
+ *   mnemex    — embedding + AST, 8 capabilities. KNOWN-BROKEN under a fresh sandbox
+ *               HOME: its `index.db` bakes in absolute paths, so an index built
+ *               elsewhere reports every hit under the tree that built it.
+ *               `repairForeignPath` in the kit recovers the relative path where it can.
+ *   serena    — language-server symbols, 5 capabilities. Verified against 1.7.0.
+ *   codegraph — SQLite graph, FTS5, no external service. 7 capabilities. Verified
+ *               against 1.6.0, 2026-08-28. Answers in MARKDOWN, never JSON.
+ *   graphify  — deterministic AST graph, no vector store. 7 capabilities. Verified
+ *               against 0.9.50, 2026-08-28. Pointer-only: it never returns source.
  */
 
 import type { Engine } from "../core/ports";
 import type { AdapterContext, EngineSpec } from "./shared/kit";
+import { create as createCodegraph } from "./codegraph/index";
+import { create as createGraphify } from "./graphify/index";
 import { create as createMnemex } from "./mnemex/index";
 import { create as createSerena } from "./serena/index";
 
@@ -50,6 +66,8 @@ export type EngineFactory = (spec: EngineSpec, ctx: AdapterContext) => Engine;
  * it. One identifier is worth more than matching an upstream name.
  */
 export const ADAPTERS: Readonly<Record<string, EngineFactory>> = {
+  codegraph: createCodegraph,
+  graphify: createGraphify,
   mnemex: createMnemex,
   serena: createSerena,
 };

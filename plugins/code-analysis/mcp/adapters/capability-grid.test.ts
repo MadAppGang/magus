@@ -54,6 +54,57 @@ const GRID: Readonly<Record<string, readonly Capability[]>> = {
     "impact",
   ],
   serena: ["generalSearch", "locateSymbol", "readSource", "findDependents", "findImplementations"],
+
+  /**
+   * codegraph 1.6.0, measured 2026-08-28. Seven declared; the two absences are the
+   * interesting half.
+   *
+   * `knowledgeSearch` is absent because codegraph has NO document model — given a
+   * corpus of 4 TypeScript files and one `docs/locking.md`, `codegraph index` reported
+   * "Indexed 4 files" and the markdown never entered the graph.
+   *
+   * `findImplementations` is absent, and this is the cell design §4.3 flagged as "the
+   * most likely to flip". IT DOES NOT FLIP. Measured against a real inheritance chain:
+   * `codegraph_node BaseStore` returns a location and nothing else, and
+   * `codegraph_callers BaseStore` answers "No callers found" even though two classes
+   * extend it. Whether `implements` edges sit in the SQLite file is beside the point —
+   * the port requires a callable operation and the live tool surface exposes none.
+   */
+  codegraph: [
+    "generalSearch",
+    "locateSymbol",
+    "readSource",
+    "findDependencies",
+    "findDependents",
+    "callTree",
+    "impact",
+  ],
+
+  /**
+   * graphify 0.9.50, measured 2026-08-28. Seven declared.
+   *
+   * `readSource` is absent because graphify stores a graph, not a corpus: `get_node`
+   * returns label, ID, source POINTER, type, community and degree, never a body —
+   * confirmed on a code node AND on a document node.
+   *
+   * `impact` is absent because no symbol-level blast-radius tool exists. `get_pr_impact`
+   * is NOT this capability: it is scoped to a GitHub pull request rather than a symbol.
+   *
+   * `findImplementations` IS declared, which closes §4.3 item 3 — it was an unverified
+   * inference from documented `inherits`/`mixes_in` edges. Measured:
+   * `get_neighbors BaseStore` returns `--> Store [implements]`, `<-- FileStore
+   * [inherits]` and `<-- MemoryStore [inherits]`, so both relations exist and are
+   * distinct.
+   */
+  graphify: [
+    "generalSearch",
+    "knowledgeSearch",
+    "locateSymbol",
+    "findDependencies",
+    "findDependents",
+    "callTree",
+    "findImplementations",
+  ],
 };
 
 /** The seven code operations, per §4's count row. `generalSearch` and
@@ -146,10 +197,21 @@ function declaredKeys(engine: Engine): string[] {
 describe("declared capabilities equal design §4, exactly", () => {
   test("the grid covers every engine this plugin ships, and no other", () => {
     expect([...ENGINE_IDS].sort()).toEqual(Object.keys(GRID).sort());
-    // TWO, and the number is the claim. An adapter reaching this table without having
+    // FOUR, and the number is the claim. An adapter reaching this table without having
     // been run against its real server is what this count exists to make someone
     // justify — see the header of `adapters/index.ts`.
-    expect(ENGINE_IDS.length).toBe(2);
+    //
+    // This gate fired when it went from two to four, which is the gate working. The
+    // justification: codegraph 1.6.0 and graphify 0.9.50 were both installed, both had
+    // their `tools/list` read from a running server, and every argument shape either
+    // adapter sends was exercised by a real round trip against a real corpus. The
+    // evidence is recorded in each adapter's header and in
+    // `live-engines.test.ts`, which re-runs it against the live binaries.
+    //
+    // It is still FOUR and not six. `claudectx` and `cocoindex` stay deleted: both
+    // score zero of the seven code operations, and claudectx additionally needs a
+    // running Milvus and an embedding credential, so neither has been run here.
+    expect(ENGINE_IDS.length).toBe(4);
   });
 
   test("the grid names only real capabilities", () => {

@@ -10,12 +10,32 @@
 
 import type { Capability, CapabilityStatus } from "./capabilities";
 
+/** What a `line` is pointing AT. Engines genuinely disagree, and the disagreement is
+ *  invisible without this field.
+ *
+ *  Measured 2026-08-28 on the same edge — `saveSettings` is declared on line 3 of
+ *  `src/settings.ts` and calls `withFileLock` on line 4. Asked what depends on
+ *  `withFileLock`, codegraph answers `src/settings.ts:3` and graphify answers
+ *  `src/settings.ts:L4`. Neither is wrong; they answer different questions.
+ *
+ *  Normalising one into the other would throw away a real number, so the port carries
+ *  which one it is instead. */
+export type LineAnchor =
+  /** The line declaring the symbol. "Where is this defined." */
+  | "declaration"
+  /** The line where the symbol is used. "Where is it called from." */
+  | "reference";
+
 export interface CodeLocation {
   /** Repo-relative POSIX path. Adapters normalise; absolute paths never cross the port. */
   file: string;
   /** 1-based, inclusive. */
   line: number;
   endLine?: number;
+  /** OMIT when the engine does not make it knowable. Absence means "unstated", never
+   *  "declaration" — an adapter that cannot tell must not guess, because a wrong anchor
+   *  is worse than an absent one: it reads as a fact the engine never asserted. */
+  anchor?: LineAnchor;
 }
 
 export type SymbolKind = "function" | "class" | "interface" | "type" | "variable" | "unknown";

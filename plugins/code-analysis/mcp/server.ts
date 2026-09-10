@@ -78,8 +78,44 @@ import {
 import { encode, makeLineReader, type RpcId, type RpcResponse } from "./transport/jsonrpc";
 import { MCP_CLIENT_DEFAULTS, makeMcpClient, type McpClient } from "./transport/mcp-stdio-client";
 
-/** The MCP revision every adapter in this plugin already speaks. */
-const PROTOCOL_VERSION = "2024-11-05";
+/**
+ * The MCP revision this server declares.
+ *
+ * BUMPED FROM `2024-11-05` FOR ONE CONCRETE REASON: `_meta` does not exist on `Tool` in
+ * that revision — it defines `name`, `description` and `inputSchema` and nothing else —
+ * and `_meta` is how a tool asks a host not to defer it
+ * (`adoption.alwaysLoad`). Sending an unknown field on an older negotiated
+ * version is undefined behaviour: a host is entitled to drop it, and a silently dropped
+ * lever is one that measures as "no effect" while never having been delivered.
+ *
+ * `2025-06-18` adds `_meta`, `title` and `annotations` on `Tool`. Nothing this server
+ * already sends changes shape, so the bump is additive.
+ */
+const PROTOCOL_VERSION = "2025-06-18";
+
+/**
+ * The `initialize` instructions, sent only when `adoption.instructions` is on.
+ *
+ * WRITTEN AS ROUTING, NOT ADVERTISING. It names the question shapes this server answers
+ * better than a text search, and — deliberately — the ones it does not, because a server
+ * that claims everything gets trusted for nothing. The measured failure it exists to
+ * address is an agent that reached for `Bash` 146 times and this server 0 times across 72
+ * scenarios.
+ *
+ * It is a STRING CONSTANT rather than generated prose so the bench can vary exactly one
+ * thing. If this text is ever tuned, that is a new arm, not an edit.
+ */
+const SERVER_INSTRUCTIONS = `This project has a pre-built code index. Use \`code_search\` INSTEAD OF running \`grep\`, \`rg\`, \`find\` or \`ls -R\` through Bash when you need to locate code.
+
+WHEN TO USE IT
+- "where is X defined", "what is X", "how does X work" -> \`code_search\`. One call returns ranked locations with the enclosing symbol, which a text match cannot give you.
+- "what calls X" / "what does X call" / "what breaks if I change X" -> the structural tools, when they are listed. They answer from the index's edges, not from string matching, so they find call sites that grep cannot see and skip matches that only look like calls.
+
+WHEN NOT TO USE IT
+- An exact literal you already know the spelling of, a count of occurrences, or a filename pattern: Bash with \`rg\`/\`find\` is the better tool and this server does not claim otherwise.
+- Files the index does not cover. Every answer names the engine that served it, so an empty result is distinguishable from an unindexed one.
+
+Only the tools listed in this session are available; a capability the configured engine cannot genuinely answer is absent rather than degraded.`;
 
 /** Matches the key in `.mcp.json`; the host prefixes it into every tool name. */
 const SERVER_NAME = "ca";
@@ -630,6 +666,10 @@ export function createServer(env: NodeJS.ProcessEnv, write: (line: string) => vo
             protocolVersion: PROTOCOL_VERSION,
             capabilities: { tools: { listChanged: true } },
             serverInfo: { name: SERVER_NAME, version },
+            // OMITTED unless switched on, rather than sent empty: absence and an empty
+            // string are different messages to a host, and the control arm must send
+            // exactly what this server sent before the lever existed.
+            ...(facade.settings.adoption.instructions ? { instructions: SERVER_INSTRUCTIONS } : {}),
           },
         };
 
@@ -647,6 +687,13 @@ export function createServer(env: NodeJS.ProcessEnv, write: (line: string) => vo
               name: tool.name,
               description: tool.description,
               inputSchema: tool.inputSchema,
+              // `anthropic/alwaysLoad` asks the host to keep this tool in context at
+              // session start instead of deferring it behind a tool search. Namespaced
+              // key inside `_meta`, per MCP 2025-06-18 — and the reason PROTOCOL_VERSION
+              // had to move off 2024-11-05, where `_meta` is not part of `Tool` at all.
+              ...(facade.settings.adoption.alwaysLoad
+                ? { _meta: { "anthropic/alwaysLoad": true } }
+                : {}),
             })),
           },
         };

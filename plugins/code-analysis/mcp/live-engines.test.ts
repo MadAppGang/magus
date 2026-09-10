@@ -96,6 +96,36 @@ export async function main(): Promise<void> {
   await saveSettings({ ok: true });
 }
 `,
+  /**
+   * An inheritance chain, added so `findImplementations` can be MEASURED rather than
+   * inferred. It separates the two relations that answer different questions: BaseStore
+   * `implements` Store (outgoing — what this type promises), and FileStore/MemoryStore
+   * `inherit` BaseStore (incoming — what concretely realises it). Only the second is
+   * `findImplementations`.
+   *
+   * It also carries the negative result for codegraph, which sees this exact chain and
+   * still exposes no way to query it.
+   */
+  "src/store.ts": `export interface Store {
+  save(key: string, value: string): Promise<void>;
+}
+
+export abstract class BaseStore implements Store {
+  abstract save(key: string, value: string): Promise<void>;
+}
+
+export class FileStore extends BaseStore {
+  async save(key: string, value: string): Promise<void> {
+    console.log(key, value);
+  }
+}
+
+export class MemoryStore extends BaseStore {
+  async save(key: string, value: string): Promise<void> {
+    console.log(key, value);
+  }
+}
+`,
 };
 
 /**
@@ -137,6 +167,51 @@ function onPath(binary: string): boolean {
 const HAS_SERENA = onPath("serena");
 const HAS_MNEMEX = onPath("mnemex");
 
+/**
+ * codegraph and graphify are reachable two ways, and BOTH are real.
+ *
+ * A user installs them and gets a binary on PATH; that is the invocation the specs
+ * below document and the one a settings file should carry. But neither is a dependency
+ * of this repo, and they were verified here through their ephemeral runners — `npx` and
+ * `uvx` — precisely so that verifying an engine does not require installing it
+ * globally on the developer's machine.
+ *
+ * Both routes run the SAME server, so both are accepted, and the route actually taken
+ * is announced. A skip that hides "we could have run this via npx" is a skip that makes
+ * the suite quieter than the facts.
+ *
+ * graphify's runner names `graphifyy[mcp]` — the double-y package WITH the mcp extra.
+ * Bare `graphifyy` installs a package whose server raises
+ * `ImportError: mcp not installed`, and `graphify` on PyPI is a different project.
+ */
+const HAS_NPX = onPath("npx");
+const HAS_UVX = onPath("uvx");
+
+const CODEGRAPH_CMD: { command: string; args: string[] } | undefined = onPath("codegraph")
+  ? { command: "codegraph", args: [] }
+  : HAS_NPX
+    ? { command: "npx", args: ["-y", "@colbymchenry/codegraph"] }
+    : undefined;
+
+/**
+ * `graphify-mcp` is the preferred route and is what a `graphifyy[mcp]` install puts on
+ * PATH — a console entry point for the same module, so it needs no python resolution and
+ * no `-m`. Its `--help` identifies itself as `python -m graphify.serve`, which is exactly
+ * what it wraps.
+ *
+ * The bare `graphifyy` install does NOT provide it: the extra is what pulls in `mcp`, and
+ * without the extra the module raises `ImportError: mcp not installed`. So its presence on
+ * PATH is also the cheapest available check that the right package was installed.
+ */
+const GRAPHIFY_CMD: { command: string; args: string[] } | undefined = onPath("graphify-mcp")
+  ? { command: "graphify-mcp", args: [] }
+  : HAS_UVX
+    ? { command: "uvx", args: ["--from", "graphifyy[mcp]", "python", "-m", "graphify.serve"] }
+    : undefined;
+
+const HAS_CODEGRAPH = CODEGRAPH_CMD !== undefined;
+const HAS_GRAPHIFY = GRAPHIFY_CMD !== undefined;
+
 function announceSkip(engine: string, unverified: string): void {
   process.stderr.write(
     `\n[live-engines] SKIPPED: ${engine} is not on PATH. UNVERIFIED on this run: ${unverified}\n`,
@@ -145,6 +220,16 @@ function announceSkip(engine: string, unverified: string): void {
 
 if (!HAS_SERENA) announceSkip("serena", "tool names, result shape, and the engine switch");
 if (!HAS_MNEMEX) announceSkip("mnemex", "tool names, the degraded index_missing path, and the switch");
+if (!HAS_CODEGRAPH) {
+  announceSkip("codegraph (no binary and no npx)", "tool names, the markdown result shape, and the 1-based line base");
+} else {
+  process.stderr.write(`\n[live-engines] codegraph via: ${CODEGRAPH_CMD?.command}\n`);
+}
+if (!HAS_GRAPHIFY) {
+  announceSkip("graphify (no binary and no uvx)", "tool names, edge direction, and pointer-only results");
+} else {
+  process.stderr.write(`\n[live-engines] graphify via: ${GRAPHIFY_CMD?.command}\n`);
+}
 
 // ---------------------------------------------------------------------------
 // Harness
@@ -159,7 +244,19 @@ interface Live {
   stderr(): string;
 }
 
-function startAgainst(engineId: string, spec: Record<string, unknown>, seedSerena: boolean): Live {
+/**
+ * `prepare` builds the engine's index inside the freshly written corpus, before the
+ * server starts. serena indexes on demand and mnemex is deliberately left unindexed to
+ * exercise its degraded path, so neither needed this; codegraph and graphify both
+ * answer nothing at all until their index exists, and an empty answer from an
+ * unindexed tree would test the wrong thing entirely.
+ */
+function startAgainst(
+  engineId: string,
+  spec: Record<string, unknown>,
+  seedSerena: boolean,
+  prepare?: (project: string) => void,
+): Live {
   const root = mkdtempSync(join(tmpdir(), `ca-live-${engineId}-`));
   scratch.push(root);
   const home = join(root, "home");
@@ -179,6 +276,7 @@ function startAgainst(engineId: string, spec: Record<string, unknown>, seedSeren
     join(project, ".claude", "settings.json"),
     JSON.stringify({ "code-analysis": { engine: engineId, engines: { [engineId]: spec } } }, null, 2),
   );
+  prepare?.(project);
 
   const child = spawn(process.execPath, [SERVER], {
     cwd: project,
@@ -280,8 +378,44 @@ afterEach(async () => {
       });
     });
   }
-  for (const dir of scratch.splice(0)) rmSync(dir, { recursive: true, force: true });
+  for (const dir of scratch.splice(0)) {
+    reapStrays(dir);
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
+
+/**
+ * Kill anything still running out of THIS case's scratch directory.
+ *
+ * Killing the facade server is not enough when an engine is reached through `npx` or
+ * `uvx`: the facade's child is the RUNNER, and the runner's own child — the engine — has
+ * a different pid and survives its parent's SIGTERM. Measured: six runs of this file
+ * left twelve `codegraph serve --mcp` processes alive, each holding a temp directory
+ * open. A user who configures the real binary never sees this, because then the facade's
+ * child IS the engine.
+ *
+ * codegraph also spawns a WATCHDOG child that SIGKILLs the server if its main thread
+ * stops responding, so a run leaks in pairs.
+ *
+ * THIS IS NOT A PATTERN KILL. The match is on `mkdtempSync`'s unique directory name,
+ * which belongs to one test case in one run of this file, and the kill is by pid.
+ * `pkill -f codegraph` would reach another developer's session on the same machine; this
+ * cannot reach anything that is not already doomed by the `rmSync` on the next line.
+ */
+function reapStrays(dir: string): void {
+  const listed = spawnSync("ps", ["-eo", "pid=,command="], { encoding: "utf8" });
+  if (listed.status !== 0 || typeof listed.stdout !== "string") return;
+  for (const line of listed.stdout.split("\n")) {
+    if (!line.includes(dir)) continue;
+    const pid = Number.parseInt(line.trim().split(/\s+/u)[0] ?? "", 10);
+    if (!Number.isInteger(pid) || pid <= 1 || pid === process.pid) continue;
+    try {
+      process.kill(pid, "SIGKILL");
+    } catch {
+      // Already gone between listing and signalling. Nothing to do.
+    }
+  }
+}
 
 // ---------------------------------------------------------------------------
 // The engine specs, verbatim — these ARE the documentation for how to configure one
@@ -451,6 +585,214 @@ describe.skipIf(!HAS_SERENA || !HAS_MNEMEX)("the facade switches between them", 
         live.request("tools/call", { name: "code_search", arguments: { query: "withFileLock" } });
       expect(textOf(await ask(serena)).text).toContain("served_by: serena/");
       expect(textOf(await ask(mnemex)).text).toContain("served_by: mnemex/");
+    },
+    LIVE_CASE_MS,
+  );
+});
+
+// ---------------------------------------------------------------------------
+// codegraph
+// ---------------------------------------------------------------------------
+
+/**
+ * `serve` is a HIDDEN subcommand: `codegraph --help` lists 19 commands and does not
+ * include it. It is real, and codegraph's own MCP reference names it.
+ *
+ * The env var is what opens the surface. WITHOUT it the server lists exactly ONE tool,
+ * `codegraph_explore`, and the other seven stay functional but unlisted — so a spec
+ * that omits it silently costs six of this adapter's seven capabilities. Its values are
+ * UNPREFIXED short names while the tools it exposes are prefixed; both spellings are
+ * correct and neither should be "fixed" to match the other.
+ */
+const CODEGRAPH_SPEC = {
+  command: CODEGRAPH_CMD?.command ?? "codegraph",
+  args: [...(CODEGRAPH_CMD?.args ?? []), "serve", "--mcp"],
+  env: {
+    CODEGRAPH_MCP_TOOLS: "explore,node,search,callers,callees,impact,files,status",
+    DO_NOT_TRACK: "1",
+  },
+  callTimeoutMs: CALL_TIMEOUT_MS,
+};
+
+/** `codegraph init` builds `.codegraph/`; without it the server has no index to answer from. */
+function buildCodegraphIndex(project: string): void {
+  const runner = CODEGRAPH_CMD ?? { command: "codegraph", args: [] };
+  spawnSync(runner.command, [...runner.args, "init", "."], {
+    cwd: project,
+    stdio: "ignore",
+    env: { ...process.env, DO_NOT_TRACK: "1" },
+    timeout: 300_000,
+  });
+}
+
+describe.skipIf(!HAS_CODEGRAPH)("codegraph, live", () => {
+  test(
+    "lists exactly the five tier-0+1 tools its capabilities support",
+    async () => {
+      const live = startAgainst("codegraph", CODEGRAPH_SPEC, false, buildCodegraphIndex);
+      await handshake(live);
+      // `find_implementations` is ABSENT and that absence is the measurement: codegraph
+      // exposes no callable inheritance query, which is the cell design §4.3 predicted
+      // was most likely to flip.
+      expect(await toolNames(live)).toEqual([
+        "code_search",
+        "find_dependencies",
+        "find_dependents",
+        "call_tree",
+        "impact",
+      ]);
+    },
+    LIVE_CASE_MS,
+  );
+
+  test(
+    "answers code_search from the corpus with a repo-relative, 1-BASED location",
+    async () => {
+      const live = startAgainst("codegraph", CODEGRAPH_SPEC, false, buildCodegraphIndex);
+      await handshake(live);
+
+      const { text, isError } = textOf(
+        await live.request("tools/call", {
+          name: "code_search",
+          arguments: { query: "withFileLock" },
+        }),
+      );
+
+      expect(isError).toBe(false);
+      expect(text).toContain("served_by: codegraph/");
+      expect(text).toContain("src/lock.ts");
+      // Absolute paths never cross the port; a temp-dir prefix here would mean the
+      // adapter passed codegraph's answer through without making it repo-relative.
+      expect(text).not.toContain(tmpdir());
+    },
+    LIVE_CASE_MS,
+  );
+
+  test(
+    "find_dependents answers with the CALLER'S DECLARATION line, not the call site",
+    async () => {
+      const live = startAgainst("codegraph", CODEGRAPH_SPEC, false, buildCodegraphIndex);
+      await handshake(live);
+
+      const { text, isError } = textOf(
+        await live.request("tools/call", {
+          name: "find_dependents",
+          arguments: { symbol: "withFileLock" },
+        }),
+      );
+
+      expect(isError).toBe(false);
+      expect(text).toContain("saveSettings");
+      // `saveSettings` is DECLARED on line 3 of src/settings.ts and CALLS withFileLock
+      // on line 4. codegraph points at 3; graphify points at 4 for the same edge — see
+      // its case below. Neither is wrong, which is why the port carries `LineAnchor`.
+      expect(text).toMatch(/src\/settings\.ts:3\b/u);
+    },
+    LIVE_CASE_MS,
+  );
+});
+
+// ---------------------------------------------------------------------------
+// graphify
+// ---------------------------------------------------------------------------
+
+/**
+ * `graphify --help` lists no `serve` command either; the MCP server is the module
+ * `graphify.serve`, whose first line is "MCP stdio server - exposes graph query tools
+ * to Claude and other agents". The positional argument is the graph file, which
+ * `graphify update` writes to `graphify-out/graph.json`.
+ */
+const GRAPHIFY_SPEC = {
+  command: GRAPHIFY_CMD?.command ?? "python3",
+  args: [...(GRAPHIFY_CMD?.args ?? ["-m", "graphify.serve"]), "graphify-out/graph.json"],
+  env: { DO_NOT_TRACK: "1" },
+  callTimeoutMs: CALL_TIMEOUT_MS,
+};
+
+/**
+ * `--no-cluster` keeps this deterministic AND free: clustering names communities with an
+ * LLM, so without the flag this case would need a model and a credential to check a
+ * parser.
+ */
+function buildGraphifyGraph(project: string): void {
+  const runner =
+    !onPath("graphify") && HAS_UVX
+      ? { command: "uvx", args: ["--from", "graphifyy", "graphify"] }
+      : { command: "graphify", args: [] };
+  spawnSync(runner.command, [...runner.args, "update", ".", "--no-cluster"], {
+    cwd: project,
+    stdio: "ignore",
+    env: { ...process.env, DO_NOT_TRACK: "1" },
+    timeout: 300_000,
+  });
+}
+
+describe.skipIf(!HAS_GRAPHIFY)("graphify, live", () => {
+  test(
+    "lists the five it can serve, and NOT impact",
+    async () => {
+      const live = startAgainst("graphify", GRAPHIFY_SPEC, false, buildGraphifyGraph);
+      await handshake(live);
+      // Pinned as an exact list, not a bag of `toContain`s: CS-1 wires this surface into
+      // its `mcpTools` row, and a `session:tool-used` check naming a tool the facade does
+      // not expose FAILS the cell rather than erroring — which reads as "the agent did not
+      // use the tool" and is the most convincing possible way to be wrong.
+      //
+      // `impact` is absent: no symbol-level blast radius exists, and `get_pr_impact` is
+      // scoped to a GitHub pull request rather than a symbol.
+      expect(await toolNames(live)).toEqual([
+        "code_search",
+        "find_dependencies",
+        "find_dependents",
+        "call_tree",
+        "find_implementations",
+      ]);
+    },
+    LIVE_CASE_MS,
+  );
+
+  test(
+    "find_dependents answers with the CALL SITE line, where codegraph answers the declaration",
+    async () => {
+      const live = startAgainst("graphify", GRAPHIFY_SPEC, false, buildGraphifyGraph);
+      await handshake(live);
+
+      const { text, isError } = textOf(
+        await live.request("tools/call", {
+          name: "find_dependents",
+          arguments: { symbol: "withFileLock" },
+        }),
+      );
+
+      expect(isError).toBe(false);
+      expect(text).toContain("served_by: graphify/");
+      expect(text).toContain("saveSettings");
+      expect(text).not.toContain(tmpdir());
+      // LINE 4, the call site — against codegraph's 3 for the same edge. This pair is
+      // the executable form of the LineAnchor rationale.
+      expect(text).toMatch(/src\/settings\.ts:4\b/u);
+    },
+    LIVE_CASE_MS,
+  );
+
+  test(
+    "find_implementations returns the concrete subclasses, closing design §4.3 item 3",
+    async () => {
+      const live = startAgainst("graphify", GRAPHIFY_SPEC, false, buildGraphifyGraph);
+      await handshake(live);
+
+      const { text, isError } = textOf(
+        await live.request("tools/call", {
+          name: "find_implementations",
+          arguments: { symbol: "BaseStore" },
+        }),
+      );
+
+      expect(isError).toBe(false);
+      // Incoming `inherits` edges. The design document had this as an inference from
+      // documentation; here it is the engine answering.
+      expect(text).toContain("FileStore");
+      expect(text).toContain("MemoryStore");
     },
     LIVE_CASE_MS,
   );

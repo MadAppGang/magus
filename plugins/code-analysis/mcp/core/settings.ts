@@ -92,12 +92,82 @@ export interface LimitSettings {
   max: number;
 }
 
+/**
+ * Levers that change how hard this server pushes to be USED, rather than what it can do.
+ *
+ * They exist because of a measured failure. Across three engines and 72 benchmark
+ * scenarios the agent called this server ZERO times — 201 tool calls, all of them `Bash`
+ * or `Read` — while the same scenarios with `Bash` removed used it and scored MacroF1
+ * 0.385. The server works; it does not get reached for.
+ *
+ * EVERY LEVER DEFAULTS TO OFF, so today's behaviour is the control arm and each one can
+ * be switched independently. That is the whole point: they are settings rather than a
+ * rewrite because the bench varies them one at a time, and a lever that ships on by
+ * default can never be measured against its own absence.
+ */
+export interface AdoptionSettings {
+  /**
+   * Mark every tool `_meta: {"anthropic/alwaysLoad": true}`, so the host loads it into
+   * context at session start instead of deferring it behind a tool search.
+   *
+   * WHY THIS MIGHT MATTER: Claude Code's MCP documentation states that with
+   * `ENABLE_TOOL_SEARCH` unset — the default — "All MCP tools deferred and loaded on
+   * demand", while its tool-search documentation states the SDK "always loads core
+   * built-in tools such as Bash, Read, and Edit upfront". The 201 calls the benchmark
+   * recorded were 146 Bash and 55 Read: exactly the two named as never deferred.
+   *
+   * REQUIRES a protocol version that has `_meta` on `Tool` — 2025-06-18 or later. It does
+   * not exist in 2024-11-05.
+   */
+  alwaysLoad: boolean;
+  /**
+   * Send an `instructions` string in the `initialize` result — the MCP channel for
+   * telling a host how the server is meant to be used. This server has never sent one.
+   */
+  instructions: boolean;
+  /**
+   * Let the `PreToolUse` hook DENY a search-shaped `Bash` call once and redirect the
+   * model to `code_search`.
+   *
+   * ENFORCEMENT RATHER THAN PERSUASION, and the most contested lever here — a five-model
+   * review panel split on it. The case for: description-level persuasion has not moved
+   * this behaviour in any measured run. The case against: an interception that cannot
+   * tell a discovery question from an exact-literal search enforces WORSE behaviour,
+   * because `rg` genuinely wins the latter.
+   *
+   * The hook therefore fires narrowly and at most `interceptBudget` times per session,
+   * and never when no engine is configured. See `hooks/redirect-search-to-facade.ts`.
+   */
+  interceptBash: boolean;
+  /** How many times per session the hook may deny. Beyond this it allows, always. */
+  interceptBudget: number;
+  /**
+   * Calibration of `interceptBash`: count `grep -l` / `rg -l` as a location query.
+   *
+   * A parameter OF the intercept lever, not a lever of its own — it changes what the
+   * hook considers a discovery search, not whether it intercepts. Measured against a real
+   * agent the narrow guard denied 0 of 14 in a smoke run because every command was a
+   * `grep -rln`; this flag exists so that calibration can be a separate bench row rather
+   * than an edit to the shipped guard after seeing it produce nothing.
+   */
+  listIsLocation: boolean;
+  /**
+   * Absolute path the hook appends its decision trace to. Unset means the hook falls back
+   * to `CA_HOOK_TRACE` and then the OS temp dir.
+   *
+   * IN SETTINGS, NOT THE ENVIRONMENT, because settings are the one channel proven to
+   * reach the hook inside madbench's sandbox. See `hooks/redirect-search-to-facade.ts`.
+   */
+  traceFile: string | undefined;
+}
+
 export interface CodeAnalysisSettings {
   engine?: string;
   engines: Readonly<Record<string, EngineSpec>>;
   passthrough: PassthroughSettings;
   grep: GrepSettings;
   limits: LimitSettings;
+  adoption: AdoptionSettings;
 }
 
 export type LayerStatus =
@@ -124,6 +194,15 @@ export const DEFAULTS: CodeAnalysisSettings = {
   passthrough: { enabled: false, maxPerEngine: 3, maxTotal: 6 },
   grep: { route: true },
   limits: { default: 20, max: 200 },
+  // ALL OFF. This is the control arm — see `AdoptionSettings`.
+  adoption: {
+    alwaysLoad: false,
+    instructions: false,
+    interceptBash: false,
+    interceptBudget: 1,
+    listIsLocation: false,
+    traceFile: undefined,
+  },
 };
 
 /** The three layer paths, in precedence order (lowest first). Pure. */
@@ -156,6 +235,7 @@ export function mergeSettingsLayers(raw: readonly (unknown | undefined)[]): {
   const passthrough: Record<string, unknown> = {};
   const grep: Record<string, unknown> = {};
   const limits: Record<string, unknown> = {};
+  const adoption: Record<string, unknown> = {};
   let engine: unknown;
 
   for (const layer of raw) {
@@ -165,6 +245,7 @@ export function mergeSettingsLayers(raw: readonly (unknown | undefined)[]): {
     assignShallow(passthrough, layer["passthrough"]);
     assignShallow(grep, layer["grep"]);
     assignShallow(limits, layer["limits"]);
+    assignShallow(adoption, layer["adoption"]);
   }
 
   const dropped: string[] = [];
@@ -173,6 +254,7 @@ export function mergeSettingsLayers(raw: readonly (unknown | undefined)[]): {
     passthrough: validatePassthrough(passthrough, dropped),
     grep: validateGrep(grep, dropped),
     limits: validateLimits(limits, dropped),
+    adoption: validateAdoption(adoption, dropped),
   };
 
   // An `engine` naming an id with no entry SURVIVES: registry.ts turns that into a
@@ -360,10 +442,56 @@ function validateGrep(raw: Record<string, unknown>, dropped: string[]): GrepSett
   return { route: readBool(raw["route"], DEFAULTS.grep.route, "grep.route", dropped) };
 }
 
+/** Both booleans, both defaulting OFF. A malformed value is dropped and reported rather
+ *  than coerced — an adoption lever that silently half-enabled would be unmeasurable. */
+function validateAdoption(raw: Record<string, unknown>, dropped: string[]): AdoptionSettings {
+  return {
+    alwaysLoad: readBool(raw["alwaysLoad"], DEFAULTS.adoption.alwaysLoad, "adoption.alwaysLoad", dropped),
+    instructions: readBool(
+      raw["instructions"],
+      DEFAULTS.adoption.instructions,
+      "adoption.instructions",
+      dropped,
+    ),
+    interceptBash: readBool(
+      raw["interceptBash"],
+      DEFAULTS.adoption.interceptBash,
+      "adoption.interceptBash",
+      dropped,
+    ),
+    // Clamped, not merely read: a budget of 0 disables the lever while leaving it
+    // switched on, and an unbounded one is a denial loop. 1..10 covers every arm the
+    // bench needs and makes the pathological values unreachable.
+    interceptBudget: readClamped(
+      raw["interceptBudget"],
+      DEFAULTS.adoption.interceptBudget,
+      1,
+      10,
+      "adoption.interceptBudget",
+      dropped,
+    ),
+    listIsLocation: readBool(
+      raw["listIsLocation"],
+      DEFAULTS.adoption.listIsLocation,
+      "adoption.listIsLocation",
+      dropped,
+    ),
+    traceFile: readOptionalString(raw["traceFile"], "adoption.traceFile", dropped),
+  };
+}
+
 function validateLimits(raw: Record<string, unknown>, dropped: string[]): LimitSettings {
   const max = readClamped(raw["max"], DEFAULTS.limits.max, 1, LIMIT_CEILING, "limits.max", dropped);
   const def = readClamped(raw["default"], DEFAULTS.limits.default, 1, max, "limits.default", dropped);
   return { default: def, max };
+}
+
+/** An optional string. Absent is fine; present-but-not-a-string is dropped and reported. */
+function readOptionalString(value: unknown, id: string, dropped: string[]): string | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value === "string" && value !== "") return value;
+  dropped.push(id);
+  return undefined;
 }
 
 function readBool(value: unknown, fallback: boolean, id: string, dropped: string[]): boolean {

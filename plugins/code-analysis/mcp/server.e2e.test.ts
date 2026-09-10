@@ -348,14 +348,64 @@ describe("initialize", () => {
       serverInfo?: { name?: string; version?: string };
     };
 
-    expect(result.protocolVersion).toBe("2024-11-05");
+    // 2025-06-18, NOT 2024-11-05, and the version is load-bearing rather than cosmetic:
+    // `_meta` is not part of `Tool` in 2024-11-05, and `_meta` is how a tool carries
+    // `anthropic/alwaysLoad` to ask the host not to defer it. On an older negotiated
+    // version a host may drop the unknown field, which would make that lever measure as
+    // "no effect" while never having been delivered.
+    expect(result.protocolVersion).toBe("2025-06-18");
     // THE assertion. A host is entitled to discard notifications/tools/list_changed
     // from a server that never declared it; the tool then stays in the host's list and
     // every call to it fails.
     expect(result.capabilities?.tools?.listChanged).toBe(true);
+    // The control arm sends NO instructions. Absence and an empty string are different
+    // messages to a host, so the default must omit the key entirely.
+    expect((result as { instructions?: unknown }).instructions).toBeUndefined();
     expect(result.serverInfo?.name).toBe("ca");
     expect(typeof result.serverInfo?.version).toBe("string");
     expect(result.serverInfo?.version).not.toBe("");
+  });
+
+  /**
+   * The two adoption levers, each proved to FIRE and to stay off by default.
+   *
+   * They exist because of a measured failure — 0 MCP calls across 72 benchmark
+   * scenarios, 201 tool calls all Bash or Read — and the bench varies them one at a
+   * time. A lever that cannot be shown to reach the wire is indistinguishable from one
+   * that had no effect, so each is asserted in both states.
+   */
+  test("adoption.instructions is OFF by default and SENT when switched on", async () => {
+    const server = startServer({ settings: { adoption: { instructions: true } } });
+    const response = await handshake(server);
+
+    const instructions = (response.result as { instructions?: string }).instructions;
+    expect(typeof instructions).toBe("string");
+    // Content assertions, not just presence: this text is the intervention. It must
+    // route rather than advertise — naming the built-ins it displaces, and naming what
+    // it does NOT claim, because a server that claims everything is trusted for nothing.
+    expect(instructions).toContain("code_search");
+    expect(instructions).toContain("grep");
+    expect(instructions).toContain("rg");
+    expect(instructions).toContain("WHEN NOT TO USE IT");
+  });
+
+  test("adoption.alwaysLoad is OFF by default and marks every tool when switched on", async () => {
+    const off = startServer();
+    await handshake(off);
+    for (const tool of listedTools(await off.request("tools/list"))) {
+      expect((tool as { _meta?: unknown })._meta).toBeUndefined();
+    }
+
+    const on = startServer({ settings: { adoption: { alwaysLoad: true } } });
+    await handshake(on);
+    const tools = listedTools(await on.request("tools/list"));
+    // Tier 0 is always present, so this can never be a vacuous pass over an empty list.
+    expect(tools.length).toBeGreaterThan(0);
+    for (const tool of tools) {
+      expect((tool as { _meta?: Record<string, unknown> })._meta?.["anthropic/alwaysLoad"]).toBe(
+        true,
+      );
+    }
   });
 
   test("answers ping, and an unknown method is -32601", async () => {

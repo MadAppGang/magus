@@ -8,6 +8,11 @@
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/hooks/block-git-add-private.sh",
             "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "bun --env-file=/dev/null ${CLAUDE_PLUGIN_ROOT}/hooks/redirect-search-to-facade.ts",
+            "timeout": 5
           }
         ]
       }
