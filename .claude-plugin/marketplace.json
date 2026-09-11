@@ -15,7 +15,7 @@
       "name": "code-analysis",
       "source": "./plugins/code-analysis",
       "description": "Read-only codebase investigation and code search behind one stable tool surface. Finds code by meaning or structure, traces callers, callees and blast radius, and dispatches a detective agent for deep dives. The search engine is named in project settings and is swappable.",
-      "version": "7.2.1",
+      "version": "7.3.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -37,6 +37,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "7.3.0",
+          "date": "2026-09-11",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "code-analysis:detective now asks for the symbol, file or behaviour to trace, and returns a\u2026"
+        },
         {
           "version": "7.2.1",
           "date": "2026-09-10",
@@ -74,11 +82,6 @@
             "Fixed"
           ],
           "summary": "Four of the six engines, because four of them had never been run"
-        },
-        {
-          "version": "5.4.3",
-          "date": "2026-08-26",
-          "summary": "References updated to claudish:claudish-usage"
         }
       ]
     },
@@ -192,7 +195,7 @@
       "name": "multimodel",
       "source": "./plugins/multimodel",
       "description": "Multi-model collaboration and orchestration. Runs a task across several AI models in parallel and aggregates their blind APPROVE/REJECT votes, or delegates it to one model running a full Claude Code session.",
-      "version": "4.0.3",
+      "version": "4.1.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -217,6 +220,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "4.1.0",
+          "date": "2026-09-11",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "multimodel:deep-analyst now says what the caller must hand over, and returns a fixed completion\u2026"
+        },
         {
           "version": "4.0.3",
           "date": "2026-09-08",
@@ -249,11 +260,6 @@
             "Added"
           ],
           "summary": "BREAKING \u2014 /multimodel:team polls instead of waiting, and needs claudish >= 8.0.0"
-        },
-        {
-          "version": "3.10.0",
-          "date": "2026-08-26",
-          "summary": "The run monitor mis-counted every turn that straddled a poll, and could report a healthy model\u2026"
         }
       ]
     },
@@ -261,7 +267,7 @@
       "name": "dev",
       "source": "./plugins/dev",
       "description": "Universal development assistant. Detects the project stack and routes work to specialist agents for architecture, implementation, debugging, review and research, enforcing design-system guardrails on every UI change.",
-      "version": "7.3.0",
+      "version": "7.4.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -301,6 +307,14 @@
       "strict": true,
       "releases": [
         {
+          "version": "7.4.0",
+          "date": "2026-09-11",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "All 13 dev subagents now say what the caller must hand over, and return a fixed completion\u2026"
+        },
+        {
           "version": "7.3.0",
           "date": "2026-09-09",
           "kinds": [
@@ -333,17 +347,6 @@
             "Fixed"
           ],
           "summary": "Every bun launch in the plugin's hooks no longer exits 1 silently when the project's .env is a\u2026"
-        },
-        {
-          "version": "7.0.0",
-          "date": "2026-09-07",
-          "kinds": [
-            "Removed",
-            "Added",
-            "Changed",
-            "Fixed"
-          ],
-          "summary": "BREAKING \u2014 context.json no longer carries bundled_skill_paths"
         }
       ]
     },
@@ -651,7 +654,7 @@
       "name": "designer",
       "source": "./plugins/designer",
       "description": "UI design validation. Compares a rendered screen against its reference by pixel diff, then reviews the result for spacing, hierarchy and design-system consistency.",
-      "version": "0.6.2",
+      "version": "0.7.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -673,6 +676,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "0.7.0",
+          "date": "2026-09-11",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "designer:design-review and designer:ui now say what the caller must hand over, and return a\u2026"
+        },
         {
           "version": "0.6.2",
           "date": "2026-09-03",
@@ -698,14 +709,6 @@
           "version": "0.5.3",
           "date": "2026-08-26",
           "summary": "Plugin manifest moved to .claude-plugin/plugin.json, the only location Claude Code's runtime\u2026"
-        },
-        {
-          "version": "0.5.2",
-          "date": "2026-08-24",
-          "kinds": [
-            "Fixed"
-          ],
-          "summary": "An external design review was verified by reading a file claudish never writes"
         }
       ]
     },
@@ -713,7 +716,7 @@
       "name": "terminal",
       "source": "./plugins/terminal",
       "description": "Slot-addressed terminal control over tmux. Runs interactive commands, dev servers, test watchers, REPLs and TUI apps in numbered helper panes \u2014 beside the user or isolated from view \u2014 that the server places and owns, so an agent never holds a pane id or targets the user's own session.",
-      "version": "5.0.1",
+      "version": "5.1.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -731,6 +734,15 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "5.1.0",
+          "date": "2026-09-11",
+          "kinds": [
+            "Changed",
+            "Fixed"
+          ],
+          "summary": "terminal:tui-navigator now says what the caller must hand over, and returns a fixed completion\u2026"
+        },
         {
           "version": "5.0.1",
           "date": "2026-09-08",
@@ -762,14 +774,6 @@
           "version": "4.1.7",
           "date": "2026-08-26",
           "summary": "Plugin manifest moved to .claude-plugin/plugin.json, the only location Claude Code's runtime\u2026"
-        },
-        {
-          "version": "4.1.4",
-          "date": "2026-07-30",
-          "kinds": [
-            "Changed"
-          ],
-          "summary": "Tracks github.com/MadAppGang/tmux-mcp@v1.6.3, up from v1.6.2"
         }
       ]
     },
@@ -777,7 +781,7 @@
       "name": "gtd",
       "source": "./plugins/gtd",
       "description": "Getting Things Done workflow. Capture, clarify, organise, reflect and engage over a task store that hooks keep in sync with the session in real time.",
-      "version": "2.1.1",
+      "version": "2.2.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -798,6 +802,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "2.2.0",
+          "date": "2026-09-11",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "gtd:gtd-reviewer now says what the caller must hand over, and returns a fixed completion\u2026"
+        },
         {
           "version": "2.1.1",
           "date": "2026-08-26",

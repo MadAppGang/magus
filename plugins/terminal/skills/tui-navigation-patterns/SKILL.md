@@ -198,7 +198,7 @@ mcp__plugin_terminal_mux__close-pane({ slot: 2 })
 
 ## htop / btop
 
-System monitors. Read-only — never send destructive keys without user confirmation.
+System monitors. Read-only — never send destructive keys unless the user approved them (in person on the main thread; in the dispatching prompt for a subagent).
 
 ### htop
 

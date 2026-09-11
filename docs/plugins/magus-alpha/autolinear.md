@@ -7,7 +7,7 @@ Autonomous Linear to Claude Code bridge. Picks up issues labelled @autolinear, r
 
 | | |
 |---|---|
-| Version | `0.4.2` |
+| Version | `0.5.0` |
 | Marketplace | [`magus-alpha`](./index.md) |
 | Commands | 5 |
 | Subagents | 3 |

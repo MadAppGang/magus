@@ -79,7 +79,7 @@ If you need a pane with no inherited context, `isolated: true` is the only guara
 
 Two skills carry the bulk of this plugin's reference material and are **not** in your skill listing — they cost nothing until you open them. They are files to **read**, not skills to invoke: the Skill tool does not fire for them.
 
-| Read this file | When the task involves |
+| Open this file (Read, or `cat` via Bash if your tools line has no Read) | When the task involves |
 |---|---|
 | `${CLAUDE_PLUGIN_ROOT}/skills/framework-signals/SKILL.md` | Deciding whether a test run, build or deploy passed — the pass/fail/running/idle markers for jest, vitest, pytest, cargo, go test, webpack, vite, and the deploy platforms |
 | `${CLAUDE_PLUGIN_ROOT}/skills/workspace-setup/SKILL.md` | Building a multi-pane dashboard, a `watch`/`entr` monitor, or a synchronised multi-host session |
@@ -195,6 +195,7 @@ For very long output (build logs, test suites with hundreds of cases), tee to a 
 ```
 mcp__plugin_terminal_mux__execute-command({ command: "npm test 2>&1 | tee /tmp/claude-output.log", isolated: true })
 Read({ file_path: "/tmp/claude-output.log" })  → full output, unlimited lines
+# (or `cat /tmp/claude-output.log` via Bash if you have no Read tool)
 ```
 
 **Output is plain text** — ANSI codes are stripped unless `colors: true`. Look for `✓` / `✗` / `PASS` / `FAIL` / `error:` / a spinner glyph (`⠋ ⠙ ⠸ ⠼ ⠴ ⠦ ⠧ ⠇ ⠏`), never "is this line red?". A spinner or progress bar means still running, not a result. `$` or `%` at the end of the last line means the shell prompt is back.
@@ -294,26 +295,26 @@ mcp__plugin_terminal_mux__notify({ message: "Build complete" })
 
 **Slot not found**: a reading tool on a slot you never opened is an error, not an empty pane. `list-slots` shows what you hold; reopen with a creating tool. After compaction this is the common case.
 
-**Long-running process (SSH, migration, deploy)**: migrations — always confirm with the user first. SSH — detect the password prompt with `pane-state` and stop. Deployments — `start-and-watch` with deploy-specific patterns; read `${CLAUDE_PLUGIN_ROOT}/skills/framework-signals/SKILL.md`.
+**Long-running process (SSH, migration, deploy)**: migrations — on the main thread, confirm with the user first; as a subagent, run only if the dispatching prompt already approved it, else return Blocked. SSH — detect the password prompt with `pane-state` and stop. Deployments — `start-and-watch` with deploy-specific patterns; read `${CLAUDE_PLUGIN_ROOT}/skills/framework-signals/SKILL.md`.
 
 ## 11. Safety guidelines
 
 1. **Never store credentials**: do not send passwords or API keys through `send-keys`. Use `pane-state` to detect password prompts and stop.
-2. **Confirm destructive operations**: database migrations, `DROP TABLE`, production deployments — always confirm with the user.
+2. **Never run an unconfirmed destructive operation**: database migrations, `DROP TABLE`, production deployments. On the main thread, confirm with the user. As a subagent there is nobody to ask: run it only when the dispatching prompt says the user already approved it; otherwise close the slot and return Blocked, naming the operation and the missing authorisation.
 3. **You cannot read a pane the user is using.** No tool takes a pane id. Run the process in a slot, or read its log file. Adopting an *idle* user shell into a slot is the one way user panes enter your reach, and the server does that, not you.
 4. **Close what you opened**: `close-pane({ slot })` or `close-pane({ slot: "all" })`. It only ever interrupts an adopted pane, never kills it.
 5. **Slots are the only address.** A slot can never be your own pane, and the server refuses any id you might pass. Check `pane-state.foregroundCmd` before sending into a slot you have not used this turn — after adoption or a user's intervention it may hold a REPL or an editor, and `send-keys` feeds whatever is in the foreground.
 
 ## 11b. Approval gate for destructive commands
 
-Before running any command that cannot be undone, Claude must **stop and confirm** with the user.
+Before running any command that cannot be undone, check for explicit approval of that exact command. A main-thread session **stops and confirms** with the user. A subagent has nobody to ask: it proceeds only on approval already in the dispatching prompt, and otherwise returns Blocked.
 
 **RPGAO loop** (for any terminal action):
 ```
 READ    → capture-pane to see current state
 PROPOSE → "I plan to run: {command}. Reason: {explanation}"
-GATE    → "Shall I proceed?" (ALWAYS for destructive; optional for safe commands)
-ACT     → send-keys or execute-command on user confirmation
+GATE    → main thread: "Shall I proceed?" (ALWAYS for destructive). Subagent: approval must already be in the prompt, else return Blocked
+ACT     → send-keys or execute-command once approval is established
 OBSERVE → start-and-watch or watch-pane for the completion signal
 → Repeat from READ on failure
 ```

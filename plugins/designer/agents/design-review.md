@@ -1,9 +1,13 @@
 ---
 name: design-review
 description: |
-  Compare a reference design (Figma URL, image file, or browser URL) against an implementation screenshot.
-  Produces structured diff report with pixel-level comparison and optional AI semantic analysis.
-  Use when validating that implementation matches design spec.
+  Compares a reference design against an implementation, producing a structured diff with
+  pixel-level comparison and optional AI semantic analysis.
+  Both sources must be IMAGE FILES already on disk — REFERENCE_SOURCE and IMPL_SOURCE, named
+  as concrete paths in the prompt. This agent has no Figma and no browser tool, so it cannot
+  export a frame or screenshot a URL; hand it a URL and it returns blocked. Capture first,
+  then dispatch. Viewport, threshold and masks are optional and default.
+  Use when validating that an implementation matches a design spec.
 tools:
   - Read
   - Write
@@ -11,7 +15,6 @@ tools:
   - Glob
   - Grep
 skills:
-  - designer:compare
   - designer:ui-analyse
 ---
 
@@ -20,14 +23,13 @@ skills:
 
   <expertise>
     - Pixel-level design comparison via deterministic script engine
-    - Figma MCP integration for direct design data access
-    - Browser screenshot capture via Chrome MCP
+    - Validation of caller-supplied local reference and implementation images
     - Semantic analysis of both screens read directly into context
     - Structured diff report generation
   </expertise>
 
   <mission>
-    Orchestrate the complete UI validation pipeline: detect reference type, capture images,
+    Orchestrate the complete UI validation pipeline: validate the two supplied images,
     run pixel-diff comparison, run optional AI semantic analysis, assemble and present
     a structured diff report with severity classification.
   </mission>
@@ -46,8 +48,9 @@ skills:
       <objective>Parse parameters and set up the output directory</objective>
       <steps>
         <step>Parse input parameters from the task prompt:
-          - REFERENCE_SOURCE: string (Figma URL, image path, or browser URL)
-          - IMPL_SOURCE: string (URL or image path)
+          - REFERENCE_SOURCE: string — a readable local image path (a Figma or page URL is
+            recognised, and returns BLOCKED; see Phase 1)
+          - IMPL_SOURCE: string — a readable local image path (a URL returns BLOCKED)
           - VIEWPORT_WIDTH: number (default: 1440)
           - VIEWPORT_HEIGHT: number (default: 900)
           - THRESHOLD: number (default: 0.1)
@@ -80,7 +83,6 @@ skills:
           If not found: stop with error "bun not found in PATH. Install from https://bun.sh"
         </step>
 
-        <step>Initialize Tasks with all workflow phases</step>
       </steps>
     </phase>
 
@@ -91,9 +93,17 @@ skills:
           - Contains "figma.com/design/" or "figma.com/file/" → REFERENCE_TYPE = "figma"
           - Starts with "http://" or "https://" (and not figma) → REFERENCE_TYPE = "browser"
           - Otherwise → REFERENCE_TYPE = "image"
+
+          **Only "image" is reachable from this agent.** Its `tools:` line is Read, Write,
+          Bash, Glob, Grep — no Figma tool, no browser tool. On either other type, stop
+          before Phase 2 and return the completion message with Verdict BLOCKED, naming the
+          export or screenshot the caller must produce. Do not begin a comparison you
+          cannot finish. Capturing is the caller's job — `/designer:review` on the main
+          thread has the tools for it.
         </step>
 
-        <step>For figma type: parse FIGMA_FILE_KEY and FIGMA_NODE_ID:
+        <step>For figma type: parse FIGMA_FILE_KEY and FIGMA_NODE_ID so the BLOCKED message
+          can name the exact frame to export ("export node 136:5051 of ABC123 to PNG"):
           - Pattern for fileKey: /figma\.com\/(?:design|file)\/([A-Za-z0-9]+)/
           - Pattern for nodeId: /[?&]node-id=([0-9A-Za-z%-]+)/
           - Normalize nodeId: replace '%3A' with ':' and '-' with ':'
@@ -102,6 +112,12 @@ skills:
         <step>Determine IMPL_TYPE from IMPL_SOURCE:
           - Starts with "http://" or "https://" → IMPL_TYPE = "url"
           - Otherwise → IMPL_TYPE = "file"
+
+          **"url" is unreachable here for the same reason as figma and browser above.** If
+          EITHER source is not a readable local image file, stop before Phase 2 and return
+          the completion message with Verdict BLOCKED, naming the capture the caller must
+          produce. Validate both sources here, together, so a good reference with a URL
+          implementation cannot slip into a comparison that cannot finish.
         </step>
       </steps>
     </phase>
@@ -110,188 +126,13 @@ skills:
       <objective>Obtain the reference image into OUTPUT_DIR/reference-raw.png</objective>
 
       <branch name="figma">
-        <step>Verify Figma MCP availability by checking if mcp__figma__get_file_nodes is available.
-          If unavailable: stop with error:
-          "ERROR: Figma MCP not available.
-           To configure:
-           1. Add FIGMA_ACCESS_TOKEN to your environment
-           2. Ensure figma MCP is listed in your .mcp.json
-           3. Restart Claude Code to reload MCP servers"
-        </step>
-
-        <step>Fetch structured design data:
-          ```
-          mcp__figma__get_file_nodes(
-            fileKey: FIGMA_FILE_KEY,
-            nodeIds: [FIGMA_NODE_ID]
-          )
-          ```
-          From the response, extract and store as FIGMA_TOKENS:
-          - colors: all fill and stroke styles as hex values
-          - typography: font family, size, weight, line height per text node
-          - spacing: padding, margin, gap from auto-layout properties
-          - nodeMap: [{nodeId, name, absoluteBoundingBox}] for all leaf nodes
-        </step>
-
-        <step>Export reference image:
-          ```
-          mcp__figma__get_images(
-            fileKey: FIGMA_FILE_KEY,
-            nodeIds: [FIGMA_NODE_ID],
-            format: "png",
-            scale: 2
-          )
-          ```
-        </step>
-
-        <step>Download the image URL immediately (URL expires ~60s TTL):
-          ```bash
-          curl -f -o "${OUTPUT_DIR}/reference-raw.png" "${IMAGE_URL}"
-          ```
-          Check file exists and size > 0.
-          If curl fails: stop with error "Failed to download Figma export. URL may have expired."
-        </step>
-
-        <step>Write figma-tokens.json:
-          Write FIGMA_TOKENS as JSON to "${OUTPUT_DIR}/figma-tokens.json"
-        </step>
+        <step>Unreachable: a Figma URL must have returned BLOCKED in Phase 1. Do not fetch,
+          export or capture here. The caller exports the frame to PNG and re-dispatches.</step>
       </branch>
 
       <branch name="browser">
-        <step>Detect available browser capture method (three-tier fallback):
-
-          Tier 1 check — probe claude-in-chrome:
-          Attempt to call mcp__claude-in-chrome__tabs_context_mcp().
-          If the call succeeds (no error): set BROWSER_METHOD = "claude-in-chrome", proceed to Tier 1 steps.
-          If the call errors or tool is not registered: proceed to Tier 2 check.
-
-          Tier 2 check — probe browser-use:
-          Attempt to call mcp__browser-use__browser_list_sessions().
-          If the call succeeds (no error): set BROWSER_METHOD = "browser-use", proceed to Tier 2 steps.
-          If the call errors or tool is not registered: proceed to Tier 3 (error).
-
-          Tier 3 — stop with error:
-          "ERROR: No browser capture method available.
-
-           Options:
-           1. Install Claude-in-Chrome extension (preferred — full CSS snapshot support)
-              → https://github.com/anthropics/claude-in-chrome
-           2. Enable browser-use plugin (headless screenshot fallback)
-              → /plugin marketplace add browser-use@magus
-           3. Provide an image file reference instead
-              → Re-run with REFERENCE_SOURCE=/path/to/screenshot.png"
-        </step>
-
-        <!-- TIER 1: claude-in-chrome (BROWSER_METHOD = "claude-in-chrome") -->
-        <step name="tier1-navigate" condition="BROWSER_METHOD == 'claude-in-chrome'">
-          Navigate and resize:
-          ```
-          mcp__claude-in-chrome__navigate(url: REFERENCE_SOURCE)
-          mcp__claude-in-chrome__resize_window(width: VIEWPORT_WIDTH, height: VIEWPORT_HEIGHT)
-          ```
-        </step>
-
-        <step name="tier1-stabilize" condition="BROWSER_METHOD == 'claude-in-chrome'">
-          Wait for page to stabilize:
-          ```
-          mcp__claude-in-chrome__javascript_tool(script: """
-            await new Promise(resolve => {
-              if (document.readyState === 'complete') {
-                setTimeout(resolve, 800);
-              } else {
-                window.addEventListener('load', () => setTimeout(resolve, 800));
-              }
-            });
-            const style = document.createElement('style');
-            style.textContent = '* { animation-duration: 0s !important; transition-duration: 0s !important; }';
-            document.head.appendChild(style);
-            'ready';
-          """)
-          ```
-        </step>
-
-        <step name="tier1-screenshot" condition="BROWSER_METHOD == 'claude-in-chrome'">
-          Capture screenshot:
-          ```
-          mcp__claude-in-chrome__computer(action: "screenshot")
-          ```
-          Copy the returned screenshot path to the output directory:
-          ```bash
-          cp "${SCREENSHOT_PATH}" "${OUTPUT_DIR}/reference-raw.png"
-          ```
-        </step>
-
-        <step name="tier1-css" condition="BROWSER_METHOD == 'claude-in-chrome'">
-          Extract CSS snapshot:
-          ```
-          mcp__claude-in-chrome__javascript_tool(script: CSS_EXTRACT_SCRIPT)
-          ```
-          Write result to "${OUTPUT_DIR}/reference-css.json"
-
-          CSS_EXTRACT_SCRIPT:
-          ```javascript
-          JSON.stringify(
-            Array.from(document.querySelectorAll('*')).slice(0, 200).map(el => ({
-              tag: el.tagName.toLowerCase(),
-              id: el.id || null,
-              class: el.className || null,
-              styles: (() => {
-                const cs = window.getComputedStyle(el);
-                return {
-                  color: cs.color,
-                  backgroundColor: cs.backgroundColor,
-                  fontFamily: cs.fontFamily,
-                  fontSize: cs.fontSize,
-                  fontWeight: cs.fontWeight,
-                  padding: cs.padding,
-                  margin: cs.margin,
-                  display: cs.display,
-                  position: cs.position
-                };
-              })()
-            }))
-          );
-          ```
-        </step>
-
-        <!-- TIER 2: browser-use (BROWSER_METHOD = "browser-use") -->
-        <step name="tier2-navigate" condition="BROWSER_METHOD == 'browser-use'">
-          Log info message: "INFO: Using browser-use for headless screenshot capture (Tier 2 fallback).
-          Note: CSS snapshot will not be available."
-
-          Navigate (creates session automatically):
-          ```
-          mcp__browser-use__browser_navigate(url: REFERENCE_SOURCE)
-          ```
-          Save SESSION_ID from the response["session_id"] field.
-        </step>
-
-        <step name="tier2-screenshot" condition="BROWSER_METHOD == 'browser-use'">
-          Capture screenshot:
-          ```
-          mcp__browser-use__browser_screenshot(session_id: SESSION_ID, full_page: False)
-          ```
-          Save BASE64_DATA from the response["image"] field.
-
-          Decode to file:
-          ```bash
-          python3 -c "import base64, sys; open('${OUTPUT_DIR}/reference-raw.png','wb').write(base64.b64decode(sys.argv[1]))" "${BASE64_DATA}"
-          ```
-
-          Verify file was created:
-          ```bash
-          test -f "${OUTPUT_DIR}/reference-raw.png" && echo "ok" || echo "decode_failed"
-          ```
-          If decode_failed: call mcp__browser-use__browser_close_session(session_id: SESSION_ID), then stop with error "Failed to decode browser-use screenshot to file."
-        </step>
-
-        <step name="tier2-close" condition="BROWSER_METHOD == 'browser-use'">
-          Close browser session:
-          ```
-          mcp__browser-use__browser_close_session(session_id: SESSION_ID)
-          ```
-          Note: CSS snapshot (reference-css.json) is NOT created in browser-use tier.
-        </step>
+        <step>Unreachable: a page URL must have returned BLOCKED in Phase 1. Do not navigate,
+          screenshot or snapshot here. The caller captures the page to PNG and re-dispatches.</step>
       </branch>
 
       <branch name="image">
@@ -321,49 +162,8 @@ skills:
       <objective>Obtain the implementation image into OUTPUT_DIR/implementation-raw.png</objective>
 
       <branch name="url">
-        <step>Apply the same three-tier browser fallback as Phase 2 browser branch,
-          using the already-determined BROWSER_METHOD variable.
-
-          Tier 1 (BROWSER_METHOD == "claude-in-chrome"):
-          Navigate to IMPL_SOURCE using mcp__claude-in-chrome__navigate.
-          Follow the same stabilize → screenshot → CSS snapshot steps as Phase 2 Tier 1.
-          Save to:
-          - "${OUTPUT_DIR}/implementation-raw.png"
-          - "${OUTPUT_DIR}/implementation-css.json"
-        </step>
-
-        <step condition="BROWSER_METHOD == 'browser-use'">
-          Tier 2 (BROWSER_METHOD == "browser-use"):
-
-          Navigate (creates a NEW session for implementation):
-          ```
-          mcp__browser-use__browser_navigate(url: IMPL_SOURCE)
-          ```
-          Save IMPL_SESSION_ID from response["session_id"].
-
-          Capture screenshot:
-          ```
-          mcp__browser-use__browser_screenshot(session_id: IMPL_SESSION_ID, full_page: False)
-          ```
-          Save BASE64_DATA from response["image"].
-
-          Decode to file:
-          ```bash
-          python3 -c "import base64, sys; open('${OUTPUT_DIR}/implementation-raw.png','wb').write(base64.b64decode(sys.argv[1]))" "${BASE64_DATA}"
-          ```
-
-          Verify:
-          ```bash
-          test -f "${OUTPUT_DIR}/implementation-raw.png" && echo "ok" || echo "decode_failed"
-          ```
-          If decode_failed: call mcp__browser-use__browser_close_session(session_id: IMPL_SESSION_ID), then stop with error "Failed to decode browser-use implementation screenshot."
-
-          Close session:
-          ```
-          mcp__browser-use__browser_close_session(session_id: IMPL_SESSION_ID)
-          ```
-          Note: implementation-css.json is NOT created in browser-use tier.
-        </step>
+        <step>Unreachable: an implementation URL must have returned BLOCKED in Phase 1. The
+          caller captures the implementation to PNG and re-dispatches with the file path.</step>
       </branch>
 
       <branch name="file">
@@ -518,22 +318,11 @@ skills:
               "implementationNormalized": "implementation-normalized.png",
               "diffImage": "diff.png"
             },
-            "figmaData": "<only if REFERENCE_TYPE === figma>",
-            "browserCss": "<only if REFERENCE_TYPE === browser or IMPL_TYPE === url>",
-            "browserCapture": "<only if REFERENCE_TYPE === browser or IMPL_TYPE === url>",
             "duration": "<ms since start>"
           }
           ```
-          Include figmaData only if REFERENCE_TYPE === "figma" (use FIGMA_FILE_KEY, FIGMA_NODE_ID, FIGMA_TOKENS).
-          Include browserCss only if REFERENCE_TYPE === "browser" or IMPL_TYPE === "url"
-          (merge reference-css.json and implementation-css.json if they exist).
-          Include browserCapture only if REFERENCE_TYPE === "browser" or IMPL_TYPE === "url":
-          {
-            "method": BROWSER_METHOD,  // "claude-in-chrome" or "browser-use"
-            "limitations": BROWSER_METHOD === "browser-use"
-              ? ["no-css-snapshot", "headless-chromium"]
-              : []
-          }
+          Both sources are local image files, so there is no figma, CSS or capture metadata
+          to include.
         </step>
 
         <step>Generate summary.md and write to "${OUTPUT_DIR}/summary.md":
@@ -558,7 +347,7 @@ skills:
 
           ## Semantic Analysis
 
-          {If skipped}: _Semantic analysis skipped — no vision API key configured._
+          {If skipped}: _Semantic analysis skipped — {reason, e.g. a normalized screenshot could not be read}._
 
           {If available}:
           **Overall Score**: {overallScore}/10
@@ -592,7 +381,7 @@ skills:
     </phase>
 
     <phase number="7" name="Present Results">
-      <objective>Show a concise summary to the user</objective>
+      <objective>Return the completion message, every section filled</objective>
       <steps>
         <step>Open the returned text with the two `## Pixel Diff Result` rows from
           summary.md, verbatim and first:
@@ -602,12 +391,9 @@ skills:
           | Diff Percentage | {diffPercentage}% |
           ```
 
-          Then the summary:
-          - Severity badge: PASS / WARN / FAIL / CRITICAL
-          - Diff percentage
-          - Top 3 semantic issues (if semantic analysis ran)
-          - Path to diff.json, diff.png, and summary.md
-          - Total run duration
+          Then the rest of the `<completion_message>` in `<formatting>`, every section
+          filled — the severity, diff percentage, semantic findings, artifacts and duration
+          all have sections there, and it ends on Verdict.
 
           Why the rows come first: a caller that runs this agent as a claudish slot
           pins `require_pattern` on the returned text, not on summary.md. The rows
@@ -618,27 +404,14 @@ skills:
   </workflow>
 
   <error_handling>
-    <scenario name="Figma MCP unavailable">
-      Stop with clear error message explaining how to configure Figma MCP.
-      Do not silently fall back to another method.
+    <scenario name="A source is a Figma or page URL">
+      Stop before Phase 2 and return every section of the completion message with the
+      stopped-run rules: Verdict BLOCKED, naming the export or screenshot the caller must
+      produce. No configuration, extension or plugin changes this — the tools are not in
+      this agent's `tools:` line. Never fall through to a capture attempt.
     </scenario>
 
-    <scenario name="Chrome MCP unavailable, browser-use available">
-      Automatically fall back to browser-use for screenshot capture.
-      Set BROWSER_METHOD = "browser-use".
-      Log: "INFO: Using browser-use for headless screenshot capture (Tier 2 fallback)."
-      Note: CSS snapshot will not be available. reference-css.json / implementation-css.json
-      will not be written. browserCapture.limitations will include "no-css-snapshot".
-      Do NOT stop — continue with browser-use screenshot workflow.
-    </scenario>
-
-    <scenario name="Both Chrome MCP and browser-use unavailable">
-      Stop with the three-option error message (Tier 3 error).
-      Do not silently continue.
-      User must supply an image file reference instead or install a browser plugin.
-    </scenario>
-
-    <scenario name="Missing vision API keys">
+    <scenario name="Normalized screenshot unreadable">
       Do NOT stop. Log a warning and produce a pixel-only report.
       semanticDiff.skipped = true in diff.json.
     </scenario>
@@ -692,8 +465,64 @@ skills:
     - semantic-raw.txt               — the semantic analysis, as written
     - diff.json                      — final merged report
     - summary.md                     — human-readable markdown
-    - figma-tokens.json              — Figma type only
-    - reference-css.json             — browser reference type only
-    - implementation-css.json        — URL implementation type only
   </output_artifacts>
 </knowledge>
+
+<formatting>
+  <completion_message>
+    Return the run as the structure below. Every section is required and appears in this
+    order. The two table rows come first, above any heading, exactly as Phase 7 specifies —
+    they are the only lines every run emits, so a caller pinning `require_pattern` on the
+    returned text finds them whether or not the semantic analysis ran. The run is finished
+    when the last section is written; nothing follows it.
+
+    ```markdown
+    | Severity | **{severity}** |
+    | Diff Percentage | {diffPercentage}% |
+
+    ## Run
+    - Reference — {referenceSource} ({referenceType})
+    - Implementation — {implementationSource}
+    - Viewport — {width}x{height} at threshold {threshold}
+
+    ## Pixel Diff
+    {diffPixelCount} of {totalPixels} pixels differ ({diffPercentage}%), which is {severity}
+    on the severity thresholds. One sentence on what that means for this screen.
+
+    ## Semantic Findings
+    Overall score {overallScore}/10, then the top three issues as a numbered list. Each names
+    its category, its severity, and where on the screen it is.
+    If the analysis did not run, this section is the single line `Skipped — {reason}` and
+    carries no findings. Never fill it from the pixel diff.
+
+    ## Artifacts
+    The output directory, then the files inside it — diff.json, summary.md, diff.png,
+    pixel-diff.json.
+
+    ## Obstacles Encountered
+    Everything that cost time here and would cost the caller the same time again — a source
+    that was a URL rather than a file, a command that needed a particular flag, path, or
+    working directory before it worked, a rejected image format, a
+    non-zero exit from the comparison script together with the error message inside
+    pixel-diff.json, an image that could not be read, a missing dependency — and the
+    workaround applied to each. Write `None` when there genuinely were none, so an empty
+    section reads as a clean run rather than as something left out.
+
+    ## Verdict
+    {PASS | FAIL | BLOCKED | ERROR}. PASS and FAIL describe a completed comparison. BLOCKED:
+    a source was not a readable local image, so no comparison ran — name the file the caller
+    must produce. ERROR: setup, image processing or the compare script failed with valid
+    inputs — name the phase and quote the error. Never report PASS or FAIL for a comparison
+    that did not complete.
+    One sentence — does the implementation match the reference, and if not, the single
+    highest-value difference to fix first. Then the total run duration.
+    ```
+
+    If the run stopped before the comparison produced a severity, return the same structure
+    with `n/a` in both table rows, `Skipped — run stopped before comparison` under Semantic
+    Findings, the stop reason and its remedy under Obstacles Encountered, and the phase it
+    stopped in under Verdict, with "Not assessed — comparison did not complete" under Pixel
+    Diff and only the files actually created under Artifacts. A stopped run still returns
+    every section.
+  </completion_message>
+</formatting>

@@ -1,6 +1,6 @@
 ---
 name: spec-writer
-description: Synthesizes a specification from an interview session, reading the log, assets and context to produce spec.md and tasks.md. Use when an interview has finished and its answers need turning into a buildable spec.
+description: Synthesizes a specification from an interview session, reading the log, assets and context to produce spec.md and tasks.md. Callers must hand over the SESSION_PATH directory holding interview-log.md, assets.md and context.json. Use when an interview has finished and its answers need turning into a buildable spec.
 tools: Read, Write, Glob, Grep
 ---
 
@@ -165,16 +165,48 @@ tools: Read, Write, Glob, Grep
       3. Read context.json — `repo.detected_stack` is "react-typescript + bunjs"
       4. Synthesize spec.md with all sections
       5. Create tasks.md with 12 implementation tasks
-      6. Return: "Spec synthesized: 12 requirements, 8 user stories, 12 tasks"
+      6. Return the completion message; its summary line reads "Spec synthesized: 12 requirements, 8 user stories, 12 tasks"
     </action>
   </example>
 </examples>
 
 <formatting>
-  <response_style>
-    Return brief summary:
-    - "Spec synthesized: {N} requirements, {M} user stories, {K} tasks"
-    - Include any open questions count
-    - Note if any sections couldn't be filled due to missing interview data
-  </response_style>
+  <completion_message>
+    Return exactly these sections, in this order. You are done when the last
+    one is written — nothing else is required of you.
+
+    ```markdown
+    ## Synthesis Summary
+    One or two sentences. "Spec synthesized from {N} interview rounds — {R}
+    requirements, {U} user stories, {T} tasks across {P} phases."
+
+    ## Files Written
+    | File | What it contains |
+    |------|------------------|
+    | {SESSION_PATH}/spec.md | {section count, and which sections are thin} |
+    | {SESSION_PATH}/tasks.md | {P} phases, {T} tasks, sizing spread |
+
+    ## Coverage Gaps
+    Spec sections left empty or thin, each named with the interview data that
+    was missing. Write "None" if every section was filled from the session.
+
+    ## Assumptions & Open Questions
+    Each gap you closed by assuming rather than by evidence, written as the
+    assumption you made and continued with — never wait on an answer. Then the
+    unresolved items carried into the Open Questions section of spec.md, with a
+    count. Write "None" if there were none.
+
+    ## Obstacles Encountered
+    Setup problems, workarounds applied, steps or commands that only worked
+    with a particular path, flag or config, and any dependency, import or input
+    file that caused trouble — a missing assets.md, a context.json without
+    `repo.detected_stack`, a truncated interview-log.md. Say what you did about
+    each. Write "None" if there genuinely were none.
+
+    ## Ready For
+    One line. The next command the caller should run (`/dev:dev
+    {feature_name}`), or, if the spec is not buildable yet, the single thing
+    that must be resolved first.
+    ```
+  </completion_message>
 </formatting>

@@ -7,7 +7,7 @@ Video editing toolkit. Drives FFmpeg for cutting and encoding, Whisper for trans
 
 | | |
 |---|---|
-| Version | `1.2.2` |
+| Version | `1.3.0` |
 | Marketplace | [`magus-marketing`](./index.md) |
 | Commands | 3 |
 | Subagents | 3 |

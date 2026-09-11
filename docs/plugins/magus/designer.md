@@ -7,7 +7,7 @@ UI design validation. Compares a rendered screen against its reference by pixel 
 
 | | |
 |---|---|
-| Version | `0.6.2` |
+| Version | `0.7.0` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 3 |
 | Subagents | 2 |
@@ -35,7 +35,6 @@ Prefer to do it by hand? [Installing Magus](../../guides/install.md) has the man
 - Use when designer agents need browser screenshot capture and claude-in-chrome is unavailable — `browser-use-integration`
 - Use when reviewing UI against an established design system — `design-references`
 - Use when creating, validating, or parsing project design styles — `ui-style-format`
-- Use when asked what is wrong with a UI or for an accessibility audit — `ui`
 
 ## Commands
 
@@ -52,7 +51,7 @@ Dispatched with the Agent tool, each in its own context window.
 | Agent | What it does |
 |---|---|
 | `designer:design-review` | \| |
-| `designer:ui` | Reviews a rendered screen for usability and WCAG accessibility, reading the screenshot or Figma design directly. Use when asked what is wrong with a UI or for an accessibility audit. |
+| `designer:ui` | Reviews a supplied screenshot for usability and visible WCAG accessibility concerns. Name the exact local image path and the review scope in the prompt; |
 
 ## Skills
 

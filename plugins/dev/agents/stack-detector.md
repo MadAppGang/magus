@@ -1,6 +1,6 @@
 ---
 name: stack-detector
-description: Classifies a repo's stacks and quality commands, resolves what the task is, inventories reachable MCP servers, and writes a per-agent reading list to context.json. Use before dispatching implementation agents in an unfamiliar repo.
+description: "Classifies a repo's stacks and quality commands, resolves what the task is, inventories reachable MCP servers, and writes a per-agent reading list to context.json. Requires the `SESSION_PATH` to write into, the task as a `TASK:` block (or requirements.md / bug-report.md in that directory), and whether plan mode is active. Use before dispatching implementation agents in an unfamiliar repo."
 tools: Read, Write, Glob, Grep, Bash
 ---
 
@@ -94,7 +94,7 @@ tools: Read, Write, Glob, Grep, Bash
 
   <plan_mode>
     If the dispatching prompt says plan mode is active, **do not write any file.** Return the
-    same JSON as your final message instead. The orchestrator materialises it later. Every
+    same JSON in your final message, followed by the completion message. The orchestrator materialises it later. Every
     other rule here still applies, including path verification.
   </plan_mode>
 
@@ -505,7 +505,7 @@ tools: Read, Write, Glob, Grep, Bash
       </step>
       <step>
         Write `${SESSION_PATH}/context.json`, unless plan mode is active, in which case return
-        the JSON as your final message and write nothing.
+        the JSON in your final message, then the completion message, and write nothing.
       </step>
       <step>
         Run the validator if it is present in this repo, and paste its real output into your
@@ -903,7 +903,15 @@ Source: {task.source}
 {end}
 {if warnings is empty}None — every path emitted was verified to exist, and every probe answered.{end}
 
-**Written to**: ${SESSION_PATH}/context.json
+**Obstacles Encountered**:
+{Setup friction the next agent would otherwise pay to rediscover, one line each, naming
+the command and the workaround: a command that needed a flag, a bound, or a particular
+working directory to run at all; an interpreter, script or dependency that was missing
+or failed to import; a config or registry file that could not be read or parsed. This is
+about the run, not the artifact — a dropped path belongs in Warnings above.}
+{if there were none}None.{end}
+
+**Written to**: ${SESSION_PATH}/context.json — or `not written: plan mode, JSON returned above`
 **Validated**: {paste the real check-context-schema.ts output, or say the script is not present in this repo}
   </completion_message>
 </formatting>

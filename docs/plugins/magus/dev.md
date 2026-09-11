@@ -7,7 +7,7 @@ Universal development assistant. Detects the project stack and routes work to sp
 
 | | |
 |---|---|
-| Version | `7.3.0` |
+| Version | `7.4.0` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 16 |
 | Subagents | 13 |
@@ -169,12 +169,12 @@ Dispatched with the Agent tool, each in its own context window.
 | `dev:architect` | Plans system architecture in any language, weighing trade-offs and naming what each choice costs. |
 | `dev:debugger` | Traces an error to its root cause across files, in any language, and reports the evidence for the diagnosis. |
 | `dev:developer` | Implements features spanning multiple files, then iterates write-test-fix-lint until every check passes. Use for new modules, subsystems, or any change needing 3+ files with test coverage. |
-| `dev:devops` | Handles infrastructure work — CI pipelines, containers, deploys, observability — and reasons through the trade-offs before changing anything. |
-| `dev:docs` | Writes, analyses, and fixes documentation. Pass mode=write\|analyze\|fix. Use for READMEs, API docs, tutorials, changelogs, or a documentation quality audit. |
+| `dev:devops` | Handles infrastructure work — CI pipelines, containers, deploys, observability — and reasons through the trade-offs before anything is applied — it produces the commands and IaC, it does not… |
+| `dev:docs` | Writes, analyses, and fixes documentation. Pass mode=write\|analyze\|fix, the exact doc paths to work on and the source paths that ground them, and SESSION_PATH so analyze and fix share one re… |
 | `dev:frontend` | Builds and revises React components against the project's design system, with optional vision review of screenshots. |
 | `dev:researcher` | Multi-round web research with convergence detection — searches 10+ sources, assesses their quality, and returns a cited report. |
 | `dev:reviewer` | Reviews recent changes in three passes — security, correctness, maintainability — returning severity-calibrated findings and a PASS/CONDITIONAL/FAIL verdict. |
-| `dev:scribe` | Appends Q&A to an interview log, updates checkpoints and maintains session state — a small, fast file writer. Use when recording an interview turn, not for analysis or synthesis. |
+| `dev:scribe` | Appends Q&A to an interview log, updates checkpoints and maintains session state — a small, fast file writer. |
 | `dev:spec-writer` | Synthesizes a specification from an interview session, reading the log, assets and context to produce spec.md and tasks.md. |
 | `dev:stack-detector` | Classifies a repo's stacks and quality commands, resolves what the task is, inventories reachable MCP servers, and writes a per-agent reading list to context.json. |
 | `dev:synthesizer` | Writes the one report a review gate reads, from one review or many: a single review passes through with its verdict, several merge with consensus per finding, against the thresholds it is ha… |

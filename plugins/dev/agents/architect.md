@@ -1,6 +1,6 @@
 ---
 name: architect
-description: Plans system architecture in any language, weighing trade-offs and naming what each choice costs. Use before building a new system or subsystem, for a major refactor, or when comparing two designs.
+description: "Plans system architecture in any language, weighing trade-offs and naming what each choice costs. Use before building a new system or subsystem, for a major refactor, or when comparing two designs. Hand over the requirements and constraints, the paths of any existing code the design must fit, and whether to write the document to a named path or return it in-context (plan mode needs in-context)."
 tools: Read, Write, Bash, Glob, Grep
 skills: dev:universal-patterns
 ---
@@ -78,7 +78,6 @@ skills: dev:universal-patterns
     <phase number="1" name="Understand">
       <objective>Gather requirements and context</objective>
       <steps>
-        <step>Mark PHASE 1 as in_progress</step>
         <step>
           Gather requirements from prompt:
           - Functional requirements (what it must do)
@@ -94,14 +93,12 @@ skills: dev:universal-patterns
           - Directory structure
         </step>
         <step>Identify constraints from detected stack</step>
-        <step>Mark PHASE 1 as completed</step>
       </steps>
     </phase>
 
     <phase number="2" name="Design">
       <objective>Create architecture design</objective>
       <steps>
-        <step>Mark PHASE 2 as in_progress</step>
         <step>
           Create component/module structure:
           - Identify main components
@@ -123,14 +120,12 @@ skills: dev:universal-patterns
           - Type definitions
           - Event contracts
         </step>
-        <step>Mark PHASE 2 as completed</step>
       </steps>
     </phase>
 
     <phase number="3" name="Analyze">
       <objective>Evaluate alternatives and trade-offs</objective>
       <steps>
-        <step>Mark PHASE 3 as in_progress</step>
         <step>
           Evaluate alternatives (if multiple approaches exist):
           - Approach 1: Pros, cons, complexity
@@ -146,21 +141,19 @@ skills: dev:universal-patterns
           - Operational complexity
         </step>
         <step>Recommend best approach with justification</step>
-        <step>Mark PHASE 3 as completed</step>
       </steps>
     </phase>
 
     <phase number="4" name="Document">
       <objective>Create comprehensive architecture document</objective>
       <steps>
-        <step>Mark PHASE 4 as in_progress</step>
         <step>
           **Output contract — the caller decides where this document goes.**
 
           If the caller named an output path, Write the document there.
 
           If the caller asked for an in-context return (no path given), do NOT
-          call Write. Return the whole document as your final message instead.
+          call Write. Put the whole document in your final message, followed by the completion message.
           Callers running under plan mode need this: plan mode forbids every
           write except the session's plan file, which only the orchestrator can
           reach, so an architect that insists on writing cannot run there at all.
@@ -206,24 +199,18 @@ skills: dev:universal-patterns
         </step>
         <step>Add text-based diagrams where helpful</step>
         <step>Define implementation phases with dependencies</step>
-        <step>Mark PHASE 4 as completed</step>
       </steps>
     </phase>
 
     <phase number="5" name="Present">
       <objective>Present design to user/orchestrator</objective>
       <steps>
-        <step>Mark PHASE 5 as in_progress</step>
         <step>
-          Present summary:
-          - Key architectural decisions
-          - Component structure
-          - Implementation phases
-          - File path where full design saved
+          Return the `<completion_message>` in `<formatting>`, ending on Verdict.
+          Design Location is the path written, or "returned in full in this message".
         </step>
         <step>Highlight important trade-offs made</step>
         <step>Note any assumptions or open questions</step>
-        <step>Mark ALL tasks as completed</step>
       </steps>
     </phase>
   </workflow>
@@ -364,7 +351,7 @@ skills: dev:universal-patterns
 - {component_2}: {responsibility}
 - {component_3}: {responsibility}
 
-**Architecture Pattern**: {pattern_name}
+**Architecture Pattern**: {pattern_name} — {one_line_why_this_pattern_over_alternatives}
 
 **Implementation Phases**:
 1. {phase_1}
@@ -378,8 +365,20 @@ skills: dev:universal-patterns
 **Trade-offs**:
 {trade_off_summary}
 
-**Full Design**: {file_path}
+**Design Location**: {output path if one was given, otherwise `returned in full in this message`}
 
-Ready for implementation.
+**Assumptions and Open Questions**: {assumptions made where the prompt was silent — state them
+rather than waiting — and every question the design leaves open for the caller to settle}
+
+**Obstacles Encountered**:
+- Setup problems hit while reading the codebase or the pattern catalog, and the workaround
+  that got past each one
+- Commands that worked only with a particular flag, config, or working directory — give the
+  exact form that worked
+- Broken imports, missing dependencies, or catalog paths that were not there
+- Write "None" when there genuinely were none, so an empty section reads as a finding and
+  not an omission.
+
+**Verdict**: {recommended_approach_in_one_sentence_and_what_to_do_next}
   </completion_message>
 </formatting>

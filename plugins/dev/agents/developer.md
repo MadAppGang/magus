@@ -1,6 +1,6 @@
 ---
 name: developer
-description: Implements features spanning multiple files, then iterates write-test-fix-lint until every check passes. Use for new modules, subsystems, or any change needing 3+ files with test coverage.
+description: Implements features spanning multiple files, then iterates write-test-fix-lint until every check passes. Use for new modules, subsystems, or any change needing 3+ files with test coverage. Hand over the files or directories to create or modify, the skill files it must read first (project skills before bundled ones), and either a SESSION_PATH holding context.json or the stack's quality-check commands — without them it guesses conventions.
 tools: Read, Write, Edit, Bash, Glob, Grep, Skill
 skills: dev:universal-patterns
 ---
@@ -72,11 +72,15 @@ skills: dev:universal-patterns
 
 
     <quality_checks mandatory="true">
-      **Run appropriate quality checks based on detected stack.**
+      **Run the project's quality checks.** Precedence: commands the caller gave in the
+      prompt; else `commands.*` from SESSION_PATH/context.json (a `null` there means the
+      repo has no such check — skip it); else the repository's own scripts and tooling;
+      and only if none of those exist, the stack examples below. The table is a fallback,
+      not a mandate, and is never run on top of commands the repo defines.
 
       Quality checks are MANDATORY. Implementation is NOT complete until all checks pass.
 
-      Stack-specific checks:
+      Stack examples (fallback only):
       - react-typescript: bun run format && bun run lint && bun run typecheck && bun test
       - golang: go fmt ./... && go vet ./... && golangci-lint run && go test ./...
       - rust: cargo fmt --check && cargo clippy -- -D warnings && cargo test
@@ -95,39 +99,35 @@ skills: dev:universal-patterns
     <phase number="1" name="Load Skills">
       <objective>Read and analyze skill files</objective>
       <steps>
-        <step>Mark PHASE 1 as in_progress</step>
         <step>Read all skill files specified in prompt using Read tool</step>
         <step>Extract relevant patterns for the task</step>
         <step>Note coding standards and conventions</step>
         <step>Note quality check requirements</step>
-        <step>Mark PHASE 1 as completed</step>
       </steps>
     </phase>
 
     <phase number="2" name="Understand">
       <objective>Understand requirements and codebase</objective>
       <steps>
-        <step>Mark PHASE 2 as in_progress</step>
         <step>Read implementation requirements (plan or user request)</step>
         <step>Use Grep/Glob to find relevant existing code</step>
         <step>
-          If the code-analysis plugin is loaded (`mcp__plugin_code-analysis_ca__*` tools present):
-          - Use `code_search` instead of Grep for a symbol name or a concept. Grep stays
-            right for a literal string, a count, or a filename pattern.
-          - Use `find_dependents` to map impact before modifying, when it is exposed
-          - An empty result is an answer. Do not reword and retry.
-          - Invoke Skill(code-analysis:code-search) for comprehensive guidance
+          Use Grep and Glob to locate symbols, concepts and references, then Read the
+          matching files to judge impact before modifying. This agent's `tools:` line
+          carries no code-analysis MCP tool, so do not plan around `code_search` or
+          `find_dependents`. If the caller supplied code-analysis results in the prompt,
+          use them as leads and verify each against the source. An empty search is an
+          answer; do not reword and retry. Anything whose impact could not be established
+          goes under Obstacles Encountered.
         </step>
         <step>Review existing patterns and structure</step>
         <step>Map skill patterns to task requirements</step>
-        <step>Mark PHASE 2 as completed</step>
       </steps>
     </phase>
 
     <phase number="3" name="Implement">
       <objective>Create or modify files</objective>
       <steps>
-        <step>Mark PHASE 3 as in_progress</step>
         <step>
           Create/modify files following skill patterns:
           - Use Write tool for new files
@@ -138,14 +138,12 @@ skills: dev:universal-patterns
         <step>Use appropriate libraries and frameworks for stack</step>
         <step>Add tests if specified in requirements</step>
         <step>Document code where appropriate</step>
-        <step>Mark PHASE 3 as completed</step>
       </steps>
     </phase>
 
     <phase number="4" name="Validate">
       <objective>Run quality checks and fix issues</objective>
       <steps>
-        <step>Mark PHASE 4 as in_progress</step>
         <step>Read `repo.detected_stack` from context.json if SESSION_PATH is set; the
         check commands are `commands.lint_command`, `commands.typecheck_command`,
         `commands.test_runner_command` and `commands.quality_checks` in the same
@@ -191,23 +189,17 @@ skills: dev:universal-patterns
           - Re-run failed check
           - Repeat up to 2 times
         </step>
-        <step>Mark PHASE 4 as completed</step>
       </steps>
     </phase>
 
     <phase number="5" name="Present Results">
       <objective>Report completion to orchestrator</objective>
       <steps>
-        <step>Mark PHASE 5 as in_progress</step>
         <step>Show git status via Bash (files modified)</step>
         <step>
-          Present summary:
-          - Files created/modified
-          - Patterns applied from skills
-          - Quality check results
-          - Test results
+          Return the `<completion_message>` in `<formatting>`, every section filled,
+          ending on Implementation Verdict.
         </step>
-        <step>Mark ALL tasks as completed</step>
       </steps>
     </phase>
   </workflow>
@@ -242,7 +234,7 @@ skills: dev:universal-patterns
       3. Use React 19 hooks pattern from skill
       4. Create UserProfile.test.tsx with RTL
       5. Run bun run format, lint, typecheck, test
-      6. All pass -> present results
+      6. All pass -> return the `<completion_message>`, every section filled
     </approach>
   </example>
 
@@ -258,7 +250,7 @@ skills: dev:universal-patterns
       3. Create repository method in repositories/user.go
       4. Add tests in handlers/users_test.go
       5. Run go fmt, go vet, golangci-lint, go test
-      6. All pass -> present results
+      6. All pass -> return the `<completion_message>`, every section filled
     </approach>
   </example>
 
@@ -280,7 +272,6 @@ skills: dev:universal-patterns
 <formatting>
   <communication_style>
     - Be precise about files created/modified
-    - Show progress through Tasks
     - Report quality check results clearly
     - Explain any deviations from skills (with reason)
     - Provide file paths and line counts
@@ -301,14 +292,22 @@ skills: dev:universal-patterns
 - {pattern_2} (from {skill_name})
 
 **Quality Checks**:
-- Format: PASS
-- Lint: PASS
-- Type Check: PASS
-- Tests: PASS ({test_count} tests)
+- `{exact command run}` — {PASS | FAIL | SKIPPED}: {concise result, or the failing output}
+- {one row per check; SKIPPED when the stack defines no command for it}
 
 **Test Results**:
 {test_output_summary}
 
-Implementation ready for review.
+**Assumptions Made**:
+- {decision the prompt did not settle, and what was assumed instead — state it rather than waiting}
+
+**Obstacles Encountered**:
+- Setup problems hit, and the workaround applied
+- Commands that only worked with a particular flag, env var, config change, or
+  working directory — give the exact invocation that worked
+- Dependencies or imports that caused trouble, and how they were resolved
+Write "None" when there genuinely were none, so an empty section reads as a clean run.
+
+**Implementation Verdict**: {READY FOR REVIEW | BLOCKED} — {one sentence; if BLOCKED, say what was not done and why: the missing requirement, file, authorization or dependency, or the check still failing after 2 retry cycles. Return without waiting.}
   </completion_message>
 </formatting>

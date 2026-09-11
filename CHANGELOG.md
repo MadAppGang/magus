@@ -4,6 +4,95 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [dev 7.4.0] - 2026-09-11
+
+### Changed
+
+- **All 13 `dev` subagents now say what the caller must hand over, and return a fixed
+  completion template that ends the run.** Each `description:` names the input that makes
+  the agent good: `dev:reviewer` surfaces its existing `TARGET:` contract and asks for exact
+  files, `dev:researcher` asks which decision the research feeds and returns citable
+  sources, `dev:debugger` asks for the reproducing command and the error text. Each
+  `<completion_message>` has named sections ordered so that filling the last one is the
+  stopping signal, and every template has an **Obstacles Encountered** section for setup
+  trouble, workarounds and flags that were needed, so the main thread does not rediscover
+  them.
+- Body instructions that contradicted the new contract were fixed in place: ask-and-wait
+  steps a subagent cannot perform, competing return formats, and steps naming tools outside
+  the agent's `tools:` line.
+- `dev:synthesizer` separates the report file it writes (`<output_file_layout>`) from the
+  message it returns (`<completion_message>`); the file layout, including its `VERDICT`
+  line, is unchanged.
+- `dev:devops` no longer preloads `dev:bunjs-production`. That skill carries
+  `disable-model-invocation`, which blocks subagent preloading, so the preload never
+  delivered anything.
+
+---
+
+## [code-analysis 7.3.0] - 2026-09-11
+
+### Changed
+
+- **`code-analysis:detective` now asks for the symbol, file or behaviour to trace, and
+  returns a fixed completion template with an Obstacles Encountered section.** It has one BLOCKED
+  shape, and a "Changes worth making" section that reports what it found without editing,
+  since the agent is read-only. Its description is now a YAML block scalar; the previous
+  form did not parse as YAML.
+
+---
+
+## [designer 0.7.0] - 2026-09-11
+
+### Changed
+
+- **`designer:design-review` and `designer:ui` now say what the caller must hand over, and
+  return a fixed completion template with an Obstacles Encountered section.** `design-review`
+  states that both sources must be image files already on disk: it has no Figma or browser
+  tool, so a URL returns blocked instead of a guessed comparison.
+- `design-review` no longer preloads `designer:compare`, which carries
+  `disable-model-invocation` and so was never delivered to the agent.
+
+---
+
+## [gtd 2.2.0] - 2026-09-11
+
+### Changed
+
+- **`gtd:gtd-reviewer` now says what the caller must hand over, and returns a fixed
+  completion template with an Obstacles Encountered section.** The `gtd-review` skill it follows
+  no longer tells it to ask the user and wait, which a subagent cannot do.
+
+---
+
+## [multimodel 4.1.0] - 2026-09-11
+
+### Changed
+
+- **`multimodel:deep-analyst` now says what the caller must hand over, and returns a fixed
+  completion template with an Obstacles Encountered section.** The `run_prompt` tool is removed
+  from its `tools:` line: it was listed there and never used by any step.
+
+---
+
+## [terminal 5.1.0] - 2026-09-11
+
+### Changed
+
+- **`terminal:tui-navigator` now says what the caller must hand over, and returns a fixed
+  completion template with an Obstacles Encountered section.** The `terminal-interaction` and
+  `tui-navigation-patterns` skills now separate main-thread guidance from subagent
+  guidance. A subagent cannot ask "Shall I proceed?" and wait, so it runs a destructive
+  command (a migration, `DROP TABLE`, a production deploy) only when the dispatching prompt
+  already approved it, and otherwise returns Blocked.
+
+### Fixed
+
+- `plugins/terminal/bin/tmux-guard` was a dangling symlink in every checkout. It pointed one
+  directory level short of `tools/tmux-setup/bin/tmux-guard`, so anything that dereferences
+  symlinks under `plugins/` failed on it.
+
+---
+
 ## [code-analysis 7.2.1] - 2026-09-10
 
 ### Fixed

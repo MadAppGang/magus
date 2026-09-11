@@ -7,7 +7,7 @@ Getting Things Done workflow. Capture, clarify, organise, reflect and engage ove
 
 | | |
 |---|---|
-| Version | `2.1.1` |
+| Version | `2.2.0` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 7 |
 | Subagents | 1 |
@@ -30,6 +30,10 @@ For a team, press `s` to save your plugins as a profile and commit it. Everyone 
 
 Prefer to do it by hand? [Installing Magus](../../guides/install.md) has the manual path.
 
+## When to reach for it
+
+- Use when the user wants a thorough, uninterrupted GTD review session — `gtd-reviewer`
+
 ## Commands
 
 | Command | What it does |
@@ -48,7 +52,7 @@ Dispatched with the Agent tool, each in its own context window.
 
 | Agent | What it does |
 |---|---|
-| `gtd:gtd-reviewer` | GTD Weekly Review agent. Runs the complete weekly review protocol in a dedicated context window. Invoke when the user wants a thorough, uninterrupted GTD review session. |
+| `gtd:gtd-reviewer` | GTD Weekly Review agent. Runs the complete weekly review protocol in a dedicated context window. Use when the user wants a thorough, uninterrupted GTD review session. |
 
 ## Skills
 

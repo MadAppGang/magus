@@ -76,7 +76,11 @@ cat "${CWD}/.claude/gtd/tasks.json"
 
 2. Generate and present each section with counts and ANSI colors via Bash echo.
 
-3. For sections requiring user decisions, ask one question at a time. Wait for response before proceeding.
+3. For sections requiring user decisions, ask one question at a time and wait for the
+   response — **when a human is present**, i.e. under `/gtd:review`. Inside the
+   `gtd:gtd-reviewer` subagent there is nobody to ask: `AskUserQuestion` is stripped, so a
+   question hangs the run. There, decide what the prompt already settles, record every
+   other decision as an assumption under Decisions and Assumptions, and continue. Never wait.
 
 4. After all sections, update `lastReview`:
 ```bash

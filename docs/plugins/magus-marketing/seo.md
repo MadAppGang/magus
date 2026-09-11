@@ -7,7 +7,7 @@ SEO analysis and optimisation. Audits content and technical SEO, proposes and ap
 
 | | |
 |---|---|
-| Version | `3.0.0` |
+| Version | `3.1.0` |
 | Marketplace | [`magus-marketing`](./index.md) |
 | Commands | 9 |
 | Subagents | 5 |
@@ -59,7 +59,7 @@ Dispatched with the Agent tool, each in its own context window.
 
 | Agent | What it does |
 |---|---|
-| `seo:analyst` | Reads the SERP for a query — who ranks, what intent they serve, where the gap is. Use when deciding what to write about, sizing up competitors, or checking whether a keyword is winnable. |
+| `seo:analyst` | Reads the SERP for a query — who ranks, what intent they serve, where the gap is. Hand over the exact target keyword, the decision this analysis must inform, and `SESSION_PATH` for the full… |
 | `seo:data-analyst` | Interprets GA4 and Google Search Console data, correlating traffic and ranking movement with what changed. |
 | `seo:editor` | Reviews draft content against E-E-A-T and the brief, returning a scored approve or reject with the specific edits needed. |
 | `seo:researcher` | Expands a seed topic into keywords, clusters them by intent, and finds the gaps a site does not yet cover. Use when planning what to write, before a brief exists. |
