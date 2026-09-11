@@ -1,0 +1,13 @@
+{
+  "$comment": "The ONE place this plugin declares which madbench release its skill mirrors. No skill file restates the version; each references this file. Read by scripts/check-staleness.ts, which compares it against `madbench version` (advisory) and loads every bench under skills/madbench-evals/examples/ with the installed binary (the gate). Bump madbenchVersion and verifiedAt in the same edit, after re-verifying the versionSensitive files against the new release.",
+  "madbenchVersion": "0.33.1",
+  "verifiedAt": "2026-09-11",
+  "versionSensitive": [
+    "skills/madbench-evals/schema.md",
+    "skills/madbench-evals/checks-catalog.md"
+  ],
+  "stable": [
+    "skills/madbench-evals/runners-and-sandbox.md",
+    "skills/madbench-evals/debugging.md"
+  ]
+}

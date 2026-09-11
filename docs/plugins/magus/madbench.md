@@ -3,17 +3,17 @@
 
 # madbench
 
-Toolkit for madbench, MadAppGang's Go harness for benchmarking agentic coding tools. Ships the madbench-evals skill: author bench YAML and Eval files, design checks, scaffold red-state and generated testdata, run the negative and positive controls, tune expectations, and debug failing checks.
+Toolkit for madbench, MadAppGang's Go harness for benchmarking agentic coding tools. An operator agent authors, runs and debugs benches natively in a visible pane, reading the madbench-evals skill by path; /madbench:bench and /madbench:doctor are the entry points; a script enforces bench layout.
 
 | | |
 |---|---|
-| Version | `0.3.0` |
+| Version | `0.4.0` |
 | Marketplace | [`magus`](./index.md) |
-| Commands | 0 |
-| Subagents | 0 |
+| Commands | 2 |
+| Subagents | 1 |
 | Skills | 1 |
 | MCP server | no |
-| Hooks | no |
+| Hooks | yes |
 
 ## Install
 
@@ -30,11 +30,31 @@ For a team, press `s` to save your plugins as a profile and commit it. Everyone 
 
 Prefer to do it by hand? [Installing Magus](../../guides/install.md) has the manual path.
 
+## Commands
+
+| Command | What it does |
+|---|---|
+| `/madbench:bench` | Author, run, or debug a madbench bench through the operator agent — bench YAML, Eval files, red-state testdata, the two controls, and a real run in a visible pane |
+| `/madbench:doctor` | Run the three madbench plugin checks — skill staleness against the installed madbench, bench layout, and the generated bench index — and print their output verbatim |
+
+## Subagents
+
+Dispatched with the Agent tool, each in its own context window.
+
+| Agent | What it does |
+|---|---|
+| `madbench:operator` | \| |
+
 ## Skills
 
 | Skill | What it covers |
 |---|---|
-| `madbench:madbench-evals` — [4 more docs](./madbench-madbench-evals.md) | Authors, runs, and debugs madbench evals — bench YAML, checks, red-state testdata, the two controls (check / grade), expectation tuning. |
+| `madbench:madbench-evals` — [4 more docs](./madbench-madbench-evals.md) | Authors, runs and debugs madbench benches natively — bench YAML, checks, metrics with module/, red-state testdata, the two controls, exit codes; |
+
+## Hooks
+
+This plugin installs hooks. They run automatically and are the usual first place to look
+if its behaviour stops firing.
 
 ## Source
 

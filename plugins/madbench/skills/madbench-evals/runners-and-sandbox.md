@@ -1,7 +1,10 @@
 # Harness, sandbox and CLI
 
-Reference for `madbench:madbench-evals`. How the agent is configured and driven, how much of
-the machine a run may touch, and the whole command line. Mirrors madbench **v0.23.0**.
+Reference for the `madbench-evals` skill, reached by path. How the agent is configured and
+driven, how much of the machine a run may touch, and the whole command line. The madbench
+release these files mirror is declared **once**, in `plugins/madbench/mirrors.json`, which
+lists this file as stable. `docs/<file>.md:<line>` citations point into the madbench
+checkout's `docs/` directory — never into `pkg/`, because the checkout builds `dev`.
 
 ---
 
@@ -63,24 +66,30 @@ harness_config:
       path: <plugin cache dir>/dev/3.3.0
   environment:                                    # how hard to look — §7
     probe: true
+  use_subscription: optional                      # bill against this machine's login — §2b
   args: ["--permission-mode", "bypassPermissions"] # appended last
 ```
 
-**Nine keys. That is the entire schema** (`Config`, `pkg/harness/claudecode/harness.go`).
-Upstream's `harness.md` says "eight keys" and omits `environment` from its table; the struct
-has nine.
+**These are the keys upstream documents. Do not trust any count, including one here.**
+`docs/harness.md:79` says "Eight keys. That is the entire schema" above a table with nine
+rows (`docs/harness.md:81-91`), and that table omits two keys documented elsewhere in the
+same file: `environment` (`docs/harness.md:1106`) and `marketplace` (`docs/harness.md:915`).
+The list below is every key with a citation; a key you cannot cite is a key the adapter
+silently ignores (see *Error behaviour*).
 
 | Key | Type | Default | Effect |
 |---|---|---|---|
-| `binary` | string | `claude` | the executable, `LookPath`'d at run time. Empty string is an error — omit the key |
+| `binary` | string | `claude` | the executable, `LookPath`'d at run time. A bare name is looked up on `PATH`; anything with a `/` is a **path relative to the bench file**, made absolute at load, and refused at `sandbox: container`. Empty string is an error — omit the key (`docs/harness.md:83`) |
 | `magmux_binary` | string | *(unset)* | the magmux build hosting an **interactive** run. Precedence: this > `$MADBENCH_MAGMUX` > PATH. Ignored by a non-interactive Scenario |
 | `model` | string | *(unset)* | `--model <value>` |
 | `effort` | string | *(unset)* | `--effort <value>`. **The one key checked by value**: `low`, `medium`, `high`, `xhigh`, `max`, exact and case-sensitive. Empty string is an error; write `~` for "the CLI's default" |
 | `system_prompt` | string | *(unset)* | `--system-prompt <value>` |
 | `agent_env` | string | *(unset)* | a directory shaped like a `.claude` folder — §5 |
-| `plugins` | []{id, path, marketplace} | *(none)* | a staged plugin registry — §6 |
-| `environment` | {probe, details, require} | probe true | how hard madbench looks at what loaded — §7 |
-| `args` | []string | *(none)* | extra argv, appended after everything madbench adds |
+| `plugins` | []{id, path, marketplace} **or** []string names | *(none)* | a staged plugin registry — §6 (`docs/harness.md:89`, `:911-931`) |
+| `marketplace` | string | *(unset)* | the checkout every short-form `plugins:` name resolves against — §6 (`docs/harness.md:915-931`) |
+| `environment` | {probe, details, require} | probe true | how hard madbench looks at what loaded — §7 (`docs/harness.md:1106-1117`) |
+| `use_subscription` | string | `optional` | whether the run may bill against **this machine's** Claude Code login: `optional` · `required` · `api_usage`, checked by value like `effort`. Empty string is an error (`docs/harness.md:90`, `:1234`) |
+| `args` | []string | *(none)* | extra argv, appended after everything madbench adds (`docs/harness.md:91`) |
 
 ### Error behaviour
 
@@ -88,8 +97,9 @@ has nine.
   evolve independently. A typo like `permission_mode:` therefore does *nothing*, quietly.
 - A **recognized key with the wrong type is a hard error**, naming key, expected type and
   actual: `claude-code harness_config: model must be a string, got int`.
-- **`effort` is additionally checked by VALUE**, because the CLI will not check it for us.
-  A misspelt level does **not** fail the CLI — it warns and runs at the default, exit 0, so
+- **`effort` and `use_subscription` are additionally checked by VALUE** — the two keys whose
+  vocabulary is closed (`docs/harness.md:101-103`) — and `effort` because the CLI will not
+  check it for us. A misspelt level does **not** fail the CLI — it warns and runs at the default, exit 0, so
   an A/B meaning to compare `high` against `low` would compare the default against itself and
   report the pair as a finding. The refusal lands at configure time, before a sandbox exists
   and before any model is billed.
@@ -177,9 +187,19 @@ Resolution follows the same precedence as `sandbox:` — bench `defaults:`, then
 `defaultScenario:`, then the Scenario's own value. Unset anywhere means **true**. The field is
 a `*bool` so "said nothing" and "said false" stay distinguishable.
 
-**Interactive needs magmux ≥ 0.8.0 on THIS machine**, at every sandbox level, on PATH (or
+**Interactive needs magmux on THIS machine**, at every sandbox level, on PATH (or
 `harness_config.magmux_binary`, or `$MADBENCH_MAGMUX`). `madbench preflight` checks for it
-only when some Scenario is interactive, and the finding names `interactive: false` as a way out.
+only when some Scenario is interactive, and the finding names `interactive: false` as a way
+out (`docs/harness.md:1439`).
+
+**magmux is checked by capability, never by version number.** Preflight runs `magmux
+--help` under a short timeout and looks for the flags madbench actually passes
+(`--headless`, `--sock-dir`); a missing flag **blocks**, naming the flag and the version the
+binary reported. A version bound could not have verified it — 0.9.0 was cut from a branch
+that never contained 0.8.0's flags, and magmux ignores an unknown flag rather than refusing
+it, so against 0.9.0 the version read as satisfied and every interactive run waited out a
+twenty-second socket timeout. A `--help` that fails or times out is **advisory only**, and
+there is deliberately no upper bound (`docs/harness.md:1440`, `:1520-1536`).
 
 > **`sandbox: container` + `interactive: true` works on macOS and Linux alike.** madbench runs
 > magmux on the host and the pane command enters the sandbox (`docker exec -t -i`), so both
@@ -310,7 +330,7 @@ scenarios:
       #   dockerfile: ./Dockerfile  # a recipe madbench builds and reuses
       dockerfile: ./Dockerfile
       network: none          # container only
-      user: root             # container, Linux only; arms a cleanup ownership sweep
+      user: root             # container, Linux only; enables a cleanup ownership sweep
       share:
         env: [GITHUB_TOKEN]          # forwarded BY NAME from your resolved settings
         secret_env: [MY_VENDOR_KEY]  # forwarded AND redacted from the captured Session
@@ -401,13 +421,29 @@ A top-level `skills/` inside the env is an **error** — skills live under
 ```yaml
 harness_config:
   plugins:
-    - id: dev@magus
-      path: <plugin cache dir>/dev/3.3.0
+    - id: dev@magus                                   # <plugin>@<marketplace>
+      path: <plugin cache dir>/dev/3.3.0              # the plugin FOLDER
+    - id: benchproof@madbench-proof
+      path: ./marketplace/plugins/benchproof
+      marketplace: ./marketplace                      # only when path is not inside a registry
 ```
+
+```yaml
+harness_config:
+  marketplace: ../../..                               # the checkout, named once
+  plugins: [code-analysis, claudish]                  # plugin NAMES — the short form
+```
+
+Both spellings stage the same registry and a bench may mix them: an entry is either a plugin
+name or the full mapping, and `marketplace:` beside `plugins:` is the checkout every name
+falls back to. The short form is not sugar — both halves of `code-analysis@magus` are facts
+of the checkout's own `marketplace.json` (`docs/harness.md:911-934`).
 
 Stages plugin folders into the run's `~/.claude` as an installed, **user-scoped, enabled**
 registry the CLI discovers on its own, instead of hand-writing `known_marketplaces.json`. It
-**composes with `agent_env`** rather than replacing it.
+**composes with `agent_env`** rather than replacing it, and applies on both drive paths
+(`docs/harness.md:970`). This is the native answer to "stage a plugin tree for a run" —
+never a registry-writing script beside the bench.
 
 Use `plugins:` when the bench measures the plugin as a user meets it; `agent_env`'s
 `--plugin-dir` route is the `--bare` alternative.
@@ -425,22 +461,63 @@ harness_config:
                      # load ERRORS before the agent is launched, so nothing is spent
 ```
 
-- **`probe:`** runs `claude plugin list --json` through the SAME sandbox, and therefore the
-  same HOME, the agent will run under. A probe launched any other way reads the host's registry
-  and reports a plugin set that has nothing to do with the run. It is skipped entirely when the
-  bench declares neither `plugins:` nor `agent_env`. **`probe: false` leaves Reported absent,
-  and every `environment:*` Check then ERRORS** rather than passing — the correct loud outcome
-  for a run that measured nothing.
+- **`probe:`** asks the environment what it has, before the agent launches. Two channels
+  answer to it (`docs/harness.md:1119-1128`): `claude plugin list --json` (and, within
+  `details:`, `claude plugin details <id>`) through the SAME sandbox, and therefore the same
+  HOME, the agent will run under — a probe launched any other way reads the host's registry
+  and reports a plugin set that has nothing to do with the run; and the **MCP preflight**
+  (§7a), one `initialize` + `tools/list` handshake per declared server. The plugin channel is
+  skipped when the bench declares neither `plugins:` nor `agent_env`. **`probe: false` leaves
+  Reported absent and launches no new process, MCP included**; upstream's `harness.md` says
+  every `environment:*` Check then ERRORS (`docs/harness.md:1130-1132`), while `madbench
+  check` now lands an unprobeable check **outside the verdict** rather than in the error
+  bucket (`docs/checks.md:838-840`). Either way it is loud and never a pass — read the bucket
+  the control prints rather than predicting it.
 - **`details:`** adds one exec per plugin for the per-kind breakdown, capped at 8, so a bench
   staging a large registry cannot turn one run into forty process launches. At the default a
-  typical run pays two execs of roughly 0.2s each.
+  typical run pays two execs of roughly 0.2s each (`docs/harness.md:1134-1137`).
 - **`require:`** is the gate. It runs after staging and after the probe, and **before the agent
   is launched** — the only step that spends anything. Under `require: true`, a staged plugin the
-  CLI does not list, a staged plugin listed with errors, and a probe that could not run are all
-  refusals. The scenario is recorded as an **ERROR, not a FAIL**: it did not score badly, it
-  never ran. Leave it false for a bench whose subject IS the degraded environment.
+  CLI does not list, a staged plugin listed with errors, a probe that could not run, **and a
+  declared MCP server that did not answer** are all refusals. The scenario is recorded as an
+  **ERROR, not a FAIL**: it did not score badly, it never ran. Leave it false for a bench whose
+  subject IS the degraded environment (`docs/harness.md:1138-1144`). **Only a `failed` server
+  refuses; an UNPROBED one never does** — a gap in madbench's knowledge is not a fact about
+  the server, so an UNPROBED row is loud in the report and silent at the gate
+  (`docs/harness.md:1152-1160`).
 
-**`probe: false` with `require: true` is refused when the bench loads**, naming both keys.
+**`probe: false` with `require: true` is refused when the bench loads**, naming both keys
+(`docs/harness.md:1162-1164`).
+
+## 7a. The MCP preflight — two halves, neither replaces the other
+
+A bench that declares MCP servers gets one extra step before the agent launches: madbench
+**starts each declared server itself, from inside this run's sandbox, and speaks MCP to it.**
+Servers are found on all three routes the CLI accepts — a `--mcp-config` value in `args:`
+(JSON or file), a staged plugin's own `.mcp.json`, and `agent_env`'s `.mcp.json`
+(`docs/harness.md:1170-1173`). It exists because the alternative is a silent absence
+discovered after a full run has been paid for — one reported grid was 264 scenarios and
+about $32, and it measured a tool that had never existed (`docs/harness.md:1175-1180`).
+**Before grading whether an agent used a capability, prove the capability was present.**
+
+| Outcome | Means | Under `require: true` |
+|---|---|---|
+| **connected** | answered `initialize`, and `tools/list` where it declared the capability; tool count recorded, zero is a real answer | proceeds |
+| **failed** | launched and did not complete; the row carries the server's own words — JSON-RPC error, **stderr tail**, exit status | **refuses, before any spend** |
+| **UNPROBED** | madbench could not construct a launch at all: remote `type: http`/`sse`, a `${…}` it does not own, a relative `command`, a `cwd` outside the sandbox | proceeds |
+
+(`docs/harness.md:1188-1194`.) Grade it with `environment:mcp-reachable` — see
+`checks-catalog.md` §9 for how that differs from `environment:mcp-connected`.
+
+**The static half runs at `madbench preflight` time, with no sandbox and no launch.** It
+takes the `Config` alone, reads the declarations from the same three routes, and asks *is the
+declared setup complete?* — the document opened and declared something, the entry can be
+launched as a stdio server at all, `command` resolves on this machine, every absolute
+`$`-free arg and `cwd` exists — with severity mirroring `environment.require` so preflight
+and the run-time gate can never disagree (`docs/harness.md:1467-1489`). It also pairs every
+top-level `environment:mcp-reachable` value against that list and refuses a name nothing
+declares (`docs/harness.md:1447`, `:1515-1518`). At `sandbox: container` none of it is
+asked, because the filesystem is the image's (`docs/harness.md:1504-1506`).
 
 When the staged and reported families disagree, the console prints one warning block:
 
@@ -505,7 +582,7 @@ declared environment carries, or a file seeded into `testdata:`.
 | `init` | write a starter bench you can run immediately |
 | `report` | read stored reports: `list`, `show`, `compare`, `trend` |
 | `grade` | **positive control** — re-grade a recorded Session offline and compare to the recorded verdicts |
-| `check` | **negative control** — run under the mock harness and require every cell to fail |
+| `check` | **negative control** — run under the mock harness and require every graded check to fail |
 | `keychain` | store madbench's API keys in the macOS login keychain instead of a file |
 | `update` | upgrade madbench to the latest release (`--notes` prints what changed) |
 | `version` | print version — **there is no `--version` flag** |
@@ -513,27 +590,60 @@ declared environment carries, or a file seeded into `testdata:`.
 
 ### Flags
 
+Read off `madbench --help` on the installed binary; the table is a map, not the source.
+
 | Group | Flag | Effect |
 |---|---|---|
-| What runs | `--run <name>` | run only these Eval runs by name (repeatable) |
+| What runs | `--run <name>` | run only these Eval runs by name (repeatable). Selects **which** runs; `--repeat` sets how many times each executes |
+| | `--scenario <string>` | run only this Scenario by name (or description, when it has no name) — a different axis from `--run` |
 | | `--param key=value` | override a declared bench param (repeatable; typed int/float/bool, else string) |
 | | `--repeat <n>` | repeat each bench N times for flake detection (default 1) |
 | | `--harness <string>` | override harness for all benches |
 | | `--sandbox <string>` | override sandbox level: `none`·`workspace`·`home`·`container` |
 | | `--concurrency <n>` | max scenarios at once within one bench (default 4); benches run one after another |
-| Watch | `--ui` | open the live run dashboard instead of plain stdout |
-| | `--plain` | append-only progress lines (implied when stderr is not a terminal, or under `NO_COLOR`/`TERM=dumb`) |
+| Watch | `--ui` | open the live run dashboard (TUI) instead of plain stdout |
+| | `--plain` | append-only progress lines — **the CI shape**, implied when stderr is not a terminal, or under `NO_COLOR`/`TERM=dumb`. Choosing it in a terminal throws away the coloured live region |
 | | `--theme <string>` | `auto`·`light`·`dark` (auto reads the terminal background) |
-| Results | `--report-dir <dir>` | persist a versioned report per invocation, enabling `madbench report` history |
-| | `--report-json <file>` | write a JSON report |
+| Drive it yourself | `--manual` | provision the sandbox exactly as a graded run does, then attach your terminal and hand over. The prompt is printed for you to paste; no checks run; the workspace is kept |
+| Results | `--report-dir <dir>` | persist a versioned report per invocation, enabling `madbench report` history. Written **incrementally**, so a run that dies mid-flight leaves a readable partial |
+| | `--report-json <file>` | write a JSON report — **the evidence channel**; read numbers from here, never off the terminal |
 | | `--report-junit <file>` | write a JUnit XML report |
 | | `--report <name>` | open a stored report read-only in the dashboard (requires `--ui`); runs nothing |
+| Exit | `--fail-on-failure` | exit 1 when scenarios **FAIL** their checks. Without it a graded miss exits 0 — see *Exit codes* below |
 | Safety | `--allow-host-writes` | consent to `sandbox: none` |
 | | `--skip-preflight` | skip the dependency check (not recommended) |
 | Settings | `--env-file <file>` | read settings from this dotenv instead of `./.env` (a missing file is an error) |
 | | `--no-env` | ignore `./.env` entirely |
 | | `--no-keychain` | ignore the macOS login keychain |
 | | `--no-update-check` | do not check for a newer release |
+| | `--use-subscription <string>` | override how claude-code benches bill: `optional` · `required` · `api_usage` |
+
+### Exit codes — a graded miss is 0
+
+One rule, applied everywhere: **nonzero when madbench itself is in question, zero when a
+measurement came out low.** A graded miss is a result; a session that never graded is a
+fault (`docs/README.md:88-112`).
+
+| Code | Means | When |
+|---|---|---|
+| `0` | the run happened | **including a run whose checks failed** |
+| `1` | something is wrong with the run or with madbench | a scenario **errored** (it ran, it spent, and it never graded); a bad config; `--fail-on-failure` with a failed scenario; `madbench check` / `grade` finding madbench unsound |
+| `3` | nothing ran, no spend | a blocking preflight finding, a failed preparation, or a declared metric that never produced |
+| `130` | the operator stopped it | SIGINT/SIGTERM, or quitting the `--ui` dashboard mid-run |
+
+Observed on the installed binary, madbench's own closing line after `madbench demo`:
+
+```
+exit 0: 1 scenario failed — scenario outcomes, not a harness crash
+```
+
+`--fail-on-failure` is opt-in because every CI reads nonzero as a broken job, and a bench
+exists to measure *how often* an agent gets it right — a control run that is supposed to
+fail is a working control. It governs **failed** scenarios only: an **errored** one exits 1
+either way, and no flag turns that off (`docs/README.md:105-108`). A CI job that treats
+nonzero as its failure signal without the flag reads a bench whose every scenario failed as
+green. Every nonzero exit closes with a line saying which of these it was, so a wrapping
+runner does not report `exit 1` as a crash (`docs/README.md:111-112`).
 
 Env vars: `MADBENCH_MOCK_RICH=1` · `MADBENCH_LOCKFILE_REQUIRED=1` (CI lockfile enforcement) ·
 `MADBENCH_ALLOW_HOST_WRITES=1` · `MADBENCH_MAGMUX` · `MADBENCH_CLAUDISH`.
@@ -553,6 +663,9 @@ it gives a confident exit 0 on a bench that cannot start.
 | Unknown check `type:` | **no** | **yes** | yes |
 | Missing `file://` grader file | **no** | **yes** | yes |
 | `image:` missing / wrong format / harness can't carry it | **no** | **yes** | yes |
+| A declared MCP server's `command` resolves; an `mcp-reachable` value names a declared server | **no** | **yes** | yes |
+| A `module/` has `bun` and a `package.json` | **no** | **yes** | yes |
+| A `metrics:` expression that will not parse | yes | yes | yes |
 | A check that grades nothing | no | no | no — use `madbench check` |
 
 **Where the line falls.** Anything that makes a bench file **malformed** — an unknown key, a
@@ -567,14 +680,15 @@ preflight's job alone. That is why the sandbox row reads yes across the board.
 
 Preflight asks *can this run*; the controls ask *does this bench measure anything*.
 
-- **`madbench check`** runs under the mock harness and requires **every gradable cell to fail**,
-  reporting a **per-cell tally**. Exit 0 = the control holds, 1 = a cell wrongly passed or could
-  not be graded, 3 = nothing gradable was found. `latency` and `cost` are reported as **NOT
-  APPLICABLE** and left out of the verdict. A cell that ERRORED is reported in its own bucket,
-  never folded into the failures — it demonstrated neither soundness nor rot.
-  A bench declaring `sandbox: none` still needs `--allow-host-writes`: the mock writes nothing,
-  but the **checks run for real**, and at level `none` an `exec` check is a command executed in
-  the directory you are sitting in.
+- **`madbench check`** runs under the mock harness and requires **every graded check to
+  fail**, reporting a **per-check tally** — one line per (Scenario, Check) pair, plus by name
+  every check that wrongly passed. Exit 0 = the control holds, 1 = a check wrongly passed or
+  a check or Scenario could not be graded, 3 = nothing gradable was found. `latency` and
+  `cost` are reported as **NOT APPLICABLE** and left out of the verdict. A check that ERRORED
+  is reported in its own bucket, never folded into the failures — it demonstrated neither
+  soundness nor rot (`madbench help check`). A bench declaring `sandbox: none` still needs
+  `--allow-host-writes`: the mock writes nothing, but the **checks run for real**, and at
+  level `none` an `exec` check is a command executed in the directory you are sitting in.
 - **`madbench grade <report.json>`** re-grades a recorded Session offline — no harness, no
   sandbox, no spend — and checks every verdict reproduces. It re-runs the evaluators against the
   stored Session; it does not replay stored verdicts, so non-deterministic grading shows up as

@@ -1,0 +1,16 @@
+{
+  "description": "Stop: refuse to end the turn while a dispatched madbench:operator has not reported back. Every Agent call in this build is asynchronous, so the parent's reply closes the session and kills the operator mid-run. The command text says three times to block on TaskOutput; measured on MBN-1 with --repeat 5 twice, parents that actually waited were 3/5 then 2/5, so the wording is replaced by a mechanism. The hook is silent unless the transcript holds an operator dispatch with no terminal task-notification after it, and it gives up — allowing the turn to end — on an unreadable transcript, a dispatch older than 45 minutes, or after 6 consecutive blocks for the same task id.",
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun --env-file=/dev/null ${CLAUDE_PLUGIN_ROOT}/scripts/stop-wait-for-operator.ts",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

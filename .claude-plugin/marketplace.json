@@ -885,8 +885,8 @@
     {
       "name": "madbench",
       "source": "./plugins/madbench",
-      "description": "Toolkit for madbench, MadAppGang's Go harness for benchmarking agentic coding tools. Ships the madbench-evals skill: author bench YAML and Eval files, design checks, scaffold red-state and generated testdata, run the negative and positive controls, tune expectations, and debug failing checks.",
-      "version": "0.3.0",
+      "description": "Toolkit for madbench, MadAppGang's Go harness for benchmarking agentic coding tools. An operator agent authors, runs and debugs benches natively in a visible pane, reading the madbench-evals skill by path; /madbench:bench and /madbench:doctor are the entry points; a script enforces bench layout.",
+      "version": "0.4.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -907,6 +907,16 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "0.4.0",
+          "date": "2026-09-10",
+          "kinds": [
+            "Added",
+            "Changed",
+            "Fixed"
+          ],
+          "summary": "The madbench:operator agent and the /madbench:bench and /madbench:doctor commands"
+        },
         {
           "version": "0.3.0",
           "date": "2026-08-29",
@@ -930,11 +940,6 @@
           "version": "0.2.2",
           "date": "2026-08-19",
           "summary": "The --runs deprecated-alias claim in the runners-and-sandbox reference now carries a dated live\u2026"
-        },
-        {
-          "version": "0.2.1",
-          "date": "2026-08-18",
-          "summary": "Four skill corrections that only a run reveals \u2014 session:step-count takes one bound and\u2026"
         }
       ]
     }

@@ -1,7 +1,9 @@
 # Debugging madbench benches
 
-Reference for `madbench:madbench-evals`. Error→cause map, the two controls, report analysis,
-expectation tuning. Mirrors madbench **v0.23.0**.
+Reference for the `madbench-evals` skill, reached by path. Error→cause map, the two controls,
+report analysis, expectation tuning. The madbench release these files mirror is declared
+**once**, in `plugins/madbench/mirrors.json`, which lists this file as stable.
+`docs/<file>.md:<line>` citations point into the madbench checkout's `docs/` directory.
 
 ## Before you debug anything
 
@@ -41,7 +43,13 @@ A conclusion drawn from source you did not build is a conclusion about a differe
 | Message | Cause / fix |
 |---|---|
 | `loading <path>: parsing <path>: yaml: line N: …` | YAML syntax/type error — fix at the line shown |
-| `field <key> not found in type madbench.BenchSpec` / `.ScenarioSpec` / `.sandboxYAML` | Strict decoding: an unknown key at that level. Common: `input:`→`prompt:`, top-level `name:`→`description:`, `sandbox: {mode:}`→`{level:}`. Check the alias table in `schema.md` before assuming the key is wrong |
+| `field <key> not found in type madbench.BenchSpec` / `.ScenarioSpec` / `.sandboxYAML` | Strict decoding: an unknown key at that level. Common: `input:`→`prompt:`, top-level `name:`→`description:`, `sandbox: {mode:}`→`{level:}`, **the retired derived-metrics key→a `metrics:` expression** (`schema.md` §8). Check the alias table in `schema.md` before assuming the key is wrong |
+| `metrics[2]` / `scenarios[0].checks[1].metrics[0]` will not parse | An expression-form `metrics:` entry with a syntax error, named by index. Compiled at load, so nothing was spent (`docs/metrics.md:725-728`) |
+| a `metrics:` entry reported as a YAML mapping | An unquoted ternary: a bare scalar containing `": "` is a key-value pair. Quote the whole entry (`docs/metrics.md:215-227`, `:729-730`) |
+| a `metrics:` block "mixing expressions and declarations" | One key, two shapes, told apart by the first entry; a block is all expressions or all mappings (`docs/metrics.md:314-317`, `:731`) |
+| `metric_error` on a report row naming two keys | A name written as both a group and a value (`f1` beside `f1.locate`). Refused at the **write**, after the Scenario ran and was billed, so that Scenario reports no metrics (`docs/metrics.md:120-127`) |
+| `mcp check subject "…"` from preflight, exit 3 | An `environment:mcp-reachable` check naming a server the run declares nowhere. Correct `value:` to the declaration's document key, or declare the server (`docs/harness.md:1447`) |
+| `binary "magmux" capabilities` from preflight | An interactive bench whose magmux `--help` does not list `--headless` or `--sock-dir`. Checked by capability, never by version (`docs/harness.md:1440`, `:1520-1536`) |
 | `sandbox: level "process" was renamed to "home"` | A retired level. `process`→`home`, `machine`/`docker`→`container`. **Refused, not aliased**, as a load error |
 | `unknown check type "<name>"` from **preflight** | typo'd `type:`, caught before any spend |
 | `unknown assertion type: "llm-rubric"` (or any AI check name) | **Missing judge provider, not a typo.** With no `judges:` block and no `ANTHROPIC_API_KEY`, judge registration is skipped, so AI types fail exactly like misspelled ones. The message names the fix |
@@ -86,10 +94,13 @@ A conclusion drawn from source you did not build is a conclusion about a differe
 | `session:tool-used` with `value: Task` and `thread: main` is always false | A spawn row carries the **subagent's** thread, not the spawner's. Use `session:subagent-used` to ask who delegated |
 | `session:tool-sequence` or `session:tool-args-match` never sees a skill or a spawn | Both read only `Calls`, which excludes `ActionSkill` and `ActionSubagent`. `session:tool-used` reads `Actions` and unions `Calls`, so it does see them |
 | `session:skill-used` never passes | If the bench sets `harness_config.agent_env`, it **cannot**: `--bare` stops advertising skills, so an agent never invokes one spontaneously. Use `plugins:` instead, or drop the check. Also note it grades the **result** — an errored invocation fails and says so, rather than reporting "was not invoked" |
-| `session:tools-only` passes on a run that did nothing | A fence is a constraint, not a claim that anything happened. An empty scope satisfies it, and `madbench check` flags it under WRONGLY PASSED. Pair it with a `session:tool-used` carrying `gte:` |
+| `session:tools-only` passes on a run that did nothing | A fence is a constraint, not a claim that anything happened. An empty scope satisfies it, and `madbench check` flags it under WRONGLY PASSED. Pair it with a `session:tool-used` carrying `gte:` — every check must be a positive assertion |
+| CI stays green on a bench whose scenarios all failed | **A graded miss exits 0.** Add `--fail-on-failure` to exit 1 on a failed scenario; an errored scenario exits 1 either way (`docs/README.md:88-108`). The run's own last line says which: `exit 0: 1 scenario failed — scenario outcomes, not a harness crash` |
+| A `--repeat` rate looks clean but some passes ran only seconds | Look at `.summary.errors` and the per-pass rows before believing the rate. A pass whose agent was refused (credit exhausted, revoked token) **never graded**, and a session that never graded is a fault, not a `fail` (`docs/README.md:90-96`). If refused passes appear as failures, that is a defect to draft upstream — never a number to publish |
 | A `session:*` check fails on a path that is obviously right | The WorkDir is a per-run tmpdir, and macOS reports `/private/var/…` where the sandbox stored `/var/…`. Use `session:file-read` (which compares through `internal/hostpath`) or a `glob:`/`suffix:` matcher — never a hand-built absolute literal |
 | A literal that starts with `glob:` / `suffix:` / `contains:` is misread | Those prefixes are now matchers. Write `exact:` in front to get the literal back |
-| Every `environment:*` check ERRORs | Nothing was captured. `harness_config.environment.probe` is false, or the harness reports no environment. That is the correct loud outcome for a run that measured nothing — a pass would report success for the exact incident the family exists to end |
+| Every `environment:*` check ERRORs, or lands in NOT APPLICABLE | Nothing was captured. `harness_config.environment.probe` is false, or the harness reports no environment. Loud either way and never a pass: upstream's `harness.md` says ERROR (`docs/harness.md:1130-1132`); `madbench check` lands an unprobeable check outside the verdict (`docs/checks.md:838-840`). A pass would report success for the exact incident the family exists to end |
+| `environment:mcp-reachable` errors on a name that is plainly declared | The check takes the **bench's** document key (`probe`), not the tool's `plugin:…:…` spelling; and it errors, never fails, on a name the preflight never recorded or recorded UNPROBED (`docs/checks.md:708-719`). A typo is caught at preflight, exit 3 (`docs/checks.md:721-727`) |
 | `environment:mcp-connected` errors rather than failing | Only `system:init` reports a status, and only the `--print` drive path carries one. On the default interactive path the run never asked |
 | `environment:command-registered` errors | `claude plugin details` prints no command heading — it folds `commands/*.md` into its own `Skills (N)` count. It needs a source other than `plugin-cli` |
 | A staged plugin is missing and the scenario ERRORed before the agent ran | `harness_config.environment.require: true` refused it. That is a gate, not a grade: it did not score badly, it never ran |
@@ -110,26 +121,51 @@ reproducible.
 madbench check bench.yaml
 ```
 
-The mock harness echoes the prompt and does nothing else, so every gradable cell must fail.
-**The exit code was never the control — the per-cell tally is.** A process exit is non-zero if
-*any* cell fails, so the obvious wrapper ("run under mock, assert non-zero exit") reports a
-healthy control while any number of cells sail through: 9-fail-1-pass and 10-fail give the
-identical exit code.
+The mock harness echoes the prompt and does nothing else, so every graded check must fail.
+**The exit code was never the control — the per-check tally is.** A bare run's exit is non-zero
+if *any* check fails, so the obvious wrapper ("run under mock, assert non-zero exit") reports
+a healthy control while any number of checks sail through: 9-fail-1-pass and 10-fail give the
+identical exit code. `madbench check` is the tool that counts per (Scenario, Check) pair;
+do not write a tally parser beside it.
 
-Three buckets, deliberately kept apart:
+Four buckets, deliberately kept apart (`madbench help check`):
 
 | Bucket | Meaning |
 |---|---|
-| **failed as required** | the cell graded, and it failed — the control holding |
-| **WRONGLY PASSED** | the cell graded and passed against a harness that did nothing. It is grading nothing |
-| **ERRORED** | the cell graded nothing at all, so it demonstrated neither soundness nor rot |
-| **NOT APPLICABLE UNDER MOCK** | `latency` and `cost` — excluded from the verdict entirely |
+| **failed as required** | the check graded, and it failed — the control holding |
+| **WRONGLY PASSED** | the check graded and passed against a harness that did nothing. It is grading nothing |
+| **ERRORED** / **COULD NOT GRADE** | the check graded nothing at all, so it demonstrated neither soundness nor rot |
+| **NOT APPLICABLE UNDER MOCK** | `latency`, `cost`, and `environment:mcp-reachable` — excluded from the verdict entirely |
 
 **Errored ≠ failed**, and folding the two together is how a broken control looks healthy.
 
-Exit codes: **0** = the control holds (every gradable cell was graded, and every one failed) ·
-**1** = a cell wrongly passed, or a cell or scenario could not be graded at all · **3** =
-nothing gradable was found.
+Exit codes: **0** = the control holds (every gradable check was graded, and every one
+failed) · **1** = a check wrongly passed, or a check or Scenario could not be graded at all ·
+**3** = nothing gradable was found. Measured on the installed binary, a holding control:
+
+```
+  2/2 checks failed as required · 0 errored (could not grade) · 0 wrongly passed
+
+  control holds: every check was graded, and none passed against a harness that did nothing.
+```
+
+and a fence with no activity partner, exit 1:
+
+```
+  0/1 checks failed as required · 0 errored (could not grade) · 1 wrongly passed
+
+  WRONGLY PASSED (1) — these checks grade nothing:
+    fence-only · session:tools-only
+      score 1.00 · session:tools-only: no tool call in scope — nothing to check
+```
+
+**Every check is a positive assertion.** A fence, an absence assertion (`not-any-of`) or an
+anti-cheat invariant passes against a do-nothing mock by construction, and the control names
+it `WRONGLY PASSED`. Only `latency` and `cost` are exempt. Express every intent as the
+presence of the wanted behaviour and pair every fence with an activity check. That
+absence-assertion gap is a real limitation and is drafted in
+`docs/madbench-issues/2026-08-22-negative-control-vs-absence-checks.md`; until it lands
+upstream, the shape of the bench bends, not the control.
 
 **Two benches it cannot control.** An `image:` bench — the mock is not `ImageCapable`, so
 `check` refuses with *harness "mock" cannot deliver an image*. And any bench at `sandbox:
@@ -142,7 +178,7 @@ sitting in.
 `latency` and `cost` guard the **budget**, not the behavior. A run that did nothing spent
 nothing and took no time, so `cost $0.00 ≤ $0.04` is the *correct* verdict under mock. They
 are reported NOT APPLICABLE and left out. A bench declaring nothing else exits **3**
-(`0 gradable cells`) rather than reporting a holding control.
+(`0 gradable checks`) rather than reporting a holding control (`docs/checks.md:229-237`).
 
 Prove one by **falsification** instead — set an impossible threshold and make one real run,
 then a generous one. Both halves matter: a guard hardwired to fail would look identical to a
@@ -183,7 +219,7 @@ regression test for your *grading*.
 Two categories are **SKIPPED with a stated reason**, never silently passed: WorkDir-reading
 checks (`exec`, `custom:exec`, file-loading script graders — the sandbox tree is deleted when
 the run ends) and judge-backed checks (re-grading spends on a live judge, and a
-non-deterministic verdict cannot be a control). A cell whose re-grade errors is reported as
+non-deterministic verdict cannot be a control). A check whose re-grade errors is reported as
 "could not re-grade", never as reproduced.
 
 ### A discovery prompt cannot prove a capability claim
@@ -209,8 +245,12 @@ rather than guessing — several are not what you would predict.
 | what the tool had loaded | `.results[].session.environment.reported` |
 | what madbench staged | `.results[].session.environment.expected` |
 | per-thread subagent rollup | `.results[].session.subagents` |
-| run tally | `.summary` → `{total, passed, failed, errors, skipped}` |
+| run tally | `.summary` → `{total, passed, failed, errors, skipped}` — **read `errors` before `failed`**: an errored row never graded |
 | per-run control diff (Eval with `control:`) | `.control` → changed paths + size deltas per run |
+| the metric declaration, echoed | `.metric_specs` and `.schema_version` — a stored report is self-describing (`docs/metrics.md:712-714`) |
+| a metric expression that threw at run time | `metric_error` on the row and on the report; the run is not failed by it (`docs/metrics.md:733-735`) |
+| per-Scenario and per-run metric values | the `metrics` map on each Scenario row and each run; `value: null` means nothing reported, never `0` (`docs/metrics.md:578-595`) |
+| `--repeat` passes | the `MultiRunReport` envelope carries every pass's rows plus `aggregate.chosenPass`; the kept pass is the medoid, never a synthesized median (`docs/metrics.md:553-576`) |
 
 **`actions` is the authoritative event stream** — everything the agent did, in order,
 including subagent lifecycle rows. **`calls` is the lossy derived view**: only `tool_call` and
@@ -269,13 +309,22 @@ one does; they compose.
   them anyway (table in `schema.md`).
 - A valid sandbox level, spelled under `level:`.
 - Expectations backed by observed runs.
-- A negative control run as `madbench check` — per cell, not by exit code. `latency`/`cost`
-  cells land in NOT APPLICABLE, which is correct and expected.
+- A negative control run as `madbench check` — per check, not by exit code. `latency`/`cost`
+  land in NOT APPLICABLE, which is correct and expected. Every other check is a positive
+  assertion, and every fence has an activity partner.
 - The verdicts reproduce: `madbench grade` on a stored report from a real run.
 - Session checks asking the **narrowest true question**: `args.thread: main` where the claim is
   about the agent under test, `args.outcome: ok` where success is knowable and matters,
   `session:file-read` instead of a sentinel token injected into the thing being measured.
 - Measurements marked `readout: true` rather than gating the Scenario.
-- `metric:` names for scores used in `derivedMetrics:` and `metrics:`.
+- `metric:` names on every check whose score a `metrics:` expression reads, and arithmetic
+  that outgrew one line living in the bench's `module/` — not in a sibling script that reads
+  the report (`schema.md` §8).
+- **If a reader needs a comment to trust a number, that comment is a check you have not
+  written yet.** A code comment saying "the plumbing was verified out of band" is a
+  `environment:mcp-reachable` or `environment:matches-expected` row that should be in the
+  bench, asserted before any spend.
+- CI invoked with `--fail-on-failure` if a miss is meant to go red; otherwise a graded miss
+  exits 0 by design.
 - Don't rely on Scenario-level `threshold:` as a gate — it is parsed for promptfoo
   compatibility and **never evaluated**. Gate with per-check `threshold:` or an `assert-set`.

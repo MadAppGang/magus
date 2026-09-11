@@ -1,7 +1,10 @@
 # Bench and Eval file schema
 
-Reference for `madbench:madbench-evals`. Every key of a bench file and an Eval file, its type
-and its default. Mirrors madbench **v0.23.0** (`pkg/madbench/benchspec.go`).
+Reference for the `madbench-evals` skill, reached by path. Every key of a bench file and an
+Eval file, its type and its default. The madbench release these files mirror is declared
+**once**, in `plugins/madbench/mirrors.json`, which lists this file as version-sensitive;
+no file here restates a version. `docs/<file>.md:<line>` citations point into the madbench
+checkout's `docs/` directory.
 
 **Both file kinds are strictly decoded at every nesting level** — scenario, check and sandbox
 block alike. An unknown key is a hard load error naming the file, line and type:
@@ -22,8 +25,7 @@ harness_config: {…}          # see runners-and-sandbox.md
 models: {fast: haiku-4.5}    # named model definitions (modelspec union)
 params: {model: fast}        # the bench's interface — declared names + defaults
 judges: {…}                  # judge providers for AI checks
-metrics: [{…}]               # the report's numeric schema
-derivedMetrics: [{…}]        # JS expressions over named scores
+metrics: [...]               # the report: aggregate expressions over sample names — §8
 defaults: {…}                # scenario-level defaults
 defaultScenario: {…}         # a whole ScenarioSpec merged into every scenario
 budget: 1.50                 # informational gauge only — NOT enforced
@@ -39,13 +41,31 @@ scenarios: [{…}]
 | `models` | map[string]modelspec | named model definitions; same union as `judges:` |
 | `params` | map[string]any | declared names + defaults — **the bench's interface** |
 | `judges` | {default, providers} | judge providers for the 17 AI check types |
-| `metrics` | []MetricSpec | the report's numeric schema |
-| `derivedMetrics` | [{name, value}] | JS expression over named scores, e.g. `"Consistency * 2"` |
+| `metrics` | []string expressions, **or** the older []mapping form — never mixed in one block (`docs/metrics.md:314-317`) | the report's numeric schema — §8 |
 | `defaults` | ScenarioDefaults | see §2 |
 | `defaultScenario` | ScenarioSpec | a whole scenario merged into every entry |
 | `budget` | float | **informational only, never enforced** |
 | `token_estimate` | int | **informational only, never enforced** |
 | `scenarios` | []ScenarioSpec | the work |
+
+**Two keys that look right and do not load.** Measured against the installed binary with a
+minimal bench (`madbench list`, exit 1):
+
+```
+line 1: field name not found in type madbench.BenchSpec
+```
+
+and, at line 13 of the same probe, the identical `field … not found in type
+madbench.BenchSpec` refusal for the retired derived-metrics key.
+
+- **There is no top-level `name:`.** The bench's identifier is `description:`; `name:` is a
+  *Scenario* key (§3). Strict decoding refuses it at the top level.
+- **There is no separate derived-metrics key.** The three metric declaration sites collapsed
+  into one `metrics:` key, and arithmetic over named scores is an *expression* in that key —
+  §8. The upstream commit that removed it records an author drafting a feature request for
+  something `metrics:` already did; look before you file (SKILL.md, "A gap"). This skill
+  does not spell the retired key, so nothing here can be copied into a bench that will not
+  load.
 
 ### Accepted aliases
 
@@ -114,6 +134,8 @@ scenarios:
       transform: "…"
       disableDefaultChecks: true
     checks: [{…}]
+    metrics:                         # sample-stage entries belonging to no single check — §8
+      - 'metrics.passed = status == "pass" ? 1 : 0'
 ```
 
 | Key | Type | Notes |
@@ -138,6 +160,7 @@ scenarios:
 | `threshold` | float | **parsed, merged, and never read** — promptfoo compatibility |
 | `options` | {transform, disableDefaultChecks} | |
 | `checks` | []check.Spec | see `checks-catalog.md` |
+| `metrics` | []string | sample-stage expressions scoped to this Scenario's row; in scope: `status`, `duration`, `session` (`docs/metrics.md:32-33`, `:59-62`) — §8 |
 
 ---
 
@@ -165,8 +188,16 @@ The workspace gets **no `.git`**, submodules are **not** initialized, and Git-LF
 
 Both run **once per run, before the workspace is seeded**, on the host, with the staged tree
 as working directory, under the same `staging_timeout:`, with the same six environment names.
+**Once per run means once per bench** — every Scenario of the bench is seeded from the one
+tree the program left, not one staging per Scenario (`docs/sandbox-and-testdata.md:431`).
 Relative paths resolve against the bench file. The tree each leaves behind replaces
 `testdata:` as the seed source.
+
+**Every staged path resolves against the bench file's directory, never the cwd** —
+`testdata:`, `generate:`, `setup:`, a local `repo:` and `harness_config.agent_env` alike,
+with `{{param}}` substitution applied first (`docs/sandbox-and-testdata.md:235-241`). That
+includes a `testdata:` a Scenario *inherits* from `defaultScenario:`, so a bench runs
+identically from its own folder, the repo root, or a multi-bench `madbench a/ b/` sweep.
 
 | | `setup:` | `generate:` |
 |---|---|---|
@@ -205,7 +236,12 @@ Declaring `image:` flips `--input-format` from `text` to `stream-json`. Verify d
 
 > **An `image:` bench cannot be negative-controlled.** The mock harness is not `ImageCapable`:
 > `madbench check` refuses with *harness "mock" cannot deliver an image*. Grade the rest of the
-> bench under mock and keep the image cell's proof to a real run.
+> bench under mock and keep the image Scenario's proof to a real run.
+>
+> **`image: generated:<name>`** names a picture the Scenario's `generate:` program writes
+> into `$MADBENCH_IMAGE_DIR` — a sibling of the workspace, never seeded into it, so the
+> pixels that *are* the answer cannot be read off disk (`docs/harness.md:284-313`). That is
+> the native home for any bench-owned image generator; do not wire one around madbench.
 
 ---
 
@@ -233,16 +269,147 @@ Levels, what each protects, and the retired spellings: `runners-and-sandbox.md` 
 
 ---
 
-## 8. `metrics:` and `derivedMetrics:`
+## 8. `metrics:` — expressions, and the bench's own `module/`
 
 A check returns higher-is-better **utility** and *grades* a Scenario; a metric *measures* it
-and never grades.
+and never grades (`docs/metrics.md:8-11`). There is **one** declaration key, `metrics:`, and
+it appears at three levels. Which stage an entry runs in is decided by **where it is
+written**, never by inspecting the expression (`docs/metrics.md:64-65`).
+
+```yaml
+scenarios:
+  - name: dev-under-plan-mode
+    prompt: "…"
+    checks:
+      - type: ts
+        metric: accuracy                     # the score, under a name you choose
+        value: "file://./verify-transition.ts"
+        metrics:                             # SAMPLE stage: this Check's own contribution
+          - metrics.bytes = evidence.size_bytes
+          - "metrics.wins += score > 0.6 ? 1 : 0"
+    metrics:                                 # SAMPLE stage: belongs to no single Check
+      - 'metrics.passed = status == "pass" ? 1 : 0'
+
+metrics:                                     # AGGREGATE stage: the report — arrays in
+  - metrics.accuracyMean = mean(accuracy)
+  - metrics.accuracyP50  = p50(accuracy)
+  - metrics.passRate     = mean(passed)
+  - 'metrics.spend = { value: sum(cost), unit: "usd", better: "lower" }'
+```
+
+The language is JavaScript — property access, arithmetic, comparison and the ternary are
+themselves. There is no `source:` catalog to learn and no `aggregate:` enum: a path is a
+path and `mean` is a function (`docs/metrics.md:42-44`).
+
+| Stage | Declared at | In scope | Lands in |
+|---|---|---|---|
+| sample | a Check's or a Scenario's `metrics:` | `score`, `pass`, `reason`, `evidence`; then `status`, `duration`, `session` | that Scenario's row |
+| aggregate | the top-level `metrics:` | every sample name, as the **array** of its per-Scenario values | the run — what the charts read |
+
+(`docs/metrics.md:57-62`.)
+
+**A Check pushes; the report never reaches back by name.** A central `source: check.score,
+check: accuracy` matches on a string, so renaming a Check silently empties its metric. The
+push form has no name to get wrong (`docs/metrics.md:46-55`). That is why `metric:` on a
+check matters: it is the name the check's own score binds under at aggregate stage.
+
+Rules that decide what a number means:
+
+- **`metrics` is one live object per Scenario, shared by its Checks** — that is what makes
+  `+=` mean "across the Checks of this Scenario". An unset key reads `0`, so `+=` works on
+  the first write (`docs/metrics.md:67-77`).
+- **Missing is not zero.** Writing `undefined`, `null`, `NaN` or `Infinity` records the
+  metric as *missing* and the report prints `n/a`; a genuine `0` prints `0`. An expression
+  cannot launder "nothing happened" into "zero" (`docs/metrics.md:79-81`).
+- **`mean`, `min`, `max`, `last` of nothing are missing; `sum` and `count` of nothing are a
+  real `0`.** A percentile over fewer than 5 samples is missing rather than an interpolated
+  guess (`docs/metrics.md:160-168`).
+- **A dot in a name groups it.** Write `metrics["f1.locate"]` (bracket form); at aggregate
+  stage `mean(f1.locate)` reads one leaf and `mean(f1)` folds every leaf. `metrics.f1.locate
+  = …` throws by design (`docs/metrics.md:83-118`).
+- **Built-ins need no declaration**: `cost`, `tokens`, `turns` bind at sample stage, plus
+  `duration` at aggregate stage — as bindings, not writes, so they appear in the report only
+  when an expression puts them there (`docs/metrics.md:142-156`).
+- **Quote a ternary.** A bare scalar containing `": "` is a YAML mapping, and madbench says
+  so rather than reporting a mystery about `MetricSpec` (`docs/metrics.md:215-227`).
+- **Every expression compiles at load**, so a typo fails before a model is billed. A
+  run-time throw is recorded on the report as `metric_error` and does **not** fail the run —
+  a metric measures, it does not grade — and it is never silent (`docs/metrics.md:292-298`).
+
+Aggregate functions: `sum` · `mean` · `min` · `max` · `count` · `last` · `p50` · `p90` ·
+`p95` · `p99` (`docs/metrics.md:160`). Anything else is ordinary JavaScript — `filter`,
+`reduce`, your own arithmetic — or an export from the module below.
+
+### The bench's own `module/`
+
+Arithmetic that outgrows one line belongs in code, **beside the bench, not around it**. Put
+a `module/` directory next to the bench file and every export is in scope, by name, in every
+one of that bench's expressions (`docs/metrics.md:229-243`):
+
+```
+benches/<name>/
+  madbench.yaml
+  module/
+    index.ts          # exports become bindings in every metrics: expression
+    package.json
+    bun.lock          # only when the module has dependencies
+```
+
+```ts
+// module/index.ts
+export function scaleBytes(bytes: number, unit: "kb" | "mb" = "kb"): number {
+  return bytes / (unit === "mb" ? 1024 * 1024 : 1024);
+}
+```
+
+```yaml
+checks:
+  - type: ts
+    metric: bundle
+    value: "file://./measure.ts"
+    metrics:
+      - metrics.kb = scaleBytes(evidence.size_bytes)
+metrics:
+  - 'metrics.size = { value: mean(kb), unit: "kb", better: "lower" }'
+```
+
+**Convention, not configuration.** No YAML key selects it: the directory is `module/`, the
+entry point is `index.ts` or `index.js`, and a `module/` holding neither is ignored. Its
+dependencies are `bun install`ed into a content-hashed cache on first run
+(`docs/metrics.md:265-269`).
+
+**The module chooses the runtime.** Without one, expressions run in-process on goja, an
+ES5.1+ interpreter that can neither import TypeScript nor resolve an npm package. With one,
+madbench spawns `bun` — one subprocess per Scenario plus one per run — with the module
+imported once and every entry evaluated in a shared scope. The expression source is
+identical either way, so adding a module never means rewriting an expression
+(`docs/metrics.md:271-287`). Two consequences: `await` is available on an async export only
+with a module, and a **module-backed block stops at the first throwing entry** (the
+in-process one keeps going), so put an entry that can throw last (`docs/metrics.md:198-210`).
+A bench with a `module/` gets its runtime checked at **preflight** — a missing `bun` or a
+module with no `package.json` is named before any spend (`docs/metrics.md:300-302`).
+
+**Aggregation stops at the run, by design.** Nothing is summed or averaged across runs, and
+there is no field in which a consumer could find cost summed across two different agent
+setups (`docs/metrics.md:456-461`). A cross-run statistic is therefore a post-hoc module
+over `--report-json` — not a feature request. Upstream refused Eval-level metrics in
+writing: *"the statistic belongs to the bench's own `module/`, and `--report-json` is the
+path. Adding a stage would turn a structural guarantee into a sentence in the docs."*
+
+### The declarative form still loads
+
+The older shape is a list of mappings under the same key. One key, two shapes, told apart by
+whether the first entry is a scalar or a mapping; a block is all expressions or all
+mappings, never a mix. New benches should use expressions (`docs/metrics.md:306-317`).
 
 ```yaml
 metrics:
   - {name: cost,   source: session.cost,   aggregate: sum,  unit: usd,    better: lower}
   - {name: steps,  source: session.steps,  aggregate: mean, unit: steps,  better: lower}
 ```
+
+Its `source:` catalog is closed (`docs/metrics.md:357-383`). The same names are what an
+expression's `session` binding exposes, so this table still tells you what is measurable:
 
 | Source | Scope | Reads |
 |---|---|---|
@@ -264,8 +431,14 @@ metrics:
 | `check.pass_rate` | scenario | passed ÷ graded Checks |
 | `check.evidence` + `key:` | check | `Result.Evidence[key]`, numeric values only |
 
-`aggregate:` accepts `sum`, `mean`, `max`, `min`. Aliases: `add`/`total` → `sum`,
-`average`/`avg` → `mean`, `agg:` → `aggregate:`.
+`aggregate:` accepts `sum`, `mean`, `min`, `max`, `count`, `last`, `p50`, `p90`, `p95`,
+`p99`. Load-only aliases: `add`/`total` → `sum`, `average`/`avg` → `mean`, `agg:` →
+`aggregate:` (`docs/metrics.md:426-436`).
+
+**No `metrics:` block at all** reports a built-in schema — `cost`, `duration`, `tokens`,
+`turns` — so every bench reports comparable numbers with no edit; declaring `metrics:`
+replaces that schema entirely, and order is priority order for a narrow dashboard column
+(`docs/metrics.md:320-337`).
 
 **"How many steps" is three questions** — main thread, whole job, one named subagent. Pick the
 one you mean; `session.steps` is the main thread.

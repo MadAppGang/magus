@@ -1,16 +1,19 @@
 # Check catalog
 
-Reference for `madbench:madbench-evals`. Every registered check type, the keys it reads, and
-how it scores. Mirrors madbench **v0.23.0**.
+Reference for the `madbench-evals` skill, reached by path. Every registered check type, the
+keys it reads, and how it scores. The madbench release these files mirror is declared
+**once**, in `plugins/madbench/mirrors.json`, which lists this file as version-sensitive.
+`docs/<file>.md:<line>` citations point into the madbench checkout's `docs/` directory —
+never into `pkg/`, because the checkout builds `dev`, not the release on your PATH.
 
 A **Check** grades one **Session** — what the Harness produced when it ran one Scenario —
 and returns a **Result**.
 
-**Counts here are counted from source** (`pkg/check/builtin/*.go`,
-`pkg/madbench/configurator.go:newDefaultCatalog`), not copied from upstream prose. The
-upstream `docs/checks.md` summary table disagrees with its own body on two families —
-it lists Session at 8 (the body enumerates 13) and Environment at 7 (source registers 8).
-When they conflict, the constructor map wins.
+**Counts here follow the family headings and enumerated rows of upstream `docs/checks.md`**,
+not its own totals table. That table disagrees with its body: it lists Session at 8 and
+Environment at 7 (`docs/checks.md:1178-1179`) while the body enumerates 13 Session rows and
+heads Environment with "9 types" (`docs/checks.md:591`). When they conflict, the enumerated
+rows win, and this file does not restate a grand total.
 
 ---
 
@@ -50,7 +53,8 @@ Harness ever runs.
 | `config` | free-form config map; **no in-tree check reads it** |
 | `weight` | multiplier when this Check is a composite child; unset → 1.0 |
 | `threshold` | the **Expectation** — the bar the score (or raw metric) must clear |
-| `metric` | named normalized-score key for `derivedMetrics:`; defaults to `type` |
+| `metric` | the name this Check's normalized score binds under in the top-level `metrics:` expressions (`mean(accuracy)`); defaults to `type` (`docs/metrics.md:27`, `:36`) |
+| `metrics` | sample-stage expressions this Check **pushes** into the Scenario's row — `score`, `pass`, `reason`, `evidence` in scope (`docs/metrics.md:29-31`, `:59-61`); see `schema.md` §8 |
 | `readout` | measure without grading — runs and scores, never fails the Scenario (§2.1) |
 | `checks` | composite children (`assert:` is an accepted alias) |
 | `inline` | inline source for `custom:gosrc` |
@@ -130,9 +134,10 @@ this Check?" and drives the dashboard badge.
 
 ---
 
-## 3. Registered totals
+## 3. Families
 
-Counted from the constructor maps at v0.23.0.
+Per-family counts from the upstream family headings and enumerated rows (see the note at
+the top). The grand total is deliberately not restated: it is the number that rots first.
 
 | Family | Types | Notes |
 |---|---:|---|
@@ -141,7 +146,7 @@ Counted from the constructor maps at v0.23.0.
 | Numeric | 4 | |
 | NLP | 6 | 3 error-only |
 | Session | 13 | 1 error-only; **+14 alias spellings** (13 `trajectory:*` + bare `skill-used`) |
-| Environment | 8 | no alias spellings — the family is new |
+| Environment | 9 | no alias spellings — the family is new (`docs/checks.md:591`) |
 | Mastra | 6 | |
 | Exec | 1 | |
 | Model | 1 | `model:current` — the only Check whose expected answer is fetched, not stored |
@@ -149,8 +154,6 @@ Counted from the constructor maps at v0.23.0.
 | Composite | 6 | |
 | Judge | 17 | always registered; each binds to the bench's judge set at construction |
 | `custom:*` prefixes | 4 | `custom:exec`, `custom:http`, `custom:gosrc`, `custom:wasm` |
-| **Distinct canonical** | **92** | 88 exact + 4 prefixes |
-| **Usable** | **88** | after the 4 error-only types |
 
 ### Registered only to produce a helpful error
 
@@ -222,18 +225,22 @@ Syntax and schema validity of the final output. All 0/1.
 behavior, and a run that did nothing spent nothing and took no time — so `cost $0.00 ≤
 $0.04` is the *correct* verdict against the mock. `madbench check` reports them under
 `NOT APPLICABLE UNDER MOCK` and leaves them out of its verdict; a bench declaring nothing
-else exits **3** (`0 gradable cells`). Prove one by falsification instead: set an impossible
-threshold, make one real run, then a generous one. Both halves matter — a guard hardwired to
-fail looks identical to a working guard if you only ever see it say no.
+else exits **3** (`0 gradable checks`) (`docs/checks.md:229-237`; `madbench help check`).
+Prove one by falsification instead: set an impossible threshold, make one real run, then a
+generous one. Both halves matter — a guard hardwired to fail looks identical to a working
+guard if you only ever see it say no.
 
 The exemption also covers a composite whose children are **nothing but** these two. A
-composite carrying even one behavior child stays graded. Any *other* error on a
-`cost`/`latency` cell — a `transform:` that will not parse, a recovered panic — is a broken
-check, not an inapplicable one, and still fails the control.
+composite carrying even one behavior child stays graded (`docs/checks.md:262-264`). Any
+*other* error on a `cost`/`latency` check — a `transform:` that will not parse, a recovered
+panic — is a broken check, not an inapplicable one, and still fails the control.
 
-Both **error** rather than fail when the harness reports no metric (`not reported by this
-session`). A fail would assert "this run was too slow", a claim a missing measurement does
-not support.
+Both are marked **not applicable** rather than failed when the harness reports no metric
+(`not reported by this session`): a fail would assert "this run was too slow", a claim a
+missing measurement does not support. That mark does **not** stop the Scenario — the checks
+beside it grade normally. It is the one error class so exempted; every other erroring Check
+still stops its Scenario, because every other error is a Check to repair
+(`docs/checks.md:143-149`, `:254-260`).
 
 > **A count ceiling is NOT exempt, and the distinction is the point.**
 > `session:step-count` with `lte:` is also satisfied by an agent that did nothing, so it
@@ -377,8 +384,8 @@ which is what makes a `tools:` fence checkable; spawn/done rows are excluded.
 
 By default a `session:*` check grades an **attempt**. An MCP server that is installed but
 unindexed issues the same call as one that works, so a bench comparing the two scores them
-identically — a green cell for a backend that answered nothing. `args.outcome` is how a bench
-asks the other question.
+identically — a green check for a backend that answered nothing. `args.outcome` is how a
+bench asks the other question.
 
 | `args.outcome` | Grades |
 |---|---|
@@ -435,16 +442,24 @@ cannot rot:
 | `not-any-of` over `session:tool-used` | you can only name what it **must not** do — a short, stable forbidden list inside an otherwise open surface |
 
 > **Pair a fence with a check that asserts activity.** A fence is a constraint, not a claim
-> that anything happened, so an empty scope satisfies it. `madbench check` flags exactly that:
+> that anything happened, so an empty scope satisfies it. `madbench check` flags exactly that
+> — measured against the installed binary on a bench carrying only the fence, exit 1:
 >
 > ```
-> WRONGLY PASSED (2) — these cells grade nothing:
->   find-the-middleware · session:tools-only
->     score 1.00 · session:tools-only: no tool call in scope — nothing to check
+>   0/1 checks failed as required · 0 errored (could not grade) · 1 wrongly passed
+>
+>   WRONGLY PASSED (1) — these checks grade nothing:
+>     fence-only · session:tools-only
+>       score 1.00 · session:tools-only: no tool call in scope — nothing to check
+>
+>   the control does NOT hold: 1 check passed against a harness that did nothing.
 > ```
 >
 > The answer is a partner — a `session:tool-used` with `gte:` beside the fence — so the pair
-> says *"it did the work, and stayed inside the set"*.
+> says *"it did the work, and stayed inside the set"*. The general rule: **every check is a
+> positive assertion.** Only `latency` and `cost` are exempt from the control
+> (`madbench help check`); a fence, an absence assertion or an anti-cheat invariant on its
+> own is `WRONGLY PASSED`.
 
 Three shape rules:
 
@@ -470,10 +485,11 @@ default — is what a fence wants: a `Write` that was attempted and blocked stil
 
 ---
 
-## 9. Environment — 8 types
+## 9. Environment — 9 types
 
 Grades what the agent was **given** rather than what it did: the plugins, skills, commands,
-agents and MCP servers the tool had loaded. Every one reads `Session.Environment`.
+agents and MCP servers the tool had loaded. Every one reads `Session.Environment`
+(`docs/checks.md:591-614`).
 
 **The rule the family rests on: Expected may name the subject of a question; it may never be
 the answer.** `Environment.Expected` is madbench's own bookkeeping about the tree it staged;
@@ -489,6 +505,7 @@ skill, and the bench scored clean.
 | `environment:command-registered` | `Reported.Commands()` contains `value`; **errors** when `plugin-cli` is the only source | `value` (e.g. `dev:architect`) | 0/1 |
 | `environment:agent-registered` | `Reported.Agents()` contains `value`, loaded plugins only | `value` (e.g. `dev:reviewer`) | 0/1 |
 | `environment:mcp-connected` | `system:init` reports server `value` with status `connected`; a server declared only by a plugin that did **not** load counts as absent | `value` (bare `claudish`, or `plugin:claudish:claudish`) | 0/1 |
+| `environment:mcp-reachable` | the server `value` answered **madbench's own** `initialize` + `tools/list`, spoken through this run's sandbox **before the agent launched**; optionally clears a tool-count floor (`docs/checks.md:611`) | `value` (the server name **as the bench declared it** — the document key, e.g. `probe`), optional `args.tools` (a floor: reported ≥ declared) | 0/1 |
 | `environment:tool-available` | `init.tools` names `value` **exactly**; **errors** when no `system:init` was captured | `value` (as the tool spells it: `Skill`, `mcp__railway__deploy`) | 0/1 |
 | `environment:plugin-inventory` | the plugin's `plugin details` breakdown clears every declared bound — the **staged tree**, read whether or not the plugin loaded | `value` (plugin id), `args.skills`/`agents`/`hooks`/`mcp_servers`/`lsp_servers` | **fraction of bounds met** |
 | `environment:matches-expected` | every plugin the run staged is listed **and** loaded | — (`harness_config.plugins` already said which) | **fraction loaded** |
@@ -508,6 +525,14 @@ checks:
   - type: environment:mcp-connected
     value: claudish
 
+  # A different question about the same server. The value is the DOCUMENT KEY the
+  # bench declared (`probe` out of `--mcp-config '{"mcpServers":{"probe":{…}}}'`),
+  # never the tool's `plugin:…:…` spelling, which the preflight has never seen.
+  - type: environment:mcp-reachable
+    value: probe
+    args:
+      tools: 1          # a floor; without args the check asks only whether it answered
+
   - type: environment:tool-available
     value: Skill
 
@@ -523,6 +548,44 @@ The prefix is `environment:`, **never** `env:` — `env` already means environme
 derives its pre-rename names because it *was* renamed; inventing one here would be inventing
 history.
 
+### Two MCP checks, two questions
+
+`mcp-connected` asks *did the **tool** register the server*, out of `system:init`.
+`mcp-reachable` asks *did the **server** answer **madbench**, before the agent launched*, out
+of madbench's own handshake. **Neither implies the other**, and declaring both is what turns
+a silent absence into a diagnosis: reachable green with connected red means the server works
+and the CLI did not register it (`docs/checks.md:616-622`, `:640-642`).
+
+| | `environment:mcp-connected` | `environment:mcp-reachable` |
+|---|---|---|
+| asks | did the **tool** register the server | did the **server** answer madbench |
+| reads | `init.mcp_servers` + each loaded plugin's declared names | `Reported.MCPServers`, madbench's own handshake |
+| exists on | the `--print` path (status) / both (the name) | **every** drive path, including the default interactive one |
+| value spelling | the tool's: `claudish` or `plugin:claudish:claudish` | the **bench's**: the document key, `probe` |
+| absent name | **fail** — absent is an answer | **error** — the surface exists only when the preflight ran |
+
+(`docs/checks.md:713-719`.)
+
+Three more things about `mcp-reachable` worth knowing before writing it:
+
+- **A typo'd `value:` is caught at preflight, before any spend — for `mcp-reachable` only.**
+  `madbench preflight` pairs every top-level `mcp-reachable` value against the servers the
+  harness declares and **refuses** (exit 3) on one nothing declares, naming the Scenario and
+  the check (`docs/checks.md:721-727`; `docs/harness.md:1447`). `mcp-connected` is
+  deliberately not cross-checked, because the tool's registry is wider than what a bench
+  declares (`docs/checks.md:731-734`).
+- **A connected server with zero tools is a pass.** A server may expose only resources or
+  prompts. A bench that needs tools declares `args: {tools: N}` (`docs/checks.md:745-748`).
+- **What green does NOT prove**: that the CLI registered the server, that the model could
+  call its tools, or that the server stayed up past *t=0*. What it does prove is the one
+  thing nothing else can — the server process starts under this run's confinement, in this
+  run's sandbox, and speaks MCP, checked before the agent launches so `require: true` can
+  refuse before the spend (`docs/checks.md:750-770`). The strongest configuration declares
+  all three: `mcp-reachable`, `mcp-connected`, and a `session:tool-used` on an `mcp__…` tool
+  — and the two take **different** names: the declared key for the first, the runtime name
+  (`mcp__plugin_<plugin>_<server>__<tool>` for a plugin-shipped server) for the last
+  (`docs/checks.md:657-668`).
+
 ### Nil is an error, never a fail
 
 Every check here returns an **error** — a `StatusError` row, not a red one — when `Session`,
@@ -534,12 +597,19 @@ environment:plugin-loaded: no environment was captured for this session
 ```
 
 A fail is a verdict about the plugin; an uncaptured environment is the *absence* of one.
-Four more cases follow the same rule:
+Five more cases follow the same rule:
 
 - **`environment:mcp-connected` on a server listed with no status.** Only `system:init`
   reports a status and only the `--print` drive path carries one, so on the default
   interactive path the run never asked. A server the tool does not list at all is still a
   fail — every drive path measures at least one surface, so "absent" is an answer.
+- **`environment:mcp-reachable` on a name the preflight never recorded, or recorded as
+  UNPROBED.** `probe: false`, a harness that is not `claude-code`, and a bench that declared
+  no server all produce a record with no entry, and none of those is evidence that a server
+  is unreachable. An UNPROBED entry — a remote `type: http` entry, a `command` carrying a
+  `${…}` madbench does not own, a relative `command`, a `cwd` the sandbox will not contain —
+  errors for the same reason and prints the recorded `probe_reason` rather than guessing
+  (`docs/checks.md:708-711`, `:737-743`; `docs/harness.md:1194`).
 - **`environment:tool-available` on a record with no tool roster.** `claude plugin details`
   prints no tool heading, so no source on the default interactive path supplies one. An
   **empty** record errors here too, unlike every other lookup: every session the tool starts
@@ -555,6 +625,31 @@ Four more cases follow the same rule:
 An unknown key under `environment:plugin-inventory`'s `args` is **refused at construction**,
 as is an empty bounds block. A typo'd `skill: 20` that silently declared no bound would leave
 the check grading nothing and passing every run.
+
+### Which of them a bench under `madbench check` can carry
+
+The mock reports a present-but-empty `Reported` record — it ran and registered nothing — so a
+**named-subject** check is genuinely absent from a genuinely empty list and fails cleanly.
+The nine split three ways (`docs/checks.md:797-826`):
+
+| Check | Under the mock | Bench can still pass `madbench check`? |
+|---|---|---|
+| `plugin-loaded` · `skill-registered` · `command-registered` · `agent-registered` · `mcp-connected` · `plugin-inventory` | **fails cleanly** — counted as the control's evidence | **yes** |
+| `mcp-reachable` | **not applicable** — listed under `NOT APPLICABLE UNDER MOCK`, left out of the verdict | **yes** |
+| `matches-expected` · `tool-available` | **errors** — the mock stages nothing and captures no `init.tools` | **no** |
+
+A bench declaring *nothing but* `mcp-reachable` exits 3 (`0 gradable checks`), the same as
+one of nothing but `cost` and `latency` (`docs/checks.md:825-826`).
+
+**An unprobeable check lands outside the verdict; a genuinely broken one is still named in
+`COULD NOT GRADE`.** Since 2026-09-08, `madbench check` reads past any row that produced
+checks at all and classifies each on its own merits (`docs/checks.md:838-840`). Note that
+upstream's `harness.md` still carries the older sentence — *"`probe: false` … Every
+`environment:*` Check then ERRORS rather than passing"* (`docs/harness.md:1130-1132`) — and
+`checks.md:728-729` says the same opt-out makes the handshake checks *"report 'not
+applicable' by design"*. Do not resolve that from memory: run `madbench check` and read which
+bucket the check lands in. Either way the outcome is loud, and a run that measured nothing
+never scores as a pass.
 
 ### The check and the gate are not the same thing
 
@@ -877,6 +972,7 @@ absent means the capture said nothing.
 | Which files changed? | `FilesChanged` | **nothing** — see §18 |
 | What is on disk now? | `WorkDir` | `exec`, and any transport reading the envelope's `work_dir` |
 | What did the tool have LOADED? | `Environment.Reported` | the `environment:*` family |
+| Did the declared MCP server answer madbench before launch? | `Environment.Reported.MCPServers` | `environment:mcp-reachable` |
 
 **MCP calls do reach `session:tool-used`.** The parser emits an `mcp__`-prefixed tool as
 `ActionMCPCall` rather than `ActionToolCall` so the UI can badge it differently, but

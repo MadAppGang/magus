@@ -1,0 +1,30 @@
+# EX-METRICS — the `metrics:` expression form, bound to a `module/` export.
+#
+# One of the loadable probes `scripts/check-staleness.ts` runs against the installed
+# madbench. It exists because the skill once taught `derivedMetrics:`, a key madbench had
+# removed, and no gate noticed until a reader's bench failed to load. Every expression
+# below is compiled when the bench loads, so a renamed key, a dropped aggregate function
+# or a changed binding surfaces as `madbench list` exit 1 — at no cost.
+#
+# Shape: a Check writes a per-Scenario sample through a `module/` export, and the
+# top-level `metrics:` folds those samples into the run's report. docs/metrics.md.
+description: "EX-METRICS metrics: expression form with a module/ export in scope"
+harness: mock
+
+scenarios:
+  - name: scores-a-reply
+    description: "One Check writes a sample; the report folds it through a module export"
+    prompt: "Reply with the single word: ready"
+    checks:
+      - type: contains
+        value: ready
+        metric: SaidReady
+        metrics:
+          # `percent` is exported by ./module/index.ts — every export binds by name.
+          - metrics.readyPct = percent(score)
+          - "metrics.wins += score > 0.5 ? 1 : 0"
+
+# Aggregate stage: each name is the array of its per-Scenario samples.
+metrics:
+  - 'metrics.readyRate = { value: mean(readyPct), unit: "percent", better: "higher" }'
+  - metrics.totalWins = sum(wins)

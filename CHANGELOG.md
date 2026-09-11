@@ -302,6 +302,98 @@
 
 ---
 
+## [madbench 0.4.0] - 2026-09-10
+
+### Added
+
+- **The `madbench:operator` agent and the `/madbench:bench` and `/madbench:doctor` commands.**
+  The operator authors, runs and debugs benches natively: it opens with `madbench version`,
+  reads the skill and its four references by path, runs the free gates (`list`, `preflight`,
+  `check`, `--harness mock`) through Bash so their output is quoted verbatim, and runs the
+  real bench in a visible split pane through the terminal plugin's `open-pane` + `send-keys`,
+  reading every number from `--report-json`. It carries no `Agent` tool — it is a leaf — and
+  no interactive-question tool, so it returns `BLOCKED:` rather than guessing. The name is
+  `operator` because every madbench noun (Bench, Eval, Scenario, Check, Harness, Session) is
+  a type, and `runner` is a banned alias.
+- `/madbench:bench <request>` is the human entry point; it dispatches the operator and
+  quotes the gates back. `/madbench:doctor` runs the plugin's three checks — skill staleness
+  against the installed binary, bench layout, and the generated index — and prints their
+  output verbatim, dispatching no agent, because a summarised gate is a gate you cannot cite.
+- A native-first table in the skill and the agent: for each wrapper an author is about to
+  write (a stats post-process, a mock-tally parser, a re-grader, a plugin-registry stager, a
+  confound guard, a read-receipt sentinel, a PNG pipeline) the madbench mechanism that already
+  does it. Upstream's own words carry the policy: *"the statistic belongs to the bench's own
+  `module/`, and `--report-json` is the path."*
+- The gap rule with a mandatory lookup step. "madbench is missing X" turned out three times
+  in one session to be "X exists and was not findable" — so a gap is looked up first
+  (`madbench --help`, the four upstream docs, closed issues), then classified (broken → bug,
+  absent → feature, present-but-unfindable → a local documentation defect), then **drafted**
+  into `docs/madbench-issues/`, never filed and never worked around.
+- `mirrors.json`, the single declaration of which madbench release the skill mirrors, with
+  the files split into version-sensitive and stable; and `scripts/check-staleness.ts`, which
+  loads the plugin's example benches through the installed `madbench list`. A bench the skill
+  teaches that the binary refuses is the finding, and no version-string edit can silence it.
+  Three-valued exit: 0 current, 1 stale, 2 could not measure — and 2 is red.
+- The bench layout standard — one root, one directory per experiment with a bench file and a
+  README carrying frontmatter, arithmetic in `module/`, no alias keys — enforced by
+  `scripts/check-bench-layout.ts` in `check:all`, with `--self-test` proving every rule can
+  fire. `benches/MADBENCH.md` is generated and `--check`-gated. A `conventions.claudemd`
+  template splices the rules into a project's CLAUDE.md through `/setup:project`.
+- `environment:mcp-reachable` in the check catalog.
+- **A `Stop` hook that refuses to end the turn while a dispatched operator has not reported
+  back.** Every `Agent` call in this Claude Code build is asynchronous, so a parent that
+  replies closes the session and kills the operator mid-run. `/madbench:bench` already said
+  three times to block on `TaskOutput`; measured on the MBN-1 bench, `--repeat 5` twice,
+  parents that actually waited were 3/5 then 2/5, so the wording is now backed by a
+  mechanism. `scripts/stop-wait-for-operator.ts` reads the transcript for the most recent
+  `madbench:operator` dispatch and blocks unless something after it — a terminal
+  `<task-notification>` or a `TaskOutput` result — says that operator finished. It allows the
+  turn to end on an unreadable transcript, a dispatch with no agentId, a dispatch older than
+  45 minutes, or after six consecutive blocks for one task id, counted from the transcript
+  and from a per-session tally so neither alone can lose count: a Stop hook that can trap a
+  session is worse than no hook.
+
+### Changed
+
+- **The `madbench-evals` skill is reached by path, not by the matcher.** It carries
+  `disable-model-invocation: true`; the operator agent reads it by path, which is the
+  deterministic route (measured elsewhere in this repo: 0/8 without a routing row, 8/8 with
+  one). The 243 characters it charged to the global skill listing are gone, so the plugin
+  gains three components and the marketplace corpus shrinks.
+- The skill documents the exit-code contract: a graded miss exits 0, `--fail-on-failure`
+  opts back in, errors stay nonzero unconditionally. Verdicts are read from the report, not
+  from `$?`.
+- The visible-run rule is explicit: `--plain` is the CI shape and is implied whenever stderr
+  is not a terminal, which is every Bash call; a run is never backgrounded; evidence comes
+  from `--report-json`, never from reading a pane.
+- The vocabulary: *run* not arm, *testdata* not fixture, *Session* not trajectory, *runs* or
+  *params* not matrix; *cell* is `madbench check`'s own word for one graded pair and is
+  quoted, never adopted. The layout checker inspects YAML keys only and says so — a banned
+  word may legitimately name another tool's feature, so hand-written text stays a review
+  responsibility.
+
+### Fixed
+
+- **The skill taught a bench that does not load.** `derivedMetrics:` was removed upstream and
+  a top-level `name:` is `description:`; against madbench 0.33.0 both produced
+  `field … not found in type madbench.BenchSpec`, exit 1, on the skill's own example. Five
+  files asserted the dead key; now `mirrors.json` is the one declaration and the schema and
+  catalog files reference it.
+- The skill was corrected to v0.23.0 on 2026-08-29 and was ten releases stale twelve days
+  later — accurate for roughly one day. The staleness check turns that into a detected state
+  rather than a noticed one; a weekly workflow installs madbench and runs it `--strict`.
+
+### Why
+
+- Whoever picked up the skill built a wrapper, and it was not a discipline problem: three
+  documents each pointed authors at something wrong (`derivedMetrics:`, a registry listing 8
+  of 22 checks, `madbench init` scaffolding three banned alias keys). An author who followed
+  every instruction correctly would still have written a wrapper. The fix is structural —
+  a native-first table, a gap rule that looks before it files, and a gate that fails when
+  the mirror rots — not another refill of a container with a one-day half-life.
+
+---
+
 ## [dev 7.3.0] - 2026-09-09
 
 ### Added

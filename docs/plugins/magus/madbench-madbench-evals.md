@@ -2,11 +2,11 @@
 
 # `madbench:madbench-evals`
 
-Authors, runs, and debugs madbench evals — bench YAML, checks, red-state testdata, the two controls (check / grade), expectation tuning.
+Authors, runs and debugs madbench benches natively — bench YAML, checks, metrics with module/, red-state testdata, the two controls, exit codes;
 
 Part of [`madbench`](./madbench.md).
 
-**4 reference documents, about 2,234 lines.**
+**4 reference documents, about 2,666 lines.**
 
 The skill itself does not contain them. It reads your question and names the one or two
 worth opening — which is the point, because loading everything below to answer one
@@ -16,10 +16,10 @@ question would cost more than the answer is worth.
 
 | Document | Covers | Lines |
 |---|---|---|
-| [`checks-catalog.md`](https://github.com/MadAppGang/magus/blob/main/plugins/madbench/skills/madbench-evals/checks-catalog.md) | Check catalog | 944 |
-| [`debugging.md`](https://github.com/MadAppGang/magus/blob/main/plugins/madbench/skills/madbench-evals/debugging.md) | Debugging madbench benches | 282 |
-| [`runners-and-sandbox.md`](https://github.com/MadAppGang/magus/blob/main/plugins/madbench/skills/madbench-evals/runners-and-sandbox.md) | Harness, sandbox and CLI | 600 |
-| [`schema.md`](https://github.com/MadAppGang/magus/blob/main/plugins/madbench/skills/madbench-evals/schema.md) | Bench and Eval file schema | 408 |
+| [`checks-catalog.md`](https://github.com/MadAppGang/magus/blob/main/plugins/madbench/skills/madbench-evals/checks-catalog.md) | Check catalog | 1040 |
+| [`debugging.md`](https://github.com/MadAppGang/magus/blob/main/plugins/madbench/skills/madbench-evals/debugging.md) | Debugging madbench benches | 331 |
+| [`runners-and-sandbox.md`](https://github.com/MadAppGang/magus/blob/main/plugins/madbench/skills/madbench-evals/runners-and-sandbox.md) | Harness, sandbox and CLI | 714 |
+| [`schema.md`](https://github.com/MadAppGang/magus/blob/main/plugins/madbench/skills/madbench-evals/schema.md) | Bench and Eval file schema | 581 |
 
 ## Reading these
 

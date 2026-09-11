@@ -1,0 +1,30 @@
+# EX-IMAGE — `image: generated:<name>` with a `generate:` program.
+#
+# A loadable probe for scripts/check-staleness.ts. The picture does not exist until the
+# run starts: `generate.sh` writes it into $MADBENCH_IMAGE_DIR (never the workspace) and
+# prints its answer on stdout, where only the grader can see it. docs/harness.md §2a.
+#
+# `harness: mock` cannot deliver an image, and madbench says so at PREFLIGHT
+# (measured on 0.33.0: `harness "mock" cannot deliver an image, so image: would be
+# silently dropped`). That refusal is upstream's design, not a defect here, so the
+# staleness checker probes this file with `madbench list` only — which is where the
+# `image:` and `generate:` keys are parsed and where a renamed key would fail.
+description: "EX-IMAGE image: generated — the picture is drawn after the bench is written"
+harness: mock
+
+defaults:
+  timeout: 60s
+  sandbox: workspace
+
+scenarios:
+  - name: sees-the-dot
+    description: "A generated PNG reaches the model; the grader reads the answer from vars"
+    generate: ./generate.sh
+    image: generated:dot.png
+    prompt: "You have been sent a tiny picture. Reply with the single word: received"
+    checks:
+      # Grades DELIVERY only: a PNG reached the model. Red here means the plumbing broke.
+      - type: session:image-sent
+        metric: ImageDelivered
+      - type: contains
+        value: received

@@ -1,7 +1,7 @@
 {
   "name": "madbench",
-  "version": "0.3.0",
-  "description": "Toolkit for madbench, MadAppGang's Go harness for benchmarking agentic coding tools. Ships the madbench-evals skill: author bench YAML and Eval files, design checks, scaffold red-state and generated testdata, run the negative and positive controls, tune expectations, and debug failing checks.",
+  "version": "0.4.0",
+  "description": "Toolkit for madbench, MadAppGang's Go harness for benchmarking agentic coding tools. An operator agent authors, runs and debugs benches natively in a visible pane, reading the madbench-evals skill by path; /madbench:bench and /madbench:doctor are the entry points; a script enforces bench layout.",
   "author": {
     "name": "MadAppGang",
     "email": "i@madappgang.com"
@@ -17,7 +17,20 @@
     "llm-judge",
     "go"
   ],
+  "dependencies": [
+    {
+      "name": "terminal",
+      "version": "^5.0"
+    }
+  ],
   "skills": "./skills/",
+  "conventions": {
+    "claudemd": {
+      "section": "madbench",
+      "template": "./templates/claude-md-conventions.md",
+      "version": "1.0.0"
+    }
+  },
   "compatibility": {
     "claudeCode": ">=0.1.0"
   }

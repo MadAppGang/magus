@@ -1,0 +1,32 @@
+# EX-PLUGINS — `harness_config.plugins:`, staging a plugin registry into the run.
+#
+# A loadable probe for scripts/check-staleness.ts. The entry names THIS checkout's own
+# madbench plugin folder, four directories up from this file, so the bench stays true
+# wherever the repo is cloned. docs/harness.md §3a.
+#
+# What this probe can and cannot prove. `harness_config` is per-harness and an
+# unrecognised key is silently ignored by contract, so under `harness: mock` the value of
+# `plugins:` is not resolved (measured on 0.33.0: a nonexistent `path:` listed and
+# preflighted cleanly). The probe therefore guards the BenchSpec shape around the key —
+# `harness_config:` as a mapping, `plugins:` as a list of {id, path} entries — and the
+# `environment:*` checks that read the staged registry. Run it under `claude-code` with
+# `madbench preflight` when the question is whether the path resolves.
+description: "EX-PLUGINS harness_config.plugins: stages this checkout's madbench plugin"
+harness: mock
+harness_config:
+  plugins:
+    - id: madbench@magus # <plugin>@<marketplace>, as the checkout's manifest declares it
+      path: ../../../.. # the plugin FOLDER — plugins/madbench, relative to this file
+  environment:
+    require: true # refuse the run before any spend when a staged plugin did not load
+
+scenarios:
+  - name: sees-the-staged-plugin
+    description: "The staged plugin is listed and loaded, and its skill is registered"
+    prompt: "Say hello."
+    checks:
+      - type: environment:matches-expected
+      - type: environment:plugin-loaded
+        value: madbench@magus
+      - type: environment:skill-registered
+        value: madbench:madbench-evals
