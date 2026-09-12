@@ -7,7 +7,7 @@
   },
   "metadata": {
     "description": "Curated collection of Claude Code plugins for modern full-stack development with LLM performance tracking and E2E skill testing",
-    "version": "11.0.0",
+    "version": "12.0.0",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -88,8 +88,8 @@
     {
       "name": "claudish",
       "source": "./plugins/claudish",
-      "description": "MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting across models, manages async sessions, and streams channel notifications. Required by code-analysis, dev, multimodel, designer and seo.",
-      "version": "2.0.3",
+      "description": "MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting across models, manages async sessions, and streams channel notifications. Required by code-analysis, dev, multimodel and designer.",
+      "version": "2.0.4",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -110,6 +110,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "2.0.4",
+          "date": "2026-09-12",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "claudish ships to magus only"
+        },
         {
           "version": "2.0.3",
           "date": "2026-09-07",
@@ -138,11 +146,6 @@
             "Changed"
           ],
           "summary": "BREAKING \u2014 the team contract in claudish:claudish-usage is rewritten for claudish 8.0.0"
-        },
-        {
-          "version": "1.1.0",
-          "date": "2026-08-26",
-          "summary": "Ships the claudish-usage skill and the model resolver. Both moved out of multimodel, which\u2026"
         }
       ]
     },
@@ -195,7 +198,7 @@
       "name": "multimodel",
       "source": "./plugins/multimodel",
       "description": "Multi-model collaboration and orchestration. Runs a task across several AI models in parallel and aggregates their blind APPROVE/REJECT votes, or delegates it to one model running a full Claude Code session.",
-      "version": "4.1.0",
+      "version": "4.1.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -220,6 +223,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "4.1.1",
+          "date": "2026-09-12",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "The session-isolation skill's examples no longer use the removed seo plugin, and its table of\u2026"
+        },
         {
           "version": "4.1.0",
           "date": "2026-09-11",
@@ -251,15 +262,6 @@
             "Fixed"
           ],
           "summary": "Both review skills consolidate through dev:synthesizer and quote the reviewer's thresholds by\u2026"
-        },
-        {
-          "version": "4.0.0",
-          "date": "2026-08-28",
-          "kinds": [
-            "Changed",
-            "Added"
-          ],
-          "summary": "BREAKING \u2014 /multimodel:team polls instead of waiting, and needs claudish >= 8.0.0"
         }
       ]
     },
@@ -267,7 +269,7 @@
       "name": "dev",
       "source": "./plugins/dev",
       "description": "Universal development assistant. Detects the project stack and routes work to specialist agents for architecture, implementation, debugging, review and research, enforcing design-system guardrails on every UI change.",
-      "version": "7.4.0",
+      "version": "7.4.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -307,6 +309,14 @@
       "strict": true,
       "releases": [
         {
+          "version": "7.4.1",
+          "date": "2026-09-12",
+          "kinds": [
+            "Removed"
+          ],
+          "summary": "/dev:architect no longer looks for a GTD task store at workflow start"
+        },
+        {
           "version": "7.4.0",
           "date": "2026-09-11",
           "kinds": [
@@ -339,14 +349,6 @@
             "Added"
           ],
           "summary": "/dev:status reconstructs where a session stands from evidence rather than memory: the opening\u2026"
-        },
-        {
-          "version": "7.0.1",
-          "date": "2026-09-08",
-          "kinds": [
-            "Fixed"
-          ],
-          "summary": "Every bun launch in the plugin's hooks no longer exits 1 silently when the project's .env is a\u2026"
         }
       ]
     },
@@ -774,111 +776,6 @@
           "version": "4.1.7",
           "date": "2026-08-26",
           "summary": "Plugin manifest moved to .claude-plugin/plugin.json, the only location Claude Code's runtime\u2026"
-        }
-      ]
-    },
-    {
-      "name": "gtd",
-      "source": "./plugins/gtd",
-      "description": "Getting Things Done workflow. Capture, clarify, organise, reflect and engage over a task store that hooks keep in sync with the session in real time.",
-      "version": "2.2.0",
-      "author": {
-        "name": "Jack Rudenko",
-        "email": "i@madappgang.com",
-        "company": "MadAppGang"
-      },
-      "category": "productivity",
-      "keywords": [
-        "gtd",
-        "getting-things-done",
-        "productivity",
-        "task-management",
-        "inbox",
-        "next-actions",
-        "weekly-review",
-        "workflow",
-        "hooks",
-        "real-time-sync"
-      ],
-      "strict": true,
-      "releases": [
-        {
-          "version": "2.2.0",
-          "date": "2026-09-11",
-          "kinds": [
-            "Changed"
-          ],
-          "summary": "gtd:gtd-reviewer now says what the caller must hand over, and returns a fixed completion\u2026"
-        },
-        {
-          "version": "2.1.1",
-          "date": "2026-08-26",
-          "summary": "Plugin manifest moved to .claude-plugin/plugin.json, the only location Claude Code's runtime\u2026"
-        },
-        {
-          "version": "2.1.0",
-          "date": "2026-08-18",
-          "summary": "Same tool-and-instruction correction for gtd-reviewer"
-        },
-        {
-          "version": "2.0.1",
-          "date": "2026-03-29",
-          "kinds": [
-            "Changed"
-          ],
-          "summary": "gtd-capture and gtd-review no longer appear in the / menu"
-        },
-        {
-          "version": "2.0.0",
-          "date": "2026-03-23",
-          "kinds": [
-            "Changed"
-          ],
-          "summary": "Canonical GTD terminology \u2014 \"Clarify\" and \"Engage\" replace the previous stage names"
-        }
-      ]
-    },
-    {
-      "name": "kanban",
-      "source": "./plugins/kanban",
-      "description": "Kanban board for task management. Five columns, cycle-safe task dependencies, priority indicators and WIP limits, over a task store independent of GTD.",
-      "version": "1.6.2",
-      "author": {
-        "name": "Jack Rudenko",
-        "email": "i@madappgang.com",
-        "company": "MadAppGang"
-      },
-      "category": "productivity",
-      "keywords": [
-        "kanban",
-        "board",
-        "task-management",
-        "productivity",
-        "dependencies",
-        "wip-limit",
-        "workflow",
-        "gtd",
-        "visual"
-      ],
-      "strict": true,
-      "releases": [
-        {
-          "version": "1.6.2",
-          "date": "2026-08-26",
-          "summary": "Plugin manifest moved to .claude-plugin/plugin.json, the only location Claude Code's runtime\u2026"
-        },
-        {
-          "version": "1.6.1",
-          "date": "2026-08-19",
-          "summary": "New README \u2014 five columns, cycle-safe dependencies, WIP limits, priority indicators, install\u2026"
-        },
-        {
-          "version": "1.6.0",
-          "date": "2026-04-24",
-          "kinds": [
-            "Changed"
-          ],
-          "summary": "BREAKING \u2014 kanban decouples from GTD"
         }
       ]
     },

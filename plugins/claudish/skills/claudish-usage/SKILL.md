@@ -132,8 +132,7 @@ provenance, and emits a receipt — **print that receipt verbatim.** Exit `3` me
 nothing survived; `0` means proceed with what it selected.
 
 Doing this in your head is what the rest of this section explains. That is the fallback for
-paths the resolver does not cover, and for channels where `multimodel` is not installed
-(`seo` consumes claudish without it). Measured over 30 benchmark runs, prose alone produced
+paths the resolver does not cover, and for installs where `multimodel` is not present. Measured over 30 benchmark runs, prose alone produced
 the disclosure at best 14/15 times; the resolver produces it every time, because it is code.
 
 ### Verify every field of the preferences file

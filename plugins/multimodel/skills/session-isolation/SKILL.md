@@ -13,7 +13,7 @@ Session-based artifact isolation for multi-artifact workflows. Use when orchestr
 When multiple workflows run (even sequentially), artifacts with the same name collide:
 
 ```
-Session 1 (SEO): writes ai-docs/plan-review-grok.md
+Session 1 (Auth): writes ai-docs/plan-review-grok.md
 Session 2 (API): writes ai-docs/plan-review-grok.md  <-- OVERWRITES!
 ```
 
@@ -22,7 +22,7 @@ Session 2 (API): writes ai-docs/plan-review-grok.md  <-- OVERWRITES!
 Use unique session folders to isolate artifacts:
 
 ```
-ai-docs/sessions/plugin-seo-20260105-143022-a3f2/
+ai-docs/sessions/plugin-designer-20260105-143022-a3f2/
 ├── session-meta.json      # Session tracking
 ├── design.md              # Primary artifact
 ├── reviews/
@@ -137,9 +137,9 @@ fi
 
 ```json
 {
-  "session_id": "plugin-seo-20260105-143022-a3f2",
+  "session_id": "plugin-designer-20260105-143022-a3f2",
   "type": "plugin",
-  "target": "SEO agent improvements",
+  "target": "Designer agent improvements",
   "started_at": "2026-01-05T14:30:22Z",
   "completed_at": "2026-01-05T15:45:30Z",
   "status": "completed",
@@ -159,7 +159,6 @@ fi
 | Plugin | Command | Session Pattern |
 |--------|---------|-----------------|
 | **frontend** | `/review`, `/implement` | `review-{timestamp}-{random}` |
-| **seo** | `/review`, `/alternatives` | `seo-review-{timestamp}-{random}` |
 | **multimodel** | `/team` | `team-{task-slug}-{timestamp}-{random}` |
 
 ### Team Session Example

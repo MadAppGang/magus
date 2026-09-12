@@ -139,12 +139,10 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates
       the file is the only route and the Skill tool has nothing to reach.
 
       At workflow start:
-      1. Check if GTD plugin is active (`.claude/gtd/tasks.json` exists)
-      2. If active: suggest `/gtd:engage` to set active task before creating phase tasks
-      3. Clean up any stale tasks from previous workflows
-      4. Create phase tasks upfront for: Triage, Initialize, Plan Mode (if applicable),
+      1. Clean up any stale tasks from previous workflows
+      2. Create phase tasks upfront for: Triage, Initialize, Plan Mode (if applicable),
          Requirements, Alternatives, Trade-offs, Detailed Design, Validation, Finalization
-      5. Track progress per the skill's phase task patterns
+      3. Track progress per the skill's phase task patterns
     </todowrite_requirement>
 
     <agent_dispatch>

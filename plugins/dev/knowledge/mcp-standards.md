@@ -215,10 +215,6 @@ characters for tool names where `code-analysis` would leave 23.
 // Bun Backend Plugin
 "mcp__bun__apidog_sync"                // Sync with Apidog
 "mcp__bun__apidog_validate"            // Validate API spec
-
-// SEO Plugin
-"mcp__seo__analyze_page"               // Analyze page SEO
-"mcp__seo__check_schema"               // Validate schema markup
 ```
 
 ### Tool Name Guidelines

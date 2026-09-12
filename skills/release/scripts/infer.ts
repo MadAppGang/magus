@@ -5,7 +5,7 @@
  * Reads git history and dist marketplace files to propose:
  *   - the next semver for each plugin (based on conventional commits)
  *   - a short description synthesized from commits since the last tag
- *   - which dist repos (magus / magus-alpha / magus-marketing) the plugin targets
+ *   - which dist repos (magus / magus-marketing) the plugin targets
  *
  * Output is a single JSON object on stdout. The human (or Claude) reviews it,
  * edits if needed, and hands the confirmed JSON back to apply.ts.
@@ -14,7 +14,7 @@
  *   bun run skills/release/scripts/infer.ts <plugin> [<plugin> ...]
  *
  * Example:
- *   bun run skills/release/scripts/infer.ts kanban gtd
+ *   bun run skills/release/scripts/infer.ts setup terminal
  */
 
 import { existsSync, readFileSync } from "node:fs";
@@ -173,7 +173,7 @@ function synthesizeDescription(plugin: string, commits: Commit[], bump: BumpKind
 
 function findTargets(plugin: string): { targets: string[]; warnings: string[] } {
   // Source of truth: the magus-src marketplace.json, where each plugin entry
-  // declares its distTargets (e.g. ["magus"], ["magus-alpha"], ["magus", "magus-marketing"]).
+  // declares its distTargets (e.g. ["magus"], ["magus-marketing"]).
   const mp = readJson<{
     plugins: Array<{ name: string; distTargets?: string[] }>;
   }>(MARKETPLACE_FILE);

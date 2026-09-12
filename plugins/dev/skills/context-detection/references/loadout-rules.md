@@ -178,8 +178,8 @@ A disabled plugin's paths do not resolve for the user, so naming one is a dead p
 | `designer` | frontend | `task.kind == "ui_change"` |
 | `multimodel`, `claudish` | **orchestrator only** | never in an implementing loadout |
 | `madbench` | developer | the target repo is a bench harness |
-| `setup`, `gtd`, `kanban`, `stats`, `autolinear`, `statusline` | none | workflow tooling, not implementation guidance |
-| `seo`, `instantly`, `image-generate`, `video-editing` | none | a different domain; excluded unless `task.brief` names them |
+| `setup`, `stats`, `statusline` | none | workflow tooling, not implementation guidance |
+| `image-generate`, `video-editing` | none | a different domain; excluded unless `task.brief` names them |
 
 The `go` row is the shape to copy for any future language plugin: it already partitions its
 own knowledge by role at `<go root>/knowledge/roles/{architect,developer,tester,code-reviewer}/`,

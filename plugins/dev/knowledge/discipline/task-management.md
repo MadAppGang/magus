@@ -67,13 +67,6 @@ Legitimate — skipping browser validation with no browser, for instance. Write
 `${SESSION_PATH}/phase{N}/skip-reason.md` saying why. The point is that the decision is
 recorded, not that every phase runs.
 
-## GTD persistence
-
-**Currently inert.** The `gtd` plugin syncs tasks to `.claude/gtd/tasks.json` through
-`PreToolUse:TaskCreate` and `PostToolUse:TaskCreate/TaskUpdate` hooks. Those matchers name
-tools that no longer exist, so none of the three fires on a current model and nothing
-syncs. This is a known gap in `gtd`, not something to work around from here.
-
 ## Parallel agents
 
 When work is split across concurrent agents rather than sequential phases, read

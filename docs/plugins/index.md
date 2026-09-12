@@ -3,14 +3,13 @@
 
 # Plugins
 
-Magus ships 20 plugins across three marketplaces. They are separate: adding one
+Magus ships 15 plugins across two marketplaces. They are separate: adding one
 does not give you the others, and a plugin's ID always names the marketplace it came from.
 
 | Marketplace | Plugins | Carries |
 |---|---|---|
-| [**Core**](./magus/index.md) `magus` | 15 | Development tooling: code analysis, terminal control, browser automation, task management, and language toolkits. |
-| [**Marketing**](./magus-marketing/index.md) `magus-marketing` | 5 | Content and outreach: SEO, image and video generation, cold email. |
-| [**Alpha**](./magus-alpha/index.md) `magus-alpha` | 1 | Experimental. Interfaces change without notice, and a plugin may be withdrawn. |
+| [**Core**](./magus/index.md) `magus` | 13 | Development tooling: code analysis, terminal control, browser automation, task management, and language toolkits. |
+| [**Marketing**](./magus-marketing/index.md) `magus-marketing` | 2 | Content tooling: image generation and video editing. |
 
 ## Getting them
 
@@ -28,7 +27,7 @@ For a team, pin the plugins in `.claude/profiles.json` and everyone runs
 
 ## The same name on two marketplaces
 
-A plugin id carries the marketplace it came from — `dev@magus`, `seo@magus-marketing` — so
+A plugin id carries the marketplace it came from — `dev@magus`, `image-generate@magus-marketing` — so
 the same short name can exist on more than one without ambiguity. claudeup shows you which
 is which, and you rarely have to type an id at all.
 

@@ -80,7 +80,7 @@ export function deny(reason: string): never {
 
 /**
  * Emit SessionStart context. Plain markdown only — raw ANSI escapes corrupt the
- * transcript. Shape matches plugins/gtd/hooks/session-start-gtd.sh:109-113.
+ * transcript.
  */
 export function additionalContext(text: string): never {
   if (text.trim()) {

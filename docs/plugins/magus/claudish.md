@@ -3,20 +3,17 @@
 
 # claudish
 
-MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting across models, manages async sessions, and streams channel notifications. Required by code-analysis, dev, multimodel, designer and seo.
+MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting across models, manages async sessions, and streams channel notifications. Required by code-analysis, dev, multimodel and designer.
 
 | | |
 |---|---|
-| Version | `2.0.3` |
+| Version | `2.0.4` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 0 |
 | Subagents | 0 |
 | Skills | 1 |
 | MCP server | yes |
 | Hooks | no |
-
-Also published to [`magus-marketing`](../magus-marketing/claudish.md).
-Install it from whichever marketplace you already have; it is the same plugin.
 
 ## Install
 

@@ -4,6 +4,68 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [dev 7.4.1] - 2026-09-12
+
+### Removed
+
+- **`/dev:architect` no longer looks for a GTD task store at workflow start.** It used to
+  check for `.claude/gtd/tasks.json` and suggest `/gtd:engage`. The `task-management`
+  knowledge file drops its "GTD persistence" section.
+- **The `seo-plugin-for-web-content` coaching rule is gone**, with the `seo` pattern in
+  `plugin-command-gap` and the `seo:researcher` route in the delegation table. They
+  recommended `/seo:*` commands that no longer exist. The loadout rules no longer list
+  `gtd`, `kanban`, `seo`, `instantly` or `autolinear`, and the MCP naming reference drops its
+  SEO plugin example.
+
+---
+
+## [multimodel 4.1.1] - 2026-09-12
+
+### Changed
+
+- The `session-isolation` skill's examples no longer use the removed `seo` plugin, and its
+  table of plugins that use session isolation drops `seo`.
+
+---
+
+## [claudish 2.0.4] - 2026-09-12
+
+### Changed
+
+- **claudish ships to `magus` only.** It was dual-published to `magus-marketing` because
+  `seo` declared it as a runtime dependency. With `seo` removed, nothing on that channel uses
+  it. The description, the README and the `claudish-usage` skill no longer name `seo`.
+
+---
+
+## [Marketplace 12.0.0] - 2026-09-12
+
+### Removed
+
+- **BREAKING — `gtd@magus` and `kanban@magus` are deleted.** Their marketplace entries,
+  `plugins/gtd/`, `plugins/kanban/`, the `autotest/gtd/` and `autotest/kanban-tmux/` suites
+  and their generated userdocs pages are gone. Every `/gtd:*` and `/kanban:*` command, the
+  `gtd:gtd-reviewer` agent and both `gtd` skills no longer resolve. The magus channel ships
+  13 plugins. Source is recoverable from git history.
+- **BREAKING — `autolinear@magus-alpha` is deleted, and the `magus-alpha` channel is
+  retired.** `plugins/autolinear/`, its webhook receiver `tools/autopilot-server/`, and the
+  channel's publish target and metadata are gone. The `MadAppGang/magus-alpha` repository no
+  longer receives releases.
+
+### Changed
+
+- Five releases ship alongside this removal and are required by it: **`dev` 7.4.1**,
+  **`multimodel` 4.1.1**, **`claudish` 2.0.4**, **`magus-marketing` 3.0.0** and
+  **claudeup 6.5.0**. Each has its own entry above.
+
+### Migration notes
+
+`gtd@magus`, `kanban@magus` and `autolinear@magus-alpha` have no replacement. Remove them
+from `enabledPlugins`, and remove the `magus-alpha` marketplace from Claude Code. Task data
+under `.claude/gtd/` and `.claude/kanban/` stays on disk, and nothing reads it now.
+
+---
+
 ## [dev 7.4.0] - 2026-09-11
 
 ### Changed
@@ -51,16 +113,6 @@
   tool, so a URL returns blocked instead of a guessed comparison.
 - `design-review` no longer preloads `designer:compare`, which carries
   `disable-model-invocation` and so was never delivered to the agent.
-
----
-
-## [gtd 2.2.0] - 2026-09-11
-
-### Changed
-
-- **`gtd:gtd-reviewer` now says what the caller must hand over, and returns a fixed
-  completion template with an Obstacles Encountered section.** The `gtd-review` skill it follows
-  no longer tells it to ask the user and wait, which a subagent cannot do.
 
 ---
 
@@ -279,8 +331,8 @@
 ### Migration notes
 
 - None. Removing a dependency only widens what installs. `claudish` remains a separate plugin
-  and is unaffected; install it if you want external models, which `dev`, `multimodel`,
-  `designer` and `seo` still declare for themselves.
+  and is unaffected; install it if you want external models, which `dev`, `multimodel` and
+  `designer` still declare for themselves.
 
 ### Notes
 
@@ -1609,9 +1661,7 @@ Documentation drift had made the skill unfollowable: its own rules required two 
 ### Changed
 
 - **`claudish` v1.1.0**: ships the `claudish-usage` skill and the model resolver.
-  Both moved out of `multimodel`, which repairs a dead reference: `seo` publishes to
-  `magus-marketing` and cites the skill, but `multimodel` publishes only to `magus`,
-  so on that channel `seo` pointed at a skill that was not installed. The resolver
+  Both moved out of `multimodel`. The resolver
   had to move with it — the documented command is
   `bun "${CLAUDE_PLUGIN_ROOT}/scripts/resolve-models.ts"`, and `CLAUDE_PLUGIN_ROOT`
   expands to the owning plugin's root.
@@ -1623,7 +1673,7 @@ Documentation drift had made the skill unfollowable: its own rules required two 
   the `claudish` plugin. Its dependency floor moves from `^1.0` to `^1.1`, because
   claudish 1.0.2 does not carry them. Six skills that still described the old
   "internal → Agent, external → team MCP" split were corrected.
-- **`code-analysis` v5.4.3**, **`seo` v2.1.2**: references updated to
+- **`code-analysis` v5.4.3**: references updated to
   `claudish:claudish-usage`.
 
 ### Why
@@ -1659,13 +1709,13 @@ worktree at once.
   `skills/<category>/<name>/` had been unreachable for eight months, answering `Unknown skill`,
   the same string a skill that was never written returns. Agents (13) and commands (15) unchanged.
 
-- **`code-analysis` v5.4.2, `multimodel` v3.9.1, `seo` v2.1.1, `designer` v0.5.3,
-  `terminal` v4.1.7, `gtd` v2.1.1, `kanban` v1.6.2, `browser-use` v1.7.3**: plugin manifest moved
+- **`code-analysis` v5.4.2, `multimodel` v3.9.1, `designer` v0.5.3,
+  `terminal` v4.1.7, `browser-use` v1.7.3**: plugin manifest moved
   to `.claude-plugin/plugin.json`, the only location Claude Code's runtime loader reads. Component
   counts are unchanged — none of these nested their skills — but the manifest is now actually read.
 
 - **`setup` v1.1.1, `statusline` v3.0.1, `go` v0.1.2, `dingo` v1.0.2, `madbench` v0.2.4,
-  `image-generate` v3.1.1, `video-editing` v1.2.2, `instantly` v2.0.2, `autolinear` v0.4.2,
+  `image-generate` v3.1.1, `video-editing` v1.2.2,
   `claudish` v1.0.2**: the same manifest move, with no change to what each registers.
 
 - **`bunjs` v0.4.2**: the same manifest move, and additionally dropped a `["./commands"]`
@@ -2437,8 +2487,6 @@ numbers, invisible to updaters, which only react to a version change. Two more p
 - **`browser-use` v1.4.1**: new README — install, `browser_doctor` preflight, the ten
   Magus tools and six skills tabulated; trailing keyword lists dropped from five skills'
   frontmatter (the matcher never read them).
-- **`kanban` v1.6.1**: new README — five columns, cycle-safe dependencies, WIP limits,
-  priority indicators, install and command reference.
 - **`madbench` v0.2.2**: the `--runs` deprecated-alias claim in the runners-and-sandbox
   reference now carries a dated live verification against `madbench --help` (2026-08-19),
   closing the EX-01 unverified-CLI-claim warning.
@@ -2488,16 +2536,10 @@ findings drove the final round; every fix below was re-verified after remediatio
   `dev:synthesizer` for consolidation.
 - **`designer` v0.5.1**: dispatch specs namespaced (`Agent: designer:ui`,
   `designer:design-review`) in commands and the design-references skill.
-- **`seo` v2.0.1**: dispatch specs in alternatives/performance/review namespaced to
-  `seo:analyst`, `seo:writer`, `seo:editor`, `seo:data-analyst`.
 - **`video-editing` v1.2.1**: six dead `Task:` dispatch specs across
   transcribe/create-fcp-project/video-edit migrated to namespaced `Agent:` form
   (`video-editing:transcriber`, `video-editing:timeline-builder`,
   `video-editing:video-processor`).
-- **`instantly` v2.0.1**: sequence and ab-test dispatch prose migrated from the retired
-  `Task` tool name to `Agent`.
-- **`autolinear` v0.4.1**: run command dispatch specs namespaced
-  (`autolinear:task-executor`, `autolinear:proof-generator`).
 
 ### Why
 
@@ -2505,7 +2547,7 @@ findings drove the final round; every fix below was re-verified after remediatio
 and one dispatched a skill as an agent. Bare names resolve by search across every
 installed plugin — one `~/.claude/skills/` auto-load away from running the wrong agent —
 and dead names fail only at runtime, in someone else's session. The panel also caught
-the remediation's own regression (a blanket `analyst` remap put the SEO SERP analyst on
+the remediation's own regression (a blanket `analyst` remap put a since-removed plugin's SERP analyst on
 four codebase-analysis call sites; now `code-analysis:detective`) and a userdocs leak:
 the catalog generator walked `.claude/.coaching` and `node_modules`, publishing links to
 untracked local state. The generator now excludes local dirt, and the regenerated
@@ -2573,11 +2615,9 @@ binary, not inferred.
 
 ### Changed
 
-- **`seo` v2.0.0**: BREAKING — five agents lost their plugin-name prefix, so their
-  addresses changed (`seo:seo-writer` → `seo:writer`, and four more). Anything naming an
-  old address stops resolving.
-- **`instantly` v2.0.0**: BREAKING — three agents lost their plugin-name prefix
-  (`instantly:instantly-campaign-analyst` → `instantly:campaign-analyst`, and two more).
+- **A since-removed plugin**: BREAKING — five agents lost their plugin-name prefix, so
+  their addresses changed. Anything naming an old address stops resolving.
+- **A second since-removed plugin**: BREAKING — three agents lost their plugin-name prefix.
 - **`designer` v0.5.0**: BREAKING — `ui-design-review` is gone, merged into `ui-analyse`,
   which absorbed its POUR-organised WCAG pass, design-system consistency check and depth
   tiers. Two skills differing mainly in name were two chances to pick the wrong one.
@@ -2587,8 +2627,6 @@ binary, not inferred.
 - **`multimodel` v3.6.0**: same tool-and-instruction correction across its agents.
 - **`code-analysis` v5.4.0**: same tool-and-instruction correction across its agents.
 - **`video-editing` v1.2.0**: same tool-and-instruction correction across its agents.
-- **`autolinear` v0.4.0**: same tool-and-instruction correction across its agents.
-- **`gtd` v2.1.0**: same tool-and-instruction correction for `gtd-reviewer`.
 - **`image-generate` v3.1.0**: the style command dispatches its subagent explicitly and
   passes a `CONFIRMED: <op> <path>` token, closing a confirmation loop that could
   silently skip the confirm step.
@@ -2621,7 +2659,7 @@ an instruction, that second number is the only one that counts.
 ### Migration notes
 
 The three BREAKING entries change addresses, not behaviour. If a `CLAUDE.md`, workflow or
-script of yours names `seo:seo-*`, `instantly:instantly-*`, or `designer:ui-design-review`,
+script of yours names an old address of a since-removed plugin, or `designer:ui-design-review`,
 update it to the new address. Nothing inside this repository referenced the old ones.
 
 ---
@@ -2778,7 +2816,6 @@ holds 0.1.1, so it considers itself current and the fix sits in git.
   trip. Caret ranges allow minor bumps and break only on a major.
 - **`code-analysis` v5.3.2**: same widening, on `mnemex` and `claudish`.
 - **`designer` v0.4.3**: same widening, on `claudish`.
-- **`seo` v1.8.2**: same widening, on `claudish`.
 - The unlisted `stats` plugin got the same treatment on `mnemex`.
 
 ### Added
@@ -3391,9 +3428,6 @@ Claude Code docs, not just read off the diff that introduced it.
 
 `agents/frontend.md` still contains real Tailwind arbitrary-value examples beyond the
 now-corrected rule statement — the full rewrite is a separate, larger item.
-`tools/autopilot-server`'s Linear tag→command mapping still routes `@test`/`@refactor`/
-`@implement` to commands removed in the v3.0.0 rename, and `@ui`/`@frontend` to a
-`frontend` plugin that no longer exists — pre-existing, not touched here.
 
 ---
 
@@ -3512,8 +3546,7 @@ Full review: `ai-docs/dev-plugin-team-review-2026-07-29.md`.
   through a heading that names a plugin *or* a bullet inside a channel-wide entry that
   names one, so a multi-plugin release stays written up once.
 - Backfilled CHANGELOG entries for 11 versions whose only record was the description field.
-  `gtd` v2.0.1 is the one version still without an entry — the generator warns rather than
-  inventing one.
+  One version is still without an entry — the generator warns rather than inventing one.
 
 ### Fixed
 - `validate-versions.js` (already in the pre-commit hook) now rejects descriptions shaped
@@ -3580,6 +3613,14 @@ Full review: `ai-docs/dev-plugin-team-review-2026-07-29.md`.
 ### Changed
 - Pointers to the deleted `shared/model-aliases.json` replaced with live-catalog resolution, and concrete model IDs in illustrative examples replaced with placeholders. Behaviour is otherwise unchanged; a patch release so claudeup actually ships the updated guidance.
 
+> **This file is the source of truth.** It covers every plugin across every distribution
+> channel, plus internal tooling. Each dist repo receives a sanitised, channel-scoped copy
+> generated by `scripts/filter-changelog.ts` during `publish-dist.sh`.
+>
+> Heading convention drives that filter: `## [<Plugin> X.Y.Z] - <date>` for plugin releases,
+> and `## [<channel> X.Y.Z] - <date>` (`Marketplace`, `magus-marketing`) for
+> channel-wide entries. A heading the filter cannot attribute is dropped from every dist copy.
+
 ---
 
 ## [Marketplace 8.1.0] - 2026-07-29
@@ -3599,11 +3640,10 @@ Full review: `ai-docs/dev-plugin-team-review-2026-07-29.md`.
 ### Changed
 
 - **BREAKING** — Split the marketing plugins out of `magus` into a new `magus-marketing`
-  marketplace. `seo`, `nanobanana`, `video-editing`, and `instantly` no longer ship on
+  marketplace. `nanobanana` and `video-editing` no longer ship on
   `magus`. Users who want them must add the new marketplace and re-enable the plugins under
-  their new IDs (`seo@magus-marketing`, not `seo@magus`).
-- `claudish` is now dual-published to `magus` and `magus-marketing`, because `seo` declares
-  it as a runtime dependency and a marketing-only install would otherwise be unsatisfiable.
+  their new IDs.
+- `claudish` is now dual-published to `magus` and `magus-marketing`.
 
 ### Added
 
@@ -3623,11 +3663,11 @@ Full review: `ai-docs/dev-plugin-team-review-2026-07-29.md`.
 
 ```jsonc
 // .claude/settings.json — before
-{ "enabledPlugins": { "seo@magus": true, "nanobanana@magus": true } }
+{ "enabledPlugins": { "nanobanana@magus": true } }
 
 // after: add the marketplace, then re-enable under the new IDs
 //   /plugin marketplace add MadAppGang/magus-marketing
-{ "enabledPlugins": { "seo@magus-marketing": true, "nanobanana@magus-marketing": true } }
+{ "enabledPlugins": { "nanobanana@magus-marketing": true } }
 ```
 
 `conductor@magus` has no replacement — remove it from `enabledPlugins`.
@@ -3734,13 +3774,13 @@ Incident 2026-06-03: an agent drove raw `tmux` and sent keystrokes into a pane w
 ## [Marketplace 7.5.0] - 2026-05-09
 
 ### Added
-- **`claudish` plugin** (v1.0.0): dedicated runtime plugin for the Claudish MCP server. Owns the `command: "claudish", args: ["--mcp"]` registration. Required by `code-analysis`, `dev`, `multimodel`, `designer`, `agentdev`, `seo`.
+- **`claudish` plugin** (v1.0.0): dedicated runtime plugin for the Claudish MCP server. Owns the `command: "claudish", args: ["--mcp"]` registration. Required by `code-analysis`, `dev`, `multimodel`, `designer`, `agentdev`.
 - **`mnemex` plugin** (v1.0.0): dedicated runtime plugin for the Mnemex MCP server. Owns the `command: "mnemex", args: ["--mcp"]` registration. Required by `code-analysis`, `dev`, `stats`.
 
 ### Changed
 - **`code-analysis` v5.3.0**: extracted `mnemex` + `claudish` from its `.mcp.json`. Now declares both as `dependencies` per Anthropic's documented pattern.
 - **`dev` v2.9.0**: extracted `claudish` from its `.mcp.json` (previously the only entry). Now declares `claudish` + `mnemex` as `dependencies` (mnemex was an implicit dependency before).
-- **`multimodel` v3.2.0, `designer` v0.4.0, `agentdev` v1.7.0, `seo` v1.8.0**: declared `claudish` as a `dependencies` entry (was an implicit dependency consumed via `mcp__claudish__*` tools without declaration).
+- **`multimodel` v3.2.0, `designer` v0.4.0, `agentdev` v1.7.0**: declared `claudish` as a `dependencies` entry (was an implicit dependency consumed via `mcp__claudish__*` tools without declaration).
 - **`stats`** (source-only): declared `mnemex` as a `dependencies` entry.
 
 ### Why
@@ -3762,18 +3802,6 @@ Decision documented in `magus-src` and `claudish` repos. Research session: `clau
 
 ---
 
-## [kanban 1.6.0] - 2026-04-24
-
-### Changed
-- **BREAKING — kanban decouples from GTD.** Independent store at `.claude/kanban/tasks.json`
-  with a kanban-only schema (a `status` field, no GTD overlay).
-
-### Migration notes
-Legacy tasks in `.claude/gtd/tasks.json` are **not** auto-migrated. Re-add them with
-`/kanban:add`.
-
----
-
 ## [Multimodel 3.1.2] - 2026-04-06
 
 ### Fixed
@@ -3785,28 +3813,6 @@ Legacy tasks in `.claude/gtd/tasks.json` are **not** auto-migrated. Re-add them 
 
 ### Fixed
 - **delegate/team commands inherit parent tools and model** — removed hardcoded `allowed-tools` and `model: opus` from both commands. Previously, delegate couldn't load the `claudish-usage` skill for alias resolution, causing heuristic file searches instead of deterministic lookups.
-
----
-
-## [gtd 2.0.1] - 2026-03-29
-
-### Changed
-
-- **`gtd-capture` and `gtd-review` no longer appear in the `/` menu.** Both are triggered
-  by the workflow rather than typed by a user, so they were taking up slash-palette space
-  for nothing. Part of a marketplace-wide pass that set `user-invocable: false` on 125
-  such skills. Note this does **not** reduce the skill listing budget — only
-  `disable-model-invocation: true` does that — and pairing the two flags makes a skill
-  unreachable entirely, which is what `terminal 4.1.3` and `agentdev 1.7.1` later repaired.
-
----
-
-## [gtd 2.0.0] - 2026-03-23
-
-### Changed
-- **Canonical GTD terminology** — "Clarify" and "Engage" replace the previous stage names.
-- Sequential task IDs (`#1`, `#2`) in place of opaque identifiers, plus a boxed terminal
-  display, a reference list, and a Bun display tool.
 
 ---
 

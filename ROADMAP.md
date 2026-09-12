@@ -63,21 +63,21 @@ New runtime plugin: rule-library + reranker + background validators. Rule librar
 
 ### CC-5 · Tasks system migration (TodoWrite → TaskCreate/Update/List/Get) 🟡
 
-Migrate all plugins from legacy `TodoWrite` to the new `TaskCreate`/`TaskUpdate`/`TaskList`/`TaskGet` task system. Approved 2026-01-30; originally scoped at ~115 files across 12 plugins (dev: 29 files HIGH priority; multimodel: 7; seo: 13; etc.). Scope shrank by conductor's 11 files when it was retired at magus v8.0.0. Completion status not verified by mining.
+Migrate all plugins from legacy `TodoWrite` to the new `TaskCreate`/`TaskUpdate`/`TaskList`/`TaskGet` task system. Approved 2026-01-30; originally scoped at ~115 files across 12 plugins (dev: 29 files HIGH priority; multimodel: 7; etc.). Scope shrank by conductor's 11 files when it was retired at magus v8.0.0. Completion status not verified by mining.
 
 - **Conflict with CC-1** — see "Decisions needed" below.
 - **Source:** `docs/plans/2026-01-30-tasks-migration-design.md`
 
-### CC-6 · Multi-target distribution (magus / magus-alpha / magus-marketing) 🟡
+### CC-6 · Multi-target distribution (magus / magus-marketing) 🟡
 
-Per-plugin `distTargets` field in marketplace.json routes plugins to distribution channels. magus-alpha live (autolinear shipped via it). magus-marketing target slot exists (v0.1.0) with zero plugins assigned.
+Per-plugin `distTargets` field in marketplace.json routes plugins to distribution channels. Two channels ship today: `magus` and `magus-marketing`.
 
 - **Scope:** all plugins via opt-in distTargets
-- **Sources:** `.claude-plugin/marketplace.json` `targetMetadata` block; CLAUDE.md "Alpha Marketplace" section
+- **Sources:** `.claude-plugin/marketplace.json` `targetMetadata` block; CLAUDE.md "Distribution Channels" section
 
 ### CC-7 · Dependency-graph correctness (claudish + mnemex extraction) ✅ shipped 2026-05-09
 
-Code-analysis, dev, multimodel, designer, seo now declare `claudish` / `mnemex` as `dependencies` per Anthropic's documented pattern (Claude Code v2.1.110+). Listed here for context, not for further work.
+Code-analysis, dev, multimodel and designer now declare `claudish` / `mnemex` as `dependencies` per Anthropic's documented pattern (Claude Code v2.1.110+). Listed here for context, not for further work.
 
 ### CC-8 · Marketplace.json schema evolution + Claude `--strict` drift ⚪
 
@@ -123,9 +123,9 @@ Plugin discovery in `/doctor` still breaks during Claude Code's `cacheMarketplac
 
 ### CC-11 · Skill → knowledge migration is gated on a behavioural eval 🔴
 
-`dev` 7.0.0 moved 24 reference manuals from `plugins/dev/skills/` to `plugins/dev/knowledge/`, reached by path through `agent_loadouts` instead of by skill registration. The set was chosen by a mechanical rule — zero preload edges **and** already `disable-model-invocation: true` — and ratified afterwards by `bun scripts/classify-skill-shape.ts`. Both are static reads of the file. Neither measures whether an agent still reaches and applies the content once it arrives as a loadout path. **Decision 2026-09-04: the 24 stay; no further moves — `dev`'s hybrid splits, or any other plugin — until a `benches/` eval exists and passes.** The classifier already names the candidates (`multimodel` ×8, `terminal` ×2, `bunjs` ×2, one each in `code-analysis`, `designer`, `gtd`); they wait.
+`dev` 7.0.0 moved 24 reference manuals from `plugins/dev/skills/` to `plugins/dev/knowledge/`, reached by path through `agent_loadouts` instead of by skill registration. The set was chosen by a mechanical rule — zero preload edges **and** already `disable-model-invocation: true` — and ratified afterwards by `bun scripts/classify-skill-shape.ts`. Both are static reads of the file. Neither measures whether an agent still reaches and applies the content once it arrives as a loadout path. **Decision 2026-09-04: the 24 stay; no further moves — `dev`'s hybrid splits, or any other plugin — until a `benches/` eval exists and passes.** The classifier already names the candidates (`multimodel` ×8, `terminal` ×2, `bunjs` ×2, one each in `code-analysis` and `designer`); they wait.
 
-- **Scope:** dev first; then multimodel, terminal, bunjs, code-analysis, designer, gtd, go
+- **Scope:** dev first; then multimodel, terminal, bunjs, code-analysis, designer, go
 - **Source:** `docs/plans/2026-09-04-skill-knowledge-migration-eval.md` (axis, cells, checks, pre-declared outcomes); `plugins/dev/knowledge/README.md` for what moved; `bun scripts/classify-skill-shape.ts` for what would move next
 
 ---
@@ -163,10 +163,6 @@ is published to users. `scripts/check-doc-plugin-lists.ts` now rejects the label
 <!-- doc-refs: off -->
 - ⚪ **CC-3** · Skill router consolidations deferred to T3 (names below are proposed, not yet created): `multimodel:orchestration` (delegate-patterns + hierarchical-coordinator + multi-agent-coordination + task-orchestration → 1); `multimodel:claudish` (3 → 1)
 <!-- doc-refs: on -->
-
-### seo
-
-- 🟡 **CC-1** · `SessionStart` hook needs Antigravity first-run `PreInvocation` shim before shipping
 
 ### video-editing
 
@@ -218,25 +214,6 @@ is published to users. `scripts/check-doc-plugin-lists.ts` now rejects the label
 
 - 🟡 **CC-1** · `PreToolUse:^Bash$` destructive-tmux-kill-server hook needs Bun adapter and Codex generated-plugin trust gate
 - ⚪ **CC-3** · `terminal:run` skill router consolidation (5 → 1) deferred to T3
-
-### gtd
-
-- 🟡 **CC-1** · GTD task workflow has no Codex parity — `TaskCreate`/`TaskUpdate` hooks must be redesigned; generator must fail if Codex artifacts require Claude-only task tools. Codex smoke for task-heavy workflow required.
-
-### kanban
-
-- ⚪ Legacy `.claude/gtd/tasks.json` migration helper — currently NOT auto-migrated by design (users re-add via `/kanban:add`). Auto-migration helper undecided.
-
-### instantly
-
-- 🟡 **CC-1** · `SessionStart` hook needs Antigravity first-run `PreInvocation` shim before shipping
-
-### autolinear (magus-alpha)
-
-- 🟡 Autonomous webhook-triggered pickup — receiver wired but queue → Claude Code dispatch is a TODO stub
-- 🟡 **CC-1** · `SessionStart` hook (Linear/webhook readiness) + `PreToolUse:Task` (Linear state before delegation) need Codex redesign
-- 🟡 Deferred from 2026-04-15 rename: landing-page marketing (D). The claudeup-core test fixture
-  item (B) is moot — `tools/claudeup-core/` was deleted when claudeup collapsed to a single package.
 
 ---
 
@@ -300,9 +277,9 @@ Items where the maintainer must choose before downstream work can proceed. Not j
 
 ### D-1 · Tasks migration vs Codex distribution conflict
 
-**CC-5** (TodoWrite → Tasks migration, approved 2026-01-30) targets the `dev` and `gtd` plugins. **CC-1** (cross-harness distribution) explicitly says Codex has no `TaskCreate` / `TaskUpdate` hookable tools, and the Codex generator must fail if artifacts require them (`docs/plans/2026-05-27-cross-harness-known-issues.md` KI-CODEX-005). The two plans are both approved; the reconciliation path is not stated in any source.
+**CC-5** (TodoWrite → Tasks migration, approved 2026-01-30) targets the `dev` plugin. **CC-1** (cross-harness distribution) explicitly says Codex has no `TaskCreate` / `TaskUpdate` hookable tools, and the Codex generator must fail if artifacts require them (`docs/plans/2026-05-27-cross-harness-known-issues.md` KI-CODEX-005). The two plans are both approved; the reconciliation path is not stated in any source.
 
-**The decision:** does dev/gtd ship the Tasks-migration changes as Claude-only features (with Codex distribution permanently lagging), or does the migration get rolled back / refactored to use a Codex-compatible mechanism?
+**The decision:** does dev ship the Tasks-migration changes as Claude-only features (with Codex distribution permanently lagging), or does the migration get rolled back / refactored to use a Codex-compatible mechanism?
 
 ### D-2 · Three plugins with no in-flight roadmap
 
@@ -339,7 +316,6 @@ Named here so they don't accidentally creep back as roadmap items in future plan
 - 🚫 **Claude-style realtime/dev-channel parity in Codex** — `realtime_conversation` disabled; claudish in Codex runs through MCP only
 - 🚫 **Generic conversation normalization layer (cross-harness V1)** — explicit V1 non-goal
 - 🚫 **claude-desktop-profiles iter-2 helper-rename recipe** — superseded by iter-3 finding
-- 🚫 **Auto-migration of legacy GTD tasks into kanban v1.6.0** — explicit non-goal in v1.6.0
 - 🚫 **Tightening `SKILL_BUDGET_FAIL_TOTAL` from 16000 → 12000** — deferred until T3 makes it achievable
 - 🚫 **claudeup writing trusted hook hashes for normal users (Codex Desktop)** — security rule; automation may write trust only in isolated smoke tests
 

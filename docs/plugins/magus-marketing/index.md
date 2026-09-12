@@ -2,7 +2,7 @@
 
 # Marketing — `magus-marketing`
 
-Content and outreach: SEO, image and video generation, cold email.
+Content tooling: image generation and video editing.
 
 [claudeup](../../guides/install.md) lists this marketplace before you add it — select it,
 confirm, and it is registered:
@@ -18,10 +18,7 @@ Plugin IDs carry the marketplace, so these are `name@magus-marketing`.
 
 | Plugin | Version | What it does |
 |---|---|---|
-| [`claudish`](./claudish.md) | 2.0.3 | MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting across models, manages async sessions, and streams channel notifications. Required by code-analysis, dev, multimodel, designer and seo. |
 | [`image-generate`](./image-generate.md) | 3.2.0 | Provider-agnostic AI image generation and editing. One interface over Nano Banana Pro, 2 and 2 Lite (Google), GPT Image 2 (OpenAI) and Seedream (ByteDance), with per-model sizing and a background advisory when the pinned models go stale. |
-| [`instantly`](./instantly.md) | 2.1.0 | Cold email outreach toolkit built on the Instantly.ai MCP. Campaign analytics, sequence building, A/B testing, lead management and auto-optimisation. |
-| [`seo`](./seo.md) | 3.1.0 | SEO analysis and optimisation. Audits content and technical SEO, proposes and applies fixes through self-correction loops, and gates each stage on explicit approval. |
 | [`video-editing`](./video-editing.md) | 1.3.0 | Video editing toolkit. Drives FFmpeg for cutting and encoding, Whisper for transcription and subtitles, and Apple Final Cut Pro for project-level work. |
 
 Turn any of them on from the Plugins tab. To give a team the same set, press `s` to save

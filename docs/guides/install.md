@@ -96,7 +96,7 @@ That registers the marketplaces, installs the pinned plugins, installs the binar
 plugins declare, installs the skills, prompts for any required environment variables, and
 activates the profile.
 
-A plugin id already names its marketplace — `dev@magus`, `seo@magus-marketing` — so
+A plugin id already names its marketplace — `dev@magus`, `image-generate@magus-marketing` — so
 claudeup registers the ones it recognises without you declaring them. Declare a
 `marketplaces` block only for a marketplace claudeup does not ship with, or to point a name
 at a fork.
@@ -134,7 +134,7 @@ itself. Inside a session:
 
 Then turn plugins on with `/plugin`, or list them in your project's `.claude/settings.json`
 under `enabledPlugins`. Plugin IDs carry their marketplace, so qualify them —
-`dev@magus`, `seo@magus-marketing`.
+`dev@magus`, `image-generate@magus-marketing`.
 
 You are then on your own for everything around the plugin: binaries, CLI tools, skills,
 environment variables, and reproducing any of it on a second machine.
@@ -157,8 +157,7 @@ before you have added anything, so you can browse first and install second.
 | Marketplace | What's in it |
 |---|---|
 | **Magus** | Development plugins — see [Plugins](../plugins/index.md) |
-| **Magus Marketing** | SEO, cold email, image generation, video editing |
-| **Magus Alpha** | Experimental. Interfaces change, plugins get withdrawn |
+| **Magus Marketing** | Image generation, video editing |
 | **Anthropic Official** | Anthropic's own plugins |
 | **3rd Party** | Plugins by other people, accepted into Anthropic's official directory |
 | **Superpowers** | A curated community collection |

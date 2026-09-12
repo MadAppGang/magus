@@ -1,6 +1,6 @@
 ---
 name: release
-description: Release one or more Magus plugins. Infers the version bump from git history, bumps plugin.json and marketplace.json, commits, and after the PR merges tags the merge commit with one explicit ref per tag; CI gates the PR and publishes the dist repos. Use whenever the user says "release kanban", "release the dev plugin", "cut a new version of gtd", "bump kanban to 1.7", or hands you a batch like "release kanban and gtd". Also use to check what a release would contain before committing.
+description: Release one or more Magus plugins. Infers the version bump from git history, bumps plugin.json and marketplace.json, commits, and after the PR merges tags the merge commit with one explicit ref per tag; CI gates the PR and publishes the dist repos. Use whenever the user says "release setup", "release the dev plugin", "cut a new version of terminal", "bump setup to 1.3", or hands you a batch like "release setup and terminal". Also use to check what a release would contain before committing.
 ---
 
 # Magus Plugin Release
@@ -12,7 +12,7 @@ them; nothing on a workstation ever pushes to a dist repo.
 
 - `magus-src` is the **source** repo. It carries `ai-docs/`, `autotest/`, `tools/`,
   `.claude/`, and other developer-only state. Users never install from here.
-- `magus`, `magus-alpha`, `magus-marketing` are the **lean dist repos**. They contain
+- `magus` and `magus-marketing` are the **lean dist repos**. They contain
   only what users need at install time: `plugins/`, `shared/`, `skills/`, and a
   transformed `marketplace.json` with string `source` paths.
 - **CI is the only publisher.** `.github/workflows/publish-dist.yml` fires on every
@@ -92,7 +92,7 @@ A good summary format:
 
 ```
 Releasing:
-  kanban  1.6.0 → 1.6.1 (patch, no commits since last tag)
+  setup   1.2.1 → 1.2.2 (patch, no commits since last tag)
   dev     2.7.0 → 2.8.0 (minor, 9 commits — FEAT: extend preset schema; FEAT: preset-file bypass; ...)
 
 Warnings:
@@ -131,8 +131,8 @@ If validation passes, it:
 Then it stops and prints the next two steps. Nothing has left the machine.
 
 Before that commit, write the CHANGELOG entry (`## [<plugin> X.Y.Z] - YYYY-MM-DD`) and
-run the generators (`bun scripts/generate-releases.ts`, `bun scripts/generate-plugin-catalog.ts`,
-`./scripts/sync-shared-deps.sh`) so their output is in the tree the PR carries — CI only
+run the generators (`bun scripts/generate-releases.ts`, `bun scripts/generate-plugin-catalog.ts`)
+so their output is in the tree the PR carries — CI only
 checks, never regenerates. `apply.ts` requires a clean tree, so commit those first or
 fold the bump into that commit by hand.
 
@@ -204,7 +204,7 @@ hand: `gh workflow run publish-dist.yml`.
 
 Single plugin, let inference decide everything:
 ```bash
-bun run skills/release/scripts/infer.ts kanban > /tmp/prop.json
+bun run skills/release/scripts/infer.ts setup > /tmp/prop.json
 # review with user, maybe edit /tmp/prop.json
 bun run skills/release/scripts/apply.ts /tmp/prop.json
 # push, PR, merge …
@@ -214,13 +214,13 @@ bun run skills/release/scripts/tag.ts /tmp/prop.json <merge-sha>
 Batch release, pipe directly without intermediate file (only when the user has
 already approved the inference output verbatim):
 ```bash
-bun run skills/release/scripts/infer.ts kanban gtd dev | \
+bun run skills/release/scripts/infer.ts setup terminal dev | \
   bun run skills/release/scripts/apply.ts -
 ```
 
 Dry run the bump to show the user what would happen:
 ```bash
-bun run skills/release/scripts/infer.ts kanban | \
+bun run skills/release/scripts/infer.ts setup | \
   bun run skills/release/scripts/apply.ts - --dry-run
 ```
 
@@ -228,7 +228,7 @@ bun run skills/release/scripts/infer.ts kanban | \
 
 - **Conventional commits matter.** If a feat was committed as `chore:` the inference
   undercalls the bump. Read the proposed `commits` array before confirming — if you
-  see a `fix(kanban): rewrote half the schema`, it's probably a minor or major.
+  see a `fix(setup): rewrote half the schema`, it's probably a minor or major.
 - **Don't bypass the validation.** If apply.ts refuses because the tree is dirty,
   don't `git stash && apply && git stash pop` — the stash stack is shared across
   every worktree and the stashed changes can collide with the release commit.

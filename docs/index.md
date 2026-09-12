@@ -1,8 +1,8 @@
 # Magus Documentation
 
 Magus is a plugin marketplace for [Claude Code](https://docs.claude.com/en/docs/claude-code).
-It ships on three channels: `magus` for core development plugins, `magus-marketing` for
-content and outreach, and `magus-alpha` for experimental work.
+It ships on two channels: `magus` for core development plugins and `magus-marketing` for
+image generation and video editing.
 
 ## Start here
 
@@ -36,7 +36,7 @@ and CLI tools they depend on.
 
 ## What is available
 
-- **[Plugins](./plugins/index.md)** — three marketplaces, and what each carries. Follow a
+- **[Plugins](./plugins/index.md)** — two marketplaces, and what each carries. Follow a
   plugin's name for its commands, subagents and skills.
 
 ## Release history
