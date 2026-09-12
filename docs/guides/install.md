@@ -158,6 +158,7 @@ before you have added anything, so you can browse first and install second.
 |---|---|
 | **Magus** | Development plugins — see [Plugins](../plugins/index.md) |
 | **Magus Marketing** | Image generation, video editing |
+| **Magus Alpha** | Experimental. Interfaces change, plugins get withdrawn |
 | **Anthropic Official** | Anthropic's own plugins |
 | **3rd Party** | Plugins by other people, accepted into Anthropic's official directory |
 | **Superpowers** | A curated community collection |

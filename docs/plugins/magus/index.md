@@ -2,7 +2,7 @@
 
 # Core — `magus`
 
-Development tooling: code analysis, terminal control, browser automation, task management, and language toolkits.
+Development tooling: code analysis, terminal control, browser automation, and language toolkits.
 
 [claudeup](../../guides/install.md) lists this marketplace before you add it — select it,
 confirm, and it is registered:

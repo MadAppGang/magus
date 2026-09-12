@@ -68,9 +68,9 @@ Migrate all plugins from legacy `TodoWrite` to the new `TaskCreate`/`TaskUpdate`
 - **Conflict with CC-1** — see "Decisions needed" below.
 - **Source:** `docs/plans/2026-01-30-tasks-migration-design.md`
 
-### CC-6 · Multi-target distribution (magus / magus-marketing) 🟡
+### CC-6 · Multi-target distribution (magus / magus-marketing / magus-alpha) 🟡
 
-Per-plugin `distTargets` field in marketplace.json routes plugins to distribution channels. Two channels ship today: `magus` and `magus-marketing`.
+Per-plugin `distTargets` field in marketplace.json routes plugins to distribution channels. Three channels: `magus`, `magus-marketing`, and `magus-alpha`, which is empty until the next alpha plugin lands and publishes an empty marketplace meanwhile.
 
 - **Scope:** all plugins via opt-in distTargets
 - **Sources:** `.claude-plugin/marketplace.json` `targetMetadata` block; CLAUDE.md "Distribution Channels" section

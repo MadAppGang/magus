@@ -250,13 +250,14 @@ Each developer on your team does this once:
 
 This registers the Magus marketplace in your Claude Code installation. You only need to do this once, and it works for all your projects.
 
-Magus ships on two channels. Core development plugins live in `magus`; add
-`magus-marketing` only if you need it:
+Magus ships on three channels. Core development plugins live in `magus`; add the others only
+if you need them:
 
 | Marketplace | Contains |
 |---|---|
 | `MadAppGang/magus` | Core development plugins — dev, code-analysis, terminal, designer, browser-use, and more |
 | `MadAppGang/magus-marketing` | AI image generation, video editing |
+| `MadAppGang/magus-alpha` | Experimental plugins with evolving interfaces — none published yet |
 
 Plugin IDs carry the marketplace, so enable them as `image-generate@magus-marketing`, not `image-generate@magus`.
 

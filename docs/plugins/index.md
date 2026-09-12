@@ -8,7 +8,7 @@ does not give you the others, and a plugin's ID always names the marketplace it 
 
 | Marketplace | Plugins | Carries |
 |---|---|---|
-| [**Core**](./magus/index.md) `magus` | 13 | Development tooling: code analysis, terminal control, browser automation, task management, and language toolkits. |
+| [**Core**](./magus/index.md) `magus` | 13 | Development tooling: code analysis, terminal control, browser automation, and language toolkits. |
 | [**Marketing**](./magus-marketing/index.md) `magus-marketing` | 2 | Content tooling: image generation and video editing. |
 
 ## Getting them

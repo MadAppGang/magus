@@ -12,7 +12,7 @@ them; nothing on a workstation ever pushes to a dist repo.
 
 - `magus-src` is the **source** repo. It carries `ai-docs/`, `autotest/`, `tools/`,
   `.claude/`, and other developer-only state. Users never install from here.
-- `magus` and `magus-marketing` are the **lean dist repos**. They contain
+- `magus`, `magus-marketing` and `magus-alpha` are the **lean dist repos**. They contain
   only what users need at install time: `plugins/`, `shared/`, `skills/`, and a
   transformed `marketplace.json` with string `source` paths.
 - **CI is the only publisher.** `.github/workflows/publish-dist.yml` fires on every

@@ -4,6 +4,24 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Marketplace 12.0.1] - 2026-09-12
+
+### Fixed
+
+- **`magus-alpha` is not retired.** 12.0.0 removed the channel together with `autolinear`,
+  its only plugin, and its migration note said to remove the marketplace. That was wrong: the
+  channel is kept for upcoming alpha plugins. Its publish target and metadata are back, and a
+  channel that `targetMetadata` declares now publishes an empty marketplace instead of
+  failing the publish. A target declared nowhere is still refused.
+- The plugin catalog lists only channels that carry plugins, so an empty channel ships no
+  link to a page it does not have.
+
+### Changed
+
+- **claudeup 6.5.1** ships alongside. Its entry is above.
+
+---
+
 ## [dev 7.4.1] - 2026-09-12
 
 ### Removed
