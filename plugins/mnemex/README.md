@@ -4,14 +4,14 @@ Provides the **Mnemex MCP runtime** for the Magus marketplace. Mnemex is a
 semantic code search and AST analysis tool that exposes structural code
 navigation (callers, callees, references, PageRank-ranked results) via MCP.
 
-This plugin is a **runtime dependency**. Other plugins (`code-analysis`, `dev`)
+This plugin is a **runtime dependency**. Other plugins (`code-search`, `dev`)
 declare it via the `dependencies` field in their `plugin.json` and consume its
 tools through standard MCP.
 
 ## Why this plugin exists
 
-Originally Mnemex was declared inside `code-analysis/.mcp.json`, but `dev` also
-referenced its tools without declaring them — relying on `code-analysis` being
+Originally Mnemex was declared inside `code-search/.mcp.json`, but `dev` also
+referenced its tools without declaring them — relying on `code-search` being
 installed. Extracting the runtime into a dedicated plugin makes the dependency
 explicit and follows Anthropic's documented `dependencies`-field pattern
 (Claude Code v2.1.110+).
@@ -39,7 +39,7 @@ Tools exposed via the `mnemex` MCP server (sample):
 
 This is a runtime dependency of:
 
-- `code-analysis` — semantic code search and analysis commands
+- `code-search` — semantic code search and analysis commands
 - `dev` — `/dev:investigate` and other code-navigation flows
 
 If you are installing Magus, this plugin is auto-installed when either of the

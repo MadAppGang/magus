@@ -15,8 +15,8 @@ tools: Read, Write, Glob, Grep, Bash, WebSearch, WebFetch, Agent, mcp__plugin_cl
   </mission>
   <not_this>
     - Single-lane web research → `dev:researcher` is cheaper.
-    - Consolidating results that already exist → `dev:synthesizer`.
-    - A local-code-only audit → the `code-analysis:deep-analysis` SKILL
+    - Consolidating results that already exist → `dev:aggregator`.
+    - A local-code-only audit → the `code-search:deep-analysis` SKILL
       (that is a skill, not an agent — never dispatch it via the Agent tool).
   </not_this>
 </role>
@@ -126,6 +126,13 @@ tools: Read, Write, Glob, Grep, Bash, WebSearch, WebFetch, Agent, mcp__plugin_cl
     an agent without Write and without Bash cannot persist, and its returned
     message is then the only handoff — consolidate from that.
 
+    `dev:researcher` is optional, not a dependency. It belongs to the `dev` plugin,
+    which may not be installed beside this one. If the Agent call is rejected because
+    the agent type is unknown, run that lane yourself with WebSearch and WebFetch
+    (Phase 2), persist it to the same `lane-<n>.md`, and record "dev:researcher absent,
+    lane run inline" under Obstacles. Do not substitute a different plugin's agent,
+    and do not treat the absence as a lane failure.
+
     Models — via claudish MCP, never Bash+CLI. Native Claude names
     (`internal`, `default`, `opus`, `sonnet`, `haiku`) are ordinary slots
     and belong in `models` beside the external ones:
@@ -135,6 +142,8 @@ tools: Read, Write, Glob, Grep, Bash, WebSearch, WebFetch, Agent, mcp__plugin_cl
     team(mode="run", path=SESSION_PATH, models=[...resolved live...],
          input_file=`${SESSION_PATH}/input.md`,
          require_pattern=<regex for that shape>, agent="dev:researcher")
+    #    `agent=` is optional: omit it when dev:researcher was found absent above,
+    #    and the slots run as plain sessions with the prompt alone.
 
     # 2. `run` returns a slot map and does NOT wait. Poll until settled:
     team(mode="status", path=SESSION_PATH)   # until no slot is RUNNING

@@ -3,7 +3,7 @@
 
 # claudish
 
-MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting across models, manages async sessions, and streams channel notifications. Required by code-analysis, dev, multimodel and designer.
+MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting across models, manages async sessions, and streams channel notifications. Required by code-search, dev, multimodel and designer.
 
 | | |
 |---|---|

@@ -195,7 +195,7 @@ Java:     (public|private|protected|static).*\w+\s*\( / closing }
 
 1. Search semantically instead of textually:
    ```
-   mcp__plugin_code-analysis_ca__code_search({ query: "<error_signature>" })
+   mcp__plugin_code-search_ca__code_search({ query: "<error_signature>" })
    ```
    Pass the error message + primary failing symbol as the query. It takes natural
    language — you do not need to guess an identifier.
@@ -256,7 +256,7 @@ Large codebase path: {invoked | not needed}
 | Read file at line range | `Read` | `offset: N`, `limit: M` |
 | Search symbol in codebase | `Grep` | `pattern`, `path`, `output_mode: "content"`, `context: 2` |
 | List files matching pattern | `Glob` | `pattern` |
-| Semantic search (large codebase) | `mcp__plugin_code-analysis_ca__code_search` | `query`, optional `scope` |
+| Semantic search (large codebase) | `mcp__plugin_code-search_ca__code_search` | `query`, optional `scope` |
 
 ---
 

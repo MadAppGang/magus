@@ -52,23 +52,23 @@ skills: dev:context-detection
     </step>
 
     <step number="2" name="Plugin Check">
-      Check if the code-analysis plugin is available:
+      Check if the code-search plugin is available:
 
       ```bash
-      ls "${HOME}/.claude/plugins/cache/" 2>/dev/null | grep -q "code-analysis"
+      ls "${HOME}/.claude/plugins/cache/" 2>/dev/null | grep -q "code-search"
       ```
 
-      If code-analysis is installed: proceed to step 3a.
+      If code-search is installed: proceed to step 3a.
       If absent: proceed to step 3b.
     </step>
 
-    <step number="3a" name="Delegate (code-analysis present)">
+    <step number="3a" name="Delegate (code-search present)">
       Map scope to investigation mode:
-        architecture  → mode: architecture, skill: code-analysis:investigate
-        implementation → mode: implementation, skill: code-analysis:investigate
-        bug-hunt      → mode: bug, skill: code-analysis:investigate
-        test-audit    → mode: test, skill: code-analysis:investigate
-        comprehensive → skill: code-analysis:deep-analysis (no mode parameter — it has none)
+        architecture  → mode: architecture, skill: code-search:investigate
+        implementation → mode: implementation, skill: code-search:investigate
+        bug-hunt      → mode: bug, skill: code-search:investigate
+        test-audit    → mode: test, skill: code-search:investigate
+        comprehensive → skill: code-search:deep-analysis (no mode parameter — it has none)
 
       Launch the agent:
 
@@ -82,7 +82,7 @@ skills: dev:context-detection
 
           RULES:
           - This is READ-ONLY analysis. Do not modify any files.
-          - Use the code-analysis MCP tools (mcp__plugin_code-analysis_ca__*) for semantic code navigation.
+          - Use the code-search MCP tools (mcp__plugin_code-search_ca__*) for semantic code navigation.
           - Produce a clear investigation report with findings and evidence.
 
           FOCUS BY MODE:
@@ -94,22 +94,22 @@ skills: dev:context-detection
             reproduction steps, root cause identification.
           - test: what is tested, what is not, coverage gaps,
             risky untested paths, test quality assessment.
-          - (comprehensive scope routes to code-analysis:deep-analysis, which takes no
+          - (comprehensive scope routes to code-search:deep-analysis, which takes no
             mode) all 4 modes above, synthesized into unified report
             with cross-cutting observations.
         """,
-        subagent_type: "code-analysis:detective"
+        subagent_type: "code-search:analyze"
       )
     </step>
 
-    <step number="3b" name="Degradation (code-analysis absent)">
+    <step number="3b" name="Degradation (code-search absent)">
       Inform the user:
 
-      "Deep investigation requires the **code-analysis** plugin (mcp__plugin_code-analysis_ca__* tools for semantic and structural analysis).
+      "Deep investigation requires the **code-search** plugin (mcp__plugin_code-search_ca__* tools for semantic and structural analysis).
 
       To install:
       1. Run: `/plugin marketplace add MadAppGang/magus`
-      2. Enable `code-analysis@magus` in `.claude/settings.json`
+      2. Enable `code-search@magus` in `.claude/settings.json`
       3. Re-run `/dev:investigate`
 
       **Alternative:** I can use `dev:researcher` for surface-level investigation
@@ -122,7 +122,7 @@ skills: dev:context-detection
         run_in_background: false,
         description: """
           Investigate: {$ARGUMENTS}
-          Note: code-analysis plugin unavailable. Use text search and file reading only.
+          Note: code-search plugin unavailable. Use text search and file reading only.
           Produce investigation report with findings and evidence.
         """,
         subagent_type: "dev:researcher"

@@ -206,8 +206,9 @@ Compare the implementation screenshot to the original design.
 **Usage**: `Read(REFERENCE_PATH)` then `Read(IMPLEMENTATION_PATH)` — two calls, so
 both images are in context at once. Read the reference first.
 
-For a pixel-level diff with a numeric score, `designer:design-review` runs
-`compare.ts` first and uses this pattern to categorise what the diff found.
+For a pixel-level diff with a numeric score, `designer:review` runs `compare.ts` first
+and hands this pattern to an external vision model (`designer:review-services`,
+Procedure A) to categorise what the diff found.
 
 ### Pattern 6: No Image Available (text-only)
 
@@ -259,52 +260,26 @@ screenshot exists to read.
 {actionable improvements}
 ```
 
-## Integration with /designer:ui Command
+## Who runs these prompts
 
-The `/designer:ui` command uses this skill when:
-1. The user requests analysis only ("review", "audit", "check")
-2. An image is supplied with no implementation request
-3. As the first step before `dev:frontend-implement`
+- `designer:review` in single-image mode (`/designer:review <screenshot>`): Patterns 1
+  and 2 at the chosen depth, answered by the external judge and written to
+  `${OUTPUT_DIR}/summary.md`.
+- `designer:review` in compare mode: Pattern 5, answered by the external judge after the
+  pixel diff.
+- `designer:ui` while creating: the checklist in its own agent file, then Patterns 1 and 2
+  on the primary screen's screenshot as a self-check.
 
-### Intent Triggers for Analysis
+## Another vendor's eyes
 
-**Primary triggers**: review, analyze, analyse, audit, check, evaluate, assess,
-score, inspect, critique, rate, examine
-
-**Pattern triggers**: "what's wrong with", "problems with", "issues with",
-"accessibility", "usability", "wcag"
-
-### Workflow Integration
-
-1. Command detects analysis intent
-2. Resolves the screenshot path and confirms the file exists
-3. `Read`s the screenshot and runs the analysis at the chosen depth
-4. Writes the review to `${SESSION_PATH}/reviews/design-review/ui.md`
-5. Presents a summary to the user
-
-## A Second Opinion (another vendor's eyes)
-
-Wanting a different model to look at the same screen is legitimate, and it needs a
-**session** rather than a one-shot prompt — the spawned Claude Code has a `Read`
-tool, and that is what puts the image in front of the other model:
-
-```
-create_session(model="{resolved from list_models}",
-  prompt="Read screenshots/dashboard.png and review it for usability and
-          accessibility. Write your review to:
-          ${SESSION_PATH}/reviews/design-review/{model}.md",
-  timeout_seconds=300)
-```
-
-Point the prompt at the **path**; the session reads it. Claudish converts the
-resulting image block for the provider, and falls back to a vision proxy that
-describes the image when the target model has no vision of its own.
-
-This gives you parallel reviewers, consensus on which issues are real, and different
-perspectives on the same screen.
-
-**Dispatch it from a command, never from inside a subagent** — a subagent has no
-channel back from an external session.
+By default the judging is done by a model other than the one running the agent. The
+procedure — resolve the newest Gemini Pro (or the top GPT tier) live, write the image
+paths into a brief, `team(mode="run")`, poll `status` until settled, read
+`response-<slot>.md`, fall back to a local `Read` only when the judge fails and say so in
+the header — is Procedure A of `designer:review-services`. It works from inside a
+subagent because `team` is polled, not awaited on a channel. Point the brief at the
+**path**; the child session reads it, and claudish carries the image block to the
+provider.
 
 ## Best Practices
 

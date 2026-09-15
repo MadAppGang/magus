@@ -131,7 +131,6 @@ skills:
     <phase number="1" name="Context">
       <objective>Understand what to document</objective>
       <steps>
-        <step>Read documentation-standards skill at ${CLAUDE_PLUGIN_ROOT}/skills/documentation-standards/SKILL.md</step>
         <step>Read `repo.detected_stack` and `repo.frameworks` from context.json (if SESSION_PATH provided)</step>
         <step>Read source code files to document</step>
         <step>Identify documentation type from request</step>
@@ -641,7 +640,7 @@ skills:
         <step>
           Write report to ${SESSION_PATH}/analysis-report.md — or, when no SESSION_PATH
           was supplied, include the COMPLETE report inline under Full Report in the
-          completion message, never a summary of it. `dev:synthesizer`
+          completion message, never a summary of it. `dev:aggregator`
           classifies the file by two lines and four headings, so they are the
           contract, not a style:
           - It opens, directly under its title, with `**Total Score**: N/52 (P%)`

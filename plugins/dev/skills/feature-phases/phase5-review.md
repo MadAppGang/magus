@@ -66,7 +66,10 @@ Use the same models as Phase 3 (already configured in Step 1f). Never re-ask.
   `MODELS: <the ids, comma-separated>`. Display: "Code review using same models as
   plan review: {model list}".
 - Otherwise → `MODELS: none`. If models were configured but claudish is absent, say so
-  once. The internal reviewer runs regardless; it is never optional.
+  once. The internal reviewer runs regardless; it is never optional. Write the skip
+  down now: append `gate skipped: code-review — MODELS none` (or `— claudish absent`)
+  to `${SESSION_PATH}/gates.log`. The completion message repeats that file
+  (`${CLAUDE_PLUGIN_ROOT}/skills/core/team-gate/SKILL.md`, steps 6-7).
 
 Presence is the claudish runtime — `which claudish`, or the
 `mcp__plugin_claudish_claudish__team` tool being registered in this session — never
@@ -130,28 +133,44 @@ exited 0 with a shapeless response is reported FAILED rather than joining the co
 count as a reviewer that found nothing. `min_output_bytes` floors the rest: 400 bytes is
 well below any real review and catches a stub.
 
-**`run` does not wait.** Before consolidating, poll
-`claudish team(mode="status", path=${SESSION_PATH}/reviews/code-review)` until no slot in
-`models` has `state === "RUNNING"`. Bound the loop and report anything still running;
-`idle_seconds_by_slot` with `activity_by_slot` tells a slow test suite apart from a wedged
-slot. Full procedure: `claudish:claudish-usage` → "The three-step lifecycle". Requires
-claudish >= 8.0.0.
+Pass `input_file` ONLY — never `input` beside it. The pair is rejected with
+`Pass input_file or input, not both`; on that exact error retry once with `input_file`
+alone. Any other error is a panel with 0 ballots.
 
-### Step 5.6: Consolidate — dispatch the synthesizer
+**`run` does not wait, and `started` is not a result.** This gate is **code-review**,
+`MIN_BALLOTS` = 2 when N ≥ 3, otherwise N. Read
+`${CLAUDE_PLUGIN_ROOT}/skills/core/team-gate/SKILL.md` and follow its steps 2-5 before
+consolidating: poll `claudish team(mode="status", path=${SESSION_PATH}/reviews/code-review)`
+until no slot in `models` has `state === "RUNNING"` (bounded; `idle_seconds_by_slot` with
+`activity_by_slot` tells a slow test suite apart from a wedged slot), then read every
+`response-<slot>.md` and count ballots. A backgrounded call is unknown until polled.
+**Ballots below `MIN_BALLOTS` is GATE NOT MET**: append the `gate not met:` line to
+`${SESSION_PATH}/gates.log`, skip Step 5.6, and stop with the skill's three options.
+Requires claudish >= 8.0.0.
 
-Consolidation is `dev:synthesizer`'s job: never done inline by the orchestrator, never
-by a reviewer. One review or five, the same dispatch — `consolidated.md` is a required
-artifact of this phase either way, and the synthesizer is the only thing that writes it.
-With one review it passes that review through unchanged and appends the `VERDICT:`
-line; with several it merges them with consensus levels.
+### Step 5.6: Consolidate
+
+`consolidated.md` is a required artifact of this phase. Count the reviews that
+completed first.
+
+**One review** (MODELS was none, or every external slot failed) — do not dispatch
+`dev:aggregator`; aggregating one review can only subtract from it. Copy
+`claude-internal.md` to `consolidated.md` unchanged, then append a blank line and
+`VERDICT: <word>`, the word being the review's own `**Verdict**:` checked against the
+reviewer's thresholds (read them from `${CLAUDE_PLUGIN_ROOT}/agents/reviewer.md`, Phase
+5). If externals were launched, list each slot that did not complete, and why, directly
+above the `VERDICT:` line.
+
+**Two or more reviews** — consolidation is `dev:aggregator`'s job: never done inline by
+the orchestrator, never by a reviewer. It merges them with consensus levels.
 
 ```
 Agent(
-  subagent_type: "dev:synthesizer",
+  subagent_type: "dev:aggregator",
   run_in_background: false,
   description: "Consolidate code reviews",
   prompt: "REVIEWS: ${SESSION_PATH}/reviews/code-review/claude-internal.md
-           ${SESSION_PATH}/reviews/code-review/response-<slot>.md   (one line per slot that completed; none when MODELS was none)
+           ${SESSION_PATH}/reviews/code-review/response-<slot>.md   (one line per slot that completed)
            THRESHOLDS: <the three lines under 'Apply verdict thresholds' in
                         ${CLAUDE_PLUGIN_ROOT}/agents/reviewer.md, Phase 5, quoted verbatim>
            OUTPUT: ${SESSION_PATH}/reviews/code-review/consolidated.md
@@ -164,13 +183,13 @@ Quote the thresholds from the reviewer's file when you build this prompt — rea
 do not recall them. They live in exactly one place so that the reviewer and the phase
 that judges its verdict cannot drift apart.
 
-The synthesizer writes `consolidated.md` ending in `VERDICT: PASS|CONDITIONAL|FAIL`.
+Either way `consolidated.md` ends in `VERDICT: PASS|CONDITIONAL|FAIL`.
 
 ### Step 5.7: Read the verdict
 
 Read the `VERDICT:` line from `${SESSION_PATH}/reviews/code-review/consolidated.md`.
-It is PASS, CONDITIONAL or FAIL, computed by the synthesizer against the reviewer's
-thresholds. This phase applies the verdict; it does not recompute it.
+It is PASS, CONDITIONAL or FAIL, computed against the reviewer's thresholds. This phase
+applies the verdict; it does not recompute it.
 
 ### Step 5.8: Review loop
 Review Loop (max code_review_limit iterations):
@@ -181,7 +200,7 @@ If CONDITIONAL or FAIL:
      and the SAME two STOP conditions. A regeneration that quietly falls back to
      a bare `git diff` reintroduces the bug this loop is fixing.
   c. Re-run Step 5.5 — the reviews
-  d. Re-run Step 5.6 — the synthesizer
+  d. Re-run Step 5.6 — the consolidation
   e. Re-read the verdict (Step 5.7)
   f. Iteration counter++
 

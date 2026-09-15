@@ -43,9 +43,9 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
 <critical_override>
   THIS COMMAND OVERRIDES THE CLAUDE.md TASK ROUTING TABLE FOR AGENT SELECTION.
 
-  WHY: The CLAUDE.md routing table maps "Debugging" to code-analysis:detective, but this
+  WHY: The CLAUDE.md routing table maps "Debugging" to code-search:analyze, but this
   command needs dev:debugger for root cause analysis and dev:developer for applying fixes.
-  code-analysis:detective is READ-ONLY and cannot write code or tests.
+  code-search:analyze is READ-ONLY and cannot write code or tests.
 
   AGENT RULES FOR THIS COMMAND:
   - Stack detection → dev:stack-detector agent (subagent_type: "dev:stack-detector")
@@ -53,12 +53,12 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
   - Writing tests and applying patches → dev:developer agent (subagent_type: "dev:developer")
   - Phase A vote, internal Claude (root-cause hypothesis) → dev:debugger with EVALUATE ONLY instruction, run_in_background: true
   - Phase B vote, internal Claude (patch quality) → dev:reviewer (subagent_type: "dev:reviewer"), foreground, handed the TARGET / FOCUS / OUTPUT / MODELS contract lines. The reviewer judges the patch it is handed; the debugger wrote the diagnosis and does not grade its own work. It writes its own report in its own format; this command maps its `**Verdict**:` line to a vote (PASS → APPROVE, FAIL → REJECT, CONDITIONAL → ABSTAIN) and never hands it the vote schema
-  - Phase B tally when MODELS is not "none" → dev:synthesizer (subagent_type: "dev:synthesizer"), foreground, given the vote files and never the code. At MODELS "none" there is one mapped vote and it is the tally — no synthesizer
+  - Phase B tally when MODELS is not "none" → dev:aggregator (subagent_type: "dev:aggregator"), foreground, given the vote files and never the code. At MODELS "none" there is one mapped vote and it is the tally — no aggregator
   - Multimodel vote (external models) → claudish MCP tools (team/create_session), run_in_background: true
   - Post-deploy monitoring → inline Bash
   - Validation → inline Bash (run tests directly)
 
-  DO NOT use code-analysis:detective (READ-ONLY — cannot apply fixes or write tests).
+  DO NOT use code-search:analyze (READ-ONLY — cannot apply fixes or write tests).
   DO NOT use dev:researcher (researches topics, does NOT debug code).
   DO NOT use dev:architect (plans architecture, does NOT debug or fix code).
 </critical_override>
@@ -126,7 +126,7 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
 
     <consensus_rules>
       Both gates tally the same way, and this block is the only statement of the
-      rule — Phase A, Phase B and the dev:synthesizer prompt quote it, never
+      rule — Phase A, Phase B and the dev:aggregator prompt quote it, never
       restate it. The panel is every voter the gate launched: the internal voter
       plus one slot per id in MODELS, so N = 1 when MODELS is "none" and
       N = 1 + (number of ids) otherwise. `--models` accepts any number of ids;
@@ -158,7 +158,7 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
     tally: only a STRONG with A = N proceeds, and a STRONG with any REJECT or
     ABSTAIN in it is handled as the gate's DIVERGENT case. The gate applies
     that over the counts. It sits outside <consensus_rules> on purpose: that
-    block is handed to the synthesizer verbatim, and the synthesizer is never
+    block is handed to the aggregator verbatim, and the aggregator is never
     told the mode.
   </critical_constraints>
 
@@ -215,6 +215,25 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
         Write the result into config.json as `"models": "none"` or `"models": "a,b"`
         (bare catalog ids, comma-separated, no provider prefix). With "none" each gate
         runs its internal voter alone and that verdict stands; nothing external launches.
+      </step>
+
+      <step name="run-record">
+        Write the run record and say it out loud, so a later audit can attribute every
+        gate call to this run (`${CLAUDE_PLUGIN_ROOT}/skills/core/team-gate/SKILL.md`,
+        "The run record"):
+        ```bash
+        cat > "${SESSION_PATH}/run.json" <<EOF
+        {"command": "/dev:fix", "depth": "production-grade",
+         "automation": "$( [ "$INTERACTIVE" = true ] && echo interactive || echo guided )",
+         "models": "${MODELS}", "skip_review": ${SKIP_REVIEW:-false},
+         "unanimous": ${UNANIMOUS:-false}, "started_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"}
+        EOF
+        ```
+        Then print one line: `Run: depth=production-grade automation=<a> models=<MODELS>`.
+        If SKIP_REVIEW=true, also append `gate skipped: fix-gate-A — --no-review` and
+        `gate skipped: fix-gate-B — --no-review` to `${SESSION_PATH}/gates.log` now; if
+        MODELS is "none" for any other reason, append `gate skipped: fix-gate-A — <reason>`
+        and the same for `fix-gate-B`, the reason being `claudish absent` or `MODELS none`.
       </step>
 
       <step>Mark PHASE 0 as completed</step>
@@ -419,7 +438,7 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
       <step name="large-codebase">
         **Large codebase path** (if Grep returns >50 hits across >10 distinct files):
         ```
-        mcp__plugin_code-analysis_ca__code_search({ query: "{error_signature}" })
+        mcp__plugin_code-search_ca__code_search({ query: "{error_signature}" })
         ```
         Append high-confidence results to the candidate list with confidence MEDIUM.
         They supplement, not replace, Strategy A/B results.
@@ -466,7 +485,7 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
       <step>Mark PHASE 2 as completed</step>
     </steps>
     <output>${SESSION_PATH}/localization.md</output>
-    <tools>Grep, Glob, Read (line-range), mcp__plugin_code-analysis_ca__code_search (if needed)</tools>
+    <tools>Grep, Glob, Read (line-range), mcp__plugin_code-search_ca__code_search (if needed)</tools>
     <estimated_duration>2-5 minutes</estimated_duration>
   </phase>
 
@@ -589,7 +608,11 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
             require_pattern="VERDICT:")
           ```
 
-          **`run` starts the panel and returns immediately — it does NOT return the reviews.** Poll `claudish team(mode="status", path=<same path>)` until no slot in `models` has `state === "RUNNING"`, then read each answer from `response-<slot>.md` in that directory. The `slots` map in the `run` response gives the model-name-to-slot-id mapping. Full procedure: `claudish:claudish-usage` → "The three-step lifecycle". Requires claudish >= 8.0.0.
+          **`run` starts the panel and returns immediately — it does NOT return the reviews, and `started` is not a result.** This is gate **fix-gate-A**, `MIN_BALLOTS` = N (every launched slot). Read `${CLAUDE_PLUGIN_ROOT}/skills/core/team-gate/SKILL.md` and follow its steps 2-5: poll `claudish team(mode="status", path=<same path>)` until no slot in `models` has `state === "RUNNING"`, then read each answer from `response-<slot>.md` in that directory. The `slots` map in the `run` response gives the model-name-to-slot-id mapping. A backgrounded call is unknown until polled. Requires claudish >= 8.0.0.
+
+          Pass `input_file` ONLY — never `input` beside it. The pair is rejected with
+          `Pass input_file or input, not both`; on that exact error retry once with
+          `input_file` alone. Any other error is a panel with 0 ballots.
 
           Do NOT pass `timeout` — it was removed from the schema and is silently
           ignored, so a leftover one reads as a deadline while enforcing nothing.
@@ -601,6 +624,16 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
         </step>
 
         <step>
+          Count ballots before parsing anything: a ballot is an external slot that
+          settled COMPLETED with a `VERDICT:` line. **Fewer ballots than `MIN_BALLOTS`
+          (here, every launched slot) is GATE NOT MET**: append
+          `gate not met: fix-gate-A — <ballots>/<N> ballots, minimum <N>; failed: <slot>=<reason>`
+          to `${SESSION_PATH}/gates.log`, do not tally, and stop with the team-gate
+          skill's three options (re-run the failed slots, proceed on the ballots in hand
+          with the override logged, stop). The ABSTAIN fault tolerance below is for
+          malformed votes inside a met gate; it is not a way to proceed past a slot that
+          never voted.
+
           After all background tasks complete, read results:
           - ${SESSION_PATH}/claude-vote-root-cause.md (written by dev:debugger via Bash)
           - External model votes from `${SESSION_PATH}/response-<slot>.md`, once
@@ -938,7 +971,11 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
           require_pattern="VERDICT:")
         ```
 
-        **`run` starts the panel and returns immediately — it does NOT return the reviews.** Poll `claudish team(mode="status", path=<same path>)` until no slot in `models` has `state === "RUNNING"`, then read each answer from `response-<slot>.md` in that directory. The `slots` map in the `run` response gives the model-name-to-slot-id mapping. Full procedure: `claudish:claudish-usage` → "The three-step lifecycle". Requires claudish >= 8.0.0.
+        **`run` starts the panel and returns immediately — it does NOT return the reviews, and `started` is not a result.** This is gate **fix-gate-B**, `MIN_BALLOTS` = N (every launched slot). Read `${CLAUDE_PLUGIN_ROOT}/skills/core/team-gate/SKILL.md` and follow its steps 2-5: poll `claudish team(mode="status", path=<same path>)` until no slot in `models` has `state === "RUNNING"`, then read each answer from `response-<slot>.md` in that directory. The `slots` map in the `run` response gives the model-name-to-slot-id mapping. A backgrounded call is unknown until polled. Requires claudish >= 8.0.0.
+
+        Pass `input_file` ONLY — never `input` beside it. The pair is rejected with
+        `Pass input_file or input, not both`; on that exact error retry once with
+        `input_file` alone. Any other error is a panel with 0 ballots.
 
         Do NOT pass `timeout` — it was removed from the schema and is silently ignored,
         so a leftover one reads as a deadline while enforcing nothing.
@@ -973,6 +1010,14 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
       </step>
 
       <step>
+        Count ballots before collecting anything: a ballot is an external slot that
+        settled COMPLETED with a `VERDICT:` line. **Fewer ballots than `MIN_BALLOTS`
+        (every launched slot) is GATE NOT MET**: append
+        `gate not met: fix-gate-B — <ballots>/<N> ballots, minimum <N>; failed: <slot>=<reason>`
+        to `${SESSION_PATH}/gates.log`, do not tally, and stop with the team-gate
+        skill's three options. With MODELS "none" no slot was launched, N = 0, and the
+        gate is met by the internal reviewer alone.
+
         Collect the votes:
         - ${SESSION_PATH}/claude-vote-patch.md (written by dev:reviewer via Bash) — the
           reviewer's own report ending in `**Verdict**: PASS | CONDITIONAL | FAIL`, not
@@ -1009,13 +1054,13 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
 
         **MODELS is "none"** — the single mapped vote is the tally. Apply the mapping
         and the fault tolerance below yourself; that vote is the verdict. Do not
-        dispatch dev:synthesizer — its output is a tally, and one vote needs none.
+        dispatch dev:aggregator — its output is a tally, and one vote needs none.
 
-        **MODELS names any model** — dispatch dev:synthesizer, foreground, with every vote
+        **MODELS names any model** — dispatch dev:aggregator, foreground, with every vote
         path. It is given votes, never the code, and it does not review:
         ```
         Agent(
-          subagent_type: "dev:synthesizer",
+          subagent_type: "dev:aggregator",
           run_in_background: false,
           description: "Consolidate patch votes",
           prompt: "SESSION_PATH: ${SESSION_PATH}
@@ -1058,7 +1103,7 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
 
       <step>
         Tally per <consensus_rules> — the counts A-R-X against the resolved N; the
-        synthesizer's `VERDICT:` line is that word when it ran — then act on it:
+        aggregator's `VERDICT:` line is that word when it ran — then act on it:
         - STRONG → proceed to DOCUMENT (under --unanimous only when A = N; any
           other STRONG is handled as DIVERGENT)
         - REJECT + any REGRESSION_RISK:HIGH → block commit → AskUserQuestion:
@@ -1082,7 +1127,7 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
         Write ${SESSION_PATH}/patch-review.md with:
         - All vote file contents
         - Parsed verdicts table (Model | Verdict | Confidence | REGRESSION_RISK | PATCH_SCOPE_ASSESSMENT)
-          — taken from patch-consolidated.md when the synthesizer ran; the internal
+          — taken from patch-consolidated.md when the aggregator ran; the internal
           row shows the mapped vote with the reviewer's verdict in parentheses
         - The tally `A-R-X`, N, the <consensus_rules> row it matched, and MODELS as resolved
         - Action taken (PROCEED | BLOCK | NARROW_AND_REVOTE | MANUAL_DECISION)
@@ -1321,8 +1366,9 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
   | Phase B re-vote still REJECT | AskUserQuestion with full evidence; user decides |
   | Monitoring FAIL (error count increases) | Alert immediately; provide: `git revert {commit_hash}` |
   | Monitoring TIMEOUT after 9 polls | Document; user decides whether to continue watching |
-  | claudish exit non-zero (external model) | Treat model as ABSTAIN with CONFIDENCE=0; note in review file; consensus proceeds with remaining votes |
-  | claudish absent, or MODELS resolves to "none" | Each gate runs its internal voter alone and that verdict stands; no `team` call, no dev:synthesizer dispatch; record MODELS "none" in the review file |
+  | External slot FAILED, EMPTY, or still RUNNING at the poll ceiling | It is not a ballot. Both gates set `MIN_BALLOTS` = every launched slot, so one missing ballot is GATE NOT MET: `gate not met:` line in `gates.log`, no tally, AskUserQuestion with re-run / proceed-with-override / stop. ABSTAIN with CONFIDENCE=0 applies only to a malformed vote inside a met gate |
+  | `team` tool_result is_error "Pass input_file or input, not both" | Retry once with `input_file` alone; a second failure is a panel with 0 ballots, which is GATE NOT MET |
+  | claudish absent, or MODELS resolves to "none" | Each gate runs its internal voter alone and that verdict stands; no `team` call, no dev:aggregator dispatch; record MODELS "none" in the review file and `gate skipped: fix-gate-A — <reason>` / `fix-gate-B` in `gates.log` |
   | `--models` names an id the catalog does not carry | Stop in Phase 0; show the id and the live alternatives from `list_models`; never substitute a near match or a lower version |
   | Internal Phase B report missing, or without a `**Verdict**:` line | ABSTAIN with CONFIDENCE=0 — never counted as agreement; with MODELS "none" that is DIVERGENT → AskUserQuestion |
   | Internal Phase B verdict CONDITIONAL | Maps to ABSTAIN; with MODELS "none" that is DIVERGENT → AskUserQuestion with the report's findings |
@@ -1361,7 +1407,7 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
         Downgrade offer: "All checks pass cleanly. Skip Phase B + monitoring?"
         User: "Full review + monitoring [RECOMMENDED]"
       PHASE 6 (REVIEW-B): team(run) launched for MODELS, then dev:reviewer foreground on
-        TARGET patch.diff, writing its own report (Verdict: PASS); dev:synthesizer maps
+        TARGET patch.diff, writing its own report (Verdict: PASS); dev:aggregator maps
         that to APPROVE and tallies the three files:
         | Model        | Verdict        | Confidence | REGRESSION_RISK | PATCH_SCOPE |
         | dev:reviewer | APPROVE (PASS) | —          | —               | —           |
@@ -1460,6 +1506,9 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
 - Phase A (root cause): {STRONG | REJECT | DIVERGENT} ({A-R-X}, N={N}) | SKIPPED
 - Phase B (patch quality): {STRONG | REJECT | DIVERGENT} ({A-R-X}, N={N}) | SKIPPED
 - REGRESSION_RISK: {HIGH|MEDIUM|LOW | N/A}
+
+**Gates** (`${SESSION_PATH}/gates.log`, verbatim):
+{every line of gates.log — `gate skipped: …`, `gate not met: …`, `gate override: …` — or the one line `no gate skipped, no gate below minimum`}
 
 **Monitoring**: {VERIFIED (Sentry/CloudWatch) | SKIPPED (no env vars) | TIMEOUT | FAIL}
 

@@ -21,7 +21,7 @@ reads how you asked and routes accordingly.
 | Scope | What it looks for | Reaches |
 |---|---|---|
 | **Code quality** | correctness, patterns, maintainability | `dev:reviewer` |
-| **UI / design** | implementation against a design spec | `designer:design-review`, or `dev:reviewer` if the designer plugin is not installed |
+| **UI / design** | implementation against a design spec | `designer:review`, or `dev:reviewer` if the designer plugin is not installed |
 | **Design system** | token-only styling, one component library, variants over call-site restyling | the `/dev:design-system` command |
 | **Documentation** | accuracy, completeness, clarity | `dev:docs` |
 | **Security** | OWASP Top 10, auth bypass, injection, exposed data | `dev:reviewer` |
@@ -46,7 +46,7 @@ designer plugin — you can name external models:
 ```
 
 The internal reviewer always runs. Externals are additive: each named model runs the
-same review brief through claudish, and `dev:synthesizer` merges every review —
+same review brief through claudish, and `dev:aggregator` merges every review —
 internal and external — into one consolidated report, with a consensus level
 (unanimous, strong, majority, divergent) on every finding and a verdict computed
 from the merged counts.
@@ -63,20 +63,20 @@ Two things to know:
 
 Every scope except design system ends the same way, whichever specialist it
 reached. The specialist writes its review into a run directory under
-`ai-docs/sessions/`, and `dev:synthesizer` writes the one file the command relays
+`ai-docs/sessions/`, and `dev:aggregator` writes the one file the command relays
 to you: the findings, then a closing `VERDICT:` line. That is the shape on every
 route — code, security, plugin, UI with or without the designer plugin, and
 documentation — so you never need to know which agent did the reading. The
 individual reviews stay beside the report as the evidence behind it.
 
-With exactly one review, the synthesizer passes it through unchanged and appends
+With exactly one review, the aggregator passes it through unchanged and appends
 the verdict line. No consensus levels, because there is nothing to agree or
 disagree with. That is always the case for the UI-with-designer and documentation
 scopes, which take no `--models`, and for any other scope run without it.
 
 The verdict is in the specialist's own vocabulary. A design review or a
 documentation review is judged on its own reviewer's scale, not the code
-reviewer's; the synthesizer computes the word from the review's own measure and
+reviewer's; the aggregator computes the word from the review's own measure and
 never substitutes one scale for another.
 
 For the scopes that reach `dev:reviewer`, findings carry a severity — **CRITICAL**,
@@ -90,7 +90,7 @@ interchangeable.
 | You want | Use | Why |
 |---|---|---|
 | A scoped review of specific code, routed to a specialist | `/dev:audit` | One reviewer, one scope, structured findings |
-| A whole-codebase health assessment | `code-analysis:deep-analysis` | Seven dimensions, centrality-driven, finds what you did not know to ask about |
+| A whole-codebase health assessment | `code-search:deep-analysis` | Seven dimensions, centrality-driven, finds what you did not know to ask about |
 | Independent opinions on one question | `/multimodel:team` | Several models vote separately; disagreement is the signal |
 | Review of a pull request diff | the built-in `/code-review` | `/dev:audit` deliberately leaves PR diff review to the host |
 

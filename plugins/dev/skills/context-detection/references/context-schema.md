@@ -215,9 +215,8 @@ Three rules the validator enforces:
 2. **No empty entries.** An agent with nothing to read is omitted from the object entirely.
    An empty entry is noise a consumer has to filter, and a consumer that has to filter will
    eventually filter wrongly.
-3. **`scribe`, `synthesizer` and `stack-detector` never get an entry.** `scribe` is a file
-   writer, `synthesizer` consolidates other agents' output, and `stack-detector` produces
-   the loadouts. This is stated so a future reader does not read the omission as an
+3. **`aggregator` and `stack-detector` never get an entry.** `aggregator` consolidates
+   other agents' output, and `stack-detector` produces the loadouts. This is stated so a future reader does not read the omission as an
    oversight. Every other key must name a real agent.
 
 ## Paths — what an emitted path may look like
@@ -360,10 +359,10 @@ account settings page."* Repo: React + Go fullstack.
     "servers": [
       {
         "name": "ca",
-        "owner": "code-analysis",
+        "owner": "code-search",
         "scope": "plugin",
         "status": "connected",
-        "usage": "/home/u/.claude/plugins/cache/magus/code-analysis/7.1.0/skills/code-search/SKILL.md"
+        "usage": "/home/u/.claude/plugins/cache/magus/code-search/7.1.0/skills/search/SKILL.md"
       },
       {
         "name": "tmux",
@@ -416,7 +415,7 @@ account settings page."* Repo: React + Go fullstack.
       "mcp": [],
       "note": "browser-use is not configured; no browser validation available this session"
     },
-    "test-architect": {
+    "qa-engineer": {
       "read": [
         "${CLAUDE_PLUGIN_ROOT}/skills/core/testing-strategies/SKILL.md",
         "/home/u/.claude/plugins/cache/magus/go/0.1.2/knowledge/roles/tester/best-practices.md"
@@ -438,8 +437,8 @@ account settings page."* Repo: React + Go fullstack.
 }
 ```
 
-Note what the example does **not** do. It lists five agents, not thirteen. `debugger`,
-`docs`, `devops`, `researcher`, `spec-writer`, `scribe`, `synthesizer` and `stack-detector`
+Note what the example does **not** do. It lists five agents, not twelve. `debugger`,
+`docs`, `devops`, `researcher`, `spec-writer`, `aggregator` and `stack-detector`
 are all absent because this task dispatches none of them.
 
 ---

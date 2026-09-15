@@ -132,7 +132,8 @@ provenance, and emits a receipt — **print that receipt verbatim.** Exit `3` me
 nothing survived; `0` means proceed with what it selected.
 
 Doing this in your head is what the rest of this section explains. That is the fallback for
-paths the resolver does not cover, and for installs where `multimodel` is not present. Measured over 30 benchmark runs, prose alone produced
+paths the resolver does not cover, and for consumers that depend on claudish without
+`multimodel` installed beside it. Measured over 30 benchmark runs, prose alone produced
 the disclosure at best 14/15 times; the resolver produces it every time, because it is code.
 
 ### Verify every field of the preferences file
@@ -514,14 +515,14 @@ or `input` argument. There is no size at which shelling out becomes correct.
 
 | Task Type | Recommended Agent | Alternatives | Notes |
 |-----------|----------------------|--------------|-------|
-| **Investigation** | `dev:researcher` | `code-analysis:detective` | For finding bugs, tracing issues |
+| **Investigation** | `dev:researcher` | `code-search:analyze` | For finding bugs, tracing issues |
 | **Code review** | `dev:reviewer` | — | Security, correctness, maintainability passes |
 | **Architecture** | `dev:architect` | — | Design and planning tasks |
 | **Implementation** | `dev:developer` | — | Building features |
-| **Testing** | `dev:test-architect` | — | Test strategy and coverage |
+| **Testing** | `dev:qa-engineer` | — | Test strategy and coverage |
 | **Debugging** | `dev:debugger` | — | Error analysis and tracing |
 | **Documentation** | `dev:docs` | `dev:researcher` | Writing or auditing documentation |
-| **UI/Design** | `dev:frontend` | `designer` plugin | Visual and UX tasks |
+| **UI/Design** | `dev:frontend-developer` | `designer` plugin | Visual and UX tasks |
 
 ### Step 3: Agent Creation Offer (When No Agent Exists)
 
@@ -549,14 +550,14 @@ Which would you prefer?
 - `typescript-frontend-dev` - Use for UI implementation with external models
 - `frontend-architect` - Use for architecture planning with external models
 - `senior-code-reviewer` - Use for code review (can delegate to external models)
-- `test-architect` - Use for test planning/implementation
+- `qa-engineer` - Use for test planning/implementation
 
 **Bun Backend Plugin:**
 - `backend-developer` - Use for API implementation with external models
 - `api-architect` - Use for API design with external models
 
-**Code Analysis Plugin:**
-- `codebase-detective` - Use for investigation tasks with external models
+**Code Search Plugin:**
+- `code-search:analyze` - Use for investigation tasks with external models
 
 **No Plugin:**
 - `general-purpose` - Default fallback for any task
@@ -596,7 +597,7 @@ Task: Refactoring (component)
 Decision:
 1. Resolve "gemini" via search_models("gemini")
 2. No specialised refactoring agent exists → offer to create one
-3. User declines → agent="dev:frontend", else "general-purpose"
+3. User declines → agent="dev:frontend-developer", else "general-purpose"
 4. create_session(model=<resolved id>, prompt=TASK, agent=<chosen>, work_dir=REPO)
 ```
 

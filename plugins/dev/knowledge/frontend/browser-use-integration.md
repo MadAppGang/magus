@@ -1,5 +1,5 @@
 ---
-description: Detects the browser-use@magus plugin and runs headless browser automation for frontend workflows. Use when dev:frontend or dev:browser-debugging needs navigation, clicking, or web scraping.
+description: Detects the browser-use@magus plugin and runs headless browser automation for frontend workflows. Use when dev:frontend-developer or dev:browser-debugging needs navigation, clicking, or web scraping.
 ---
 
 # Browser-Use Plugin Integration (dev)
@@ -36,7 +36,7 @@ browser_use_available = try mcp__browser-use__browser_list_sessions()
 
 | dev Component | Without browser-use | With browser-use |
 |--------------|---------------------|------------------|
-| `dev:frontend` agent | Manual Gemini screenshots or claude-in-chrome | Automated `browser_navigate` + `browser_screenshot` |
+| `dev:frontend-developer` agent | Manual Gemini screenshots or claude-in-chrome | Automated `browser_navigate` + `browser_screenshot` |
 | `dev:browser-debugging` skill | claude-in-chrome only (DevTools access) | Hybrid mode: browser-use for screenshots, claude-in-chrome for console/network |
 | UI implementation validation | Describe + check manually | Automated screenshot + Gemini vision analysis |
 | Full-page screenshots | Not supported in claude-in-chrome | `browser_screenshot(full_page=True)` |

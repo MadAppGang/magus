@@ -228,7 +228,7 @@ Backend:
 - **multimodel@magus** - Team voting and multi-model review skills
 
 **Optional:**
-- **code-analysis@magus** - Semantic code search and structural analysis for better context
+- **code-search@magus** - Semantic code search and structural analysis for better context
 
 ### Multi-Model Validation
 

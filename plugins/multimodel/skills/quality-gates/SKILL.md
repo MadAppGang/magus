@@ -467,7 +467,7 @@ Step 5: Extract Structured Feedback
     Severity: LOW
 
 Step 6: Launch Fixing Agent
-  Agent: dev:frontend
+  Agent: dev:frontend-developer
     Prompt: "Fix user-reported issues:
 
              1. Button color: Change from #10B981 to #2563EB
@@ -534,7 +534,7 @@ Phase 4: User Acceptance
 
 ```
 Step 1: Write Tests First
-  Agent: dev:test-architect
+  Agent: dev:qa-engineer
     Prompt: "Write comprehensive tests for authentication feature.
              Requirements: [link to requirements]
              Implementation: [link to code]"
@@ -553,7 +553,7 @@ Step 3: Check Test Results
     → Analyze failure (continue to Step 4)
 
 Step 4: Analyze Test Failure
-  Agent: dev:test-architect
+  Agent: dev:qa-engineer
     Prompt: "Analyze test failure output:
 
              [test failure logs]
@@ -564,13 +564,13 @@ Step 4: Analyze Test Failure
 
              Provide detailed analysis."
 
-  test-architect returns:
+  qa-engineer returns:
     verdict: TEST_ISSUE | IMPLEMENTATION_ISSUE
     analysis: Detailed explanation
     recommendation: Specific fix needed
 
 Step 5a: If TEST_ISSUE (test is wrong)
-  Agent: dev:test-architect
+  Agent: dev:qa-engineer
     Prompt: "Fix test based on analysis:
              [analysis from Step 4]"
 
@@ -588,7 +588,7 @@ Step 5b: If IMPLEMENTATION_ISSUE (code is wrong)
              [failure output]
 
              Root Cause:
-             [analysis from test-architect]
+             [analysis from qa-engineer]
 
              Recommended Fix:
              [specific fix needed]"
@@ -651,7 +651,7 @@ Benefits:
 Benefits:
 
 1. Catch bugs early (before code review, not after)
-2. Ensure test quality (test-architect fixes bad tests)
+2. Ensure test quality (qa-engineer fixes bad tests)
 3. Automated quality assurance (no manual testing needed)
 4. Fast feedback loop (seconds to run tests, not minutes)
 5. Confidence in implementation (all tests passing)
@@ -795,7 +795,7 @@ Step 3c: User says CANCEL
 
 ```
 Iteration 1:
-  Agent: designer:design-review
+  Agent: designer:review
     Prompt: "Validate navbar against Figma design"
     Output: ai-docs/design-review-1.md
     Assessment: NEEDS IMPROVEMENT
@@ -803,28 +803,28 @@ Iteration 1:
       - Button color: #3B82F6 (expected #2563EB)
       - Spacing: 8px (expected 16px)
 
-  Agent: dev:frontend
+  Agent: dev:frontend-developer
     Prompt: "Fix issues from ai-docs/design-review-1.md"
     Changes: Updated button color, increased spacing
 
   Result: Continue to Iteration 2
 
 Iteration 2:
-  Agent: designer:design-review
+  Agent: designer:review
     Prompt: "Re-validate navbar"
     Output: ai-docs/design-review-2.md
     Assessment: NEEDS IMPROVEMENT
     Issues:
       - Border radius: 8px (expected 4px)
 
-  Agent: dev:frontend
+  Agent: dev:frontend-developer
     Prompt: "Fix border radius issue"
     Changes: Reduced border radius to 4px
 
   Result: Continue to Iteration 3
 
 Iteration 3:
-  Agent: designer:design-review
+  Agent: designer:review
     Prompt: "Re-validate navbar"
     Output: ai-docs/design-review-3.md
     Assessment: PASS ✓
@@ -851,14 +851,14 @@ Summary:
 Phase 2.5: Test-Driven Development Loop
 
 Iteration 1:
-  Agent: dev:test-architect
+  Agent: dev:qa-engineer
     Prompt: "Write tests for authentication feature"
     Output: tests/auth.test.ts (20 tests)
 
   Bash: bun test tests/auth.test.ts
     Result: 5 failed, 15 passed
 
-  Agent: dev:test-architect
+  Agent: dev:qa-engineer
     Prompt: "Analyze test failures"
     Verdict: IMPLEMENTATION_ISSUE
     Analysis: "Missing JWT expiration validation"
@@ -874,12 +874,12 @@ Iteration 2:
   Bash: bun test tests/auth.test.ts
     Result: 2 failed, 18 passed
 
-  Agent: dev:test-architect
+  Agent: dev:qa-engineer
     Prompt: "Analyze test failures"
     Verdict: TEST_ISSUE
     Analysis: "Mock database not reset between tests"
 
-  Agent: dev:test-architect
+  Agent: dev:qa-engineer
     Prompt: "Fix test setup"
     Changes: Added beforeEach cleanup
 

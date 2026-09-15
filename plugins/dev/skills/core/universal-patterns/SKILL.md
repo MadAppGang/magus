@@ -360,7 +360,7 @@ ls "${CLAUDE_PLUGIN_ROOT}/../go/knowledge/roles" 2>/dev/null \
 
 Apply this Go knowledge in preference to the generic patterns above. The role names
 map to dev agents: developer→`dev:developer`, architect→`dev:architect`,
-tester→`dev:test-architect`, code-reviewer→`dev:reviewer`.
+tester→`dev:qa-engineer`, code-reviewer→`dev:reviewer`.
 
 **If NOT found** and the task is Go-heavy, tell the user once, then proceed with the
 generic patterns:

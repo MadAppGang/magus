@@ -1183,7 +1183,7 @@ console.log(`Intent: ${detectedIntent} (confidence: ${maxScore})`);
 const agentMap = {
   'ui-design': 'designer',
   'backend': 'backend-developer',
-  'testing': 'test-architect',
+  'testing': 'qa-engineer',
   'devops': 'devops-engineer',
   'review': 'code-reviewer'
 };

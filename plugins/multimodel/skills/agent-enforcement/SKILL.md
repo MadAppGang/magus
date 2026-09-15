@@ -38,7 +38,7 @@ The PreToolUse hook intercepts Task and Bash tool calls at runtime:
 
 Detects /team workflows by vote template pattern in Task prompts. Blocks:
 
-- **Wrong agent for /team Tasks:** Only agents in the whitelist are allowed: `dev:researcher`, `dev:debugger`, `dev:developer`, `dev:architect`, `dev:test-architect`, `dev:devops`, `dev:frontend`
+- **Wrong agent for /team Tasks:** Only agents in the whitelist are allowed: `dev:researcher`, `dev:debugger`, `dev:developer`, `dev:architect`, `dev:qa-engineer`, `dev:devops`, `dev:frontend-developer`
 - **Insecure paths:** No `/tmp/` paths in Task prompts (use `ai-docs/sessions/`)
 
 ### Layer 2: model: opus
@@ -54,9 +54,9 @@ much more reliably than Sonnet (~90% vs ~33% compliance).
 | Review | dev:reviewer | — |
 | Architecture | dev:architect | — |
 | Implementation | dev:developer | — |
-| Testing | dev:test-architect | — |
+| Testing | dev:qa-engineer | — |
 | DevOps | dev:devops | — |
-| UI/Design | dev:frontend | — |
+| UI/Design | dev:frontend-developer | — |
 
 ## Agent Resolution
 

@@ -248,7 +248,7 @@ from `list_models` using the criterion below — always current, never hardcoded
 | coding | implement, build, create, code, develop | Fast variants, tools-capable | dev:developer |
 | review | review, audit, check, validate, verify | flagships from 3+ distinct providers | dev:researcher |
 | architecture | architecture, design, plan, system, refactor | most capable / reasoning | dev:architect |
-| testing | test, coverage, unit test, integration, e2e | Fast variants, tools-capable | dev:test-architect |
+| testing | test, coverage, unit test, integration, e2e | Fast variants, tools-capable | dev:qa-engineer |
 
 **Preferences** (`.claude/multimodel-team.json`): `defaultModels[]`, `defaultThreshold`,
 `contextPreferences{context:[models]}`, `agentPreferences{context:"agent"}`. All fields optional.

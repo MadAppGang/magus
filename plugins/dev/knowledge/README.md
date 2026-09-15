@@ -72,7 +72,7 @@ The design-system rules are **not** here. They are a skill —
 every frontend task and you can fail them.
 
 There is no `design/` category. The `designer@magus` presence check is not knowledge: it
-lives in `dev:frontend` and `/dev:audit`, the two places that act on the answer, and the
+lives in `dev:frontend-developer` and `/dev:audit`, the two places that act on the answer, and the
 skill that once carried it was deleted in dev 6.1.0.
 
 ### `discipline/`
@@ -81,6 +81,22 @@ skill that once carried it was deleted in dev 6.1.0.
 |---|---|
 | `task-management.md` | Tracking phases in text, since current models have no task-list tools |
 | `task-management/agent-coordination.md` | Splitting work across parallel agents rather than sequential phases |
+
+### `devops/` — routed by `dev:devops`; gated by the target platform, never all at once
+
+| File | Answers |
+|---|---|
+| `aws.md` | aws CLI (ECS, ECR, Lambda, S3, CloudFront), CDK patterns, a worked ECS Fargate deployment |
+| `azure.md` | az CLI (AKS, Container Apps, ACR, Functions) and which runtime fits which workload |
+| `cost.md` | Estimating monthly cost by compute / storage / network / managed services, calculator links, a worked AWS optimisation pass |
+| `environments.md` | dev / staging / production sizing and the configuration mechanism per IaC tool |
+| `firebase.md` | firebase CLI (hosting, functions, Firestore, preview channels), a worked multi-environment hosting setup |
+| `gcp.md` | gcloud CLI (GKE, Cloud Run, Artifact Registry, Cloud Functions) and which runtime fits which workload |
+| `iac.md` | Terraform / Pulumi / CDK / CloudFormation compared, the pick rules, the skeletons emitted beside every CLI proposal |
+| `kubernetes.md` | kubectl / helm / kustomize reference and a worked ingress-with-TLS example |
+
+`devops/` has no `skills/` counterpart on purpose: the agent that reads it is a router, and
+the provider detail was inline agent text before it moved here.
 
 ### Top level
 

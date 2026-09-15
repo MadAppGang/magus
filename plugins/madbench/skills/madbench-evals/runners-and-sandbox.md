@@ -431,12 +431,12 @@ harness_config:
 ```yaml
 harness_config:
   marketplace: ../../..                               # the checkout, named once
-  plugins: [code-analysis, claudish]                  # plugin NAMES — the short form
+  plugins: [code-search, claudish]                  # plugin NAMES — the short form
 ```
 
 Both spellings stage the same registry and a bench may mix them: an entry is either a plugin
 name or the full mapping, and `marketplace:` beside `plugins:` is the checkout every name
-falls back to. The short form is not sugar — both halves of `code-analysis@magus` are facts
+falls back to. The short form is not sugar — both halves of `code-search@magus` are facts
 of the checkout's own `marketplace.json` (`docs/harness.md:911-934`).
 
 Stages plugin folders into the run's `~/.claude` as an installed, **user-scoped, enabled**

@@ -1,7 +1,7 @@
 ---
 name: dev
 description: "Builds a feature through an 8-phase workflow, delegating each phase to a specialist agent. Depth picks how many phases run, automation how often it stops to ask."
-allowed-tools: Agent, AskUserQuestion, Bash, Read, EnterPlanMode, ExitPlanMode, Glob, Grep, mcp__chrome-devtools__navigate_page, mcp__chrome-devtools__take_screenshot, mcp__chrome-devtools__take_snapshot, mcp__chrome-devtools__click, mcp__chrome-devtools__fill, mcp__chrome-devtools__new_page, mcp__chrome-devtools__select_page, mcp__chrome-devtools__list_pages
+allowed-tools: Agent, AskUserQuestion, Bash, Read, EnterPlanMode, ExitPlanMode, Glob, Grep, mcp__plugin_claudish_claudish__team, mcp__plugin_claudish_claudish__list_models, mcp__plugin_claudish_claudish__search_models, mcp__plugin_claudish_claudish__create_session, mcp__plugin_claudish_claudish__get_output, mcp__plugin_claudish_claudish__get_diagnostics, mcp__chrome-devtools__navigate_page, mcp__chrome-devtools__take_screenshot, mcp__chrome-devtools__take_snapshot, mcp__chrome-devtools__click, mcp__chrome-devtools__fill, mcp__chrome-devtools__new_page, mcp__chrome-devtools__select_page, mcp__chrome-devtools__list_pages
 skills: dev:context-detection, dev:universal-patterns, dev:worktree-lifecycle, multimodel:multi-model-validation, multimodel:quality-gates, multimodel:model-tracking-protocol
 ---
 
@@ -130,7 +130,7 @@ skills: dev:context-detection, dev:universal-patterns, dev:worktree-lifecycle, m
 
   WHY: This workflow uses DIFFERENT agents for each phase. The CLAUDE.md routing
   table would incorrectly substitute agents (e.g., dev:architect for implementation,
-  code-analysis:detective for debugging). Each phase MUST use its designated agent.
+  code-search:analyze for debugging). Each phase MUST use its designated agent.
 
   AGENT RULES FOR THIS COMMAND:
   - Stack detection → dev:stack-detector agent (subagent_type: "dev:stack-detector")
@@ -138,17 +138,17 @@ skills: dev:context-detection, dev:universal-patterns, dev:worktree-lifecycle, m
   - Plan review (external models via claudish) → dev:architect agent
   - Implementation → dev:developer agent (subagent_type: "dev:developer")
   - Code review (external models via claudish) → dev:architect agent
-  - Test creation → dev:test-architect agent (subagent_type: "dev:test-architect")
+  - Test creation → dev:qa-engineer agent (subagent_type: "dev:qa-engineer")
   - Real validation → Orchestrator (Chrome MCP tools directly)
 
   DO NOT substitute agents across phases. Each phase has specific agent requirements.
-  DO NOT use code-analysis:detective for any phase (READ-ONLY, cannot write code).
+  DO NOT use code-search:analyze for any phase (READ-ONLY, cannot write code).
   DO NOT use dev:researcher for any phase (research only, not in this workflow).
 
   PRECEDENCE WHILE PLAN MODE IS ACTIVE: the agent rules above still name WHICH
   agent runs each phase, but none of them may write. Delegate read-only work only
   — dev:architect and dev:stack-detector explore and report; dev:developer and
-  dev:test-architect do not run at all until after ExitPlanMode. This resolves the
+  dev:qa-engineer do not run at all until after ExitPlanMode. This resolves the
   conflict rather than leaving both instruction sets reading as absolute.
 </critical_override>
 
@@ -320,6 +320,21 @@ skills: dev:context-detection, dev:universal-patterns, dev:worktree-lifecycle, m
     ```
 
     All subsequent phase logic checks these values to decide what to run and when to ask.
+
+    **Write the run record the moment SESSION_PATH exists** (Phase 0 creates it; under
+    plan mode that is after ExitPlanMode) and before Phase 1 starts
+    (`${CLAUDE_PLUGIN_ROOT}/skills/core/team-gate/SKILL.md`, "The run record"):
+    ```bash
+    cat > "${SESSION_PATH}/run.json" <<EOF
+    {"command": "/dev:dev", "depth": "${DEPTH}", "automation": "${AUTOMATION}",
+     "models": null, "started_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"}
+    EOF
+    ```
+    Then print one line into the transcript: `Run: depth=<depth> automation=<automation>
+    models=pending`. `models` is null until Phase 1 Step 1f resolves the panel; the
+    `<model_selection>` block below says how the record is completed. A run that never
+    printed this line cannot be audited, and the 2026-09-12 transcript audit found none
+    that had.
   </scope_selection>
 
   <critical_constraints>
@@ -449,7 +464,9 @@ skills: dev:context-detection, dev:universal-patterns, dev:worktree-lifecycle, m
       - Plan review: architect agent (external models via claudish)
       - Implementation: developer agent
       - Code review: reviewer/architect agent (external models via claudish)
-      - Test creation: test-architect agent (NEVER external)
+      - Test creation: qa-engineer agent, blind — the writer sees only the spec and
+        contract sandbox; an external GPT top-tier writer via claudish when one resolves,
+        else dev:qa-engineer in its own context (the `/dev:qa` route, Phase 6)
       - Test execution: Bash
       - Real validation: Orchestrator (Chrome MCP tools)
     </delegation_rules>
@@ -720,6 +737,16 @@ skills: dev:context-detection, dev:universal-patterns, dev:worktree-lifecycle, m
     **Selection happens ONCE in Phase 1 Step 1f (upfront)**
     Models are stored in iteration-config.json and reused in Phases 3 and 5.
 
+    **Complete the run record right after Step 1f.** Rewrite `models` in
+    `${SESSION_PATH}/run.json` with the resolved ids (an empty array when the review is
+    internal-only) and print the line again in full:
+    `Run: depth=<depth> automation=<automation> models=<id>,<id>` — or `models=none`.
+    When the list is empty, also append `gate skipped: plan-review — <reason>` and
+    `gate skipped: code-review — <reason>` to `${SESSION_PATH}/gates.log` now, the
+    reason being `MODELS none`, `claudish absent`, or `preset review_models empty`.
+    Standard depth runs no panel at all: append the same two lines with reason
+    `depth standard` at scope selection, so the completion message can say so.
+
     **Model Discovery:**
     - Resolve a review team via `claudish:claudish-usage` → Model Alias Resolution (`list_models`)
     - Name a family (e.g. grok, gemini, gpt) and resolve it via `list_models`
@@ -784,9 +811,9 @@ skills: dev:context-detection, dev:universal-patterns, dev:worktree-lifecycle, m
   </infinite_mode_safeguards>
 
   <file_access_restriction>
-    **For test-architect agent ONLY:**
+    **For qa-engineer agent ONLY:**
 
-    The test-architect agent prompt MUST NOT include:
+    The qa-engineer agent prompt MUST NOT include:
     - File paths to implementation files
     - Source code snippets
     - Internal function names
@@ -1203,6 +1230,10 @@ skills: dev:context-detection, dev:universal-patterns, dev:worktree-lifecycle, m
 - [x] **Real Validation** ({validation_status})
 - [x] Report generated
 {/If}
+
+**Run**: depth={depth} automation={automation} models={ids or none}
+**Gates** (`${SESSION_PATH}/gates.log`, verbatim):
+{every line of gates.log — `gate skipped: …`, `gate not met: …`, `gate override: …` — or the one line `no gate skipped, no gate below minimum`}
 
 {If full depth}
 **Real Validation Results**:

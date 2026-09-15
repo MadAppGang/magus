@@ -197,8 +197,8 @@ mcp__plugin_<plugin-id>_<server-key>__<tool-name>
 - `<tool-name>` - Descriptive snake_case tool name
 
 **The full name has a 64-character ceiling**, so a long server key is paid on every tool
-forever. `code-analysis` picked the key `ca` for exactly this reason: `ca` leaves 34
-characters for tool names where `code-analysis` would leave 23.
+forever. `code-search` picked the key `ca` for exactly this reason: `ca` leaves 34
+characters for tool names where `code-search` would leave 23.
 
 ### Real-World Examples
 
@@ -209,8 +209,8 @@ characters for tool names where `code-analysis` would leave 23.
 "mcp__frontend__lighthouse_audit"      // Run Lighthouse audit
 
 // Code Analysis Plugin (plugin-hosted, server key "ca")
-"mcp__plugin_code-analysis_ca__code_search"       // Search the codebase
-"mcp__plugin_code-analysis_ca__find_dependents"   // Callers of a symbol
+"mcp__plugin_code-search_ca__code_search"       // Search the codebase
+"mcp__plugin_code-search_ca__find_dependents"   // Callers of a symbol
 
 // Bun Backend Plugin
 "mcp__bun__apidog_sync"                // Sync with Apidog

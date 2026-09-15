@@ -630,11 +630,11 @@ Optimize bundle size and verify test coverage remains above 80%
 Locate the code that actually runs hot before optimizing it:
 
 ```
-Use mcp__plugin_code-analysis_ca__code_search to find the request-handling hot path,
+Use mcp__plugin_code-search_ca__code_search to find the request-handling hot path,
 then identify performance bottlenecks in it
 ```
 
-Once you have a symbol, `mcp__plugin_code-analysis_ca__call_tree` shows what it pulls in
+Once you have a symbol, `mcp__plugin_code-search_ca__call_tree` shows what it pulls in
 transitively — usually where the cost is, rather than in the function you started from.
 
 ## Best Practices

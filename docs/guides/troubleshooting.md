@@ -22,7 +22,7 @@ Your `.claude/settings.json` must use **object format**, not array format:
 {
   "enabledPlugins": {
     "dev@magus": true,
-    "code-analysis@magus": true
+    "code-search@magus": true
   }
 }
 ```
@@ -32,7 +32,7 @@ Your `.claude/settings.json` must use **object format**, not array format:
 {
   "enabledPlugins": [
     "dev@magus",
-    "code-analysis@magus"
+    "code-search@magus"
   ]
 }
 ```

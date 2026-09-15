@@ -398,25 +398,24 @@ The ui agent will check for style in this order:
 ### Review with Specific Reference
 
 ```
-Agent: designer:ui
-Review this dashboard screenshot against Material Design 3 guidelines.
-
+Agent: designer:review
+IMPL_SOURCE: screenshots/dashboard.png
+REVIEW_SCOPE: comprehensive
 Design Reference: material-3
-
-Image: screenshots/dashboard.png
-
-Write review to: ${SESSION_PATH}/reviews/design-review/gemini.md
-(Verify via the channel `completed`/`failed` events and `get_output`, then confirm the
-file exists. claudish writes no `.exit` file, so any check for one can never fire.)
 ```
 
-### Combining Project Style + Reference
+The judge's verdict lands in `${OUTPUT_DIR}/summary.md`; the agent's completion message
+names the model that judged.
+
+### Designing Against a Reference
 
 ```
 Agent: designer:ui
-Review using:
-- Project Style: .claude/design-style.md (brand colors, custom tokens)
-- Base Reference: shadcn-ui (component patterns, accessibility)
-
-Image: screenshots/form.png
+BRIEF: a settings form — profile name, email, notification toggles; the user saves changes
+OUTPUT_DIR: design/settings
+REFERENCE: shadcn-ui
+STYLE_FILE: .claude/design-style.md
 ```
+
+Project style wins for colours, type and spacing; the reference supplies component
+patterns and accessibility rules.

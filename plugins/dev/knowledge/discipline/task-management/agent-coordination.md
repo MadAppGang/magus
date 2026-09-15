@@ -137,7 +137,7 @@ succeeded.
 
 ### Skill Gaps
 **Trigger:** Current agent lacks specific skill that another agent has
-**Delegate to:** a specialist (dev:reviewer for security, dev:frontend for accessibility)
+**Delegate to:** a specialist (dev:reviewer for security, dev:frontend-developer for accessibility)
 **Example:** "Launch accessibility agent to audit ARIA compliance"
 
 ## When NOT to Use Agents

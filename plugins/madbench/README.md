@@ -4,7 +4,7 @@ Toolkit for [madbench](https://github.com/MadAppGang/madbench), MadAppGang's Go 
 benchmarking agentic coding tools. Website: <https://madbench.web.app>.
 
 The plugin does three things: it teaches Claude Code how to author a bench that measures
-what you think it measures, it runs benches for you through an operator agent in a visible
+what you think it measures, it runs benches for you through the `madbench:bench` agent in a visible
 terminal pane, and it checks that the skill still matches the madbench you have installed.
 
 ## Install
@@ -25,11 +25,11 @@ dependency.
 
 | Component | Address | What it is for |
 |---|---|---|
-| Command | `/madbench:bench` | Author, run, or debug a bench. Dispatches the operator with your request. |
+| Command | `/madbench:bench` | Author, run, or debug a bench. Dispatches the `madbench:bench` agent with your request. |
 | Command | `/madbench:doctor` | Three mechanical checks: skill staleness, bench layout, generated index. No agent, output printed verbatim. |
-| Agent | `madbench:operator` | Loads the skill by path, writes or fixes the bench, runs the two controls, then runs the bench in a split pane with madbench's own colour output. Never a wrapper, never `--plain`, never a background job. |
-| Skill | `skills/madbench-evals/` | The authoring reference. Read by the operator by path; it is not in the skill listing and not a slash command. |
-| Hook | `Stop` | Refuses to end a turn while a dispatched operator has not reported back. Silent in every other session. |
+| Agent | `madbench:bench` | Loads the skill by path, writes or fixes the bench, runs the two controls, then runs the bench in a split pane with madbench's own colour output. Never a wrapper, never `--plain`, never a background job. |
+| Skill | `skills/madbench-evals/` | The authoring reference. Read by the agent by path; it is not in the skill listing and not a slash command. |
+| Hook | `Stop` | Refuses to end a turn while a dispatched `madbench:bench` agent has not reported back. Silent in every other session. |
 
 **Why the hook exists.** Every `Agent` call in current Claude Code is asynchronous: it
 returns a task id at once and the operator keeps working, so a parent that replies closes

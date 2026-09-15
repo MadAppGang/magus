@@ -4,7 +4,7 @@ Provides the **Claudish MCP runtime** for the Magus marketplace. Claudish is an
 external-model proxy that exposes tools (`team`, `create_session`, `list_models`,
 etc.) for orchestrating multi-model workflows from Claude Code.
 
-This plugin is a **runtime dependency**. Other plugins (`code-analysis`, `dev`,
+This plugin is a **runtime dependency**. Other plugins (`code-search`, `dev`,
 `multimodel`, `designer`) declare it via the `dependencies`
 field in their `plugin.json` and consume its tools through standard MCP.
 
@@ -59,7 +59,8 @@ the MCP server launches, plus three read-only diagnostics (`--help`, `--version`
 `--models`) for investigating that runtime. No workflow shells out.
 
 The skill lives here rather than in `multimodel` because it documents the claudish
-runtime.
+runtime: a consumer that depends on claudish alone must find the resolution
+procedure installed beside it, without also installing `multimodel`.
 
 ## Channel notifications (optional)
 
@@ -83,7 +84,7 @@ Requirements:
 
 This is a runtime dependency of:
 
-- `code-analysis` — semantic code search via mnemex; uses Claudish for
+- `code-search` — semantic code search via mnemex; uses Claudish for
   multi-model team review
 - `dev` — universal development assistant; uses Claudish for `/dev:research`,
   `/team`, model orchestration

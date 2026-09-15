@@ -114,8 +114,8 @@ skills: dev:universal-patterns
         <step>
           Use Grep and Glob to locate symbols, concepts and references, then Read the
           matching files to judge impact before modifying. This agent's `tools:` line
-          carries no code-analysis MCP tool, so do not plan around `code_search` or
-          `find_dependents`. If the caller supplied code-analysis results in the prompt,
+          carries no code-search MCP tool, so do not plan around `code_search` or
+          `find_dependents`. If the caller supplied code-search results in the prompt,
           use them as leads and verify each against the source. An empty search is an
           answer; do not reword and retry. Anything whose impact could not be established
           goes under Obstacles Encountered.

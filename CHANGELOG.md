@@ -4,6 +4,184 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Marketplace 13.0.0] - 2026-09-15
+
+### Changed
+
+- **BREAKING — two plugins are renamed.** `code-analysis@magus` → `code-search@magus`, and
+  `image-generate@magus-marketing` → `image@magus-marketing`. Each has its own entry below.
+- Eight releases ship alongside and are part of the same change: **`dev` 8.0.0**,
+  **`code-search` 8.0.0**, **`image` 4.0.0**, **`designer` 0.8.0**, **`multimodel` 4.2.0**,
+  **`madbench` 0.5.0**, **`magus-marketing` 4.0.0** and **claudeup 6.7.1**, plus description
+  and reference updates in `mnemex` 1.0.3, `setup` 1.2.2 and `go` 0.1.4.
+- Why: the 2026-09-12 subagent inventory (`docs/plans/2026-09-12-subagent-refactor.md`)
+  scored every agent in the marketplace against one rubric. It found a read-only agent that
+  inherited `Write`, a preload that silently could not load, agents that duplicated their
+  command, names that did not say what the agent did, and a test-writing agent that read the
+  implementation it was testing. This release is the fix.
+
+### Migration notes
+
+In `enabledPlugins`, replace `code-analysis@magus` with `code-search@magus` and
+`image-generate@magus-marketing` with `image@magus-marketing`. Commands move with them:
+`/code-analysis:*` → `/code-search:*`, `/image-generate:*` → `/image:*` (and `image-edit` →
+`edit`, `image-style` → `style`). MCP tool names change from `mcp__plugin_code-analysis_ca__*`
+to `mcp__plugin_code-search_ca__*`. Agent ids that moved: `code-analysis:detective` →
+`code-search:analyze`, `dev:synthesizer` → `dev:aggregator`, `dev:frontend` →
+`dev:frontend-developer`, `dev:test-architect` → `dev:qa-engineer`, `designer:design-review`
+→ `designer:review`, `madbench:operator` → `madbench:bench`. `dev:scribe`,
+`image-generate:image-generator` and `image-generate:style-manager` are deleted; their work
+moved into the commands that dispatched them.
+
+---
+
+## [dev 8.0.0] - 2026-09-15
+
+### Removed
+
+- **BREAKING — `dev:scribe` deleted.** `/dev:interview` now has `Write` and records its own
+  interview log, checkpoint and focus areas. The agent existed only because the command
+  lacked `Write`; the question-type metrics it maintained had no reader.
+- **BREAKING — `dev:test-architect` replaced by `dev:qa-engineer`** (see Added).
+
+### Changed
+
+- **BREAKING — `dev:synthesizer` → `dev:aggregator`**, now a 60-line contract over the new
+  `dev:aggregate-reviews` skill, which holds the consolidation and research-synthesis
+  algorithms. `/dev:audit`, plan review and code review skip the dispatch at N=1, as
+  `/dev:fix` already did: a single review passes through with its own verdict.
+- **BREAKING — `dev:frontend` → `dev:frontend-developer`**, rewritten around the component
+  contract: every component lives in the library with a Storybook story, every state is a
+  story and a variant rather than call-site styling, screens compose library components only,
+  tokens are the only styling values, and discovery precedes building. It runs `audit-ui.ts`
+  and fixes what it finds before reporting done.
+- **`dev:reviewer` gained a design-system pass** over changed UI files: a component with no
+  story, a state styled at a call site, custom styling inside a screen, or a raw styling
+  literal in place of a token is a HIGH finding, and `audit-ui.ts` output is reported as
+  findings.
+- **`dev:devops` is a 299-line router** (was 983). Its cloud content moved to
+  `knowledge/devops/{kubernetes,aws,gcp,azure,firebase,iac,cost,environments}.md`, each
+  carrying that provider's CLI reference; the agent reads the file the detected target needs.
+  It no longer reads the bunjs production skill — an application's production concerns belong
+  to the developer, not to the infrastructure agent.
+- **A gate is not passed until its result has been read.** New hidden skill `core/team-gate`
+  (reached by path, zero listing cost) defines the procedure every `team` gate follows: pass
+  `input_file` only, retry once on `Pass input_file or input, not both`, poll `status` until
+  no slot is running, read every `response-<slot>.md`, and compare the ballots against a
+  `MIN_BALLOTS` for that gate (plan and code review: 2 of N when N ≥ 3, else N; verify: 1;
+  fix gates: every slot). Below it the run stops as GATE NOT MET. `/dev:dev` and `/dev:fix`
+  write `run.json` with the depth, automation and models they chose, log every skipped gate
+  to `gates.log`, and repeat those lines in the final report.
+- `dev:docs` no longer loads `documentation-standards` twice — it was both preloaded and read
+  again unconditionally in Phase 1.
+
+### Added
+
+- **`dev:qa-engineer` and `/dev:qa`: tests written blind.** The writer's working directory is
+  a sandbox holding the specification, the contract files and the existing tests, and never
+  the implementation, so blindness is enforced by the file system rather than by instruction.
+  `/dev:qa` resolves an external GPT top-tier model live through claudish `search_models`
+  and runs it with `create_session`; with no external model available it falls back to the
+  agent in its own context window. `--run` executes the tests and requires a negative control
+  — one mutated expectation must fail — before reporting coverage as proven. Go, Bun and UI
+  work route to their own testing references, including the new `testing/ui-playwright` skill.
+
+### Why
+
+An audit of 106 real `/dev:dev` and `/dev:fix` sessions over 45 days
+(`ai-docs/dev-workflow-gate-audit-2026-09-12.md`): 51 never called `team` at all, 22 panels
+returned partial and were treated as passed, 32 gate calls were lost to a single call-shape
+error, and tests were written blind in 1 session out of 106.
+
+---
+
+## [code-search 8.0.0] - 2026-09-15
+
+### Changed
+
+- **BREAKING — the plugin is renamed from `code-analysis` to `code-search`.** Enable it as
+  `code-search@magus`; its commands are `/code-search:analyze`, `/code-search:setup` and
+  `/code-search:help`, and its MCP tools are `mcp__plugin_code-search_ca__*`.
+- **BREAKING — the `detective` agent is now `analyze`, and it declares its tools.** It had no
+  `tools:` line, so a read-only investigator inherited `Write`, `Edit` and `Agent`; it now
+  holds Read, Grep, Glob, Bash and the `ca` tools only. The division it implies is the one
+  the plugin now states: the `search` skill (renamed from `code-search`) locates code and
+  returns `file:line` spans, and `analyze` runs many searches, reads the spans and returns a
+  report with evidence.
+
+### Migration notes
+
+Replace `code-analysis@magus` in `enabledPlugins`, and `code-analysis:detective` with
+`code-search:analyze` in any command, agent or settings file that dispatches it.
+
+---
+
+## [designer 0.8.0] - 2026-09-15
+
+### Changed
+
+- **BREAKING — `designer:design-review` is now `designer:review`, and `designer:ui` creates
+  instead of critiquing.** `ui` takes a brief and the project's style guide and produces one
+  HTML/CSS artboard per screen and state, a tokens summary and the list of library components
+  it reused, following the same component contract the dev plugin enforces; it screenshots
+  through browser-use when that plugin is installed.
+- **`review` judges, and no longer judges alone.** It keeps the local pixel diff (`sharp` and
+  `pixelmatch`), adds a design-system pass over the implementation's source, and sends the
+  semantic comparison to an external vision model resolved live through claudish — the newest
+  Gemini Pro, else the GPT top tier — labelling the report "judged locally" when it must fall
+  back. Whether claudish hands the images to the external child inside a `team` slot is
+  unverified until the first live run; the report's `Judged by` line is what shows it.
+- New `review-services` skill: detects axe-core, Lighthouse, Playwright snapshots, Percy,
+  Chromatic and Applitools, uses what the project has, and says plainly what it did not run.
+- `/designer:ui` rewritten at 109 lines, replacing 900 of stale "Anti-AI patterns" and
+  glassmorphism instructions.
+
+---
+
+## [multimodel 4.2.0] - 2026-09-15
+
+### Changed
+
+- `multimodel:deep-analyst` treats `dev:researcher` as optional rather than assumed. When the
+  Agent tool does not know that type, the web lane runs inline and the report says so. No
+  `dev` dependency is declared, because the plugin must work without it.
+- References follow this release's renames.
+
+---
+
+## [madbench 0.5.0] - 2026-09-15
+
+### Changed
+
+- **BREAKING — `madbench:operator` is now `madbench:bench`.** The agent and the
+  `/madbench:bench` command share the word; they resolve in different tool namespaces.
+
+---
+
+## [mnemex 1.0.3] - 2026-09-15
+
+### Changed
+
+- The description names the `code-search` facade. No behaviour change.
+
+---
+
+## [setup 1.2.2] - 2026-09-15
+
+### Changed
+
+- References follow the `code-search` rename. No behaviour change.
+
+---
+
+## [go 0.1.4] - 2026-09-15
+
+### Changed
+
+- The README names `dev:qa-engineer` as the consumer of the tester knowledge base.
+
+---
+
 ## [Marketplace 12.0.1] - 2026-09-12
 
 ### Fixed

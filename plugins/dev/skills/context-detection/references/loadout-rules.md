@@ -151,11 +151,11 @@ smaller surface than a row per skill in a generated one.
 
 | # | Category | Agents | Notes |
 |---|---|---|---|
-| **R1** | `core/**` | architect, developer, frontend, test-architect, reviewer, debugger, devops | Universal and stack-independent. Lowest rank — it is what a spare cap slot gets, never what fills the first one. |
+| **R1** | `core/**` | architect, developer, frontend, qa-engineer, reviewer, debugger, devops | Universal and stack-independent. Lowest rank — it is what a spare cap slot gets, never what fills the first one. |
 | **R2** | `architecture/**` | **architect** always; **reviewer** when `task.kind` is `refactor` or `new_subsystem` | The router at `SKILL.md` picks *which* file. Never push the router itself — push the leaf it routes to (a style file, a GoF category, `selection.md`, `refactoring.md`, `adr.md`). Pushing the index spends a slot on navigation. |
-| **R3** | `backend/**` | developer, test-architect, reviewer, debugger; devops gets `bunjs-production` only | Filtered by `repo.stacks` per the name rule above. **Never load `python` for a Go repo** — a wrong-language skill is worse than none, because it reads as authoritative. |
+| **R3** | `backend/**` | developer, qa-engineer, reviewer, debugger; devops gets `bunjs-production` only | Filtered by `repo.stacks` per the name rule above. **Never load `python` for a Go repo** — a wrong-language skill is worse than none, because it reads as authoritative. |
 | **R4** | `frontend/**` | frontend, developer, reviewer | Filtered by framework. `design-system-guardrails` is **mandatory** whenever `task.surfaces` includes `frontend`, whatever `kind` says. |
-| **R5** | `discipline/**` — splits by file, never as a block | `systematic-debugging` → debugger. `test-driven-development` + `verification-before-completion` → test-architect, developer. `worktree-lifecycle` + `task-management` → **orchestrator only** | The two halves serve different readers. Handing an implementer the worktree lifecycle invites it to manage the workspace it is running inside. |
+| **R5** | `discipline/**` — splits by file, never as a block | `systematic-debugging` → debugger. `test-driven-development` + `verification-before-completion` → qa-engineer, developer. `worktree-lifecycle` + `task-management` → **orchestrator only** | The two halves serve different readers. Handing an implementer the worktree lifecycle invites it to manage the workspace it is running inside. |
 | **R6** | `planning/**` (`brainstorming`) | architect, spec-writer | |
 | **R7** | depth-1 singletons, by name, in **either** tree | `security-audit` + `code-roast` → reviewer. `documentation-standards` → whichever agent writes documentation **other than `docs`**, which already preloads it (a developer handed a README task, for instance). `mcp-standards` + `plugin-sdk-patterns` → developer, **only when the target repo is itself a plugin or MCP project**. `optimize` → developer, devops | The plugin/MCP gate matters: these are excellent for a plugin repo and pure noise for a web app. Four of these six are knowledge (`security-audit.md`, `mcp-standards.md`, `optimize.md`, and `enforcement.md` under R8); `code-roast` and `plugin-sdk-patterns` are still skills. The rule does not care which — it names a path either way. |
 | **R8** | **orchestrator-only — never in any loadout**: `skills/context-detection`, `knowledge/enforcement.md`, `skills/feature-phases/*` | none | These describe the pipeline itself. Handing an implementing agent the phase files invites it to re-run the orchestration it is a step inside. `feature-phases/` holds no `SKILL.md` at all — by the directory rule it is a category, and its contents are neither skill nor knowledge for an implementer. |
@@ -169,22 +169,22 @@ A disabled plugin's paths do not resolve for the user, so naming one is a dead p
 
 | Plugin | Agents | Gate |
 |---|---|---|
-| `bunjs` | developer, test-architect, devops | `bunjs` ∈ `repo.stacks` |
-| `go` | developer, architect, test-architect, reviewer — each via its own `knowledge/roles/<role>/` directory | `golang` ∈ `repo.stacks` |
+| `bunjs` | developer, qa-engineer, devops | `bunjs` ∈ `repo.stacks` |
+| `go` | developer, architect, qa-engineer, reviewer — each via its own `knowledge/roles/<role>/` directory | `golang` ∈ `repo.stacks` |
 | `dingo` | developer | `dingo` ∈ `repo.stacks` |
-| `code-analysis` | debugger, reviewer, architect | always — read-only investigation helps every one of them |
-| `terminal` | developer, test-architect, devops | its MCP server appears in `mcp.servers` |
+| `code-search` | debugger, reviewer, architect | always — read-only investigation helps every one of them |
+| `terminal` | developer, qa-engineer, devops | its MCP server appears in `mcp.servers` |
 | `browser-use` | frontend | its server appears in `mcp.servers` **and** `task.surfaces` includes `frontend` |
 | `designer` | frontend | `task.kind == "ui_change"` |
 | `multimodel`, `claudish` | **orchestrator only** | never in an implementing loadout |
 | `madbench` | developer | the target repo is a bench harness |
 | `setup`, `stats`, `statusline` | none | workflow tooling, not implementation guidance |
-| `image-generate`, `video-editing` | none | a different domain; excluded unless `task.brief` names them |
+| `image`, `video-editing` | none | a different domain; excluded unless `task.brief` names them |
 
 The `go` row is the shape to copy for any future language plugin: it already partitions its
 own knowledge by role at `<go root>/knowledge/roles/{architect,developer,tester,code-reviewer}/`,
 so the mapping is role→agent and needs no per-file judgement here. `tester` maps to
-`test-architect` and `code-reviewer` to `reviewer`.
+`qa-engineer` and `code-reviewer` to `reviewer`.
 
 ### Resolving another plugin's installed root
 
@@ -194,8 +194,8 @@ A path into another plugin is emitted **absolute**, under that plugin's installe
 and 7.0.0 shipped fifteen of them in the detector's own examples. Every R9 row, and the
 MCP `usage` table in the detector, resolves through this procedure and no other:
 
-1. **Plugin id.** `enabledPlugins` names `<plugin>@<marketplace>` — `code-analysis@magus`
-   is plugin `code-analysis`, marketplace `magus`. A plugin not enabled in the target repo
+1. **Plugin id.** `enabledPlugins` names `<plugin>@<marketplace>` — `code-search@magus`
+   is plugin `code-search`, marketplace `magus`. A plugin not enabled in the target repo
    is not resolved: its row does not apply.
 2. **Registry.** Read `~/.claude/plugins/installed_plugins.json` →
    `plugins["<plugin>@<marketplace>"]`. It is an **array**, one entry per `projectPath`,
@@ -228,8 +228,8 @@ plugin_root() {
 }
 # The MAIN working tree, not the worktree: a linked worktree has no registry rows of its own.
 main_tree="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
-root="$(plugin_root code-analysis magus "$main_tree")"
-[ -n "$root" ] && [ -e "$root/skills/code-search/SKILL.md" ] || echo "DROP code-analysis usage"
+root="$(plugin_root code-search magus "$main_tree")"
+[ -n "$root" ] && [ -e "$root/skills/search/SKILL.md" ] || echo "DROP code-search usage"
 ```
 
 **Never read `settings.installedPluginVersions`.** It is not a Claude Code field — the
@@ -281,20 +281,19 @@ judgement, not the inventory.
 | `architect` | yes | R1 R2 R6 | Preloads `dev:universal-patterns`, so R1's `universal-patterns` is already held — do not spend a slot on it. **Has no `Skill` tool**, so every entry must be a readable path, never a `plugin:skill` address. |
 | `developer` | yes | R1 R3 R4 R7 R9 | The only agent holding the `Skill` tool; it still receives paths, because paths work for flagged skills and skill addresses do not. Preloads `dev:universal-patterns`. |
 | `frontend` | yes | R1 R4 R9 | Inherits all tools. Preloads `design-system-guardrails` — still list it as `mandatory` when `surfaces` includes `frontend`, because the mandatory marker is what a downstream reviewer checks. |
-| `test-architect` | yes | R1 R3 R5 R9 | Declares no `skills:` at all, so its whole loadout is dynamic. Must not receive implementation detail that would let it write tests against the implementation rather than the contract. |
+| `qa-engineer` | yes | R1 R3 R5 R9 | Declares no `skills:` at all, so its whole loadout is dynamic. Must not receive implementation detail that would let it write tests against the implementation rather than the contract. |
 | `reviewer` | yes | R1 R2 R3 R4 R7 | Declares no `skills:` today. |
 | `debugger` | yes | R1 R3 R5 R9 | Preloads `dev:systematic-debugging` — do not repeat it. |
 | `devops` | yes | R1 R3 R7 R9 | Preloads `dev:bunjs-production` — do not repeat it. |
 | `docs` | yes | R7 | Inherits all tools. Preloads `dev:documentation-standards` — do not repeat it. What R7 leaves it is the repo's own documentation conventions and the knowledge behind the document being written. |
 | `researcher` | minimal | R1 | Web-facing. Repo skills rarely help; one or zero entries is the normal outcome. |
 | `spec-writer` | minimal | R6 | Already reads `context.json` directly. |
-| `scribe` | **no** | — | A file writer. A loadout is pure overhead. |
-| `synthesizer` | **no** | — | Consolidates other agents' output; preloads `universal-patterns` and needs nothing else. |
+| `aggregator` | **no** | — | Consolidates other agents' output; preloads `aggregate-reviews` and needs nothing else. |
 | `stack-detector` | **no** | — | It produces the loadouts. |
 
-The last three are **enforced**, not merely advised:
-`scripts/check-context-schema.ts` rejects any `agent_loadouts` key naming `scribe`,
-`synthesizer` or `stack-detector`, and rejects any key that is not an agent on disk. They
+The last two are **enforced**, not merely advised:
+`scripts/check-context-schema.ts` rejects any `agent_loadouts` key naming
+`aggregator` or `stack-detector`, and rejects any key that is not an agent on disk. They
 are listed here so a future reader does not read the omission as an oversight.
 
 Ten of thirteen get an entry — and only the ones **this task actually dispatches**. A loadout
@@ -303,7 +302,7 @@ filter will eventually filter wrongly.
 
 Which dispatch sites read which entry today: `architect` in `feature-phases/phase3-planning.md`,
 `developer` and `frontend` in `phase4-implementation.md`, `reviewer` in `phase5-review.md`,
-`test-architect` in `phase6-testing.md`, `debugger` in `commands/fix.md`. `devops`, `docs`,
+`qa-engineer` in `phase6-testing.md`, `debugger` in `commands/fix.md`. `devops`, `docs`,
 `researcher` and `spec-writer` are built for the entry points that dispatch those agents; no
 `/dev:dev` phase passes them yet.
 

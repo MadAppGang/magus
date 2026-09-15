@@ -5,7 +5,7 @@ user-invocable: false
 disable-model-invocation: true
 ---
 <!-- Hidden on purpose: it costs no listing budget and cannot be preloaded. Its consumer,
-     the madbench:operator agent, reads this file BY PATH, so the preload block starves nothing. -->
+     the madbench:bench agent, reads this file BY PATH, so the preload block starves nothing. -->
 
 # madbench Evals — author, run, debug
 

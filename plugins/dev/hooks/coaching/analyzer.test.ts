@@ -315,15 +315,15 @@ describe("Rule: tmp-path-usage", () => {
 });
 
 describe("Rule: skill-invoked-as-task", () => {
-  it("TEST-09: Task with code-analysis:code-search subagent_type triggers rule", () => {
+  it("TEST-09: Task with code-search:search subagent_type triggers rule", () => {
     const transcript = generateTranscript([
-      { tool: "Agent", input: { subagent_type: "code-analysis:code-search", prompt: "search for auth patterns" } },
+      { tool: "Agent", input: { subagent_type: "code-search:search", prompt: "search for auth patterns" } },
     ]);
     const transcriptPath = writeTranscript(testDir, transcript);
     runAnalyzer(transcriptPath, "aaaabbbbccccdddd", testDir);
     const recs = readRecommendations(testDir);
     expect(recs).not.toBeNull();
-    expect(recs).toContain("code-analysis:code-search");
+    expect(recs).toContain("code-search:search");
     expect(recs).toContain("Skill");
   });
 
@@ -664,7 +664,7 @@ describe("Top-3 Cap", () => {
     lines.push(JSON.stringify({ type: "assistant", message: { content: [{ type: "tool_use", name: "Bash", input: { command: "cat /tmp/result.txt" } }] } }));
 
     // Skill as Task (triggers skill-invoked-as-task)
-    lines.push(JSON.stringify({ type: "assistant", message: { content: [{ type: "tool_use", name: "Agent", input: { subagent_type: "code-analysis:code-search", prompt: "find auth patterns" } }] } }));
+    lines.push(JSON.stringify({ type: "assistant", message: { content: [{ type: "tool_use", name: "Agent", input: { subagent_type: "code-search:search", prompt: "find auth patterns" } }] } }));
 
     // 3 sequential non-background Tasks (triggers no-background-tasks)
     lines.push(JSON.stringify({ type: "assistant", message: { content: [{ type: "tool_use", name: "Agent", input: { subagent_type: "dev:developer", prompt: "impl task A" } }] } }));

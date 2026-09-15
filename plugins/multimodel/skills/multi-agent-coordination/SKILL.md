@@ -48,7 +48,7 @@ Phase 2: Implementation (depends on Phase 1)
     Wait for completion ✓
 
 Phase 3: Testing (depends on Phase 2)
-  Agent: dev:test-architect
+  Agent: dev:qa-engineer
     Input: Read src/auth.ts, src/routes.ts
     Output: tests/auth.test.ts
 ```
@@ -96,7 +96,7 @@ Agent(
 )
 
 All three execute simultaneously (3x speedup!)
-Wait for all to complete, then hand the three output paths to `dev:synthesizer` on
+Wait for all to complete, then hand the three output paths to `dev:aggregator` on
 REVIEWS: with `dev:reviewer`'s scale on THRESHOLDS: — the three lines under 'Apply
 verdict thresholds' in that agent's file, read at dispatch time, never recalled —
 and the consolidated file on OUTPUT:. It consolidates; none of the three reviewers
@@ -127,7 +127,7 @@ Message 2: Parallel Execution (Task Only)
   - All execute simultaneously
 
 Message 3: Consolidation (Task Only)
-  - Launch `dev:synthesizer` with every output path on REVIEWS:, the scale of
+  - Launch `dev:aggregator` with every output path on REVIEWS:, the scale of
     the reviewer that wrote them on THRESHOLDS: (for `dev:reviewer`, the three
     lines under 'Apply verdict thresholds' in its agent file, read at dispatch
     time, never recalled) and the consolidated file on OUTPUT:
@@ -173,7 +173,7 @@ Task Type Detection:
 
 IF request mentions "API", "endpoint", "backend", "database":
   → API-focused workflow
-  → Use: api-architect, backend-developer, test-architect
+  → Use: api-architect, backend-developer, qa-engineer
   → Skip: designer, ui-developer (not relevant)
 
 ELSE IF request mentions "UI", "component", "design", "Figma":
@@ -188,8 +188,8 @@ ELSE IF request mentions both API and UI:
 
 ELSE IF request mentions "test", "coverage", "bug":
   → Testing-focused workflow
-  → Use: test-architect, ui-manual-tester
-  → Optional: codebase-detective (for bug investigation)
+  → Use: qa-engineer, ui-manual-tester
+  → Optional: analyze (for bug investigation)
 
 ELSE IF request mentions "review", "validate", "feedback":
   → Review-focused workflow
@@ -203,10 +203,10 @@ ELSE IF request mentions "review", "validate", "feedback":
 |-----------|---------------|-----------------|-------------------|
 | API Implementation | backend-developer | api-architect | - |
 | UI Implementation | ui-developer | designer | ui-developer-codex |
-| Testing | test-architect | ui-manual-tester | - |
+| Testing | qa-engineer | ui-manual-tester | - |
 | Code Review | senior-code-reviewer | - | codex-code-reviewer |
 | Architecture Planning | api-architect OR frontend-architect | - | plan-reviewer |
-| Bug Investigation | codebase-detective | test-architect | - |
+| Bug Investigation | analyze | qa-engineer | - |
 | Design Validation | designer | ui-developer | designer-codex |
 
 **Agent Switching Pattern:**
@@ -217,7 +217,7 @@ Some workflows benefit from **adaptive agent selection** based on context:
 Example: UI Development with External Validation
 
 Base Implementation:
-  Agent: dev:frontend
+  Agent: dev:frontend-developer
     Prompt: Implement navbar component from design
 
 User requests external validation:
@@ -484,7 +484,7 @@ Step 1: Initialize Tasks (task-orchestration)
 Step 2: Sequential Agent Delegation (multi-agent-coordination)
   - Phase 1: api-architect
   - Phase 2: backend-developer (depends on Phase 1)
-  - Phase 3: test-architect (depends on Phase 2)
+  - Phase 3: qa-engineer (depends on Phase 2)
   - TaskUpdate after each phase
 ```
 
@@ -563,9 +563,9 @@ Message 2: Parallel Execution (the internal Agent call and the claudish MCP
   lifecycle").
 
 Message 3: Auto-Consolidation
-  # The synthesizer is given the three reviews and never the code.
+  # The aggregator is given the three reviews and never the code.
   Agent(
-    subagent_type: "dev:synthesizer",
+    subagent_type: "dev:aggregator",
     run_in_background: false,
     description: "Consolidate code reviews",
     prompt: "REVIEWS: ai-docs/claude-review.md
@@ -598,7 +598,7 @@ Message 4: Present Results
 
 **Agent Selection:**
 - Task type: API implementation
-- Agents: api-architect → backend-developer → test-architect → senior-code-reviewer
+- Agents: api-architect → backend-developer → qa-engineer → senior-code-reviewer
 
 **Execution:**
 
@@ -625,7 +625,7 @@ Phase 2: Implementation (depends on Phase 1)
   Wait for completion ✓
 
 Phase 3: Testing (depends on Phase 2)
-  Agent: dev:test-architect
+  Agent: dev:qa-engineer
     Prompt: "Write tests for src/payment.ts and src/webhooks.ts"
     Output: tests/payment.test.ts, tests/webhooks.test.ts
     Return: "Test suite complete. 20 tests covering payment flows."
@@ -665,14 +665,14 @@ Phase 4: Code Review (depends on Phase 3)
 Step 1: Ask user preference, then make the directory both paths name (Bash only)
   "Do you want external AI validation? (Yes/No)"
   mkdir -p ai-docs/design-panel/claude-internal
-  # design-review creates OUTPUT_DIR itself only when it was given none; a caller
+  # designer:review creates OUTPUT_DIR itself only when it was given none; a caller
   # that names one creates it.
 
 Step 2a: If user says NO (speed mode)
-  # designer:design-review reads no `Output:` line. It takes OUTPUT_DIR and writes
+  # designer:review reads no `Output:` line. It takes OUTPUT_DIR and writes
   # its report, summary.md, into that directory beside the images and JSON it measured.
   Agent(
-    subagent_type: "designer:design-review",
+    subagent_type: "designer:review",
     run_in_background: false,
     description: "Design review: navbar",
     prompt: "REFERENCE_SOURCE: <the Figma URL, image path or browser URL>
@@ -681,7 +681,7 @@ Step 2a: If user says NO (speed mode)
              This is READ-ONLY analysis of the two sources named. Write only under OUTPUT_DIR."
   )
   The review is ai-docs/design-panel/claude-internal/summary.md. N = 1 still goes
-  through dev:synthesizer — Message 2 below with that one path on REVIEWS: — which
+  through dev:aggregator — Message 2 below with that one path on REVIEWS: — which
   passes the review through and appends the VERDICT: line, so the output has the
   same shape as the quality mode's.
 
@@ -689,7 +689,7 @@ Step 2b: If user says YES (quality mode)
   Message 1: Parallel Validation — the internal Agent call and the claudish MCP
     `team` call in ONE message (never the claudish CLI, which does not run tasks)
     Agent(
-      subagent_type: "designer:design-review",
+      subagent_type: "designer:review",
       run_in_background: false,
       description: "Design review: navbar — internal",
       prompt: "REFERENCE_SOURCE: <the Figma URL, image path or browser URL>
@@ -700,29 +700,29 @@ Step 2b: If user says YES (quality mode)
     ---
     claudish team(mode="run", path="ai-docs/design-panel",
       models=["<the model the user named, resolved against the live catalog>"],
-      agent="designer:design-review",
+      agent="designer:review",
       input_file="ai-docs/design-panel/prompt.md",
       require_pattern="Diff [Pp]ercentage.*[0-9.]+%",
       min_output_bytes=400)
     require_pattern pins the Diff Percentage row — the line every design review
-    carries, with or without a vision key, and one of the two the synthesizer
-    keys on. Never pin "Overall Score": design-review writes it only when semantic
-    analysis ran, so a pixel-only slot the synthesizer would count is reported
+    carries, with or without a vision key, and one of the two the aggregator
+    keys on. Never pin "Overall Score": designer:review writes it only when semantic
+    analysis ran, so a pixel-only slot the aggregator would count is reported
     FAILED before it reaches REVIEWS:.
     prompt.md carries the same REFERENCE_SOURCE and IMPL_SOURCE lines; claudish
     captures each slot's returned report itself. Poll team(mode="status",
     path="ai-docs/design-panel") until no slot has state RUNNING; each completed
     slot's review is ai-docs/design-panel/response-<slot>.md.
 
-  Message 2: Consolidate — dev:synthesizer, never a reviewer
+  Message 2: Consolidate — dev:aggregator, never a reviewer
     # It is given the reviews and never the screens or the code.
     Agent(
-      subagent_type: "dev:synthesizer",
+      subagent_type: "dev:aggregator",
       run_in_background: false,
       description: "Consolidate design reviews",
       prompt: "REVIEWS: ai-docs/design-panel/claude-internal/summary.md
                ai-docs/design-panel/response-<slot>.md   (one line per slot that completed)
-               THRESHOLDS: <designer:design-review's own PASS | WARN | FAIL | CRITICAL
+               THRESHOLDS: <designer:review's own PASS | WARN | FAIL | CRITICAL
                             scale — the four difference-percentage rows under
                             severity_thresholds in that agent's file, read at
                             dispatch time, never recalled>
@@ -794,7 +794,7 @@ Solution: Explicitly detect task type using keywords
 Check user request for keywords:
   - API/endpoint/backend → api-architect, backend-developer
   - UI/component/design → designer, ui-developer
-  - test/coverage → test-architect
+  - test/coverage → qa-engineer
   - review/validate → senior-code-reviewer
 
 Default: Ask user to clarify task type

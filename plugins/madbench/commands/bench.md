@@ -6,7 +6,7 @@ allowed-tools: Agent, TaskOutput, Bash, Read, Glob, Grep
 
 ## Mission
 
-Dispatch the `madbench:operator` agent at one madbench request, **then wait for it**. The
+Dispatch the `madbench:bench` agent at one madbench request, **then wait for it**. The
 operator authors the bench, runs the free gates, and runs the real bench in a split pane the
 user can watch. It never writes a wrapper around madbench; a gap comes back as a drafted
 issue.
@@ -49,7 +49,7 @@ it first.
 
 ```
 Agent(
-  subagent_type: "madbench:operator",
+  subagent_type: "madbench:bench",
   run_in_background: false,
   description: "madbench: [brief description]",
   prompt: `

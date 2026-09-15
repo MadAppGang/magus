@@ -45,7 +45,7 @@ skills: dev:context-detection, dev:systematic-debugging, dev:testing-strategies,
   - Applying fixes → dev:developer agent
 
   QUICK-PATCH: root cause analysis is INLINE (no agent delegation)
-  DO NOT use code-analysis:detective (READ-ONLY agent, not for fixing)
+  DO NOT use code-search:analyze (READ-ONLY agent, not for fixing)
 </critical_override>
 
 <scope_selection>

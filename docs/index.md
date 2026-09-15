@@ -27,7 +27,7 @@ and CLI tools they depend on.
 - **[Isolated worktrees](./guides/dev-worktree.md)** — `/dev:worktree` with database branching
 - **[multimodel](./guides/multimodel.md)** — a blind vote across models, or handing a whole
   task to one
-- **[code-analysis](./guides/code-analysis.md)** — asking questions about code you didn't write
+- **[code-search](./guides/code-search.md)** — asking questions about code you did not write
 - **[bunjs](./guides/bunjs.md)** — one command, and the eight skills behind it
 - **[Advanced Usage](./guides/advanced-usage.md)** — global and project-scoped installs, version
   pinning, updates, custom configuration

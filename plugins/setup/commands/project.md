@@ -30,7 +30,7 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion, Skill
     Two setup commands already exist and are authoritative in their domains.
     Invoke them; never reimplement what they do:
     - `/dev:setup` — writes the agent-delegation routing table into CLAUDE.md
-    - `/code-analysis:setup` — mnemex MCP wiring and first index
+    - `/code-search:setup` — mnemex MCP wiring and first index
     If either plugin is absent, say so and skip that step. Do not inline a
     copy of their behaviour.
   </rule>
@@ -151,7 +151,7 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion, Skill
 
     | Stack signal | Plugin | Reason |
     |---|---|---|
-    | any repo over a few thousand files | `code-analysis@magus` | semantic search and call-graph navigation |
+    | any repo over a few thousand files | `code-search@magus` | semantic search and call-graph navigation |
     | any repo | `dev@magus` | stack detection and specialist agent routing |
     | Bun or TypeScript | `bunjs@magus` | task-shaped Bun skills, zero listing cost |
     | Go | `go@magus` | go-tui skill for Charm-stack terminal UIs |
@@ -227,7 +227,7 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion, Skill
     Invoke the authoritative commands rather than reimplementing them:
 
     - If `dev@magus` is installed, run `/dev:setup` — it owns the routing table.
-    - If `code-analysis@magus` is installed, run `/code-analysis:setup` — it
+    - If `code-search@magus` is installed, run `/code-search:setup` — it
       owns mnemex MCP wiring and the first index.
 
     For any other MCP server the stack implies, write it to the project

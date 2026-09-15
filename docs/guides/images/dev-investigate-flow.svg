@@ -14,7 +14,7 @@
   <path d="M 294 390 L 294 442" fill="none" stroke="#98a1b3" stroke-width="1.6" marker-end="url(#arw)"/>
   <path d="M 294 494 L 294 546" fill="none" stroke="#98a1b3" stroke-width="1.6" marker-end="url(#arw)"/>
   <path d="M 402 156 L 574.2 156" fill="none" stroke="#98a1b3" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#arw)"/>
-  <text x="488.1" y="149" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#5d6779" text-anchor="middle" paint-order="stroke" stroke="#fbfbfd" stroke-width="3.5" stroke-linejoin="round">code-analysis missing</text>
+  <text x="488.1" y="149" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#5d6779" text-anchor="middle" paint-order="stroke" stroke="#fbfbfd" stroke-width="3.5" stroke-linejoin="round">code-search missing</text>
   <rect x="186" y="26" width="216" height="52" rx="9" fill="#eef2ff" stroke="#a5b1e8" stroke-width="1.5"/>
   <text x="294" y="48" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#26307a" text-anchor="middle">/dev:investigate</text>
   <text x="294" y="65" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#77808f" text-anchor="middle">a question about the code</text>
@@ -24,12 +24,12 @@
   <rect x="52" y="234" width="216" height="68" rx="9" fill="#ffffff" stroke="#d3d8e2" stroke-width="1.5"/>
   <text x="160" y="256" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#1c2230" text-anchor="middle">architecture · implementation</text>
   <text x="160" y="272" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#1c2230" text-anchor="middle">debugging · testing</text>
-  <text x="160" y="289" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#77808f" text-anchor="middle">code-analysis:investigate</text>
+  <text x="160" y="289" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#77808f" text-anchor="middle">code-search:investigate</text>
   <rect x="320" y="234" width="216" height="52" rx="9" fill="#ffffff" stroke="#d3d8e2" stroke-width="1.5"/>
   <text x="428" y="256" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#1c2230" text-anchor="middle">comprehensive</text>
-  <text x="428" y="273" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#77808f" text-anchor="middle">code-analysis:deep-analysis</text>
+  <text x="428" y="273" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#77808f" text-anchor="middle">code-search:deep-analysis</text>
   <rect x="169" y="338" width="250" height="52" rx="9" fill="#ffffff" stroke="#d3d8e2" stroke-width="1.5"/>
-  <text x="294" y="360" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#1c2230" text-anchor="middle">code-analysis:detective</text>
+  <text x="294" y="360" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#1c2230" text-anchor="middle">code-search:analyze</text>
   <text x="294" y="377" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="11" fill="#77808f" text-anchor="middle">read-only · its own context</text>
   <rect x="116" y="442" width="356" height="52" rx="9" fill="#ffffff" stroke="#d3d8e2" stroke-width="1.5"/>
   <text x="294" y="464" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#1c2230" text-anchor="middle">code_search · Read · Grep · Glob</text>

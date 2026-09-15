@@ -14,59 +14,57 @@ Say, in one line: **Phase 6 — starting.**
 tdd_limit=$(cat ${SESSION_PATH}/iteration-config.json | jq -r '.innerLoops.unitTestTDD')
 ```
 
-### Step 6.3: Launch test-architect for test plan (STRICT isolation)
-Prompt: "SESSION_PATH: ${SESSION_PATH}
+### Step 6.3: Build the writer sandbox (blindness by file system, not by prompt)
+The writer sees one directory and nothing else. Create `${SESSION_PATH}/qa/sandbox/` and
+copy into it:
+- `${SESSION_PATH}/requirements.md` → `sandbox/spec.md`
+- the API-contracts section of `${SESSION_PATH}/architecture.md` → `sandbox/contract/architecture-contracts.md`
+- every public type / interface / story file that architecture.md names as the contract → `sandbox/contract/`
+- the repo's existing test directory and test config (`bunfig.toml`, `vitest.config.*`,
+  `playwright.config.*`, `go.mod`, `package.json`) → `sandbox/tests/` and `sandbox/`
+- each path in `context.agent_loadouts.qa-engineer.read` → `sandbox/loadout/` (these are
+  testing guidance, never implementation)
 
-         **BLACK BOX TESTING: You have NO access to implementation.**
+No implementation file is copied. Write `${SESSION_PATH}/qa/inputs.json` listing exactly
+what went in; the final report prints it.
 
-         INPUT ALLOWED:
-         - ${SESSION_PATH}/requirements.md
-         - ${SESSION_PATH}/architecture.md (API contracts only)
-         - Public types/interfaces
+### Step 6.4: Resolve the writer and write plan + tests
+Follow `/dev:qa` Phase 1 (`plugins/dev/commands/qa.md`), which is the one place the
+writer-resolution procedure lives:
+1. `list_models()`; unavailable → internal writer.
+2. `search_models({ query: "gpt" })` → the top-tier model of that family from the live
+   result; no such model → internal writer, and say so.
+3. External: `create_session(model=<id>, agent="dev:qa-engineer",
+   work_dir="${SESSION_PATH}/qa/sandbox", timeout_seconds=900, prompt=<below>)`, wait for
+   `completed`, `get_output(session_id)`; `failed`/`timeout` → `get_diagnostics`, record,
+   fall back to internal.
+4. Internal: `Agent(subagent_type: "dev:qa-engineer", run_in_background: false, prompt=<below>)`.
 
-         INPUT FORBIDDEN:
-         - Implementation source code
-         - Internal function details
-         - Implementation patterns
+Prompt (sandbox-relative paths only):
+```
+SPEC_PATH: <sandbox>/spec.md
+CONTRACT_PATHS: <sandbox>/contract/*
+TEST_DIR: <sandbox>/tests
+STACK: {from context.repo.stacks: golang→go, bunjs→bun, react/vue→ui}
+STOP_AT: implement
+SESSION_PATH: <sandbox>
+LOADOUT: <sandbox>/loadout/*   (mandatory first: {context.agent_loadouts.qa-engineer.mandatory})
+Write the test plan and the tests. Do not read anything outside the paths above.
+```
+Write `writer: <model id> (external)` or `writer: internal (<reason>)` to
+`${SESSION_PATH}/qa/writer.txt` and say the same line in the transcript.
 
-         **YOUR LOADOUT** (from context.agent_loadouts.test-architect.read in
-         ${SESSION_PATH}/context.json — at most 5, chosen for this agent and this task;
-         read them, mandatory first. These are guidance on HOW to test — testing strategy,
-         the stack's tester conventions — never implementation, so they sit inside the
-         black box):
-         {for each path in context.agent_loadouts.test-architect.read}
-         - {path}{if path in context.agent_loadouts.test-architect.mandatory} ← MANDATORY{end}
-         {end}
-         {if context.agent_loadouts.test-architect.note}
-         Note: {context.agent_loadouts.test-architect.note}
-         {end}
+### Step 6.5: Bring the tests home, run them, prove they can fail
+Copy `sandbox/tests/**` into the repo's test directory and
+`sandbox/qa/test-plan.md` (or `sandbox/tests/TEST-PLAN.md`) to
+`${SESSION_PATH}/tests/test-plan.md`. Check the writer's `Files Read` section: any path
+outside the sandbox is a blindness breach — record it in the report and mark the tests
+"suspect".
 
-         Create comprehensive test plan based on requirements and API contracts.
+Negative control (mandatory): mutate one expected value in one test, run that file,
+paste the failure into `${SESSION_PATH}/tests/negative-control.md`, restore the test.
+No pasted failure → the phase report says `not proven`.
 
-         Write to ${SESSION_PATH}/tests/test-plan.md
-         Return brief summary"
-
-### Step 6.4: Launch test-architect to implement tests
-Prompt: "SESSION_PATH: ${SESSION_PATH}
-
-         Read test plan: ${SESSION_PATH}/tests/test-plan.md
-
-         **YOUR LOADOUT** (from context.agent_loadouts.test-architect.read in
-         ${SESSION_PATH}/context.json — the same list the plan was written against; read
-         them, mandatory first):
-         {for each path in context.agent_loadouts.test-architect.read}
-         - {path}{if path in context.agent_loadouts.test-architect.mandatory} ← MANDATORY{end}
-         {end}
-         {if context.agent_loadouts.test-architect.note}
-         Note: {context.agent_loadouts.test-architect.note}
-         {end}
-
-         Implement tests for all scenarios in the plan.
-         Tests must validate behavior from requirements, not implementation.
-
-         Return brief summary"
-
-### Step 6.5: Run tests
 Run tests using Bash:
 - Execute `commands.test_runner_command` from ${SESSION_PATH}/context.json, then the
   `commands.quality_checks` entries for the surfaces this feature touched
@@ -78,7 +76,7 @@ TDD Loop (max tdd_limit iterations):
 
 If tests fail:
 
-  a. Launch test-architect to analyze failure:
+  a. Launch qa-engineer to analyze failure:
      Prompt: "Read test results: ${SESSION_PATH}/tests/test-results.md
 
               Analyze each failure and classify:
@@ -88,7 +86,7 @@ If tests fail:
               Write analysis to ${SESSION_PATH}/tests/failure-analysis.md"
 
   b. For TEST_ISSUE failures:
-     - Launch test-architect to fix tests
+     - Launch qa-engineer to fix tests
 
   c. For IMPLEMENTATION_ISSUE failures:
      - Launch developer to fix implementation

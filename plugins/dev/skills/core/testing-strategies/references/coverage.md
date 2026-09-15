@@ -528,7 +528,7 @@ Request comprehensive test creation:
 Analyze test coverage and generate tests for all critical gaps
 ```
 
-The test-architect agent will:
+The qa-engineer agent will:
 1. Identify gaps using this skill
 2. Generate test files
 3. Run tests and verify coverage improvement

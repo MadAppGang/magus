@@ -93,7 +93,7 @@ Then add to your project's `.claude/settings.json`:
 {
   "enabledPlugins": {
     "dev@magus": true,
-    "code-analysis@magus": true,
+    "code-search@magus": true,
     "multimodel@magus": true,
     "terminal@magus": true
   }
@@ -110,7 +110,7 @@ This repository contains production-ready plugins designed for modern web develo
 
 ### Available Plugins
 
-#### 🔍 Code Analysis
+#### 🔍 Code Search
 
 **Version:** 5.3.0 | **Category:** Development | **Marketplace:** `magus`
 
@@ -118,7 +118,7 @@ Read-only code investigation for understanding complex codebases, behind one sta
 surface that does not change when the search engine does.
 
 **Highlights:**
-- **`code-analysis:detective` agent** - Investigates code patterns, relationships, and architecture
+- **`code-search:analyze` agent** - Investigates code patterns, relationships, and architecture
 - **3 Skills** - `code-search`, `investigate`, `deep-analysis`
 - **MCP Integration** - `code_search` is always present; call-graph and blast-radius tools
   appear only when the configured search engine genuinely supports them
@@ -255,11 +255,11 @@ if you need them:
 
 | Marketplace | Contains |
 |---|---|
-| `MadAppGang/magus` | Core development plugins — dev, code-analysis, terminal, designer, browser-use, and more |
-| `MadAppGang/magus-marketing` | AI image generation, video editing |
+| `MadAppGang/magus` | Core development plugins — dev, code-search, terminal, designer, browser-use, and more |
+| `MadAppGang/magus-marketing` | AI image generation and editing, video editing |
 | `MadAppGang/magus-alpha` | Experimental plugins with evolving interfaces — none published yet |
 
-Plugin IDs carry the marketplace, so enable them as `image-generate@magus-marketing`, not `image-generate@magus`.
+Plugin IDs carry the marketplace, so enable them as `image@magus-marketing`, not `image@magus`.
 
 #### Step 2: Enable Plugins in Your Project
 
@@ -269,7 +269,7 @@ Add or edit `.claude/settings.json` in your project root:
 {
   "enabledPlugins": {
     "dev@magus": true,
-    "code-analysis@magus": true
+    "code-search@magus": true
   }
 }
 ```
@@ -309,7 +309,7 @@ Need more than one plugin? Just add more entries:
 {
   "enabledPlugins": {
     "dev@magus": true,
-    "code-analysis@magus": true,
+    "code-search@magus": true,
     "multimodel@magus": true,
     "terminal@magus": true,
     "setup@magus": true

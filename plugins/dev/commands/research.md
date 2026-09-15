@@ -17,7 +17,7 @@ skills: dev:context-detection, multimodel:task-orchestration
   </expertise>
   <mission>
     Orchestrate comprehensive research on any topic by coordinating specialized
-    agents (Planner, Explorer, Synthesizer) to gather information from internet
+    agents (Planner, Explorer, Aggregator) to gather information from internet
     and local sources, then synthesize findings into a coherent report.
 
     Apply answer convergence criteria to determine when research is complete,
@@ -41,12 +41,12 @@ skills: dev:context-detection, multimodel:task-orchestration
   - Query generation → dev:developer agent (used as planner)
   - Web exploration → dev:researcher agents (parallel, up to 3)
   - Local investigation → dev:researcher agents
-  - Finding synthesis → dev:synthesizer agent (subagent_type: "dev:synthesizer")
-  - Report generation → dev:synthesizer agent
+  - Finding synthesis → dev:aggregator agent (subagent_type: "dev:aggregator")
+  - Report generation → dev:aggregator agent
 
   DO NOT use dev:developer for web exploration (dev:developer writes code, not research).
   DO NOT use dev:architect for research (dev:architect plans systems, not research).
-  DO NOT use code-analysis:detective (READ-ONLY codebase analysis, not web research).
+  DO NOT use code-search:analyze (READ-ONLY codebase analysis, not web research).
 </critical_override>
 
 <instructions>
@@ -89,7 +89,7 @@ skills: dev:context-detection, multimodel:task-orchestration
 
       - Planner writes to ${SESSION_PATH}/research-plan.md
       - Each Explorer writes to ${SESSION_PATH}/findings/explorer-{N}.md
-      - Synthesizer writes to ${SESSION_PATH}/synthesis/iteration-{N}.md
+      - Aggregator writes to ${SESSION_PATH}/synthesis/iteration-{N}.md
       - Final report at ${SESSION_PATH}/report.md
 
       **Why:**
@@ -104,8 +104,8 @@ skills: dev:context-detection, multimodel:task-orchestration
       - Query generation: developer agent (used as planner)
       - Web exploration: researcher agents (parallel, up to 3)
       - Local investigation: researcher agents
-      - Finding synthesis: synthesizer agent
-      - Report generation: synthesizer agent
+      - Finding synthesis: aggregator agent
+      - Report generation: aggregator agent
     </delegation_rules>
 
     <iteration_limits>
@@ -314,7 +314,7 @@ skills: dev:context-detection, multimodel:task-orchestration
       <steps>
         <step>Mark PHASE 4 as in_progress</step>
         <step>
-          Launch synthesizer agent:
+          Launch aggregator agent:
           ```
           SESSION_PATH: ${SESSION_PATH}
           ITERATION: {synthesis_iteration}
@@ -443,7 +443,7 @@ skills: dev:context-detection, multimodel:task-orchestration
       <steps>
         <step>Mark PHASE 6 as in_progress</step>
         <step>
-          Launch synthesizer for final report:
+          Launch aggregator for final report:
           ```
           SESSION_PATH: ${SESSION_PATH}
           MODE: final_report
@@ -693,7 +693,7 @@ skills: dev:context-detection, multimodel:task-orchestration
               - Agent 3: Performance benchmarks
               Duration: ~30 seconds parallel
 
-      PHASE 4: Synthesizer consolidates findings
+      PHASE 4: Aggregator consolidates findings
               Key findings:
               1. Token bucket is most flexible [Sources: 3]
               2. go.uber.org/ratelimit for simple cases [Sources: 2]

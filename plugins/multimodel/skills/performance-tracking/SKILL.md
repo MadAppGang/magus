@@ -278,7 +278,7 @@ Store performance metrics in `.claude/agent-performance.json`:
 Execution Flow:
 
 1. Agent executes task
-   Agent: dev:frontend
+   Agent: dev:frontend-developer
    Input: "Implement login form component"
    Result: Success
    Confidence: 0.90
@@ -420,7 +420,7 @@ Routing Flow:
    Task: "Implement user profile page"
    Analysis: Medium complexity (multiple components, state management)
    Selected tier: 2
-   Agent: dev:frontend
+   Agent: dev:frontend-developer
    Model: sonnet
 
 2. Record routing decision
@@ -625,7 +625,7 @@ agents["ui-developer"]:
   totalRuns: 42
   success rate: 38/42 = 90.5% ✅ GOOD
 
-agents["test-architect"]:
+agents["qa-engineer"]:
   successCount: 15
   totalRuns: 25
   success rate: 15/25 = 60% ❌ UNDERPERFORMING
@@ -636,7 +636,7 @@ Threshold: <70% success rate = underperforming
 **Action:**
 
 ```
-For test-architect (60% success):
+For qa-engineer (60% success):
 
 1. Analyze failure patterns
    Review history entries where result="failure"
@@ -646,7 +646,7 @@ For test-architect (60% success):
      - "Test timeout" (2 occurrences)
 
 2. Identify root cause
-   Pattern: test-architect struggles with async/timing tests
+   Pattern: qa-engineer struggles with async/timing tests
    Evidence: All timeout failures involved async code
 
 3. Take action
@@ -657,11 +657,11 @@ For test-architect (60% success):
 
    Option B: Route differently
      - Route async test tasks to backend-developer (90% success on async)
-     - Keep test-architect for synchronous unit tests
+     - Keep qa-engineer for synchronous unit tests
 
    Option C: Replace agent
-     - Create new specialized-async-test-architect
-     - Deprecate test-architect for async work
+     - Create new specialized-async-qa-engineer
+     - Deprecate qa-engineer for async work
 ```
 
 ### Optimization 2: Find Cost-Effective Model Alternatives
@@ -1116,7 +1116,7 @@ Phase Execution Tracking:
 Quality Gate Decision:
 
 1. Agent completes task
-   Agent: dev:frontend
+   Agent: dev:frontend-developer
    Task: "Implement dashboard component"
    Confidence: 0.75
 

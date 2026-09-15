@@ -33,7 +33,7 @@ scenarios:
         value: madbench:bench
 
       - type: environment:agent-registered
-        value: madbench:operator
+        value: madbench:bench
 
       # Two MCP questions, two checks. `mcp-connected` asks whether the TOOL registered
       # the server; `mcp-reachable` asks whether the SERVER answered madbench's own

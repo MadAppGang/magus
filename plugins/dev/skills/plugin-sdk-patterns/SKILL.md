@@ -808,7 +808,7 @@ updated: 2026-01-28
 ### Naming Conventions
 
 **Plugins**: `lowercase-hyphen-separated`
-- Example: `frontend-toolkit`, `code-analysis`, `seo-optimizer`
+- Example: `frontend-toolkit`, `code-search`, `video-editing`
 
 **Skills**: `descriptive-noun-phrase`
 - Example: `react-patterns`, `api-design`, `testing-strategies`

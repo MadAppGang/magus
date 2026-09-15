@@ -3,11 +3,11 @@
 
 # madbench
 
-Toolkit for madbench, MadAppGang's Go harness for benchmarking agentic coding tools. An operator agent authors, runs and debugs benches natively in a visible pane, reading the madbench-evals skill by path; /madbench:bench and /madbench:doctor are the entry points; a script enforces bench layout.
+Toolkit for madbench, MadAppGang's Go harness for benchmarking agentic coding tools. The madbench:bench agent authors, runs and debugs benches natively in a visible pane, reading the madbench-evals skill by path; /madbench:bench and /madbench:doctor are the entry points.
 
 | | |
 |---|---|
-| Version | `0.4.0` |
+| Version | `0.5.0` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 2 |
 | Subagents | 1 |
@@ -43,7 +43,7 @@ Dispatched with the Agent tool, each in its own context window.
 
 | Agent | What it does |
 |---|---|
-| `madbench:operator` | \| |
+| `madbench:bench` | \| |
 
 ## Skills
 

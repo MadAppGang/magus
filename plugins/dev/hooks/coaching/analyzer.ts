@@ -410,7 +410,7 @@ function applyRules(
       case "plugin-command-gap":
       case "bash-ffmpeg-without-plugin":
       case "suggest-claudeup-for-plugin-install":
-      case "image-generate-not-suggested-for-images":
+      case "image-plugin-not-suggested-for-images":
       case "browser-use-for-playwright-selenium":
       case "tui-via-bash-instead-of-terminal": {
         const bashPatterns = signal.bash_patterns ?? [];
@@ -528,7 +528,7 @@ function applyRules(
       }
 
       case "no-code-search-during-investigation": {
-        // Fire when Grep count >= min_count AND no code-analysis facade tool calls exist
+        // Fire when Grep count >= min_count AND no code-search facade tool calls exist
         const minCount = signal.min_count ?? 5;
         const absentPrefix = signal.absent_tool_prefix ?? "";
         const hasCodeSearch = toolCalls.some((tc) =>
@@ -576,9 +576,9 @@ function applyRules(
       }
 
       case "designer-review-after-ui-implementation": {
-        // Signal: dev:frontend Task present AND no designer:design-review Task
+        // Signal: dev:frontend-developer Task present AND no designer:review Task
         const frontendTasks = taskCalls.filter(
-          (tc) => String(tc.input.subagent_type ?? "") === "dev:frontend"
+          (tc) => String(tc.input.subagent_type ?? "") === "dev:frontend-developer"
         );
         const absentAgent = signal.absent_agent ?? "";
         const designerTasks = absentAgent

@@ -268,7 +268,7 @@ tools: Read, Write, Glob, Grep, Bash
 
         claude.ai Google Drive: https://drivemcp.googleapis.com/mcp/v1 - ✔ Connected
         plugin:mnemex:mnemex: mnemex --mcp - ✔ Connected
-        plugin:code-analysis:ca: bun /…/code-analysis/7.1.0/mcp/server.ts - ✔ Connected
+        plugin:code-search:ca: bun /…/code-search/7.1.0/mcp/server.ts - ✔ Connected
         plugin:terminal:tmux: tmux-mcp -shell-type zsh -scope agentic - ✔ Connected
         linear-server: https://mcp.linear.app/mcp (HTTP) - ✔ Connected
         ```
@@ -350,7 +350,7 @@ tools: Read, Write, Glob, Grep, Bash
 
         | Server | Owner | `usage` |
         |---|---|---|
-        | `ca` | code-analysis | `<root>/skills/code-search/SKILL.md` |
+        | `ca` | code-search | `<root>/skills/search/SKILL.md` |
         | `claudish` | claudish | `<root>/skills/claudish-usage/SKILL.md` |
         | `tmux` | terminal | `<root>/skills/terminal-interaction/SKILL.md` |
         | `browser-use` | browser-use | `<root>/skills/core-api/SKILL.md` |
@@ -458,7 +458,7 @@ tools: Read, Write, Glob, Grep, Bash
         wrongly. Omit an agent entirely rather than giving it an empty `read`.
       </step>
       <step>
-        `scribe`, `synthesizer` and `stack-detector` **never** receive an entry. The
+        `aggregator` and `stack-detector` **never** receive an entry. The
         validator rejects them, and it rejects any key that is not an agent on disk.
       </step>
       <step>
@@ -470,8 +470,8 @@ tools: Read, Write, Glob, Grep, Bash
       <step>
         **Do not spend a slot on a skill the agent already preloads.** `debugger` preloads
         `systematic-debugging`; `docs` preloads `documentation-standards`; `devops` preloads
-        `bunjs-production`; `architect`, `developer`, `researcher` and `synthesizer` preload
-        `universal-patterns` — read the current set off disk with
+        `bunjs-production`; `architect`, `developer` and `researcher` preload
+        `universal-patterns`; `aggregator` preloads `aggregate-reviews` — read the current set off disk with
         `grep -A3 '^skills:' "${CLAUDE_PLUGIN_ROOT}/agents/"*.md`. Repeating one wastes a
         cap slot on a file the agent is already holding. The one exception is
         `frontend` + `design-system-guardrails`: list it anyway, as `mandatory`, because the
@@ -629,7 +629,7 @@ tools: Read, Write, Glob, Grep, Bash
       and surface remaining quota in the account settings page."
       `claude mcp list` answered in 4s. `~/.claude/plugins/installed_plugins.json` names
       `installPath`s for this project under `/home/u/.claude/plugins/cache/magus/` —
-      `code-analysis/7.1.0`, `terminal/4.2.0`, `go/0.1.2` — and each resolved file `stat`s.
+      `code-search/7.1.0`, `terminal/4.2.0`, `go/0.1.2` — and each resolved file `stat`s.
     </scenario>
     <emitted>
 ```json
@@ -683,8 +683,8 @@ tools: Read, Write, Glob, Grep, Bash
     "source": "claude-cli",
     "checked_health": true,
     "servers": [
-      { "name": "ca", "owner": "code-analysis", "scope": "plugin", "status": "connected",
-        "usage": "/home/u/.claude/plugins/cache/magus/code-analysis/7.1.0/skills/code-search/SKILL.md" },
+      { "name": "ca", "owner": "code-search", "scope": "plugin", "status": "connected",
+        "usage": "/home/u/.claude/plugins/cache/magus/code-search/7.1.0/skills/search/SKILL.md" },
       { "name": "tmux", "owner": "terminal", "scope": "plugin", "status": "connected",
         "usage": "/home/u/.claude/plugins/cache/magus/terminal/4.2.0/skills/terminal-interaction/SKILL.md" },
       { "name": "mnemex", "owner": "mnemex", "scope": "plugin", "status": "connected",
@@ -721,7 +721,7 @@ tools: Read, Write, Glob, Grep, Bash
       "mcp": [],
       "note": "browser-use is not configured; no browser validation available this session"
     },
-    "test-architect": {
+    "qa-engineer": {
       "read": [
         "${CLAUDE_PLUGIN_ROOT}/skills/core/testing-strategies/SKILL.md",
         "/home/u/.claude/plugins/cache/magus/go/0.1.2/knowledge/roles/tester/best-practices.md"
@@ -757,7 +757,7 @@ tools: Read, Write, Glob, Grep, Bash
   <example name="Bug fix — architecture is null, MCP probe fell back">
     <scenario>
       Go-only service. `${SESSION_PATH}/bug-report.md` carries a panic trace.
-      `claude mcp list` hit the 60s timeout. The registry names `code-analysis/7.1.0` and
+      `claude mcp list` hit the 60s timeout. The registry names `code-search/7.1.0` and
       `go/0.1.2` under `/home/u/.claude/plugins/cache/magus/` for this project.
     </scenario>
     <emitted>
@@ -795,8 +795,8 @@ tools: Read, Write, Glob, Grep, Bash
     "source": "static-files",
     "checked_health": false,
     "servers": [
-      { "name": "ca", "owner": "code-analysis", "scope": "plugin", "status": "unknown",
-        "usage": "/home/u/.claude/plugins/cache/magus/code-analysis/7.1.0/skills/code-search/SKILL.md" }
+      { "name": "ca", "owner": "code-search", "scope": "plugin", "status": "unknown",
+        "usage": "/home/u/.claude/plugins/cache/magus/code-search/7.1.0/skills/search/SKILL.md" }
     ],
     "unavailable": []
   },
@@ -807,7 +807,7 @@ tools: Read, Write, Glob, Grep, Bash
       "mcp": ["ca"],
       "note": "ca is configured; health was not verified — the CLI probe timed out"
     },
-    "test-architect": {
+    "qa-engineer": {
       "read": ["${CLAUDE_PLUGIN_ROOT}/skills/discipline/test-driven-development/SKILL.md"],
       "mandatory": [],
       "mcp": []

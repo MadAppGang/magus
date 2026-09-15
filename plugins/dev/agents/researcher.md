@@ -511,7 +511,7 @@ skills: dev:universal-patterns
       2. Present both perspectives with sources
       3. Assess which is more credible (quality, recency, consensus)
       4. Flag as requiring verification
-      5. Let synthesizer agent resolve in consolidation
+      5. Let aggregator agent resolve in consolidation
     </recovery>
   </strategy>
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * Stop hook — refuse to end the turn while a dispatched `madbench:operator` has not
+ * Stop hook — refuse to end the turn while a dispatched `madbench:bench` has not
  * reported back.
  *
  * THE FAILURE IT CATCHES. In this Claude Code build every `Agent` call is asynchronous.
@@ -14,7 +14,7 @@
  * `--repeat 5` twice: parents that actually waited were 3/5, then 2/5. Wording is roughly
  * a coin flip; a Stop hook is a mechanism.
  *
- * WHAT IT DOES. Reads the transcript, finds the most recent `madbench:operator` dispatch,
+ * WHAT IT DOES. Reads the transcript, finds the most recent `madbench:bench` dispatch,
  * and asks whether anything since then says that operator finished. If not, it answers
  * `{"decision":"block","reason":…}` and names the exact call to make. Otherwise it is
  * silent.
@@ -29,7 +29,7 @@
  * hook at all, so it gives up whenever it might be wrong:
  *
  *   - no transcript, unreadable transcript, or a parse failure   -> allow, silently
- *   - no `madbench:operator` dispatch in the transcript at all   -> allow (the common case,
+ *   - no `madbench:bench` dispatch in the transcript at all   -> allow (the common case,
  *                                                                   and the early exit)
  *   - a dispatch whose tool result carries no agentId            -> allow (nothing to name,
  *                                                                   and a synchronous agent
@@ -50,7 +50,7 @@ import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "no
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-export const OPERATOR = "madbench:operator";
+export const OPERATOR = "madbench:bench";
 
 /** Stamped into every block reason so a later invocation can count its own prior blocks. */
 export const SENTINEL = "madbench-stop-wait";

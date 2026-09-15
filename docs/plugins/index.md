@@ -27,7 +27,7 @@ For a team, pin the plugins in `.claude/profiles.json` and everyone runs
 
 ## The same name on two marketplaces
 
-A plugin id carries the marketplace it came from — `dev@magus`, `image-generate@magus-marketing` — so
+A plugin id carries the marketplace it came from — `dev@magus`, `image@magus-marketing` — so
 the same short name can exist on more than one without ambiguity. claudeup shows you which
 is which, and you rarely have to type an id at all.
 

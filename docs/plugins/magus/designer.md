@@ -7,11 +7,11 @@ UI design validation. Compares a rendered screen against its reference by pixel 
 
 | | |
 |---|---|
-| Version | `0.7.0` |
+| Version | `0.8.0` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 3 |
 | Subagents | 2 |
-| Skills | 5 |
+| Skills | 6 |
 | MCP server | no |
 | Hooks | no |
 
@@ -41,8 +41,8 @@ Prefer to do it by hand? [Installing Magus](../../guides/install.md) has the man
 | Command | What it does |
 |---|---|
 | `/designer:create-style` | \| |
-| `/designer:review` | Compare a reference design against an implementation. Accepts Figma URL, image file, or browser URL as reference. |
-| `/designer:ui` | UI design review from a screenshot or Figma file, covering usability and accessibility |
+| `/designer:review` | Judge an implementation against its reference design — pixel diff, external vision model, and the project's review services. |
+| `/designer:ui` | Create a UI design from a brief — artboards per screen and state, tokens, component list — then optionally implement it and judge the result against the design |
 
 ## Subagents
 
@@ -50,8 +50,8 @@ Dispatched with the Agent tool, each in its own context window.
 
 | Agent | What it does |
 |---|---|
-| `designer:design-review` | \| |
-| `designer:ui` | Reviews a supplied screenshot for usability and visible WCAG accessibility concerns. Name the exact local image path and the review scope in the prompt; |
+| `designer:review` | \| |
+| `designer:ui` | \| |
 
 ## Skills
 
@@ -66,6 +66,7 @@ Dispatched with the Agent tool, each in its own context window.
 |---|---|---|
 | ● | `designer:browser-use-integration` | Detects the browser-use@magus plugin and captures screenshots of URL-based references. Use when designer agents need browser screenshot capture and claude-in-chrome is unavailable. |
 | ● | `designer:design-references` | Provides design system references — Material 3, Apple HIG, Tailwind UI, Ant Design, Shadcn/ui. Use when reviewing UI against an established design system. |
+| ● | `designer:review-services` | Judges a screen with an external vision model resolved live via claudish, and detects the project's review services (axe, Lighthouse, Percy, Chromatic, Applitools). |
 | ● | `designer:ui-analyse` | Reviews a UI screenshot — usability, WCAG, design-system consistency, design-vs-implementation diff. Prompting patterns, depth tiers and severity guidelines. Analysis only; |
 | ● | `designer:ui-style-format` | Specifies the UI design style file format and schema for .claude/design-style.md and .claude/design-references/. Use when creating, validating, or parsing project design styles. |
 | ○ | `designer:compare` | Provides the compare.ts CLI invocation pattern, semantic comparison prompt template, severity thresholds, and model selection guide for UI design comparison. |

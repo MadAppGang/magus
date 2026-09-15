@@ -29,7 +29,7 @@ One guide per job. What you type, what it asks, which options change the outcome
 
 - **[multimodel](./multimodel.md)** — a blind vote across models, or handing a whole task
   to one
-- **[code-analysis](./code-analysis.md)** — asking questions about code you didn't write
+- **[code-search](./code-search.md)** — asking questions about code you didn't write
 - **[bunjs](./bunjs.md)** — one command, and the eight skills behind it
 
 Looking for what a specific plugin does? See the [plugin catalog](../plugins/index.md).

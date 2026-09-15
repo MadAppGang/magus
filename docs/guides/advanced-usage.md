@@ -208,7 +208,7 @@ Add marketplace to `.claude/settings.json`:
   },
   "enabledPlugins": {
     "dev@magus": true,
-    "code-analysis@magus": true
+    "code-search@magus": true
   }
 }
 ```

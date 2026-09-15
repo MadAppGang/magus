@@ -7,11 +7,11 @@ Universal development assistant. Detects the project stack and routes work to sp
 
 | | |
 |---|---|
-| Version | `7.4.1` |
+| Version | `8.0.0` |
 | Marketplace | [`magus`](./index.md) |
-| Commands | 16 |
-| Subagents | 13 |
-| Skills | 18 |
+| Commands | 17 |
+| Subagents | 12 |
+| Skills | 21 |
 | MCP server | no |
 | Hooks | yes |
 
@@ -35,13 +35,13 @@ Each one does a single job. The commands pick which to call — you rarely name 
 | `dev:developer` | Writes code, then loops write → test → fix → lint until the checks pass |
 | `dev:debugger` | Finds the root cause |
 | `dev:reviewer` | Reviews in three passes: security, correctness, maintainability |
-| `dev:test-architect` | Writes black box tests from the requirements, never from the code |
+| `dev:qa-engineer` | Writes black box tests from the requirements, never from the code |
 | `dev:researcher` | Multi-round web research, and rates the sources it used |
-| `dev:synthesizer` | Merges findings from several sources into one answer |
+| `dev:aggregator` | Merges findings from several sources into one answer |
 | `dev:docs` | Writes, checks and fixes documentation |
-| `dev:frontend` | Builds components against your design system |
+| `dev:frontend-developer` | Builds components against your design system |
 | `dev:devops` | Infrastructure and deployment |
-| `dev:spec-writer` and `dev:scribe` | Turn an interview into a spec |
+| `dev:spec-writer` | Turn an interview into a spec |
 
 ### MCP servers
 
@@ -154,6 +154,7 @@ Step-by-step, one guide per job:
 | `/dev:interview` | Comprehensive specification interview with intelligent requirements elicitation |
 | `/dev:investigate` | Read-only code investigation — architecture traces, implementation analysis, bug origin tracking with specialist agents |
 | `/dev:learn` | Analyze session for learnable patterns, apply pending learnings (--apply), or prune stale preferences (--prune) |
+| `/dev:qa` | Writes behaviour tests from a spec and a public contract with a writer that never sees the implementation — an external GPT top-tier model via claudish, or dev:qa-engineer in its own context… |
 | `/dev:release` | Releases the current project through a phased pipeline — preflight gates, version+changelog PR, merge, tag, publish, verify against the public registry. |
 | `/dev:research` | Multi-source research with convergence-based finalization and parallel exploration |
 | `/dev:setup` | Set up project CLAUDE.md with task routing table and agent delegation rules |
@@ -166,19 +167,18 @@ Dispatched with the Agent tool, each in its own context window.
 
 | Agent | What it does |
 |---|---|
+| `dev:aggregator` | Merges several reviews of one target into the one report a gate reads, tagging each finding with its consensus and computing the verdict from the thresholds it is handed; |
 | `dev:architect` | Plans system architecture in any language, weighing trade-offs and naming what each choice costs. |
 | `dev:debugger` | Traces an error to its root cause across files, in any language, and reports the evidence for the diagnosis. |
 | `dev:developer` | Implements features spanning multiple files, then iterates write-test-fix-lint until every check passes. Use for new modules, subsystems, or any change needing 3+ files with test coverage. |
 | `dev:devops` | Handles infrastructure work — CI pipelines, containers, deploys, observability — and reasons through the trade-offs before anything is applied — it produces the commands and IaC, it does not… |
 | `dev:docs` | Writes, analyses, and fixes documentation. Pass mode=write\|analyze\|fix, the exact doc paths to work on and the source paths that ground them, and SESSION_PATH so analyze and fix share one re… |
-| `dev:frontend` | Builds and revises React components against the project's design system, with optional vision review of screenshots. |
+| `dev:frontend-developer` | Builds and revises React components against the project's design system — library components with Storybook stories, tokens only, screens compose. Use when implementing or reworking UI. |
+| `dev:qa-engineer` | Writes behaviour tests from a spec and a public contract without reading the implementation — Go, Bun/TypeScript, UI via Playwright. Use when coverage must check the spec, not the code. |
 | `dev:researcher` | Multi-round web research with convergence detection — searches 10+ sources, assesses their quality, and returns a cited report. |
-| `dev:reviewer` | Reviews recent changes in three passes — security, correctness, maintainability — returning severity-calibrated findings and a PASS/CONDITIONAL/FAIL verdict. |
-| `dev:scribe` | Appends Q&A to an interview log, updates checkpoints and maintains session state — a small, fast file writer. |
+| `dev:reviewer` | Reviews recent changes in three passes — security, correctness, maintainability — plus a design-system pass on UI files, returning severity-calibrated findings and a PASS/CONDITIONAL/FAIL ve… |
 | `dev:spec-writer` | Synthesizes a specification from an interview session, reading the log, assets and context to produce spec.md and tasks.md. |
 | `dev:stack-detector` | Classifies a repo's stacks and quality commands, resolves what the task is, inventories reachable MCP servers, and writes a per-agent reading list to context.json. |
-| `dev:synthesizer` | Writes the one report a review gate reads, from one review or many: a single review passes through with its verdict, several merge with consensus per finding, against the thresholds it is ha… |
-| `dev:test-architect` | Writes tests from the requirements alone, never reading the implementation, so the tests check behaviour rather than restate the code. |
 
 ## Skills
 
@@ -187,17 +187,20 @@ Dispatched with the Agent tool, each in its own context window.
 | ● | Claude can reach for it on its own |
 | ○ | You invoke it by name |
 | ▸ | A command loads it for you — you never name it |
+| ! | Nothing can reach it — a packaging bug |
 
 [Why a skill lands in one row or another](../../guides/skill-visibility.md)
 
 | | Skill | What it covers |
 |---|---|---|
+| ● | `dev:aggregate-reviews` | Merges independent reviews of one target into one report with a consensus tag per finding and a verdict from supplied thresholds; also synthesises research findings. |
 | ● | `dev:context-detection` | Detects the project stack from its config files, then names the one or two dev skill files to read for this task — it loads none of them. |
 | ● | `dev:design-system-guardrails` — [4 more docs](./dev-design-system-guardrails.md) | Enforces single-source-of-truth UI — design tokens for every style value, one component library, variants instead of call-site restyling. |
 | ● | `dev:documentation-standards` | 15 ranked documentation practices, 7 templates and anti-slop writing rules. Use when writing or reviewing a README, API reference, guide or changelog, even if the user only says "document th… |
 | ● | `dev:systematic-debugging` — [5 more docs](./dev-systematic-debugging.md) | Root-cause debugging — reproduce, localize, explain, verify — with depth routing and a technique catalogue for stack traces, wolf fence and data-flow tracing. |
 | ● | `dev:test-driven-development` | RED-GREEN-REFACTOR: write a failing test, watch it fail, make it pass, refactor. Use before writing any production code or bug fix, or on mention of TDD or test-first, even if the user asked… |
 | ● | `dev:testing-strategies` | Testing pyramid, AAA structure, test doubles, fixtures, assertions and coverage targets, in any language. Use when writing, reviewing or setting up tests. |
+| ● | `dev:ui-playwright` | Writes Playwright UI tests — role locators, page objects, fixtures, network stubs, snapshot policy, one test per Storybook story state. |
 | ● | `dev:universal-patterns` | Code organization, error handling, data flow, naming and anti-patterns in any language. Use while writing or reviewing everyday code. |
 | ● | `dev:verification-before-completion` | Requires fresh evidence — command output, a test run, a screenshot — before any completion claim. |
 | ● | `dev:worktree-lifecycle` | Creates, uses and cleans up git worktrees with safety checks. Use before isolated, risky or parallel feature work, or on mention of worktree, experiment or prototype. |
@@ -207,9 +210,10 @@ Dispatched with the Agent tool, each in its own context window.
 | ○ | `dev:code-roast` | Roasts code with severity-graded sins, cites file and line, offers redemption. Use when the user asks to roast code, find sins, or shame my code. |
 | ○ | `dev:db-branching` | Branches Neon, Turso, or Supabase per git worktree for isolated schema work. Use when a worktree changes the schema, or on mention of Neon, Turso, Prisma. |
 | ○ | `dev:plugin-sdk-patterns` | Patterns and templates for building Claude Code plugins. Use for plugin development — creating a plugin, skill and agent templates, plugin architecture, or standardizing structure. |
+| ○ | `dev:team-gate` | Runs a multi-model review gate to a verdict: start the claudish team panel with input_file only, poll until settled, read every ballot, apply the minimum ballot count, log every skip. |
 | ▸ | `dev:brainstorming` | Explores solution approaches in parallel across models, scores confidence, validates the chosen plan. Use when planning an approach or asked to brainstorm. |
 | ▸ | `dev:bunjs-production` | Provides Bun.js production patterns — Docker, AWS ECS/Fargate, Redis caching, security hardening, CI/CD. Use when deploying or operationalizing a Bun.js service. |
-| ▸ | `dev:frontend-implement` | Rewrites generic-looking UI by five anti-generic rules — asymmetry, texture, typography, motion, colour. Use when applying design-review fixes, or UI looks AI-generated. |
+| ! | `dev:frontend-implement` | Rewrites generic-looking UI by five anti-generic rules — asymmetry, texture, typography, motion, colour. Use when applying design-review fixes, or UI looks AI-generated. |
 
 ## Hooks
 

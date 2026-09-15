@@ -638,7 +638,7 @@ Phase 2: Implementation
   Checkpoint: Does implementation match architecture?
 
 Phase 3: Testing
-  Agent: dev:test-architect
+  Agent: dev:qa-engineer
   Input: Implementation files
   Output: tests/auth/*.test.ts files
   Checkpoint: Do tests cover all auth requirements?
@@ -656,7 +656,7 @@ Phase 4: Code Review
 Task: "Migrate database from MySQL to PostgreSQL"
 
 Phase 1: Impact Analysis
-  Agent: code-analysis:detective
+  Agent: code-search:analyze
   Input: Current codebase
   Output: ai-docs/migration-impact.md
   Checkpoint: Are all affected files identified?
@@ -674,7 +674,7 @@ Phase 3: Code Migration
   Checkpoint: Do code changes align with schema migration?
 
 Phase 4: Testing
-  Agent: dev:test-architect
+  Agent: dev:qa-engineer
   Input: Migrated code
   Output: Test suite for new database layer
   Checkpoint: Do tests verify data integrity post-migration?
@@ -692,7 +692,7 @@ Phase 5: Validation
 Task: "Review authentication module for security issues"
 
 Phase 1: Context Gathering
-  Agent: code-analysis:detective
+  Agent: code-search:analyze
   Input: Auth module source files
   Output: ai-docs/review-context.md
   Checkpoint: Is all relevant code captured?
@@ -883,7 +883,7 @@ Step 4: CHECKPOINT 2
 ---
 
 Step 5: PHASE 3 - Testing
-  Agent: dev:test-architect
+  Agent: dev:qa-engineer
     Prompt: "Read ai-docs/coordinator-context.md.
              Read ai-docs/phase-2-findings.md.
              Write tests for pagination implementation."
@@ -964,7 +964,7 @@ Tasks:
 ---
 
 Step 1: PHASE 1 - Context Gathering
-  Agent: code-analysis:detective
+  Agent: code-search:analyze
     Output: ai-docs/auth-review-context.md (all auth DB queries)
 
   CHECKPOINT 1: ALIGNED (all auth queries captured)
@@ -1046,7 +1046,7 @@ Tasks:
 ---
 
 PHASE 1: Impact Analysis
-  Agent: code-analysis:detective
+  Agent: code-search:analyze
   Output: 8 files affected, 3 payment providers, 45 tests
   CHECKPOINT 1: ALIGNED
 
@@ -1080,7 +1080,7 @@ PHASE 3: Implementation
     CHECKPOINT 3 (Re-validate): ALIGNED
 
 PHASE 4: Test Validation
-  Agent: dev:test-architect
+  Agent: dev:qa-engineer
   Output: All 45 tests pass, no behavior changes detected
   CHECKPOINT 4: ALIGNED
 

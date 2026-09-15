@@ -16,7 +16,7 @@ Everything file-bound runs *after* that gate, because it cannot run before it:
 
 - `claudish team` **requires** a `path` and writes each model's output into it. There is
   no file-free mode. Multi-model review therefore cannot happen inside plan mode.
-- `dev:test-architect` may read `architecture.md` and nothing else (see
+- `dev:qa-engineer` may read `architecture.md` and nothing else (see
   `<test_independence>` in `dev.md`). That file is the isolation boundary that keeps
   tests black-box, so it has to exist as a file.
 - `phase-completion-validator.ts` refuses to mark this phase complete until
@@ -170,7 +170,7 @@ Now that writes are permitted again, persist what was approved:
 - `${SESSION_PATH}/architecture.md` ← the `## Architecture` section of the plan file
 
 These are the same files, with the same content, that this phase has always produced.
-Everything downstream — Phase 4, `dev:test-architect`, the completion validator — is
+Everything downstream — Phase 4, `dev:qa-engineer`, the completion validator — is
 unchanged and does not know planning happened under plan mode.
 
 ### Step 3.10: Multi-model plan review (P1b — READ FROM CONFIG, NO RE-ASKING)
@@ -186,14 +186,18 @@ which claudish >/dev/null 2>&1; claudish_present=$?
   `claudish_present` is 0 → externals run beside the internal review. Display:
   "Using pre-configured models: {model list}".
 - Otherwise → internal review only. If models were configured but claudish is absent,
-  say so once. The internal review runs regardless; it is never optional.
+  say so once. The internal review runs regardless; it is never optional. Write the
+  skip down at this moment, never later — append one line to `${SESSION_PATH}/gates.log`:
+  `gate skipped: plan-review — MODELS none` or `gate skipped: plan-review — claudish
+  absent`. The line is repeated in the completion message; silence about a skipped
+  gate is a defect (`${CLAUDE_PLUGIN_ROOT}/skills/core/team-gate/SKILL.md`, step 6).
 
 **The plan-review rule.** This phase owns its own verdict rule, because a plan has no
 code reviewer's thresholds to borrow — the architect's output is a design, not a diff:
 
 > FAIL: any CRITICAL · CONDITIONAL: any HIGH · PASS: otherwise
 
-It is stated here, quoted to every reviewer in the brief, and quoted to the synthesizer
+It is stated here, quoted to every reviewer in the brief, and quoted to the aggregator
 on `THRESHOLDS:`. Do not substitute `dev:reviewer`'s thresholds — those count HIGHs on
 a code-review scale that no plan reviewer was asked to use.
 
@@ -248,33 +252,49 @@ a code-review scale that no plan reviewer was asked to use.
      shapeless response is reported FAILED rather than entering the count as a reviewer
      that found no issues — which reads as agreement. `min_output_bytes` floors the rest.
 
-  c. Externals only: wait by **polling**, not on the call —
-     `claudish team(mode="status", path=${SESSION_PATH}/reviews/plan-review)` until no
-     slot in `models` has `state === "RUNNING"`. `run` returned as soon as it started
-     them. Bound the loop and report anything still running rather than looping forever;
-     `idle_seconds_by_slot` and `activity_by_slot` tell a slow build apart from a wedged
-     slot. Full procedure: `claudish:claudish-usage` → "The three-step lifecycle".
-     Requires claudish >= 8.0.0.
+     Pass `input_file` ONLY — never `input` beside it. The pair is rejected with
+     `Pass input_file or input, not both`; on that exact error retry once with
+     `input_file` alone. Any other error is a panel with 0 ballots (step c).
 
-  d. Consolidate — dispatch `dev:synthesizer`, always, one review or five. Never inline,
-     never the architect. `consolidated.md` is a required artifact of this phase, and the
-     synthesizer is the only thing that writes it; with one review it passes that review
-     through unchanged and appends the `VERDICT:` line.
+  c. Externals only: this gate is **plan-review**, `MIN_BALLOTS` = 2 when N ≥ 3,
+     otherwise N. Read `${CLAUDE_PLUGIN_ROOT}/skills/core/team-gate/SKILL.md` and follow
+     its steps 2-5: `run` returned as soon as it started the slots, so poll
+     `claudish team(mode="status", path=${SESSION_PATH}/reviews/plan-review)` until no
+     slot in `models` has `state === "RUNNING"` (bounded; `idle_seconds_by_slot` and
+     `activity_by_slot` tell a slow build apart from a wedged slot), then read every
+     `response-<slot>.md` and count ballots. A backgrounded call is unknown until polled.
+     **Ballots below `MIN_BALLOTS` is GATE NOT MET**: append the `gate not met:` line to
+     `${SESSION_PATH}/gates.log`, do not consolidate, and stop with the skill's three
+     options. Requires claudish >= 8.0.0.
+
+  d. Consolidate. `consolidated.md` is a required artifact of this phase. Count the
+     reviews that completed first — step c already stopped the run if the panel fell
+     below its minimum, so what reaches here is a met gate, full or partial.
+
+     **One review** (no externals ran, or every slot failed) — do not dispatch
+     `dev:aggregator`; aggregating one review can only subtract from it. Copy
+     `claude-internal.md` to `consolidated.md` unchanged, then append a blank line and
+     `VERDICT: <word>`, the word being the review's own `**Verdict**:` checked against
+     the plan-review rule. If externals were launched, list each slot that did not
+     complete, and why, directly above the `VERDICT:` line.
+
+     **Two or more reviews** — dispatch `dev:aggregator`, foreground. Never inline,
+     never the architect:
 
      Agent(
-       subagent_type: "dev:synthesizer",
+       subagent_type: "dev:aggregator",
        run_in_background: false,
        description: "Consolidate plan reviews",
        prompt: "REVIEWS: ${SESSION_PATH}/reviews/plan-review/claude-internal.md
-                ${SESSION_PATH}/reviews/plan-review/response-<slot>.md   (one line per slot that completed; none when no externals ran)
+                ${SESSION_PATH}/reviews/plan-review/response-<slot>.md   (one line per slot that completed)
                 THRESHOLDS: FAIL: any CRITICAL · CONDITIONAL: any HIGH · PASS: otherwise
                 OUTPUT: ${SESSION_PATH}/reviews/plan-review/consolidated.md
                 Compute the verdict line from your counts against THRESHOLDS.
                 You are given reviews, never code. Do not review."
      )
 
-     The synthesizer writes `consolidated.md` ending in `VERDICT: PASS|CONDITIONAL|FAIL` —
-     the words this phase's rule names. Step e reads it.
+     Either way `consolidated.md` ends in `VERDICT: PASS|CONDITIONAL|FAIL` — the words
+     this phase's rule names. Step e reads it.
 
   e. Read the `VERDICT:` line. If FAIL (any CRITICAL):
      - Launch the architect to revise the plan

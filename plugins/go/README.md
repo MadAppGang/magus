@@ -27,7 +27,7 @@ discover and use this plugin's `knowledge/` base when both plugins are installed
 | Implement Go code | `dev:developer` | `roles/developer/` + `references/` |
 | Design Go architecture | `dev:architect` | `roles/architect/` + `references/` |
 | Review Go code | `dev:reviewer` | `roles/code-reviewer/` + style guides |
-| Write Go tests | `dev:test-architect` | `roles/tester/` + `testing-patterns.md` |
+| Write Go tests | `dev:qa-engineer` | `roles/tester/` + `testing-patterns.md` |
 
 So the intended workflow is: **install both plugins, then delegate Go work to the
 `dev` agents** — they pick up the Go knowledge automatically.

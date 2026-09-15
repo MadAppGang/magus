@@ -388,7 +388,7 @@ claudish slot. Launch it as its own
 as the `team` call, carrying the contract lines — `TARGET: BRANCH`, `FOCUS:`, its own
 `OUTPUT:` path, and `MODELS:` naming the externals. Never seat it in that team's `models`
 list. Its return is in your hands: list its OUTPUT file on REVIEWS: whether or not it
-carries a `**Verdict**:` line — the synthesizer counts a file with no verdict as
+carries a `**Verdict**:` line — the aggregator counts a file with no verdict as
 no-verdict, never as one more approval. (`/team` itself, where claudish is a hard
 dependency, seats it as the `internal` slot instead — Pattern 3 states the rule.)
 ```
@@ -430,12 +430,12 @@ Message 2: Parallel Execution (the internal Agent call and ONE team call, same m
 
 Message 3: Auto-Consolidation (Task Only)
   - Automatically triggered when the panel settles — at N = 1 too, where the
-    synthesizer passes the single review through with a `VERDICT:` line (Pattern 5)
-  - Launch `dev:synthesizer` — the only consolidator; it reads reviews, never code
+    aggregator passes the single review through with a `VERDICT:` line (Pattern 5)
+  - Launch `dev:aggregator` — the only consolidator; it reads reviews, never code
   - Pass every review file path on REVIEWS:, the three lines under 'Apply verdict
     thresholds' in `dev:reviewer`'s agent file on THRESHOLDS: — read at dispatch
     time, never recalled — and the consolidated file on OUTPUT: (Pattern 5)
-  - Consensus analysis is the synthesizer's; never send the reviews to dev:reviewer
+  - Consensus analysis is the aggregator's; never send the reviews to dev:reviewer
 
 Message 4: Present Results
   - Show user prioritized issues
@@ -483,7 +483,7 @@ Message 2: Start the panel (the internal Agent call and ONE team call, same mess
   and the team tool parallelises the four externals internally. The internal
   reviewer is never a `models` entry — its return is in your hands, and its OUTPUT
   file goes on REVIEWS: whether or not it carries a `**Verdict**:` line; the
-  synthesizer counts a file with no verdict as no-verdict, never as approval.
+  aggregator counts a file with no verdict as no-verdict, never as approval.
 
   The team call RETURNS IMMEDIATELY with a slots map. It does not carry the reviews.
 
@@ -499,12 +499,12 @@ Message 3: Auto-Consolidation
   # The internal reviewer wrote $SESSION_DIR/claude-review.md. The team run wrote
   # one file per external slot, $SESSION_DIR/response-NN.md, named by
   # ANONYMOUS slot id rather than by model, because the vote is blind. Do not try
-  # to attribute a file to a model before the verdict is in. The synthesizer is
+  # to attribute a file to a model before the verdict is in. The aggregator is
   # the only consolidator: it is given the reviews and never the code, and no
   # reviewer ever sees another reviewer's output.
 
   Agent(
-    subagent_type: "dev:synthesizer",
+    subagent_type: "dev:aggregator",
     run_in_background: false,
     description: "Consolidate code reviews",
     prompt: "REVIEWS: $SESSION_DIR/claude-review.md
@@ -648,7 +648,7 @@ Do NOT consolidate until ALL tasks complete:
   Launch: Task1, Task2, Task3, Task4 (parallel)
   Wait: All 4 complete
   Check: results.filter(r => r.status === 'fulfilled').length
-  If >= 1: Dispatch dev:synthesizer (a passthrough with a verdict at N = 1);
+  If >= 1: Dispatch dev:aggregator (a passthrough with a verdict at N = 1);
            if any failed, also offer to retry them
   If 0:    Offer retry or abort
 
@@ -707,7 +707,7 @@ There is no `timeout` parameter any more, and passing one is silently ignored. F
 **In a dev-dispatched panel the internal reviewer is never a `models` entry.** It runs as
 the Agent above — on the host session, with the dev plugin loaded, so `TARGET: BRANCH`
 resolves through dev's own capture script — and its return is in the dispatcher's hands.
-Its file goes on REVIEWS: whether or not it carries a verdict line; the synthesizer counts
+Its file goes on REVIEWS: whether or not it carries a verdict line; the aggregator counts
 a file with no verdict as no-verdict, never as one more approval.
 
 **`require_pattern` is what turns exit 0 into a real success check.** A slot that finished
@@ -751,8 +751,8 @@ Agent({ subagent_type: "dev:reviewer", run_in_background: true,
 ```
 
 The internal reviewer runs `run_in_background: false` so that its return — and whether its
-OUTPUT file carries a `**Verdict**:` line — is in hand before the synthesizer is dispatched.
-It goes on REVIEWS: either way; the synthesizer counts a file with no verdict as no-verdict,
+OUTPUT file carries a `**Verdict**:` line — is in hand before the aggregator is dispatched.
+It goes on REVIEWS: either way; the aggregator counts a file with no verdict as no-verdict,
 never as approval. A background Agent's file is read by nobody until it is too late. (For
 `/team` itself the correct form is the `internal` slot — `commands/team.md`, per the rule
 above.)
@@ -887,7 +887,7 @@ If user says YES:
 **Automatic Trigger:**
 
 Consolidation happens **automatically** as soon as the panel settles — at N = 1 as well
-as N ≥ 2. `dev:synthesizer` is the only writer of the consolidated report; at N = 1 it
+as N ≥ 2. `dev:aggregator` is the only writer of the consolidated report; at N = 1 it
 passes the single review through unchanged and appends the `VERDICT:` line, so the
 output has one shape whatever N is:
 
@@ -902,7 +902,7 @@ if (successful.length >= 1) {
   // Auto-trigger consolidation (DON'T wait for user to ask). N = 1 is a passthrough with a verdict.
   const reviewPaths = successful.map((r) => r.value.reviewFile); // one review file per slot
   const consolidated = await Agent({
-    subagent_type: "dev:synthesizer",
+    subagent_type: "dev:aggregator",
     run_in_background: false,     // formatResults() consumes the return value
     description: "Consolidate code reviews",
     prompt: `REVIEWS: ${reviewPaths.join("\n")}
@@ -932,7 +932,7 @@ const successful = results.filter(r => r.status === 'fulfilled');
 notifyUser("3 reviews complete. Would you like me to consolidate them?");
 // Waits for user to request consolidation...
 
-❌ WRONG - Skip the synthesizer at N = 1:
+❌ WRONG - Skip the aggregator at N = 1:
 
 if (successful.length >= 2) {
   await consolidate();
@@ -951,15 +951,15 @@ if (successful.length >= 2) {
 **N = 1 is a passthrough, not a skip:**
 
 Consensus levels need at least two reviews; the consolidated report does not. At N = 1
-the synthesizer emits the single review unchanged — no `[CONSENSUS: …]` tags, nothing
+the aggregator emits the single review unchanged — no `[CONSENSUS: …]` tags, nothing
 reworded — followed by the `VERDICT:` line computed from that review's own counts against
 THRESHOLDS, so the dispatcher still gets the one file its gate reads. The only dispatcher
-that skips the synthesizer at N = 1 is `/dev:fix` Phase B, whose output is a vote tally,
+that skips the aggregator at N = 1 is `/dev:fix` Phase B, whose output is a vote tally,
 and a single vote is its own tally:
 
 ```
 if (successful.length >= 1) {
-  // Dispatch dev:synthesizer: consolidation at N ≥ 2, passthrough with a verdict at N = 1
+  // Dispatch dev:aggregator: consolidation at N ≥ 2, passthrough with a verdict at N = 1
   if (successful.length < results.length) {
     // In addition, not instead
     notifyUser("Some models failed. Retry the failures and re-consolidate?");
@@ -972,12 +972,12 @@ if (successful.length >= 1) {
 
 **Pass All Review File Paths:**
 
-`dev:synthesizer` needs the path of EVERY review file, one per `REVIEWS:` line. It
+`dev:aggregator` needs the path of EVERY review file, one per `REVIEWS:` line. It
 reads the reviews and never the code, so the paths are all it gets:
 
 ```
 Agent(
-  subagent_type: "dev:synthesizer",
+  subagent_type: "dev:aggregator",
   run_in_background: false,
   description: "Consolidate code reviews",
   prompt: "REVIEWS: $SESSION_DIR/claude-review.md
@@ -1793,7 +1793,7 @@ Step 2: Error Handling (error-recovery)
   Model 5: Success
 
 Step 3: Partial Success Strategy (error-recovery)
-  3/5 models succeeded (the synthesizer runs at N ≥ 1; at exactly 1 it passes through)
+  3/5 models succeeded (the aggregator runs at N ≥ 1; at exactly 1 it passes through)
   Proceed with consolidation using 3 reviews
   Notify user: "2 models failed, proceeding with 3 reviews"
 
@@ -1836,7 +1836,7 @@ Step 3: User Sees Real-Time Progress
 - ✅ Use 4-Message Pattern for true parallel execution
 - ✅ Provide cost estimates BEFORE execution
 - ✅ Ask user approval for costs >$0.01
-- ✅ Auto-trigger `dev:synthesizer` when the panel settles — at N = 1 it is a passthrough with a verdict
+- ✅ Auto-trigger `dev:aggregator` when the panel settles — at N = 1 it is a passthrough with a verdict
 - ✅ Use blocking (synchronous) claudish execution
 - ✅ Write full output to files, return brief summaries
 - ✅ Prioritize by consensus level (unanimous → strong → majority → divergent)
@@ -1951,9 +1951,9 @@ Message 3: Start the panel (the internal Agent call and ONE team call, same mess
 
 Message 4: Auto-Consolidation + Statistics Update
   # Consolidate — claude-review.md plus one response-NN.md per external slot; the
-  # synthesizer never sees the code
+  # aggregator never sees the code
   Agent(
-    subagent_type: "dev:synthesizer",
+    subagent_type: "dev:aggregator",
     run_in_background: false,
     description: "Consolidate code reviews",
     prompt: "REVIEWS: $SESSION_DIR/claude-review.md
@@ -2047,7 +2047,7 @@ Message 3: Poll, then Error Recovery (error-recovery skill)
   running, and cancelling it is YOUR decision (error.reason = "cancelled").
 
   successful.length = 2 (Claude + GPT-5)
-  2 ≥ 1 ✓ (the synthesizer runs; had only one survived it would pass that review through)
+  2 ≥ 1 ✓ (the aggregator runs; had only one survived it would pass that review through)
 
   Notify user:
     "2/4 models succeeded (Grok timeout, Gemini error).
@@ -2056,7 +2056,7 @@ Message 3: Poll, then Error Recovery (error-recovery skill)
 Message 4: Auto-Consolidation
   # The internal review plus the one COMPLETED slot have a review file; list exactly those.
   Agent(
-    subagent_type: "dev:synthesizer",
+    subagent_type: "dev:aggregator",
     run_in_background: false,
     description: "Consolidate code reviews",
     prompt: "REVIEWS: $SESSION_DIR/claude-review.md

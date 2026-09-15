@@ -1,7 +1,7 @@
 ---
 name: interview
 description: Comprehensive specification interview with intelligent requirements elicitation
-allowed-tools: Agent, AskUserQuestion, Bash, Read, Glob, Grep
+allowed-tools: Agent, AskUserQuestion, Bash, Read, Write, Glob, Grep
 skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates, multimodel:task-orchestration
 ---
 
@@ -56,14 +56,15 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates,
 
       **You MUST:**
       - Conduct interviews using AskUserQuestion tool
-      - Delegate interview log updates to `scribe` agent after each round
+      - Record every round yourself with Write, into `${SESSION_PATH}/` only
+        (see `<session_files>`); there is no scribe agent
       - Delegate stack detection to `stack-detector` agent
       - Delegate spec synthesis to `spec-writer` agent
       - Use ultrathink (extended thinking) for tech stack recommendations
       - Collect and organize assets systematically
 
       **You MUST NOT:**
-      - Use Write or Edit tools directly (delegate to agents)
+      - Write outside `${SESSION_PATH}/` (the spec itself is spec-writer's)
       - Skip question categories
       - Ask obvious questions already answered in spec
       - Exceed iteration limits without user consent
@@ -81,6 +82,67 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates,
 
       This ensures all agents write to the correct session directory.
     </session_path_requirement>
+
+    <session_files>
+      The command keeps its own session files with Write. Four files, one rule each:
+
+      **`interview-log.md` — append only.** Read the file, then Write it back with the
+      new round added at the end. Never drop or rewrite an earlier round.
+      ```markdown
+      ## Round {N}
+
+      ### Questions Asked
+      1. {question1} [TYPE: {context-independent|parameterized|context-deepening|context-enhancing}]
+      2. {question2} [TYPE: {type}]
+
+      ### Answers
+      {user_answers}
+
+      ### Triggers Identified
+      {triggers}
+
+      ---
+      ```
+
+      **`session-meta.json` — overwrite with the complete object.**
+      ```json
+      {
+        "sessionId": "{SESSION_ID}",
+        "createdAt": "{timestamp}",
+        "type": "interview",
+        "interviewMode": "{focused|exploratory}",
+        "hasExistingSpec": true,
+        "status": "in_progress | spec_complete | completed",
+        "checkpoint": {
+          "phase": {current_phase},
+          "round": {current_round},
+          "coverage": { "{category}": {percent} },
+          "resumable": true
+        },
+        "lastUpdated": "{timestamp}"
+      }
+      ```
+
+      **`focus-areas.md` — overwrite with current coverage.**
+      ```markdown
+      # Focus Areas
+
+      | Category | Coverage | Questions Asked | Status |
+      |----------|----------|-----------------|--------|
+      | Functional Requirements | {%} | {N} | {status} |
+      | Non-Functional Requirements | {%} | {N} | {status} |
+      | User Experience | {%} | {N} | {status} |
+      | Edge Cases & Errors | {%} | {N} | {status} |
+      | Integration Points | {%} | {N} | {status} |
+      | Constraints & Trade-offs | {%} | {N} | {status} |
+      | Technical Preferences | {%} | {N} | {status} |
+      ```
+
+      **`assets.md` and `tasks.md` — overwrite**, templates in Phase 3 and Phase 5.
+
+      A "checkpoint update" anywhere below means: rewrite `session-meta.json` with the
+      new `checkpoint`, `status` and `lastUpdated`, nothing else changed.
+    </session_files>
 
     <interview_modes>
       **Mode Selection (from $ARGUMENTS or default):**
@@ -148,7 +210,7 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates,
 
       **Quality Target:** 60%+ context-dependent questions (types 3+4)
 
-      Log question types in interview-log.md via scribe agent.
+      Tag each question with its type in interview-log.md.
     </question_type_tracking>
 
     <mistake_avoidance>
@@ -242,48 +304,12 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates,
           - Begin with broad scoping questions
         </step>
         <step>
-          Write session-meta.json (via scribe agent):
-
-          Agent: dev:scribe
-          Prompt: "SESSION_PATH: ${SESSION_PATH}
-
-          Create session-meta.json with:
-          ```json
-          {
-            "sessionId": "{SESSION_ID}",
-            "createdAt": "{timestamp}",
-            "type": "interview",
-            "interviewMode": "{INTERVIEW_MODE: focused|exploratory}",
-            "hasExistingSpec": true/false,
-            "status": "in_progress",
-            "currentPhase": 0,
-            "currentRound": 0,
-            "checkpoint": {
-              "phase": 0,
-              "round": 0,
-              "coverage": {},
-              "lastUpdated": "{timestamp}"
-            },
-            "questionMetrics": {
-              "total": 0,
-              "byType": {
-                "contextIndependent": 0,
-                "parameterized": 0,
-                "contextDeepening": 0,
-                "contextEnhancing": 0
-              },
-              "adaptabilityScore": 0
-            }
-          }
-          ```"
+          Write `${SESSION_PATH}/session-meta.json` (template in `<session_files>`) with
+          `interviewMode`, `hasExistingSpec`, `status: "in_progress"` and
+          `checkpoint: { phase: 0, round: 0, coverage: {}, resumable: true }`.
         </step>
         <step>
-          Initialize interview log (via scribe agent):
-
-          Agent: dev:scribe
-          Prompt: "SESSION_PATH: ${SESSION_PATH}
-
-          Create interview-log.md with header:
+          Write `${SESSION_PATH}/interview-log.md` with the header only:
           ```markdown
           # Interview Log
 
@@ -292,9 +318,7 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates,
           **Existing Spec**: {yes/no}
 
           ---
-
-          ## Round 1
-          ```"
+          ```
         </step>
         <step>Mark PHASE 0 as completed</step>
       </steps>
@@ -333,29 +357,13 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates,
           - Integration points not detailed
         </step>
         <step>
-          Create interview focus areas document (via scribe agent):
-
-          Agent: dev:scribe
-          Prompt: "SESSION_PATH: ${SESSION_PATH}
-
-          Create focus-areas.md with categories:
-          1. Functional Requirements - % complete, gaps
-          2. Non-Functional Requirements - % complete, gaps
-          3. User Experience - % complete, gaps
-          4. Edge Cases & Errors - % complete, gaps
-          5. Integration Points - % complete, gaps
-          6. Constraints & Trade-offs - % complete, gaps
-          7. Technical Preferences - % complete, gaps
-
-          Initial coverage: 0% for all if no existing spec."
+          Write `${SESSION_PATH}/focus-areas.md` (template in `<session_files>`), one row
+          per category. Coverage is 0% everywhere when there is no existing spec;
+          otherwise the percentage the spec analysis above produced, with the gaps
+          listed under the table.
         </step>
         <step>
-          Update checkpoint in session-meta.json:
-
-          Agent: dev:scribe
-          Prompt: "SESSION_PATH: ${SESSION_PATH}
-
-          Update session-meta.json checkpoint to phase: 1, round: 0"
+          Checkpoint update: phase 1, round 0.
         </step>
         <step>Mark PHASE 1 as completed</step>
       </steps>
@@ -408,41 +416,18 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates,
 
           d. **Check for pause request:**
              If user responds with "pause" or "continue later":
-             - Save checkpoint state via scribe agent
+             - Checkpoint update (current phase and round)
              - Inform user: "Session saved. Resume with: /dev:interview --resume ${SESSION_ID}"
              - Exit gracefully
 
-          e. Record answers in interview log (via scribe agent):
+          e. Append the round to `${SESSION_PATH}/interview-log.md` using the Round
+             template in `<session_files>`: every question with its `[TYPE: …]` tag,
+             the answers, and the follow-up triggers. Read the file first; write it
+             back with the new round at the end and nothing earlier changed.
 
-             Agent: dev:scribe
-             Prompt: "SESSION_PATH: ${SESSION_PATH}
+          f. Rewrite `${SESSION_PATH}/focus-areas.md` with the new coverage
 
-             Append to interview-log.md:
-             ## Round {N}
-
-             **Questions Asked:**
-             1. {question1} [TYPE: context-deepening]
-             2. {question2} [TYPE: context-enhancing]
-
-             **Answers:**
-             1. {answer1}
-             2. {answer2}
-
-             **Follow-up Triggers:**
-             - {trigger1}
-             - {trigger2}
-
-             **Question Type Summary This Round:**
-             - Context-independent: {count}
-             - Parameterized: {count}
-             - Context-deepening: {count}
-             - Context-enhancing: {count}
-
-             Also update questionMetrics in session-meta.json"
-
-          f. Update focus-areas.md with new coverage (via scribe)
-
-          g. Update checkpoint in session-meta.json (via scribe)
+          g. Checkpoint update (phase 2, round N, coverage from focus-areas)
 
           h. Check completion criteria:
              - All categories at >= 70% coverage?
@@ -534,12 +519,7 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates,
           - Validate spec format and completeness
         </step>
         <step>
-          Compile assets document (via scribe agent):
-
-          Agent: dev:scribe
-          Prompt: "SESSION_PATH: ${SESSION_PATH}
-
-          Create assets.md with:
+          Write `${SESSION_PATH}/assets.md`:
           ```markdown
           # Project Assets
 
@@ -562,10 +542,10 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates,
           ## Inspiration / References
           - {app1}: Why mentioned
           - {app2}: Why mentioned
-          ```"
+          ```
         </step>
         <step>
-          Update checkpoint in session-meta.json (via scribe)
+          Checkpoint update: phase 3.
         </step>
         <step>Mark PHASE 3 as completed</step>
       </steps>
@@ -735,7 +715,7 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates,
           (Max 2 amendment rounds)
         </step>
         <step>
-          Update checkpoint in session-meta.json (via scribe) with status: "spec_complete"
+          Checkpoint update: phase 4, `status: "spec_complete"`.
         </step>
         <step>Mark PHASE 4 as completed</step>
       </steps>
@@ -754,12 +734,7 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates,
           - Suggest implementation order
         </step>
         <step>
-          Generate task breakdown (via scribe agent):
-
-          Agent: dev:scribe
-          Prompt: "SESSION_PATH: ${SESSION_PATH}
-
-          Create tasks.md with:
+          Write `${SESSION_PATH}/tasks.md`:
           ```markdown
           # Implementation Tasks
 
@@ -784,7 +759,7 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates,
           - Small tasks: N
           - Medium tasks: N
           - Large tasks: N
-          ```"
+          ```
         </step>
         <step>
           Determine recommended next commands:
@@ -800,7 +775,7 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates,
           - /dev:architect {topic} - "For detailed technical design"
         </step>
         <step>
-          Update session-meta.json (via scribe) with status: "completed"
+          Checkpoint update: phase 5, `status: "completed"`.
         </step>
         <step>
           Present completion summary (see completion_message template)
@@ -1237,7 +1212,7 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates,
   <strategy scenario="User requests pause/continue later">
     <recovery>
       1. Acknowledge: "Saving your progress..."
-      2. Update checkpoint via scribe agent
+      2. Checkpoint update (current phase and round)
       3. Display resume command: "/dev:interview --resume ${SESSION_ID}"
       4. Confirm session saved
       5. Exit gracefully
@@ -1272,17 +1247,6 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates,
 - Edge Cases & Errors: {%}
 - Integration Points: {%}
 - Constraints & Trade-offs: {%}
-
-**Question Quality Metrics (LLMREI):**
-| Type | Count | % | Target |
-|------|-------|---|--------|
-| Context-independent | {N} | {%} | ~27% |
-| Parameterized | {N} | {%} | ~20% |
-| Context-deepening | {N} | {%} | ~38% |
-| Context-enhancing | {N} | {%} | ~15% |
-
-**Adaptability Score**: {context_dependent_percentage}%
-(Target: ≥60% context-dependent questions)
 
 **Assets Collected**:
 - API Spec: {yes/no} -> {path}

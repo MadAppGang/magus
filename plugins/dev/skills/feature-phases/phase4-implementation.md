@@ -33,7 +33,7 @@ a. Determine if phases are independent or dependent:
 b. If independent phases:
    Launch in PARALLEL (single message, multiple Tasks). **Route each phase to the agent
    that owns its surface**: a phase whose files are components, screens, styles or themes
-   goes to `dev:frontend` (it preloads the design-system guardrails, and
+   goes to `dev:frontend-developer` (it preloads the design-system guardrails, and
    `agent_loadouts.frontend` marks them MANDATORY); every other phase goes to
    `dev:developer`. Each agent receives ITS OWN entry from `context.agent_loadouts` —
    never the other's, and never one flat list.
@@ -71,7 +71,7 @@ b. If independent phases:
               Log progress to ${SESSION_PATH}/implementation-log.md
               Return brief summary (max 3 lines)"
    ---
-   Agent: dev:frontend
+   Agent: dev:frontend-developer
      Prompt: "SESSION_PATH: ${SESSION_PATH}
 
               Read architecture: ${SESSION_PATH}/architecture.md

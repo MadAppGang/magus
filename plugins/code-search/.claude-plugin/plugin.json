@@ -1,0 +1,47 @@
+{
+  "name": "code-search",
+  "version": "8.0.0",
+  "description": "Read-only code search and investigation behind one stable tool surface. Finds code by meaning or structure, traces callers, callees and blast radius, and dispatches an analyze agent for deep dives. The search engine is named in project settings and is swappable.",
+  "author": {
+    "name": "Jack Rudenko",
+    "email": "i@madappgang.com",
+    "company": "MadAppGang"
+  },
+  "license": "MIT",
+  "keywords": [
+    "code-search",
+    "codebase",
+    "investigation",
+    "architecture",
+    "patterns",
+    "debugging",
+    "code-navigation",
+    "semantic-search",
+    "mcp",
+    "ast",
+    "structural-analysis"
+  ],
+  "category": "development",
+  "skills": [
+    "./skills/search",
+    "./skills/deep-analysis",
+    "./skills/investigate"
+  ],
+  "mcpServers": "./.mcp.json",
+  "conventions": {
+    "gitignore": {
+      "project": [
+        ".mnemex/"
+      ],
+      "global": [
+        ".claudemem/",
+        ".claude/.coaching/"
+      ]
+    },
+    "claudemd": {
+      "section": "code-search",
+      "template": "./templates/claude-md-conventions.md",
+      "version": "2.0.0"
+    }
+  }
+}

@@ -40,19 +40,20 @@ Then in `.claude/settings.json`:
 
 Delegated to via the Agent tool; each runs in its own context window.
 
-**Build** — `developer` (multi-file implementation with tests), `frontend`
-(React against the project's design system), `devops` (infrastructure).
+**Build** — `developer` (multi-file implementation with tests), `frontend-developer`
+(React against the project's design system: library components with stories, tokens
+only, screens compose), `devops` (infrastructure).
 
 **Understand** — `researcher` (multi-round web research), `debugger` (root
-cause), `architect` (system design), `synthesizer` (consolidating findings),
+cause), `architect` (system design), `aggregator` (consolidating findings),
 `stack-detector` (what is this project built with).
 
 **Check** — `reviewer` (3-pass security / correctness / maintainability),
-`test-architect` (black-box tests from requirements).
+`qa-engineer` (black-box tests from requirements).
 
 **Document** — `docs` (modes: write / analyze / fix).
 
-**Interview support** — `scribe`, `spec-writer`.
+**Interview support** — `spec-writer`.
 
 ## Skills and knowledge
 

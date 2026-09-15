@@ -7,15 +7,15 @@
   },
   "metadata": {
     "description": "Curated collection of Claude Code plugins for modern full-stack development with LLM performance tracking and E2E skill testing",
-    "version": "12.0.1",
+    "version": "13.0.0",
     "pluginRoot": "./plugins"
   },
   "plugins": [
     {
-      "name": "code-analysis",
-      "source": "./plugins/code-analysis",
-      "description": "Read-only codebase investigation and code search behind one stable tool surface. Finds code by meaning or structure, traces callers, callees and blast radius, and dispatches a detective agent for deep dives. The search engine is named in project settings and is swappable.",
-      "version": "7.3.0",
+      "name": "code-search",
+      "source": "./plugins/code-search",
+      "description": "Read-only code search and investigation behind one stable tool surface. Finds code by meaning or structure, traces callers, callees and blast radius, and dispatches an analyze agent for deep dives. The search engine is named in project settings and is swappable.",
+      "version": "8.0.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -23,7 +23,7 @@
       },
       "category": "development",
       "keywords": [
-        "code-analysis",
+        "code-search",
         "codebase",
         "investigation",
         "architecture",
@@ -37,6 +37,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "8.0.0",
+          "date": "2026-09-15",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "BREAKING \u2014 the plugin is renamed from code-analysis to code-search"
+        },
         {
           "version": "7.3.0",
           "date": "2026-09-11",
@@ -71,24 +79,13 @@
             "Changed"
           ],
           "summary": "Requires claudish ^2.0 (was ^1.0). claudish 2.0.0 rewrote its team contract for the\u2026"
-        },
-        {
-          "version": "7.0.0",
-          "date": "2026-08-27",
-          "kinds": [
-            "Removed",
-            "Changed",
-            "Added",
-            "Fixed"
-          ],
-          "summary": "Four of the six engines, because four of them had never been run"
         }
       ]
     },
     {
       "name": "claudish",
       "source": "./plugins/claudish",
-      "description": "MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting across models, manages async sessions, and streams channel notifications. Required by code-analysis, dev, multimodel and designer.",
+      "description": "MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting across models, manages async sessions, and streams channel notifications. Required by code-search, dev, multimodel and designer.",
       "version": "2.0.4",
       "author": {
         "name": "Jack Rudenko",
@@ -152,8 +149,8 @@
     {
       "name": "mnemex",
       "source": "./plugins/mnemex",
-      "description": "MCP runtime for semantic code search and AST analysis, ranking symbols by PageRank. Optional engine behind the code-analysis facade, and usable directly for its full tool surface.",
-      "version": "1.0.2",
+      "description": "MCP runtime for semantic code search and AST analysis, ranking symbols by PageRank. Optional engine behind the code-search facade, and usable directly for its full tool surface.",
+      "version": "1.0.3",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -174,6 +171,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "1.0.3",
+          "date": "2026-09-15",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "The description names the code-search facade. No behaviour change"
+        },
         {
           "version": "1.0.2",
           "date": "2026-08-22",
@@ -198,7 +203,7 @@
       "name": "multimodel",
       "source": "./plugins/multimodel",
       "description": "Multi-model collaboration and orchestration. Runs a task across several AI models in parallel and aggregates their blind APPROVE/REJECT votes, or delegates it to one model running a full Claude Code session.",
-      "version": "4.1.1",
+      "version": "4.2.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -223,6 +228,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "4.2.0",
+          "date": "2026-09-15",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "multimodel:deep-analyst treats dev:researcher as optional rather than assumed. When the Agent\u2026"
+        },
         {
           "version": "4.1.1",
           "date": "2026-09-12",
@@ -254,14 +267,6 @@
             "Changed"
           ],
           "summary": "The README's permitted-CLI list drops --probe, matching claudish:claudish-usage"
-        },
-        {
-          "version": "4.0.1",
-          "date": "2026-09-03",
-          "kinds": [
-            "Fixed"
-          ],
-          "summary": "Both review skills consolidate through dev:synthesizer and quote the reviewer's thresholds by\u2026"
         }
       ]
     },
@@ -269,7 +274,7 @@
       "name": "dev",
       "source": "./plugins/dev",
       "description": "Universal development assistant. Detects the project stack and routes work to specialist agents for architecture, implementation, debugging, review and research, enforcing design-system guardrails on every UI change.",
-      "version": "7.4.1",
+      "version": "8.0.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -309,6 +314,16 @@
       "strict": true,
       "releases": [
         {
+          "version": "8.0.0",
+          "date": "2026-09-15",
+          "kinds": [
+            "Removed",
+            "Changed",
+            "Added"
+          ],
+          "summary": "BREAKING \u2014 dev:scribe deleted"
+        },
+        {
           "version": "7.4.1",
           "date": "2026-09-12",
           "kinds": [
@@ -341,14 +356,6 @@
             "Changed"
           ],
           "summary": "/dev:dev survives a cleared or compacted context. Claude Code's plan-approval dialog can offer\u2026"
-        },
-        {
-          "version": "7.1.0",
-          "date": "2026-09-08",
-          "kinds": [
-            "Added"
-          ],
-          "summary": "/dev:status reconstructs where a session stands from evidence rather than memory: the opening\u2026"
         }
       ]
     },
@@ -356,7 +363,7 @@
       "name": "go",
       "source": "./plugins/go",
       "description": "Go development toolkit. Ships the go-tui skill for building Charm-stack terminal UIs (Bubble Tea, Lip Gloss, Bubbles, ntcharts), with a colour-accurate screenshot workflow for reviewing a running TUI.",
-      "version": "0.1.3",
+      "version": "0.1.4",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -374,6 +381,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "0.1.4",
+          "date": "2026-09-15",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "The README names dev:qa-engineer as the consumer of the tester knowledge base"
+        },
         {
           "version": "0.1.3",
           "date": "2026-09-07",
@@ -527,7 +542,7 @@
       "name": "setup",
       "source": "./plugins/setup",
       "description": "Project setup jobs in one plugin. Investigates a repository and provisions it \u2014 plugins, tools, framework best-practice references, and a seeded knowledge base \u2014 then installs the adaptive statusline and indexes every skill reachable from the project into browsable markdown.",
-      "version": "1.2.1",
+      "version": "1.2.2",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -547,6 +562,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "1.2.2",
+          "date": "2026-09-15",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "References follow the code-search rename. No behaviour change"
+        },
         {
           "version": "1.2.1",
           "date": "2026-09-08",
@@ -577,11 +600,6 @@
             "Changed"
           ],
           "summary": "The plan-limits section reappears, along with both reset countdowns and the token count. Three\u2026"
-        },
-        {
-          "version": "1.0.0",
-          "date": "2026-08-06",
-          "summary": "One plugin for project setup jobs. /setup:project investigates a repository \u2014 stack, package\u2026"
         }
       ]
     },
@@ -656,7 +674,7 @@
       "name": "designer",
       "source": "./plugins/designer",
       "description": "UI design validation. Compares a rendered screen against its reference by pixel diff, then reviews the result for spacing, hierarchy and design-system consistency.",
-      "version": "0.7.0",
+      "version": "0.8.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -678,6 +696,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "0.8.0",
+          "date": "2026-09-15",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "BREAKING \u2014 designer:design-review is now designer:review, and designer:ui creates instead of\u2026"
+        },
         {
           "version": "0.7.0",
           "date": "2026-09-11",
@@ -706,11 +732,6 @@
             "Changed"
           ],
           "summary": "Requires claudish ^2.0 (was ^1.0), for the same reason as code-analysis 7.1.0: the marketplace\u2026"
-        },
-        {
-          "version": "0.5.3",
-          "date": "2026-08-26",
-          "summary": "Plugin manifest moved to .claude-plugin/plugin.json, the only location Claude Code's runtime\u2026"
         }
       ]
     },
@@ -782,8 +803,8 @@
     {
       "name": "madbench",
       "source": "./plugins/madbench",
-      "description": "Toolkit for madbench, MadAppGang's Go harness for benchmarking agentic coding tools. An operator agent authors, runs and debugs benches natively in a visible pane, reading the madbench-evals skill by path; /madbench:bench and /madbench:doctor are the entry points; a script enforces bench layout.",
-      "version": "0.4.0",
+      "description": "Toolkit for madbench, MadAppGang's Go harness for benchmarking agentic coding tools. The madbench:bench agent authors, runs and debugs benches natively in a visible pane, reading the madbench-evals skill by path; /madbench:bench and /madbench:doctor are the entry points.",
+      "version": "0.5.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -804,6 +825,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "0.5.0",
+          "date": "2026-09-15",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "BREAKING \u2014 madbench:operator is now madbench:bench"
+        },
         {
           "version": "0.4.0",
           "date": "2026-09-10",
@@ -832,11 +861,6 @@
             "Added"
           ],
           "summary": "madbench list catches a retired sandbox: level now, and the skill said it did not"
-        },
-        {
-          "version": "0.2.2",
-          "date": "2026-08-19",
-          "summary": "The --runs deprecated-alias claim in the runners-and-sandbox reference now carries a dated live\u2026"
         }
       ]
     }

@@ -9,7 +9,7 @@
     },
     "category": "search-efficiency",
     "priority": 1,
-    "suggestion": "You ran {count} grep/rg searches this session. For faster semantic code exploration:\n  `mcp__plugin_code-analysis_ca__code_search({ query: \"your concept\" })` -- ask in your own words; it understands intent, not just text\n  Skill: use the Skill tool with `code-analysis:code-search`",
+    "suggestion": "You ran {count} grep/rg searches this session. For faster semantic code exploration:\n  `mcp__plugin_code-search_ca__code_search({ query: \"your concept\" })` -- ask in your own words; it understands intent, not just text\n  Skill: use the Skill tool with `code-search:search`",
     "suppress_after_sessions": 10
   },
   {
@@ -31,9 +31,9 @@
       "tool": "Agent",
       "input_key": "subagent_type",
       "value_in": [
-        "code-analysis:code-search",
-        "code-analysis:investigate",
-        "code-analysis:deep-analysis",
+        "code-search:search",
+        "code-search:investigate",
+        "code-search:deep-analysis",
         "dev:db-branching",
         "terminal:terminal-interaction",
         "terminal:tui-navigation-patterns",
@@ -86,11 +86,10 @@
       "prompt_patterns": {
         "research|compare|sources": "dev:researcher",
         "implement|create|build|write": "dev:developer",
-        "understand|investigate|trace|analyze": "code-analysis:detective",
+        "understand|investigate|trace|analyze": "code-search:analyze",
         "debug|error|root cause": "dev:debugger",
         "transcribe|whisper|subtitle|srt|fcpxml|final\\s+cut": "video-editing:transcriber",
-        "generate.*image|create.*image|image.*generation|dall-e|midjourney|gemini.*image": "image-generate:image-generator",
-        "design.*review|pixel.*diff|figma|matches.*design|ui.*review": "designer:design-review"
+        "design.*review|pixel.*diff|figma|matches.*design|ui.*review": "designer:review"
       }
     },
     "category": "delegation-efficiency",
@@ -230,11 +229,11 @@
     "signal": {
       "tool": "Grep",
       "min_count": 5,
-      "absent_tool_prefix": "mcp__plugin_code-analysis_ca__"
+      "absent_tool_prefix": "mcp__plugin_code-search_ca__"
     },
     "category": "search-efficiency",
     "priority": 1,
-    "suggestion": "You ran {count} Grep searches with no code_search calls. For codebase investigation, code-analysis answers semantically:\n  `mcp__plugin_code-analysis_ca__code_search({ query: \"<concept>\" })` -- ranked source locations for a concept or a symbol\n  `mcp__plugin_code-analysis_ca__code_search({ query: \"what calls <function>\", intent: \"dependents\" })` -- every caller, without grep\n  Skill({ \"skill\": \"code-analysis:code-search\" }) -- how to drive the tools\n  `/code-analysis:setup` -- configure the search engine for this project",
+    "suggestion": "You ran {count} Grep searches with no code_search calls. For codebase investigation, code-search answers semantically:\n  `mcp__plugin_code-search_ca__code_search({ query: \"<concept>\" })` -- ranked source locations for a concept or a symbol\n  `mcp__plugin_code-search_ca__code_search({ query: \"what calls <function>\", intent: \"dependents\" })` -- every caller, without grep\n  Skill({ \"skill\": \"code-search:search\" }) -- how to drive the tools\n  `/code-search:setup` -- configure the search engine for this project",
     "suppress_after_sessions": 7
   },
   {
@@ -246,7 +245,7 @@
     },
     "category": "search-efficiency",
     "priority": 2,
-    "suggestion": "You read {count} files sequentially -- a common sign of manual codebase tracing. code-analysis can trace it in one call:\n  `mcp__plugin_code-analysis_ca__code_search({ query: \"what calls <symbol>\", intent: \"dependents\" })` -- always available\n  `mcp__plugin_code-analysis_ca__find_dependencies({ symbol: \"<symbol>\" })` -- outgoing edges, when the engine exposes it\n  `mcp__plugin_code-analysis_ca__call_tree({ symbol: \"<symbol>\" })` -- transitive call paths, not just direct edges\n  Skill({ \"skill\": \"code-analysis:investigate\" }) -- routes to the right investigation mode",
+    "suggestion": "You read {count} files sequentially -- a common sign of manual codebase tracing. code-search can trace it in one call:\n  `mcp__plugin_code-search_ca__code_search({ query: \"what calls <symbol>\", intent: \"dependents\" })` -- always available\n  `mcp__plugin_code-search_ca__find_dependencies({ symbol: \"<symbol>\" })` -- outgoing edges, when the engine exposes it\n  `mcp__plugin_code-search_ca__call_tree({ symbol: \"<symbol>\" })` -- transitive call paths, not just direct edges\n  Skill({ \"skill\": \"code-search:investigate\" }) -- routes to the right investigation mode",
     "suppress_after_sessions": 5
   },
   {
@@ -283,30 +282,30 @@
     "id": "designer-review-after-ui-implementation",
     "audience": "claude",
     "signal": {
-      "feature_session_agents": ["dev:frontend"],
+      "feature_session_agents": ["dev:frontend-developer"],
       "requires_ask_user_or_claudish": false,
-      "absent_agent": "designer:design-review"
+      "absent_agent": "designer:review"
     },
     "category": "quality-assurance",
     "priority": 3,
-    "suggestion": "UI implementation detected (dev:frontend) but no design review was performed.\n  `/designer:review` -- pixel-diff comparison against Figma or reference screenshots\n  `/designer:ui` -- Gemini multimodal accessibility and usability review\n  Catching design drift early prevents rework. designer:compare shows pixel-level differences.",
+    "suggestion": "UI implementation detected (dev:frontend-developer) but no design review was performed.\n  `/designer:review` -- pixel-diff comparison against Figma or reference screenshots\n  `/designer:ui` -- creates artboards from a brief; `/designer:review` judges a built screen with pixel diff and an external vision model\n  Catching design drift early prevents rework. designer:compare shows pixel-level differences.",
     "suppress_after_sessions": 5
   },
   {
-    "id": "image-generate-not-suggested-for-images",
+    "id": "image-plugin-not-suggested-for-images",
     "audience": "claude",
     "signal": {
       "bash_patterns": [
         {
           "pattern": "\\b(midjourney|dall-e|dalle|stable[-\\s]diffusion|leonardo\\.ai)\\b",
-          "plugin": "image-generate plugin",
-          "command": "/image-generate:generate"
+          "plugin": "image plugin",
+          "command": "/image:generate"
         }
       ]
     },
     "category": "plugin-discovery",
     "priority": 4,
-    "suggestion": "External image generation tool mentioned ({plugin} reference). The image-generate plugin provides image generation directly in Claude Code:\n  `/image-generate:generate \"description\"` -- text-to-image via Gemini 3 Pro Image\n  `/image-generate:style` -- create reusable style templates for consistent outputs\n  `/image-generate:edit` -- modify existing images with natural language\n  Requires: `GEMINI_API_KEY` environment variable.",
+    "suggestion": "External image generation tool mentioned ({plugin} reference). The image plugin provides image generation directly in Claude Code:\n  `/image:generate \"description\"` -- text-to-image on any pinned model (`--models` lists them and their key status)\n  `/image:style` -- create reusable style templates for consistent outputs\n  `/image:edit` -- modify existing images with natural language\n  Requires: the API key of the chosen model's provider.",
     "suppress_after_sessions": 3
   },
   {

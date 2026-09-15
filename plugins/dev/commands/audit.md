@@ -39,7 +39,7 @@ skills: dev:context-detection
   **`/dev:audit` — Multi-Scope Quality Audit**
   Beyond Claude's built-in `/code-review` (PR diff review), this command adds:
   - 6 audit scopes: code quality, UI/design, design system, documentation, security, plugin/agent
-  - Routes to specialist reviewers (`dev:reviewer`, `designer:design-review`, `dev:docs`)
+  - Routes to specialist reviewers (`dev:reviewer`, `designer:review`, `dev:docs`)
   - Design-system drift measured by a bundled auditor via `/dev:design-system`
   - Multi-model when you name models and claudish is installed — the internal reviewer always runs, externals are additive
   - One output shape on every route: a consolidated report ending in a `VERDICT:` line
@@ -103,7 +103,11 @@ skills: dev:context-detection
       4. Otherwise `MODELS: none`. If models were named but claudish is absent,
          tell the user once — "claudish is not installed; running the internal
          reviewer only" — and continue. The internal reviewer is never optional
-         and never waits on an external one.
+         and never waits on an external one. Once `AUDIT_PATH` exists (step 3.1),
+         write the skip down: append `gate skipped: code-review — MODELS none` (or
+         `— claudish absent`) to `${AUDIT_PATH}/gates.log`, and repeat that line
+         when relaying the result. Silence about a skipped panel is a defect
+         (`${CLAUDE_PLUGIN_ROOT}/skills/core/team-gate/SKILL.md`, steps 6-7).
 
       `MODELS:` applies only to rows that dispatch `dev:reviewer`. The designer,
       docs and design-system rows have no multi-model story; do not attach it
@@ -135,7 +139,7 @@ skills: dev:context-detection
       | Scope | Agent | Contract lines in the prompt — and nothing else |
       |---|---|---|
       | code | `dev:reviewer` | `TARGET: <file paths from $ARGUMENTS, or BRANCH>` / `FOCUS: code` |
-      | ui, designer present | `designer:design-review` | its own inputs: `REFERENCE_SOURCE: <the reference named in $ARGUMENTS>` / `IMPL_SOURCE: <the implementation named in $ARGUMENTS>` / `OUTPUT_DIR: ${AUDIT_PATH}/claude-internal` |
+      | ui, designer present | `designer:review` | its own inputs: `REFERENCE_SOURCE: <the reference named in $ARGUMENTS>` / `IMPL_SOURCE: <the implementation named in $ARGUMENTS>` / `OUTPUT_DIR: ${AUDIT_PATH}/claude-internal` |
       | ui, designer absent | `dev:reviewer` | `TARGET: <component paths>` / `FOCUS: ui-degraded` — and tell the *user*, not the reviewer: "Designer plugin not installed; reviewing the UI from code only. For pixel-diff comparison, install designer@magus." |
       | docs | `dev:docs` | "mode=analyze" in the prompt body — `mode` is not an Agent parameter and is silently dropped if passed as one — and `SESSION_PATH: ${AUDIT_PATH}`, which is where it writes its report |
       | security | `dev:reviewer` | `TARGET: <paths, or BRANCH>` / `FOCUS: security` |
@@ -148,14 +152,13 @@ skills: dev:context-detection
 
       **Every row but design-system ends the same way, whatever agent it dispatched**:
       the reviewer persists its report to a run directory, any externals persist
-      theirs beside it, and `dev:synthesizer` writes the one file this command relays.
-      With one review the synthesizer passes it through and appends the verdict line;
-      with several it merges them. The output has one shape on every route — a file
-      ending in `VERDICT:` — so nothing downstream has to know which agent reviewed
-      or whether claudish was present. The designer and docs rows take no `MODELS:`,
-      so for them N is always 1; they go through the synthesizer anyway, because the
-      verdict line and the output shape have one writer, and a route that relays raw
-      agent output is a second shape.
+      theirs beside it, and one file, `consolidated.md`, is what this command relays.
+      With one review this command copies it through and appends the verdict line
+      itself; with two or more, `dev:aggregator` merges them. The output has one
+      shape on every route — a file ending in `VERDICT:` — so nothing downstream has
+      to know which agent reviewed or whether claudish was present. The designer and
+      docs rows take no `MODELS:`, so for them N is always 1 and the aggregator is
+      never dispatched.
 
       1. Make a run directory. When `MODELS:` names models (`dev:reviewer` rows
          only), also write the brief the externals will run:
@@ -203,7 +206,11 @@ skills: dev:context-detection
          slot that exited 0 with a shapeless or empty response is reported FAILED
          instead of joining the count as a reviewer that found nothing.
 
-         **ui, designer present** — `designer:design-review` reads no `OUTPUT:` line.
+         Pass `input_file` ONLY — never `input` beside it. The pair is rejected with
+         `Pass input_file or input, not both`; on that exact error retry once with
+         `input_file` alone. Any other error is a panel with 0 ballots (step 3).
+
+         **ui, designer present** — `designer:review` reads no `OUTPUT:` line.
          It takes `OUTPUT_DIR` and writes its report, `summary.md`, into that
          directory beside the images and JSON it measured. It creates that directory
          itself only when it was given none, so make it before the dispatch:
@@ -212,7 +219,7 @@ skills: dev:context-detection
          ```
          ```
          Agent(
-           subagent_type: "designer:design-review",
+           subagent_type: "designer:review",
            run_in_background: false,
            description: "Audit: ui — design review",
            prompt: "REFERENCE_SOURCE: {the reference named in $ARGUMENTS — Figma URL, image path or browser URL}
@@ -240,15 +247,31 @@ skills: dev:context-detection
          The review is `${AUDIT_PATH}/analysis-report.md`.
 
       3. Externals only (`dev:reviewer` rows with models): `run` returns as soon as
-         the slots start. Poll `claudish team(mode="status", path="${AUDIT_PATH}")`
-         until no slot in `models` has `state === "RUNNING"`; bound the loop and
-         report any slot still running or FAILED rather than waiting on it.
-         Procedure: `claudish:claudish-usage` → "The three-step lifecycle".
+         the slots start, and `started` is not a result. This is a **code-review**
+         gate, `MIN_BALLOTS` = 2 when N ≥ 3, otherwise N. Read
+         `${CLAUDE_PLUGIN_ROOT}/skills/core/team-gate/SKILL.md` and follow its steps
+         2-5: poll `claudish team(mode="status", path="${AUDIT_PATH}")` until no slot
+         in `models` has `state === "RUNNING"` (bounded), then read every
+         `response-<slot>.md` and count ballots. A backgrounded call is unknown until
+         polled. **Ballots below `MIN_BALLOTS` is GATE NOT MET**: append the
+         `gate not met:` line to `${AUDIT_PATH}/gates.log`, skip step 4, and stop with
+         the skill's three options — never relay a verdict computed over a panel that
+         fell below its minimum.
 
-      4. Consolidate — always, on every row, never inline, never by a reviewer:
+      4. Consolidate. Count the row's reviews first.
+
+         **One review** (`MODELS:` was none, or every external slot failed) — do not
+         dispatch dev:aggregator; aggregating one review can only subtract from it.
+         Copy that review to `${AUDIT_PATH}/consolidated.md` unchanged, then append a
+         blank line and `VERDICT: <word>`, where the word is the review's own verdict
+         checked against the row's rule below. If any slot was launched, list each
+         slot that did not complete, and why, directly above the `VERDICT:` line.
+
+         **Two or more reviews** — dispatch dev:aggregator, foreground, never inline,
+         never by a reviewer:
          ```
          Agent(
-           subagent_type: "dev:synthesizer",
+           subagent_type: "dev:aggregator",
            run_in_background: false,
            description: "Consolidate {scope} review",
            prompt: "REVIEWS: {the row's review paths from the table below, one per line}
@@ -265,15 +288,14 @@ skills: dev:context-detection
          | Row | `REVIEWS:` | `THRESHOLDS:` — the reviewer's own scale, by reference |
          |---|---|---|
          | every `dev:reviewer` row | `${AUDIT_PATH}/claude-internal.md`, then `${AUDIT_PATH}/response-<slot>.md` per slot that completed (none when `MODELS:` was none) | the three lines under "Apply verdict thresholds" in `${CLAUDE_PLUGIN_ROOT}/agents/reviewer.md`, Phase 5 — PASS / CONDITIONAL / FAIL over severity counts |
-         | ui, designer present | `${AUDIT_PATH}/claude-internal/summary.md` | the four difference-percentage rows under `severity_thresholds` in `designer:design-review`'s agent file — PASS / WARN / FAIL / CRITICAL over the diff percentage |
+         | ui, designer present | `${AUDIT_PATH}/claude-internal/summary.md` | the four difference-percentage rows under `severity_thresholds` in `designer:review`'s agent file — PASS / WARN / FAIL / CRITICAL over the diff percentage |
          | docs | `${AUDIT_PATH}/analysis-report.md` | the four lines under "Determine verdict" in `${CLAUDE_PLUGIN_ROOT}/agents/docs.md`, Generate Report — PASS / GOOD / NEEDS_WORK / FAIL over the 52-point score |
 
-         The synthesizer emits the word the row's rule names — WARN for a design
+         The aggregator emits the word the row's rule names — WARN for a design
          review, NEEDS_WORK for docs — never a code-review word for a row that did
-         not quote the code reviewer. With one review it writes that review
-         unchanged plus the `VERDICT:` line; with several it merges them with
-         consensus levels. Either way `consolidated.md` is the audit's output —
-         relay it to the user. The review files beside it are the evidence behind it.
+         not quote the code reviewer. It merges the reviews with consensus levels.
+         Either way `consolidated.md` is the audit's output — relay it to the user.
+         The review files beside it are the evidence behind it.
 
       `run_in_background: false` is required on every Agent call here. This command
       reports the findings back to the user in the same turn, and a background spawn
@@ -289,4 +311,13 @@ skills: dev:context-detection
     3. Show which plugin to enable in settings
     4. Continue with the row for "absent" — `dev:reviewer` is the universal fallback
   </graceful_degradation>
+
+  <completion_message>
+Relay the consolidated verdict, then this section — step 7 of the team-gate skill. A run
+that skipped a panel, overrode a gate, or proceeded below `MIN_BALLOTS` must say so here;
+silence about a gate is the defect the 2026-09-12 audit closed.
+
+**Gates** (`${SESSION_PATH}/gates.log`, verbatim):
+{every line of gates.log — `gate skipped: …`, `gate not met: …`, `gate override: …` — or the one line `no gate skipped, no gate below minimum`}
+  </completion_message>
 </instructions>

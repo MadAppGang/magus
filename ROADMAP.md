@@ -46,9 +46,9 @@ Build a guided plugin install flow in claudeup TUI: list available plugins with 
 
 ### CC-3 · Skill description budget remediation (T3 consolidation) 🟢
 
-Remediate Claude Code 2.1.105+'s skill listing budget. T1, T2, T4, T5 shipped (44% char reduction; 25 skills flagged `disable-model-invocation: true`; `scripts/skill-budget-check.ts` enforces on release). **T3 (architectural consolidation)** identifies 5 router consolidations across dev, multimodel, terminal, code-analysis — ~17 listing entries → 5. Estimated 1-week design effort.
+Remediate Claude Code 2.1.105+'s skill listing budget. T1, T2, T4, T5 shipped (44% char reduction; 25 skills flagged `disable-model-invocation: true`; `scripts/skill-budget-check.ts` enforces on release). **T3 (architectural consolidation)** identifies 5 router consolidations across dev, multimodel, terminal, code-search — ~17 listing entries → 5. Estimated 1-week design effort.
 
-- **Scope:** dev, multimodel, terminal, code-analysis
+- **Scope:** dev, multimodel, terminal, code-search
 - **Source:** `scripts/skill-budget-check.ts` (enforces on release). Detailed T3 plan lives in session scratch from the 2026-05-06 skill-budget research/build sessions — needs promotion to `docs/plans/` before further tracking.
 
 ### CC-4 · best-practice-gates plugin 🟢
@@ -123,9 +123,9 @@ Plugin discovery in `/doctor` still breaks during Claude Code's `cacheMarketplac
 
 ### CC-11 · Skill → knowledge migration is gated on a behavioural eval 🔴
 
-`dev` 7.0.0 moved 24 reference manuals from `plugins/dev/skills/` to `plugins/dev/knowledge/`, reached by path through `agent_loadouts` instead of by skill registration. The set was chosen by a mechanical rule — zero preload edges **and** already `disable-model-invocation: true` — and ratified afterwards by `bun scripts/classify-skill-shape.ts`. Both are static reads of the file. Neither measures whether an agent still reaches and applies the content once it arrives as a loadout path. **Decision 2026-09-04: the 24 stay; no further moves — `dev`'s hybrid splits, or any other plugin — until a `benches/` eval exists and passes.** The classifier already names the candidates (`multimodel` ×8, `terminal` ×2, `bunjs` ×2, one each in `code-analysis` and `designer`); they wait.
+`dev` 7.0.0 moved 24 reference manuals from `plugins/dev/skills/` to `plugins/dev/knowledge/`, reached by path through `agent_loadouts` instead of by skill registration. The set was chosen by a mechanical rule — zero preload edges **and** already `disable-model-invocation: true` — and ratified afterwards by `bun scripts/classify-skill-shape.ts`. Both are static reads of the file. Neither measures whether an agent still reaches and applies the content once it arrives as a loadout path. **Decision 2026-09-04: the 24 stay; no further moves — `dev`'s hybrid splits, or any other plugin — until a `benches/` eval exists and passes.** The classifier already names the candidates (`multimodel` ×8, `terminal` ×2, `bunjs` ×2, one each in `code-search`, `designer`, `gtd`); they wait.
 
-- **Scope:** dev first; then multimodel, terminal, bunjs, code-analysis, designer, go
+- **Scope:** dev first; then multimodel, terminal, bunjs, code-search, designer, go
 - **Source:** `docs/plans/2026-09-04-skill-knowledge-migration-eval.md` (axis, cells, checks, pre-declared outcomes); `plugins/dev/knowledge/README.md` for what moved; `bun scripts/classify-skill-shape.ts` for what would move next
 
 ---
@@ -140,7 +140,7 @@ authority and is gated by `scripts/validate-versions.js`. These headings used to
 `(current: vX.Y.Z)` label; 11 of 17 had drifted, `dev` by two minor versions, and this file
 is published to users. `scripts/check-doc-plugin-lists.ts` now rejects the label.
 
-### code-analysis
+### code-search
 
 - 🟡 **CC-1** · `PreToolUse:^Bash$` hook ("Block accidental `git add` of private files") needs Bun adapter and Codex generated-plugin trust gate before shipping for Codex
 - ⚪ **CC-3** · `mnemex-*` skill cluster consolidation (2 entries → 1 router) deferred to T3
@@ -168,7 +168,7 @@ is published to users. `scripts/check-doc-plugin-lists.ts` now rejects the label
 
 - ➖ No in-flight signal found in plan docs or sessions — owner to populate
 
-### image-generate
+### image
 
 - ➖ No in-flight signal found in plan docs or sessions — owner to populate
 
@@ -208,7 +208,7 @@ is published to users. `scripts/check-doc-plugin-lists.ts` now rejects the label
 
 ### designer
 
-- ➖ No in-flight signal found beyond skill-budget T1.1 (already shipped) — owner to populate
+- 🟡 0.8.0 split the plugin into a creator (`designer:ui`) and a judge (`designer:review`) with an external vision model resolved live through claudish. **Unverified:** whether claudish delivers the two PNGs to the external child inside a `team` slot. The first real `/designer:review` run must show a `Judged by` line naming the external model; if it reads "judged locally", the image hand-off is the open item.
 
 ### terminal
 
@@ -283,7 +283,7 @@ Items where the maintainer must choose before downstream work can proceed. Not j
 
 ### D-2 · Three plugins with no in-flight roadmap
 
-`video-editing`, `image-generate`, `designer` have shipped bugfixes recently but have no forward-looking roadmap items in any plan doc or session. Either they're in steady-state (correct → mark "maintained, no active roadmap") or they have unwritten direction (owner must populate). `conductor` was the fourth — resolved by retiring it at magus v8.0.0.
+`video-editing`, `image`, `designer` have shipped bugfixes recently but have no forward-looking roadmap items in any plan doc or session. Either they're in steady-state (correct → mark "maintained, no active roadmap") or they have unwritten direction (owner must populate). `conductor` was the fourth — resolved by retiring it at magus v8.0.0.
 
 ### D-3 · claude-desktop-profiles Path 2 commitment
 

@@ -48,7 +48,7 @@ allowed-tools: Read, Write, Edit, Bash, Glob, AskUserQuestion
     Search for these markers (any of them indicates routing is present):
     - "Task Routing - Agent Delegation"
     - "| Task Pattern | Delegate To | Trigger |"
-    - "dev:researcher" AND "dev:developer" AND "code-analysis:detective"
+    - "dev:researcher" AND "dev:developer" AND "code-search:analyze"
 
     If routing table already exists:
     - Report: "Task routing table already present in CLAUDE.md. No changes needed."
@@ -68,15 +68,15 @@ allowed-tools: Read, Write, Edit, Bash, Glob, AskUserQuestion
     |---|---|---|
     | Research: web search, tech comparison, multi-source reports | `dev:researcher` | 3+ sources or comparison needed |
     | Implementation: creating code, new modules, features, building with tests | `dev:developer` | Writing new code, adding features, creating modules - even if they relate to existing codebase |
-    | Investigation: READ-ONLY codebase analysis, tracing, understanding | `code-analysis:detective` | Only when task is to UNDERSTAND code, not to WRITE new code |
+    | Investigation: READ-ONLY codebase analysis, tracing, understanding | `code-search:analyze` | Only when task is to UNDERSTAND code, not to WRITE new code |
     | Debugging: error analysis, root cause investigation | `dev:debugger` | Non-obvious bugs or multi-file root cause |
     | Architecture: system design, trade-off analysis | `dev:architect` | New systems or major refactors |
     | Code review before merge: security, correctness, maintainability | `dev:reviewer` | Reviewing a diff or a branch |
     | Documentation: write, analyse or repair READMEs, API docs, changelogs | `dev:docs` | Any documentation task |
-    | UI implementation against the design system | `dev:frontend` | Building or reworking a component or screen |
-    | Tests written from requirements, without reading the implementation | `dev:test-architect` | Black-box test creation |
+    | UI implementation against the design system | `dev:frontend-developer` | Building or reworking a component or screen |
+    | Tests written from requirements, without reading the implementation | `dev:qa-engineer` | Black-box test creation |
 
-    Key distinction: If the task asks to IMPLEMENT/CREATE/BUILD -> `dev:developer`. If the task asks to UNDERSTAND/ANALYZE/TRACE -> `code-analysis:detective`.
+    Key distinction: If the task asks to IMPLEMENT/CREATE/BUILD -> `dev:developer`. If the task asks to UNDERSTAND/ANALYZE/TRACE -> `code-search:analyze`.
 
     ### Skill Routing (Skill tool, NOT Agent tool)
 
@@ -84,9 +84,9 @@ allowed-tools: Read, Write, Edit, Bash, Glob, AskUserQuestion
 
     | Need | Invoke Skill | When |
     |---|---|---|
-    | Semantic code search, symbol lookup, caller tracing | `code-analysis:code-search` | Before any `mcp__plugin_code-analysis_ca__*` call |
-    | Codebase investigation (architecture/implementation/debugging/testing) | `code-analysis:investigate` | Mode-based investigation routing |
-    | Deep multi-perspective analysis | `code-analysis:deep-analysis` | Comprehensive codebase investigation |
+    | Semantic code search, symbol lookup, caller tracing | `code-search:search` | Before any `mcp__plugin_code-search_ca__*` call |
+    | Codebase investigation (architecture/implementation/debugging/testing) | `code-search:investigate` | Mode-based investigation routing |
+    | Deep multi-perspective analysis | `code-search:deep-analysis` | Comprehensive codebase investigation |
     | Claudish MCP tools — `team`, `create_session`, `run_prompt` — and model resolution | `claudish:claudish-usage` | Before ANY claudish call. MCP tools only; the CLI is for the three read-only diagnostics (`--help`, `--version`, `--models`) and never runs a task |
     ```
   </step>

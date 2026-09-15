@@ -80,7 +80,7 @@ export function deny(reason: string): never {
 
 /**
  * Emit SessionStart context. Plain markdown only — raw ANSI escapes corrupt the
- * transcript.
+ * transcript. Shape matches the SessionStart additionalContext envelope other hooks emit.
  */
 export function additionalContext(text: string): never {
   if (text.trim()) {

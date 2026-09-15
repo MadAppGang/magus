@@ -1,7 +1,7 @@
 {
   "name": "madbench",
-  "version": "0.4.0",
-  "description": "Toolkit for madbench, MadAppGang's Go harness for benchmarking agentic coding tools. An operator agent authors, runs and debugs benches natively in a visible pane, reading the madbench-evals skill by path; /madbench:bench and /madbench:doctor are the entry points; a script enforces bench layout.",
+  "version": "0.5.0",
+  "description": "Toolkit for madbench, MadAppGang's Go harness for benchmarking agentic coding tools. The madbench:bench agent authors, runs and debugs benches natively in a visible pane, reading the madbench-evals skill by path; /madbench:bench and /madbench:doctor are the entry points.",
   "author": {
     "name": "MadAppGang",
     "email": "i@madappgang.com"
