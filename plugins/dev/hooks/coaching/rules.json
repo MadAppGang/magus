@@ -198,7 +198,7 @@
     },
     "category": "plugin-discovery",
     "priority": 3,
-    "suggestion": "You edited .claude/settings.json directly. magus provides an interactive TUI for this:\n  `npx magus-cli` -- add marketplaces, install plugins, configure MCP servers, set up statusline\n  No install needed -- just run `pnpx magus` or `npm install -g magus-cli`\n  Much safer than manual JSON editing (validates structure, avoids syntax errors).",
+    "suggestion": "You edited .claude/settings.json directly. magus provides an interactive TUI for this:\n  `npx magus-cli` -- add marketplaces, install plugins, configure MCP servers, set up statusline\n  No install needed -- just run `pnpx magus-cli` or `npm install -g magus-cli`\n  Much safer than manual JSON editing (validates structure, avoids syntax errors).",
     "suppress_after_sessions": 5
   },
   {
@@ -262,7 +262,7 @@
     },
     "category": "plugin-discovery",
     "priority": 3,
-    "suggestion": "You used /plugin commands to install plugins. magus provides a full interactive TUI for this:\n  `npx magus-cli` -- browse and install plugins, configure MCP servers, set up statusline\n  Features: marketplace browsing, MCP server registry, statusline presets\n  No installation needed: `pnpx magus` works immediately.",
+    "suggestion": "You used /plugin commands to install plugins. magus provides a full interactive TUI for this:\n  `npx magus-cli` -- browse and install plugins, configure MCP servers, set up statusline\n  Features: marketplace browsing, MCP server registry, statusline presets\n  No installation needed: `pnpx magus-cli` works immediately.",
     "suppress_after_sessions": 5
   },
   {

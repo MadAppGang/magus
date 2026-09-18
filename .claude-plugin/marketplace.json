@@ -274,7 +274,7 @@
       "name": "dev",
       "source": "./plugins/dev",
       "description": "Universal development assistant. Detects the project stack and routes work to specialist agents for architecture, implementation, debugging, review and research, enforcing design-system guardrails on every UI change.",
-      "version": "8.0.0",
+      "version": "8.1.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -314,6 +314,15 @@
       "strict": true,
       "releases": [
         {
+          "version": "8.1.0",
+          "date": "2026-09-19",
+          "kinds": [
+            "Added",
+            "Fixed"
+          ],
+          "summary": "Session start reports a magus CLI that is behind npm, with the command that updates it"
+        },
+        {
           "version": "8.0.0",
           "date": "2026-09-15",
           "kinds": [
@@ -347,15 +356,6 @@
             "Changed"
           ],
           "summary": "/dev:release records how this project releases, in a committed ai-docs/release.md"
-        },
-        {
-          "version": "7.2.0",
-          "date": "2026-09-08",
-          "kinds": [
-            "Added",
-            "Changed"
-          ],
-          "summary": "/dev:dev survives a cleared or compacted context. Claude Code's plan-approval dialog can offer\u2026"
         }
       ]
     },

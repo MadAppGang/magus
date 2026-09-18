@@ -1,6 +1,6 @@
 # Installing Magus
 
-**[magus](https://www.npmjs.com/package/magus) is the way in.**
+**[magus](https://www.npmjs.com/package/magus-cli) is the way in.**
 
 ## Why not just use Claude Code
 

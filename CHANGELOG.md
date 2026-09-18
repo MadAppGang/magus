@@ -4,6 +4,65 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [magus 7.3.1] - 2026-09-19
+
+### Fixed
+
+- **`magus upgrade` installs magus again.** Since 7.0.0 it installed the unrelated npm
+  package named `magus` and left magus itself where it was. It now installs `magus-cli`,
+  and its duplicate-install hint names `magus-cli` in the uninstall command.
+- **The update banner appears again.** The check was asking npm about the wrong package,
+  whose latest release is 0.0.2, so no release since 7.0.0 was ever reported.
+- **The CLI Tools row for magus targets `magus-cli`.** This covers its latest-version
+  probe, install, update and uninstall, and a profile pin on magus, which could never
+  install before because the unrelated package only publishes 0.0.x.
+
+### Why
+
+The npm package is `magus-cli` and the command is `magus`. The bare `magus` name on npm
+belongs to an unrelated 2015 package, and npm never transfers names, so the split is
+permanent. The 7.0.0 rename wrote the bare name into the four places that talk to npm.
+Inside `tools/magus` the npm name is now read from `package.json`, so those call sites
+share one source. The three documentation and coaching copies outside it were corrected
+by hand in the same change.
+
+### Migration notes
+
+7.0.0 through 7.3.0 can neither see this release nor install it. Run these steps once:
+
+1. `bun add -g magus-cli@latest` (npm installs: `npm install -g magus-cli@latest`).
+2. `bun remove -g magus` (npm: `npm uninstall -g magus`), to drop the unrelated package
+   the broken upgrade installed. It has no `bin`, so it never replaced your `magus`
+   command.
+
+With the dev plugin 8.1.0 or later, Claude Code prints the step 1 command for your
+install at session start.
+
+---
+
+## [dev 8.1.0] - 2026-09-19
+
+### Added
+
+- **Session start reports a magus CLI that is behind npm, with the command that updates it.**
+  A new `SessionStart` hook (matcher `startup`) compares the installed `magus` with the
+  latest `magus-cli` release on npm. When the install is older, it prints the command for
+  the package manager that owns it: `bun add -g magus-cli@latest`,
+  `pnpm add -g magus-cli@latest`, or `npm install -g magus-cli@latest`. It caches the
+  registry answer for 24 hours, gives each external call 1.5 s, and stays silent on
+  every other path. magus 7.0.0 to 7.3.0 ask npm about the wrong package, so
+  they can neither see nor install their own fix. This plugin updates from the
+  marketplace whatever the magus version, so it reaches them.
+
+### Fixed
+
+- **The coaching suggestions name the real npm package.** Two suggestions — after a
+  direct edit of `.claude/settings.json`, and after installing plugins with `/plugin` —
+  told users to run `pnpx` with the bare `magus` name, which runs an unrelated npm
+  package. They now say `pnpx magus-cli`.
+
+---
+
 ## [claudish 2.0.5] - 2026-09-19
 
 ### Fixed

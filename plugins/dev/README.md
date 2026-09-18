@@ -98,6 +98,7 @@ top level. `knowledge/` mirrors the same categories.
 | Event | What runs |
 |---|---|
 | `SessionStart` | Surfaces workflow coaching from previous sessions |
+| `SessionStart` (`startup`) | When the installed magus CLI is behind npm's `magus-cli` release, names the command that updates it; silent otherwise |
 | `Stop` | Analyses the session and queues learnings |
 | `Stop` | Blocks the turn when a `/dev:dev` phase was started and left without its artifacts |
 | `UserPromptSubmit` | Injects the plan-mode protocol when `/dev:dev` is invoked; on `--resume`, the resume block instead |
