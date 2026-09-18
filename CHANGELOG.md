@@ -4,6 +4,24 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [dev 8.1.1] - 2026-09-19
+
+### Fixed
+
+- **`/dev:investigate` now detects code-search from the session's agent list.** Its plugin
+  check ran `ls ~/.claude/plugins/cache/` and grepped for the plugin name, but that
+  directory holds marketplaces, not plugins, so the check reported the plugin absent on
+  every machine since dev 2.0.0. The command now routes to `code-search:analyze` when that
+  agent is listed, and offers a fallback when it is not. Correct routing no longer depends
+  on the model ignoring its own instruction.
+- **The fallback runs.** It dispatched `dev:researcher` without the `SESSION_PATH` that
+  agent requires, so an accepted fallback came back `BLOCKED`. It now uses the built-in
+  read-only `Explore` agent, which needs no handover.
+- Both `Agent` calls in `/dev:investigate` pass the brief as `prompt` and a short
+  `description`. They put the whole brief in `description` before.
+
+---
+
 ## [magus 7.3.1] - 2026-09-19
 
 ### Fixed

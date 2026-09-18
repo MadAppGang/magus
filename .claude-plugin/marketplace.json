@@ -274,7 +274,7 @@
       "name": "dev",
       "source": "./plugins/dev",
       "description": "Universal development assistant. Detects the project stack and routes work to specialist agents for architecture, implementation, debugging, review and research, enforcing design-system guardrails on every UI change.",
-      "version": "8.1.0",
+      "version": "8.1.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -314,6 +314,14 @@
       "strict": true,
       "releases": [
         {
+          "version": "8.1.1",
+          "date": "2026-09-19",
+          "kinds": [
+            "Fixed"
+          ],
+          "summary": "/dev:investigate now detects code-search from the session's agent list"
+        },
+        {
           "version": "8.1.0",
           "date": "2026-09-19",
           "kinds": [
@@ -347,15 +355,6 @@
             "Changed"
           ],
           "summary": "All 13 dev subagents now say what the caller must hand over, and return a fixed completion\u2026"
-        },
-        {
-          "version": "7.3.0",
-          "date": "2026-09-09",
-          "kinds": [
-            "Added",
-            "Changed"
-          ],
-          "summary": "/dev:release records how this project releases, in a committed ai-docs/release.md"
         }
       ]
     },

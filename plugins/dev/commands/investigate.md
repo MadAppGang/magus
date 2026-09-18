@@ -9,8 +9,8 @@ skills: dev:context-detection
   <identity>Investigate Orchestrator</identity>
   <mission>
     Progressive disclosure entry point for codebase investigation. Collects
-    the investigation scope, checks plugin availability, and delegates to
-    the appropriate read-only analysis agent.
+    the investigation scope, checks whether the `code-search:analyze` agent is
+    loaded, and delegates to the appropriate read-only analysis agent.
   </mission>
 </role>
 
@@ -52,17 +52,18 @@ skills: dev:context-detection
     </step>
 
     <step number="2" name="Plugin Check">
-      Check if the code-search plugin is available:
+      Look for `code-search:analyze` in the Agent tool's list of available agent types.
 
-      ```bash
-      ls "${HOME}/.claude/plugins/cache/" 2>/dev/null | grep -q "code-search"
-      ```
+      That list is the only authority: it is what this session actually loaded, after
+      scope, enablement and version resolution. Do not check the disk instead. The plugin
+      cache is laid out `cache/<marketplace>/<plugin>/<version>`, and a cached plugin can
+      be disabled or installed after this session started.
 
-      If code-search is installed: proceed to step 3a.
-      If absent: proceed to step 3b.
+      If `code-search:analyze` is listed: proceed to step 3a.
+      If it is not listed: proceed to step 3b.
     </step>
 
-    <step number="3a" name="Delegate (code-search present)">
+    <step number="3a" name="Delegate (code-search:analyze listed)">
       Map scope to investigation mode:
         architecture  → mode: architecture, skill: code-search:investigate
         implementation → mode: implementation, skill: code-search:investigate
@@ -73,8 +74,10 @@ skills: dev:context-detection
       Launch the agent:
 
       Agent(
+        subagent_type: "code-search:analyze",
         run_in_background: false,
-        description: """
+        description: "Investigate: {target in three or four words}",
+        prompt: """
           Investigate: {$ARGUMENTS}
 
           Investigation mode: {mode}
@@ -97,35 +100,40 @@ skills: dev:context-detection
           - (comprehensive scope routes to code-search:deep-analysis, which takes no
             mode) all 4 modes above, synthesized into unified report
             with cross-cutting observations.
-        """,
-        subagent_type: "code-search:analyze"
+        """
       )
     </step>
 
-    <step number="3b" name="Degradation (code-search absent)">
+    <step number="3b" name="Degradation (code-search:analyze not available)">
       Inform the user:
 
-      "Deep investigation requires the **code-search** plugin (mcp__plugin_code-search_ca__* tools for semantic and structural analysis).
+      "Deep investigation needs the `code-search:analyze` agent from the **code-search** plugin, and this session has not loaded it.
 
       To install:
       1. Run: `/plugin marketplace add MadAppGang/magus`
       2. Enable `code-search@magus` in `.claude/settings.json`
-      3. Re-run `/dev:investigate`
+      3. Restart the session, then re-run `/dev:investigate`
 
-      **Alternative:** I can use `dev:researcher` for surface-level investigation
-      (text search only, no AST-level semantic analysis).
+      If code-search is already installed, it is not enabled for this project, or it
+      was installed or enabled after this session started.
+
+      **Alternative:** I can use the built-in `Explore` agent for a surface-level
+      investigation (text search and file reading, no semantic or structural analysis).
       Would you like to proceed with the fallback?"
 
       If user accepts fallback:
 
       Agent(
+        subagent_type: "Explore",
         run_in_background: false,
-        description: """
+        description: "Investigate: {target in three or four words}",
+        prompt: """
           Investigate: {$ARGUMENTS}
-          Note: code-search plugin unavailable. Use text search and file reading only.
-          Produce investigation report with findings and evidence.
-        """,
-        subagent_type: "dev:researcher"
+
+          Search breadth: medium.
+          Use text search and file reading only. Do not modify any files.
+          Produce an investigation report with findings, each backed by file:line evidence.
+        """
       )
     </step>
   </workflow>
