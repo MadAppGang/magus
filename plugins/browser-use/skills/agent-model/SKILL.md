@@ -72,7 +72,8 @@ the `update-config` skill to edit `.claude/settings.json` (committed) or `.claud
 ## Secrets — never store keys in settings
 
 `apiKeyEnv` holds the **name** of an environment variable, never the key itself (settings.json is
-often committed). For a custom `openai_compatible` provider, that env var must also reach the MCP
-server: add it to the plugin's `.mcp.json` env block (e.g. `"ZHIPU_API_KEY": "${ZHIPU_API_KEY}"`)
-and export it in your shell. `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, and `BROWSER_USE_API_KEY`
-already flow through — only custom providers need this step.
+often committed). Export that variable in the shell that starts Claude Code. The MCP server
+inherits Claude Code's environment, so every exported key reaches it, custom providers included.
+Never add the key to the plugin's `.mcp.json`: a `${VAR}` entry there makes Claude Code refuse to
+start the server whenever the variable is unset, and edits to an installed plugin do not survive
+its next update.

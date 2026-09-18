@@ -86,7 +86,7 @@
       "name": "claudish",
       "source": "./plugins/claudish",
       "description": "MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting across models, manages async sessions, and streams channel notifications. Required by code-search, dev, multimodel and designer.",
-      "version": "2.0.4",
+      "version": "2.0.5",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -107,6 +107,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "2.0.5",
+          "date": "2026-09-19",
+          "kinds": [
+            "Fixed"
+          ],
+          "summary": "The claudish MCP server starts for users whose keys are not in the environment"
+        },
         {
           "version": "2.0.4",
           "date": "2026-09-12",
@@ -135,14 +143,6 @@
           "version": "2.0.1",
           "date": "2026-08-29",
           "summary": "Claudish-usage no longer narrates what earlier versions of the skill contained. The prohibition\u2026"
-        },
-        {
-          "version": "2.0.0",
-          "date": "2026-08-28",
-          "kinds": [
-            "Changed"
-          ],
-          "summary": "BREAKING \u2014 the team contract in claudish:claudish-usage is rewritten for claudish 8.0.0"
         }
       ]
     },
@@ -605,7 +605,7 @@
       "name": "browser-use",
       "source": "./plugins/browser-use",
       "description": "Full-platform browser automation. Live-page JS eval, keyboard and focus primitives, environment preflight, and a configurable agent LLM, across dual local and cloud browsers backed by Playwright's own Chromium so your real Chrome is never hijacked. Ten Magus-specific tools on top of the upstream Browser Use MCP set, plus 6 skills.",
-      "version": "1.7.4",
+      "version": "1.7.5",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -627,6 +627,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "1.7.5",
+          "date": "2026-09-19",
+          "kinds": [
+            "Fixed"
+          ],
+          "summary": "The browser-use MCP server starts without ANTHROPIC_API_KEY, OPENAI_API_KEY and\u2026"
+        },
         {
           "version": "1.7.4",
           "date": "2026-09-07",
@@ -656,15 +664,6 @@
             "Added"
           ],
           "summary": "The server survived SIGTERM. Its signal handler ran cleanup and then called sys.exit(0), which\u2026"
-        },
-        {
-          "version": "1.7.0",
-          "date": "2026-08-22",
-          "kinds": [
-            "Fixed",
-            "Added"
-          ],
-          "summary": "The orphan reaper could terminate the wrong browser"
         }
       ]
     },

@@ -28,7 +28,14 @@ See: [Anthropic plugin dependencies docs](https://code.claude.com/docs/en/plugin
   ```bash
   npm install -g claudish
   ```
-- `OPENROUTER_API_KEY` environment variable for external-model access.
+- Provider credentials, which claudish resolves itself: from the environment, its
+  own config, the macOS Keychain, or 1Password. `claudish --help` lists the
+  credential commands.
+
+The plugin's `.mcp.json` declares no `env` entries, on purpose. The server inherits
+Claude Code's environment, so an exported key reaches it without one. A
+`"OPENROUTER_API_KEY": "${OPENROUTER_API_KEY}"` entry made Claude Code refuse to
+start the server for every user who keeps keys outside the environment.
 
 ## What it provides
 

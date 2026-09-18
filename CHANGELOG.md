@@ -4,6 +4,60 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [claudish 2.0.5] - 2026-09-19
+
+### Fixed
+
+- **The claudish MCP server starts for users whose keys are not in the environment.**
+  `.mcp.json` passed `"OPENROUTER_API_KEY": "${OPENROUTER_API_KEY}"`, and Claude Code
+  refuses a plugin MCP server whose `${VAR}` is unset: `mcp-config-invalid: MCP server
+  claudish invalid: Missing environment variables: OPENROUTER_API_KEY`. Every claudish
+  tool (`team`, `create_session`, `run_prompt`, `list_models`, …) was then missing from
+  the session. claudish resolves its own credentials from the environment, its config,
+  the macOS Keychain or 1Password, so a Keychain user never had the variable and never
+  needed it. The entry is gone: a stdio server inherits Claude Code's environment, so an
+  exported key still reaches claudish unchanged.
+
+### Why
+
+- Measured on Claude Code 2.1.276 with a probe plugin: a server with no `env` block
+  received the parent's value, and the `${VAR}` form failed validation whenever the
+  variable was unset. Headless runs logged the same error, then launched the server with
+  the literal string `${OPENROUTER_API_KEY}` as the key.
+- `bun run check:mcp-env` now fails any plugin MCP config that references a variable a
+  user may not have, or that sets `CLAUDE_PLUGIN_ROOT` or `CLAUDE_PLUGIN_DATA` in `env`.
+  It finds configs in every form a manifest can declare them: the default `.mcp.json`, a
+  path, an array, or an inline object.
+
+---
+
+## [browser-use 1.7.5] - 2026-09-19
+
+### Fixed
+
+- **The browser-use MCP server starts without `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` and
+  `BROWSER_USE_API_KEY` all exported.** `.mcp.json` passed all three as `${VAR}`, so
+  Claude Code refused the server unless every one was set, including the two a user of
+  the other provider never has: `Missing environment variables: ANTHROPIC_API_KEY,
+  OPENAI_API_KEY, BROWSER_USE_API_KEY`. The entries are gone. The server inherits Claude
+  Code's environment, so each exported key still arrives and `browser_doctor` still
+  reports it.
+- **A missing key no longer reaches the server as fake text.** Where Claude Code launched
+  the server despite that error (observed in headless runs), each unset key arrived as its
+  own literal placeholder, such as `${BROWSER_USE_API_KEY}`. `browser_doctor` then reported
+  the key present, and with no agent model configured the server picked the `browser_use`
+  provider with that placeholder as its key.
+- **`CLAUDE_PLUGIN_ROOT` reaches the server as the real path.** The `env` block also set
+  `"CLAUDE_PLUGIN_ROOT": "${CLAUDE_PLUGIN_ROOT}"`, which replaced the path Claude Code sets
+  and arrived unexpanded, as the literal text `${CLAUDE_PLUGIN_ROOT}`. The whole block is
+  gone: Claude Code sets `CLAUDE_PLUGIN_ROOT` and `CLAUDE_PROJECT_DIR` in the server's
+  environment itself, and nothing read `BROWSER_USE_SESSION_DIR`.
+- **The agent-model skill no longer tells you to add a custom provider's key to
+  `.mcp.json`.** That advice produced the same failure, and an edit to an installed
+  plugin does not survive its next update. Exporting the key in your shell is enough.
+
+---
+
 ## [setup 1.3.0] - 2026-09-19
 
 ### Added
