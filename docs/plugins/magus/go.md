@@ -18,15 +18,15 @@ Go development toolkit. Ships the go-tui skill for building Charm-stack terminal
 ## Install
 
 ```bash
-claudeup
+magus
 ```
 
-Find `go` on the Plugins tab and turn it on. claudeup registers the `magus`
+Find `go` on the Plugins tab and turn it on. magus registers the `magus`
 marketplace if you do not have it, and installs what the plugin needs to actually run —
 binaries, MCP servers, CLI tools.
 
 For a team, press `s` to save your plugins as a profile and commit it. Everyone else runs
-`claudeup install` — see [Teams and profiles](../../guides/teams.md).
+`magus install` — see [Teams and profiles](../../guides/teams.md).
 
 Prefer to do it by hand? [Installing Magus](../../guides/install.md) has the manual path.
 

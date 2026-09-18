@@ -167,7 +167,7 @@ Phase 7 drives a real browser through the `chrome-devtools` MCP server, which yo
 yourself. Without it, pick `unit-tests-only` and that phase is skipped.
 
 The review gate in Phase 3 uses other models through `claudish`, which comes with `dev` when
-you install it through [claudeup](./install.md).
+you install it through [magus](./install.md).
 
 ## Not what you wanted?
 

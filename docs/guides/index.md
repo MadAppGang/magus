@@ -4,7 +4,7 @@ For people using Magus plugins.
 
 ## Getting set up
 
-- **[Installing Magus](./install.md)** — install claudeup, add a marketplace, enable plugins
+- **[Installing Magus](./install.md)** — install magus, add a marketplace, enable plugins
 - **[Teams and profiles](./teams.md)** — share one setup through a committed manifest
 - **[Advanced Usage](./advanced-usage.md)** — global and project-scoped installation,
   version pinning, plugin updates, and custom configuration

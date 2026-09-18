@@ -74,7 +74,7 @@ test-first discipline.
 
 Both gates call other models through the [multimodel](./multimodel.md) plugin and its
 `claudish` MCP server, which come with `dev` when you install it through
-[claudeup](./install.md). Without them, use `--no-review`.
+[magus](./install.md). Without them, use `--no-review`.
 
 You can ask for top-tier models, or name a family. Which ones exist right now:
 <https://models.madappgang.com/recommended>. Picking a team works the same way as it does

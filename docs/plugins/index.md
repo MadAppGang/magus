@@ -13,22 +13,22 @@ does not give you the others, and a plugin's ID always names the marketplace it 
 
 ## Getting them
 
-[claudeup](../guides/install.md) manages plugins, the MCP servers and binaries they depend
+[magus](../guides/install.md) manages plugins, the MCP servers and binaries they depend
 on, skills, and CLI tools. It lists these marketplaces before you add them and registers
 whichever you pick:
 
 ```bash
-bun add -g claudeup
-claudeup
+bun add -g magus-cli
+magus
 ```
 
 For a team, pin the plugins in `.claude/profiles.json` and everyone runs
-`claudeup install` — see [Teams and profiles](../guides/teams.md).
+`magus install` — see [Teams and profiles](../guides/teams.md).
 
 ## The same name on two marketplaces
 
 A plugin id carries the marketplace it came from — `dev@magus`, `image@magus-marketing` — so
-the same short name can exist on more than one without ambiguity. claudeup shows you which
+the same short name can exist on more than one without ambiguity. magus shows you which
 is which, and you rarely have to type an id at all.
 
 [Advanced Usage](../guides/advanced-usage.md) covers global installs, version pinning and

@@ -7,17 +7,17 @@ image generation and video editing, and `magus-alpha` for experimental work.
 ## Start here
 
 ```bash
-bun add -g claudeup
-claudeup
+bun add -g magus-cli
+magus
 ```
 
-That is it. **[claudeup](./guides/install.md)** lists the Magus marketplaces, registers
+That is it. **[magus](./guides/install.md)** lists the Magus marketplaces, registers
 whichever you pick, and installs the plugins along with the MCP servers, binaries, skills
 and CLI tools they depend on.
 
 ## Guides
 
-- **[Installing Magus](./guides/install.md)** — claudeup, marketplaces, enabling plugins
+- **[Installing Magus](./guides/install.md)** — magus, marketplaces, enabling plugins
 - **[Teams and profiles](./guides/teams.md)** — one committed manifest, one command per teammate
 - **[Building a feature](./guides/dev-build.md)** — `/dev:dev`, depth, and presets
 - **[Fixing a bug](./guides/dev-debug.md)** — `/dev:fix`, reproduced first, reviewed twice

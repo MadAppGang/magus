@@ -33,15 +33,15 @@ Work that spans multiple plugins or affects the marketplace as a whole. Per-plug
 
 Generate per-harness distribution manifests from the magus source marketplace so plugins ship to Codex and Antigravity, not just Claude Code. Codex generator + validator are working (17 plugins generated, install validated, hook trust gate validated on CLI, Desktop app-server, and live Desktop UI). Antigravity is blocked on local CLI availability.
 
-- **Scope:** all 18 published plugins, claudeup, distribution pipeline
+- **Scope:** all 18 published plugins, magus, distribution pipeline
 - **Open work:** KI-CODEX-005 (Codex task-management translation; generator must fail if Codex artifacts need Claude-only task tools), KI-CODEX-008 (commit Desktop/app-server smoke as a harness command, not R&D)
 - **Sources:** `docs/plans/2026-05-27-harness-mapping.md`, `docs/plans/2026-05-27-cross-harness-known-issues.md`, `docs/plans/2026-05-26-hook-tool-conversion-map.md`, `docs/plans/2026-05-28-codex-plugin-distribution-spec.md`
 
 ### CC-2 · Cowork guided install lane 🟢
 
-Build a guided plugin install flow in claudeup TUI: list available plugins with versions from GitHub Release manifests, search/filter, download to deterministic cache, checksum verification, deep-link generation. Update flow with cached-version comparison + re-verify. 6-phase plan; implementation unverified from sources.
+Build a guided plugin install flow in magus TUI: list available plugins with versions from GitHub Release manifests, search/filter, download to deterministic cache, checksum verification, deep-link generation. Update flow with cached-version comparison + re-verify. 6-phase plan; implementation unverified from sources.
 
-- **Scope:** all plugins (artifact packaging), claudeup TUI, website, GitHub Releases pipeline
+- **Scope:** all plugins (artifact packaging), magus TUI, website, GitHub Releases pipeline
 - **Source:** `docs/plans/2026-05-26-cowork-guided-plugin-install.md`
 
 ### CC-3 · Skill description budget remediation (T3 consolidation) 🟢
@@ -53,11 +53,11 @@ Remediate Claude Code 2.1.105+'s skill listing budget. T1, T2, T4, T5 shipped (4
 
 ### CC-4 · best-practice-gates plugin 🟢
 
-New runtime plugin: rule-library + reranker + background validators. Rule library is loose YAML files curated by claudeup. Per-rule cross-model validators run as `async: true` hooks, deliver verdicts via `additionalContext` system reminders into actor's next turn. Bun + TypeScript end-to-end (no shell shims). Per-session state in `.claude/best-practice-gates/session.{session_id}.json` (no cross-session shared state by design). 8 design constants resolved; ready for implementation.
+New runtime plugin: rule-library + reranker + background validators. Rule library is loose YAML files curated by magus. Per-rule cross-model validators run as `async: true` hooks, deliver verdicts via `additionalContext` system reminders into actor's next turn. Bun + TypeScript end-to-end (no shell shims). Per-session state in `.claude/best-practice-gates/session.{session_id}.json` (no cross-session shared state by design). 8 design constants resolved; ready for implementation.
 
 - **Scope:** new plugin `plugins/best-practice-gates/`; depends on claudish + mnemex + multimodel
 - **Acceptance gate:** madbench trajectory-replay of the two evidenced failures (R1 fork-vs-extend; R2 mock-coverage-as-validation) — control variant (no bpg) reproduces failure, treatment variant (bpg installed) catches and fixes. Per-rule madbench suites land in v1.1 alongside the starter rule pack.
-- **Claudeup integration:** plugin install via existing claudeup plugin flow; new "Rules" tab for browsing/toggling rule packs; static curated rule-pack manifest shipped with claudeup (real registry deferred to v1.1).
+- **Magus integration:** plugin install via existing magus plugin flow; new "Rules" tab for browsing/toggling rule packs; static curated rule-pack manifest shipped with magus (real registry deferred to v1.1).
 - **Rule sources:** wraps select existing magus skills (e.g., `dev:verification-before-completion`, `dev:code-roast`) as validator prompts; receives software-architecture gates being authored in the user's cowork project as a downstream supplier (no schema/naming forced now).
 - **Source:** `docs/plans/2026-05-28-best-practice-gates-design.md`
 
@@ -154,7 +154,7 @@ is published to users. `scripts/check-doc-plugin-lists.ts` now rejects the label
 
 ### mnemex (runtime plugin, new in v7.5.0)
 
-- 🟡 **CC-1** · System-wide `mnemex` executable must be installed/repaired by claudeup before installing/validating `mnemex@magus-codex` (KI-CODEX-009)
+- 🟡 **CC-1** · System-wide `mnemex` executable must be installed/repaired by magus before installing/validating `mnemex@magus-codex` (KI-CODEX-009)
 
 ### multimodel
 
@@ -237,13 +237,13 @@ is published to users. `scripts/check-doc-plugin-lists.ts` now rejects the label
 
 ### Tools
 
-#### claudeup (current: v4.17.0+, npm package)
+#### magus (current: v4.17.0+, npm package)
 
 - 🟢 **CC-2** · Cowork TUI screen (Phase 4) — plugin list from GitHub Release manifests, search/filter, deterministic cache, checksum verification, deep-link generation
 - 🟢 **CC-2** · Cowork install update flow (Phase 5) — cached version comparison, redownload + re-verify, guided update prompt
 - 🟡 **CC-1** · Mnemex repair before `mnemex@magus-codex` install (per KI-CODEX-009)
-- 🟢 Raise the `@opentui/core` pin. `tools/claudeup` pins `^0.1.75` (published 2026-01-25) and **0.1.107 is verified compile-safe**: `bun build --compile`, no `--external`, binary launches, exit 0, 66,534,800 B — 32 patch versions of headroom inside the safe line. 0.4.x still breaks the compiled binary at launch (`resolveFallbackFilePath` → `normalizeLoadedFilePath`, native lib resolution inside `/$bunfs/root/`), so the 0.1.x ceiling stands, but the pin does not have to stay at 0.1.75. Surfaced by the bunjs v0.1.0 build.
-- ⚪ **CC-2** · Optional helper command surface (`claudeup cowork list/install/update` non-interactive)
+- 🟢 Raise the `@opentui/core` pin. `tools/magus` pins `^0.1.75` (published 2026-01-25) and **0.1.107 is verified compile-safe**: `bun build --compile`, no `--external`, binary launches, exit 0, 66,534,800 B — 32 patch versions of headroom inside the safe line. 0.4.x still breaks the compiled binary at launch (`resolveFallbackFilePath` → `normalizeLoadedFilePath`, native lib resolution inside `/$bunfs/root/`), so the 0.1.x ceiling stands, but the pin does not have to stay at 0.1.75. Surfaced by the bunjs v0.1.0 build.
+- ⚪ **CC-2** · Optional helper command surface (`magus cowork list/install/update` non-interactive)
 - ⚪ Trust action for Codex Desktop hooks — security trade-off: "may guide users to the Hooks screen or offer an explicit 'trust these installed hooks' action only if the user asks for it"
 
 #### claude-desktop-profiles (separate tool, current: v1.2.2)
@@ -317,7 +317,7 @@ Named here so they don't accidentally creep back as roadmap items in future plan
 - 🚫 **Generic conversation normalization layer (cross-harness V1)** — explicit V1 non-goal
 - 🚫 **claude-desktop-profiles iter-2 helper-rename recipe** — superseded by iter-3 finding
 - 🚫 **Tightening `SKILL_BUDGET_FAIL_TOTAL` from 16000 → 12000** — deferred until T3 makes it achievable
-- 🚫 **claudeup writing trusted hook hashes for normal users (Codex Desktop)** — security rule; automation may write trust only in isolated smoke tests
+- 🚫 **magus writing trusted hook hashes for normal users (Codex Desktop)** — security rule; automation may write trust only in isolated smoke tests
 
 ---
 

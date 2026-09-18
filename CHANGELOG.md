@@ -4,6 +4,274 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [setup 1.3.0] - 2026-09-19
+
+### Added
+
+- **The statusline `wt:` chip takes the session's colour.** It used to hash the worktree
+  name into a palette, which predates sessions having a colour at all, so the chip and the
+  tmux tab disagreed about the same session (measured: tab cyan, chip pale peach). The chip
+  now resolves, first hit wins: the tmux window's `@cc_colour`, then `$CLAUDE_WT_COLOUR`,
+  then the old name hash. Each of the eight `/color` tokens maps to the 256-colour cube
+  index nearest the tmux theme's own fill, per appearance, and every fill clears 4.5:1
+  against its ink. In dark mode a coloured chip therefore carries dark ink on a bright
+  fill, matching the tab. `default`, empty and unrecognised values fall through to the
+  hash rather than becoming a colour.
+- **It reads its own session's window, not the one you are looking at.** An untargeted
+  `tmux show` answers for the client's active window, so the read goes through
+  `$TMUX_PANE` and is skipped outright when that is unset. The live tmux value outranks
+  the launch-time env var, so a later `/color` moves the chip along with the tab.
+
+---
+
+## [magus 7.3.0] - 2026-09-18
+### Added
+
+- **A plugin loading the wrong version is now a state you can see and fix.** Claude Code
+  picks a plugin version by taking the first install record relevant to this repository
+  whose path still exists — and those records belong to other directories, including
+  worktrees you deleted. magus judged currency from its own settings key overlaid with
+  this project's records, and the loader consults neither, so the panel could read "up to
+  date" while every session in the directory ran an older plugin. Measured here: six
+  plugins affected, one of them two minor versions behind, while `magus doctor` reported
+  "No problems found".
+
+  Affected rows are marked BROKEN with the key that fixes them and counted in their own
+  header bucket, so they can never fold into "current" or "updates". A startup popup
+  offers the repair with Fix as the default; `a` and `magus update` apply it.
+
+### Fixed
+
+- **`magus doctor` now checks plugin loads**, naming the loaded version, the installed
+  version, and the project path of the record that wins. It had no check for this before.
+- **`magus update --check` fails on a broken load.** It was excluded only while nothing
+  could clear it.
+- **`magus doctor --fix` no longer exits 0 over a broken load.** `--fix` does not repair
+  that class — the section says so — and counting it with the fixable problems meant the
+  command printed its red lines and reported success, so a pre-flight step went green over
+  a plugin whose sessions run a version nobody installed.
+
+### Why
+
+A reinstall cannot fix this, which is why the existing affordances did nothing: the
+record being reinstalled is not the record that wins. The repair rewrites every stale
+record for this repository forward to the installed version — nothing deleted, nothing
+downgraded, the promise `magus update` already makes. Because every worktree of a
+repository shares one resolution, repairing one directory converges them all.
+
+A profile's exact pin is a ceiling on all of this. A plugin loading exactly the version
+its pin asked for is never a broken load, even when a higher version sits in another
+scope — user scope holds one machine-wide install, and no `claude plugin` command can
+downgrade it, so that is a permanent state rather than something to fix. Both the panel
+and the startup dialog cap their target at the highest installed version the pin permits,
+so neither offers to move a pinned plugin off its pin.
+
+It edits `installed_plugins.json` in place, which this repo's rules forbid. No `claude
+plugin` command can reach a record belonging to a directory that no longer exists, so
+there is no other mechanism. The file is backed up before the first write, the write is
+atomic, a target with no cache directory is refused, and the registry is re-read from
+disk afterwards to confirm the resolution moved — a repair that changed nothing reports
+failure rather than success.
+
+"For this repository" is the exact reach, not a simplification. The loader counts a
+machine-wide record — `user` or `managed` scope — as relevant to every project, and a
+repair must never write further than the dialog offering it says. Those records are left
+alone; when one of them is the record that wins, the repair says so, names the scope and
+names the action that would move it, rather than changing what every project on the
+machine loads. The write also refuses outright if another Claude Code session wrote the
+registry meanwhile: an atomic write prevents a torn file, not a lost update, and that
+file is written constantly.
+
+The resolution logic is a port of Claude Code 2.1.274's own, decompiled from the binary
+and validated at 113/113 against the loader's `--debug-file` record across twelve
+repositories and worktrees. How to re-derive it when Claude Code changes, and the traps
+that make this easy to measure wrongly, are in `ai-docs/claude-code-plugin-resolution.md`.
+
+---
+
+## [magus 7.2.0] - 2026-09-18
+### Fixed
+
+- **Migrating to profiles now puts the project on one.** Adopting wrote
+  `.claude/profiles.json` and stopped. "Active" is not a field anywhere — it is whether
+  `.claude/settings.json` is a symlink into `_profiles/<id>/` — so a manifest nothing
+  linked to left the project exactly as it was, and the very next step of `magus update`
+  asked which profile to use, having just been told. Both surfaces now write the manifest
+  and link the project to it, or neither.
+- **Activation no longer deletes what it replaces.** It moved four paths aside with
+  `fs.remove` and no backup, which is why adoption deliberately stopped short of
+  activating: completing a migration meant risking a hand-written `settings.json`. A
+  displaced artifact is now moved to `.claude/.magus-backups/<timestamp>/` and reported
+  as it moves. `magus install` and `magus profile switch` were displacing files silently
+  — both now say so. Backups sit beside `_profiles/`, never inside it, because that
+  directory is documented as regenerable and is the first thing a cleanup removes.
+- **A symlink you put there survives too.** One pointing outside `_profiles/` is
+  deliberate wiring, not generated state, so it is preserved like a real file and
+  rewritten absolute so it still resolves from the backup.
+- **Ctrl+C quits from under a modal.** The key handler returned early whenever one was
+  open, so the quit branch never ran. Every modal used to be dismissable, making
+  Escape-then-Ctrl+C work; a modal that cannot be dismissed left no interrupt at all.
+
+### Added
+
+- **The TUI asks about profiles when it opens.** It could show a Profiles tab listing two
+  profiles while the project ran neither, and say nothing. One question covers both
+  states — no profile exists, or none is selected — because asking separately asks twice
+  about one situation.
+- **`.claude/profiles.json` can declare which profile the project wants**, as a top-level
+  `"default": "<id>"`. A manifest said which profiles exist and never which to use, so
+  every teammate cloning a repo was asked to choose with nothing to choose by. A clone
+  with nothing to replace activates it silently and says why; a checkout with local work
+  still asks, with that profile under the cursor. Adopting records it when the manifest
+  has none, and never overwrites an existing one — saving local state must not republish
+  the team's committed choice. `validateManifest` rejects one naming no profile.
+- **The Profiles tab marks the active profile** with a green `●`, and says `· active` in
+  the detail pane. Activating a profile and landing on that tab previously showed two
+  rows that looked identical.
+
+### Changed
+
+- **There is no way past a missing profile.** The TUI offered "Not now" and the CLI
+  resolved a profile "for this run only", updating a manifest the project was not
+  running. With none active there is no profile state to read and nowhere to write
+  updates, so both let the user into a magus that could not do its job. The choices are
+  now migrate, activate, or stop — `Quit magus` in the TUI, a non-zero exit in the CLI.
+  Naming a profile still skips the gate: `magus update lean` says which one to update,
+  and updating it needs the manifest rather than the symlink.
+- **Nothing compares the manifest to `enabledPlugins` any more.** A profiled project's
+  `settings.json` is generated from the manifest, so weighing one against the other read
+  the manifest's own output and offered to create a third profile describing it — the
+  answer there is to re-materialize. The drift comparison, its `matches now` badge and
+  `magus update`'s drift-triggered prompt are all gone; detection now asks one question
+  with no heuristic in it.
+- **The profile dialog talks about your plugins, not magus's internals.** It said "the
+  manifest is not in effect" and "there is no profile state to read", and never mentioned
+  that switching overwrites the plugins and skills currently turned on — the one fact
+  that makes saving them worth choosing.
+
+---
+
+## [magus 7.1.0] - 2026-09-17
+
+### Changed
+
+- **"Cannot compare" now means current, not a warning.** A plugin whose marketplace
+  publishes no version, or whose installed version cannot be ordered against its pin, is
+  reported as current. 278 of the 292 plugins in `claude-plugins-official` publish no
+  version, so the old `unknown` state put a permanent amber row in front of every user
+  with no action that could ever clear it — re-running changed nothing, because there was
+  nothing to fetch. The machine-readable reason is kept on the item, so *why* the verdict
+  was reached is still recorded; only the warning is gone. `magus update --check` is
+  unaffected: it never failed on an unknown, so no gate changes colour.
+- **`magus update` groups plugins by state.** Five headings in priority order —
+  Update, Deprecated, Fix required, Unverified, Current — each with its own count, and the
+  actionable groups carry a badge. Current is last because it is the largest and least
+  interesting group, and leading with it buried the handful of rows that need a decision.
+  A state the ordering does not name is appended rather than dropped.
+- **`Unverified` is its own heading, separate from `Current`.** A row whose catalog read
+  failed is not a row that was checked and found current. The two answer different
+  questions and no longer share a heading. This is distinct from "nothing could be
+  compared, so assume the install is the latest", which genuinely is `current` and is
+  decided in the classifier, not in the report.
+- **The report resolves the terminal's palette.** Only the TUI ever called
+  `setThemeMode`, so every subcommand painted dark-page colours regardless of the
+  terminal. `magus update`, `install`, `doctor`, `profile`, `models` and `upgrade` now
+  resolve light or dark from `--theme`, `MAGUS_THEME`, `TERM_THEME` and `COLORFGBG` —
+  with no terminal probe, because a report must not block on a reply and may be piped.
+- **An available update is green.** Amber stays on "could not tell", so the two states
+  are distinguishable at a glance rather than by shade. The colours are lifted from the
+  existing measured badge palette: ink on fill 5.82:1 on a light page, 4.80:1 on a dark
+  one.
+
+### Fixed
+
+- **The empty half of every progress bar was the loudest thing in the report.** The bar
+  track was a single dark grey chosen against a near-black terminal. Measured on a cream
+  background it is 14.54:1 — higher contrast than body text — which rendered as a dense
+  stipple that outweighed the data. It resolves per page now: 1.24:1 on light, 1.10:1 on
+  dark, matching what the dark page always had.
+- **`magus` no longer claims a plugin moved when it did not.** The destination was
+  inferred from a plugin name appearing in another marketplace, which cannot distinguish
+  a move from a dual publication — `claudish` ships to two marketplaces, and both copies
+  installed produced `v2.0.3 moved → magus` about a plugin that had not moved. A plugin
+  no configured marketplace offers is reported as deprecated, with no guess about where
+  it went.
+- **The auto-update warning is gone, because it was measuring the wrong thing.** A
+  marketplace with `autoUpdate: false` was reported as having a frozen catalog whose
+  updates stay hidden. Measured against a real clone that is false: the catalog read does
+  its own `git fetch` and reads `origin/<branch>`, so a marketplace pinned at dev 7.4.0
+  with auto-update off still reported 7.4.1 available. The flag does not hide updates, and
+  the warning sent users to fix something that was not broken. magus also no longer
+  writes the field into Claude Code's marketplace registry on startup.
+- **A `.bak` directory is no longer listed as a marketplace.** The local scan enumerated
+  every directory under the marketplaces path; it is now intersected with Claude Code's
+  own registry. An unreadable registry keeps every directory rather than manufacturing
+  orphans.
+- **Two notices removed as noise.** The trailing "N plugin(s) could not be checked"
+  restated the table above it and counted rows that now sit under Current; the
+  "(not offered by any configured marketplace)" note repeated what the row's own
+  DEPRECATED badge already said.
+- **Bars that restated a number are gone.** The per-step duration bar in the printed
+  summary was each step's share of the slowest step, which the millisecond column beside
+  it already reported exactly. The live progress bar stays — a meter or an indeterminate
+  sweep answers "working or hung?", which no printed number can.
+- **Every planned plugin gets a row in the report.** A pin naming a plugin no marketplace
+  offers, with nothing installed, was filtered out of the table on the grounds that a
+  notice listed it instead. That notice was never written, so the row appeared in no table
+  and no notice while the closing lines still counted it and said "Reasons are shown
+  above", pointing at nothing. The header count and the rows on screen now always agree.
+- **A project's `.env` can no longer choose the palette.** The theme environment is
+  snapshotted by `main.tsx` before it loads a project's `.env`, then handed to the router.
+  It was previously re-read inside the router, which runs after that merge — so a
+  checked-out repo could set `MAGUS_THEME` and repaint the report.
+- **`which()` no longer spawns a process** to resolve a binary on PATH.
+
+### Why
+
+The two front ends had drifted into answering the same question differently, and both
+answered it with warnings nobody could act on. The state model is now decided in one
+place and rendered by both, and a state that implies no action no longer produces a
+warning that implies one.
+
+### Migration notes
+
+None. No flags, commands or config keys changed.
+
+---
+
+## [magus 7.0.0] - 2026-09-17
+
+### Changed
+
+- **`claudeup` is now `magus`.** The command, the TUI, the environment variables and the
+  on-disk state all carry the new name. Install with `bun add -g magus-cli` (or
+  `npm install -g magus-cli`) and run `magus`.
+- The npm package is **`magus-cli`, not `magus`** — the bare name belongs to an unrelated
+  package published in 2015, and npm's disputes policy does not transfer names on request.
+  The command you type is still `magus`; only the install string differs. The three
+  prebuilt-binary packages follow the package name: `magus-cli-darwin-arm64`,
+  `magus-cli-darwin-x64`, `magus-cli-linux-x64`.
+- Environment variables lost the old prefix: `MAGUS_THEME`, `MAGUS_HEADER`, `MAGUS_MATES`,
+  `MAGUS_NO_BINARY`, `MAGUS_DEBUG_KEYS`.
+- Source moved to `tools/magus/`, and release tags now take the `tools/magus/vX.Y.Z` prefix.
+
+### Migration notes
+
+Nothing migrates itself, and nothing reads the old names. After installing `magus-cli`,
+remove the old package with `npm uninstall -g claudeup` (or `bun remove -g claudeup`).
+
+These files keep the old name on disk and are simply no longer read. The two caches rebuild
+on first run, so only the alias name and any plugin checkouts are worth re-doing by hand:
+
+- `~/.claude/settings.json` → the `"claudeup"` key, which held `aliasName`
+- `~/.claude/claudeup-alias.json`
+- `~/.claude/claudeup-catalog-cache.json` and `~/.claude/claudeup-version-snapshot.json` (rebuilt automatically)
+- `~/.claude/claudeup-checkouts/`
+
+Any shell profile exporting a `CLAUDEUP_*` variable must be updated; the new names are listed above.
+
+---
+
 ## [Marketplace 13.0.0] - 2026-09-15
 
 ### Changed

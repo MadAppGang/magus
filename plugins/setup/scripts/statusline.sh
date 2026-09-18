@@ -89,7 +89,7 @@ if [ -f "$CONFIG_FILE" ] && command -v jq >/dev/null 2>&1; then
 fi
 
 # ── Appearance detection (light vs dark terminal) ─────────
-# One resolution order, shared with claudeup and tmux-setup, first answer wins:
+# One resolution order, shared with magus and tmux-setup, first answer wins:
 #
 #   1. `appearance` config key            (the script's own flag)
 #   2. $STATUSLINE_APPEARANCE             (the script's own variable)
@@ -243,6 +243,10 @@ apply_theme() {
     # Worktree chips are tinted per name — see pick_wt_bg. Pale enough that #444444
     # text clears 7:1 on every one of them.
     WT_PALETTE=(223 194 189 224 230 195 225 187 152 218 151 222 158 183 217 229 153 216)
+    # Session-colour chips (see wt_chip_style). Pale fills, so the ink stays the
+    # tier's usual dark 238 — every pair below clears 5.1:1.
+    WT_INK=$(fg 238)
+    WT_TOKEN_INDEX_MAP="red:216 orange:187 yellow:186 green:151 cyan:152 blue:153 purple:182 pink:224"
     BG_VIM_INSERT=$(bg 151); BG_VIM_NORMAL=$(bg 153)
     BG_VIM_VISUAL=$(bg 183); BG_VIM_REPLACE=$(bg 217); BG_VIM_OTHER=$(bg 252)
   else
@@ -265,6 +269,13 @@ apply_theme() {
     BG_ALERT=$(bg 160)    # #d70000 —  5.4:1
     # Saturated enough that #ffffff clears 4.5:1 on every one of them.
     WT_PALETTE=(130 22 24 53 88 58 23 90 94 25 55 28 61 89 29 95 54 18)
+    # Session-colour chips (see wt_chip_style) INVERT the rule two lines up: the fills
+    # are the tmux tab's BRIGHT colours, so the ink is dark, not $BADGE_FG white.
+    # 238 (#444444) is not dark enough against them — it fails 4.5:1 on four of the
+    # eight (measured: red 3.36, purple 3.59, blue 4.20, pink 4.50). 235 (#262626)
+    # clears every one with 5.2:1 to spare; see the mapping table in wt_chip_style.
+    WT_INK=$(fg 235)
+    WT_TOKEN_INDEX_MAP="red:204 orange:215 yellow:221 green:78 cyan:80 blue:75 purple:141 pink:212"
     BG_VIM_INSERT=$(bg 28);  BG_VIM_NORMAL=$(bg 25)
     BG_VIM_VISUAL=$(bg 90);  BG_VIM_REPLACE=$(bg 124); BG_VIM_OTHER=$(bg 240)
   fi
@@ -286,6 +297,115 @@ pick_wt_bg() {
     h=$(( (h * 31 + ord) % 1000003 ))
   done
   bg "${WT_PALETTE[$(( h % ${#WT_PALETTE[@]} ))]}"
+}
+
+# ── `wt:` chip colour — the SESSION's colour, not a hash of its name ──
+# The chip names the same session the tmux tab names, so it should carry the same
+# COLOUR. A hash of the worktree name cannot: it has no way to learn that this
+# session is `cyan`. Measured on one live session: @cc_colour=cyan while the chip
+# rendered 223, a pale peach. Two surfaces, two colours, one session.
+#
+# Resolution order, first hit wins:
+#   1. tmux window option @cc_colour on THIS SESSION'S OWN window, resolved through
+#      $TMUX_PANE. It is the LIVE truth — the tab reconciler rewrites it whenever the
+#      session's colour changes, so a later `/color green` moves the chip too, and it
+#      therefore outranks the env var below, which is written once at launch and never
+#      again. Costs one fork per render (measured 5.9ms over 20 calls), paid knowingly:
+#      a stale chip is worse than a few milliseconds.
+#
+#      `-t "$TMUX_PANE"` is NOT optional. An untargeted `show -wqv` resolves to the
+#      attached client's ACTIVE window, which is whatever the user is LOOKING at —
+#      measured from pane %91 in window @45 while the client was focused on @8:
+#        tmux show -wqv       @cc_colour  -> ""      (window @8, another session's)
+#        tmux show -wqv -t %91 @cc_colour  -> cyan    (window @45, this session's)
+#      so the chip both read the wrong session and changed colour as the user switched
+#      windows. `current_window()` in dotfiles/tmux/.tmux/scripts/claude-tab-colour.sh
+#      documents the same trap: "resolve through TMUX_PANE rather than trusting 'the
+#      current window' — with several clients attached to the same session those are
+#      not always the same window." With $TMUX_PANE unset there is nothing to target,
+#      so this path is SKIPPED rather than falling back to an untargeted read — that
+#      fallback IS the bug.
+#
+#      Read with `show -wqv`, NOT `-wv`: on an option that was never set, `-wv` prints
+#      "invalid option" and exits 1, while `-q` is silent and exits 0.
+#   2. $CLAUDE_WT_COLOUR — exported by the sibling `wt` launcher. A shell read, no
+#      fork, and the only source a session outside tmux has.
+#   3. pick_wt_bg, untouched — with no token available the chip is exactly what it
+#      is today.
+#
+# `default`, the empty string and any unrecognised value are NO OPINION at every step
+# and fall through to the next one.
+#
+# Fills are the cube index nearest each `@thm_cc_cur_*` hex in the tmux theme
+# (dotfiles/tmux/.tmux/scripts/theme.sh), so chip and tab read as one colour.
+# Nearest is by redmean distance over the 216-colour cube; contrast is WCAG 2.1.
+# target hex -> index -> that index's actual hex -> contrast against this tier's ink:
+#
+#   DARK tier, bright fills, ink 235 #262626 (all >= 4.5:1, min 5.22):
+#     red    #ff6b81 -> 204 #ff5f87   5.22:1
+#     orange #ff9f45 -> 215 #ffaf5f   8.32:1
+#     yellow #f5d547 -> 221 #ffd75f  10.91:1
+#     green  #6fdc8c ->  78 #5fd787   8.33:1
+#     cyan   #4fd6e0 ->  80 #5fd7d7   8.78:1
+#     blue   #6aa8ff ->  75 #5fafff   6.53:1
+#     purple #b98bff -> 141 #af87ff   5.57:1
+#     pink   #ff8ad1 -> 212 #ff87d7   6.99:1
+#
+#   LIGHT tier, pale fills, ink 238 #444444 (all >= 4.5:1, min 5.10):
+#     red    #ffaf87 -> 216 #ffaf87   5.44:1  (exact)
+#     orange #eacbad -> 187 #d7d7af   6.60:1
+#     yellow #e1d099 -> 186 #d7d787   6.47:1
+#     green  #b4dbaf -> 151 #afd7af   6.10:1
+#     cyan   #afd8dd -> 152 #afd7d7   6.27:1
+#     blue   #c0d2ea -> 153 #afd7ff   6.49:1  see note (a)
+#     purple #dccae8 -> 182 #d7afd7   5.10:1  see note (b)
+#     pink   #f0c5d7 -> 224 #ffd7d7   7.40:1
+#
+#   (a) 152 is 2 units nearer to light blue than 153 is (41.33 vs 43.48) but it is
+#       ALSO cyan's near-exact match (9.34), and one index cannot be two tokens.
+#       Cyan keeps it; blue takes the runner-up, which is the one that looks blue.
+#   (b) 188 #d7d7d7 is nearest to light purple (36.98) and is an achromatic GREY — a
+#       colourless "purple" chip defeats the point. The next, 189 #d7d7ff (43.39), is
+#       a pale periwinkle indistinguishable from blue's 153. 182 (60.06) is the
+#       nearest index that is recognisably purple and collides with nothing.
+#
+# Keeping every dark fill at its nearest index is what forced ink 235. Constraining
+# the FILL to clear 4.5:1 against the tier's usual 238 instead would have moved dark
+# red to 216 #ffaf87 (distance 25.5 -> 136.3 — that is the LIGHT tier's red), blue to
+# 81 #5fd7ff (22.0 -> 95.5, a cyan) and purple to 147 #afafff (18.3 -> 73.9). Each
+# would break the one property the chip exists for: matching the tab.
+#
+# Sets WT_CHIP_BG / WT_CHIP_FG as globals rather than printing, because the chip needs
+# two escapes and the ink depends on which branch won — a token fill carries dark ink,
+# the hashed fallback keeps $BADGE_FG. Both are read at render time, after apply_theme
+# has run for the resolved appearance.
+wt_chip_style() {
+  local name="$1" tok='' pair=''
+
+  if [ -n "${TMUX:-}" ] && [ -n "${TMUX_PANE:-}" ] && command -v tmux >/dev/null 2>&1; then
+    tok=$(tmux show -wqv -t "$TMUX_PANE" @cc_colour 2>/dev/null)
+    case "$tok" in
+      red|blue|green|yellow|purple|orange|pink|cyan) ;;
+      *) tok='' ;;   # covers `default`, unset/empty, and anything this build predates
+    esac
+  fi
+
+  if [ -z "$tok" ]; then
+    case "${CLAUDE_WT_COLOUR:-}" in
+      red|blue|green|yellow|purple|orange|pink|cyan) tok="$CLAUDE_WT_COLOUR" ;;
+    esac
+  fi
+
+  if [ -n "$tok" ]; then
+    for pair in $WT_TOKEN_INDEX_MAP; do
+      case "$pair" in
+        "$tok":*) WT_CHIP_BG=$(bg "${pair#*:}"); WT_CHIP_FG="$WT_INK"; return ;;
+      esac
+    done
+  fi
+
+  WT_CHIP_BG=$(pick_wt_bg "$name")
+  WT_CHIP_FG="$BADGE_FG"
 }
 
 # ── Icon table ────────────────────────────────────────────
@@ -892,7 +1012,8 @@ if [ "$SHOW_BRANCH" = "true" ] && [ -n "$BRANCH" ] && [ "$WORKTREE_CHIP" -eq 0 ]
 fi
 
 if [ "$WORKTREE_CHIP" -eq 1 ]; then
-  append_section "$(pick_wt_bg "$WORKTREE_NAME")${B}${BADGE_FG} wt:${WORKTREE_NAME} ${R}"
+  wt_chip_style "$WORKTREE_NAME"
+  append_section "${WT_CHIP_BG}${B}${WT_CHIP_FG} wt:${WORKTREE_NAME} ${R}"
 fi
 
 # ── 5. Vim mode (if active) ───────────────────────────────

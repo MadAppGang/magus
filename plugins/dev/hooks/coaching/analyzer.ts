@@ -409,7 +409,7 @@ function applyRules(
 
       case "plugin-command-gap":
       case "bash-ffmpeg-without-plugin":
-      case "suggest-claudeup-for-plugin-install":
+      case "suggest-magus-for-plugin-install":
       case "image-plugin-not-suggested-for-images":
       case "browser-use-for-playwright-selenium":
       case "tui-via-bash-instead-of-terminal": {

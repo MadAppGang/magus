@@ -48,7 +48,7 @@ drawn for a light or a dark terminal.
 ## Appearance
 
 The statusline resolves light vs dark at render time, because the same colours cannot
-work on both. It follows the same six-step order as claudeup and tmux-setup, first hit
+work on both. It follows the same six-step order as magus and tmux-setup, first hit
 wins:
 
 1. `appearance` in this config, when set to `light` or `dark` (the script's own flag)
@@ -66,7 +66,7 @@ wins:
 prints a "could not detect" warning, including the dark default — it is a decision, not
 a failure.
 
-`TERM_THEME` is read from the process environment everywhere (here, in claudeup and in
+`TERM_THEME` is read from the process environment everywhere (here, in magus and in
 tmux-setup), never from a `.env` file. Set it in your shell profile and every tool
 agrees.
 

@@ -4,15 +4,15 @@
 
 Content tooling: image generation and video editing.
 
-[claudeup](../../guides/install.md) lists this marketplace before you add it — select it,
+[magus](../../guides/install.md) lists this marketplace before you add it — select it,
 confirm, and it is registered:
 
 ```bash
-claudeup
+magus
 ```
 
 For a team, pin the plugins in `.claude/profiles.json` and everyone runs
-`claudeup install` — see [Teams and profiles](../../guides/teams.md).
+`magus install` — see [Teams and profiles](../../guides/teams.md).
 
 Plugin IDs carry the marketplace, so these are `name@magus-marketing`.
 

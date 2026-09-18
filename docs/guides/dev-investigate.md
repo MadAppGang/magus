@@ -34,7 +34,7 @@ yours. You get the conclusion.
 It tells you, and offers text search instead. It doesn't pretend the AST tools are there and
 quietly give you a worse answer.
 
-Install it through [claudeup](./install.md) to get semantic search, the call graph, and
+Install it through [magus](./install.md) to get semantic search, the call graph, and
 "what breaks if I change this" — none of which you can grep for. See
 [code-search](./code-search.md).
 

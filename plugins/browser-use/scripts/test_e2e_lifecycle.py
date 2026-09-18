@@ -304,6 +304,64 @@ def _dead_digit_prefix(pid: int) -> int | None:
     return None
 
 
+def _ensure_prefixable_pid_space(budget_seconds: float = 20.0) -> int | None:
+    """
+    Walk the PID counter until a freshly spawned process has a free digit prefix.
+
+    Returns the probe PID that satisfied it, or None if the budget ran out. It is
+    a near no-op when the condition already holds, which is the usual case on a
+    developer machine.
+
+    Why this exists: a fresh container starts near the bottom of the PID space,
+    and every PID below roughly 1000 on Linux is a kernel thread that always
+    exists. MEASURED on a GitHub ubuntu runner: the live server drew pid 2850,
+    whose only digit prefixes are 285, 28 and 2 — all occupied — so
+    _dead_digit_prefix returned None, setUpClass raised SkipTest, and the whole
+    five-test class silently did not run. The suite reported OK (skipped=1) and
+    the CI gate then failed the job for running 6 tests instead of 11.
+
+    A five-digit PID has its longest prefix in the 1000-9999 range, which is
+    empty on a machine running a few dozen processes. Spawning throwaway children
+    walks the counter into that range, because each spawn advances it by one.
+
+    Batched on purpose: serially spawning and waiting would need thousands of
+    round trips to climb from 2850 past 10000, where firing a batch and reaping
+    it takes a fraction of that wall-clock.
+
+    This cannot help where `kernel.pid_max` is itself below the five-digit range.
+    There the budget expires and the caller skips exactly as it did before, so
+    the worst case is today's behaviour rather than a hang.
+    """
+    true_bin = shutil.which("true") or "/bin/true"
+
+    def probe() -> int:
+        child = subprocess.Popen(
+            [true_bin], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+        )
+        pid = child.pid
+        child.wait()
+        return pid
+
+    pid = probe()
+    if _dead_digit_prefix(pid) is not None:
+        return pid
+
+    deadline = time.monotonic() + budget_seconds
+    while time.monotonic() < deadline:
+        batch = [
+            subprocess.Popen(
+                [true_bin], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+            )
+            for _ in range(256)
+        ]
+        last = batch[-1].pid
+        for child in batch:
+            child.wait()
+        if _dead_digit_prefix(last) is not None:
+            return last
+    return None
+
+
 # ---------------------------------------------------------------------------
 # Real MCP server subprocess, driven over real stdio JSON-RPC
 # ---------------------------------------------------------------------------
@@ -776,6 +834,13 @@ class TestReaperAgainstRealProcesses(unittest.TestCase):
         cls.addClassCleanup(_terminate_all_owned)
         profiles_root = home / ".config" / "browseruse" / "profiles"
 
+        # Before anything is created: the PREFIX case below needs the live
+        # server's PID to have a free digit prefix, and the live server takes
+        # whatever PID the OS is handing out when it starts. Move the counter
+        # into a range where that is possible FIRST, because it cannot be fixed
+        # afterwards without tearing the whole fixture down.
+        _ensure_prefixable_pid_space()
+
         # --- LIVE: a real server with a real browser --------------------
         live = _Server(home)
         cls.addClassCleanup(live.close)
@@ -814,8 +879,11 @@ class TestReaperAgainstRealProcesses(unittest.TestCase):
         dead_prefix = _dead_digit_prefix(live.pid)
         if dead_prefix is None:
             raise unittest.SkipTest(
-                f"no digit prefix of live server pid {live.pid} is free; "
-                "cannot build the PID-prefix collision with real processes"
+                f"no digit prefix of live server pid {live.pid} is free even after "
+                "walking the PID counter; cannot build the PID-prefix collision "
+                "with real processes. Check kernel.pid_max — below the five-digit "
+                "range this test cannot be constructed on Linux, because every "
+                "shorter prefix is a kernel thread"
             )
         prefix_dir = profiles_root / f"{_PROFILE_PREFIX}{dead_prefix}"
         prefix_browser = _launch_raw_chromium(prefix_dir)

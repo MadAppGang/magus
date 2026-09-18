@@ -7,7 +7,7 @@ Project setup jobs in one plugin. Investigates a repository and provisions it �
 
 | | |
 |---|---|
-| Version | `1.2.2` |
+| Version | `1.3.0` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 4 |
 | Subagents | 0 |
@@ -53,15 +53,15 @@ plugin is eating it.
 ## Install
 
 ```bash
-claudeup
+magus
 ```
 
-Find `setup` on the Plugins tab and turn it on. claudeup registers the `magus`
+Find `setup` on the Plugins tab and turn it on. magus registers the `magus`
 marketplace if you do not have it, and installs what the plugin needs to actually run —
 binaries, MCP servers, CLI tools.
 
 For a team, press `s` to save your plugins as a profile and commit it. Everyone else runs
-`claudeup install` — see [Teams and profiles](../../guides/teams.md).
+`magus install` — see [Teams and profiles](../../guides/teams.md).
 
 Prefer to do it by hand? [Installing Magus](../../guides/install.md) has the manual path.
 

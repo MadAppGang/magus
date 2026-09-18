@@ -1,11 +1,11 @@
 # Installing Magus
 
-**[claudeup](https://www.npmjs.com/package/claudeup) is the way in.**
+**[magus](https://www.npmjs.com/package/magus) is the way in.**
 
 ## Why not just use Claude Code
 
 Claude Code can add a marketplace and enable plugins on its own. For one person, on one
-machine, on one project, that is fine — and it is what claudeup drives underneath.
+machine, on one project, that is fine — and it is what magus drives underneath.
 
 It stops being fine in three places.
 
@@ -25,38 +25,38 @@ Code owns — a marketplace registry, an installed-plugins registry, `enabledPlu
 scopes, and a content cache. When a hook stops firing or a plugin quietly does not load, the
 fault is in one of those and you get no error saying which.
 
-claudeup answers all three: one committed manifest that installs everything a plugin needs,
+magus answers all three: one committed manifest that installs everything a plugin needs,
 one command that reports and repairs the state, and updates you can see across projects.
 
-## 1. Install claudeup
+## 1. Install magus
 
 ```bash
-bun add -g claudeup
+bun add -g magus-cli
 ```
 
 npm works too:
 
 ```bash
-npm install -g claudeup
+npm install -g magus-cli
 ```
 
 You get a self-contained binary for your platform. On a platform with no prebuilt binary the
 launcher runs from source under Bun, so the install still works.
 
-**Update through claudeup, not your package manager:**
+**Update through magus, not your package manager:**
 
 ```bash
-claudeup upgrade
+magus upgrade
 ```
 
-Two verbs, the same split every package manager uses. `claudeup upgrade` advances
-**claudeup itself**. `claudeup update` advances **your dependencies** — it installs
+Two verbs, the same split every package manager uses. `magus upgrade` advances
+**magus itself**. `magus update` advances **your dependencies** — it installs
 whatever your active profile declares but this machine is missing, and moves every
 `"latest"` plugin, CLI tool and skill to its newest published version.
 
 ```bash
-claudeup update           # install what's missing, advance what's behind
-claudeup update --check   # report only; exits 1 if anything is out of date
+magus update           # install what's missing, advance what's behind
+magus update --check   # report only; exits 1 if anything is out of date
 ```
 
 ## 2. Pick your path
@@ -66,17 +66,17 @@ Two ways to use it, and they answer different questions.
 ### Solo — the TUI
 
 ```bash
-claudeup
+magus
 ```
 
-That is the whole thing. `claudeup` with no arguments opens the interactive TUI: toggle
+That is the whole thing. `magus` with no arguments opens the interactive TUI: toggle
 plugins, MCP servers and skills on this machine, see what each one needs, and install the
 binaries it depends on.
 
-![The claudeup Plugins tab: marketplaces grouped with their plugins, install state beside each name, and details for the selected entry on the right](./images/claudeup-plugins.png)
+![The magus Plugins tab: marketplaces grouped with their plugins, install state beside each name, and details for the selected entry on the right](./images/magus-plugins.png)
 
 The Magus marketplaces are listed even before you add them. Select one and confirm, and
-claudeup clones and registers it for you. Press `n` for the same menu, or to be pointed at
+magus clones and registers it for you. Press `n` for the same menu, or to be pointed at
 the terminal command for a marketplace it does not know about.
 
 Numbers switch tabs: `1` Plugins, `2` Skills, `3` MCP, `4` Settings, `5` Profiles, `6` CLI,
@@ -89,7 +89,7 @@ Write `.claude/profiles.json` once, commit it, and every teammate runs one comma
 
 ```bash
 git clone <repo> && cd <repo>
-claudeup install
+magus install
 ```
 
 That registers the marketplaces, installs the pinned plugins, installs the binaries those
@@ -97,8 +97,8 @@ plugins declare, installs the skills, prompts for any required environment varia
 activates the profile.
 
 A plugin id already names its marketplace — `dev@magus`, `image@magus-marketing` — so
-claudeup registers the ones it recognises without you declaring them. Declare a
-`marketplaces` block only for a marketplace claudeup does not ship with, or to point a name
+magus registers the ones it recognises without you declaring them. Declare a
+`marketplaces` block only for a marketplace magus does not ship with, or to point a name
 at a fork.
 
 See [Teams and profiles](./teams.md) for the manifest format and how switching works.
@@ -123,7 +123,7 @@ bottom of Claude Code. Install it per project or globally.
 While you are there, `/setup:project` investigates the repository and provisions it, and
 `/setup:index-skills` tells you what your installed skills cost you on every turn.
 
-## Without claudeup
+## Without magus
 
 If you want the manual path anyway, Claude Code does the marketplace and plugin steps
 itself. Inside a session:
@@ -142,16 +142,16 @@ environment variables, and reproducing any of it on a second machine.
 ## Checking a setup
 
 ```bash
-claudeup doctor          # binary deps, profile symlinks, conventions
-claudeup doctor --fix    # repair what it can
+magus doctor          # binary deps, profile symlinks, conventions
+magus doctor --fix    # repair what it can
 ```
 
 `doctor` exits non-zero when it finds a problem, so it works as a CI check. So does
-`claudeup install --check`, which reports drift without writing anything.
+`magus install --check`, which reports drift without writing anything.
 
 ## Which marketplace
 
-You are not limited to Magus. claudeup knows about several out of the box and lists them
+You are not limited to Magus. magus knows about several out of the box and lists them
 before you have added anything, so you can browse first and install second.
 
 | Marketplace | What's in it |
@@ -163,7 +163,7 @@ before you have added anything, so you can browse first and install second.
 | **3rd Party** | Plugins by other people, accepted into Anthropic's official directory |
 | **Superpowers** | A curated community collection |
 
-Anthropic Official and 3rd Party are the same upstream directory. claudeup splits them into
+Anthropic Official and 3rd Party are the same upstream directory. magus splits them into
 two lists by who wrote each plugin, so "Anthropic ships this" and "Anthropic accepted this"
 are not the same badge.
 
@@ -171,7 +171,7 @@ The marketplaces are independent. Adding one does not give you the others.
 
 ### Your own
 
-Add any marketplace claudeup does not ship with — your team's, or a fork. Press `n` in the
+Add any marketplace magus does not ship with — your team's, or a fork. Press `n` in the
 TUI, or name it in your profile manifest:
 
 ```json
@@ -182,7 +182,7 @@ TUI, or name it in your profile manifest:
 }
 ```
 
-Then teammates get it from `claudeup install` like everything else. See
+Then teammates get it from `magus install` like everything else. See
 [Teams and profiles](./teams.md).
 
 ## Next

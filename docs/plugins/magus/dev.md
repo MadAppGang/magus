@@ -53,7 +53,7 @@ Each one does a single job. The commands pick which to call — you rarely name 
 | [`mnemex`](./mnemex.md) | Semantic and AST-level code search |
 | [`multimodel`](./multimodel.md) | The voting and quality-gate skills those gates run |
 
-Install `dev` with [claudeup](../../guides/install.md) and all three come with it. Without
+Install `dev` with [magus](../../guides/install.md) and all three come with it. Without
 `claudish` the review gates can't run. The commands still work — they just lose the outside
 opinion.
 
@@ -107,15 +107,15 @@ for free.
 ## Install
 
 ```bash
-claudeup
+magus
 ```
 
-Find `dev` on the Plugins tab and turn it on. claudeup registers the `magus`
+Find `dev` on the Plugins tab and turn it on. magus registers the `magus`
 marketplace if you do not have it, and installs what the plugin needs to actually run —
 binaries, MCP servers, CLI tools.
 
 For a team, press `s` to save your plugins as a profile and commit it. Everyone else runs
-`claudeup install` — see [Teams and profiles](../../guides/teams.md).
+`magus install` — see [Teams and profiles](../../guides/teams.md).
 
 Prefer to do it by hand? [Installing Magus](../../guides/install.md) has the manual path.
 

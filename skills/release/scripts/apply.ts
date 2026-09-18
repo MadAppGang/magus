@@ -23,7 +23,7 @@
  * message, and CHANGELOG.md (from which generate-releases.ts fills the `releases`
  * field). `description` answers "what is this plugin", changes rarely, and is
  * written by a human. This script used to assign the release note over it, which is
- * why claudeup's plugin panel once showed a changelog line where the plugin's
+ * why magus's plugin panel once showed a changelog line where the plugin's
  * purpose belonged. validate-versions.js rejects that shape on every commit.
  *
  * Usage:

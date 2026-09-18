@@ -54,7 +54,7 @@ and `StackedBar` apportion `width` for you; `Sparkline` and `HeatRow` are one co
 
 > **`gap`, `minWidth`, `minHeight`, `flexWrap`, `flexGrow` and `flexBasis` are supported.** MEASURED 2026-07-30 in
 > `@opentui/core/Renderable.d.ts` (`LayoutOptions`) and `renderables/Box.d.ts` — same sets in both versions, attested in
-> production (claudeup writes `gap={1}` at `ScopeTabs.tsx:20`), absent from the **docs site** only. **Prefer `gap` to
+> production (magus writes `gap={1}` at `ScopeTabs.tsx:20`), absent from the **docs site** only. **Prefer `gap` to
 > spacer `<box>`es and `" ".repeat(n)` padding.**
 
 One idiom is OpenTUI's own: **a `flexGrow={1}` box with `border={["top"]}` is a self-sizing horizontal rule**, deleting
@@ -163,8 +163,8 @@ export function ConnectForm({ onConnect }: { onConnect: () => void }) {
 
 **`useKeyboard` is a broadcast, not a focus-routed dispatch.** Every mounted subscriber receives every key — no bubbling,
 no `stopPropagation` — so mutual exclusion is hand-rolled in every handler, with guard clauses (`if (state.modal)
-return`, claudeup `AliasScreen.tsx:625-632`). Production splits between **centralised** (claudish: two call sites for a
-whole app on a mode state machine, `App.tsx:1092-1110`) and **distributed** (claudeup 15, mnemex 24). Default to one
+return`, magus `AliasScreen.tsx:625-632`). Production splits between **centralised** (claudish: two call sites for a
+whole app on a mode state machine, `App.tsx:1092-1110`) and **distributed** (magus 15, mnemex 24). Default to one
 handler per screen plus a guard that bails while a modal or child owns the keys. Both `"enter"` and `"return"` occur, so
 test both; `key.raw` carries the literal character.
 
@@ -184,7 +184,7 @@ test both; `key.raw` carries the literal character.
 
 `grep` for `ThemeProvider|ThemeContext|useTheme` across all three production apps returns **zero matches.** All three
 import a frozen `as const` object directly (`import { tokens, ramps } from "./theme/tokens"`; mnemex has 20+ such
-sites) — one theme per process, so context buys nothing. **Nor scatter hex literals:** claudeup's `theme.colors.dim`
+sites) — one theme per process, so context buys nothing. **Nor scatter hex literals:** magus's `theme.colors.dim`
 holds `#333333` and `ScreenLayout.tsx` hardcodes it at four call sites, so the token stopped being the source of truth.
 
 ## Resize and breakpoints
@@ -193,7 +193,7 @@ holds `#333333` and `ScreenLayout.tsx` hardcodes it at four call sites, so the t
 default; `useOnResize((w, h) => …)` is for a side effect such as recomputing derived chrome. Three production shapes,
 cheapest first: **`height="100%"` everywhere, no resize handling** (mnemex `App.tsx:140-146`); **measure at the root and
 thread as props** (claudish derives one `contentH` from named chrome constants, `App.tsx:2186` — the column budget
-above); **a dimensions context with conditional chrome** (claudeup, `DimensionsContext.tsx:48-65`).
+above); **a dimensions context with conditional chrome** (magus, `DimensionsContext.tsx:48-65`).
 
 Breakpoints are a branch on `width`, thresholds named in the theme rather than inline (mnemex keeps `minWidth: 80` and
 `wideWidth: 120` in `theme.ts:79-85`): given `wide = width >= layout.wideWidth`, a sidebar becomes
@@ -205,7 +205,7 @@ the body. Screenshot **both** extremes — resize bugs only show at the edges.
 - **Ref geometry is unpopulated on the first render.** `content.height` and `viewport.height` land after the first layout
   pass; default to the safe branch while the ref is null (`probe-tui-app.tsx:1440-1445`).
 - **A scrollbox child's `id` must be content-derived, never positional.** The reconciler keys off `id` while React keys
-  off `key`, so a positional `id` desynchronises them (claudeup `AliasScreen.tsx:707-711`). Render every row in and let
+  off `key`, so a positional `id` desynchronises them (magus `AliasScreen.tsx:707-711`). Render every row in and let
   the scrollbox window — the hand-rolled JS windowing it replaced overstruck rows whenever its height drifted from the
   panel (`:674-678`).
 - **`scrollTo` is overloaded** — `scrollTo({x, y})` (`RoutingContent.tsx:97`) beside `scrollTo(0)`

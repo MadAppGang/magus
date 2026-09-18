@@ -4,15 +4,15 @@
 
 Development tooling: code analysis, terminal control, browser automation, and language toolkits.
 
-[claudeup](../../guides/install.md) lists this marketplace before you add it — select it,
+[magus](../../guides/install.md) lists this marketplace before you add it — select it,
 confirm, and it is registered:
 
 ```bash
-claudeup
+magus
 ```
 
 For a team, pin the plugins in `.claude/profiles.json` and everyone runs
-`claudeup install` — see [Teams and profiles](../../guides/teams.md).
+`magus install` — see [Teams and profiles](../../guides/teams.md).
 
 Plugin IDs carry the marketplace, so these are `name@magus`.
 
@@ -29,7 +29,7 @@ Plugin IDs carry the marketplace, so these are `name@magus`.
 | [`madbench`](./madbench.md) | 0.5.0 | Toolkit for madbench, MadAppGang's Go harness for benchmarking agentic coding tools. The madbench:bench agent authors, runs and debugs benches natively in a visible pane, reading the madbench-evals skill by path; /madbench:bench and /madbench:doctor are the entry points. |
 | [`mnemex`](./mnemex.md) | 1.0.3 | MCP runtime for semantic code search and AST analysis, ranking symbols by PageRank. Optional engine behind the code-search facade, and usable directly for its full tool surface. |
 | [`multimodel`](./multimodel.md) | 4.2.0 | Multi-model collaboration and orchestration. Runs a task across several AI models in parallel and aggregates their blind APPROVE/REJECT votes, or delegates it to one model running a full Claude Code session. |
-| [`setup`](./setup.md) | 1.2.2 | Project setup jobs in one plugin. Investigates a repository and provisions it — plugins, tools, framework best-practice references, and a seeded knowledge base — then installs the adaptive statusline and indexes every skill reachable from the project into browsable markdown. |
+| [`setup`](./setup.md) | 1.3.0 | Project setup jobs in one plugin. Investigates a repository and provisions it — plugins, tools, framework best-practice references, and a seeded knowledge base — then installs the adaptive statusline and indexes every skill reachable from the project into browsable markdown. |
 | [`terminal`](./terminal.md) | 5.1.0 | Slot-addressed terminal control over tmux. Runs interactive commands, dev servers, test watchers, REPLs and TUI apps in numbered helper panes — beside the user or isolated from view — that the server places and owns, so an agent never holds a pane id or targets the user's own session. |
 
 Turn any of them on from the Plugins tab. To give a team the same set, press `s` to save
