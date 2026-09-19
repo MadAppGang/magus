@@ -7,11 +7,11 @@ Multi-model collaboration and orchestration. Runs a task across several AI model
 
 | | |
 |---|---|
-| Version | `4.2.0` |
+| Version | `4.2.1` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 2 |
 | Subagents | 1 |
-| Skills | 16 |
+| Skills | 15 |
 | MCP server | no |
 | Hooks | yes |
 
@@ -36,11 +36,11 @@ Prefer to do it by hand? [Installing Magus](../../guides/install.md) has the man
 ## When to reach for it
 
 - Use when launching multiple agents, reading many files, or removing sequential execution bottlenecks — `batching-patterns`
-- Use when routing work to an external model — `delegate-patterns`
 - Use when dealing with external model timeouts, API failures, partial success, user cancellation, or graceful degradation — `error-recovery`
 - Use when orchestrating 3+ agents or multi-phase work — `hierarchical-coordinator`
 - Use when orchestrating workflows that generate multiple files (designs, reviews, reports) to prevent file collisions across concurrent or sequential sessions with unique session directories — `session-isolation`
 - Use for model selection, complexity routing, picking a tier, or optimizing API cost — `task-complexity-router`
+- Use when unsure how to specify an external model — `task-external-models`
 
 ## Commands
 
@@ -75,7 +75,6 @@ Dispatched with the Agent tool, each in its own context window.
 | ● | `multimodel:task-complexity-router` | Routes tasks to model tiers (haiku/sonnet/opus) by complexity. Use for model selection, complexity routing, picking a tier, or optimizing API cost. |
 | ● | `multimodel:task-orchestration` | Track progress in multi-phase workflows with Tasks system. Use when orchestrating 5+ phase commands, managing iteration loops, tracking parallel tasks, or providing real-time progress visibi… |
 | ○ | `multimodel:agent-enforcement` | \| |
-| ○ | `multimodel:delegate-patterns` | Delegating plugin commands and tasks to external models via claudish — capability discovery, pre-flight question gathering, and prompt assembly. Use when routing work to an external model. |
 | ○ | `multimodel:hierarchical-coordinator` | Prevents goal drift in long multi-agent runs by validating outputs against the original objective at checkpoints. Use when orchestrating 3+ agents or multi-phase work. |
 | ○ | `multimodel:hooks-system` | Lifecycle hook patterns — PreToolUse, PostToolUse, UserPromptSubmit, Stop, SubagentStop. |
 | ○ | `multimodel:model-tracking-protocol` | MANDATORY tracking protocol for multi-model validation. Creates structured tracking tables BEFORE launching models, tracks progress during execution, and ensures complete results presentatio… |

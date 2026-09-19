@@ -161,7 +161,7 @@ is published to users. `scripts/check-doc-plugin-lists.ts` now rejects the label
 - 🟡 **CC-1** · `PreToolUse:Task` / `PreToolUse:Bash` hooks need Codex redesign — Codex has no `Task` hookable tool; switch to `SubagentStart` / `SubagentStop`
 - ✅ `agent-enforcement`'s unrecognized `triggers:` frontmatter removed 2026-08-08, along with 8 other unread keys (`version`, `updated`, `plugin`, `keywords`, `tags`, `namespace`, `globs`, `skills`) across 56 skill files. Only keys the matcher actually reads remain
 <!-- doc-refs: off -->
-- ⚪ **CC-3** · Skill router consolidations deferred to T3 (names below are proposed, not yet created): `multimodel:orchestration` (delegate-patterns + hierarchical-coordinator + multi-agent-coordination + task-orchestration → 1); `multimodel:claudish` (3 → 1)
+- ⚪ **CC-3** · Skill router consolidations deferred to T3 (names below are proposed, not yet created): `multimodel:orchestration` (hierarchical-coordinator + multi-agent-coordination + task-orchestration → 1); `multimodel:claudish` (3 → 1)
 <!-- doc-refs: on -->
 
 ### video-editing

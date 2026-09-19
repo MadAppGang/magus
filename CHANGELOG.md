@@ -4,6 +4,28 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [multimodel 4.2.1] - 2026-09-19
+
+### Removed
+
+- **The `delegate-patterns` skill is gone.** It described the claudish CLI flow that
+  `/multimodel:delegate` left for MCP channel sessions in March. Nothing in the repo has
+  referenced it since: the command dropped its `skills:` preload then, and since May
+  `disable-model-invocation` has kept it off the listing. Its instructions could not be
+  followed. It read only project-scope `enabledPlugins` and found manifests with a
+  recursive cache glob that matches every cached version, so it could not tell what was
+  loaded. It dispatched `dev:researcher` without the `SESSION_PATH` that agent requires.
+  It piped prompts through `claudish < prompt.md` and read `result.exit`, a CLI route this
+  repo forbids in commands.
+
+### Migration notes
+
+- `/multimodel:delegate-patterns` no longer resolves. This ships as a patch, not a major,
+  because no working workflow could depend on it: every route it described is gone or
+  forbidden. Use `/multimodel:delegate`, which carries the current flow itself.
+
+---
+
 ## [dev 8.1.1] - 2026-09-19
 
 ### Fixed

@@ -203,7 +203,7 @@
       "name": "multimodel",
       "source": "./plugins/multimodel",
       "description": "Multi-model collaboration and orchestration. Runs a task across several AI models in parallel and aggregates their blind APPROVE/REJECT votes, or delegates it to one model running a full Claude Code session.",
-      "version": "4.2.0",
+      "version": "4.2.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -228,6 +228,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "4.2.1",
+          "date": "2026-09-19",
+          "kinds": [
+            "Removed"
+          ],
+          "summary": "The delegate-patterns skill is gone"
+        },
         {
           "version": "4.2.0",
           "date": "2026-09-15",
@@ -259,14 +267,6 @@
             "Fixed"
           ],
           "summary": "enforce-team-rules.sh printed line 39: 3: Bad file descriptor to stderr on every Bash and Agent\u2026"
-        },
-        {
-          "version": "4.0.2",
-          "date": "2026-09-07",
-          "kinds": [
-            "Changed"
-          ],
-          "summary": "The README's permitted-CLI list drops --probe, matching claudish:claudish-usage"
         }
       ]
     },
