@@ -4,6 +4,66 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [magus 7.4.0] - 2026-09-19
+
+### Changed
+
+- **Every keypress reaches exactly one handler.** A key used to reach every listener at
+  once, so Esc on a kept filter also quit magus, Enter in a dialog also acted on the screen
+  under it, and search boxes lost `j`, `k`, `q` and digits. Now a key goes to the dialog, the
+  search box, the screen, the scroll keys or the global keys, in that order, and stops at
+  the first one that takes it. PgUp, PgDn, Ctrl+U and Ctrl+D scroll on every tab, also
+  while a search box has focus. Backspace no longer leaves search; Esc does.
+- **Footers and help come from one keymap.** `?` opens a help overlay that lists every
+  tab's keys, the current tab first, with a legend for each tab's symbols. It scrolls and
+  closes on Esc or `?`. Every footer shows `? help`, and a footer names what a key does on
+  the selected row: on CLI Tools, Enter reads install, update, update anyway or reinstall.
+  On a tool installed newer than its pin, Enter does nothing: its pinned command would
+  downgrade it, and latest would move it further past the pin.
+- **Clicking a panel no longer makes keys act twice.** A click gave the panel keyboard focus,
+  so arrows and page keys moved the selection and scrolled the panel behind it.
+- **The tab bar keeps its labels at 80 to 100 columns.** It used to drop every inactive
+  label below 110 columns. It now steps down through padded labels, unpadded labels and
+  short labels before it falls back to numbers.
+- **Colours mean one thing each.** Five role-named hues plus grey. Loading text is grey, not
+  the amber that means "cannot tell". Git State draws "ignore" and "track" neutrally and
+  keeps red for a real violation. The selected row carries `▌`, and scope squares read
+  `■` installed and `□` not, so no state depends on telling colours apart.
+
+### Fixed
+
+- **A damaged settings or profiles file is never overwritten.** Affected files: the project
+  and global `settings.json`, `settings.local.json`, `.mcp.json` and `profiles.json`. When
+  one did not parse, or parsed to the wrong shape, magus read it as empty and could write
+  that back. Wrong shapes include a top level that is not an object, a `profiles` block that
+  is not an object, a mistyped `profiles` key, an `enabledPlugins` that is an array, and a
+  `hooks.PreToolUse` that is not a list, which registering the model-routing hook replaced. A
+  mistyped `profiles` key could lose a saved profile through the startup gate's Save. magus
+  now refuses the file, names it, and leaves it byte-for-byte as it was. Every `magus`
+  subcommand reports it in one line instead of "Error starting magus" and a source dump.
+- **The terminal is restored when magus stops.** Ctrl+C and `q` exit 0, SIGINT 130,
+  SIGTERM 143 and SIGHUP 129, each after the terminal is restored. A crash restores the
+  terminal before printing the error. A screen that fails to draw shows an error panel,
+  and the tabs keep working.
+- **CLI Tools reads the install that PATH actually runs.** A tool installed under another
+  Node (nvm, Homebrew, `~/.local`) now updates in place with
+  `npm install -g --prefix <that prefix>` instead of being marked "not managed". Claude
+  Code's native installer is recognised and updated with `claude update`. Versions come
+  from the package's own files, so magus, Claude Code and Crush show one. Rows show a short
+  status instead of a path cut off at the panel edge.
+- **Detail panes keep their right edge.** Long lines such as a URL or an update command
+  lost their last characters silently. Every detail pane now wraps to the width it has.
+- **Settings labels no longer run into their values**, and emoji rows on Skills keep the
+  panel divider straight.
+- **Counts and text agree.** The Skills header count matches its list. A local skill shows
+  its description at once. A `SKILL.md` whose description is a YAML block (`>-`) shows the
+  text instead of `>-`. "Press 6 to manage profiles" now names the key the Profiles tab has.
+- **Enter works on MCP, the MCP registry, Settings and Profiles.** Those screens matched a
+  key name terminals do not send.
+- **A slower Plugins load can no longer overwrite a newer one.**
+
+---
+
 ## [multimodel 4.2.1] - 2026-09-19
 
 ### Removed
