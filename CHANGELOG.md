@@ -4,6 +4,33 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [magus 7.4.1] - 2026-09-21
+
+### Fixed
+
+- **Pasted text reaches a search box.** A terminal delivers a paste as one event rather than
+  as keys, so a pasted filter term used to disappear with no feedback. A paste now follows
+  the same order as a key — a focused search box takes it, an open dialog takes it first,
+  and with nothing focused it is ignored.
+- **The Gitignore tab's template no longer drops your own ignore rules.** Applying a template
+  read a `.claude/gitignore.json` it could not parse as "no entries" and rewrote the file. It
+  now refuses, names the file, and leaves it exactly as it was.
+- **A damaged `installed_plugins.json` is reported, not replaced.** Every writer used to read
+  a corrupt registry as empty and could save that back holding only the plugin it was
+  writing. There is now one strict read and one compare-and-set write behind all of them, so
+  a registry that changed since it was read is also refused.
+- **`magus install` keeps what Claude Code writes while it asks.** It collected an env value,
+  then wrote back a copy of `settings.local.json` read before the questions — losing, for
+  example, a permission rule saved during them. It now asks everything first, then reads,
+  checks and writes once. The four settings writers re-check the file at write time.
+- **Claude Code's native install is handled honestly in CLI Tools.** The conflict fix no
+  longer offers "keep npm, remove others" when the native copy cannot be removed — its
+  installer ships no uninstall command — and says so instead of skipping it silently. A
+  `claude` earlier on PATH that is not the native launcher is no longer planned as
+  `claude update`, an update that would not change what PATH runs.
+
+---
+
 ## [magus 7.4.0] - 2026-09-19
 
 ### Changed
