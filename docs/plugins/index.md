@@ -3,13 +3,14 @@
 
 # Plugins
 
-Magus ships 15 plugins across two marketplaces. They are separate: adding one
+Magus ships 16 plugins across three marketplaces. They are separate: adding one
 does not give you the others, and a plugin's ID always names the marketplace it came from.
 
 | Marketplace | Plugins | Carries |
 |---|---|---|
 | [**Core**](./magus/index.md) `magus` | 13 | Development tooling: code analysis, terminal control, browser automation, and language toolkits. |
 | [**Marketing**](./magus-marketing/index.md) `magus-marketing` | 2 | Content tooling: image generation and video editing. |
+| [**Alpha**](./magus-alpha/index.md) `magus-alpha` | 1 | Experimental. Interfaces change without notice, and a plugin may be withdrawn. |
 
 ## Getting them
 
