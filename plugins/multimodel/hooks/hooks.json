@@ -1,6 +1,18 @@
 {
-  "description": "Multi-model orchestration enforcement - validates /team agent whitelist and session directory rules",
+  "description": "Multi-model orchestration enforcement - validates /team agent whitelist and session directory rules. SessionStart with matcher startup runs magus-version-check, which reports a magus CLI that is behind npm's magus-cli latest and names the exact install command; it is carried by every hook-bearing plugin because magus 7.0.0 to 7.3.0 ask npm about the wrong package and can never discover or install their own fix, while the plugins update from the marketplace independently of the magus version. The copy here is byte-identical to the other five and gated by scripts/check-hook-copies.ts. All copies share one cache directory and claim one marker, so a session start costs one registry request and prints at most one notice however many of them are installed.",
   "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun --env-file=/dev/null --config=/dev/null ${CLAUDE_PLUGIN_ROOT}/hooks/magus-version-check.ts",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
     "PreToolUse": [
       {
         "matcher": "Agent",

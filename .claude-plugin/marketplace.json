@@ -7,7 +7,7 @@
   },
   "metadata": {
     "description": "Curated collection of Claude Code plugins for modern full-stack development with LLM performance tracking and E2E skill testing",
-    "version": "13.0.0",
+    "version": "13.1.0",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -15,7 +15,7 @@
       "name": "code-search",
       "source": "./plugins/code-search",
       "description": "Read-only code search and investigation behind one stable tool surface. Finds code by meaning or structure, traces callers, callees and blast radius, and dispatches an analyze agent for deep dives. The search engine is named in project settings and is swappable.",
-      "version": "8.0.0",
+      "version": "8.1.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -37,6 +37,11 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "8.1.0",
+          "date": "2026-09-22",
+          "summary": "Carries the session-start check that reports a magus CLI behind npm and names the command that\u2026"
+        },
         {
           "version": "8.0.0",
           "date": "2026-09-15",
@@ -71,14 +76,6 @@
             "Removed"
           ],
           "summary": "Two more engines behind the facade \u2014 codegraph and graphify \u2014 each installed, run, and measured\u2026"
-        },
-        {
-          "version": "7.1.0",
-          "date": "2026-08-28",
-          "kinds": [
-            "Changed"
-          ],
-          "summary": "Requires claudish ^2.0 (was ^1.0). claudish 2.0.0 rewrote its team contract for the\u2026"
         }
       ]
     },
@@ -203,7 +200,7 @@
       "name": "multimodel",
       "source": "./plugins/multimodel",
       "description": "Multi-model collaboration and orchestration. Runs a task across several AI models in parallel and aggregates their blind APPROVE/REJECT votes, or delegates it to one model running a full Claude Code session.",
-      "version": "4.2.1",
+      "version": "4.3.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -228,6 +225,11 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "4.3.0",
+          "date": "2026-09-22",
+          "summary": "The same check"
+        },
         {
           "version": "4.2.1",
           "date": "2026-09-19",
@@ -259,14 +261,6 @@
             "Changed"
           ],
           "summary": "multimodel:deep-analyst now says what the caller must hand over, and returns a fixed completion\u2026"
-        },
-        {
-          "version": "4.0.3",
-          "date": "2026-09-08",
-          "kinds": [
-            "Fixed"
-          ],
-          "summary": "enforce-team-rules.sh printed line 39: 3: Bad file descriptor to stderr on every Bash and Agent\u2026"
         }
       ]
     },
@@ -274,7 +268,7 @@
       "name": "dev",
       "source": "./plugins/dev",
       "description": "Universal development assistant. Detects the project stack and routes work to specialist agents for architecture, implementation, debugging, review and research, enforcing design-system guardrails on every UI change.",
-      "version": "8.1.1",
+      "version": "8.1.2",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -314,6 +308,11 @@
       "strict": true,
       "releases": [
         {
+          "version": "8.1.2",
+          "date": "2026-09-22",
+          "summary": "The check it introduced in 8.1.0 moves to the shared cache and the once-per-session claim, so\u2026"
+        },
+        {
           "version": "8.1.1",
           "date": "2026-09-19",
           "kinds": [
@@ -347,14 +346,6 @@
             "Removed"
           ],
           "summary": "/dev:architect no longer looks for a GTD task store at workflow start"
-        },
-        {
-          "version": "7.4.0",
-          "date": "2026-09-11",
-          "kinds": [
-            "Changed"
-          ],
-          "summary": "All 13 dev subagents now say what the caller must hand over, and return a fixed completion\u2026"
         }
       ]
     },
@@ -735,7 +726,7 @@
       "name": "terminal",
       "source": "./plugins/terminal",
       "description": "Slot-addressed terminal control over tmux. Runs interactive commands, dev servers, test watchers, REPLs and TUI apps in numbered helper panes \u2014 beside the user or isolated from view \u2014 that the server places and owns, so an agent never holds a pane id or targets the user's own session.",
-      "version": "5.1.0",
+      "version": "5.2.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -753,6 +744,11 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "5.2.0",
+          "date": "2026-09-22",
+          "summary": "The same check"
+        },
         {
           "version": "5.1.0",
           "date": "2026-09-11",
@@ -788,11 +784,6 @@
             "Fixed"
           ],
           "summary": "Agents no longer manage panes. tmux-mcp v1.7.1 reads the pane it was launched in and keeps a\u2026"
-        },
-        {
-          "version": "4.1.7",
-          "date": "2026-08-26",
-          "summary": "Plugin manifest moved to .claude-plugin/plugin.json, the only location Claude Code's runtime\u2026"
         }
       ]
     },
@@ -800,7 +791,7 @@
       "name": "madbench",
       "source": "./plugins/madbench",
       "description": "Toolkit for madbench, MadAppGang's Go harness for benchmarking agentic coding tools. The madbench:bench agent authors, runs and debugs benches natively in a visible pane, reading the madbench-evals skill by path; /madbench:bench and /madbench:doctor are the entry points.",
-      "version": "0.5.0",
+      "version": "0.6.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -821,6 +812,11 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "0.6.0",
+          "date": "2026-09-22",
+          "summary": "The same check"
+        },
         {
           "version": "0.5.0",
           "date": "2026-09-15",
@@ -848,15 +844,6 @@
           "version": "0.2.4",
           "date": "2026-08-26",
           "summary": "The same manifest move, with no change to what each registers"
-        },
-        {
-          "version": "0.2.3",
-          "date": "2026-08-22",
-          "kinds": [
-            "Fixed",
-            "Added"
-          ],
-          "summary": "madbench list catches a retired sandbox: level now, and the skill said it did not"
         }
       ]
     }

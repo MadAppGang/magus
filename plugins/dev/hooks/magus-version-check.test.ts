@@ -9,7 +9,8 @@
  *   HOME, XDG_CACHE_HOME temp dirs (XDG_CACHE_HOME deliberately absent in one case)
  *   npm_config_registry  a Bun.serve on 127.0.0.1 that counts and records requests
  * Otherwise the hook runs with the environment Claude Code gives it, so bun's own
- * writes count towards "no writes outside the cache file" exactly as in production.
+ * writes count towards "no writes outside the cache file and the claim marker" exactly
+ * as in production.
  *
  * The hook is spawned with Bun.spawn (async), never spawnSync: a synchronous spawn would
  * block this process's event loop and the in-process fake registry could never answer.
@@ -67,7 +68,11 @@ const BARE_AT = ["magus", "latest"].join("@");
 const BARE_G = "-g " + "magus" + " ";
 
 const LATEST_PATH = "/magus-cli/latest";
-const CACHE_REL = join("magus-dev", "magus-version-check.json");
+/** The shared directory every plugin's copy of the check reads and writes (R11.3). */
+const SHARED_DIR = "magus";
+const CACHE_REL = join(SHARED_DIR, "magus-version-check.json");
+/** The once-per-session-start claim (R11.2). Cleared by runHook, see the note there. */
+const MARKER_REL = join(SHARED_DIR, "magus-version-notice.log");
 
 const BUDGET_MS = 3000; // "finishes within 3 seconds"
 const PER_CALL_MS = 1500; // "each external call gets its own timeout of 1.5 s or less"
@@ -405,6 +410,11 @@ function sessionStartPayload(sb: Sandbox): string {
   });
 }
 
+/** The shared cache directory a given run resolves to, from the same two variables. */
+function cacheRootFor(sb: Sandbox, xdg: string | null | undefined): string {
+  return xdg === null ? join(sb.home, ".cache") : (xdg ?? sb.cache);
+}
+
 async function runHook(sb: Sandbox, opts: RunOpts): Promise<Run> {
   const env: Record<string, string> = {
     PATH: opts.path.join(":"),
@@ -412,6 +422,17 @@ async function runHook(sb: Sandbox, opts: RunOpts): Promise<Run> {
     npm_config_registry: opts.registry,
   };
   if (opts.xdg !== null) env.XDG_CACHE_HOME = opts.xdg ?? sb.cache;
+
+  // EVERY runHook IS A NEW SESSION START. Six plugins carry this hook and the notice
+  // prints once per session start, so the first to claim a short-lived marker does the
+  // work and the rest stay silent. Two runs in one sandbox are two sessions, not one, so
+  // the previous session's claim goes before the next one starts. A test that wants the
+  // claim itself races processes; these spawn one at a time.
+  try {
+    rmSync(join(cacheRootFor(sb, opts.xdg), MARKER_REL), { force: true });
+  } catch {
+    // Nothing to clear, or an unwritable cache root the run is about to trip over too.
+  }
 
   const id = ++seq;
   const outPath = join(sb.logs, `run-${id}.stdout`);
@@ -765,7 +786,7 @@ describe("magus-version-check: cache", () => {
     const r1 = await runHook(sb, { path: [m.dir], registry: reg.url, xdg: null });
     expectStale(r1, { installed: "7.1.0", latest: "7.3.1", via: "npm" });
     expect(existsSync(join(sb.home, ".cache", CACHE_REL))).toBe(true);
-    expect(existsSync(join(sb.cache, "magus-dev"))).toBe(false);
+    expect(existsSync(join(sb.cache, SHARED_DIR))).toBe(false);
     const afterFirst = reg.count;
     const r2 = await runHook(sb, { path: [m.dir], registry: reg.url, xdg: null });
     expect(reg.count).toBe(afterFirst);
@@ -913,14 +934,17 @@ describe("magus-version-check: side effects and robustness", () => {
     return out;
   }
 
-  test("TEST-42: nothing is written outside the cache file", async () => {
+  test("TEST-42: nothing is written outside the cache file and the claim marker", async () => {
     const sb = sandbox();
     const reg = registry(ok("7.3.1"));
     const plain = plainMagus(sb, "magus v7.1.0");
     // A package layout too, so package.json and the link are inside the snapshot.
     npmLayout(sb, { version: "7.0.0" });
-    const cacheDir = join(sb.cache, "magus-dev");
+    const cacheDir = join(sb.cache, SHARED_DIR);
     const cacheFile = join(sb.cache, CACHE_REL);
+    // The marker is the second file the hook is allowed to write: it is how six plugin
+    // copies agree that one of them prints. Both live in the shared directory.
+    const markerFile = join(sb.cache, MARKER_REL);
 
     const before = snapshot(sb.root);
     const r = await runHook(sb, { path: [plain.dir], registry: reg.url });
@@ -930,7 +954,7 @@ describe("magus-version-check: side effects and robustness", () => {
     const added = [...after.keys()].filter((p) => !before.has(p)).sort();
     const removed = [...before.keys()].filter((p) => !after.has(p));
     const changed = [...before.keys()].filter((p) => after.has(p) && after.get(p) !== before.get(p));
-    expect(added).toEqual([cacheDir, cacheFile].sort());
+    expect(added).toEqual([cacheDir, cacheFile, markerFile].sort());
     expect(removed).toEqual([]);
     expect(changed).toEqual([]);
   }, T);

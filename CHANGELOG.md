@@ -4,6 +4,33 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Marketplace 13.1.0] - 2026-09-22
+
+### Added
+
+- **`code-search` v8.1.0**: carries the session-start check that reports a magus CLI behind
+  npm and names the command that updates it.
+- **`multimodel` v4.3.0**: the same check.
+- **`terminal` v5.2.0**: the same check.
+- **`madbench` v0.6.0**: the same check.
+- **`dev` v8.1.2**: the check it introduced in 8.1.0 moves to the shared cache and the
+  once-per-session claim, so six installed plugins still make one request and print once.
+- Why: magus 7.0.0 to 7.3.0 ask npm about the wrong package — the bare `magus`, an unrelated
+  2015 package whose latest is 0.0.2 — so `magus upgrade` installs that instead and the update
+  banner never appears. Such an install can neither see nor fetch its own fix. Plugins update
+  from the marketplace independently of the magus CLI, so a plugin hook is the only thing that
+  reaches one of those machines.
+- The notice costs one npm request per 24 hours and appears once per session however many of
+  these plugins are installed: the copies share one cache file, and the first hook to claim a
+  short-lived marker prints while the rest stay silent. It never installs anything — it names
+  the command for the package manager that owns your install and stops.
+- The copies each plugin carries are byte-identical, and `bun run check:hook-copies` fails the
+  build when they drift or when a plugin stops registering the hook. It runs in `check:all`,
+  in the pre-commit hook (skipping where a branch carries none of it) and in the
+  `release-gates` job, where absence is fatal.
+
+---
+
 ## [magus 7.4.1] - 2026-09-21
 
 ### Fixed
