@@ -79,12 +79,22 @@ Only the manifest. Everything else is generated, like `node_modules`.
 
 Because the config files are generated, one developer on `frontend` and another on `backend`
 produce no git diff between them. `magus install` and `magus profile switch` add the
-generated paths to `.gitignore` for you. If one of them was committed before, a `.gitignore`
-line does not untrack it: magus tells you to run `git rm --cached <path>` and commit.
+generated paths to `.gitignore` for you.
+
+If one of them was committed before, a `.gitignore` line does not untrack it, so magus will
+not write it. Every command that would — and the TUI — stops, changes nothing at all, and
+names each tracked path with the fix: run `git rm --cached <path>`, commit, then run the
+command again.
+
+A plugin that needs other plugins to load (its dependencies) gets them: a profile enables
+what its plugins depend on even when another profile lists them, without writing them into
+`.claude/profiles.json`.
 
 ## What ends up in the file
 
-magus writes it, so you mostly read it in a diff. A profile looks like this:
+magus writes it, so you mostly read it in a diff — and it edits the file rather than
+re-writing it: only the values that changed move, and your formatting, key order and inline
+arrays stay as they were. A profile looks like this:
 
 ```json
 {
@@ -175,6 +185,11 @@ meantime, both survive.
 
 Editing a skill magus installed makes it yours: magus stops managing it, removes it from the
 profile, and tells you to commit it as a custom skill.
+
+`magus install`, `magus update` and the TUI's update key finish by checking that Claude Code
+will load the version they just installed. Other checkouts of the same repository can leave
+records that make it load an older one; when that happens magus moves them forward in the same
+run and says so, or reports the plugin as failed if it cannot.
 
 ## Keeping CI honest
 

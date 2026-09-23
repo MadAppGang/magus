@@ -4,6 +4,38 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [magus 7.5.1] - 2026-09-24
+
+### Fixed
+
+- **magus no longer takes over a settings file your repo commits.** In a project that
+  commits `.claude/settings.json` or `.mcp.json`, activating a profile used to move the
+  committed file to a backup, regenerate it, and add it to `.gitignore` — which git ignores
+  for a tracked file, so every regeneration showed up as a change to commit. magus now
+  writes nothing in that case and names the fix: `git rm --cached <path>`, commit, then run
+  it again. This covers install, switch, update, the TUI's startup choice and regeneration
+  after a pull.
+- **Updating a plugin makes Claude Code load the new version.** In a repo with several
+  checkouts, older registry records from other checkouts — deleted worktrees included — were
+  read first, so a plugin could show "updated" and "BROKEN" at once and keep loading the old
+  version. An update now brings those records forward in the same step, and reports a plugin
+  as updated only once the new version is the one that loads.
+- **Switching to a profile keeps its plugins' dependencies on.** A profile that listed a
+  plugin but not the plugins it depends on — `dev` without `claudish`, say — rendered those
+  dependencies as off whenever another profile used them, and Claude Code then refused to
+  load the plugin at all. A profile now turns on every dependency of the plugins it enables.
+  They are worked out from each plugin's manifest and never written into `profiles.json`.
+- **`profiles.json` is edited, not rewritten.** Recording a change used to reformat the whole
+  committed file. magus now changes only the values that changed; formatting, key order and
+  keys it does not use stay exactly as written.
+- **Activation keeps `installedPluginVersions`.** Switching or first activating a profile
+  dropped magus's record of installed plugin versions from `.claude/settings.json`; it is now
+  carried into every regenerated file.
+- **`magus update` discards only its own install records.** A plugin you enable in Claude
+  Code while an update runs is kept, even if another profile uses it.
+
+---
+
 ## [designer 0.8.1] - 2026-09-23
 
 ### Fixed
