@@ -4,6 +4,46 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [designer 0.8.1] - 2026-09-23
+
+### Fixed
+
+- `/designer:create-style` now runs the action you name — `create`, `update`, `capture`,
+  `add-reference`, `remove-reference` or `list-references` — instead of always starting the
+  full wizard. The command advertised all six and had a workflow for each, but nothing read
+  the action from its arguments. An unknown action answers with the list of actions, and an
+  unknown `update` section answers with the three sections (colors, typography, spacing).
+- `update` no longer asks whether to create or update, and it stops with a pointer to
+  `create` when no style exists yet. `remove-reference <name>` finds the `<name>.png` that
+  capture and add-reference saved.
+
+### Added
+
+- The actions appear as an argument hint after the command name as you type it.
+
+---
+
+## [dev 8.1.3] - 2026-09-23
+
+### Added
+
+- `/dev:worktree` shows `create [branch] | list | cleanup [path] | status | help` as an
+  argument hint after the command name as you type it.
+- Why a hint and not a dropdown: Claude Code's subcommand dropdown (the list under
+  `/claude-api`) is built in code for its bundled skills only. No frontmatter key gives a
+  plugin command one, so the hint is the closest a plugin can get.
+
+---
+
+## [terminal 5.2.1] - 2026-09-23
+
+### Added
+
+- `/terminal:slots` shows `list | close <N> | close all` as an argument hint after the
+  command name as you type it.
+
+---
+
 ## [magus 7.5.0] - 2026-09-23
 
 ### Fixed

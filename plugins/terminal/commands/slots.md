@@ -1,6 +1,7 @@
 ---
 name: slots
 description: Lists the slots this session holds and closes one or all of them. Use to find a slot number after compaction, or to clean up panes left open by /terminal:watch, /terminal:repl, or /terminal:tui.
+argument-hint: "list | close <N> | close all"
 allowed-tools: mcp__plugin_terminal_mux__list-slots, mcp__plugin_terminal_mux__close-pane
 ---
 

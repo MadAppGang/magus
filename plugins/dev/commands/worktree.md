@@ -1,6 +1,7 @@
 ---
 name: worktree
 description: Manage git worktrees - create isolated workspaces, list active worktrees, and clean up. Supports automatic Neon DB branching for schema isolation.
+argument-hint: "create [branch] | list | cleanup [path] | status | help"
 allowed-tools: Bash, Read, Write, Edit, AskUserQuestion, Glob, Grep
 skills: dev:worktree-lifecycle
 ---

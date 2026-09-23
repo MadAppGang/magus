@@ -4,6 +4,7 @@ description: |
   Interactive wizard to create and update project design style guides.
   Supports reference image capture, style updates, and visual reference management.
   Actions: create, update, capture, add-reference, remove-reference, list-references
+argument-hint: "create | update [section] | capture <name> | add-reference <path> <name> | remove-reference <name> | list-references"
 allowed-tools: AskUserQuestion, Bash, Read, Write, Glob, Grep
 skills:
   - designer:design-references
@@ -97,17 +98,37 @@ skills:
   </critical_constraints>
 
   <workflow>
+    <action_routing>
+      Read the first word of $ARGUMENTS as the action and pass the rest to that phase:
+      - empty → the main wizard (Phases 1-8, then stop); Phase 1 asks new or update
+      - `create` → the main wizard (Phases 1-8, then stop) as a new style
+      - `update` with no section → the main wizard (Phases 1-8, then stop) on the existing style
+      - `update colors`, `update typography` or `update spacing` → Phase 13 (Partial Update)
+      - `update` followed by any other word → reply that the sections are colors, typography
+        and spacing, and stop
+      - `capture` → Phase 9 (Capture Workflow)
+      - `add-reference` → Phase 10 (Add Reference Workflow)
+      - `remove-reference` → Phase 11 (Remove Reference Workflow)
+      - `list-references` → Phase 12 (List References)
+      - anything else → reply with this list of actions and stop
+
+      `update`, with or without a section, needs an existing `.claude/design-style.md`. If
+      the file is missing, reply "No style yet. Run `/designer:create-style create`." and stop.
+    </action_routing>
+
     <phase number="1" name="Initialization">
       <objective>Check for existing style and initialize wizard</objective>
 
       <steps>
         <step>Initialize Tasks with wizard phases</step>
         <step>Use Read tool to check if .claude/design-style.md exists</step>
-        <step>If exists, ask: Update existing or create new?</step>
+        <step>If the action was `create` and the file exists, ask: replace the existing style or cancel?</step>
+        <step>If no action was given and the file exists, ask: Update existing or create new?</step>
+        <step>If the action was `update`, do not ask; it is already decided</step>
         <step>If updating, read existing file as base</step>
       </steps>
 
-      <quality_gate>User confirmed action (new/update)</quality_gate>
+      <quality_gate>Action settled (new/update), from the argument or the user</quality_gate>
     </phase>
 
     <phase number="2" name="Base Reference">
@@ -396,7 +417,8 @@ skills:
 
       <steps>
         <step>Mark "Find reference in style file" as in_progress</step>
-        <step>Extract image name from arguments</step>
+        <step>Extract image name from arguments. If it has no file extension, append `.png`:
+          capture and add-reference save every reference as `{name}.png`</step>
         <step>Verify image exists in .claude/design-references/:
           ```bash
           ls -la ".claude/design-references/{name}"
@@ -467,7 +489,7 @@ skills:
 
       <steps>
         <step>Mark "Determine target section" as in_progress</step>
-        <step>Determine section from action (colors/typography/spacing)</step>
+        <step>Determine section from action: colors → Phase 3, typography → Phase 4, spacing → Phase 5</step>
         <step>Mark "Determine target section" as completed</step>
         <step>Mark "Read current style" as in_progress</step>
         <step>Read current style file</step>
