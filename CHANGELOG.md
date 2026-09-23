@@ -4,6 +4,67 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [magus 7.5.0] - 2026-09-23
+
+### Fixed
+
+- **Claude Code can install plugins in a project that uses magus profiles again.** A profile
+  made `.claude/settings.json` a symlink, and Claude Code refuses to write through one, so
+  `claude plugin install --scope project`, `/config`, "always allow" rules and
+  `claude mcp add --scope project` all failed with `SymlinkWriteRefusedError`. Profiles now
+  write real files. Nothing magus writes is a symlink any more.
+- **Committed custom skills no longer show as deleted.** Activating a profile moved a
+  project's own `.claude/skills/` folders out of git's sight, so the next commit would have
+  deleted them for the whole team. magus now touches only the skill folders it installed
+  itself; every other folder belongs to git. Converting an older layout restores any skill an
+  older version moved, byte for byte.
+- **magus never writes over a live settings file it cannot parse.** A `.claude/settings.json`,
+  `.mcp.json` or `.claude/models.json` with a JSON typo is reported and left exactly as it is;
+  every command that would rewrite it, `models use`/`off` and style changes included, refuses
+  until it is fixed by hand.
+- **An interrupted `magus install` no longer adds every profile's plugins to the active one.**
+  When the installs finish or fail, only the Claude CLI's own records in
+  `.claude/settings.json` are discarded; anything Claude Code wrote meanwhile, such as an
+  "always allow" rule or a plugin you installed yourself, is added to the profile. A run
+  stopped with Ctrl-C is recognised and handled the same way by the next command.
+- **`.gitignore` lines and `.claude/profiles/` contents that magus did not write are left
+  alone.** magus edits only its own block in `.gitignore`, and treats nothing under
+  `.claude/profiles/` except `active.json` as its own.
+
+### Changed
+
+- **`.claude/profiles.json` is the only source of truth.** When Claude Code changes the live
+  settings — say, a plugin install — the next magus command adds that change to the active
+  profile and prints what it added, e.g. `Added code-search@magus to profile "default"`. A
+  profile switch keeps it and makes no backup.
+- **A teammate's change regenerates your live settings.** After a pull that changes
+  `profiles.json`, including a change to another profile, the next magus command rewrites
+  `.claude/settings.json`. When your own Claude Code edit and a pulled change arrive together,
+  both are kept, down to single entries in a permission list; where both changed the same
+  value, yours is kept and magus names the key.
+- **The generated directory is `.claude/profiles/`**, renamed from `_profiles/`. It holds
+  only `active.json`, this checkout's record of which profile is active. An older layout is
+  converted by the next magus command that touches profiles (`install`, `update`, `profile`,
+  `models`, opening the TUI, or `magus doctor --fix`). What Claude Code added through the
+  old layout's links is added to the profile first; where the old files and `profiles.json`
+  disagree, `profiles.json`'s value is kept and the key is named, and a removal made under
+  the old layout is not applied. The old `.claude/_profiles/` directory, with the older
+  copies, is kept in `.claude/.magus-backups/`, never deleted.
+- **`magus doctor` names a recorded profile that `profiles.json` no longer defines**, and
+  switching to a real profile carries the unsaved changes into it. `doctor` also reports a
+  generated file that git still tracks, with the `git rm --cached` command that fixes it.
+  Without `--fix` it only reports: it records, regenerates and converts nothing.
+- **The TUI Profiles tab switches profiles the same way `magus profile switch` does.** It no
+  longer writes `enabledPlugins` into the project's settings directly.
+
+### Removed
+
+- **`magus profile sync`.** Every magus command now does what it did, automatically. Scripts
+  that call it must drop the call.
+- **`magus install --force`.** There is no longer an edited state for it to discard.
+
+---
+
 ## [Marketplace 13.1.0] - 2026-09-22
 
 ### Added

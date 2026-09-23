@@ -142,12 +142,13 @@ environment variables, and reproducing any of it on a second machine.
 ## Checking a setup
 
 ```bash
-magus doctor          # binary deps, profile symlinks, conventions
+magus doctor          # binary deps, the active profile, conventions
 magus doctor --fix    # repair what it can
 ```
 
 `doctor` exits non-zero when it finds a problem, so it works as a CI check. So does
-`magus install --check`, which reports drift without writing anything.
+`magus install --check`, which reports plugins whose installed version differs from the pin
+without writing anything.
 
 ## Which marketplace
 

@@ -60,8 +60,8 @@ magus profile list
 magus profile switch backend
 ```
 
-Or the Profiles tab, where `Enter` applies one. Switching repoints symlinks rather than
-rewriting files, so it is fast and leaves no git diff.
+Or the Profiles tab, where `Enter` applies one. Switching renders the chosen profile's
+settings into this project's config files, which are gitignored, so it leaves no git diff.
 
 ## What is committed, and what is not
 
@@ -69,16 +69,18 @@ Only the manifest. Everything else is generated, like `node_modules`.
 
 | Path | Committed | Written by |
 |---|---|---|
-| `.claude/profiles.json` | **yes** — the source of truth | magus, when you save a profile |
-| `.claude/_profiles/<name>/` | no, gitignored | `magus install` |
-| `.claude/settings.json` | no, gitignored | symlink into the active profile |
-| `.mcp.json` | no, gitignored | symlink into the active profile |
-| `.claude/skills/` | no, gitignored | symlink into the active profile |
+| `.claude/profiles.json` | **yes** — the one source of truth | magus, when you save a profile or change the live config |
+| `.claude/profiles/active.json` | no, gitignored | magus — which profile is active |
+| `.claude/settings.json` | no, gitignored | generated from the active profile |
+| `.mcp.json` | no, gitignored | generated from the active profile |
+| `.claude/models.json` | no, gitignored | generated from the active profile's model routing |
+| `.claude/skills/<name>/` | per folder | the active profile's skills are installed and gitignored one folder each; any other folder is your own and stays committed |
 | `.claude/settings.local.json` | no, gitignored | you — **credentials live here** |
 
-Because switching repoints symlinks, one developer on `frontend` and another on `backend`
+Because the config files are generated, one developer on `frontend` and another on `backend`
 produce no git diff between them. `magus install` and `magus profile switch` add the
-generated paths to `.gitignore` for you.
+generated paths to `.gitignore` for you. If one of them was committed before, a `.gitignore`
+line does not untrack it: magus tells you to run `git rm --cached <path>` and commit.
 
 ## What ends up in the file
 
@@ -137,40 +139,42 @@ target is gone, so magus follows the link and checks executability rather than t
 ## More than one profile per repo
 
 ```bash
-magus install              # materialize every profile, activate one
+magus install              # install every profile's plugins, keep (or pick) the active one
 magus profile list         # ● marks the active one
 magus profile switch backend
 magus profile show backend
 ```
 
-`switch` is offline and cheap: it repoints symlinks and verifies the profile's binaries are
-present, warning rather than failing if any are missing.
+`switch` writes the chosen profile's settings, MCP servers and model routing into this
+project's config files, installs its skills, and verifies its binaries are present, warning
+rather than failing if any are missing.
 
-Switching is **exclusive**. Each profile's generated `settings.json` names every plugin in
+Switching is **exclusive**. The generated `settings.json` names every plugin in
 the manifest — its own as `true`, everyone else's as `false` — so switching to `backend`
 actively disables the frontend plugins instead of leaving both sets on.
 
-## Promoting local changes
+## Changes you make outside magus
 
-Toggling something in the TUI changes **your** setup. It does not touch the manifest.
+If you use magus, magus owns the profile. A plugin you install with
+`claude plugin install --scope project`, a setting you change with `/config`, an MCP server
+you add with `claude mcp add --scope project` — each is a change to the **active profile**.
+The next time you run magus (any command that touches profiles, or the TUI), it records the
+change in `.claude/profiles.json` and prints one line for it:
 
-When you want a local change to become the team's, promote it:
-
-```bash
-magus profile sync
+```
+Added code-search@magus to profile "frontend"
 ```
 
-That writes your local state back into `.claude/profiles.json` so you can commit it.
+Nothing is set aside or backed up. Review the diff and commit `.claude/profiles.json` when you
+want the team to have it; revert the line if you were only trying something.
 
-**This step is deliberate, not an oversight.** The manifest is what the team agreed to; your
-local setup is what you happen to have right now. Keeping them separate is what makes the
-difference between them visible — and that difference is the whole point of
-`magus install --check` below. If every toggle wrote itself into the manifest, there would
-be no drift to detect, because the file would always agree with the machine it was last
-touched on.
+It works the other way too. When a teammate's change to `.claude/profiles.json` arrives with
+`git pull`, the next magus command regenerates your config from it — also when the change
+was to another profile but alters yours. If you had changed something locally in the
+meantime, both survive.
 
-It also means trying a plugin for ten minutes does not put a change into a shared file you
-have to remember to revert.
+Editing a skill magus installed makes it yours: magus stops managing it, removes it from the
+profile, and tells you to commit it as a custom skill.
 
 ## Keeping CI honest
 
@@ -178,19 +182,23 @@ have to remember to revert.
 magus install --check
 ```
 
-Reports drift and writes nothing. With `"strictVersions": true` a version that has floated
-away from its pin fails the check. `magus doctor` also exits non-zero on a problem.
+Reports plugins whose installed version differs from the pin, and writes nothing. With
+`"strictVersions": true` such a mismatch fails the check. `magus doctor` also exits non-zero on a problem.
 
-## Before you adopt profiles
+## Skills you commit
 
-Profiles make `.claude/skills` a symlink into the active profile and gitignore it. If your
-repo **commits** skills there, two things follow:
+`.claude/skills/` stays a normal directory. Skills you commit there are yours: magus never
+moves, copies, backs up or deletes them, in any profile, and they stay tracked by git. Only
+the skills a profile lists are installed by magus, each in its own gitignored folder.
 
-1. **Nothing is lost locally.** The first `magus install` copies your existing
-   `.claude/skills/*` into every profile before the swap.
-2. **They stop being tracked.** A fresh clone has nothing to copy from, so a committed
-   project skill does not reach teammates this way. If a skill must ship with the repo, put
-   it in a plugin — a plugin skill is versioned, listed, and installed by the manifest.
+If a profile lists a skill whose folder name is already taken by one of yours, magus refuses
+to switch to it and names both, so you can rename one.
 
-If that trade is wrong for your repo, do not adopt profiles for it. The two models genuinely
-conflict over who owns `.claude/skills`.
+A project set up by an earlier magus release, where the settings files and `.claude/skills`
+were links into the profile, is converted automatically the next time you run magus. What
+Claude Code added through those links — a plugin, a permission rule, an MCP server — is added
+to the profile first. Where the old files and `.claude/profiles.json` disagree, the profiles
+file's value is kept and magus names the key; a removal made under the old layout is not
+applied. Any committed skill the old layout had moved out of the way is put back, and the old
+`.claude/_profiles/` directory, with the older copies, is kept in `.claude/.magus-backups/`
+rather than deleted. `magus doctor` without `--fix` only reports that a conversion is due.
