@@ -4,6 +4,22 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [magus 7.5.2] - 2026-09-24
+
+### Fixed
+
+- **`magus update` works with Claude Code 2.1.281.** Claude Code 2.1.281 changed
+  `claude plugin update --scope project`: in a repo with several checkouts it updates the
+  record of whichever checkout Claude Code would load from, not the project you run it in. The
+  update succeeded, but magus read your project's record, saw the old version, and reported
+  "no change" while your project stayed behind. magus now notices the version Claude Code
+  fetched for the other checkout, moves your project's record to it too, and reports the
+  plugin as updated — naming the checkout Claude Code wrote to. When Claude Code did not
+  actually fetch the new version, it still says "no change", now with the reason. On Claude
+  Code 2.1.280 and earlier nothing changes.
+
+---
+
 ## [magus 7.5.1] - 2026-09-24
 
 ### Fixed
