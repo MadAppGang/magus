@@ -2,7 +2,7 @@
 name: interview
 description: Comprehensive specification interview with intelligent requirements elicitation
 allowed-tools: Agent, AskUserQuestion, Bash, Read, Write, Glob, Grep
-skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates, multimodel:task-orchestration
+skills: dev:context-detection, dev:universal-patterns, multimodel:task-orchestration
 ---
 
 <role>

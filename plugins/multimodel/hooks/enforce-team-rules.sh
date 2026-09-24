@@ -15,7 +15,8 @@ set -u
 #   - Every claudish invocation is logged to .claude/claudish-usage.log
 #   - Log includes: timestamp, model, agent, flags, full command
 #
-# Fail-open: parse errors default to ALLOW (never block due to own bugs)
+# Fail-open: parse errors take no decision (never block due to own bugs). The hook never
+# approves a call; it only denies or stays silent.
 # ============================================================================
 
 # Read hook input from stdin
@@ -24,18 +25,17 @@ INPUT=$(cat)
 # Parse tool name directly from raw input (avoids intermediate variable issues)
 TOOL_NAME=$(echo "${INPUT}" | jq -r '.tool_name // empty' 2>/dev/null || true)
 
-# If we can't parse, allow (never block due to own bugs)
+# If we can't parse, take no decision (never block due to own bugs)
 if [ -z "${TOOL_NAME}" ]; then
-  echo '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow"}}'
   exit 0
 fi
 
 # --------------------------------------------------------------------------
-# Helper: output allow/deny decision
+# Helper: let the call through, or deny it. Letting it through prints nothing: exit 0
+# with no output is "no decision", so the user's own permission rules and prompts apply.
+# Printing permissionDecision "allow" would skip the user's permission prompt.
 # --------------------------------------------------------------------------
 allow() {
-  local json='{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow"}}'
-  echo "${json}"
   exit 0
 }
 

@@ -7,7 +7,7 @@ Universal development assistant. Detects the project stack and routes work to sp
 
 | | |
 |---|---|
-| Version | `8.1.3` |
+| Version | `8.2.0` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 17 |
 | Subagents | 12 |
@@ -133,11 +133,11 @@ Step-by-step, one guide per job:
 ## When to reach for it
 
 - Use for README, API docs, tutorials, changelogs — `doc`
-- Use when planning an approach or asked to brainstorm — `brainstorming`
-- Use when verifying UI, chasing browser bugs, or console errors — `browser-debugging`
 - Use when deploying or operationalizing a Bun — `bunjs-production`
 - Use when the user asks to roast code, find sins, or shame my code — `code-roast`
 - Use when a worktree changes the schema, or on mention of Neon, Turso, Prisma — `db-branching`
+- Use when applying design-review fixes, or when a UI looks AI-generated — `frontend-implement`
+- Use when writing, reviewing or setting up tests — `testing-strategies`
 
 ## Commands
 
@@ -187,7 +187,6 @@ Dispatched with the Agent tool, each in its own context window.
 | ● | Claude can reach for it on its own |
 | ○ | You invoke it by name |
 | ▸ | A command loads it for you — you never name it |
-| ! | Nothing can reach it — a packaging bug |
 
 [Why a skill lands in one row or another](../../guides/skill-visibility.md)
 
@@ -205,15 +204,15 @@ Dispatched with the Agent tool, each in its own context window.
 | ● | `dev:verification-before-completion` | Requires fresh evidence — command output, a test run, a screenshot — before any completion claim. |
 | ● | `dev:worktree-lifecycle` | Creates, uses and cleans up git worktrees with safety checks. Use before isolated, risky or parallel feature work, or on mention of worktree, experiment or prototype. |
 | ○ | `dev:architecture` — [42 more docs](./dev-architecture.md) | Router for architecture knowledge — 7 architectural styles (layered, hexagonal, clean, modular monolith, microservices, event-driven, CQRS) and the 22 GoF design patterns. |
-| ○ | `dev:browser-debugging` | Tests UI in a real browser via Chrome MCP — visual fidelity, console, network. Use when verifying UI, chasing browser bugs, or console errors. |
+| ○ | `dev:browser-debugging` | Drives a real browser — claude-in-chrome or browser-use — to verify a UI change, read console and network activity, and reproduce browser-only bugs. |
 | ○ | `dev:bunjs-architecture` | Provides Bun.js clean architecture patterns — routes/controllers/services/repositories, camelCase conventions, Prisma schemas. |
 | ○ | `dev:code-roast` | Roasts code with severity-graded sins, cites file and line, offers redemption. Use when the user asks to roast code, find sins, or shame my code. |
 | ○ | `dev:db-branching` | Branches Neon, Turso, or Supabase per git worktree for isolated schema work. Use when a worktree changes the schema, or on mention of Neon, Turso, Prisma. |
-| ○ | `dev:plugin-sdk-patterns` | Patterns and templates for building Claude Code plugins. Use for plugin development — creating a plugin, skill and agent templates, plugin architecture, or standardizing structure. |
+| ○ | `dev:frontend-implement` | Rewrites generic-looking UI into a deliberate design via theme tokens and library variants, never call-site values. Use when applying design-review fixes, or when a UI looks AI-generated. |
+| ○ | `dev:plugin-sdk-patterns` | Builds Claude Code plugins that load — manifest location, what registers, the frontmatter each component reads, hooks, MCP servers, verification. |
 | ○ | `dev:team-gate` | Runs a multi-model review gate to a verdict: start the claudish team panel with input_file only, poll until settled, read every ballot, apply the minimum ballot count, log every skip. |
-| ▸ | `dev:brainstorming` | Explores solution approaches in parallel across models, scores confidence, validates the chosen plan. Use when planning an approach or asked to brainstorm. |
+| ▸ | `dev:brainstorming` | Explores solution approaches in parallel across models through claudish, then has an external panel review the chosen plan. |
 | ▸ | `dev:bunjs-production` | Provides Bun.js production patterns — Docker, AWS ECS/Fargate, Redis caching, security hardening, CI/CD. Use when deploying or operationalizing a Bun.js service. |
-| ! | `dev:frontend-implement` | Rewrites generic-looking UI by five anti-generic rules — asymmetry, texture, typography, motion, colour. Use when applying design-review fixes, or UI looks AI-generated. |
 
 ## Hooks
 

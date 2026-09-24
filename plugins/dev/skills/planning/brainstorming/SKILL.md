@@ -1,587 +1,244 @@
 ---
 name: brainstorming
-description: "Explores solution approaches in parallel across models, scores confidence, validates the chosen plan. Use when planning an approach or asked to brainstorm."
+description: "Explores solution approaches in parallel across models through claudish, then has an external panel review the chosen plan. Use when the direction is open, or the user asks to brainstorm or compare approaches."
 user-invocable: false
 disable-model-invocation: true
 ---
 
-# Brainstorming v2.0: Resilient Multi-Model Planning
-
-Turn ideas into validated designs through collaborative AI dialogue with resilient model execution and confidence-based validation.
-
-## Overview
-
-This skill improves upon v1.0 by addressing critical reliability gaps:
-
-**Key v2.0 Improvements:**
-- **No AskUserQuestion dependency**: Uses Task + Tasks for structured interaction
-- **Fallback chains**: 3+ models per role ensures completion even if some fail
-- **Explicit parallelism**: Documented Task call patterns for parallel execution
-- **Defined algorithms**: Consensus matrix and confidence scoring are mathematically specified
-
-## When to Use
-
-Use this skill BEFORE implementing any feature:
-- "Design a user authentication system"
-- "Brainstorm approaches for API rate limiting"
-- "Plan architecture for a new dashboard feature"
-- "Evaluate options for real-time data synchronization"
-
-## Prerequisites
-
-### Required Setup
-
-```bash
-# 1. Install required skills
-/plugin marketplace add MadAppGang/magus
-skill install superpowers:using-git-worktrees
-skill install superpowers:writing-plans
-
-# 2. Verify OpenRouter access (for multi-model)
-export OPENROUTER_API_KEY=your-key
-
-# 3. Configure models in ~/.claude/settings.json
-# Use model IDs from the live catalog (list_models)
-{
-  "brainstorming": {
-    "primary_model": "internal",
-    "explorer_models": [
-      "(model resolved from list_models)"
-    ]
-  }
-}
-```
-
-### Model Requirements
-
-| Role | Min Context | Capabilities |
-|------|-------------|--------------|
-| Primary | 200K tokens | Complex reasoning, orchestration |
-| Explorer | 100K tokens | Code generation, analysis |
-
-## Workflow
-
-### Phase 0: Problem Analysis (200-300 words)
-
-**Objective**: Capture problem scope, constraints, and success criteria
-
-**How to Ask Users (Without AskUserQuestion)**:
-
-```typescript
-// Pattern: Use Tasks to track questions, Read/Write for presentation
-
-// 1. Write question to temp file
-await Write({
-  file_path: "/tmp/brainstorm-q1.md",
-  content: `## Question 1 of 3
-
-**What are the main constraints or requirements for this feature?**
-
-Please respond with:
-- Functional requirements (what it must do)
-- Non-functional requirements (performance, scale)
-- Any existing dependencies or integrations
-`
-});
-
-// 2. Present file and wait for user response
-// User reads file, provides input via conversation
-
-// 3. Summarize understanding
-const problemSummary = await Write({
-  file_path: "/tmp/brainstorm-problem.md",
-  content: `## Problem Understanding
-
-**Constraints identified:**
-- [From user response]
-
-**Success criteria:**
-- [Measurable outcomes]
-
-**Scope boundaries:**
-- [What's in/out]
-
----
-
-**Does this accurately capture the problem?** (Reply "yes" to proceed or clarify)
-`
-});
-```
-
-**Gate Type**: USER_GATE (requires confirmation)
-
----
-
-### Phase 1: Parallel Exploration
-
-**Objective**: Generate diverse solutions via multi-model brainstorming
-
-**Fallback Chain Implementation**:
-
-```typescript
-interface ModelResult {
-  model: string;
-  success: boolean;
-  output?: string;
-  error?: string;
-}
-
-async function exploreWithFallback(
-  prompt: string,
-  role: "explorer"
-): Promise<ModelResult> {
-  // Use model IDs from `list_models` — pick current models for the task
-  //
-  const fallbackModels = role === "explorer"
-    ? [/* models resolved from `list_models` for code */]
-    : ["internal" /* plus models from list_models */];
-
-  for (const model of fallbackModels) {
-    try {
-      const result = await Agent({
-        model: model,
-        prompt: prompt,
-        timeout_ms: 120000  // 2 minute timeout
-      });
-
-      return { model, success: true, output: result };
-    } catch (error) {
-      console.warn(`Model ${model} failed:`, error.message);
-      continue;  // Try next in chain
-    }
-  }
-
-  throw new Error(`All models in fallback chain failed`);
-}
-```
-
-**Parallel Execution Pattern**:
-
-```typescript
-// WRONG: Sequential (slow)
-// const result1 = await Agent({ model: "grok", ... });
-// const result2 = await Agent({ model: "gemini", ... });
-// const result3 = await Agent({ model: "sonnet", ... });
-
-// CORRECT: Parallel (3-5x faster)
-// Use model IDs from `list_models` (live catalog), filtered for code
-const [result1, result2, result3] = await Promise.all([
-  Agent({
-    model: "(fast_coding role — resolve from list_models)",
-    prompt: generateExplorerPrompt(problem, "fast_code")
-  }),
-  Agent({
-    model: "(reasoning role — resolve from list_models)",
-    prompt: generateExplorerPrompt(problem, "balanced")
-  }),
-  Agent({
-    model: "(model resolved from list_models)",
-    prompt: generateExplorerPrompt(problem, "thorough")
-  })
-]);
-
-// Handle partial failures
-const results = [result1, result2, result3].filter(r => r.success);
-if (results.length === 0) {
-  throw new Error("All exploration models failed");
-}
-```
-
-**Output Format**:
-```markdown
-## Approach: [Name]
-
-**Model**: [Which model generated this]
-**Approach Type**: [architecture/algorithm/pattern]
-**Summary**: 2-3 sentences
-
-**Key Components**:
-1. Component A
-2. Component B
-3. Component C
-
-**Trade-offs**:
-- + Advantage
-- - Disadvantage
-
-**Confidence**: [Model's confidence 0-100]
-```
-
-**Gate Type**: AUTO_GATE (automatic consolidation)
-
----
-
-### Phase 2: Consensus Analysis
-
-**Objective**: Identify strongest ideas using defined algorithms
-
-**Consensus Matrix Algorithm**:
-1. **Clustering**: Group approaches by semantic similarity (vector embedding + clustering)
-2. **Scoring**: Count model agreement per cluster
-3. **Classification**: UNANIMOUS (3/3), STRONG (2/3), DIVERGENT (1/3)
-4. **Confidence**: Weighted average of model confidences + agreement bonus
-
-**Consensus Matrix Calculation**:
-
-```typescript
-interface Approach {
-  id: string;
-  name: string;
-  summary: string;
-  model: string;  // Which model proposed
-  modelConfidence: number;  // 0-100
-  embedding: number[];  // For clustering
-}
-
-interface Cluster {
-  approaches: Approach[];
-  representative: Approach;  // Most complete
-  agreementScore: number;  // 0-1
-  confidenceScore: number;  // 0-100
-  consensusLevel: "UNANIMOUS" | "STRONG" | "DIVERGENT";
-}
-
-function calculateConsensus(approaches: Approach[]): Cluster[] {
-  // Step 1: Cluster by semantic similarity
-  const clusters = clusterByEmbedding(approaches, threshold: 0.85);
-
-  // Step 2: Calculate metrics per cluster
-  return clusters.map(cluster => {
-    const models = cluster.map(a => a.model);
-    const modelCount = new Set(models).size;
-    const totalModels = approaches.length;
-
-    // Agreement: proportion of models that have an approach in this cluster
-    const agreementScore = modelCount / totalModels;
-
-    // Confidence: weighted average + agreement bonus
-    const baseConfidence = cluster
-      .map(a => a.modelConfidence)
-      .reduce((a, b) => a + b, 0) / cluster.length;
-
-    const confidenceScore = Math.min(100,
-      baseConfidence + (agreementScore * 20)  // +20% for agreement
-    );
-
-    // Consensus classification
-    const consensusLevel = agreementScore >= 0.9 ? "UNANIMOUS" :
-                          agreementScore >= 0.5 ? "STRONG" :
-                          "DIVERGENT";
-
-    return {
-      approaches: cluster,
-      representative: cluster.reduce((best, current) =>
-        current.modelConfidence > best.modelConfidence ? current : best
-      ),
-      agreementScore,
-      confidenceScore: Math.round(confidenceScore),
-      consensusLevel
-    };
-  }).sort((a, b) => b.confidenceScore - a.confidenceScore);
-}
-```
-
-**Confidence Scoring Formula**:
-
-```
-Confidence = Base + AgreementBonus - DiversityPenalty
-
-Where:
-  Base = average(model confidences in cluster)
-  AgreementBonus = (unique_models / total_models) * 20
-  DiversityPenalty = (1 - similarity_coefficient) * 10
-
-Example:
-  3 models propose similar approaches
-  Base = (92 + 88 + 95) / 3 = 91.7
-  AgreementBonus = (3/3) * 20 = 20
-  DiversityPenalty = (1 - 0.9) * 10 = 1
-  Confidence = 91.7 + 20 - 1 = 110.7 -> capped at 100
-  Final: 97%
-```
-
-**Consensus Matrix Example**:
-
-| Approach | Grok | Gemini | Sonnet | Agreement | Confidence |
-|----------|------|--------|--------|-----------|------------|
-| Token Bucket | Yes | Yes | Yes | UNANIMOUS | 97% |
-| Leaky Bucket | Yes | Yes | No | STRONG | 82% |
-| Sliding Window | No | No | Yes | DIVERGENT | 45% |
-
-**Gate Type**: AUTO_GATE (automatic scoring)
-
----
-
-### Phase 3: User Selection
-
-**Objective**: Present top approaches for user decision
-
-**Presentation Pattern**:
-
-```typescript
-async function presentApproaches(clusters: Cluster[]): Promise<string> {
-  const topClusters = clusters.slice(0, 5);  // Top 5
-
-  let presentation = `## Top Approaches\n\n`;
-
-  for (const [index, cluster] of topClusters.entries()) {
-    const approach = cluster.representative;
-
-    presentation += `### ${String.fromCharCode(65 + index)}: ${approach.name} [${cluster.consensusLevel}]
-
-**Summary**: ${approach.summary}
-
-**Confidence**: ${cluster.confidenceScore}% (${cluster.approaches.length} model(s) agree)
-
-**Pros**:
-${cluster.approaches.map(a => `- ${a.summary}`).join("\n")}
-
-**Cons**:
-${cluster.approaches.map(a => `- Potential issue from ${a.model}`).join("\n")}
-
----
-`;
-  }
-
-  presentation += `
-## Your Choice
-
-Which approach best fits your requirements?
-
-- **A**: Select approach A
-- **B**: Select approach B
-- **C**: Select approach C
-- **D**: Combine elements from multiple
-- **E**: Explore alternatives (return to Phase 1)
-`;
-
-  // Save for user review
-  await Write({
-    file_path: "/tmp/brainstorm-approaches.md",
-    content: presentation
-  });
-
-  return presentation;
-}
-```
-
-**Gate Type**: USER_GATE (selection via conversation)
-
----
-
-### Phase 4: Detailed Planning
-
-**Objective**: Elaborate selected approach into actionable sections
-
-**Confidence-Based Gating**:
-
-| Confidence | Gate Type | Action |
-|------------|-----------|--------|
-| >=95% | AUTO_GATE | Proceed automatically |
-| 80-94% | AUTO_GATE | Proceed with notification |
-| 60-79% | USER_GATE | Request confirmation |
-| <60% | USER_GATE | Require revision |
-
-**Section Template**:
+# Brainstorming: multi-model approach exploration
+
+Turn an open problem into a chosen, reviewed plan. Several models propose approaches
+independently, you compare what they proposed, the user picks, and the written plan goes
+to an external review panel before anyone builds it.
+
+Done means: the user chose an approach with its trade-offs in front of them, and the plan
+going forward has been through the external review, or the report says why it was not.
+
+## Who runs this
+
+The main session runs it. `/dev:architect` routes here in Brainstorm mode. The workflow
+needs two things only the main session has:
+
+- **AskUserQuestion**, for the user's decisions.
+- **The claudish MCP tools**: `list_models` and `search_models` to pick the panel, and
+  `team` to run it.
+
+External models never run through the Agent tool. Its `model` parameter accepts only
+Claude tier aliases, so a catalog ID passed there fails. Every model that isn't the host
+runs through claudish, and so does the host itself when it sits on the panel: the
+native name `internal` in a `team` panel is covered by `require_pattern` like any other
+panel member.
+
+**If you are a subagent** (a loadout handed this file to the architect or spec-writer
+agent), you have neither tool. Do the exploration yourself. Write approaches that use
+genuinely different mechanisms, in the per-approach shape from step 2, and return them
+to the orchestrator. It presents them to the user and runs any panel.
+
+## Session directory
+
+Use `${SESSION_PATH}/brainstorm/` when the caller passes a session path. Otherwise create
+`ai-docs/sessions/dev-brainstorm-<YYYYMMDD-HHMMSS>-<4 random hex bytes>/`. It must sit
+inside the working directory, because `team` rejects a `path` outside it. Everything the
+run writes goes here: `problem.md`, `explore/`, `approaches.md`, `plan.md`, `review/`,
+`gates.log`.
+
+## 1. Pin down the problem
+
+Read the code the topic touches before you ask anything. The questions worth the user's
+time are the ones whose answers would change which approach wins: scale and load,
+latency or consistency needs, dependencies the approach must keep, what is out of scope,
+and what "done" looks like. Skip anything the prompt or the repo already answers.
+
+Ask with AskUserQuestion, offering the answers the code suggests as options. Its
+free-text answer covers everything else. Write `problem.md` (constraints, success
+criteria, scope in and out) and confirm it with the user before going on. A panel run on
+the wrong problem is the most expensive mistake this workflow can make.
+
+## 2. Explore in parallel
+
+**Choose the panel.** Call `list_models`, and call `search_models` for any family the
+user named. The rules, from `claudish:claudish-usage` → "Model Alias Resolution", that
+matter here:
+
+- Never name a model from memory. Training data carries dead IDs.
+- A version the user names is a hard constraint. If the catalog does not list it, say so
+  and show the live alternatives. Never substitute the nearest-sounding version.
+- Pass the catalog's bare `id`. That means no `vendor/` slug, and no `provider@` prefix
+  unless the user named that exact address.
+- If `.claude/multimodel-team.json` exists, check every ID in it against the catalog,
+  drop the dead ones, and say which you dropped.
+
+Aim for disagreement. Models from different vendors diverge more usefully than two
+models from one family. Include `internal` so the host's own view is one panel member
+among the others. Once the panel is chosen, write `run.json` in the session directory
+as team-gate describes under "The run record", with `"command": "brainstorming"`.
+
+**Write the brief** to `explore/input.md`:
 
 ```markdown
-## [Section Name] (Confidence: XX%)
+# Explore approaches: <topic>
 
-**Approach**: [Selected approach]
+## Problem
+<problem.md, verbatim>
 
-**Implementation Details**:
-[200-300 words]
+## Codebase context
+<stack; the modules and paths an approach must fit; conventions it must respect>
 
-**Assumptions**:
-- Assumption 1
-- Assumption 2
+## Task
+Propose the approaches you would seriously consider for this problem, each a different
+mechanism rather than a variation of another. Read the code named above as needed.
+Answer in your response. Do not create or edit files.
 
-**Confidence Calculation**:
-- Technical feasibility: XX%
-- Edge cases covered: XX%
-- Team capability: XX%
-- Overall: XX%
+For each approach, under `### <name>`:
+- How it works: components and data flow
+- Fits when, and wrong when, tied to the constraints above
+- Costs: complexity, operational burden, migration from the current code
+- Risks and open unknowns
 
-**Status**: [AUTO_GATE|PENDING_USER] - [Reason]
+Then say which one you would choose under these constraints, and what would change
+your mind.
+
+Include a fenced block tagged `approaches`: one line per approach, then
+`recommend: <name>`.
 ```
 
-**Gate Type**: MIXED_GATE (adaptive)
+Don't ask for a confidence number. Self-reported confidence is not calibrated across
+vendors, so averaging it measures nothing. "What would change your mind" tells you more.
 
----
+**Run it:**
 
-### Phase 5: Plan Validation
+````
+team(mode="run", path=<dir>/explore, models=[...resolved...],
+     input_file=<dir>/explore/input.md, require_pattern="```approaches",
+     min_output_bytes=400, agent="dev:architect")
+````
 
-**Objective**: Final review before implementation
+`dev:architect` gives every panel member the architecture catalog and read access to
+the repo. Read `${CLAUDE_PLUGIN_ROOT}/skills/core/team-gate/SKILL.md` and follow its
+steps 1–4 for the lifecycle. The `run` call only starts the panel; poll `status` until
+it settles, then read every `response-<slot>.md` named in the `slots` map.
 
-**Validation Checklist**:
+Exploration is not a vote, so it has no ballot minimum:
+
+- **Two or more usable responses**: compare them.
+- **One**: present it as a single model's view.
+- **None**: report each slot's `error.reason` and stop. Offer the user four choices:
+  retry, choose other models, explore host-only, or cancel. Never substitute a model
+  silently.
+
+A panel member can write to the repo despite the brief, so check `git status` once the
+panel has settled.
+
+**Without claudish** (no `team` tool in your tool list), tell the user, write the
+approaches yourself, and label the comparison single-model. With one source there is
+no agreement signal.
+
+## 3. Compare
+
+This step is judgment, not arithmetic. Slot IDs are anonymised, so read the responses
+before you look at the model mapping. That way you weigh the argument, not the vendor.
+
+- **Group by mechanism, not by name.** Two approaches with different names can be the
+  same mechanism, and one name can cover two different mechanisms.
+- **For each group, record** who proposed it (a count of models, not a score), the
+  strongest case for and against it, and the conditions under which it is wrong.
+- **Treat agreement as weak evidence.** Several models landing on one approach shows
+  it is conventional. It does not show it fits these constraints. Weigh every approach
+  against `problem.md`.
+- **Keep lone proposals visible.** An approach only one model raised is often the most
+  useful thing the panel produced. Do not rank it out of sight.
+- **Read the panel's overall shape.** Wide divergence means the problem is new or
+  underspecified. It is not a failed panel. Near-total agreement means the problem is
+  well understood. Say which of the two it was.
+
+Write `approaches.md`. Start with a table: approach, proposed by, fits when, main risk.
+Follow it with a short section per approach, then your recommendation and its reasons,
+tied to the constraints.
+
+## 4. User chooses
+
+Show `approaches.md`, then ask with AskUserQuestion. The widget holds only a few
+options, so put the leading candidates in them. Each option's label is the approach
+name, and its description says when it fits and what it risks. The free-text answer
+covers two other choices: combining approaches, and exploring further.
+
+- **Combine**: in the plan, record what comes from each approach and where they
+  conflict.
+- **Explore further**: add what the user said to the brief and repeat step 2 in a new
+  directory (`explore-2/`).
+
+## 5. Write the plan
+
+Write the chosen approach into `plan.md`. Cover:
+
+- components and their responsibilities
+- data flow
+- the existing code it touches, by path
+- decisions still open
+- assumptions, and what would falsify each one
+- risks with mitigations
+- how success is measured, taken from `problem.md`
+- a build order
+
+Don't attach confidence percentages. The review in step 6 and the user's approval in
+step 7 are the gates.
+
+## 6. External review of the plan
+
+The plan goes to an external panel before it moves on. This gate is `plan-review` in
+team-gate's table: `MIN_BALLOTS` is 2 when N ≥ 3, otherwise N. Reuse the exploration
+panel. A model whose approach was not chosen makes a sharp critic.
+
+Write `review/prompt.md`: the plan, `problem.md`, and this ask:
 
 ```markdown
-## Plan Validation
-
-**Problem**: [Summary]
-**Approach**: [Selected]
-**Confidence**: [Overall]
-
-### Checklist
-
-- [ ] Problem scope accurately captured
-- [ ] Chosen approach matches expectations
-- [ ] Module structure aligns with capabilities
-- [ ] Technical constraints addressed
-- [ ] Success criteria measurable
-
-### Next Steps
-
-**To proceed**:
-1. Reply "approve" to finalize
-2. Reply "revise [section]" to modify
-3. Reply "restart" to begin fresh
-
-**Final decision?**
+Review this plan against the problem's constraints and success criteria. Find what
+will break, what is missing, and what conflicts with the stated constraints.
+Grade each finding:
+- CRITICAL: the plan cannot meet a stated constraint or success criterion, or will force a redesign
+- HIGH: a boundary, contract or data-flow decision that will produce wrong behaviour or a rewrite
+- MEDIUM: a gap implementation will have to resolve on its own
+- LOW: naming, structure, presentation
+For each: the plan section, the problem, why it matters, a suggestion.
+Open with `**Verdict**: PASS|CONDITIONAL|FAIL` (FAIL: any CRITICAL; CONDITIONAL: any HIGH;
+PASS: otherwise). This is read-only analysis; do not create or edit files.
 ```
 
-**Gate Type**: USER_GATE (explicit approval)
+Run it with `path=<dir>/review`, `input_file=<dir>/review/prompt.md`,
+`require_pattern="\*\*Verdict\*\*: (PASS|CONDITIONAL|FAIL)"`, `min_output_bytes=400` and
+`agent="dev:architect"`. Then follow team-gate steps 2–7. Its step 5 decides what
+happens when ballots fall below the minimum, and its step 6 decides what to log when
+the panel is skipped, for example when claudish is absent or the user declines the
+review. `gates.log` lives in the session directory.
 
----
+Read every ballot. For each CRITICAL and HIGH finding, decide whether it holds against
+the plan and the constraints. Reviewers misread plans too, and one wrong CRITICAL should
+not sink a sound plan. Revise `plan.md` for the findings that hold. List the ones you
+reject, each with its reason. If a revision changes the approach itself rather than its
+details, offer the user another review round.
 
-## Complete Parallel Execution Example
+## 7. Approval and hand-off
 
-```typescript
-// Complete Phase 1 parallel exploration
-async function runParallelExploration(problem: string): Promise<Approach[]> {
-  // Use model IDs from `list_models` (live catalog), filtered for code
-  //
-  const explorerModels = [
-    // fast_coding role — fast, code-focused
-    // reasoning role — balanced, creative
-    // another model from list_models — thorough
-  ];
+Ask with AskUserQuestion: approve, revise a named section, or start over from step 1.
+When the user approves, return this report to the caller:
 
-  const prompts = explorerModels.map(model =>
-    `Generate 5 implementation approaches for: ${problem}
+- **Problem**: one line, with the path to `problem.md`
+- **Panel**: the models used, the result of the catalog check (how many saved IDs were
+  live, and which were dropped), and any slot that failed with its `error.reason`
+- **Approaches**: the table from `approaches.md`
+- **Chosen**: the approach, and the user's reason if they gave one
+- **Review**: ballots against N, each verdict, the findings acted on, and the findings
+  rejected with reasons
+- **Gates**: the lines of `gates.log` verbatim, or `no gate skipped, no gate below minimum`
+- **Files**: the paths to `approaches.md` and `plan.md`
 
-For each approach provide:
-1. Name (2-3 words)
-2. One-sentence summary
-3. Key components (bullet points)
-4. Trade-offs (+/-)
-5. Your confidence (0-100)
+`/dev:architect` can then carry `plan.md` into Architecture design mode.
 
-Format as JSON array.`
-  );
+## Failure handling
 
-  // LAUNCH ALL MODELS IN PARALLEL
-  const taskPromises = explorerModels.map((model, index) =>
-    Agent({
-      model: model,
-      prompt: prompts[index],
-      timeout_ms: 120000,
-      max_turns: 1
-    }).catch(error => ({
-      model,
-      success: false,
-      error: error.message
-    }))
-  );
-
-  // WAIT FOR ALL TO COMPLETE
-  const results = await Promise.all(taskPromises);
-
-  // CONSOLIDATE SUCCESSFUL RESULTS
-  const approaches: Approach[] = results
-    .filter(r => r.success)
-    .flatMap(r => parseApproaches(r.output));
-
-  // HANDLE PARTIAL FAILURES
-  if (approaches.length < 5) {
-    console.warn(`Only got ${approaches.length} approaches from ${explorerModels.length} models`);
-    if (approaches.length === 0) {
-      throw new Error("All models failed");
-    }
-  }
-
-  return approaches;
-}
-```
-
-## Troubleshooting
-
-### Model Failures
-
-| Symptom | Cause | Solution |
-|---------|-------|----------|
-| Single model fails | API error, timeout | Fallback chain handles automatically |
-| All models fail | API key issue, network | Check `OPENROUTER_API_KEY`, retry |
-| Partial results (2/3) | One model unavailable | Continue with available; lower diversity but valid |
-
-**Recovery Pattern**:
-```typescript
-async function resilientExploration(problem: string): Promise<Approach[]> {
-  let attempts = 0;
-  const maxAttempts = 3;
-
-  while (attempts < maxAttempts) {
-    try {
-      return await runParallelExploration(problem);
-    } catch (error) {
-      attempts++;
-      if (attempts === maxAttempts) throw error;
-
-      // Exponential backoff
-      await new Promise(r => setTimeout(r, Math.pow(2, attempts) * 1000));
-    }
-  }
-}
-```
-
-### Consensus Issues
-
-| Symptom | Cause | Solution |
-|---------|-------|----------|
-| All approaches DIVERGENT | Models produce very different ideas | Not a failure - indicates novel problem |
-| Single cluster with 90%+ confidence | Problem is well-understood | Good for AUTO_GATE |
-| No clear winner | Multiple valid approaches | Present all to user |
-
-### User Interaction Issues
-
-| Symptom | Cause | Solution |
-|---------|-------|----------|
-| User doesn't respond | Unclear question | Rewrite with specific format |
-| User provides conflicting answers | Multiple questions at once | Ask one at a time, confirm understanding |
-| User wants to restart | Dissatisfied with direction | Allow restart to Phase 0 |
-
----
-
-## Configuration
-
-### Environment Variables
-
-```bash
-# Required for multi-model
-OPENROUTER_API_KEY=...
-
-# Optional
-BRAINSTORM_TIMEOUT_MS=120000
-BRAINSTORM_MAX_RETRIES=2
-BRAINSTORM_MIN_MODELS=2  # Minimum models for valid consensus
-```
-
-### Model Configuration
-
-```json
-{
-  "brainstorming": {
-    "primary": ["internal"],
-    "explorers": {
-      // Use model IDs from the live catalog (list_models)
-      "primary_chain": ["(another model from list_models)", "(another model from list_models)"],
-      "fallback_chain": ["(model from list_models)", "(model from list_models)"]
-    },
-    "thresholds": {
-      "auto_gate": 95,
-      "confirm_gate": 60
-    }
-  }
-}
-```
-
+- **A slot fails**: name the slot and its `error.reason` in the report, and carry on
+  with the slots that succeeded. Never retry automatically or swap in another model.
+  Routing belongs to claudish. A model that will not route is a `report_error` call,
+  and only with the user's consent.
+- **Slots still running at the poll ceiling**: report them as still running and let
+  the user decide. Do not cancel them automatically.

@@ -1,6 +1,6 @@
 {
   "name": "dev",
-  "version": "8.1.3",
+  "version": "8.2.0",
   "description": "Universal development assistant. Detects the project stack and routes work to specialist agents for architecture, implementation, debugging, review and research, enforcing design-system guardrails on every UI change.",
   "author": {
     "name": "Jack Rudenko",
@@ -50,7 +50,7 @@
     },
     {
       "name": "multimodel",
-      "version": "^4.0"
+      "version": "^5.0"
     }
   ],
   "skills": [

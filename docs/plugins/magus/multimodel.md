@@ -7,11 +7,11 @@ Multi-model collaboration and orchestration. Runs a task across several AI model
 
 | | |
 |---|---|
-| Version | `4.3.0` |
+| Version | `5.0.0` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 2 |
 | Subagents | 1 |
-| Skills | 15 |
+| Skills | 3 |
 | MCP server | no |
 | Hooks | yes |
 
@@ -35,12 +35,7 @@ Prefer to do it by hand? [Installing Magus](../../guides/install.md) has the man
 
 ## When to reach for it
 
-- Use when launching multiple agents, reading many files, or removing sequential execution bottlenecks — `batching-patterns`
 - Use when dealing with external model timeouts, API failures, partial success, user cancellation, or graceful degradation — `error-recovery`
-- Use when orchestrating 3+ agents or multi-phase work — `hierarchical-coordinator`
-- Use when orchestrating workflows that generate multiple files (designs, reviews, reports) to prevent file collisions across concurrent or sequential sessions with unique session directories — `session-isolation`
-- Use for model selection, complexity routing, picking a tier, or optimizing API cost — `task-complexity-router`
-- Use when unsure how to specify an external model — `task-external-models`
 
 ## Commands
 
@@ -59,30 +54,11 @@ Dispatched with the Agent tool, each in its own context window.
 
 ## Skills
 
-| | How you get it |
+| Skill | What it covers |
 |---|---|
-| ● | Claude can reach for it on its own |
-| ○ | You invoke it by name |
-
-[Why a skill lands in one row or another](../../guides/skill-visibility.md)
-
-| | Skill | What it covers |
-|---|---|---|
-| ● | `multimodel:batching-patterns` | Batches related operations into single messages for maximum parallelism. Use when launching multiple agents, reading many files, or removing sequential execution bottlenecks. |
-| ● | `multimodel:error-recovery` | Handle errors, timeouts, and failures in multi-agent workflows. Use when dealing with external model timeouts, API failures, partial success, user cancellation, or graceful degradation. |
-| ● | `multimodel:multi-agent-coordination` | Coordinate multiple agents in parallel or sequential workflows. Use when running agents simultaneously, delegating to sub-agents, switching between specialized agents, or managing agent sele… |
-| ● | `multimodel:multi-model-validation` | Runs the same task across multiple AI models in parallel and aggregates verdicts. Use when the user wants a second opinion, multi-expert validation, or consensus from Grok, Gemini, GPT-5, or… |
-| ● | `multimodel:task-complexity-router` | Routes tasks to model tiers (haiku/sonnet/opus) by complexity. Use for model selection, complexity routing, picking a tier, or optimizing API cost. |
-| ● | `multimodel:task-orchestration` | Track progress in multi-phase workflows with Tasks system. Use when orchestrating 5+ phase commands, managing iteration loops, tracking parallel tasks, or providing real-time progress visibi… |
-| ○ | `multimodel:agent-enforcement` | \| |
-| ○ | `multimodel:hierarchical-coordinator` | Prevents goal drift in long multi-agent runs by validating outputs against the original objective at checkpoints. Use when orchestrating 3+ agents or multi-phase work. |
-| ○ | `multimodel:hooks-system` | Lifecycle hook patterns — PreToolUse, PostToolUse, UserPromptSubmit, Stop, SubagentStop. |
-| ○ | `multimodel:model-tracking-protocol` | MANDATORY tracking protocol for multi-model validation. Creates structured tracking tables BEFORE launching models, tracks progress during execution, and ensures complete results presentatio… |
-| ○ | `multimodel:performance-tracking` | Track agent, skill, and model performance metrics for optimization. Use when measuring agent success rates, tracking model latency, analyzing routing effectiveness, or optimizing cost-per-ta… |
-| ○ | `multimodel:proxy-mode-reference` | Reference for running models through the claudish MCP tools — team, create_session, run_prompt. Covers model routing, native Claude slots, require_pattern shape checks, and error handling. |
-| ○ | `multimodel:quality-gates` | Implement quality gates, user approval, iteration loops, and test-driven development. |
-| ○ | `multimodel:session-isolation` | Use when orchestrating workflows that generate multiple files (designs, reviews, reports) to prevent file collisions across concurrent or sequential sessions with unique session directories. |
-| ○ | `multimodel:task-external-models` | Quick reference for running external models in orchestration. They are invoked via claudish MCP tools (team, create_session), never the CLI. Use when unsure how to specify an external model. |
+| `multimodel:error-recovery` | Handle errors, timeouts, and failures in multi-agent workflows. Use when dealing with external model timeouts, API failures, partial success, user cancellation, or graceful degradation. |
+| `multimodel:multi-model-validation` | Runs the same task across multiple AI models in parallel and aggregates verdicts. Use when the user wants a second opinion, multi-expert validation, or consensus from Grok, Gemini, GPT-5, or… |
+| `multimodel:task-orchestration` | Track progress in multi-phase workflows with Tasks system. Use when orchestrating 5+ phase commands, managing iteration loops, tracking parallel tasks, or providing real-time progress visibi… |
 
 ## Hooks
 

@@ -9,7 +9,8 @@ user-invocable: false
 ## Overview
 
 Patterns, checklists and templates for reviewing a UI visually. **Analysis only** —
-to implement the improvements, use `dev:frontend-implement`.
+to implement the improvements, read the dev plugin's
+`skills/frontend/frontend-implement/SKILL.md` (the Skill tool cannot load it).
 
 ## Getting the Image In Front of You
 

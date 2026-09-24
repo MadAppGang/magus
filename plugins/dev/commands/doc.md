@@ -2,7 +2,7 @@
 name: doc
 description: Documentation command - generate, analyze, fix, or validate docs. Use for README, API docs, tutorials, changelogs.
 allowed-tools:  Agent, AskUserQuestion, Bash, Read, Glob, Grep
-skills: dev:documentation-standards, multimodel:quality-gates
+skills: dev:documentation-standards
 ---
 
 <role>

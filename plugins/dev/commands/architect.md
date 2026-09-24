@@ -2,7 +2,7 @@
 name: architect
 description: "Architecture design and technical planning — complexity-aware with plan mode reasoning and multi-model escalation"
 allowed-tools: Agent, AskUserQuestion, Bash, Read, Skill, Glob, Grep, EnterPlanMode, ExitPlanMode, mcp__plugin_claudish_claudish__team, mcp__plugin_claudish_claudish__run_prompt
-skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates
+skills: dev:context-detection, dev:universal-patterns
 ---
 
 <role>
@@ -126,10 +126,11 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates
     - Execute ALL 8 phases as documented below (the full architect workflow)
 
     **If "Brainstorm first" selected:**
-    - Load the `dev:brainstorming` skill using the Skill tool
-    - Pass $ARGUMENTS to the brainstorming skill
-    - The brainstorming skill handles the entire workflow (multi-model ideation -> consensus -> convergence)
-    - After brainstorming completes, optionally offer to continue into Architecture design mode
+    - Read `${CLAUDE_PLUGIN_ROOT}/skills/planning/brainstorming/SKILL.md` and follow it
+      with $ARGUMENTS as the topic. It carries `disable-model-invocation`, so the Skill
+      tool refuses it; reading the file is the route
+    - That file runs the whole workflow (multi-model exploration -> comparison -> user choice -> plan -> external plan review)
+    - After brainstorming completes, optionally offer to continue into Architecture design mode, carrying its `plan.md`
   </mode_selection>
 
   <critical_constraints>
@@ -645,14 +646,15 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:quality-gates
       TRIAGE: Moderate (open question), no retry
       Mode auto-inferred: Brainstorm first (open question / "how should I")
 
-      Load dev:brainstorming skill
-      Phase 0: Capture requirements and constraints (USER_GATE)
-      Phase 1: Parallel exploration (WebSocket vs SSE vs polling vs push)
-      Phase 2: Consensus analysis across models
-      Phase 3: User selects preferred approach
-      Phase 4: Detailed planning with confidence gates
-      Phase 5: Final validation
-      Optionally offer to continue into Architecture design mode
+      Read ${CLAUDE_PLUGIN_ROOT}/skills/planning/brainstorming/SKILL.md and follow it
+      1: Pin down the problem and constraints (AskUserQuestion)
+      2: Parallel exploration via claudish team (WebSocket vs SSE vs polling vs push)
+      3: Compare approaches across models
+      4: User selects preferred approach
+      5: Write plan.md
+      6: External plan-review panel (team-gate, plan-review)
+      7: User approval and hand-off
+      Optionally offer to continue into Architecture design mode with plan.md
     </execution>
   </example>
 

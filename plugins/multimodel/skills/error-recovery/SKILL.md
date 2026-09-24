@@ -987,46 +987,6 @@ Step 4: Consolidation (multi-model-validation)
   Notify user about 2 failures
 ```
 
-**error-recovery + quality-gates:**
-
-```
-Use Case: Test-driven loop with error recovery
-
-Step 1: Run Tests (quality-gates TDD pattern)
-  Bash: bun test
-
-Step 2: If Test Execution Fails (error-recovery)
-  Error type: Syntax error in test file
-
-  Recovery:
-    - Fix syntax error
-    - Retry test execution
-    - If still fails: Notify user, skip TDD phase
-
-Step 3: If Tests Pass (quality-gates)
-  Proceed to code review
-```
-
-**error-recovery + multi-agent-coordination:**
-
-```
-Use Case: Agent selection with fallback
-
-Step 1: Agent Selection (multi-agent-coordination)
-  Preferred: ui-developer-codex (external validation)
-
-Step 2: Check Tool Availability (error-recovery)
-  Bash: which claudish
-  Result: Not found
-
-Step 3: Fallback Strategy (error-recovery)
-  Log: "Claudish not installed, falling back to embedded ui-developer"
-  Use: ui-developer (embedded)
-
-Step 4: Execution (multi-agent-coordination)
-  Agent: dev:frontend-developer
-```
-
 ---
 
 ## Best Practices

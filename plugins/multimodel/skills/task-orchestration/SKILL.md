@@ -802,33 +802,6 @@ TaskUpdate: taskId="phase-3-id", status="in_progress"
 
 ## Integration with Other Skills
 
-**task-orchestration + multi-agent-coordination:**
-
-```
-Use Case: Multi-phase implementation workflow
-
-Step 1: Initialize Tasks (task-orchestration)
-  TaskCreate: subject="PHASE 1: Requirements"
-  TaskCreate: subject="PHASE 2: Architecture"
-  TaskCreate: subject="PHASE 3: Backend Implementation"
-  TaskCreate: subject="PHASE 4: Frontend Implementation"
-  TaskCreate: subject="PHASE 5: Testing"
-  ... (8 total phases)
-
-Step 2: Sequential Agent Delegation (multi-agent-coordination)
-  Phase 1: api-architect
-    TaskUpdate: taskId="phase-1-id", status="in_progress"
-    Delegate to api-architect
-    TaskUpdate: taskId="phase-1-id", status="completed"
-
-  Phase 2: backend-developer
-    TaskUpdate: taskId="phase-2-id", status="in_progress"
-    Delegate to backend-developer
-    TaskUpdate: taskId="phase-2-id", status="completed"
-
-  ... continue for all phases
-```
-
 **task-orchestration + multi-model-validation:**
 
 ```
@@ -857,28 +830,6 @@ Step 2: Parallel Execution (multi-model-validation)
 
 Step 3: Real-Time Visibility (task-orchestration)
   User sees: "PHASE 2: 3/5 reviews complete..."
-```
-
-**task-orchestration + quality-gates:**
-
-```
-Use Case: Iteration loop with Tasks tracking
-
-Step 1: Initialize Tasks (task-orchestration)
-  TaskCreate: subject="Iteration 1/10: Designer validation"
-  TaskCreate: subject="Iteration 2/10: Designer validation"
-  TaskCreate: subject="Iteration 3/10: Designer validation"
-  ... (10 iterations)
-
-Step 2: Iteration Loop (quality-gates)
-  For i = 1 to 10:
-    TaskUpdate: taskId="iter-i-id", status="in_progress"
-    Run designer validation
-    If PASS: Exit loop
-    TaskUpdate: taskId="iter-i-id", status="completed"
-
-Step 3: Progress Visibility
-  User sees: "Iteration 5/10 complete, 5 remaining"
 ```
 
 ---

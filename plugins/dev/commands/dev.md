@@ -2,7 +2,7 @@
 name: dev
 description: "Builds a feature through an 8-phase workflow, delegating each phase to a specialist agent. Depth picks how many phases run, automation how often it stops to ask."
 allowed-tools: Agent, AskUserQuestion, Bash, Read, EnterPlanMode, ExitPlanMode, Glob, Grep, mcp__plugin_claudish_claudish__team, mcp__plugin_claudish_claudish__list_models, mcp__plugin_claudish_claudish__search_models, mcp__plugin_claudish_claudish__create_session, mcp__plugin_claudish_claudish__get_output, mcp__plugin_claudish_claudish__get_diagnostics, mcp__chrome-devtools__navigate_page, mcp__chrome-devtools__take_screenshot, mcp__chrome-devtools__take_snapshot, mcp__chrome-devtools__click, mcp__chrome-devtools__fill, mcp__chrome-devtools__new_page, mcp__chrome-devtools__select_page, mcp__chrome-devtools__list_pages
-skills: dev:context-detection, dev:universal-patterns, dev:worktree-lifecycle, multimodel:multi-model-validation, multimodel:quality-gates, multimodel:model-tracking-protocol
+skills: dev:context-detection, dev:universal-patterns, dev:worktree-lifecycle, multimodel:multi-model-validation
 ---
 
 <role>

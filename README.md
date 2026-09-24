@@ -135,29 +135,20 @@ surface that does not change when the search engine does.
 **Version:** 3.2.0 | **Category:** Development | **Marketplace:** `magus`
 
 Multi-agent coordination and multi-model orchestration. Run the same task across several AI
-models in parallel, collect independent verdicts, and route work by complexity. Requires the
+models in parallel and collect independent verdicts. Requires the
 `claudish` runtime plugin (declared as a dependency).
 
 **Commands:**
 - `/multimodel:team` - Blind voting across models in parallel; aggregates APPROVE/REJECT verdicts
 - `/multimodel:delegate` - Hand a task to one external model running a full Claude Code session
 
-**Key skills** (16 total under `plugins/multimodel/skills/`):
-- **multi-agent-coordination** - Parallel vs sequential execution, agent selection, delegation
+**Skills** (3 under `plugins/multimodel/skills/`):
 - **multi-model-validation** - Run multiple models in parallel and compare findings
-- **task-complexity-router** - Match task complexity to the right model tier
 - **task-orchestration** - Phase tracking for complex multi-step workflows
-- **quality-gates** - Approval gates, iteration loops, severity classification
 - **error-recovery** - Timeouts, API failures, partial success, graceful degradation
 
 Model routing and provider backends are covered by `claudish:claudish-usage`, which ships
 with the `claudish` runtime plugin. Read it before ANY `claudish` command.
-
-**Usage:**
-```yaml
-# In your agent or command frontmatter
-skills: multimodel:multi-model-validation, multimodel:quality-gates
-```
 
 **Perfect for:** complex multi-phase workflows, multi-model validation, parallel execution
 patterns, production-grade error handling

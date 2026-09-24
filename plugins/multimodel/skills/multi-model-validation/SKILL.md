@@ -115,33 +115,10 @@ Task: "Debug this error, use different models"
 
 ## Related Skills
 
-> **CRITICAL: Tracking Protocol Required**
->
-> Before using any patterns in this skill, ensure you have completed the
-> pre-launch setup from `multimodel:model-tracking-protocol`.
->
-> Launching models without tracking setup = INCOMPLETE validation.
-
 **Cross-References:**
 
-- **multimodel:model-tracking-protocol** - MANDATORY tracking templates and protocols (NEW in v0.6.0)
-  - Pre-launch checklist (8 required items)
-  - Tracking table templates
-  - Failure documentation format
-  - Results presentation template
-- **multimodel:quality-gates** - Approval gates and severity classification
 - **multimodel:task-orchestration** - Progress tracking during execution
 - **multimodel:error-recovery** - Handling failures and retries
-
-**Skill Integration:**
-
-This skill (`multi-model-validation`) defines **execution patterns** (how to run models in parallel).
-The `model-tracking-protocol` skill defines **tracking infrastructure** (how to collect and present results).
-
-**Use both together:**
-```yaml
-skills: multimodel:multi-model-validation, multimodel:model-tracking-protocol
-```
 
 ---
 
@@ -1757,26 +1734,6 @@ In your finalization phase, show:
 
 ## Integration with Other Skills
 
-**multi-model-validation + quality-gates:**
-
-```
-Use Case: Cost approval before expensive multi-model review
-
-Step 1: Cost Estimation (multi-model-validation)
-  Calculate input/output tokens
-  Estimate cost range
-
-Step 2: User Approval Gate (quality-gates)
-  Present cost estimate
-  Ask user for approval
-  If NO: Offer alternatives or abort
-  If YES: Proceed with execution
-
-Step 3: Parallel Execution (multi-model-validation)
-  Follow 4-Message Pattern
-  Launch all models simultaneously
-```
-
 **multi-model-validation + error-recovery:**
 
 ```
@@ -2175,19 +2132,6 @@ Real-world feedback showed that agents often:
 - ❌ Present results without performance data
 
 **This checklist prevents those failures.**
-
-### Complete Tracking Protocol
-
-For the complete tracking protocol including:
-- Pre-launch checklist (8 required items)
-- Tracking table templates (simple, detailed, session-based)
-- Failure documentation format
-- Consensus analysis requirements
-- Results presentation template
-
-**See:** `multimodel:model-tracking-protocol`
-
-The tracking protocol skill provides copy-paste templates that make compliance easy and unforgettable.
 
 ### Pre-Flight Checklist (Before Launching Models)
 

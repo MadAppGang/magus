@@ -4,6 +4,79 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Marketplace 13.2.0] - 2026-09-24
+
+### Security
+
+- **`multimodel` v5.0.0**: its PreToolUse hook no longer approves tool calls. On every Bash
+  and Agent call it let through, the hook printed `permissionDecision: "allow"`, which Claude
+  Code documents as skipping the user's permission prompt. With multimodel installed, any
+  Bash command that no deny or ask rule covered ran without asking. The hook now exits 0 with
+  no output on those calls, which is "no decision", so your own permission rules and prompts
+  apply again. Its two denials, an agent outside the `/team` allow-list and a `/tmp/` path in
+  a vote prompt, are unchanged. Every earlier multimodel version carries the defect; update,
+  and update dev to 8.2.0 at the same time: dev 8.1.x declares `multimodel ^4.0` and does
+  not load beside 5.0.0.
+
+### Removed
+
+- **`multimodel` v5.0.0**: BREAKING — twelve skills are retired, leaving
+  `error-recovery`, `multi-model-validation` and `task-orchestration`. Gone:
+  `batching-patterns`, `multi-agent-coordination`, `task-complexity-router`,
+  `agent-enforcement`, `hierarchical-coordinator`, `hooks-system`, `performance-tracking`,
+  `proxy-mode-reference`, `session-isolation`, `task-external-models`, `quality-gates` and
+  `model-tracking-protocol`. Their jobs had moved: `claudish:claudish-usage` covers running
+  external models, dev's `team-gate` and `aggregate-reviews` cover review gates and
+  consensus, and effort levels replace keyword-scored model routing. `/multimodel:<name>`
+  for any of them now answers unknown.
+- The nine hidden ones had been out of the model's reach since they were hidden on the
+  premise that commands preload them. Claude Code reads `skills:` only in agent files, and
+  a hidden skill cannot be preloaded, so no command ever delivered them. Bench MTP-1 measured
+  `model-tracking-protocol` directly: read 0 times in 30 sessions on Claude Opus 5.5 and
+  Claude Sonnet 5, including with an explicit read line, and the review outcomes it guards
+  were 30/30 without it.
+- The multi-model design-review panel that lived in `multi-agent-coordination` moves to
+  `/designer:review --panel`. The rule that reviews of different targets are shown side by
+  side, never merged, moves into dev's `aggregate-reviews`. The measured `PermissionRequest`
+  permission-mode constraints from `hooks-system` move into dev's `plugin-sdk-patterns`.
+
+### Changed
+
+- **`dev` v8.2.0**: four hidden skills are rebuilt against the repo's current rules.
+  `browser-debugging` follows the real browser-use and claude-in-chrome contracts, runs no
+  claudish CLI and names no model from memory. `frontend-implement` lands every change as
+  theme tokens and library variants, never call-site values, and names the default styles to
+  avoid. `plugin-sdk-patterns` teaches the manifest at `.claude-plugin/plugin.json`, the
+  frontmatter keys Claude Code reads, `skills:` as an agent-only field, hook exit codes, and
+  MCP tool naming. `brainstorming` runs external models through claudish MCP tools and
+  compares approaches by judgment instead of a confidence formula.
+- `/dev:architect` reads the brainstorming file instead of calling the Skill tool, which
+  refuses hidden skills. `systematic-debugging` routes to `browser-debugging` the same way.
+- `aggregate-reviews` refuses reviews of different targets rather than merging them into
+  one verdict.
+- The coaching rules no longer name retired multimodel skills, and five dev commands drop
+  the retired names from their `skills:` lines.
+- dev now declares `multimodel ^5.0`. A plugin whose declared dependency is unmet does not
+  load at all, so dev 8.2.0 and multimodel 5.0.0 update together.
+
+### Added
+
+- **`designer` v0.9.0**: `/designer:review --panel "<model>,…"` runs the same comparison
+  through several external vision models via claudish and merges the reviews with
+  `designer:review`'s own PASS / WARN / FAIL / CRITICAL scale. Each panel model judges the
+  images with its own read (`designer:review` takes a new `JUDGE: self` input for this), and
+  each slot writes to its own directory. Model IDs are resolved from the live catalog, and it
+  takes image files only.
+- `ui-analyse` names the `frontend-implement` file to read, since the Skill tool cannot load
+  that hidden skill.
+
+### Why
+
+- A prompt audit of every plugin against Claude Opus 5.5 found these skills stale or
+  unreachable; the report and plan are in `docs/plans/2026-09-23-prompt-audit/`.
+
+---
+
 ## [magus 7.5.2] - 2026-09-24
 
 ### Fixed

@@ -50,16 +50,13 @@ claudish is published to both `magus` and `magus-marketing` while this plugin is
 
 ## Skills
 
-Sixteen skills covering orchestration. The ones you are most likely to want:
+Three skills covering orchestration, plus the claudish skill they build on:
 
 | Skill | Covers |
 |---|---|
 | `claudish:claudish-usage` | Model routing and provider backends. Read before ANY claudish command. Ships with the claudish plugin |
-| `multimodel:multi-agent-coordination` | Parallel vs sequential execution, agent selection, delegation |
 | `multimodel:multi-model-validation` | Running a task across models and comparing findings |
-| `multimodel:task-complexity-router` | Matching task complexity to the right model tier |
 | `multimodel:task-orchestration` | Phase tracking for multi-step workflows |
-| `multimodel:quality-gates` | Approval gates, iteration loops, severity classification |
 | `multimodel:error-recovery` | Timeouts, API failures, partial success, graceful degradation |
 
 ## In agent and command workflows

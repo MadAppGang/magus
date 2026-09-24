@@ -210,7 +210,6 @@ v1.0.0 (go1.22.0)
 - **test-driven-development:** TDD provides the tests you'll use as verification evidence
 - **systematic-debugging:** Debug process ends with fix verification (this skill)
 - **agent-coordination-discipline:** Agents must return verification evidence, not just claims
-- **quality-gates:** Quality gate checks are verification evidence types
 
 ## Quick Reference
 

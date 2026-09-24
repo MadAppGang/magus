@@ -47,6 +47,7 @@ skills:
       - OUTPUT_DIR (pre-created by the caller, or generated in Phase 0)
       - SESSION_PATH (optional)
       - REVIEW_SCOPE (single-image mode only: usability | accessibility | comprehensive)
+      - JUDGE (optional): `self` when this run is one slot of a `/designer:review --panel`
 
       Missing IMPL_SOURCE → return the completion message with Verdict BLOCKED naming the
       file the caller must supply. Do not guess a path.
@@ -185,6 +186,11 @@ skills:
           (Pattern 2) from `designer:ui-analyse` at REVIEW_SCOPE depth, ending with the
           same ```json shape where `categories` are `usability`, `accessibility`,
           `hierarchy`, `consistency`.</step>
+        <step>With `JUDGE: self` you are already one of the external models on a panel:
+          skip Procedure A, `Read` the image(s) yourself, reference first, answer the same
+          prompt, and set JUDGED_BY = "<your model id> (panel slot, own read)". Starting
+          another claudish team from a panel slot would hand every slot the same judge.
+          Otherwise continue with the next step.</step>
         <step>Run Procedure A, Steps 1–5: resolve JUDGE_MODEL, write `${JUDGE_DIR}/input.md`
           naming the image paths in order (reference first), `team(mode="run", …,
           require_pattern="\"overallScore\"")`, poll `status` to settled (ceiling 10 min),

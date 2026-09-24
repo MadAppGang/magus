@@ -65,6 +65,11 @@ SESSION_PATH: optional context. Not a file to read.
 - No `THRESHOLDS:` → do the whole consolidation, then end the report with
   `VERDICT: none — THRESHOLDS absent from dispatch` in place of a verdict. The gate
   that reads the file is meant to fail on that.
+- Reviews of different targets → do not consolidate. Consolidation needs reviews of one
+  target that share a location scheme, a severity scale and a verdict vocabulary; a
+  Figma design review, a browser usability test and a code review share none of those.
+  Name each review and what it covers, write no verdict, and say they belong side by
+  side in the dispatcher's summary.
 
 ### N = 1 is a passthrough with a verdict
 

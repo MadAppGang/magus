@@ -58,5 +58,5 @@ invites picking a technique before you have a hypothesis.
 
 ## Related
 
-- `dev:browser-debugging` — anything involving a browser, console, or network tab
+- Browser, console or network-tab bugs — read `${CLAUDE_PLUGIN_ROOT}/skills/frontend/browser-debugging/SKILL.md` (hidden from the Skill tool; the file read works)
 - `dev:test-driven-development` — writing the failing test that pins the bug
