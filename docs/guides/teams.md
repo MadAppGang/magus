@@ -81,10 +81,11 @@ Because the config files are generated, one developer on `frontend` and another 
 produce no git diff between them. `magus install` and `magus profile switch` add the
 generated paths to `.gitignore` for you.
 
-If one of them was committed before, a `.gitignore` line does not untrack it, so magus will
-not write it. Every command that would — and the TUI — stops, changes nothing at all, and
-names each tracked path with the fix: run `git rm --cached <path>`, commit, then run the
-command again.
+If one of them was committed before, a `.gitignore` line does not untrack it. magus writes it
+anyway and asks about it: every time you open magus, the gitignore question names the file as
+one that should be ignored, and its first choice stops tracking it for you (staged, for you to
+commit). The CLI prints a warning with the fix — `git rm --cached <path>`, then commit — and
+never runs git itself.
 
 A plugin that needs other plugins to load (its dependencies) gets them: a profile enables
 what its plugins depend on even when another profile lists them, without writing them into

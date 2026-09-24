@@ -4,6 +4,32 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [magus 7.5.3] - 2026-09-24
+
+### Changed
+
+- **A settings file your repo commits no longer blocks magus.** magus 7.5.1 refused to write
+  `.claude/settings.json`, `.mcp.json`, `.claude/models.json` or a magus-installed skill folder
+  when git tracked it. In a repo that commits `settings.json` and had no `profiles.json`, that
+  left the startup profile question with no way forward: saving what you have was refused, and
+  dismissing brought the same question back. magus now writes those files as usual and asks
+  about them instead.
+- **The TUI asks about tracked generated files on every open.** In a project with profiles,
+  the startup gitignore question names each generated file git tracks as one that should be
+  ignored — every time you open magus until it is fixed, and right after you save your first
+  profile. Its first choice stops tracking those files in place (the removal is staged for you
+  to commit) and adds the `.gitignore` entries, then returns you to the app. The Git State tab
+  lists the same files with a per-file fix, and Dismiss leaves everything as it is.
+- **The command line warns instead of refusing.** `magus install`, `magus profile switch` and
+  `magus update` print one warning per tracked generated file with the fix —
+  `git rm --cached <path>`, then commit — and exit normally. They never run git themselves.
+  `magus doctor` lists it as a note and no longer fails because of it.
+- **A skill folder your team committed is never treated as magus's.** magus 7.5.0 recorded some
+  committed skill folders as ones it had installed. magus now hands them back — it says so once
+  — and never flags them as tracked, untracks them or removes them.
+
+---
+
 ## [Marketplace 13.2.0] - 2026-09-24
 
 ### Security
