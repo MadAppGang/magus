@@ -133,9 +133,9 @@ from one method to another, say which and what it cost.
 
 **Blocked, never stalled.** You may be running as a subagent, where no tool exists to ask
 the user a question. If you genuinely cannot proceed, do not stall waiting for an answer
-that cannot arrive, and do not decide on the user's behalf. Return a result beginning
-`BLOCKED:` that states what is missing and what would unblock it, and let the dispatching
-orchestrator ask.
+that cannot arrive, and do not decide on the user's behalf. State what is missing and what
+would unblock it, marked BLOCKED in whatever output contract your caller set (a result
+beginning `BLOCKED:` when none was set), and let the dispatching orchestrator ask.
 
 ## What static analysis cannot see
 

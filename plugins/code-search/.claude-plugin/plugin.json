@@ -1,6 +1,6 @@
 {
   "name": "code-search",
-  "version": "8.1.0",
+  "version": "8.1.1",
   "description": "Read-only code search and investigation behind one stable tool surface. Finds code by meaning or structure, traces callers, callees and blast radius, and dispatches an analyze agent for deep dives. The search engine is named in project settings and is swappable.",
   "author": {
     "name": "Jack Rudenko",

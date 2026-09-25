@@ -119,8 +119,11 @@ tmux -f /dev/null -L "$SOCK" new-session -d -s "$SESS" -x 80 -y 24 "go run ."
 for _ in $(seq 40); do sleep 0.25; tmux -f /dev/null -L "$SOCK" capture-pane -p -e -t "$SESS" >"$OUT/tui.ansi" 2>/dev/null && grep -q $'\x1b' "$OUT/tui.ansi" && break; done
 tmux -f /dev/null -L "$SOCK" kill-window -t "$SESS"   # its only window: the session and the private server end with it
 
-# 3. render to a 2x color PNG (Bun + aha + a Chromium-family browser, offscreen):
-bun run scripts/ansi-to-png.ts "$OUT/tui.ansi" "$OUT/tui.png" 900x600
+# 3. render to a 2x color PNG (Bun + aha + a Chromium-family browser, offscreen). The script
+#    lives beside this SKILL.md, not in your project; CLAUDE_PLUGIN_ROOT is unset in a Bash
+#    tool call, so paste the directory this file was read from over the placeholder:
+SKILL="${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/skills/go-tui}"; SKILL="${SKILL:-PASTE_THE_DIR_THIS_SKILL_MD_WAS_READ_FROM}"
+bun run "$SKILL/scripts/ansi-to-png.ts" "$OUT/tui.ansi" "$OUT/tui.png" 900x600
 
 # 4. Read("$OUT/tui.png") and judge: semantic color, alignment, density, no black gaps.
 #    Then fix the code and repeat. Capture one narrow (80x24) AND one wide size.

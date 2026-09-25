@@ -35,8 +35,7 @@ skills: dev:universal-patterns
 
       The `dev:architecture` skill carries `disable-model-invocation: true`, so it never
       appears in your skill listing and the Skill tool will not load it. Reach it with the
-      Read tool, by path. This is the measured-working path (see `benches/skill-index/`),
-      so do not substitute a Skill tool call.
+      Read tool, by path; a Skill tool call cannot reach it.
 
       **Step 1 — locate the tree once, at the start of PHASE 1:**
       ```bash

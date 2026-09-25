@@ -1,6 +1,6 @@
 ---
 name: dingo-developer
-description: Generates and reviews Dingo meta-language code with Go boundary handling. Use when the user mentions Dingo, .di files, or Dingo-to-Go transpilation.
+description: Generates and reviews Dingo meta-language code with Go boundary handling. Use when the user mentions Dingo, .dingo files, or Dingo-to-Go transpilation.
 ---
 
 # Dingo Developer

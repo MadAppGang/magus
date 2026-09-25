@@ -16,7 +16,7 @@ Error recovery is the practice of handling failures gracefully in multi-agent wo
 
 This skill provides battle-tested patterns for:
 - **User escalation** (STOP and report before fallback — DEFAULT)
-- **Timeout handling** (external models taking >30s)
+- **Timeout handling** (external models running longer than expected)
 - **API failure recovery** (401, 500, network errors)
 - **Partial success strategies** (some agents succeed, others fail)
 - **User cancellation** (graceful Ctrl+C handling)
@@ -84,92 +84,50 @@ Options:
 Which do you prefer?"
 ```
 
-**Why this matters:** When a user says "use Gemini", they've made a deliberate choice — for its 1M context, its reasoning style, or for model diversity. Silently substituting GPT-5 defeats the purpose. The user should always be in control of model selection decisions.
+**Why this matters:** When a user says "use Gemini", they've made a deliberate choice — for its 1M context, its reasoning style, or for model diversity. Silently substituting another model defeats the purpose. The user should always be in control of model selection decisions.
 
 ---
 
 ### Pattern 1: Timeout Handling
 
-**Scenario: External Model Takes >30s**
+**Scenario: A model is running longer than expected**
 
-External AI models via Claudish may take >30s due to:
-- Model service overloaded (high demand)
-- Network latency (slow connection)
-- Complex task (large input, detailed analysis)
-- Model thinking time (GPT-5, Grok reasoning models)
+`team` has no timeout: a slot runs until it finishes, fails, or you cancel it.
+`create_session` takes `timeout_seconds` (`/delegate` uses 300). A value in the tens of
+seconds kills sessions that are working normally, because a model running a build or a
+test suite goes quiet while the tool runs.
 
-**Detection:**
+**Detection:** poll `team(mode="status")` and read `idle_seconds_by_slot` together with
+`activity_by_slot`:
+- idle in `tool_executing` — a local tool is running; keep polling
+- idle in `running` — the model stopped mid-answer; candidate for cancel
+- `waiting_for_input` — it asked a question nothing will answer; candidate for cancel
 
-```
-Monitor execution time and set timeout limits:
-
-const TIMEOUT_THRESHOLD = 30000; // 30 seconds
-
-startTime = Date.now();
-executeClaudish(model, prompt);
-
-setInterval(() => {
-  elapsedTime = Date.now() - startTime;
-  if (elapsedTime > TIMEOUT_THRESHOLD && !modelResponded) {
-    handleTimeout();
-  }
-}, 1000);
-```
-
-**Recovery Strategy:**
-
-```
-Step 1: Detect Timeout
-  Log: "Timeout: grok after 30s with no response"
-
-Step 2: Notify User
-  Present options:
-    "Model 'Grok' timed out after 30 seconds.
-     Options:
-     1. Retry with 60s timeout
-     2. Skip this model and continue with others
-     3. Cancel entire workflow
-
-     What would you like to do? (1/2/3)"
-
-Step 3a: User selects RETRY
-  Increase timeout to 60s
-  Re-execute claudish with longer timeout
-  If still times out: Offer skip or cancel
-
-Step 3b: User selects SKIP
-  Log: "Skipping Grok review due to timeout"
-  Mark this model as failed
-  Continue with remaining models
-  (Graceful degradation pattern)
-
-Step 3c: User selects CANCEL
-  Exit workflow gracefully
-  Save partial results (if any)
-  Log cancellation reason
-```
+**Recovery:** at your poll ceiling, report each still-running slot with its idle seconds
+and activity, and ask the user whether to wait longer, cancel it and continue with the
+others, or cancel the workflow. Do not cancel automatically.
 
 **Graceful Degradation:**
 
 ```
 Multi-Model Review Example:
 
-Requested: 5 models (Claude, Grok, Gemini, GPT-5, DeepSeek)
-Timeout: Grok after 30s
+Requested: 5 models (Claude, Grok, Gemini, GPT, DeepSeek)
+Grok: still running at the poll ceiling; the user chose to cancel it
 
 Result:
   - Claude: Success ✓
-  - Grok: Timeout ✗ (skipped)
+  - Grok: Cancelled ✗
   - Gemini: Success ✓
-  - GPT-5: Success ✓
+  - GPT: Success ✓
   - DeepSeek: Success ✓
 
 Successful: 4/5 models (80%)
-Threshold: N ≥ 2 for consolidation ✓
+dev:aggregator runs at N ≥ 1 ✓
 
 Action:
   Proceed with consolidation using 4 reviews
-  Notify user: "4/5 models completed (Grok timeout). Proceeding with 4-model consensus."
+  Notify user: "4/5 models completed (Grok cancelled). Proceeding with 4-model consensus."
 
 Benefits:
   - Workflow completes despite failure
@@ -181,7 +139,7 @@ Benefits:
 
 ```
 # Via create_session MCP tool (timeout handled by the tool)
-create_session(model="grok", prompt=PROMPT, timeout_seconds=30)
+create_session(model="grok", prompt=PROMPT, timeout_seconds=300)
 
 # React to channel events:
 # - completed → get_output(session_id) → process result
@@ -373,10 +331,10 @@ If ALL external models fail (401, 500, network, etc.):
       Errors:
       - Grok: Network timeout
       - Gemini: 500 Internal Server Error
-      - GPT-5: Rate limited (429)
+      - GPT: Rate limited (429)
       - DeepSeek: Authentication failed (401)
 
-      Proceeding with Claude Sonnet (embedded) only."
+      Proceeding with the internal reviewer only."
 
   3. Run embedded Claude review
   4. Present results with disclaimer:
@@ -400,15 +358,13 @@ In multi-model workflows, it's common for some models to succeed while others fa
 **Tracking Success/Failure:**
 
 ```
-const results = await Promise.allSettled([
-  Agent({ subagent: "reviewer", model: "claude" }),
-  Agent({ subagent: "reviewer", model: "grok" }),
-  Agent({ subagent: "reviewer", model: "gemini" }),
-  Agent({ subagent: "reviewer", model: "gpt-5" })
-]);
+// External models: one team call, then read the SETTLED status
+team(mode="run", path=SESSION_DIR, models=[...resolved live...], input_file=INPUT_MD,
+  require_pattern=<shape the prompt mandates>)
+team(mode="status", path=SESSION_DIR)   // until no slot is RUNNING
 
-const successful = results.filter(r => r.status === 'fulfilled');
-const failed = results.filter(r => r.status === 'rejected');
+const successful = slots.filter(s => status.models[s].state === "COMPLETED");
+const failed     = slots.filter(s => status.models[s].state !== "COMPLETED");
 
 log(`Success: ${successful.length}/4`);
 log(`Failed: ${failed.length}/4`);
@@ -417,22 +373,22 @@ log(`Failed: ${failed.length}/4`);
 **Decision Logic:**
 
 ```
-If N ≥ 2 successful:
-  → Proceed with consolidation
-  → Use N reviews (not all 4)
-  → Notify user about failures
+If N ≥ 1 successful:
+  → Dispatch dev:aggregator with the N review files (at N = 1 it passes the
+    single review through with a verdict line)
+  → Notify user about failures, and offer to retry them
 
-If N < 2 successful:
-  → Insufficient data for consensus
+If N = 0:
+  → Nothing to consolidate
   → Offer user choice:
     1. Retry failures
     2. Abort workflow
-    3. Proceed with embedded Claude only
+    3. Proceed with embedded Claude only (not when the user named the models — Pattern 0)
 
 Example:
 
 successful.length = 2 (Claude, Gemini)
-failed.length = 2 (Grok timeout, GPT-5 500 error)
+failed.length = 2 (Grok cancelled at the poll ceiling, GPT 500 error)
 
 Action:
   notifyUser("2/4 models completed successfully. Proceeding with consolidation using 2 reviews.");
@@ -446,8 +402,8 @@ Action:
     totalModels: 4,
     successful: 2,
     failureReasons: {
-      grok: "Timeout after 30s",
-      gpt5: "500 Internal Server Error"
+      grok: "Cancelled at the poll ceiling (user choice)",
+      gpt: "500 Internal Server Error"
     }
   });
 ```
@@ -465,20 +421,20 @@ Be transparent with user about partial success:
   "Multi-model review complete (2/4 models succeeded).
 
    Successful:
-   - Claude Sonnet ✓
-   - Gemini 2.5 Flash ✓
+   - internal ✓
+   - Gemini ✓
 
    Failed:
-   - Grok: Timeout after 30s
-   - GPT-5 Codex: 500 Internal Server Error
+   - Grok: cancelled at the poll ceiling
+   - GPT: 500 Internal Server Error
 
    Proceeding with 2-model consensus.
    Top issues: [...]"
 
 User knows:
   - What succeeded (Claude, Gemini)
-  - What failed (Grok, GPT-5)
-  - Why they failed (timeout, 500 error)
+  - What failed (Grok, GPT)
+  - Why they failed (cancelled, 500 error)
   - What action was taken (2-model consensus)
 ```
 
@@ -639,24 +595,16 @@ if (state) {
 **Detection:**
 
 ```
-Check if claudish CLI is installed:
-
-Bash: which claudish
-Exit code 0: Installed ✓
-Exit code 1: Not installed ✗
-
-Or:
-
-Bash: claudish --version
-Output: "claudish version 2.2.1" → Installed ✓
-Error: "command not found" → Not installed ✗
+The claudish MCP tools (`team`, `create_session`, `list_models`) are absent from the
+tools list. That, not a shell probe, is the signal: the tools are what the workflow calls,
+and the plugin's MCP server registers only when the claudish CLI is installed.
 ```
 
 **Recovery Strategy:**
 
 ```
 Step 1: Detect Missing Claudish
-  hasClaudish = checkCommand('which claudish');
+  hasClaudish = claudishMcpToolsInToolsList();
 
   if (!hasClaudish) {
     log("Claudish CLI not found");
@@ -671,7 +619,7 @@ Step 2: Notify User with Installation Instructions
    2. Configure: Set OPENROUTER_API_KEY in .env
    3. Re-run this command
 
-   For now, falling back to embedded Claude Sonnet only."
+   For now, continuing with the internal reviewer only."
 
 Step 3: Fallback to Embedded Claude
   log("Falling back to embedded Claude review");
@@ -688,21 +636,12 @@ Benefits:
 ```
 Phase 2: Model Selection
 
-Bash: which claudish
-if [ $? -ne 0 ]; then
-  # Claudish not installed
-  echo "⚠️ Claudish CLI not found."
-  echo "Install: npm install -g claudish"
-  echo "Falling back to embedded Claude only."
-
-  # Skip external model selection
-  selectedModels=["claude-sonnet"]
-else
-  # Claudish available
-  echo "Claudish CLI found ✓"
-  # Proceed with external model selection
-  selectedModels=["claude-sonnet", "grok", "gemini", "gpt-5"]
-fi
+If the claudish MCP tools are not in the tools list:
+  Tell the user: "claudish MCP tools unavailable. Install with
+  `npm install -g claudish`, then restart the session."
+  selectedModels = ["internal"]            # only if the user named no external model
+Otherwise:
+  selectedModels = ["internal", ...resolved live from list_models...]
 ```
 
 ---
@@ -746,7 +685,7 @@ Step 3: Notify User
    2. Add credits to your account
    3. Re-run this command
 
-   For now, falling back to embedded Claude Sonnet."
+   For now, continuing with the internal reviewer only."
 
 Step 4: Skip All External Models
   skipAllExternalModels();
@@ -974,12 +913,12 @@ Step 1: Parallel Execution (multi-model-validation)
 Step 2: Error Recovery (error-recovery)
   Model 1: Success ✓
   Model 2: Timeout → Skip (timeout handling pattern)
-  Model 3: 500 error → Retry once, then skip
+  Model 3: 500 error → Report it; no automatic retry or substitution
   Model 4: Success ✓
   Model 5: Success ✓
 
 Step 3: Partial Success Strategy (error-recovery)
-  3/5 successful (≥ 2 threshold)
+  3/5 successful (dev:aggregator runs at N ≥ 1)
   Proceed with consolidation using 3 reviews
 
 Step 4: Consolidation (multi-model-validation)
@@ -992,14 +931,14 @@ Step 4: Consolidation (multi-model-validation)
 ## Best Practices
 
 **Do:**
-- ✅ Set timeout limits (30s default, 60s for complex tasks)
+- ✅ Bound the poll loop, and read idle seconds with activity before calling a slot hung
 - ✅ Retry transient errors (network, 500, 503)
 - ✅ Use exponential backoff (avoid hammering services)
 - ✅ Skip non-retriable errors (401, 404, don't retry)
 - ✅ Provide graceful degradation (fallback to embedded Claude)
 - ✅ Save partial results on cancellation
 - ✅ Communicate transparently (tell user what failed and why)
-- ✅ Adapt to partial success (N ≥ 2 reviews is useful)
+- ✅ Adapt to partial success (dev:aggregator runs at N ≥ 1)
 - ✅ Offer error reporting for provider/stream failures (report_error tool)
 
 **Don't:**
@@ -1025,29 +964,29 @@ Step 4: Consolidation (multi-model-validation)
 
 ### Example 1: Timeout with Retry
 
-**Scenario:** Grok model times out, user retries with longer timeout
+**Scenario:** A delegated Grok session hits its timeout, user retries with a longer one
 
 **Execution:**
 
 ```
 Attempt 1:
-  create_session(model="grok", prompt=PROMPT, timeout_seconds=30)
-  Result: failed channel event — timeout after 30s
+  create_session(model="grok", prompt=PROMPT, timeout_seconds=300)
+  Result: timeout channel event after 300s — get_diagnostics shows it was mid-test-run
 
   Notify user:
-    "⚠️ Grok timed out after 30s.
+    "⚠️ Grok hit its 300s timeout while running the test suite.
      Options:
-     1. Retry with 60s timeout
+     1. Retry with timeout_seconds=900
      2. Skip Grok
      3. Cancel workflow"
 
   User selects: 1 (Retry)
 
 Attempt 2:
-  create_session(model="grok", prompt=PROMPT, timeout_seconds=60)
-  Result: completed channel event after 45s
+  create_session(model="grok", prompt=PROMPT, timeout_seconds=900)
+  Result: completed channel event after 7 min
 
-  Log: "Grok review completed on retry (45s)"
+  Log: "Grok review completed on retry (7 min)"
   get_output(session_id) → process result
   Continue with workflow
 ```
@@ -1061,30 +1000,30 @@ Attempt 2:
 **Execution:**
 
 ```
-Launch 4 models in parallel:
-  Task: Claude (embedded)
-  Task: Grok (external)
-  Task: Gemini (external)
-  Task: GPT-5 (external)
+One team run, 4 slots:
+  internal (host model)
+  Grok (external)
+  Gemini (external)
+  GPT (external)
 
 Results:
   Claude: Success ✓ (2 min)
-  Grok: Timeout ✗ (30s)
+  Grok: Cancelled ✗ (still running at the poll ceiling)
   Gemini: 500 error ✗ (retry failed)
-  GPT-5: Success ✓ (3 min)
+  GPT: Success ✓ (3 min)
 
-successful.length = 2 (Claude, GPT-5)
-2 ≥ 2 ✓ (threshold met)
+successful.length = 2 (Claude, GPT)
+2 ≥ 1 ✓ (dev:aggregator runs at N ≥ 1)
 
 Notify user:
   "2/4 models completed successfully.
 
    Successful:
-   - Claude Sonnet ✓
-   - GPT-5 Codex ✓
+   - internal ✓
+   - GPT ✓
 
    Failed:
-   - Grok: Timeout after 30s
+   - Grok: cancelled at the poll ceiling
    - Gemini: 500 Internal Server Error (retry failed)
 
    Proceeding with 2-model consensus."
@@ -1092,7 +1031,7 @@ Notify user:
 Consolidate:
   consolidateReviews([
     "ai-docs/claude-review.md",
-    "ai-docs/gpt5-review.md"
+    "ai-docs/gpt-review.md"
   ]);
 
 Present results with 2-model consensus
@@ -1216,7 +1155,7 @@ Error recovery ensures resilient workflows through:
 
 - **Timeout handling** (detect, retry with longer timeout, or skip)
 - **API failure recovery** (retry transient, skip permanent)
-- **Partial success strategies** (N ≥ 2 threshold, adapt to failures)
+- **Partial success strategies** (dev:aggregator runs at N ≥ 1; adapt to failures)
 - **User cancellation** (graceful Ctrl+C, save partial results)
 - **Missing tools** (claudish not installed, fallback to embedded)
 - **Out of credits** (402 error, fallback to free models)

@@ -2,7 +2,6 @@
 name: fix
 description: "Fixes a bug test-first — reproduce, localize, plan, patch, validate. Two multimodel gates, one on the root-cause hypothesis before any code and one on the finished patch."
 allowed-tools:  Agent, AskUserQuestion, Bash, Read, Glob, Grep, Write, Edit, Skill, mcp__plugin_claudish_claudish__team, mcp__plugin_claudish_claudish__run_prompt, mcp__plugin_claudish_claudish__list_models
-skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-development, dev:testing-strategies, dev:verification-before-completion, multimodel:error-recovery
 ---
 
 <role>
@@ -66,24 +65,12 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
 <instructions>
 
   <critical_constraints>
-    <todowrite_requirement>
-      You MUST use Tasks to track all 8 phases plus the two review gates.
-
-      Before starting, create this todo list:
-      0. Initialize (session setup, flag parsing, skill loading)
-      1. REPRODUCE (confirm bug, detect stack, capture error signature)
-      2. LOCALIZE (3-strategy fault localization with context budget)
-      3. PLAN (root cause analysis + Phase A multimodel review)
-      4. PATCH (TDD: RED → VERIFY RED → GREEN, apply minimal fix)
-      5. VALIDATE (full test suite + quality checks + downgrade offer)
-      6. REVIEW-B (multimodel patch quality vote — after full validation)
-      7. MONITOR (optional 3-tier deployment monitoring)
-      8. DOCUMENT (fix-report.md + git commit)
-
-      Mark each phase in_progress before starting it.
-      Update continuously as you progress.
-      Mark ALL tasks completed in Phase 8.
-    </todowrite_requirement>
+    <phase_reporting>
+      There are no task-list tools. Announce each of the nine phases (0 Initialize
+      through 8 DOCUMENT) in one line of text — `**Phase N — starting.**` and
+      `**Phase N — complete.**` naming its artifacts — and let the session files be the
+      record.
+    </phase_reporting>
 
     <orchestrator_role>
       **You are an ORCHESTRATOR, not an IMPLEMENTER.**
@@ -165,12 +152,13 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
   <phase number="0" name="Initialize">
     <objective>Load skills, establish session, parse flags, isolate bug description</objective>
     <steps>
-      <step>Mark PHASE 0 as in_progress</step>
 
       <step name="load-skills">
         Invoke the following skills via the Skill tool to load their patterns before
         any delegation or localization work:
         - Skill("dev:systematic-debugging") — session setup, localization, workflow (see session-setup.md, localization.md)
+        - Skill("dev:test-driven-development") — the RED → VERIFY RED → GREEN loop of Phase 4
+        - Skill("dev:testing-strategies") — test naming and level for the Phase 4 reproduction test
         Apply these patterns throughout all phases below.
       </step>
 
@@ -202,8 +190,9 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
 
         1. Presence: claudish is available when `which claudish` succeeds or the
            `mcp__plugin_claudish_claudish__team` tool is registered in this session.
-           Never test for an installed `multimodel` plugin — this command depends on
-           the claudish runtime, not on the multimodel orchestration plugin.
+           Presence means claudish, not the multimodel plugin: the review gates need
+           only the claudish runtime. multimodel is optional, and this command runs
+           the same without it.
         2. `--models a,b` given → validate every id against `list_models`. An id the
            catalog does not carry is an error: name it, show the live alternatives, and
            stop. Never substitute a near match or a lower version.
@@ -236,7 +225,6 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
         and the same for `fix-gate-B`, the reason being `claudish absent` or `MODELS none`.
       </step>
 
-      <step>Mark PHASE 0 as completed</step>
     </steps>
     <output>SESSION_PATH established, skills loaded, BUG_DESCRIPTION isolated, flags captured</output>
     <estimated_duration>30 seconds</estimated_duration>
@@ -246,7 +234,6 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
     <objective>Confirm bug is reproducible; capture error signature for monitoring baseline</objective>
     <inputs>BUG_DESCRIPTION, any stack trace or error message from user input</inputs>
     <steps>
-      <step>Mark PHASE 1 as in_progress</step>
 
       <step name="1a-record-baseline">
         **Step 1a — Record the review baseline. Do this FIRST.**
@@ -381,7 +368,6 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
         All sections are required. Use exact sentinel strings for absent data.
       </step>
 
-      <step>Mark PHASE 1 as completed</step>
     </steps>
     <decision_point>
       If bug cannot be confirmed reproducible and no error signature is available:
@@ -396,7 +382,6 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
     <objective>Identify exact files and functions containing the bug using 3-strategy localization</objective>
     <inputs>${SESSION_PATH}/bug-report.md, stack trace from bug-report.md</inputs>
     <steps>
-      <step>Mark PHASE 2 as in_progress</step>
 
       <step>
         Apply dev:systematic-debugging → localization.md — run all three strategies in order.
@@ -482,7 +467,6 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
         ```
       </step>
 
-      <step>Mark PHASE 2 as completed</step>
     </steps>
     <output>${SESSION_PATH}/localization.md</output>
     <tools>Grep, Glob, Read (line-range), mcp__plugin_code-search_ca__code_search (if needed)</tools>
@@ -493,7 +477,6 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
     <objective>Generate root cause hypothesis + fix approach; gate on Phase A multimodel consensus</objective>
     <inputs>${SESSION_PATH}/localization.md, ${SESSION_PATH}/bug-report.md</inputs>
     <steps>
-      <step>Mark PHASE 3 as in_progress</step>
 
       <step name="debugger-delegation">
         Launch dev:debugger with full localized context. It has Bash but not Write, so it
@@ -691,7 +674,6 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
         ```
       </human_gate>
 
-      <step>Mark PHASE 3 as completed</step>
     </steps>
     <output>${SESSION_PATH}/root-cause.md, ${SESSION_PATH}/root-cause-review.md (if review ran)</output>
     <estimated_duration>3-8 minutes (including ~55s parallel review)</estimated_duration>
@@ -701,7 +683,6 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
     <objective>Write failing reproduction test (RED), verify it fails, apply minimal fix (GREEN)</objective>
     <inputs>${SESSION_PATH}/root-cause.md, ${SESSION_PATH}/context.json</inputs>
     <steps>
-      <step>Mark PHASE 4 as in_progress</step>
 
       <step name="4a-red-test">
         **Step 4a — Write reproduction test (RED)**
@@ -808,7 +789,6 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
         changed files and main hunks, to keep the REVIEW-B vote prompt context manageable.
       </step>
 
-      <step>Mark PHASE 4 as completed</step>
     </steps>
     <output>Applied patch, ${SESSION_PATH}/patch.diff, ${SESSION_PATH}/test-path.txt</output>
     <estimated_duration>5-10 minutes</estimated_duration>
@@ -818,7 +798,6 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
     <objective>Full test suite + quality checks; confirm no regressions; offer downgrade if clean</objective>
     <inputs>${SESSION_PATH}/patch.diff, ${SESSION_PATH}/context.json</inputs>
     <steps>
-      <step>Mark PHASE 5 as in_progress</step>
 
       <step name="5a-full-suite">
         **Step 5a — Full test suite**
@@ -897,7 +876,6 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
         If SKIP_REVIEW was already set via --no-review flag, skip this question entirely.
       </step>
 
-      <step>Mark PHASE 5 as completed</step>
     </steps>
     <output>${SESSION_PATH}/validation-report.md</output>
     <estimated_duration>2-5 minutes</estimated_duration>
@@ -908,7 +886,6 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
     <condition>Skip if SKIP_REVIEW=true (--no-review flag or downgrade offer accepted)</condition>
     <inputs>${SESSION_PATH}/patch.diff, ${SESSION_PATH}/validation-report.md, ${SESSION_PATH}/test-path.txt, ${SESSION_PATH}/config.json (MODELS)</inputs>
     <steps>
-      <step>Mark PHASE 6 (REVIEW-B) as in_progress</step>
 
       <step>
         Read MODELS from ${SESSION_PATH}/config.json (resolved once in Phase 0).
@@ -1133,7 +1110,6 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
         - Action taken (PROCEED | BLOCK | NARROW_AND_REVOTE | MANUAL_DECISION)
       </step>
 
-      <step>Mark PHASE 6 (REVIEW-B) as completed</step>
     </steps>
     <output>${SESSION_PATH}/patch-review.md</output>
     <estimated_duration>2-4 minutes (including ~55s parallel vote)</estimated_duration>
@@ -1143,7 +1119,6 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
     <objective>Detect error signature reduction in production after deployment</objective>
     <condition>Skip if SKIP_MONITOR=true (--no-monitor flag or downgrade offer accepted)</condition>
     <steps>
-      <step>Mark PHASE 7 (MONITOR) as in_progress</step>
 
       <step name="tier-detection">
         Auto-detect monitoring tier from environment variables:
@@ -1238,7 +1213,6 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
       </step>
 
       <step>Append monitoring outcome to ${SESSION_PATH}/validation-report.md</step>
-      <step>Mark PHASE 7 (MONITOR) as completed</step>
     </steps>
     <estimated_duration>0-10 minutes depending on tier and outcome</estimated_duration>
   </phase>
@@ -1246,7 +1220,6 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
   <phase number="8" name="DOCUMENT">
     <objective>Git commit with review-informed message; produce full fix session report</objective>
     <steps>
-      <step>Mark PHASE 8 as in_progress</step>
 
       <step name="git-commit">
         Git commit — include key findings from root-cause.md and patch-review.md:
@@ -1339,7 +1312,6 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
         ```
       </step>
 
-      <step>Mark ALL tasks as completed</step>
     </steps>
     <output>${SESSION_PATH}/fix-report.md, git commit</output>
     <estimated_duration>1-2 minutes</estimated_duration>
@@ -1391,11 +1363,11 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
         Strategy C: Expand GetUser handler (lines 130-178) and ScanUser method (lines 83-96)
         Context budget: ~3,200 tokens — under limit
       PHASE 3 (PLAN): debugger → root cause: db.QueryRow returns nil when user not found, no nil check before .Scan()
-        Phase A review (3 models, parallel):
+        Phase A review (internal + 2 models from `list_models`, parallel):
         | Model   | Verdict | Confidence | Root Cause |
-        | Claude  | APPROVE | 9          | nil check missing before .Scan() |
-        | Grok    | APPROVE | 8          | QueryRow nil dereference |
-        | Qwen    | APPROVE | 7          | nil pointer on missing user |
+        | internal| APPROVE | 9          | nil check missing before .Scan() |
+        | model A | APPROVE | 8          | QueryRow nil dereference |
+        | model B | APPROVE | 7          | nil pointer on missing user |
         Tally 3-0-0, N=3 → STRONG (A = N) → proceed to PATCH
       PHASE 4 (PATCH):
         4a: developer writes TestGetUserNotFound — RED
@@ -1411,8 +1383,8 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
         that to APPROVE and tallies the three files:
         | Model        | Verdict        | Confidence | REGRESSION_RISK | PATCH_SCOPE |
         | dev:reviewer | APPROVE (PASS) | —          | —               | —           |
-        | Grok         | APPROVE        | 8          | LOW             | MINIMAL     |
-        | Qwen         | APPROVE        | 8          | LOW             | MINIMAL     |
+        | model A      | APPROVE        | 8          | LOW             | MINIMAL     |
+        | model B      | APPROVE        | 8          | LOW             | MINIMAL     |
         Tally 3-0-0, N=3 → STRONG (A = N) → proceed to commit
       PHASE 7 (MONITOR): SENTRY_AUTH_TOKEN detected → poll starts
         Poll 1/9: count=42 baseline=48
@@ -1451,7 +1423,7 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
       PHASE 2 (LOCALIZE): Strategy A: OrderList.tsx:67 — HIGH; Strategy B: useOrders hook — MEDIUM
         Strategy C: expand renderItems function (lines 58-80)
       PHASE 3 (PLAN): debugger → root cause: useOrders returns undefined before data loads, no guard
-        Phase A review: Claude APPROVE (9), Grok APPROVE (8), Qwen APPROVE (7) — tally 3-0-0 → STRONG
+        Phase A review: internal APPROVE (9), model A APPROVE (8), model B APPROVE (7) — tally 3-0-0 → STRONG
       PHASE 4 (PATCH):
         4a: Write test asserting loading state renders without crash — RED
         4b: Verify RED (test fails with TypeError)
@@ -1471,7 +1443,7 @@ skills: dev:context-detection, dev:systematic-debugging, dev:test-driven-develop
 <formatting>
   <communication_style>
     - Announce session path at Phase 0 completion: "Session: {SESSION_BASE} | Path: {SESSION_PATH}"
-    - Show phase transitions clearly: "Starting PHASE 3 (PLAN)..."
+    - Show phase transitions as the one-line `**Phase N — starting.**` / `**Phase N — complete.**` from <phase_reporting>
     - Report vote results in tabular form: Model | Verdict | Confidence | Key Fields
     - Explain the tally explicitly, counts first: "2-1-0 at N=3 — A/V = 2/3 → STRONG"
     - Show monitoring poll progress: "Poll 3/9: error count = 19 (baseline = 48)"

@@ -260,6 +260,7 @@ Return every section, in this order. Writing Verdict ends the task.
 
 ## UI Design Complete
 
+**Status**: {COMPLETE | BLOCKED — the missing input}
 **Brief**: {one line}
 **Style source**: {STYLE_FILE | reference name | chosen: reference name}
 **Output**: {OUTPUT_DIR}

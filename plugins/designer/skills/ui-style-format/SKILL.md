@@ -9,8 +9,8 @@ user-invocable: false
 ## Overview
 
 The UI Style system provides a standardized way to define project design preferences
-that the `ui` agent uses during design reviews. It supports both text-based style
-definitions and visual reference images.
+that `designer:ui` designs against. It supports both text-based style definitions and
+visual reference images.
 
 ## File Structure
 
@@ -30,7 +30,7 @@ definitions and visual reference images.
 | Section | Purpose |
 |---------|---------|
 | Header | Version, dates, base reference |
-| Reference Images | Links to visual references (v2.0+) |
+| Reference Images | Links to visual references |
 | Brand Colors | Color palette with light/dark modes |
 | Typography | Fonts and type scale |
 | Spacing | Base unit and scale |
@@ -111,17 +111,12 @@ Before using a style file, validate:
 4. Colors are valid hex codes
 5. Spacing values are numbers
 
-## Integration with ui Agent
+## Integration with designer:ui
 
-### Style-Aware Review Flow
-
-When the ui agent performs a review:
-
-1. **Load Style**: Read `.claude/design-style.md`
-2. **Load References**: List `.claude/design-references/`
-3. **Match Components**: Find relevant reference images for review target
-4. **Comparative Analysis**: `Read` the reference, then `Read` the target
-5. **Validate Tokens**: Check colors, typography, spacing against style
+When `designer:ui` designs a screen, it reads `.claude/design-style.md`, takes its
+tokens from Brand Colors, Typography and Spacing, and reads the reference images whose
+name or description matches the brief. `designer:review` judges image files only and
+does not read this file.
 
 ### Comparison Prompt with References
 
@@ -143,15 +138,8 @@ Compare this implementation screenshot against the project design reference.
 4. Spacing uses defined tokens
 ```
 
-## Version Compatibility
-
-| Version | Features |
-|---------|----------|
-| 1.x | Text-only style (legacy) |
-| 2.x | Reference images + text style |
-
-Version 2.x is backward compatible - the ui agent handles missing
-`## Reference Images` section gracefully.
+A style file with no `## Reference Images` section is valid; the design then works
+from the text sections alone.
 
 ## Best Practices
 

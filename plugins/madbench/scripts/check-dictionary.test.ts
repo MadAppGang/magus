@@ -140,7 +140,7 @@ describe("carve-out 4 — identifiers", () => {
 
 	test("an inline code span is a literal, not vocabulary", () => {
 		expect(words("The verdict comes from `controlCell.Outcome()`.")).toEqual([]);
-		expect(words("The `cell` madbench prints is its own word.")).toEqual([]);
+		expect(words("The `cell` spelling in an old transcript is a literal.")).toEqual([]);
 	});
 
 	test("a member access and a call are identifiers", () => {

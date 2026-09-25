@@ -5,11 +5,10 @@ description: |
   Supports reference image capture, style updates, and visual reference management.
   Actions: create, update, capture, add-reference, remove-reference, list-references
 argument-hint: "create | update [section] | capture <name> | add-reference <path> <name> | remove-reference <name> | list-references"
-allowed-tools: AskUserQuestion, Bash, Read, Write, Glob, Grep
-skills:
-  - designer:design-references
-  - designer:ui-style-format
+allowed-tools: AskUserQuestion, Bash, Read, Write, Glob, Grep, mcp__plugin_browser-use_browser-use__browser_list_sessions, mcp__plugin_browser-use_browser-use__browser_navigate, mcp__plugin_browser-use_browser-use__browser_screenshot, mcp__plugin_browser-use_browser-use__browser_close_session
 ---
+
+Read `${CLAUDE_PLUGIN_ROOT}/skills/design-references/SKILL.md` and `${CLAUDE_PLUGIN_ROOT}/skills/ui-style-format/SKILL.md` before the first step; they hold the reference this command follows.
 
 <role>
   <identity>Design Style Wizard</identity>
@@ -23,10 +22,9 @@ skills:
   </expertise>
 
   <mission>
-    Guide users through creating a custom project design style that the
-    ui agent will automatically detect and use for all future
-    reviews. Make the process simple while capturing comprehensive
-    design decisions.
+    Guide users through creating a custom project design style that
+    designer:ui reads whenever it designs a screen in this project. Make the
+    process simple while capturing comprehensive design decisions.
   </mission>
 </role>
 
@@ -43,7 +41,6 @@ skills:
       - Use AskUserQuestion for all user input gates
       - Use Write to create .claude/design-style.md
       - Use Read to check for existing style file
-      - Use Tasks to track wizard progress
       - Use Bash for file operations in `.claude/` directory
 
       **You MUST NOT:**
@@ -57,44 +54,11 @@ skills:
       - Delete reference images when user confirms removal
     </implementer_role>
 
-    <todowrite_requirement>
-      Track wizard progress through phases. For main wizard (create/update):
-      1. Check existing style
-      2. Select base reference
-      3. Define brand colors
-      4. Configure typography
-      5. Set spacing scale
-      6. Document component patterns
-      7. Add dos and donts
-      8. Save style file
-
-      For action-specific workflows:
-
-      **capture action:**
-      1. Parse capture arguments
-      2. Determine capture method
-      3. Execute capture or copy
-      4. Update style file references
-      5. Confirm completion
-
-      **add-reference action:**
-      1. Validate source file
-      2. Get description and mode
-      3. Copy to design-references
-      4. Update style file
-      5. Confirm completion
-
-      **remove-reference action:**
-      1. Find reference in style file
-      2. Confirm deletion with user
-      3. Delete file and update style
-      4. Confirm completion
-
-      **list-references action:**
-      1. Read style file
-      2. List directory contents
-      3. Cross-reference and report
-    </todowrite_requirement>
+    <phase_reporting>
+      There are no task-list tools. Announce each phase in one line of text
+      (`**Phase N — starting.**` / `**Phase N — complete.**`, naming its artifacts). The
+      style file and `.claude/design-references/` are the record.
+    </phase_reporting>
   </critical_constraints>
 
   <workflow>
@@ -120,7 +84,6 @@ skills:
       <objective>Check for existing style and initialize wizard</objective>
 
       <steps>
-        <step>Initialize Tasks with wizard phases</step>
         <step>Use Read tool to check if .claude/design-style.md exists</step>
         <step>If the action was `create` and the file exists, ask: replace the existing style or cancel?</step>
         <step>If no action was given and the file exists, ask: Update existing or create new?</step>
@@ -309,31 +272,19 @@ skills:
     <phase number="9" name="Capture Workflow">
       <objective>Capture current UI state as reference image</objective>
 
-      <todowrite_init>
-        Initialize with:
-        1. Parse capture arguments
-        2. Determine capture method
-        3. Execute capture or copy
-        4. Update style file references
-        5. Confirm completion
-      </todowrite_init>
-
       <steps>
-        <step>Mark "Parse capture arguments" as in_progress</step>
         <step>Extract image name from arguments (e.g., "hero-section")</step>
-        <step>Mark "Parse capture arguments" as completed</step>
-        <step>Mark "Determine capture method" as in_progress</step>
         <step>AskUserQuestion: How to capture?
           Options:
           - "I'll provide a screenshot file path"
           - "I'll provide a URL to screenshot"
           - "Manual: I'll save the file myself"
         </step>
-        <step>Mark "Determine capture method" as completed</step>
-        <step>Mark "Execute capture or copy" as in_progress</step>
         <step>Based on selection:
           - File path: Validate file exists, copy to .claude/design-references/
-          - URL: Use Bash to screenshot with Playwright (if available)
+          - URL: capture it with browser-use as
+            `${CLAUDE_PLUGIN_ROOT}/skills/browser-use-integration/SKILL.md` describes; if
+            browser-use is not installed, ask for a screenshot file instead
           - Manual: Provide target path, wait for user confirmation
         </step>
         <step>AskUserQuestion: Describe this reference (what it shows)</step>
@@ -344,13 +295,9 @@ skills:
           ```
         </step>
         <step>Copy/save image to .claude/design-references/{name}.png</step>
-        <step>Mark "Execute capture or copy" as completed</step>
-        <step>Mark "Update style file references" as in_progress</step>
         <step>Update Reference Images table in design-style.md</step>
         <step>Add Usage Guidelines entry</step>
         <step>Add Style History entry</step>
-        <step>Mark "Update style file references" as completed</step>
-        <step>Mark "Confirm completion" as completed</step>
       </steps>
 
       <quality_gate>Image saved, style file updated</quality_gate>
@@ -359,29 +306,15 @@ skills:
     <phase number="10" name="Add Reference Workflow">
       <objective>Add existing image file as reference</objective>
 
-      <todowrite_init>
-        Initialize with:
-        1. Validate source file
-        2. Get description and mode
-        3. Copy to design-references
-        4. Update style file
-        5. Confirm completion
-      </todowrite_init>
-
       <steps>
-        <step>Mark "Validate source file" as in_progress</step>
         <step>Extract source path and name from arguments</step>
         <step>Validate source file exists:
           ```bash
           ls -la "{source_path}"
           ```
         </step>
-        <step>Mark "Validate source file" as completed</step>
-        <step>Mark "Get description and mode" as in_progress</step>
         <step>AskUserQuestion: Describe this reference</step>
         <step>AskUserQuestion: Mode? (light/dark/both)</step>
-        <step>Mark "Get description and mode" as completed</step>
-        <step>Mark "Copy to design-references" as in_progress</step>
         <step>Create directory if needed:
           ```bash
           mkdir -p .claude/design-references/
@@ -392,13 +325,9 @@ skills:
           cp "{source_path}" ".claude/design-references/{name}.png"
           ```
         </step>
-        <step>Mark "Copy to design-references" as completed</step>
-        <step>Mark "Update style file" as in_progress</step>
         <step>Update Reference Images table</step>
         <step>Add Usage Guidelines entry</step>
         <step>Add Style History entry</step>
-        <step>Mark "Update style file" as completed</step>
-        <step>Mark "Confirm completion" as completed</step>
       </steps>
 
       <quality_gate>Image copied, style file updated</quality_gate>
@@ -407,16 +336,7 @@ skills:
     <phase number="11" name="Remove Reference Workflow">
       <objective>Remove a reference image</objective>
 
-      <todowrite_init>
-        Initialize with:
-        1. Find reference in style file
-        2. Confirm deletion with user
-        3. Delete file and update style
-        4. Confirm completion
-      </todowrite_init>
-
       <steps>
-        <step>Mark "Find reference in style file" as in_progress</step>
         <step>Extract image name from arguments. If it has no file extension, append `.png`:
           capture and add-reference save every reference as `{name}.png`</step>
         <step>Verify image exists in .claude/design-references/:
@@ -424,14 +344,10 @@ skills:
           ls -la ".claude/design-references/{name}"
           ```
         </step>
-        <step>Mark "Find reference in style file" as completed</step>
-        <step>Mark "Confirm deletion with user" as in_progress</step>
         <step>AskUserQuestion: Confirm deletion
           "Remove reference '{name}'? This cannot be undone."
           Options: ["Yes, remove", "No, keep"]
         </step>
-        <step>Mark "Confirm deletion with user" as completed</step>
-        <step>Mark "Delete file and update style" as in_progress</step>
         <step>If confirmed:
           - Delete file:
             ```bash
@@ -441,8 +357,6 @@ skills:
           - Remove from Usage Guidelines
           - Add Style History entry
         </step>
-        <step>Mark "Delete file and update style" as completed</step>
-        <step>Mark "Confirm completion" as completed</step>
       </steps>
 
       <quality_gate>Image removed (if confirmed)</quality_gate>
@@ -451,56 +365,27 @@ skills:
     <phase number="12" name="List References">
       <objective>Display all reference images</objective>
 
-      <todowrite_init>
-        Initialize with:
-        1. Read style file
-        2. List directory contents
-        3. Cross-reference and report
-      </todowrite_init>
-
       <steps>
-        <step>Mark "Read style file" as in_progress</step>
         <step>Read Reference Images table from style file</step>
-        <step>Mark "Read style file" as completed</step>
-        <step>Mark "List directory contents" as in_progress</step>
         <step>List files in .claude/design-references/:
           ```bash
           ls -la .claude/design-references/ 2>/dev/null || echo "Directory does not exist"
           ```
         </step>
-        <step>Mark "List directory contents" as completed</step>
-        <step>Mark "Cross-reference and report" as in_progress</step>
         <step>Cross-reference: identify orphaned files, missing references</step>
         <step>Display formatted list with descriptions</step>
-        <step>Mark "Cross-reference and report" as completed</step>
       </steps>
     </phase>
 
     <phase number="13" name="Partial Update">
       <objective>Update specific section only</objective>
 
-      <todowrite_init>
-        Initialize with:
-        1. Determine target section
-        2. Read current style
-        3. Run section wizard
-        4. Merge and save
-      </todowrite_init>
-
       <steps>
-        <step>Mark "Determine target section" as in_progress</step>
         <step>Determine section from action: colors → Phase 3, typography → Phase 4, spacing → Phase 5</step>
-        <step>Mark "Determine target section" as completed</step>
-        <step>Mark "Read current style" as in_progress</step>
         <step>Read current style file</step>
-        <step>Mark "Read current style" as completed</step>
-        <step>Mark "Run section wizard" as in_progress</step>
         <step>Run only relevant wizard phase for that section</step>
-        <step>Mark "Run section wizard" as completed</step>
-        <step>Mark "Merge and save" as in_progress</step>
         <step>Merge updated section with existing file</step>
         <step>Add Style History entry</step>
-        <step>Mark "Merge and save" as completed</step>
       </steps>
     </phase>
   </workflow>
@@ -763,10 +648,10 @@ skills:
 - Border radius: {radius}px
 
 **How it works**:
-The designer:ui agent will automatically detect this file and apply
-your design preferences when reviewing any UI in this project.
+The designer:ui agent reads this file and designs against your preferences
+whenever it creates a screen or component in this project.
 
-Run `/designer:ui` to review a design against your new style guide.
+Run `/designer:ui <brief>` to design a screen against your new style guide.
   </completion_template>
 
   <error_templates>

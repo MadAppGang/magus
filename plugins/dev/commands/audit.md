@@ -2,7 +2,6 @@
 name: audit
 description: "Structured quality audit — routes to specialist reviewers for code, UI, docs, security, or plugin quality"
 allowed-tools:  Agent, AskUserQuestion, Bash, Read, mcp__plugin_claudish_claudish__team, mcp__plugin_claudish_claudish__list_models, mcp__plugin_claudish_claudish__search_models
-skills: dev:context-detection
 ---
 
 <role>
@@ -91,9 +90,11 @@ skills: dev:context-detection
          ```
          Presence is the claudish runtime — the binary above, or the
          `mcp__plugin_claudish_claudish__team` tool being registered in this
-         session. It is never "is the multimodel plugin installed": `dev` may
-         depend on the claudish runtime and may not depend on the multimodel
-         orchestration plugin.
+         session. It is never "is the multimodel plugin installed": the review
+         gates need only the claudish runtime. multimodel is optional. If it is
+         not installed and the user asked for models, say once that
+         `claude plugin install multimodel@magus` adds `/multimodel:team` and
+         `/multimodel:delegate`, then continue without it.
       3. Both true → resolve each name against the live catalog: `list_models`
          first, then `search_models` for a family it does not cover — the
          procedure in `claudish:claudish-usage`, "Model Alias Resolution". A
@@ -317,7 +318,7 @@ Relay the consolidated verdict, then this section — step 7 of the team-gate sk
 that skipped a panel, overrode a gate, or proceeded below `MIN_BALLOTS` must say so here;
 silence about a gate is the defect the 2026-09-12 audit closed.
 
-**Gates** (`${SESSION_PATH}/gates.log`, verbatim):
+**Gates** (`${AUDIT_PATH}/gates.log`, verbatim):
 {every line of gates.log — `gate skipped: …`, `gate not met: …`, `gate override: …` — or the one line `no gate skipped, no gate below minimum`}
   </completion_message>
 </instructions>

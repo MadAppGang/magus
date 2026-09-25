@@ -275,12 +275,9 @@ expect('user@example.com').toBeValidEmail();
 
 ### Coverage Targets
 
-| Type | Target | Notes |
-|------|--------|-------|
-| Line Coverage | 80% | Minimum acceptable |
-| Branch Coverage | 75% | Test all conditionals |
-| Function Coverage | 90% | All public APIs |
-| Critical Paths | 100% | Auth, payments, data integrity |
+Set targets by risk, not one number for the repo. The risk tiers and their targets live in
+`references/coverage.md` ("Set Coverage Targets by Risk") — read them there rather than
+from a copy here.
 
 ### Coverage Pitfalls
 

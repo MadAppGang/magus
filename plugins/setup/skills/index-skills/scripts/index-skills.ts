@@ -414,9 +414,9 @@ function inListing(s: Skill): boolean {
  *
  * The tempting rule is "a model-invocable skill advertises itself, so the
  * index need not name it". That holds only while the listing fits its budget,
- * and whether it does depends on the model: 13,022 chars overflows the 8,000
- * a 200k-token window allows, and fits the 40,000 a 1M window allows. Same
- * corpus, different outcome, and a shipped plugin does not choose the model.
+ * and whether it does depends on the model: a corpus can overflow the 8,000
+ * chars a 200k-token window allows and still fit the 40,000 a 1M window allows.
+ * Same corpus, different outcome, and a shipped plugin does not choose the model.
  *
  * A `listed` skill carrying `user-invocable: false` is the one that suffers:
  * when its description is shortened the matcher cannot match on what was cut,
@@ -542,10 +542,10 @@ const END = "<!-- skill-index:end -->";
 /**
  * The small index — sized for CLAUDE.md, which is injected on every turn.
  *
- * Names, not descriptions. That is the whole trade: 3,142 chars of invocation
- * strings covers every skill deterministically, where 13,022 chars of listing
- * covers about 47 of 77 and picks which ones by a rule nothing on disk can
- * predict. A name is a weaker signal than a description, but a name that is
+ * Names, not descriptions. That is the whole trade: a few KB of invocation
+ * strings covers every skill deterministically, where an over-budget listing
+ * covers only some descriptions and picks which ones by a rule nothing on disk
+ * can predict. A name is a weaker signal than a description, but a name that is
  * always present beats a description that vanishes.
  *
  * Skills reached only by preloading are omitted by default: the command or

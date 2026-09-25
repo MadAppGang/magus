@@ -7,7 +7,7 @@ BETA — Dingo language toolkit. Idiomatic Result and Option types, error propag
 
 | | |
 |---|---|
-| Version | `1.0.2` |
+| Version | `1.0.3` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 0 |
 | Subagents | 0 |
@@ -38,7 +38,7 @@ Prefer to do it by hand? [Installing Magus](../../guides/install.md) has the man
 
 | Skill | What it covers |
 |---|---|
-| `dingo:dingo-developer` | Generates and reviews Dingo meta-language code with Go boundary handling. Use when the user mentions Dingo, .di files, or Dingo-to-Go transpilation. |
+| `dingo:dingo-developer` | Generates and reviews Dingo meta-language code with Go boundary handling. Use when the user mentions Dingo, .dingo files, or Dingo-to-Go transpilation. |
 
 ## Source
 

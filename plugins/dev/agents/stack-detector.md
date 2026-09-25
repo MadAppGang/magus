@@ -108,7 +108,7 @@ tools: Read, Write, Glob, Grep, Bash
       <step>Record `cwd` as an absolute path, and `generated_at` as ISO-8601 UTC.</step>
       <step>
         Glob for config files and read EVERY one found, not the first:
-        `package.json`, `go.mod`, `Cargo.toml`, `pyproject.toml`, `bun.lockb`,
+        `package.json`, `go.mod`, `Cargo.toml`, `pyproject.toml`, `bun.lock`, `bun.lockb`,
         plus the same set under `frontend/`, `backend/`, `apps/*`, `packages/*`, `services/*`.
       </step>
       <step>
@@ -119,7 +119,7 @@ tools: Read, Write, Glob, Grep, Bash
         - `go.mod` **and** any `*.dingo` file → `dingo` **and** `golang` (Dingo transpiles to Go)
         - `Cargo.toml` → `rust`
         - `pyproject.toml` → `python`
-        - `bun.lockb` with no frontend framework in `package.json` → `bunjs`
+        - `bun.lock` (current Bun) or `bun.lockb` (older Bun) with no frontend framework in `package.json` → `bunjs`
         Confirm with directory evidence — `src/routes/`, `src/components/`, `cmd/`,
         `src/main.rs` — and with file extensions found by Glob.
 
@@ -435,7 +435,7 @@ tools: Read, Write, Glob, Grep, Bash
       <step>
         Read `${CLAUDE_PLUGIN_ROOT}/skills/context-detection/references/loadout-rules.md`.
         It carries R1-R9 (category→agent), the stack-gating-by-name rule, the task gates,
-        the 13-agent table, and the preload/loadout distinction. **Do not reconstruct any of
+        the agent table, and the preload/loadout distinction. **Do not reconstruct any of
         it from memory.**
       </step>
       <step>
@@ -469,12 +469,12 @@ tools: Read, Write, Glob, Grep, Bash
       </step>
       <step>
         **Do not spend a slot on a skill the agent already preloads.** `debugger` preloads
-        `systematic-debugging`; `docs` preloads `documentation-standards`; `devops` preloads
-        `bunjs-production`; `architect`, `developer` and `researcher` preload
+        `systematic-debugging`; `docs` preloads `documentation-standards`;
+        `architect`, `developer` and `researcher` preload
         `universal-patterns`; `aggregator` preloads `aggregate-reviews` — read the current set off disk with
         `grep -A3 '^skills:' "${CLAUDE_PLUGIN_ROOT}/agents/"*.md`. Repeating one wastes a
         cap slot on a file the agent is already holding. The one exception is
-        `frontend` + `design-system-guardrails`: list it anyway, as `mandatory`, because the
+        `frontend-developer` + `design-system-guardrails`: list it anyway, as `mandatory`, because the
         mandatory marker is what a downstream reviewer checks.
       </step>
       <step>
@@ -569,8 +569,8 @@ tools: Read, Write, Glob, Grep, Bash
     </pattern>
 
     <pattern name="Bun Backend">
-      <file>bun.lockb</file>
-      <check>file exists AND no frontend framework in package.json</check>
+      <file>bun.lock or bun.lockb</file>
+      <check>either file exists AND no frontend framework in package.json</check>
       <stack>bunjs</stack>
       <quality_checks>bun run format, bun run lint, bun run typecheck, bun test</quality_checks>
     </pattern>
@@ -711,7 +711,7 @@ tools: Read, Write, Glob, Grep, Bash
       "mandatory": [],
       "mcp": ["ca", "tmux"]
     },
-    "frontend": {
+    "frontend-developer": {
       "read": [
         "${CLAUDE_PLUGIN_ROOT}/skills/frontend/design-system-guardrails/SKILL.md",
         "${CLAUDE_PLUGIN_ROOT}/knowledge/frontend/react-typescript.md",
@@ -744,9 +744,9 @@ tools: Read, Write, Glob, Grep, Bash
 ```
     </emitted>
     <what_to_notice>
-      Five agents, not thirteen — the other eight are not dispatched by this task.
+      Five agents, not every agent on disk — the rest are not dispatched by this task.
       `architect` gets two paths, not five: `universal-patterns` is omitted because the
-      architect already preloads it. `frontend` carries a `note` because a capability it
+      architect already preloads it. `frontend-developer` carries a `note` because a capability it
       would normally use is absent. `mnemex` has `usage: null` rather than a guessed path.
       Every path into another plugin — the two `usage` values, the `go` role files — is
       absolute under the root the registry named; `dev`'s own files are

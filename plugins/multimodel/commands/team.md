@@ -83,7 +83,7 @@ slot on a timer any more; Step 2b is what replaced it.
   "started": true,
   "team_session_id": "team-20260827-0015",
   "session_path": "/abs/path/to/SESSION_DIR",
-  "slots": { "gpt-5.6-sol": "01", "grok-4.6": "02", "internal": "03" }
+  "slots": { "<model-id-a>": "01", "<model-id-b>": "02", "internal": "03" }
 }
 ```
 

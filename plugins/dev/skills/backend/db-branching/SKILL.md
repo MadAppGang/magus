@@ -287,8 +287,8 @@ Worktree ready:
   Status: READY
 
 Safe to run schema commands:
-  bun run circl:push       # Push schema changes (isolated)
-  bun run circl:generate   # Regenerate Prisma client
+  bun run {name}:push       # Push schema changes (isolated)
+  bun run {name}:generate   # Regenerate Prisma client
 ```
 
 ---
@@ -358,7 +358,6 @@ supabase branches delete "{BRANCH_NAME}" --project-ref "{PROJECT_REF}"
 Neon is the recommended provider due to:
 - **Instant copy-on-write branching** — milliseconds, not seconds
 - **Native MCP integration** — no CLI shelling, direct tool calls
-- **Free tier includes 3 branches** — sufficient for most development
 - **Full PostgreSQL** — works with every PostgreSQL ORM
 - **Unique endpoints per branch** — clean connection string isolation
 
@@ -404,7 +403,7 @@ turso auth login
 - Connection strings use `libsql://` protocol
 - Separate auth token per database (stored in different env var)
 - ORM support limited to Drizzle and raw libSQL clients
-- No MCP server — uses CLI via Bash tool
+- This skill drives it through its CLI via the Bash tool
 
 ### Turso-Specific `.db-branch.json`
 
@@ -440,7 +439,7 @@ supabase login
 - Tightly coupled with **GitHub PR workflow** (preview branches)
 - Includes **additional services** per branch (Auth, Storage, Edge Functions)
 - Uses `supabase` CLI for branch management
-- No MCP server — uses CLI via Bash tool
+- This skill drives it through its CLI via the Bash tool
 
 ### Supabase-Specific `.db-branch.json`
 

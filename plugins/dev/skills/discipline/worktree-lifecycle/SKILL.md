@@ -148,16 +148,6 @@ if [ -f .gitmodules ]; then
   git submodule update --init --recursive
 fi
 
-# 7. Write statusline worktree marker (persists across compaction)
-if [ -n "$SESSION_ID" ]; then
-  cat > "$HOME/.claude/.statusline-worktree-${SESSION_ID}" <<MARKER_EOF
-{
-  "worktree_path": "$WORKTREE_PATH",
-  "branch": "$BRANCH",
-  "worktree_name": "$(basename "$WORKTREE_PATH")"
-}
-MARKER_EOF
-fi
 ```
 
 **Error handling**: If `git worktree add` fails, clean up any partial state and report the error to user.
@@ -180,7 +170,7 @@ for stack in "${STACKS[@]}"; do
   echo "Setting up $stack..."
   case "$stack" in
     nodejs)
-      if [ -f bun.lockb ]; then
+      if [ -f bun.lock ] || [ -f bun.lockb ]; then
         bun install
       elif [ -f pnpm-lock.yaml ]; then
         pnpm install
@@ -217,7 +207,7 @@ done
 for stack in "${STACKS[@]}"; do
   case "$stack" in
     nodejs)
-      if [ -f bun.lockb ]; then
+      if [ -f bun.lock ] || [ -f bun.lockb ]; then
         bun test 2>&1 | tee test-output.log
       else
         npm test 2>&1 | tee test-output.log
@@ -234,9 +224,12 @@ for stack in "${STACKS[@]}"; do
       ;;
   esac
 
-  # Parse test results (do NOT block on pre-existing failures)
-  PASSING=$(grep -o '[0-9]* passing' test-output.log | cut -d' ' -f1)
-  FAILING=$(grep -o '[0-9]* failing' test-output.log | cut -d' ' -f1)
+  # Parse test results (do NOT block on pre-existing failures).
+  # Runners word their summary differently: mocha "N passing", bun " N pass", pytest
+  # "N passed", go "ok"/"FAIL" per package. Read the counts off this runner's summary line;
+  # if none parses, record the counts as unknown rather than 0.
+  PASSING=$(grep -oE '[0-9]+ (passing|passed|pass)' test-output.log | tail -1 | cut -d' ' -f1)
+  FAILING=$(grep -oE '[0-9]+ (failing|failed|fail)' test-output.log | tail -1 | cut -d' ' -f1)
 
   echo "Baseline tests: $PASSING passing, $FAILING failing"
   if [ "${FAILING:-0}" -gt 0 ]; then
@@ -351,10 +344,6 @@ jq '.status = "removed" | .removedAt = "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"' \
   "${SESSION_PATH}/worktree-metadata.json" > "${SESSION_PATH}/worktree-metadata.json.tmp"
 mv "${SESSION_PATH}/worktree-metadata.json.tmp" "${SESSION_PATH}/worktree-metadata.json"
 
-# 8. Remove statusline worktree marker
-if [ -n "$SESSION_ID" ]; then
-  rm -f "$HOME/.claude/.statusline-worktree-${SESSION_ID}"
-fi
 ```
 
 **Error handling during cleanup:**
@@ -365,7 +354,6 @@ fi
 | Uncommitted changes | `git status --porcelain` not empty | Ask user: commit/stash/discard |
 | Worktree in use | `git worktree remove` fails | Ask: force removal with `--force`? |
 | Branch not merged | `git branch -d` fails | Ask: keep branch or force delete? |
-| Stale marker file | Marker exists but worktree removed | Auto-cleaned by statusline (marker ignored if worktree gone) |
 
 ## Error Recovery
 
@@ -449,5 +437,5 @@ IMPORTANT: You are working in an isolated worktree.
 - **verification-before-completion:** Worktree cleanup requires clean state
 - **systematic-debugging:** Isolated worktrees for reproducing bugs
 - **context-detection:** Multi-stack detection feeds into setup phase
-- **agent-coordination-discipline:** Parallel agents use separate worktrees
-- **db-branching:** Automatic database branch creation/cleanup for worktrees with schema changes — supports Neon, Turso, Supabase (invoke `dev:db-branching` skill when branchable database detected)
+- **Parallel agents:** each delegated agent gets its own worktree
+- **db-branching:** Automatic database branch creation/cleanup for worktrees with schema changes — supports Neon, Turso, Supabase (when a branchable database is detected, read `${CLAUDE_PLUGIN_ROOT}/skills/backend/db-branching/SKILL.md`)

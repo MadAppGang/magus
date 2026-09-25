@@ -2,9 +2,9 @@
 name: statusline-customize
 description: Interactively configure statusline sections, theme, and bar widths
 allowed-tools: Read, Write, Edit, Bash, AskUserQuestion
-skills:
-  - setup:statusline-customization
 ---
+
+Read `${CLAUDE_PLUGIN_ROOT}/skills/statusline-customization/SKILL.md` before the first step; it holds the reference this command follows.
 
 <role>
   <identity>Status Line Customizer</identity>
@@ -15,7 +15,7 @@ skills:
 </role>
 
 <instructions>
-  Execute ALL steps in a SINGLE response. Do NOT pause for confirmation between steps.
+  Run the steps in order. The only pauses are the AskUserQuestion prompts the steps name.
 
   <step number="1" name="Load config">
     Read `~/.claude/statusline-config.json`. If it doesn't exist, use these defaults:
@@ -80,7 +80,9 @@ skills:
 
     Based on choice:
 
-    **Toggle sections:** Use AskUserQuestion with multiSelect:true listing all 7 sections.
+    **Toggle sections:** Use AskUserQuestion with multiSelect:true over the section keys the
+    config carries (see the schema in step 1; split across questions if there are more keys than
+    one question takes options).
     Sections the user selects get TOGGLED (on→off, off→on). Show updated state.
 
     **Change theme:** Use AskUserQuestion with the 4 theme options:

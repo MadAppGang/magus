@@ -170,7 +170,7 @@ is the same failure as using a dead one — it just fails in the other direction
 
 When you report your model choice, **state the result of the catalog check**:
 
-> `3 of 7 saved model IDs are no longer in the catalog: grok-4.20-beta, gpt-5.4, kimi-k2.5`
+> `3 of 7 saved model IDs are no longer in the catalog: <id-a>, <id-b>, <id-c>`
 
 Report it every run, including when nothing was dropped — `all 5 saved IDs are
 still live` is the same disclosure with a different value.
@@ -207,7 +207,7 @@ a **requirement**. Resolve it against the catalog and use what you find.
 - If it does not exist → **say so and show the live alternatives.** Ask which
   one they want.
 - **NEVER** fall back to a lower version because its name is closer as a string.
-  `kimi3` resolving to `kimi-k3` is a bug, not a near-miss: string distance
+  `kimi3` resolving to `kimi-k2.5` is a bug, not a near-miss: string distance
   cannot tell a version bump from a typo, and silently downgrading a model is
   worse than erroring.
 
@@ -343,7 +343,7 @@ It returns a slot map, not results:
   "started": true,
   "team_session_id": "team-20260827-0015",
   "session_path": "/abs/path/to/SESSION_DIR",
-  "slots": { "gpt-5.6-sol": "01", "grok-4.6": "02", "internal": "03" },
+  "slots": { "<model-a>": "01", "<model-b>": "02", "internal": "03" },
   "next": { "status": "...", "cancel": "...", "judge": "..." }
 }
 ```
@@ -515,7 +515,7 @@ or `input` argument. There is no size at which shelling out becomes correct.
 
 | Task Type | Recommended Agent | Alternatives | Notes |
 |-----------|----------------------|--------------|-------|
-| **Investigation** | `dev:researcher` | `code-search:analyze` | For finding bugs, tracing issues |
+| **Investigation** | `code-search:analyze` | `dev:debugger` | Read-only code tracing; `dev:researcher` is for web research |
 | **Code review** | `dev:reviewer` | — | Security, correctness, maintainability passes |
 | **Architecture** | `dev:architect` | — | Design and planning tasks |
 | **Implementation** | `dev:developer` | — | Building features |
@@ -544,25 +544,7 @@ Options:
 Which would you prefer?
 ```
 
-### Step 4: Common Agents by Plugin
-
-**Frontend Plugin:**
-- `typescript-frontend-dev` - Use for UI implementation with external models
-- `frontend-architect` - Use for architecture planning with external models
-- `senior-code-reviewer` - Use for code review (can delegate to external models)
-- `qa-engineer` - Use for test planning/implementation
-
-**Bun Backend Plugin:**
-- `backend-developer` - Use for API implementation with external models
-- `api-architect` - Use for API design with external models
-
-**Code Search Plugin:**
-- `code-search:analyze` - Use for investigation tasks with external models
-
-**No Plugin:**
-- `general-purpose` - Default fallback for any task
-
-### Step 5: Example Agent Selection
+### Step 4: Example Agent Selection
 
 **Example 1: User says "use Grok to implement authentication"**
 ```
@@ -576,12 +558,12 @@ Decision:
 4. On completed → get_output(session_id) → summarise
 ```
 
-**Example 2: User says "ask GPT-5 to review my API design"**
+**Example 2: User says "ask GPT to review my API design"**
 ```
 Task: Code review (API design)
 
 Decision:
-1. Resolve the GPT family via search_models("gpt") — a named version is a hard constraint
+1. Resolve the GPT family via search_models("gpt") — had the user named a version, it would be a hard constraint
 2. Pick the agent: review → dev:reviewer
 3. One reviewer → create_session(model=<resolved id>, prompt=REVIEW_PROMPT,
                     agent="dev:reviewer", timeout_seconds=300)
@@ -621,7 +603,7 @@ under `team` above.
 ## Overview
 
 **Claudish** is an external-model runtime: it runs Claude Code against any model a provider
-catalog offers (Grok, GPT-5, MiniMax, Gemini, Kimi, …) by proxying through a local
+catalog offers (Grok, GPT, MiniMax, Gemini, Kimi, …) by proxying through a local
 Anthropic-API-compatible server, and it exposes that capability to Claude Code as an **MCP
 server**. Magus talks to the MCP server. It does not talk to the binary.
 
@@ -793,7 +775,7 @@ the resolved model chain, and paths to the full records — with no re-run and n
 ### The escalation rule: STOP and REPORT
 
 Never silently substitute. If the user asked for Gemini and Gemini failed, do not quietly
-run GPT-5, and do not quietly fall back to the embedded Claude.
+run GPT, and do not quietly fall back to the embedded Claude.
 
 ```
 "{Model} failed.

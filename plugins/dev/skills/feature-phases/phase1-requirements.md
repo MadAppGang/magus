@@ -251,9 +251,9 @@ Write iteration config to ${SESSION_PATH}/iteration-config.json:
 
 ### Step 1f: Multi-Model Review Configuration (P1b — UPFRONT MODEL SELECTION)
 
-**PRESET CHECK:** If preset `review_models` is set (array of alias strings, e.g. `["internal","grok","gemini"]`), use that list and SKIP the free-form prompt below. Resolve each alias exactly as documented in the parse step.
+**PRESET CHECK:** If preset `review_models` is set (array of alias strings, e.g. `["internal","<family A>","<family B>"]`), use that list and SKIP the free-form prompt below. Resolve each alias exactly as documented in the parse step.
 
-If claudish is available (check with `which claudish`):
+If the claudish MCP tools are available (`list_models` answers):
 
 **Read available aliases** from `list_models` (claudish MCP):
 ```bash
@@ -269,7 +269,7 @@ Available aliases (from the live catalog (list_models)):
   {available}
   (plus "internal" — always included)
 
-Type a comma-separated list (e.g. "grok, gemini, qwen") or "internal" for no external review.
+Type a comma-separated list of the aliases above, or "internal" for no external review.
 ```
 
 **Parse the response** using `claudish:claudish-usage` skill's "Model Alias Resolution" procedure:
@@ -283,7 +283,7 @@ Store selection in ${SESSION_PATH}/iteration-config.json under `selectedModels`:
 {
   "selectedModels": {
     "configured": true,
-    "models": ["LATEST_GROK_MODEL", "LATEST_GEMINI_MODEL", "LATEST_QWEN_MODEL"],
+    "models": ["<resolved id A>", "<resolved id B>"],
     "includeInternal": true
   }
 }
@@ -293,14 +293,14 @@ Note: `models` stores the RESOLVED model IDs from the live catalog, not the shor
 aliases the user typed. Phases 3 and 5 pass them straight to `claudish team()`.
 
 **Store the catalog's `id`, never a routing address.** A catalog record carries
-addresses next to the identity — `openrouterId` (`moonshotai/kimi-k3`) and Access
-routes (`kc@kimi-k3`) — and storing either pins the provider, bypassing the
+addresses next to the identity — `openrouterId` (`<vendor>/<model-id>`) and Access
+routes (`<backend>@<model-id>`) — and storing either pins the provider, bypassing the
 subscription-aware routing and fallback that the bare `id` gets. A stored ID must
-contain no `@` and no `/`: `kimi-k3`, not `moonshotai/kimi-k3`. Store an address only
+contain no `@` and no `/`: `<model-id>`, not `<vendor>/<model-id>`. Store an address only
 when the user explicitly asked to pin that backend. See `claudish:claudish-usage` →
 "Identity vs routing address".
 
-If claudish is NOT available:
+If the claudish MCP tools are NOT available:
   Set selectedModels.configured = true, selectedModels.models = [],
   selectedModels.includeInternal = true (internal only, no external)
 
@@ -320,8 +320,8 @@ Options:
 2. Modify settings
 3. Cancel feature development
 
-### Step 1.8: Mark phase as completed
-If approved: say **Phase 1 — complete**, naming the artifacts you wrote
+### Step 1.8: Announce the phase complete
+If approved, say in one line: **Phase 1 — complete**, naming the artifacts you wrote.
 
 ## Quality Gate
 User approves requirements.md, validation-criteria.md, and iteration-config.json

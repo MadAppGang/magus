@@ -8,7 +8,7 @@ user-invocable: false
 # Investigate
 
 One investigation, one mode. Pick the mode from the request, announce it, then run that
-mode's sequence. The retrieval mechanics live in the `code-search` skill; this skill is
+mode's sequence. The retrieval mechanics live in the `code-search:search` skill; this skill is
 about which questions to ask and in what order.
 
 ## Routing
@@ -38,8 +38,9 @@ investigation is spent.
   without saying so is the defect.
 - **Blocked, never stalled.** A subagent has no tool for asking the user a question. If you
   cannot proceed, do not wait for an answer that cannot arrive and do not decide on the
-  user's behalf: return a result beginning `BLOCKED:` naming what is missing and what would
-  unblock it, and let the dispatching orchestrator ask.
+  user's behalf: name what is missing and what would unblock it, marked BLOCKED in your
+  caller's output contract (a result beginning `BLOCKED:` when none was set), and let the
+  dispatching orchestrator ask.
 - **Centrality is relative.** Treat it as tiers — core, key, ordinary, leaf — never as a
   number to threshold. An absent centrality means unknown, not low.
 

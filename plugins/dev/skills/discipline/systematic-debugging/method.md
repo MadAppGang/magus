@@ -544,10 +544,11 @@ When debugging reveals a bug:
 3. Implement fix (GREEN phase)
 4. Refactor if needed (REFACTOR phase)
 
-### With agent-coordination-discipline
+### With delegated investigations
 For complex debugging requiring multiple investigations:
 - Use agent delegation when debugging spans multiple services
-- Use claudish CLI for external debugging expertise
+- For an external model's view, use the claudish MCP tools (`run_prompt`, `team`) per
+  `claudish:claudish-usage`, with models resolved live from `list_models`
 - Define clear success criteria: "Find root cause of timeout"
 
 ## Enforcement Checklist

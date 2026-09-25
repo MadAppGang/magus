@@ -81,7 +81,7 @@ skills:
       2. 5-minute quick start first
       3. Progressive disclosure (simple -> complex)
       4. Second person ("you")
-      5. Short sentences (<25 words)
+      5. Short sentences (Rule S2: average 15-20 words, none over 40)
       6. Lists and tables for comparison
 
       STRONG (67%+ consensus):
@@ -158,7 +158,7 @@ skills:
           Write documentation following template structure:
           - Use active voice, present tense
           - Address reader directly ("you")
-          - Keep sentences under 25 words
+          - Keep sentence length within Rule S2 (average 15-20 words, none over 40)
           - Use lists for 3+ items
           - Use tables for comparisons
         </step>
@@ -413,7 +413,7 @@ skills:
       - [ ] Active voice (1pt)
       - [ ] Present tense (1pt)
       - [ ] Second person (1pt)
-      - [ ] Short sentences (<25 words avg) (1pt)
+      - [ ] Sentence length within Rule S2 (average 15-20 words, none over 40) (1pt)
       - [ ] Short paragraphs (3-5 sentences) (1pt)
       - [ ] Plain language (1pt)
       - [ ] No jargon (1pt)
@@ -932,9 +932,9 @@ That's it! See [full documentation](docs/) for more.
 
     <transformation name="shorten_sentences">
       <description>Break long sentences into shorter ones</description>
-      <threshold>25 words</threshold>
+      <threshold>40 words, per Rule S2</threshold>
       <process>
-        1. Find sentences with 25+ words
+        1. Find sentences over 40 words, and the runs the finding names
         2. Identify natural break points (and, but, which, that)
         3. Split into 2-3 shorter sentences
         4. Ensure each sentence has clear subject-verb
@@ -948,8 +948,8 @@ That's it! See [full documentation](docs/) for more.
 
 Before starting, ensure you have:
 
-- [ ] Node.js 18+ installed ([Download](https://nodejs.org))
-- [ ] Git installed ([Download](https://git-scm.com))
+- [ ] {runtime} {minimum_version} installed ([Download]({download_url}))
+- [ ] {each other required tool, read from the manifest}
 - [ ] Basic knowledge of {relevant_topic}
       </template>
       <process>
@@ -1000,7 +1000,7 @@ Before starting, ensure you have:
         If no report path was given, or no finding is marked approved, apply nothing: return
         the completion message with **Files Modified**: 0 and Status BLOCKED naming what was
         missing. Do not wait.</step>
-        <step>List all issues with severity</step>
+        <step>List the approved findings with severity; everything else stays as written</step>
         <step>Prioritize: CRITICAL -> HIGH -> MEDIUM -> LOW</step>
       </steps>
     </phase>
@@ -1030,7 +1030,7 @@ Before starting, ensure you have:
           - THIRD_PERSON: Convert to second person ("you")
           - FUTURE_TENSE: Convert to present tense
         </step>
-        <step>Use Edit tool with replace_all for patterns</step>
+        <step>Edit at each location an approved finding names; replace_all would also rewrite text no finding covers</step>
       </steps>
     </phase>
 

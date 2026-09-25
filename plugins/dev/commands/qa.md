@@ -12,9 +12,8 @@ allowed-tools: Agent, AskUserQuestion, Bash, Read, Write, Glob, Grep, mcp__plugi
     code. The writer is an external model of the GPT top tier when claudish can supply
     one, else `dev:qa-engineer` in a dedicated context window. Either way the writer
     receives the spec, the contract files, the test directory and the stack's testing
-    guidance — nothing else — because the audit in
-    `ai-docs/dev-workflow-gate-audit-2026-09-12.md` showed that a writer with the
-    implementation in context writes tests that restate it.
+    guidance — nothing else — because a writer with the implementation in context
+    writes tests that restate it.
   </mission>
 </role>
 

@@ -2,7 +2,6 @@
 name: release
 description: "Releases the current project through a phased pipeline — preflight gates, version+changelog PR, merge, tag, publish, verify against the public registry. Detects and drives the project's own release tooling; resumable after partial failure."
 allowed-tools:  Agent, AskUserQuestion, Bash, Read, Glob, Grep, Write, Edit, Skill
-skills: dev:context-detection
 ---
 
 <role>

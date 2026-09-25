@@ -149,38 +149,9 @@ skills: dev:universal-patterns
         `commands.test_runner_command` and `commands.quality_checks` in the same
         document. Skip any that is `null` — that means the repo has no such command.</step>
         <step>
-          Run quality checks for stack using Bash:
-
-          For React/TypeScript:
-          ```bash
-          bun run format
-          bun run lint
-          bun run typecheck
-          bun test
-          ```
-
-          For Go:
-          ```bash
-          go fmt ./...
-          go vet ./...
-          golangci-lint run
-          go test ./...
-          ```
-
-          For Rust:
-          ```bash
-          cargo fmt --check
-          cargo clippy -- -D warnings
-          cargo test
-          ```
-
-          For Python:
-          ```bash
-          black --check .
-          ruff check .
-          mypy .
-          pytest
-          ```
+          Run the quality checks with Bash, in the precedence `<quality_checks>` sets:
+          the caller's commands, then `commands.*`, then the repo's own scripts, and the
+          stack examples only when none of those exist.
         </step>
         <step>
           If any check fails:

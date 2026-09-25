@@ -3,7 +3,7 @@ name: bun
 description: Router for the eight Bun/TypeScript skills — setup, HTTP, errors, testing, security, production, performance, TUI. Says which to read for a task, without loading them. Any Bun or TS work.
 ---
 
-# Bun skill index — bunjs v0.2.2
+# Bun skill index
 
 You are holding the **index**, not the content. Its whole job is to tell you which one or
 two files to open, so you pay for the guidance a task needs and nothing else.
@@ -62,8 +62,9 @@ Reading all six upfront buys nothing you can act on yet.
 
 ## Two rules that come from the skills themselves
 
-**Copy the shipped `assets/`, never retype them.** Six of the eight ship tested code —
-error hierarchy, security guards, logger, test harness, env parser, benchmark harness.
+**Copy the shipped `assets/`, never retype them.** All eight ship tested code — env
+parser, HTTP middleware, error hierarchy, test harness, security guards, logger, benchmark
+harness, TUI theme.
 Each skill has the exact `cp` line. Retyped versions drop the subtle parts: the
 enumeration-timing burn, the full-jitter backoff, the cycle-safe cause walk.
 

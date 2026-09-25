@@ -403,7 +403,7 @@ account settings page."* Repo: React + Go fullstack.
       "mandatory": [],
       "mcp": ["ca", "tmux"]
     },
-    "frontend": {
+    "frontend-developer": {
       "read": [
         "${CLAUDE_PLUGIN_ROOT}/skills/frontend/design-system-guardrails/SKILL.md",
         "${CLAUDE_PLUGIN_ROOT}/knowledge/frontend/react-typescript.md",

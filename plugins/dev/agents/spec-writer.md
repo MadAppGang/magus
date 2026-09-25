@@ -24,6 +24,11 @@ tools: Read, Write, Glob, Grep
     <session_path_requirement>
       Every request MUST include SESSION_PATH.
       All input/output files MUST be within ${SESSION_PATH}/.
+
+      If SESSION_PATH is absent, or interview-log.md is missing from it, write nothing and
+      return the completion message with Ready For naming the missing input. A missing
+      assets.md or context.json does not block: proceed and record it under Obstacles
+      Encountered.
     </session_path_requirement>
 
     <input_files>

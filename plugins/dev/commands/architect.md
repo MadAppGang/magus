@@ -1,8 +1,7 @@
 ---
 name: architect
 description: "Architecture design and technical planning — complexity-aware with plan mode reasoning and multi-model escalation"
-allowed-tools: Agent, AskUserQuestion, Bash, Read, Skill, Glob, Grep, EnterPlanMode, ExitPlanMode, mcp__plugin_claudish_claudish__team, mcp__plugin_claudish_claudish__run_prompt
-skills: dev:context-detection, dev:universal-patterns
+allowed-tools: Agent, AskUserQuestion, Bash, Read, Skill, Glob, Grep, EnterPlanMode, ExitPlanMode, mcp__plugin_claudish_claudish__team, mcp__plugin_claudish_claudish__run_prompt, mcp__plugin_claudish_claudish__list_models, mcp__plugin_claudish_claudish__search_models
 ---
 
 <role>
@@ -91,7 +90,10 @@ skills: dev:context-detection, dev:universal-patterns
     ```
 
     **If user selects "Multi-model brainstorm":**
-    - Invoke the `multimodel:team` skill with the architecture topic
+    - multimodel is optional. If `/multimodel:team` is available, invoke it with the architecture topic.
+    - If it is not installed, say once that `claude plugin install multimodel@magus` adds it. Then run
+      the same prompt through the claudish `team` MCP tool when claudish is present
+      (`claudish:claudish-usage` resolves the models), or fall back to plan mode reasoning when it is not.
     - Frame the /team prompt as: "Architect: {$ARGUMENTS}. Generate 2-3 alternative architecture approaches with trade-offs."
     - After /team completes, feed the multi-model consensus into Phase 2 (Alternative Designs) as input
     - Continue with the architecture workflow from Phase 2 onward
@@ -134,17 +136,11 @@ skills: dev:context-detection, dev:universal-patterns
   </mode_selection>
 
   <critical_constraints>
-    <todowrite_requirement>
-      **Read** `${CLAUDE_PLUGIN_ROOT}/knowledge/discipline/task-management.md` for phase
-      tracking. It is knowledge, not a skill — nothing registers `knowledge/`, so naming
-      the file is the only route and the Skill tool has nothing to reach.
-
-      At workflow start:
-      1. Clean up any stale tasks from previous workflows
-      2. Create phase tasks upfront for: Triage, Initialize, Plan Mode (if applicable),
-         Requirements, Alternatives, Trade-offs, Detailed Design, Validation, Finalization
-      3. Track progress per the skill's phase task patterns
-    </todowrite_requirement>
+    <phase_reporting>
+      There are no task-list tools. Announce each phase in one line of text
+      (`**Phase N — starting.**` / `**Phase N — complete.**`, naming its artifacts). The
+      session files are the record.
+    </phase_reporting>
 
     <agent_dispatch>
       **Every phase that says "Launch the architect agent" is a `Agent` tool call. Not
@@ -259,7 +255,6 @@ skills: dev:context-detection, dev:universal-patterns
     <phase number="0" name="Initialize">
       <objective>Setup session and understand requirements</objective>
       <steps>
-        <step>Mark PHASE 0 as in_progress</step>
         <step>
           Initialize session with increased entropy:
           ```bash
@@ -282,7 +277,6 @@ skills: dev:context-detection, dev:universal-patterns
           ```
         </step>
         <step>Gather context on existing architecture via Read/Grep</step>
-        <step>Mark PHASE 0 as completed</step>
       </steps>
       <quality_gate>Context gathered, stack detected</quality_gate>
     </phase>
@@ -290,7 +284,6 @@ skills: dev:context-detection, dev:universal-patterns
     <phase number="1" name="Plan Mode Reasoning" condition="moderate_or_complex">
       <objective>Use Claude Code plan mode for structured architectural reasoning</objective>
       <steps>
-        <step>Mark PHASE 1 as in_progress</step>
         <step>
           **Enter Plan Mode** using the EnterPlanMode tool.
 
@@ -307,7 +300,6 @@ skills: dev:context-detection, dev:universal-patterns
           After reasoning is complete, **Exit Plan Mode** using the ExitPlanMode tool.
           The plan mode reasoning output becomes input for subsequent phases.
         </step>
-        <step>Mark PHASE 1 as completed</step>
       </steps>
       <quality_gate>Structured reasoning completed, key constraints and patterns identified</quality_gate>
     </phase>
@@ -315,7 +307,6 @@ skills: dev:context-detection, dev:universal-patterns
     <phase number="2" name="Requirements Analysis">
       <objective>Understand and document requirements</objective>
       <steps>
-        <step>Mark PHASE 2 as in_progress</step>
         <step>
           **Launch the architect agent** — `Agent` tool, `subagent_type: "dev:architect"`,
           per the `agent_dispatch` block. Substitute every placeholder and append the resolved
@@ -350,7 +341,6 @@ skills: dev:context-detection, dev:universal-patterns
           2. Request revisions
           3. Add missing requirements
         </step>
-        <step>Mark PHASE 2 as completed</step>
       </steps>
       <quality_gate>Requirements documented and confirmed</quality_gate>
     </phase>
@@ -358,7 +348,6 @@ skills: dev:context-detection, dev:universal-patterns
     <phase number="3" name="Alternative Designs">
       <objective>Generate multiple design alternatives</objective>
       <steps>
-        <step>Mark PHASE 3 as in_progress</step>
         <step>
           **If /team was used in triage:**
           - Read the multi-model brainstorming results
@@ -393,7 +382,6 @@ skills: dev:context-detection, dev:universal-patterns
           ```
         </step>
         <step>Present alternatives summary to user</step>
-        <step>Mark PHASE 3 as completed</step>
       </steps>
       <quality_gate>Multiple alternatives documented</quality_gate>
     </phase>
@@ -401,7 +389,6 @@ skills: dev:context-detection, dev:universal-patterns
     <phase number="4" name="Trade-off Analysis">
       <objective>Analyze trade-offs and recommend approach</objective>
       <steps>
-        <step>Mark PHASE 4 as in_progress</step>
         <step>
           **Launch the architect agent** — `Agent` tool, `subagent_type: "dev:architect"`,
           per the `agent_dispatch` block. Substitute every placeholder and append the resolved
@@ -444,7 +431,6 @@ skills: dev:context-detection, dev:universal-patterns
           5. Request more analysis
           ```
         </step>
-        <step>Mark PHASE 4 as completed</step>
       </steps>
       <quality_gate>Trade-offs analyzed, approach selected</quality_gate>
     </phase>
@@ -452,7 +438,6 @@ skills: dev:context-detection, dev:universal-patterns
     <phase number="5" name="Detailed Design">
       <objective>Create detailed architecture document</objective>
       <steps>
-        <step>Mark PHASE 5 as in_progress</step>
         <step>
           **Launch the architect agent** — `Agent` tool, `subagent_type: "dev:architect"`,
           per the `agent_dispatch` block. Substitute every placeholder and append the resolved
@@ -498,7 +483,6 @@ skills: dev:context-detection, dev:universal-patterns
           Save to: ${SESSION_PATH}/architecture.md
           ```
         </step>
-        <step>Mark PHASE 5 as completed</step>
       </steps>
       <quality_gate>Detailed architecture documented</quality_gate>
     </phase>
@@ -506,7 +490,6 @@ skills: dev:context-detection, dev:universal-patterns
     <phase number="6" name="Validation" optional="true">
       <objective>Validate architecture with external review</objective>
       <steps>
-        <step>Mark PHASE 6 as in_progress</step>
         <step>
           **Select Review Models** (AskUserQuestion, multiSelect):
           - models resolved from `list_models` (live catalog)
@@ -530,7 +513,6 @@ skills: dev:context-detection, dev:universal-patterns
           - Revise architecture with architect
           - Update ${SESSION_PATH}/architecture.md
         </step>
-        <step>Mark PHASE 6 as completed</step>
       </steps>
       <quality_gate>Architecture validated (or skipped)</quality_gate>
     </phase>
@@ -538,7 +520,6 @@ skills: dev:context-detection, dev:universal-patterns
     <phase number="7" name="Finalization">
       <objective>Complete architecture documentation</objective>
       <steps>
-        <step>Mark PHASE 7 as in_progress</step>
         <step>
           Verify all deliverables exist:
           - ${SESSION_PATH}/requirements.md
@@ -553,7 +534,6 @@ skills: dev:context-detection, dev:universal-patterns
           2. Share for stakeholder review
           3. Archive for future reference
         </step>
-        <step>Mark ALL tasks as completed</step>
       </steps>
       <quality_gate>Architecture documentation complete</quality_gate>
     </phase>
@@ -596,7 +576,7 @@ skills: dev:context-detection, dev:universal-patterns
       PHASE 3: Alternatives based on /team consensus (CRDT variants)
       PHASE 4: Trade-offs -> recommend Model C's hybrid approach
       PHASE 5: Detailed CRDT design with WebSocket transport
-      PHASE 6: Grok + Gemini validation -> confirm approach
+      PHASE 6: external-model validation (ids from `list_models`) -> confirm approach
       PHASE 7: Complete documentation
     </execution>
   </example>

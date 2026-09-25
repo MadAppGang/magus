@@ -6,7 +6,7 @@ user-invocable: false
 
 # Browser Use Core API
 
-Reference for the MCP tools exposed by the Browser Use plugin: the upstream Browser Use set plus ten Magus-specific additions. All are accessed via `mcp__browser-use__<tool_name>`. The authoritative list is whatever the server registers at runtime, so check there rather than counting this table.
+Reference for the MCP tools exposed by the Browser Use plugin: the upstream Browser Use set plus ten Magus-specific additions. Their full names are `mcp__plugin_browser-use_browser-use__<tool_name>`; the examples below shorten that prefix to `mcp__browser-use__`, and an agent's `tools:` line must use the full name. The authoritative list is whatever the server registers at runtime, so check there rather than counting this table.
 
 ---
 
@@ -729,6 +729,6 @@ is `python3 -m playwright install chromium`.
 | Screenshot returns empty/blank | Page not finished rendering | Add a `browser_scroll(direction="down", amount=1)` to trigger rendering, then screenshot |
 | `browser_type` has no effect | Input not focused | Call `browser_click` on the input first, then `browser_type` |
 | Can't type into Monaco/CodeMirror | Editor has no indexable input | Use `browser_evaluate` (`setValue`) or `browser_focus` + `browser_keyboard` — not `browser_type` |
-| `browser_run_script` hangs ~300s | Passed inline JS / a stream as `script_path` | Pass a real `.py` file; to run JS in the page use `browser_evaluate` |
+| `browser_run_script` errors at once on `script_path` | Passed inline JS / a stream, not a `.py` file | Pass a real `.py` file; to run JS in the page use `browser_evaluate` |
 | `ModuleNotFoundError` in `run_script` | Subprocess interpreter lacks the deps | `run_script` doesn't share this env or browser; install deps in that interpreter — run `browser_doctor` to check |
 | Cached element `index` clicks the wrong thing | Indices are snapshot-scoped | Re-`get_state` immediately before use, or target by selector (`browser_focus`/`browser_evaluate`) |

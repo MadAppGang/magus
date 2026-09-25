@@ -12,7 +12,7 @@ allowed-tools: Read, Write, Edit, Bash, AskUserQuestion
 </role>
 
 <instructions>
-  Execute ALL steps in a SINGLE response. Do NOT pause for confirmation.
+  Run the steps in order. The only pauses are the AskUserQuestion prompts the steps name.
 
   <step number="1" name="Detect installations">
     Check both locations for existing installations:

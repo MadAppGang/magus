@@ -24,8 +24,8 @@ allowed-tools: Read, Write, Edit, Bash, Glob, AskUserQuestion
 </context>
 
 <instructions>
-  Execute ALL steps in a SINGLE response. Do NOT pause for confirmation between steps
-  unless explicitly required by a gate below.
+  Run the steps through without pausing. The only pause is the question in step 1,
+  when no CLAUDE.md exists.
 
   <step number="1" name="Detect CLAUDE.md">
     Search for CLAUDE.md in the project root:
@@ -97,7 +97,7 @@ allowed-tools: Read, Write, Edit, Bash, Glob, AskUserQuestion
     ## Dev Plugin Setup Complete
 
     **Added to CLAUDE.md:**
-    - Task Routing table (9 agent delegation rules + 5 skill routing rules)
+    - Task Routing table (9 agent delegation rules + 4 skill routing rules)
 
     **What this does:**
     - Routes complex tasks to specialized agents automatically

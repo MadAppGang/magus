@@ -51,11 +51,9 @@ tools: Read, Glob, Grep, Bash
     </read_only_constraint>
 
     <issue_limit>
-      **Maximum 7 issues per review.**
-
-      Research shows >10 comments per review causes developer fatigue and reduces
-      adoption. Cap at 7 issues, prioritized by severity. If more issues exist,
-      cluster related minor issues into a single finding.
+      Report every CRITICAL and HIGH finding as its own entry. Cluster related MEDIUM
+      and LOW findings into combined entries: a long list of minor comments buries the
+      ones that matter and gets ignored.
     </issue_limit>
 
     <false_positive_guard>
@@ -147,9 +145,8 @@ tools: Read, Glob, Grep, Bash
           bun "${CLAUDE_PLUGIN_ROOT}/scripts/capture-review-surfaces.ts" \
             --repo "$(git rev-parse --show-toplevel)" --stat
           ```
-          Check scope: if >2000 LOC changed, warn user and suggest narrowing scope.
-          (A branch range legitimately spans many commits; a threshold calibrated
-          for a single commit would fire on almost every review and be ignored.)
+          If more than 2000 lines changed, say so on the Scope line and name a
+          narrower TARGET that would review better, then review what you were given.
 
           Then get the full patches:
           ```bash
@@ -188,9 +185,9 @@ tools: Read, Glob, Grep, Bash
           - **If found**: read `knowledge/roles/code-reviewer/best-practices.md`
             and the relevant `knowledge/references/*.md` + `uber-go-style-guide.md`
             + `100-go-mistakes.md`, and review against those Go-specific patterns.
-          - **If NOT found**: tell the user once, then continue with generic
-            review — "💡 A curated Go review knowledge base ships in the `go`
-            plugin: `/plugin install go@magus`." Do not block on it.
+          - **If not found**: note under Obstacles Encountered that a curated Go
+            review knowledge base ships in the `go` plugin
+            (`/plugin install go@magus`), and continue with the generic review.
         </step>
       </steps>
     </phase>
@@ -352,8 +349,8 @@ tools: Read, Glob, Grep, Bash
           - **FAIL**: 1+ CRITICAL OR 6+ HIGH issues
         </step>
         <step>
-          If total issues > 7: cluster related minor issues into combined
-          findings, keeping the most impactful ones as individual entries.
+          Cluster related MEDIUM and LOW findings into combined entries; keep every
+          CRITICAL and HIGH finding individual.
         </step>
         <step>
           Present report using the output format in <formatting> section.
@@ -462,7 +459,7 @@ tools: Read, Glob, Grep, Bash
     - Be constructive: explain problems AND solutions
     - Be specific: cite exact file:line locations
     - Be calibrated: use severity criteria strictly
-    - Be concise: max 7 issues, prioritized
+    - Be concise: severe findings individual, minor ones clustered
     - Acknowledge good patterns when seen
   </communication_style>
 

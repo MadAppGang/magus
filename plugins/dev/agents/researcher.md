@@ -188,62 +188,8 @@ skills: dev:universal-patterns
           - Extract {N} from prompt
         </step>
         <step>
-          Write findings document with structure:
-
-          ```markdown
-          # Research Findings: {sub_question}
-
-          **Researcher**: Explorer {N}
-          **Date**: {timestamp}
-          **Queries Executed**: {count}
-
-          ---
-
-          ## Key Findings
-
-          ### Finding 1: {title}
-          **Summary**: {brief_description}
-          **Evidence**: {detailed_information}
-          **Sources**:
-          - [{source_1_name}]({URL}) - Quality: High
-          - [{source_2_name}]({URL}) - Quality: Medium
-
-          **Confidence**: High/Medium/Low
-          **Multi-source**: Yes/No
-
-          ### Finding 2: {title}
-          ...
-
-          ---
-
-          ## Source Summary
-
-          **Total Sources**: {count}
-          - High Quality: {count}
-          - Medium Quality: {count}
-          - Low Quality: {count}
-
-          **Source List**:
-          1. [{name}]({URL}) - Quality: {rating}, Date: {date}
-          2. ...
-
-          ---
-
-          ## Knowledge Gaps
-
-          What this research did NOT find:
-          - {gap_1}: Why not found, suggested queries
-          - {gap_2}: ...
-
-          ---
-
-          ## Search Limitations
-
-          - Model: {model_used}
-          - Web search: {available|unavailable}
-          - Local search: {performed|skipped}
-          - Date range: {range}
-          ```
+          Write the findings document in the shape `<findings_document_template>` in
+          `<formatting>` defines.
         </step>
         <step>
           Use Write tool to save findings to file
@@ -257,9 +203,6 @@ skills: dev:universal-patterns
         <step>
           Return the `<completion_message>` in `<formatting>`: one to three lines
           per section, never restating the findings file.
-        </step>
-        <step>
-          Return the `<completion_message>` in `<formatting>` — the findings live in the file it names
         </step>
       </steps>
     </phase>
@@ -310,7 +253,7 @@ skills: dev:universal-patterns
     **Narrow**:
     - Add qualifier terms ("best practices", "tutorial", "official")
     - Add technology stack context
-    - Add recency filter ("2024", "latest")
+    - Add a recency qualifier ("latest", or the current year written out)
 
     **Rephrase**:
     - Use synonyms
@@ -440,7 +383,7 @@ skills: dev:universal-patterns
 
       Sub-question: GraphQL vs REST performance comparison
       Search queries:
-      - "GraphQL REST performance benchmark 2024"
+      - "GraphQL REST performance benchmark"
       - "GraphQL N+1 problem solutions"
 
       Save findings to: ai-docs/sessions/dev-research-graphql-20260106/findings/explorer-2.md

@@ -346,7 +346,7 @@ These are optional and free. The roast is complete without them.
 |-----------|--------|
 | No sins found | Congratulate genuinely; suggest Tier 2 tools for deeper scan |
 | All tools missing (Tier 2) | Tier 1 grep patterns still work; note tool recommendations |
-| Target too large (>200 files) | Ask user to narrow scope |
+| Target too large (>50 files) | Ask user to narrow scope (see Phase 1) |
 | Language not in registry | Use universal patterns (UNI-*) + SLOP patterns; note coverage gap |
 | User says "stop" mid-roast | Stop immediately; show what you have so far |
 | Sin is a false positive | Acknowledge and skip; explain why the pattern matched but isn't a real issue |

@@ -51,14 +51,10 @@ Agent(
     Context: [debugging | learning | refactoring]
     Working directory: [current working directory]
 
-    Return:
-    1. Exact file:line locations
-    2. The code at those locations, quoted
-    3. How the mechanism works
-    4. Related files and dependencies, inbound and outbound
-    5. A flow diagram when the path crosses more than two or three hops
+    Anchor: [the symbol, file, or specific behaviour to start from]
+    Job: [locate | trace a flow | map dependencies | find a bug's origin]
 
-    Name the method behind each finding, and say what the configured engine could not answer.
+    Return your Location report.
   `
 )
 ```

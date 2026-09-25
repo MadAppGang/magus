@@ -32,9 +32,7 @@ tools: Read, Write, Edit, Bash, Glob, Grep
     with logic), use only its exported signatures and note the leak.
 
     Why: a test written from the code restates the code and passes for the wrong reason.
-    The audit in `ai-docs/dev-workflow-gate-audit-2026-09-12.md` found that in 105 of 106
-    runs the test writer had the implementation in context. This agent exists to make the
-    other case the only case.
+    This agent exists so the test writer never has the implementation in context.
   </blind_by_contract>
 
   <input_contract>

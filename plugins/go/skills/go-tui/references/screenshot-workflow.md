@@ -31,6 +31,7 @@ client whose server has already exited starts a fresh one that does read that fi
 
 ```bash
 OUT=$(mktemp -d); SOCK=gotui-$$; SESS=tui-$$   # never fixed names: a parallel run collides, and a reused dir hands back a stale PNG
+SKILL="${CLAUDE_PLUGIN_ROOT:+$CLAUDE_PLUGIN_ROOT/skills/go-tui}"; SKILL="${SKILL:-PASTE_THE_DIR_THIS_SKILL_MD_WAS_READ_FROM}"   # unset in a Bash tool call — paste the go-tui skill dir
 shot() {                                    # ${1} cols × ${2} rows → a ${3}-pixel PNG. Non-zero if the capture is worthless.
   local A="$OUT/${1}x${2}.ansi"
   tmux -f /dev/null -L "$SOCK" new-session -d -s "$SESS" -x "${1}" -y "${2}" "go run ." || return 1
@@ -39,7 +40,7 @@ shot() {                                    # ${1} cols × ${2} rows → a ${3}-
   for _ in $(seq 40); do sleep 0.25; tmux -f /dev/null -L "$SOCK" capture-pane -p -e -t "$SESS" >"$A" 2>/dev/null && grep -q $'\x1b' "$A" && break; done
   tmux -f /dev/null -L "$SOCK" kill-window -t "$SESS" 2>/dev/null   # its only window, so the session and the private server end with it
   grep -q $'\x1b' "$A" || { echo "NO ESC BYTES in $A — no -e, or it never drew"; return 1; }   # THE GATE: non-zero, so the chain below STOPS
-  bun run /path/to/go-tui/scripts/ansi-to-png.ts "$A" "$OUT/${1}x${2}.png" "${3}"
+  bun run "$SKILL/scripts/ansi-to-png.ts" "$A" "$OUT/${1}x${2}.png" "${3}"
 }
 shot 80 24 720x480 && shot 145 45 1300x900 && ls -l "$OUT"/*.png   # narrow AND wide in one command, so neither can be skipped
 ```

@@ -1,6 +1,6 @@
 ---
 name: multi-model-validation
-description: Runs the same task across multiple AI models in parallel and aggregates verdicts. Use when the user wants a second opinion, multi-expert validation, or consensus from Grok, Gemini, GPT-5, or Kimi.
+description: Runs the same task across multiple AI models in parallel and aggregates verdicts. Use when the user wants a second opinion, multi-expert validation, or consensus from Grok, Gemini, GPT, or Kimi.
 user-invocable: false
 ---
 
@@ -12,7 +12,7 @@ user-invocable: false
 
 ## Overview
 
-Multi-model validation is the practice of running multiple AI models (Grok, Gemini, GPT-5, DeepSeek, etc.) in parallel to validate code, designs, or implementations from different perspectives. This achieves:
+Multi-model validation is the practice of running multiple AI models (Grok, Gemini, GPT, DeepSeek, etc.) in parallel to validate code, designs, or implementations from different perspectives. This achieves:
 
 - **3-5x speedup** via parallel execution (15 minutes → 5 minutes)
 - **Consensus-based prioritization** (issues flagged by all models are CRITICAL)
@@ -106,7 +106,7 @@ Task: "Debug the API timeout"
 Task: "Debug this error, use different models"
 → Detected: "different models" override trigger
 → ASK: "Which models for debug tasks?"
-→ User selects: gemini, LATEST_GPT_MODEL
+→ User selects: gemini, <model-c>
 → UPDATE contextPreferences.debug
 → Run with new models
 ```
@@ -117,7 +117,6 @@ Task: "Debug this error, use different models"
 
 **Cross-References:**
 
-- **multimodel:task-orchestration** - Progress tracking during execution
 - **multimodel:error-recovery** - Handling failures and retries
 
 ---
@@ -160,10 +159,10 @@ echo "Directory: $SESSION_DIR"
 - ✅ Session ID can be used for tracking in statistics
 - ✅ Parallel sessions don't conflict
 - ✅ Aligned with the `dev:dev` session pattern
-- ✅ Committed to git for audit trail (unlike `/tmp/`)
+- ✅ Git-ignored session scratch: it dies with the session and is never committed
 
-> **⚠️ Do NOT use `/tmp/` for session directories.** Files in `/tmp/` are not
-> traceable, not committable, and parallel runs will overwrite each other.
+> Use `ai-docs/sessions/`, not `/tmp/`: a `/tmp/` path is not tied to the project, and
+> the `/team` hook denies `/tmp/` paths in agent prompts.
 
 ---
 
@@ -177,13 +176,8 @@ access prefixes — served from claudish’s catalog with a 24-hour cache.
 
 For every live variant in one family, call `search_models` with the family name.
 
-**Recommended Free Models for Code Review:**
-
-| Model | Provider | Context | Capabilities | Why Good |
-|-------|----------|---------|--------------|----------|
-| `qwen/LATEST_FREE_CODING_MODEL` | Qwen | 262K | Tools ✓ | Coding-specialized, large context |
-| `mistralai/LATEST_FREE_CODING_MODEL` | Mistral | 262K | Tools ✓ | Dev-focused, excellent for code |
-| `qwen/LATEST_FREE_REASONING_MODEL` | Qwen | 131K | Tools ✓ Reasoning ✓ | Massive 235B model, reasoning |
+**Free models:** filter the `list_models` result by pricing. Keep no list here — free tiers
+churn faster than any other part of the catalog.
 
 **Model Selection Flow (Learn and Reuse):**
 
@@ -268,23 +262,15 @@ AskUserQuestion({
     header: "Models",
     multiSelect: true,
     options: [
-      // Top paid (from the live catalog (list_models) + historical data)
+      // One option per model, built from this run's list_models result plus
+      // ai-docs/llm-performance.json history when it exists. Illustrative shape:
       {
-        label: "grok ⚡",
-        description: "$0.85/1M | Quality: 87% | Avg: 42s | Fast + accurate"
+        label: "<id from list_models>",
+        description: "<price from list_models> | Quality: <history %, or 'new'> | Avg: <history s>"
       },
       {
-        label: "gemini",
-        description: "$7.00/1M | Quality: 91% | Avg: 55s | High accuracy"
-      },
-      // Free models — filter the list_models result by pricing
-      {
-        label: "qwen/LATEST_FREE_CODING_MODEL 🆓",
-        description: "FREE | Quality: 82% | 262K context | Coding-specialized"
-      },
-      {
-        label: "mistralai/LATEST_FREE_CODING_MODEL 🆓",
-        description: "FREE | 262K context | Dev-focused, new model"
+        label: "<free id from list_models> 🆓",
+        description: "FREE | <context from list_models> | Quality: <history %, or 'new'>"
       }
     ]
   }]
@@ -321,7 +307,7 @@ load_session_models() {
 
 # Usage:
 # After AskUserQuestion returns selected models
-save_session_models "$SESSION_DIR" "grok" "qwen/LATEST_FREE_CODING_MODEL"
+save_session_models "$SESSION_DIR" "grok" "<free-model-a>"
 
 # Later in the session, retrieve the selection
 MODELS=$(load_session_models "$SESSION_DIR")
@@ -334,7 +320,7 @@ $SESSION_DIR/
 ├── selected-models.txt    # User's model selection (persists for session)
 ├── claude-review.md       # Internal review
 ├── grok-review.md         # External review (if selected)
-├── qwen-coder-review.md   # External review (if selected)
+├── free-model-a-review.md   # External review (if selected)
 └── consolidated-review.md # Final consolidated review
 ```
 
@@ -374,14 +360,11 @@ dependency, seats it as the `internal` slot instead — Pattern 3 states the rul
 
 ### Pattern 1: The 4-Message Pattern (MANDATORY)
 
-This pattern is **CRITICAL** for achieving true parallel execution with multiple AI models.
-
-**Why This Pattern Exists:**
-
-Claude Code executes tools **sequentially by default** when different tool types are mixed in the same message. To achieve true parallelism, you MUST:
-1. Use ONLY one tool type per message
-2. Ensure all Agent calls are in a single message
-3. Separate preparation (Bash) from execution (Task) from presentation
+**Why This Pattern Exists:** independent calls issued in one message run together; calls
+split across messages wait for each other. So preparation comes first, every reviewer
+starts in one message, and consolidation waits until the panel settles. What decides
+whether two calls may share a message is data dependency, not tool type — Message 2 below
+issues an `Agent` call and a `team` MCP call together, and that is correct.
 
 **The Pattern:**
 
@@ -393,7 +376,6 @@ Message 1: Preparation (Bash Only)
     handed `TARGET: BRANCH` and captures its own surfaces through dev's
     `capture-review-surfaces.ts`
   - NO Agent calls
-  - NO Tasks calls
 
 Message 2: Parallel Execution (the internal Agent call and ONE team call, same message)
   - `Agent(subagent_type: "dev:reviewer", run_in_background: false, …)` — the
@@ -402,10 +384,8 @@ Message 2: Parallel Execution (the internal Agent call and ONE team call, same m
     internally. In a dev-dispatched panel the internal reviewer is never a
     `models` entry (Pattern 3 — `/team` itself seats it as the `internal` slot)
   - Pass require_pattern whenever the prompt mandates an output shape
-  - (A pure-Agent fan-out with no external models still obeys the
-     one-tool-type-per-message rule above)
 
-Message 3: Auto-Consolidation (Task Only)
+Message 3: Auto-Consolidation (one Agent call)
   - Automatically triggered when the panel settles — at N = 1 too, where the
     aggregator passes the single review through with a `VERDICT:` line (Pattern 5)
   - Launch `dev:aggregator` — the only consolidator; it reads reviews, never code
@@ -448,11 +428,11 @@ Message 2: Start the panel (the internal Agent call and ONE team call, same mess
     prompt: "TARGET: BRANCH
              FOCUS: code
              OUTPUT: $SESSION_DIR/claude-review.md
-             MODELS: grok,LATEST_FREE_CODING_MODEL,gpt,LATEST_FREE_REASONING_MODEL"
+             MODELS: grok,<free-model-a>,gpt,<free-model-c>"
   )
   ---
   claudish team(mode="run", path=$SESSION_DIR,
-    models=["grok", "LATEST_FREE_CODING_MODEL", "gpt", "LATEST_FREE_REASONING_MODEL"],
+    models=["grok", "<free-model-a>", "gpt", "<free-model-c>"],
     input_file="$SESSION_DIR/input.md",
     require_pattern="\*\*Verdict\*\*: (PASS|CONDITIONAL|FAIL)", agent="dev:reviewer")
 
@@ -502,9 +482,9 @@ Message 4: Present Results + Update Statistics
   # Track performance for each model (see Pattern 7)
   track_model_performance "claude-embedded" "success" 32 8 95
   track_model_performance "grok" "success" 45 6 87
-  track_model_performance "qwen/LATEST_FREE_CODING_MODEL" "success" 52 5 82
+  track_model_performance "<free-model-a>" "success" 52 5 82
   track_model_performance "gpt" "success" 68 7 89
-  track_model_performance "mistralai/LATEST_FREE_CODING_MODEL" "success" 48 5 84
+  track_model_performance "<free-model-b>" "success" 48 5 84
 
   # Record session summary
   record_session_stats 5 5 0 68 245 3.6
@@ -524,9 +504,9 @@ Message 4: Present Results + Update Statistics
    |--------------------------------|------|--------|---------|--------|
    | claude-embedded                | 32s  | 8      | 95%     | FREE   |
    | grok          | 45s  | 6      | 87%     | $0.002 |
-   | qwen/LATEST_FREE_CODING_MODEL          | 52s  | 5      | 82%     | FREE   |
+   | <free-model-a>          | 52s  | 5      | 82%     | FREE   |
    | gpt        | 68s  | 7      | 89%     | $0.015 |
-   | mistralai/LATEST_FREE_CODING_MODEL   | 48s  | 5      | 84%     | FREE   |
+   | <free-model-b>   | 48s  | 5      | 84%     | FREE   |
 
    Parallel Speedup: 3.6x (245s sequential → 68s parallel)
 
@@ -605,7 +585,7 @@ Each Task MUST write to a **unique output file** within the session directory:
 ✅ CORRECT - Unique Files in Session Directory:
   Task: reviewer1 → $SESSION_DIR/claude-review.md
   Task: reviewer2 → $SESSION_DIR/grok-review.md
-  Task: reviewer3 → $SESSION_DIR/qwen-coder-review.md
+  Task: reviewer3 → $SESSION_DIR/free-model-a-review.md
 
 ❌ WRONG - Shared File:
   Task: reviewer1 → $SESSION_DIR/review.md
@@ -818,10 +798,8 @@ Always provide a **range** (min-max), not a single number:
 Output tokens are typically **3-5x more expensive** than input tokens:
 
 ```
-Example Pricing (OpenRouter):
-  - Grok: $0.50 / 1M input, $1.50 / 1M output (3x difference)
-  - Gemini Flash: $0.10 / 1M input, $0.40 / 1M output (4x difference)
-  - GPT-5 Codex: $1.00 / 1M input, $5.00 / 1M output (5x difference)
+Pricing: read each model's input and output rates from this run's `list_models`
+result, never from this file. Output is typically several times the input rate.
 
 Impact:
   If input = 5,000 tokens, output = 15,000 tokens:
@@ -837,11 +815,11 @@ ALWAYS ask for user approval before expensive operations:
 ```
 Present to user:
   "You selected 5 AI models for code review:
-   - Claude Sonnet (embedded, free)
-   - Grok Code Fast (external, $0.002)
-   - Gemini 2.5 Flash (external, $0.001)
-   - GPT-5 Codex (external, $0.004)
-   - DeepSeek Coder (external, $0.001)
+   - internal (host Claude session, no external cost)
+   - <model-a> (external, <estimate from list_models pricing>)
+   - <model-b> (external, <estimate>)
+   - <model-c> (external, <estimate>)
+   - <model-d> (external, <estimate>)
 
    Estimated total cost: $0.008 ($0.005 - $0.010)
 
@@ -959,7 +937,7 @@ Agent(
   description: "Consolidate code reviews",
   prompt: "REVIEWS: $SESSION_DIR/claude-review.md
            $SESSION_DIR/grok-review.md
-           $SESSION_DIR/qwen-coder-review.md
+           $SESSION_DIR/free-model-a-review.md
            THRESHOLDS: <the three lines under 'Apply verdict thresholds' in
                         dev:reviewer's agent file, read at dispatch time, never
                         recalled>
@@ -982,13 +960,13 @@ Agent(
            Grok Review:
            [500 lines of review content]
 
-           Qwen Review:
+           Free model A review:
            [500 lines of review content]"
 
 ✅ CORRECT - File Paths in Session Directory:
   prompt: "REVIEWS: $SESSION_DIR/claude-review.md
            $SESSION_DIR/grok-review.md
-           $SESSION_DIR/qwen-coder-review.md
+           $SESSION_DIR/free-model-a-review.md
            THRESHOLDS: ...
            OUTPUT: $SESSION_DIR/consolidated-review.md
            ..."
@@ -1070,7 +1048,7 @@ Show which models agree on which issues:
 ```
 Issue Matrix:
 
-Issue                             Claude  Grok  Gemini  GPT-5  DeepSeek  Consensus
+Issue                             Claude  Grok  Gemini  GPT  DeepSeek  Consensus
 ──────────────────────────────────────────────────────────────────────────────────
 SQL injection in search              ✓      ✓     ✓       ✓       ✓      UNANIMOUS
 Missing input validation             ✓      ✓     ✓       ✓       ✗      STRONG
@@ -1087,16 +1065,16 @@ Sort issues by consensus level, then by severity:
 Top 10 Issues (Prioritized):
 
 1. [UNANIMOUS - CRITICAL] SQL injection in search endpoint
-   Flagged by: Claude, Grok, Gemini, GPT-5, DeepSeek (5/5)
+   Flagged by: Claude, Grok, Gemini, GPT, DeepSeek (5/5)
 
 2. [UNANIMOUS - HIGH] Missing input validation on POST /api/users
-   Flagged by: Claude, Grok, Gemini, GPT-5, DeepSeek (5/5)
+   Flagged by: Claude, Grok, Gemini, GPT, DeepSeek (5/5)
 
 3. [STRONG - HIGH] Weak password hashing (bcrypt rounds too low)
-   Flagged by: Claude, Grok, Gemini, GPT-5 (4/5)
+   Flagged by: Claude, Grok, Gemini, GPT (4/5)
 
 4. [STRONG - MEDIUM] Missing rate limiting on auth endpoints
-   Flagged by: Claude, Grok, Gemini, GPT-5 (4/5)
+   Flagged by: Claude, Grok, Gemini, GPT (4/5)
 
 5. [MAJORITY - MEDIUM] Insufficient error handling in payment flow
    Flagged by: Claude, Grok, Gemini (3/5)
@@ -1168,16 +1146,16 @@ Instead of keyword matching, use semantic similarity:
       "modelId": "grok",
       "provider": "X-ai",
       "isFree": false,
-      "pricing": "$0.85/1M",
+      "pricing": "<from list_models>",
       "totalRuns": 10,
       "successfulRuns": 9,
       "failedRuns": 1,
       "totalCost": 0.12,
       "trend": "improving"
     },
-    "LATEST_FREE_CODING_MODEL": {
-      "modelId": "LATEST_FREE_CODING_MODEL",
-      "provider": "Qwen",
+    "<free-model-a>": {
+      "modelId": "<free-model-a>",
+      "provider": "<from list_models>",
       "isFree": true,
       "pricing": "FREE",
       "totalRuns": 5,
@@ -1203,7 +1181,7 @@ Instead of keyword matching, use semantic similarity:
   ],
   "recommendations": {
     "topPaid": ["grok", "gemini"],
-    "topFree": ["qwen/LATEST_FREE_CODING_MODEL", "mistralai/LATEST_FREE_CODING_MODEL"],
+    "topFree": ["<free-model-a>", "<free-model-b>"],
     "bestValue": ["grok"],
     "avoid": [],
     "lastGenerated": "2025-12-12T10:45:00Z"
@@ -1242,7 +1220,7 @@ Example:
 - Claude: 32s
 - Grok: 45s
 - Gemini: 38s
-- GPT-5: 120s
+- GPT: 120s
 
 Sequential would take: 32 + 45 + 38 + 120 = 235s
 Parallel took: max(32, 45, 38, 120) = 120s
@@ -1260,7 +1238,7 @@ Speedup: 235 / 120 = 1.96x
 | grok     | 45s    | 6      | 85%     | ✓         |
 | gemini   | 38s    | 5      | 90%     | ✓         |
 | gpt   | 120s   | 9      | 88%     | ✓ (slow)  |
-| deepseek/deepseek-chat    | TIMEOUT| 0      | -       | ✗         |
+| <model-d>    | TIMEOUT| 0      | -       | ✗         |
 
 **Session Summary:**
 - Parallel Speedup: 1.96x (235s sequential → 120s parallel)
@@ -1269,7 +1247,7 @@ Speedup: 235 / 120 = 1.96x
 
 **Recommendations:**
 ⚠️ gpt runs 2x slower than average - consider removing
-⚠️ deepseek-chat timed out - check API status or remove from shortlist
+⚠️ <model-d> timed out - check API status or remove from shortlist
 ✓ Top performers: claude-embedded, gemini (fast + high quality)
 ```
 
@@ -1386,8 +1364,8 @@ track_model_performance "grok" "success" 45 6 87 0.002 false
 track_model_performance "gpt" "success" 68 7 89 0.015 false
 
 # Free models (cost=0, is_free=true)
-track_model_performance "qwen/LATEST_FREE_CODING_MODEL" "success" 52 5 82 0 true
-track_model_performance "mistralai/LATEST_FREE_CODING_MODEL" "success" 48 5 84 0 true
+track_model_performance "<free-model-a>" "success" 52 5 82 0 true
+track_model_performance "<free-model-b>" "success" 48 5 84 0 true
 
 # Embedded Claude (always free)
 track_model_performance "claude-embedded" "success" 32 8 95 0 true
@@ -1490,7 +1468,7 @@ display_recommendations() {
 **The Problem:**
 
 Users often select models arbitrarily or based on outdated information:
-- "I'll use GPT-5 because it's famous"
+- "I'll use GPT because it's famous"
 - "Let me try this new model I heard about"
 - "I'll use the same 5 models every time"
 
@@ -1546,19 +1524,19 @@ AskUserQuestion({
       // Top paid with historical data
       {
         label: "grok ⚡ (Recommended)",
-        description: "$0.85/1M | Quality: 87% | Avg: 42s | Fast + accurate"
+        description: "<price from list_models> | Quality: 87% | Avg: 42s"
       },
       {
         label: "gemini 🎯",
-        description: "$7.00/1M | Quality: 91% | Avg: 55s | High accuracy"
+        description: "<price from list_models> | Quality: 91% | Avg: 55s"
       },
       // Top free models
       {
-        label: "qwen/LATEST_FREE_CODING_MODEL 🆓",
+        label: "<free-model-a> 🆓",
         description: "FREE | Quality: 82% | 262K | Coding-specialized"
       },
       {
-        label: "mistralai/LATEST_FREE_CODING_MODEL 🆓",
+        label: "<free-model-b> 🆓",
         description: "FREE | Quality: 84% | 262K | Dev-focused"
       }
       // Note: Models to AVOID are simply not shown in options
@@ -1580,14 +1558,14 @@ AskUserQuestion({
 **After Selection - Save to Session:**
 
 ```bash
-# User selected: grok, LATEST_FREE_CODING_MODEL
+# User selected: grok, <free-model-a>
 # Save for session persistence
 save_session_models "$SESSION_DIR" "${USER_SELECTED_MODELS[@]}"
 
 # Now $SESSION_DIR/selected-models.txt contains:
 # claude-embedded
 # grok
-# qwen/LATEST_FREE_CODING_MODEL
+# <free-model-a>
 ```
 
 **Warning Display (separate from selection):**
@@ -1724,12 +1702,6 @@ In your finalization phase, show:
 </phase>
 ```
 
-### Plugins Using This Pattern
-
-| Plugin | Command | Usage |
-|--------|---------|-------|
-| **frontend** | `/review` | Full implementation with historical tracking |
-
 ---
 
 ## Integration with Other Skills
@@ -1744,8 +1716,8 @@ Step 1: Parallel Execution (multi-model-validation)
 
 Step 2: Error Handling (error-recovery)
   Model 1: Success
-  Model 2: Timeout after 30s → Skip, continue with others
-  Model 3: API 500 error → Retry once, then skip
+  Model 2: still RUNNING at the poll ceiling → report it; the user decides wait or cancel
+  Model 3: FAILED (nonzero_exit) → report it; no automatic retry or substitution
   Model 4: Success
   Model 5: Success
 
@@ -1759,32 +1731,6 @@ Step 4: Consolidation (multi-model-validation)
   Apply consensus analysis
 ```
 
-**multi-model-validation + task-orchestration:**
-
-```
-Use Case: Real-time progress tracking during parallel execution
-
-Step 1: Initialize Tasks (task-orchestration)
-  Tasks:
-    1. Prepare workspace
-    2. Launch Claude review
-    3. Launch Grok review
-    4. Launch Gemini review
-    5. Launch GPT-5 review
-    6. Consolidate reviews
-    7. Present results
-
-Step 2: Update Progress (task-orchestration)
-  Mark tasks complete as models finish:
-    - Claude completes → Mark task 2 complete
-    - Grok completes → Mark task 3 complete
-    - Gemini completes → Mark task 4 complete
-    - GPT-5 completes → Mark task 5 complete
-
-Step 3: User Sees Real-Time Progress
-  "3/4 external models completed, 1 in progress..."
-```
-
 ---
 
 ## Best Practices
@@ -1794,7 +1740,7 @@ Step 3: User Sees Real-Time Progress
 - ✅ Provide cost estimates BEFORE execution
 - ✅ Ask user approval for costs >$0.01
 - ✅ Auto-trigger `dev:aggregator` when the panel settles — at N = 1 it is a passthrough with a verdict
-- ✅ Use blocking (synchronous) claudish execution
+- ✅ Start the panel with `team(mode="run")`, then poll `status` until no slot is RUNNING
 - ✅ Write full output to files, return brief summaries
 - ✅ Prioritize by consensus level (unanimous → strong → majority → divergent)
 - ✅ Show model agreement matrix
@@ -1805,10 +1751,10 @@ Step 3: User Sees Real-Time Progress
 - ✅ **Generate recommendations for slow/failing models** (NEW v2.0)
 
 **Don't:**
-- ❌ Mix tool types in Message 2 (breaks parallelism)
-- ❌ Use background claudish execution (returns before completion)
+- ❌ Split independent reviewer launches across messages (breaks parallelism)
+- ❌ Consolidate before `status` reports the panel settled
 - ❌ Wait for user to request consolidation (auto-trigger instead)
-- ❌ Consolidate with < 2 successful reviews (no meaningful consensus)
+- ❌ Skip `dev:aggregator` at N = 1 (it passes the single review through with a verdict)
 - ❌ Inline full reviews in consolidation prompt (use file paths)
 - ❌ Return full 500-line reviews to orchestrator (use brief summaries)
 - ❌ Skip cost approval gate for expensive operations
@@ -1845,7 +1791,7 @@ Message 1: Session Setup + Model Discovery
 
   # Load historical performance
   Bash: cat ai-docs/llm-performance.json | jq '.models | keys'
-  Output: ["claude-embedded", "x-ai-grok", "LATEST_FREE_CODING_MODEL"]
+  Output: ["claude-embedded", "grok", "<free-model-a>"]
 
   # No code capture here: every reviewer is handed TARGET: BRANCH and runs dev's
   # capture-review-surfaces.ts itself, in BRANCH mode.
@@ -1858,10 +1804,10 @@ Message 2: Model Selection (AskUserQuestion with multiSelect)
       header: "Models",
       multiSelect: true,
       options: [
-        { label: "grok ⚡", description: "$0.85/1M | Quality: 87% | Avg: 42s" },
-        { label: "gemini", description: "$7.00/1M | New model, no history" },
-        { label: "qwen/LATEST_FREE_CODING_MODEL 🆓", description: "FREE | Quality: 82% | Coding-specialized" },
-        { label: "mistralai/LATEST_FREE_CODING_MODEL 🆓", description: "FREE | Dev-focused, new model" }
+        { label: "grok ⚡", description: "<price from list_models> | Quality: 87% | Avg: 42s" },
+        { label: "gemini", description: "<price from list_models> | New model, no history" },
+        { label: "<free-model-a> 🆓", description: "FREE | Quality: 82% | Coding-specialized" },
+        { label: "<free-model-b> 🆓", description: "FREE | Dev-focused, new model" }
       ]
     }]
   })
@@ -1869,18 +1815,18 @@ Message 2: Model Selection (AskUserQuestion with multiSelect)
   # User selects via interactive UI:
   # ☑ grok
   # ☐ gemini
-  # ☑ qwen/LATEST_FREE_CODING_MODEL
-  # ☑ mistralai/LATEST_FREE_CODING_MODEL
+  # ☑ <free-model-a>
+  # ☑ <free-model-b>
 
   # Save selection to session for later use
-  save_session_models "$SESSION_DIR" "grok" "qwen/LATEST_FREE_CODING_MODEL" "mistralai/LATEST_FREE_CODING_MODEL"
+  save_session_models "$SESSION_DIR" "grok" "<free-model-a>" "<free-model-b>"
 
   # Session now has:
   # $SESSION_DIR/selected-models.txt containing:
   # claude-embedded (always)
   # grok
-  # qwen/LATEST_FREE_CODING_MODEL
-  # mistralai/LATEST_FREE_CODING_MODEL
+  # <free-model-a>
+  # <free-model-b>
 
 Message 3: Start the panel (the internal Agent call and ONE team call, same message)
   Bash: write the brief to "$SESSION_DIR/input.md"   # TARGET: BRANCH / FOCUS: code / MODELS: none
@@ -1892,11 +1838,11 @@ Message 3: Start the panel (the internal Agent call and ONE team call, same mess
     prompt: "TARGET: BRANCH
              FOCUS: code
              OUTPUT: $SESSION_DIR/claude-review.md
-             MODELS: grok,LATEST_FREE_CODING_MODEL,LATEST_FREE_REASONING_MODEL"
+             MODELS: grok,<free-model-a>,<free-model-c>"
   )
   ---
   claudish team(mode="run", path=$SESSION_DIR,
-    models=["grok", "LATEST_FREE_CODING_MODEL", "LATEST_FREE_REASONING_MODEL"],
+    models=["grok", "<free-model-a>", "<free-model-c>"],
     input_file="$SESSION_DIR/input.md",
     require_pattern="\*\*Verdict\*\*: (PASS|CONDITIONAL|FAIL)", agent="dev:reviewer")
 
@@ -1929,8 +1875,8 @@ Message 4: Auto-Consolidation + Statistics Update
   # Track performance
   track_model_performance "claude-embedded" "success" 32 8 95 0 true
   track_model_performance "grok" "success" 45 6 87 0.002 false
-  track_model_performance "qwen/LATEST_FREE_CODING_MODEL" "success" 52 5 82 0 true
-  track_model_performance "mistralai/LATEST_FREE_CODING_MODEL" "success" 48 5 84 0 true
+  track_model_performance "<free-model-a>" "success" 52 5 82 0 true
+  track_model_performance "<free-model-b>" "success" 48 5 84 0 true
 
   record_session_stats 4 4 0 52 177 3.4 0.002 3
 
@@ -1947,8 +1893,8 @@ Message 5: Present Results
    |------------------------------|------|--------|---------|--------|
    | claude-embedded              | 32s  | 8      | 95%     | FREE   |
    | grok        | 45s  | 6      | 87%     | $0.002 |
-   | qwen/LATEST_FREE_CODING_MODEL        | 52s  | 5      | 82%     | FREE   |
-   | mistralai/LATEST_FREE_CODING_MODEL | 48s  | 5      | 84%     | FREE   |
+   | <free-model-a>        | 52s  | 5      | 82%     | FREE   |
+   | <free-model-b> | 48s  | 5      | 84%     | FREE   |
 
    Session Stats:
    - Parallel Speedup: 3.4x (177s → 52s)
@@ -1982,11 +1928,11 @@ Message 2: Start the panel (the internal Agent call and ONE team call, same mess
     prompt: "TARGET: BRANCH
              FOCUS: code
              OUTPUT: $SESSION_DIR/claude-review.md
-             MODELS: grok,gemini,LATEST_GPT_CODING_MODEL"
+             MODELS: grok,gemini,<model-c>"
   )
   ---
   claudish team(mode="run", path=$SESSION_DIR,
-    models=["grok", "gemini", "LATEST_GPT_CODING_MODEL"],
+    models=["grok", "gemini", "<model-c>"],
     input_file="$SESSION_DIR/input.md",
     require_pattern="\*\*Verdict\*\*: (PASS|CONDITIONAL|FAIL)", agent="dev:reviewer")
 
@@ -1997,17 +1943,17 @@ Message 3: Poll, then Error Recovery (error-recovery skill)
   Settled status.models:
     - slot 01 (Grok):   FAILED, error.reason = nonzero_exit ✗
     - slot 02 (Gemini): FAILED, error.reason = nonzero_exit (API 500) ✗
-    - slot 03 (GPT-5):  COMPLETED ✓
+    - slot 03 (GPT):  COMPLETED ✓
 
   Note there is no "timeout" reason any more — nothing kills a slot on a timer. A
   slot that is still RUNNING when you hit your poll ceiling is reported as still
   running, and cancelling it is YOUR decision (error.reason = "cancelled").
 
-  successful.length = 2 (Claude + GPT-5)
+  successful.length = 2 (Claude + GPT)
   2 ≥ 1 ✓ (the aggregator runs; had only one survived it would pass that review through)
 
   Notify user:
-    "2/4 models succeeded (Grok timeout, Gemini error).
+    "2/4 models succeeded (Grok and Gemini failed: nonzero_exit).
      Proceeding with consolidation using 2 reviews."
 
 Message 4: Auto-Consolidation
@@ -2033,7 +1979,7 @@ Message 5: Present Results
    Top Issues (2-model consensus):
    1. [UNANIMOUS] SQL injection (both flagged)
    2. [DIVERGENT] Input validation (Claude only)
-   3. [DIVERGENT] Rate limiting (GPT-5 only)
+   3. [DIVERGENT] Rate limiting (GPT only)
 
    Note: Grok and Gemini failed. Limited consensus data.
    See $SESSION_DIR/consolidated-review.md for details."
@@ -2047,20 +1993,18 @@ Message 5: Present Results
 
 **Problem: Models executing sequentially instead of parallel**
 
-Cause: Mixed tool types in Message 2
+Cause: the reviewer launches were split across messages, or a launch waited on a call
+that did not need to finish first
 
-Solution: Use ONLY Agent calls in Message 2
+Solution: issue every independent launch in one message
 
 ```
 ❌ Wrong:
-  Message 2:
-    TaskCreate({...})
-    Agent({...})
-    Agent({...})
+  Message 2: Agent({...})
+  Message 3: team(mode="run", ...)   (waits for Message 2 for no reason)
 
 ✅ Correct:
-  Message 1: TaskCreate({...}) (separate message)
-  Message 2: Agent({...}); Agent({...}) (only Task)
+  Message 2: Agent({...}); team(mode="run", ...)   (independent, so together)
 ```
 
 ---
@@ -2155,7 +2099,7 @@ declare -A MODEL_START_TIMES
 # Before launching each Task
 MODEL_START_TIMES["claude-embedded"]=$(date +%s)
 MODEL_START_TIMES["grok"]=$(date +%s)
-MODEL_START_TIMES["qwen/LATEST_FREE_CODING_MODEL"]=$(date +%s)
+MODEL_START_TIMES["<free-model-a>"]=$(date +%s)
 
 # After each TaskOutput returns, calculate duration
 model_completed() {
@@ -2222,7 +2166,7 @@ declare -A MODEL_DURATIONS
 # Record start times BEFORE launching Tasks
 MODEL_START_TIMES["claude-embedded"]=$SESSION_START
 MODEL_START_TIMES["grok"]=$SESSION_START
-MODEL_START_TIMES["qwen/LATEST_FREE_CODING_MODEL"]=$SESSION_START
+MODEL_START_TIMES["<free-model-a>"]=$SESSION_START
 
 # Launch all Tasks in parallel (Message 2)
 # ... Agent calls here ...
@@ -2238,7 +2182,7 @@ record_completion() {
 # Call as each completes
 record_completion "claude-embedded"
 record_completion "grok"
-record_completion "qwen/LATEST_FREE_CODING_MODEL"
+record_completion "<free-model-a>"
 
 # === STATISTICS PHASE ===
 # Calculate totals
@@ -2256,7 +2200,7 @@ SPEEDUP=$(echo "scale=1; $SEQUENTIAL_TIME / $PARALLEL_TIME" | bc)
 # Track each model
 track_model_performance "claude-embedded" "success" "${MODEL_DURATIONS[claude-embedded]}" 8 95 0 true
 track_model_performance "grok" "success" "${MODEL_DURATIONS[grok]}" 6 87 0.002 false
-track_model_performance "qwen/LATEST_FREE_CODING_MODEL" "success" "${MODEL_DURATIONS[qwen/LATEST_FREE_CODING_MODEL]}" 5 82 0 true
+track_model_performance "<free-model-a>" "success" "${MODEL_DURATIONS[<free-model-a>]}" 5 82 0 true
 
 # Record session
 record_session_stats 3 3 0 $PARALLEL_TIME $SEQUENTIAL_TIME $SPEEDUP 0.002 2
@@ -2275,7 +2219,7 @@ Your final message to the user **MUST** include this table:
 |---------------------------|-------|--------|---------|--------|--------|
 | claude-embedded           | 32s   | 8      | 95%     | FREE   | ✅     |
 | grok     | 45s   | 6      | 87%     | $0.002 | ✅     |
-| qwen/LATEST_FREE_CODING_MODEL     | 52s   | 5      | 82%     | FREE   | ✅     |
+| <free-model-a>     | 52s   | 5      | 82%     | FREE   | ✅     |
 
 ## Session Statistics
 
@@ -2344,7 +2288,7 @@ Multi-model validation achieves 3-5x speedup and consensus-based prioritization 
 - **Pattern 0: Session Setup** (NEW v3.0) - Unique session directories, dynamic model discovery
 - **Pattern 1: 4-Message Pattern** - True parallel execution
 - **Pattern 2: Parallel Architecture** - Single message, multiple Agent calls
-- **Pattern 3: Proxy Mode** - Blocking execution via Claudish
+- **Pattern 3: Model Invocation** - one `team` call starts the panel; poll `status` to completion
 - **Pattern 4: Cost Transparency** - Estimate before, report after
 - **Pattern 5: Auto-Consolidation** - Triggered when the panel settles; N = 1 is a passthrough with a verdict
 - **Pattern 6: Consensus Analysis** - unanimous → strong → majority → divergent
@@ -2352,43 +2296,3 @@ Multi-model validation achieves 3-5x speedup and consensus-based prioritization 
 - **Pattern 8: Data-Driven Selection** (NEW v3.0) - Intelligent model recommendations
 
 Master this skill and you can validate any implementation with multiple AI perspectives in minutes, while continuously improving your model shortlist based on actual performance data.
-
-**Version 3.1.0 Additions:**
-- **MANDATORY Statistics Collection Checklist** - Prevents incomplete reviews
-- **SubagentStop Hook** - Automatically reminds when statistics weren't collected
-- **Pre-Flight Checklist** - Record SESSION_START, initialize timing arrays
-- **Per-Model Timing Examples** - Bash associative arrays for tracking durations
-- **Required Output Template** - Standardized performance table format
-- **Verification Script** - `verify_statistics_complete()` function
-- **Common Mistakes Table** - Quick reference for debugging
-
-**Version 3.0 Additions:**
-- **Pattern 0: Session Setup and Model Discovery**
-  - Unique session directories (`ai-docs/sessions/review-{slug}-{timestamp}-{hash}`)
-  - Dynamic model discovery via `list_models` (live, 24h cache)
-  - Always include internal reviewer (safety net)
-  - Recommended free models: LATEST_QWEN_CODING_MODEL, LATEST_FREE_CODING_MODEL, LATEST_QWEN_MODEL
-- **Pattern 8: Data-Driven Model Selection**
-  - Historical performance tracking in `ai-docs/llm-performance.json`
-  - Per-model metrics: speed, cost, quality, success rate, trend
-  - Automatic shortlist generation (balanced, quality, budget, free-only)
-  - Model recommendations with context
-- **Enhanced Statistics**
-  - Cost tracking per model and per session
-  - Free vs paid model tracking
-  - Trend detection (improving/stable/degrading)
-  - Top free performers category
-
-**Version 2.0 Additions:**
-- Pattern 7: Statistics Collection and Analysis
-- Per-model execution time tracking
-- Quality score calculation (issues in consensus %)
-- Session summary statistics (speedup, avg time, success rate)
-- Recommendations for slow/failing models
-
----
-
-**Extracted From:**
-- `/review` command (complete multi-model review orchestration)
-- `CLAUDE.md` Parallel Multi-Model Execution Protocol
-- Claudish CLI (https://github.com/MadAppGang/claudish) proxy mode patterns

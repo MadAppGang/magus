@@ -235,11 +235,11 @@ allowed-tools: Read, Write, Edit, AskUserQuestion, Bash
           Find or create `## Learned Preferences` section
         </step>
         <step>
-          Add approved learnings under appropriate subsections:
-          - Code Style
-          - Project Structure
-          - Tools & Commands
-          - Conventions
+          Add approved learnings under appropriate subsections (Code Style, Project
+          Structure, Tools & Commands, Conventions, Workflow), in the same form phase 0a
+          uses — a `<!-- learned: … session: … source: … -->` metadata comment above each
+          rule line — and within the 200-line budget. `--prune` reads those comments;
+          a rule without one can never be dated or pruned.
         </step>
         <step>
           Use Edit tool to update the file (preserve existing content)

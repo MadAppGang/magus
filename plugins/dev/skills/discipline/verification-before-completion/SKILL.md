@@ -11,7 +11,7 @@ user-invocable: false
 ## When to Use
 
 This skill applies whenever you:
-- Mark a todo item as complete
+- Report a task or phase complete
 - Claim a bug is fixed
 - Report a feature is ready
 - State implementation is done
@@ -73,16 +73,16 @@ Test output:
 
 ## Enforcement Mechanism
 
-### Tasks Integration
+### Evidence in the Completion Message
 
-When marking a todo as `completed`:
-1. **BEFORE** changing status to `completed`, gather fresh evidence
-2. **IN THE SAME MESSAGE** that marks it complete, show the evidence
-3. **NEVER** mark complete in one message, then show evidence later
+When you report a task or phase complete:
+1. **BEFORE** you report it, gather fresh evidence
+2. **IN THE SAME MESSAGE** that reports it complete, show the evidence
+3. **NEVER** report complete in one message, then show evidence later
 
 **Violation Pattern:**
 ```
-Message 1: "Fixed the validator. Marking todo complete."
+Message 1: "Fixed the validator. Task complete."
 Message 2: "Here's the test output..."
 ```
 
@@ -93,7 +93,7 @@ Message 1:
 ✓ should validate email (5ms)
 ✓ should reject invalid format (3ms)
 
-Marking todo complete."
+Task complete."
 ```
 
 ### Rationalization Detection
@@ -209,7 +209,7 @@ v1.0.0 (go1.22.0)
 
 - **test-driven-development:** TDD provides the tests you'll use as verification evidence
 - **systematic-debugging:** Debug process ends with fix verification (this skill)
-- **agent-coordination-discipline:** Agents must return verification evidence, not just claims
+- **Delegated agents:** an agent's report must carry its verification evidence, not just its claims
 
 ## Quick Reference
 
@@ -221,6 +221,6 @@ v1.0.0 (go1.22.0)
 4. ✅ For UI changes → take screenshot
 5. ✅ For deployments → link CI run
 6. ✅ Show evidence in completion message
-7. ✅ Only then mark todo as completed
+7. ✅ Only then report the task complete
 
 **Remember:** If you can't show fresh evidence, the task isn't complete yet.

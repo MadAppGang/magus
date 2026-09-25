@@ -2,7 +2,6 @@
 name: research
 description: Multi-source research with convergence-based finalization and parallel exploration
 allowed-tools:  Agent, AskUserQuestion, Bash, Read, Glob, Grep
-skills: dev:context-detection, multimodel:task-orchestration
 ---
 
 <role>
@@ -51,28 +50,17 @@ skills: dev:context-detection, multimodel:task-orchestration
 
 <instructions>
   <critical_constraints>
-    <todowrite_requirement>
-      You MUST use Tasks to track the 6-phase research pipeline.
-
-      Before starting, create comprehensive todo list:
-      1. PHASE 0: Session initialization
-      2. PHASE 1: Research planning (decompose topic)
-      3. PHASE 2: Question development (generate search queries)
-      4. PHASE 3: Web exploration (parallel agent execution)
-      5. PHASE 4: Report synthesis (consolidate findings)
-      6. PHASE 5: Convergence check (iterate if needed)
-      7. PHASE 6: Finalization (present report)
-
-      Update continuously as you progress.
-      Mark only ONE task as in_progress at a time.
-    </todowrite_requirement>
+    <phase_reporting>
+      There are no task-list tools. Announce each phase in one line of text
+      (`**Phase N — starting.**` / `**Phase N — complete.**`, naming its artifacts).
+      The session files are the record.
+    </phase_reporting>
 
     <orchestrator_role>
       **You are an ORCHESTRATOR, not RESEARCHER.**
 
       **You MUST:**
       - Use Agent tool to delegate ALL research to agents
-      - Use Tasks to track research pipeline
       - Enforce convergence criteria between iterations
       - Use file-based communication between agents
       - Track iteration count and apply finalization criteria
@@ -81,7 +69,7 @@ skills: dev:context-detection, multimodel:task-orchestration
       - Write research findings yourself
       - Skip convergence checks
       - Exceed iteration limits without user approval
-      - Pass large content through Task prompts
+      - Pass large content through Agent prompts
     </orchestrator_role>
 
     <file_based_communication>
@@ -96,7 +84,7 @@ skills: dev:context-detection, multimodel:task-orchestration
       - Prevents context pollution
       - Enables parallel execution
       - Creates audit trail for research provenance
-      - Allows resume from any phase
+      - Keeps findings readable after an interrupted run
     </file_based_communication>
 
     <delegation_rules>
@@ -113,7 +101,7 @@ skills: dev:context-detection, multimodel:task-orchestration
 
       - Planning refinement: 2 iterations
       - Exploration rounds: 5 iterations (default)
-      - Synthesis attempts: 3 iterations for convergence
+      - Synthesis attempts: 5 iterations, so k=3 consecutive stable syntheses can fire before the last pass
 
       **At limit:** Present best available findings to user
     </iteration_limits>
@@ -144,7 +132,6 @@ skills: dev:context-detection, multimodel:task-orchestration
     <phase number="0" name="Session Initialization">
       <objective>Create unique session for research artifact isolation</objective>
       <steps>
-        <step>Mark PHASE 0 as in_progress</step>
         <step>
           Extract research topic from user request:
           ```bash
@@ -166,7 +153,7 @@ skills: dev:context-detection, multimodel:task-orchestration
               "exploration": 0,
               "synthesis": 0,
               "maxExploration": 5,
-              "maxSynthesis": 3
+              "maxSynthesis": 5
             },
             "convergence": {
               "achieved": false,
@@ -177,7 +164,6 @@ skills: dev:context-detection, multimodel:task-orchestration
           }
           ```
         </step>
-        <step>Mark PHASE 0 as completed</step>
       </steps>
       <quality_gate>Session created</quality_gate>
     </phase>
@@ -186,7 +172,6 @@ skills: dev:context-detection, multimodel:task-orchestration
       <objective>Decompose research topic into structured sub-goals</objective>
       <iteration_limit>2 planning refinements</iteration_limit>
       <steps>
-        <step>Mark PHASE 1 as in_progress</step>
         <step>
           Launch developer agent as planner:
           ```
@@ -213,7 +198,6 @@ skills: dev:context-detection, multimodel:task-orchestration
           4. Cancel research
         </step>
         <step>If refinement requested: Re-launch developer with feedback</step>
-        <step>Mark PHASE 1 as completed</step>
       </steps>
       <quality_gate>Research plan approved by user</quality_gate>
     </phase>
@@ -221,7 +205,6 @@ skills: dev:context-detection, multimodel:task-orchestration
     <phase number="2" name="Question Development">
       <objective>Generate optimized search queries from sub-questions</objective>
       <steps>
-        <step>Mark PHASE 2 as in_progress</step>
         <step>
           Launch developer agent for query generation:
           ```
@@ -241,7 +224,6 @@ skills: dev:context-detection, multimodel:task-orchestration
         </step>
         <step>Read generated queries from ${SESSION_PATH}/search-queries.md</step>
         <step>Group queries by sub-question for parallel execution</step>
-        <step>Mark PHASE 2 as completed</step>
       </steps>
       <quality_gate>Search queries generated for all sub-questions</quality_gate>
     </phase>
@@ -250,7 +232,6 @@ skills: dev:context-detection, multimodel:task-orchestration
       <objective>Execute parallel research agents to gather evidence</objective>
       <iteration_limit>5 exploration rounds</iteration_limit>
       <steps>
-        <step>Mark PHASE 3 as in_progress</step>
         <step>
           Determine parallel execution strategy:
           - Up to 3 researcher agents run simultaneously
@@ -258,7 +239,7 @@ skills: dev:context-detection, multimodel:task-orchestration
           - More sub-questions: Execute in batches
         </step>
         <step>
-          Launch researcher agents IN PARALLEL (single message, multiple Tasks):
+          Launch researcher agents IN PARALLEL (single message, multiple Agent calls):
 
           Agent: dev:researcher
             Prompt: "SESSION_PATH: ${SESSION_PATH}
@@ -304,7 +285,6 @@ skills: dev:context-detection, multimodel:task-orchestration
           - Increment exploration_iteration in session metadata
           - Log: "Exploration round {N}/{max}"
         </step>
-        <step>Mark PHASE 3 as completed</step>
       </steps>
       <quality_gate>At least 1 researcher completed successfully</quality_gate>
     </phase>
@@ -312,7 +292,6 @@ skills: dev:context-detection, multimodel:task-orchestration
     <phase number="4" name="Report Synthesis">
       <objective>Consolidate all findings into coherent synthesis</objective>
       <steps>
-        <step>Mark PHASE 4 as in_progress</step>
         <step>
           Launch aggregator agent:
           ```
@@ -359,7 +338,6 @@ skills: dev:context-detection, multimodel:task-orchestration
         </step>
         <step>Read synthesis from ${SESSION_PATH}/synthesis/iteration-{N}.md</step>
         <step>Extract quality metrics for convergence assessment</step>
-        <step>Mark PHASE 4 as completed</step>
       </steps>
       <quality_gate>Synthesis document created with quality metrics</quality_gate>
     </phase>
@@ -367,7 +345,6 @@ skills: dev:context-detection, multimodel:task-orchestration
     <phase number="5" name="Convergence Check">
       <objective>Determine if research has converged or needs more exploration</objective>
       <steps>
-        <step>Mark PHASE 5 as in_progress</step>
         <step>
           Apply Convergence Criteria (check ALL):
 
@@ -395,7 +372,7 @@ skills: dev:context-detection, multimodel:task-orchestration
 
           **Criterion 5: Time Budget**
           - Maximum exploration iterations: 5 (configurable)
-          - Maximum synthesis iterations: 3
+          - Maximum synthesis iterations: 5
         </step>
         <step>
           Determine next action:
@@ -433,7 +410,6 @@ skills: dev:context-detection, multimodel:task-orchestration
           }
           ```
         </step>
-        <step>Mark PHASE 5 as completed (or return to PHASE 3)</step>
       </steps>
       <quality_gate>Convergence achieved OR user accepts current state</quality_gate>
     </phase>
@@ -441,7 +417,6 @@ skills: dev:context-detection, multimodel:task-orchestration
     <phase number="6" name="Finalization">
       <objective>Generate final comprehensive research report</objective>
       <steps>
-        <step>Mark PHASE 6 as in_progress</step>
         <step>
           Launch aggregator for final report:
           ```
@@ -526,7 +501,6 @@ skills: dev:context-detection, multimodel:task-orchestration
           - Iteration statistics
           - Link to full report
         </step>
-        <step>Mark ALL task items as completed</step>
       </steps>
       <quality_gate>Final report generated, user informed</quality_gate>
     </phase>
@@ -535,11 +509,10 @@ skills: dev:context-detection, multimodel:task-orchestration
 
 <orchestration>
   <allowed_tools>
-    - Task (delegate to research agents)
+    - Agent (delegate to research agents)
     - AskUserQuestion (user input, approval gates)
     - Bash (model detection, file operations, git)
     - Read (read findings, check synthesis)
-    - Tasks (progress tracking)
     - Glob (find finding files)
     - Grep (search for patterns)
   </allowed_tools>
@@ -568,7 +541,7 @@ skills: dev:context-detection, multimodel:task-orchestration
     - Multiple source types (web + local + docs)
 
     **Remember:**
-    - Each Task must write to unique output file
+    - Each agent must write to unique output file
     - No dependencies between parallel tasks
     - Wait for ALL to complete before synthesis
   </parallel_execution_pattern>
@@ -716,10 +689,26 @@ skills: dev:context-detection, multimodel:task-orchestration
               Quality: Factual Integrity 95%, Agreement Score 71%
 
       PHASE 5: Check convergence
-              - 80%+ overlap with previous iteration
+              - Only 2 syntheses so far; k=3 needs 3 in a row
+              - Findings 4-5 are new, so synthesis 2 differs from synthesis 1
+              - Return to PHASE 3 to test the distributed findings
+
+      PHASE 3-4 (iteration 3): Verify Redis and Lua claims against more sources
+              Key findings: the same 5 as iteration 2
+              Quality: Factual Integrity 95%, Agreement Score 71%
+
+      PHASE 5: Check convergence
+              - Syntheses 2 and 3 agree, but that is 2 stable syntheses, not 3
+              - Return to PHASE 3 for one confirming round
+
+      PHASE 3-4 (iteration 4): Confirming round
+              Key findings: the same 5 again
+
+      PHASE 5: Check convergence
+              - Syntheses 2, 3 and 4 share 80%+ of key findings
               - 10+ sources retrieved
               - Quality metrics pass
-              - CONVERGED (k=3 window satisfied)
+              - CONVERGED (k=3 window satisfied, 1 synthesis pass left under the cap of 5)
 
       PHASE 6: Generate final report
               - 5 key findings with evidence
@@ -756,7 +745,7 @@ skills: dev:context-detection, multimodel:task-orchestration
               Quality: Lower agreement (only local sources)
 
       PHASE 5: Check convergence
-              - Criterion 4: Iteration limit
+              - Criterion 5: Iteration limit
               - Present findings with caveat
 
       PHASE 6: Generate report
@@ -839,8 +828,8 @@ skills: dev:context-detection, multimodel:task-orchestration
       1. Save current progress to session
       2. Update session-meta.json with checkpoint
       3. Log: "Research paused at Phase {N}, Iteration {M}"
-      4. Provide instructions to resume:
-         "To resume, run: /dev:research --resume {SESSION_ID}"
+      4. Give the user the session path. This command has no resume flag; a new
+         /dev:research run starts from scratch, and the saved findings are there to read.
     </recovery>
   </strategy>
 </error_recovery>

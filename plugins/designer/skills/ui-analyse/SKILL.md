@@ -18,10 +18,11 @@ to implement the improvements, read the dev plugin's
 Read("screenshots/dashboard.png")
 ```
 
-That is the whole mechanism. Claude Code renders a `.png`/`.jpg` into context as an
-image, so you review the screen rather than its filename. **You are the vision
-model.** There is no model to select, no catalog lookup, no API key, no encoding
-step, and no "vision unavailable" fallback.
+Claude Code renders a `.png`/`.jpg` into context as an image, so you review the screen
+rather than its filename. This is how you answer a pattern yourself: when you run
+the local fallback, or when no agent asked for an external judge. The designer agents
+send these patterns to a model from another vendor first — see "Another vendor's eyes"
+below.
 
 Read one image per call. Call it twice to hold a reference and an implementation side
 by side — reference first, so "Image 1" and "Image 2" mean what the prompt says.
@@ -34,7 +35,7 @@ confident review of a screen the model never saw, and reports no error while doi
 
 Claudish *can* carry images — it converts image blocks to `image_url` for the provider, and
 describes them via a vision proxy when the target model has no vision of its own. That path
-runs through a **session** (see "A Second Opinion" below), where the spawned Claude Code
+runs through a **session** (see "Another vendor's eyes" below), where the spawned Claude Code
 Reads the file.
 
 ## When to Use

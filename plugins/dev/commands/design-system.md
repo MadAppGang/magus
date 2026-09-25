@@ -2,9 +2,10 @@
 name: design-system
 description: "Validate a project against the design-system guardrails — token-only styling, one component library, variants over call-site restyling. Reports drift by rule, and can fix it or scaffold the guardrails."
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep, AskUserQuestion, Skill
-skills: dev:design-system-guardrails
 argument-hint: "[path] [--changed] [--fix] [--setup] [--strict]"
 ---
+
+Read `${CLAUDE_PLUGIN_ROOT}/skills/frontend/design-system-guardrails/SKILL.md` first. It defines the five guardrails this command measures.
 
 <role>
   <identity>Design System Guardrails Validator</identity>

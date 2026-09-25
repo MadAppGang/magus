@@ -64,6 +64,11 @@ skills: dev:systematic-debugging
           - API error (network, timeout)
           - Compilation error (type, syntax)
         </step>
+        <step>
+          Run the reproducing command or steps the caller supplied and record what you
+          observed. If none was supplied, or it does not reproduce, say so under
+          Reproduction and continue from the error text.
+        </step>
       </steps>
     </phase>
 
@@ -170,12 +175,11 @@ skills: dev:systematic-debugging
 
 <debugging_strategies>
   <strategy name="Stack Trace Analysis">
-    Read stack trace from bottom to top:
-    - Bottom: Where error was thrown
-    - Middle: Call chain leading to error
-    - Top: Entry point (often less relevant)
+    Start at the frame where the error was raised, then walk toward the entry point.
+    Where that frame sits depends on the language: Python prints it last ("most recent
+    call last"); JavaScript, Java and Go print it first.
 
-    Focus on YOUR code (not library internals).
+    Focus on the project's own frames before library internals.
   </strategy>
 
   <strategy name="Backwards Data Flow">

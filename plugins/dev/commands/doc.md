@@ -2,7 +2,6 @@
 name: doc
 description: Documentation command - generate, analyze, fix, or validate docs. Use for README, API docs, tutorials, changelogs.
 allowed-tools:  Agent, AskUserQuestion, Bash, Read, Glob, Grep
-skills: dev:documentation-standards
 ---
 
 <role>
@@ -27,22 +26,11 @@ skills: dev:documentation-standards
 
 <instructions>
   <critical_constraints>
-    <todowrite_requirement>
-      You MUST use Tasks to track documentation workflow.
-
-      Before starting, create todo list based on action:
-      - GENERATE: Detect type, gather context, generate, validate
-      - ANALYZE: Read docs, score quality, detect anti-patterns, report
-      - FIX: Analyze issues, apply fixes, validate improvements
-      - VALIDATE: Check against best practices, generate report
-
-      **Tasks Ownership Rules:**
-      - You (the orchestrator) OWN the Tasks list exclusively
-      - The dev:docs sub-agent MUST NOT modify Tasks
-      - Sub-agents report progress via their return messages only
-      - Use 1-based phase numbering (Phase 1, 2, 3...)
-      - Maintain exactly ONE todo in_progress at any time
-    </todowrite_requirement>
+    <phase_reporting>
+      There are no task-list tools. Announce each phase in one line of text
+      (`**Phase N — starting.**` / `**Phase N — complete.**`, naming its artifacts).
+      The session files are the record.
+    </phase_reporting>
 
     <orchestrator_role>
       **You are an ORCHESTRATOR, not IMPLEMENTER.**
@@ -112,7 +100,6 @@ skills: dev:documentation-standards
     <phase number="1" name="Session Setup">
       <objective>Create session for artifact isolation</objective>
       <steps>
-        <step>Mark PHASE 1 as in_progress</step>
         <step>
           Generate session:
           ```bash
@@ -122,14 +109,12 @@ skills: dev:documentation-standards
           mkdir -p "${SESSION_PATH}"
           ```
         </step>
-        <step>Mark PHASE 1 as completed</step>
       </steps>
     </phase>
 
     <phase number="2" name="Action Detection">
       <objective>Determine documentation action and type</objective>
       <steps>
-        <step>Mark PHASE 2 as in_progress</step>
         <step>
           Analyze user request:
           - Determine action: GENERATE | ANALYZE | FIX | VALIDATE
@@ -144,14 +129,12 @@ skills: dev:documentation-standards
            3. Fix documentation issues
            4. Validate against best practices"
         </step>
-        <step>Mark PHASE 2 as completed</step>
       </steps>
     </phase>
 
     <phase number="3" name="Context Gathering">
       <objective>Gather relevant context for documentation</objective>
       <steps>
-        <step>Mark PHASE 3 as in_progress</step>
         <step>
           Use Glob/Grep to find relevant files:
           - Source code files
@@ -168,14 +151,12 @@ skills: dev:documentation-standards
                    conforming to context.json v2
                    (${CLAUDE_PLUGIN_ROOT}/skills/context-detection/references/context-schema.md)."
         </step>
-        <step>Mark PHASE 3 as completed</step>
       </steps>
     </phase>
 
     <phase number="4" name="Execute Action">
       <objective>Execute the documentation action</objective>
       <steps>
-        <step>Mark PHASE 4 as in_progress</step>
         <step>
           **If GENERATE:**
           Check if target file exists first:
@@ -195,9 +176,7 @@ skills: dev:documentation-standards
                    Follow all 15 best practices.
 
                    Write documentation to {output_path}
-                   Return brief summary
-
-                   IMPORTANT: Do NOT use Tasks - report progress via return message only."
+                   Return brief summary"
         </step>
         <step>
           **If ANALYZE:**
@@ -214,9 +193,7 @@ skills: dev:documentation-standards
                    Generate quality report.
 
                    Write report to ${SESSION_PATH}/analysis-report.md
-                   Return brief summary with score
-
-                   IMPORTANT: Do NOT use Tasks - report progress via return message only."
+                   Return brief summary with score"
         </step>
         <step>
           **If FIX:**
@@ -237,9 +214,7 @@ skills: dev:documentation-standards
                    - Add missing sections
                    - Improve structure
 
-                   Return brief summary of changes
-
-                   IMPORTANT: Do NOT use Tasks - report progress via return message only."
+                   Return brief summary of changes"
         </step>
         <step>
           **If VALIDATE:**
@@ -256,18 +231,14 @@ skills: dev:documentation-standards
                    - Source code matches documentation claims
 
                    Write validation report to ${SESSION_PATH}/validation-report.md
-                   Return PASS/FAIL with summary
-
-                   IMPORTANT: Do NOT use Tasks - report progress via return message only."
+                   Return PASS/FAIL with summary"
         </step>
-        <step>Mark PHASE 4 as completed</step>
       </steps>
     </phase>
 
     <phase number="5" name="Quality Gate">
       <objective>Validate documentation quality</objective>
       <steps>
-        <step>Mark PHASE 5 as in_progress</step>
         <step>
           If GENERATE, launch dev:docs (mode=analyze) to validate:
           - Score generated documentation
@@ -281,14 +252,12 @@ skills: dev:documentation-standards
           - Fix critical issues
           - Re-validate
         </step>
-        <step>Mark PHASE 5 as completed</step>
       </steps>
     </phase>
 
     <phase number="6" name="Report">
       <objective>Present results to user</objective>
       <steps>
-        <step>Mark PHASE 6 as in_progress</step>
         <step>
           Generate summary:
           - Action completed
@@ -298,7 +267,6 @@ skills: dev:documentation-standards
           - Recommendations
         </step>
         <step>Present completion message</step>
-        <step>Mark ALL tasks as completed</step>
       </steps>
     </phase>
   </workflow>

@@ -4,6 +4,87 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [madbench 0.6.1] - 2026-09-25
+
+### Fixed
+
+- The dictionary check no longer describes `cell` as the word `madbench check` prints.
+  madbench retired it, and its output says "checks".
+
+---
+
+## [Marketplace 13.3.0] - 2026-09-25
+
+### Removed
+
+- **`multimodel` v5.1.0**: the `task-orchestration` skill is removed. It taught progress
+  tracking through `TaskCreate` and `TaskUpdate`, which Claude Code no longer offers on
+  current models, so every example in it called a tool that does not exist. Long commands
+  now announce each phase in one line of text instead. `/multimodel:task-orchestration`
+  now answers unknown. The minor version keeps dev's `multimodel ^5.0` dependency
+  satisfied; nothing could call the skill successfully before this release.
+
+### Fixed
+
+- **`dev` v8.3.0**: commands and skills no longer order task-list tools that do not
+  exist. `/dev:dev`, `/dev:architect`, `/dev:fix`, `/dev:doc`, `/dev:research` and
+  `/dev:interview` announce each phase in text instead of marking a checklist.
+- dev no longer declares `multimodel` as a dependency. Claude Code has no optional
+  dependency: a declared plugin that is missing disables dev entirely. multimodel is now
+  optional in the instructions instead. `/dev:architect` and `/dev:audit` use it when it is
+  installed; when it is not, they name `claude plugin install multimodel@magus` once and
+  continue. The review gates need only the claudish runtime, which dev still declares.
+- `/dev:dev` describes the artifact gate correctly: the Stop hook reports a half-done phase
+  but does not block, so the command checks the artifacts itself.
+- `/dev:audit` writes its gate log under the audit path it defines. `/dev:research` caps
+  syntheses at 5, so three stable syntheses in a row can end the research, and no longer
+  names a `--resume` flag. `/dev:help` lists all 17 commands. `/dev:learn` writes the
+  metadata that `--prune` reads. `/dev:worktree` no longer writes a statusline marker that
+  nothing reads.
+- The stack detector, context detection, worktree lifecycle and Bun production skill
+  recognise `bun.lock` as well as `bun.lockb`. The frontend agent's reading list is keyed
+  `frontend-developer`, the name the schema accepts.
+- The reviewer lists every CRITICAL and HIGH finding instead of stopping at seven. The
+  debugger starts a stack trace at the raising frame for each language and runs the
+  reproduction before it diagnoses. Duplicated thresholds that disagreed now agree.
+- Examples name no concrete chat model; models resolve from claudish's live catalog.
+- **`claudish` v2.0.6**: `claudish-usage` routes only to agents that exist, gives a
+  consistent example for a version the user names, and uses placeholders for model IDs.
+- **`code-search` v8.1.1**: the skills defer to the caller's report contract, and the
+  handoff to the analyze agent carries the anchor and the job.
+- **`browser-use` v1.7.6**: tool names use the full plugin prefix, `browser_evaluate` is
+  documented where the skills said no eval tool exists, and session reuse uses export and
+  import instead of a profile that is deleted on close.
+- **`designer` v0.9.1**: `/designer:create-style` drops its task-list steps, `compare` no
+  longer passes a flag the script does not have, and `ui-analyse` no longer claims to be
+  the vision model.
+- **`video-editing` v1.3.1**: the commands drop their task-list blocks, list the tools
+  their frontmatter grants, and pass each agent the inputs it requires. The transcriber
+  keeps one noise-reduction rule and one sample-rate rule.
+- **`setup` v1.3.1**: the statusline commands no longer forbid the pauses their own
+  questions need. `/setup:project` describes code-search setup and the skill listing
+  budget as they work today.
+- **`terminal` v5.2.2**: `tdd-workflow` reads `framework-signals` by path, and
+  `terminal-interaction` quits a TUI with its own keys before it sends Ctrl-C.
+- **`image` v4.0.2**: the providers skill points at `--models` instead of naming model IDs.
+- **`go` v0.1.5**: the `go-tui` screenshot step uses a path to `ansi-to-png.ts` that
+  exists and starts tmux without the user's config.
+- **`bunjs` v0.4.5**: the index says that all eight skills ship tested code.
+- **`dingo` v1.0.3**: the skill description names `.dingo` files.
+
+### Added
+
+- Lint rule AG-09 fails the build when a command or skill orders a task-list tool,
+  including the lowercase `<todowrite_requirement>` tag and the phrase "use Tasks".
+
+### Why
+
+- The second pass of the prompt audit applied the correctness fixes that still applied after
+  13.2.0. The prompting-style changes wait for a bench; they are recorded in
+  `docs/plans/2026-09-23-prompt-audit/batch-b/`.
+
+---
+
 ## [magus 7.5.3] - 2026-09-24
 
 ### Changed

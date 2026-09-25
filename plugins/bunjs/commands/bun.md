@@ -17,7 +17,7 @@ argument-hint: "[what you want to build, fix or review]"
    test, `production` until it is being shipped. Reading all eight is ~4,000 lines and
    defeats the point of the index.
 
-3. **Copy the shipped `assets/` rather than retyping them.** Six of the eight ship tested
+3. **Copy the shipped `assets/` rather than retyping them.** All eight ship tested
    code and each names its exact `cp` line. Retyped versions silently lose the parts that
    matter — the enumeration-timing burn, full-jitter backoff, the cycle-safe cause walk.
 

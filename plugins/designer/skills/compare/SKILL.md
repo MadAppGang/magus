@@ -149,8 +149,10 @@ Always read `pixel-diff.json` after the Bash call. Use the `success` field to br
 
 ## 2. Semantic Comparison Prompt Template
 
-Answer this prompt yourself, after reading both normalized images. It categorizes
-differences across 7 UI categories and outputs structured JSON.
+`designer:review` sends this prompt to an external vision judge (Procedure A of
+`designer:review-services`); answer it yourself only as that procedure's labelled
+local fallback. It categorizes differences across 7 UI categories and outputs
+structured JSON.
 
 ### Prompt Template
 
@@ -244,8 +246,9 @@ prompt text with neither screenshot attached.
 
 ## 4. Preconditions for Semantic Analysis
 
-There is no model to select. The only precondition is that both normalized PNGs
-exist and are readable. If either is missing, set `SEMANTIC_SKIP=true` and log:
+The judge model is resolved live by Procedure A of `designer:review-services`. The
+precondition here is that both normalized PNGs exist and are readable. If either is
+missing, set `SEMANTIC_SKIP=true` and log:
 
 ```
 WARN: normalized images not produced. Semantic analysis skipped.
@@ -276,8 +279,8 @@ For fonts with heavy sub-pixel rendering, increase to 0.15–0.2:
 --threshold 0.15
 ```
 
-Use `--includeAA false` (the default) to exclude anti-aliased edge pixels
-from the diff count.
+`compare.ts` already excludes anti-aliased edge pixels from the diff count; there is
+no flag for it, so do not pass one.
 
 ### Match Viewport to Design Spec
 

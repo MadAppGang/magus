@@ -7,6 +7,11 @@ disable-model-invocation: true
 
 # Bun.js Production Deployment Patterns
 
+**The `bunjs` plugin is the authority for Bun work.** Where it is installed, its
+`production` skill (`/bunjs:production`) owns graceful shutdown, logging, health checks,
+Docker and CI, and ships a tested Dockerfile. This file's shutdown example runs Hono through
+`@hono/node-server` rather than `Bun.serve`; prefer the `bunjs` assets when the two differ.
+
 ## Overview
 
 This skill covers production deployment patterns for Bun.js TypeScript backend applications, including Docker containerization, AWS ECS deployment, Redis caching, security hardening, structured logging, CI/CD pipelines, and production readiness checklists.
@@ -35,7 +40,8 @@ WORKDIR /app
 
 # Stage 2: Dependencies
 FROM base AS deps
-COPY package.json bun.lockb ./
+# bun.lock* matches bun.lock (current Bun) or bun.lockb (Bun before 1.2)
+COPY package.json bun.lock* ./
 COPY prisma ./prisma/
 RUN bun install --frozen-lockfile --production
 
@@ -60,7 +66,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY --from=build /app/src ./src
 COPY --from=build /app/prisma ./prisma
 COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
-COPY package.json bun.lockb ./
+COPY package.json bun.lock* ./
 
 # Set ownership
 RUN chown -R bunuser:bungroup /app
@@ -766,7 +772,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ~/.bun/install/cache
-          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lockb') }}
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock', 'bun.lockb') }}
           restore-keys: |
             ${{ runner.os }}-bun-
 

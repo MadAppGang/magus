@@ -142,9 +142,8 @@ models in parallel and collect independent verdicts. Requires the
 - `/multimodel:team` - Blind voting across models in parallel; aggregates APPROVE/REJECT verdicts
 - `/multimodel:delegate` - Hand a task to one external model running a full Claude Code session
 
-**Skills** (3 under `plugins/multimodel/skills/`):
+**Skills** (2 under `plugins/multimodel/skills/`):
 - **multi-model-validation** - Run multiple models in parallel and compare findings
-- **task-orchestration** - Phase tracking for complex multi-step workflows
 - **error-recovery** - Timeouts, API failures, partial success, graceful degradation
 
 Model routing and provider backends are covered by `claudish:claudish-usage`, which ships

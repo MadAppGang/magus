@@ -357,10 +357,13 @@ A bold magenta `⟳` appears after the token count when auto-compaction is detec
 
 | Theme | Description |
 |-------|-------------|
-| `default` | Warm/cool ANSI palette — bright cyan, green, yellow, orange, red |
+| `default` | Warm/cool palette — cyan, green, yellow, orange, red |
 | `monochrome` | White and gray only — no colors |
-| `minimal` | Muted dim ANSI colors (30-series) — subtle and low-contrast |
-| `neon` | 256-color bright variants — vivid and high-contrast |
+| `minimal` | Muted, low-contrast variants of the same hues |
+| `neon` | Bright, high-contrast variants |
+
+Every theme is drawn from 256-cube indices, like the rest of the script (see *Why colours are
+all 256-cube indices*).
 
 ## Script Architecture
 

@@ -22,8 +22,8 @@ question would cost more than the answer is worth.
 | [`layout-patterns.md`](https://github.com/MadAppGang/magus/blob/main/plugins/go/skills/go-tui/references/layout-patterns.md) | Layout Patterns — arranging panels that survive resize | 90 |
 | [`lipgloss-styling.md`](https://github.com/MadAppGang/magus/blob/main/plugins/go/skills/go-tui/references/lipgloss-styling.md) | Lip Gloss Styling, Color & Layout | 154 |
 | [`reference-apps.md`](https://github.com/MadAppGang/magus/blob/main/plugins/go/skills/go-tui/references/reference-apps.md) | Reference Apps — study these, steal these patterns | 99 |
-| [`screenshot-workflow.md`](https://github.com/MadAppGang/magus/blob/main/plugins/go/skills/go-tui/references/screenshot-workflow.md) | Screenshot Workflow — see your TUI in color | 129 |
-| [`testing.md`](https://github.com/MadAppGang/magus/blob/main/plugins/go/skills/go-tui/references/testing.md) | Testing Go TUIs | 93 |
+| [`screenshot-workflow.md`](https://github.com/MadAppGang/magus/blob/main/plugins/go/skills/go-tui/references/screenshot-workflow.md) | Screenshot Workflow — see your TUI in color | 130 |
+| [`testing.md`](https://github.com/MadAppGang/magus/blob/main/plugins/go/skills/go-tui/references/testing.md) | Testing Go TUIs | 92 |
 
 ## Reading these
 

@@ -6,6 +6,13 @@ disable-model-invocation: true
 
 # Bun.js Clean Architecture Patterns
 
+**The `bunjs` plugin is the authority for Bun work.** Where it is installed, route through
+`/bunjs:bun` first. Its `project-setup` skill structures a service by business component
+(`src/orders/`, `src/billing/`) with layers inside each component, and its `http-service`
+skill builds on `Bun.serve` without a framework. This file's top-level
+`routes/controllers/services/repositories` split and its Hono examples disagree with both;
+use them only in a codebase that already has that shape.
+
 ## Overview
 
 This skill covers layered architecture, clean code patterns, camelCase naming conventions, and structured implementation workflows for Bun.js TypeScript backend applications. Use this skill when building complex, maintainable applications that require strict separation of concerns.

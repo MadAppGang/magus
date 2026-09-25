@@ -7,7 +7,7 @@ Universal development assistant. Detects the project stack and routes work to sp
 
 | | |
 |---|---|
-| Version | `8.2.0` |
+| Version | `8.3.0` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 17 |
 | Subagents | 12 |
@@ -45,15 +45,16 @@ Each one does a single job. The commands pick which to call — you rarely name 
 
 ### MCP servers
 
-`dev` ships no MCP server. It declares three plugin dependencies and uses theirs.
+`dev` ships no MCP server. It declares two plugin dependencies and uses theirs.
 
 | Dependency | What `dev` gets from it |
 |---|---|
 | [`claudish`](./claudish.md) | The calls to other models behind every review gate |
 | [`mnemex`](./mnemex.md) | Semantic and AST-level code search |
-| [`multimodel`](./multimodel.md) | The voting and quality-gate skills those gates run |
 
-Install `dev` with [magus](../../guides/install.md) and all three come with it. Without
+Install `dev` with [magus](../../guides/install.md) and both come with it.
+[`multimodel`](./multimodel.md) is optional: `/dev:architect` and `/dev:audit` use it when it
+is installed, and suggest installing it when it is not. Without
 `claudish` the review gates can't run. The commands still work — they just lose the outside
 opinion.
 
@@ -187,6 +188,7 @@ Dispatched with the Agent tool, each in its own context window.
 | ● | Claude can reach for it on its own |
 | ○ | You invoke it by name |
 | ▸ | A command loads it for you — you never name it |
+| ! | Nothing can reach it — a packaging bug |
 
 [Why a skill lands in one row or another](../../guides/skill-visibility.md)
 
@@ -212,7 +214,7 @@ Dispatched with the Agent tool, each in its own context window.
 | ○ | `dev:plugin-sdk-patterns` | Builds Claude Code plugins that load — manifest location, what registers, the frontmatter each component reads, hooks, MCP servers, verification. |
 | ○ | `dev:team-gate` | Runs a multi-model review gate to a verdict: start the claudish team panel with input_file only, poll until settled, read every ballot, apply the minimum ballot count, log every skip. |
 | ▸ | `dev:brainstorming` | Explores solution approaches in parallel across models through claudish, then has an external panel review the chosen plan. |
-| ▸ | `dev:bunjs-production` | Provides Bun.js production patterns — Docker, AWS ECS/Fargate, Redis caching, security hardening, CI/CD. Use when deploying or operationalizing a Bun.js service. |
+| ! | `dev:bunjs-production` | Provides Bun.js production patterns — Docker, AWS ECS/Fargate, Redis caching, security hardening, CI/CD. Use when deploying or operationalizing a Bun.js service. |
 
 ## Hooks
 

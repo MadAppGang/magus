@@ -8,7 +8,7 @@ user-invocable: false
 
 # Deep analysis
 
-A multi-dimensional audit. Retrieval mechanics live in the `code-search` skill and
+A multi-dimensional audit. Retrieval mechanics live in the `code-search:search` skill and
 single-thread investigation in `investigate`; this skill is the dimension set, the verdict
 definitions, and the report contract.
 
@@ -33,9 +33,9 @@ definitions, and the report contract.
   results, reformulate rather than build on them.
 - **Name the method** behind every finding, including the dimensions where lexical search
   was the correct tool.
-- **Blocked, never stalled.** A subagent cannot ask the user a question. Return a result
-  beginning `BLOCKED:` naming what is missing and what would unblock it, and let the
-  dispatching orchestrator ask.
+- **Blocked, never stalled.** A subagent cannot ask the user a question. Name what is
+  missing and what would unblock it, marked BLOCKED in your caller's output contract (a
+  result beginning `BLOCKED:` when none was set), and let the dispatching orchestrator ask.
 - **Centrality is relative** — tiers, not numbers. An absent centrality means unknown.
 
 ---
@@ -92,7 +92,7 @@ default, because their consumers may be outside this tree.
 **Every dead-code and coverage verdict is labelled "requires manual review"** unless a human
 has checked it against what static analysis cannot see — dynamic imports, reflection and
 bracket dispatch, event and callback registration, dependency-injection wiring, and callers
-in another repository. That list is in the `code-search` skill; it is a limit of the
+in another repository. That list is in the `code-search:search` skill; it is a limit of the
 category, not of any one engine. This skill never authorises a deletion.
 
 **For a critical gap, pull the full transitive impact before prioritising it.** Centrality

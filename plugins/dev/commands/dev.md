@@ -2,7 +2,6 @@
 name: dev
 description: "Builds a feature through an 8-phase workflow, delegating each phase to a specialist agent. Depth picks how many phases run, automation how often it stops to ask."
 allowed-tools: Agent, AskUserQuestion, Bash, Read, EnterPlanMode, ExitPlanMode, Glob, Grep, mcp__plugin_claudish_claudish__team, mcp__plugin_claudish_claudish__list_models, mcp__plugin_claudish_claudish__search_models, mcp__plugin_claudish_claudish__create_session, mcp__plugin_claudish_claudish__get_output, mcp__plugin_claudish_claudish__get_diagnostics, mcp__chrome-devtools__navigate_page, mcp__chrome-devtools__take_screenshot, mcp__chrome-devtools__take_snapshot, mcp__chrome-devtools__click, mcp__chrome-devtools__fill, mcp__chrome-devtools__new_page, mcp__chrome-devtools__select_page, mcp__chrome-devtools__list_pages
-skills: dev:context-detection, dev:universal-patterns, dev:worktree-lifecycle, multimodel:multi-model-validation
 ---
 
 <role>
@@ -105,7 +104,7 @@ skills: dev:context-detection, dev:universal-patterns, dev:worktree-lifecycle, m
      approved, and ExitPlanMode was denied only so the clear could happen.
   d. **Derive the next phase from artifacts, not from the checkpoint.** Walk the depth's
      phase list (<scope_selection> → Depth → Phase mapping). The next phase is the first
-     whose required artifacts (the sets in hooks/phase-completion-validator.ts) are
+     whose required artifacts (the sets in ${CLAUDE_PLUGIN_ROOT}/hooks/phase-completion-validator.ts) are
      missing or incomplete. A phase with some artifacts was interrupted: read what it
      wrote (implementation-log.md, reviews/…) and finish it rather than redoing it. After
      step c at Full depth the next work is Phase 3 Steps 3.10-3.13 (plan review and
@@ -165,14 +164,13 @@ skills: dev:context-detection, dev:universal-patterns, dev:worktree-lifecycle, m
 
     **Step 0b — task-list preflight:**
 
-    There are no task-list tools. TaskCreate/TaskUpdate/TaskList/TaskGet and TodoWrite
-    were removed from Opus 4.8, Sonnet 5, Fable 5, Mythos 5 and newer in Claude Code
-    2.1.233 — verified with a control, not read from the changelog. Report every phase
-    transition in ONE LINE of text instead: "**Phase N — starting.**" and "**Phase N —
-    complete.**" naming the artifacts.
+    There are no task-list tools. Announce each phase in one line of text
+    (`**Phase N — starting.**` / `**Phase N — complete.**`, naming its artifacts). The
+    session files are the record.
 
-    The artifact gate still exists and still blocks: it moved to the Stop hook, which
-    fires when the turn ends and refuses it if a phase was started and left half done.
+    Before you announce a phase complete, check its artifacts (the sets are in
+    `${CLAUDE_PLUGIN_ROOT}/hooks/phase-completion-validator.ts`). A Stop hook reports a half-done phase, but it
+    does not block, so the check is yours.
 
     **Step 0 — Check for preset file (autotest/CI bypass):**
 
@@ -359,53 +357,25 @@ skills: dev:context-detection, dev:universal-patterns, dev:worktree-lifecycle, m
       1. Read the phase instruction file using Read tool
       2. Follow ALL instructions in the loaded file
       3. Complete the phase's quality gate before moving to next phase
-      4. Run checkpoint verification before marking phase complete
+      4. Check the phase's artifacts before announcing the phase complete
 
       WHY: Loading instructions just-in-time places them at the END of context
       where LLM attention is highest (~95%), instead of buried in the middle
       of an 800-line prompt where attention drops to ~60% ("Lost in the Middle" effect).
     </phase_loading_protocol>
 
-    <todowrite_requirement>
-      You MUST use Tasks to track the build.
-
-      Create tasks AFTER scope selection — only include phases that apply to the selected depth:
-
-      Quick depth tasks:
-      1. SCOPE: Select depth + automation
-      2. PHASE 0: Detect stack
-      3. PHASE 4: Implement
-      4. Done
-
-      Standard depth tasks:
-      1. SCOPE: Select depth + automation
-      2. PHASE 0: Detect stack
-      3. PHASE 3: Plan (single-model)
-      4. PHASE 4: Implement
-      5. PHASE 6: Test
-      6. PHASE 8: Complete
-
-      Full depth tasks:
-      1. SCOPE: Select depth + automation
-      2. PHASE 0: Detect stack
-      3. PHASE 1: Requirements + validation setup
-      4. PHASE 2: Research (optional)
-      5. PHASE 3: Multi-model planning
-      6. PHASE 4: Implement
-      7. PHASE 5: Code review
-      8. PHASE 6: Black box testing
-      9. PHASE 7: Browser validation
-      10. PHASE 8: Complete
-
-      Update continuously. Mark only ONE task as in_progress at a time.
-    </todowrite_requirement>
+    <phase_reporting>
+      There are no task-list tools. Announce each phase in one line of text
+      (`**Phase N — starting.**` / `**Phase N — complete.**`, naming its artifacts). The
+      session files are the record. Announce only the phases the selected depth runs.
+    </phase_reporting>
 
     <orchestrator_role>
       **You are an ORCHESTRATOR, not IMPLEMENTER.**
 
       **You MUST:**
       - Use Agent tool to delegate ALL work to agents
-      - Use Tasks to track build progress
+      - Announce each phase start and completion in one line (see <phase_reporting>)
       - Enforce quality gates between phases (standard + full depth)
       - Respect depth and automation selections throughout
       - Use file-based communication (standard + full depth)
@@ -491,15 +461,12 @@ skills: dev:context-detection, dev:universal-patterns, dev:worktree-lifecycle, m
     <phase_completion_enforcement>
       **MANDATORY: Evidence-based phase completion**
 
-      Before marking ANY phase as completed, you MUST:
+      Before announcing ANY phase complete, you MUST:
 
-      1. **Run checkpoint verification:**
-         ```bash
-         (Artifacts are enforced automatically by the PreToolUse hook on
-         TaskUpdate — hooks/phase-completion-validator.ts. It blocks the
-         transition if the phase's artifacts are missing or unsubstantiated.)
-         ```
-         If this fails, DO NOT mark phase complete. Fix missing artifacts first.
+      1. **Check the phase's artifacts** (the sets are in
+         `${CLAUDE_PLUGIN_ROOT}/hooks/phase-completion-validator.ts`). A Stop hook reports a half-done phase,
+         but it does not block, so the check is yours. If an artifact is missing, fix it
+         before you announce the phase complete.
 
       2. **Show evidence summary (3-5 lines):**
          ```
@@ -583,8 +550,9 @@ skills: dev:context-detection, dev:universal-patterns, dev:worktree-lifecycle, m
          - Read("${CLAUDE_PLUGIN_ROOT}/skills/feature-phases/phase5-review.md")
          - Read("${CLAUDE_PLUGIN_ROOT}/skills/feature-phases/phase6-testing.md")
          - Read("${CLAUDE_PLUGIN_ROOT}/skills/feature-phases/phase7-validation.md")
-      3. Mark the phase complete. The PreToolUse hook validates its artifacts
-         and blocks the update if they are missing — no manual check needed.
+      3. Check the phase's artifacts (the sets are in `${CLAUDE_PLUGIN_ROOT}/hooks/phase-completion-validator.ts`),
+         then announce the phase complete in one line, naming them. A Stop hook reports a
+         half-done phase, but it does not block, so the check is yours.
       4. After Phase 7: invoke Bash `bun ${CLAUDE_PLUGIN_ROOT}/scripts/outer-loop.ts record-result ${SESSION_PATH} <PASS|FAIL> "reason" [score]`.
       5. Before Phase 8: invoke Bash `bun ${CLAUDE_PLUGIN_ROOT}/scripts/outer-loop.ts check-can-complete ${SESSION_PATH}` and verify exit code 0.
 
@@ -649,7 +617,6 @@ skills: dev:context-detection, dev:universal-patterns, dev:worktree-lifecycle, m
     - AskUserQuestion (user input, model selection with multiSelect)
     - Bash (git commands, test execution, quality checks, dev server)
     - Read (read files, review outputs, load phase instruction files)
-    - Tasks (progress tracking)
     - Glob (find files)
     - Grep (search patterns)
     - Chrome MCP tools (real validation):
@@ -704,15 +671,15 @@ skills: dev:context-detection, dev:universal-patterns, dev:worktree-lifecycle, m
 
     **Example:**
 
-    Launched 4 models in parallel:
-    - Claude: Success
-    - Grok: Success
-    - Gemini: Timeout
-    - GPT-5: API Error
+    Launched 4 reviewers in parallel (ids from `list_models`):
+    - internal: Success
+    - model A: Success
+    - model B: Timeout
+    - model C: API Error
 
     Result: 2/4 succeeded (meets threshold)
     Action: Proceed with consolidation using 2 reviews
-    Note: "Gemini and GPT-5 failed, proceeding with Claude and Grok"
+    Note: "model B and model C failed, proceeding with internal and model A"
   </parallel_error_handling>
 
   <model_selection>
@@ -730,7 +697,7 @@ skills: dev:context-detection, dev:universal-patterns, dev:worktree-lifecycle, m
       is free; the host is whatever model is running this session.
 
     Store the catalog's `id`, never a routing address. `openrouterId`
-    (`moonshotai/kimi-k3`) and Access routes (`kc@kimi-k3`) sit beside the identity in
+    (`<vendor>/<model>`) and Access routes (`<route>@<model>`) sit beside the identity in
     the same record, and storing either pins the provider and bypasses
     subscription-aware routing. A stored ID contains no `@` and no `/`.
 
@@ -1005,7 +972,7 @@ skills: dev:context-detection, dev:universal-patterns, dev:worktree-lifecycle, m
         Validation: Real browser + Screenshot comparison
         Reference: designs/login.png
         Outer loop: 3 iterations
-        Models: qwen/LATEST_FREE_CODING_MODEL (stored in config)
+        Models: catalog ids resolved from `list_models` (stored in config)
 
       OUTER LOOP: Iteration 1/3
 
@@ -1155,10 +1122,9 @@ skills: dev:context-detection, dev:universal-patterns, dev:worktree-lifecycle, m
 
   <strategy scenario="Session creation fails">
     <recovery>
-      1. Fall back to legacy mode (SESSION_PATH="ai-docs")
-      2. Log warning: "Session isolation unavailable"
-      3. Continue workflow using direct paths
-      4. All features work, just without isolation
+      1. Stop and report the mkdir error. Session artifacts belong only under
+         ai-docs/sessions/, which is git-ignored; writing them anywhere else puts
+         session scratch where it can be committed.
     </recovery>
   </strategy>
 
@@ -1292,6 +1258,3 @@ skills: dev:context-detection, dev:universal-patterns, dev:worktree-lifecycle, m
 **Phase gates.** Read
 `${CLAUDE_PLUGIN_ROOT}/knowledge/enforcement.md` before starting
 phase 1 of a Standard or Full run. Quick depth (0 → 4 → done) has no gates to enforce.
-
-This command is already the only consumer of that skill and already reads its phase
-files this way — see the `skills/feature-phases/phase{N}-{name}.md` reads below.

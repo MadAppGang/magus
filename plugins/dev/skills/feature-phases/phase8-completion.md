@@ -71,10 +71,11 @@ If worktree was created (WORKTREE_PATH is set):
   Execute chosen option following dev:worktree-lifecycle Phase 6.
 
 ### Step 8.8: Present final summary
-Present comprehensive summary to user (see completion_message template in feature.md).
+Present comprehensive summary to user (the `<completion_message>` template in `commands/dev.md`).
 
-### Step 8.9: Mark all tasks as completed
-Mark ALL task items as completed.
+### Step 8.9: Announce the phase complete
+Say in one line: **Phase 8 — complete**, naming `report.md`. There are no task-list tools;
+the session files are the record.
 
 ## Quality Gate
 Report generated with validation evidence.

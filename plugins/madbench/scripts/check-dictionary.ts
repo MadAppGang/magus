@@ -11,7 +11,7 @@
  * scanner is built from, so the two cannot drift:
  *
  *   `arm`         say run, strategy, or variant — clinical-trial jargon, never ours
- *   `cell`        say Check or graded pair — `madbench check`'s own word, never general vocabulary
+ *   `cell`        say Check or graded pair — madbench retired it; `madbench check` prints "checks"
  *   `fixture`     say testdata — matches madbench's own key
  *   `trajectory`  say transcript or session
  *   `matrix`      say parameter sweep, or name `params:` directly

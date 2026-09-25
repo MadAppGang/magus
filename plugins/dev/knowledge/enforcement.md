@@ -10,18 +10,20 @@ There are two mechanisms, and the difference between them matters:
 
 | | Enforced by | Runs |
 |---|---|---|
-| **Artifact gate** | `hooks/phase-completion-validator.ts` | The runtime, on every `TaskUpdate` |
+| **Artifact report** | `hooks/phase-completion-validator.ts` | The runtime, when a turn ends (`Stop`) |
 | **Outer loop** | `scripts/outer-loop.ts` | The orchestrator, between phases |
 
-The first is real enforcement — Claude Code invokes it whether or not anyone
-remembers to. The second is bookkeeping the command drives itself.
+Claude Code runs the first whether or not anyone remembers to, but it is
+**advisory**: it reports a half-done phase and never blocks the turn. The check
+before you announce a phase complete is yours. The second is bookkeeping the
+command drives itself.
 
-## 1. Artifact gate (automatic)
+## 1. Artifact report (automatic, advisory)
 
-Registered as a `Stop` hook in `hooks/hooks.json`, invoked with `--stop`. It was a
-`PreToolUse` on `TaskUpdate` until the task-list tools were removed from current
-models, which left it unable to fire at all. It receives the
-payload on stdin and exits **2** to block, with the reason on stdout.
+Registered as a `Stop` hook in `hooks/hooks.json`, invoked with `--stop`. When a
+phase has some but not all of its artifacts, it adds an `INCOMPLETE PHASE` note to
+the model's context and exits 0. It does not block: at Stop time a phase in progress
+and a phase abandoned look the same, so a blocking gate would fire on healthy runs.
 
 It checks three things:
 
@@ -44,12 +46,12 @@ It checks three things:
 | 7 | validation/result.md | records a PASS/FAIL status |
 | 8 | report.md | — |
 
-It also blocks *starting* a phase whose predecessor is incomplete: 4 needs 3, 5
-and 6 need 4, 7 needs 6.
+Nothing checks phase order for you. Before you start a phase, check that its
+predecessor's artifacts exist: 4 needs 3, 5 and 6 need 4, 7 needs 6.
 
-**It allows whenever it is unsure** — no session directory, several sessions open
-at once, an unparseable payload, any internal error. It exists to catch a phase
-marked done with nothing behind it, not to police ambiguity.
+**It stays silent whenever it is unsure** — no session directory, several sessions
+open at once, an unparseable payload, any internal error. It exists to surface a
+phase left with nothing behind it, not to police ambiguity.
 
 ## 2. Outer loop (orchestrator-driven)
 
@@ -170,5 +172,5 @@ The payment timeout test failure needs investigation before Phase 6 can complete
 `checkpoint-verifier.sh` checked the same artifacts the hook now checks, but only
 when the orchestrator remembered to run it. `validation-criteria-enforcer.js` and
 `failure-report-generator.js` had no callers at all. An enforcement mechanism the
-enforced party has to opt into is a suggestion with an exit code attached; the
-hook is the real thing.
+enforced party has to opt into is a suggestion with an exit code attached. The
+Stop hook runs without being asked, but it only reports.

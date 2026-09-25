@@ -6,7 +6,7 @@ user-invocable: false
 
 # TDD Workflow — Red-Green-Refactor Protocol
 
-This skill teaches the protocol Claude follows AFTER a test watcher is running. For watcher setup (starting the watcher pane and managing long-running processes), see `terminal:terminal-interaction`. For framework-specific pass/fail/running/idle signals, see `terminal:framework-signals`.
+This skill teaches the protocol Claude follows AFTER a test watcher is running. For watcher setup (starting the watcher pane and managing long-running processes), see `terminal:terminal-interaction`. For framework-specific pass/fail/running/idle signals, read `${CLAUDE_PLUGIN_ROOT}/skills/framework-signals/SKILL.md` — it is a file to read, not a skill to invoke.
 
 The TDD loop requires a dedicated pane topology: Claude edits code in one pane while a persistent test watcher runs in a second pane. Claude reads the watcher with `watch-pane` and `capture-pane` but never restarts it.
 

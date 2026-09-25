@@ -17,7 +17,7 @@ Read this when:
 - Evaluating whether a task requires agent delegation
 - Selecting between different agent types or external models
 - Coordinating multiple agents in a workflow
-- Implementing external-model for external model delegation
+- Delegating to an external model through claudish
 - Debugging agent coordination failures
 
 This reference exists to prevent premature agent launches, redundant agent usage, and poor task isolation that wastes thinking budget and causes coordination failures.
@@ -25,7 +25,7 @@ This reference exists to prevent premature agent launches, redundant agent usage
 ## Red Flags (Violation Indicators)
 
 - [ ] **Agent for single grep** - Launching agent to run one grep/glob command (trivial-task anti-pattern)
-- [ ] **Missing external-model model** - Using external-model without explicit model name specification
+- [ ] **Missing model ID** - Delegating to an external model without a model ID resolved from claudish `list_models`
 - [ ] **No task isolation** - Agent task description lacks independent context or success criteria
 - [ ] **No success criteria** - Task description doesn't define what "done" looks like
 - [ ] **Default thinking pattern** - Not considering whether task needs deep thinking vs. fast execution
@@ -49,8 +49,8 @@ Does the task require:
 │  └─ ✗ NO AGENT - Use tools directly in sequence
 ├─ Multi-step investigation with branching logic?
 │  └─ ✓ AGENT - Agent tool with developer/architect agent
-├─ External model expertise (Grok, DeepSeek, etc.)?
-│  └─ ✓ AGENT - external-model pattern with model specification
+├─ External model expertise (a model resolved from `list_models`)?
+│  └─ ✓ AGENT - claudish `create_session` with that model ID
 ├─ Parallel exploration of multiple code paths?
 │  └─ ✓ AGENT - Multiple Agent calls with coordination
 └─ High-risk change needing isolation?
@@ -80,7 +80,7 @@ When delegating to external models, use claudish MCP tools:
 
 **For single-model tasks:**
 ```
-create_session(model="grok",
+create_session(model="<model ID from list_models>",
   prompt="Analyze the React component rendering performance issue in Dashboard.tsx.
 
   Context:
@@ -96,7 +96,7 @@ create_session(model="grok",
 **For multi-model parallel tasks:**
 ```
 team(mode="run", path=SESSION_DIR,
-  models=["internal", "grok", "gemini"],
+  models=["internal", "<model A>", "<model B>"],   # IDs from list_models, never from memory
   input_file=`${SESSION_DIR}/input.md`,
   require_pattern=<regex for the shape PROMPT mandates>)
 ```
@@ -123,7 +123,7 @@ succeeded.
 ### External Model Expertise
 **Trigger:** Need specialized model capabilities (code speed, vision, reasoning)
 **Delegate to:** an external model via claudish (see claudish:claudish-usage)
-**Example:** "Use Grok Code Fast to refactor 15 files for consistency in < 2 minutes"
+**Example:** "Use a fast coding model from `list_models` to refactor 15 files for consistency"
 
 ### Parallel Work
 **Trigger:** Multiple independent tasks that can run simultaneously
@@ -202,28 +202,34 @@ if (performanceIsCritical) {
 
 ## Agent Selection Matrix
 
-| Task Type | Best Agent | Model | Reasoning |
+| Task Type | Best Agent | Model class | Reasoning |
 |-----------|------------|-------|-----------|
-| **Debugging errors** | developer | sonnet-4-5 | Deep reasoning, context retention |
-| **Design review** | architect | sonnet-4-5 | System thinking, trade-off evaluation |
-| **Code generation** | developer | grok-code-fast | Speed for repetitive patterns |
-| **Multi-codebase analysis** | developer | sonnet-4-5 | Cross-repo understanding |
-| **Performance profiling** | developer + external-model | grok-code-fast | Fast scanning + specific optimization |
-| **Security audit** | security (if available) | sonnet-4-5 | Nuanced threat modeling |
-| **Documentation generation** | developer | grok-code-fast | Fast, straightforward task |
-| **Refactoring (large scope)** | developer | sonnet-4-5 | Maintain consistency across changes |
+| **Debugging errors** | developer | deep reasoning | Deep reasoning, context retention |
+| **Design review** | architect | deep reasoning | System thinking, trade-off evaluation |
+| **Code generation** | developer | fast coding | Speed for repetitive patterns |
+| **Multi-codebase analysis** | developer | deep reasoning | Cross-repo understanding |
+| **Performance profiling** | developer + external model | fast coding | Fast scanning + specific optimization |
+| **Security audit** | security (if available) | deep reasoning | Nuanced threat modeling |
+| **Documentation generation** | developer | fast coding | Fast, straightforward task |
+| **Refactoring (large scope)** | developer | deep reasoning | Maintain consistency across changes |
 
-## external-model Pattern Details
+A model class is a capability, not an ID. Resolve it to a model ID with claudish
+`list_models` (or `search_models` for a named family) when you delegate.
+
+## External Model Delegation Details
 
 ### 1. Model Selection
 
-**Fast Execution (< 2 min):**
-- `grok` - Code generation, refactoring, simple analysis
-- `haiku` - Quick decisions, data transformation
+Pick the class from the task, then resolve the ID with claudish `list_models`. Never
+write a model ID from memory.
 
-**Deep Reasoning (> 2 min):**
-- `sonnet` - Complex debugging, architecture design
-- `gemini` - Extended thinking budget
+**Fast execution:**
+- A fast coding model - code generation, refactoring, simple analysis
+- `haiku` (a native Claude slot) - quick decisions, data transformation
+
+**Deep reasoning:**
+- `internal` or `opus` (native Claude slots) - complex debugging, architecture design
+- The strongest external reasoning model `list_models` recommends - a second opinion
 
 **Specialized:**
 - Vision models - Screenshot analysis, diagram interpretation
@@ -267,7 +273,7 @@ Success Criteria:
 
 **Pattern:**
 ```
-1. Launch agent with external-model
+1. Start a claudish session with the resolved model ID
 2. Capture result in variable or file
 3. Validate result against success criteria
 4. Route to next step:
@@ -278,7 +284,9 @@ Success Criteria:
 
 **Example:**
 ```
-result = Agent("external-model: grok\n\nRefactor 10 components for React 19...")
+session = create_session(model="<fast coding model from list_models>",
+  prompt="Refactor 10 components for React 19...")
+result = get_output(session.session_id)   # after the completed notification
 
 if (result.contains("Refactored successfully")) {
   // Apply changes to codebase
@@ -337,11 +345,11 @@ Constraints:
 - No code changes (diagnosis only)"
 ```
 
-### Example 3: external-model with External Model (Go)
+### Example 3: Delegating to an External Model (Go)
 
 ```go
-// ✓ CORRECT: Fast refactoring with Grok
-external-model: grok
+// ✓ CORRECT: Fast refactoring with an external model
+// create_session(model="<fast coding model from list_models>", prompt=...)
 
 Refactor 15 handler functions in handlers/ to use consistent error handling pattern.
 
@@ -366,7 +374,6 @@ Constraints:
 **Works with:**
 - **verification-before-completion** - Validate agent results before marking tasks complete
 - **systematic-debugging** - Use agents for multi-step debugging investigations
-- **orchestration skills** - Multi-agent coordination patterns from orchestration plugin
 
 **Prevents:**
 - **Premature agent launches** - Check delegation criteria first
@@ -380,7 +387,7 @@ Constraints:
 | **Trivial task delegation** | Launch agent to run single grep | Use Grep tool directly |
 | **Missing isolation** | "Fix the bug we discussed" | "Debug TypeError in UserProfile.tsx line 42: 'Cannot read property name of undefined'. Context: ..." |
 | **No success criteria** | "Analyze the performance issue" | "Identify re-render causes (line numbers), propose memoization, estimate improvement %" |
-| **Wrong model selection** | Use sonnet-4-5 for simple refactoring | Use grok-code-fast for speed |
+| **Wrong model selection** | Use a deep-reasoning model for simple refactoring | Use a fast coding model from `list_models` |
 | **No result validation** | Launch agent, assume success | Check result against success criteria, have fallback plan |
 | **Coordination failure** | Launch 3 agents, hope they coordinate | Define result routing: Agent 1 → validate → Agent 2 → aggregate |
 
@@ -388,7 +395,7 @@ Constraints:
 
 **Detection:**
 1. Before Agent tool call, check if task description includes success criteria
-2. Before external-model, verify model name is explicitly specified
+2. Before delegating to an external model, verify the model ID came from `list_models`
 3. Before agent launch, confirm native tools were attempted first
 4. After agent completes, verify result is validated before use
 
@@ -415,7 +422,6 @@ Agent Task Checklist (all must be true):
 **Related Skills:**
 - `verification-before-completion` - Validate agent results
 - `systematic-debugging` - Multi-step debugging investigations
-- `orchestration/multi-agent-orchestration` - Complex coordination patterns
 
 **Version:** 1.0.0
 **Last Updated:** 2026-01-20

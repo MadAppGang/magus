@@ -42,13 +42,11 @@
         "terminal:framework-signals",
         "claudish:claudish-usage",
         "multimodel:multi-model-validation",
-        "multimodel:task-orchestration",
         "multimodel:error-recovery",
         "dev:test-driven-development",
         "dev:worktree-lifecycle",
         "dev:systematic-debugging",
         "dev:verification-before-completion",
-        "dev:agent-coordination-discipline",
         "designer:compare",
         "designer:ui-analyse",
         "browser-use:core-api",
@@ -271,7 +269,7 @@
     },
     "category": "plugin-discovery",
     "priority": 3,
-    "suggestion": "External model names detected in task prompts but claudish was not used. claudish lets Claude Code run any catalogued model, through its MCP tools:\n  Install the runtime: `npm install -g claudish`\n  Set: `OPENROUTER_API_KEY=your-key`\n  Use `/team` for parallel multi-model reviews, `/multimodel:delegate` for one model\n  See: `claudish:claudish-usage` skill for which MCP tool fits which task",
+    "suggestion": "External model names detected in task prompts but claudish was not used. claudish lets Claude Code run any catalogued model, through its MCP tools:\n  Install the runtime: `npm install -g claudish`\n  Set: `OPENROUTER_API_KEY=your-key`\n  Optional multimodel plugin (`claude plugin install multimodel@magus`): `/multimodel:team` for parallel reviews, `/multimodel:delegate` for one model\n  See: `claudish:claudish-usage` skill for which MCP tool fits which task",
     "suppress_after_sessions": 5
   },
   {

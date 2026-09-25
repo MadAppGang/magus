@@ -144,8 +144,8 @@ config_file_patterns:
     stacks: ["python"]
     mode: "backend"
 
-  bun.lockb:
-    check: "file exists AND no react/vue in package.json"
+  bun.lock or bun.lockb:
+    check: "either lockfile exists AND no react/vue in package.json (bun.lock is the text lockfile Bun writes by default; bun.lockb is the older binary one)"
     stacks: ["bunjs"]
     mode: "backend"
 ```
@@ -205,6 +205,7 @@ find_all_configs() {
   [ -f "go.mod" ] && configs+=("go.mod")
   [ -f "Cargo.toml" ] && configs+=("Cargo.toml")
   [ -f "pyproject.toml" ] && configs+=("pyproject.toml")
+  [ -f "bun.lock" ] && configs+=("bun.lock")
   [ -f "bun.lockb" ] && configs+=("bun.lockb")
 
   # Check for Dingo files (go.mod must also exist)
@@ -251,8 +252,8 @@ analyze_all_configs() {
     detected_stacks+=("python")
   fi
 
-  # Check bun.lockb (only if NOT frontend)
-  if [ -f "bun.lockb" ] && ! grep -q '"react"\|"vue"' package.json 2>/dev/null; then
+  # Check for a Bun lockfile, text or binary (only if NOT frontend)
+  if { [ -f "bun.lock" ] || [ -f "bun.lockb" ]; } && ! grep -q '"react"\|"vue"' package.json 2>/dev/null; then
     detected_stacks+=("bunjs")
   fi
 
@@ -424,7 +425,7 @@ detect_python() {
 ```bash
 detect_bun() {
   # Bun backend (NOT frontend with Bun runtime)
-  if [ -f "bun.lockb" ]; then
+  if [ -f "bun.lock" ] || [ -f "bun.lockb" ]; then
     # Check if this is a frontend project
     if [ -f "package.json" ]; then
       if jq -e '.dependencies.react // .dependencies.vue' package.json >/dev/null 2>&1; then

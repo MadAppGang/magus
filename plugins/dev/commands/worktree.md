@@ -3,7 +3,6 @@ name: worktree
 description: Manage git worktrees - create isolated workspaces, list active worktrees, and clean up. Supports automatic Neon DB branching for schema isolation.
 argument-hint: "create [branch] | list | cleanup [path] | status | help"
 allowed-tools: Bash, Read, Write, Edit, AskUserQuestion, Glob, Grep
-skills: dev:worktree-lifecycle
 ---
 
 <role>
@@ -15,8 +14,13 @@ skills: dev:worktree-lifecycle
   </expertise>
   <mission>
     Provide a simple interface for managing git worktrees following the
-    dev:worktree-lifecycle skill's 6-phase approach.
+    worktree-lifecycle skill's 6-phase approach.
   </mission>
+  <required_reading>
+    Before `create` or `cleanup`, read
+    `${CLAUDE_PLUGIN_ROOT}/skills/discipline/worktree-lifecycle/SKILL.md`. The phases
+    named below are its phases.
+  </required_reading>
 </role>
 
 <user_request>
@@ -29,7 +33,7 @@ skills: dev:worktree-lifecycle
   <subcommand name="create">
     **Usage:** `/dev:worktree create [branch-name]`
 
-    Create a new worktree following the dev:worktree-lifecycle skill phases 1-5.
+    Create a new worktree following the worktree-lifecycle skill phases 1-5.
 
     Steps:
     1. If branch-name not provided, ask user for branch name
@@ -47,7 +51,8 @@ skills: dev:worktree-lifecycle
        - Detect database provider from .env (neon.tech, turso.io, supabase.co)
        - If branchable provider detected, ask user if branch involves schema changes
        - If yes: create DB branch, get connection string, patch .env, write .db-branch.json
-       - Follow dev:db-branching skill for provider-specific procedure
+       - Follow `${CLAUDE_PLUGIN_ROOT}/skills/backend/db-branching/SKILL.md` (read the
+         file) for the provider-specific procedure
     7. Execute Phase 4: Setup
        - Detect stacks (nodejs, rust, golang, python, ruby)
        - Install dependencies for each stack
@@ -57,18 +62,6 @@ skills: dev:worktree-lifecycle
        - Display worktree information
        - Show path, branch, stacks, test results
        - If Neon branch: show Neon branch ID and isolation status
-    8. Write worktree context marker for statusline persistence
-       - Get Claude Code session ID (if available from environment or session context)
-       - Write marker file to `~/.claude/.statusline-worktree-{SESSION_ID}`:
-         ```json
-         {
-           "worktree_path": ".worktrees/{slug}",
-           "branch": "{branch-name}",
-           "worktree_name": "{slug}"
-         }
-         ```
-       - This marker survives context compaction and ensures the statusline
-         continues showing worktree info after long-running operations
 
     Output format:
     ```
@@ -126,7 +119,7 @@ skills: dev:worktree-lifecycle
   <subcommand name="cleanup">
     **Usage:** `/dev:worktree cleanup [path]`
 
-    Remove a worktree following dev:worktree-lifecycle Phase 6.
+    Remove a worktree following the worktree-lifecycle skill's Phase 6.
 
     Steps:
     1. If path not provided, list available worktrees and ask which to clean up
@@ -142,13 +135,12 @@ skills: dev:worktree-lifecycle
              - Discard changes
              - Abort cleanup
        - Check for `.db-branch.json` in worktree root
-       - If database branch exists, follow dev:db-branching cleanup:
+       - If database branch exists, follow the cleanup in
+         `${CLAUDE_PLUGIN_ROOT}/skills/backend/db-branching/SKILL.md`:
          - Ask user about schema migration (apply to production / discard / keep)
          - If applying: merge code first, then run schema push in main worktree
          - Delete database branch via provider-specific method (MCP or CLI)
        - Remove worktree with `git worktree remove`
-       - Remove statusline worktree marker: `rm -f ~/.claude/.statusline-worktree-*`
-         (clean all markers for this project to avoid stale files)
        - Optionally delete branch (only if merged)
 
     Safety checks:
@@ -232,7 +224,7 @@ skills: dev:worktree-lifecycle
       /dev:worktree cleanup .worktrees/auth-system
       /dev:worktree status
 
-    See dev:worktree-lifecycle skill for detailed documentation.
+    See the worktree-lifecycle skill for detailed documentation.
     ```
   </subcommand>
 

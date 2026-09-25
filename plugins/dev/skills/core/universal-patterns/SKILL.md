@@ -41,61 +41,8 @@ collaboration), then the specific file. What it covers, none of which is below:
 | GoF patterns | `references/patterns/*.md` | all 22, with TypeScript, trade-offs, and when not to use each |
 | Selection | `references/selection.md` | how to choose, overuse smells, and where TypeScript already gives you the pattern free |
 
-**Do not answer an architecture question from the summaries below when the deep file
-exists.** The summaries omit the trade-offs and the failure modes, which are the parts that
-decide whether the choice is right.
-
-## Architecture Patterns (summary — see the `architecture` skill for the real treatment)
-
-### Layered Architecture
-
-```
-┌─────────────────────────────┐
-│     Presentation Layer      │  UI, API handlers, CLI
-├─────────────────────────────┤
-│     Application Layer       │  Use cases, services
-├─────────────────────────────┤
-│       Domain Layer          │  Business logic, entities
-├─────────────────────────────┤
-│    Infrastructure Layer     │  DB, cache, external APIs
-└─────────────────────────────┘
-```
-
-**When to Use**: Most applications benefit from clear separation of concerns.
-
-### Clean Architecture
-
-```
-         ┌─────────────────┐
-         │   Frameworks    │  (outermost)
-         │   & Drivers     │
-     ┌───┴─────────────────┴───┐
-     │    Interface Adapters    │
-     │   (Controllers, Gateways)│
- ┌───┴─────────────────────────┴───┐
- │        Application Business      │
- │           Rules (Use Cases)      │
- ┌─────────────────────────────────┐
- │    Enterprise Business Rules     │  (innermost)
- │         (Entities)               │
- └─────────────────────────────────┘
-```
-
-**Dependency Rule**: Dependencies point inward. Inner layers don't know about outer layers.
-
-### Component-Based Architecture (Frontend)
-
-```
-src/
-├── components/
-│   ├── common/         # Shared UI components
-│   ├── layout/         # Layout components
-│   └── features/       # Feature-specific components
-├── hooks/              # Custom hooks
-├── stores/             # State management
-├── services/           # API services
-└── utils/              # Utilities
-```
+Answer architecture questions from those files: they carry the trade-offs and failure
+modes that decide whether a choice is right.
 
 ## Code Organization Principles
 

@@ -149,7 +149,7 @@ Same content as result-iteration-{N}.md (allows validator to find the latest res
 ### Step 7.9: Handle Result
 
 If PASS:
-- Mark Phase 7 as completed
+- Say in one line: **Phase 7 — complete**, naming `validation/result.md`
 - Exit outer loop
 - Proceed to Phase 8
 

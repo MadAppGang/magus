@@ -490,8 +490,8 @@ This skill integrates with:
 
 - **verification-before-completion**: Test output is primary evidence for completion claims
 - **systematic-debugging**: When test fails, use debugging workflow to find root cause
-- **code-review**: Tests serve as executable documentation and specification
-- **refactoring**: Tests enable safe refactoring (verify behavior preservation)
+- **dev:reviewer** (agent): Tests serve as executable documentation and specification
+- **`${CLAUDE_PLUGIN_ROOT}/skills/architecture/references/refactoring.md`**: Tests enable safe refactoring (verify behavior preservation)
 
 ---
 

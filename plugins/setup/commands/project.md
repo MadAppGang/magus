@@ -30,7 +30,7 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion, Skill
     Two setup commands already exist and are authoritative in their domains.
     Invoke them; never reimplement what they do:
     - `/dev:setup` — writes the agent-delegation routing table into CLAUDE.md
-    - `/code-search:setup` — mnemex MCP wiring and first index
+    - `/code-search:setup` — ripgrep shim, MCP server check, and search-engine report
     If either plugin is absent, say so and skip that step. Do not inline a
     copy of their behaviour.
   </rule>
@@ -161,8 +161,9 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion, Skill
     | multi-model review wanted | `multimodel@magus` + `claudish@magus` | team voting and delegation |
 
     **Weigh the listing budget before recommending.** Every plugin whose skills
-    are model-invocable eats the shared per-turn budget — 8,000 chars total
-    across everything installed. Check the cost before proposing:
+    are model-invocable eats the shared per-turn budget — one budget across
+    everything installed, 8,000 chars at a 200k-token context and larger on a
+    bigger window. Check the cost before proposing:
 
     ```bash
     claude plugin details <name> 2>/dev/null
@@ -228,7 +229,7 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion, Skill
 
     - If `dev@magus` is installed, run `/dev:setup` — it owns the routing table.
     - If `code-search@magus` is installed, run `/code-search:setup` — it
-      owns mnemex MCP wiring and the first index.
+      owns the ripgrep shim, the MCP server check, and the engine report.
 
     For any other MCP server the stack implies, write it to the project
     `.mcp.json` using `${CLAUDE_PLUGIN_ROOT}` or environment variables for

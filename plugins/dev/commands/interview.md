@@ -2,7 +2,6 @@
 name: interview
 description: Comprehensive specification interview with intelligent requirements elicitation
 allowed-tools: Agent, AskUserQuestion, Bash, Read, Write, Glob, Grep
-skills: dev:context-detection, dev:universal-patterns, multimodel:task-orchestration
 ---
 
 <role>
@@ -36,20 +35,11 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:task-orchestra
 
 <instructions>
   <critical_constraints>
-    <todowrite_requirement>
-      You MUST use Tasks to track the 6-phase interview workflow.
-
-      Before starting, create comprehensive todo list:
-      1. PHASE 0: Session initialization (or resume)
-      2. PHASE 1: Context gathering
-      3. PHASE 2: Deep interview loop
-      4. PHASE 3: Asset collection
-      5. PHASE 4: Spec synthesis
-      6. PHASE 5: Agent breakdown and next steps
-
-      Update continuously as you progress.
-      Mark only ONE task as in_progress at a time.
-    </todowrite_requirement>
+    <phase_reporting>
+      There are no task-list tools. Announce each phase in one line of text
+      (`**Phase N — starting.**` / `**Phase N — complete.**`, naming its artifacts).
+      The session files and the checkpoint in session-meta.json are the record.
+    </phase_reporting>
 
     <orchestrator_role>
       **You are an ORCHESTRATOR and INTERVIEWER, not IMPLEMENTER.**
@@ -247,7 +237,7 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:task-orchestra
     <iteration_limits>
       **Interview loop limits:**
       - Maximum interview rounds: 10 (can be extended)
-      - Questions per round: 3-5 (batched)
+      - Questions per round: one, or two when they are closely related
       - Minimum rounds before completion: 3
 
       **At limit:** Ask user if they want to continue or proceed to synthesis
@@ -258,7 +248,6 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:task-orchestra
     <phase number="0" name="Session Initialization">
       <objective>Setup unique session or resume existing session</objective>
       <steps>
-        <step>Mark PHASE 0 as in_progress</step>
         <step>
           Parse $ARGUMENTS to identify:
           - --resume SESSION_ID flag (for resuming)
@@ -320,7 +309,6 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:task-orchestra
           ---
           ```
         </step>
-        <step>Mark PHASE 0 as completed</step>
       </steps>
       <quality_gate>Session created (or resumed), existing context loaded</quality_gate>
     </phase>
@@ -328,7 +316,6 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:task-orchestra
     <phase number="1" name="Context Gathering">
       <objective>Understand project context and determine interview scope</objective>
       <steps>
-        <step>Mark PHASE 1 as in_progress</step>
         <step>
           Launch stack-detector agent:
 
@@ -365,7 +352,6 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:task-orchestra
         <step>
           Checkpoint update: phase 1, round 0.
         </step>
-        <step>Mark PHASE 1 as completed</step>
       </steps>
       <quality_gate>Context documented, focus areas identified</quality_gate>
     </phase>
@@ -374,7 +360,6 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:task-orchestra
       <objective>Conduct comprehensive interview with non-obvious, context-aware questions</objective>
       <iteration_limit>10 rounds (extendable)</iteration_limit>
       <steps>
-        <step>Mark PHASE 2 as in_progress</step>
         <step>
           Interview Loop (max 10 rounds, min 3 rounds):
 
@@ -451,7 +436,6 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:task-orchestra
            3. Focus on specific area: [list areas]
            4. Pause and continue later"
         </step>
-        <step>Mark PHASE 2 as completed</step>
       </steps>
       <quality_gate>All categories >= 70% OR user approves to proceed</quality_gate>
     </phase>
@@ -459,7 +443,6 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:task-orchestra
     <phase number="3" name="Asset Collection">
       <objective>Proactively gather supporting assets and tech recommendations</objective>
       <steps>
-        <step>Mark PHASE 3 as in_progress</step>
         <step>
           Analyze interview log for asset triggers (with thresholds):
 
@@ -511,11 +494,10 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:task-orchestra
         </step>
         <step>
           If Figma link provided:
-          - Leverage existing design analysis skills from dev plugin
           - If designer@magus is installed, hand design assets to /designer:ui
 
           If API spec path provided:
-          - Leverage existing api-design skill
+          - Read `${CLAUDE_PLUGIN_ROOT}/knowledge/backend/api-design.md`
           - Validate spec format and completeness
         </step>
         <step>
@@ -547,7 +529,6 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:task-orchestra
         <step>
           Checkpoint update: phase 3.
         </step>
-        <step>Mark PHASE 3 as completed</step>
       </steps>
       <quality_gate>Assets documented (even if 'none' for some)</quality_gate>
     </phase>
@@ -555,7 +536,6 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:task-orchestra
     <phase number="4" name="Spec Synthesis">
       <objective>Compile interview into comprehensive specification</objective>
       <steps>
-        <step>Mark PHASE 4 as in_progress</step>
         <step>
           Prepare synthesis context by reading:
           - ${SESSION_PATH}/interview-log.md
@@ -717,7 +697,6 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:task-orchestra
         <step>
           Checkpoint update: phase 4, `status: "spec_complete"`.
         </step>
-        <step>Mark PHASE 4 as completed</step>
       </steps>
       <quality_gate>User approves specification</quality_gate>
     </phase>
@@ -725,7 +704,6 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:task-orchestra
     <phase number="5" name="Agent Breakdown & Next Steps">
       <objective>Create implementation plan and propose next commands</objective>
       <steps>
-        <step>Mark PHASE 5 as in_progress</step>
         <step>
           Analyze spec.md to identify implementation tasks:
           - Group by component/layer
@@ -769,7 +747,7 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:task-orchestra
 
           If design assets collected:
           - /designer:create-style - "To configure project design style" (designer plugin)
-          - /designer:ui - "To review UI against design system" (designer plugin)
+          - /designer:ui - "To design the screens the spec describes" (designer plugin)
 
           If complex architecture:
           - /dev:architect {topic} - "For detailed technical design"
@@ -780,7 +758,6 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:task-orchestra
         <step>
           Present completion summary (see completion_message template)
         </step>
-        <step>Mark ALL tasks as completed</step>
       </steps>
       <quality_gate>Tasks documented, next steps proposed</quality_gate>
     </phase>
@@ -1074,13 +1051,10 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:task-orchestra
       PHASE 2: Interview Loop (6 rounds)
         Round 1: Non-functional deep-dive
           Q: "The spec mentions 'fast response times'. What's your target latency for the search endpoint?"
-          Q: "How many concurrent searches should the system support at peak?"
-          Q: "What happens if search takes longer than X seconds?"
+          Q: "What happens if search takes longer than that?" (closely related, so asked together)
 
         Round 2: Error handling
           Q: "When payment fails, what information should users see?"
-          Q: "How should the system behave if the database is temporarily unreachable?"
-          Q: "Who should be notified when critical errors occur?"
 
         Round 3: Integration authentication (5 Whys applied)
           Q: "How will the mobile app authenticate with the API?"
@@ -1108,13 +1082,9 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:task-orchestra
       PHASE 2: Interview Loop (8 rounds)
         Round 1: Broad scoping
           Q: "What's the single most important thing users need to accomplish?"
-          Q: "Who are your target users? Individuals, teams, or both?"
-          Q: "What makes this different from Todoist/Asana/Linear?"
 
         Round 2: Core features
           Q: "Walk me through creating and completing a task end-to-end"
-          Q: "How should tasks be organized? Projects, tags, lists, or something else?"
-          Q: "What happens when a task is overdue?"
 
         Round 3: Collaboration (5 Whys on "team features")
           Q: "You want team features. Why is collaboration important?"
@@ -1223,7 +1193,7 @@ skills: dev:context-detection, dev:universal-patterns, multimodel:task-orchestra
 <formatting>
   <communication_style>
     - Ask questions in conversational but professional tone
-    - Group related questions (3-5 max per round)
+    - Ask one question per round, two when they are closely related
     - Provide context for why you're asking
     - Summarize periodically: "So far we've covered X, Y, Z..."
     - Celebrate progress: "Great, that clarifies the auth requirements"

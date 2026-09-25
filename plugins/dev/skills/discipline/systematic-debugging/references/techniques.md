@@ -21,7 +21,13 @@ which phase you are in.
 
 ### Stack Trace Reading
 
-Read stack traces **bottom to top**:
+Start at the **raising frame**, then walk toward the entry point. Where that frame sits
+depends on the language:
+
+| Language | Raising frame | Entry point |
+|---|---|---|
+| JavaScript/TypeScript, Java, Go, Rust, C# | first line after the message (top) | bottom |
+| Python | last line before the message (bottom) | top |
 
 ```
 Error: Cannot read property 'name' of undefined

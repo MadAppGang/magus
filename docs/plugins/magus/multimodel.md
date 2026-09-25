@@ -7,11 +7,11 @@ Multi-model collaboration and orchestration. Runs a task across several AI model
 
 | | |
 |---|---|
-| Version | `5.0.0` |
+| Version | `5.1.0` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 2 |
 | Subagents | 1 |
-| Skills | 3 |
+| Skills | 2 |
 | MCP server | no |
 | Hooks | yes |
 
@@ -57,8 +57,7 @@ Dispatched with the Agent tool, each in its own context window.
 | Skill | What it covers |
 |---|---|
 | `multimodel:error-recovery` | Handle errors, timeouts, and failures in multi-agent workflows. Use when dealing with external model timeouts, API failures, partial success, user cancellation, or graceful degradation. |
-| `multimodel:multi-model-validation` | Runs the same task across multiple AI models in parallel and aggregates verdicts. Use when the user wants a second opinion, multi-expert validation, or consensus from Grok, Gemini, GPT-5, or… |
-| `multimodel:task-orchestration` | Track progress in multi-phase workflows with Tasks system. Use when orchestrating 5+ phase commands, managing iteration loops, tracking parallel tasks, or providing real-time progress visibi… |
+| `multimodel:multi-model-validation` | Runs the same task across multiple AI models in parallel and aggregates verdicts. Use when the user wants a second opinion, multi-expert validation, or consensus from Grok, Gemini, GPT, or K… |
 
 ## Hooks
 

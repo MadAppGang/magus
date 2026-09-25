@@ -26,7 +26,7 @@ Patterns for combining Browser Use MCP tools with claude-in-chrome to achieve fu
 | Scroll page | `browser_scroll` | `computer` (scroll) |
 | Read console errors | Not available | `read_console_messages` |
 | Read network requests | Not available | `read_network_requests` |
-| Execute JavaScript | Not available (no eval tool) | `javascript_tool` |
+| Execute JavaScript | `browser_evaluate` (in its own page) | `javascript_tool` |
 | Resize viewport | Via agent only | `javascript_tool` (resizeTo) |
 | Record GIF of interaction | Not available | `gif_creator` |
 | Autonomous agent mode | `retry_with_browser_use_agent` | Not available |
@@ -71,7 +71,7 @@ Use this table when deciding which tool to reach for:
 | Read what errors appeared in console | `read_console_messages` | Not possible with BU alone |
 | Trace which API calls a button made | `read_network_requests` | Not possible with BU alone |
 | Get the current DOM element map | `browser_get_state` | `read_page` (text only, less structured) |
-| Execute arbitrary JavaScript | `javascript_tool` | Not possible with BU alone |
+| Execute arbitrary JavaScript | `browser_evaluate` (BU's page) | `javascript_tool` (the user's Chrome) |
 | Capture full-page screenshot | `browser_screenshot(full_page=True)` | `computer` (viewport only) |
 | Record a GIF of a user flow | `gif_creator` | screenshot sequence (not animated) |
 | Autonomous complex task | `retry_with_browser_use_agent` | Not possible with CiC alone |
@@ -81,6 +81,13 @@ Use this table when deciding which tool to reach for:
 ---
 
 ## 4. Hybrid Workflow Patterns
+
+**Two browsers, not one.** Browser Use drives its own headless Chromium; claude-in-chrome
+reads the user's Chrome. Console and network reads from claude-in-chrome describe the
+Chrome tab, never Browser Use's session. For the patterns below to observe the same page,
+open the URL in the user's Chrome too (`mcp__claude-in-chrome__navigate`) and reproduce
+the action there; use Browser Use for what only it has (indexed DOM map, full-page
+screenshots, the autonomous agent).
 
 ### 4.1 Pattern: Navigate + Monitor Console
 
@@ -227,9 +234,9 @@ When `tabs_context_mcp` probe fails, use these fallback patterns:
 |------|--------------------------|------------|
 | Console errors | `retry_with_browser_use_agent(task="Check the browser console for errors after clicking X, use_vision=True")` | Less reliable than direct console access |
 | Network trace | `browser_get_html` — look for error messages rendered in page | Cannot see network-level failures |
-| JavaScript execution | `retry_with_browser_use_agent(task="Run document.title and report it")` | Agent-mediated, not direct eval |
-| Computed styles | `browser_get_html(selector=element)` — inspect inline styles | No computed style access |
-| Application state | `browser_extract_content(query="cart total and item count")` | Semantic, not programmatic |
+| JavaScript execution | `browser_evaluate(script="document.title")` | None — direct eval in the live page |
+| Computed styles | `browser_evaluate(script="getComputedStyle(document.querySelector('.x')).color")` | None |
+| Application state | `browser_evaluate` on the store (`window.__STORE__`), or `browser_extract_content` | Store must be reachable from `window` |
 
 ### Fallback Debugging Report
 
@@ -242,12 +249,11 @@ When running Browser Use-only, be explicit about what you could and could not ch
 - Visual state: screenshot before/after interaction
 - DOM state: selector_map, element attributes
 - Page HTML: class names, inline styles, aria attributes
+- Computed CSS and application state, through `browser_evaluate`
 
 **Not Checked** (requires claude-in-chrome):
 - JavaScript console errors
 - Network request trace
-- Computed CSS properties
-- Application state (Redux/Vuex store)
 
 **Recommendation**: Install the claude-in-chrome extension and re-run for complete analysis.
 ```

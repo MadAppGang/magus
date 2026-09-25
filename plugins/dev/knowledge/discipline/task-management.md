@@ -38,19 +38,21 @@ phase's required artifacts are its definition of done — see `${CLAUDE_PLUGIN_R
 |---|---|---|
 | which phase am I in? | `TaskList` | the last `**Phase N — starting**` line you wrote |
 | is phase N done? | its task status | its artifacts exist and are non-trivial |
-| what enforces it? | `PreToolUse:TaskUpdate` | the `Stop` hook, which still fires |
+| what checks it? | `PreToolUse:TaskUpdate` | you, before you announce it complete; the `Stop` hook reports what you missed |
 
-## The gate
+## The report
 
 `hooks/phase-completion-validator.ts --stop` runs when the turn ends. It resolves the
-session, and blocks the turn if any phase has **some but not all** of its artifacts — a
-phase begun and abandoned:
+session, and reports any phase that has **some but not all** of its artifacts — a
+phase begun and abandoned. It is advisory and never blocks the turn, so the artifact
+check before you announce a phase complete is yours:
 
 ```
-BLOCKED: a /dev:dev phase was started and left incomplete.
+INCOMPLETE PHASE: a /dev:dev phase was started and left without its artifacts.
   - Multi-Model Planning (phase3): missing reviews/plan-review/consolidated.md
 Session: ai-docs/sessions/dev-feature-x
 Finish the artifacts, or write a skip-reason.md saying why the phase was abandoned.
+(Advisory: this does not block the turn. If the phase is still in progress, ignore it.)
 ```
 
 A phase with **none** of its artifacts was never started and is not a finding. A phase

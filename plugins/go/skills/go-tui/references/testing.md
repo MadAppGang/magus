@@ -71,10 +71,9 @@ ANSI escapes, so a color change is a diff — exactly what you want.
 Golden tests catch *regressions* but can't tell you the design is *good*. For that, render
 to a color PNG and inspect it (full procedure in `screenshot-workflow.md`):
 
-1. Run the TUI in a headless tmux pane.
-2. `tmux -L mcp-headless capture-pane -p -e -t %0 > /tmp/tui.ansi`
-3. `bun run scripts/ansi-to-png.ts /tmp/tui.ansi /tmp/tui.png 900x600`
-4. `Read` the PNG and judge color, alignment, density, empty space.
+1. Run the `shot` loop from `screenshot-workflow.md` (Route A) — a private tmux socket with
+   `-f /dev/null`, a `mktemp -d` output directory, and the ESC-byte gate.
+2. `Read` both PNGs and judge color, alignment, density, empty space.
 
 Do this at **one narrow (80×24) and one wide** size — responsive breakage hides at the
 edges. Re-screenshot after any layout or color change.

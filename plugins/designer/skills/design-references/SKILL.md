@@ -388,24 +388,14 @@ This skill provides predefined design system references that the ui agent can us
 
 ### Selecting a Design Reference
 
-The ui agent will check for style in this order:
+`designer:ui` takes its style in this order:
 
-1. **Project Style** (`.claude/design-style.md`) - Highest priority
-2. **Predefined Reference** (via `Design Reference:` directive or user selection)
-3. **Auto-detect** (if recognizable patterns found)
-4. **Generic Best Practices** (fallback)
+1. **Project Style** (`STYLE_FILE`, default `.claude/design-style.md`)
+2. **Predefined Reference** (the `REFERENCE` input, one of the IDs above)
+3. **Chosen by platform** when neither is given (iOS → `apple-hig`, web app →
+   `shadcn-ui`), named in its report
 
-### Review with Specific Reference
-
-```
-Agent: designer:review
-IMPL_SOURCE: screenshots/dashboard.png
-REVIEW_SCOPE: comprehensive
-Design Reference: material-3
-```
-
-The judge's verdict lands in `${OUTPUT_DIR}/summary.md`; the agent's completion message
-names the model that judged.
+`designer:review` compares image files and takes no reference input.
 
 ### Designing Against a Reference
 

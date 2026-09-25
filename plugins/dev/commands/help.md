@@ -2,7 +2,6 @@
 name: help
 description: Show dev plugin help, detected stack, and available commands
 allowed-tools:  Agent, Bash, Read, Glob, Grep
-skills: dev:context-detection
 ---
 
 <role>
@@ -86,6 +85,8 @@ skills: dev:context-detection
 | `/dev:dev` | Develop features — adaptive depth and automation |
 | `/dev:debug` | Debug router — quick patch (inline) or standard debug (via skill) |
 | `/dev:fix` | Production-grade TDD fix — dual multimodel review + deployment monitoring |
+| `/dev:qa` | Blind behaviour tests from a spec and a public contract, by a writer that never sees the implementation |
+| `/dev:release` | Phased release — preflight gates, version+changelog PR, merge, tag, publish, verify |
 
 **REVIEW & UNDERSTAND**
 
@@ -185,7 +186,7 @@ Based on your stack, these quality checks will run automatically:
 - `bun run format` - Code formatting (Biome)
 - `bun run lint` - Linting (Biome)
 - `bun run typecheck` - Type checking (TypeScript)
-- `bun test` - Unit tests (Vitest)
+- `bun test` - Unit tests (`bun:test`)
 {end}
 
 {if mode === "backend" && stack includes "golang"}
@@ -223,16 +224,15 @@ Backend:
 
 ### Dependencies
 
-**Required:**
-- **claudish@magus** (~1.0) - External model routing via MCP tools
-- **multimodel@magus** - Team voting and multi-model review skills
+**Required:** the `dependencies` array in `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json`
+— list each name and version range from there, never from a copy written here.
 
 **Optional:**
 - **code-search@magus** - Semantic code search and structural analysis for better context
 
 ### Multi-Model Validation
 
-When Claudish CLI is installed, you can use external AI models for:
+When the claudish plugin (its MCP runtime) is installed, you can use external AI models for:
 - Architecture reviews (`/dev:architect`)
 - Code reviews (`/dev:dev`)
 - Design validation
@@ -270,9 +270,7 @@ See: https://github.com/MadAppGang/claudish
       Mode: frontend
 
       Recommended Skills:
-      - react-typescript - React 19 + TypeScript patterns with compiler
-      - state-management - State management with TanStack Query
-      - testing-frontend - Vitest and React Testing Library patterns
+      - {name} - {description}   (one line per skill on disk that matches the stack)
 
       Quality Checks:
       - bun run format
@@ -280,7 +278,7 @@ See: https://github.com/MadAppGang/claudish
       - bun run typecheck
       - bun test
 
-      Shows all 14 commands with React-specific examples
+      Shows every command with React-specific examples
     </output>
   </example>
 
@@ -295,9 +293,7 @@ See: https://github.com/MadAppGang/claudish
       Mode: backend
 
       Recommended Skills:
-      - golang - Go language idioms and patterns
-      - api-design - RESTful API design patterns
-      - database-patterns - Database schema and query patterns
+      - {name} - {description}   (one line per skill on disk that matches the stack)
 
       Quality Checks:
       - go fmt ./...
@@ -305,7 +301,7 @@ See: https://github.com/MadAppGang/claudish
       - golangci-lint run
       - go test ./...
 
-      Shows all 14 commands with Go-specific examples
+      Shows every command with Go-specific examples
     </output>
   </example>
 
@@ -320,12 +316,7 @@ See: https://github.com/MadAppGang/claudish
       Mode: fullstack
 
       Recommended Skills:
-      - react-typescript - React 19 + TypeScript (frontend)
-      - state-management - State management patterns
-      - testing-frontend - Frontend testing
-      - golang - Go language patterns (backend)
-      - api-design - RESTful API design
-      - database-patterns - Database patterns
+      - {name} - {description}   (one line per skill on disk that matches either stack)
 
       Quality Checks:
       Frontend:

@@ -2,11 +2,10 @@
 
 Reference for `dev:testing-strategies`. Read when setting a coverage target, gating CI on coverage, or asked what to measure.
 
-# Test Coverage Skill
-
 ## Overview
 
-The test-coverage skill provides comprehensive on-demand test coverage analysis for your codebase. It identifies untested code paths, measures coverage metrics, finds test gaps, evaluates test quality, and provides actionable recommendations for improving test coverage across all supported technology stacks.
+How to measure coverage, find untested paths, judge test quality, and set targets, across
+the supported stacks.
 
 **When to Use**:
 - Measuring current test coverage
@@ -516,37 +515,6 @@ ok      github.com/user/project/users     0.189s  coverage: 62.3% of statements
 || src/users.rs: 89/143 (62.2%)
 ||
 68.23% coverage, 146/214 lines covered
-```
-
-## Integration with Dev Plugin
-
-### With Test Architect Agent
-
-Request comprehensive test creation:
-
-```
-Analyze test coverage and generate tests for all critical gaps
-```
-
-The qa-engineer agent will:
-1. Identify gaps using this skill
-2. Generate test files
-3. Run tests and verify coverage improvement
-
-### With Audit Skill
-
-Combine coverage with security:
-
-```
-Identify untested security-critical code paths
-```
-
-### With Optimize Skill
-
-Balance coverage with performance:
-
-```
-Check test coverage impact on build time
 ```
 
 ## Best Practices

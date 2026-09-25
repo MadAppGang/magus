@@ -289,7 +289,7 @@ mcp__plugin_terminal_mux__notify({ message: "Build complete" })
 
 **Port already in use**: `start-and-watch` returns `event: "error"` or output containing `EADDRINUSE`. Free the port (`execute-command({ command: "lsof -ti:3000 | xargs kill", isolated: true })`), try another port, or report to the user.
 
-**TUI app stuck**: `watch-pane` fires `idle:N`, or `pane-state` shows `isAlive: true` but nothing draws. Try `C-c` (`literal: false`), then `q`, then `close-pane({ slot })`.
+**TUI app stuck**: `watch-pane` fires `idle:N`, or `pane-state` shows `isAlive: true` but nothing draws. Try the app's own exit first — `q`, then `Escape` — then `C-c` (`literal: false`), then `close-pane({ slot })`.
 
 **Password prompt**: `pane-state` shows `waitingForInput: true` and `capture-pane` output contains "password" → **STOP**. Never send credentials through `send-keys`; report to the user and let them authenticate.
 

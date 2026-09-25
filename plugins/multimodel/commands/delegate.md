@@ -94,7 +94,7 @@ failure. Choosing when the user named nothing is a different act, and the announ
 what keeps them different: a silent pick is the anti-pattern, an announced one is a
 documented default with the override syntax attached. Measured 2026-08-19: with no default
 specified, agents facing this dead end did not stop — two of them invented a model argument
-(`Model resolved: gemini → gemini-3.6-flash`) from a prompt containing no such word.
+(`Model resolved: gemini → <an ID it made up>`) from a prompt containing no such word.
 
 **Step 1d — Build CLAUDE_FLAGS and AGENT.** CLAUDE_FLAGS is `preferences.claudeFlags`
 (may be empty). Keep the parsed agent OUT of it and pass it as `create_session`'s
@@ -205,15 +205,15 @@ Model: {MODEL} | Session: {SESSION_ID}
     Aliases below are illustrative — actual resolution comes from `list_models` (live catalog).
 
     `grok implement authentication`
-    → MODEL=(resolved from aliases file via "grok" shortAlias), TASK="implement authentication"
+    → MODEL=(ALIAS_TABLE entry for "grok"), TASK="implement authentication"
 
     `gemini /dev:architect design payment service`
-    → MODEL=gemini (resolved from aliases file), EXPLICIT_COMMAND=/dev:architect, TASK="design payment service"
+    → MODEL=(ALIAS_TABLE entry for "gemini"), EXPLICIT_COMMAND=/dev:architect, TASK="design payment service"
 
     `/dev:research rate limiting patterns`
     → EXPLICIT_COMMAND=/dev:research, TASK="rate limiting patterns" (model from preferences)
 
-    `gpt-5.4 implement login` (full model ID, not alias)
-    → MODEL=gpt-5.4 (verbatim), TASK="implement login"
+    `<full-model-id> implement login` (a full ID from `list_models`, not an alias)
+    → MODEL=<full-model-id> (verbatim), TASK="implement login"
   </argument_parsing_examples>
 </knowledge>

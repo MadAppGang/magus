@@ -77,9 +77,6 @@ Step 5: Close session (ALWAYS — even on error)
   mcp__plugin_browser-use_browser-use__browser_close_session(session_id: SESSION_ID)
 ```
 
-**Note**: CSS snapshot extraction (`mcp__claude-in-chrome__javascript_tool`) is NOT
-available in browser-use tier. Skip the reference-css.json step when using browser-use.
-
 ## Limitations vs claude-in-chrome
 
 | Capability | claude-in-chrome | browser-use |
@@ -104,7 +101,7 @@ Options:
 1. Install Claude-in-Chrome extension (preferred — full CSS snapshot support)
    → https://github.com/anthropics/claude-in-chrome
 2. Enable browser-use plugin (headless screenshot fallback)
-   → /plugin marketplace add browser-use@magus
+   → /plugin install browser-use@magus
 3. Provide an image file reference instead
    → Re-run with REFERENCE_SOURCE=/path/to/screenshot.png
 ```
@@ -113,5 +110,4 @@ If browser-use IS available but claude-in-chrome is not, log this info message (
 
 ```
 INFO: Using browser-use for headless screenshot capture (Tier 2 fallback).
-Note: CSS snapshot will not be available — reference-css.json will not be written.
 ```

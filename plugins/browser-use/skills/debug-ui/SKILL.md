@@ -106,7 +106,7 @@ After taking screenshots at each breakpoint, look for:
 
 ## 3. DOM State Inspection for CSS Debugging
 
-Use `browser_get_state` and `browser_get_html` to inspect CSS classes, attributes, and computed styles without needing browser DevTools.
+Use `browser_get_state` and `browser_get_html` to inspect CSS classes, attributes and inline styles; use `browser_evaluate` with `getComputedStyle` for computed styles.
 
 ### 3.1 Find Elements by CSS Class
 
@@ -267,7 +267,11 @@ browser_get_html(selector="#checkout-btn", session_id)
 
 ## 6. When to Escalate to claude-in-chrome
 
-Browser Use can detect visual bugs and inspect DOM/CSS. But some debugging signals require browser DevTools access, which is only available via claude-in-chrome (when available).
+Computed CSS, framework state and performance entries are one `browser_evaluate` call
+away in Browser Use's own page (`getComputedStyle(el)`, `window.__STORE__`,
+`performance.getEntries()`). Console history, the network log and GIF recording are not;
+they need claude-in-chrome, which reads the user's Chrome rather than Browser Use's
+session.
 
 **Escalate to claude-in-chrome when you need**:
 
@@ -275,10 +279,6 @@ Browser Use can detect visual bugs and inspect DOM/CSS. But some debugging signa
 |--------|--------------|
 | JavaScript console errors | `mcp__claude-in-chrome__read_console_messages` |
 | Network request failures (404, 500, CORS) | `mcp__claude-in-chrome__read_network_requests` |
-| React/Vue component state | `mcp__claude-in-chrome__javascript_tool` (run DevTools API) |
-| Computed CSS (after all stylesheets applied) | `mcp__claude-in-chrome__javascript_tool` (getComputedStyle) |
-| Event listener inspection | `mcp__claude-in-chrome__javascript_tool` |
-| Performance timeline | `mcp__claude-in-chrome__javascript_tool` (PerformanceObserver) |
 | Animated GIF of user interaction | `mcp__claude-in-chrome__gif_creator` |
 
 See the `browser-use:hybrid-debugging` skill for combined Browser Use + claude-in-chrome workflows.

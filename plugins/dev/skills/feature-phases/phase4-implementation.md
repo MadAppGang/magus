@@ -34,7 +34,7 @@ b. If independent phases:
    Launch in PARALLEL (single message, multiple Tasks). **Route each phase to the agent
    that owns its surface**: a phase whose files are components, screens, styles or themes
    goes to `dev:frontend-developer` (it preloads the design-system guardrails, and
-   `agent_loadouts.frontend` marks them MANDATORY); every other phase goes to
+   `agent_loadouts["frontend-developer"]` marks them MANDATORY); every other phase goes to
    `dev:developer`. Each agent receives ITS OWN entry from `context.agent_loadouts` —
    never the other's, and never one flat list.
 
@@ -82,15 +82,15 @@ b. If independent phases:
               - {skill.path} ({skill.name})
               {end}
 
-              **YOUR LOADOUT** (from context.agent_loadouts.frontend.read — at most 5,
+              **YOUR LOADOUT** (from context.agent_loadouts["frontend-developer"].read — at most 5,
               chosen for this agent and this task; read them, mandatory first. The
               design-system guardrails are listed MANDATORY even though you preload them:
               the marker is what the reviewer checks):
-              {for each path in context.agent_loadouts.frontend.read}
-              - {path}{if path in context.agent_loadouts.frontend.mandatory} ← MANDATORY{end}
+              {for each path in context.agent_loadouts["frontend-developer"].read}
+              - {path}{if path in context.agent_loadouts["frontend-developer"].mandatory} ← MANDATORY{end}
               {end}
-              {if context.agent_loadouts.frontend.note}
-              Note: {context.agent_loadouts.frontend.note}
+              {if context.agent_loadouts["frontend-developer"].note}
+              Note: {context.agent_loadouts["frontend-developer"].note}
               {end}
 
               {If outer_iteration > 1}

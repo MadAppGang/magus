@@ -154,22 +154,16 @@ for s in sessions["sessions"]:
 
 ---
 
-## 5. Browser Profile Persistence
+## 5. Login Persistence
 
-Browser profiles save cookies, localStorage, and login state across Claude Code sessions. Use them to skip login flows.
+A session's Chrome profile is temporary: it is deleted when the session closes, including
+by the 10-minute idle timeout (see core-api, "Automatic cleanup"). Login state survives
+only as an exported JSON file, so export it the moment a login completes and import it to
+skip the next login.
 
-### 5.1 Profile Directory
+### 5.1 Where Exports Live
 
-Profiles are stored in `~/.browser-use/profiles/` (one directory per profile, named by you):
-
-```
-~/.browser-use/
-├── profiles/
-│   ├── github/       # Saved login state for GitHub
-│   ├── jira/         # Saved login state for Jira
-│   └── work-google/  # Work Google account cookies
-└── sessions/         # Exported session snapshots (JSON files)
-```
+Pick any path for the export; `~/.browser-use/sessions/<site>.json` keeps them together.
 
 ### 5.2 Export Session for Reuse (After Login)
 
