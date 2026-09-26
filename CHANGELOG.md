@@ -4,6 +4,35 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [magus 7.6.0] - 2026-09-27
+
+### Added
+
+- **Saving what you have as a new profile asks for its name.** The option used to read
+  `Save what you have as "default-2"` and pick the name itself, which read like "overwrite
+  Default". It now reads "Save what you have as a new profile" and asks for a name, with the
+  generated one as the suggestion. An empty name, a name with no letters or digits, or a name
+  another profile already has is explained and asked again; magus never renames it for you.
+  Esc in the TUI goes back to the question; Ctrl+C in the command line stops without saving.
+
+### Fixed
+
+- **The TUI no longer loses the "No profile selected" question.** When magus first asked about
+  a file git should not track and you chose to fix it, the profile question appeared for an
+  instant and was replaced by "Gitignore fixed". It never came back, so the TUI looked like the
+  project had an active profile, and the next start — with nothing left in front of it —
+  showed the question as if updating had broken the profile. Startup questions now come one at
+  a time, a fix keeps its dialog on screen until its result is shown, and the profile question
+  stays asked until you answer it — if any other dialog covers it, it comes back.
+- **One keypress no longer answers two dialogs.** A key that opened a text box also reached
+  that box: Enter on "Save what you have" saved at once under the suggested name, and `r`
+  (rename a profile), `n` (new team style) or `a` (add a flag value) typed that letter into the
+  box they opened. A key now goes only to the box that had focus when it was pressed.
+- **A question on the command line no longer waits forever when its input ends.** Closed input
+  now cancels, the same as Ctrl+C.
+
+---
+
 ## [madbench 0.6.2] - 2026-09-27
 
 ### Fixed
