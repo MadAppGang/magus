@@ -4,6 +4,56 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [magus 7.5.4] - 2026-09-26
+
+### Changed
+
+- **The command line and the TUI now agree on what needs updating.** `magus update` planned only
+  the active profile's plugins, so a plugin installed in your user scope could show "update
+  available" in the Plugins screen while `magus update` reported everything up to date. Both now
+  use one plan: the profile's plugins plus every plugin installed in any scope. `magus update`
+  therefore also updates user-scope plugins, and the screen's "update all" updates exactly what
+  `magus update` would.
+- **A plugin is installed or not installed.** magus shows one state per scope — user, project
+  or local — and it is what Claude Code loads: the scope's settings turn the plugin on. The
+  plugin list and the detail pane now show the same thing. A plugin whose files are missing
+  says "files missing". "Installed, not enabled" and "enabled, not installed" are gone, and a
+  plugin installed nowhere in this folder no longer shows a version or "update available".
+- **The command line states what is going on, in your terms.** Screens lead with the state —
+  "No profiles in this project yet", "This project uses an old magus profile format" — then
+  say why, then ask. Plugins appear as a list under a scope badge (`USER`, `PROJECT`, `LOCAL`).
+  File names appear only where you have to act on a file.
+- **Choosing from a list uses the arrow keys.** "Which profile?" and `magus install`'s "Which
+  profile should be active?" are lists you move through with ↑/↓ and pick with Enter; Esc
+  cancels. The command line no longer opens TUI dialogs.
+- **In a subfolder of a project that has profiles, magus explains and stops.** Claude Code
+  treats each folder you start it in as a separate project, so a profile saved in a subfolder
+  would apply only there. The command line and the TUI both say so and name the parent project;
+  run `magus profile init` in the subfolder to give it its own setup on purpose.
+- **An old profile format is stated and asked about, in the command line and the TUI.** With a
+  person at the terminal, magus says it found the old format and asks before updating it; the
+  TUI used to update it without asking. With `--yes`, or with no terminal, it updates as before.
+- **The tracked-file notice is shorter and appears once.** "git tracks .claude/settings.json,
+  but magus rewrites it", with the command to stop tracking it on its own line. One
+  `magus update` could print it three times.
+
+### Fixed
+
+- **A plugin whose files are missing is reinstalled in the scope where they are missing.** A
+  user- or local-scope plugin was reinstalled in the project scope, which then added it to the
+  team's `profiles.json`.
+- **`magus update` no longer reports an update that did not happen.** When Claude Code exits
+  cleanly but records no version, the plugin is reported as "no change", not as updated.
+- **Updating a plugin this project has no record of installs it here.** magus used to ask
+  Claude Code to update it, and Claude Code then updated another checkout's copy.
+- **"Update it now" in the TUI says when the old format could not be updated.** A settings file
+  that does not parse stops the update; the TUI showed "Profile format updated" over it, while
+  the command line stopped with the error. Both now stop.
+- **An interrupted list puts the terminal back.** A signal or an error while an arrow-key list
+  was open could leave the terminal without echo until `reset`.
+
+---
+
 ## [madbench 0.6.1] - 2026-09-25
 
 ### Fixed
