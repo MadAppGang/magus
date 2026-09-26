@@ -55,7 +55,7 @@ With `--isolated`, add `isolated: true` and use slot 2 or higher. `created: fals
 | Bun/Node dev server | `"Local:.*http\|listening on\|ready in"` |
 | Go server | `"listening on\|started on\|server running"` |
 | Test watcher (Vitest/Jest) | `"press a to rerun\|Waiting for file changes"` |
-| Bun test watcher | `"watch mode\|watching"` |
+| Bun test watcher | `"Ran [0-9]+ tests? across"` (bun prints no idle marker; this line ends every run) |
 | docker-compose up | `"healthy\|started"` |
 | Log tail | any line, then `watch-pane({ slot, triggers: "idle:5" })` |
 

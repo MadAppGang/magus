@@ -47,23 +47,27 @@ const NATIVE_WIDTH: ((s: string) => number) | null = (() => {
  * `[0x1f300, 0x1f9ff]` run, while an explicit range brings in the non-emoji planes
  * that run never covered — Tangut, Nushu, Khitan, Kana Extended.
  *
- * MEASURED 2026-07-30 against `Bun.stringWidth` across all 1,112,064 codepoints:
- * 1,081 disagreements, down from 11,205 for the previous hand table. 749 are lone
- * combining marks and 237 are codepoints this engine's Unicode tables do not know;
- * neither occurs in real text. Only 17 are anything else, 14 of them Unicode 16
- * emoji where the FALLBACK is right and the oracle is behind. `color.test.ts` pins
- * every one of those numbers, so widening a run without a sweep fails the suite.
+ * MEASURED 2026-09-26 against `Bun.stringWidth` on Bun 1.4.0, across all 1,112,064
+ * codepoints: 369 disagreements. The previous hand table scored 11,205; this one
+ * scored 1,081 on 2026-07-30, then 3,017 once Bun 1.4.0 moved to newer Unicode data
+ * (new Wide runs for trigrams, digrams, Yijing and Tai Xuan Jing symbols, counting
+ * rods and Tangut extensions; lone marks and conjoining Hangul vowels now 0). The
+ * residual: 75 lone marks, 242 codepoints this engine's Unicode tables do not know,
+ * 23 format controls, 26 single regional-indicator halves, and 3 other (U+0980,
+ * U+0C80, U+0D3A, letters the oracle treats as zero-width). None occurs in real
+ * single-line text. `color.test.ts` pins these numbers, so widening a run without a
+ * sweep fails the suite — and so does the next oracle update, which is the point.
  */
 const WIDE: ReadonlyArray<readonly [number, number]> = [
-  [0x1100, 0x115f], [0x2329, 0x232a],
-  [0x2e80, 0x303e], [0x3041, 0x31e3], [0x31e6, 0x3247], [0x3250, 0x33ff],
-  [0x3400, 0x4dbf], [0x4e00, 0x9fff],
+  [0x1100, 0x115f], [0x2329, 0x232a], [0x2630, 0x2637], [0x268a, 0x268f],
+  [0x2e80, 0x303e], [0x3041, 0x3247], [0x3250, 0x33ff],
+  [0x3400, 0x4dff], [0x4e00, 0x9fff],
   [0xa000, 0xa4cf], [0xa960, 0xa97f], [0xac00, 0xd7a3], [0xf900, 0xfaff],
   [0xfe10, 0xfe19], [0xfe30, 0xfe6f], [0xff00, 0xff60], [0xffe0, 0xffe6],
-  [0x16fe0, 0x16fe4], [0x16ff0, 0x16ff1], [0x17000, 0x187f7], [0x18800, 0x18cd5],
-  [0x18d00, 0x18d08], [0x1aff0, 0x1aff3], [0x1aff5, 0x1affb], [0x1affd, 0x1affe],
+  [0x16fe0, 0x16fe4], [0x16ff0, 0x16ff6], [0x17000, 0x18cd5],
+  [0x18cff, 0x18d1e], [0x18d80, 0x18df2], [0x1aff0, 0x1aff3], [0x1aff5, 0x1affb], [0x1affd, 0x1affe],
   [0x1b000, 0x1b122], [0x1b132, 0x1b132], [0x1b150, 0x1b152], [0x1b155, 0x1b155],
-  [0x1b164, 0x1b167], [0x1b170, 0x1b2fb],
+  [0x1b164, 0x1b167], [0x1b170, 0x1b2fb], [0x1d300, 0x1d356], [0x1d360, 0x1d376],
   [0x1f200, 0x1f202], [0x1f210, 0x1f23b], [0x1f240, 0x1f248], [0x1f250, 0x1f251],
   [0x1f260, 0x1f265], [0x20000, 0x2fffd], [0x30000, 0x3fffd],
 ]
@@ -82,6 +86,20 @@ const VS16 = "\uFE0F"
  * these at all and billed each one a column. Anchored, because it classifies a
  * grapheme cluster by the codepoint that STARTS it. */
 const LEADING_FORMAT = /^\p{Cf}/u
+
+/** Zero-width in the fallback, part two: a cluster that STARTS with a nonspacing or
+ * enclosing mark. Grapheme segmentation attaches a mark to the base before it, so a
+ * cluster only starts with one when the mark stands alone — and a lone mark paints
+ * nothing of its own. Spacing marks (`Mc`) take a column and are left at 1. */
+const LEADING_NONSPACING_MARK = /^[\p{Mn}\p{Me}]/u
+
+/** Hangul conjoining medial vowels and final consonants (Jungseong, Jongseong, and
+ * their Extended-B block). A terminal composes them into the preceding syllable
+ * block, so alone they cost 0. The leading consonants (U+1100-U+115F) are the Wide
+ * half of the pair and stay in `WIDE`. */
+function isHangulConjoining(cp: number): boolean {
+  return (cp >= 0x1160 && cp <= 0x11ff) || (cp >= 0xd7b0 && cp <= 0xd7fb)
+}
 
 /** Wide in the fallback, part two: emoji whose default presentation is Wide. This
  * is the engine's own table, so it tracks Unicode releases without an edit here. */
@@ -155,6 +173,7 @@ function isWide(cp: number): boolean {
 export function fallbackClusterWidth(cluster: string): number {
   const cp = cluster.codePointAt(0) ?? 0
   if (cp < 0x20 || (cp >= 0x7f && cp <= 0x9f) || LEADING_FORMAT.test(cluster)) return 0
+  if (LEADING_NONSPACING_MARK.test(cluster) || isHangulConjoining(cp)) return 0
   return isWide(cp) || LEADING_EMOJI_PRESENTATION.test(cluster) || cluster.includes(VS16) ? 2 : 1
 }
 

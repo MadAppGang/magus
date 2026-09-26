@@ -568,6 +568,6 @@ Path                              Branch                    DB Branch (Provider)
 ## Integration with Other Skills
 
 - **worktree-lifecycle:** Primary integration — extends all 6 phases
-- **database-patterns:** Schema design patterns used in branched development
+- **`${CLAUDE_PLUGIN_ROOT}/knowledge/backend/database-patterns.md`:** Schema design patterns used in branched development
 - **context-detection:** Detects database provider from env vars and config files
 - **verification-before-completion:** Verify schema applied to production before cleanup

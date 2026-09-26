@@ -19,7 +19,7 @@ Copy-paste-ready signal strings for `start-and-watch` and `watch-pane` pattern p
 | **Cargo watch** | `test result: ok.` | `test result: FAILED.` or `error[E` | `[Running 'cargo test']` | `[Watching` |
 | **pytest-watch** | `N passed in Xs` or `passed in` | `FAILED ` (caps+space) or `N failed` | `Ding! Tests running...` | `Waiting for changes...` |
 | **Go test** (with entr) | `ok ` (line start, space after) | `FAIL` (line start) or `--- FAIL:` | `--- RUN` | (no idle state — entr reruns on change) |
-| **Bun test** | `✓ N tests` or `N pass` | `✗` or `N fail` | progress output | (no explicit idle marker) |
+| **Bun test** | ` 0 fail` in the summary | `✗` lines, or ` N fail` with N > 0 | `bun test v…` header | none: each run ends with `Ran N tests across M files.` |
 | **RSpec** | `N examples, 0 failures` | `N examples, N failures` | progress dots | (no watcher state) |
 
 ## Build Tools
@@ -109,7 +109,7 @@ mcp__plugin_terminal_mux__start-and-watch({
 mcp__plugin_terminal_mux__start-and-watch({
   slot: 1,
   command: "bun test --watch",
-  pattern: "press a to rerun|Waiting for file changes|Waiting\\.\\.\\.",
+  pattern: "Ran [0-9]+ tests? across",
   mode: "medium",
   timeout: 30
 })

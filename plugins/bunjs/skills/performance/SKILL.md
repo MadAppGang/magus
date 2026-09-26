@@ -143,4 +143,4 @@ a query is cheap and answers the question faster than a profiler.
 | File | Read it when |
 |---|---|
 | `references/profiling.md` | finding the bottleneck — timing boundaries, heap snapshots, `bun:jsc`, load testing, what the numbers mean |
-| `references/optimisation-patterns.md` | caching, batching, N+1, streaming, workers, memory and GC pressure, data-structure choices |
+| `references/optimisation-patterns.md` | caching (in-process, and shared across replicas with Redis), batching, N+1, streaming, workers, memory and GC pressure, data-structure choices |

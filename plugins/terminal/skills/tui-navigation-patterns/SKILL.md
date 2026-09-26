@@ -512,7 +512,7 @@ from the `foregroundCmd` field of `pane-state` / `list-slots`:
 
 | Prompt / Visual Pattern | Application |
 |------------------------|-------------|
-| `=#` or `=#` | psql |
+| `dbname=#` (superuser) or `dbname=>` (normal user) | psql |
 | `>` after MongoDB URI | mongosh |
 | `127.0.0.1:6379>` | redis-cli |
 | Turso shell header | turso shell |

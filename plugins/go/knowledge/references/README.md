@@ -160,6 +160,19 @@ Optimize Go code with proven techniques. Covers:
 
 ---
 
+### [Profiling and Benchmarking](./profiling-and-benchmarking.md)
+**Focus:** Measuring before and after a change
+
+Find where time and memory go, and prove a change helped. Covers:
+- pprof CPU, heap and goroutine profiles, from a benchmark or a running service
+- Benchmarks with `b.Loop()` and `-benchmem`
+- `benchstat` before/after comparison
+- Escape analysis output, and GOGC / GOMEMLIMIT
+
+**When to use:** Before touching Performance Optimization — to find the hot path, then to confirm the fix
+
+---
+
 ## Source Projects
 
 All examples are extracted from production-quality open-source projects:

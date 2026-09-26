@@ -183,19 +183,7 @@ node --prof app.js
 node --prof-process isolate-*.log > processed.txt
 ```
 
-**Go**:
-```bash
-# Build time analysis
-go build -x 2>&1 | ts '[%Y-%m-%d %H:%M:%S]'
-
-# CPU profiling
-go test -cpuprofile=cpu.prof -bench=.
-go tool pprof cpu.prof
-
-# Memory profiling
-go test -memprofile=mem.prof -bench=.
-go tool pprof mem.prof
-```
+**Go**: read the `go` plugin's `knowledge/references/profiling-and-benchmarking.md` (by path) when it is installed; if not, say once that `claude plugin install go@magus` adds it.
 
 **Rust**:
 ```bash
@@ -815,17 +803,9 @@ ON orders(user_id, status, created_at);
 
 ### Go
 
-**Common Bottlenecks**:
-- Unnecessary allocations
-- Blocked goroutines
-- Lock contention
-- Inefficient algorithms
-
-**Optimization Tools**:
-- `go tool pprof`
-- `go tool trace`
-- Benchmarks with `-bench`
-- Race detector with `-race`
+dev ships no Go guidance. Read the `go` plugin's `knowledge/references/performance-optimization.md`
+and `profiling-and-benchmarking.md` by path when it is installed; if not, say once that
+`claude plugin install go@magus` adds it.
 
 ### Rust
 

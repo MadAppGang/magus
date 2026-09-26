@@ -721,17 +721,8 @@ npm test -- --coverage --collectCoverageFrom='src/**/*.{ts,tsx}'
 
 ### Go
 
-**Coverage Command**:
-```bash
-go test -coverprofile=coverage.out ./...
-go tool cover -html=coverage.out
-```
-
-**Common Gaps**:
-- Error return paths
-- Defer cleanup functions
-- Context cancellation
-- Goroutine error handling
+dev ships no Go guidance. Read the `go` plugin's `knowledge/roles/tester/best-practices.md` by
+path when it is installed; if not, say once that `claude plugin install go@magus` adds it.
 
 ### Rust
 

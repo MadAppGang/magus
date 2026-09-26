@@ -7,7 +7,7 @@ Go development toolkit. Ships the go-tui skill for building Charm-stack terminal
 
 | | |
 |---|---|
-| Version | `0.1.5` |
+| Version | `0.2.0` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 0 |
 | Subagents | 0 |

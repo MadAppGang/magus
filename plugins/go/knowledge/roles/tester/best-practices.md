@@ -758,20 +758,16 @@ func TestDatabase(t *testing.T) {
 
 ```go
 func BenchmarkProcessData(b *testing.B) {
-    // Setup (not timed)
-    data := setupLargeDataset()
+    data := setupLargeDataset() // setup before the loop is not timed
 
-    b.ResetTimer()  // Reset timer after setup
-
-    // Benchmark loop
-    var result Result
-    for i := 0; i < b.N; i++ {
-        result = ProcessData(data)
+    for b.Loop() { // Go 1.24+: times only the body, keeps the call from being optimised away
+        ProcessData(data)
     }
-
-    _ = result  // Prevent compiler optimization
 }
 ```
+
+`b.Loop()` replaces the older `for i := 0; i < b.N; i++` loop, the `b.ResetTimer()` after
+setup, and the `_ = result` sink. Use the old form only for a module on Go before 1.24.
 
 ### Benchmarking with Different Inputs
 
@@ -789,9 +785,7 @@ func BenchmarkProcessData(b *testing.B) {
     for _, bm := range benchmarks {
         b.Run(bm.name, func(b *testing.B) {
             data := generateData(bm.size)
-            b.ResetTimer()
-
-            for i := 0; i < b.N; i++ {
+            for b.Loop() {
                 ProcessData(data)
             }
         })

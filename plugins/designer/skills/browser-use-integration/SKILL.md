@@ -50,31 +50,33 @@ An agent that wants them must list them in its `tools:` line by that full name.
 
 ## Screenshot Capture Pattern
 
-When browser-use is available (Tier 2), use this exact sequence. `TARGET_URL` may be a
-`file://<absolute path>` for a local HTML artboard.
+When browser-use is available (Tier 2), use this sequence. It needs
+`browser_save_screenshot`, the browser-use tool that writes a PNG file; if the tool is
+missing, the installed browser-use predates it: say so, and name
+`claude plugin update browser-use@magus`.
+
+**A local HTML artboard must be served, not opened.** browser-use reports
+"Navigated to" for a `file://` URL but stays on `about:blank`, so the screenshot is
+blank. Serve the artboard directory on loopback for the capture:
 
 ```
-Step 1: Navigate (creates session automatically)
-  mcp__plugin_browser-use_browser-use__browser_navigate(url: TARGET_URL)
-  → save session_id from response
+Step 1: Serve local files (skip for an http(s) TARGET_URL)
+  Bash (background): python3 -m http.server <port> --bind 127.0.0.1 --directory "<artboard dir>"
+  TARGET_URL = http://127.0.0.1:<port>/<artboard>.html
 
-Step 2: Capture screenshot
-  mcp__plugin_browser-use_browser-use__browser_screenshot(session_id: SESSION_ID, full_page: False)
-  → returns: {"image": "<base64-PNG>", "format": "png", "width": N, "height": N}
-  → save BASE64_DATA from response["image"]
+Step 2: Navigate, then record the session id
+  mcp__plugin_browser-use_browser-use__browser_navigate(url=TARGET_URL)
+  mcp__plugin_browser-use_browser-use__browser_list_sessions()   → the new entry is SESSION_ID
 
-Step 3: Decode base64 to file
-  Write the base64 text to "${OUTPUT_DIR}/filename.b64" with the Write tool, then:
-  Bash:
-  bun -e "const fs=require('fs');fs.writeFileSync(process.argv[2],Buffer.from(fs.readFileSync(process.argv[1],'utf8').trim(),'base64'))" "${OUTPUT_DIR}/filename.b64" "${OUTPUT_DIR}/filename.png" && rm "${OUTPUT_DIR}/filename.b64"
+Step 3: Write the PNG
+  mcp__plugin_browser-use_browser-use__browser_save_screenshot(output_path="${OUTPUT_DIR}/<name>.png", full_page=false)
+  → {"path": "…", "size_bytes": N, "width": W, "height": H}
+  `output_path` must be absolute; the tool refuses a relative one.
+  An "Error:" line means no file was written: close the session, then stop with that error.
 
-Step 4: Verify file was created
-  Bash:
-  test -f "${OUTPUT_DIR}/filename.png" && echo "ok" || echo "decode_failed"
-  If decode_failed: close session then stop with error.
-
-Step 5: Close session (ALWAYS — even on error)
-  mcp__plugin_browser-use_browser-use__browser_close_session(session_id: SESSION_ID)
+Step 4: Close (ALWAYS — even on error)
+  mcp__plugin_browser-use_browser-use__browser_close_session(session_id=SESSION_ID)
+  Stop the Step 1 server.
 ```
 
 ## Limitations vs claude-in-chrome

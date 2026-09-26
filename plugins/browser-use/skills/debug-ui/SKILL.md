@@ -16,26 +16,25 @@ The baseline pattern for any UI debugging task:
 
 ```
 Step 1: Navigate to the page under investigation
-  mcp__browser-use__browser_navigate(url="https://app.example.com/dashboard")
-  → session_id: "debug_01"
+  mcp__plugin_browser-use_browser-use__browser_navigate(url="https://app.example.com/dashboard")
+  mcp__plugin_browser-use_browser-use__browser_list_sessions()
+  → record the new session's id, e.g. "debug_01"
 
 Step 2: Capture visual state
-  mcp__browser-use__browser_screenshot(session_id="debug_01")
-  → base64 image — Claude can analyze this directly
+  mcp__plugin_browser-use_browser-use__browser_screenshot()
+  → an image the model sees directly (browser_save_screenshot writes a PNG file)
 
 Step 3: Inspect DOM state for element details
-  mcp__browser-use__browser_get_state(session_id="debug_01")
-  → selector_map with element positions, classes, attributes, text
+  mcp__plugin_browser-use_browser-use__browser_get_state()
+  → interactive_elements: index, tag, text, href for each clickable element
 
 Step 4: Get HTML for CSS/class inspection
-  mcp__browser-use__browser_get_html(
-    selector=".problematic-component",
-    session_id="debug_01"
-  )
+  mcp__plugin_browser-use_browser-use__browser_get_html(
+    selector=".problematic-component")
   → raw HTML with class names, inline styles, data attributes
 
 Step 5: Close session
-  mcp__browser-use__browser_close_session(session_id="debug_01")
+  mcp__plugin_browser-use_browser-use__browser_close_session(session_id="debug_01")
 ```
 
 ### Reading Screenshots
@@ -51,31 +50,21 @@ When analyzing a screenshot from `browser_screenshot`:
 
 ## 2. Responsive Layout Testing
 
-Test how the UI looks at different viewport widths. Browser Use does not support viewport resizing via a direct tool parameter, so use one of two approaches.
+Browser Use cannot change the viewport size: no tool takes a width, and page
+JavaScript (`window.resizeTo`, a rewritten meta viewport) cannot resize a
+top-level window. Screenshots here are at the server's one window size.
 
-### 2.1 Multi-Session Approach (Recommended)
+### 2.1 What you can check at the current size
 
-Open separate sessions with different browser configurations (different window sizes). Each session gets an independent Chromium instance.
+Ask the page which breakpoints are active, and what the layout computed:
 
 ```
-# Desktop session
-session_desktop = browser_navigate(url="https://app.example.com")["session_id"]
-screenshot_desktop = browser_screenshot(session_id=session_desktop, full_page=True)
-
-# Mobile session (simulate via JS before screenshot)
-session_mobile = browser_navigate(url="https://app.example.com")["session_id"]
-# Resize viewport via JS using retry_with_browser_use_agent
-retry_with_browser_use_agent(
-  task="Resize the viewport to 390x844 (iPhone 14 size) using window.resizeTo or meta viewport manipulation, then take a screenshot",
-  session_id=session_mobile,
-  max_steps=5
-)
-screenshot_mobile = browser_screenshot(session_id=session_mobile, full_page=True)
-
-# Compare: Claude analyzes both screenshots
-browser_close_session(session_id=session_desktop)
-browser_close_session(session_id=session_mobile)
+browser_evaluate(script="return [320,375,414,768,1024,1280,1440].map(w => [w, matchMedia(`(min-width: ${w}px)`).matches])")
+browser_evaluate(script="return getComputedStyle(document.querySelector('.nav')).display")
 ```
+
+For screenshots at other widths, use a browser that can resize: claude-in-chrome's
+`resize_window`, or the project's own Playwright tests with a `viewport` option.
 
 ### 2.2 Standard Breakpoints to Test
 
@@ -91,7 +80,7 @@ browser_close_session(session_id=session_mobile)
 
 ### 2.3 Responsive Bug Detection Checklist
 
-After taking screenshots at each breakpoint, look for:
+At each breakpoint you can reach, look for:
 
 - [ ] Navigation menu: collapsed to hamburger on mobile?
 - [ ] Text: no overflow outside containers, no horizontal scroll
@@ -113,9 +102,7 @@ Use `browser_get_state` and `browser_get_html` to inspect CSS classes, attribute
 ```
 # Get HTML of a specific component to see its CSS classes and inline styles
 browser_get_html(
-  selector=".checkout-button",
-  session_id=session_id
-)
+  selector=".checkout-button")
 → "<button class='checkout-button btn btn-primary disabled' style='opacity: 0.5;' disabled>Check Out</button>"
 ```
 
@@ -128,17 +115,18 @@ From this HTML you can detect:
 
 ```
 # Get full page HTML and search for hidden elements
-browser_get_html(session_id=session_id)
+browser_get_html()
 → scan for: display:none, visibility:hidden, opacity:0, height:0, overflow:hidden
 
-# Or get DOM state and look for:
-browser_get_state(session_id=session_id)
-→ selector_map elements missing from expected positions may be hidden
+# Or ask the page directly
+browser_evaluate(script="return [...document.querySelectorAll('button, a, input')].filter(e => !e.checkVisibility()).map(e => e.outerHTML.slice(0, 80))")
 ```
 
 ### 3.3 Attribute Validation
 
-From `browser_get_state`, the `selector_map` includes element attributes. Check for:
+`browser_get_state` lists only each element's index, tag, text and href. Read
+attributes from `browser_get_html(selector=…)`, or with `browser_evaluate`
+(`el.getAttribute('aria-label')`). Check for:
 
 | Attribute | What to Verify |
 |-----------|---------------|
@@ -159,22 +147,19 @@ Capture visual state before and after an action or code change.
 
 ```
 # BEFORE state: capture baseline
-session_id = browser_navigate(url="https://app.example.com/cart")["session_id"]
-screenshot_before = browser_screenshot(session_id=session_id, full_page=True)
+browser_navigate(url="https://app.example.com/cart")
+session_id = the new entry in browser_list_sessions()
+browser_save_screenshot(output_path="/abs/path/before.png", full_page=True)
 # Analyze: Claude describes the visual state
 
 # Apply action (e.g., add item to cart)
-state = browser_get_state(session_id=session_id)
+state = browser_get_state()
 # Find "Add to Cart" button → index N
-browser_click(index=N, session_id=session_id)
+browser_click(index=N)
 
 # AFTER state: capture changed state
-screenshot_after = browser_screenshot(session_id=session_id, full_page=True)
-# Analyze: Claude describes what changed
-
-# Save screenshots to files for documentation
-Bash: python3 -c "import base64; open('before.png','wb').write(base64.b64decode('<before_base64>'))"
-Bash: python3 -c "import base64; open('after.png','wb').write(base64.b64decode('<after_base64>'))"
+browser_save_screenshot(output_path="/abs/path/after.png", full_page=True)
+# Analyze: read both PNGs and describe what changed
 
 browser_close_session(session_id=session_id)
 ```
@@ -185,12 +170,10 @@ For tracking regressions across deployments:
 
 ```
 Step 1: Capture baseline (production/main branch)
-  screenshot_prod = browser_screenshot(session_id=prod_session, full_page=True)
-  → save as "baseline-homepage-2026-03-03.png"
+  browser_save_screenshot(output_path="/abs/path/baseline-homepage.png", full_page=True)
 
 Step 2: Capture candidate (staging/PR branch)
-  screenshot_staging = browser_screenshot(session_id=staging_session, full_page=True)
-  → save as "candidate-homepage-2026-03-03.png"
+  browser_save_screenshot(output_path="/abs/path/candidate-homepage.png", full_page=True)
 
 Step 3: Report differences
   Claude analyzes both screenshots and describes:
@@ -201,7 +184,7 @@ Step 3: Report differences
   - Spacing differences
 ```
 
-**Limitation**: Browser Use cannot do pixel-level diff. Claude provides a descriptive comparison, not a numerical diff percentage. For automated CI regression testing with pixel diff, use Playwright + Percy or BackstopJS instead.
+**Limitation**: Browser Use does no pixel diff itself. With both PNGs on disk, a pixel diff is one command away (the designer plugin's `compare` skill runs one); otherwise the comparison is descriptive. For automated CI regression testing with pixel diff, use Playwright + Percy or BackstopJS instead.
 
 ---
 
@@ -212,11 +195,11 @@ Step 3: Report differences
 **Detection**:
 ```
 # Screenshot reveals two elements occupying the same space
-browser_screenshot(session_id)
+browser_screenshot()
 # → Claude can see: tooltip covered by navbar, modal behind overlay, etc.
 
 # Confirm via HTML: check z-index in inline styles or classes
-browser_get_html(selector=".navbar, .tooltip", session_id)
+browser_get_html(selector=".navbar, .tooltip")
 → look for z-index values, position:fixed, position:absolute
 ```
 
@@ -225,10 +208,10 @@ browser_get_html(selector=".navbar, .tooltip", session_id)
 **Detection**:
 ```
 # Screenshot shows "..." in unexpected places
-browser_screenshot(session_id)
+browser_screenshot()
 
 # Confirm via HTML: find overflow:hidden, white-space:nowrap, text-overflow:ellipsis
-browser_get_html(selector=".product-title, .card-description", session_id)
+browser_get_html(selector=".product-title, .card-description")
 ```
 
 ### 5.3 Broken Flexbox/Grid Layout
@@ -236,10 +219,10 @@ browser_get_html(selector=".product-title, .card-description", session_id)
 **Detection**:
 ```
 # Screenshot shows elements stacked that should be side-by-side, or vice versa
-browser_screenshot(session_id)
+browser_screenshot()
 
 # Confirm via HTML: check display:flex, display:grid, flex-direction, grid-template-columns
-browser_get_html(selector=".product-grid, .card-container", session_id)
+browser_get_html(selector=".product-grid, .card-container")
 ```
 
 ### 5.4 Missing Images / Broken Image Links
@@ -247,7 +230,7 @@ browser_get_html(selector=".product-grid, .card-container", session_id)
 **Detection**:
 ```
 # Get HTML and check img tags for broken src attributes
-browser_get_html(selector="img", session_id)
+browser_get_html(selector="img")
 → look for: src="" (empty), src="/undefined", missing alt attributes
 ```
 
@@ -256,10 +239,10 @@ browser_get_html(selector="img", session_id)
 **Detection**:
 ```
 # Button appears active but doesn't respond to clicks
-browser_get_state(session_id)
-# Check selector_map element attributes for: disabled, aria-disabled, tabindex="-1"
+browser_get_state()
+# Check interactive_elements element attributes for: disabled, aria-disabled, tabindex="-1"
 
-browser_get_html(selector="#checkout-btn", session_id)
+browser_get_html(selector="#checkout-btn")
 # Check for: pointer-events:none, opacity:0.5 without disabled attr (just visually disabled)
 ```
 
@@ -301,7 +284,7 @@ When reporting UI bugs, use this structured format:
 
 ### Evidence
 - Screenshot before/after: [attached or described]
-- DOM state: [relevant selector_map entries]
+- DOM state: [relevant interactive_elements entries]
 - HTML/CSS: [relevant HTML snippet with problematic classes/styles]
 
 ### Root Cause (Suspected)

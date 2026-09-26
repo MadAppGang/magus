@@ -117,7 +117,7 @@ Task: "Debug this error, use different models"
 
 **Cross-References:**
 
-- **multimodel:error-recovery** - Handling failures and retries
+- **multimodel:error-recovery** - Handling failures: diagnosis, reporting, user-chosen re-runs
 
 ---
 
@@ -386,8 +386,8 @@ Message 2: Parallel Execution (the internal Agent call and ONE team call, same m
   - Pass require_pattern whenever the prompt mandates an output shape
 
 Message 3: Auto-Consolidation (one Agent call)
-  - Automatically triggered when the panel settles — at N = 1 too, where the
-    aggregator passes the single review through with a `VERDICT:` line (Pattern 5)
+  - Automatically triggered when the panel settles with N ≥ 2 reviews. At N = 1 there
+    is nothing to consolidate: use that review's own verdict directly (Pattern 5)
   - Launch `dev:aggregator` — the only consolidator; it reads reviews, never code
   - Pass every review file path on REVIEWS:, the three lines under 'Apply verdict
     thresholds' in `dev:reviewer`'s agent file on THRESHOLDS: — read at dispatch
@@ -605,9 +605,9 @@ Do NOT consolidate until ALL tasks complete:
   Launch: Task1, Task2, Task3, Task4 (parallel)
   Wait: All 4 complete
   Check: results.filter(r => r.status === 'fulfilled').length
-  If >= 1: Dispatch dev:aggregator (a passthrough with a verdict at N = 1);
-           if any failed, also offer to retry them
-  If 0:    Offer retry or abort
+  If >= 2: Dispatch dev:aggregator; if any failed, also offer to re-run them
+  If 1:    Use that review's own verdict; if any failed, offer to re-run them
+  If 0:    Offer a re-run or abort
 
 ❌ WRONG - Premature Consolidation:
   Launch: Task1, Task2, Task3, Task4
@@ -841,10 +841,11 @@ If user says YES:
 
 **Automatic Trigger:**
 
-Consolidation happens **automatically** as soon as the panel settles — at N = 1 as well
-as N ≥ 2. `dev:aggregator` is the only writer of the consolidated report; at N = 1 it
-passes the single review through unchanged and appends the `VERDICT:` line, so the
-output has one shape whatever N is:
+Consolidation happens **automatically** as soon as the panel settles with N ≥ 2
+reviews. `dev:aggregator` is the only writer of the consolidated report. At N = 1 there is
+nothing to consolidate, so the dispatcher does not send it: the single review and its own
+verdict are the result. This is dev's rule (`aggregate-reviews`: dispatchers avoid sending
+N = 1 and use the single review's verdict directly):
 
 ```
 ✅ CORRECT - Auto-Trigger:
@@ -853,8 +854,8 @@ const results = await Promise.allSettled([task1, task2, task3, task4, task5]);
 const successful = results.filter(r => r.status === 'fulfilled');
 const failed = results.length - successful.length;
 
-if (successful.length >= 1) {
-  // Auto-trigger consolidation (DON'T wait for user to ask). N = 1 is a passthrough with a verdict.
+if (successful.length >= 2) {
+  // Auto-trigger consolidation (DON'T wait for user to ask).
   const reviewPaths = successful.map((r) => r.value.reviewFile); // one review file per slot
   const consolidated = await Agent({
     subagent_type: "dev:aggregator",
@@ -870,12 +871,16 @@ You are given reviews, never code. Do not review.`
 
   if (failed > 0) {
     // An addition to the dispatch above, never a substitute for it
-    notifyUser(`${failed} of ${results.length} models failed. Retry them and re-consolidate?`);
+    notifyUser(`${failed} of ${results.length} models failed. Re-run them and re-consolidate?`);
   }
   return formatResults(consolidated);
+} else if (successful.length === 1) {
+  // One review: its own verdict is the result; no aggregator
+  if (failed > 0) notifyUser(`${failed} of ${results.length} models failed. Re-run them?`);
+  return formatResults(successful[0].value.reviewFile);
 } else {
-  // All failed — there is nothing to pass through
-  notifyUser("All models failed. Check logs and retry?");
+  // All failed
+  notifyUser("All models failed. Check the diagnostics and re-run?");
 }
 
 ❌ WRONG - Wait for User:
@@ -887,13 +892,10 @@ const successful = results.filter(r => r.status === 'fulfilled');
 notifyUser("3 reviews complete. Would you like me to consolidate them?");
 // Waits for user to request consolidation...
 
-❌ WRONG - Skip the aggregator at N = 1:
+❌ WRONG - Send one review to the aggregator:
 
-if (successful.length >= 2) {
-  await consolidate();
-} else {
-  notifyUser("Only 1 model succeeded. See single review or retry?");
-  // The raw review carries no VERDICT: line and not the shape every other dispatcher reads
+if (successful.length >= 1) {
+  await consolidate();   // at N = 1 this costs an Agent call and can only subtract
 }
 ```
 
@@ -903,27 +905,13 @@ if (successful.length >= 2) {
 - Faster workflow (no wait for user response)
 - Expected behavior (user assumes consolidation is part of workflow)
 
-**N = 1 is a passthrough, not a skip:**
+**N = 1 needs no aggregator:**
 
-Consensus levels need at least two reviews; the consolidated report does not. At N = 1
-the aggregator emits the single review unchanged — no `[CONSENSUS: …]` tags, nothing
-reworded — followed by the `VERDICT:` line computed from that review's own counts against
-THRESHOLDS, so the dispatcher still gets the one file its gate reads. The only dispatcher
-that skips the aggregator at N = 1 is `/dev:fix` Phase B, whose output is a vote tally,
-and a single vote is its own tally:
-
-```
-if (successful.length >= 1) {
-  // Dispatch dev:aggregator: consolidation at N ≥ 2, passthrough with a verdict at N = 1
-  if (successful.length < results.length) {
-    // In addition, not instead
-    notifyUser("Some models failed. Retry the failures and re-consolidate?");
-  }
-} else {
-  // All failed
-  notifyUser("All models failed. Check logs and retry?");
-}
-```
+Consensus needs at least two reviews, and consolidating one review can only subtract from
+it. At N = 1 the dispatcher uses that review and its own verdict directly, as `/dev:fix`,
+`/dev:audit` and dev's review phases do. If a single review reaches `dev:aggregator`
+anyway, it passes it through unchanged with a `VERDICT:` line, so nothing breaks; it is
+just a wasted call.
 
 **Pass All Review File Paths:**
 
@@ -1722,7 +1710,7 @@ Step 2: Error Handling (error-recovery)
   Model 5: Success
 
 Step 3: Partial Success Strategy (error-recovery)
-  3/5 models succeeded (the aggregator runs at N ≥ 1; at exactly 1 it passes through)
+  3/5 models succeeded (the aggregator runs at N ≥ 2)
   Proceed with consolidation using 3 reviews
   Notify user: "2 models failed, proceeding with 3 reviews"
 
@@ -1739,7 +1727,7 @@ Step 4: Consolidation (multi-model-validation)
 - ✅ Use 4-Message Pattern for true parallel execution
 - ✅ Provide cost estimates BEFORE execution
 - ✅ Ask user approval for costs >$0.01
-- ✅ Auto-trigger `dev:aggregator` when the panel settles — at N = 1 it is a passthrough with a verdict
+- ✅ Auto-trigger `dev:aggregator` when the panel settles with N ≥ 2; at N = 1 use the review's own verdict
 - ✅ Start the panel with `team(mode="run")`, then poll `status` until no slot is RUNNING
 - ✅ Write full output to files, return brief summaries
 - ✅ Prioritize by consensus level (unanimous → strong → majority → divergent)
@@ -1754,7 +1742,7 @@ Step 4: Consolidation (multi-model-validation)
 - ❌ Split independent reviewer launches across messages (breaks parallelism)
 - ❌ Consolidate before `status` reports the panel settled
 - ❌ Wait for user to request consolidation (auto-trigger instead)
-- ❌ Skip `dev:aggregator` at N = 1 (it passes the single review through with a verdict)
+- ❌ Send a single review to `dev:aggregator` (one review is its own result)
 - ❌ Inline full reviews in consolidation prompt (use file paths)
 - ❌ Return full 500-line reviews to orchestrator (use brief summaries)
 - ❌ Skip cost approval gate for expensive operations
@@ -2031,7 +2019,7 @@ External model execution is handled by MCP tools (team/create_session), not by s
 
 Cause: Waiting for user to request it
 
-Solution: Auto-trigger when the panel settles — at N = 1 too (Pattern 5)
+Solution: Auto-trigger when the panel settles with N ≥ 2 (Pattern 5)
 
 ```
 ❌ Wrong:
@@ -2041,8 +2029,8 @@ Solution: Auto-trigger when the panel settles — at N = 1 too (Pattern 5)
   }
 
 ✅ Correct:
-  if (results.length >= 1) {
-    // Auto-trigger, don't wait; N = 1 is a passthrough with a verdict
+  if (results.length >= 2) {
+    // Auto-trigger, don't wait; at N = 1 the single review is the result
     await consolidate();
   }
 ```
@@ -2290,7 +2278,7 @@ Multi-model validation achieves 3-5x speedup and consensus-based prioritization 
 - **Pattern 2: Parallel Architecture** - Single message, multiple Agent calls
 - **Pattern 3: Model Invocation** - one `team` call starts the panel; poll `status` to completion
 - **Pattern 4: Cost Transparency** - Estimate before, report after
-- **Pattern 5: Auto-Consolidation** - Triggered when the panel settles; N = 1 is a passthrough with a verdict
+- **Pattern 5: Auto-Consolidation** - Triggered when the panel settles with N ≥ 2; one review is its own result
 - **Pattern 6: Consensus Analysis** - unanimous → strong → majority → divergent
 - **Pattern 7: Statistics Collection** - Track speed, cost, quality per model
 - **Pattern 8: Data-Driven Selection** (NEW v3.0) - Intelligent model recommendations

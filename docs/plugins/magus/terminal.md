@@ -7,7 +7,7 @@ Slot-addressed terminal control over tmux. Runs interactive commands, dev server
 
 | | |
 |---|---|
-| Version | `5.2.2` |
+| Version | `5.2.3` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 9 |
 | Subagents | 1 |

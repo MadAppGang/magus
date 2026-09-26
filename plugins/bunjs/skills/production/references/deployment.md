@@ -124,6 +124,42 @@ Staging should differ from production in **data and scale only** — not in runt
 configuration mechanism, not in topology. Pin the Bun version identically in both; a bug that
 appears only in production because it runs a different Bun is the most expensive kind to find.
 
+## CI pipeline
+
+CI runs the same gates the Acceptance section lists, in the order that fails fastest, on the Bun
+version the image runs:
+
+```yaml
+name: ci
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@4bc047ad259df6fc24a6c9b0f9a0cb08cf17fbe5   # v2
+        with:
+          bun-version: 1.3.10          # the version in the Dockerfile's FROM lines
+      - run: bun install --frozen-lockfile
+      - run: bun run typecheck
+      - run: bun run lint
+      - run: bun test
+      - run: bun audit
+      - run: docker build .            # the image builds from the same lockfile
+```
+
+- **`--frozen-lockfile` is the point of the lockfile.** Without it CI can resolve a different
+  dependency set than the one you tested locally, and the failure shows up only in production.
+- **Pin the Bun version to the image's**, not `latest`: a CI that upgrades Bun on its own tests a
+  runtime you do not ship.
+- **Tests that need a database run it as a service container** in the job, not a shared instance
+  (`testing/references/database-testing.md`). Apply migrations in the job the same way deploy
+  applies them.
+- **Deploy is a separate job** that needs `check`, runs only on the main branch, and holds the
+  deploy credentials. Pinning actions and scoping tokens is in `security/references/supply-chain.md`.
+
 ## Secrets
 
 From the platform's secret store, injected as environment variables, parsed at boot (see

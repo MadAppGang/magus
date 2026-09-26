@@ -117,27 +117,14 @@ Based on detected stack **{detected_stack}**:
 
 ### Configuration
 
-Override auto-detection in `.claude/settings.json`:
+Override stack detection in `.claude/settings.json`. `stack` is the only key dev reads;
+quality-check commands and review models come from detection and `list_models` per run.
 
 ```json
 {
   "pluginSettings": {
     "dev": {
-      "stack": ["react-typescript", "golang"],
-      "features": {
-        "testing": "vitest",
-        "api": "rest"
-      },
-      "qualityChecks": {
-        "format": true,
-        "lint": true,
-        "typecheck": true,
-        "test": true
-      },
-      "multiModelReview": {
-        "enabled": true,
-        "models": ["(model aliases from the live catalog (list_models))"]
-      }
+      "stack": ["react-typescript", "golang"]
     }
   }
 }
@@ -241,9 +228,9 @@ When the claudish plugin (its MCP runtime) is installed, you can use external AI
 
 Available models and aliases are listed in the live catalog (`list_models`).
 
-- Fast coding models: resolve the fast_coding role from `list_models`
-- Reasoning models: see `roles.reasoning` and `roles.reasoning_premium`
-- Code review teams: resolve review teams from `list_models`
+- Fast coding models: the "Fast variants" section of `list_models`
+- Reasoning models: the "Flagship models" section of `list_models`
+- Code review teams: pick two or more from those sections, from different vendors
 
 See: https://github.com/MadAppGang/claudish
 
@@ -355,6 +342,7 @@ See: https://github.com/MadAppGang/claudish
       - react-typescript (React + TypeScript)
       - vue-typescript (Vue + TypeScript)
       - golang (Go backend)
+      - dingo (Dingo on Go)
       - rust (Rust backend)
       - python (Python backend)
       - bunjs (Bun backend)

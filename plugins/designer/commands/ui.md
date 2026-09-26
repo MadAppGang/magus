@@ -1,7 +1,7 @@
 ---
 name: ui
 description: Create a UI design from a brief — artboards per screen and state, tokens, component list — then optionally implement it and judge the result against the design
-allowed-tools: Agent, AskUserQuestion, Bash, Read, Glob, Grep
+allowed-tools: Agent, AskUserQuestion, Bash, Read, Glob, Grep, mcp__plugin_browser-use_browser-use__browser_navigate, mcp__plugin_browser-use_browser-use__browser_list_sessions, mcp__plugin_browser-use_browser-use__browser_save_screenshot, mcp__plugin_browser-use_browser-use__browser_close_session
 ---
 
 <user_request>
@@ -39,9 +39,11 @@ allowed-tools: Agent, AskUserQuestion, Bash, Read, Glob, Grep
   **Step 2 — Session directory**
 
   ```bash
-  SESSION_PATH="ai-docs/sessions/designer-ui-$(date -u +%Y%m%d-%H%M%S)"
+  SESSION_PATH="$PWD/ai-docs/sessions/designer-ui-$(date -u +%Y%m%d-%H%M%S)"
   OUTPUT_DIR="${OUT:-${SESSION_PATH}/design}"
   mkdir -p "${OUTPUT_DIR}"
+  # browser_save_screenshot refuses relative paths: the MCP server's cwd is not this project.
+  OUTPUT_DIR="$(cd "${OUTPUT_DIR}" && pwd)"
   ```
 
   **Step 3 — Dispatch the designer**
@@ -89,7 +91,9 @@ allowed-tools: Agent, AskUserQuestion, Bash, Read, Glob, Grep
   `designer:review` needs two image files. The reference is `{OUTPUT_DIR}/screens/<screen>--default.png`
   (only present when browser-use captured it; otherwise skip review and say why). The
   implementation screenshot is the caller's to capture: ask for its path, or capture it
-  through browser-use when the developer reported a running URL.
+  through browser-use when the developer reported a running URL: `browser_navigate` to
+  the URL, `browser_list_sessions` to record the new session id, `browser_save_screenshot`
+  to an absolute `.png` path under `{SESSION_PATH}`, then `browser_close_session` on that id.
 
   ```
   Agent: designer:review

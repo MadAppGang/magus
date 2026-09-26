@@ -7,7 +7,7 @@ description: |
   and STYLE_FILE when it is not the default. Screenshots each artboard when browser-use is
   installed and self-checks through an external vision model. Use when asked to design a
   screen, component or flow. Judging a finished screen against a reference is designer:review.
-tools: Read, Write, Bash, Glob, Grep, mcp__plugin_claudish_claudish__list_models, mcp__plugin_claudish_claudish__search_models, mcp__plugin_claudish_claudish__team, mcp__plugin_browser-use_browser-use__browser_list_sessions, mcp__plugin_browser-use_browser-use__browser_navigate, mcp__plugin_browser-use_browser-use__browser_screenshot, mcp__plugin_browser-use_browser-use__browser_close_session
+tools: Read, Write, Bash, Glob, Grep, mcp__plugin_claudish_claudish__list_models, mcp__plugin_claudish_claudish__search_models, mcp__plugin_claudish_claudish__team, mcp__plugin_browser-use_browser-use__browser_list_sessions, mcp__plugin_browser-use_browser-use__browser_navigate, mcp__plugin_browser-use_browser-use__browser_save_screenshot, mcp__plugin_browser-use_browser-use__browser_close_session
 skills:
   - designer:ui-style-format
   - designer:design-references
@@ -154,15 +154,19 @@ skills:
           An error means the plugin is absent → skip this phase and write
           "Screenshots not captured — browser-use@magus not installed" under Obstacles.
           This agent has no claude-in-chrome tools; browser-use is its only capture route.</step>
-        <step>For each artboard:
-          1. `browser_navigate(url="file://<absolute path to the .html>")` → session_id
-          2. `browser_screenshot(session_id, full_page=False)` → base64 PNG in `image`
-          3. Write the base64 text to `${OUTPUT_DIR}/screens/<name>.b64`, then decode:
-             ```bash
-             bun -e "const fs=require('fs');fs.writeFileSync(process.argv[2],Buffer.from(fs.readFileSync(process.argv[1],'utf8').trim(),'base64'))" "${OUTPUT_DIR}/screens/<name>.b64" "${OUTPUT_DIR}/screens/<name>.png" && rm "${OUTPUT_DIR}/screens/<name>.b64"
-             test -f "${OUTPUT_DIR}/screens/<name>.png" && echo ok || echo decode_failed
-             ```
-          4. `browser_close_session(session_id)` — on error too.
+        <step>Serve `${OUTPUT_DIR}` on loopback in the background
+          (`python3 -m http.server <port> --bind 127.0.0.1 --directory "${OUTPUT_DIR}"`):
+          browser-use does not load `file://` URLs and would capture a blank page.
+          Then for each artboard:
+          1. `browser_navigate(url="http://127.0.0.1:<port>/<name>.html")`, then
+             `browser_list_sessions` → record the new session id
+          2. `browser_save_screenshot(output_path="${OUTPUT_DIR}/screens/<name>.png")`, with
+             `OUTPUT_DIR` absolute (resolve it with `cd "$OUTPUT_DIR" && pwd` if the caller
+             passed a relative one: the tool refuses relative paths)
+             → an `Error:` line means nothing was written; if the tool itself is missing,
+             browser-use is older than this agent: note it under Obstacles and skip the phase
+          3. `browser_close_session(session_id)` — on error too.
+          Stop the server when the last artboard is captured.
           The full capture pattern is `${CLAUDE_PLUGIN_ROOT}/skills/browser-use-integration/SKILL.md`.</step>
       </steps>
     </phase>

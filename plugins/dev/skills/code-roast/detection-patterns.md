@@ -373,7 +373,7 @@ Files: *.html, *.htm
 
 | Tool | Check | Run Command | Output | Detects |
 |------|-------|-------------|--------|---------|
-| **semgrep** | `which semgrep` | `semgrep --config auto --json --output /tmp/semgrep.json .` | JSON | Custom rules across all languages |
+| **semgrep** | `which semgrep` | `semgrep --config auto --json .` | JSON | Custom rules across all languages |
 | **lizard** | `which lizard` | `lizard . --output_file /dev/stdout -l json` | JSON | Cyclomatic complexity across all languages |
 | **gitleaks** | `which gitleaks` | `gitleaks detect --report-format json --report-path /dev/stdout` | JSON | Secrets in git history (UNI-44) |
 | **detect-secrets** | `which detect-secrets` | `detect-secrets scan --all-files .` | JSON | API keys, passwords, tokens |
@@ -384,7 +384,7 @@ Files: *.html, *.htm
 
 | Tool | Check | Run Command | Output | Detects |
 |------|-------|-------------|--------|---------|
-| **golangci-lint** | `which golangci-lint` | `golangci-lint run ./... --out-format json 2>/dev/null` | JSON | 100+ linters: GO-01 through GO-21 |
+| **golangci-lint** | `which golangci-lint` | `golangci-lint run --output.json.path=stdout ./... 2>/dev/null` | JSON | 100+ linters: GO-01 through GO-21 |
 | **staticcheck** | `which staticcheck` | `staticcheck -f json ./...` | JSON | SA/S/ST/U checks: correctness, style |
 | **go vet** | `which go` | `go vet ./... 2>&1` | Text | GO-09 (mutex copy), GO-21 (waitgroup), basics |
 | **errcheck** | `which errcheck` | `errcheck -json ./...` | JSON | GO-01 (ignored errors) |

@@ -12,8 +12,10 @@ fail=0
 
 echo "paths the index names:"
 named=""
-for p in $(grep -oE 'skills/[a-z-]+/SKILL\.md' "$HERE/SKILL.md" | sort -u); do
-  if [ -f "$PLUGIN/$p" ]; then
+# The index names its siblings relative to its own directory (`../<name>/SKILL.md`), the
+# only spelling a reader can resolve, so resolve them the same way here.
+for p in $(grep -oE '\.\./[a-z-]+/SKILL\.md' "$HERE/SKILL.md" | sort -u); do
+  if [ -f "$HERE/$p" ]; then
     printf '  OK    %s\n' "$p"
     named="$named $(basename "$(dirname "$p")")"
   else

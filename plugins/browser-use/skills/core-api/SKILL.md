@@ -6,71 +6,89 @@ user-invocable: false
 
 # Browser Use Core API
 
-Reference for the MCP tools exposed by the Browser Use plugin: the upstream Browser Use set plus ten Magus-specific additions. Their full names are `mcp__plugin_browser-use_browser-use__<tool_name>`; the examples below shorten that prefix to `mcp__browser-use__`, and an agent's `tools:` line must use the full name. The authoritative list is whatever the server registers at runtime, so check there rather than counting this table.
+Reference for the MCP tools exposed by the Browser Use plugin: the upstream Browser Use set plus eleven Magus-specific additions. Their full names are `mcp__plugin_browser-use_browser-use__<tool_name>`, as the examples below write them; an agent's `tools:` line uses the same full name. The parameters here were read from the live tool schemas. The authoritative list is whatever the server registers at runtime, so check there rather than counting this table.
 
 ---
 
 ## 1. Quick Reference Table
 
-| Tool | Purpose | Requires session_id? |
+The server drives **one current browser**. Every page tool acts on it; none takes a
+`session_id`. Session ids exist only for listing, closing and exporting sessions.
+
+| Tool | Purpose | Takes a session_id? |
 |------|---------|---------------------|
-| `browser_navigate` | Navigate to URL (creates session) | No (creates it) |
-| `browser_click` | Click element by DOM index | Yes |
-| `browser_type` | Type text into an input element | Yes |
-| `browser_get_state` | Get full DOM element map with indices | Yes |
-| `browser_extract_content` | LLM-powered semantic content extraction | Yes |
-| `browser_get_html` | Raw HTML (full page or CSS selector) | Yes |
-| `browser_screenshot` | Capture viewport or full-page screenshot | Yes |
-| `browser_scroll` | Scroll the page up, down, left, right | Yes |
-| `browser_go_back` | Navigate back in browser history | Yes |
-| `browser_list_tabs` | List all open tabs in a session | Yes |
-| `browser_switch_tab` | Switch to a tab by tab_id | Yes |
-| `browser_close_tab` | Close a specific tab | Yes |
-| `browser_list_sessions` | List all active browser sessions | No |
-| `browser_close_session` | Close session and release browser resources | Yes |
-| `retry_with_browser_use_agent` | Autonomous LLM agent for complex tasks | No (creates session) |
-| `browser_export_session` | Export cookies + localStorage to JSON file | Yes |
-| `browser_import_session` | Restore session from exported JSON file | No (creates session) |
+| `browser_navigate` | Open a URL in the current browser (starts one if none runs) | No |
+| `browser_get_state` | Page URL, title, tabs, and the indexed interactive elements | No |
+| `browser_click` | Click an element by index, or at viewport coordinates | No |
+| `browser_type` | Type into an input by index (clears it first) | No |
+| `browser_extract_content` | LLM-powered extraction from the current page | No |
+| `browser_get_html` | Raw HTML of the page or of one CSS selector | No |
+| `browser_screenshot` | Show the page to the model as an image | No |
+| `browser_save_screenshot` | Write the page to a PNG file | No |
+| `browser_scroll` | Scroll up or down | No |
+| `browser_go_back` | Go back in history | No |
+| `browser_list_tabs` / `browser_switch_tab` / `browser_close_tab` | Tabs, by 4-character `tab_id` | No |
+| `browser_list_sessions` | List browser sessions with their ids | No |
+| `browser_close_session` | Close one session by id | **Yes** |
+| `browser_close_all` | Close every session | No |
+| `retry_with_browser_use_agent` | Autonomous agent for a task the direct tools failed at | No |
+| `browser_export_session` | Save a session's cookies to a JSON file | **Yes** |
+| `browser_import_session` | Start a new session from an exported file | No |
 | `browser_run_script` | Run a standalone Python script as a subprocess (own browser) | No |
-| `browser_evaluate` | **Run JS in the live page** and return its result (CDP) | No (uses current) |
-| `browser_press_key` | Press a key/shortcut (e.g. `Meta+a`, `Enter`, `Escape`) | No (uses current) |
-| `browser_keyboard` | Batch keys + insert literal text via CDP | No (uses current) |
-| `browser_focus` | Focus any element by CSS selector (incl. hidden inputs) | No (uses current) |
+| `browser_evaluate` | **Run JS in the live page** and return its result (CDP) | No |
+| `browser_press_key` | Press a key/shortcut (e.g. `Meta+a`, `Enter`, `Escape`) | No |
+| `browser_keyboard` | Batch keys + insert literal text via CDP | No |
+| `browser_focus` | Focus any element by CSS selector (incl. hidden inputs) | No |
 | `browser_doctor` | Preflight: Python / deps / Chromium / API keys | No |
 
 > **Editing a code editor (Monaco/CodeMirror/contenteditable)?** Those expose no
 > indexable input, so `browser_type` cannot reach them. Use `browser_evaluate`
 > (e.g. `monaco.editor.getModels()[0].setValue('...')`), or `browser_focus` the
-> hidden input then `browser_keyboard`. See §9.
+> hidden input then `browser_keyboard`. See §3.19 and §3.22.
+
+> **Local HTML files: serve them, do not open them.** `browser_navigate` to a
+> `file://` URL reports "Navigated to" but leaves the page on `about:blank`
+> (measured: a screenshot of it is blank). Serve the directory and navigate to it:
+> `python3 -m http.server <port> --bind 127.0.0.1 --directory <dir>` in the
+> background, then `http://127.0.0.1:<port>/<file>.html`; stop the server when done.
 
 ---
 
 ## 2. Session Lifecycle (Critical Pattern)
 
-Sessions are created implicitly on the first `browser_navigate` call. The returned `session_id` must be passed to every subsequent tool call. Always close sessions when done.
+The first `browser_navigate` starts a browser session. `browser_navigate` does not
+return its id: read it from `browser_list_sessions` straight after, and record it,
+because only the sessions you record are yours to close.
 
 ```
-1. NAVIGATE (creates session) → save session_id
-   mcp__browser-use__browser_navigate(url="https://example.com")
-   → returns: {"session_id": "abc123", "url": "...", "title": "..."}
+1. NAVIGATE (starts the browser if needed)
+   mcp__plugin_browser-use_browser-use__browser_navigate(url="https://example.com")
+   → "Navigated to: https://example.com"
 
-2. INSPECT (get DOM element map)
-   mcp__browser-use__browser_get_state(session_id="abc123")
-   → returns: {"selector_map": {"1": {...}, "2": {...}}, "url": "...", "title": "..."}
+2. RECORD the session id
+   mcp__plugin_browser-use_browser-use__browser_list_sessions()
+   → [{"session_id": "06ab70ef-…", "active": true, "age_minutes": 0.1, …}]
 
-3. INTERACT (click, type, scroll)
-   mcp__browser-use__browser_click(index=3, session_id="abc123")
-   mcp__browser-use__browser_type(index=5, text="search query", session_id="abc123")
+3. INSPECT (indexed interactive elements)
+   mcp__plugin_browser-use_browser-use__browser_get_state()
+   → {"url": "…", "title": "…", "tabs": […], "interactive_elements": [{"index": 19, "tag": "a", "text": "Learn more", …}], "viewport": {…}, "scroll": {…}}
 
-4. EXTRACT or VERIFY
-   mcp__browser-use__browser_extract_content(query="product prices", session_id="abc123")
-   mcp__browser-use__browser_screenshot(session_id="abc123")
+4. INTERACT
+   mcp__plugin_browser-use_browser-use__browser_click(index=19)          → "Clicked element 19"
+   mcp__plugin_browser-use_browser-use__browser_type(index=5, text="search query")
 
-5. CLOSE (ALWAYS — do not skip)
-   mcp__browser-use__browser_close_session(session_id="abc123")
+5. EXTRACT or VERIFY
+   mcp__plugin_browser-use_browser-use__browser_extract_content(query="product prices")
+   mcp__plugin_browser-use_browser-use__browser_screenshot()             (image shown to the model)
+
+6. CLOSE (ALWAYS — do not skip)
+   mcp__plugin_browser-use_browser-use__browser_close_session(session_id="06ab70ef-…")
+   → "Successfully closed session 06ab70ef-…"
 ```
 
-**Rule**: Every code path must close the session. If an error occurs mid-workflow, still call `browser_close_session` before returning.
+**Rule**: Every code path must close the session it opened. If an error occurs
+mid-workflow, still call `browser_close_session` before returning. Never close a
+session you did not open: another task or the user can be using it.
 
 ### Automatic cleanup — the browser does not wait for you
 
@@ -80,7 +98,7 @@ last:
 
 | Trigger | What happens |
 |---|---|
-| `browser_close_session` / `browser_close_all_sessions` | Chrome is killed; once the last session is gone, this session's Chrome profile directory is deleted |
+| `browser_close_session` / `browser_close_all` | Chrome is killed; once the last session is gone, this session's Chrome profile directory is deleted |
 | **10 minutes with no tool call on a session** | Same thing, automatically — the session is closed, Chrome killed, and the profile deleted if it was the last one |
 | Every 2 minutes | Profiles left behind by servers that have died are swept, along with any Chrome still running on them |
 | The `claude` process dies | The server notices it has been reparented, kills Chrome, deletes the profile, and exits |
@@ -101,434 +119,189 @@ and `browser_navigate` creates a new one.
 
 ### 3.1 `browser_navigate`
 
-Navigate to a URL. Creates a new browser session if `session_id` is omitted.
+Open a URL in the current browser. Starts a browser if none is running.
 
-**Parameters**:
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `url` | string | Yes | Full URL including scheme (https://) |
-| `session_id` | string | No | Existing session ID; omit to create new session |
-| `new_tab` | boolean | No | Open in new tab within existing session (default: false) |
+| `url` | string | Yes | Full URL including scheme. `file://` does not load; see §1 |
+| `new_tab` | boolean | No | Open in a new tab (default: false) |
 
-**Returns**:
-```json
-{
-  "session_id": "abc123",
-  "url": "https://example.com",
-  "title": "Example Domain",
-  "status": 200
-}
-```
-
-**When to use**: First step of any browser workflow. Also used for navigating to subsequent pages within the same session.
-
-**Example**:
-```
-mcp__browser-use__browser_navigate(url="https://news.ycombinator.com")
-→ session_id: "hk72x1"
-```
+**Returns**: text, `Navigated to: <url>`. It returns no session id; use `browser_list_sessions`.
 
 ---
 
 ### 3.2 `browser_get_state`
 
-Get the current DOM state with a numbered element map. This is the primary way to discover clickable elements, inputs, and interactive components on a page.
+The current page: URL, title, tabs, indexed interactive elements, viewport, page size and scroll offset.
 
-**Parameters**:
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `session_id` | string | Yes | Active session ID |
-| `include_screenshot` | boolean | No | Include base64 screenshot in response (default: false) |
+| `include_screenshot` | boolean | No | Also return a screenshot (default: false) |
 
-**Returns**:
-```json
-{
-  "url": "https://example.com",
-  "title": "Example Domain",
-  "selector_map": {
-    "1": {
-      "tag": "a",
-      "text": "More information...",
-      "href": "https://www.iana.org/domains/example",
-      "attributes": {"class": "link"}
-    },
-    "2": {
-      "tag": "input",
-      "type": "text",
-      "placeholder": "Search...",
-      "attributes": {"id": "search", "name": "q"}
-    },
-    "3": {
-      "tag": "button",
-      "text": "Submit",
-      "attributes": {"type": "submit"}
-    }
-  }
-}
-```
-
-**When to use**: After every navigation or interaction to see the updated DOM state. Always call `get_state` before `click` or `type` to verify the correct element index.
-
-> ⚠️ **Indices are snapshot-scoped and NOT stable across calls.** The same DOM
-> element can get a different `index` on each `get_state` (the map is rebuilt
-> every call). Never cache an index from one snapshot and reuse it later — always
-> `get_state` immediately before the `*_by_index` call that consumes it. To avoid
-> index churn entirely, target elements by CSS selector: `browser_focus`
-> (§3.22) + `browser_keyboard` (§3.21), or `browser_evaluate` (§3.19).
+**Returns**: JSON with `url`, `title`, `tabs`, `interactive_elements` (each has `index`, `tag`, `text`, and `href` for links), `viewport`, `page`, `scroll`. Pass an element's `index` to `browser_click` or `browser_type`.
 
 ---
 
 ### 3.3 `browser_click`
 
-Click an element identified by its index from the `selector_map`.
+Click an element by index, or at viewport pixel coordinates.
 
-**Parameters**:
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `session_id` | string | Yes | Active session ID |
-| `index` | integer | No* | Element index from `selector_map` |
-| `coordinate_x` | float | No* | X coordinate (fallback when no index available) |
-| `coordinate_y` | float | No* | Y coordinate (fallback when no index available) |
+| `index` | integer | One of | Element index from `browser_get_state` |
+| `coordinate_x`, `coordinate_y` | integer | One of | Viewport coordinates; pass both |
+| `new_tab` | boolean | No | Open any resulting navigation in a new tab |
 
-*Either `index` OR `coordinate_x`/`coordinate_y` required.
-
-**Returns**:
-```json
-{"success": true, "element": "button[type=submit]", "url": "https://example.com/results"}
-```
-
-**When to use**: Clicking links, buttons, checkboxes, menu items. Prefer `index` over coordinates — indices are more reliable than pixel positions.
-
-**Example**:
-```
-# From get_state: element 3 is the submit button
-mcp__browser-use__browser_click(index=3, session_id="abc123")
-```
+**Returns**: text, `Clicked element <index>`.
 
 ---
 
 ### 3.4 `browser_type`
 
-Type text into an input element identified by its index.
+Type into an input element. Clears existing text first; `text=""` only clears.
 
-**Parameters**:
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `session_id` | string | Yes | Active session ID |
-| `index` | integer | Yes | Input element index from `selector_map` |
+| `index` | integer | Yes | Input element index from `browser_get_state` |
 | `text` | string | Yes | Text to type |
-
-**Returns**:
-```json
-{"success": true, "element": "input[name=q]", "typed": "search query"}
-```
-
-**When to use**: Filling text inputs, search boxes, password fields, textareas that **appear in `get_state`'s index list**. Does not clear existing content — to clear first, `browser_focus` the field then `browser_keyboard(keys=["Meta+a","Delete"])` (`Control+a` on Linux/Windows).
-
-> **Limitation — index-only.** `browser_type` can only target an element that
-> has an `index` in `get_state`'s `selector_map`. Code editors (Monaco,
-> CodeMirror, ProseMirror, contenteditable) use a hidden/synthetic input that
-> never appears there, so there is no index to pass. For those, use
-> `browser_evaluate` (§3.19) to set the value directly, or `browser_focus`
-> (§3.22) + `browser_keyboard` (§3.21).
-
-**Example**:
-```
-# From get_state: element 2 is the search input
-mcp__browser-use__browser_type(index=2, text="browser automation", session_id="abc123")
-```
 
 ---
 
 ### 3.5 `browser_extract_content`
 
-Use LLM-powered semantic extraction to find and return specific content from the page. The agent reads the page and extracts the requested information as structured text.
+Extract information from the current page with the agent's LLM.
 
-**Parameters**:
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `session_id` | string | Yes | Active session ID |
-| `query` | string | Yes | Natural language description of what to extract |
-
-**Returns**:
-```json
-{
-  "content": "Product: Widget Pro\nPrice: $49.99\nRating: 4.5/5\nAvailability: In Stock",
-  "url": "https://shop.example.com/widget-pro"
-}
-```
-
-**When to use**: When you need structured data from a page but do not know the exact CSS selector. Better than `get_html` when the page structure is complex or varies. Costs one extra LLM inference call internally.
-
-**Avoid**: On very simple pages where `get_html` with a known selector is faster and cheaper.
-
-**Example**:
-```
-mcp__browser-use__browser_extract_content(
-  query="product name, price, rating, and availability",
-  session_id="abc123"
-)
-```
+| `query` | string | Yes | What to extract |
+| `extract_links` | boolean | No | Include links (default: false) |
 
 ---
 
 ### 3.6 `browser_get_html`
 
-Get raw HTML content — either the full page or scoped to a CSS selector.
-
-**Parameters**:
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `session_id` | string | Yes | Active session ID |
-| `selector` | string | No | CSS selector to scope extraction (default: full page) |
+| `selector` | string | No | CSS selector; omit for the whole page |
 
-**Returns**:
-```json
-{
-  "html": "<table class=\"data-table\"><tr><th>Name</th>...</table>",
-  "selector": ".data-table",
-  "url": "https://example.com/data"
-}
-```
-
-**When to use**: When you need raw HTML for parsing (table data, specific DOM structure), when you know the exact CSS selector, or when LLM-based extraction is overkill. Cheaper than `extract_content`.
-
-**Example**:
-```
-# Get just the pricing table
-mcp__browser-use__browser_get_html(selector=".pricing-table", session_id="abc123")
-```
+**Returns**: the HTML as text, e.g. `<h1>Example Domain</h1>` for `selector="h1"`.
 
 ---
 
 ### 3.7 `browser_screenshot`
 
-Capture a screenshot of the current page. Returns base64-encoded PNG data.
+Show the current page to the model.
 
-**Parameters**:
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `session_id` | string | Yes | Active session ID |
-| `full_page` | boolean | No | Capture entire page height (default: false = viewport only) |
+| `full_page` | boolean | No | Whole scrollable page instead of the viewport (default: false) |
 
-**Returns**:
-```json
-{
-  "image": "<base64-encoded PNG>",
-  "format": "png",
-  "width": 1280,
-  "height": 720,
-  "url": "https://example.com"
-}
-```
-
-**When to use**: Visual verification after interactions, UI debugging, before/after state comparison, documenting the browser state for users. Claude can analyze the base64 image directly.
-
-**Save to file**:
-```bash
-# Decode base64 image to PNG file via Bash
-python3 -c "import base64; open('screenshot.png','wb').write(base64.b64decode('<base64-data>'))"
-```
+**Returns**: a text block `{"size_bytes": N, "viewport": {"width": W, "height": H}}` and an
+image block the model can see. Nothing is written to disk, and no base64 text is
+returned to save. To get a file, use `browser_save_screenshot` (§3.24).
 
 ---
 
 ### 3.8 `browser_scroll`
 
-Scroll the page in a direction by a given amount.
-
-**Parameters**:
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `session_id` | string | Yes | Active session ID |
-| `direction` | string | Yes | `"up"`, `"down"`, `"left"`, `"right"` |
-| `amount` | integer | No | Pixels to scroll (default: 500) |
+| `direction` | `"up"` or `"down"` | No | Default `"down"`; one viewport per call |
 
-**Returns**:
-```json
-{"success": true, "direction": "down", "amount": 500}
-```
-
-**When to use**: Revealing lazy-loaded content, scrolling to see more elements, implementing infinite scroll pagination.
+**Returns**: text, `Scrolled <direction>`.
 
 ---
 
 ### 3.9 `browser_go_back`
 
-Navigate back in the browser's history stack.
-
-**Parameters**:
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `session_id` | string | Yes | Active session ID |
-
-**Returns**:
-```json
-{"success": true, "url": "https://example.com/previous-page", "title": "Previous Page"}
-```
-
-**When to use**: Returning to a list page after visiting a detail page, undoing navigation mistakes, implementing crawl-and-return patterns.
+No parameters. **Returns**: text, `Navigated back`.
 
 ---
 
 ### 3.10 `browser_list_tabs`
 
-List all open tabs in the current session.
-
-**Parameters**:
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `session_id` | string | Yes | Active session ID |
-
-**Returns**:
-```json
-{
-  "tabs": [
-    {"tab_id": "tab_0", "url": "https://example.com", "title": "Example", "active": true},
-    {"tab_id": "tab_1", "url": "https://github.com", "title": "GitHub", "active": false}
-  ]
-}
-```
+No parameters. **Returns**: JSON list of `{"tab_id", "url", "title"}`; `tab_id` is 4 characters.
 
 ---
 
 ### 3.11 `browser_switch_tab`
 
-Switch the active tab within a session.
-
-**Parameters**:
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `session_id` | string | Yes | Active session ID |
-| `tab_id` | string | Yes | Tab ID from `browser_list_tabs` |
-
-**Returns**:
-```json
-{"success": true, "tab_id": "tab_1", "url": "https://github.com", "title": "GitHub"}
-```
+| `tab_id` | string | Yes | 4-character id from `browser_list_tabs` |
 
 ---
 
 ### 3.12 `browser_close_tab`
 
-Close a specific tab without closing the entire session.
-
-**Parameters**:
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `session_id` | string | Yes | Active session ID |
-| `tab_id` | string | Yes | Tab ID from `browser_list_tabs` |
-
-**Returns**:
-```json
-{"success": true, "closed_tab_id": "tab_1", "remaining_tabs": 1}
-```
+| `tab_id` | string | Yes | 4-character id from `browser_list_tabs` |
 
 ---
 
 ### 3.13 `browser_list_sessions`
 
-List all currently active browser sessions. No parameters.
-
-**Returns**:
-```json
-{
-  "sessions": [
-    {"session_id": "abc123", "url": "https://example.com", "created_at": "2026-03-03T10:00:00Z"},
-    {"session_id": "xyz789", "url": "https://github.com", "created_at": "2026-03-03T10:05:00Z"}
-  ]
-}
-```
-
-**When to use**: Before starting a workflow to detect leaked sessions from previous runs. Also for cleanup after errors.
+No parameters. **Returns**: JSON list of `{"session_id", "created_at", "last_activity", "active", "current_url", "age_minutes"}`.
+The list includes sessions other tasks opened.
 
 ---
 
-### 3.14 `browser_close_session`
+### 3.14 `browser_close_session` and `browser_close_all`
 
-Close a browser session and release all associated resources (browser process, CDP connection, memory).
-
-**Parameters**:
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `session_id` | string | Yes | Session ID to close |
-
-**Returns**:
-```json
-{"success": true, "session_id": "abc123", "closed_at": "2026-03-03T10:10:00Z"}
-```
-
-**Critical rule**: Always close sessions. Leaked sessions consume memory and browser processes. Call in a `finally`-equivalent pattern: even if the workflow fails, close the session.
+`browser_close_session(session_id=…)` closes one session and returns
+`Successfully closed session <id>`. `browser_close_all()` closes every session,
+including ones other tasks or the user opened: use it only when you know you own
+them all.
 
 ---
 
 ### 3.15 `retry_with_browser_use_agent`
 
-Delegate a complex browser task to Browser Use's internal LLM agent. The agent autonomously navigates, clicks, types, and extracts data to complete a natural language goal.
+Hand a task to Browser Use's own LLM agent. A last resort, after direct tools failed on a page more than once.
 
-**Parameters**:
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `task` | string | Yes | Natural language goal description |
-| `session_id` | string | No | Existing session to reuse; omit to create new |
-| `max_steps` | integer | No | Maximum agent steps before stopping (default: 25) |
-| `use_vision` | boolean | No | Enable screenshot-based decision making (default: false) |
-| `allowed_domains` | array | No | Whitelist of domains the agent can visit |
+| `task` | string | Yes | The goal, step-by-step detail, relevant data, and what earlier attempts tried |
+| `max_steps` | integer | No | Step limit (default: 100) |
+| `use_vision` | boolean | No | Use screenshots (default: true) |
+| `allowed_domains` | array | No | Domains the agent may visit; omit (or pass `[]`) for the server's configured defaults |
+| `model` | string | No | Agent LLM; defaults to the configured one (see `browser_set_agent_model`) |
 
-**Returns**:
-```json
-{
-  "result": "Found 3 pricing plans: Starter ($9/mo), Pro ($29/mo), Enterprise (custom)",
-  "steps_taken": 8,
-  "final_url": "https://example.com/pricing",
-  "session_id": "new_session_id"
-}
-```
-
-**When to use**: Tasks where you cannot predict the exact click sequence (login flows with 2FA prompts, dynamic SPAs, complex multi-step forms). Use as escalation after direct tools fail.
-
-**When NOT to use**: Simple linear workflows (navigate → extract) — direct tools are faster and more reliable.
+**When NOT to use**: simple linear workflows (navigate → extract). Direct tools are faster and more reliable.
 
 ---
 
 ### 3.16 `browser_export_session`
 
-Export a live browser session's cookies and localStorage to a JSON file for later restoration.
+Save a session's **cookies** to a JSON file.
 
-**Parameters**:
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `session_id` | string | Yes | Session ID to export |
-| `output_path` | string | Yes | File path for exported JSON (e.g., `~/.browser-use/sessions/github.json`) |
-| `include_local_storage` | boolean | No | Export localStorage too (default: true) |
+| `session_id` | string | Yes | From `browser_list_sessions` |
+| `output_path` | string | Yes | Full path of the `.json` file to write |
 
-**Returns**:
-```json
-{"success": true, "path": "~/.browser-use/sessions/github.json", "cookies_count": 12}
-```
+**Returns**: `{"success": true, "path": "…", "cookies_count": N, "url": "…"}`
 
-**When to use**: The moment a login flow completes — not at the end of the
-workflow. Cookies and localStorage live in the session's Chrome profile
-directory, which is deleted when the browser is closed, including by the
-10-minute idle timeout (see [Automatic cleanup](#automatic-cleanup--the-browser-does-not-wait-for-you)).
-Exporting is what makes authenticated state outlive the browser; import it in the
-next session to skip login.
+**When to use**: the moment a login flow completes, not at the end of the
+workflow. Cookies live in the session's Chrome profile directory, which is deleted
+when the browser is closed, including by the 10-minute idle timeout (see
+[Automatic cleanup](#automatic-cleanup--the-browser-does-not-wait-for-you)).
+Only cookies are exported; a site that keeps its login in `localStorage` needs
+logging in again.
 
 ---
 
 ### 3.17 `browser_import_session`
 
-Restore a previously exported session (cookies, localStorage) into a new browser session.
+Start a new browser session with the cookies from an exported file.
 
-**Parameters**:
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `import_path` | string | Yes | Path to exported JSON file |
-| `navigate_to` | string | No | URL to navigate to after importing cookies |
+| `import_path` | string | Yes | Path to the exported `.json` file |
+| `navigate_to` | string | No | URL to open after importing |
 
-**Returns**:
-```json
-{"session_id": "new_id_456", "cookies_imported": 12, "url": "https://github.com/dashboard"}
-```
+**Returns**: `{"session_id": "…", "cookies_imported": N, "original_url": "…", "navigated_to": "…"}`
 
 ---
 
@@ -580,7 +353,7 @@ current session — no `session_id` needed.
 
 **Example — set a Monaco editor's text (the canonical use case)**:
 ```
-mcp__browser-use__browser_evaluate(
+mcp__plugin_browser-use_browser-use__browser_evaluate(
   script="return monaco.editor.getModels()[0].setValue('graph TD; A-->B')"
 )
 ```
@@ -626,8 +399,8 @@ Provide at least one of `keys` / `text`.
 
 **Example — clear a field and type new text**:
 ```
-mcp__browser-use__browser_focus(selector="textarea.inputarea")
-mcp__browser-use__browser_keyboard(keys=["Meta+a"], text="new content")
+mcp__plugin_browser-use_browser-use__browser_focus(selector="textarea.inputarea")
+mcp__plugin_browser-use_browser-use__browser_keyboard(keys=["Meta+a"], text="new content")
 ```
 
 ---
@@ -686,6 +459,28 @@ is `python3 -m playwright install chromium`.
 
 ---
 
+### 3.24 `browser_save_screenshot`
+
+Write the live page to a PNG file: the tool for pixel diffs, design references and
+attachments, since `browser_screenshot` writes nothing to disk. Captures through CDP
+`Page.captureScreenshot` on the page the other tools are driving.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `output_path` | string | Yes | Absolute path ending in `.png`; parent directories are created |
+| `full_page` | boolean | No | Whole scrollable page instead of the viewport (default: false) |
+
+**Returns**: `{"path": "…", "size_bytes": N, "width": W, "height": H}`. Width and
+height are in device pixels. A relative path, a non-`.png` path, or no running
+browser returns an `Error:` line and writes nothing.
+
+```
+mcp__plugin_browser-use_browser-use__browser_navigate(url="http://127.0.0.1:8765/card.html")
+mcp__plugin_browser-use_browser-use__browser_save_screenshot(output_path="/abs/out/card--default.png")
+```
+
+---
+
 ## 4. Tool Selection Guide
 
 | Problem | Use This Tool |
@@ -722,11 +517,12 @@ is `python3 -m playwright install chromium`.
 |-------|-------|-----|
 | `"session_not_found"` | Stale `session_id` or typo | Call `browser_list_sessions` to see active sessions |
 | `"session_not_found"` after a long pause | The session idled out after 10 minutes and was closed automatically | Start a new one with `browser_navigate`. Its login state went with the profile — `browser_import_session` if you exported it |
-| `"element index N not in selector_map"` | Element index is stale | Call `browser_get_state` again — DOM may have changed |
-| `"browser_navigate" returns status 403` | Site blocking headless browser | Try `retry_with_browser_use_agent` with `use_vision=True`, or use Browser Use Cloud |
-| No elements in `selector_map` | Page still loading | Call `browser_get_state` again; SPAs need time to render |
+| A click or type reports the index is not found | Element index is stale | Call `browser_get_state` again — DOM may have changed |
+| The page shows a block, captcha or 403 page | Site blocking headless browser | Try `retry_with_browser_use_agent` with `use_vision=True`, or use Browser Use Cloud |
+| `interactive_elements` is empty | Page still loading | Call `browser_get_state` again; SPAs need time to render |
 | Agent hits `max_steps` | Task too complex or poorly described | Increase `max_steps` or rewrite the task description with more specific goals |
-| Screenshot returns empty/blank | Page not finished rendering | Add a `browser_scroll(direction="down", amount=1)` to trigger rendering, then screenshot |
+| Page is `about:blank` after navigating to `file://` | browser-use does not load `file://` URLs | Serve the directory over `http://127.0.0.1` (see §1) |
+| Screenshot returns empty/blank | Page not finished rendering | Call `browser_scroll(direction="down")` to trigger rendering, then screenshot |
 | `browser_type` has no effect | Input not focused | Call `browser_click` on the input first, then `browser_type` |
 | Can't type into Monaco/CodeMirror | Editor has no indexable input | Use `browser_evaluate` (`setValue`) or `browser_focus` + `browser_keyboard` — not `browser_type` |
 | `browser_run_script` errors at once on `script_path` | Passed inline JS / a stream, not a `.py` file | Pass a real `.py` file; to run JS in the page use `browser_evaluate` |

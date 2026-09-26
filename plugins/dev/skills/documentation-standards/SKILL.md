@@ -91,9 +91,9 @@ GOOD: Install the plugin by...
 
 ---
 
-#### 5. Keep Sentences Under 25 Words
+#### 5. Keep Sentences Short (Rule S2)
 
-**Why**: Comprehension drops 30% when sentences exceed 30 words
+**Why**: Long sentences cost comprehension. Rule S2 sets the numbers: average 15-20 words, at most one 26-40 word sentence per paragraph, none over 40.
 
 **Implementation**:
 ```markdown
@@ -319,6 +319,15 @@ NEVER use these words or phrases. Each tier has escalating severity.
 - "While this may vary... it generally tends to..."
 - "...depending on your particular requirements/needs/situation"
 - Maximum 2 hedge phrases per 1000 words. Technical docs should be authoritative.
+- Counted hedge phrases: "may vary", "might", "could potentially", "may or may not", "generally", "typically", "tends to", "in most cases", "depending on your", "it is important to note", "it's important to note", "arguably", "somewhat", "relatively"
+
+**Counting is a script's job.** `scripts/doc-metrics.ts` counts every term in this rule, and the sentence, heading, code-ratio and link metrics in the rules below, with line numbers:
+
+```bash
+bun ${CLAUDE_PLUGIN_ROOT}/skills/documentation-standards/scripts/doc-metrics.ts <file.md>
+```
+
+Its term lists are this rule's lists; its test fails when one has a term this rule lacks.
 
 ---
 
@@ -364,7 +373,7 @@ Target 40%+ code coverage (code blocks as a percentage of total content). Develo
 ### Rule S5: Enhanced Heading Rules
 
 Following Stripe/Twilio/Vercel patterns:
-- Maximum 3 heading levels per page (H1 → H2 → H3). Never use H4.
+- Maximum 3 heading levels per page (H1 → H2 → H3). Never use H4 in a document you write; this skill file itself uses H4 for its own numbered practices, and that is not a template.
 - One H2 per 200-400 words of body text.
 - Use sentence case for headings, not Title Case.
 - Compress structural signals into headings, not opening sentences:
@@ -400,9 +409,10 @@ Every sentence must add new information. Delete:
 
 ### Rule S8: Diagram Requirements
 
-Include at least one Mermaid diagram for architecture or flow documentation.
+Include a diagram where the text describes a flow of 3 or more steps, or an architecture with 3 or more parts.
+Use whatever format the project's docs already render (Mermaid, SVG, an image); do not add a new diagram toolchain.
 Diagrams must:
-- Use correct Mermaid syntax
+- Render in the project's docs (valid syntax for the chosen format)
 - Match the text they accompany
 - Add information that prose alone cannot convey (flow, timing, relationships)
 - Have descriptive labels (not "Step 1", "Step 2")
@@ -760,7 +770,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Breaking Changes
 
-#### Agent Configuration Format Changed
+**Agent configuration format changed.**
 
 **Old format:**
 ```json
@@ -917,9 +927,9 @@ We will use **PostgreSQL 15+** as our primary database.
 
 ## Common Issues by Category
 
-### Installation Issues
+**Installation issues**
 
-#### Issue: EACCES permission denied
+### Issue: EACCES permission denied
 
 **Symptom**: npm install fails
 
@@ -935,9 +945,9 @@ npx my-tool
 
 ---
 
-### Configuration Issues
+**Configuration issues**
 
-#### Issue: Environment variables not loaded
+### Issue: Environment variables not loaded
 
 **Symptom**: "Missing required config" error
 
@@ -1036,11 +1046,11 @@ Use this checklist to validate documentation quality (42-point base + 10-point a
 - [ ] **Active Voice**: "Server processes" not "is processed"
 - [ ] **Present Tense**: "Program saves" not "will save"
 - [ ] **Second Person**: "You configure" not "user configures"
-- [ ] **Short Sentences**: Average <25 words
-- [ ] **Short Paragraphs**: 3-5 sentences max
+- [ ] **Long Sentences Rationed**: At most one 26-40 word sentence per paragraph, Rule S2 **(script)**
+- [ ] **Short Paragraphs**: None over 5 sentences **(script)**
 - [ ] **Plain Language**: Terms defined
 - [ ] **No Jargon**: Acronyms defined
-- [ ] **Scannable**: Headings every 200-300 words
+- [ ] **Scannable**: A reader finds a task by its heading
 
 ### AI-Specific (8 points)
 
@@ -1049,7 +1059,7 @@ Use this checklist to validate documentation quality (42-point base + 10-point a
 - [ ] **Examples Work**: Copy-paste tested
 - [ ] **Version Compatible**: Versions stated
 - [ ] **Edge Cases Included**: Error cases documented
-- [ ] **Human Reviewed**: Expert validated
+- [ ] **Limitations Stated**: Says what it does not cover or support
 - [ ] **No Over-Confidence**: Uncertain qualified
 - [ ] **Citations Provided**: Sources included
 
@@ -1067,19 +1077,21 @@ Use this checklist to validate documentation quality (42-point base + 10-point a
 - [ ] **Date Stamped**: "Last Updated: YYYY-MM-DD"
 - [ ] **Version Noted**: "Version: X.Y.Z"
 - [ ] **Deprecation Warnings**: Old approaches marked
-- [ ] **Links Valid**: All links work
+- [ ] **Links Valid**: Local links resolve **(script)**; a dead external link is a finding
 
 ### Anti-Slop Quality (10 points)
 
-- [ ] **No CRITICAL Banned Words**: Zero AI artifacts or marketing superlatives (2pt)
-- [ ] **No MEDIUM Banned Words**: No corporate jargon or filler phrases (1pt)
-- [ ] **No Throat-Clearing**: No section openers like "In this section..." (1pt)
-- [ ] **Sentence Rhythm Varies**: No 3+ same-length consecutive sentences (1pt)
-- [ ] **Sentence Length**: Average 15-20 words, none exceeds 40 (1pt)
+- [ ] **No CRITICAL Banned Words**: Zero S1 AI-artifact phrases (2pt) **(script)**
+- [ ] **No MEDIUM Banned Words**: No corporate jargon or filler phrases (1pt) **(script)**
+- [ ] **No Throat-Clearing**: No section openers like "In this section..." (1pt) **(script)**
+- [ ] **Sentence Rhythm Varies**: No run of 4+ sentences within ±5 words (1pt) **(script)**
+- [ ] **Sentence Length**: Average 15-20 words, none exceeds 40 (1pt) **(script)**
 - [ ] **Structural Variety**: Paragraph openers, list lengths, section lengths vary (1pt)
-- [ ] **Code-to-Prose Ratio**: ≥ 40% code blocks (1pt)
-- [ ] **Heading Discipline**: Max 3 levels, sentence case, one H2 per 200-400 words (1pt)
-- [ ] **Hedging Limited**: Max 2 hedge phrases per 1000 words (1pt)
+- [ ] **Code-to-Prose Ratio**: ≥ 40% code blocks (1pt) **(script)**
+- [ ] **Heading Discipline**: Max 3 levels, sentence case, one H2 per 200-400 words (1pt) **(script)**
+- [ ] **Hedging Limited**: Max 2 hedge phrases per 1000 words (1pt) **(script)**
+
+**(script)** marks the 12 points `scripts/doc-metrics.ts` decides. The other 40 are judgement.
 
 ---
 

@@ -3,11 +3,11 @@
 
 # browser-use
 
-Full-platform browser automation. Live-page JS eval, keyboard and focus primitives, environment preflight, and a configurable agent LLM, across dual local and cloud browsers backed by Playwright's own Chromium so your real Chrome is never hijacked. Ten Magus-specific tools on top of the upstream Browser Use MCP set, plus 6 skills.
+Full-platform browser automation: live-page JS eval, keyboard and focus primitives, file screenshots, preflight and a configurable agent LLM, on local or cloud browsers. Runs Playwright's own Chromium, never your real Chrome. Adds Magus tools and 6 skills to the upstream Browser Use MCP set.
 
 | | |
 |---|---|
-| Version | `1.7.6` |
+| Version | `1.8.0` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 0 |
 | Subagents | 0 |

@@ -156,7 +156,7 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion, Skill
     | Bun or TypeScript | `bunjs@magus` | task-shaped Bun skills, zero listing cost |
     | Go | `go@magus` | go-tui skill for Charm-stack terminal UIs |
     | React or any web UI | `designer@magus` | pixel-diff design validation |
-    | browser automation or E2E | `browser-use@magus` | 26 MCP tools for real browsers |
+    | browser automation or E2E | `browser-use@magus` | MCP tools that drive a real headless browser |
     | long-running processes, TDD, dev servers | `terminal@magus` | tmux-backed interactive terminal |
     | multi-model review wanted | `multimodel@magus` + `claudish@magus` | team voting and delegation |
 

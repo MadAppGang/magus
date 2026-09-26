@@ -226,7 +226,7 @@ and `mcp.servers[].usage` takes exactly one of two forms:
 
 | Form | Means | Example |
 |---|---|---|
-| `${CLAUDE_PLUGIN_ROOT}/…` | a file inside the `dev` plugin itself | `${CLAUDE_PLUGIN_ROOT}/knowledge/backend/golang.md` |
+| `${CLAUDE_PLUGIN_ROOT}/…` | a file inside the `dev` plugin itself | `${CLAUDE_PLUGIN_ROOT}/knowledge/backend/api-design.md` |
 | absolute (`/…`) | any other file on the machine the document describes — another plugin's file under its installed root, or a file in the target repo | `/home/u/.claude/plugins/cache/magus/go/0.1.2/knowledge/roles/developer/best-practices.md` |
 
 A repo-relative `plugins/<p>/…` is **rejected** (rule `PATH`). It is the layout of the magus
@@ -395,7 +395,7 @@ account settings page."* Repo: React + Go fullstack.
     },
     "developer": {
       "read": [
-        "${CLAUDE_PLUGIN_ROOT}/knowledge/backend/golang.md",
+        "/home/u/.claude/plugins/cache/magus/go/0.1.2/knowledge/references/error-handling.md",
         "${CLAUDE_PLUGIN_ROOT}/knowledge/backend/api-design.md",
         "${CLAUDE_PLUGIN_ROOT}/knowledge/backend/error-handling.md",
         "/home/u/.claude/plugins/cache/magus/go/0.1.2/knowledge/roles/developer/best-practices.md"

@@ -815,11 +815,11 @@ allowed-tools:  Agent, AskUserQuestion, Bash, Read, Glob, Grep
 
   <strategy scenario="Model API rate limited">
     <recovery>
-      1. Log rate limit error
-      2. Wait 60 seconds
-      3. Retry with exponential backoff (max 3 retries)
-      4. If still failing: Switch to fallback model
-      5. If no fallback: Queue remaining work for later
+      1. Log the rate-limit error and the model that returned it
+      2. Save progress to the session, as for a cancellation
+      3. Tell the user which model is rate limited and any wait the error names. Offer:
+         wait and re-run that step, finish with the sources already gathered, or stop
+      4. Never switch to another model on your own; the model choice is the user's
     </recovery>
   </strategy>
 

@@ -16,18 +16,18 @@ Patterns for combining Browser Use MCP tools with claude-in-chrome to achieve fu
 
 | Capability | Browser Use | claude-in-chrome |
 |-----------|-------------|-----------------|
-| Navigate to URL | `browser_navigate` | Tab management only |
+| Navigate to URL | `browser_navigate` | `navigate` |
 | Click elements | `browser_click` (by index) | `computer` (by coordinate) |
 | Type into inputs | `browser_type` (by index) | `computer` (keyboard) |
 | Get DOM element map | `browser_get_state` | `read_page` (text extract) |
 | Read raw HTML | `browser_get_html` | `read_page` |
-| Take screenshot | `browser_screenshot` | `computer` (screenshot) |
+| Take screenshot | `browser_screenshot` (seen by the model); `browser_save_screenshot` (PNG file) | `computer` (screenshot) |
 | Capture full-page screenshot | `browser_screenshot(full_page=True)` | Not available |
 | Scroll page | `browser_scroll` | `computer` (scroll) |
-| Read console errors | Not available | `read_console_messages` |
-| Read network requests | Not available | `read_network_requests` |
+| Read console errors | An error hook installed with `browser_evaluate` (§4.1) | `read_console_messages` |
+| Read network requests | URLs and statuses from `performance` entries via `browser_evaluate` (§4.2) | `read_network_requests` |
 | Execute JavaScript | `browser_evaluate` (in its own page) | `javascript_tool` |
-| Resize viewport | Via agent only | `javascript_tool` (resizeTo) |
+| Resize viewport | Not available | `resize_window` |
 | Record GIF of interaction | Not available | `gif_creator` |
 | Autonomous agent mode | `retry_with_browser_use_agent` | Not available |
 | Multi-tab session | `browser_navigate(new_tab=True)` | Tab enumeration only |
@@ -89,140 +89,74 @@ open the URL in the user's Chrome too (`mcp__claude-in-chrome__navigate`) and re
 the action there; use Browser Use for what only it has (indexed DOM map, full-page
 screenshots, the autonomous agent).
 
-### 4.1 Pattern: Navigate + Monitor Console
-
-Navigate with Browser Use, observe console errors with claude-in-chrome.
+### 4.1 Pattern: Click + Console Errors
 
 **Use case**: "The checkout button throws an error — find out what JavaScript error occurs."
 
+In the user's Chrome (claude-in-chrome), where the console is readable:
+
 ```
-PHASE 1 — Browser Use (Navigate and Click):
-  1. browser_navigate(url="https://app.example.com/cart")
-     → session_id: "s1"
-  2. browser_get_state(session_id="s1")
-     → find "Checkout" button → index 7
-  3. browser_screenshot(session_id="s1")
-     → visual state before click
-
-  4. browser_click(index=7, session_id="s1")
-     → triggers the checkout action
-
-PHASE 2 — claude-in-chrome (Console Observation, run after step 4):
-  5. mcp__claude-in-chrome__read_console_messages()
-     → ["Error: Cannot read property 'total' of undefined (cart.js:142)",
-        "Warning: React key prop missing in list item"]
-
-PHASE 3 — Synthesize:
-  6. browser_screenshot(session_id="s1")
-     → visual state after click (did UI change? error state shown?)
-  7. browser_get_state(session_id="s1")
-     → DOM state after click (error message in page? modal open?)
-
-  8. browser_close_session(session_id="s1")
-
-Report:
-  - Root cause: cart.js:142 — undefined `total` property (JS error)
-  - Visual evidence: before/after screenshots
-  - DOM state: error modal visible in selector_map
+1. mcp__claude-in-chrome__navigate(url="https://app.example.com/cart")   → returns the tab list; note tabId
+2. mcp__claude-in-chrome__find(query="Checkout button", tabId=T)   → its ref
+3. mcp__claude-in-chrome__computer(action="left_click", ref="ref_…", tabId=T)
+4. mcp__claude-in-chrome__read_console_messages(tabId=T, pattern="Error|Warning", onlyErrors=true)
+   → the errors this click raised, with file:line
 ```
 
-### 4.2 Pattern: Click + Trace Network Requests
+In Browser Use alone, install an error hook before the action and read it after:
 
-Trigger a user action with Browser Use, trace the resulting API calls with claude-in-chrome.
+```
+1. browser_navigate(url="https://app.example.com/cart")
+2. browser_evaluate(script="window.__errs=[]; addEventListener('error', e => __errs.push(e.message + ' @ ' + e.filename + ':' + e.lineno)); addEventListener('unhandledrejection', e => __errs.push(String(e.reason))); const ce = console.error; console.error = (...a) => { __errs.push(a.join(' ')); ce(...a) }; return true")
+3. browser_get_state()  → "Checkout" button → index 7
+4. browser_click(index=7)
+5. browser_evaluate(script="return window.__errs")
+6. browser_save_screenshot(output_path="/abs/path/after-checkout.png")
+```
+
+The hook sees only what happens after step 2; an error during page load needs claude-in-chrome.
+
+### 4.2 Pattern: Submit + Network Requests
 
 **Use case**: "When I submit this form, what API calls are made and are they returning correctly?"
 
+In the user's Chrome (full request list, statuses, bodies):
+
 ```
-PHASE 1 — Browser Use (Navigate and Setup):
-  1. browser_navigate(url="https://app.example.com/signup")
-     → session_id: "s1"
-  2. browser_get_state(session_id="s1")
-  3. browser_type(index=2, text="test@example.com", session_id="s1")  # Email field
-  4. browser_type(index=3, text="SecurePass123!", session_id="s1")    # Password field
-
-PHASE 2 — Submit and Capture (run together):
-  5. browser_click(index=8, session_id="s1")   # Submit button
-     [simultaneously]
-  6. mcp__claude-in-chrome__read_network_requests()
-     → [
-         {"url": "/api/auth/signup", "method": "POST", "status": 422,
-          "response": {"error": "Email already registered"}},
-         {"url": "/api/analytics/event", "method": "POST", "status": 200}
-       ]
-
-PHASE 3 — Correlate:
-  7. browser_get_state(session_id="s1")
-     → DOM shows inline error "Email already in use"
-  8. browser_screenshot(session_id="s1")
-     → confirms error state displayed visually
-
-  9. browser_close_session(session_id="s1")
-
-Report:
-  - API call: POST /api/auth/signup → 422 (Email already registered)
-  - UI response: inline error message correctly displayed
-  - Issue: Form should clear password field on error (visual check shows it doesn't)
+1. mcp__claude-in-chrome__navigate(url="https://app.example.com/signup")
+2. mcp__claude-in-chrome__form_input(…, tabId=T) for each field, then click submit with computer
+3. mcp__claude-in-chrome__read_network_requests(tabId=T, urlPattern="/api/")
 ```
 
-### 4.3 Pattern: Screenshot + JavaScript State Validation
+In Browser Use alone, the Resource Timing entries give URL, type and status (no bodies):
 
-Capture visual state with Browser Use, validate application state with JavaScript via claude-in-chrome.
+```
+1. browser_navigate(url="https://app.example.com/signup")
+2. browser_get_state() → field indices; browser_type(…) each; browser_click(index=<submit>)
+3. browser_evaluate(script="return performance.getEntriesByType('resource').filter(e => e.initiatorType === 'fetch' || e.initiatorType === 'xmlhttprequest').map(e => ({url: e.name, status: e.responseStatus, ms: Math.round(e.duration)}))")
+```
+
+### 4.3 Pattern: Action + Application State
 
 **Use case**: "After adding to cart, verify the cart count in the header updates correctly."
 
-```
-PHASE 1 — Browser Use (Action):
-  1. browser_navigate(url="https://shop.example.com/product/widget-a")
-  2. browser_get_state(session_id)
-     → find "Add to Cart" → index 5
-  3. browser_screenshot(session_id)   # Before
-  4. browser_click(index=5, session_id)
-  5. browser_screenshot(session_id)   # After
-
-PHASE 2 — JavaScript State Check:
-  6. mcp__claude-in-chrome__javascript_tool(
-       script="return JSON.stringify(window.__STORE__?.cart?.items?.length)"
-     )
-     → "3"   # 3 items in cart now
-
-  7. mcp__claude-in-chrome__javascript_tool(
-       script="return document.querySelector('.cart-count')?.textContent"
-     )
-     → "3"   # Header badge shows 3
-
-PHASE 3 — Verify:
-  Screenshot shows badge updated → JavaScript confirms state updated → consistent
-
-  browser_close_session(session_id)
-```
-
-### 4.4 Pattern: GIF Recording of Bug Reproduction
-
-Use claude-in-chrome to record a GIF of the bug, while Browser Use performs the interaction.
-
-**Use case**: "Show me the visual glitch when hovering over the dropdown menu."
+This needs no second browser: `browser_evaluate` reads state in the page Browser Use drives.
 
 ```
-PHASE 1 — Setup GIF recording with claude-in-chrome:
-  1. mcp__claude-in-chrome__gif_creator(action="start", filename="dropdown-bug.gif")
-
-PHASE 2 — Trigger interaction with Browser Use:
-  2. browser_navigate(url="https://app.example.com")
-  3. browser_get_state(session_id)
-     → find navigation dropdown → index 3
-  4. browser_click(index=3, session_id)   # Open dropdown
-  5. browser_get_state(session_id)
-     → find specific menu item → index 12
-  6. browser_click(index=12, session_id)  # Click menu item
-
-PHASE 3 — Stop recording:
-  7. mcp__claude-in-chrome__gif_creator(action="stop")
-     → "dropdown-bug.gif saved"
-
-  8. browser_close_session(session_id)
+1. browser_navigate(url="https://shop.example.com/product/widget-a")
+2. browser_get_state() → "Add to Cart" → index 5
+3. browser_click(index=5)
+4. browser_evaluate(script="return {store: window.__STORE__?.cart?.items?.length, badge: document.querySelector('.cart-count')?.textContent}")
+   → {"result": {"store": 3, "badge": "3"}}
+5. browser_screenshot()   → the badge as the user sees it
 ```
 
-Note: This pattern works when Browser Use and claude-in-chrome target the same Chrome instance. Browser Use operates in a headless Chromium by default — for GIF recording, use claude-in-chrome's DOM navigation or use `retry_with_browser_use_agent` with the developer's Chrome (headed mode).
+### 4.4 Pattern: GIF of a Bug Reproduction
+
+`gif_creator` records the user's Chrome, so the whole reproduction runs there:
+`gif_creator(action="start_recording", tabId=T)`, drive the page with claude-in-chrome
+(`navigate`, `find`, `computer`), then `stop_recording` and `export` with `download=true`. Browser Use cannot appear in that recording: its
+Chromium is headless and separate.
 
 ---
 
@@ -232,8 +166,8 @@ When `tabs_context_mcp` probe fails, use these fallback patterns:
 
 | Need | Browser Use-Only Approach | Limitation |
 |------|--------------------------|------------|
-| Console errors | `retry_with_browser_use_agent(task="Check the browser console for errors after clicking X, use_vision=True")` | Less reliable than direct console access |
-| Network trace | `browser_get_html` — look for error messages rendered in page | Cannot see network-level failures |
+| Console errors | The `browser_evaluate` error hook (§4.1) | Sees only errors after the hook is installed |
+| Network trace | `performance.getEntriesByType('resource')` via `browser_evaluate` (§4.2) | URL, status and timing; no request or response bodies |
 | JavaScript execution | `browser_evaluate(script="document.title")` | None — direct eval in the live page |
 | Computed styles | `browser_evaluate(script="getComputedStyle(document.querySelector('.x')).color")` | None |
 | Application state | `browser_evaluate` on the store (`window.__STORE__`), or `browser_extract_content` | Store must be reachable from `window` |
@@ -247,13 +181,13 @@ When running Browser Use-only, be explicit about what you could and could not ch
 
 **Checked** (via Browser Use):
 - Visual state: screenshot before/after interaction
-- DOM state: selector_map, element attributes
+- DOM state: interactive_elements
 - Page HTML: class names, inline styles, aria attributes
 - Computed CSS and application state, through `browser_evaluate`
 
 **Not Checked** (requires claude-in-chrome):
-- JavaScript console errors
-- Network request trace
+- Console errors raised before the hook was installed (page load)
+- Request and response bodies
 
 **Recommendation**: Install the claude-in-chrome extension and re-run for complete analysis.
 ```

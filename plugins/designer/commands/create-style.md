@@ -5,7 +5,7 @@ description: |
   Supports reference image capture, style updates, and visual reference management.
   Actions: create, update, capture, add-reference, remove-reference, list-references
 argument-hint: "create | update [section] | capture <name> | add-reference <path> <name> | remove-reference <name> | list-references"
-allowed-tools: AskUserQuestion, Bash, Read, Write, Glob, Grep, mcp__plugin_browser-use_browser-use__browser_list_sessions, mcp__plugin_browser-use_browser-use__browser_navigate, mcp__plugin_browser-use_browser-use__browser_screenshot, mcp__plugin_browser-use_browser-use__browser_close_session
+allowed-tools: AskUserQuestion, Bash, Read, Write, Glob, Grep, mcp__plugin_browser-use_browser-use__browser_list_sessions, mcp__plugin_browser-use_browser-use__browser_navigate, mcp__plugin_browser-use_browser-use__browser_save_screenshot, mcp__plugin_browser-use_browser-use__browser_close_session
 ---
 
 Read `${CLAUDE_PLUGIN_ROOT}/skills/design-references/SKILL.md` and `${CLAUDE_PLUGIN_ROOT}/skills/ui-style-format/SKILL.md` before the first step; they hold the reference this command follows.

@@ -100,18 +100,12 @@ This skill provides predefined design system references that the ui agent can us
 
 #### Color System
 
-**System Colors**:
-| Color | Light Mode | Dark Mode | Usage |
-|-------|------------|-----------|-------|
-| Blue | #007AFF | #0A84FF | Links, interactive elements |
-| Green | #34C759 | #30D158 | Success, positive actions |
-| Indigo | #5856D6 | #5E5CE6 | Accent |
-| Orange | #FF9500 | #FF9F0A | Warnings, attention |
-| Pink | #FF2D55 | #FF375F | Accent |
-| Purple | #AF52DE | #BF5AF2 | Accent |
-| Red | #FF3B30 | #FF453A | Destructive, errors |
-| Teal | #5AC8FA | #64D2FF | Accent |
-| Yellow | #FFCC00 | #FFD60A | Warnings |
+**System Colors**: blue, green, indigo, orange, pink, purple, red, teal, yellow (plus
+mint, cyan, brown and gray). Use them through the platform API (`Color.blue`,
+`UIColor.systemBlue`, `NSColor.systemBlue`), never as hex: Apple has revised the values
+across releases, and each one resolves at runtime per light/dark mode and the
+increased-contrast setting. Blue marks interactive elements, red destructive actions,
+green success, orange and yellow warnings.
 
 **Semantic Colors**:
 - Label (Primary, Secondary, Tertiary, Quaternary)
@@ -124,7 +118,7 @@ This skill provides predefined design system references that the ui agent can us
 **SF Pro** (San Francisco):
 | Style | Size | Weight | Leading |
 |-------|------|--------|---------|
-| Large Title | 34pt | Bold | 41pt |
+| Large Title | 34pt | Regular (Bold when emphasized) | 41pt |
 | Title 1 | 28pt | Regular | 34pt |
 | Title 2 | 22pt | Regular | 28pt |
 | Title 3 | 20pt | Regular | 25pt |
@@ -322,33 +316,31 @@ This skill provides predefined design system references that the ui agent can us
 
 #### Color System
 
-**CSS Variables Based**:
+**CSS variables in `oklch()`** (Tailwind v4), defined in the project's global CSS for
+`:root` and `.dark`. The default neutral theme starts:
+
 ```css
---background: 0 0% 100%;
---foreground: 240 10% 3.9%;
---card: 0 0% 100%;
---card-foreground: 240 10% 3.9%;
---popover: 0 0% 100%;
---popover-foreground: 240 10% 3.9%;
---primary: 240 5.9% 10%;
---primary-foreground: 0 0% 98%;
---secondary: 240 4.8% 95.9%;
---secondary-foreground: 240 5.9% 10%;
---muted: 240 4.8% 95.9%;
---muted-foreground: 240 3.8% 46.1%;
---accent: 240 4.8% 95.9%;
---accent-foreground: 240 5.9% 10%;
---destructive: 0 84.2% 60.2%;
---destructive-foreground: 0 0% 98%;
---border: 240 5.9% 90%;
---input: 240 5.9% 90%;
---ring: 240 5.9% 10%;
---radius: 0.5rem;
+:root {
+  --radius: 0.625rem;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+}
 ```
+
+The full set: `background`, `foreground`, `card`, `popover`, `primary`, `secondary`,
+`muted`, `accent` (each with a `-foreground` pair), `destructive`, `border`, `input`,
+`ring`, `radius`, `chart-1`…`chart-5`, and the `sidebar-*` group. The values depend on the
+base colour chosen at init, so read the project's own file rather than this sample. A
+project still on HSL triples (`--background: 0 0% 100%`) predates Tailwind v4.
 
 #### Typography
 
-**Inter** (default) or system font stack
+The components set no font family; the app's own font applies (read the root layout).
 
 | Variant | Size | Weight | Leading |
 |---------|------|--------|---------|

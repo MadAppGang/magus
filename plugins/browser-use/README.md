@@ -31,7 +31,7 @@ Keys are read from the environment, never stored in settings: `ANTHROPIC_API_KEY
 
 ## What you get
 
-The MCP server exposes the upstream Browser Use tools plus ten Magus-specific ones:
+The MCP server exposes the upstream Browser Use tools plus eleven Magus-specific ones:
 
 | Tool | Why it exists |
 |---|---|
@@ -39,7 +39,8 @@ The MCP server exposes the upstream Browser Use tools plus ten Magus-specific on
 | `browser_keyboard` | Batch key sequences and insert literal text via CDP |
 | `browser_press_key` | Single keys and shortcuts (`Meta+a`, `Enter`, `Escape`) |
 | `browser_focus` | Focus any element by CSS selector, including hidden inputs |
-| `browser_export_session` / `browser_import_session` | Save and restore cookies and localStorage across runs |
+| `browser_save_screenshot` | Write the live page to a PNG file; upstream `browser_screenshot` only shows it to the model |
+| `browser_export_session` / `browser_import_session` | Save and restore cookies across runs |
 | `browser_start_cloud_session` | Hosted session with stealth mode, proxy rotation, CAPTCHA handling |
 | `browser_set_agent_model` | Swap the autonomous agent's brain LLM for this session |
 | `browser_run_script` | Run a standalone Python script with its own browser |

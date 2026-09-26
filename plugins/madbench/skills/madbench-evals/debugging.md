@@ -61,8 +61,8 @@ A conclusion drawn from source you did not build is a conclusion about a differe
 | `generate:` refusal naming a value | the generated secret was findable in the workspace, prompt, or report. The expectation must be **derived** (sums, counts, checksums), not planted. If the answer IS a path, use `setup:` instead |
 | both `setup:` and `generate:` declared | refused — both own the staged tree and both run before the workspace exists |
 | `probe: false` with `require: true` | refused at load, naming both keys: "do not look" and "verify before spending" cannot both be true |
-| `CONFOUNDED` / an Eval stopped before spend | `control:` found a run differing by a path not in `varies:`. Read the printed diff — the undeclared file is your confound |
-| a `varies:` entry that matched nothing | reported as the shape of a typo: `varies: [plugin]` loads clean and matches nothing |
+| `CONFOUNDED` / an Eval stopped before spend | `guard_changes:` found a run differing by a path not in `allow:`. Read the printed diff — the undeclared file is your confound |
+| an `allow:` entry that matched nothing | reported as the shape of a typo: `allow: [plugin]` loads clean and matches nothing |
 | `no madbench.yaml or madbench.yml in <dir>` | bare `madbench` with no discoverable file — pass a path |
 | `assert-set: child "<type>": <err>` | error inside a composite child — fix the child |
 | `exec: 'cmd' (string slice) or 'value' (string) is required` | exec check missing its command |
@@ -246,7 +246,7 @@ rather than guessing — several are not what you would predict.
 | what madbench staged | `.results[].session.environment.expected` |
 | per-thread subagent rollup | `.results[].session.subagents` |
 | run tally | `.summary` → `{total, passed, failed, errors, skipped}` — **read `errors` before `failed`**: an errored row never graded |
-| per-run control diff (Eval with `control:`) | `.control` → changed paths + size deltas per run |
+| per-run guard diff (Eval with `guard_changes:`) | `.guard_changes` → changed paths + size deltas per run |
 | the metric declaration, echoed | `.metric_specs` and `.schema_version` — a stored report is self-describing (`docs/metrics.md:712-714`) |
 | a metric expression that threw at run time | `metric_error` on the row and on the report; the run is not failed by it (`docs/metrics.md:733-735`) |
 | per-Scenario and per-run metric values | the `metrics` map on each Scenario row and each run; `value: null` means nothing reported, never `0` (`docs/metrics.md:578-595`) |

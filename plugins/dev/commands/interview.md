@@ -415,7 +415,7 @@ allowed-tools: Agent, AskUserQuestion, Bash, Read, Write, Glob, Grep
           g. Checkpoint update (phase 2, round N, coverage from focus-areas)
 
           h. Check completion criteria:
-             - All categories at >= 70% coverage?
+             - All categories at 100% coverage?
              - User signals "that's enough"?
              - Max rounds reached?
 
@@ -437,7 +437,7 @@ allowed-tools: Agent, AskUserQuestion, Bash, Read, Write, Glob, Grep
            4. Pause and continue later"
         </step>
       </steps>
-      <quality_gate>All categories >= 70% OR user approves to proceed</quality_gate>
+      <quality_gate>All categories at 100% OR user approves to proceed</quality_gate>
     </phase>
 
     <phase number="3" name="Asset Collection">
@@ -904,11 +904,16 @@ allowed-tools: Agent, AskUserQuestion, Bash, Read, Write, Glob, Grep
 
   <coverage_calculation>
     **Definition:**
-    Coverage = (key_questions_answered / min_questions_per_category) * 100
+    Coverage = min(key_questions_answered, min_questions_per_category)
+               / min_questions_per_category * 100
+
+    With a minimum of 3 the only values are 0, 33, 67 and 100%, so a threshold between
+    them means nothing. A category is complete when every minimum question has a
+    substantive answer.
 
     **Rules:**
     - min_questions_per_category: Defined per category (typically 3)
-    - Category complete: Coverage >= 70% AND user confirms no more needs
+    - Category complete: Coverage = 100% AND user confirms no more needs
     - Questions count if they elicit substantive answers
     - Follow-up questions count toward same category
 
@@ -916,10 +921,10 @@ allowed-tools: Agent, AskUserQuestion, Bash, Read, Write, Glob, Grep
     - Functional Requirements: min_questions = 3
     - Questions answered with substance: 2
     - Coverage = (2 / 3) * 100 = 66.7%
-    - Status: Not complete (< 70%)
+    - Status: Not complete (< 100%)
 
     **Completion criteria:**
-    - All 7 categories >= 70% coverage
+    - All 7 categories at 100% coverage
     - OR user explicitly approves proceeding with gaps
   </coverage_calculation>
 
@@ -1046,7 +1051,7 @@ allowed-tools: Agent, AskUserQuestion, Bash, Read, Write, Glob, Grep
         - Error handling strategy
         - Integration authentication details
 
-      PHASE 1: Detect React + Bun stack, create focus areas with 40% coverage
+      PHASE 1: Detect React + Bun stack, create focus areas (each starts at 0% coverage)
 
       PHASE 2: Interview Loop (6 rounds)
         Round 1: Non-functional deep-dive

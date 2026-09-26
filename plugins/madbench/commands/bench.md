@@ -27,7 +27,7 @@ $ARGUMENTS
 - **Author** — write a `madbench.yaml` or an Eval file for a question about an agent's behaviour
 - **Run** — run an existing bench, watchably, and read its report
 - **Debug** — a bench fails `madbench check`, `preflight` refuses it, or a Check grades wrongly
-- **Extend** — add a Check, a `metrics:` expression, a `control:` block, staged plugins
+- **Extend** — add a Check, a `metrics:` expression, a `guard_changes:` block, staged plugins
 - **Review** — is this bench measuring anything, and is its testdata red
 
 ## Step 1 — read the request

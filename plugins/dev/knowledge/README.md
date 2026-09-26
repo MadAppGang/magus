@@ -29,7 +29,8 @@ The category layout **mirrors `skills/`** — `backend/`, `frontend/`, `discipli
 the loadout rules in
 [`../skills/context-detection/references/loadout-rules.md`](../skills/context-detection/references/loadout-rules.md)
 apply to both trees unchanged. A topic with supporting references keeps them in a
-same-named directory beside it: `backend/golang.md` and `backend/golang/performance.md`.
+same-named directory beside it: `frontend/state-management.md` and
+`frontend/state-management/tanstack-query.md`.
 
 A loadout may name any file here. Reading a path needs no skill registry, which is why
 knowledge works for every consumer including agents that hold no `Skill` tool.
@@ -38,17 +39,15 @@ knowledge works for every consumer including agents that hold no `Skill` tool.
 
 ### `backend/` — gated by `repo.stacks`; never load `python` for a Go repo
 
+There is no Bun, Go or Dingo manual here. That guidance lives in the `bunjs`, `go` and
+`dingo` plugins, which the loadout rules route to when a repo uses that stack (R9).
+
 | File | Answers |
 |---|---|
 | `api-design.md` | REST and GraphQL design — pagination, filtering, versioning, auth, rate limiting, OpenAPI |
 | `auth-patterns.md` | JWT, sessions, OAuth, RBAC/ABAC, password hashing, MFA |
-| `bunjs.md` | Bun/Hono — HTTP endpoints, Prisma/SQLite, Zod validation, `bun test` |
-| `bunjs-apidog.md` | OpenAPI specs for Bun APIs and the Apidog import API |
 | `database-patterns.md` | Schema design, repository pattern, query optimisation, migrations, indexes, transactions |
-| `dingo.md` | Dingo meta-language for Go — optionals, results, generics shortcuts, transpiling to `.go` |
 | `error-handling.md` | Custom error classes, error middleware, structured logging, retry, graceful shutdown |
-| `golang.md` | Go idioms — goroutines and channels, error handling, testify, API and CLI patterns |
-| `golang/performance.md` | Profiling Go, chasing allocations, tuning a hot path |
 | `python.md` | FastAPI, async endpoints, Pydantic, SQLAlchemy, pytest |
 | `rust.md` | Axum, type-safe handlers, SQLx, `thiserror` |
 

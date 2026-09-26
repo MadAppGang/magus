@@ -7,7 +7,7 @@ Provider-agnostic AI image generation and editing over a pinned model registry: 
 
 | | |
 |---|---|
-| Version | `4.0.2` |
+| Version | `4.0.3` |
 | Marketplace | [`magus-marketing`](./index.md) |
 | Commands | 3 |
 | Subagents | 0 |

@@ -1,6 +1,6 @@
 {
   "name": "dev",
-  "version": "8.3.0",
+  "version": "9.0.0",
   "description": "Universal development assistant. Detects the project stack and routes work to specialist agents for architecture, implementation, debugging, review and research, enforcing design-system guardrails on every UI change.",
   "author": {
     "name": "Jack Rudenko",
@@ -60,8 +60,6 @@
     "./skills/frontend/design-system-guardrails",
     "./skills/frontend/browser-debugging",
     "./skills/frontend/frontend-implement",
-    "./skills/backend/bunjs-architecture",
-    "./skills/backend/bunjs-production",
     "./skills/backend/db-branching",
     "./skills/documentation-standards",
     "./skills/discipline/verification-before-completion",

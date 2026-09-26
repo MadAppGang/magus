@@ -1003,6 +1003,19 @@ go run -race ./cmd/server
 go test -race ./...
 ```
 
+### Failure Checks Worth Running First
+
+- **A non-nil error that holds a nil pointer.** A function that returns a typed nil pointer
+  as `error` gives a non-nil interface: `err != nil` is true (checked on Go 1.27). Return
+  the literal `nil`, never a typed nil variable.
+- **Swallowed errors.** Search for `_ = err` and for `err` values assigned and never
+  checked; `errcheck` (in golangci-lint) finds them.
+- **Context cancellation.** A cancelled or timed-out context stops HTTP calls and queries.
+  Test the error with `errors.Is(err, context.Canceled)` or `context.DeadlineExceeded`
+  before treating it as a network fault.
+- **Missing JSON fields.** `encoding/json` skips unexported (lowercase) struct fields
+  without an error. Export the field and give it a `json:` tag.
+
 ---
 
 ## Further Reading

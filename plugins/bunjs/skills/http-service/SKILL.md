@@ -157,3 +157,4 @@ a 500. Only stream what you can produce reliably.
 | `references/routing-and-serve.md` | the full `Bun.serve` surface — route precedence, params, cookies, static responses, `reload`, TLS, unix sockets |
 | `references/api-design.md` | status codes, pagination, versioning, idempotency, content negotiation, CORS |
 | `references/websockets-and-streaming.md` | `Bun.serve` websockets, pub/sub, backpressure, SSE, upload streaming |
+| `references/openapi-and-apidog.md` | keeping an OpenAPI spec true to the routes, and importing it into Apidog |

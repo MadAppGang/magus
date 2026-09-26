@@ -4,6 +4,79 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [madbench 0.6.2] - 2026-09-27
+
+### Fixed
+
+- The madbench skill teaches `guard_changes:` and its `allow:` list. madbench 0.37.0 renamed
+  `control:` and `varies:`, and 0.37.1 refuses the old keys, so an Eval written from the
+  old text did not load.
+
+---
+
+## [Marketplace 13.4.0] - 2026-09-27
+
+### Removed
+
+- **`dev` v9.0.0**: BREAKING — dev no longer teaches Bun, Go or Dingo. The
+  `bunjs-architecture` and `bunjs-production` skills and the Bun, Go and Dingo knowledge
+  files are deleted. dev still detects each stack; it then routes to the `bunjs`, `go` or
+  `dingo` plugin when it is installed, and names its `claude plugin install` command once
+  when it is not. The deleted copies taught Hono and
+  a `src/controllers/` layout that bunjs rejects, so a Bun repo got contradicting advice
+  depending on which copy loaded.
+
+### Added
+
+- **`bunjs` v0.5.0**: the four things only dev's copy had, rewritten to bunjs conventions:
+  a Redis shared cache that deletes by prefix with `SCAN` and `UNLINK` instead of the
+  blocking `KEYS`, a database schema reference, an OpenAPI and Apidog reference, and a CI
+  pipeline that pins the same Bun as the shipped Dockerfile.
+- The `tui` fallback width table matches Bun 1.4.0's `Bun.stringWidth`. The bunjs test
+  suites now run in CI, which is why the drift went unseen.
+- **`browser-use` v1.8.0**: `browser_save_screenshot` writes the page to a PNG file.
+  `browser_screenshot` shows the image to the model but writes nothing, so every recipe that
+  saved a screenshot had no input.
+- `core-api` documents the tools as the server registers them: page tools take no
+  `session_id`, and every example uses the full tool prefix. Skills close only the sessions
+  their task opened.
+
+### Fixed
+
+- **`designer` v0.10.0**: `/designer:ui` serves artboards over 127.0.0.1, because
+  browser-use does not load `file://` pages, and saves captures with
+  `browser_save_screenshot`. Its commands are granted the browser-use tools they call.
+- **`dev` v9.0.0**: the documentation score counts sentences, banned words, code ratio,
+  headings and local links with a script, and the model judges the rest. The rules that
+  disagreed about sentence length now agree.
+- `/dev:research` reports a rate-limited model instead of switching to a fallback model.
+  The interview coverage gate, the architect complexity score and `/dev:help`'s settings
+  example are corrected. The browser-use guidance uses the real tool names.
+- **`go` v0.2.0**: a profiling and benchmarking reference in the knowledge base, with its
+  claims re-measured on Go 1.27: benchmarks use `b.Loop()`, escape analysis also reports
+  `moved to heap`, and a pointer to a range variable no longer allocates.
+- **`multimodel` v5.1.1**: `error-recovery` retries only when the user asks, reads failure
+  causes from claudish, and sends reviews to `dev:aggregator` only when there are two or
+  more.
+- **`terminal` v5.2.3**: the `bun test --watch` readiness pattern matches what Bun prints,
+  and the psql prompt row names `=#` and `=>`.
+- **`video-editing` v1.3.2**: model listing, frame-rate and diarization facts corrected.
+- **`dingo` v1.0.4**: a build-and-tooling reference, measured against the Dingo compiler:
+  generated Go goes to `build/`, and only `dingo build <pkg>` makes that directory a module
+  with a `go.mod` and the test files, so the project check runs `go vet` and `go test`
+  inside `build/`. `dingo build` takes explicit packages, not `./...`. The AP-3 example
+  comment names `IsNone`.
+- **`image` v4.0.3**: a maintainer TODO is resolved.
+- **`setup` v1.3.2**: `/setup:project` no longer states a tool count that goes stale.
+
+### Changed
+
+- The benches use madbench's `guard_changes:` key and load again: 24 of 24, from 7. The
+  code-search bench's corpus path, facade tool name and report key are fixed with them.
+- CI pins Bun 1.4.0 in the plugin test workflow.
+
+---
+
 ## [magus 7.5.4] - 2026-09-26
 
 ### Changed

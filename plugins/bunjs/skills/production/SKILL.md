@@ -159,5 +159,5 @@ image and never from the repository. `Bun.env === process.env` (MEASURED — the
 
 | File | Read it when |
 |---|---|
-| `references/deployment.md` | orchestrator settings, probes, rollouts, replicas, resource limits, migrations |
+| `references/deployment.md` | orchestrator settings, probes, rollouts, replicas, resource limits, migrations, the CI pipeline |
 | `references/observability.md` | metrics, tracing, what to alert on, log levels and sampling, correlation |

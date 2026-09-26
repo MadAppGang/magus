@@ -50,7 +50,7 @@ skills: dev:universal-patterns
       - .claude/skills/auth-patterns/SKILL.md (auth-patterns)
 
       **BUNDLED SKILLS** (fallback):
-      - ${CLAUDE_PLUGIN_ROOT}/knowledge/backend/golang.md
+      - ${CLAUDE_PLUGIN_ROOT}/knowledge/backend/api-design.md
 
       **FULL SKILL CATALOG** (invoke as needed):
       Available: tdd-workflow, auth-patterns, api-design
@@ -212,11 +212,12 @@ skills: dev:universal-patterns
   <example name="Go API Handler Implementation">
     <task>Implement GET /users/:id endpoint</task>
     <skills_loaded>
-      - golang (error handling, project structure)
+      - the go plugin's knowledge/roles/developer/best-practices.md and
+        knowledge/references/error-handling.md (read by path; go plugin installed)
       - api-design (REST patterns, response formatting)
     </skills_loaded>
     <approach>
-      1. Read both skills
+      1. Read those files
       2. Create handler in handlers/users.go
       3. Create repository method in repositories/user.go
       4. Add tests in handlers/users_test.go

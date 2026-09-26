@@ -7,11 +7,11 @@ Universal development assistant. Detects the project stack and routes work to sp
 
 | | |
 |---|---|
-| Version | `8.3.0` |
+| Version | `9.0.0` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 17 |
 | Subagents | 12 |
-| Skills | 21 |
+| Skills | 19 |
 | MCP server | no |
 | Hooks | yes |
 
@@ -79,8 +79,10 @@ one fire:
 ### Knowledge is not on that list, and that is deliberate
 
 Alongside `skills/` the plugin ships a `knowledge/` directory: the stack and framework
-reference manuals — Go, Python, Rust, Bun, React, Vue, Tailwind, shadcn/ui, TanStack Router
-and the rest. They are reference you consult at a decision point, not procedures you
+reference manuals — Python, Rust, React, Vue, Tailwind, shadcn/ui, TanStack Router
+and the rest. Bun, Go and Dingo are not among them: their guidance is the
+[`bunjs`](./bunjs.md), [`go`](./go.md) and [`dingo`](./dingo.md) plugins, which `dev` uses
+when they are installed. They are reference you consult at a decision point, not procedures you
 follow, so they are not skills and nothing registers them. An agent is handed the path to
 the one or two its task calls for; it never browses the set.
 
@@ -134,11 +136,11 @@ Step-by-step, one guide per job:
 ## When to reach for it
 
 - Use for README, API docs, tutorials, changelogs — `doc`
-- Use when deploying or operationalizing a Bun — `bunjs-production`
 - Use when the user asks to roast code, find sins, or shame my code — `code-roast`
 - Use when a worktree changes the schema, or on mention of Neon, Turso, Prisma — `db-branching`
 - Use when applying design-review fixes, or when a UI looks AI-generated — `frontend-implement`
 - Use when writing, reviewing or setting up tests — `testing-strategies`
+- Use for new modules, subsystems, or any change needing 3+ files with test coverage — `developer`
 
 ## Commands
 
@@ -188,7 +190,6 @@ Dispatched with the Agent tool, each in its own context window.
 | ● | Claude can reach for it on its own |
 | ○ | You invoke it by name |
 | ▸ | A command loads it for you — you never name it |
-| ! | Nothing can reach it — a packaging bug |
 
 [Why a skill lands in one row or another](../../guides/skill-visibility.md)
 
@@ -207,14 +208,12 @@ Dispatched with the Agent tool, each in its own context window.
 | ● | `dev:worktree-lifecycle` | Creates, uses and cleans up git worktrees with safety checks. Use before isolated, risky or parallel feature work, or on mention of worktree, experiment or prototype. |
 | ○ | `dev:architecture` — [42 more docs](./dev-architecture.md) | Router for architecture knowledge — 7 architectural styles (layered, hexagonal, clean, modular monolith, microservices, event-driven, CQRS) and the 22 GoF design patterns. |
 | ○ | `dev:browser-debugging` | Drives a real browser — claude-in-chrome or browser-use — to verify a UI change, read console and network activity, and reproduce browser-only bugs. |
-| ○ | `dev:bunjs-architecture` | Provides Bun.js clean architecture patterns — routes/controllers/services/repositories, camelCase conventions, Prisma schemas. |
 | ○ | `dev:code-roast` | Roasts code with severity-graded sins, cites file and line, offers redemption. Use when the user asks to roast code, find sins, or shame my code. |
 | ○ | `dev:db-branching` | Branches Neon, Turso, or Supabase per git worktree for isolated schema work. Use when a worktree changes the schema, or on mention of Neon, Turso, Prisma. |
 | ○ | `dev:frontend-implement` | Rewrites generic-looking UI into a deliberate design via theme tokens and library variants, never call-site values. Use when applying design-review fixes, or when a UI looks AI-generated. |
 | ○ | `dev:plugin-sdk-patterns` | Builds Claude Code plugins that load — manifest location, what registers, the frontmatter each component reads, hooks, MCP servers, verification. |
 | ○ | `dev:team-gate` | Runs a multi-model review gate to a verdict: start the claudish team panel with input_file only, poll until settled, read every ballot, apply the minimum ballot count, log every skip. |
 | ▸ | `dev:brainstorming` | Explores solution approaches in parallel across models through claudish, then has an external panel review the chosen plan. |
-| ! | `dev:bunjs-production` | Provides Bun.js production patterns — Docker, AWS ECS/Fargate, Redis caching, security hardening, CI/CD. Use when deploying or operationalizing a Bun.js service. |
 
 ## Hooks
 

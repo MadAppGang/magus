@@ -197,7 +197,7 @@ is published to users. `scripts/check-doc-plugin-lists.ts` now rejects the label
 - ⚪ Right-aligning a group in a one-row header/footer is undocumented. The aesthetics reference prefers `gap` over spacer boxes but never says what pushes a group to the last column; the answer is `justifyContent="space-between"` over two row groups, which both fresh-consumer builds worked out independently.
 - ⚪ `HeatRow`'s global-max mandate makes low-volume rows near-black. `widgets.tsx` mandates ONE max across all rows, so a 5xx row at ~10% of 2xx renders almost black — correct per the cross-row-comparability contract, but it reads as a dead panel. Options: an opt-in per-row max, or document the trade-off and suggest splitting scales when magnitudes differ by an order of magnitude.
 - 🔴 CI job `test-bunjs-skill` written but not committed (~12 lines in `.github/workflows/test-plugins.yml`: `working-directory: plugins/bunjs/skills/opentui-tui`, then install / test / typecheck / check-surface). Withheld because the render tests drive the real native Zig renderer — green on macOS arm64, UNVERIFIED on `ubuntu-latest` — and committing it blind risks turning repo CI red. Add it when someone can watch one run.
-- **Provenance:** all six found and confirmed during the v0.1.0 build (two fresh-consumer builds, three code reviews, one execution verifier) and consciously deferred; none blocks release. Whether `dev`'s four `bunjs*` skills migrate here is a separate open question — see **D-6**.
+- **Provenance:** all six found and confirmed during the v0.1.0 build (two fresh-consumer builds, three code reviews, one execution verifier) and consciously deferred; none blocks release. `dev`'s own Bun skills have since moved here; dev now routes Bun work to this plugin.
 
 ### browser-use
 
@@ -293,12 +293,6 @@ Iteration-3 research from the 2026-05-09 electron-keychain-isolation session (st
 ### D-5 · CLAUDE.md inventory drift
 
 Trivial but high-impact: documentation says "12 published plugins"; reality is 18. Combined with stale AGENTS.md references (retired plugins, old versions, old names). One-shot maintainer pass to fix.
-
-### D-6 · Do `dev`'s four `bunjs*` skills migrate into the `bunjs` plugin?
-
-`plugins/dev/skills/backend/` holds `bunjs` (839), `bunjs-architecture` (840), `bunjs-production` (988) and `bunjs-apidog` (855) — 3,522 lines, all server-side, all `disable-model-invocation: true`. The new plugin was deliberately named `bunjs` and described Bun-broad so they COULD move without a rename. They were not moved in v0.1.0: 3,522 lines of unrequested churn, and it would change `dev`'s surface.
-
-**The decision:** move them or leave them. The status quo is the awkward option — a `bunjs` *plugin* holding only a TUI skill while `dev` holds four `bunjs*` skills. This is a product call for the repo owner, not an engineering task; nothing downstream is blocked on it.
 
 ---
 

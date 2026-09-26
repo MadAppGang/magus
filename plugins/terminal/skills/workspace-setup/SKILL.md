@@ -81,7 +81,7 @@ For the TDD archetype's full state machine, see `terminal:tdd-workflow`.
 2. mcp__plugin_terminal_mux__start-and-watch({
      slot: 2,
      command: "bun test --watch",
-     pattern: "press a to rerun|Waiting for file changes|Waiting\\.\\.\\.",
+     pattern: "Ran [0-9]+ tests? across",
      triggers: "exit,error",
      timeout: 30
    })                                          → confirms the watcher came up
@@ -133,7 +133,7 @@ For the TDD archetype's full state machine, see `terminal:tdd-workflow`.
 1. mcp__plugin_terminal_mux__start-and-watch({
      slot: 1,
      command: "bun test --watch",
-     pattern: "press a to rerun|Waiting for file changes|Waiting\\.\\.\\.",
+     pattern: "Ran [0-9]+ tests? across",
      triggers: "exit,error",
      timeout: 30
    })

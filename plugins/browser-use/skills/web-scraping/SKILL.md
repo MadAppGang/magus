@@ -16,18 +16,16 @@ The fundamental extract-one-page workflow:
 
 ```
 1. Navigate to page
-   mcp__browser-use__browser_navigate(url="https://shop.example.com/products")
-   → session_id: "s1"
+   mcp__plugin_browser-use_browser-use__browser_navigate(url="https://shop.example.com/products")
+   mcp__plugin_browser-use_browser-use__browser_list_sessions()   → record the new session's id
 
 2. Get DOM state (find data containers and pagination controls)
-   mcp__browser-use__browser_get_state(session_id="s1")
-   → selector_map: {... "47": {tag: "a", text: "Next →", href: "..."}, ...}
+   mcp__plugin_browser-use_browser-use__browser_get_state()
+   → interactive_elements: [..., {"index": 47, "tag": "a", "text": "Next →", "href": "..."}, ...]
 
 3. Extract structured data with LLM-powered query
-   mcp__browser-use__browser_extract_content(
-     query="product name, price, SKU, availability for each product listed",
-     session_id="s1"
-   )
+   mcp__plugin_browser-use_browser-use__browser_extract_content(
+     query="product name, price, SKU, availability for each product listed")
    → "Product: Widget A, Price: $12.99, SKU: WA-001, In Stock\n..."
 
 4. Append to results array
@@ -35,7 +33,7 @@ The fundamental extract-one-page workflow:
 5. Check pagination (see Section 2)
 
 6. Close session when done
-   mcp__browser-use__browser_close_session(session_id="s1")
+   mcp__plugin_browser-use_browser-use__browser_close_session(session_id="s1")
 
 7. Write results to file
    Write tool → products.json
@@ -65,17 +63,15 @@ all_results = []
 
 for page in range(1, max_pages + 1):
     url = f"{base_url}?page={page}"
-    mcp__browser-use__browser_navigate(url=url, session_id=session_id)
-    state = mcp__browser-use__browser_get_state(session_id=session_id)
+    mcp__plugin_browser-use_browser-use__browser_navigate(url=url)
+    state = mcp__plugin_browser-use_browser-use__browser_get_state()
 
     # Check if page has content (stop if we reach an empty page)
-    if "No products found" in str(state["selector_map"]):
+    if "No products found" in str(state["interactive_elements"]):
         break
 
-    data = mcp__browser-use__browser_extract_content(
-        query="all product names, prices, and URLs",
-        session_id=session_id
-    )
+    data = mcp__plugin_browser-use_browser-use__browser_extract_content(
+        query="all product names, prices, and URLs")
     all_results.append(data["content"])
 
     # Rate limit: pause between pages
@@ -87,48 +83,50 @@ for page in range(1, max_pages + 1):
 For sites with a "Next" or ">" button:
 
 ```
-session_id from browser_navigate(url=start_url)
+browser_navigate(url=start_url); session_id = new entry in browser_list_sessions()
 all_results = []
 page = 0
 
 LOOP:
     page += 1
-    state = browser_get_state(session_id)
+    state = browser_get_state()
 
     # Extract data on current page
-    data = browser_extract_content(query="...", session_id)
+    data = browser_extract_content(query="...")
     all_results.append(data)
 
-    # Find next button in selector_map
-    next_index = find_next_button(state["selector_map"])
+    # Find next button in interactive_elements
+    next_index = find_next_button(state["interactive_elements"])
     # Look for: text contains "Next", "›", "»", or href with page+1
 
     if next_index is None or page >= max_pages:
         BREAK  # No more pages
 
-    browser_click(index=next_index, session_id)
+    browser_click(index=next_index)
     # After click, DOM updates — call get_state again in next loop iteration
 
 browser_close_session(session_id)
 ```
 
-**Finding the "next" button**: Look in `selector_map` for elements with:
+**Finding the "next" button**: Look in `interactive_elements` for elements with:
 - `text` containing: `"Next"`, `"›"`, `"»"`, `">"`, `"Load more"`
 - `href` containing: `page=N+1`, `offset=`, `cursor=`
-- `attributes["aria-label"]` containing: `"Next page"`
+- nothing else: entries carry only `index`, `tag`, `text` and `href`. For an icon-only
+  button, find it with `browser_get_html(selector="[aria-label*='Next']")` and click it
+  with `browser_evaluate`.
 
 ### 2.3 Infinite Scroll (Lazy Loading)
 
 For pages that load more content as you scroll down:
 
 ```
-session_id from browser_navigate(url=start_url)
+browser_navigate(url=start_url); session_id = new entry in browser_list_sessions()
 all_results = []
 previous_count = 0
 
 LOOP (max 20 scrolls):
     # Extract current visible items
-    data = browser_extract_content(query="all items visible", session_id)
+    data = browser_extract_content(query="all items visible")
     current_count = count_items(data)
 
     if current_count == previous_count:
@@ -138,11 +136,11 @@ LOOP (max 20 scrolls):
     previous_count = current_count
 
     # Scroll down to trigger next batch
-    browser_scroll(direction="down", amount=2000, session_id=session_id)
+    browser_scroll(direction="down")
 
     # Wait for lazy-load: call get_state twice (SPA needs render time)
-    browser_get_state(session_id)
-    browser_get_state(session_id)
+    browser_get_state()
+    browser_get_state()
 
 browser_close_session(session_id)
 ```
@@ -169,20 +167,20 @@ SPAs (React, Vue, Angular) render content via JavaScript after the initial HTML 
 1. browser_navigate(url="https://spa-app.com/products")
    → response arrives, but DOM is still rendering
 
-2. browser_get_state(session_id)
-   → selector_map may be sparse (only skeleton/loading elements)
+2. browser_get_state()
+   → interactive_elements may be sparse (only skeleton/loading elements)
 
-3. browser_get_state(session_id)   ← call again after first render
-   → selector_map now has actual content
+3. browser_get_state()   ← call again after first render
+   → interactive_elements now has actual content
 
 4. If still sparse:
-   browser_scroll(direction="down", amount=100, session_id)  ← trigger rendering
-   browser_get_state(session_id)   ← try once more
+   browser_scroll(direction="down")  ← trigger rendering
+   browser_get_state()   ← try once more
 ```
 
 ### 3.2 Detecting a Loaded SPA
 
-Signs the page is still loading in `selector_map`:
+Signs the page is still loading in `interactive_elements`:
 - Elements with text like `"Loading..."`, `"Fetching..."`, `"Please wait"`
 - Very few elements (< 5) when expecting many
 - Elements with class names containing `skeleton`, `placeholder`, `shimmer`
@@ -213,18 +211,18 @@ Scraping behind a login wall — two strategies:
 browser_navigate(url="https://site.com/login")
 
 # 2. Fill credentials
-state = browser_get_state(session_id)
-# Find username input in selector_map → index N
-# Find password input in selector_map → index M
-browser_type(index=N, text="username@example.com", session_id)
-browser_type(index=M, text="password123", session_id)
+state = browser_get_state()
+# Find username input in interactive_elements → index N
+# Find password input in interactive_elements → index M
+browser_type(index=N, text="username@example.com")
+browser_type(index=M, text="password123")
 
 # 3. Submit
-# Find submit button in selector_map → index P
-browser_click(index=P, session_id)
+# Find submit button in interactive_elements → index P
+browser_click(index=P)
 
 # 4. Verify login succeeded
-state = browser_get_state(session_id)
+state = browser_get_state()
 # Check: no login form present, dashboard elements visible
 
 # 5. Export session for future use
@@ -244,10 +242,10 @@ browser_import_session(
   import_path="~/.browser-use/sessions/site-session.json",
   navigate_to="https://site.com/dashboard"
 )
-→ session_id: "restored_xyz"
+→ {"session_id": "restored_xyz", "cookies_imported": 12, …}
 
 # Verify session is still valid
-state = browser_get_state(session_id="restored_xyz")
+state = browser_get_state()
 # If login form visible → session expired, fall back to Strategy A
 # If dashboard visible → proceed with scraping
 ```
@@ -255,9 +253,9 @@ state = browser_get_state(session_id="restored_xyz")
 ### 4.3 Session Expiry Handling
 
 ```
-FUNCTION check_logged_in(session_id, expected_element_text):
-    state = browser_get_state(session_id)
-    for element in selector_map.values():
+FUNCTION check_logged_in(expected_element_text):
+    state = browser_get_state()
+    for element in state["interactive_elements"]:
         if expected_element_text in element.get("text", ""):
             return True
     return False  # Session expired
@@ -293,7 +291,7 @@ Bash: python3 -c "import time, random; time.sleep(random.uniform(1, 3))"
 Watch for these signals in `browser_get_state` responses:
 - Page title: `"Access Denied"`, `"403 Forbidden"`, `"Bot Detected"`, `"Cloudflare"`
 - URL change to `/challenge`, `/captcha`, `/blocked`
-- `selector_map` dominated by CAPTCHA widgets
+- `interactive_elements` dominated by CAPTCHA widgets
 
 **On bot detection**: Stop scraping. Consider a cloud session (`browser_start_cloud_session`), which includes stealth mode, proxy rotation, and CAPTCHA handling. See the `browser-use:agent-model` skill for picking its brain model.
 
@@ -307,7 +305,7 @@ Watch for these signals in `browser_get_state` responses:
 all_results = []
 
 for each page:
-    data = browser_extract_content(query="product name, price, URL", session_id)
+    data = browser_extract_content(query="product name, price, URL")
     all_results.append(data["content"])
 ```
 
@@ -384,13 +382,13 @@ finally:
 
 ```
 # WRONG: Assume extract_content always works
-data = browser_extract_content(query="products", session_id)
+data = browser_extract_content(query="products")
 results.extend(data)  # What if page redirected to login? Data is now the login page.
 
 # CORRECT: Verify page content before extracting
-state = browser_get_state(session_id)
+state = browser_get_state()
 if "Login" in get_page_title(state):
     handle_session_expired()
 else:
-    data = browser_extract_content(query="products", session_id)
+    data = browser_extract_content(query="products")
 ```

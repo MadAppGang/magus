@@ -317,8 +317,9 @@ describe("displayWidth fallback — measured against the oracle, with a budget",
   })
 
   // The full oracle sweep, and the numbers the source comment quotes. These are a
-  // RATCHET: 11,205 was the old table's score and 1,081 is this one's. Widening a run
-  // by guess moves this number and fails here.
+  // RATCHET: 11,205 was the old table's score, 1,081 the next one's, and 369 is this
+  // one's, re-derived on Bun 1.4.0 (see the WIDE comment in text.ts). Widening a run by
+  // guess, or a Bun release that moves the oracle, moves this number and fails here.
   test("the whole-Unicode disagreement budget holds, by category", () => {
     const isMark = /^\p{M}/u
     const isUnassigned = /^\p{Cn}/u
@@ -336,12 +337,12 @@ describe("displayWidth fallback — measured against the oracle, with a budget",
       else if (cp >= 0x1f1e6 && cp <= 0x1f1ff) cat.regionalIndicator++
       else cat.other++
     }
-    expect(total).toBeLessThanOrEqual(1081) // the previous hand table scored 11,205
+    expect(total).toBeLessThanOrEqual(369) // the previous hand tables scored 11,205, then 1,081
     // None of the residual is reachable from real single-line text: a lone combining
     // mark, a codepoint this engine's Unicode tables predate, a bidi format control,
     // or one half of a flag pair (the PAIR is one cluster and measures 2 correctly).
-    expect(cat.marks + cat.unassigned + cat.format + cat.regionalIndicator).toBeGreaterThanOrEqual(total - 17)
-    expect(cat.other).toBeLessThanOrEqual(17)
+    expect(cat.marks + cat.unassigned + cat.format + cat.regionalIndicator).toBeGreaterThanOrEqual(total - 3)
+    expect(cat.other).toBeLessThanOrEqual(3)
   }, 30_000)
 })
 

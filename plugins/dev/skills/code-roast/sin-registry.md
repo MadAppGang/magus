@@ -41,7 +41,7 @@
 | GO-20 | Type Assertion Without ok Check | CRIME | `go vet`; `gocritic` typeAssertChain | "You asserted the type without checking ok. Bold choice. Your panic handler will appreciate the business." | Use val, ok := x.(Type) pattern |
 | GO-21 | WaitGroup.Add After Go | CAPITAL | `go vet` govet/waitgroup | "You called wg.Add inside the goroutine. Your WaitGroup has given up waiting. Honestly, relatable." | Call wg.Add BEFORE launching the goroutine |
 
-**Primary tool**: `golangci-lint run ./... --out-format json`
+**Primary tool**: `golangci-lint run --output.json.path=stdout ./...`
 
 ---
 

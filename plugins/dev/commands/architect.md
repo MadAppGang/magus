@@ -59,7 +59,9 @@ allowed-tools: Agent, AskUserQuestion, Bash, Read, Skill, Glob, Grep, EnterPlanM
     | Single component, clear pattern | LOW | "add caching to the user service" |
     | Well-understood domain | LOW | "standard CRUD API for products" |
 
-    Score: Count HIGH signals. 0 = Simple, 1 = Moderate, 2+ = Complex.
+    Score: HIGH = 2 points, MEDIUM = 1, LOW = 0; sum every signal present.
+    0 = Simple, 1-2 = Moderate, 3+ = Complex. So one MEDIUM or one HIGH is Moderate,
+    and one HIGH plus one MEDIUM, or two HIGH, is Complex.
 
     **Step 3: Route based on assessment**
 
@@ -244,8 +246,10 @@ allowed-tools: Agent, AskUserQuestion, Bash, Read, Skill, Glob, Grep, EnterPlanM
       - **Delegation** — when you dispatch to the `dev:architect` agent, pass the resolved
         catalog path in the prompt so the agent does not re-discover it.
 
-      **Do not duplicate what already exists.** For Bun-specific layering, defer to
-      `dev:bunjs-architecture`. For how these patterns fail in review, the maintained
+      **Do not duplicate what already exists.** For Bun-specific layering, defer to the
+      `bunjs` plugin when it is installed (`bunjs:bun` routes to its `project-setup` skill); if
+      it is not, say once that `claude plugin install bunjs@magus` adds it. For how these
+      patterns fail in review, the maintained
       inventory is `dev:code-roast`'s `sin-registry.md` (`UNI-01`…`UNI-15`). Cite those IDs
       rather than restating them.
     </architecture_catalog>

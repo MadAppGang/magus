@@ -71,11 +71,7 @@ Detection follows a priority order from most explicit to most inferred:
 {
   "pluginSettings": {
     "dev": {
-      "stack": ["react-typescript", "golang"],
-      "features": {
-        "testing": "vitest",
-        "api": "rest"
-      }
+      "stack": ["react-typescript", "golang"]
     }
   }
 }
@@ -491,16 +487,16 @@ golang:
     purpose: "Run tests"
 
 dingo:
-  - command: "dingo fmt"
-    purpose: "Format Dingo source files"
-  - command: "dingo go"
-    purpose: "Transpile Dingo to Go"
-  - command: "go vet ./.dingo/..."
-    purpose: "Static analysis on generated Go"
-  - command: "golangci-lint run ./.dingo/..."
-    purpose: "Comprehensive linting on generated Go"
-  - command: "go test ./.dingo/..."
-    purpose: "Run tests on generated Go"
+  - command: "dingo fmt --check ."
+    purpose: "Check Dingo formatting (plain `dingo fmt` only prints to stdout)"
+  - command: "dingo build -o /dev/null <one package with .dingo files, e.g. ./cmd/app>"
+    purpose: "Transpile the whole workspace into build/ and make it a module (go.mod plus the _test.go copies); dingo build refuses ./..."
+  - command: "cd build && go vet ./..."
+    purpose: "Static analysis on the generated Go; catches type errors in packages the build did not name"
+  - command: "cd build && go test ./..."
+    purpose: "Run tests against the generated Go"
+  - command: "dingo lint ./..."
+    purpose: "Advisory only: prints warnings, always exits 0, never fails the check"
 
 rust:
   - command: "cargo fmt --check"
@@ -566,11 +562,26 @@ are then **derived from the filesystem** — a directory with `SKILL.md` is a sk
 without is a category — rather than recalled from a table.
 
 **Two trees, one rule set.** A plugin's reference manuals live in `knowledge/`, not
-`skills/`: `${CLAUDE_PLUGIN_ROOT}/knowledge/backend/golang.md`,
+`skills/`: `${CLAUDE_PLUGIN_ROOT}/knowledge/backend/python.md`,
 `${CLAUDE_PLUGIN_ROOT}/knowledge/frontend/react-typescript.md`, and so on. The category
 names mirror `skills/` exactly, so R1-R9 apply to both without a second clause. Enumerate
 both when building a loadout — a stack-gated rule that only walks `skills/` now finds
 almost nothing, because most of what it used to name is knowledge.
+
+**A Bun stack reads the `bunjs` plugin, not dev.** dev detects Bun (a `bun.lock` or
+`bun.lockb` with no frontend framework → `bunjs`) and runs its quality commands, but ships no
+Bun guidance: that lives in the `bunjs` plugin. If it is installed, start from its index,
+`bunjs:bun`, which names the one or two skill files the task needs (loadout rule R9 routes
+agents the same way). If it is not, say once that `claude plugin install bunjs@magus` adds it,
+then continue with the stack-neutral material.
+
+**Go and Dingo read their own plugins, the same way.** dev detects Go (`go.mod` → `golang`)
+and Dingo (`.dingo` files → `dingo`) and runs their quality commands, but ships no Go or
+Dingo guidance. For Go, the `go` plugin's knowledge base is read by path: its
+`knowledge/roles/<role>/` files per agent and `knowledge/references/` for a topic (R9). For
+Dingo, read the `dingo:dingo-developer` skill. If the plugin is not installed, say once that
+`claude plugin install go@magus` (or `dingo@magus`) adds it, then continue with the
+stack-neutral material.
 
 Why the function is gone rather than merely moved:
 
@@ -709,7 +720,7 @@ project/
 ├── go.mod
 ├── cmd/api/main.dingo
 ├── internal/handlers/user.dingo
-└── .dingo/                  # generated .go files, gitignored
+└── build/                   # dingo build's shadow directory, gitignored
 ```
 
 ```json

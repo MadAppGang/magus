@@ -67,8 +67,8 @@ Two shapes to expect when enumerating `knowledge/`:
 | `knowledge/<cat>/<topic>.md` | the topic |
 | `knowledge/<cat>/<topic>/<ref>.md` | that topic's supporting reference, in a same-named directory beside it |
 
-`plugins/dev/knowledge/backend/golang.md` and `plugins/dev/knowledge/backend/golang/performance.md`
-are the worked case. Push the topic; the topic points at its own references.
+`plugins/dev/knowledge/frontend/state-management.md` and
+`plugins/dev/knowledge/frontend/state-management/tanstack-query.md` are the worked case. Push the topic; the topic points at its own references.
 
 So the detector's procedure is:
 
@@ -91,8 +91,8 @@ stack. A directory whose name matches nothing is stack-neutral within its catego
 
 | Directory name | Gate |
 |---|---|
-| exactly a stack id (`golang`, `rust`, `python`, `bunjs`, `dingo`, `react-typescript`, `vue-typescript`) | that id ∈ `repo.stacks` |
-| a stack id followed by `-` (`bunjs-production`, `bunjs-apidog`, `bunjs-architecture`) | that id ∈ `repo.stacks` |
+| exactly a stack id (`golang`, `rust`, `python`, `dingo`, `react-typescript`, `vue-typescript`) | that id ∈ `repo.stacks` |
+| a stack id followed by `-` (`golang-…`, `python-…`) | that id ∈ `repo.stacks` |
 | a framework or library name (`tailwindcss`, `shadcn-ui`, `tanstack-router`, `css-modules`) | that name appears in `repo.frameworks`, or in the repo's dependency manifest |
 | anything else (`api-design`, `error-handling`, `state-management`, …) | stack-neutral; category rule alone decides |
 
@@ -153,7 +153,7 @@ smaller surface than a row per skill in a generated one.
 |---|---|---|---|
 | **R1** | `core/**` | architect, developer, frontend-developer, qa-engineer, reviewer, debugger, devops | Universal and stack-independent. Lowest rank — it is what a spare cap slot gets, never what fills the first one. |
 | **R2** | `architecture/**` | **architect** always; **reviewer** when `task.kind` is `refactor` or `new_subsystem` | The router at `SKILL.md` picks *which* file. Never push the router itself — push the leaf it routes to (a style file, a GoF category, `selection.md`, `refactoring.md`, `adr.md`). Pushing the index spends a slot on navigation. |
-| **R3** | `backend/**` | developer, qa-engineer, reviewer, debugger; devops gets `bunjs-production` only, as a loadout path | Filtered by `repo.stacks` per the name rule above. **Never load `python` for a Go repo** — a wrong-language skill is worse than none, because it reads as authoritative. |
+| **R3** | `backend/**` | developer, qa-engineer, reviewer, debugger | Filtered by `repo.stacks` per the name rule above. **Never load `python` for a Go repo** — a wrong-language skill is worse than none, because it reads as authoritative. |
 | **R4** | `frontend/**` | frontend-developer, developer, reviewer | Filtered by framework. `design-system-guardrails` is **mandatory** whenever `task.surfaces` includes `frontend`, whatever `kind` says. |
 | **R5** | `discipline/**` — splits by file, never as a block | `systematic-debugging` → debugger. `test-driven-development` + `verification-before-completion` → qa-engineer, developer. `worktree-lifecycle` + `task-management` → **orchestrator only** | The two halves serve different readers. Handing an implementer the worktree lifecycle invites it to manage the workspace it is running inside. |
 | **R6** | `planning/**` (`brainstorming`) | architect, spec-writer | |
@@ -169,9 +169,9 @@ A disabled plugin's paths do not resolve for the user, so naming one is a dead p
 
 | Plugin | Agents | Gate |
 |---|---|---|
-| `bunjs` | developer, qa-engineer, devops | `bunjs` ∈ `repo.stacks` |
-| `go` | developer, architect, qa-engineer, reviewer — each via its own `knowledge/roles/<role>/` directory | `golang` ∈ `repo.stacks` |
-| `dingo` | developer | `dingo` ∈ `repo.stacks` |
+| `bunjs` | developer → `skills/bun/SKILL.md` (its index names the one or two skill files the task needs); qa-engineer → `skills/testing/SKILL.md`; devops → `skills/production/SKILL.md` | `bunjs` ∈ `repo.stacks` |
+| `go` | developer, architect, qa-engineer, reviewer — each via its own `knowledge/roles/<role>/` directory, plus one `knowledge/references/<topic>.md` when the task names a topic (error handling, concurrency, performance) | `golang` ∈ `repo.stacks` |
+| `dingo` | developer → `skills/dingo-developer/SKILL.md` | `dingo` ∈ `repo.stacks` |
 | `code-search` | debugger, reviewer, architect | always — read-only investigation helps every one of them |
 | `terminal` | developer, qa-engineer, devops | its MCP server appears in `mcp.servers` |
 | `browser-use` | frontend-developer | its server appears in `mcp.servers` **and** `task.surfaces` includes `frontend` |
@@ -180,6 +180,16 @@ A disabled plugin's paths do not resolve for the user, so naming one is a dead p
 | `madbench` | developer | the target repo is a bench harness |
 | `setup`, `stats`, `statusline` | none | workflow tooling, not implementation guidance |
 | `image`, `video-editing` | none | a different domain; excluded unless `task.brief` names them |
+
+**dev ships no Bun, Go or Dingo manual, knowledge file or guidance of its own.** Its
+stack-neutral files point at the plugin instead of carrying a per-stack section, and
+`code-roast` keeps only per-language *detection* patterns. Everything that teaches those
+stacks lives in the `bunjs`, `go` and `dingo` plugins, so a repo in one of them without its plugin
+gets only the stack-neutral material. When the stack is in `repo.stacks` and its plugin is
+not installed or not enabled, add one `warnings` entry naming the command, for example
+`go plugin not installed — "claude plugin install go@magus" adds the Go guidance`
+(`bunjs@magus` for `bunjs`, `dingo@magus` for `dingo`). The orchestrator repeats it to the
+user once and continues; it never blocks a run.
 
 The `go` row is the shape to copy for any future language plugin: it already partitions its
 own knowledge by role at `<go root>/knowledge/roles/{architect,developer,tester,code-reviewer}/`,
@@ -257,7 +267,7 @@ failed auto-update.
 | `ui_change` | `frontend/design-system-guardrails` **mandatory**; the `designer` plugin for frontend | — |
 | `refactor` | `architecture/references/refactoring.md` for architect and reviewer | — |
 | `docs` | `documentation-standards` for the writing agent — **unless it is `docs`, which already preloads it, and it usually is**, so in practice this adds the repo's own documentation conventions (a discovered project skill, `CONTRIBUTING.md`) or the knowledge the document describes (`api-design.md` for an API reference) instead | most stack skills — a docs task does not need `error-handling` |
-| `ops` | `backend/bunjs-production` and stack-specific ops knowledge for devops | — |
+| `ops` | stack-specific ops knowledge for devops — for a Bun repo, R9's `bunjs` production skill | — |
 | `unknown` | nothing | nothing — loadouts fall back to repo-derived entries only, and `task.confidence` is `low` |
 
 **Two rules that keep this honest:**
@@ -284,7 +294,7 @@ judgement, not the inventory.
 | `qa-engineer` | yes | R1 R3 R5 R9 | Declares no `skills:` at all, so its whole loadout is dynamic. Must not receive implementation detail that would let it write tests against the implementation rather than the contract. |
 | `reviewer` | yes | R1 R2 R3 R4 R7 | Declares no `skills:` today. |
 | `debugger` | yes | R1 R3 R5 R9 | Preloads `dev:systematic-debugging` — do not repeat it. |
-| `devops` | yes | R1 R3 R7 R9 | Declares no `skills:`; R3 gives it `bunjs-production` as a path. |
+| `devops` | yes | R1 R7 R9 | Declares no `skills:`; its stack's ops knowledge comes from R9 (`bunjs` production for a Bun repo). |
 | `docs` | yes | R7 | Preloads `dev:documentation-standards` — do not repeat it. What R7 leaves it is the repo's own documentation conventions and the knowledge behind the document being written. |
 | `researcher` | minimal | R1 | Web-facing. Repo skills rarely help; one or zero entries is the normal outcome. |
 | `spec-writer` | minimal | R6 | Already reads `context.json` directly. |

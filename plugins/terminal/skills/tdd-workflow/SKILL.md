@@ -104,7 +104,7 @@ This example shows the full loop from watcher start through a single RED-to-GREE
 mcp__plugin_terminal_mux__start-and-watch({
   slot: 1,
   command: "bun test --watch",
-  pattern: "press a to rerun|Waiting for file changes|Waiting\\.\\.\\.",
+  pattern: "Ran [0-9]+ tests? across",
   mode: "medium",
   timeout: 30
 }) → WatchResult  // confirms watcher is initialized and idle

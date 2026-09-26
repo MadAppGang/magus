@@ -27,10 +27,13 @@ code is clean and idiomatic. All Go syntax remains valid in `.dingo` files.
 **CLI commands:**
 
 ```bash
-dingo build          # Transpile + compile binary
-dingo run main.dingo # Transpile + run directly
-dingo go             # Generate .go files only (CI/CD)
+dingo build ./cmd/app  # Transpile + compile; explicit packages only, not ./...
+dingo run main.dingo   # Transpile + run directly
+dingo go ./...         # Generate .go files only, into build/ (no go.mod there)
 ```
+
+Build directory, checking a project, CI, editor setup and transpile errors:
+`references/build-and-tooling.md` (relative to this file).
 
 ---
 
@@ -1298,7 +1301,7 @@ match status {
 **AP-3: `MustOk()`/`MustSome()` without a prior check**
 
 ```dingo
-// WRONG — panics at runtime if IsErr
+// WRONG — panics at runtime if IsNone
 user := findUser(id).MustSome()
 
 // CORRECT

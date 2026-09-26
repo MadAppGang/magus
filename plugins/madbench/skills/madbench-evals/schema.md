@@ -458,9 +458,9 @@ models:
   fast: haiku-4.5
   smart: opus-4.8
 metrics: [{name: cost, source: session.cost, aggregate: sum, unit: usd, better: lower}]
-control:
+guard_changes:
   baseline: bare
-  varies: [CLAUDE.md]
+  allow: [CLAUDE.md]
 runs:
   - name: fast-greedy
     params: {model: fast, temp: 0.0}
@@ -469,7 +469,7 @@ runs:
   - {}                               # the bench as-is
 ```
 
-Known keys are exactly `description`, `bench`, `models`, `metrics`, `control`, `runs`.
+Known keys are exactly `description`, `bench`, `models`, `metrics`, `guard_changes`, `runs`.
 **Anything else is an unknown-field error** — `matrix:` and `variations:` are not part of the
 format.
 
@@ -481,8 +481,8 @@ format.
 | duplicate-name | two entries resolving to the same name |
 | undeclared param | a run param the bench does not declare in `params:` |
 | eval-runs-eval | a `bench:` pointing at another Eval file |
-| unknown baseline | `control.baseline:` naming no declared run |
-| bad varies pattern | empty, absolute, or escaping the staged root |
+| unknown baseline | `guard_changes.baseline:` naming no declared run |
+| bad `allow:` pattern | empty, absolute, or escaping the staged root |
 
 An Eval's `metrics:` **replaces** the bench's own for all runs rather than merging — one
 declaration across the runs is what makes their numbers comparable.
@@ -510,10 +510,10 @@ check `value:`/`inline:`/`transform:`/`args:`/`config:` recursively including ne
 is a load error; an incoming param the bench does not declare is also a load error. The
 declaration IS the interface, so this catches typos on both sides.
 
-### `control:` — what the runs may differ by
+### `guard_changes:` — what the runs may differ by
 
 An Eval whose runs differ in their **instructions** is only interpretable if everything else
-is identical. `control:` declares that claim so madbench can check it.
+is identical. `guard_changes:` declares that claim so madbench can check it.
 
 Before any sandbox is provisioned or any model billed, madbench walks each run's staged
 inputs — every scenario's `testdata:` root, `harness_config.agent_env`,
@@ -521,12 +521,12 @@ inputs — every scenario's `testdata:` root, `harness_config.agent_env`,
 position) and `harness_config.plugins` (each plugin folder's whole tree plus marketplace and
 registry metadata) — diffs them against the baseline, and:
 
-- **reports** the changed paths and byte delta, in the console's `── CONTROL` section and
-  under the report's `control` key;
-- **stops the Eval** when a run differs somewhere `varies:` does not cover, naming the path.
+- **reports** the changed paths and byte delta, in the console's `── GUARD ──` section and
+  under the report's `guard_changes` key;
+- **stops the Eval** when a run differs somewhere `allow:` does not cover, naming the path.
   Nothing runs, nothing is spent;
 - **names a declaration that covered nothing** while the runs plainly differed — the shape of
-  a typo, since `varies: [plugin]` loads clean and matches nothing.
+  a typo, since `allow: [plugin]` loads clean and matches nothing.
 
 The diff is reported with or without the block; only the guard is opt-in. `baseline:` defaults
 to the **first** `runs:` entry. Runs that stage the same root are not audited.

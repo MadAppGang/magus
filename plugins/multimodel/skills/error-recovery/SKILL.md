@@ -22,7 +22,7 @@ This skill provides battle-tested patterns for:
 - **User cancellation** (graceful Ctrl+C handling)
 - **Missing tools** (claudish not installed)
 - **Out of credits** (payment/quota errors)
-- **Retry strategies** (exponential backoff, max retries)
+- **Re-running a failed model** (only when the user chooses it)
 
 With proper error recovery, workflows become **resilient** and **production-ready**.
 
@@ -123,7 +123,7 @@ Result:
   - DeepSeek: Success ✓
 
 Successful: 4/5 models (80%)
-dev:aggregator runs at N ≥ 1 ✓
+dev:aggregator runs (N ≥ 2) ✓
 
 Action:
   Proceed with consolidation using 4 reviews
@@ -192,130 +192,37 @@ Network Errors:
   - Quota exhausted for time window
 ```
 
-**Recovery Strategies by Error Type:**
+**Where the cause comes from.** You never see an HTTP status directly: every model call
+goes through the claudish MCP tools, and claudish owns transport, routing and credentials.
+Read the cause from what claudish reports:
 
-**401 Unauthorized:**
+- `team`: the settled `status` marks the slot FAILED; `errors/<slot>.log` in the session
+  directory holds the upstream error body.
+- `create_session`: a `failed` or `timeout` event; call `get_diagnostics(session_id)` for
+  stderr, upstream error bodies and the resolved model chain.
+- Credentials, billing or reachability in doubt (401, 402, "credits", "quota"): call
+  `preflight(models=[...])`. It reports which provider would serve each model, whether that
+  route is metered, and whether it answers now. It is a diagnostic for this moment, never a
+  step before a run.
 
-> **Pattern 0 guard:** If the user requested a specific model, apply Pattern 0 (stop and report with options) instead of auto-fallback. The fallback below applies only to automated pipelines or when the user pre-authorized graceful degradation.
+Never check `OPENROUTER_API_KEY` or call a provider with `curl` yourself. Keys and routes are
+claudish's; a copy of that logic here goes stale and routes around the real bug.
 
-```
-Detection:
-  API returns 401 status code
+**Recovery is the same for every cause: no automatic retry.** claudish-usage states the rule
+for every caller: a failed slot is shown as FAILED, the run continues with the survivors,
+and nothing is retried or substituted on its own. A model that will not route is a claudish
+bug to report (Pattern 8), not something to loop around.
 
-Recovery:
-  1. Log: "API authentication failed (401)"
-  2. Check if OPENROUTER_API_KEY is set:
-     if [ -z "$OPENROUTER_API_KEY" ]; then
-       notifyUser("OpenRouter API key not found. Set OPENROUTER_API_KEY in .env")
-     else
-       notifyUser("Invalid OpenRouter API key. Check .env file")
-     fi
-  3. Skip all external models
-  4. Fallback to embedded Claude only
-  5. Notify user:
-     "⚠️ API authentication failed. Falling back to embedded Claude.
-      To fix: Add valid OPENROUTER_API_KEY to .env file."
+| Cause (from the failure text) | What to tell the user | Their options |
+|---|---|---|
+| 401 / missing or invalid key | The provider rejected the credentials; name the model | Fix the key as claudish documents, then re-run that model |
+| 402 / credits / quota | The account behind that route is out of credit (Pattern 6) | Add credit, pick another model, or skip it |
+| 5xx | The provider failed on its side | Re-run that model once, pick another, or skip it |
+| network error | The route was unreachable; say whether `preflight` reaches it now | Re-run that model once, or skip it |
+| 429 / rate limited | Rate limited; quote any wait the error body names | Wait and re-run that model, or skip it |
 
-No retry (authentication won't fix itself)
-```
-
-**500 Internal Server Error:**
-
-```
-Detection:
-  API returns 500 status code
-
-Recovery:
-  1. Log: "Model service error (500): grok"
-  2. Wait 5 seconds (give service time to recover)
-  3. Retry ONCE
-  4. If retry succeeds: Continue normally
-  5. If retry fails: Skip this model, continue with others
-
-Example:
-  try {
-    result = await claudish(model, prompt);
-  } catch (error) {
-    if (error.status === 500) {
-      log("500 error, waiting 5s before retry...");
-      await sleep(5000);
-
-      try {
-        result = await claudish(model, prompt); // Retry
-        log("Retry succeeded");
-      } catch (retryError) {
-        log("Retry failed, skipping model");
-        skipModel(model);
-        continueWithRemaining();
-      }
-    }
-  }
-
-Max retries: 1 (avoid long delays)
-```
-
-**Network Errors:**
-
-```
-Detection:
-  - Connection timeout
-  - ECONNREFUSED
-  - ETIMEDOUT
-  - DNS resolution failure
-
-Recovery:
-  Retry up to 3 times with exponential backoff:
-
-  async function retryWithBackoff(fn, maxRetries = 3) {
-    for (let i = 0; i < maxRetries; i++) {
-      try {
-        return await fn();
-      } catch (error) {
-        if (!isNetworkError(error)) throw error;  // Not retriable
-        if (i === maxRetries - 1) throw error;     // Max retries reached
-
-        const delay = Math.pow(2, i) * 1000;  // 1s, 2s, 4s
-        log(`Network error, retrying in ${delay}ms (attempt ${i+1}/${maxRetries})`);
-        await sleep(delay);
-      }
-    }
-  }
-
-  result = await retryWithBackoff(() => claudish(model, prompt));
-
-Rationale: Network errors are often transient (temporary)
-```
-
-**429 Rate Limiting:**
-
-```
-Detection:
-  API returns 429 status code
-  Response may include Retry-After header
-
-Recovery:
-  1. Check Retry-After header (seconds to wait)
-  2. If present: Wait for specified time
-  3. If not present: Wait 60s (default)
-  4. Retry ONCE after waiting
-  5. If still rate limited: Skip model
-
-Example:
-  if (error.status === 429) {
-    const retryAfter = error.headers['retry-after'] || 60;
-    log(`Rate limited. Waiting ${retryAfter}s before retry...`);
-    await sleep(retryAfter * 1000);
-
-    try {
-      result = await claudish(model, prompt);
-    } catch (retryError) {
-      log("Still rate limited after retry. Skipping model.");
-      skipModel(model);
-    }
-  }
-
-Note: Respect Retry-After header (avoid hammering API)
-```
+A re-run happens only when the user picks it: one new `team` or `create_session` call for
+the same model (Pattern 7). When the user named the model, Pattern 0 applies first.
 
 **Graceful Degradation for All API Failures:**
 
@@ -373,15 +280,19 @@ log(`Failed: ${failed.length}/4`);
 **Decision Logic:**
 
 ```
-If N ≥ 1 successful:
-  → Dispatch dev:aggregator with the N review files (at N = 1 it passes the
-    single review through with a verdict line)
-  → Notify user about failures, and offer to retry them
+If N ≥ 2 successful:
+  → Dispatch dev:aggregator with the N review files
+  → Notify user about failures, and offer to re-run them (Pattern 7)
+
+If N = 1 successful:
+  → Use that review as the result, with its own verdict; one review needs no
+    aggregator
+  → Notify user about failures, and offer to re-run them (Pattern 7)
 
 If N = 0:
   → Nothing to consolidate
   → Offer user choice:
-    1. Retry failures
+    1. Re-run the failed models (Pattern 7)
     2. Abort workflow
     3. Proceed with embedded Claude only (not when the user named the models — Pattern 0)
 
@@ -616,7 +527,7 @@ Step 2: Notify User with Installation Instructions
 
    To enable multi-model review:
    1. Install: npm install -g claudish
-   2. Configure: Set OPENROUTER_API_KEY in .env
+   2. Configure a provider key as the claudish documentation describes
    3. Re-run this command
 
    For now, continuing with the internal reviewer only."
@@ -670,12 +581,11 @@ Example error messages:
 
 ```
 Step 1: Detect Credit Exhaustion
-  if (error.status === 402 || error.message.includes('credits')) {
-    handleCreditExhaustion();
-  }
+  The failure text (errors/<slot>.log for team, get_diagnostics for create_session)
+  names 402, "credits", "quota" or "billing".
 
 Step 2: Log Event
-  log("OpenRouter credits exhausted");
+  log("Provider credits exhausted for {model}");
 
 Step 3: Notify User
   "⚠️ OpenRouter credits exhausted. External models unavailable.
@@ -699,111 +609,30 @@ Benefits:
   - Clear instructions for adding credits
 ```
 
-**Proactive Credit Check (Advanced):**
-
-```
-Before expensive multi-model operation:
-
-Step 1: Check OpenRouter Credit Balance
-  Bash: curl -H "Authorization: Bearer $OPENROUTER_API_KEY" \
-        https://openrouter.ai/api/v1/auth/key
-
-  Response: { "data": { "usage": 1.23, "limit": 10.00 } }
-
-Step 2: Estimate Cost
-  estimatedCost = 0.008  // From cost estimation pattern
-
-Step 3: Check if Sufficient Credits
-  remainingCredits = 10.00 - 1.23 = 8.77
-  if (estimatedCost > remainingCredits) {
-    warnUser("Insufficient credits ($8.77 remaining, $0.008 needed)");
-  }
-
-Benefits:
-  - Warn before operation (not after failure)
-  - User can add credits first (avoid wasted time)
-```
+**Checking a route before a large run:** when the user asks whether their models will run,
+or a previous run failed on billing, call `preflight(models=[...])`. It reports, per model,
+the provider that would serve it, whether that route is metered, and whether it answers
+now. Do not query a provider's balance endpoint yourself.
 
 ---
 
-### Pattern 7: Retry Strategies
+### Pattern 7: Re-running a Failed Model
 
-**Exponential Backoff:**
-
-```
-Retry with increasing delays to avoid overwhelming services:
-
-Retry Schedule:
-  1st retry: Wait 1 second
-  2nd retry: Wait 2 seconds
-  3rd retry: Wait 4 seconds
-  Max retries: 3
-
-Formula: delay = 2^attempt × 1000ms
-
-async function retryWithBackoff(fn, maxRetries = 3) {
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    try {
-      return await fn();
-    } catch (error) {
-      if (!isRetriable(error)) {
-        throw error;  // Don't retry non-retriable errors
-      }
-
-      if (attempt === maxRetries - 1) {
-        throw error;  // Max retries reached
-      }
-
-      const delay = Math.pow(2, attempt) * 1000;
-      log(`Retry ${attempt + 1}/${maxRetries} after ${delay}ms`);
-      await sleep(delay);
-    }
-  }
-}
-```
-
-**When to Retry:**
+Nothing here retries on its own. A re-run is an option you offer, and it happens only when
+the user chooses it.
 
 ```
-Retriable Errors (temporary, retry likely to succeed):
-  ✓ Network errors (ETIMEDOUT, ECONNREFUSED)
-  ✓ 500 Internal Server Error (service temporarily down)
-  ✓ 503 Service Unavailable (overloaded, retry later)
-  ✓ 429 Rate Limiting (wait for reset, then retry)
+When the user picks "re-run {model}":
+  1. Start ONE new call for the SAME model — a team run with just that slot, or a
+     create_session — with the same prompt.
+  2. Read its settled status the same way as the first run.
+  3. If it fails again, report both failures with their causes and stop. Offer the
+     remaining options (another model, skip, cancel, report to claudish); do not loop.
 
-Non-Retriable Errors (permanent, retry won't help):
-  ✗ 401 Unauthorized (bad credentials)
-  ✗ 403 Forbidden (insufficient permissions)
-  ✗ 404 Not Found (model doesn't exist)
-  ✗ 400 Bad Request (invalid input)
-  ✗ User cancellation (SIGINT)
-
-Function:
-  function isRetriable(error) {
-    const retriableCodes = [500, 503, 429];
-    const retriableTypes = ['ETIMEDOUT', 'ECONNREFUSED', 'ENOTFOUND'];
-
-    return (
-      retriableCodes.includes(error.status) ||
-      retriableTypes.includes(error.code)
-    );
-  }
-```
-
-**Max Retry Limits:**
-
-```
-Set appropriate max retries by operation type:
-
-Network requests: 3 retries (transient failures)
-API calls: 1-2 retries (avoid long delays)
-User input: 0 retries (ask user to retry manually)
-
-Example:
-  result = await retryWithBackoff(
-    () => claudish(model, prompt),
-    maxRetries: 2  // 2 retries for API calls
-  );
+Never:
+  ❌ wrap a call in a retry loop or an exponential backoff
+  ❌ re-run a different model in place of the one that failed
+  ❌ re-run a 401/402 failure before the credentials or credit are fixed
 ```
 
 ---
@@ -822,7 +651,7 @@ Parameters:
   exit_code (optional):        Process exit code (if CLI fallback was used)
   error_log_path (optional):   Path to full error log file
   session_path (optional):     Path to team session directory
-  additional_context (optional): Extra context (what was attempted, retry count, etc.)
+  additional_context (optional): Extra context (what was attempted, re-runs the user chose, etc.)
   auto_send (optional):        Mention auto-reporting option to user (bool)
 ```
 
@@ -868,7 +697,7 @@ Do NOT offer after:
 
 ```
 1. Model fails (detected by Pattern 0–7)
-2. Handle error per the appropriate pattern (retry, skip, escalate to user)
+2. Handle error per the appropriate pattern (report, skip, escalate to user)
 3. Ask user:
      "Would you like to report this error to claudish developers?
       Data is sanitized before sending."
@@ -918,7 +747,7 @@ Step 2: Error Recovery (error-recovery)
   Model 5: Success ✓
 
 Step 3: Partial Success Strategy (error-recovery)
-  3/5 successful (dev:aggregator runs at N ≥ 1)
+  3/5 successful (dev:aggregator runs at N ≥ 2)
   Proceed with consolidation using 3 reviews
 
 Step 4: Consolidation (multi-model-validation)
@@ -932,31 +761,28 @@ Step 4: Consolidation (multi-model-validation)
 
 **Do:**
 - ✅ Bound the poll loop, and read idle seconds with activity before calling a slot hung
-- ✅ Retry transient errors (network, 500, 503)
-- ✅ Use exponential backoff (avoid hammering services)
-- ✅ Skip non-retriable errors (401, 404, don't retry)
+- ✅ Read the cause from claudish (errors/<slot>.log, get_diagnostics, preflight)
+- ✅ Offer a re-run of a failed model; start it only when the user picks it
 - ✅ Provide graceful degradation (fallback to embedded Claude)
 - ✅ Save partial results on cancellation
 - ✅ Communicate transparently (tell user what failed and why)
-- ✅ Adapt to partial success (dev:aggregator runs at N ≥ 1)
+- ✅ Adapt to partial success (dev:aggregator at N ≥ 2; one review stands alone)
 - ✅ Offer error reporting for provider/stream failures (report_error tool)
 
 **Don't:**
 - ❌ Silently substitute a different model than the user requested (Pattern 0 violation)
 - ❌ Fall back to embedded Claude without asking when user requested a specific model
-- ❌ Retry indefinitely (set max retry limits)
-- ❌ Retry non-retriable errors (waste time on 401, 404)
+- ❌ Retry automatically, in a loop or with backoff (claudish-usage: no retry, no substitution)
+- ❌ Check API keys or provider balances yourself (claudish owns credentials)
 - ❌ Fail entire workflow for single model failure (graceful degradation)
 - ❌ Hide errors from user (be transparent)
 - ❌ Discard partial results on failure (save what succeeded)
 - ❌ Ignore user cancellation (handle SIGINT gracefully)
-- ❌ Retry without delay (use backoff)
 - ❌ Call report_error without user consent (privacy requirement)
 
 **Performance:**
-- Exponential backoff: Prevents overwhelming services
-- Max retries: Limits wasted time (3 retries = <10s overhead)
 - Graceful degradation: Workflows complete despite failures
+- No automatic retry: a failed model costs one call, never a loop
 
 ---
 
@@ -1009,11 +835,11 @@ One team run, 4 slots:
 Results:
   Claude: Success ✓ (2 min)
   Grok: Cancelled ✗ (still running at the poll ceiling)
-  Gemini: 500 error ✗ (retry failed)
+  Gemini: 500 error ✗
   GPT: Success ✓ (3 min)
 
 successful.length = 2 (Claude, GPT)
-2 ≥ 1 ✓ (dev:aggregator runs at N ≥ 1)
+2 ≥ 2 ✓ (dev:aggregator runs at N ≥ 2)
 
 Notify user:
   "2/4 models completed successfully.
@@ -1024,7 +850,7 @@ Notify user:
 
    Failed:
    - Grok: cancelled at the poll ceiling
-   - Gemini: 500 Internal Server Error (retry failed)
+   - Gemini: 500 Internal Server Error
 
    Proceeding with 2-model consensus."
 
@@ -1107,27 +933,23 @@ Solution: Continue with remaining models
 
 ---
 
-**Problem: Retrying 401 errors indefinitely**
+**Problem: A failure is retried in a loop**
 
-Cause: Retrying non-retriable errors
+Cause: A retry loop around a model call. claudish owns transport and routing, and a loop
+here hides the failure instead of reporting it.
 
-Solution: Check if error is retriable
+Solution: Report the failure with its cause and offer a single re-run (Pattern 7).
 
 ```
 ❌ Wrong:
-  for (let i = 0; i < 10; i++) {
-    try { return await fn(); }
-    catch (e) { /* retry all errors */ }
+  for (let i = 0; i < 3; i++) {
+    try { return await run(model); }
+    catch (e) { await sleep(delay); }
   }
 
 ✅ Correct:
-  for (let i = 0; i < 3; i++) {
-    try { return await fn(); }
-    catch (e) {
-      if (!isRetriable(e)) throw e;  // Don't retry 401
-      await sleep(delay);
-    }
-  }
+  Report "{model} failed: {cause from errors/<slot>.log or get_diagnostics}"
+  Offer: re-run once, another model, skip, cancel, report to claudish
 ```
 
 ---
@@ -1153,13 +975,13 @@ Solution: Transparently report all failures
 
 Error recovery ensures resilient workflows through:
 
-- **Timeout handling** (detect, retry with longer timeout, or skip)
-- **API failure recovery** (retry transient, skip permanent)
-- **Partial success strategies** (dev:aggregator runs at N ≥ 1; adapt to failures)
+- **Timeout handling** (detect, then re-run with a longer timeout or skip, as the user chooses)
+- **API failure recovery** (read the cause from claudish, report it, no automatic retry)
+- **Partial success strategies** (dev:aggregator at N ≥ 2; adapt to failures)
 - **User cancellation** (graceful Ctrl+C, save partial results)
 - **Missing tools** (claudish not installed, fallback to embedded)
-- **Out of credits** (402 error, fallback to free models)
-- **Retry strategies** (exponential backoff, max 3 retries)
+- **Out of credits** (402 error, report it; the user picks another model or adds credit)
+- **Re-running a failed model** (one call, only when the user chooses it)
 - **Error reporting** (report_error MCP tool, user consent required)
 
 With these patterns, workflows are **production-ready** and **resilient** to inevitable failures.

@@ -104,8 +104,8 @@ skills:
       Critical enforcement points:
       - **S1 Banned Words**: Zero tolerance for CRITICAL-tier words (AI artifacts, marketing superlatives).
         Max 2 hedge phrases per 1000 words. No throat-clearing openers.
-      - **S2 Sentence Rhythm**: Average 15-20 words. Vary lengths. No 3+ consecutive sentences within ±5 words.
-        Never exceed 40 words in a single sentence.
+      - **S2 Sentence Rhythm**: Average 15-20 words. Vary lengths. At most 3 consecutive sentences within ±5 words.
+        At most one 26-40 word sentence per paragraph. Never exceed 40 words in a single sentence.
       - **S3 Structural Variety**: Vary paragraph openers (code-first, question, scenario, contrast).
         Vary list lengths (not always 3 or 5). Vary section lengths.
       - **S4 Code-to-Prose Ratio**: Target 40%+ code blocks. Every concept needs a code example within 2 paragraphs.
@@ -191,9 +191,10 @@ skills:
           - [ ] Version information included
         </step>
         <step>
-          Anti-slop self-check:
-          - [ ] Zero CRITICAL-tier banned words (AI artifacts, marketing superlatives)
-          - [ ] Sentence rhythm varies (no 3+ consecutive same-length sentences)
+          Anti-slop self-check. Run `bun ${CLAUDE_PLUGIN_ROOT}/skills/documentation-standards/scripts/doc-metrics.ts <each file you wrote>` and fix every
+          point it reports as failed before you finish; then check what it cannot count:
+          - [ ] Zero S1 banned words in any tier (the script lists each with its line)
+          - [ ] Sentence rhythm varies (no run of 4+ sentences within ±5 words)
           - [ ] No throat-clearing openers ("In this section...", "Let's explore...")
           - [ ] Code-to-prose ratio ≥ 40%
           - [ ] Max 3 heading levels, sentence case
@@ -389,6 +390,11 @@ skills:
     <scoring_system>
       **52-Point Quality Checklist:**
 
+      Items marked **(script)** are decided by `bun ${CLAUDE_PLUGIN_ROOT}/skills/documentation-standards/scripts/doc-metrics.ts <file>`: take their
+      points from its `points` array and their evidence from its line numbers. Never recount them
+      by hand — an estimate of a count is what made this score move between runs on an unchanged
+      file. The script decides 12 points; you judge the other 40.
+
       Content Quality (8 points):
       - [ ] No over-marketing (1pt)
       - [ ] No feature hallucination (1pt)
@@ -413,8 +419,8 @@ skills:
       - [ ] Active voice (1pt)
       - [ ] Present tense (1pt)
       - [ ] Second person (1pt)
-      - [ ] Sentence length within Rule S2 (average 15-20 words, none over 40) (1pt)
-      - [ ] Short paragraphs (3-5 sentences) (1pt)
+      - [ ] At most one 26-40 word sentence per paragraph, Rule S2 (1pt) **(script)**
+      - [ ] Short paragraphs, none over 5 sentences (1pt) **(script)**
       - [ ] Plain language (1pt)
       - [ ] No jargon (1pt)
       - [ ] Scannable headings (1pt)
@@ -425,7 +431,7 @@ skills:
       - [ ] Examples work (1pt)
       - [ ] Version compatible (1pt)
       - [ ] Edge cases included (1pt)
-      - [ ] Human reviewed (1pt)
+      - [ ] Limitations stated — the doc says what it does not cover or support (1pt)
       - [ ] No over-confidence (1pt)
       - [ ] Citations provided (1pt)
 
@@ -441,18 +447,21 @@ skills:
       - [ ] Date stamped (1pt)
       - [ ] Version noted (1pt)
       - [ ] Deprecation warnings (1pt)
-      - [ ] Links valid (1pt)
+      - [ ] Local links resolve (1pt) **(script)** — check external links yourself and report a dead one as a finding
 
       Anti-Slop Quality (10 points):
-      - [ ] No CRITICAL banned words — AI artifacts, marketing superlatives (2pt)
-      - [ ] No MEDIUM banned words — corporate jargon, filler phrases (1pt)
-      - [ ] No throat-clearing openers — "In this section...", "Let's explore..." (1pt)
-      - [ ] Sentence rhythm varies — no 3+ same-length consecutive sentences (1pt)
-      - [ ] Average sentence length 15-20 words, none exceeds 40 (1pt)
+      - [ ] No CRITICAL banned words — S1's AI-artifact tier (2pt) **(script)**
+      - [ ] No MEDIUM banned words — corporate jargon, filler phrases (1pt) **(script)**
+      - [ ] No throat-clearing openers — "In this section...", "Let's explore..." (1pt) **(script)**
+      - [ ] Sentence rhythm varies — no run of 4+ sentences within ±5 words (1pt) **(script)**
+      - [ ] Average sentence length 15-20 words, none exceeds 40 (1pt) **(script)**
       - [ ] Structural variety — paragraph openers, list lengths, section lengths vary (1pt)
-      - [ ] Code-to-prose ratio ≥ 40% (1pt)
-      - [ ] Heading discipline — max 3 levels, sentence case, one H2 per 200-400 words (1pt)
-      - [ ] Hedging limited — max 2 hedge phrases per 1000 words (1pt)
+      - [ ] Code-to-prose ratio ≥ 40% (1pt) **(script)**
+      - [ ] Heading discipline — max 3 levels, sentence case, one H2 per 200-400 words (1pt) **(script)**
+      - [ ] Hedging limited — max 2 hedge phrases per 1000 words (1pt) **(script)**
+
+      The script's HIGH-tier hits (marketing superlatives, difficulty dismissers) are the
+      evidence for Content's "No over-marketing" point, which stays yours to judge.
     </scoring_system>
   </critical_constraints>
 
@@ -476,6 +485,10 @@ skills:
           - For tutorials: Check code examples exist
         </step>
         <step>Establish ground truth for validation</step>
+        <step>
+          Run `bun ${CLAUDE_PLUGIN_ROOT}/skills/documentation-standards/scripts/doc-metrics.ts <file> [more files]` on every doc in scope and keep its JSON.
+          Phases 4 and 5 take the **(script)** points from it.
+        </step>
       </steps>
     </phase>
 
@@ -530,8 +543,7 @@ skills:
           - Active voice usage (search for passive: "is/are/was/were + past participle")
           - Present tense usage
           - Second person ("you" vs "the user")
-          - Sentence length (count words, average < 25)
-          - Paragraph length (3-5 sentences)
+          - Long sentences and paragraph length: from the script's `points`, not a count of your own
           - Plain language (undefined acronyms)
         </step>
         <step>Calculate style score (0-8)</step>
@@ -542,35 +554,20 @@ skills:
       <objective>Score anti-slop quality (10 points)</objective>
       <steps>
         <step>
-          Scan for banned words (Rules S1):
-          - CRITICAL tier: AI artifacts ("As an AI", "I'd be happy to"), marketing superlatives ("revolutionary", "seamlessly")
-          - HIGH tier: difficulty dismissers ("simply", "just", "obviously")
-          - MEDIUM tier: corporate jargon ("leverage", "utilize", "streamline")
-          - Structural overhead: throat-clearing openers ("In this section...", "Let's explore...")
-          - Count hedge phrases per 1000 words (max 2 allowed)
-        </step>
-        <step>
-          Check sentence rhythm (Rule S2):
-          - Calculate average sentence length (target: 15-20 words)
-          - Find sentences exceeding 40 words
-          - Detect 3+ consecutive sentences within ±5 words of each other
+          Take banned words (S1, every tier), hedges, sentence rhythm and length (S2), code ratio (S4)
+          and heading discipline (S5) from the script's `metrics` and `points`. Copy each located
+          violation into the findings with its `file:line`. Read the flagged lines before you
+          report them: a banned word inside a quotation of someone else's text is not the author's.
         </step>
         <step>
           Check structural variety (Rule S3):
           - Paragraph opener patterns (all same structure = violation)
-          - List length patterns (all 3 or 5 items = suspicious)
+          - List length patterns (all 3 or 5 items = suspicious; the script's `listSizes` has them)
           - Section length variance (all same length = violation)
         </step>
         <step>
-          Check code-to-prose ratio (Rule S4):
-          - Count code block lines vs total lines
-          - Target: ≥ 40% code coverage
-        </step>
-        <step>
-          Check heading discipline (Rule S5):
-          - Count heading levels used (max 3: H1, H2, H3)
-          - Check heading case (sentence case, not Title Case)
-          - Verify H2 frequency (one per 200-400 words)
+          The script's title-case heading hits are candidates: a proper noun is not a violation.
+          Clear a false hit in your findings rather than failing the point on it.
         </step>
         <step>Calculate anti-slop score (0-10)</step>
       </steps>

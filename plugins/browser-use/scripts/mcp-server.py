@@ -102,6 +102,7 @@ if "--test" in sys.argv:
 
 import asyncio
 import atexit
+import base64
 import glob
 import importlib
 import json
@@ -756,6 +757,31 @@ _CUSTOM_TOOLS: list[types.Tool] = [
         },
     ),
     types.Tool(
+        name="browser_save_screenshot",
+        description=(
+            "Capture the live page the other browser tools are driving and WRITE it "
+            "to a PNG file. browser_screenshot only shows the image to the model; "
+            "use this when a file on disk is needed (pixel diffs, design references, "
+            "attachments). Captures via CDP Page.captureScreenshot. Returns the path, "
+            "byte count and pixel size."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "output_path": {
+                    "type": "string",
+                    "description": "Absolute path of the .png file to write. Parent directories are created.",
+                },
+                "full_page": {
+                    "type": "boolean",
+                    "description": "Capture the whole scrollable page instead of the viewport.",
+                    "default": False,
+                },
+            },
+            "required": ["output_path"],
+        },
+    ),
+    types.Tool(
         name="browser_doctor",
         description=(
             "Preflight diagnosis of this plugin's environment. Reports the Python "
@@ -1161,6 +1187,8 @@ class MagusBrowserServer(BrowserUseServer):
             return await self._handle_keyboard(arguments)
         elif tool_name == "browser_focus":
             return await self._handle_focus(arguments)
+        elif tool_name == "browser_save_screenshot":
+            return await self._handle_save_screenshot(arguments)
         elif tool_name == "browser_doctor":
             return await self._handle_doctor(arguments)
         elif tool_name == "browser_start_cloud_session":
@@ -1209,7 +1237,7 @@ class MagusBrowserServer(BrowserUseServer):
                 "cookies": cookies,
             }
 
-            out = Path(output_path)
+            out = Path(output_path).expanduser()
             out.parent.mkdir(parents=True, exist_ok=True)
             out.write_text(json.dumps(export_data, indent=2))
 
@@ -1233,7 +1261,7 @@ class MagusBrowserServer(BrowserUseServer):
         if not import_path:
             return "Error: import_path is required."
 
-        src = Path(import_path)
+        src = Path(import_path).expanduser()
         if not src.exists():
             return f"Error: File not found: {import_path}"
 
@@ -1632,6 +1660,75 @@ class MagusBrowserServer(BrowserUseServer):
         if not focused:
             return json.dumps({"focused": False, "error": f"No element matched {selector!r}"})
         return json.dumps({"focused": True, "selector": selector})
+
+    async def _handle_save_screenshot(self, args: dict[str, Any]) -> str:
+        """
+        Write the live page to a PNG file. Upstream browser_screenshot returns an
+        image content block the model can see but cannot save, so every "save the
+        screenshot" recipe had no working path to disk.
+        """
+        output_path = args.get("output_path", "")
+        if not isinstance(output_path, str) or not output_path:
+            return "Error: output_path is required."
+        out = Path(output_path)
+        if not out.is_absolute():
+            return f"Error: output_path must be absolute, got {output_path!r}."
+        if out.suffix.lower() != ".png":
+            return f"Error: output_path must end in .png, got {output_path!r}."
+
+        cdp_session = await self._live_cdp_session(focus=True)
+        if cdp_session is None:
+            return "Error: No browser session active. Navigate first (browser_navigate)."
+
+        params: dict[str, Any] = {"format": "png"}
+        try:
+            # Always pass an explicit clip. Without one, a headless window whose
+            # size differs from the CSS viewport returns the page tiled across the
+            # frame (measured on example.com: a 3x3 grid of the page).
+            metrics = await cdp_session.cdp_client.send.Page.getLayoutMetrics(
+                params={}, session_id=cdp_session.session_id
+            )
+            if args.get("full_page"):
+                size = metrics.get("cssContentSize") or metrics.get("contentSize") or {}
+                clip = {"x": 0, "y": 0, "width": size.get("width", 0), "height": size.get("height", 0)}
+                params["captureBeyondViewport"] = True
+            else:
+                vv = metrics.get("cssVisualViewport") or metrics.get("visualViewport") or {}
+                clip = {
+                    "x": vv.get("pageX", 0),
+                    "y": vv.get("pageY", 0),
+                    "width": vv.get("clientWidth", 0),
+                    "height": vv.get("clientHeight", 0),
+                }
+            if not clip["width"] or not clip["height"]:
+                return "Error: the browser reported no page size to capture."
+            params["clip"] = {**clip, "scale": 1}
+            result = await cdp_session.cdp_client.send.Page.captureScreenshot(
+                params=params, session_id=cdp_session.session_id
+            )
+        except Exception as exc:
+            return f"save_screenshot failed: {exc}"
+
+        data = result.get("data")
+        if not data:
+            return "Error: the browser returned no image data."
+        try:
+            png = base64.b64decode(data)
+        except (ValueError, TypeError) as exc:
+            return f"Error: the browser returned image data that is not base64: {exc}"
+        # PNG is width/height big-endian at bytes 16-24 of the IHDR chunk.
+        if png[:8] != b"\x89PNG\r\n\x1a\n":
+            return "Error: the browser returned data that is not a PNG."
+        width = int.from_bytes(png[16:20], "big")
+        height = int.from_bytes(png[20:24], "big")
+        try:
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_bytes(png)
+        except OSError as exc:
+            return f"Error: cannot write {out}: {exc}"
+        return json.dumps(
+            {"path": str(out), "size_bytes": len(png), "width": width, "height": height}
+        )
 
     async def _handle_press_key(self, args: dict[str, Any]) -> str:
         """Press a single key/shortcut `count` times in the live page."""

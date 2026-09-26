@@ -381,18 +381,9 @@ EOF
 
 ### Go
 
-- **Nil pointer dereference:** Print the full stack trace — `runtime/debug.PrintStack()`
-  in a `recover()` gives the goroutine trace. Check whether an interface value is nil
-  vs. a non-nil interface holding a nil pointer (these behave differently).
-- **Race conditions:** Run `go test -race ./...` to surface data races. Common cause:
-  goroutines sharing a map or slice without a mutex.
-- **Error swallowing:** Grep for `if err != nil { _ = err }` or bare `err` assignments
-  that are never checked.
-- **Context cancellation:** A cancelled context silently stops HTTP requests and DB
-  queries. Check whether the error is `context.Canceled` or `context.DeadlineExceeded`
-  before assuming a network problem.
-- **JSON field visibility:** Lowercase struct fields are not marshalled. Check that
-  fields in API response structs are exported and have `json:` tags.
+dev ships no Go guidance. Read the `go` plugin's `knowledge/roles/developer/best-practices.md`
+("Debugging Tips") by path when it is installed; if not, say once that
+`claude plugin install go@magus` adds it.
 
 ### Rust
 

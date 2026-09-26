@@ -54,7 +54,7 @@ this agent is its consumer. Open every one of these with `Read`:
 | File | Carries |
 |---|---|
 | `${CLAUDE_PLUGIN_ROOT}/skills/madbench-evals/SKILL.md` | the workflow, the vocabulary, the scoring contract, the gotchas |
-| `${CLAUDE_PLUGIN_ROOT}/skills/madbench-evals/schema.md` | every bench and Eval key, `metrics:`, params, `control:` |
+| `${CLAUDE_PLUGIN_ROOT}/skills/madbench-evals/schema.md` | every bench and Eval key, `metrics:`, params, `guard_changes:` |
 | `${CLAUDE_PLUGIN_ROOT}/skills/madbench-evals/checks-catalog.md` | every check type by family, scoping, matchers, `readout:` |
 | `${CLAUDE_PLUGIN_ROOT}/skills/madbench-evals/runners-and-sandbox.md` | `harness_config`, drive modes, sandbox levels, the CLI |
 | `${CLAUDE_PLUGIN_ROOT}/skills/madbench-evals/debugging.md` | error→cause map, the two controls, report-JSON analysis |
@@ -78,7 +78,7 @@ Before you write any script that touches a run, its report, or its grading, find
 | a mock-tally parser | `madbench check` |
 | a re-grader | `madbench grade` |
 | a plugin-registry stager | `harness_config.plugins:` |
-| a confound guard | `control: {baseline, varies}` |
+| a confound guard | `guard_changes: {baseline, allow}` |
 | a read-receipt sentinel | `session:file-read` |
 | a PNG pipeline | `image: generated:<name>` + `$MADBENCH_IMAGE_DIR` |
 

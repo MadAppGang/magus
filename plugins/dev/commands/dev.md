@@ -690,7 +690,7 @@ allowed-tools: Agent, AskUserQuestion, Bash, Read, EnterPlanMode, ExitPlanMode, 
     - Code review team: resolve a code team from `list_models`
     - Architecture review team: resolve an architecture team from `list_models`
     - Fast coding role: pick a Fast variant from `list_models`
-    - Reasoning role: see `roles.reasoning` and `roles.reasoning_premium`
+    - Reasoning role: pick from the "Flagship models" section of `list_models`
 
     Always include:
     - `internal` — the current host session model. Do not name a vendor or claim it

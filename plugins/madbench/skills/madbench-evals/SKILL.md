@@ -19,7 +19,7 @@ stayed documented in five places. Reference files, read on demand:
 
 - `schema.md` — every bench and Eval key: scenarios, `repo:` · `setup:` · `generate:` ·
   `image:` · `cwd:`, the sandbox block, **`metrics:` expressions and the bench's `module/`**,
-  params and placeholders, `control:`
+  params and placeholders, `guard_changes:`
 - `checks-catalog.md` — every check family, incl. the `environment:*` family (nine types),
   the 13 `session:*` types, thread/outcome scoping, matchers, `readout:`
 - `runners-and-sandbox.md` — `harness_config`'s keys, `interactive:` and permission modes,
@@ -116,7 +116,7 @@ wrote the policy down when it refused Eval-level metrics:
 | a "did every check fail under mock" tally parser | `madbench check` — the per-check tally is the product | `madbench help check`; `debugging.md` |
 | a re-grader over a stored report | `madbench grade <report.json>` | `runners-and-sandbox.md` §9 |
 | a script that writes `known_marketplaces.json` | `harness_config.plugins:` (+ `marketplace:` for the short form) | `docs/harness.md:911-931` |
-| a "these runs differ only by X" guard | `control: {baseline, varies}` on the Eval | `docs/eval-file.md:143`; `schema.md` §9 |
+| a "these runs differ only by X" guard | `guard_changes: {baseline, allow}` on the Eval | `docs/eval-file.md:143`; `schema.md` §9 |
 | a sentinel token planted to prove a file was read | `session:file-read` | `docs/checks.md:299` |
 | a "did the MCP server come up" probe script | `environment:mcp-reachable`, asserted before any spend | `docs/checks.md:611` |
 | a PNG pipeline feeding the prompt | `image: generated:<name>` + `$MADBENCH_IMAGE_DIR` | `docs/harness.md:284-308` |

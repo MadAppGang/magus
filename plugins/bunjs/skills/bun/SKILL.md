@@ -49,6 +49,9 @@ Most real tasks need a short ordered chain. Build code first, then harden it:
 | new service or app from scratch | `project-setup` → `http-service` → `errors` |
 | "add auth / login / signup" | `security` → `errors` |
 | "build an API endpoint" | `http-service` → `errors` |
+| "design the tables / schema" | `project-setup` (`references/database-schema.md`) |
+| "document the API" / OpenAPI / Apidog | `http-service` (`references/openapi-and-apidog.md`) |
+| "add a cache shared by every replica" / Redis | `performance` (`references/optimisation-patterns.md`) |
 | "write tests" / "fix this flaky test" | `testing` |
 | "get it deployed" / "the deploy drops requests" | `production` |
 | "it's slow" | `performance` |

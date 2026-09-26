@@ -187,3 +187,4 @@ happen (MEASURED: an unhandled rejection does not terminate the process).
 | `references/structure-and-layering.md` | laying out components, dependency direction, where "shared" belongs, when to split a package |
 | `references/typescript-config.md` | strictness flags explained, module resolution, path aliases and why they bite, library vs app config |
 | `references/tooling.md` | workspaces and catalogs, bunfig, linting, formatting, git hooks, editor setup |
+| `references/database-schema.md` | primary keys, timestamps, foreign keys and the SQLite pragma, indexes, constrained values, naming, migrations |

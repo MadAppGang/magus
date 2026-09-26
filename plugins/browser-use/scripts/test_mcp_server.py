@@ -818,6 +818,7 @@ class TestCustomToolsRegistered(unittest.TestCase):
         "browser_press_key",
         "browser_keyboard",
         "browser_focus",
+        "browser_save_screenshot",
         "browser_doctor",
         "browser_start_cloud_session",
         "browser_set_agent_model",
@@ -1541,6 +1542,95 @@ class TestWrapEvalScript(unittest.TestCase):
         # 'returnValue' / 'returned' start with the letters but are not `return`.
         self.assertEqual(self.wrap('returnValue'), 'returnValue')
         self.assertEqual(self.wrap('returned'), 'returned')
+
+
+# A real 1x1 PNG: the signature, then an IHDR chunk carrying width=1, height=1.
+_PNG_1x1 = (
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+)
+
+
+class TestSaveScreenshotTool(unittest.IsolatedAsyncioTestCase):
+    """browser_save_screenshot writes the live page to a PNG file, which upstream
+    browser_screenshot cannot do: it returns an image block, not a file."""
+
+    def setUp(self):
+        import tempfile
+        self.dir = Path(tempfile.mkdtemp())
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self.dir, ignore_errors=True)
+
+    async def test_writes_png_and_reports_size(self):
+        server, cdp = _server_with_cdp(returns={
+            "Page.getLayoutMetrics": {"cssVisualViewport": {"pageX": 0, "pageY": 200, "clientWidth": 1280, "clientHeight": 720}},
+            "Page.captureScreenshot": {"data": _PNG_1x1},
+        })
+        target = self.dir / "sub" / "shot.png"
+        out = json.loads(await server._handle_save_screenshot({"output_path": str(target)}))
+        self.assertTrue(target.exists())
+        self.assertEqual(target.read_bytes()[:8], b"\x89PNG\r\n\x1a\n")
+        self.assertEqual(out, {"path": str(target), "size_bytes": target.stat().st_size, "width": 1, "height": 1})
+        path, params = cdp.cdp_client.calls[-1]
+        self.assertEqual(path, "Page.captureScreenshot")
+        # The viewport is clipped explicitly, at its scroll offset.
+        self.assertEqual(params["clip"], {"x": 0, "y": 200, "width": 1280, "height": 720, "scale": 1})
+        self.assertNotIn("captureBeyondViewport", params)
+
+    async def test_full_page_clips_to_content_size(self):
+        server, cdp = _server_with_cdp(returns={
+            "Page.getLayoutMetrics": {"cssContentSize": {"width": 1280, "height": 4000}},
+            "Page.captureScreenshot": {"data": _PNG_1x1},
+        })
+        await server._handle_save_screenshot({"output_path": str(self.dir / "f.png"), "full_page": True})
+        _, params = cdp.cdp_client.calls[-1]
+        self.assertTrue(params["captureBeyondViewport"])
+        self.assertEqual((params["clip"]["width"], params["clip"]["height"]), (1280, 4000))
+
+    async def test_relative_path_is_refused_and_nothing_is_written(self):
+        server, cdp = _server_with_cdp(returns={"Page.captureScreenshot": {"data": _PNG_1x1}})
+        out = await server._handle_save_screenshot({"output_path": "shot.png"})
+        self.assertIn("must be absolute", out)
+        self.assertEqual(cdp.cdp_client.calls, [])
+
+    async def test_unwritable_path_is_an_error_line_not_an_exception(self):
+        server, _ = _server_with_cdp(returns={
+            "Page.getLayoutMetrics": {"cssVisualViewport": {"clientWidth": 10, "clientHeight": 10}},
+            "Page.captureScreenshot": {"data": _PNG_1x1},
+        })
+        blocker = self.dir / "file"
+        blocker.write_text("x")  # a file where a directory must go
+        out = await server._handle_save_screenshot({"output_path": str(blocker / "shot.png")})
+        self.assertTrue(out.startswith("Error: cannot write"), out)
+
+    async def test_non_png_suffix_is_refused(self):
+        server, _ = _server_with_cdp()
+        out = await server._handle_save_screenshot({"output_path": str(self.dir / "shot.jpg")})
+        self.assertIn(".png", out)
+
+    async def test_missing_page_size_is_an_error(self):
+        server, cdp = _server_with_cdp(returns={"Page.captureScreenshot": {"data": _PNG_1x1}})
+        out = await server._handle_save_screenshot({"output_path": str(self.dir / "z.png")})
+        self.assertIn("no page size", out)
+        self.assertNotIn("Page.captureScreenshot", [p for p, _ in cdp.cdp_client.calls])
+
+    async def test_non_png_data_is_an_error_not_a_file(self):
+        import base64 as _b64
+        server, _ = _server_with_cdp(returns={
+            "Page.getLayoutMetrics": {"cssVisualViewport": {"clientWidth": 10, "clientHeight": 10}},
+            "Page.captureScreenshot": {"data": _b64.b64encode(b"not a png").decode()},
+        })
+        target = self.dir / "bad.png"
+        out = await server._handle_save_screenshot({"output_path": str(target)})
+        self.assertIn("not a PNG", out)
+        self.assertFalse(target.exists())
+
+    async def test_no_session_errors_cleanly(self):
+        server = _make_server()
+        server.browser_session = None
+        out = await server._handle_save_screenshot({"output_path": str(self.dir / "x.png")})
+        self.assertIn("No browser session", out)
 
 
 class TestFocusTool(unittest.IsolatedAsyncioTestCase):

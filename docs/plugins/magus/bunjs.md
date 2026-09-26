@@ -7,7 +7,7 @@ Bun and TypeScript toolkit. A `/bunjs:bun` index routes any task to the right on
 
 | | |
 |---|---|
-| Version | `0.4.5` |
+| Version | `0.5.0` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 9 |
 | Subagents | 0 |
@@ -60,10 +60,10 @@ Prefer to do it by hand? [Installing Magus](../../guides/install.md) has the man
 |---|---|---|
 | ● | `bunjs:bun` | Router for the eight Bun/TypeScript skills — setup, HTTP, errors, testing, security, production, performance, TUI. Says which to read for a task, without loading them. Any Bun or TS work. |
 | ○ | `bunjs:errors` — [4 more docs](./bunjs-errors.md) | Error handling and resilience for Bun/TypeScript — operational vs programmer errors, AppError hierarchy, centralized handler, boundary validation, timeout/retry/circuit breaker. |
-| ○ | `bunjs:http-service` | Build or review a Bun HTTP service — Bun.serve declarative routes, middleware composition, request context, status/ETag/streaming helpers, graceful lifecycle. |
+| ○ | `bunjs:http-service` — [4 more docs](./bunjs-http-service.md) | Build or review a Bun HTTP service — Bun.serve declarative routes, middleware composition, request context, status/ETag/streaming helpers, graceful lifecycle. |
 | ○ | `bunjs:performance` | Diagnose and fix Bun/TypeScript performance — event-loop blocking, measured native fast paths, benchmarking that does not lie, streaming, caching, workers, memory. |
 | ○ | `bunjs:production` | Ship a Bun service — graceful shutdown ordering, structured logging, liveness vs readiness, multi-stage Docker, signals and PID 1, frozen lockfiles, CI. |
-| ○ | `bunjs:project-setup` | Start or restructure a Bun/TypeScript project — folder structure by business component, strict tsconfig, typed env config, workspaces and catalogs, bunfig, linting. |
+| ○ | `bunjs:project-setup` — [4 more docs](./bunjs-project-setup.md) | Start or restructure a Bun/TypeScript project — folder structure by business component, strict tsconfig, typed env config, workspaces and catalogs, bunfig, linting. |
 | ○ | `bunjs:security` | Harden or review a Bun/TypeScript service — secrets, password and token handling, SQL injection, authn/authz, rate limiting, CORS and security headers, dependency audit. |
 | ○ | `bunjs:testing` — [4 more docs](./bunjs-testing.md) | Write and fix Bun tests — bun:test surface, component tests over HTTP, doubles, coverage gating, flake control. Ships a tested harness, fake upstream and builders. |
 | ○ | `bunjs:tui` — [30 more docs](./bunjs-tui.md) | Build, review, or debug OpenTUI terminal UIs — React JSX or core constructs, Yoga flexbox, gradient meters, colour screenshots. Any Bun/TypeScript TUI. Only Bun is tested; |

@@ -18,8 +18,8 @@ Plugin IDs carry the marketplace, so these are `name@magus-marketing`.
 
 | Plugin | Version | What it does |
 |---|---|---|
-| [`image`](./image.md) | 4.0.2 | Provider-agnostic AI image generation and editing over a pinned model registry: Google, OpenAI and ByteDance models behind one CLI, with per-model sizing, markdown style templates, and a background advisory when a pinned model goes stale. |
-| [`video-editing`](./video-editing.md) | 1.3.1 | Video editing toolkit. Drives FFmpeg for cutting and encoding, Whisper for transcription and subtitles, and Apple Final Cut Pro for project-level work. |
+| [`image`](./image.md) | 4.0.3 | Provider-agnostic AI image generation and editing over a pinned model registry: Google, OpenAI and ByteDance models behind one CLI, with per-model sizing, markdown style templates, and a background advisory when a pinned model goes stale. |
+| [`video-editing`](./video-editing.md) | 1.3.2 | Video editing toolkit. Drives FFmpeg for cutting and encoding, Whisper for transcription and subtitles, and Apple Final Cut Pro for project-level work. |
 
 Turn any of them on from the Plugins tab. To give a team the same set, press `s` to save
 your selection as a profile and commit it — see [Teams and profiles](../../guides/teams.md).

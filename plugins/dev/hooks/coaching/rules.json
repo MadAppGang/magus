@@ -167,7 +167,7 @@
     },
     "category": "plugin-discovery",
     "priority": 3,
-    "suggestion": "You called WebFetch {count} times this session. For JavaScript-heavy SPAs, form interactions, or structured scraping, the browser-use plugin gives full browser control:\n  `mcp__browser-use__browser_navigate` -- navigate with full JS rendering\n  `mcp__browser-use__browser_extract_content` -- structured extraction\n  `mcp__browser-use__browser_screenshot` -- capture live screenshots\n  Skills: `browser-use:web-scraping`, `browser-use:navigation-patterns`",
+    "suggestion": "You called WebFetch {count} times this session. For JavaScript-heavy SPAs, form interactions, or structured scraping, the browser-use plugin gives full browser control:\n  `mcp__plugin_browser-use_browser-use__browser_navigate` -- navigate with full JS rendering\n  `mcp__plugin_browser-use_browser-use__browser_extract_content` -- structured extraction\n  `mcp__plugin_browser-use_browser-use__browser_screenshot` -- capture live screenshots\n  Skills: `browser-use:web-scraping`, `browser-use:navigation-patterns`",
     "suppress_after_sessions": 5
   },
   {
@@ -310,13 +310,13 @@
         {
           "pattern": "\\b(playwright|selenium|puppeteer|cypress)\\b",
           "plugin": "browser-use plugin",
-          "command": "mcp__browser-use__browser_navigate"
+          "command": "mcp__plugin_browser-use_browser-use__browser_navigate"
         }
       ]
     },
     "category": "plugin-discovery",
     "priority": 3,
-    "suggestion": "Browser automation framework detected ({plugin} reference). The browser-use plugin provides 18 MCP tools directly in Claude Code:\n  `mcp__browser-use__browser_navigate` -- navigate URLs\n  `mcp__browser-use__browser_click` -- click elements\n  `mcp__browser-use__browser_extract_content` -- extract structured content\n  `mcp__browser-use__browser_screenshot` -- capture screenshots\n  Skills: `browser-use:web-scraping`, `browser-use:debug-ui`",
+    "suggestion": "Browser automation framework detected ({plugin} reference). The browser-use plugin gives Claude Code browser control through MCP tools:\n  `mcp__plugin_browser-use_browser-use__browser_navigate` -- navigate URLs\n  `mcp__plugin_browser-use_browser-use__browser_click` -- click elements\n  `mcp__plugin_browser-use_browser-use__browser_extract_content` -- extract structured content\n  `mcp__plugin_browser-use_browser-use__browser_screenshot` -- capture screenshots\n  Skills: `browser-use:web-scraping`, `browser-use:debug-ui`",
     "suppress_after_sessions": 5
   },
   {

@@ -55,6 +55,47 @@ Deduplicate by caching the *promise*, not the value, so concurrent callers await
 `Bun.hash` is the right hash for a cache key — MEASURED ~10x faster than sha256, and a cache key
 needs no cryptographic property.
 
+### A cache shared across replicas
+
+An in-process `Map` is per replica: with three replicas, an invalidation reaches one of them and the
+other two serve stale data until their TTL runs out. When replicas must agree, move the cache out
+of the process. Bun ships a Redis client, so no extra dependency is needed:
+
+```ts
+import { redis } from "bun"; // reads REDIS_URL; `new RedisClient(url)` for a second connection
+
+async function cachedShared<T>(key: string, ttlSeconds: number, compute: () => Promise<T>): Promise<T> {
+  const hit = await redis.get(key);
+  if (hit !== null) return JSON.parse(hit) as T;
+  const value = await compute();
+  // One command, so a crash between "set" and "expire" can never leave a key with no TTL.
+  await redis.send("SET", [key, JSON.stringify(value), "EX", String(ttlSeconds)]);
+  return value;
+}
+```
+
+- **Namespace every key by what invalidates it**: `user:${id}`, `user:${id}:orders`. The prefix
+  is how a write finds the entries it made stale.
+- **Check `hit !== null`, not `if (hit)`.** A cached `0`, `""` or `false` is a hit.
+- **Delete the exact keys a write touches.** When a write invalidates a whole prefix, walk it
+  with `SCAN`. **Never `KEYS`**: it blocks Redis for the whole keyspace walk, so every other
+  client stalls, and on a large keyspace that is an outage.
+
+  ```ts
+  async function deletePrefix(prefix: string): Promise<void> {
+    let cursor = "0";
+    do {
+      const [next, keys] = (await redis.send("SCAN", [cursor, "MATCH", `${prefix}*`, "COUNT", "500"])) as [string, string[]];
+      if (keys.length) await redis.send("UNLINK", keys); // UNLINK frees memory off the main thread
+      cursor = next;
+    } while (cursor !== "0");
+  }
+  ```
+
+- **Close it in the shutdown sequence** (`production`), after the server stops accepting work.
+- A shared cache is a network hop. It only pays when the computation costs more than that hop; for
+  anything cheaper, keep the in-process cache and accept per-replica staleness.
+
 ### HTTP caching costs nothing
 
 An `ETag` and a 304 means the response never leaves the server. `withETag()` in the `http-service`

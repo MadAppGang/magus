@@ -448,8 +448,8 @@ tools: Read, Write, Glob, Grep, Bash
         that only visits `skills/` misses most of the stack and framework material, because
         that is where it lives. Under `knowledge/` the unit is the FILE:
         `knowledge/<cat>/<topic>.md`, with any supporting references in a same-named
-        directory beside it (`knowledge/backend/golang.md` +
-        `knowledge/backend/golang/performance.md`). Push the topic, not its references.
+        directory beside it (`knowledge/frontend/state-management.md` +
+        `knowledge/frontend/state-management/tanstack-query.md`). Push the topic, not its references.
       </step>
       <step>
         **Only agents this task will actually dispatch get an entry.** A fullstack feature
@@ -551,7 +551,7 @@ tools: Read, Write, Glob, Grep, Bash
       <file>go.mod + *.dingo</file>
       <check>go.mod exists AND any .dingo file is present outside .git, node_modules, vendor</check>
       <stack>dingo + golang — always both, because Dingo transpiles to Go</stack>
-      <quality_checks>dingo fmt, dingo go, go vet ./.dingo/..., golangci-lint run ./.dingo/..., go test ./.dingo/...</quality_checks>
+      <quality_checks>dingo fmt --check ., dingo build -o /dev/null ONE_PACKAGE (any package holding .dingo files; ./... is refused), then inside build/: go vet ./... and go test ./..., dingo lint ./... (advisory, always exits 0)</quality_checks>
     </pattern>
 
     <pattern name="Rust Backend">
@@ -703,7 +703,7 @@ tools: Read, Write, Glob, Grep, Bash
     },
     "developer": {
       "read": [
-        "${CLAUDE_PLUGIN_ROOT}/knowledge/backend/golang.md",
+        "/home/u/.claude/plugins/cache/magus/go/0.1.2/knowledge/references/error-handling.md",
         "${CLAUDE_PLUGIN_ROOT}/knowledge/backend/api-design.md",
         "${CLAUDE_PLUGIN_ROOT}/knowledge/backend/error-handling.md",
         "/home/u/.claude/plugins/cache/magus/go/0.1.2/knowledge/roles/developer/best-practices.md"
