@@ -4,6 +4,25 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [magus 7.7.0] - 2026-09-28
+
+### Changed
+
+- **The TUI no longer stops you to confirm that something worked.** Activating a profile,
+  fixing git tracking, repairing plugins, refreshing, saving, copying, adding an MCP server
+  and similar actions used to end in a box you had to dismiss with a key. Now the screen shows
+  the result, and when it cannot, one line at the top says what happened and goes away by
+  itself: `✓ Using profile "magus-main"`. A warning stays a little longer:
+  `⚠ typescript-lsp isn't downloaded yet — run magus install`. Errors still open a box, and so
+  does help you asked for.
+- **Activating a profile keeps you where you are, and the screen updates.** It used to jump to
+  the Profiles tab after the confirmation box, and the Plugins list kept showing the state from
+  before the switch.
+- **Less internal detail.** The TUI no longer says where it backed up your old settings, which
+  plugin file it could not read, or "profile not resolved — states judged against latest".
+
+---
+
 ## [magus 7.6.0] - 2026-09-27
 
 ### Added

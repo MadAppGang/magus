@@ -93,12 +93,24 @@ fi
 #
 #   1. `appearance` config key            (the script's own flag)
 #   2. $STATUSLINE_APPEARANCE             (the script's own variable)
-#   3. $TERM_THEME
-#   4. OSC 11 probe — NO STEP HERE. The statusline child has no controlling
+#   3. inside tmux: the theme of the client showing THIS pane's session
+#   4. $TERM_THEME
+#   5. OSC 11 probe — NO STEP HERE. The statusline child has no controlling
 #      terminal: stdin, stdout and stderr are all pipes and /dev/tty is "Device
 #      not configured", so there is nowhere to send a query and nothing to read.
-#   5. COLORFGBG — tmux's session-scope copy inside tmux, $COLORFGBG outside
-#   6. dark
+#   6. COLORFGBG — tmux's session-scope copy inside tmux, $COLORFGBG outside
+#   7. dark
+#
+# Step 3 is the probe the statusline cannot make itself, made by tmux instead.
+# tmux 3.6+ asks each client OSC 11 on attach and subscribes to its mode-2031
+# theme reports, so #{client_theme} is live, and it is per CLIENT: a session
+# shown in a dark window and another in a light one each get their own answer.
+# It is also exactly what Claude Code's `/theme auto` sees inside tmux — tmux
+# answers the pane's OSC 11 from that client and forwards the 2031 reports —
+# so the statusline switches when the UI above it does. It outranks TERM_THEME
+# because TERM_THEME is frozen into Claude's environment at launch, while the
+# session may since have been attached from a different window. Blink on the
+# iPad reports no theme, leaves #{client_theme} empty, and falls through.
 #
 # Only the exact lowercase words `light` and `dark` count at steps 1-3. Anything
 # else — `Light`, `auto`, empty, unset — is no opinion and the next step runs.
@@ -160,6 +172,22 @@ tmux_colorfgbg_verdict() {
   printf '%s' "$verdict"
 }
 
+# Prints light|dark from the client showing $TMUX_PANE's session, the most
+# recently active one when several are attached; prints nothing when no
+# attached client has reported a theme or the pane is gone. `list-clients -t`,
+# not `display -p -t`: display falls back to ANY client when the session has
+# none attached, and would paint a detached session with a stranger's theme.
+# Not cached — it is one fork, and a cache is what would make it lag.
+tmux_client_theme() {
+  [ -n "${TMUX_PANE:-}" ] || return 0
+  command -v tmux >/dev/null 2>&1 || return 0
+  local line
+  line=$(tmux list-clients -t "$TMUX_PANE" -F '#{client_activity} #{client_theme}' 2>/dev/null | sort -rn | head -1)
+  case "${line##* }" in
+    light|dark) printf '%s' "${line##* }" ;;
+  esac
+}
+
 resolve_appearance() {
   case "$APPEARANCE" in
     light|dark) printf '%s' "$APPEARANCE"; return ;;
@@ -168,6 +196,14 @@ resolve_appearance() {
   case "${STATUSLINE_APPEARANCE:-}" in
     light|dark) printf '%s' "$STATUSLINE_APPEARANCE"; return ;;
   esac
+
+  if [ -n "${TMUX:-}" ]; then
+    local live
+    live=$(tmux_client_theme)
+    case "$live" in
+      light|dark) printf '%s' "$live"; return ;;
+    esac
+  fi
 
   case "${TERM_THEME:-}" in
     light|dark) printf '%s' "$TERM_THEME"; return ;;

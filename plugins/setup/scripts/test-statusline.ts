@@ -96,7 +96,7 @@ if (!fn) {
  * export TERM_THEME or COLORFGBG and would silently decide every case.
  *
  * The block must depend only on $APPEARANCE, $STATUSLINE_APPEARANCE, $TERM_THEME,
- * $TMUX, $COLORFGBG, $HOME and the tmux binary on PATH; anything else it reaches for
+ * $TMUX, $TMUX_PANE, $COLORFGBG, $HOME and the tmux binary on PATH; anything else it reaches for
  * shows up here as a wrong word or non-empty stderr.
  */
 const appearanceFn = src.match(
@@ -115,6 +115,11 @@ if (!appearanceFn) {
     env?: Record<string, string>;
     /** What the tmux shim prints on stdout; undefined means no shim on PATH. */
     tmuxPrints?: string;
+    /**
+     * What the shim prints for `list-clients` instead ("<activity> <theme>" lines).
+     * Undefined means list-clients prints nothing, i.e. no client reported a theme.
+     */
+    tmuxClients?: string;
     /** Content pre-written to the cache file before the run. */
     cachePrewrite?: string;
     /** Age in seconds to give the pre-written cache file (mtime in the past). */
@@ -167,6 +172,13 @@ if (!appearanceFn) {
     { id: "S-tmux-8", what: "inside tmux a fresh cache is trusted over tmux", env: { TMUX: "1" }, tmuxPrints: "COLORFGBG=0;15", cachePrewrite: "dark", want: "dark", wantCache: "dark" },
     { id: "S-cache-noenv", what: "env is never cached: cache says dark, TERM_THEME says light", env: { TERM_THEME: "light" }, cachePrewrite: "dark", want: "light" },
     { id: "S-cache-env-outside", what: "outside tmux the cache is not consulted", env: { COLORFGBG: "0;15" }, cachePrewrite: "dark", want: "light" },
+    { id: "S-live-1", what: "inside tmux the viewing client's theme beats TERM_THEME", env: { TMUX: "1", TMUX_PANE: "%1", TERM_THEME: "light" }, tmuxClients: "100 dark", tmuxPrints: "COLORFGBG=0;15", want: "dark" },
+    { id: "S-live-2", what: "inside tmux the viewing client's theme beats the session COLORFGBG", env: { TMUX: "1", TMUX_PANE: "%1" }, tmuxClients: "100 light", tmuxPrints: "COLORFGBG=15;0", want: "light" },
+    { id: "S-live-3", what: "several clients: the most recently active one decides", env: { TMUX: "1", TMUX_PANE: "%1", TERM_THEME: "dark" }, tmuxClients: "100 dark\n300 light\n200 dark", want: "light" },
+    { id: "S-live-4", what: "a client with no reported theme (Blink) falls through to TERM_THEME", env: { TMUX: "1", TMUX_PANE: "%1", TERM_THEME: "light" }, tmuxClients: "100 ", tmuxPrints: "COLORFGBG=15;0", want: "light" },
+    { id: "S-live-5", what: "no TMUX_PANE: the client step is skipped", env: { TMUX: "1", TERM_THEME: "light" }, tmuxClients: "100 dark", want: "light" },
+    { id: "S-live-6", what: "outside tmux the client step never runs", env: { TMUX_PANE: "%1", TERM_THEME: "light" }, tmuxClients: "100 dark", want: "light" },
+    { id: "S-live-7", what: "STATUSLINE_APPEARANCE still beats the client theme", env: { TMUX: "1", TMUX_PANE: "%1", STATUSLINE_APPEARANCE: "light" }, tmuxClients: "100 dark", want: "light" },
     { id: "S-removed", what: "the old tmux theme-file pin is gone", homeFiles: { [join(".config", "tmux", "theme")]: "light\n" }, want: "dark" },
   ];
 
@@ -186,8 +198,13 @@ if (!appearanceFn) {
     const shimDir = join(home, "shim");
     mkdirSync(shimDir);
     mkdirSync(join(home, ".claude"));
-    if (c.tmuxPrints !== undefined) {
-      writeFileSync(join(shimDir, "tmux"), `#!/bin/sh\nprintf '%s\\n' ${JSON.stringify(c.tmuxPrints)}\n`, { mode: 0o755 });
+    if (c.tmuxPrints !== undefined || c.tmuxClients !== undefined) {
+      const clients = c.tmuxClients === undefined ? "exit 0" : `printf '%b\\n' ${JSON.stringify(c.tmuxClients)}; exit 0`;
+      writeFileSync(
+        join(shimDir, "tmux"),
+        `#!/bin/sh\ncase "$1" in list-clients) ${clients} ;; esac\nprintf '%s\\n' ${JSON.stringify(c.tmuxPrints ?? "")}\n`,
+        { mode: 0o755 },
+      );
     }
     if (c.cachePrewrite !== undefined) {
       const file = join(home, ".claude", ".statusline-tmux-colorfgbg");
