@@ -4,6 +4,19 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [setup 1.4.0] - 2026-10-01
+
+### Added
+
+- **Inside tmux, the statusline follows the theme of the window showing the session.** It
+  asks tmux 3.6+ for the attached client's theme (`#{client_theme}`, updated live) ahead of
+  `TERM_THEME`, which is frozen into Claude's environment at launch. A session opened from a
+  dark window and later shown in a light one now switches palette when Claude's own UI does,
+  and two windows of different themes each get their own. A client that reports no theme,
+  such as Blink, falls through to the previous order unchanged.
+
+---
+
 ## [magus 7.8.0] - 2026-09-29
 
 ### Fixed
