@@ -4,6 +4,46 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [magus 7.8.0] - 2026-09-29
+
+### Fixed
+
+- **Plugins in a folder outside git no longer show as BROKEN when they are fine.** Claude Code
+  2.1.284 changed which installs count in a folder that is not a git repository: only that
+  folder's own installs and your USER installs. magus still used the older rule, where every
+  such folder shared every other one's installs, so it named old versions from unrelated
+  folders, called working plugins BROKEN, and reported updates that had worked as failed.
+  magus now follows the 2.1.284 rule, checked against Claude Code's own debug log.
+- **A failed update says why.** The box used to list plugin names and nothing else. It now names
+  each plugin with its reason in plain words, groups plugins that failed for the same reason,
+  and ends with the one thing to do when there is one (`Run magus install`, or how to install
+  Claude Code). An update that ran but changed nothing is reported too, with the reason it did
+  not move.
+- **Every error in the TUI uses the same box**: what did not happen, the reason, and the fix
+  when there is one. Failures that used to show nothing (CLI tool update-all, plugin
+  dependency installs, a failed marketplace refresh, git failing to stop tracking a file)
+  open it too.
+
+### Changed
+
+- **Plugins magus no longer publishes are removed.** A plugin whose marketplace no longer lists
+  it shows `deprecated — press a to remove`. `a` in the TUI and `magus update` uninstall it
+  and drop it from the profile, so switching back to the profile does not bring it back.
+  Claude Code already refuses to load such a plugin. A plugin that moved to another marketplace
+  is kept and says where it went; one that another installed plugin still needs is kept and
+  says which. `magus update --check` counts removals as pending changes.
+- **Removing no-longer-published plugins goes through Claude Code only.** magus runs
+  `claude plugin uninstall` and never edits Claude Code's own files as a fallback, so a removal
+  that did not happen is reported as not done.
+- **No status lines.** The notice line at the top of the TUI, the "updated" badge on plugin
+  rows, and the status lines on the Models, Styles and Alias screens are gone. After an action
+  the screen reloads and shows the result. Something that failed, or that you must act on,
+  opens the error box. A server added or removed this session is marked "restart Claude Code"
+  on its row, and a plugin whose MCP server still needs settings says so in its details.
+- **`magus doctor` reports a plugin that is installed but loads no version in this folder.**
+
+---
+
 ## [magus 7.7.0] - 2026-09-28
 
 ### Changed
