@@ -13,8 +13,17 @@
  * on stdout. Any failure inside this hook allows — a broken validator must never
  * be able to wedge the user.
  */
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { readHookInput, allow, deny } from "./lib/hook-io.ts";
 
@@ -131,7 +140,7 @@ export const PHASE_ARTIFACTS: Record<string, PhaseSpec> = {
       // three different capture designs each produced exactly that file.
       // Constraint: the verdict words and consolidated.md's path are
       // string-matched elsewhere and are NOT changed here; this is additive.
-      // Advisory only: the Stop hook that consumes this REPORTS the empty diff, it does not block the turn.
+      // Advisory only: the Stop hook that consumes this REPORTS the empty diff, once per session.
       { file: "code-changes.diff", minSize: 1 },
     ],
     evidence: "reviewReachedVerdict",
@@ -465,8 +474,42 @@ export function evaluateStop(deps: Deps, sessionOverride?: string): string | nul
     ...partial,
     `Session: ${sessionPath}`,
     `Finish the artifacts, or write a skip-reason.md saying why the phase was abandoned.`,
-    `(Advisory: this does not block the turn. If the phase is still in progress, ignore it.)`,
+    `(Advisory: shown once per session until the incomplete phases change. If the phase is still in progress, ignore it and end your turn.)`,
   ].join("\n");
+}
+
+/** Per-session memory of the last emitted Stop advisory. Injected so tests need no disk. */
+export interface EmissionStore {
+  get(key: string): string | null;
+  set(key: string, value: string): void;
+}
+
+/**
+ * Decide whether a Stop advisory is actually emitted. Returns the text, or null for silence.
+ *
+ * On Claude Code 2.1.285 a Stop hook's `additionalContext` continues the turn, and the
+ * artifacts this hook judges do not change while the model replies, so an unconditional
+ * emission re-fires on every continuation. Two guards bound it:
+ *
+ *  - `stopHookActive` — Claude Code is already continuing because of a Stop hook. Never
+ *    emit then; that alone caps the advisory at one continuation per turn.
+ *  - one emission per distinct message per session — a hash of the last message is kept
+ *    under the session id, so an unchanged set of incomplete phases stays silent and a
+ *    changed set speaks again.
+ */
+export function stopEmission(
+  message: string | null,
+  ctx: { stopHookActive: boolean; sessionId?: string },
+  store: EmissionStore,
+): string | null {
+  if (message === null) return null;
+  if (ctx.stopHookActive) return null;
+  if (!ctx.sessionId) return message;
+
+  const hash = createHash("sha256").update(message).digest("hex");
+  if (store.get(ctx.sessionId) === hash) return null;
+  store.set(ctx.sessionId, hash);
+  return message;
 }
 
 // ── Entry point ─────────────────────────────────────────────────────────────
@@ -513,6 +556,29 @@ function liveDeps(cwd: string): Deps {
   };
 }
 
+/** One file per session id under the OS temp dir. Every fs failure degrades to "not seen". */
+function liveEmissionStore(): EmissionStore {
+  const dir = join(tmpdir(), "magus-dev-phase-gate");
+  const fileFor = (key: string) => join(dir, key.replace(/[^A-Za-z0-9_-]/g, "_"));
+  return {
+    get: (key) => {
+      try {
+        return readFileSync(fileFor(key), "utf-8").trim() || null;
+      } catch {
+        return null;
+      }
+    },
+    set: (key, value) => {
+      try {
+        mkdirSync(dir, { recursive: true });
+        writeFileSync(fileFor(key), value);
+      } catch {
+        // unwritable temp dir → the stop_hook_active guard still bounds the loop
+      }
+    },
+  };
+}
+
 function main(): void {
   const input = readHookInput();
   if (!input) allow(); // no or unparseable payload → allow
@@ -548,10 +614,24 @@ function main(): void {
   // act, and a long-running turn is never interrupted. Enforcement was traded for
   // correctness deliberately — a blocking gate that fires on healthy runs gets disabled by
   // whoever hits it first, which is worse than an advisory one that is right.
+  //
+  // "Advisory" turned out to block anyway. Measured on Claude Code 2.1.285: a Stop hook's
+  // additionalContext re-prompts the model, so the turn continues, Stop fires again over
+  // the same unchanged files, and emitting on every Stop looped until the cap — "A hook
+  // blocked the turn from ending 9 consecutive times" — on 397 of 426 turn-ends in one
+  // transcript. `stopEmission` now stays silent while `stop_hook_active` is set and emits
+  // a given message once per session.
   if (process.argv.includes("--stop")) {
     let stopMessage: string | null = null;
     try {
-      stopMessage = evaluateStop(liveDeps(cwd), process.env.CLAUDE_SESSION_PATH);
+      stopMessage = stopEmission(
+        evaluateStop(liveDeps(cwd), process.env.CLAUDE_SESSION_PATH),
+        {
+          stopHookActive: input.raw.stop_hook_active === true,
+          sessionId: input.sessionId,
+        },
+        liveEmissionStore(),
+      );
     } catch {
       process.exit(0); // any internal error → stay silent
     }

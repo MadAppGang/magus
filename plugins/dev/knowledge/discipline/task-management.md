@@ -52,7 +52,7 @@ INCOMPLETE PHASE: a /dev:dev phase was started and left without its artifacts.
   - Multi-Model Planning (phase3): missing reviews/plan-review/consolidated.md
 Session: ai-docs/sessions/dev-feature-x
 Finish the artifacts, or write a skip-reason.md saying why the phase was abandoned.
-(Advisory: this does not block the turn. If the phase is still in progress, ignore it.)
+(Advisory: shown once per session until the incomplete phases change. If the phase is still in progress, ignore it and end your turn.)
 ```
 
 A phase with **none** of its artifacts was never started and is not a finding. A phase

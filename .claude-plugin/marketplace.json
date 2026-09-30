@@ -253,7 +253,7 @@
       "name": "dev",
       "source": "./plugins/dev",
       "description": "Universal development assistant. Detects the project stack and routes work to specialist agents for architecture, implementation, debugging, review and research, enforcing design-system guardrails on every UI change.",
-      "version": "9.0.0",
+      "version": "9.0.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -293,6 +293,14 @@
       "strict": true,
       "releases": [
         {
+          "version": "9.0.1",
+          "date": "2026-10-01",
+          "kinds": [
+            "Fixed"
+          ],
+          "summary": "The phase-gate Stop hook no longer traps a session in a loop. It shows its \"INCOMPLETE PHASE\"\u2026"
+        },
+        {
           "version": "9.0.0",
           "date": "2026-09-27",
           "summary": "BREAKING \u2014 dev no longer teaches Bun, Go or Dingo. The bunjs-architecture and bunjs-production\u2026"
@@ -314,11 +322,6 @@
             "Added"
           ],
           "summary": "/dev:worktree shows create [branch] | list | cleanup [path] | status | help as an argument hint\u2026"
-        },
-        {
-          "version": "8.1.2",
-          "date": "2026-09-22",
-          "summary": "The check it introduced in 8.1.0 moves to the shared cache and the once-per-session claim, so\u2026"
         }
       ]
     },

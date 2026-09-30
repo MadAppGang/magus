@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   detectPhase,
@@ -7,6 +9,7 @@ import {
   evaluateStop,
   PHASE_ARTIFACTS,
   resolveSession,
+  stopEmission,
   type Deps,
 } from "./phase-completion-validator.ts";
 
@@ -517,5 +520,72 @@ describe("phase 3 gates the session context", () => {
     );
     expect(msg).toContain("BLOCKED");
     expect(msg).toContain("missing context.json");
+  });
+});
+
+/**
+ * The Stop loop. On Claude Code 2.1.285 a Stop hook's additionalContext re-prompts the
+ * model, and this hook judged only files that do not change while the model answers
+ * "Waiting." — so it fired on every continuation until CC's 9-block cap, every turn.
+ * These pin the two brakes: silence while `stop_hook_active`, and one emission per
+ * session for a given set of incomplete phases.
+ */
+describe("Stop emission: no loop", () => {
+  const MSG = "INCOMPLETE PHASE: x";
+  const memStore = () => {
+    const m = new Map<string, string>();
+    return { get: (k: string) => m.get(k) ?? null, set: (k: string, v: string) => void m.set(k, v) };
+  };
+
+  test("no message → silent", () => {
+    expect(stopEmission(null, { stopHookActive: false, sessionId: "s" }, memStore())).toBeNull();
+  });
+
+  test("stop_hook_active → silent, even for a message never shown", () => {
+    expect(stopEmission(MSG, { stopHookActive: true, sessionId: "s" }, memStore())).toBeNull();
+  });
+
+  test("same message in the same session is emitted once", () => {
+    const store = memStore();
+    expect(stopEmission(MSG, { stopHookActive: false, sessionId: "s" }, store)).toBe(MSG);
+    expect(stopEmission(MSG, { stopHookActive: false, sessionId: "s" }, store)).toBeNull();
+  });
+
+  test("a changed message emits again; another session is independent", () => {
+    const store = memStore();
+    stopEmission(MSG, { stopHookActive: false, sessionId: "s" }, store);
+    expect(stopEmission(MSG + "2", { stopHookActive: false, sessionId: "s" }, store)).toBe(MSG + "2");
+    expect(stopEmission(MSG, { stopHookActive: false, sessionId: "t" }, store)).toBe(MSG);
+  });
+
+  test("end to end: the live hook emits once, then stays silent on the continuation", () => {
+    const cwd = mkdtempSync(join(tmpdir(), "pcv-loop-"));
+    const session = join(cwd, "ai-docs/sessions/dev-feature-loop");
+    mkdirSync(join(session, "reviews/code-review"), { recursive: true });
+    // Phase 5 with one of its required artifacts: unambiguously partial.
+    writeFileSync(
+      join(session, "reviews/code-review/consolidated.md"),
+      "# review\n\nmodel review analysis issue concern verdict: PASS\n".repeat(8),
+    );
+    const sid = `loop-${process.pid}-${Date.now()}`;
+    const stop = (active: boolean, id = sid) =>
+      spawnSync("bun", [HOOK, "--stop"], {
+        input: JSON.stringify({ hook_event_name: "Stop", session_id: id, cwd, stop_hook_active: active }),
+        encoding: "utf-8",
+        timeout: 20_000,
+        env: { ...process.env, CLAUDE_SESSION_PATH: "" },
+      });
+
+    const first = stop(false);
+    expect(first.status).toBe(0);
+    expect(first.stdout).toContain("INCOMPLETE PHASE");
+
+    const again = stop(false);
+    expect(again.status).toBe(0);
+    expect(again.stdout).toBe("");
+
+    const continuing = stop(true, `${sid}-fresh`);
+    expect(continuing.status).toBe(0);
+    expect(continuing.stdout).toBe("");
   });
 });

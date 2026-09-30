@@ -4,6 +4,28 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [dev 9.0.1] - 2026-10-01
+
+### Fixed
+
+- The phase-gate Stop hook no longer traps a session in a loop. It shows its
+  "INCOMPLETE PHASE" advisory once per session, and again only when the set of incomplete
+  phases changes. It stays silent while Claude Code is already continuing from a Stop hook.
+- Before this fix, every turn in a session with a half-finished `/dev:dev` phase ended in
+  a run of "Waiting." replies. Claude Code then stopped the turn with "A hook blocked the
+  turn from ending 9 consecutive times".
+
+### Why
+
+- On Claude Code 2.1.285, a Stop hook's `additionalContext` re-prompts the model. The hook
+  sent the advisory on every Stop, including continuations, and judged only files that do
+  not change while the model waits. One affected transcript carried the advisory on 397 of
+  426 turn ends.
+- To silence an advisory for a phase you abandoned, write a `skip-reason.md` of at least
+  50 bytes in the session folder. That escape hatch is unchanged.
+
+---
+
 ## [setup 1.4.0] - 2026-10-01
 
 ### Added
