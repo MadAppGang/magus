@@ -15,7 +15,7 @@
       "name": "code-search",
       "source": "./plugins/code-search",
       "description": "Read-only code search and investigation behind one stable tool surface. Finds code by meaning or structure, traces callers, callees and blast radius, and dispatches an analyze agent for deep dives. The search engine is named in project settings and is swappable.",
-      "version": "8.1.1",
+      "version": "8.2.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -37,6 +37,15 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "8.2.0",
+          "date": "2026-10-02",
+          "kinds": [
+            "Added",
+            "Changed"
+          ],
+          "summary": "Guided setup: /code-search:setup now installs, configures and indexes an engine, asking before\u2026"
+        },
         {
           "version": "8.1.1",
           "date": "2026-09-25",
@@ -62,15 +71,6 @@
             "Changed"
           ],
           "summary": "code-analysis:detective now asks for the symbol, file or behaviour to trace, and returns a\u2026"
-        },
-        {
-          "version": "7.2.1",
-          "date": "2026-09-10",
-          "kinds": [
-            "Fixed",
-            "Changed"
-          ],
-          "summary": "An unrecognised value-taking flag made the intercept hook deny a legitimate command and tell\u2026"
         }
       ]
     },

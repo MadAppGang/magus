@@ -16,6 +16,7 @@
 import type { Capability } from "./capabilities";
 import type { BackendNote, Scope } from "./ports";
 import type { LimitSettings } from "./settings";
+import { SETUP_COMMAND } from "./setup-state";
 
 export type Intent =
   | "locate"
@@ -690,6 +691,7 @@ function unavailable(message: string): BackendNote {
     message,
     // The settings key is written out rather than imported, so route.ts keeps its
     // type-only dependency on settings.ts and stays a pure function of its input.
-    remedy: 'Name an engine that declares this capability under "code-search".engine in .claude/settings.json.',
+    // SETUP_COMMAND is a string constant from a module with no IO, which keeps that true.
+    remedy: `Name an engine that declares this capability under "code-search".engine in .claude/settings.json, or run ${SETUP_COMMAND}.`,
   };
 }

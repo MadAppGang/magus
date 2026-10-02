@@ -14,7 +14,7 @@ const SHIM_PATH = "/fixture/home/.local/bin/rg";
 
 function evidence(overrides: Partial<RipgrepEvidence> = {}): RipgrepEvidence {
   return {
-    doctorJson: { ripgrepStatus: { working: true, mode: "system", systemPath: SHIM_PATH } },
+    doctorText: `Search: OK (${SHIM_PATH})\n`,
     shimPath: SHIM_PATH,
     shimHeader: "#!/bin/sh\n# OWNER=code-search VERSION=6.0.0\n",
     commandVRg: SHIM_PATH,
@@ -30,7 +30,7 @@ function codes(notes: readonly { code: string }[]): string[] {
 }
 
 describe("assessRipgrep — routing comes from the host, never from the setting", () => {
-  test("mode and working are read out of ripgrepStatus", () => {
+  test("mode and working are read out of the doctor's Search line", () => {
     const { ripgrep } = assessRipgrep(evidence());
     expect(ripgrep).toEqual({ working: true, mode: "system", systemPath: SHIM_PATH });
   });
@@ -41,7 +41,7 @@ describe("assessRipgrep — routing comes from the host, never from the setting"
     // from the setting reports the opposite of what is happening.
     const { ripgrep, shim } = assessRipgrep(
       evidence({
-        doctorJson: { ripgrepStatus: { working: true, mode: "embedded" } },
+        doctorText: "Search: OK (bundled)\n",
         settingPrefersSystem: true,
       }),
     );
@@ -50,13 +50,11 @@ describe("assessRipgrep — routing comes from the host, never from the setting"
   });
 
   test("an unrecognisable doctor payload degrades rather than throwing", () => {
-    expect(assessRipgrep(evidence({ doctorJson: null })).ripgrep).toEqual({
+    expect(assessRipgrep(evidence({ doctorText: undefined })).ripgrep).toEqual({
       working: false,
       mode: "unknown",
     });
-    expect(assessRipgrep(evidence({ doctorJson: { ripgrepStatus: 7 } })).ripgrep.mode).toBe(
-      "unknown",
-    );
+    expect(assessRipgrep(evidence({ doctorText: "Search: 7\n" })).ripgrep.mode).toBe("unknown");
   });
 });
 

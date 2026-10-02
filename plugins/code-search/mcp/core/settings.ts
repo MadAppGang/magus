@@ -161,8 +161,27 @@ export interface AdoptionSettings {
   traceFile: string | undefined;
 }
 
+/**
+ * Whether the user has answered the setup prompt for this project.
+ *
+ *   "dismissed" — "ignore for this project": no setup prompt, from the hook or the server.
+ *   "active"    — written by `configure` in the same write as `engine`, so a configure
+ *                 run in one layer overrides a "dismissed" left in another.
+ *   absent      — never answered; prompts whenever setup is incomplete.
+ *
+ * Any other value is dropped with `settings_ignored`, so a typo reads as "never answered"
+ * and prompts, rather than silently suppressing the prompt.
+ */
+export type SetupPreference = "dismissed" | "active";
+
 export interface CodeAnalysisSettings {
-  engine?: string;
+  /**
+   * The engine id, or `false` for an explicit "no engine": `code_search` only, chosen on
+   * purpose. Distinct from ABSENT, which means never configured. A string survives the
+   * merge even with no matching `engines` entry — registry.ts names the missing entry.
+   */
+  engine?: string | false;
+  setup?: SetupPreference;
   engines: Readonly<Record<string, EngineSpec>>;
   passthrough: PassthroughSettings;
   grep: GrepSettings;
@@ -237,10 +256,12 @@ export function mergeSettingsLayers(raw: readonly (unknown | undefined)[]): {
   const limits: Record<string, unknown> = {};
   const adoption: Record<string, unknown> = {};
   let engine: unknown;
+  let setup: unknown;
 
   for (const layer of raw) {
     if (!isPlainObject(layer)) continue;
     if ("engine" in layer) engine = layer["engine"];
+    if ("setup" in layer) setup = layer["setup"];
     assignShallow(engines, layer["engines"]);
     assignShallow(passthrough, layer["passthrough"]);
     assignShallow(grep, layer["grep"]);
@@ -261,8 +282,17 @@ export function mergeSettingsLayers(raw: readonly (unknown | undefined)[]): {
   // backend_unavailable note that can name the missing entry. Silently blanking it
   // here would leave the user staring at a tier-0-only tool list with no cause.
   if (engine !== undefined) {
-    if (typeof engine === "string" && ENGINE_ID_PATTERN.test(engine)) settings.engine = engine;
+    if (engine === false) settings.engine = false;
+    else if (typeof engine === "string" && ENGINE_ID_PATTERN.test(engine)) settings.engine = engine;
     else dropped.push("engine");
+  }
+
+  // Same rule as `engine`: the winning layer's value, whole. A bad value there is dropped,
+  // NOT replaced by a lower layer's — falling back would let a typo in settings.local.json
+  // quietly revive a "dismissed" written in ~/.claude/settings.json.
+  if (setup !== undefined) {
+    if (setup === "dismissed" || setup === "active") settings.setup = setup;
+    else dropped.push(`setup (${describeValue(setup)})`);
   }
 
   return { settings, dropped };

@@ -194,14 +194,15 @@ const CODEGRAPH_CMD: { command: string; args: string[] } | undefined = onPath("c
     : undefined;
 
 /**
- * `graphify-mcp` is the preferred route and is what a `graphifyy[mcp]` install puts on
- * PATH — a console entry point for the same module, so it needs no python resolution and
- * no `-m`. Its `--help` identifies itself as `python -m graphify.serve`, which is exactly
- * what it wraps.
+ * `graphify-mcp` is the preferred route — a console entry point for the same module, so it
+ * needs no python resolution and no `-m`. Its `--help` identifies itself as
+ * `python -m graphify.serve`, which is exactly what it wraps.
  *
- * The bare `graphifyy` install does NOT provide it: the extra is what pulls in `mcp`, and
- * without the extra the module raises `ImportError: mcp not installed`. So its presence on
- * PATH is also the cheapest available check that the right package was installed.
+ * Its presence on PATH does NOT prove the right install. graphifyy 0.9.50 declares
+ * `graphify-mcp` as an unconditional console script, so a bare `graphifyy` install puts it
+ * on PATH too; only the `[mcp]` extra installs the `mcp` library it imports, and without it
+ * the server raises `ImportError: mcp not installed`. The setup check reads uv's tool
+ * receipt (`extras = ["mcp"]`) for that; this suite finds out by starting the server.
  */
 const GRAPHIFY_CMD: { command: string; args: string[] } | undefined = onPath("graphify-mcp")
   ? { command: "graphify-mcp", args: [] }
@@ -272,9 +273,17 @@ function startAgainst(
     mkdirSync(join(project, ".serena"), { recursive: true });
     writeFileSync(join(project, ".serena", "project.yml"), SERENA_PROJECT_YML);
   }
+  // `setup: "dismissed"` keeps the server's `setup_incomplete` note out of every answer.
+  // This suite asserts what the ENGINE says; the note would add a temp-dir path (breaking
+  // the repo-relative checks) and the word "index_missing" (letting the unindexed-mnemex
+  // case pass on the note instead of the adapter).
   writeFileSync(
     join(project, ".claude", "settings.json"),
-    JSON.stringify({ "code-search": { engine: engineId, engines: { [engineId]: spec } } }, null, 2),
+    JSON.stringify(
+      { "code-search": { engine: engineId, engines: { [engineId]: spec }, setup: "dismissed" } },
+      null,
+      2,
+    ),
   );
   prepare?.(project);
 

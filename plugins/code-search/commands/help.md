@@ -39,12 +39,16 @@ That is routing, not a fallback. The only rule is that a report names the method
 ## The engine
 
 One engine at a time, named in project settings under a `code-search` block, read from your
-user settings, then the project's, then the project's local overrides. With none named,
-`code_search` runs on its own — a supported configuration, not a broken one.
+user settings, then the project's, then the project's local overrides.
 
-Run `/code-search:setup` to see which engine is active, whether it answered a probe, and what
-the remedy is when it did not. Engines document their own installation; this plugin does not
-install one for you.
+Run `/code-search:setup` to choose an engine, install it, build its index and check that
+`code_search` is served. It asks before every
+change. It can also record "no engine" as a deliberate choice, and it undoes an earlier
+"ignore for this project".
+
+Until setup is done, Claude offers it once per session, before it first searches this
+codebase by any means, `Grep` included. The three answers are set up now, not now, or
+ignore for this project.
 
 ---
 
@@ -62,7 +66,7 @@ or why something breaks. It runs in its own context window and never edits anyth
 | Command | What it does |
 |---|---|
 | `/code-search:analyze` | Dispatch the analyze agent at one question |
-| `/code-search:setup` | Install and verify the ripgrep shim, check the server, report the engine |
+| `/code-search:setup` | Guided setup: engine, index and settings, then a verify |
 | `/code-search:help` | This |
 
 ```

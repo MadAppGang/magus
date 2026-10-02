@@ -26,5 +26,9 @@
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true
   },
-  "include": ["mcp/**/*.ts"]
+  // scripts/ is the setup CLI; mcp/** already covers mcp/setup/. Before scripts/ was listed
+  // here it compiled nowhere, and a type error in it reached users unseen. The same holds
+  // for the setup-offer hook. The other hooks are left out: they predate this list, and
+  // magus-version-check.ts is a byte-identical copy owned by plugins/dev.
+  "include": ["mcp/**/*.ts", "scripts/**/*.ts", "hooks/offer-setup*.ts"]
 }

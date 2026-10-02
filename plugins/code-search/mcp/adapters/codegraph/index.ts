@@ -94,6 +94,7 @@ import {
   type EngineAnswer,
   type EngineSpec,
 } from "../shared/kit";
+import { CATALOG, shellQuote } from "../catalog";
 
 const ID = "codegraph";
 const DISPLAY_NAME = "CodeGraph";
@@ -109,9 +110,12 @@ const TOOL = {
   files: "codegraph_files",
 } as const;
 
-const START_REMEDY =
-  'codegraph serve --mcp  with CODEGRAPH_MCP_TOOLS=explore,node,search,callers,callees,impact,files,status  ' +
-  "(and `codegraph init` in the project, once — without an index the server lists only codegraph_explore)";
+/** Rendered from the catalog. Pinned by `remedies.snapshot.test.ts`. */
+export const START_REMEDY =
+  `${shellQuote(CATALOG.codegraph.start)}  ` +
+  `with ${shellQuote([`CODEGRAPH_MCP_TOOLS=${CATALOG.codegraph.settings.env.CODEGRAPH_MCP_TOOLS}`])}  ` +
+  `(and \`${shellQuote(CATALOG.codegraph.projectStep.argv)}\` in the project, once — ` +
+  "without an index the server lists only codegraph_explore)";
 
 const TOOLS_FOR: Readonly<Partial<Record<Capability, readonly string[]>>> = {
   generalSearch: [TOOL.explore],

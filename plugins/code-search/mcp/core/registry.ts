@@ -27,6 +27,7 @@ import { CAPABILITIES } from "./capabilities";
 import type { Capability, CapabilityStatus } from "./capabilities";
 import type { BackendHealth, BackendNote, Engine, PassthroughTool } from "./ports";
 import type { CodeAnalysisSettings, EngineSpec, PassthroughSettings } from "./settings";
+import { SETUP_COMMAND } from "./setup-state";
 
 export interface ToolDescriptor {
   /** The unprefixed name. Claude Code adds `mcp__plugin_code-search_ca__`. */
@@ -533,8 +534,10 @@ function resolveEngine(
   notes: BackendNote[],
 ): { engine: Engine | undefined; engineId: string | undefined } {
   const id = input.settings.engine;
-  // No engine named is a legitimate configuration, not a fault: tier 0 alone.
-  if (id === undefined) return { engine: undefined, engineId: undefined };
+  // Never configured, or `false` — "no engine", chosen on purpose: tier 0 alone, and no
+  // registry note either way. What to tell the user about each is the setup check's job,
+  // not the tool set's; this module only decides which tools exist.
+  if (id === undefined || id === false) return { engine: undefined, engineId: undefined };
 
   // Quoted, so an id with a stray space or a smart quote in it is visible rather than
   // reading as a clean name that mysteriously does not work.
@@ -547,7 +550,7 @@ function resolveEngine(
       level: "error",
       code: "backend_unavailable",
       message: `"code-search".engine names "${id}", but "code-search".engines has no entry for it.`,
-      remedy: `Add an "engines"."${id}" entry with a "command" to .claude/settings.json, or change "engine".${shippedClause}`,
+      remedy: `Add an "engines"."${id}" entry with a "command" to .claude/settings.json, or change "engine", or run ${SETUP_COMMAND}.${shippedClause}`,
     });
     return { engine: undefined, engineId: id };
   }
@@ -567,7 +570,7 @@ function resolveEngine(
       // is the same class of error as picking a model by name similarity: it is right
       // often enough to be trusted and wrong silently. The list is shown; the choice
       // stays the operator's.
-      remedy: `Set "code-search".engine to an engine this plugin ships an adapter for.${shippedClause}`,
+      remedy: `Set "code-search".engine to an engine this plugin ships an adapter for, or run ${SETUP_COMMAND}.${shippedClause}`,
     });
   }
   return { engine, engineId: id };

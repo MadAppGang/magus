@@ -289,6 +289,7 @@ describe("core/ obeys the hexagon", () => {
       "render.ts",
       "route.ts",
       "settings.ts",
+      "setup-state.ts",
     ]);
 
     const mcp = shippedFiles(MCP_DIR);

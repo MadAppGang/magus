@@ -69,6 +69,7 @@ import {
   type EngineAnswer,
   type EngineSpec,
 } from "../shared/kit";
+import { CATALOG, shellQuote } from "../catalog";
 
 const ID = "serena";
 const DISPLAY_NAME = "Serena";
@@ -79,8 +80,8 @@ const TOOL = {
   findImplementations: "find_implementations",
 } as const;
 
-const START_REMEDY =
-  "serena start-mcp-server --context claude-code --project-from-cwd  (check the project is activated)";
+/** Rendered from the catalog. Pinned by `remedies.snapshot.test.ts`. */
+export const START_REMEDY = `${shellQuote(CATALOG.serena.start)}  (check the project is activated)`;
 
 const TOOLS_FOR: Readonly<Partial<Record<Capability, readonly string[]>>> = {
   generalSearch: [TOOL.findSymbol],

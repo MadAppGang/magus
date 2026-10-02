@@ -95,6 +95,7 @@ import {
   type EngineAnswer,
   type EngineSpec,
 } from "../shared/kit";
+import { CATALOG, shellQuote } from "../catalog";
 
 const ID = "graphify";
 const DISPLAY_NAME = "Graphify";
@@ -107,10 +108,11 @@ const TOOL = {
   graphStats: "graph_stats",
 } as const;
 
-const START_REMEDY =
-  'uv tool install "graphifyy[mcp]"  then  graphify update <path> --no-cluster  ' +
-  "(the bare `graphifyy` install has no MCP server; the [mcp] extra is required, and it is " +
-  "what puts `graphify-mcp` on PATH)";
+/** Rendered from the catalog. Pinned by `remedies.snapshot.test.ts`. */
+export const START_REMEDY =
+  `${shellQuote(CATALOG.graphify.install)}  then  ${shellQuote(CATALOG.graphify.projectStep.argv)}  ` +
+  "(the [mcp] extra is required: without it `graphify-mcp` is still on PATH but cannot start, " +
+  "because the `mcp` library it imports is missing)";
 
 const TOOLS_FOR: Readonly<Partial<Record<Capability, readonly string[]>>> = {
   generalSearch: [TOOL.queryGraph],

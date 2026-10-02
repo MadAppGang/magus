@@ -7,11 +7,11 @@ Read-only code search and investigation behind one stable tool surface. Finds co
 
 | | |
 |---|---|
-| Version | `8.1.1` |
+| Version | `8.2.0` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 3 |
 | Subagents | 1 |
-| Skills | 3 |
+| Skills | 4 |
 | MCP server | yes |
 | Hooks | yes |
 
@@ -43,7 +43,7 @@ Prefer to do it by hand? [Installing Magus](../../guides/install.md) has the man
 |---|---|
 | `/code-search:analyze` | Investigate a codebase read-only — understand architecture, trace how a feature works, locate an implementation, or track a bug to its origin |
 | `/code-search:help` | Show what the code-search plugin provides — its agent, commands, skills, tool surface, and which one to reach for |
-| `/code-search:setup` | Install and verify the ripgrep shim, check the code-search MCP server starts, and report the active search engine and its health |
+| `/code-search:setup` | Set up code-search in this project: choose, install and configure a search engine, build its index, and verify. Asks before every change, and undoes an earlier ignore-for-this-project. |
 
 ## Subagents
 
@@ -55,11 +55,19 @@ Dispatched with the Agent tool, each in its own context window.
 
 ## Skills
 
-| Skill | What it covers |
+| | How you get it |
 |---|---|
-| `code-search:deep-analysis` | Audits a codebase across seven dimensions, from architecture to code health, scoring each finding with evidence. |
-| `code-search:investigate` | Routes a code investigation to one of four modes — bug, test gap, architecture, implementation — and runs the query sequence that mode needs. |
-| `code-search:search` | Finds code by meaning, structure or exact text, then reads only the spans returned. Use when searching a codebase, locating a symbol, tracing callers, or about to open three or more files. |
+| ● | Claude can reach for it on its own |
+| ○ | You invoke it by name |
+
+[Why a skill lands in one row or another](../../guides/skill-visibility.md)
+
+| | Skill | What it covers |
+|---|---|---|
+| ● | `code-search:deep-analysis` | Audits a codebase across seven dimensions, from architecture to code health, scoring each finding with evidence. |
+| ● | `code-search:investigate` | Routes a code investigation to one of four modes — bug, test gap, architecture, implementation — and runs the query sequence that mode needs. |
+| ● | `code-search:search` | Finds code by meaning, structure or exact text, then reads only the spans returned. Use when searching a codebase, locating a symbol, tracing callers, or about to open three or more files. |
+| ○ | `code-search:setup` | Sets up code-search in a project (search engine, index and settings) through its setup CLI, asking before every change. |
 
 ## MCP server
 

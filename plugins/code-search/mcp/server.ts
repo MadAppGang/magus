@@ -35,7 +35,7 @@
  * for the rest of it.
  */
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -71,10 +71,14 @@ import {
 } from "./core/route";
 import {
   loadSettings,
+  settingsLayerPaths,
   type CodeAnalysisSettings,
   type EngineSpec,
   type SettingsIo,
 } from "./core/settings";
+import { SETUP_COMMAND, type SetupAdvice, type SetupStateId } from "./core/setup-state";
+import { evaluateSetup } from "./setup/check";
+import { makeNodeCheckIo } from "./setup/node-io";
 import { encode, makeLineReader, type RpcId, type RpcResponse } from "./transport/jsonrpc";
 import { MCP_CLIENT_DEFAULTS, makeMcpClient, type McpClient } from "./transport/mcp-stdio-client";
 
@@ -122,6 +126,30 @@ const SERVER_NAME = "ca";
 
 /** Probe-result TTL handed to each adapter, per design §8.1. */
 const PROBE_TTL_MS = 60_000;
+
+/**
+ * How long one evaluation of the setup state is trusted. The evaluation is the fast path of
+ * `setup/check.ts` (file reads and stats, never a process), so this bounds the cost per
+ * call rather than protecting anything slow. A change to any settings file invalidates it
+ * at once (see `makeSetupNotes`): a user who answers "ignore for this project" must not be
+ * told on the very next call that setup is still incomplete.
+ */
+const SETUP_STATE_TTL_MS = 60_000;
+
+/** The one note an explicit "no engine" answers with. A choice, so `info` and no remedy. */
+const NO_ENGINE_NOTE: BackendNote = {
+  level: "info",
+  code: "no_engine",
+  message: "No engine configured, by choice; use Grep, Glob and Read.",
+};
+
+/** Setup dismissed and no engine configured (A18). Also a choice: `info`, no remedy, and
+ *  deliberately no mention of the setup command. */
+const SETUP_DISMISSED_NOTE: BackendNote = {
+  level: "info",
+  code: "setup_dismissed",
+  message: "Code search is not set up in this project (setup dismissed); use Grep, Glob and Read.",
+};
 
 const METHOD_NOT_FOUND = -32601;
 const INVALID_PARAMS = -32602;
@@ -302,6 +330,93 @@ function buildFacade(env: NodeJS.ProcessEnv, onToolsChanged: () => void): Facade
 }
 
 // ---------------------------------------------------------------------------
+// The setup note
+// ---------------------------------------------------------------------------
+
+interface SetupNotes {
+  /** The `setup_incomplete` note for the next tool result, or undefined when setup is
+   *  ready, dismissed, or set to no engine. */
+  next(): BackendNote | undefined;
+  /** The merged settings say `setup: "dismissed"`, read live (same cache as `next`), so a
+   *  dismissal written mid-session takes effect on the next call. False when the
+   *  evaluation fails. */
+  dismissed(): boolean;
+}
+
+/**
+ * The `setup_incomplete` note: the full "ask the user" text on the first tool result of
+ * this process, the short form after. Both carry the state, the setup skill's path, the
+ * dismiss command and the relay sentence (`setupAdvice()`), so a subagent that sees only
+ * the short form can still act on it or hand it up.
+ *
+ * The state comes from `setup/check.ts`, the evaluator the SessionStart hook and the setup
+ * CLI use, so the three surfaces cannot disagree. It is cached, and re-evaluated when any
+ * settings layer's size or mtime changes (three stats per call) or after
+ * `SETUP_STATE_TTL_MS` (an index built changes no settings file).
+ *
+ * A failed evaluation is one stderr line and no note: a setup reminder must never cost an
+ * answer.
+ */
+function makeSetupNotes(env: NodeJS.ProcessEnv, projectDir: string, now: () => number): SetupNotes {
+  const home = homeOf(env);
+  const pluginRoot = join(HERE, "..");
+  const io = makeNodeCheckIo(env);
+  const layers = settingsLayerPaths(home, projectDir);
+
+  let cached:
+    | { at: number; stamp: string; headline: SetupStateId; advice: SetupAdvice | undefined }
+    | undefined;
+  let fullSent = false;
+
+  const stampOf = (): string =>
+    layers
+      .map((path) => {
+        try {
+          const stats = statSync(path);
+          return `${stats.mtimeMs}:${stats.size}`;
+        } catch {
+          return "-";
+        }
+      })
+      .join("|");
+
+  const evaluation = (): { headline: SetupStateId; advice: SetupAdvice | undefined } => {
+    const stamp = stampOf();
+    const at = now();
+    if (cached === undefined || cached.stamp !== stamp || at - cached.at >= SETUP_STATE_TTL_MS) {
+      const report = evaluateSetup({ pluginRoot, projectDir, home }, io);
+      cached = { at, stamp, headline: report.headline, advice: report.advice };
+    }
+    return cached;
+  };
+  const advice = (): SetupAdvice | undefined => evaluation().advice;
+
+  return {
+    dismissed(): boolean {
+      try {
+        return evaluation().headline === "dismissed";
+      } catch (error) {
+        log(`setup check failed: ${describe(error)}`);
+        return false;
+      }
+    },
+    next(): BackendNote | undefined {
+      let current: SetupAdvice | undefined;
+      try {
+        current = advice();
+      } catch (error) {
+        log(`setup check failed: ${describe(error)}`);
+        return undefined;
+      }
+      if (current === undefined) return undefined;
+      const message = fullSent ? current.short : current.full;
+      fullSent = true;
+      return { level: "info", code: "setup_incomplete", message };
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Capability invocation
 // ---------------------------------------------------------------------------
 
@@ -395,12 +510,17 @@ export function createServer(env: NodeJS.ProcessEnv, write: (line: string) => vo
 
   const facade = buildFacade(env, notifyToolsChanged);
   const version = pluginVersion();
+  const setupNotes = makeSetupNotes(env, projectDirOf(env), Date.now);
 
   /** Startup notes ride along on every result: they describe a misconfiguration that
    *  persists, and a cause nobody sees is the silent failure this facade exists to
-   *  remove. On a healthy install this array is empty and costs nothing. */
+   *  remove. On a healthy install this array is empty and costs nothing.
+   *
+   *  The setup note rides along too, until setup is done or dismissed. Called exactly
+   *  once per tool result, because the first call takes the note's full form. */
   function facadeNotes(): BackendNote[] {
-    return [...facade.startupNotes, ...facade.registry.notes()];
+    const setup = setupNotes.next();
+    return [...facade.startupNotes, ...facade.registry.notes(), ...(setup === undefined ? [] : [setup])];
   }
 
   function engineLabel(): string {
@@ -551,6 +671,22 @@ export function createServer(env: NodeJS.ProcessEnv, write: (line: string) => vo
       });
     }
 
+    // `engine: false` is an answer the user gave, not a fault: one `info` note, no
+    // remedy, and neither route's nor this file's `backend_unavailable`. Checked after
+    // the arguments, so a malformed call is still a protocol error.
+    if (facade.settings.engine === false) {
+      return unavailable({ engine: "none" }, NO_ENGINE_NOTE);
+    }
+
+    // A18: setup dismissed and no engine configured is also an answer the user gave. One
+    // `info` note, no remedy, no `backend_unavailable`, and nothing pointing back to
+    // setup — a remedy naming /code-search:setup is how a dismissed project gets asked
+    // again (bench CSO-1 scenario 3). The dismissal is read live; the engine is this
+    // process's, since the registry is built once at startup.
+    if (facade.settings.engine === undefined && setupNotes.dismissed()) {
+      return unavailable({ engine: "none" }, SETUP_DISMISSED_NOTE);
+    }
+
     if (!routed.ok) {
       return unavailable({ engine: engineId || "none" }, routed.note);
     }
@@ -561,7 +697,7 @@ export function createServer(env: NodeJS.ProcessEnv, write: (line: string) => vo
         level: "error",
         code: "backend_unavailable",
         message: `No engine is available to answer ${routed.decision.capability} for this project.`,
-        remedy: 'Set "code-search".engine and its "engines" entry in .claude/settings.json.',
+        remedy: `Set "code-search".engine and its "engines" entry in .claude/settings.json, or run ${SETUP_COMMAND}.`,
       });
     }
 

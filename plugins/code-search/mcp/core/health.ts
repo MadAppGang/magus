@@ -1,17 +1,23 @@
 /**
  * health.ts — pure assessors for ripgrep/shim/engine health.
  *
- * This module spawns nothing and reads no file. `server.ts` runs `claude doctor
- * --json`, `command -v rg` and `type rg`, and hands the captured text in as
- * `RipgrepEvidence`. That is what makes the three states that break silently —
- * a setting that prefers a system rg with no shim installed, a foreign shim, and a
- * Bash shell function shadowing the file — testable at all.
+ * NO PRODUCTION CALLER since code-search 8.2.0: setup stopped checking the ripgrep shim,
+ * because the shim runs the host's own embedded ripgrep and never reaches an engine
+ * (ai-docs/code-search-ripgrep-shim-and-adoption.md). `assessRipgrep` and its tests stay
+ * until the next iteration decides whether the shim goes or gets a real job.
+ *
+ * This module spawns nothing and reads no file. A caller runs plain `claude doctor`,
+ * looks `rg` up on PATH and takes `type rg` from its shell, and hands the captured text
+ * in as `RipgrepEvidence`. That is what makes the three
+ * states that break silently — a setting that prefers a system rg with no shim
+ * installed, a foreign shim, and a Bash shell function shadowing the file — testable at
+ * all.
  *
  * USE_BUILTIN_RIPGREP is a soft PREFERENCE, never routing: the host treats
  * `0|false|no|off` as "prefer a system rg" and silently falls through to its embedded
  * copy when the PATH lookup finds nothing. Any check that infers routing from the
- * setting is wrong, which is why `mode` comes from `ripgrepStatus` and the setting
- * appears only as `settingPrefersSystem`.
+ * setting is wrong, which is why `mode` comes from the doctor's `Search:` line and the
+ * setting appears only as `settingPrefersSystem`.
  */
 
 import { CAPABILITIES } from "./capabilities";
@@ -19,6 +25,7 @@ import type { CapabilityStatus } from "./capabilities";
 import type { BackendHealth, BackendNote } from "./ports";
 import type { LayerReport } from "./settings";
 import type { ProbeResult } from "./registry";
+import { SETUP_COMMAND } from "./setup-state";
 
 export interface RipgrepStatus {
   working: boolean;
@@ -26,7 +33,17 @@ export interface RipgrepStatus {
   systemPath?: string;
 }
 
-export type ShimOwner = "code-search" | "mnemex" | "foreign" | "none";
+/**
+ * Who wrote the shim at `~/.local/bin/rg`, read from its `OWNER=` header.
+ *
+ *   code-search    ours
+ *   code-analysis  ours too, written before the plugin was renamed (2026-09-15): it routes
+ *                  Grep, and is always outdated
+ *   mnemex         a sibling's shim that also routes Grep
+ *   foreign        anything else, including no OWNER= at all; never overwritten
+ *   none           no file
+ */
+export type ShimOwner = "code-search" | "code-analysis" | "mnemex" | "foreign" | "none";
 
 export interface ShimReport {
   path: string;
@@ -45,7 +62,10 @@ export interface ShimReport {
 
 /** Everything is pre-captured text. This module spawns nothing and reads no file. */
 export interface RipgrepEvidence {
-  doctorJson: unknown; // `claude doctor --json`, already parsed
+  /** The stdout of plain `claude doctor`, or undefined when it was not run. There is no
+   *  `--json` (Claude Code 2.1.283: `error: unknown option '--json'`); the one line read
+   *  is `Search: OK (<path>)` or `Search: OK (bundled)`. */
+  doctorText: string | undefined;
   shimPath: string;
   shimHeader?: string; // first ~5 lines of the shim, when present
   commandVRg?: string; // `command -v rg`
@@ -63,14 +83,12 @@ export interface FacadeHealth {
   notes: readonly BackendNote[];
 }
 
-const SETUP_COMMAND = "/code-search:setup";
-
 export function assessRipgrep(e: RipgrepEvidence): {
   ripgrep: RipgrepStatus;
   shim: ShimReport;
   notes: BackendNote[];
 } {
-  const ripgrep = readRipgrepStatus(e.doctorJson);
+  const ripgrep = readRipgrepStatus(e.doctorText);
   const owner = readOwner(e.shimHeader);
   const resolved = e.commandVRg?.trim();
 
@@ -198,38 +216,45 @@ export function emptyHealth(engineId: string, reason: string, remedy?: string): 
 // Internals
 // ---------------------------------------------------------------------------
 
-function readRipgrepStatus(doctorJson: unknown): RipgrepStatus {
-  const status = asRecord(asRecord(doctorJson)?.["ripgrepStatus"]);
-  if (status === undefined) return { working: false, mode: "unknown" };
+/**
+ * The host's own ripgrep routing, read off the one line `claude doctor` prints for it.
+ *
+ * The 2.1.283 format string is
+ *   `Search: ${working ? "OK" : "Not working"} (${mode === "embedded" ? "bundled" : systemPath || "system"})`
+ * so the parenthesis is either `bundled` (the embedded copy) or the rg that won the PATH
+ * lookup. The path may be printed with a leading `~`; callers compare after expanding it.
+ *
+ * Another program's human output: read defensively. A missing or reworded line is
+ * `unknown`, never a throw, so an upgrade that changes the wording degrades the report
+ * instead of taking the check down.
+ */
+export function readRipgrepStatus(doctorText: string | undefined): RipgrepStatus {
+  if (doctorText === undefined) return { working: false, mode: "unknown" };
+  // Colour codes, should a future build emit them without a TTY.
+  const plain = doctorText.replace(/\u001b\[[0-9;]*m/gu, "");
+  const match = /\bSearch:[^\S\n]*(OK|Not working)[^\S\n]*\((.*)\)[^\S\n]*$/mu.exec(plain);
+  if (match === null) return { working: false, mode: "unknown" };
 
-  const working = status["working"] === true;
-  const rawMode = status["mode"];
-  const mode: RipgrepStatus["mode"] =
-    rawMode === "system" || rawMode === "embedded" ? rawMode : "unknown";
-  const out: RipgrepStatus = { working, mode };
-  const systemPath = status["systemPath"];
-  if (typeof systemPath === "string" && systemPath !== "") out.systemPath = systemPath;
-  return out;
+  const working = match[1] === "OK";
+  const inside = (match[2] ?? "").trim();
+  if (inside === "bundled") return { working, mode: "embedded" };
+  if (inside === "" || inside === "system") return { working, mode: "system" };
+  return { working, mode: "system", systemPath: inside };
 }
 
-/** `claude doctor --json` is another program's output shape: read it defensively or
- *  an upgrade that renames a field takes the server down instead of degrading. */
-function asRecord(value: unknown): Record<string, unknown> | undefined {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) return undefined;
-  return value as Record<string, unknown>;
-}
-
-/** The shim's header names its owner so setup can tell ours from mnemex's from a
- *  stranger's, and refuse to clobber the stranger. */
-function readOwner(header: string | undefined): ShimOwner {
+/** The shim's header names its owner, so ours (under either name) can be told from
+ *  mnemex's and from a stranger's. */
+export function readOwner(header: string | undefined): ShimOwner {
   if (header === undefined) return "none";
   const owner = readHeaderField(header, "OWNER");
   if (owner === "code-search") return "code-search";
+  if (owner === "code-analysis") return "code-analysis";
   if (owner === "mnemex") return "mnemex";
   return "foreign";
 }
 
-function readHeaderField(header: string | undefined, field: string): string | undefined {
+/** One `FIELD=value` out of the shim header (`OWNER=`, `VERSION=`). */
+export function readHeaderField(header: string | undefined, field: string): string | undefined {
   if (header === undefined) return undefined;
   const match = new RegExp(`\\b${field}=([A-Za-z0-9._-]+)`, "u").exec(header);
   return match?.[1];

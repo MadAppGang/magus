@@ -88,6 +88,7 @@ import {
   type EngineSpec,
   type TtlCache,
 } from "../shared/kit";
+import { CATALOG, shellQuote } from "../catalog";
 
 const ID = "mnemex";
 const DISPLAY_NAME = "mnemex";
@@ -102,10 +103,11 @@ const TOOL = {
   indexStatus: "index_status",
 } as const;
 
-/** Install command, verbatim and copy-pasteable. `npm install -g mnemex` and
- *  `npm install -g claude-codemem` are both wrong and both appear in the old skills. */
-const INSTALL_REMEDY = "bun install -g mnemex";
-const INDEX_REMEDY = "mnemex index";
+/** Install and index commands, rendered from the catalog so there is one copy.
+ *  `npm install -g mnemex` and `npm install -g claude-codemem` are both wrong and both
+ *  appear in the old skills. Pinned by `remedies.snapshot.test.ts`. */
+export const INSTALL_REMEDY = shellQuote(CATALOG.mnemex.install);
+export const INDEX_REMEDY = shellQuote(CATALOG.mnemex.projectStep.argv);
 
 /** Which upstream tools each declared capability needs. Read at probe time so a
  *  version bump that removes one makes the TOOL disappear rather than fail at call

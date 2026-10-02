@@ -101,7 +101,18 @@ export interface BackendNote {
     /** The Grep tool's ripgrep routing is not what the settings imply — shim missing,
      *  shadowed on PATH or by a shell function, or repaired but not yet live. Same
      *  argument as settings_ignored: this is not the engine. */
-    | "grep_routing";
+    | "grep_routing"
+    /** Setup is incomplete — no engine chosen, or the engine or its index missing — and
+     *  the user has not dismissed the prompt. Carries
+     *  what to read and what to run, so the model can offer setup or relay the note. */
+    | "setup_incomplete"
+    /** `engine: false`: the user chose `code_search` with no engine. Level `info`, no
+     *  remedy — a choice is not a fault, so it must not read like `backend_unavailable`. */
+    | "no_engine"
+    /** The user dismissed setup ("ignore for this project") and no engine is configured.
+     *  Level `info`, no remedy, and no pointer back to setup: the user already answered,
+     *  and a note that re-offers setup is how a dismissed project gets asked again. */
+    | "setup_dismissed";
   message: string;
   /** A command the user can run, when one exists. Verbatim, copy-pasteable. */
   remedy?: string;

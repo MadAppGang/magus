@@ -1,5 +1,5 @@
 {
-  "description": "PreToolUse:Bash guards the private index directories and redirects raw searches to the facade. SessionStart with matcher startup runs magus-version-check, which reports a magus CLI that is behind npm's magus-cli latest and names the exact install command; it is carried by every hook-bearing plugin because magus 7.0.0 to 7.3.0 ask npm about the wrong package and can never discover or install their own fix, while the plugins update from the marketplace independently of the magus version. The copy here is byte-identical to the other five and gated by scripts/check-hook-copies.ts. All copies share one cache directory and claim one marker, so a session start costs one registry request and prints at most one notice however many of them are installed.",
+  "description": "PreToolUse:Bash guards the private index directories and redirects raw searches to the facade. SessionStart with matcher startup|clear runs offer-setup, which reads this project's code-search settings, engine and index without starting any process, and, only when setup is incomplete and the user has not dismissed it, asks the model to offer set up now, not now, or ignore for this project; it is silent when setup is ready, dismissed, or set to no engine. SessionStart with matcher startup runs magus-version-check, which reports a magus CLI that is behind npm's magus-cli latest and names the exact install command; it is carried by every hook-bearing plugin because magus 7.0.0 to 7.3.0 ask npm about the wrong package and can never discover or install their own fix, while the plugins update from the marketplace independently of the magus version. The copy here is byte-identical to the other five and gated by scripts/check-hook-copies.ts. All copies share one cache directory and claim one marker, so a session start costs one registry request and prints at most one notice however many of them are installed.",
   "hooks": {
     "SessionStart": [
       {
@@ -8,6 +8,16 @@
           {
             "type": "command",
             "command": "bun --env-file=/dev/null --config=/dev/null ${CLAUDE_PLUGIN_ROOT}/hooks/magus-version-check.ts",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "startup|clear",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun --env-file=/dev/null --config=/dev/null ${CLAUDE_PLUGIN_ROOT}/hooks/offer-setup.ts",
             "timeout": 5
           }
         ]

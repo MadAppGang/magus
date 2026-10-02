@@ -4,6 +4,33 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [code-search 8.2.0] - 2026-10-02
+
+### Added
+
+- **Guided setup: `/code-search:setup` now installs, configures and indexes an engine, asking
+  before every change.** It walks through choosing an engine (codegraph, graphify, mnemex or
+  serena, each with what it is, its pros and cons), installs it through its package manager,
+  writes the settings, builds the project index and checks that `code_search` answers. Every
+  install and settings change runs through one setup script with predefined commands; nothing
+  is piped into a shell.
+  It can also record "no engine" as a deliberate choice.
+- **Claude now offers setup when it is incomplete.** Until the project has a working engine,
+  Claude asks once per session (and again after `/clear`), before it first searches the
+  codebase: set up now, not now, or ignore for this project. "Ignore" is remembered in the project's settings, and running
+  `/code-search:setup` later undoes it. A task that needs no search is never interrupted.
+- `code_search` answers carry a short setup note while setup is incomplete, and a quiet note
+  when the project chose no engine or dismissed setup.
+
+### Changed
+
+- Settings writes made by setup are atomic. They are refused, with nothing written, while any
+  settings file is invalid JSON or when a more specific settings file would override them.
+- Setup does not install or check the ripgrep shim. It runs Claude Code's own ripgrep and
+  never reaches an engine, so it is no part of setup. An installed shim keeps working.
+
+---
+
 ## [dev 9.0.1] - 2026-10-01
 
 ### Fixed
