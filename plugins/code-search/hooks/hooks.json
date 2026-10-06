@@ -9,6 +9,11 @@
             "type": "command",
             "command": "bun --env-file=/dev/null --config=/dev/null ${CLAUDE_PLUGIN_ROOT}/hooks/magus-version-check.ts",
             "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "command -v bun >/dev/null 2>&1 && exec bun --env-file=/dev/null --config=/dev/null \"${CLAUDE_PLUGIN_ROOT}/hooks/deps-check.ts\" code-search || exec sh \"${CLAUDE_PLUGIN_ROOT}/hooks/bun-missing.sh\" code-search",
+            "timeout": 10
           }
         ]
       },

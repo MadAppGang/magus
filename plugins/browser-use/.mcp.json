@@ -1,6 +1,6 @@
 {
   "browser-use": {
-    "command": "python3",
-    "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/mcp-server.py"]
+    "command": "uv",
+    "args": ["run", "--no-config", "--script", "${CLAUDE_PLUGIN_ROOT}/scripts/mcp-server.py"]
   }
 }

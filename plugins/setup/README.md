@@ -26,6 +26,20 @@ adaptive statusline and indexes every skill reachable from the project.
 Run `/setup:project --dry-run` first on an existing repo. It reports what it would change
 before touching anything, which matters because provisioning writes settings files.
 
+## Plugin dependencies
+
+Besides the project's own stack, `/setup:project` checks what your installed plugins need
+on the machine, such as the binaries behind their MCP servers. It does this in every
+repository, because a plugin with a missing binary is broken whatever the stack. The list
+comes from magus-cli (`magus doctor --json`), which reads each plugin's own declaration;
+the command keeps no copy of it. When magus-cli is missing, `/setup:project` says so and
+offers `bun add -g magus-cli` (`npm i -g magus-cli` without Bun). It then shows every
+missing dependency with its fix, asks once, and on yes runs `magus doctor --fix --yes --json`,
+which installs the dependencies and changes nothing else. An install that outlasts the
+10-minute tool limit finishes in your terminal with the same command plus
+`--project <repo>`, which resumes where it stopped. Restart Claude Code afterwards so
+the MCP servers connect.
+
 ## Indexing skills
 
 ```

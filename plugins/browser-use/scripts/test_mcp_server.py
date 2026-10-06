@@ -2646,12 +2646,15 @@ def _make_fake_chromium(
     mac_bundle: str = "Google Chrome for Testing",
 ) -> Path:
     """
-    Create one fake Playwright chromium install under cache_root and return the
-    binary path.  Layouts mirror what Playwright actually ships today:
+    Create one fake, finished Playwright chromium install under cache_root and
+    return the binary path.  Layouts mirror what Playwright actually ships today:
 
         darwin: chromium-<rev>/chrome-mac-arm64/<Bundle>.app/Contents/MacOS/<Bundle>
         linux : chromium-<rev>/chrome-linux/chrome
         win32 : chromium-<rev>/chrome-win/chrome.exe
+
+    Finished means the markers Playwright writes: INSTALLATION_COMPLETE, and on
+    Linux DEPENDENCIES_VALIDATED. The resolver launches no revision without them.
     """
     rev_dir = cache_root / f"chromium-{revision}"
     if platform_key == "darwin":
@@ -2663,6 +2666,9 @@ def _make_fake_chromium(
     binary.parent.mkdir(parents=True, exist_ok=True)
     binary.write_text("#!/bin/sh\nexit 0\n")
     binary.chmod(0o755)
+    (rev_dir / "INSTALLATION_COMPLETE").write_text("")
+    if platform_key == "linux":
+        (rev_dir / "DEPENDENCIES_VALIDATED").write_text("")
     return binary
 
 
@@ -2811,9 +2817,9 @@ class TestResolveChromiumBinary(_TempDirMixin):
                 )
 
         self.assertIn(
-            "playwright install",
+            "magus doctor --fix",
             str(ctx.exception).lower(),
-            "The error must name the remedy (python3 -m playwright install chromium). "
+            "The error must name the remedy (magus doctor --fix). "
             f"Got: {str(ctx.exception)!r}",
         )
 
@@ -4204,10 +4210,10 @@ class TestDoctorReportsChromiumResolution(_TempDirMixin, unittest.IsolatedAsynci
             f"telling the user what to do next. Got: {data['chromium_error']!r}",
         )
         self.assertIn(
-            "playwright install",
+            "magus doctor --fix",
             str(data["chromium_error"]).lower(),
-            "The reported error must name the remedy (python3 -m playwright install "
-            f"chromium). Got: {data['chromium_error']!r}",
+            "The reported error must name the remedy (magus doctor --fix). "
+            f"Got: {data['chromium_error']!r}",
         )
 
 

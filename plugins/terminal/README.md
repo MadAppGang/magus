@@ -13,8 +13,7 @@ Every terminal operation is addressed by a **slot** — a small integer naming a
 ### 1. Install dependencies
 
 ```bash
-brew install tmux
-go install github.com/MadAppGang/tmux-mcp/v2@v2.0.0
+magus doctor --fix   # installs what plugin.json `requires` declares: tmux, zsh, tmux-mcp
 ```
 
 ### 2. Enable the plugin
@@ -148,8 +147,7 @@ Five skills teach Claude the full terminal interaction protocol.
 
 | Requirement | Install |
 |-------------|---------|
-| tmux | `brew install tmux` (macOS) · `apt-get install tmux` (Debian/Ubuntu) |
-| tmux-mcp v2.0.0 (Go binary) | `go install github.com/MadAppGang/tmux-mcp/v2@v2.0.0` — see [DEPENDENCIES.md](./DEPENDENCIES.md) |
+| tmux, zsh, tmux-mcp v2.0.0 | declared in `.claude-plugin/plugin.json` `requires`; `magus doctor --fix` installs them — see [DEPENDENCIES.md](./DEPENDENCIES.md) |
 
 ---
 

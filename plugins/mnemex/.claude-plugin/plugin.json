@@ -1,6 +1,6 @@
 {
   "name": "mnemex",
-  "version": "1.0.3",
+  "version": "1.1.0",
   "description": "MCP runtime for semantic code search and AST analysis, ranking symbols by PageRank. Optional engine behind the code-search facade, and usable directly for its full tool surface.",
   "author": {
     "name": "Jack Rudenko",
@@ -21,5 +21,55 @@
     "runtime"
   ],
   "category": "infrastructure",
-  "mcpServers": "./.mcp.json"
+  "mcpServers": "./.mcp.json",
+  "requires": {
+    "schema": 1,
+    "bin": [
+      {
+        "name": "bun",
+        "check": [
+          "bun",
+          "--version"
+        ],
+        "install": [
+          {
+            "via": "bootstrap",
+            "tool": "bun"
+          }
+        ]
+      },
+      {
+        "name": "mnemex",
+        "check": [
+          "mnemex",
+          "--version"
+        ],
+        "install": [
+          {
+            "via": "brew",
+            "os": [
+              "darwin"
+            ],
+            "formula": "madappgang/tap/mnemex"
+          },
+          {
+            "via": "release",
+            "repo": "MadAppGang/mnemex",
+            "tag": "v0.36.1",
+            "asset": "mnemex-{os}-{arch}",
+            "binary": "mnemex",
+            "arch": {
+              "amd64": "x64"
+            },
+            "sha256": {
+              "darwin_amd64": "b833b0d3d11d5969417c6621a0cfd96a98c3b4c68ddcc576cdc164b4a507ea89",
+              "darwin_arm64": "d36b0648f5cf7bb92bce2bc63ade0b7fd4ff6dc9dec7f7ac7b5c43a41c683d1e",
+              "linux_amd64": "52824b20f7334ca41382e68d6424781f1f4958c453d3ca1abbddd67b9df4df51",
+              "linux_arm64": "855ef3586adcec3192d77ca3a3f8253abe4e17df847293a025beb19c342fc0f3"
+            }
+          }
+        ]
+      }
+    ]
+  }
 }

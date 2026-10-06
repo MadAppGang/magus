@@ -4,6 +4,133 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [terminal 5.3.0] - 2026-10-06
+
+### Added
+
+- **A missing dependency is named at session start.** When `tmux`, `tmux-mcp` or `zsh` is not
+  installed, Claude Code prints a `magus-deps` line naming each one and the command that
+  installs it. Nothing is printed when everything is present.
+- **`magus doctor --fix` installs them.** tmux-mcp installs from its checksummed v2.0.0
+  release, so no Go toolchain is needed; tmux and zsh come from Homebrew or `apt`.
+
+---
+
+## [browser-use 1.9.0] - 2026-10-06
+
+### Changed
+
+- **The server starts through `uv run --script`.** Its Python dependencies (`browser-use`,
+  `mcp`, `playwright`, all pinned) live in the script's own header, so the only host
+  dependency is `uv`. A machine that ran the server with its own `python3` and pip-installed
+  `browser_use` now needs `uv`; the session-start line says so and `magus doctor --fix`
+  installs it.
+
+### Added
+
+- **Missing `uv` or Chromium is named at session start,** and `magus doctor --fix` installs
+  them, including Chromium's system libraries on Linux.
+
+---
+
+## [claudish 2.1.0] - 2026-10-06
+
+### Added
+
+- **A missing `claudish` binary is named at session start.** `magus doctor --fix` installs it
+  from the madappgang Homebrew tap on macOS, else from its checksummed release binary.
+
+---
+
+## [mnemex 1.1.0] - 2026-10-06
+
+### Added
+
+- **A missing `mnemex` binary is named at session start.** `magus doctor --fix` installs it
+  from the madappgang Homebrew tap on macOS, else from its checksummed release binary.
+
+---
+
+## [code-search 8.3.0] - 2026-10-06
+
+### Added
+
+- **A missing `bun` or `jq` is named at session start,** with the command that installs it.
+
+---
+
+## [dev 9.1.0] - 2026-10-06
+
+### Added
+
+- **A missing `bun` or `jq` is named at session start,** with the command that installs it.
+
+---
+
+## [madbench 0.7.0] - 2026-10-06
+
+### Added
+
+- **A missing `madbench` or `magmux` binary is named at session start.** `magus doctor --fix`
+  installs madbench v0.41.0 and magmux from the madappgang tap casks on macOS, else from their
+  checksummed release tarballs.
+
+---
+
+## [multimodel 5.2.0] - 2026-10-06
+
+### Added
+
+- **A missing `bun` or `jq` is named at session start,** with the command that installs it.
+
+---
+
+## [setup 1.5.0] - 2026-10-06
+
+### Added
+
+- **`/setup:project` installs what your plugins need.** A required step in every repository:
+  it checks for magus-cli and offers to install it, shows `magus doctor --json`, asks once,
+  installs with `magus doctor --fix --yes --json` (dependencies only, nothing else changed),
+  and reports what is still missing. It keeps no dependency list of its own.
+
+---
+
+## [magus 7.9.0] - 2026-10-06
+
+### Added
+
+- **`magus doctor` installs what your plugins need, with or without a profile.** It reads the
+  `requires` block of every plugin you have enabled, and `magus doctor --fix` installs the
+  missing ones after one confirmation (`--yes` skips it). `magus doctor --json` prints the same
+  report for scripts and for `/setup:project`. Before this, doctor checked binaries only when
+  the project had a `.claude/profiles.json`, so on a fresh machine it said "No problems found"
+  while most MCP servers failed to start.
+- **Installs are checked, not assumed.** After each install doctor checks again, and it reports
+  a dependency as installed only when it now finds it. A binary that landed in a folder that is
+  not on your `PATH` is reported with the line to add to your shell rc file.
+- **Release binaries are verified.** tmux-mcp, claudish, mnemex, madbench and magmux install from
+  their GitHub releases where Homebrew is not used, and the download must match the digest the
+  plugin pins. A mismatch installs nothing.
+- **`sudo` is never interactive.** System packages (`apt`) install with `sudo -n`; when sudo needs
+  a password, doctor prints the exact command for you to run.
+
+### Changed
+
+- **One installer.** `magus doctor --fix`, `magus install` and the TUI's plugin toggle use the
+  same planner and the same runner, so they install the same thing the same way. The TUI no
+  longer reads plugin dependencies from a path that did not exist.
+- **Python modules for browser-use are no longer installed with `uv tool install`.** The plugin
+  now runs its server through `uv run --script`, so `uv` is its only host dependency.
+
+### Fixed
+
+- **Reading a marketplace never writes Claude Code's files.** A scan used to rewrite the
+  marketplace's `marketplace.json` and drop every plugin whose folder it could not find, after
+  which Claude Code loaded none of them.
+
+---
+
 ## [code-search 8.2.0] - 2026-10-02
 
 ### Added

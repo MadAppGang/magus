@@ -1,6 +1,6 @@
 {
   "name": "madbench",
-  "version": "0.6.2",
+  "version": "0.7.0",
   "description": "Toolkit for madbench, MadAppGang's Go harness for benchmarking agentic coding tools. The madbench:bench agent authors, runs and debugs benches natively in a visible pane, reading the madbench-evals skill by path; /madbench:bench and /madbench:doctor are the entry points.",
   "author": {
     "name": "MadAppGang",
@@ -33,5 +33,81 @@
   },
   "compatibility": {
     "claudeCode": ">=0.1.0"
+  },
+  "requires": {
+    "schema": 1,
+    "bin": [
+      {
+        "name": "bun",
+        "check": [
+          "bun",
+          "--version"
+        ],
+        "install": [
+          {
+            "via": "bootstrap",
+            "tool": "bun"
+          }
+        ]
+      },
+      {
+        "name": "madbench",
+        "check": [
+          "madbench",
+          "version"
+        ],
+        "install": [
+          {
+            "via": "brew",
+            "os": [
+              "darwin"
+            ],
+            "cask": "madappgang/tap/madbench"
+          },
+          {
+            "via": "release",
+            "repo": "MadAppGang/madbench-releases",
+            "tag": "v0.41.0",
+            "asset": "madbench_{os}_{arch}.tar.gz",
+            "binary": "madbench",
+            "sha256": {
+              "darwin_amd64": "fa5257d51031249b00984d3bb2f0bb207d8459ab35454f901c95891f208e10ab",
+              "darwin_arm64": "6c03ae39878dae88b8ed005c38be5448517a30d91ecfcba4b653d618848ef8e2",
+              "linux_amd64": "70b4f3acb7cff380646cb61d4fccb441fda9fb56d43db8f693aa84c0eb3c815d",
+              "linux_arm64": "1d5b65ca6218d3558aad2ac0c6cf85298879763d8fcff09fa77ab950fac1871f"
+            }
+          }
+        ]
+      },
+      {
+        "name": "magmux",
+        "check": [
+          "magmux",
+          "--version"
+        ],
+        "install": [
+          {
+            "via": "brew",
+            "os": [
+              "darwin"
+            ],
+            "cask": "madappgang/tap/magmux"
+          },
+          {
+            "via": "release",
+            "repo": "MadAppGang/magmux",
+            "tag": "v0.14.0",
+            "asset": "magmux_{os}_{arch}.tar.gz",
+            "binary": "magmux",
+            "sha256": {
+              "darwin_amd64": "3ad723b3b2ea8ab55aff1df0a91d7cdb4eef2afc121e22fbdf76b31de1d49ded",
+              "darwin_arm64": "a00ebd3f0c2b9fab14b1bd1ca554aaa1f60bbdddbae4e6dd634d65fb5ffda9e3",
+              "linux_amd64": "4a37911687f781e312239f86f82e259c1937f69a249897d6ee386737be4b01d7",
+              "linux_arm64": "bb22ce371d136cde07a407965898ff9f6c1a46d93b19d05bd7f0cc511b9603b2"
+            }
+          }
+        ]
+      }
+    ]
   }
 }

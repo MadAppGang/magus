@@ -1,6 +1,6 @@
 {
   "name": "browser-use",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "description": "Full-platform browser automation: live-page JS eval, keyboard and focus primitives, file screenshots, preflight and a configurable agent LLM, on local or cloud browsers. Runs Playwright's own Chromium, never your real Chrome. Adds Magus tools and 6 skills to the upstream Browser Use MCP set.",
   "author": {
     "name": "Jack Rudenko",
@@ -23,12 +23,6 @@
     "debugging"
   ],
   "category": "development",
-  "setup": {
-    "pip": [
-      "browser-use",
-      "mcp"
-    ]
-  },
   "mcpServers": "./.mcp.json",
   "skills": [
     "./skills/core-api",
@@ -37,5 +31,114 @@
     "./skills/debug-ui",
     "./skills/hybrid-debugging",
     "./skills/agent-model"
-  ]
+  ],
+  "requires": {
+    "schema": 1,
+    "bin": [
+      {
+        "name": "bun",
+        "check": [
+          "bun",
+          "--version"
+        ],
+        "install": [
+          {
+            "via": "bootstrap",
+            "tool": "bun"
+          }
+        ]
+      },
+      {
+        "name": "uv",
+        "check": [
+          "uv",
+          "--version"
+        ],
+        "install": [
+          {
+            "via": "brew",
+            "os": [
+              "darwin"
+            ],
+            "formula": "uv"
+          },
+          {
+            "via": "bootstrap",
+            "tool": "uv"
+          }
+        ]
+      },
+      {
+        "name": "browser-use-env",
+        "check": [
+          "uv",
+          "run",
+          "--offline",
+          "--no-config",
+          "--script",
+          "${CLAUDE_PLUGIN_ROOT}/scripts/mcp-server.py",
+          "--check-env"
+        ],
+        "install": [
+          {
+            "via": "uv-script",
+            "script": "scripts/mcp-server.py",
+            "args": [
+              "--check-env"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "chromium-libs",
+        "os": [
+          "linux"
+        ],
+        "check": [
+          "uv",
+          "run",
+          "--offline",
+          "--no-config",
+          "--script",
+          "${CLAUDE_PLUGIN_ROOT}/scripts/mcp-server.py",
+          "--check-chromium-libs"
+        ],
+        "install": [
+          {
+            "via": "uv-module",
+            "script": "scripts/mcp-server.py",
+            "module": "playwright",
+            "args": [
+              "install-deps",
+              "chromium"
+            ],
+            "root": true
+          }
+        ]
+      },
+      {
+        "name": "chromium",
+        "check": [
+          "uv",
+          "run",
+          "--offline",
+          "--no-config",
+          "--script",
+          "${CLAUDE_PLUGIN_ROOT}/scripts/mcp-server.py",
+          "--check-chromium"
+        ],
+        "install": [
+          {
+            "via": "uv-module",
+            "script": "scripts/mcp-server.py",
+            "module": "playwright",
+            "args": [
+              "install",
+              "chromium"
+            ]
+          }
+        ]
+      }
+    ]
+  }
 }

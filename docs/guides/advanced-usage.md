@@ -383,7 +383,8 @@ export CODEX_API_KEY="your-key"
 ```
 
 Leave `CHROME_EXECUTABLE_PATH` unset unless you need a specific browser build: the
-`browser-use` plugin otherwise finds the newest Chromium in Playwright's own cache.
+`browser-use` plugin otherwise launches the newest Chromium Playwright finished installing
+in its own cache.
 When it is set, that exact binary is what launches — so pointing it at
 `/Applications/Google Chrome.app` drives your real Chrome, which on macOS takes over
 the `com.google.Chrome` single-instance slot and makes your own Chrome icon reopen the

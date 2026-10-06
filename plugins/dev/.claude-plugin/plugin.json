@@ -1,6 +1,6 @@
 {
   "name": "dev",
-  "version": "9.0.1",
+  "version": "9.1.0",
   "description": "Universal development assistant. Detects the project stack and routes work to specialist agents for architecture, implementation, debugging, review and research, enforcing design-system guardrails on every UI change.",
   "author": {
     "name": "Jack Rudenko",
@@ -72,5 +72,48 @@
   ],
   "compatibility": {
     "claudeCode": ">=0.1.0"
+  },
+  "requires": {
+    "schema": 1,
+    "bin": [
+      {
+        "name": "bun",
+        "check": [
+          "bun",
+          "--version"
+        ],
+        "install": [
+          {
+            "via": "bootstrap",
+            "tool": "bun"
+          }
+        ]
+      },
+      {
+        "name": "jq",
+        "check": [
+          "jq",
+          "--version"
+        ],
+        "install": [
+          {
+            "via": "brew",
+            "os": [
+              "darwin"
+            ],
+            "formula": "jq"
+          },
+          {
+            "via": "apt",
+            "os": [
+              "linux"
+            ],
+            "packages": [
+              "jq"
+            ]
+          }
+        ]
+      }
+    ]
   }
 }

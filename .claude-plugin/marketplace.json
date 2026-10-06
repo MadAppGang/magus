@@ -15,7 +15,7 @@
       "name": "code-search",
       "source": "./plugins/code-search",
       "description": "Read-only code search and investigation behind one stable tool surface. Finds code by meaning or structure, traces callers, callees and blast radius, and dispatches an analyze agent for deep dives. The search engine is named in project settings and is swappable.",
-      "version": "8.2.0",
+      "version": "8.3.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -37,6 +37,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "8.3.0",
+          "date": "2026-10-06",
+          "kinds": [
+            "Added"
+          ],
+          "summary": "A missing bun or jq is named at session start, with the command that installs it"
+        },
         {
           "version": "8.2.0",
           "date": "2026-10-02",
@@ -63,14 +71,6 @@
             "Changed"
           ],
           "summary": "BREAKING \u2014 the plugin is renamed from code-analysis to code-search"
-        },
-        {
-          "version": "7.3.0",
-          "date": "2026-09-11",
-          "kinds": [
-            "Changed"
-          ],
-          "summary": "code-analysis:detective now asks for the symbol, file or behaviour to trace, and returns a\u2026"
         }
       ]
     },
@@ -78,7 +78,7 @@
       "name": "claudish",
       "source": "./plugins/claudish",
       "description": "MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting across models, manages async sessions, and streams channel notifications. Required by code-search, dev, multimodel and designer.",
-      "version": "2.0.6",
+      "version": "2.1.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -99,6 +99,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "2.1.0",
+          "date": "2026-10-06",
+          "kinds": [
+            "Added"
+          ],
+          "summary": "A missing claudish binary is named at session start"
+        },
         {
           "version": "2.0.6",
           "date": "2026-09-25",
@@ -127,14 +135,6 @@
             "Changed"
           ],
           "summary": "Route probing is no longer offered to the agent"
-        },
-        {
-          "version": "2.0.2",
-          "date": "2026-09-03",
-          "kinds": [
-            "Changed"
-          ],
-          "summary": "The claudish-usage Review row names dev:reviewer only; the detective is no longer offered as an\u2026"
         }
       ]
     },
@@ -142,7 +142,7 @@
       "name": "mnemex",
       "source": "./plugins/mnemex",
       "description": "MCP runtime for semantic code search and AST analysis, ranking symbols by PageRank. Optional engine behind the code-search facade, and usable directly for its full tool surface.",
-      "version": "1.0.3",
+      "version": "1.1.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -163,6 +163,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "1.1.0",
+          "date": "2026-10-06",
+          "kinds": [
+            "Added"
+          ],
+          "summary": "A missing mnemex binary is named at session start"
+        },
         {
           "version": "1.0.3",
           "date": "2026-09-15",
@@ -195,7 +203,7 @@
       "name": "multimodel",
       "source": "./plugins/multimodel",
       "description": "Multi-model collaboration and orchestration. Runs a task across several AI models in parallel and aggregates their blind APPROVE/REJECT votes, or delegates it to one model running a full Claude Code session.",
-      "version": "5.1.1",
+      "version": "5.2.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -220,6 +228,14 @@
       "strict": true,
       "releases": [
         {
+          "version": "5.2.0",
+          "date": "2026-10-06",
+          "kinds": [
+            "Added"
+          ],
+          "summary": "A missing bun or jq is named at session start, with the command that installs it"
+        },
+        {
           "version": "5.1.1",
           "date": "2026-09-27",
           "summary": "Error-recovery retries only when the user asks, reads failure causes from claudish, and sends\u2026"
@@ -238,14 +254,6 @@
           "version": "4.3.0",
           "date": "2026-09-22",
           "summary": "The same check"
-        },
-        {
-          "version": "4.2.1",
-          "date": "2026-09-19",
-          "kinds": [
-            "Removed"
-          ],
-          "summary": "The delegate-patterns skill is gone"
         }
       ]
     },
@@ -253,7 +261,7 @@
       "name": "dev",
       "source": "./plugins/dev",
       "description": "Universal development assistant. Detects the project stack and routes work to specialist agents for architecture, implementation, debugging, review and research, enforcing design-system guardrails on every UI change.",
-      "version": "9.0.1",
+      "version": "9.1.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -293,6 +301,14 @@
       "strict": true,
       "releases": [
         {
+          "version": "9.1.0",
+          "date": "2026-10-06",
+          "kinds": [
+            "Added"
+          ],
+          "summary": "A missing bun or jq is named at session start, with the command that installs it"
+        },
+        {
           "version": "9.0.1",
           "date": "2026-10-01",
           "kinds": [
@@ -314,14 +330,6 @@
           "version": "8.2.0",
           "date": "2026-09-24",
           "summary": "Four hidden skills are rebuilt against the repo's current rules. browser-debugging follows the\u2026"
-        },
-        {
-          "version": "8.1.3",
-          "date": "2026-09-23",
-          "kinds": [
-            "Added"
-          ],
-          "summary": "/dev:worktree shows create [branch] | list | cleanup [path] | status | help as an argument hint\u2026"
         }
       ]
     },
@@ -508,7 +516,7 @@
       "name": "setup",
       "source": "./plugins/setup",
       "description": "Project setup jobs in one plugin. Investigates a repository and provisions it \u2014 plugins, tools, framework best-practice references, and a seeded knowledge base \u2014 then installs the adaptive statusline and indexes every skill reachable from the project into browsable markdown.",
-      "version": "1.4.0",
+      "version": "1.5.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -528,6 +536,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "1.5.0",
+          "date": "2026-10-06",
+          "kinds": [
+            "Added"
+          ],
+          "summary": "/setup:project installs what your plugins need"
+        },
         {
           "version": "1.4.0",
           "date": "2026-10-01",
@@ -553,14 +569,6 @@
             "Added"
           ],
           "summary": "The statusline wt: chip takes the session's colour"
-        },
-        {
-          "version": "1.2.2",
-          "date": "2026-09-15",
-          "kinds": [
-            "Changed"
-          ],
-          "summary": "References follow the code-search rename. No behaviour change"
         }
       ]
     },
@@ -568,7 +576,7 @@
       "name": "browser-use",
       "source": "./plugins/browser-use",
       "description": "Full-platform browser automation: live-page JS eval, keyboard and focus primitives, file screenshots, preflight and a configurable agent LLM, on local or cloud browsers. Runs Playwright's own Chromium, never your real Chrome. Adds Magus tools and 6 skills to the upstream Browser Use MCP set.",
-      "version": "1.8.0",
+      "version": "1.9.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -590,6 +598,15 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "1.9.0",
+          "date": "2026-10-06",
+          "kinds": [
+            "Changed",
+            "Added"
+          ],
+          "summary": "The server starts through uv run --script"
+        },
         {
           "version": "1.8.0",
           "date": "2026-09-27",
@@ -615,11 +632,6 @@
             "Fixed"
           ],
           "summary": "The MCP server crashed on construction against mcp 2.x, so every fresh install got no browser\u2026"
-        },
-        {
-          "version": "1.7.3",
-          "date": "2026-08-26",
-          "summary": "Plugin manifest moved to .claude-plugin/plugin.json, the only location Claude Code's runtime\u2026"
         }
       ]
     },
@@ -687,7 +699,7 @@
       "name": "terminal",
       "source": "./plugins/terminal",
       "description": "Slot-addressed terminal control over tmux. Runs interactive commands, dev servers, test watchers, REPLs and TUI apps in numbered helper panes \u2014 beside the user or isolated from view \u2014 that the server places and owns, so an agent never holds a pane id or targets the user's own session.",
-      "version": "5.2.3",
+      "version": "5.3.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -705,6 +717,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "5.3.0",
+          "date": "2026-10-06",
+          "kinds": [
+            "Added"
+          ],
+          "summary": "A missing dependency is named at session start"
+        },
         {
           "version": "5.2.3",
           "date": "2026-09-27",
@@ -727,15 +747,6 @@
           "version": "5.2.0",
           "date": "2026-09-22",
           "summary": "The same check"
-        },
-        {
-          "version": "5.1.0",
-          "date": "2026-09-11",
-          "kinds": [
-            "Changed",
-            "Fixed"
-          ],
-          "summary": "terminal:tui-navigator now says what the caller must hand over, and returns a fixed completion\u2026"
         }
       ]
     },
@@ -743,7 +754,7 @@
       "name": "madbench",
       "source": "./plugins/madbench",
       "description": "Toolkit for madbench, MadAppGang's Go harness for benchmarking agentic coding tools. The madbench:bench agent authors, runs and debugs benches natively in a visible pane, reading the madbench-evals skill by path; /madbench:bench and /madbench:doctor are the entry points.",
-      "version": "0.6.2",
+      "version": "0.7.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -764,6 +775,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "0.7.0",
+          "date": "2026-10-06",
+          "kinds": [
+            "Added"
+          ],
+          "summary": "A missing madbench or magmux binary is named at session start"
+        },
         {
           "version": "0.6.2",
           "date": "2026-09-27",
@@ -792,16 +811,6 @@
             "Changed"
           ],
           "summary": "BREAKING \u2014 madbench:operator is now madbench:bench"
-        },
-        {
-          "version": "0.4.0",
-          "date": "2026-09-10",
-          "kinds": [
-            "Added",
-            "Changed",
-            "Fixed"
-          ],
-          "summary": "The madbench:operator agent and the /madbench:bench and /madbench:doctor commands"
         }
       ]
     }

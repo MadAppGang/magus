@@ -1,119 +1,86 @@
 # Browser Use Plugin — Dependencies
 
-## Required
+The MCP server is a PEP 723 script. `.mcp.json` launches it with
+`uv run --no-config --script`, and uv builds the Python environment its header
+declares:
 
-### 1. Python 3.11+
-
-```bash
-# Check version
-python3 --version  # Must be >= 3.11
-
-# Install via pyenv (if needed)
-brew install pyenv
-pyenv install 3.12
-pyenv global 3.12
+```python
+# requires-python = ">=3.11"
+# dependencies = ["browser-use==0.13.10", "mcp==2.1.1", "playwright==1.63.0"]
 ```
 
-### 2. uv (recommended) or pip
+Every uv call on that env passes `--no-config`. Claude Code starts the server in
+your project, and uv would otherwise read that project's `uv.toml` or
+`pyproject.toml`: its package index, Python preference or `offline` setting
+would decide what the plugin imports, and the env built there is shared by every
+project.
+
+Nothing is installed into a system Python, so there is no `pip install` step
+and no PEP 668 conflict. The machine needs uv, the env, and Playwright's
+Chromium. `plugin.json` declares all four in `requires`; a session start reports
+any that are missing, and one command installs them:
 
 ```bash
-# Install uv (recommended — manages isolated Python environments)
-curl -LsSf https://astral.sh/uv/install.sh | sh
+magus doctor --fix
 ```
 
-### 3. browser-use
+No magus-cli yet? `bun add -g magus-cli`, then `magus doctor --fix`.
 
-```bash
-# Via uv (recommended)
-uv pip install 'browser-use>=0.13.1'
+## What is declared, and how each is checked
 
-# Or via pip
-pip install 'browser-use>=0.13.1'
-```
+| Requirement | Check | Installed by `magus doctor --fix` |
+|---|---|---|
+| `uv` | `uv --version` | `brew install uv` (macOS), else uv's own installer into `~/.local/bin` |
+| `browser-use-env` | `uv run --offline --no-config --script scripts/mcp-server.py --check-env` | `uv run --no-config --script scripts/mcp-server.py --check-env` (builds the env) |
+| `chromium-libs` (Linux) | `… --check-chromium-libs` | `sudo -n env DEBIAN_FRONTEND=noninteractive <env python> -B -m playwright install-deps chromium` |
+| `chromium` | `… --check-chromium` | `<env python> -B -m playwright install chromium` |
 
-Version 0.13.1+ is required: the plugin relies on `BrowserSession.kill()`
-semantics, the `executable_path` profile field (which upstream honours ahead of
-its own browser discovery), `use_cloud` cloud-browser support, and
-`ChatBrowserUse` (bu-latest) — all verified against 0.13.1.
+The three `--check-*` flags read files only (see `scripts/browser_env.py`); none
+starts a browser, apt or the Playwright driver. `--check-chromium` and
+`--check-chromium-libs` both ask the launcher's own resolver whether it would find
+a Chromium to start, so a session start never reports missing a browser the server
+launches. A cached Chromium counts when Playwright finished installing its revision
+(`INSTALLATION_COMPLETE`), whichever revision it is; on Linux it also needs
+`DEPENDENCIES_VALIDATED`, which Playwright writes only when its own host-library
+validation passed.
 
-### 4. Chromium Browser
+`<env python>` is the interpreter of the script's own uv env:
+`uv sync --no-config --script scripts/mcp-server.py`, then
+`uv python find --no-config --script scripts/mcp-server.py`. Running Playwright through it
+installs exactly the browser the pinned `playwright` drives. `uv run --script`
+cannot do this, because arguments after the script go to the script.
 
-The plugin launches the newest Chromium in Playwright's cache and refuses to fall
-back to any other browser, so this install is required, not optional:
+## Why these versions
 
-```bash
-python3 -m playwright install chromium
-```
+- **browser-use 0.13.10, pinned.** The plugin relies on `BrowserSession.kill()`,
+  the `executable_path` profile field (which upstream honours ahead of its own
+  browser discovery), `use_cloud`, and `ChatBrowserUse` (bu-latest), all present
+  since 0.13.1. The pin is the release the env resolves today, so a new upstream
+  release reaches users only through a plugin release that bumps it.
+- **mcp 2.1.1, pinned.** browser-use pins `mcp` exactly (0.13.10 pins
+  `mcp==2.1.1`), and the header names the same version. `mcp-server.py` still
+  detects which surface the installed SDK has
+  (`hasattr(server, "add_request_handler")`), so the 1.x surface keeps working
+  if a pin bump goes back to it.
+- **playwright pinned.** browser-use drives Chrome over CDP and does not depend
+  on Playwright, so the header declares it. Its install CLI decides which Chromium
+  revision `magus doctor --fix` installs; `scripts/test_browser_env.py` fails a
+  bump that moves the revision, which PDEP-1's Chromium oracle names.
 
-This is the exact command the server names when it cannot find a Chromium. To use
-a different build instead, set `CHROME_EXECUTABLE_PATH` to its binary.
+The plugin launches the newest Chromium Playwright finished installing in its
+cache, of any revision, and refuses to fall back to any other browser. To drive a different build, set
+`CHROME_EXECUTABLE_PATH` to its binary.
 
-### 5. MCP SDK
+## API keys
 
-```bash
-uv pip install mcp
-```
-
-You do not choose the SDK version — **browser-use pins `mcp` exactly**, so the
-line above only confirms what step 3 already resolved. `browser-use 0.13.1`
-pins `mcp==1.26.0`; **`browser-use >= 0.13.10` pins `mcp==2.1.1`**. That is why
-a fresh install lands on the 2.x SDK while an install from before September 2026
-still runs 1.x.
-
-**Both majors are supported by the same `mcp-server.py`.** mcp 2.x removed the
-1.x handler surface the server used to extend upstream's tool list
-(`Server.request_handlers`, `@Server.list_tools()`); the wrapper now detects
-which surface the installed SDK has — `hasattr(server, "add_request_handler")`
-— and registers its tools through that one. It branches on capability, never on
-a version string, so there is nothing to pin and no upgrade step: whichever mcp
-your browser-use brought along is the one the server runs on.
-
-### 6. ANTHROPIC_API_KEY
-
-Required for the autonomous agent mode (`retry_with_browser_use_agent`).
-
-```bash
-export ANTHROPIC_API_KEY=your-anthropic-api-key
-```
-
-## Optional
-
-### Browser Use Cloud
-
-For CAPTCHA handling, proxy rotation, and stealth mode:
-
-```bash
-export BROWSER_USE_API_KEY=your-browser-use-cloud-key
-```
-
-Also install the Node.js SDK for cloud task scripts:
-
-```bash
-bun add browser-use-node
-```
-
-### OpenAI API Key (fallback LLM)
-
-```bash
-export OPENAI_API_KEY=your-openai-key
-```
+- `ANTHROPIC_API_KEY` — the autonomous agent mode (`retry_with_browser_use_agent`).
+- `BROWSER_USE_API_KEY` — optional, Browser Use Cloud (CAPTCHA handling, proxy
+  rotation, stealth). Cloud task scripts also use the Node SDK: `bun add browser-use-node`.
+- `OPENAI_API_KEY` — optional fallback LLM.
 
 ## Verification
 
 ```bash
-# Verify MCP server starts
-python3 plugins/browser-use/scripts/mcp-server.py --test
-
-# Verify browser-use is importable
-python3 -c "import browser_use; print(f'browser-use {browser_use.__version__}')"
+uv run --no-config --script plugins/browser-use/scripts/mcp-server.py --test
+python3 plugins/browser-use/scripts/test_browser_env.py
 ```
-
-## Minimum Versions
-
-| Dependency | Minimum Version | Notes |
-|-----------|-----------------|-------|
-| Python | 3.11 | |
-| browser-use | 0.13.1 | pins the `mcp` version it needs |
-| mcp | 1.26.0 | 1.x and 2.x both supported; verified on 1.26.0 and 2.1.1 |
-| Chromium | Latest (auto-installed) | |
-| Bun | 1.0+ (for hooks/cloud scripts) | |

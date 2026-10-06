@@ -455,7 +455,8 @@ A `chromium_path` under `/Applications/Google Chrome.app` is never reported
 unless `CHROME_EXECUTABLE_PATH` asked for it: launching the user's real Chrome
 steals the macOS `com.google.Chrome` single-instance slot, so an unresolvable
 Chromium is reported as an error instead of quietly falling back to it. The fix
-is `python3 -m playwright install chromium`.
+is `magus doctor --fix`, which installs the Chromium the plugin's pinned
+Playwright drives.
 
 ---
 

@@ -13,7 +13,7 @@ MCP runtime for semantic code search and AST analysis, ranking symbols by PageRa
 | Subagents | 0 |
 | Skills | 0 |
 | MCP server | yes |
-| Hooks | no |
+| Hooks | yes |
 
 ## Install
 
@@ -33,6 +33,11 @@ Prefer to do it by hand? [Installing Magus](../../guides/install.md) has the man
 ## MCP server
 
 This plugin runs an MCP server; its tools appear as `mcp__*` once the plugin is enabled.
+
+## Hooks
+
+This plugin installs hooks. They run automatically and are the usual first place to look
+if its behaviour stops firing.
 
 ## Source
 

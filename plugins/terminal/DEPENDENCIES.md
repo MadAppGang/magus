@@ -22,16 +22,17 @@ This plugin requires one MCP server to be installed and available on your system
 
 ### Install
 
+`.claude-plugin/plugin.json` declares everything this plugin needs in `requires`:
+Bun (its hooks), tmux, zsh (the shell `.mcp.json` starts panes with) and tmux-mcp,
+pinned to a GitHub release with one sha256 per platform. A session start reports any
+that are missing, with the command for each; one command installs them all:
+
 ```bash
-# tmux (macOS)
-brew install tmux
-
-# tmux (Ubuntu/Debian)
-sudo apt-get install tmux
-
-# tmux-mcp, the exact version this plugin is pinned to
-go install github.com/MadAppGang/tmux-mcp/v2@v2.0.0
+magus doctor --fix
 ```
+
+No magus-cli yet? `bun add -g magus-cli`, then `magus doctor --fix`. tmux-mcp lands in
+`~/.local/bin`, which must be on the PATH Claude Code starts with.
 
 ### Verify
 

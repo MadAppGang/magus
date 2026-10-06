@@ -26,6 +26,15 @@ same way as the last one.
 | Put a statusline in Claude Code | `/setup:statusline-install` |
 | List every skill you have, and what it costs you per turn | `/setup:index-skills` |
 
+### What your plugins need on the machine
+
+`/setup:project` also checks the tools your installed plugins depend on, such as the
+binaries behind their MCP servers. It does this in every repository, whatever the stack,
+because a plugin with a missing binary is broken everywhere. magus-cli supplies the list:
+`/setup:project` runs `magus doctor`, and offers to install magus-cli first when it is
+missing. It shows each missing dependency with the command that fixes it and asks once
+whether to install them. Restart Claude Code afterwards so the MCP servers connect.
+
 ### The statusline lives here
 
 The statusline is part of `setup`. Enable `setup@magus` and you have it.

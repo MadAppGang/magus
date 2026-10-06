@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v bun >/dev/null 2>&1 && exec bun --env-file=/dev/null --config=/dev/null \"${CLAUDE_PLUGIN_ROOT}/hooks/deps-check.ts\" claudish || exec sh \"${CLAUDE_PLUGIN_ROOT}/hooks/bun-missing.sh\" claudish",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

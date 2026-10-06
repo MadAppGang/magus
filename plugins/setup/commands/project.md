@@ -53,10 +53,20 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion, Skill
     Every claim in the report cites the file that proves it. If you cannot
     point at a file, the finding is a guess — label it as one or drop it.
   </rule>
+  <rule id="plugin-deps-are-not-stack">
+    Plugin dependencies (step 3b) belong to the plugins installed in Claude
+    Code, not to this repository. A plugin whose binary is missing has an MCP
+    server that does not connect and a hook that does not run — here and in
+    every other repo. So a missing plugin dependency is NEVER "unrelated to
+    this project", never left out of the report, and never skipped because
+    the stack does not use it. Step 3b runs in every repository, whatever
+    its stack.
+  </rule>
 </constraints>
 
 <instructions>
-  Run steps 1-4 without pausing. Stop at the gate in step 5. Then run 6-9.
+  Run steps 1-4, including 3b, without pausing. Stop at the gate in step 5.
+  Then run 6-10.
 
   <step number="1" name="Investigate the stack">
     Read-only. Gather evidence before proposing anything.
@@ -114,7 +124,7 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion, Skill
     For each tool the stack implies, check presence rather than assuming it:
 
     ```bash
-    for t in bun node go cargo python3 uv docker gh jq rg mnemex; do
+    for t in bun node go cargo python3 uv docker gh jq rg; do
       command -v "$t" >/dev/null 2>&1 && echo "have $t" || echo "MISSING $t"
     done
     ```
@@ -122,6 +132,56 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion, Skill
     Extend the list with anything step 1 implied (for example `air` for a Go
     hot-reload project, `wrangler` for a Cloudflare Worker). A tool named in a
     CI workflow but absent locally is a finding worth reporting.
+
+    This list is the project's stack only. Never add a plugin's binary to it —
+    that is step 3b.
+  </step>
+
+  <step number="3b" name="Plugin dependencies" mandatory="true">
+    Not optional, and not about the stack (rule `plugin-deps-are-not-stack`).
+    Run both parts in every repository, even when you already noticed missing
+    binaries elsewhere — what you noticed is not the list.
+
+    This command holds no list of plugin dependencies. Each plugin declares
+    its own in its manifest, and magus-cli is the one thing that reads them.
+    Never compose the list yourself from memory, from `.mcp.json`, or from a
+    session-start banner. Run magus.
+
+    **Part 1 — is magus-cli installed?**
+
+    ```bash
+    command -v magus || echo "MAGUS-CLI MISSING"
+    command -v bun || echo "no bun"
+    command -v npm || echo "no npm"
+    ```
+
+    If `magus` is missing, this is the first line of the step-4 report, in
+    these words: "magus-cli is not installed — it owns plugin dependency
+    checks, so nothing can say which plugin dependencies are missing until it
+    is." Its install command is `bun add -g magus-cli`; when `bun` is absent
+    and `npm` is present, `npm i -g magus-cli`. When both are absent there is
+    no command to offer: say "install Bun from https://bun.sh, then re-run
+    /setup:project". Skip part 2 — step 5b offers the install, and part 2
+    runs after it.
+
+    **Part 2 — what is missing?** When `magus` is present:
+
+    ```bash
+    magus doctor --json
+    ```
+
+    Exit 1 means problems remain: it is the finding, not a failed command.
+    stdout is one JSON document. Carry into the step-4 report, verbatim:
+
+    - every `deps[]` entry whose `status` is not `present`: its `name`,
+      `status`, `requiredBy`, and `fix.text`, marked `[sudo]` when
+      `fix.escalation` is `sudo`
+    - every `unfixable[]` entry (`name` — `why`)
+    - every `plugins_needing_update[]` and `invalid[]` entry
+    - every `pathAdvice[]` entry (`rcLine`, to add to `rcFile`)
+
+    If it prints no JSON document, its stderr is the finding — report it
+    verbatim.
   </step>
 
   <step number="4" name="Report findings">
@@ -144,7 +204,17 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion, Skill
       Missing tools:    <list, or none>
       Missing plugins:  <recommended, with a one-line reason each>
       Missing docs:     <what a new contributor cannot learn from the code>
+
+    PLUGIN DEPENDENCIES                                   (evidence: magus doctor --json)
+      magus-cli:    installed | NOT INSTALLED — <install command>
+      Missing:      <name> (<requiredBy>) — fix: <fix.text>    one line each, [sudo] marked
+      Unfixable:    <name> — <why>
+      Needs update: <plugin> — <message>
+      PATH:         add <rcLine> to <rcFile>
     ```
+
+    The PLUGIN DEPENDENCIES block is always printed. With nothing missing it
+    says "all present" — it is never omitted.
 
     Recommend plugins only where the stack justifies them, and give the
     reason. A recommendation with no reason is noise:
@@ -176,10 +246,15 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion, Skill
 
   <step number="5" name="Approval gate" gate="true">
     STOP here. If the arguments contain `--dry-run`, print the plan and exit
-    without installing anything.
+    without installing anything. The plan includes the PLUGIN DEPENDENCIES
+    block and the command that would install them:
+    `magus doctor --fix --yes --json`.
 
-    Otherwise use AskUserQuestion. Present the plan as discrete opt-in groups,
-    because users routinely want the docs and not the installs:
+    Otherwise ask up to three separate questions, in this order. 5b and 5c
+    are their own AskUserQuestion calls, never folded into 5a.
+
+    **5a — provisioning.** Use AskUserQuestion. Present the plan as discrete
+    opt-in groups, because users routinely want the docs and not the installs:
 
     - question: "Provision this repository? Pick what to apply."
     - multiSelect: true
@@ -191,7 +266,39 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion, Skill
       5. "Report missing tools only" — install commands printed, not run
 
     Apply only the selected groups. An unselected group is skipped in full,
-    not partially applied.
+    not partially applied. 5a does not decide plugin dependencies: 5b and 5c
+    are asked whatever was picked here.
+
+    **5b — magus-cli.** Ask only when step 3b found magus-cli missing and has
+    an install command for it. Use AskUserQuestion:
+
+    - question: "magus-cli is not installed, so nothing can check or install
+      what your plugins need. Install magus-cli now? (<install command>)"
+    - options: "Install magus-cli" — runs the command; "Skip" — your
+      plugins' needs stay unchecked
+
+    On "Install magus-cli", run the install command now. It is the one
+    install that happens inside the gate, because the dependency list cannot
+    be read without it. Then `command -v magus`. If it is still not found,
+    the global bin directory is not on PATH: call it by full path —
+    `"$(bun pm bin -g)/magus"`, or `"$(npm prefix -g)/bin/magus"` after an
+    npm install — for the rest of this run, and report that directory as
+    missing from PATH. Then run step 3b part 2, print its PLUGIN DEPENDENCIES
+    block, and go on to 5c. On "Skip" or a failed install, report it and
+    skip 5c and step 6b.
+
+    **5c — plugin dependencies.** Ask whenever step 3b part 2 found at least
+    one `deps[]` entry with `status` `missing`. First print every such entry's
+    `fix.text` as a list, `[sudo]` marked, so the user sees what will run.
+    Then use AskUserQuestion, single-select:
+
+    - question: "Install the N missing plugin dependencies now? (magus doctor
+      --fix --yes --json)" — N is that count
+    - options: "Install" — magus-cli installs them; "Skip" — the fix lines
+      stay in the report for the user to run
+
+    This is a yes/no about the user's installed plugins. It is asked in every
+    repository, whatever its stack.
   </step>
 
   <step number="6" name="Install plugins">
@@ -220,6 +327,67 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion, Skill
 
     If a plugin fails to install, report which and why, and carry on with the
     rest. One failure does not abort the run.
+  </step>
+
+  <step number="6b" name="Install plugin dependencies">
+    Runs when 5c was answered "Install", whatever 5a selected — including
+    "Report missing tools only". It runs after step 6, so the dependencies of
+    plugins step 6 just installed are covered too. If step 6 installed any
+    plugin, re-run `magus doctor --json` first and print every missing
+    dependency that was not in the 5c list: it belongs to a plugin the user
+    just chose, and it is installed with the rest.
+
+    magus-cli is the only installer. Never run the `fix.text` lines yourself,
+    one by one or as a fallback — `magus doctor --fix` orders the steps,
+    verifies checksums, and resumes after an interruption.
+
+    Always with `--json`: that form installs the plugin dependencies and
+    nothing else, which is all 5c asked about. Without it, `--fix` also
+    applies doctor's other repairs — profile state, CLAUDE.md and .gitignore
+    conventions, model routing — and writes files the user never agreed to.
+
+    Run it through the Bash tool **with `timeout: 600000` set on the Bash
+    call itself**. The tool's default is 120000 ms (two minutes), which a
+    system package install or a browser download routinely exceeds; 600000
+    is the tool's maximum. Not a `timeout` shell wrapper, not a background
+    run:
+
+    ```bash
+    magus doctor --fix --yes --json
+    ```
+
+    Exit 1 means something is still missing: it is the finding, not a failed
+    command. Then, by how it ended:
+
+    - **It finished** — stdout is one JSON document. Echo every `applied[]`
+      entry, one line each: `name` — `status`, and for every status other
+      than `installed` its `remedy`, verbatim (for example a step that needs
+      a sudo password the tool cannot type), plus `dir` when it is set. Then
+      print the PLUGIN DEPENDENCIES block of step 4 from the same document:
+      its `deps[]`, `unfixable[]` and `pathAdvice[]` describe the machine
+      after the install.
+    - **The tool timed out** (its result says the command timed out). Do not
+      run it again in the tool. Tell the user, verbatim, with this
+      repository's absolute path in place of `<repo>`: "Installing plugin
+      dependencies did not finish within the 10-minute tool limit. Finish it
+      in your terminal: `magus doctor --fix --yes --json --project <repo>` —
+      it installs only the plugin dependencies, resumes, and skips everything
+      already installed."
+    - **It failed** — no JSON document on stdout. Its stderr is the finding
+      (for example another dependency install already running): report it
+      verbatim. Never retry silently.
+
+    After a timeout or a failure, re-run the check and report what is still
+    missing, in the PLUGIN DEPENDENCIES shape of step 4:
+
+    ```bash
+    magus doctor --json
+    ```
+
+    Then tell the user: MCP servers whose binaries were just installed
+    connect only after Claude Code restarts — and from a new terminal when a
+    PATH line was reported, because Claude Code passes its own PATH to every
+    MCP server it starts.
   </step>
 
   <step number="7" name="Wire MCP servers and delegate">
@@ -302,15 +470,21 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion, Skill
     Failed:       <what did not install, and why>
     Files:        <every file created or modified>
     Tools needed: <install commands for what is still missing>
+    Plugin deps:  <still missing, from the last magus doctor --json — or
+                   "magus-cli not installed: <install command>">
     Next:         <the single most useful next command>
     ════════════════════════════════════════
     ```
 
     A plugin appears under `Installed` only if it showed up in
     `claude plugin list`. Never report an install you did not confirm.
+    `Plugin deps` comes from the last `magus doctor --json` this run made
+    (step 6b's, else step 3b's); it is never left blank.
 
     **A newly installed plugin's commands and skills are not available in this
     session.** Claude Code loads plugin components at session start. Tell the
     user to restart, or to run `/reload-plugins` if their build supports it.
+    MCP servers whose binaries step 6b installed also connect only after a
+    restart.
   </step>
 </instructions>

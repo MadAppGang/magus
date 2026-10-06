@@ -13,7 +13,7 @@ MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, ru
 | Subagents | 0 |
 | Skills | 1 |
 | MCP server | yes |
-| Hooks | no |
+| Hooks | yes |
 
 ## Install
 
@@ -39,6 +39,11 @@ Prefer to do it by hand? [Installing Magus](../../guides/install.md) has the man
 ## MCP server
 
 This plugin runs an MCP server; its tools appear as `mcp__*` once the plugin is enabled.
+
+## Hooks
+
+This plugin installs hooks. They run automatically and are the usual first place to look
+if its behaviour stops firing.
 
 ## Source
 

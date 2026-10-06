@@ -1,4 +1,12 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "browser-use==0.13.10",
+#     "mcp==2.1.1",
+#     "playwright==1.63.0",
+# ]
+# ///
 """
 Browser Use MCP Server — thin wrapper over browser_use.mcp.server.BrowserUseServer.
 
@@ -9,8 +17,8 @@ override's upstream status was verified 2026-06-03 against browser_use 0.12.5 an
 the latest upstream `main`:
 
   - Strip oneOf/allOf/anyOf from upstream tool schemas (browser-use#4211).
-    FIXED upstream in 0.12.6+ (PR #4212), but we install browser-use UNPINNED and
-    0.12.5 still ships it — and it breaks ALL MCP tools. Kept as version-defense.
+    FIXED upstream in 0.12.6+ (PR #4212), and the header pins a fixed release;
+    0.12.5 and earlier break ALL MCP tools with it. Kept as version-defense.
   - downloads_path → ~/.config/browseruse/downloads. Upstream uses TCC-protected
     ~/Downloads (browser-use#4548, STILL OPEN; present on latest main).
   - user_data_dir → PID-isolated profile. Upstream uses a fixed profile dir, so
@@ -46,15 +54,32 @@ browser_run_script, browser_start_cloud_session, browser_set_agent_model, and
 browser_evaluate, browser_press_key, browser_keyboard, browser_focus,
 browser_doctor.
 
-Usage (via .mcp.json):
-    python3 /path/to/mcp-server.py
+Usage (via .mcp.json): uv builds the env this file's PEP 723 header declares.
+`--no-config` keeps a uv.toml or pyproject.toml in the project it runs in out of
+that env.
+    uv run --no-config --script /path/to/mcp-server.py
 
-Test mode:
-    python3 mcp-server.py --test
+Test mode (full imports):
+    uv run --no-config --script mcp-server.py --test
+
+Dependency checks (plugin.json `requires`; file reads only, see browser_env.py):
+    uv run --offline --no-config --script mcp-server.py --check-env | --check-chromium | --check-chromium-libs
 """
 
 import os
 import sys
+
+# browser_env sits beside this file. `uv run --script` already puts this
+# directory on sys.path; a test loading the file by path does not.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+import browser_env  # noqa: E402
+
+# The dependency checks run on every session start: answer them before any
+# heavy import, the dock workaround included.
+for _flag in browser_env.CHECK_FLAGS:
+    if _flag in sys.argv[1:]:
+        sys.exit(browser_env.check(_flag))
 
 # Hide Python from macOS dock — Homebrew's framework Python shows a rocket icon
 # for every process. We call NSApplication.setActivationPolicy_(Prohibited) via
@@ -132,7 +157,7 @@ try:
     from browser_use.utils import get_browser_use_version
 except ImportError as exc:
     print(
-        f"ERROR: browser_use not installed. Run: pip install browser-use\nDetails: {exc}",
+        f"ERROR: browser_use is not in this interpreter. Run: magus doctor --fix\nDetails: {exc}",
         file=sys.stderr,
     )
     sys.exit(1)
@@ -145,7 +170,7 @@ try:
     from mcp.server.models import InitializationOptions
 except ImportError as exc:
     print(
-        f"ERROR: mcp SDK not installed. Run: pip install mcp\nDetails: {exc}",
+        f"ERROR: the mcp SDK is not in this interpreter. Run: magus doctor --fix\nDetails: {exc}",
         file=sys.stderr,
     )
     sys.exit(1)
@@ -281,19 +306,11 @@ def _build_llm(choice: LLMChoice) -> Any:
 # single-instance slot. So we resolve the binary ourselves and hand upstream an
 # explicit `executable_path`, which it honours before any glob runs. Nothing here
 # can *silently* select the user's own Chrome: a missing Chromium is a hard error
-# naming the install command. Only an explicit CHROME_EXECUTABLE_PATH can point
-# at a real Chrome, and that is the user saying so out loud.
+# naming `magus doctor --fix`. Only an explicit CHROME_EXECUTABLE_PATH can point
+# at a real Chrome, and that is the user saying so out loud. The resolver lives in
+# browser_env.py beside the dependency checks, so both read one registry rule.
 
-_PLAYWRIGHT_INSTALL_CMD = "python3 -m playwright install chromium"
-
-# Current Playwright cache layouts. The macOS pattern globs the .app bundle
-# rather than naming "Google Chrome for Testing", so the next upstream rename
-# cannot reintroduce this bug.
-_CHROMIUM_GLOBS = {
-    "darwin": "chromium-*/chrome-mac*/*.app/Contents/MacOS/*",
-    "linux": "chromium-*/chrome-linux*/chrome",
-    "win32": "chromium-*/chrome-win*/chrome.exe",
-}
+from browser_env import _resolve_chromium_binary  # noqa: E402
 
 # Profile directories embed upstream's 'browser-use-user-data-dir-' marker on
 # purpose. Setting executable_path makes BrowserProfile._copy_profile()'s
@@ -442,110 +459,6 @@ def _exit_process(code: int) -> None:
     exactly the lingering server this is meant to end.
     """
     os._exit(code)
-
-
-def _platform_key() -> str:
-    """Map sys.platform onto the three Playwright cache layouts."""
-    if sys.platform == "darwin":
-        return "darwin"
-    if sys.platform.startswith("win"):
-        return "win32"
-    return "linux"
-
-
-def _playwright_cache_root() -> Path:
-    """Playwright's browser cache root, honouring PLAYWRIGHT_BROWSERS_PATH."""
-    override = os.environ.get("PLAYWRIGHT_BROWSERS_PATH")
-    if override:
-        return Path(override).expanduser()
-
-    key = _platform_key()
-    if key == "darwin":
-        return Path.home() / "Library" / "Caches" / "ms-playwright"
-    if key == "win32":
-        local_app_data = os.environ.get("LOCALAPPDATA")
-        base = Path(local_app_data) if local_app_data else Path.home() / "AppData" / "Local"
-        return base / "ms-playwright"
-    return Path.home() / ".cache" / "ms-playwright"
-
-
-def _chromium_revision(path: Path) -> int:
-    """
-    Parse the integer revision out of a `chromium-<rev>` path component.
-
-    Sorting on this instead of the raw string is load-bearing: upstream does
-    matches.sort() then matches[-1], which picks chromium-999 over chromium-1234
-    the moment the revision number changes digit width.
-    """
-    for part in path.parts:
-        match = re.fullmatch(r"chromium-(\d+)", part)
-        if match:
-            return int(match.group(1))
-    return -1
-
-
-def _resolve_chromium_binary() -> str:
-    """
-    Return the Chromium executable to launch, or raise RuntimeError.
-
-    Order:
-      1. CHROME_EXECUTABLE_PATH — the explicit user override. It must name an
-         existing FILE; a missing path or a directory is an error, never a
-         silent fall-back. The directory check matters on macOS, where
-         `/Applications/Google Chrome.app` is a plausible-looking value that
-         exists but is a bundle, not the binary two levels inside it.
-      2. Playwright's browser cache (PLAYWRIGHT_BROWSERS_PATH, else the
-         per-platform default root), newest revision by integer comparison.
-      3. Nothing found — raise, naming `python3 -m playwright install chromium`.
-
-    No branch can *silently* select the user's real Chrome — a loud, actionable
-    error beats a hijacked browser. CHROME_EXECUTABLE_PATH can still name one,
-    because that is the user asking for it explicitly; we warn on stderr when it
-    resolves outside Playwright's cache so the choice is never invisible.
-    """
-    override = os.environ.get("CHROME_EXECUTABLE_PATH")
-    if override:
-        candidate = Path(override).expanduser()
-        if candidate.is_dir():
-            raise RuntimeError(
-                f"CHROME_EXECUTABLE_PATH points at a directory, not an executable: "
-                f"{override} — on macOS the binary lives inside the bundle, e.g. "
-                "'<Bundle>.app/Contents/MacOS/<Name>'."
-            )
-        if candidate.is_file():
-            # An override outside Playwright's cache is legitimate but easy to
-            # set by accident — .env.example used to ship the user's real Chrome
-            # as its example value. Say so rather than hijacking in silence.
-            if "ms-playwright" not in str(candidate):
-                print(
-                    f"browser-use MCP: CHROME_EXECUTABLE_PATH={candidate} is not a "
-                    "Playwright Chromium. Automation will drive this browser; on macOS "
-                    "a real Chrome.app also takes over its single-instance slot. "
-                    "Unset the variable to use Playwright's bundled Chromium.",
-                    file=sys.stderr,
-                )
-            return str(candidate)
-        raise RuntimeError(
-            f"CHROME_EXECUTABLE_PATH points at a path that does not exist: {override} — "
-            "fix it, or unset it to use Playwright's bundled Chromium "
-            f"({_PLAYWRIGHT_INSTALL_CMD})."
-        )
-
-    root = _playwright_cache_root()
-    pattern = _CHROMIUM_GLOBS[_platform_key()]
-    matches = [Path(p) for p in glob.glob(str(root / pattern))]
-    matches = [p for p in matches if p.is_file()]
-    if matches:
-        matches.sort(key=lambda p: (_chromium_revision(p), str(p)))
-        return str(matches[-1])
-
-    raise RuntimeError(
-        f"No Playwright Chromium found under {root} (looked for {pattern!r}). "
-        f"Install it with: {_PLAYWRIGHT_INSTALL_CMD}. "
-        "Alternatively set CHROME_EXECUTABLE_PATH to a Chromium build of your "
-        "choice. The plugin refuses to fall back to a browser it did not resolve "
-        "explicitly, because that silently hijacks your real Chrome."
-    )
 
 
 def _apply_chromium_executable_path(profile_data: dict[str, Any]) -> None:
@@ -875,11 +788,10 @@ def _sanitize_tool_schemas(tools: list[Any]) -> None:
     ALL MCP tool registration for the session — not just browser-use's tools.
 
     Status (verified 2026-06-03): browser-use#4211 was FIXED upstream in 0.12.6+
-    via merged PR #4212. But our plugin installs browser-use UNPINNED (see
-    plugin.json `setup`), and 0.12.5 (and earlier) still emits the oneOf —
-    confirmed by running the native server. So this stays: load-bearing on
-    browser-use <= 0.12.5, a harmless no-op on 0.12.6+. Cheap insurance against
-    an uncontrolled dependency version.
+    via merged PR #4212, and the PEP 723 header pins a release after it; 0.12.5
+    (and earlier) still emits the oneOf — confirmed by running the native
+    server. So this stays: load-bearing on browser-use <= 0.12.5, a harmless
+    no-op on 0.12.6+. Cheap insurance against a pin moved back past the fix.
 
     The schema lives under two attribute names: mcp 1.x models the field as
     `Tool.inputSchema`; mcp 2.x renamed it `Tool.input_schema` and kept

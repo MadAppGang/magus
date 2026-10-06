@@ -1,6 +1,6 @@
 {
   "name": "terminal",
-  "version": "5.2.3",
+  "version": "5.3.0",
   "description": "Slot-addressed terminal control over tmux. Runs interactive commands, dev servers, test watchers, REPLs and TUI apps in numbered helper panes — beside the user or isolated from view — that the server places and owns, so an agent never holds a pane id or targets the user's own session.",
   "author": {
     "name": "Jack Rudenko",
@@ -30,13 +30,95 @@
     "./skills/tdd-workflow",
     "./skills/workspace-setup"
   ],
-  "setup": {
-    "go": [
-      "github.com/MadAppGang/tmux-mcp/v2@v2.0.0"
-    ],
-    "required": [
-      "tmux"
+  "mcpServers": "./.mcp.json",
+  "requires": {
+    "schema": 1,
+    "bin": [
+      {
+        "name": "bun",
+        "check": [
+          "bun",
+          "--version"
+        ],
+        "install": [
+          {
+            "via": "bootstrap",
+            "tool": "bun"
+          }
+        ]
+      },
+      {
+        "name": "tmux",
+        "check": [
+          "tmux",
+          "-V"
+        ],
+        "install": [
+          {
+            "via": "brew",
+            "os": [
+              "darwin"
+            ],
+            "formula": "tmux"
+          },
+          {
+            "via": "apt",
+            "os": [
+              "linux"
+            ],
+            "packages": [
+              "tmux"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "zsh",
+        "check": [
+          "zsh",
+          "--version"
+        ],
+        "install": [
+          {
+            "via": "brew",
+            "os": [
+              "darwin"
+            ],
+            "formula": "zsh"
+          },
+          {
+            "via": "apt",
+            "os": [
+              "linux"
+            ],
+            "packages": [
+              "zsh"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "tmux-mcp",
+        "check": [
+          "tmux-mcp",
+          "--version"
+        ],
+        "install": [
+          {
+            "via": "release",
+            "repo": "MadAppGang/tmux-mcp",
+            "tag": "v2.0.0",
+            "asset": "tmux-mcp_{os}_{arch}.tar.gz",
+            "binary": "tmux-mcp",
+            "sha256": {
+              "darwin_amd64": "6e03b4c4d8f3fe70f18ebc1117afa91a82d120612e28586a16c7b0b6921a4522",
+              "darwin_arm64": "0a6d93021e0df8cbc915da68c0e2cdfb82f85075ce67c161fa786bceb4b275cd",
+              "linux_amd64": "44e8f5749e98230b87585b60131d2116ae00d8e8ceb57348a84b6c8dfd93cd20",
+              "linux_arm64": "10ca7af43fa0c83ae0e4e892171bad260a7055caee43507aa5b56f1a1a7e997f"
+            }
+          }
+        ]
+      }
     ]
-  },
-  "mcpServers": "./.mcp.json"
+  }
 }
