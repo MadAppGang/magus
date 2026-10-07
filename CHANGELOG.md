@@ -4,6 +4,52 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [madbench 0.9.0] - 2026-10-07
+
+### Changed
+
+- `/madbench:madbench` is the entry point for creating, running, debugging and migrating a
+  bench. It asks madbench first whether the skills match the installed release and says so
+  when they differ: "You're using madbench 0.38.1, but your madbench skills were written for
+  0.38.0." On a difference it asks whether to run `madbench update --check`. In a project,
+  `madbench skills` installs the same skill as a bare `/madbench`.
+- The madbench skills now belong to the madbench repository and ship with each madbench
+  release. This plugin carries the 0.42.3 set, synced with `madbench skills`: each skill
+  directory says which release it was written for in `MADBENCH_VERSION`.
+- `/madbench:doctor` check 1 is madbench's own `madbench skills --check`. A set pinned with
+  `madbench skills --pin` counts as current.
+- The skills and the operator agent state one rule: never reimplement madbench's own
+  tooling. Something missing becomes a feature request to MadAppGang/madbench, something
+  broken a bug report there, filed once you approve the draft. A local stand-in is allowed
+  only while the issue is open, and it is marked TEMPORARY.
+- The reference file `runners-and-sandbox.md` is now `harness-and-sandbox.md`, and madbench's
+  word list is `glossary.md`.
+- When madbench is missing and no Homebrew is available, the dependency check now installs
+  the madbench 0.42.3 release, the version these skills are written for, not 0.41.0.
+- The operator agent, `/madbench:doctor`, the README and the CLAUDE.md template use
+  madbench 0.42 terms: Experiment files (`*.experiment.yaml`) with `variants:`, `--trials`,
+  and one `harness:` block.
+- `check-bench-layout.ts` no longer checks for old or alias keys. madbench 0.42 refuses them
+  when it loads a bench.
+
+### Added
+
+- `/madbench:migrate` brings a bench or Eval written for an older madbench to the installed
+  one, fixing each refusal exactly as madbench's loader names it.
+- `madbench-evals/vocabulary.md`, madbench's dictionary. Every skill reads it first.
+
+### Removed
+
+- `/madbench:bench`. Use `/madbench:madbench`. The `madbench:bench` agent stays.
+- `mirrors.json` and `scripts/check-staleness.ts`. madbench answers the same question with
+  `madbench skills --check`, and loads the skills' example benches in its own release tests.
+- The `evals/` folder from the copy of `madbench-evals`; madbench keeps it upstream.
+- `scripts/check-dictionary.ts`, the word checker for bench docs. It was a second copy of
+  madbench's own Glossary rules; madbench is asked to ship the one checker as
+  `madbench glossary check`.
+
+---
+
 ## [mnemex 1.1.1] - 2026-10-07
 
 ### Fixed

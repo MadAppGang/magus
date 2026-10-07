@@ -770,8 +770,8 @@
     {
       "name": "madbench",
       "source": "./plugins/madbench",
-      "description": "Toolkit for madbench, MadAppGang's Go harness for benchmarking agentic coding tools. The madbench:bench agent authors, runs and debugs benches natively in a visible pane, reading the madbench-evals skill by path; /madbench:bench and /madbench:doctor are the entry points.",
-      "version": "0.8.1",
+      "description": "Toolkit for madbench, MadAppGang's Go harness for benchmarking agentic coding tools. Carries madbench's own skills with /madbench:madbench as the entry point, checks them against the installed madbench, and runs benches in a visible pane through the madbench:bench agent.",
+      "version": "0.9.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -792,6 +792,16 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "0.9.0",
+          "date": "2026-10-07",
+          "kinds": [
+            "Changed",
+            "Added",
+            "Removed"
+          ],
+          "summary": "/madbench:madbench is the entry point for creating, running, debugging and migrating a bench.\u2026"
+        },
         {
           "version": "0.8.1",
           "date": "2026-10-07",
@@ -823,14 +833,6 @@
             "Fixed"
           ],
           "summary": "The madbench skill teaches guard_changes: and its allow: list. madbench 0.37.0 renamed control:\u2026"
-        },
-        {
-          "version": "0.6.1",
-          "date": "2026-09-25",
-          "kinds": [
-            "Fixed"
-          ],
-          "summary": "The dictionary check no longer describes cell as the word madbench check prints. madbench\u2026"
         }
       ]
     }

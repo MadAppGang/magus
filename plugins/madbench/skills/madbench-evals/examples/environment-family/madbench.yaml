@@ -1,41 +1,41 @@
-# EX-ENVIRONMENT — the whole `environment:*` check family, one of each.
+# EX-ENVIRONMENT — the whole `environment:*` Check family, one of each.
 #
-# A loadable probe for scripts/check-staleness.ts. `madbench list` proves only that the
-# BenchSpec parses; it does NOT construct checks (measured on 0.33.0: an
-# `environment:nonsense` type listed cleanly). `madbench preflight` constructs every check,
-# so a renamed or removed type in this family fails preflight with madbench's own
-# `unknown check type "…"` — which is the finding the probe exists to surface.
+# `madbench list` proves only that the BenchSpec parses; it does NOT construct Checks.
+# `madbench preflight` constructs every one, so a type this family does not have
+# fails preflight with madbench's own `unknown check type "…"` — which is the finding this
+# example exists to surface.
+#
+# The ids name madbench's in-repo plugin marketplace (tests/plugin-staging): plugin
+# `benchproof` in marketplace `madbench-proof`, shipping the skill `staged-proof`.
 #
 # Under `harness: mock` nothing is staged and nothing is captured, so at run time every
-# check here would ERROR rather than fail. That is correct and irrelevant: this file is
+# Check here would ERROR rather than fail. That is correct and irrelevant: this file is
 # loaded and preflighted, never run. docs/checks.md — the environment family.
 description: "EX-ENVIRONMENT every environment:* check type the skill teaches"
 harness: mock
-harness_config:
-  environment:
-    probe: true
 
 scenarios:
   - name: names-every-type
-    description: "One check per environment:* type, spelled as the catalogue spells it"
+    description: "One Check per environment:* type, spelled as the catalogue spells it"
     prompt: "Say hello."
     checks:
       # The one-liner most benches want: every plugin the run staged is listed and loaded.
       - type: environment:matches-expected
 
       - type: environment:plugin-loaded
-        value: madbench@magus
+        value: benchproof@madbench-proof
 
       - type: environment:skill-registered
-        value: madbench:madbench-evals
+        value: benchproof:staged-proof
 
+      # benchproof ships no command and no agent; name the ones your plugin ships.
       - type: environment:command-registered
-        value: madbench:bench
+        value: benchproof:a-command
 
       - type: environment:agent-registered
-        value: madbench:bench
+        value: benchproof:an-agent
 
-      # Two MCP questions, two checks. `mcp-connected` asks whether the TOOL registered
+      # Two MCP questions, two Checks. `mcp-connected` asks whether the TOOL registered
       # the server; `mcp-reachable` asks whether the SERVER answered madbench's own
       # initialize + tools/list before the agent launched. Neither implies the other.
       - type: environment:mcp-connected
@@ -51,6 +51,6 @@ scenarios:
         value: Skill
 
       - type: environment:plugin-inventory
-        value: madbench@magus
+        value: benchproof@madbench-proof
         args:
           skills: 1 # each bound is a floor

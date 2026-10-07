@@ -3,15 +3,15 @@
 
 # madbench
 
-Toolkit for madbench, MadAppGang's Go harness for benchmarking agentic coding tools. The madbench:bench agent authors, runs and debugs benches natively in a visible pane, reading the madbench-evals skill by path; /madbench:bench and /madbench:doctor are the entry points.
+Toolkit for madbench, MadAppGang's Go harness for benchmarking agentic coding tools. Carries madbench's own skills with /madbench:madbench as the entry point, checks them against the installed madbench, and runs benches in a visible pane through the madbench:bench agent.
 
 | | |
 |---|---|
-| Version | `0.8.1` |
+| Version | `0.9.0` |
 | Marketplace | [`magus`](./index.md) |
-| Commands | 2 |
+| Commands | 1 |
 | Subagents | 1 |
-| Skills | 1 |
+| Skills | 3 |
 | MCP server | no |
 | Hooks | yes |
 
@@ -34,8 +34,7 @@ Prefer to do it by hand? [Installing Magus](../../guides/install.md) has the man
 
 | Command | What it does |
 |---|---|
-| `/madbench:bench` | Author, run, or debug a madbench bench through the operator agent — bench YAML, Eval files, red-state testdata, the two controls, and a real run in a visible pane |
-| `/madbench:doctor` | Run the three madbench plugin checks — skill staleness against the installed madbench, bench layout, and the generated bench index — and print their output verbatim |
+| `/madbench:doctor` | Run the three madbench plugin checks — skills against the installed madbench, bench layout, and the generated bench index — and print their output verbatim |
 
 ## Subagents
 
@@ -47,9 +46,18 @@ Dispatched with the Agent tool, each in its own context window.
 
 ## Skills
 
-| Skill | What it covers |
+| | How you get it |
 |---|---|
-| `madbench:madbench-evals` — [4 more docs](./madbench-madbench-evals.md) | Authors, runs and debugs madbench benches natively — bench YAML, checks, metrics with module/, red-state testdata, the two controls, exit codes; |
+| ○ | You invoke it by name |
+| ▸ | A command loads it for you — you never name it |
+
+[Why a skill lands in one row or another](../../guides/skill-visibility.md)
+
+| | Skill | What it covers |
+|---|---|---|
+| ○ | `madbench:madbench` | Creates, runs, debugs and migrates madbench benches. Checks the installed madbench against these skills first, then routes the request. |
+| ○ | `madbench:migrate` | Brings a madbench Bench or Experiment written for madbench v0.41.0 or later to the installed madbench, applying the changes `changes.md` records between the two versions. |
+| ▸ | `madbench:madbench-evals` — [5 more docs](./madbench-madbench-evals.md) | Authors, runs and debugs madbench benches natively — bench YAML, checks, metrics with module/, red-state testdata, the two controls, exit codes; |
 
 ## Hooks
 

@@ -1,7 +1,7 @@
 {
   "name": "madbench",
-  "version": "0.8.1",
-  "description": "Toolkit for madbench, MadAppGang's Go harness for benchmarking agentic coding tools. The madbench:bench agent authors, runs and debugs benches natively in a visible pane, reading the madbench-evals skill by path; /madbench:bench and /madbench:doctor are the entry points.",
+  "version": "0.9.0",
+  "description": "Toolkit for madbench, MadAppGang's Go harness for benchmarking agentic coding tools. Carries madbench's own skills with /madbench:madbench as the entry point, checks them against the installed madbench, and runs benches in a visible pane through the madbench:bench agent.",
   "author": {
     "name": "MadAppGang",
     "email": "i@madappgang.com"
@@ -28,7 +28,7 @@
     "claudemd": {
       "section": "madbench",
       "template": "./templates/claude-md-conventions.md",
-      "version": "1.0.0"
+      "version": "1.2.0"
     }
   },
   "compatibility": {
@@ -67,14 +67,14 @@
           {
             "via": "release",
             "repo": "MadAppGang/madbench-releases",
-            "tag": "v0.41.0",
+            "tag": "v0.42.3",
             "asset": "madbench_{os}_{arch}.tar.gz",
             "binary": "madbench",
             "sha256": {
-              "darwin_amd64": "fa5257d51031249b00984d3bb2f0bb207d8459ab35454f901c95891f208e10ab",
-              "darwin_arm64": "6c03ae39878dae88b8ed005c38be5448517a30d91ecfcba4b653d618848ef8e2",
-              "linux_amd64": "70b4f3acb7cff380646cb61d4fccb441fda9fb56d43db8f693aa84c0eb3c815d",
-              "linux_arm64": "1d5b65ca6218d3558aad2ac0c6cf85298879763d8fcff09fa77ab950fac1871f"
+              "darwin_amd64": "7cf8b92eda08cebef443cb084a651f29b3958b4e9b0ea4524c644156024fe916",
+              "darwin_arm64": "485565670d2f158170f1898e837b843fcdaa7a60d52295d8e2e9649b67d61d4f",
+              "linux_amd64": "2d76189e76f3e12a387467d399de22feadc42b68f5a32a50a81cce5210a85704",
+              "linux_arm64": "d7ed5b4158b3c3b55cd4765a2ae1c6de5839a30eb4592304dce761c98cfcdf51"
             }
           }
         ]

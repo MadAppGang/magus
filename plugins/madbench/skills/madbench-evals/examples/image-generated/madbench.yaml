@@ -1,25 +1,29 @@
 # EX-IMAGE — `image: generated:<name>` with a `generate:` program.
 #
-# A loadable probe for scripts/check-staleness.ts. The picture does not exist until the
-# run starts: `generate.sh` writes it into $MADBENCH_IMAGE_DIR (never the workspace) and
-# prints its answer on stdout, where only the grader can see it. docs/harness.md §2a.
+# The picture does not exist until the run starts: `generate.ts` writes it into
+# $MADBENCH_IMAGE_DIR (never the workspace) and prints its answer on stdout, where only the
+# Checks can see it. madbench executes the program directly, so it keeps its `#!/usr/bin/env
+# bun` line and its executable bit. docs/harness.md §2a.
 #
-# `harness: mock` cannot deliver an image, and madbench says so at PREFLIGHT
-# (measured on 0.33.0: `harness "mock" cannot deliver an image, so image: would be
-# silently dropped`). That refusal is upstream's design, not a defect here, so the
-# staleness checker probes this file with `madbench list` only — which is where the
-# `image:` and `generate:` keys are parsed and where a renamed key would fail.
+# `interactive: false` is required: claude-code's interactive driver cannot carry an image,
+# and an image on an interactive Scenario is refused at configure.
+#
+# `harness: mock` cannot deliver an image, and madbench says so at PREFLIGHT (`harness
+# "mock" cannot deliver an image`). That refusal is madbench's design, not a defect here,
+# so this file is gated by `madbench list` only — which is where the `image:` and
+# `generate:` keys are parsed and where an unknown key would fail.
 description: "EX-IMAGE image: generated — the picture is drawn after the bench is written"
 harness: mock
 
 defaults:
   timeout: 60s
   sandbox: workspace
+  interactive: false
 
 scenarios:
   - name: sees-the-dot
-    description: "A generated PNG reaches the model; the grader reads the answer from vars"
-    generate: ./generate.sh
+    description: "A generated PNG reaches the model; the Checks read the answer from vars"
+    generate: ./generate.ts
     image: generated:dot.png
     prompt: "You have been sent a tiny picture. Reply with the single word: received"
     checks:

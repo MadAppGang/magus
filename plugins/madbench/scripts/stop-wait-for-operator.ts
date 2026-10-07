@@ -11,7 +11,7 @@
  *
  * WHY A HOOK AND NOT MORE WORDING. `commands/bench.md` says three times to block on
  * `TaskOutput(task_id, block: true, timeout: 600000)`. Measured on the MBN-1 bench,
- * `--repeat 5` twice: parents that actually waited were 3/5, then 2/5. Wording is roughly
+ * 5 trials, twice: parents that actually waited were 3/5, then 2/5. Wording is roughly
  * a coin flip; a Stop hook is a mechanism.
  *
  * WHAT IT DOES. Reads the transcript, finds the most recent `madbench:bench` dispatch,

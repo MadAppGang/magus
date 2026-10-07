@@ -9,11 +9,11 @@
  * nobody ran it. Everything here is derived from the filesystem — there is no registry
  * to keep in step, because a committed mapping goes stale and a filesystem rule cannot.
  *
- * The five rules:
+ * The four rules:
  *
  *   1  exactly one bench root — one top-level directory holding bench directories
- *   2  every directory under the root has a bench or Eval file (`madbench.yaml`,
- *      `<name>.madbench.yaml`, `<name>.eval.yaml`). Exempt BY NAME, never by guess:
+ *   2  every directory under the root has a Bench or Experiment file (`madbench.yaml`,
+ *      `<name>.madbench.yaml`, `<name>.experiment.yaml`). Exempt BY NAME, never by guess:
  *      `lib/`, `results/`, `MADBENCH.md`, `README.md`, `.gitignore`
  *   3  every bench has a `README.md` whose frontmatter carries `id`, `question`,
  *      `status`, `last_run` (YYYY-MM-DD or `never`) and `binary`
@@ -21,12 +21,9 @@
  *      allowed only when a check in that bench's own YAML names it as a `file://`
  *      target. Anything under `module/` or `lib/` is not at the root and is untouched.
  *      This is the mechanically decidable form of "arithmetic lives in `module/`".
- *   5  no alias key in any bench file — `runner:`, `runner_config:`, `cases:`, `assert:`,
- *      `fixture:`, `tests:`, `defaultCase:`, `defaultTest:`, `matrix:`, `control:`,
- *      `varies:`, `agg:` — at ANY depth. YAML keys only, never
- *      hand-written text: a sentence describing another tool's parameter sweep names
- *      that tool's feature, and a key scanner is the only thing that can tell the two
- *      apart. Hand-written text is check-dictionary.ts's job, not this one's.
+ *
+ * There is no alias-key rule. madbench 0.42.0 loads strictly: an old or alias key fails
+ * `madbench list` as an unknown key, so checking for one here would be a second loader.
  *
  * Two named escape hatches, both printed by --list, both narrower than an exemption:
  *
@@ -79,7 +76,7 @@ const YAML = (Bun as unknown as { YAML: { parse(text: string): unknown } }).YAML
 // the standard, as data
 // ---------------------------------------------------------------------------
 
-export const BENCH_FILE_RX = /^(madbench\.ya?ml|.+\.madbench\.ya?ml|.+\.eval\.ya?ml)$/;
+export const BENCH_FILE_RX = /^(madbench\.ya?ml|.+\.madbench\.ya?ml|.+\.experiment\.ya?ml)$/;
 const YAML_RX = /\.ya?ml$/;
 
 /** Rule 2's exemptions. Names, not patterns — a guess is how `lib/` got flagged on day one. */
@@ -91,27 +88,6 @@ export const ROOT_EXEMPT_FILES: ReadonlySet<string> = new Set(["MADBENCH.md", "R
 
 export const REQUIRED_FRONTMATTER = ["id", "question", "status", "last_run", "binary"] as const;
 const LAST_RUN_RX = /^(\d{4}-\d{2}-\d{2}|never)$/;
-
-/**
- * Rule 5. madbench 0.37.0 refuses every one of these at load, but only when the binary
- * loads the file — and nothing in CI does. On 2026-09-25, 15 of this repo's 63 bench and
- * Eval files still said `control:`/`varies:` and this gate passed them. A key scan needs no
- * binary, so it catches them on every commit.
- */
-export const ALIAS_KEYS: ReadonlySet<string> = new Set([
-	"runner",
-	"runner_config",
-	"cases",
-	"assert",
-	"fixture",
-	"tests",
-	"defaultCase",
-	"defaultTest",
-	"matrix",
-	"control",
-	"varies",
-	"agg",
-]);
 
 /** Top-level directories that are never a bench root, whatever they contain. */
 const NEVER_A_ROOT: ReadonlySet<string> = new Set(["node_modules"]);
@@ -312,21 +288,6 @@ export function readFrontmatter(text: string): Frontmatter {
 	}
 }
 
-/** Every mapping key at any depth whose name is an alias, as a dotted path. */
-function aliasKeyPaths(node: unknown, path: string, out: string[]): void {
-	if (Array.isArray(node)) {
-		node.forEach((v, i) => aliasKeyPaths(v, `${path}[${i}]`, out));
-		return;
-	}
-	if (node && typeof node === "object") {
-		for (const [k, v] of Object.entries(node as Record<string, unknown>)) {
-			const p = path ? `${path}.${k}` : k;
-			if (ALIAS_KEYS.has(k)) out.push(p);
-			aliasKeyPaths(v, p, out);
-		}
-	}
-}
-
 /** Every string value at any depth. */
 function strings(node: unknown, out: string[]): void {
 	if (typeof node === "string") out.push(node);
@@ -354,10 +315,7 @@ function checkFileTargets(node: unknown, out: string[], insideChecks: boolean): 
 		return;
 	}
 	for (const [k, v] of Object.entries(node)) {
-		if (k === "checks" || k === "assert") {
-			// `assert:` is madbench's accepted alias for `checks:`. Rule 5 reports it as an
-			// alias key; rule 4 still has to understand it, or narrowing rule 4 would make a
-			// bench using the alias fail both rules for one mistake.
+		if (k === "checks") {
 			const collected: string[] = [];
 			strings(v, collected);
 			out.push(...collected);
@@ -383,7 +341,7 @@ export function checkTree(repo: string, opts: Options = {}): Report {
 			path: repo,
 			message:
 				"no bench root: no top-level directory holds a directory with a bench file " +
-				"(madbench.yaml, <name>.madbench.yaml or <name>.eval.yaml)",
+				"(madbench.yaml, <name>.madbench.yaml or <name>.experiment.yaml)",
 		});
 		return report;
 	}
@@ -423,7 +381,7 @@ export function checkTree(repo: string, opts: Options = {}): Report {
 				findings.push({
 					rule: 2,
 					path: rel,
-					message: "no bench file (madbench.yaml, <name>.madbench.yaml or <name>.eval.yaml)",
+					message: "no bench file (madbench.yaml, <name>.madbench.yaml or <name>.experiment.yaml)",
 				});
 			}
 
@@ -460,8 +418,7 @@ export function checkTree(repo: string, opts: Options = {}): Report {
 				}
 			}
 
-			// Rule 5 reads every YAML directly in the bench — probes and Evals included.
-			// Rule 4's file:// targets come only from BENCH files (BENCH_FILE_RX) and only
+			// Every YAML directly in the bench must parse. Rule 4's file:// targets come only from BENCH files (BENCH_FILE_RX) and only
 			// from their `checks:` subtree: a check is what makes a .ts file load-bearing,
 			// and a sibling scratch YAML is not a check.
 			const fileTargets = new Set<string>();
@@ -478,11 +435,6 @@ export function checkTree(repo: string, opts: Options = {}): Report {
 						message: `does not parse as YAML: ${(err as Error).message.split("\n")[0]}`,
 					});
 					continue;
-				}
-				const aliases: string[] = [];
-				aliasKeyPaths(doc, "", aliases);
-				for (const p of aliases) {
-					findings.push({ rule: 5, path: `${rel}/${f.name}`, message: `alias key at ${p}` });
 				}
 				if (!BENCH_FILE_RX.test(f.name)) continue;
 				const values: string[] = [];
@@ -670,19 +622,6 @@ const SELF_TESTS: readonly SelfTest[] = [
 			),
 			"benches/t/verify.ts": "export default () => 1;\n",
 		},
-		opts: NO_DEBT,
-	},
-	{
-		id: "BL-05",
-		title: "rule 5 — no alias key in any bench file, at any depth",
-		why: "`madbench init` (0.37.0 and 0.37.1) still scaffolds runner:/cases:/assert:, which the same binary then refuses, and `control:` survived in 15 Eval files because nothing in CI loads them. Nested `assert:` under a composite is the form that survived review three times.",
-		rule: 5,
-		positives: [
-			{ ...BASE, "benches/t/madbench.yaml": GOOD_BENCH.replace("scenarios:", "cases:") },
-			{ ...BASE, "benches/t/t.eval.yaml": "bench: ./madbench.yaml\ncontrol:\n  baseline: a\n  varies: [x]\nruns:\n  - name: a\n" },
-			{ ...BASE, "benches/t/probe.yaml": GOOD_BENCH.replace("    checks:", "    checks:\n      - type: any-of\n        assert:\n          - type: contains\n            value: hi") },
-		],
-		negative: BASE,
 		opts: NO_DEBT,
 	},
 	{

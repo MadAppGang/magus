@@ -1,5 +1,5 @@
 /**
- * The Stop hook that keeps a `/madbench:bench` turn open while its operator is still
+ * The Stop hook that keeps a turn open while a dispatched `madbench:bench` operator is still
  * working.
  *
  * Every case reads a transcript out of `testdata/`, in the record shapes Claude Code

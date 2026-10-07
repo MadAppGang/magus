@@ -1,6 +1,6 @@
 ---
 name: doctor
-description: Run the three madbench plugin checks — skill staleness against the installed madbench, bench layout, and the generated bench index — and print their output verbatim
+description: Run the three madbench plugin checks — skills against the installed madbench, bench layout, and the generated bench index — and print their output verbatim
 allowed-tools: Bash, Read
 ---
 
@@ -16,23 +16,24 @@ Run each from the project root, one command per call, and paste its **complete**
 stderr into the reply. Do not trim, do not paraphrase, do not stop at the first failure — a
 reader wants all three verdicts side by side.
 
-### 1. Staleness — does the skill mirror the installed madbench?
+### 1. Skills — do the plugin's skills match the installed madbench?
 
 ```bash
-bun "${CLAUDE_PLUGIN_ROOT}/scripts/check-staleness.ts"
+if command -v madbench >/dev/null; then madbench skills --check --plain --dir "${CLAUDE_PLUGIN_ROOT}/skills"; else echo "skipped — madbench is not on PATH, so there is no release to compare the skills with"; fi
 ```
 
-Runs `madbench version` and loads the plugin's example benches through `madbench list`. A
-bench the skill teaches that the installed madbench refuses to load is the finding; the
-version comparison above it is advisory and names how far behind the mirror is.
+madbench's own compare: its first line is `skills <W> · madbench <I> · <verdict>`, and the
+verdict is `current`, `stale`, `pinned`, `disagree` or `unmeasured`. Its exit codes are
+madbench's, not this command's — see the table below. Whether the skills' example benches
+load is madbench's own release test, so it is not repeated here.
 
 ### 2. Layout — does the bench tree follow the standard?
 
 ```bash
-if [ -n "$(find . -maxdepth 3 \( -name madbench.yaml -o -name '*.madbench.yaml' -o -name '*.eval.yaml' \) -not -path '*/node_modules/*' -print -quit)" ]; then bun "${CLAUDE_PLUGIN_ROOT}/scripts/check-bench-layout.ts"; else echo "skipped — this project has no bench file yet, so there is no layout to check"; fi
+if [ -n "$(find . -maxdepth 3 \( -name madbench.yaml -o -name '*.madbench.yaml' -o -name '*.experiment.yaml' \) -not -path '*/node_modules/*' -print -quit)" ]; then bun "${CLAUDE_PLUGIN_ROOT}/scripts/check-bench-layout.ts"; else echo "skipped — this project has no bench file yet, so there is no layout to check"; fi
 ```
 
-One bench root; every bench directory carries a bench or Eval file and a `README.md` with
+One bench root; every bench directory carries a Bench or Experiment file and a `README.md` with
 the required frontmatter; no loose TypeScript at a bench root; no alias key in any bench
 file.
 
@@ -65,24 +66,25 @@ All three exit the same way, and the middle value is the one to respect:
 
 | Exit | Meaning | Report as |
 |---|---|---|
-| 0 | the check measured and passed — **or check 2 or 3 skipped**, which its own line says | green |
+| 0 | the check measured and passed (check 1: `current` or `pinned`) — **or a check skipped**, which its own line says | green |
 | 1 | the check measured and found a defect — its output names it | red |
-| 2 | **could not measure** — no madbench binary, no bench root, a file that does not parse | **red** |
+| 2 | **could not measure** — no bench root, a file that does not parse | **red** |
+| 3 | check 1 only — **madbench found nothing to check**: no stamped skills, or a `dev` build | **red** |
 
 Exit 2 is red on purpose. A run that measured nothing is not a pass; reporting it as one
 rebuilds the blind spot these checks exist to close.
 
 Two exits of 0 are not verdicts of the same strength, and the output distinguishes them:
 
-- **Check 1 without a madbench binary** is silent by design — a machine that never runs
+- **Check 1 without a madbench binary** prints `skipped` — a machine that never runs
   benches must not get a false failure. Quote its one line rather than inventing a verdict.
 - **Check 2 in a project with no bench file**, and **check 3 outside magus-src**, print
   `skipped` and exit 0. Report them as `skipped`, not as green: nothing was measured, and
   nothing was meant to be.
 
-If check 1 or check 2 reports `error: Module not found`, report that as exit 2 and name the
-path — those two ship with the plugin, so a missing one means the plugin is installed
-without its scripts and reinstalling it is the fix. **Check 3 is not covered by that
+If check 2 reports `error: Module not found`, report that as exit 2 and name the path — it
+ships with the plugin, so a missing one means the plugin is installed without its scripts
+and reinstalling it is the fix. **Check 3 is not covered by that
 diagnosis**: it names a magus-src script that no plugin install delivers, which is why it
 probes first instead of failing.
 
@@ -91,7 +93,7 @@ probes first instead of failing.
 ```
 madbench doctor
 
-1. staleness   exit N
+1. skills      exit N
 <verbatim output>
 
 2. layout      exit N

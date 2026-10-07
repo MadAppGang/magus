@@ -2,8 +2,14 @@
 
 Benches are madbench evals over this project's own instruction text: real harness, real
 plugins, one variable changed. madbench is the harness — docs at <https://madbench.web.app>,
-source at <https://github.com/MadAppGang/madbench>. Use it natively; a wrapper around it
-is a gap that should have been drafted as an upstream issue instead.
+source at <https://github.com/MadAppGang/madbench>. **`/madbench` is the entry point** for creating
+and running a bench (`/madbench:madbench` when only the magus plugin provides it).
+
+**Never reimplement madbench's own tooling or logic** — running, grading, checks, report
+parsing, run status, bench validation, hooks around a run, version checks. Missing in madbench:
+a feature request to `MadAppGang/madbench`. Broken: a bug report there. Locally, at most a
+stand-in marked `TEMPORARY — stands in for MadAppGang/madbench#<n>`, recorded with the issue,
+and deleted when madbench ships the real one.
 
 **Run `/madbench:doctor` before quoting a number.** It runs the layout check, the index
 check and the staleness check, and prints their output verbatim. Exit 2 from any of them
@@ -18,7 +24,7 @@ benches/
   lib/                     shared TypeScript, exempt from the per-bench rules
   <name>/
     madbench.yaml          REQUIRED   the bench (or <name>.madbench.yaml)
-    <name>.eval.yaml       optional   runs and params — one bench per harness_config
+    <name>.experiment.yaml optional   variants and params — one Bench per harness: block
     README.md              REQUIRED   frontmatter id, question, status, last_run, binary; then the
                                       question and the measured answer
     testdata/              optional   seeded RED — a no-op run must fail
@@ -27,9 +33,10 @@ benches/
 ```
 
 The layout checker (`scripts/check-bench-layout.ts` in the madbench plugin; `--self-test`
-proves each rule can fire) enforces five rules: one root; every directory has a bench or
-Eval file; every bench has the README frontmatter above; no loose `.ts` at a bench root
-unless a check names it as a `file://` target; no alias key in any bench file.
+proves each rule can fire) enforces four rules: one root; every directory has a Bench or
+Experiment file; every bench has the README frontmatter above; no loose `.ts` at a bench root
+unless a check names it as a `file://` target. Keys are madbench's job: `madbench list`
+refuses an old or unknown key.
 
 ### Testdata — composed in this order
 
@@ -51,9 +58,8 @@ a post-hoc module over `--report-json`; madbench's aggregation stops at the run 
 
 ### Vocabulary
 
-YAML keys are canonical: `harness:`, `scenarios:`, `checks:`, `testdata:`, `session:*`, and
-`guard_changes:`/`allow:` on an Eval. madbench refuses the old spellings (`runner:`, `cases:`,
-`assert:`, `fixture:`, `tests:`, `defaultCase:`, `control:`, `varies:`) at load, and
-`trajectory:*` check types at preflight; `matrix:` never loaded. Say *run*, *testdata*,
-*Session*, *Event* and *turn* in documentation too; say *Check* or *graded pair*, never
-*cell*.
+madbench's Glossary is the authority: `skills/madbench-evals/glossary.md` in the madbench
+plugin, the same file `madbench skills` installs. Write its Terms — Bench, Experiment,
+variant, run, trial, Scenario, Check, Session, testdata — in YAML, comments and
+documentation alike, and translate another tool's word (suite, test case, grader) into
+madbench's rather than echoing it.
