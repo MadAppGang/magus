@@ -15,7 +15,7 @@
       "name": "code-search",
       "source": "./plugins/code-search",
       "description": "Read-only code search and investigation behind one stable tool surface. Finds code by meaning or structure, traces callers, callees and blast radius, and dispatches an analyze agent for deep dives. The search engine is named in project settings and is swappable.",
-      "version": "8.3.0",
+      "version": "8.3.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -37,6 +37,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "8.3.1",
+          "date": "2026-10-07",
+          "kinds": [
+            "Fixed"
+          ],
+          "summary": "The session-start check fixes in terminal 5.3.1 apply here too"
+        },
         {
           "version": "8.3.0",
           "date": "2026-10-06",
@@ -63,14 +71,6 @@
           "version": "8.1.0",
           "date": "2026-09-22",
           "summary": "Carries the session-start check that reports a magus CLI behind npm and names the command that\u2026"
-        },
-        {
-          "version": "8.0.0",
-          "date": "2026-09-15",
-          "kinds": [
-            "Changed"
-          ],
-          "summary": "BREAKING \u2014 the plugin is renamed from code-analysis to code-search"
         }
       ]
     },
@@ -78,7 +78,7 @@
       "name": "claudish",
       "source": "./plugins/claudish",
       "description": "MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting across models, manages async sessions, and streams channel notifications. Required by code-search, dev, multimodel and designer.",
-      "version": "2.2.0",
+      "version": "2.2.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -99,6 +99,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "2.2.1",
+          "date": "2026-10-07",
+          "kinds": [
+            "Fixed"
+          ],
+          "summary": "The session-start check fixes in terminal 5.3.1 apply here too"
+        },
         {
           "version": "2.2.0",
           "date": "2026-10-07",
@@ -128,14 +136,6 @@
             "Fixed"
           ],
           "summary": "The claudish MCP server starts for users whose keys are not in the environment"
-        },
-        {
-          "version": "2.0.4",
-          "date": "2026-09-12",
-          "kinds": [
-            "Changed"
-          ],
-          "summary": "claudish ships to magus only"
         }
       ]
     },
@@ -143,7 +143,7 @@
       "name": "mnemex",
       "source": "./plugins/mnemex",
       "description": "MCP runtime for semantic code search and AST analysis, ranking symbols by PageRank. Optional engine behind the code-search facade, and usable directly for its full tool surface.",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -164,6 +164,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "1.1.1",
+          "date": "2026-10-07",
+          "kinds": [
+            "Fixed"
+          ],
+          "summary": "mnemex installs and starts on Apple Silicon Macs"
+        },
         {
           "version": "1.1.0",
           "date": "2026-10-06",
@@ -192,11 +200,6 @@
           "version": "1.0.1",
           "date": "2026-08-19",
           "summary": "Description rewritten as a durable capability statement instead of release-note phrasing"
-        },
-        {
-          "version": "1.0.0",
-          "date": "2026-05-09",
-          "summary": "Dedicated runtime plugin for the Mnemex MCP server. Owns the command: \"mnemex\", args: [\"--mcp\"]\u2026"
         }
       ]
     },
@@ -204,7 +207,7 @@
       "name": "multimodel",
       "source": "./plugins/multimodel",
       "description": "Multi-model collaboration and orchestration. Runs a task across several AI models in parallel and aggregates their blind APPROVE/REJECT votes, or delegates it to one model running a full Claude Code session.",
-      "version": "5.3.0",
+      "version": "5.3.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -228,6 +231,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "5.3.1",
+          "date": "2026-10-07",
+          "kinds": [
+            "Fixed"
+          ],
+          "summary": "The session-start check fixes in terminal 5.3.1 apply here too"
+        },
         {
           "version": "5.3.0",
           "date": "2026-10-07",
@@ -254,11 +265,6 @@
           "version": "5.1.0",
           "date": "2026-09-25",
           "summary": "The task-orchestration skill is removed. It taught progress tracking through TaskCreate and\u2026"
-        },
-        {
-          "version": "5.0.0",
-          "date": "2026-09-24",
-          "summary": "Its PreToolUse hook no longer approves tool calls. On every Bash and Agent call it let through,\u2026"
         }
       ]
     },
@@ -266,7 +272,7 @@
       "name": "dev",
       "source": "./plugins/dev",
       "description": "Universal development assistant. Detects the project stack and routes work to specialist agents for architecture, implementation, debugging, review and research, enforcing design-system guardrails on every UI change.",
-      "version": "9.1.0",
+      "version": "9.1.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -306,6 +312,14 @@
       "strict": true,
       "releases": [
         {
+          "version": "9.1.1",
+          "date": "2026-10-07",
+          "kinds": [
+            "Fixed"
+          ],
+          "summary": "The session-start check fixes in terminal 5.3.1 apply here too"
+        },
+        {
           "version": "9.1.0",
           "date": "2026-10-06",
           "kinds": [
@@ -330,11 +344,6 @@
           "version": "8.3.0",
           "date": "2026-09-25",
           "summary": "Commands and skills no longer order task-list tools that do not exist. /dev:dev,\u2026"
-        },
-        {
-          "version": "8.2.0",
-          "date": "2026-09-24",
-          "summary": "Four hidden skills are rebuilt against the repo's current rules. browser-debugging follows the\u2026"
         }
       ]
     },
@@ -581,7 +590,7 @@
       "name": "browser-use",
       "source": "./plugins/browser-use",
       "description": "Full-platform browser automation: live-page JS eval, keyboard and focus primitives, file screenshots, preflight and a configurable agent LLM, on local or cloud browsers. Runs Playwright's own Chromium, never your real Chrome. Adds Magus tools and 6 skills to the upstream Browser Use MCP set.",
-      "version": "1.9.0",
+      "version": "1.9.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -603,6 +612,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "1.9.1",
+          "date": "2026-10-07",
+          "kinds": [
+            "Fixed"
+          ],
+          "summary": "Installing uv no longer edits your shell rc file behind magus's back"
+        },
         {
           "version": "1.9.0",
           "date": "2026-10-06",
@@ -629,14 +646,6 @@
             "Fixed"
           ],
           "summary": "The browser-use MCP server starts without ANTHROPIC_API_KEY, OPENAI_API_KEY and\u2026"
-        },
-        {
-          "version": "1.7.4",
-          "date": "2026-09-07",
-          "kinds": [
-            "Fixed"
-          ],
-          "summary": "The MCP server crashed on construction against mcp 2.x, so every fresh install got no browser\u2026"
         }
       ]
     },
@@ -704,7 +713,7 @@
       "name": "terminal",
       "source": "./plugins/terminal",
       "description": "Slot-addressed terminal control over tmux. Runs interactive commands, dev servers, test watchers, REPLs and TUI apps in numbered helper panes \u2014 beside the user or isolated from view \u2014 that the server places and owns, so an agent never holds a pane id or targets the user's own session.",
-      "version": "5.3.0",
+      "version": "5.3.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -722,6 +731,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "5.3.1",
+          "date": "2026-10-07",
+          "kinds": [
+            "Fixed"
+          ],
+          "summary": "A Bun outside ~/.bun/bin is no longer reported as missing"
+        },
         {
           "version": "5.3.0",
           "date": "2026-10-06",
@@ -747,11 +764,6 @@
             "Added"
           ],
           "summary": "/terminal:slots shows list | close <N> | close all as an argument hint after the command name\u2026"
-        },
-        {
-          "version": "5.2.0",
-          "date": "2026-09-22",
-          "summary": "The same check"
         }
       ]
     },
@@ -759,7 +771,7 @@
       "name": "madbench",
       "source": "./plugins/madbench",
       "description": "Toolkit for madbench, MadAppGang's Go harness for benchmarking agentic coding tools. The madbench:bench agent authors, runs and debugs benches natively in a visible pane, reading the madbench-evals skill by path; /madbench:bench and /madbench:doctor are the entry points.",
-      "version": "0.8.0",
+      "version": "0.8.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -780,6 +792,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "0.8.1",
+          "date": "2026-10-07",
+          "kinds": [
+            "Fixed"
+          ],
+          "summary": "The session-start check fixes in terminal 5.3.1 apply here too"
+        },
         {
           "version": "0.8.0",
           "date": "2026-10-07",
@@ -811,11 +831,6 @@
             "Fixed"
           ],
           "summary": "The dictionary check no longer describes cell as the word madbench check prints. madbench\u2026"
-        },
-        {
-          "version": "0.6.0",
-          "date": "2026-09-22",
-          "summary": "The same check"
         }
       ]
     }

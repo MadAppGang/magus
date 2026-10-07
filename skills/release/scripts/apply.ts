@@ -9,7 +9,10 @@
  *      exists; no proposed tag exists locally or on origin.
  *   2. Update plugins/<name>/.claude-plugin/plugin.json version.
  *   3. Update .claude-plugin/marketplace.json plugin entry version.
- *   4. git add + commit — one commit for the batch, on the CURRENT branch.
+ *   4. Regenerate userdocs/plugins/ (scripts/generate-plugin-catalog.ts). Its pages
+ *      print each plugin's version, so they are derived from steps 2-3 and belong in
+ *      the same commit; generated before the bump, they ship one version behind.
+ *   5. git add + commit — one commit for the batch, on the CURRENT branch.
  *
  * It stops there. Nothing here pushes, tags, or publishes:
  *   - the branch is pushed and merged through a PR, where CI runs the gates;
@@ -191,9 +194,14 @@ function commitMessage(proposal: ReleaseProposal): string {
   return `${header}\n\n${body}`;
 }
 
+function regenerateCatalog(dryRun: boolean): void {
+  console.log("── Regenerating the plugin catalog ─────────────");
+  sh("bun scripts/generate-plugin-catalog.ts", { dryRun });
+}
+
 function gitCommit(proposal: ReleaseProposal, dryRun: boolean): void {
   console.log("── Committing ──────────────────────────────────");
-  sh("git add plugins/ .claude-plugin/marketplace.json", { dryRun });
+  sh("git add plugins/ .claude-plugin/marketplace.json userdocs/plugins/", { dryRun });
   // Use a temp file for the message to avoid shell-escape pain with multi-line.
   const msgFile = join(process.env.TMPDIR ?? "/tmp", "magus-release-msg.txt");
   const msg = commitMessage(proposal) +
@@ -242,6 +250,7 @@ function main(): void {
     updateMarketplaceEntry(p, dryRun);
   }
 
+  regenerateCatalog(dryRun);
   gitCommit(proposal, dryRun);
 
   const branch = dryRun ? "<branch>" : sh("git rev-parse --abbrev-ref HEAD");

@@ -1,6 +1,6 @@
 {
   "name": "browser-use",
-  "version": "1.9.0",
+  "version": "1.9.1",
   "description": "Full-platform browser automation: live-page JS eval, keyboard and focus primitives, file screenshots, preflight and a configurable agent LLM, on local or cloud browsers. Runs Playwright's own Chromium, never your real Chrome. Adds Magus tools and 6 skills to the upstream Browser Use MCP set.",
   "author": {
     "name": "Jack Rudenko",

@@ -17,7 +17,9 @@
  * atomic `mkdir claimed/<dedupeKey>`. A failed mkdir means another plugin's copy
  * reports that dep this session, so one dep is one banner line however many
  * plugins need it. An unreadable session id means no ledger and no claims:
- * more banners, never fewer. Ledgers older than a day are pruned on write.
+ * more banners, never fewer. The ledger is 0700. Ledgers older than a day are
+ * pruned on write, each on its own, so one this user cannot remove skips only
+ * itself.
  *
  * Exit 0 always. A watchdog keeps the hook inside its registration timeout.
  */
@@ -94,28 +96,42 @@ async function readHookInput(): Promise<HookInput> {
 	}
 }
 
+/**
+ * Remove ledgers older than a day. Each is tried on its own: a shared `/tmp`
+ * holds other users' ledgers, which this user cannot remove, and one of those
+ * must not stop this user's own from being pruned.
+ */
 function pruneOldLedgers(base: string): void {
+	let entries: string[];
 	try {
-		for (const entry of readdirSync(base)) {
-			if (!entry.startsWith("magus-deps-")) continue;
-			const dir = join(base, entry);
+		entries = readdirSync(base);
+	} catch {
+		return; // Pruning is housekeeping; a failure costs nothing now.
+	}
+	for (const entry of entries) {
+		if (!entry.startsWith("magus-deps-")) continue;
+		const dir = join(base, entry);
+		try {
 			if (Date.now() - statSync(dir).mtimeMs > LEDGER_MAX_AGE_MS) {
 				rmSync(dir, { recursive: true, force: true });
 			}
+		} catch {
+			// Another user's, or already gone: the next entry is still pruned.
 		}
-	} catch {
-		// Pruning is housekeeping; a failure costs nothing now.
 	}
 }
 
-/** The ledger directory, with `seen/<label>` written, or null without a session. */
+/**
+ * The ledger directory, with `seen/<label>` written, or null without a session.
+ * Created 0700: in a shared `/tmp`, no other user reads which plugins ran.
+ */
 function openLedger(hookSession: string | null, label: string): string | null {
 	if (!hookSession) return null;
 	const base = process.env.TMPDIR || tmpdir();
 	const dir = join(base, `magus-deps-${hookSession}`);
 	try {
-		mkdirSync(join(dir, "seen"), { recursive: true });
-		mkdirSync(join(dir, "claimed"), { recursive: true });
+		mkdirSync(join(dir, "seen"), { recursive: true, mode: 0o700 });
+		mkdirSync(join(dir, "claimed"), { recursive: true, mode: 0o700 });
 		writeFileSync(join(dir, "seen", label), "ts");
 	} catch {
 		return null;

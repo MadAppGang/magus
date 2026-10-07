@@ -124,17 +124,20 @@ If validation passes, it:
    subject, the tag message, and CHANGELOG.md. Release notes reach the marketplace
    through `bun scripts/generate-releases.ts`, which fills the separate `releases`
    field from CHANGELOG.md.
-3. Creates one commit for the whole batch on the current branch
+3. Regenerates `userdocs/plugins/` with `bun scripts/generate-plugin-catalog.ts`. Those
+   pages print each plugin's version, so they are derived from the bump and ride in its
+   commit.
+4. Creates one commit for the whole batch on the current branch
    (`release(<name>): vX.Y.Z` for a single plugin, `release: <name> vX.Y.Z, <other> vA.B.C`
    for a batch)
 
 Then it stops and prints the next two steps. Nothing has left the machine.
 
 Before that commit, write the CHANGELOG entry (`## [<plugin> X.Y.Z] - YYYY-MM-DD`) and
-run the generators (`bun scripts/generate-releases.ts`, `bun scripts/generate-plugin-catalog.ts`)
-so their output is in the tree the PR carries — CI only
-checks, never regenerates. `apply.ts` requires a clean tree, so commit those first or
-fold the bump into that commit by hand.
+run `bun scripts/generate-releases.ts`, so its output is in the tree the PR carries — CI
+only checks, never regenerates. `apply.ts` requires a clean tree, so commit those first.
+Do not run `generate-plugin-catalog.ts` ahead of `apply.ts`: before the bump it writes the
+old versions, and `apply.ts` regenerates it anyway.
 
 ### Step 4 — push, PR, merge
 

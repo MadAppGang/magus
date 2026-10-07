@@ -4,6 +4,102 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [mnemex 1.1.1] - 2026-10-07
+
+### Fixed
+
+- **mnemex installs and starts on Apple Silicon Macs.** `magus doctor --fix` now installs mnemex
+  v0.36.2. The v0.36.1 macOS binary, from its GitHub release and from Homebrew, carried an
+  invalid code signature and was killed at launch.
+- **The session-start check is quieter and more accurate** (shared with every plugin that
+  carries it): see the terminal 5.3.1 entry.
+
+---
+
+## [terminal 5.3.1] - 2026-10-07
+
+### Fixed
+
+- **A Bun outside `~/.bun/bin` is no longer reported as missing.** When Bun is installed by
+  Homebrew or under `$BUN_INSTALL` but is not on the PATH Claude Code started with, the
+  session-start line names where it is and the PATH line to add, instead of telling you to
+  install it again.
+- **No second PATH line.** When your shell's startup file already puts a tool's directory on
+  PATH, the session-start line and `magus doctor` tell you to restart Claude Code from a new
+  terminal, instead of advising the same line again.
+- **The session-start check's scratch folder is private.** It is created readable by you only,
+  and old ones are cleaned up even when another user's cannot be.
+
+---
+
+## [browser-use 1.9.1] - 2026-10-07
+
+### Fixed
+
+- **Installing uv no longer edits your shell rc file behind magus's back.** uv's installer runs
+  with `UV_NO_MODIFY_PATH=1`, so the only PATH line is the one magus shows you, once.
+- The session-start check fixes in terminal 5.3.1 apply here too.
+
+---
+
+## [claudish 2.2.1] - 2026-10-07
+
+### Fixed
+
+- The session-start check fixes in terminal 5.3.1 apply here too.
+
+---
+
+## [code-search 8.3.1] - 2026-10-07
+
+### Fixed
+
+- The session-start check fixes in terminal 5.3.1 apply here too.
+
+---
+
+## [dev 9.1.1] - 2026-10-07
+
+### Fixed
+
+- The session-start check fixes in terminal 5.3.1 apply here too.
+
+---
+
+## [madbench 0.8.1] - 2026-10-07
+
+### Fixed
+
+- The session-start check fixes in terminal 5.3.1 apply here too.
+
+---
+
+## [multimodel 5.3.1] - 2026-10-07
+
+### Fixed
+
+- The session-start check fixes in terminal 5.3.1 apply here too.
+
+---
+
+## [magus 7.9.1] - 2026-10-07
+
+### Fixed
+
+- **Two `magus doctor --fix` runs can no longer install at once.** The install lock always holds
+  its owner's process id, so a second run that starts at the same moment waits or says another
+  install is running, instead of taking the lock over.
+- **An interrupted install leaves nothing behind.** The next `magus doctor --fix` removes the
+  temporary folders a killed install left in `~/.local/bin` and `~/.bun/bin`.
+- **A tool's warning is never taken as a path.** The interpreter browser-use's Chromium steps use
+  and Bun's global bin folder are read from the tool's answer only, not from a warning it prints.
+- **Installer scripts are fetched over https on every redirect.** A redirect to plain http is
+  refused before it is followed.
+- **One PATH line, never two.** doctor no longer advises a PATH line your shell already has, and
+  uv's installer no longer adds its own.
+
+---
+
 ## [claudish 2.2.0] - 2026-10-07
 
 ### Added

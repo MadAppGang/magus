@@ -21,7 +21,7 @@
 
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
-import { constants, accessSync, statSync } from "node:fs";
+import { constants, accessSync, readFileSync, statSync } from "node:fs";
 import { delimiter, join } from "node:path";
 
 /** The one `requires` shape this reader knows. Any change to it bumps this. */
@@ -51,6 +51,17 @@ export interface Bootstrap {
 	prefix: UserPrefix;
 	/** Tools the upstream installer script itself runs. */
 	needs: readonly string[];
+	/**
+	 * The environment the installer runs with: what keeps it out of the user's
+	 * rc files, so the PATH line magus prints is the only one.
+	 */
+	env?: Readonly<Record<string, string>>;
+	/**
+	 * The installer adds `prefix` to the user's rc file itself and has no
+	 * switch to stop it, so magus prints no PATH line ahead of it; once it has
+	 * run, the rc file is read to see whether it did.
+	 */
+	editsRc?: true;
 }
 
 /**
@@ -64,12 +75,14 @@ export const TOOLCHAIN_BOOTSTRAP = {
 		interpreter: "bash",
 		prefix: BUN_PREFIX,
 		needs: ["curl", "unzip"],
+		editsRc: true,
 	},
 	uv: {
 		url: "https://astral.sh/uv/install.sh",
 		interpreter: "sh",
 		prefix: LOCAL_PREFIX,
 		needs: ["curl"],
+		env: { UV_NO_MODIFY_PATH: "1" },
 	},
 } as const satisfies Record<string, Bootstrap>;
 
@@ -679,6 +692,79 @@ export function rcFile(shell: string): string {
 	return "~/.bashrc";
 }
 
+/** The files `shell` reads when a terminal starts it, `rcFile(shell)` first. */
+function startupFiles(shell: string): string[] {
+	if (shell.endsWith("zsh")) return ["~/.zshrc", "~/.zprofile", "~/.zshenv"];
+	if (shell.endsWith("fish")) return ["~/.config/fish/config.fish"];
+	return ["~/.bashrc", "~/.bash_profile"];
+}
+
+const SHELL_VAR_RE = /\$(?:\{([A-Za-z_]\w*)\}|([A-Za-z_]\w*))/g;
+const ASSIGN_RE = /^(?:export\s+)?([A-Za-z_]\w*)=(.*)$/;
+const FISH_SET_RE = /^set\s+(?:-\S+\s+)*([A-Za-z_]\w*)\s+(.*)$/;
+const PATH_EDIT_RE = /\bPATH\b|^fish_add_path\b|^path\+?=/;
+
+/**
+ * Does `text` (one rc file) put `abs` on PATH? A line that edits PATH counts
+ * when, with `~`, `$HOME` and the variables the file assigns earlier
+ * substituted, one of its words is `abs`. That reads the line magus prints,
+ * a hand-written one, and bun's installer's
+ * `export BUN_INSTALL="$HOME/.bun"` + `export PATH="$BUN_INSTALL/bin:$PATH"`.
+ */
+function textAddsToPath(text: string, abs: string, home: string): boolean {
+	const vars = new Map([["HOME", home]]);
+	const expand = (s: string): string =>
+		s
+			.replace(
+				SHELL_VAR_RE,
+				(whole: string, braced?: string, bare?: string) =>
+					vars.get(braced ?? bare ?? "") ?? whole,
+			)
+			.replace(
+				/(^|[\s:="'(])~(?=\/|$)/g,
+				(_whole: string, lead: string) => `${lead}${home}`,
+			);
+	for (const raw of text.split("\n")) {
+		const line = raw.trim();
+		if (line === "" || line.startsWith("#")) continue;
+		if (PATH_EDIT_RE.test(line)) {
+			const words = expand(line).split(/[\s:"'()=]+/);
+			if (words.some((w) => w === abs || w === `${abs}/`)) return true;
+		}
+		const assign = line.match(ASSIGN_RE) ?? line.match(FISH_SET_RE);
+		if (assign?.[1] && assign[2] !== undefined) {
+			const value = expand(assign[2]);
+			const quoted = /^(["']).*\1$/.test(value);
+			vars.set(assign[1], quoted ? value.slice(1, -1) : value);
+		}
+	}
+	return false;
+}
+
+/**
+ * The startup file of `shell` (as `~/…`) that already puts `dir` on PATH, or
+ * null. A PATH line is advice only while no such file exists: when one does,
+ * the prefix is off the PATH only because Claude Code started without reading
+ * it, and the fix is a restart, not a second line.
+ */
+export function rcFileAdding(
+	dir: string,
+	shell: string,
+	home: string,
+): string | null {
+	const abs = expandHome(dir, home).replace(/\/+$/, "");
+	for (const file of startupFiles(shell)) {
+		let text: string;
+		try {
+			text = readFileSync(expandHome(file, home), "utf8");
+		} catch {
+			continue;
+		}
+		if (textAddsToPath(text, abs, home)) return file;
+	}
+	return null;
+}
+
 // ─── presence ─────────────────────────────────────────────────────────────────
 
 export type Presence =
@@ -824,6 +910,8 @@ export type InstallStep =
 			url: string;
 			interpreter: "sh" | "bash";
 			prefix: UserPrefix;
+			/** The installer's environment, from {@link Bootstrap.env}. */
+			env?: Record<string, string>;
 	  }
 	| {
 			kind: "release";
@@ -980,13 +1068,14 @@ export function renderInstall(
 			};
 		}
 		case "bootstrap": {
-			const b = TOOLCHAIN_BOOTSTRAP[option.tool];
+			const b: Bootstrap = TOOLCHAIN_BOOTSTRAP[option.tool];
 			return {
 				kind: "bootstrap",
 				name,
 				url: b.url,
 				interpreter: b.interpreter,
 				prefix: b.prefix,
+				...(b.env ? { env: { ...b.env } } : {}),
 			};
 		}
 		case "uv-script":
@@ -1054,8 +1143,12 @@ export function describeStep(step: InstallStep, os: Os): string {
 			const sudo = step.escalation === "sudo" ? "sudo " : "";
 			return `${sync} && ${sudo}"$(${find})" ${run}`;
 		}
-		case "bootstrap":
-			return `curl -fsSL ${step.url} | ${step.interpreter}`;
+		case "bootstrap": {
+			const env = Object.entries(step.env ?? {}).map(([k, v]) => `${k}=${v}`);
+			const run =
+				env.length > 0 ? ["env", ...env, step.interpreter] : [step.interpreter];
+			return `curl -fsSL ${step.url} | ${shellLine(run)}`;
+		}
 		case "release": {
 			const asset = step.url.slice(step.url.lastIndexOf("/") + 1);
 			const verify = os === "darwin" ? "shasum -a 256 -c" : "sha256sum -c";
@@ -1174,8 +1267,11 @@ export function renderFix(
 	for (const p of offPath) {
 		const prefix = USER_PREFIXES.find((u) => u.dir === p.prefix);
 		const rc = prefix?.rcLine(shell) ?? "";
+		const adding = rcFileAdding(p.prefix, shell, env.home);
 		lines.push(
-			`  ${p.name} is in ${p.prefix}, which is not on the PATH Claude Code started with: add ${rc} to ${rcFile(shell)}`,
+			adding
+				? `  ${p.name} is in ${p.prefix}, which is not on the PATH Claude Code started with; ${adding} already puts it on PATH`
+				: `  ${p.name} is in ${p.prefix}, which is not on the PATH Claude Code started with: add ${rc} to ${rcFile(shell)}`,
 		);
 	}
 	lines.push("  Then restart Claude Code from a new terminal.");
