@@ -4,6 +4,21 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [setup 1.5.1] - 2026-10-07
+
+### Fixed
+
+- **`/setup:project` asks its questions in the same turn as its report.** Its approval step
+  began "STOP here", and the agent sometimes ended its turn on the report. The questions,
+  including whether to install the plugin dependencies, were then never asked, and nothing
+  was installed.
+- **The provisioning question has four options.** AskUserQuestion shows at most four, and
+  with five the agent dropped one of its own choosing, sometimes "Report missing tools
+  only". "Write framework references" and "Seed the knowledge base" are now one option,
+  "Write docs".
+
+---
+
 ## [madbench 0.9.0] - 2026-10-07
 
 ### Changed

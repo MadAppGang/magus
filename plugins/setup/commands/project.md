@@ -245,7 +245,10 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion, Skill
   </step>
 
   <step number="5" name="Approval gate" gate="true">
-    STOP here. If the arguments contain `--dry-run`, print the plan and exit
+    Nothing is applied before these answers. Ask them in the same turn as the
+    report, straight after it: a turn that ends on the report leaves the user
+    without the questions it promised, and nothing gets installed. If the
+    arguments contain `--dry-run`, print the plan and exit
     without installing anything. The plan includes the PLUGIN DEPENDENCIES
     block and the command that would install them:
     `magus doctor --fix --yes --json`.
@@ -261,9 +264,13 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion, Skill
     - options:
       1. "Install recommended plugins" — lists them by name and scope
       2. "Wire MCP servers" — names which
-      3. "Write framework references" — names the target file
-      4. "Seed the knowledge base" — names the target files
-      5. "Report missing tools only" — install commands printed, not run
+      3. "Write docs" — the framework reference and the knowledge base; names
+         the target files (steps 8 and 9)
+      4. "Report missing tools only" — install commands printed, not run
+
+    AskUserQuestion takes at most four options, so the list is exactly these
+    four. A fifth would be dropped by the tool, and which one is not yours to
+    choose.
 
     Apply only the selected groups. An unselected group is skipped in full,
     not partially applied. 5a does not decide plugin dependencies: 5b and 5c
@@ -406,7 +413,7 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion, Skill
   </step>
 
   <step number="8" name="Write framework references">
-    Only if selected.
+    Only if "Write docs" was selected.
 
     The goal is a short, verifiable set of project-specific rules — not a
     tutorial the model already knows. Anything true of the framework in
@@ -430,7 +437,7 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion, Skill
   </step>
 
   <step number="9" name="Seed the knowledge base">
-    Only if selected.
+    Only if "Write docs" was selected.
 
     A knowledge base is what a future session cannot derive from the code.
     Code structure, past fixes, and git history are already available — do not
