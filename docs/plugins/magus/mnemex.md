@@ -7,7 +7,7 @@ MCP runtime for semantic code search and AST analysis, ranking symbols by PageRa
 
 | | |
 |---|---|
-| Version | `1.0.3` |
+| Version | `1.1.0` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 0 |
 | Subagents | 0 |

@@ -21,8 +21,9 @@
  *      allowed only when a check in that bench's own YAML names it as a `file://`
  *      target. Anything under `module/` or `lib/` is not at the root and is untouched.
  *      This is the mechanically decidable form of "arithmetic lives in `module/`".
- *   5  no alias key in any bench file — `runner:`, `cases:`, `assert:`, `fixture:`,
- *      `tests:`, `defaultCase:`, `matrix:` — at ANY depth. YAML keys only, never
+ *   5  no alias key in any bench file — `runner:`, `runner_config:`, `cases:`, `assert:`,
+ *      `fixture:`, `tests:`, `defaultCase:`, `defaultTest:`, `matrix:`, `control:`,
+ *      `varies:`, `agg:` — at ANY depth. YAML keys only, never
  *      hand-written text: a sentence describing another tool's parameter sweep names
  *      that tool's feature, and a key scanner is the only thing that can tell the two
  *      apart. Hand-written text is check-dictionary.ts's job, not this one's.
@@ -91,15 +92,25 @@ export const ROOT_EXEMPT_FILES: ReadonlySet<string> = new Set(["MADBENCH.md", "R
 export const REQUIRED_FRONTMATTER = ["id", "question", "status", "last_run", "binary"] as const;
 const LAST_RUN_RX = /^(\d{4}-\d{2}-\d{2}|never)$/;
 
-/** Rule 5. Every one of these still loads — that is exactly why a script has to catch them. */
+/**
+ * Rule 5. madbench 0.37.0 refuses every one of these at load, but only when the binary
+ * loads the file — and nothing in CI does. On 2026-09-25, 15 of this repo's 63 bench and
+ * Eval files still said `control:`/`varies:` and this gate passed them. A key scan needs no
+ * binary, so it catches them on every commit.
+ */
 export const ALIAS_KEYS: ReadonlySet<string> = new Set([
 	"runner",
+	"runner_config",
 	"cases",
 	"assert",
 	"fixture",
 	"tests",
 	"defaultCase",
+	"defaultTest",
 	"matrix",
+	"control",
+	"varies",
+	"agg",
 ]);
 
 /** Top-level directories that are never a bench root, whatever they contain. */
@@ -664,10 +675,11 @@ const SELF_TESTS: readonly SelfTest[] = [
 	{
 		id: "BL-05",
 		title: "rule 5 — no alias key in any bench file, at any depth",
-		why: "`madbench init` scaffolds runner:/cases:/assert:, all of which still load, so nothing but a key scan catches them. Nested `assert:` under a composite is the form that survived review three times.",
+		why: "`madbench init` (0.37.0 and 0.37.1) still scaffolds runner:/cases:/assert:, which the same binary then refuses, and `control:` survived in 15 Eval files because nothing in CI loads them. Nested `assert:` under a composite is the form that survived review three times.",
 		rule: 5,
 		positives: [
 			{ ...BASE, "benches/t/madbench.yaml": GOOD_BENCH.replace("scenarios:", "cases:") },
+			{ ...BASE, "benches/t/t.eval.yaml": "bench: ./madbench.yaml\ncontrol:\n  baseline: a\n  varies: [x]\nruns:\n  - name: a\n" },
 			{ ...BASE, "benches/t/probe.yaml": GOOD_BENCH.replace("    checks:", "    checks:\n      - type: any-of\n        assert:\n          - type: contains\n            value: hi") },
 		],
 		negative: BASE,

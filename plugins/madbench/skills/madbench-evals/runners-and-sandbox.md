@@ -43,6 +43,7 @@ of truth, and the engine forwards emitted events only as cosmetic progress for t
 | `Capture` | Scenario `capture:` > `defaults.capture:` > `log` |
 | `Config` | `harness_config:`, verbatim |
 | `Provider` | the current `providers:` entry, `""` for a single-provider run |
+| `Driver` | the Scenario's resolved `driver:`, or **nil** when it is not driven — §3 (`docs/harness.md:56`) |
 
 > **The default timeout is 300s, not 120s.** It was raised on 2026-08-27 because 120s was
 > calibrated for `--print`, and a cold-start **interactive** turn exceeds it. Declare your own;
@@ -71,25 +72,26 @@ harness_config:
 ```
 
 **These are the keys upstream documents. Do not trust any count, including one here.**
-`docs/harness.md:79` says "Eight keys. That is the entire schema" above a table with nine
-rows (`docs/harness.md:81-91`), and that table omits two keys documented elsewhere in the
-same file: `environment` (`docs/harness.md:1106`) and `marketplace` (`docs/harness.md:915`).
+`docs/harness.md:80` says "Eight keys. That is the entire schema" above a table with ten
+rows (`docs/harness.md:82-93`), and that table omits two keys documented elsewhere in the
+same file: `environment` (`docs/harness.md:1210`) and `marketplace` (`docs/harness.md:1019`).
 The list below is every key with a citation; a key you cannot cite is a key the adapter
 silently ignores (see *Error behaviour*).
 
 | Key | Type | Default | Effect |
 |---|---|---|---|
-| `binary` | string | `claude` | the executable, `LookPath`'d at run time. A bare name is looked up on `PATH`; anything with a `/` is a **path relative to the bench file**, made absolute at load, and refused at `sandbox: container`. Empty string is an error — omit the key (`docs/harness.md:83`) |
+| `binary` | string | `claude` | the executable, `LookPath`'d at run time. A bare name is looked up on `PATH`; anything with a `/` is a **path relative to the bench file**, made absolute at load, and refused at `sandbox: container`. Empty string is an error — omit the key (`docs/harness.md:84`) |
 | `magmux_binary` | string | *(unset)* | the magmux build hosting an **interactive** run. Precedence: this > `$MADBENCH_MAGMUX` > PATH. Ignored by a non-interactive Scenario |
-| `model` | string | *(unset)* | `--model <value>` |
-| `effort` | string | *(unset)* | `--effort <value>`. **The one key checked by value**: `low`, `medium`, `high`, `xhigh`, `max`, exact and case-sensitive. Empty string is an error; write `~` for "the CLI's default" |
+| `model` | string, a model block, or a `models:` name | *(unset)* | `--model <value>`. A block or a name is split into `model`, `effort` and `provider` for the adapter; a key written beside `model` wins (`docs/eval-file.md:127`) |
+| `provider` | string | *(unset)* | set by madbench when `model:` is a block or a `models:` name — rarely written by hand. `claude-code` and `anthropic` run directly; any other is **refused** unless `binary: claudish`, because the agent IS the `claude` CLI (`docs/harness.md:87`) |
+| `effort` | string | *(unset)* | `--effort <value>`. **The one key checked by value**: `low`, `medium`, `high`, `xhigh`, `max`, exact and case-sensitive. Empty string is an error; write `~` for "the CLI's default". A `models:` entry's `effort:` reaches this key too |
 | `system_prompt` | string | *(unset)* | `--system-prompt <value>` |
-| `agent_env` | string | *(unset)* | a directory shaped like a `.claude` folder — §5 |
-| `plugins` | []{id, path, marketplace} **or** []string names | *(none)* | a staged plugin registry — §6 (`docs/harness.md:89`, `:911-931`) |
-| `marketplace` | string | *(unset)* | the checkout every short-form `plugins:` name resolves against — §6 (`docs/harness.md:915-931`) |
-| `environment` | {probe, details, require} | probe true | how hard madbench looks at what loaded — §7 (`docs/harness.md:1106-1117`) |
-| `use_subscription` | string | `optional` | whether the run may bill against **this machine's** Claude Code login: `optional` · `required` · `api_usage`, checked by value like `effort`. Empty string is an error (`docs/harness.md:90`, `:1234`) |
-| `args` | []string | *(none)* | extra argv, appended after everything madbench adds (`docs/harness.md:91`) |
+| `agent_env` | string | *(unset)* | a directory shaped like a `.claude` folder; the CLI then runs `--setting-sources ""` with only that folder added back — §5 |
+| `plugins` | []{id, path, marketplace} **or** []string names | *(none)* | a staged plugin registry — §6 (`docs/harness.md:91`, `:1015-1035`) |
+| `marketplace` | string | *(unset)* | the checkout every short-form `plugins:` name resolves against — §6 (`docs/harness.md:1019-1035`) |
+| `environment` | {probe, details, require} | probe true | how hard madbench looks at what loaded — §7 (`docs/harness.md:1210-1221`) |
+| `use_subscription` | string | `optional` | whether the run bills **this machine's** Claude Code login: `optional` · `required` · `api_usage`, checked by value like `effort`. Empty string is an error — §2b (`docs/harness.md:92`, `:1338`) |
+| `args` | []string | *(none)* | extra argv, appended after everything madbench adds (`docs/harness.md:93`) |
 
 ### Error behaviour
 
@@ -98,7 +100,7 @@ silently ignores (see *Error behaviour*).
 - A **recognized key with the wrong type is a hard error**, naming key, expected type and
   actual: `claude-code harness_config: model must be a string, got int`.
 - **`effort` and `use_subscription` are additionally checked by VALUE** — the two keys whose
-  vocabulary is closed (`docs/harness.md:101-103`) — and `effort` because the CLI will not
+  vocabulary is closed (`docs/harness.md:103-105`) — and `effort` because the CLI will not
   check it for us. A misspelt level does **not** fail the CLI — it warns and runs at the default, exit 0, so
   an A/B meaning to compare `high` against `low` would compare the default against itself and
   report the pair as a finding. The refusal lands at configure time, before a sandbox exists
@@ -116,15 +118,16 @@ claude --print \
        --output-format stream-json \
        --input-format text \
        --session-id <fresh-uuid> \
-       [--bare --setting-sources "" --plugin-dir … --mcp-config … --strict-mcp-config --settings …] \
+       [--setting-sources "" --plugin-dir … --mcp-config … --strict-mcp-config --settings …] \
        [--model <model>] \
        [--system-prompt <system_prompt>] \
        [--effort <effort>] \
        <args...>
 ```
 
-The bracketed `--bare` block appears **only when `agent_env` is set**. The first five flags
-are always present and never configurable:
+The bracketed `--setting-sources` block appears **only when `agent_env` is set**; `--bare` is
+no longer part of it (`docs/harness.md:152-163`). The first five flags are always present and
+never configurable:
 
 | Flag | Why |
 |---|---|
@@ -143,6 +146,40 @@ are always present and never configurable:
 > `--model`, `--effort` and `--system-prompt` a supported escape hatch rather than a
 > collision. But `args:` is shape-checked only, so an `--effort` typo *there* is back to a
 > warning and a default-effort run. Prefer the key.
+
+### 2b. `use_subscription:` — who pays for the run
+
+Sandbox levels `home` and `container` give the run its own HOME, so the Claude Code login in
+your `~/.claude` is not visible inside them. madbench reads that login's token live, per run,
+and forwards it as `CLAUDE_CODE_OAUTH_TOKEN`; nothing is written to disk
+(`docs/harness.md:1345-1352`).
+
+| Value | What it does |
+|---|---|
+| `optional` *(default)* | **Prefer the host login; fall back to a key.** When the login is usable the run bills it, and an `ANTHROPIC_API_KEY` that is also set is **masked** — preflight says it is not used. When the login is missing or expired and a key is set, the key bills the run, and preflight says so |
+| `required` | bill the host login or do not run; a missing or expired login is a blocking preflight finding |
+| `api_usage` | never read the host login — no keychain call, no dialog. **The way to bill a key on purpose** |
+
+(`docs/harness.md:1354-1358`.) **`optional` changed meaning on 2026-09-19.** It used to stand
+down whenever a key was set, so a key kept in the keychain silently took every run off the
+subscription until its credit ran out; the login now wins by default
+(`docs/harness.md:1401-1404`). Measured on 0.37.0 with both present, preflight's header reads
+*"billed to your Claude <plan> subscription — the ANTHROPIC_API_KEY that is also set is not
+used (use_subscription: api_usage bills the key instead)"*. `--use-subscription <value>` (and
+`MADBENCH_USE_SUBSCRIPTION`) overrides it for every claude-code bench in one invocation, since
+the answer is often a property of the machine (`docs/harness.md:1360-1362`).
+
+The same rule holds for the Driver and every judge on the `claude-code` provider: that
+provider means "this machine's login", so it removes `ANTHROPIC_API_KEY` from the CLI it
+starts (`docs/harness.md:1406-1409`).
+
+**`required` beside `agent_env` now works.** It used to be refused, because `agent_env` ran
+the CLI `--bare`, which never reads OAuth. `--bare` is gone from `agent_env`
+(`docs/harness.md:887-895`), and measured on 0.37.0 a bench declaring both preflights clean
+and bills the subscription. Upstream's `docs/harness.md:1411-1416` still says the pairing is
+refused; the binary no longer does. Do not put the OAuth token in `madbench key` or `.env` —
+it expires in hours and a stale copy fails as an unrelated-looking auth error
+(`docs/harness.md:1391-1394`).
 
 ---
 
@@ -190,7 +227,7 @@ a `*bool` so "said nothing" and "said false" stay distinguishable.
 **Interactive needs magmux on THIS machine**, at every sandbox level, on PATH (or
 `harness_config.magmux_binary`, or `$MADBENCH_MAGMUX`). `madbench preflight` checks for it
 only when some Scenario is interactive, and the finding names `interactive: false` as a way
-out (`docs/harness.md:1439`).
+out (`docs/harness.md:1553`).
 
 **magmux is checked by capability, never by version number.** Preflight runs `magmux
 --help` under a short timeout and looks for the flags madbench actually passes
@@ -199,7 +236,7 @@ binary reported. A version bound could not have verified it — 0.9.0 was cut fr
 that never contained 0.8.0's flags, and magmux ignores an unknown flag rather than refusing
 it, so against 0.9.0 the version read as satisfied and every interactive run waited out a
 twenty-second socket timeout. A `--help` that fails or times out is **advisory only**, and
-there is deliberately no upper bound (`docs/harness.md:1440`, `:1520-1536`).
+there is deliberately no upper bound (`docs/harness.md:1554`, `:1634-1650`).
 
 > **`sandbox: container` + `interactive: true` works on macOS and Linux alike.** madbench runs
 > magmux on the host and the pane command enters the sandbox (`docker exec -t -i`), so both
@@ -257,6 +294,91 @@ madbench writes these into the sandbox's `~/.claude.json` **after the environmen
 before launching**, merging rather than overwriting — the probe runs a real `claude` one step
 earlier and that launch rewrites the file, consuming `bypassPermissionsModeAccepted`.
 
+### `driver:` — somebody answers the agent's questions
+
+Those four prompts are the CLI's own. The **agent** can ask too: Claude Code's
+`AskUserQuestion` paints a picker and waits for a keypress. Before the Driver existed that
+Scenario waited out its `timeout:` and died with `turn 1 never ended: context deadline
+exceeded`, and fencing the tool off with `--disallowedTools AskUserQuestion` changed what was
+under test (`docs/driving-a-session.md:8-23`). The Driver answers instead.
+
+**With no YAML at all, an interactive claude-code Scenario gets one.** It runs the `claude`
+on this machine, headless, on the login it already has — no API key — and it only
+**answers**: it never writes a prompt of its own, so the conversation stays exactly the
+prompts the bench declared (`docs/driving-a-session.md:49-66`, `:115-127`). Measured on 0.37.0:
+`madbench preflight -v` on an interactive claude-code bench with no `driver:` block lists a
+`Driver driver` component. `driver: false` turns it off; a question then fails the Scenario
+**at once and by name** rather than being waited out (`docs/driving-a-session.md:67-79`):
+
+```
+claudecode: turn 1 blocked on AskUserQuestion, unanswered
+  question: "Deploy target"
+  options:  staging | production
+  fix:      declare a driver:, or answer it with driver.answers:
+```
+
+Upstream's `docs/vocabulary.md:658-669` still describes the older rule — an answering Driver
+only "whenever `ANTHROPIC_API_KEY` resolves", and none without a key. `driving-a-session.md`
+is the newer statement and the one the binary matches.
+
+```yaml
+driver:
+  # model: omitted — the default is the local `claude` on its own login. Name one to bill a key.
+  instructions: |
+    You are the engineer who owns this service. Prefer the safest option.
+  answers:                     # consulted BEFORE the model; first match wins
+    - match: "Deploy target"   # matched against the question's header, then its text
+      choose: staging          # by label, or a 1-based index
+  steer: false                 # true: the Driver may write the next prompt itself
+  max_turns: 8                 # default: declared prompts + 3
+  max_blocked_wait: 120s       # total wait on questions, ADDED to timeout:
+  allow_free_text: false       # true: may type prose into the picker's free-text row
+```
+
+(`docs/driving-a-session.md:85-111`.) A bench-level block is inherited by every Scenario; a
+Scenario's own overrides it (`:284-285`).
+
+- **Answering vs steering.** Answering unblocks a turn already in flight and cannot change a
+  bench that passes today, because the alternative is a timeout. `steer: true` writes further
+  prompts after the declared ones run out — which changes `FinalOutput`, which every
+  `contains` reads, so it is opt-in (`docs/driving-a-session.md:295-318`).
+- **`answers:` buys determinism back.** A model's answer is a sample — for an A/B, a second
+  variable nobody declared. A `match: "*"` catch-all makes the Driver a lookup table: no key,
+  no network, the same answer every repeat (`docs/driving-a-session.md:332-365`). Prove it
+  from the Session with `session:driver-source: scripted`.
+- **The guard audits it.** Every declared field of the block is hashed into
+  `guard_changes:`, so two runs whose Drivers differ are `CONFOUNDED` unless `allow:` names
+  `driver` or `driver/instructions` (`docs/driving-a-session.md:367-382`).
+- **The worst case is stated in the file**: `timeout + max_blocked_wait`. Blocked time is
+  counted apart from working time (`docs/driving-a-session.md:527-541`).
+- **The question is untrusted input.** The Driver *chooses* an offered option as a single
+  keystroke rather than typing text; `allow_free_text` opens a single-line, 200-character
+  path that refuses a leading `!`, `/` or `#` (`docs/driving-a-session.md:392-408`).
+- **A subagent cannot ask.** Claude Code removes `AskUserQuestion` from every subagent, so a
+  bench cannot depend on a delegated agent asking (`docs/driving-a-session.md:708-733`).
+
+**Refused — each measured on 0.37.0, each at `preflight`, none at `list`:**
+
+| Combination | Why |
+|---|---|
+| `driver:` on any harness but `claude-code` | only claude-code reads a Driver; `harness: mock` "cannot be driven" (`docs/driving-a-session.md:31-35`) |
+| `driver:` with `interactive: false` | `claude -p` disables every tool that needs terminal input, so the agent never asks (`docs/driving-a-session.md:287-291`) |
+| `driver:` with `--manual` | a person holds that keyboard (`docs/harness.md:777`) |
+| `driver:` beside `harness_config.agent_env` | the binary says `agent_env` loads no hooks and the Driver learns of a question from a hook (`docs/driving-a-session.md:640-642`). Upstream's release notes say hooks now load under `agent_env`; for this pairing the 0.37.0 binary still refuses |
+
+Only a **declared** `driver:` is refused; the baseline Driver is simply not built where it
+cannot run (`docs/harness.md:779-781`). Grade a driven run with the four Driver checks —
+`session:question-asked`, `session:answer-verified`, `session:end-reason`,
+`session:driver-source` — in `checks-catalog.md` §8.
+
+### `--watch` — seeing every driven session
+
+`--watch` draws each agent's own screen live inside the progress region, one slot per
+`--concurrency`. The run is graded exactly as without it and the Session is byte-identical;
+a frame is a picture, never evidence. It needs a terminal on stderr and is refused with
+`--manual`, `--ui`, `--plain`, and on a run whose Scenarios are all `--print`
+(`docs/driving-a-session.md:545-581`).
+
 ### Delegation: whose last word the run ends on
 
 `Session.FinalOutput` is what every `contains`, `not-contains` and `llm-rubric` check reads.
@@ -269,7 +391,7 @@ the thread that answered.
 [Explore] assistant_message  "## HandleLogin Search Results ### Definition - **File**: …"
 ```
 
-The job answered; the answer was in the session, one action after the sentence every text
+The job answered; the answer was in the session, one Event after the sentence every text
 check was grading. The parent never follows up, so waiting longer does not help. It is
 deliberately narrow and changes nothing for a run that never delegated, or one whose parent
 received the result and spoke last.
@@ -369,9 +491,14 @@ back. The boundary is stated rather than implied:
 | Tier | What | Behavior |
 |---|---|---|
 | restored | `settings.json`, `settings.local.json`, `remote-settings.json`, `policy-limits.json`, `.mcp.json`, `CLAUDE.md`, `statusline-command.sh`, `agents/`, `commands/`, `skills/`, `hooks/` | copied before, put back after |
-| reclaimed | `projects/`, `todos/`, `shell-snapshots/`, `statsig/` | entries the run **created** are deleted; yours are left alone |
+| reclaimed | `projects/` | the run's **own** transcript directory, named after its workspace, is deleted; nothing else there is touched |
+| left alone | `todos/`, `shell-snapshots/`, `statsig/` | not deleted from: their entries are named by session id or timestamp, so a run cannot tell its own from another Claude Code session's |
 | reported | `plugins/` | stamped and compared; a change is **reported**, not undone |
 | out of scope | caches, logs, telemetry, downloads, session data, the agent's own dotenv | not examined |
+
+(`docs/sandbox-levels.md:86-92`.) The CLI re-creates the transcript directory as it shuts
+down, after the run removed it, so madbench clears that backlog at the **start of the next
+run** and reports what it removed (`docs/sandbox-levels.md:99-109`).
 
 The agent's dotenv is deliberately out of scope: copying a credentials file into a backup
 directory would spread secrets to a second place on disk in the name of protecting them. A
@@ -404,15 +531,34 @@ The whole machine. The only level that enforces `network: none` and `access: ro`
 
 ## 5. `agent_env` — running against a declared environment
 
-A directory shaped like a `.claude` folder — `plugins/`, `skills/`, `.mcp.json`,
-`settings.json`. When set, it is copied into the sandbox workspace and the CLI runs `--bare`
-with **only** that environment added back, so the host machine's plugins, hooks and MCP
-servers cannot influence the run. Unset changes nothing: isolation is opt-in.
+A directory shaped like a `.claude` folder — `plugins/`, `.mcp.json`, `settings.json`. When
+set, it is copied into the sandbox workspace and the CLI runs with `--setting-sources ""`: no
+user, project or local `settings.json` scope is consulted, and only what the folder declares
+is added back — `--plugin-dir` per plugin, `--mcp-config … --strict-mcp-config`, `--settings`
+(`docs/harness.md:881-885`, `:925-934`). Unset changes nothing: isolation is opt-in.
 
-A top-level `skills/` inside the env is an **error** — skills live under
-`<env>/plugins/<p>/skills/<s>/SKILL.md`.
+**`--bare` was removed from this path on 2026-09-23.** It closed no leak `--setting-sources ""`
+does not, and it took the run's credential: bare reads only `ANTHROPIC_API_KEY` or an
+`apiKeyHelper`, never OAuth, so every `agent_env` bench was forced onto a funded API key
+(`docs/harness.md:887-895`). Such a bench now bills like any other, subscription included, and
+hooks load in it (upstream's v0.37.0 release notes). Measured on 0.37.0: `agent_env` beside
+`use_subscription: required` preflights clean.
 
-**`CLAUDE.md` is inert under `agent_env`** — `--bare` does no `CLAUDE.md` auto-discovery at all.
+Upstream's `harness.md` was only partly rewritten, so several statements beside the removal
+note still reason from `--bare`. Treat each as **unverified on 0.37.0** rather than as fact:
+
+| Upstream still says | Where | Status on 0.37.0 |
+|---|---|---|
+| a top-level `skills/` in the env is a hard error | `docs/harness.md:934`, `:975-983` | still the rule — skills ride inside a plugin: `<env>/plugins/<p>/skills/<s>/SKILL.md` |
+| `settings.local.json` in the env is a hard error | `docs/harness.md:932` | the stated reason is `--setting-sources`, not `--bare`, so it stands |
+| skills are not advertised, so `session:skill-used` can never fire | `docs/harness.md:995-998` | premise (`--bare`) removed; **not measured** |
+| `CLAUDE.md` is inert — no auto-discovery | `docs/harness.md:1451` | premise (`--bare`) removed; **not measured** |
+| a `driver:` cannot be combined with `agent_env` | `docs/driving-a-session.md:640-642` | **still refused by the binary** (measured) — §3 |
+| `use_subscription: required` cannot be combined with `agent_env` | `docs/harness.md:1411-1416` | **no longer refused** (measured) — §2b |
+
+`agent_env` governs what the CLI **loads**, not what the agent can **read**: an agent that
+greps the filesystem still finds trees on disk. Filesystem isolation needs a container
+(`docs/harness.md:958-973`).
 
 ---
 
@@ -437,16 +583,25 @@ harness_config:
 Both spellings stage the same registry and a bench may mix them: an entry is either a plugin
 name or the full mapping, and `marketplace:` beside `plugins:` is the checkout every name
 falls back to. The short form is not sugar — both halves of `code-search@magus` are facts
-of the checkout's own `marketplace.json` (`docs/harness.md:911-934`).
+of the checkout's own `marketplace.json` (`docs/harness.md:1015-1038`).
 
 Stages plugin folders into the run's `~/.claude` as an installed, **user-scoped, enabled**
 registry the CLI discovers on its own, instead of hand-writing `known_marketplaces.json`. It
 **composes with `agent_env`** rather than replacing it, and applies on both drive paths
-(`docs/harness.md:970`). This is the native answer to "stage a plugin tree for a run" —
+(`docs/harness.md:1074`). This is the native answer to "stage a plugin tree for a run" —
 never a registry-writing script beside the bench.
 
+It needs sandbox level **`home` or higher**: the registry is only the run's `~/.claude` when
+HOME is the workspace, so at `none`/`workspace` madbench refuses rather than writing a file
+nothing reads. Everything checkable — the folder, its `plugin.json`, declared dependencies,
+the marketplace — is checked by `preflight` before any spend (`docs/harness.md:1133-1148`).
+
 Use `plugins:` when the bench measures the plugin as a user meets it; `agent_env`'s
-`--plugin-dir` route is the `--bare` alternative.
+`--plugin-dir` route is the declared-environment alternative. A with/without-plugin
+comparison is a param spent on `plugins:` — `plugins: []` in one run stages no registry at
+all — plus `allow: [plugins]` on the Eval (`docs/comparing-runs.md:115-157`). Upstream's
+worked example there still writes the Eval's block as `control:`
+(`docs/comparing-runs.md:133-137`), which 0.37.0 refuses; write `guard_changes:`.
 
 ---
 
@@ -462,32 +617,32 @@ harness_config:
 ```
 
 - **`probe:`** asks the environment what it has, before the agent launches. Two channels
-  answer to it (`docs/harness.md:1119-1128`): `claude plugin list --json` (and, within
+  answer to it (`docs/harness.md:1223-1232`): `claude plugin list --json` (and, within
   `details:`, `claude plugin details <id>`) through the SAME sandbox, and therefore the same
   HOME, the agent will run under — a probe launched any other way reads the host's registry
   and reports a plugin set that has nothing to do with the run; and the **MCP preflight**
   (§7a), one `initialize` + `tools/list` handshake per declared server. The plugin channel is
   skipped when the bench declares neither `plugins:` nor `agent_env`. **`probe: false` leaves
   Reported absent and launches no new process, MCP included**; upstream's `harness.md` says
-  every `environment:*` Check then ERRORS (`docs/harness.md:1130-1132`), while `madbench
+  every `environment:*` Check then ERRORS (`docs/harness.md:1234-1236`), while `madbench
   check` now lands an unprobeable check **outside the verdict** rather than in the error
-  bucket (`docs/checks.md:838-840`). Either way it is loud and never a pass — read the bucket
+  bucket (`docs/checks.md:903-905`). Either way it is loud and never a pass — read the bucket
   the control prints rather than predicting it.
 - **`details:`** adds one exec per plugin for the per-kind breakdown, capped at 8, so a bench
   staging a large registry cannot turn one run into forty process launches. At the default a
-  typical run pays two execs of roughly 0.2s each (`docs/harness.md:1134-1137`).
+  typical run pays two execs of roughly 0.2s each (`docs/harness.md:1238-1241`).
 - **`require:`** is the gate. It runs after staging and after the probe, and **before the agent
   is launched** — the only step that spends anything. Under `require: true`, a staged plugin the
   CLI does not list, a staged plugin listed with errors, a probe that could not run, **and a
   declared MCP server that did not answer** are all refusals. The scenario is recorded as an
   **ERROR, not a FAIL**: it did not score badly, it never ran. Leave it false for a bench whose
-  subject IS the degraded environment (`docs/harness.md:1138-1144`). **Only a `failed` server
+  subject IS the degraded environment (`docs/harness.md:1242-1248`). **Only a `failed` server
   refuses; an UNPROBED one never does** — a gap in madbench's knowledge is not a fact about
   the server, so an UNPROBED row is loud in the report and silent at the gate
-  (`docs/harness.md:1152-1160`).
+  (`docs/harness.md:1256-1264`).
 
 **`probe: false` with `require: true` is refused when the bench loads**, naming both keys
-(`docs/harness.md:1162-1164`).
+(`docs/harness.md:1266-1268`).
 
 ## 7a. The MCP preflight — two halves, neither replaces the other
 
@@ -495,9 +650,9 @@ A bench that declares MCP servers gets one extra step before the agent launches:
 **starts each declared server itself, from inside this run's sandbox, and speaks MCP to it.**
 Servers are found on all three routes the CLI accepts — a `--mcp-config` value in `args:`
 (JSON or file), a staged plugin's own `.mcp.json`, and `agent_env`'s `.mcp.json`
-(`docs/harness.md:1170-1173`). It exists because the alternative is a silent absence
+(`docs/harness.md:1274-1277`). It exists because the alternative is a silent absence
 discovered after a full run has been paid for — one reported grid was 264 scenarios and
-about $32, and it measured a tool that had never existed (`docs/harness.md:1175-1180`).
+about $32, and it measured a tool that had never existed (`docs/harness.md:1279-1284`).
 **Before grading whether an agent used a capability, prove the capability was present.**
 
 | Outcome | Means | Under `require: true` |
@@ -506,7 +661,7 @@ about $32, and it measured a tool that had never existed (`docs/harness.md:1175-
 | **failed** | launched and did not complete; the row carries the server's own words — JSON-RPC error, **stderr tail**, exit status | **refuses, before any spend** |
 | **UNPROBED** | madbench could not construct a launch at all: remote `type: http`/`sse`, a `${…}` it does not own, a relative `command`, a `cwd` outside the sandbox | proceeds |
 
-(`docs/harness.md:1188-1194`.) Grade it with `environment:mcp-reachable` — see
+(`docs/harness.md:1292-1298`.) Grade it with `environment:mcp-reachable` — see
 `checks-catalog.md` §9 for how that differs from `environment:mcp-connected`.
 
 **The static half runs at `madbench preflight` time, with no sandbox and no launch.** It
@@ -514,10 +669,10 @@ takes the `Config` alone, reads the declarations from the same three routes, and
 declared setup complete?* — the document opened and declared something, the entry can be
 launched as a stdio server at all, `command` resolves on this machine, every absolute
 `$`-free arg and `cwd` exists — with severity mirroring `environment.require` so preflight
-and the run-time gate can never disagree (`docs/harness.md:1467-1489`). It also pairs every
+and the run-time gate can never disagree (`docs/harness.md:1581-1603`). It also pairs every
 top-level `environment:mcp-reachable` value against that list and refuses a name nothing
-declares (`docs/harness.md:1447`, `:1515-1518`). At `sandbox: container` none of it is
-asked, because the filesystem is the image's (`docs/harness.md:1504-1506`).
+declares (`docs/harness.md:1561`, `:1629-1632`). At `sandbox: container` none of it is
+asked, because the filesystem is the image's (`docs/harness.md:1618-1620`).
 
 When the staged and reported families disagree, the console prints one warning block:
 
@@ -534,7 +689,7 @@ That warning never changes a status — it is a reading aid. The graded verdict 
 
 ## 8. Where every other knob lives
 
-Beyond the nine keys, a knob is one of three things: a CLI flag through `args:`, a file the
+Beyond the keys in §2, a knob is one of three things: a CLI flag through `args:`, a file the
 declared environment carries, or a file seeded into `testdata:`.
 
 | Knob | Mechanism | How |
@@ -544,16 +699,16 @@ declared environment carries, or a file seeded into `testdata:`.
 | System prompt (replace) | **dedicated key** | `harness_config.system_prompt:` |
 | CLI binary / wrapper | **dedicated key** | `harness_config.binary:` — point at a shim or absolute path |
 | Plugin tree | **`plugins:`** *(preferred)* · `agent_env` | §6 |
-| Skills | **`agent_env`** *(preferred)* | `<env>/plugins/<p>/skills/<s>/SKILL.md`. Without it: `<testdata>/.claude/skills/<name>/SKILL.md` |
+| Skills | **`agent_env`** *(preferred)* | `<env>/plugins/<p>/skills/<s>/SKILL.md` — a top-level `skills/` is an error. Without `agent_env`: `<testdata>/.claude/skills/<name>/` **carrying a `.claude-plugin/plugin.json`**, which the CLI adopts as `<name>@skills-dir`; a bare `SKILL.md` with no manifest is not adopted (`docs/harness.md:1442`) |
 | MCP servers | **`agent_env`** *(preferred)* · `args:` · testdata | `<env>/.mcp.json`; or `args: ["--mcp-config", …]`; or seed `.mcp.json` |
 | `settings.json` | **`agent_env`** *(preferred)* · testdata | `<env>/settings.json` → `--settings` |
-| Hooks | **via whichever `settings.json` is in force** | `--bare` loads none of the host's |
+| Hooks | **via whichever `settings.json` is in force** | under `agent_env`, `--setting-sources ""` consults none of the host's scopes; the env's own `settings.json` declares them |
 | Permission mode | **via `args:`** | `args: ["--permission-mode", "bypassPermissions"]` — **read §3 first** |
 | Allowed tools | **via `args:`** | `args: ["--allowedTools", "Read,Grep"]` |
 | Denied tools | **via `args:`** | `args: ["--disallowedTools", "Agent,Workflow"]` |
 | System prompt (append) | **via `args:`** | `args: ["--append-system-prompt", "…"]` |
 | Extra readable dirs | **via `args:`** | `args: ["--add-dir", "/abs/path"]` — must exist on the host |
-| `CLAUDE.md` | **testdata seeding** | `<testdata>/CLAUDE.md` or `<testdata>/.claude/CLAUDE.md`. **Inert under `agent_env`** |
+| `CLAUDE.md` | **testdata seeding** | `<testdata>/CLAUDE.md` or `<testdata>/.claude/CLAUDE.md`. Upstream still calls it inert under `agent_env` because of `--bare` (`docs/harness.md:1451`); `--bare` is gone, so that is **unverified on 0.37.0** — §5 |
 | Subagents | **testdata** *or* **`args:`** | `<testdata>/.claude/agents/<name>.md`; or `args: ["--agents", "<json>"]` |
 | cwd | **Scenario key** | `cwd: packages/api` — relative to the workspace root |
 | Environment variables | **`sandbox.env:`** | per-Scenario map; the forwarded-secret list is fixed in Go |
@@ -579,11 +734,11 @@ declared environment carries, or a file seeded into `testdata:`.
 | `demo` | run an offline emulated bench — no network, no API keys, no spend |
 | `list` | list discovered benches and scenarios |
 | `preflight` | check every Harness binary, API key, runtime and daemon a run needs, before any spend |
-| `init` | write a starter bench you can run immediately |
-| `report` | read stored reports: `list`, `show`, `compare`, `trend` |
+| `init` | write a starter bench. **Measured on 0.37.0, the file it writes uses `runner:`, `cases:` and `assert:`, which the same binary refuses to load** — rename them, or copy an example instead |
+| `report` | read stored reports: `ls`, `show`, `compare`, `history` (`madbench help report`) — there is no `list` or `trend` subcommand |
 | `grade` | **positive control** — re-grade a recorded Session offline and compare to the recorded verdicts |
 | `check` | **negative control** — run under the mock harness and require every graded check to fail |
-| `keychain` | store madbench's API keys in the macOS login keychain instead of a file |
+| `key` | store madbench's API keys in the macOS login keychain instead of a file: `set`, `list`, `get`, `rm`. The old `keychain` command is gone — the CLI now reads that word as a path |
 | `update` | upgrade madbench to the latest release (`--notes` prints what changed) |
 | `version` | print version — **there is no `--version` flag** |
 | `completion` | generate a shell autocompletion script |
@@ -597,13 +752,14 @@ Read off `madbench --help` on the installed binary; the table is a map, not the 
 | What runs | `--run <name>` | run only these Eval runs by name (repeatable). Selects **which** runs; `--repeat` sets how many times each executes |
 | | `--scenario <string>` | run only this Scenario by name (or description, when it has no name) — a different axis from `--run` |
 | | `--param key=value` | override a declared bench param (repeatable; typed int/float/bool, else string) |
-| | `--repeat <n>` | repeat each bench N times for flake detection (default 1) |
+| | `--repeat <n>` | repeat each bench N times for flake detection (default 1). The old `--runs` spelling is refused: `unknown flag: --runs` |
 | | `--harness <string>` | override harness for all benches |
 | | `--sandbox <string>` | override sandbox level: `none`·`workspace`·`home`·`container` |
 | | `--concurrency <n>` | max scenarios at once within one bench (default 4); benches run one after another |
 | Watch | `--ui` | open the live run dashboard (TUI) instead of plain stdout |
 | | `--plain` | append-only progress lines — **the CI shape**, implied when stderr is not a terminal, or under `NO_COLOR`/`TERM=dumb`. Choosing it in a terminal throws away the coloured live region |
 | | `--theme <string>` | `auto`·`light`·`dark` (auto reads the terminal background) |
+| | `--watch` | show every agent's screen live in the progress region while the Driver drives it; graded as usual. Needs a terminal; refused with `--ui`, `--plain` and `--manual` — §3 |
 | Drive it yourself | `--manual` | provision the sandbox exactly as a graded run does, then attach your terminal and hand over. The prompt is printed for you to paste; no checks run; the workspace is kept |
 | Results | `--report-dir <dir>` | persist a versioned report per invocation, enabling `madbench report` history. Written **incrementally**, so a run that dies mid-flight leaves a readable partial |
 | | `--report-json <file>` | write a JSON report — **the evidence channel**; read numbers from here, never off the terminal |
@@ -616,7 +772,7 @@ Read off `madbench --help` on the installed binary; the table is a map, not the 
 | | `--no-env` | ignore `./.env` entirely |
 | | `--no-keychain` | ignore the macOS login keychain |
 | | `--no-update-check` | do not check for a newer release |
-| | `--use-subscription <string>` | override how claude-code benches bill: `optional` · `required` · `api_usage` |
+| | `--use-subscription <string>` | override how claude-code benches bill: `optional` (prefer this machine's login, even over an `ANTHROPIC_API_KEY`) · `required` · `api_usage` (never read the login; bill the key) — §2b |
 
 ### Exit codes — a graded miss is 0
 
@@ -646,7 +802,8 @@ green. Every nonzero exit closes with a line saying which of these it was, so a 
 runner does not report `exit 1` as a crash (`docs/README.md:111-112`).
 
 Env vars: `MADBENCH_MOCK_RICH=1` · `MADBENCH_LOCKFILE_REQUIRED=1` (CI lockfile enforcement) ·
-`MADBENCH_ALLOW_HOST_WRITES=1` · `MADBENCH_MAGMUX` · `MADBENCH_CLAUDISH`.
+`MADBENCH_ALLOW_HOST_WRITES=1` · `MADBENCH_MAGMUX` · `MADBENCH_CLAUDISH` ·
+`MADBENCH_USE_SUBSCRIPTION` (`docs/harness.md:1360`).
 
 ### `list` vs `preflight` vs a real run
 
@@ -656,11 +813,15 @@ it gives a confident exit 0 on a bench that cannot start.
 | | `list` | `preflight` | real run |
 |---|---|---|---|
 | YAML parses, unknown keys, bench + scenario names | yes | yes | yes |
+| Retired key spelling — `runner:`, `cases:`, `assert:`, `fixture:`, `agg:`, an Eval's `control:`/`varies:`, a model block's `type:`/`base_url:` | yes | yes | yes |
+| `experiment:` declared | yes | yes | yes |
 | Retired `sandbox:` level | yes | yes | yes |
 | Missing `testdata:` directory | **no** | yes | yes |
 | Harness binary / API key present | **no** | yes | yes |
 | magmux present, when a Scenario is interactive | **no** | yes | yes |
-| Unknown check `type:` | **no** | **yes** | yes |
+| Unknown check `type:` — including a retired `trajectory:*` or bare `skill-used` | **no** | **yes** | yes |
+| A check's own arguments — `session:match` keys, an `exec` `value:` with shell syntax, an even `votes:`, `args.envelope` | **no** | **yes** | yes |
+| A `driver:` the harness or drive mode cannot take; an interactive `image:` Scenario | **no** | **yes** | yes |
 | Missing `file://` grader file | **no** | **yes** | yes |
 | `image:` missing / wrong format / harness can't carry it | **no** | **yes** | yes |
 | A declared MCP server's `command` resolves; an `mcp-reachable` value names a declared server | **no** | **yes** | yes |
@@ -669,12 +830,15 @@ it gives a confident exit 0 on a bench that cannot start.
 | A check that grades nothing | no | no | no — use `madbench check` |
 
 **Where the line falls.** Anything that makes a bench file **malformed** — an unknown key, a
-bad metric declaration, a retired `sandbox:` level — is a **load** error, and every command
-refuses it identically. Anything about **this machine** — binaries, keys, images — is
-preflight's job alone. That is why the sandbox row reads yes across the board.
+retired key spelling, a bad metric declaration, a retired `sandbox:` level — is a **load**
+error, and every command refuses it identically. Anything decided when a **check or component
+is constructed**, and anything about **this machine** — binaries, keys, images — is
+preflight's job alone, because `list` constructs neither. The retired-spelling, check-argument,
+`driver:` and `image:` rows were measured on 0.37.0: `list` exit 0, `preflight` exit 1 for
+each "no"; `list` exit 1 for each retired key and for `experiment:`.
 
 **Preflight is automatic.** Every run preflights first and refuses to start if anything blocks
-(`preflight: nothing was run, no spend`). `--skip-preflight` opts out.
+(`nothing was run, no spend`). `--skip-preflight` opts out.
 
 ### The two controls
 

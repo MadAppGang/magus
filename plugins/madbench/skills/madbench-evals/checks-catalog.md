@@ -9,11 +9,13 @@ never into `pkg/`, because the checkout builds `dev`, not the release on your PA
 A **Check** grades one **Session** — what the Harness produced when it ran one Scenario —
 and returns a **Result**.
 
-**Counts here follow the family headings and enumerated rows of upstream `docs/checks.md`**,
-not its own totals table. That table disagrees with its body: it lists Session at 8 and
-Environment at 7 (`docs/checks.md:1178-1179`) while the body enumerates 13 Session rows and
-heads Environment with "9 types" (`docs/checks.md:591`). When they conflict, the enumerated
-rows win, and this file does not restate a grand total.
+**Counts here follow the enumerated rows of upstream `docs/checks.md`**, not its headings or
+its totals table, which disagree with the body and with each other. The totals table lists
+Session at 8 plus seven alias spellings, and Environment at 7 (`docs/checks.md:1267-1268`);
+the Session heading says "14 canonical types" (`docs/checks.md:289`); the Session table
+enumerates 18 rows (`docs/checks.md:295-312`) and the Environment heading says "9 types"
+(`docs/checks.md:656`). When they conflict, the enumerated rows win, and this file does not
+restate a grand total.
 
 ---
 
@@ -56,7 +58,7 @@ Harness ever runs.
 | `metric` | the name this Check's normalized score binds under in the top-level `metrics:` expressions (`mean(accuracy)`); defaults to `type` (`docs/metrics.md:27`, `:36`) |
 | `metrics` | sample-stage expressions this Check **pushes** into the Scenario's row — `score`, `pass`, `reason`, `evidence` in scope (`docs/metrics.md:29-31`, `:59-61`); see `schema.md` §8 |
 | `readout` | measure without grading — runs and scores, never fails the Scenario (§2.1) |
-| `checks` | composite children (`assert:` is an accepted alias) |
+| `checks` | composite children — `assert:` is refused at load, naming `checks:` (`docs/checks.md:57`) |
 | `inline` | inline source for `custom:gosrc` |
 | `transform` | JS expression (goja) rewriting `output` before **this** Check sees it |
 
@@ -112,9 +114,13 @@ questions, and expressing the second as a gate answers the first wrongly. Boundi
 with `session:step-count` turns a correct-but-slow answer into `FAIL`; as a readout the
 Scenario passes and the number still reaches the comparison table.
 
-**An ERRORING readout still fails the Scenario.** A Check that could not run measured
+**An ERRORING readout still stops the Scenario.** A Check that could not run measured
 nothing. `readout:` is a statement about the verdict, not permission to ignore a broken
-Check — a silently erroring readout is how an unwired measurement survives for months.
+Check — a silently erroring readout is how an unwired measurement survives for months. The
+row reports `error`, not `fail`: a fail would be a verdict about the agent, and nobody graded
+the agent. That holds for **every** Check — a script check that threw, or a judge whose key
+stopped working, errors its row and lands in `summary.errors` rather than reporting a page of
+failures (`docs/checks.md:136-141`).
 
 Rule of thumb: if the answer changes what you'd *do*, grade it; if it changes how good the
 result was, make it a readout and give it a `metrics:` entry.
@@ -145,8 +151,8 @@ the top). The grand total is deliberately not restated: it is the number that ro
 | Structured | 10 | |
 | Numeric | 4 | |
 | NLP | 6 | 3 error-only |
-| Session | 13 | 1 error-only; **+14 alias spellings** (13 `trajectory:*` + bare `skill-used`) |
-| Environment | 9 | no alias spellings — the family is new (`docs/checks.md:591`) |
+| Session | 18 | 1 error-only. The old `trajectory:*` spellings and the bare `skill-used` are **gone**: preflight refuses them as `unknown check type` |
+| Environment | 9 | no alias spellings — the family is new (`docs/checks.md:656`) |
 | Mastra | 6 | |
 | Exec | 1 | |
 | Model | 1 | `model:current` — the only Check whose expected answer is fetched, not stored |
@@ -246,7 +252,7 @@ still stops its Scenario, because every other error is a Check to repair
 > `session:step-count` with `lte:` is also satisfied by an agent that did nothing, so it
 > looks like it belongs with `cost` and `latency`. It does not. Cost and latency are measured
 > **by the provider**; a harness reporting neither leaves the check no input. A step count is
-> **derived from the Session's own action trace**, and the mock produces that trace — an
+> **derived from the Session's own Event stream**, and the mock produces that stream — an
 > honest, empty one. Zero steps is a real measurement, so `0 ≤ 10` passing is evidence that
 > the guard cannot fail. `madbench check` reports it under `WRONGLY PASSED`, correctly. Fix
 > it with a lower bound (`gte`) or an exact count.
@@ -264,13 +270,13 @@ still stops its Scenario, because every other error is a Check to repair
 
 ---
 
-## 8. Session — 13 types
+## 8. Session — 18 types
 
-Grades *how the agent worked*, not what it said. All 0/1.
+Grades *how the agent worked*, not what it said. All 0/1 (`docs/checks.md:289-312`).
 
 | type | Asserts | Config |
 |---|---|---|
-| `session:tool-used` | every named tool was **invoked** — present in `Session.Actions` under any invocation kind (`tool_call`, `mcp_call`, `skill`, `subagent`), or in derived `Session.Calls`. Each **at least once**, or inside a bound **per tool**. The attempt, not its result, unless `args.outcome` narrows it | `value` (string or list), `args.gte`/`args.lte`/`args.eq`, `args.thread`, `args.outcome` |
+| `session:tool-used` | every named tool was **invoked** — present in `Session.Events` under any invocation type (`tool_call`, `mcp_call`, `skill`, `subagent`), or in derived `Session.Calls`. Each **at least once**, or inside a bound **per tool**. The attempt, not its result, unless `args.outcome` narrows it | `value` (string or list), `args.gte`/`args.lte`/`args.eq`, `args.thread`, `args.outcome` |
 | `session:tool-args-match` | some call to `value` had args matching `args.args` (subset match on keys; each value exact by default, or a matcher) | `value` (tool name), `args.args` (map, required), `args.thread`, `args.outcome` |
 | `session:tool-sequence` | the named tools appear **in order** — a subsequence, not necessarily consecutive | `value` (list), `args.thread` |
 | `session:tools-only` | an **allowlist fence**: every call in scope was to one of the named tools | `value` (non-empty name or list), `args.thread`, `args.outcome` |
@@ -281,12 +287,117 @@ Grades *how the agent worked*, not what it said. All 0/1.
 | `session:subagent-used` | a subagent spawn was captured | `args.agent` |
 | `session:subagent-count` | spawn count ≥ `value` | `value` (positive int), `args.agent` |
 | `session:skill-used` | a skill invocation named `value` (case-insensitive) **that the tool did not answer with an error** | `value` (skill name) |
-| `session:image-sent` | the Scenario's `image:` **reached the model** — at least `value` attachment events with an `image/…` media type | `value` (whole number ≥ 1, default 1) |
+| `session:image-sent` | the Scenario's `image:` **reached the model** — at least `value` attachment Events with an `image/…` media type | `value` (whole number ≥ 1, default 1) |
+| `session:match` | the marker `value` appears in the selected Events — their text, tool name, arguments or output; with `args.harness` declared, the harness's own record. Counts matching Events, at least one by default | `value` (substring, or RE2 with `args.regex`), `args.ignore_case`, `args.type`, `args.category`, `args.source`, `args.thread`, `args.gte`/`args.lte`/`args.eq`; harness-specific `args.raw_type`, `args.raw` — each **requires** `args.harness` |
+| `session:question-asked` | **what the agent asked** — one `AskUserQuestion` question satisfies every declared expectation | `args.question`, `args.header` (matchers), `args.options` (labels that must all be offered), `args.exact_options`, `args.count`, `args.thread`, `args.outcome` — at least one required, no `value` |
+| `session:answer-verified` | **what the picker actually selected** — every answer the Driver entered was recorded by the CLI as the option the Driver chose | `args.require_verified` (default false), no `value` |
+| `session:end-reason` | **why the conversation stopped** — `Session.EndReason` is one of the declared reasons | `value`: `script-complete` · `driver-done` · `turn-cap`, or a list meaning any-of |
+| `session:driver-source` | **who decided what the Driver said** — the strongest source in `Session.Driver` | `value`: `scripted` or `model` |
 | `session:goal-success` | — | **error only** |
 
-Every `session:<verb>` is also registered as `trajectory:<verb>`, derived so the two cannot
-drift. `session:skill-used` additionally keeps the bare `skill-used` spelling. Both exist so
-pre-rename files keep loading — **never write either.**
+`session:<verb>` is the only spelling (`docs/checks.md:314-316`). The pre-rename
+`trajectory:<verb>` family and the bare `skill-used` were removed with every other alias.
+Upstream says they are "refused at load, by name"; measured on 0.37.0 the refusal is
+`unknown check type "trajectory:tool-used"` and it comes from **`preflight`** — `madbench list`
+does not construct checks and lists such a bench with exit 0.
+
+### `session:match` — did a marker reach the agent?
+
+Every record the harness wrote is in the Session with its payload: a hook's stdout, a file put
+into context, a subagent's report, the system prompt. `session:match` finds a marker in them,
+so it grades what was **delivered**. `contains` on the final answer grades only whether the
+agent chose to repeat it (`docs/checks.md:318-323`). This is the native answer to "did X
+reach the model's context" — never a transcript grep beside the bench.
+
+```yaml
+checks:
+  # Portable: runs on any harness.
+  - type: session:match
+    value: BLUEHERON
+    args: { type: tool_result }        # the agent saw it in a tool's output
+
+  # Harness-specific: claude-code's own record, its own field.
+  - type: session:match
+    value: MONITORPROOF-7Q4XZ
+    args:
+      harness: claude-code
+      raw_type: hook_success
+      raw: attachment.stdout
+```
+
+| Layer | Keys | Reads | Runs on |
+|---|---|---|---|
+| portable | `type`, `category`, `source`, `thread` | each Event's text, tool name, tool arguments and tool output | any harness |
+| harness-specific | `raw_type`, `raw` — each **requires `harness:`** | the harness's whole record (`raw: true`) or one dotted path in it (`raw: attachment.stdout`) | the declared harness only |
+
+(`docs/checks.md:346-351`.) The portable keys take madbench's own closed vocabulary — the
+same `category` · `type` · `source` every Event carries (§17):
+
+| Key | Values |
+|---|---|
+| `category` | `conversation` · `agentic` · `harness` · `system` |
+| `type` | `user_message` · `assistant_message` · `thinking` · `tool_call` · `tool_result` · `mcp_call` · `file_edit` · `subagent` · `skill` · `hook` · `reminder` · `context` · `tools_changed` · `mode` · `attachment` · `turn_end` · `compaction` · `cost` · `error` · `system` · `unknown` |
+| `source` | `human` · `agent` · `external` · `system` · `unknown` |
+
+(`docs/vocabulary.md:709-713`.) `agentic` is the only Category that is work, and a turn nobody
+attributed is `source: unknown`, never `human` (`docs/vocabulary.md:715`, `:721`).
+
+- **Counted** is matching Events, with the same `gte`/`lte`/`eq` grammar as the counting
+  checks below; at least one by default. A record that became several Events counts once
+  when `raw` is searched (`docs/checks.md:358-361`).
+- **`raw` paths are dotted**: a number indexes a list, `*` fans out (`hookInfos.*.command`),
+  strings are searched decoded, and a path the record lacks is a non-match, not an error
+  (`docs/checks.md:362-365`).
+- **`value` is a case-sensitive substring**; `args.regex: true` makes it RE2,
+  `args.ignore_case: true` folds case (`docs/checks.md:366-367`).
+- **Refused before anything runs:** `raw_type`/`raw` without `harness:`; a `harness:` that is
+  not the bench's own; an unknown `args` key; a `type`, `category` or `source` outside the
+  vocabulary above — the error lists the valid values; a bad regex; an empty marker
+  (`docs/checks.md:353-356`, `:368-370`). Measured on 0.37.0, every one of these is caught by
+  `preflight`, not by `list`.
+- **A failure says which of two things happened**: no Event of the selected kind at all, or
+  some and none carried the marker. Evidence carries `searched`, `matched` and up to 20
+  matches with `seq`, `type`, `raw_type` and an excerpt (`docs/checks.md:371-374`).
+- **`eq: 0` — "the secret never appeared" — is an absence assertion.** It passes against the
+  do-nothing mock, so `madbench check` reports it `WRONGLY PASSED` (measured on 0.37.0:
+  *score 1.00 · 0 event(s) matched "sk-live-" (expected 0)*). Give it a positive partner.
+
+Which `raw_type` names and `raw` paths exist is the harness's business. For claude-code,
+expand a row in the `--ui` timeline: it shows the record's `type` and its raw payload
+(`docs/checks.md:376-378`); `RawType` is claude-code's word verbatim — `hook_success`, or
+`system/turn_duration` for a subtyped system record (`docs/harness.md:1814-1847`).
+
+### The four Driver checks — what was asked, who answered, why it stopped
+
+A driven Scenario (`runners-and-sandbox.md` §3) records the agent's questions and their
+answers as ordinary Events, so `session:tool-used` with `value: AskUserQuestion` grades *that
+something was asked*. Four checks grade what the transcript cannot know
+(`docs/checks.md:1733-1861`):
+
+- **`session:question-asked` — what was asked.** `session:tool-args-match` **cannot** grade an
+  `AskUserQuestion` call in any spelling: the labels sit at `questions[i].options[j].label`
+  and its matcher is a flat top-level lookup that refuses a non-string value
+  (`docs/checks.md:1733-1741`). One question must satisfy every expectation; the CLI's own
+  appended `Type something.`/`Chat about this` rows are excluded; `args.options` is a subset
+  unless `exact_options: true`; a check with no expectation is refused; no call at all fails
+  by name (`docs/checks.md:1754-1782`).
+- **`session:answer-verified` — what the picker selected.** The only Driver check that reads
+  an outcome: the CLI's `PostToolUse` record of the label it selected, against what the
+  Driver chose. An answer it could not read is **unverified, not wrong**, and passes unless
+  `args.require_verified: true` — which a bench that runs regularly should set
+  (`docs/checks.md:1814-1849`).
+- **`session:end-reason` — why the conversation stopped.** `value: [script-complete,
+  driver-done]` fails a run cut off at `max_turns`; `value: turn-cap` is the inverse bench
+  that proves the cap fires (`docs/checks.md:1792-1796`).
+- **`session:driver-source` — who decided.** `scripted` asserts from the Session that no
+  model was consulted; `model` wins whenever a model decided anything, including the
+  decision to stop (`docs/checks.md:1797-1812`).
+
+**`session:answer-verified`, `session:end-reason` and `session:driver-source` fail on an
+undriven run**, naming the fix — never a vacuous pass (`docs/checks.md:1857-1861`). Measured
+on 0.37.0 under `madbench check`, all four fail cleanly under the mock, so a bench carrying
+them keeps a holding negative control. Do not put them on a Scenario that declares
+`driver: false`.
 
 ### One bound grammar for the three counting checks
 
@@ -365,7 +476,7 @@ used"* and *"did the agent under test use `Write`"* are different questions.
 
 | `args.thread` | Grades |
 |---|---|
-| `main` | the top-level agent only (`Action.Thread == ""`) |
+| `main` | the top-level agent only (`Event.Thread == ""`) |
 | *a subagent's name* | that subagent only — display name (`subagent_type`/`agentType`) or stable agent id |
 | *omitted* | **any thread** — the default |
 
@@ -489,7 +600,7 @@ default — is what a fence wants: a `Write` that was attempted and blocked stil
 
 Grades what the agent was **given** rather than what it did: the plugins, skills, commands,
 agents and MCP servers the tool had loaded. Every one reads `Session.Environment`
-(`docs/checks.md:591-614`).
+(`docs/checks.md:656-679`).
 
 **The rule the family rests on: Expected may name the subject of a question; it may never be
 the answer.** `Environment.Expected` is madbench's own bookkeeping about the tree it staged;
@@ -505,7 +616,7 @@ skill, and the bench scored clean.
 | `environment:command-registered` | `Reported.Commands()` contains `value`; **errors** when `plugin-cli` is the only source | `value` (e.g. `dev:architect`) | 0/1 |
 | `environment:agent-registered` | `Reported.Agents()` contains `value`, loaded plugins only | `value` (e.g. `dev:reviewer`) | 0/1 |
 | `environment:mcp-connected` | `system:init` reports server `value` with status `connected`; a server declared only by a plugin that did **not** load counts as absent | `value` (bare `claudish`, or `plugin:claudish:claudish`) | 0/1 |
-| `environment:mcp-reachable` | the server `value` answered **madbench's own** `initialize` + `tools/list`, spoken through this run's sandbox **before the agent launched**; optionally clears a tool-count floor (`docs/checks.md:611`) | `value` (the server name **as the bench declared it** — the document key, e.g. `probe`), optional `args.tools` (a floor: reported ≥ declared) | 0/1 |
+| `environment:mcp-reachable` | the server `value` answered **madbench's own** `initialize` + `tools/list`, spoken through this run's sandbox **before the agent launched**; optionally clears a tool-count floor (`docs/checks.md:676`) | `value` (the server name **as the bench declared it** — the document key, e.g. `probe`), optional `args.tools` (a floor: reported ≥ declared) | 0/1 |
 | `environment:tool-available` | `init.tools` names `value` **exactly**; **errors** when no `system:init` was captured | `value` (as the tool spells it: `Skill`, `mcp__railway__deploy`) | 0/1 |
 | `environment:plugin-inventory` | the plugin's `plugin details` breakdown clears every declared bound — the **staged tree**, read whether or not the plugin loaded | `value` (plugin id), `args.skills`/`agents`/`hooks`/`mcp_servers`/`lsp_servers` | **fraction of bounds met** |
 | `environment:matches-expected` | every plugin the run staged is listed **and** loaded | — (`harness_config.plugins` already said which) | **fraction loaded** |
@@ -554,7 +665,7 @@ history.
 `mcp-reachable` asks *did the **server** answer **madbench**, before the agent launched*, out
 of madbench's own handshake. **Neither implies the other**, and declaring both is what turns
 a silent absence into a diagnosis: reachable green with connected red means the server works
-and the CLI did not register it (`docs/checks.md:616-622`, `:640-642`).
+and the CLI did not register it (`docs/checks.md:681-687`, `:705-707`).
 
 | | `environment:mcp-connected` | `environment:mcp-reachable` |
 |---|---|---|
@@ -564,27 +675,27 @@ and the CLI did not register it (`docs/checks.md:616-622`, `:640-642`).
 | value spelling | the tool's: `claudish` or `plugin:claudish:claudish` | the **bench's**: the document key, `probe` |
 | absent name | **fail** — absent is an answer | **error** — the surface exists only when the preflight ran |
 
-(`docs/checks.md:713-719`.)
+(`docs/checks.md:778-784`.)
 
 Three more things about `mcp-reachable` worth knowing before writing it:
 
 - **A typo'd `value:` is caught at preflight, before any spend — for `mcp-reachable` only.**
   `madbench preflight` pairs every top-level `mcp-reachable` value against the servers the
   harness declares and **refuses** (exit 3) on one nothing declares, naming the Scenario and
-  the check (`docs/checks.md:721-727`; `docs/harness.md:1447`). `mcp-connected` is
+  the check (`docs/checks.md:786-792`; `docs/harness.md:1561`). `mcp-connected` is
   deliberately not cross-checked, because the tool's registry is wider than what a bench
-  declares (`docs/checks.md:731-734`).
+  declares (`docs/checks.md:796-799`).
 - **A connected server with zero tools is a pass.** A server may expose only resources or
-  prompts. A bench that needs tools declares `args: {tools: N}` (`docs/checks.md:745-748`).
+  prompts. A bench that needs tools declares `args: {tools: N}` (`docs/checks.md:810-813`).
 - **What green does NOT prove**: that the CLI registered the server, that the model could
   call its tools, or that the server stayed up past *t=0*. What it does prove is the one
   thing nothing else can — the server process starts under this run's confinement, in this
   run's sandbox, and speaks MCP, checked before the agent launches so `require: true` can
-  refuse before the spend (`docs/checks.md:750-770`). The strongest configuration declares
+  refuse before the spend (`docs/checks.md:815-835`). The strongest configuration declares
   all three: `mcp-reachable`, `mcp-connected`, and a `session:tool-used` on an `mcp__…` tool
   — and the two take **different** names: the declared key for the first, the runtime name
   (`mcp__plugin_<plugin>_<server>__<tool>` for a plugin-shipped server) for the last
-  (`docs/checks.md:657-668`).
+  (`docs/checks.md:722-733`).
 
 ### Nil is an error, never a fail
 
@@ -609,11 +720,11 @@ Five more cases follow the same rule:
   is unreachable. An UNPROBED entry — a remote `type: http` entry, a `command` carrying a
   `${…}` madbench does not own, a relative `command`, a `cwd` the sandbox will not contain —
   errors for the same reason and prints the recorded `probe_reason` rather than guessing
-  (`docs/checks.md:708-711`, `:737-743`; `docs/harness.md:1194`).
-- **`environment:tool-available` on a record with no tool roster.** `claude plugin details`
+  (`docs/checks.md:773-776`, `:802-808`; `docs/harness.md:1298`).
+- **`environment:tool-available` on a record with no tools list.** `claude plugin details`
   prints no tool heading, so no source on the default interactive path supplies one. An
   **empty** record errors here too, unlike every other lookup: every session the tool starts
-  registers a roster, so a record carrying none never stated it.
+  registers a tools list, so a record carrying none never stated it.
 - **`environment:plugin-inventory` on a listed plugin with no breakdown.** The per-plugin
   probe was capped or switched off (`harness_config.environment.details`).
 - **`environment:matches-expected` when the run staged nothing.** The check has no subject,
@@ -630,7 +741,7 @@ the check grading nothing and passing every run.
 
 The mock reports a present-but-empty `Reported` record — it ran and registered nothing — so a
 **named-subject** check is genuinely absent from a genuinely empty list and fails cleanly.
-The nine split three ways (`docs/checks.md:797-826`):
+The nine split three ways (`docs/checks.md:862-891`):
 
 | Check | Under the mock | Bench can still pass `madbench check`? |
 |---|---|---|
@@ -639,14 +750,14 @@ The nine split three ways (`docs/checks.md:797-826`):
 | `matches-expected` · `tool-available` | **errors** — the mock stages nothing and captures no `init.tools` | **no** |
 
 A bench declaring *nothing but* `mcp-reachable` exits 3 (`0 gradable checks`), the same as
-one of nothing but `cost` and `latency` (`docs/checks.md:825-826`).
+one of nothing but `cost` and `latency` (`docs/checks.md:890-891`).
 
 **An unprobeable check lands outside the verdict; a genuinely broken one is still named in
 `COULD NOT GRADE`.** Since 2026-09-08, `madbench check` reads past any row that produced
-checks at all and classifies each on its own merits (`docs/checks.md:838-840`). Note that
+checks at all and classifies each on its own merits (`docs/checks.md:903-905`). Note that
 upstream's `harness.md` still carries the older sentence — *"`probe: false` … Every
-`environment:*` Check then ERRORS rather than passing"* (`docs/harness.md:1130-1132`) — and
-`checks.md:728-729` says the same opt-out makes the handshake checks *"report 'not
+`environment:*` Check then ERRORS rather than passing"* (`docs/harness.md:1234-1236`) — and
+`checks.md:793-794` says the same opt-out makes the handshake checks *"report 'not
 applicable' by design"*. Do not resolve that from memory: run `madbench check` and read which
 bucket the check lands in. Either way the outcome is loud, and a run that measured nothing
 never scores as a pass.
@@ -703,6 +814,13 @@ globs or `&&`. Use `cmd: [sh, -c, '…']` for those.
     cmd: ["go", "test", "./..."]
     timeout: "120s"
 ```
+
+**A `value:` carrying shell syntax is refused**, naming the fix, because quotes are not
+honoured and the check would otherwise fail with a shell error naming neither the file nor
+the mistake (`docs/checks.md:1160-1182`). `args.cmd` is never screened — a list is the author
+asking for a shell on purpose — and glob characters in `value:` stay legal. Measured on
+0.37.0 the refusal comes from `preflight`: *"exec: 'value' is split on whitespace, not
+parsed by a shell, so quotes in it cannot work: … write the command as a list instead"*.
 
 ## 12. Model — 1 type (Service)
 
@@ -770,12 +888,23 @@ judges:
     fast: haiku-4.5                   # short form: provider inferred, endpoint + key env implied
     ds: deepseek/deepseek-chat        # short form: explicit provider/model
     or-qwen:                          # long form: any OpenAI-compatible gateway
-      transport: openai               # `type:` is an accepted alias
-      endpoint: "https://openrouter.ai/api/v1"   # `base_url:` is an accepted alias
+      transport: openai               # `type:` is refused, naming `transport:`
+      endpoint: "https://openrouter.ai/api/v1"   # `base_url:` is refused, naming `endpoint:`
       model: "qwen/qwen3-235b"
       api_key_env: OPENROUTER_API_KEY
       params: { temperature: 0.0, max_tokens: 1024 }
+    local:                            # the `claude` on this machine, on its own login
+      provider: claude-code           # no endpoint, no api_key_env
+      effort: high                    # the CLI's --effort: low | medium | high | xhigh | max
 ```
+
+(`docs/checks.md:1308-1323`.) A judge is the same model block the agent and the Driver take,
+so a `models:` entry can BE a judge — name it in `judges.providers.<id>`, in `judges.default`
+or in a Check's `args.judge`. **A `claude-code` judge needs no API key**: it runs the local
+CLI on this machine's login (`docs/checks.md:1325-1329`). `effort:` is a top-level key of the
+block — inside `params:` it is refused — and freeform except on `claude-code`, which is
+checked against the CLI's list. `temperature:`/`max_tokens:` exist only on the two HTTP
+transports and are refused on `claude-code` (`docs/checks.md:1331-1342`).
 
 `default:` is optional — with none, the sole (or first-declared) provider wins. Naming a
 `default:` whose provider is unavailable is a run-start error. A `default:` that names no
@@ -786,11 +915,37 @@ literal string. **API keys never appear in YAML**: `api_key_env` names an enviro
 
 | key | Effect |
 |---|---|
-| `args.judge` | select a named provider; unset uses the default. An unknown id fails at **construction** |
-| `args.model` | override the model for this Check |
+| `args.judge` | select a named provider, or a `models:` entry by name; unset uses the default. An unknown id fails at **construction** |
+| `args.model` | override the model for this Check. The old `args.provider: "<id>:<model>"` suffix is removed |
 | `args.temperature`, `args.max_tokens` | override the provider's sampling params |
+| `args.effort` | override the judge's effort for this Check alone; checked against the CLI's list only on a `claude-code` judge |
 | `args.rubric` | the rubric, when you would rather not put it in `value:` |
+| `args.votes` | ask the judge this many times and take the majority — a positive **odd** integer, default `1` |
 | `threshold` | must be within `[0,1]`, validated at construction; `0` means "use the type's default" |
+
+(`docs/checks.md:1351-1359`.)
+
+### Majority voting — `args.votes`
+
+One judge call is the noisiest part of a judged Check: the same rubric over the same output
+can pass on one call and fail on the next. `votes: N` asks the **same prompt** N times and
+returns the majority verdict — the protocol `claude plugin eval` uses (`docs/checks.md:1399-1427`).
+
+```yaml
+- type: llm-rubric
+  value: "The answer names the failing test and explains why it failed."
+  args: { votes: 3 }
+```
+
+- An even or non-integer count is refused at configure, before any spend — measured on
+  0.37.0: *"llm-rubric: args.votes must be a positive odd integer, got 2"*.
+- Each call is graded exactly as a single call is (risk inversion, then `threshold`); the
+  Check's **Score is the fraction of calls that passed** (2 of 3 → `0.667`), and `threshold`
+  is not re-applied to that fraction.
+- Evidence carries `votes`, `vote_passes`, `vote_verdicts`, `vote_scores` and
+  `vote_calls_failed`; judge tokens are summed over the N calls.
+- A vote the answered calls cannot settle, or one where every call failed, is an **error**,
+  never a FAIL — a measurement madbench did not obtain is not a verdict about the agent.
 
 ### The 17 types
 
@@ -877,14 +1032,20 @@ contract exists.
 Four register under a **prefix**, so a type suffix can carry a payload
 (`custom:gosrc:./scoring.go`); the managed `ts`/`js`/`python` family registers exact types.
 
-All receive the **same JSON envelope** on stdin (or as the POST body / WASM buffer):
+All receive the **same JSON envelope** on stdin (or as the POST body / WASM buffer) — and so
+do the managed `ts`/`js`/`python` scripts (`docs/checks.md:1504-1528`):
 
 ```json
 {
-  "version": "madbench/v1",
+  "version": "madbench/v2",
   "session": {
     "final_output": "…",
-    "actions": [],
+    "events": [
+      { "seq": 0, "category": "conversation", "type": "user_message",
+        "text": "Fix the failing test", "source": "human" },
+      { "seq": 4, "category": "harness", "type": "hook", "raw_type": "hook_success",
+        "source": "system", "raw": { "type": "attachment", "attachment": { "stdout": "…" } } }
+    ],
     "calls": [
       { "name": "Bash", "args": {}, "tool_call_id": "toolu_01…",
         "result_ok": false, "result_tag": "exit 1 · 2 failed" },
@@ -900,7 +1061,16 @@ All receive the **same JSON envelope** on stdin (or as the POST body / WASM buff
 …and must return a JSON `check.Result` — `{"pass": bool, "score": 0..1, "reason": "…",
 "evidence": {}}`.
 
-**`calls[]` carries the recorded outcome** under the names `actions[]` uses: `tool_call_id`
+**There is one envelope, `madbench/v2`.** The `madbench/v1` shape (`actions`, `kind`,
+`message`) and the `args.envelope` selector were removed. **A grader of your own must read
+`session.events`**: one still reading `session.actions` gets `undefined` and scores an empty
+list without a word of complaint — madbench cannot see that happen. A check still setting
+`args.envelope` is refused before anything runs (`docs/checks.md:1534-1554`); measured on
+0.37.0, that refusal comes from `preflight`. Upstream's sample envelope still shows
+`"args": { "envelope": "v2" }` (`docs/checks.md:1525`) — copying it would be refused, so the
+sample above leaves `args` empty. An Event's `raw` is the harness's own record, never re-keyed.
+
+**`calls[]` carries the recorded outcome** under the names an Event uses: `tool_call_id`
 (the join key back to the authoritative stream), `result_ok`, `result_tag`. All three are
 `omitempty` — **an absent `result_ok` means the capture recorded no outcome, and must never
 be read as failure.**
@@ -946,13 +1116,23 @@ with no path separator.
 
 ## 17. What a Session exposes
 
-`Session.Actions` is the authoritative normalized event stream; `Session.Calls` is a
-**derived, lossy** view. Both carry the recorded outcome of each call, tri-state, where
-absent means the capture said nothing.
+`Session.Events` is the authoritative normalized stream; `Session.Calls` is a **derived,
+lossy** view. Both carry the recorded outcome of each call, tri-state, where absent means the
+capture said nothing (`docs/checks.md:1618-1624`).
+
+**What an Event is.** Every record the harness wrote becomes at least one Event; none is
+skipped. Each carries madbench's closed `category`, `type` and `source` — the portable
+vocabulary a `session:match` filters on (§8) — beside the harness's own words verbatim:
+`raw_type` (`hook_success`, `system/compact_boundary`), `raw_source`, and the whole original
+record in `raw`. A record madbench has no word for becomes type `unknown` with its bytes
+intact (`docs/vocabulary.md:701-723`). For claude-code the envelope's top-level `type`
+decides the Category and the subtype decides the Type — `hook_success` → `hook`,
+`total_tokens_reminder` → `reminder`; one assistant message carrying a reply and a tool call
+is two Events sharing one `raw` (`docs/harness.md:1814-1847`).
 
 | Question | Where it lives | Reachable by |
 |---|---|---|
-| Was tool X called? | `Actions[].ToolName` on any invocation kind, unioned with `Calls[].Name` | `session:tool-used` |
+| Was tool X called? | `Events[].ToolName` on any invocation type, unioned with `Calls[].Name` | `session:tool-used` |
 | **Did it succeed?** | `Calls[].ResultOK` (tri-state) / `.ResultTag` | `args.outcome` — **absent means unknown** |
 | How many times? | the same invocation set, counted | `session:tool-used` with `args.gte`/`lte`, **per named tool** |
 | Did it stay inside a tool set? | `Calls[].Name` | `session:tools-only` (allowlist), or `not-any-of` (denylist) |
@@ -962,11 +1142,16 @@ absent means the capture said nothing.
 | How many steps? | `Metrics.StepCount` | `session:step-count` |
 | How many exchanges? | `Session.Turns` | `session:turn-count` |
 | Did any ONE exchange thrash? | `Turns[].StepCount()` | `session:turn-step-count` |
-| Was a subagent spawned? How many? | `Actions` with `Kind == subagent` | `session:subagent-used`, `session:subagent-count` |
-| Was the `Skill` tool reached for? | `Actions` with `Kind == skill` | `session:tool-used` with `value: Skill` |
+| Was a subagent spawned? How many? | `Events` with `Type == subagent` | `session:subagent-used`, `session:subagent-count` |
+| Was the `Skill` tool reached for? | `Events` with `Type == skill` | `session:tool-used` with `value: Skill` |
 | Was an MCP tool used? | `Calls` under its `mcp__…` name | `session:tool-used` |
-| Was a skill invoked? | `Actions` with `Kind == skill` | `session:skill-used` |
-| Did the picture arrive? | `Actions` with `Kind == attachment` + a `media_type` | `session:image-sent` |
+| Was a skill invoked? | `Events` with `Type == skill` | `session:skill-used` |
+| Did the picture arrive? | `Events` with `Type == attachment` + a `media_type` | `session:image-sent` |
+| Did a marker reach the agent, or leak? | any Event's text, tool name, arguments and output — or, per harness, its raw record | `session:match` |
+| What was the agent asked, with which options? | the recorded `AskUserQuestion` call's `questions` argument | `session:question-asked` — never `session:tool-args-match` |
+| Did the keystroke select what the Driver chose? | `Session.Driver.Answers[].Chosen` against `.Recorded` | `session:answer-verified` |
+| Why did the conversation stop? | `Session.EndReason` | `session:end-reason` |
+| Who answered the agent's questions? | `Session.Driver` | `session:driver-source` |
 | What did it cost / how long? | `Metrics.Cost`, `.Latency`, `.PromptTokens`, `.OutputTokens` | `cost`, `latency` |
 | What did it finally say? | `FinalOutput` | every String / Structured / NLP / judge check |
 | Which files changed? | `FilesChanged` | **nothing** — see §18 |
@@ -975,13 +1160,13 @@ absent means the capture said nothing.
 | Did the declared MCP server answer madbench before launch? | `Environment.Reported.MCPServers` | `environment:mcp-reachable` |
 
 **MCP calls do reach `session:tool-used`.** The parser emits an `mcp__`-prefixed tool as
-`ActionMCPCall` rather than `ActionToolCall` so the UI can badge it differently, but
+`TypeMCPCall` rather than `TypeToolCall` so the UI can badge it differently, but
 `DeriveCalls` folds both into `Calls` identically. Assert on the full name.
 
 **Subagent spawns and skill invocations do NOT appear in `Calls` — and `session:tool-used`
-sees them anyway.** A `Task`/`Agent` tool_use becomes `ActionSubagent` and a `Skill` tool_use
-becomes `ActionSkill`, both deliberately excluded from `Calls`. `session:tool-used` reads
-`Actions` and unions `Calls` on top.
+sees them anyway.** A `Task`/`Agent` tool_use becomes a `subagent` Event and a `Skill`
+tool_use a `skill` Event, both deliberately excluded from `Calls`. `session:tool-used` reads
+`Events` and unions `Calls` on top (`docs/checks.md:1665-1671`).
 
 ```yaml
 - { type: session:tool-used,  value: "Skill" }          # the Skill tool was invoked at all
@@ -1016,8 +1201,10 @@ agent reach for it".
 **`session:image-sent` grades delivery, not comprehension.** Pair it with a check on the
 output that is answerable only by looking: `image-sent` red means the plumbing broke;
 `image-sent` green with the output check red means the agent was shown the picture and still
-got it wrong. An `attachment` record cannot fake it — injected context records carry
-`attachment_type` and **never** a `media_type`, and the check requires `image/…`.
+got it wrong. An injected-context record cannot fake it: a claude-code `attachment` record
+(`skill_listing`, `hook_success`, `task_reminder`, `file`, …) becomes an Event of its own
+type — `tools_changed`, `hook`, `reminder`, `context` — never `attachment`, and none carries
+the `image/…` media type the check requires (`docs/checks.md:1726-1731`).
 
 ---
 

@@ -4,6 +4,59 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [claudish 2.2.0] - 2026-10-07
+
+### Added
+
+- **claudish runs report their progress into the session that started them.** A plugin
+  monitor prints one `claudish-monitor:` line each time a `create_session` session or a `team`
+  run changes state: started, needs input, completed, failed, timed out, cancelled, plus a
+  `running` heartbeat at most every 5 minutes. Each line reaches the session as a notification;
+  in two measured live sessions it also woke the idle session, which is not yet a rate. It
+  reports only the runs this Claude Code session started; when it cannot tell which session it
+  belongs to, it prints one notice and nothing else.
+- **An older claudish is named once.** Below claudish 10.4.0 the monitor prints a single
+  notice that claudish is too old to report progress.
+
+### Changed
+
+- **`magus doctor --fix` installs claudish v10.4.1 when claudish is missing,** from its
+  checksummed release binary where Homebrew is not used. 10.4.1 writes the session records the
+  monitor reads and records which conversation started each run. An installed older claudish is
+  not upgraded; the monitor's notice names it.
+- **After `team(mode:"run")`, the claudish-usage skill waits on the run's end record** with a
+  bounded wait, and never relies on a notification to wake the turn.
+
+---
+
+## [multimodel 5.3.0] - 2026-10-07
+
+### Changed
+
+- **`/multimodel:team` and `/multimodel:delegate` wait for the run to finish.** A finished
+  `team` run used to sit unseen until something else woke the session. Both commands now wait,
+  with a time limit, on the run's end record; `/multimodel:team` falls back to `status.json`
+  with claudish older than 10.4.0.
+
+### Removed
+
+- **The hand-written claudish poller** (`scripts/monitor.ts`) and its private parser copy. The
+  claudish plugin's monitor replaces it.
+
+---
+
+## [madbench 0.8.0] - 2026-10-07
+
+### Changed
+
+- **The madbench-evals skill teaches madbench 0.37.1**: `session:match` for grading what a
+  session was sent, Events, the Driver checks, and the spellings 0.37 refuses at load, with a
+  new `session-match` example.
+- **The bench layout gate rejects the keys madbench 0.37 removed** (`control`, `varies`, `agg`,
+  `runner_config`, `defaultTest`), so a bench using one fails CI rather than at run time.
+
+---
+
 ## [terminal 5.3.0] - 2026-10-06
 
 ### Added

@@ -79,8 +79,9 @@ as success and is not, since the control carries none of the change under test.
 
 Run the negative control first: `madbench check <bench>` runs it under the mock harness
 and requires **every check** to fail. If something passes there, the check is not testing
-what you think, and the exit code alone will not tell you, because it is non-zero if
-*any* check fails. Read the tally line, which counts them.
+what you think, and a plain run's exit code will not tell you — a graded miss exits 0, and
+`--fail-on-failure` goes nonzero once *any* Scenario fails. Read the tally line, which counts
+them.
 
 ## Bench layout
 

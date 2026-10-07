@@ -54,10 +54,10 @@ this agent is its consumer. Open every one of these with `Read`:
 | File | Carries |
 |---|---|
 | `${CLAUDE_PLUGIN_ROOT}/skills/madbench-evals/SKILL.md` | the workflow, the vocabulary, the scoring contract, the gotchas |
-| `${CLAUDE_PLUGIN_ROOT}/skills/madbench-evals/schema.md` | every bench and Eval key, `metrics:`, params, `guard_changes:` |
-| `${CLAUDE_PLUGIN_ROOT}/skills/madbench-evals/checks-catalog.md` | every check type by family, scoping, matchers, `readout:` |
-| `${CLAUDE_PLUGIN_ROOT}/skills/madbench-evals/runners-and-sandbox.md` | `harness_config`, drive modes, sandbox levels, the CLI |
-| `${CLAUDE_PLUGIN_ROOT}/skills/madbench-evals/debugging.md` | error→cause map, the two controls, report-JSON analysis |
+| `${CLAUDE_PLUGIN_ROOT}/skills/madbench-evals/schema.md` | every bench and Eval key, `metrics:`, params, `guard_changes:`, the retired spellings madbench refuses |
+| `${CLAUDE_PLUGIN_ROOT}/skills/madbench-evals/checks-catalog.md` | every check type by family, `session:match`, the Driver checks, scoping, matchers, `readout:` |
+| `${CLAUDE_PLUGIN_ROOT}/skills/madbench-evals/runners-and-sandbox.md` | `harness_config`, drive modes, the Driver, billing, sandbox levels, the CLI |
+| `${CLAUDE_PLUGIN_ROOT}/skills/madbench-evals/debugging.md` | error→cause map, the two controls, report-JSON and bench-log analysis |
 
 `${CLAUDE_PLUGIN_ROOT}` is the madbench plugin's install directory. If the variable is not
 set in your environment, resolve the plugin root from the path of this agent file.
@@ -73,13 +73,16 @@ Before you write any script that touches a run, its report, or its grading, find
 | If you are about to hand-roll | Use instead |
 |---|---|
 | arithmetic in a sibling script | `module/index.ts` — every export binds in every `metrics:` expression |
-| a stats post-process | `metrics:` with `mean` / `p95` / `sum` / `median` |
+| a stats post-process | `metrics:` with `mean` / `p50` / `p95` / `sum` — there is no `median`; `p50` is it |
 | a cross-run statistic | a post-hoc module over `--report-json` — aggregation stops at the run by design |
 | a mock-tally parser | `madbench check` |
 | a re-grader | `madbench grade` |
 | a plugin-registry stager | `harness_config.plugins:` |
-| a confound guard | `guard_changes: {baseline, allow}` |
+| a confound guard | `guard_changes: {baseline, allow}` on the Eval |
 | a read-receipt sentinel | `session:file-read` |
+| a transcript grep for "did it reach the model" | `session:match` on the Session's Events |
+| a script answering the benched agent's questions mid-run, or fencing its question tool off | the Driver — on by default; `driver.answers:` for a scripted answer |
+| a loop voting a judge | `args.votes: N` |
 | a PNG pipeline | `image: generated:<name>` + `$MADBENCH_IMAGE_DIR` |
 
 A row you cannot find is not permission to write the wrapper — it is the trigger for the gap
@@ -125,10 +128,15 @@ code, and — for a feature — why the workaround is unacceptable as a permanen
 ### 6. The vocabulary
 
 Say **run**, never *arm*. Say **testdata**, never *fixture*. Say **Session**, never
-*trajectory*. Say **runs** or **params**, never *matrix*. Do not use *cell* as general
-vocabulary — it is `madbench check`'s own word for one graded (Scenario, Check) pair, so
-quoting madbench's output ("6 wrongly passed cells") is fine and using it as your own noun
-is the drift.
+*trajectory*. Say **runs** or **params**, never *matrix*. Say **turn**, never *round*. Say
+**Check** or **MetricValue**, never *cell* — madbench retired it too, and `madbench check`
+now prints "2/2 checks failed as required". A Session is made of **Events**, never
+*Actions*. And the Eval block is **`guard_changes:`**; *control* now means only the negative
+control, `madbench check`.
+
+The old YAML spellings are not a style preference any more: `fixture:`, `runner:`,
+`control:` and the rest are **refused at load**, and `trajectory:*` check types are refused
+at preflight. A bench carrying one does not run.
 
 The carve-out is real: a banned word may name *another tool's* feature. "Promptfoo builds a
 matrix" is a quotation; "madbench's matrix" is a violation. The layout checker inspects YAML

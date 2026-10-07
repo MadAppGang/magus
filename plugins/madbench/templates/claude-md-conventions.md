@@ -51,8 +51,9 @@ a post-hoc module over `--report-json`; madbench's aggregation stops at the run 
 
 ### Vocabulary
 
-YAML keys are canonical: `harness:`, `scenarios:`, `checks:`, `testdata:`, `session:*`.
-The accepted aliases (`runner:`, `cases:`, `assert:`, `fixture:`, `tests:`, `defaultCase:`,
-`matrix:`) still load, which is exactly why the checker rejects them. Say *run*, *testdata*
-and *Session* in documentation too; *cell* is `madbench check`'s own word for one graded
-(Scenario, Check) pair and is not general vocabulary.
+YAML keys are canonical: `harness:`, `scenarios:`, `checks:`, `testdata:`, `session:*`, and
+`guard_changes:`/`allow:` on an Eval. madbench refuses the old spellings (`runner:`, `cases:`,
+`assert:`, `fixture:`, `tests:`, `defaultCase:`, `control:`, `varies:`) at load, and
+`trajectory:*` check types at preflight; `matrix:` never loaded. Say *run*, *testdata*,
+*Session*, *Event* and *turn* in documentation too; say *Check* or *graded pair*, never
+*cell*.

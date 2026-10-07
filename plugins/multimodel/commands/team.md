@@ -83,14 +83,16 @@ slot on a timer any more; Step 2b is what replaced it.
   "started": true,
   "team_session_id": "team-20260827-0015",
   "session_path": "/abs/path/to/SESSION_DIR",
+  "monitor_record": "team-5e6f7a8b",
   "slots": { "<model-id-a>": "01", "<model-id-b>": "02", "internal": "03" }
 }
 ```
 
-**Keep `slots` and `session_path`.** `slots` maps each model name to its anonymised slot
-id, and that id addresses everything on disk for that model — `response-<slot>.md`,
-`stats/<slot>.json`, `errors/<slot>.log`. Ids are shuffled, so the responses can be read
-blind before the mapping is consulted.
+**Keep `slots`, `session_path` and `monitor_record`** (claudish 10.4.0 or later returns
+`monitor_record`; Step 2b waits on it, and on `status.json` when it is absent). `slots`
+maps each model name to its anonymised slot id, and that id addresses everything on disk
+for that model — `response-<slot>.md`, `stats/<slot>.json`, `errors/<slot>.log`. Ids are
+shuffled, so the responses can be read blind before the mapping is consulted.
 
 **Native Claude names are ordinary slots.** `internal` and `default` select the host tier;
 `opus`/`sonnet`/`haiku` select a specific one. They belong in `models` alongside the
@@ -104,27 +106,64 @@ being silently counted as a success. Exit code 0 is not a success oracle — it 
 an API error, and on a child that simply ignored the required format. Nothing validated the
 old `Agent` path, so a reviewer that never voted passed unnoticed.
 
-## Step 2b: Poll until the run settles
+## Step 2b: Wait until the run settles
 
-Announce once: "Panel running: {N} models. Polling for completion."
+Announce once: "Panel running: {N} models. Waiting for completion."
+
+The `run` result's `monitor_record` names the run's end record in claudish's sessions
+directory: one `meta.json`, written once when the run ends, whatever the outcome. Start a
+bounded background wait on it with the `Monitor` tool and a 30-minute timeout
+(`timeout_ms: 1800000`), running:
+
+```bash
+f="${CLAUDISH_SESSIONS_DIR:-$HOME/.claudish/sessions}/MONITOR_RECORD/meta.json"
+until grep -Eqs '"status": *"(completed|failed|cancelled)"' "$f"; do sleep 10; done; echo "claudish team run MONITOR_RECORD ended"
+```
+
+It tests the record's end state, so a file that is missing, half written or unreadable is
+read again ten seconds later. `MONITOR_RECORD` is `monitor_record`, not `team_session_id`:
+both start with `team-`, and the wrong one names a directory that never appears, so the wait
+runs to the ceiling. So does a `CLAUDISH_SESSIONS_DIR` set only in the claudish server's
+`env` block: the wait reads the variable from Claude Code's environment, so it moves where
+claudish writes and not where the wait looks (claudish plugin README, "How it knows which
+runs are yours"). While the result carries `monitor_record`, do not wait on
+`SESSION_PATH/status.json`: it is rewritten in place, and a slot can stay `RUNNING` in it
+after the run has ended.
+
+**A result with no `monitor_record`** comes from a claudish older than 10.4.0, which writes no
+end record. Do not stop: run the same bounded wait, with the same tool and ceiling, on the
+run's `status.json` instead. It needs `bun` on `PATH`:
+
+```bash
+f="SESSION_PATH/status.json"
+until F="$f" bun --env-file=/dev/null -e 'try{const m=Object.values(JSON.parse(require("fs").readFileSync(process.env.F,"utf8")).models??{});process.exit(m.length>0&&m.every(s=>!/^(PENDING|RUNNING)$/.test(s?.state))?0:1)}catch{process.exit(1)}'; do sleep 10; done; echo "claudish team run settled"
+```
+
+It settles when the file parses and no slot in `models` is `PENDING` or `RUNNING`; a file
+that is missing, half written or unparseable is read again ten seconds later. On this path a
+start that failed or a whole-run cancel can leave a slot `RUNNING`, and the wait then runs to
+the ceiling. Tell the user a claudish of 10.4.0 or later ends the wait exactly, but collect
+the votes either way.
+
+With claudish 10.4.0 or later, the claudish plugin's monitor also delivers
+`claudish-monitor: team <id> completed|failed|cancelled … next: team-status` when the run
+settles. Act on whichever arrives first. **Never end the turn without the wait running**: a
+plugin monitor's line woke an idle session in two measured sessions, which is not a rate, and
+under `claude -p` no monitor runs (claudish-usage skill, "Waiting for a run to end"). Never `sleep` in the foreground.
+
+Then make the settled call:
 
 ````
 claudish team(mode="status", path=SESSION_PATH)
 ````
 
-**Settled means no slot in `models` has `state === "RUNNING"`.** That is the loop
-condition, and it is the only one. Do not treat a slot going quiet as finished.
+**Settled means the run's end record exists** — the wait's line or the monitor's end line
+says so. With no `monitor_record` it means no slot in `status.json` is `PENDING` or
+`RUNNING`. Do not treat a slot going quiet as finished.
 
-Pacing — `Bash: sleep <n>` between calls:
-
-| Elapsed | Poll every |
-|---|---|
-| 0–2 min | 15s |
-| 2 min onward | 30s |
-
-**Ceiling: 30 minutes wall clock.** At the ceiling, STOP polling and go to Step 2c. Never
-loop past it — there is no server-side deadline any more, so an unbounded poll is an
-unbounded wait.
+**Ceiling: 30 minutes wall clock** — the wait's timeout. When it fires with the run not
+settled, go to Step 2c. Never restart the wait past it without the user: there is no server-side
+deadline any more, so an unbounded wait is unbounded.
 
 A settled `status` also carries `summary` — the rendered result card (`N/M succeeded`,
 `reason=shape_mismatch`, and the rest) that the old blocking `run` used to return. Use it
@@ -135,13 +174,13 @@ for the verification table in Step 4.
 `status` carries two fields for this, and they are **only meaningful read together**:
 
 - `idle_seconds_by_slot` — seconds since that slot last wrote anything.
-- `activity_by_slot` — `running`, `tool_executing`, `waiting_for_input`, or a terminal state.
+- `activity_by_slot` — `starting`, `running`, `tool_executing`, `finishing`, or a terminal state.
 
 | Idle | Activity | Reading |
 |---|---|---|
-| 90s+ | `tool_executing` | Normal. A build or test suite is running. Keep polling. |
+| 90s+ | `tool_executing` | Normal. A build or test suite is running. Keep waiting. |
 | 90s+ | `running` | The model stopped mid-answer. Candidate for cancel. |
-| any | `waiting_for_input` | It asked a question nothing will answer. Candidate for cancel. |
+| any | `finishing` | The answer is complete; the slot is exiting. Nothing to do. |
 
 **Default for this command: do NOT cancel automatically.** At the ceiling, report the
 still-running slots with their idle seconds and activity, and ask the user whether to wait

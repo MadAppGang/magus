@@ -78,7 +78,7 @@
       "name": "claudish",
       "source": "./plugins/claudish",
       "description": "MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting across models, manages async sessions, and streams channel notifications. Required by code-search, dev, multimodel and designer.",
-      "version": "2.1.0",
+      "version": "2.2.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -99,6 +99,15 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "2.2.0",
+          "date": "2026-10-07",
+          "kinds": [
+            "Added",
+            "Changed"
+          ],
+          "summary": "claudish runs report their progress into the session that started them"
+        },
         {
           "version": "2.1.0",
           "date": "2026-10-06",
@@ -127,14 +136,6 @@
             "Changed"
           ],
           "summary": "claudish ships to magus only"
-        },
-        {
-          "version": "2.0.3",
-          "date": "2026-09-07",
-          "kinds": [
-            "Changed"
-          ],
-          "summary": "Route probing is no longer offered to the agent"
         }
       ]
     },
@@ -203,7 +204,7 @@
       "name": "multimodel",
       "source": "./plugins/multimodel",
       "description": "Multi-model collaboration and orchestration. Runs a task across several AI models in parallel and aggregates their blind APPROVE/REJECT votes, or delegates it to one model running a full Claude Code session.",
-      "version": "5.2.0",
+      "version": "5.3.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -228,6 +229,15 @@
       "strict": true,
       "releases": [
         {
+          "version": "5.3.0",
+          "date": "2026-10-07",
+          "kinds": [
+            "Changed",
+            "Removed"
+          ],
+          "summary": "/multimodel:team and /multimodel:delegate wait for the run to finish"
+        },
+        {
           "version": "5.2.0",
           "date": "2026-10-06",
           "kinds": [
@@ -249,11 +259,6 @@
           "version": "5.0.0",
           "date": "2026-09-24",
           "summary": "Its PreToolUse hook no longer approves tool calls. On every Bash and Agent call it let through,\u2026"
-        },
-        {
-          "version": "4.3.0",
-          "date": "2026-09-22",
-          "summary": "The same check"
         }
       ]
     },
@@ -754,7 +759,7 @@
       "name": "madbench",
       "source": "./plugins/madbench",
       "description": "Toolkit for madbench, MadAppGang's Go harness for benchmarking agentic coding tools. The madbench:bench agent authors, runs and debugs benches natively in a visible pane, reading the madbench-evals skill by path; /madbench:bench and /madbench:doctor are the entry points.",
-      "version": "0.7.0",
+      "version": "0.8.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -775,6 +780,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "0.8.0",
+          "date": "2026-10-07",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "The madbench-evals skill teaches madbench 0.37.1: session:match for grading what a session was\u2026"
+        },
         {
           "version": "0.7.0",
           "date": "2026-10-06",
@@ -803,14 +816,6 @@
           "version": "0.6.0",
           "date": "2026-09-22",
           "summary": "The same check"
-        },
-        {
-          "version": "0.5.0",
-          "date": "2026-09-15",
-          "kinds": [
-            "Changed"
-          ],
-          "summary": "BREAKING \u2014 madbench:operator is now madbench:bench"
         }
       ]
     }

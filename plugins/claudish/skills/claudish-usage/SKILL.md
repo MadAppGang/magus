@@ -63,12 +63,12 @@ run_prompt(model="grok", prompt="Review this diff for security issues")
 // A real Claude Code session with tools, in a working directory
 create_session(model="grok", prompt=TASK_PROMPT, timeout_seconds=300,
   agent="dev:developer", work_dir=WORK_DIR)
-→ watch channel events → get_output(session_id)
+→ claudish-monitor: session ID completed … next: get_output ID → get_output(ID)
 
 // A whole panel. `run` STARTS it and returns immediately — it does not wait.
 team(mode="run", path=SESSION_DIR, models=["internal", "grok", "gemini"],
   input_file=SESSION_DIR + "/input.md", require_pattern="```vote", agent="dev:researcher")
-→ poll team(mode="status", path=SESSION_DIR) until settled → read response-NN.md
+→ wait until settled ("Waiting for a run to end") → team(mode="status") → read response-NN.md
 ```
 
 ## Model Alias Resolution
@@ -281,6 +281,10 @@ Parameter names below are verified against claudish 8.0.0. Use them exactly.
 their answers are not in its response.** You start the run, poll `status` until it settles,
 then read each slot's answer off disk. Requires **claudish >= 8.0.0**.
 
+With claudish 10.4.0 or later, a run's start and end also arrive as `claudish-monitor: team`
+lines (see **Monitor lines** below). Act on the end line when it arrives, but never end a
+turn on the strength of it alone — see **Waiting for a run to end**.
+
 ```
 team(mode, path, models, judges, input, input_file,
      require_pattern, min_output_bytes, agent, claude_flags, slot)
@@ -343,13 +347,17 @@ It returns a slot map, not results:
   "started": true,
   "team_session_id": "team-20260827-0015",
   "session_path": "/abs/path/to/SESSION_DIR",
+  "monitor_record": "team-5e6f7a8b",
   "slots": { "<model-a>": "01", "<model-b>": "02", "internal": "03" },
   "next": { "status": "...", "cancel": "...", "judge": "..." }
 }
 ```
 
-`slots` maps each display model name to its anonymised slot id. Keep it — that id addresses
-everything else on disk for that model:
+`monitor_record` names the run's end record, the file step 2 waits on. It is not
+`team_session_id`, though both start with `team-`. A claudish older than 10.4.0 returns no
+`monitor_record`, and step 2 then waits on `<session_path>/status.json`. `slots` maps each
+display model name to its anonymised slot id. Keep it — that id addresses everything else
+on disk for that model:
 
 | Path | Contents |
 |---|---|
@@ -358,7 +366,9 @@ everything else on disk for that model:
 | `<session_path>/errors/<slot>.log` | stderr and diagnostics, on failure |
 | `<session_path>/errors/<slot>-upstream.jsonl` | raw provider error bodies, when any |
 
-**Step 2 — poll until the run settles.**
+**Step 2 — wait until the run settles, then read `status`.** The wait is the record wait in
+**Waiting for a run to end**, or its `status.json` wait when the result has no
+`monitor_record`; then make one call:
 
 ```
 team(mode="status", path=SESSION_PATH)
@@ -377,16 +387,18 @@ team(mode="status", path=SESSION_PATH)
 }
 ```
 
-**Settled means no slot in `models` has `state === "RUNNING"`.** That is the loop
-condition, and it is the only one.
+**Settled means the run's end record exists** — the wait's line or the monitor's end line
+says so. With no `monitor_record` it means no slot in `status.json` is `PENDING` or
+`RUNNING`. A slot going quiet is not the run settling.
 
 `summary` is the rendered result card the old blocking `run` used to return — `N/M
 succeeded`, `reason=shape_mismatch`, and the rest. A workflow that matched on that text
 keeps working; it just reads it from a settled `status` instead.
 
-**Bound the loop and fail loudly.** There is no server-side deadline any more, so an
-unbounded poll is an unbounded wait. Pick a wall-clock ceiling that suits the work, and on
-hitting it report what is still running rather than looping on.
+**Bound the wait and fail loudly.** There is no server-side deadline any more, so an
+unbounded wait is unbounded. Pick a wall-clock ceiling that suits the work, and on hitting it
+report what is still running rather than waiting on. Wait with the bounded background wait in
+**Waiting for a run to end**, never a foreground `sleep`.
 
 **Step 3 — read the answers off disk.** For each entry in the `slots` map from step 1, read
 `<session_path>/response-<slot>.md`. Slot ids are shuffled, so responses can be read blind
@@ -403,7 +415,9 @@ Nothing cancels on your behalf. `status` gives you two fields for this, and they
 meaningful **read together**:
 
 - `idle_seconds_by_slot` — seconds since that slot's child last wrote anything.
-- `activity_by_slot` — `running`, `tool_executing`, `waiting_for_input`, or a terminal state.
+- `activity_by_slot` — `starting`, `running`, `tool_executing`, `finishing`, or a terminal
+  state. `starting`: the child is still starting up. `finishing`: the slot's
+  answer is complete and its child is exiting; nothing to do.
 
 Ninety seconds of silence in `tool_executing` is a build or a test suite, and is completely
 normal. The same ninety seconds in `running` is a model that stopped mid-answer. The reaper
@@ -445,16 +459,106 @@ The child runs a full Claude Code session — plugins, skills, tools, its own wo
 directory — in its own process. Its transcript never reaches your context window. This is
 the tool that replaces every hand-rolled instruction-file-plus-result-file pattern.
 
-Lifecycle, driven by channel events:
+#### Monitor lines (on by default)
+
+The claudish plugin's monitor reports every `create_session` session and `team` run this
+Claude Code session started, one notification line per state change, each starting with
+`claudish-monitor:`. It needs no launch flag; it needs claudish 10.4.0 or later and `bun` on
+`PATH`. These are the only states it emits:
+
+| Line | What you do |
+|---|---|
+| `session ID started` | Note the id; report "Delegating to {MODEL}…" |
+| `session ID running …` (at most one per 5 minutes) | Nothing |
+| `session ID needs-input … next: send_input ID` | `AskUserQuestion` → `send_input(ID, answer)` |
+| `session ID needs-input … waited=…` | Nothing; that wait was already answered |
+| `session ID completed … next: get_output ID` | `get_output(ID)` (`tail_lines` to trim) |
+| `session ID failed` / `timeout` `… next: get_diagnostics ID` | `get_diagnostics(ID)` → report → stop |
+| `session ID cancelled` | Nothing |
+| `team ID started … path=P` | Note the path |
+| `team ID running …` (at most one per 5 minutes) | Nothing |
+| `team ID completed` / `failed` / `cancelled` `… next: team-status` | `team(mode="status", path=P)` with `P` percent-decoded, then `judge` if a verdict is wanted |
+| `notice claudish-too-old: …` | Tell the user to upgrade claudish and restart Claude Code. Runs started through that server are not reported; runs through a current one still are |
+| `notice no-session-identity: …` | Nothing; the monitor reports nothing in this session |
+
+A wait still open when its session ends is not reported; the end line is. `run_prompt`
+writes no session record and is never reported. `cancel_session(ID)` stops a session;
+`list_sessions(include_completed=true)` lists them all.
+
+#### Waiting for a run to end
+
+A monitor line is a notification, and a notification is not a guaranteed wake-up.
+**Measured:** a plugin monitor's line reaches the model as a `<task-notification>` turn,
+and a `Monitor`-tool line — the same notification — starts a new turn in an idle
+interactive session. A plugin monitor's line did the same in two live sessions, which is not a
+rate.
+Under `claude -p` no monitor runs at all. So never end a turn relying on the monitor alone:
+
+1. While you have other work, keep working; act on each `claudish-monitor:` line as it arrives.
+2. Before ending a turn with a run in flight, start a **bounded** wait on the run's end
+   record: the `meta.json` claudish writes once, when the run ends, in its sessions directory.
+   Use the `Monitor` tool (`timeout_ms`, at most 1800000), or for a ceiling under ten minutes
+   `Bash` with `run_in_background` (`timeout`, at most 600000). Run:
+
+   ```bash
+   # a session: SESSION_ID is create_session's session_id
+   f="${CLAUDISH_SESSIONS_DIR:-$HOME/.claudish/sessions}/SESSION_ID/meta.json"
+   until grep -Eqs '"status": *"(completed|failed|timeout|cancelled)"' "$f"; do sleep 10; done; echo "claudish session SESSION_ID ended"
+   # a team run: MONITOR_RECORD is the `monitor_record` field of the `run` result
+   f="${CLAUDISH_SESSIONS_DIR:-$HOME/.claudish/sessions}/MONITOR_RECORD/meta.json"
+   until grep -Eqs '"status": *"(completed|failed|cancelled)"' "$f"; do sleep 10; done; echo "claudish team run MONITOR_RECORD ended"
+   ```
+
+   The test is the end state, not the file's existence: a file that is missing, half
+   written or unreadable fails it and is read again ten seconds later. `MONITOR_RECORD` is
+   `monitor_record`, not `team_session_id`: both start with `team-`, and the wrong one names a
+   directory that never appears, so the wait runs to its ceiling. So does a
+   `CLAUDISH_SESSIONS_DIR` set only in the claudish server's `env` block: the wait expands the
+   variable in Claude Code's environment, so it moves where claudish writes and not where the
+   wait looks (claudish plugin README, "How it knows which runs are yours"). While the result
+   carries `monitor_record`, never wait on the run's `status.json`: it is rewritten in place,
+   and a slot can stay `RUNNING` in it after the run has ended.
+
+   **A `run` result with no `monitor_record`** comes from a claudish older than 10.4.0, which
+   writes no end record. Do not stop waiting: run the same bounded wait, with the same tools
+   and ceiling, on the run's `status.json` instead. It needs `bun` on `PATH`:
+
+   ```bash
+   # no monitor_record: SESSION_PATH is the `session_path` field of the `run` result
+   f="SESSION_PATH/status.json"
+   until F="$f" bun --env-file=/dev/null -e 'try{const m=Object.values(JSON.parse(require("fs").readFileSync(process.env.F,"utf8")).models??{});process.exit(m.length>0&&m.every(s=>!/^(PENDING|RUNNING)$/.test(s?.state))?0:1)}catch{process.exit(1)}'; do sleep 10; done; echo "claudish team run settled"
+   ```
+
+   It settles when the file parses and no slot in `models` is `PENDING` or `RUNNING`; a file
+   that is missing, half written or unparseable is read again ten seconds later. On this path
+   a start that failed or a whole-run cancel can leave a slot `RUNNING`, and the wait then runs
+   to its ceiling. Tell the user a claudish of 10.4.0 or later ends the wait exactly, but
+   collect the results either way.
+
+   Ceilings: a team run, 30 minutes. A session, its `timeout_seconds` plus two minutes. Above
+   30 minutes the wait cannot cover that in one go: when it times out and `get_output` still
+   says the session is running, start the same wait again. The session's own timeout ends it.
+
+3. On whichever comes first — the wait's line or the monitor's end line — make the one
+   settled call: `get_output` / `get_diagnostics`, or `team(mode="status")`. A wait that
+   times out is the ceiling: report what is still running.
+
+Never `sleep` in the foreground between status calls: Claude Code blocks it, and it holds
+the turn without waking anything.
+
+#### Channel mode (optional; needs `--channels`)
+
+When Claude Code was launched with claudish's channel enabled, claudish also pushes its own
+event stream. Without the flag none of these arrive; the monitor lines above do.
 
 | Event | What you do |
 |---|---|
-| `session_started` | Note the `session_id`; report "Delegating to {MODEL}…" |
+| `session_started` | Note the `session_id` |
 | `tool_executing` | Optional progress line |
-| `input_required` | `AskUserQuestion` → `send_input(session_id, answer)` |
-| `completed` | `get_output(session_id)` (`tail_lines` to trim) |
+| `input_required` | Only interactive sessions (no `prompt`, or after `send_input`): `AskUserQuestion` → `send_input(session_id, answer)` |
+| `finishing` | Nothing to do; `completed` follows |
+| `completed` | `get_output(session_id)` |
 | `failed` / `timeout` | `get_diagnostics(session_id)` → report → stop |
-| — | `cancel_session(session_id)` to stop it; `list_sessions()` to see all |
 
 ### `run_prompt` — one completion, no session
 
@@ -694,11 +798,13 @@ behaviour at one moment; restating it here is how the routing table went stale.
 // Resolve first (list_models / search_models), then:
 create_session(model=RESOLVED_ID, prompt=TASK_PROMPT, timeout_seconds=300,
   agent="dev:developer", work_dir=REPO_PATH)
-→ session_started : report "Delegating to {MODEL}…"
-→ input_required  : AskUserQuestion → send_input(session_id, answer)
-→ completed       : get_output(session_id, tail_lines=200) → summarise for the user
-→ failed/timeout  : get_diagnostics(session_id) → report → stop
+→ claudish-monitor: session ID started                         : report "Delegating to {MODEL}…"
+→ claudish-monitor: session ID completed … next: get_output ID : get_output(ID, tail_lines=200) → summarise for the user
+→ claudish-monitor: session ID failed|timeout … next: get_diagnostics ID : get_diagnostics(ID) → report → stop
 ```
+
+A session started with a `prompt` never waits for input, so this pattern has no
+`needs-input` step.
 
 The session's own transcript stays out of your context — that is the point, and it is why
 no instruction file, no result file and no `/tmp` scratch is involved. Do not add any.
@@ -761,11 +867,13 @@ response, which returns before any slot has finished.
 Show failed slots as FAILED in your results table, proceed with the survivors, and name
 what failed. No retry, no substitution.
 
-### From `create_session`: the channel event
+### From `create_session`: the end line
 
-| Event | Meaning | Next call |
+The monitor line (or, in channel mode, the channel event) names the end state:
+
+| End state | Meaning | Next call |
 |---|---|---|
-| `failed` | The child exited with an error | `get_diagnostics(session_id)` |
+| `failed` | The child exited with an error; `reason=no-terminal-record` means claudish died before recording an end | `get_diagnostics(session_id)` |
 | `timeout` | It hit `timeout_seconds` and was killed | `get_diagnostics(session_id)` |
 | `completed` with empty or surprising output | Suspect a silent failure | `get_diagnostics(session_id)` |
 
@@ -782,7 +890,7 @@ run GPT, and do not quietly fall back to the embedded Claude.
 
 What happened:
 1. Tool: {team | create_session}
-   Error: {error from the result object or the failed channel event}
+   Error: {error from the result object or from get_diagnostics after the failed line}
 
 Options:
 (1) Retry the same model
@@ -891,9 +999,9 @@ resolves.
 ### ❌ Don't Skip Error Handling
 
 ```
-// On a `failed` channel event → STOP and REPORT
+// On `claudish-monitor: session ID failed … next: get_diagnostics ID` → STOP and REPORT
 // "Grok failed: {error content}. Options: (1) Retry, (2) Different model, (3) Skip, (4) Cancel"
-// On `completed` → get_output(session_id)
+// On `… completed … next: get_output ID` → get_output(ID)
 ```
 
 **❌ NEVER do silent fallback.** If `create_session` fails for Gemini, do not silently run

@@ -18,13 +18,17 @@ No file here restates a version number — five files each asserting one is how 
 stayed documented in five places. Reference files, read on demand:
 
 - `schema.md` — every bench and Eval key: scenarios, `repo:` · `setup:` · `generate:` ·
-  `image:` · `cwd:`, the sandbox block, **`metrics:` expressions and the bench's `module/`**,
-  params and placeholders, `guard_changes:`
+  `image:` · `cwd:` · `driver:`, the sandbox block, **`metrics:` expressions and the bench's
+  `module/`**, params and placeholders, `guard_changes:`, and **the retired spellings
+  madbench now refuses**
 - `checks-catalog.md` — every check family, incl. the `environment:*` family (nine types),
-  the 13 `session:*` types, thread/outcome scoping, matchers, `readout:`
+  the 18 `session:*` types (`session:match` and the four Driver checks among them),
+  thread/outcome scoping, matchers, `readout:`, judge `votes:`
 - `runners-and-sandbox.md` — `harness_config`'s keys, `interactive:` and permission modes,
-  sandbox levels, the environment probe and MCP preflight, the whole CLI, **exit codes**
-- `debugging.md` — error→cause map, the two controls, report-JSON analysis, tuning
+  the **Driver** that answers the agent's questions, sandbox levels, the environment probe
+  and MCP preflight, billing, the whole CLI, **exit codes**
+- `debugging.md` — error→cause map, the two controls, report-JSON and bench-log analysis,
+  tuning
 
 Every madbench capability claim in these files carries a `docs/<file>.md:<line>` citation
 into the madbench checkout's `docs/`. Never `pkg/**/*.go`: the checkout builds `dev`.
@@ -45,40 +49,51 @@ what the binary on your PATH does. If the binary is older than a feature you are
 **Eval** (runs the same Bench across a list of param sets) → **Bench** = `madbench.BenchSpec`
 → **Scenario** = `madbench.ScenarioSpec` → **Check** = `check.Spec` graded by a `check.Check`.
 A **Harness** (syn. Target) + **Model** run the scenario, producing a **Session** made of
-**Action**s. An **Expectation** is a `threshold:`; a **Result** carries
-`{Pass, Score, Reason, Evidence}`. One `--repeat` execution is a **Pass**.
+**Event**s (`docs/vocabulary.md:32-42`). An **Expectation** is a `threshold:`; a **Result**
+carries `{Pass, Score, Reason, Evidence}`. One `--repeat` execution is a **Pass**.
 
-Two more that carry weight:
+Four more that carry weight:
 
-- **Control** — what an Eval's runs are ALLOWED to differ by. An undeclared difference stops
-  the Eval before any spend.
+- **Event** — one thing that happened in a Session (a message, a tool call, a hook, a
+  reminder), with madbench's closed `category`·`type`·`source` beside the harness's own
+  `raw_type` and whole `raw` record; nothing is dropped (`docs/vocabulary.md:701-723`).
+- **Guard** — what an Eval's runs are ALLOWED to differ by: `guard_changes:` with an `allow:`
+  list; anything undeclared stops the Eval as `CONFOUNDED` before any spend
+  (`docs/vocabulary.md:207-231`). *Control* now names only the negative control.
+- **Driver** — who answers the agent's mid-run questions (`AskUserQuestion`). A Judge grades
+  a Session from outside; a Driver speaks inside one (`docs/vocabulary.md:634-657`).
 - **Environment** — what the agent was **GIVEN**, not what it did. It splits in two:
   **Expected** (what madbench staged, its own claim) and **Reported** (what the tool said it
   loaded, the evidence). That split is the whole point — see the `environment:*` family.
 
 `…Spec` = the declarative YAML form; the bare word is the live configured component.
-`Suite`, `Case`, `Runner` and `Event` are **not madbench types** — don't grep for them.
+`Suite`, `Case`, `Runner` and `Action` are **not madbench types** — don't grep for them.
 
 ### Banned words
 
-madbench retired these because each had a correct word already (`docs/vocabulary.md:738-751`).
+madbench retired these because each had a correct word already (`docs/vocabulary.md:876-891`).
 The ban covers documentation, YAML keys and values, examples, READMEs and CLI output.
 
 | Never write | Write | Why |
 |---|---|---|
 | **arm** | **run** | clinical-trial jargon; an Eval's `runs:` list has one entry per run |
-| **fixture** | **testdata** | `fixture:` survives only as an accepted YAML alias |
-| **trajectory** | **Session** | `trajectory:*` checks are `session:*`; old spelling loads, never written |
+| **fixture** | **testdata** | the `fixture:` key is **refused at load**, naming `testdata:` |
+| **trajectory** | **Session** | `trajectory:*` check types are refused; write `session:*` |
 | **matrix** | **runs** / **params** | there is no cross-product; the loader rejects `matrix:` outright |
 | **cell** | **Check** / **MetricValue** | one graded (Scenario, Check) pair is a **Check**; one number in the report is a **MetricValue**. Retired upstream 2026-09-08 — `madbench check` now prints *"2/2 checks failed as required"*, never "cells" |
+| **Action** *(a Session's unit)* | **Event** | retired upstream 2026-09-18: a reminder or a hook's output is recorded, and nobody acted. `action.duration`/`action.tokens` are refused; English *action* naming something else (GitHub Actions) stays |
 | **round** | **turn** | one prompt→work→stop cycle; "3 rounds" collides with `--repeat` |
+
+Upstream's rows for **fixture** and **trajectory** still call the old spelling an accepted
+alias (`docs/vocabulary.md:885-886`); the paragraph below them (`:896-900`) and the binary
+both say it is refused.
 
 The environment prefix is `environment:`, **never** `env:` — `env` already means environment
 *variables*.
 
 **The carve-out, stated so nobody over-applies it:** a banned word may name **another
 tool's** feature. "Promptfoo builds a matrix" is a quotation; "madbench's matrix" is a
-violation. The test is whose concept the word names (`docs/vocabulary.md:759-771`). A
+violation. The test is whose concept the word names (`docs/vocabulary.md:901-913`). A
 mechanical checker can inspect YAML keys, not intent — so banned words in hand-written
 documentation stay a review responsibility.
 
@@ -112,14 +127,17 @@ wrote the policy down when it refused Eval-level metrics:
 |---|---|---|
 | arithmetic in a sibling script | `module/index.ts` — every export binds in every `metrics:` expression | `docs/metrics.md:229-243`; `schema.md` §8 |
 | a stats post-process over the report | `metrics:` with `mean`/`p50`/`p95`/`sum`/`count` | `docs/metrics.md:160` |
-| a cross-run statistic | a **post-hoc module over `--report-json`** — aggregation stops at the run by design, and that is not a gap | `docs/metrics.md:456-461` |
+| a cross-run statistic | a **post-hoc module over `--report-json`** — aggregation stops at the run by design, and that is not a gap | `docs/metrics.md:460-465` |
 | a "did every check fail under mock" tally parser | `madbench check` — the per-check tally is the product | `madbench help check`; `debugging.md` |
 | a re-grader over a stored report | `madbench grade <report.json>` | `runners-and-sandbox.md` §9 |
-| a script that writes `known_marketplaces.json` | `harness_config.plugins:` (+ `marketplace:` for the short form) | `docs/harness.md:911-931` |
-| a "these runs differ only by X" guard | `guard_changes: {baseline, allow}` on the Eval | `docs/eval-file.md:143`; `schema.md` §9 |
+| a script that writes `known_marketplaces.json` | `harness_config.plugins:` (+ `marketplace:` for the short form) | `docs/harness.md:1015-1035` |
+| a "these runs differ only by X" guard | `guard_changes: {baseline, allow}` on the Eval | `docs/eval-file.md:208-242`; `schema.md` §9 |
 | a sentinel token planted to prove a file was read | `session:file-read` | `docs/checks.md:299` |
-| a "did the MCP server come up" probe script | `environment:mcp-reachable`, asserted before any spend | `docs/checks.md:611` |
-| a PNG pipeline feeding the prompt | `image: generated:<name>` + `$MADBENCH_IMAGE_DIR` | `docs/harness.md:284-308` |
+| a transcript grep for "did X reach the model's context" — a hook's stdout, an injected file, a monitor tick | `session:match` on the Events, portable or harness-specific | `docs/checks.md:318-378`; `checks-catalog.md` §8 |
+| `--disallowedTools AskUserQuestion`, or a script typing into the pane when the agent asks | the **Driver** — on by default; `driver.answers:` for a scripted, offline answer | `docs/driving-a-session.md:17-23`, `:49-79`; `runners-and-sandbox.md` §3 |
+| a loop calling a judge N times and taking the majority | `args.votes: N` on the judge check | `docs/checks.md:1399-1427` |
+| a "did the MCP server come up" probe script | `environment:mcp-reachable`, asserted before any spend | `docs/checks.md:676` |
+| a PNG pipeline feeding the prompt | `image: generated:<name>` + `$MADBENCH_IMAGE_DIR` | `docs/harness.md:315-339` |
 | a CI wrapper mapping exit codes | `--fail-on-failure` | `docs/README.md:100-108` |
 | a version-string gate on the skill | `madbench version` + `mirrors.json`, and `madbench list` over a shipped example bench — a bench the skill teaches that the binary refuses to load is the finding | Step 0 |
 | a terminal scraper for the numbers | `--report-json` / `--report-dir` | below |
@@ -135,6 +153,8 @@ binary: colour is the default and survives a pipe — `madbench demo` redirected
 still emitted 24-bit truecolor. Nothing needs building.
 
 - `--ui` is the live dashboard. Plain coloured stdout is the default and is right for most runs.
+- `--watch` shows every agent's own screen in the progress region, graded as usual; refused
+  with `--ui`, `--plain`, `--manual` (`docs/driving-a-session.md:545-581`).
 - **`--plain` is the CI shape.** It is implied when stderr is not a terminal or under
   `NO_COLOR`/`TERM=dumb` (`madbench --help`). Choosing it interactively throws away the thing
   the user asked to watch.
@@ -218,8 +238,9 @@ directory, so a bench runs from any cwd. Details: `schema.md` §5.
 ### 3. Choose checks — deterministic first
 
 1. **Deterministic** — `exec` (run the tests!), `session:*` (did it use Write/Edit? read that
-   file? invoke that skill? stay inside a tool fence?), `environment:*` (did the plugin
-   actually load? did the MCP server answer?), string/structured matchers. Free and fast.
+   file? invoke that skill? stay inside a tool fence? did a marker reach its context? what
+   did it ask?), `environment:*` (did the plugin actually load? did the MCP server answer?),
+   string/structured matchers. Free and fast.
 2. **AI** (`llm-rubric`, `factuality`, …) — only for genuine judgment calls. Needs a judge;
    default threshold 0.7.
 3. **Code** (`ts`/`js`/`python`, `custom:gosrc`, `custom:wasm`, `custom:exec`).
@@ -237,6 +258,12 @@ Always add **anti-cheat guards**: an agent can pass `go test` by deleting the te
     - { type: session:tool-used, value: "Write" }
     - { type: session:tool-used, value: "Edit" }
 ```
+
+**Grade delivery with `session:match`, not with `contains`.** "Did the hook's output, the
+injected file reach the model?" is a question about the Session's Events; `contains` reads
+only the final answer, so it grades whether the agent *chose to repeat* the marker
+(`docs/checks.md:318-323`). E.g. `{type: session:match, value: BLUEHERON, args: {type:
+tool_result}}`; the full key set is `checks-catalog.md` §8.
 
 **Prefer an allowlist to a denylist.** `session:tools-only` names what the run *may* do in one
 line and cannot rot; a `not-any-of` over `session:tool-used` has to be extended by hand every
@@ -272,8 +299,15 @@ timeout.** A bench carrying `acceptEdits` from the `--print` era was never getti
 from it; `bypassPermissions` is not a widening of access, it is the access it already had.
 
 Interactive needs magmux on this machine, **checked by capability, never by version** —
-preflight runs `magmux --help` and looks for the flags madbench passes (`docs/harness.md:1520-1536`).
+preflight runs `magmux --help` and looks for the flags madbench passes (`docs/harness.md:1634-1650`).
 It checks only when some Scenario is interactive, and names `interactive: false` as a way out.
+
+**When the agent stops to ask, a Driver answers.** An interactive claude-code Scenario gets
+one with no YAML: the local `claude` on its own login, no API key, answering only
+(`docs/driving-a-session.md:49-66`). `driver: false` makes a question fail the Scenario at
+once, by name (`:67-79`); for an A/B, pin the answers with `driver.answers:` (`:350-361`).
+Refusals and keys: `runners-and-sandbox.md` §3. **An `image:` Scenario must say
+`interactive: false`** — a picture cannot be typed into a pane (`docs/harness.md:245-258`).
 
 Use `harness: mock` for offline YAML development.
 
@@ -314,8 +348,10 @@ Cost and latency vary run to run. Start generous, run 2–3 times, then tighten 
 observed max. If a healthy run crosses the bar, raise the Expectation — don't re-roll.
 
 Read `results[].checks[].result.{pass,score,evidence,reason}` and
-`results[].session.{metrics,actions,calls}` from the report JSON. **`actions` is the
-authoritative event stream; `calls` its lossy tool-call view.** Read `.summary.errors`
+`results[].session.{metrics,events,calls}` from a `--report-json` file. **`events` is the
+authoritative stream; `calls` its lossy tool-call view.** Under `--report-dir` the stored
+report carries no Session: each row's `session_log` names a bench log beside it, holding the
+Events at `.sessions["<session_ref>"].events` (measured on 0.37.0). Read `.summary.errors`
 before `.summary.failed`. Full key map in `debugging.md`.
 
 ---
@@ -332,15 +368,20 @@ before `.summary.failed`. Full key map in `debugging.md`.
    flaky and expensive.
 6. **Anti-cheat guards** present for exec-graded work, every fence paired with an activity
    check, and every check a positive assertion.
-7. **Aliases** → canonical. `runner:`/`runner_config:`/`cases:`/`tests:`/`assert:`/`fixture:`/
-   `defaultCase:`/`defaultTest:` all still load. So does `trajectory:*` — rewrite to `session:*`.
-   `matrix:`, top-level `name:` and the retired derived-metrics key do **not** load.
-8. **Sandbox level** is `none | workspace | home | container` (default `home`). A bench still
+7. **Retired spellings** — none loads any more. `runner:`, `cases:`, `assert:`, `fixture:`,
+   an Eval's `control:`/`varies:` and the rest are **refused at load**, naming the
+   replacement; `trajectory:*` and bare `skill-used` list cleanly (checks are not built by
+   `list`) and are refused by `preflight` as `unknown check type` — measured on 0.37.0.
+   Full table: `schema.md` §1. `matrix:` and top-level `name:` never loaded.
+8. **`experiment:` declared?** The premise is not established, and every command refuses the
+   bench with its own text (`docs/README.md:153-163`). Delete it only after a measurement.
+9. **Sandbox level** is `none | workspace | home | container` (default `home`). A bench still
    saying `sandbox: process` does not load at all.
-9. **Expectations** neither vacuous nor overfit to one run.
-10. **Arithmetic in `module/`**, not in a sibling script; no `.ts` loose at the bench root
+10. **Expectations** neither vacuous nor overfit to one run.
+11. **Arithmetic in `module/`**, not in a sibling script; no `.ts` loose at the bench root
     unless a check names it as a `file://` target.
-11. **CI invocation** carries `--fail-on-failure` if a miss is meant to go red.
+12. **"Did it reach the model" graded by `session:match`**, not by `contains` on the reply.
+13. **CI invocation** carries `--fail-on-failure` if a miss is meant to go red.
 
 ---
 
@@ -400,8 +441,12 @@ code, and — for a feature — why the workaround is unacceptable. Filing is th
 - **`session:tool-used` counts per named tool, never aggregate.** `value: [Read, Grep]` with
   `gte: 2` means *each* at least twice.
 - **`session:*` checks do not all read the same thing.** `session:tool-used` reads the
-  authoritative `Actions` and unions `Calls`; `session:tool-sequence` and
-  `session:tool-args-match` read only `Calls`, so neither sees a subagent spawn or a skill.
+  authoritative `Events` and unions `Calls`; `session:tool-sequence` and
+  `session:tool-args-match` read only `Calls`, so neither sees a subagent spawn or a skill —
+  nor an `AskUserQuestion`'s nested labels: that is `session:question-asked`
+  (`docs/checks.md:1733-1744`).
+- **`session:match` with `eq: 0` is an absence assertion** — WRONGLY PASSED under
+  `madbench check` without a positive partner (measured on 0.37.0).
 - **`session:step-count` counts the MAIN thread only.** A subagent's work is in
   `Session.Subagents`; scope a `session:tool-used` with `args.thread:` to count it.
 - **`args.outcome` grades whether the call worked** — `any` (default) · `ok` · `error`.
@@ -411,8 +456,8 @@ code, and — for a feature — why the workaround is unacceptable. Filing is th
   exempt from `madbench check`. A count ceiling is **not** exempt — fix `lte`-only guards
   with a floor.
 - **An unprobed `environment:*` check is loud, never a pass.** `probe: false` leaves Reported
-  absent; upstream's `harness.md:1130` says every `environment:*` check then ERRORS, and
-  `madbench check` lands an unprobeable check outside the verdict (`docs/checks.md:838-840`).
+  absent; upstream's `harness.md:1234` says every `environment:*` check then ERRORS, and
+  `madbench check` lands an unprobeable check outside the verdict (`docs/checks.md:903-905`).
   Read the bucket the control prints. `checks-catalog.md` §9 has the per-type table.
 - **`environment:mcp-reachable` takes the bench's document key**, never the tool's
   `plugin:…:…` spelling; a typo is caught at preflight, exit 3.
@@ -423,20 +468,30 @@ code, and — for a feature — why the workaround is unacceptable. Filing is th
 - **Missing is not zero in `metrics:`.** `mean` of nothing is `n/a`; `sum` and `count` of
   nothing are a real `0`; a run-time throw is a `metric_error`, never a silent hole.
 - `assert-set` threshold defaults to **1.0**; set e.g. `0.66` for 2-of-3.
-- `exec` has no shell: `value:` is whitespace-split argv. Use `cmd: [sh, -c, '…']` for pipes.
+- `exec` has no shell: `value:` is whitespace-split argv, and quotes in it are **refused** at
+  preflight (`docs/checks.md:1160-1182`). Use `cmd: [sh, -c, '…']`.
 - `latency` threshold is **milliseconds**, `cost` is **USD**, `levenshtein` is max edit distance.
 - `budget:` and `token_estimate:` are informational gauges — **not enforced**.
 - **`cwd:` moves the agent, not `Session.WorkDir`.** Checks still resolve against the root.
 - **No judge provider** (no `judges:` block AND no `ANTHROPIC_API_KEY`) → AI check types fail
-  at construction with a message naming the fix. Check judge config before your spelling.
+  at construction naming the fix. A `provider: claude-code` judge needs no key
+  (`docs/checks.md:1320-1329`); `args.votes: 3` (odd only) takes a judge's majority
+  (`docs/checks.md:1399-1427`).
+- **A check that could not measure errors its row, never fails it** — a script that threw, a
+  judge whose key died — and lands in `summary.errors` (`docs/checks.md:136-141`).
 - String checks (`contains`, `regex`, …) grade ONLY the agent's final message, never files on
   disk — grade files with `exec`. There is **no `file:*` check family**.
+- **Billing defaults to this machine's Claude Code login, even with `ANTHROPIC_API_KEY` set**;
+  preflight says so. `use_subscription: api_usage` bills the key (`docs/harness.md:1356`,
+  `:1401-1404`).
+- **`madbench init` scaffolds a bench 0.37.0 refuses** — measured: its `runner:`/`cases:`/
+  `assert:` fail `madbench list`. Copy an example from `examples/` instead.
 - **`Session.FinalOutput` follows a delegation.** If the parent ended its turn without
   receiving a subagent's result, the final output is the answering thread's last message, not
   the parent's "I've launched a search agent…".
 - `file://` script checks resolve relative to the YAML's directory; managed runtimes pin via
   `defaults.bun:` / `defaults.python:`.
-- A scenario can also be a **case directory** (`assert.yaml` + optional `input.md`, `setup.sh`,
-  `expected/`) — discovered when a directory is passed to `madbench`.
+- A scenario can also be a **case directory** (`assert.yaml` + optional `input.md`); a
+  `setup.sh` or `expected/` beside them is **inert** (`docs/README.md:228-235`).
 
 When debugging a failing or misbehaving bench, read `debugging.md`.

@@ -24,9 +24,12 @@ args:
   (Step 1c.4). Swapping a model the user *did* specify, after it failed, is substitution
   and stays forbidden.
 - **NO PRE-SOLVING** — do not read project files before launching. The external model investigates itself.
-- **FORWARD input_required TO USER** — use AskUserQuestion whenever it is available. Never
-  auto-answer. Where it is unavailable (`claude -p`), see Phase 3 — cancel the session and
-  report the question rather than hanging on an answer that cannot arrive.
+- **FORWARD A QUESTION TO USER** — Phase 2 starts the session with a `prompt`, so with
+  claudish 10.4.0 or later it never waits for input. If a question arrives anyway
+  (`input_required`, or `needs-input … next: send_input`), use AskUserQuestion whenever it
+  is available. Never auto-answer. Where it is unavailable (`claude -p`), see Phase 3 —
+  cancel the session and report the question rather than hanging on an answer that cannot
+  arrive.
 - **NEVER add provider prefixes** — no "openai/", "google/", "mm@", "or@". Claudish resolves internally.
 
 ## Phase 1: Parse and Resolve
@@ -114,7 +117,7 @@ you a role description and none of that.
 **One trap in `claude_flags`:** it is split on whitespace, so a flag whose VALUE contains a
 space (`--append-system-prompt "two words"`) cannot be expressed through it at all.
 
-## Phase 2: Execute via Channel
+## Phase 2: Start the session
 
 Build prompt: `{EXPLICIT_COMMAND} {TASK_DESCRIPTION}` (omit EXPLICIT_COMMAND if not set).
 
@@ -127,31 +130,42 @@ Call the claudish `create_session` MCP tool:
 
 Store the returned `session_id` as SESSION_ID.
 
-## Phase 3: React to Channel Events
+## Phase 3: React to Session Events
 
 **The second dead end, and why it is fixed in the same change as Step 1c.4.** Step 1c.4
 makes a non-interactive session reach dispatch. That moves the interactivity problem
-downstream rather than removing it: `input_required` also forwards through
-AskUserQuestion, so a delegated session that asks a question under `claude -p` would hang
-on an answer that cannot arrive — turning a free pre-dispatch stall into a **paid session
-stranded mid-flight**. Cancelling and reporting the question keeps the failure cheap and
-legible.
+downstream rather than removing it: a question also forwards through AskUserQuestion, so a
+delegated session that asks one under `claude -p` would hang on an answer that cannot
+arrive — turning a free pre-dispatch stall into a **paid session stranded mid-flight**.
+Cancelling and reporting the question keeps the failure cheap and legible.
 
-Channel events arrive as: `<channel source="claudish" session_id="..." event="...">content</channel>`
+Two sources report the session. The claudish plugin's monitor is on by default and needs
+no flag: `claudish-monitor: session SESSION_ID …` lines. Channel events arrive only when
+Claude Code was launched with claudish's channel enabled:
+`<channel source="claudish" session_id="..." event="...">content</channel>`. Act on
+whichever arrives first.
 
-| Event | Action |
+**Before ending a turn with the session in flight, start the bounded wait** from the
+`claudish:claudish-usage` skill, "Waiting for a run to end", with a ceiling of
+`timeout_seconds` plus two minutes: `timeout_ms: 420000` on the `Monitor` tool, or
+`timeout: 420000` on `Bash` with `run_in_background`. A plugin monitor's line woke an idle
+session in two measured sessions, which is not a rate, and under `claude -p` no monitor runs. Never `sleep` in the
+foreground. When the wait fires with no monitor line, call `get_output(SESSION_ID)`: its
+`status` says which row below applies.
+
+| Monitor line / channel event | Action |
 |-------|--------|
-| `session_started` | Log: "Delegating to {MODEL}..." |
-| `tool_executing` | Log: "{MODEL}: executing {content}" |
-| `input_required` | **AskUserQuestion available** → forward `content` → `send_input(SESSION_ID, answer)` → resume waiting. **Unavailable** (`claude -p`) → `cancel_session(SESSION_ID)`, then report: `The delegated session asked a question and this session cannot answer it. Question: {content}. Re-run interactively, or restate the task so it needs no clarification.` Stop. |
-| `completed` | Call `get_output(SESSION_ID, tail_lines=200)` → proceed to Phase 4 |
-| `failed` | Call `get_output(SESSION_ID)` → report error (first 20 lines) → see Error Reporting below → stop |
+| `started` / `session_started` | Log: "Delegating to {MODEL}..." |
+| — / `tool_executing` | Log: "{MODEL}: executing {content}" |
+| `needs-input … next: send_input` / `input_required` | **AskUserQuestion available** → forward the question (`get_output(SESSION_ID)` shows it after a monitor line; `content` carries it on a channel event) → `send_input(SESSION_ID, answer)` → resume waiting. **Unavailable** (`claude -p`) → `cancel_session(SESSION_ID)`, then report: `The delegated session asked a question and this session cannot answer it. Question: {question}. Re-run interactively, or restate the task so it needs no clarification.` Stop. |
+| `completed … next: get_output` / `completed` | Call `get_output(SESSION_ID, tail_lines=200)` → proceed to Phase 4 |
+| `failed` / `timeout` `… next: get_diagnostics` / `failed`, `timeout` | Call `get_diagnostics(SESSION_ID)` → report error (first 20 lines) → see Error Reporting below → stop |
 
 ### Error Reporting (on failure)
 
 When the session fails:
 
-1. Call `get_output(SESSION_ID)` — show first 20 lines to user
+1. Call `get_diagnostics(SESSION_ID)` — show first 20 lines to user
 2. Ask: "Would you like to report this error to claudish developers? (Data is sanitized.)"
 3. If yes, call `report_error`:
    - `error_type`: `"provider_failure"` (model failure) or `"adapter_error"` (claudish crash)

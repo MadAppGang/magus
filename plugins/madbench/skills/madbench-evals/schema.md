@@ -22,31 +22,39 @@ Error: loading bench.yaml: parsing bench.yaml: yaml: unmarshal errors:
 description: "what this bench measures"
 harness: claude-code
 harness_config: {…}          # see runners-and-sandbox.md
-models: {fast: haiku-4.5}    # named model definitions (modelspec union)
+models: {fast: haiku-4.5}    # named model definitions — the one model shape, §9
 params: {model: fast}        # the bench's interface — declared names + defaults
 judges: {…}                  # judge providers for AI checks
+driver: {…}                  # who answers the agent's questions — runners-and-sandbox.md §3
 metrics: [...]               # the report: aggregate expressions over sample names — §8
 defaults: {…}                # scenario-level defaults
 defaultScenario: {…}         # a whole ScenarioSpec merged into every scenario
 budget: 1.50                 # informational gauge only — NOT enforced
 token_estimate: 200000       # informational gauge only — NOT enforced
+experiment: "…"              # ONLY when the premise is broken: the bench then refuses to run
 scenarios: [{…}]
 ```
 
 | Key | Type | Notes |
 |---|---|---|
 | `description` | string | shown as the bench name in reports |
-| `harness` | string | e.g. `claude-code`, `mock`, `magmux` |
+| `harness` | string | `claude-code` or `mock` — the `magmux` harness is retired (`docs/harness.md:1864`) |
 | `harness_config` | map | handed to the adapter verbatim — **not validated by the loader** |
-| `models` | map[string]modelspec | named model definitions; same union as `judges:` |
+| `models` | map[string]modelspec | named model definitions; the same block the agent, the Driver and every judge take (§9) |
 | `params` | map[string]any | declared names + defaults — **the bench's interface** |
 | `judges` | {default, providers} | judge providers for the 17 AI check types |
+| `driver` | DriverConfig or `false` | inherited by every Scenario; a Scenario's own block overrides it. Interactive `claude-code` Scenarios only (`docs/driving-a-session.md:83-113`, `:284-291`) |
 | `metrics` | []string expressions, **or** the older []mapping form — never mixed in one block (`docs/metrics.md:314-317`) | the report's numeric schema — §8 |
 | `defaults` | ScenarioDefaults | see §2 |
 | `defaultScenario` | ScenarioSpec | a whole scenario merged into every entry |
 | `budget` | float | **informational only, never enforced** |
 | `token_estimate` | int | **informational only, never enforced** |
+| `experiment` | string | the bench's own statement of why its premise is not established. madbench then refuses it everywhere — run, `list`, `preflight`, or named from an Eval — and prints that text as the error (`docs/README.md:153-163`). Delete it when a measurement shows the premise holds |
 | `scenarios` | []ScenarioSpec | the work |
+
+**A key starting with `x-` is accepted and ignored**, at every level, in bench and Eval files
+alike — the one place to park a YAML anchor shared by several scenarios. It is a prefix, not a
+substring: `max-tokens:` is still an unknown field (`docs/eval-file.md:295-326`).
 
 **Two keys that look right and do not load.** Measured against the installed binary with a
 minimal bench (`madbench list`, exit 1):
@@ -67,22 +75,43 @@ madbench.BenchSpec` refusal for the retired derived-metrics key.
   does not spell the retired key, so nothing here can be copied into a bench that will not
   load.
 
-### Accepted aliases
+### Retired spellings — refused, each naming its replacement
 
-All still load; the canonical spelling is on the left.
+madbench accepts **one spelling per key**. Every alias was removed on 2026-09-22, and a file
+using one is refused before anything runs or is spent, with the replacement named
+(`docs/eval-file.md:283-286`; the migration tables are in upstream's v0.37.0 release notes).
+There is no deprecation period: a refusal that names the replacement fixes the file in one
+edit, and an alias never stops being a second answer.
 
-| Canonical | Alias |
-|---|---|
-| `harness:` | `runner:` |
-| `harness_config:` | `runner_config:` |
-| `scenarios:` | `cases:` · `tests:` |
-| `defaultScenario:` | `defaultCase:` · `defaultTest:` |
-| `checks:` | `assert:` |
-| `testdata:` | `fixture:` |
-| `session:*` check types | `trajectory:*`, and bare `skill-used` |
-| `disableDefaultChecks:` | `disableDefaultAsserts:` |
+| Old spelling (refused) | Write | Caught by |
+|---|---|---|
+| `runner:` | `harness:` | load — `list` exits 1 |
+| `runner_config:` | `harness_config:` | load |
+| `cases:` · `tests:` | `scenarios:` | load |
+| `defaultCase:` · `defaultTest:` | `defaultScenario:` | load |
+| `assert:` (on a Scenario **or** a composite) | `checks:` | load |
+| `fixture:` | `testdata:` | load |
+| `disableDefaultAsserts:` | `disableDefaultChecks:` | load |
+| `agg:` on a declarative metric | `aggregate:` | load |
+| `add` · `total` · `avg` · `average` as an aggregate | `sum` · `mean` | load — "unknown aggregate" |
+| `action.duration` · `action.tokens` as a metric source | `event.duration` · `event.tokens` | load — "unknown source" |
+| `type:` · `base_url:` in a model block (judges, models) | `transport:` · `endpoint:` | load |
+| an Eval's `control:` · `varies:` | `guard_changes:` · `allow:` | load |
+| `trajectory:<verb>` · bare `skill-used` check types | `session:<verb>` · `session:skill-used` | **preflight**, as `unknown check type` — `list` does not construct checks and lists them clean |
+| `args.envelope` on a script/transport check | delete it; there is one envelope, `madbench/v2` | preflight |
+| `args.provider: "<id>:<model>"` on a judge check | `args.judge` + `args.model` | removed (`docs/checks.md:1354`); not probed here |
+| `--runs N` | `--repeat N` | the CLI: `unknown flag: --runs` |
+| `madbench run <file>` | `madbench <file>` | the CLI treats `run` as a path that does not exist |
+| `madbench keychain …` | `madbench key …` | the same |
 
-Say **testdata**, never "fixture". Write `session:`, never `trajectory:`.
+Every "load" and "preflight" row above was measured against the installed 0.37.0; a load
+refusal reads *"`runner:` was renamed `harness:` on 2026-09-22 and the old spelling is no
+longer accepted"*, naming the line. Two upstream pages were not updated with the binary:
+`docs/metrics.md:439-440` still lists `add`/`total`/`avg`/`agg:` as accepted, and
+`docs/eval-file.md:36-38` still calls `--runs` a hidden alias. The binary refuses both.
+
+A **stored report** written by an older madbench is refused on read too, rather than decoded
+into an empty one — reports are now `schema_version: 2` (`docs/vocabulary.md:284-287`).
 
 ---
 
@@ -115,11 +144,12 @@ scenarios:
     repo: {url: …, ref: …, path: …}  # third-party checkout, pinned
     setup: ./stage.sh                # build testdata; keeps NO expectation
     generate: ./gen.sh               # build testdata AND compute the answer
-    image: ./shots/dashboard.png     # delivered with the prompt
+    image: ./shots/dashboard.png     # delivered with the prompt — needs interactive: false
     cwd: packages/api                # moves the AGENT only
     vars: {reference: "…"}
     sandbox: {level: container}
     interactive: false
+    driver: false                    # or a block — overrides the bench-level driver:
     timeout: 600s
     capture: log
     staging_timeout: 120s
@@ -148,11 +178,12 @@ scenarios:
 | `repo` | {url, ref, path} | see §4 |
 | `setup` | string | staging program that keeps no expectation — §5 |
 | `generate` | string | staging program that computes the answer — §5 |
-| `image` | string or []string | delivered in the same first user message as the prompt — §6 |
+| `image` | string or []string | delivered in the same first user message as the prompt — §6. **Requires `interactive: false`** on claude-code; an interactive `image:` Scenario is refused at configure |
 | `cwd` | string | relative only, no `..`; must exist after seeding. **Moves the agent only** |
 | `vars` | map | reachable as check `Vars` |
 | `sandbox` | SandboxConfig or string | overrides `defaults:` |
 | `interactive` | bool-ish | overrides `defaults:` |
+| `driver` | DriverConfig or `false` | overrides the bench-level `driver:`; `false` switches the default Driver off, so a question fails the Scenario by name (`docs/driving-a-session.md:67-79`) — `runners-and-sandbox.md` §3 |
 | `timeout` · `capture` · `staging_timeout` · `bun` · `python` · `lockfile_required` | | as `defaults:` |
 | `providers` | []string | multi-provider fan-out; makes `Sessions`/`Providers` plural |
 | `transform` | string | JS (goja) rewriting `output` before checks see it |
@@ -189,13 +220,13 @@ The workspace gets **no `.git`**, submodules are **not** initialized, and Git-LF
 Both run **once per run, before the workspace is seeded**, on the host, with the staged tree
 as working directory, under the same `staging_timeout:`, with the same six environment names.
 **Once per run means once per bench** — every Scenario of the bench is seeded from the one
-tree the program left, not one staging per Scenario (`docs/sandbox-and-testdata.md:431`).
+tree the program left, not one staging per Scenario (`docs/sandbox-and-testdata.md:435`).
 Relative paths resolve against the bench file. The tree each leaves behind replaces
 `testdata:` as the seed source.
 
 **Every staged path resolves against the bench file's directory, never the cwd** —
 `testdata:`, `generate:`, `setup:`, a local `repo:` and `harness_config.agent_env` alike,
-with `{{param}}` substitution applied first (`docs/sandbox-and-testdata.md:235-241`). That
+with `{{param}}` substitution applied first (`docs/sandbox-and-testdata.md:239-245`). That
 includes a `testdata:` a Scenario *inherits* from `defaultScenario:`, so a bench runs
 identically from its own folder, the repo root, or a multi-bench `madbench a/ b/` sweep.
 
@@ -231,7 +262,12 @@ file to see it and could just as well ignore it; `image:` is in the message the 
 answering, so it is seen before the agent does anything at all. A bench that wants both
 declares both.
 
-Declaring `image:` flips `--input-format` from `text` to `stream-json`. Verify delivery with
+Declaring `image:` flips `--input-format` from `text` to `stream-json`. That stdin is the
+`--print` path, so **an `image:` Scenario must declare `interactive: false`**: an interactive
+Scenario types its prompt into a pane, a picture cannot be typed, and the pairing is refused
+at configure rather than silently dropping the picture (`docs/harness.md:245-258`). Measured
+on 0.37.0, `madbench preflight` names it: *"a picture cannot be typed, so `image:` would be
+dropped … set `interactive: false` on this Scenario"*. Verify delivery with
 `session:image-sent`, which grades transport, not comprehension.
 
 > **An `image:` bench cannot be negative-controlled.** The mock harness is not `ImageCapable`:
@@ -240,7 +276,7 @@ Declaring `image:` flips `--input-format` from `text` to `stream-json`. Verify d
 >
 > **`image: generated:<name>`** names a picture the Scenario's `generate:` program writes
 > into `$MADBENCH_IMAGE_DIR` — a sibling of the workspace, never seeded into it, so the
-> pixels that *are* the answer cannot be read off disk (`docs/harness.md:284-313`). That is
+> pixels that *are* the answer cannot be read off disk (`docs/harness.md:315-344`). That is
 > the native home for any bench-owned image generator; do not wire one around madbench.
 
 ---
@@ -391,7 +427,7 @@ module with no `package.json` is named before any spend (`docs/metrics.md:300-30
 
 **Aggregation stops at the run, by design.** Nothing is summed or averaged across runs, and
 there is no field in which a consumer could find cost summed across two different agent
-setups (`docs/metrics.md:456-461`). A cross-run statistic is therefore a post-hoc module
+setups (`docs/metrics.md:460-465`). A cross-run statistic is therefore a post-hoc module
 over `--report-json` — not a feature request. Upstream refused Eval-level metrics in
 writing: *"the statistic belongs to the bench's own `module/`, and `--report-json` is the
 path. Adding a stage would turn a structural guarantee into a sentence in the docs."*
@@ -419,7 +455,7 @@ expression's `session` binding exposes, so this table still tells you what is me
 | `session.prompt_tokens` / `session.output_tokens` | scenario | one side of the above |
 | `session.steps` | scenario | `Metrics.StepCount` — **main-thread tool calls, not turns** |
 | `session.turns` | scenario | one **exchange** — `prompt:` plus each `follow_ups:` entry |
-| `session.model_requests` | scenario | one **request→response**. **No fallback** — nothing in the Action stream reconstructs it |
+| `session.model_requests` | scenario | one **request→response**. **No fallback** — nothing in the Event stream reconstructs it |
 | `session.tool_calls` | scenario | `len(Session.Calls)` — **every** thread, so it exceeds `session.steps` when a subagent ran |
 | `session.steps.main` | scenario | the same number as `session.steps`, named for the threads it counts |
 | `session.steps.all` | scenario | the same as `session.tool_calls` — the whole job |
@@ -427,13 +463,20 @@ expression's `session` binding exposes, so this table still tells you what is me
 | `session.plugins_reported` | scenario | error-free entries in `Environment.Reported.Plugins` |
 | `session.plugins_failed` | scenario | entries carrying `errors` |
 | `session.skills_registered` | scenario | `len(Reported.Skills())`, loaded plugins only |
+| `event.duration` | event | `Event.DurationMs`, one sample per Event that reported one (`docs/metrics.md:379`) |
+| `event.tokens` | event | `Event.Tokens`, likewise (`docs/metrics.md:380`) |
 | `check.score` | check | each Check's normalized score |
 | `check.pass_rate` | scenario | passed ÷ graded Checks |
 | `check.evidence` + `key:` | check | `Result.Evidence[key]`, numeric values only |
 
-`aggregate:` accepts `sum`, `mean`, `min`, `max`, `count`, `last`, `p50`, `p90`, `p95`,
-`p99`. Load-only aliases: `add`/`total` → `sum`, `average`/`avg` → `mean`, `agg:` →
-`aggregate:` (`docs/metrics.md:426-436`).
+`action.duration` and `action.tokens` were the per-Event sources' names before a Session's
+unit became an Event; they are refused as unknown sources (`docs/metrics.md:385-387`).
+
+`aggregate:` accepts exactly `sum`, `mean`, `min`, `max`, `count`, `last`, `p50`, `p90`,
+`p95`, `p99` (`docs/metrics.md:430-437`). Upstream's next paragraph still lists
+`add`/`total`/`avg`/`average` and `agg:` as accepted load-only spellings
+(`docs/metrics.md:439-440`); the 0.37.0 binary refuses every one of them — `avg` as
+*unknown aggregate*, `agg:` as renamed to `aggregate:` (measured with `madbench list`).
 
 **No `metrics:` block at all** reports a built-in schema — `cost`, `duration`, `tokens`,
 `turns` — so every bench reports comparable numbers with no edit; declaring `metrics:`
@@ -459,7 +502,7 @@ models:
   smart: opus-4.8
 metrics: [{name: cost, source: session.cost, aggregate: sum, unit: usd, better: lower}]
 guard_changes:
-  baseline: bare
+  baseline: fast-greedy
   allow: [CLAUDE.md]
 runs:
   - name: fast-greedy
@@ -469,20 +512,24 @@ runs:
   - {}                               # the bench as-is
 ```
 
-Known keys are exactly `description`, `bench`, `models`, `metrics`, `guard_changes`, `runs`.
-**Anything else is an unknown-field error** — `matrix:` and `variations:` are not part of the
-format.
+Known keys are exactly `description`, `bench`, `models`, `metrics`, `guard_changes`, `runs`
+(`docs/eval-file.md:260-262`). **Anything else is an unknown-field error** — `matrix:` and
+`variations:` are not part of the format — and `control:`/`varies:` earn a rename message
+naming `guard_changes:`/`allow:`.
 
 | Error | Cause |
 |---|---|
 | unknown field | `matrix:`, `variations:`, or a typo |
+| renamed key | `control:` → `guard_changes:`, `varies:` → `allow:` — refused, not aliased |
 | missing `bench:` | required |
 | empty `runs:` | required |
 | duplicate-name | two entries resolving to the same name |
 | undeclared param | a run param the bench does not declare in `params:` |
 | eval-runs-eval | a `bench:` pointing at another Eval file |
 | unknown baseline | `guard_changes.baseline:` naming no declared run |
-| bad `allow:` pattern | empty, absolute, or escaping the staged root |
+| bad allow pattern | an `allow:` entry that is empty, absolute, or escapes the staged root |
+
+(`docs/eval-file.md:258-273`.)
 
 An Eval's `metrics:` **replaces** the bench's own for all runs rather than merging — one
 declaration across the runs is what makes their numbers comparable.
@@ -491,9 +538,36 @@ declaration across the runs is what makes their numbers comparable.
 
 - **Effective value** per param: incoming override (Eval entry / CLI `--param`) > bench
   `params:` default.
-- A param value that exactly matches a `models:` key resolves to that model's canonical id
-  before substitution. The Eval's `models:` wins over the bench's own on a name collision.
+- A param value that exactly matches a `models:` key resolves to that **entry, carried
+  whole** — provider, model and effort. Where a string is wanted it is the id; where a model
+  block is wanted it is the block. The Eval's `models:` wins over the bench's own on a name
+  collision (`docs/eval-file.md:70-78`).
 - `harness_config.model` additionally accepts inline modelspec notation with zero declaration.
+  A bare family alias (`opus`, `sonnet`) is left as written — it is the CLI's own name.
+
+### One model shape
+
+The agent, the Driver and every judge take the same block, `{provider, model, effort}`,
+written inline or named from `models:` (`docs/eval-file.md:83-118`):
+
+```yaml
+models:
+  careful: { provider: claude-code, model: opus, effort: max }
+harness_config:
+  model: careful          # split into model / effort / provider for the adapter
+driver:
+  model: careful          # the whole block
+judges:
+  default: careful        # a models: name IS a judge
+```
+
+`effort:` is a top-level key of the block, never inside `params:`. It is freeform — the
+model's vendor owns the levels — except on `claude-code`, where it is checked against the
+CLI's own list because the CLI answers a typo with a warning and a default-effort run
+(`docs/driving-a-session.md:186-217`). Refused at load: a name that is no model and no
+`models:` entry, an entry naming another entry, an agent model from a provider the CLI does
+not serve unless `binary: claudish`, and `effort:` on a provider with no graded level
+(`docs/eval-file.md:133-140`).
 
 `{{name}}` (whitespace-tolerant) is substituted anywhere a string appears: `harness_config`
 values including nested slices/maps, `prompt`, `testdata`, all three of `repo:`, `generate`,
@@ -513,20 +587,34 @@ declaration IS the interface, so this catches typos on both sides.
 ### `guard_changes:` — what the runs may differ by
 
 An Eval whose runs differ in their **instructions** is only interpretable if everything else
-is identical. `guard_changes:` declares that claim so madbench can check it.
+is identical. `guard_changes:` declares that claim so madbench can check it
+(`docs/eval-file.md:208-242`). The list sits under `allow:` on purpose — "guard CLAUDE.md"
+would read as "protect it from changing", the opposite of what the list means — and
+`allow: []` is the strictest guard there is: nothing may differ (`docs/vocabulary.md:258-261`).
 
 Before any sandbox is provisioned or any model billed, madbench walks each run's staged
 inputs — every scenario's `testdata:` root, `harness_config.agent_env`,
 `harness_config.system_prompt`, and for claude-code `harness_config.args` (one entry per argv
-position) and `harness_config.plugins` (each plugin folder's whole tree plus marketplace and
-registry metadata) — diffs them against the baseline, and:
+position, `args/<i>`), `effort` under the bare path `effort`, and `harness_config.plugins`
+(each plugin folder's whole tree plus marketplace and registry metadata, `plugins/<id>/…`)
+(`docs/harness.md:1153-1159`) — plus every declared field of a `driver:` block, so two runs
+whose Drivers differ need `allow: [driver]` or `allow: [driver/instructions]`
+(`docs/driving-a-session.md:369-382`). It diffs them against the baseline, and:
 
-- **reports** the changed paths and byte delta, in the console's `── GUARD ──` section and
-  under the report's `guard_changes` key;
-- **stops the Eval** when a run differs somewhere `allow:` does not cover, naming the path.
-  Nothing runs, nothing is spent;
+- **reports** the changed paths and byte delta, in the console's `── GUARD` section — each
+  run reads `allowed`, `CONFOUNDED`, or `unguarded` when the Eval wrote no block — and under
+  the report's `guard_changes` key;
+- **stops the Eval** when a run differs somewhere `allow:` does not cover, naming the path,
+  exit 1. Nothing runs, nothing is spent;
 - **names a declaration that covered nothing** while the runs plainly differed — the shape of
   a typo, since `allow: [plugin]` loads clean and matches nothing.
+
+Measured on 0.37.0 with two mock runs differing only in a staged `CLAUDE.md`: with
+`allow: [CLAUDE.md]` the console prints ``── GUARD ── 1 run(s) vs baseline `a` · allowed to
+differ: CLAUDE.md`` and the report carries `.guard_changes.allow`; with `allow: []` the Eval
+stops before spend with `CONFOUNDED: runs differ in more than their instructions`, exit 1.
+Upstream's `docs/eval-file.md:228-229` still says "the report's `control` key"; the binary
+writes `guard_changes`, which is what `docs/vocabulary.md:284-287` says.
 
 The diff is reported with or without the block; only the guard is opt-in. `baseline:` defaults
 to the **first** `runs:` entry. Runs that stage the same root are not audited.
@@ -544,15 +632,18 @@ madbench --param temp=0.0 ./mybench/      # override a declared param
 `--run` selects **which** runs execute; `--repeat` sets **how many times** each one does. They
 compose. `--param` splits on the FIRST `=`, so a value may contain `=`.
 
-There is no separate `run` subcommand and no file-kind flag: the bare command auto-detects a
-bench vs an Eval **by content**, and a directory expands every `*.yaml` in it.
+There is no `run` subcommand and no file-kind flag: the bare command auto-detects a bench vs
+an Eval **by content**, and a directory expands every `*.yaml` in it. `--runs` is gone too —
+the CLI answers `unknown flag: --runs`.
 
 ---
 
 ## 10. Case directories
 
-A scenario can also be a **case directory** — `assert.yaml` plus optional `input.md`,
-`setup.sh`, `expected/` — discovered when a directory is passed to `madbench`.
+A scenario can also be a **case directory** — `assert.yaml` plus an optional `input.md` —
+discovered when a directory is passed to `madbench`. A `setup.sh` or `expected/` beside them
+is **inert**: the loader reads those two files and nothing else, so write `setup:` in a bench
+file instead (`docs/README.md:228-235`; `docs/sandbox-and-testdata.md:760-767`).
 
 ---
 
@@ -574,7 +665,8 @@ harness_config:
   temperature: 0.2        # ← loads clean, preflights clean, is NEVER read
 ```
 
-`claude-code` reads exactly nine keys and **silently ignores** everything else. There is no
+`claude-code` reads a fixed set of keys, listed with citations in `runners-and-sandbox.md` §2,
+and **silently ignores** everything else. There is no
 `temperature` key — pass CLI flags through `args:`, and only if your installed `claude`
 accepts them. A recognized key with the wrong *type* is a hard error; an unrecognized key is
 silence. See `runners-and-sandbox.md` §2.

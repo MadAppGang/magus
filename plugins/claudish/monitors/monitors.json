@@ -1,0 +1,8 @@
+[
+  {
+    "name": "claudish-sessions",
+    "command": "bun --env-file=/dev/null \"${CLAUDE_PLUGIN_ROOT}/scripts/session-monitor.ts\"",
+    "description": "Progress of claudish create_session and team runs started by this Claude Code session",
+    "when": "always"
+  }
+]

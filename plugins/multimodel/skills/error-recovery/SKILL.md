@@ -97,11 +97,15 @@ Which do you prefer?"
 seconds kills sessions that are working normally, because a model running a build or a
 test suite goes quiet while the tool runs.
 
-**Detection:** poll `team(mode="status")` and read `idle_seconds_by_slot` together with
+**Detection:** read `team(mode="status")`'s `idle_seconds_by_slot` together with
 `activity_by_slot`:
-- idle in `tool_executing` — a local tool is running; keep polling
+- idle in `tool_executing` — a local tool is running; keep waiting
 - idle in `running` — the model stopped mid-answer; candidate for cancel
-- `waiting_for_input` — it asked a question nothing will answer; candidate for cancel
+- `starting` — the child is still starting up; keep waiting
+- `finishing` — the answer is complete and the child is exiting; nothing to do
+
+A team slot never reports `waiting_for_input`: its input is closed at spawn, so nothing can
+wait for an answer.
 
 **Recovery:** at your poll ceiling, report each still-running slot with its idle seconds
 and activity, and ask the user whether to wait longer, cancel it and continue with the
