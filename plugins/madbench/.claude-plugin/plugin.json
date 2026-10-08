@@ -1,6 +1,6 @@
 {
   "name": "madbench",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "description": "Toolkit for madbench, MadAppGang's Go harness for benchmarking agentic coding tools. Carries madbench's own skills with /madbench:madbench as the entry point, checks them against the installed madbench, and runs benches in a visible pane through the madbench:bench agent.",
   "author": {
     "name": "MadAppGang",

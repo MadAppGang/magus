@@ -42,13 +42,13 @@ install its skills there:
 madbench skills            # into ./.claude/skills — madbench 0.38.0 or later
 ```
 
-**Why the hook exists.** Every `Agent` call in current Claude Code is asynchronous: it
-returns a task id at once and the operator keeps working, so a parent that replies closes
-the session and kills the run mid-flight. Measured on the MBN-1 bench with 5 trials,
-twice: parents told to wait actually waited 3/5 and then 2/5. The hook replaces that coin
-flip with a mechanism — and gives up, letting the turn end, on an unreadable transcript, a
-dispatch older than 45 minutes, or after six consecutive blocks for one task id, because a
-Stop hook that can trap a session is worse than none.
+**The operator runs in the background, and nothing waits for it.** Every `Agent` call in
+current Claude Code returns at once and the operator keeps working. The parent says it
+dispatched the operator and ends its turn; when the operator finishes, Claude Code delivers
+a task notification that starts the parent's next turn, and the parent reports from the
+operator's result. Nothing blocks the session, so nothing can hang it. This plugin used to
+carry a Stop hook that held the parent's turn open with `TaskOutput`; Claude Code removed
+`TaskOutput` in 2.1.277, and the hook was deleted on 2026-10-08.
 
 ## Who owns what
 
@@ -57,8 +57,8 @@ Stop hook that can trap a session is worse than none.
 describe; this plugin carries a copy. A mistake in them is fixed upstream and synced back,
 never edited here.
 
-**This plugin owns only the Claude Code setup around madbench**: the operator agent, the
-Stop hook, `/madbench:doctor`, and the bench-layout conventions of this marketplace.
+**This plugin owns only the Claude Code setup around madbench**: the operator agent,
+`/madbench:doctor`, and the bench-layout conventions of this marketplace.
 
 **Nothing here reimplements madbench.** Running, grading, checks, report parsing, run status,
 bench validation, hooks around a run and version checks are madbench's. Something missing is

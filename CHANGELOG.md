@@ -4,6 +4,18 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [madbench 0.9.1] - 2026-10-08
+
+### Removed
+
+- The Stop hook that held the parent's turn open while a dispatched `madbench:bench` operator
+  was working. It told the model to wait with `TaskOutput`, which Claude Code removed in
+  2.1.277, so it could no longer work: on the MBN-1 bench every parent ended its turn
+  anyway. The operator runs in the background, and Claude Code notifies the parent when it
+  finishes, so nothing needs to wait. The plugin keeps its SessionStart hooks.
+
+---
+
 ## [setup 1.5.1] - 2026-10-07
 
 ### Fixed

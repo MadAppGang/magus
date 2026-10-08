@@ -771,7 +771,7 @@
       "name": "madbench",
       "source": "./plugins/madbench",
       "description": "Toolkit for madbench, MadAppGang's Go harness for benchmarking agentic coding tools. Carries madbench's own skills with /madbench:madbench as the entry point, checks them against the installed madbench, and runs benches in a visible pane through the madbench:bench agent.",
-      "version": "0.9.0",
+      "version": "0.9.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -792,6 +792,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "0.9.1",
+          "date": "2026-10-08",
+          "kinds": [
+            "Removed"
+          ],
+          "summary": "The Stop hook that held the parent's turn open while a dispatched madbench:bench operator was\u2026"
+        },
         {
           "version": "0.9.0",
           "date": "2026-10-07",
@@ -825,14 +833,6 @@
             "Added"
           ],
           "summary": "A missing madbench or magmux binary is named at session start"
-        },
-        {
-          "version": "0.6.2",
-          "date": "2026-09-27",
-          "kinds": [
-            "Fixed"
-          ],
-          "summary": "The madbench skill teaches guard_changes: and its allow: list. madbench 0.37.0 renamed control:\u2026"
         }
       ]
     }
