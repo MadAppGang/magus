@@ -1,7 +1,7 @@
 {
   "name": "claudish",
-  "version": "2.2.1",
-  "description": "MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting across models, manages async sessions, and streams channel notifications. Required by code-search, dev, multimodel and designer.",
+  "version": "2.3.0",
+  "description": "MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting, manages async sessions, streams channel notifications, and shows the session's runs live above the prompt, with stop and live-screen tabs. Required by code-search, dev, multimodel and designer.",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",
@@ -23,6 +23,7 @@
   "category": "infrastructure",
   "skills": "./skills/",
   "mcpServers": "./.mcp.json",
+  "types": "./types/index.d.ts",
   "requires": {
     "schema": 1,
     "bin": [

@@ -11,6 +11,19 @@
           }
         ]
       }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "^mcp__(plugin_claudish_claudish|claudish)__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v bun >/dev/null 2>&1 && exec bun --env-file=/dev/null --config=/dev/null \"${CLAUDE_PLUGIN_ROOT}/hooks/allow-read-verbs.ts\" || true",
+            "timeout": 5
+          }
+        ]
+      }
     ]
-  }
+  },
+  "modules": ["./status/register.tsx"]
 }

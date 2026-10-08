@@ -4,6 +4,33 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [claudish 2.3.0] - 2026-10-08
+
+### Added
+
+- **The session's claudish runs show live above the prompt.** Every `team(mode="run")` run
+  and `create_session` session this session started gets one line per model: state, model
+  and provider, tokens, tool calls, loops, idle time and current activity. Needs Claude
+  Code 2.1.286+ (on 2.1.250 and 2.1.284 a one-line startup notice and no band; claudish's
+  tools work on every version measured back to 2.1.223) and claudish CLI 10.4.0+; with an
+  older claudish it stays silent. A `run-and-judge` call answers only after its run has settled, so
+  it is not shown live.
+- **Stop** cancels one slot after two presses, then Claude Code's own permission question.
+- **Show** opens a read-only tab per model with its live screen, in the model's own colours.
+- **An idle session wakes** when a model in a run it started finishes, fails or is stopped,
+  or when one of its sessions starts waiting; a toast names the slot. Where the plugin's
+  session progress monitor reports the same change, the band holds its notice for 10 seconds
+  and sends nothing once the monitor's line arrives, so the change brings one turn. A monitor
+  line that arrives after those 10 seconds can still add a second one.
+- **claudish's read-only calls no longer prompt.** Listing runs, a run's status, a slot's
+  screen, listing sessions and a session's screen are allowed before the permission check, so
+  they never prompt or wait behind another dialog. They are matched by exact tool name, for
+  claudish installed through the plugin and for a directly registered `claudish` server, and
+  for Claude's calls too; starting and cancelling still ask. Your own `deny` and `ask` rules
+  for these tools still apply.
+
+---
+
 ## [madbench 0.9.1] - 2026-10-08
 
 ### Removed

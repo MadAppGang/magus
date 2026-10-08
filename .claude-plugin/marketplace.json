@@ -77,8 +77,8 @@
     {
       "name": "claudish",
       "source": "./plugins/claudish",
-      "description": "MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting across models, manages async sessions, and streams channel notifications. Required by code-search, dev, multimodel and designer.",
-      "version": "2.2.1",
+      "description": "MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting, manages async sessions, streams channel notifications, and shows the session's runs live above the prompt, with stop and live-screen tabs. Required by code-search, dev, multimodel and designer.",
+      "version": "2.3.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -99,6 +99,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "2.3.0",
+          "date": "2026-10-08",
+          "kinds": [
+            "Added"
+          ],
+          "summary": "The session's claudish runs show live above the prompt"
+        },
         {
           "version": "2.2.1",
           "date": "2026-10-07",
@@ -128,14 +136,6 @@
           "version": "2.0.6",
           "date": "2026-09-25",
           "summary": "Claudish-usage routes only to agents that exist, gives a consistent example for a version the\u2026"
-        },
-        {
-          "version": "2.0.5",
-          "date": "2026-09-19",
-          "kinds": [
-            "Fixed"
-          ],
-          "summary": "The claudish MCP server starts for users whose keys are not in the environment"
         }
       ]
     },

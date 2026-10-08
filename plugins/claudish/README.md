@@ -233,6 +233,83 @@ They are independent. The monitor is on by default, needs no flag, and reports s
 only. Channel mode (below) is opt-in and pushes claudish's own event stream, including
 per-tool progress. With both enabled you get both; neither reads the other.
 
+## Live run status
+
+Measured on Claude Code 2.1.286 and 2.1.292 (see **Older Claude Code** below). While a `team(mode="run")`
+run or a `create_session` session that this Claude Code session started is going, a band
+above the prompt shows it, one line per model:
+
+```
+◆ claudish · 4 running
+   01 ▶ running  gpt-6.1-sol OpenRouter 12.7k/780 4 tools 1 loops idle 1s Read [ Stop ] [ Show ]
+```
+
+Each line carries the slot, its state, the model and its provider, tokens in and out,
+tool calls, loops, how long the model has been idle, and what it is doing now. A slot
+that needs you (waiting for input or for a permission) is highlighted. On a narrow
+terminal the least important columns drop first; a line never wraps.
+
+- **Stop** cancels that one slot and nothing else. Press it twice: the first press turns
+  the button into `confirm?`, and a second press within four seconds sends the cancel.
+  Cancelling is not a read, so Claude Code then asks its own permission question before
+  anything stops.
+- **Show** opens a tab for that slot, titled by its model: the model's live screen,
+  read-only, in the model's own colours. One tab per model; pressing Show again brings
+  its tab forward.
+- **Wake-up.** When a model in a run this session started finishes, fails or is stopped —
+  or a `create_session` session starts waiting for input or a permission — an idle
+  session wakes on its own: Claude gets a short notice naming the slot and how to fetch
+  its result, and you see a toast. Runs another session started never wake this one.
+
+**One turn per change, with the session progress monitor.** Some changes are also reported
+by the [session progress monitor](#session-progress-monitor): a `create_session` session
+ending or starting to wait, and a `team` run settling. For those, the band holds its notice
+for 10 seconds. If the monitor's line reaches the conversation first, the band sends nothing
+and that line is the one turn. If no line comes, Claude gets the band's notice after the
+10 seconds. A monitor line that arrives later than that still reaches Claude, so a rare change
+can bring a second turn. A slot of a `team` run that ends while other slots still run is
+not held: the monitor reports a run only once it settles. If such a notice is still waiting
+when the run settles (it was held for a turn in progress), it waits with the settle, so the
+monitor's one line covers the whole run. A run is matched to the monitor's line by the record
+claudish names it by, never by its directory, so a run started again in the same directory
+is never covered by the line of the run before it.
+
+**What it does not show.** A `team(mode="run-and-judge")` call answers only once the run and
+its judging have finished, so the band first sees it settled and does not show it, and it
+cannot be stopped from the band. Runs started before the plugin loaded, or by anything other
+than this session's own claudish tool calls, are not shown either.
+
+**Read-only calls do not prompt.** The plugin allows claudish's read-only calls — listing
+runs, a run's status, a slot's screen, listing sessions, and a session's screen — before
+Claude Code's permission check, so they never ask you and never wait behind another open
+question, such as Stop's own. It does so for claudish installed through this plugin and for
+a `claudish` server you registered yourself, and it matches each tool by its exact name. This
+applies to Claude's own calls of those tools too. Starting a run, cancelling one, and every
+other claudish call still ask as usual.
+
+Your own permission rules still win: Claude Code applies a matching `deny` rule (the call is
+blocked) and a matching `ask` rule (you are asked) whatever the plugin answers. To be asked
+again for these calls, add an `ask` rule for them; the band's refresh then asks too.
+
+**What it needs.** The band comes from the claudish CLI's status answers, which exist from
+claudish **10.4.0** (mod contract version 1). With an older claudish the band never
+appears and nothing else changes; run `claudish update` (or reinstall it) to get it.
+
+**Where it stays off.** The band is a Claude Code mod, so it is inert wherever Claude Code
+refuses mods: `--bare`, safe mode, `disableAllHooks`, and a folder you have not trusted.
+claudish's tools keep working in all of these.
+
+**Older Claude Code.** The band needs Claude Code 2.1.286 or later. On 2.1.250 and 2.1.284
+Claude Code shows a one-line notice at startup (`claudish: hooks module did not load: … is not
+an event`) and runs without the band; on 2.1.223 nothing is shown. claudish's MCP tools, the
+read-only allow and the dependency check work on every one of these versions. Update Claude
+Code to get the band.
+
+**On Claude Desktop**, the band and the tabs work in the Code tab, but a wake-up's turn
+stays invisible until you type something
+([anthropics/claude-code#96336](https://github.com/anthropics/claude-code/issues/96336)).
+The toast is the visible signal there.
+
 ## Channel notifications (optional)
 
 Claudish emits `notifications/claude/channel` events during long-running model
