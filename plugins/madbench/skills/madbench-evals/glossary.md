@@ -2,7 +2,7 @@
 
 Read this before any other madbench work. Every madbench skill does, at its Step 0.
 
-The tables are parsed by a checker: the word is in the first column, one word or phrase per
+The tables are parsed by `madbench glossary check`: the word is in the first column, one word or phrase per
 row, and the replacement is in the second. The long-form rationale is `docs/glossary.md` in
 the madbench repository.
 
@@ -114,12 +114,13 @@ the rule without guessing at intent. A word is quoted, and never flagged, when i
   target; and, in this file only, in a row of one of the tables above (a `Word`-headed table
   in any other file is that author's prose);
 - in code, inside a string literal whose whole content, as written between the quotes, is
-  one lower-case key matching `^[a-z_][a-z0-9_.-]*$` — `"assertion"`, `'test_cases'` —
+  one lower-case key matching `^[a-z_][a-z0-9_.-]*$` — `"assertion"`, `'test_cases'`, and a
+  Python `"""assertion"""` alike —
   because that is a name on the wire, such as the `madbench/v2` envelope's `assertion`, not
   a sentence.
 
 Everything else is a use. In code that means every comment and every other string literal:
 a capitalised or punctuated word (`"Suite"`, `"Assertions:"`, `"./grader.ts"`), a message,
-and every line of a Python `"""…"""` or `'''…'''` literal. Identifiers belong to the
+and every line of any other Python `"""…"""` or `'''…'''` literal. Identifiers belong to the
 language and are not read. YAML is read whole: a Bench is the madbench concept itself, so a
 quoted YAML scalar is still a use.

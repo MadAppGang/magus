@@ -99,6 +99,9 @@ tool's word from `glossary.md` used for a madbench concept becomes the Glossary'
 "test case" → Scenario, "fixture" → testdata, "arm" → variant. A word naming another tool's
 own feature stays: that is a quotation.
 
+`madbench glossary check <the Bench's directory>` lists each one as `path:line  word →
+replacement`, and exits 0 when none is left.
+
 ## Step 6 — stored reports are re-run, never edited
 
 A report or store whose `schema_version` is not the installed madbench's is refused by

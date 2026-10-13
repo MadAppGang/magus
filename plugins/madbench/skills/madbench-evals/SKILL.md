@@ -305,6 +305,7 @@ Use `harness: mock` for offline YAML development.
 madbench list bench.yaml            # proves it PARSES — not that it runs
 madbench preflight bench.yaml       # proves it COULD RUN (binaries, keys, magmux, MCP declarations, module/)
 madbench check bench.yaml           # NEGATIVE control: every graded check must fail
+madbench glossary check . --skip testdata   # the words: no deprecated or other tools' word in the Bench, its README, its code
 madbench demo                       # offline emulated bench: no keys, no spend
 madbench bench.yaml --harness mock  # dry-run your YAML offline
 madbench bench.yaml --report-json out.json   # a real run: in a split pane beside the conversation ("Runs are visible")

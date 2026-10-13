@@ -4,6 +4,17 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [madbench 0.10.1] - 2026-10-14
+
+### Changed
+
+- The madbench skills are synced to madbench 0.43.2, so `/madbench:madbench` and the
+  operator see a current set: `skills 0.43.2 · madbench 0.43.2 · current`. When madbench
+  is missing, the plugin now installs 0.43.2 from the release, checksum-verified. 0.43.1
+  is the release that keeps a Session open until a background subagent reports back.
+
+---
+
 ## [magus 7.10.1] - 2026-10-14
 
 ### Fixed

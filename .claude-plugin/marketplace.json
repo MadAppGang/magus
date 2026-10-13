@@ -783,7 +783,7 @@
       "name": "madbench",
       "source": "./plugins/madbench",
       "description": "Toolkit for madbench, MadAppGang's Go harness for benchmarking agentic coding tools. Carries madbench's own skills with /madbench:madbench as the entry point, checks them against the installed madbench, and runs benches in a visible pane through the madbench:bench agent.",
-      "version": "0.10.0",
+      "version": "0.10.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -804,6 +804,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "0.10.1",
+          "date": "2026-10-14",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "The madbench skills are synced to madbench 0.43.2, so /madbench:madbench and the operator see a\u2026"
+        },
         {
           "version": "0.10.0",
           "date": "2026-10-13",
@@ -837,14 +845,6 @@
             "Fixed"
           ],
           "summary": "The session-start check fixes in terminal 5.3.1 apply here too"
-        },
-        {
-          "version": "0.8.0",
-          "date": "2026-10-07",
-          "kinds": [
-            "Changed"
-          ],
-          "summary": "The madbench-evals skill teaches madbench 0.37.1: session:match for grading what a session was\u2026"
         }
       ]
     }
