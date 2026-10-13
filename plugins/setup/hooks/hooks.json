@@ -1,0 +1,27 @@
+{
+  "description": "SessionStart with matcher startup|resume runs profile-check, which tells the user when this folder declares magus profiles but has none set up, and names the fix: run magus update in this folder. Claude Code started inside such a folder loads only the plugins installed at USER scope; started at the repository root with --worktree it loads the root project's plugins, and the hook cannot tell the two apart (same project dir, cwd and stdin, measured on 2.1.294), so it states the folder's state and never claims what the session loaded. This is how a git worktree of a profiled project starts, because the project settings magus generates are git-ignored and Claude Code reads only the folder it starts in; setup is the magus plugin installed at USER scope, so it is the one still loaded there to say so. It checks the project folder only, reads the filesystem and nothing else, and is silent when the folder is set up and on any error. resume is in the matcher because resuming is how the failure is usually hit; clear and compact do not reload plugins. SessionStart with matcher startup also runs deps-check, carried by every plugin whose plugin.json declares requires (here: bun, which profile-check needs) and gated by scripts/check-hook-copies.ts; it prints only when a required tool is missing, once per session however many plugins need it.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v bun >/dev/null 2>&1 && exec bun --env-file=/dev/null --config=/dev/null \"${CLAUDE_PLUGIN_ROOT}/hooks/deps-check.ts\" setup || exec sh \"${CLAUDE_PLUGIN_ROOT}/hooks/bun-missing.sh\" setup",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v bun >/dev/null 2>&1 && exec bun --env-file=/dev/null --config=/dev/null \"${CLAUDE_PLUGIN_ROOT}/hooks/profile-check.ts\" || true",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -4,6 +4,48 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [setup 1.6.0] - 2026-10-14
+
+### Added
+
+- **A session started in a folder whose magus profile is not set up says so.** This is how a
+  new git worktree of a profiled project starts: Claude Code started inside it gets only
+  your USER plugins, and a project skill answers `Unknown skill`. setup is the magus plugin
+  installed at USER scope, so it is the one still loaded there. At session start and on
+  resume it prints "This project's plugins are not set up in this folder" and names the
+  fix, `magus update` in that folder. It also tells the model the cause, so the model
+  reports the fix instead of searching for the missing tools. It reads only the folder
+  itself and is silent everywhere else.
+- **setup declares that it needs Bun**, so the standard session-start dependency check
+  says so when Bun is missing.
+
+### Why
+
+- A worktree never gets the project settings magus generates, because they are not in
+  git. Claude Code reads only the settings of the folder it starts in. A session started
+  from the repository root with `--worktree` uses the root's settings and works. A session
+  started inside the worktree, for example after a terminal restore, loads only USER
+  plugins, and nothing said why.
+
+---
+
+## [magus 7.10.0] - 2026-10-14
+
+### Added
+
+- **`magus update` sets up the other worktrees of the repository too.** A worktree whose
+  project declares a profile, with nothing of yours to replace, gets that profile without
+  a question, the same rule magus already follows for the folder it runs in. One line
+  reports it: "Worktrees feature-a, feature-b now have this project's plugins." A worktree
+  that needs a choice gets one line telling you to run `magus update` there.
+- **The TUI does the same when it opens**, once this project's own profile is settled.
+  Success shows nothing. A failure shows in the usual failure popup.
+- **`magus doctor` reports those worktrees in one line** and writes nothing. `--json` lists
+  them in `worktreesWithoutProfile`. Neither changes the exit code. `--check` and
+  `--dry-run` also only report.
+
+---
+
 ## [code-search 8.4.0] - 2026-10-13
 
 ### Added

@@ -7,13 +7,13 @@ Project setup jobs in one plugin. Investigates a repository and provisions it �
 
 | | |
 |---|---|
-| Version | `1.5.1` |
+| Version | `1.6.0` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 4 |
 | Subagents | 0 |
 | Skills | 2 |
 | MCP server | no |
-| Hooks | no |
+| Hooks | yes |
 
 ## What it's for
 
@@ -96,6 +96,11 @@ Prefer to do it by hand? [Installing Magus](../../guides/install.md) has the man
 |---|---|---|
 | ○ | `setup:index-skills` | Walks every skill reachable from this project and writes a browsable markdown index, plus a small deterministic index spliced into CLAUDE.md. |
 | ▸ | `setup:statusline-customization` | Configuration reference and troubleshooting for the statusline plugin — sections, themes, bar widths, and script architecture |
+
+## Hooks
+
+This plugin installs hooks. They run automatically and are the usual first place to look
+if its behaviour stops firing.
 
 ## Source
 
