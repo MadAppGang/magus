@@ -1,5 +1,6 @@
 ---
 name: bench
+color: cyan
 description: |
   Authors, runs, and debugs madbench benches end to end — writes Bench and Experiment files,
   stages red-state testdata, chooses checks, runs the two controls, and runs the real bench

@@ -1,5 +1,6 @@
 ---
 name: developer
+color: green
 description: Implements features spanning multiple files, then iterates write-test-fix-lint until every check passes. Use for new modules, subsystems, or any change needing 3+ files with test coverage. Hand over the files or directories to create or modify, the skill files it must read first (project skills before bundled ones), and either a SESSION_PATH holding context.json or the stack's quality-check commands — without them it guesses conventions.
 tools: Read, Write, Edit, Bash, Glob, Grep, Skill
 skills: dev:universal-patterns

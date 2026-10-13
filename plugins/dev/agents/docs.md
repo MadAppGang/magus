@@ -1,5 +1,6 @@
 ---
 name: docs
+color: cyan
 description: Writes, analyses, and fixes documentation. Pass mode=write|analyze|fix, the exact doc paths to work on and the source paths that ground them, and SESSION_PATH so analyze and fix share one report — fix mode needs the analysis report path and which findings are approved, and applies nothing else. Use for READMEs, API docs, tutorials, changelogs, or a documentation quality audit.
 tools:
   - Read

@@ -1,5 +1,6 @@
 ---
 name: spec-writer
+color: purple
 description: Synthesizes a specification from an interview session, reading the log, assets and context to produce spec.md and tasks.md. Callers must hand over the SESSION_PATH directory holding interview-log.md, assets.md and context.json. Use when an interview has finished and its answers need turning into a buildable spec.
 tools: Read, Write, Glob, Grep
 ---

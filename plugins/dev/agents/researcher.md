@@ -1,5 +1,6 @@
 ---
 name: researcher
+color: purple
 description: Multi-round web research with convergence detection — searches 10+ sources, assesses their quality, and returns a cited report. Use for technology evaluations, library comparisons, and best-practice surveys. Supply the decision the research feeds (e.g. choosing a library that must work offline), the sub-question, search queries, and a SESSION_PATH — the findings document is written there — and require citable sources.
 tools: Read, Write, Bash, Glob, Grep, WebSearch, WebFetch
 skills: dev:universal-patterns

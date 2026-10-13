@@ -1,5 +1,6 @@
 ---
 name: debugger
+color: red
 description: Traces an error to its root cause across files, in any language, and reports the evidence for the diagnosis. Use when a bug is not obvious from the stack trace, or when a failure spans several modules. Supply the exact error text or stack trace and the reproducing command or steps; explicitly say if no reliable reproduction exists.
 tools: Read, Glob, Grep, Bash
 skills: dev:systematic-debugging

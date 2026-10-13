@@ -1,5 +1,6 @@
 ---
 name: reviewer
+color: yellow
 description: "Reviews recent changes in three passes — security, correctness, maintainability — plus a design-system pass on UI files, returning severity-calibrated findings and a PASS/CONDITIONAL/FAIL verdict. Give it a TARGET: line — exact file paths (FILES mode), a capture file (CAPTURE mode), or BRANCH — plus optional FOCUS:, OUTPUT: and MODELS: lines; a vague 'review my changes' falls through to BRANCH and the agent guesses its own scope. Use before merging or when asked to check code quality."
 tools: Read, Glob, Grep, Bash
 ---

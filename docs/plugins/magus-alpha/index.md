@@ -18,6 +18,7 @@ Plugin IDs carry the marketplace, so these are `name@magus-alpha`.
 
 | Plugin | Version | What it does |
 |---|---|---|
+| [`agent-colours`](./agent-colours.md) | 0.1.0 | Draws each subagent's name on a coloured badge in Claude Code: in its Agent row and wherever a reply names it. The colour comes from the agent's own color: field. Alpha: a function-hooks mod, not commands or skills. |
 | [`claudoom`](./claudoom.md) | 0.1.0 | Plays Doom-engine WADs in a Claude Code pane: runs doom-cli (GPLv2, built from upstream) in a private tmux server and repaints its frames into a Raster. Fetches Freedoom (BSD) on demand. DOOM is a ZeniMax trademark; not affiliated with id Software, ZeniMax or Anthropic. |
 
 Turn any of them on from the Plugins tab. To give a team the same set, press `s` to save

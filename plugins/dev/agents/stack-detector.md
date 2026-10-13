@@ -1,5 +1,6 @@
 ---
 name: stack-detector
+color: orange
 description: "Classifies a repo's stacks and quality commands, resolves what the task is, inventories reachable MCP servers, and writes a per-agent reading list to context.json. Requires the `SESSION_PATH` to write into, the task as a `TASK:` block (or requirements.md / bug-report.md in that directory), and whether plan mode is active. Use before dispatching implementation agents in an unfamiliar repo."
 tools: Read, Write, Glob, Grep, Bash
 ---

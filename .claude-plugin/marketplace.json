@@ -15,7 +15,7 @@
       "name": "code-search",
       "source": "./plugins/code-search",
       "description": "Read-only code search and investigation behind one stable tool surface. Finds code by meaning or structure, traces callers, callees and blast radius, and dispatches an analyze agent for deep dives. The search engine is named in project settings and is swappable.",
-      "version": "8.3.1",
+      "version": "8.4.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -37,6 +37,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "8.4.0",
+          "date": "2026-10-13",
+          "kinds": [
+            "Added"
+          ],
+          "summary": "The analyze agent has a color: field again: pink"
+        },
         {
           "version": "8.3.1",
           "date": "2026-10-07",
@@ -66,11 +74,6 @@
           "version": "8.1.1",
           "date": "2026-09-25",
           "summary": "The skills defer to the caller's report contract, and the handoff to the analyze agent carries\u2026"
-        },
-        {
-          "version": "8.1.0",
-          "date": "2026-09-22",
-          "summary": "Carries the session-start check that reports a magus CLI behind npm and names the command that\u2026"
         }
       ]
     },
@@ -207,7 +210,7 @@
       "name": "multimodel",
       "source": "./plugins/multimodel",
       "description": "Multi-model collaboration and orchestration. Runs a task across several AI models in parallel and aggregates their blind APPROVE/REJECT votes, or delegates it to one model running a full Claude Code session.",
-      "version": "5.3.1",
+      "version": "5.4.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -231,6 +234,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "5.4.0",
+          "date": "2026-10-13",
+          "kinds": [
+            "Added"
+          ],
+          "summary": "The deep-analyst agent has a color: field again: purple"
+        },
         {
           "version": "5.3.1",
           "date": "2026-10-07",
@@ -260,11 +271,6 @@
           "version": "5.1.1",
           "date": "2026-09-27",
           "summary": "Error-recovery retries only when the user asks, reads failure causes from claudish, and sends\u2026"
-        },
-        {
-          "version": "5.1.0",
-          "date": "2026-09-25",
-          "summary": "The task-orchestration skill is removed. It taught progress tracking through TaskCreate and\u2026"
         }
       ]
     },
@@ -272,7 +278,7 @@
       "name": "dev",
       "source": "./plugins/dev",
       "description": "Universal development assistant. Detects the project stack and routes work to specialist agents for architecture, implementation, debugging, review and research, enforcing design-system guardrails on every UI change.",
-      "version": "9.1.1",
+      "version": "9.2.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -312,6 +318,14 @@
       "strict": true,
       "releases": [
         {
+          "version": "9.2.0",
+          "date": "2026-10-13",
+          "kinds": [
+            "Added"
+          ],
+          "summary": "All 12 agents have a color: field again"
+        },
+        {
           "version": "9.1.1",
           "date": "2026-10-07",
           "kinds": [
@@ -339,11 +353,6 @@
           "version": "9.0.0",
           "date": "2026-09-27",
           "summary": "BREAKING \u2014 dev no longer teaches Bun, Go or Dingo. The bunjs-architecture and bunjs-production\u2026"
-        },
-        {
-          "version": "8.3.0",
-          "date": "2026-09-25",
-          "summary": "Commands and skills no longer order task-list tools that do not exist. /dev:dev,\u2026"
         }
       ]
     },
@@ -653,7 +662,7 @@
       "name": "designer",
       "source": "./plugins/designer",
       "description": "UI design validation. Compares a rendered screen against its reference by pixel diff, then reviews the result for spacing, hierarchy and design-system consistency.",
-      "version": "0.10.0",
+      "version": "0.11.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -675,6 +684,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "0.11.0",
+          "date": "2026-10-13",
+          "kinds": [
+            "Added"
+          ],
+          "summary": "Both agents have a color: field again: review is purple, ui is green. With agent-colours\u2026"
+        },
         {
           "version": "0.10.0",
           "date": "2026-09-27",
@@ -698,14 +715,6 @@
             "Added"
           ],
           "summary": "/designer:create-style now runs the action you name \u2014 create, update, capture, add-reference,\u2026"
-        },
-        {
-          "version": "0.8.0",
-          "date": "2026-09-15",
-          "kinds": [
-            "Changed"
-          ],
-          "summary": "BREAKING \u2014 designer:design-review is now designer:review, and designer:ui creates instead of\u2026"
         }
       ]
     },
@@ -713,7 +722,7 @@
       "name": "terminal",
       "source": "./plugins/terminal",
       "description": "Slot-addressed terminal control over tmux. Runs interactive commands, dev servers, test watchers, REPLs and TUI apps in numbered helper panes \u2014 beside the user or isolated from view \u2014 that the server places and owns, so an agent never holds a pane id or targets the user's own session.",
-      "version": "5.3.1",
+      "version": "5.4.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -731,6 +740,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "5.4.0",
+          "date": "2026-10-13",
+          "kinds": [
+            "Added"
+          ],
+          "summary": "The tui-navigator agent has a color: field again: cyan"
+        },
         {
           "version": "5.3.1",
           "date": "2026-10-07",
@@ -756,14 +773,6 @@
           "version": "5.2.2",
           "date": "2026-09-25",
           "summary": "Tdd-workflow reads framework-signals by path, and terminal-interaction quits a TUI with its own\u2026"
-        },
-        {
-          "version": "5.2.1",
-          "date": "2026-09-23",
-          "kinds": [
-            "Added"
-          ],
-          "summary": "/terminal:slots shows list | close <N> | close all as an argument hint after the command name\u2026"
         }
       ]
     },
@@ -771,7 +780,7 @@
       "name": "madbench",
       "source": "./plugins/madbench",
       "description": "Toolkit for madbench, MadAppGang's Go harness for benchmarking agentic coding tools. Carries madbench's own skills with /madbench:madbench as the entry point, checks them against the installed madbench, and runs benches in a visible pane through the madbench:bench agent.",
-      "version": "0.9.1",
+      "version": "0.10.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -792,6 +801,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "0.10.0",
+          "date": "2026-10-13",
+          "kinds": [
+            "Added"
+          ],
+          "summary": "The bench agent has a color: field again: cyan"
+        },
         {
           "version": "0.9.1",
           "date": "2026-10-08",
@@ -825,14 +842,6 @@
             "Changed"
           ],
           "summary": "The madbench-evals skill teaches madbench 0.37.1: session:match for grading what a session was\u2026"
-        },
-        {
-          "version": "0.7.0",
-          "date": "2026-10-06",
-          "kinds": [
-            "Added"
-          ],
-          "summary": "A missing madbench or magmux binary is named at session start"
         }
       ]
     }

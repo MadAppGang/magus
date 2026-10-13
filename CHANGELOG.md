@@ -4,6 +4,62 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [code-search 8.4.0] - 2026-10-13
+
+### Added
+
+- **The `analyze` agent has a `color:` field again: `pink`.** With `agent-colours`
+  installed, its name is drawn on that badge.
+
+---
+
+## [designer 0.11.0] - 2026-10-13
+
+### Added
+
+- **Both agents have a `color:` field again:** `review` is `purple`, `ui` is `green`. With
+  `agent-colours` installed, their names are drawn on those badges.
+
+---
+
+## [dev 9.2.0] - 2026-10-13
+
+### Added
+
+- **All 12 agents have a `color:` field again.** `architect` is `blue`, `developer` green,
+  `debugger` red, `reviewer` and `qa-engineer` yellow, `devops` and `stack-detector` orange,
+  `researcher` and `spec-writer` purple, `frontend-developer` pink, `aggregator` and `docs`
+  cyan. With `agent-colours` installed, their names are drawn on those badges.
+
+---
+
+## [madbench 0.10.0] - 2026-10-13
+
+### Added
+
+- **The `bench` agent has a `color:` field again: `cyan`.** With `agent-colours`
+  installed, its name is drawn on that badge.
+
+---
+
+## [multimodel 5.4.0] - 2026-10-13
+
+### Added
+
+- **The `deep-analyst` agent has a `color:` field again: `purple`.** With `agent-colours`
+  installed, its name is drawn on that badge.
+
+---
+
+## [terminal 5.4.0] - 2026-10-13
+
+### Added
+
+- **The `tui-navigator` agent has a `color:` field again: `cyan`.** With `agent-colours`
+  installed, its name is drawn on that badge.
+
+---
+
 ## [claudish 2.3.0] - 2026-10-08
 
 ### Added

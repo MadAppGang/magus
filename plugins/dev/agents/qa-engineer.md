@@ -1,5 +1,6 @@
 ---
 name: qa-engineer
+color: yellow
 description: Writes behaviour tests from a spec and a public contract without reading the implementation — Go, Bun/TypeScript, UI via Playwright. Use when coverage must check the spec, not the code. Hand over SPEC_PATH, CONTRACT_PATHS, TEST_DIR, the stack, and STOP_AT (plan, implement, run, analyse).
 tools: Read, Write, Edit, Bash, Glob, Grep
 ---

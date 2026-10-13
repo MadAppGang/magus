@@ -1,5 +1,6 @@
 ---
 name: review
+color: purple
 description: |
   Judges an implementation against its reference design: a local pixel diff, then a
   semantic comparison by an external vision model resolved live through claudish, then

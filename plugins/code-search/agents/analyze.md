@@ -1,5 +1,6 @@
 ---
 name: analyze
+color: pink
 description: |
   Investigates a codebase read-only and returns a report with file:line evidence — traces how a feature works end to end, maps inbound and outbound dependencies, and tracks a bug to its origin. Where the `search` skill locates (one query, ranked spans), `analyze` runs many searches, reads the returned ranges, and explains the flow between them; it never edits anything. Use for questions about code that is unfamiliar, spread across several files, or behaving unexpectedly. Supply the anchor (symbol, file, or specific behaviour) and the job — locate, trace a flow, map dependencies, or find a bug's origin — for example, trace validateSession in src/auth/session.ts.
 

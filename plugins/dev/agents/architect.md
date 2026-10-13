@@ -1,5 +1,6 @@
 ---
 name: architect
+color: blue
 description: "Plans system architecture in any language, weighing trade-offs and naming what each choice costs. Use before building a new system or subsystem, for a major refactor, or when comparing two designs. Hand over the requirements and constraints, the paths of any existing code the design must fit, and whether to write the document to a named path or return it in-context (plan mode needs in-context)."
 tools: Read, Write, Bash, Glob, Grep
 skills: dev:universal-patterns

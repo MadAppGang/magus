@@ -1,5 +1,6 @@
 ---
 name: aggregator
+color: cyan
 description: "Merges several reviews of one target into the one report a gate reads, tagging each finding with its consensus and computing the verdict from the thresholds it is handed; also synthesises research findings across iterations. Hand over `REVIEWS:` (one path per line), `THRESHOLDS:` quoted verbatim and `OUTPUT:`, or `SESSION_PATH:` plus `ITERATION:` for research. It never opens the code the reviews judged. Use when two or more reviews of one target need one file; a single review needs no aggregator."
 tools: Read, Write, Glob, Grep
 skills: dev:aggregate-reviews

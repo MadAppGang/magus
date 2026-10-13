@@ -1,5 +1,6 @@
 ---
 name: frontend-developer
+color: pink
 description: Builds and revises React components against the project's design system — library components with Storybook stories, tokens only, screens compose. Use when implementing or reworking UI. Hand over the component path, theme and library locations, SESSION_PATH if any, and screenshot paths if any.
 tools: Read, Write, Edit, Bash, Glob, Grep
 skills: dev:design-system-guardrails

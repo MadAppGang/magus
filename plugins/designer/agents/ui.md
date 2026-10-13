@@ -1,5 +1,6 @@
 ---
 name: ui
+color: green
 description: |
   Creates a UI design from a brief: one HTML/CSS artboard per screen or component state
   under a caller-named output directory, a tokens summary, and a list of the library

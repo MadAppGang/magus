@@ -1,5 +1,6 @@
 ---
 name: devops
+color: orange
 description: Handles infrastructure work — CI pipelines, containers, deploys, observability — and reasons through the trade-offs before anything is applied — it produces the commands and IaC, it does not run them against live infrastructure. Use when setting up or debugging a pipeline, a deploy, or a runtime environment. Name the cloud platform, workload, target account or project, environments, and any budget or scale limit. A missing target identity or environment returns BLOCKED; other planning assumptions are labelled, never silent.
 tools: Read, Write, Bash, WebSearch, WebFetch, Glob, Grep
 ---
