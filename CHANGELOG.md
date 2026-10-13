@@ -4,6 +4,24 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [magus 7.10.1] - 2026-10-14
+
+### Fixed
+
+- **A tool another installer put on your machine shows as KEPT, not UNKNOWN.** `magus update`
+  listed mnemex and claudish installed with bun, uv from its own installer and the system zsh
+  as "could not be checked", with the file path and Homebrew's folder in each row. It knows
+  exactly what they are: installed, not by Homebrew, so it leaves them alone. The row now
+  says that in one line, they count as kept, and the "could not be checked" warning is gone.
+  A tool the profile pins to a version magus cannot deliver stays a warning.
+- **`magus update` no longer lists worktrees it cannot set up.** 7.10.0 printed one line per
+  worktree that needs a profile choice, on every run, telling the user to run the command they
+  had just run. Those were mostly old-branch, agent and bench worktrees. magus cannot set them
+  up from another folder, and the `setup` plugin already says so when Claude Code starts in
+  one. Worktrees it can set up are still set up, in one line.
+
+---
+
 ## [setup 1.6.0] - 2026-10-14
 
 ### Added
