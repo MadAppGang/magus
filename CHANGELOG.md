@@ -4,6 +4,54 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [code-search 8.5.0] - 2026-10-14
+
+### Added
+
+- **Bash `grep` now shows related code from the index.** In a project with a configured
+  engine, a recursive word search such as `grep -rn fetchUserProfile .` prints grep's own
+  output unchanged, then a labelled block of up to 10 related locations from the engine,
+  none of which contain the word. grep's output, error output and exit code are never
+  changed, and anything the merge does not handle passes straight through: pipes, redirecting
+  grep's output to a file, `$( )`, regex patterns, `-c`, background jobs, `set -x`.
+  `2>/dev/null` still merges. A session start adds one guarded
+  line to Claude Code's session environment file; nothing is installed machine-wide. Works
+  in bash 3.2 and later and in zsh.
+- **Grep-tool calls get the same block**, as context after the result, including in
+  subagents limited to `Read, Grep, Glob`.
+- **`setup.ts remove-rg-shim [--dry-run]`** deletes the `rg` shim that code-search 8.1 could
+  install at `~/.local/bin/rg`, and the `USE_BUILTIN_RIPGREP: "0"` user setting that came
+  with it. It touches only a file marked as code-search's. `/code-search:setup` reports the
+  shim when it is still there.
+
+### Changed
+
+- **On by default whenever an engine is configured.** Turn it off for a project with
+  `"code-search": { "grep": { "route": false } }` in settings, or anywhere with
+  `CODE_SEARCH_MERGE=0`. `CODE_SEARCH_MERGE_LOG=<file>` records why each `grep` call merged
+  or passed through.
+  It starts with the next session; to start now, reconnect `ca` in `/mcp`, then run `/clear`.
+- **The search redirect steps aside for `grep` while the merge is on.** With
+  `adoption.interceptBash` enabled, `grep` commands are no longer denied while the merge can
+  run. A recursive word search gets the block; a piped, regex or redirected `grep`, which was
+  redirected to `code_search` before, now runs as plain grep. `rg` and other search commands
+  are redirected as before.
+
+### Known limits
+
+- A sandboxed Bash call gets no block; its output is unchanged. When the sandbox is enabled
+  only by `--settings` or managed policy, the redirect hook cannot see it, so the command
+  runs unredirected and unmerged.
+- The block may name files that a `Read` deny rule hides from the Grep tool. Deny rules are
+  not applied to it.
+- Not available on Windows, and not yet verified on Linux in a real session. The Grep-tool
+  route is silent while `RIPGREP_CONFIG_PATH` is set.
+- zsh adds about 0.75 ms to every Bash call, bash about 2 ms.
+- In a ten-file bug-fix bench the block reached the agent in 0 of 20 sessions: the agents'
+  greps were piped, ran through `xargs`, or used a regex, and those never merge.
+
+---
+
 ## [magus 7.10.4] - 2026-10-14
 
 ### Changed

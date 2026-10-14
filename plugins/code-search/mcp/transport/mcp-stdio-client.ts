@@ -90,6 +90,25 @@ export interface McpClient {
   isPermanentlyUnready(): boolean;
   lastFailure(): BackendNote | undefined;
   dispose(): Promise<void>;
+  /** Monotonic count of crash-class failures (spawn, timeout, child gone) settled on ANY
+   *  call, counted or uncounted. A caller that compares it before and after its own call
+   *  learns whether the engine crashed under it, without reading the latch state. */
+  failureSeq(): number;
+  /** Consecutive counted failures, as the latch sees them. 0 means no backoff is armed. */
+  streak(): number;
+  /**
+   * A view sharing this client's child. Its calls behave exactly like the owner's, except
+   * that their failures and successes leave `streak()`, the backoff, the first failure,
+   * the latch and `lastFailure()` unchanged; a crash-class failure still raises
+   * `failureSeq()`. `dispose()` on the view is a no-op. `view.uncounted()` returns the view.
+   * One more difference: a view call that times out abandons its own request and leaves
+   * the shared child running, so it can never fail an owner call in flight on that child.
+   *
+   * It exists for opportunistic callers (the Grep merge) whose failures must not cost
+   * `code_search` its engine: the latch is reached after exactly as many counted failures
+   * as it would be without them.
+   */
+  uncounted(): McpClient;
 }
 
 const PROTOCOL_VERSION = "2024-11-05";
@@ -119,7 +138,20 @@ interface Pending {
   settle: (s: Settled) => void;
 }
 
-type StartOutcome = { ok: true } | { ok: false; note: BackendNote };
+/**
+ * A failure before anyone has decided whether it counts. Whether a failure moves the
+ * latch depends on WHO made the call (owner or uncounted view), not on what failed, so
+ * the note is built first and settled by the caller.
+ */
+interface Failure {
+  note: BackendNote;
+  /** Crash class: spawn failure, timeout, child gone. These are what the latch counts and
+   *  what `failureSeq` reports; a protocol failure leaves the child healthy. */
+  crash: boolean;
+}
+
+type StartOutcome = { ok: true } | { ok: false; failure: Failure };
+type Started = { ok: true } | { ok: false; note: BackendNote };
 
 export function makeMcpClient(spec: McpClientSpec, opts: McpClientOptions): McpClient {
   const pending = new Map<number, Pending>();
@@ -138,6 +170,9 @@ export function makeMcpClient(spec: McpClientSpec, opts: McpClientOptions): McpC
   let latched: BackendNote | undefined;
   let lastNote: BackendNote | undefined;
   let disposed = false;
+  // Every crash-class failure settled on any call, owner or view. Never reset: a caller
+  // compares two readings, so only monotonicity matters.
+  let failureCount = 0;
 
   // One crash is one failure however many calls were waiting on it. Without this,
   // three concurrent calls sharing a child would latch the engine on a single crash.
@@ -146,26 +181,37 @@ export function makeMcpClient(spec: McpClientSpec, opts: McpClientOptions): McpC
 
   // ---------------------------------------------------------------- notes
 
-  /** A note for a crash-class failure: the child's own stderr is the best evidence. */
-  function crashNote(what: string): BackendNote {
+  /** A crash-class failure: the child's own stderr is the best evidence. */
+  function crashFailure(what: string): Failure {
     const captured = stderrRing.trim();
-    return remember({
-      level: "error",
-      code: "backend_unavailable",
-      message: captured
-        ? `${spec.engineId} ${what}: ${captured}`
-        : `${spec.engineId} ${what}`,
-    });
+    return {
+      crash: true,
+      note: {
+        level: "error",
+        code: "backend_unavailable",
+        message: captured ? `${spec.engineId} ${what}: ${captured}` : `${spec.engineId} ${what}`,
+      },
+    };
   }
 
-  /** A note for a well-framed but unusable answer. The child is healthy, so its
-   *  stderr is noise here and is deliberately left out. */
-  function protocolNote(what: string): BackendNote {
-    return remember({
-      level: "error",
-      code: "backend_unavailable",
-      message: `${spec.engineId} ${what}`,
-    });
+  /** A well-framed but unusable answer. The child is healthy, so its stderr is noise
+   *  here and is deliberately left out. */
+  function protocolFailure(what: string): Failure {
+    return {
+      crash: false,
+      note: { level: "error", code: "backend_unavailable", message: `${spec.engineId} ${what}` },
+    };
+  }
+
+  /**
+   * Hand a failure to the caller that made the call. An owner call remembers it and, for
+   * a crash, counts it toward the latch. An uncounted call changes none of the latch
+   * state; it only raises `failureCount`, so its caller can still tell a crash happened.
+   */
+  function settle(failure: Failure, counted: boolean): BackendNote {
+    if (failure.crash) failureCount += 1;
+    if (!counted) return failure.note;
+    return failure.crash ? recordFailure(failure.note) : remember(failure.note);
   }
 
   function remember(note: BackendNote): BackendNote {
@@ -211,16 +257,16 @@ export function makeMcpClient(spec: McpClientSpec, opts: McpClientOptions): McpC
     firstFailure = undefined;
   }
 
-  function settleNote(s: Exclude<Settled, { kind: "ok" }>, label: string): BackendNote {
+  function failureOf(s: Exclude<Settled, { kind: "ok" }>, label: string): Failure {
     switch (s.kind) {
       case "timeout":
-        return recordFailure(crashNote(`did not answer ${label} within ${opts.callMs}ms`));
+        return crashFailure(`did not answer ${label} within ${opts.callMs}ms`);
       case "gone":
-        return recordFailure(crashNote(`${s.detail} during ${label}`));
+        return crashFailure(`${s.detail} during ${label}`);
       case "rpc-error":
-        return protocolNote(`refused ${label}: ${s.detail} (JSON-RPC ${s.code})`);
+        return protocolFailure(`refused ${label}: ${s.detail} (JSON-RPC ${s.code})`);
       case "malformed":
-        return protocolNote(`returned an unusable answer to ${label}: ${s.detail}`);
+        return protocolFailure(`returned an unusable answer to ${label}: ${s.detail}`);
     }
   }
 
@@ -304,26 +350,35 @@ export function makeMcpClient(spec: McpClientSpec, opts: McpClientOptions): McpC
     });
   }
 
-  function ensureChild(): Promise<StartOutcome> {
-    if (disposed) return Promise.resolve({ ok: false, note: protocolNote("client is disposed") });
-    if (latched) return Promise.resolve({ ok: false, note: remember(latched) });
-    if (starting) return starting;
-    if (child) return Promise.resolve({ ok: true });
+  /**
+   * One start attempt is shared by every caller waiting on it, owner and view alike, and
+   * each settles the outcome as its own: an owner sharing a view's failed start counts it
+   * (once per epoch, as before), and a view sharing an owner's counts nothing.
+   */
+  async function ensureChild(counted: boolean): Promise<Started> {
+    if (disposed) return { ok: false, note: settle(protocolFailure("client is disposed"), counted) };
+    if (latched) return { ok: false, note: counted ? remember(latched) : latched };
 
-    const attempt = doStart();
-    starting = attempt;
-    const clear = () => {
-      if (starting === attempt) starting = undefined;
-    };
-    void attempt.then(clear, clear);
-    return attempt;
+    let attempt = starting;
+    if (attempt === undefined) {
+      if (child) return { ok: true };
+      const fresh = doStart();
+      attempt = fresh;
+      starting = fresh;
+      const clear = () => {
+        if (starting === fresh) starting = undefined;
+      };
+      void fresh.then(clear, clear);
+    }
+    const outcome = await attempt;
+    return outcome.ok ? outcome : { ok: false, note: settle(outcome.failure, counted) };
   }
 
   async function doStart(): Promise<StartOutcome> {
     const wait = nextAttemptAt - Date.now();
     if (wait > 0) await delay(wait);
     if (disposed) {
-      return { ok: false, note: protocolNote("client is disposed") };
+      return { ok: false, failure: protocolFailure("client is disposed") };
     }
 
     startEpoch += 1;
@@ -336,7 +391,7 @@ export function makeMcpClient(spec: McpClientSpec, opts: McpClientOptions): McpC
         stdio: ["pipe", "pipe", "pipe"],
       });
     } catch (err) {
-      return { ok: false, note: recordFailure(crashNote(`could not be started (${describe(err)})`)) };
+      return { ok: false, failure: crashFailure(`could not be started (${describe(err)})`) };
     }
 
     // A hung engine may not hold the facade open. The child's own handle and each
@@ -379,16 +434,18 @@ export function makeMcpClient(spec: McpClientSpec, opts: McpClientOptions): McpC
 
     child = proc;
 
-    const init = await request("initialize", {
-      protocolVersion: PROTOCOL_VERSION,
-      capabilities: { tools: {} },
-      clientInfo: CLIENT_INFO,
-    });
+    // The handshake is the shared start, not anyone's call: a timeout here kills the
+    // child (and the failed start is settled per caller by `ensureChild`).
+    const init = await request(
+      "initialize",
+      { protocolVersion: PROTOCOL_VERSION, capabilities: { tools: {} }, clientInfo: CLIENT_INFO },
+      true,
+    );
 
     if (init.kind !== "ok") {
-      const note = settleNote(init, "the handshake");
+      const failure = failureOf(init, "the handshake");
       await killChild("handshake failed");
-      return { ok: false, note };
+      return { ok: false, failure };
     }
 
     // A handshake that completes is NOT evidence the engine works, so it does not
@@ -431,7 +488,14 @@ export function makeMcpClient(spec: McpClientSpec, opts: McpClientOptions): McpC
     p.settle({ kind: "ok", result: msg["result"] });
   }
 
-  function request(method: string, params: unknown): Promise<Settled> {
+  /**
+   * `counted` decides what a timeout does to the shared child. An owner timeout kills it.
+   * An uncounted (view) timeout only abandons its own request: killing the child would
+   * fail every owner request in flight on it, each as a counted crash, so Grep could cost
+   * `code_search` its engine by a route the latch rules otherwise forbid. A child that is
+   * really hung is then killed by the next owner timeout, which is owner evidence.
+   */
+  function request(method: string, params: unknown, counted: boolean): Promise<Settled> {
     const proc = child;
     const stdin = proc?.stdin;
     if (!proc || !stdin) {
@@ -446,7 +510,8 @@ export function makeMcpClient(spec: McpClientSpec, opts: McpClientOptions): McpC
           resolve({ kind: "timeout" });
           // A server that missed one deadline is not trustworthy for the next
           // request, so the child goes rather than the request being retried on it.
-          void killChild(`timed out on ${method}`);
+          // A late reply to an abandoned id finds no pending entry and is dropped.
+          if (counted) void killChild(`timed out on ${method}`);
         }, opts.callMs),
       );
 
@@ -481,17 +546,22 @@ export function makeMcpClient(spec: McpClientSpec, opts: McpClientOptions): McpC
 
   // ---------------------------------------------------------------- surface
 
-  async function listTools(): Promise<ListToolsResult> {
-    const started = await ensureChild();
+  async function listTools(counted: boolean): Promise<ListToolsResult> {
+    const started = await ensureChild(counted);
     if (!started.ok) return started;
 
-    const s = await request("tools/list", {});
-    if (s.kind !== "ok") return { ok: false, note: settleNote(s, "tools/list") };
-    resetFailures();
+    const s = await request("tools/list", {}, counted);
+    if (s.kind !== "ok") return { ok: false, note: settle(failureOf(s, "tools/list"), counted) };
+    // An uncounted success is no evidence for the owner's streak either way: clearing it
+    // would let an opportunistic caller hold a failing engine back from its latch.
+    if (counted) resetFailures();
 
     const result = s.result;
     if (!isRecord(result) || !Array.isArray(result["tools"])) {
-      return { ok: false, note: protocolNote("returned a tools/list result with no tools array") };
+      return {
+        ok: false,
+        note: settle(protocolFailure("returned a tools/list result with no tools array"), counted),
+      };
     }
 
     const tools: UpstreamTool[] = [];
@@ -510,19 +580,19 @@ export function makeMcpClient(spec: McpClientSpec, opts: McpClientOptions): McpC
     return { ok: true, tools };
   }
 
-  async function call(tool: string, args: unknown): Promise<CallResult> {
-    const started = await ensureChild();
+  async function call(tool: string, args: unknown, counted: boolean): Promise<CallResult> {
+    const started = await ensureChild(counted);
     if (!started.ok) return started;
 
-    const s = await request("tools/call", { name: tool, arguments: args ?? {} });
-    if (s.kind !== "ok") return { ok: false, note: settleNote(s, tool) };
-    resetFailures();
+    const s = await request("tools/call", { name: tool, arguments: args ?? {} }, counted);
+    if (s.kind !== "ok") return { ok: false, note: settle(failureOf(s, tool), counted) };
+    if (counted) resetFailures();
 
     const result = s.result;
     if (!isRecord(result) || !("content" in result)) {
       return {
         ok: false,
-        note: protocolNote(`returned a ${tool} result that is not an MCP tool result`),
+        note: settle(protocolFailure(`returned a ${tool} result that is not an MCP tool result`), counted),
       };
     }
     return { ok: true, content: result["content"], isError: result["isError"] === true };
@@ -546,12 +616,34 @@ export function makeMcpClient(spec: McpClientSpec, opts: McpClientOptions): McpC
   };
   registerTeardown(teardown);
 
+  const isPermanentlyUnready = (): boolean => latched !== undefined;
+  const lastFailure = (): BackendNote | undefined => lastNote;
+  const failureSeq = (): number => failureCount;
+  const streak = (): number => consecutiveFailures;
+
+  // The view shares the child, the pending map and the start attempt; only the
+  // bookkeeping after a call differs. Its dispose is a no-op because the child is the
+  // owner's to stop.
+  const view: McpClient = {
+    listTools: () => listTools(false),
+    call: (tool, args) => call(tool, args, false),
+    isPermanentlyUnready,
+    lastFailure,
+    dispose: () => Promise.resolve(),
+    failureSeq,
+    streak,
+    uncounted: () => view,
+  };
+
   return {
-    listTools,
-    call,
-    isPermanentlyUnready: () => latched !== undefined,
-    lastFailure: () => lastNote,
+    listTools: () => listTools(true),
+    call: (tool, args) => call(tool, args, true),
+    isPermanentlyUnready,
+    lastFailure,
     dispose,
+    failureSeq,
+    streak,
+    uncounted: () => view,
   };
 }
 

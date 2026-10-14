@@ -20,8 +20,9 @@ Done when the step 10 report is printed.
 command yourself. The CLI refuses the unsafe cases a hand edit walks into: a malformed
 settings file, a value another settings layer overrides.
 
-Setup does not touch ripgrep. `Grep` runs whatever ripgrep Claude Code chooses, and nothing
-here installs a shim or sets `USE_BUILTIN_RIPGREP`.
+Setup installs nothing for ripgrep and never sets `USE_BUILTIN_RIPGREP`. The one ripgrep
+change it can make is removing the `rg` shim code-search 8.1 shipped, and only when the user
+says yes (step 8).
 
 ## Names used below
 
@@ -54,6 +55,10 @@ step. Do not retry with other flags, work around a refusal, or run a remedy with
 Read `data.report`: `headline`, `findings[]` (`code`, `level`, `message`, `remedy`),
 `engine`, `setup`, `enabledIn`, `engineReport`. It runs the engine's version probe and
 looks up the latest releases, so allow about 30 seconds.
+
+Keep `data.grepRoute` for steps 8 and 10: `gate` (`open`, or why the Bash `grep` route is
+off), `summary`, `oracleUnavailable`, `rgShim` and `ripgrepEnv`. Every later `status` call
+returns it again; use the latest.
 
 ## 2. Decide where to start
 
@@ -205,7 +210,7 @@ to test them before a restart.
 
 On `not_served`, show the notes from the message. The usual cause is a missing index.
 
-## 8. Offer upgrades
+## 8. Offer upgrades, and removing the 8.1 rg shim
 
 For each `info` finding from step 1 (skip the rest):
 
@@ -217,6 +222,34 @@ Run the dry run first (`<cli> upgrade <id> --dry-run --json --project "<project>
 and show `actions[0]`. Say what changes, ask, then run it without `--dry-run`, with a Bash
 timeout of 600000. `installed_elsewhere` means the binary was installed some other way:
 show the remedy and do not force it.
+
+**The 8.1 rg shim.** Skip this, with no line, unless `data.grepRoute.rgShim` is set. Then
+say in text: code-search 8.1 shipped an `rg` shim at `~/.local/bin/rg`, ahead of every other
+`rg` on PATH, for every Claude Code session and terminal on this machine. It never reached an
+engine, and this version neither ships nor maintains it. Removing it deletes that file and,
+only because the shim was removed, the `USE_BUILTIN_RIPGREP: "0"` that pointed the Grep tool
+at it in `~/.claude/settings.json`. Show `actions` from the dry run:
+
+```
+<cli> remove-rg-shim --dry-run --json --project "<project>"
+```
+
+Ask: `Remove it` or `Leave it`. On yes:
+
+```
+<cli> remove-rg-shim --json --project "<project>"
+```
+
+| `failure.code` | Do |
+|---|---|
+| `rg_shim_foreign` | Another tool owns `~/.local/bin/rg`; the message says why it is not ours. Nothing changed, and setup never touches it. |
+| `rg_shim_changed`, `settings_changed_concurrently` | Something changed the file meanwhile. Say so and ask before running it again. |
+| `rg_shim_remove_failed`, or any `settings_*` code | Show the path and message, and stop. A message starting `Removed` means the shim is gone and the setting was not deleted. |
+
+On success the summary ends "restart sessions that use the Grep tool"; carry that to step 10.
+
+If `data.grepRoute.ripgrepEnv` is set instead, show that line verbatim and change nothing:
+someone set `USE_BUILTIN_RIPGREP` without a code-search shim, and it is theirs.
 
 ## 9. Project CLAUDE.md
 
@@ -234,14 +267,25 @@ Engine      <id> | none (by choice) | dismissed          layer: <layer>
             installed: <path> | already installed | skipped
 Index       built | already present | not needed | skipped | failed: <code>
 Verify      served by <id> | not served: <reason> | not run
+Grep route  on | off: <reason>
 Upgrades    <what was upgraded, or "none offered">
+rg shim     removed | left in place | none
 CLAUDE.md   added | replaced | already present | skipped
 ```
+
+`Grep route` is `on` when `data.grepRoute.gate` is `open`. When `data.grepRoute.summary` is
+set, print it verbatim as its own line. It reads:
+
+> Bash `grep` appends related locations from the index, starting with your next session. To start now: reconnect `ca` in `/mcp`, then run `/clear`. Turn it off with `grep.route: false` in settings, or `CODE_SEARCH_MERGE=0` on one command. It does not run inside Claude Code's Bash sandbox. The block may name files that a Read deny rule hides from the Grep tool.
+
+When `data.grepRoute.oracleUnavailable` is set, print it too, and say that Bash `grep` gets
+nothing appended until a native `claude` or an `rg` binary is reachable.
 
 Then one line on what applies the change:
 
 - the engine settings or the index changed: restart Claude Code, or reconnect the
   code-search `ca` server in `/mcp`. The running server read its settings at startup.
+- the 8.1 rg shim was removed: restart sessions that use the Grep tool.
 - nothing changed: nothing to do.
 
 If setup began from the session-start prompt, go back to the user's original task. Until

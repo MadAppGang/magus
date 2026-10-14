@@ -31,6 +31,15 @@ export interface CodeLocation {
   file: string;
   /** 1-based, inclusive. */
   line: number;
+  /** The engine's own number for this hit, before any clamp and before any base change.
+   *  `line` is clamped to 1 for rendering, which makes an engine's line 0 and line 1
+   *  indistinguishable; the Grep merge needs to tell them apart, because it emits a
+   *  line from the file itself rather than a pointer the agent then opens.
+   *
+   *  ABSENT when the engine gave no line, when the line is a fallback the adapter
+   *  supplied, or for a file-level row. Never synthesised: absence makes a consumer
+   *  that needs an exact line drop the hit, which is the safe direction. */
+  rawLine?: number;
   endLine?: number;
   /** OMIT when the engine does not make it knowable. Absence means "unstated", never
    *  "declaration" — an adapter that cannot tell must not guess, because a wrong anchor
@@ -98,10 +107,6 @@ export interface BackendNote {
      *  what the file says. Coding this as backend_unavailable would make a typo in
      *  settings.local.json indistinguishable from a crashed engine. */
     | "settings_ignored"
-    /** The Grep tool's ripgrep routing is not what the settings imply — shim missing,
-     *  shadowed on PATH or by a shell function, or repaired but not yet live. Same
-     *  argument as settings_ignored: this is not the engine. */
-    | "grep_routing"
     /** Setup is incomplete — no engine chosen, or the engine or its index missing — and
      *  the user has not dismissed the prompt. Carries
      *  what to read and what to run, so the model can offer setup or relay the note. */
@@ -194,6 +199,10 @@ export interface Engine {
   readonly id: string; // /^[a-z][a-z0-9]{1,11}$/ — no underscores
   readonly displayName: string;
   readonly capabilities: Capabilities;
+  /** Line base of `rawLine` when this engine deviates from the 1-based contract.
+   *  ABSENT means 1. Only a measured deviation is declared here. `line` itself is never
+   *  base-corrected, so what `code_search` renders does not depend on this field. */
+  readonly lineBase?: 0;
   probe(): Promise<BackendHealth>;
   passthroughs?(): Promise<PassthroughTool[]>;
   callPassthrough?(name: string, args: unknown): Promise<unknown>;

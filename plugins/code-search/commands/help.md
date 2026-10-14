@@ -50,6 +50,18 @@ Until setup is done, Claude offers it once per session, before it first searches
 codebase by any means, `Grep` included. The three answers are set up now, not now, or
 ignore for this project.
 
+## Bash `grep` and the index
+
+Once an engine is configured, setup's report says:
+
+> Bash `grep` appends related locations from the index, starting with your next session. To start now: reconnect `ca` in `/mcp`, then run `/clear`. Turn it off with `grep.route: false` in settings, or `CODE_SEARCH_MERGE=0` on one command. It does not run inside Claude Code's Bash sandbox. The block may name files that a Read deny rule hides from the Grep tool.
+
+grep's own output and exit code never change; the appended block comes after them, labelled.
+
+code-search 8.1 shipped an optional `rg` shim at `~/.local/bin/rg`. This version does not.
+If that file is still there, setup reports it and offers `remove-rg-shim`, which deletes it
+and then the `USE_BUILTIN_RIPGREP: "0"` that pointed the Grep tool at it.
+
 ---
 
 ## Agent (1)

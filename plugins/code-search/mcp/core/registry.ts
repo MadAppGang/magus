@@ -544,7 +544,8 @@ function resolveEngine(
   const shipped = input.availableEngines.map((each) => `"${each}"`).join(", ");
   const shippedClause = shipped === "" ? "" : ` This build ships: ${shipped}.`;
 
-  const spec = input.settings.engines[id];
+  // Own properties only: an id like `constructor` names an Object.prototype member.
+  const spec = Object.hasOwn(input.settings.engines, id) ? input.settings.engines[id] : undefined;
   if (spec === undefined) {
     notes.push({
       level: "error",

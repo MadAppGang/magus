@@ -164,13 +164,14 @@ describe("the repair reaches upstream answers", () => {
       ...p.paths,
       withText: false,
     });
-    expect(read.hits).toEqual([{ file: "utils/file-locking.ts", line: 42 }]);
+    // `rawLine` is the engine's own number, recorded beside the clamped `line`.
+    expect(read.hits).toEqual([{ file: "utils/file-locking.ts", line: 42, rawLine: 42 }]);
     expect(read.dropped).toBe(0);
   });
 
   test("locationsFromText leaves an unresolvable reference honest", () => {
     const p = predicate([]);
     const hits = locationsFromText("see src/main.ts:10 for the entry point", p.paths);
-    expect(hits).toEqual([{ file: "src/main.ts", line: 10 }]);
+    expect(hits).toEqual([{ file: "src/main.ts", line: 10, rawLine: 10 }]);
   });
 });

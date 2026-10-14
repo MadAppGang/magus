@@ -76,6 +76,14 @@ async function spawnHook(
   // An inherited developer override must never enable tracing in these tests.
   delete env.CA_HOOK_TRACE;
 
+  // Hermetic against the session the tests run in (review round 3): inside Claude Code
+  // these are exported, and the hook would read the real project's settings
+  // (CLAUDE_PROJECT_DIR wins over the payload cwd), the real session's socket, or a real
+  // kill switch, instead of this test's temp tree.
+  for (const name of ["CLAUDE_PROJECT_DIR", "CLAUDE_ENV_FILE", "CODE_SEARCH_SESSION_PID", "CODE_SEARCH_MERGE", "CODE_SEARCH_MERGE_LOG", "RIPGREP_CONFIG_PATH"]) {
+    delete env[name];
+  }
+
   if (options.traceOverride !== undefined) {
     env.CA_HOOK_TRACE = options.traceOverride;
   }
@@ -187,7 +195,8 @@ describe("process contract", () => {
   test("allows when an engine is configured but interceptBash is absent", async () => {
     await writeSettings(project, "settings.json", {
       "code-search": {
-        engine: "configured-engine",
+        engine: "mnemex",
+        engines: { mnemex: { command: "true" } },
       },
     });
 
@@ -199,7 +208,8 @@ describe("process contract", () => {
   test("allows when interceptBash is not exactly true", async () => {
     await writeSettings(project, "settings.json", {
       "code-search": {
-        engine: "configured-engine",
+        engine: "mnemex",
+        engines: { mnemex: { command: "true" } },
         adoption: {
           interceptBash: "true",
         },
@@ -228,7 +238,8 @@ describe("process contract", () => {
   test("denial output is one JSON object directing the caller to code_search", async () => {
     await writeSettings(project, "settings.json", {
       "code-search": {
-        engine: "configured-engine",
+        engine: "mnemex",
+        engines: { mnemex: { command: "true" } },
         adoption: {
           interceptBash: true,
         },
@@ -243,7 +254,8 @@ describe("process contract", () => {
   test("an unreadable JSON payload allows and exits zero", async () => {
     await writeSettings(project, "settings.json", {
       "code-search": {
-        engine: "configured-engine",
+        engine: "mnemex",
+        engines: { mnemex: { command: "true" } },
         adoption: {
           interceptBash: true,
         },
@@ -268,7 +280,8 @@ describe("process contract", () => {
   test("a payload missing the command allows and exits zero", async () => {
     await writeSettings(project, "settings.json", {
       "code-search": {
-        engine: "configured-engine",
+        engine: "mnemex",
+        engines: { mnemex: { command: "true" } },
         adoption: {
           interceptBash: true,
         },
@@ -292,7 +305,8 @@ describe("diagnostic tracing is strictly opt-in", () => {
   test("arming interception does not create a plaintext command log by default", async () => {
     await writeSettings(project, "settings.json", {
       "code-search": {
-        engine: "configured-engine",
+        engine: "mnemex",
+        engines: { mnemex: { command: "true" } },
         adoption: {
           interceptBash: true,
         },
@@ -318,7 +332,8 @@ describe("diagnostic tracing is strictly opt-in", () => {
 
     await writeSettings(project, "settings.json", {
       "code-search": {
-        engine: "configured-engine",
+        engine: "mnemex",
+        engines: { mnemex: { command: "true" } },
         adoption: {
           interceptBash: false,
           traceFile: tracePath,
@@ -339,7 +354,8 @@ describe("diagnostic tracing is strictly opt-in", () => {
 
     await writeSettings(project, "settings.json", {
       "code-search": {
-        engine: "configured-engine",
+        engine: "mnemex",
+        engines: { mnemex: { command: "true" } },
         adoption: {
           interceptBash: false,
           traceFile: tracePath,
@@ -359,7 +375,8 @@ describe("diagnostic tracing is strictly opt-in", () => {
 
     await writeSettings(project, "settings.json", {
       "code-search": {
-        engine: "configured-engine",
+        engine: "mnemex",
+        engines: { mnemex: { command: "true" } },
         adoption: {
           interceptBash: false,
         },
@@ -380,7 +397,8 @@ describe("configuration layers are merged", () => {
   test("merges project engine with local interceptBash", async () => {
     await writeSettings(project, "settings.json", {
       "code-search": {
-        engine: "configured-engine",
+        engine: "mnemex",
+        engines: { mnemex: { command: "true" } },
       },
     });
 
@@ -400,7 +418,8 @@ describe("configuration layers are merged", () => {
   test("merges HOME engine with project-local interceptBash", async () => {
     await writeSettings(home, "settings.json", {
       "code-search": {
-        engine: "configured-engine",
+        engine: "mnemex",
+        engines: { mnemex: { command: "true" } },
       },
     });
 
@@ -423,7 +442,8 @@ describe("configuration layers are merged", () => {
 
     await writeSettings(project, "settings.json", {
       "code-search": {
-        engine: "configured-engine",
+        engine: "mnemex",
+        engines: { mnemex: { command: "true" } },
         adoption: {
           interceptBash: true,
         },
@@ -447,7 +467,8 @@ describe("configuration layers are merged", () => {
   test("the local layer wins per adoption key and can turn interception off", async () => {
     await writeSettings(project, "settings.json", {
       "code-search": {
-        engine: "configured-engine",
+        engine: "mnemex",
+        engines: { mnemex: { command: "true" } },
         adoption: {
           interceptBash: true,
         },
@@ -470,7 +491,8 @@ describe("configuration layers are merged", () => {
   test("project settings win over HOME settings per key", async () => {
     await writeSettings(home, "settings.json", {
       "code-search": {
-        engine: "home-engine",
+        engine: "serena",
+        engines: { serena: { command: "true" } },
         adoption: {
           interceptBash: true,
         },
@@ -493,7 +515,8 @@ describe("configuration layers are merged", () => {
   test("project-local settings win over both earlier layers per key", async () => {
     await writeSettings(home, "settings.json", {
       "code-search": {
-        engine: "home-engine",
+        engine: "serena",
+        engines: { serena: { command: "true" } },
         adoption: {
           interceptBash: true,
         },
@@ -502,7 +525,8 @@ describe("configuration layers are merged", () => {
 
     await writeSettings(project, "settings.json", {
       "code-search": {
-        engine: "project-engine",
+        engine: "codegraph",
+        engines: { codegraph: { command: "true" } },
         adoption: {
           interceptBash: true,
         },

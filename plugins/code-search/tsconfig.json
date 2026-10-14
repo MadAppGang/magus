@@ -29,6 +29,16 @@
   // scripts/ is the setup CLI; mcp/** already covers mcp/setup/. Before scripts/ was listed
   // here it compiled nowhere, and a type error in it reached users unseen. The same holds
   // for the setup-offer hook. The other hooks are left out: they predate this list, and
-  // magus-version-check.ts is a byte-identical copy owned by plugins/dev.
-  "include": ["mcp/**/*.ts", "scripts/**/*.ts", "hooks/offer-setup*.ts"]
+  // magus-version-check.ts is a byte-identical copy owned by plugins/dev. The grep-merge
+  // hooks, the asset tests and their harness are new with the search merge and compile here.
+  "include": [
+    "mcp/**/*.ts",
+    "scripts/**/*.ts",
+    "hooks/offer-setup*.ts",
+    "hooks/grep-merge-env*.ts",
+    "hooks/grep-tool-merge*.ts",
+    "assets/**/*.ts",
+    "test-support/**/*.ts",
+    "blind/**/*.ts"
+  ]
 }

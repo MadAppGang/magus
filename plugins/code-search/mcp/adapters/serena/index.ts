@@ -348,6 +348,10 @@ export function create(spec: EngineSpec, ctx: AdapterContext): Engine {
   return {
     id: ID,
     displayName: DISPLAY_NAME,
+    // Measured (header): serena's lines are 0-based. Declared rather than corrected, so
+    // `line` still passes through untouched and only a consumer that needs the exact
+    // line, reading `rawLine`, applies the base.
+    lineBase: 0,
     capabilities,
     probe,
     dispose: () => disposeQuietly(ctx.client),

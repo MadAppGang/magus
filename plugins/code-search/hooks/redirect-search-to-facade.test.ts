@@ -10,9 +10,13 @@
  * Run: bun test plugins/code-search/hooks/
  */
 
-import { describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { spawnSync } from "node:child_process";
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { createServer, type Server } from "node:net";
+import { join } from "node:path";
 
-import { discoveryTarget } from "./redirect-search-to-facade";
+import { discoveryTarget, grepMergeStepsAside } from "./redirect-search-to-facade";
 
 describe("redirects a discovery search — 'where is this symbol'", () => {
   test("a bare identifier is the case this hook exists for", () => {
@@ -193,4 +197,216 @@ describe("discoveryTarget with listIsLocation", () => {
     expect(discoveryTarget('grep -rln "withFileLock" --include="*.ts" .')).toBeUndefined();
     expect(discoveryTarget("rg withFileLock")).toBe("withFileLock");
   });
+});
+
+/**
+ * D11 — WHILE THE SEARCH MERGE IS ON, `grep` IS LEFT ALONE.
+ *
+ * A Bash `grep` in a session with the merge on already ends with the index's related
+ * locations, so a redirect to `code_search` only costs the agent a round trip. The step
+ * aside is for the `grep` binary alone: `rg` and the rest are judged as before, and with
+ * the gate closed `grep` is judged as before too.
+ */
+describe("grepMergeStepsAside", () => {
+  test("grep, and only grep, steps aside while the gate is open and the socket exists", () => {
+    expect(grepMergeStepsAside("grep -rn saveSettings src/", undefined, true)).toBe(true);
+    expect(grepMergeStepsAside("  grep saveSettings", undefined, true)).toBe(true);
+    for (const cmd of ["rg saveSettings", "egrep -r saveSettings .", "fgrep saveSettings", "grep-x saveSettings", "ag saveSettings"]) {
+      expect(grepMergeStepsAside(cmd, undefined, true)).toBe(false);
+    }
+  });
+
+  test("a closed gate, or no session socket, steps aside for nothing", () => {
+    for (const why of ["win32", "kill-switch", "route-off", "no-engine"] as const) {
+      expect(grepMergeStepsAside("grep -rn saveSettings src/", why, true)).toBe(false);
+    }
+    expect(grepMergeStepsAside("grep -rn saveSettings src/", undefined, false)).toBe(false);
+  });
+});
+
+describe("the hook process, with the merge gate", () => {
+  let root: string;
+  let home: string;
+  let project: string;
+  let trace: string;
+  let server: Server | undefined;
+  let session = 0;
+
+  const HOOK = join(import.meta.dir, "redirect-search-to-facade.ts");
+  const uid = process.getuid?.() ?? 0;
+
+  beforeEach(() => {
+    // Under /tmp: the session socket path must stay within 100 bytes.
+    root = realpathSync(mkdtempSync("/tmp/cs-redirect-"));
+    home = join(root, "home");
+    project = join(root, "project");
+    trace = join(root, "trace.log");
+    mkdirSync(join(home, ".claude"), { recursive: true });
+    mkdirSync(join(project, ".claude"), { recursive: true });
+    server = undefined;
+  });
+
+  afterEach(async () => {
+    const s = server;
+    if (s !== undefined) await new Promise<void>((resolve) => s.close(() => resolve()));
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  /** This session's socket: the hook is spawned by this process, so its ppid is ours. */
+  async function sessionSocket(pid = process.pid): Promise<void> {
+    const dir = join(root, `code-search-${uid}`);
+    mkdirSync(dir, { recursive: true, mode: 0o700 });
+    chmodSync(dir, 0o700);
+    const s = createServer();
+    server = s;
+    await new Promise<void>((resolve) => s.listen(join(dir, `${pid}.sock`), () => resolve()));
+  }
+
+  function settings(extra: Record<string, unknown> = {}, env?: Record<string, string>, top: Record<string, unknown> = {}): void {
+    const block = {
+      engine: "mnemex",
+      engines: { mnemex: { command: "true" } },
+      adoption: { interceptBash: true, traceFile: trace },
+      ...extra,
+    };
+    writeFileSync(
+      join(project, ".claude", "settings.json"),
+      JSON.stringify({ "code-search": block, ...(env ? { env } : {}), ...top }),
+    );
+  }
+
+  function decide(
+    command: string,
+    env: Record<string, string> = {},
+    o: { cwd?: string; input?: Record<string, unknown> } = {},
+  ): "allow" | "deny" {
+    session += 1;
+    const payload = {
+      session_id: `s-${process.pid}-${session}`,
+      cwd: o.cwd ?? project,
+      tool_name: "Bash",
+      tool_input: { command, ...o.input },
+    };
+    const r = spawnSync(process.execPath, ["--env-file=/dev/null", "--config=/dev/null", HOOK], {
+      cwd: project,
+      env: { PATH: process.env["PATH"] ?? "/usr/bin:/bin", HOME: home, TMPDIR: root, ...env },
+      input: JSON.stringify(payload),
+      encoding: "utf8",
+    });
+    expect(r.status).toBe(0);
+    return r.stdout.includes('"permissionDecision":"deny"') ? "deny" : "allow";
+  }
+
+  test("gate open and this session's socket present: grep is allowed with a trace line; rg is still redirected", async () => {
+    settings();
+    await sessionSocket();
+    expect(decide("grep -rn saveSettings src/")).toBe("allow");
+    expect(readFileSync(trace, "utf8")).toContain("-> allowed: grep merge active");
+    expect(decide("rg saveSettings")).toBe("deny");
+  });
+
+  // Review round 1, internal M3: an open gate with no socket means the merge cannot run
+  // (sandbox, no TMPDIR, server not bound), so the redirect must not step aside.
+  test("gate open but no session socket: grep is redirected as before", () => {
+    settings();
+    expect(decide("grep -rn saveSettings src/")).toBe("deny");
+  });
+
+  test.each([
+    ["grep.route false", { grep: { route: false } }, undefined, {}],
+    ["CODE_SEARCH_MERGE \"0\" in settings env", {}, { CODE_SEARCH_MERGE: "0" }, {}],
+    ["CODE_SEARCH_MERGE=0 in the hook's environment", {}, undefined, { CODE_SEARCH_MERGE: "0" }],
+  ] as const)("gate closed (%s), socket present: grep is redirected as before", async (_name, extra, env, procEnv) => {
+    settings(extra, env);
+    await sessionSocket();
+    expect(decide("grep -rn saveSettings src/", { ...procEnv })).toBe("deny");
+  });
+
+  // Review round 3, Codex CRITICAL: an engine id with no `engines` entry builds no engine,
+  // so there is no facade to redirect to; the redirect must judge "configured" by gate.ts's
+  // one rule, not by a non-empty engine string, and leave every search alone.
+  test("an engine id with no engines entry: grep and rg are both allowed", () => {
+    writeFileSync(
+      join(project, ".claude", "settings.json"),
+      JSON.stringify({ "code-search": { engine: "typo", engines: {}, adoption: { interceptBash: true, traceFile: trace } } }),
+    );
+    expect(decide("grep -rn saveSettings src/")).toBe("allow");
+    expect(decide("rg saveSettings")).toBe("allow");
+  });
+
+  // Review round 5, Codex CRITICAL: an id with an `engines` entry that names no adapter
+  // this plugin ships resolves to nothing in the server (`resolveEngine`), so no facade and
+  // no merge exist; the redirect must leave every search alone.
+  test("an engine id this plugin does not ship, with an entry: grep and rg are both allowed", () => {
+    writeFileSync(
+      join(project, ".claude", "settings.json"),
+      JSON.stringify({ "code-search": { engine: "fake", engines: { fake: { command: "true" } }, adoption: { interceptBash: true, traceFile: trace } } }),
+    );
+    expect(decide("grep -rn saveSettings src/")).toBe("allow");
+    expect(decide("rg saveSettings")).toBe("allow");
+  });
+
+  // Review round 2, MEDIUM (three reviewers): under the Bash sandbox the shell cannot reach
+  // the socket the hook can see (P0-9), so the merge does not run there and the redirect
+  // must not step aside, unless this call runs outside the sandbox.
+  test("sandbox enabled in settings, socket present: grep is redirected; dangerouslyDisableSandbox: steps aside", async () => {
+    settings({}, undefined, { sandbox: { enabled: true } });
+    await sessionSocket();
+    expect(decide("grep -rn saveSettings src/")).toBe("deny");
+    expect(decide("grep -rn saveSettings src/", {}, { input: { dangerouslyDisableSandbox: true } })).toBe("allow");
+  });
+
+  test("a later settings layer turning the sandbox off wins", async () => {
+    settings({}, undefined, { sandbox: { enabled: true } });
+    writeFileSync(join(project, ".claude", "settings.local.json"), JSON.stringify({ sandbox: { enabled: false } }));
+    await sessionSocket();
+    expect(decide("grep -rn saveSettings src/")).toBe("allow");
+  });
+
+  // Review round 2, Codex HIGH: the launcher no longer execs bun, so the claude pid is
+  // passed in CODE_SEARCH_SESSION_PID rather than read as the hook's parent.
+  test("CODE_SEARCH_SESSION_PID names the session whose socket is checked", async () => {
+    settings();
+    await sessionSocket(4242);
+    expect(decide("grep -rn saveSettings src/")).toBe("deny");
+    expect(decide("grep -rn saveSettings src/", { CODE_SEARCH_SESSION_PID: "4242" })).toBe("allow");
+  });
+
+  // Review round 2, internal LOW: settings are the project's (CLAUDE_PROJECT_DIR), as the
+  // merge hooks read them, not the payload cwd, which a `cd` can move into a subdirectory.
+  test("settings come from CLAUDE_PROJECT_DIR when the payload cwd is a subdirectory", async () => {
+    settings();
+    await sessionSocket();
+    const sub = join(project, "src");
+    mkdirSync(sub);
+    expect(decide("rg saveSettings", { CLAUDE_PROJECT_DIR: project }, { cwd: sub })).toBe("deny");
+    expect(decide("grep -rn saveSettings src/", { CLAUDE_PROJECT_DIR: project }, { cwd: sub })).toBe("allow");
+  });
+
+  // Review round 4, LOW: the watchdog must be able to fire. A payload that never ends
+  // (stdin held open) ends in an allow inside the 5 s hooks.json timeout, never a hook error.
+  test("stdin held open: the hook exits 0 with no decision inside the hooks.json timeout", async () => {
+    settings();
+    const { spawn } = await import("node:child_process");
+    const child = spawn(process.execPath, ["--env-file=/dev/null", "--config=/dev/null", HOOK], {
+      cwd: project,
+      env: { PATH: process.env["PATH"] ?? "/usr/bin:/bin", HOME: home, TMPDIR: root },
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+    child.stdin.write('{"tool_name":"Bash",');
+    let out = "";
+    child.stdout.on("data", (c: Buffer) => (out += c.toString("utf8")));
+    const started = Date.now();
+    const code = await new Promise<number | null | "hung">((resolve) => {
+      const t = setTimeout(() => resolve("hung"), 5_000);
+      child.on("exit", (c) => {
+        clearTimeout(t);
+        resolve(c);
+      });
+    });
+    if (code === "hung") child.kill("SIGKILL");
+    child.stdin.destroy();
+    expect({ code, deny: out.includes('"deny"') }).toEqual({ code: 0, deny: false });
+    expect(Date.now() - started).toBeLessThan(5_000);
+  }, 10_000);
 });

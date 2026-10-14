@@ -67,6 +67,8 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { homedir, tmpdir } from "node:os";
 
+import type { GateClosed } from "../mcp/grep/gate";
+
 /** Search binaries worth intercepting. `ls` is deliberately absent: `ls -R` is a
  *  directory question, and the facade has no answer shaped like a directory listing. */
 const SEARCH_BINARIES = /^\s*(?:rg|grep|egrep|fgrep|ag|ack|ripgrep)\b/u;
@@ -252,20 +254,18 @@ function deny(reason: string): never {
  *
  * Returns undefined when no layer carried a block at all, which the caller treats as
  * "not configured for this project" and allows.
+ *
+ * It takes the layer TEXTS (`readLayers`), read once per call and shared with the merge
+ * gate and the sandbox check (review round 2), so all three judge one view of settings.
  */
-function readBlock(cwd: string): Record<string, unknown> | undefined {
-  const layers = [
-    join(homedir(), ".claude", "settings.json"),
-    join(cwd, ".claude", "settings.json"),
-    join(cwd, ".claude", "settings.local.json"),
-  ];
+function readBlock(texts: readonly (string | undefined)[]): Record<string, unknown> | undefined {
   const merged: Record<string, unknown> = {};
   const adoption: Record<string, unknown> = {};
   let found = false;
-  for (const path of layers) {
-    if (!existsSync(path)) continue;
+  for (const text of texts) {
+    if (text === undefined) continue;
     try {
-      const parsed: unknown = JSON.parse(readFileSync(path, "utf8"));
+      const parsed: unknown = JSON.parse(text);
       if (typeof parsed !== "object" || parsed === null) continue;
       const block = (parsed as Record<string, unknown>)["code-search"];
       if (typeof block !== "object" || block === null) continue;
@@ -287,6 +287,113 @@ function readBlock(cwd: string): Record<string, unknown> | undefined {
   if (!found) return undefined;
   merged["adoption"] = adoption;
   return merged;
+}
+
+/**
+ * The three settings layers' texts, lowest precedence first (`undefined` = absent): the
+ * user's, then the project's shared and local files. The project is `CLAUDE_PROJECT_DIR`,
+ * as the merge hooks and the server read it (review round 2); the payload's `cwd` only when
+ * that is unset, since a `cd` earlier in the session can leave cwd in a subdirectory.
+ */
+function readLayers(projectDir: string): (string | undefined)[] {
+  return [
+    join(homedir(), ".claude", "settings.json"),
+    join(projectDir, ".claude", "settings.json"),
+    join(projectDir, ".claude", "settings.local.json"),
+  ].map((path) => {
+    try {
+      return existsSync(path) ? readFileSync(path, "utf8") : undefined;
+    } catch {
+      return undefined;
+    }
+  });
+}
+
+/**
+ * Is Claude Code's Bash sandbox on for this call? (review round 2) `sandbox.enabled` from
+ * the merged layers, the later layer winning, unless the call itself asks to run outside it
+ * (`tool_input.dangerouslyDisableSandbox: true`). A sandboxed shell has its own `TMPDIR`
+ * and cannot connect to the session socket (measured, P0-9), so the merge does not run
+ * there even when this hook can see the socket.
+ */
+export function sandboxedCall(texts: readonly (string | undefined)[], toolInput: unknown): boolean {
+  if (typeof toolInput === "object" && toolInput !== null && (toolInput as Record<string, unknown>)["dangerouslyDisableSandbox"] === true) {
+    return false;
+  }
+  let enabled = false;
+  for (const text of texts) {
+    if (text === undefined) continue;
+    try {
+      const root: unknown = JSON.parse(text);
+      if (typeof root !== "object" || root === null || Array.isArray(root)) continue;
+      const sandbox = (root as Record<string, unknown>)["sandbox"];
+      if (typeof sandbox !== "object" || sandbox === null) continue;
+      const value = (sandbox as Record<string, unknown>)["enabled"];
+      if (typeof value === "boolean") enabled = value;
+    } catch {
+      continue;
+    }
+  }
+  return enabled;
+}
+
+/** A command whose search binary is `grep` itself: the word the session's wrapper owns.
+ *  `egrep`, `fgrep` and `grep-x` are other programs, which the wrapper never sees. */
+const GREP_BINARY = /^\s*grep(?:\s|$)/u;
+
+/**
+ * D11: while the search merge is on, a Bash `grep` already gets the index's related
+ * locations appended to its own output, so redirecting it to `code_search` would only
+ * cost the agent a round trip. The hook steps aside for `grep` alone; every other
+ * search binary is judged exactly as before.
+ *
+ * The rule: step aside for `grep` only when the merge gate is open AND the merge can
+ * actually run for this call. "Can run" (`canRun`) is: this session's socket qualifies
+ * (review round 1, internal M3) and the call is not sandboxed (review round 2). With no
+ * socket (no TMPDIR, a server that did not bind) or under the Bash sandbox (whose shell
+ * cannot reach the socket) no block arrives, so the agent should still get the redirect.
+ *
+ * `gate` is `mergeGate`'s answer for this project (`undefined` when open).
+ */
+export function grepMergeStepsAside(command: string, gate: GateClosed | undefined, canRun: boolean): boolean {
+  return gate === undefined && canRun && GREP_BINARY.test(command);
+}
+
+type GateModule = typeof import("../mcp/grep/gate");
+
+/**
+ * Whether a `grep` command may skip the redirect: the gate (from the settings `main`
+ * already parsed, `s`) and the socket, whose module is loaded only on this path, so a
+ * module that fails to load costs the step aside and nothing else. The session is
+ * `CODE_SEARCH_SESSION_PID` (the launcher's `$PPID`, Claude Code), else this process's
+ * parent.
+ */
+async function grepMergeActive(
+  command: string,
+  gateModule: GateModule,
+  s: ReturnType<GateModule["gateSettings"]>,
+  texts: readonly (string | undefined)[],
+  toolInput: unknown,
+): Promise<boolean> {
+  try {
+    const { combineGateEnv, mergeGate } = gateModule;
+    const { sessionPid, sessionSocket } = await import("../mcp/grep/socket");
+    const gate = mergeGate({
+      platform: process.platform,
+      env: combineGateEnv(process.env, s.env),
+      route: s.route,
+      engineConfigured: s.engineConfigured,
+    });
+    const uid = process.getuid?.();
+    const claude = sessionPid(process.env, process.ppid);
+    const socket =
+      uid !== undefined &&
+      claude > 1 &&
+      sessionSocket({ TMPDIR: process.env["TMPDIR"], XDG_RUNTIME_DIR: process.env["XDG_RUNTIME_DIR"] }, uid, claude) !== undefined;
+    return grepMergeStepsAside(command, gate, socket && !sandboxedCall(texts, toolInput));
+  } catch {
+    return false;
+  }
 }
 
 /** Denials so far this session, kept in a temp file keyed by session id. */
@@ -432,6 +539,12 @@ export function discoveryTarget(command: string, opts: DiscoveryOptions = {}): s
 }
 
 /**
+ * Where the trace goes, resolved once `main()` has read the settings block. Unset means
+ * tracing is OFF, the "payload unreadable" breadcrumb included.
+ */
+let traceTarget: string | undefined;
+
+/**
  * Opt-in breadcrumb, written before ANY decision logic — but ONLY when a destination has
  * been named explicitly.
  *
@@ -447,12 +560,6 @@ export function discoveryTarget(command: string, opts: DiscoveryOptions = {}): s
  * credential passed inline (`curl -H 'Authorization: ...'`, `PGPASSWORD=... psql`).
  * Nobody opted into that and nobody could discover it. Naming a path is now the switch.
  */
-/**
- * Where the trace goes, resolved once `main()` has read the settings block. Unset means
- * tracing is OFF, the "payload unreadable" breadcrumb included.
- */
-let traceTarget: string | undefined;
-
 function trace(line: string): void {
   // SETTINGS FIRST, env second, nothing third — and the order is the lesson.
   //
@@ -475,10 +582,26 @@ function trace(line: string): void {
   }
 }
 
-function main(): void {
+/** Inside the 5 s hooks.json timeout, as the two merge hooks bound themselves: a stalled
+ *  filesystem ends in an allow, never a hook error. */
+const WATCHDOG_MS = 4_000;
+
+/** Asynchronous on purpose: a synchronous read of fd 0 blocks the event loop, and a payload
+ *  that never ends would then hold the watchdog off for good. */
+function readStdin(): Promise<string> {
+  return new Promise((resolve) => {
+    const chunks: Buffer[] = [];
+    process.stdin.on("data", (c: Buffer) => chunks.push(c));
+    process.stdin.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
+    process.stdin.on("error", () => resolve(""));
+  });
+}
+
+async function main(): Promise<void> {
+  setTimeout(() => process.exit(0), WATCHDOG_MS).unref();
   let input: HookInput;
   try {
-    const raw = readFileSync(0, "utf8");
+    const raw = await readStdin();
     input = JSON.parse(raw) as HookInput;
   } catch {
     trace("invoked but payload unreadable");
@@ -487,8 +610,10 @@ function main(): void {
 
   // Settings BEFORE the first real breadcrumb, because the settings decide where the
   // breadcrumb goes. A block that names a `traceFile` redirects everything after this line.
-  const cwd = input.cwd ?? process.cwd();
-  const block = readBlock(cwd);
+  const declared = process.env["CLAUDE_PROJECT_DIR"];
+  const projectDir = declared !== undefined && declared !== "" ? declared : (input.cwd ?? process.cwd());
+  const texts = readLayers(projectDir);
+  const block = readBlock(texts);
   const adoption = ((block?.["adoption"] ?? {}) as Adoption);
   if (typeof adoption.traceFile === "string" && adoption.traceFile !== "") {
     traceTarget = adoption.traceFile;
@@ -507,11 +632,24 @@ function main(): void {
   if (block === undefined) allow();
 
   // No engine, no redirect. Sending the agent to a facade that cannot answer leaves it
-  // with neither route.
-  const engine = block["engine"];
-  if (typeof engine !== "string" || engine === "") allow();
-
+  // with neither route. "An engine" is gate.ts's one rule (review round 3): an id WITH an
+  // `engines` entry, since an id alone builds no engine and no facade answers it. The
+  // module is loaded here, inside a boundary: one that fails to load means allow.
   if (adoption.interceptBash !== true) allow();
+  let gateModule: GateModule;
+  try {
+    gateModule = await import("../mcp/grep/gate");
+  } catch {
+    allow();
+  }
+  const settings = gateModule.gateSettings(texts);
+  if (!settings.engineConfigured) allow();
+
+  // Only a grep command pays for the socket and sandbox checks.
+  if (GREP_BINARY.test(command) && (await grepMergeActive(command, gateModule, settings, texts, input.tool_input))) {
+    trace("  -> allowed: grep merge active");
+    allow();
+  }
 
   const target = discoveryTarget(command, { listIsLocation: adoption.listIsLocation === true });
   if (target === undefined) {
@@ -539,4 +677,4 @@ function main(): void {
   );
 }
 
-if (import.meta.main) main();
+if (import.meta.main) await main();

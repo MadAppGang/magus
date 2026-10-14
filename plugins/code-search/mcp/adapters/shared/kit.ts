@@ -529,6 +529,10 @@ export function readHit(value: unknown, opts: ReadHitOptions): Hit | undefined {
     // this repo cannot run five of the six engines to verify which base they use.
     line: Math.max(1, rawLine ?? 1),
   };
+  // The clamp above makes 0 and 1 the same line. `rawLine` keeps the engine's number so
+  // a consumer that knows the engine's base can recover the exact line; with no number
+  // from the engine there is nothing to keep, and a synthesised one would read as fact.
+  if (rawLine !== undefined) hit.rawLine = rawLine;
 
   const endLine =
     firstNumber(rec, END_LINE_KEYS) ?? nestedNumber(rec, ["location", "body_location", "range"], END_LINE_KEYS);
@@ -589,11 +593,12 @@ export function locationsFromText(text: string, paths: PathContext): Hit[] {
     const rawLine = m[2];
     if (rawFile === undefined || rawLine === undefined) continue;
     const file = toPortablePath(rawFile, paths);
-    const line = Math.max(1, Number.parseInt(rawLine, 10));
+    const parsed = Number.parseInt(rawLine, 10);
+    const line = Math.max(1, parsed);
     const key = `${file}:${line}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    const hit: Hit = { file, line };
+    const hit: Hit = { file, line, rawLine: parsed };
     const rawEnd = m[3];
     if (rawEnd !== undefined) {
       const endLine = Number.parseInt(rawEnd, 10);

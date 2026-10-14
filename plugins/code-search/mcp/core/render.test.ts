@@ -310,16 +310,7 @@ describe("renderHealth", () => {
       { path: "/fixture/project/.claude/settings.json", status: "malformed" },
       { path: "/fixture/project/.claude/settings.local.json", status: "absent" },
     ],
-    ripgrep: { working: true, mode: "embedded" },
-    shim: {
-      path: "/fixture/home/.local/bin/rg",
-      present: false,
-      owner: "none",
-      functionShadowed: false,
-      settingPrefersSystem: true,
-      restartRequired: false,
-    },
-    notes: [{ level: "degraded", code: "grep_routing", message: "shim missing." }],
+    notes: [{ level: "degraded", code: "settings_ignored", message: "a layer was skipped." }],
   };
 
   test("prints all three settings layers so a human can see which ones spoke", () => {

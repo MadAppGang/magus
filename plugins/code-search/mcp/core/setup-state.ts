@@ -25,10 +25,10 @@ export const SETUP_COMMAND = "/code-search:setup";
  *   index_missing     the engine's per-project index marker is absent
  *   ready             nothing to do
  *
- * The ripgrep shim (`assets/rg`) is not part of setup: it runs the host's own embedded
- * ripgrep and never reaches an engine, so whether it is installed changes nothing setup
- * is responsible for. `core/health.ts` keeps its assessor (`assessRipgrep`), which has no
- * production caller.
+ * No ripgrep shim state exists: the plugin ships no shim. The search merge needs no install
+ * (ai-docs/code-search-grep-merge.md), and a code-search 8.1 shim still on the machine is
+ * reported by the setup CLI's `status` and removed by `remove-rg-shim`, never evaluated
+ * here.
  */
 export type SetupStateId =
   | "dismissed"

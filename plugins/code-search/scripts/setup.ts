@@ -11,9 +11,14 @@
  *     index     <engine> [--dry-run]
  *     dismiss   [--layer local|project] [--dry-run]
  *     verify    [--query <text>]
+ *     remove-rg-shim [--dry-run]
  *
  * Exit codes: 0 done, 1 failed or refused, 2 usage error or nothing measured.
  * An unknown engine is a usage error that lists the shipped ids; nothing is near-matched.
+ *
+ * `remove-rg-shim` is the one machine-wide subcommand: it deletes the code-search 8.1
+ * `~/.local/bin/rg` and, only then, the user layer's `env.USE_BUILTIN_RIPGREP: "0"`
+ * (setup/rg-shim-removal.ts). It is never part of the setup state.
  */
 
 import { dirname, resolve } from "node:path";
@@ -24,6 +29,7 @@ import { SHIPPED_ENGINE_IDS, type LayerName } from "../mcp/setup/check";
 import { installEngine, indexEngine, upgradeEngine } from "./setup/install";
 import { makeNodeSetupIo, type SetupContext, type SetupIo } from "./setup/io";
 import { renderJson, renderText, usageError, type Outcome } from "./setup/report";
+import { removeRgShim } from "./setup/rg-shim-removal";
 import { configure, dismiss } from "./setup/settings-writer";
 import { status } from "./setup/status";
 import { verify } from "./setup/verify";
@@ -37,12 +43,13 @@ export const USAGE = `Usage: setup.ts <subcommand> [args] [--json] [--project <d
   index     <engine> [--dry-run]
   dismiss   [--layer local|project] [--dry-run]
   verify    [--query <text>]
+  remove-rg-shim [--dry-run]    (machine-wide: deletes the code-search 8.1 ~/.local/bin/rg)
 
 Engines: ${SHIPPED_ENGINE_IDS.join(", ")}
 Exit codes: 0 done, 1 failed or refused, 2 usage error or nothing measured.
 `;
 
-const SUBCOMMANDS = ["status", "install", "upgrade", "configure", "index", "dismiss", "verify"] as const;
+const SUBCOMMANDS = ["status", "install", "upgrade", "configure", "index", "dismiss", "verify", "remove-rg-shim"] as const;
 type Subcommand = (typeof SUBCOMMANDS)[number];
 
 /** Flags each subcommand accepts, beyond the global --json and --project. */
@@ -54,6 +61,7 @@ const ALLOWED: Readonly<Record<Subcommand, readonly string[]>> = {
   index: ["--dry-run"],
   dismiss: ["--layer", "--dry-run"],
   verify: ["--query"],
+  "remove-rg-shim": ["--dry-run"],
 };
 const TAKES_VALUE = new Set(["--project", "--layer", "--query"]);
 const BOOLEAN = new Set(["--json", "--deep", "--check-updates", "--dry-run", "--replace"]);
@@ -193,6 +201,11 @@ async function route(parsed: Parsed, io: SetupIo, ctx: SetupContext): Promise<Ou
       if (extra !== undefined) return extra;
       const query = stringFlag(parsed, "--query");
       return verify(io, ctx, query === undefined ? {} : { query });
+    }
+    case "remove-rg-shim": {
+      const extra = noPositional();
+      if (extra !== undefined) return extra;
+      return removeRgShim(io, ctx, { dryRun });
     }
   }
 }

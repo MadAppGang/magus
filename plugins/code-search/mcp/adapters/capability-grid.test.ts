@@ -140,7 +140,7 @@ function fakeClient(script: {
   calls?: Readonly<Record<string, ScriptedCall>>;
 }): FakeClient {
   const seen: { tool: string; args: unknown }[] = [];
-  return {
+  const client: FakeClient = {
     seen,
     listTools: (): Promise<ListToolsResult> =>
       Promise.resolve({
@@ -160,7 +160,11 @@ function fakeClient(script: {
     isPermanentlyUnready: () => false,
     lastFailure: () => undefined,
     dispose: () => Promise.resolve(),
+    failureSeq: () => 0,
+    streak: () => 0,
+    uncounted: () => client,
   };
+  return client;
 }
 
 const PROJECT_DIR = "/tmp/ca-grid-fixture";

@@ -12,5 +12,10 @@ Read `${CLAUDE_PLUGIN_ROOT}/skills/setup/SKILL.md` in full, then follow it from 
 The plugin root it calls `<root>` is `${CLAUDE_PLUGIN_ROOT}`. The project root it calls
 `<project>` is the directory this session was started in.
 
-If the request above names something narrower (one engine, an upgrade, only the index), still
-run step 1 first, then go to the step that covers it.
+If the request above names something narrower (one engine, an upgrade, only the index, or
+removing the code-search 8.1 `rg` shim with `remove-rg-shim`), still run step 1 first, then
+go to the step that covers it.
+
+Once an engine is configured, the step 10 report carries this line verbatim:
+
+> Bash `grep` appends related locations from the index, starting with your next session. To start now: reconnect `ca` in `/mcp`, then run `/clear`. Turn it off with `grep.route: false` in settings, or `CODE_SEARCH_MERGE=0` on one command. It does not run inside Claude Code's Bash sandbox. The block may name files that a Read deny rule hides from the Grep tool.

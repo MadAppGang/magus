@@ -262,6 +262,7 @@ export function create(spec: EngineSpec, ctx: AdapterContext): Engine {
     const hit: Hit = {
       file: toRepoRelative(row.file, ctx.projectDir),
       line: Math.max(1, row.line),
+      rawLine: row.line,
       anchor,
       symbol: { name, kind },
     };
@@ -285,7 +286,8 @@ export function create(spec: EngineSpec, ctx: AdapterContext): Engine {
       const key = `${resolved}:${line}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      hits.push({ file: resolved, line: Math.max(1, Number.parseInt(line, 10)), anchor });
+      const rawLine = Number.parseInt(line, 10);
+      hits.push({ file: resolved, line: Math.max(1, rawLine), rawLine, anchor });
     }
     return hits;
   }

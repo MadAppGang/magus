@@ -15,6 +15,7 @@ import { spawn } from "node:child_process";
 import {
   closeSync,
   fchmodSync,
+  linkSync,
   lstatSync,
   mkdirSync,
   openSync,
@@ -34,6 +35,16 @@ import {
 } from "../../mcp/transport/mcp-stdio-client";
 
 export type EntryKind = "missing" | "file" | "directory" | "symlink" | "other";
+
+/** What `lstat` says about a path, without following a symlink. */
+export interface EntryInfo {
+  type: "file" | "directory" | "symlink" | "socket" | "fifo" | "other";
+  uid: number;
+  /** Permission bits only (`mode & 0o7777`). */
+  mode: number;
+  /** `<dev>:<ino>`, exact (from a bigint stat): which object the name pointed at. */
+  id: string;
+}
 
 /** Where a subcommand acts. Resolved once by `setup.ts`, passed to every handler. */
 export interface SetupContext {
@@ -59,12 +70,22 @@ export interface SetupIo extends CheckIo {
   /** Creates `path` exclusively (fails if it exists), writes `data`, sets `mode` exactly. */
   writeNew(path: string, data: string | Uint8Array, mode: number): void;
   rename(from: string, to: string): void;
+  /** A hard link `to` → `from`'s inode. Throws (code `EEXIST`) when `to` exists: unlike
+   *  `rename`, it never replaces anything, which is what makes it a safe "create". */
+  link(from: string, to: string): void;
+  /** Removes the name `path` (never a directory). Throws, with the errno code, when it
+   *  cannot: unlike `removeQuietly`, the caller reports the failure. */
+  unlink(path: string): void;
   /** Never throws: a temp file that is already gone is the outcome wanted. */
   removeQuietly(path: string): void;
   /** A suffix unique enough for a temp file name in a shared directory. */
   uniqueSuffix(): string;
   /** An MCP client over stdio. `verify` starts the plugin's own server through it. */
   connect(spec: McpClientSpec, opts: McpClientOptions): McpClient;
+  /** `lstat` of `path`; undefined when it does not exist or cannot be read. Never throws.
+   *  The settings writer and `remove-rg-shim` compare `id`s to tell whether a name still
+   *  points at the object they read. */
+  lstatInfo(path: string): EntryInfo | undefined;
 }
 
 /** Bytes kept from each child stream. Enough for the last 20 stderr lines of an install. */
@@ -133,6 +154,12 @@ export function makeNodeSetupIo(env: Readonly<Record<string, string | undefined>
     rename(from: string, to: string): void {
       renameSync(from, to);
     },
+    link(from: string, to: string): void {
+      linkSync(from, to);
+    },
+    unlink(path: string): void {
+      unlinkSync(path);
+    },
     removeQuietly(path: string): void {
       try {
         unlinkSync(path);
@@ -146,6 +173,20 @@ export function makeNodeSetupIo(env: Readonly<Record<string, string | undefined>
     },
     connect(spec: McpClientSpec, opts: McpClientOptions): McpClient {
       return makeMcpClient(spec, opts);
+    },
+    lstatInfo(path: string): EntryInfo | undefined {
+      try {
+        const stats = lstatSync(path, { bigint: true });
+        let type: EntryInfo["type"] = "other";
+        if (stats.isSymbolicLink()) type = "symlink";
+        else if (stats.isFile()) type = "file";
+        else if (stats.isDirectory()) type = "directory";
+        else if (stats.isSocket()) type = "socket";
+        else if (stats.isFIFO()) type = "fifo";
+        return { type, uid: Number(stats.uid), mode: Number(stats.mode & 0o7777n), id: `${stats.dev}:${stats.ino}` };
+      } catch {
+        return undefined;
+      }
     },
   };
 }

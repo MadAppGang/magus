@@ -289,6 +289,9 @@ export function create(spec: EngineSpec, ctx: AdapterContext): Engine {
       anchor,
       symbol: { name: row.name, kind },
     };
+    // A `(file)` row is the file node itself, so its number locates no hit inside the
+    // file. Leaving `rawLine` off keeps it out of anything that emits an exact line.
+    if (row.kind !== "file") hit.rawLine = row.line;
     return hit;
   }
 
@@ -454,7 +457,8 @@ export function create(spec: EngineSpec, ctx: AdapterContext): Engine {
         return finish([], answer.text, s, { tool: TOOL.node, anchor: "declaration", notes });
       }
 
-      const line = location?.[2] === undefined ? q.at.line : Number.parseInt(location[2], 10);
+      const engineLine = location?.[2] === undefined ? undefined : Number.parseInt(location[2], 10);
+      const line = engineLine ?? q.at.line;
       const file = location?.[1] === undefined ? q.at.file : location[1];
       const hit: Hit = {
         file: toRepoRelative(file, ctx.projectDir),
@@ -465,6 +469,8 @@ export function create(spec: EngineSpec, ctx: AdapterContext): Engine {
         // thing that makes the body addressable.
         text: fence[1].replace(/\n$/u, ""),
       };
+      // The caller's own line is a fallback, not codegraph's answer.
+      if (engineLine !== undefined) hit.rawLine = engineLine;
       const scoped = withinScope([hit], s);
       return outcome(scoped, notes, { truncated: false });
     },

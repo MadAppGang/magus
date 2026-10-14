@@ -18,9 +18,8 @@
  * States are evaluated in `SETUP_STATE_ORDER`; the first that holds is the headline and
  * every problem found is still listed in `findings`.
  *
- * The ripgrep shim is not evaluated here: it runs the host's embedded ripgrep and never
- * reaches an engine, so it is no part of setup. `core/health.ts` keeps its assessor
- * (`assessRipgrep`), which has no production caller.
+ * No ripgrep shim is evaluated here: the plugin ships none. A code-search 8.1 shim left on
+ * the machine is the setup CLI's `status` and `remove-rg-shim` business.
  */
 
 import { basename, dirname, isAbsolute, join, resolve } from "node:path";
@@ -295,7 +294,8 @@ function evaluateEngine(
   add: (finding: SetupFinding) => void,
 ): EngineReport {
   const entry = catalogEntry(id);
-  const spec = engines[id];
+  // Own properties only: an id like `constructor` names an Object.prototype member.
+  const spec = Object.hasOwn(engines, id) ? engines[id] : undefined;
   const report: EngineReport = { id, known: entry !== undefined, hasBlock: spec !== undefined };
   const cli = (args: readonly string[]): string => setupCliCommand(input.pluginRoot, args);
 

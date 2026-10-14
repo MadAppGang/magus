@@ -90,6 +90,21 @@ export function resolveEngine(id: string, spec: EngineSpec, ctx: AdapterContext)
 }
 
 /**
+ * A second adapter instance for an engine the registry already resolved, over a context
+ * the caller chose.
+ *
+ * `server.ts` builds the Grep merge's engine view with it: the same id and spec, and a
+ * context whose client is the owner's `uncounted()` view of the same child. A separate
+ * instance, rather than the registry's, keeps the Grep path away from the registry's
+ * probe cache, so Grep traffic never moves the tool list. Construction touches no engine
+ * (pinned by `measured-shapes.test.ts`), so building one costs nothing until it is called.
+ * `undefined` for an unknown id, exactly as `resolveEngine`.
+ */
+export function createEngine(id: string, spec: EngineSpec, ctx: AdapterContext): Engine | undefined {
+  return resolveEngine(id, spec, ctx);
+}
+
+/**
  * The shape `RegistryInput.resolve` wants: `(id, spec) => Engine | undefined`.
  *
  * The context is built per engine by the caller, because it carries an `McpClient`

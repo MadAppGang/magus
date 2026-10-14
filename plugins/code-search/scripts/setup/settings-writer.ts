@@ -1,6 +1,8 @@
 /**
  * settings-writer.ts — every settings file write the setup CLI makes, and the two
- * subcommands that are nothing but a settings write: `configure` and `dismiss`.
+ * subcommands that are nothing but a settings write: `configure` and `dismiss`. The one
+ * other writer is `remove-rg-shim` (rg-shim-removal.ts), which deletes the user layer's
+ * `env.USE_BUILTIN_RIPGREP` through the same `editSettingsFile`.
  *
  * BEFORE ANY WRITE (A22): `configure` and `dismiss` read all three layers
  * and refuse `settings_invalid`, writing nothing, while any of them is invalid JSON or has
@@ -14,9 +16,20 @@
  *   4. Apply the edit to a copy. No change → write nothing at all.
  *   5. Write a temp file in the target's own directory with the original's mode
  *      (a new file gets 0600: settings files hold credentials).
- *   6. Re-read the target. If its bytes differ from what step 3 read, someone else wrote
- *      it meanwhile → `settings_changed_concurrently`, temp removed, nothing written.
- *   7. Rename the temp over the target.
+ *   6. Pin the object the target names under a private hard link (the guard). If its
+ *      bytes differ from what step 3 read, or the target no longer names it, someone else
+ *      wrote it meanwhile → `settings_changed_concurrently`, temp removed, nothing written.
+ *   7. Rename the temp over the target (a target that did not exist is created with
+ *      `link`, which refuses a name that appeared meanwhile; on a filesystem without hard
+ *      links, with an exclusive open, which refuses it too). If the guard's bytes changed
+ *      by then, another program wrote the file in place inside the window: its version is
+ *      put back and the result is `settings_changed_concurrently`, never success. What
+ *      stays open: a writer that replaces the target BY RENAME in the microseconds between
+ *      the identity check and this rename (no atomic swap is reachable from Node).
+ *      A process killed mid-write can leave `.<name>.<suffix>.tmp` or `.guard` beside the
+ *      target. Both carry the target's own mode (the guard IS the old file's inode), so
+ *      nothing is exposed that the settings file did not already expose; they are not
+ *      swept, because deleting by name pattern inside ~/.claude is the riskier act.
  *
  * WHICH FILE (A5):
  *   configure  the most specific layer where
@@ -220,25 +233,141 @@ export function editSettingsFile(io: SetupIo, requested: string, edit: SettingsE
     return refuse("settings_write_failed", `Could not write ${temp}: ${errorText(error)}`);
   }
 
-  // 6. Did anyone else write the target since step 3?
-  const now = io.kind(path) === "file" ? io.readText(path) : undefined;
-  if (now !== before) {
-    io.removeQuietly(temp);
-    return refuse(
+  // 6-7. Replace exactly the object step 3 read, or nothing.
+  const concurrent = (): EditResult =>
+    refuse(
       "settings_changed_concurrently",
       `${path} changed while this command was editing it; nothing was written.`,
       "Run the command again.",
     );
+  const done: EditResult = { ok: true, path, changed: true, text };
+
+  // No file at step 3: link() creates the name and refuses an existing one, so a file
+  // another program created meanwhile is never replaced. A filesystem without hard links
+  // (FAT/exFAT, most SMB and FUSE mounts) creates it with an exclusive open instead: the
+  // same refusal of a name that appeared, but not atomic, so a reader may see the file
+  // while its bytes are still being written.
+  if (before === undefined) {
+    try {
+      io.link(temp, path);
+    } catch (error) {
+      if (errorCode(error) === "EEXIST") return concurrent();
+      return createExclusively(io, path, text, done, concurrent, refuse, errorText(error));
+    } finally {
+      io.removeQuietly(temp);
+    }
+    return done;
   }
 
-  // 7. Replace.
+  // A file at step 3. Pin the object the path names NOW under a private hard link (the
+  // guard): it must hold exactly `before`, and the path must still name it (dev:ino)
+  // immediately before the rename. A writer that changes the file in place between that
+  // check and the rename writes into the pinned object, so the guard still shows it
+  // afterwards: its version is put back and the edit is refused, never reported as done.
+  // Residual: a writer that REPLACES the path by rename in the microseconds between the
+  // identity check and this rename is overwritten. An atomic swap (renameat2
+  // RENAME_EXCHANGE, renamex_np RENAME_SWAP) would close it; Node exposes neither.
+  const guard = join(dir, `.${basename(path)}.${io.uniqueSuffix()}.guard`);
+  try {
+    io.link(path, guard);
+  } catch (error) {
+    if (errorCode(error) === "ENOENT") {
+      io.removeQuietly(temp);
+      return concurrent();
+    }
+    // A filesystem without hard links: the same checks, without the after-the-fact one.
+    const id = io.lstatInfo(path)?.id;
+    if (io.readText(path) !== before || id === undefined || io.lstatInfo(path)?.id !== id) {
+      io.removeQuietly(temp);
+      return concurrent();
+    }
+    return replace(io, temp, path, done, refuse);
+  }
+  let keepGuard = false;
+  try {
+    const pinned = io.lstatInfo(guard)?.id;
+    if (pinned === undefined || io.readText(guard) !== before || io.lstatInfo(path)?.id !== pinned) {
+      io.removeQuietly(temp);
+      return concurrent();
+    }
+    const replaced = replace(io, temp, path, done, refuse);
+    if (!replaced.ok) return replaced;
+    if (io.readText(guard) === before) return done;
+    // Changed in place in the window: the other program's version is in the guard.
+    try {
+      io.rename(guard, path);
+      return refuse(
+        "settings_changed_concurrently",
+        `${path} was changed by another program while this command replaced it; its version was put back and this edit was not applied.`,
+        "Run the command again.",
+      );
+    } catch (error) {
+      keepGuard = true;
+      return refuse(
+        "settings_changed_concurrently",
+        `${path} was changed by another program while this command replaced it, and its version could not be put back ` +
+          `(${errorText(error)}). It is kept in ${guard}; compare it with ${path} by hand.`,
+      );
+    }
+  } finally {
+    if (!keepGuard) io.removeQuietly(guard);
+  }
+}
+
+/**
+ * Step 7 for a new file where `link` failed for a reason other than EEXIST: create the
+ * name with O_EXCL and write the text into it. An existing name is never replaced
+ * (EEXIST → `settings_changed_concurrently`). When the open succeeded but the write did
+ * not, the partial file is ours only while it still holds a prefix of `text`: then it is
+ * removed; anything else at the name belongs to another program and is left alone.
+ */
+function createExclusively(
+  io: SetupIo,
+  path: string,
+  text: string,
+  done: EditResult,
+  concurrent: () => EditResult,
+  refuse: (code: string, message: string, remedy?: string) => EditResult,
+  linkError: string,
+): EditResult {
+  try {
+    io.writeNew(path, text, 0o600);
+    return done;
+  } catch (error) {
+    if (errorCode(error) === "EEXIST") return concurrent();
+    const syscall = (error as { syscall?: unknown } | null)?.syscall;
+    if (syscall !== "open") {
+      const now = io.readText(path);
+      if (now === text) return done; // every byte is there; only the mode change failed
+      if (now !== undefined && text.startsWith(now)) io.removeQuietly(path);
+    }
+    return refuse(
+      "settings_write_failed",
+      `Could not create ${path}: a hard link failed (${linkError}) and so did an exclusive create (${errorText(error)}).`,
+    );
+  }
+}
+
+/** The final rename of step 7; the temp is gone afterwards either way. */
+function replace(
+  io: SetupIo,
+  temp: string,
+  path: string,
+  done: EditResult,
+  refuse: (code: string, message: string, remedy?: string) => EditResult,
+): EditResult {
   try {
     io.rename(temp, path);
+    return done;
   } catch (error) {
     io.removeQuietly(temp);
     return refuse("settings_write_failed", `Could not replace ${path}: ${errorText(error)}`);
   }
-  return { ok: true, path, changed: true, text };
+}
+
+function errorCode(error: unknown): string | undefined {
+  const code = (error as { code?: unknown } | null)?.code;
+  return typeof code === "string" ? code : undefined;
 }
 
 // ---------------------------------------------------------------------------

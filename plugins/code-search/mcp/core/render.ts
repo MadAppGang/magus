@@ -161,20 +161,6 @@ export function renderHealth(h: FacadeHealth): string {
   lines.push("settings layers (lowest precedence first):");
   for (const layer of h.settingsLayers) lines.push(`  ${layer.status}: ${layer.path}`);
 
-  if (h.ripgrep !== undefined) {
-    const via = h.ripgrep.systemPath === undefined ? "" : ` (${h.ripgrep.systemPath})`;
-    lines.push(`ripgrep: ${h.ripgrep.working ? "working" : "not working"}, mode ${h.ripgrep.mode}${via}`);
-  }
-  if (h.shim !== undefined) {
-    const s = h.shim;
-    lines.push(
-      `rg shim: ${s.present ? `present, owner ${s.owner}${s.version === undefined ? "" : ` v${s.version}`}` : "absent"} at ${s.path}`,
-    );
-    if (s.shadowedBy !== undefined) lines.push(`  shadowed on PATH by: ${s.shadowedBy}`);
-    if (s.functionShadowed) lines.push("  shadowed in Bash by a shell function");
-    if (s.restartRequired) lines.push("  restart required for the repair to take effect");
-  }
-
   const notes = renderNotes(h.notes);
   if (notes !== "") {
     lines.push("");

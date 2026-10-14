@@ -427,10 +427,12 @@ export function create(spec: EngineSpec, ctx: AdapterContext): Engine {
       if (rec === undefined) continue;
       const file = readString(rec, "file");
       if (file === undefined) continue;
+      const rawLine = readNumber(rec, "line");
       const hit: Hit = {
         file: toPortablePath(file, ctx),
-        line: Math.max(1, readNumber(rec, "line") ?? 1),
+        line: Math.max(1, rawLine ?? 1),
       };
+      if (rawLine !== undefined) hit.rawLine = rawLine;
       const endLine = readNumber(rec, "lineEnd");
       if (endLine !== undefined && endLine >= hit.line) hit.endLine = endLine;
       const symbol = readString(rec, "symbol");
@@ -509,10 +511,12 @@ export function create(spec: EngineSpec, ctx: AdapterContext): Engine {
         return emptyOutcome(notes);
       }
 
+      const rawLine = readNumber(definition, "line");
       const hit: Hit = {
         file: toPortablePath(file, ctx),
-        line: Math.max(1, readNumber(definition, "line") ?? 1),
+        line: Math.max(1, rawLine ?? 1),
       };
+      if (rawLine !== undefined) hit.rawLine = rawLine;
       const endLine = readNumber(definition, "endLine");
       if (endLine !== undefined && endLine >= hit.line) hit.endLine = endLine;
       const name = readString(definition, "name") ?? q.name;
@@ -588,10 +592,13 @@ export function create(spec: EngineSpec, ctx: AdapterContext): Engine {
       }
 
       const file = readString(enclosing, "file") ?? q.at.file;
+      const startLine = readNumber(enclosing, "startLine");
       const hit: Hit = {
         file: toPortablePath(file, ctx),
-        line: Math.max(1, readNumber(enclosing, "startLine") ?? q.at.line),
+        line: Math.max(1, startLine ?? q.at.line),
       };
+      // `q.at.line` is the caller's own line, a fallback rather than mnemex's answer.
+      if (startLine !== undefined) hit.rawLine = startLine;
       const endLine = readNumber(enclosing, "endLine");
       if (endLine !== undefined && endLine >= hit.line) hit.endLine = endLine;
       const name = readString(enclosing, "name");
@@ -989,10 +996,12 @@ export function create(spec: EngineSpec, ctx: AdapterContext): Engine {
       if (rec === undefined) continue;
       const file = readString(rec, "file");
       if (file === undefined) continue;
+      const rawLine = readNumber(rec, "line");
       const hit: Hit = {
         file: toPortablePath(file, ctx),
-        line: Math.max(1, readNumber(rec, "line") ?? 1),
+        line: Math.max(1, rawLine ?? 1),
       };
+      if (rawLine !== undefined) hit.rawLine = rawLine;
       const name = readString(rec, "symbol");
       if (name !== undefined) hit.symbol = { name, kind: "unknown" };
       const centrality = clamp01(readNumber(rec, "pageRank"));

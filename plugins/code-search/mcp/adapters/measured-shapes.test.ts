@@ -20,8 +20,11 @@
 
 import { describe, expect, test } from "bun:test";
 
+import type { McpClient } from "../transport/mcp-stdio-client";
 import { parseEdgeRows, parseImpactRows, parseSearchRows } from "./codegraph/index";
 import { parseNeighborRows, parseNodeRows, splitName } from "./graphify/index";
+import { ADAPTERS } from "./index";
+import { readHit } from "./shared/kit";
 
 // ---------------------------------------------------------------------------
 // codegraph 1.6.0 — captured payloads
@@ -210,5 +213,60 @@ describe("graphify text shapes, as captured from 0.9.50", () => {
     // scraper instead of using `locationsFromText`, which looks for `path:line`.
     expect(NEIGHBORS).toContain("at=src/lock.ts:L3");
     expect(DFS).toContain("loc=L3");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Line bases — one row per adapter, required
+// ---------------------------------------------------------------------------
+
+/**
+ * The base each engine's line numbers are in, as measured: serena 0 (1.7.0, header of
+ * serena/index.ts), codegraph and graphify 1 (the captures above), mnemex 1. `line` is
+ * never corrected for it; the Grep merge reads `Engine.lineBase` with `rawLine` to emit
+ * an exact line from the file. A new adapter fails the first test until it has a row
+ * here, because a wrong base puts every merged line one off.
+ */
+const LINE_BASES: Readonly<Record<string, 0 | 1>> = { codegraph: 1, graphify: 1, mnemex: 1, serena: 0 };
+
+/** Constructing an adapter must not touch its engine, so any client access throws. */
+const untouchable = new Proxy({} as McpClient, {
+  get: (_target, key) => {
+    throw new Error(`adapter construction touched client.${String(key)}`);
+  },
+});
+
+describe("line bases and raw lines", () => {
+  test("every adapter declares exactly its measured line base", () => {
+    const declared: Record<string, number> = {};
+    for (const [id, create] of Object.entries(ADAPTERS)) {
+      const engine = create(
+        { command: "unused" },
+        {
+          client: untouchable,
+          projectDir: "/nonexistent-project",
+          fileExists: () => false,
+          now: () => 0,
+          log: () => undefined,
+          probeTtlMs: 60_000,
+        },
+      );
+      declared[id] = engine.lineBase ?? 1;
+    }
+    expect(declared).toEqual(LINE_BASES);
+  });
+
+  test("serena's measured record keeps the engine's number beside the clamped line", () => {
+    // `find_symbol` gave `start_line: 15` for a declaration on line 16 (serena 1.7.0).
+    const at = (record: Record<string, unknown>) =>
+      readHit(
+        { relative_path: "src/a.ts", ...record },
+        { projectDir: "/nonexistent-project", fileExists: () => false, withText: false },
+      );
+    expect(at({ body_location: { start_line: 15 } })).toMatchObject({ line: 15, rawLine: 15 });
+    // The first line: the clamp makes it line 1 either way, and only rawLine says it was 0.
+    expect(at({ body_location: { start_line: 0 } })).toMatchObject({ line: 1, rawLine: 0 });
+    // No number from the engine: no rawLine, never a synthesised one.
+    expect(at({})).toEqual({ file: "src/a.ts", line: 1 });
   });
 });

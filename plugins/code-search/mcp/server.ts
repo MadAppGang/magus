@@ -35,14 +35,19 @@
  * for the rest of it.
  */
 
-import { existsSync, readFileSync, statSync } from "node:fs";
+import { appendFileSync, existsSync, readFileSync, realpathSync, statSync } from "node:fs";
+import { readFile as readFileAsync, stat as statAsync } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { ENGINE_IDS, makeResolver } from "./adapters/index";
+import { ENGINE_IDS, createEngine, makeResolver } from "./adapters/index";
 import type { AdapterContext } from "./adapters/shared/kit";
 import type { Capability } from "./core/capabilities";
-import type { BackendNote, Capabilities, Hit, Outcome } from "./core/ports";
+import type { BackendNote, Capabilities, Engine, Hit, Outcome } from "./core/ports";
+import { combineGateEnv, engineConfigured, gateSettings, mergeGate, type GateClosed } from "./grep/gate";
+import { makeGrepPort, resolveOracleBin } from "./grep/port";
+import { makeGrepService, type EngineSearchResult } from "./grep/service";
+import { startGrepSocket } from "./grep/socket";
 import {
   TIER1_TOOLS,
   buildRegistry,
@@ -197,6 +202,11 @@ interface Facade {
   /** Every client this process constructed, so shutdown can reap children even if an
    *  adapter forgets to. `dispose()` is documented idempotent. */
   clients: McpClient[];
+  /** The active engine's client: the owner, whose failures `code_search` counts. */
+  engineClient(): McpClient | undefined;
+  /** The Grep engine view: a second adapter instance for the active engine, over the
+   *  owner's `uncounted()` view. Built on first use, then kept. */
+  grepEngine(): Engine | undefined;
   dispose(): Promise<void>;
 }
 
@@ -276,6 +286,10 @@ function buildFacade(env: NodeJS.ProcessEnv, onToolsChanged: () => void): Facade
 
   const load = loadSettings(io);
   const clients: McpClient[] = [];
+  // The context the registry's engine was built with. The Grep engine view reuses it
+  // with only the client swapped, so both instances share one child process.
+  let active: { id: string; spec: EngineSpec; ctx: AdapterContext } | undefined;
+  let grepView: { engine: Engine | undefined } | undefined;
 
   const resolve = makeResolver((id: string, spec: EngineSpec): AdapterContext => {
     // The composition root is the only place a child process may be constructed. An
@@ -299,7 +313,9 @@ function buildFacade(env: NodeJS.ProcessEnv, onToolsChanged: () => void): Facade
     // `fileExists` is the ONLY filesystem access an adapter gets, and it is injected for
     // the same reason the clock is: `repairForeignPath` has to ask whether a candidate
     // resolves under projectDir, and kit.ts may not reach for node:fs to find out.
-    return { client, projectDir, fileExists, now: Date.now, log, probeTtlMs: PROBE_TTL_MS };
+    const ctx: AdapterContext = { client, projectDir, fileExists, now: Date.now, log, probeTtlMs: PROBE_TTL_MS };
+    active = { id, spec, ctx };
+    return ctx;
   });
 
   const registry = buildRegistry({
@@ -322,6 +338,18 @@ function buildFacade(env: NodeJS.ProcessEnv, onToolsChanged: () => void): Facade
     ledger: makeLedger(),
     startupNotes: load.notes,
     clients,
+    engineClient: () => (registry.engine() === undefined ? undefined : active?.ctx.client),
+    grepEngine(): Engine | undefined {
+      if (grepView !== undefined) return grepView.engine;
+      // Only for the engine the registry actually resolved: an id it refused has no
+      // adapter, and Grep must not resurrect one.
+      const engine =
+        active !== undefined && registry.engine() !== undefined
+          ? createEngine(active.id, active.spec, { ...active.ctx, client: active.ctx.client.uncounted() })
+          : undefined;
+      grepView = { engine };
+      return engine;
+    },
     async dispose(): Promise<void> {
       await registry.dispose();
       for (const client of clients) await client.dispose();
@@ -879,9 +907,215 @@ export function createServer(env: NodeJS.ProcessEnv, write: (line: string) => vo
     }
   }
 
+  // -------------------------------------------------------------------------
+  // The search merge: engine search for the grep wrapper and the Grep-tool hook,
+  // over the uncounted view
+  // -------------------------------------------------------------------------
+
+  /**
+   * One engine search for the merge, classified (Decision 15).
+   *
+   * It never calls `probeOnce()`: the registry's probe cache, the tier-0 descriptor and
+   * `tools/list_changed` are `code_search`'s, and merge traffic must not move them. The
+   * first merge of a session may therefore find the engine cold; that call runs on past
+   * its deadline and is the warm-up.
+   */
+  async function engineSearch(q: { pattern: string; limit: number; glob?: string }): Promise<EngineSearchResult> {
+    const view = facade.grepEngine();
+    const client = facade.engineClient();
+    if (view === undefined || client === undefined || view.capabilities.generalSearch === undefined) {
+      return { kind: "unsupported" };
+    }
+    if (client.isPermanentlyUnready()) {
+      return {
+        kind: "unavailable",
+        note: client.lastFailure() ?? {
+          level: "error",
+          code: "backend_unavailable",
+          message: `${view.id} will not be started again this session`,
+        },
+      };
+    }
+    const before = client.failureSeq();
+    let outcome: Outcome<Hit>;
+    try {
+      outcome = await view.capabilities.generalSearch(
+        { text: q.pattern },
+        q.glob === undefined ? { limit: q.limit } : { limit: q.limit, glob: q.glob },
+      );
+    } catch (error) {
+      return {
+        kind: "unavailable",
+        note: { level: "error", code: "backend_unavailable", message: `${view.id} search failed: ${describe(error)}` },
+      };
+    }
+    const errorNote = outcome.notes.find((note) => note.level === "error");
+    // A crash anywhere on the shared child during this call, ours or a concurrent
+    // code_search call's: the engine is failing either way, and a transport failure is
+    // a pause, not an upstream error.
+    if (client.failureSeq() > before) {
+      return {
+        kind: "unavailable",
+        note: errorNote ?? { level: "error", code: "backend_unavailable", message: `${view.id} crashed during a search` },
+      };
+    }
+    if (errorNote !== undefined) return { kind: "upstream-error", note: errorNote };
+    // `info`/`degraded` notes such as index_stale are still an answer: dedup runs against
+    // disk, so a stale index costs recall, never correctness.
+    return { kind: "ok", hits: outcome.results, lineBase: view.lineBase ?? 1, notes: outcome.notes };
+  }
+
+  /**
+   * Bind the merge socket, or return why not (D12).
+   *
+   * The bind conditions are checked HERE, ONCE, at startup: not win32, a live parent, and
+   * an engine in the registry (built once at startup). A usable socket directory is the
+   * socket's own check. `grep.route` and `CODE_SEARCH_MERGE` are NOT bind conditions:
+   * they are read per request by the gate below, so turning the merge off or on again
+   * takes effect at the next request without a restart. An engine configured after
+   * startup takes effect only in a new server.
+   *
+   * Called by the stdio driver, never by `createServer` itself: the socket is named for
+   * the parent process, which is a property of the real process, not of a server built
+   * in-process.
+   */
+  function startMerge(): { stop(): Promise<void>; bound(): string | undefined } | string {
+    if (process.platform === "win32") return "win32";
+    if (process.ppid <= 1) return "no parent";
+    // gate.ts's one definition of "configured", then the registry's resolution of it.
+    if (!engineConfigured(facade.settings) || facade.registry.engine() === undefined) return "no engine";
+
+    let projectReal: string;
+    try {
+      projectReal = realpathSync(projectDirOf(env));
+    } catch (error) {
+      return `project dir does not resolve: ${describe(error)}`;
+    }
+
+    const mergeLog = makeMergeLog(env);
+    const both = (line: string): void => {
+      log(line);
+      mergeLog?.(line);
+    };
+
+    // D13, once. Every request then answers `oracle_unavailable` if nothing was found.
+    const oracle = resolveOracleBin(env);
+    if (oracle.bin === undefined) both(`oracle unavailable: ${oracle.tried.join(", ")}`);
+
+    const gate = makeGateReader({
+      paths: settingsLayerPaths(homeOf(env), projectDirOf(env)),
+      platform: process.platform,
+      env,
+      // Fixed at startup with the registry: this server never gains or loses its engine.
+      engineConfigured: true,
+    });
+
+    const client = facade.engineClient();
+    const service = makeGrepService(makeGrepPort({ engineSearch, root: projectReal }), {
+      projectReal,
+      ...(oracle.bin === undefined ? {} : { oracleBin: oracle.bin }),
+      client: {
+        isPermanentlyUnready: () => client?.isPermanentlyUnready() ?? true,
+        streak: () => client?.streak() ?? 0,
+      },
+      gate,
+      ...(mergeLog === undefined ? {} : { log: mergeLog }),
+    });
+    return startGrepSocket({
+      env,
+      uid: typeof process.getuid === "function" ? process.getuid() : -1,
+      // Read live: an orphaned server's parent becomes 1, which ends its identity.
+      ppid: () => process.ppid,
+      startedAtMs: Math.round(performance.timeOrigin),
+      service,
+      log: both,
+    });
+  }
+
   return {
     handle,
+    startMerge,
     dispose: (): Promise<void> => facade.dispose(),
+  };
+}
+
+/** `(mtimeMs, size, ino)` of one settings file, or "absent"; "error" when it exists but
+ *  cannot be stat'ed. Asynchronous: it runs per merge request (review round 5). */
+async function settingsSignature(path: string): Promise<string> {
+  try {
+    const st = await statAsync(path);
+    return `${st.mtimeMs}:${st.size}:${st.ino}`;
+  } catch (error) {
+    return (error as { code?: unknown } | null)?.code === "ENOENT" ? "absent" : "error";
+  }
+}
+
+async function readSettingsText(path: string): Promise<string | undefined> {
+  try {
+    return await readFileAsync(path, "utf8");
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * The per-request merge gate (D12): why it is closed now, or `undefined`.
+ *
+ * Built once at startup, CALLED once per request: `makeGateReader(…)` returns
+ * `() => GateClosed | undefined`, and the closure holds the settings signature cache.
+ * On every call it `stat`s the three settings files (`settingsLayerPaths`, as at HEAD)
+ * and re-reads them only when a file's (mtimeMs, size, ino) changed, or a file appeared
+ * or vanished. `grep.route` and the layers' `env.CODE_SEARCH_MERGE` come from those
+ * files; `CODE_SEARCH_MERGE` is also read from this process's own environment, and a `0`
+ * in either closes the gate.
+ *
+ * ASYNCHRONOUS (review round 5, Codex HIGH, measured): the stats and reads use the
+ * promise API, so a settings file on a stalled mount holds this request, which the
+ * service races against its deadline, and never the server's event loop, which every
+ * `code_search` call shares. Concurrent requests may each re-read; the last to finish
+ * leaves its view, and every view is read from the files.
+ *
+ * Exported so the reload rule can be tested with a temp tree; `stat` and `read` are
+ * injectable for the same reason.
+ */
+export function makeGateReader(i: {
+  paths: readonly string[];
+  platform: string;
+  env: Readonly<Record<string, string | undefined>>;
+  engineConfigured: boolean;
+  stat?: (path: string) => string | Promise<string>;
+  read?: (path: string) => string | undefined | Promise<string | undefined>;
+}): () => Promise<GateClosed | undefined> {
+  const stat = i.stat ?? settingsSignature;
+  const read = i.read ?? readSettingsText;
+  let signature: string | undefined;
+  let settings: ReturnType<typeof gateSettings> = { route: true, env: {}, engineConfigured: false };
+  return async () => {
+    const now = (await Promise.all(i.paths.map(async (path) => stat(path)))).join("\0");
+    if (now !== signature) {
+      settings = gateSettings(await Promise.all(i.paths.map(async (path) => read(path))));
+      signature = now;
+    }
+    return mergeGate({
+      platform: i.platform,
+      env: combineGateEnv(i.env, settings.env),
+      route: settings.route,
+      engineConfigured: i.engineConfigured,
+    });
+  };
+}
+
+/** `CODE_SEARCH_MERGE_LOG=<file>`: off by default. Appends, and never throws; a log that
+ *  cannot be written costs the log, not the answer. */
+function makeMergeLog(env: NodeJS.ProcessEnv): ((line: string) => void) | undefined {
+  const file = env["CODE_SEARCH_MERGE_LOG"];
+  if (file === undefined || file === "") return undefined;
+  return (line: string) => {
+    try {
+      appendFileSync(file, `${line}\n`);
+    } catch {
+      // See above.
+    }
   };
 }
 
@@ -945,13 +1179,21 @@ async function main(): Promise<void> {
   const server = createServer(process.env, write);
   log(`started (bun ${process.versions["bun"] ?? "?"}, pid ${process.pid})`);
 
+  // The merge socket, when its bind conditions hold at startup. A refusal is one stderr line.
+  const merge = server.startMerge();
+  if (typeof merge === "string") log(`search merge off: ${merge}`);
+  const grepSocket = typeof merge === "string" ? undefined : merge;
+
   let closing = false;
   const shutdown = (reason: string): void => {
     if (closing) return;
     closing = true;
     log(`shutting down (${reason})`);
-    void server
-      .dispose()
+    // The socket goes first: close the listener and drop our own names (inode-guarded),
+    // so no client reaches a server that is disposing its engine.
+    void (grepSocket?.stop() ?? Promise.resolve())
+      .catch((error: unknown) => log(`shutdown: ${describe(error)}`))
+      .then(() => server.dispose())
       .catch((error: unknown) => log(`shutdown: ${describe(error)}`))
       .finally(() => process.exit(0));
   };

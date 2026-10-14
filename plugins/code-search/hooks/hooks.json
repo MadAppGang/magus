@@ -1,5 +1,5 @@
 {
-  "description": "PreToolUse:Bash guards the private index directories and redirects raw searches to the facade. SessionStart with matcher startup|clear runs offer-setup, which reads this project's code-search settings, engine and index without starting any process, and, only when setup is incomplete and the user has not dismissed it, asks the model to offer set up now, not now, or ignore for this project; it is silent when setup is ready, dismissed, or set to no engine. SessionStart with matcher startup runs magus-version-check, which reports a magus CLI that is behind npm's magus-cli latest and names the exact install command; it is carried by every hook-bearing plugin because magus 7.0.0 to 7.3.0 ask npm about the wrong package and can never discover or install their own fix, while the plugins update from the marketplace independently of the magus version. The copy here is byte-identical to the other five and gated by scripts/check-hook-copies.ts. All copies share one cache directory and claim one marker, so a session start costs one registry request and prints at most one notice however many of them are installed.",
+  "description": "PreToolUse:Bash guards the private index directories and redirects raw searches to the facade; while the search merge can run for the call (gate open, this session's socket present, the Bash sandbox not in effect) it leaves `grep` alone, because the merge already appends the index's related locations to it. The three grep-merge hooks (grep-merge-env, grep-tool-merge, redirect) launch as `command -v bun && CODE_SEARCH_SESSION_PID=$PPID bun … 2>/dev/null || true`: no exec, so a bun that fails to load still ends the hook with status 0 and its loader error goes nowhere (each hook decides on stdout), and the session's claude pid is passed explicitly instead of read as bun's parent. SessionStart with matcher startup|resume|clear|compact runs grep-merge-env, which, while the merge gate is open (an engine configured, grep.route not false, CODE_SEARCH_MERGE not 0), appends one guarded line to CLAUDE_ENV_FILE that sources assets/grep-merge.sh from this plugin at the start of every Bash call (never while the shell is in verbose or xtrace mode), unless a SessionStart hook file of this session already holds that line; the sourced script wraps `grep` so a recursive word search gets a labelled block of related locations from this session's code-search server after grep's own output. PostToolUse with matcher ^Grep$ runs grep-tool-merge, which sends the Grep tool's input to the same server and returns its block as additionalContext; it is silent on every failure, sends nothing while RIPGREP_CONFIG_PATH is set (a ripgrep config can change what the Grep tool matched), uses only a socket in a 0700 directory owned by the user, and the merge hooks exit 0 silently when bun is missing. SessionStart with matcher startup|clear runs offer-setup, which reads this project's code-search settings, engine and index without starting any process, and, only when setup is incomplete and the user has not dismissed it, asks the model to offer set up now, not now, or ignore for this project; it is silent when setup is ready, dismissed, or set to no engine. SessionStart with matcher startup runs magus-version-check, which reports a magus CLI that is behind npm's magus-cli latest and names the exact install command; it is carried by every hook-bearing plugin because magus 7.0.0 to 7.3.0 ask npm about the wrong package and can never discover or install their own fix, while the plugins update from the marketplace independently of the magus version. The copy here is byte-identical to the other five and gated by scripts/check-hook-copies.ts. All copies share one cache directory and claim one marker, so a session start costs one registry request and prints at most one notice however many of them are installed.",
   "hooks": {
     "SessionStart": [
       {
@@ -22,7 +22,29 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bun --env-file=/dev/null --config=/dev/null ${CLAUDE_PLUGIN_ROOT}/hooks/offer-setup.ts",
+            "command": "bun --env-file=/dev/null --config=/dev/null \"${CLAUDE_PLUGIN_ROOT}/hooks/offer-setup.ts\"",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v bun >/dev/null 2>&1 && CODE_SEARCH_SESSION_PID=$PPID bun --env-file=/dev/null --config=/dev/null \"${CLAUDE_PLUGIN_ROOT}/hooks/grep-merge-env.ts\" 2>/dev/null || true",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "^Grep$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v bun >/dev/null 2>&1 && CODE_SEARCH_SESSION_PID=$PPID bun --env-file=/dev/null --config=/dev/null \"${CLAUDE_PLUGIN_ROOT}/hooks/grep-tool-merge.ts\" 2>/dev/null || true",
             "timeout": 5
           }
         ]
@@ -39,7 +61,7 @@
           },
           {
             "type": "command",
-            "command": "bun --env-file=/dev/null ${CLAUDE_PLUGIN_ROOT}/hooks/redirect-search-to-facade.ts",
+            "command": "command -v bun >/dev/null 2>&1 && CODE_SEARCH_SESSION_PID=$PPID bun --env-file=/dev/null --config=/dev/null \"${CLAUDE_PLUGIN_ROOT}/hooks/redirect-search-to-facade.ts\" 2>/dev/null || true",
             "timeout": 5
           }
         ]
