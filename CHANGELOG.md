@@ -4,6 +4,41 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [magus 7.10.4] - 2026-10-14
+
+### Changed
+
+- **`magus update` asks each installer what it owns, and shows only tools you can act on.**
+  A tool's owner and version now come from what the installer itself reports: Homebrew's
+  own list of a formula's files and versions, the global folder Bun or npm names, uv's
+  receipt, or a version command magus defines per tool. magus no longer builds Homebrew's
+  folder layout itself, no longer guesses a version from nearby files, and never runs a
+  plugin's own check command. A tool that Homebrew, Bun, npm
+  or uv owns is updated through that installer. A tool none of them owns, such as the
+  system zsh, is installed elsewhere: it has no row and is counted in the section header,
+  for example `CLI  6  5 current · 1 installed elsewhere`. This replaces the KEPT rows and
+  their owner notes from 7.10.1–7.10.3.
+- **A copy hidden later on PATH is counted, not warned about.** The 7.10.3 warning named a
+  folder and gave nothing to run. The header now says `N with another copy on PATH`.
+- **A held-back tool is its own state.** A brew-pinned tool shows `HELD` with
+  `brew unpin <formula>`, counts as held back rather than unchecked, and offers no update
+  in the TUI.
+
+### Fixed
+
+- **A Homebrew tap formula is recognised as Homebrew's.** Ownership used to be read from a
+  Cellar path built from the full tap name, which never exists, so a tool from
+  `madappgang/tap` read as not Homebrew's.
+- **No tool message names a path.** Notes, installer errors and the post-install check
+  state the state in words; a Homebrew error reads "brew reported an error".
+- **No "Everything is up to date" while a tool went unchecked.** The run ends with
+  "Nothing to apply. N tool(s) not checked." instead.
+- **A Homebrew tool whose version cannot be read stays Homebrew's.** A HEAD build, or
+  several kept versions of a tool magus has no version command for, is classified by
+  Homebrew's own outdated answer instead of "not checked".
+
+---
+
 ## [magus 7.10.3] - 2026-10-14
 
 ### Fixed
