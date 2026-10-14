@@ -4,6 +4,26 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [magus 7.10.3] - 2026-10-14
+
+### Fixed
+
+- **A KEPT tool now says who installed it and which version runs.** The row read
+  "installed outside Homebrew", which named the installer magus would have used and said
+  nothing about the copy you have. It now names the real owner, such as "comes with the
+  operating system", "installed by a Homebrew cask", "installed by cargo" or "installed by
+  ruff's own installer", and shows the version: `zsh  KEPT  5.9 (comes with the operating
+  system)`.
+- **A uv from uv's own installer is checked and updated.** magus reads the installer's
+  receipt for the version, asks PyPI for the latest, and runs `uv self update`. A pin
+  runs `uv self update <pin>`.
+- **A newer copy hidden later on PATH is reported.** When PATH runs one copy and a newer
+  one sits further down, unused, the row warns, for example
+  `⚠ Homebrew also has 0.13.0, unused: ~/.local/bin comes first on PATH`. Only you can
+  choose which copy to keep.
+
+---
+
 ## [magus 7.10.2] - 2026-10-14
 
 ### Fixed
