@@ -1,6 +1,6 @@
 {
   "name": "mnemex",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "MCP runtime for semantic code search and AST analysis, ranking symbols by PageRank. Optional engine behind the code-search facade, and usable directly for its full tool surface.",
   "author": {
     "name": "Jack Rudenko",
@@ -45,6 +45,10 @@
           "--version"
         ],
         "install": [
+          {
+            "via": "bun",
+            "package": "mnemex"
+          },
           {
             "via": "brew",
             "os": [

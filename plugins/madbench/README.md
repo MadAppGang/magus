@@ -30,7 +30,6 @@ dependency.
 | Skill | `skills/madbench-evals/` | The reference: schema, checks, harness and sandbox, debugging, and madbench's Glossary (`glossary.md`). Read by path from the entry point and the agent; not a slash command. |
 | Command | `/madbench:doctor` | Three mechanical checks: the skills against your madbench, bench layout, generated index. No agent, output printed verbatim. |
 | Agent | `madbench:bench` | Loads the reference by path, writes or fixes the bench, runs the two controls, then runs the bench in a split pane with madbench's own colour output. |
-| Hook | `Stop` | Refuses to end a turn while a dispatched `madbench:bench` agent has not reported back. Silent in every other session. |
 
 **Why the entry point is `/madbench:madbench` here, and `/madbench` in a project.** Claude
 Code names a plugin's commands and skills `/<plugin>:<name>`; measured on 2.1.283, a bare

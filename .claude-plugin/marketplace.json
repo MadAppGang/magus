@@ -81,7 +81,7 @@
       "name": "claudish",
       "source": "./plugins/claudish",
       "description": "MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting, manages async sessions, streams channel notifications, and shows the session's runs live above the prompt, with stop and live-screen tabs. Required by code-search, dev, multimodel and designer.",
-      "version": "2.3.0",
+      "version": "2.3.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -102,6 +102,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "2.3.1",
+          "date": "2026-10-14",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "A fresh install of the claudish CLI uses bun"
+        },
         {
           "version": "2.3.0",
           "date": "2026-10-08",
@@ -134,11 +142,6 @@
             "Added"
           ],
           "summary": "A missing claudish binary is named at session start"
-        },
-        {
-          "version": "2.0.6",
-          "date": "2026-09-25",
-          "summary": "Claudish-usage routes only to agents that exist, gives a consistent example for a version the\u2026"
         }
       ]
     },
@@ -146,7 +149,7 @@
       "name": "mnemex",
       "source": "./plugins/mnemex",
       "description": "MCP runtime for semantic code search and AST analysis, ranking symbols by PageRank. Optional engine behind the code-search facade, and usable directly for its full tool surface.",
-      "version": "1.1.1",
+      "version": "1.1.2",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -167,6 +170,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "1.1.2",
+          "date": "2026-10-14",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "A fresh install of the mnemex CLI uses bun"
+        },
         {
           "version": "1.1.1",
           "date": "2026-10-07",
@@ -198,11 +209,6 @@
             "Changed"
           ],
           "summary": "Description corrected. It claimed to be required by code-analysis and dev; neither depends on\u2026"
-        },
-        {
-          "version": "1.0.1",
-          "date": "2026-08-19",
-          "summary": "Description rewritten as a durable capability statement instead of release-note phrasing"
         }
       ]
     },

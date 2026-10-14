@@ -4,6 +4,50 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [magus 7.10.2] - 2026-10-14
+
+### Fixed
+
+- **A tool is checked and updated through the installer that put it on your machine.** A
+  plugin lists its install options in order for a fresh install, and magus treated the
+  first one as the only owner it accepted. A mnemex or claudish from `bun add -g` read as
+  KEPT, "installed outside Homebrew", even when a newer version was out. A Homebrew copy
+  read the same way: magus looked for a tap formula's files under its full name, and
+  Homebrew keeps them under the short name. magus now finds the installer that holds the
+  tool (bun, npm or Homebrew), reads its version, and updates it with that installer's
+  command. A tool in no installer magus knows still reads KEPT, with a shorter note, and
+  a tool the operating system ships says so.
+- **A plugin update now lands even when another checkout already has the new version.**
+  Claude Code's `plugin update` writes to the repository's first folder, not the one it
+  runs in, and magus moves your folder forward after it. It only did that when it saw the
+  other folder change. When that folder already held the new version, nothing changed,
+  and `magus update` reported "the installer exited 0 but mnemex@magus is still 1.1.0"
+  on every run. It now follows a folder that already holds the target, too.
+
+---
+
+## [mnemex 1.1.2] - 2026-10-14
+
+### Changed
+
+- **A fresh install of the mnemex CLI uses bun.** bun is the preferred way to install
+  mnemex, and the plugin already installs bun before it. Homebrew on macOS and the
+  release binary stay as fallbacks. An existing mnemex keeps its installer: magus 7.10.2
+  updates a Homebrew copy with Homebrew and a bun copy with bun.
+
+---
+
+## [claudish 2.3.1] - 2026-10-14
+
+### Changed
+
+- **A fresh install of the claudish CLI uses bun.** bun is the preferred way to install
+  claudish, and the plugin already installs bun before it. Homebrew on macOS and the
+  release binary stay as fallbacks. An existing claudish keeps its installer: magus
+  7.10.2 updates a Homebrew copy with Homebrew and a bun copy with bun.
+
+---
+
 ## [madbench 0.10.1] - 2026-10-14
 
 ### Changed
