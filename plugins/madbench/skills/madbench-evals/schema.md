@@ -82,6 +82,8 @@ harness:
   use_subscription: required   # optional (default) | required | api_usage
   config:                      # what the tool is GIVEN before it starts
     dirs: [./config/base, "{{overlay}}"]   # composed, in order, into the tool's ~/.claude
+    edits:                                 # marked blocks of composed files, replaced after dirs
+      - {file: commands/dev.md, between: ["<x>", "</x>"], with: ./fragments/x.md}
     plugins: [../../plugins/dev]           # plugin FOLDERS; identity is derived
     system_prompt: "…"
   args: ["--permission-mode", "bypassPermissions"]   # extra CLI flags, appended last
@@ -99,6 +101,12 @@ harness:
   configuration directory; a later file at the same relative path replaces the earlier one, and
   an `""` entry is skipped. When declared, the composed tree is the user scope
   (`--setting-sources user`) and nothing from the host's own `~/.claude` loads.
+- **`config.edits`** — after the dirs compose, each entry replaces one marked block of a file
+  in the tree: `file` (a path INSIDE the tree), `between` (the START and END marker lines, each a
+  whole line exactly once, START first) and `with` (the fragment, relative to the bench file,
+  opening and closing with those marker lines). `with: ""` skips the edit; `edits` without
+  `dirs` is an error; all three keys are required and no other is accepted
+  (`harness.config.edits[0].replace: unknown key`).
 - **`config.plugins`** — plugin folder paths (a folder carrying `plugin.json` at its root or
   under `.claude-plugin/`), relative to the bench file. `<name>@<marketplace>` is derived from
   the folder's `plugin.json` and its enclosing marketplace checkout; two entries resolving to
@@ -299,7 +307,8 @@ Relative paths resolve against the bench file. The tree each leaves behind repla
 `testdata:` as the seed source.
 
 **Every staged path resolves against the bench file's directory, never the cwd** —
-`testdata:`, `generate:`, `setup:`, a local `repo:`, `harness.config.dirs` and `harness.config.plugins` alike,
+`testdata:`, `generate:`, `setup:`, a local `repo:`, `harness.config.dirs`, `harness.config.plugins` and each
+`harness.config.edits[].with` alike,
 with `{{param}}` substitution applied first (`docs/sandbox-and-testdata.md:239-245`). That
 includes a `testdata:` a Scenario *inherits* from `defaultScenario:`, so a bench runs
 identically from its own folder, the repo root, or a multi-bench `madbench a/ b/` sweep.
@@ -573,7 +582,7 @@ models:
   smart: opus-4.8
 metrics: [{name: cost, source: session.cost, aggregate: sum, unit: usd, better: lower}]
 guard_changes:
-  allow: [harness/model]             # the variants sweep the model; anything else is CONFOUNDED
+  allow: [harness/model]             # the variants sweep the model; anything else is FORBIDDEN CHANGES
 variants:
   - name: defaults                   # the bench as-is; the first variant is the baseline
   - name: fast-greedy
@@ -612,7 +621,7 @@ one declaration across the runs is what makes their numbers comparable.
 `{{name}}` (whitespace-tolerant) is substituted anywhere a string appears: `harness:`
 values including nested slices/maps, `prompt`, `testdata`, all three of `repo:`, `generate`,
 `setup`, `cwd`, `staging_timeout`, every `sandbox:` value, `transform`, `vars` values, and
-check `value:`/`inline:`/`transform:`/`args:`/`config:` recursively including nested children.
+check `value:`/`inline:`/`transform:`/own keys/`config:` recursively including nested children.
 
 - A value that is **exactly** one placeholder keeps the param's **native type**
   (`temp: "{{temp}}"` → the float `0.0`).
@@ -635,7 +644,9 @@ the `harness` source, whose paths are the YAML paths under `harness/`: `harness/
 `harness/provider`, `harness/effort` and the other scalar keys by resolved value (the model
 canonicalised), `harness/args/<i>` (one entry per argv position),
 `harness/config/system_prompt`, `harness/config/files/<relative path>` (each file of the tree
-`config.dirs` composes, by content) and `harness/config/plugins/<id>/…` (each staged plugin) —
+`config.dirs` composes, by content, a file `config.edits` changed with its edited regions masked),
+`harness/config/regions/<relative path>/<start marker>` (one edited region, START through END)
+and `harness/config/plugins/<id>/…` (each staged plugin) —
 diffs them against the baseline, and:
 
 - **reports** the changed paths and byte delta, in the console's `── GUARD ──` section and
@@ -687,7 +698,7 @@ Strict decoding checks key **names**, not value **semantics**. These load clean 
 | Write this | Not this | Why it slips through |
 |---|---|---|
 | `timeout: 600s` | `timeout: 600` or `"600"` | The field's **type is string**, so `600` decodes fine. `time.ParseDuration` then rejects `"600"` and the timeout **silently falls back to the default**. Always write a unit |
-| `config:` | `args:` on `ts`/`js`/`python` | `args:` is a **real field** on a check spec — the right key for `exec`, `session:*` and most others. On the script shims it is the wrong one: they bind `config` as a parameter, so your config arrives as `assertion.args` and nothing reads it |
+| `config:` | your own keys beside `type:` on `ts`/`js`/`python` | The script types take any key, and one written beside `type:` reaches the envelope as `assertion.args.<key>`. The shims bind `config` as the parameter, so such a key reaches your function only if it reads `assertion.args` itself |
 
 **Strict decoding covers the `harness:` block too.** An unknown key anywhere under it is a load
 error naming the full key path:

@@ -30,7 +30,7 @@ the madbench repository.
 | Event | One thing that happened in a Session — a message, a tool call, a hook, a reminder — with madbench's Category, Type and Source beside the harness's own RawType, RawSource and Raw. |
 | Environment | What the agent was given, not what it did: Expected (what madbench staged) and Reported (what the tool said it loaded), captured on the Session; `harness.probe` controls the capture. Graded by the `environment:*` Checks. |
 | Result | What a Check returned: `Pass`, `Score`, `Reason`, `Evidence`. |
-| Guard | What an Experiment's variants may differ by: `guard_changes:` with its list under `allow:`. Every declared variant is diffed against the baseline, the first declared variant, whichever variants `--variant` selects to run. An undeclared difference stops the Experiment before any spend as `CONFOUNDED`. |
+| Guard | What an Experiment's variants may differ by: `guard_changes:` with its list under `allow:`. Every declared variant is diffed against the baseline, the first declared variant, whichever variants `--variant` selects to run. An undeclared difference stops the Experiment before any spend as `FORBIDDEN CHANGES`. |
 | Driver | Who answers the agent's questions mid-run (`driver:`), and with `steer: true` decides what to say next. It speaks inside a Session; a Judge grades one from outside. |
 | Judge | The model behind an AI Check (`judges:`). It reads a finished Session and never touches it. |
 | Preflight | The pre-run checklist of binaries, keys, runtimes and daemons (`madbench preflight`, exit 3 = blocked). Every run preflights first. |
@@ -94,7 +94,7 @@ stage), `metric` / `metrics` (`metric:` and `metrics:`), `threshold` (the Expect
 `provider`), `model`, `eval` (the Eval), `evaluator` (madbench's `Evaluator` interface),
 `baseline` (a Term, the first variant), `pass` (a Scenario's verdict, which is why a
 repetition is never called a pass), `judge`, `target` (the Harness synonym), `score`,
-`grade` (`madbench grade`), `outcome` (`args.outcome`), `example` (`examples/`), `tool call`
+`grade` (`madbench grade`), `outcome` (a session Check's `outcome:` key), `example` (`examples/`), `tool call`
 (the `tool_call` Event type), and `test`, `task`, `result`, `feedback` and `requirement`
 (plain English; `Task` is also a Claude Code tool).
 

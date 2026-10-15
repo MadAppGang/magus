@@ -4,6 +4,22 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [madbench 0.11.0] - 2026-10-16
+
+### Changed
+
+- **The madbench skills are synced to madbench 0.46.0**, so `/madbench:madbench` and the
+  operator see `skills 0.46.0 · madbench 0.46.0 · current`. When madbench is missing, the
+  plugin now installs 0.46.0 from the release, checksum-verified.
+- **The skills teach the `file-changes` Check.** It grades which files the agent created,
+  updated and deleted: `must: { update: fizzbuzz.go }`, `must-not: { touch: fizzbuzz_test.go }`,
+  `default: []`. A Scenario can now require the fix and forbid rewriting the test.
+- **A Check's own keys sit beside `type:`.** madbench 0.46.0 refuses `args:` under a Check
+  (`unknown key "args"`), and `exec`'s `cmd:` takes a plain string (`cmd: go test ./...`). The
+  `migrate` skill carries the steps. Every bench in `benches/` is migrated.
+
+---
+
 ## [code-search 8.5.0] - 2026-10-14
 
 ### Added

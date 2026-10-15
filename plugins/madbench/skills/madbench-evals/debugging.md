@@ -63,7 +63,7 @@ A conclusion drawn from source you did not build is a conclusion about a differe
 | `generate:` refusal naming a value | the generated secret was findable in the workspace, prompt, or report. The expectation must be **derived** (sums, counts, checksums), not planted. If the answer IS a path, use `setup:` instead |
 | both `setup:` and `generate:` declared | refused — both own the staged tree and both run before the workspace exists |
 | `probe: false` with `require: true` | refused at preflight (`list` passes it), naming both keys: "do not look" and "verify before spending" cannot both be true |
-| `CONFOUNDED` / an Experiment stopped before spend | `guard_changes:` found a variant differing from the baseline, the first declared variant, by a path not in `allow:` — whichever variants `--variant` selected to run. Read the printed diff — the undeclared file is your confound. A model sweep needs `harness/model` in `allow:`, an effort sweep `harness/effort` |
+| `FORBIDDEN CHANGES` / an Experiment stopped before spend | `guard_changes:` found a variant differing from the baseline, the first declared variant, by a path not in `allow:` — whichever variants `--variant` selected to run. Read the printed diff — the undeclared file is your confound. A model sweep needs `harness/model` in `allow:`, an effort sweep `harness/effort` |
 | an `allow:` entry that matched nothing | reported as the shape of a typo: `allow: [plugin]` loads clean and matches nothing |
 | `no madbench.yaml or madbench.yml in <dir>` | bare `madbench` with no discoverable file — pass a path |
 | `assert-set: child "<type>": <err>` | error inside a composite child — fix the child |
@@ -90,7 +90,7 @@ A conclusion drawn from source you did not build is a conclusion about a differe
 | `contains`/`regex` fails though the code is correct and on disk | String and structured checks read ONLY `Session.FinalOutput`, never files or tool output. Grade files with `exec` |
 | Text checks grade a status line like "I've launched a search agent…" | The run delegated. `Session.FinalOutput` follows the answering thread when the parent ended its turn without receiving the result — if you still see this, the parent *did* receive it and chose to say that |
 | `latency`/`cost` fail intermittently on healthy runs | Expectation too tight. Tighten only to 1.5–2× observed max |
-| `session:step-count` refused at construction | It **requires** a bound. `args.lte` / `args.gte` / `args.eq`; a range binds both ends. It also counts the **main thread only** — a subagent's work is in `Session.Subagents` |
+| `session:step-count` refused at construction | It **requires** a bound. `lte` / `gte` / `eq`; a range binds both ends. It also counts the **main thread only** — a subagent's work is in `Session.Subagents` |
 | A `session:tool-used` bound fails though the totals look right | Counting is **per named tool, never aggregate**. `value: [Read, Grep]` with `gte: 2` means *each* at least twice |
 | `session:tool-used` with `outcome: ok` fails on a call that plainly worked | **Unknown satisfies neither `ok` nor `error`**, and unknown is the majority state — a successful `Read` records no outcome at all. The reason says so: *"Read was called 3 time(s), none with a recorded outcome"*. Use `outcome: ok` only where the answer is knowable (Bash, Edit/Write) |
 | `session:tool-used` with `value: Task` and `thread: main` is always false | A spawn row carries the **subagent's** thread, not the spawner's. Use `session:subagent-used` to ask who delegated |
@@ -107,7 +107,7 @@ A conclusion drawn from source you did not build is a conclusion about a differe
 | `environment:command-registered` errors | `claude plugin details` prints no command heading — it folds `commands/*.md` into its own `Skills (N)` count. It needs a source other than `plugin-cli` |
 | A staged plugin is missing and the scenario ERRORed before the agent ran | `harness.probe.require: true` refused it. That is a gate, not a grade: it did not score badly, it never ran |
 | `assert-set` fails though most children pass | Its threshold defaults to 1.0 (all) — set a ratio like 0.66 |
-| exec with pipes or quotes behaves oddly | No shell — `value:` is whitespace-split argv. Use `cmd: [sh, -c, '…']` |
+| exec with pipes or quotes behaves oddly | `cmd:` is a list, which is the exact argv with no shell. Write it as a string: `cmd: go test ./... \| tee out.txt` runs under `sh -c` |
 | ts/js/python check cannot find deps | Deps resolve from the nearest `package.json`/`pyproject.toml` root; add a lockfile or set `defaults.bun`/`defaults.python` |
 | Score looks inverted (high toxicity = high score?) | Contract: Score is normalized [0,1], higher-is-better. Raw risk is in `Evidence` under `raw_toxicity` and friends |
 | A check you meant as a measurement is failing the Scenario | Give it `readout: true`. It still runs, scores and reports, and its named score still reaches `metrics:` — it just cannot fail the Scenario. An **erroring** readout still fails |
@@ -331,8 +331,8 @@ run has; they compose.
   land in NOT APPLICABLE, which is correct and expected. Every other Check is a positive
   Check, and every fence has an activity partner.
 - The verdicts reproduce: `madbench grade` on a stored report from a real run.
-- Session checks asking the **narrowest true question**: `args.thread: main` where the claim is
-  about the agent under test, `args.outcome: ok` where success is knowable and matters,
+- Session checks asking the **narrowest true question**: `thread: main` where the claim is
+  about the agent under test, `outcome: ok` where success is knowable and matters,
   `session:file-read` instead of a sentinel token injected into the thing being measured.
 - Measurements marked `readout: true` rather than gating the Scenario.
 - `metric:` names on every check whose score a `metrics:` expression reads, and arithmetic

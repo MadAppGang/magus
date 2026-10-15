@@ -43,8 +43,7 @@ scenarios:
 
       - type: environment:mcp-reachable
         value: probe
-        args:
-          tools: 1 # a floor: reported >= declared
+        tools: 1 # a floor: reported >= declared
 
       # Spelled exactly as the tool spells it. Errors when no system:init was captured.
       - type: environment:tool-available
@@ -52,5 +51,4 @@ scenarios:
 
       - type: environment:plugin-inventory
         value: benchproof@madbench-proof
-        args:
-          skills: 1 # each bound is a floor
+        skills: 1 # each bound is a floor

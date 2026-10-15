@@ -65,6 +65,8 @@ harness:
     dirs:                                         # composed into the tool's `.claude` — §5
       - ./config/base
       - "{{overlay}}"                             # "" is skipped
+    edits:                                        # marked blocks replaced after dirs — §5
+      - {file: commands/dev.md, between: ["<x>", "</x>"], with: ./fragments/x.md}
     plugins:                                      # plugin FOLDERS, staged as a registry — §6
       - ./marketplace/plugins/benchproof          # tests/plugin-staging
     system_prompt: "You are terse."               # "" omits --system-prompt
@@ -89,6 +91,7 @@ names the full key path. Nothing is silently ignored.
 | `effort` | string | *(unset)* | `--effort <value>`. **Checked by value**: `low`, `medium`, `high`, `xhigh`, `max`, exact and case-sensitive. Empty string is an error; write `~` for "the CLI's default" |
 | `use_subscription` | string | `optional` | whether the run may bill against **this machine's** Claude Code login: `optional` · `required` · `api_usage`, checked by value like `effort`. Empty string is an error |
 | `config.dirs` | []string | *(none)* | directories composed, in order, into the tool's `.claude` — §5 |
+| `config.edits` | []{file, between, with} | *(none)* | marked blocks of composed files, each replaced by a fragment after the dirs compose; requires `config.dirs` — §5 |
 | `config.plugins` | []string | *(none)* | plugin folders, staged as a registry — §6 |
 | `config.system_prompt` | string | *(unset)* | `--system-prompt <value>` |
 | `args` | []string | *(none)* | extra argv, appended after everything madbench adds |
@@ -482,9 +485,30 @@ What follows from a declared configuration:
   `CLAUDE.md` with a marker the agent can only have from that file, graded with
   `session:match` or `contains`.
 
+### `config.edits` — replacing one marked block
+
+```yaml
+    dirs: [./base, ./variants/{{variant}}]
+    edits:
+      - file: plugins/dev/commands/dev.md            # a path INSIDE the composed tree
+        between: ["  <model_selection>", "  </model_selection>"]
+        with: ./fragments/{{variant}}/dev.md.model_selection   # relative to the bench file
+```
+
+For a variant that differs only inside one region of a large shared file. Edits apply after
+every dirs entry, in order, each seeing the ones before. Each marker must be a whole line of
+the file exactly once (exact match, no trimming), START before END; the fragment replaces
+START..END inclusive and must itself open with START and close with END. Missing, repeated or
+out-of-order markers, a `file` outside the tree, a missing fragment, and `edits` without
+`dirs` are errors naming `harness.config.edits[<i>]`. `with: ""` skips the edit. Worked
+example: `tests/model-selection/`.
+
 **The guard compares the composed tree file by file**, as `harness/config/files/<relative
 path>` (§5a). Two variants whose `dirs:` lists differ but compose to identical trees have no
 delta.
+The guard splits an edited file: `harness/config/regions/<file>/<start marker>` is the
+region, and `harness/config/files/<file>` the rest with the region masked, so `allow:` can
+name the region and a change elsewhere in the file is still a confound.
 
 ### 5a. The harness under `guard_changes:`
 
@@ -496,7 +520,8 @@ path is the YAML path under `harness/`:
 | `harness/type` · `harness/binary` · `harness/model` · `harness/provider` · `harness/effort` · `harness/use_subscription` | the resolved value (the model canonicalised) |
 | `harness/args/<i>` | one argv element by position |
 | `harness/config/system_prompt` | the text |
-| `harness/config/files/<relative path>` | each file of the tree `config.dirs` composes, by content, before plugins are staged into it |
+| `harness/config/files/<relative path>` | each file of the tree `config.dirs` composes, by content, before plugins are staged into it; an edited file with its edited regions masked, marker lines kept |
+| `harness/config/regions/<relative path>/<start marker>` | one `config.edits` region, START through END inclusive; the marker trimmed of surrounding whitespace |
 | `harness/config/plugins/<id>/…` | each staged plugin |
 | `harness/probe/…` | the probe settings |
 
@@ -504,10 +529,11 @@ path is the YAML path under `harness/`:
 guard_changes:
   allow: [harness/model, harness/effort]          # a model × effort sweep
   # allow: [harness/config/files/CLAUDE.md]       # only that composed file may differ
+  # allow: [harness/config/regions]              # only config.edits regions may differ
   # allow: [harness/config]                       # the whole composed config
 ```
 
-A variant whose model differs without `harness/model` in `allow:` is **CONFOUNDED**. The
+A variant whose model differs without `harness/model` in `allow:` is **FORBIDDEN CHANGES**. The
 directory rule applies: `allow: [harness]` covers everything under it.
 
 ---
@@ -661,7 +687,7 @@ composed configuration (`config.dirs`) carries, or a file seeded into `testdata:
 > what the agent's relative Reads resolve against, what its shell commands run in, and which
 > `CLAUDE.md` the CLI discovers. Everything madbench does *after* the run still resolves against
 > the workspace **root** — so `session:file-read` compares against the root, and the `exec`
-> check's `args.cwd` joins onto the root.
+> check's `cwd` joins onto the root.
 
 ---
 

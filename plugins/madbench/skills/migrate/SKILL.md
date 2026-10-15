@@ -75,7 +75,8 @@ loader has not named.
 ## Step 4 — the free gates, in order
 
 `list` proves the file parses, not that it can run. Check types are built at preflight, so
-an unknown check type passes `list` and fails here as `unknown check type`. Treat it the way
+an unknown check type passes `list` and fails here as `unknown check type`, and a key a Check
+type does not take fails here as `unknown key "<key>"; the keys are …`. Treat both the way
 Step 3 treats an unknown key.
 
 ```bash

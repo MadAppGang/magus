@@ -9,12 +9,10 @@ never into `pkg/`, because the checkout builds `dev`, not the release on your PA
 A **Check** grades one **Session** — what the Harness produced when it ran one Scenario —
 and returns a **Result**.
 
-**Counts here follow the enumerated rows of upstream `docs/checks.md`**, not its headings or
-its totals table. The totals table lists Session at 8 and Environment at 7
-(`docs/checks.md:1267-1268`) while the body heads Environment with "9 types"
-(`docs/checks.md:656`), and the Session heading says "14 canonical types" over a table of 18
-rows (`docs/checks.md:289-316`). When they conflict, the enumerated rows win, and this file
-does not restate a grand total.
+**Counts here follow the enumerated rows of upstream `docs/checks.md`**, not its headings.
+The Session heading says "14 canonical types" over a table of 18 rows
+(`docs/checks.md:292`), and the totals table (`docs/checks.md:1442`) counts the 18. When a
+heading and the rows conflict, the rows win, and this file does not restate a grand total.
 
 ---
 
@@ -43,6 +41,8 @@ Harness ever runs.
 | `Providers` | `[]string` | provider labels aligned 1:1 with `Sessions` |
 | `Spec` | `Spec` | this Check's own parsed YAML |
 | `Vars` | `map[string]any` | the Scenario's `vars:`, for interpolation and reference text |
+| `Sandbox` | `check.Sandbox` | the run's live sandbox, for `exec` with `in_sandbox: true`; nil under `madbench grade` |
+| `Baseline` | `*check.Baseline` | the working tree when the agent started and when the harness returned, for `file-changes`; nil under `madbench grade` |
 
 ### Spec — every YAML key a check accepts
 
@@ -50,7 +50,6 @@ Harness ever runs.
 |---|---|
 | `type` | the registered type string — **the only required key** |
 | `value` | the type's primary payload (needle, reference text, rubric, command, path…) |
-| `args` | per-type options map |
 | `config` | free-form config map; **no in-tree check reads it** |
 | `weight` | multiplier when this Check is a composite child; unset → 1.0 |
 | `threshold` | the **Expectation** — the bar the score (or raw metric) must clear |
@@ -101,7 +100,7 @@ check passes (a composite counts as one check — put partial credit *inside* an
 ### 2.1 `readout:` — measuring without grading
 
 ```yaml
-- { type: session:step-count, metric: SearchWasBounded, args: { lte: 10 }, readout: true }
+- { type: session:step-count, metric: SearchWasBounded, lte: 10, readout: true }
 ```
 
 A readout **runs, scores, and reports**. It appears in the report labelled `(readout)`, its
@@ -128,7 +127,7 @@ this Check?" and drives the dashboard badge.
 
 | Kind | Powered by | Types |
 |---|---|---|
-| **Logic** | built-in deterministic matchers | String, Structured, Numeric, NLP, Session, Environment, Mastra, Composite |
+| **Logic** | built-in deterministic matchers | String, Structured, Numeric, NLP, Session, Environment, Mastra, File changes, Composite |
 | **AI** | an LLM judging the answer | the 17 judge-backed types (§5) |
 | **Code** | your own program | `ts`, `js`, `python`, `exec`, `custom:exec`, `custom:gosrc`, `custom:wasm` |
 | **Service** | an external API | `custom:http`, `model:current` |
@@ -150,6 +149,7 @@ the top). The grand total is deliberately not restated: it is the number that ro
 | Environment | 9 | no alias spellings (`docs/checks.md:656`) |
 | Mastra | 6 | |
 | Exec | 1 | |
+| File changes | 1 | `file-changes` — the working tree before and after the run (§12) |
 | Model | 1 | `model:current` — the only Check whose expected answer is fetched, not stored |
 | Script | 3 | `ts` · `js` · `python` |
 | Composite | 6 | |
@@ -259,7 +259,7 @@ still stops its Scenario, because every other error is a Check to repair
 | type | Asserts | Config |
 |---|---|---|
 | `bleu` | corpus BLEU vs `value` ≥ threshold | `value`, `threshold` |
-| `rouge-n` | ROUGE-N vs `value` ≥ threshold | `value`, `args.n` (positive int, default 1), `threshold` |
+| `rouge-n` | ROUGE-N vs `value` ≥ threshold | `value`, `n` (positive int, default 1), `threshold` |
 | `gleu` | GLEU vs `value` ≥ threshold | `value`, `threshold` |
 | `meteor` · `perplexity` · `perplexity-score` | — | **error only** |
 
@@ -271,21 +271,21 @@ Grades *how the agent worked*, not what it said. All 0/1 (`docs/checks.md:289-31
 
 | type | Asserts | Config |
 |---|---|---|
-| `session:tool-used` | every named tool was **invoked** — present in `Session.Events` under any invocation Type (`tool_call`, `mcp_call`, `skill`, `subagent`), or in derived `Session.Calls`. Each **at least once**, or inside a bound **per tool**. The attempt, not its result, unless `args.outcome` narrows it | `value` (string or list), `args.gte`/`args.lte`/`args.eq`, `args.thread`, `args.outcome` |
-| `session:tool-args-match` | some call to `value` had args matching `args.args` (subset match on keys; each value exact by default, or a matcher) | `value` (tool name), `args.args` (map, required), `args.thread`, `args.outcome` |
-| `session:tool-sequence` | the named tools appear **in order** — a subsequence, not necessarily consecutive | `value` (list), `args.thread` |
-| `session:tools-only` | an **allowlist fence**: every call in scope was to one of the named tools | `value` (non-empty name or list), `args.thread`, `args.outcome` |
-| `session:file-read` | the agent read `value`, a path **relative to `Session.WorkDir`**, or `plugin:<id>/<path>` for the exact file inside a staged plugin. A shell reader in a `Bash` command (`cat`, `head`, `tail`, `sed`, `nl`, `less`, `more`, `bat`) counts as a read; `ls` or `stat` does not | `value` (path, matcher or `plugin:` anchor), `args.tools` (default `Read`/`NotebookRead`/`View`/`read_file`), `args.shell_tools` (default `Bash`, `[]` for none), `args.thread`, `args.outcome` |
+| `session:tool-used` | every named tool was **invoked** — present in `Session.Events` under any invocation Type (`tool_call`, `mcp_call`, `skill`, `subagent`), or in derived `Session.Calls`. Each **at least once**, or inside a bound **per tool**. The attempt, not its result, unless `outcome` narrows it | `value` (string or list), `gte`/`lte`/`eq`, `thread`, `outcome` |
+| `session:tool-args-match` | some call to `value` had arguments matching `tool_args` (subset match on keys; each value exact by default, or a matcher) | `value` (tool name), `tool_args` (map, required), `thread`, `outcome` |
+| `session:tool-sequence` | the named tools appear **in order** — a subsequence, not necessarily consecutive | `value` (list), `thread` |
+| `session:tools-only` | an **allowlist fence**: every call in scope was to one of the named tools | `value` (non-empty name or list), `thread`, `outcome` |
+| `session:file-read` | the agent read `value`, a path **relative to `Session.WorkDir`**, or `plugin:<id>/<path>` for the exact file inside a staged plugin. A shell reader in a `Bash` command (`cat`, `head`, `tail`, `sed`, `nl`, `less`, `more`, `bat`) counts as a read; `ls` or `stat` does not | `value` (path, matcher or `plugin:` anchor), `tools` (default `Read`/`NotebookRead`/`View`/`read_file`), `shell_tools` (default `Bash`, `[]` for none), `thread`, `outcome` |
 | `session:step-count` | **main-thread** tool-call count is inside the bound | a bound is **required** |
 | `session:turn-count` | how many exchanges the conversation took | a bound |
 | `session:turn-step-count` | tool calls made by the **busiest** turn (the quietest, for a `gte`; a range tests each end against its own turn) | a bound |
-| `session:subagent-used` | a subagent spawn was captured | `args.agent` |
-| `session:subagent-count` | spawn count ≥ `value` | `value` (positive int), `args.agent` |
+| `session:subagent-used` | a subagent spawn was captured | `agent` |
+| `session:subagent-count` | spawn count ≥ `value` | `value` (positive int), `agent` |
 | `session:skill-used` | a skill invocation in `Session.Events` named `value` (case-insensitive) **that the tool did not answer with an error** | `value` (skill name) |
 | `session:image-sent` | the Scenario's `image:` **reached the model** — at least `value` Events of Type `attachment` with an `image/…` media type | `value` (whole number ≥ 1, default 1) |
-| `session:match` | the marker `value` appears in the selected Events — their text, tool name, arguments or output; with `harness:` declared, the harness's own record. Counts matching Events; at least one by default, `eq: 0` asserts it never appeared | `value` (substring, or RE2 with `args.regex`), `args.ignore_case`, `args.type`, `args.category`, `args.source`, `args.thread`, `args.gte`/`args.lte`/`args.eq`; `args.raw_type` and `args.raw` each **require** `args.harness` |
-| `session:question-asked` | **what the agent asked** — one `AskUserQuestion` question satisfies every declared expectation | `args.question`, `args.header` (matchers), `args.options`, `args.exact_options`, `args.count`, `args.thread`, `args.outcome` — at least one; no `value` |
-| `session:answer-verified` | **what the picker actually selected** — every answer the Driver entered was recorded by the CLI as the option it chose | `args.require_verified` (default false); no `value` |
+| `session:match` | the marker `value` appears in the selected Events — their text, tool name, arguments or output; with `harness:` declared, the harness's own record. Counts matching Events; at least one by default, `eq: 0` asserts it never appeared | `value` (substring, or RE2 with `regex`), `ignore_case`, `event_type`, `category`, `source`, `thread`, `gte`/`lte`/`eq`; `raw_type` and `raw` each **require** `harness` |
+| `session:question-asked` | **what the agent asked** — one `AskUserQuestion` question satisfies every declared expectation | `question`, `header` (matchers), `options`, `exact_options`, `count`, `thread`, `outcome` — at least one; no `value` |
+| `session:answer-verified` | **what the picker actually selected** — every answer the Driver entered was recorded by the CLI as the option it chose | `require_verified` (default false); no `value` |
 | `session:end-reason` | **why the conversation stopped** — `Session.EndReason` is one of the declared reasons | `value` (`script-complete` · `driver-done` · `turn-cap`, or a list meaning any-of) |
 | `session:driver-source` | **who decided what the Driver said** — the strongest source in `Session.Driver` | `value` (`scripted` or `model`) |
 | `session:goal-success` | — | **error only** |
@@ -303,18 +303,20 @@ chose to repeat it (`docs/checks.md:318-378`).
 ```yaml
 - type: session:match          # portable: any harness
   value: BLUEHERON
-  args: { type: tool_result }  # the agent saw it in a tool's output
+  event_type: tool_result  # the agent saw it in a tool's output
 - type: session:match          # a secret never appeared anywhere in the Session
   value: "sk-live-"
-  args: { eq: 0 }
+  eq: 0
 - type: session:match          # harness-specific: claude-code's own record, one path in it
   value: MONITORPROOF-7Q4XZ
-  args: { harness: claude-code, raw_type: hook_success, raw: attachment.stdout }
+  harness: claude-code
+  raw_type: hook_success
+  raw: attachment.stdout
 ```
 
 - `raw_type`/`raw` without `harness:` is **refused when the Check is built** — at
   `preflight`, never by `list`; a `harness:` that is not the bench's own is refused there too.
-- An unknown `args` key, a `type`/`category`/`source` outside madbench's vocabulary, a bad
+- An unknown key, an `event_type`/`category`/`source` outside madbench's vocabulary, a bad
   regex and an empty marker are all refused when the Check is built (`preflight`).
 - A record that became several Events counts **once** when `raw` is searched. `raw` paths
   are dotted; a number indexes a list and `*` fans out.
@@ -330,14 +332,14 @@ the agent; `docs/driving-a-session.md` covers what each records.
 ### One bound grammar for the three counting checks
 
 `session:step-count`, `session:turn-count` and `session:turn-step-count` read the same
-`args`, so there is one grammar. `session:tool-used` spells its bounds identically.
+keys, so there is one grammar. `session:tool-used` spells its bounds identically.
 
 | written | means |
 |---|---|
-| `args: {lte: 20}` | a ceiling — at most 20 |
-| `args: {gte: 1}` | a floor — at least 1 |
-| `args: {gte: 1, lte: 20}` | a closed range — **both ends bind** |
-| `args: {eq: 3}` | an exact count |
+| `lte: 20` | a ceiling — at most 20 |
+| `gte: 1` | a floor — at least 1 |
+| `gte: 1` and `lte: 20` | a closed range — **both ends bind** |
+| `eq: 3` | an exact count |
 | `min` / `max` | accepted spellings of `gte` / `lte` |
 
 On `session:turn-step-count` each end is tested against its OWN turn — a floor is broken by
@@ -360,8 +362,8 @@ presence is the degenerate case of the count, not a separate rule.
 
 ```yaml
 - { type: session:tool-used, value: [Read, Grep] }                    # each at least once
-- { type: session:tool-used, value: [Read, Grep], args: { gte: 2 } }  # each at least twice
-- { type: session:tool-used, value: Bash, args: { lte: 0 } }          # never used
+- { type: session:tool-used, value: [Read, Grep], gte: 2 }  # each at least twice
+- { type: session:tool-used, value: Bash, lte: 0 }          # never used
 ```
 
 ### Matchers — asserting on a path you cannot know
@@ -375,16 +377,15 @@ resolves it. Matchers let any `session:tool-args-match` expectation, and `sessio
 |---|---|---|
 | *(none)* | exact | the default |
 | `exact:` | exact | escape hatch for a literal that itself starts with a prefix |
-| `glob:` | path glob | `*`, `?`, `[…]` inside one segment; `**` across segments; anchored both ends |
+| `glob:` | path glob | `*`, `?`, `[…]` inside one segment; `**` across segments, at the end at least one (`glob:skills/**` does not match `skills`); `{a,b}` either alternative; anchored both ends |
 | `suffix:` | tail of the string | |
 | `contains:` | anywhere in the string | |
 
 ```yaml
 - type: session:tool-args-match
   value: Read
-  args:
-    args:
-      file_path: "glob:**/skills/security/SKILL.md"
+  tool_args:
+    file_path: "glob:**/skills/security/SKILL.md"
 ```
 
 Non-string expectations (numbers, maps, lists) are always exact. A literal that itself opens
@@ -397,12 +398,12 @@ return (`/var/folders/…`) while Claude Code reports the resolved spelling
 knows those name one file. Evidence carries `work_dir`, `expected_resolved` and every
 `paths_read`.
 
-### Scoping to one thread — `args.thread`
+### Scoping to one thread — `thread`
 
 A Session interleaves the main thread with every subagent it spawned, so *"was `Write`
 used"* and *"did the agent under test use `Write`"* are different questions.
 
-| `args.thread` | Grades |
+| `thread` | Grades |
 |---|---|
 | `main` | the top-level agent only (`Event.Thread == ""`) |
 | *a subagent's name* | that subagent only — display name (`subagent_type`/`agentType`) or stable agent id |
@@ -410,23 +411,23 @@ used"* and *"did the agent under test use `Write`"* are different questions.
 
 ```yaml
 # The main thread must delegate, not do the work itself.
-- { type: session:tool-used, value: Write, args: { thread: main } }             # must FAIL
-- { type: session:tool-used, value: Write, args: { thread: general-purpose } }
-- { type: session:subagent-used, args: { agent: general-purpose } }
+- { type: session:tool-used, value: Write, thread: main }             # must FAIL
+- { type: session:tool-used, value: Write, thread: general-purpose }
+- { type: session:subagent-used, agent: general-purpose }
 ```
 
-`args.agent` on the `subagent:*` pair matches whichever spelling landed on the spawn row.
+`agent` on the `subagent:*` pair matches whichever spelling landed on the spawn row.
 `SubagentRollup.Tools` lists the distinct tools each subagent invoked in first-use order,
 which is what makes a `tools:` fence checkable; spawn/done rows are excluded.
 
-### Did the call actually succeed? — `args.outcome`
+### Did the call actually succeed? — `outcome`
 
 By default a `session:*` check grades an **attempt**. An MCP server that is installed but
 unindexed issues the same call as one that works, so a bench comparing the two scores them
-identically — a green check for a backend that answered nothing. `args.outcome` is how a
+identically — a green check for a backend that answered nothing. `outcome` is how a
 bench asks the other question.
 
-| `args.outcome` | Grades |
+| `outcome` | Grades |
 |---|---|
 | `any` | every call, whatever its recorded outcome — **the default** |
 | `ok` | `result_ok == true` — a **recorded** success |
@@ -499,19 +500,22 @@ cannot rot:
 > positive Check.** Only `latency` and `cost` are exempt from the control
 > (`madbench help check`); a fence, an absence Check or an anti-cheat invariant on its
 > own is `WRONGLY PASSED` (`docs/checks.md:608-622`).
+>
+> `file-changes` with only `must-not:`/`default:` is the same case for the working tree: an
+> agent that changed nothing breaks no ban. Pair it with the Check that proves the work (§12).
 
 Three shape rules:
 
 - **An empty `value: []` is refused at construction** — far more likely an anchor that
   expanded to nothing than a deliberate "no tool at all". For that, write `session:step-count`
-  with `args.eq: 0`.
+  with `eq: 0`.
 - **An empty scope passes vacuously and says so** (`calls_seen: 0` in Evidence).
 - **A subagent that ran but contributed no captured calls is a FAIL**, not a vacuous pass:
   *the subagent ran but this capture recorded none of its tool calls — the fence cannot be
   graded*. A green on an ungradeable fence is a lie.
 
 The **verdict** is the first call outside the set (`Bash is not allowed (call 4 of 11)`);
-the **Evidence names every one**. `args.outcome` is accepted for uniformity, but `any` — the
+the **Evidence names every one**. `outcome` is accepted for uniformity, but `any` — the
 default — is what a fence wants: a `Write` that was attempted and blocked still violates
 "this run may only read".
 
@@ -544,9 +548,9 @@ skill, and the bench scored clean.
 | `environment:command-registered` | `Reported.Commands()` contains `value`; **errors** when `plugin-cli` is the only source | `value` (namespaced, `<plugin>:<command>`) | 0/1 |
 | `environment:agent-registered` | `Reported.Agents()` contains `value`, loaded plugins only | `value` (namespaced, `<plugin>:<agent>`) | 0/1 |
 | `environment:mcp-connected` | `system:init` reports server `value` with status `connected`; a server declared only by a plugin that did **not** load counts as absent | `value` (bare `probe`, or the tool's `plugin:mcpproof:probe`) | 0/1 |
-| `environment:mcp-reachable` | the server `value` answered **madbench's own** `initialize` + `tools/list`, spoken through this run's sandbox **before the agent launched**; optionally clears a tool-count floor (`docs/checks.md:676`) | `value` (the server name **as the bench declared it** — the document key, e.g. `probe`), optional `args.tools` (a floor: reported ≥ declared) | 0/1 |
+| `environment:mcp-reachable` | the server `value` answered **madbench's own** `initialize` + `tools/list`, spoken through this run's sandbox **before the agent launched**; optionally clears a tool-count floor (`docs/checks.md:676`) | `value` (the server name **as the bench declared it** — the document key, e.g. `probe`), optional `tools` (a floor: reported ≥ declared) | 0/1 |
 | `environment:tool-available` | `init.tools` names `value` **exactly**; **errors** when no `system:init` was captured | `value` (as the tool spells it: `Skill`, `mcp__railway__deploy`) | 0/1 |
-| `environment:plugin-inventory` | the plugin's `plugin details` breakdown clears every declared bound — the **staged tree**, read whether or not the plugin loaded | `value` (plugin id), `args.skills`/`agents`/`hooks`/`mcp_servers`/`lsp_servers` | **fraction of bounds met** |
+| `environment:plugin-inventory` | the plugin's `plugin details` breakdown clears every declared bound — the **staged tree**, read whether or not the plugin loaded | `value` (plugin id), `skills`/`agents`/`hooks`/`mcp_servers`/`lsp_servers` | **fraction of bounds met** |
 | `environment:matches-expected` | every plugin the run staged is listed **and** loaded | — (`harness.config.plugins` already said which) | **fraction loaded** |
 
 ```yaml
@@ -572,16 +576,14 @@ checks:
   # never the tool's `plugin:…:…` spelling, which the preflight has never seen.
   - type: environment:mcp-reachable
     value: probe
-    args:
-      tools: 1          # a floor; without args the check asks only whether it answered
+    tools: 1          # a floor; without it the check asks only whether it answered
 
   - type: environment:tool-available
     value: Skill
 
   - type: environment:plugin-inventory
     value: benchproof@madbench-proof
-    args:
-      skills: 1         # each bound is a floor: reported >= declared
+    skills: 1         # each bound is a floor: reported >= declared
 ```
 
 The prefix is `environment:`, **never** `env:` — `env` already means environment *variables*
@@ -614,7 +616,7 @@ Three more things about `mcp-reachable` worth knowing before writing it:
   deliberately not cross-checked, because the tool's registry is wider than what a bench
   declares (`docs/checks.md:796-800`).
 - **A connected server with zero tools is a pass.** A server may expose only resources or
-  prompts. A bench that needs tools declares `args: {tools: N}` (`docs/checks.md:810-813`).
+  prompts. A bench that needs tools declares `tools: N` (`docs/checks.md:810-813`).
 - **What green does NOT prove**: that the CLI registered the server, that the model could
   call its tools, or that the server stayed up past *t=0*. What it does prove is the one
   thing nothing else can — the server process starts under this run's confinement, in this
@@ -661,8 +663,8 @@ Five more cases follow the same rule:
   details` prints no command heading — it folds `commands/*.md` into its own `Skills (N)`
   count.
 
-An unknown key under `environment:plugin-inventory`'s `args` is **refused at construction**,
-as is an empty bounds block. A typo'd `skill: 20` that silently declared no bound would leave
+An unknown key on `environment:plugin-inventory` is **refused at construction**, as is a
+check that declares no bound. A typo'd `skill: 20` that silently declared no bound would leave
 the check grading nothing and passing every run.
 
 ### Which of them a bench under `madbench check` can carry
@@ -715,35 +717,105 @@ or the Scenario's `vars:`.
 
 | type | Asserts | Config | Score |
 |---|---|---|---|
-| `completeness` | output covers the input's elements | `value` \| `args.input` \| `Vars[prompt]`, `threshold` (0.7) | continuous |
+| `completeness` | output covers the input's elements | `value` \| `input` \| `Vars[prompt]`, `threshold` (0.7) | continuous |
 | `keyword-coverage` | output contains the input's keywords | same, `threshold` (1.0) | continuous |
-| `tone` | output sentiment matches the reference tone | `value` \| `args.referenceTone`, `threshold` (0.7) | continuous |
-| `content-similarity` | Dice similarity to the reference | `value` \| `args.expected`/`reference`, `args.ignoreCase` (true), `args.ignoreWhitespace` (true) | continuous |
-| `textual-difference` | LCS ratio against the reference | `value` \| `args.expected`/`reference` | continuous |
-| `code-tool-call-accuracy` | the expected tool (or tool order) was used | `args.expectedTool` \| `args.expectedToolOrder`, `args.strictMode` (false), `threshold` (1.0) | 0/1 |
+| `tone` | output sentiment matches the reference tone | `value` \| `referenceTone`, `threshold` (0.7) | continuous |
+| `content-similarity` | Dice similarity to the reference | `value` \| `expected`/`reference`, `ignoreCase` (true), `ignoreWhitespace` (true) | continuous |
+| `textual-difference` | LCS ratio against the reference | `value` \| `expected`/`reference` | continuous |
+| `code-tool-call-accuracy` | the expected tool (or tool order) was used | `expectedTool` \| `expectedToolOrder`, `strictMode` (false), `threshold` (1.0) | 0/1 |
 
 ## 11. Exec — 1 type
 
 | type | Asserts | Config |
 |---|---|---|
-| `exec` | a command run against the post-run workspace exits with the expected code | `args.cmd` (list) or `value` (string, whitespace-split — no shell); `args.cwd`; `args.expected_exit` (0); `args.timeout` (duration string, default `60s`) |
+| `exec` | a command run against the post-run workspace exits with the expected code | `cmd` (a string run by `sh -c`, or a list that is the exact argv); `cwd`; `expected_exit` (0); `timeout` (duration string, default `60s`); `in_sandbox` (false) |
 
-The command runs in `Session.WorkDir`; a relative `args.cwd` is joined onto it. An empty
+The command runs in `Session.WorkDir`; a relative `cwd` is joined onto it. An empty
 `WorkDir` with no absolute `cwd` is an error, deliberately — falling through to the harness
 process's cwd would run your tests in the user's own repo. On failure the tail of the
 combined output lands in `Reason`.
 
-**No shell is involved**: `value: "go test ./..."` is argv, not a shell line — no pipes,
-globs or `&&`. Use `cmd: [sh, -c, '…']` for those.
+**Write the command as you would type it.** A string runs as `sh -c '<line>'`, so pipes,
+`&&`, `$(…)` and quotes work. A list is the exact argv with no shell, for an argument a shell
+must not touch. `exec` takes no `value:`; one written there is refused.
 
 ```yaml
 - type: exec
-  args:
-    cmd: ["go", "test", "./..."]
-    timeout: "120s"
+  cmd: go test ./...
+  timeout: "120s"
+- type: exec
+  cmd: test "$(cat deployed-to.txt)" = staging
 ```
 
-## 12. Model — 1 type (Service)
+## 12. File changes — 1 type
+
+| type | Asserts | Config |
+|---|---|---|
+| `file-changes` | which files the agent must and must not create, update or delete, compared with the working tree it started from | `must`, `must-not` (each a map from kind to a path or a list); `default` (a list of kinds); `ignore` (a path or a list) |
+
+The question a test command cannot answer: the agent did the work — did it stay inside its
+boundaries? An agent that rewrites the test to match its own bug makes `go test` pass;
+`file-changes` names the edited test (`docs/checks.md:1237`).
+
+```yaml
+- type: file-changes
+  must:     { create: reports/summary.json, update: src/slugify.ts, delete: tmp }
+  must-not: { touch: [tests, data] }
+  default:  [update]
+  ignore:   [dist/**]
+```
+
+| Kind | A path is |
+|---|---|
+| `create` | absent when the agent started, present after the run |
+| `update` | present at both times, with different contents — a mode change alone is not one |
+| `delete` | present when the agent started, absent after the run |
+| `touch` | any of the three; `must` and `must-not` take it, `default` does not |
+
+| Key | Rule |
+|---|---|
+| `must` | every listed path must have that change: a file itself; a folder or pattern, at least one file inside it |
+| `must-not` | nothing the listed paths name may have that change |
+| `default` | the kinds allowed for a change no `must`/`must-not` rule names. Omitted: anything goes. `[]`: nothing else may change. No value: refused |
+| `ignore` | paths left out of every rule, on top of the built-in set |
+
+- **Paths** are relative to the working tree. A path names what it spells literally
+  (`app/[slug]/page.tsx`) and what it matches as a glob — `*` `?` `[abc]` in a segment, `**`
+  across segments (trailing: at least one), `{a,b}` alternatives — and everything inside a
+  folder it names. `guard_changes.allow` reads a path the same way (`tree.Match`).
+- **A rule governs the kinds it names; `default` governs the rest.** `must: {update: src}` +
+  `default: [update]` frees updates under `src`; a create or delete there still breaks
+  `default`. A path that `must` requires and `must-not` forbids for every satisfying kind, an
+  unknown kind, an absolute path or `..` is refused when the Check is built.
+- **A path that names nothing is an error.** A `must`/`must-not` path under `update` or
+  `delete` that names nothing in the starting tree is an evaluator error naming it (or naming
+  the ignore entry that hides it), at grading. `create` and `touch` paths are exempt. A
+  `must-not` `create`/`touch` path that matches no file at either moment does not fail the
+  Check; it is named after the verdict (`must-not touch: tset matched no file`) and in
+  `unmatched`.
+- **When the trees are recorded.** At the agent's start — after testdata, `setup:`/`generate:`,
+  staging and `sandbox.provision:` steps — and when the harness returns, before any Check
+  runs, so an `exec` that writes a cache is never the agent's work. `providers:` share one
+  baseline, so inside `select-best`/`max-score`/`compare` every provider gets the same score.
+- **Built-in ignore**: `.git`, `node_modules`, `__pycache__`, `.pytest_cache` at any depth,
+  `.madbench`, `.madbench-interactive`, and at level container (HOME is the working tree)
+  `.tmp`, `.cache`, `.claude`, `.claude.json`, the CLI's
+  `.local/share/applications/claude-code-url-handler.desktop`, plus each toolchain cache under
+  HOME that the seeded tree does not hold, even one a provision step pre-warms (`go/pkg/mod`,
+  `.npm`, `.cargo/registry`, … — `docs/checks.md:1315`).
+  `target/`, `coverage/`, `dist/` are never ignored by default: use `ignore:`.
+- **Unreadable is an error.** A file the walk cannot read makes the Check an evaluator error
+  naming it, unless `ignore:` covers it. A file deleted while the tree is walked is absent.
+- **Score 0/1.** Reason names each broken rule: `must-not touch: fizzbuzz_test.go was
+  updated`, `default [update]: notes.md was created`. Evidence: `created`/`updated`/`deleted`
+  (first 20) with `_count`s, `broken`, and `unmatched`.
+- **Live run only.** No baseline → evaluator error `no baseline recorded`, never a pass.
+  `madbench grade` skips it, inside a composite too.
+- **A ban alone is `WRONGLY PASSED`** under `madbench check`: pair `must-not:`/`default:` with a
+  Check that proves the work — `exec: go test`, or a `must:` rule (`docs/checks.md:1361`).
+  `tests/file-changes` is the worked pair.
+
+## 13. Model — 1 type (Service)
 
 Did the agent name a model that exists, and is it current? The expected answer is **not in
 the repository and must not be**: `model:current` asks the live catalog at grading time
@@ -752,7 +824,7 @@ snapshot it exists to detect.
 
 | type | Config |
 |---|---|
-| `model:current` | `args.file` (JSON path relative to `Session.WorkDir`; default source is the final output) + `args.path` (dotted path inside it); `args.ignore` (non-model sentinels); `args.require` (`current` · `superseded` · `retired`, default `current`); `args.allow_routes` (default false); `args.min_count` (default 1); `args.timeout` (default `60s`) |
+| `model:current` | `file` (JSON path relative to `Session.WorkDir`; default source is the final output) + `path` (dotted path inside it); `ignore` (non-model sentinels); `require` (`current` · `superseded` · `retired`, default `current`); `allow_routes` (default false); `min_count` (default 1); `timeout` (default `60s`) |
 
 | standing | meaning | utility |
 |---|---|---:|
@@ -773,28 +845,28 @@ it is missing.
 ```yaml
 - type: model:current
   metric: SelectionIsRoutable
-  args:
-    file: .dev-session/iteration-config.json
-    path: selectedModels.models
-    ignore: [internal]
+  file: .dev-session/iteration-config.json
+  path: selectedModels.models
+  ignore: [internal]
 ```
 
-## 13. Script — 3 types
+## 14. Script — 3 types
 
 Your own grading logic in a managed runtime: `ts`/`js` via **bun**, `python` via **uv**.
 `value:` is inline source or a `file://` path. The runtime is located on PATH first, then
 auto-installed into madbench's cache unless the install policy is `never`. Per-scenario
 `bun:`/`python:` pin versions; `lockfile_required:` demands `bun.lock` / `uv.lock`.
+The types are open: any key written beside `type:` reaches your script. YAML writes a Check's own keys flat, beside `type:`; the envelope carries them under `assertion.args`.
 
 | type | Runtime | Config |
 |---|---|---|
-| `ts` | bun | `value` (inline or `file://…`), `args.timeout` (default 30s) |
+| `ts` | bun | `value` (inline or `file://…`), `timeout` (default 30s) |
 | `js` | bun | same |
 | `python` | uv | same |
 
 ---
 
-## 14. Judge checks — 17 types (AI)
+## 15. Judge checks — 17 types (AI)
 
 All 17 are always registered, but each binds to the bench's judge set at **construction** —
 so a bench with no usable judge fails before the Harness runs, naming the actual fix (*set
@@ -833,7 +905,7 @@ judges:
   freeform — the model's vendor decides which levels it takes — except on `claude-code`,
   where it is checked against the CLI's own list.
 - A `models:` entry can be a judge: name it in `judges.providers.<id>`, `judges.default` or a
-  Check's `args.judge`.
+  Check's `judge`.
 
 `default:` is optional — with none, the sole (or first-declared) provider wins. Naming a
 `default:` whose provider is unavailable is a run-start error. A `default:` that names no
@@ -844,17 +916,17 @@ literal string. **API keys never appear in YAML**: `api_key_env` names an enviro
 
 | key | Effect |
 |---|---|
-| `args.judge` | select a named provider, or a `models:` entry by name; unset uses the default. An unknown id fails at **construction** |
-| `args.model` | override the model for this Check (the `args.provider: "<id>:<model>"` suffix is refused) |
-| `args.temperature`, `args.max_tokens` | override the provider's sampling params |
-| `args.effort` | override the judge's effort for this Check alone |
-| `args.rubric` | the rubric, when you would rather not put it in `value:` |
-| `args.votes` | ask the judge N times and take the majority — a positive **odd** integer, default `1` |
+| `judge` | select a named provider, or a `models:` entry by name; unset uses the default. An unknown id fails at **construction** |
+| `model` | override the model for this Check (the `provider: "<id>:<model>"` suffix is refused) |
+| `temperature`, `max_tokens` | override the provider's sampling params |
+| `effort` | override the judge's effort for this Check alone |
+| `rubric` | the rubric, when you would rather not put it in `value:` |
+| `votes` | ask the judge N times and take the majority — a positive **odd** integer, default `1` |
 | `threshold` | must be within `[0,1]`, validated at construction; `0` means "use the type's default" |
 
 (`docs/checks.md:1349-1359`.)
 
-### Majority voting — `args.votes`
+### Majority voting — `votes`
 
 One judge call is the noisiest part of an AI Check: the same rubric over the same output can
 come back PASS, then FAIL, and the report reads that as the agent changing. `votes: N` asks
@@ -863,7 +935,7 @@ the same prompt N times and returns the majority verdict (`docs/checks.md:1399-1
 ```yaml
 - type: llm-rubric
   value: "The answer names the failing test and explains why it failed."
-  args: { votes: 3 }
+  votes: 3
 ```
 
 - An even or non-integer count is **refused at configure**, before any spend — an even count
@@ -877,7 +949,7 @@ the same prompt N times and returns the majority verdict (`docs/checks.md:1399-1
 
 ### The 17 types
 
-`value:` (or `args.rubric`) is **required** for the four rubric-taking types. For the rest,
+`value:` (or `rubric`) is **required** for the four rubric-taking types. For the rest,
 `value:` is read as reference text. Every type is continuous.
 
 | type | Judges | Default threshold |
@@ -919,7 +991,7 @@ verdict. `{{RUBRIC}}` is **not** wrapped — it is authored by the bench, not th
 
 ---
 
-## 15. Composites — 6 types
+## 16. Composites — 6 types
 
 Children go under `checks:` — the same canonical key a Scenario uses. A composite with no
 children is a configure error in a single-provider Scenario; in a multi-provider Scenario it
@@ -931,7 +1003,7 @@ borrows the Scenario's non-composite siblings.
 | `any-of` | at least one child passes | `max(child scores)` |
 | `not-any-of` | **no** child passes | `1 − max(child scores)` |
 | `select-best` | always (a scoring op, not a gate) | single-session: best child's score. Multi: winning session's `Σ(score×weight)/Σweight` |
-| `max-score` | single-session: best child score > 0. Multi: winner's aggregate ≥ threshold | single: `max(child scores)`. Multi: weighted average, or raw sum when `args.method: sum` |
+| `max-score` | single-session: best child score > 0. Multi: winner's aggregate ≥ threshold | single: `max(child scores)`. Multi: weighted average, or raw sum when `method: sum` |
 | `compare` | the **first** provider scores strictly higher than every other | first provider's normalized score |
 
 Two weighting knobs, easy to confuse:
@@ -939,14 +1011,14 @@ Two weighting knobs, easy to confuse:
 | | Where | Meaning |
 |---|---|---|
 | `weight:` | on each **child** spec | that child's multiplier — used by every composite |
-| `weights:` | on the **composite**, under `args.weights` or a mapping `value:` | a `type → multiplier` map; overrides `weight:` for children of that type. Read by `select-best`, `max-score`, `compare` only |
+| `weights:` | on the **composite**, beside its `type:` or inside a mapping `value:` | a `type → multiplier` map; overrides `weight:` for children of that type. Read by `select-best`, `max-score`, `compare` only |
 
 ```yaml
 - type: assert-set
   threshold: 0.75                      # 75% of the weight must pass
   checks:
     - { type: contains, value: "PASS", weight: 2 }
-    - { type: exec, args: { cmd: ["go", "vet", "./..."] } }
+    - { type: exec, cmd: ["go", "vet", "./..."] }
     - { type: session:tool-used, value: ["Read", "Edit"] }
 ```
 
@@ -955,7 +1027,7 @@ contract exists.
 
 ---
 
-## 16. External transports — 4 prefixes
+## 17. External transports — 4 prefixes
 
 Four register under a **prefix**, so a type suffix can carry a payload
 (`custom:gosrc:./scoring.go`); the managed `ts`/`js`/`python` family registers exact types.
@@ -986,7 +1058,7 @@ is one envelope, `madbench/v2` (`docs/checks.md:1504-1528`):
 
 …and must return a JSON `check.Result` — `{"pass": bool, "score": 0..1, "reason": "…",
 "evidence": {}}`. `session` is the serialized `harness.Session`; the `assertion` key (the
-envelope's own field name) is this Check's `Spec`.
+envelope's own field name) is this Check's `Spec`, with one difference: YAML writes a Check's own keys flat, beside `type:`; the envelope carries them under `assertion.args`.
 
 **Your own grading program must read `session.events`**, each Event carrying `type` and
 `text`, and `turns[]` entries carry the same key. A program reading a key the envelope does
@@ -1002,19 +1074,19 @@ be read as failure.**
 
 | type | Transport | Config | Notes |
 |---|---|---|---|
-| `custom:exec` | spawn any CLI, envelope on stdin | `args.command` (list, preferred) or `value` (shlex-split), `args.timeout` (default 30s) | environment scrubbed to `PATH`, `HOME`, `LANG`, `LC_ALL`, `TMPDIR` plus `MADBENCH=1` |
-| `custom:http` | POST the envelope | `args.url` or `value` (http/https only), `args.timeout` (30s), `args.headers` | **Service** kind |
-| `custom:gosrc` | compile Go source, cache by SHA256(source + Go version), run it | `inline:`, `value:` (path), or the type suffix; `args.timeout` (30s) | compiled at evaluation time |
+| `custom:exec` | spawn any CLI, envelope on stdin | `command` (list, preferred) or `value` (shlex-split), `timeout` (default 30s) | environment scrubbed to `PATH`, `HOME`, `LANG`, `LC_ALL`, `TMPDIR` plus `MADBENCH=1` |
+| `custom:http` | POST the envelope | `url` or `value` (http/https only), `timeout` (30s), `headers` | **Service** kind |
+| `custom:gosrc` | compile Go source, cache by SHA256(source + Go version), run it | `inline:`, `value:` (path), or the type suffix; `timeout` (30s) | compiled at evaluation time |
 | `custom:wasm` | Wazero, WASI preview1 | `value:` (module path) or the type suffix | 5s timeout, 64 MiB memory ceiling; must export `alloc` |
 
 ```yaml
 - type: custom:exec
-  args: { command: ["bun", "run", "./grade.ts"], timeout: "90s" }
+  command: ["bun", "run", "./grade.ts"]
+  timeout: "90s"
 
 - type: custom:http
-  args:
-    url: "https://checks.internal/score"
-    headers: { X-Bench: "regression" }   # literal strings only — no env interpolation
+  url: "https://checks.internal/score"
+  headers: { X-Bench: "regression" }   # literal strings only — no env interpolation
 
 - type: custom:gosrc:./checks/scoring.go
 
@@ -1039,7 +1111,7 @@ with no path separator.
 
 ---
 
-## 17. What a Session exposes
+## 18. What a Session exposes
 
 `Session.Events` is the authoritative normalized stream; `Session.Calls` is a
 **derived, lossy** view (`docs/checks.md:1618-1653`). Both carry the recorded outcome of
@@ -1048,8 +1120,8 @@ each call, tri-state, where absent means the capture said nothing.
 | Question | Where it lives | Reachable by |
 |---|---|---|
 | Was tool X called? | `Events[].ToolName` on any invocation Type, unioned with `Calls[].Name` | `session:tool-used` |
-| **Did it succeed?** | `Calls[].ResultOK` (tri-state) / `.ResultTag` | `args.outcome` — **absent means unknown** |
-| How many times? | the same invocation set, counted | `session:tool-used` with `args.gte`/`lte`, **per named tool** |
+| **Did it succeed?** | `Calls[].ResultOK` (tri-state) / `.ResultTag` | `outcome` — **absent means unknown** |
+| How many times? | the same invocation set, counted | `session:tool-used` with `gte`/`lte`, **per named tool** |
 | Did it stay inside a tool set? | `Calls[].Name` | `session:tools-only` (allowlist), or `not-any-of` (denylist) |
 | With what arguments? | `Calls[].Args` | `session:tool-args-match` |
 | Which files did it read? | the path arg of every `Read`-family call | `session:file-read` |
@@ -1064,7 +1136,7 @@ each call, tri-state, where absent means the capture said nothing.
 | Did the picture arrive? | `Events` with `Type == attachment` + a `media_type` | `session:image-sent` |
 | What did it cost / how long? | `Metrics.Cost`, `.Latency`, `.PromptTokens`, `.OutputTokens` | `cost`, `latency` |
 | What did it finally say? | `FinalOutput` | every String / Structured / NLP / judge check |
-| Which files changed? | `FilesChanged` | **nothing** — see §18 |
+| Which files changed? | the working tree at the agent's start and when the harness returned (`Input.Baseline`) — not `FilesChanged`, which only the demo harness fills | `file-changes` (§12) |
 | What is on disk now? | `WorkDir` | `exec`, and any transport reading the envelope's `work_dir` |
 | What did the tool have LOADED? | `Environment.Reported` | the `environment:*` family |
 | Did the declared MCP server answer madbench before launch? | `Environment.Reported.MCPServers` | `environment:mcp-reachable` |
@@ -1090,7 +1162,7 @@ one of Type `skill`, both deliberately excluded from `Calls`. `session:tool-used
 
 Two things this does **not** change. `session:tool-sequence` and `session:tool-args-match`
 still read `Calls`, so neither sees a spawn or a skill. And a spawn row carries the
-**subagent's** `Event.Thread`, so `session:tool-used` with `value: Task` and `args.thread: main` is
+**subagent's** `Event.Thread`, so `session:tool-used` with `value: Task` and `thread: main` is
 **false** — it selects the thread that was spawned, not the one that spawned it.
 `session:subagent-used` is the check that asks who delegated.
 
@@ -1121,15 +1193,15 @@ got it wrong. An `attachment` record cannot fake it — injected context records
 
 ---
 
-## 18. What is not here yet
+## 19. What is not here yet
 
 - **Scenario-level `threshold:` is parsed but never evaluated.** It loads and merges down
   from `defaultScenario:`, and then nothing reads it. It exists for promptfoo compatibility.
   Per-Check `threshold:` is the one that grades.
-- **There is no `file:*` check family.** Nothing asserts "this file exists / matches / was
-  created". `Session.FilesChanged` is defined with before/after SHAs and a unified diff but is
-  populated **only by the demo harness**. Assert on the filesystem with `exec` against
-  `Session.WorkDir`. (`session:file-read` is not that — it grades what the agent *read*.)
+- **Nothing asserts what a file contains after the run.** `file-changes` (§12) grades which
+  files were created, updated and deleted, not their contents; for "this file matches", use
+  `exec` against `Session.WorkDir`. `Session.FilesChanged` is populated **only by the demo
+  harness**. (`session:file-read` grades what the agent *read*.)
 - **The per-criterion composite breakdown in the dashboard is demo-backed.** Only
   `MADBENCH_MOCK_RICH=1` emits `Result.Evidence["criteria"]`; a real `llm-rubric` returns a
   single score.

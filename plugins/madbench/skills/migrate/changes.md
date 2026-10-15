@@ -1,3 +1,27 @@
+## v0.46.0
+
+A Check's own keys sit beside `type:`. `args:` is no key of any Check type: written under a Check, it fails when the Check is built (at `preflight` and on every run) as `unknown key "args"`, followed by the keys that type takes.
+
+- A Check's `args: {<key>: <value>, …}` → each `<key>: <value>` beside `type:`, and delete `args:`. `- {type: exec, args: {cmd: [go, test]}}` → `- {type: exec, cmd: [go, test]}`.
+- `session:match`'s `args.type` → `event_type`.
+- `session:tool-args-match`'s `args.args` → `tool_args`.
+- A script reading report JSON: a Check's `spec.args.<key>` → `spec.<key>`. The program behind a `custom:*`, `ts`, `js` or `python` Check is unchanged: it still reads the Check's own keys from the envelope as `assertion.args.<key>`.
+- `exec`'s `cmd:` takes a string, run as `sh -c '<line>'`; a list is still the exact argv. `exec`'s `value: <command>` → `cmd: <command>`: `exec` takes no `value:`, and one written there fails when the Check is built. The text runs under a shell now, so a `*` or `?` in it expands as it does in a terminal; quote it (`-name '*.go'`) to keep it literal. `cmd: [sh, -c, '<line>']` still works; `cmd: <line>` is the same command.
+- `sandbox.provision.steps`: each step reads the same way, a string run by `sh -c` or a list that is the exact argv. `- [sh, -c, 'npm ci']` → `- npm ci`.
+- A stored report written before v0.46.0 records its Checks with `args:`. `madbench grade` reports each such Check as could not be re-graded (`unknown key "args"`). Re-run the bench to get a report `grade` can replay.
+
+## v0.45.0
+
+Nothing a v0.44 file spells changed. The guard's verdict word did.
+
+- A script or CI step matching `CONFOUNDED` in madbench's output → match `FORBIDDEN CHANGES`. The guard section's per-variant verdict reads `ALLOWED`, `UNGUARDED` or `FORBIDDEN CHANGES`.
+
+## v0.44.0
+
+`harness.config.edits` replaces one marked block of a file in the tree `harness.config.dirs` composes. Nothing a v0.43 file spells changed; the line below is optional and removes a staging script.
+
+- A `harness.config.dirs` entry naming a directory a script assembled from a base, whole variant files and a marked-block replacement (`dirs: [./envs/{{variant}}]`) → `dirs: [./base, ./variants/{{variant}}]` plus `edits: [{file: <path inside the tree>, between: [<START line>, <END line>], with: <fragment beside the bench>}]`. Move each fragment out of `variants/` (everything there is copied into the tree), and in `guard_changes.allow` replace `harness/config/files/<file>` with `harness/config/regions/<file>/<START line, trimmed>`. Delete the script.
+
 ## v0.42.0
 
 The file that compares setups is an Experiment, each setup in it a named variant, and running a bench several times gives trials. An old key, flag or file name fails like a typo and names nothing.
@@ -26,4 +50,4 @@ The Harness is one `harness:` block. Every key under it is the Harness's own, an
 - `harness_config.environment: {probe, details, require}` → `harness.probe: {enabled, details, require}`.
 - `harness: mock` keeps only `type` and `model`; `harness: demo` only `type`. Delete any other key on such a bench.
 - `guard_changes.allow`: `effort` → `harness/effort`; `system_prompt` → `harness/config/system_prompt`; `args`, `args/<i>` → `harness/args`, `harness/args/<i>`; `plugins`, `plugins/<id>/…` → `harness/config/plugins`, `harness/config/plugins/<id>/…`; a path inside an `agent_env` tree → `harness/config/files/<path>`.
-- `guard_changes.allow` of an Experiment whose variants differ by model → add `harness/model` (and `harness/provider` when the provider differs). The model is audited now, and an undeclared model difference is CONFOUNDED.
+- `guard_changes.allow` of an Experiment whose variants differ by model → add `harness/model` (and `harness/provider` when the provider differs). The model is audited now, and an undeclared model difference is FORBIDDEN CHANGES.

@@ -29,7 +29,7 @@ asserting one are five places to fall out of step with the binary. Reference fil
   the bench's `module/`**, params and placeholders, `guard_changes:`, how an unknown key fails
 - `checks-catalog.md` — every Check family, incl. the `environment:*` family (nine types),
   the 18 `session:*` types (the Driver's four and `session:match` among them),
-  thread/outcome scoping, matchers, `readout:`, judges and `args.votes`
+  thread/outcome scoping, matchers, `readout:`, judges and `votes`
 - `harness-and-sandbox.md` — the `harness:` block's keys, `interactive:` and permission modes,
   sandbox levels, the environment probe and MCP preflight, the whole CLI, **exit codes**
 - `debugging.md` — error→cause map, the two controls, report-JSON analysis, tuning
@@ -239,9 +239,10 @@ Always add **anti-cheat Checks**: an agent can pass `go test` by deleting the te
 
 ```yaml
 - type: exec
-  args: { cmd: [go, test, ./...], expected_exit: 0 }
+  cmd: go test ./...
+  expected_exit: 0
 - type: exec        # anti-cheat: the test file still contains its cases
-  args: { cmd: [sh, -c, 'test "$(grep -c "\"FizzBuzz\"" fizzbuzz_test.go)" -ge 4'] }
+  cmd: test "$(grep -c "\"FizzBuzz\"" fizzbuzz_test.go)" -ge 4
 - type: any-of      # the agent actually edited, didn't just talk
   checks:
     - { type: session:tool-used, value: "Write" }
@@ -443,7 +444,7 @@ the workaround is unacceptable as a permanent answer.
 - **`sandbox: none` is gated twice** — the bench asks by name, and the operator passes
   `--allow-host-writes`. It cannot run concurrently, and `madbench check` still needs the flag
   because the **checks run for real** in your actual directory.
-- **The three counting checks share one bound grammar**: `args.lte` / `args.gte` / `args.eq`,
+- **The three counting checks share one bound grammar**: `lte` / `gte` / `eq`,
   with `min`/`max` accepted. Both ends of a range bind. A `session:step-count` with no bound
   at all is refused at construction.
 - **`session:tool-used` counts per named tool, never aggregate.** `value: [Read, Grep]` with
@@ -452,8 +453,8 @@ the workaround is unacceptable as a permanent answer.
   authoritative `Events` and unions `Calls`; `session:tool-sequence` and
   `session:tool-args-match` read only `Calls`, so neither sees a subagent spawn or a skill.
 - **`session:step-count` counts the MAIN thread only.** A subagent's work is in
-  `Session.Subagents`; scope a `session:tool-used` with `args.thread:` to count it.
-- **`args.outcome` grades whether the call worked** — `any` (default) · `ok` · `error`.
+  `Session.Subagents`; scope a `session:tool-used` with `thread:` to count it.
+- **`outcome` grades whether the call worked** — `any` (default) · `ok` · `error`.
   **Unknown satisfies neither `ok` nor `error`**, and unknown is the majority state: a
   perfectly successful `Read` records no outcome at all.
 - **`latency` and `cost` are NOT APPLICABLE when the harness reported no metrics**, and are
@@ -474,7 +475,8 @@ the workaround is unacceptable as a permanent answer.
 - **Missing is not zero in `metrics:`.** `mean` of nothing is `n/a`; `sum` and `count` of
   nothing are a real `0`; a run-time throw is a `metric_error`, never a silent hole.
 - `assert-set` threshold defaults to **1.0**; set e.g. `0.66` for 2-of-3.
-- `exec` has no shell: `value:` is whitespace-split argv. Use `cmd: [sh, -c, '…']` for pipes.
+- `exec`'s `cmd:` is written as you would type it: `cmd: go test ./...` runs under `sh -c`, so
+  pipes and `&&` work. A list is the exact argv, only for an argument a shell must not touch.
 - `latency` threshold is **milliseconds**, `cost` is **USD**, `levenshtein` is max edit distance.
 - `budget:` and `token_estimate:` are informational gauges — **not enforced**.
 - **`cwd:` moves the agent, not `Session.WorkDir`.** Checks still resolve against the root.
@@ -482,7 +484,7 @@ the workaround is unacceptable as a permanent answer.
   at construction with a message naming the fix. Check judge config before your spelling. A
   judge declared with `provider: claude-code` needs no key: it runs the local `claude` on this
   machine's login (`docs/checks.md:1300-1330`).
-- **A judge is a variable.** `args.votes: N` (a positive odd integer) asks it N times and takes
+- **A judge is a variable.** `votes: N` (a positive odd integer) asks it N times and takes
   the majority, so one noisy call cannot flip the verdict alone. An undecided vote is an ERROR,
   not a FAIL (`docs/checks.md:1399-1428`).
 - String checks (`contains`, `regex`, …) grade ONLY the agent's final message, never files on
