@@ -25,6 +25,9 @@ and not acceptable "just this once".
 | Capability comparison between models | `compare_models` |
 | Report a failure to claudish's developers | `report_error` |
 
+Inside a session that claudish started, `team`, `create_session`, the session tools and
+`report_error` are absent. See "Inside a claudish session (child mode)" below.
+
 Two properties are why: MCP sessions run in their own process, so a model's transcript
 never enters your context window; and every tool returns a **structured per-slot result**
 with status and errors, so a failure is data you can act on rather than text you have to
@@ -32,6 +35,36 @@ parse. Both are lost the moment you shell out.
 
 The only CLI that survives is a set of three read-only diagnostics — see
 "Diagnostics: the only CLI left". They investigate the runtime. They never run a task.
+
+## Inside a claudish session (child mode)
+
+**How to tell.** Run `printenv CLAUDISH_PANE_CHILD`. If it prints `1`, claudish started
+this session, and its MCP server runs in nested mode. That variable is the deciding signal.
+
+A missing tool is not enough on its own. Claude Code can defer MCP tools behind tool
+search, so a parent session can list `create_session` only as a deferred name, and a
+session without claudish has no claudish tools at all. Neither one is child mode. The tool
+shape that does match child mode is `list_models` present while `create_session` and `team`
+are absent, with deferred names counted as present. If claudish has no tools at all, claudish
+is unreachable: follow the workflow's own path for that case, not this section.
+
+**What it means.** You are the delegate. claudish allows one level of nesting, so no
+session tier exists below you. The session that started you is waiting for your result.
+
+**What to do.** Do the task yourself, with your own tools and subagents. If a workflow step
+says to delegate to an external model, `create_session` or `team`, you already satisfy that
+step by running it. Where the workflow names an internal path, take it (for example the
+internal writer in `/dev:qa`), and say in your report that you took it because the session
+is nested.
+
+**What you still have.** `run_prompt` and `compare_models` give a one-shot second opinion
+from another model. `list_models` and `search_models` still resolve IDs.
+
+**Why the internal path is the right one.** Another agent CLI started from a shell or a
+terminal pane (`codex exec`, `claude -p`, `claudish -p`) rebuilds the nesting that the limit
+exists to prevent. It also hides the work from the session that asked for it: that session
+sees neither the transcript nor a structured result. Your own tools keep the work visible
+and the result in one place.
 
 ## Quick Start
 

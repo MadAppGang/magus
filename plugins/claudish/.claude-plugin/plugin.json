@@ -1,6 +1,6 @@
 {
   "name": "claudish",
-  "version": "2.3.1",
+  "version": "2.3.2",
   "description": "MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting, manages async sessions, streams channel notifications, and shows the session's runs live above the prompt, with stop and live-screen tabs. Required by code-search, dev, multimodel and designer.",
   "author": {
     "name": "Jack Rudenko",
@@ -61,17 +61,17 @@
           {
             "via": "release",
             "repo": "MadAppGang/claudish",
-            "tag": "v10.4.1",
+            "tag": "v10.6.3",
             "asset": "claudish-{os}-{arch}",
             "binary": "claudish",
             "arch": {
               "amd64": "x64"
             },
             "sha256": {
-              "darwin_amd64": "95a89dbeaae53dee4cbd1ad2166502a0b93d4a5c16b821df4e460abe73027028",
-              "darwin_arm64": "439ca8a91bb451c7d07f778895af25d8fabadac1ee76f5fc4a4676d0e3bffcbf",
-              "linux_amd64": "d8c3546ece4eda0b8884de01617fcfb67b0a4350c0c4d399a2b06d89951ec394",
-              "linux_arm64": "210fdf7fd71b07feeb81d12aa258daba0ac713990ccfe47da69f3504ff79553c"
+              "darwin_amd64": "76cb7a2bf7240beae9c70d589e59d09614e24b9f4f532fe849c7d3532cbfb077",
+              "darwin_arm64": "10609492b01312b533f0746287d329a4f9f079a22554524d6b23bed59637f6a6",
+              "linux_amd64": "bed1c5ee2e5450e1e866db214632e7737de4dae5610df14ad08e7604b97c2887",
+              "linux_arm64": "07bf5d906c18a1e08bf83f53d7b676729cd37ab0e8c712200eba2adeff323118"
             }
           }
         ]

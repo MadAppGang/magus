@@ -50,8 +50,12 @@ allowed-tools: Agent, AskUserQuestion, Bash, Read, Write, Glob, Grep, mcp__plugi
     Read `plugins/claudish/skills/claudish-usage/SKILL.md` under the installed claudish
     root first (resolve it with `claude plugin list --json`); the calls below follow it.
 
-    1. `list_models()` — if the tool is unavailable or errors, the writer is internal
-       (go to step 4) and the report says `writer: internal (claudish unreachable)`.
+    1. Check for child mode first, as "Inside a claudish session (child mode)" in that
+       skill describes. `list_models` still answers in child mode, so it cannot tell you.
+       In child mode you are already the delegate: go to step 4, and the report says
+       `writer: internal (nested claudish session; blindness by agent contract)`.
+       Otherwise, `list_models()`: if the tool is unavailable or errors, the writer is
+       internal (go to step 4) and the report says `writer: internal (claudish unreachable)`.
     2. `search_models({ query: "<tier word>" })` with the `--model` value (default `gpt`).
        Pick the top-tier model of that family from the live results. The tier the user
        named is a hard constraint: if the catalog has no model matching it, stop and show

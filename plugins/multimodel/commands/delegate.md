@@ -18,6 +18,12 @@ args:
 
 ## Rules
 
+- **CHILD MODE: YOU ARE THE DELEGATE** — check for child mode as
+  `claudish:claudish-usage` → "Inside a claudish session (child mode)" describes. In child
+  mode, claudish allows no session below this one. Say so in one line, then do the task
+  yourself: the rules and phases below describe launching a session, so skip them, and run
+  any `/plugin:command` the user named yourself. If claudish has no tools at all, that is
+  not child mode: report it as a failure under NO AUTO-RECOVERY.
 - **NO AUTO-RECOVERY** — on failure, report verbatim and stop. No retries, no substitution.
   **Resolution may default when nothing was named; recovery never substitutes a named
   model.** Picking a model the user did not specify is a documented, announced default

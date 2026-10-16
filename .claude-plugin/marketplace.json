@@ -7,7 +7,7 @@
   },
   "metadata": {
     "description": "Curated collection of Claude Code plugins for modern full-stack development with LLM performance tracking and E2E skill testing",
-    "version": "13.4.0",
+    "version": "13.4.1",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -85,7 +85,7 @@
       "name": "claudish",
       "source": "./plugins/claudish",
       "description": "MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting, manages async sessions, streams channel notifications, and shows the session's runs live above the prompt, with stop and live-screen tabs. Required by code-search, dev, multimodel and designer.",
-      "version": "2.3.1",
+      "version": "2.3.2",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -106,6 +106,11 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "2.3.2",
+          "date": "2026-10-16",
+          "summary": "A session that claudish started now knows it is the delegate. Since claudish 10.6.3 such a\u2026"
+        },
         {
           "version": "2.3.1",
           "date": "2026-10-14",
@@ -138,14 +143,6 @@
             "Changed"
           ],
           "summary": "claudish runs report their progress into the session that started them"
-        },
-        {
-          "version": "2.1.0",
-          "date": "2026-10-06",
-          "kinds": [
-            "Added"
-          ],
-          "summary": "A missing claudish binary is named at session start"
         }
       ]
     },
@@ -220,7 +217,7 @@
       "name": "multimodel",
       "source": "./plugins/multimodel",
       "description": "Multi-model collaboration and orchestration. Runs a task across several AI models in parallel and aggregates their blind APPROVE/REJECT votes, or delegates it to one model running a full Claude Code session.",
-      "version": "5.4.0",
+      "version": "5.4.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -244,6 +241,11 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "5.4.1",
+          "date": "2026-10-16",
+          "summary": "/multimodel:delegate and /multimodel:team say so in one line when they run in child mode, then\u2026"
+        },
         {
           "version": "5.4.0",
           "date": "2026-10-13",
@@ -276,11 +278,6 @@
             "Added"
           ],
           "summary": "A missing bun or jq is named at session start, with the command that installs it"
-        },
-        {
-          "version": "5.1.1",
-          "date": "2026-09-27",
-          "summary": "Error-recovery retries only when the user asks, reads failure causes from claudish, and sends\u2026"
         }
       ]
     },
@@ -288,7 +285,7 @@
       "name": "dev",
       "source": "./plugins/dev",
       "description": "Universal development assistant. Detects the project stack and routes work to specialist agents for architecture, implementation, debugging, review and research, enforcing design-system guardrails on every UI change.",
-      "version": "9.2.0",
+      "version": "9.2.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -328,6 +325,11 @@
       "strict": true,
       "releases": [
         {
+          "version": "9.2.1",
+          "date": "2026-10-16",
+          "summary": "/dev:qa checks for child mode before it calls list_models, which still answers in child mode.\u2026"
+        },
+        {
           "version": "9.2.0",
           "date": "2026-10-13",
           "kinds": [
@@ -358,11 +360,6 @@
             "Fixed"
           ],
           "summary": "The phase-gate Stop hook no longer traps a session in a loop. It shows its \"INCOMPLETE PHASE\"\u2026"
-        },
-        {
-          "version": "9.0.0",
-          "date": "2026-09-27",
-          "summary": "BREAKING \u2014 dev no longer teaches Bun, Go or Dingo. The bunjs-architecture and bunjs-production\u2026"
         }
       ]
     },

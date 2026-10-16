@@ -4,6 +4,32 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Marketplace 13.4.1] - 2026-10-16
+
+### Fixed
+
+- **`claudish` v2.3.2**: a session that claudish started now knows it is the delegate. Since
+  claudish 10.6.3 such a session has no `create_session` and no `team`, and its MCP server
+  said what was missing but not what to do. A child running `/dev:qa`-style work then
+  started `codex exec` through a terminal pane. The `claudish-usage` skill gains "Inside a
+  claudish session (child mode)": how to tell, what to do (the task itself, through the
+  workflow's internal path), what is still available, and why another agent CLI is the
+  wrong route. `CLAUDISH_PANE_CHILD=1` is the deciding signal. A tool that is missing from
+  the list is not, because Claude Code can defer MCP tools and a parent session then lists
+  `create_session` only by name. The release-asset install path now pins claudish
+  v10.6.3, the first release with the one-level limit, instead of v10.4.1. Each of its four
+  digests matches the release's `checksums.txt` and a local hash of the downloaded binary.
+- **`dev` v9.2.1**: `/dev:qa` checks for child mode before it calls `list_models`, which
+  still answers in child mode. The old order reached `create_session` and found nothing.
+  In child mode the writer is now internal, the report says
+  `writer: internal (nested claudish session; blindness by agent contract)`, and the writer
+  still sees only the sandbox. claudish being unreachable keeps its own report line.
+- **`multimodel` v5.4.1**: `/multimodel:delegate` and `/multimodel:team` say so in one line
+  when they run in child mode, then do the task directly instead of delegating. When
+  claudish has no tools at all, they still report a failure.
+
+---
+
 ## [magus 7.10.5] - 2026-10-16
 
 ### Fixed

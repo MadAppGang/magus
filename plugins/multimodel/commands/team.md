@@ -19,6 +19,12 @@ args:
     required: false
 ---
 
+**Child mode.** Check for child mode as `claudish:claudish-usage` →
+"Inside a claudish session (child mode)" describes. In child mode, claudish allows no panel
+below this session. Say so in one line, then do the task yourself and report one verdict,
+labelled as yours and not a panel vote. If claudish has no tools at all, that is not child
+mode: report it as a failure.
+
 ## Step 1: Setup
 
 **Step 1a — Load alias table:** Follow the `claudish:claudish-usage` skill → "Model Alias Resolution" procedure to build ALIAS_TABLE from the live catalog (`list_models`) + `.claude/multimodel-team.json` `customAliases`.
