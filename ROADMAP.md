@@ -212,6 +212,11 @@ is published to users. `scripts/check-doc-plugin-lists.ts` now rejects the label
 - 🟡 **CC-1** · `PreToolUse:^Bash$` destructive-tmux-kill-server hook needs Bun adapter and Codex generated-plugin trust gate
 - ⚪ **CC-3** · `terminal:run` skill router consolidation (5 → 1) deferred to T3
 
+### agent-colours
+
+- ⚪ Rows the mod draws itself lose two pieces of the engine's layout. Seen in a live session (Claude Code 2.1.301, 0.2.0 loaded with `--plugin-dir`, demo skills with `color:`): a coloured `Skill(name)` row has no blank line above it, where the engine's own Skill row has one; and in a reply that names a coloured skill, the assistant text showed no `⏺` bullet or indent, including its first lines that name nothing. Cause not traced; start in `hooks/register.tsx`. The engine draws `⏺`, the mod `●`, which tells the two apart in a capture.
+- ⚪ Agents and skills choose a plugin's install row by different rules: skills take the newest row whose `installPath` exists, agents the newest whose `agents/` exists. Align agents to the skill rule.
+
 ---
 
 ### Source-only plugins (not in magus marketplace)

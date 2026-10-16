@@ -3,11 +3,11 @@
 
 # agent-colours
 
-Draws each subagent's name on a coloured badge in Claude Code: in its Agent row and wherever a reply names it. The colour comes from the agent's own color: field. Alpha: a function-hooks mod, not commands or skills.
+Colours subagent and skill names in Claude Code by their own color: field. An agent's name sits on a coloured badge in its Agent row and in replies; a skill's name is drawn in its colour in its Skill row and in replies. Alpha: a function-hooks mod; it ships no commands or skills of its own.
 
 | | |
 |---|---|
-| Version | `0.1.0` |
+| Version | `0.2.0` |
 | Marketplace | [`magus-alpha`](./index.md) |
 | Commands | 0 |
 | Subagents | 0 |
