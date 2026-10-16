@@ -4,6 +4,43 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [magus 7.10.5] - 2026-10-16
+
+### Fixed
+
+- **A worktree Claude Code creates now starts with this project's plugins.** magus keeps the
+  project settings it generates out of git, and Claude Code copies an ignored file into a
+  new worktree (`claude -w`, EnterWorktree, agent isolation) only when the project's
+  `.worktreeinclude` lists it. magus never wrote that list, so every new worktree of a
+  profiled project got the profile manifest and none of the plugins: a delegating command
+  such as `/dev:dev` failed at its first agent with `Agent type 'dev:architect' not found`.
+  magus now keeps its own block in `.worktreeinclude`, next to its `.gitignore` block,
+  listing the generated settings, the active-profile record and each skill folder it
+  installed. Backups are never listed. A project already set up gains the block on its next
+  `magus update`; nothing needs re-activating. `magus doctor` without `--fix` still writes
+  nothing.
+- Measured on Claude Code 2.1.301 in a scratch repo with the `dev`, `terminal`, `multimodel`
+  and `claudish` plugins: without the list, `claude -w` started with no plugin agents and
+  delegation to `dev:debugger` failed; with it, the worktree loaded all of them and the
+  delegation answered.
+
+---
+
+## [setup 1.6.1] - 2026-10-16
+
+### Fixed
+
+- **The worktree note no longer tells the model the session is fine.** In a folder without
+  magus setup, setup's note to the model claimed that Claude Code started at the repository
+  root with `--worktree` loads the root project's plugins. On Claude Code 2.1.299 such a
+  session gets the project's commands and skills but not its agents, so a model that
+  believed the note started a delegating command and failed partway. The note now says
+  commands and skills may appear while agents are missing, and tells the model to check
+  that the agent it needs is available before starting a command that delegates. The
+  message the user sees is unchanged.
+
+---
+
 ## [madbench 0.11.0] - 2026-10-16
 
 ### Changed

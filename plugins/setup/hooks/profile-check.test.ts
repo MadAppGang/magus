@@ -152,6 +152,20 @@ describe("profileCheck(dir)", () => {
       expect(systemMessage).not.toContain(forbidden);
     }
   });
+
+  test("additionalContext never claims --worktree loads the root project's plugins", async () => {
+    // REGRESSION: new git worktrees of a magus-profiled repo start without project plugins — Fixed in /dev:fix session dev-fix-20261015-002521-dc0f06b1
+    const dir = await unconfiguredProject();
+    const { additionalContext } = profileCheck(dir)!;
+    expect(additionalContext).not.toContain("loads the root project's plugins");
+  });
+
+  test("additionalContext tells the model to check the needed agent is available first", async () => {
+    // REGRESSION: new git worktrees of a magus-profiled repo start without project plugins — Fixed in /dev:fix session dev-fix-20261015-002521-dc0f06b1
+    const dir = await unconfiguredProject();
+    const { additionalContext } = profileCheck(dir)!;
+    expect(additionalContext.toLowerCase()).toContain("agent");
+  });
 });
 
 describe("profile-check.ts as a script", () => {

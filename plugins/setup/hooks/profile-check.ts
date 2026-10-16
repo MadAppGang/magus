@@ -34,19 +34,23 @@ const STDIN_WAIT_MS = 1_000;
 const WATCHDOG_MS = 4_000;
 
 // Claude Code started inside this folder reads only its settings and loads only USER plugins.
-// Started at the repo root with --worktree it reads the root settings instead, and the hook
-// cannot tell the two apart (same project dir, cwd and stdin), so the message states the
-// folder's state and never claims what this session loaded.
+// Started at the repo root with --worktree (measured on 2.1.299) it loads the root's commands
+// and skills but this folder's agents and /plugin view, so a delegating command fails partway.
+// The hook cannot tell the two launches apart (same project dir, cwd and stdin), so the message
+// states the folder's state and never claims what this session loaded.
 const SYSTEM_MESSAGE =
   "This project's plugins are not set up in this folder. Claude Code started inside it gets only " +
   "your USER plugins. Run `magus update` in this folder to set them up.";
 
 const ADDITIONAL_CONTEXT =
-  "This folder declares magus profiles, but none is set up in it. Claude Code started inside " +
-  "this folder loads only the plugins installed at USER scope; started at the repository root " +
-  "with --worktree it loads the root project's plugins. If a magus skill, command or MCP tool " +
-  "answers `Unknown skill` or is not found in this session, this is the likely cause: do not search for " +
-  "it or work around it. Tell the user to run `magus update` in this folder, then restart Claude Code.";
+  "This folder declares magus profiles, but none is set up in it, so this project's plugins are " +
+  "not enabled here. In this session some of the project's commands and skills may still appear " +
+  "while its agents and MCP tools are missing (Claude Code started at the repository root with " +
+  "--worktree behaves this way), so a delegating command can fail partway. Before starting any " +
+  "command that delegates to a plugin agent, check that the agent type it needs is available. If a " +
+  "magus agent, skill, command or MCP tool is not found or answers `Unknown skill`, this is the " +
+  "cause: do not search for it or work around it. Tell the user to run `magus update` in this " +
+  "folder, then restart Claude Code here.";
 
 function errorCode(error: unknown): string | undefined {
   return typeof error === "object" && error !== null ? (error as { code?: string }).code : undefined;
