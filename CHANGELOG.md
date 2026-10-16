@@ -4,6 +4,18 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [claudish 2.3.3] - 2026-10-17
+
+### Changed
+
+- **The release-asset install path pins claudish v10.7.1 instead of v10.6.3.** In 10.7.1 the
+  nested-mode server instructions tell a session that claudish started that it is the
+  delegate, and point to the skill's "Inside a claudish session (child mode)" section. Each of
+  the four digests matches the release's `checksums.txt` and a local hash of the downloaded
+  binary.
+
+---
+
 ## [Marketplace 13.4.1] - 2026-10-16
 
 ### Fixed
