@@ -1,6 +1,6 @@
 {
   "name": "claudish",
-  "version": "2.3.5",
+  "version": "2.4.0",
   "description": "MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting, manages async sessions, and shows the session's runs live above the prompt, with stop and live-screen tabs. Required by code-search, dev, multimodel and designer.",
   "author": {
     "name": "Jack Rudenko",
@@ -24,7 +24,7 @@
   "mcpServers": "./.mcp.json",
   "types": "./types/index.d.ts",
   "requires": {
-    "schema": 1,
+    "schema": 2,
     "bin": [
       {
         "name": "bun",
@@ -45,6 +45,7 @@
           "claudish",
           "--version"
         ],
+        "minVersion": "10.7.0",
         "install": [
           {
             "via": "bun",

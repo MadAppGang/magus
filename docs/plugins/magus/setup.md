@@ -7,7 +7,7 @@ Project setup jobs in one plugin. Investigates a repository and provisions it â€
 
 | | |
 |---|---|
-| Version | `1.6.1` |
+| Version | `1.7.0` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 4 |
 | Subagents | 0 |

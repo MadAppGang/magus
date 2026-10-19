@@ -4,6 +4,65 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Marketplace 13.5.0] - 2026-10-20
+
+### Added
+
+- **`claudish` v2.4.0**: the plugin declares that it needs claudish 10.7.0 or later. An older
+  claudish starts `/team` and `create_session` children with the user's `editorMode`, and
+  under `editorMode: vim` no child ever submits its prompt. The session-start check now
+  reads `claudish --version` and, below 10.7.0, prints `outdated claudish <found> (needs
+  10.7.0)` with the update line (`bun add -g claudish@latest`). The check takes about 0.1 s.
+- **`setup` v1.7.0**: `/setup:project` reports an outdated plugin dependency with its found
+  version and floor, and offers to update it together with the missing ones.
+
+### Changed
+
+Every plugin that declares dependencies moves to `requires` schema 2, which adds an optional
+`minVersion` per dependency. Each plugin's session-start check carries the new reader.
+`magus doctor` needs magus-cli 7.11.0 to read these plugins; an older magus-cli says "update
+magus-cli" for them until it is updated.
+
+- **`browser-use` v1.10.0**: dependencies declared in `requires` schema 2.
+- **`code-search` v8.6.0**: dependencies declared in `requires` schema 2.
+- **`dev` v9.3.0**: dependencies declared in `requires` schema 2.
+- **`madbench` v0.12.0**: dependencies declared in `requires` schema 2.
+- **`mnemex` v1.2.0**: dependencies declared in `requires` schema 2.
+- **`multimodel` v5.6.0**: dependencies declared in `requires` schema 2.
+- **`terminal` v5.5.0**: dependencies declared in `requires` schema 2.
+
+### Verified
+
+- magus-cli: 4544 tests pass, 0 fail, including 109 written blind from the spec. The
+  claudish session-start check, run by hand: silent with claudish 10.7.1, and with a fake
+  10.6.0 first on PATH it prints the outdated line and `bun add -g claudish@latest`.
+- `PDEP-1` (plugin dependencies on a fresh Linux box), 3 trials with this tree's plugins and
+  magus-cli: RED, for causes that predate this release. Since the 2026-10-14 install-order
+  change, `bun add -g` leaves claudish off PATH in the container and mnemex fails to build
+  `better-sqlite3`; browser-use cannot build `aiohttp` because the image has no C compiler.
+  The `Outdated:` line reached the `/setup:project` report.
+
+---
+
+## [magus 7.11.0] - 2026-10-20
+
+### Added
+
+- **`magus doctor` reports a plugin dependency that is too old.** A plugin can declare a
+  `minVersion` for a dependency (`requires` schema 2). Below it, doctor lists the dependency
+  as outdated with the version it found, counts it as a failure, and `magus doctor --fix`
+  updates it: `bun add -g <package>@latest`, or `brew upgrade` for a Homebrew copy. If the
+  old version is still found afterwards, usually because an older copy comes first on PATH,
+  the fix reports a failure naming that copy's path.
+
+### Changed
+
+- **magus-cli reads `requires` schema 2 only.** A plugin still on schema 1 gets "update the
+  plugin". `magus doctor --json` is schema 2: a dependency's `status` can be `outdated`,
+  with `found` and `minVersion`.
+
+---
+
 ## [multimodel 5.5.0] - 2026-10-20
 
 ### Added

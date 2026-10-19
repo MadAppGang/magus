@@ -24,8 +24,11 @@ import { createHash } from "node:crypto";
 import { constants, accessSync, readFileSync, statSync } from "node:fs";
 import { delimiter, join } from "node:path";
 
-/** The one `requires` shape this reader knows. Any change to it bumps this. */
-export const REQUIRES_SCHEMA = 1;
+/**
+ * The one `requires` shape this reader knows. Any change to it bumps this.
+ * 2 added a requirement's optional `minVersion`.
+ */
+export const REQUIRES_SCHEMA = 2;
 
 export type Os = "darwin" | "linux";
 export type Arch = "amd64" | "arm64";
@@ -129,6 +132,11 @@ export interface Requirement {
 	name: string;
 	check: string[];
 	os?: Os[];
+	/**
+	 * The lowest version that will do, `X.Y.Z`. The check's output is read for
+	 * the version it reports; one below this is `outdated`.
+	 */
+	minVersion?: string;
 	install: InstallOption[];
 }
 
@@ -154,6 +162,10 @@ const SHA256_RE = /^[0-9a-f]{64}$/;
 const MODULE_RE = /^[A-Za-z_][A-Za-z0-9_.]*$/;
 const SCRIPT_RE = /^[A-Za-z0-9._-]+(\/[A-Za-z0-9._-]+)*$/;
 const ROOT_TOKEN = "${CLAUDE_PLUGIN_ROOT}";
+/** A `minVersion`: three numeric parts, no `v`, no prerelease. */
+const MIN_VERSION_RE = /^\d+\.\d+\.\d+$/;
+/** The version a check reports: the first `X.Y.Z` anywhere in its output. */
+const FOUND_VERSION_RE = /(\d+)\.(\d+)\.(\d+)/;
 
 const PROFILE_ONLY: readonly Via[] = ["npm", "pip", "go"];
 
@@ -183,6 +195,44 @@ export function releaseAsset(
 	return option.asset
 		.replaceAll("{os}", os)
 		.replaceAll("{arch}", option.arch?.[arch] ?? arch);
+}
+
+// ─── versions ─────────────────────────────────────────────────────────────────
+
+/** `X.Y.Z` (exactly, as `minVersion` spells it) as numbers, or null. */
+export function parseVersion(v: string): [number, number, number] | null {
+	if (!MIN_VERSION_RE.test(v)) return null;
+	const [a = 0, b = 0, c = 0] = v.split(".").map(Number);
+	return [a, b, c];
+}
+
+/**
+ * Compare two `X.Y.Z` versions numerically, part by part: negative when `a`
+ * is lower, zero when equal, positive when higher. Either one malformed
+ * compares as equal; callers parse before they compare.
+ */
+export function compareVersions(a: string, b: string): number {
+	const x = parseVersion(a);
+	const y = parseVersion(b);
+	if (!x || !y) return 0;
+	for (let i = 0; i < 3; i++) {
+		const d = (x[i] ?? 0) - (y[i] ?? 0);
+		if (d !== 0) return d;
+	}
+	return 0;
+}
+
+/**
+ * The version a check's output reports: the first `X.Y.Z` in stdout, or in
+ * stderr when stdout has none. A suffix after it (`10.7.0-beta.1`) is not
+ * read, so a prerelease satisfies its release. Null when neither has one.
+ */
+export function foundVersion(stdout: string, stderr: string): string | null {
+	return (
+		stdout.match(FOUND_VERSION_RE)?.[0] ??
+		stderr.match(FOUND_VERSION_RE)?.[0] ??
+		null
+	);
 }
 
 /** The keys each `via` allows, besides `via` and `os`. */
@@ -449,7 +499,12 @@ function parseRequirement(
 		errors.push(`${at}: must be an object`);
 		return null;
 	}
-	unknownKeys(at, raw, ["name", "check", "os", "install"], errors);
+	unknownKeys(
+		at,
+		raw,
+		["name", "check", "os", "minVersion", "install"],
+		errors,
+	);
 	const name = raw.name;
 	if (typeof name !== "string" || !NAME_RE.test(name)) {
 		errors.push(`${at}.name: missing or malformed`);
@@ -469,6 +524,16 @@ function parseRequirement(
 		}
 	}
 	const os = parseOs(named, raw.os, errors);
+	let minVersion: string | undefined;
+	if (raw.minVersion !== undefined) {
+		if (typeof raw.minVersion !== "string" || !parseVersion(raw.minVersion)) {
+			errors.push(
+				`${named}.minVersion: must be X.Y.Z (three numbers, no "v", no prerelease)`,
+			);
+		} else {
+			minVersion = raw.minVersion;
+		}
+	}
 	if (!Array.isArray(raw.install) || raw.install.length === 0) {
 		errors.push(`${named}.install: must be a non-empty list of options`);
 		return null;
@@ -476,13 +541,57 @@ function parseRequirement(
 	const install = raw.install
 		.map((o, i) => parseOption(`${named}.install[${i}]`, o, name, errors))
 		.filter((o): o is InstallOption => o !== null);
+	if (minVersion !== undefined) {
+		install.forEach((option, i) =>
+			checkPinFloor(`${named}.install[${i}]`, option, minVersion, errors),
+		);
+	}
 	const requirement: Requirement = {
 		name,
 		check: isStrArray(check) ? check : [],
 		install,
 	};
 	if (os) requirement.os = os;
+	if (minVersion !== undefined) requirement.minVersion = minVersion;
 	return requirement;
+}
+
+/**
+ * A pinned option must install at least `minVersion`: a pin below the floor
+ * installs a binary the probe then reports as outdated. A release's `tag`
+ * (one leading `v` removed) must be `X.Y.Z`; a bun `version` is compared only
+ * when it is an exact `X.Y.Z`, never a range or a dist-tag.
+ */
+function checkPinFloor(
+	at: string,
+	option: InstallOption,
+	minVersion: string,
+	errors: string[],
+): void {
+	if (option.via === "release") {
+		if (!option.tag) return; // already reported as malformed
+		const tag = option.tag.replace(/^v/, "");
+		if (!parseVersion(tag)) {
+			errors.push(
+				`${at}.tag: "${option.tag}" is not X.Y.Z, so it cannot be held to minVersion ${minVersion}`,
+			);
+		} else if (compareVersions(tag, minVersion) < 0) {
+			errors.push(
+				`${at}.tag: "${option.tag}" is below minVersion ${minVersion}; it would install an outdated binary`,
+			);
+		}
+		return;
+	}
+	if (
+		option.via === "bun" &&
+		option.version !== undefined &&
+		parseVersion(option.version) &&
+		compareVersions(option.version, minVersion) < 0
+	) {
+		errors.push(
+			`${at}.version: ${option.version} is below minVersion ${minVersion}; it would install an outdated package`,
+		);
+	}
 }
 
 /**
@@ -507,7 +616,9 @@ export function parseRequires(pluginJson: unknown): ParseResult {
 		return {
 			ok: false,
 			kind: "invalid",
-			errors: ["requires.schema: missing (this reader reads schema 1)"],
+			errors: [
+				`requires.schema: missing (this reader reads schema ${REQUIRES_SCHEMA})`,
+			],
 		};
 	}
 	if (schema > REQUIRES_SCHEMA) {
@@ -589,7 +700,9 @@ export function dedupeKey(r: Requirement): string {
  * binary (`check[0]` is the requirement's name) is decided by the PATH lookup
  * alone, so a session start never waits on a slow `--version`; a dangling
  * symlink still reads as missing. Every other check runs, because it answers
- * something a lookup cannot (a script env, a marker file).
+ * something a lookup cannot (a script env, a marker file) — and so does every
+ * check of a requirement with a `minVersion`, because a lookup cannot read a
+ * version.
  *
  * "full" (`magus doctor`): every check runs.
  */
@@ -771,7 +884,9 @@ export type Presence =
 	| { name: string; status: "present" }
 	| { name: string; status: "missing"; blockedBy?: string }
 	| { name: string; status: "off-path"; prefix: UserPrefix }
-	| { name: string; status: "unknown"; reason: string };
+	| { name: string; status: "unknown"; reason: string }
+	/** The check ran and reported `found`, below the requirement's `minVersion`. */
+	| { name: string; status: "outdated"; found: string; minVersion: string };
 
 /** The check argv with `${CLAUDE_PLUGIN_ROOT}` expanded, and nothing else. */
 export function expandCheck(r: Requirement, pluginRoot: string): string[] {
@@ -788,35 +903,78 @@ function offPathPrefix(tool: string, home: string): UserPrefix | null {
 	return null;
 }
 
-function runCheck(
-	argv: string[],
-	env: ProbeEnv,
-): Promise<"pass" | "fail" | "timeout"> {
+/** How much of each output stream a check keeps: a version is near the top. */
+const OUTPUT_KEEP_BYTES = 64 * 1024;
+/** How the `unknown` of a check that printed no version begins. */
+const NO_VERSION = "no version in";
+/** How long after a check exits its output may take to end. */
+const CLOSE_GRACE_MS = 250;
+
+interface CheckResult {
+	outcome: "pass" | "fail" | "timeout";
+	stdout: string;
+	stderr: string;
+}
+
+/**
+ * Run one check argv, no shell, under `env.capMs`. Its output is kept (up to
+ * {@link OUTPUT_KEEP_BYTES} a stream) for the version a `minVersion` reads.
+ * A check that exited but left its output open (a daemon it started holds the
+ * pipe) is decided by its exit, not called slow.
+ */
+function runCheck(argv: string[], env: ProbeEnv): Promise<CheckResult> {
 	return new Promise((resolve) => {
 		const [cmd = "", ...args] = argv;
 		const exe = onPath(cmd, env.path);
 		if (!exe) {
-			resolve("fail");
+			resolve({ outcome: "fail", stdout: "", stderr: "" });
 			return;
 		}
+		const out: Buffer[] = [];
+		const err: Buffer[] = [];
+		const keep = (into: Buffer[]) => (chunk: Buffer) => {
+			const held = into.reduce((n, b) => n + b.length, 0);
+			if (held < OUTPUT_KEEP_BYTES) into.push(chunk);
+		};
+		let exitCode: number | null | undefined;
 		let settled = false;
-		const settle = (outcome: "pass" | "fail" | "timeout"): void => {
+		const settle = (outcome: CheckResult["outcome"]): void => {
 			if (settled) return;
 			settled = true;
 			clearTimeout(timer);
-			resolve(outcome);
+			// A pipe a daemon still holds must not keep this process alive.
+			child.stdout?.destroy();
+			child.stderr?.destroy();
+			resolve({
+				outcome,
+				stdout: Buffer.concat(out).toString("utf8"),
+				stderr: Buffer.concat(err).toString("utf8"),
+			});
 		};
 		const child = spawn(exe, args, {
 			cwd: env.pluginRoot,
 			env: { ...process.env, PATH: env.path, HOME: env.home },
-			stdio: "ignore",
+			stdio: ["ignore", "pipe", "pipe"],
 		});
+		child.stdout?.on("data", keep(out));
+		child.stderr?.on("data", keep(err));
 		const timer = setTimeout(() => {
 			child.kill("SIGKILL");
-			settle("timeout");
+			if (exitCode !== undefined) settle(exitCode === 0 ? "pass" : "fail");
+			else settle("timeout");
 		}, env.capMs);
+		const byExit = () => settle(exitCode === 0 ? "pass" : "fail");
 		child.on("error", () => settle("fail"));
-		child.on("exit", (code) => settle(code === 0 ? "pass" : "fail"));
+		child.on("exit", (code) => {
+			exitCode = code;
+			// The output normally ends at once; a pipe held open past the grace
+			// costs that grace, never the whole cap.
+			setTimeout(byExit, CLOSE_GRACE_MS).unref();
+		});
+		// "close" comes after the output streams end, so every byte is read.
+		child.on("close", (code) =>
+			settle((exitCode ?? code) === 0 ? "pass" : "fail"),
+		);
 	});
 }
 
@@ -832,13 +990,31 @@ function notFound(r: Requirement, tool: string, env: ProbeEnv): Presence {
 async function probeOne(r: Requirement, env: ProbeEnv): Promise<Presence> {
 	const argv = expandCheck(r, env.pluginRoot);
 	const tool = argv[0] ?? "";
-	if (env.depth === "presence" && tool === r.name) {
+	// A lookup cannot read a version: a requirement with a floor always runs.
+	if (
+		env.depth === "presence" &&
+		tool === r.name &&
+		r.minVersion === undefined
+	) {
 		return onPath(tool, env.path)
 			? { name: r.name, status: "present" }
 			: notFound(r, tool, env);
 	}
-	const outcome = await runCheck(argv, env);
-	if (outcome === "pass") return { name: r.name, status: "present" };
+	const { outcome, stdout, stderr } = await runCheck(argv, env);
+	if (outcome === "pass") {
+		if (r.minVersion === undefined) return { name: r.name, status: "present" };
+		const found = foundVersion(stdout, stderr);
+		if (found === null) {
+			return {
+				name: r.name,
+				status: "unknown",
+				reason: `${NO_VERSION} "${argv.join(" ")}" output`,
+			};
+		}
+		return compareVersions(found, r.minVersion) < 0
+			? { name: r.name, status: "outdated", found, minVersion: r.minVersion }
+			: { name: r.name, status: "present" };
+	}
 	if (outcome === "timeout") {
 		return {
 			name: r.name,
@@ -852,7 +1028,8 @@ async function probeOne(r: Requirement, env: ProbeEnv): Promise<Presence> {
 /**
  * Probe every requirement that applies on `env.os`, in parallel. A check whose
  * argv[0] is another declared requirement waits for it, and is `missing` with
- * `blockedBy` when that one is not present — its own check could not run.
+ * `blockedBy` when that one is neither present nor outdated — its own check
+ * could not run.
  */
 export async function probe(
 	reqs: Requirement[],
@@ -876,9 +1053,10 @@ export async function probe(
 			.map(async (r) => {
 				const dep = dependsOn(r) as string;
 				const depStatus = first.get(dep)?.status;
+				// An outdated tool still exists and runs, so its dependents' checks can.
 				first.set(
 					r.name,
-					depStatus === "present"
+					depStatus === "present" || depStatus === "outdated"
 						? await probeOne(r, env)
 						: { name: r.name, status: "missing", blockedBy: dep },
 				);
@@ -1022,23 +1200,44 @@ export function uvScriptArgv(
 	return [uv, ...sub, "--no-config", "--script", script];
 }
 
-/** The one rendering of an option into the step that installs it. */
+/**
+ * Why a step installs: the requirement is `missing`, or it is there but
+ * `outdated` and the step must replace it.
+ */
+export type InstallReason = "missing" | "outdated";
+
+/**
+ * The one rendering of an option into the step that installs it. An
+ * `outdated` requirement is upgraded where the installer tells the two apart:
+ * bun asks for a version (the pin, or `latest`, so an installed copy is not
+ * kept), Homebrew runs `upgrade`. Every other option installs the same way
+ * either way.
+ */
 export function renderInstall(
 	r: Requirement,
 	option: InstallOption,
 	env: Pick<ProbeEnv, "os" | "arch" | "pluginRoot">,
+	reason: InstallReason = "missing",
 ): InstallStep {
 	const name = r.name;
 	const argv = (args: string[], escalation: "none" | "sudo" = "none") =>
 		({ kind: "argv", name, escalation, argv: args }) as const;
+	const brewVerb = reason === "outdated" ? "upgrade" : "install";
 	switch (option.via) {
 		case "bun":
-			return argv(["bun", "add", "-g", pinned(option.package, option.version)]);
+			return argv([
+				"bun",
+				"add",
+				"-g",
+				reason === "outdated"
+					? `${option.package}@${option.version ?? "latest"}`
+					: pinned(option.package, option.version),
+			]);
 		case "brew":
 			return argv(
 				option.cask !== undefined
-					? ["brew", "install", "--cask", option.cask]
-					: ["brew", "install", option.formula],
+					? ["brew", brewVerb, "--cask", option.cask]
+					: ["brew", brewVerb, option.formula],
 			);
 		case "apt":
 			return argv(
@@ -1185,10 +1384,11 @@ export function doctorFixCommand(projectDir: string | null): string {
 }
 
 /**
- * The banner text for one plugin, or null when nothing is missing or off PATH:
- * a healthy machine prints nothing. An `unknown` (a check that was too slow to
- * answer) is mentioned only beside a real finding, and never called missing.
- * `projectDir` is the directory the session runs in, when the hook input says.
+ * The banner text for one plugin, or null when nothing is missing, outdated or
+ * off PATH: a healthy machine prints nothing. An `unknown` (a check that was
+ * too slow to answer, or printed no version) is mentioned only beside a real
+ * finding, and never called missing. `projectDir` is the directory the session
+ * runs in, when the hook input says.
  */
 export function renderFix(
 	plugin: string,
@@ -1199,11 +1399,17 @@ export function renderFix(
 	projectDir: string | null = null,
 ): string | null {
 	const missing = presences.filter((p) => p.status === "missing");
+	const outdated = presences.filter(
+		(p): p is Extract<Presence, { status: "outdated" }> =>
+			p.status === "outdated",
+	);
 	const offPath = presences.filter(
 		(p): p is Extract<Presence, { status: "off-path" }> =>
 			p.status === "off-path",
 	);
-	if (missing.length === 0 && offPath.length === 0) return null;
+	if (missing.length === 0 && outdated.length === 0 && offPath.length === 0) {
+		return null;
+	}
 	const unknown = presences.filter(
 		(p): p is Extract<Presence, { status: "unknown" }> =>
 			p.status === "unknown",
@@ -1218,8 +1424,21 @@ export function renderFix(
 			.join(", ");
 	const head: string[] = [];
 	if (missing.length > 0) head.push(`missing ${names(missing)}`);
+	if (outdated.length > 0) {
+		const each = [...outdated]
+			.sort((a, b) => a.name.localeCompare(b.name))
+			.map((p) => `${p.name} ${p.found} (needs ${p.minVersion})`)
+			.join(", ");
+		head.push(`outdated ${each}`);
+	}
 	if (offPath.length > 0) head.push(`not on PATH ${names(offPath)}`);
-	if (unknown.length > 0) head.push(`unknown (slow) ${names(unknown)}`);
+	// Answered with no version to hold to a floor, or too slow to answer.
+	const noVersion = unknown.filter((p) => p.reason.startsWith(NO_VERSION));
+	const slow = unknown.filter((p) => !p.reason.startsWith(NO_VERSION));
+	if (slow.length > 0) head.push(`unknown (slow) ${names(slow)}`);
+	if (noVersion.length > 0) {
+		head.push(`unknown (no version) ${names(noVersion)}`);
+	}
 	const lines = [`magus-deps · ${plugin}: ${head.join("; ")}.`];
 	lines.push(
 		`  Fix all: ${magusOnPath ? "" : `${MAGUS_CLI_INSTALL}, then `}${doctorFixCommand(projectDir)}`,
@@ -1231,7 +1450,10 @@ export function renderFix(
 	const apt: string[] = [];
 	const aptNames: string[] = [];
 	const byHand: string[] = [];
-	for (const p of [...missing].sort((a, b) => a.name.localeCompare(b.name))) {
+	const toFix = [...missing, ...outdated].sort((a, b) =>
+		a.name.localeCompare(b.name),
+	);
+	for (const p of toFix) {
 		const r = byName.get(p.name);
 		if (!r) continue;
 		const option = selectOption(r, env, has);
@@ -1246,8 +1468,10 @@ export function renderFix(
 		}
 		const blocked =
 			p.status === "missing" && p.blockedBy ? ` (after ${p.blockedBy})` : "";
+		const reason: InstallReason =
+			p.status === "outdated" ? "outdated" : "missing";
 		byHand.push(
-			`${p.name}${blocked}: ${describeStep(renderInstall(r, option, env), env.os)}`,
+			`${p.name}${blocked}: ${describeStep(renderInstall(r, option, env, reason), env.os)}`,
 		);
 	}
 	if (apt.length > 0) {

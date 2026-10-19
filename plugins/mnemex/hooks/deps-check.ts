@@ -6,8 +6,9 @@
  * Reads the plugin's own `.claude-plugin/plugin.json` through
  * lib/requires-probe.ts, probes each requirement at presence depth (a PATH
  * lookup for a check that runs the requirement's own binary, the declared check
- * for every other), and prints a `systemMessage` carrying the `magus-deps` marker when something is
- * missing or off PATH. Prints nothing when healthy. Its "Fix all" line runs
+ * for every other, and for any requirement with a `minVersion`), and prints a
+ * `systemMessage` carrying the `magus-deps` marker when something is missing,
+ * outdated or off PATH. Prints nothing when healthy. Its "Fix all" line runs
  * doctor with `--project <cwd>`, the session's directory from the hook input:
  * doctor reads the plugins enabled in the project it checks, and the banner is
  * read in a terminal that may be anywhere.
@@ -200,8 +201,11 @@ async function main(): Promise<void> {
 		userShell: process.env.SHELL ?? "",
 	};
 	const presences = await probe(reqs, env);
+	// Outdated is a finding like missing: claimed once, reported once.
 	const reportable = (p: Presence) =>
-		p.status === "missing" || p.status === "off-path";
+		p.status === "missing" ||
+		p.status === "outdated" ||
+		p.status === "off-path";
 	if (!presences.some(reportable)) return;
 
 	const byName = new Map(reqs.map((r) => [r.name, r]));

@@ -208,6 +208,7 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion, Skill
     PLUGIN DEPENDENCIES                                   (evidence: magus doctor --json)
       magus-cli:    installed | NOT INSTALLED — <install command>
       Missing:      <name> (<requiredBy>) — fix: <fix.text>    one line each, [sudo] marked
+      Outdated:     <name> <found> (needs <minVersion>) (<requiredBy>) — fix: <fix.text>
       Unfixable:    <name> — <why>
       Needs update: <plugin> — <message>
       PATH:         add <rcLine> to <rcFile>
@@ -295,11 +296,13 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion, Skill
     skip 5c and step 6b.
 
     **5c — plugin dependencies.** Ask whenever step 3b part 2 found at least
-    one `deps[]` entry with `status` `missing`. First print every such entry's
-    `fix.text` as a list, `[sudo]` marked, so the user sees what will run.
-    Then use AskUserQuestion, single-select:
+    one `deps[]` entry with `status` `missing` or `outdated`. An outdated
+    entry is installed but older than its plugin's `minVersion`, and its fix
+    updates it. First print every such entry's `fix.text` as a list, `[sudo]`
+    marked, so the user sees what will run. Then use AskUserQuestion,
+    single-select:
 
-    - question: "Install the N missing plugin dependencies now? (magus doctor
+    - question: "Install or update the N plugin dependencies now? (magus doctor
       --fix --yes --json)" — N is that count
     - options: "Install" — magus-cli installs them; "Skip" — the fix lines
       stay in the report for the user to run
@@ -340,8 +343,8 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion, Skill
     Runs when 5c was answered "Install", whatever 5a selected — including
     "Report missing tools only". It runs after step 6, so the dependencies of
     plugins step 6 just installed are covered too. If step 6 installed any
-    plugin, re-run `magus doctor --json` first and print every missing
-    dependency that was not in the 5c list: it belongs to a plugin the user
+    plugin, re-run `magus doctor --json` first and print every missing or
+    outdated dependency that was not in the 5c list: it belongs to a plugin the user
     just chose, and it is installed with the rest.
 
     magus-cli is the only installer. Never run the `fix.text` lines yourself,

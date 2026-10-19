@@ -7,7 +7,7 @@ Full-platform browser automation: live-page JS eval, keyboard and focus primitiv
 
 | | |
 |---|---|
-| Version | `1.9.1` |
+| Version | `1.10.0` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 0 |
 | Subagents | 0 |

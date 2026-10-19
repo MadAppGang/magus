@@ -7,7 +7,7 @@
   },
   "metadata": {
     "description": "Curated collection of Claude Code plugins for modern full-stack development with LLM performance tracking and E2E skill testing",
-    "version": "13.4.2",
+    "version": "13.5.0",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -15,7 +15,7 @@
       "name": "code-search",
       "source": "./plugins/code-search",
       "description": "Read-only code search and investigation behind one stable tool surface. Finds code by meaning or structure, traces callers, callees and blast radius, and dispatches an analyze agent for deep dives. The search engine is named in project settings and is swappable.",
-      "version": "8.5.0",
+      "version": "8.6.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -37,6 +37,11 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "8.6.0",
+          "date": "2026-10-20",
+          "summary": "Dependencies declared in requires schema 2"
+        },
         {
           "version": "8.5.0",
           "date": "2026-10-14",
@@ -69,15 +74,6 @@
             "Added"
           ],
           "summary": "A missing bun or jq is named at session start, with the command that installs it"
-        },
-        {
-          "version": "8.2.0",
-          "date": "2026-10-02",
-          "kinds": [
-            "Added",
-            "Changed"
-          ],
-          "summary": "Guided setup: /code-search:setup now installs, configures and indexes an engine, asking before\u2026"
         }
       ]
     },
@@ -85,7 +81,7 @@
       "name": "claudish",
       "source": "./plugins/claudish",
       "description": "MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting, manages async sessions, and shows the session's runs live above the prompt, with stop and live-screen tabs. Required by code-search, dev, multimodel and designer.",
-      "version": "2.3.5",
+      "version": "2.4.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -105,6 +101,11 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "2.4.0",
+          "date": "2026-10-20",
+          "summary": "The plugin declares that it needs claudish 10.7.0 or later. An older claudish starts /team and\u2026"
+        },
         {
           "version": "2.3.5",
           "date": "2026-10-20",
@@ -130,14 +131,6 @@
           "version": "2.3.2",
           "date": "2026-10-16",
           "summary": "A session that claudish started now knows it is the delegate. Since claudish 10.6.3 such a\u2026"
-        },
-        {
-          "version": "2.3.1",
-          "date": "2026-10-14",
-          "kinds": [
-            "Changed"
-          ],
-          "summary": "A fresh install of the claudish CLI uses bun"
         }
       ]
     },
@@ -145,7 +138,7 @@
       "name": "mnemex",
       "source": "./plugins/mnemex",
       "description": "MCP runtime for semantic code search and AST analysis, ranking symbols by PageRank. Optional engine behind the code-search facade, and usable directly for its full tool surface.",
-      "version": "1.1.2",
+      "version": "1.2.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -166,6 +159,11 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "1.2.0",
+          "date": "2026-10-20",
+          "summary": "Dependencies declared in requires schema 2"
+        },
         {
           "version": "1.1.2",
           "date": "2026-10-14",
@@ -197,14 +195,6 @@
             "Changed"
           ],
           "summary": "The description names the code-search facade. No behaviour change"
-        },
-        {
-          "version": "1.0.2",
-          "date": "2026-08-22",
-          "kinds": [
-            "Changed"
-          ],
-          "summary": "Description corrected. It claimed to be required by code-analysis and dev; neither depends on\u2026"
         }
       ]
     },
@@ -212,7 +202,7 @@
       "name": "multimodel",
       "source": "./plugins/multimodel",
       "description": "Multi-model collaboration and orchestration. Runs a task across several AI models in parallel and aggregates their blind APPROVE/REJECT votes, or delegates it to one model running a full Claude Code session.",
-      "version": "5.5.0",
+      "version": "5.6.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -236,6 +226,11 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "5.6.0",
+          "date": "2026-10-20",
+          "summary": "Dependencies declared in requires schema 2"
+        },
         {
           "version": "5.5.0",
           "date": "2026-10-20",
@@ -262,14 +257,6 @@
             "Added"
           ],
           "summary": "The deep-analyst agent has a color: field again: purple"
-        },
-        {
-          "version": "5.3.1",
-          "date": "2026-10-07",
-          "kinds": [
-            "Fixed"
-          ],
-          "summary": "The session-start check fixes in terminal 5.3.1 apply here too"
         }
       ]
     },
@@ -277,7 +264,7 @@
       "name": "dev",
       "source": "./plugins/dev",
       "description": "Universal development assistant. Detects the project stack and routes work to specialist agents for architecture, implementation, debugging, review and research, enforcing design-system guardrails on every UI change.",
-      "version": "9.2.2",
+      "version": "9.3.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -317,6 +304,11 @@
       "strict": true,
       "releases": [
         {
+          "version": "9.3.0",
+          "date": "2026-10-20",
+          "summary": "Dependencies declared in requires schema 2"
+        },
+        {
           "version": "9.2.2",
           "date": "2026-10-20",
           "summary": "/dev:qa waits for the external writer by the monitor line or by polling, not a channel event.\u2026"
@@ -341,14 +333,6 @@
             "Fixed"
           ],
           "summary": "The session-start check fixes in terminal 5.3.1 apply here too"
-        },
-        {
-          "version": "9.1.0",
-          "date": "2026-10-06",
-          "kinds": [
-            "Added"
-          ],
-          "summary": "A missing bun or jq is named at session start, with the command that installs it"
         }
       ]
     },
@@ -535,7 +519,7 @@
       "name": "setup",
       "source": "./plugins/setup",
       "description": "Project setup jobs in one plugin. Investigates a repository and provisions it \u2014 plugins, tools, framework best-practice references, and a seeded knowledge base \u2014 then installs the adaptive statusline and indexes every skill reachable from the project into browsable markdown.",
-      "version": "1.6.1",
+      "version": "1.7.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -555,6 +539,11 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "1.7.0",
+          "date": "2026-10-20",
+          "summary": "/setup:project reports an outdated plugin dependency with its found version and floor, and\u2026"
+        },
         {
           "version": "1.6.1",
           "date": "2026-10-16",
@@ -586,14 +575,6 @@
             "Added"
           ],
           "summary": "/setup:project installs what your plugins need"
-        },
-        {
-          "version": "1.4.0",
-          "date": "2026-10-01",
-          "kinds": [
-            "Added"
-          ],
-          "summary": "Inside tmux, the statusline follows the theme of the window showing the session"
         }
       ]
     },
@@ -601,7 +582,7 @@
       "name": "browser-use",
       "source": "./plugins/browser-use",
       "description": "Full-platform browser automation: live-page JS eval, keyboard and focus primitives, file screenshots, preflight and a configurable agent LLM, on local or cloud browsers. Runs Playwright's own Chromium, never your real Chrome. Adds Magus tools and 6 skills to the upstream Browser Use MCP set.",
-      "version": "1.9.1",
+      "version": "1.10.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -623,6 +604,11 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "1.10.0",
+          "date": "2026-10-20",
+          "summary": "Dependencies declared in requires schema 2"
+        },
         {
           "version": "1.9.1",
           "date": "2026-10-07",
@@ -649,14 +635,6 @@
           "version": "1.7.6",
           "date": "2026-09-25",
           "summary": "Tool names use the full plugin prefix, browser_evaluate is documented where the skills said no\u2026"
-        },
-        {
-          "version": "1.7.5",
-          "date": "2026-09-19",
-          "kinds": [
-            "Fixed"
-          ],
-          "summary": "The browser-use MCP server starts without ANTHROPIC_API_KEY, OPENAI_API_KEY and\u2026"
         }
       ]
     },
@@ -724,7 +702,7 @@
       "name": "terminal",
       "source": "./plugins/terminal",
       "description": "Slot-addressed terminal control over tmux. Runs interactive commands, dev servers, test watchers, REPLs and TUI apps in numbered helper panes \u2014 beside the user or isolated from view \u2014 that the server places and owns, so an agent never holds a pane id or targets the user's own session.",
-      "version": "5.4.0",
+      "version": "5.5.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -742,6 +720,11 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "5.5.0",
+          "date": "2026-10-20",
+          "summary": "Dependencies declared in requires schema 2"
+        },
         {
           "version": "5.4.0",
           "date": "2026-10-13",
@@ -770,11 +753,6 @@
           "version": "5.2.3",
           "date": "2026-09-27",
           "summary": "The bun test --watch readiness pattern matches what Bun prints, and the psql prompt row names\u2026"
-        },
-        {
-          "version": "5.2.2",
-          "date": "2026-09-25",
-          "summary": "Tdd-workflow reads framework-signals by path, and terminal-interaction quits a TUI with its own\u2026"
         }
       ]
     },
@@ -782,7 +760,7 @@
       "name": "madbench",
       "source": "./plugins/madbench",
       "description": "Toolkit for madbench, MadAppGang's Go harness for benchmarking agentic coding tools. Carries madbench's own skills with /madbench:madbench as the entry point, checks them against the installed madbench, and runs benches in a visible pane through the madbench:bench agent.",
-      "version": "0.11.0",
+      "version": "0.12.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -803,6 +781,11 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "0.12.0",
+          "date": "2026-10-20",
+          "summary": "Dependencies declared in requires schema 2"
+        },
         {
           "version": "0.11.0",
           "date": "2026-10-16",
@@ -834,16 +817,6 @@
             "Removed"
           ],
           "summary": "The Stop hook that held the parent's turn open while a dispatched madbench:bench operator was\u2026"
-        },
-        {
-          "version": "0.9.0",
-          "date": "2026-10-07",
-          "kinds": [
-            "Changed",
-            "Added",
-            "Removed"
-          ],
-          "summary": "/madbench:madbench is the entry point for creating, running, debugging and migrating a bench.\u2026"
         }
       ]
     }

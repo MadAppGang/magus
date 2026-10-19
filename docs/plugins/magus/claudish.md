@@ -7,7 +7,7 @@ MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, ru
 
 | | |
 |---|---|
-| Version | `2.3.5` |
+| Version | `2.4.0` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 0 |
 | Subagents | 0 |
