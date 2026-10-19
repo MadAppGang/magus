@@ -22,7 +22,7 @@ and not acceptable "just this once".
 | One model, long task, its own tools and working directory | `create_session` |
 | One model, one completion, no tools and no session | `run_prompt` |
 | What models exist right now | `list_models`, `search_models` |
-| Capability comparison between models | `compare_models` |
+| Debugging claudish: the same prompt through several models' APIs | `compare_models` (debug tool) |
 | Report a failure to claudish's developers | `report_error` |
 
 Inside a session that claudish started, `team`, `create_session`, the session tools and
@@ -57,8 +57,9 @@ step by running it. Where the workflow names an internal path, take it (for exam
 internal writer in `/dev:qa`), and say in your report that you took it because the session
 is nested.
 
-**What you still have.** `run_prompt` and `compare_models` give a one-shot second opinion
-from another model. `list_models` and `search_models` still resolve IDs.
+**What you still have.** `run_prompt` gives a one-shot second opinion from another model.
+`list_models` and `search_models` still resolve IDs. `compare_models` is also there, but
+it is a debug tool for claudish's developers, not a second opinion.
 
 **Why the internal path is the right one.** Another agent CLI started from a shell or a
 terminal pane (`codex exec`, `claude -p`, `claudish -p`) rebuilds the nesting that the limit
@@ -579,36 +580,48 @@ Under `claude -p` no monitor runs at all. So never end a turn relying on the mon
 Never `sleep` in the foreground between status calls: Claude Code blocks it, and it holds
 the turn without waking anything.
 
-#### Channel mode (optional; needs `--channels`)
-
-When Claude Code was launched with claudish's channel enabled, claudish also pushes its own
-event stream. Without the flag none of these arrive; the monitor lines above do.
-
-| Event | What you do |
-|---|---|
-| `session_started` | Note the `session_id` |
-| `tool_executing` | Optional progress line |
-| `input_required` | Only interactive sessions (no `prompt`, or after `send_input`): `AskUserQuestion` → `send_input(session_id, answer)` |
-| `finishing` | Nothing to do; `completed` follows |
-| `completed` | `get_output(session_id)` |
-| `failed` / `timeout` | `get_diagnostics(session_id)` → report → stop |
+claudish pushes nothing into the conversation. A `<channel source="claudish">` block never
+arrives, so never wait for one. Between the monitor's lines, the one live view is
+`list_sessions(include_completed=true)`: each row carries `state`, `activity`, `idle_seconds` and, on a failed or
+timed-out row, `reason_detail`. One call every 10 seconds or so is enough.
 
 ### `run_prompt` — one completion, no session
 
 ```
-run_prompt(model, prompt, system_prompt, max_tokens)
+run_prompt(model, prompt, system_prompt)
 ```
 
-No tools, no working directory, no lifecycle. Use it when you want an opinion, not work.
+One completion, straight to one model's API. No tools, no working directory, no session,
+so it is never subagent work: a task that must read files, run commands or write code goes
+through `create_session`, and a panel through `team`. Use `run_prompt` when you want an
+opinion, not work. There is no `max_tokens` argument; never pass one.
 
 ### Catalog and reporting
 
 ```
 list_models()                 // current recommended set — call this first, always
 search_models(query)          // every live variant in a family
-compare_models(...)           // capability comparison
 report_error(error_type, model, stderr_snippet, session_path, additional_context)
 ```
+
+`compare_models` is a **debug** tool for claudish's own developers. It sends one prompt to
+several models' APIs side by side. It never stands in for `team`: it runs no tools, keeps
+no record and collects no votes.
+
+### Tool groups
+
+`CLAUDISH_MCP_TOOLS` in the server's environment limits which tools it exposes. The plugin
+sets none, so every tool is there.
+
+| Value | Tools |
+|---|---|
+| unset / `all` | all 14 |
+| `low-level` | `list_models`, `run_prompt`, `search_models` |
+| `agentic` | `preflight`, `report_error`, `team` |
+| `session` | `cancel_session`, `capture_session`, `create_session`, `get_diagnostics`, `get_output`, `list_sessions`, `send_input` |
+| `debug` | `compare_models` |
+
+`channel` is not a group. A server given it warns once on stderr and exposes all 14 tools.
 
 ## Choosing between the tools
 
@@ -902,7 +915,10 @@ what failed. No retry, no substitution.
 
 ### From `create_session`: the end line
 
-The monitor line (or, in channel mode, the channel event) names the end state:
+The monitor line, or the row's `state` in `list_sessions`, names the end state. A failed or
+timed-out row also carries `reason_detail`: the provider's error message, or the first line
+of the kept detail, at most 160 characters. Quote it in your report; it is `null` when
+nothing readable was kept.
 
 | End state | Meaning | Next call |
 |---|---|---|

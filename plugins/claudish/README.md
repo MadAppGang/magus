@@ -42,13 +42,17 @@ start the server for every user who keeps keys outside the environment.
 
 Tools exposed via the `claudish` MCP server:
 
-- **Low-level**: `run_prompt`, `list_models`, `search_models`, `compare_models`
-- **Agentic**: `team`, `report_error`
-- **Channel**: `create_session`, `send_input`, `get_output`, `cancel_session`,
-  `list_sessions`
+- **Low-level**: `run_prompt`, `list_models`, `search_models`
+- **Agentic**: `team`, `preflight`, `report_error`
+- **Session**: `create_session`, `send_input`, `get_output`, `get_diagnostics`,
+  `capture_session`, `cancel_session`, `list_sessions`
+- **Debug**: `compare_models`, for claudish's own developers
 
 Tool gating via `CLAUDISH_MCP_TOOLS` env var: `all` (default), `low-level`,
-`agentic`, `channel`.
+`agentic`, `session`, `debug`. The plugin sets none, so every tool is exposed.
+
+`run_prompt` is one completion straight to one model's API: no tools, no session, so it is
+never subagent work. Work goes through `create_session`, a panel through `team`.
 
 Plus one plugin monitor, `claudish-sessions`, which reports the progress of the
 `create_session` and `team` runs this Claude Code session started. See
@@ -227,11 +231,12 @@ before the monitor started are never reported.
   (Claude Code 2.1.290) the monitor process stayed the same across `/clear` and `/resume`, and
   a run started after each delivered its start and end lines.
 
-### Monitor and channel mode
+### Monitoring sessions
 
-They are independent. The monitor is on by default, needs no flag, and reports state changes
-only. Channel mode (below) is opt-in and pushes claudish's own event stream, including
-per-tool progress. With both enabled you get both; neither reads the other.
+claudish pushes nothing into the conversation. The monitor reports state changes; between
+its lines, `list_sessions` is the live view. Each row carries `state`, `activity`,
+`idle_seconds`, and on a failed or timed-out row `reason_detail`, the provider's error
+message in at most 160 characters. Polling about every 10 seconds is enough.
 
 ## Live run status
 
@@ -309,24 +314,6 @@ Code to get the band.
 stays invisible until you type something
 ([anthropics/claude-code#96336](https://github.com/anthropics/claude-code/issues/96336)).
 The toast is the visible signal there.
-
-## Channel notifications (optional)
-
-Claudish emits `notifications/claude/channel` events during long-running model
-sessions. To enable them in Claude Code:
-
-```bash
-claude --dangerously-load-development-channels plugin:claudish@magus
-```
-
-See the [Channels reference](https://code.claude.com/docs/en/channels-reference)
-for what channels do, and Claudish's own `CLAUDE.md` "Channel Mode" section
-for implementation details.
-
-Requirements:
-- Claude Code v2.1.80 or later
-- Anthropic auth via claude.ai or Console API key (not Bedrock/Vertex/Foundry)
-- Interactive mode (channels do not register in `-p` mode)
 
 ## Used by
 

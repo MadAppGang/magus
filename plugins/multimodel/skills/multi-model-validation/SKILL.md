@@ -676,14 +676,16 @@ never actually received.
 **For single-model delegation:**
 ```
 create_session(model="grok", prompt=TASK_PROMPT, timeout_seconds=300)
-→ channel events: session_started → tool_executing → completed/failed
+→ poll list_sessions(include_completed=true) about every 10 s, or act on the
+  claudish-monitor line: STARTING → RUNNING → COMPLETED / FAILED / TIMEOUT
 → get_output(session_id) to retrieve result
 ```
 
 **Verification:**
 - `team` tool: check `status.models[<slot>].state` on a SETTLED `status` response — never
   the `run` response, which returns before any model has answered
-- `create_session`: The `completed` channel event confirms success; `failed` provides error details
+- `create_session`: the row's `state` `COMPLETED` confirms success; on `FAILED` or `TIMEOUT`
+  the row's `reason_detail` says why in one line, and `get_diagnostics` gives the full cause
 
 ### Correct Pattern Example
 
@@ -2001,7 +2003,8 @@ Solution: issue every independent launch in one message
 
 Cause: Not waiting for MCP session completion.
 
-Solution: The orchestrating command waits for `completed` channel events from MCP sessions.
+Solution: The orchestrating command polls `team(mode="status")` or `list_sessions` until no
+slot is `STARTING` or `RUNNING`. claudish pushes no completion event.
 External model execution is handled by MCP tools (team/create_session), not by sub-agents.
 
 ```
@@ -2010,7 +2013,7 @@ External model execution is handled by MCP tools (team/create_session), not by s
 
 ✅ Correct:
   Orchestrator uses team MCP tool → waits for structured results
-  Or uses create_session → waits for completed channel event
+  Or uses create_session → polls list_sessions until the row is COMPLETED
 ```
 
 ---

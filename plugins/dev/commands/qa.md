@@ -73,8 +73,10 @@ allowed-tools: Agent, AskUserQuestion, Bash, Read, Write, Glob, Grep, mcp__plugi
        ```
        `work_dir` is the sandbox, so the child session's tools cannot reach the
        implementation: blindness is a property of the file system, not of the prompt.
-       Then wait for the channel `completed` event and call `get_output(session_id)`;
-       on `failed` or `timeout` call `get_diagnostics(session_id)`, record it, and fall
+       Then wait for the session to end (the `claudish-monitor` end line, or poll
+       `list_sessions(include_completed=true)` about every 10 s; nothing is pushed). On
+       `COMPLETED` call `get_output(session_id)`; on `FAILED` or `TIMEOUT` call
+       `get_diagnostics(session_id)`, record it with the row's `reason_detail`, and fall
        through to step 4 with `writer: internal (external failed: <reason>)`.
     4. Internal writer:
        ```

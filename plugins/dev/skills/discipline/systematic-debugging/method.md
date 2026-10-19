@@ -547,8 +547,10 @@ When debugging reveals a bug:
 ### With delegated investigations
 For complex debugging requiring multiple investigations:
 - Use agent delegation when debugging spans multiple services
-- For an external model's view, use the claudish MCP tools (`run_prompt`, `team`) per
-  `claudish:claudish-usage`, with models resolved live from `list_models`
+- For an external model's investigation, use the claudish MCP tools `create_session` (one
+  model) or `team` (a panel) per `claudish:claudish-usage`, with models resolved live from
+  `list_models`. `run_prompt` only answers text you paste: it runs no tools, so it cannot
+  investigate
 - Define clear success criteria: "Find root cause of timeout"
 
 ## Enforcement Checklist

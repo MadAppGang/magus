@@ -221,7 +221,7 @@ Leave the model out and it uses your saved default.
 
 ### Step 2. Answer its questions
 
-![Flow diagram: the task is parsed and the model resolved, a full external session starts, and its channel events either ask the user a question, return output, or report a failure and stop](./images/multimodel-delegate-flow.svg)
+![Flow diagram: the task is parsed and the model resolved, a full external session starts, and its polled session state either asks the user a question, returns output, or reports a failure and stops](./images/multimodel-delegate-flow.svg)
 
 When the model asks something, you get asked. It's never answered on your behalf.
 

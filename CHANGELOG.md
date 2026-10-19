@@ -4,6 +4,36 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Marketplace 13.4.2] - 2026-10-20
+
+### Changed
+
+- **`claudish` v2.3.4**: the plugin's docs follow claudish 10.7's MCP surface. claudish
+  pushes no channel notifications any more, so the `claudish-usage` skill and the README
+  drop channel mode and tell the caller to poll `list_sessions(include_completed=true)`,
+  whose rows carry `state`, `activity`, `idle_seconds` and, on a failed or timed-out row,
+  `reason_detail`. `run_prompt(model, prompt, system_prompt)` has no `max_tokens` and is
+  documented as one completion that is never subagent work. `compare_models` is a debug
+  tool. The `CLAUDISH_MCP_TOOLS` groups are `all`, `low-level`, `agentic`, `session` and
+  `debug`. The plugin description no longer claims channel notifications.
+- **`multimodel` v5.4.2**: `/multimodel:delegate`, `error-recovery` and
+  `multi-model-validation` read session states from the monitor line or `list_sessions`
+  (`AWAITING_INPUT`, `COMPLETED`, `FAILED`, `TIMEOUT`) instead of channel events, and quote
+  `reason_detail` on a failure. `/multimodel:delegate` gains a row for a known claudish
+  defect: a delegated session that starts background agents never settles, so it is
+  cancelled and reported as that defect.
+- **`dev` v9.2.2**: `/dev:qa` waits for the external writer by the monitor line or by
+  polling, not a channel event. `systematic-debugging` sends an external investigation to
+  `create_session` or `team`, because `run_prompt` runs no tools.
+
+### Verified
+
+- `MS-2` (model selection): 20/20 on both trees. `CLA-3` (agent routing): this tree
+  `delegate` 5/5 and `team` 4/4 (one trial timed out), against `delegate` 0/5 on the
+  stale tree. madbench 0.47.0, claudish 10.7.0, five trials each.
+
+---
+
 ## [claudish 2.3.3] - 2026-10-17
 
 ### Changed

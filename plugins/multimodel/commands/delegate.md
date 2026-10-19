@@ -1,7 +1,7 @@
 ---
 name: delegate
 description: |
-  Delegate a task to an external AI model via claudish MCP channel session.
+  Delegate a task to an external AI model via a claudish MCP session.
   The model runs a full Claude Code session with all plugins and skills loaded.
   Interactive: when the model asks questions, they're forwarded to you.
 
@@ -32,7 +32,7 @@ args:
 - **NO PRE-SOLVING** — do not read project files before launching. The external model investigates itself.
 - **FORWARD A QUESTION TO USER** — Phase 2 starts the session with a `prompt`, so with
   claudish 10.4.0 or later it never waits for input. If a question arrives anyway
-  (`input_required`, or `needs-input … next: send_input`), use AskUserQuestion whenever it
+  (`needs-input … next: send_input`, or `state` `AWAITING_INPUT` in `list_sessions`), use AskUserQuestion whenever it
   is available. Never auto-answer. Where it is unavailable (`claude -p`), see Phase 3 —
   cancel the session and report the question rather than hanging on an answer that cannot
   arrive.
@@ -145,11 +145,12 @@ delegated session that asks one under `claude -p` would hang on an answer that c
 arrive — turning a free pre-dispatch stall into a **paid session stranded mid-flight**.
 Cancelling and reporting the question keeps the failure cheap and legible.
 
-Two sources report the session. The claudish plugin's monitor is on by default and needs
-no flag: `claudish-monitor: session SESSION_ID …` lines. Channel events arrive only when
-Claude Code was launched with claudish's channel enabled:
-`<channel source="claudish" session_id="..." event="...">content</channel>`. Act on
-whichever arrives first.
+claudish pushes nothing into the conversation; a `<channel>` block never arrives. Two
+sources report the session. The claudish plugin's monitor is on by default and needs no
+flag: `claudish-monitor: session SESSION_ID …` lines. Between them, poll
+`list_sessions(include_completed=true)` (about every 10 seconds is enough): the SESSION_ID row carries `state`,
+`activity`, `idle_seconds`, and on a failed or timed-out row `reason_detail`. Act on
+whichever reports first.
 
 **Before ending a turn with the session in flight, start the bounded wait** from the
 `claudish:claudish-usage` skill, "Waiting for a run to end", with a ceiling of
@@ -159,13 +160,14 @@ session in two measured sessions, which is not a rate, and under `claude -p` no 
 foreground. When the wait fires with no monitor line, call `get_output(SESSION_ID)`: its
 `status` says which row below applies.
 
-| Monitor line / channel event | Action |
+| Monitor line / `list_sessions` row | Action |
 |-------|--------|
-| `started` / `session_started` | Log: "Delegating to {MODEL}..." |
-| — / `tool_executing` | Log: "{MODEL}: executing {content}" |
-| `needs-input … next: send_input` / `input_required` | **AskUserQuestion available** → forward the question (`get_output(SESSION_ID)` shows it after a monitor line; `content` carries it on a channel event) → `send_input(SESSION_ID, answer)` → resume waiting. **Unavailable** (`claude -p`) → `cancel_session(SESSION_ID)`, then report: `The delegated session asked a question and this session cannot answer it. Question: {question}. Re-run interactively, or restate the task so it needs no clarification.` Stop. |
-| `completed … next: get_output` / `completed` | Call `get_output(SESSION_ID, tail_lines=200)` → proceed to Phase 4 |
-| `failed` / `timeout` `… next: get_diagnostics` / `failed`, `timeout` | Call `get_diagnostics(SESSION_ID)` → report error (first 20 lines) → see Error Reporting below → stop |
+| `started` / row present, `RUNNING` | Log: "Delegating to {MODEL}..." |
+| — / `activity` changes | Optional log: "{MODEL}: {activity}" |
+| `needs-input … next: send_input` / `AWAITING_INPUT` or `AWAITING_PERMISSION` | **AskUserQuestion available** → forward the question (`get_output(SESSION_ID)` shows it) → `send_input(SESSION_ID, answer)` → resume waiting. **Unavailable** (`claude -p`) → `cancel_session(SESSION_ID)`, then report: `The delegated session asked a question and this session cannot answer it. Question: {question}. Re-run interactively, or restate the task so it needs no clarification.` Stop. |
+| `completed … next: get_output` / `COMPLETED` | Call `get_output(SESSION_ID, tail_lines=200)` → proceed to Phase 4 |
+| `failed` / `timeout` `… next: get_diagnostics` / `FAILED`, `TIMEOUT` | Call `get_diagnostics(SESSION_ID)` → report error (first 20 lines, plus the row's `reason_detail` when it is not null) → see Error Reporting below → stop |
+| — / `RUNNING`, `activity` `background`, past the wait's ceiling | Known claudish defect: a child that launched background agents never settles, and `get_output` stays empty. `cancel_session(SESSION_ID)` and report it as that defect, not as a model failure. Never ask the delegated model to use background agents. |
 
 ### Error Reporting (on failure)
 

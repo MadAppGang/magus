@@ -7,7 +7,7 @@
   },
   "metadata": {
     "description": "Curated collection of Claude Code plugins for modern full-stack development with LLM performance tracking and E2E skill testing",
-    "version": "13.4.1",
+    "version": "13.4.2",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -84,8 +84,8 @@
     {
       "name": "claudish",
       "source": "./plugins/claudish",
-      "description": "MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting, manages async sessions, streams channel notifications, and shows the session's runs live above the prompt, with stop and live-screen tabs. Required by code-search, dev, multimodel and designer.",
-      "version": "2.3.3",
+      "description": "MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting, manages async sessions, and shows the session's runs live above the prompt, with stop and live-screen tabs. Required by code-search, dev, multimodel and designer.",
+      "version": "2.3.4",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -99,13 +99,17 @@
         "openrouter",
         "team",
         "voting",
-        "channels",
         "multi-model",
         "orchestration",
         "runtime"
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "2.3.4",
+          "date": "2026-10-20",
+          "summary": "The plugin's docs follow claudish 10.7's MCP surface. claudish pushes no channel notifications\u2026"
+        },
         {
           "version": "2.3.3",
           "date": "2026-10-17",
@@ -134,14 +138,6 @@
             "Added"
           ],
           "summary": "The session's claudish runs show live above the prompt"
-        },
-        {
-          "version": "2.2.1",
-          "date": "2026-10-07",
-          "kinds": [
-            "Fixed"
-          ],
-          "summary": "The session-start check fixes in terminal 5.3.1 apply here too"
         }
       ]
     },
@@ -216,7 +212,7 @@
       "name": "multimodel",
       "source": "./plugins/multimodel",
       "description": "Multi-model collaboration and orchestration. Runs a task across several AI models in parallel and aggregates their blind APPROVE/REJECT votes, or delegates it to one model running a full Claude Code session.",
-      "version": "5.4.1",
+      "version": "5.4.2",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -240,6 +236,11 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "5.4.2",
+          "date": "2026-10-20",
+          "summary": "/multimodel:delegate, error-recovery and multi-model-validation read session states from the\u2026"
+        },
         {
           "version": "5.4.1",
           "date": "2026-10-16",
@@ -269,14 +270,6 @@
             "Removed"
           ],
           "summary": "/multimodel:team and /multimodel:delegate wait for the run to finish"
-        },
-        {
-          "version": "5.2.0",
-          "date": "2026-10-06",
-          "kinds": [
-            "Added"
-          ],
-          "summary": "A missing bun or jq is named at session start, with the command that installs it"
         }
       ]
     },
@@ -284,7 +277,7 @@
       "name": "dev",
       "source": "./plugins/dev",
       "description": "Universal development assistant. Detects the project stack and routes work to specialist agents for architecture, implementation, debugging, review and research, enforcing design-system guardrails on every UI change.",
-      "version": "9.2.1",
+      "version": "9.2.2",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -324,6 +317,11 @@
       "strict": true,
       "releases": [
         {
+          "version": "9.2.2",
+          "date": "2026-10-20",
+          "summary": "/dev:qa waits for the external writer by the monitor line or by polling, not a channel event.\u2026"
+        },
+        {
           "version": "9.2.1",
           "date": "2026-10-16",
           "summary": "/dev:qa checks for child mode before it calls list_models, which still answers in child mode.\u2026"
@@ -351,14 +349,6 @@
             "Added"
           ],
           "summary": "A missing bun or jq is named at session start, with the command that installs it"
-        },
-        {
-          "version": "9.0.1",
-          "date": "2026-10-01",
-          "kinds": [
-            "Fixed"
-          ],
-          "summary": "The phase-gate Stop hook no longer traps a session in a loop. It shows its \"INCOMPLETE PHASE\"\u2026"
         }
       ]
     },

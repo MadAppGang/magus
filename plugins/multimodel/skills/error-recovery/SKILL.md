@@ -145,11 +145,12 @@ Benefits:
 # Via create_session MCP tool (timeout handled by the tool)
 create_session(model="grok", prompt=PROMPT, timeout_seconds=300)
 
-# React to channel events:
-# - completed → get_output(session_id) → process result
-# - failed → inspect error content:
-#   - Content contains "timeout" → timeout occurred
-#   - Content contains "401" → API key issue
+# Nothing is pushed. Poll list_sessions(include_completed=true) about every 10 s
+# (or act on the claudish-monitor line) and read the session's row:
+# - COMPLETED → get_output(session_id) → process result
+# - TIMEOUT → the session hit timeout_seconds → get_diagnostics(session_id)
+# - FAILED → read the row's reason and reason_detail, then get_diagnostics(session_id):
+#   - reason_detail names a 401 / missing key → API key issue
 #   - Other → general failure
 
 # Via team MCP tool. There is NO per-model timeout any more — the parameter was
@@ -651,7 +652,7 @@ Never:
 Parameters:
   error_type (required): "provider_failure" | "team_failure" | "stream_error" | "adapter_error" | "other"
   model (optional):            Model ID that failed (e.g., "grok")
-  stderr_snippet (optional):   First 500 chars of error output (from MCP result or channel event)
+  stderr_snippet (optional):   First 500 chars of error output (from the MCP result, the row's reason_detail, or get_diagnostics)
   exit_code (optional):        Process exit code (if CLI fallback was used)
   error_log_path (optional):   Path to full error log file
   session_path (optional):     Path to team session directory
@@ -801,7 +802,7 @@ Step 4: Consolidation (multi-model-validation)
 ```
 Attempt 1:
   create_session(model="grok", prompt=PROMPT, timeout_seconds=300)
-  Result: timeout channel event after 300s — get_diagnostics shows it was mid-test-run
+  Result: list_sessions row TIMEOUT after 300s — get_diagnostics shows it was mid-test-run
 
   Notify user:
     "⚠️ Grok hit its 300s timeout while running the test suite.
@@ -814,7 +815,7 @@ Attempt 1:
 
 Attempt 2:
   create_session(model="grok", prompt=PROMPT, timeout_seconds=900)
-  Result: completed channel event after 7 min
+  Result: list_sessions row COMPLETED after 7 min
 
   Log: "Grok review completed on retry (7 min)"
   get_output(session_id) → process result
