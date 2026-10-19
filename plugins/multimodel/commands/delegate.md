@@ -173,7 +173,9 @@ foreground. When the wait fires with no monitor line, call `get_output(SESSION_I
 
 When the session fails:
 
-1. Call `get_diagnostics(SESSION_ID)` — show first 20 lines to user
+1. Call `get_diagnostics(SESSION_ID)` — show first 20 lines to user. If the reason is
+   `prompt_not_accepted`, follow claudish-usage, "Every slot failed with
+   `prompt_not_accepted`", before step 2.
 2. Ask: "Would you like to report this error to claudish developers? (Data is sanitized.)"
 3. If yes, call `report_error`:
    - `error_type`: `"provider_failure"` (model failure) or `"adapter_error"` (claudish crash)

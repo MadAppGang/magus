@@ -225,6 +225,7 @@ bug to report (Pattern 8), not something to loop around.
 | 5xx | The provider failed on its side | Re-run that model once, pick another, or skip it |
 | network error | The route was unreachable; say whether `preflight` reaches it now | Re-run that model once, or skip it |
 | 429 / rate limited | Rate limited; quote any wait the error body names | Wait and re-run that model, or skip it |
+| `prompt_not_accepted` in every slot | The children never took their prompt; a re-run fails the same way | Follow claudish-usage, "Every slot failed with `prompt_not_accepted`" |
 
 A re-run happens only when the user picks it: one new `team` or `create_session` call for
 the same model (Pattern 7). When the user named the model, Pattern 0 applies first.

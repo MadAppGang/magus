@@ -1070,6 +1070,21 @@ Read the error from the per-model result (`team`) or call `get_diagnostics` (`cr
 Common causes: rate limits, an ID the catalog no longer lists, a missing credential for that
 provider. An empty response that exited 0 usually means `require_pattern` did its job.
 
+### Every slot failed with `prompt_not_accepted`
+
+`prompt_not_accepted` means the child's Claude Code never took its launch prompt: the prompt
+sits typed in the input box and no transcript starts. In one slot it is a one-off. In every
+slot it is the child's input mode, not the models, and a retry fails the same way.
+
+The known cause is `"editorMode": "vim"` in the user's Claude Code settings. claudish 10.7.0
+fixes it by starting every child in normal mode. Check with `claudish --version`. On an older
+claudish, upgrade it, or pass `claude_flags='--settings {"editorMode":"normal"}'` to the
+`team` or `create_session` call. The value holds no space, so the whitespace split of
+`claude_flags` leaves it intact.
+
+On claudish 10.7.0 or later, every slot failing this way is a claudish bug: report it with
+`report_error` and stop.
+
 ### A model will not route
 
 Report it with `report_error` and pick a different model from `list_models`. Do not

@@ -4,6 +4,39 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [multimodel 5.5.0] - 2026-10-20
+
+### Added
+
+- **`/multimodel:team` passes `claudeFlags` from the preferences file to every slot again.**
+  It was removed when the `team` tool had no `claude_flags`; the tool has it now. Children
+  inherit the user's `effortLevel` and per-model `modelSettings`, so voters could start at
+  different efforts. An `--effort <level>` in `claudeFlags` gives every voter the same one.
+
+### Fixed
+
+- **An explicit `--models` list is used as given.** The old wording, "internal included", led
+  the command to add `internal` to a panel the user had chosen.
+- **Two runs started in the same second no longer share a session directory.** The directory
+  name gets a random suffix; before, `team` refused the second run.
+- **A repeated `prompt_not_accepted` in every slot points to the cause.** `team`, `delegate` and
+  the `error-recovery` skill send it to the claudish-usage section, instead of a retry.
+
+---
+
+## [claudish 2.3.5] - 2026-10-20
+
+### Fixed
+
+- **`claudish-usage` names the cause when every slot fails `prompt_not_accepted`.** A child
+  Claude Code with `"editorMode": "vim"` never took its launch prompt, so every `/team` slot
+  failed after 30 s and a retry failed the same way. claudish 10.7.0 fixes it by starting
+  children in normal mode. For an older claudish, the skill gives
+  `claude_flags='--settings {"editorMode":"normal"}'`. On 10.7.0 or later the same failure is
+  a claudish bug to report.
+
+---
+
 ## [Marketplace 13.4.2] - 2026-10-20
 
 ### Changed

@@ -30,7 +30,8 @@ mode: report it as a failure.
 **Step 1a — Load alias table:** Follow the `claudish:claudish-usage` skill → "Model Alias Resolution" procedure to build ALIAS_TABLE from the live catalog (`list_models`) + `.claude/multimodel-team.json` `customAliases`.
 
 **Step 1b — Parse args:**
-Parse: `defaultModels`, `contextPreferences`, `agentPreferences`, `defaultThreshold` from prefs.
+Parse: `defaultModels`, `contextPreferences`, `agentPreferences`, `defaultThreshold`, `claudeFlags` from prefs.
+CLAUDE_FLAGS is `claudeFlags` (may be empty).
 Parse command args: task, `--models`, `--threshold`, `--no-memory`. If no task: ask the user.
 
 **Step 1c — Resolve models** (stop at first match, resolve each name via ALIAS_TABLE):
@@ -52,7 +53,9 @@ native and external alike; there is no per-model form. For a blind panel that is
 correct shape — every voter reviews by the same method, so a vote difference reflects the
 model rather than the prompt.
 
-**Session directory** (the `team` tool's session path): `Bash: SESSION_DIR="$(pwd)/ai-docs/sessions/team-$(date +%Y%m%d-%H%M%S)" && mkdir -p "$SESSION_DIR" && echo "$SESSION_DIR"`
+**Session directory** (the `team` tool's session path): `Bash: SESSION_DIR="$(pwd)/ai-docs/sessions/team-$(date +%Y%m%d-%H%M%S)-$RANDOM" && mkdir -p "$SESSION_DIR" && echo "$SESSION_DIR"`.
+The suffix keeps two runs started in the same second from sharing a directory; `team` refuses
+a path that already holds a session.
 
 **Build vote prompt** using the template below with `{TASK}` substituted, then **write it
 to `${SESSION_DIR}/input.md`**. Step 2 passes that path, not the text — a vote prompt is
@@ -65,13 +68,21 @@ Unless `--no-memory`, save resolved models to `defaultModels` in the preferences
 
 ONE `team` call starts the whole panel. The tool parallelises every model internally —
 native and external alike — so there is no second dispatch to issue alongside it.
+`internal` is a slot only when Step 1c resolved it. Never add it to an explicit `--models`
+list: the user chose that panel.
 
 ````
 claudish team(mode="run", path=SESSION_DIR,
-  models=[...ALL resolved models, "internal" included...],
+  models=[...ALL resolved models, exactly as Step 1c produced them...],
   input_file=`${SESSION_DIR}/input.md`,
-  require_pattern="```vote", agent=RESOLVED_AGENT)
+  require_pattern="```vote", agent=RESOLVED_AGENT,
+  claude_flags=CLAUDE_FLAGS)   # omit when CLAUDE_FLAGS is empty
 ````
+
+`claude_flags` applies to every slot, like `agent`. Each child also inherits the user's
+Claude Code settings, including `effortLevel` and per-model `modelSettings`, so slots can
+start at different efforts. If a vote needs one effort in every slot, the user puts
+`--effort <level>` in `claudeFlags`: it overrides both settings in every child.
 
 **Requires `claudish >= 8.0.0`.** Check with `claudish --version` if a run behaves oddly.
 On 7.67.x and earlier there is no `input_file` and `run` still blocks, so this command does
@@ -227,6 +238,7 @@ A slot's outcome comes from `status.models[{slot}].state`:
 | `FAILED` / `EMPTY` | Did not vote. `error.reason` says why. |
 | reason `shape_mismatch` | It answered but produced no vote block. Report FAILED; **do not go hunting for a verdict in its prose.** |
 | reason `cancelled` | You cancelled it in Step 2c. Report CANCELLED. |
+| reason `prompt_not_accepted` in every slot | The children never took the prompt. Do not retry: follow claudish-usage, "Every slot failed with `prompt_not_accepted`". |
 | `RUNNING` at the ceiling | Not a failure. Report it as still running. |
 
 Failed models: show as FAILED in the table, proceed with the remaining. No retry, no
@@ -296,7 +308,8 @@ from `list_models` using the criterion below — always current, never hardcoded
 | testing | test, coverage, unit test, integration, e2e | Fast variants, tools-capable | dev:qa-engineer |
 
 **Preferences** (`.claude/multimodel-team.json`): `defaultModels[]`, `defaultThreshold`,
-`contextPreferences{context:[models]}`, `agentPreferences{context:"agent"}`. All fields optional.
+`contextPreferences{context:[models]}`, `agentPreferences{context:"agent"}`, `claudeFlags`
+(Claude Code flags for every slot, e.g. `"--effort high"`). All fields optional.
 
 **Vote prompt template:**
 ```
