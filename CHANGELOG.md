@@ -4,6 +4,38 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Marketplace 13.7.10] - 2026-10-21
+
+### Added
+
+- **`multimodel` v5.8.0**: `/multimodel:team` runs every voter at one effort, chosen from the
+  task. A trivial check gets `low`, a small review `medium`, a normal code review `high`, and
+  architecture, security or a go/no-go `xhigh`. When the task fits two levels or names no
+  scope, the command asks, and starts no run until you answer. An `--effort` on the command or
+  in `claudeFlags` wins and skips both. The level goes to every slot through `claude_flags`, and
+  `effort.json` in the session directory records the level, its source and the reason. The
+  verification table shows the effort each voter ran with, read from the voter's own
+  transcript, and marks a mismatch. A model without the chosen level runs at its nearest
+  published one; claudish does not report which, and the table says so.
+
+### Fixed
+
+- **`claudish` v2.9.1**: the `claudish-usage` skill checks for child mode with
+  `echo "CLAUDISH_PANE_CHILD=${CLAUDISH_PANE_CHILD:-unset}"`, which prints both cases. Before, it
+  said to run `printenv CLAUDISH_PANE_CHILD`, and an agent that appended its exit status read
+  the `1` from an unset variable as child mode, so `/multimodel:team` skipped its panel.
+
+### Verified
+
+- `multimodel`: bench TEF-1 (madbench 0.48.0, claudish 12.3.0, 3 trials, with the child-mode
+  fix above): 21 of 21 Sessions pass. The effort was settled right and carried on every `team`
+  run call in 18 of 18 panel Sessions, the ambiguous task asked first in 3 of 3, and
+  `--effort turbo` was refused before any run in 3 of 3. Every child-mode check printed
+  `CLAUDISH_PANE_CHILD=unset`. Whether each voter finishes at that level is not measured yet:
+  inside madbench's sandbox no voter completes.
+
+---
+
 ## [Marketplace 13.7.9] - 2026-10-21
 
 ### Changed

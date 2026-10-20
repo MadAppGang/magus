@@ -38,8 +38,11 @@ The only CLI that survives is a set of three read-only diagnostics — see
 
 ## Inside a claudish session (child mode)
 
-**How to tell.** Run `printenv CLAUDISH_PANE_CHILD`. If it prints `1`, claudish started
-this session, and its MCP server runs in nested mode. That variable is the deciding signal.
+**How to tell.** Run exactly `echo "CLAUDISH_PANE_CHILD=${CLAUDISH_PANE_CHILD:-unset}"`,
+with nothing appended. If it prints `CLAUDISH_PANE_CHILD=1`, claudish started this session,
+and its MCP server runs in nested mode. `CLAUDISH_PANE_CHILD=unset` means it did not. That
+variable is the deciding signal. Never read an exit status as its value: `printenv` exits 1
+when the variable is unset, which once read as "child mode" and skipped a whole panel.
 
 A missing tool is not enough on its own. Claude Code can defer MCP tools behind tool
 search, so a parent session can list `create_session` only as a deferred name, and a

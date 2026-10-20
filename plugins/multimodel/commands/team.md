@@ -17,6 +17,9 @@ args:
   - name: --no-memory
     description: Don't save model preferences for this run
     required: false
+  - name: --effort
+    description: Effort for every voter (low, medium, high, xhigh, max). Skips the automatic choice
+    required: false
 ---
 
 **Child mode.** Check for child mode as `claudish:claudish-usage` →
@@ -32,7 +35,7 @@ mode: report it as a failure.
 **Step 1b — Parse args:**
 Parse: `defaultModels`, `contextPreferences`, `agentPreferences`, `defaultThreshold`, `claudeFlags` from prefs.
 CLAUDE_FLAGS is `claudeFlags` (may be empty).
-Parse command args: task, `--models`, `--threshold`, `--no-memory`. If no task: ask the user.
+Parse command args: task, `--models`, `--threshold`, `--no-memory`, `--effort`. If no task: ask the user.
 
 **Step 1c — Resolve models** (stop at first match, resolve each name via ALIAS_TABLE):
 1. `--models` flag provided → resolve each via ALIAS_TABLE
@@ -53,9 +56,39 @@ native and external alike; there is no per-model form. For a blind panel that is
 correct shape — every voter reviews by the same method, so a vote difference reflects the
 model rather than the prompt.
 
+**Step 1d — Resolve effort.** Every run uses ONE effort for every voter, so a vote
+difference reflects the model, not how hard it was told to think. Without it each child
+inherits the user's `effortLevel` and per-model `modelSettings`, and slots start at
+different efforts. Stop at the first rule that applies:
+
+1. **The user chose.** `--effort <level>` on the command, else an `--effort` already in
+   CLAUDE_FLAGS. Use it: do not pick, do not ask. A command `--effort` replaces any
+   `--effort` pair in CLAUDE_FLAGS. Valid levels: `low`, `medium`, `high`, `xhigh`, `max`;
+   anything else is an error that lists them. SOURCE = `user`.
+2. **The task clearly fits one row.** Pick it. SOURCE = `auto`.
+
+   | Level | Task |
+   |---|---|
+   | `low` | A trivial check: formatting, a typo, a yes/no fact, a quick sanity vote |
+   | `medium` | A small, contained review: one function, one short file, a doc's wording |
+   | `high` | A normal code review, a bug diagnosis, a test or feature review |
+   | `xhigh` | Architecture or design, security, data loss or migration, a release go/no-go, anything hard to reverse |
+
+   Never pick `max` yourself. Only the user chooses it.
+3. **Not sure** — the task fits two rows, or names no scope ("/team look at this"). Do not
+   guess. AskUserQuestion: "Which effort should every voter run at?", options `low`,
+   `medium`, `high`, `xhigh`, your best guess first and marked "(Recommended)", each with its
+   row above as the description. SOURCE = `asked`. No run starts before the user answers.
+
+Then append `--effort EFFORT` to CLAUDE_FLAGS (rule 1 already has it there). Announce:
+"Effort: {EFFORT} ({SOURCE}: {REASON})" — REASON is the row matched, or "set by the user".
+
 **Session directory** (the `team` tool's session path): `Bash: SESSION_DIR="$(pwd)/ai-docs/sessions/team-$(date +%Y%m%d-%H%M%S)-$RANDOM" && mkdir -p "$SESSION_DIR" && echo "$SESSION_DIR"`.
 The suffix keeps two runs started in the same second from sharing a directory; `team` refuses
 a path that already holds a session.
+
+**Write `${SESSION_DIR}/effort.json`** with the Step 1d result:
+`{"level": "EFFORT", "source": "user|auto|asked", "reason": "REASON"}`.
 
 **Build vote prompt** using the template below with `{TASK}` substituted, then **write it
 to `${SESSION_DIR}/input.md`**. Step 2 passes that path, not the text — a vote prompt is
@@ -76,13 +109,19 @@ claudish team(mode="run", path=SESSION_DIR,
   models=[...ALL resolved models, exactly as Step 1c produced them...],
   input_file=`${SESSION_DIR}/input.md`,
   require_pattern="```vote", agent=RESOLVED_AGENT,
-  claude_flags=CLAUDE_FLAGS)   # omit when CLAUDE_FLAGS is empty
+  claude_flags=CLAUDE_FLAGS)   # always carries --effort EFFORT from Step 1d
 ````
 
-`claude_flags` applies to every slot, like `agent`. Each child also inherits the user's
-Claude Code settings, including `effortLevel` and per-model `modelSettings`, so slots can
-start at different efforts. If a vote needs one effort in every slot, the user puts
-`--effort <level>` in `claudeFlags`: it overrides both settings in every child.
+`claude_flags` applies to every slot, like `agent`: claudish appends the same list to each
+child's command line. `--effort` overrides the child's inherited `effortLevel` and
+per-model `modelSettings`, so every child boots at EFFORT.
+
+**A model that lacks EFFORT runs at its nearest level.** Some models publish only some
+levels (one lists `high`, `medium`, `low`; others `high`, `low`, `minimal`). claudish
+clamps EFFORT to the nearest level the model publishes, rounding up on a tie, and sends
+that. The mapping is claudish's job: do not reimplement it, do not drop or refuse the
+slot. claudish does not yet report the level it sent, so a clamp is invisible to this
+command; Step 4 says so for every voter.
 
 **Requires `claudish >= 8.0.0`.** Check with `claudish --version` if a run behaves oddly.
 On 7.67.x and earlier there is no `input_file` and `run` still blocks, so this command does
@@ -243,11 +282,23 @@ substitution. See Error Reporting below.
 
 **Verification table:**
 ```
-| Model | Slot | Status | Output | Notes |
-| {model} | {slot} | OK/FAILED/CANCELLED/RUNNING | {size} | {error.reason} |
+| Model | Slot | Effort | Status | Output | Notes |
+| {model} | {slot} | {ran} | OK/FAILED/CANCELLED/RUNNING | {size} | {error.reason} |
 ```
 
 `{slot}` comes from the `slots` map, `{size}` from `status.models[{slot}].outputSize`.
+`{ran}` is the effort the child ran with, read from its own transcript
+(`status.models[{slot}].transcriptPath`), which records it on every turn:
+
+```bash
+grep -o '"effort":"[a-z]*"' "TRANSCRIPT_PATH" | sort -u
+```
+
+One value equal to EFFORT is the expected case. Anything else — another level, two
+levels, or no transcript — goes in the column as found, with **MISMATCH** in Notes; never
+fill in EFFORT for a slot you could not read. Below the table, one line: "Effort: {EFFORT}
+for every voter ({SOURCE}: {REASON}). A model without {EFFORT} ran at its nearest level;
+claudish does not report which."
 
 **Verdict:**
 ```
@@ -257,6 +308,7 @@ substitution. See Error Reporting below.
 | {model} | APPROVE/REJECT/ABSTAIN | {n}/10 | {summary} |
 
 Result: {approve}/{valid} APPROVE ({pct}%) — Threshold: {threshold}%
+Effort: {EFFORT} for every voter ({SOURCE}: {REASON})
 ```
 
 Key issues ranked by frequency. Dissenting opinions if votes differ.
@@ -304,7 +356,8 @@ from `list_models` using the criterion below — always current, never hardcoded
 
 **Preferences** (`.claude/multimodel-team.json`): `defaultModels[]`, `defaultThreshold`,
 `contextPreferences{context:[models]}`, `agentPreferences{context:"agent"}`, `claudeFlags`
-(Claude Code flags for every slot, e.g. `"--effort high"`). All fields optional.
+(Claude Code flags for every slot, e.g. `"--effort high"`; an `--effort` here fixes the
+effort for every run and skips Step 1d's choice). All fields optional.
 
 **Vote prompt template:**
 ```

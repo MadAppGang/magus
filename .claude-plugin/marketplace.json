@@ -7,7 +7,7 @@
   },
   "metadata": {
     "description": "Curated collection of Claude Code plugins for modern full-stack development with LLM performance tracking and E2E skill testing",
-    "version": "13.7.9",
+    "version": "13.7.10",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -78,7 +78,7 @@
       "name": "claudish",
       "source": "./plugins/claudish",
       "description": "MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting, manages async sessions, and shows the session's runs live above the prompt, with stop and live-screen tabs. Required by code-search, dev, multimodel and designer.",
-      "version": "2.9.0",
+      "version": "2.9.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -99,6 +99,11 @@
       "strict": true,
       "releases": [
         {
+          "version": "2.9.1",
+          "date": "2026-10-21",
+          "summary": "The claudish-usage skill checks for child mode with echo\u2026"
+        },
+        {
           "version": "2.9.0",
           "date": "2026-10-21",
           "summary": "Every running claudish session takes the Show panel's size, not only the one the open panel\u2026"
@@ -117,11 +122,6 @@
           "version": "2.7.0",
           "date": "2026-10-20",
           "summary": "The Show panel fits each session to itself. It sets the session's terminal size to the panel's\u2026"
-        },
-        {
-          "version": "2.6.2",
-          "date": "2026-10-20",
-          "summary": "The plugin now requires claudish 12.1.0 or later, which can resize a session's pane\u2026"
         }
       ]
     },
@@ -193,7 +193,7 @@
       "name": "multimodel",
       "source": "./plugins/multimodel",
       "description": "Multi-model collaboration and orchestration. Runs a task across several AI models in parallel and aggregates their blind APPROVE/REJECT votes, or delegates it to one model running a full Claude Code session.",
-      "version": "5.7.1",
+      "version": "5.8.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -218,6 +218,11 @@
       "strict": true,
       "releases": [
         {
+          "version": "5.8.0",
+          "date": "2026-10-21",
+          "summary": "/multimodel:team runs every voter at one effort, chosen from the task. A trivial check gets\u2026"
+        },
+        {
           "version": "5.7.1",
           "date": "2026-10-20",
           "summary": "/multimodel:delegate, the multi-model-validation and error-recovery skills and /dev:qa no\u2026"
@@ -240,11 +245,6 @@
             "Fixed"
           ],
           "summary": "/multimodel:team passes claudeFlags from the preferences file to every slot again"
-        },
-        {
-          "version": "5.4.2",
-          "date": "2026-10-20",
-          "summary": "/multimodel:delegate, error-recovery and multi-model-validation read session states from the\u2026"
         }
       ]
     },
