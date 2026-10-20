@@ -4,6 +4,17 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Marketplace 13.7.12] - 2026-10-21
+
+### Fixed
+
+- **`claudish` v2.9.3**: a resize shows in the Show panel within about a second, not 2–3 s later.
+  The session redraws almost at once, but the panel read its screen only once per poll tick, so the
+  redrawn screen could wait a tick or two. After a size change the shown tab's screen is now read
+  again at 250 ms and 750 ms.
+
+---
+
 ## [Marketplace 13.7.11] - 2026-10-21
 
 ### Fixed

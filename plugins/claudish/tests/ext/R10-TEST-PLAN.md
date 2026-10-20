@@ -2,9 +2,9 @@
 
 The `spec.md` named below is kept in `docs/plans/2026-10-20-claudish-status-band-spec.md` at the repository root (revision R10).
 
-- **Spec**: `spec.md`, "claudish status mod, 2.9.0: revision R10", R10.1–R10.3. R7.2/R9.1 supply the size oracle (`cols = max(40, columns)`, `rows = max(24, rows − 3)`); R6.5 supplies Show/Hide and "captures run only while the panel is open".
+- **Spec**: `spec.md`, "claudish status mod, 2.9.0: revision R10", R10.1–R10.4. R7.2/R9.1 supply the size oracle (`cols = max(40, columns)`, `rows = max(24, rows − 3)`); R6.5 supplies Show/Hide and "captures run only while the panel is open".
 - **Contract**: `contract/index.d.ts`, `contract/run-source.ts`
-- **Stack**: bun   **Framework**: `claude-code/testing` engine kit   **Scenarios**: 12 new (× terminal, desktop = 24 tests), plus 3 rewritten R7 scenarios (6 tests) and 6 adjusted R6/R7-era Button assertions
+- **Stack**: bun   **Framework**: `claude-code/testing` engine kit   **Scenarios**: 15 new (× terminal, desktop = 30 tests), plus 3 rewritten R7 scenarios (6 tests) and 6 adjusted R6/R7-era Button assertions
 - **Host command**: `claude plugin test plugins/claudish` (not runnable in this sandbox).
 - **Observation boundary**: recorded MCP requests (`resize_session`, `team` mode `resize`/`capture`/`list`, `capture_session`), `ui.open`/`ui.close`, the drawn band and panel, the published `showTab` and `panes/*` state. No private resize memory is read.
 
@@ -20,6 +20,9 @@ The `spec.md` named below is kept in `docs/plans/2026-10-20-claudish-status-band
 - REQ-R10-8: A session forgets its size once no longer running: its slot finished, or its run left the mod's list (cleared, compacted). Missing from a list answer is not leaving; listed again, it is not asked again.
 - REQ-R10-9: The tab strip row ends with a `[ Hide ]` Button, flush right, as the band's Hide (`suggestion`, bold, 8 cells); tabs shrink first, Hide never does. The panel's Buttons are the tabs and Hide.
 - REQ-R10-10: Pressing the panel's Hide does what the band's Hide does: `ui.close` of `claudish-show`, tabs and views kept for the next Show.
+- REQ-R10-11 (R10.4): When the panel's size changes and a tab is shown, the shown tab is captured at once and again 250 ms and 750 ms later, each with `since_seq`; so a child that redraws just after its resize answer is in the panel well before the next poll tick (1 s).
+- REQ-R10-12 (R10.4): The extra captures happen only while the panel is open.
+- REQ-R10-13 (R10.4): Nothing else about the cadence changes: no extra captures without a size change.
 
 ## Scenarios (tests/ext/r10-live-resize.test.ts)
 
@@ -83,6 +86,21 @@ The `spec.md` named below is kept in `docs/plans/2026-10-20-claudish-status-band
 - **Given** a panel hidden by its own Hide **When** Show is pressed again **Then** one `ui.open` of `claudish-show`, the same tab labels and view ids, the pressed slot shown, and the panel carries its Hide again.
 - **Requirement**: REQ-R10-10
 
+#### TEST-R10-13: the shown tab catches its redraw
+- **Type**: component  **Priority**: critical
+- **Given** a 2-slot team shown at 120×40, a fake child that redraws 150 ms after its resize answer (old layout before, new layout and a higher seq after), and the size change drawn just after a poll tick **When** the panel redraws at 100×30 **Then** the shown slot is resized (100×27) and captured within 100 ms, the panel still shows the old layout; captures of the shown slot fall at about +250 ms (200–350) and +750 ms (700–800), each with a numeric `since_seq`, with no poll tick (list call) inside those windows; at +900 ms the panel shows the new layout.
+- **Requirement**: REQ-R10-11
+
+#### TEST-R10-14: no catch-up captures once the panel is closed
+- **Type**: component  **Priority**: high
+- **Given** the same panel **When** it redraws at 100×30 (resize + capture at once: positive control) and is hidden by the band's Hide within 200 ms **Then** no capture of the shown slot at +200–850 ms, no capture at all while closed over 2 s, while polling continues (control).
+- **Requirement**: REQ-R10-12
+
+#### TEST-R10-15: an unchanged size makes no catch-up captures
+- **Type**: component  **Priority**: high
+- **Given** the same panel at 120×40 **When** it redraws at 120×40 and with no new props, just after a poll tick **Then** no capture of the shown slot at +200–350 or +700–850 ms and no resize; positive control: a later change to 100×30 in the same panel brings the +250/+750 captures.
+- **Requirement**: REQ-R10-13
+
 ## Rewritten scenarios (tests/ext/r7-resize.test.ts)
 
 - **TEST-9/10** → `R7.2 R10.1 R10.2 TEST-9 TEST-10`: three sessions get 132×41 once; only the shown tab must have its capture next (`expectBeforeOwnCapture`). REQ-R10-3, REQ-R10-7.
@@ -110,9 +128,15 @@ The `spec.md` named below is kept in `docs/plans/2026-10-20-claudish-status-band
 | REQ-R10-8 forgets only when finished or the run leaves the mod's list | TEST-R10-8 (absent-then-relisted keeps the size) | partly, see gaps |
 | REQ-R10-9 strip Hide look and place | TEST-R10-9, -10, pane.test.ts | yes |
 | REQ-R10-10 panel Hide behaviour | TEST-R10-11, -12 | yes |
+| REQ-R10-11 shown tab captured at once, +250, +750 ms with since_seq; late redraw drawn within 1 s | TEST-R10-13, TEST-R10-15 (positive control) | yes |
+| REQ-R10-12 catch-up captures only while open | TEST-R10-14 | yes |
+| REQ-R10-13 no catch-up captures without a size change | TEST-R10-15 | yes |
 
 ## Known gaps
 
 - REQ-R10-8 for a *finished* session: a finished session never runs again, so whether it forgot its size cannot be observed. A run leaving the mod's list (cleared, compacted) also ends the session's eligibility, so forgetting is not observable there either. TEST-R10-8 tests the observable rule: a brief absence does NOT forget.
 - "Closing a tab" (R10.2) has no separate UI action in the R6.5 single-pane panel apart from the run leaving the band, which also ends the session's eligibility, so it is not tested on its own.
 - "Tabs shrink first" is checked only through Hide staying whole and the row fitting its width. How a tab label gets cut is not specified, so no assertion is made about it.
+- REQ-R10-12 "a size change while the panel is closed": a closed panel is not drawn, so its size cannot change while closed. TEST-R10-14 tests the observable case: a size change followed by closing before the +250 ms capture is due.
+- R10.4 timing windows assume the spec's poll tick of about 1 s: each R10.4 test changes the size just after a poll (list call) and asserts no list call inside the windows, so a capture there cannot be the tick's. A tick shorter than about 850 ms would fail that guard rather than the catch-up assertion.
+- R10.4 is checked for team slots only; delegations (`capture_session`) share the capture path and are not repeated.

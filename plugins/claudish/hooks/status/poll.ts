@@ -72,6 +72,8 @@ const sameSize = (a: Size | null | undefined, b: Size | null | undefined): boole
 
 /** A resize answer later than this counts as failed, so a call that never answers cannot hold its tab. */
 export const RESIZE_TIMEOUT_MS = 5_000
+/** After a new panel size, the shown tab is captured again this long after, to catch its redraw. */
+export const SETTLE_CAPTURE_MS: readonly number[] = [250, 750]
 /** Sizes asked for in one capture of a tab, so a panel dragged without pause still gets captured. */
 const RESIZE_ROUNDS = 3
 
@@ -135,8 +137,11 @@ async function fitLive(host: Host, runs: ClaudishRuns, feeds: Readonly<Record<st
 export function notePanelSize(host: Host, size: Size, shownId: string | null): void {
   if (sameSize(panelSize, size)) return
   panelSize = size
-  if (shownId === null) ensureLoop(host)
-  else void captureOpened(host, shownId)
+  if (shownId === null) return ensureLoop(host)
+  void captureOpened(host, shownId)
+  // The session redraws a moment after its resize answer, so the capture right after can still
+  // show the old drawing; these catch the redraw instead of the next tick, a second or two later.
+  for (const ms of SETTLE_CAPTURE_MS) host.after(ms, () => void captureOpened(host, shownId, false))
 }
 
 // ── session boundaries ────────────────────────────────────────────────────────
@@ -327,15 +332,16 @@ export function ensureLoop(host: Host): void {
 /**
  * A tab Show (or a tab press) just made active: its first screen is captured now, not at the
  * loop's next tick, which can be a whole poll interval away while one is already scheduled.
- * Then the loop carries on.
+ * Then the loop carries on. `kick` false (a settle capture after a resize) leaves the loop as it is:
+ * it is not a press, so it must not run a tick of its own (R11.3).
  */
-export async function captureOpened(host: Host, id: string): Promise<void> {
+export async function captureOpened(host: Host, id: string, kick = true): Promise<void> {
   try {
     if (await panelOpen(host)) await captures(host, [{ id, inPanel: true, isShown: true }], await host.store.runs.read(), await host.store.feeds.read(), await host.now(), false)
   } catch (err) {
     host.debug(`claudish Show capture failed: ${err instanceof Error ? err.message : String(err)}`)
   }
-  ensureLoop(host)
+  if (kick) ensureLoop(host)
 }
 
 async function panelOpen(host: Host): Promise<boolean> {

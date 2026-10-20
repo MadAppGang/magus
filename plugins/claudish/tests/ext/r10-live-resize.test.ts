@@ -1,4 +1,4 @@
-// R10.1–R10.3 only, written from spec.md and the public contract, without implementation reads.
+// R10.1–R10.4 only, written from spec.md and the public contract, without implementation reads.
 // Observation boundary: recorded MCP requests (resize, capture, list), ui.open/ui.close, the drawn
 // panel and band, and the published showTab / panes state. No private resize state is inspected.
 // Run with the host's engine kit (`claude plugin test plugins/claudish`). See R10-TEST-PLAN.md for ids.
@@ -9,7 +9,8 @@ import { harness, start, type Harness, type Recorded } from '../fake-claudish'
 import { bandProps, mountBand, mountPane, paneProps, SURFACES, walk, type Mounted, type Node } from '../ui'
 import { POLL, delegate, team } from './support'
 import { expectInk, keyOf, pressChip, visibleText } from './v2-support'
-import { SHOW_PANE, activeTab, expectFlushRight, views } from './r6-support'
+import { SHOW_PANE, activeTab, expectFlushRight, untilPoll, views } from './r6-support'
+import type { Json } from '../scenario'
 
 
 const isResize = (c: Recorded) => c.tool === 'resize_session' || (c.tool === 'team' && c.args.mode === 'resize')
@@ -65,6 +66,88 @@ async function panelHide(p: Mounted): Promise<{ hide: Node; strip: Node; tree: u
   const strip = holders.filter(n => !holders.some(o => o !== n && walk(n).slice(1).some(x => x.node === o))).at(-1)
   expect(strip, 'Hide sits in the tab strip row, with the tabs').toBeDefined()
   return { hide, strip: strip!, tree }
+}
+
+// ── R10.4 helpers ────────────────────────────────────────────────────────────
+
+/** Steps the mock clock in ≤ 50 ms steps up to `t`, so each timer fires (and is recorded) near its own time. */
+async function stepTo(h: Harness, t: number): Promise<void> {
+  while (h.clock.now() < t) await h.clock.advance(Math.min(50, t - h.clock.now()))
+  await h.clock.settle()
+}
+
+const teamCaptures = (h: Harness, runId: string, slot: string) =>
+  h.fake.captureCalls().filter(c => c.tool === 'team' && c.args.run_id === runId && c.args.slot === slot)
+const within = (calls: Recorded[], from: number, to: number) => calls.filter(c => c.at >= from && c.at <= to)
+
+/**
+ * Lines the poll tick's capture right after a list call (so the next tick, about 1 s away per spec,
+ * cannot land in the R10.4 windows), then draws the panel at `columns` x `rows`. Returns the time of the draw.
+ */
+async function drawAfterTick(h: Harness, p: Mounted, columns: number, rows: number): Promise<number> {
+  await untilPoll(h)
+  await h.clock.settle()
+  const t0 = h.clock.now()
+  await p.redraw(paneProps(columns, rows))
+  await h.clock.settle()
+  return t0
+}
+
+/**
+ * The shown tab's resize to `cols` made at or after `t0`, and the capture of that tab that follows it
+ * ("captured at once", R7.3/R10.4): it must come within 100 ms of the size change.
+ */
+async function atOnce(h: Harness, runId: string, slot: string, cols: number, t0: number): Promise<{ resized: Recorded; first: Recorded }> {
+  const find = () => {
+    const resized = h.fake.calls.find(c => isResize(c) && c.tool === 'team' && c.args.run_id === runId && c.args.slot === slot && c.args.cols === cols && c.at >= t0)
+    if (!resized) return undefined
+    const first = h.fake.calls.slice(h.fake.calls.indexOf(resized) + 1).find(c => isCapture(c) && c.tool === 'team' && c.args.run_id === runId && c.args.slot === slot)
+    return first ? { resized, first } : undefined
+  }
+  await h.clock.settle()
+  for (let i = 0; i < 2 && !find(); i++) await h.clock.advance(50)
+  const got = find()
+  expect(got, 'the size change resizes the shown tab and captures it at once').toBeDefined()
+  expect(got!.first.at - t0, 'the capture right after the size change is at once').toBeLessThanOrEqual(100)
+  return got!
+}
+
+/** R10.4: the extra captures of the shown tab at about +250 ms and +750 ms after `c0`, each with since_seq. */
+function expectCatchUp(h: Harness, runId: string, slot: string, c0: number): void {
+  const shown = teamCaptures(h, runId, slot)
+  // these are not the poll tick's captures: no tick (list call) falls between them (spec: tick about 1 s)
+  expect(within(h.fake.listCalls(), c0 + 150, c0 + 800), 'no poll tick inside the R10.4 windows').toHaveLength(0)
+  const quarter = within(shown, c0 + 200, c0 + 350)
+  const threeQuarter = within(shown, c0 + 700, c0 + 800)
+  expect(quarter.length, 'the shown tab is captured again about 250 ms after the size change').toBeGreaterThanOrEqual(1)
+  expect(threeQuarter.length, 'and again about 750 ms after it').toBeGreaterThanOrEqual(1)
+  for (const c of [...quarter, ...threeQuarter]) {
+    expect(typeof c.args.since_seq, 'each catch-up capture carries since_seq').toBe('number')
+  }
+}
+
+const OLD_LAYOUT = 'R10.4 child screen in its old layout'
+const NEW_LAYOUT = 'R10.4 child screen redrawn at the new size'
+
+/**
+ * A child that redraws `lag` ms AFTER its resize answer (as measured live: the capture right after the
+ * resize answer can come just before the redraw). Until then every capture shows the old layout; from
+ * then on the new layout, with a higher seq. Seqs sit far above the fake's own, so no answer is `unchanged`.
+ */
+function lateRedraw(get: () => Harness | undefined, cols: number, lag = 150) {
+  return ({ slot, final }: { seq: number; slot: string; final: boolean }): Json => {
+    const h = get()
+    const resized = h?.fake.resizeCalls().find(c => c.tool === 'team' && c.args.slot === slot && c.args.cols === cols)
+    const redrawn = !!h && !!resized && h.clock.now() >= resized.at + lag
+    return {
+      seq: redrawn ? 100_001 : 100_000,
+      final,
+      cols: redrawn ? cols : 160,
+      rows: 2,
+      cursor: null,
+      lines: [redrawn ? NEW_LAYOUT : OLD_LAYOUT, 'child prompt'],
+    }
+  }
 }
 
 for (const surface of SURFACES) {
@@ -406,6 +489,90 @@ for (const surface of SURFACES) {
     expect(views(h).get(activeTab(h)!)).toMatchObject({ model: 'rh-two' })
     await panelHide(again) // and the reopened panel carries its Hide again
     await again.unmount()
+    await b.unmount()
+  })
+
+  // ── R10.4 ──────────────────────────────────────────────────────────────────
+
+  // TEST-R10-13 / REQ-R10-11: the shown tab catches the redraw that lands after its resize answer.
+  test(`R10.4 TEST-R10-13: after a panel size change the shown tab is captured again about 250 ms and 750 ms later with since_seq, and a redraw made after the resize answer is in the panel within 1 s [${surface}]`, async ($, on) => {
+    let ref: Harness | undefined
+    const h = harness(on, { frame: lateRedraw(() => ref, 100) })
+    ref = h
+    await start($, surface)
+    const r = await team($, h, 'catch-redraw', ['cr-one', 'cr-two'])
+    const { b, p } = await drawOnce($, h, surface, 'cr-one', 120, 40)
+    await until(h, () => teamCaptures(h, r.runId, '01').length > 0, 'the drawn panel captures its shown tab')
+    await h.clock.advance(3_000)
+
+    const t0 = await drawAfterTick(h, p, 100, 30)
+    const { resized, first } = await atOnce(h, r.runId, '01', 100, t0)
+    expect(resized.args).toMatchObject({ cols: 100, rows: 27 })
+    // the capture at once came before the child redrew: the panel still shows the old layout
+    await p.redraw(paneProps(100, 30))
+    const before = visibleText(await p.drawn())
+    expect(before).toContain(OLD_LAYOUT)
+    expect(before).not.toContain(NEW_LAYOUT)
+
+    await stepTo(h, first.at + 900)
+    expectCatchUp(h, r.runId, '01', first.at)
+    // the child's redraw (150 ms after its resize answer) is drawn within 1 s of the size change,
+    // ahead of the next poll tick
+    await p.redraw(paneProps(100, 30))
+    expect(visibleText(await p.drawn())).toContain(NEW_LAYOUT)
+    await p.unmount()
+    await b.unmount()
+  })
+
+  // TEST-R10-14 / REQ-R10-12: the extra captures happen only while the panel is open.
+  test(`R10.4 TEST-R10-14: a size change followed by closing the panel makes no catch-up capture at 250 ms or 750 ms, nor any capture while closed [${surface}]`, async ($, on) => {
+    const h = harness(on)
+    await start($, surface)
+    const r = await team($, h, 'catch-closed', ['cc-one', 'cc-two'])
+    const { b, p } = await drawOnce($, h, surface, 'cc-one', 120, 40)
+    await until(h, () => teamCaptures(h, r.runId, '01').length > 0, 'the drawn panel captures its shown tab')
+    await h.clock.advance(3_000)
+
+    const t0 = await drawAfterTick(h, p, 100, 30)
+    // positive control: the size change registered (resize, then the capture at once)
+    const { first } = await atOnce(h, r.runId, '01', 100, t0)
+    await hideFromBand(h, b, p) // closed before the +250 ms capture is due
+    const closedAt = h.clock.now()
+    expect(closedAt - first.at, 'the panel closed before the first catch-up capture was due').toBeLessThan(200)
+    const captures = h.fake.captureCalls().length
+
+    await stepTo(h, first.at + 2_000)
+    expect(within(teamCaptures(h, r.runId, '01'), first.at + 200, first.at + 850), 'no catch-up capture once the panel is closed').toHaveLength(0)
+    expect(h.fake.captureCalls(), 'no capture at all while the panel is closed').toHaveLength(captures)
+    expect(h.fake.listCalls().filter(c => c.at > closedAt).length, 'control: polling went on while closed').toBeGreaterThan(0)
+    await b.unmount()
+  })
+
+  // TEST-R10-15 / REQ-R10-13: an unchanged panel size triggers no catch-up captures; a real change still does.
+  test(`R10.4 TEST-R10-15: a redraw at the same panel size makes no capture at 250 ms or 750 ms; a later size change does [${surface}]`, async ($, on) => {
+    const h = harness(on)
+    await start($, surface)
+    const r = await team($, h, 'catch-same', ['cs-one', 'cs-two'])
+    const { b, p } = await drawOnce($, h, surface, 'cs-one', 120, 40)
+    await until(h, () => teamCaptures(h, r.runId, '01').length > 0, 'the drawn panel captures its shown tab')
+    await h.clock.advance(3_000)
+    const resizes = h.fake.resizeCalls().length
+
+    const t0 = await drawAfterTick(h, p, 120, 40) // identical to the drawing before
+    await p.redraw() // and a redraw with no new props
+    await stepTo(h, t0 + 900)
+    const shown = teamCaptures(h, r.runId, '01')
+    expect(within(shown, t0 + 200, t0 + 350), 'no capture about 250 ms after an unchanged size').toHaveLength(0)
+    expect(within(shown, t0 + 700, t0 + 850), 'no capture about 750 ms after an unchanged size').toHaveLength(0)
+    expect(h.fake.resizeCalls(), 'an unchanged size sends no resize').toHaveLength(resizes)
+
+    // positive control: a real size change in the same panel brings the catch-up captures
+    await h.clock.advance(2_000)
+    const t1 = await drawAfterTick(h, p, 100, 30)
+    const { first } = await atOnce(h, r.runId, '01', 100, t1)
+    await stepTo(h, first.at + 900)
+    expectCatchUp(h, r.runId, '01', first.at)
+    await p.unmount()
     await b.unmount()
   })
 }
