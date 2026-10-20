@@ -4,6 +4,26 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Marketplace 13.6.1] - 2026-10-20
+
+### Fixed
+
+- **`code-search` v8.6.1**: in a project managed by magus profiles, `/code-search:setup`
+  writes a project-level engine choice to the active profile in `.claude/profiles.json`,
+  the committed file the team shares, then runs magus to regenerate `.claude/settings.json`.
+  Before, it wrote only the generated `settings.json`, which is not committed, so the
+  choice stayed on one machine. Setup now stops with a clear next step when no profile is
+  active in this checkout (run `magus update`) or when magus is not installed. The local
+  and user levels, and projects without profiles, are unchanged.
+
+### Verified
+
+- Reproduced first: a failing test in a profiled project, then 75 of 75 setup tests
+  passing. Run twice against real magus 7.11.0 with an out-of-date `settings.json`: both
+  files ended with the new engine.
+
+---
+
 ## [Marketplace 13.6.0] - 2026-10-20
 
 ### Added

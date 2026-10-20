@@ -7,7 +7,7 @@
   },
   "metadata": {
     "description": "Curated collection of Claude Code plugins for modern full-stack development with LLM performance tracking and E2E skill testing",
-    "version": "13.6.0",
+    "version": "13.6.1",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -15,7 +15,7 @@
       "name": "code-search",
       "source": "./plugins/code-search",
       "description": "Read-only code search and investigation behind one stable tool surface. Finds code by meaning or structure, traces callers, callees and blast radius, and dispatches an analyze agent for deep dives. The search engine is named in project settings and is swappable.",
-      "version": "8.6.0",
+      "version": "8.6.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -37,6 +37,11 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "8.6.1",
+          "date": "2026-10-20",
+          "summary": "In a project managed by magus profiles, /code-search:setup writes a project-level engine choice\u2026"
+        },
         {
           "version": "8.6.0",
           "date": "2026-10-20",
@@ -66,14 +71,6 @@
             "Fixed"
           ],
           "summary": "The session-start check fixes in terminal 5.3.1 apply here too"
-        },
-        {
-          "version": "8.3.0",
-          "date": "2026-10-06",
-          "kinds": [
-            "Added"
-          ],
-          "summary": "A missing bun or jq is named at session start, with the command that installs it"
         }
       ]
     },

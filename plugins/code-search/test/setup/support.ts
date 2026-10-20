@@ -78,6 +78,52 @@ export function fakeExecutable(s: Site, name: string): string {
   return path;
 }
 
+export type FakeMagusMode = "render" | "fail" | "noop" | "fail-second";
+
+/**
+ * A stand-in `magus` on the site's PATH. Every call appends one JSON line
+ * `{ argv, cwd }` to `s.marker`, so `assertNotExecuted` still proves it never ran.
+ *   render       regenerates `.claude/settings.json` in its cwd the way magus does:
+ *                existing enabledPlugins plus `profiles[<active>].settings`.
+ *   fail         writes stderr and exits 3.
+ *   noop         exits 0 and writes nothing.
+ *   fail-second  renders on every call except the second, which fails like `fail`.
+ * The interpreter line names the absolute bun path, so bun need not be on PATH.
+ */
+export function fakeMagus(s: Site, mode: FakeMagusMode): string {
+  const path = join(s.bin, "magus");
+  const script = `#!${process.execPath}
+const fs = require("node:fs");
+const path = require("node:path");
+const record = ${JSON.stringify(s.marker)};
+const mode = ${JSON.stringify(mode)};
+const calls = fs.existsSync(record) ? fs.readFileSync(record, "utf8").split("\\n").filter(Boolean).length : 0;
+fs.appendFileSync(record, JSON.stringify({ argv: process.argv.slice(2), cwd: process.cwd() }) + "\\n");
+if (mode === "fail" || (mode === "fail-second" && calls === 1)) {
+  process.stderr.write("fake magus: render failed\\n");
+  process.exit(3);
+}
+if (mode === "noop") process.exit(0);
+const claude = path.join(process.cwd(), ".claude");
+const active = JSON.parse(fs.readFileSync(path.join(claude, "profiles", "active.json"), "utf8")).profile;
+const manifest = JSON.parse(fs.readFileSync(path.join(claude, "profiles.json"), "utf8"));
+const live = path.join(claude, "settings.json");
+const current = fs.existsSync(live) ? JSON.parse(fs.readFileSync(live, "utf8")) : {};
+const rendered = { enabledPlugins: current.enabledPlugins ?? {}, ...(manifest.profiles[active].settings ?? {}) };
+fs.writeFileSync(live, JSON.stringify(rendered, null, 2) + "\\n");
+process.exit(0);
+`;
+  writeFileSync(path, script, { mode: 0o755 });
+  chmodSync(path, 0o755);
+  return path;
+}
+
+/** Each recorded `magus` call, in order. Empty when magus never ran. */
+export function magusCalls(s: Site): { argv: string[]; cwd: string }[] {
+  if (!existsSync(s.marker)) return [];
+  return readFileSync(s.marker, "utf8").split("\n").filter(Boolean).map((line) => JSON.parse(line));
+}
+
 export function foreignShim(s: Site, owner = "someone-else"): string {
   const path = join(s.shimDir, "rg");
   writeFileSync(path, `#!/bin/sh\n# OWNER=${owner}\n# VERSION=0\nexit 0\n`, { mode: 0o755 });

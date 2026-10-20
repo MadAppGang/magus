@@ -40,10 +40,18 @@
  *              `.claude/settings.local.json`. Never the user file.
  *   `--layer` overrides both.
  *
- * A magus-profiled project renders `.claude/settings.json` from `.claude/profiles.json`.
- * magus does not drop a `code-search` key written there: its reconcile step absorbs any
- * non-plugin settings key into the ACTIVE profile's `settings` (committed with
- * profiles.json) and renders it back. It is absent while a different profile is active.
+ * A MAGUS-PROFILED PROJECT (`.claude/profiles.json` exists): `.claude/settings.json` is
+ * magus's generated output and profiles.json is the one source of truth, so a
+ * project-layer write (configure or dismiss) goes ONLY into
+ * `profiles[<active>].settings["code-search"]` in profiles.json, through the same A4 write.
+ * settings.json is never written on that route and never a fallback. The active profile
+ * is `.claude/profiles/active.json` `profile` (no marker → `profile_not_active`); magus
+ * must be on PATH before anything is written (`magus_missing`). `magus profile list`
+ * (cwd = project, no shell) runs once before profiles.json is read and once after the
+ * write to regenerate settings.json, which must then carry exactly what was written
+ * (`profile_render_failed`, `profile_not_rendered`). A dry run starts no magus process.
+ * The value is absent while a profile without it is active. The local and user layers,
+ * and projects without profiles.json, are written directly and make no magus call.
  *
  * SHADOWING (A1): before writing, the three layers are merged with the edited text in
  * place of the target. If the merged value of a key to be written is not what would be
@@ -55,10 +63,17 @@
 import { basename, dirname, join } from "node:path";
 
 import { catalogEntry } from "../../mcp/adapters/catalog";
-import { enabledLayers, layerPath, LAYER_NAMES, type LayerName } from "../../mcp/setup/check";
+import { enabledLayers, layerPath, LAYER_NAMES, whichOnPath, type LayerName } from "../../mcp/setup/check";
 import { loadSettings, SETTINGS_KEY } from "../../mcp/core/settings";
 import type { SetupContext, SetupIo } from "./io";
-import { failed, type Failure, type Outcome } from "./report";
+import {
+  failed,
+  processFailure,
+  processSucceeded,
+  type Failure,
+  type Outcome,
+  type ProcessFailure,
+} from "./report";
 
 // ---------------------------------------------------------------------------
 // Target file
@@ -450,11 +465,15 @@ export interface ConfigureOptions {
   dryRun: boolean;
 }
 
-export function configure(io: SetupIo, ctx: SetupContext, target: string, opts: ConfigureOptions): Outcome {
+export async function configure(io: SetupIo, ctx: SetupContext, target: string, opts: ConfigureOptions): Promise<Outcome> {
   const command = `configure ${target}`;
   const invalid = invalidSettingsLayer(io, ctx, command, opts.dryRun);
   if (invalid !== undefined) return invalid;
-  const { layer, path } = targetFor(io, ctx, "configure", opts.layer);
+  const { layer, path: layerFile } = targetFor(io, ctx, "configure", opts.layer);
+  const profile = layer === "project" ? profileTarget(io, ctx, command, opts.dryRun) : undefined;
+  if (profile !== undefined && "outcome" in profile) return profile.outcome;
+  const path = profile?.path ?? layerFile;
+  const keyPrefix = profile === undefined ? SETTINGS_KEY : `profiles.${profile.id}.settings.${SETTINGS_KEY}`;
   const written: WrittenKey[] = [];
   const actions: string[] = [];
 
@@ -471,12 +490,12 @@ export function configure(io: SetupIo, ctx: SetupContext, target: string, opts: 
       { kind: "block", key: "engine", value: false },
       { kind: "block", key: "setup", value: "active" },
     );
-    actions.push(`${path}: ${SETTINGS_KEY}.engine = false, ${SETTINGS_KEY}.setup = "active"`);
+    actions.push(`${path}: ${keyPrefix}.engine = false, ${keyPrefix}.setup = "active"`);
   } else {
     const entry = catalogEntry(target);
     if (entry === undefined) throw new TypeError(`configure: ${target} is not a catalog id`); // parser guards this
     const wanted = JSON.parse(JSON.stringify(entry.settings)) as Json;
-    actions.push(`${path}: ${SETTINGS_KEY}.engine = "${target}", ${SETTINGS_KEY}.setup = "active"`);
+    actions.push(`${path}: ${keyPrefix}.engine = "${target}", ${keyPrefix}.setup = "active"`);
     edit = (root) => {
       const block = childObject(root, SETTINGS_KEY, path);
       if ("code" in block) return block;
@@ -497,7 +516,7 @@ export function configure(io: SetupIo, ctx: SetupContext, target: string, opts: 
           };
         }
         engines.value[target] = wanted;
-        actions.push(`${path}: ${SETTINGS_KEY}.engines.${target} = ${canonical(wanted)}`);
+        actions.push(`${path}: ${keyPrefix}.engines.${target} = ${canonical(wanted)}`);
       }
       return undefined;
     };
@@ -508,7 +527,9 @@ export function configure(io: SetupIo, ctx: SetupContext, target: string, opts: 
     );
   }
 
-  return applyAndCheck(io, ctx, command, path, layer, edit, written, opts.dryRun, actions);
+  return profile === undefined
+    ? applyAndCheck(io, ctx, command, path, layer, edit, written, opts.dryRun, actions)
+    : applyToProfile(io, ctx, command, profile, layer, edit, written, opts.dryRun, actions);
 }
 
 // ---------------------------------------------------------------------------
@@ -520,27 +541,25 @@ export interface DismissOptions {
   dryRun: boolean;
 }
 
-export function dismiss(io: SetupIo, ctx: SetupContext, opts: DismissOptions): Outcome {
+export async function dismiss(io: SetupIo, ctx: SetupContext, opts: DismissOptions): Promise<Outcome> {
   const invalid = invalidSettingsLayer(io, ctx, "dismiss", opts.dryRun);
   if (invalid !== undefined) return invalid;
-  const { layer, path } = targetFor(io, ctx, "dismiss", opts.layer);
+  const { layer, path: layerFile } = targetFor(io, ctx, "dismiss", opts.layer);
+  const profile = layer === "project" ? profileTarget(io, ctx, "dismiss", opts.dryRun) : undefined;
+  if (profile !== undefined && "outcome" in profile) return profile.outcome;
+  const path = profile?.path ?? layerFile;
+  const keyPrefix = profile === undefined ? SETTINGS_KEY : `profiles.${profile.id}.settings.${SETTINGS_KEY}`;
   const edit: SettingsEdit = (root) => {
     const block = childObject(root, SETTINGS_KEY, path);
     if ("code" in block) return block;
     block.value["setup"] = "dismissed";
     return undefined;
   };
-  return applyAndCheck(
-    io,
-    ctx,
-    "dismiss",
-    path,
-    layer,
-    edit,
-    [{ kind: "block", key: "setup", value: "dismissed" }],
-    opts.dryRun,
-    [`${path}: ${SETTINGS_KEY}.setup = "dismissed"`],
-  );
+  const written: WrittenKey[] = [{ kind: "block", key: "setup", value: "dismissed" }];
+  const actions = [`${path}: ${keyPrefix}.setup = "dismissed"`];
+  return profile === undefined
+    ? applyAndCheck(io, ctx, "dismiss", path, layer, edit, written, opts.dryRun, actions)
+    : applyToProfile(io, ctx, "dismiss", profile, layer, edit, written, opts.dryRun, actions);
 }
 
 // ---------------------------------------------------------------------------
@@ -596,6 +615,319 @@ export function applyAndCheck(
     actions: result.changed ? actions : [],
     restartRequired: !dryRun && result.changed,
     data,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// A magus-profiled project: the project layer is the active profile
+// ---------------------------------------------------------------------------
+
+/** Deadline for one `magus profile list`. magus loads the project's .env, which can block. */
+const MAGUS_RENDER_TIMEOUT_MS = 60_000;
+
+export interface ProfileTarget {
+  /** `.claude/profiles.json`, as named. */
+  path: string;
+  /** The profile active in this checkout (`.claude/profiles/active.json` `profile`). */
+  id: string;
+  /** The magus binary found on PATH. */
+  magus: string;
+}
+
+/**
+ * Where a project-layer write goes in a magus-profiled project, or a refusal that wrote
+ * nothing; undefined when the project has no `.claude/profiles.json`. Starts no process.
+ * The active profile is the checkout's marker, never the manifest's `default`: with no
+ * marker magus regenerates nothing, so a write to `default` would never reach settings.json.
+ */
+function profileTarget(
+  io: SetupIo,
+  ctx: SetupContext,
+  command: string,
+  dryRun: boolean,
+): ProfileTarget | { outcome: Outcome } | undefined {
+  const path = join(ctx.projectDir, ".claude", "profiles.json");
+  if (io.kind(path) !== "file") return undefined;
+  const refuse = (failure: Failure): { outcome: Outcome } => ({
+    outcome: failed(command, failure, dryRun ? { dryRun: true } : {}),
+  });
+
+  const text = io.readText(path);
+  if (text === undefined) {
+    return refuse({ code: "settings_unreadable", message: `${path} exists but could not be read; nothing was written.`, path });
+  }
+  let manifest: unknown;
+  try {
+    manifest = JSON.parse(text);
+  } catch (error) {
+    return refuse({
+      code: "settings_malformed",
+      message: `${path} is not valid JSON (${errorText(error)}); nothing was written.`,
+      remedy: `Fix ${path} by hand, then run the command again.`,
+      path,
+    });
+  }
+  const profiles = isPlainObject(manifest) ? manifest["profiles"] : undefined;
+  if (!isPlainObject(profiles)) {
+    return refuse({
+      code: "settings_malformed",
+      message: `"profiles" in ${path} is missing or not an object; nothing was written.`,
+      remedy: `Fix "profiles" in ${path} by hand, then run the command again.`,
+      path,
+    });
+  }
+
+  const markerPath = join(ctx.projectDir, ".claude", "profiles", "active.json");
+  const id = parseObject(io.readText(markerPath))?.["profile"];
+  if (typeof id !== "string") {
+    return refuse({
+      code: "profile_not_active",
+      message: "This project uses magus profiles, but no profile is active in this checkout; nothing was written.",
+      remedy: `Run magus update in ${ctx.projectDir}, then run this again.`,
+      path: markerPath,
+    });
+  }
+  if (!Object.hasOwn(profiles, id)) {
+    const ids = Object.keys(profiles);
+    return refuse(
+      ids.length === 0
+        ? {
+            code: "profile_not_active",
+            message: `This project uses magus profiles, but ${path} defines none; nothing was written.`,
+            remedy: `Add a profile to ${path} with magus, then run this again.`,
+            path,
+          }
+        : {
+            code: "profile_not_active",
+            message: `This project uses magus profiles, but the profile active in this checkout, "${id}", is not in ${path}; nothing was written.`,
+            remedy: `Run magus profile switch <profile> in ${ctx.projectDir} (profiles: ${ids.join(", ")}), then run this again.`,
+            path,
+          },
+    );
+  }
+
+  const magus = whichOnPath("magus", io.env["PATH"], io);
+  if (magus === undefined) {
+    return refuse({
+      code: "magus_missing",
+      message: "Settings in this project are generated by magus from .claude/profiles.json, and magus is not on PATH; nothing was written.",
+      remedy: "Install magus (bun add -g magus-cli), or use --layer local.",
+      path,
+    });
+  }
+  return { path, id, magus };
+}
+
+/** `edit`, applied to `profiles[<id>].settings` of a profiles.json root instead of the root. */
+function scopeToProfile(edit: SettingsEdit, target: ProfileTarget): SettingsEdit {
+  return (root) => {
+    const profiles = root["profiles"];
+    if (!isPlainObject(profiles)) {
+      return {
+        code: "settings_malformed",
+        message: `"profiles" in ${target.path} is missing or not an object; the file was not changed.`,
+        remedy: `Fix "profiles" in ${target.path} by hand, then run the command again.`,
+      };
+    }
+    const entry = Object.hasOwn(profiles, target.id) ? profiles[target.id] : undefined;
+    if (entry === undefined) {
+      return {
+        code: "profile_not_active",
+        message: `The profile active in this checkout, "${target.id}", is no longer in ${target.path}; the file was not changed.`,
+        remedy: "Run magus profile switch <profile> in this project, then run this again.",
+      };
+    }
+    const profile = childObject(profiles, target.id, target.path);
+    if ("code" in profile) return profile;
+    const settings = childObject(profile.value, "settings", target.path);
+    if ("code" in settings) return settings;
+    return edit(settings.value);
+  };
+}
+
+/** The `code-search` block of profile `id` in a profiles.json text. */
+function profileBlock(text: string, id: string): unknown {
+  const entry = parseObject(text)?.["profiles"];
+  if (!isPlainObject(entry)) return undefined;
+  const profile = entry[id];
+  if (!isPlainObject(profile) || !isPlainObject(profile["settings"])) return undefined;
+  return profile["settings"][SETTINGS_KEY];
+}
+
+/** settings.json as magus will render it: today's file with the profile's block in place. */
+function predictedRender(io: SetupIo, settingsPath: string, block: unknown): string {
+  const next: Json = { ...(parseObject(io.readText(settingsPath)) ?? {}) };
+  if (block === undefined) delete next[SETTINGS_KEY];
+  else next[SETTINGS_KEY] = block;
+  return `${JSON.stringify(next, null, 2)}\n`;
+}
+
+/** `magus profile list` in the project: regenerates settings.json. A failure as R8, or undefined. */
+async function renderProfiles(io: SetupIo, ctx: SetupContext, target: ProfileTarget): Promise<ProcessFailure | undefined> {
+  const argv = [target.magus, "profile", "list"];
+  const result = await io.run(argv, { cwd: ctx.projectDir, timeoutMs: MAGUS_RENDER_TIMEOUT_MS });
+  return processSucceeded(result) ? undefined : processFailure(argv, result);
+}
+
+/** What settings.json carries for one written key. */
+function renderedValue(root: Json | undefined, key: WrittenKey): unknown {
+  const block = root?.[SETTINGS_KEY];
+  if (!isPlainObject(block)) return undefined;
+  if (key.kind === "block") return block[key.key];
+  return isPlainObject(block["engines"]) ? block["engines"][key.id] : undefined;
+}
+
+/**
+ * The profile route of `applyAndCheck`: write the active profile in profiles.json, have
+ * magus regenerate settings.json, and prove settings.json carries what was written.
+ * settings.json itself is never written here. A dry run starts no magus process.
+ */
+async function applyToProfile(
+  io: SetupIo,
+  ctx: SetupContext,
+  command: string,
+  target: ProfileTarget,
+  layer: LayerName,
+  edit: SettingsEdit,
+  written: readonly WrittenKey[],
+  dryRun: boolean,
+  actions: string[],
+): Promise<Outcome> {
+  const settingsPath = layerPath("project", ctx.home, ctx.projectDir);
+  const scoped = scopeToProfile(edit, target);
+  const regenerate = `Run magus profile list in ${ctx.projectDir} to regenerate .claude/settings.json.`;
+
+  // What this project ran on before magus touched anything: the preflight below can
+  // regenerate settings.json, and a change it makes is a change the user must restart for.
+  const liveBeforePreflight = dryRun ? undefined : parseObject(io.readText(settingsPath))?.[SETTINGS_KEY];
+
+  // Preflight: proves magus works before anything is written, and lets magus take in any
+  // edit still pending in settings.json before profiles.json is read.
+  if (!dryRun) {
+    const preflight = await renderProfiles(io, ctx, target);
+    if (preflight !== undefined) {
+      return failed(
+        command,
+        {
+          code: "profile_render_failed",
+          message: `magus could not regenerate ${settingsPath} from ${target.path}; nothing was written.`,
+          remedy: `${regenerate} Fix what it reports, then run this again.`,
+          path: target.path,
+          process: preflight,
+        },
+        { restartRequired: false, data: { path: target.path, layer, profile: target.id, changed: false } },
+      );
+    }
+  }
+
+  const actionsBefore = actions.length;
+  const preview = editSettingsFile(io, target.path, scoped, true);
+  if (!preview.ok) return failed(command, preview.failure);
+  const block = profileBlock(preview.text, target.id);
+  const shadow = findShadow(io, ctx, settingsPath, predictedRender(io, settingsPath, block), written, true);
+  if (shadow !== undefined) {
+    // The preflight may already have regenerated settings.json, so only profiles.json is
+    // known untouched.
+    if (!dryRun) shadow.message = `${shadow.message} Nothing was written to ${target.path}.`;
+    return failed(command, shadow, {
+      ...(dryRun ? { dryRun: true } : {}),
+      actions,
+      restartRequired: false,
+      data: { path: preview.path, layer, profile: target.id, changed: false },
+    });
+  }
+
+  actions.length = actionsBefore;
+  const result = dryRun ? preview : editSettingsFile(io, target.path, scoped, false);
+  if (!result.ok) return failed(command, result.failure);
+  const where = `profile "${target.id}" in ${result.path}`;
+  const data = { path: result.path, layer, profile: target.id, changed: result.changed };
+
+  if (dryRun) {
+    return {
+      command,
+      ok: true,
+      exitCode: 0,
+      summary: result.changed
+        ? `${command}: would write ${where}; magus would regenerate ${settingsPath}.`
+        : `${command}: ${where} already says this; nothing written.`,
+      dryRun: true,
+      actions: result.changed ? actions : [],
+      restartRequired: false,
+      data,
+    };
+  }
+
+  const liveBefore = parseObject(io.readText(settingsPath))?.[SETTINGS_KEY];
+  if (!result.changed && canonical(liveBefore) === canonical(block)) {
+    if (canonical(liveBeforePreflight) !== canonical(liveBefore)) {
+      return {
+        command,
+        ok: true,
+        exitCode: 0,
+        summary: `${command}: ${where} already says this; magus regenerated ${settingsPath}, which did not.`,
+        actions: [`magus profile list (in ${ctx.projectDir}): regenerated ${settingsPath}`],
+        restartRequired: true,
+        data: { ...data, regenerated: settingsPath },
+      };
+    }
+    return {
+      command,
+      ok: true,
+      exitCode: 0,
+      summary: `${command}: ${where} already says this, and so does ${settingsPath}; nothing written.`,
+      actions: [],
+      restartRequired: false,
+      data,
+    };
+  }
+
+  const done = result.changed ? actions : [];
+  const render = await renderProfiles(io, ctx, target);
+  if (render !== undefined) {
+    return failed(
+      command,
+      {
+        code: "profile_render_failed",
+        message: result.changed
+          ? `Wrote ${where}, but magus could not regenerate ${settingsPath}, so this project does not use it yet.`
+          : `${where} already says this, but magus could not regenerate ${settingsPath}, so this project does not use it yet.`,
+        remedy: regenerate,
+        path: result.path,
+        process: render,
+      },
+      { actions: done, restartRequired: false, data },
+    );
+  }
+
+  const live = parseObject(io.readText(settingsPath));
+  for (const key of written) {
+    const value = renderedValue(live, key);
+    if (canonical(value) === canonical(key.value)) continue;
+    return failed(
+      command,
+      {
+        code: "profile_not_rendered",
+        message:
+          `${where} sets ${SETTINGS_KEY}.${key.kind === "block" ? key.key : `engines.${key.id}`} to ${canonical(key.value)}, but after magus regenerated ` +
+          `${settingsPath} it has ${value === undefined ? "nothing there" : canonical(value)}, so this project does not use the new value.`,
+        remedy: `Run magus profile list in ${ctx.projectDir}, then compare ${settingsPath} with ${where}.`,
+        path: settingsPath,
+      },
+      { actions: done, restartRequired: false, data: { ...data, regenerated: settingsPath } },
+    );
+  }
+
+  return {
+    command,
+    ok: true,
+    exitCode: 0,
+    summary: result.changed
+      ? `${command}: wrote ${where}; magus regenerated ${settingsPath}.`
+      : `${command}: ${where} already says this; magus regenerated ${settingsPath}.`,
+    actions: [...done, `magus profile list (in ${ctx.projectDir}): regenerated ${settingsPath}`],
+    restartRequired: true,
+    data: { ...data, regenerated: settingsPath },
   };
 }
 
