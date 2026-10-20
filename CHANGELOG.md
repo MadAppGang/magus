@@ -4,6 +4,28 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Marketplace 13.6.2] - 2026-10-20
+
+### Fixed
+
+- **`setup` v1.7.1**: status line bars render on Linux. Every bar showed as `�`, because GNU
+  `tr` is byte-oriented and wrote only the first byte of `█` and `░`. The bars are now built
+  in pure bash. macOS was never affected (MadAppGang/magus#676).
+
+---
+
+## [magus 7.11.1] - 2026-10-20
+
+### Fixed
+
+- **A deprecated plugin can no longer be installed or updated from the Plugins screen.** The
+  scope keys (`u` / `p` / `l`) and the Enter scope picker on a plugin removed from the
+  marketplace ran `claude plugin install` and failed with a raw CLI error. On a scope where
+  the plugin is installed the key removes it, as before; on any other scope it does nothing.
+  `d` still removes it everywhere.
+
+---
+
 ## [Marketplace 13.6.1] - 2026-10-20
 
 ### Fixed

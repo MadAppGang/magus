@@ -541,7 +541,11 @@ plan_color_for_pct() {
 repeat_char() {
   local n=$1 ch=$2
   [ "$n" -le 0 ] && return
-  printf "%${n}s" | tr ' ' "$ch"
+  # Pure bash, not `tr`: GNU tr is byte-oriented and writes only the first byte
+  # of a multibyte character like █, so every bar rendered as � on Linux.
+  local out="" i
+  for ((i = 0; i < n; i++)); do out+="$ch"; done
+  printf '%s' "$out"
 }
 
 # Convert ISO 8601 timestamp to human-friendly countdown

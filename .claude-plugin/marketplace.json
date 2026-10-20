@@ -7,7 +7,7 @@
   },
   "metadata": {
     "description": "Curated collection of Claude Code plugins for modern full-stack development with LLM performance tracking and E2E skill testing",
-    "version": "13.6.1",
+    "version": "13.6.2",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -513,7 +513,7 @@
       "name": "setup",
       "source": "./plugins/setup",
       "description": "Project setup jobs in one plugin. Investigates a repository and provisions it \u2014 plugins, tools, framework best-practice references, and a seeded knowledge base \u2014 then installs the adaptive statusline and indexes every skill reachable from the project into browsable markdown.",
-      "version": "1.7.0",
+      "version": "1.7.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -533,6 +533,11 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "1.7.1",
+          "date": "2026-10-20",
+          "summary": "Status line bars render on Linux. Every bar showed as \ufffd, because GNU tr is byte-oriented and\u2026"
+        },
         {
           "version": "1.7.0",
           "date": "2026-10-20",
@@ -561,14 +566,6 @@
             "Fixed"
           ],
           "summary": "/setup:project asks its questions in the same turn as its report"
-        },
-        {
-          "version": "1.5.0",
-          "date": "2026-10-06",
-          "kinds": [
-            "Added"
-          ],
-          "summary": "/setup:project installs what your plugins need"
         }
       ]
     },
