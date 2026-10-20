@@ -7,7 +7,7 @@
   },
   "metadata": {
     "description": "Curated collection of Claude Code plugins for modern full-stack development with LLM performance tracking and E2E skill testing",
-    "version": "13.7.0",
+    "version": "13.7.1",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -624,7 +624,7 @@
       "name": "designer",
       "source": "./plugins/designer",
       "description": "UI design validation. Compares a rendered screen against its reference by pixel diff, then reviews the result for spacing, hierarchy and design-system consistency.",
-      "version": "0.11.0",
+      "version": "0.11.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -647,6 +647,11 @@
       "strict": true,
       "releases": [
         {
+          "version": "0.11.1",
+          "date": "2026-10-20",
+          "summary": "Sharp moves from ^0.33.0 to ^0.35.5, which closes the three high-severity Dependabot alerts\u2026"
+        },
+        {
           "version": "0.11.0",
           "date": "2026-10-13",
           "kinds": [
@@ -668,15 +673,6 @@
           "version": "0.9.0",
           "date": "2026-09-24",
           "summary": "/designer:review --panel \"<model>,\u2026\" runs the same comparison through several external vision\u2026"
-        },
-        {
-          "version": "0.8.1",
-          "date": "2026-09-23",
-          "kinds": [
-            "Fixed",
-            "Added"
-          ],
-          "summary": "/designer:create-style now runs the action you name \u2014 create, update, capture, add-reference,\u2026"
         }
       ]
     },

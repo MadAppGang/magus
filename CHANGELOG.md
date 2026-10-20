@@ -4,6 +4,38 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Marketplace 13.7.1] - 2026-10-20
+
+### Security
+
+- **`designer` v0.11.1**: `sharp` moves from `^0.33.0` to `^0.35.5`, which closes the
+  three high-severity Dependabot alerts against `plugins/designer/package.json`. The
+  pixel diff behind `designer:review` runs unchanged on it: `bun test` in the plugin,
+  57 pass, 0 fail.
+
+### Removed
+
+- **`tools/pnpm-lock.yaml` and `tools/pnpm-workspace.yaml`.** They locked `skills-api`,
+  which was deleted 2026-08-08, and `magus-harness`, which has its own `bun.lock`. The
+  stale lockfile held 38 Dependabot alerts, among them `protobufjs`, `node-forge`,
+  `@grpc/grpc-js` and `websocket-driver`, for code that no longer exists here.
+
+### Changed
+
+- **`tools/docs-site` and `landing-page` dependencies.** `npm audit fix`, plus `overrides`
+  for the transitive packages that Docusaurus 3.10.2 and Tailwind 3 still pin to vulnerable
+  ranges (`tinypool`, `uuid`, `serialize-javascript`, `postcss-selector-parser`). The docs
+  site builds clean. One advisory remains in each: `braces`, which has no patched version;
+  it stays open until upstream ships a fix.
+
+### Fixed
+
+- **`landing-page` builds again.** `src/App.jsx` declared `Plugins` twice since the page
+  was created, so `vite build` always failed. The second, unused declaration and the four
+  helpers only it rendered are deleted.
+
+---
+
 ## [Marketplace 13.7.0] - 2026-10-20
 
 ### Added
