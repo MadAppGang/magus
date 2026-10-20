@@ -24,7 +24,7 @@ import {
 } from './domain'
 import type { Host } from './host'
 import { activeTab, showTabs } from './layout'
-import type { FeedAnswer, PollBatch } from './run-source'
+import type { FeedAnswer, PollBatch, ResizeResult } from './run-source'
 import * as wake from './wake'
 
 // ── cadence ───────────────────────────────────────────────────────────────────
@@ -54,6 +54,45 @@ const lastAttemptAt = new Map<string, number>()
 const terminalSeenAt = new Map<string, number>()
 /** tick failure messages already logged once. */
 const loggedFailures = new Set<string>()
+/** The size the Show panel last drew a tab's child at, from its render; null before the first. */
+let panelSize: Size | null = null
+/** pane id → the size its child was last given (or refused). Asked again only when the panel's size moves. */
+const askedSize = new Map<string, Size>()
+/** pane ids whose resize answer is still out. Another capture pass skips them: the pass that sent the
+ *  resize captures the tab once the answer is back, so no capture shows the size before it. */
+const resizing = new Set<string>()
+
+type Size = { cols: number; rows: number }
+const sameSize = (a: Size | null | undefined, b: Size | null | undefined): boolean =>
+  !!a && !!b && a.cols === b.cols && a.rows === b.rows
+
+/** A resize answer later than this counts as failed, so a call that never answers cannot hold its tab. */
+export const RESIZE_TIMEOUT_MS = 5_000
+/** Sizes asked for in one capture of a tab, so a panel dragged without pause still gets captured. */
+const RESIZE_ROUNDS = 3
+
+/** One resize, never rejecting and never longer than RESIZE_TIMEOUT_MS: either becomes a failed answer. */
+function resizeBounded(host: Host, ref: ClaudishRun['ref'], slot: string, size: Size): Promise<ResizeResult> {
+  return new Promise(resolve => {
+    const timer = host.after(RESIZE_TIMEOUT_MS, () => resolve({ kind: 'failed', reason: 'no answer' }))
+    host.source.resize(ref, slot, size.cols, size.rows).then(
+      r => { timer.cancel(); resolve(r) },
+      (e: unknown) => { timer.cancel(); resolve({ kind: 'failed', reason: e instanceof Error ? e.message : String(e) }) },
+    )
+  })
+}
+
+/**
+ * The Show panel's render reports the size its tabs' children are drawn at. A new size captures the
+ * shown tab now (resizing its child first), not at the loop's next tick, which can be a back-off
+ * away. Hidden tabs take the new size at their own next capture.
+ */
+export function notePanelSize(host: Host, size: Size, shownId: string | null): void {
+  if (sameSize(panelSize, size)) return
+  panelSize = size
+  if (shownId === null) ensureLoop(host)
+  else void captureOpened(host, shownId)
+}
 
 // ── session boundaries ────────────────────────────────────────────────────────
 
@@ -408,6 +447,7 @@ async function captures(
     const openIds = new Set(open.map(p => p.id))
     for (const id of [...lastAttemptAt.keys()]) if (!openIds.has(id)) lastAttemptAt.delete(id)
     for (const id of [...terminalSeenAt.keys()]) if (!openIds.has(id)) terminalSeenAt.delete(id)
+    for (const id of [...askedSize.keys()]) if (!openIds.has(id)) askedSize.delete(id)
   }
   const end = (v: ClaudishPaneView | null): ClaudishPaneView | null =>
     v ? { ...v, status: 'ended', note: v.frame ? null : NO_SCREEN_NOTE } : v
@@ -416,6 +456,7 @@ async function captures(
     if (!view || view.status === 'ended') {
       lastAttemptAt.delete(p.id)
       terminalSeenAt.delete(p.id)
+      askedSize.delete(p.id)
       continue
     }
     const run = runs.list.find(r => r.id === view.runId)
@@ -439,8 +480,22 @@ async function captures(
     const last = lastAttemptAt.get(p.id)
     const due = last === undefined
       || (view.status === 'unavailable' ? now - last >= UNAVAILABLE_RETRY_MS : p.isShown || now - last >= HIDDEN_CAPTURE_MS)
-    if (!due) continue
+    if (!due || resizing.has(p.id)) continue
     lastAttemptAt.set(p.id, now)
+    // Fit the child to the panel before reading its screen, so this capture already shows it reflowed.
+    // A finished slot is left as it is: its pane no longer redraws.
+    if (support.can.resize && !(slot && isTerminal(slot.state))) {
+      // The panel can move again while an answer is out (a drag): ask for the newest size before
+      // capturing, rather than leave it to the next tick.
+      for (let round = 0; round < RESIZE_ROUNDS; round++) {
+        const size = panelSize
+        if (!size || sameSize(askedSize.get(p.id), size)) break
+        askedSize.set(p.id, size) // a refusal is not retried until the size moves
+        resizing.add(p.id)
+        const rs = await resizeBounded(host, run.ref, view.slot, size).finally(() => resizing.delete(p.id))
+        if (rs.kind === 'failed') host.debug(`claudish Show resize to ${size.cols}x${size.rows} failed: ${rs.reason}`)
+      }
+    }
     const r = await host.source.capture(run.ref, view.slot, view.frame?.seq ?? 0, support.can.spans)
     let ended = false
     switch (r.kind) {
@@ -467,6 +522,7 @@ async function captures(
       out.capturing -= 1
       lastAttemptAt.delete(p.id)
       terminalSeenAt.delete(p.id)
+      askedSize.delete(p.id)
     }
   }
   return out

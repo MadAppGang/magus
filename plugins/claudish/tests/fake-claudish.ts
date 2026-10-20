@@ -11,6 +11,8 @@ import type { McpToolResult, On, ToolCallResult, UiPane } from 'claude-code'
 import { mock, type MockClock } from 'claude-code/testing'
 import {
   CAPABILITIES,
+  COLS,
+  ROWS,
   PRECONTRACT_LIST_ERROR,
   REAP_MS,
   basename,
@@ -46,6 +48,10 @@ export type FakeOptions = {
   noCapture?: boolean
   noCancel?: boolean
   noSpans?: boolean
+  /** omit the R7 resize capability; capture support is unchanged */
+  noResize?: boolean
+  /** a resize answers this ContractError code without changing the requested size */
+  resizeError?: string
   /** the n-th (1-based) list call of a kind: answer this instead, or undefined to answer normally */
   listAnswer?: (n: number, kind: 'runs' | 'sessions') => ListOverride | undefined
   /** rewrite a slot row before it is listed (a defective entry) */
@@ -97,6 +103,7 @@ export type Fake = {
   restart(): void
   listCalls(kind?: 'runs' | 'sessions'): Recorded[]
   captureCalls(): Recorded[]
+  resizeCalls(): Recorded[]
   cancelCalls(): Recorded[]
   /** hold every cancel answer until release() */
   holdCancels(): { release(): void }
@@ -156,11 +163,13 @@ function text(body: unknown, isError = false): McpToolResult {
 }
 
 function meta(o: FakeOptions): Json {
-  const caps = CAPABILITIES.filter(c =>
+  // Keep the historical golden examples unchanged; only this fake's live lists gain resize.
+  const caps = [...CAPABILITIES, 'resize'].filter(c =>
     !(o.declines && c === 'list')
     && !(o.noCapture && (c === 'capture' || c === 'capture_since_seq' || c === 'capture_spans'))
     && !(o.noCancel && c === 'cancel')
-    && !(o.noSpans && c === 'capture_spans'))
+    && !(o.noSpans && c === 'capture_spans')
+    && !(o.noResize && c === 'resize'))
   return { contract_version: o.version2 ? 2 : 1, capabilities: caps }
 }
 
@@ -176,6 +185,7 @@ export function fakeClaudish(on: On, clock: MockClock, options: FakeOptions = {}
   const sessions: FakeSession[] = []
   const calls: Recorded[] = []
   const listCount = { runs: 0, sessions: 0 }
+  const sizes = new Map<string, { cols: number; rows: number }>()
   let starts = 0
   let gate: Promise<void> | null = null
 
@@ -234,6 +244,16 @@ export function fakeClaudish(on: On, clock: MockClock, options: FakeOptions = {}
     return text((options.frame ?? frame)({ seq, model, slot, final, spans: args.spans === true }))
   }
 
+  /** Resize replies model the protocol; captured screen content stays under options.frame's control. */
+  function resize(key: string, startedAt: number, control: SlotControl, args: Json): Json {
+    const cols = Math.max(80, Number(args.cols))
+    const rows = Math.max(24, Number(args.rows))
+    const before = sizes.get(key) ?? { cols: COLS, rows: ROWS }
+    const changed = before.cols !== cols || before.rows !== rows
+    sizes.set(key, { cols, rows })
+    return { cols, rows, changed, seq: seqAt(startedAt, now(), control) }
+  }
+
   // ── the mod's calls ─────────────────────────────────────────────────────────
   on('mcp.call', async ($, e) => {
     const args = (e.args ?? {}) as Json
@@ -276,6 +296,25 @@ export function fakeClaudish(on: On, clock: MockClock, options: FakeOptions = {}
       const s = sessions.find(x => x.id === args.session_id)
       if (!s) return { value: text(contractError('unknown_session', 'no such session'), true) }
       return { value: text({ session_id: s.id, ...cancelSlot(s) }) }
+    }
+    if ((e.tool === 'team' && args.mode === 'resize') || e.tool === 'resize_session') {
+      if (options.precontract) return { value: text(e.tool === 'team' ? 'Error: Unknown mode: resize' : precontractUnknownTool(e.tool), true) }
+      if (options.resizeError) return { value: text(contractError(options.resizeError, 'resize refused'), true) }
+      if (typeof args.cols !== 'number' || !Number.isFinite(args.cols)
+        || typeof args.rows !== 'number' || !Number.isFinite(args.rows)) {
+        return { value: text(contractError('invalid_args', 'resize requires numeric cols and rows'), true) }
+      }
+      if (e.tool === 'team') {
+        const run = runs.find(r => r.runId === args.run_id && r.path === args.path)
+        if (!run) return { value: text(contractError('unknown_run', 'no such run'), true) }
+        const s = run.slots.find(x => x.slot === args.slot)
+        if (!s) return { value: text(contractError('unknown_slot', 'no such slot'), true) }
+        return { value: text({ run_id: run.runId, path: run.path, slot: s.slot,
+          ...resize(`${run.runId}/${s.slot}`, run.startedAt, s.control, args) }) }
+      }
+      const s = sessions.find(x => x.id === args.session_id)
+      if (!s) return { value: text(contractError('unknown_session', 'no such session'), true) }
+      return { value: text({ session_id: s.id, ...resize(s.id, s.startedAt, s.control, args) }) }
     }
     if ((e.tool === 'team' && args.mode === 'capture') || e.tool === 'capture_session') {
       if (options.rejectCapture) return { deny: 'capture rejected' }
@@ -376,6 +415,7 @@ export function fakeClaudish(on: On, clock: MockClock, options: FakeOptions = {}
     restart() {
       runs.splice(0, runs.length)
       sessions.splice(0, sessions.length)
+      sizes.clear()
     },
     listCalls(kind) {
       return calls.filter(c =>
@@ -385,6 +425,9 @@ export function fakeClaudish(on: On, clock: MockClock, options: FakeOptions = {}
     },
     captureCalls() {
       return calls.filter(c => c.tool === 'capture_session' || (c.tool === 'team' && c.args.mode === 'capture'))
+    },
+    resizeCalls() {
+      return calls.filter(c => c.tool === 'resize_session' || (c.tool === 'team' && c.args.mode === 'resize'))
     },
     cancelCalls() {
       return calls.filter(c => c.tool === 'cancel_session' || (c.tool === 'team' && c.args.mode === 'cancel'))

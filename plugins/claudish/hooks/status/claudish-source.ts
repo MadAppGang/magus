@@ -13,6 +13,7 @@ import { STYLE_SPANS_PER_LINE, feedKey, sanitize } from './domain'
 import type {
   CallSeen,
   CaptureResult,
+  ResizeResult,
   FeedAnswer,
   FetchSlot,
   PollBatch,
@@ -191,7 +192,7 @@ function classify(result: McpToolResult | Error, rowsKey: 'runs' | 'sessions'): 
   // 7. speaks
   const capture = has('capture') && has('capture_since_seq')
   return {
-    answer: { kind: 'speaks', version: 1, can: { cancel: has('cancel'), capture, spans: capture && has('capture_spans') } },
+    answer: { kind: 'speaks', version: 1, can: { cancel: has('cancel'), capture, spans: capture && has('capture_spans'), resize: capture && has('resize') } },
     rows: rows.filter(isObject),
   }
 }
@@ -287,6 +288,24 @@ function stopResult(result: McpToolResult | Error, ref: ClaudishRunRef, slot: st
   return isObject(entry) && typeof entry.changed === 'boolean'
     ? { kind: 'stopped', changed: entry.changed }
     : { kind: 'failed', reason: `cancel answer has no result for slot ${slot}` }
+}
+
+// ── resize ────────────────────────────────────────────────────────────────────
+
+function resizeResult(result: McpToolResult | Error): ResizeResult {
+  if (result instanceof Error) return { kind: 'failed', reason: short(result) }
+  const text = firstText(result)
+  if (result.isError === true) {
+    const code = contractErrorCode(text)
+    if (code !== null && GONE_CODES.has(code)) return { kind: 'gone' }
+    return { kind: 'failed', reason: code ?? short(text ?? '') }
+  }
+  const body = parseObject(text)
+  if (!body) return { kind: 'failed', reason: 'resize answer is not a JSON object' }
+  const { cols, rows } = body
+  return typeof cols === 'number' && typeof rows === 'number'
+    ? { kind: 'resized', cols, rows }
+    : { kind: 'failed', reason: 'resize answer has no cols and rows' }
 }
 
 // ── capture ───────────────────────────────────────────────────────────────────
@@ -472,6 +491,13 @@ export function makeClaudishSource(call: McpCall): RunSource {
         ? await settleCall(call(ref.server, 'team', { mode: 'capture', path: ref.address, slot, run_id: ref.token, since_seq: sinceSeq, ...spans }))
         : await settleCall(call(ref.server, 'capture_session', { session_id: ref.token, since_seq: sinceSeq, ...spans }))
       return captureResult(answer, withSpans)
+    },
+
+    async resize(ref: ClaudishRunRef, slot: string, cols: number, rows: number): Promise<ResizeResult> {
+      const answer = ref.kind === 'panel'
+        ? await settleCall(call(ref.server, 'team', { mode: 'resize', path: ref.address, slot, run_id: ref.token, cols, rows }))
+        : await settleCall(call(ref.server, 'resize_session', { session_id: ref.token, cols, rows }))
+      return resizeResult(answer)
     },
 
     runLine,

@@ -23,7 +23,7 @@ export type ClaudishRunRef = {
   address: string
 }
 
-export type ClaudishFeatures = { cancel: boolean; capture: boolean; spans: boolean }
+export type ClaudishFeatures = { cancel: boolean; capture: boolean; spans: boolean; resize: boolean }
 
 export type ClaudishFeedSupport =
   | { kind: 'probing'; strikes: number }

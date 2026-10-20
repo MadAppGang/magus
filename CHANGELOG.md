@@ -4,6 +4,19 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Marketplace 13.7.5] - 2026-10-20
+
+### Added
+
+- **`claudish` v2.7.0**: the Show panel fits each session to itself. It sets the session's
+  terminal size to the panel's (with claudish's `resize_session`, or `team` mode `resize`), and
+  the session redraws at that size, so its screen is no longer cut at the panel's edge. A panel
+  narrower than 80 columns or shorter than 24 rows still cuts, because claudish keeps sessions
+  at least that size. Resizing the terminal or the panel resizes the shown session within a
+  second. Finished sessions are left as they are.
+
+---
+
 ## [Marketplace 13.7.4] - 2026-10-20
 
 ### Changed

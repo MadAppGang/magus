@@ -10,7 +10,7 @@ import type { EngineInterface, Register } from 'claude-code'
 import { CLAUDISH_TOOL, makeClaudishSource } from './claudish-source'
 import { capped, claimVia, rejected, toAccepted, type Host, type PressUi, type Store } from './host'
 import { CLIENT_SURFACES, SHOW_PANE_ID } from './domain'
-import { activeTab, bandModel, paneFit, paneModel, showTabs } from './layout'
+import { activeTab, bandModel, childSize, paneFit, paneModel, showTabs } from './layout'
 import * as poll from './poll'
 import * as wake from './wake'
 import * as controls from './controls'
@@ -193,6 +193,7 @@ export const register: Register = (on, options) => {
     const view = active ? await read($, memberOf(PANES, { requestId: active.id })) : null
     const fit = paneFit(e.props, e.surface)
     const tabRows = { ...fit, rows: Math.max(1, fit.rows - 2) } // the tab strip and its rule
+    poll.notePanelSize(bound, childSize(tabRows), active?.id ?? null) // each tab's child is resized to it before its capture
     const model = view ? paneModel(view, runs, tabRows, await $.clock.now()) : null
     const press = bindStore($)
     return panelTree($.ui.resolve(e), tabs, active?.id ?? null, model, fit.columns, palette,

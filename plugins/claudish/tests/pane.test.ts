@@ -287,7 +287,7 @@ for (const surface of SURFACES) {
     expect(capturesOf(h, '03').filter(c => c.at > from).length).toBeGreaterThanOrEqual(25)
   })
 
-  test(`pane: read-only — no input, no client, no select; its only Buttons are the tabs; only list and capture calls [${surface}]`, async ($, on) => {
+  test(`pane: read-only — no input, no client, no select; its only Buttons are the tabs; only list, capture and resize calls [${surface}]`, async ($, on) => {
     const h = harness(on)
     await start($, surface)
     await showTab($, h, surface)
@@ -300,7 +300,8 @@ for (const surface of SURFACES) {
     expect((await pane.findAll({ type: 'Button' })).map(b => b.props.label)).toEqual(['gpt-6.1-sol', 'kimi-k3', 'grok-4.6', 'glm-5.3'])
     const kinds = h.fake.calls.slice(from).map(c => (c.tool === 'team' ? `team:${String(c.args.mode)}` : c.tool))
     expect(kinds.length).toBeGreaterThan(0)
-    expect(kinds.every(k => k === 'team:list' || k === 'team:capture')).toBe(true)
+    // R7.3: a resize is not input, so `team` mode `resize` and `resize_session` join the allowed calls
+    expect(kinds.every(k => k === 'team:list' || k === 'team:capture' || k === 'team:resize' || k === 'resize_session')).toBe(true)
   })
 
   test(`pane: unavailable — the note drawn, the numbers line in R6.1's counts with a space after each mark, retried no sooner than 10 s [${surface}]`, async ($, on) => {

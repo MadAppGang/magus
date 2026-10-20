@@ -99,7 +99,7 @@ function run(id: string, slots: ClaudishSlot[], over: Partial<ClaudishRun> = {})
 
 function input(list: ClaudishRun[], over: Partial<BandInput> = {}): BandInput {
   const runs: ClaudishRuns = { epoch: 0, starts: {}, list }
-  const can = { cancel: true, capture: true, spans: true }
+  const can = { cancel: true, capture: true, spans: true, resize: true }
   return {
     runs, feeds: { 's#panel': { kind: 'speaks', version: 1, can, declined: 0 }, 's#delegation': { kind: 'speaks', version: 1, can, declined: 0 } },
     stops: {}, ledger: { epoch: 0, entries: {} }, earlier: { runs: 0, done: 0, failed: 0, stopped: 0 },
@@ -246,7 +246,7 @@ describe('layout: the band', () => {
   test('Stop: drawn only for a live slot of a feed that can cancel; armed reads confirm, sent reads stopping', () => {
     const base = input([run('a', four)], { stops: { 'a/01': { kind: 'armed', until: 9 }, 'a/02': { kind: 'sent', at: 1 } } })
     expect(bandModel(base)!.rows.map(r => r.stop)).toEqual(['confirm', 'stopping', 'none', 'none'])
-    const noCancel = { kind: 'speaks' as const, version: 1, can: { cancel: false, capture: true, spans: true }, declined: 0 }
+    const noCancel = { kind: 'speaks' as const, version: 1, can: { cancel: false, capture: true, spans: true, resize: true }, declined: 0 }
     expect(bandModel({ ...base, feeds: { 's#panel': noCancel } })!.rows.every(r => r.stop === 'none')).toBe(true)
   })
 

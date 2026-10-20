@@ -43,7 +43,7 @@ const ROW = slotRow({ slot: '01', model: 'grok-4.6', startedAt: NOW, now: NOW + 
 describe('adapter: golden answers (contract v1 examples, verbatim)', () => {
   test('the §A list example decodes into one slot', async () => {
     const { feed, run } = await pollOne(reply(GOLDEN_LIST))
-    expect(feed).toEqual({ kind: 'speaks', version: 1, can: { cancel: true, capture: true, spans: true } })
+    expect(feed).toEqual({ kind: 'speaks', version: 1, can: { cancel: true, capture: true, spans: true, resize: false } })
     expect(run).toEqual({
       kind: 'ok',
       slots: [{
@@ -148,11 +148,11 @@ describe('adapter: feed classification', () => {
   })
   test('without capture_since_seq: capture and spans false', async () => {
     const { feed } = await pollOne(reply(JSON.stringify({ contract_version: 1, capabilities: ['list', 'cancel', 'capture', 'capture_spans'], runs: [] })))
-    expect(feed).toEqual({ kind: 'speaks', version: 1, can: { cancel: true, capture: false, spans: false } })
+    expect(feed).toEqual({ kind: 'speaks', version: 1, can: { cancel: true, capture: false, spans: false, resize: false } })
   })
   test('without capture_spans: spans false, capture still true', async () => {
     const { feed } = await pollOne(reply(JSON.stringify({ contract_version: 1, capabilities: ['list', 'capture', 'capture_since_seq'], runs: [] })))
-    expect(feed).toEqual({ kind: 'speaks', version: 1, can: { cancel: false, capture: true, spans: false } })
+    expect(feed).toEqual({ kind: 'speaks', version: 1, can: { cancel: false, capture: true, spans: false, resize: false } })
   })
 })
 

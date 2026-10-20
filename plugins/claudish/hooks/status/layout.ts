@@ -597,6 +597,20 @@ export function paneFit(props: { bodyColumns?: unknown; scroll?: { bodyRows?: un
   }
 }
 
+/** claudish clamps a resize to at least this size; asking for less would only be clamped again. */
+export const CHILD_MIN_COLS = 80
+export const CHILD_MIN_ROWS = 24
+
+/**
+ * The terminal size a shown child is given: the tab's width, and its height less the header row
+ * (`fit` is the tab's fit, the tab strip already taken off). Clamped as claudish clamps, so a
+ * size already set compares equal and is not asked for again. A panel smaller than the minimum
+ * keeps cropping, as it did before resize existed.
+ */
+export function childSize(fit: PaneFit): { cols: number; rows: number } {
+  return { cols: Math.max(CHILD_MIN_COLS, fit.columns), rows: Math.max(CHILD_MIN_ROWS, fit.rows - 1) }
+}
+
 /** A child's colour as the engine takes a raw colour: `#rrggbb`. */
 export function colorSpelling(c: ClaudishColor): Color {
   const hex = (r: number, g: number, b: number) => `#${[r, g, b].map(v => v.toString(16).padStart(2, '0')).join('')}`

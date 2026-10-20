@@ -76,6 +76,14 @@ export type CaptureResult =
   /** any other error, a rejection, or an unparseable answer */
   | { kind: 'unavailable'; reason: string }
 
+export type ResizeResult =
+  /** the size claudish set, after its own clamping */
+  | { kind: 'resized'; cols: number; rows: number }
+  /** the run, session or slot is no longer retained */
+  | { kind: 'gone' }
+  /** any other error (resize_unsupported included), a rejection, or an unparseable answer */
+  | { kind: 'failed'; reason: string }
+
 /** A watched run as poll() needs it: the mod's run id and its ref. */
 export type WatchedRun = { id: string; ref: ClaudishRunRef }
 
@@ -90,6 +98,9 @@ export type RunSource = {
   /** sinceSeq: the last seq drawn, 0 before the first frame. withSpans: ask for the child's colours;
    *  poll.ts passes the feed's can.spans, and nothing else may ask. */
   capture(ref: ClaudishRunRef, slot: string, sinceSeq: number, withSpans: boolean): Promise<CaptureResult>
+  /** Sets the child's terminal size, so it draws to the Show panel's size. poll.ts calls it only
+   *  where the feed's can.resize is true. */
+  resize(ref: ClaudishRunRef, slot: string, cols: number, rows: number): Promise<ResizeResult>
   /** The wake text's line naming one run for the model: its label plus claudish's own address and id. */
   runLine(ref: ClaudishRunRef, label: string): string
   /** One sentence telling the model which call fetches these slots' results, or answers a waiting delegation. */
