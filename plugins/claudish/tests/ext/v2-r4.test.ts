@@ -231,7 +231,7 @@ for (const surface of SURFACES) {
     expect(h.state.get(`panes/${tab}`) ?? null).toBeNull()
     expect([...views(h).values()].map(v => v.model)).toEqual(['b-model'])
     const p = await mountPane($, surface, SHOW_PANE, paneProps(100, 24))
-    expect((await p.findAll({ type: 'Button' })).map(f => f.props.label)).toEqual(['b-model'])
+    expect((await p.findAll({ type: 'Button' })).map(f => f.props.label).filter(l => l !== 'Hide')).toEqual(['b-model']) // R10.3: Hide is not a tab
     expect(visibleText(await p.drawn())).not.toContain('a-model')
     await p.unmount()
     await b.unmount()
@@ -258,7 +258,7 @@ for (const surface of SURFACES) {
     expect(h.panes.map(p => p.id)).toEqual([SHOW_PANE])
     expect(views(h).get(activeTab(h)!)).toMatchObject({ model: 'b-model' })
     const p = await mountPane($, surface, SHOW_PANE, paneProps(100, 24))
-    expect((await p.findAll({ type: 'Button' })).map(f => f.props.label)).toEqual(['b-model'])
+    expect((await p.findAll({ type: 'Button' })).map(f => f.props.label).filter(l => l !== 'Hide')).toEqual(['b-model']) // R10.3: Hide is not a tab
     await p.unmount()
     await b.unmount()
   })

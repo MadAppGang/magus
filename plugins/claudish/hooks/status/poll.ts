@@ -13,6 +13,7 @@ import {
   compaction,
   feedKey,
   isTerminal,
+  paneId,
   mergeRun,
   newRun,
   pruneStops,
@@ -80,6 +81,47 @@ function resizeBounded(host: Host, ref: ClaudishRun['ref'], slot: string, size: 
       (e: unknown) => { timer.cancel(); resolve({ kind: 'failed', reason: e instanceof Error ? e.message : String(e) }) },
     )
   })
+}
+
+/**
+ * Resizes one session to the panel's size, once per size whatever the answer. The panel can move
+ * again while an answer is out (a drag), so it asks for the newest size before returning.
+ */
+async function fitToPanel(host: Host, id: string, ref: ClaudishRun['ref'], slot: string): Promise<void> {
+  for (let round = 0; round < RESIZE_ROUNDS; round++) {
+    const size = panelSize
+    if (!size || sameSize(askedSize.get(id), size)) return
+    askedSize.set(id, size) // a refusal is not retried until the size moves
+    resizing.add(id)
+    const rs = await resizeBounded(host, ref, slot, size).finally(() => resizing.delete(id))
+    if (rs.kind === 'failed') host.debug(`claudish Show resize to ${size.cols}x${size.rows} failed: ${rs.reason}`)
+  }
+}
+
+/**
+ * Every running session takes the panel's last size, shown or not and panel open or not, so a
+ * session that ends before anyone opens it was already drawing at that size: an ended screen can
+ * no longer redraw. The size is the session's, so a session forgets it only when it is no longer
+ * running.
+ */
+async function fitLive(host: Host, runs: ClaudishRuns, feeds: Readonly<Record<string, ClaudishFeedSupport>>): Promise<void> {
+  const live = new Set<string>()
+  const fits: Promise<void>[] = []
+  for (const run of runs.list) {
+    const support = feeds[feedKey(run.ref)]
+    for (const slot of run.slots) {
+      if (slot.slot === '*' || isTerminal(slot.state)) continue
+      const id = paneId(run.id, slot.slot)
+      live.add(id)
+      // A run whose server is not answering would only spend the 5 s bound; it is asked once it answers.
+      if (run.settledAt !== null || run.unreachableSince !== null) continue
+      if (support?.kind !== 'speaks' || !support.can.resize || resizing.has(id)) continue
+      fits.push(fitToPanel(host, id, run.ref, slot.slot))
+    }
+  }
+  // All at once: one slow answer must not hold the tick's captures behind every other session.
+  await Promise.all(fits)
+  for (const id of [...askedSize.keys()]) if (!live.has(id)) askedSize.delete(id)
 }
 
 /**
@@ -350,6 +392,7 @@ export async function tick(host: Host): Promise<void> {
 
     runsNow = await compact(host, runsNow, epoch)
 
+    await fitLive(host, runsNow, feedsNow)
     open = await syncTabs(host, runsNow, feedsNow)
     tabs = await captures(host, open, runsNow, feedsNow, now)
 
@@ -447,7 +490,6 @@ async function captures(
     const openIds = new Set(open.map(p => p.id))
     for (const id of [...lastAttemptAt.keys()]) if (!openIds.has(id)) lastAttemptAt.delete(id)
     for (const id of [...terminalSeenAt.keys()]) if (!openIds.has(id)) terminalSeenAt.delete(id)
-    for (const id of [...askedSize.keys()]) if (!openIds.has(id)) askedSize.delete(id)
   }
   const end = (v: ClaudishPaneView | null): ClaudishPaneView | null =>
     v ? { ...v, status: 'ended', note: v.frame ? null : NO_SCREEN_NOTE } : v
@@ -456,7 +498,6 @@ async function captures(
     if (!view || view.status === 'ended') {
       lastAttemptAt.delete(p.id)
       terminalSeenAt.delete(p.id)
-      askedSize.delete(p.id)
       continue
     }
     const run = runs.list.find(r => r.id === view.runId)
@@ -484,18 +525,7 @@ async function captures(
     lastAttemptAt.set(p.id, now)
     // Fit the child to the panel before reading its screen, so this capture already shows it reflowed.
     // A finished slot is left as it is: its pane no longer redraws.
-    if (support.can.resize && !(slot && isTerminal(slot.state))) {
-      // The panel can move again while an answer is out (a drag): ask for the newest size before
-      // capturing, rather than leave it to the next tick.
-      for (let round = 0; round < RESIZE_ROUNDS; round++) {
-        const size = panelSize
-        if (!size || sameSize(askedSize.get(p.id), size)) break
-        askedSize.set(p.id, size) // a refusal is not retried until the size moves
-        resizing.add(p.id)
-        const rs = await resizeBounded(host, run.ref, view.slot, size).finally(() => resizing.delete(p.id))
-        if (rs.kind === 'failed') host.debug(`claudish Show resize to ${size.cols}x${size.rows} failed: ${rs.reason}`)
-      }
-    }
+    if (support.can.resize && !(slot && isTerminal(slot.state))) await fitToPanel(host, p.id, run.ref, view.slot)
     const r = await host.source.capture(run.ref, view.slot, view.frame?.seq ?? 0, support.can.spans)
     let ended = false
     switch (r.kind) {
@@ -522,7 +552,6 @@ async function captures(
       out.capturing -= 1
       lastAttemptAt.delete(p.id)
       terminalSeenAt.delete(p.id)
-      askedSize.delete(p.id)
     }
   }
   return out

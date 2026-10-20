@@ -1,4 +1,4 @@
-// R7.1–R7.4 only, written from spec.md and the public contract, without implementation reads.
+// R7.1–R7.4 (with R9.1 sizes and R10's when/which), written from spec.md and the public contract, without implementation reads.
 // MCP requests, captured text and debug lines are the observation boundary. No private resize state.
 // Run with the host's engine kit, not standalone bun test. See R7-TEST-PLAN.md for TEST/REQ ids.
 
@@ -167,6 +167,20 @@ function expectPaired(h: Harness, resized: Recorded): void {
   expect(target(captured!)).toBe(target(resized))
 }
 
+/**
+ * R10.2: the SHOWN tab is still resized at once, before its capture. With several running sessions the
+ * tick's resize pass may put other sessions' resizes in between, so this asks only that the next call
+ * naming the same target is its capture, made in the same pass (within one shown-tab repaint, 1 s).
+ */
+function expectBeforeOwnCapture(h: Harness, resized: Recorded): void {
+  const index = h.fake.calls.indexOf(resized)
+  expect(index).toBeGreaterThanOrEqual(0)
+  const next = h.fake.calls.slice(index + 1).find(c => (isResize(c) || isCapture(c)) && target(c) === target(resized))
+  expect(next, 'the shown tab is captured after its resize').toBeDefined()
+  expect(isCapture(next!), 'the next call naming the shown tab is its capture, not a second resize').toBe(true)
+  expect(next!.at - resized.at).toBeLessThanOrEqual(1_000)
+}
+
 /** Stable screen words so a resize result cannot masquerade as a child frame. */
 const SCREEN = 'R7 child screen stays visible'
 function screen({ seq, final }: { seq: number; final: boolean }): Json {
@@ -253,8 +267,8 @@ for (const surface of SURFACES) {
     })
   }
 
-  // TEST-9, TEST-10 / REQ-4, REQ-5, REQ-8, REQ-9.
-  test(`R7.2 R7.3 TEST-9 TEST-10: team slots and delegation each receive the shared panel size immediately before their own capture [${surface}]`, async ($, on) => {
+  // TEST-9, TEST-10 / REQ-4, REQ-5, REQ-8, REQ-9; R10.1: hidden tabs are resized at the tick, not with their capture.
+  test(`R7.2 R10.1 R10.2 TEST-9 TEST-10: team slots and delegation each receive the shared panel size once; the shown tab before its capture [${surface}]`, async ($, on) => {
     const h = harness(on)
     await start($, surface)
     const r = await team($, h, 'shared-size', ['team-one', 'team-two'])
@@ -265,6 +279,7 @@ for (const surface of SURFACES) {
 
     await until(h, () => h.fake.resizeCalls().length >= 3, 'every tab, including inactive tabs, resizes')
 
+    await h.clock.advance(3_000) // once per size: further ticks add nothing
     const calls = h.fake.resizeCalls()
     expect(calls).toHaveLength(3)
     for (const slot of ['01', '02']) expect(calls.map(wire)).toContainEqual({
@@ -273,7 +288,8 @@ for (const surface of SURFACES) {
     expect(calls.map(wire)).toContainEqual({
       server: SERVER, tool: 'resize_session', args: { session_id: s.id, cols: 132, rows: 41 },
     })
-    for (const c of calls) expectPaired(h, c)
+    // R10.2: the shown tab (team-one, slot 01) is still resized before its capture; hidden ones need no capture
+    expectBeforeOwnCapture(h, calls.find(c => c.args.slot === '01')!)
     await p.unmount()
     await b.unmount()
   })
@@ -547,8 +563,8 @@ for (const surface of SURFACES) {
     })
   }
 
-  // TEST-19 / REQ-5, REQ-10: hidden tabs can wait for their due capture; no resize-only pass.
-  test(`R7.3 TEST-19: an inactive tab gets a changed size only together with its next capture [${surface}]`, async ($, on) => {
+  // TEST-19 / REQ-10, R10.1, R10.2: a hidden tab no longer waits for its 5-second capture; it is resized at the next tick.
+  test(`R10.1 R10.2 TEST-19: an inactive tab gets a changed size at the next tick, ahead of its next capture [${surface}]`, async ($, on) => {
     const h = harness(on)
     await start($, surface)
     await team($, h, 'due-size', ['due-one', 'due-two'])
@@ -560,24 +576,30 @@ for (const surface of SURFACES) {
     expect(hiddenLast).toBeDefined()
     expect(h.clock.now() - hiddenLast!.at).toBeLessThan(1_000)
     const before = h.fake.calls.length
+    const redrawnAt = h.clock.now()
 
     await p.redraw(paneProps(145, 47))
-    await h.clock.advance(1_000)
-    // The inactive tab's inherited 5-second capture cadence is not reset by a drawing.
-    const earlyHidden = h.fake.calls.slice(before).filter(c => c.args.slot === '02' && (isResize(c) || isCapture(c)))
-    expect(earlyHidden).toHaveLength(0)
-    for (const c of h.fake.calls.slice(before).filter(isResize)) expectPaired(h, c)
-    await until(h, () => h.fake.resizeCalls().filter(c => c.args.cols === 145).length >= 2, 'both tabs reach their next capture')
+    // The hidden tab's next capture is at least 4 s away (5-second cadence, last capture < 1 s ago);
+    // R10.1 resizes it at the next poll tick instead, well inside that.
+    await until(h, () => h.fake.resizeCalls().filter(c => c.args.cols === 145).length >= 2, 'both tabs resized at the next tick', 3_000)
 
     const changed = h.fake.resizeCalls().filter(c => c.args.cols === 145)
     expect(changed.map(c => c.args.slot).sort()).toEqual(['01', '02'])
-    for (const c of changed) expectPaired(h, c)
+    expect(changed.every(c => c.args.rows === 44)).toBe(true)
+    const hidden = changed.find(c => c.args.slot === '02')!
+    expect(hidden.at - redrawnAt).toBeLessThan(3_000)
+    // no capture of the hidden tab came between the new drawing and its resize
+    const hiddenIndex = h.fake.calls.indexOf(hidden)
+    expect(h.fake.calls.slice(before, hiddenIndex).filter(c => isCapture(c) && c.args.slot === '02')).toHaveLength(0)
+    expectBeforeOwnCapture(h, changed.find(c => c.args.slot === '01')!)
+    await h.clock.advance(6_000) // once per size
+    expect(h.fake.resizeCalls().filter(c => c.args.cols === 145)).toHaveLength(2)
     await p.unmount()
     await b.unmount()
   })
 
-  // TEST-20 / REQ-11: closing the one panel closes its tabs; reopening must not retain last-size suppression.
-  test(`R7.3 TEST-20: Hide stops capture and reopening at the same size asks for resize again [${surface}]`, async ($, on) => {
+  // TEST-20 / R10.2 (replaces R7.3's "forgets"): the size belongs to the session, so Hide and reopen at the same size send nothing.
+  test(`R10.2 TEST-20: Hide stops capture; reopening at the same size sends no resize, a new size sends one [${surface}]`, async ($, on) => {
     const h = harness(on)
     await start($, surface)
     await team($, h, 'reopen-size', ['reopen-model'])
@@ -599,9 +621,16 @@ for (const surface of SURFACES) {
     await b.redraw()
     await pressChip(b, 'reopen-model', 'Show')
     const reopened = await mountPane($, surface, SHOW_PANE, paneProps(128, 42))
-    await until(h, () => h.fake.resizeCalls().length >= 2, 'reopening forgets the previous size request')
+    // positive control: the reopened panel captures again, so a resize would have had its chance
+    await until(h, () => h.fake.captureCalls().length > count, 'reopened panel captures again')
+    await h.clock.advance(4_000)
+    expect(h.fake.captureCalls().length).toBeGreaterThan(count + 1)
+    expect(h.fake.resizeCalls().map(c => [c.args.cols, c.args.rows])).toEqual([[128, 39]])
 
-    expect(h.fake.resizeCalls().map(c => [c.args.cols, c.args.rows])).toEqual([[128, 39], [128, 39]])
+    await reopened.redraw(paneProps(140, 42))
+    await until(h, () => h.fake.resizeCalls().length >= 2, 'a new size is requested once')
+    await h.clock.advance(3_000)
+    expect(h.fake.resizeCalls().map(c => [c.args.cols, c.args.rows])).toEqual([[128, 39], [140, 39]])
     expectPaired(h, h.fake.resizeCalls()[1]!)
     await reopened.unmount()
     await b.unmount()

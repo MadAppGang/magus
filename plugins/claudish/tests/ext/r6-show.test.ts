@@ -25,7 +25,8 @@ async function headerHide(b: Awaited<ReturnType<typeof mountBand>>): Promise<Nod
 
 /** The tab strip's labels, in order: each tab is a Button whose `label` prop is its label. */
 async function tabLabels(p: Awaited<ReturnType<typeof mountPane>>): Promise<string[]> {
-  return (await p.findAll({ type: 'Button' })).map(f => String(f.props.label))
+  // R10.3: the strip's row also carries the panel's own Hide, which is not a tab
+  return (await p.findAll({ type: 'Button' })).map(f => String(f.props.label)).filter(l => l !== 'Hide')
 }
 
 for (const surface of SURFACES) {
@@ -224,8 +225,9 @@ for (const surface of SURFACES) {
     const rule = runsOf(tree).filter(x => x.text === '─'.repeat(90))
     expect(rule).toHaveLength(1)
     expect(rule[0]!.color).toBe('subtle')
-    // the strip draws no Stop, Show or Hide: its Buttons are the tabs
+    // the strip draws no Stop or Show: its Buttons are the tabs and, since R10.3, one Hide
     expect(await tabLabels(p)).toEqual(['s-one', 's-two', 's-three'])
+    expect((await p.findAll({ type: 'Button' })).filter(f => f.props.label === 'Hide')).toHaveLength(1)
     // pressing a tab shows it
     const tab = (await p.findAll({ type: 'Button' })).find(f => f.props.label === 's-three')!
     await p.press({ key: tab.key! })

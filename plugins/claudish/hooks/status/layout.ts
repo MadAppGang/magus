@@ -771,6 +771,30 @@ export function showTabs(runs: ClaudishRuns, feeds: Readonly<Record<string, Clau
   return tabs.map(({ where, ...t }) => ((uses.get(t.label) ?? 0) > 1 ? { ...t, label: `${t.label} ${where}` } : t))
 }
 
+/**
+ * The tab labels as drawn in `room` cells (the panel's width less Hide): each tab costs its label
+ * plus 4 (` ●`, a space each side), and 1 more for the bar before every tab but the first. Over
+ * the room, the longest label that is not the active one is cut by a cell at a time, ending in `…`;
+ * the active one is cut last. A label is never cut below one cell (`…`).
+ */
+export function fitTabLabels(tabs: readonly ShowTab[], active: string | null, room: number): string[] {
+  const full = tabs.map(t => Array.from(t.label))
+  const len = full.map(f => f.length)
+  let cost = tabs.reduce((s, _, i) => s + (i > 0 ? 1 : 0) + 4, 0) + len.reduce((s, n) => s + n, 0)
+  while (cost > room) {
+    let pick = -1
+    for (let i = 0; i < tabs.length; i++) {
+      if (len[i]! <= 1 || tabs[i]!.id === active) continue
+      if (pick < 0 || len[i]! > len[pick]!) pick = i
+    }
+    if (pick < 0) pick = tabs.findIndex((t, i) => t.id === active && len[i]! > 1)
+    if (pick < 0) break
+    len[pick]!--
+    cost--
+  }
+  return full.map((f, i) => (len[i]! >= f.length ? f.join('') : `${f.slice(0, len[i]! - 1).join('')}…`))
+}
+
 /** The tab the panel shows: the one last asked for while it is still a tab, else the first. */
 export function activeTab(tabs: readonly ShowTab[], asked: string | null): ShowTab | null {
   return tabs.find(t => t.id === asked) ?? tabs[0] ?? null

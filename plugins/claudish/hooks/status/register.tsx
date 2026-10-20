@@ -178,12 +178,12 @@ export const register: Register = (on, options) => {
     return bandTree(els, model, {
       stop: target => void controls.pressStop(press, bound, target),
       show: target => void controls.pressShow(press, ui, bound, target).then(id => poll.captureOpened(bound, id), () => poll.ensureLoop(bound)),
-      hide: () => void controls.pressHide(ui),
+      hide: () => void controls.pressHide(ui).catch(err => bound.debug(`claudish Hide failed: ${err instanceof Error ? err.message : String(err)}`)),
     }, palette, look)
   })
 
   // The Show panel: a tab per slot of the runs the band shows, and the active tab's screen (its
-  // member, read, so a frame redraws the panel). A tab press makes that tab active.
+  // member, read, so a frame redraws the panel). A tab press makes that tab active; Hide puts it away.
   on('ui.render', { component: 'Pane', requestId: SHOW_PANE_ID }, async ($, e, next) => {
     const bound = host
     if (!bound) return next(e)
@@ -197,6 +197,7 @@ export const register: Register = (on, options) => {
     const model = view ? paneModel(view, runs, tabRows, await $.clock.now()) : null
     const press = bindStore($)
     return panelTree($.ui.resolve(e), tabs, active?.id ?? null, model, fit.columns, palette,
-      target => void controls.pressTab(press, target).then(id => poll.captureOpened(bound, id), () => poll.ensureLoop(bound)))
+      target => void controls.pressTab(press, target).then(id => poll.captureOpened(bound, id), () => poll.ensureLoop(bound)),
+      () => void controls.pressHide(bindPressUi($)).catch(err => bound.debug(`claudish Hide failed: ${err instanceof Error ? err.message : String(err)}`)))
   })
 }

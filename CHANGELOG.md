@@ -4,6 +4,23 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Marketplace 13.7.9] - 2026-10-21
+
+### Changed
+
+- **`claudish` v2.9.0**: every running claudish session takes the Show panel's size, not only the
+  one the open panel shows. Once the panel has been drawn, each running session is resized to its
+  last size, whether the panel is open or closed. A session that ends before you open Show has
+  already been drawing at the panel's width, so its last screen fits instead of being cut.
+
+### Added
+
+- **`claudish` v2.9.0**: a `[ Hide ]` button at the right end of the Show panel's tab row, drawn like
+  the band's Hide. Claude Code's own close mark is one cell wide and hard to hit. Long tab labels
+  are cut with `…` so the row fits the panel and Hide stays whole.
+
+---
+
 ## [Marketplace 13.7.8] - 2026-10-21
 
 ### Fixed

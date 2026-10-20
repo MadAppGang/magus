@@ -31,7 +31,8 @@ async function pressHeaderHide(b: Mounted): Promise<void> {
 
 /** The Show panel's tab labels, in order (each tab a Button whose `label` prop is its label). */
 async function tabLabels(p: Mounted): Promise<string[]> {
-  return (await p.findAll({ type: 'Button' })).map(f => String(f.props.label))
+  // R10.3: the strip's row also carries the panel's own Hide, which is not a tab
+  return (await p.findAll({ type: 'Button' })).map(f => String(f.props.label)).filter(l => l !== 'Hide')
 }
 
 async function tabHeader(p: Mounted, model: string): Promise<Node> {
@@ -163,8 +164,9 @@ for (const surface of SURFACES) {
     expectInk(hdr, 'header-model', { bold: true })
     expectInk(hdr, '▰▰▱▱▱ 42s', { color: 'success' })
     expect(text).not.toMatch(/^header-model|▶ running|idle | · ended/)
-    // R6.5: the panel's only Buttons are its tabs: no Stop, Show or Hide inside it
-    expect((await p.findAll({ type: 'Button' })).map(f => f.props.label)).toEqual(['header-model'])
+    // R6.5 + R10.3: the panel's only Buttons are its tabs and its one Hide: no Stop or Show inside it
+    expect((await p.findAll({ type: 'Button' })).map(f => f.props.label).filter(l => l !== 'Hide')).toEqual(['header-model'])
+    expect((await p.findAll({ type: 'Button' })).filter(f => f.props.label === 'Hide')).toHaveLength(1)
     themeKeysOnly(await p.drawn())
     await p.unmount()
     await b.unmount()

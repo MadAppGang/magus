@@ -288,7 +288,7 @@ for (const surface of SURFACES) {
     expect(capturesOf(h, '03').filter(c => c.at > from).length).toBeGreaterThanOrEqual(25)
   })
 
-  test(`pane: read-only — no input, no client, no select; its only Buttons are the tabs; only list, capture and resize calls [${surface}]`, async ($, on) => {
+  test(`pane: read-only — no input, no client, no select; its only Buttons are the tabs and Hide (R10.3); only list, capture and resize calls [${surface}]`, async ($, on) => {
     const h = harness(on)
     await start($, surface)
     await showTab($, h, surface)
@@ -297,8 +297,10 @@ for (const surface of SURFACES) {
     const pane = await mountPane($, surface, SHOW_PANE_ID) // R6.5: the one Show pane
     expect((await frameLines(pane)).length).toBeGreaterThan(0) // a real screen is drawn, so the checks below bite
     for (const type of ['Input', 'Client', 'Select']) expect(await pane.findAll({ type })).toHaveLength(0)
-    // R6.5: each tab is a Button labelled by its model; nothing else in the pane is pressable
-    expect((await pane.findAll({ type: 'Button' })).map(b => b.props.label)).toEqual(['gpt-6.1-sol', 'kimi-k3', 'grok-4.6', 'glm-5.3'])
+    // R6.5 + R10.3: each tab is a Button labelled by its model, plus the strip's one Hide; nothing else is pressable
+    const pressable = (await pane.findAll({ type: 'Button' })).map(b => b.props.label)
+    expect(pressable.filter(l => l !== 'Hide')).toEqual(['gpt-6.1-sol', 'kimi-k3', 'grok-4.6', 'glm-5.3'])
+    expect(pressable.filter(l => l === 'Hide')).toHaveLength(1)
     const kinds = h.fake.calls.slice(from).map(c => (c.tool === 'team' ? `team:${String(c.args.mode)}` : c.tool))
     expect(kinds.length).toBeGreaterThan(0)
     // R7.3: a resize is not input, so `team` mode `resize` and `resize_session` join the allowed calls
