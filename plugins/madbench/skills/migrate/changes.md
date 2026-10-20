@@ -1,3 +1,9 @@
+## v0.47.0
+
+A count bound is spelled `gte` or `lte`. On `session:tool-used`, `session:step-count`, `session:turn-count`, `session:turn-step-count` and `session:match`, `min` and `max` fail when the Check is built as `unknown key "min"` (or `"max"`), followed by the keys that type takes.
+
+- `min: <n>` → `gte: <n>`; `max: <n>` → `lte: <n>`.
+
 ## v0.46.0
 
 A Check's own keys sit beside `type:`. `args:` is no key of any Check type: written under a Check, it fails when the Check is built (at `preflight` and on every run) as `unknown key "args"`, followed by the keys that type takes.

@@ -4,6 +4,37 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Marketplace 13.6.3] - 2026-10-20
+
+### Fixed
+
+- **`dev` v9.3.1**: `/dev:dev` Phase 2 sends research to the agents built for it: web
+  questions to `dev:researcher`, questions about the codebase to `code-search:analyze`.
+  Before, the command banned both agents "for any phase", and Phase 2 said only "Gather
+  information (via available tools)", so a model that read the text literally researched in
+  the orchestrator or through `general-purpose` agents. The ban now covers every phase except
+  Phase 2, because both agents are read-only and cannot write code, tests or fixes.
+
+### Changed
+
+- **`madbench` v0.12.1**: the madbench skills are synced to madbench 0.47.0, so
+  `/madbench:madbench` and the operator see `skills 0.47.0 · madbench 0.47.0 · current`.
+  When madbench is missing, the plugin installs 0.47.0 from the release, checksum-verified.
+  madbench 0.47.0 refuses `min:` and `max:` on a `session:` count Check; the bound is
+  spelled `gte` or `lte`, and the `migrate` skill carries the step.
+
+### Verified
+
+- `dev`: the `dev-research-routing` bench (madbench 0.47.0, `claude-sonnet-5`, 5 trials per
+  side) saw `dev:researcher` run the Phase 2 research in 1 of 5 sessions on the old text and
+  5 of 5 on the new. Neither side dispatched `general-purpose` on this prompt, so the run
+  does not show that the new text prevents that case.
+- `madbench`: the four sha256 sums come from the v0.47.0 release's `checksums.txt`; the
+  `darwin_arm64` asset was re-hashed locally and matched. No bench in `benches/` uses
+  `min:` or `max:`.
+
+---
+
 ## [Marketplace 13.6.2] - 2026-10-20
 
 ### Fixed

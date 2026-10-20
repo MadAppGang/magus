@@ -7,7 +7,7 @@
   },
   "metadata": {
     "description": "Curated collection of Claude Code plugins for modern full-stack development with LLM performance tracking and E2E skill testing",
-    "version": "13.6.2",
+    "version": "13.6.3",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -258,7 +258,7 @@
       "name": "dev",
       "source": "./plugins/dev",
       "description": "Universal development assistant. Detects the project stack and routes work to specialist agents for architecture, implementation, debugging, review and research, enforcing design-system guardrails on every UI change.",
-      "version": "9.3.0",
+      "version": "9.3.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -298,6 +298,11 @@
       "strict": true,
       "releases": [
         {
+          "version": "9.3.1",
+          "date": "2026-10-20",
+          "summary": "/dev:dev Phase 2 sends research to the agents built for it: web questions to dev:researcher,\u2026"
+        },
+        {
           "version": "9.3.0",
           "date": "2026-10-20",
           "summary": "Dependencies declared in requires schema 2"
@@ -319,14 +324,6 @@
             "Added"
           ],
           "summary": "All 12 agents have a color: field again"
-        },
-        {
-          "version": "9.1.1",
-          "date": "2026-10-07",
-          "kinds": [
-            "Fixed"
-          ],
-          "summary": "The session-start check fixes in terminal 5.3.1 apply here too"
         }
       ]
     },
@@ -751,7 +748,7 @@
       "name": "madbench",
       "source": "./plugins/madbench",
       "description": "Toolkit for madbench, MadAppGang's Go harness for benchmarking agentic coding tools. Carries madbench's own skills with /madbench:madbench as the entry point, checks them against the installed madbench, and runs benches in a visible pane through the madbench:bench agent.",
-      "version": "0.12.0",
+      "version": "0.12.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -772,6 +769,11 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "0.12.1",
+          "date": "2026-10-20",
+          "summary": "The madbench skills are synced to madbench 0.47.0, so /madbench:madbench and the operator see\u2026"
+        },
         {
           "version": "0.12.0",
           "date": "2026-10-20",
@@ -800,14 +802,6 @@
             "Added"
           ],
           "summary": "The bench agent has a color: field again: cyan"
-        },
-        {
-          "version": "0.9.1",
-          "date": "2026-10-08",
-          "kinds": [
-            "Removed"
-          ],
-          "summary": "The Stop hook that held the parent's turn open while a dispatched madbench:bench operator was\u2026"
         }
       ]
     }

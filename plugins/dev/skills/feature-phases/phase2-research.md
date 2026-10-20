@@ -19,8 +19,15 @@ Say, in one line: **Phase 2 — starting.**
 If research needed:
   a. Ask user (AskUserQuestion): "Would you like me to research [topics]?"
   b. If yes: Identify specific questions to research
-  c. Gather information (via available tools)
-  d. Write ${SESSION_PATH}/research.md with findings
+  c. Delegate each question to the agent built for it:
+     - Web sources (libraries, APIs, standards, best practice) →
+       Agent(subagent_type: "dev:researcher"). Hand it the decision the research
+       feeds, the sub-question, and SESSION_PATH; it writes its findings there.
+     - This codebase (existing patterns, call sites, constraints) →
+       Agent(subagent_type: "code-search:analyze"), naming the anchor and the job.
+     Independent questions run in parallel. Do not use general-purpose agents for
+     research.
+  d. Write ${SESSION_PATH}/research.md, merging the agents' findings
 
 If not needed:
   a. Skip this phase
