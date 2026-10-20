@@ -4,6 +4,28 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Marketplace 13.6.4] - 2026-10-20
+
+### Fixed
+
+- **`dev` v9.3.2**: `/dev:dev` Phase 2 works without the code-search plugin. Codebase
+  questions go to `code-search:analyze` only when that agent is available; otherwise the
+  orchestrator answers them with Read, Grep and Glob. code-search stays optional. Before,
+  Phase 2 named only that agent and also banned general-purpose agents, which left no route
+  for codebase questions when code-search was not installed. The ban on giving either
+  research agent a later phase now says that neither writes code, tests or fixes; it said
+  both were read-only, which is wrong for `dev:researcher`.
+
+### Verified
+
+- `dev`: the `dev-research-routing` bench, DRR-2 (madbench 0.47.0, `claude-sonnet-5`, 5
+  trials per variant), saw `dev:researcher` run the web research and no `general-purpose`
+  spawn in 5 of 5 sessions with code-search and 5 of 5 without, with no unknown-agent
+  error. No session asked a codebase question in Phase 2, so the Read/Grep/Glob branch
+  itself was not exercised.
+
+---
+
 ## [Marketplace 13.6.3] - 2026-10-20
 
 ### Fixed

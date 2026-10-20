@@ -135,6 +135,7 @@ allowed-tools: Agent, AskUserQuestion, Bash, Read, EnterPlanMode, ExitPlanMode, 
   - Stack detection → dev:stack-detector agent (subagent_type: "dev:stack-detector")
   - Research (Phase 2) → dev:researcher agent for web sources (subagent_type: "dev:researcher"),
     code-search:analyze agent for questions about this codebase (subagent_type: "code-search:analyze")
+    if it is available; without it, the orchestrator answers codebase questions with Read/Grep/Glob
   - Architecture/planning → dev:architect agent (subagent_type: "dev:architect")
   - Plan review (external models via claudish) → dev:architect agent
   - Implementation → dev:developer agent (subagent_type: "dev:developer")
@@ -143,8 +144,8 @@ allowed-tools: Agent, AskUserQuestion, Bash, Read, EnterPlanMode, ExitPlanMode, 
   - Real validation → Orchestrator (Chrome MCP tools directly)
 
   DO NOT substitute agents across phases. Each phase has specific agent requirements.
-  DO NOT give dev:researcher or code-search:analyze any phase except Phase 2. Both are
-  read-only: they cannot write code, tests or fixes.
+  DO NOT give dev:researcher or code-search:analyze any phase except Phase 2. Neither
+  writes code, tests or fixes.
 
   PRECEDENCE WHILE PLAN MODE IS ACTIVE: the agent rules above still name WHICH
   agent runs each phase, but none of them may write. Delegate read-only work only
@@ -430,8 +431,8 @@ allowed-tools: Agent, AskUserQuestion, Bash, Read, EnterPlanMode, ExitPlanMode, 
       - Requirements gathering: Orchestrator (AskUserQuestion)
       - Validation criteria: Orchestrator (AskUserQuestion)
       - Tool validation: Orchestrator (direct MCP calls)
-      - Research: researcher agent (web), code-search:analyze agent (this codebase);
-        the orchestrator merges their findings into research.md
+      - Research: researcher agent (web), code-search:analyze agent (this codebase,
+        when available, else the orchestrator); the orchestrator merges their findings into research.md
       - Stack detection: stack-detector agent
       - Architecture: architect agent
       - Plan review: architect agent (external models via claudish)
