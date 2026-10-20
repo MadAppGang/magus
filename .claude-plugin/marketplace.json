@@ -7,7 +7,7 @@
   },
   "metadata": {
     "description": "Curated collection of Claude Code plugins for modern full-stack development with LLM performance tracking and E2E skill testing",
-    "version": "13.5.0",
+    "version": "13.6.0",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -81,7 +81,7 @@
       "name": "claudish",
       "source": "./plugins/claudish",
       "description": "MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting, manages async sessions, and shows the session's runs live above the prompt, with stop and live-screen tabs. Required by code-search, dev, multimodel and designer.",
-      "version": "2.4.0",
+      "version": "2.5.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -101,6 +101,11 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "2.5.0",
+          "date": "2026-10-20",
+          "summary": "The claudish-usage skill and the README document recent on every live session row: the current\u2026"
+        },
         {
           "version": "2.4.0",
           "date": "2026-10-20",
@@ -126,11 +131,6 @@
             "Changed"
           ],
           "summary": "The release-asset install path pins claudish v10.7.1 instead of v10.6.3"
-        },
-        {
-          "version": "2.3.2",
-          "date": "2026-10-16",
-          "summary": "A session that claudish started now knows it is the delegate. Since claudish 10.6.3 such a\u2026"
         }
       ]
     },
@@ -202,7 +202,7 @@
       "name": "multimodel",
       "source": "./plugins/multimodel",
       "description": "Multi-model collaboration and orchestration. Runs a task across several AI models in parallel and aggregates their blind APPROVE/REJECT votes, or delegates it to one model running a full Claude Code session.",
-      "version": "5.6.0",
+      "version": "5.7.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -227,6 +227,11 @@
       "strict": true,
       "releases": [
         {
+          "version": "5.7.0",
+          "date": "2026-10-20",
+          "summary": "/multimodel:delegate reads recent beside activity, and can log the newest step's tool and\u2026"
+        },
+        {
           "version": "5.6.0",
           "date": "2026-10-20",
           "summary": "Dependencies declared in requires schema 2"
@@ -249,14 +254,6 @@
           "version": "5.4.1",
           "date": "2026-10-16",
           "summary": "/multimodel:delegate and /multimodel:team say so in one line when they run in child mode, then\u2026"
-        },
-        {
-          "version": "5.4.0",
-          "date": "2026-10-13",
-          "kinds": [
-            "Added"
-          ],
-          "summary": "The deep-analyst agent has a color: field again: purple"
         }
       ]
     },

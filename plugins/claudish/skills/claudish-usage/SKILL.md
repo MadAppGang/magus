@@ -585,6 +585,13 @@ arrives, so never wait for one. Between the monitor's lines, the one live view i
 `list_sessions(include_completed=true)`: each row carries `state`, `activity`, `idle_seconds` and, on a failed or
 timed-out row, `reason_detail`. One call every 10 seconds or so is enough.
 
+A live row also carries `recent`: the current turn's last 20 steps, oldest first, each
+`{at, kind, tool, summary}`. `kind` is `text`, `thinking`, `tool` or `ask`; `summary` is one
+line naming the target (the file, the first line of a Bash command, the pattern or url), at
+most 100 characters. It shows what the child did between two polls, which `activity` alone
+cannot. It is `null` before the first step and on rows read from disk, which have no live
+transcript to follow.
+
 ### `run_prompt` — one completion, no session
 
 ```

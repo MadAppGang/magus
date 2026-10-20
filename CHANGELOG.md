@@ -4,6 +4,29 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Marketplace 13.6.0] - 2026-10-20
+
+### Added
+
+- **`claudish` v2.5.0**: the `claudish-usage` skill and the README document `recent` on
+  every live session row: the current turn's last 20 steps, each `{at, kind, tool,
+  summary}`, so a poll shows what the child did since the last one. The plugin now needs
+  claudish 11.1.0 or later, the release that ships `recent`, and its release-asset install
+  is pinned to v11.1.0.
+- **`multimodel` v5.7.0**: `/multimodel:delegate` reads `recent` beside `activity`, and can
+  log the newest step's tool and target. It no longer tells the caller to cancel a session
+  whose background agents never settle: claudish 11.0.0 fixed that.
+
+### Verified
+
+- `CLA-3` (agent routing), madbench 0.47.0, claudish 11.1.0, `--trials 5`: this tree
+  `delegate` 5/5 and `team` 5/5 with no errors; the old tree `delegate` 0/5, `team` 3/5.
+  Archived in `benches/claudish-agent-routing/results/20261019T235321Z-8510a1/`.
+- The v11.1.0 pin: all four digests match both the release's `checksums.txt` and the digest
+  GitHub computed on upload.
+
+---
+
 ## [Marketplace 13.5.0] - 2026-10-20
 
 ### Added

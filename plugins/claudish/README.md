@@ -236,7 +236,9 @@ before the monitor started are never reported.
 claudish pushes nothing into the conversation. The monitor reports state changes; between
 its lines, `list_sessions` is the live view. Each row carries `state`, `activity`,
 `idle_seconds`, and on a failed or timed-out row `reason_detail`, the provider's error
-message in at most 160 characters. Polling about every 10 seconds is enough.
+message in at most 160 characters. A live row also carries `recent`, the current turn's
+last 20 steps (`{at, kind, tool, summary}`), so a poll shows what happened since the last
+one. Polling about every 10 seconds is enough.
 
 ## Live run status
 

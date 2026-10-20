@@ -149,7 +149,8 @@ claudish pushes nothing into the conversation; a `<channel>` block never arrives
 sources report the session. The claudish plugin's monitor is on by default and needs no
 flag: `claudish-monitor: session SESSION_ID …` lines. Between them, poll
 `list_sessions(include_completed=true)` (about every 10 seconds is enough): the SESSION_ID row carries `state`,
-`activity`, `idle_seconds`, and on a failed or timed-out row `reason_detail`. Act on
+`activity`, `idle_seconds`, `recent` (the turn's last steps), and on a failed or timed-out
+row `reason_detail`. Act on
 whichever reports first.
 
 **Before ending a turn with the session in flight, start the bounded wait** from the
@@ -163,12 +164,10 @@ foreground. When the wait fires with no monitor line, call `get_output(SESSION_I
 | Monitor line / `list_sessions` row | Action |
 |-------|--------|
 | `started` / row present, `RUNNING` | Log: "Delegating to {MODEL}..." |
-| — / `activity` changes | Optional log: "{MODEL}: {activity}" |
+| — / `activity` or `recent` changes | Optional log: "{MODEL}: {activity}", or the newest `recent` step's `tool` and `summary` |
 | `needs-input … next: send_input` / `AWAITING_INPUT` or `AWAITING_PERMISSION` | **AskUserQuestion available** → forward the question (`get_output(SESSION_ID)` shows it) → `send_input(SESSION_ID, answer)` → resume waiting. **Unavailable** (`claude -p`) → `cancel_session(SESSION_ID)`, then report: `The delegated session asked a question and this session cannot answer it. Question: {question}. Re-run interactively, or restate the task so it needs no clarification.` Stop. |
 | `completed … next: get_output` / `COMPLETED` | Call `get_output(SESSION_ID, tail_lines=200)` → proceed to Phase 4 |
 | `failed` / `timeout` `… next: get_diagnostics` / `FAILED`, `TIMEOUT` | Call `get_diagnostics(SESSION_ID)` → report error (first 20 lines, plus the row's `reason_detail` when it is not null) → see Error Reporting below → stop |
-| — / `RUNNING`, `activity` `background`, past the wait's ceiling | Known claudish defect: a child that launched background agents never settles, and `get_output` stays empty. `cancel_session(SESSION_ID)` and report it as that defect, not as a model failure. Never ask the delegated model to use background agents. |
-
 ### Error Reporting (on failure)
 
 When the session fails:
