@@ -150,7 +150,7 @@ for (const surface of SURFACES) {
     await b.unmount()
   })
 
-  test(`R6.6: the band and the Show panel use only the allowed theme keys and palette colours; timeline colours only inside the Clients [${surface}]`, async ($, on) => {
+  test(`R6.6 R8.2 REQ-9 REQ-10: the band and the Show panel use only the allowed theme keys and palette colours; timeline colours only inside the Clients [${surface}]`, async ($, on) => {
     const h = harness(on)
     await start($, surface)
     const r = await team($, h, 'colours', ['co-one', 'co-two', 'co-three', 'co-four'])
@@ -179,7 +179,7 @@ for (const surface of SURFACES) {
     await b.unmount()
   })
 
-  test(`R6.6: a light theme hands the Clients the light timeline table [${surface}]`, async ($, on) => {
+  test(`R6.6 R8.2 REQ-9: a light theme hands the Clients the light timeline table without fold colours [${surface}]`, async ($, on) => {
     const h = harness(on, { theme: 'light' })
     await start($, surface)
     await team($, h, 'light', ['light-model'])

@@ -4,6 +4,18 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Marketplace 13.7.6] - 2026-10-21
+
+### Changed
+
+- **`claudish` v2.8.0**: the live run cell draws each finished step as one thin bar in its
+  colour, at every width, instead of a time badge. The `3×` runs and the `+N` badge for older
+  steps are gone. The bars take at most half the cell and keep the newest. The current step keeps
+  its words and its name-and-time badge at the right. The narrow cell, ended rows, the `line`
+  look and the colour legend are unchanged.
+
+---
+
 ## [Marketplace 13.7.5] - 2026-10-20
 
 ### Added

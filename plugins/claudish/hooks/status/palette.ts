@@ -17,7 +17,7 @@ export type Palette = {
 /**
  * The live cell's colours (flow.tsx), raw, since it draws on its own thread and reads no theme:
  * each tool family's badge, the kinds' badges, the words, pac-man and the ghost, the silence's
- * three steps, the fold badge, and the page the faded runs fade toward.
+ * three steps, and the page the legend chips fade toward.
  */
 export type TimelineColors = {
   read: string; edit: string; run: string; web: string; agent: string; other: string
@@ -27,11 +27,10 @@ export type TimelineColors = {
   ok: string; warn: string; bad: string
   /** a job's time once its fill turns amber or red for silence */
   silenceInk: string
-  foldCount: string; foldTime: string; foldInk: string
 }
 
 // Tool families as the preview settled them: teal reads, gold edits, pink runs, blue reaches the
-// web, orange hands work to an agent or an MCP tool. The fold badge is steel blue. Pac-man is the
+// web, orange hands work to an agent or an MCP tool. Pac-man is the
 // orange-gold that reads on a cream page and a dark one.
 const TIMELINE_LIGHT: TimelineColors = {
   read: '#0D9488', edit: '#A16207', run: '#BE185D', web: '#0369A1', agent: '#C2410C', other: '#4B5563',
@@ -39,7 +38,6 @@ const TIMELINE_LIGHT: TimelineColors = {
   words: '#4B5068', dim: '#8F94AC', ink: '#FFFFFF', timeInk: '#0B0B12', page: '#FFFFFF',
   pac: '#E8890C', pacQuiet: '#A8743A', ghost: '#B91C1C', ghost2: '#BE185D',
   ok: '#166534', warn: '#B45309', bad: '#B91C1C', silenceInk: '#FFFFFF',
-  foldCount: '#3D59A1', foldTime: '#7AA2F7', foldInk: '#FFFFFF',
 }
 const TIMELINE_DARK: TimelineColors = {
   read: '#4FD6BE', edit: '#FFD479', run: '#F38BA8', web: '#7DCFFF', agent: '#FF9E64', other: '#D8DAE5',
@@ -47,7 +45,6 @@ const TIMELINE_DARK: TimelineColors = {
   words: '#9AA0BC', dim: '#5A5E78', ink: '#0B0B12', timeInk: '#0B0B12', page: '#16171D',
   pac: '#FFD23F', pacQuiet: '#A8743A', ghost: '#FF4D5E', ghost2: '#FF8AD8',
   ok: '#22E06B', warn: '#FFB454', bad: '#FF4D5E', silenceInk: '#FFFFFF',
-  foldCount: '#3D59A1', foldTime: '#7AA2F7', foldInk: '#FFFFFF',
 }
 
 // madbench's stops: azure, honey, lime, coral, gold, pending grey; indigo (the model, as madbench's id

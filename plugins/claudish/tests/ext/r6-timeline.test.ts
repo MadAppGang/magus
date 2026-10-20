@@ -2,7 +2,8 @@
 // What is recorded (trail steps from claudish's `recent` and from activity changes, the final step),
 // how the band hands it over (a Client keyed `timeline:<runId>/<slot>` and its props), and how the
 // module draws it (the badges look, an ended row, the legend, the `line` option, a narrow cell).
-// Written from spec.md only. Times and colours are worked from R6.4/R6.6.
+// Written from spec.md only. R8.1 replaces past badges with bars; R8.2 updates props and colours.
+// Unchanged times and colours are worked from R6.4/R6.6.
 
 import { test, expect } from 'claude-code/testing'
 import { harness, start, type Harness } from '../fake-claudish'
@@ -34,7 +35,7 @@ const kindsOf = (p: TimelineProps) => p.steps.map(s => (s.k === 'tool' ? `tool:$
 for (const surface of SURFACES) {
   // ── the Client and its props ─────────────────────────────────────────────
 
-  test(`R6.4: each row's live cell is a Client keyed timeline:<runId>/<slot>, module ./flow.tsx, with exactly the R6.4 props [${surface}]`, async ($, on) => {
+  test(`R6.4 R8.2 REQ-7: each row's live cell is a Client keyed timeline:<runId>/<slot>, module ./flow.tsx, with exactly the R8.2 props [${surface}]`, async ($, on) => {
     const seconds = { value: 3 as number | null }
     const h = patched(on, { '*': { activity: 'Bash', tool_calls: 1 } }, seconds)
     await start($, surface)
@@ -46,7 +47,7 @@ for (const surface of SURFACES) {
       const { found, props } = await timeline(b, timelineKey(id, slot))
       expect(isFlowModule(found.props.module), String(found.props.module)).toBe(true)
       expect(Object.keys(props).sort()).toEqual(TIMELINE_PROP_KEYS)
-      expect(props).toMatchObject({ look: 'badges', live: true, idle: 3, staleAfter: 5, staleFull: 120, before: { count: 0, ms: 0 } })
+      expect(props).toMatchObject({ look: 'badges', live: true, idle: 3, staleAfter: 5, staleFull: 120 })
       expect(props.c).toEqual(TIMELINE_DARK)
       expect(props.elapsed).toBe(h.clock.now() - r.startedAt)
       expect(props.width).toBeGreaterThanOrEqual(30)
@@ -133,7 +134,7 @@ for (const surface of SURFACES) {
     await b.unmount()
   })
 
-  test(`R6.4: the live cell receives the last 40 steps, with how many came before and their total time [${surface}]`, async ($, on) => {
+  test(`R6.4 R8.2 TEST-9 REQ-8: the live cell still receives the newest 40 steps [${surface}]`, async ($, on) => {
     const extra: Record<string, Json> = { '01': { activity: 'Bash', tool_calls: 1 } }
     const h = patched(on, extra, { value: 1 })
     await start($, surface)
@@ -150,7 +151,6 @@ for (const surface of SURFACES) {
     const b = await mountBand($, surface, bandProps(150))
     const { props } = await timeline(b, timelineKey(runIds(h)[0]!, '01'))
     expect(props.steps).toHaveLength(40)
-    expect(props.before).toEqual({ count: 10, ms: 10_000 })
     expect(props.steps[0]).toMatchObject({ t: 10_000, k: 'tool', tool: 'Read', x: 'f10.ts' })
     expect(props.steps[39]).toMatchObject({ t: 49_000, k: 'tool', tool: 'Edit', x: 'f49.ts' })
     await b.unmount()
@@ -183,7 +183,7 @@ for (const surface of SURFACES) {
 
   // ── how the badges look draws a live row ─────────────────────────────────
 
-  test(`R6.4: badges look — finished blocks at the left (one colour run is one N× badge), the current job's words then its name and live time flush right; the cell counts on by itself [${surface}]`, async ($, on) => {
+  test(`R6.4 R8.1 REQ-1 REQ-2 REQ-10: badges look — one bar per finished step, the current job's words then its name and live time flush right; the cell counts on by itself [${surface}]`, async ($, on) => {
     const extra: Record<string, Json> = {}
     const h = patched(on, extra, { value: 1 })
     await start($, surface)
@@ -203,8 +203,9 @@ for (const surface of SURFACES) {
     expect(kindsOf(props)).toEqual(['tool:Read', 'tool:Read', 'tool:Edit', 'tool:Bash'])
     const live = props.elapsed - 9_000
     const time = ` ${blockTime(live)} `
-    // two Read blocks of 2 s each are one badge 2×:04; the Edit block is :05
-    expect(text).toMatch(new RegExp(`^ 2×:04  :05 .*bun test  Bash ${esc(time)}$`))
+    // R8.1: the two Read steps remain two bars, followed by one Edit bar and one space; then blanks,
+    // then the words right-aligned one space left of the flush-right badge (R8.1 clarified).
+    expect(text).toMatch(new RegExp(`^▌▌▌ \\s*bun test ${esc(` Bash ${time}`)}$`))
     expectFlushRight(tree, props.width, ` Bash ${time}`)
     for (const ink of inkOfLast(tree, ' Bash ')) {
       expect(ink.bold).toBe(true)
@@ -216,10 +217,12 @@ for (const surface of SURFACES) {
       expect(ink.color).toBe(TIMELINE_DARK.timeInk)
       expect(timeFill.map(c => c.toUpperCase())).toContain(String(ink.backgroundColor).toUpperCase())
     }
-    // finished badges are faded toward the page: never the step's full colour
-    for (const ink of inkOfLast(tree, ' 2×:04 ')) {
-      expect(ink.backgroundColor).toBeDefined()
-      expect(String(ink.backgroundColor).toUpperCase()).not.toBe(TIMELINE_DARK.read)
+    // R8.1: history is full-colour foreground bars, with no fill or fading.
+    const bars = runsOf(tree).flatMap(ink => Array.from(ink.text).filter(ch => ch === '▌').map(() => ink))
+    expect(bars.map(ink => ink.color)).toEqual([TIMELINE_DARK.read, TIMELINE_DARK.read, TIMELINE_DARK.edit])
+    for (const ink of bars) {
+      expect(ink.backgroundColor ?? null).toBeNull()
+      expect(ink.dimColor).not.toBe(true)
     }
     // between polls the cell counts on by itself
     await b.advance(3_000)
@@ -312,14 +315,14 @@ for (const surface of SURFACES) {
     await b.unmount()
   })
 
-  test(`R6.4: badges look — past badges past half the cell fold into one +N badge with their summed time [${surface}]`, async ($, on) => {
+  test(`R8.1 REQ-3: badges look — finished-step bars keep only the newest floor(width/2)−1 steps without a fold badge [${surface}]`, async ($, on) => {
     const extra: Record<string, Json> = { '01': { activity: 'Bash', tool_calls: 1 } }
     const h = patched(on, extra, { value: 1 })
     await start($, surface)
     const r = await team($, h, 'fold', ['fold-model'])
     const S = r.startedAt
     await h.clock.set(S + 80_000)
-    // 24 finished blocks of 3 s, alternating colours (none merge), then the current job. claudish sends
+    // 24 finished steps of 3 s, alternating colours, then the current job. claudish sends
     // at most 20 steps, so they arrive over two polls, the second list starting after the first's last.
     const blocks = Array.from({ length: 24 }, (_, i) => step(S + i * 3_000, 'tool', i % 2 === 0 ? 'Read' : 'Edit', `f${i}`))
     extra['01'] = { activity: 'Bash', tool_calls: 1, recent: blocks.slice(0, 12) }
@@ -329,19 +332,13 @@ for (const surface of SURFACES) {
     const b = await mountBand($, surface, bandProps(140))
     expect((await timeline(b, timelineKey(runIds(h)[0]!, '01'))).props.steps).toHaveLength(25)
     const { tree, text, props } = await cellDrawing(b, timelineKey(runIds(h)[0]!, '01'))
-    const m = /^ \+(\d+)  (\d*:\d\d) /.exec(text)
-    expect(m, text).not.toBeNull()
-    const folded = Number(m![1])
-    expect(folded).toBeGreaterThanOrEqual(1)
-    expect(m![2]).toBe(blockTime(folded * 3_000)) // their summed time
-    const rest = text.slice(m![0].length, text.indexOf('bun test'))
-    const shown = rest.match(/ :03 /g) ?? []
-    expect(folded + shown.length).toBe(24) // every block is either folded or shown
-    expect(shown.length * 5).toBeLessThanOrEqual(Math.floor(props.width / 2))
-    for (const ink of runsOf(tree).filter(x => x.text.includes(`+${folded}`))) expect(ink.backgroundColor).toBe(TIMELINE_DARK.foldCount)
-    const foldTimeRuns = runsOf(tree).filter(x => x.text.includes(m![2]!) && !x.text.includes('+'))
-    expect(foldTimeRuns.length).toBeGreaterThan(0)
-    expect(foldTimeRuns[0]!.backgroundColor).toBe(TIMELINE_DARK.foldTime)
+    const kept = Math.min(24, Math.floor(props.width / 2) - 1)
+    const bars = runsOf(tree).flatMap(ink => Array.from(ink.text).filter(ch => ch === '▌').map(() => ink.color))
+    const expected = Array.from({ length: 24 }, (_, i) => i % 2 === 0 ? TIMELINE_DARK.read : TIMELINE_DARK.edit).slice(-kept)
+    expect(bars).toEqual(expected)
+    expect(text.startsWith(`${'▌'.repeat(kept)} `)).toBe(true)
+    expect(text).not.toMatch(/\+\d+|×/)
+    expectFlushRight(tree, props.width, ` Bash  ${blockTime(props.elapsed - 72_000)} `)
     await b.unmount()
   })
 
@@ -394,7 +391,7 @@ for (const surface of SURFACES) {
 
   // ── the legend ───────────────────────────────────────────────────────────
 
-  test(`R6.4: the legend — one line under the rows, indented 2, a Client keyed legend naming each colour once in the order met; none with no finished step, none when the live cell is dropped, none once every row ended [${surface}]`, async ($, on) => {
+  test(`R6.4 R8.2 REQ-9 REQ-10: the legend — one line under the rows, indented 2, a Client keyed legend naming each colour once in the order met; none with no finished step, none when the live cell is dropped, none once every row ended [${surface}]`, async ($, on) => {
     const extra: Record<string, Json> = { '01': { activity: 'Bash', tool_calls: 1 } }
     const h = patched(on, extra, { value: 1 })
     await start($, surface)

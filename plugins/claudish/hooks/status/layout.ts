@@ -176,11 +176,10 @@ const METER_NUMBER_CELLS = 4
 /** One step of a slot's timeline as the live cell takes it: ms from the run's start, its kind, the tool, its line. */
 export type TrailMark = { t: number; k: ClaudishTrailKind; tool: string; x: string }
 /**
- * A slot's timeline: its last TRAIL_SHOWN steps, and how many steps came before them and how
- * long those took together (what the fold badge counts); how long the run has gone (to now while
- * live, to its end once ended); the silence in whole seconds while live; how long ago it ended.
+ * A slot's timeline: its last TRAIL_SHOWN steps; how long the run has gone (to now while live, to
+ * its end once ended); the silence in whole seconds while live; how long ago it ended.
  */
-export type TrailView = { steps: TrailMark[]; before: { count: number; ms: number }; elapsed: number; live: boolean; idle: number; endedFor: number }
+export type TrailView = { steps: TrailMark[]; elapsed: number; live: boolean; idle: number; endedFor: number }
 
 /** Steps the live cell receives: more than either look draws, so a long trail costs the cell nothing. */
 export const TRAIL_SHOWN = 40
@@ -194,14 +193,8 @@ export function trailView(run: ClaudishRun, slot: ClaudishSlot, now: number): Tr
   const live = !isTerminal(slot.state)
   const end = live ? now : last.at
   const cut = Math.max(0, steps.length - TRAIL_SHOWN)
-  const before = { count: 0, ms: 0 }
-  for (let i = 0; i < cut; i++) {
-    before.count++
-    before.ms += steps[i + 1]!.at - steps[i]!.at
-  }
   return {
     steps: steps.slice(cut).map(s => ({ t: Math.max(0, s.at - start), k: s.kind, tool: s.tool ?? '', x: s.text ?? '' })),
-    before,
     elapsed: Math.max(1, end - start),
     live,
     idle: live && slot.idleSeconds !== null ? Math.max(0, Math.floor(slot.idleSeconds)) : 0,

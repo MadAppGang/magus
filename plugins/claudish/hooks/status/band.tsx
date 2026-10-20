@@ -119,7 +119,7 @@ function row(els: Els, r: BandRow, model: BandModel, actions: BandActions, palet
           module="./flow.tsx"
           width={plan.meter}
           props={{
-            look, steps: r.trail.steps, before: r.trail.before, elapsed: r.trail.elapsed, live: r.trail.live, idle: r.trail.idle, endedFor: r.trail.endedFor,
+            look, steps: r.trail.steps, elapsed: r.trail.elapsed, live: r.trail.live, idle: r.trail.idle, endedFor: r.trail.endedFor,
             staleAfter: STALE_NUMBER_S, staleFull: STALE_STEPS_S[STALE_STEPS_S.length - 1]!, width: plan.meter, c: palette.timeline,
           } satisfies FlowProps}
         />

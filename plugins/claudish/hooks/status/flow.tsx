@@ -2,10 +2,9 @@
 // on the surface's own frame clock and the band never redraws for an animation frame. Two looks,
 // picked in /config (the plugin's `timeline` option):
 //
-//   badges  each finished block a coloured badge with its time (`:05`, `3×:03` for a run of one
-//           colour, `+11 34:43` for the oldest folded away); the current job at the right as a
-//           two-part badge, its name then its live time, and its words. A finished job scrolls
-//           out to the right and the next scrolls in.
+//   badges  each finished step a bar `▌` in its colour (at most half the cell, the newest kept);
+//           the current job at the right as a two-part badge, its name then its live time, and its
+//           words. A finished job scrolls out to the right and the next scrolls in.
 //           An ended row drops the badges: its end badge, then the model's last words or the error.
 //   line    a running line: every step as a badge and its words, typed in from the right, each
 //           ended step with its time; pac-man at the left eats the line. Silent, the line stops
@@ -27,9 +26,8 @@ export type FlowStep = { t: number; k: ClaudishTrailKind; tool: string; x: strin
 /** What the band hands the cell (plain data): see layout.ts TrailView. */
 export type FlowProps = {
   look: 'badges' | 'line'
-  /** the last steps; `before` counts the steps that came before them, and their time together */
+  /** the last steps */
   steps: FlowStep[]
-  before: { count: number; ms: number }
   /** ms since the run started, at the band's render */
   elapsed: number
   live: boolean
@@ -66,8 +64,8 @@ const CPS = 40
 /** How fast a finished job scrolls out, and the next one in, in cells a second. */
 const OUT_CPS = 150
 const IN_CPS = 120
-/** The badges keep this share of the row, so a long job never pushes them around. */
-const BADGE_SHARE = 0.5
+/** The finished steps' bars keep at most this share of the row, so the current job keeps room for its words. */
+const BAR_SHARE = 0.5
 /** Below this many columns, the narrow look. */
 const NARROW = 30
 
@@ -112,7 +110,7 @@ function badgeOf(m: Step, c: TimelineColors): { name: string; color: string } {
   }
 }
 
-/** A finished block's fill, faded toward the page so the current job stands out; its text in the block's own hue. */
+/** A legend chip's fill, faded toward the page; its text in the colour's own hue. */
 export function soft(color: string, c: TimelineColors): { fg: string; bg: string } {
   return { fg: mix(color, c.words, 0.3), bg: mix(color, c.page, 0.78) }
 }
@@ -160,7 +158,7 @@ function clockOf(ms: number): string {
   return `${t >= 60 ? Math.floor(t / 60) : ''}:${String(t % 60).padStart(2, '0')}`
 }
 
-type Frame = { steps: Step[]; before: { count: number; ms: number }; now: number; live: boolean; idle: number; endedFor: number; ms: number; width: number; staleAfter: number; staleFull: number; c: TimelineColors }
+type Frame = { steps: Step[]; now: number; live: boolean; idle: number; endedFor: number; ms: number; width: number; staleAfter: number; staleFull: number; c: TimelineColors }
 /** A look's drawing, and for how many more ms something in it moves (0: only its clocks change). */
 type Drawn = { segs: Seg[]; busy: number }
 /** On every other second: a blink that a calm row, redrawn once a second, still shows. */
@@ -229,7 +227,7 @@ function lineLook(f: Frame): Drawn {
   return { segs: [head, { text: ' ', fg: c.dim }, ...row, ...clock], busy: Math.max(typingFor, dying) }
 }
 
-// ── badges: the past as timed badges, the current job at the right ────────────
+// ── badges: the past as bars, the current job at the right ──────────────────────
 
 /** A job: its words, then its two-part badge, so the badge sits flush right. Too long for `max`,
  *  the words are cut and the badge is kept whole. */
@@ -324,39 +322,13 @@ function badgesLook(f: Frame): Drawn {
   const job = out ? prev! : cur
   const shift = !f.live ? 0 : out ? Math.floor((since / 1000) * OUT_CPS) : Math.max(0, cur.length - Math.floor(((since - outMs) / 1000) * IN_CPS))
 
-  // Every finished block, the leaving one only once it has gone; a run of one colour is one badge.
-  const done = steps.slice(0, out ? n - 2 : n - 1).map((m, i) => ({ m, ms: steps[i + 1]!.t - m.t }))
-  const groups: { color: string; ms: number; count: number }[] = []
-  for (const d of done) {
-    const color = badgeOf(d.m, c).color
-    const last = groups[groups.length - 1]
-    if (last && last.color === color) {
-      last.count++
-      last.ms += d.ms
-    } else groups.push({ color, ms: d.ms, count: 1 })
-  }
-  const label = (count: number, ms: number) => ` ${count > 1 ? `${count}×` : ''}${clockOf(ms)} `
-  const room = Math.floor(W * BADGE_SHARE)
-  const spanFrom = (from: number) => groups.slice(from).reduce((s, g) => s + label(g.count, g.ms).length, 0)
-  // The oldest fold into one two-part badge: how many, then their time together. Steps the band
-  // no longer sends (f.before) are always folded.
-  const foldOf = (from: number) => {
-    const hidden = groups.slice(0, from)
-    const count = f.before.count + hidden.reduce((s, g) => s + g.count, 0)
-    return count === 0 ? null : { count: ` +${count} `, time: ` ${clockOf(f.before.ms + hidden.reduce((s, g) => s + g.ms, 0))} ` }
-  }
-  const widthOf = (from: number) => { const fd = foldOf(from); return (fd ? fd.count.length + fd.time.length + 1 : 0) + spanFrom(from) }
-  let from = 0
-  while (from < groups.length && widthOf(from) > room) from++
-  const keep = groups.length - from
-  const fold = foldOf(from)
-  const strip: Seg[] = []
-  if (fold) strip.push(...cells([
-    { text: fold.count, fg: c.foldInk, bg: c.foldCount, bold: true },
-    { text: fold.time, fg: c.timeInk, bg: c.foldTime, bold: true },
-    { text: ' ', fg: c.dim },
-  ]))
-  for (const g of groups.slice(groups.length - keep)) strip.push(...cells([{ text: label(g.count, g.ms), ...soft(g.color, c), bold: true }]))
+  // Every finished step as one bar in its colour, the leaving one only once it has gone. The bars
+  // take at most half the cell, the newest kept, and never the room the shown job's badge needs.
+  const bars = steps.slice(0, out ? n - 2 : n - 1).map(m => ({ text: '▌', fg: badgeOf(m, c).color }))
+  const badgeCells = jobBadge(f, steps, out ? n - 2 : n - 1, out ? false : stale).length
+  const room = Math.min(Math.floor(W * BAR_SHARE) - 1, W - badgeCells - 2)
+  const kept = room > 0 ? bars.slice(Math.max(0, bars.length - room)) : []
+  const strip: Seg[] = kept.length > 0 ? [...kept, { text: ' ', fg: c.dim }] : []
   strip.forEach((s, x) => { if (x < W) row[x] = s })
 
   const max = W - strip.length - 1
@@ -380,7 +352,7 @@ function merge(segs: readonly Seg[]): Seg[] {
   return out
 }
 
-/** The band's legend line: what each finished block's colour means, in the blocks' own faded fills. */
+/** The band's legend line: what each finished step's colour means, each as a chip on its faded fill. */
 export type LegendProps = { legend: { name: string; color: string }[]; c: TimelineColors }
 
 const Flow: ClientModule<FlowProps | LegendProps, FlowState> = (all, surface) => {
@@ -428,7 +400,6 @@ const Flow: ClientModule<FlowProps | LegendProps, FlowState> = (all, surface) =>
   if (s !== undefined && !s.halt && settledAt(endedFor)) surface.setState({ ...(surface.state ?? s), halt: true })
   const f: Frame = {
     steps: props.steps,
-    before: props.before,
     now: props.live ? props.elapsed + lag : props.elapsed,
     live: props.live,
     idle: props.live ? props.idle + Math.floor(lag / 1000) : 0,

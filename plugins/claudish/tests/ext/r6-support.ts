@@ -1,6 +1,6 @@
-// Black-box helpers for spec revision R6 (2.6.0). Written from spec.md (R6.1–R6.8) and the public
-// contract only: the engine kit's element descriptions, the plugin's published `$.state` keys, and
-// the Client props R6.4 names. No implementation import.
+// Black-box helpers for spec revision R6, with R8.2's Client props and timeline palette delta.
+// Written from spec.md and the public contract only: the engine kit's element descriptions,
+// the plugin's published `$.state` keys, and the specified Client props. No implementation import.
 
 import { expect } from 'claude-code/testing'
 import type { Harness } from '../fake-claudish'
@@ -16,7 +16,7 @@ export const TIMELINE_LIGHT = {
   think: '#7C3AED', say: '#6D28D9', ask: '#B45309', done: '#166534', fail: '#B91C1C', finish: '#15803D',
   words: '#4B5068', dim: '#8F94AC', ink: '#FFFFFF', timeInk: '#0B0B12', page: '#FFFFFF', pac: '#E8890C',
   pacQuiet: '#A8743A', ghost: '#B91C1C', ghost2: '#BE185D', ok: '#166534', warn: '#B45309', bad: '#B91C1C',
-  silenceInk: '#FFFFFF', foldCount: '#3D59A1', foldTime: '#7AA2F7', foldInk: '#FFFFFF',
+  silenceInk: '#FFFFFF',
 } as const
 
 export const TIMELINE_DARK = {
@@ -24,25 +24,24 @@ export const TIMELINE_DARK = {
   think: '#B794F6', say: '#C4A7F8', ask: '#FFB454', done: '#22E06B', fail: '#FF4D5E', finish: '#7EE2A0',
   words: '#9AA0BC', dim: '#5A5E78', ink: '#0B0B12', timeInk: '#0B0B12', page: '#16171D', pac: '#FFD23F',
   pacQuiet: '#A8743A', ghost: '#FF4D5E', ghost2: '#FF8AD8', ok: '#22E06B', warn: '#FFB454', bad: '#FF4D5E',
-  silenceInk: '#FFFFFF', foldCount: '#3D59A1', foldTime: '#7AA2F7', foldInk: '#FFFFFF',
+  silenceInk: '#FFFFFF',
 } as const
 
 /**
  * R6.6: dark timeline colours that are NOT also a §9 palette colour, so they can only reach a
  * drawing through a Client module: none may appear in the band's own tree.
  */
-export const TIMELINE_ONLY_DARK = ['#F38BA8', '#7DCFFF', '#FF9E64', '#D8DAE5', '#C4A7F8', '#7EE2A0', '#9AA0BC', '#16171D', '#FFD23F', '#A8743A', '#FF8AD8', '#3D59A1', '#7AA2F7'] as const
+export const TIMELINE_ONLY_DARK = ['#F38BA8', '#7DCFFF', '#FF9E64', '#D8DAE5', '#C4A7F8', '#7EE2A0', '#9AA0BC', '#16171D', '#FFD23F', '#A8743A', '#FF8AD8'] as const
 
 // ── R6.4: the live cell's props ──────────────────────────────────────────────
 
 /** One step as the live cell receives it (the contract's TrailMark): ms from the run's start, kind, tool, its line. */
 export type Mark = { t: number; k: string; tool: string | null; x: string | null }
 
-/** R6.4: `{ look, steps, before, elapsed, live, idle, endedFor, staleAfter: 5, staleFull: 120, width, c }`. */
+/** R8.2: `{ look, steps, elapsed, live, idle, endedFor, staleAfter: 5, staleFull: 120, width, c }`. */
 export type TimelineProps = {
   look: string
   steps: Mark[]
-  before: { count: number; ms: number }
   elapsed: number
   live: boolean
   idle: number
@@ -53,7 +52,7 @@ export type TimelineProps = {
   c: Record<string, string>
 }
 
-export const TIMELINE_PROP_KEYS = ['before', 'c', 'elapsed', 'endedFor', 'idle', 'live', 'look', 'staleAfter', 'staleFull', 'steps', 'width']
+export const TIMELINE_PROP_KEYS = ['c', 'elapsed', 'endedFor', 'idle', 'live', 'look', 'staleAfter', 'staleFull', 'steps', 'width']
 
 /** The mod's run ids, oldest first, from its published `runs` state. */
 export function runIds(h: Harness): string[] {

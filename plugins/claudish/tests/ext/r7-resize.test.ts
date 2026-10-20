@@ -122,7 +122,7 @@ for (const ref of REFS) {
     { name: 'string cols', answer: reply({ cols: '120', rows: 36 }) },
     { name: 'string rows', answer: reply({ cols: 120, rows: '36' }) },
     { name: 'null rows', answer: reply({ cols: 120, rows: null }) },
-    { name: 'empty MCP content', answer: { content: [] } },
+    { name: 'empty MCP content', answer: { content: [], isError: false } },
   ]
   for (const c of failures) {
     test(`R7.4 TEST-6: ${ref.kind} ${c.name} decodes as failed with a reason`, async () => {
