@@ -4,6 +4,17 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Marketplace 13.7.4] - 2026-10-20
+
+### Changed
+
+- **`claudish` v2.6.2**: the plugin now requires claudish 12.1.0 or later, which can resize a
+  session's pane (`resize_session`, and `team` mode `"resize"`). An older claudish gets the
+  session-start notice with the upgrade command. Where claudish is installed from a GitHub
+  release, the plugin now installs v12.1.2.
+
+---
+
 ## [Marketplace 13.7.3] - 2026-10-20
 
 ### Fixed
