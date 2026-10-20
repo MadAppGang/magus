@@ -4,6 +4,22 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Marketplace 13.7.3] - 2026-10-20
+
+### Fixed
+
+- **`dev` v9.3.4**: `/dev:qa` starts its external test writer again. The writer runs as a
+  claudish session inside the sandbox folder, which loads only plugins installed for the
+  user, so `dev:qa-engineer` was rejected wherever `dev` is installed for the project. The
+  command now puts a copy of the agent and the stack's testing guidance into the sandbox. A
+  writer session that ends on a provider error without writing a test counts as failed, and
+  the command falls back to the internal writer.
+- **`dev` v9.3.4**: `dev:qa-engineer` reads only the guidance it is handed when the prompt
+  lists `LOADOUT`. Before, its own plugin-path lookups ran too, and inside a sandbox they
+  read as a read outside it.
+
+---
+
 ## [Marketplace 13.7.2] - 2026-10-20
 
 ### Fixed

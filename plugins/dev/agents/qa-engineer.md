@@ -60,8 +60,14 @@ tools: Read, Write, Edit, Bash, Glob, Grep
 </critical_constraints>
 
 <knowledge_routing>
-  Read only the files for the stacks in `STACK`. Discovery covers both install layouts
-  (marketplace cache and a local plugin tree); the first `ls` that succeeds wins.
+  **`LOADOUT` given → read only that.** When the prompt lists `LOADOUT`, it holds the stack
+  guidance already copied for you. Read it, and skip all the discovery below. An external
+  writer runs in a sandbox with no plugin root, so the paths below do not exist there, and
+  reading them would show as a read outside the sandbox. A guidance file missing from
+  `LOADOUT` is a gap to note under Obstacles, not a reason to look elsewhere.
+
+  Without `LOADOUT`: read only the files for the stacks in `STACK`. Discovery covers both
+  install layouts (marketplace cache and a local plugin tree); the first `ls` that succeeds wins.
 
   **Go**
   ```bash

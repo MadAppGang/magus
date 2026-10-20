@@ -2,7 +2,7 @@
 name: qa
 description: "Writes behaviour tests from a spec and a public contract with a writer that never sees the implementation — an external GPT top-tier model via claudish, or dev:qa-engineer in its own context — then runs them and a negative control."
 argument-hint: "--spec <path> --contract <path,...> [--test-dir <dir>] [--stack go|bun|ui|auto] [--model <tier>] [--run]"
-allowed-tools: Agent, AskUserQuestion, Bash, Read, Write, Glob, Grep, mcp__plugin_claudish_claudish__list_models, mcp__plugin_claudish_claudish__search_models, mcp__plugin_claudish_claudish__create_session, mcp__plugin_claudish_claudish__get_output, mcp__plugin_claudish_claudish__get_diagnostics
+allowed-tools: Agent, AskUserQuestion, Bash, Read, Write, Glob, Grep, mcp__plugin_claudish_claudish__list_models, mcp__plugin_claudish_claudish__search_models, mcp__plugin_claudish_claudish__create_session, mcp__plugin_claudish_claudish__list_sessions, mcp__plugin_claudish_claudish__get_output, mcp__plugin_claudish_claudish__get_diagnostics
 ---
 
 <role>
@@ -42,8 +42,36 @@ allowed-tools: Agent, AskUserQuestion, Bash, Read, Write, Glob, Grep, mcp__plugi
       for each contract path, the test dir's existing files under
       `${SESSION_PATH}/qa/sandbox/tests/`, and the test config files
       (`playwright.config.*`, `vitest.config.*`, `bunfig.toml`, `go.mod`, `package.json`).
-      No implementation file is copied. Write `${SESSION_PATH}/qa/inputs.json` listing
-      exactly what went in.
+      No implementation file is copied.
+    - Put the writer itself in the sandbox, because an external writer cannot reach this
+      plugin. A claudish child started with `work_dir` = the sandbox is its own Claude Code
+      project, so it loads only USER-scope plugins. Where `dev` is installed at PROJECT
+      scope, `agent = "dev:qa-engineer"` fails within a second as `agent_rejected`
+      (`--agent 'dev:qa-engineer' not found`, measured 2026-10-20). A project-level agent
+      inside the sandbox is found whatever the install scope:
+      - copy `${CLAUDE_PLUGIN_ROOT}/agents/qa-engineer.md` to
+        `${SESSION_PATH}/qa/sandbox/.claude/agents/qa-engineer.md`;
+      - copy the stack guidance into `${SESSION_PATH}/qa/sandbox/loadout/`, keeping each
+        source's tree: `loadout/<plugin>/<path under that plugin's root>`. Never flatten
+        it. Two files are both `SKILL.md`, and a skill links to its own `references/`. For
+        each guidance file, copy its whole skill directory or knowledge folder, leaving out
+        `assets/` and `node_modules/`. The child has no `CLAUDE_PLUGIN_ROOT`, so it can read
+        guidance only from the sandbox. Per resolved stack:
+
+        | Stack | Copy, when found |
+        |---|---|
+        | go | `${CLAUDE_PLUGIN_ROOT}/../go/knowledge/roles/tester/` and `…/go/knowledge/references/testing-patterns.md`, or the same under `${CLAUDE_PLUGIN_ROOT}/../../go/*/` |
+        | bun | `${CLAUDE_PLUGIN_ROOT}/../bunjs/skills/testing/`, or `${CLAUDE_PLUGIN_ROOT}/../../bunjs/*/skills/testing/` |
+        | ui | `${CLAUDE_PLUGIN_ROOT}/skills/testing/ui-playwright/` and `${CLAUDE_PLUGIN_ROOT}/knowledge/frontend/testing-frontend.md` |
+        | always | `${CLAUDE_PLUGIN_ROOT}/skills/core/testing-strategies/` |
+
+        A stack whose guidance is not installed gets none. Record the gap in `inputs.json`;
+        the writer cannot install it.
+    - Snapshot the tests as they went in: `shasum` of every file under
+      `${SESSION_PATH}/qa/sandbox/tests/`, saved to `${SESSION_PATH}/qa/tests.before`.
+      Phase 1 compares against it.
+    - Write `${SESSION_PATH}/qa/inputs.json` listing exactly what went in, the agent and
+      every loadout file included.
   </phase>
 
   <phase number="1" name="Resolve the writer">
@@ -65,19 +93,31 @@ allowed-tools: Agent, AskUserQuestion, Bash, Read, Write, Glob, Grep, mcp__plugi
        ```
        create_session(
          model = <resolved id>,
-         agent = "dev:qa-engineer",
+         agent = "qa-engineer",                  // the sandbox's own copy, from phase 0
          work_dir = "${SESSION_PATH}/qa/sandbox",
          timeout_seconds = 900,
          prompt = <the writer prompt below, with sandbox-relative paths>
        )
        ```
-       `work_dir` is the sandbox, so the child session's tools cannot reach the
-       implementation: blindness is a property of the file system, not of the prompt.
+       `work_dir` is the sandbox, so the child starts with nothing but the sandbox in view.
+       The sandbox still lives inside the repository, though: a shell can climb out of it,
+       and Claude Code loads the repo's ancestor `CLAUDE.md`. So blindness rests on the
+       agent's contract (Reads only under the given paths) and on the `Files Read` check
+       in phase 2, not on the file system alone.
        Then wait for the session to end (poll `list_sessions(include_completed=true)`
        about every 10 s; nothing is pushed). On
        `COMPLETED` call `get_output(session_id)`; on `FAILED` or `TIMEOUT` call
        `get_diagnostics(session_id)`, record it with the row's `reason_detail`, and fall
        through to step 4 with `writer: internal (external failed: <reason>)`.
+       `COMPLETED` is not success on its own. A provider error ends the turn as
+       `COMPLETED`, with output such as `[API Error: server_is_overloaded …]` and no test
+       file written. Hash `<sandbox>/tests/` again and compare it with
+       `${SESSION_PATH}/qa/tests.before`. If no file was added or changed, the writer
+       failed:
+       - on a transient provider error (overloaded, rate limited, timeout), retry once
+         with a new `create_session` and the same arguments;
+       - otherwise, or when the retry fails too, fall through to step 4 with
+         `writer: internal (external failed: COMPLETED with no tests written)`.
     4. Internal writer:
        ```
        Agent(
@@ -98,7 +138,8 @@ allowed-tools: Agent, AskUserQuestion, Bash, Read, Write, Glob, Grep, mcp__plugi
     STACK: <stack list>
     STOP_AT: implement
     SESSION_PATH: <sandbox>
-    LOADOUT: <stack guidance paths the qa-engineer's knowledge routing names>
+    LOADOUT: <sandbox>/loadout/ — the stack guidance, each source under its own tree;
+             read it for stack guidance and do not run your knowledge routing's discovery
     Write the plan and the tests. Do not read anything outside the paths above.
     ```
   </phase>

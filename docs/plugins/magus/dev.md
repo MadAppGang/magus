@@ -7,7 +7,7 @@ Universal development assistant. Detects the project stack and routes work to sp
 
 | | |
 |---|---|
-| Version | `9.3.3` |
+| Version | `9.3.4` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 17 |
 | Subagents | 12 |
