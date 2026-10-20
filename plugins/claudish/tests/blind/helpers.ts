@@ -30,8 +30,33 @@ export const DARK = {
   tokensIn: '#0F592A', tokensOut: '#16803D',
 } as const
 
-/** Every colour the band may draw: the theme keys, and the §9 dark palette's hex. */
-export const ALLOWED_COLOURS: readonly string[] = [...THEME_KEYS, ...new Set(Object.values(DARK))]
+/**
+ * R6.2/R6.5 (dark): a hue's quiet fill is the hue mixed 55 % toward black. Where a channel lands on an
+ * exact half the spec leaves the rounding open, so both spellings are listed.
+ */
+export function quietDark(hex: string): string[] {
+  const opts = [0, 1, 2].map(i => {
+    const exact = parseInt(hex.slice(1 + 2 * i, 3 + 2 * i), 16) * 0.45
+    return Math.abs(exact - Math.floor(exact) - 0.5) < 1e-6 ? [Math.floor(exact), Math.ceil(exact)] : [Math.round(exact)]
+  })
+  const two = (n: number) => n.toString(16).toUpperCase().padStart(2, '0')
+  return opts[0]!.flatMap(r => opts[1]!.flatMap(g => opts[2]!.map(b => `#${two(r)}${two(g)}${two(b)}`)))
+}
+
+/**
+ * Every colour the band (and the Show panel outside the child's frame) may draw (R6.6): the theme
+ * keys, the §9/§10 dark palette's hex, and the quiet inks R6.2 puts tool calls, loops and cost on,
+ * plus the run hue's quiet fill under the shown Show tab (R6.5). Hex compared upper-case.
+ */
+export const ALLOWED_COLOURS: readonly string[] = [
+  ...THEME_KEYS,
+  ...new Set([...Object.values(DARK), ...[DARK.run, DARK.tools, DARK.loops, DARK.cost].flatMap(quietDark)]),
+]
+
+/** A drawn colour as ALLOWED_COLOURS spells it: theme keys as they are, hex upper-case. */
+export function allowedSpelling(c: unknown): unknown {
+  return typeof c === 'string' && c.startsWith('#') ? c.toUpperCase() : c
+}
 
 /** Spec §2/§9: state → 3-letter badge code, its ink (`fg`) on its solid fill (`bg`), and its hue (the runtime's text). */
 export const STATE_LOOK = {

@@ -1,11 +1,13 @@
 // A Show tab, drawn through the plugin on both surfaces: frames and since_seq, the
-// viewport (the bottom of the child's screen), the child's colours and the style budget,
-// how a tab ends, cadence, the read-only guarantee, and which tabs are captured at all.
+// viewport (the last lines of the child's screen, top-aligned under the tab header), the child's
+// colours and the style budget, how a tab ends, cadence, the read-only guarantee, and which tabs
+// are captured at all. R6.5: every tab is drawn inside the one pane SHOW_PANE_ID; a tab's id
+// (paneId) names its view, and the pane draws the shown one.
 
 import type { Register } from 'claude-code'
 import { expect, test } from 'claude-code/testing'
 import type { ClaudishPaneView, ClaudishRuns } from '../types'
-import { FINAL_GRACE_MS, NO_SCREEN_NOTE, PANE_STYLE_BUDGET, STYLE_SPANS_PER_LINE, paneId } from '../hooks/status/domain'
+import { FINAL_GRACE_MS, NO_SCREEN_NOTE, PANE_STYLE_BUDGET, SHOW_PANE_ID, STYLE_SPANS_PER_LINE, paneId } from '../hooks/status/domain'
 import { ENGINE_DRAWING, engineOwn, TEAM_TOOL, harness, start, type FakeOptions, type Harness, type Recorded } from './fake-claudish'
 import { COLS, CUBE_INDEX, RED_INDEX, ROWS, TRUECOLOR_BORDER, type Json } from './scenario'
 import { SURFACES, mountBand, mountPane, paneProps, walk, type Mounted, type Node, type Surface } from './ui'
@@ -61,7 +63,7 @@ const CLOSER = {
   name: 'closer',
   register(on: Parameters<Register>[0]) {
     on('prompt.submit', async ($, e, next) => {
-      const m = /^close (cl_[0-9a-f]{8})$/.exec(e.text)
+      const m = /^close (claudish-show)$/.exec(e.text)
       if (!m) return next(e)
       await $.ui.close({ id: m[1]! })
       return { drop: 'closed a tab' }
@@ -78,8 +80,9 @@ for (const surface of SURFACES) {
     expect(h.writes.find(([k]) => k === `panes/${id}`)?.[1]).toMatchObject({ status: 'waiting', frame: null })
     expect(capturesOf(h, '02')).toHaveLength(1)
     expect(view(h, id)?.status).toBe('live')
+    expect((h.state.get('showTab') as { active?: string } | undefined)?.active).toBe(id) // R6.5: the pressed slot's tab is shown
     await h.clock.advance(1000)
-    const pane = await mountPane($, surface, id)
+    const pane = await mountPane($, surface, SHOW_PANE_ID)
     const first = view(h, id)?.frame?.seq
     expect(first).toBeGreaterThan(0)
     expect((await frameLines(pane)).some(l => l.includes(`seq ${first}`))).toBe(true)
@@ -99,27 +102,28 @@ for (const surface of SURFACES) {
     expect(writesOf(h, id)).toBe(writes)
   })
 
-  test(`pane: viewport — the bottom of the screen, one outer Text per line, exactly the body's rows [${surface}]`, async ($, on) => {
+  test(`pane: viewport — the screen's last lines, top-aligned, one outer Text per line, exactly the room's rows [${surface}]`, async ($, on) => {
     const h = harness(on)
     await start($, surface)
     const id = await showTab($, h, surface)
     await h.clock.advance(1000)
-    // 24 body rows (not the 20-row fallback), so a height read from anywhere else shows
-    const pane = await mountPane($, surface, id, paneProps(80, 24))
+    // 24 body rows (not the 20-row fallback), so a height read from anywhere else shows. R6.5: the room
+    // is the rows less 2 (the strip and its rule); the frame keeps its last room − 1 = 21 lines.
+    const pane = await mountPane($, surface, SHOW_PANE_ID, paneProps(80, 24))
     const lines = await frameLines(pane)
-    expect(lines).toHaveLength(23)
+    expect(lines).toHaveLength(21)
     const screen = view(h, id)!.frame!.lines
     expect(lines.at(-1)).toBe(screen[47]) // the last non-blank line of the fake screen
-    expect(lines[0]).toBe(screen[25] === '' ? ' ' : screen[25]!.slice(0, 81))
+    expect(lines[0]).toBe(screen[27] === '' ? ' ' : screen[27]!.slice(0, 81))
     const frame = await pane.find({ type: 'Box', key: 'frame' })
     for (const line of (frame?.children ?? []) as Node[]) {
       expect(line.type).toBe('Text')
       expect(line.props?.wrap).toBe('truncate-end')
       for (const c of (line.children ?? []) as unknown[]) if (typeof c !== 'string') expect((c as Node).type).toBe('Text')
     }
-    const top = (await pane.drawn()) as unknown as Node
-    expect((top.children ?? []).length).toBe(2) // the header row and the frame
-    expect(1 + lines.length).toBe(24) // exactly the body's rows
+    expect(2 + 1 + lines.length).toBe(24) // the strip, its rule, the header row and the frame: exactly the body's rows
+    // the rule under the strip runs the pane's columns
+    expect(await pane.find({ type: 'Text', text: '─'.repeat(80) })).toBeDefined()
     // the wide line is cut at bodyColumns + 1, so the engine still truncates it with …
     expect(Math.max(...lines.map(l => Array.from(l).length))).toBe(81)
   })
@@ -129,7 +133,8 @@ for (const surface of SURFACES) {
     await start($, surface)
     const id = await showTab($, h, surface)
     await h.clock.advance(1000)
-    const pane = await mountPane($, surface, id, paneProps(170, 60))
+    expect(view(h, id)?.status).toBe('live') // the panel shows the pressed slot's tab, painted
+    const pane = await mountPane($, surface, SHOW_PANE_ID, paneProps(170, 60))
     expect(capturesOf(h, '02').every(c => c.args.spans === true)).toBe(true)
     const nodes = frameNodes(await pane.drawn())
     const colours = new Set(nodes.map(n => n.props?.color).filter(c => c !== undefined))
@@ -150,7 +155,8 @@ for (const surface of SURFACES) {
     await start($, surface)
     const id = await showTab($, h, surface)
     await h.clock.advance(2000)
-    const pane = await mountPane($, surface, id, paneProps(170, 60))
+    expect(view(h, id)?.frame?.styles).toBeUndefined() // captured without spans
+    const pane = await mountPane($, surface, SHOW_PANE_ID, paneProps(170, 60))
     expect(capturesOf(h, '02').length).toBeGreaterThan(0)
     expect(capturesOf(h, '02').every(c => !('spans' in c.args))).toBe(true)
     expect((await frameLines(pane)).length).toBeGreaterThan(10)
@@ -170,12 +176,13 @@ for (const surface of SURFACES) {
       await start($, surface)
       const id = await showTab($, h, surface)
       await h.clock.advance(1000)
-      const pane = await mountPane($, surface, id, paneProps(60, 60))
-      // 59 body rows for a 50-line screen: bottom-aligned, 9 blank lines above the whole frame
+      void id
+      const pane = await mountPane($, surface, SHOW_PANE_ID, paneProps(60, 60))
+      // room 58 (60 less the strip and its rule), header 1: 57 rows for a 50-line screen. R6.5: top-aligned,
+      // the whole screen from the first row, nothing blank above it
       const lines = await frameLines(pane)
-      expect(lines).toHaveLength(59)
-      expect(lines.slice(0, 59 - ROWS).every(l => l === ' ')).toBe(true)
-      expect(lines.slice(59 - ROWS).map(l => l.slice(0, 2))).toEqual(Array.from({ length: ROWS }, (_, i) => String(i).padStart(2, '0')))
+      expect(lines.slice(0, ROWS).map(l => l.slice(0, 2))).toEqual(Array.from({ length: ROWS }, (_, i) => String(i).padStart(2, '0')))
+      expect(lines.slice(ROWS).every(l => l.trim() === '')).toBe(true)
       const coloured = frameNodes(await pane.drawn()).filter(n => n.props?.color !== undefined)
       expect(coloured.length > 0).toBe(painted)
       if (painted) expect(coloured).toHaveLength(ROWS * 7)
@@ -188,8 +195,12 @@ for (const surface of SURFACES) {
     const id = await showTab($, h, surface)
     await h.clock.advance(1000)
     expect(view(h, id)?.frame?.styles?.every(l => l.length === STYLE_SPANS_PER_LINE)).toBe(true)
-    const pane = await mountPane($, surface, id, paneProps(170, 60))
+    const pane = await mountPane($, surface, SHOW_PANE_ID, paneProps(170, 60)) // R6.5: the one Show pane
     const tree = await pane.drawn()
+    // the whole 50-line screen is drawn (room 58 − 1), so the plain check below covers a real frame
+    const lines = await frameLines(pane)
+    expect(lines.filter(l => l.startsWith('#'))).toHaveLength(ROWS)
+    expect(frameNodes(tree).length).toBeGreaterThan(0)
     expect(frameNodes(tree).every(n => n.props?.color === undefined)).toBe(true)
     expect(walk(tree).length).toBeLessThan(2600)
     expect(PANE_STYLE_BUDGET).toBe(50_000)
@@ -209,7 +220,7 @@ for (const surface of SURFACES) {
     const n = capturesOf(h, '02').length
     await h.clock.advance(20_000)
     expect(capturesOf(h, '02')).toHaveLength(n)
-    const pane = await mountPane($, surface, id)
+    const pane = await mountPane($, surface, SHOW_PANE_ID)
     expect(await pane.find({ type: 'Text', text: /· ended/ })).toBeDefined()
     expect((await frameLines(pane)).length).toBeGreaterThan(0)
   })
@@ -238,7 +249,7 @@ for (const surface of SURFACES) {
     const n = capturesOf(h, '02').length
     await h.clock.advance(20_000)
     expect(capturesOf(h, '02')).toHaveLength(n)
-    const pane = await mountPane($, surface, id)
+    const pane = await mountPane($, surface, SHOW_PANE_ID)
     expect(await pane.find({ type: 'Text', text: NO_SCREEN_NOTE })).toBeDefined()
   })
 
@@ -276,29 +287,33 @@ for (const surface of SURFACES) {
     expect(capturesOf(h, '03').filter(c => c.at > from).length).toBeGreaterThanOrEqual(25)
   })
 
-  test(`pane: read-only — no input, no client, no button; only list and capture calls [${surface}]`, async ($, on) => {
+  test(`pane: read-only — no input, no client, no select; its only Buttons are the tabs; only list and capture calls [${surface}]`, async ($, on) => {
     const h = harness(on)
     await start($, surface)
-    const id = await showTab($, h, surface)
+    await showTab($, h, surface)
     const from = h.fake.calls.length
     await h.clock.advance(5000)
-    const pane = await mountPane($, surface, id)
-    for (const type of ['Input', 'Client', 'Button', 'Select']) expect(await pane.findAll({ type })).toHaveLength(0)
+    const pane = await mountPane($, surface, SHOW_PANE_ID) // R6.5: the one Show pane
+    expect((await frameLines(pane)).length).toBeGreaterThan(0) // a real screen is drawn, so the checks below bite
+    for (const type of ['Input', 'Client', 'Select']) expect(await pane.findAll({ type })).toHaveLength(0)
+    // R6.5: each tab is a Button labelled by its model; nothing else in the pane is pressable
+    expect((await pane.findAll({ type: 'Button' })).map(b => b.props.label)).toEqual(['gpt-6.1-sol', 'kimi-k3', 'grok-4.6', 'glm-5.3'])
     const kinds = h.fake.calls.slice(from).map(c => (c.tool === 'team' ? `team:${String(c.args.mode)}` : c.tool))
     expect(kinds.length).toBeGreaterThan(0)
     expect(kinds.every(k => k === 'team:list' || k === 'team:capture')).toBe(true)
   })
 
-  test(`pane: unavailable — the note drawn, retried no sooner than 10 s [${surface}]`, async ($, on) => {
-    const h = harness(on, { rejectCapture: true })
+  test(`pane: unavailable — the note drawn, the numbers line in R6.1's counts with a space after each mark, retried no sooner than 10 s [${surface}]`, async ($, on) => {
+    const h = harness(on, { rejectCapture: true, rowPatch: r => ({ ...r, tokens_in: 12_700, tokens_out: 780, tool_calls: 8, turns_completed: 1 }) })
     await start($, surface)
     const id = await showTab($, h, surface)
     await h.clock.advance(1000)
     expect(view(h, id)?.status).toBe('unavailable')
-    const pane = await mountPane($, surface, id)
+    const pane = await mountPane($, surface, SHOW_PANE_ID)
     expect(await pane.find({ type: 'Text', text: /Live screen not available/ })).toBeDefined()
-    // the row's numbers keep the tab useful
-    expect(await pane.find({ type: 'Text', text: /^tokens ↑[\d.]+k? ↓[\d.]+k? · ƒ \d+ · ↻ \d+$/ })).toBeDefined()
+    // R6.8: the row's numbers keep the tab useful
+    expect(await pane.find({ type: 'Text', text: /^tokens ↑13k ↓780 · ƒ 8 · ↻ 1$/ })).toBeDefined()
+    expect(await pane.find({ type: 'Text', text: /12\.7k|ƒ8|↻1/ })).toBeUndefined()
     await h.clock.advance(30_000)
     const at = capturesOf(h, '02').map(c => c.at)
     for (let i = 1; i < at.length; i++) expect(at[i]! - at[i - 1]!).toBeGreaterThanOrEqual(10_000)
@@ -319,21 +334,21 @@ for (const surface of SURFACES) {
     expect(h.fake.calls).toHaveLength(calls)
   })
 
-  test(`pane: capture scope — no tab, no capture; a closed tab stops capturing [${surface}]`, { plugins: [CLOSER] }, async ($, on) => {
+  test(`pane: capture scope — no panel, no capture; closing the panel stops capturing and keeps the views [${surface}]`, { plugins: [CLOSER] }, async ($, on) => {
     const h = harness(on)
     await start($, surface)
     await ($ as { tool: { call: (e: unknown) => Promise<unknown> } }).tool.call({ tool: TEAM_TOOL, mode: 'run', path: 'r1' })
     await h.clock.advance(10_000)
-    expect(h.fake.captureCalls()).toHaveLength(0)
+    expect(h.fake.captureCalls()).toHaveLength(0) // R6.5: every slot's view is seeded, but nothing is captured while the panel is closed
     const band = await mountBand($, surface)
     await band.press({ key: `show:${runs(h).list[0]!.id}/02` })
     await h.clock.advance(3000)
-    const id = h.opens[0]!.id
+    expect(h.opens.map(o => o.id)).toEqual([SHOW_PANE_ID])
+    const id = paneId(runs(h).list[0]!.id, '02')
     expect(capturesOf(h, '02').length).toBeGreaterThan(0)
-    await $.prompt.submit({ text: `close ${id}` } as never) // the stand-in closes the tab: ui.close reaches the plugin's hook
-    expect(h.closes).toEqual([id])
-    // §9: the stand-in is a plugin, so its close carries origin `plugin`, and a plugin's close keeps the view
-    // (only the person's close or an unload clears it; the kit cannot raise a person-origin close)
+    await $.prompt.submit({ text: `close ${SHOW_PANE_ID}` } as never) // the stand-in closes the panel: ui.close reaches the plugin's hook
+    expect(h.closes).toEqual([SHOW_PANE_ID])
+    // the stand-in is a plugin, so its close carries origin `plugin`, and the views stay
     expect(view(h, id)).toMatchObject({ slot: '02' })
     const n = h.fake.captureCalls().length
     await h.clock.advance(10_000)

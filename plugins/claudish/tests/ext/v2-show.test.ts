@@ -5,6 +5,7 @@ import { REAP_MS } from '../scenario'
 import { bandProps, mountBand, mountPane, paneProps, SURFACES, walk, type Mounted, type Node } from '../ui'
 import { POLL, delegate, team } from './support'
 import { DARK, bandRow, chips, expectInk, frameLines, keyOf, pressChip, runtimePart, themeKeysOnly, visibleText } from './v2-support'
+import { SHOW_PANE, activeTab, drawnRows, silentFor, untilPoll, views } from './r6-support'
 
 async function rowWithId(b: Mounted, id: string): Promise<Node> {
   const escaped = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -20,8 +21,16 @@ async function showId(b: Mounted, id: string): Promise<void> {
   await b.press({ key: keyOf(chips(await rowWithId(b, id), 'Show')[0]!) })
 }
 
-async function hideId(b: Mounted, id: string): Promise<void> {
-  await b.press({ key: keyOf(chips(await rowWithId(b, id), 'Hide')[0]!) })
+/** R6.5: the band header's Hide (no row reads Hide). */
+async function pressHeaderHide(b: Mounted): Promise<void> {
+  const hide = (await b.findAll({ type: 'Button' })).filter(x => x.props.label === 'Hide')
+  expect(hide).toHaveLength(1)
+  await b.press({ key: hide[0]!.key! })
+}
+
+/** The Show panel's tab labels, in order (each tab a Button whose `label` prop is its label). */
+async function tabLabels(p: Mounted): Promise<string[]> {
+  return (await p.findAll({ type: 'Button' })).map(f => String(f.props.label))
 }
 
 async function tabHeader(p: Mounted, model: string): Promise<Node> {
@@ -34,7 +43,7 @@ async function tabHeader(p: Mounted, model: string): Promise<Node> {
 }
 
 for (const surface of SURFACES) {
-  test(`v2 §6/§7: Show asks for 120 dock columns, 24 inline rows and close on Escape, even from the band at its floor [${surface}]`, async ($, on) => {
+  test(`R6.5: Show opens the one pane claudish-show — title claudish, 120 dock columns, 24 inline rows, close on Escape — even from the band at its floor [${surface}]`, async ($, on) => {
     const observed: PaneOpenArgs[] = []
     // Register before the harness's answering hook: a spy beneath that hook would never run.
     on('ui.open', {}, async (_$, e, next) => { observed.push({ ...e }); return next(e) })
@@ -45,12 +54,13 @@ for (const surface of SURFACES) {
     const showKey = keyOf(chips(await bandRow(b, 'size-model'), 'Show')[0]!)
     expect(observed).toHaveLength(0)
     expect(h.fake.captureCalls()).toHaveLength(0)
-    await b.redraw(bandProps(41)) // §10 floor for a 10-character model: 2 + 2 + 5 + (8 + 2) + 9 + 8 + 5 gaps
+    await b.redraw(bandProps(41)) // R6.3 floor for a 10-character model: 2 + 2 + 5 + (8 + 2) + 9 + 8 + 5 gaps
     await b.press({ key: showKey })
     expect(observed).toHaveLength(1)
-    expect(observed[0]).toMatchObject({ title: 'size-model', columns: 120, rows: 24, closeOnEscape: true })
+    expect(observed[0]).toMatchObject({ id: SHOW_PANE, title: 'claudish', columns: 120, rows: 24, closeOnEscape: true })
     expect(h.opens).toHaveLength(1)
     expect(h.panes[0]?.isPlaced).toBe(true)
+    expect(views(h).get(activeTab(h)!)).toMatchObject({ slot: '01', model: 'size-model' })
     expect(h.toasts.some(t => t.includes('not drawn yet'))).toBe(false)
     await h.clock.advance(0) // the first capture is due at once: no poll interval passes
     expect(h.fake.captureCalls().length).toBeGreaterThan(0)
@@ -77,76 +87,68 @@ for (const surface of SURFACES) {
     await b.unmount()
   })
 
-  test(`v2 §6/§9: duplicate team model titles add label/slot; Hide then Show brings both tabs back, never a duplicate [${surface}]`, async ($, on) => {
+  test(`R6.5: two tabs of one model add their slot id to the label; Hide then Show brings the panel back with both tabs, never a second pane [${surface}]`, async ($, on) => {
     const h = harness(on)
     await start($, surface)
     await team($, h, 'title-run', ['same-model', 'same-model'])
     const b = await mountBand($, surface)
     await showId(b, '01')
-    expect(h.opens).toHaveLength(1)
-    expect(h.opens[0]?.title).toBe('same-model')
-    const tab01 = h.opens[0]!.id
+    const tab01 = activeTab(h)
     await showId(b, '02')
-    // §8: the open comes first, so a taken title is fixed once the open tabs are read (a retitle of the same id)
-    const tab02 = h.opens[1]!.id
+    const tab02 = activeTab(h)
     expect(tab02).not.toBe(tab01)
-    expect(h.opens.slice(1).every(o => o.id === tab02)).toBe(true)
-    expect(h.opens.at(-1)?.title).toBe('same-model (title-run/02)')
-    expect(h.panes.find(p => p.id === tab02)?.title).toBe('same-model (title-run/02)')
-    expect(h.panes).toHaveLength(2)
+    expect(h.opens.every(o => o.id === SHOW_PANE && o.title === 'claudish')).toBe(true)
+    const p = await mountPane($, surface, SHOW_PANE, paneProps(120, 24))
+    expect(await tabLabels(p)).toEqual(['same-model 01', 'same-model 02'])
+    expect((await tabLabels(p)).some(l => l.includes('(') || l.includes('title-run'))).toBe(false) // one run: the slot id alone
     await b.redraw()
-    const opened = h.opens.length
-    await hideId(b, '02')
-    // §9: Hide puts every Show tab away
-    expect([...h.closes].sort()).toEqual([tab01, tab02].sort())
+    await pressHeaderHide(b)
+    expect(h.closes).toEqual([SHOW_PANE])
     expect(h.panes).toHaveLength(0)
     await b.redraw()
     await showId(b, '02')
-    // both come back under their own ids and titles, the pressed one opened last (any retitle comes after)
-    const again = h.opens.slice(opened)
-    expect(again.map(o => o.id).slice(0, 2)).toEqual([tab01, tab02])
-    expect(again.every(o => o.id === tab01 || o.id === tab02)).toBe(true)
-    expect(h.panes.find(p => p.id === tab01)?.title).toBe('same-model')
-    expect(h.panes.find(p => p.id === tab02)?.title).toBe('same-model (title-run/02)')
-    expect(h.panes.find(p => p.id === tab02)?.isShown).toBe(true)
-    expect(h.panes).toHaveLength(2)
-    expect(h.opens.every(o => !o.title?.includes('(title-run/02) (title-run/02)'))).toBe(true)
+    expect(h.panes.map(x => x.id)).toEqual([SHOW_PANE])
+    expect(activeTab(h)).toBe(tab02)
+    await p.redraw()
+    expect(await tabLabels(p)).toEqual(['same-model 01', 'same-model 02'])
+    await p.unmount()
     await b.unmount()
   })
 
-  test(`v2 §6: duplicate delegation model title adds only its label, never the session id [${surface}]`, async ($, on) => {
+  test(`R6.5: a delegation sharing a model with a team slot adds only its label, never the session id; the team slot adds label/slot [${surface}]`, async ($, on) => {
     const h = harness(on)
     await start($, surface)
     await team($, h, 'team-title', ['haiku-4.5'])
     const b = await mountBand($, surface)
     await showId(b, '01')
-    expect(h.opens[0]?.title).toBe('haiku-4.5')
+    const p = await mountPane($, surface, SHOW_PANE, paneProps(120, 24))
+    expect(await tabLabels(p)).toEqual(['haiku-4.5'])
     const s = await delegate($, h)
     await b.redraw()
     const label = `#${s.id.slice(0, 6)}`
     await showId(b, label)
-    const tab = h.opens[1]!.id
-    expect(h.opens.slice(1).every(o => o.id === tab)).toBe(true)
-    const title = h.panes.find(p => p.id === tab)?.title
-    expect(title).toBe(`haiku-4.5 (${label})`)
-    expect(h.opens.at(-1)?.title).toBe(title)
-    expect(title).not.toContain(s.id)
-    expect(title).not.toContain(`${label}/`)
-    expect(h.panes).toHaveLength(2)
+    await p.redraw()
+    const labels = await tabLabels(p)
+    expect(labels).toContain(`haiku-4.5 ${label}`)
+    expect(labels).toContain('haiku-4.5 team-title/01') // two runs drawn: label/slot
+    expect(labels.some(l => l.includes(s.id))).toBe(false)
+    expect(labels.some(l => l.includes(`${label}/`))).toBe(false)
+    expect(views(h).get(activeTab(h)!)).toMatchObject({ model: 'haiku-4.5' })
+    expect(h.panes.map(x => x.id)).toEqual([SHOW_PANE])
+    await p.unmount()
     await b.unmount()
   })
 
   test(`v2 §6: tab header starts with the row badge, then bold model, provider, meter and activity [${surface}]`, async ($, on) => {
-    const h = harness(on, { rowPatch: row => ({ ...row, idle_seconds: 42, activity: 'thinking' }) })
+    const h: ReturnType<typeof harness> = harness(on, { rowPatch: row => silentFor(() => h, () => 42)({ ...row, activity: 'thinking' }) })
     await start($, surface)
     await team($, h, 'tab-header', ['header-model'])
     const b = await mountBand($, surface)
-    const badge = visibleText(await bandRow(b, 'header-model')).slice(
-      visibleText(await bandRow(b, 'header-model')).indexOf(' RUN '),
-      visibleText(await bandRow(b, 'header-model')).indexOf(' RUN ') + 12,
-    )
     await pressChip(b, 'header-model', 'Show')
-    const p = await mountPane($, surface, h.opens[0]!.id, paneProps(120, 24))
+    await untilPoll(h) // read right after a poll: the silence is exactly 42 s
+    const rowText = visibleText(await bandRow(b, 'header-model'))
+    const badge = rowText.slice(rowText.indexOf(' RUN '), rowText.indexOf(' RUN ') + 12)
+    const p = await mountPane($, surface, SHOW_PANE, paneProps(120, 24))
     const hdr = await tabHeader(p, 'header-model')
     const text = visibleText(hdr)
     expect(text.startsWith(`${badge} header-model`)).toBe(true)
@@ -160,7 +162,8 @@ for (const surface of SURFACES) {
     expectInk(hdr, 'header-model', { bold: true })
     expectInk(hdr, '▰▰▱▱▱ 42s', { color: 'success' })
     expect(text).not.toMatch(/^header-model|▶ running|idle | · ended/)
-    expect(chips(await p.drawn())).toHaveLength(0)
+    // R6.5: the panel's only Buttons are its tabs: no Stop, Show or Hide inside it
+    expect((await p.findAll({ type: 'Button' })).map(f => f.props.label)).toEqual(['header-model'])
     themeKeysOnly(await p.drawn())
     await p.unmount()
     await b.unmount()
@@ -188,8 +191,8 @@ for (const surface of SURFACES) {
     await b.unmount()
   })
 
-  for (const bodyRows of [8, 4] as const) {
-    test(`v2 §6: a three-line child frame is bottom-aligned in ${bodyRows} body rows [${surface}]`, async ($, on) => {
+  for (const [bodyRows, kept] of [[8, 3], [4, 1]] as const) {
+    test(`R6.5: a three-line child frame is top-aligned in ${bodyRows} body rows, right under the tab header [${surface}]`, async ($, on) => {
       const lines = ['short answer', '❯ short prompt', 'child status']
       const h = harness(on, { noSpans: true, frame: args => ({
         seq: args.seq, cols: 80, rows: lines.length, cursor: { x: 2, y: 1 }, final: args.final, lines,
@@ -199,49 +202,52 @@ for (const surface of SURFACES) {
       const b = await mountBand($, surface)
       await pressChip(b, 'short-model', 'Show')
       await h.clock.advance(0) // the first capture is due at once: no poll interval passes
-      const p = await mountPane($, surface, h.opens[0]!.id, paneProps(80, bodyRows))
-      const frame = frameLines(await p.drawn())
-      // a blank row may be drawn as a space, so it keeps its height: compare what is visible
-      expect(frame.map(l => l.trimEnd())).toEqual([...new Array<string>(bodyRows - 1 - lines.length).fill(''), ...lines])
-      expect(frame).toHaveLength(bodyRows - 1)
-      expect(frame[frame.length - 1]).toBe('child status')
-      expect(frame[frame.length - 2]).toBe('❯ short prompt')
-      expect(frame[frame.length - 1]).not.toBe('')
-      if (bodyRows === 8) expect(frame[0]).not.toBe('short answer')
-      expect(chips(await p.drawn())).toHaveLength(0)
+      const p = await mountPane($, surface, SHOW_PANE, paneProps(80, bodyRows))
+      const frame = frameLines(await p.drawn()).map(l => l.trimEnd())
+      // room = rows less the strip and its rule; the frame keeps its last room − 1 lines
+      const expected = lines.slice(lines.length - kept)
+      expect(frame.slice(0, kept)).toEqual(expected)
+      expect(frame.slice(kept).every(l => l === ''), 'blank rows only below the screen').toBe(true)
+      expect(frame[0]).not.toBe('')
+      expect(frame[0]).toBe(expected[0])
+      if (bodyRows === 8) expect(frame[0]).toBe('short answer') // top-aligned, never bottom
       await p.unmount()
       await b.unmount()
     })
   }
 
   // §7/§8/§9: Hide, written from the spec text only.
-  test(`v2 §9: a row reads [ Hide ] while its tab is open, drawn and not hidden; Hide puts every tab away, each keeping its view; every row then reads [ Show ] [${surface}]`, async ($, on) => {
+  test(`R6.5: no row reads [ Hide ]; the header carries it while the panel is open and drawn; it puts the panel away keeping every view; rows read [ Show ] throughout [${surface}]`, async ($, on) => {
     const h = harness(on)
     await start($, surface)
     await team($, h, 'hide-run', ['hide-model', 'other-model'])
     const b = await mountBand($, surface)
-    expect(chips(await bandRow(b, 'hide-model'), 'Hide')).toHaveLength(0)
+    const hides = async () => (await b.findAll({ type: 'Button' })).filter(x => x.props.label === 'Hide')
+    expect(await hides()).toHaveLength(0)
     await pressChip(b, 'hide-model', 'Show')
-    const tab = h.opens[0]!.id
-    expect(h.opens[0]).toMatchObject({ closeOnEscape: true })
+    expect(h.opens[0]).toMatchObject({ id: SHOW_PANE, closeOnEscape: true })
+    const tab = activeTab(h)!
     await b.redraw()
-    const row = await bandRow(b, 'hide-model')
-    expect(chips(row, 'Show')).toHaveLength(0)
-    const hide = chips(row, 'Hide')
+    for (const model of ['hide-model', 'other-model']) {
+      expect(chips(await bandRow(b, model), 'Show')).toHaveLength(1)
+      expect(chips(await bandRow(b, model), 'Hide')).toHaveLength(0)
+    }
+    const hide = await hides()
     expect(hide).toHaveLength(1)
-    expect(hide[0]!.props?.label).toBe('Hide')
-    expectInk(hide[0], '[ Hide ]', { color: 'suggestion', bold: true, backgroundColor: undefined })
-    expect(chips(await bandRow(b, 'other-model'), 'Show')).toHaveLength(1) // its tab is not open
+    expect(hide[0]!.props.label).toBe('Hide')
+    const hideNode = walk(await b.drawn()).map(x => x.node).find(n => n.type === 'Button' && n.props?.label === 'Hide')
+    expectInk(hideNode, '[ Hide ]', { color: 'suggestion', bold: true, backgroundColor: undefined })
+    for (const r of drawnRows(await b.drawn())) expect(walk(r).map(x => x.node)).not.toContain(hideNode)
     await pressChip(b, 'other-model', 'Show')
-    const other = h.opens[1]!.id
+    const other = activeTab(h)!
     await b.redraw()
-    expect(chips(await bandRow(b, 'other-model'), 'Hide')).toHaveLength(1)
-    await pressChip(b, 'hide-model', 'Hide')
-    expect([...h.closes].sort()).toEqual([tab, other].sort())
+    await pressHeaderHide(b)
+    expect(h.closes).toEqual([SHOW_PANE])
     expect(h.panes).toHaveLength(0)
-    expect(h.state.get(`panes/${tab}`)).toMatchObject({ slot: '01' }) // the view is kept
+    expect(h.state.get(`panes/${tab}`)).toMatchObject({ slot: '01' }) // the views are kept
     expect(h.state.get(`panes/${other}`)).toMatchObject({ slot: '02' })
     await b.redraw()
+    expect(await hides()).toHaveLength(0)
     for (const model of ['hide-model', 'other-model']) {
       expect(chips(await bandRow(b, model), 'Show')).toHaveLength(1)
       expect(chips(await bandRow(b, model), 'Hide')).toHaveLength(0)
@@ -251,47 +257,49 @@ for (const surface of SURFACES) {
     await b.unmount()
   })
 
-  test(`v2 §8: a tab Claude Code keeps undrawn reads [ Show ], and pressing it opens the tab again [${surface}]`, async ($, on) => {
+  test(`R6.5: a panel Claude Code keeps undrawn has no Hide in the header; Show opens it again as the person's request [${surface}]`, async ($, on) => {
     const h = harness(on)
     await start($, surface)
     await team($, h, 'undrawn-run', ['undrawn-model'])
     const b = await mountBand($, surface)
     await pressChip(b, 'undrawn-model', 'Show')
-    const tab = h.opens[0]!.id
     // open, but not drawn, until the person asks again
-    h.panesAnswer = () => (h.opens.length === 1 ? h.panes.map(p => (p.id === tab ? { ...p, isPlaced: false, isShown: false } : p)) : h.panes)
+    h.panesAnswer = () => (h.opens.length === 1 ? h.panes.map(p => ({ ...p, isPlaced: false, isShown: false })) : h.panes)
     await b.redraw()
-    expect(chips(await bandRow(b, 'undrawn-model'), 'Hide')).toHaveLength(0)
+    expect((await b.findAll({ type: 'Button' })).filter(x => x.props.label === 'Hide')).toHaveLength(0)
     expect(chips(await bandRow(b, 'undrawn-model'), 'Show')).toHaveLength(1)
+    const calls = h.uiCalls.length
     await pressChip(b, 'undrawn-model', 'Show')
+    expect(h.uiCalls[calls]).toBe('open')
     expect(h.opens.length).toBeGreaterThanOrEqual(2)
-    expect(h.opens.every(o => o.id === tab)).toBe(true)
-    expect(h.closes.every(id => id === tab)).toBe(true)
+    expect(h.opens.every(o => o.id === SHOW_PANE)).toBe(true)
+    expect(h.closes.every(id => id === SHOW_PANE)).toBe(true)
     await b.redraw()
-    expect(chips(await bandRow(b, 'undrawn-model'), 'Hide')).toHaveLength(1)
+    expect((await b.findAll({ type: 'Button' })).filter(x => x.props.label === 'Hide')).toHaveLength(1)
+    expect(chips(await bandRow(b, 'undrawn-model'), 'Hide')).toHaveLength(0)
     await b.unmount()
   })
 
-  test(`v2 §8/§9: the press opens before anything else: its first calls are the opens, the pressed tab last, before any other call [${surface}]`, async ($, on) => {
+  test(`R6.5: every Show press opens claudish-show before anything else — the first, after a switch, and after Hide [${surface}]`, async ($, on) => {
     const h = harness(on)
     await start($, surface)
     await team($, h, 'first-call', ['first-model', 'second-model'])
     const b = await mountBand($, surface)
-    // a lone Show: the first call is its open
     let before = h.uiCalls.length
     await pressChip(b, 'first-model', 'Show')
     expect(h.uiCalls.slice(before)[0], `calls: ${h.uiCalls.slice(before).join(', ')}`).toBe('open')
+    before = h.uiCalls.length
     await pressChip(b, 'second-model', 'Show')
-    const [first, second] = [h.opens[0]!.id, h.opens[1]!.id]
+    if (h.uiCalls.length > before) expect(h.uiCalls[before]).toBe('open') // a switch: nothing before the open, if any
     await b.redraw()
-    await pressChip(b, 'first-model', 'Hide')
+    await pressHeaderHide(b)
     await b.redraw()
-    // a Show after Hide: every restore open and the pressed open come first, the pressed one last
     before = h.uiCalls.length
     const opens = h.opens.length
     await pressChip(b, 'first-model', 'Show')
-    expect(h.uiCalls.slice(before, before + 2), `calls: ${h.uiCalls.slice(before).join(', ')}`).toEqual(['open', 'open'])
-    expect(h.opens.slice(opens, opens + 2).map(o => o.id)).toEqual([second, first])
+    expect(h.uiCalls[before], `calls: ${h.uiCalls.slice(before).join(', ')}`).toBe('open')
+    expect(h.opens.slice(opens).map(o => o.id)).toEqual([SHOW_PANE])
+    expect(views(h).get(activeTab(h)!)).toMatchObject({ slot: '01' })
     await b.unmount()
   })
 }

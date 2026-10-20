@@ -3,6 +3,7 @@ import { harness, start } from '../fake-claudish'
 import { REAP_MS, COLS, ROWS, type Json } from '../scenario'
 import { mountBand, mountPane, paneProps, SURFACES, walk } from '../ui'
 import { POLL, delegate, drawingText, press, team, textOf, themeOnly } from './support'
+import { SHOW_PANE, TAB_ID, activeTab } from './r6-support'
 
 function captured(args: { seq: number; final: boolean; spans: boolean }): Json {
   const lines = new Array<string>(ROWS).fill('')
@@ -20,33 +21,40 @@ function captured(args: { seq: number; final: boolean; spans: boolean }): Json {
 }
 
 for (const surface of SURFACES) {
-  test(`ext Show: one model-titled tab per slot; Hide puts every tab away; Show brings them all back, the pressed one in front [${surface}]`, async ($, on) => {
+  test(`ext Show: one pane for every slot; the header Hide puts it away keeping the tabs; Show brings it back on the pressed slot's tab [${surface}]`, async ($, on) => {
     const h = harness(on)
     await start($, surface)
     const r = await team($, h)
     const b = await mountBand($, surface)
     expect(h.fake.captureCalls()).toHaveLength(0)
     await press(b, 'model-a', 'Show')
+    const tabA = activeTab(h)
     await press(b, 'model-b', 'Show')
-    const [tabA, tabB] = [h.opens[0]!.id, h.opens[1]!.id]
+    const tabB = activeTab(h)
+    expect(tabA).toMatch(TAB_ID)
+    expect(tabB).toMatch(TAB_ID)
     expect(tabA).not.toBe(tabB)
+    expect(h.opens.every(o => o.id === SHOW_PANE && o.title === 'claudish')).toBe(true)
     await b.redraw()
-    await press(b, 'model-a', 'Hide')
-    // §9: Hide closes every Show tab, not only its own
-    expect([...h.closes].sort()).toEqual([tabA, tabB].sort())
+    const hide = (await b.findAll({ type: 'Button' })).filter(x => x.props.label === 'Hide')
+    expect(hide).toHaveLength(1) // R6.5: in the header, once
+    await b.press({ key: hide[0]!.key! })
+    expect(h.closes).toEqual([SHOW_PANE])
     expect(h.panes).toHaveLength(0)
+    expect(h.state.get(`panes/${tabA}`)).toMatchObject({ slot: '01' }) // views kept
+    expect(h.state.get(`panes/${tabB}`)).toMatchObject({ slot: '02' })
     await b.redraw()
+    const opens = h.opens.length
     await press(b, 'model-a', 'Show')
-    // §9: the hidden tab comes back, and the pressed one opens last, in front
-    expect(h.opens.slice(2).map(p => p.id)).toEqual([tabB, tabA])
-    expect(h.opens.map(p => p.title)).toEqual(['model-a', 'model-b', 'model-b', 'model-a'])
-    expect(h.panes).toHaveLength(2)
-    expect(h.panes.find(p => p.id === tabA)?.isShown).toBe(true)
+    expect(h.opens.slice(opens).map(p => p.id)).toEqual([SHOW_PANE])
+    expect(activeTab(h)).toBe(tabA)
+    expect(h.panes.map(p => p.id)).toEqual([SHOW_PANE])
     await h.clock.advance(3_000)
-    expect(h.fake.captureCalls().length).toBeGreaterThan(0)
-    for (const c of h.fake.captureCalls()) {
+    const captures = h.fake.captureCalls()
+    expect(captures.filter(c => c.args.slot === '01').length).toBeGreaterThan(0) // the shown tab is captured
+    for (const c of captures) {
       expect(c).toMatchObject({ tool: 'team', args: { mode: 'capture', path: r.path, run_id: r.runId } })
-      expect(['01', '02']).toContain(c.args.slot)
+      expect(['01', '02', '03']).toContain(c.args.slot)
       expect(c.args).not.toHaveProperty('pane')
     }
     await b.unmount()
@@ -139,17 +147,17 @@ for (const surface of SURFACES) {
     await p.redraw()
     const frameText = walk(await p.drawn()).filter(x => x.inFrame && x.node.type === 'Text').map(x => textOf(x.node)).join('')
     expect(frameText).toContain('ALPHA BETA tail')
-    const n = h.fake.captureCalls().length
+    const n = h.fake.captureCalls().filter(c => c.args.slot === '01').length
     await h.clock.set(endedAt + REAP_MS - 1)
-    expect(h.fake.captureCalls().length).toBeGreaterThan(n)
+    expect(h.fake.captureCalls().filter(c => c.args.slot === '01').length).toBeGreaterThan(n)
     await h.clock.advance(POLL + 1)
     await p.redraw()
     const finalText = walk(await p.drawn()).filter(x => x.inFrame && x.node.type === 'Text').map(x => textOf(x.node)).join('')
     expect(finalText).toBe(frameText)
-    const finalCount = h.fake.captureCalls().length
+    const finalCount = h.fake.captureCalls().filter(c => c.args.slot === '01').length
     await h.clock.advance(30_000)
-    expect(h.fake.captureCalls()).toHaveLength(finalCount)
-    expect(h.closes).not.toContain(h.opens[0]!.id)
+    expect(h.fake.captureCalls().filter(c => c.args.slot === '01')).toHaveLength(finalCount)
+    expect(h.closes).not.toContain(SHOW_PANE) // the panel stays open; only this slot stopped capturing
     await p.unmount()
     await b.unmount()
   })

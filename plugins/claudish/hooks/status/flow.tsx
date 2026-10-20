@@ -50,10 +50,11 @@ export type FlowProps = {
  * began, so the cell counts time itself and a poll costs no redraw of its own. Two clocks count:
  * a slow one, once a second, always; a fast one, every FRAME_MS, only while the drawing moves
  * (fast, until busyTo). halt: the row has ended and its last animation is done, so both stop.
+ * at: the band's clock the cell last compared itself with, so only a fresh render can correct it.
  */
-type FlowState = { ms: number; mount: number; busyTo: number; fast: boolean; halt: boolean }
+type FlowState = { ms: number; mount: number; at: number; busyTo: number; fast: boolean; halt: boolean }
 const SLOW_MS = 1000
-/** The cell's own count may run this far from the band's before it takes the band's again. */
+/** When the band hands a new time, the cell's own count may differ this far before it takes the band's. */
 const DRIFT_MS = 1500
 
 /** The fast clock's period, while something moves. */
@@ -409,18 +410,22 @@ const Flow: ClientModule<FlowProps | LegendProps, FlowState> = (all, surface) =>
         else if (!now.fast) surface.setState({ ...now, ms: now.ms + SLOW_MS })
       })
     }
-    surface.setState({ ms: 0, mount: clockAt, busyTo: 0, fast: false, halt: settledAt(props.endedFor) })
+    surface.setState({ ms: 0, mount: clockAt, at: clockAt, busyTo: 0, fast: false, halt: settledAt(props.endedFor) })
   }
   const ms = s?.ms ?? 0
   let t = (s?.mount ?? clockAt) + ms
-  if (s !== undefined && Math.abs(t - clockAt) > DRIFT_MS) {
-    // The cell's count fell behind (a hidden terminal throttles its clocks) or ran ahead: take the band's.
-    surface.setState({ ...s, mount: clockAt - ms })
-    t = clockAt
+  // Only a render with the band's new time can correct the count: between polls the props stand
+  // still while the cell counts on, and comparing with them would hold it at the last poll.
+  if (s !== undefined && clockAt !== s.at) {
+    if (Math.abs(t - clockAt) > DRIFT_MS) {
+      // The cell's count fell behind (a hidden terminal throttles its clocks) or ran ahead: take the band's.
+      surface.setState({ ...s, mount: clockAt - ms, at: clockAt })
+      t = clockAt
+    } else surface.setState({ ...s, at: clockAt })
   }
   const lag = Math.max(0, t - clockAt) // how far the cell has counted on since the band's render
   const endedFor = props.endedFor + lag
-  if (s !== undefined && !s.halt && settledAt(endedFor)) surface.setState({ ...s, halt: true })
+  if (s !== undefined && !s.halt && settledAt(endedFor)) surface.setState({ ...(surface.state ?? s), halt: true })
   const f: Frame = {
     steps: props.steps,
     before: props.before,

@@ -66,6 +66,8 @@ export const SHOW_COLUMNS = 120
 export const SHOW_ROWS = 24
 /** Surfaces that paint the child's colours in a Show tab; the others draw its screen plain. */
 export const PAINT_SURFACES: readonly string[] = ['terminal', 'desktop']
+/** Surfaces that draw a `Client` (the live cell). vscode's resolve still hands one over, and draws nothing for it. */
+export const CLIENT_SURFACES: readonly string[] = ['terminal', 'desktop']
 /** What one frame line and one styled segment cost, estimated, against the style budget. */
 export const PANE_LINE_COST = 64
 export const PANE_SEGMENT_COST = 128

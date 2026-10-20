@@ -18,8 +18,9 @@ for (const surface of SURFACES) {
     await b.redraw()
     const after = textOf(await row(b, s.model))
     expect(after).not.toBe(before)
-    expect(after).toContain('ƒ 4')
-    expect(after).toContain('↻ 1')
+    expect(after).toContain(' ƒ4 ') // R6.2: the mark touches its number, one space each side
+    expect(after).toContain(' ↻1 ')
+    expect(after).not.toMatch(/ƒ \d|↻ \d/)
     expect(after).not.toMatch(/tools?|loops?/) // a symbol and a number, no words
     stateColor(await row(b, s.model), 'RUN', DARK.ink, DARK.run)
     expect(h.submits).toHaveLength(0)

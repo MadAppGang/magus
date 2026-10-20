@@ -4,7 +4,7 @@
 
 import { expect, test } from 'claude-code/testing'
 import type { ClaudishRuns, ClaudishStopRequest } from '../types'
-import { SHOW_COLUMNS, STOP_CONFIRM_MS, STOP_SENT_TIMEOUT_MS, THEME_KEYS } from '../hooks/status/domain'
+import { SHOW_COLUMNS, SHOW_PANE_ID, SHOW_PANE_TITLE, SHOW_ROWS, STOP_CONFIRM_MS, STOP_SENT_TIMEOUT_MS, THEME_KEYS } from '../hooks/status/domain'
 import { ENGINE_DRAWING, engineOwn, TEAM_TOOL, harness, start, type Harness } from './fake-claudish'
 import { SURFACES, bandProps, mountBand, mountPane, texts, walk, type Mounted } from './ui'
 
@@ -18,6 +18,30 @@ const DARK = {
   model: '#5B6CE0', modelQuiet: '#293165', tokensIn: '#0F592A', tokensOut: '#16803D', tools: '#4FD6BE', loops: '#B794F6', cost: '#FFD479',
   ink: '#0B0B12', snow: '#FFFFFF',
 } as const
+
+/**
+ * R6.2/R6.5: a hue's quiet fill in the dark palette, the hue mixed 55 % toward black (tool calls,
+ * loops and cost sit on it; so does the shown Show tab, on the run hue's). Where a channel lands on
+ * an exact half the spec leaves the rounding open, so both spellings are allowed.
+ */
+function quiet(hex: string): string[] {
+  const opts = [0, 1, 2].map(i => {
+    const exact = parseInt(hex.slice(1 + 2 * i, 3 + 2 * i), 16) * 0.45
+    return Math.abs(exact - Math.floor(exact) - 0.5) < 1e-6 ? [Math.floor(exact), Math.ceil(exact)] : [Math.round(exact)]
+  })
+  const two = (n: number) => n.toString(16).toUpperCase().padStart(2, '0')
+  return opts[0]!.flatMap(r => opts[1]!.flatMap(g => opts[2]!.map(b => `#${two(r)}${two(g)}${two(b)}`)))
+}
+const ALLOWED = [...THEME_KEYS, ...Object.values(DARK), ...[DARK.run, DARK.tools, DARK.loops, DARK.cost].flatMap(quiet)]
+  .map(c => (c.startsWith('#') ? c.toUpperCase() : c))
+
+/** The shown Show tab's id, from the published `showTab` state. */
+const shownTab = (h: Harness) => (h.state.get('showTab') as { active?: string | null } | undefined)?.active ?? null
+
+/** The band header's Hide button (R6.5), if drawn. */
+async function headerHide(band: Mounted) {
+  return (await band.findAll({ type: 'Button' })).find(b => b.props.label === 'Hide')
+}
 
 /** A team run of four slots, listed once. */
 async function teamRun($: unknown, h: Harness, path = 'r1') {
@@ -52,7 +76,13 @@ for (const surface of SURFACES) {
     const id = modRun(h).id
     const rows = (await band.findAll({ type: 'Box' })).filter(b => b.key?.startsWith('row:')).map(b => b.key)
     expect(rows).toEqual([`row:${id}/01`, `row:${id}/02`, `row:${id}/03`, `row:${id}/04`])
-    expect((await band.find({ type: 'Text', text: 'blocked' }))?.text).toBe('blocked')
+    // R6.2/R6.4: a row with a timeline draws no activity; the failed slot's live cell ends on its reason
+    expect(await band.find({ type: 'Text', text: 'blocked' })).toBeUndefined()
+    const cell = await band.find({ type: 'Client', key: `timeline:${id}/04` })
+    // R6.4: the kit reports the module resolved from the plugin root; the band names it ./flow.tsx
+    expect(cell?.props.module === './flow.tsx' || /(^|\/)hooks\/status\/flow\.tsx$/.test(String(cell?.props.module))).toBe(true)
+    await band.resize({ columns: (cell!.props.props as { width: number }).width, rows: 1, in: `timeline:${id}/04` })
+    expect(await band.find({ text: ' blocked ', in: `timeline:${id}/04` })).toBeDefined()
   })
 
   test(`band: values change [${surface}]`, async ($, on) => {
@@ -80,7 +110,7 @@ for (const surface of SURFACES) {
     const band = await mountBand($, surface)
     await band.press({ key: `show:${id}/01` })
     await h.clock.advance(1000)
-    const pane = await mountPane($, surface, h.opens[0]!.id)
+    const pane = await mountPane($, surface, SHOW_PANE_ID)
     let frameColours = 0
     for (const tree of [await band.drawn(), await pane.drawn()]) {
       for (const { node, inFrame } of walk(tree)) {
@@ -91,8 +121,8 @@ for (const surface of SURFACES) {
             expect(String(c)).toMatch(/^#[0-9a-f]{6}$/)
             frameColours += 1
           } else {
-            // §9: theme keys, except the badges and value text, which draw the palette's hex
-            expect([...THEME_KEYS, ...Object.values(DARK)].includes(c as never)).toBe(true)
+            // R6.6: theme keys, except the badges and value text, which draw the palette's hex (with R6.2's quiet inks)
+            expect(ALLOWED, `${node.type}.${prop}=${String(c)}`).toContain(String(c).startsWith('#') ? String(c).toUpperCase() : c)
           }
         }
       }
@@ -305,7 +335,7 @@ for (const surface of SURFACES) {
     expect(h.fake.calls).toHaveLength(0)
   })
 
-  test(`band: Show opens one tab per slot, titled by model; Hide puts every tab away, keeping their views; the next Show brings them all back, the pressed tab in front [${surface}]`, async ($, on) => {
+  test(`band: Show opens the one Show pane on that slot's tab; the header's Hide puts it away keeping every view; the next Show brings it back [${surface}]`, async ($, on) => {
     const h = harness(on)
     await start($, surface)
     await teamRun($, h)
@@ -313,58 +343,65 @@ for (const surface of SURFACES) {
     const band = await mountBand($, surface)
     const label = async (slot: string) => (await band.find({ key: `show:${id}/${slot}` }))?.props.label
     expect(await label('02')).toBe('Show')
+    expect(await headerHide(band)).toBeUndefined()
+    const first = h.uiCalls.length
     await band.press({ key: `show:${id}/02` })
-    await band.press({ key: `show:${id}/03` })
-    expect(h.opens.map(o => o.title)).toEqual(['kimi-k3', 'grok-4.6'])
-    expect(h.opens.every(o => /^cl_[0-9a-f]{8}$/.test(o.id) && o.columns === SHOW_COLUMNS && o.closeOnEscape === true)).toBe(true)
-    const [tab02, tab03] = [h.opens[0]!.id, h.opens[1]!.id]
-    await band.redraw()
-    expect(await label('02')).toBe('Hide') // open, drawn and not hidden
-    expect(await label('03')).toBe('Hide')
-    await band.press({ key: `show:${id}/02` })
-    // §9: Hide closes every Show tab and lists them, each keeping its view
-    expect([...h.closes].sort()).toEqual([tab02, tab03].sort())
-    expect(h.panes).toEqual([])
-    expect(((h.state.get('hiddenTabs') ?? []) as { id: string }[]).map(t => t.id).sort()).toEqual([tab02, tab03].sort())
+    expect(h.uiCalls[first]).toBe('open') // R6.5: the press's first call
+    const tab02 = shownTab(h)
+    expect(tab02).toMatch(/^cl_[0-9a-f]{8}$/)
     expect(h.state.get(`panes/${tab02}`)).toMatchObject({ slot: '02' })
+    await band.press({ key: `show:${id}/03` })
+    const tab03 = shownTab(h)
+    expect(tab03).not.toBe(tab02)
     expect(h.state.get(`panes/${tab03}`)).toMatchObject({ slot: '03' })
+    // one pane for every slot, never one per slot
+    expect(h.opens.length).toBeGreaterThan(0)
+    expect(h.opens.every(o => o.id === SHOW_PANE_ID && o.title === SHOW_PANE_TITLE && o.columns === SHOW_COLUMNS && o.rows === SHOW_ROWS && o.closeOnEscape === true)).toBe(true)
+    expect(h.panes.map(p => p.id)).toEqual([SHOW_PANE_ID])
     await band.redraw()
+    // a row always reads Show; Hide is the header's
     expect(await label('02')).toBe('Show')
     expect(await label('03')).toBe('Show')
-    // the next Show, on either row, reopens them all: the pressed tab last, so in front
-    await band.press({ key: `show:${id}/02` })
-    expect(h.opens.slice(2).map(o => o.id)).toEqual([tab03, tab02])
-    expect(h.opens.slice(2).map(o => o.title)).toEqual(['grok-4.6', 'kimi-k3'])
-    expect(new Set(h.opens.map(o => o.id)).size).toBe(2) // one tab id per slot, stable
-    expect(h.panes.find(p => p.id === tab02)?.isShown).toBe(true)
-    expect(h.panes).toHaveLength(2)
-    expect(h.state.get('hiddenTabs')).toEqual([])
+    const hide = await headerHide(band)
+    expect(hide).toBeDefined()
+    await band.press({ key: hide!.key! })
+    expect(h.closes).toEqual([SHOW_PANE_ID])
+    expect(h.panes).toEqual([])
+    // the tabs and their views stay, and the shown tab is remembered
+    expect(h.state.get(`panes/${tab02}`)).toMatchObject({ slot: '02' })
+    expect(h.state.get(`panes/${tab03}`)).toMatchObject({ slot: '03' })
+    expect(shownTab(h)).toBe(tab03)
+    expect(h.state.get('hiddenTabs')).toBeUndefined() // R6.5 replaces the hidden-tab list
     await band.redraw()
-    expect(await label('02')).toBe('Hide')
-    expect(await label('03')).toBe('Hide')
+    expect(await headerHide(band)).toBeUndefined()
+    const opens = h.opens.length
+    await band.press({ key: `show:${id}/02` })
+    expect(h.opens.slice(opens).map(o => o.id)).toEqual([SHOW_PANE_ID])
+    expect(shownTab(h)).toBe(tab02)
+    expect(h.panes).toHaveLength(1)
+    await band.redraw()
+    expect(await headerHide(band)).toBeDefined()
   })
 
-  test(`band: Show focuses — an open tab Claude Code keeps undrawn reads Show; the press opens it, and if it is still not shown closes and opens it again [${surface}]`, async ($, on) => {
+  test(`band: Show on an open but undrawn panel — no Hide in the header; the press opens claudish-show first and shows that slot's tab [${surface}]`, async ($, on) => {
     const h = harness(on)
     await start($, surface)
     await teamRun($, h)
     const id = modRun(h).id
     const band = await mountBand($, surface)
-    await band.press({ key: `show:${id}/02` })
     await band.press({ key: `show:${id}/03` })
-    const tab02 = h.opens[0]!.id
-    // The surface keeps 02 undrawn behind 03, even after it is opened again, until it is closed.
-    h.panesAnswer = () => (h.closes.length === 0 ? h.panes.map(p => (p.id === tab02 ? { ...p, isShown: false, isPlaced: false } : p)) : h.panes)
+    // the surface keeps the pane undrawn until the person asks again
+    h.panesAnswer = () => (h.opens.length === 1 ? h.panes.map(p => ({ ...p, isShown: false, isPlaced: false })) : h.panes)
     await band.redraw()
-    expect((await band.find({ key: `show:${id}/02` }))?.props.label).toBe('Show') // open but not drawn: not Hide
-    const writes = h.writes.length
+    expect(await headerHide(band)).toBeUndefined()
+    expect((await band.find({ key: `show:${id}/02` }))?.props.label).toBe('Show')
+    const calls = h.uiCalls.length
     await band.press({ key: `show:${id}/02` })
-    expect(h.closes).toEqual([tab02])
-    expect(h.opens.map(o => o.id)).toEqual([tab02, h.opens[1]!.id, tab02, tab02])
-    // re-seeded on the close-and-reopen path (the first capture then follows at once)
-    const seeded = h.writes.slice(writes).filter(([k]) => k === `panes/${tab02}`).map(([, v]) => v)
-    expect(seeded[0]).toMatchObject({ status: 'waiting', slot: '02', frame: null })
-    expect(h.state.get(`panes/${tab02}`)).toMatchObject({ slot: '02' })
-    expect(h.toasts).toEqual([])
+    expect(h.uiCalls[calls]).toBe('open')
+    expect(h.opens.at(-1)?.id).toBe(SHOW_PANE_ID)
+    expect(h.state.get(`panes/${shownTab(h)}`)).toMatchObject({ slot: '02' })
+    expect(h.toasts).toEqual([]) // the open answered placed: nothing to say
+    await band.redraw()
+    expect(await headerHide(band)).toBeDefined()
   })
 }

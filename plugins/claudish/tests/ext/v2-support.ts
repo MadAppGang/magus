@@ -3,7 +3,7 @@
 import { expect } from 'claude-code/testing'
 import type { On } from 'claude-code'
 import { walk, type Mounted, type Node } from '../ui'
-import { children } from './support'
+import { QUIET_DARK, RETIRED_THEME_KEYS, children, colourKey } from './support'
 
 // §9/§10: the badges' dark palette (the kit sets no theme), worked from the spec's table and formulas:
 // solid = the hue as fill, ink white or #0B0B12 by WCAG contrast; quiet = the hue 55 % toward black,
@@ -18,10 +18,11 @@ export const DARK = {
   tokensIn: '#0F592A', tokensOut: '#16803D',
 } as const
 
-// §9: the theme key set (text outside the badges), plus the palette's hex (the badges and value text).
+// §9 / R6.6: the theme key set (text outside the badges), plus the palette's hex (the badges and value
+// text), with R6.2's quiet inks (tool calls, loops, cost) and R6.5's shown-tab fill (the run hue's quiet).
 export const V2_THEME: readonly string[] = [
   'claude', 'permission', 'success', 'error', 'warning', 'inactive', 'subtle', 'inverseText', 'ide', 'suggestion',
-  ...new Set(Object.values(DARK)),
+  ...new Set([...Object.values(DARK), ...Object.values(QUIET_DARK).flat()]),
 ]
 
 export function visibleText(tree: unknown): string {
@@ -148,12 +149,32 @@ export function expectInk(tree: unknown, text: string, expected: Ink): void {
 }
 
 export function themeKeysOnly(tree: unknown): void {
+  const allowed = V2_THEME.map(colourKey)
   for (const { node, inFrame } of walk(tree)) {
     if (inFrame) continue
     for (const prop of ['color', 'backgroundColor', 'borderColor']) {
-      if (node.props?.[prop] !== undefined) expect(V2_THEME).toContain(node.props[prop])
+      if (node.props?.[prop] !== undefined) expect(allowed).toContain(colourKey(node.props[prop]))
+      expect(RETIRED_THEME_KEYS as readonly unknown[]).not.toContain(node.props?.[prop])
     }
   }
+}
+
+/** The ink matches one of the allowed spellings of a colour (a quiet ink whose rounding the spec leaves open). */
+export function expectInkOneOf(tree: unknown, text: string, prop: 'color' | 'backgroundColor', candidates: readonly string[]): void {
+  for (const ink of inkOf(tree, text)) {
+    const v = ink[prop]
+    expect(typeof v === 'string' && candidates.some(c => c.toUpperCase() === v.toUpperCase()), `${text} ${prop}=${String(v)} not in ${candidates.join('|')}`).toBe(true)
+  }
+}
+
+/** The tab header of the Show panel's shown tab: a Box led by the badge and naming the model (outside the frame). */
+export async function tabHeader(p: Mounted, model: string): Promise<Node> {
+  const candidates = walk(await p.drawn()).filter(x => !x.inFrame).map(x => x.node)
+    .filter(n => n.type === 'Box' && /^ (?:NEW|RUN|ASK|END|ERR|TMO|NIL|FMT|STP|LST|\?\?\?) /.test(visibleText(n))
+      && visibleText(n).includes(model))
+  const result = candidates[candidates.length - 1]
+  if (!result) throw new Error(`no badge-led tab header for ${model}`)
+  return result
 }
 
 export function runtimePart(value: string): string { return `${value} `.padStart(7) }

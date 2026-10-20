@@ -456,7 +456,8 @@ export function fitColumns(bodyColumns: number, rows: readonly BandRow[]): Colum
   const plan: ColumnPlan = {
     lead: LEAD_CELLS, id: content.id, badge: BADGE_CELLS,
     model: content.model > 0 ? content.model + PAD : 0, provider: content.provider > 0 ? content.provider + PAD : 0,
-    tokens: content.tokensIn > 0 ? content.tokensIn + content.tokensOut + 2 * PAD : 0,
+    // No row with an out half (both counts unknown everywhere): one part, so one padding.
+    tokens: content.tokensIn > 0 ? content.tokensIn + PAD + (content.tokensOut > 0 ? content.tokensOut + PAD : 0) : 0,
     tokensIn: content.tokensIn + PAD,
     tools: content.tools > 0 ? MARK_CELLS + content.tools + PAD : 0,
     loops: content.loops > 0 ? MARK_CELLS + content.loops + PAD : 0,

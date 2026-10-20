@@ -36,12 +36,17 @@ export async function mountPane($: unknown, surface: Surface, id: string, props 
 export type Found = { type: string; key: string | undefined; props: Record<string, unknown>; text: string; children: unknown[] }
 
 export type Mounted = {
-  drawn(): Promise<RenderElement>
-  find(q: { type?: string; key?: string; text?: string | RegExp }): Promise<Found | undefined>
-  findAll(q: { type?: string; key?: string; text?: string | RegExp }): Promise<Found[]>
+  /** With `{ in }`: what that `Client`'s module last drew (the kit's ClientScope). */
+  drawn(scope?: { in?: string }): Promise<RenderElement>
+  find(q: { type?: string; key?: string; text?: string | RegExp; in?: string }): Promise<Found | undefined>
+  findAll(q: { type?: string; key?: string; text?: string | RegExp; in?: string }): Promise<Found[]>
   press(t: { key: string }): Promise<unknown>
   redraw(props?: unknown): Promise<void>
   unmount(): Promise<void>
+  /** The drawing's frame clock, for its `Client`s (terminal and desktop both draw `Client`). */
+  advance(ms: number): Promise<void>
+  /** Lays a `Client`'s region out at a size, as the surface measuring it does. */
+  resize(size: { columns: number; rows: number; in?: string }): Promise<void>
 }
 
 /** A node of a drawn tree, as plain data. */

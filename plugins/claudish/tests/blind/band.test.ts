@@ -3,9 +3,14 @@
 
 import { expect, test } from 'claude-code/testing'
 import { harness, start } from '../fake-claudish'
-import { bandProps, mountBand, walk, SURFACES } from '../ui'
+import { iso } from '../scenario'
+import { bandProps, mountBand, mountPane, paneProps, walk, SURFACES } from '../ui'
 import {
   ALLOWED_COLOURS,
+  allowedSpelling,
+  keyOf,
+  kids,
+  type N,
   SLOW,
   STATE_LOOK,
   buttonsIn,
@@ -75,7 +80,14 @@ test('band: one header and one row per slot, each row with Stop and Show', SLOW,
   }
 })
 
-test('band: a row shows its fields in order (badge, model/provider, tokens, tools, loops, cost, stale-meter/activity, buttons)', SLOW, async ($, on) => {
+/** A row's text with its live cell (a Client, R6.4) written as a marker, in document order. */
+function withLiveCell(t: unknown): string {
+  if (t !== null && typeof t === 'object' && (t as N).type === 'Client') return '⟦LIVE⟧'
+  if (t !== null && typeof t === 'object' && (t as N).type !== 'Button') return kids(t as N).map(withLiveCell).join('')
+  return textOf(t)
+}
+
+test('band: a row shows its fields in order (badge, the model/provider/tokens/tools/loops/cost block, the live cell, buttons)', SLOW, async ($, on) => {
   const h = harness(on)
   await start($)
   const run = await startTeam($, h, 'review', MODELS)
@@ -85,7 +97,7 @@ test('band: a row shows its fields in order (badge, model/provider, tokens, tool
     const ui = await mountBand($, surface, bandProps(200, 40))
     const row = rowFor(await ui.drawn(), 'gpt-6.1-sol')
     expect(row, surface).toBeDefined()
-    const t = textOf(row)
+    const t = withLiveCell(row)
     const at = (re: RegExp) => {
       const m = re.exec(t)
       expect(m, `${surface}: ${re} in "${t}"`).not.toBeNull()
@@ -94,28 +106,25 @@ test('band: a row shows its fields in order (badge, model/provider, tokens, tool
     const state = at(/ RUN \s+\d+s\b/) // the badge: code, then the runtime
     const model = at(/gpt-6\.1-sol/)
     const provider = at(/OpenRouter/)
-    // UI contract §4.3: both halves compact with one decimal (`48.1k/2.3k`, `12.0k/0.4k`).
-    // spec 2.4.0 §8: in then out, each value in its own unit; tools and loops a symbol and a number
-    const tokens = at(/↑\d+\.\dk\s+↓\d+(\.\dk)?/) // §9: one split badge, each half padded
-    const tools = at(/ƒ \d+/)
-    const loops = at(/↻ \d+/)
-    const cost = at(/ — /) // §9: the fake reports no cost_usd, so —
-    const idle = at(/[▰▱]{5}/) // the stale-meter, where idle was
-    const activity = at(/\bBash\b/)
+    // R6.1/R6.2: in then out, each in R6.1's units; the marks touch their numbers
+    const tokens = at(/↑\d+(\.\d)?[kM]?\s+↓\d+(\.\d)?[kM]?/)
+    const tools = at(/ƒ\d+/)
+    const loops = at(/↻\d+/)
+    const cost = at(/ — /) // the fake reports no cost_usd on a routed provider: —
+    const live = at(/⟦LIVE⟧/) // R6.4: the live cell, where the stale-meter and activity were
     const stop = at(/\[ Stop \]/)
     const show = at(/\[ Show \]/)
-    // UI contract §4.2/§4.3 order (orchestrator ruling over requirements' "provider / model"):
-    // the model, then the provider in its own column after it.
     expect(state).toBeLessThan(model)
     expect(model, `${surface}: model before provider`).toBeLessThan(provider)
     expect(provider).toBeLessThan(tokens)
     expect(tokens).toBeLessThan(tools)
     expect(tools).toBeLessThan(loops)
     expect(loops).toBeLessThan(cost)
-    expect(cost).toBeLessThan(idle)
-    expect(idle).toBeLessThan(activity)
-    expect(activity).toBeLessThan(stop)
+    expect(cost).toBeLessThan(live)
+    expect(live).toBeLessThan(stop)
     expect(stop).toBeLessThan(show)
+    // R6.2: a row with a timeline has no activity text and no stale-meter
+    expect(textOf(row), surface).not.toMatch(/\bBash\b|[▰▱]|ƒ \d|↻ \d/)
     await ui.unmount()
   }
 })
@@ -235,7 +244,7 @@ test('band: Stop is not offered when the feed does not advertise cancel', SLOW, 
   }
 })
 
-test('band: colours are theme keys, or the §9 palette for the badges, never any other raw colour', SLOW, async ($, on) => {
+test('band: colours are theme keys, or the §9 palette and R6.2 quiet inks, never any other raw colour', SLOW, async ($, on) => {
   const h = harness(on)
   await start($)
   const run = await startTeam($, h, 'review', MODELS)
@@ -253,7 +262,9 @@ test('band: colours are theme keys, or the §9 palette for the badges, never any
         for (const prop of ['color', 'backgroundColor']) {
           const v = node.props?.[prop]
           if (v === undefined) continue
-          expect(ALLOWED_COLOURS as readonly unknown[], `${surface}@${width}: ${node.type}.${prop}=${String(v)}`).toContain(v)
+          expect(ALLOWED_COLOURS as readonly unknown[], `${surface}@${width}: ${node.type}.${prop}=${String(v)}`).toContain(allowedSpelling(v))
+          // R6.6: retired theme keys
+          expect(['diffAdded', 'diffRemoved', 'diffAddedDimmed', 'diffRemovedDimmed', 'merged', 'text']).not.toContain(v)
         }
       }
       await ui.unmount()
@@ -261,9 +272,11 @@ test('band: colours are theme keys, or the §9 palette for the badges, never any
   }
 })
 
-test('band: the stale-meter fills on a RUNNING slot silent past the threshold', SLOW, async ($, on) => {
+test('band: the stale-meter fills on a RUNNING slot silent past the threshold — in its Show tab header, never in a row with a timeline', SLOW, async ($, on) => {
   const h = harness(on, {
-    rowPatch: row => (row.slot === '01' && row.state === 'RUNNING' ? { ...row, idle_seconds: 240, activity: 'Bash' } : row),
+    rowPatch: row => (row.slot === '01' && row.state === 'RUNNING'
+      ? { ...row, idle_seconds: 240, last_activity_at: iso(h.clock.now() - 240_000), activity: 'Bash' }
+      : { ...row, idle_seconds: 0, last_activity_at: iso(h.clock.now()) }),
   })
   await start($)
   await startTeam($, h, 'review', ['gpt-6.1-sol', 'kimi-k3'])
@@ -271,12 +284,19 @@ test('band: the stale-meter fills on a RUNNING slot silent past the threshold', 
   for (const surface of SURFACES) {
     const ui = await mountBand($, surface, bandProps(200, 40))
     const tree = await ui.drawn()
-    const quiet = rowFor(tree, 'gpt-6.1-sol')
-    expect(textOf(quiet), surface).toMatch(/▰▰▰▰▰ 4m/)
-    expect(colorsOf(quiet, /▰/)[0], `${surface}: a full meter is drawn in error`).toBe('error')
-    const lively = textOf(rowFor(tree, 'kimi-k3'))
-    expect(lively, `${surface}: a lively row's meter is empty`).toMatch(/▱▱▱▱▱/)
-    expect(lively, `${surface}: a lively row has no filled cell`).not.toContain('▰')
+    // R6.2/R6.7: the rows carry a live cell, not the meter text
+    for (const model of ['gpt-6.1-sol', 'kimi-k3']) expect(textOf(rowFor(tree, model)), `${surface}: ${model}`).not.toMatch(/[▰▱]/)
+    await ui.press({ key: keyOf(showButton(rowFor(tree, 'gpt-6.1-sol'))!)! })
+    const pane = await mountPane($, surface, 'claudish-show', paneProps(120, 24))
+    const quiet = textOf(await pane.drawn())
+    expect(quiet, surface).toMatch(/▰▰▰▰▰ 4m/)
+    expect(colorsOf(await pane.drawn(), /▰/)[0], `${surface}: a full meter is drawn in error`).toBe('error')
+    await ui.press({ key: keyOf(showButton(rowFor(await ui.drawn(), 'kimi-k3'))!)! })
+    await pane.redraw(paneProps(120, 24) as never)
+    const lively = textOf(await pane.drawn())
+    expect(lively, `${surface}: a lively slot's meter is not filled`).not.toContain('▰')
+    expect(lively, `${surface}: and has no number below 5 s`).not.toMatch(/[▰▱]{5} \d/)
+    await pane.unmount()
     await ui.unmount()
   }
 })
@@ -297,7 +317,7 @@ test('band: an unknown number draws — rather than a guess', SLOW, async ($, on
   }
 })
 
-test('band: narrowing drops activity, then provider, loops, tools, tokens; the model is never dropped; rows fit and never wrap', SLOW, async ($, on) => {
+test('band: narrowing drops provider, then loops, tools, tokens; activity never shows beside a timeline; the model is never dropped; rows fit and never wrap', SLOW, async ($, on) => {
   const h = harness(on)
   await start($)
   const run = await startTeam($, h, 'review', ['gpt-6.1-sol', 'kimi-k3'])
@@ -317,26 +337,25 @@ test('band: narrowing drops activity, then provider, loops, tools, tokens; the m
         const t = textOf(row)
         expect(t.includes('\n'), `${surface}@${width}: a row is one line`).toBe(false)
         expect(t.length, `${surface}@${width}: "${t}" fits`).toBeLessThanOrEqual(width)
-        const activity = /\bBash\b/.test(t)
         const provider = /OpenRouter/.test(t)
-        const loops = /↻ \d+/.test(t)
-        const tools = /ƒ \d+/.test(t)
+        const loops = /↻\d+/.test(t)
+        const tools = /ƒ\d+/.test(t)
         const tokens = /↑\S+\s+↓\S+/.test(t)
-        if (width === 200) expect(activity && provider && loops && tools && tokens, `${surface}@200: all columns`).toBe(true)
-        // §9 drop priority: activity goes first, then provider, loops, tools, tokens.
-        if (activity) expect(provider, `${surface}@${width}: provider dropped before activity`).toBe(true)
+        if (width === 200) expect(provider && loops && tools && tokens, `${surface}@200: all columns`).toBe(true)
+        // R6.3 drop priority: provider, loops, tool calls, tokens
         if (provider) expect(loops, `${surface}@${width}: loops dropped before provider`).toBe(true)
         if (loops) expect(tools, `${surface}@${width}: tools dropped before loops`).toBe(true)
         if (tools) expect(tokens, `${surface}@${width}: tokens dropped before tools`).toBe(true)
-        // §9: the model shrinks (to 8 at the floor, gpt-6.1-sol cut with …) but is never dropped
-        expect(t, `${surface}@${width}: the model stays`).toMatch(/gpt-6\.1|kimi-k3/)
-        if (!activity) sawDrop = true
+        // R6.2: a row with a timeline draws no activity at any width
+        expect(/\bBash\b/.test(t), `${surface}@${width}: no activity beside a timeline`).toBe(false)
+        expect(t, `${surface}@${width}: the model stays`).toMatch(/gpt-6\.1|kimi-k3|gpt-6\.…|kimi-k…/)
+        if (!provider) sawDrop = true
       }
       for (const text of outerTexts(tree)) {
         expect(text.props?.wrap, `${surface}@${width}: Text "${textOf(text)}" must truncate, never wrap`).toBe('truncate-end')
       }
     }
-    expect(sawDrop, `${surface}: activity dropped somewhere between 200 and 41`).toBe(true)
+    expect(sawDrop, `${surface}: the provider dropped somewhere between 200 and 41`).toBe(true)
     await ui.unmount()
   }
 })
@@ -382,7 +401,8 @@ test('band: panel slots and delegations share the row format and buttons', SLOW,
       const row = rowFor(tree, model)
       expect(row, `${surface}: ${model}`).toBeDefined()
       expect(textOf(row)).toContain(' RUN ')
-      expect(textOf(row)).toMatch(/ƒ \d+/)
+      expect(textOf(row)).toMatch(/ ƒ\d+ /) // R6.2: the mark touches its number
+      expect(textOf(row)).not.toMatch(/ƒ \d/)
       expect(stopButton(row)).toBeDefined()
       expect(showButton(row)).toBeDefined()
     }

@@ -4,7 +4,7 @@
 import { describe, expect, test } from 'claude-code/testing'
 import type { ClaudishFrame, ClaudishRun, ClaudishRuns, ClaudishSlot, ClaudishStyleSpan } from '../types'
 import { PANE_LINE_COST, PANE_SEGMENT_COST, PANE_STYLE_BUDGET } from '../hooks/status/domain'
-import { LOOPS_MARK, TOOLS_MARK, bandModel, colorSpelling, count, dollars, fitColumns, paneCost, paneFit, paneLines, planWidth, rowCells, tally, tokenIO, type BandInput } from '../hooks/status/layout'
+import { LOOPS_MARK, TOOLS_MARK, bandModel, colorSpelling, count, dollars, fitColumns, paneCost, paneFit, paneLines, planWidth, providerName, tokenIO, type BandInput } from '../hooks/status/layout'
 
 const fit = (columns = 200, rows = 60, paint = true) => ({ columns, rows, paint })
 
@@ -29,14 +29,13 @@ describe('layout: colour spelling', () => {
 })
 
 describe('layout: paneLines', () => {
-  test('segments cut at span boundaries reproduce the line exactly', () => {
+  test('segments cut at span boundaries reproduce the line exactly; a short frame is top-aligned (no blank rows above it)', () => {
     const line = '✕ an error line drawn red, then plain'
     const out = paneLines(frame([line], [[span(0, 5, { index: 1 }, true), span(11, 4, { rgb: 0x112233 })]]), fit())
     expect(out.painted).toBe(true)
-    // bottom-aligned: the one line sits on the tab's last body row, blank lines above it
-    expect(out.lines).toHaveLength(59)
-    expect(out.lines.slice(0, 58).every(l => l.length === 1 && l[0] === '')).toBe(true)
-    const parts = out.lines[58]!
+    // R6.5: top-aligned: the one line is the first drawn, with no blank line above it
+    expect(out.lines).toHaveLength(1)
+    const parts = out.lines[0]!
     expect(parts.map(p => (typeof p === 'string' ? p : p.text)).join('')).toBe(line)
     expect(parts[0]).toEqual({ text: '✕ an ', color: '#cd0000', bold: true })
     expect(parts[2]).toEqual({ text: 'line', color: '#112233' })
@@ -44,10 +43,11 @@ describe('layout: paneLines', () => {
 
   test('a line holding a wide character draws plain; paint off draws every line plain', () => {
     const out = paneLines(frame(['漢字 here', 'ascii'], [[span(0, 2, { index: 1 })], [span(0, 2, { index: 1 })]]), fit())
-    expect(out.lines[57]).toEqual(['漢字 here'])
-    expect(typeof out.lines[58]![0]).toBe('object')
+    expect(out.lines).toHaveLength(2)
+    expect(out.lines[0]).toEqual(['漢字 here'])
+    expect(typeof out.lines[1]![0]).toBe('object')
     const off = paneLines(frame(['ascii'], [[span(0, 2, { index: 1 })]]), fit(200, 60, false))
-    expect(off).toEqual({ lines: [...Array.from({ length: 58 }, () => ['']), ['ascii']], painted: false })
+    expect(off).toEqual({ lines: [['ascii']], painted: false })
   })
 
   test('the viewport: trailing blanks trimmed, the last rows-1 lines, each cut at columns + 1', () => {
@@ -135,36 +135,40 @@ describe('layout: the band', () => {
     expect(fitColumns(35, short)).toBeNull()
   })
 
-  test('count: plain below 1000, then k with one decimal, then M', () => {
+  test('count (R6.1): the integer below 1000; one decimal and k below 9 950; a whole k below 999 500; then one decimal and M', () => {
     expect(count(0)).toBe('0')
-    expect(count(780)).toBe('780')
+    expect(count(850)).toBe('850')
     expect(count(999)).toBe('999')
     expect(count(1000)).toBe('1.0k')
-    expect(count(12_700)).toBe('12.7k')
-    expect(count(999_949)).toBe('999.9k')
-    expect(count(999_950)).toBe('1.0M') // never 1000.0k
+    expect(count(5_500)).toBe('5.5k')
+    expect(count(9_949)).toBe('9.9k')
+    expect(count(9_950)).toBe('10k') // never 10.0k
+    expect(count(12_700)).toBe('13k') // not 12.7k
+    expect(count(999_499)).toBe('999k')
+    expect(count(999_500)).toBe('1.0M') // never 1000k
     expect(count(2_345_678)).toBe('2.3M')
     expect(count(null)).toBe('—')
+    for (const n of [9_950, 12_700, 48_100, 999_499]) expect(count(n)).not.toMatch(/\.\dk$/)
   })
 
-  test('tokens: in then out, each value in its own unit; an unknown value reads —, both unknown the cell reads —', () => {
-    expect(tokenIO(12_700, 780)).toBe('↑12.7k ↓780')
+  test('tokens (R6.1): in then out, each value in its own unit; an unknown value reads —, both unknown the cell reads —', () => {
+    expect(tokenIO(12_700, 780)).toBe('↑13k ↓780')
     expect(tokenIO(850, 120)).toBe('↑850 ↓120')
     expect(tokenIO(999, 1000)).toBe('↑999 ↓1.0k')
-    expect(tokenIO(42_900, 37)).toBe('↑42.9k ↓37') // measured live: a native slot's few output tokens
-    expect(tokenIO(42_900, 0)).toBe('↑42.9k ↓0')
-    expect(tokenIO(10_000, 49)).toBe('↑10.0k ↓49')
-    expect(tokenIO(37, 42_900)).toBe('↑37 ↓42.9k') // either side
-    expect(tokenIO(2_345_678, 40_000)).toBe('↑2.3M ↓40.0k')
+    expect(tokenIO(42_900, 37)).toBe('↑43k ↓37') // measured live: a native slot's few output tokens
+    expect(tokenIO(42_900, 0)).toBe('↑43k ↓0')
+    expect(tokenIO(10_000, 49)).toBe('↑10k ↓49')
+    expect(tokenIO(37, 42_900)).toBe('↑37 ↓43k') // either side
+    expect(tokenIO(2_345_678, 40_000)).toBe('↑2.3M ↓40k')
     expect(tokenIO(5_000_000, 900)).toBe('↑5.0M ↓900')
-    expect(tokenIO(12_000, null)).toBe('↑12.0k ↓—')
+    expect(tokenIO(12_000, null)).toBe('↑12k ↓—')
     expect(tokenIO(null, 780)).toBe('↑— ↓780')
     expect(tokenIO(null, null)).toBe('—')
     for (const [a, b] of [[42_900, 37], [2_345_678, 40_000], [999_960, 10], [1000, 0], [0, 7_000_000]] as const) {
       expect(tokenIO(a, b)).not.toMatch(/[↑↓]-?0\.0[kM]/) // a few real tokens never read as none
     }
     const row = bandModel(input([run('a', [slot('01', { tokensIn: 42_900, tokensOut: 37 })])]))!.rows[0]!
-    expect([row.tokensIn, row.tokensOut]).toEqual(['↑42.9k', '↓37']) // §9: the split badge's two halves
+    expect([row.tokensIn, row.tokensOut]).toEqual(['↑43k', '↓37']) // the two halves of the tokens part
   })
 
   test('cost: <$0.01, $x.xx below $10, $xx.x below $100, $xxx; — when claudish reports none', () => {
@@ -178,16 +182,27 @@ describe('layout: the band', () => {
     expect(row.cost).toBe('$0.42')
   })
 
-  test('tool calls and loops: a symbol and a number, no words and no plural; unknown reads —', () => {
+  test('cost (R6.1): negative, non-finite or missing reads —; the provider drops a trailing (Native), any case', () => {
+    expect(dollars(-0.5)).toBe('—')
+    expect(dollars(Number.NaN)).toBe('—')
+    expect(dollars(Number.POSITIVE_INFINITY)).toBe('—')
+    expect(dollars(undefined)).toBe('—')
+    expect(dollars(0.009)).toBe('<$0.01')
+    expect(dollars(0.01)).toBe('$0.01')
+    expect(dollars(99.4)).toBe('$99.4')
+    expect(dollars(100)).toBe('$100')
+    expect(providerName('Anthropic (Native)')).toBe('Anthropic')
+    expect(providerName('Anthropic (native)')).toBe('Anthropic')
+    expect(providerName('Anthropic (NATIVE)  ')).toBe('Anthropic')
+    expect(providerName('OpenRouter')).toBe('OpenRouter')
+    expect(providerName('Native Labs')).toBe('Native Labs') // only a trailing (Native) goes
+  })
+
+  test('tool calls and loops: the marks ƒ and ↻; the row carries the bare count, — when unknown (R6.2 draws ƒ8 / ↻1, the mark touching it)', () => {
     expect(TOOLS_MARK).toBe('ƒ')
     expect(LOOPS_MARK).toBe('↻')
-    expect(tally(TOOLS_MARK, 8)).toBe('ƒ 8')
-    expect(tally(LOOPS_MARK, 1)).toBe('↻ 1')
-    expect(tally(LOOPS_MARK, 0)).toBe('↻ 0')
-    expect(tally(TOOLS_MARK, null)).toBe('—')
-    const m = bandModel(input([run('a', [slot('01', { toolCalls: 1, turnsCompleted: 1 })])]))!
-    const cells = rowCells(m.rows[0]!, m.plan!)
-    expect([cells.tools, cells.loops]).toEqual(['ƒ 1', '↻ 1']) // drawn: the symbol, then the number
+    const m = bandModel(input([run('a', [slot('01', { toolCalls: 8, turnsCompleted: 1 })])]))!
+    expect([m.rows[0]!.tools, m.rows[0]!.loops]).toEqual(['8', '1'])
     const unknown = bandModel(input([run('a', [slot('01', { toolCalls: null, turnsCompleted: null })])]))!.rows[0]!
     expect([unknown.tools, unknown.loops]).toEqual(['—', '—'])
   })
@@ -235,14 +250,19 @@ describe('layout: the band', () => {
     expect(bandModel({ ...base, feeds: { 's#panel': noCancel } })!.rows.every(r => r.stop === 'none')).toBe(true)
   })
 
-  test('the stale-meter: a cell per step of silence, the number from 30s, warning from 60s, error from two minutes', () => {
+  test('the stale-meter (R6.7): a cell at each of 5, 30, 60, 90, 120 s; below 5 s streaming with no number; warning from three cells, error at five', () => {
     const at = (idleSeconds: number) => bandModel(input([run('a', [slot('01', { idleSeconds })])]))!.rows[0]!.meter
-    expect(at(3)).toEqual({ filled: 0, number: '', color: 'success' })
-    expect(at(12)).toEqual({ filled: 1, number: '', color: 'success' })
-    expect(at(42)).toEqual({ filled: 2, number: '42s', color: 'success' })
-    expect(at(65)).toEqual({ filled: 3, number: '1m', color: 'warning' })
-    expect(at(130)).toEqual({ filled: 5, number: '2m', color: 'error' })
+    expect(at(3)).toEqual({ filled: 0, number: '', color: 'success', flowing: true, idle: 3 })
+    expect(at(4)).toEqual({ filled: 0, number: '', color: 'success', flowing: true, idle: 4 })
+    expect(at(5)).toEqual({ filled: 1, number: '5s', color: 'success', flowing: false, idle: 5 })
+    expect(at(12)).toEqual({ filled: 1, number: '12s', color: 'success', flowing: false, idle: 12 })
+    expect(at(42)).toEqual({ filled: 2, number: '42s', color: 'success', flowing: false, idle: 42 })
+    expect(at(65)).toEqual({ filled: 3, number: '1m', color: 'warning', flowing: false, idle: 65 })
+    expect(at(95)).toEqual({ filled: 4, number: '1m', color: 'warning', flowing: false, idle: 95 })
+    expect(at(130)).toEqual({ filled: 5, number: '2m', color: 'error', flowing: false, idle: 130 })
     const done = bandModel(input([run('a', [slot('01', { state: 'COMPLETED', idleSeconds: null })])]))!.rows[0]!
     expect(done.meter).toBeNull()
+    const blind = bandModel(input([run('a', [slot('01', { idleSeconds: null })])]))!.rows[0]!
+    expect(blind.meter).toBeNull() // RUNNING with an unknown idle time
   })
 })

@@ -37,8 +37,8 @@ for (const surface of SURFACES) {
     await b.unmount()
   })
 
-  test(`v2 §5: narrowing drops columns in the exact specified order [${surface}]`, async ($, on) => {
-    const model = 'model-column-with-a-longname' // 28 characters: spec §5 caps the model column at 28
+  test(`R6.3: narrowing drops columns in the exact specified order — provider, loops, tool calls, tokens, cost, the live cell, then the runtime, the id to 2, the model to 8 [${surface}]`, { timeoutMs: 60_000 }, async ($, on) => {
+    const model = 'model-column-with-a-longname' // 28 characters: the model column's cap
     const h = harness(on, { rowPatch: row => ({
       ...row, provider: 'provider-column', tokens_in: 48_100, tokens_out: 2_300,
       tool_calls: 123, turns_completed: 2, cost_usd: 0.004, idle_seconds: 42, activity: 'thinking',
@@ -49,12 +49,13 @@ for (const surface of SURFACES) {
     const b = await mountBand($, surface, bandProps(200))
     const showKey = keyOf(await chip(b, model, 'Show'))
     const initial = visibleText(await rowByShow(b, showKey))
-    for (const content of ['thinking', '↑48.1k', '↓2.3k', 'ƒ 123', 'provider-column', '↻ 2', '<$0.01', '▰▰▱▱▱ 42s', 'id-column-alpha/01']) {
+    for (const content of ['↑48k', '↓2.3k', 'ƒ123', 'provider-column', '↻2', '<$0.01', 'id-column-alpha/01']) {
       expect(initial).toContain(content)
     }
+    // R6.2: a row with a timeline has an empty activity and no stale-meter text
+    expect(initial).not.toMatch(/thinking|[▰▱]/)
     const firstMissing: Record<string, number> = {}
-    // §9: activity, provider, loops, tools, tokens, cost, meter; then the runtime, the id to 2, and last the model to 8
-    const order = ['activity', 'provider', 'loops', 'tools', 'tokens', 'cost', 'meter', 'runtime', 'id2', 'model8']
+    const order = ['provider', 'loops', 'tools', 'tokens', 'cost', 'live', 'runtime', 'id2', 'model8']
     for (let width = 199; width >= 41; width -= 1) {
       await b.redraw(bandProps(width))
       const row = await rowByShow(b, showKey)
@@ -62,30 +63,29 @@ for (const surface of SURFACES) {
       const codeAt = text.indexOf(' RUN ')
       expect(codeAt).toBeGreaterThanOrEqual(0)
       const id = text.slice(0, codeAt).trim()
-      // §10: the model is its badge's own padded half; the shortest Text starting with it is that half
+      // the model is its badge's own padded half; the shortest Text starting with it is that half
       const modelPart = walk(row).map(x => x.node).filter(n => n.type === 'Text')
         .map(n => visibleText(n).trim()).filter(t => t.startsWith('model-')).sort((x, y) => x.length - y.length)[0]
       const gone = {
-        activity: !text.includes('thinking'),
         provider: !text.includes('provider-column'),
-        loops: !text.includes('↻ 2'),
-        tools: !text.includes('ƒ 123'),
-        tokens: !text.includes('↑48.1k'),
+        loops: !text.includes('↻2'),
+        tools: !text.includes('ƒ123'),
+        tokens: !text.includes('↑48k'),
         cost: !text.includes('<$0.01'),
-        meter: !/[▰▱]/.test(text),
+        live: !walk(row).some(x => x.node.type === 'Client'),
         runtime: !/^ *\d+s /.test(text.slice(codeAt + 5, codeAt + 12)),
         id2: Array.from(id).length <= 2,
         model8: modelPart !== undefined && Array.from(modelPart).length <= 8,
       }
-      expect(text).toContain('model-') // §9: the model is never dropped
+      expect(text).toContain('model-') // the model is never dropped
+      expect(text).not.toMatch(/thinking|[▰▱]/)
       for (const [name, isGone] of Object.entries(gone)) {
         if (isGone && firstMissing[name] === undefined) firstMissing[name] = width
       }
       expect(chips(row, 'Stop')).toHaveLength(1)
       expect(chips(row, 'Show')).toHaveLength(1)
       expect(text).not.toContain('\n')
-      // Negative checks at every width: a lower-priority column cannot disappear
-      // while a higher-priority one is still present.
+      // a lower-priority column cannot disappear while a higher-priority one is still present
       for (let i = 1; i < order.length; i += 1) {
         if (gone[order[i] as keyof typeof gone]) expect(gone[order[i - 1] as keyof typeof gone]).toBe(true)
       }

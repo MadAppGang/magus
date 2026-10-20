@@ -15,10 +15,49 @@ export const DARK = {
   // §10 "Tokens, FINAL": two fixed inks, no hue; dark in #0F592A, out #16803D, both written in white
   tokensIn: '#0F592A', tokensOut: '#16803D',
 } as const
+
+/**
+ * `hex` mixed `t` of the way toward `target`, per channel, rounded. Where a channel lands exactly on
+ * a half, the spec does not fix the rounding, so both spellings are returned (upper-case `#RRGGBB`).
+ * Worked from the spec's formulas, never read from the code.
+ */
+export function mixCandidates(hex: string, target: string, t: number): string[] {
+  const ch = (h: string, i: number) => parseInt(h.slice(1 + 2 * i, 3 + 2 * i), 16)
+  const options = [0, 1, 2].map(i => {
+    const exact = ch(hex, i) + (ch(target, i) - ch(hex, i)) * t
+    const frac = exact - Math.floor(exact)
+    return Math.abs(frac - 0.5) < 1e-6 ? [Math.floor(exact), Math.ceil(exact)] : [Math.round(exact)]
+  })
+  const out: string[] = []
+  const two = (n: number) => n.toString(16).toUpperCase().padStart(2, '0')
+  for (const r of options[0]!) for (const g of options[1]!) for (const b of options[2]!) out.push(`#${two(r)}${two(g)}${two(b)}`)
+  return out
+}
+
+/**
+ * R6.2/R6.5, dark: the quiet fill of a hue (the hue 55 % toward black, written in white). Tool calls,
+ * loops and cost sit on their hue's quiet ink; the Show panel's shown tab sits on the run hue's quiet fill.
+ */
+export const QUIET_DARK = {
+  run: mixCandidates(DARK.run, '#000000', 0.55),
+  tools: mixCandidates(DARK.tools, '#000000', 0.55),
+  loops: mixCandidates(DARK.loops, '#000000', 0.55),
+  cost: mixCandidates(DARK.cost, '#000000', 0.55),
+  model: [DARK.modelQuiet] as string[],
+} as const
+
+/** A colour equals one of the spellings the spec allows (hex compared without case). */
+export function isOneOf(colour: unknown, candidates: readonly string[]): boolean {
+  return typeof colour === 'string' && candidates.some(c => c.toUpperCase() === colour.toUpperCase())
+}
+
+// R6.6: the theme keys the band may use, plus the raw palette colours of §9/§10 (with R6.2's quiet inks).
 export const THEME = [
   'claude', 'permission', 'success', 'error', 'warning', 'inactive', 'subtle', 'inverseText', 'ide', 'suggestion',
-  ...new Set(Object.values(DARK)),
+  ...new Set([...Object.values(DARK), ...Object.values(QUIET_DARK).flat()]),
 ]
+/** R6.6: theme keys the band no longer uses. */
+export const RETIRED_THEME_KEYS = ['diffAdded', 'diffRemoved', 'diffAddedDimmed', 'diffRemovedDimmed', 'merged', 'text'] as const
 
 let callId = 0
 export async function modelCall($: Engine, tool: string, args: Record<string, unknown>) {
@@ -86,11 +125,18 @@ export async function button(m: Mounted, model: string, label: string): Promise<
 }
 export async function press(m: Mounted, model: string, label: string) { await m.press({ key: await button(m, model, label) }) }
 
+/** A colour as compared against the allowed set: theme keys exactly, raw hex without case. */
+export function colourKey(c: unknown): unknown {
+  return typeof c === 'string' && c.startsWith('#') ? c.toUpperCase() : c
+}
 export function themeOnly(tree: unknown) {
+  const allowed = THEME.map(colourKey)
   for (const { node, inFrame } of walk(tree)) {
     if (inFrame) continue
     for (const prop of ['color', 'backgroundColor', 'borderColor']) {
-      if (node.props?.[prop] !== undefined) expect(THEME).toContain(node.props[prop])
+      if (node.props?.[prop] !== undefined) expect(allowed).toContain(colourKey(node.props[prop]))
+      // R6.6: retired theme keys never come back
+      expect(RETIRED_THEME_KEYS as readonly unknown[]).not.toContain(node.props?.[prop])
     }
   }
 }

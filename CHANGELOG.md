@@ -4,6 +4,26 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Marketplace 13.7.2] - 2026-10-20
+
+### Fixed
+
+- **`claudish` v2.6.1**: the live run timeline keeps counting between polls. Its own clock was
+  held back to the last poll, so a job's time and its silence colours stood still whenever a
+  poll came late, as under heavy machine load.
+- **`claudish` v2.6.1**: VS Code shows the stale-meter in a run's row again. It does not draw
+  the live timeline cell, and the row was left blank there.
+- **`claudish` v2.6.1**: a row whose token counts are both unknown no longer takes two extra
+  cells for a second half it never draws.
+
+### Changed
+
+- **`claudish` v2.6.1**: the status mod's tests are rewritten, blind, to the shipped 2.6 band
+  and Show panel: 661 pass, 0 fail, where 186 had pinned the earlier design. The spec they
+  follow is `docs/plans/2026-10-20-claudish-status-band-spec.md`.
+
+---
+
 ## [Marketplace 13.7.1] - 2026-10-20
 
 ### Security

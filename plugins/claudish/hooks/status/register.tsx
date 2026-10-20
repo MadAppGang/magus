@@ -9,7 +9,7 @@ import type { EngineInterface, Register } from 'claude-code'
 
 import { CLAUDISH_TOOL, makeClaudishSource } from './claudish-source'
 import { capped, claimVia, rejected, toAccepted, type Host, type PressUi, type Store } from './host'
-import { SHOW_PANE_ID } from './domain'
+import { CLIENT_SURFACES, SHOW_PANE_ID } from './domain'
 import { activeTab, bandModel, paneFit, paneModel, showTabs } from './layout'
 import * as poll from './poll'
 import * as wake from './wake'
@@ -172,7 +172,10 @@ export const register: Register = (on, options) => {
     if (model === null) return next(e) // nothing to draw
     const press = bindStore($)
     const ui = bindPressUi($)
-    return bandTree($.ui.resolve(e), model, {
+    // Where the surface draws no Client, the band is handed none, so the row falls back to the stale-meter.
+    const resolved = $.ui.resolve(e)
+    const els = CLIENT_SURFACES.includes(e.surface) ? resolved : { ...resolved, Client: undefined }
+    return bandTree(els, model, {
       stop: target => void controls.pressStop(press, bound, target),
       show: target => void controls.pressShow(press, ui, bound, target).then(id => poll.captureOpened(bound, id), () => poll.ensureLoop(bound)),
       hide: () => void controls.pressHide(ui),

@@ -1,14 +1,17 @@
 import { test, expect } from 'claude-code/testing'
-import { harness, start } from '../fake-claudish'
-import { mountBand, SURFACES } from '../ui'
-import { POLL, team } from './support'
-import { DARK, bandRow, expectInk, visibleText } from './v2-support'
+import { harness, start, type Harness } from '../fake-claudish'
+import { bandProps, mountBand, mountPane, paneProps, SURFACES } from '../ui'
+import { DARK, POLL, QUIET_DARK, team } from './support'
+import { bandRow, expectInk, expectInkOneOf, pressChip, tabHeader, visibleText } from './v2-support'
+import { SHOW_PANE, silentFor, untilPoll } from './r6-support'
 
+// R6.7: one cell fills at each of 5, 30, 60, 90, 120 s; below 5 s the slot is streaming, no number;
+// from 5 s the number follows the cells. Colours: 0–2 cells success, 3–4 warning, 5 error.
 const EDGES = [
   [0, '▱▱▱▱▱', 'success'],
-  [9, '▱▱▱▱▱', 'success'],
-  [10, '▰▱▱▱▱', 'success'],
-  [29, '▰▱▱▱▱', 'success'],
+  [4, '▱▱▱▱▱', 'success'],
+  [5, '▰▱▱▱▱ 5s', 'success'],
+  [29, '▰▱▱▱▱ 29s', 'success'],
   [30, '▰▰▱▱▱ 30s', 'success'],
   [42, '▰▰▱▱▱ 42s', 'success'],
   [59, '▰▰▱▱▱ 59s', 'success'],
@@ -22,19 +25,26 @@ const EDGES = [
 
 for (const surface of SURFACES) {
   for (const [seconds, meter, color] of EDGES) {
-    test(`v2 §3: ${seconds}s silence draws ${meter} in ${color} [${surface}]`, async ($, on) => {
-      const h = harness(on, { rowPatch: row => ({ ...row, idle_seconds: seconds, activity: 'thinking' }) })
+    test(`R6.7: ${seconds}s silence draws ${meter}${seconds < 5 ? ' (no number)' : ''} in ${color}, in the Show tab header [${surface}]`, async ($, on) => {
+      const h: Harness = harness(on, { rowPatch: row => silentFor(() => h, () => seconds)({ ...row, activity: 'thinking' }) })
       await start($, surface)
       await team($, h, 'stale-meter', ['meter-model'])
-      const b = await mountBand($, surface)
-      const row = await bandRow(b, 'meter-model')
-      const text = visibleText(row)
+      const b = await mountBand($, surface, bandProps(160))
+      // R6.4: the row draws its timeline, never the meter text
+      expect(visibleText(await bandRow(b, 'meter-model'))).not.toMatch(/[▰▱]/)
+      await pressChip(b, 'meter-model', 'Show')
+      await untilPoll(h) // read right after a poll: the silence is exactly what claudish said
+      const p = await mountPane($, surface, SHOW_PANE, paneProps(120, 24))
+      const hdr = await tabHeader(p, 'meter-model')
+      const text = visibleText(hdr)
       const meters = text.match(/[▰▱]{5}(?: \d+(?:s|m|h))?/g) ?? []
-      expect(meters).toEqual([meter])
-      expectInk(row, meter, { color })
+      expect(meters).toHaveLength(1)
+      expect(meters[0]).toBe(meter)
+      if (seconds < 5) expect(meters[0]).not.toMatch(/\d/) // streaming: 0 cells filled, no number
+      expectInk(hdr, meters[0]!, { color })
       expect(text).not.toMatch(/idle |⚠/)
-      if (seconds < 30) expect(meters[0]).not.toMatch(/\d/)
       if (seconds < 120) expect(meters[0]).not.toContain('▰▰▰▰▰')
+      await p.unmount()
       await b.unmount()
     })
   }
@@ -68,18 +78,20 @@ for (const surface of SURFACES) {
     await b.unmount()
   })
 
-  // §8: loops are a symbol and a number, no words and no plural
-  for (const [count, label] of [[1, '↻ 1'], [2, '↻ 2']] as const) {
-    test(`v2 §3/§8: ${count} completed turns reads ${label} [${surface}]`, async ($, on) => {
+  // R6.2: loops are the mark touching a number, no words and no plural
+  for (const [count, label] of [[1, '↻1'], [2, '↻2']] as const) {
+    test(`R6.2: ${count} completed turns reads ${label} on the loops quiet ink [${surface}]`, async ($, on) => {
       const h = harness(on, { rowPatch: row => ({ ...row, turns_completed: count }) })
       await start($, surface)
       await team($, h, 'loops', ['loop-model'])
       const b = await mountBand($, surface)
       const text = visibleText(await bandRow(b, 'loop-model'))
-      expect(text).toContain(label)
+      expect(text).toContain(` ${label} `) // one space each side
+      expect(text).not.toMatch(/↻ \d/)
       expect(text.replace('loop-model', '')).not.toMatch(/loops?/)
-      // §9: plain bold text in the loops hue, no fill
-      expectInk(await bandRow(b, 'loop-model'), label, { color: DARK.loops, bold: true, backgroundColor: undefined })
+      // R6.2: on the loops hue's quiet ink, bold, white text
+      expectInk(await bandRow(b, 'loop-model'), ` ${label} `, { color: DARK.snow, bold: true })
+      expectInkOneOf(await bandRow(b, 'loop-model'), ` ${label} `, 'backgroundColor', QUIET_DARK.loops)
       await b.unmount()
     })
   }

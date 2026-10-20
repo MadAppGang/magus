@@ -1,5 +1,7 @@
 # Blind behaviour tests: claudish status mod 2.4.0
 
+The spec files named below (`spec.md`, `spec-v2.md`, `spec-2.3.0.md`) are kept, as one document, in `docs/plans/2026-10-20-claudish-status-band-spec.md` at the repository root.
+
 Authority: `spec-v2.md`. Each line below maps one expanded test name to a numbered point; every line runs on both `[terminal]` and `[desktop]`. The unchanged contracts supply run/slot addressing, the mocked clock, and read-only capture semantics. No implementation file is imported or inspected.
 
 ## §1 — Which runs the band draws (`v2-runs.test.ts`)
