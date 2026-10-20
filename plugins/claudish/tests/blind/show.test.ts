@@ -87,7 +87,7 @@ test('show: a delegation shows in its own tab and captures by session_id', SLOW,
   }
 })
 
-test('show: the tab is a read-only live view, captured only while the panel is open, with since_seq', SLOW, async ($, on) => {
+test('show: the tab is a read-only live view, repainted while shown, at the closed rate otherwise, with since_seq', SLOW, async ($, on) => {
   const h = harness(on)
   await start($)
   for (const surface of SURFACES) {
@@ -95,8 +95,9 @@ test('show: the tab is a read-only live view, captured only while the panel is o
     const run = await startTeam($, h, `show-live-${surface}`, [model, `quiet-${surface}`])
     const capsOf = (slot: string) => h.fake.captureCalls().filter(c => c.args.run_id === run.runId && c.args.slot === slot)
     await h.clock.advance(5_000)
-    expect(capsOf('01'), `${surface}: no capture before the panel is open`).toHaveLength(0)
-    expect(capsOf('02'), `${surface}: no capture before the panel is open`).toHaveLength(0)
+    // closed: each tab is captured, at most every 10 s, so Show opens on a screen already held
+    expect(capsOf('01'), `${surface}: one capture in 5 s before the panel is open`).toHaveLength(1)
+    expect(capsOf('02'), `${surface}: one capture in 5 s before the panel is open`).toHaveLength(1)
 
     const band = await mountBand($, surface, WIDE)
     await band.press({ key: keyOf(showButton(rowFor(await band.drawn(), model))!)! })
@@ -126,12 +127,12 @@ test('show: the tab is a read-only live view, captured only while the panel is o
     expect(later).not.toBe(counter)
     await pane.unmount()
 
-    // The person closes the panel: capturing stops for every tab.
+    // The person closes the panel: each tab falls back to the closed rate.
     h.panes = h.panes.filter(p => p.id !== PANE)
     await h.clock.advance(3_000)
-    const n = h.fake.captureCalls().length
+    const n = capsOf('01').length
     await h.clock.advance(6_000)
-    expect(h.fake.captureCalls().length, `${surface}: no capture once the panel is closed`).toBe(n)
+    expect(capsOf('01').length - n, `${surface}: at most one capture in 6 s once the panel is closed`).toBeLessThanOrEqual(1)
     await band.unmount()
   }
   expect(modVerbs(h).filter(v => !ALLOWED_VERBS.includes(v)), 'the mod sent no input to claudish').toEqual([])

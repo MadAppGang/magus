@@ -55,7 +55,7 @@ for (const surface of SURFACES) {
     const b = await mountBand($, surface, bandProps(160))
     const showKey = keyOf(chips(await bandRow(b, 'size-model'), 'Show')[0]!)
     expect(observed).toHaveLength(0)
-    expect(h.fake.captureCalls()).toHaveLength(0)
+    const capturedBefore = h.fake.captureCalls().length
     await b.redraw(bandProps(41)) // R6.3 floor for a 10-character model: 2 + 2 + 5 + (8 + 2) + 9 + 8 + 5 gaps
     await b.press({ key: showKey })
     expect(observed).toHaveLength(1)
@@ -64,8 +64,8 @@ for (const surface of SURFACES) {
     expect(h.panes[0]?.isPlaced).toBe(true)
     expect(views(h).get(activeTab(h)!)).toMatchObject({ slot: '01', model: 'size-model' })
     expect(h.toasts.some(t => t.includes('not drawn yet'))).toBe(false)
-    await h.clock.advance(0) // the first capture is due at once: no poll interval passes
-    expect(h.fake.captureCalls().length).toBeGreaterThan(0)
+    await h.clock.advance(0) // the press captures at once: no poll interval passes
+    expect(h.fake.captureCalls().length).toBeGreaterThan(capturedBefore)
     await b.unmount()
   })
 

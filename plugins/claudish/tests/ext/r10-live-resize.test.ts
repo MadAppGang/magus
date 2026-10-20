@@ -71,7 +71,7 @@ for (const surface of SURFACES) {
   // ── R10.1 ──────────────────────────────────────────────────────────────────
 
   // TEST-R10-1 / REQ-R10-1, REQ-R10-2, REQ-R10-3
-  test(`R10.1 TEST-R10-1: a session started while the panel is closed, after it drew, is resized to the panel's last size at a tick, with no capture [${surface}]`, async ($, on) => {
+  test(`R10.1 TEST-R10-1: a session started while the panel is closed, after it drew, is resized to the panel's last size at a tick, before any capture [${surface}]`, async ($, on) => {
     const h = harness(on)
     await start($, surface)
     await team($, h, 'closed-start', ['closed-one'])
@@ -89,8 +89,11 @@ for (const surface of SURFACES) {
     expect(sessionResizes(h, s.id).map(c => ({ tool: c.tool, args: c.args }))).toEqual([
       { tool: 'resize_session', args: { session_id: s.id, cols: 130, rows: 41 } },
     ])
-    expect(sessionCaptures(h, s.id), 'resized without any capture').toHaveLength(0)
-    expect(h.fake.captureCalls(), 'no capture at all while the panel is closed').toHaveLength(captures)
+    // R11: a closed panel captures at most every 10 s; the resize needs no capture and comes first
+    const caps = sessionCaptures(h, s.id)
+    expect(caps.length, 'at most one closed-rate capture in the window').toBeLessThanOrEqual(1)
+    if (caps[0]) expect(h.fake.calls.indexOf(sessionResizes(h, s.id)[0]!)).toBeLessThan(h.fake.calls.indexOf(caps[0]))
+    void captures
     await b.unmount()
   })
 
@@ -164,8 +167,11 @@ for (const surface of SURFACES) {
 
     expect(sizes(sessionResizes(h, s.id))).toEqual([[120, 37]])
     expect(resizedAt).toBeLessThanOrEqual(endedAt)
-    expect(sessionCaptures(h, s.id)).toHaveLength(0)
-    expect(h.fake.captureCalls()).toHaveLength(captures)
+    // R11: closed, it is captured at its first tick and once more when it ends, never more; the resize comes first
+    const caps = sessionCaptures(h, s.id)
+    expect(caps.length).toBeLessThanOrEqual(2)
+    if (caps[0]) expect(h.fake.calls.indexOf(sessionResizes(h, s.id)[0]!)).toBeLessThan(h.fake.calls.indexOf(caps[0]))
+    void captures
 
     // reopening at a NEW size: the finished session is left alone (R10.1 last bullet)
     const again = await reopen($, b, surface, 'short-keep', 140, 40)
@@ -344,7 +350,7 @@ for (const surface of SURFACES) {
   })
 
   // TEST-R10-11 / REQ-R10-10: pressing it puts the panel away, as the band's Hide does.
-  test(`R10.3 TEST-R10-11: pressing the panel's Hide closes claudish-show, keeps the tabs and views, and stops capture [${surface}]`, async ($, on) => {
+  test(`R10.3 TEST-R10-11: pressing the panel's Hide closes claudish-show, keeps the tabs and views, and drops capture to the closed rate [${surface}]`, async ($, on) => {
     const h = harness(on)
     await start($, surface)
     await team($, h, 'press-hide', ['ph-one', 'ph-two'])
@@ -368,7 +374,8 @@ for (const surface of SURFACES) {
     await h.clock.advance(POLL)
     const n = h.fake.captureCalls().length
     await h.clock.advance(8_000)
-    expect(h.fake.captureCalls()).toHaveLength(n)
+    // R11: closed, each of the two tabs is captured at most once in 8 s (the closed rate is 10 s)
+    expect(h.fake.captureCalls().length - n).toBeLessThanOrEqual(2)
     await b.unmount()
   })
 

@@ -343,7 +343,7 @@ for (const surface of SURFACES) {
     const b = await mountBand($, surface, bandProps(180))
     await h.clock.advance(3_000)
     expect(h.fake.resizeCalls()).toHaveLength(0)
-    expect(h.fake.captureCalls()).toHaveLength(0)
+    expect(h.fake.captureCalls(), 'closed: captured at the closed rate, never resized').toHaveLength(1)
 
     await pressChip(b, 'not-drawn-model', 'Show')
     await h.clock.advance(2_000)
@@ -574,13 +574,14 @@ for (const surface of SURFACES) {
     await until(h, () => h.fake.resizeCalls().length >= 2, 'both tabs receive initial size')
     const hiddenLast = h.fake.captureCalls().filter(c => c.args.slot === '02').at(-1)
     expect(hiddenLast).toBeDefined()
-    expect(h.clock.now() - hiddenLast!.at).toBeLessThan(1_000)
+    // R11: the closed panel captured it before Show, so its last capture can be up to 2 s back
+    expect(h.clock.now() - hiddenLast!.at).toBeLessThan(2_000)
     const before = h.fake.calls.length
     const redrawnAt = h.clock.now()
 
     await p.redraw(paneProps(145, 47))
-    // The hidden tab's next capture is at least 4 s away (5-second cadence, last capture < 1 s ago);
-    // R10.1 resizes it at the next poll tick instead, well inside that.
+    // The hidden tab's next capture is more than 3 s away (5-second cadence, last capture < 2 s ago);
+    // R10.1 resizes it at the next poll tick instead, inside the 3 s window below.
     await until(h, () => h.fake.resizeCalls().filter(c => c.args.cols === 145).length >= 2, 'both tabs resized at the next tick', 3_000)
 
     const changed = h.fake.resizeCalls().filter(c => c.args.cols === 145)
@@ -599,7 +600,7 @@ for (const surface of SURFACES) {
   })
 
   // TEST-20 / R10.2 (replaces R7.3's "forgets"): the size belongs to the session, so Hide and reopen at the same size send nothing.
-  test(`R10.2 TEST-20: Hide stops capture; reopening at the same size sends no resize, a new size sends one [${surface}]`, async ($, on) => {
+  test(`R10.2 TEST-20: Hide drops capture to the closed rate; reopening at the same size sends no resize, a new size sends one [${surface}]`, async ($, on) => {
     const h = harness(on)
     await start($, surface)
     await team($, h, 'reopen-size', ['reopen-model'])
@@ -617,7 +618,7 @@ for (const surface of SURFACES) {
     const count = h.fake.captureCalls().length
     await h.clock.advance(6_000)
     expect(h.fake.resizeCalls()).toHaveLength(1)
-    expect(h.fake.captureCalls()).toHaveLength(count)
+    expect(h.fake.captureCalls().length - count, 'at most one capture in 6 s while closed').toBeLessThanOrEqual(1)
     await b.redraw()
     await pressChip(b, 'reopen-model', 'Show')
     const reopened = await mountPane($, surface, SHOW_PANE, paneProps(128, 42))

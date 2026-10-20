@@ -4,6 +4,23 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Marketplace 13.7.11] - 2026-10-21
+
+### Fixed
+
+- **`claudish` v2.9.2**: the Show panel opens on a screen it already holds, with no blank
+  "Waiting for the first screen…". Every slot is captured while the panel is closed too, at most
+  every 10 s, and once more when it ends. So a slot that finished before Show was pressed shows
+  its final screen, where it used to read "Run ended before a screen was captured" once claudish
+  had reaped its pane. The mod's resize calls no longer open a permission dialog. The `says` step
+  is lime, because it read as the same violet as `think`. A run started while the band was idling
+  appears within a second, not up to three.
+- **`code-search` v8.6.2**: a session claudish started no longer stops on the setup question.
+  The offer is skipped where `CLAUDISH_PANE_CHILD=1`, because no person is there to answer it,
+  and claudish failed the slot as blocked.
+
+---
+
 ## [Marketplace 13.7.10] - 2026-10-21
 
 ### Added

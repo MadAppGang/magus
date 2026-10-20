@@ -44,11 +44,14 @@ export const TICK_RETRIES = 8
 /** A hidden tab is captured at most this often; an unavailable one, at most this often. */
 export const HIDDEN_CAPTURE_MS = 5_000
 export const UNAVAILABLE_RETRY_MS = 10_000
+/** A tab of a closed panel is captured at most this often, and once more when its slot ends. */
+export const CLOSED_CAPTURE_MS = 10_000
 
 // ── module state: dies with a hot reload, which session.start restarts ───────
 
 type Phase = 'idle' | 'scheduled' | 'running'
-const loop: { phase: Phase; rerun: boolean; failures: number } = { phase: 'idle', rerun: false, failures: 0 }
+/** gen: the number of the one scheduled tick that may run; an earlier one fires as a no-op. */
+const loop: { phase: Phase; rerun: boolean; failures: number; gen: number } = { phase: 'idle', rerun: false, failures: 0, gen: 0 }
 /** pane id → last capture attempt, whatever its answer. Not drawn, so not in state. */
 const lastAttemptAt = new Map<string, number>()
 /** pane id → the first tick that found its slot terminal. */
@@ -301,13 +304,19 @@ export function mergeAll(
 // ── the loop ──────────────────────────────────────────────────────────────────
 
 /** From session.start, the observer's start branch, and Show. */
+function schedule(host: Host, ms: number): void {
+  const gen = ++loop.gen
+  loop.phase = 'scheduled'
+  host.after(ms, () => {
+    if (gen === loop.gen) void tick(host)
+  })
+}
+
 export function ensureLoop(host: Host): void {
   switch (loop.phase) {
     case 'idle':
-      loop.phase = 'scheduled'
-      host.after(0, () => void tick(host))
-      return
-    case 'scheduled':
+    case 'scheduled': // the pending tick can be a quiet one, seconds away: run now, and it fires as a no-op
+      schedule(host, 0)
       return
     case 'running':
       loop.rerun = true
@@ -322,7 +331,7 @@ export function ensureLoop(host: Host): void {
  */
 export async function captureOpened(host: Host, id: string): Promise<void> {
   try {
-    if (await panelOpen(host)) await captures(host, [{ id, isShown: true }], await host.store.runs.read(), await host.store.feeds.read(), await host.now(), false)
+    if (await panelOpen(host)) await captures(host, [{ id, inPanel: true, isShown: true }], await host.store.runs.read(), await host.store.feeds.read(), await host.now(), false)
   } catch (err) {
     host.debug(`claudish Show capture failed: ${err instanceof Error ? err.message : String(err)}`)
   }
@@ -417,8 +426,7 @@ export async function tick(host: Host): Promise<void> {
     if (!keepGoing) {
       loop.phase = 'idle'
     } else {
-      loop.phase = 'scheduled'
-      host.after(delay(watchedNow, tabs.shownLive, now), () => void tick(host))
+      schedule(host, delay(watchedNow, tabs.shownLive, now))
     }
   }
 }
@@ -435,8 +443,8 @@ async function compact(host: Host, runs: ClaudishRuns, epoch: number): Promise<C
 }
 
 
-/** A tab the capture pass visits: its id (its view's member id), and whether the panel shows it. */
-type TabRef = { id: string; isShown: boolean }
+/** A tab the capture pass visits: its id (its view's member id), whether the panel is open, and whether it shows the tab. */
+type TabRef = { id: string; inPanel: boolean; isShown: boolean }
 
 /** Tab ids this load has given a view, so a tab whose run left the band has its view cleared. */
 const seeded = new Set<string>()
@@ -444,8 +452,10 @@ const seeded = new Set<string>()
 /**
  * The panel's tabs follow the runs the band shows: every slot gets a view (`waiting`) as soon as
  * it is listed, so its tab is there before anyone presses Show, and a tab whose run left the band
- * loses its view. Returns the tabs to capture: none while the panel is put away, else every tab,
- * the active one shown (the one last picked, else the first).
+ * loses its view. Returns every tab to capture, the panel open or not: a closed panel's tabs are
+ * captured at the closed rate, so Show opens on a screen already held and a slot that ends while
+ * the panel is closed keeps its last screen. A tab is shown only while the panel is open (the one
+ * last picked, else the first).
  */
 async function syncTabs(host: Host, runs: ClaudishRuns, feeds: Readonly<Record<string, ClaudishFeedSupport>>): Promise<TabRef[]> {
   const tabs = showTabs(runs, feeds)
@@ -461,12 +471,12 @@ async function syncTabs(host: Host, runs: ClaudishRuns, feeds: Readonly<Record<s
     const { runId, slot, model } = t.target
     await host.store.panes.update(t.id, v => v ?? { runId, slot, model, status: 'waiting', frame: null, note: null })
   }
-  if (!(await panelOpen(host))) return []
-  const active = activeTab(tabs, (await host.store.showTab.read()).active)
-  return tabs.map(t => ({ id: t.id, isShown: t.id === active?.id }))
+  const inPanel = await panelOpen(host)
+  const active = inPanel ? activeTab(tabs, (await host.store.showTab.read()).active) : null
+  return tabs.map(t => ({ id: t.id, inPanel, isShown: t.id === active?.id }))
 }
 
-// ── captures: the panel's tabs, while it is open ─────────────────────────────────────────────
+// ── captures: the panel's tabs, open or closed ───────────────────────────────────────────────
 
 type TabsOutcome = { shownLive: boolean; capturing: number }
 
@@ -495,7 +505,10 @@ async function captures(
     v ? { ...v, status: 'ended', note: v.frame ? null : NO_SCREEN_NOTE } : v
   for (const p of open) {
     const view = await host.store.panes.read(p.id)
-    if (!view || view.status === 'ended') {
+    // An ended tab with no screen is asked once more when it is opened: claudish keeps a closed
+    // pane's last screen, so the answer is that screen, not a guess that none exists.
+    const retry = !everyTab && view?.status === 'ended' && view.frame === null
+    if (!view || (view.status === 'ended' && !retry)) {
       lastAttemptAt.delete(p.id)
       terminalSeenAt.delete(p.id)
       continue
@@ -512,15 +525,24 @@ async function captures(
       }
       continue
     }
+    if (retry) {
+      // One shot: a screen is stored, anything else leaves the tab ended as it was.
+      const r = await host.source.capture(run.ref, view.slot, 0, support.can.spans)
+      if (r.kind === 'frame') await host.store.panes.update(p.id, v => (v ? { ...v, frame: r.frame, note: null } : v))
+      continue
+    }
     out.capturing += 1
     if (p.isShown) out.shownLive = true
     const slot = run.slots.find(s => s.slot === view.slot)
-    if (slot && isTerminal(slot.state) && !terminalSeenAt.has(p.id)) terminalSeenAt.set(p.id, now)
+    const justEnded = slot !== undefined && isTerminal(slot.state) && !terminalSeenAt.has(p.id)
+    if (justEnded) terminalSeenAt.set(p.id, now)
     const seenAt = terminalSeenAt.get(p.id)
     const graceOver = seenAt !== undefined && now - seenAt >= FINAL_GRACE_MS
     const last = lastAttemptAt.get(p.id)
-    const due = last === undefined
-      || (view.status === 'unavailable' ? now - last >= UNAVAILABLE_RETRY_MS : p.isShown || now - last >= HIDDEN_CAPTURE_MS)
+    // The tick that first finds the slot ended asks for its final screen whatever the rate.
+    const due = last === undefined || justEnded
+      || (view.status === 'unavailable' ? now - last >= UNAVAILABLE_RETRY_MS
+        : p.isShown || now - last >= (p.inPanel ? HIDDEN_CAPTURE_MS : CLOSED_CAPTURE_MS))
     if (!due || resizing.has(p.id)) continue
     lastAttemptAt.set(p.id, now)
     // Fit the child to the panel before reading its screen, so this capture already shows it reflowed.
@@ -530,8 +552,9 @@ async function captures(
     let ended = false
     switch (r.kind) {
       case 'frame':
-        ended = r.final
-        await host.store.panes.update(p.id, v => (v ? { ...v, status: r.final ? 'ended' : 'live', frame: r.frame, note: null } : v))
+        // A finished slot whose pane keeps redrawing still ends at the grace: nothing else would stop it.
+        ended = r.final || graceOver
+        await host.store.panes.update(p.id, v => (v ? { ...v, status: ended ? 'ended' : 'live', frame: r.frame, note: null } : v))
         break
       case 'unchanged':
         if (r.final || graceOver) {

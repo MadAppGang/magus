@@ -34,14 +34,14 @@ export type TimelineColors = {
 // orange-gold that reads on a cream page and a dark one.
 const TIMELINE_LIGHT: TimelineColors = {
   read: '#0D9488', edit: '#A16207', run: '#BE185D', web: '#0369A1', agent: '#C2410C', other: '#4B5563',
-  think: '#7C3AED', say: '#6D28D9', ask: '#B45309', done: '#166534', fail: '#B91C1C', finish: '#15803D',
+  think: '#7C3AED', say: '#4D7C0F', ask: '#B45309', done: '#166534', fail: '#B91C1C', finish: '#15803D',
   words: '#4B5068', dim: '#8F94AC', ink: '#FFFFFF', timeInk: '#0B0B12', page: '#FFFFFF',
   pac: '#E8890C', pacQuiet: '#A8743A', ghost: '#B91C1C', ghost2: '#BE185D',
   ok: '#166534', warn: '#B45309', bad: '#B91C1C', silenceInk: '#FFFFFF',
 }
 const TIMELINE_DARK: TimelineColors = {
   read: '#4FD6BE', edit: '#FFD479', run: '#F38BA8', web: '#7DCFFF', agent: '#FF9E64', other: '#D8DAE5',
-  think: '#B794F6', say: '#C4A7F8', ask: '#FFB454', done: '#22E06B', fail: '#FF4D5E', finish: '#7EE2A0',
+  think: '#B794F6', say: '#A3E635', ask: '#FFB454', done: '#22E06B', fail: '#FF4D5E', finish: '#7EE2A0',
   words: '#9AA0BC', dim: '#5A5E78', ink: '#0B0B12', timeInk: '#0B0B12', page: '#16171D',
   pac: '#FFD23F', pacQuiet: '#A8743A', ghost: '#FF4D5E', ghost2: '#FF8AD8',
   ok: '#22E06B', warn: '#FFB454', bad: '#FF4D5E', silenceInk: '#FFFFFF',

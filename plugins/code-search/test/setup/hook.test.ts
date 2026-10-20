@@ -46,3 +46,10 @@ test("same project: ready, dismissed and none are silent; unconfigured offers se
   expect(first).toContain(s.project);
   expect(first).toContain("If the task needs no search of this codebase at all, do not ask.");
 });
+
+test("a session claudish started is silent: no one is there to answer the offer", () => {
+  const s = site();
+  expect(status(s).headline).toBe("unconfigured");
+  expect(context(hook(s))).toContain("AskUserQuestion"); // the same project offers setup to a person
+  silent(hook({ ...s, env: { ...s.env, CLAUDISH_PANE_CHILD: "1" } }));
+});

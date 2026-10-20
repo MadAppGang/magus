@@ -9,7 +9,8 @@
  * nothing and fetches nothing, which is what keeps this hook inside its 5 s timeout.
  *
  * SILENT unless the headline state prompts (`NEEDS_SETUP`): ready, `none` (no engine, by
- * choice) and `dismissed` print nothing at all.
+ * choice) and `dismissed` print nothing at all. Also silent inside a claudish session
+ * (`CLAUDISH_PANE_CHILD=1`), which has no person to answer the offer.
  *
  * `compact` and `resume` are left out of the matcher on purpose: a user who answered
  * "Not now" is not asked again in the same session. The MCP server's `setup_incomplete`
@@ -58,6 +59,9 @@ export interface OfferInput {
  */
 export function offerSetup(input: OfferInput): string | undefined {
   const { env, pluginRoot, io } = input;
+  // A session claudish started has no person at it: the offer becomes a question nobody can
+  // answer, and claudish fails the slot as blocked.
+  if (env["CLAUDISH_PANE_CHILD"] === "1") return undefined;
   const declared = env["CLAUDE_PROJECT_DIR"];
   const projectDir =
     declared !== undefined && declared !== "" ? declared : (cwdOf(input.payload) ?? process.cwd());

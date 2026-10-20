@@ -27,7 +27,6 @@ for (const surface of SURFACES) {
     await start($, surface)
     const r = await team($, h)
     const b = await mountBand($, surface)
-    expect(h.fake.captureCalls()).toHaveLength(0)
     await press(b, 'model-a', 'Show')
     const tabA = activeTab(h)
     await press(b, 'model-b', 'Show')
@@ -163,7 +162,7 @@ for (const surface of SURFACES) {
     await b.unmount()
   })
 
-  test(`ext Show: engine owns dock/inline placement, and only placed open tabs capture [${surface}]`, async ($, on) => {
+  test(`ext Show: engine owns dock/inline placement; once the surface closes the pane, tabs fall to the closed rate [${surface}]`, async ($, on) => {
     const h = harness(on, { frame: captured })
     await start($, surface)
     await team($, h)
@@ -178,9 +177,13 @@ for (const surface of SURFACES) {
     // Simulate the surface closing the dock's last tab (ui.panes is authoritative).
     h.panes = []
     await h.clock.advance(POLL * 2)
-    const count = h.fake.captureCalls().length
-    await h.clock.advance(10_000)
-    expect(h.fake.captureCalls()).toHaveLength(count)
+    const closedAt = h.clock.now()
+    await h.clock.advance(30_000)
+    // no tab is shown any more: each is captured at most every 10 s, not at every tick
+    for (const slot of ['01', '02', '03']) {
+      const at = h.fake.captureCalls().filter(c => c.args.slot === slot && c.at >= closedAt).map(c => c.at)
+      expect(at.slice(1).every((t, i) => t - at[i]! >= 10_000), `${slot} at the closed rate`).toBe(true)
+    }
     await b.unmount()
   })
 }

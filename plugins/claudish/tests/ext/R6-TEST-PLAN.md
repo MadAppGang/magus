@@ -52,8 +52,8 @@ Every test checks something R6 says must not appear; the per-section notes say w
 | r6-timeline: any option but `line` gives badges | R6.4 option |
 | r6-show: one pane `claudish-show` (claudish, 120, 24, Escape); the open is the first call; it picks the slot's tab | R6.5. Negative: never a `cl_` pane id |
 | r6-show: an unplaced open toasts "Show m: not drawn yet. reason" for 8 s | R6.5 toast. Negative: no Hide |
-| r6-show: header Hide: suggestion, bold, 8 cells, right edge; closes the pane; views and tab kept; Show restores | R6.5 Hide. Negative: no Hide while undrawn, no captures while closed, no re-seed |
-| r6-show: tabs follow the band: seeded `waiting` before any Show; a run that leaves is cleared | R6.5 tabs. Negative: no capture before open |
+| r6-show: header Hide: suggestion, bold, 8 cells, right edge; closes the pane; views and tab kept; Show restores | R6.5 Hide. Negative: no Hide while undrawn, captures fall to the closed rate (10 s) while closed, no re-seed |
+| r6-show: tabs follow the band: seeded `waiting` before any Show; a run that leaves is cleared | R6.5 tabs. A screen is held before any Show |
 | r6-show: tab labels: `kimi-k3 01`, `label/slot` across runs, a delegation's `#label` | R6.5 labels. Negative: never the session id |
 | r6-show: strip: dots, inactive labels, the shown tab's ink, `│`, `─` rule; a tab press | R6.5 strip |
 | r6-show: the shown tab falls back to the first; with no tab, `No run to show.` in dim | R6.5 |
@@ -75,13 +75,13 @@ Every test checks something R6 says must not appear; the per-section notes say w
 | blind/band: panel slots and delegations share the format (` ƒN `) | R6.2 |
 | blind/show: one pane for every slot (open, header Hide, reuse, switch) | R6.5 |
 | blind/show: a delegation shows in its own tab and captures by `session_id` | R6.5 |
-| blind/show: a read-only live view, captured only while the panel is open | R6.5 (room = rows − 2) |
+| blind/show: a read-only live view, repainted while shown, at the closed rate otherwise | R6.5 (room = rows − 2) |
 | ext band-layout: shrinking drops provider … live cell, with no activity or meter | R6.3 and R6.1 (`↑48k`, `ƒ12`) |
 | ext band-layout: badge, colour, header group and live cell, ×10 states | R6.4: every row has its Client and no meter text |
 | ext band-layout: null metrics; native shows as `Anthropic`; the tab meter at 119 s and 120 s | R6.1 and R6.7 |
 | ext delegation: row and live counters (` ƒ4 `, ` ↻1 `) | R6.2 |
 | ext Show: one pane for every slot; header Hide; Show restores the pressed tab | R6.5 |
-| ext Show: a stopped slot keeps its frame until final (captures filtered to its slot) | R6.5: every tab captures while the panel is open |
+| ext Show: a stopped slot keeps its frame until final (captures filtered to its slot) | R6.5: every tab captures, the panel open or closed |
 | v2-fit: narrowing order (provider … live, runtime, id, model) | R6.3 |
 | v2-meter: 0 / 4 / 5 / 29 / 30 / 42 / 59 / 60 / 89 / 90 / 119 / 120 / 3600 s in the tab header | R6.7 thresholds and colours |
 | v2-meter: 1 and 2 turns read ` ↻1 ` / ` ↻2 ` on the loops quiet ink | R6.2 |

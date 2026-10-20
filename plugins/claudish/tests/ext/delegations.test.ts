@@ -25,7 +25,9 @@ for (const surface of SURFACES) {
     expect(after).not.toMatch(/tools?|loops?/) // a symbol and a number, no words
     stateColor(await row(b, s.model), 'RUN', DARK.ink, DARK.run)
     expect(h.submits).toHaveLength(0)
-    expect(h.fake.captureCalls()).toHaveLength(0)
+    // no Show was pressed: the closed panel captures the delegation at most every 10 s
+    const at = h.fake.captureCalls().map(c => c.at)
+    expect(at.slice(1).every((t, i) => t - at[i]! >= 10_000)).toBe(true)
     await b.unmount()
   })
 

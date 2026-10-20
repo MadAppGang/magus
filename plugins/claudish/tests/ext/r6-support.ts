@@ -13,7 +13,7 @@ import { chips, visibleText } from './v2-support'
 
 export const TIMELINE_LIGHT = {
   read: '#0D9488', edit: '#A16207', run: '#BE185D', web: '#0369A1', agent: '#C2410C', other: '#4B5563',
-  think: '#7C3AED', say: '#6D28D9', ask: '#B45309', done: '#166534', fail: '#B91C1C', finish: '#15803D',
+  think: '#7C3AED', say: '#4D7C0F', ask: '#B45309', done: '#166534', fail: '#B91C1C', finish: '#15803D',
   words: '#4B5068', dim: '#8F94AC', ink: '#FFFFFF', timeInk: '#0B0B12', page: '#FFFFFF', pac: '#E8890C',
   pacQuiet: '#A8743A', ghost: '#B91C1C', ghost2: '#BE185D', ok: '#166534', warn: '#B45309', bad: '#B91C1C',
   silenceInk: '#FFFFFF',
@@ -21,7 +21,7 @@ export const TIMELINE_LIGHT = {
 
 export const TIMELINE_DARK = {
   read: '#4FD6BE', edit: '#FFD479', run: '#F38BA8', web: '#7DCFFF', agent: '#FF9E64', other: '#D8DAE5',
-  think: '#B794F6', say: '#C4A7F8', ask: '#FFB454', done: '#22E06B', fail: '#FF4D5E', finish: '#7EE2A0',
+  think: '#B794F6', say: '#A3E635', ask: '#FFB454', done: '#22E06B', fail: '#FF4D5E', finish: '#7EE2A0',
   words: '#9AA0BC', dim: '#5A5E78', ink: '#0B0B12', timeInk: '#0B0B12', page: '#16171D', pac: '#FFD23F',
   pacQuiet: '#A8743A', ghost: '#FF4D5E', ghost2: '#FF8AD8', ok: '#22E06B', warn: '#FFB454', bad: '#FF4D5E',
   silenceInk: '#FFFFFF',
@@ -31,7 +31,7 @@ export const TIMELINE_DARK = {
  * R6.6: dark timeline colours that are NOT also a §9 palette colour, so they can only reach a
  * drawing through a Client module: none may appear in the band's own tree.
  */
-export const TIMELINE_ONLY_DARK = ['#F38BA8', '#7DCFFF', '#FF9E64', '#D8DAE5', '#C4A7F8', '#7EE2A0', '#9AA0BC', '#16171D', '#FFD23F', '#A8743A', '#FF8AD8'] as const
+export const TIMELINE_ONLY_DARK = ['#F38BA8', '#7DCFFF', '#FF9E64', '#D8DAE5', '#A3E635', '#7EE2A0', '#9AA0BC', '#16171D', '#FFD23F', '#A8743A', '#FF8AD8'] as const
 
 // ── R6.4: the live cell's props ──────────────────────────────────────────────
 

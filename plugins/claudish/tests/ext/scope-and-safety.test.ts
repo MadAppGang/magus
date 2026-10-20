@@ -26,7 +26,7 @@ for (const surface of SURFACES) {
     await b.unmount()
   })
 
-  test(`ext polling: bounded list traffic, no child capture until Show, render never writes [${surface}]`, async ($, on) => {
+  test(`ext polling: bounded list traffic, child captures at the closed rate before any Show, render never writes [${surface}]`, async ($, on) => {
     const h = harness(on)
     await start($, surface)
     await team($, h)
@@ -36,7 +36,11 @@ for (const surface of SURFACES) {
     const traffic = h.fake.listCalls().length - initial
     expect(traffic).toBeGreaterThanOrEqual(2)
     expect(traffic).toBeLessThanOrEqual(12) // two owned runs, five ~1s ticks plus scheduling slack
-    expect(h.fake.captureCalls()).toHaveLength(0)
+    // R6.5 as amended: every tab is captured with the panel closed, each at most every 10 s
+    const caps = h.fake.captureCalls()
+    expect(caps.length).toBeGreaterThan(0)
+    const byTab = Map.groupBy(caps, c => `${c.tool}:${String(c.args.slot ?? c.args.session_id)}`)
+    for (const [tab, cs] of byTab) expect(cs.slice(1).every((c, i) => c.at - cs[i]!.at >= 10_000), tab).toBe(true)
     const b = await mountBand($, surface)
     const writes = h.writes.length
     await b.redraw()

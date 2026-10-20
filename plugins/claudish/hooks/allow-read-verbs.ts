@@ -15,8 +15,11 @@
  * installed through this plugin (`mcp__plugin_claudish_claudish__…`) or registered directly
  * (`mcp__claudish__…`). A suffix match is never enough, so the hook stays safe under any matcher.
  *
- * - `team` with mode list | status | capture → allow (its run and cancel modes must ask).
- * - `list_sessions`, `capture_session` → allow. Both are read-only as whole tools.
+ * - `team` with mode list | status | capture | resize → allow (its run and cancel modes must ask).
+ * - `list_sessions`, `capture_session`, `resize_session` → allow.
+ *
+ * Resize is not a read, but it changes only the size of a child's terminal, which the Show tab
+ * sets so the child's screen fits it. Asking each time would put a dialog over the tab it serves.
  * - anything else (a team run, a judge, a cancel, a session start or send, another server) →
  *   print nothing: the person's own rules decide.
  *
@@ -27,12 +30,12 @@
  */
 
 const SERVERS = ['mcp__plugin_claudish_claudish__', 'mcp__claudish__'] as const
-const READ_MODES: ReadonlySet<string> = new Set(['list', 'status', 'capture'])
-const READ_TOOLS: ReadonlySet<string> = new Set(SERVERS.flatMap(s => [`${s}list_sessions`, `${s}capture_session`]))
+const READ_MODES: ReadonlySet<string> = new Set(['list', 'status', 'capture', 'resize'])
+const READ_TOOLS: ReadonlySet<string> = new Set(SERVERS.flatMap(s => [`${s}list_sessions`, `${s}capture_session`, `${s}resize_session`]))
 const TEAM_TOOLS: ReadonlySet<string> = new Set(SERVERS.map(s => `${s}team`))
 
 /** Shown to the person, not the model; names why no question was asked. */
-const REASON = 'claudish read-only call'
+const REASON = 'claudish read-only or resize call'
 
 function isReadOnly(raw: string): boolean {
   let input: unknown

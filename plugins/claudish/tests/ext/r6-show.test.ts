@@ -123,11 +123,15 @@ for (const surface of SURFACES) {
     expect(activeTab(h)).toBe(active)
     await b.redraw()
     expect(await headerHide(b)).toBeUndefined()
-    // captures run only while the panel is open
+    // put away, the tabs keep being captured, at the closed rate: at most every 10 s each
     await h.clock.advance(POLL)
-    const n = h.fake.captureCalls().length
-    await h.clock.advance(10_000)
-    expect(h.fake.captureCalls()).toHaveLength(n)
+    const hiddenAt = h.clock.now()
+    await h.clock.advance(30_000)
+    for (const slot of ['01', '02']) {
+      const at = h.fake.captureCalls().filter(c => c.args.slot === slot && c.at >= hiddenAt).map(c => c.at)
+      expect(at.length, `${slot} still captured while put away`).toBeGreaterThan(0)
+      expect(at.slice(1).every((t, i) => t - at[i]! >= 10_000), `${slot} at the closed rate`).toBe(true)
+    }
     // the next Show brings it back, as it was: no view starts over
     const writes = h.writes.length
     const calls = h.uiCalls.length
@@ -148,9 +152,11 @@ for (const surface of SURFACES) {
     await start($, surface)
     const a = await team($, h, 'run-a', ['a-one', 'a-two'])
     expect(h.opens).toHaveLength(0)
-    expect(h.fake.captureCalls()).toHaveLength(0) // captures run only while the panel is open
     const seeded = views(h)
-    expect([...seeded.values()].map(v => [v.slot, v.status]).sort()).toEqual([['01', 'waiting'], ['02', 'waiting']])
+    // each view's first write is `waiting`; the closed panel's capture then fills it before any Show
+    const firstWrite = (id: string) => h.writes.find(([k]) => k === `panes/${id}`)?.[1] as { status?: string } | undefined
+    expect([...seeded.entries()].map(([id, v]) => [v.slot, firstWrite(id)?.status]).sort()).toEqual([['01', 'waiting'], ['02', 'waiting']])
+    expect([...seeded.values()].every(v => v.frame !== null), 'a screen is held before any Show').toBe(true)
     for (const id of seeded.keys()) expect(id).toMatch(TAB_ID)
     const aTabs = [...seeded.keys()]
     // run-a settles, run-b starts: run-a is no longer drawn

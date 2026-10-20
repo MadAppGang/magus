@@ -77,9 +77,10 @@ for (const surface of SURFACES) {
     const h = harness(on)
     await start($, surface)
     const id = await showTab($, h, surface)
-    // seeded waiting at the press, then captured at once (not at the loop's next tick)
+    // seeded waiting, captured once while the panel was closed, then again at the press (not at
+    // the loop's next tick)
     expect(h.writes.find(([k]) => k === `panes/${id}`)?.[1]).toMatchObject({ status: 'waiting', frame: null })
-    expect(capturesOf(h, '02')).toHaveLength(1)
+    expect(capturesOf(h, '02')).toHaveLength(2)
     expect(view(h, id)?.status).toBe('live')
     expect((h.state.get('showTab') as { active?: string } | undefined)?.active).toBe(id) // R6.5: the pressed slot's tab is shown
     await h.clock.advance(1000)
@@ -261,9 +262,28 @@ for (const surface of SURFACES) {
     await h.clock.advance(1000)
     expect(view(h, id)?.status).toBe('ended')
     const n = capturesOf(h, '02').length
-    expect(n).toBe(1)
+    expect(n).toBe(2) // once while the panel was closed (gone ends it), once more at the Show press
     await h.clock.advance(20_000)
     expect(capturesOf(h, '02')).toHaveLength(n)
+  })
+
+  test(`pane: a slot that ended while the panel was closed shows its last screen, even once claudish no longer keeps it [${surface}]`, async ($, on) => {
+    const options: FakeOptions = {}
+    const h = harness(on, options)
+    await start($, surface)
+    await ($ as { tool: { call: (e: unknown) => Promise<unknown> } }).tool.call({ tool: TEAM_TOOL, mode: 'run', path: 'r1' })
+    await h.clock.advance(1000)
+    h.fake.set(h.fake.runs[0]!.runId, '02', 'COMPLETED')
+    await h.clock.advance(FINAL_GRACE_MS + 11_000)
+    options.captureGone = true // the pane is reaped: a capture now answers retention over
+    const band = await mountBand($, surface)
+    await band.press({ key: `show:${runs(h).list[0]!.id}/02` })
+    const id = paneId(runs(h).list[0]!.id, '02')
+    expect(view(h, id)?.status).toBe('ended')
+    expect(view(h, id)?.frame?.seq, 'the screen captured while the panel was closed').toBeGreaterThan(0)
+    const pane = await mountPane($, surface, SHOW_PANE_ID)
+    expect(await pane.find({ type: 'Text', text: NO_SCREEN_NOTE })).toBeUndefined()
+    expect((await frameLines(pane)).some(l => l.includes('seq '))).toBe(true)
   })
 
   test(`pane: a tab with no view draws nothing of the plugin's own [${surface}]`, async ($, on) => {
@@ -338,12 +358,22 @@ for (const surface of SURFACES) {
     expect(h.fake.calls).toHaveLength(calls)
   })
 
-  test(`pane: capture scope — no panel, no capture; closing the panel stops capturing and keeps the views [${surface}]`, { plugins: [CLOSER] }, async ($, on) => {
+  test(`pane: capture scope — a closed panel captures every tab at most every 10 s, so Show opens on a held screen; closing the panel keeps the views [${surface}]`, { plugins: [CLOSER] }, async ($, on) => {
     const h = harness(on)
     await start($, surface)
     await ($ as { tool: { call: (e: unknown) => Promise<unknown> } }).tool.call({ tool: TEAM_TOOL, mode: 'run', path: 'r1' })
-    await h.clock.advance(10_000)
-    expect(h.fake.captureCalls()).toHaveLength(0) // R6.5: every slot's view is seeded, but nothing is captured while the panel is closed
+    await h.clock.advance(25_000)
+    // R6.5 as amended: every slot is captured while the panel is closed, no more often than every 10 s
+    const closedGaps = (slot: string, from: number) => {
+      const at = capturesOf(h, slot).filter(c => c.at >= from).map(c => c.at)
+      return at.slice(1).map((t, i) => t - at[i]!)
+    }
+    for (const slot of ['01', '02', '03', '04']) {
+      expect(capturesOf(h, slot).length, `slot ${slot} captured while closed`).toBeGreaterThanOrEqual(2)
+      expect(closedGaps(slot, 0).every(g => g >= 10_000), `slot ${slot} at the closed rate`).toBe(true)
+    }
+    const heldId = paneId(runs(h).list[0]!.id, '02')
+    expect(view(h, heldId)?.frame?.seq, 'a screen is held before any Show').toBeGreaterThan(0)
     const band = await mountBand($, surface)
     await band.press({ key: `show:${runs(h).list[0]!.id}/02` })
     await h.clock.advance(3000)
@@ -354,8 +384,10 @@ for (const surface of SURFACES) {
     expect(h.closes).toEqual([SHOW_PANE_ID])
     // the stand-in is a plugin, so its close carries origin `plugin`, and the views stay
     expect(view(h, id)).toMatchObject({ slot: '02' })
-    const n = h.fake.captureCalls().length
-    await h.clock.advance(10_000)
-    expect(h.fake.captureCalls()).toHaveLength(n)
+    // closed again: back to the closed rate, never the shown tab's every tick
+    const closedAt = h.clock.now()
+    await h.clock.advance(30_000)
+    expect(closedGaps('02', closedAt).every(g => g >= 10_000)).toBe(true)
+    expect(capturesOf(h, '02').filter(c => c.at >= closedAt).length).toBeLessThanOrEqual(4)
   })
 }
