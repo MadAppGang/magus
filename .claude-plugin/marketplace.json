@@ -7,7 +7,7 @@
   },
   "metadata": {
     "description": "Curated collection of Claude Code plugins for modern full-stack development with LLM performance tracking and E2E skill testing",
-    "version": "13.7.7",
+    "version": "13.7.8",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -78,7 +78,7 @@
       "name": "claudish",
       "source": "./plugins/claudish",
       "description": "MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting, manages async sessions, and shows the session's runs live above the prompt, with stop and live-screen tabs. Required by code-search, dev, multimodel and designer.",
-      "version": "2.8.0",
+      "version": "2.8.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -99,6 +99,11 @@
       "strict": true,
       "releases": [
         {
+          "version": "2.8.1",
+          "date": "2026-10-21",
+          "summary": "The Show panel fits a session to a narrow panel. A panel docked beside the chat is often 50\u201360\u2026"
+        },
+        {
           "version": "2.8.0",
           "date": "2026-10-21",
           "summary": "The live run cell draws each finished step as one thin bar in its colour, at every width,\u2026"
@@ -117,11 +122,6 @@
           "version": "2.6.1",
           "date": "2026-10-20",
           "summary": "The live run timeline keeps counting between polls. Its own clock was held back to the last\u2026"
-        },
-        {
-          "version": "2.6.0",
-          "date": "2026-10-20",
-          "summary": "The band above the prompt shows what each model is doing, from claudish's recent steps.\u2026"
         }
       ]
     },

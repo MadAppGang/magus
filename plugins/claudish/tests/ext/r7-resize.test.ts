@@ -174,17 +174,18 @@ function screen({ seq, final }: { seq: number; final: boolean }): Json {
 }
 
 for (const surface of SURFACES) {
-  // TEST-7 / REQ-3: literal oracles, rather than reusing a production sizing helper.
+  // TEST-7 / REQ-3, R9.1: literal oracles, rather than reusing a production sizing helper.
+  // R9.1: cols = max(40, columns), rows = max(24, rows - 3).
   const sizes = [
     { columns: 136, rows: 43, cols: 136, height: 40 },
     { columns: 80, rows: 27, cols: 80, height: 24 },
-    { columns: 79, rows: 26, cols: 80, height: 24 },
+    { columns: 79, rows: 26, cols: 79, height: 24 },
     { columns: 151, rows: 14, cols: 151, height: 24 },
-    { columns: 49, rows: 45, cols: 80, height: 42 },
+    { columns: 49, rows: 45, cols: 49, height: 42 },
     { columns: 81, rows: 28, cols: 81, height: 25 },
   ]
   for (const size of sizes) {
-    test(`R7.2 TEST-7: body ${size.columns}x${size.rows} requests ${size.cols}x${size.height} [${surface}]`, async ($, on) => {
+    test(`R7.2 R9.1 TEST-7: body ${size.columns}x${size.rows} requests ${size.cols}x${size.height} [${surface}]`, async ($, on) => {
       const h = harness(on)
       await start($, surface)
       const r = await team($, h, 'size-rule', ['size-model'])
@@ -203,6 +204,26 @@ for (const surface of SURFACES) {
       await b.unmount()
     })
   }
+
+  // R9.1: a typical docked panel, 55 columns wide, is given exactly its own width, not a floor.
+  test(`R9.1 TEST-23: a 55-column docked panel asks for exactly 55 columns [${surface}]`, async ($, on) => {
+    const h = harness(on)
+    await start($, surface)
+    const r = await team($, h, 'docked-size', ['docked-model'])
+    const b = await mountBand($, surface, bandProps(180))
+    await pressChip(b, 'docked-model', 'Show')
+    const p = await mountPane($, surface, SHOW_PANE, paneProps(55, 30))
+
+    await until(h, () => h.fake.resizeCalls().length > 0, 'the docked panel is resized')
+
+    expect(h.fake.resizeCalls().map(wire)).toEqual([{
+      server: SERVER, tool: 'team',
+      args: { mode: 'resize', path: r.path, run_id: r.runId, slot: '01', cols: 55, rows: 27 },
+    }])
+    expectPaired(h, h.fake.resizeCalls()[0]!)
+    await p.unmount()
+    await b.unmount()
+  })
 
   // TEST-8 / REQ-3: inherited fallbacks, observable through the Pane's own props.
   for (const name of ['absent dimensions', 'absent height', 'non-finite dimensions'] as const) {
@@ -406,27 +427,27 @@ for (const surface of SURFACES) {
     await b.unmount()
   })
 
-  // TEST-15 / REQ-3, REQ-9: changing the physical panel within the clamp is not a new requested size.
-  test(`R7.2 R7.3 TEST-15: panel changes that still clamp to 80x24 do not repeat resize [${surface}]`, async ($, on) => {
+  // TEST-15 / REQ-3, REQ-9, R9.1: changing the physical panel within the 40x24 clamp is not a new requested size.
+  test(`R9.1 R7.3 TEST-15: panel changes that still clamp to 40x24 do not repeat resize [${surface}]`, async ($, on) => {
     const h = harness(on)
     await start($, surface)
     await team($, h, 'clamped-size', ['clamped-model'])
     const b = await mountBand($, surface, bandProps(180))
     await pressChip(b, 'clamped-model', 'Show')
-    const p = await mountPane($, surface, SHOW_PANE, paneProps(70, 20))
+    const p = await mountPane($, surface, SHOW_PANE, paneProps(30, 20))
     await until(h, () => h.fake.resizeCalls().length > 0, 'initial clamped size requested')
     const captures = h.fake.captureCalls().length
 
-    await p.redraw(paneProps(79, 26))
+    await p.redraw(paneProps(39, 26))
     await h.clock.advance(POLL)
-    await p.redraw(paneProps(80, 27))
+    await p.redraw(paneProps(40, 27))
     await h.clock.advance(POLL)
 
-    expect(h.fake.resizeCalls().map(c => [c.args.cols, c.args.rows])).toEqual([[80, 24]])
+    expect(h.fake.resizeCalls().map(c => [c.args.cols, c.args.rows])).toEqual([[40, 24]])
     expect(h.fake.captureCalls().length).toBeGreaterThan(captures)
-    await p.redraw(paneProps(80, 28))
+    await p.redraw(paneProps(40, 28))
     await until(h, () => h.fake.resizeCalls().length >= 2, 'height above the clamp requests a new size')
-    expect(h.fake.resizeCalls().map(c => [c.args.cols, c.args.rows])).toEqual([[80, 24], [80, 25]])
+    expect(h.fake.resizeCalls().map(c => [c.args.cols, c.args.rows])).toEqual([[40, 24], [40, 25]])
     await p.unmount()
     await b.unmount()
   })
@@ -641,23 +662,23 @@ for (const surface of SURFACES) {
     })
   }
 
-  // TEST-22 / REQ-3: the request minimum does not make a narrow drawing wider than the panel.
-  test(`R7.2 TEST-22: a narrow panel asks for 80x24 but still cuts the captured wide line [${surface}]`, async ($, on) => {
+  // TEST-22 / REQ-3, R9.1: the 40-column request minimum does not make a narrower drawing wider than the panel.
+  test(`R9.1 TEST-22: a panel under 40 columns asks for 40x24 but still cuts the captured wide line [${surface}]`, async ($, on) => {
     const long = `wide-child-${'x'.repeat(149)}`
     const h = harness(on, { frame: ({ seq, final }) => ({ seq, final, cols: 160, rows: 1, cursor: null, lines: [long] }) })
     await start($, surface)
     await team($, h, 'cut-size', ['cut-model'])
     const b = await mountBand($, surface, bandProps(180))
     await pressChip(b, 'cut-model', 'Show')
-    const p = await mountPane($, surface, SHOW_PANE, paneProps(49, 20))
+    const p = await mountPane($, surface, SHOW_PANE, paneProps(35, 20))
     await until(h, () => h.fake.resizeCalls().length > 0, 'minimum size requested')
     await p.redraw()
 
-    expect(h.fake.resizeCalls().map(c => [c.args.cols, c.args.rows])).toEqual([[80, 24]])
+    expect(h.fake.resizeCalls().map(c => [c.args.cols, c.args.rows])).toEqual([[40, 24]])
     const lines = frameLines(await p.drawn())
     expect(lines).toHaveLength(1)
     // Existing R6 viewport convention includes one extra character before terminal clipping.
-    expect(lines[0]).toBe(long.slice(0, 50))
+    expect(lines[0]).toBe(long.slice(0, 36))
     expect(lines[0]).not.toBe(long)
     await p.unmount()
     await b.unmount()

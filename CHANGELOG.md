@@ -4,6 +4,18 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Marketplace 13.7.8] - 2026-10-21
+
+### Fixed
+
+- **`claudish` v2.8.1**: the Show panel fits a session to a narrow panel. A panel docked beside the
+  chat is often 50–60 columns wide, and the session stayed 80 wide, so its lines were cut. It now
+  resizes the session down to 40 columns. The plugin needs claudish 12.3.0 or later for this; an
+  older claudish gets the session-start notice with the upgrade command. Where claudish is
+  installed from a GitHub release, the plugin now installs v12.3.0.
+
+---
+
 ## [Marketplace 13.7.7] - 2026-10-21
 
 ### Fixed

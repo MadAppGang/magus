@@ -591,7 +591,7 @@ export function paneFit(props: { bodyColumns?: unknown; scroll?: { bodyRows?: un
 }
 
 /** claudish clamps a resize to at least this size; asking for less would only be clamped again. */
-export const CHILD_MIN_COLS = 80
+export const CHILD_MIN_COLS = 40
 export const CHILD_MIN_ROWS = 24
 
 /**
