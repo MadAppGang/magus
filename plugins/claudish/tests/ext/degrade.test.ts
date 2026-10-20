@@ -1,7 +1,7 @@
 import { test, expect } from 'claude-code/testing'
-import { ENGINE_DRAWING, harness, start, type FakeOptions } from '../fake-claudish'
+import { ENGINE_DRAWING, engineOwn, harness, start, type FakeOptions } from '../fake-claudish'
 import { mountBand, mountPane, SURFACES } from '../ui'
-import { POLL, GRACE, delegate, drawingText, modelCall, press, row, stateColor, team, themeOnly } from './support'
+import { POLL, delegate, drawingText, modelCall, press, row, DARK, stateColor, team, themeOnly } from './support'
 
 const unsupported: [string, FakeOptions][] = [
   ['missing server', { listAnswer: () => ({ deny: 'server not connected' }) }],
@@ -22,7 +22,7 @@ for (const surface of SURFACES) {
       const b = await mountBand($, surface)
       await h.clock.advance(60_000)
       await b.redraw()
-      expect(await b.drawn()).toEqual(ENGINE_DRAWING)
+      expect(engineOwn(await b.drawn())).toEqual(ENGINE_DRAWING)
       expect(h.submits).toHaveLength(0)
       expect(h.toasts).toHaveLength(0)
       expect(h.fake.cancelCalls()).toHaveLength(0)
@@ -38,9 +38,9 @@ for (const surface of SURFACES) {
     await start($, surface)
     const s = await delegate($, h)
     h.fake.set(s.id, s.id, 'COMPLETED')
-    await h.clock.advance(POLL + GRACE + 60_000)
+    await h.clock.advance(POLL + 60_000)
     const b = await mountBand($, surface)
-    expect(await b.drawn()).toEqual(ENGINE_DRAWING)
+    expect(engineOwn(await b.drawn())).toEqual(ENGINE_DRAWING)
     expect(h.submits).toHaveLength(0)
     expect(h.toasts).toHaveLength(0)
     await b.unmount()
@@ -51,9 +51,9 @@ for (const surface of SURFACES) {
     await start($, surface)
     await team($, h)
     const b = await mountBand($, surface)
-    stateColor(await row(b, 'model-a'), '? unknown', 'inactive')
-    expect(await drawingText(b)).not.toContain('▶ running')
-    expect(await drawingText(b)).not.toContain('✓ done')
+    stateColor(await row(b, 'model-a'), '???', DARK.snow, DARK.stopped)
+    expect(await drawingText(b)).not.toContain(' RUN ')
+    expect(await drawingText(b)).not.toContain(' END ')
     expect(h.submits).toHaveLength(0)
     themeOnly(await b.drawn())
     await b.unmount()
@@ -65,17 +65,17 @@ for (const surface of SURFACES) {
     await start($, surface)
     await team($, h)
     const b = await mountBand($, surface)
-    expect(await drawingText(b)).toContain('▶ running')
+    expect(await drawingText(b)).toContain(' RUN ')
     broken = true
     await h.clock.advance(POLL * 2)
     await b.redraw()
-    stateColor(await row(b, 'model-a'), '? unknown', 'inactive')
-    expect(await drawingText(b)).not.toContain('▶ running')
+    stateColor(await row(b, 'model-a'), '???', DARK.snow, DARK.stopped)
+    expect(await drawingText(b)).not.toContain(' RUN ')
     expect(h.submits).toHaveLength(0)
     broken = false
     await h.clock.advance(30_000) // past the documented back-off of a failing feed
     await b.redraw()
-    stateColor(await row(b, 'model-a'), '▶ running', 'warning')
+    stateColor(await row(b, 'model-a'), 'RUN', DARK.ink, DARK.run)
     await b.unmount()
   })
 
@@ -84,8 +84,8 @@ for (const surface of SURFACES) {
     await start($, surface)
     await team($, h)
     const b = await mountBand($, surface)
-    expect(await drawingText(b)).toContain('▶ running')
-    const shows = await b.findAll({ type: 'Button', text: /^Show$/ })
+    expect(await drawingText(b)).toContain(' RUN ')
+    const shows = await b.findAll({ type: 'Button', text: /^\[ Show \]$/ })
     if (shows.length > 0) {
       await press(b, 'model-a', 'Show')
       if (h.opens.length > 0) {
@@ -122,9 +122,9 @@ for (const surface of SURFACES) {
     h.fake.sessions.push({ id: 'old-session', model: 'old-model', startedAt: h.clock.now() - 60_000, control: { state: 'COMPLETED', reason: null, at: h.clock.now() }, noPane: false })
     // The supplied fake answers this tool, but the mod must not treat it as claudish.
     await modelCall($, 'mcp__foreign__team', { mode: 'run', path: 'foreign', models: ['foreign-model'] })
-    await h.clock.advance(POLL + GRACE + POLL)
+    await h.clock.advance(POLL + POLL)
     const b = await mountBand($, surface)
-    expect(await b.drawn()).toEqual(ENGINE_DRAWING)
+    expect(engineOwn(await b.drawn())).toEqual(ENGINE_DRAWING)
     expect(h.submits).toHaveLength(0)
     expect(h.toasts).toHaveLength(0)
     await b.unmount()
@@ -134,9 +134,9 @@ for (const surface of SURFACES) {
     const h = harness(on, { startSettled: true })
     await start($, surface)
     await modelCall($, 'mcp__plugin_claudish_claudish__team', { mode: 'run-and-judge', path: 'judged', models: ['judge-model'] })
-    await h.clock.advance(POLL + GRACE + POLL)
+    await h.clock.advance(POLL + POLL)
     const b = await mountBand($, surface)
-    expect(await b.drawn()).toEqual(ENGINE_DRAWING)
+    expect(engineOwn(await b.drawn())).toEqual(ENGINE_DRAWING)
     expect(h.submits).toHaveLength(0)
     await b.unmount()
   })

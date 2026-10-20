@@ -5,7 +5,7 @@
 
 import { expect, test } from 'claude-code/testing'
 import type { ClaudishLedger, ClaudishRun, ClaudishRuns, ClaudishSlot } from '../types'
-import { MONITOR_GRACE_MS, PARKED_RETRY_MS, WAKE_HOLD_GUARD_MS, mergeRun, newRun, wakeUnits } from '../hooks/status/domain'
+import { PARKED_RETRY_MS, WAKE_HOLD_GUARD_MS, mergeRun, newRun, wakeUnits } from '../hooks/status/domain'
 import { composeWake, reconcileInflight } from '../hooks/status/wake'
 import { CREATE_TOOL, TEAM_TOOL, harness, start, type Harness } from './fake-claudish'
 import { mountBand } from './ui'
@@ -37,9 +37,6 @@ async function delegation($: unknown, h: Harness, prompt: string | null = 'do it
   await h.clock.advance(1000)
   return h.fake.sessions[h.fake.sessions.length - 1]!
 }
-
-/** A change claudish's monitor also reports waits this long for its line; these tests send none. */
-const held = (h: Harness) => h.clock.advance(MONITOR_GRACE_MS)
 
 const turnStart = ($: unknown, id = 't1') => D($).turn.start({ text: 'go', turnId: id })
 const turnComplete = async ($: unknown, h: Harness, id = 't1', agentId?: string) => {
@@ -85,7 +82,6 @@ test('wake: blocked team slot — seen waiting for a tick, then FAILED (blocked)
   expect(modRun(h).slots[0]?.state).toBe('AWAITING_INPUT')
   h.fake.set(run.runId, '01', 'FAILED', 'blocked')
   await h.clock.advance(1000)
-  await held(h)
   expect(h.submits).toHaveLength(1)
   expect(h.submits[0]).toContain('slot 01 m-a: FAILED (blocked)')
   expect(Object.keys(ledger(h).entries)).toEqual([`${modRun(h).id}/01`])
@@ -100,8 +96,6 @@ test('wake: delegation waits — each entry wakes once (1 → 2), and its end on
   expect(h.submits).toHaveLength(0)
   h.fake.set(s.id, s.id, 'AWAITING_INPUT', null, { turnsCompleted: 1, activity: null })
   await h.clock.advance(1000)
-  expect(h.submits).toHaveLength(0) // held for claudish's monitor line
-  await held(h)
   expect(h.submits).toHaveLength(1)
   const first = h.submits[0]!
   expect(first).toContain('A delegated session is waiting for you.')
@@ -117,11 +111,9 @@ test('wake: delegation waits — each entry wakes once (1 → 2), and its end on
   expect(modRun(h).slots[0]?.state).toBe('RUNNING')
   h.fake.set(s.id, s.id, 'AWAITING_INPUT', null, { turnsCompleted: 2, activity: null })
   await h.clock.advance(1000)
-  await held(h)
   expect(h.submits).toHaveLength(2)
   h.fake.set(s.id, s.id, 'COMPLETED')
   await h.clock.advance(1000)
-  await held(h)
   expect(h.submits).toHaveLength(3)
   expect(h.submits[2]).toContain('haiku-4.5: COMPLETED')
   expect(h.submits[2]).toContain(`Fetch the result now: get_output(session_id="${s.id}").`)
@@ -135,15 +127,12 @@ test('wake: re-entry between polls — turns rise with no RUNNING seen: 2; then 
   const s = await delegation($, h)
   h.fake.set(s.id, s.id, 'AWAITING_INPUT', null, { turnsCompleted: 1, activity: null })
   await h.clock.advance(1000)
-  await held(h)
   expect(h.submits).toHaveLength(1)
   h.fake.set(s.id, s.id, 'AWAITING_INPUT', null, { turnsCompleted: 2, activity: null })
   await h.clock.advance(1000)
-  await held(h)
   expect(h.submits).toHaveLength(2)
   h.fake.set(s.id, s.id, 'AWAITING_INPUT', null, { turnsCompleted: 2, activity: 'AskUserQuestion' })
   await h.clock.advance(1000)
-  await held(h)
   expect(h.submits).toHaveLength(3)
   expect(h.submits[2]).toContain('is asking a question and waiting for an answer')
 })
@@ -154,7 +143,6 @@ test('wake: permission and promptless — a permission dialog names the dialog a
   const s = await delegation($, h)
   h.fake.set(s.id, s.id, 'AWAITING_PERMISSION', null, { activity: 'Bash' })
   await h.clock.advance(1000)
-  await held(h)
   expect(h.submits).toHaveLength(1)
   expect(h.submits[0]).toContain('is waiting on a permission dialog')
   expect(h.submits[0]).toContain(`cancel_session(session_id="${s.id}")`)
@@ -162,7 +150,6 @@ test('wake: permission and promptless — a permission dialog names the dialog a
   const p = await delegation($, h, null)
   expect(p.control.state).toBe('AWAITING_INPUT')
   await h.clock.advance(1000)
-  await held(h)
   expect(h.submits).toHaveLength(2)
   expect(h.submits[1]).toContain(`session_id "${p.id}"`)
   await h.clock.advance(10_000)
@@ -181,7 +168,6 @@ test('wake: wait already left — counted in a busy turn, answered in it: one pr
   await D($).tool.call({ tool: SEND_TOOL, session_id: s.id, text: 'answer' })
   await h.clock.advance(1000)
   await turnComplete($, h)
-  await held(h) // the turn's end does not cut the hold short
   expect(h.submits).toHaveLength(1)
   expect(h.submits[0]).toContain('waited for input; now RUNNING')
   expect(h.submits[0]).toContain(`get_output(session_id="${s.id}") once it finishes`)
@@ -198,7 +184,6 @@ test('wake: wait and end coalesce — waiting then COMPLETED within one busy tur
   await h.clock.advance(1000)
   expect(h.attempts).toHaveLength(0)
   await turnComplete($, h)
-  await held(h)
   expect(h.submits).toHaveLength(1)
   expect(h.submits[0]).toContain('haiku-4.5: COMPLETED (it had been waiting for input)')
   expect(h.submits[0]!.split('\n').filter(l => l.includes('haiku-4.5'))).toHaveLength(1)
@@ -215,7 +200,6 @@ test('wake: wait survives reload — counted, reloaded before the flush: exactly
   await h.clock.advance(1000)
   expect(h.attempts).toHaveLength(0)
   await reload($, h)
-  await held(h)
   expect(h.submits).toHaveLength(1)
   expect(h.submits[0]).toContain('waiting for input')
   await reload($, h)
@@ -230,7 +214,7 @@ test('wake: reload race — recover settles only the notices it found stranded; 
     await new Promise<void>(r => { releaseMessages = r })
     return { value: [] }
   })
-  const h = harness(on, { models: ['m-a', 'm-b', 'm-c'] }) // 03 runs on: no transition here is held for the monitor
+  const h = harness(on, { models: ['m-a', 'm-b', 'm-c'] })
   let calls = 0
   let releaseSecond: (() => void) | null = null
   h.submitAnswer = text => {
@@ -333,7 +317,6 @@ test('wake: person stop — 01 stopped by the person while 02 runs; 02 completes
   expect(h.submits[0]).toContain('slot 01 m-a: CANCELLED (stopped by the person)')
   h.fake.set(h.fake.runs[0]!.runId, '02', 'COMPLETED')
   await h.clock.advance(1000)
-  await held(h) // the run settled: its last change waits for claudish's monitor line first
   expect(h.submits).toHaveLength(2)
   expect(h.submits[1]).toContain('slot 02 m-b: COMPLETED')
   expect(h.submits[1]).not.toContain('slot 01')
@@ -479,7 +462,7 @@ test('wake: parked — variant: delivered at the next main turn.complete, before
   expect(h.statuses[h.statuses.length - 1]).toBeUndefined()
 })
 
-test('wake: stranded entry — settles during a main turn, loop stopped: delivered once the hold after turn.complete ends', async ($, on) => {
+test('wake: stranded entry — settles during a main turn, loop stopped: delivered at turn.complete, with no hold', async ($, on) => {
   const h = harness(on, { models: ['m-a'] })
   await start($ as never)
   await teamRun($, h)
@@ -490,9 +473,7 @@ test('wake: stranded entry — settles during a main turn, loop stopped: deliver
   await h.clock.advance(10_000)
   expect(h.fake.listCalls().length).toBe(listed) // the loop stopped
   await turnComplete($, h)
-  expect(h.submits, 'held for the monitor line the turn kept queued').toHaveLength(0)
-  await h.clock.advance(MONITOR_GRACE_MS)
-  expect(h.submits).toHaveLength(1)
+  expect(h.submits, 'delivered as the turn ends').toHaveLength(1)
 })
 
 test('wake: stranded entry — variant: no turn.complete ever; the guard timer delivers it at 30 min', async ($, on) => {
@@ -516,7 +497,6 @@ test('wake: stuck turn after reload — turn.start, a reload, no turn.complete: 
   await reload($, h)
   h.fake.set(h.fake.runs[0]!.runId, '01', 'COMPLETED')
   await h.clock.advance(1000)
-  await held(h) // the hold, not a turn that will never end
   expect(h.submits).toHaveLength(1)
 })
 
@@ -616,7 +596,6 @@ test('wake: injection — activity, provider and an out-of-set reason never reac
   const s = await delegation($, h)
   h.fake.set(s.id, s.id, 'AWAITING_INPUT', null, { turnsCompleted: 1 })
   await h.clock.advance(1000)
-  await held(h)
   expect(h.submits).toHaveLength(2)
   expect(h.submits[0]).toContain('slot 01 m-a: FAILED')
   for (const text of h.submits) expect(text).not.toContain(EVIL)
@@ -656,7 +635,7 @@ const words = {
 function slot(over: Partial<ClaudishSlot> = {}): ClaudishSlot {
   return {
     slot: '01', model: 'm-a', provider: null, state: 'RUNNING', reason: null, tokensIn: null, tokensOut: null,
-    toolCalls: null, turnsCompleted: null, idleSeconds: null, lastActivityAt: null, activity: null, asked: false, ...over,
+    toolCalls: null, turnsCompleted: null, idleSeconds: null, lastActivityAt: null, activity: null, asked: false, costUsd: null, ...over,
   }
 }
 

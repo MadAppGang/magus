@@ -1,15 +1,14 @@
-// THE ADAPTER: claudish mod contract v1 (sections A–E), and the line grammar of claudish's
-// own session monitor, → the mod's domain types.
+// THE ADAPTER: claudish mod contract v1 (sections A–E) → the mod's domain types.
 //
-// The only module of the mod that names a claudish tool, a mode, an argument, a capability,
-// a response field or a monitor line's words. (The plugin's PreToolUse command hook,
+// The only module of the mod that names a claudish tool, a mode, an argument, a capability
+// or a response field. (The plugin's PreToolUse command hook,
 // hooks/allow-read-verbs.ts, names claudish's read-only tools too; it is not part of the mod.)
 // It calls MCP only through the McpCall it was given (register.tsx builds the mod's one MCP
 // closure), holds no state, and decides nothing about display, cadence, support policy or
-// waking: it reports what the server answered, and what the monitor said.
+// waking: it reports what the server answered.
 
 import type { McpToolResult } from 'claude-code'
-import type { ClaudishColor, ClaudishFrame, ClaudishRunKind, ClaudishRunRef, ClaudishSlot, ClaudishSlotState, ClaudishStyleSpan } from '../../types'
+import type { ClaudishColor, ClaudishFrame, ClaudishRecentStep, ClaudishRunKind, ClaudishRunRef, ClaudishSlot, ClaudishSlotState, ClaudishStyleSpan } from '../../types'
 import { STYLE_SPANS_PER_LINE, feedKey, sanitize } from './domain'
 import type {
   CallSeen,
@@ -20,7 +19,6 @@ import type {
   PollResult,
   RecognizedCall,
   RunSource,
-  MonitorReport,
   StopResult,
   WatchedRun,
 } from './run-source'
@@ -138,11 +136,7 @@ function recognizeCall(call: CallSeen): RecognizedCall {
       return { kind: 'unidentified', reason: 'team start answer has no absolute run.path' }
     }
     if (!isSafePath(path)) return { kind: 'unidentified', reason: 'team start answer has a run.path that is not display-safe' }
-    // The monitor names the run by its end record, not by run_id: kept so its line matches this start alone.
-    const monitor = typeof body.monitor_record === 'string' && isSafeId(body.monitor_record) ? body.monitor_record : null
-    const ref: ClaudishRunRef = monitor === null
-      ? { kind: 'panel', server, token: body.run_id, address: path }
-      : { kind: 'panel', server, token: body.run_id, address: path, monitor }
+    const ref: ClaudishRunRef = { kind: 'panel', server, token: body.run_id, address: path }
     return { kind: 'start', ref, label: lastSegment(path) }
   }
 
@@ -202,6 +196,32 @@ function classify(result: McpToolResult | Error, rowsKey: 'runs' | 'sessions'): 
   }
 }
 
+/** The failure in the provider's own words (`reason_detail`), present only when claudish sends one. */
+function detailOf(row: Json): { detail?: string } {
+  const detail = str(row.reason_detail, 160)
+  return detail ? { detail } : {}
+}
+
+const RECENT_KINDS = new Set(['text', 'thinking', 'tool', 'ask'])
+/** claudish sends at most 20; a longer list is cut to its newest. */
+const RECENT_MAX = 20
+
+/**
+ * claudish's `recent`: the slot's last steps, each with its start time and one line. Present only when
+ * claudish sends a list (a row read from disk sends null); a step with no time or kind is skipped.
+ */
+function recentOf(row: Json): { recent?: ClaudishRecentStep[] } {
+  if (!Array.isArray(row.recent)) return {}
+  const recent: ClaudishRecentStep[] = []
+  for (const r of row.recent.slice(-RECENT_MAX)) {
+    if (!isObject(r) || typeof r.kind !== 'string' || !RECENT_KINDS.has(r.kind)) continue
+    const at = typeof r.at === 'string' ? Date.parse(r.at) : NaN
+    if (!Number.isFinite(at)) continue
+    recent.push({ at, kind: r.kind as ClaudishRecentStep['kind'], tool: str(r.tool, 60) || null, summary: str(r.summary, 120) ?? '' })
+  }
+  return { recent }
+}
+
 function mapSlot(row: Json): ClaudishSlot | null {
   if (typeof row.slot !== 'string' || !isSafeId(row.slot)) return null
   const model = typeof row.model === 'string' ? sanitize(row.model, 80) : ''
@@ -216,14 +236,17 @@ function mapSlot(row: Json): ClaudishSlot | null {
     provider: str(row.provider, 40) || null,
     state,
     reason: typeof row.reason === 'string' && FAILURE_REASONS.has(row.reason) ? row.reason : null,
+    ...detailOf(row),
     tokensIn: num(row.tokens_in),
     tokensOut: num(row.tokens_out),
     toolCalls: num(row.tool_calls),
     turnsCompleted: num(row.turns_completed),
+    costUsd: num(row.cost_usd),
     idleSeconds: num(row.idle_seconds),
     lastActivityAt: Number.isFinite(lastAt) ? lastAt : null,
     activity,
     asked: state === 'AWAITING_INPUT' && row.activity === QUESTION_ACTIVITY,
+    ...recentOf(row),
   }
 }
 
@@ -400,55 +423,6 @@ function fetchHint(ref: ClaudishRunRef, slots: readonly FetchSlot[]): string {
   return delegationHint(ref.token, s)
 }
 
-// ── claudish's session monitor: its line grammar (plugin README, "Session progress monitor") ──
-
-const MONITOR_PREFIX = 'claudish-monitor: '
-const MONITOR_ID = '[A-Za-z0-9._-]{1,64}'
-// value = 1*200 printable ASCII without space " & < = >
-const MONITOR_LINE = new RegExp(
-  `^claudish-monitor: (session|team) (${MONITOR_ID}) (started|running|needs-input|completed|failed|timeout|cancelled)`
-  + `((?: [a-z]+=[!#-%'-;?-~]{1,200})*)`
-  + `(?: next: (?:(?:get_output|get_diagnostics|send_input) ${MONITOR_ID}|team-status))?$`,
-)
-const SESSION_ENDS: ReadonlySet<string> = new Set(['completed', 'failed', 'timeout', 'cancelled'])
-const TEAM_ENDS: ReadonlySet<string> = new Set(['completed', 'failed', 'cancelled'])
-
-/** Each candidate line of a row's text: at a line's start, or right after a tag (`<event>…`), cut at the next tag. */
-function monitorLines(text: string): string[] {
-  const out: string[] = []
-  for (const raw of text.split(/\r?\n/)) {
-    let from = 0
-    for (;;) {
-      const at = raw.indexOf(MONITOR_PREFIX, from)
-      if (at < 0) break
-      from = at + MONITOR_PREFIX.length
-      const before = raw.slice(0, at).trimStart()
-      if (before !== '' && !before.endsWith('>')) continue
-      const end = raw.indexOf('<', at)
-      out.push((end < 0 ? raw.slice(at) : raw.slice(at, end)).trimEnd())
-    }
-  }
-  return out
-}
-
-/** A team line names its run by the start answer's `monitor_record`; its `path` is not an identity (one
- *  directory can hold run after run), so it is not read. */
-function monitorReports(text: string): MonitorReport[] {
-  const out: MonitorReport[] = []
-  for (const line of monitorLines(text)) {
-    const m = MONITOR_LINE.exec(line)
-    if (!m) continue
-    const [, record, id = '', state = ''] = m
-    if (record === 'session') {
-      if (state === 'needs-input') out.push({ kind: 'delegation', token: id, event: 'waiting' })
-      else if (SESSION_ENDS.has(state)) out.push({ kind: 'delegation', token: id, event: 'ended' })
-      continue
-    }
-    if (TEAM_ENDS.has(state)) out.push({ kind: 'panel', record: id, event: 'ended' })
-  }
-  return out
-}
-
 // ── the adapter ───────────────────────────────────────────────────────────────
 
 const settleCall = (p: Promise<McpToolResult>): Promise<McpToolResult | Error> =>
@@ -502,6 +476,5 @@ export function makeClaudishSource(call: McpCall): RunSource {
 
     runLine,
     fetchHint,
-    monitorReports,
   }
 }

@@ -1,16 +1,16 @@
 import { test, expect } from 'claude-code/testing'
 import { harness, start, TEAM_TOOL } from '../fake-claudish'
 import { mountBand, SURFACES } from '../ui'
-import { POLL, GRACE, team, delivered, drawingText, endTurn, modelCall, row, stateColor } from './support'
+import { POLL, team, delivered, drawingText, endTurn, modelCall, row, DARK, stateColor } from './support'
 
 for (const surface of SURFACES) {
-  test(`ext team: every slot ends once; final settle waits for the monitor [${surface}]`, async ($, on) => {
+  test(`ext team: every slot ends once; final settle wakes at once [${surface}]`, async ($, on) => {
     const h = harness(on)
     await start($, surface)
     const r = await team($, h)
     const b = await mountBand($, surface)
-    expect(await b.findAll({ type: 'Button', text: /^Show$/ })).toHaveLength(3)
-    expect(await b.findAll({ type: 'Button', text: /^Stop$/ })).toHaveLength(3)
+    expect(await b.findAll({ type: 'Button', text: /^\[ Show \]$/ })).toHaveLength(3)
+    expect(await b.findAll({ type: 'Button', text: /^\[ Stop \]$/ })).toHaveLength(3)
     expect(await drawingText(b)).toContain('3 running')
     const states = ['COMPLETED', 'FAILED', 'CANCELLED']
     const reasons = [null, 'blocked', 'cancelled']
@@ -25,8 +25,6 @@ for (const surface of SURFACES) {
         expect(h.submits[i]).toContain(r.path)
         expect(h.submits[i]).toContain('still running:')
       } else {
-        expect(h.submits).toHaveLength(2)
-        await h.clock.advance(GRACE + POLL)
         expect(h.submits).toHaveLength(3)
         expect(h.submits[2]).toContain('CANCELLED')
         expect(h.submits[2]).not.toContain('still running:')
@@ -39,14 +37,14 @@ for (const surface of SURFACES) {
     expect(h.submits[1]).toContain('blocked')
     expect(h.submits.every(s => s.includes('team(mode="status"'))).toBe(true)
     await b.redraw()
-    stateColor(await row(b, 'model-a'), '✓ done', 'success')
-    stateColor(await row(b, 'model-b'), '✕ failed', 'error')
-    stateColor(await row(b, 'model-c'), '■ stopped', 'inactive')
-    expect(await b.findAll({ type: 'Button', text: /^Stop$/ })).toHaveLength(0)
+    stateColor(await row(b, 'model-a'), 'END', DARK.ink, DARK.done)
+    stateColor(await row(b, 'model-b'), 'ERR', DARK.ink, DARK.fail)
+    stateColor(await row(b, 'model-c'), 'STP', DARK.snow, DARK.stopped)
+    expect(await b.findAll({ type: 'Button', text: /^\[ Stop \]$/ })).toHaveLength(0)
     await h.clock.advance(60_000)
     await b.redraw()
     expect(h.submits).toHaveLength(3)
-    expect(await b.findAll({ type: 'Button', text: /^Show$/ })).toHaveLength(3)
+    expect(await b.findAll({ type: 'Button', text: /^\[ Show \]$/ })).toHaveLength(3)
     await b.unmount()
   })
 
@@ -77,7 +75,8 @@ for (const surface of SURFACES) {
     expect(h.submits).toHaveLength(1)
   })
 
-  test(`ext team: rejected submit is retried, parked, and retried at main turn end [${surface}]`, async ($, on) => {
+  // It simulates about ten minutes of retries: under a full-suite load the default 5 s is too tight.
+  test(`ext team: rejected submit is retried, parked, and retried at main turn end [${surface}]`, { timeoutMs: 20_000 }, async ($, on) => {
     const h = harness(on)
     await start($, surface)
     const r = await team($, h)
@@ -110,13 +109,13 @@ for (const surface of SURFACES) {
     await start($, surface)
     const first = await team($, h, 'review', ['round-one'])
     h.fake.set(first.runId, '01', 'COMPLETED')
-    await h.clock.advance(POLL + GRACE + POLL)
+    await h.clock.advance(POLL + POLL)
     const second = await team($, h, 'review', ['round-two'])
     expect(second.runId).not.toBe(first.runId)
     const b = await mountBand($, surface)
     expect(await drawingText(b)).toContain('review·2')
     h.fake.set(second.runId, '01', 'COMPLETED')
-    await h.clock.advance(POLL + GRACE + POLL)
+    await h.clock.advance(POLL + POLL)
     expect(h.submits).toHaveLength(2)
     expect(h.submits[0]).toContain(first.runId)
     expect(h.submits[1]).toContain(second.runId)

@@ -1,7 +1,7 @@
 import { test, expect } from 'claude-code/testing'
 import { harness, start } from '../fake-claudish'
 import { mountBand, SURFACES } from '../ui'
-import { POLL, GRACE, delegate, delivered, drawingText, entries, modelCall, row, stateColor, textOf } from './support'
+import { POLL, delegate, delivered, drawingText, entries, modelCall, row, DARK, stateColor, textOf } from './support'
 
 for (const surface of SURFACES) {
   test(`ext delegation: row and live counters [${surface}]`, async ($, on) => {
@@ -18,9 +18,10 @@ for (const surface of SURFACES) {
     await b.redraw()
     const after = textOf(await row(b, s.model))
     expect(after).not.toBe(before)
-    expect(after).toContain('4 tools')
-    expect(after).toContain('1 loops')
-    stateColor(await row(b, s.model), '▶ running', 'warning')
+    expect(after).toContain('ƒ 4')
+    expect(after).toContain('↻ 1')
+    expect(after).not.toMatch(/tools?|loops?/) // a symbol and a number, no words
+    stateColor(await row(b, s.model), 'RUN', DARK.ink, DARK.run)
     expect(h.submits).toHaveLength(0)
     expect(h.fake.captureCalls()).toHaveLength(0)
     await b.unmount()
@@ -32,10 +33,8 @@ for (const surface of SURFACES) {
     // Promptless create starts waiting in the supplied contract fake.
     const s = await delegate($, h, null)
     const b = await mountBand($, surface)
-    stateColor(await row(b, s.model), '◇ input', 'permission')
-    expect(h.submits).toHaveLength(0)
-    await h.clock.advance(GRACE + POLL)
-    expect(h.submits).toHaveLength(1)
+    stateColor(await row(b, s.model), 'ASK', DARK.ink, DARK.ask)
+    expect(h.submits, 'the first wait wakes on the poll that notices it').toHaveLength(1)
     expect(h.submits[0]).toContain(s.id)
     expect(h.submits[0]).toContain('get_output')
     expect(h.submits[0]).toContain('send_input')
@@ -45,10 +44,10 @@ for (const surface of SURFACES) {
     await modelCall($, 'mcp__plugin_claudish_claudish__send_input', { session_id: s.id, input: 'Continue' })
     await h.clock.advance(POLL)
     h.fake.set(s.id, s.id, 'AWAITING_INPUT', null, { turnsCompleted: 1, activity: null })
-    await h.clock.advance(POLL + GRACE + POLL)
+    await h.clock.advance(POLL + POLL)
     expect(h.submits).toHaveLength(2)
     h.fake.set(s.id, s.id, 'COMPLETED')
-    await h.clock.advance(POLL + GRACE + POLL)
+    await h.clock.advance(POLL + POLL)
     expect(h.submits).toHaveLength(3)
     expect(h.submits[2]).toContain('COMPLETED')
     expect(h.submits[2]).toContain('get_output')
@@ -56,8 +55,8 @@ for (const surface of SURFACES) {
     await h.clock.advance(30_000)
     expect(h.submits).toHaveLength(3)
     await b.redraw()
-    stateColor(await row(b, s.model), '✓ done', 'success')
-    expect(await b.findAll({ type: 'Button', text: /^Stop$/ })).toHaveLength(0)
+    stateColor(await row(b, s.model), 'END', DARK.ink, DARK.done)
+    expect(await b.findAll({ type: 'Button', text: /^\[ Stop \]$/ })).toHaveLength(0)
     await b.unmount()
   })
 
@@ -67,15 +66,15 @@ for (const surface of SURFACES) {
     const s = await delegate($, h)
     const b = await mountBand($, surface)
     h.fake.set(s.id, s.id, 'AWAITING_PERMISSION', null, { activity: 'Bash' })
-    await h.clock.advance(POLL + GRACE + POLL)
+    await h.clock.advance(POLL + POLL)
     expect(h.submits).toHaveLength(1)
     expect(h.submits[0]).toMatch(/permission dialog/)
     await b.redraw()
-    stateColor(await row(b, s.model), '◇ permit', 'permission')
+    stateColor(await row(b, s.model), 'ASK', DARK.ink, DARK.ask)
     h.fake.set(s.id, s.id, 'RUNNING')
     await h.clock.advance(POLL)
     h.fake.set(s.id, s.id, 'AWAITING_INPUT', null, { activity: 'AskUserQuestion', turnsCompleted: 1 })
-    await h.clock.advance(POLL + GRACE + POLL)
+    await h.clock.advance(POLL + POLL)
     expect(h.submits).toHaveLength(2)
     expect(h.submits[1]).toMatch(/asking a question.*waiting for an answer/)
     await h.clock.advance(30_000)
@@ -84,15 +83,19 @@ for (const surface of SURFACES) {
     await b.unmount()
   })
 
-  test(`ext delegation: answered during hold still reports the owed wait honestly [${surface}]`, async ($, on) => {
+  test(`ext delegation: answered during a busy turn still reports the owed wait honestly [${surface}]`, async ($, on) => {
     const h = harness(on)
     await start($, surface)
     const s = await delegate($, h)
+    await $.turn.start({ text: 'Still working', turnId: 'ext-main' })
     h.fake.set(s.id, s.id, 'AWAITING_INPUT', null, { activity: null })
     await h.clock.advance(POLL)
     expect(entries(h)).toHaveLength(1)
     await modelCall($, 'mcp__plugin_claudish_claudish__send_input', { session_id: s.id, input: 'Continue' })
-    await h.clock.advance(POLL + GRACE + POLL)
+    await h.clock.advance(POLL + POLL)
+    expect(h.submits).toHaveLength(0)
+    await $.turn.complete({ answer: 'Done', durationMs: 1, isAborted: false, reason: 'answer', turnId: 'ext-main' })
+    await h.clock.settle()
     expect(h.submits).toHaveLength(1)
     expect(h.submits[0]).toMatch(/waited for input; now RUNNING/)
     expect(delivered(h)).toHaveLength(1)
@@ -106,13 +109,11 @@ for (const surface of SURFACES) {
     h.fake.set(s.id, s.id, 'AWAITING_INPUT', null, { activity: null })
     await h.clock.advance(POLL)
     h.fake.set(s.id, s.id, 'COMPLETED')
-    await h.clock.advance(POLL + GRACE + POLL)
+    await h.clock.advance(POLL + POLL)
     expect(h.submits).toHaveLength(0)
     await $.turn.complete({ answer: 'Done', durationMs: 1, isAborted: false, reason: 'answer', turnId: 'ext-main' })
     await h.clock.settle()
-    expect(h.submits).toHaveLength(0) // held after the turn: the monitor line a turn queues arrives only after it
-    await h.clock.advance(GRACE + POLL)
-    expect(h.submits).toHaveLength(1)
+    expect(h.submits).toHaveLength(1) // delivered as the turn ends, with no hold
     expect(h.submits[0]).toMatch(/COMPLETED.*had been waiting for input/)
     expect(h.submits[0]!.split('\n').filter(l => /^\s*- /.test(l))).toHaveLength(1)
     expect(delivered(h)).toHaveLength(2)

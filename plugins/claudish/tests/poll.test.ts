@@ -1,9 +1,7 @@
 import type { Register } from 'claude-code'
 import { expect, test } from 'claude-code/testing'
 import type { ClaudishFeedSupport, ClaudishLedger, ClaudishRuns } from '../types'
-import { MONITOR_GRACE_MS } from '../hooks/status/domain'
 import { CREATE_TOOL, TEAM_TOOL, harness, start, type Harness } from './fake-claudish'
-import { monitorRecordOf } from './scenario'
 
 const FEED = 'plugin:claudish:claudish#panel'
 const DFEED = 'plugin:claudish:claudish#delegation'
@@ -20,7 +18,7 @@ test('poll: registration — a claudish start through the plugin hook is watched
   expect(ran.isError).toBeUndefined()
   expect(runs(h).list).toHaveLength(1)
   const run = runs(h).list[0]
-  expect(run?.ref).toEqual({ kind: 'panel', server: 'plugin:claudish:claudish', token: h.fake.runs[0]?.runId, address: '/w/r1', monitor: monitorRecordOf(h.fake.runs[0]!.runId) })
+  expect(run?.ref).toEqual({ kind: 'panel', server: 'plugin:claudish:claudish', token: h.fake.runs[0]?.runId, address: '/w/r1' })
   expect(run?.label).toBe('r1')
   expect(run?.generation).toBe(1)
   await h.clock.advance(1000)
@@ -92,7 +90,6 @@ test('poll: same path twice — two runs, own run ids, generations 1 and 2, neve
   h.fake.set(first.runId, '02', 'COMPLETED')
   await h.clock.advance(1000)
   expect(runs(h).list[0]?.settledAt).not.toBeNull()
-  await h.clock.advance(MONITOR_GRACE_MS) // a settled run waits for claudish's monitor line; none comes
   await $.tool.call({ tool: TEAM_TOOL, mode: 'run', path: '/w/r1' })
   const second = h.fake.runs[1]!
   expect(second.runId).not.toBe(first.runId)
@@ -203,7 +200,8 @@ test('poll: missing tolerance — 4 misses then reappearance resets; bookkeeping
   expect(runs(h).list[0]?.lostReason).toBeNull()
 })
 
-test('poll: unknown bound — a state outside the set is UNKNOWN, LOST after 10 min', async ($, on) => {
+// It simulates ten minutes of polling: under a full-suite load the default 5 s is too tight.
+test('poll: unknown bound — a state outside the set is UNKNOWN, LOST after 10 min', { timeoutMs: 20_000 }, async ($, on) => {
   const h = harness(on, { models: ['m-a'] })
   await start($)
   await $.tool.call({ tool: TEAM_TOOL, mode: 'run', path: 'r1' })
@@ -250,7 +248,7 @@ test('poll: a tick that throws after the last merge is retried — the run still
   expect(runs(h).list[0]?.settledAt).not.toBeNull()
   expect(h.debug.some(l => l.includes('poll tick failed'))).toBe(true)
   expect(h.submits).toHaveLength(0)
-  await h.clock.advance(MONITOR_GRACE_MS + 60_000)
+  await h.clock.advance(60_000)
   expect(h.submits).toHaveLength(1)
   expect(h.submits[0]).toContain('slot 01 m-a: COMPLETED')
   await h.clock.advance(120_000)

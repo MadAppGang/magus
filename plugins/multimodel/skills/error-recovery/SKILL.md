@@ -146,7 +146,7 @@ Benefits:
 create_session(model="grok", prompt=PROMPT, timeout_seconds=300)
 
 # Nothing is pushed. Poll list_sessions(include_completed=true) about every 10 s
-# (or act on the claudish-monitor line) and read the session's row:
+# and read the session's row:
 # - COMPLETED → get_output(session_id) → process result
 # - TIMEOUT → the session hit timeout_seconds → get_diagnostics(session_id)
 # - FAILED → read the row's reason and reason_detail, then get_diagnostics(session_id):

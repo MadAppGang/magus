@@ -7,6 +7,7 @@ import type {
   ClaudishEarlier,
   ClaudishFeedSupport,
   ClaudishLedger,
+  ClaudishRecentStep,
   ClaudishRun,
   ClaudishRunKind,
   ClaudishRunRef,
@@ -14,6 +15,8 @@ import type {
   ClaudishSlot,
   ClaudishSlotState,
   ClaudishStopRequest,
+  ClaudishTrailKind,
+  ClaudishTrailStep,
   ClaudishWait,
 } from '../../types'
 
@@ -38,12 +41,29 @@ export const QUIET_AFTER_S = 120
 export const NO_SCREEN_NOTE = 'Run ended before a screen was captured'
 export const NO_CAPTURE_NOTE = 'Live screen not available from this claudish version'
 
-/** The only colours the mod's own drawing uses: theme keys the engine resolves for light and dark. */
-export const THEME_KEYS = ['claude', 'permission', 'success', 'error', 'warning', 'inactive', 'subtle'] as const satisfies readonly ThemeKey[]
+/** The theme keys the mod's text uses; the badges take raw colours from palette.ts, by the person's theme. */
+export const THEME_KEYS = [
+  'claude', 'permission', 'success', 'error', 'warning', 'inactive', 'subtle', 'inverseText', 'ide', 'suggestion',
+] as const satisfies readonly ThemeKey[]
 export type StatusColor = (typeof THEME_KEYS)[number]
+
+/** A badge's tone: its hue (palette.ts). Loud tones (ask, fail, format) mean the row needs the person, or it failed. */
+export type BadgeTone = 'run' | 'ask' | 'done' | 'fail' | 'format' | 'stopped' | 'unclear'
+
+/** The stale-meter: one cell fills at each of these seconds of silence; the last is QUIET_AFTER_S. */
+export const STALE_STEPS_S = [5, 30, 60, 90, 120] as const
+/** Below this much silence the slot counts as streaming (the meter animates); from it, the meter
+ *  fills and prints how long the slot has been silent. */
+export const STALE_NUMBER_S = 5
+
+/** The Show panel: one pane, its tabs drawn by the mod (one per slot of the runs the band shows). */
+export const SHOW_PANE_ID = 'claudish-show'
+export const SHOW_PANE_TITLE = 'claudish'
 
 /** The body columns a Show tab asks for when docked: a request, the person's own width wins. */
 export const SHOW_COLUMNS = 120
+/** The body rows a Show tab asks for while inline above the prompt: a request, as the columns are. */
+export const SHOW_ROWS = 24
 /** Surfaces that paint the child's colours in a Show tab; the others draw its screen plain. */
 export const PAINT_SURFACES: readonly string[] = ['terminal', 'desktop']
 /** What one frame line and one styled segment cost, estimated, against the style budget. */
@@ -61,9 +81,6 @@ export const WAKE_RETRY_MS = 30_000
 export const WAKE_QUICK_ATTEMPTS = 3
 /** A parked notice is retried this often, and at every main-loop turn end. */
 export const PARKED_RETRY_MS = 10 * 60_000
-/** A change claudish's session monitor also reports is held this long for the monitor's line, which then
- *  stands for it; a line seen up to this long before the change was noticed counts too. */
-export const MONITOR_GRACE_MS = 10_000
 
 // ── state classes ─────────────────────────────────────────────────────────────
 
@@ -79,19 +96,30 @@ export function isWaiting(state: ClaudishSlotState): boolean {
   return state === 'AWAITING_INPUT' || state === 'AWAITING_PERMISSION'
 }
 
-/** §4.2: glyph + word, the theme key, and the header word, per state. */
-export const STATE_LOOK: Readonly<Record<ClaudishSlotState, { glyph: string; word: string; color: StatusColor; group: 'needs you' | 'running' | 'done' | 'failed' | 'stopped' }>> = {
-  STARTING: { glyph: '◌', word: 'starting', color: 'warning', group: 'running' },
-  RUNNING: { glyph: '▶', word: 'running', color: 'warning', group: 'running' },
-  AWAITING_INPUT: { glyph: '◇', word: 'input', color: 'permission', group: 'needs you' },
-  AWAITING_PERMISSION: { glyph: '◇', word: 'permit', color: 'permission', group: 'needs you' },
-  COMPLETED: { glyph: '✓', word: 'done', color: 'success', group: 'done' },
-  FAILED: { glyph: '✕', word: 'failed', color: 'error', group: 'failed' },
-  TIMEOUT: { glyph: '✕', word: 'timeout', color: 'error', group: 'failed' },
-  EMPTY: { glyph: '✕', word: 'empty', color: 'error', group: 'failed' },
-  CANCELLED: { glyph: '■', word: 'stopped', color: 'inactive', group: 'stopped' },
-  LOST: { glyph: '?', word: 'lost', color: 'error', group: 'failed' },
-  UNKNOWN: { glyph: '?', word: 'unknown', color: 'inactive', group: 'running' },
+export type Group = 'needs you' | 'running' | 'done' | 'wrong format' | 'failed' | 'stopped'
+export type StateLook = { code: string; tone: BadgeTone; glyph: string; word: string; color: StatusColor; group: Group }
+
+/** The badge code (three letters, as tt draws them), its tone, the word, and the header group, per state. */
+export const STATE_LOOK: Readonly<Record<ClaudishSlotState, StateLook>> = {
+  STARTING: { code: 'NEW', tone: 'run', glyph: '◌', word: 'starting', color: 'success', group: 'running' },
+  RUNNING: { code: 'RUN', tone: 'run', glyph: '▶', word: 'running', color: 'success', group: 'running' },
+  AWAITING_INPUT: { code: 'ASK', tone: 'ask', glyph: '◇', word: 'input', color: 'permission', group: 'needs you' },
+  AWAITING_PERMISSION: { code: 'ASK', tone: 'ask', glyph: '◇', word: 'permit', color: 'permission', group: 'needs you' },
+  COMPLETED: { code: 'END', tone: 'done', glyph: '✓', word: 'done', color: 'success', group: 'done' },
+  FAILED: { code: 'ERR', tone: 'fail', glyph: '✕', word: 'failed', color: 'error', group: 'failed' },
+  TIMEOUT: { code: 'TMO', tone: 'fail', glyph: '✕', word: 'timeout', color: 'error', group: 'failed' },
+  EMPTY: { code: 'NIL', tone: 'fail', glyph: '✕', word: 'empty', color: 'error', group: 'failed' },
+  CANCELLED: { code: 'STP', tone: 'stopped', glyph: '■', word: 'stopped', color: 'inactive', group: 'stopped' },
+  LOST: { code: 'LST', tone: 'fail', glyph: '?', word: 'lost', color: 'error', group: 'failed' },
+  UNKNOWN: { code: '???', tone: 'unclear', glyph: '?', word: 'unknown', color: 'inactive', group: 'running' },
+}
+
+/** An answer that exists but missed the required shape: not empty, and not a crash. */
+const WRONG_FORMAT: StateLook = { code: 'FMT', tone: 'format', glyph: '!', word: 'wrong format', color: 'warning', group: 'wrong format' }
+
+/** A slot's look: its state's, except an EMPTY slot whose answer only missed the required shape. */
+export function lookOf(state: ClaudishSlotState, reason: string | null): StateLook {
+  return state === 'EMPTY' && reason === 'shape_mismatch' ? WRONG_FORMAT : STATE_LOOK[state]
 }
 
 // ── ids and hashes ────────────────────────────────────────────────────────────
@@ -153,6 +181,16 @@ export function isDrawn(run: ClaudishRun, feeds: Readonly<Record<string, Claudis
   return run.slots.length > 0 || feeds[feedKey(run.ref)]?.kind === 'speaks'
 }
 
+/**
+ * The runs the band draws: the most recent drawn run, plus every older one still live (its
+ * Stop must stay reachable). Older settled runs are counted in the header, not drawn.
+ */
+export function shownRuns(drawn: readonly ClaudishRun[]): { shown: ClaudishRun[]; older: number } {
+  const latest = drawn[drawn.length - 1]
+  const shown = drawn.filter(r => r === latest || r.settledAt === null)
+  return { shown, older: drawn.length - shown.length }
+}
+
 // ── text ──────────────────────────────────────────────────────────────────────
 
 // SGR and other CSI sequences, OSC sequences, lone escapes, C0/C1 controls and bidi overrides.
@@ -198,6 +236,7 @@ export function newRun(args: {
     label: args.label,
     generation: args.generation,
     slots: [],
+    startedAt: args.now,
     activityAt: args.now,
     missedPolls: 0,
     missingSince: null,
@@ -228,7 +267,7 @@ export function applyLost(run: ClaudishRun, reason: string): ClaudishRun {
   const slots: ClaudishSlot[] = run.slots.length === 0
     ? [{
         slot: '*', model: run.label, provider: null, state: 'LOST', reason: null,
-        tokensIn: null, tokensOut: null, toolCalls: null, turnsCompleted: null,
+        tokensIn: null, tokensOut: null, toolCalls: null, turnsCompleted: null, costUsd: null,
         idleSeconds: null, lastActivityAt: null, activity: null, asked: false,
       }]
     : run.slots.map(s => (isTerminal(s.state) ? s : lostSlot(s)))
@@ -274,6 +313,92 @@ function settle(run: ClaudishRun, now: number): ClaudishRun {
   return done ? { ...run, settledAt: now } : run
 }
 
+// ── the timeline: what each slot did, one step per change ─────────────────────
+
+/** A trail keeps at most this many steps per slot; later changes still end it (its final step). */
+export const TRAIL_MAX_STEPS = 400
+
+/** What a slot is doing now, as a trail step's kind and tool. */
+export function trailKindOf(slot: ClaudishSlot): { kind: ClaudishTrailKind; tool: string | null } {
+  switch (slot.state) {
+    case 'STARTING': return { kind: 'start', tool: null }
+    case 'AWAITING_INPUT':
+    case 'AWAITING_PERMISSION': return { kind: 'wait', tool: null }
+    case 'COMPLETED': return { kind: 'done', tool: null }
+    case 'CANCELLED': return { kind: 'stop', tool: null }
+    case 'FAILED':
+    case 'EMPTY':
+    case 'TIMEOUT':
+    case 'LOST': return { kind: 'fail', tool: null }
+    case 'RUNNING': {
+      const a = slot.activity
+      if (a === null) return { kind: 'idle', tool: null }
+      if (a === 'thinking') return { kind: 'think', tool: null }
+      if (a === 'finishing') return { kind: 'finish', tool: null }
+      if (a === 'background') return { kind: 'background', tool: null }
+      return { kind: 'tool', tool: a }
+    }
+    default: return { kind: 'idle', tool: null }
+  }
+}
+
+/** A recent step's kind on the trail: the words a model writes and its thinking are told apart. */
+const RECENT_KIND: Readonly<Record<ClaudishRecentStep['kind'], ClaudishTrailKind>> = { text: 'say', thinking: 'think', tool: 'tool', ask: 'wait' }
+
+/** A failed slot's line on its trail: the reason, then the provider's words when claudish sends them. */
+function failText(slot: ClaudishSlot): string | undefined {
+  const reason = slot.reason ?? ''
+  if (slot.detail) return reason ? `${reason}: ${slot.detail}` : slot.detail
+  return reason || undefined
+}
+
+const isFinal = (k: ClaudishTrailKind) => k === 'done' || k === 'fail' || k === 'stop'
+
+/**
+ * Each slot's trail with this tick's observation. When claudish sends `recent`, its steps (with
+ * their words and exact times) stand for the current turn: steps older than its first one stay,
+ * the rest is replaced. Without it, a new step when the kind or the tool changes, or when the
+ * tool-call count rose (the same tool again is a new call). An ended slot gets one final step.
+ * The previous trails themselves when nothing changed.
+ */
+export function nextTrails(
+  prev: Readonly<Record<string, ClaudishTrailStep[]>> | undefined,
+  before: readonly ClaudishSlot[],
+  slots: readonly ClaudishSlot[],
+  now: number,
+): Record<string, ClaudishTrailStep[]> | undefined {
+  let out: Record<string, ClaudishTrailStep[]> | undefined = prev ? { ...prev } : undefined
+  let changed = false
+  const put = (slot: string, trail: ClaudishTrailStep[]) => {
+    out = out ?? {}
+    out[slot] = trail.slice(-TRAIL_MAX_STEPS)
+    changed = true
+  }
+  for (const s of slots) {
+    if (s.slot === '*') continue
+    const trail = out?.[s.slot] ?? []
+    const last = trail[trail.length - 1]
+    if (last && isFinal(last.kind)) continue // ended: final
+    const { kind, tool } = trailKindOf(s)
+    if (s.recent && s.recent.length > 0) {
+      const first = s.recent[0]!.at
+      const turn = s.recent.map(r => ({ at: r.at, kind: RECENT_KIND[r.kind], tool: r.tool, text: r.summary }))
+      const next = [...trail.filter(t => t.at < first), ...turn]
+      if (isFinal(kind)) next.push({ at: now, kind, tool: null, ...(kind === 'fail' && failText(s) ? { text: failText(s)! } : {}) })
+      const same = next.length === trail.length && next.every((t, i) => t.at === trail[i]!.at && t.kind === trail[i]!.kind && t.text === trail[i]!.text)
+      if (!same) put(s.slot, next)
+      continue
+    }
+    const was = before.find(b => b.slot === s.slot)
+    const newCall = kind === 'tool' && was?.toolCalls !== null && s.toolCalls !== null && was !== undefined && s.toolCalls > (was.toolCalls ?? 0)
+    if (last && last.kind === kind && last.tool === tool && !newCall) continue
+    const final = isFinal(kind)
+    if (trail.length >= TRAIL_MAX_STEPS && !final) continue
+    put(s.slot, [...trail, { at: now, kind, tool, ...(kind === 'fail' && failText(s) ? { text: failText(s)! } : {}) }])
+  }
+  return changed ? out : prev as Record<string, ClaudishTrailStep[]> | undefined
+}
+
 function mergeOk(prev: ClaudishRun, observed: readonly ClaudishSlot[], now: number): ClaudishRun {
   // LOST is terminal and final in the mod: a slot that reappears keeps it.
   const seen = observed.map(s => {
@@ -311,6 +436,8 @@ function mergeOk(prev: ClaudishRun, observed: readonly ClaudishSlot[], now: numb
     activityAt: isActivity(prev.slots, slots) ? now : prev.activityAt,
     waits: prev.ref.kind === 'delegation' ? nextWaits(prev.waits, slots) : prev.waits,
   }
+  const trails = nextTrails(prev.trails, prev.slots, slots, now)
+  if (trails !== undefined) run.trails = trails
   return settle(run, now)
 }
 
@@ -355,8 +482,7 @@ export function assertNever(x: never): never {
 
 // ── wake units ────────────────────────────────────────────────────────────────
 
-/** held: the change is one claudish's session monitor reports too (wake.ts decides, per run) */
-export type WakeUnit = { key: string; state: ClaudishSlotState; held?: boolean }
+export type WakeUnit = { key: string; state: ClaudishSlotState }
 
 function waitEntryState(w: ClaudishWait, n: number): ClaudishSlotState {
   const state = n === w.entries && w.sig !== null ? w.sig.slice(0, w.sig.indexOf('|')) : ''

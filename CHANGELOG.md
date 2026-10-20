@@ -4,6 +4,56 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Marketplace 13.7.0] - 2026-10-20
+
+### Added
+
+- **`claudish` v2.6.0**: the band above the prompt shows what each model is doing, from
+  claudish's `recent` steps. Finished steps are soft, timed badges (a run of one kind merges
+  into `3×:07`; the oldest fold into `+11 34:43`), the current step's words sit beside its
+  two-part badge at the right edge (`grep -rn … [Bash│:01]`), and a legend under the rows
+  names the colours. An ended row drops the badges and shows the model's last words, or the
+  error, with `done` or `api_error` at the right. A cell narrower than 30 columns draws one
+  bar per step and the current badge, or the bars alone with the current one blinking.
+  `/config` → `timeline` chooses `badges` (the default) or `line`, a running line of steps.
+
+### Changed
+
+- **`claudish` v2.6.0**: each row starts with a status badge in madbench's colours (`RUN`,
+  `ASK`, `END`, `ERR`, `STP`, `FMT` and others) and how long the slot has run, following the
+  Claude Code theme. The model badge carries its provider (`Anthropic`, no longer
+  `Anthropic (Native)`), then tokens, tool calls, loops and cost as one joined block
+  (`↑295k ↓1.3k ƒ8 ↻1 SUB`). The timeline takes the row's free width, and the Stop column
+  goes once no row can be stopped. The band shows the latest run plus any older run still
+  going; older finished runs are counted in the header.
+- **`claudish` v2.6.0**: Hide puts the Show panel away and keeps its tabs; Escape closes the
+  tab you are in. A Show tab captures its first screen at once and closes with the run that
+  owns it.
+- **`claudish` v2.6.0**: the plugin's session monitor is removed (`monitors.json`, its
+  script and the `claudish-monitor` bench). The plugin's mod already wakes the session once
+  per settled run and per delegation wait. The bounded waits on a run's end record stay.
+- **`multimodel` v5.7.1** and **`dev` v9.3.3**: `/multimodel:delegate`, the
+  `multi-model-validation` and `error-recovery` skills and `/dev:qa` no longer mention the
+  monitor's lines or channel events; they poll `list_sessions` and use the bounded wait.
+  `/multimodel:delegate` names the claudish plugin's wake-up notice as what reports a session
+  waiting on a question: the bounded wait fires only when a session ends.
+
+### Fixed
+
+- **`claudish` v2.6.0**: Show opens its tab on a terminal narrower than 144 columns; it did
+  nothing there. A Show tab draws the model's screen against its bottom edge, and two tabs of
+  one model are told apart by their run (`haiku (team-long/01)`).
+- **`claudish` v2.6.0**: an answer that missed the required format reads `FMT`, wrong
+  format, in gold. It read as a red `✕ empty`, although the answer was on disk.
+
+### Known issues
+
+- claudish 11.1.0 can leave a finished slot `RUNNING` with its last step frozen, so the
+  band shows it thinking with a growing clock (MTL-107). The band shows claudish's state
+  as reported.
+
+---
+
 ## [Marketplace 13.6.4] - 2026-10-20
 
 ### Fixed

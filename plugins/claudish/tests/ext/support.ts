@@ -4,8 +4,21 @@ import { CREATE_TOOL, TEAM_TOOL, type Harness } from '../fake-claudish'
 import { walk, type Mounted, type Node } from '../ui'
 
 export const POLL = 1_500
-export const GRACE = 10_000
-export const THEME = ['claude', 'permission', 'success', 'error', 'warning', 'inactive', 'subtle']
+// Spec §9: the theme keys (text outside the badges) and the badges' dark palette, as the kit draws
+// with no theme set. The hex values are worked from the §9 table and formulas, not read from the code.
+export const DARK = {
+  run: '#89B4FA', ask: '#FFB454', done: '#22E06B', fail: '#FF4D5E', format: '#FFD479', stopped: '#5A5E78',
+  model: '#5B6CE0', tools: '#4FD6BE', loops: '#B794F6', cost: '#FFD479', // §10: model indigo
+  ink: '#0B0B12', snow: '#FFFFFF',
+  // quiet fill: the hue 55 % toward black, written in white
+  modelQuiet: '#293165',
+  // §10 "Tokens, FINAL": two fixed inks, no hue; dark in #0F592A, out #16803D, both written in white
+  tokensIn: '#0F592A', tokensOut: '#16803D',
+} as const
+export const THEME = [
+  'claude', 'permission', 'success', 'error', 'warning', 'inactive', 'subtle', 'inverseText', 'ide', 'suggestion',
+  ...new Set(Object.values(DARK)),
+]
 
 let callId = 0
 export async function modelCall($: Engine, tool: string, args: Record<string, unknown>) {
@@ -33,7 +46,7 @@ export async function endTurn($: Engine, agentId?: string) {
 }
 
 // Only published $.state keys are inspected, never implementation exports or private constants.
-export type Entry = { kind: string; at: number; state?: string; heldUntil?: number; by?: string; attempts?: number }
+export type Entry = { kind: string; at: number; state?: string; attempts?: number }
 export function ledger(h: Harness): Record<string, Entry> {
   const value = h.state.get('wakeLedger') as { entries?: Record<string, Entry> } | undefined
   return value?.entries ?? {}
@@ -54,11 +67,12 @@ export function textOf(tree: unknown): string {
 }
 export async function drawingText(m: Mounted) { return textOf(await m.drawn()) }
 
-// Locate a row by its visible model and exactly one Show, not by undocumented row keys.
+// Locate a row by its visible model and exactly one Show (or Hide, while its tab is open), not by
+// undocumented row keys. The buttons' own group holds no model text, so it is never the row.
 export async function row(m: Mounted, model: string): Promise<Node> {
   const candidates = walk(await m.drawn()).map(x => x.node).filter(n =>
     n.type === 'Box' && textOf(n).includes(model)
-    && walk(n).filter(x => x.node.type === 'Button' && x.node.props?.label === 'Show').length === 1)
+    && walk(n).filter(x => x.node.type === 'Button' && (x.node.props?.label === 'Show' || x.node.props?.label === 'Hide')).length === 1)
   const found = candidates[candidates.length - 1]
   if (!found) throw new Error(`no row for ${model}`)
   return found
@@ -80,30 +94,11 @@ export function themeOnly(tree: unknown) {
     }
   }
 }
-export function stateColor(tree: unknown, word: string, color: string) {
-  const nodes = walk(tree).map(x => x.node).filter(n => n.type === 'Text' && textOf(n).includes(word))
+/** The status badge (§9): its 3-letter `code`, drawn ` XXX `, bold, in `color` on the solid `fill`. */
+export function stateColor(tree: unknown, code: string, color: string, fill: string) {
+  const nodes = walk(tree).map(x => x.node).filter(n => n.type === 'Text' && textOf(n) === ` ${code} `)
   expect(nodes.length).toBeGreaterThan(0)
-  expect(nodes.some(n => n.props?.color === color)).toBe(true)
+  expect(nodes.some(n => n.props?.color === color && n.props?.backgroundColor === fill && n.props?.bold === true)).toBe(true)
 }
 
-let appendId = 0
-export async function append($: Engine, h: Harness, text: string, options: { role?: 'user' | 'assistant'; agentId?: string; type?: 'user' | 'assistant' | 'system'; extra?: string } = {}) {
-  const role = options.role ?? 'user'
-  const e = {
-    door: 'delivery' as const,
-    origin: { kind: 'task-notification' as const },
-    uuid: `ext-row-${++appendId}`,
-    ...(options.agentId ? { agentId: options.agentId } : {}),
-    message: {
-      type: options.type ?? role,
-      ...(options.type === 'system' ? {} : { role, isMeta: true as const }),
-      content: [{ type: 'text' as const, text }, ...(options.extra ? [{ type: 'text' as const, text: options.extra }] : [])],
-    },
-  }
-  const before = h.appended.length
-  // The supplied 2.1.292 kit has no session.append core. Only swallow its bottom rejection
-  // AFTER proving that next(e) reached the spy with the full, unchanged event.
-  await $.session.append(e).catch(() => undefined)
-  expect(h.appended.slice(before)).toEqual([e])
-  await h.clock.settle()
-}
+

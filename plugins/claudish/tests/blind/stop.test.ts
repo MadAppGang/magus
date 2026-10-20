@@ -12,7 +12,7 @@ function cancelsFor(h: ReturnType<typeof harness>, runId: string) {
   return h.fake.cancelCalls().filter(c => c.args.run_id === runId)
 }
 
-test('stop: one press arms confirm? for 4 s; expiry cancels nothing and the button returns', SLOW, async ($, on) => {
+test('stop: one press arms Stop? for 4 s; expiry cancels nothing and the button returns', SLOW, async ($, on) => {
   const h = harness(on)
   await start($)
   for (const surface of SURFACES) {
@@ -26,13 +26,13 @@ test('stop: one press arms confirm? for 4 s; expiry cancels nothing and the butt
 
     await ui.press({ key: keyOf(stop!)! })
     const armed = stopButton(rowFor(await ui.drawn(), a2))
-    expect(armed && labelOf(armed), `${surface}: first press arms`).toBe('confirm?')
+    expect(armed && labelOf(armed), `${surface}: first press arms`).toBe('Stop?')
     expect(h.fake.cancelCalls().length, `${surface}: first press sends nothing`).toBe(cancelsBefore)
     // Only the pressed slot is armed.
     expect(labelOf(stopButton(rowFor(await ui.drawn(), a1))!)).toBe('Stop')
 
     await h.clock.advance(3_000)
-    expect(labelOf(stopButton(rowFor(await ui.drawn(), a2))!), `${surface}: still armed inside 4 s`).toBe('confirm?')
+    expect(labelOf(stopButton(rowFor(await ui.drawn(), a2))!), `${surface}: still armed inside 4 s`).toBe('Stop?')
 
     await h.clock.advance(1_500)
     const back = stopButton(rowFor(await ui.drawn(), a2))
@@ -42,7 +42,7 @@ test('stop: one press arms confirm? for 4 s; expiry cancels nothing and the butt
 
     // A press after expiry is a FIRST press again: it arms, it does not cancel.
     await ui.press({ key: keyOf(back!)! })
-    expect(labelOf(stopButton(rowFor(await ui.drawn(), a2))!)).toBe('confirm?')
+    expect(labelOf(stopButton(rowFor(await ui.drawn(), a2))!)).toBe('Stop?')
     expect(h.fake.cancelCalls().length, `${surface}: a press after expiry re-arms only`).toBe(cancelsBefore)
     await h.clock.advance(5_000)
     expect(h.fake.cancelCalls().length).toBe(cancelsBefore)
@@ -78,7 +78,7 @@ test('stop: two presses inside 4 s cancel exactly that slot of that run, once', 
     expect(run.slots.map(s => s.control.state)).toEqual(['RUNNING', 'CANCELLED', 'RUNNING'])
     await h.clock.advance(3_000)
     const tree = await ui.drawn()
-    expect(textOf(rowFor(tree, b2)), `${surface}: stopped row`).toMatch(/■\s*stopped/)
+    expect(textOf(rowFor(tree, b2)), `${surface}: stopped row`).toContain(' STP ')
     expect(stopButton(rowFor(tree, b2)), `${surface}: no Stop once stopped`).toBeUndefined()
     expect(stopButton(rowFor(tree, b1))).toBeDefined()
     expect(stopButton(rowFor(tree, b3))).toBeDefined()

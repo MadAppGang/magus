@@ -10,20 +10,42 @@ import { walk } from '../ui'
 
 export type N = { type?: string; key?: unknown; props?: Record<string, unknown>; children?: unknown[] }
 
-/** UI contract §4.2: the only colours the mod's own drawing may use. */
-export const THEME_KEYS = ['claude', 'permission', 'success', 'error', 'warning', 'inactive', 'subtle'] as const
+/** Spec 2.4.0 §9 (R4): the theme keys, used only by text outside the badges. */
+export const THEME_KEYS = [
+  'claude', 'permission', 'success', 'error', 'warning', 'inactive', 'subtle', 'inverseText', 'ide', 'suggestion',
+] as const
 
-/** UI contract §4.2: state → glyph, word, theme key. */
+/**
+ * Spec §9, the dark palette (the kit pins no theme and no TERM_THEME/COLORFGBG, so dark): each hue,
+ * its solid ink (white or #0B0B12, by WCAG contrast) and, for tokens, the quiet fill (the hue 55 %
+ * toward black, written in white). Values worked from the §9 table and formulas, not from the code.
+ */
+export const DARK = {
+  run: '#89B4FA', ask: '#FFB454', done: '#22E06B', fail: '#FF4D5E', format: '#FFD479', stopped: '#5A5E78',
+  model: '#5B6CE0', tools: '#4FD6BE', loops: '#B794F6', cost: '#FFD479', // §10: model indigo
+  ink: '#0B0B12', snow: '#FFFFFF',
+  // quiet fill: the hue 55 % toward black, written in white
+  modelQuiet: '#293165',
+  // §10 "Tokens, FINAL": two fixed inks, no hue; dark in #0F592A, out #16803D, both written in white
+  tokensIn: '#0F592A', tokensOut: '#16803D',
+} as const
+
+/** Every colour the band may draw: the theme keys, and the §9 dark palette's hex. */
+export const ALLOWED_COLOURS: readonly string[] = [...THEME_KEYS, ...new Set(Object.values(DARK))]
+
+/** Spec §2/§9: state → 3-letter badge code, its ink (`fg`) on its solid fill (`bg`), and its hue (the runtime's text). */
 export const STATE_LOOK = {
-  STARTING: { glyph: '◌', word: 'starting', color: 'warning' },
-  RUNNING: { glyph: '▶', word: 'running', color: 'warning' },
-  AWAITING_INPUT: { glyph: '◇', word: 'input', color: 'permission' },
-  AWAITING_PERMISSION: { glyph: '◇', word: 'permit', color: 'permission' },
-  COMPLETED: { glyph: '✓', word: 'done', color: 'success' },
-  FAILED: { glyph: '✕', word: 'failed', color: 'error' },
-  TIMEOUT: { glyph: '✕', word: 'timeout', color: 'error' },
-  EMPTY: { glyph: '✕', word: 'empty', color: 'error' },
-  CANCELLED: { glyph: '■', word: 'stopped', color: 'inactive' },
+  STARTING: { code: 'NEW', fg: DARK.ink, bg: DARK.run },
+  RUNNING: { code: 'RUN', fg: DARK.ink, bg: DARK.run },
+  AWAITING_INPUT: { code: 'ASK', fg: DARK.ink, bg: DARK.ask },
+  AWAITING_PERMISSION: { code: 'ASK', fg: DARK.ink, bg: DARK.ask },
+  COMPLETED: { code: 'END', fg: DARK.ink, bg: DARK.done },
+  FAILED: { code: 'ERR', fg: DARK.ink, bg: DARK.fail },
+  TIMEOUT: { code: 'TMO', fg: DARK.ink, bg: DARK.fail },
+  EMPTY: { code: 'NIL', fg: DARK.ink, bg: DARK.fail },
+  /** EMPTY with reason shape_mismatch: an answer in the wrong format, never "empty" */
+  WRONG_FORMAT: { code: 'FMT', fg: DARK.ink, bg: DARK.format },
+  CANCELLED: { code: 'STP', fg: DARK.snow, bg: DARK.stopped },
 } as const
 
 export const SLOW = { timeoutMs: 60_000 } as const
@@ -43,13 +65,16 @@ export function labelOf(n: N): string {
   return typeof l === 'string' ? l : ''
 }
 
-/** What a subtree shows: Buttons as `[ label ]`, a column Box line by line, a row Box with its gap. */
+/**
+ * What a subtree shows: Buttons as `[ label ]` (a `plain` Button with children draws its
+ * children, as a chip does), a column Box line by line, a row Box with its gap.
+ */
 export function textOf(t: unknown): string {
   if (typeof t === 'string') return t
   if (typeof t === 'number') return String(t)
   if (t === null || typeof t !== 'object') return ''
   const n = t as N
-  if (n.type === 'Button') return `[ ${labelOf(n)} ]`
+  if (n.type === 'Button') return n.props?.plain && kids(n).length > 0 ? kids(n).map(textOf).join('') : `[ ${labelOf(n)} ]`
   const parts = kids(n).map(textOf)
   if (n.type === 'Box') {
     if (n.props?.flexDirection === 'column') return parts.join('\n')
@@ -81,12 +106,12 @@ export function rowFor(tree: unknown, needle: string): N | undefined {
   return best?.node
 }
 
-/** The state glyphs a row leads with (UI contract §4.2); the one field narrowing never drops. */
-const GLYPHS = [...new Set(Object.values(STATE_LOOK).map(l => l.glyph))]
+/** The badge codes a row leads with (spec 2.4.0 §2), padded as drawn; the one field narrowing never drops. */
+const CODES = [...new Set([...Object.values(STATE_LOOK).map(l => l.code), '???', 'LST'])].map(c => ` ${c} `)
 
 /**
  * Every band row, one per slot: for each `Show` Button, the deepest non-header node that holds
- * exactly that one Show AND shows a state glyph. The glyph (not the model id) identifies the row
+ * exactly that one Show AND shows a badge code. The code (not the model id) identifies the row
  * because narrowing may cut the model id; requiring it skips any wrapper around the Button alone.
  */
 export function rowsOf(tree: unknown): N[] {
@@ -98,7 +123,7 @@ export function rowsOf(tree: unknown): N[] {
       if (n.type === 'Button' || !buttonsIn(n).includes(show)) continue
       const t = textOf(n)
       if (t.includes('◆ claudish')) continue
-      if (!GLYPHS.some(g => t.includes(g))) continue
+      if (!CODES.some(c => t.includes(c))) continue
       if (buttonsIn(n).filter(b => labelOf(b) === 'Show').length !== 1) continue
       if (!best || depth > best.depth) best = { node: n, depth }
     }
@@ -107,11 +132,16 @@ export function rowsOf(tree: unknown): N[] {
 }
 
 export function stopButton(row: N | undefined): N | undefined {
-  return row ? buttonsIn(row).find(b => labelOf(b) === 'Stop' || labelOf(b) === 'confirm?') : undefined
+  return row ? buttonsIn(row).find(b => labelOf(b) === 'Stop' || labelOf(b) === 'Stop?') : undefined
 }
 
 export function showButton(row: N | undefined): N | undefined {
   return row ? buttonsIn(row).find(b => labelOf(b) === 'Show') : undefined
+}
+
+/** R2/R3: the button a row's Show becomes while its tab is open and drawn. */
+export function hideButton(row: N | undefined): N | undefined {
+  return row ? buttonsIn(row).find(b => labelOf(b) === 'Hide') : undefined
 }
 
 /** The colour each shown string matching `re` is drawn in: its own or the nearest ancestor's `color`. */
@@ -130,6 +160,23 @@ export function colorsOf(tree: unknown, re: RegExp): (string | undefined)[] {
       return
     }
     for (const k of kids(n)) go(k, c)
+  }
+  go(tree, undefined)
+  return out
+}
+
+/** The fill each shown string matching `re` is drawn on: its own or the nearest ancestor's `backgroundColor`. */
+export function fillsOf(tree: unknown, re: RegExp): (string | undefined)[] {
+  const out: (string | undefined)[] = []
+  const go = (t: unknown, fill: string | undefined) => {
+    if (typeof t === 'string') {
+      if (re.test(t)) out.push(fill)
+      return
+    }
+    if (t === null || typeof t !== 'object') return
+    const n = t as N
+    const f = typeof n.props?.backgroundColor === 'string' ? (n.props.backgroundColor as string) : fill
+    for (const k of kids(n)) go(k, f)
   }
   go(tree, undefined)
   return out
@@ -204,37 +251,5 @@ export function modVerbs(h: Harness): string[] {
   return h.fake.calls.map(c => (c.tool === 'team' ? `team:${String(c.args.mode)}` : c.tool))
 }
 
-/** decisions-monitor-dedupe #2: how long the mod holds a unit the plugin monitor covers. */
-export const MONITOR_GRACE_MS = 10_000
-/** Past the hold plus a few polls: a held unit with no monitor line has woken by then. */
-export const PAST_HOLD_MS = MONITOR_GRACE_MS + 4_000
-
-let rowSeq = 0
-
-/**
- * The plugin monitor's stdout line, kept as the session keeps it: a background task's
- * notification row (user role, isMeta, origin `task-notification`) with the line on its own
- * line. Resolves with the row sent. The 2.1.292 kit has no core for `session.append`, so the
- * call rejects once the row is past the plugin (after the harness spy recorded it); exactly
- * that rejection is swallowed, any other is rethrown.
- */
-export async function monitorLine($: Engine, line: string): Promise<unknown> {
-  rowSeq += 1
-  const row = {
-    message: {
-      type: 'user',
-      role: 'user',
-      isMeta: true,
-      content: [{ type: 'text', text: `<task-notification>\n<task-id>claudish-sessions</task-id>\n<event>\n${line}\n</event>\n</task-notification>` }],
-    },
-    door: 'delivery',
-    origin: { kind: 'task-notification' },
-    uuid: `00000000-0000-4000-8000-${String(rowSeq).padStart(12, '0')}`,
-  }
-  const session = ($ as unknown as { session: { append: (e: unknown) => Promise<unknown> } }).session
-  await session.append(row).catch((err: unknown) => {
-    const m = err instanceof Error ? err.message : String(err)
-    if (!/session\.append|no implementation/i.test(m)) throw err
-  })
-  return row
-}
+/** A few polls: by then the mod has noticed a change and named it in a prompt (nothing holds a wake-up). */
+export const NOTICED_MS = 3_000

@@ -20,7 +20,7 @@ function captured(args: { seq: number; final: boolean; spans: boolean }): Json {
 }
 
 for (const surface of SURFACES) {
-  test(`ext Show: one model-titled tab per slot; reopening focuses the same id [${surface}]`, async ($, on) => {
+  test(`ext Show: one model-titled tab per slot; Hide puts every tab away; Show brings them all back, the pressed one in front [${surface}]`, async ($, on) => {
     const h = harness(on)
     await start($, surface)
     const r = await team($, h)
@@ -28,13 +28,20 @@ for (const surface of SURFACES) {
     expect(h.fake.captureCalls()).toHaveLength(0)
     await press(b, 'model-a', 'Show')
     await press(b, 'model-b', 'Show')
+    const [tabA, tabB] = [h.opens[0]!.id, h.opens[1]!.id]
+    expect(tabA).not.toBe(tabB)
+    await b.redraw()
+    await press(b, 'model-a', 'Hide')
+    // §9: Hide closes every Show tab, not only its own
+    expect([...h.closes].sort()).toEqual([tabA, tabB].sort())
+    expect(h.panes).toHaveLength(0)
+    await b.redraw()
     await press(b, 'model-a', 'Show')
-    expect(h.opens).toHaveLength(3)
-    expect(h.opens.map(p => p.title)).toEqual(['model-a', 'model-b', 'model-a'])
-    expect(h.opens[0]!.id).toBe(h.opens[2]!.id)
-    expect(h.opens[0]!.id).not.toBe(h.opens[1]!.id)
+    // §9: the hidden tab comes back, and the pressed one opens last, in front
+    expect(h.opens.slice(2).map(p => p.id)).toEqual([tabB, tabA])
+    expect(h.opens.map(p => p.title)).toEqual(['model-a', 'model-b', 'model-b', 'model-a'])
     expect(h.panes).toHaveLength(2)
-    expect(h.panes.find(p => p.id === h.opens[0]!.id)?.isShown).toBe(true)
+    expect(h.panes.find(p => p.id === tabA)?.isShown).toBe(true)
     await h.clock.advance(3_000)
     expect(h.fake.captureCalls().length).toBeGreaterThan(0)
     for (const c of h.fake.captureCalls()) {

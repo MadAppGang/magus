@@ -31,7 +31,6 @@ See: [Anthropic plugin dependencies docs](https://code.claude.com/docs/en/plugin
 - Provider credentials, which claudish resolves itself: from the environment, its
   own config, the macOS Keychain, or 1Password. `claudish --help` lists the
   credential commands.
-- For the session progress monitor: claudish 10.4.0 or later, and `bun` on `$PATH`.
 
 The plugin's `.mcp.json` declares no `env` entries, on purpose. The server inherits
 Claude Code's environment, so an exported key reaches it without one. A
@@ -54,10 +53,6 @@ Tool gating via `CLAUDISH_MCP_TOOLS` env var: `all` (default), `low-level`,
 `run_prompt` is one completion straight to one model's API: no tools, no session, so it is
 never subagent work. Work goes through `create_session`, a panel through `team`.
 
-Plus one plugin monitor, `claudish-sessions`, which reports the progress of the
-`create_session` and `team` runs this Claude Code session started. See
-[Session progress monitor](#session-progress-monitor).
-
 ## Skills
 
 | Skill | Covers |
@@ -78,208 +73,81 @@ The skill lives here rather than in `multimodel` because it documents the claudi
 runtime: a consumer that depends on claudish alone must find the resolution
 procedure installed beside it, without also installing `multimodel`.
 
-## Session progress monitor
+## Monitoring sessions
 
-`monitors/monitors.json` declares one Claude Code plugin monitor, `claudish-sessions`.
-Claude Code starts it with every interactive session, with no launch flag. Apart from the
-two notices below, it stays silent until that session starts claudish work. From then on it
-prints one line per state change of:
-
-- every `create_session` session this Claude Code session started;
-- every `team(mode:"run")` run this Claude Code session started.
-
-Each line reaches the model as a notification, so a caller acts on the end line instead of
-polling `list_sessions` or `team(mode:"status")`. It does not end its turn relying on that
-line alone: a plugin monitor's line woke an idle session in the two live sessions measured, and
-two sessions are not a rate (see [Limits](#limits)), so a caller starts a bounded background
-wait before it ends a turn with a run in flight. The `claudish:claudish-usage` skill, "Waiting for a run to end", gives the
-wait.
-
-### What it reports
-
-Every line starts with `claudish-monitor:`. The monitor writes nothing else to stdout.
-
-| Line | Meaning | Next action |
-|---|---|---|
-| `session ID started` | the session exists | note the id |
-| `session ID running` | still running; at most one every 5 minutes | nothing |
-| `session ID needs-input … next: send_input ID` | it finished a turn and waits for input | `send_input(ID, answer)` |
-| `session ID needs-input … waited=…` | a wait that was already answered when the monitor read it | nothing |
-| `session ID completed … next: get_output ID` | finished | `get_output(ID)` |
-| `session ID failed` / `timeout … next: get_diagnostics ID` | ended badly | `get_diagnostics(ID)` |
-| `session ID cancelled` | cancelled | nothing |
-| `team ID started … path=P` | the panel exists | note the path |
-| `team ID running …` | still running; at most one every 5 minutes | nothing |
-| `team ID completed` / `failed` / `cancelled` `… next: team-status` | the run settled | `team(mode:"status", path=P)` |
-| `notice claudish-too-old: …` | a claudish server in this session is older than 10.4.0; runs started through it are not reported | upgrade claudish, restart Claude Code |
-| `notice no-session-identity: …` | the monitor cannot tell which runs are this session's | none; it exits |
-
-`needs-input` is reported once per wait, and only interactive sessions wait (no `prompt`, or
-after a `send_input`). A session started with a `prompt` never needs input. A wait still open
-when its session ends is not reported; the end line is. A writer that dies before recording
-an end is reported as `failed reason=no-terminal-record`.
-
-Line grammar:
-
-```
-line          = "claudish-monitor:" SP ( session-line / team-line / notice-line )
-session-line  = "session" SP id SP s-state *( SP field ) [ SP "next:" SP s-hint ]
-s-state       = "started" / "running" / "needs-input" / "completed" / "failed" / "timeout" / "cancelled"
-s-hint        = ( "get_output" / "get_diagnostics" / "send_input" ) SP id
-team-line     = "team" SP id SP t-state *( SP field ) [ SP "next:" SP "team-status" ]
-t-state       = "started" / "running" / "completed" / "failed" / "cancelled"
-field         = key "=" value
-key           = "model" / "elapsed" / "turns" / "replies" / "tools" / "cost" / "reason"
-              / "exit" / "waited" / "slots" / "ok" / "failed" / "cancelled" / "running" / "path"
-value         = 1*200( safe )         ; printable ASCII without space " & < = >
-                                      ; only path reaches 200; every other value stops at 80
-notice-line   = "notice" SP ( "claudish-too-old" / "no-session-identity" ) ":" SP text
-id            = 1*64( ALPHA / DIGIT / "-" / "_" / "." )
-```
-
-Fields, in this order, each omitted when unknown:
-
-| Line | Fields |
-|---|---|
-| session `started` | `model` |
-| session `running` | `model elapsed replies tools cost` |
-| session `needs-input` | `model elapsed turns` (+ `waited` once answered) |
-| session `completed`, `cancelled` | `model elapsed turns tools cost` |
-| session `failed`, `timeout` | `model elapsed turns tools cost reason exit` |
-| team `started` | `slots path` |
-| team `running` | `elapsed slots ok failed cancelled running path` |
-| team `completed`, `failed`, `cancelled` | `elapsed slots ok failed cancelled reason path` |
-
-- `elapsed` and `waited`: `7m41s` below one hour, `1h05m` from one hour.
-- `turns` is claudish's completed-turn count; `replies` counts distinct assistant messages in
-  the event log. They measure different things and are named apart on purpose.
-- `cost`: `$0.00` for an exact zero, two decimals from one cent, up to four below it.
-- `running` on a team `running` line counts every slot not yet finished, including one not
-  yet started, so `ok + failed + cancelled + running` is `slots`. A slot counts as cancelled
-  or failed the same way on both lines.
-- `reason` on failure lines only: claudish's own reason, or the monitor's verdict
-  `no-terminal-record`, `terminal-record-unreadable` or `unrecognised-status`.
-- `path` is the team directory, relative to the project when inside it, and
-  **percent-encoded** (decode it before passing it to `team`). A path over 200 characters
-  keeps its last part after a `...`; the full path is `teamPath` in
-  `<sessionsDir>/<id>/spawn.json`.
-- `next: team-status` means: call `team(mode:"status", path=<the decoded path>)`.
-
-Examples (`MODEL_ID` stands for whatever model the run used):
-
-```
-claudish-monitor: session 1a2b3c4d started model=MODEL_ID
-claudish-monitor: session 9f8e7d6c needs-input model=MODEL_ID elapsed=1m12s turns=1 next: send_input 9f8e7d6c
-claudish-monitor: session 1a2b3c4d completed model=MODEL_ID elapsed=7m41s turns=5 tools=22 cost=$0.09 next: get_output 1a2b3c4d
-claudish-monitor: team team-5e6f7a8b completed elapsed=12m03s slots=4 ok=3 failed=1 cancelled=0 path=ai-docs/sessions/RUN/reviews/panel next: team-status
-```
-
-### How it knows which runs are yours
-
-claudish 10.4.0 and later writes `<sessionsDir>/<id>/spawn.json` before each run starts.
-`sessionsDir` is `$CLAUDISH_SESSIONS_DIR` when set and not empty, else
-`$HOME/.claudish/sessions`, falling back to the OS account home only when `HOME` is unset or
-empty. claudish and the monitor apply this one rule, so a sandbox or launcher that changes
-`HOME` moves both together. Each applies it to its own environment, and the monitor's is
-Claude Code's: set `CLAUDISH_SESSIONS_DIR` where Claude Code starts. Set only in the claudish
-server's `env` block, it moves the writer and not the monitor, and no run is reported. The
-record names the
-Claude Code process that launched the claudish MCP server (`hostPid`). The monitor reports a
-record only when that pid is its own window's Claude Code process (`CLAUDE_PID`), so two
-windows never see each other's runs, even when they share a conversation. Runs that ended
-before the monitor started are never reported.
-
-### Limits
-
-- **Needs claudish 10.4.0 or later.** An older claudish records no `spawn.json`, so its runs
-  are not reported. The monitor prints one `claudish-too-old` notice when it reads a version
-  below 10.4.0 from one of this session's claudish servers; when no version can be read, it
-  prints none.
-- **Waking an idle session: measured twice, not a rate.** A plugin monitor's line reaches the
-  model as a notification (PMON-3), and in two live interactive sessions (Claude Code 2.1.290
-  and 2.1.292) every end line arrived after the turn had ended and started a new one. Two
-  sessions are not a rate, and under `claude -p` no monitor runs, so the shipped instructions
-  never rely on it alone.
-- **Needs `bun` on `PATH`.** Without it Claude Code reports `script failed (exit 127)` once
-  per session.
-- Not under `claude -p`, which starts no monitors. Not on Bedrock, Vertex or Foundry, nor
-  with `DISABLE_TELEMETRY` or `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` set.
-- claudish must be launched directly by Claude Code, as this plugin's `.mcp.json` does. A
-  wrapper process in between hides which window started a run, and its runs are not reported.
-- A monitor that fails at start is not restarted until Claude Code restarts.
-- One Bun process per Claude Code session, roughly 30-40 MB.
-- Without `ps` there is no too-old notice and no check for a reused writer pid, and a run
-  already in flight when the monitor starts is not picked up, not even when it ends.
-- The too-old notice needs an npm or bun install of claudish whose path holds no space. A
-  Homebrew or standalone binary gets none, because its version is not read without running
-  it; neither does an install under a path with a space (such as `Application Support`),
-  because a `ps` line cannot be split on it.
-- After upgrading claudish, restart Claude Code: the old server keeps running, and its runs are
-  not reported.
-- **`run_prompt` writes no session record and is not reported.** Neither are `run-and-judge`
-  and `judge`, although both start child processes: they hold the tool call open until the
-  run ends and return the verdict in its result. `status` and `cancel` start nothing.
-- A run still in flight when the monitor starts is picked up only when its record directory
-  changed in the 62 minutes before: claudish's longest session timeout, 60 minutes, plus two.
-  No session runs longer than that; a team run that has is not reported.
-- claudish stops appending to a session's `waits.jsonl` once it holds 1 MiB, about 5,000
-  waits. Waits after that are not reported.
-- A team run whose end record cannot be written (a full disk, lost permissions, the record
-  directory removed mid-run) is reported `running` until the window closes, and the wait in
-  the `claudish:claudish-usage` skill runs to its ceiling.
-- **`/clear` and an in-session `/resume`: measured once, survives both.** In one live session
-  (Claude Code 2.1.290) the monitor process stayed the same across `/clear` and `/resume`, and
-  a run started after each delivered its start and end lines.
-
-### Monitoring sessions
-
-claudish pushes nothing into the conversation. The monitor reports state changes; between
-its lines, `list_sessions` is the live view. Each row carries `state`, `activity`,
-`idle_seconds`, and on a failed or timed-out row `reason_detail`, the provider's error
-message in at most 160 characters. A live row also carries `recent`, the current turn's
-last 20 steps (`{at, kind, tool, summary}`), so a poll shows what happened since the last
-one. Polling about every 10 seconds is enough.
+claudish pushes nothing into the conversation; `list_sessions` is the live view. Each row
+carries `state`, `activity`, `idle_seconds`, and on a failed or timed-out row
+`reason_detail`, the provider's error message in at most 160 characters. A live row also
+carries `recent`, the current turn's last 20 steps (`{at, kind, tool, summary}`), so a poll
+shows what happened since the last one. Polling about every 10 seconds is enough.
 
 ## Live run status
 
-Measured on Claude Code 2.1.286 and 2.1.292 (see **Older Claude Code** below). While a `team(mode="run")`
+Measured on Claude Code 2.1.286, 2.1.292 and 2.1.296 (see **Older Claude Code** below). While a `team(mode="run")`
 run or a `create_session` session that this Claude Code session started is going, a band
 above the prompt shows it, one line per model:
 
 ```
-◆ claudish · 4 running
-   01 ▶ running  gpt-6.1-sol OpenRouter 12.7k/780 4 tools 1 loops idle 1s Read [ Stop ] [ Show ]
+◆ claudish  review · 2 running · 1 done · 1 earlier run
+  01  RUN  1m12s  gpt-6.1-sol  OpenRouter   ↑12.7k ↓780   ƒ 4  ↻ 1  $0.42  ▰▱▱▱▱     Read   [ Stop ] [ Show ]
+  02  RUN    58s  glm-5.3      Z.ai          ↑9.1k ↓2.2k  ƒ 6  ↻ 2  $0.08  ▰▰▰▱▱ 1m  Bash   [ Stop ] [ Hide ]
+  03  END  2m40s  haiku        Anthropic    ↑31.0k ↓4.1k  ƒ 9  ↻ 1    SUB                   [ Show ]
 ```
 
-Each line carries the slot, its state, the model and its provider, tokens in and out,
-tool calls, loops, how long the model has been idle, and what it is doing now. A slot
-that needs you (waiting for input or for a permission) is highlighted. On a narrow
-terminal the least important columns drop first; a line never wraps.
+The band shows the run started most recently, plus any older run that is still going.
+Older finished runs are counted in the header (`1 earlier run`), not listed.
+
+Each line starts with the status: a three-letter code on a coloured badge, then how long the
+slot has run, in the same colour.
+
+- `RUN` and `NEW` are blue, and `END` is green.
+- `ASK` (the slot needs you: input or a permission) is amber.
+- `ERR`, `TMO`, `NIL` and `LST` (it failed) are red, and `STP` (stopped) is grey.
+- `FMT` means the model answered but missed the format the run required (`shape_mismatch`).
+  Its answer is still on disk, so it is gold, not red.
+
+Then come:
+
+- the model, as a coloured badge with its provider (the model is the one column that never drops);
+- the tokens badge, sent (`↑`) and received (`↓`);
+- tool calls (`ƒ`) and loops (`↻`);
+- what the slot cost, or `SUB` when it runs on a subscription (claudish reports no charge, or it is
+  a native Claude model); `—` when claudish reports nothing;
+- the stale-meter;
+- what the model is doing now.
+
+The colours are madbench's. They follow your Claude Code theme, and an `auto` theme follows
+`TERM_THEME` or `COLORFGBG`.
+
+The Stop and Show buttons sit at the right edge of the line. The stale-meter fills one cell at
+10, 30, 60, 90 and 120 seconds without activity: green, then amber from one minute, red from
+two. From 30 seconds it also prints the time. On a narrow terminal the least important columns
+drop first; a line never wraps.
 
 - **Stop** cancels that one slot and nothing else. Press it twice: the first press turns
-  the button into `confirm?`, and a second press within four seconds sends the cancel.
+  the button into `[ Stop? ]`, and a second press within four seconds sends the cancel.
   Cancelling is not a read, so Claude Code then asks its own permission question before
   anything stops.
 - **Show** opens a tab for that slot, titled by its model: the model's live screen,
-  read-only, in the model's own colours. One tab per model; pressing Show again brings
-  its tab forward.
+  read-only, in the model's own colours, with its prompt on the tab's bottom edge.
+  - The tabs sit in a panel beside the conversation when Claude Code runs fullscreen at 110
+    columns or wider, and above the prompt otherwise. If Claude Code cannot draw a tab, a
+    toast says why.
+  - Tabs belong to the runs the band shows: once a newer run replaces an older one, the older
+    run's tabs close.
+- **Hide** puts the panel away and keeps its tabs. While a tab is open, its line reads
+  `[ Hide ]`; the next Show on any line brings the panel back with every tab it had. Escape
+  closes the tab you are in.
 - **Wake-up.** When a model in a run this session started finishes, fails or is stopped —
   or a `create_session` session starts waiting for input or a permission — an idle
   session wakes on its own: Claude gets a short notice naming the slot and how to fetch
   its result, and you see a toast. Runs another session started never wake this one.
 
-**One turn per change, with the session progress monitor.** Some changes are also reported
-by the [session progress monitor](#session-progress-monitor): a `create_session` session
-ending or starting to wait, and a `team` run settling. For those, the band holds its notice
-for 10 seconds. If the monitor's line reaches the conversation first, the band sends nothing
-and that line is the one turn. If no line comes, Claude gets the band's notice after the
-10 seconds. A monitor line that arrives later than that still reaches Claude, so a rare change
-can bring a second turn. A slot of a `team` run that ends while other slots still run is
-not held: the monitor reports a run only once it settles. If such a notice is still waiting
-when the run settles (it was held for a turn in progress), it waits with the settle, so the
-monitor's one line covers the whole run. A run is matched to the monitor's line by the record
-claudish names it by, never by its directory, so a run started again in the same directory
-is never covered by the line of the run before it.
+**One turn per change.** A run that settles, or a `create_session` session that starts
+waiting, is named in exactly one prompt, as soon as the band sees it. A slot of a `team` run
+that ends while other slots still run gets its own notice; the next arrives as the next slot
+ends. While Claude is in the middle of a turn, notices wait for that turn to end and then go
+together in one prompt.
 
 **What it does not show.** A `team(mode="run-and-judge")` call answers only once the run and
 its judging have finished, so the band first sees it settled and does not show it, and it

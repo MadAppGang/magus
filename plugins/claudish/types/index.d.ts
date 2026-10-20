@@ -21,9 +21,6 @@ export type ClaudishRunRef = {
   token: string
   /** panel: the absolute session directory; delegation: the per-start id again. Opaque */
   address: string
-  /** panel: the id claudish's session monitor names this run by, from the start answer; absent when the
-   *  answer carries none (the monitor's line then never stands for this run). Opaque */
-  monitor?: string
 }
 
 export type ClaudishFeatures = { cancel: boolean; capture: boolean; spans: boolean }
@@ -40,10 +37,14 @@ export type ClaudishSlot = {
   provider: string | null
   state: ClaudishSlotState
   reason: string | null
+  /** the failure in the provider's own words (claudish's reason_detail), when claudish sends one */
+  detail?: string | null
   tokensIn: number | null
   tokensOut: number | null
   toolCalls: number | null
   turnsCompleted: number | null
+  /** what the slot cost in US dollars, as claudish reports it; null when unknown or billed by a subscription */
+  costUsd: number | null
   /** null in terminal states */
   idleSeconds: number | null
   /** epoch ms */
@@ -52,6 +53,19 @@ export type ClaudishSlot = {
   activity: string | null
   /** waiting for input on a question (the adapter's comparison); false otherwise */
   asked: boolean
+  /** claudish's last steps of the slot's current turn, oldest first (its `recent`); absent when claudish sends none */
+  recent?: ClaudishRecentStep[]
+}
+
+/** One step claudish saw in a slot's transcript: what the model said or thought, a tool call, or a question. */
+export type ClaudishRecentStep = {
+  /** epoch ms the step began */
+  at: number
+  kind: 'text' | 'thinking' | 'tool' | 'ask'
+  /** the tool's name, for a `tool` step */
+  tool: string | null
+  /** one line: the words, the tool's target (a path, a command's first line), or the question */
+  summary: string
 }
 
 /** Per slot of a run: the entries into AWAITING_INPUT / AWAITING_PERMISSION seen so far. */
@@ -72,6 +86,8 @@ export type ClaudishRun = {
   /** 1 + starts of this epoch already made at the same ref.address */
   generation: number
   slots: ClaudishSlot[]
+  /** when the mod saw the run start (epoch ms): each slot's runtime counts from it; absent = unknown, drawn — */
+  startedAt?: number
   /** last poll whose answer showed activity; drives cadence only */
   activityAt: number
   missedPolls: number
@@ -86,7 +102,18 @@ export type ClaudishRun = {
   lostReason: string | null
   /** when every slot became terminal; never on an empty slot list */
   settledAt: number | null
+  /** slot → what it did, one step per change the polls saw; absent on a run recorded before trails */
+  trails?: Record<string, ClaudishTrailStep[]>
 }
+
+/** What a slot was doing, as the band's timeline draws it. */
+export type ClaudishTrailKind = 'start' | 'say' | 'think' | 'tool' | 'background' | 'finish' | 'idle' | 'wait' | 'done' | 'fail' | 'stop'
+
+/**
+ * One change of what a slot does: from `at` (epoch ms) until the next step. `tool` names the tool
+ * of a `tool` step; `text` is its one line (the words, the tool's target, the failure), when known.
+ */
+export type ClaudishTrailStep = { at: number; kind: ClaudishTrailKind; tool: string | null; text?: string }
 
 export type ClaudishFrame = {
   seq: number
@@ -126,16 +153,16 @@ export type ClaudishStopRequest =
   | { kind: 'sent'; at: number }
 
 export type ClaudishWakeEntry =
-  /** heldUntil: a change claudish's own session monitor also reports; not sent before it, so the monitor's line can stand for it */
-  | { kind: 'pending'; state: ClaudishSlotState; at: number; attempts: number; retryAt: number | null; heldUntil?: number }
+  | { kind: 'pending'; state: ClaudishSlotState; at: number; attempts: number; retryAt: number | null }
   | { kind: 'inflight'; state: ClaudishSlotState; at: number; attempts: number; nonce: string; since: number }
   | { kind: 'parked'; state: ClaudishSlotState; at: number; attempts: number; reason: string; retryAt: number }
-  /** by 'monitor': claudish's own session monitor reported it in a row of this conversation; nothing was sent */
-  | { kind: 'delivered'; at: number; nonce: string; by?: 'monitor' }
+  | { kind: 'delivered'; at: number; nonce: string }
 
 export type ClaudishRuns = { epoch: number; starts: Record<string, number>; list: ClaudishRun[] }
 export type ClaudishLedger = { epoch: number; entries: Record<string, ClaudishWakeEntry> }
 export type ClaudishTurn = { isRunning: boolean; since: number }
+/** The Show panel's active tab: a slot's tab id (its view's member id); null before the first Show. */
+export type ClaudishShowTab = { active: string | null }
 export type ClaudishEarlier = { runs: number; done: number; failed: number; stopped: number }
 
 declare module 'claude-code' {
@@ -153,6 +180,8 @@ declare module 'claude-code' {
       wakeLedger: ClaudishLedger
       turn: ClaudishTurn
       earlier: ClaudishEarlier
+      /** which tab the Show panel shows; kept while the panel is hidden */
+      showTab: ClaudishShowTab
     }
   }
 }

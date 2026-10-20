@@ -676,8 +676,8 @@ never actually received.
 **For single-model delegation:**
 ```
 create_session(model="grok", prompt=TASK_PROMPT, timeout_seconds=300)
-→ poll list_sessions(include_completed=true) about every 10 s, or act on the
-  claudish-monitor line: STARTING → RUNNING → COMPLETED / FAILED / TIMEOUT
+→ poll list_sessions(include_completed=true) about every 10 s:
+  STARTING → RUNNING → COMPLETED / FAILED / TIMEOUT
 → get_output(session_id) to retrieve result
 ```
 

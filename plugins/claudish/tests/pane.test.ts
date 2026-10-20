@@ -6,7 +6,7 @@ import type { Register } from 'claude-code'
 import { expect, test } from 'claude-code/testing'
 import type { ClaudishPaneView, ClaudishRuns } from '../types'
 import { FINAL_GRACE_MS, NO_SCREEN_NOTE, PANE_STYLE_BUDGET, STYLE_SPANS_PER_LINE, paneId } from '../hooks/status/domain'
-import { ENGINE_DRAWING, TEAM_TOOL, harness, start, type FakeOptions, type Harness, type Recorded } from './fake-claudish'
+import { ENGINE_DRAWING, engineOwn, TEAM_TOOL, harness, start, type FakeOptions, type Harness, type Recorded } from './fake-claudish'
 import { COLS, CUBE_INDEX, RED_INDEX, ROWS, TRUECOLOR_BORDER, type Json } from './scenario'
 import { SURFACES, mountBand, mountPane, paneProps, walk, type Mounted, type Node, type Surface } from './ui'
 
@@ -74,7 +74,10 @@ for (const surface of SURFACES) {
     const h = harness(on)
     await start($, surface)
     const id = await showTab($, h, surface)
-    expect(view(h, id)?.status).toBe('waiting')
+    // seeded waiting at the press, then captured at once (not at the loop's next tick)
+    expect(h.writes.find(([k]) => k === `panes/${id}`)?.[1]).toMatchObject({ status: 'waiting', frame: null })
+    expect(capturesOf(h, '02')).toHaveLength(1)
+    expect(view(h, id)?.status).toBe('live')
     await h.clock.advance(1000)
     const pane = await mountPane($, surface, id)
     const first = view(h, id)?.frame?.seq
@@ -168,7 +171,11 @@ for (const surface of SURFACES) {
       const id = await showTab($, h, surface)
       await h.clock.advance(1000)
       const pane = await mountPane($, surface, id, paneProps(60, 60))
-      expect(await frameLines(pane)).toHaveLength(ROWS)
+      // 59 body rows for a 50-line screen: bottom-aligned, 9 blank lines above the whole frame
+      const lines = await frameLines(pane)
+      expect(lines).toHaveLength(59)
+      expect(lines.slice(0, 59 - ROWS).every(l => l === ' ')).toBe(true)
+      expect(lines.slice(59 - ROWS).map(l => l.slice(0, 2))).toEqual(Array.from({ length: ROWS }, (_, i) => String(i).padStart(2, '0')))
       const coloured = frameNodes(await pane.drawn()).filter(n => n.props?.color !== undefined)
       expect(coloured.length > 0).toBe(painted)
       if (painted) expect(coloured).toHaveLength(ROWS * 7)
@@ -252,7 +259,7 @@ for (const surface of SURFACES) {
     await start($, surface)
     void h
     const pane = await mountPane($, surface, 'cl_0123abcd')
-    expect(await pane.drawn()).toEqual(ENGINE_DRAWING)
+    expect(engineOwn(await pane.drawn())).toEqual(ENGINE_DRAWING)
   })
 
   test(`pane: hidden cadence — a tab behind another is captured at most every 5 s [${surface}]`, async ($, on) => {
@@ -290,7 +297,8 @@ for (const surface of SURFACES) {
     expect(view(h, id)?.status).toBe('unavailable')
     const pane = await mountPane($, surface, id)
     expect(await pane.find({ type: 'Text', text: /Live screen not available/ })).toBeDefined()
-    expect(await pane.find({ type: 'Text', text: /tools/ })).toBeDefined() // the row's numbers keep the tab useful
+    // the row's numbers keep the tab useful
+    expect(await pane.find({ type: 'Text', text: /^tokens ↑[\d.]+k? ↓[\d.]+k? · ƒ \d+ · ↻ \d+$/ })).toBeDefined()
     await h.clock.advance(30_000)
     const at = capturesOf(h, '02').map(c => c.at)
     for (let i = 1; i < at.length; i++) expect(at[i]! - at[i - 1]!).toBeGreaterThanOrEqual(10_000)
@@ -324,7 +332,9 @@ for (const surface of SURFACES) {
     expect(capturesOf(h, '02').length).toBeGreaterThan(0)
     await $.prompt.submit({ text: `close ${id}` } as never) // the stand-in closes the tab: ui.close reaches the plugin's hook
     expect(h.closes).toEqual([id])
-    expect(view(h, id)).toBeNull()
+    // §9: the stand-in is a plugin, so its close carries origin `plugin`, and a plugin's close keeps the view
+    // (only the person's close or an unload clears it; the kit cannot raise a person-origin close)
+    expect(view(h, id)).toMatchObject({ slot: '02' })
     const n = h.fake.captureCalls().length
     await h.clock.advance(10_000)
     expect(h.fake.captureCalls()).toHaveLength(n)

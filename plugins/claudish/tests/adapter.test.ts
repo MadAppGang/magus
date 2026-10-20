@@ -50,6 +50,7 @@ describe('adapter: golden answers (contract v1 examples, verbatim)', () => {
         slot: '01', model: 'internal', provider: 'Anthropic (native)', state: 'RUNNING', reason: null,
         tokensIn: 61211, tokensOut: 812, toolCalls: 3, turnsCompleted: 0, idleSeconds: 0,
         lastActivityAt: Date.parse('2026-10-02T11:00:41.120Z'), activity: 'Bash', asked: false,
+        costUsd: null, // the example's cost_usd is null: a subscription model reports none
       }],
     })
   })
@@ -79,6 +80,7 @@ describe('adapter: list → domain', () => {
       slot: '01', model: 'grok-4.6', provider: 'OpenRouter', state: 'RUNNING', reason: null,
       tokensIn: 1000 + 9000, tokensOut: 600, toolCalls: 3, turnsCompleted: 1, idleSeconds: 0,
       lastActivityAt: NOW + 10_000, activity: 'Bash', asked: false,
+      costUsd: 1.5, // spec §9: the slot record reads claudish's cost_usd
     })
   })
   test('closed-set reason kept; unknown state word → UNKNOWN; absent state → UNKNOWN; absent model → unknown model', async () => {
@@ -87,7 +89,7 @@ describe('adapter: list → domain', () => {
       { ...ROW, slot: '02', state: 'PAUSED' },
       { ...ROW, slot: '03', state: undefined },
       { ...ROW, slot: '04', model: undefined },
-      { ...ROW, slot: '05', tokens_in: 'lots', tool_calls: Infinity, last_activity_at: 'yesterday' },
+      { ...ROW, slot: '05', tokens_in: 'lots', tool_calls: Infinity, last_activity_at: 'yesterday', cost_usd: '$1' },
       { ...ROW, slot: '06', model: 'bad model with spaces', provider: '\u001b[31mRed\u001b[0m\nProvider', activity: 'x'.repeat(100) },
     ])))
     if (run?.kind !== 'ok') throw new Error(`expected ok, got ${JSON.stringify(run)}`)
@@ -96,7 +98,7 @@ describe('adapter: list → domain', () => {
     expect(s2?.state).toBe('UNKNOWN')
     expect(s3?.state).toBe('UNKNOWN')
     expect(s4?.model).toBe('unknown model')
-    expect([s5?.tokensIn, s5?.toolCalls, s5?.lastActivityAt]).toEqual([null, null, null])
+    expect([s5?.tokensIn, s5?.toolCalls, s5?.lastActivityAt, s5?.costUsd]).toEqual([null, null, null, null])
     expect(s6?.model).toBe('unknown model')
     expect(s6?.provider).toBe('Red Provider')
     expect(s6?.activity).toHaveLength(60)
@@ -332,57 +334,5 @@ describe('adapter: display-safe ids', () => {
   })
   test('quoted values in the wake text use string syntax', () => {
     expect(source.runLine({ ...PANEL, address: '/w/my review' }, 'r')).toBe(`Run r (path "/w/my review", run_id "${PANEL.token}"):`)
-  })
-})
-
-describe('adapter: monitor lines', () => {
-  const source = makeClaudishSource(async () => reply('{}'))
-  const wrap = (line: string) =>
-    `<task-notification>\n<task-id>b1</task-id>\n<summary>Monitor event: "Progress of claudish create_session and team runs"</summary>\n<event>${line}</event>\n</task-notification>`
-  test('session ends and waits, as the README writes them, inside a task notification', () => {
-    const text = [
-      'claudish-monitor: session 1a2b3c4d completed model=MODEL_ID elapsed=7m41s turns=5 tools=22 cost=$0.09 next: get_output 1a2b3c4d',
-      'claudish-monitor: session 9f8e7d6c needs-input model=MODEL_ID elapsed=1m12s turns=1 next: send_input 9f8e7d6c',
-      'claudish-monitor: session 9f8e7d6c needs-input model=MODEL_ID elapsed=1m12s turns=1 waited=0m03s',
-      'claudish-monitor: session 5e5e5e5e failed model=m reason=no-terminal-record next: get_diagnostics 5e5e5e5e',
-      'claudish-monitor: session 6f6f6f6f timeout model=m elapsed=1h05m',
-      'claudish-monitor: session 7a7a7a7a cancelled model=m',
-    ].map(wrap).join('\n')
-    expect(source.monitorReports(text)).toEqual([
-      { kind: 'delegation', token: '1a2b3c4d', event: 'ended' },
-      { kind: 'delegation', token: '9f8e7d6c', event: 'waiting' },
-      { kind: 'delegation', token: '9f8e7d6c', event: 'waiting' },
-      { kind: 'delegation', token: '5e5e5e5e', event: 'ended' },
-      { kind: 'delegation', token: '6f6f6f6f', event: 'ended' },
-      { kind: 'delegation', token: '7a7a7a7a', event: 'ended' },
-    ])
-  })
-  test('a team end is named by its record id (the monitor_record of the start answer); its path is not read', () => {
-    const team = (path: string, state = 'completed') =>
-      `claudish-monitor: team team-5e6f7a8b ${state} elapsed=12m03s slots=4 ok=3 failed=1 cancelled=0 path=${path} next: team-status`
-    const ended = [{ kind: 'panel', record: 'team-5e6f7a8b', event: 'ended' }]
-    expect(source.monitorReports(team('ai-docs/sessions/RUN/reviews/my%20panel'))).toEqual(ended)
-    expect(source.monitorReports(team('/tmp/x%25y', 'failed'))).toEqual(ended)
-    expect(source.monitorReports(team('...reviews/panel', 'cancelled'))).toEqual(ended)
-    expect(source.monitorReports('claudish-monitor: team team-1 completed slots=4')).toEqual([{ kind: 'panel', record: 'team-1', event: 'ended' }])
-    expect(source.monitorReports('claudish-monitor: team team-1 completed path=%E0%A4%A')).toEqual([{ kind: 'panel', record: 'team-1', event: 'ended' }])
-  })
-  test('starts, heartbeats, notices, a team timeout, bad grammar and quoted mentions → nothing', () => {
-    for (const line of [
-      'claudish-monitor: session 1a2b3c4d started model=m',
-      'claudish-monitor: session 1a2b3c4d running model=m elapsed=5m00s replies=3',
-      'claudish-monitor: team team-1 started slots=4 path=r1',
-      'claudish-monitor: team team-1 running elapsed=5m00s slots=4 ok=1 failed=0 cancelled=0 running=3 path=r1',
-      'claudish-monitor: team team-1 timeout path=r1',
-      'claudish-monitor: notice no-session-identity: this monitor started without CLAUDE_PID, so it cannot tell.',
-      'claudish-monitor: notice claudish-too-old: this Claude Code session runs claudish 10.3.0',
-      'claudish-monitor: session 1a2b3c4d exploded',
-      'claudish-monitor: session bad"id completed',
-      'claudish-monitor: session 1a2b3c4d completed model=has space in it',
-      'The monitor said `claudish-monitor: session 1a2b3c4d completed` earlier.',
-      'claudish-monitor:session 1a2b3c4d completed',
-    ]) {
-      expect(source.monitorReports(wrap(line))).toEqual([])
-    }
   })
 })

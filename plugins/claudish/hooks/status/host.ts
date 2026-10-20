@@ -5,6 +5,7 @@
 
 import type { PromptSubmitResult, Timer, UiOpenResult, UiPane } from 'claude-code'
 import type {
+  ClaudishShowTab,
   ClaudishEarlier,
   ClaudishFeedSupport,
   ClaudishLedger,
@@ -38,6 +39,7 @@ export type Store = {
   ledger: Cell<ClaudishLedger>
   turn: Cell<ClaudishTurn>
   earlier: Cell<ClaudishEarlier>
+  showTab: Cell<ClaudishShowTab>
   panes: Member<ClaudishPaneView | null>
 }
 
@@ -50,8 +52,6 @@ export type Host = {
   /** bound to the session.start dispatch; what timer code uses */
   store: Store
   source: RunSource
-  /** the directory the session started in (session.start's cwd): where a monitor line's relative path starts */
-  cwd: string
   /** the engine's clock.now */
   now(): Promise<number>
   /** the engine's clock.after */
@@ -64,8 +64,7 @@ export type Host = {
   /** the engine's ui.log to the debug log */
   debug(text: string): void
   panes(): Promise<readonly UiPane[]>
-  /** the engine's ui.open; columns: the body width asked for while docked (a request) */
-  open(id: string, title: string, columns?: number): Promise<UiOpenResult>
+  /** the engine's ui.close, for tabs of runs the band no longer shows (a close needs no press behind it) */
   close(id: string): Promise<void>
   /** the engine's session.messages; recovery only */
   messages(): Promise<readonly TranscriptRow[]>
@@ -109,4 +108,16 @@ export function toAccepted(result: PromptSubmitResult | { drop: string }): Submi
 export function rejected(err: unknown): SubmitOutcome {
   const reason = err instanceof Error ? err.message : String(err)
   return { accepted: false, reason: reason.slice(0, 120) || 'rejected' }
+}
+
+/**
+ * The pane calls a press makes, bound to the render dispatch whose tree held the button. They
+ * must not go through the session-bound Host: Claude Code places a pane at any width only when
+ * the person's press is behind its open, and below 144 columns it keeps an unasked one undrawn.
+ */
+export type PressUi = {
+  panes(): Promise<readonly UiPane[]>
+  /** the engine's ui.open; columns: the body width asked for while docked, rows: the height inline (requests) */
+  open(id: string, title: string, size: { columns: number; rows: number }): Promise<UiOpenResult>
+  close(id: string): Promise<void>
 }

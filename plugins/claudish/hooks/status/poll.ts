@@ -3,13 +3,13 @@
 // Takes a Host only.
 // Names no claudish tool or field: the adapter behind host.source speaks claudish.
 
-import type { Frozen, Next, SessionEndInput, ToolCallInput, ToolCallResult, UiPane } from 'claude-code'
+import type { Frozen, Next, SessionEndInput, ToolCallInput, ToolCallResult } from 'claude-code'
 import type { ClaudishFeedSupport, ClaudishPaneView, ClaudishRun, ClaudishRuns } from '../../types'
 import {
   FINAL_GRACE_MS,
   NO_CAPTURE_NOTE,
   NO_SCREEN_NOTE,
-  PANE_ID_PATTERN,
+  SHOW_PANE_ID,
   compaction,
   feedKey,
   isTerminal,
@@ -23,6 +23,7 @@ import {
   type RunObservation,
 } from './domain'
 import type { Host } from './host'
+import { activeTab, showTabs } from './layout'
 import type { FeedAnswer, PollBatch } from './run-source'
 import * as wake from './wake'
 
@@ -233,6 +234,24 @@ export function ensureLoop(host: Host): void {
   }
 }
 
+/**
+ * A tab Show (or a tab press) just made active: its first screen is captured now, not at the
+ * loop's next tick, which can be a whole poll interval away while one is already scheduled.
+ * Then the loop carries on.
+ */
+export async function captureOpened(host: Host, id: string): Promise<void> {
+  try {
+    if (await panelOpen(host)) await captures(host, [{ id, isShown: true }], await host.store.runs.read(), await host.store.feeds.read(), await host.now(), false)
+  } catch (err) {
+    host.debug(`claudish Show capture failed: ${err instanceof Error ? err.message : String(err)}`)
+  }
+  ensureLoop(host)
+}
+
+async function panelOpen(host: Host): Promise<boolean> {
+  return (await host.panes()).some(p => p.id === SHOW_PANE_ID && p.isPlaced)
+}
+
 function isWatched(run: ClaudishRun, feeds: Readonly<Record<string, ClaudishFeedSupport>>): boolean {
   return run.settledAt === null && feeds[feedKey(run.ref)]?.kind !== 'unsupported'
 }
@@ -251,7 +270,7 @@ const BAD_ANSWERS: ReadonlySet<FeedAnswer['kind']> = new Set(['refused', 'unansw
 export async function tick(host: Host): Promise<void> {
   loop.phase = 'running'
   loop.rerun = false
-  let open: UiPane[] = []
+  let open: TabRef[] = []
   let runsNow: ClaudishRuns | null = null
   let feedsNow: Record<string, ClaudishFeedSupport> = {}
   let now = 0
@@ -292,7 +311,7 @@ export async function tick(host: Host): Promise<void> {
 
     runsNow = await compact(host, runsNow, epoch)
 
-    open = (await host.panes()).filter(p => PANE_ID_PATTERN.test(p.id))
+    open = await syncTabs(host, runsNow, feedsNow)
     tabs = await captures(host, open, runsNow, feedsNow, now)
 
     const polled = [...batch.feeds.values()]
@@ -334,7 +353,38 @@ async function compact(host: Host, runs: ClaudishRuns, epoch: number): Promise<C
 }
 
 
-// ── captures: open Show tabs only ─────────────────────────────────────────────
+/** A tab the capture pass visits: its id (its view's member id), and whether the panel shows it. */
+type TabRef = { id: string; isShown: boolean }
+
+/** Tab ids this load has given a view, so a tab whose run left the band has its view cleared. */
+const seeded = new Set<string>()
+
+/**
+ * The panel's tabs follow the runs the band shows: every slot gets a view (`waiting`) as soon as
+ * it is listed, so its tab is there before anyone presses Show, and a tab whose run left the band
+ * loses its view. Returns the tabs to capture: none while the panel is put away, else every tab,
+ * the active one shown (the one last picked, else the first).
+ */
+async function syncTabs(host: Host, runs: ClaudishRuns, feeds: Readonly<Record<string, ClaudishFeedSupport>>): Promise<TabRef[]> {
+  const tabs = showTabs(runs, feeds)
+  const ids = new Set(tabs.map(t => t.id))
+  for (const id of [...seeded]) {
+    if (ids.has(id)) continue
+    seeded.delete(id)
+    await host.store.panes.update(id, () => null)
+  }
+  for (const t of tabs) {
+    if (seeded.has(t.id)) continue
+    seeded.add(t.id)
+    const { runId, slot, model } = t.target
+    await host.store.panes.update(t.id, v => v ?? { runId, slot, model, status: 'waiting', frame: null, note: null })
+  }
+  if (!(await panelOpen(host))) return []
+  const active = activeTab(tabs, (await host.store.showTab.read()).active)
+  return tabs.map(t => ({ id: t.id, isShown: t.id === active?.id }))
+}
+
+// ── captures: the panel's tabs, while it is open ─────────────────────────────────────────────
 
 type TabsOutcome = { shownLive: boolean; capturing: number }
 
@@ -345,16 +395,20 @@ type TabsOutcome = { shownLive: boolean; capturing: number }
  */
 async function captures(
   host: Host,
-  open: readonly UiPane[],
+  open: readonly TabRef[],
   runs: ClaudishRuns,
   feeds: Readonly<Record<string, ClaudishFeedSupport>>,
   now: number,
+  everyTab = true,
 ): Promise<TabsOutcome> {
   const out: TabsOutcome = { shownLive: false, capturing: 0 }
-  // A tab closed before its run ended leaves its bookkeeping behind: drop it with the tab.
-  const openIds = new Set(open.map(p => p.id))
-  for (const id of [...lastAttemptAt.keys()]) if (!openIds.has(id)) lastAttemptAt.delete(id)
-  for (const id of [...terminalSeenAt.keys()]) if (!openIds.has(id)) terminalSeenAt.delete(id)
+  // A tab closed before its run ended leaves its bookkeeping behind: drop it with the tab. Only a
+  // pass over every open tab knows which are closed.
+  if (everyTab) {
+    const openIds = new Set(open.map(p => p.id))
+    for (const id of [...lastAttemptAt.keys()]) if (!openIds.has(id)) lastAttemptAt.delete(id)
+    for (const id of [...terminalSeenAt.keys()]) if (!openIds.has(id)) terminalSeenAt.delete(id)
+  }
   const end = (v: ClaudishPaneView | null): ClaudishPaneView | null =>
     v ? { ...v, status: 'ended', note: v.frame ? null : NO_SCREEN_NOTE } : v
   for (const p of open) {

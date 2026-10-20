@@ -1,8 +1,8 @@
 import { test, expect } from 'claude-code/testing'
-import { ENGINE_DRAWING, harness, start, SERVERS } from '../fake-claudish'
+import { ENGINE_DRAWING, engineOwn, harness, start, SERVERS } from '../fake-claudish'
 import { COLS, ROWS } from '../scenario'
 import { mountBand, mountPane, SURFACES } from '../ui'
-import { POLL, GRACE, delegate, drawingText, entries, press, team } from './support'
+import { POLL, delegate, drawingText, entries, press, team } from './support'
 
 for (const surface of SURFACES) {
   test(`ext source: directly registered claudish owns its own run and tools [${surface}]`, async ($, on) => {
@@ -15,7 +15,7 @@ for (const surface of SURFACES) {
     await h.clock.advance(POLL)
     await press(b, 'direct-model', 'Stop')
     await b.redraw()
-    await press(b, 'direct-model', 'confirm?')
+    await press(b, 'direct-model', 'Stop?')
     await h.clock.advance(POLL)
     expect(h.fake.cancelCalls()).toHaveLength(1)
     expect(h.fake.cancelCalls()[0]!.server).toBe('claudish')
@@ -88,18 +88,19 @@ for (const surface of SURFACES) {
     await b.unmount()
   })
 
-  test(`ext epoch: clear abandons old held wakes and rows without needing session.start [${surface}]`, async ($, on) => {
+  test(`ext epoch: clear abandons old deferred wakes and rows without needing session.start [${surface}]`, async ($, on) => {
     const h = harness(on)
     await start($, surface)
     const s = await delegate($, h)
+    await $.turn.start({ text: 'Main is working', turnId: 'ext-main' }) // defers the wake to the turn's end
     h.fake.set(s.id, s.id, 'COMPLETED')
     await h.clock.advance(POLL)
     expect(entries(h).some(e => e.kind === 'pending')).toBe(true)
     expect(h.submits).toHaveLength(0)
     await $.session.end({ reason: 'clear', sessionId: 'ext-old-conversation', resume: { id: 'ext-old-conversation' } })
     const b = await mountBand($, surface)
-    expect(await b.drawn()).toEqual(ENGINE_DRAWING)
-    await h.clock.advance(GRACE + 30_000)
+    expect(engineOwn(await b.drawn())).toEqual(ENGINE_DRAWING)
+    await h.clock.advance(30_000)
     expect(h.submits).toHaveLength(0)
     await b.unmount()
   })

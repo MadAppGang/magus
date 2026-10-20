@@ -1,9 +1,7 @@
 // The engine-kit fake of claudish (contract v1, sections A–E), and the test harness that
 // stands beneath the plugin: `mcp.call` (the mod's calls), `tool.call` (the model's
 // claudish calls), and the engine events the mod's effects reach (clock, ui.log,
-// ui.toast, ui.status, ui.panes, prompt.submit, turn.start/complete, session.start/end, a state.set spy,
-// and a session.append spy: the 2.1.292 kit has no core for that event, so a raised row rejects
-// once it is past the plugin, after the spy has recorded it).
+// ui.toast, ui.status, ui.panes, prompt.submit, turn.start/complete, session.start/end and a state.set spy).
 //
 // Answers come from scenario.ts at the mocked clock's time. Every mod call is recorded
 // in `calls`. Any server name other than the contract's two is denied, so a wrong
@@ -21,7 +19,7 @@ import {
   isTerminal,
   iso,
   mintRunId,
-  monitorRecordOf,
+  endRecordOf,
   neverSpawned,
   precontractUnknownTool,
   seqAt,
@@ -56,8 +54,6 @@ export type FakeOptions = {
   startSettled?: boolean
   /** a team start answer without run.path */
   noRunPath?: boolean
-  /** a team start answer with monitor_record null (no monitor record for the run) */
-  noMonitorRecord?: boolean
   /** models per team start (default four) */
   models?: readonly string[]
   /** awaited before a list call is answered (to hold a list answer) */
@@ -76,6 +72,10 @@ export type FakeOptions = {
   cancelNoEffect?: boolean
   /** a cancel is refused before it reaches claudish (the person answered No in Claude Code's dialog): mcp.call rejects */
   denyCancel?: string
+  /** the person's Claude Code theme, as `$.config.list` answers its `theme` row; absent: no theme row */
+  theme?: string
+  /** what `$.env.get` answers for TERM_THEME and COLORFGBG; unset by default, so the machine's own never leaks in */
+  env?: { TERM_THEME?: string; COLORFGBG?: string }
   /** build the captured screen instead of scenario.frame (lines and spans as the contract sends them) */
   frame?: (args: { seq: number; model: string; slot: string; final: boolean; spans: boolean }) => Json
 }
@@ -104,13 +104,15 @@ export type Fake = {
 
 export type SubmitAnswer = { text: string } | { drop: string }
 
-export type Opened = { id: string; title: string | undefined; columns: number | undefined }
+export type Opened = { id: string; title: string | undefined; columns: number | undefined; rows?: number; closeOnEscape?: boolean }
 
 export type Harness = {
   clock: MockClock
   /** every ui.open and ui.close the plugin made */
   opens: Opened[]
   closes: string[]
+  /** every ui.panes, ui.open and ui.close the plugin made, in the order they reached the engine */
+  uiCalls: ('panes' | 'open' | 'close')[]
   fake: Fake
   debug: string[]
   toasts: string[]
@@ -121,8 +123,6 @@ export type Harness = {
   attempts: string[]
   /** how prompt.submit answers; a test may replace it (to drop, or to hold the answer) */
   submitAnswer: (text: string) => SubmitAnswer | Promise<SubmitAnswer>
-  /** every row the engine kept through session.append, as the bottom received it */
-  appended: unknown[]
   /** the plugin's last written value per `key` (or `key/id` for a family member) */
   state: Map<string, unknown>
   /** one state.set per write: [key, value] */
@@ -137,6 +137,17 @@ export type Harness = {
 
 /** What the engine draws of its own at a site the plugin passes on (a stand-in, recognisable by key). */
 export const ENGINE_DRAWING = { type: 'Box', props: { key: 'engine-own' }, children: [] }
+
+/**
+ * A drawing as the engine's own stand-in compares: Claude Code 2.1.299's kit stamps the plugin that
+ * drew an element (`part: { plugin }`), and the stand-in is drawn by this harness's `test` plugin.
+ * Only that stamp is removed; any other plugin's stamp (claudish's) stays, so its drawing never equals the stand-in.
+ */
+export function engineOwn(tree: unknown): unknown {
+  if (!tree || typeof tree !== 'object') return tree
+  const { part, ...rest } = tree as { part?: { plugin?: unknown } }
+  return part !== undefined && part.plugin === 'test' && Object.keys(part).length === 1 ? rest : tree
+}
 
 const SLOT_IDS = ['01', '02', '03', '04', '05', '06', '07', '08']
 
@@ -322,7 +333,7 @@ export function fakeClaudish(on: On, clock: MockClock, options: FakeOptions = {}
       }
       const row = runRow(run)
       if (options.noRunPath) delete row.path
-      return answer({ started: true, run_id: runId, team_session_id: teamSessionId, session_path: path, monitor_record: options.noMonitorRecord ? null : monitorRecordOf(runId), slots, run: row, next: {}, note: '' })
+      return answer({ started: true, run_id: runId, team_session_id: teamSessionId, session_path: path, monitor_record: endRecordOf(runId), slots, run: row, next: {}, note: '' })
     }
     if (verb === 'create_session') {
       starts += 1
@@ -393,6 +404,7 @@ export function harness(on: On, options: FakeOptions = {}): Harness {
     clock,
     opens: [],
     closes: [],
+    uiCalls: [],
     fake: fakeClaudish(on, clock, options),
     debug: [],
     toasts: [],
@@ -400,7 +412,6 @@ export function harness(on: On, options: FakeOptions = {}): Harness {
     submits: [],
     attempts: [],
     submitAnswer: text => ({ text }),
-    appended: [],
     state: new Map(),
     writes: [],
     panes: [],
@@ -408,6 +419,14 @@ export function harness(on: On, options: FakeOptions = {}): Harness {
     failWrite: null,
   }
   on('session.start', ($, e) => ({ cwd: e.cwd }))
+  // The theme the badges' palette follows (spec §9): pinned here, never read from the machine.
+  on('config.list', () => ({
+    value: options.theme === undefined ? [] : [{
+      key: 'theme', label: 'Theme', kind: 'choice' as const, value: options.theme,
+      provider: { plugin: 'engine', tier: 'core' as const }, isLocked: false, // the engine's own panel row
+    }],
+  }))
+  on('env.get', ($, e, next) => (e.name === 'TERM_THEME' || e.name === 'COLORFGBG' ? { value: options.env?.[e.name] } : next(e)))
   on('session.end', ($, e) => ({ sessionId: e.sessionId }))
   on('ui.log', ($, e) => {
     if (e.to === 'debug') h.debug.push(e.text)
@@ -421,18 +440,23 @@ export function harness(on: On, options: FakeOptions = {}): Harness {
     h.statuses.push(e.text)
     return { value: undefined }
   })
-  on('ui.panes', async () => ({ value: await h.panesAnswer() }))
+  on('ui.panes', async () => {
+    h.uiCalls.push('panes')
+    return { value: await h.panesAnswer() }
+  })
   // The engine's own drawing, beneath the plugins: what a site shows when the plugin passes.
   on('ui.render', () => ENGINE_DRAWING as never)
   // A surface that shows the pane it opened last; the rest are tabs behind it.
   on('ui.open', ($, e) => {
-    h.opens.push({ id: e.id, title: e.title, columns: e.columns })
+    h.uiCalls.push('open')
+    h.opens.push({ id: e.id, title: e.title, columns: e.columns, rows: e.rows, closeOnEscape: e.closeOnEscape })
     const title = e.title ?? e.id
     const others = h.panes.filter(p => p.id !== e.id).map(p => ({ ...p, isShown: false }))
     h.panes = [...others, { id: e.id, title, isShown: true, isFocused: false, isPlaced: true }]
     return { value: { isPlaced: true as const } }
   })
   on('ui.close', ($, e) => {
+    h.uiCalls.push('close')
     h.closes.push(e.id)
     h.panes = h.panes.filter(p => p.id !== e.id)
     return { value: undefined }
@@ -442,11 +466,6 @@ export function harness(on: On, options: FakeOptions = {}): Harness {
     const answer = await h.submitAnswer(e.text)
     if ('text' in answer) h.submits.push(e.text)
     return answer
-  })
-  // Every row the plugin passed on, as it arrived here; the kit's own core keeps it.
-  on('session.append', ($, e, next) => {
-    h.appended.push(e)
-    return next(e)
   })
   on('turn.start', ($, e) => ({ turnId: e.turnId }))
   on('turn.complete', ($, e) => ({ text: e.answer }))

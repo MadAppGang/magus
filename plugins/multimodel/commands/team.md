@@ -142,8 +142,7 @@ read again ten seconds later. `MONITOR_RECORD` is `monitor_record`, not `team_se
 both start with `team-`, and the wrong one names a directory that never appears, so the wait
 runs to the ceiling. So does a `CLAUDISH_SESSIONS_DIR` set only in the claudish server's
 `env` block: the wait reads the variable from Claude Code's environment, so it moves where
-claudish writes and not where the wait looks (claudish plugin README, "How it knows which
-runs are yours"). While the result carries `monitor_record`, do not wait on
+claudish writes and not where the wait looks. While the result carries `monitor_record`, do not wait on
 `SESSION_PATH/status.json`: it is rewritten in place, and a slot can stay `RUNNING` in it
 after the run has ended.
 
@@ -162,11 +161,8 @@ start that failed or a whole-run cancel can leave a slot `RUNNING`, and the wait
 the ceiling. Tell the user a claudish of 10.4.0 or later ends the wait exactly, but collect
 the votes either way.
 
-With claudish 10.4.0 or later, the claudish plugin's monitor also delivers
-`claudish-monitor: team <id> completed|failed|cancelled … next: team-status` when the run
-settles. Act on whichever arrives first. **Never end the turn without the wait running**: a
-plugin monitor's line woke an idle session in two measured sessions, which is not a rate, and
-under `claude -p` no monitor runs (claudish-usage skill, "Waiting for a run to end"). Never `sleep` in the foreground.
+**Never end the turn without the wait running**: it is what reports the run's end
+(claudish-usage skill, "Waiting for a run to end"). Never `sleep` in the foreground.
 
 Then make the settled call:
 
@@ -174,8 +170,7 @@ Then make the settled call:
 claudish team(mode="status", path=SESSION_PATH)
 ````
 
-**Settled means the run's end record exists** — the wait's line or the monitor's end line
-says so. With no `monitor_record` it means no slot in `status.json` is `PENDING` or
+**Settled means the run's end record exists** — the wait's line says so. With no `monitor_record` it means no slot in `status.json` is `PENDING` or
 `RUNNING`. Do not treat a slot going quiet as finished.
 
 **Ceiling: 30 minutes wall clock** — the wait's timeout. When it fires with the run not

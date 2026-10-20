@@ -4,7 +4,7 @@
 import { expect, test } from 'claude-code/testing'
 import { harness, start } from '../fake-claudish'
 import { bandProps, mountBand, mountPane, paneProps, walk, SURFACES } from '../ui'
-import { SLOW, keyOf, modVerbs, nodesOf, rowFor, showButton, startDelegation, startTeam, textOf } from './helpers'
+import { SLOW, hideButton, keyOf, labelOf, modVerbs, nodesOf, rowFor, showButton, startDelegation, startTeam, textOf } from './helpers'
 
 const WIDE = bandProps(200, 40)
 const HEX = /^#[0-9a-f]{6}$/
@@ -12,7 +12,7 @@ const HEX = /^#[0-9a-f]{6}$/
 /** The mod may only read (list/status/capture) and cancel; nothing it sends is input to a child. */
 const ALLOWED_VERBS = ['team:list', 'team:status', 'team:capture', 'team:cancel', 'list_sessions', 'capture_session', 'cancel_session']
 
-test('show: opens one tab per slot titled by its model; reopening focuses the same id', SLOW, async ($, on) => {
+test('show: opens one tab per slot titled by its model; on the open tab it reads Hide and closes it; Show again reuses the id', SLOW, async ($, on) => {
   const h = harness(on)
   await start($)
   for (const surface of SURFACES) {
@@ -27,7 +27,18 @@ test('show: opens one tab per slot titled by its model; reopening focuses the sa
     const first = h.opens[h.opens.length - 1]!
     expect(first.title ?? '', `${surface}: titled by model`).toContain(s1)
 
-    await ui.press({ key: keyOf(showButton(rowFor(await ui.drawn(), s1))!)! })
+    // spec §7/§8: while the tab is open and drawn, the row's button reads Hide; pressing it closes the tab
+    await ui.redraw(WIDE as never)
+    const hide = hideButton(rowFor(await ui.drawn(), s1))
+    expect(hide && labelOf(hide), `${surface}: Hide on the open tab`).toBe('Hide')
+    expect(showButton(rowFor(await ui.drawn(), s1)), `${surface}: no Show beside it`).toBeUndefined()
+    await ui.press({ key: keyOf(hide!)! })
+    expect(h.closes, `${surface}: Hide closed that tab`).toContain(first.id)
+    expect(h.panes.filter(p => p.id === first.id), `${surface}: tab gone`).toHaveLength(0)
+    await ui.redraw(WIDE as never)
+    const back = showButton(rowFor(await ui.drawn(), s1))
+    expect(back && labelOf(back), `${surface}: Show again`).toBe('Show')
+    await ui.press({ key: keyOf(back!)! })
     const again = h.opens[h.opens.length - 1]!
     expect(again.id, `${surface}: reopen reuses the id`).toBe(first.id)
     expect(h.panes.filter(p => p.id === first.id), `${surface}: still one tab`).toHaveLength(1)

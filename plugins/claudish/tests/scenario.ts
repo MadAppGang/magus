@@ -162,8 +162,8 @@ export function mintRunId(teamSessionId: string, startMs: number, n: number): st
   return `${teamSessionId}-${startMs.toString(36)}-${(0x9c41e0 + n * 7919).toString(16).slice(-6).padStart(6, '0')}`
 }
 
-/** The id claudish 10.4 names a team run by in its start answer (`monitor_record`) and in its monitor lines. */
-export function monitorRecordOf(runId: string): string {
+/** The end record id claudish 10.4 and later name in a team start answer (`monitor_record`); the mod reads none. */
+export function endRecordOf(runId: string): string {
   return `team-${runId.slice(-6)}`
 }
 

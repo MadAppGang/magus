@@ -145,29 +145,34 @@ delegated session that asks one under `claude -p` would hang on an answer that c
 arrive — turning a free pre-dispatch stall into a **paid session stranded mid-flight**.
 Cancelling and reporting the question keeps the failure cheap and legible.
 
-claudish pushes nothing into the conversation; a `<channel>` block never arrives. Two
-sources report the session. The claudish plugin's monitor is on by default and needs no
-flag: `claudish-monitor: session SESSION_ID …` lines. Between them, poll
-`list_sessions(include_completed=true)` (about every 10 seconds is enough): the SESSION_ID row carries `state`,
-`activity`, `idle_seconds`, `recent` (the turn's last steps), and on a failed or timed-out
-row `reason_detail`. Act on
-whichever reports first.
+claudish pushes nothing into the conversation; a `<channel>` block never arrives. Three
+sources report the session:
+
+- the claudish plugin's wake-up notice, a prompt naming the session when it ends or starts
+  waiting for input or a permission (interactive sessions only; it needs the plugin's mod);
+- the bounded wait below, which fires only when the session ends, never when it waits;
+- `list_sessions(include_completed=true)`, polled about every 10 seconds: the SESSION_ID row
+  carries `state`, `activity`, `idle_seconds`, `recent` (the turn's last steps), and on a
+  failed or timed-out row `reason_detail`.
+
+Act on whichever reports first. A session waiting on a question is reported by the wake-up
+notice or a poll, never by the wait.
 
 **Before ending a turn with the session in flight, start the bounded wait** from the
 `claudish:claudish-usage` skill, "Waiting for a run to end", with a ceiling of
 `timeout_seconds` plus two minutes: `timeout_ms: 420000` on the `Monitor` tool, or
-`timeout: 420000` on `Bash` with `run_in_background`. A plugin monitor's line woke an idle
-session in two measured sessions, which is not a rate, and under `claude -p` no monitor runs. Never `sleep` in the
-foreground. When the wait fires with no monitor line, call `get_output(SESSION_ID)`: its
-`status` says which row below applies.
+`timeout: 420000` on `Bash` with `run_in_background`. Never `sleep` in the foreground. When
+the wait fires, call `get_output(SESSION_ID)`: its `status` says which
+row below applies.
 
-| Monitor line / `list_sessions` row | Action |
+| `list_sessions` row / wake-up notice / wait | Action |
 |-------|--------|
-| `started` / row present, `RUNNING` | Log: "Delegating to {MODEL}..." |
-| — / `activity` or `recent` changes | Optional log: "{MODEL}: {activity}", or the newest `recent` step's `tool` and `summary` |
-| `needs-input … next: send_input` / `AWAITING_INPUT` or `AWAITING_PERMISSION` | **AskUserQuestion available** → forward the question (`get_output(SESSION_ID)` shows it) → `send_input(SESSION_ID, answer)` → resume waiting. **Unavailable** (`claude -p`) → `cancel_session(SESSION_ID)`, then report: `The delegated session asked a question and this session cannot answer it. Question: {question}. Re-run interactively, or restate the task so it needs no clarification.` Stop. |
-| `completed … next: get_output` / `COMPLETED` | Call `get_output(SESSION_ID, tail_lines=200)` → proceed to Phase 4 |
-| `failed` / `timeout` `… next: get_diagnostics` / `FAILED`, `TIMEOUT` | Call `get_diagnostics(SESSION_ID)` → report error (first 20 lines, plus the row's `reason_detail` when it is not null) → see Error Reporting below → stop |
+| row present, `RUNNING` | Log: "Delegating to {MODEL}..." |
+| `activity` or `recent` changes | Optional log: "{MODEL}: {activity}", or the newest `recent` step's `tool` and `summary` |
+| `AWAITING_INPUT` or `AWAITING_PERMISSION`, or the wake-up notice says the session is waiting | **AskUserQuestion available** → forward the question (`get_output(SESSION_ID)` shows it) → `send_input(SESSION_ID, answer)` → resume waiting. **Unavailable** (`claude -p`) → `cancel_session(SESSION_ID)`, then report: `The delegated session asked a question and this session cannot answer it. Question: {question}. Re-run interactively, or restate the task so it needs no clarification.` Stop. |
+| `COMPLETED` / the wait fires → `get_output` status `completed` | Call `get_output(SESSION_ID, tail_lines=200)` → proceed to Phase 4 |
+| `FAILED`, `TIMEOUT` / the wait fires → `get_output` status `failed` or `timeout` | Call `get_diagnostics(SESSION_ID)` → report error (first 20 lines, plus the row's `reason_detail` when it is not null) → see Error Reporting below → stop |
+
 ### Error Reporting (on failure)
 
 When the session fails:

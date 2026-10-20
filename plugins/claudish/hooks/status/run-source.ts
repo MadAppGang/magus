@@ -81,17 +81,6 @@ export type WatchedRun = { id: string; ref: ClaudishRunRef }
 
 export type FetchSlot = { slot: string; state: ClaudishSlotState; asked: boolean }
 
-/**
- * One change claudish's own session monitor reported in a row of this conversation, in the
- * mod's vocabulary. Only the changes the wake can stand down for: a run's end, and a
- * delegation's entry into a wait. Each is matched against a run's ref, never trusted further.
- */
-export type MonitorReport =
-  /** token: the delegation's per-start id (ref.token) */
-  | { kind: 'delegation'; token: string; event: 'ended' | 'waiting' }
-  /** record: the id the line names the run by, matched against ref.monitor exactly (a path can be reused) */
-  | { kind: 'panel'; record: string; event: 'ended' }
-
 export type RunSource = {
   recognizeCall(call: CallSeen): RecognizedCall
   /** One list call per feed that has a watched run; answers keyed by feed and by run id. Several runs may
@@ -105,6 +94,4 @@ export type RunSource = {
   runLine(ref: ClaudishRunRef, label: string): string
   /** One sentence telling the model which call fetches these slots' results, or answers a waiting delegation. */
   fetchHint(ref: ClaudishRunRef, slots: readonly FetchSlot[]): string
-  /** Every monitor report in one row's text, in order. Pure; text that is not the monitor's yields nothing. */
-  monitorReports(text: string): MonitorReport[]
 }

@@ -1,20 +1,15 @@
 // The completion wake-up: every terminal transition of a drawn run this conversation
 // started, and every entry of one of its delegations into a waiting state, is named in
 // exactly one prompt the engine accepted. The ledger (one atom, through host.store) holds
-// delivery: pending → inflight → delivered, or back to pending / parked on a refusal.
-//
-// claudish's own session monitor reports some of the same changes, and its line is a turn of
-// its own. Where it reports, it is the primary: such a change is held for MONITOR_GRACE_MS,
-// and a matching line in a row of the conversation marks it delivered without a prompt.
-// Otherwise the prompt goes as before. A line arriving after the prompt cannot be taken back.
+// delivery: pending → inflight → delivered, or back to pending / parked on a refusal. A change
+// is due as soon as the mod notices it; only the main loop's running turn defers it.
 //
 // Takes a Host only. Names no claudish tool or field: the run line and the fetch line of
-// the text come from the port's runLine and fetchHint, monitor lines from monitorReports.
+// the text come from the port's runLine and fetchHint.
 
 import type {
   Frozen,
   Next,
-  SessionAppendInput,
   Timer,
   TurnCompleteInput,
   TurnCompleteResult,
@@ -30,14 +25,13 @@ import type {
   ClaudishWakeEntry,
 } from '../../types'
 import {
-  MONITOR_GRACE_MS,
   PARKED_RETRY_MS,
-  STATE_LOOK,
   WAKE_HOLD_GUARD_MS,
   WAKE_QUICK_ATTEMPTS,
   WAKE_RETRY_MS,
   fnv1a32,
   hex8,
+  lookOf,
   isDrawn,
   isTerminal,
   isWaiting,
@@ -47,16 +41,13 @@ import {
   type WakeUnit,
 } from './domain'
 import type { Host, TranscriptRow } from './host'
-import type { FetchSlot, MonitorReport, RunSource } from './run-source'
+import type { FetchSlot, RunSource } from './run-source'
 
 // ── module state: dies with a hot reload, which session.start rebuilds ───────
 
 /** The one wake timer: cancelled and replaced when an earlier time is asked. */
 let timer: { at: number; t: Timer } | null = null
 let flushSeq = 0
-/** Monitor reports seen in the last MONITOR_GRACE_MS, for changes noticed after their line. */
-let sightings: Sighting[] = []
-const SIGHTINGS_MAX = 200
 
 // ── pure ledger moves ─────────────────────────────────────────────────────────
 
@@ -74,24 +65,18 @@ export function createPending(
   if (created.length === 0) return [l, []] as const
   const entries = { ...l.entries }
   for (const u of created) {
-    entries[u.key] = u.held
-      ? { kind: 'pending', state: u.state, at: now, attempts: 0, retryAt: null, heldUntil: now + MONITOR_GRACE_MS }
-      : { kind: 'pending', state: u.state, at: now, attempts: 0, retryAt: null }
+    entries[u.key] = { kind: 'pending', state: u.state, at: now, attempts: 0, retryAt: null }
   }
   return [{ ...l, entries }, created] as const
 }
 
-/** A held entry waits for the monitor's line until its hold ends, at a turn's end too. */
+/** A pending or parked entry is due once its retry time has come, and at every main-loop turn end. */
 function isDue(e: ClaudishWakeEntry, now: number, atTurnEnd: boolean): boolean {
   if (e.kind !== 'pending' && e.kind !== 'parked') return false
-  if (e.kind === 'pending' && e.heldUntil !== undefined && e.heldUntil > now) return false
   return atTurnEnd || e.retryAt === null || e.retryAt <= now
 }
 
-/** Moves every due pending or parked entry to inflight under `nonce`; they are the claim. While any entry
- *  of a run is still held, the run's due entries wait with it: the monitor's line, if it comes, stands
- *  for them all, and if it does not, one prompt names the run at the hold's end. Taking a held entry
- *  early is what made the monitor's line a second notice for the same change. */
+/** Moves every due pending or parked entry to inflight under `nonce`; they are the claim. */
 export function claimDue(
   l: ClaudishLedger,
   now: number,
@@ -100,30 +85,12 @@ export function claimDue(
 ): readonly [ClaudishLedger, Claimed[]] {
   const claimed: Claimed[] = []
   const entries = { ...l.entries }
-  const heldRuns = runHolds(l, now)
   for (const [key, e] of Object.entries(l.entries)) {
-    if (!isDue(e, now, atTurnEnd) || e.kind === 'delivered' || e.kind === 'inflight' || heldRuns.has(parseWakeKey(key).runId)) continue
+    if (!isDue(e, now, atTurnEnd) || e.kind === 'delivered' || e.kind === 'inflight') continue
     entries[key] = { kind: 'inflight', state: e.state, at: e.at, attempts: e.attempts, nonce, since: now }
     claimed.push({ key, state: e.state, wasParked: e.kind === 'parked' })
   }
   return claimed.length === 0 ? [l, claimed] as const : [{ ...l, entries }, claimed] as const
-}
-
-/**
- * The main loop's turn ended: every held entry is held MONITOR_GRACE_MS from now. While a turn
- * runs, Claude Code queues the monitor's line and hands it over only after the turn, so a hold
- * that ran out during the turn gave the line no chance (measured: the mod prompted 6 ms after
- * the turn ended, and the queued line then started a second turn).
- */
-export function reholdAtTurnEnd(l: ClaudishLedger, now: number): ClaudishLedger {
-  let changed = false
-  const entries = { ...l.entries }
-  for (const [key, e] of Object.entries(l.entries)) {
-    if (e.kind !== 'pending' || e.heldUntil === undefined || e.heldUntil >= now + MONITOR_GRACE_MS) continue
-    entries[key] = { ...e, heldUntil: now + MONITOR_GRACE_MS }
-    changed = true
-  }
-  return changed ? { ...l, entries } : l
 }
 
 /** The submit carrying `nonce` was accepted: its entries are delivered. */
@@ -153,104 +120,6 @@ export function markRefused(l: ClaudishLedger, nonce: string, now: number, reaso
   return changed ? { ...l, entries } : l
 }
 
-// ── the monitor's lines ───────────────────────────────────────────────────────
-
-/** One monitor report and when its row was seen. */
-export type Sighting = { at: number; report: MonitorReport }
-
-/** Does a monitor report stand for this wake key of this run? A delegation's end stands for its
- *  waits too (the monitor reports no wait still open at the end); a panel run's end, matched by the
- *  record id its start answer named, stands for every key of the run once the mod has seen it settle. */
-export function reports(run: ClaudishRun, isWait: boolean, r: MonitorReport): boolean {
-  if (r.kind === 'delegation') {
-    return run.ref.kind === 'delegation' && r.token === run.ref.token && (r.event === 'ended' || isWait)
-  }
-  if (isWait || !monitorCovers(run)) return false
-  return run.ref.kind === 'panel' && r.record === run.ref.monitor
-}
-
-/** Would claudish's monitor report this unit's change? Every unit of a delegation; a panel run's once
- *  it settled, when its start answer named the record the monitor reports it by. */
-export function monitorCovers(run: ClaudishRun): boolean {
-  if (run.ref.kind === 'delegation') return true
-  return run.settledAt !== null && run.ref.monitor !== undefined
-}
-
-/**
- * Marks delivered (by the monitor) every pending or parked entry a sighting stands for: one
- * seen after the change was noticed, or at most MONITOR_GRACE_MS before. The marked keys are the claim.
- */
-export function monitorDeliver(
-  l: ClaudishLedger,
-  runs: ClaudishRuns,
-  seen: readonly Sighting[],
-  now: number,
-): readonly [ClaudishLedger, string[]] {
-  if (l.epoch !== runs.epoch || seen.length === 0) return [l, []] as const
-  const moved: string[] = []
-  const entries = { ...l.entries }
-  for (const [key, e] of Object.entries(l.entries)) {
-    if (e.kind !== 'pending' && e.kind !== 'parked') continue
-    const k = parseWakeKey(key)
-    const run = runs.list.find(r => r.id === k.runId)
-    if (!run || !seen.some(s => s.at >= e.at - MONITOR_GRACE_MS && reports(run, k.wait !== null, s.report))) continue
-    entries[key] = { kind: 'delivered', at: now, nonce: 'monitor', by: 'monitor' }
-    moved.push(key)
-  }
-  return moved.length === 0 ? [l, moved] as const : [{ ...l, entries }, moved] as const
-}
-
-/** The text of a row the monitor's line could arrive in: not the model's, not a tool's, not typed by the person. */
-export function notificationText(e: Frozen<SessionAppendInput>): string | null {
-  if (e.message.type === 'assistant' || e.door === 'response' || e.door === 'tool-result' || e.door === 'tool-message') return null
-  const kind = e.origin.kind
-  if (kind === 'model' || kind === 'tool' || kind === 'composer' || kind === 'bridge') return null
-  const blocks = Array.isArray(e.message.content) ? e.message.content : []
-  const texts: string[] = []
-  for (const b of blocks) {
-    const block = b as { type?: unknown; text?: unknown }
-    if (block.type === 'text' && typeof block.text === 'string') texts.push(block.text)
-  }
-  return texts.length === 0 ? null : texts.join('\n')
-}
-
-function sightingsAt(now: number): Sighting[] {
-  sightings = sightings.filter(s => s.at >= now - MONITOR_GRACE_MS).slice(-SIGHTINGS_MAX)
-  return sightings
-}
-
-/**
- * session.append, observe-only: a row of the conversation carrying claudish's monitor lines
- * stands the wake down for the changes they report. Synchronous up to the parse; never throws.
- */
-export function observeRow(host: Host, e: Frozen<SessionAppendInput>): void {
-  let found: MonitorReport[]
-  try {
-    const text = notificationText(e)
-    found = text === null ? [] : host.source.monitorReports(text)
-  } catch {
-    return
-  }
-  if (found.length === 0) return
-  standDown(host, found).catch((err: unknown) => {
-    try {
-      host.debug(`claudish wake: monitor line not applied: ${err instanceof Error ? err.message : String(err)}`)
-    } catch {
-      // the environment that saw the row is gone (a reload)
-    }
-  })
-}
-
-async function standDown(host: Host, found: readonly MonitorReport[]): Promise<void> {
-  const now = await host.now()
-  sightings = [...sightingsAt(now), ...found.map(report => ({ at: now, report }))].slice(-SIGHTINGS_MAX)
-  const seen = sightings
-  const runs = await host.store.runs.read()
-  const [after, moved] = await host.store.ledger.claim(l => monitorDeliver(l, runs, seen, now))
-  for (const key of moved) host.debug(`claudish wake: ${key} delivered by claudish's session monitor`)
-  armTimer(host, earliestRetryAt(after, now), now)
-}
-
 /**
  * After a reload, each inflight entry is settled from the transcript: a user row holding
  * its nonce means the prompt entered (delivered); otherwise it is owed again (pending,
@@ -275,25 +144,12 @@ export function reconcileInflight(
   return changed ? { ...l, entries } : l
 }
 
-/** The latest hold still running per run: claimDue holds the run's due entries until then. */
-function runHolds(l: ClaudishLedger, now: number): Map<string, number> {
-  const holds = new Map<string, number>()
-  for (const [key, e] of Object.entries(l.entries)) {
-    if (e.kind !== 'pending' || e.heldUntil === undefined || e.heldUntil <= now) continue
-    const runId = parseWakeKey(key).runId
-    holds.set(runId, Math.max(holds.get(runId) ?? 0, e.heldUntil))
-  }
-  return holds
-}
-
 /** The earliest time a pending or parked entry can be claimed, or null when none is owed. */
 export function earliestRetryAt(l: ClaudishLedger, now: number): number | null {
-  const holds = runHolds(l, now)
   let at: number | null = null
-  for (const [key, e] of Object.entries(l.entries)) {
+  for (const e of Object.values(l.entries)) {
     if (e.kind !== 'pending' && e.kind !== 'parked') continue
-    const held = holds.get(parseWakeKey(key).runId) ?? -Infinity
-    const due = Math.max(e.retryAt ?? now, held)
+    const due = e.retryAt ?? now
     at = at === null ? due : Math.min(at, due)
   }
   return at
@@ -319,7 +175,7 @@ export function toastText(runs: readonly ClaudishRun[], unit: WakeUnit): { text:
   const slot = run?.slots.find(s => s.slot === k.slot)
   const name = run ? (k.slot === '*' ? runLabel(run) : `${slotName(run, k.slot)} ${slot?.model ?? ''}`.trim()) : k.slot
   if (k.wait !== null) return { text: `${name} waiting for ${waitWord(unit.state)} ◇`, timeoutMs: 4_000 }
-  const look = STATE_LOOK[unit.state]
+  const look = lookOf(unit.state, slot?.reason ?? null)
   return { text: `${name} ${look.word} ${look.glyph}`, timeoutMs: look.group === 'failed' ? 6_000 : 4_000 }
 }
 
@@ -337,7 +193,7 @@ function keyLabels(runs: readonly ClaudishRun[], keys: readonly string[]): strin
 }
 
 /** What one terminal state reads as in the text, with the reason claudish gave (closed set only). */
-function terminalPhrase(run: ClaudishRun, slot: string, state: ClaudishSlotState, reason: string | null): string {
+function terminalPhrase(run: ClaudishRun, slot: string, state: ClaudishSlotState, reason: string | null, detail: string | null = null): string {
   switch (state) {
     case 'CANCELLED':
       return run.personStops.includes(slot) ? 'CANCELLED (stopped by the person)' : 'CANCELLED'
@@ -345,7 +201,8 @@ function terminalPhrase(run: ClaudishRun, slot: string, state: ClaudishSlotState
       return 'TIMEOUT'
     case 'FAILED':
     case 'EMPTY':
-      return reason ? `${state} (${reason})` : state
+      if (reason && detail) return `${state} (${reason}: ${detail})`
+      return reason ? `${state} (${reason})` : detail ? `${state} (${detail})` : state
     case 'LOST':
       return 'no longer reported by claudish, so check its status'
     default:
@@ -356,6 +213,36 @@ function terminalPhrase(run: ClaudishRun, slot: string, state: ClaudishSlotState
 function waitingPhrase(state: ClaudishSlotState, asked: boolean): string {
   if (state === 'AWAITING_PERMISSION') return 'is waiting on a permission dialog'
   return asked ? 'is asking a question and waiting for an answer' : 'finished its turn and is waiting for input'
+}
+
+/** How each terminal state is counted in a run's tally, in the order the tally names them. */
+const OUTCOMES: readonly (readonly [ClaudishSlotState, string])[] = [
+  ['COMPLETED', 'completed'],
+  ['FAILED', 'failed'],
+  ['EMPTY', 'empty'],
+  ['TIMEOUT', 'timed out'],
+  ['CANCELLED', 'cancelled'],
+  ['LOST', 'lost'],
+]
+
+/**
+ * A panel run's standing, said outright: how many slots are done and how they ended, and, once
+ * every slot is terminal, that the run is finished. The model must not infer the end from the
+ * absence of a "still running" line. Null for a run with no slots yet.
+ */
+function progressLine(run: ClaudishRun): string | null {
+  const total = run.slots.length
+  if (total === 0) return null
+  const done = run.slots.filter(s => isTerminal(s.state))
+  const tally = OUTCOMES
+    .map(([state, word]) => [done.filter(s => s.state === state).length, word] as const)
+    .filter(([n]) => n > 0)
+    .map(([n, word]) => `${n} ${word}`)
+    .join(', ')
+  const counted = `${done.length} of ${total} ${total === 1 ? 'slot' : 'slots'} done${tally ? ` (${tally})` : ''}`
+  return done.length === total
+    ? `  run finished: ${counted}. No more messages will arrive for this run.`
+    : `  progress: ${counted}`
 }
 
 type SlotClaim = { slot: string; terminal: ClaudishSlotState | null; wait: { n: number; state: ClaudishSlotState } | null }
@@ -413,7 +300,7 @@ export function composeWake(
       }
       if (sc.terminal !== null) {
         finished += 1
-        phrase = terminalPhrase(run, sc.slot, sc.terminal, now?.reason ?? null)
+        phrase = terminalPhrase(run, sc.slot, sc.terminal, now?.reason ?? null, now?.detail ?? null)
         if (sc.wait !== null) {
           const had = `it had been waiting for ${waitWord(sc.wait.state)}`
           phrase = phrase.endsWith(')') ? `${phrase.slice(0, -1)}; ${had})` : `${phrase} (${had})`
@@ -432,6 +319,8 @@ export function composeWake(
       ? run.slots.filter(s => !isTerminal(s.state) && !slots.has(s.slot)).map(s => `${s.slot} ${s.model}`)
       : []
     if (running.length > 0) lines.push(`  still running: ${running.join(', ')}`)
+    const progress = run.ref.kind === 'panel' ? progressLine(run) : null
+    if (progress !== null) lines.push(progress)
     lines.push(fetchLine(words.fetchHint(run.ref, fetch), fetch.map(f => f.state)))
     if (running.length > 0) lines.push('Another message like this arrives as each running slot finishes.')
     else if (run.ref.kind === 'delegation' && fetch.some(f => !isTerminal(f.state))) {
@@ -519,7 +408,7 @@ export async function onTurnStart(
   return next(e)
 }
 
-/** The main loop's turn ended: notices it held, and parked ones, are delivered now. */
+/** The main loop's turn ended: notices it deferred, and parked ones, are delivered now. */
 export async function onTurnComplete(
   host: Host,
   e: Frozen<TurnCompleteInput>,
@@ -528,8 +417,6 @@ export async function onTurnComplete(
   const result = await next(e)
   if (e.agentId === undefined) {
     await host.store.turn.update(t => (t.isRunning ? { isRunning: false, since: 0 } : t))
-    const now = await host.now()
-    await host.store.ledger.update(l => reholdAtTurnEnd(l, now))
     flushDetached(host, { atTurnEnd: true })
   }
   return result
@@ -539,9 +426,7 @@ export async function onTurnComplete(
 
 /**
  * From the poll tick: creates a pending entry for each owed unit of a drawn run that has
- * none (held when claudish's monitor reports that change too, and delivered at once when its
- * line was already seen), toasts each one created, and flushes. Writes nothing when every
- * unit has an entry.
+ * none, toasts each one created, and flushes. Writes nothing when every unit has an entry.
  */
 export async function notice(
   host: Host,
@@ -549,28 +434,17 @@ export async function notice(
   runs: ClaudishRuns,
   feeds: Readonly<Record<string, ClaudishFeedSupport>>,
 ): Promise<void> {
-  const drawn = runs.list.filter(r => isDrawn(r, feeds))
-  const units = wakeUnits(drawn).map(u => {
-    const run = drawn.find(r => r.id === parseWakeKey(u.key).runId)
-    return run && monitorCovers(run) ? { ...u, held: true } : u
-  })
+  const units = wakeUnits(runs.list.filter(r => isDrawn(r, feeds)))
   if (units.length === 0) return
   const before = await host.store.ledger.read()
   if (before.epoch !== epoch || units.every(u => u.key in before.entries)) return
   const now = await host.now()
-  const seen = sightingsAt(now)
-  const [, made] = await host.store.ledger.claim(l => {
-    const [withNew, created] = createPending(l, epoch, units, now)
-    if (created.length === 0) return [withNew, { created, moved: [] as string[] }] as const
-    const [written, moved] = monitorDeliver(withNew, runs, seen, now)
-    return [written, { created, moved }] as const
-  })
-  for (const u of made.created) {
+  const [, created] = await host.store.ledger.claim(l => createPending(l, epoch, units, now))
+  for (const u of created) {
     const t = toastText(runs.list, u)
     host.toast(t.text, t.timeoutMs)
   }
-  for (const key of made.moved) host.debug(`claudish wake: ${key} delivered by claudish's session monitor`)
-  if (made.created.length > 0) await flush(host)
+  if (created.length > 0) await flush(host)
 }
 
 /**

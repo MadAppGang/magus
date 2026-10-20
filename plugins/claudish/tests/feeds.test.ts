@@ -3,8 +3,7 @@
 
 import { expect, test } from 'claude-code/testing'
 import type { ClaudishFeedSupport, ClaudishLedger, ClaudishRuns } from '../types'
-import { MONITOR_GRACE_MS } from '../hooks/status/domain'
-import { CREATE_TOOL, ENGINE_DRAWING, TEAM_TOOL, harness, start, type FakeOptions, type Harness, type ListOverride } from './fake-claudish'
+import { CREATE_TOOL, ENGINE_DRAWING, engineOwn, TEAM_TOOL, harness, start, type FakeOptions, type Harness, type ListOverride } from './fake-claudish'
 import { PRECONTRACT_LIST_ERROR, contractError } from './scenario'
 import { mountBand, mountPane } from './ui'
 
@@ -35,7 +34,7 @@ for (const surface of SURFACES) {
     expect(feeds(h)[PANEL]).toMatchObject({ kind: 'unsupported', spoke: false })
     expect(feeds(h)[DELEG]).toMatchObject({ kind: 'unsupported', spoke: false })
     expect(drawn(h)).toEqual([])
-    expect(await (await mountBand($, surface)).drawn()).toEqual(ENGINE_DRAWING) // no plugin element in the band
+    expect(engineOwn(await (await mountBand($, surface)).drawn())).toEqual(ENGINE_DRAWING) // no plugin element in the band
     expect(h.submits).toEqual([])
     expect(h.debug).toHaveLength(2) // one per feed
     expect(h.fake.listCalls('runs')).toHaveLength(0)
@@ -49,7 +48,7 @@ for (const surface of SURFACES) {
     await h.clock.advance(60_000)
     expect(feeds(h)[DELEG]).toMatchObject({ kind: 'unsupported', spoke: false })
     expect(drawn(h)).toEqual([])
-    expect(await (await mountBand($, surface)).drawn()).toEqual(ENGINE_DRAWING)
+    expect(engineOwn(await (await mountBand($, surface)).drawn())).toEqual(ENGINE_DRAWING)
     expect(h.debug).toHaveLength(1)
     expect(h.fake.listCalls('sessions')).toHaveLength(1)
   })
@@ -119,8 +118,8 @@ for (const surface of SURFACES) {
     expect(feeds(h)[PANEL]?.kind).toBe('speaks')
     expect(states(h)?.every(s => s === 'RUNNING')).toBe(true)
     const band = await mountBand($, surface)
-    expect(await band.findAll({ type: 'Text', text: /^\? unknown/ })).toHaveLength(4)
-    expect(await band.findAll({ type: 'Text', text: /▶ running/ })).toHaveLength(0) // never a stale running row
+    expect(await band.findAll({ type: 'Text', text: /^ \?\?\? $/ })).toHaveLength(4)
+    expect(await band.findAll({ type: 'Text', text: /^ RUN $/ })).toHaveLength(0) // never a stale running row
     await h.clock.advance(2 * 60_000)
     expect(states(h)?.every(s => s === 'LOST')).toBe(true)
     expect(runs(h).list[0]?.lostReason).toBe('unreachable')
@@ -138,7 +137,8 @@ for (const surface of SURFACES) {
     expect(feeds(h)[PANEL]?.kind).toBe('speaks')
     expect(runs(h).list[0]?.slots.map(s => s.model)).toEqual(['gpt-6.1-sol', 'unknown model', 'grok-4.6', 'glm-5.3'])
     expect(runs(h).list[1]?.slots.map(s => s.model)).toEqual(['m-x'])
-    expect(await (await mountBand($, surface)).find({ type: 'Text', text: /^unknown model/ })).toBeDefined()
+    // §10: the model badge's half, padded one space either side
+    expect(await (await mountBand($, surface)).find({ type: 'Text', text: /^ unknown model $/ })).toBeDefined()
   })
 
   test(`feeds: no capture — Show opens the tab with the unavailable note; 0 capture calls [${surface}]`, async ($, on) => {
@@ -215,7 +215,6 @@ for (const surface of SURFACES) {
     expect(h.attempts).toHaveLength(0)
     await $.turn.complete({ answer: '', durationMs: 1, isAborted: false, turnId: 't1', reason: 'answer' })
     await h.clock.settle()
-    await h.clock.advance(MONITOR_GRACE_MS) // a settled run is held after the turn for the monitor line it kept queued
     expect(h.submits).toHaveLength(1) // 1 wake names the LOST slots; the pending entry is delivered with it
     expect(h.submits[0]).toContain('slot 01 gpt-6.1-sol: COMPLETED')
     expect(h.submits[0]!.match(/no longer reported by claudish/g)).toHaveLength(3)
@@ -236,7 +235,6 @@ for (const surface of SURFACES) {
     expect(feeds(h)[PANEL]).toMatchObject({ kind: 'unsupported', spoke: true })
     expect(runs(h).list[1]?.slots.map(s => [s.slot, s.state])).toEqual([['*', 'LOST']])
     expect(runs(h).list[1]?.settledAt).not.toBeNull()
-    await h.clock.advance(MONITOR_GRACE_MS) // settled runs wait for claudish's monitor line first; none comes
     expect(h.submits).toHaveLength(1) // one wake: r1's LOST slots and r2 never listed
     expect(h.submits[0]).toContain("run r2 never appeared in claudish's list, so check its status")
   })

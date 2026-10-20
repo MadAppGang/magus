@@ -1,11 +1,11 @@
-// What the band's two buttons do. State goes through the Store it is handed (bound to
+// What the band's and the panel's buttons do. State goes through the Store it is handed (bound to
 // the render dispatch whose tree held the button); effects through the Host. No engine
 // interface spelled here, and no claudish tool named: Stop reaches claudish through the
 // port's `stop`.
 
 import type { ClaudishPaneView } from '../../types'
-import { PANE_ID_PATTERN, SHOW_COLUMNS, STOP_CONFIRM_MS, assertNever, paneId, slotKey, withPersonStop } from './domain'
-import type { Host, Store } from './host'
+import { SHOW_COLUMNS, SHOW_PANE_ID, SHOW_PANE_TITLE, SHOW_ROWS, STOP_CONFIRM_MS, assertNever, paneId, slotKey, withPersonStop } from './domain'
+import type { Host, PressUi, Store } from './host'
 import type { SlotTarget } from './layout'
 import type { StopResult } from './run-source'
 
@@ -107,23 +107,32 @@ function seed(target: SlotTarget): () => ClaudishPaneView {
   return () => ({ runId: target.runId, slot: target.slot, model: target.model, status: 'waiting', frame: null, note: null })
 }
 
-/**
- * Show opens the slot's tab (one per slot, its id stable across reloads), titled by the
- * model, or `model (slot)` when another open tab already shows that model. A pane not
- * open is seeded `waiting` whatever its member held. If opening an open id did not make it
- * the shown tab, it is closed and opened again, re-seeded, so the press always shows it.
- */
-export async function pressShow(press: Store, host: Host, target: SlotTarget): Promise<void> {
+/** Makes a slot's tab the panel's active one, its view seeded `waiting` when it has none yet. Returns the tab's id. */
+export async function pressTab(press: Store, target: SlotTarget): Promise<string> {
   const id = paneId(target.runId, target.slot)
-  const open = (await host.panes()).filter(p => PANE_ID_PATTERN.test(p.id))
-  const taken = open.some(p => p.id !== id && (p.title === target.model || p.title.startsWith(`${target.model} (`)))
-  const title = taken ? `${target.model} (${target.slot})` : target.model
-  if (!open.some(p => p.id === id)) await press.panes.update(id, seed(target))
-  await host.open(id, title, SHOW_COLUMNS)
-  const now = (await host.panes()).find(p => p.id === id)
-  if (now && !now.isShown) {
-    await host.close(id)
-    await press.panes.update(id, seed(target))
-    await host.open(id, title, SHOW_COLUMNS)
-  }
+  await press.showTab.update(() => ({ active: id }))
+  if ((await press.panes.read(id)) === null) await press.panes.update(id, seed(target))
+  return id
+}
+
+/**
+ * Show opens the panel on this slot's tab; with the panel open, it only moves it to that tab. The
+ * panel holds a tab for every slot the band shows (poll.ts seeds them), so no slot needs a Show
+ * of its own to be there. Should Claude Code keep the panel undrawn, a toast gives its reason
+ * rather than nothing happening. Returns the tab's id, for its first capture.
+ */
+export async function pressShow(press: Store, ui: PressUi, host: Host, target: SlotTarget): Promise<string> {
+  // The open is the press's first call: Claude Code places a pane at any width only while the
+  // person's press is behind it, and an open after an await reads as unasked (measured at 106
+  // columns). Opening the open panel only retitles it.
+  const opening = ui.open(SHOW_PANE_ID, SHOW_PANE_TITLE, { columns: SHOW_COLUMNS, rows: SHOW_ROWS })
+  const id = await pressTab(press, target)
+  const opened = await opening
+  if (!opened.isPlaced) host.toast(`Show ${target.model}: not drawn yet. ${opened.reason}`, 8_000)
+  return id
+}
+
+/** Hide puts the panel away. Its tabs and their views stay: the next Show brings them back as they were. */
+export async function pressHide(ui: PressUi): Promise<void> {
+  await ui.close(SHOW_PANE_ID)
 }

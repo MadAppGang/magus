@@ -1,16 +1,13 @@
 // Blind tests: completion wake-up (spec "Completion wake-up"; stop-wake contract §3.6;
-// decisions-rev4 #1; decisions-monitor-dedupe). A wake is a prompt the engine ACCEPTED (`h.submits`).
+// decisions-rev4 #1). A wake is a prompt the engine ACCEPTED (`h.submits`).
 //
-// Monitor dedupe (FINAL): a delegation's needs-input entries and terminal states, and the last
-// units of a team run that has SETTLED, are held for G = 10 s waiting for claudish's plugin
-// monitor line. A matching line within the hold means no mod prompt; none means exactly one
-// prompt after the hold. Per-slot team transitions before the run settles are not held.
+// Nothing holds a wake-up: a run that settles, or a delegation that starts waiting, is named in
+// exactly one prompt as soon as the mod notices it. Only the main loop's running turn defers it.
 
 import { expect, test } from 'claude-code/testing'
 import { harness, start, TEAM_TOOL, CREATE_TOOL } from '../fake-claudish'
 import { bandProps, mountBand, SURFACES } from '../ui'
-import { monitorRecordOf } from '../scenario'
-import { MONITOR_GRACE_MS, PAST_HOLD_MS, SLOW, foreignRun, isEngineDrawing, monitorLine, namedWith, startDelegation, startTeam } from './helpers'
+import { NOTICED_MS, SLOW, foreignRun, isEngineDrawing, namedWith, startDelegation, startTeam } from './helpers'
 
 const MODELS = ['gpt-6.1-sol', 'kimi-k3', 'grok-4.6', 'glm-5.3'] as const
 
@@ -110,8 +107,8 @@ test('wake: a delegation wakes once per entry into waiting, and again when it en
   expect(h.submits).toHaveLength(0)
 
   h.fake.set(s.id, s.id, 'AWAITING_INPUT', null, { activity: null, turnsCompleted: 1 })
-  await h.clock.advance(PAST_HOLD_MS)
-  expect(h.submits, 'first entry wakes (no monitor line, after the hold)').toHaveLength(1)
+  await h.clock.advance(NOTICED_MS)
+  expect(h.submits, 'first entry wakes as soon as it is noticed').toHaveLength(1)
   expect(h.submits[0]!).toContain(s.id)
   expect(h.submits[0]!).toMatch(/waiting for input/)
   expect(h.submits[0]!, 'how to fetch / answer it').toMatch(/get_output|send_input/)
@@ -122,18 +119,18 @@ test('wake: a delegation wakes once per entry into waiting, and again when it en
   await h.clock.advance(3_000)
   expect(h.submits).toHaveLength(1)
   h.fake.set(s.id, s.id, 'AWAITING_INPUT', null, { activity: null, turnsCompleted: 2 })
-  await h.clock.advance(PAST_HOLD_MS)
+  await h.clock.advance(NOTICED_MS)
   expect(h.submits, 're-entry wakes again').toHaveLength(2)
 
   await $.tool.call({ tool: 'mcp__plugin_claudish_claudish__send_input', session_id: s.id, input: 'and more' } as never)
   await h.clock.advance(3_000)
   h.fake.set(s.id, s.id, 'AWAITING_PERMISSION', null, { activity: 'Bash' })
-  await h.clock.advance(PAST_HOLD_MS)
+  await h.clock.advance(NOTICED_MS)
   expect(h.submits, 'a permission wait wakes too').toHaveLength(3)
   expect(h.submits[2]!).toMatch(/permission/)
 
   h.fake.set(s.id, s.id, 'COMPLETED')
-  await h.clock.advance(PAST_HOLD_MS)
+  await h.clock.advance(NOTICED_MS)
   expect(h.submits).toHaveLength(4)
   expect(namedWith(h.submits.slice(3), 'haiku-4.5', 'COMPLETED')).toBe(1)
   await h.clock.advance(60_000)
@@ -144,7 +141,7 @@ test('wake: a delegation started waiting (no prompt) wakes once for that entry',
   const h = harness(on)
   await start($)
   const s = await startDelegation($, h, 'haiku-4.5', null)
-  await h.clock.advance(5_000 + PAST_HOLD_MS)
+  await h.clock.advance(5_000 + NOTICED_MS)
   expect(h.submits).toHaveLength(1)
   expect(h.submits[0]!).toContain(s.id)
   await h.clock.advance(60_000)
@@ -175,10 +172,10 @@ test('wake: a dropped prompt is retried until accepted, then never again', SLOW,
   h.submitAnswer = text => (drops-- > 0 ? { drop: 'busy' } : { text })
   const run = await startTeam($, h, 'review', ['gpt-6.1-sol'])
   await h.clock.advance(3_000)
-  // One slot: its COMPLETED settles the run, so the unit is held for the monitor first.
+  // One slot: its COMPLETED settles the run, and the settle is prompted at once.
   h.fake.set(run.runId, '01', 'COMPLETED')
-  await h.clock.advance(PAST_HOLD_MS)
-  expect(h.attempts.length, 'attempted once the hold ran out').toBeGreaterThanOrEqual(1)
+  await h.clock.advance(NOTICED_MS)
+  expect(h.attempts.length, 'attempted as soon as it was noticed').toBeGreaterThanOrEqual(1)
   expect(h.submits, 'the first attempt was dropped').toHaveLength(0)
   await h.clock.advance(45_000)
   expect(h.submits, 'retried and accepted').toHaveLength(1)
@@ -197,96 +194,52 @@ test('wake: the model starting a delegation is observed through its own tool cal
   const s = h.fake.sessions[0]!
   await h.clock.advance(3_000)
   h.fake.set(s.id, s.id, 'FAILED', 'child_exited')
-  await h.clock.advance(PAST_HOLD_MS)
+  await h.clock.advance(NOTICED_MS)
   expect(namedWith(h.submits, 'haiku-4.5', 'FAILED')).toBe(1)
   expect(h.submits[0]!).toContain('child_exited')
   await h.clock.advance(60_000)
   expect(h.submits, 'exactly once').toHaveLength(1)
 })
 
-// ── monitor dedupe (decisions-monitor-dedupe #2, #6) ──────────────────────────
+// ── no hold: the mod's own wake-up is the only one ────────────────────────────
 
-test('wake: a monitor needs-input line within the hold replaces the mod prompt for that entry', SLOW, async ($, on) => {
+test('wake: a settled team run is named in one prompt as soon as the mod notices it, with no hold', SLOW, async ($, on) => {
+  const h = harness(on)
+  await start($)
+  const run = await startTeam($, h, 'plan panel/review', ['gpt-6.1-sol', 'kimi-k3'])
+  await h.clock.advance(3_000)
+
+  h.fake.set(run.runId, '01', 'COMPLETED')
+  await h.clock.advance(NOTICED_MS)
+  expect(h.submits, 'a per-slot change wakes at once').toHaveLength(1)
+
+  // The settle: its last slot is named within the same few polls, not ten seconds later.
+  h.fake.set(run.runId, '02', 'COMPLETED')
+  await h.clock.advance(NOTICED_MS)
+  expect(h.submits, 'the settle wakes at once').toHaveLength(2)
+  expect(namedWith(h.submits.slice(1), 'kimi-k3', 'COMPLETED')).toBe(1)
+  await h.clock.advance(60_000)
+  expect(h.attempts, 'exactly once per change').toHaveLength(2)
+})
+
+test('wake: a delegation that starts waiting, then ends, is named once for each as soon as the mod notices it', SLOW, async ($, on) => {
   const h = harness(on)
   await start($)
   const s = await startDelegation($, h, 'haiku-4.5', 'do the task')
   await h.clock.advance(3_000)
 
   h.fake.set(s.id, s.id, 'AWAITING_INPUT', null, { activity: null, turnsCompleted: 1 })
-  await h.clock.advance(3_000)
-  expect(h.attempts, 'held for the monitor: nothing yet').toHaveLength(0)
-  const row = await monitorLine($, `claudish-monitor: session ${s.id} needs-input model=haiku-4.5 next: send_input ${s.id}`)
-  expect(h.appended.at(-1), 'the row passes beneath the plugin unchanged').toEqual(row)
-  await h.clock.advance(PAST_HOLD_MS + 60_000)
-  expect(h.attempts, 'the monitor line woke the model; the mod sends nothing').toHaveLength(0)
+  await h.clock.advance(NOTICED_MS)
+  expect(h.submits, 'the wait wakes at once').toHaveLength(1)
+  expect(h.submits[0]!).toMatch(/waiting for input/)
 
-  // Control in the same world: the end, with no monitor line, still wakes exactly once.
   await $.tool.call({ tool: 'mcp__plugin_claudish_claudish__send_input', session_id: s.id, input: 'go on' } as never)
   await h.clock.advance(3_000)
   h.fake.set(s.id, s.id, 'COMPLETED')
-  await h.clock.advance(PAST_HOLD_MS)
-  expect(h.submits).toHaveLength(1)
-  expect(namedWith(h.submits, 'haiku-4.5', 'COMPLETED')).toBe(1)
-  expect(h.submits[0]!, 'the delivered wait is not repeated').not.toMatch(/waiting for input/)
+  await h.clock.advance(NOTICED_MS)
+  expect(h.submits, 'the end wakes at once').toHaveLength(2)
+  expect(namedWith(h.submits.slice(1), 'haiku-4.5', 'COMPLETED')).toBe(1)
+  expect(h.submits[1]!, 'the delivered wait is not repeated').not.toMatch(/waiting for input/)
   await h.clock.advance(60_000)
-  expect(h.submits).toHaveLength(1)
-})
-
-test('wake: a monitor end line within the hold replaces the mod prompt for a delegation', SLOW, async ($, on) => {
-  const h = harness(on)
-  await start($)
-  const s = await startDelegation($, h, 'haiku-4.5', 'do the task')
-  await h.clock.advance(3_000)
-  h.fake.set(s.id, s.id, 'COMPLETED')
-  await h.clock.advance(3_000)
-  expect(h.attempts, 'held for the monitor').toHaveLength(0)
-  await monitorLine($, `claudish-monitor: session ${s.id} completed model=haiku-4.5 next: get_output ${s.id}`)
-  await h.clock.advance(PAST_HOLD_MS + 60_000)
-  expect(h.attempts, 'no mod prompt').toHaveLength(0)
-})
-
-test('wake: a settled team run whose monitor line arrives within the hold sends no prompt for its last slot', SLOW, async ($, on) => {
-  const h = harness(on)
-  await start($)
-  // A space in a parent directory: the monitor's path is percent-encoded; the run id stays one token.
-  const run = await startTeam($, h, 'plan panel/review', ['gpt-6.1-sol', 'kimi-k3'])
-  await h.clock.advance(3_000)
-
-  // Not a settle (02 still runs): not held, wakes at once.
-  h.fake.set(run.runId, '01', 'COMPLETED')
-  await h.clock.advance(3_000)
-  expect(h.submits, 'a per-slot change before the settle is not held').toHaveLength(1)
-  expect(namedWith(h.submits, 'gpt-6.1-sol', 'COMPLETED')).toBe(1)
-
-  // The settle: held; claudish's monitor reports the run (path percent-encoded, project-relative).
-  h.fake.set(run.runId, '02', 'COMPLETED')
-  await h.clock.advance(3_000)
-  expect(h.submits).toHaveLength(1)
-  await monitorLine($, `claudish-monitor: team ${monitorRecordOf(run.runId)} completed slots=2 path=plan%20panel/review next: team-status`)
-  await h.clock.advance(PAST_HOLD_MS + 60_000)
-  expect(h.attempts, 'the monitor line covered the settle').toHaveLength(1)
-  expect(namedWith(h.attempts, 'kimi-k3', 'COMPLETED'), 'the last slot is not prompted').toBe(0)
-  expect(h.toasts.some(t => t.includes('kimi-k3')), 'toasts are unchanged by the dedupe').toBe(true)
-})
-
-test('wake: a monitor line for another session or another run at the same path does not stand in; exactly one prompt after the hold', SLOW, async ($, on) => {
-  const h = harness(on)
-  await start($)
-  const s = await startDelegation($, h, 'haiku-4.5', 'do the task')
-  const run = await startTeam($, h, 'review', ['gpt-6.1-sol'])
-  await h.clock.advance(3_000)
-  h.fake.set(s.id, s.id, 'COMPLETED')
-  h.fake.set(run.runId, '01', 'COMPLETED')
-  await h.clock.advance(3_000)
-  const other = 'ffffffff-0000-4000-8000-000000000099'
-  await monitorLine($, `claudish-monitor: session ${other} completed model=haiku-4.5 next: get_output ${other}`)
-  await monitorLine($, `claudish-monitor: team team-ffffff completed slots=1 path=review next: team-status`) // another run, same path
-  await h.clock.advance(MONITOR_GRACE_MS - 8_000)
-  expect(h.attempts, 'still inside the hold').toHaveLength(0)
-  await h.clock.advance(PAST_HOLD_MS)
-  expect(namedWith(h.submits, 'haiku-4.5', 'COMPLETED'), 'the delegation wakes once').toBe(1)
-  expect(namedWith(h.submits, 'gpt-6.1-sol', 'COMPLETED'), 'the run wakes once').toBe(1)
-  await h.clock.advance(60_000)
-  expect(namedWith(h.submits, 'haiku-4.5', 'COMPLETED')).toBe(1)
-  expect(namedWith(h.submits, 'gpt-6.1-sol', 'COMPLETED')).toBe(1)
+  expect(h.attempts, 'exactly once per change').toHaveLength(2)
 })
