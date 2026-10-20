@@ -3,7 +3,8 @@
 // no `Client` (vscode). Its cells fill at 5, 30, 60, 90 and 120 s; below 5 s no number; colours
 // success / warning / error by cells. Written from spec.md only.
 
-import { test, expect } from 'claude-code/testing'
+import { expect } from 'claude-code/testing'
+import { test } from '../kit'
 import { harness, start, type Harness } from '../fake-claudish'
 import { bandProps, mountBand, mountPane, paneProps, SURFACES, walk } from '../ui'
 import { POLL, team } from './support'

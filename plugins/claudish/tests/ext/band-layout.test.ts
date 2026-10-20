@@ -1,4 +1,5 @@
-import { test, expect } from 'claude-code/testing'
+import { expect } from 'claude-code/testing'
+import { test } from '../kit'
 import { ENGINE_DRAWING, engineOwn, harness, start } from '../fake-claudish'
 import { iso } from '../scenario'
 import { bandProps, mountBand, mountPane, paneProps, SURFACES, walk, type Node } from '../ui'

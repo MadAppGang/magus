@@ -1,7 +1,8 @@
 // Pure layout: colour spelling, the tab's viewport and style budget, the tab's fit from the
 // engine's Pane props, and the band's column plan at the widths that matter.
 
-import { describe, expect, test } from 'claude-code/testing'
+import { describe, expect } from 'claude-code/testing'
+import { test } from './kit'
 import type { ClaudishFrame, ClaudishRun, ClaudishRuns, ClaudishSlot, ClaudishStyleSpan } from '../types'
 import { PANE_LINE_COST, PANE_SEGMENT_COST, PANE_STYLE_BUDGET } from '../hooks/status/domain'
 import { LOOPS_MARK, TOOLS_MARK, bandModel, colorSpelling, count, dollars, fitColumns, paneCost, paneFit, paneLines, planWidth, providerName, tokenIO, type BandInput } from '../hooks/status/layout'

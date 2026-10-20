@@ -1,5 +1,6 @@
 import type { McpToolResult } from 'claude-code'
-import { describe, expect, test } from 'claude-code/testing'
+import { describe, expect } from 'claude-code/testing'
+import { test } from './kit'
 import type { ClaudishRunRef } from '../types'
 import { makeClaudishSource, type McpCall } from '../hooks/status/claudish-source'
 import type { CallSeen, FeedAnswer, PollResult } from '../hooks/status/run-source'

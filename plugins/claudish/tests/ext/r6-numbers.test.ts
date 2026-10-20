@@ -2,7 +2,8 @@
 // cell (SUB, —, dollars), and the provider name without its ` (Native)` suffix in the row and the
 // Show tab header. Written from spec.md only; every expected string is worked from R6.1's rules.
 
-import { test, expect } from 'claude-code/testing'
+import { expect } from 'claude-code/testing'
+import { test } from '../kit'
 import { harness, start } from '../fake-claudish'
 import { bandProps, mountBand, mountPane, paneProps, SURFACES, walk, type Node } from '../ui'
 import { DARK, QUIET_DARK, team } from './support'

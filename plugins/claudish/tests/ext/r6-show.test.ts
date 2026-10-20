@@ -4,7 +4,8 @@
 // when two share a model; the strip's look; a tab press.
 // Written from spec.md only; the shown tab is read from the published `showTab` state.
 
-import { test, expect } from 'claude-code/testing'
+import { expect } from 'claude-code/testing'
+import { test } from '../kit'
 import type { PaneOpenArgs } from 'claude-code'
 import { harness, start } from '../fake-claudish'
 import { bandProps, mountBand, mountPane, paneProps, SURFACES, walk, type Node } from '../ui'

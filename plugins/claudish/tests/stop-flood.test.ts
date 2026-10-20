@@ -12,7 +12,8 @@
 // the read-only verbs the plugin's PreToolUse hook allows (tests/claudish-status covers the
 // hook itself), at most one poll per tick.
 
-import { expect, test } from 'claude-code/testing'
+import { expect } from 'claude-code/testing'
+import { test } from './kit'
 import type { ClaudishRuns, ClaudishStopRequest } from '../types'
 import { TEAM_TOOL, harness, start, type Harness } from './fake-claudish'
 import { SURFACES, mountBand } from './ui'

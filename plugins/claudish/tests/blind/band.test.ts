@@ -1,7 +1,8 @@
 // Blind tests: the status band above the prompt (spec "Status rows", "Colours", "Layout";
 // UI contract §4.1–4.3). Every body loops over both surfaces.
 
-import { expect, test } from 'claude-code/testing'
+import { expect } from 'claude-code/testing'
+import { test } from '../kit'
 import { harness, start } from '../fake-claudish'
 import { iso } from '../scenario'
 import { bandProps, mountBand, mountPane, paneProps, walk, SURFACES } from '../ui'

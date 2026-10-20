@@ -1,7 +1,8 @@
 // Blind tests: Stop, press twice (spec "Buttons"; stop-wake contract §3.5; mod contract §C).
 // Each surface gets its own run (distinct models) so the loop's iterations never share a slot.
 
-import { expect, test } from 'claude-code/testing'
+import { expect } from 'claude-code/testing'
+import { test } from '../kit'
 import { harness, start } from '../fake-claudish'
 import { bandProps, mountBand, SURFACES } from '../ui'
 import { SLOW, keyOf, labelOf, namedWith, rowFor, startDelegation, startTeam, stopButton, textOf } from './helpers'

@@ -1,4 +1,5 @@
-import { test, expect } from 'claude-code/testing'
+import { expect } from 'claude-code/testing'
+import { test } from '../kit'
 import { ENGINE_DRAWING, engineOwn, harness, start, type FakeOptions } from '../fake-claudish'
 import { mountBand, mountPane, SURFACES } from '../ui'
 import { POLL, delegate, drawingText, modelCall, press, row, DARK, stateColor, team, themeOnly } from './support'

@@ -2,7 +2,8 @@
 // quiet, no gap between them), the final tokens badge (two fixed inks, both regular), and the SUB cost.
 // No implementation import: every expected hex is worked from the §9 formulas and the §10 hues.
 
-import { test, expect } from 'claude-code/testing'
+import { expect } from 'claude-code/testing'
+import { test } from '../kit'
 import { harness, start } from '../fake-claudish'
 import { bandProps, mountBand, SURFACES, walk, type Node } from '../ui'
 import { QUIET_DARK, team } from './support'

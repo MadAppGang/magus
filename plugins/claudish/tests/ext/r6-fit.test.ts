@@ -2,7 +2,8 @@
 // rows, 40 the header alone), the drop order, and that no row is ever wider than the band, a row
 // with a timeline exactly as wide, at every width from 30 to 200. Measured on the drawn description.
 
-import { test, expect } from 'claude-code/testing'
+import { expect } from 'claude-code/testing'
+import { test } from '../kit'
 import { harness, start } from '../fake-claudish'
 import { bandProps, mountBand, SURFACES, walk } from '../ui'
 import { POLL, team } from './support'

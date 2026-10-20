@@ -3,7 +3,8 @@
 // Host runner: claude plugin test plugins/claudish. See R8-TEST-PLAN.md for REQ/TEST ids.
 
 import type { On } from 'claude-code'
-import { expect, test, type Engine } from 'claude-code/testing'
+import { expect, type Engine } from 'claude-code/testing'
+import { test } from '../kit'
 import { harness, start, type Harness } from '../fake-claudish'
 import { iso, type Json } from '../scenario'
 import { bandProps, mountBand, SURFACES, type Mounted, type Surface } from '../ui'

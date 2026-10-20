@@ -177,14 +177,28 @@ tmux_colorfgbg_verdict() {
 # attached client has reported a theme or the pane is gone. `list-clients -t`,
 # not `display -p -t`: display falls back to ANY client when the session has
 # none attached, and would paint a detached session with a stranger's theme.
+# When the dotfiles' tmux theme.sh runs, `@theme_dark` is the mode it decided
+# for that client (1 dark, 0 light): the terminal's report, unless a per-host
+# setting (prefix+T "This screen") or a pin overrides it, so the status line
+# follows the menu for a terminal that never reports a change (rootshell
+# on iPad, 2026-10). Without theme.sh it expands empty and the report decides.
 # Not cached — it is one fork, and a cache is what would make it lag.
 tmux_client_theme() {
   [ -n "${TMUX_PANE:-}" ] || return 0
   command -v tmux >/dev/null 2>&1 || return 0
-  local line
-  line=$(tmux list-clients -t "$TMUX_PANE" -F '#{client_activity} #{client_theme}' 2>/dev/null | sort -rn | head -1)
-  case "${line##* }" in
-    light|dark) printf '%s' "${line##* }" ;;
+  local line act decided reported
+  line=$(tmux list-clients -t "$TMUX_PANE" -F '#{client_activity} #{E:@theme_dark} #{client_theme}' 2>/dev/null | sort -rn | head -1)
+  read -r act decided reported <<EOF
+$line
+EOF
+  # A field left empty shifts the rest left, so a lone light|dark is the report.
+  case "$decided" in light|dark) reported=$decided; decided= ;; esac
+  case "$decided" in
+    1) printf 'dark'; return ;;
+    0) printf 'light'; return ;;
+  esac
+  case "$reported" in
+    light|dark) printf '%s' "$reported" ;;
   esac
 }
 

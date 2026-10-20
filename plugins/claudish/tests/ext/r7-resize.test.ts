@@ -3,7 +3,8 @@
 // Run with the host's engine kit, not standalone bun test. See R7-TEST-PLAN.md for TEST/REQ ids.
 
 import type { McpToolResult } from 'claude-code'
-import { expect, test } from 'claude-code/testing'
+import { expect } from 'claude-code/testing'
+import { test } from '../kit'
 import type { ClaudishRunRef } from '../../types'
 import { makeClaudishSource, type McpCall } from '../../hooks/status/claudish-source'
 import { CWD, harness, start, type Harness, type Recorded } from '../fake-claudish'

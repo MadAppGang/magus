@@ -1,4 +1,5 @@
-import { test, expect } from 'claude-code/testing'
+import { expect } from 'claude-code/testing'
+import { test } from '../kit'
 import { harness, start } from '../fake-claudish'
 import { mountBand, SURFACES, walk } from '../ui'
 import { POLL, button, delegate, drawingText, press, row, DARK, stateColor, team, textOf } from './support'

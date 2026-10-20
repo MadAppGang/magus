@@ -1,5 +1,6 @@
 import type { Register } from 'claude-code'
-import { expect, test } from 'claude-code/testing'
+import { expect } from 'claude-code/testing'
+import { test } from './kit'
 import type { ClaudishFeedSupport, ClaudishLedger, ClaudishRuns } from '../types'
 import { CREATE_TOOL, TEAM_TOOL, harness, start, type Harness } from './fake-claudish'
 

@@ -3,7 +3,8 @@
 // marks with no space before their number, the quiet inks, the filled Show of the shown tab, no Hide
 // on any row, and a Stop column only while some row can be stopped.
 
-import { test, expect } from 'claude-code/testing'
+import { expect } from 'claude-code/testing'
+import { test } from '../kit'
 import { harness, start } from '../fake-claudish'
 import { bandProps, mountBand, mountPane, paneProps, SURFACES, walk, type Node } from '../ui'
 import { DARK, POLL, QUIET_DARK, children, team, themeOnly } from './support'

@@ -1,7 +1,8 @@
 // Silent degradation: how each feed (server × run kind) is classified from what claudish
 // answers, on both surfaces: state, calls and debug lines, and what the band draws of it.
 
-import { expect, test } from 'claude-code/testing'
+import { expect } from 'claude-code/testing'
+import { test } from './kit'
 import type { ClaudishFeedSupport, ClaudishLedger, ClaudishRuns } from '../types'
 import { CREATE_TOOL, ENGINE_DRAWING, engineOwn, TEAM_TOOL, harness, start, type FakeOptions, type Harness, type ListOverride } from './fake-claudish'
 import { PRECONTRACT_LIST_ERROR, contractError } from './scenario'

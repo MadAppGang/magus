@@ -1,7 +1,8 @@
 // Blind tests: silent degradation (spec "Non-functional"; mod contract "Detecting the contract").
 // A pre-contract claudish answers team(mode="list") with isError "Error: Unknown mode: list".
 
-import { expect, test } from 'claude-code/testing'
+import { expect } from 'claude-code/testing'
+import { test } from '../kit'
 import { harness, start } from '../fake-claudish'
 import { bandProps, mountBand, SURFACES } from '../ui'
 import { SLOW, isEngineDrawing, modVerbs, startDelegation, startTeam } from './helpers'

@@ -5,7 +5,8 @@
 // Written from spec.md only. R8.1 replaces past badges with bars; R8.2 updates props and colours.
 // Unchanged times and colours are worked from R6.4/R6.6.
 
-import { test, expect } from 'claude-code/testing'
+import { expect } from 'claude-code/testing'
+import { test } from '../kit'
 import { harness, start, type Harness } from '../fake-claudish'
 import { iso, type Json } from '../scenario'
 import { bandProps, mountBand, SURFACES, walk } from '../ui'

@@ -5,7 +5,8 @@
 // (paneId) names its view, and the pane draws the shown one.
 
 import type { Register } from 'claude-code'
-import { expect, test } from 'claude-code/testing'
+import { expect } from 'claude-code/testing'
+import { test } from './kit'
 import type { ClaudishPaneView, ClaudishRuns } from '../types'
 import { FINAL_GRACE_MS, NO_SCREEN_NOTE, PANE_STYLE_BUDGET, SHOW_PANE_ID, STYLE_SPANS_PER_LINE, paneId } from '../hooks/status/domain'
 import { ENGINE_DRAWING, engineOwn, TEAM_TOOL, harness, start, type FakeOptions, type Harness, type Recorded } from './fake-claudish'

@@ -1,4 +1,5 @@
-import { test, expect } from 'claude-code/testing'
+import { expect } from 'claude-code/testing'
+import { test } from '../kit'
 import type { PaneOpenArgs } from 'claude-code'
 import { harness, start } from '../fake-claudish'
 import { REAP_MS } from '../scenario'

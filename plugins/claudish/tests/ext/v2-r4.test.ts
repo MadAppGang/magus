@@ -3,7 +3,8 @@
 // dropped, Hide that puts the panel away, and tabs that belong to the current run(s).
 // No implementation import: every expected hex is worked from the §9 table and formulas.
 
-import { test, expect } from 'claude-code/testing'
+import { expect } from 'claude-code/testing'
+import { test } from '../kit'
 import { harness, start, type FakeOptions } from '../fake-claudish'
 import { bandProps, mountBand, mountPane, paneProps, SURFACES, walk } from '../ui'
 import { POLL, QUIET_DARK, team } from './support'

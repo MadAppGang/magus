@@ -4,7 +4,8 @@
 // Nothing holds a wake-up: a run that settles, or a delegation that starts waiting, is named in
 // exactly one prompt as soon as the mod notices it. Only the main loop's running turn defers it.
 
-import { expect, test } from 'claude-code/testing'
+import { expect } from 'claude-code/testing'
+import { test } from '../kit'
 import { harness, start, TEAM_TOOL, CREATE_TOOL } from '../fake-claudish'
 import { bandProps, mountBand, SURFACES } from '../ui'
 import { NOTICED_MS, SLOW, foreignRun, isEngineDrawing, namedWith, startDelegation, startTeam } from './helpers'

@@ -1,4 +1,5 @@
-import { test, expect } from 'claude-code/testing'
+import { expect } from 'claude-code/testing'
+import { test } from '../kit'
 import { harness, start } from '../fake-claudish'
 import { REAP_MS, COLS, ROWS, type Json } from '../scenario'
 import { mountBand, mountPane, paneProps, SURFACES, walk } from '../ui'

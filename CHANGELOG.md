@@ -4,6 +4,18 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Marketplace 13.7.7] - 2026-10-21
+
+### Fixed
+
+- **`setup` v1.7.2**: inside tmux, the status line follows the light/dark mode the tmux theme
+  menu chose for that screen, when the tmux config publishes one as `@theme_dark` (1 dark,
+  0 light). Before, it read only the terminal's own report, so a screen switched by hand,
+  or one whose terminal never reports a change, kept the wrong palette. Without
+  `@theme_dark` it reads the terminal's report as before.
+
+---
+
 ## [Marketplace 13.7.6] - 2026-10-21
 
 ### Changed

@@ -1,7 +1,8 @@
 // Blind tests: Show, one read-only live tab per slot or session (spec "Layout", "Buttons",
 // "Non-functional"; decisions-rev4 #2; mod contract §D; UI contract §4.2 frame colours).
 
-import { expect, test } from 'claude-code/testing'
+import { expect } from 'claude-code/testing'
+import { test } from '../kit'
 import { harness, start } from '../fake-claudish'
 import { bandProps, mountBand, mountPane, paneProps, walk, SURFACES } from '../ui'
 import { SLOW, buttonsIn, keyOf, labelOf, modVerbs, nodesOf, rowFor, showButton, startDelegation, startTeam, textOf } from './helpers'

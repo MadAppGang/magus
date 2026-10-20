@@ -3,7 +3,8 @@
 // retried on a refusal, parked and still owed, fenced by /clear, recovered on reload.
 // Terminal only: a wake is not a surface drawing (architecture §6.1).
 
-import { expect, test } from 'claude-code/testing'
+import { expect } from 'claude-code/testing'
+import { test } from './kit'
 import type { ClaudishLedger, ClaudishRun, ClaudishRuns, ClaudishSlot } from '../types'
 import { PARKED_RETRY_MS, WAKE_HOLD_GUARD_MS, mergeRun, newRun, wakeUnits } from '../hooks/status/domain'
 import { composeWake, reconcileInflight } from '../hooks/status/wake'

@@ -2,7 +2,8 @@
 // surfaces: header and rows, live values, colours, narrow widths, Stop (press twice
 // within 4 s) and Show (one tab per slot).
 
-import { expect, test } from 'claude-code/testing'
+import { expect } from 'claude-code/testing'
+import { test } from './kit'
 import type { ClaudishRuns, ClaudishStopRequest } from '../types'
 import { SHOW_COLUMNS, SHOW_PANE_ID, SHOW_PANE_TITLE, SHOW_ROWS, STOP_CONFIRM_MS, STOP_SENT_TIMEOUT_MS, THEME_KEYS } from '../hooks/status/domain'
 import { ENGINE_DRAWING, engineOwn, TEAM_TOOL, harness, start, type Harness } from './fake-claudish'
