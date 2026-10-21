@@ -152,18 +152,76 @@ describe("inProgressSessions", () => {
   const B = "ai-docs/sessions/dev-feature-b-20260908-000000-0002";
 
   test("drops completed and cancelled runs, keeps unreadable ones, newest first", () => {
+    const D = "ai-docs/sessions/dev-feature-d-20260903-000000-0004";
     const deps = fakeDeps(
       {
         [`${A}/session-meta.json`]: meta({ status: "in_progress" }),
         [`${B}/session-meta.json`]: meta({ status: "completed" }),
+        [`${D}/session-meta.json`]: meta({ status: "cancelled" }),
         // C has no meta at all — a run that died in Phase 0. Still a candidate.
       },
-      [A, B, "ai-docs/sessions/dev-feature-c-20260905-000000-0003"],
+      [A, B, "ai-docs/sessions/dev-feature-c-20260905-000000-0003", D],
     );
     expect(inProgressSessions(deps)).toEqual([
       "ai-docs/sessions/dev-feature-c-20260905-000000-0003",
       A,
     ]);
+  });
+
+  // REGRESSION: MTL-113 — resume hook offered to resume runs that already shipped — Fixed in /dev:fix session dev-fix-20261021-201201-597a0ac1
+  describe("closed runs (MTL-113)", () => {
+    /** The evidence run's shape: Standard depth, Phase 3 half-written, Phase 8 done. */
+    const released = (extra: Record<string, string> = {}) => ({
+      [`${A}/session-meta.json`]: meta({
+        status: "released",
+        checkpoint: { lastCompletedPhase: "phase8", nextPhase: null },
+      }),
+      [`${A}/architecture.md`]: pad(600),
+      [`${A}/report.md`]: pad(6437),
+      // No context.json, implementation-log.md or tests/test-plan.md — the run folded them.
+      ...extra,
+    });
+
+    test("status released with a complete report.md is dropped", () => {
+      expect(inProgressSessions(fakeDeps(released(), [A]))).toEqual([]);
+    });
+
+    test("status released without report.md is dropped — the status alone closes it", () => {
+      const deps = fakeDeps({ [`${A}/session-meta.json`]: meta({ status: "released" }) }, [A]);
+      expect(inProgressSessions(deps)).toEqual([]);
+    });
+
+    test("status in_progress with a complete report.md is dropped — Step 8.5 skipped", () => {
+      const deps = fakeDeps(
+        { [`${A}/session-meta.json`]: meta(), [`${A}/report.md`]: pad(500) },
+        [A],
+      );
+      expect(inProgressSessions(deps)).toEqual([]);
+    });
+
+    test("status in_progress with a report.md under 500 bytes stays open", () => {
+      // A partial report is Phase 8 under way, not a finished run.
+      const deps = fakeDeps(
+        { [`${A}/session-meta.json`]: meta(), [`${A}/report.md`]: pad(499) },
+        [A],
+      );
+      expect(inProgressSessions(deps)).toEqual([A]);
+    });
+
+    test("meta without a status key stays open, and so does no meta at all", () => {
+      const { status: _omit, ...noStatus } = JSON.parse(meta()) as Record<string, unknown>;
+      const deps = fakeDeps({ [`${A}/session-meta.json`]: JSON.stringify(noStatus) }, [A, B]);
+      // B has no meta — died before Phase 0 wrote it.
+      expect(inProgressSessions(deps)).toEqual([B, A]);
+    });
+
+    test("an improvised status word is dropped", () => {
+      const deps = fakeDeps(
+        { [`${A}/session-meta.json`]: meta({ status: "verified_uncommitted" }) },
+        [A],
+      );
+      expect(inProgressSessions(deps)).toEqual([]);
+    });
   });
 
   test("newest first means by start time, not by feature name", () => {
@@ -374,6 +432,30 @@ describe("process contract", () => {
       const r = run({ hook_event_name: "SessionStart", source: "clear", cwd });
       expect(r.status).toBe(0);
       expect(r.stdout).toBe("");
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  // REGRESSION: MTL-113 — resume hook offered to resume runs that already shipped — Fixed in /dev:fix session dev-fix-20261021-201201-597a0ac1
+  test("clear after a released run: silent, and the plan marker is not re-armed", () => {
+    // The symptom as the user saw it: the only run on disk shipped, yet /clear announced
+    // it in progress at phase3 and re-armed the ExitPlanMode hint.
+    const cwd = scratch();
+    try {
+      const dir = join(cwd, SESSION);
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(
+        join(dir, "session-meta.json"),
+        meta({ status: "released", checkpoint: { lastCompletedPhase: "phase8", nextPhase: null } }),
+      );
+      writeFileSync(join(dir, "architecture.md"), pad(600));
+      writeFileSync(join(dir, "report.md"), pad(6437));
+      seedMarker(cwd);
+      const r = run({ hook_event_name: "SessionStart", source: "clear", cwd });
+      expect(r.status).toBe(0);
+      expect(r.stdout).toBe("");
+      expect(existsSync(join(cwd, ".claude/.coaching/dev-run.json"))).toBe(false);
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }

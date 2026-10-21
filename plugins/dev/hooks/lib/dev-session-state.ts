@@ -80,11 +80,6 @@ export function readSessionMeta(sessionPath: string, deps: Deps): SessionMeta | 
 }
 
 /**
- * Sessions that are still open. `status` is the command's own word; a directory with no
- * readable meta at all is still a candidate, because a run that died before Phase 0
- * finished is exactly the kind this exists to recover.
- */
-/**
  * Newest first. The id is `dev-feature-<slug>-YYYYMMDD-HHMMSS-XXXX`, so the slug comes
  * BEFORE the date and a plain lexical sort would order by feature name. Sort on the date
  * segment; a directory without one sorts last.
@@ -94,14 +89,30 @@ function startedAt(sessionPath: string): string {
   return m ? m[1] : "00000000-000000";
 }
 
+/**
+ * The only status Phase 0 writes for a live run (skills/feature-phases/phase0-init.md),
+ * and the one commands/dev.md's resume locator selects on.
+ */
+const OPEN_STATUS = "in_progress";
+
+/**
+ * Whether a session is still open. An allowlist, not a denylist: `status` is free text the
+ * model improvises ("released", "verified_uncommitted" were seen), so a list of closed
+ * words fails open. A complete Phase 8 report closes the run whatever `status` says. A
+ * directory with no readable meta, or meta without a status, is still a candidate: a run
+ * that died in or before Phase 0 is exactly the kind this exists to recover.
+ */
+function isOpen(sessionPath: string, deps: Deps): boolean {
+  if (checkArtifacts(PHASE_ARTIFACTS.phase8, sessionPath, deps).length === 0) return false;
+  const meta = readSessionMeta(sessionPath, deps);
+  if (meta === null || meta.status === undefined) return true;
+  return meta.status === OPEN_STATUS;
+}
+
 export function inProgressSessions(deps: Deps): string[] {
   return deps
     .sessions()
-    .filter((p) => {
-      const meta = readSessionMeta(p, deps);
-      if (meta === null) return true;
-      return meta.status !== "completed" && meta.status !== "cancelled";
-    })
+    .filter((p) => isOpen(p, deps))
     .sort((a, b) => startedAt(b).localeCompare(startedAt(a)));
 }
 

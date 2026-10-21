@@ -4,6 +4,27 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Marketplace 13.7.15] - 2026-10-21
+
+### Fixed
+
+- **`dev` v9.3.5**: after `/clear` or a compaction, the resume hook no longer offers to resume a
+  `/dev:dev` run that already finished. It called a run open unless its status was `completed`
+  or `cancelled`, but the model writes other words there, so a run marked `released` came back
+  as "in progress" at Phase 3 and an obedient model redid Phases 3–8. A run is now open only
+  while its status is `in_progress` (or it has none yet), and a written Phase 8 report closes it
+  whatever the status says. A live run whose status was renamed is no longer offered
+  automatically; `/dev:dev --resume <id>` still resumes it.
+
+### Changed
+
+- DRC-1 (`benches/dev-resume-after-clear`) gains a `released-run` Experiment that types `/clear`
+  into a session holding a finished run. It is blocked: madbench 0.52.0 keeps reading the
+  transcript it launched, so nothing after the clear is recorded, and no pass rate exists yet.
+  The probe is archived, and a Check now fails a Session cut at the clear instead of passing it.
+
+---
+
 ## [Marketplace 13.7.14] - 2026-10-21
 
 ### Changed
