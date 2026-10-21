@@ -297,7 +297,12 @@ a code-review scale that no plan reviewer was asked to use.
      this phase's rule names. Step e reads it.
 
   e. Read the `VERDICT:` line. If FAIL (any CRITICAL):
-     - Launch the architect to revise the plan
+     - Launch the architect to revise the plan, telling it to keep the `## Decisions changed`
+       section of architecture.md as it is and only append to it, never rewrite it
+     - Append each decision the revision changed to a `## Decisions changed` section at the
+       end of ${SESSION_PATH}/architecture.md, one line each:
+       `Phase 3: {was} → {now} — {why}`. Phase 8 reports this section to the user. Not
+       implementation-log.md: that file existing is what marks Phase 4 as started.
      - Re-run steps a-d (max plan_revision_limit iterations total)
      - If still FAIL after the limit: escalate to the user
 

@@ -7,7 +7,7 @@
   },
   "metadata": {
     "description": "Curated collection of Claude Code plugins for modern full-stack development with LLM performance tracking and E2E skill testing",
-    "version": "13.7.16",
+    "version": "13.7.17",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -249,7 +249,7 @@
       "name": "dev",
       "source": "./plugins/dev",
       "description": "Universal development assistant. Detects the project stack and routes work to specialist agents for architecture, implementation, debugging, review and research, enforcing design-system guardrails on every UI change.",
-      "version": "9.3.5",
+      "version": "9.4.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -289,6 +289,11 @@
       "strict": true,
       "releases": [
         {
+          "version": "9.4.0",
+          "date": "2026-10-21",
+          "summary": "A finished /dev:dev run reports first, then asks (MTL-71). Phase 8 prints the summary before\u2026"
+        },
+        {
           "version": "9.3.5",
           "date": "2026-10-21",
           "summary": "After /clear or a compaction, the resume hook no longer offers to resume a /dev:dev run that\u2026"
@@ -307,11 +312,6 @@
           "version": "9.3.2",
           "date": "2026-10-20",
           "summary": "/dev:dev Phase 2 works without the code-search plugin. Codebase questions go to\u2026"
-        },
-        {
-          "version": "9.3.1",
-          "date": "2026-10-20",
-          "summary": "/dev:dev Phase 2 sends research to the agents built for it: web questions to dev:researcher,\u2026"
         }
       ]
     },

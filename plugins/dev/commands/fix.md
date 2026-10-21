@@ -856,6 +856,19 @@ allowed-tools:  Agent, AskUserQuestion, Bash, Read, Glob, Grep, Write, Edit, Ski
 
         If validation passes with ZERO regressions and ALL quality checks pass:
 
+        FIRST print this refresher as text, in the same turn and BEFORE the AskUserQuestion
+        call. AskUserQuestion stops the turn, so the user must already be reading what
+        happened when the question appears under it:
+        ```markdown
+        **Root cause**: {one sentence from root-cause.md}
+        **What changed**: {each file the patch touched, `path` — what changed}
+        **How it was checked**: {each command run in Steps 5a-5b with its result, e.g. `bun test path/to.test.ts` → 12 pass, 0 fail; the reproduction test RED → GREEN}
+        **Issues**: {anything skipped or flaky, and every line of ${SESSION_PATH}/gates.log verbatim — or "None"}
+        **Decisions that changed**: {`{phase}: {was} → {now} — {why}` for each hypothesis or approach replaced since REPRODUCE (a Phase A choice, a return to PLAN) — or "None"}
+        ```
+
+        Then CALL the AskUserQuestion tool below; never ask it as a question in the text:
+
         AskUserQuestion:
         ```yaml
         question: "Validation passed cleanly. How do you want to proceed?"
@@ -1292,10 +1305,16 @@ allowed-tools:  Agent, AskUserQuestion, Bash, Read, Glob, Grep, Write, Edit, Ski
         is left in the index as it was. "none" if only the session directory}
 
         ## Validation
-        - Reproduction test: PASS
-        - Full test suite: PASS
-        - Quality checks: PASS
+        - Reproduction test: `{command}` → {result}
+        - Full test suite: `{command}` → {N pass, N fail}
+        - Quality checks: {each command run, `{command}` → {result}}
         - Monitoring: {VERIFIED|TIMEOUT|SKIPPED|FAIL}
+
+        ## Issues
+        {known issues, anything skipped or still failing, and every line of gates.log verbatim — or "None"}
+
+        ## Decisions That Changed
+        {one line each, `{phase}: {was} → {now} — {why}` (a replaced hypothesis, a Phase A/B choice, a return to PLAN) — or "None"}
 
         ## Review Results
         - Phase A (root cause): {consensus verdict or SKIPPED}
@@ -1469,10 +1488,14 @@ allowed-tools:  Agent, AskUserQuestion, Bash, Read, Glob, Grep, Write, Edit, Ski
 - Patch (GREEN): APPLIED
 - GREEN verification: CONFIRMED PASS
 
-**Validation**:
-- Full test suite: PASS
-- Quality checks: PASS (lint, typecheck, format)
-- Regression status: NONE
+**Validation** (how it was checked):
+- Full test suite: `{command}` → {N pass, N fail}
+- Quality checks: {each command run, `{command}` → {result}; SKIPPED where the repo has none}
+- Regression status: {NONE | DETECTED: tests}
+
+**Issues**: {known issues, anything skipped or still failing — or "None"; gate lines are listed under Gates below}
+
+**Decisions that changed**: {one line each, `{phase}: {was} → {now} — {why}` (a replaced hypothesis, a Phase A/B choice, a return to PLAN) — or "None"}
 
 **Multimodel Review**:
 - Phase A (root cause): {STRONG | REJECT | DIVERGENT} ({A-R-X}, N={N}) | SKIPPED

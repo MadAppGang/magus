@@ -4,6 +4,32 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Marketplace 13.7.17] - 2026-10-21
+
+### Changed
+
+- **`dev` v9.4.0**: a finished `/dev:dev` run reports first, then asks (MTL-71). Phase 8 prints
+  the summary before the worktree cleanup question, in the same turn, so the question appears
+  under the report rather than ahead of it. The report now opens with four parts: **Done**,
+  **How it was checked** (the commands actually run and their results, not a bare "All checks
+  pass"), **Issues** (including every skip or override line in `gates.log`) and **Decisions that
+  changed**, each `was → now — why`. The cleanup question, its options and what each one does
+  are unchanged.
+- **`dev` v9.4.0**: changed decisions are recorded when they happen: a plan revised after review
+  appends to a `## Decisions changed` section in `architecture.md`, and the developer's
+  assumptions and deviations from the plan go to the same section in `implementation-log.md`.
+  Phase 8 reads both.
+- **`dev` v9.4.0**: `/dev:fix` prints a refresher (root cause, what changed, how it was checked,
+  issues, decisions that changed) before it offers to skip review after validation. Its
+  completion summary and `fix-report.md` gain **Issues** and **Decisions that changed**, and
+  name the validation commands instead of a hardcoded PASS. `/dev:architect`'s completion
+  summary opens with the same four parts.
+- RPT-1 (`benches/dev-report-first`) measures it: the previous text asked before reporting in
+  3 of 3 runs; the new text reports first in 3 of 3, naming the planted decision, issue and test
+  command.
+
+---
+
 ## [Marketplace 13.7.16] - 2026-10-21
 
 ### Changed

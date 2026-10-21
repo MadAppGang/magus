@@ -1173,6 +1173,19 @@ allowed-tools: Agent, AskUserQuestion, Bash, Read, EnterPlanMode, ExitPlanMode, 
   <completion_message>
 ## Build Complete
 
+The four-part report comes FIRST, before artifacts, next steps or any question. Fill every
+part from the session files; write "None" for an empty part rather than dropping it.
+
+**Done**: {what was built or changed, by file or feature: one line each, `path` — what changed. Not a phase checklist}
+
+**How it was checked**: {each command or evidence actually run, with its result, e.g. `bun test src/x.test.ts` → 12 pass, 0 fail; review verdict (CRITICAL/HIGH counts); real validation status. Taken from tests/test-results.md and validation/, never a bare "PASS"}
+
+**Issues**: {known issues, anything still failing, flaky or skipped tests, and every `gate skipped:` / `gate not met:` / `gate override:` line of `${SESSION_PATH}/gates.log` verbatim — or "None"}
+
+**Decisions that changed**: {one line each, `{phase}: {was} → {now} — {why}`, from the "## Decisions changed" sections of `${SESSION_PATH}/architecture.md` and `${SESSION_PATH}/implementation-log.md` — or "None"}
+
+Any question comes after this block, through AskUserQuestion where the step names one.
+
 **Feature**: {feature_name}
 **Mode**: {Standard | Full}
 **Stack**: {detected_stack}
@@ -1181,24 +1194,6 @@ allowed-tools: Agent, AskUserQuestion, Bash, Read, EnterPlanMode, ExitPlanMode, 
 
 {If full depth}
 **Outer Loop Iterations**: {outer_iterations}/{max_iterations}
-{/If}
-
-**Phases Completed**:
-{If standard}
-- [x] Stack Detection
-- [x] Planning (single-model)
-- [x] Implementation
-- [x] Unit Testing
-{/If}
-{If full depth}
-- [x] Requirements + Validation Setup
-- [x] Research ({status})
-- [x] Planning ({model_count} models, {iterations} iterations)
-- [x] Implementation ({phase_count} phases)
-- [x] Code Review ({verdict}, {iterations} iterations)
-- [x] Unit Testing ({test_count} tests, {iterations} iterations)
-- [x] **Real Validation** ({validation_status})
-- [x] Report generated
 {/If}
 
 **Run**: depth={depth} automation={automation} models={ids or none}
@@ -1219,12 +1214,6 @@ allowed-tools: Agent, AskUserQuestion, Bash, Read, EnterPlanMode, ExitPlanMode, 
 - Before: ${SESSION_PATH}/validation/screenshot-before.png
 - After: ${SESSION_PATH}/validation/screenshot-after.png
 {/If}
-
-**Quality Summary**:
-- Implementation: All checks pass
-- Review: {verdict} (CRITICAL: {count}, HIGH: {count})
-- Unit Tests: {passing}/{total} passing
-{If full depth}- **Real Validation: PASSED**{/If}
 
 {If full depth}
 **Model Performance** (if multi-model):

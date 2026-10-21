@@ -674,6 +674,19 @@ allowed-tools: Agent, AskUserQuestion, Bash, Read, Skill, Glob, Grep, EnterPlanM
   <completion_message>
 ## Architecture Complete
 
+The four-part report comes FIRST, before documentation links and next steps. Write "None"
+for an empty part rather than dropping it.
+
+**Done**: {what was designed, by document: `architecture.md` — the chosen approach in one line; the other files written}
+
+**How it was checked**: {how the design was validated: the review run with its models and consensus, the trade-off analysis, or "not reviewed" when no validation ran}
+
+**Issues**: {open risks, unresolved review concerns, assumptions still unconfirmed — or "None"}
+
+**Decisions that changed**: {one line each, `{phase}: {was} → {now} — {why}` (an approach dropped after review or user feedback) — or "None"}
+
+Any question comes after this block, through AskUserQuestion where the step names one.
+
 **Project**: {architecture_name}
 **Stack**: {detected_stack}
 **Complexity**: {simple | moderate | complex}

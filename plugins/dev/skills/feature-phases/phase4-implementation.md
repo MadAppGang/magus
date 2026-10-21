@@ -68,7 +68,10 @@ b. If independent phases:
               PRIORITY: Follow discovered project patterns first.
               Run quality checks before completing.
 
-              Log progress to ${SESSION_PATH}/implementation-log.md
+              Log progress to ${SESSION_PATH}/implementation-log.md, including your
+              Assumptions Made and every deviation from architecture.md: append each
+              deviation to its "## Decisions changed" section as
+              `Phase 4: {was} → {now} — {why}`
               Return brief summary (max 3 lines)"
    ---
    Agent: dev:frontend-developer
@@ -103,7 +106,10 @@ b. If independent phases:
               PRIORITY: Follow discovered project patterns first.
               Run quality checks before completing.
 
-              Log progress to ${SESSION_PATH}/implementation-log.md
+              Log progress to ${SESSION_PATH}/implementation-log.md, including your
+              Assumptions Made and every deviation from architecture.md: append each
+              deviation to its "## Decisions changed" section as
+              `Phase 4: {was} → {now} — {why}`
               Return brief summary (max 3 lines)"
    ---
    ... (one dispatch per parallel phase, each to the agent that owns its surface)
@@ -125,6 +131,9 @@ Track all progress in ${SESSION_PATH}/implementation-log.md:
 - Quality check results
 - Issues encountered
 - Outer loop iteration number
+- `## Decisions changed` — one line per decision that changed, appended when it changes:
+  `{phase}: {was} → {now} — {why}` (a plan deviation, an assumption the developer made, a
+  retry with a different approach). Phase 8 reports this section to the user.
 
 ### Step 4.7: Announce the phase complete
 Say, in one line: **Phase 4 — complete**, naming the artifacts you wrote.

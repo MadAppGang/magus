@@ -401,7 +401,8 @@ mv "${SESSION_PATH}/worktree-metadata.json.tmp" "${SESSION_PATH}/worktree-metada
 - If no: Continue as normal
 
 **Phase 8** (completion):
-- If worktree created: Ask cleanup options (PR, merge, keep, discard)
+- Present the final report first, as text in the same turn: done, how it was checked, issues, decisions that changed
+- Then, if worktree created: Ask cleanup options (PR, merge, keep, discard)
 - Execute Phase 6 with chosen option
 
 ### `/dev:dev` Integration (quick depth)
