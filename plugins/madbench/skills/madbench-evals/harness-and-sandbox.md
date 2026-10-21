@@ -215,7 +215,7 @@ block, `driver: false` turns it off, and `driver.answers:` scripts it
 **Interactive needs magmux on THIS machine**, at every sandbox level, on PATH (or
 `harness.magmux_binary`, or `$MADBENCH_MAGMUX`). `madbench preflight` checks for it
 only when some Scenario is interactive, and the finding names `interactive: false` as a way
-out (`docs/harness.md:610-613`, `:1553`).
+out (`docs/harness.md:610-613`, `:1555`).
 
 **magmux is checked by capability, never by version number.** Preflight runs `magmux
 --help` under a short timeout and looks for the flags madbench actually passes
@@ -224,7 +224,7 @@ binary reported. A version bound could not have verified it — 0.9.0 was cut fr
 that never contained 0.8.0's flags, and magmux ignores an unknown flag rather than refusing
 it, so against 0.9.0 the version read as satisfied and every interactive run waited out a
 twenty-second socket timeout. A `--help` that fails or times out is **advisory only**, and
-there is deliberately no upper bound (`docs/harness.md:1554`, `:1634-1660`).
+there is deliberately no upper bound (`docs/harness.md:1556`, `:1636-1662`).
 
 > **`sandbox: container` + `interactive: true` works on macOS and Linux alike.** madbench runs
 > magmux on the host and the pane command enters the sandbox (`docker exec -t -i`), so both
@@ -618,9 +618,9 @@ A bench that declares MCP servers gets one extra step before the agent launches:
 **starts each declared server itself, from inside this run's sandbox, and speaks MCP to it.**
 Servers are found on all three routes the CLI accepts — a `--mcp-config` value in `args:`
 (JSON or file), a staged plugin's own `.mcp.json`, and the `.mcp.json` `config.dirs` composes
-(`docs/harness.md:1276-1277`). It exists because the alternative is a silent absence
+(`docs/harness.md:1278-1279`). It exists because the alternative is a silent absence
 discovered after a full run has been paid for — one reported grid was 264 scenarios and
-about $32, and it measured a tool that had never existed (`docs/harness.md:1279-1284`).
+about $32, and it measured a tool that had never existed (`docs/harness.md:1281-1286`).
 **Before grading whether an agent used a capability, prove the capability was present.**
 
 | Outcome | Means | Under `require: true` |
@@ -629,7 +629,7 @@ about $32, and it measured a tool that had never existed (`docs/harness.md:1279-
 | **failed** | launched and did not complete; the row carries the server's own words — JSON-RPC error, **stderr tail**, exit status | **refuses, before any spend** |
 | **UNPROBED** | madbench could not construct a launch at all: remote `type: http`/`sse`, a `${…}` it does not own, a relative `command`, a `cwd` outside the sandbox | proceeds |
 
-(`docs/harness.md:1294-1298`.) Grade it with `environment:mcp-reachable` — see
+(`docs/harness.md:1296-1300`.) Grade it with `environment:mcp-reachable` — see
 `checks-catalog.md` §9 for how that differs from `environment:mcp-connected`.
 
 **The static half runs at `madbench preflight` time, with no sandbox and no launch.** It
@@ -637,10 +637,10 @@ takes the `Config` alone, reads the declarations from the same three routes, and
 declared setup complete?* — the document opened and declared something, the entry can be
 launched as a stdio server at all, `command` resolves on this machine, every absolute
 `$`-free arg and `cwd` exists — with severity mirroring `probe.require` so preflight
-and the run-time gate can never disagree (`docs/harness.md:1583-1603`). It also pairs every
+and the run-time gate can never disagree (`docs/harness.md:1585-1605`). It also pairs every
 top-level `environment:mcp-reachable` value against that list and refuses a name nothing
-declares (`docs/harness.md:1561`, `:1629-1632`). At `sandbox: container` none of it is
-asked, because the filesystem is the image's (`docs/harness.md:1618-1620`).
+declares (`docs/harness.md:1563`, `:1631-1634`). At `sandbox: container` none of it is
+asked, because the filesystem is the image's (`docs/harness.md:1620-1622`).
 
 When the staged and reported families disagree, the console prints one warning block:
 

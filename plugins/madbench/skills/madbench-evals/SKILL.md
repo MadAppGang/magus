@@ -99,14 +99,14 @@ wrote the policy down when it refused Experiment-level metrics:
 |---|---|---|
 | arithmetic in a sibling script | `module/index.ts` — every export binds in every `metrics:` expression | `docs/metrics.md:229-243`; `schema.md` §8 |
 | a stats post-process over the report | `metrics:` with `mean`/`p50`/`p95`/`sum`/`count` | `docs/metrics.md:160` |
-| a cross-run statistic | a **post-hoc module over `--report-json`** — aggregation stops at the run by design, and that is not a gap | `docs/metrics.md:460-465` |
+| a cross-run statistic | a **post-hoc module over `--report-json`** — aggregation stops at the run by design, and that is not a gap | `docs/metrics.md:497-502` |
 | a "did every check fail under mock" tally parser | `madbench check` — the per-check tally is the product | `madbench help check`; `debugging.md` |
 | a script that re-grades a stored report | `madbench grade <report.json>`; with a revised check, `madbench grade <report.json> --bench <file>` grades the stored Sessions with the bench's current checks, no spend | `harness-and-sandbox.md` §9 |
 | a script that writes `known_marketplaces.json` | `harness.config.plugins:` — plugin folders; the identity is derived | `harness-and-sandbox.md` §6 |
 | a "these variants differ only by X" guard | `guard_changes: {allow}` on the Experiment — the baseline is the first declared variant; every declared variant is audited, whichever `--variant` selects to run | `docs/experiment-file.md`; `schema.md` §9 |
 | a sentinel token planted to prove a file was read | `session:file-read` | `docs/checks.md:299` |
-| a grep of the Session for a marker that reached the agent (a hook's output, an injected reminder, a subagent's report) | `session:match` | `docs/checks.md:307`, `:318-379` |
-| a "did the MCP server come up" probe script | `environment:mcp-reachable`, asserted before any spend | `docs/checks.md:676` |
+| a grep of the Session for a marker that reached the agent (a hook's output, an injected reminder, a subagent's report) | `session:match` | `docs/checks.md:307`, `:318-389` |
+| a "did the MCP server come up" probe script | `environment:mcp-reachable`, asserted before any spend | `docs/checks.md:686` |
 | a PNG pipeline feeding the prompt | `image: generated:<name>` + `$MADBENCH_IMAGE_DIR` | `docs/harness.md:315-361` |
 | a CI wrapper mapping exit codes | `--fail-on-failure` | `docs/README.md:100-108` |
 | a version-string gate on the skill | `madbench version` against `MADBENCH_VERSION` (or `madbench skills --check`), and `madbench list` over a shipped example bench — a bench the skill teaches that the binary refuses to load is the finding | Step 0 |
@@ -284,7 +284,7 @@ timeout.** A bench carrying `acceptEdits` from the `--print` era was never getti
 from it; `bypassPermissions` is not a widening of access, it is the access it already had.
 
 Interactive needs magmux on this machine, **checked by capability, never by version** —
-preflight runs `magmux --help` and looks for the flags madbench passes (`docs/harness.md:1634-1661`).
+preflight runs `magmux --help` and looks for the flags madbench passes (`docs/harness.md:1636-1663`).
 It checks only when some Scenario is interactive, and names `interactive: false` as a way out.
 
 **An interactive agent can stop and ask, and a Driver answers.** With no `driver:` block an
@@ -461,7 +461,7 @@ the workaround is unacceptable as a permanent answer.
   exempt from `madbench check`. A count ceiling is **not** exempt — fix `lte`-only bounds
   with a floor.
 - **An unprobed `environment:*` check is loud, never a pass.** `probe.enabled: false` leaves Reported
-  absent, and every `environment:*` Check then ERRORS (`docs/harness.md:1234-1236`); `madbench
+  absent, and every `environment:*` Check then ERRORS (`docs/harness.md:1236-1238`); `madbench
   check` lands an unprobeable Check outside the verdict (`docs/checks.md:904`).
   Read the bucket the control prints. `checks-catalog.md` §9 has the per-type table.
 - **`environment:mcp-reachable` takes the bench's document key**, never the tool's
@@ -483,10 +483,10 @@ the workaround is unacceptable as a permanent answer.
 - **No judge provider** (no `judges:` block AND no `ANTHROPIC_API_KEY`) → AI Check types fail
   at construction with a message naming the fix. Check judge config before your spelling. A
   judge declared with `provider: claude-code` needs no key: it runs the local `claude` on this
-  machine's login (`docs/checks.md:1300-1330`).
+  machine's login (`docs/checks.md:1310-1340`).
 - **A judge is a variable.** `votes: N` (a positive odd integer) asks it N times and takes
   the majority, so one noisy call cannot flip the verdict alone. An undecided vote is an ERROR,
-  not a FAIL (`docs/checks.md:1399-1428`).
+  not a FAIL (`docs/checks.md:1409-1438`).
 - String checks (`contains`, `regex`, …) grade ONLY the agent's final message, never files on
   disk — grade files with `exec`. There is **no `file:*` check family**.
 - **`Session.FinalOutput` follows a delegation.** If the parent ended its turn without

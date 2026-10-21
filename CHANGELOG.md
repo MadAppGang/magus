@@ -4,6 +4,26 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Marketplace 13.7.14] - 2026-10-21
+
+### Changed
+
+- **`madbench` v0.12.2**: the madbench skills are synced to madbench 0.49.0, so
+  /madbench:madbench and the bench agent describe the harness that is installed. They now say
+  that `answers: []` on a Scenario clears an inherited Driver script, and they list the
+  `session.model_requests` and cache metrics (`cache_read_tokens`, `cache_creation_tokens`,
+  `cache_hit_rate`, `cache_marked_requests`). `madbench skills --check` reports `current`.
+
+### Fixed
+
+- TEF-1 (`benches/team-effort`) stages the `dev` plugin and its dependency `mnemex`.
+  `/multimodel:team` passes `--agent dev:researcher` to every voter, and a voter child refuses
+  an agent it cannot load, so half the run calls ended as `agent_rejected`. On claudish 13.0.2
+  that is 0, and VotersAtLevel rose from 0/18 to 13/18. Its grader also counts a run directory
+  once when the team call and the workspace name it as `/private/var/…` and `/var/…`.
+
+---
+
 ## [Marketplace 13.7.13] - 2026-10-21
 
 ### Changed

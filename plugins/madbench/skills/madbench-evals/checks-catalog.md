@@ -11,7 +11,7 @@ and returns a **Result**.
 
 **Counts here follow the enumerated rows of upstream `docs/checks.md`**, not its headings.
 The Session heading says "14 canonical types" over a table of 18 rows
-(`docs/checks.md:292`), and the totals table (`docs/checks.md:1442`) counts the 18. When a
+(`docs/checks.md:292`), and the totals table (`docs/checks.md:1452`) counts the 18. When a
 heading and the rows conflict, the rows win, and this file does not restate a grand total.
 
 ---
@@ -146,7 +146,7 @@ the top). The grand total is deliberately not restated: it is the number that ro
 | Numeric | 4 | |
 | NLP | 6 | 3 error-only |
 | Session | 18 | 1 error-only; **no alias spellings** — `trajectory:*` and bare `skill-used` pass `list` and are refused at preflight as `unknown check type` |
-| Environment | 9 | no alias spellings (`docs/checks.md:656`) |
+| Environment | 9 | no alias spellings (`docs/checks.md:666`) |
 | Mastra | 6 | |
 | Exec | 1 | |
 | File changes | 1 | `file-changes` — the working tree before and after the run (§12) |
@@ -298,7 +298,7 @@ list` — Checks are not built at load — and is refused at **preflight** as `u
 
 `session:match` grades what was **delivered** to the agent: a hook's stdout, a file put into
 context, a subagent's report. `contains` on the final output grades only whether the agent
-chose to repeat it (`docs/checks.md:318-378`).
+chose to repeat it (`docs/checks.md:318-388`).
 
 ```yaml
 - type: session:match          # portable: any harness
@@ -499,7 +499,7 @@ cannot rot:
 > says *"it did the work, and stayed inside the set"*. The general rule: **every Check is a
 > positive Check.** Only `latency` and `cost` are exempt from the control
 > (`madbench help check`); a fence, an absence Check or an anti-cheat invariant on its
-> own is `WRONGLY PASSED` (`docs/checks.md:608-622`).
+> own is `WRONGLY PASSED` (`docs/checks.md:618-632`).
 >
 > `file-changes` with only `must-not:`/`default:` is the same case for the working tree: an
 > agent that changed nothing breaks no ban. Pair it with the Check that proves the work (§12).
@@ -532,7 +532,7 @@ default — is what a fence wants: a `Write` that was attempted and blocked stil
 
 Grades what the agent was **given** rather than what it did: the plugins, skills, commands,
 agents and MCP servers the tool had loaded. Every one reads `Session.Environment`
-(`docs/checks.md:656-679`).
+(`docs/checks.md:666-689`).
 
 **The rule the family rests on: Expected may name the subject of a question; it may never be
 the answer.** `Environment.Expected` is madbench's own bookkeeping about the tree it staged;
@@ -548,7 +548,7 @@ skill, and the bench scored clean.
 | `environment:command-registered` | `Reported.Commands()` contains `value`; **errors** when `plugin-cli` is the only source | `value` (namespaced, `<plugin>:<command>`) | 0/1 |
 | `environment:agent-registered` | `Reported.Agents()` contains `value`, loaded plugins only | `value` (namespaced, `<plugin>:<agent>`) | 0/1 |
 | `environment:mcp-connected` | `system:init` reports server `value` with status `connected`; a server declared only by a plugin that did **not** load counts as absent | `value` (bare `probe`, or the tool's `plugin:mcpproof:probe`) | 0/1 |
-| `environment:mcp-reachable` | the server `value` answered **madbench's own** `initialize` + `tools/list`, spoken through this run's sandbox **before the agent launched**; optionally clears a tool-count floor (`docs/checks.md:676`) | `value` (the server name **as the bench declared it** — the document key, e.g. `probe`), optional `tools` (a floor: reported ≥ declared) | 0/1 |
+| `environment:mcp-reachable` | the server `value` answered **madbench's own** `initialize` + `tools/list`, spoken through this run's sandbox **before the agent launched**; optionally clears a tool-count floor (`docs/checks.md:686`) | `value` (the server name **as the bench declared it** — the document key, e.g. `probe`), optional `tools` (a floor: reported ≥ declared) | 0/1 |
 | `environment:tool-available` | `init.tools` names `value` **exactly**; **errors** when no `system:init` was captured | `value` (as the tool spells it: `Skill`, `mcp__railway__deploy`) | 0/1 |
 | `environment:plugin-inventory` | the plugin's `plugin details` breakdown clears every declared bound — the **staged tree**, read whether or not the plugin loaded | `value` (plugin id), `skills`/`agents`/`hooks`/`mcp_servers`/`lsp_servers` | **fraction of bounds met** |
 | `environment:matches-expected` | every plugin the run staged is listed **and** loaded | — (`harness.config.plugins` already said which) | **fraction loaded** |
@@ -595,7 +595,7 @@ The prefix is `environment:`, **never** `env:` — `env` already means environme
 `mcp-reachable` asks *did the **server** answer **madbench**, before the agent launched*, out
 of madbench's own handshake. **Neither implies the other**, and declaring both is what turns
 a silent absence into a diagnosis: reachable green with connected red means the server works
-and the CLI did not register it (`docs/checks.md:681-687`, `:705-707`).
+and the CLI did not register it (`docs/checks.md:691-697`, `:715-717`).
 
 | | `environment:mcp-connected` | `environment:mcp-reachable` |
 |---|---|---|
@@ -605,27 +605,27 @@ and the CLI did not register it (`docs/checks.md:681-687`, `:705-707`).
 | value spelling | the tool's: `probe` or `plugin:mcpproof:probe` | the **bench's**: the document key, `probe` |
 | absent name | **fail** — absent is an answer | **error** — the surface exists only when the preflight ran |
 
-(`docs/checks.md:777-783`.)
+(`docs/checks.md:787-793`.)
 
 Three more things about `mcp-reachable` worth knowing before writing it:
 
 - **A typo'd `value:` is caught at preflight, before any spend — for `mcp-reachable` only.**
   `madbench preflight` pairs every top-level `mcp-reachable` value against the servers the
   harness declares and **refuses** (exit 3) on one nothing declares, naming the Scenario and
-  the check (`docs/checks.md:786-795`; `docs/harness.md:1629-1632`). `mcp-connected` is
+  the check (`docs/checks.md:796-805`; `docs/harness.md:1631-1634`). `mcp-connected` is
   deliberately not cross-checked, because the tool's registry is wider than what a bench
-  declares (`docs/checks.md:796-800`).
+  declares (`docs/checks.md:806-810`).
 - **A connected server with zero tools is a pass.** A server may expose only resources or
-  prompts. A bench that needs tools declares `tools: N` (`docs/checks.md:810-813`).
+  prompts. A bench that needs tools declares `tools: N` (`docs/checks.md:820-823`).
 - **What green does NOT prove**: that the CLI registered the server, that the model could
   call its tools, or that the server stayed up past *t=0*. What it does prove is the one
   thing nothing else can — the server process starts under this run's confinement, in this
   run's sandbox, and speaks MCP, checked before the agent launches so `harness.probe.require: true`
-  can refuse before the spend (`docs/checks.md:815-835`). The strongest configuration declares
+  can refuse before the spend (`docs/checks.md:825-845`). The strongest configuration declares
   all three: `mcp-reachable`, `mcp-connected`, and a `session:tool-used` on an `mcp__…` tool
   — and the two take **different** names: the declared key for the first, the runtime name
   (`mcp__plugin_<plugin>_<server>__<tool>` for a plugin-shipped server) for the last
-  (`docs/checks.md:722-733`).
+  (`docs/checks.md:732-743`).
 
 ### Nil is an error, never a fail
 
@@ -650,7 +650,7 @@ Five more cases follow the same rule:
   is unreachable. An UNPROBED entry — a remote `type: http` entry, a `command` carrying a
   `${…}` madbench does not own, a relative `command`, a `cwd` the sandbox will not contain —
   errors for the same reason and prints the recorded `probe_reason` rather than guessing
-  (`docs/checks.md:802-808`; `docs/harness.md:1298`).
+  (`docs/checks.md:812-818`; `docs/harness.md:1300`).
 - **`environment:tool-available` on a record with no tool roster.** `claude plugin details`
   prints no tool heading, so no source on the default interactive path supplies one. An
   **empty** record errors here too, unlike every other lookup: every session the tool starts
@@ -671,7 +671,7 @@ the check grading nothing and passing every run.
 
 The mock reports a present-but-empty `Reported` record — it ran and registered nothing — so a
 **named-subject** check is genuinely absent from a genuinely empty list and fails cleanly.
-The nine split three ways (`docs/checks.md:862-893`):
+The nine split three ways (`docs/checks.md:872-903`):
 
 | Check | Under the mock | Bench can still pass `madbench check`? |
 |---|---|---|
@@ -680,14 +680,14 @@ The nine split three ways (`docs/checks.md:862-893`):
 | `matches-expected` · `tool-available` | **errors** — the mock stages nothing and captures no `init.tools` | **no** |
 
 A bench declaring *nothing but* `mcp-reachable` exits 3 (`0 gradable checks`), the same as
-one of nothing but `cost` and `latency` (`docs/checks.md:889-891`).
+one of nothing but `cost` and `latency` (`docs/checks.md:899-901`).
 
 **An unprobeable check lands outside the verdict; a genuinely broken one is still named in
 `COULD NOT GRADE`.** `madbench check` reads past any row that produced
-checks at all and classifies each on its own merits (`docs/checks.md:895-905`). Note that
+checks at all and classifies each on its own merits (`docs/checks.md:905-915`). Note that
 upstream's `harness.md` says otherwise — *"`probe.enabled: false` … Every
-`environment:*` Check then ERRORS rather than passing"* (`docs/harness.md:1234-1236`) — and
-`docs/checks.md:793-794` says the same opt-out makes the handshake checks *"report 'not
+`environment:*` Check then ERRORS rather than passing"* (`docs/harness.md:1236-1238`) — and
+`docs/checks.md:803-804` says the same opt-out makes the handshake checks *"report 'not
 applicable' by design"*. Do not resolve that from memory: run `madbench check` and read which
 bucket the check lands in. Either way the outcome is loud, and a run that measured nothing
 never scores as a pass.
@@ -755,7 +755,7 @@ must not touch. `exec` takes no `value:`; one written there is refused.
 
 The question a test command cannot answer: the agent did the work — did it stay inside its
 boundaries? An agent that rewrites the test to match its own bug makes `go test` pass;
-`file-changes` names the edited test (`docs/checks.md:1237`).
+`file-changes` names the edited test (`docs/checks.md:1247`).
 
 ```yaml
 - type: file-changes
@@ -802,7 +802,7 @@ boundaries? An agent that rewrites the test to match its own bug makes `go test`
   `.tmp`, `.cache`, `.claude`, `.claude.json`, the CLI's
   `.local/share/applications/claude-code-url-handler.desktop`, plus each toolchain cache under
   HOME that the seeded tree does not hold, even one a provision step pre-warms (`go/pkg/mod`,
-  `.npm`, `.cargo/registry`, … — `docs/checks.md:1315`).
+  `.npm`, `.cargo/registry`, … — `docs/checks.md:1325`).
   `target/`, `coverage/`, `dist/` are never ignored by default: use `ignore:`.
 - **Unreadable is an error.** A file the walk cannot read makes the Check an evaluator error
   naming it, unless `ignore:` covers it. A file deleted while the tree is walked is absent.
@@ -812,7 +812,7 @@ boundaries? An agent that rewrites the test to match its own bug makes `go test`
 - **Live run only.** No baseline → evaluator error `no baseline recorded`, never a pass.
   `madbench grade` skips it, inside a composite too.
 - **A ban alone is `WRONGLY PASSED`** under `madbench check`: pair `must-not:`/`default:` with a
-  Check that proves the work — `exec: go test`, or a `must:` rule (`docs/checks.md:1361`).
+  Check that proves the work — `exec: go test`, or a `must:` rule (`docs/checks.md:1371`).
   `tests/file-changes` is the worked pair.
 
 ## 13. Model — 1 type (Service)
@@ -871,7 +871,7 @@ The types are open: any key written beside `type:` reaches your script. YAML wri
 All 17 are always registered, but each binds to the bench's judge set at **construction** —
 so a bench with no usable judge fails before the Harness runs, naming the actual fix (*set
 `ANTHROPIC_API_KEY` for the default Anthropic judge, or declare a `judges:` block*)
-(`docs/checks.md:1297-1304`). The default Anthropic judge model is Sonnet — `claude-sonnet-5`,
+(`docs/checks.md:1307-1314`). The default Anthropic judge model is Sonnet — `claude-sonnet-5`,
 the `judge_model` a default judge records (`docs/tutorials/scoring-contract.md:50`).
 
 ### Declaring judges
@@ -893,10 +893,10 @@ judges:
       effort: high                    # the CLI's --effort: low | medium | high | xhigh | max
 ```
 
-(`docs/checks.md:1306-1341`.)
+(`docs/checks.md:1316-1351`.)
 
 - **`type:` and `base_url:` are refused** inside a judge block; the error names `transport:`
-  and `endpoint:` (`docs/checks.md:1315-1316`).
+  and `endpoint:` (`docs/checks.md:1325-1326`).
 - **`provider: claude-code` is the keyless judge.** It runs the local CLI on this machine's
   login, so it needs no key; `temperature:`/`max_tokens:` are refused on it at load, because
   the CLI takes neither.
@@ -924,13 +924,13 @@ literal string. **API keys never appear in YAML**: `api_key_env` names an enviro
 | `votes` | ask the judge N times and take the majority — a positive **odd** integer, default `1` |
 | `threshold` | must be within `[0,1]`, validated at construction; `0` means "use the type's default" |
 
-(`docs/checks.md:1349-1359`.)
+(`docs/checks.md:1359-1369`.)
 
 ### Majority voting — `votes`
 
 One judge call is the noisiest part of an AI Check: the same rubric over the same output can
 come back PASS, then FAIL, and the report reads that as the agent changing. `votes: N` asks
-the same prompt N times and returns the majority verdict (`docs/checks.md:1399-1428`).
+the same prompt N times and returns the majority verdict (`docs/checks.md:1409-1438`).
 
 ```yaml
 - type: llm-rubric
@@ -1033,7 +1033,7 @@ Four register under a **prefix**, so a type suffix can carry a payload
 (`custom:gosrc:./scoring.go`); the managed `ts`/`js`/`python` family registers exact types.
 
 All receive the **same JSON envelope** on stdin (or as the POST body / WASM buffer). There
-is one envelope, `madbench/v2` (`docs/checks.md:1504-1528`):
+is one envelope, `madbench/v2` (`docs/checks.md:1514-1538`):
 
 ```json
 {
@@ -1114,7 +1114,7 @@ with no path separator.
 ## 18. What a Session exposes
 
 `Session.Events` is the authoritative normalized stream; `Session.Calls` is a
-**derived, lossy** view (`docs/checks.md:1618-1653`). Both carry the recorded outcome of
+**derived, lossy** view (`docs/checks.md:1628-1663`). Both carry the recorded outcome of
 each call, tri-state, where absent means the capture said nothing.
 
 | Question | Where it lives | Reachable by |

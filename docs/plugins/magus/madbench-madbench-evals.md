@@ -6,7 +6,7 @@ Authors, runs and debugs madbench benches natively — bench YAML, checks, metri
 
 Part of [`madbench`](./madbench.md).
 
-**5 reference documents, about 3,245 lines.**
+**5 reference documents, about 3,253 lines.**
 
 The skill itself does not contain them. It reads your question and names the one or two
 worth opening — which is the point, because loading everything below to answer one
@@ -20,7 +20,7 @@ question would cost more than the answer is worth.
 | [`debugging.md`](https://github.com/MadAppGang/magus/blob/main/plugins/madbench/skills/madbench-evals/debugging.md) | Debugging madbench benches | 349 |
 | [`glossary.md`](https://github.com/MadAppGang/magus/blob/main/plugins/madbench/skills/madbench-evals/glossary.md) | madbench Glossary — the one table | 127 |
 | [`harness-and-sandbox.md`](https://github.com/MadAppGang/magus/blob/main/plugins/madbench/skills/madbench-evals/harness-and-sandbox.md) | Harness, sandbox and CLI | 840 |
-| [`schema.md`](https://github.com/MadAppGang/magus/blob/main/plugins/madbench/skills/madbench-evals/schema.md) | Bench and Experiment file schema | 717 |
+| [`schema.md`](https://github.com/MadAppGang/magus/blob/main/plugins/madbench/skills/madbench-evals/schema.md) | Bench and Experiment file schema | 725 |
 
 ## Reading these
 

@@ -178,7 +178,11 @@ Such benches live in `unproven/`.
 
 ## 2a. `driver:` — who answers the agent's questions
 
-Declared at the top level, under `defaults:`, or on one Scenario (the nearest wins). With no
+Declared at the top level, under `defaults:`, under `defaultScenario:`, or on one Scenario —
+merged field by field, the nearest declaration of each key winning, so a Scenario that writes
+only `instructions:` keeps an inherited `answers:` script. Only `answers: []` clears it: a bare
+`answers:` is null and inherits, and an empty string or `0` never overrides
+(`docs/driving-a-session.md`, "field by field"). With no
 block, an interactive claude-code Scenario gets the **default Driver**: it answers questions
 and nothing else, and runs the `claude` on this machine on its own login — no API key
 (`docs/driving-a-session.md:49-113`).
@@ -204,6 +208,7 @@ driver:
 | no `driver:` | the default Driver answers; the conversation is exactly the declared prompts |
 | `driver: false` | no Driver: a question fails the Scenario at once, by name |
 | `answers:` with `match: "*"` | a closed script — deterministic, offline; `session:driver-source` proves it |
+| `answers: []` on a Scenario | the inherited script is cleared; that Scenario's questions go to the model |
 | `steer: true` | the Driver may add turns once the declared prompts run out |
 
 A Driver speaks **inside** the Session, so what it says is part of what the Checks read; a
@@ -508,7 +513,7 @@ module with no `package.json` is named before any spend (`docs/metrics.md:300-30
 
 **Aggregation stops at the run, by design.** Nothing is summed or averaged across runs, and
 there is no field in which a consumer could find cost summed across two different agent
-setups (`docs/metrics.md:460-465`). A cross-run statistic is therefore a post-hoc module
+setups (`docs/metrics.md:497-502`). A cross-run statistic is therefore a post-hoc module
 over `--report-json` — not a feature request. Upstream refused Experiment-level metrics in
 writing: *"the statistic belongs to the bench's own `module/`, and `--report-json` is the
 path. Adding a stage would turn a structural guarantee into a sentence in the docs."*
@@ -525,7 +530,7 @@ metrics:
   - {name: steps,  source: session.steps,  aggregate: mean, unit: steps,  better: lower}
 ```
 
-Its `source:` catalog is closed (`docs/metrics.md:357-384`). The same names are what an
+Its `source:` catalog is closed (`docs/metrics.md:357-388`). The same names are what an
 expression's `session` binding exposes, so this table still tells you what is measurable:
 
 | Source | Scope | Reads |
@@ -537,7 +542,10 @@ expression's `session` binding exposes, so this table still tells you what is me
 | `session.prompt_tokens` / `session.output_tokens` | scenario | one side of the above |
 | `session.steps` | scenario | `Metrics.StepCount` — **main-thread tool calls, not turns** |
 | `session.turns` | scenario | one **exchange** — `prompt:` plus each `follow_ups:` entry |
-| `session.model_requests` | scenario | one **request→response**. **No fallback** — nothing in the Event stream reconstructs it |
+| `session.model_requests` | scenario | one **request→response**: the answered **main-thread** `llm_call`s, counted from the Event stream on every Harness. Missing only for a Session with no Events |
+| `session.cache_read_tokens` / `session.cache_creation_tokens` | scenario | main-thread prompt tokens read from / written to the provider's cache |
+| `session.cache_hit_rate` | scenario | read ÷ (input + read + creation), in `[0,1]`; `input` excludes cached tokens |
+| `session.cache_marked_requests` | scenario | main-thread requests that asked for caching, retries included, so it can exceed `model_requests`. Missing unless the Harness records its requests |
 | `session.tool_calls` | scenario | `len(Session.Calls)` — **every** thread, so it exceeds `session.steps` when a subagent ran |
 | `session.steps.main` | scenario | the same number as `session.steps`, named for the threads it counts |
 | `session.steps.all` | scenario | the same as `session.tool_calls` — the whole job |
@@ -552,7 +560,7 @@ expression's `session` binding exposes, so this table still tells you what is me
 | `check.evidence` + `key:` | check | `Result.Evidence[key]`, numeric values only |
 
 `aggregate:` accepts `sum`, `mean`, `min`, `max`, `count`, `last`, `p50`, `p90`, `p95`,
-`p99` (`docs/metrics.md:428-437`), and nothing else: any other name is refused as an unknown
+`p99` (`docs/metrics.md:465-474`), and nothing else: any other name is refused as an unknown
 aggregate, with the known list printed. A `source:` outside the table above is refused as an
 unknown source the same way, and a key outside `MetricSpec` as `field … not found in type
 madbench.MetricSpec`.
