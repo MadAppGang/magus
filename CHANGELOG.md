@@ -4,6 +4,26 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Marketplace 13.7.18] - 2026-10-21
+
+### Fixed
+
+- **`multimodel` v5.8.1**: `/team` asks for a missing scope with AskUserQuestion, never in
+  plain text, so "/team look at this" no longer ends the turn with no panel. When the
+  effort level must be asked too, both questions go in one call.
+- **`multimodel` v5.8.1**: an effort level the user picked from `/team`'s question is
+  recorded with source `asked`, not `user`, in `effort.json` and in the verdict.
+- **`multimodel` v5.8.1**: every verdict, INCONCLUSIVE included, carries the line
+  `Effort: <level> for every voter (<source>: <reason>)` with the source as one exact word.
+
+### Why
+
+TEF-1 on madbench 0.53.0, the first run that graded the panel's verdict, failed 10 of 21
+Scenarios on these three points. With multimodel 5.8.1 it passes 21 of 21, every Check 3 of 3
+(`benches/team-effort/results/tef1-multimodel581-trials3`).
+
+---
+
 ## [Marketplace 13.7.17] - 2026-10-21
 
 ### Changed

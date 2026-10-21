@@ -35,7 +35,12 @@ mode: report it as a failure.
 **Step 1b — Parse args:**
 Parse: `defaultModels`, `contextPreferences`, `agentPreferences`, `defaultThreshold`, `claudeFlags` from prefs.
 CLAUDE_FLAGS is `claudeFlags` (may be empty).
-Parse command args: task, `--models`, `--threshold`, `--no-memory`, `--effort`. If no task: ask the user.
+Parse command args: task, `--models`, `--threshold`, `--no-memory`, `--effort`. If there is
+no task, or it names nothing to review ("look at this", "check it"), ask what to review with
+AskUserQuestion, never in plain text: a plain-text question ends the turn, and no panel
+starts. Offer up to 3 concrete targets from the repo (recently changed or uncommitted files)
+as options; the user can type another. When Step 1d must also ask about effort (rule 3), ask
+both in ONE AskUserQuestion call: what to review first, effort second.
 
 **Step 1c — Resolve models** (stop at first match, resolve each name via ALIAS_TABLE):
 1. `--models` flag provided → resolve each via ALIAS_TABLE
@@ -79,9 +84,14 @@ different efforts. Stop at the first rule that applies:
    guess. AskUserQuestion: "Which effort should every voter run at?", options `low`,
    `medium`, `high`, `xhigh`, your best guess first and marked "(Recommended)", each with its
    row above as the description. SOURCE = `asked`. No run starts before the user answers.
+   SOURCE stays `asked` after the user answers: `user` means the user set the level before
+   you asked anything (rule 1).
 
 Then append `--effort EFFORT` to CLAUDE_FLAGS (rule 1 already has it there). Announce:
-"Effort: {EFFORT} ({SOURCE}: {REASON})" — REASON is the row matched, or "set by the user".
+"Effort: {EFFORT} ({SOURCE}: {REASON})" — REASON is the row matched, the user's answer, or
+"set by the user". SOURCE is exactly one word, `user`, `auto` or `asked`, always written
+before the colon: `(user: set by the user)`, never `(set by the user)`. The same rule holds
+for every line below that carries `({SOURCE}: {REASON})`, and for `source` in effort.json.
 
 **Session directory** (the `team` tool's session path): `Bash: SESSION_DIR="$(pwd)/ai-docs/sessions/team-$(date +%Y%m%d-%H%M%S)-$RANDOM" && mkdir -p "$SESSION_DIR" && echo "$SESSION_DIR"`.
 The suffix keeps two runs started in the same second from sharing a directory; `team` refuses
@@ -310,6 +320,10 @@ claudish does not report which."
 Result: {approve}/{valid} APPROVE ({pct}%) — Threshold: {threshold}%
 Effort: {EFFORT} for every voter ({SOURCE}: {REASON})
 ```
+
+The `Effort:` line is part of every verdict, whatever the result, INCONCLUSIVE included. Copy
+it from the template with only the three fields replaced, for example
+`Effort: xhigh for every voter (auto: security go/no-go)`.
 
 Key issues ranked by frequency. Dissenting opinions if votes differ.
 Save to `{SESSION_DIR}/verdict.md`.
