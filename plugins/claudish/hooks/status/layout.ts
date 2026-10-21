@@ -771,28 +771,81 @@ export function showTabs(runs: ClaudishRuns, feeds: Readonly<Record<string, Clau
   return tabs.map(({ where, ...t }) => ((uses.get(t.label) ?? 0) > 1 ? { ...t, label: `${t.label} ${where}` } : t))
 }
 
+/** A label is never cut below this many cells (5 characters + `…`), unless it is shorter (R12.2). */
+export const TAB_FLOOR = 6
+
+/** One tab as the strip draws it: its index into the tabs given, and its label as drawn. */
+export type StripTab = { index: number; label: string }
+
+/** A tab's cells besides its label: ` ●` and a space each side. */
+const TAB_CELLS = 4
+/** The `│` between two tabs of one row. */
+const BAR_CELLS = 1
+
 /**
- * The tab labels as drawn in `room` cells (the panel's width less Hide): each tab costs its label
- * plus 4 (` ●`, a space each side), and 1 more for the bar before every tab but the first. Over
- * the room, the longest label that is not the active one is cut by a cell at a time, ending in `…`;
- * the active one is cut last. A label is never cut below one cell (`…`).
+ * The tab strip's rows (R12): the tabs in order, wrapped onto the fewest rows that hold every
+ * label at its floor, broken where the largest common cap still gives that row count, then each
+ * row's labels cut as R10.3 cuts them in that row's room (the active one last, never below the
+ * floor). The first row's room is `width − SHOW_CELLS` (Hide ends it); later rows' is `width`.
+ * A first tab that fits the first row at its floor is always there; otherwise the first row holds
+ * only Hide. A later row too narrow for one tab at its floor holds one tab cut below it, to
+ * `width − 4` cells, never below 1. Always at least one row. Lengths are code points.
  */
-export function fitTabLabels(tabs: readonly ShowTab[], active: string | null, room: number): string[] {
-  const full = tabs.map(t => Array.from(t.label))
-  const len = full.map(f => f.length)
-  let cost = tabs.reduce((s, _, i) => s + (i > 0 ? 1 : 0) + 4, 0) + len.reduce((s, n) => s + n, 0)
-  while (cost > room) {
-    let pick = -1
+export function wrapTabs(tabs: readonly Pick<ShowTab, 'id' | 'label'>[], active: string | null, width: number): StripTab[][] {
+  const w = Math.max(0, Math.floor(width))
+  const chars = tabs.map(t => Array.from(t.label))
+  const full = chars.map(c => c.length)
+  const floorOf = (i: number) => Math.min(full[i]!, TAB_FLOOR)
+  const room = (r: number) => (r === 0 ? Math.max(0, w - SHOW_CELLS) : w)
+
+  // Next-fit placing in order at a cap: never returns to an earlier row, so the row count is
+  // non-decreasing in the cap and the largest cap keeping the floor's row count is a downward scan.
+  const place = (cap: number): number[][] => {
+    const rows: number[][] = [[]]
+    let used = 0
     for (let i = 0; i < tabs.length; i++) {
-      if (len[i]! <= 1 || tabs[i]!.id === active) continue
-      if (pick < 0 || len[i]! > len[pick]!) pick = i
+      for (;;) {
+        const r = rows.length - 1
+        const row = rows[r]!
+        let len = Math.min(full[i]!, cap)
+        if (r === 0 && row.length === 0 && floorOf(i) + TAB_CELLS <= room(0)) len = Math.min(len, room(0) - TAB_CELLS)
+        const need = (row.length > 0 ? BAR_CELLS : 0) + len + TAB_CELLS
+        if (used + need <= room(r)) { row.push(i); used += need; break }
+        if (r > 0 && row.length === 0) { row.push(i); used = room(r); break }
+        rows.push([])
+        used = 0
+      }
     }
-    if (pick < 0) pick = tabs.findIndex((t, i) => t.id === active && len[i]! > 1)
-    if (pick < 0) break
-    len[pick]!--
-    cost--
+    return rows
   }
-  return full.map((f, i) => (len[i]! >= f.length ? f.join('') : `${f.slice(0, len[i]! - 1).join('')}…`))
+
+  const count = place(TAB_FLOOR).length
+  let breaks: number[][] | null = null
+  for (let cap = Math.max(0, ...full); cap > TAB_FLOOR && !breaks; cap--) {
+    const rows = place(cap)
+    if (rows.length <= count) breaks = rows
+  }
+  breaks ??= place(TAB_FLOOR)
+
+  return breaks.map((row, r) => {
+    const len = row.map(i => full[i]!)
+    let cost = len.reduce((s, n) => s + n + TAB_CELLS, 0) + BAR_CELLS * Math.max(0, row.length - 1)
+    const passes = r > 0 && row.length === 1 ? [floorOf, () => 1] : [floorOf]
+    for (const floor of passes) {
+      while (cost > room(r)) {
+        let pick = -1
+        for (let k = 0; k < row.length; k++) {
+          if (len[k]! <= floor(row[k]!) || tabs[row[k]!]!.id === active) continue
+          if (pick < 0 || len[k]! > len[pick]!) pick = k
+        }
+        if (pick < 0) pick = row.findIndex((i, k) => tabs[i]!.id === active && len[k]! > floor(i))
+        if (pick < 0) break
+        len[pick]!--
+        cost--
+      }
+    }
+    return row.map((i, k) => ({ index: i, label: len[k]! >= full[i]! ? tabs[i]!.label : `${chars[i]!.slice(0, len[k]! - 1).join('')}…` }))
+  })
 }
 
 /** The tab the panel shows: the one last asked for while it is still a tab, else the first. */

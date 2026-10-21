@@ -6,7 +6,7 @@
 import type { RenderElement } from 'claude-code'
 import { badgeParts, button, segmentsText, type Els } from './band'
 import type { Palette } from './palette'
-import { CODE_CELLS, RUNTIME_CELLS, SHOW_CELLS, fitTabLabels, type PaneLine, type PaneModel, type ShowTab, type SlotTarget } from './layout'
+import { CODE_CELLS, RUNTIME_CELLS, SHOW_CELLS, type PaneLine, type PaneModel, type ShowTab, type SlotTarget, type StripTab } from './layout'
 
 function frameLine(els: Els, line: PaneLine, row: number): RenderElement {
   const { Text } = els
@@ -29,46 +29,54 @@ function frameLine(els: Els, line: PaneLine, row: number): RenderElement {
 }
 
 /**
- * The tab strip, as tt draws its tabs: each label after a dot in its slot's status colour, a thin
- * bar between them, the active one bold on a pale fill; at the right, Hide, drawn as the band's
- * Hide (Claude Code's own close mark is one cell and hard to hit); a rule under the strip. Pressing
- * a tab shows it; Hide puts the panel away.
+ * The tab strip, as tt draws its tabs, on the rows `wrapTabs` gave (R12): each label after a dot
+ * in its slot's status colour, a thin bar between two tabs of one row, the active one bold on a
+ * pale fill; at the right of the first row only, Hide, drawn as the band's Hide (Claude Code's own
+ * close mark is one cell and hard to hit); a rule under the last row. Every tab is drawn at its
+ * exact cost, so nothing shrinks. Pressing a tab shows it; Hide puts the panel away.
  */
-function tabStrip(els: Els, tabs: readonly ShowTab[], active: string | null, columns: number, palette: Palette, select: (target: SlotTarget) => void, hide: () => void): RenderElement {
+function tabStrip(els: Els, tabs: readonly ShowTab[], strip: readonly (readonly StripTab[])[], active: string | null, columns: number, palette: Palette, select: (target: SlotTarget) => void, hide: () => void): RenderElement {
   const { Box, Button, Text } = els
-  // Cut here, as the band cuts its rows, so the strip never runs past the panel and Hide stays whole.
-  const labels = fitTabLabels(tabs, active, Math.max(0, columns - SHOW_CELLS))
   return (
     <Box key="tabs" flexDirection="column">
-      {/* The panel's width, so Hide sits at its right edge and the tabs shrink before it does. */}
-      <Box flexDirection="row" width={Math.max(1, columns)}>
-        <Box flexDirection="row" flexGrow={1} flexShrink={1}>
-          {tabs.map((tab, i) => {
-            const on = tab.id === active
-            return (
-              <Box key={`tab:${tab.id}`} flexDirection="row" flexShrink={on ? 0 : 1}>
-                {i > 0 && <Text wrap="truncate-end" color="subtle">│</Text>}
-                <Button plain label={tab.label} onPress={() => select(tab.target)}>
-                  <Text wrap="truncate-end" {...(on ? { backgroundColor: palette.quiet.run.bg } : {})}>
-                    <Text color={palette.text[tab.hue]}>{' ●'}</Text>
-                    <Text {...(on ? { color: palette.text.run, bold: true } : { color: 'inactive' })}>{` ${labels[i]} `}</Text>
-                  </Text>
-                </Button>
-              </Box>
-            )
-          })}
+      {strip.map((row, r) => (
+        // The panel's width, so Hide sits at the first row's right edge.
+        <Box key={`tabrow:${r}`} flexDirection="row" width={Math.max(1, columns)}>
+          <Box flexDirection="row" flexGrow={1}>
+            {row.map(({ index, label }, k) => {
+              const tab = tabs[index]!
+              const on = tab.id === active
+              return (
+                <Box key={`tab:${tab.id}`} flexDirection="row" flexShrink={0}>
+                  {k > 0 && <Text wrap="truncate-end" color="subtle">│</Text>}
+                  {/* The Button keeps the full label (R6.5); only the drawn text is cut. */}
+                  <Button plain label={tab.label} onPress={() => select(tab.target)}>
+                    <Text wrap="truncate-end" {...(on ? { backgroundColor: palette.quiet.run.bg } : {})}>
+                      <Text color={palette.text[tab.hue]}>{' ●'}</Text>
+                      <Text {...(on ? { color: palette.text.run, bold: true } : { color: 'inactive' })}>{` ${label} `}</Text>
+                    </Text>
+                  </Button>
+                </Box>
+              )
+            })}
+          </Box>
+          {r === 0 && <Box width={SHOW_CELLS} flexShrink={0}>{button(els, 'hide-panel', 'Hide', { color: 'suggestion', bold: true }, hide)}</Box>}
         </Box>
-        <Box width={SHOW_CELLS} flexShrink={0}>{button(els, 'hide-panel', 'Hide', { color: 'suggestion', bold: true }, hide)}</Box>
-      </Box>
+      ))}
       <Text wrap="truncate-end" color="subtle">{'─'.repeat(Math.max(1, columns))}</Text>
     </Box>
   ) as RenderElement
 }
 
-/** The panel: the tab strip, then the active tab's header row and its child's screen, or why there is none. */
+/**
+ * The panel: the tab strip (`strip` is `wrapTabs` over `tabs`, computed once by the caller so the
+ * rows it takes off the session view are the rows drawn), then the active tab's header row and its
+ * child's screen, or why there is none.
+ */
 export function panelTree(
   els: Els,
   tabs: readonly ShowTab[],
+  strip: readonly (readonly StripTab[])[],
   active: string | null,
   model: PaneModel | null,
   columns: number,
@@ -79,7 +87,7 @@ export function panelTree(
   const { Box, Text } = els
   return (
     <Box flexDirection="column">
-      {tabStrip(els, tabs, active, columns, palette, select, hide)}
+      {tabStrip(els, tabs, strip, active, columns, palette, select, hide)}
       {model ? paneTree(els, model, palette) : <Text wrap="truncate-end" dimColor>No run to show.</Text>}
     </Box>
   ) as RenderElement

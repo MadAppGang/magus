@@ -4,6 +4,18 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Marketplace 13.7.13] - 2026-10-21
+
+### Changed
+
+- **`claudish` v2.10.0**: the Show panel's tabs wrap onto more rows when they do not fit one. With
+  about 8 or more sessions in a narrow panel, labels used to be cut down to `…`, and then the tabs
+  overlapped or pushed `[ Hide ]` off the row. Labels are now cut no lower than 6 cells, and the
+  tabs that do not fit flow onto a second or third row. `[ Hide ]` stays whole at the right of the
+  first row, and the rows the strip takes come off the session view.
+
+---
+
 ## [Marketplace 13.7.12] - 2026-10-21
 
 ### Fixed

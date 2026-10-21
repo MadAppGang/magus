@@ -7,7 +7,7 @@
   },
   "metadata": {
     "description": "Curated collection of Claude Code plugins for modern full-stack development with LLM performance tracking and E2E skill testing",
-    "version": "13.7.12",
+    "version": "13.7.13",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -75,7 +75,7 @@
       "name": "claudish",
       "source": "./plugins/claudish",
       "description": "MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting, manages async sessions, and shows the session's runs live above the prompt, with stop and live-screen tabs. Required by code-search, dev, multimodel and designer.",
-      "version": "2.9.3",
+      "version": "2.10.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -96,6 +96,11 @@
       "strict": true,
       "releases": [
         {
+          "version": "2.10.0",
+          "date": "2026-10-21",
+          "summary": "The Show panel's tabs wrap onto more rows when they do not fit one. With about 8 or more\u2026"
+        },
+        {
           "version": "2.9.3",
           "date": "2026-10-21",
           "summary": "A resize shows in the Show panel within about a second, not 2\u20133 s later. The session redraws\u2026"
@@ -114,11 +119,6 @@
           "version": "2.9.0",
           "date": "2026-10-21",
           "summary": "Every running claudish session takes the Show panel's size, not only the one the open panel\u2026"
-        },
-        {
-          "version": "2.8.1",
-          "date": "2026-10-21",
-          "summary": "The Show panel fits a session to a narrow panel. A panel docked beside the chat is often 50\u201360\u2026"
         }
       ]
     },
