@@ -11,7 +11,7 @@ and returns a **Result**.
 
 **Counts here follow the enumerated rows of upstream `docs/checks.md`**, not its headings.
 The Session heading says "14 canonical types" over a table of 18 rows
-(`docs/checks.md:292`), and the totals table (`docs/checks.md:1452`) counts the 18. When a
+(`docs/checks.md:292`), and the totals table (`docs/checks.md:1466`) counts the 18. When a
 heading and the rows conflict, the rows win, and this file does not restate a grand total.
 
 ---
@@ -286,7 +286,7 @@ Grades *how the agent worked*, not what it said. All 0/1 (`docs/checks.md:289-31
 | `session:match` | the marker `value` appears in the selected Events — their text, tool name, arguments or output; with `harness:` declared, the harness's own record. Counts matching Events; at least one by default, `eq: 0` asserts it never appeared | `value` (substring, or RE2 with `regex`), `ignore_case`, `event_type`, `category`, `source`, `thread`, `gte`/`lte`/`eq`; `raw_type` and `raw` each **require** `harness` |
 | `session:question-asked` | **what the agent asked** — one `AskUserQuestion` question satisfies every declared expectation | `question`, `header` (matchers), `options`, `exact_options`, `count`, `thread`, `outcome` — at least one; no `value` |
 | `session:answer-verified` | **what the picker actually selected** — every answer the Driver entered was recorded by the CLI as the option it chose | `require_verified` (default false); no `value` |
-| `session:end-reason` | **why the conversation stopped** — `Session.EndReason` is one of the declared reasons | `value` (`script-complete` · `driver-done` · `turn-cap`, or a list meaning any-of) |
+| `session:end-reason` | **why the conversation stopped** — `Session.EndReason` is one of the declared reasons | `value` (`script-complete` · `driver-done` · `turn-cap` · `background-timeout`, or a list meaning any-of). `background-timeout`: time ran out while a background shell or Monitor still held the Session, which was graded as it stood — on a driven or an undriven Session |
 | `session:driver-source` | **who decided what the Driver said** — the strongest source in `Session.Driver` | `value` (`scripted` or `model`) |
 | `session:goal-success` | — | **error only** |
 
@@ -612,7 +612,7 @@ Three more things about `mcp-reachable` worth knowing before writing it:
 - **A typo'd `value:` is caught at preflight, before any spend — for `mcp-reachable` only.**
   `madbench preflight` pairs every top-level `mcp-reachable` value against the servers the
   harness declares and **refuses** (exit 3) on one nothing declares, naming the Scenario and
-  the check (`docs/checks.md:796-805`; `docs/harness.md:1631-1634`). `mcp-connected` is
+  the check (`docs/checks.md:796-805`; `docs/harness.md:1691-1694`). `mcp-connected` is
   deliberately not cross-checked, because the tool's registry is wider than what a bench
   declares (`docs/checks.md:806-810`).
 - **A connected server with zero tools is a pass.** A server may expose only resources or
@@ -650,7 +650,7 @@ Five more cases follow the same rule:
   is unreachable. An UNPROBED entry — a remote `type: http` entry, a `command` carrying a
   `${…}` madbench does not own, a relative `command`, a `cwd` the sandbox will not contain —
   errors for the same reason and prints the recorded `probe_reason` rather than guessing
-  (`docs/checks.md:812-818`; `docs/harness.md:1300`).
+  (`docs/checks.md:812-818`; `docs/harness.md:1360`).
 - **`environment:tool-available` on a record with no tool roster.** `claude plugin details`
   prints no tool heading, so no source on the default interactive path supplies one. An
   **empty** record errors here too, unlike every other lookup: every session the tool starts
@@ -686,7 +686,7 @@ one of nothing but `cost` and `latency` (`docs/checks.md:899-901`).
 `COULD NOT GRADE`.** `madbench check` reads past any row that produced
 checks at all and classifies each on its own merits (`docs/checks.md:905-915`). Note that
 upstream's `harness.md` says otherwise — *"`probe.enabled: false` … Every
-`environment:*` Check then ERRORS rather than passing"* (`docs/harness.md:1236-1238`) — and
+`environment:*` Check then ERRORS rather than passing"* (`docs/harness.md:1296-1298`) — and
 `docs/checks.md:803-804` says the same opt-out makes the handshake checks *"report 'not
 applicable' by design"*. Do not resolve that from memory: run `madbench check` and read which
 bucket the check lands in. Either way the outcome is loud, and a run that measured nothing
@@ -732,8 +732,9 @@ or the Scenario's `vars:`.
 
 The command runs in `Session.WorkDir`; a relative `cwd` is joined onto it. An empty
 `WorkDir` with no absolute `cwd` is an error, deliberately — falling through to the harness
-process's cwd would run your tests in the user's own repo. On failure the tail of the
-combined output lands in `Reason`.
+process's cwd would run your tests in the user's own repo. Every result, pass or fail, keeps
+the last 2 KB of combined stdout+stderr in `Evidence["output"]` (`""` when the command
+printed nothing); a failure also repeats that tail in `Reason`.
 
 **Write the command as you would type it.** A string runs as `sh -c '<line>'`, so pipes,
 `&&`, `$(…)` and quotes work. A list is the exact argv with no shell, for an argument a shell
@@ -755,7 +756,7 @@ must not touch. `exec` takes no `value:`; one written there is refused.
 
 The question a test command cannot answer: the agent did the work — did it stay inside its
 boundaries? An agent that rewrites the test to match its own bug makes `go test` pass;
-`file-changes` names the edited test (`docs/checks.md:1247`).
+`file-changes` names the edited test (`docs/checks.md:1261`).
 
 ```yaml
 - type: file-changes
@@ -802,7 +803,7 @@ boundaries? An agent that rewrites the test to match its own bug makes `go test`
   `.tmp`, `.cache`, `.claude`, `.claude.json`, the CLI's
   `.local/share/applications/claude-code-url-handler.desktop`, plus each toolchain cache under
   HOME that the seeded tree does not hold, even one a provision step pre-warms (`go/pkg/mod`,
-  `.npm`, `.cargo/registry`, … — `docs/checks.md:1325`).
+  `.npm`, `.cargo/registry`, … — `docs/checks.md:1339`).
   `target/`, `coverage/`, `dist/` are never ignored by default: use `ignore:`.
 - **Unreadable is an error.** A file the walk cannot read makes the Check an evaluator error
   naming it, unless `ignore:` covers it. A file deleted while the tree is walked is absent.
@@ -812,7 +813,7 @@ boundaries? An agent that rewrites the test to match its own bug makes `go test`
 - **Live run only.** No baseline → evaluator error `no baseline recorded`, never a pass.
   `madbench grade` skips it, inside a composite too.
 - **A ban alone is `WRONGLY PASSED`** under `madbench check`: pair `must-not:`/`default:` with a
-  Check that proves the work — `exec: go test`, or a `must:` rule (`docs/checks.md:1371`).
+  Check that proves the work — `exec: go test`, or a `must:` rule (`docs/checks.md:1385`).
   `tests/file-changes` is the worked pair.
 
 ## 13. Model — 1 type (Service)
@@ -871,7 +872,7 @@ The types are open: any key written beside `type:` reaches your script. YAML wri
 All 17 are always registered, but each binds to the bench's judge set at **construction** —
 so a bench with no usable judge fails before the Harness runs, naming the actual fix (*set
 `ANTHROPIC_API_KEY` for the default Anthropic judge, or declare a `judges:` block*)
-(`docs/checks.md:1307-1314`). The default Anthropic judge model is Sonnet — `claude-sonnet-5`,
+(`docs/checks.md:1321-1328`). The default Anthropic judge model is Sonnet — `claude-sonnet-5`,
 the `judge_model` a default judge records (`docs/tutorials/scoring-contract.md:50`).
 
 ### Declaring judges
@@ -893,10 +894,10 @@ judges:
       effort: high                    # the CLI's --effort: low | medium | high | xhigh | max
 ```
 
-(`docs/checks.md:1316-1351`.)
+(`docs/checks.md:1330-1365`.)
 
 - **`type:` and `base_url:` are refused** inside a judge block; the error names `transport:`
-  and `endpoint:` (`docs/checks.md:1325-1326`).
+  and `endpoint:` (`docs/checks.md:1339-1340`).
 - **`provider: claude-code` is the keyless judge.** It runs the local CLI on this machine's
   login, so it needs no key; `temperature:`/`max_tokens:` are refused on it at load, because
   the CLI takes neither.
@@ -924,13 +925,13 @@ literal string. **API keys never appear in YAML**: `api_key_env` names an enviro
 | `votes` | ask the judge N times and take the majority — a positive **odd** integer, default `1` |
 | `threshold` | must be within `[0,1]`, validated at construction; `0` means "use the type's default" |
 
-(`docs/checks.md:1359-1369`.)
+(`docs/checks.md:1373-1383`.)
 
 ### Majority voting — `votes`
 
 One judge call is the noisiest part of an AI Check: the same rubric over the same output can
 come back PASS, then FAIL, and the report reads that as the agent changing. `votes: N` asks
-the same prompt N times and returns the majority verdict (`docs/checks.md:1409-1438`).
+the same prompt N times and returns the majority verdict (`docs/checks.md:1423-1452`).
 
 ```yaml
 - type: llm-rubric
@@ -1033,7 +1034,7 @@ Four register under a **prefix**, so a type suffix can carry a payload
 (`custom:gosrc:./scoring.go`); the managed `ts`/`js`/`python` family registers exact types.
 
 All receive the **same JSON envelope** on stdin (or as the POST body / WASM buffer). There
-is one envelope, `madbench/v2` (`docs/checks.md:1514-1538`):
+is one envelope, `madbench/v2` (`docs/checks.md:1528-1552`):
 
 ```json
 {
@@ -1071,6 +1072,13 @@ Event's `raw` is the harness's own record, and its
 (the join key back to the authoritative stream), `result_ok`, `result_tag`. All three are
 `omitempty` — **an absent `result_ok` means the capture recorded no outcome, and must never
 be read as failure.**
+
+**`background_tasks[]`** (interactive claude-code only) is every task the agent started
+beside its turns — `kind` (`subagent` · `workflow` · `shell` · `monitor`), `tool_call_id`
+and `state` (`finished` · `running` · `blocked` · `stale` · `unknown`) always; `task_id`,
+`description`, `command`, `started_at`, `ended_at`, `status` (verbatim, or `stopped` /
+`expired`), `last_activity` when known; `terminated` (`signal`, `at`, `orphan`, `error`)
+only when madbench ended it (`docs/checks.md`, "External transports").
 
 | type | Transport | Config | Notes |
 |---|---|---|---|
@@ -1114,7 +1122,7 @@ with no path separator.
 ## 18. What a Session exposes
 
 `Session.Events` is the authoritative normalized stream; `Session.Calls` is a
-**derived, lossy** view (`docs/checks.md:1628-1663`). Both carry the recorded outcome of
+**derived, lossy** view (`docs/checks.md:1642-1677`). Both carry the recorded outcome of
 each call, tri-state, where absent means the capture said nothing.
 
 | Question | Where it lives | Reachable by |

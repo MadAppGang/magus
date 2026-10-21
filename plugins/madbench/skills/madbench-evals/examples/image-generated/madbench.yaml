@@ -5,8 +5,8 @@
 # Checks can see it. madbench executes the program directly, so it keeps its `#!/usr/bin/env
 # bun` line and its executable bit. docs/harness.md §2a.
 #
-# `interactive: false` is required: claude-code's interactive driver cannot carry an image,
-# and an image on an interactive Scenario is refused at configure.
+# `interactive: false` sends the picture with the prompt on one --print turn. An interactive
+# run would paste it into the prompt at the start of turn 1 instead.
 #
 # `harness: mock` cannot deliver an image, and madbench says so at PREFLIGHT (`harness
 # "mock" cannot deliver an image`). That refusal is madbench's design, not a defect here,

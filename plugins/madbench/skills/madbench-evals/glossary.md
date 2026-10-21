@@ -28,6 +28,8 @@ the madbench repository.
 | Session | What happened when the agent ran one Scenario: its Events, final output, cost and timing. Graded by the `session:*` Checks. |
 | transcript | The Harness's own stored file of a Session, e.g. Claude Code's JSONL. madbench reads it to build the Session. |
 | Event | One thing that happened in a Session — a message, a tool call, a hook, a reminder — with madbench's Category, Type and Source beside the harness's own RawType, RawSource and Raw. |
+| background task | Work the agent starts that runs beside its turns and reports back later: a subagent, a Workflow, a background shell, a Monitor. Listed on `Session.BackgroundTasks` and as `background_task` Events; while one holds, an interactive Session stays open, and one still holding a shell or Monitor at the bound ends it `background-timeout`, graded. |
+| background state | A background task's state when last looked at: `finished` · `running` · `blocked` · `stale` · `unknown`. `running`, `blocked` and `unknown` hold the Session; `finished` and `stale` release it. |
 | Environment | What the agent was given, not what it did: Expected (what madbench staged) and Reported (what the tool said it loaded), captured on the Session; `harness.probe` controls the capture. Graded by the `environment:*` Checks. |
 | Result | What a Check returned: `Pass`, `Score`, `Reason`, `Evidence`. |
 | Guard | What an Experiment's variants may differ by: `guard_changes:` with its list under `allow:`. Every declared variant is diffed against the baseline, the first declared variant, whichever variants `--variant` selects to run. An undeclared difference stops the Experiment before any spend as `FORBIDDEN CHANGES`. |

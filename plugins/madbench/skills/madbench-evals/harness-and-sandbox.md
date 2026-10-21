@@ -43,6 +43,7 @@ of truth, and the engine forwards emitted events only as cosmetic progress for t
 | `Timeout` | Scenario `timeout:` > bench `defaults.timeout:` > **300s** |
 | `Capture` | Scenario `capture:` > `defaults.capture:` > `log` |
 | `Config` | the `harness:` block, after `{{param}}` substitution |
+| `Args` | the Scenario's own `harness.args` — §2a. Empty when the Scenario writes none |
 | `Provider` | the current `providers:` entry, `""` for a single-provider run |
 
 > **The default timeout is 300s.** A `--print` turn fits in 120s; a cold-start
@@ -94,7 +95,7 @@ names the full key path. Nothing is silently ignored.
 | `config.edits` | []{file, between, with} | *(none)* | marked blocks of composed files, each replaced by a fragment after the dirs compose; requires `config.dirs` — §5 |
 | `config.plugins` | []string | *(none)* | plugin folders, staged as a registry — §6 |
 | `config.system_prompt` | string | *(unset)* | `--system-prompt <value>` |
-| `args` | []string | *(none)* | extra argv, appended after everything madbench adds |
+| `args` | []string | *(none)* | extra argv, appended after everything madbench adds. A Scenario can append its own after these — §2a |
 | `probe` | {enabled, details, require} | `{true, 8, false}` | how hard madbench looks at what loaded — §7 |
 
 `type: mock` accepts only `type` and `model`; `type: demo` accepts only `type`. Any other key
@@ -132,8 +133,12 @@ claude --print \
        [--model <model>] \
        [--system-prompt <config.system_prompt>] \
        [--effort <effort>] \
-       <args...>
+       <bench args...> \
+       [<scenario args...>]
 ```
+
+`<bench args...>` is the bench's `harness.args`; `<scenario args...>` is the Scenario's own
+(§2a). The interactive command line ends the same way.
 
 The bracketed config block appears **only when `config.dirs` is declared** — §5
 (`agentEnv.args`, `pkg/harness/claudecode/agentenv.go`).
@@ -144,7 +149,7 @@ The first five flags are always present and never configurable:
 | `--print` | non-interactive; there is no human to answer prompts |
 | `--verbose` | required by `--output-format stream-json` |
 | `--output-format stream-json` | one JSON event per stdout line — the Session source |
-| `--input-format text` | prompt on stdin as plain text — **flips to `stream-json` when the Scenario declares `image:`**, which is why `image:` is a `--print`-only key |
+| `--input-format text` | prompt on stdin as plain text — **flips to `stream-json` when the Scenario declares `image:`**, so the picture rides with the prompt (an interactive Scenario pastes it instead, §2a of `docs/harness.md`) |
 | `--session-id <uuid>` | a **fresh** UUID per run, correlating the on-disk session file |
 
 > **`args:` is appended last, so it can collide.** Nothing stops you writing
@@ -156,6 +161,35 @@ The first five flags are always present and never configurable:
 > `--model`, `--effort` and `--system-prompt` a supported escape hatch rather than a
 > collision. But `args:` is shape-checked only, so an `--effort` typo *there* is back to a
 > warning and a default-effort run. Prefer the key.
+
+### 2a. A Scenario's own `args`
+
+```yaml
+harness:
+  type: claude-code
+  args: [--permission-mode, bypassPermissions]   # every Scenario, first
+scenarios:
+  - name: classic
+    harness:
+      args: [--code-mode, "off"]                 # this Scenario only, after the bench's
+  - name: auto                                   # no block: the bench's args only
+```
+
+- The Scenario's block has **one key, `args:`**. Any other key fails as
+  `scenario "classic": harness.<key>: unknown key`.
+- The argv is `<bench args> <scenario args>`. A single-value flag in both takes the Scenario's
+  value; a list-valued one such as `--tools` or `--allowedTools` adds the Scenario's values to
+  the bench's, so a Scenario cannot narrow it (`docs/harness.md`, "A Scenario's own `args`").
+- **Nothing is inherited.** A Scenario without the block gets the bench's args only.
+  `defaultScenario.harness` fails at load as an unknown key.
+- Shape-checked by the same function as the bench's `harness.args`:
+  `scenario "classic": harness.args[1] must be a string, got int`. `{{param}}` substitutes
+  inside it.
+- **claude-code only.** On `mock` or `demo` the block is refused at configure time and by
+  `madbench list`, unless `--harness` chose that harness, which then runs without it.
+- **Cannot hold `--mcp-config`**, in either spelling: the sandbox read allows and the MCP
+  preflight come from the bench's block. Declare MCP servers in the bench's `harness.args`.
+- The guard compares it as `scenario/<id>/harness/args/<i>` — §5a.
 
 ---
 
@@ -210,12 +244,12 @@ parts"). Interactive runs need a magmux with typed send; preflight refuses one w
 **An interactive agent can stop and ask** (`AskUserQuestion`). The **Driver** answers it:
 every interactive claude-code bench gets the default answering Driver with no `driver:`
 block, `driver: false` turns it off, and `driver.answers:` scripts it
-(`docs/harness.md:743`, `docs/driving-a-session.md`).
+(`docs/harness.md:800`, `docs/driving-a-session.md`).
 
 **Interactive needs magmux on THIS machine**, at every sandbox level, on PATH (or
 `harness.magmux_binary`, or `$MADBENCH_MAGMUX`). `madbench preflight` checks for it
 only when some Scenario is interactive, and the finding names `interactive: false` as a way
-out (`docs/harness.md:610-613`, `:1555`).
+out (`docs/harness.md:667-670`, `:1555`).
 
 **magmux is checked by capability, never by version number.** Preflight runs `magmux
 --help` under a short timeout and looks for the flags madbench actually passes
@@ -224,7 +258,7 @@ binary reported. A version bound could not have verified it — 0.9.0 was cut fr
 that never contained 0.8.0's flags, and magmux ignores an unknown flag rather than refusing
 it, so against 0.9.0 the version read as satisfied and every interactive run waited out a
 twenty-second socket timeout. A `--help` that fails or times out is **advisory only**, and
-there is deliberately no upper bound (`docs/harness.md:1556`, `:1636-1662`).
+there is deliberately no upper bound (`docs/harness.md:1616`, `:1636-1662`).
 
 > **`sandbox: container` + `interactive: true` works on macOS and Linux alike.** madbench runs
 > magmux on the host and the pane command enters the sandbox (`docker exec -t -i`), so both
@@ -302,25 +336,56 @@ received the result and spoke last.
 **Handing off is still visible**: `session.steps.main` is 0 on exactly these runs, the
 per-thread breakdown is in `Session.Subagents`, and `session:turn-count` still counts one turn.
 
-### When a delegating run is finished
+### When a run's background work is finished
 
-The Stop hook ends a **turn**, and a turn ends when the MAIN thread stops. An agent that
-delegates hands the work off and stops, so the hook fires while the subagent is still writing
-its own log. madbench therefore waits on the whole **job**. It is finished when all three hold:
+The Stop hook ends a **turn**, and a turn ends when the MAIN thread stops. Background work
+outlives it — a subagent, a Workflow, a background shell, a Monitor — and reports back with a
+task notification that wakes the idle agent into a turn of its own. madbench therefore waits on
+the whole **job** (`docs/harness.md`, "When a run's background work is finished"). It is
+finished when the parent and every subagent sidecar have been quiet for the settle window, **no
+background task holds the Session**, every woken turn has ended, and any `idle_wait:` window has
+run out.
 
-1. the parent's session file (Claude Code's "transcript") has been quiet for the settle window;
-2. every subagent sidecar has been quiet for that window — each on its own clock;
-3. **no spawn is outstanding** — every `Agent`/`Task` call has its result.
+- **Opened** by an `Agent`/`Task` call (`subagent`), a `Workflow` result `async_launched` with a
+  `taskId` and `taskType` (`workflow`), a Bash result carrying `backgroundTaskId` (`shell`), a
+  result carrying `taskId` beside `timeoutMs`/`persistent` (`monitor`).
+- **Closed** by a task notification with any `<status>`, a `TaskStop` result (`stopped`), a
+  non-persistent Monitor's declared expiry (`expired`), or a subagent's non-acknowledgement
+  result. A notice with no `<status>` closes nothing.
+- **States**, re-read every poll: `finished` and `stale` release; `running`, `blocked` and
+  `unknown` hold. A `persistent` Monitor never holds. A shell's or Monitor's state comes from the
+  processes holding its output file, read through the sandbox (at `container` as the agent's own
+  user); a shell is `stale` only once successful readings have found no holder for 10 s, and a
+  reading that cannot see the agent's own processes reads `unknown` (another of the user's, such
+  as a non-dumpable `ssh-agent`, changes nothing). Subagents and Workflows are never `stale`.
 
-(3) is not redundant: a sidecar not yet **created** is not quiet, it is pending, and file-size
-polling alone would call that settled.
+When `timeout:` runs out (counted from the agent's start, plus only the blocked time the Driver
+actually spent) with only shells/Monitors holding → the Session ends **`background-timeout` and
+is graded** — at the timeout on a driven Scenario, and **15 s before it on an undriven one**,
+whose deadline is the timeout itself (the teardown needs those 15 s). On a driven Scenario a
+Monitor still emitting events at the bound does not turn that into an error, though a subagent's
+log still growing holds it. Nothing ends graded past the reserve line (15 s before the
+deadline), decided at its first poll: a woken turn still running, a record half written, or a
+subagent log seen growing there → ERROR. On an undriven Scenario the bound IS that line, so a
+Monitor whose woken turn is in flight at that poll → the woken-turn ERROR, not a graded end. A
+file watched only briefly and never seen to grow is not "still being written". A subagent or
+Workflow is waited for to
+the agent's whole budget (plus the Driver's blocked budget); still running then, or a woken turn
+still in flight → **the Scenario ERRORs**, naming it. A Session missing a thread's work would
+score like a bad agent rather than reading like the incomplete capture it is.
+
+**Nothing is killed silently**: `Session.BackgroundTasks` records every task; then each open
+shell/Monitor gets TERM, then KILL, each checked by a reading after it (unverified if that
+fails), recorded as `terminated`; then the pane is torn down; then a sweep ends anything still
+holding a file of this Session's own task directory (`orphan: true`) — all before the Session is
+built. Only holders of a file under `…/<this session-id>/tasks/`, as the sandbox resolves it, are
+ever signalled, and never the agent's own processes.
+
+`idle_wait: 45s` on a Scenario keeps a settled Session open for a wake no task announces — a
+plugin's monitor, an MCP push. Scenario-only, interactive-only, claude-code-only.
 
 A subagent's conversation streams as it is written; its events carry `AgentID` and a `Thread`.
 They do **not** count toward `Metrics.StepCount`.
-
-**If a subagent is still running when the settle window times out, the Scenario ERRORs**,
-naming the thread and when it spawned. It does not grade — a Session missing a thread's work
-would score like a bad agent rather than reading like the incomplete capture it is.
 
 ---
 
@@ -512,13 +577,15 @@ name the region and a change elsewhere in the file is still a confound.
 
 ### 5a. The harness under `guard_changes:`
 
-The harness is one compared source of an Experiment's guard, labelled `harness`, and every
-path is the YAML path under `harness/`:
+The harness is one compared source of an Experiment's guard, labelled `harness`. Every path of
+the bench's block is its YAML path under `harness/`, and a Scenario's own `args` (§2a) are in
+the same source under `scenario/<id>/harness/args/<i>`:
 
 | Path | Compared value |
 |---|---|
 | `harness/type` · `harness/binary` · `harness/model` · `harness/provider` · `harness/effort` · `harness/use_subscription` | the resolved value (the model canonicalised) |
 | `harness/args/<i>` | one argv element by position |
+| `scenario/<id>/harness/args/<i>` | one element of a Scenario's own argv by position — claude-code only |
 | `harness/config/system_prompt` | the text |
 | `harness/config/files/<relative path>` | each file of the tree `config.dirs` composes, by content, before plugins are staged into it; an edited file with its edited regions masked, marker lines kept |
 | `harness/config/regions/<relative path>/<start marker>` | one `config.edits` region, START through END inclusive; the marker trimmed of surrounding whitespace |
@@ -534,7 +601,9 @@ guard_changes:
 ```
 
 A variant whose model differs without `harness/model` in `allow:` is **FORBIDDEN CHANGES**. The
-directory rule applies: `allow: [harness]` covers everything under it.
+directory rule applies: `allow: [harness]` covers everything under it. A Scenario's own args
+are not under it: `allow: [scenario/*/harness/args]` covers every Scenario's, and
+`allow: [scenario/<id>/harness/args]` one Scenario's.
 
 ---
 
@@ -618,9 +687,9 @@ A bench that declares MCP servers gets one extra step before the agent launches:
 **starts each declared server itself, from inside this run's sandbox, and speaks MCP to it.**
 Servers are found on all three routes the CLI accepts — a `--mcp-config` value in `args:`
 (JSON or file), a staged plugin's own `.mcp.json`, and the `.mcp.json` `config.dirs` composes
-(`docs/harness.md:1278-1279`). It exists because the alternative is a silent absence
+(`docs/harness.md:1338-1339`). It exists because the alternative is a silent absence
 discovered after a full run has been paid for — one reported grid was 264 scenarios and
-about $32, and it measured a tool that had never existed (`docs/harness.md:1281-1286`).
+about $32, and it measured a tool that had never existed (`docs/harness.md:1341-1346`).
 **Before grading whether an agent used a capability, prove the capability was present.**
 
 | Outcome | Means | Under `require: true` |
@@ -629,7 +698,7 @@ about $32, and it measured a tool that had never existed (`docs/harness.md:1281-
 | **failed** | launched and did not complete; the row carries the server's own words — JSON-RPC error, **stderr tail**, exit status | **refuses, before any spend** |
 | **UNPROBED** | madbench could not construct a launch at all: remote `type: http`/`sse`, a `${…}` it does not own, a relative `command`, a `cwd` outside the sandbox | proceeds |
 
-(`docs/harness.md:1296-1300`.) Grade it with `environment:mcp-reachable` — see
+(`docs/harness.md:1356-1360`.) Grade it with `environment:mcp-reachable` — see
 `checks-catalog.md` §9 for how that differs from `environment:mcp-connected`.
 
 **The static half runs at `madbench preflight` time, with no sandbox and no launch.** It
@@ -637,10 +706,10 @@ takes the `Config` alone, reads the declarations from the same three routes, and
 declared setup complete?* — the document opened and declared something, the entry can be
 launched as a stdio server at all, `command` resolves on this machine, every absolute
 `$`-free arg and `cwd` exists — with severity mirroring `probe.require` so preflight
-and the run-time gate can never disagree (`docs/harness.md:1585-1605`). It also pairs every
+and the run-time gate can never disagree (`docs/harness.md:1645-1665`). It also pairs every
 top-level `environment:mcp-reachable` value against that list and refuses a name nothing
-declares (`docs/harness.md:1563`, `:1631-1634`). At `sandbox: container` none of it is
-asked, because the filesystem is the image's (`docs/harness.md:1620-1622`).
+declares (`docs/harness.md:1623`, `:1631-1634`). At `sandbox: container` none of it is
+asked, because the filesystem is the image's (`docs/harness.md:1680-1682`).
 
 When the staged and reported families disagree, the console prints one warning block:
 
@@ -657,8 +726,9 @@ That warning never changes a status — it is a reading aid. The graded verdict 
 
 ## 8. Where every other knob lives
 
-Beyond the keys in §2, a knob is one of three things: a CLI flag through `args:`, a file the
-composed configuration (`config.dirs`) carries, or a file seeded into `testdata:`.
+Beyond the keys in §2, a knob is one of three things: a CLI flag through `args:` (the bench's,
+or one Scenario's own — §2a), a file the composed configuration (`config.dirs`) carries, or a
+file seeded into `testdata:`.
 
 | Knob | Mechanism | How |
 |---|---|---|
@@ -668,7 +738,7 @@ composed configuration (`config.dirs`) carries, or a file seeded into `testdata:
 | CLI binary / wrapper | **dedicated key** | `harness.binary:` — point at a shim or absolute path |
 | Plugin tree | **`config.plugins`** | §6 |
 | Skills | **`config.plugins`** · `config.dirs` | a plugin's `skills/<s>/SKILL.md`, staged by §6; or `skills/<s>/SKILL.md` in a composed dir (§5) |
-| MCP servers | **`config.dirs`** *(preferred)* · `args:` · testdata | `.mcp.json` in a composed dir; or `args: ["--mcp-config", …]`; or seed `.mcp.json` |
+| MCP servers | **`config.dirs`** *(preferred)* · `args:` · testdata | `.mcp.json` in a composed dir; or `args: ["--mcp-config", …]` in the bench's `harness:` (never a Scenario's — §2a); or seed `.mcp.json` |
 | `settings.json` | **`config.dirs`** *(preferred)* · testdata | `settings.json` in a composed dir |
 | Hooks | **via whichever `settings.json` is in force** | under `config.dirs` the composed one, and never the host's; without it, the seeded one |
 | Permission mode | **via `args:`** | `args: ["--permission-mode", "bypassPermissions"]` — **read §3 first** |
@@ -678,6 +748,7 @@ composed configuration (`config.dirs`) carries, or a file seeded into `testdata:
 | Extra readable dirs | **via `args:`** | `args: ["--add-dir", "/abs/path"]` — must exist on the host |
 | `CLAUDE.md` | **testdata seeding** · `config.dirs` | `<testdata>/CLAUDE.md` or `<testdata>/.claude/CLAUDE.md`; or `CLAUDE.md` in a composed dir (§5) |
 | Subagents | **testdata** *or* **`args:`** | `<testdata>/.claude/agents/<name>.md`; or `args: ["--agents", "<json>"]` |
+| A flag for one Scenario only | **Scenario key** | `harness: {args: [--code-mode, "off"]}` on the Scenario, after the bench's `args` — §2a |
 | cwd | **Scenario key** | `cwd: packages/api` — relative to the workspace root |
 | Environment variables | **`sandbox.env:`** | per-Scenario map; the forwarded-secret list is fixed in Go |
 | Session resumption | **not supported** | `--session-id` is a fresh UUID every run |

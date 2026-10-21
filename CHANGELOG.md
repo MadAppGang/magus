@@ -4,6 +4,23 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Marketplace 13.7.16] - 2026-10-21
+
+### Changed
+
+- **`madbench` v0.12.3**: the madbench skills are synced to madbench 0.53.0, so
+  /madbench:madbench and the bench agent describe the harness that is installed. They now say
+  that background work the agent starts (a background shell, a Monitor, an async subagent, a
+  Workflow) holds an interactive Session open until it finishes, and they list
+  `background_tasks` with each task's state, the end reason `background-timeout` and the
+  Scenario key `idle_wait:`. They also cover a Scenario's own `harness: {args: [...]}`, an
+  `image:` on an interactive Scenario, the output an `exec` Check keeps when it passes, the
+  separate prompt and output token metrics, and the Scenario ID rule (no `/`, `.` or `..`).
+  `madbench skills --check` reports `current`. Where Homebrew is not used (Linux), the plugin
+  installs madbench v0.53.0 when madbench is missing, not v0.47.0.
+
+---
+
 ## [Marketplace 13.7.15] - 2026-10-21
 
 ### Fixed

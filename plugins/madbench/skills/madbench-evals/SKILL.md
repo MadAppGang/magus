@@ -107,7 +107,7 @@ wrote the policy down when it refused Experiment-level metrics:
 | a sentinel token planted to prove a file was read | `session:file-read` | `docs/checks.md:299` |
 | a grep of the Session for a marker that reached the agent (a hook's output, an injected reminder, a subagent's report) | `session:match` | `docs/checks.md:307`, `:318-389` |
 | a "did the MCP server come up" probe script | `environment:mcp-reachable`, asserted before any spend | `docs/checks.md:686` |
-| a PNG pipeline feeding the prompt | `image: generated:<name>` + `$MADBENCH_IMAGE_DIR` | `docs/harness.md:315-361` |
+| a PNG pipeline feeding the prompt | `image: generated:<name>` + `$MADBENCH_IMAGE_DIR` | `docs/harness.md:473-534` |
 | a CI wrapper mapping exit codes | `--fail-on-failure` | `docs/README.md:100-108` |
 | a version-string gate on the skill | `madbench version` against `MADBENCH_VERSION` (or `madbench skills --check`), and `madbench list` over a shipped example bench — a bench the skill teaches that the binary refuses to load is the finding | Step 0 |
 | a terminal scraper for the numbers | `--report-json` / `--report-dir` | below |
@@ -284,7 +284,7 @@ timeout.** A bench carrying `acceptEdits` from the `--print` era was never getti
 from it; `bypassPermissions` is not a widening of access, it is the access it already had.
 
 Interactive needs magmux on this machine, **checked by capability, never by version** —
-preflight runs `magmux --help` and looks for the flags madbench passes (`docs/harness.md:1636-1663`).
+preflight runs `magmux --help` and looks for the flags madbench passes (`docs/harness.md:1696-1724`).
 It checks only when some Scenario is interactive, and names `interactive: false` as a way out.
 
 **An interactive agent can stop and ask, and a Driver answers.** With no `driver:` block an
@@ -461,7 +461,7 @@ the workaround is unacceptable as a permanent answer.
   exempt from `madbench check`. A count ceiling is **not** exempt — fix `lte`-only bounds
   with a floor.
 - **An unprobed `environment:*` check is loud, never a pass.** `probe.enabled: false` leaves Reported
-  absent, and every `environment:*` Check then ERRORS (`docs/harness.md:1236-1238`); `madbench
+  absent, and every `environment:*` Check then ERRORS (`docs/harness.md:1296-1298`); `madbench
   check` lands an unprobeable Check outside the verdict (`docs/checks.md:904`).
   Read the bucket the control prints. `checks-catalog.md` §9 has the per-type table.
 - **`environment:mcp-reachable` takes the bench's document key**, never the tool's
@@ -483,10 +483,10 @@ the workaround is unacceptable as a permanent answer.
 - **No judge provider** (no `judges:` block AND no `ANTHROPIC_API_KEY`) → AI Check types fail
   at construction with a message naming the fix. Check judge config before your spelling. A
   judge declared with `provider: claude-code` needs no key: it runs the local `claude` on this
-  machine's login (`docs/checks.md:1310-1340`).
+  machine's login (`docs/checks.md:1324-1354`).
 - **A judge is a variable.** `votes: N` (a positive odd integer) asks it N times and takes
   the majority, so one noisy call cannot flip the verdict alone. An undecided vote is an ERROR,
-  not a FAIL (`docs/checks.md:1409-1438`).
+  not a FAIL (`docs/checks.md:1423-1452`).
 - String checks (`contains`, `regex`, …) grade ONLY the agent's final message, never files on
   disk — grade files with `exec`. There is **no `file:*` check family**.
 - **`Session.FinalOutput` follows a delegation.** If the parent ended its turn without

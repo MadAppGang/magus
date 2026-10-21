@@ -43,7 +43,7 @@ scenarios: [{…}]
 | `driver` | DriverConfig, or `false` | who answers the agent's questions mid-run; claude-code only — §2a |
 | `metrics` | []string expressions, **or** the older []mapping form — never mixed in one block (`docs/metrics.md:314-317`) | the report's numeric schema — §8 |
 | `defaults` | ScenarioDefaults | see §2 |
-| `defaultScenario` | ScenarioSpec | a whole scenario merged into every entry |
+| `defaultScenario` | ScenarioSpec | a whole scenario merged into every entry, except `harness:`, which is an unknown key there |
 | `budget` | float | **informational only, never enforced** |
 | `token_estimate` | int | **informational only, never enforced** |
 | `unproven` | string | why this bench's premise is not established. **Every command refuses to load the bench** and prints the text — below |
@@ -115,6 +115,8 @@ harness:
   false). `{enabled: false, require: true}` is an error.
 - **`{{param}}` placeholders** work anywhere under `harness:` (§9).
 - **`--harness <type>`** overrides `harness.type` for every bench.
+- **A Scenario's own `harness:`** holds one key, `args:`, appended after these `args` for that
+  Scenario only (§3). Nothing else in this block can be set per Scenario.
 
 The keys' full effect is `harness-and-sandbox.md` §2 and §5–§7.
 
@@ -233,6 +235,8 @@ scenarios:
     generate: ./gen.sh               # build testdata AND compute the answer
     image: ./shots/dashboard.png     # delivered with the prompt
     cwd: packages/api                # moves the AGENT only
+    harness:                         # this Scenario's own argv, after the bench's harness.args
+      args: [--code-mode, "off"]
     vars: {reference: "…"}
     sandbox: {level: container}
     interactive: false
@@ -258,7 +262,7 @@ scenarios:
 | Key | Type | Notes |
 |---|---|---|
 | `description` | string | |
-| `name` | string | stable id |
+| `name` | string | stable id; without it the id is `description`. An id containing `/`, or `.`/`..`, is a **load error** (`docs/glossary.md`, Scenario) |
 | `prompt` | string, or a list of parts | **required** — typed into an interactive session as keystrokes, never a paste. As a list, `- type:` · `- paste:` · `- image:` (+ `clipboard: true`) are delivered in order, interactive only (`docs/harness.md`, "A turn written as parts"). Written here, inherited from `defaultScenario:`, or read from a case directory's `input.md`. An explicit `prompt: ""` is a choice and is kept; never writing one is a **load error**, because an empty prompt otherwise reaches the agent and spends a real run on nothing |
 | `follow_ups` | []string or lists of parts | each entry takes either shape `prompt:` does. One send, one turn, one `Session.Turns` entry. **Rejected at load with `interactive: false`** |
 | `testdata` | string | directory copied fresh into the sandbox per scenario |
@@ -267,11 +271,13 @@ scenarios:
 | `generate` | string | staging program that computes the answer — §5 |
 | `image` | string or []string | delivered in the same first user message as the prompt — §6 |
 | `cwd` | string | relative only, no `..`; must exist after seeding. **Moves the agent only** |
+| `harness` | {args} | **only `args:`** — argv appended after the bench's `harness.args`: a single-value flag in both takes this value, a list-valued one such as `--tools` adds to the bench's (`docs/harness.md`, "A Scenario's own `args`"). Not inherited: a Scenario without it gets the bench's args only, and `defaultScenario.harness` is an unknown key. Shape-checked like the bench's (`scenario "x": harness.args[1] must be a string, got int`); `{{param}}` substitutes inside it. claude-code only — refused on `mock`/`demo` unless `--harness` chose them. Cannot hold `--mcp-config`: declare MCP servers in the bench's `harness.args` |
 | `vars` | map | reachable as check `Vars` |
 | `sandbox` | SandboxConfig or string | overrides `defaults:` |
 | `interactive` | bool-ish | overrides `defaults:` |
 | `driver` | DriverConfig, or `false` | overrides the bench's and `defaults:` — §2a |
 | `timeout` · `capture` · `staging_timeout` · `bun` · `python` · `lockfile_required` | | as `defaults:` |
+| `idle_wait` | string | a duration (`45s`): once the agent's work has settled, keep the Session open until no turn the agent was woken into — a plugin's monitor, an MCP push — has begun for this long; each one restarts the window, expiry is a graded end, `timeout:` still bounds the run (`docs/harness.md`, "When a run's background work is finished"). **This Scenario's own key**: unknown under `defaults:` and `defaultScenario:`. Refused at load when not a duration, negative, on a Scenario that is `interactive: false`, or on any harness but claude-code. `{{param}}` substitutes inside it |
 | `providers` | []string | multi-provider fan-out; makes `Sessions`/`Providers` plural |
 | `transform` | string | JS (goja) rewriting `output` before checks see it |
 | `metadata` | map | free-form, carried into the report |
@@ -350,11 +356,11 @@ file to see it and could just as well ignore it; `image:` is in the message the 
 answering, so it is seen before the agent does anything at all. A bench that wants both
 declares both.
 
-**An `image:` Scenario must be `interactive: false`.** claude-code carries a picture only on the
-`--print` path, where declaring `image:` flips `--input-format` from `text` to `stream-json`;
-its interactive driver cannot, so an image on an interactive Scenario is refused at configure
-(`docs/harness.md:245-266`). Verify delivery with `session:image-sent`, which grades
-transport, not comprehension.
+**An `image:` works on both drives.** On `--print`, declaring `image:` flips `--input-format`
+from `text` to `stream-json` and the picture rides with the prompt; on an interactive Scenario
+(the default) madbench pastes it at the start of turn 1 and waits for `[Image #1]` before
+typing the prompt (`docs/harness.md:409-424`). Verify delivery with `session:image-sent`, which
+grades transport, not comprehension.
 
 > **An `image:` bench cannot be negative-controlled.** The mock harness is not `ImageCapable`:
 > `madbench check` refuses with *harness "mock" cannot deliver an image*. Grade the rest of the
@@ -362,7 +368,7 @@ transport, not comprehension.
 >
 > **`image: generated:<name>`** names a picture the Scenario's `generate:` program writes
 > into `$MADBENCH_IMAGE_DIR` — a sibling of the workspace, never seeded into it, so the
-> pixels that *are* the answer cannot be read off disk (`docs/harness.md:315-361`). That is
+> pixels that *are* the answer cannot be read off disk (`docs/harness.md:473-534`). That is
 > the native home for any bench-owned image generator; do not wire one around madbench.
 
 ---
@@ -530,7 +536,7 @@ metrics:
   - {name: steps,  source: session.steps,  aggregate: mean, unit: steps,  better: lower}
 ```
 
-Its `source:` catalog is closed (`docs/metrics.md:357-388`). The same names are what an
+Its `source:` catalog is closed (`docs/metrics.md:357-389`). The same names are what an
 expression's `session` binding exposes, so this table still tells you what is measurable:
 
 | Source | Scope | Reads |
@@ -538,8 +544,9 @@ expression's `session` binding exposes, so this table still tells you what is me
 | `scenario.duration` | scenario | `ScenarioResult.Duration` — present even on an error row |
 | `session.latency` | scenario | `Metrics.Latency` |
 | `session.cost` | scenario | `Metrics.Cost` |
-| `session.tokens` | scenario | prompt + output tokens |
-| `session.prompt_tokens` / `session.output_tokens` | scenario | one side of the above |
+| `session.tokens` | scenario | prompt + output tokens; present when both sides were reported, missing when only one was |
+| `session.prompt_tokens` | scenario | `Metrics.PromptTokens`, one side of the above, with its own reported flag |
+| `session.output_tokens` | scenario | `Metrics.OutputTokens`, the other side: what the **main thread's** answered `llm_call`s produced, summed from the Event stream; on the `--print` stream-only fallback, the `result` envelope's main-thread count. Its own reported flag: missing, not 0, when no response reported usage |
 | `session.steps` | scenario | `Metrics.StepCount` — **main-thread tool calls, not turns** |
 | `session.turns` | scenario | one **exchange** — `prompt:` plus each `follow_ups:` entry |
 | `session.model_requests` | scenario | one **request→response**: the answered **main-thread** `llm_call`s, counted from the Event stream on every Harness. Missing only for a Session with no Events |
@@ -628,7 +635,7 @@ one declaration across the runs is what makes their numbers comparable.
 
 `{{name}}` (whitespace-tolerant) is substituted anywhere a string appears: `harness:`
 values including nested slices/maps, `prompt`, `testdata`, all three of `repo:`, `generate`,
-`setup`, `cwd`, `staging_timeout`, every `sandbox:` value, `transform`, `vars` values, and
+`setup`, `cwd`, `staging_timeout`, `idle_wait`, every `sandbox:` value, `transform`, `vars` values, and
 check `value:`/`inline:`/`transform:`/own keys/`config:` recursively including nested children.
 
 - A value that is **exactly** one placeholder keeps the param's **native type**
@@ -654,7 +661,9 @@ canonicalised), `harness/args/<i>` (one entry per argv position),
 `harness/config/system_prompt`, `harness/config/files/<relative path>` (each file of the tree
 `config.dirs` composes, by content, a file `config.edits` changed with its edited regions masked),
 `harness/config/regions/<relative path>/<start marker>` (one edited region, START through END)
-and `harness/config/plugins/<id>/…` (each staged plugin) —
+and `harness/config/plugins/<id>/…` (each staged plugin), plus each scenario's own
+`harness.args` in the same source as `scenario/<id>/harness/args/<i>` (claude-code only;
+`allow: [scenario/*/harness/args]` covers them, `allow: [harness]` does not) —
 diffs them against the baseline, and:
 
 - **reports** the changed paths and byte delta, in the console's `── GUARD ──` section and
