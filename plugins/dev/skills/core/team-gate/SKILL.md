@@ -14,10 +14,12 @@ Every gate site in `/dev:dev`, `/dev:fix` and `/dev:audit` follows it; none rest
 
 ## The minimum ballot table
 
-`N` is the number of external slots the gate launched. A **ballot** is a slot whose
-`status` state is `COMPLETED` and whose `response-<slot>.md` matched `require_pattern`
-(the settled `status.summary` counts these as `succeeded`). FAILED, EMPTY, still-RUNNING at
-the poll ceiling, and never-started slots are not ballots.
+`N` is the number of external slots the gate launched. A **ballot** is an external slot
+whose `status` state is `COMPLETED` and whose `response-<slot>.md` matched
+`require_pattern`. FAILED, EMPTY, still-RUNNING at the poll ceiling, and never-started
+slots are not ballots. Count both by slot identity: walk the slots map, leave out the id
+`slots.internal`, and count the rest — never derive either from the summary's `succeeded`,
+which includes the internal slot when it completed and omits it when it failed.
 
 | Gate | Where | `MIN_BALLOTS` |
 |---|---|---|
@@ -26,9 +28,37 @@ the poll ceiling, and never-started slots are not ballots.
 | verify | any verification panel (`verify*` session dirs) | 1 |
 | fix-gate | `/dev:fix` Phase A and Phase B | N (every launched slot) |
 
-The internal reviewer (`dev:architect`, `dev:reviewer`, `dev:debugger` via the Agent
-tool) is never a ballot in this count: it is always required, it is not covered by
-`require_pattern`, and the phase's own rule says what a missing internal report means.
+The internal voters still dispatched through the Agent tool — `dev:architect` at Phase 3,
+`dev:debugger` at `/dev:fix` Phase A — are never a ballot in this count: each is always
+required, is not covered by `require_pattern`, and the phase's own rule says what a
+missing internal report means.
+
+## The internal slot
+
+The internal code reviewer runs in a session of its own — the `internal` slot of the
+gate's `team()` call, a CLI session, or, in a nested claudish child only, a foreground
+subagent. Which one is decided once per phase by
+`${CLAUDE_PLUGIN_ROOT}/skills/core/team-gate/cli-sessions.md`, "the review-session routes";
+read it before the first gate of a phase.
+
+- **Copy on COMPLETED only.** Copy `response-<slots.internal>.md` to the site's internal
+  path only when that slot is `COMPLETED` and matched `require_pattern`. Delete the
+  internal path before the panel starts, so an earlier iteration's copy never stands in.
+- **A failed internal slot is re-run once**, alone: `team(models=["internal"], …)` in a
+  fresh sub-path `<gate dir>/internal-retry/`, or one CLI session. A second failure at a
+  code-review gate is **GATE NOT MET** — append
+  `gate not met: <gate> — internal reviewer failed twice: <reason>` and stop with the
+  options in step 5. `/dev:fix` Phase B instead maps the missing report to ABSTAIN, as
+  its tally step says.
+- **A FAILED `launch` on the bypass warning is not retried.** It is Claude Code's
+  bypass-permissions consent screen (`cli-sessions.md` §4.7), and it shows on every launch
+  until the user opts in, so it counts as that second failure at once. The gate's report
+  leads with the opt-in step: run `claude --dangerously-skip-permissions` once,
+  interactively, or use claudish.
+- **Never twice on `REVIEWS:`.** The internal path stands for the internal review; list
+  `response-<slot>.md` for each external slot that completed and never
+  `response-<slots.internal>.md`. "One review" and "two or more reviews" count distinct
+  reviewers.
 
 ## The procedure
 
@@ -83,16 +113,19 @@ from the `run` response and never from memory of what a model usually says.
   with GATE NOT MET as the reason; a gate is the one thing autonomy does not skip.
 
 **6. Skipping is written down.** Whenever a gate does not run its external panel — MODELS
-is `none`, claudish is absent, `--no-review`, a downgrade offer accepted, internal-only by
-preset — append one line to `${SESSION_PATH}/gates.log` at the moment the decision is made:
+is `none`, claudish is absent at a gate with no CLI route (plan-review), `--no-review`, a
+downgrade offer accepted, internal-only by preset — append one line to `${SESSION_PATH}/gates.log` at the moment the decision is made:
 
 ```
 gate skipped: <gate> — <reason>
 ```
 
-Reasons are short and literal: `MODELS none`, `claudish absent`, `--no-review`,
-`downgrade accepted`, `preset review_models empty`. The internal review still runs; only
-the panel is skipped, and the line says so by naming the gate.
+One line per gate, with one reason. Reasons are short and literal: `MODELS none`, `claudish absent` (plan-review only),
+`--no-review`, `downgrade accepted`, `preset review_models empty`. A gate that runs but
+drops one id writes the same line with the slot named, one per id:
+`gate skipped: <gate> slot <id> — <reason>` (`cli-sessions.md` §4.1). The internal reviewer still runs, as the `internal` slot or
+a CLI session; only the external panel is skipped, and the line says so by naming the
+gate. Which route ran is its own line, `gate route: …`, written by `cli-sessions.md`.
 
 **7. The final report repeats `gates.log`.** Every completion message of a command that
 owns gates carries a `**Gates**:` section with the file's lines verbatim, or the single

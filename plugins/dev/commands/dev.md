@@ -1,7 +1,7 @@
 ---
 name: dev
 description: "Builds a feature through an 8-phase workflow, delegating each phase to a specialist agent. Depth picks how many phases run, automation how often it stops to ask."
-allowed-tools: Agent, AskUserQuestion, Bash, Read, EnterPlanMode, ExitPlanMode, Glob, Grep, mcp__plugin_claudish_claudish__team, mcp__plugin_claudish_claudish__list_models, mcp__plugin_claudish_claudish__search_models, mcp__plugin_claudish_claudish__create_session, mcp__plugin_claudish_claudish__get_output, mcp__plugin_claudish_claudish__get_diagnostics, mcp__chrome-devtools__navigate_page, mcp__chrome-devtools__take_screenshot, mcp__chrome-devtools__take_snapshot, mcp__chrome-devtools__click, mcp__chrome-devtools__fill, mcp__chrome-devtools__new_page, mcp__chrome-devtools__select_page, mcp__chrome-devtools__list_pages
+allowed-tools: Agent, AskUserQuestion, Bash, Read, EnterPlanMode, ExitPlanMode, Glob, Grep, mcp__plugin_claudish_claudish__team, mcp__plugin_claudish_claudish__list_models, mcp__plugin_claudish_claudish__search_models, mcp__plugin_claudish_claudish__create_session, mcp__plugin_claudish_claudish__get_output, mcp__plugin_claudish_claudish__get_diagnostics, mcp__plugin_terminal_mux__open-pane, mcp__plugin_terminal_mux__send-keys, mcp__plugin_terminal_mux__watch-pane, mcp__plugin_terminal_mux__pane-state, mcp__plugin_terminal_mux__list-slots, mcp__plugin_terminal_mux__close-pane, mcp__chrome-devtools__navigate_page, mcp__chrome-devtools__take_screenshot, mcp__chrome-devtools__take_snapshot, mcp__chrome-devtools__click, mcp__chrome-devtools__fill, mcp__chrome-devtools__new_page, mcp__chrome-devtools__select_page, mcp__chrome-devtools__list_pages
 ---
 
 <role>
@@ -712,9 +712,17 @@ allowed-tools: Agent, AskUserQuestion, Bash, Read, EnterPlanMode, ExitPlanMode, 
     `${SESSION_PATH}/run.json` with the resolved ids (an empty array when the review is
     internal-only) and print the line again in full:
     `Run: depth=<depth> automation=<automation> models=<id>,<id>` — or `models=none`.
-    When the list is empty, also append `gate skipped: plan-review — <reason>` and
-    `gate skipped: code-review — <reason>` to `${SESSION_PATH}/gates.log` now, the
-    reason being `MODELS none`, `claudish absent`, or `preset review_models empty`.
+    Then append the skip lines to `${SESSION_PATH}/gates.log` now — at most one per
+    gate, each with one reason:
+    - plan-review: `gate skipped: plan-review — claudish absent` when the claudish
+      `team` tool is not registered (this gate has no CLI route); otherwise, when the
+      list is empty, `— MODELS none` or `— preset review_models empty`.
+    - code-review: only when the list is empty, `gate skipped: code-review — MODELS none`
+      or `— preset review_models empty`. Without claudish this gate still runs its
+      external panel through the CLI route on the ids Step 1f stored, so `claudish
+      absent` is never its reason. On the nested route write nothing for it here: the
+      `gate route:` line from `team-gate/cli-sessions.md` is that gate's record.
+    Phase 5 appends no second skip line for code-review.
     Standard depth runs no panel at all: append the same two lines with reason
     `depth standard` at scope selection, so the completion message can say so.
 

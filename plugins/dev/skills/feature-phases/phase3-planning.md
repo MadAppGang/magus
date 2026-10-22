@@ -175,22 +175,27 @@ unchanged and does not know planning happened under plan mode.
 
 ### Step 3.10: Multi-model plan review (P1b — READ FROM CONFIG, NO RE-ASKING)
 
-Read model selection from ${SESSION_PATH}/iteration-config.json and check for the
-claudish runtime:
+Read model selection from ${SESSION_PATH}/iteration-config.json:
 ```bash
 selected_models=$(cat ${SESSION_PATH}/iteration-config.json | jq '.selectedModels')
-which claudish >/dev/null 2>&1; claudish_present=$?
 ```
 
-- `selectedModels.configured = true`, `selectedModels.models` non-empty AND
-  `claudish_present` is 0 → externals run beside the internal review. Display:
+claudish is present when the `mcp__plugin_claudish_claudish__team` tool is registered in
+this session — the tool, never the binary on PATH. Without claudish, Step 1f may have
+stored ids for the CLI route; this gate has no CLI route, so those ids do not make a
+panel here.
+
+- `selectedModels.configured = true`, `selectedModels.models` non-empty AND the `team`
+  tool is registered → externals run beside the internal review. Display:
   "Using pre-configured models: {model list}".
 - Otherwise → internal review only. If models were configured but claudish is absent,
-  say so once. The internal review runs regardless; it is never optional. Write the
-  skip down at this moment, never later — append one line to `${SESSION_PATH}/gates.log`:
-  `gate skipped: plan-review — MODELS none` or `gate skipped: plan-review — claudish
-  absent`. The line is repeated in the completion message; silence about a skipped
-  gate is a defect (`${CLAUDE_PLUGIN_ROOT}/skills/core/team-gate/SKILL.md`, step 6).
+  say so once. The internal review runs regardless; it is never optional. The skip is
+  one line in `${SESSION_PATH}/gates.log`, `gate skipped: plan-review — claudish absent`
+  or `gate skipped: plan-review — MODELS none`, which `dev.md` writes right after Step 1f
+  ("Complete the run record"); append it here only when `gates.log` carries no
+  `gate skipped: plan-review` line yet, so the gate keeps one. The line is repeated in
+  the completion message; silence about a skipped gate is a defect
+  (`${CLAUDE_PLUGIN_ROOT}/skills/core/team-gate/SKILL.md`, step 6).
 
 **The plan-review rule.** This phase owns its own verdict rule, because a plan has no
 code reviewer's thresholds to borrow — the architect's output is a design, not a diff:

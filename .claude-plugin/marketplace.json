@@ -7,7 +7,7 @@
   },
   "metadata": {
     "description": "Curated collection of Claude Code plugins for modern full-stack development with LLM performance tracking and E2E skill testing",
-    "version": "13.7.18",
+    "version": "13.8.0",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -75,7 +75,7 @@
       "name": "claudish",
       "source": "./plugins/claudish",
       "description": "MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting, manages async sessions, and shows the session's runs live above the prompt, with stop and live-screen tabs. Required by code-search, dev, multimodel and designer.",
-      "version": "2.10.0",
+      "version": "2.10.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -96,6 +96,11 @@
       "strict": true,
       "releases": [
         {
+          "version": "2.10.1",
+          "date": "2026-10-22",
+          "summary": "Claudish-usage's nested-child section points at dev's nested review route, so the two never\u2026"
+        },
+        {
           "version": "2.10.0",
           "date": "2026-10-21",
           "summary": "The Show panel's tabs wrap onto more rows when they do not fit one. With about 8 or more\u2026"
@@ -114,11 +119,6 @@
           "version": "2.9.1",
           "date": "2026-10-21",
           "summary": "The claudish-usage skill checks for child mode with echo\u2026"
-        },
-        {
-          "version": "2.9.0",
-          "date": "2026-10-21",
-          "summary": "Every running claudish session takes the Show panel's size, not only the one the open panel\u2026"
         }
       ]
     },
@@ -190,7 +190,7 @@
       "name": "multimodel",
       "source": "./plugins/multimodel",
       "description": "Multi-model collaboration and orchestration. Runs a task across several AI models in parallel and aggregates their blind APPROVE/REJECT votes, or delegates it to one model running a full Claude Code session.",
-      "version": "5.8.1",
+      "version": "5.9.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -215,6 +215,11 @@
       "strict": true,
       "releases": [
         {
+          "version": "5.9.0",
+          "date": "2026-10-22",
+          "summary": "Multi-model-validation seats the internal reviewer as the internal slot in every code-review\u2026"
+        },
+        {
           "version": "5.8.1",
           "date": "2026-10-21",
           "summary": "/team asks for a missing scope with AskUserQuestion, never in plain text, so \"/team look at\u2026"
@@ -233,11 +238,6 @@
           "version": "5.7.0",
           "date": "2026-10-20",
           "summary": "/multimodel:delegate reads recent beside activity, and can log the newest step's tool and\u2026"
-        },
-        {
-          "version": "5.6.0",
-          "date": "2026-10-20",
-          "summary": "Dependencies declared in requires schema 2"
         }
       ]
     },
@@ -245,7 +245,7 @@
       "name": "dev",
       "source": "./plugins/dev",
       "description": "Universal development assistant. Detects the project stack and routes work to specialist agents for architecture, implementation, debugging, review and research, enforcing design-system guardrails on every UI change.",
-      "version": "9.4.0",
+      "version": "9.5.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -285,6 +285,11 @@
       "strict": true,
       "releases": [
         {
+          "version": "9.5.0",
+          "date": "2026-10-22",
+          "summary": "The internal code reviewer runs in its own session, never as a subagent of the session that\u2026"
+        },
+        {
           "version": "9.4.0",
           "date": "2026-10-21",
           "summary": "A finished /dev:dev run reports first, then asks (MTL-71). Phase 8 prints the summary before\u2026"
@@ -303,11 +308,6 @@
           "version": "9.3.3",
           "date": "2026-10-20",
           "summary": "/multimodel:delegate, the multi-model-validation and error-recovery skills and /dev:qa no\u2026"
-        },
-        {
-          "version": "9.3.2",
-          "date": "2026-10-20",
-          "summary": "/dev:dev Phase 2 works without the code-search plugin. Codebase questions go to\u2026"
         }
       ]
     },

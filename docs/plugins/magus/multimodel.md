@@ -7,7 +7,7 @@ Multi-model collaboration and orchestration. Runs a task across several AI model
 
 | | |
 |---|---|
-| Version | `5.8.1` |
+| Version | `5.9.0` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 2 |
 | Subagents | 1 |

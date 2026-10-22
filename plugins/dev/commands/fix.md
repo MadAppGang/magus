@@ -1,7 +1,7 @@
 ---
 name: fix
 description: "Fixes a bug test-first — reproduce, localize, plan, patch, validate. Two multimodel gates, one on the root-cause hypothesis before any code and one on the finished patch."
-allowed-tools:  Agent, AskUserQuestion, Bash, Read, Glob, Grep, Write, Edit, Skill, mcp__plugin_claudish_claudish__team, mcp__plugin_claudish_claudish__run_prompt, mcp__plugin_claudish_claudish__list_models
+allowed-tools:  Agent, AskUserQuestion, Bash, Read, Glob, Grep, Write, Edit, Skill, mcp__plugin_claudish_claudish__team, mcp__plugin_claudish_claudish__run_prompt, mcp__plugin_claudish_claudish__list_models, mcp__plugin_terminal_mux__open-pane, mcp__plugin_terminal_mux__send-keys, mcp__plugin_terminal_mux__watch-pane, mcp__plugin_terminal_mux__pane-state, mcp__plugin_terminal_mux__list-slots, mcp__plugin_terminal_mux__close-pane
 ---
 
 <role>
@@ -51,9 +51,9 @@ allowed-tools:  Agent, AskUserQuestion, Bash, Read, Glob, Grep, Write, Edit, Ski
   - Error analysis and root cause investigation → dev:debugger agent (subagent_type: "dev:debugger")
   - Writing tests and applying patches → dev:developer agent (subagent_type: "dev:developer")
   - Phase A vote, internal Claude (root-cause hypothesis) → dev:debugger with EVALUATE ONLY instruction, run_in_background: true
-  - Phase B vote, internal Claude (patch quality) → dev:reviewer (subagent_type: "dev:reviewer"), foreground, handed the TARGET / FOCUS / OUTPUT / MODELS contract lines. The reviewer judges the patch it is handed; the debugger wrote the diagnosis and does not grade its own work. It writes its own report in its own format; this command maps its `**Verdict**:` line to a vote (PASS → APPROVE, FAIL → REJECT, CONDITIONAL → ABSTAIN) and never hands it the vote schema
+  - Phase B vote, internal Claude (patch quality) → dev:reviewer in a session of its own: the `internal` slot of its own claudish `team` call (`agent="dev:reviewer"`), or a route of `${CLAUDE_PLUGIN_ROOT}/skills/core/team-gate/cli-sessions.md` without claudish — never a subagent of this session. It is handed the TARGET / FOCUS / MODELS contract lines. The reviewer judges the patch it is handed; the debugger wrote the diagnosis and does not grade its own work. It writes its own report in its own format; this command maps its `**Verdict**:` line to a vote (PASS → APPROVE, FAIL → REJECT, CONDITIONAL → ABSTAIN) and never hands it the vote schema
   - Phase B tally when MODELS is not "none" → dev:aggregator (subagent_type: "dev:aggregator"), foreground, given the vote files and never the code. At MODELS "none" there is one mapped vote and it is the tally — no aggregator
-  - Multimodel vote (external models) → claudish MCP tools (team/create_session), run_in_background: true
+  - Multimodel vote (external models) → claudish MCP `team`, or CLI sessions in terminal slots when claudish is absent (`team-gate/cli-sessions.md`)
   - Post-deploy monitoring → inline Bash
   - Validation → inline Bash (run tests directly)
 
@@ -115,9 +115,9 @@ allowed-tools:  Agent, AskUserQuestion, Bash, Read, Glob, Grep, Write, Edit, Ski
       Both gates tally the same way, and this block is the only statement of the
       rule — Phase A, Phase B and the dev:aggregator prompt quote it, never
       restate it. The panel is every voter the gate launched: the internal voter
-      plus one slot per id in MODELS, so N = 1 when MODELS is "none" and
-      N = 1 + (number of ids) otherwise. `--models` accepts any number of ids;
-      the rule is written for any N.
+      plus each external slot it launched, so N = 1 when MODELS is "none". An id
+      skipped because no installed CLI carries it was never launched and is not a
+      member. `--models` accepts any number of ids; the rule is written for any N.
 
       After fault tolerance every panel member holds exactly one of APPROVE,
       REJECT or ABSTAIN — a missing, malformed, FAILED, EMPTY or still-RUNNING
@@ -188,22 +188,29 @@ allowed-tools:  Agent, AskUserQuestion, Bash, Read, Glob, Grep, Write, Edit, Ski
         rather than resolving again. Skip when SKIP_REVIEW=true — MODELS stays "none"
         and neither gate runs.
 
-        1. Presence: claudish is available when `which claudish` succeeds or the
-           `mcp__plugin_claudish_claudish__team` tool is registered in this session.
-           Presence means claudish, not the multimodel plugin: the review gates need
-           only the claudish runtime. multimodel is optional, and this command runs
-           the same without it.
-        2. `--models a,b` given → validate every id against `list_models`. An id the
-           catalog does not carry is an error: name it, show the live alternatives, and
-           stop. Never substitute a near match or a lower version.
-        3. No `--models` and claudish present → pick two reviewers from `list_models`.
-           The default panel at each gate is the internal voter plus these two.
-        4. claudish absent → MODELS="none". A `--models` value with no claudish is an
-           error, not a silent downgrade.
+        1. Route: read `${CLAUDE_PLUGIN_ROOT}/skills/core/team-gate/cli-sessions.md`,
+           "the review-session routes", §1 — once, for both gates. claudish is present
+           when the `mcp__plugin_claudish_claudish__team` tool is registered in this
+           session; the binary on PATH is not presence. Presence means claudish, not
+           the multimodel plugin: the review gates need only the claudish runtime.
+           multimodel is optional, and this command runs the same without it.
+        2. claudish route, `--models a,b` given → validate every id against
+           `list_models`. An id the catalog does not carry is an error: name it, show
+           the live alternatives, and stop. Never substitute a near match or a lower
+           version.
+        3. claudish route, no `--models` → pick two reviewers from `list_models`. The
+           default panel at each gate is the internal voter plus these two.
+        4. cli-sessions route, `--models a,b` given → each id goes to the CLI of its
+           family with that exact id (§4.1 of that file). An id no installed CLI
+           carries is skipped and named, never substituted.
+        5. cli-sessions route, no `--models` → the default panel of that file, §4.1.
+        6. nested route → MODELS="none"; the external panels are skipped and logged by
+           that file. stop route → stop as that file says, before Phase 1.
 
         Write the result into config.json as `"models": "none"` or `"models": "a,b"`
-        (bare catalog ids, comma-separated, no provider prefix). With "none" each gate
-        runs its internal voter alone and that verdict stands; nothing external launches.
+        (bare ids that will run, comma-separated, no provider prefix). With "none" each
+        gate runs its internal voter alone and that verdict stands; nothing external
+        launches.
       </step>
 
       <step name="run-record">
@@ -221,8 +228,10 @@ allowed-tools:  Agent, AskUserQuestion, Bash, Read, Glob, Grep, Write, Edit, Ski
         Then print one line: `Run: depth=production-grade automation=<a> models=<MODELS>`.
         If SKIP_REVIEW=true, also append `gate skipped: fix-gate-A — --no-review` and
         `gate skipped: fix-gate-B — --no-review` to `${SESSION_PATH}/gates.log` now; if
-        MODELS is "none" for any other reason, append `gate skipped: fix-gate-A — <reason>`
-        and the same for `fix-gate-B`, the reason being `claudish absent` or `MODELS none`.
+        MODELS is "none" for any other reason, append `gate skipped: fix-gate-A — MODELS none`
+        and the same for `fix-gate-B`. Each id resolve-models skipped gets
+        `gate skipped: fix-gate-A slot <id> — no installed CLI carries it`, and the same
+        for `fix-gate-B`.
       </step>
 
     </steps>
@@ -591,7 +600,16 @@ allowed-tools:  Agent, AskUserQuestion, Bash, Read, Glob, Grep, Write, Edit, Ski
             require_pattern="VERDICT:")
           ```
 
-          **`run` starts the panel and returns immediately — it does NOT return the reviews, and `started` is not a result.** This is gate **fix-gate-A**, `MIN_BALLOTS` = N (every launched slot). Read `${CLAUDE_PLUGIN_ROOT}/skills/core/team-gate/SKILL.md` and follow its steps 2-5: poll `claudish team(mode="status", path=<same path>)` until no slot in `models` has `state === "RUNNING"`, then read each answer from `response-<slot>.md` in that directory. The `slots` map in the `run` response gives the model-name-to-slot-id mapping. A backgrounded call is unknown until polled. Requires claudish >= 8.0.0.
+          On the cli-sessions route the same voters run as CLI sessions by
+          `${CLAUDE_PLUGIN_ROOT}/skills/core/team-gate/cli-sessions.md`, with
+          `${SESSION_PATH}` as the gate directory — the path above — vote-prompt-root-cause.md
+          as the brief and `require_pattern="VERDICT:"`. This panel is external-only: it
+          launches no internal session, and its slots map has no `internal` key. It names
+          no agent, so the CLIs get the vote prompt unchanged, without the agent
+          preamble. On the nested route the external panel is skipped. Model 1 is
+          unchanged on every route.
+
+          **On the claudish route, `run` starts the panel and returns immediately — it does NOT return the reviews, and `started` is not a result.** This is gate **fix-gate-A**, `MIN_BALLOTS` = N (every launched slot). Read `${CLAUDE_PLUGIN_ROOT}/skills/core/team-gate/SKILL.md` and follow its steps 2-5: poll `claudish team(mode="status", path=<same path>)` until no slot in `models` has `state === "RUNNING"`, then read each answer from `response-<slot>.md` in that directory. The `slots` map in the `run` response gives the model-name-to-slot-id mapping. A backgrounded call is unknown until polled. Requires claudish >= 8.0.0.
 
           Pass `input_file` ONLY — never `input` beside it. The pair is rejected with
           `Pass input_file or input, not both`; on that exact error retry once with
@@ -619,9 +637,12 @@ allowed-tools:  Agent, AskUserQuestion, Bash, Read, Glob, Grep, Write, Edit, Ski
 
           After all background tasks complete, read results:
           - ${SESSION_PATH}/claude-vote-root-cause.md (written by dev:debugger via Bash)
-          - External model votes from `${SESSION_PATH}/response-<slot>.md`, once
-            `team(mode="status")` reports every slot out of `RUNNING`. They are **not**
-            in the `run` response — that returns before any model has answered.
+          - External model votes from `${SESSION_PATH}/response-<slot>.md` — on the
+            claudish route once `team(mode="status")` reports every slot out of
+            `RUNNING`, on the cli-sessions route once `cli-sessions.md` §4.7 has
+            decided each session, with `${SESSION_PATH}/cli-slots.json` as the slots
+            map. They are **not** in the `run` response — that returns before any
+            model has answered.
 
           **The internal vote is the one `require_pattern` does not cover.** It is an
           `Agent`, so nothing checks that the file was written or that it holds a
@@ -949,9 +970,21 @@ allowed-tools:  Agent, AskUserQuestion, Bash, Read, Glob, Grep, Write, Edit, Ski
 
       <step>
         Launch the panel. The internal reviewer is never optional; external models are
-        additive. Start the external panel FIRST — `run` returns at once and the models
-        work in the background — then run the internal reviewer in the foreground, so
-        the two overlap.
+        additive. They are two calls in ONE message, because `agent` applies to every
+        child of a call and the external vote schema differs from the reviewer's
+        report: both `run` calls return at once, and the two panels overlap.
+
+        Pick the route from Phase 0 (`${CLAUDE_PLUGIN_ROOT}/skills/core/team-gate/cli-sessions.md`).
+        On the cli-sessions route both calls below run as CLI sessions by that file,
+        each with its own path as the gate directory. The vote panel is external-only —
+        no internal session, no `internal` key in its slots map, no agent preamble. The
+        internal reviewer is the separate call, one internal session
+        (`claude --agent dev:reviewer`) in its own gate directory. The two take their
+        slots from one `list-slots` read, split between them (that file, §4.2), so
+        each `cli-slots.json` lists only its own panel's slots. On the nested route
+        the vote panel is skipped and the internal reviewer takes that file's nested
+        route, writing `${SESSION_PATH}/claude-vote-patch.md` directly: the nested route
+        has no slots map, so there is nothing to poll or copy.
 
         External models — only when MODELS is not "none" — via claudish MCP team tool:
         ```
@@ -961,7 +994,7 @@ allowed-tools:  Agent, AskUserQuestion, Bash, Read, Glob, Grep, Write, Edit, Ski
           require_pattern="VERDICT:")
         ```
 
-        **`run` starts the panel and returns immediately — it does NOT return the reviews, and `started` is not a result.** This is gate **fix-gate-B**, `MIN_BALLOTS` = N (every launched slot). Read `${CLAUDE_PLUGIN_ROOT}/skills/core/team-gate/SKILL.md` and follow its steps 2-5: poll `claudish team(mode="status", path=<same path>)` until no slot in `models` has `state === "RUNNING"`, then read each answer from `response-<slot>.md` in that directory. The `slots` map in the `run` response gives the model-name-to-slot-id mapping. A backgrounded call is unknown until polled. Requires claudish >= 8.0.0.
+        **On the claudish route, `run` starts the panel and returns immediately — it does NOT return the reviews, and `started` is not a result.** This is gate **fix-gate-B**, `MIN_BALLOTS` = N (every launched slot). Read `${CLAUDE_PLUGIN_ROOT}/skills/core/team-gate/SKILL.md` and follow its steps 2-5: poll `claudish team(mode="status", path=<same path>)` until no slot in `models` has `state === "RUNNING"`, then read each answer from `response-<slot>.md` in that directory. The `slots` map in the `run` response gives the model-name-to-slot-id mapping. A backgrounded call is unknown until polled. Requires claudish >= 8.0.0.
 
         Pass `input_file` ONLY — never `input` beside it. The pair is rejected with
         `Pass input_file or input, not both`; on that exact error retry once with
@@ -975,28 +1008,43 @@ allowed-tools:  Agent, AskUserQuestion, Bash, Read, Glob, Grep, Write, Edit, Ski
         `shape_mismatch`) instead of handing prose to the parse step. Exit code 0 is not
         a success oracle — it is also 0 on an API error.
 
-        Internal reviewer — always — via Agent tool. It judges the patch it is handed and
-        nothing else; it did not write the diagnosis, so it is not grading its own work.
-        The dispatcher owns MODELS and is what launches externals. The reviewer writes
-        its full report in its own format, ending in its own `**Verdict**:` line; it is
-        not told about APPROVE/REJECT — the tally step maps that line to a vote.
+        Internal reviewer — always — as the `internal` slot of its own call. It judges
+        the patch it is handed and nothing else; it did not write the diagnosis, so it is
+        not grading its own work. The dispatcher owns MODELS and is what launches
+        externals. The reviewer writes its full report in its own format, ending in its
+        own `**Verdict**:` line; it is not told about APPROVE/REJECT — the tally step
+        maps that line to a vote. First delete `${SESSION_PATH}/claude-vote-patch.md`, so
+        an earlier vote's copy never stands in, then write the brief, with no `OUTPUT:`
+        line, to `${SESSION_PATH}/patch-review-internal/prompt.md` (a re-vote uses a
+        fresh `patch-review-internal-<n>/`):
         ```
-        Agent(
-          subagent_type: "dev:reviewer",
-          run_in_background: false,
-          description: "Review patch quality",
-          prompt: "TARGET: ${SESSION_PATH}/patch.diff
-                   FOCUS: code
-                   OUTPUT: ${SESSION_PATH}/claude-vote-patch.md
-                   MODELS: {MODELS from config.json}
-                   Read ${SESSION_PATH}/patch-context.md for the bug description, the
-                   reproduction test and the validation results, then review TARGET.
-                   IMPORTANT: EVALUATE the patch as presented. Do NOT propose alternative
-                   patches. Do NOT investigate further.
-                   Persist your report to OUTPUT with a Bash heredoc (you have Bash but not
-                   Write); the file is what the next step reads, not your return message."
-        )
+        TARGET: ${SESSION_PATH}/patch.diff
+        FOCUS: code
+        MODELS: none
+        Read ${SESSION_PATH}/patch-context.md for the bug description, the
+        reproduction test and the validation results, then review TARGET.
+        IMPORTANT: EVALUATE the patch as presented. Do NOT propose alternative
+        patches. Do NOT investigate further.
+        Return the full report as your answer.
         ```
+        Then, in the same message as the vote panel:
+        ```
+        claudish team(mode="run", path=${SESSION_PATH}/patch-review-internal,
+          models=["internal"],
+          agent="dev:reviewer",
+          input_file=${SESSION_PATH}/patch-review-internal/prompt.md,
+          require_pattern="\*\*Verdict\*\*: (PASS|CONDITIONAL|FAIL)",
+          min_output_bytes=400)
+        ```
+        On the claudish route, poll it like the vote panel, then copy its
+        `response-<slots.internal>.md` to `${SESSION_PATH}/claude-vote-patch.md` — only
+        when that slot is `COMPLETED` and matched `require_pattern`; otherwise re-run it
+        once, alone, in a fresh `<gate dir>/internal-retry/` path —
+        `${SESSION_PATH}/patch-review-internal/internal-retry/`, or under
+        `patch-review-internal-<n>/` for a re-vote. On the cli-sessions route the same
+        copy and re-run rules apply, with that gate directory's `cli-slots.json` as the
+        slots map; the nested route already wrote the file. Rules:
+        `${CLAUDE_PLUGIN_ROOT}/skills/core/team-gate/SKILL.md`, "The internal slot".
       </step>
 
       <step>
@@ -1005,22 +1053,26 @@ allowed-tools:  Agent, AskUserQuestion, Bash, Read, Glob, Grep, Write, Edit, Ski
         (every launched slot) is GATE NOT MET**: append
         `gate not met: fix-gate-B — <ballots>/<N> ballots, minimum <N>; failed: <slot>=<reason>`
         to `${SESSION_PATH}/gates.log`, do not tally, and stop with the team-gate
-        skill's three options. With MODELS "none" no slot was launched, N = 0, and the
-        gate is met by the internal reviewer alone.
+        skill's three options. Ballots count the vote panel's external slots only — the
+        internal reviewer's call is not one of them. With MODELS "none" no external slot
+        was launched, N = 0, and the gate is met by the internal reviewer alone.
 
         Collect the votes:
-        - ${SESSION_PATH}/claude-vote-patch.md (written by dev:reviewer via Bash) — the
-          reviewer's own report ending in `**Verdict**: PASS | CONDITIONAL | FAIL`, not
-          a vote. The tally step maps it.
-        - External model votes from `${SESSION_PATH}/response-<slot>.md`, once
-          `team(mode="status")` reports every slot out of `RUNNING`. They are **not** in
-          the `run` response — that returns before any model has answered. With MODELS
-          "none" nothing was launched, so there is nothing to poll.
+        - ${SESSION_PATH}/claude-vote-patch.md (the copy of the internal slot's report) —
+          the reviewer's own report ending in `**Verdict**: PASS | CONDITIONAL | FAIL`,
+          not a vote. The tally step maps it.
+        - External model votes from `${SESSION_PATH}/response-<slot>.md` — on the
+          claudish route once `team(mode="status")` reports every slot out of
+          `RUNNING`, on the cli-sessions route once `cli-sessions.md` §4.7 has decided
+          each session, with `${SESSION_PATH}/cli-slots.json` as the slots map. They are
+          **not** in the `run` response — that returns before any model has answered.
+          With MODELS "none", or on the nested route, nothing was launched, so there is
+          nothing to poll.
 
-        **The internal vote is the one `require_pattern` does not cover.** It is an
-        `Agent`, so nothing checks the file was written or holds a verdict. A missing
-        file, or one with no `**Verdict**:` line, MUST fall through the ABSTAIN rule
-        below — an absent internal vote is never agreement.
+        **The internal vote is never a ballot.** Its own call checks the report's shape,
+        and the copy is made only from a slot that passed; a slot that failed twice
+        leaves no file. A missing file, or one with no `**Verdict**:` line, MUST fall
+        through the ABSTAIN rule below — an absent internal vote is never agreement.
       </step>
 
       <step>
@@ -1055,12 +1107,12 @@ allowed-tools:  Agent, AskUserQuestion, Bash, Read, Glob, Grep, Write, Edit, Ski
           description: "Consolidate patch votes",
           prompt: "SESSION_PATH: ${SESSION_PATH}
                    REVIEWS: ${SESSION_PATH}/claude-vote-patch.md
-                            ${SESSION_PATH}/response-<slot>.md   (one line per slot)
+                            ${SESSION_PATH}/response-<slot>.md   (one line per external slot of the vote panel)
                    THRESHOLDS: <the mapping table above, the fault tolerance below, and
                                 the <consensus_rules> block, all quoted verbatim — not
                                 the escalation rules, and not CONSENSUS_MODE>
                    OUTPUT: ${SESSION_PATH}/patch-consolidated.md
-                   N: <1 + the number of ids in MODELS>
+                   N: <the voters launched: the internal reviewer plus each external slot the vote panel launched>
                    claude-vote-patch.md is a code-review report; map its terminal
                    `**Verdict**:` line to a vote exactly as THRESHOLDS says. Every
                    response-<slot>.md carries VERDICT, CONFIDENCE, REGRESSION_RISK and
@@ -1359,9 +1411,11 @@ allowed-tools:  Agent, AskUserQuestion, Bash, Read, Glob, Grep, Write, Edit, Ski
   | Monitoring TIMEOUT after 9 polls | Document; user decides whether to continue watching |
   | External slot FAILED, EMPTY, or still RUNNING at the poll ceiling | It is not a ballot. Both gates set `MIN_BALLOTS` = every launched slot, so one missing ballot is GATE NOT MET: `gate not met:` line in `gates.log`, no tally, AskUserQuestion with re-run / proceed-with-override / stop. ABSTAIN with CONFIDENCE=0 applies only to a malformed vote inside a met gate |
   | `team` tool_result is_error "Pass input_file or input, not both" | Retry once with `input_file` alone; a second failure is a panel with 0 ballots, which is GATE NOT MET |
-  | claudish absent, or MODELS resolves to "none" | Each gate runs its internal voter alone and that verdict stands; no `team` call, no dev:aggregator dispatch; record MODELS "none" in the review file and `gate skipped: fix-gate-A — <reason>` / `fix-gate-B` in `gates.log` |
+  | MODELS resolves to "none" | Each gate runs its internal voter alone and that verdict stands; no external panel, no dev:aggregator dispatch; Phase B's internal reviewer still runs in its own session; record MODELS "none" in the review file and `gate skipped: fix-gate-A — MODELS none` / `fix-gate-B` in `gates.log` |
+  | claudish absent | Both gates take the route `team-gate/cli-sessions.md` picks once in Phase 0: CLI sessions in terminal slots, the nested route inside a claudish child, or a stop naming what to install — never a subagent fallback |
+  | `--models` names an id no installed CLI carries (claudish absent) | Skip it and log `gate skipped: <gate> slot <id> — no installed CLI carries it`; it is not a panel member, so it is not in N |
   | `--models` names an id the catalog does not carry | Stop in Phase 0; show the id and the live alternatives from `list_models`; never substitute a near match or a lower version |
-  | Internal Phase B report missing, or without a `**Verdict**:` line | ABSTAIN with CONFIDENCE=0 — never counted as agreement; with MODELS "none" that is DIVERGENT → AskUserQuestion |
+  | Internal Phase B slot FAILED, or its report without a `**Verdict**:` line | Re-run it once, alone; still no report → ABSTAIN with CONFIDENCE=0 — never counted as agreement; with MODELS "none" that is DIVERGENT → AskUserQuestion |
   | Internal Phase B verdict CONDITIONAL | Maps to ABSTAIN; with MODELS "none" that is DIVERGENT → AskUserQuestion with the report's findings |
   | Internal Phase B verdict FAIL | Maps to REJECT; it carries no REGRESSION_RISK or PATCH_SCOPE field, so it goes to AskUserQuestion with the report's CRITICAL and HIGH findings |
   | Step 1a or Step 4e finds no repoPath/baselineCommit | STOP before any capture — the script would also exit 2 on the empty value; this stop names the step that did not run |
@@ -1374,7 +1428,7 @@ allowed-tools:  Agent, AskUserQuestion, Bash, Read, Glob, Grep, Write, Edit, Ski
     <user_request>/dev:fix production panic: runtime error: invalid memory address in handlers/users.go:142 — critical</user_request>
     <execution>
       PHASE 0: No flags; establish dev-fix-{ts}-{rand} session; load dev:systematic-debugging;
-        `which claudish` succeeds → MODELS = two reviewers from list_models
+        the `team` tool is registered → claudish route, MODELS = two reviewers from list_models
       PHASE 1 (REPRODUCE): stack-detector → Go; reproduce via: go test -run TestGetUser ./handlers/...
       PHASE 2 (LOCALIZE):
         Strategy A: handlers/users.go:142 — HIGH — direct stack frame
@@ -1397,9 +1451,10 @@ allowed-tools:  Agent, AskUserQuestion, Bash, Read, Glob, Grep, Write, Edit, Ski
       PHASE 5 (VALIDATE): go test ./... PASS, go vet PASS, golangci-lint PASS, gofmt PASS
         Downgrade offer: "All checks pass cleanly. Skip Phase B + monitoring?"
         User: "Full review + monitoring [RECOMMENDED]"
-      PHASE 6 (REVIEW-B): team(run) launched for MODELS, then dev:reviewer foreground on
-        TARGET patch.diff, writing its own report (Verdict: PASS); dev:aggregator maps
-        that to APPROVE and tallies the three files:
+      PHASE 6 (REVIEW-B): two `run` calls in one message — the vote panel for MODELS, and
+        the internal reviewer's own call (the `internal` slot, agent dev:reviewer) on
+        TARGET patch.diff; its report (Verdict: PASS) is copied to claude-vote-patch.md;
+        dev:aggregator maps that to APPROVE and tallies the three files:
         | Model        | Verdict        | Confidence | REGRESSION_RISK | PATCH_SCOPE |
         | dev:reviewer | APPROVE (PASS) | —          | —               | —           |
         | model A      | APPROVE        | 8          | LOW             | MINIMAL     |

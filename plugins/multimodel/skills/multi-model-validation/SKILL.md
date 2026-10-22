@@ -345,15 +345,17 @@ Why?
 
 The internal reviewer should NEVER be optional - it's your safety net.
 
-In the code-review panels `dev` dispatches — where claudish is optional — it is not a
-claudish slot. Launch it as its own
-`Agent(subagent_type: "dev:reviewer", run_in_background: false, …)` in the SAME message
-as the `team` call, carrying the contract lines — `TARGET: BRANCH`, `FOCUS:`, its own
-`OUTPUT:` path, and `MODELS:` naming the externals. Never seat it in that team's `models`
-list. Its return is in your hands: list its OUTPUT file on REVIEWS: whether or not it
-carries a `**Verdict**:` line — the aggregator counts a file with no verdict as
-no-verdict, never as one more approval. (`/team` itself, where claudish is a hard
-dependency, seats it as the `internal` slot instead — Pattern 3 states the rule.)
+It runs in a session of its own, never as a subagent of the session that wrote the code:
+seat it as the `internal` slot in the `models` list of the ONE `team` call, beside the
+externals, so it gets the same `require_pattern` shape check as every one of them. After
+the panel settles, copy `response-<slots.internal>.md` to `claude-review.md` — only when
+that slot is COMPLETED and matched the pattern — and list `claude-review.md` on REVIEWS:,
+never `response-<slots.internal>.md` beside it: that is the same review counted twice.
+Without claudish this skill runs the internal reviewer alone, through the `claude` CLI by
+`skills/core/team-gate/cli-sessions.md` inside the dev plugin; it launches no external CLIs,
+and that file's §4.1 says the same. dev's root is the `installPath` of its `dev@` entry in
+`claude plugin list --json`; with no such entry dev is not installed, and the route is
+unavailable. Pattern 3 states the rule.
 ```
 
 ---
@@ -363,33 +365,32 @@ dependency, seats it as the `internal` slot instead — Pattern 3 states the rul
 **Why This Pattern Exists:** independent calls issued in one message run together; calls
 split across messages wait for each other. So preparation comes first, every reviewer
 starts in one message, and consolidation waits until the panel settles. What decides
-whether two calls may share a message is data dependency, not tool type — Message 2 below
-issues an `Agent` call and a `team` MCP call together, and that is correct.
+whether two calls may share a message is data dependency, not tool type — and every
+reviewer, the internal one included, is a slot of the one `team` call in Message 2.
 
 **The Pattern:**
 
 ```
 Message 1: Preparation (Bash Only)
   - Create workspace directories
-  - Validate inputs (check if claudish installed)
+  - Validate inputs (check the claudish `team` tool is registered)
   - Write the brief (input.md) — never a pre-computed diff: every reviewer is
     handed `TARGET: BRANCH` and captures its own surfaces through dev's
-    `capture-review-surfaces.ts`
+    `capture-review-surfaces.ts`. No `OUTPUT:` line; it ends
+    `Return the full report as your answer.`
   - NO Agent calls
 
-Message 2: Parallel Execution (the internal Agent call and ONE team call, same message)
-  - `Agent(subagent_type: "dev:reviewer", run_in_background: false, …)` — the
-    internal reviewer, always present, carrying the contract lines
-  - Every external model in a single `team` MCP call; the tool parallelises them
-    internally. In a dev-dispatched panel the internal reviewer is never a
-    `models` entry (Pattern 3 — `/team` itself seats it as the `internal` slot)
+Message 2: Parallel Execution (ONE team call)
+  - `internal` and every external model in a single `team` MCP call; the tool
+    parallelises them internally. `internal` is always present (Pattern 3)
   - Pass require_pattern whenever the prompt mandates an output shape
 
 Message 3: Auto-Consolidation (one Agent call)
   - Automatically triggered when the panel settles with N ≥ 2 reviews. At N = 1 there
     is nothing to consolidate: use that review's own verdict directly (Pattern 5)
   - Launch `dev:aggregator` — the only consolidator; it reads reviews, never code
-  - Pass every review file path on REVIEWS:, the three lines under 'Apply verdict
+  - Pass every review file path on REVIEWS: — `claude-review.md`, then one
+    `response-<slot>.md` per external slot, never `slots.internal` — the three lines under 'Apply verdict
     thresholds' in `dev:reviewer`'s agent file on THRESHOLDS: — read at dispatch
     time, never recalled — and the consolidated file on OUTPUT: (Pattern 5)
   - Consensus analysis is the aggregator's; never send the reviews to dev:reviewer
@@ -417,30 +418,18 @@ Message 1: Preparation (Session Setup + Model Discovery)
 
   # User selects models via AskUserQuestion (see Pattern 0)
 
-Message 2: Start the panel (the internal Agent call and ONE team call, same message)
+Message 2: Start the panel (ONE team call)
   Bash: write the brief to "$SESSION_DIR/input.md" — the contract lines every
-        external gets: TARGET: BRANCH / FOCUS: code / MODELS: none
+        reviewer gets: TARGET: BRANCH / FOCUS: code / MODELS: none, no OUTPUT:
+        line, ending "Return the full report as your answer."
 
-  Agent(
-    subagent_type: "dev:reviewer",
-    run_in_background: false,
-    description: "Internal code review",
-    prompt: "TARGET: BRANCH
-             FOCUS: code
-             OUTPUT: $SESSION_DIR/claude-review.md
-             MODELS: grok,<free-model-a>,gpt,<free-model-c>"
-  )
-  ---
   claudish team(mode="run", path=$SESSION_DIR,
-    models=["grok", "<free-model-a>", "gpt", "<free-model-c>"],
+    models=["internal", "grok", "<free-model-a>", "gpt", "<free-model-c>"],
     input_file="$SESSION_DIR/input.md",
     require_pattern="\*\*Verdict\*\*: (PASS|CONDITIONAL|FAIL)", agent="dev:reviewer")
 
-  All 5 reviewers run at once: the Agent is the always-present internal reviewer,
-  and the team tool parallelises the four externals internally. The internal
-  reviewer is never a `models` entry — its return is in your hands, and its OUTPUT
-  file goes on REVIEWS: whether or not it carries a `**Verdict**:` line; the
-  aggregator counts a file with no verdict as no-verdict, never as approval.
+  All 5 reviewers run at once as slots of one call: `internal` is the
+  always-present internal reviewer, shape-checked like the four externals.
 
   The team call RETURNS IMMEDIATELY with a slots map. It does not carry the reviews.
 
@@ -453,22 +442,19 @@ Message 2b: Poll to completion
 Message 3: Auto-Consolidation
   (Automatically triggered - don't wait for user to request)
 
-  # The internal reviewer wrote $SESSION_DIR/claude-review.md. The team run wrote
-  # one file per external slot, $SESSION_DIR/response-NN.md, named by
+  # The team run wrote one file per slot, $SESSION_DIR/response-NN.md, named by
   # ANONYMOUS slot id rather than by model, because the vote is blind. Do not try
-  # to attribute a file to a model before the verdict is in. The aggregator is
-  # the only consolidator: it is given the reviews and never the code, and no
-  # reviewer ever sees another reviewer's output.
+  # to attribute a file to a model before the verdict is in. Copy
+  # response-<slots.internal>.md to $SESSION_DIR/claude-review.md if that slot
+  # COMPLETED and matched. The aggregator is the only consolidator: it is given the
+  # reviews and never the code, and no reviewer ever sees another reviewer's output.
 
   Agent(
     subagent_type: "dev:aggregator",
     run_in_background: false,
     description: "Consolidate code reviews",
     prompt: "REVIEWS: $SESSION_DIR/claude-review.md
-             $SESSION_DIR/response-01.md
-             $SESSION_DIR/response-02.md
-             $SESSION_DIR/response-03.md
-             $SESSION_DIR/response-04.md
+             $SESSION_DIR/response-<slot>.md   (one line per external slot from the slots map that completed — never slots.internal)
              THRESHOLDS: <the three lines under 'Apply verdict thresholds' in
                           dev:reviewer's agent file, read at dispatch time, never
                           recalled>
@@ -624,36 +610,31 @@ Do NOT consolidate until ALL tasks complete:
 External models are invoked via claudish MCP tools. The orchestrator calls the MCP tools
 directly; no Bash invocation is needed. This is 100% reliable.
 
-**Where the native reviewer sits — one rule.** It is a claudish `internal` slot when
-claudish is a hard dependency of the dispatcher, and a separate `Agent(…)` call when
-claudish is optional.
+**Where the native reviewer sits — one rule.** It is the claudish `internal` slot, in the
+`models` list of the ONE `team` call, and gets the same `require_pattern` shape check as
+every external. It is never a subagent of the session that wrote the code: that shares
+its lineage and escapes the shape check.
 
-- **`/team` itself** — the `multimodel` plugin declares claudish as a dependency, so
-  `internal` goes in the `models` list of the ONE `team` call and gets the same
-  `require_pattern` shape check as every external. That procedure lives in this
-  plugin's own `commands/team.md` (Step 2 onward) and is not restated here.
+- **`/team` itself** — that procedure lives in this plugin's own `commands/team.md`
+  (Step 2 onward) and is not restated here.
 - **The code-review panels `dev` dispatches** (`/dev:dev` Phase 5, `/dev:audit`,
-  `/dev:fix` Phase B) — claudish is optional there and the panel may be empty, so the
-  internal reviewer is an always-present
-  `Agent(subagent_type: "dev:reviewer", run_in_background: false, …)` issued in the
-  same message as the `team` call, carrying the contract lines. Every code-review
-  example in this skill is this case.
+  `/dev:fix` Phase B) — the same slot; with no externals the call is
+  `models=["internal"]`. Without claudish, dev runs the reviewers as CLI sessions in
+  terminal slots, by `skills/core/team-gate/cli-sessions.md` inside the dev plugin (its
+  root: the `installPath` of the `dev@` entry in `claude plugin list --json`). Every code-review example in
+  this skill is this case.
 
-**For a dev-dispatched code-review panel:** write the brief to `input.md`, start the
-internal Agent and the panel in one message, poll the panel to completion, then read
-the externals' reviews off disk.
+**For a code-review panel:** write the brief to `input.md`, start the panel, poll it to
+completion, then read the reviews off disk.
 ````
-Agent(subagent_type: "dev:reviewer", run_in_background: false,
-  description: "Internal code review",
-  prompt: "TARGET: BRANCH\nFOCUS: code\nOUTPUT: ${SESSION_DIR}/claude-review.md\nMODELS: grok,gemini")
----
-team(mode="run", path=SESSION_DIR, models=["grok", "gemini"],
+team(mode="run", path=SESSION_DIR, models=["internal", "grok", "gemini"],
   input_file=`${SESSION_DIR}/input.md`,
   require_pattern="\*\*Verdict\*\*: (PASS|CONDITIONAL|FAIL)", agent="dev:reviewer")
-  // → { started: true, slots: { "grok": "01", "gemini": "02" }, ... }
+  // → { started: true, slots: { "internal": "01", "grok": "02", "gemini": "03" }, ... }
 
 team(mode="status", path=SESSION_DIR)   // until no slot has state === "RUNNING"
-  // → read `${SESSION_DIR}/response-<slot>.md` for each slot
+  // → copy `response-<slots.internal>.md` to `${SESSION_DIR}/claude-review.md`
+  //   when that slot COMPLETED; read `response-<slot>.md` for each external slot
 ````
 
 The `team` tool runs all models in parallel internally. **`run` does not wait and does not
@@ -661,11 +642,10 @@ return the answers** — it starts the slots and hands back the slot map. Per-mo
 (`state`, `exitCode`, `outputSize`, `error.reason`) comes from a settled `status` response.
 There is no `timeout` parameter any more, and passing one is silently ignored. Full procedure: `claudish:claudish-usage` → "The three-step lifecycle". Requires claudish >= 8.0.0.
 
-**In a dev-dispatched panel the internal reviewer is never a `models` entry.** It runs as
-the Agent above — on the host session, with the dev plugin loaded, so `TARGET: BRANCH`
-resolves through dev's own capture script — and its return is in the dispatcher's hands.
-Its file goes on REVIEWS: whether or not it carries a verdict line; the aggregator counts
-a file with no verdict as no-verdict, never as one more approval.
+**The internal reviewer is always a `models` entry.** Its slot runs with the dev plugin
+loaded, so `TARGET: BRANCH` resolves through dev's own capture script. Its copy,
+`claude-review.md`, goes on REVIEWS: in place of its slot file, never beside it; a slot
+that failed leaves no copy, and dev's team-gate says what that means for the gate.
 
 **`require_pattern` is what turns exit 0 into a real success check.** A slot that finished
 without producing the required shape is reported FAILED (state EMPTY, reason
@@ -690,31 +670,27 @@ create_session(model="grok", prompt=TASK_PROMPT, timeout_seconds=300)
 ### Correct Pattern Example
 
 ````
-// ✅ CORRECT (dev-dispatched panel): the internal reviewer as its own Agent, every external in ONE team call — same message
-Agent({ subagent_type: "dev:reviewer", run_in_background: false,
-        description: "Internal code review",
-        prompt: "TARGET: BRANCH\nFOCUS: code\nOUTPUT: ${SESSION_DIR}/claude-review.md\nMODELS: grok,gemini" })
+// ✅ CORRECT: the internal reviewer and every external in ONE team call
 team(mode="run", path=SESSION_DIR,
-  models=["grok", "gemini"],
+  models=["internal", "grok", "gemini"],
   input_file=`${SESSION_DIR}/input.md`,
   require_pattern="\*\*Verdict\*\*: (PASS|CONDITIONAL|FAIL)", agent="dev:reviewer")
 
-// …then poll, then read the externals' reviews from response-<slot>.md
+// …then poll, copy the internal slot to claude-review.md, and read each external
+// slot's review from response-<slot>.md
 team(mode="status", path=SESSION_DIR)
 ````
 
 ```
-// ❌ WRONG: the native reviewer fired into the background, its file read by nobody
-Agent({ subagent_type: "dev:reviewer", run_in_background: true,
-        prompt: "Review the change...\n\nWrite to: session/internal-result.md" })
+// ❌ WRONG: the internal review counted twice
+REVIEWS: ${SESSION_DIR}/claude-review.md
+         ${SESSION_DIR}/response-<slots.internal>.md   // the same review again
+         ${SESSION_DIR}/response-<slot>.md             // each external slot
 ```
 
-The internal reviewer runs `run_in_background: false` so that its return — and whether its
-OUTPUT file carries a `**Verdict**:` line — is in hand before the aggregator is dispatched.
-It goes on REVIEWS: either way; the aggregator counts a file with no verdict as no-verdict,
-never as approval. A background Agent's file is read by nobody until it is too late. (For
-`/team` itself the correct form is the `internal` slot — `commands/team.md`, per the rule
-above.)
+`claude-review.md` is the copy of `response-<slots.internal>.md`. Listing both hands the
+aggregator one review as two, and the consensus it reports is fake. REVIEWS: names the
+copy once, then each external slot that completed.
 
 ---
 
@@ -926,8 +902,8 @@ Agent(
   run_in_background: false,
   description: "Consolidate code reviews",
   prompt: "REVIEWS: $SESSION_DIR/claude-review.md
-           $SESSION_DIR/grok-review.md
-           $SESSION_DIR/free-model-a-review.md
+           $SESSION_DIR/response-<slot>.md   (one line per external slot from the slots map —
+                                             never slots.internal, which claude-review.md copies)
            THRESHOLDS: <the three lines under 'Apply verdict thresholds' in
                         dev:reviewer's agent file, read at dispatch time, never
                         recalled>
@@ -955,8 +931,7 @@ Agent(
 
 ✅ CORRECT - File Paths in Session Directory:
   prompt: "REVIEWS: $SESSION_DIR/claude-review.md
-           $SESSION_DIR/grok-review.md
-           $SESSION_DIR/free-model-a-review.md
+           $SESSION_DIR/response-<slot>.md   (one per external slot)
            THRESHOLDS: ...
            OUTPUT: $SESSION_DIR/consolidated-review.md
            ..."
@@ -1818,29 +1793,20 @@ Message 2: Model Selection (AskUserQuestion with multiSelect)
   # <free-model-a>
   # <free-model-b>
 
-Message 3: Start the panel (the internal Agent call and ONE team call, same message)
-  Bash: write the brief to "$SESSION_DIR/input.md"   # TARGET: BRANCH / FOCUS: code / MODELS: none
+Message 3: Start the panel (ONE team call)
+  Bash: write the brief to "$SESSION_DIR/input.md"   # TARGET: BRANCH / FOCUS: code / MODELS: none, no OUTPUT:
 
-  Agent(
-    subagent_type: "dev:reviewer",
-    run_in_background: false,
-    description: "Internal code review",
-    prompt: "TARGET: BRANCH
-             FOCUS: code
-             OUTPUT: $SESSION_DIR/claude-review.md
-             MODELS: grok,<free-model-a>,<free-model-c>"
-  )
-  ---
   claudish team(mode="run", path=$SESSION_DIR,
-    models=["grok", "<free-model-a>", "<free-model-c>"],
+    models=["internal", "grok", "<free-model-a>", "<free-model-c>"],
     input_file="$SESSION_DIR/input.md",
     require_pattern="\*\*Verdict\*\*: (PASS|CONDITIONAL|FAIL)", agent="dev:reviewer")
 
-  All 4 reviewers run at once — the Agent is the internal reviewer, and the team
-  call parallelises the three externals internally. The team call returns a slots
-  map immediately; poll before consolidating:
+  All 4 reviewers run at once as slots of one call — `internal` and the three
+  externals. The team call returns a slots map immediately; poll before
+  consolidating:
 
   claudish team(mode="status", path=$SESSION_DIR)  # until no slot is RUNNING
+  # copy response-<slots.internal>.md to $SESSION_DIR/claude-review.md if it COMPLETED
 
 Message 4: Auto-Consolidation + Statistics Update
   # Consolidate — claude-review.md plus one response-NN.md per external slot; the
@@ -1850,9 +1816,7 @@ Message 4: Auto-Consolidation + Statistics Update
     run_in_background: false,
     description: "Consolidate code reviews",
     prompt: "REVIEWS: $SESSION_DIR/claude-review.md
-             $SESSION_DIR/response-01.md
-             $SESSION_DIR/response-02.md
-             $SESSION_DIR/response-03.md
+             $SESSION_DIR/response-<slot>.md   (each external slot from the slots map — never slots.internal)
              THRESHOLDS: <the three lines under 'Apply verdict thresholds' in
                           dev:reviewer's agent file, read at dispatch time, never
                           recalled>
@@ -1908,32 +1872,22 @@ Message 5: Present Results
 Message 1: Preparation
   (same as Example 1)
 
-Message 2: Start the panel (the internal Agent call and ONE team call, same message)
-  Bash: write the brief to "$SESSION_DIR/input.md"   # TARGET: BRANCH / FOCUS: code / MODELS: none
+Message 2: Start the panel (ONE team call)
+  Bash: write the brief to "$SESSION_DIR/input.md"   # TARGET: BRANCH / FOCUS: code / MODELS: none, no OUTPUT:
 
-  Agent(
-    subagent_type: "dev:reviewer",
-    run_in_background: false,
-    description: "Internal code review",
-    prompt: "TARGET: BRANCH
-             FOCUS: code
-             OUTPUT: $SESSION_DIR/claude-review.md
-             MODELS: grok,gemini,<model-c>"
-  )
-  ---
   claudish team(mode="run", path=$SESSION_DIR,
-    models=["grok", "gemini", "<model-c>"],
+    models=["internal", "grok", "gemini", "<model-c>"],
     input_file="$SESSION_DIR/input.md",
     require_pattern="\*\*Verdict\*\*: (PASS|CONDITIONAL|FAIL)", agent="dev:reviewer")
 
 Message 3: Poll, then Error Recovery (error-recovery skill)
   claudish team(mode="status", path=$SESSION_DIR)  # until no slot is RUNNING
 
-  Internal reviewer: returned; $SESSION_DIR/claude-review.md carries a Verdict line ✓
   Settled status.models:
-    - slot 01 (Grok):   FAILED, error.reason = nonzero_exit ✗
-    - slot 02 (Gemini): FAILED, error.reason = nonzero_exit (API 500) ✗
-    - slot 03 (GPT):  COMPLETED ✓
+    - slot 01 (internal): COMPLETED ✓ — copied to $SESSION_DIR/claude-review.md
+    - slot 02 (Grok):     FAILED, error.reason = nonzero_exit ✗
+    - slot 03 (Gemini):   FAILED, error.reason = nonzero_exit (API 500) ✗
+    - slot 04 (GPT):      COMPLETED ✓
 
   Note there is no "timeout" reason any more — nothing kills a slot on a timer. A
   slot that is still RUNNING when you hit your poll ceiling is reported as still
@@ -1947,13 +1901,13 @@ Message 3: Poll, then Error Recovery (error-recovery skill)
      Proceeding with consolidation using 2 reviews."
 
 Message 4: Auto-Consolidation
-  # The internal review plus the one COMPLETED slot have a review file; list exactly those.
+  # The internal review's copy plus the one COMPLETED external slot; list exactly those.
   Agent(
     subagent_type: "dev:aggregator",
     run_in_background: false,
     description: "Consolidate code reviews",
     prompt: "REVIEWS: $SESSION_DIR/claude-review.md
-             $SESSION_DIR/response-03.md
+             $SESSION_DIR/response-<slot>.md   (the one external slot that completed, GPT's slot in the slots map — never slots.internal)
              THRESHOLDS: <the three lines under 'Apply verdict thresholds' in
                           dev:reviewer's agent file, read at dispatch time, never
                           recalled>
@@ -1990,11 +1944,11 @@ Solution: issue every independent launch in one message
 
 ```
 ❌ Wrong:
-  Message 2: Agent({...})
-  Message 3: team(mode="run", ...)   (waits for Message 2 for no reason)
+  Message 2: team(mode="run", models=["internal"], ...)
+  Message 3: team(mode="run", models=[the externals], ...)   (two panels, two slots maps to poll and walk; polling Message 2 to settle first runs them one after the other)
 
 ✅ Correct:
-  Message 2: Agent({...}); team(mode="run", ...)   (independent, so together)
+  Message 2: team(mode="run", models=["internal", the externals], ...)   (one call, one panel)
 ```
 
 ---

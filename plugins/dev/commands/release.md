@@ -245,8 +245,8 @@ allowed-tools:  Agent, AskUserQuestion, Bash, Read, Glob, Grep, Write, Edit, Ski
 
   GATE: PR CI green. Not a second approval — the human decided up front. The PR is the
   durable record of what shipped, and CI is the mechanical gate.
-  - Run a code review on the diff here (Agent → dev:reviewer, or the project's review
-    command) and surface its findings in the PR. It does not block on its own; a
+  - Run a code review on the diff here (`/dev:audit code` on the diff, or the project's
+    review command) and surface its findings in the PR. It does not block on its own; a
     critical, evidence-backed finding is reported as a preflight-class failure (the
     run stops because proceeding would be wrong), everything else is noted and the
     run continues. An agent approving its own release is a log line, not a gate.

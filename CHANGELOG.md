@@ -4,6 +4,45 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Marketplace 13.8.0] - 2026-10-22
+
+### Changed
+
+- **`dev` v9.5.0**: the internal code reviewer runs in its own session, never as a subagent of
+  the session that wrote the code (MTL-170). With claudish it is the `internal` slot of the
+  review's `team` call, so `require_pattern` covers it and it shows in the claudish panel beside
+  the other reviewers. This applies to Phase 5 of `/dev:dev`, `/dev:audit` and `/dev:fix` Phase B.
+  Its report is copied to the same `claude-internal.md` / `claude-vote-patch.md` as before, and
+  the aggregator is never handed it twice.
+- **`dev` v9.5.0**: without claudish, reviewers run as CLI sessions in isolated terminal slots
+  (MTL-171): the internal reviewer as `claude --agent dev:reviewer`, external ids as `codex`,
+  `agy` (Antigravity) or `opencode` sessions. The procedure lives in one file,
+  `skills/core/team-gate/cli-sessions.md`. It starts each CLI only after the slot's shell is
+  ready, reads the result from the OUTPUT file and never from the screen, and never answers
+  Claude Code's bypass-permissions warning for you. With neither claudish nor the terminal
+  plugin, the review step stops and names what to install. Inside a nested claudish child, the
+  one place claudish forbids another agent CLI, the reviewer stays a subagent.
+- **`dev` v9.5.0**: presence is decided by the registered claudish `team` tool, not by
+  `which claudish`, in Phases 0, 3 and 5, `/dev:audit` and `/dev:fix`. A failed internal review
+  is re-run once; a second failure stops the gate with its three options.
+- **`multimodel` v5.9.0**: `multi-model-validation` seats the internal reviewer as the `internal`
+  slot in every code-review panel it describes, and names external response files from the
+  `slots` map instead of fixed numbers.
+- **`claudish` v2.10.1**: `claudish-usage`'s nested-child section points at dev's nested review
+  route, so the two never disagree.
+
+### Why
+
+IRS-1 (`benches/internal-reviewer-session`) on madbench 0.54.0, Claude Code 2.1.307, two runs at
+`--trials 3`: with the previous text the reviewer was a `dev:reviewer` subagent in 9 of 9 trials,
+with or without claudish. With the new text and claudish present, it ran as the `internal` slot in
+3 of 3, with no subagent. Without claudish, with `TMUX_TMPDIR` set so the sandbox can start tmux,
+the new text launched `claude --agent dev:reviewer` in a terminal slot in 2 of 2 graded trials,
+with no subagent; the third trial timed out and was not graded. Whether the child reviewer
+finishes its report inside the sandbox is not measured; live runs of all four CLIs show the launch.
+
+---
+
 ## [Marketplace 13.7.18] - 2026-10-21
 
 ### Fixed

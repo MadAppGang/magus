@@ -58,7 +58,10 @@ session tier exists below you. The session that started you is waiting for your 
 says to delegate to an external model, `create_session` or `team`, you already satisfy that
 step by running it. Where the workflow names an internal path, take it (for example the
 internal writer in `/dev:qa`), and say in your report that you took it because the session
-is nested.
+is nested. A review gate in `dev` takes the nested route of
+`skills/core/team-gate/cli-sessions.md` inside the dev plugin (its root: the `installPath`
+of the `dev@` entry in `claude plugin list --json`): the internal reviewer as a foreground subagent, no external
+panel, no CLI launched from a pane.
 
 **What you still have.** `run_prompt` gives a one-shot second opinion from another model.
 `list_models` and `search_models` still resolve IDs. `compare_models` is also there, but

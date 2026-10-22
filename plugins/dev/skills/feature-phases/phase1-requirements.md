@@ -300,9 +300,19 @@ contain no `@` and no `/`: `<model-id>`, not `<vendor>/<model-id>`. Store an add
 when the user explicitly asked to pin that backend. See `claudish:claudish-usage` →
 "Identity vs routing address".
 
-If the claudish MCP tools are NOT available:
-  Set selectedModels.configured = true, selectedModels.models = [],
-  selectedModels.includeInternal = true (internal only, no external)
+If the claudish MCP tools are NOT available, pick the route by
+`${CLAUDE_PLUGIN_ROOT}/skills/core/team-gate/cli-sessions.md`, §1:
+
+- **cli-sessions** → the code-review panel runs as CLI sessions, so store ids the
+  installed CLIs carry. Ask the same free-form question, listing the installed CLIs
+  (`codex`, `agy`, `opencode`) in place of catalog aliases; with a preset, take its
+  `review_models` entries as the answer. Match each id by §4.1 of that file — one no
+  installed CLI carries is named and dropped, never substituted. An empty answer takes
+  that file's default panel (§4.1); `internal` alone means no external review. Store the ids that will run in
+  `selectedModels.models`, with `configured: true` and `includeInternal: true`. Plan-review has no CLI route and is
+  skipped (`dev.md`, "Complete the run record").
+- **any other route** → `selectedModels.configured = true`, `selectedModels.models = []`,
+  `selectedModels.includeInternal = true` (internal only, no external).
 
 ### Step 1.7: User Approval Gate
 

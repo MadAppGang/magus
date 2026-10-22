@@ -58,9 +58,11 @@ If the tree is already dirty at this point, say so in one line. The baseline can
 tell pre-session changes from session changes, so Phase 5 will review both.
 
 ### Step 0.5: Check Claudish availability
-```bash
-which claudish
-```
+
+claudish is present when the `mcp__plugin_claudish_claudish__team` tool is registered in
+this session — the tool, never the binary on PATH: inside a claudish child the binary is
+there and `team` is not. Nothing is run here; Step 1f and each gate's route
+(`${CLAUDE_PLUGIN_ROOT}/skills/core/team-gate/cli-sessions.md`, §1) read the same test.
 
 ### Step 0.6: Worktree option
 

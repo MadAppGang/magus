@@ -354,9 +354,10 @@ Four sections, in this order; writing Completion Status ends the task.
 
 ## Worked example: three code reviews, Phase 5
 
-Prompt: `REVIEWS:` lists `claude-internal.md`, `response-01.md`, `response-02.md`;
-`THRESHOLDS:` quotes dev:reviewer's three verdict lines; `OUTPUT:` names
-`consolidated.md`.
+Prompt: `REVIEWS:` lists `claude-internal.md` and `response-<slot>.md` for each external
+slot in the slots map — never `slots.internal`, whose response is the review
+`claude-internal.md` already copies; `THRESHOLDS:` quotes
+dev:reviewer's three verdict lines; `OUTPUT:` names `consolidated.md`.
 
 1. Read the three files. All carry a Verdict line → N = 3.
 2. Merge: the unbounded retry loop is raised by all three (unanimous, HIGH); a missing

@@ -1,7 +1,7 @@
 ---
 name: audit
 description: "Structured quality audit — routes to specialist reviewers for code, UI, docs, security, or plugin quality"
-allowed-tools:  Agent, AskUserQuestion, Bash, Read, mcp__plugin_claudish_claudish__team, mcp__plugin_claudish_claudish__list_models, mcp__plugin_claudish_claudish__search_models
+allowed-tools:  Agent, AskUserQuestion, Bash, Read, mcp__plugin_claudish_claudish__team, mcp__plugin_claudish_claudish__list_models, mcp__plugin_claudish_claudish__search_models, mcp__plugin_terminal_mux__open-pane, mcp__plugin_terminal_mux__send-keys, mcp__plugin_terminal_mux__watch-pane, mcp__plugin_terminal_mux__pane-state, mcp__plugin_terminal_mux__list-slots, mcp__plugin_terminal_mux__close-pane
 ---
 
 <role>
@@ -18,8 +18,9 @@ allowed-tools:  Agent, AskUserQuestion, Bash, Read, mcp__plugin_claudish_claudis
 <critical_override>
   THIS COMMAND OVERRIDES THE CLAUDE.md TASK ROUTING TABLE.
   WHY: This is a READ-ONLY router. It must NEVER self-handle review work.
-  RULE: ALL review work is delegated via the Agent tool to the agent the scope
-  resolves to, with the contract lines below and nothing else in the prompt.
+  RULE: ALL review work is delegated to the agent the scope resolves to, with the
+  contract lines below and nothing else in the prompt — a `dev:reviewer` row in a
+  session of its own (step 3), every other row via the Agent tool.
   NEVER: Review code, assess quality, provide feedback inline, or restate a
   reviewer's checklist in the prompt — the reviewer owns its own rules.
   EXCEPTION: the design-system scope hands off to the `/dev:design-system`
@@ -40,7 +41,7 @@ allowed-tools:  Agent, AskUserQuestion, Bash, Read, mcp__plugin_claudish_claudis
   - 6 audit scopes: code quality, UI/design, design system, documentation, security, plugin/agent
   - Routes to specialist reviewers (`dev:reviewer`, `designer:review`, `dev:docs`)
   - Design-system drift measured by a bundled auditor via `/dev:design-system`
-  - Multi-model when you name models and claudish is installed — the internal reviewer always runs, externals are additive
+  - Multi-model when you name models — through claudish, or the matching CLIs in terminal slots without it — the internal reviewer always runs, externals are additive
   - One output shape on every route: a consolidated report ending in a `VERDICT:` line
   - Structured reports with severity levels (CRITICAL/HIGH/MEDIUM/LOW)
   - Plugin-aware: detects and uses the designer plugin when installed
@@ -84,31 +85,36 @@ allowed-tools:  Agent, AskUserQuestion, Bash, Read, mcp__plugin_claudish_claudis
 
       1. Did the user name models? Look in $ARGUMENTS for `--models a,b,c` or a
          phrase naming external models ("with grok and gemini", "get kimi's view").
-      2. Is claudish present?
-         ```bash
-         which claudish >/dev/null 2>&1
-         ```
-         Presence is the claudish runtime — the binary above, or the
-         `mcp__plugin_claudish_claudish__team` tool being registered in this
-         session. It is never "is the multimodel plugin installed": the review
-         gates need only the claudish runtime. multimodel is optional. If it is
-         not installed and the user asked for models, say once that
+      2. Pick the review route: read
+         `${CLAUDE_PLUGIN_ROOT}/skills/core/team-gate/cli-sessions.md`, "the
+         review-session routes", §1. claudish is present when the
+         `mcp__plugin_claudish_claudish__team` tool is registered in this session —
+         the tool, never the binary on PATH: inside a claudish child the binary is
+         there and `team` is not. It is never "is the multimodel plugin installed":
+         the review gates need only the claudish runtime. multimodel is optional. If
+         it is not installed and the user asked for models, say once that
          `claude plugin install multimodel@magus` adds `/multimodel:team` and
          `/multimodel:delegate`, then continue without it.
-      3. Both true → resolve each name against the live catalog: `list_models`
-         first, then `search_models` for a family it does not cover — the
-         procedure in `claudish:claudish-usage`, "Model Alias Resolution". A
-         version the user names is a hard constraint: if it is not in the
-         catalog, say so and show the live alternatives; never substitute a lower
-         version. The result is `MODELS: <bare catalog ids, comma-separated>`.
-      4. Otherwise `MODELS: none`. If models were named but claudish is absent,
-         tell the user once — "claudish is not installed; running the internal
-         reviewer only" — and continue. The internal reviewer is never optional
-         and never waits on an external one. Once `AUDIT_PATH` exists (step 3.1),
-         write the skip down: append `gate skipped: code-review — MODELS none` (or
-         `— claudish absent`) to `${AUDIT_PATH}/gates.log`, and repeat that line
-         when relaying the result. Silence about a skipped panel is a defect
-         (`${CLAUDE_PLUGIN_ROOT}/skills/core/team-gate/SKILL.md`, steps 6-7).
+      3. Models named, claudish route → resolve each name against the live
+         catalog: `list_models` first, then `search_models` for a family it does not
+         cover — the procedure in `claudish:claudish-usage`, "Model Alias
+         Resolution". A version the user names is a hard constraint: if it is not in
+         the catalog, say so and show the live alternatives; never substitute a
+         lower version. The result is `MODELS: <bare catalog ids, comma-separated>`.
+         Models named, cli-sessions route → each id the user named goes to the CLI
+         of its family with that exact id (§4.1 of that file), and `MODELS:` lists
+         the ids that will run; one no installed CLI carries is skipped and logged.
+      4. Otherwise `MODELS: none` on every route — no models named, every named id
+         skipped, or the nested route; with no models named this command never takes
+         `cli-sessions.md`'s default panel, which is `/dev:fix`'s. The internal reviewer
+         is never optional and never waits on an external one. Once `AUDIT_PATH` exists (step 3.1), write the skip down:
+         append `gate skipped: code-review — MODELS none` to
+         `${AUDIT_PATH}/gates.log`, and repeat that line when relaying the result.
+         Silence about a skipped panel is a defect
+         (`${CLAUDE_PLUGIN_ROOT}/skills/core/team-gate/SKILL.md`, steps 6-7). The
+         stop route stops the `dev:reviewer` rows here, as that file says; the docs,
+         ui (designer) and design-system scopes need no review session and run as
+         before.
 
       `MODELS:` applies only to rows that dispatch `dev:reviewer`. The designer,
       docs and design-system rows have no multi-model story; do not attach it
@@ -125,10 +131,9 @@ allowed-tools:  Agent, AskUserQuestion, Bash, Read, mcp__plugin_claudish_claudis
       drift, duplicated components, missing variants) rather than visual fidelity to a
       spec, treat it as design-system above.
 
-      Presence checks — the only two this plugin makes, both in CLI syntax:
+      Plugin presence, in CLI syntax — claudish presence is the registered tool (step 2):
       ```bash
       claude plugin list 2>/dev/null | grep -q "designer@"   # designer plugin installed?
-      which claudish >/dev/null 2>&1                          # claudish runtime present?
       ```
       `claude plugin list` prints one `❯ <name>@<marketplace>` entry per installed
       plugin, so `designer@` matches the plugin whichever marketplace it came from.
@@ -161,51 +166,51 @@ allowed-tools:  Agent, AskUserQuestion, Bash, Read, mcp__plugin_claudish_claudis
       docs rows take no `MODELS:`, so for them N is always 1 and the aggregator is
       never dispatched.
 
-      1. Make a run directory. When `MODELS:` names models (`dev:reviewer` rows
-         only), also write the brief the externals will run:
+      1. Make a run directory — a fresh one on every run, so no earlier run's file
+         can stand in. For the `dev:reviewer` rows also write the brief, **always**,
+         whatever `MODELS:` is:
          ```bash
          AUDIT_PATH="ai-docs/sessions/dev-audit-$(date +%Y%m%d-%H%M%S)"
          mkdir -p "$AUDIT_PATH"
-         cat > "$AUDIT_PATH/prompt.md" <<'BRIEF_EOF'      # only when MODELS names models
+         cat > "$AUDIT_PATH/prompt.md" <<'BRIEF_EOF'      # dev:reviewer rows
          TARGET: {…}
          FOCUS: {…}
          MODELS: none
          This is READ-ONLY analysis. Do not modify any files.
-         Return the full report.
+         Return the full report as your answer.
          BRIEF_EOF
          ```
-         The externals get the same brief the internal reviewer gets. They run as
-         `dev:reviewer` too, so `MODELS: none` in the file is correct: a reviewer
+         Every reviewer, internal and external, runs this one brief as
+         `dev:reviewer`, so `MODELS: none` in the file is correct: a reviewer
          mentions externals only when told of them, and no reviewer launches other
-         reviewers.
+         reviewers. There is no `OUTPUT:` line — each writes only its own slot file.
 
       2. Launch the review, foreground. Which call depends on the row:
 
-         **`dev:reviewer` rows** — the internal reviewer, and, when `MODELS:` names
-         models, the externals in the SAME message:
+         **`dev:reviewer` rows, claudish route** — the internal reviewer is the
+         `internal` slot of one panel call, beside the externals when `MODELS:`
+         names any:
          ```
-         Agent(
-           subagent_type: "dev:reviewer",
-           run_in_background: false,
-           description: "Audit: {scope} — internal reviewer",
-           prompt: "TARGET: {…}
-                    FOCUS: {…}
-                    OUTPUT: ${AUDIT_PATH}/claude-internal.md
-                    MODELS: {none, or a,b,c}
-                    This is READ-ONLY analysis. Do not modify any files.
-                    Persist the full report to OUTPUT with a Bash heredoc, then return a brief summary."
-         )
-         ---                                                # only when MODELS names models
          claudish team(mode="run", path="${AUDIT_PATH}",
-           models=[a, b, c],
+           models=["internal", a, b, c],
            agent="dev:reviewer",
            input_file="${AUDIT_PATH}/prompt.md",
            require_pattern="\*\*Verdict\*\*: (PASS|CONDITIONAL|FAIL)",
            min_output_bytes=400)
          ```
-         `require_pattern` is the line the reviewer's report format mandates, so a
-         slot that exited 0 with a shapeless or empty response is reported FAILED
-         instead of joining the count as a reviewer that found nothing.
+         With `MODELS: none` the call is `models=["internal"]`. `require_pattern`
+         is the line the reviewer's report format mandates, so a slot that exited 0
+         with a shapeless or empty response is reported FAILED instead of joining
+         the count as a reviewer that found nothing.
+
+         **`dev:reviewer` rows, cli-sessions or nested route** — run the same brief
+         by `${CLAUDE_PLUGIN_ROOT}/skills/core/team-gate/cli-sessions.md`, with
+         `${AUDIT_PATH}` as the gate directory, `agent="dev:reviewer"`, the
+         `require_pattern` and `min_output_bytes` above, and
+         `${AUDIT_PATH}/claude-internal.md` as the internal path. When the target is
+         a branch or pull request that is not the user's own work, tell the user
+         before launching, in these terms: on this route the reviewer runs with
+         bypassed permissions, so it can run commands over that code without asking.
 
          Pass `input_file` ONLY — never `input` beside it. The pair is rejected with
          `Pass input_file or input, not both`; on that exact error retry once with
@@ -247,21 +252,40 @@ allowed-tools:  Agent, AskUserQuestion, Bash, Read, mcp__plugin_claudish_claudis
          ```
          The review is `${AUDIT_PATH}/analysis-report.md`.
 
-      3. Externals only (`dev:reviewer` rows with models): `run` returns as soon as
-         the slots start, and `started` is not a result. This is a **code-review**
-         gate, `MIN_BALLOTS` = 2 when N ≥ 3, otherwise N. Read
-         `${CLAUDE_PLUGIN_ROOT}/skills/core/team-gate/SKILL.md` and follow its steps
-         2-5: poll `claudish team(mode="status", path="${AUDIT_PATH}")` until no slot
-         in `models` has `state === "RUNNING"` (bounded), then read every
+      3. `dev:reviewer` rows: this is a **code-review** gate, `MIN_BALLOTS` = 2 when
+         N ≥ 3, otherwise N, with N and ballots over external slots only, on every
+         route (`${CLAUDE_PLUGIN_ROOT}/skills/core/team-gate/SKILL.md`). **Ballots
+         below `MIN_BALLOTS` is GATE NOT MET**: append the `gate not met:` line to
+         `${AUDIT_PATH}/gates.log`, skip step 4, and stop with the skill's three
+         options — never relay a verdict computed over a panel that fell below its
+         minimum.
+
+         **claudish route** — `run` returns as soon as the slots start, and `started`
+         is not a result. Follow the skill's steps 2-5: poll
+         `claudish team(mode="status", path="${AUDIT_PATH}")` until no slot in
+         `models` has `state === "RUNNING"` (bounded), then read every
          `response-<slot>.md` and count ballots. A backgrounded call is unknown until
-         polled. **Ballots below `MIN_BALLOTS` is GATE NOT MET**: append the
-         `gate not met:` line to `${AUDIT_PATH}/gates.log`, skip step 4, and stop with
-         the skill's three options — never relay a verdict computed over a panel that
-         fell below its minimum.
+         polled. Then, on the claudish route, copy the internal review by the skill's
+         "The internal slot": only a `COMPLETED` `response-<slots.internal>.md` that
+         matched `require_pattern` becomes `${AUDIT_PATH}/claude-internal.md`.
+
+         **cli-sessions route** — there is no `team` tool to poll. `cli-sessions.md`
+         §4.7 decides each session by its OUTPUT file,
+         `${AUDIT_PATH}/response-<slot>.md`, and §4.2 writes the slots map to
+         `${AUDIT_PATH}/cli-slots.json`; the same copy and ballot rules apply over
+         those files, with `cli-slots.json` as the slots map.
+
+         **nested route** — the Agent writes `${AUDIT_PATH}/claude-internal.md`
+         directly; there is no slots map and no external panel, so there is nothing
+         to poll, copy or count.
+
+         A failed internal reviewer, on any route, is re-run once, alone; a second
+         failure is GATE NOT MET
+         (`gate not met: code-review — internal reviewer failed twice: <reason>`).
 
       4. Consolidate. Count the row's reviews first.
 
-         **One review** (`MODELS:` was none, or every external slot failed) — do not
+         **One review** (`MODELS:` was none, the nested route, or every external slot failed) — do not
          dispatch dev:aggregator; aggregating one review can only subtract from it.
          Copy that review to `${AUDIT_PATH}/consolidated.md` unchanged, then append a
          blank line and `VERDICT: <word>`, where the word is the review's own verdict
@@ -288,7 +312,7 @@ allowed-tools:  Agent, AskUserQuestion, Bash, Read, mcp__plugin_claudish_claudis
 
          | Row | `REVIEWS:` | `THRESHOLDS:` — the reviewer's own scale, by reference |
          |---|---|---|
-         | every `dev:reviewer` row | `${AUDIT_PATH}/claude-internal.md`, then `${AUDIT_PATH}/response-<slot>.md` per slot that completed (none when `MODELS:` was none) | the three lines under "Apply verdict thresholds" in `${CLAUDE_PLUGIN_ROOT}/agents/reviewer.md`, Phase 5 — PASS / CONDITIONAL / FAIL over severity counts |
+         | every `dev:reviewer` row | `${AUDIT_PATH}/claude-internal.md`, then `${AUDIT_PATH}/response-<slot>.md` per external slot that completed — never `slots.internal` (none when `MODELS:` was none) | the three lines under "Apply verdict thresholds" in `${CLAUDE_PLUGIN_ROOT}/agents/reviewer.md`, Phase 5 — PASS / CONDITIONAL / FAIL over severity counts |
          | ui, designer present | `${AUDIT_PATH}/claude-internal/summary.md` | the four difference-percentage rows under `severity_thresholds` in `designer:review`'s agent file — PASS / WARN / FAIL / CRITICAL over the diff percentage |
          | docs | `${AUDIT_PATH}/analysis-report.md` | the four lines under "Determine verdict" in `${CLAUDE_PLUGIN_ROOT}/agents/docs.md`, Generate Report — PASS / GOOD / NEEDS_WORK / FAIL over the 52-point score |
 
