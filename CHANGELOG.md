@@ -4,6 +4,33 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [magus 7.11.2] - 2026-10-23
+
+### Fixed
+
+- **Installing a plugin at PROJECT no longer fails with "Claude Code loads the USER install
+  of it here" when USER does not install it.** Claude Code can keep a USER copy of a plugin
+  after USER stopped installing it, and loads that copy first in every project. magus
+  treated the copy as a real USER install and refused the PROJECT install, and `a` on a
+  plugin marked BROKEN refused the same way. magus now removes the leftover USER copy and
+  retries. A plugin that USER really installs still gets the refusal. The removal applies on
+  the whole machine: another project that relied on the leftover copy shows the plugin as
+  files missing until it is installed there.
+- **Uninstalling a plugin at PROJECT removes it from the active profile.** The same happens
+  at USER or LOCAL when no scope still installs it. Before, the row showed "not installed —
+  profile declares it" and the next `magus update` put the plugin back.
+- **An uninstall that would take a dependency away from a plugin the active profile
+  declares refuses before it changes anything.** For example, removing `claudish` while the
+  profile declares `dev` shows "dev needs claudish — uninstall dev first". Plugins outside
+  the profile are not checked.
+
+### Changed
+
+- **A scope uninstall that `claude plugin uninstall` refuses now shows the error.** Before,
+  magus edited Claude Code's plugin files directly instead.
+
+---
+
 ## [Marketplace 13.8.0] - 2026-10-22
 
 ### Changed
