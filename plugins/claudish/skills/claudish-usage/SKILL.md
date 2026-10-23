@@ -262,7 +262,7 @@ a **requirement**. Resolve it against the catalog and use what you find.
 | "something fast for coding" | `list_models` → Fast variants | Capability intent |
 | "biggest context" | `list_models` → Quick picks → Large context | Capability intent |
 | "kimi3" | `search_models("kimi")`, require major v3 | Version is a constraint |
-| "LATEST_MINIMAX_MODEL" | Verify it's in the catalog, then pass through | Already a full ID |
+| "LATEST_MINIMAX_MODEL" | Pass it through; the run tool's refusal is the catalog check | Already a full ID |
 
 When uncertain, show the live candidates and ask the user to pick. Listing real
 options is always better than guessing one.
@@ -284,11 +284,80 @@ slug is a route, not part of the name. Both prefix forms pin the request to one
 provider and bypass the subscription-aware backend selection and fallback that passing
 `id` gives you. `z-ai/glm-5.2` is as wrong as `gc@glm-5.2`, for the same reason.
 
-- If the user names an address (`cx@LATEST_GPT_MODEL`), pass it through **verbatim**.
+- If the user names an address (`cx@LATEST_GPT_MODEL`), pass it through **verbatim** and
+  list it in `user_required_provider` (see "Model names the run tools accept").
 - Otherwise pass `id`, and let claudish pick the backend.
 - Never assemble an address yourself, and never substitute one field for another —
   "the catalog reports it" is not a licence to send it, because the catalog reports
   every address too.
+
+### Model names the run tools accept
+
+claudish routing picks the provider from the user's setup: their configured providers,
+subscriptions first, their preferences and manual overrides. Do not choose it yourself.
+
+| You write | claudish does | Example |
+|---|---|---|
+| bare name | routes through the user's setup (subscription first) | `LATEST_GPT_MODEL` |
+| `provider@model` | that provider only (MCP tools: only with `user_required_provider`) | `or@moonshotai/kimi-k3` |
+| `ollama@` `lmstudio@` | a local model, never stripped | `ollama@llama3.2` |
+| `http://...` | a custom endpoint, never stripped | `http://localhost:8000/model` |
+
+1. **Pass bare names** (`LATEST_GPT_MODEL`, `LATEST_MINIMAX_MODEL`), never `provider@model`, unless the
+   user named the provider. A `provider@` on a catalog model is removed by the MCP tools,
+   and their answer says so.
+2. **User named the provider** ("run Kimi on OpenRouter"): pass the spec and list it in
+   `user_required_provider` (`team`: an array of those `models`/`judges` entries;
+   `create_session` / `run_prompt`: `true`).
+3. **User named exact models:** pass them as given. No `preflight` or `search_models`
+   call is needed to check them: the run tool checks them against the live catalog, and
+   its refusal is that check. You still read `list_models` once for their efforts (next
+   section). A named model outside the recommended list answers `not_recommended`; list
+   it in `user_required_model` (`team`: the entries; `create_session` / `run_prompt`:
+   `true`) and call again. A named model the catalog does not list at all answers
+   `unknown_model`: follow "Version intent is a hard constraint" above, never swap it.
+4. **User named only a family or vendor** ("a GPT model", "minimax", "latest Grok"): call
+   `list_models` and take the newest model of that family from it, as a bare name. A
+   family name (`gpt`) or a model you recall (`gpt-5`) answers `unknown_model` /
+   `not_recommended` with the recommended ids: pick from them and call again.
+
+**The refusals start nothing.** From claudish 14.4.0, `team`, `create_session` and
+`run_prompt` refuse a bare name outside the recommended list before any slot or session
+exists:
+
+| Answer | Means | Do |
+|---|---|---|
+| `unknown_model:` | the catalog lists no such model (a family such as `gpt`, or a version that does not exist) | you chose it: pick a returned id. The user named it: say it is not in the catalog, show the returned ids, and ask whether to run it anyway with `user_required_model` or take one of them |
+| `not_recommended:` | a catalog model outside the recommended list (`gpt-5`) | the user named it: add `user_required_model`; you chose it: pick a returned id |
+
+Each answer lists the recommended ids of that family, newest first, their effort rows, and
+the whole recommended list. `search_models` puts the same set first, under
+`## Recommended models (pass one of these)`. Never set `user_required_model` for a model
+you chose yourself: it exists so a model the **user** named still runs.
+
+### Reasoning effort per model
+
+Before `team`, `create_session` or `run_prompt` on an external model:
+
+1. Call `list_models`. Its last section, **Recommended effort by task type**, has a row per
+   model and a column per task type.
+2. Map YOUR task to one column (planning, implementation, code_review, debugging, …). You
+   know the task; claudish does not guess it.
+3. For each model you run, take its cell. This works the same when the models were chosen
+   with the user and when the task already fixed them.
+4. Pass it: `team(..., models: [...], efforts: {"<model>": "<level>"})` with keys exactly
+   as in `models`, or `create_session(..., effort: "<level>")`, or
+   `run_prompt(..., effort: "<level>")`.
+
+A model with no row, or `-` in your column, gets no entry: it keeps Claude Code's own effort.
+
+If you call without any effort while a model has a row, nothing starts: the tool answers
+`needs_effort:` with each model's levels by task type. Pick your column and call again. To keep
+Claude Code's own level on purpose, pass `efforts: {}` (`team`) or `effort: "default"`.
+
+**A `--effort` in `claude_flags` does not satisfy this gate.** `team` checks only the
+`efforts` argument, and `create_session` only `effort`. When one level is already settled for the whole run (a user's
+`--effort`), pass it per model in `efforts`, every key spelled as in `models`.
 
 ### Responsibility Boundaries
 
@@ -302,7 +371,8 @@ provider and bypass the subscription-aware backend selection and fallback that p
 
 ### Rules
 
-- ALWAYS resolve against the live catalog; NEVER from memory or a committed file
+- ALWAYS resolve against the live catalog; NEVER from memory or a committed file. For a
+  model the user named exactly, the run tool's refusal is that check
 - NEVER invent a model ID — if nothing matches, show live options and ask
 - NEVER silently downgrade to an older version than the user asked for
 - ALWAYS send the catalog's `id`. NEVER send an address (`vendor/model`,
@@ -322,8 +392,9 @@ their answers are not in its response.** You start the run, poll `status` until 
 then read each slot's answer off disk. Requires **claudish >= 8.0.0**.
 
 ```
-team(mode, path, models, judges, input, input_file,
-     require_pattern, min_output_bytes, agent, claude_flags, slot)
+team(mode, path, models, judges, efforts, input, input_file,
+     require_pattern, min_output_bytes, agent, claude_flags, slot,
+     user_required_model, user_required_provider)
 ```
 
 | Parameter | What it does |
@@ -332,6 +403,9 @@ team(mode, path, models, judges, input, input_file,
 | `path` | Session directory. **Must be within the current working directory.** |
 | `models` | The panel. Native names are **ordinary entries** — see below. |
 | `judges` | Models that judge the collected responses (`judge` / `run-and-judge`) |
+| `efforts` | Effort per model, keys exactly as in `models`. See "Reasoning effort per model". |
+| `user_required_model` | The `models`/`judges` entries the user named that are not recommended |
+| `user_required_provider` | The entries where the user named the provider (`provider@model`) |
 | `input` | The prompt every slot receives, inline |
 | `input_file` | The same prompt, read from a file. **Prefer this.** Passing both is a hard error. |
 | `require_pattern` | Regex the response MUST match, or the slot is reported FAILED |
@@ -496,7 +570,8 @@ equivalent and must poll.**
 ### `create_session` — one model, full session
 
 ```
-create_session(model, prompt, timeout_seconds, agent, claude_flags, work_dir)
+create_session(model, prompt, timeout_seconds, agent, claude_flags, work_dir,
+               effort, user_required_model, user_required_provider)
   → session_id
 ```
 
@@ -575,7 +650,7 @@ transcript to follow.
 ### `run_prompt` — one completion, no session
 
 ```
-run_prompt(model, prompt, system_prompt)
+run_prompt(model, prompt, system_prompt, effort, user_required_model, user_required_provider)
 ```
 
 One completion, straight to one model's API. No tools, no working directory, no session,
@@ -1025,12 +1100,15 @@ if (!shortlist.includes(userModel)) {
 
 ```
 create_session(model=userModel, prompt=TASK, timeout_seconds=300)
+→ not_recommended: ...       // a catalog model outside the recommended list
+→ unknown_model: ...         // not in the catalog at all: tell the user, ask first
+create_session(model=userModel, prompt=TASK, timeout_seconds=300, user_required_model=true)
 ```
 
 Users legitimately have access to beta models, private fine-tunes, newly released models
 not yet in the recommended set, and regional or enterprise endpoints. Say that the ID is
-not in the recommended set if it is not, then run it anyway — claudish decides whether it
-resolves.
+not in the recommended set if it is not, then run it anyway with `user_required_model` —
+claudish decides whether it resolves.
 
 ### ❌ Don't Skip Error Handling
 

@@ -4,6 +4,30 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Marketplace 13.9.0] - 2026-10-24
+
+### Changed
+
+- **`claudish` v2.11.0**: `claudish-usage` teaches the model-name and effort checks of
+  claudish 14.4.0 (MTL-230). `team`, `create_session` and `run_prompt` refuse a bare name
+  outside the recommended list and start nothing: `unknown_model` for a family name such as
+  `gpt`, `not_recommended` for a catalog model such as `gpt-5`. The skill says to pass bare
+  names, to take the newest model of a named family from `list_models`, and to add
+  `user_required_model` only for a model the user named. It also adds the per-model effort
+  flow: read the effort row from `list_models`, pass it in `efforts` or `effort`, and answer
+  `needs_effort` by picking the task column.
+- The plugin rule catalog's pinned claudish tool schemas (rule `MC-01`) now match claudish
+  14.4.0: `team`, `create_session` and `run_prompt` accept the effort and `user_required_*`
+  parameters, and `run_prompt` no longer accepts `max_tokens`.
+
+### Why
+
+- claudish 14.4.0 made these refusals part of the MCP contract. Its recommended-effort bench
+  (run13) showed `not_recommended` fire in 2 of 6 runs before the agents corrected to a
+  recommended model. With the rules in the skill, the first call is the right one.
+
+---
+
 ## [Marketplace 13.8.1] - 2026-10-23
 
 ### Fixed
