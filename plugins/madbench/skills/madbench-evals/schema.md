@@ -203,6 +203,7 @@ driver:
   max_turns: 8                # default: declared prompts + 3
   max_blocked_wait: 120s      # added to timeout:, so the worst case is stated
   allow_free_text: false
+  commands: [/clear, "/compact *"]  # default: the Harness's (claude-code: /clear, /compact)
 ```
 
 | Write | Means |
@@ -212,11 +213,13 @@ driver:
 | `answers:` with `match: "*"` | a closed script — deterministic, offline; `session:driver-source` proves it |
 | `answers: []` on a Scenario | the inherited script is cleared; that Scenario's questions go to the model |
 | `steer: true` | the Driver may add turns once the declared prompts run out |
+| `commands: [...]` | the slash commands a steering Driver may type, replacing the Harness's default; each entry begins with `/`, a trailing ` *` takes one line of argument, and matching is exact and case-sensitive. `commands: []` allows none. Never used for a picker answer, and `!` or `#` is never allowed (`docs/driving-a-session.md`, "Typing a slash command") |
 
 A Driver speaks **inside** the Session, so what it says is part of what the Checks read; a
 Judge grades a finished Session from outside. `driver:` on any harness but claude-code passes
 `list` and is refused at `preflight`. In an Experiment, the Guard hashes the whole block, so
-variants whose Drivers differ need a matching `allow:` entry (`driver`, or `driver/instructions`).
+variants whose Drivers differ need a matching `allow:` entry (`driver`, `driver/instructions`,
+or `driver/commands`).
 
 ---
 

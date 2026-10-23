@@ -779,8 +779,9 @@ file seeded into `testdata:`.
 | `check` | **negative control** — run under the mock harness and require every graded check to fail |
 | `key` | store madbench's API keys in the macOS login keychain instead of a file: `set`, `get`, `list`, `rm` |
 | `skills` | install this release's madbench skills into `./.claude/skills` (`--dir` to choose; `--force` replaces a same-named directory madbench did not install). `--check` compares the installed set's `MADBENCH_VERSION` with the binary; `--version X` installs release X's set; `--pin` holds a set (a `MADBENCH_PINNED` marker) and `--unpin` lets it follow madbench again. An unpinned set follows the binary |
-| `update` | upgrade madbench to the latest release (`--notes` prints what changed) |
-| `version` | print version — **there is no `--version` flag** |
+| `update` | upgrade madbench to the latest release, then print what changed |
+| `changelog` | print release notes: the installed version's, one tag's (`changelog v0.52.0`), or every release after one (`--since v0.50.0`) |
+| `version` | print version; `madbench --version` prints the same line |
 | `completion` | generate a shell autocompletion script |
 
 ### Flags

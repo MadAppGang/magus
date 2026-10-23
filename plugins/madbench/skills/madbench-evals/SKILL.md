@@ -105,7 +105,7 @@ wrote the policy down when it refused Experiment-level metrics:
 | a script that writes `known_marketplaces.json` | `harness.config.plugins:` — plugin folders; the identity is derived | `harness-and-sandbox.md` §6 |
 | a "these variants differ only by X" guard | `guard_changes: {allow}` on the Experiment — the baseline is the first declared variant; every declared variant is audited, whichever `--variant` selects to run | `docs/experiment-file.md`; `schema.md` §9 |
 | a sentinel token planted to prove a file was read | `session:file-read` | `docs/checks.md:299` |
-| a grep of the Session for a marker that reached the agent (a hook's output, an injected reminder, a subagent's report) | `session:match` | `docs/checks.md:307`, `:318-389` |
+| a grep of the Session for a marker that reached the agent (a hook's output, an injected reminder, a subagent's report) | `session:match` | `docs/checks.md:307`, `:320-403` |
 | a "did the MCP server come up" probe script | `environment:mcp-reachable`, asserted before any spend | `docs/checks.md:686` |
 | a PNG pipeline feeding the prompt | `image: generated:<name>` + `$MADBENCH_IMAGE_DIR` | `docs/harness.md:473-534` |
 | a CI wrapper mapping exit codes | `--fail-on-failure` | `docs/README.md:100-108` |

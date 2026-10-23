@@ -4,6 +4,21 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Marketplace 13.9.1] - 2026-10-24
+
+### Changed
+
+- **`madbench` v0.12.4**: the madbench skills are synced to madbench 0.55.0, so
+  /madbench:madbench and the bench agent describe the harness that is installed. They now cover
+  the Driver key `commands:`, which lists the slash commands a steering Driver may type
+  (claude-code's default: `/clear`, `/compact`), and the Guard path `driver/commands`. They say
+  that a portable `session:match` with `event_type: hook` reads a hook's output, and that a hook
+  which injects context counts as two Events. They list `madbench changelog`, and note that
+  `madbench --version` now works. `madbench skills --check` reports `current`. Where Homebrew is
+  not used (Linux), the plugin installs madbench v0.55.0 when madbench is missing, not v0.53.0.
+
+---
+
 ## [claudish 2.12.0] - 2026-10-24
 
 ### Added

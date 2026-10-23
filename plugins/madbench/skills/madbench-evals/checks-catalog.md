@@ -298,12 +298,16 @@ list` — Checks are not built at load — and is refused at **preflight** as `u
 
 `session:match` grades what was **delivered** to the agent: a hook's stdout, a file put into
 context, a subagent's report. `contains` on the final output grades only whether the agent
-chose to repeat it (`docs/checks.md:318-388`).
+chose to repeat it (`docs/checks.md:320-405`).
 
 ```yaml
 - type: session:match          # portable: any harness
   value: BLUEHERON
   event_type: tool_result  # the agent saw it in a tool's output
+- type: session:match          # portable: a marker a hook injected never appeared
+  value: "<dev-resume-after-clear>"
+  event_type: hook
+  eq: 0
 - type: session:match          # a secret never appeared anywhere in the Session
   value: "sk-live-"
   eq: 0
@@ -314,6 +318,11 @@ chose to repeat it (`docs/checks.md:318-388`).
   raw: attachment.stdout
 ```
 
+- The portable layer reads a hook's output (`content`, `stdout`, `stderr`), so `event_type: hook`
+  with `value:` finds a marker a hook injected and `eq: 0` over it fails when one did.
+  `raw:` narrows to one field of the record: `raw: attachment.content` is only what was injected.
+  A hook that injects context is two Events, so a portable count over its marker reads 2 per
+  firing. To count firings, use `harness: claude-code` with `raw_type: hook_additional_context`.
 - `raw_type`/`raw` without `harness:` is **refused when the Check is built** — at
   `preflight`, never by `list`; a `harness:` that is not the bench's own is refused there too.
 - An unknown key, an `event_type`/`category`/`source` outside madbench's vocabulary, a bad
