@@ -22,23 +22,21 @@ copy into it:
 - every public type / interface / story file that architecture.md names as the contract → `sandbox/contract/`
 - the repo's existing test directory and test config (`bunfig.toml`, `vitest.config.*`,
   `playwright.config.*`, `go.mod`, `package.json`) → `sandbox/tests/` and `sandbox/`
-- each path in `context.agent_loadouts.qa-engineer.read` → `sandbox/loadout/` (these are
-  testing guidance, never implementation)
+- each path in `context.agent_loadouts.qa-engineer.read` → `sandbox/loadout/<plugin>/<path>`,
+  keeping each source's tree, never flattened, by qa.md Phase 0's rule (these are testing
+  guidance, never implementation)
+
+Then build what `/dev:qa` Phase 1 needs, as qa.md Phase 0 does:
+- copy `${CLAUDE_PLUGIN_ROOT}/agents/qa-engineer.md` to `sandbox/.claude/agents/qa-engineer.md`;
+- snapshot `sandbox/tests/` to `${SESSION_PATH}/qa/tests.before`, and keep the pristine
+  copy qa.md Phase 0 names.
 
 No implementation file is copied. Write `${SESSION_PATH}/qa/inputs.json` listing exactly
 what went in; the final report prints it.
 
 ### Step 6.4: Resolve the writer and write plan + tests
 Follow `/dev:qa` Phase 1 (`plugins/dev/commands/qa.md`), which is the one place the
-writer-resolution procedure lives:
-1. `list_models()`; unavailable → internal writer.
-2. `search_models({ query: "gpt" })` → the top-tier model of that family from the live
-   result; no such model → internal writer, and say so.
-3. External: `create_session(model=<id>, agent="dev:qa-engineer",
-   work_dir="${SESSION_PATH}/qa/sandbox", timeout_seconds=900, prompt=<below>)`, wait for
-   `completed`, `get_output(session_id)`; `failed`/`timeout` → `get_diagnostics`, record,
-   fall back to internal.
-4. Internal: `Agent(subagent_type: "dev:qa-engineer", run_in_background: false, prompt=<below>)`.
+writer-resolution procedure lives. Use the Step 6.3 sandbox and the prompt fields below.
 
 Prompt (sandbox-relative paths only):
 ```
@@ -51,8 +49,9 @@ SESSION_PATH: <sandbox>
 LOADOUT: <sandbox>/loadout/*   (mandatory first: {context.agent_loadouts.qa-engineer.mandatory})
 Write the test plan and the tests. Do not read anything outside the paths above.
 ```
-Write `writer: <model id> (external)` or `writer: internal (<reason>)` to
-`${SESSION_PATH}/qa/writer.txt` and say the same line in the transcript.
+Write the three-line record to `${SESSION_PATH}/qa/writer.txt` — `writer:` as `/dev:qa`
+reports it, then `analyst: not run` and `fixer: not run` (Step 6.6 fills them) — and say
+the `writer:` line in the transcript.
 
 ### Step 6.5: Bring the tests home, run them, prove they can fail
 Copy `sandbox/tests/**` into the repo's test directory and
@@ -71,27 +70,37 @@ Run tests using Bash:
 - Capture output
 - Save to ${SESSION_PATH}/tests/test-results.md
 
+Expected failures: copy the `## Expected test failures` section of
+`${SESSION_PATH}/implementation-log.md` to `${SESSION_PATH}/tests/expected-failures.md`.
+Keep each test's name, its assertion message and the test-file file:line, by qa.md's copy
+rule, plus the requirement that changed it. Step 6.6 hands this file to every analyst
+call. The analyst, on the writer's model, updates those tests from the spec.
+
 ### Step 6.6: TDD loop
 TDD Loop (max tdd_limit iterations):
 
-If tests fail:
+If tests fail (an expected failure from Phase 4 goes to the analyst like any other
+failure):
 
-  a. Launch qa-engineer to analyze failure:
-     Prompt: "Read test results: ${SESSION_PATH}/tests/test-results.md
-
-              Analyze each failure and classify:
-              - TEST_ISSUE: Test is wrong (fix test)
-              - IMPLEMENTATION_ISSUE: Implementation is wrong (fix code)
-
-              Write analysis to ${SESSION_PATH}/tests/failure-analysis.md"
+  a. Analyse the failures in a `/dev:qa` Phase 1 Phase session (same model, same sandbox):
+     the writer's model from `writer.txt`, in the Step 6.3 sandbox, `STOP_AT: analyse`.
+     Build `<sandbox>/qa/test-results.md` fresh for each call: the latest
+     `${SESSION_PATH}/tests/test-results.md` filtered by qa.md's copy rule, then the
+     contents of `${SESSION_PATH}/tests/expected-failures.md` when it exists.
+     That one call classifies the failures and fixes the TEST_ISSUE tests. Read
+     `<sandbox>/qa/failure-analysis.md` and copy it to
+     `${SESSION_PATH}/tests/failure-analysis.md`. Write the `analyst:` line in `writer.txt`.
 
   b. For TEST_ISSUE failures:
-     - Launch qa-engineer to fix tests
+     - Bring home the tests that call fixed, as in Step 6.5. Write the `fixer:` line in
+       `writer.txt`; it names the same model as `analyst:`.
 
   c. For IMPLEMENTATION_ISSUE failures:
-     - Launch developer to fix implementation
+     - Launch `dev:developer` to fix the implementation. Its prompt says: edit no test
+       files.
 
-  d. Re-run tests
+  d. Re-run tests, and save the output to `${SESSION_PATH}/tests/test-results.md`, which
+     the next analyst call reads
 
   e. Iteration counter++
 

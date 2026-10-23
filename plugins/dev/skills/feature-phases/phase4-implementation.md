@@ -66,6 +66,12 @@ b. If independent phases:
 
               Implement phase: {phase_name}
               PRIORITY: Follow discovered project patterns first.
+              Create or edit no test files in this phase, even where requirements.md
+              or architecture.md asks for tests — Phase 6 writes them blind. Run the
+              existing tests only. An existing test that fails because the feature
+              intentionally changes behaviour the spec now requires is not fixed here:
+              record it under "## Expected test failures" in implementation-log.md,
+              with the test, the requirement, and the observed failure.
               Run quality checks before completing.
 
               Log progress to ${SESSION_PATH}/implementation-log.md, including your
@@ -104,6 +110,12 @@ b. If independent phases:
 
               Implement phase: {phase_name}
               PRIORITY: Follow discovered project patterns first.
+              Create or edit no test files in this phase, even where requirements.md
+              or architecture.md asks for tests — Phase 6 writes them blind. Run the
+              existing tests only. An existing test that fails because the feature
+              intentionally changes behaviour the spec now requires is not fixed here:
+              record it under "## Expected test failures" in implementation-log.md,
+              with the test, the requirement, and the observed failure.
               Run quality checks before completing.
 
               Log progress to ${SESSION_PATH}/implementation-log.md, including your
@@ -120,7 +132,11 @@ c. If dependent phases:
 
 d. After each phase:
    - Verify quality checks passed
-   - If failed: Delegate fix (max 2 attempts)
+   - An expected failure recorded under "## Expected test failures" does not count as a
+     failed quality check.
+   - If failed: Delegate fix (max 2 attempts). The fix prompt says: "Create or edit no
+     test files in this phase, even where requirements.md or architecture.md asks for
+     tests — Phase 6 writes them blind. Run the existing tests only."
    - If still failing: Escalate to user
 
 ### Step 4.6: Track implementation progress
@@ -134,6 +150,8 @@ Track all progress in ${SESSION_PATH}/implementation-log.md:
 - `## Decisions changed` — one line per decision that changed, appended when it changes:
   `{phase}: {was} → {now} — {why}` (a plan deviation, an assumption the developer made, a
   retry with a different approach). Phase 8 reports this section to the user.
+- `## Expected test failures` — one entry per existing test the spec intentionally breaks:
+  the test, the requirement, and the observed failure. Phase 6 updates those tests.
 
 ### Step 4.7: Announce the phase complete
 Say, in one line: **Phase 4 — complete**, naming the artifacts you wrote.

@@ -7,7 +7,7 @@ Universal development assistant. Detects the project stack and routes work to sp
 
 | | |
 |---|---|
-| Version | `9.5.1` |
+| Version | `9.6.0` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 17 |
 | Subagents | 12 |
@@ -157,7 +157,7 @@ Step-by-step, one guide per job:
 | `/dev:interview` | Comprehensive specification interview with intelligent requirements elicitation |
 | `/dev:investigate` | Read-only code investigation — architecture traces, implementation analysis, bug origin tracking with specialist agents |
 | `/dev:learn` | Analyze session for learnable patterns, apply pending learnings (--apply), or prune stale preferences (--prune) |
-| `/dev:qa` | Writes behaviour tests from a spec and a public contract with a writer that never sees the implementation — an external GPT top-tier model via claudish, or dev:qa-engineer in its own context… |
+| `/dev:qa` | Writes behaviour tests from a spec and a public contract with a writer that never sees the implementation — the top-tier model of the first non-Claude family that answers via claudish (GPT,… |
 | `/dev:release` | Releases the current project through a phased pipeline — preflight gates, version+changelog PR, merge, tag, publish, verify against the public registry. |
 | `/dev:research` | Multi-source research with convergence-based finalization and parallel exploration |
 | `/dev:setup` | Set up project CLAUDE.md with task routing table and agent delegation rules |

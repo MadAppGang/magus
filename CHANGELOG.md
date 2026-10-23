@@ -4,6 +4,42 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [dev 9.6.0] - 2026-10-24
+
+### Changed
+
+- `/dev:qa` and `/dev:dev` Phase 6 try GPT, then Gemini, then another non-Claude family for
+  the test writer, and ask the user when none can write, instead of silently using a Claude
+  writer (MTL-169). Each family's top-tier model resolves live; a `--model` the user names is
+  that family only. A Claude writer runs only when the user picks it, or inside a nested
+  claudish session, and is recorded as `not blind across families`.
+- Failure analysis and test fixes run on the writer's model, in the writer's sandbox
+  (`STOP_AT: analyse`). The report and `writer.txt` carry `writer:`, `analyst:` and `fixer:`
+  lines.
+- Phase 4 creates or edits no test files, even where the requirements ask for tests. Phase 6
+  writes them blind. `dev:developer` adds tests only when the dispatch prompt does not say to
+  write none. An existing test that fails because the spec now requires new behaviour is
+  recorded under `## Expected test failures` in `implementation-log.md`, does not count as a
+  failed quality check, and goes to the Phase 6 analyst, which updates it from the spec.
+- Step 6.4 no longer carries its own copy of the writer procedure. It points at `/dev:qa`
+  Phase 1, whose copy had drifted to an `agent` form that fails as `agent_rejected`.
+- `/dev:dev` Phase 6 builds the sandbox agent copy and the `tests.before` snapshot the writer
+  procedure needs. Each family starts from a clean sandbox. `qa-engineer` accepts
+  `RESULTS_PATH` and analyses without re-running Plan, Implement and Run.
+- An analyst session reuses the writer's `create_session` arguments but not its sandbox
+  reset or its "no test changed" check, and its prompt asks only for analysis and
+  TEST_ISSUE fixes. Phase 4's expected failures sit in their own file and go into every
+  analyst call. `/dev:dev` grants `list_sessions`, which the writer procedure polls.
+
+### Why
+
+- When claudish was absent, or the GPT writer failed, both commands fell through to a Claude
+  subagent with no question. Tests from the same family as the implementer are not blind in
+  the way the procedure claims. 43 contract tests in `scripts/check-qa-writer-contract.test.ts`
+  pin the new wording: 40 fail on the 9.5.1 text, and all 43 pass on this one.
+
+---
+
 ## [Marketplace 13.9.0] - 2026-10-24
 
 ### Changed

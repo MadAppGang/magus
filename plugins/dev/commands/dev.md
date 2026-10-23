@@ -1,7 +1,7 @@
 ---
 name: dev
 description: "Builds a feature through an 8-phase workflow, delegating each phase to a specialist agent. Depth picks how many phases run, automation how often it stops to ask."
-allowed-tools: Agent, AskUserQuestion, Bash, Read, EnterPlanMode, ExitPlanMode, Glob, Grep, mcp__plugin_claudish_claudish__team, mcp__plugin_claudish_claudish__list_models, mcp__plugin_claudish_claudish__search_models, mcp__plugin_claudish_claudish__create_session, mcp__plugin_claudish_claudish__get_output, mcp__plugin_claudish_claudish__get_diagnostics, mcp__plugin_terminal_mux__open-pane, mcp__plugin_terminal_mux__send-keys, mcp__plugin_terminal_mux__watch-pane, mcp__plugin_terminal_mux__pane-state, mcp__plugin_terminal_mux__list-slots, mcp__plugin_terminal_mux__close-pane, mcp__chrome-devtools__navigate_page, mcp__chrome-devtools__take_screenshot, mcp__chrome-devtools__take_snapshot, mcp__chrome-devtools__click, mcp__chrome-devtools__fill, mcp__chrome-devtools__new_page, mcp__chrome-devtools__select_page, mcp__chrome-devtools__list_pages
+allowed-tools: Agent, AskUserQuestion, Bash, Read, EnterPlanMode, ExitPlanMode, Glob, Grep, mcp__plugin_claudish_claudish__team, mcp__plugin_claudish_claudish__list_models, mcp__plugin_claudish_claudish__search_models, mcp__plugin_claudish_claudish__create_session, mcp__plugin_claudish_claudish__list_sessions, mcp__plugin_claudish_claudish__get_output, mcp__plugin_claudish_claudish__get_diagnostics, mcp__plugin_terminal_mux__open-pane, mcp__plugin_terminal_mux__send-keys, mcp__plugin_terminal_mux__watch-pane, mcp__plugin_terminal_mux__pane-state, mcp__plugin_terminal_mux__list-slots, mcp__plugin_terminal_mux__close-pane, mcp__chrome-devtools__navigate_page, mcp__chrome-devtools__take_screenshot, mcp__chrome-devtools__take_snapshot, mcp__chrome-devtools__click, mcp__chrome-devtools__fill, mcp__chrome-devtools__new_page, mcp__chrome-devtools__select_page, mcp__chrome-devtools__list_pages
 ---
 
 <role>
@@ -140,7 +140,7 @@ allowed-tools: Agent, AskUserQuestion, Bash, Read, EnterPlanMode, ExitPlanMode, 
   - Plan review (external models via claudish) → dev:architect agent
   - Implementation → dev:developer agent (subagent_type: "dev:developer")
   - Code review (external models via claudish) → dev:architect agent
-  - Test creation → dev:qa-engineer agent (subagent_type: "dev:qa-engineer")
+  - Test creation, failure analysis, test fixes → one non-Claude family via /dev:qa Phase 1
   - Real validation → Orchestrator (Chrome MCP tools directly)
 
   DO NOT substitute agents across phases. Each phase has specific agent requirements.
@@ -439,8 +439,8 @@ allowed-tools: Agent, AskUserQuestion, Bash, Read, EnterPlanMode, ExitPlanMode, 
       - Implementation: developer agent
       - Code review: reviewer/architect agent (external models via claudish)
       - Test creation: qa-engineer agent, blind — the writer sees only the spec and
-        contract sandbox; an external GPT top-tier writer via claudish when one resolves,
-        else dev:qa-engineer in its own context (the `/dev:qa` route, Phase 6)
+        contract sandbox; one non-Claude family via `/dev:qa` Phase 1 (GPT, then Gemini,
+        then another), and a question to the user when none can write (Phase 6)
       - Test execution: Bash
       - Real validation: Orchestrator (Chrome MCP tools)
     </delegation_rules>

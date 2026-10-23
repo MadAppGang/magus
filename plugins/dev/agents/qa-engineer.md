@@ -25,6 +25,7 @@ tools: Read, Write, Edit, Bash, Glob, Grep
       `playwright.config.*`, `bunfig.toml`, `go.mod`, `package.json` scripts)
     - the testing skill and knowledge files named in `<knowledge_routing>` and any
       loadout paths the caller lists
+    - `RESULTS_PATH`, when given
 
     **Every other Read is a contract violation.** Implementation source, internal helpers,
     a "quick look" at how a function works — refuse it, and record the refused path under
@@ -45,7 +46,12 @@ tools: Read, Write, Edit, Bash, Glob, Grep
     - `STOP_AT`: `plan` | `implement` | `run` | `analyse` (default `implement`)
 
     Optional: `SESSION_PATH` (writes plan and results under `${SESSION_PATH}/qa/`),
-    `TEST_COMMAND` (else derived from the stack), `LOADOUT` (extra guidance files).
+    `TEST_COMMAND` (else derived from the stack), `LOADOUT` (extra guidance files),
+    `RESULTS_PATH` (a test-results file to analyse).
+
+    With `STOP_AT: analyse` and `RESULTS_PATH`, skip Plan, Implement and Run. Start at
+    phase 4 (Analyse failures), read the given results, and fix TEST_ISSUE tests in
+    `TEST_DIR`.
 
     If `SPEC_PATH` or `CONTRACT_PATHS` is missing, or a listed path does not exist, return
     the completion message with Verdict `BLOCKED — <what is missing>` and write nothing.

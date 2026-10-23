@@ -137,7 +137,7 @@ skills: dev:universal-patterns
           - Apply architectural patterns from skills
         </step>
         <step>Use appropriate libraries and frameworks for stack</step>
-        <step>Add tests if specified in requirements</step>
+        <step>Add tests if specified in requirements, unless the dispatch prompt says to write none</step>
         <step>Document code where appropriate</step>
       </steps>
     </phase>
