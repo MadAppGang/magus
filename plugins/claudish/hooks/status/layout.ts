@@ -29,6 +29,7 @@ import {
   STALE_NUMBER_S,
   STALE_STEPS_S,
   STATE_LOOK,
+  batchAgent,
   feedKey,
   isDrawn,
   shownRuns,
@@ -37,9 +38,12 @@ import {
   lookOf,
   runLabel,
   paneId,
+  slotAgent,
   slotKey,
   type BadgeTone,
+  type BatchAgent,
   type Group,
+  type SlotAgent,
   type StatusColor,
 } from './domain'
 import type { Hue } from './palette'
@@ -257,6 +261,10 @@ export type BandRow = {
   /** the slot's timeline, for the live cell; null for a run not listed yet */
   trail: TrailView | null
   activity: string
+  /** the agent cell: '' unless the batch is mixed or the row's agent disagrees */
+  agent: string
+  /** the cell is a disagreement (drawn in the warning colour) */
+  agentMismatch: boolean
   stop: StopCell
   show: boolean
   /** the open Show panel is on this slot's tab */
@@ -270,12 +278,12 @@ export type BandRow = {
 /** Cells per column; 0 = dropped. `badge` is BADGE_CELLS (code and runtime) or CODE_CELLS (code alone). */
 export type ColumnPlan = {
   lead: number; id: number; badge: number; model: number; provider: number; tokens: number
-  tools: number; loops: number; cost: number; meter: number; activity: number; stop: number; show: number
+  tools: number; loops: number; cost: number; agent: number; meter: number; activity: number; stop: number; show: number
   /** the in half's share of `tokens`: the two halves are one block, so this is not a column */
   tokensIn: number
 }
 
-const COLUMNS = ['lead', 'id', 'badge', 'model', 'provider', 'tokens', 'tools', 'loops', 'cost', 'meter', 'activity', 'stop', 'show'] as const
+const COLUMNS = ['lead', 'id', 'badge', 'model', 'provider', 'tokens', 'tools', 'loops', 'cost', 'agent', 'meter', 'activity', 'stop', 'show'] as const
 
 export type BandModel = {
   header: Segment[]
@@ -319,11 +327,23 @@ const MODEL_MIN = 8
 const MODEL_MAX = 28
 const PROVIDER_MAX = 18
 const ACTIVITY_MIN = 12
+/** An agent cell on a row: room for `requested dev:reviewer, loaded none`; cut to AGENT_MIN before the stats go. */
+const AGENT_MAX = 40
+const AGENT_MIN = 12
+/** The agent name in the header, cut with … past this. */
+const AGENT_HEADER_MAX = 32
 export const LEAD_CELLS = 2
 
 const GROUPS: readonly Group[] = ['needs you', 'running', 'done', 'wrong format', 'failed', 'stopped']
 
-function rowsOf(input: BandInput, drawn: readonly ClaudishRun[]): BandRow[] {
+/** A row's agent cell: empty unless the batch is mixed or this row's agent disagrees (a single agent is the header's). */
+export function rowAgentText(agent: SlotAgent, batch: BatchAgent): string {
+  if (agent.mismatch) return `requested ${agent.requested}, loaded ${agent.loaded ?? 'none'}`
+  if (batch.kind === 'mixed') return agent.name ?? 'no agent'
+  return ''
+}
+
+function rowsOf(input: BandInput, drawn: readonly ClaudishRun[], batch: BatchAgent): BandRow[] {
   const severalRuns = drawn.length > 1
   const rows: BandRow[] = []
   for (const run of drawn) {
@@ -337,6 +357,7 @@ function rowsOf(input: BandInput, drawn: readonly ClaudishRun[]): BandRow[] {
         badge: { code: look.code, runtime: runtime(run.startedAt === undefined ? null : input.now - run.startedAt), hue: HUE_OF[look.tone] },
         word: look.word, group: look.group,
         model: '', provider: '', tokensIn: '', tokensOut: '', tools: '', loops: '', cost: '', meter: null, trail: null, activity: '',
+        agent: '', agentMismatch: false,
         stop: 'none', show: false, active: false, terminal: false, endedAt: null,
         target: { runId: run.id, epoch: run.epoch, ref: run.ref, slot: '', model: '', label },
       })
@@ -356,6 +377,7 @@ function rowsOf(input: BandInput, drawn: readonly ClaudishRun[]): BandRow[] {
         : severalRuns ? `${label}/${slot.slot}`
         : slot.slot
       const trail = trailView(run, slot, input.now)
+      const agent = slotAgent(slot)
       rows.push({
         key,
         attention: isWaiting(state),
@@ -375,6 +397,8 @@ function rowsOf(input: BandInput, drawn: readonly ClaudishRun[]): BandRow[] {
         trail,
         // A row drawn as a timeline says what it does there; the column is for a row without one.
         activity: trail ? '' : activityOf(run, slot, state),
+        agent: rowAgentText(agent, batch),
+        agentMismatch: agent.mismatch,
         stop,
         show: slot.slot !== '*',
         active: input.panel.open && input.panel.active === paneId(run.id, slot.slot),
@@ -428,9 +452,9 @@ function meterText(m: Meter | null): string {
 
 /**
  * Drops columns in a fixed priority until the row fits `bodyColumns`: activity, provider, loops,
- * tool calls, tokens, cost, the meter; then the badge loses its runtime, the id shrinks to 2, and
- * last the model shrinks to 8. The model is never dropped: it is what the row is about. Below
- * that floor, null: header alone.
+ * tool calls, tokens; the agent shrinks to 12; cost, the meter; then the badge loses its runtime,
+ * the agent goes, the id shrinks to 2, and last the model shrinks to 8. The model is never
+ * dropped: it is what the row is about. Below that floor, null: header alone.
  */
 export function fitColumns(bodyColumns: number, rows: readonly BandRow[]): ColumnPlan | null {
   const content = {
@@ -445,6 +469,7 @@ export function fitColumns(bodyColumns: number, rows: readonly BandRow[]): Colum
     // A live meter counts on between polls (flow.tsx), so its column keeps room for the number.
     meter: Math.max(width(rows.map(r => meterText(r.meter))), rows.some(r => r.meter !== null || r.trail !== null) ? METER_CELLS + METER_NUMBER_CELLS : 0),
     activity: width(rows.map(r => r.activity)),
+    agent: width(rows.map(r => r.agent), AGENT_MAX),
   }
   const plan: ColumnPlan = {
     lead: LEAD_CELLS, id: content.id, badge: BADGE_CELLS,
@@ -455,6 +480,8 @@ export function fitColumns(bodyColumns: number, rows: readonly BandRow[]): Colum
     tools: content.tools > 0 ? MARK_CELLS + content.tools + PAD : 0,
     loops: content.loops > 0 ? MARK_CELLS + content.loops + PAD : 0,
     cost: content.cost > 0 ? content.cost + PAD : 0,
+    // Plain text, as the activity; 0 for a batch whose agent is the header's, so no column and no gap.
+    agent: content.agent,
     meter: content.meter,
     activity: Math.min(content.activity, ACTIVITY_MIN),
     // No row can be stopped (the run ended): the Stop column gives its room to the timeline.
@@ -466,9 +493,11 @@ export function fitColumns(bodyColumns: number, rows: readonly BandRow[]): Colum
     p => { p.loops = 0 },
     p => { p.tools = 0 },
     p => { p.tokens = 0 },
+    p => { p.agent = Math.min(p.agent, AGENT_MIN) },
     p => { p.cost = 0 },
     p => { p.meter = 0 },
     p => { p.badge = CODE_CELLS },
+    p => { p.agent = 0 },
     p => { p.id = Math.min(p.id, ID_MIN) },
     p => { p.model = Math.min(p.model, MODEL_MIN + PAD) },
   ]
@@ -486,7 +515,7 @@ export function fitColumns(bodyColumns: number, rows: readonly BandRow[]): Colum
   return null
 }
 
-function headerOf(rows: readonly BandRow[], input: BandInput, shown: readonly ClaudishRun[], older: number): Segment[] {
+function headerOf(rows: readonly BandRow[], input: BandInput, shown: readonly ClaudishRun[], older: number, batch: BatchAgent): Segment[] {
   const counts = new Map<string, number>()
   for (const r of rows) {
     counts.set(r.group, (counts.get(r.group) ?? 0) + 1)
@@ -501,6 +530,10 @@ function headerOf(rows: readonly BandRow[], input: BandInput, shown: readonly Cl
       : g === 'wrong format' ? { text: ` · ${n} wrong format`, color: 'warning' }
       : { text: ` · ${n} ${g}`, dim: true })
   }
+  // After the counts, so a narrow band cuts the agent before what asks for the person; before the
+  // notices and earlier runs, since it describes the shown batch, not those.
+  if (batch.kind === 'one') out.push({ text: ` · ${cut(batch.name, AGENT_HEADER_MAX)}` })
+  else if (batch.kind === 'mixed') out.push({ text: ' · mixed agents', dim: true })
   const parked = Object.values(input.ledger.entries).filter(e => e.kind === 'parked').length
   if (parked > 0) out.push({ text: ` · ${parked} ${parked === 1 ? 'notice' : 'notices'} not delivered`, color: 'error' })
   const earlier = older + input.earlier.runs
@@ -517,8 +550,10 @@ export function bandModel(input: BandInput): BandModel | null {
   const drawn = input.runs.list.filter(r => isDrawn(r, input.feeds))
   if (drawn.length === 0 && input.earlier.runs === 0) return null
   const { shown, older } = shownRuns(drawn)
-  const all = rowsOf(input, shown)
-  const header = headerOf(all, input, shown, older)
+  // One batch for the one header: every slot under it, whichever run it belongs to (the Show tab reads the same).
+  const batch = bandAgent(input.runs, input.feeds)
+  const all = rowsOf(input, shown, batch)
+  const header = headerOf(all, input, shown, older, batch)
   const plan = fitColumns(input.bodyColumns, all)
   const panelOpen = input.panel.open
   if (plan === null) return { header, plan: null, rows: [], more: null, panelOpen }
@@ -537,7 +572,7 @@ export function bandModel(input: BandInput): BandModel | null {
 /** One row's cells as drawn text, each cut and padded to its column. The badge halves carry their own padding. */
 export function rowCells(row: BandRow, plan: ColumnPlan): {
   lead: string; id: string; code: string; runtime: string; model: string; provider: string
-  tokensIn: string; tokensOut: string; tools: string; loops: string; cost: string; meter: string; meterNumber: string; activity: string
+  tokensIn: string; tokensOut: string; tools: string; loops: string; cost: string; agent: string; meter: string; meterNumber: string; activity: string
 } {
   const fit = (text: string, w: number, right = false) => {
     if (w <= 0) return ''
@@ -559,6 +594,7 @@ export function rowCells(row: BandRow, plan: ColumnPlan): {
     tools: plan.tools > 0 ? (row.tools === '' ? ' '.repeat(plan.tools) : ` ${TOOLS_MARK}${fit(row.tools, plan.tools - MARK_CELLS - PAD)} `) : '',
     loops: plan.loops > 0 ? (row.loops === '' ? ' '.repeat(plan.loops) : ` ${LOOPS_MARK}${fit(row.loops, plan.loops - MARK_CELLS - PAD)} `) : '',
     cost: plan.cost > 0 ? ` ${fit(row.cost, plan.cost - PAD, true)} ` : '',
+    agent: fit(row.agent, plan.agent),
     meter: plan.meter <= 0 ? '' : m ? meterCells(m) : ' '.repeat(METER_CELLS),
     meterNumber: pad(meterNumber, Math.max(0, plan.meter - METER_CELLS)),
     activity: fit(row.activity, plan.activity),
@@ -699,12 +735,48 @@ export type PaneBody =
   | { kind: 'frame'; lines: PaneLine[] }
   | { kind: 'note'; note: string }
 
-export type PaneModel = { badge: Badge | null; header: Segment[]; body: PaneBody }
+/** `agent`: the line above the header naming the slot's agent; [] when it names none. */
+export type PaneModel = { agent: Segment[]; badge: Badge | null; header: Segment[]; body: PaneBody }
 
-/** The tab's header (the row's badge, then its text, theme keys only) and its body. */
-export function paneModel(view: ClaudishPaneView, runs: ClaudishRuns, fit: PaneFit, now: number): PaneModel {
+/**
+ * The Show tab's first line. A slot naming no agent has one only in a band whose batch has agents
+ * (`Agent: none`, the row is reserved for every tab then); in a band with none, null: no line at all.
+ */
+export function paneAgentLine(slot: ClaudishSlot, batch: BatchAgent = { kind: 'none' }): { text: string; mismatch: boolean } | null {
+  const a = slotAgent(slot)
+  if (a.requested === null && a.loaded === null) return batch.kind === 'none' ? null : { text: 'Agent: none', mismatch: false }
+  if (a.loaded === null && !isTerminal(slot.state)) return { text: `Agent: ${a.requested} (requested)`, mismatch: false }
+  if (!a.mismatch) return { text: `Agent: ${a.name}`, mismatch: false }
+  // The reason only when it is about the agent: any other failure is the header's, as today.
+  const why = slot.reason === 'agent_rejected' ? ` · ${slot.detail ? `agent_rejected: ${slot.detail}` : 'agent_rejected'}` : ''
+  return { text: `Agent: ${a.loaded ?? 'none'} (requested ${a.requested})${why}`, mismatch: true }
+}
+
+/** The band's batch: every slot under its one header, as bandModel reads it. */
+export function bandAgent(runs: ClaudishRuns, feeds: Readonly<Record<string, ClaudishFeedSupport>>): BatchAgent {
+  const { shown } = shownRuns(runs.list.filter(r => isDrawn(r, feeds)))
+  return batchAgent(shown.flatMap(r => r.slots))
+}
+
+/**
+ * Rows the Show tab keeps for the agent line besides its header: 1 while the band's batch has an
+ * agent, for every tab alike. The panel size is one value every live child is resized to, so a
+ * count that changed per tab would resize every session on each tab switch.
+ */
+export function paneAgentRows(runs: ClaudishRuns, feeds: Readonly<Record<string, ClaudishFeedSupport>>): 0 | 1 {
+  return bandAgent(runs, feeds).kind === 'none' ? 0 : 1
+}
+
+/** The tab's agent line, header (the row's badge, then its text, theme keys only) and its body. */
+export function paneModel(view: ClaudishPaneView, runs: ClaudishRuns, fit: PaneFit, now: number, feeds: Readonly<Record<string, ClaudishFeedSupport>>): PaneModel {
   const run = runs.list.find(r => r.id === view.runId)
   const slot = run?.slots.find(s => s.slot === view.slot)
+  const batch = bandAgent(runs, feeds)
+  const agentRows = batch.kind === 'none' ? 0 : 1
+  const line = slot ? paneAgentLine(slot, batch) : null
+  const agent: Segment[] = line ? [{ text: line.text, ...(line.mismatch ? { color: 'warning' as const } : {}) }] : []
+  // The agent line already says why the agent was rejected: the header does not say it twice.
+  const reasonShown = line !== null && line.mismatch && slot?.reason === 'agent_rejected'
   const header: Segment[] = []
   let badge: Badge | null = null
   if (run && slot) {
@@ -716,7 +788,7 @@ export function paneModel(view: ClaudishPaneView, runs: ClaudishRuns, fit: PaneF
     const m = staleMeter(slot, state)
     if (m) header.push({ text: ` · ${meterText(m)}`, color: m.color })
     const activity = activityOf(run, slot, state)
-    if (activity) header.push({ text: ` · ${activity}`, dim: true })
+    if (activity && !reasonShown) header.push({ text: ` · ${activity}`, dim: true })
     if (look.tone === 'format') header.push({ text: ' · the answer missed the required format', color: 'warning' })
   } else {
     header.push({ text: view.model, bold: true })
@@ -732,9 +804,9 @@ export function paneModel(view: ClaudishPaneView, runs: ClaudishRuns, fit: PaneF
   else if (view.status === 'unavailable') {
     const note = view.note === null || view.note === NO_CAPTURE_NOTE ? NO_CAPTURE_NOTE : `Live screen not available right now: ${view.note}`
     body = { kind: 'unavailable', note, numbers }
-  } else if (view.frame) body = { kind: 'frame', lines: paneLines(view.frame, fit).lines }
+  } else if (view.frame) body = { kind: 'frame', lines: paneLines(view.frame, { ...fit, rows: fit.rows - agentRows }).lines } // the agent line's row, kept for every tab
   else body = { kind: 'note', note: view.note ?? '' }
-  return { badge, header, body }
+  return { agent, badge, header, body }
 }
 
 // ── Show panel: its tabs ──────────────────────────────────────────────────────

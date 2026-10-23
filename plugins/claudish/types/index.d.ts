@@ -39,6 +39,10 @@ export type ClaudishSlot = {
   reason: string | null
   /** the failure in the provider's own words (claudish's reason_detail), when claudish sends one */
   detail?: string | null
+  /** the agent the caller asked for (claudish's agent_requested); absent when claudish sends none or an unsafe name */
+  agentRequested?: string | null
+  /** the agent Claude Code actually loaded, as claudish read it from the child's transcript; absent likewise */
+  agent?: string | null
   tokensIn: number | null
   tokensOut: number | null
   toolCalls: number | null

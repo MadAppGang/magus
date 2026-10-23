@@ -50,6 +50,9 @@ const FAILURE_REASONS: ReadonlySet<string> = new Set([
 const GONE_CODES: ReadonlySet<string> = new Set(['unknown_run', 'unknown_session', 'unknown_slot'])
 const QUESTION_ACTIVITY = 'AskUserQuestion'
 const MODEL_ID = /^[\w.@:/-]{1,80}$/
+/** An agent name as Claude Code spells one: `name`, `plugin:name`, a nested `plugin:dir:name`. */
+const AGENT_NAME = /^[A-Za-z0-9][A-Za-z0-9_.-]*(?::[A-Za-z0-9][A-Za-z0-9_.-]*){0,3}$/
+const AGENT_MAX = 64
 const PRECONTRACT_START = 'no run_id: pre-contract claudish'
 
 type Json = Record<string, unknown>
@@ -203,6 +206,17 @@ function detailOf(row: Json): { detail?: string } {
   return detail ? { detail } : {}
 }
 
+/**
+ * The agent asked for and the one loaded, each present only when claudish sends a name that is
+ * display-safe as it stands. Rejected, never repaired: a repaired identifier names an agent that does not exist.
+ */
+function agentsOf(row: Json): { agentRequested?: string; agent?: string } {
+  const name = (v: unknown) => (typeof v === 'string' && v.length <= AGENT_MAX && AGENT_NAME.test(v) ? v : null)
+  const requested = name(row.agent_requested)
+  const loaded = name(row.agent)
+  return { ...(requested ? { agentRequested: requested } : {}), ...(loaded ? { agent: loaded } : {}) }
+}
+
 const RECENT_KINDS = new Set(['text', 'thinking', 'tool', 'ask'])
 /** claudish sends at most 20; a longer list is cut to its newest. */
 const RECENT_MAX = 20
@@ -238,6 +252,7 @@ function mapSlot(row: Json): ClaudishSlot | null {
     state,
     reason: typeof row.reason === 'string' && FAILURE_REASONS.has(row.reason) ? row.reason : null,
     ...detailOf(row),
+    ...agentsOf(row),
     tokensIn: num(row.tokens_in),
     tokensOut: num(row.tokens_out),
     toolCalls: num(row.tool_calls),

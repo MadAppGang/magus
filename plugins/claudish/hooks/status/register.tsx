@@ -10,7 +10,7 @@ import type { EngineInterface, Register } from 'claude-code'
 import { CLAUDISH_TOOL, makeClaudishSource } from './claudish-source'
 import { capped, claimVia, rejected, toAccepted, type Host, type PressUi, type Store } from './host'
 import { CLIENT_SURFACES, SHOW_PANE_ID } from './domain'
-import { activeTab, bandModel, childSize, paneFit, paneModel, showTabs, wrapTabs } from './layout'
+import { activeTab, bandModel, childSize, paneAgentRows, paneFit, paneModel, showTabs, wrapTabs } from './layout'
 import * as poll from './poll'
 import * as wake from './wake'
 import * as controls from './controls'
@@ -188,14 +188,17 @@ export const register: Register = (on, options) => {
     const bound = host
     if (!bound) return next(e)
     const runs = await read($, RUNS)
-    const tabs = showTabs(runs, await read($, FEEDS))
+    const feeds = await read($, FEEDS)
+    const tabs = showTabs(runs, feeds)
     const active = activeTab(tabs, (await read($, SHOW_TAB)).active)
     const view = active ? await read($, memberOf(PANES, { requestId: active.id })) : null
     const fit = paneFit(e.props, e.surface)
     const strip = wrapTabs(tabs, active?.id ?? null, fit.columns) // once: the rows drawn are the rows taken off
     const tabRows = { ...fit, rows: Math.max(1, fit.rows - strip.length - 1) } // the strip's rows and its rule (R12.6)
-    poll.notePanelSize(bound, childSize(tabRows), active?.id ?? null) // each tab's child is resized to it before its capture
-    const model = view ? paneModel(view, runs, tabRows, await $.clock.now()) : null
+    // The agent line takes a row too, the same for every tab, so the child is that row shorter and a tab switch resizes nothing.
+    const agentRows = paneAgentRows(runs, feeds)
+    poll.notePanelSize(bound, childSize({ ...tabRows, rows: tabRows.rows - agentRows }), active?.id ?? null) // each tab's child is resized to it before its capture
+    const model = view ? paneModel(view, runs, tabRows, await $.clock.now(), feeds) : null
     const press = bindStore($)
     return panelTree($.ui.resolve(e), tabs, strip, active?.id ?? null, model, fit.columns, palette,
       target => void controls.pressTab(press, target).then(id => poll.captureOpened(bound, id), () => poll.ensureLoop(bound)),

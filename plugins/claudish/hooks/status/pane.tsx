@@ -93,12 +93,13 @@ export function panelTree(
   ) as RenderElement
 }
 
-/** One tab's body: a header row, then the child's screen, or why there is none. */
+/** One tab's body: the slot's agent when it names one, a header row, then the child's screen, or why there is none. */
 export function paneTree(els: Els, model: PaneModel, palette: Palette): RenderElement {
   const { Box, Text } = els
   const body = model.body
   return (
     <Box flexDirection="column">
+      {model.agent.length > 0 && segmentsText(els, model.agent)}
       {segmentsText(els, model.header, model.badge ? badgeParts(els, palette, model.badge, ` ${model.badge.code.padEnd(CODE_CELLS - 2)} `, ` ${model.badge.runtime.padStart(RUNTIME_CELLS - 2)} `) : [])}
       {body.kind === 'waiting' && <Text wrap="truncate-end" dimColor>Waiting for the first screen…</Text>}
       {body.kind === 'unavailable' && <Text wrap="truncate-end" dimColor>{body.note}</Text>}

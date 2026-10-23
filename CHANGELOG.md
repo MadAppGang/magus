@@ -4,6 +4,34 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [claudish 2.12.0] - 2026-10-24
+
+### Added
+
+- The status band names the subagent each run batch runs as (MTL-191). The batch header shows
+  the agent once, such as `◆ claudish  plan-review · 2 running · dev:reviewer`, or
+  `mixed agents` when the rows differ, and then each row names its own. The Show tab's first
+  line is `Agent: dev:reviewer`.
+- A finished row that asked for an agent and loaded a different one, or none, shows
+  `requested dev:reviewer, loaded none` in warning colour. Its Show tab line adds the
+  `agent_rejected` reason when claudish refused the agent.
+
+### Changed
+
+- The agent line takes one row of the Show tab in every tab of a band that has agents, so
+  switching tabs never resizes the live sessions. A band with no agents keeps today's layout.
+
+### Notes
+
+- Agents show with claudish 14.3.0 or later, which adds `agent_requested` and `agent` to every
+  session and team slot row. An older claudish sends neither field, and the band looks the same
+  as before.
+- claudish fills `agent` only after it reads the child's transcript, a few seconds into
+  `RUNNING`. Until a slot finishes, a missing agent reads as `Agent: dev:reviewer (requested)`,
+  never as a mismatch.
+
+---
+
 ## [dev 9.6.0] - 2026-10-24
 
 ### Changed

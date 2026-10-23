@@ -193,6 +193,32 @@ export function shownRuns(drawn: readonly ClaudishRun[]): { shown: ClaudishRun[]
   return { shown, older: drawn.length - shown.length }
 }
 
+// ── agents ────────────────────────────────────────────────────────────────────
+
+/** A slot's agent: what was asked for, what loaded, the name the row is about, and whether they disagree. */
+export type SlotAgent = { requested: string | null; loaded: string | null; name: string | null; mismatch: boolean }
+
+export function slotAgent(slot: Pick<ClaudishSlot, 'state' | 'agentRequested' | 'agent'>): SlotAgent {
+  const requested = slot.agentRequested ?? null
+  const loaded = slot.agent ?? null
+  // claudish fills `agent` only once it has read the child's transcript, seconds into RUNNING.
+  // Until the slot settles, no loaded agent is "not read yet", not a disagreement.
+  const pending = loaded === null && !isTerminal(slot.state)
+  const mismatch = requested !== null && loaded !== requested && !pending
+  return { requested, loaded, name: loaded ?? requested, mismatch }
+}
+
+/** One agent for every row under the header, several, or none at all. */
+export type BatchAgent = { kind: 'none' } | { kind: 'one'; name: string } | { kind: 'mixed' }
+
+/** The batch is every slot under the one header; the `*` placeholder of a run never listed is not a row's agent. */
+export function batchAgent(slots: readonly ClaudishSlot[]): BatchAgent {
+  const names = slots.filter(s => s.slot !== '*').map(s => slotAgent(s).name)
+  if (names.every(n => n === null)) return { kind: 'none' }   // also the empty list
+  const first = names[0] ?? null
+  return first !== null && names.every(n => n === first) ? { kind: 'one', name: first } : { kind: 'mixed' }
+}
+
 // ── text ──────────────────────────────────────────────────────────────────────
 
 // SGR and other CSI sequences, OSC sequences, lone escapes, C0/C1 controls and bidi overrides.

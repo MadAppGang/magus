@@ -110,6 +110,8 @@ function row(els: Els, r: BandRow, model: BandModel, actions: BandActions, palet
           </Text>
         )}
       </Box>
+      {/* Only a mixed batch or a disagreement fills it: a single agent is the header's. */}
+      {plan.agent > 0 && t(c.agent, r.agentMismatch ? { color: 'warning' } : { dimColor: true })}
       {plan.activity > 0 && t(c.activity, { dimColor: true })}
       {/* The live cell takes every free cell up to the buttons: the slot's timeline, live or ended.
           Where the surface draws no module, the stale-meter stands still. */}
