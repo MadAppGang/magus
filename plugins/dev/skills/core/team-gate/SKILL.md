@@ -55,6 +55,11 @@ read it before the first gate of a phase.
   until the user opts in, so it counts as that second failure at once. The gate's report
   leads with the opt-in step: run `claude --dangerously-skip-permissions` once,
   interactively, or use claudish.
+- **A `timeout` is not re-run either.** An internal CLI session still working at the
+  45-minute cap (`cli-sessions.md` §4.7) is FAILED `timeout`; a re-run meets the same cap
+  on the same diff, so it counts as the second failure at once, and the report names the
+  cap and suggests a narrower `TARGET:` or the claudish route. A `stalled` session — idle
+  for 5 minutes with no OUTPUT — is re-run once like any other failure.
 - **Never twice on `REVIEWS:`.** The internal path stands for the internal review; list
   `response-<slot>.md` for each external slot that completed and never
   `response-<slots.internal>.md`. "One review" and "two or more reviews" count distinct

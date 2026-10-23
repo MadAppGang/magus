@@ -110,6 +110,9 @@ allowed-tools:  Agent, AskUserQuestion, Bash, Read, mcp__plugin_claudish_claudis
          is never optional and never waits on an external one. Once `AUDIT_PATH` exists (step 3.1), write the skip down:
          append `gate skipped: code-review — MODELS none` to
          `${AUDIT_PATH}/gates.log`, and repeat that line when relaying the result.
+         On the nested route write no skip line: the `gate route:` line from
+         `team-gate/cli-sessions.md` is that gate's record, and a second line would
+         give one skip two reasons.
          Silence about a skipped panel is a defect
          (`${CLAUDE_PLUGIN_ROOT}/skills/core/team-gate/SKILL.md`, steps 6-7). The
          stop route stops the `dev:reviewer` rows here, as that file says; the docs,
@@ -207,10 +210,14 @@ allowed-tools:  Agent, AskUserQuestion, Bash, Read, mcp__plugin_claudish_claudis
          by `${CLAUDE_PLUGIN_ROOT}/skills/core/team-gate/cli-sessions.md`, with
          `${AUDIT_PATH}` as the gate directory, `agent="dev:reviewer"`, the
          `require_pattern` and `min_output_bytes` above, and
-         `${AUDIT_PATH}/claude-internal.md` as the internal path. When the target is
-         a branch or pull request that is not the user's own work, tell the user
-         before launching, in these terms: on this route the reviewer runs with
-         bypassed permissions, so it can run commands over that code without asking.
+         `${AUDIT_PATH}/claude-internal.md` as the internal path. On the
+         cli-sessions route, when the target is a branch or pull request that is not
+         the user's own work, ask before launching (AskUserQuestion, one question):
+         the reviewer runs with permission prompts turned off, so text in that code
+         could make it run commands on this machine. Options: run it; skip the
+         `dev:reviewer` rows. On skip, launch nothing, append
+         `gate skipped: code-review — user declined the CLI route on code not their own`,
+         and name the claudish route as the way to review it.
 
          Pass `input_file` ONLY — never `input` beside it. The pair is rejected with
          `Pass input_file or input, not both`; on that exact error retry once with

@@ -4,6 +4,47 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [Marketplace 13.8.1] - 2026-10-23
+
+### Fixed
+
+- **`dev` v9.5.1**: the CLI review route, used when claudish is absent, reads each reviewer's
+  screen from a terminal log, not from the pane (MTL-224, MTL-171). Every reviewer CLI now runs
+  under `script -qF`, which records its terminal to `tty-<slot>.log` beside its report and
+  flushes on every write. The banner check, the dialog checks and the failure report read that
+  log. A missing `dev:reviewer` agent now fails at once with `agent_not_loaded`, even when the
+  CLI exits before the first poll. Claude Code's trust dialog is answered with Down, then
+  Enter: its default is "No, exit", and the old Enter exited. A claudish server that is still
+  connecting gets up to 60 seconds before the route is picked.
+- **`dev` v9.5.1**: a long review on the CLI route is no longer cut off at 10 minutes. A
+  reviewer CLI keeps running while its terminal log grows, up to 45 minutes. A CLI idle for 5
+  minutes with no report fails as `stalled` and is re-run once. One still working at 45 minutes
+  fails as `timeout` and is not re-run. A pane is closed only after its result is decided.
+- **`dev` v9.5.1**: on the nested route, `/dev:fix` and `/dev:audit` write one record per gate,
+  the `gate route:` line, not a second "skipped" line with a different reason.
+- **`dev` v9.5.1**: on the CLI route the user is told once that reviewers run with permission
+  prompts turned off. `/dev:audit` asks first when the code under review is not the user's own,
+  and launches nothing on a no.
+- **`multimodel` v5.9.1**: `multi-model-validation` picks the review route by `cli-sessions.md`
+  §1. Inside a claudish child it takes the nested route, instead of launching a `claude` CLI
+  that rebuilds the nesting claudish refuses.
+
+### Why
+
+- The post-release review of dev 9.5.0 (a `dev:reviewer` in a claudish `internal` slot over
+  PR 269) returned PASS with two HIGH findings on the CLI route. Probes on Claude Code 2.1.309
+  in isolated terminal slots confirmed them. `watch-pane` missed a CLI's one-line exit message
+  in two of four launches, while a `script` log held it every time. The trust dialog's
+  highlighted option is "No, exit". `claude --agent dev:reviewer` in a folder without dev exits
+  1 within seconds with `--agent 'dev:reviewer' not found`.
+- A review of this change found that BSD `script` holds small writes for up to 30 seconds, so
+  the launch lines pass `-F`. Measured: without `-F` the log was empty 3 seconds after a write,
+  with `-F` it held the text.
+- 15 contract tests in `scripts/check-review-contracts.test.ts` were written blind by another
+  model from the requirements. 12 fail on the 9.5.0 text, and all 15 pass on this one.
+
+---
+
 ## [magus 7.11.2] - 2026-10-23
 
 ### Fixed

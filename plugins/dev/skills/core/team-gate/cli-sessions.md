@@ -23,6 +23,11 @@ Presence is the registered tool, never the `claudish` binary on PATH: inside a c
 child the binary is there and `team` is not, so a binary check reads present and the
 panel call then fails.
 
+A claudish server the session reports as still connecting is not absent yet: the route
+picked here holds for the whole phase, so wait up to 60 s for `team` to appear in the tool
+list, re-checking it every 15 s. Still connecting after that, or reported as failed to
+connect, counts as absent, and the `gate route:` line names that as the reason.
+
 ## 2. claudish — `internal` is a slot
 
 The site writes its brief to `<gate dir>/prompt.md` **always**, whether or not MODELS names
@@ -90,9 +95,9 @@ Each external id the site resolved goes to the CLI of its family, **with that ex
 picks a default panel on every route, so with no `--models` on this route it runs `codex`
 (its configured model, recorded as `codex`) and `agy` (the first entry of `agy models`,
 recorded as that id), each only if installed. `/dev:dev` Phase 5 and `/dev:audit` never
-take it: with no ids they are `MODELS: none`, the internal reviewer alone. Phase 5's ids
-are the ones Phase 1 Step 1f stored, so a default Step 1f picked there is stored ids, not
-a default at the gate.
+take it: with no ids they are `MODELS: none`, the internal reviewer alone. `/dev:dev`
+Phase 1 Step 1f also offers it, before any gate runs, and stores what it picked as ids;
+Phase 5 runs those stored ids, so it still takes no default at the gate.
 
 An id no installed CLI carries is skipped and named — never substituted, because a
 version the user named is a hard constraint. Log
@@ -115,9 +120,10 @@ orchestrator's working directory first.
 
 ### 4.3 Fresh output
 
-Each session's OUTPUT is `<gate dir>/response-<slot>.md`, absolute. Before launch delete it
-and any `.partial` beside it (`rm -f`), so an earlier iteration's file can never satisfy
-the oracle in §4.7.
+Each session's OUTPUT is `<gate dir>/response-<slot>.md`, absolute, and its terminal log
+is `<gate dir>/tty-<slot>.log`. Before launch delete both and any `.partial` beside them
+(`rm -f`), so an earlier iteration's file can never satisfy the oracle in §4.7 or answer a
+dialog that is no longer on screen.
 
 ### 4.4 The brief
 
@@ -153,14 +159,24 @@ The prompt on the command line is a one-line pointer, never the brief:
 Measured. Every line is prefixed with `CLAUDE_PLUGIN_ROOT=<DEV_ROOT>`, so
 `${CLAUDE_PLUGIN_ROOT}` in `reviewer.md` — the capture script behind `TARGET: BRANCH` —
 expands in the child's shell. `<repo>` is the repository under review, absolute, and every
-CLI's working directory is `<repo>`.
+CLI's working directory is `<repo>`. Every CLI runs under `script`, which records its
+terminal to `<tty log>`, the absolute `tty-<slot>.log` of §4.3: that log, not the pane, is
+what §4.6 and §4.7 read.
 
 ```
-cd <repo> && CLAUDE_PLUGIN_ROOT=<DEV_ROOT> claude --agent dev:reviewer --dangerously-skip-permissions "<pointer>"
-cd <repo> && CLAUDE_PLUGIN_ROOT=<DEV_ROOT> codex -C <repo> -s workspace-write -a never [--add-dir <gate dir>] [-m <id>] "<pointer>"
-cd <repo> && CLAUDE_PLUGIN_ROOT=<DEV_ROOT> agy --dangerously-skip-permissions --model <id> -i "<pointer>"
-cd <repo> && CLAUDE_PLUGIN_ROOT=<DEV_ROOT> opencode <repo> -m <provider/model> --prompt "<pointer>"
+cd <repo> && CLAUDE_PLUGIN_ROOT=<DEV_ROOT> script -qF <tty log> claude --agent dev:reviewer --dangerously-skip-permissions "<pointer>"
+cd <repo> && CLAUDE_PLUGIN_ROOT=<DEV_ROOT> script -qF <tty log> codex -C <repo> -s workspace-write -a never [--add-dir <gate dir>] [-m <id>] "<pointer>"
+cd <repo> && CLAUDE_PLUGIN_ROOT=<DEV_ROOT> script -qF <tty log> agy --dangerously-skip-permissions --model <id> -i "<pointer>"
+cd <repo> && CLAUDE_PLUGIN_ROOT=<DEV_ROOT> script -qF <tty log> opencode <repo> -m <provider/model> --prompt "<pointer>"
 ```
+
+That is the BSD `script` of macOS. `-F` makes it flush the log on every write: without it,
+BSD `script` holds small writes for up to 30 s (`-t`, default 30), so a dialog that drew
+one screen and stopped stays out of the log past the 45 s banner deadline. Where
+`script --version` succeeds, it is util-linux's, which takes the command as one argument
+after `-c`: write `script -qfc '<the CLI part of the line>' <tty log>` instead, with the
+same CLI part; its `-f` is the same flush. A path in that CLI part that holds an
+apostrophe must be written `'\''` inside the quotes.
 
 codex's `workspace-write` sandbox writes only under `<repo>`, so when `<gate dir>` is
 outside it — an isolated worktree whose session files stay in the main checkout — pass
@@ -174,6 +190,11 @@ an explicit model to every external CLI: a configured default can be retired. Th
 exception is a site's default panel that names `codex` itself, meaning its configured
 model: that line drops `-m`, and the report names the model codex's banner showed.
 
+**Consent.** When a phase picks this route, the site tells the user once, in one line,
+before the first launch: the reviewers on this route run with permission prompts turned
+off, over the code under review. `/dev:audit` asks instead, when its target is not the
+user's own work (its step 3.2), and launches nothing on a no.
+
 ### 4.6 Start in two steps
 
 Never `start-and-watch`: it types the command before a fresh isolated shell is ready, and
@@ -182,26 +203,43 @@ the line sits unsubmitted.
 1. `open-pane({ slot, isolated: true })`
 2. `watch-pane({ slot, triggers: "idle:3", timeout: 30 })` — the shell has settled.
 3. `send-keys({ slot, keys: "<launch line>", enter: true })`
-4. `pane-state({ slot })` until `foregroundCmd` is no longer the shell.
-5. claude only: the `watch-pane` output must contain `@dev:reviewer` — the banner line
-   `@dev:reviewer · <cwd>`. Absent means dev is not installed in this folder; the report
-   names the fix, run `magus update` here.
+4. `pane-state({ slot })` until `foregroundCmd` is no longer the shell. On this route it
+   reads `script`, the wrapper of §4.5, while the CLI runs. Read the stripped tty log on
+   every poll too: a CLI that fails at once can exit before the first poll, so the shell
+   is all `pane-state` ever shows, and the log is what says why.
+5. claude only: the tty log must contain `@dev:reviewer` — the banner line
+   `@dev:reviewer · <cwd>`. A log that contains `--agent 'dev:reviewer' not found` instead
+   is FAILED `agent_not_loaded` at once, in step 4 or here, whatever `foregroundCmd` says:
+   claude printed that and exited 1 within seconds when dev was not installed in `<repo>`.
+   Either way the report names the fix, run `magus update` in `<repo>`.
+
+**Read the tty log, never the pane.** Strip its escape codes first:
+`perl -pe 's/\e\[[0-9;?]*[ -\/]*[@-~]//g; s/\e\][^\a]*\a//g' <tty log>`. `capture-pane`
+and `screenshot-pane` return nothing on isolated slots, and `watch-pane` output is not
+reliable there either: on Claude Code 2.1.309 it missed a CLI's one-line exit message in
+two of four launches, while the tty log held that line every time. `watch-pane` is used
+on this route to wait, never as a source of text.
 
 ### 4.7 Watch until done
 
-The screen is never the done signal: `capture-pane` and `screenshot-pane` return nothing
-on isolated slots, and an idle screen fired mid-work. **Done is the OUTPUT file**: it
-exists, matches the site's `require_pattern`, is at least `min_output_bytes`, and its size
-is the same on two reads 15 s apart (`wc -c`, `grep -E`). Between reads, wait with
-`watch-pane({ slot, triggers: "exit,shell", timeout: 15 })`, which is also the dialog check.
+The screen is never the done signal; an idle screen fired mid-work. **Done is the OUTPUT
+file**: it exists, matches the site's `require_pattern`, is at least `min_output_bytes`,
+and its size is the same on two reads 15 s apart (`wc -c`, `grep -E`).
 
-**Dialogs.** Every `watch-pane` call, for the whole session, checks its `output` for these
-exact strings, and only these — generic words fire on the review's own text:
+Between reads, wait with `watch-pane({ slot, triggers: "exit,shell", timeout: 15 })`. It
+is only a wait: nothing it returns is read.
+
+After each wait, read the stripped tty log for the dialogs below, and `pane-state` for
+whether the CLI still runs.
+
+**Dialogs.** Every read of the tty log, for the whole session, checks it for these exact
+strings, and only these — generic words fire on the review's own text. The log keeps a
+dialog's text after it is answered, so each dialog is answered once per slot.
 
 | CLI | Exact string | Answer |
 |---|---|---|
 | `agy` | `Do you trust the contents of this project?` | Enter — the highlighted `Yes, I trust this folder` |
-| `claude` | `Is this a project you created or one you trust` | Enter — the highlighted `Yes, I trust this folder` |
+| `claude` | `Is this a project you created or one you trust` | `Down`, then `Enter`, each `literal: false`. The options are `No, exit`, highlighted, then `Yes, I trust this folder` below it; Enter on the default exits. Measured on Claude Code 2.1.309: `Down` then `Enter` reached the trusted session |
 | `claude` | `WARNING: Claude Code running in Bypass Permissions mode` | never answered — the slot is FAILED `launch` and is not retried; the gate's report leads with the opt-in step: run `claude --dangerously-skip-permissions` once, interactively, or use the claudish route |
 
 The bypass warning is a consent gate the user has not passed on this machine; an agent
@@ -209,21 +247,28 @@ answering it would opt the user in on their behalf. It is not retried: it shows 
 every launch until the user opts in, so a re-run fails the same way. Nothing else is
 treated as a dialog.
 
-**Deadlines.** Each runs from the step that starts it; a miss decides the slot.
+**Deadlines.** Each runs from the step that starts it; a miss decides the slot. The
+reviewer writes OUTPUT once, at the end, so an absent OUTPUT says nothing about progress.
+Progress is the tty log: a working CLI redraws its spinner and tool output, and an idle
+one at its prompt does not. Measure it as the log's size, `wc -c < <tty log>`, recorded
+at each read with the time it last changed.
 
 | State | Deadline | Result |
 |---|---|---|
 | shell not settled | 30 s | FAILED `launch` |
-| `foregroundCmd` still the shell after `send-keys` | 30 s | FAILED `launch` |
-| `@dev:reviewer` banner absent (claude only) | 45 s | FAILED `agent_not_loaded` |
-| OUTPUT absent or still growing, and `foregroundCmd` still the CLI | 10 min | still running — not a ballot, and handled exactly as team-gate step 4 handles a slot still RUNNING at its poll ceiling, never as a silent fail |
+| `foregroundCmd` still the shell after `send-keys`, and the tty log holds no `not found` line | 30 s | FAILED `launch` (with that line, step 4's `agent_not_loaded` applies instead) |
+| `@dev:reviewer` banner absent from the tty log (claude only) | 45 s | FAILED `agent_not_loaded` |
+| OUTPUT not yet done, the CLI still running, and its log size changed in the last 5 min | none until the cap below | still working — keep waiting |
+| OUTPUT absent, the CLI still running, and its log size unchanged for 5 min | when seen | FAILED `stalled` — it sits at a prompt nothing here answers, or ended its turn without writing OUTPUT |
+| OUTPUT absent or not yet done, and the CLI still running 45 min after `send-keys` | 45 min | FAILED `timeout` — not a ballot; an internal session follows `SKILL.md`, "The internal slot" |
 | OUTPUT absent, and the CLI has exited (`foregroundCmd` the shell again) | when seen | FAILED `no_output` |
-| OUTPUT present but under `min_output_bytes` or not matching `require_pattern`, and the CLI has exited or the 10 min ceiling passed | when seen | FAILED `shape_mismatch`, the file kept for the report |
+| OUTPUT present but under `min_output_bytes` or not matching `require_pattern`, and the CLI has exited, stalled or reached the cap | when seen | FAILED `shape_mismatch`, the file kept for the report |
 
-A failed slot's report quotes the last `watch-pane` output.
+A failed slot's report quotes the last 40 lines of its stripped tty log.
 
-**Finish.** Send `/exit` (codex: `C-c` twice, `literal: false`), then `close-pane` every
-slot this run created, whatever its result — COMPLETED, FAILED or still running.
+**Finish.** Once every slot has a result — COMPLETED or FAILED with its reason — send
+`/exit` (codex: `C-c` twice, `literal: false`), then `close-pane` every slot this run
+created. A slot is never closed while the table above still says to keep waiting.
 
 ### 4.8 Ballots and the record
 

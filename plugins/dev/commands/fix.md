@@ -205,7 +205,8 @@ allowed-tools:  Agent, AskUserQuestion, Bash, Read, Glob, Grep, Write, Edit, Ski
            carries is skipped and named, never substituted.
         5. cli-sessions route, no `--models` → the default panel of that file, §4.1.
         6. nested route → MODELS="none"; the external panels are skipped and logged by
-           that file. stop route → stop as that file says, before Phase 1.
+           that file. stop route → stop as that file says, before Phase 1: Phase B
+           would have no reviewer, and a fix is not started that cannot be reviewed.
 
         Write the result into config.json as `"models": "none"` or `"models": "a,b"`
         (bare ids that will run, comma-separated, no provider prefix). With "none" each
@@ -229,7 +230,9 @@ allowed-tools:  Agent, AskUserQuestion, Bash, Read, Glob, Grep, Write, Edit, Ski
         If SKIP_REVIEW=true, also append `gate skipped: fix-gate-A — --no-review` and
         `gate skipped: fix-gate-B — --no-review` to `${SESSION_PATH}/gates.log` now; if
         MODELS is "none" for any other reason, append `gate skipped: fix-gate-A — MODELS none`
-        and the same for `fix-gate-B`. Each id resolve-models skipped gets
+        and the same for `fix-gate-B` — except on the nested route, where nothing is
+        written for either gate here: the `gate route:` line from
+        `team-gate/cli-sessions.md` is each gate's record. Each id resolve-models skipped gets
         `gate skipped: fix-gate-A slot <id> — no installed CLI carries it`, and the same
         for `fix-gate-B`.
       </step>
@@ -1411,7 +1414,7 @@ allowed-tools:  Agent, AskUserQuestion, Bash, Read, Glob, Grep, Write, Edit, Ski
   | Monitoring TIMEOUT after 9 polls | Document; user decides whether to continue watching |
   | External slot FAILED, EMPTY, or still RUNNING at the poll ceiling | It is not a ballot. Both gates set `MIN_BALLOTS` = every launched slot, so one missing ballot is GATE NOT MET: `gate not met:` line in `gates.log`, no tally, AskUserQuestion with re-run / proceed-with-override / stop. ABSTAIN with CONFIDENCE=0 applies only to a malformed vote inside a met gate |
   | `team` tool_result is_error "Pass input_file or input, not both" | Retry once with `input_file` alone; a second failure is a panel with 0 ballots, which is GATE NOT MET |
-  | MODELS resolves to "none" | Each gate runs its internal voter alone and that verdict stands; no external panel, no dev:aggregator dispatch; Phase B's internal reviewer still runs in its own session; record MODELS "none" in the review file and `gate skipped: fix-gate-A — MODELS none` / `fix-gate-B` in `gates.log` |
+  | MODELS resolves to "none" | Each gate runs its internal voter alone and that verdict stands; no external panel, no dev:aggregator dispatch; Phase B's internal reviewer still runs in its own session; record MODELS "none" in the review file and `gate skipped: fix-gate-A — MODELS none` / `fix-gate-B` in `gates.log`, except on the nested route, whose `gate route:` line is the record |
   | claudish absent | Both gates take the route `team-gate/cli-sessions.md` picks once in Phase 0: CLI sessions in terminal slots, the nested route inside a claudish child, or a stop naming what to install — never a subagent fallback |
   | `--models` names an id no installed CLI carries (claudish absent) | Skip it and log `gate skipped: <gate> slot <id> — no installed CLI carries it`; it is not a panel member, so it is not in N |
   | `--models` names an id the catalog does not carry | Stop in Phase 0; show the id and the live alternatives from `list_models`; never substitute a near match or a lower version |

@@ -345,15 +345,19 @@ Why?
 
 The internal reviewer should NEVER be optional - it's your safety net.
 
-It runs in a session of its own, never as a subagent of the session that wrote the code:
+It runs in a session of its own, never as a subagent of the session that wrote the code —
+except on the nested route below, `cli-sessions.md` §3, the one place a subagent is allowed:
 seat it as the `internal` slot in the `models` list of the ONE `team` call, beside the
 externals, so it gets the same `require_pattern` shape check as every one of them. After
 the panel settles, copy `response-<slots.internal>.md` to `claude-review.md` — only when
 that slot is COMPLETED and matched the pattern — and list `claude-review.md` on REVIEWS:,
 never `response-<slots.internal>.md` beside it: that is the same review counted twice.
-Without claudish this skill runs the internal reviewer alone, through the `claude` CLI by
-`skills/core/team-gate/cli-sessions.md` inside the dev plugin; it launches no external CLIs,
-and that file's §4.1 says the same. dev's root is the `installPath` of its `dev@` entry in
+Without the `team` tool, pick the route by §1 of `skills/core/team-gate/cli-sessions.md`
+inside the dev plugin, never by "is claudish installed": inside a claudish child `team` is
+absent too, and a CLI launched from there rebuilds the nesting claudish refuses. When §1
+picks the nested route, follow its §3 — the one foreground subagent, no externals. When it
+picks cli-sessions, run the internal reviewer alone as a `claude` CLI session; this skill
+launches no external CLIs, and that file's §4.1 says the same. dev's root is the `installPath` of its `dev@` entry in
 `claude plugin list --json`; with no such entry dev is not installed, and the route is
 unavailable. Pattern 3 states the rule.
 ```
@@ -619,8 +623,9 @@ its lineage and escapes the shape check.
   (Step 2 onward) and is not restated here.
 - **The code-review panels `dev` dispatches** (`/dev:dev` Phase 5, `/dev:audit`,
   `/dev:fix` Phase B) — the same slot; with no externals the call is
-  `models=["internal"]`. Without claudish, dev runs the reviewers as CLI sessions in
-  terminal slots, by `skills/core/team-gate/cli-sessions.md` inside the dev plugin (its
+  `models=["internal"]`. Without the `team` tool, dev picks the route by §1 of
+  `skills/core/team-gate/cli-sessions.md` inside the dev plugin — CLI sessions in terminal
+  slots, or the nested route inside a claudish child (its
   root: the `installPath` of the `dev@` entry in `claude plugin list --json`). Every code-review example in
   this skill is this case.
 
