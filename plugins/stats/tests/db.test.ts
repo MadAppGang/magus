@@ -35,7 +35,13 @@ describe("db", () => {
     }
   });
 
-  function makeSession(id: string, project = "/test/project", date = "2026-03-26"): SessionMetrics {
+  function today(offsetDays = 0): string {
+    const d = new Date();
+    d.setDate(d.getDate() - offsetDays);
+    return d.toISOString().slice(0, 10);
+  }
+
+  function makeSession(id: string, project = "/test/project", date = today()): SessionMetrics {
     return {
       session_id: id,
       date,
@@ -48,14 +54,14 @@ describe("db", () => {
           duration_ms: 50,
           success: true,
           activity_category: "research",
-          timestamp: "2026-03-26T10:00:00.000Z",
+          timestamp: `${date}T10:00:00.000Z`,
         },
         {
           tool_name: "Write",
           duration_ms: 30,
           success: true,
           activity_category: "coding",
-          timestamp: "2026-03-26T10:01:00.000Z",
+          timestamp: `${date}T10:01:00.000Z`,
         },
       ],
       activity_counts: {
@@ -229,7 +235,7 @@ describe("db", () => {
     insertToolCalls(db, metrics.tool_calls, "old-session");
 
     // Insert a recent session
-    const recent = makeSession("recent-session", "/test/project", "2026-03-26");
+    const recent = makeSession("recent-session");
     insertSession(db, recent);
 
     const { deletedCount } = deleteOldSessions(db, 90);
