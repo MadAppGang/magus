@@ -40,7 +40,7 @@ of truth, and the engine forwards emitted events only as cosmetic progress for t
 | `Vars` | the Scenario's `vars:` |
 | `WorkDir` | `sandbox.WorkDir()` — the seeded tmpdir, **and the agent's `HOME`** |
 | `Env` | `sandbox.Env()` — the scrubbed environment |
-| `Timeout` | Scenario `timeout:` > bench `defaults.timeout:` > **300s** |
+| `Timeout` | Scenario `timeout:` > bench `defaults.timeout:` > **300s**; a value at either position that is not a positive duration is refused at load |
 | `Capture` | Scenario `capture:` > `defaults.capture:` > `log` |
 | `Config` | the `harness:` block, after `{{param}}` substitution |
 | `Args` | the Scenario's own `harness.args` — §2a. Empty when the Scenario writes none |
@@ -339,8 +339,9 @@ per-thread breakdown is in `Session.Subagents`, and `session:turn-count` still c
 ### When a run's background work is finished
 
 The Stop hook ends a **turn**, and a turn ends when the MAIN thread stops. Background work
-outlives it — a subagent, a Workflow, a background shell, a Monitor — and reports back with a
-task notification that wakes the idle agent into a turn of its own. madbench therefore waits on
+outlives it — a subagent, a Workflow, a background shell, a Monitor, an MCP call the CLI moved
+to the background — and reports back with a task notification that wakes the idle agent into a
+turn of its own. madbench therefore waits on
 the whole **job** (`docs/harness.md`, "When a run's background work is finished"). It is
 finished when the parent and every subagent sidecar have been quiet for the settle window, **no
 background task holds the Session**, every woken turn has ended, and any `idle_wait:` window has
@@ -348,19 +349,28 @@ run out.
 
 - **Opened** by an `Agent`/`Task` call (`subagent`), a `Workflow` result `async_launched` with a
   `taskId` and `taskType` (`workflow`), a Bash result carrying `backgroundTaskId` (`shell`), a
-  result carrying `taskId` beside `timeoutMs`/`persistent` (`monitor`).
-- **Closed** by a task notification with any `<status>`, a `TaskStop` result (`stopped`), a
-  non-persistent Monitor's declared expiry (`expired`), or a subagent's non-acknowledgement
-  result. A notice with no `<status>` closes nothing.
+  result carrying `taskId` beside `timeoutMs`/`persistent` (`monitor`), an `mcp__…` call's
+  result that IS the CLI's message for it — opening `MCP tool "<server>/<tool>"` with the call's
+  own tool, then a measured lead-in to `… the background as task k…` (`mcp`; the one place the
+  ledger reads prose, since the CLI writes no structured id for it; the same words quoted
+  anywhere else open nothing).
+- **Closed** by the first, in transcript order, of a task notification with any `<status>`, a
+  `TaskStop` result (`stopped`), or a subagent's non-acknowledgement result; failing those, a
+  non-persistent Monitor's declared expiry (`expired`). A notice with no `<status>` closes
+  nothing. Each task's `task-open` and `task-close` Events sit right after the record that says
+  so, so they stream live.
 - **States**, re-read every poll: `finished` and `stale` release; `running`, `blocked` and
   `unknown` hold. A `persistent` Monitor never holds. A shell's or Monitor's state comes from the
   processes holding its output file, read through the sandbox (at `container` as the agent's own
-  user); a shell is `stale` only once successful readings have found no holder for 10 s, and a
-  reading that cannot see the agent's own processes reads `unknown` (another of the user's, such
-  as a non-dumpable `ssh-agent`, changes nothing). Subagents and Workflows are never `stale`.
+  user). When a shell reads `stale`, and every reading that reads `unknown` instead, are in
+  `docs/harness.md`, "The five states": madbench never guesses a task finished. Subagents and
+  Workflows are never `stale`. An MCP call has no
+  output file and no process of its own, so it reads `unknown` while open, and is never
+  signalled. Known limit: on a Linux host with `/proc` mounted `hidepid=1`, every reading at
+  `home` and `workspace` fails, so tasks read `unknown` and hold the Session to `timeout:`.
 
 When `timeout:` runs out (counted from the agent's start, plus only the blocked time the Driver
-actually spent) with only shells/Monitors holding → the Session ends **`background-timeout` and
+actually spent) with only shells/Monitors/MCP calls holding → the Session ends **`background-timeout` and
 is graded** — at the timeout on a driven Scenario, and **15 s before it on an undriven one**,
 whose deadline is the timeout itself (the teardown needs those 15 s). On a driven Scenario a
 Monitor still emitting events at the bound does not turn that into an error, though a subagent's
@@ -376,10 +386,14 @@ score like a bad agent rather than reading like the incomplete capture it is.
 
 **Nothing is killed silently**: `Session.BackgroundTasks` records every task; then each open
 shell/Monitor gets TERM, then KILL, each checked by a reading after it (unverified if that
-fails), recorded as `terminated`; then the pane is torn down; then a sweep ends anything still
+fails), recorded as `terminated` — or, when the reading before TERM fails or the task's file has a
+name no reading lists, nothing is signalled and `terminated` says so: an empty `signal` and an
+`error` beginning `not signalled:`; then the
+pane is torn down; then a sweep ends anything still
 holding a file of this Session's own task directory (`orphan: true`) — all before the Session is
 built. Only holders of a file under `…/<this session-id>/tasks/`, as the sandbox resolves it, are
-ever signalled, and never the agent's own processes.
+ever signalled, and never the agent's own processes — at `container` those are the pane pids
+root recorded, which the agent cannot rewrite.
 
 `idle_wait: 45s` on a Scenario keeps a settled Session open for a wake no task announces — a
 plugin's monitor, an MCP push. Scenario-only, interactive-only, claude-code-only.
@@ -498,7 +512,45 @@ skills, agents and `CLAUDE.md`.
 
 ### `container`
 
-The whole machine. The only level that enforces `network: none` and `access: ro`.
+The whole machine. The only level that enforces `network: none` and `access: ro`. The image
+needs util-linux's `setpriv` unless `user: root`: each command madbench starts inside enters as
+root, records its process group where the agent cannot rewrite it, and becomes the container's
+user with `setpriv`. busybox and a bare alpine have only busybox's, which cannot change the uid,
+and the sandbox is refused with a message naming it. As root those commands look tools up in
+`/usr/sbin:/usr/bin:/sbin:/bin` only, never the image's PATH, and madbench sets empty, for
+root's launches, every variable on glibc's list of what ld.so strips from a privileged process
+that names a path glibc loads code or data from (`LD_PRELOAD`, `LD_LIBRARY_PATH`, `GCONV_PATH`,
+`LOCPATH` among them), so the agent cannot inject a library into root's `/bin/sh` through one
+of them, and restores them for the container's user. A variable off that list reaches root as
+the image set it: `TZ`, which can name the zone file glibc reads, and musl's `MUSL_LOCPATH`.
+
+The paths root trusts are one list, written out once: `docs/sandbox-levels.md`, *The paths
+root trusts* (the PATH directories above, the loader's library directories and files,
+`/run/madbench-exec`, `/proc/self/status`). Two rules hold them:
+
+- **A share may not be mounted on them:** a `share.paths` entry on one of them, above one
+  (`/`, `/usr`, `/etc`, `/run`) or inside one (`/usr/bin/setpriv`) is refused, on both engines
+  and whatever its `access:`, naming the share and the path — on the host for the `to:` as
+  written, and in the container, before the agent starts, for the path it landed on through
+  the image's symlinks (`/var/run/madbench-exec` lands on `/run/madbench-exec` in madbench's
+  own image). On Docker Desktop a bind mount reads as owned by whoever looks at it, so the
+  ownership check cannot see a share. `/usr/local/bin`, `/opt` and the working tree are fine.
+- **Inside the container, when the sandbox is made and its user is not root,** they must be
+  root's alone: each of them that exists, every directory above each (`/etc` and `/run`
+  included), every entry in the command directories and every entry under the library
+  directories must be root's and not group- or world-writable — a sticky `/run` included — or
+  the sandbox is refused, naming the path, owner and mode. Symlinks are followed to their
+  targets; a symlink to nothing among the listed paths, or a walk that cannot finish, is
+  refused. A symlink's target's own parent directories are not checked.
+
+The image also needs `od` and `tr`; `find` and `stat` unless its user is root; and `readlink`
+when the bench declares `share.paths`. The container user's uid, gid and groups are read from
+`/proc/self/status` when the sandbox is made, in an exec of that user's with those load-path
+variables set empty, through `od` and `tr` looked up in `/usr/sbin:/usr/bin:/sbin:/bin` and never
+in that user's PATH; an image without them there is refused with a message naming the tool. The
+PATH and load-path variables given back to that user come from a second, ordinary exec, and
+reach only that user's own commands. madbench reads a command's stdout only, so a shell that
+warns on stderr as it starts does not change the reading.
 
 ---
 
@@ -791,7 +843,7 @@ Read off `madbench --help` on the installed binary; the table is a map, not the 
 | Group | Flag | Effect |
 |---|---|---|
 | What runs | `--variant <name>` | run only these variants, by name (repeatable), in every Experiment that declares the name. Selects **which** variants run; `--trials` sets how many times each runs. The guard still audits every declared variant |
-| | `--scenario <string>` | run only this Scenario by name (or description, when it has no name) — a different axis from `--variant`, which selects an Experiment's variants. Narrows what runs, never what the guard audits |
+| | `--scenario <name>` | run only these Scenarios, by name (repeatable, any-of; a Scenario with no name goes by its description, and a value is one id, commas included) — a different axis from `--variant`, which selects an Experiment's variants. A name no Scenario carries is an error listing the ids. Narrows what runs, never what the guard audits |
 | | `--param key=value` | override a declared bench param (repeatable; typed int/float/bool, else string) |
 | | `--trials <n>` | run each bench N times — N trials — to measure flake and spread (default 1) |
 | | `--harness <string>` | override `harness.type` for every bench |

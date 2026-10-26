@@ -24,6 +24,20 @@ worktree.
 
 ---
 
+## [Marketplace 13.9.2] - 2026-10-27
+
+### Changed
+
+- **`madbench` v0.12.5**: the madbench skills are synced to madbench 0.56.0, so
+  /madbench:madbench and the bench agent describe the harness that is installed. The Glossary
+  says "stage" where it used "layer": the four stages one run passes through are Declaring,
+  Running, Results and Reports. The skills also cover MCP calls that the harness moves to the
+  background (a `background_task` of kind `mcp`) and the `task-open` and `task-close` Events.
+  `madbench skills --check` reports `current`. Where Homebrew is not used (Linux), the plugin
+  installs madbench v0.56.0 when madbench is missing, not v0.55.0.
+
+---
+
 ## [Marketplace 13.9.1] - 2026-10-24
 
 ### Changed

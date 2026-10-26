@@ -318,7 +318,7 @@ chose to repeat it (`docs/checks.md:320-405`).
   raw: attachment.stdout
 ```
 
-- The portable layer reads a hook's output (`content`, `stdout`, `stderr`), so `event_type: hook`
+- Portable matching reads a hook's output (`content`, `stdout`, `stderr`), so `event_type: hook`
   with `value:` finds a marker a hook injected and `eq: 0` over it fails when one did.
   `raw:` narrows to one field of the record: `raw: attachment.content` is only what was injected.
   A hook that injects context is two Events, so a portable count over its marker reads 2 per
@@ -1082,12 +1082,17 @@ Event's `raw` is the harness's own record, and its
 `omitempty` — **an absent `result_ok` means the capture recorded no outcome, and must never
 be read as failure.**
 
-**`background_tasks[]`** (interactive claude-code only) is every task the agent started
-beside its turns — `kind` (`subagent` · `workflow` · `shell` · `monitor`), `tool_call_id`
-and `state` (`finished` · `running` · `blocked` · `stale` · `unknown`) always; `task_id`,
-`description`, `command`, `started_at`, `ended_at`, `status` (verbatim, or `stopped` /
-`expired`), `last_activity` when known; `terminated` (`signal`, `at`, `orphan`, `error`)
-only when madbench ended it (`docs/checks.md`, "External transports").
+**`background_tasks[]`** (claude-code, from its transcript; a `--print` run's open tasks
+are `unknown`) is every task the agent started beside its turns — `kind` (`subagent` ·
+`workflow` · `shell` · `monitor` · `mcp`), `tool_call_id` and `state` (`finished` · `running`
+· `blocked` · `stale` · `unknown`) always; `task_id`, `description`, `command`, `started_at`,
+`ended_at`, `status` (verbatim, or `stopped` / `expired`), `last_activity` when known;
+`terminated` (`signal`, `at`, `orphan`, `error`) only when madbench ended it — or, with an
+empty `signal` and an `error` beginning `not signalled:`, could not see its processes and sent
+nothing. The
+`background_task` Events carry the same lifecycle, a `task-open` or `task-close` right after
+the record that says so, with `metadata.state` as known at that moment (`docs/checks.md`,
+"External transports").
 
 | type | Transport | Config | Notes |
 |---|---|---|---|

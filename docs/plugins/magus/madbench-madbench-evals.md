@@ -6,7 +6,7 @@ Authors, runs and debugs madbench benches natively — bench YAML, checks, metri
 
 Part of [`madbench`](./madbench.md).
 
-**5 reference documents, about 3,357 lines.**
+**5 reference documents, about 3,426 lines.**
 
 The skill itself does not contain them. It reads your question and names the one or two
 worth opening — which is the point, because loading everything below to answer one
@@ -16,11 +16,11 @@ question would cost more than the answer is worth.
 
 | Document | Covers | Lines |
 |---|---|---|
-| [`checks-catalog.md`](https://github.com/MadAppGang/magus/blob/main/plugins/madbench/skills/madbench-evals/checks-catalog.md) | Check catalog | 1229 |
+| [`checks-catalog.md`](https://github.com/MadAppGang/magus/blob/main/plugins/madbench/skills/madbench-evals/checks-catalog.md) | Check catalog | 1234 |
 | [`debugging.md`](https://github.com/MadAppGang/magus/blob/main/plugins/madbench/skills/madbench-evals/debugging.md) | Debugging madbench benches | 350 |
-| [`glossary.md`](https://github.com/MadAppGang/magus/blob/main/plugins/madbench/skills/madbench-evals/glossary.md) | madbench Glossary — the one table | 129 |
-| [`harness-and-sandbox.md`](https://github.com/MadAppGang/magus/blob/main/plugins/madbench/skills/madbench-evals/harness-and-sandbox.md) | Harness, sandbox and CLI | 912 |
-| [`schema.md`](https://github.com/MadAppGang/magus/blob/main/plugins/madbench/skills/madbench-evals/schema.md) | Bench and Experiment file schema | 737 |
+| [`glossary.md`](https://github.com/MadAppGang/magus/blob/main/plugins/madbench/skills/madbench-evals/glossary.md) | madbench Glossary — the one table | 130 |
+| [`harness-and-sandbox.md`](https://github.com/MadAppGang/magus/blob/main/plugins/madbench/skills/madbench-evals/harness-and-sandbox.md) | Harness, sandbox and CLI | 964 |
+| [`schema.md`](https://github.com/MadAppGang/magus/blob/main/plugins/madbench/skills/madbench-evals/schema.md) | Bench and Experiment file schema | 748 |
 
 ## Reading these
 

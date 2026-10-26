@@ -169,7 +169,7 @@ Such benches live in `unproven/`.
 | `interactive` | bool-ish | **true** | how the agent is driven — see harness-and-sandbox.md §3 |
 | `driver` | DriverConfig, or `false` | the default Driver | who answers the agent's questions — §2a |
 | `cwd` | string | *(root)* | where inside the workspace the agent starts |
-| `timeout` | string | `300s` | must carry a unit — see the gotcha below |
+| `timeout` | string | `300s` | a positive duration with a unit (`90s`, `5m`); `600`, `7sec`, `0s` or a negative value is refused at load |
 | `capture` | string | `log` | `log` · `proxy` · `log+proxy` |
 | `staging_timeout` | string | | budget for `generate:`/`setup:` |
 | `bun` | string | | pin the Bun version for `ts`/`js` checks |
@@ -395,6 +395,11 @@ sandbox:
       - {from: ./golden,    to: /opt/golden, access: copy}
       - {from: /srv/corpus, to: /srv/corpus, access: ro}   # container only
 ```
+
+At level `container` a `to:` on, above or inside a path root trusts (the one list:
+`docs/sandbox-levels.md`, *The paths root trusts*) is refused, whatever the `access:` — as
+written, before the container is created, and where it lands through the image's symlinks,
+before the agent starts. Share tools under `/usr/local/bin` or `/opt` instead.
 
 Levels and what each protects: `harness-and-sandbox.md` §4.
 
@@ -636,10 +641,17 @@ one declaration across the runs is what makes their numbers comparable.
   collision.
 - `harness.model` additionally accepts inline modelspec notation with zero declaration.
 
-`{{name}}` (whitespace-tolerant) is substituted anywhere a string appears: `harness:`
-values including nested slices/maps, `prompt`, `testdata`, all three of `repo:`, `generate`,
-`setup`, `cwd`, `staging_timeout`, `idle_wait`, every `sandbox:` value, `transform`, `vars` values, and
-check `value:`/`inline:`/`transform:`/own keys/`config:` recursively including nested children.
+`{{name}}` (whitespace-tolerant) is substituted in every string the bench writes: `harness:`
+values including nested slices/maps; every Scenario and `defaults:` key (`prompt`,
+`follow_ups`, `timeout`, `testdata`, all three of `repo:`, `generate`, `setup`, `cwd`,
+`staging_timeout`, `idle_wait`, `transform`, `options.transform`, `image`, `capture`, `bun`,
+`python`, `providers`, `vars` and `metadata` values); every `sandbox:` value; the `driver:`
+block including `max_blocked_wait` and `answers:`; and every check key (`type:`, `metric:`,
+`value:`, `inline:`, `transform:`, own keys, `config:`) recursively including nested children.
+Left as written: the bench's `description:`, a Scenario's `name:`/`description:` (identities),
+`params:` and `models:` (declarations), `unproven:`, and the keys of a long-form model block
+under `driver.model:` or `judges.providers:` (decoded as the file is read — name a `models:`
+entry instead). An undeclared placeholder is a load error wherever it appears.
 
 - A value that is **exactly** one placeholder keeps the param's **native type**
   (`temp: "{{temp}}"` → the float `0.0`).
@@ -695,8 +707,8 @@ madbench --param temp=0.0 ./mybench/                # override a declared param
 
 `--variant` selects **which** variants run; `--trials` sets **how many trials** each run has.
 They compose. A `--variant` name selects that variant in every Experiment that declares it.
-`--scenario` narrows what runs, never what the guard audits: the guard compares every
-declared variant, whole. `--param` splits on the FIRST `=`, so a value may contain `=`.
+`--scenario` is repeatable and any-of, like `--variant`; it narrows what runs, never what the
+guard audits: the guard compares every declared variant, whole. `--param` splits on the FIRST `=`, so a value may contain `=`.
 
 There is no separate `run` subcommand and no file-kind flag: the bare command auto-detects a
 bench vs an Experiment **by content**, and a directory expands every `*.yaml` in it.
@@ -717,7 +729,6 @@ Strict decoding checks key **names**, not value **semantics**. These load clean 
 
 | Write this | Not this | Why it slips through |
 |---|---|---|
-| `timeout: 600s` | `timeout: 600` or `"600"` | The field's **type is string**, so `600` decodes fine. `time.ParseDuration` then rejects `"600"` and the timeout **silently falls back to the default**. Always write a unit |
 | `config:` | your own keys beside `type:` on `ts`/`js`/`python` | The script types take any key, and one written beside `type:` reaches the envelope as `assertion.args.<key>`. The shims bind `config` as the parameter, so such a key reaches your function only if it reads `assertion.args` itself |
 
 **Strict decoding covers the `harness:` block too.** An unknown key anywhere under it is a load

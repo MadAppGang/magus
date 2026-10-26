@@ -28,7 +28,7 @@ the madbench repository.
 | Session | What happened when the agent ran one Scenario: its Events, final output, cost and timing. Graded by the `session:*` Checks. |
 | transcript | The Harness's own stored file of a Session, e.g. Claude Code's JSONL. madbench reads it to build the Session. |
 | Event | One thing that happened in a Session — a message, a tool call, a hook, a reminder — with madbench's Category, Type and Source beside the harness's own RawType, RawSource and Raw. |
-| background task | Work the agent starts that runs beside its turns and reports back later: a subagent, a Workflow, a background shell, a Monitor. Listed on `Session.BackgroundTasks` and as `background_task` Events; while one holds, an interactive Session stays open, and one still holding a shell or Monitor at the bound ends it `background-timeout`, graded. |
+| background task | Work the agent starts that runs beside its turns and reports back later: a subagent, a Workflow, a background shell, a Monitor, an MCP call the harness moved to the background. Listed on `Session.BackgroundTasks` and as `background_task` Events; while one holds, an interactive Session stays open, and one still holding a shell, Monitor or MCP call at the bound ends it `background-timeout`, graded. |
 | background state | A background task's state when last looked at: `finished` · `running` · `blocked` · `stale` · `unknown`. `running`, `blocked` and `unknown` hold the Session; `finished` and `stale` release it. |
 | Environment | What the agent was given, not what it did: Expected (what madbench staged) and Reported (what the tool said it loaded), captured on the Session; `harness.probe` controls the capture. Graded by the `environment:*` Checks. |
 | Result | What a Check returned: `Pass`, `Score`, `Reason`, `Evidence`. |
@@ -56,6 +56,7 @@ madbench's own words that a better word replaced. Never write them for a madbenc
 | Action | Event | as a Session's unit. English "action" naming another concept (GitHub Actions, a UI step) is not ours |
 | round | turn | "3 rounds" also reads as `--trials 3`, which is three trials |
 | eval file | Experiment | the file is an Experiment; the Eval is the whole system |
+| layer | stage | the four stages one run passes through are Declaring, Running, Results and Reports. For an order of precedence say "precedence" or "order". Claude Code's own memory layers are its term, quoted |
 
 ## Other tools' terms
 
