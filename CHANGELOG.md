@@ -4,6 +4,26 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [magus 7.11.3] - 2026-10-27
+
+### Fixed
+
+- **Removing a deprecated plugin in a git worktree now removes it.** In a worktree, a plugin
+  installed in the repository's main folder showed as deprecated, but `d` did nothing: the
+  popup closed, no error appeared and the plugin stayed. magus now removes the plugin from
+  the main folder, where it is installed, and reads the result back. The plugin is then gone
+  from the main folder and from every other worktree of the repository, because they share
+  that install. `magus update` follows the same rule and no longer reports success while the
+  plugin is still installed there.
+- **A failed removal shows its error.** `d` ignored every error from
+  `claude plugin uninstall`. Now it ignores only "not installed in <scope> scope". If magus
+  cannot confirm that the plugin is gone, it reports the removal as failed.
+
+The main folder's profile can still list the plugin after a removal that started in a
+worktree.
+
+---
+
 ## [Marketplace 13.9.1] - 2026-10-24
 
 ### Changed
