@@ -4,6 +4,28 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [setup 1.8.0] - 2026-10-29
+
+### Changed
+
+- The status line's context bar measures against Claude Code's auto-compact window, so it shows
+  how close the session is to compacting (MTL-317). On 1M Opus with a 400k window it showed 36%
+  while Claude Code said 3% until auto-compact; the two now agree. The bar fills toward the
+  compaction trigger (the window less 33k, output tokens counted) and is labelled `400k|1M`,
+  or `355k/400k|1M` above 50%.
+- The window is read as Claude Code reads it: `CLAUDE_CODE_AUTO_COMPACT_WINDOW` first, then the
+  user, project, local and managed settings, where a per-model
+  `modelSettings.<model>.autoCompactWindow` beats the top-level `autoCompactWindow`. With no
+  window set, or auto-compact turned off, the bar measures the model window as before. The
+  answer is cached per session and re-read when a settings file changes.
+
+### Added
+
+- `context_autocompact` in the status line config, on by default. Set it to `false` to measure
+  against the model window instead. `/setup:statusline-customize` offers it.
+
+---
+
 ## [claudish 2.13.2] - 2026-10-29
 
 ### Fixed

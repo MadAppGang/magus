@@ -29,6 +29,7 @@ disable-model-invocation: true
     "nerd_font": false     // Opt in to Nerd Font glyphs (RAM → 󰍛). Default OFF
   },
   "context_bar_width": 12, // Width of context bar in chars (8-20)
+  "context_autocompact": true, // Measure ctx against the auto-compact window; false = model window
   "plan_bar_width": 10,    // Width of plan limit bar in chars (6-16)
   "theme": "default",      // Color theme name
   "appearance": "auto",    // "auto" | "light" | "dark" — see Appearance below
@@ -203,7 +204,7 @@ produces no error and no visible breakage, so only a unit test catches it.
 | `worktree` | Orange (bold) | `wt:name` — only shown when inside a linked worktree. Replaces the branch chip rather than sitting next to it |
 | `cost` | Yellow | Cumulative session cost in USD |
 | `duration` | Magenta | Session duration in minutes/seconds |
-| `context_bar` | Green→Red gradient | Visual bar + token count (90k/200k) + compaction indicator (⟳) |
+| `context_bar` | Green→Red gradient | Visual bar + token count (90k/200k) + compaction indicator (⟳). When an auto-compact window below the model's context window is configured, the bar measures progress toward compaction and labels it `400k\|1M` (`355k/400k\|1M` above 50%) — see *Context against the auto-compact window* |
 | `plan_limits` | Teal→Red gradient | Dual bar: top=5h, bottom=7d plan usage with reset countdowns. **Anthropic only** — suppressed entirely when the session is routed through claudish (see below) |
 | `claudish_plan` | Teal→Red gradient | The ACTIVE provider's plan windows when routed through claudish. Same `id:NN% ↻countdown` style as `plan_limits`, with an arbitrary number of windows. Requires `plan_limits` to also be on |
 | `diff` | Cyan+green/red | Two independent chips rendered side-by-side: `🤖 +A/-D` (U+1F916) shows lines Claude has added/removed *in this conversation*; `⎇ +A/-D` (U+2387, plain Unicode — no Nerd Font needed) shows uncommitted lines from `git diff --shortstat` in the current worktree. The glyphs pair semantically — 🤖 is what the agent wrote, ⎇ is what is uncommitted in git. Each chip is hidden when its counts are zero; the git chip is also hidden when cwd is not a git repo. The whole section is hidden when both sides are zero. |
@@ -343,6 +344,73 @@ After the percentage, a dim token count shows current/max context usage:
 - `45% 90k/200k` — 90k tokens used out of 200k window
 - `72% 144k/200k` — approaching limit
 - Only shown when Claude Code provides token data in stdin
+
+### Context against the auto-compact window
+
+Claude Code's auto-compact window (`/autocompact`) makes compaction fire well below the
+model's context window. Measured against the full window, a 1M model with a 400k
+auto-compact window read `36%` while Claude Code said `3% until auto-compact`. So when a
+window below the context window is configured, the bar measures progress toward
+compaction instead:
+
+```
+███████████░  97%  355k/400k|1M ⚡
+```
+
+- `400k|1M` — the auto-compact window, then the model's context window. Always shown in
+  this mode; above 50% it gains the used count (`355k/400k|1M`).
+- The `1M+` "exceeds" marker is suppressed in this mode — the label already names 1M.
+- The bar, colours, ≥80% highlight and ⚡ use the same thresholds as before.
+
+**The trigger.** Claude Code compacts at `T = W − min(maxOutput, 20000) − 13000`, which is
+`T = W − 33000` for every current Claude model. Used tokens `U` are the last request's
+input + cache-creation + cache-read + **output** tokens, and the percentage is
+`round(U × 100 / T)`, floored at 0. It equals 100 minus Claude Code's own
+"N% until auto-compact".
+
+**Resolution order** — the window `W` is resolved the way Claude Code resolves it:
+
+1. `CLAUDE_CODE_AUTO_COMPACT_WINDOW` — `400k`, `1m` or bare digits, clamped to
+   100000..1000000. Beats every settings file, and still applies when auto-compact is off.
+2. `DISABLE_AUTO_COMPACT` or `DISABLE_COMPACT` set truthy → no window.
+3. Settings layers, last wins: user (`~/.claude/settings.json`, or
+   `$CLAUDE_CONFIG_DIR/settings.json`) → project (`<project>/.claude/settings.json`) →
+   local (`<project>/.claude/settings.local.json`) → managed policy settings. A layer with
+   a top-level `autoCompactWindow` resets the per-model values from earlier layers; a
+   layer with only `modelSettings` merges into them. The model's own
+   `modelSettings["<model>"].autoCompactWindow` beats the top-level value. Model names
+   match case-insensitively with `[1m]`, a date suffix and Bedrock/Vertex decorations
+   removed, so `claude-opus-5-5` matches `claude-opus-5-5[1m]`; an exact key wins over
+   such a match. `"auto"` or any non-integer counts as unset.
+4. `autoCompactEnabled: false` in `~/.claude.json` (`$CLAUDE_CONFIG_DIR/.claude.json` when
+   that is set) → no window.
+5. `W` is capped at the context window. If it reaches the context window, there is
+   nothing to show and the bar is exactly what it was without this feature.
+
+`<project>` is the session's project directory (`workspace.project_dir` from stdin,
+falling back to `cwd`).
+
+**Cache.** The settings read is cached per session in
+`~/.claude/.statusline-acw-cache-<session_id>`, one line: a signature and the window. The
+signature is the model, the project directory, the size and modification time of every
+settings layer, taken in a single `stat` call, and whether `~/.claude.json` turns
+auto-compact off (checked with a `grep` every render, since that file is rewritten
+constantly); while it is unchanged the window is reused without running `jq`. Editing any
+layer refreshes it on the next render. If `stat` cannot measure the layers, nothing is
+cached and every render reads the settings. Environment variables are never cached.
+
+**Known limits.** With a `--settings` layer or a server-tuned `"auto"` window in play, the
+status line uses the settings-file value (or the model window when there is none), which
+may differ from Claude Code's window in either direction:
+
+- The `--settings` flag layer is invisible: the status-line command cannot read Claude
+  Code's command line.
+- `"auto"` (or no setting) lets Claude Code use a server-tuned window, which is not
+  available to the status line.
+- Model aliases used as `modelSettings` keys (`opus`, `sonnet`, `haiku`) are not matched.
+  Use the full model id as the key.
+
+Turn the whole mode off with `"context_autocompact": false` in the config.
 
 ### Compaction Detection
 

@@ -36,6 +36,7 @@ Read `${CLAUDE_PLUGIN_ROOT}/skills/statusline-customization/SKILL.md` before the
       },
       "context_bar_width": 12,
       "plan_bar_width": 10,
+      "context_autocompact": true,
       "theme": "default"
     }
     ```
@@ -63,9 +64,13 @@ Read `${CLAUDE_PLUGIN_ROOT}/skills/statusline-customization/SKILL.md` before the
       context_bar_width: 12
       plan_bar_width:    10
 
+    Context measure: auto-compact window (context_autocompact: on)
     Theme: default
     Nerd Font icons: off
     ```
+
+    Show `Context measure: model window (context_autocompact: off)` when the key is
+    `false`.
   </step>
 
   <step number="3" name="Ask what to change">
@@ -76,7 +81,8 @@ Read `${CLAUDE_PLUGIN_ROOT}/skills/statusline-customization/SKILL.md` before the
       2. "Change theme" — switch between default, monochrome, minimal, neon
       3. "Change bar widths" — adjust context bar or plan bar width
       4. "Nerd Font icons" — render the RAM segment as a glyph instead of a label
-      5. "Reset to defaults" — restore all settings to defaults
+      5. "Context measure" — measure the context bar against the auto-compact window or the model window
+      6. "Reset to defaults" — restore all settings to defaults
 
     Based on choice:
 
@@ -111,6 +117,19 @@ Read `${CLAUDE_PLUGIN_ROOT}/skills/statusline-customization/SKILL.md` before the
     Offer "blank space" explicitly: a missing Nerd Font glyph frequently renders as
     nothing at all rather than as tofu, and Nerd Font coverage is partial — a user
     whose font resolves other glyphs may still get a gap for this one.
+
+    **Context measure:** Use AskUserQuestion:
+    - question: "What should the context bar measure against?"
+    - options:
+      "Auto-compact window" → `context_autocompact: true` — the bar shows progress toward
+      the point where Claude Code compacts, labelled like `355k/400k|1M`. It only changes
+      anything when an auto-compact window below the model's context window is set;
+      otherwise the bar is the same either way.
+      "Model context window" → `context_autocompact: false` — the bar always measures
+      against the model's full context window.
+
+    The resolution order and its known limits are in the skill's *Context against the
+    auto-compact window* section.
 
     **Reset to defaults:** Restore the default config from step 1.
   </step>

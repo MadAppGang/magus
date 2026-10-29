@@ -34,6 +34,10 @@ SHOW_SESSION_NAME=true
 SHOW_MEMORY=true
 CTX_BAR_WIDTH=12
 PLAN_BAR_WIDTH=10
+# Measure the ctx bar against Claude Code's auto-compact window rather than the
+# model's full context window, when one is configured. `false` restores the
+# model-window measure. See resolve_autocompact_window.
+CONTEXT_AUTOCOMPACT=true
 THEME="default"
 # `appearance` picks the light-on-dark or dark-on-light variant of $THEME.
 # "auto" resolves it from the terminal at render time — see resolve_appearance().
@@ -80,6 +84,7 @@ if [ -f "$CONFIG_FILE" ] && command -v jq >/dev/null 2>&1; then
     "ICONS_NERD_FONT=\(d(.icons.nerd_font; false))",
     "CTX_BAR_WIDTH=\(d(.context_bar_width; 12))",
     "PLAN_BAR_WIDTH=\(d(.plan_bar_width; 10))",
+    "CONTEXT_AUTOCOMPACT=\(d(.context_autocompact; true))",
     "THEME=\(d(.theme; "default"))",
     "APPEARANCE=\(d(.appearance; "auto"))",
     "WRAP=\(d(.wrap; "auto"))",
@@ -792,6 +797,11 @@ eval "$(printf '%s' "$input" | jq -r '
   "DURATION_MS=\(n(.cost.total_duration_ms))",
   "CTX_MAX_TOKENS=\(n(.context_window.context_window_size))",
   "CURRENT_USAGE=\(usage(.context_window.current_usage))",
+  # Output tokens ARE counted by Claude Code when it decides to auto-compact, so the
+  # auto-compact measure adds them back; the plain occupancy above stays input-only.
+  "CURRENT_OUTPUT=\(.context_window.current_usage | if type == "object" then (.output_tokens | numbers) // 0 else 0 end | tostring)",
+  # Settings layers live under the project root, which is not always the cwd.
+  "PROJECT_DIR=\(s(.workspace.project_dir // .cwd) | @sh)",
   "TOTAL_INPUT_TOKENS=\(n(.context_window.total_input_tokens))",
   "SESSION_ID=\(s(.session_id) | @sh)",
   "FIVE_HR=\(i(.rate_limits.five_hour.used_percentage) | @sh)",
@@ -934,6 +944,175 @@ if [ -n "$SESSION_ID" ] && [ "${TOTAL_INPUT_TOKENS:-0}" -gt 0 ] 2>/dev/null; the
   fi
   printf '%s %s\n' "$TOTAL_INPUT_TOKENS" "$COMPACTION_COUNT" > "$TOKEN_CACHE"
 fi
+
+# ── Auto-compact window ───────────────────────────────────
+# Claude Code compacts at its auto-compact WINDOW, which can sit far below the model's
+# context window: 1M Opus with a 400k window showed `36%` here while Claude Code said
+# `3% until auto-compact`. Stdin carries no auto-compact field, so the window is
+# resolved the way Claude Code resolves it (read from the 2.1.312 binary):
+#
+#   1. $CLAUDE_CODE_AUTO_COMPACT_WINDOW — `400k`, `1m`, bare digits; clamped to
+#      100000..1000000. Beats every settings file and survives auto-compact being off.
+#   2. DISABLE_AUTO_COMPACT / DISABLE_COMPACT truthy → no window.
+#   3. Settings layers, user → project → local → policy, last wins. A layer with a
+#      top-level `autoCompactWindow` resets the per-model map built by earlier layers;
+#      a layer with only `modelSettings` merges into it. The model's own entry beats
+#      the top-level value. `"auto"` or any non-integer counts as unset.
+#      `autoCompactEnabled: false` in .claude.json → no window.
+#   4. W = min(W, context window); W >= context window prints nothing.
+#
+# Not reachable from a status-line child: the `--settings` flag layer (Claude Code's
+# argv is not ours to read) and the server-tuned `"auto"` window. With either in play
+# the bar uses the settings-file value (or the model window when there is none), which
+# may differ from Claude Code's window in either direction.
+
+# Prints a window in tokens from a CLAUDE_CODE_AUTO_COMPACT_WINDOW value; nothing when
+# it does not parse. Pure bash — bash 3.2 has no ${v,,}, so case globs do the folding.
+parse_autocompact_env() {
+  local v=$1 num mult=1 w
+  case "$v" in
+    *[kK]) num=${v%?}; mult=1000 ;;
+    *[mM]) num=${v%?}; mult=1000000 ;;
+    *)     num=$v ;;
+  esac
+  case "$num" in ''|*[!0-9]*) return ;; esac
+  # More than 10 digits is past any clamp below; skip the arithmetic that would overflow.
+  if [ "${#num}" -gt 10 ]; then
+    w=1000000
+  else
+    w=$(( 10#$num * mult ))
+  fi
+  [ "$w" -lt 100000 ] && w=100000
+  [ "$w" -gt 1000000 ] && w=1000000
+  printf '%s' "$w"
+}
+
+is_truthy() {
+  case "$1" in 1|[tT][rR][uU][eE]|[yY][eE][sS]|[oO][nN]) return 0 ;; esac
+  return 1
+}
+
+# Prints the settings-derived window (before the context-window clamp), or nothing.
+# ONE jq call over every layer. Missing or unreadable layers are read as /dev/null,
+# which fails `fromjson` and drops out, so a broken file never errors the render.
+autocompact_from_settings() {
+  local user="$1" project="$2" local_="$3" policy="$4" global="$5" f
+  for f in user project local_ policy global; do
+    [ -r "${!f}" ] || printf -v "$f" '%s' /dev/null
+  done
+  jq -n -r \
+    --rawfile u "$user" --rawfile p "$project" --rawfile l "$local_" \
+    --rawfile m "$policy" --rawfile g "$global" --arg model "$MODEL_ID" '
+    def obj: try (fromjson | if type == "object" then . else null end) catch null;
+    # Canonical model id: lowercase, no [1m], no Bedrock region/vendor prefix or
+    # -vN:M suffix, no Vertex @date or trailing -YYYYMMDD.
+    def canon: ascii_downcase | gsub("\\[1m\\]"; "") | sub("^.*anthropic\\."; "")
+      | sub("-v[0-9]+(:[0-9]+)?$"; "") | sub("@[0-9]{8}$"; "") | sub("-[0-9]{8}$"; "");
+    if (($g | obj) // {} | .autoCompactEnabled) == false then empty else
+      reduce ([$u, $p, $l, $m][] | obj | select(. != null)) as $s ({d: null, by: {}};
+        (if $s.autoCompactWindow != null then .d = $s.autoCompactWindow | .by = {} else . end)
+        | if ($s.modelSettings | type) == "object" then
+            reduce ($s.modelSettings | to_entries[]
+                    | select((.value | type) == "object" and .value.autoCompactWindow != null)) as $e
+              (.; .by[$e.key] = $e.value.autoCompactWindow)
+          else . end)
+      | ($model | canon) as $cm
+      # An exact key beats a canonical one; per-model beats top-level.
+      | (.by[$model] // .by[$cm]
+         // ([.by | to_entries[] | select(.key | canon == $cm) | .value][0])
+         // .d) as $w
+      | select(($w | type) == "number")
+      | select($w == ($w | floor) and $w > 0)
+      | [$w, 1000000000] | min | tostring
+    end
+  ' 2>/dev/null
+}
+
+# Prints the effective auto-compact window W, or nothing when no window below the
+# context window applies. Env reads are free and never cached; the settings read is
+# cached per session, keyed on the model, project, every layer's size and mtime, and
+# whether .claude.json turns auto-compact off.
+resolve_autocompact_window() {
+  local ctx="${CTX_MAX_TOKENS:-0}" w=""
+  [ "$ctx" -gt 0 ] 2>/dev/null || return 0
+
+  if [ -n "${CLAUDE_CODE_AUTO_COMPACT_WINDOW:-}" ]; then
+    w=$(parse_autocompact_env "$CLAUDE_CODE_AUTO_COMPACT_WINDOW")
+  fi
+
+  if [ -z "$w" ]; then
+    is_truthy "${DISABLE_AUTO_COMPACT:-}" && return 0
+    is_truthy "${DISABLE_COMPACT:-}" && return 0
+    command -v jq >/dev/null 2>&1 || return 0
+
+    local cfg="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+    local user="$cfg/settings.json"
+    local project="" local_=""
+    if [ -n "$PROJECT_DIR" ]; then
+      project="$PROJECT_DIR/.claude/settings.json"
+      local_="$PROJECT_DIR/.claude/settings.local.json"
+    fi
+    local policy="/etc/claude-code/managed-settings.json"
+    case "$OSTYPE" in darwin*) policy="/Library/Application Support/ClaudeCode/managed-settings.json" ;; esac
+    local global="${CLAUDE_CONFIG_DIR:-$HOME}/.claude.json"
+
+    # .claude.json is large (hundreds of KB) and rewritten constantly, so its mtime
+    # would miss the cache on most renders. Grep it every render instead, key the cache
+    # on the 0/1 answer, and hand it to jq only when the one value that matters is there.
+    local global_in=/dev/null acoff=0
+    if grep -q '"autoCompactEnabled"[[:space:]]*:[[:space:]]*false' "$global" 2>/dev/null; then
+      global_in=$global
+      acoff=1
+    fi
+
+    # ONE stat call for the signature in the common case: name, size and mtime per
+    # layer, so a same-second edit still changes it. Missing files print nothing, and
+    # the name is in every record, so "A missing, B present" never collides with the
+    # reverse. $OSTYPE only picks which dialect to try first: Homebrew's gnubin puts GNU
+    # stat ahead of BSD's on macOS, and busybox has `-c` but no `--printf`. An empty
+    # answer while a layer exists means the dialect was wrong; try the other one.
+    local sig="" files=("$user" "$policy") f any=0
+    [ -n "$project" ] && files+=("$project" "$local_")
+    for f in "${files[@]}"; do [ -e "$f" ] && { any=1; break; }; done
+    if [ "$any" -eq 1 ]; then
+      case "$OSTYPE" in
+        darwin*|*bsd*)
+          sig=$(stat -n -f '%N:%z:%m;' "${files[@]}" 2>/dev/null)
+          [ -z "$sig" ] && sig=$(stat -c '%n:%s:%Y;' "${files[@]}" 2>/dev/null) ;;
+        *)
+          sig=$(stat -c '%n:%s:%Y;' "${files[@]}" 2>/dev/null)
+          [ -z "$sig" ] && sig=$(stat -n -f '%N:%z:%m;' "${files[@]}" 2>/dev/null) ;;
+      esac
+    fi
+    # Still empty while a layer exists: the measurement failed, so a match would be a
+    # constant signature, not an unchanged one. Neither trust the cache nor write it.
+    local measured=1
+    [ "$any" -eq 1 ] && [ -z "$sig" ] && measured=0
+    sig="${MODEL_ID}|${PROJECT_DIR}|acoff=${acoff}|${sig}"
+    sig=${sig//$'\t'/ }
+    sig=${sig//$'\n'/ }
+
+    local cache="" hit=0 cached_sig cached_w
+    if [ -n "$SESSION_ID" ] && [ "$measured" -eq 1 ]; then
+      cache="$HOME/.claude/.statusline-acw-cache-${SESSION_ID}"
+      if [ -r "$cache" ] && IFS=$'\t' read -r cached_sig cached_w < "$cache" 2>/dev/null \
+         && [ "$cached_sig" = "$sig" ]; then
+        w=$cached_w
+        hit=1
+      fi
+    fi
+
+    if [ "$hit" -eq 0 ]; then
+      w=$(autocompact_from_settings "$user" "$project" "$local_" "$policy" "$global_in")
+      [ -n "$cache" ] && { printf '%s\t%s\n' "$sig" "$w" > "$cache"; } 2>/dev/null
+    fi
+  fi
+
+  case "$w" in ''|*[!0-9]*) return 0 ;; esac
+  [ "$w" -gt "$ctx" ] && w=$ctx
+  [ "$w" -ge "$ctx" ] && return 0
+  printf '%s' "$w"
+}
 
 # ── Plan usage fallback (API poll when native fields absent OR resets missing) ──
 # Claude Code's native rate_limits input provides used_percentage but omits resets_at,
@@ -1218,9 +1397,28 @@ fi
 
 # ── 10. Context bar (always visible, adaptive width) ──────
 if [ "$SHOW_CONTEXT_BAR" = "true" ]; then
+  # Against the auto-compact window, PCT is how far toward the compaction trigger the
+  # session is: T = W − min(maxOutput, 20000) − 13000 = W − 33000 for every current
+  # Claude model, and Claude Code counts output tokens toward it. The result equals
+  # 100 minus Claude Code's own "N% until auto-compact".
+  ACW=""
+  [ "$CONTEXT_AUTOCOMPACT" = "true" ] && ACW=$(resolve_autocompact_window)
+  if [ -n "$ACW" ]; then
+    ACW_TRIGGER=$((ACW - 33000))
+    [ "$ACW_TRIGGER" -gt 0 ] || ACW=""
+    # Arithmetic below needs integers; anything else keeps today's measure.
+    case "${CURRENT_USAGE:-0}${CURRENT_OUTPUT:-0}" in *[!0-9]*) ACW="" ;; esac
+  fi
+  if [ -n "$ACW" ]; then
+    ACW_USED=$(( ${CURRENT_USAGE:-0} + ${CURRENT_OUTPUT:-0} ))
+    PCT=$(( (ACW_USED * 100 + ACW_TRIGGER / 2) / ACW_TRIGGER ))
+    [ "$PCT" -lt 0 ] && PCT=0
+  fi
+
   BAR_COLOR=$(color_for_pct "$PCT")       # the % label — muted, meant to be read
   BAR_FILL=$(bar_color_for_pct "$PCT")    # the █ run — vivid, meant to be scanned
   CTX_USED_TOKENS="${CURRENT_USAGE:-0}"
+  [ -n "$ACW" ] && CTX_USED_TOKENS=$ACW_USED
   CTX_USED_FMT=$(fmt_tokens "$CTX_USED_TOKENS")
   CTX_MAX_FMT=$(fmt_tokens "$CTX_MAX_TOKENS")
 
@@ -1231,8 +1429,9 @@ if [ "$SHOW_CONTEXT_BAR" = "true" ]; then
   fi
 
   # Context window size indicator (shows when exceeding nominal size)
+  # Suppressed against an auto-compact window: its `400k|1M` label already names 1M.
   EXCEEDS_IND=""
-  if [ "$EXCEEDS_200K" = "true" ]; then
+  if [ "$EXCEEDS_200K" = "true" ] && [ -z "$ACW" ]; then
     ctx_label=$(fmt_tokens "$CTX_MAX_TOKENS")
     EXCEEDS_IND=" ${C_RED}${B}${ctx_label:-200k}+${R}"
   fi
@@ -1257,8 +1456,16 @@ if [ "$SHOW_CONTEXT_BAR" = "true" ]; then
 
   CTX_SECTION="${BAR_FILL}$(repeat_char "$CTX_F" '█')${C_GRAY}$(repeat_char "$CTX_E" '░')${R} ${PCT_LABEL}"
 
-  # Token count in full form
-  if [ "${PCT:-0}" -gt 50 ] 2>/dev/null && [ -n "$CTX_USED_FMT" ] && [ -n "$CTX_MAX_FMT" ]; then
+  # Token count in full form. Against an auto-compact window the size label is always
+  # shown, `400k|1M`, so the bar never reads as a share of the whole model window;
+  # above 50% it gains the used count: `355k/400k|1M`.
+  if [ -n "$ACW" ]; then
+    ACW_LABEL="$(fmt_tokens "$ACW")|${CTX_MAX_FMT}"
+    if [ "$PCT" -gt 50 ] && [ -n "$CTX_USED_FMT" ]; then
+      ACW_LABEL="${CTX_USED_FMT}/${ACW_LABEL}"
+    fi
+    CTX_SECTION="${CTX_SECTION} ${C_GRAY}${D}${ACW_LABEL}${R}"
+  elif [ "${PCT:-0}" -gt 50 ] 2>/dev/null && [ -n "$CTX_USED_FMT" ] && [ -n "$CTX_MAX_FMT" ]; then
     CTX_SECTION="${CTX_SECTION} ${C_GRAY}${D}${CTX_USED_FMT}/${CTX_MAX_FMT}${R}"
   fi
 
