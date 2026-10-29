@@ -28,8 +28,9 @@ for (const surface of SURFACES) {
       expect(h.toasts).toHaveLength(0)
       expect(h.fake.cancelCalls()).toHaveLength(0)
       expect(h.fake.captureCalls()).toHaveLength(0)
-      // No repeating transcript errors; a single debug diagnostic is permitted.
-      expect(h.debug.length).toBeLessThanOrEqual(1)
+      // M1: pre-contract claudish also diagnoses the unsupported allowance feed once.
+      // Other scenarios retain their original single-feed bound.
+      expect(h.debug.length).toBeLessThanOrEqual(options.precontract ? 2 : 1)
       await b.unmount()
     })
   }

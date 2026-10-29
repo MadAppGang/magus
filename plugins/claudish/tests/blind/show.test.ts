@@ -12,7 +12,8 @@ const HEX = /^#[0-9a-f]{6}$/
 
 /** The mod may only read (list/status/capture) and cancel; nothing it sends is input to a child. */
 // R7.3: a resize is not input, so `team` mode `resize` and `resize_session` join the allowed calls.
-const ALLOWED_VERBS = ['team:list', 'team:status', 'team:capture', 'team:cancel', 'team:resize', 'list_sessions', 'capture_session', 'cancel_session', 'resize_session']
+// H1/H2: allowance_status is another read-only call, including the startup probe.
+const ALLOWED_VERBS = ['team:list', 'team:status', 'team:capture', 'team:cancel', 'team:resize', 'list_sessions', 'capture_session', 'cancel_session', 'resize_session', 'allowance_status']
 
 /** R6.5: the one Show pane, and the shown tab (a slot's view id) from the published `showTab` state. */
 const PANE = 'claudish-show'

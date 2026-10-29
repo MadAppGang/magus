@@ -69,7 +69,7 @@ test('poll: an already settled start is not watched', async ($, on) => {
   expect(h.fake.listCalls()).toHaveLength(0)
 })
 
-test('poll: pre-contract start — no run, panel feed unsupported, one debug line, 0 list calls', async ($, on) => {
+test('poll: pre-contract start — no run, panel feed unsupported, two feed debug lines, 0 list calls', async ($, on) => {
   const h = harness(on, { precontract: true })
   await start($)
   await $.tool.call({ tool: TEAM_TOOL, mode: 'run', path: 'r1' })
@@ -77,7 +77,7 @@ test('poll: pre-contract start — no run, panel feed unsupported, one debug lin
   expect(feeds(h)[FEED]?.kind).toBe('unsupported')
   await $.tool.call({ tool: TEAM_TOOL, mode: 'run', path: 'r2' })
   await h.clock.advance(60_000)
-  expect(h.debug).toHaveLength(1)
+  expect(h.debug).toHaveLength(2) // M1: one for panel, one for allowance; never per poll
   expect(h.fake.listCalls('runs')).toHaveLength(0)
 })
 

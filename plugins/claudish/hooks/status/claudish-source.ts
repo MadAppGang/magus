@@ -1,8 +1,11 @@
 // THE ADAPTER: claudish mod contract v1 (sections A–E) → the mod's domain types.
 //
-// The only module of the mod that names a claudish tool, a mode, an argument, a capability
-// or a response field. (The plugin's PreToolUse command hook,
-// hooks/allow-read-verbs.ts, names claudish's read-only tools too; it is not part of the mod.)
+// One of the mod's two modules that name a claudish tool, a mode, an argument, a capability
+// or a response field; the other is allowance-source.ts, which names `allowance_status` and
+// its report. This one owns the contract's envelope: classifyEnvelope is the one classifier
+// of a contract answer (rejection, error body, JSON object, version, capability), and both
+// adapters call it. (The plugin's PreToolUse command hook, hooks/allow-read-verbs.ts, names
+// claudish's read-only tools too; it is not part of the mod.)
 // It calls MCP only through the McpCall it was given (register.tsx builds the mod's one MCP
 // closure), holds no state, and decides nothing about display, cadence, support policy or
 // waking: it reports what the server answered.
@@ -19,7 +22,7 @@ import type {
   PollBatch,
   PollResult,
   RecognizedCall,
-  RunSource,
+  RunFeeds,
   StopResult,
   WatchedRun,
 } from './run-source'
@@ -31,6 +34,15 @@ export const CLAUDISH_TOOL = /^mcp__(plugin_claudish_claudish|claudish)__([a-z_]
 const SERVER_OF: Readonly<Record<string, string>> = {
   plugin_claudish_claudish: 'plugin:claudish:claudish',
   claudish: 'claudish',
+}
+
+/** Every server name claudish may answer under, in the order to try them: through the plugin first. */
+export const SERVER_CANDIDATES: readonly string[] = Object.freeze(Object.values(SERVER_OF))
+
+/** The server name of a claudish tool the model called; null for any other tool. */
+export function serverOfTool(tool: string): string | null {
+  const m = CLAUDISH_TOOL.exec(tool)
+  return m ? SERVER_OF[m[1] ?? ''] ?? null : null
 }
 
 export type McpCall = (server: string, tool: string, args: Record<string, unknown>) => Promise<McpToolResult>
@@ -49,17 +61,18 @@ const FAILURE_REASONS: ReadonlySet<string> = new Set([
 ])
 const GONE_CODES: ReadonlySet<string> = new Set(['unknown_run', 'unknown_session', 'unknown_slot'])
 const QUESTION_ACTIVITY = 'AskUserQuestion'
-const MODEL_ID = /^[\w.@:/-]{1,80}$/
+/** A model name display-safe as it stands. */
+export const MODEL_ID = /^[\w.@:/-]{1,80}$/
 /** An agent name as Claude Code spells one: `name`, `plugin:name`, a nested `plugin:dir:name`. */
 const AGENT_NAME = /^[A-Za-z0-9][A-Za-z0-9_.-]*(?::[A-Za-z0-9][A-Za-z0-9_.-]*){0,3}$/
 const AGENT_MAX = 64
 const PRECONTRACT_START = 'no run_id: pre-contract claudish'
 
-type Json = Record<string, unknown>
+export type Json = Record<string, unknown>
 
 // ── decoding helpers ──────────────────────────────────────────────────────────
 
-function isObject(v: unknown): v is Json {
+export function isObject(v: unknown): v is Json {
   return typeof v === 'object' && v !== null && !Array.isArray(v)
 }
 
@@ -86,16 +99,17 @@ function contractErrorCode(text: string | null): string | null {
   return err && typeof err.code === 'string' && typeof err.message === 'string' ? err.code : null
 }
 
-function short(text: unknown): string {
+/** A reason the mod shows: display-safe, at most 120 characters, never empty. */
+export function short(text: unknown): string {
   const s = text instanceof Error ? text.message : typeof text === 'string' ? text : String(text)
   return sanitize(s, 120) || 'no reason given'
 }
 
-function num(v: unknown): number | null {
+export function num(v: unknown): number | null {
   return typeof v === 'number' && Number.isFinite(v) ? v : null
 }
 
-function str(v: unknown, max: number): string | null {
+export function str(v: unknown, max: number): string | null {
   return typeof v === 'string' ? sanitize(v, max) : null
 }
 
@@ -159,43 +173,67 @@ function recognizeCall(call: CallSeen): RecognizedCall {
   return { kind: 'other' }
 }
 
+// ── one contract answer: the envelope ────────────────────────────────────────
+
+/** A contract answer's envelope: a version 1 body carrying the asked capability, or why not (FeedAnswer's failure kinds). */
+export type EnvelopeVerdict =
+  | { kind: 'body'; body: Json; caps: readonly string[] }
+  | Exclude<FeedAnswer, { kind: 'speaks' }>
+
+/**
+ * THE envelope classifier. Every contract answer the mod reads passes through it once, and no
+ * caller re-checks the version or the capabilities: a list feed asks for 'list', the allowance
+ * report for 'allowance'. The verdict on an error, a version or a capability is the same for both.
+ */
+export function classifyEnvelope(result: McpToolResult | Error, capability: string): EnvelopeVerdict {
+  // 1. the call itself failed
+  if (result instanceof Error) return { kind: 'unanswered', reason: short(result) }
+  const text = firstText(result)
+  // 2. an error: the contract's error body, or a server that predates the contract
+  if (result.isError === true) {
+    const code = contractErrorCode(text)
+    return code !== null
+      ? { kind: 'refused', code }
+      : { kind: 'precontract', reason: `error answer without a contract error body: ${short(text ?? '')}` }
+  }
+  // 3. not a JSON object
+  const body = parseObject(text)
+  if (!body) return { kind: 'garbled', reason: 'answer is not a JSON object' }
+  // 4. no contract declaration
+  const version = body.contract_version
+  const caps = body.capabilities
+  if (typeof version !== 'number' || !Number.isInteger(version)
+    || !Array.isArray(caps) || !caps.every(c => typeof c === 'string')) {
+    return { kind: 'precontract', reason: 'answer carries no contract_version and capabilities' }
+  }
+  // 5. a version this mapping does not read, or not the asked capability
+  if (version !== CONTRACT_VERSION) return { kind: 'declines', reason: `contract version ${version}` }
+  if (!caps.includes(capability)) return { kind: 'declines', reason: `no ${capability} capability` }
+  return { kind: 'body', body, caps: caps as string[] }
+}
+
 // ── one list answer: classification, then rows ───────────────────────────────
 
 type Classified = { answer: FeedAnswer; rows: Json[] }
 
 function classify(result: McpToolResult | Error, rowsKey: 'runs' | 'sessions'): Classified {
   const none: Json[] = []
-  // 1. the call itself failed
-  if (result instanceof Error) return { answer: { kind: 'unanswered', reason: short(result) }, rows: none }
-  const text = firstText(result)
-  // 2. an error: the contract's error body, or a server that predates the contract
-  if (result.isError === true) {
-    const code = contractErrorCode(text)
-    return code !== null
-      ? { answer: { kind: 'refused', code }, rows: none }
-      : { answer: { kind: 'precontract', reason: `error answer without a contract error body: ${short(text ?? '')}` }, rows: none }
-  }
-  // 3. not a JSON object
-  const body = parseObject(text)
-  if (!body) return { answer: { kind: 'garbled', reason: 'answer is not a JSON object' }, rows: none }
-  // 4. no contract declaration
-  const version = body.contract_version
-  const caps = body.capabilities
-  if (typeof version !== 'number' || !Number.isInteger(version)
-    || !Array.isArray(caps) || !caps.every(c => typeof c === 'string')) {
-    return { answer: { kind: 'precontract', reason: 'answer carries no contract_version and capabilities' }, rows: none }
-  }
-  // 5. a version this mapping does not read, or no list capability
-  if (version !== CONTRACT_VERSION) return { answer: { kind: 'declines', reason: `contract version ${version}` }, rows: none }
-  const has = (c: string) => (caps as string[]).includes(c)
-  if (!has('list')) return { answer: { kind: 'declines', reason: 'no list capability' }, rows: none }
+  // 1–5. the envelope
+  const envelope = classifyEnvelope(result, 'list')
+  if (envelope.kind !== 'body') return { answer: envelope, rows: none }
+  const { body, caps } = envelope
+  const has = (c: string) => caps.includes(c)
   // 6. the row array
   const rows = body[rowsKey]
   if (!Array.isArray(rows)) return { answer: { kind: 'garbled', reason: `answer has no ${rowsKey} array` }, rows: none }
-  // 7. speaks
+  // 7. speaks. `allowance` is present only when announced: a trigger to re-probe, never support itself.
   const capture = has('capture') && has('capture_since_seq')
   return {
-    answer: { kind: 'speaks', version: 1, can: { cancel: has('cancel'), capture, spans: capture && has('capture_spans'), resize: capture && has('resize') } },
+    answer: {
+      kind: 'speaks',
+      version: 1,
+      can: { cancel: has('cancel'), capture, spans: capture && has('capture_spans'), resize: capture && has('resize'), ...(has('allowance') ? { allowance: true } : {}) },
+    },
     rows: rows.filter(isObject),
   }
 }
@@ -459,14 +497,14 @@ function fetchHint(ref: ClaudishRunRef, slots: readonly FetchSlot[]): string {
 
 // ── the adapter ───────────────────────────────────────────────────────────────
 
-const settleCall = (p: Promise<McpToolResult>): Promise<McpToolResult | Error> =>
+export const settleCall = (p: Promise<McpToolResult>): Promise<McpToolResult | Error> =>
   p.then(
     r => r,
     (e: unknown) => (e instanceof Error ? e : new Error(String(e))),
   )
 
-/** The one RunSource. register.tsx passes its one MCP closure; tests may pass a stub. */
-export function makeClaudishSource(call: McpCall): RunSource {
+/** The run feeds of the RunSource (allowance-source.ts adds the allowance report). register.tsx passes its one MCP closure; tests may pass a stub. */
+export function makeClaudishSource(call: McpCall): RunFeeds {
   return {
     recognizeCall,
 

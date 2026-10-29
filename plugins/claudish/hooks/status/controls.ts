@@ -4,8 +4,12 @@
 // port's `stop`.
 
 import type { ClaudishPaneView } from '../../types'
-import { SHOW_COLUMNS, SHOW_PANE_ID, SHOW_PANE_TITLE, SHOW_ROWS, STOP_CONFIRM_MS, assertNever, paneId, slotKey, withPersonStop } from './domain'
+import {
+  FORECAST_COLUMNS, FORECAST_PANE_ID, FORECAST_PANE_TITLE, FORECAST_ROWS,
+  SHOW_COLUMNS, SHOW_PANE_ID, SHOW_PANE_TITLE, SHOW_ROWS, STOP_CONFIRM_MS, assertNever, paneId, slotKey, withPersonStop,
+} from './domain'
 import type { Host, PressUi, Store } from './host'
+import * as allowancePoll from './allowance-poll'
 import type { SlotTarget } from './layout'
 import type { StopResult } from './run-source'
 
@@ -129,10 +133,35 @@ export async function pressShow(press: Store, ui: PressUi, host: Host, target: S
   const id = await pressTab(press, target)
   const opened = await opening
   if (!opened.isPlaced) host.toast(`Show ${target.model}: not drawn yet. ${opened.reason}`, 8_000)
+  await closeIfPlaced(ui, FORECAST_PANE_ID) // the two claudish panes are exclusive
   return id
 }
 
 /** Hide puts the panel away. Its tabs and their views stay: the next Show brings them back as they were. */
 export async function pressHide(ui: PressUi): Promise<void> {
   await ui.close(SHOW_PANE_ID)
+}
+
+/** Closes a pane Claude Code lists as drawn; one it does not list is left alone. */
+async function closeIfPlaced(ui: PressUi, id: string): Promise<void> {
+  if ((await ui.panes()).some(p => p.id === id && p.isPlaced)) await ui.close(id)
+}
+
+/**
+ * The allowance row's Show: opens the forecast panel, then puts the Show panel away (the two claudish
+ * panes are exclusive), then asks claudish for a fresh report when the one shown is older than
+ * SHOW_REFRESH_MS. The open is the press's first call, as pressShow's is. Should Claude Code keep
+ * the panel undrawn, a toast gives its reason.
+ */
+export async function pressForecast(ui: PressUi, host: Host): Promise<void> {
+  const opening = ui.open(FORECAST_PANE_ID, FORECAST_PANE_TITLE, { columns: FORECAST_COLUMNS, rows: FORECAST_ROWS })
+  const opened = await opening
+  if (!opened.isPlaced) host.toast(`Forecast: not drawn yet. ${opened.reason}`, 8_000)
+  await closeIfPlaced(ui, SHOW_PANE_ID)
+  await allowancePoll.refreshIfOlder(host)
+}
+
+/** The forecast panel's Hide (the row's `[ Hide ]` and the panel's own). */
+export async function pressForecastHide(ui: PressUi): Promise<void> {
+  await ui.close(FORECAST_PANE_ID)
 }

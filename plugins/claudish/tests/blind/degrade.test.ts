@@ -31,7 +31,8 @@ test('degrade: pre-contract claudish draws no band rows and sends no wakes, sile
   expect(h.statuses.filter(x => typeof x === 'string' && x.length > 0), 'no status line').toHaveLength(0)
 
   const debugAfter20s = h.debug.length
-  expect(debugAfter20s, 'at most a line per feed, not per poll').toBeLessThanOrEqual(2)
+  // M1: panel, delegation and allowance may each diagnose unsupported once.
+  expect(debugAfter20s, 'at most a line per feed, not per poll').toBeLessThanOrEqual(3)
   await h.clock.advance(60_000)
   expect(h.debug.length, 'no debug spam while polling on').toBe(debugAfter20s)
   expect(h.toasts).toHaveLength(0)

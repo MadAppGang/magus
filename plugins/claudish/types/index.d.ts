@@ -23,7 +23,9 @@ export type ClaudishRunRef = {
   address: string
 }
 
-export type ClaudishFeatures = { cancel: boolean; capture: boolean; spans: boolean; resize: boolean }
+/** allowance: true when a list answer announces claudish's allowance report; absent when it does not
+ *  (and on a feed recorded before this field). A trigger to re-probe only: allowance_status decides support. */
+export type ClaudishFeatures = { cancel: boolean; capture: boolean; spans: boolean; resize: boolean; allowance?: boolean }
 
 export type ClaudishFeedSupport =
   | { kind: 'probing'; strikes: number }
@@ -169,6 +171,142 @@ export type ClaudishTurn = { isRunning: boolean; since: number }
 export type ClaudishShowTab = { active: string | null }
 export type ClaudishEarlier = { runs: number; done: number; failed: number; stopped: number }
 
+// ── the allowance report (claudish's Codex account pool) ─────────────────────
+// All times are epoch ms; fractions are 0..1; rates are compute units per hour (cu/h) whatever the
+// view's `unit`, which is the pool's (remaining and capacity).
+// hooks/status/allowance-source.ts maps claudish's wire report onto these.
+
+export type ClaudishAllowanceSpan = '5h' | 'week'
+
+export type ClaudishAllowanceWindow = {
+  span: ClaudishAllowanceSpan
+  usedFraction: number
+  resetAt: number | null
+  /** claudish read the window from the account, not inferred it from a reset */
+  observed: boolean
+}
+
+export type ClaudishAllowanceAccount = {
+  /** 1-based profile number: its place in claudish's `account list`, disabled accounts counted (T2);
+   *  on a claudish that does not report the place, its position among the accounts reported */
+  number: number
+  /** the account's name as claudish labels it ("default", "second"), display-safe, at most 40
+   *  characters: the forecast panel names the account by it; null when claudish sends none */
+  label: string | null
+  /** the plan class, display-safe, at most 40 characters */
+  plan: string | null
+  /** a 5h and a week window at most; any other window length is dropped */
+  windows: ClaudishAllowanceWindow[]
+  /** the account in use now; null when claudish does not report it (older than T2) */
+  active: boolean | null
+  /** the median share of the governing window expected to expire unused at its next refill (T4); null when unknown */
+  lostShare: number | null
+  /** when that refill is (epoch ms); absent or null when claudish does not say */
+  lostAt?: number | null
+  /** the governing window claudish names (`binding`: len:300 → 5h, len:10080 → week); absent or
+   *  null when claudish sends none or another length */
+  binding?: ClaudishAllowanceSpan | null
+}
+
+/** A projected time with no allowance left, from claudish's thresholded alerts: the only source of a future ╳. */
+export type ClaudishAllowanceGap = {
+  level: 'warn' | 'critical'
+  /** the median start */
+  startAt: number
+  /** the median end; null when claudish projects none */
+  endAt: number | null
+  /** the median length in hours */
+  hours: number | null
+  /** the probability the gap happens */
+  pGap: number
+  /** claudish's one-line remedy, display-safe, at most 160 characters */
+  remedy: string
+  /** the numbers of the accounts whose windows bind it */
+  accounts: number[]
+}
+
+/** A window refill: claudish's trajectory reset. */
+export type ClaudishAllowanceRefill = { at: number; account: number | null; span: ClaudishAllowanceSpan | null; projected: boolean }
+
+/** One hour of claudish's forecast of the pool's remaining allowance, and the share of paths blocked then. */
+export type ClaudishAllowancePoint = { at: number; p10: number; p50: number; p90: number; pBlocked: number }
+
+/**
+ * When an account takes over (its first takeover inside the horizon, T3): `at` the usual time,
+ * `soonest`..`latest` its likely window, `probability` the share of paths where it happens,
+ * `likelihood` the shape of its hourly likelihood (absent or null when claudish sends none).
+ */
+export type ClaudishAllowanceSwitch = { account: number; at: number; soonest: number; latest: number; probability?: number; likelihood?: ClaudishAllowanceLikelihood | null }
+
+/**
+ * A takeover's likelihood per hour: `p[i]` is the relative likelihood that it falls in the hour
+ * starting at `start + i h` (epoch ms, on the hour). Peak-normalised (max 1); shape only, never
+ * where to mark the takeover (that is the switch's `at`). `[1]` is a takeover at a fixed refill.
+ */
+export type ClaudishAllowanceLikelihood = { start: number; p: number[] }
+
+/** A projected blocked run (claudish's `trajectory.blocked[]` shape): `from`..`to` epoch ms, the window that binds it, the share of paths blocked. */
+export type ClaudishAllowanceBlocked = { from: number; to: number; kind: '7d' | '5h'; probability: number }
+
+/**
+ * claudish's slower scenario (`trajectory.slower`): the same paths with every hour's demand ×
+ * `factor` (0 < factor < 1), its takeovers and blocked runs by the same rules. NOT guaranteed
+ * better: a slower switch or gap can come earlier; nothing is derived from comparing the two.
+ */
+export type ClaudishAllowanceSlower = { factor: number; switches: ClaudishAllowanceSwitch[]; blocked: ClaudishAllowanceBlocked[] }
+
+/** One hour of an account's own remaining allowance (T6): `observed` read, not inferred from a refill. */
+export type ClaudishAllowanceHistoryPoint = { at: number; remaining: number; observed: boolean }
+
+/** An account's last 24 hours (T6), by profile number. */
+export type ClaudishAllowanceHistory = { account: number; points: ClaudishAllowanceHistoryPoint[] }
+
+/**
+ * The parts of a view one answer may carry: a partial answer replaces only these, the rest of the
+ * view keeps its last value. accounts; pool (remaining and capacity); rate; gaps; forecast
+ * (refills, forecast, switches, history, slower).
+ */
+export type ClaudishAllowancePart = 'accounts' | 'pool' | 'rate' | 'gaps' | 'forecast'
+
+export type ClaudishAllowanceView = {
+  generatedAt: number
+  status: 'ok' | 'insufficient-evidence'
+  evidence: 'none' | 'window-only' | 'partial' | 'full'
+  /** the pool quantities' unit (remaining and capacity); never the rates' */
+  unit: 'cu' | 'account-fraction'
+  /** in cu/h (claudish's `burn.unit`; a burn in any other unit decodes as null). short: the recent rate; long: the day's; safe: the sustainable rate (null on insufficient evidence; T1) */
+  rate: { short: number | null; long: number | null; safe: number | null }
+  accounts: ClaudishAllowanceAccount[]
+  pool: { remaining: number | null; capacity: number | null }
+  gaps: ClaudishAllowanceGap[]
+  /** nothing is left now: the only source of the now-cell ╳ */
+  blockedNow: boolean
+  refills: ClaudishAllowanceRefill[]
+  forecast: ClaudishAllowancePoint[]
+  /** null when claudish does not report takeovers (older than T3), or the forecast part has not arrived */
+  switches: ClaudishAllowanceSwitch[] | null
+  /** each account's last 24 hours (T6); absent or null when claudish does not report it */
+  history?: ClaudishAllowanceHistory[] | null
+  /** the slower scenario; absent or null when claudish does not report it (older) or it does not decode */
+  slower?: ClaudishAllowanceSlower | null
+}
+
+/** The allowance as the mod holds it: what the last answer said, and when. */
+export type ClaudishAllowance =
+  | { kind: 'probing' }
+  /** this claudish has no allowance report (older, or the capability absent) */
+  | { kind: 'unsupported'; reason: string; at: number }
+  /** claudish answered no report, with its reason (no account pool) */
+  | { kind: 'none'; reason: string; at: number }
+  /** claudish answered a contract error */
+  | { kind: 'refused'; code: string; at: number }
+  /**
+   * failures: the band's asks since the view that brought nothing new (the view is kept). at: when
+   * the newest answer arrived. parts: when each part of the view last arrived; absent = every part
+   * at `at` (a full report); a part missing from it has not arrived yet.
+   */
+  | { kind: 'ready'; view: ClaudishAllowanceView; at: number; failures: number; parts?: Partial<Record<ClaudishAllowancePart, number>> }
+
 declare module 'claude-code' {
   interface PluginState {
     claudish: {
@@ -186,6 +324,8 @@ declare module 'claude-code' {
       earlier: ClaudishEarlier
       /** which tab the Show panel shows; kept while the panel is hidden */
       showTab: ClaudishShowTab
+      /** claudish's allowance report, polled on its own cadence */
+      allowance: ClaudishAllowance
     }
   }
 }

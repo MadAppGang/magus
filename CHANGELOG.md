@@ -4,6 +4,34 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [claudish 2.13.0] - 2026-10-29
+
+### Added
+
+- An allowance band above the prompt for claudish's pooled Codex accounts (MTL-266): the account
+  in use by its number, its 5-hour and weekly minis, a pace gauge centred on the safe pace, the
+  speed per hour, and a ruler from now to six days ahead with each takeover, its likely window,
+  any time with no allowance left, and allowance that would go unused before a refill.
+- A forecast panel behind the band's `[ Show ]`: the next switch with each account's allowance
+  left and time to refill, the likely window in hours, the speed gauge and the hour-by-hour
+  likelihood of the switch; a week strip of which account is in use, with a `slower` row when
+  claudish sends that scenario; speed against the safe pace; and what is left per account.
+- `allowance_status` joins the read-only claudish calls the plugin allows without a prompt.
+
+### Changed
+
+- The status mod picks its light or dark colours from the tmux window showing the session, then
+  `TERM_THEME`, then dark. It no longer reads Claude Code's `theme` setting, which every session
+  shares, so a `/theme` change in one session no longer repaints another.
+
+### Notes
+
+- Everything the band and panel draw comes from claudish's `allowance_status`; the plugin
+  forecasts nothing itself. The band needs claudish 14.5.0 or later, the switch likelihood
+  14.8.0. The `slower` row appears once claudish sends `trajectory.slower`.
+
+---
+
 ## [magus 7.11.3] - 2026-10-27
 
 ### Fixed

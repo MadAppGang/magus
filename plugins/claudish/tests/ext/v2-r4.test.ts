@@ -50,13 +50,15 @@ for (const surface of SURFACES) {
   })
 
   for (const [name, options, light] of [
-    ['a light theme', { theme: 'light' }, true],
-    ['a light-daltonized theme', { theme: 'light-daltonized' }, true],
-    ['a dark theme', { theme: 'dark-ansi', env: { TERM_THEME: 'light' } }, false],
+    // The order of the Magus status line: tmux's client (outside tmux here), TERM_THEME, dark.
+    // Claude Code's own theme setting (shared by every session) and COLORFGBG are not read.
+    ['a light Claude Code theme alone', { theme: 'light' }, false],
+    ['a light-daltonized Claude Code theme alone', { theme: 'light-daltonized' }, false],
+    ['a dark Claude Code theme under TERM_THEME=light', { theme: 'dark-ansi', env: { TERM_THEME: 'light' } }, true],
     ['auto with TERM_THEME=light', { theme: 'auto', env: { TERM_THEME: 'light' } }, true],
     ['auto with TERM_THEME=dark over a light COLORFGBG', { theme: 'auto', env: { TERM_THEME: 'dark', COLORFGBG: '0;15' } }, false],
-    ['auto with COLORFGBG 0;15', { theme: 'auto', env: { COLORFGBG: '0;15' } }, true],
-    ['auto with COLORFGBG 0;7', { theme: 'auto', env: { COLORFGBG: '0;7' } }, true],
+    ['auto with COLORFGBG 0;15 alone', { theme: 'auto', env: { COLORFGBG: '0;15' } }, false],
+    ['auto with COLORFGBG 0;7 alone', { theme: 'auto', env: { COLORFGBG: '0;7' } }, false],
     ['auto with COLORFGBG 15;0', { theme: 'auto', env: { COLORFGBG: '15;0' } }, false],
     ['auto with nothing to go on', { theme: 'auto' }, false],
   ] as [string, FakeOptions, boolean][]) {
@@ -84,13 +86,13 @@ for (const surface of SURFACES) {
   }
 
   test(`v2 §9: the theme is read again at every turn end [${surface}]`, async ($, on) => {
-    const options: FakeOptions = { theme: 'dark' }
-    const h = harness(on, options)
+    const env: NonNullable<FakeOptions['env']> = { TERM_THEME: 'dark' }
+    const h = harness(on, { env })
     await start($, surface)
     await team($, h, 'retheme', ['theme-model'])
     const b = await mountBand($, surface, bandProps(200))
     expect(await codeInk(b, 'theme-model')).toEqual({ color: DARK.ink, backgroundColor: DARK.run })
-    options.theme = 'light' // the person switches theme
+    env.TERM_THEME = 'light' // the screen turns light
     await $.turn.complete({ turnId: 't-1', answer: 'done', durationMs: 1, isAborted: false, reason: 'answer' })
     await h.clock.settle()
     await b.redraw()

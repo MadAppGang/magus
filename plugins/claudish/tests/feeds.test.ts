@@ -37,7 +37,7 @@ for (const surface of SURFACES) {
     expect(drawn(h)).toEqual([])
     expect(engineOwn(await (await mountBand($, surface)).drawn())).toEqual(ENGINE_DRAWING) // no plugin element in the band
     expect(h.submits).toEqual([])
-    expect(h.debug).toHaveLength(2) // one per feed
+    expect(h.debug).toHaveLength(3) // M1: one each for panel, delegation and allowance
     expect(h.fake.listCalls('runs')).toHaveLength(0)
     expect(h.fake.listCalls('sessions')).toHaveLength(1)
   })
@@ -240,11 +240,12 @@ for (const surface of SURFACES) {
     expect(h.submits[0]).toContain("run r2 never appeared in claudish's list, so check its status")
   })
 
-  test(`feeds: an absent server — no claudish call, no loop work [${surface}]`, async ($, on) => {
+  test(`feeds: no observed run server — only the startup allowance probe, no run loop work [${surface}]`, async ($, on) => {
     const h = harness(on)
     await start($, surface)
     await h.clock.advance(60_000)
-    expect(h.fake.calls).toEqual([])
+    // H2: the default no-pool answer waits 5 min; discovery is the only permitted call here.
+    expect(h.fake.calls.map(c => c.tool)).toEqual(['allowance_status'])
     expect(h.debug).toEqual([])
   })
 

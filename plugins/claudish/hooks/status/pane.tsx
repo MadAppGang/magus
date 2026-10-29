@@ -8,7 +8,8 @@ import { badgeParts, button, segmentsText, type Els } from './band'
 import type { Palette } from './palette'
 import { CODE_CELLS, RUNTIME_CELLS, SHOW_CELLS, type PaneLine, type PaneModel, type ShowTab, type SlotTarget, type StripTab } from './layout'
 
-function frameLine(els: Els, line: PaneLine, row: number): RenderElement {
+/** One line of styled parts as one truncating Text; only parts carrying a backgroundColor are filled. */
+export function frameLine(els: Els, line: PaneLine, row: number): RenderElement {
   const { Text } = els
   const blank = line.every(part => (typeof part === 'string' ? part : part.text) === '')
   if (blank) return (<Text key={`line:${row}`} wrap="truncate-end">{' '}</Text>) as RenderElement

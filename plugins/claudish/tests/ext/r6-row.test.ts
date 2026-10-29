@@ -181,7 +181,7 @@ for (const surface of SURFACES) {
   })
 
   test(`R6.6 R8.2 REQ-9: a light theme hands the Clients the light timeline table without fold colours [${surface}]`, async ($, on) => {
-    const h = harness(on, { theme: 'light' })
+    const h = harness(on, { env: { TERM_THEME: 'light' } }) // the screen's appearance (Claude Code's theme setting is not read)
     await start($, surface)
     await team($, h, 'light', ['light-model'])
     const b = await mountBand($, surface, bandProps(160))

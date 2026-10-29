@@ -1,9 +1,11 @@
 // THE PORT. The mod's core (poll, wake, controls, band, pane) speaks to claudish only
-// through this shape, in the mod's own vocabulary. One adapter implements it
-// (claudish-source.ts); nothing here names a claudish tool, mode, argument, capability
-// or response field. Types only.
+// through this shape, in the mod's own vocabulary. Two adapters implement it:
+// claudish-source.ts (runs and their feeds) and allowance-source.ts (the allowance report);
+// nothing here names a claudish tool, mode, argument, capability or response field. Types only.
 
 import type {
+  ClaudishAllowancePart,
+  ClaudishAllowanceView,
   ClaudishFeatures,
   ClaudishFrame,
   ClaudishRunKind,
@@ -89,6 +91,33 @@ export type WatchedRun = { id: string; ref: ClaudishRunRef }
 
 export type FetchSlot = { slot: string; state: ClaudishSlotState; asked: boolean }
 
+/**
+ * Which slice of the allowance report one ask is for: what the band row draws (accounts, rate,
+ * gaps), or the forecast (accounts, pool, forecast) the band's takeovers and the forecast panel
+ * draw. Each is one small answer; the whole report is too large for one tool answer.
+ */
+export type AllowanceAsk = 'band' | 'forecast'
+
+/** What one ask for the allowance report answered. Facts, not policy: allowance-poll.ts decides cadence and support. */
+export type AllowanceAnswer =
+  /** parts: the parts of the view this answer carries; absent = a whole report (every part) */
+  | { kind: 'report'; view: ClaudishAllowanceView; parts?: readonly ClaudishAllowancePart[] }
+  /** claudish has no report to give (no account pool), in its own words */
+  | { kind: 'none'; reason: string }
+  /** an error answer without the contract's error body: a claudish that predates the report (unknown tool) */
+  | { kind: 'precontract'; reason: string }
+  /** the contract declared, but a version other than 1, or no allowance capability */
+  | { kind: 'declines'; reason: string }
+  /** an error answer carrying the contract's error body (its code) */
+  | { kind: 'refused'; code: string }
+  /** not a JSON object, or a version 1 report that does not decode */
+  | { kind: 'garbled'; reason: string }
+  /** the call rejected (transport, timeout, a server not connected under that name) */
+  | { kind: 'unanswered'; reason: string }
+
+/** The first server whose answer came from the contract, with that answer; null and the telling failure when none did. */
+export type AllowanceResolution = { server: string | null; answer: AllowanceAnswer }
+
 export type RunSource = {
   recognizeCall(call: CallSeen): RecognizedCall
   /** One list call per feed that has a watched run; answers keyed by feed and by run id. Several runs may
@@ -105,4 +134,11 @@ export type RunSource = {
   runLine(ref: ClaudishRunRef, label: string): string
   /** One sentence telling the model which call fetches these slots' results, or answers a waiting delegation. */
   fetchHint(ref: ClaudishRunRef, slots: readonly FetchSlot[]): string
+  /** One slice of the allowance report (default: the band's), asked of one server. */
+  allowance(server: string, ask?: AllowanceAsk): Promise<AllowanceAnswer>
+  /** The band's slice, asked of each candidate server in order until one answers from the contract. */
+  resolveAllowance(candidates: readonly string[]): Promise<AllowanceResolution>
 }
+
+/** What claudish-source.ts implements: everything but the allowance report. */
+export type RunFeeds = Omit<RunSource, 'allowance' | 'resolveAllowance'>

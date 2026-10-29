@@ -116,8 +116,10 @@ Then come:
 - the stale-meter;
 - what the model is doing now.
 
-The colours are madbench's. They follow your Claude Code theme, and an `auto` theme follows
-`TERM_THEME` or `COLORFGBG`.
+The colours are madbench's, in a light and a dark set. Inside tmux the set follows the theme
+of the tmux window showing the session (the same answer Claude Code's `/theme auto` gets);
+otherwise `TERM_THEME=light|dark`; otherwise dark. Claude Code's shared `theme` setting is not
+read, so changing `/theme` in one session never repaints another.
 
 The Stop and Show buttons sit at the right edge of the line. The stale-meter fills one cell at
 10, 30, 60, 90 and 120 seconds without activity: green, then amber from one minute, red from
@@ -155,7 +157,8 @@ cannot be stopped from the band. Runs started before the plugin loaded, or by an
 than this session's own claudish tool calls, are not shown either.
 
 **Read-only calls do not prompt.** The plugin allows claudish's read-only calls — listing
-runs, a run's status, a slot's screen, listing sessions, and a session's screen — before
+runs, a run's status, a slot's screen, listing sessions, a session's screen, and the
+account-pool report (`allowance_status`) — before
 Claude Code's permission check, so they never ask you and never wait behind another open
 question, such as Stop's own. It does so for claudish installed through this plugin and for
 a `claudish` server you registered yourself, and it matches each tool by its exact name. This
@@ -184,6 +187,51 @@ Code to get the band.
 stays invisible until you type something
 ([anthropics/claude-code#96336](https://github.com/anthropics/claude-code/issues/96336)).
 The toast is the visible signal there.
+
+## Allowance
+
+When claudish pools several Codex accounts, a one-row band above the prompt shows how the pool
+is doing, and `[ Show ]` opens a forecast panel. Everything comes from claudish's read-only
+`allowance_status` report; the plugin computes no forecast of its own, and a part claudish does
+not send is simply not drawn.
+
+```
+ 1  wk▮▮▮▮ █▆▄▂▁▂▄▆█ 1.4M/h now━━1h━━6h━━━━1d━━━━━┈┈┈┈3d┈┈2−86%┈2━━6d [ Show ]
+```
+
+The band, left to right:
+
+- the account in use, by its number in `claudish account list` order, and its 5-hour and weekly
+  minis;
+- the pace gauge: nine bars, the middle three green at the safe pace; left is under-use
+  (amber), right is too fast (yellow to red);
+- your speed per hour, in the colour of the gauge's tip;
+- a ruler from now to six days ahead: an account's number where it takes over, `┈` for the
+  window it may take over in, a red `╳` where no account has allowance left, and a number with
+  `−NN%` where that much of an account's week would go unused before it refills.
+
+The panel, top to bottom:
+
+- **Next switch.** Which account hands over to which, each account's 5-hour and weekly
+  allowance left with time to refill, the likely window in hours, the speed gauge with the safe
+  pace, and the hour-by-hour likelihood of the switch up to its latest time (soonest, usual,
+  latest).
+- **The week strip.** Which account is in use each hour, real and predicted; the switch
+  windows; each account's refills and unused allowance; and, when claudish sends it, the same
+  plan at the lower use claudish names (`slower`, for example `⅓ less busy`), with `→ no gap`
+  or `→ gap`. The slower plan is drawn as claudish sends it: it can switch earlier, not only
+  later.
+- **Speed**, **left now** per account, and a legend for the marks drawn.
+
+Speeds are claudish's compute units per hour (`cu/h`). "safe" is the fastest pace at which
+claudish forecasts no hour with every account empty.
+
+**How often.** The band asks claudish once a minute (every five minutes while claudish has too
+little history to forecast). It asks for the forecast every five minutes, and every minute
+while the panel is open.
+
+**What it needs.** claudish **14.5.0** or later for the band; **14.8.0** for the switch
+likelihood. With an older claudish the band stays off, and nothing else changes.
 
 ## Used by
 

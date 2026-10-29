@@ -327,13 +327,14 @@ for (const surface of SURFACES) {
     expect(engineOwn(await band.drawn())).toEqual(ENGINE_DRAWING)
   })
 
-  test(`band: no runs — nothing drawn, no claudish call [${surface}]`, async ($, on) => {
+  test(`band: no runs — nothing drawn, only the startup allowance probe [${surface}]`, async ($, on) => {
     const h = harness(on)
     await start($, surface)
     const band = await mountBand($, surface)
     await h.clock.advance(10_000)
     expect(engineOwn(await band.drawn())).toEqual(ENGINE_DRAWING)
-    expect(h.fake.calls).toHaveLength(0)
+    // H2: allowance discovery starts before the model calls claudish; no run work is sent.
+    expect(h.fake.calls.map(c => c.tool)).toEqual(['allowance_status'])
   })
 
   test(`band: Show opens the one Show pane on that slot's tab; the header's Hide puts it away keeping every view; the next Show brings it back [${surface}]`, async ($, on) => {

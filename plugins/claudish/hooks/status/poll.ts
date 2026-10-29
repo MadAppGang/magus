@@ -1,6 +1,7 @@
 // The tool.call observer and the poll loop: handshake, cadence, backoff, feed support,
 // the run merge, the hand-off to the wake, stop-request pruning, compaction and captures.
-// Takes a Host only.
+// Takes a Host only. Hands the allowance loop (allowance-poll.ts) the two things only this loop
+// sees: the server name of the model's own claudish call, and a list answer announcing the report.
 // Names no claudish tool or field: the adapter behind host.source speaks claudish.
 
 import type { Frozen, Next, SessionEndInput, ToolCallInput, ToolCallResult } from 'claude-code'
@@ -23,6 +24,8 @@ import {
   withoutRuns,
   type RunObservation,
 } from './domain'
+import * as allowancePoll from './allowance-poll'
+import { serverOfTool } from './claudish-source'
 import type { Host } from './host'
 import { activeTab, showTabs } from './layout'
 import type { FeedAnswer, PollBatch, ResizeResult } from './run-source'
@@ -182,6 +185,8 @@ export async function onClaudishCall(
   const ran = await next(e)
   try {
     if (ran.deny !== undefined) return ran
+    // The model reached claudish under this name: the allowance loop may ask there before it resolves one.
+    allowancePoll.noteServer(serverOfTool(String(e.tool)))
     const seen = host.source.recognizeCall({
       tool: String(e.tool),
       args: argsOf(e),
@@ -385,6 +390,9 @@ export async function tick(host: Host): Promise<void> {
     const [feedsWritten, support] = await host.store.feeds.claim(f => applySupport(f, batch.feeds, at))
     feedsNow = feedsWritten
     for (const line of support.logs) host.debug(line)
+    // A list answer announcing the allowance report: a claudish upgraded under this session. Only a
+    // trigger: the allowance loop probes again if it had found the report unsupported.
+    if ([...batch.feeds.values()].some(a => a.kind === 'speaks' && a.can.allowance === true)) allowancePoll.reprobe(host)
 
     const before = runsNow
     const feedsAfter = feedsNow

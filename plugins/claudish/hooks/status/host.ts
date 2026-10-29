@@ -5,6 +5,7 @@
 
 import type { PromptSubmitResult, Timer, UiOpenResult, UiPane } from 'claude-code'
 import type {
+  ClaudishAllowance,
   ClaudishShowTab,
   ClaudishEarlier,
   ClaudishFeedSupport,
@@ -41,6 +42,8 @@ export type Store = {
   earlier: Cell<ClaudishEarlier>
   showTab: Cell<ClaudishShowTab>
   panes: Member<ClaudishPaneView | null>
+  /** claudish's allowance report, as allowance-poll.ts last decided it */
+  allowance: Cell<ClaudishAllowance>
 }
 
 export type SubmitOutcome = { accepted: true } | { accepted: false; reason: string }
@@ -68,6 +71,8 @@ export type Host = {
   close(id: string): Promise<void>
   /** the engine's session.messages; recovery only */
   messages(): Promise<readonly TranscriptRow[]>
+  /** the engine's session.id: this conversation's id, which changes on /clear */
+  sessionId(): Promise<string>
 }
 
 const MAX_PASSES = 8

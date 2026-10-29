@@ -73,11 +73,21 @@ for (const surface of SURFACES) {
     await b.unmount()
   })
 
-  test(`ext safety: display and polling need no process or foreign MCP [${surface}]`, async ($, on) => {
+  test(`ext safety: display and polling need no process but the tmux theme read, and no foreign MCP [${surface}]`, async ($, on) => {
     const forbidden: string[] = []
-    on('process.run', () => { forbidden.push('process.run'); throw new Error('unexpected host command') })
+    const themeReads: (readonly string[])[] = []
+    // The one host command allowed: the appearance read inside tmux (`tmux list-clients …`), as the
+    // Magus status line makes it. Anything else is refused and recorded.
+    on('process.run', ($, e) => {
+      if (e.argv[0] === 'tmux' && e.argv[1] === 'list-clients') {
+        themeReads.push(e.argv)
+        return { value: { exitCode: 0, stdout: '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
+      }
+      forbidden.push(`process.run ${e.argv.join(' ')}`)
+      throw new Error('unexpected host command')
+    })
     on('process.spawn', async function* () { forbidden.push('process.spawn'); throw new Error('unexpected host spawn') })
-    const h = harness(on)
+    const h = harness(on, { env: { TMUX_PANE: '%1' } }) // inside tmux, so the theme read runs
     await start($, surface)
     const r = await team($, h)
     const b = await mountBand($, surface)
@@ -88,6 +98,7 @@ for (const surface of SURFACES) {
     h.fake.set(r.runId, '01', 'COMPLETED')
     await h.clock.advance(POLL)
     expect(forbidden).toEqual([])
+    expect(themeReads.length).toBeGreaterThan(0) // the allowance is exercised, not vacuous
     expect(h.fake.calls.every(c => (SERVERS as readonly string[]).includes(c.server))).toBe(true)
     await p.unmount()
     await b.unmount()

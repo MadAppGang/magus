@@ -6,6 +6,9 @@
 // Answers come from scenario.ts at the mocked clock's time. Every mod call is recorded
 // in `calls`. Any server name other than the contract's two is denied, so a wrong
 // spelling fails tests. Under `precontract` it answers what claudish 10.3.0 answered.
+// `allowance_status` answers one of allowance-scenario.ts's variants (default: `unavailable`, no
+// account pool, the commonest real install, so a run scenario draws no allowance row; WARN and the
+// rest are opt-in), only under the server names in `allowanceServers`, so server resolution is exercised.
 
 import type { McpToolResult, On, ToolCallResult, UiPane } from 'claude-code'
 import { mock, type MockClock } from 'claude-code/testing'
@@ -29,6 +32,7 @@ import {
   type Json,
   type SlotControl,
 } from './scenario'
+import { allowanceReply, type AllowanceVariant } from './allowance-scenario'
 
 export const SERVERS = ['plugin:claudish:claudish', 'claudish'] as const
 export const TEAM_TOOL = 'mcp__plugin_claudish_claudish__team'
@@ -80,10 +84,21 @@ export type FakeOptions = {
   denyCancel?: string
   /** the person's Claude Code theme, as `$.config.list` answers its `theme` row; absent: no theme row */
   theme?: string
-  /** what `$.env.get` answers for TERM_THEME and COLORFGBG; unset by default, so the machine's own never leaks in */
-  env?: { TERM_THEME?: string; COLORFGBG?: string }
+  /** what `$.env.get` answers for TERM_THEME, COLORFGBG and TMUX_PANE; unset by default, so the machine's own never leaks in */
+  env?: { TERM_THEME?: string; COLORFGBG?: string; TMUX_PANE?: string }
   /** build the captured screen instead of scenario.frame (lines and spans as the contract sends them) */
   frame?: (args: { seq: number; model: string; slot: string; final: boolean; spans: boolean }) => Json
+  /**
+   * what allowance_status answers (default 'unavailable', no account pool; under `precontract`, 'unknown-tool-error'), or a function
+   * of the n-th (1-based) allowance_status call and its server. A test may reassign it to change the answer.
+   */
+  allowance?: AllowanceVariant | ((n: number, server: string) => AllowanceVariant)
+  /** the server names allowance_status answers under (default both); under any other the call rejects, as an unconnected server's does */
+  allowanceServers?: readonly string[]
+  /** list answers announce the `allowance` capability (default: they do not, as claudish before 14.5) */
+  listAllowance?: boolean
+  /** awaited before an allowance_status call is answered (to hold it, as claudish's cold evaluation does) */
+  beforeAllowance?: () => Promise<void> | void
 }
 
 export type FakeSlot = { slot: string; model: string; control: SlotControl; noPane: boolean; finalFrame: boolean }
@@ -105,6 +120,8 @@ export type Fake = {
   captureCalls(): Recorded[]
   resizeCalls(): Recorded[]
   cancelCalls(): Recorded[]
+  /** every allowance_status call the mod made, on any server */
+  allowanceCalls(): Recorded[]
   /** hold every cancel answer until release() */
   holdCancels(): { release(): void }
 }
@@ -164,7 +181,7 @@ function text(body: unknown, isError = false): McpToolResult {
 
 function meta(o: FakeOptions): Json {
   // Keep the historical golden examples unchanged; only this fake's live lists gain resize.
-  const caps = [...CAPABILITIES, 'resize'].filter(c =>
+  const caps = [...CAPABILITIES, 'resize', ...(o.listAllowance ? ['allowance'] : [])].filter(c =>
     !(o.declines && c === 'list')
     && !(o.noCapture && (c === 'capture' || c === 'capture_since_seq' || c === 'capture_spans'))
     && !(o.noCancel && c === 'cancel')
@@ -185,6 +202,7 @@ export function fakeClaudish(on: On, clock: MockClock, options: FakeOptions = {}
   const sessions: FakeSession[] = []
   const calls: Recorded[] = []
   const listCount = { runs: 0, sessions: 0 }
+  let allowanceCount = 0
   const sizes = new Map<string, { cols: number; rows: number }>()
   let starts = 0
   let gate: Promise<void> | null = null
@@ -254,11 +272,26 @@ export function fakeClaudish(on: On, clock: MockClock, options: FakeOptions = {}
     return { cols, rows, changed, seq: seqAt(startedAt, now(), control) }
   }
 
+  /** The variant the n-th allowance_status call answers on this server. */
+  function allowanceVariant(n: number, server: string): AllowanceVariant {
+    const v = options.allowance
+    if (typeof v === 'function') return v(n, server)
+    return v ?? (options.precontract ? 'unknown-tool-error' : 'unavailable')
+  }
+
   // ── the mod's calls ─────────────────────────────────────────────────────────
   on('mcp.call', async ($, e) => {
     const args = (e.args ?? {}) as Json
     calls.push({ server: e.server, tool: e.tool, args, at: now() })
     if (!(SERVERS as readonly string[]).includes(e.server)) return { deny: `unknown server ${e.server}` }
+
+    if (e.tool === 'allowance_status') {
+      await options.beforeAllowance?.()
+      if (!(options.allowanceServers ?? SERVERS).includes(e.server)) return { deny: `no MCP server connected as ${e.server}` }
+      allowanceCount += 1
+      const reply = allowanceReply(allowanceVariant(allowanceCount, e.server), args)
+      return 'reject' in reply ? { deny: reply.reject } : { value: text(reply.text, reply.isError) }
+    }
 
     if ((e.tool === 'team' && args.mode === 'list') || e.tool === 'list_sessions') await options.beforeList?.()
     if (e.tool === 'team' && args.mode === 'list') {
@@ -399,6 +432,11 @@ export function fakeClaudish(on: On, clock: MockClock, options: FakeOptions = {}
       const run = [...runs].reverse().find(r => r.path === absolute(args.path))
       return answer(run ? { ...meta(options), run: runRow(run) } : { note: 'no run' })
     }
+    if (verb === 'allowance_status') {
+      // The model's own call: answered as the mod's is, but not counted among the mod's calls.
+      const reply = allowanceReply(allowanceVariant(allowanceCount + 1, m?.[1] === 'claudish' ? 'claudish' : 'plugin:claudish:claudish'), args)
+      return 'reject' in reply ? answer(reply.reject, true) : answer(reply.text, reply.isError)
+    }
     return answer({ ok: true })
   })
 
@@ -431,6 +469,9 @@ export function fakeClaudish(on: On, clock: MockClock, options: FakeOptions = {}
     },
     cancelCalls() {
       return calls.filter(c => c.tool === 'cancel_session' || (c.tool === 'team' && c.args.mode === 'cancel'))
+    },
+    allowanceCalls() {
+      return calls.filter(c => c.tool === 'allowance_status')
     },
     holdCancels() {
       let release!: () => void
@@ -469,7 +510,7 @@ export function harness(on: On, options: FakeOptions = {}): Harness {
       provider: { plugin: 'engine', tier: 'core' as const }, isLocked: false, // the engine's own panel row
     }],
   }))
-  on('env.get', ($, e, next) => (e.name === 'TERM_THEME' || e.name === 'COLORFGBG' ? { value: options.env?.[e.name] } : next(e)))
+  on('env.get', ($, e, next) => (e.name === 'TERM_THEME' || e.name === 'COLORFGBG' || e.name === 'TMUX_PANE' ? { value: options.env?.[e.name] } : next(e)))
   on('session.end', ($, e) => ({ sessionId: e.sessionId }))
   on('ui.log', ($, e) => {
     if (e.to === 'debug') h.debug.push(e.text)

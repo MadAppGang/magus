@@ -64,6 +64,13 @@ export const SHOW_PANE_TITLE = 'claudish'
 export const SHOW_COLUMNS = 120
 /** The body rows a Show tab asks for while inline above the prompt: a request, as the columns are. */
 export const SHOW_ROWS = 24
+
+/** The forecast panel the allowance row's Show opens: a pane of its own, exclusive with the Show panel. */
+export const FORECAST_PANE_ID = 'claudish-allowance'
+export const FORECAST_PANE_TITLE = 'Codex allowance'
+/** The body columns and inline rows the forecast panel asks for: requests, as the Show panel's are. */
+export const FORECAST_COLUMNS = 100
+export const FORECAST_ROWS = 30
 /** Surfaces that paint the child's colours in a Show tab; the others draw its screen plain. */
 export const PAINT_SURFACES: readonly string[] = ['terminal', 'desktop']
 /** Surfaces that draw a `Client` (the live cell). vscode's resolve still hands one over, and draws nothing for it. */
