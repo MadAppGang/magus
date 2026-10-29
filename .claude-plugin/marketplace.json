@@ -75,7 +75,7 @@
       "name": "claudish",
       "source": "./plugins/claudish",
       "description": "MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting, manages async sessions, and shows the session's runs live above the prompt, with stop and live-screen tabs. Required by code-search, dev, multimodel and designer.",
-      "version": "2.13.1",
+      "version": "2.13.2",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -95,6 +95,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "2.13.2",
+          "date": "2026-10-29",
+          "kinds": [
+            "Fixed"
+          ],
+          "summary": "A forecast panel left open in a session that is not on claudish's Codex pool now closes and\u2026"
+        },
         {
           "version": "2.13.1",
           "date": "2026-10-29",
@@ -125,11 +133,6 @@
           "version": "2.11.0",
           "date": "2026-10-24",
           "summary": "Claudish-usage teaches the model-name and effort checks of claudish 14.4.0 (MTL-230). team,\u2026"
-        },
-        {
-          "version": "2.10.1",
-          "date": "2026-10-22",
-          "summary": "Claudish-usage's nested-child section points at dev's nested review route, so the two never\u2026"
         }
       ]
     },

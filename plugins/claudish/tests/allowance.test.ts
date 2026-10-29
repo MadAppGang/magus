@@ -32,6 +32,15 @@ for (const surface of SURFACES) {
       await b.unmount()
     })
   }
+  test(`a forecast panel drawn off the Codex pool is put away and draws nothing [${surface}]`, async ($, on) => {
+    const h = harness(on, { allowance: 'warn', activeModel: null })
+    await start($, surface)
+    const p = await mountPane($, surface, FORECAST_PANE_ID)
+    await h.clock.advance(1)
+    expect(h.closes).toContain(FORECAST_PANE_ID)
+    expect(h.fake.calls.some(c => c.tool === 'allowance_status')).toBe(false)
+    await p.unmount()
+  })
   test(`REQ-16 row takes exactly one run-band budget row; run band wins at maxRows 1 [${surface}]`, async ($, on) => {
     const h = harness(on, { allowance: 'warn' })
     await start($, surface)

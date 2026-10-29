@@ -189,10 +189,13 @@ export const register: Register = (on, options) => {
   // session.start, so the palette above would stay dark until a turn ends: the first hook with an
   // interface after a load reads it (themeOnLoad).
   const theme: ThemeGate = { asked: false, palette: () => palette, set: read => (palette = read) }
-  // Whether this session runs on claudish's Codex pool (isCodexSession): the allowance row and its
-  // poll exist only then. Null until read: at session.start, or by the first band draw after a
-  // reload, which fires no session.start. The environment does not change under a running process.
+  // Whether this session runs on claudish's Codex pool (isCodexSession): the allowance row, its poll
+  // and the forecast panel exist only then. Null until read: at session.start, or by the first band
+  // or panel draw after a reload, which fires no session.start. The environment does not change
+  // under a running process, so it is read once per load.
   let codex: boolean | null = null
+  let codexAsked = false
+  let forecastPutAway = false // off the pool, the forecast panel is closed once per load
 
   on('session.start', async ($, e, next) => {
     theme.asked = true // read just below, awaited
@@ -270,14 +273,16 @@ export const register: Register = (on, options) => {
     }
     // The allowance row takes one of the band's rows; the runs get the rest. With a single row to
     // give, the runs win: they carry Stop and Show and change by the second, the allowance is ambient.
-    if (codex === null) {
-      codex = false // until the read lands: no row rather than a row this session may not own
+    if (codex === null && !codexAsked) {
+      codexAsked = true // no row until the read lands, rather than a row this session may not own
       void readCodex($).then(read => {
-        codex = read
-        if (read) $.ui.invalidate('ui.render')
-      }).catch(() => {}) // a refused redraw keeps the row off until the next one
+        codex ??= read
+        // Either way, draw again: on the pool the row appears; off it, a forecast panel still
+        // showing what an earlier load drew is redrawn, and so put away.
+        $.ui.invalidate('ui.render')
+      }).catch(() => {}) // a refused redraw keeps what is drawn until the next one
     }
-    let row = codex && allowance.kind === 'ready' ? allowanceRow(allowance.view, now, e.props.bodyColumns, palette.allowance) : null
+    let row = codex === true && allowance.kind === 'ready' ? allowanceRow(allowance.view, now, e.props.bodyColumns, palette.allowance) : null
     const runRows = e.props.maxRows - (row ? 1 : 0)
     let model = runRows >= 1 ? bandModel({ ...input, maxRows: runRows }) : null
     if (row && model === null && runRows < 1) {
@@ -338,6 +343,16 @@ export const register: Register = (on, options) => {
     themeOnLoad($, theme)
     const bound = host
     if (!bound) return next(e)
+    codex ??= await readCodex($)
+    // Off the Codex pool the panel has nothing of this session's to show: put it away (a panel left
+    // open from before, or one a reload carried over) and draw nothing. Once per load: the close
+    // redraws, and a pane still drawn would otherwise close again on every redraw.
+    if (!codex) {
+      if (forecastPutAway) return next(e)
+      forecastPutAway = true
+      void controls.pressForecastHide(bindPressUi($)).catch(err => bound.debug(`claudish allowance panel close failed: ${err instanceof Error ? err.message : String(err)}`))
+      return next(e)
+    }
     const allowance = await read($, ALLOWANCE)
     const now = await $.clock.now()
     const fit = paneFit(e.props, e.surface)

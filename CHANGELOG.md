@@ -4,6 +4,16 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [claudish 2.13.2] - 2026-10-29
+
+### Fixed
+
+- A forecast panel left open in a session that is not on claudish's Codex pool now closes and
+  draws nothing (MTL-312). 2.13.1 hid the band and stopped its poll, but a panel opened before the
+  update kept showing the last report.
+
+---
+
 ## [claudish 2.13.1] - 2026-10-29
 
 ### Fixed
