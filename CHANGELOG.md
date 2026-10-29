@@ -4,6 +4,23 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [magus 7.11.4] - 2026-10-29
+
+### Fixed
+
+- **Your USER plugins no longer appear in a new project's profile.** On the first run in a
+  project that turns on no plugins of its own, "Save what you have as a new profile" saved the
+  plugins installed at USER into the PROJECT profile (MTL-323). They then showed as installed
+  at both USER and PROJECT. magus now saves only the plugins the project turns on, so such a
+  project gets an empty profile and USER plugins show at USER only. `magus install` and
+  `magus update` in such a project say there are no plugins to save, instead of offering your
+  USER plugins.
+
+A project set up by an earlier version keeps those plugins in its profile. Remove them at
+PROJECT in magus, or delete the project's profiles and run magus again.
+
+---
+
 ## [setup 1.8.0] - 2026-10-29
 
 ### Changed
