@@ -4,6 +4,18 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [claudish 2.13.1] - 2026-10-29
+
+### Fixed
+
+- The allowance band now appears only in a session that claudish launched on its Codex pool, with
+  a `cx@` or `codex@` model (MTL-312). A plain Claude Code session, or a claudish session on another
+  provider, no longer shows the Codex pool's band and never asks claudish for the report.
+- `TERM_THEME` picks the light or dark colours only when it is exactly `light` or `dark`, in
+  lowercase, as magus and the status line read it (MTL-311). `LIGHT` or ` light ` now means dark.
+
+---
+
 ## [claudish 2.13.0] - 2026-10-29
 
 ### Added

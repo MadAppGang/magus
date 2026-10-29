@@ -8,7 +8,7 @@ import { atom, memberOf, read, update } from 'claude-code'
 import type { EngineInterface, Register, RenderElement } from 'claude-code'
 
 import { CLAUDISH_TOOL, makeClaudishSource, type McpCall } from './claudish-source'
-import { makeAllowanceSource } from './allowance-source'
+import { isCodexSession, makeAllowanceSource } from './allowance-source'
 import { capped, claimVia, rejected, toAccepted, type Host, type PressUi, type Store } from './host'
 import { CLIENT_SURFACES, FORECAST_PANE_ID, FORECAST_PANE_TITLE, SHOW_PANE_ID } from './domain'
 import { activeTab, bandModel, childSize, paneAgentRows, paneFit, paneModel, showTabs, wrapTabs } from './layout'
@@ -147,6 +147,18 @@ async function readTheme($: EngineInterface): Promise<Palette | null> {
   }
 }
 
+/**
+ * Whether this session runs on claudish's Codex pool (isCodexSession). False where the read is
+ * refused: the allowance row stays off rather than failing the hook that asked.
+ */
+async function readCodex($: EngineInterface): Promise<boolean> {
+  try {
+    return isCodexSession(await $.env.get('CLAUDISH_ACTIVE_MODEL_NAME'))
+  } catch {
+    return false
+  }
+}
+
 /** A load's theme read: asked once (session.start and turn ends read it themselves), and the palette it sets. */
 type ThemeGate = { asked: boolean; palette: () => Palette; set: (read: Palette) => void }
 
@@ -177,9 +189,14 @@ export const register: Register = (on, options) => {
   // session.start, so the palette above would stay dark until a turn ends: the first hook with an
   // interface after a load reads it (themeOnLoad).
   const theme: ThemeGate = { asked: false, palette: () => palette, set: read => (palette = read) }
+  // Whether this session runs on claudish's Codex pool (isCodexSession): the allowance row and its
+  // poll exist only then. Null until read: at session.start, or by the first band draw after a
+  // reload, which fires no session.start. The environment does not change under a running process.
+  let codex: boolean | null = null
 
   on('session.start', async ($, e, next) => {
     theme.asked = true // read just below, awaited
+    codex = await readCodex($)
     host = bindHost($)
     // Claude Code draws the band (and may draw a pane) before this event: those draws met no host,
     // returned before reading any state, and so subscribed to nothing; and nothing else draws the
@@ -191,7 +208,7 @@ export const register: Register = (on, options) => {
     await wake.resetVolatile(bound) // stop requests and the turn flag: what a reload strands
     void wake.recover(bound).then(() => wake.flushDetached(bound), () => wake.flushDetached(bound)) // inflight → delivered | pending, then deliver what is due
     poll.ensureLoop(bound) // restarts only if state holds something to watch
-    allowancePoll.start(bound) // the allowance report's own loop; a no-op while one is live
+    if (codex) allowancePoll.start(bound) // the allowance report's own loop; a no-op while one is live
     return next(e)
   })
 
@@ -253,7 +270,14 @@ export const register: Register = (on, options) => {
     }
     // The allowance row takes one of the band's rows; the runs get the rest. With a single row to
     // give, the runs win: they carry Stop and Show and change by the second, the allowance is ambient.
-    let row = allowance.kind === 'ready' ? allowanceRow(allowance.view, now, e.props.bodyColumns, palette.allowance) : null
+    if (codex === null) {
+      codex = false // until the read lands: no row rather than a row this session may not own
+      void readCodex($).then(read => {
+        codex = read
+        if (read) $.ui.invalidate('ui.render')
+      }).catch(() => {}) // a refused redraw keeps the row off until the next one
+    }
+    let row = codex && allowance.kind === 'ready' ? allowanceRow(allowance.view, now, e.props.bodyColumns, palette.allowance) : null
     const runRows = e.props.maxRows - (row ? 1 : 0)
     let model = runRows >= 1 ? bandModel({ ...input, maxRows: runRows }) : null
     if (row && model === null && runRows < 1) {

@@ -86,6 +86,11 @@ export type FakeOptions = {
   theme?: string
   /** what `$.env.get` answers for TERM_THEME, COLORFGBG and TMUX_PANE; unset by default, so the machine's own never leaks in */
   env?: { TERM_THEME?: string; COLORFGBG?: string; TMUX_PANE?: string }
+  /**
+   * what `$.env.get` answers for CLAUDISH_ACTIVE_MODEL_NAME, the model claudish launched the session
+   * with (default `cx@gpt-test`, a session on the Codex pool); null: unset, a plain Claude Code session
+   */
+  activeModel?: string | null
   /** build the captured screen instead of scenario.frame (lines and spans as the contract sends them) */
   frame?: (args: { seq: number; model: string; slot: string; final: boolean; spans: boolean }) => Json
   /**
@@ -510,7 +515,10 @@ export function harness(on: On, options: FakeOptions = {}): Harness {
       provider: { plugin: 'engine', tier: 'core' as const }, isLocked: false, // the engine's own panel row
     }],
   }))
-  on('env.get', ($, e, next) => (e.name === 'TERM_THEME' || e.name === 'COLORFGBG' || e.name === 'TMUX_PANE' ? { value: options.env?.[e.name] } : next(e)))
+  on('env.get', ($, e, next) => {
+    if (e.name === 'CLAUDISH_ACTIVE_MODEL_NAME') return { value: options.activeModel === undefined ? 'cx@gpt-test' : options.activeModel ?? undefined }
+    return e.name === 'TERM_THEME' || e.name === 'COLORFGBG' || e.name === 'TMUX_PANE' ? { value: options.env?.[e.name] } : next(e)
+  })
   on('session.end', ($, e) => ({ sessionId: e.sessionId }))
   on('ui.log', ($, e) => {
     if (e.to === 'debug') h.debug.push(e.text)

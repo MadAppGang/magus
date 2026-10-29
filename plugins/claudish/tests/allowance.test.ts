@@ -18,6 +18,20 @@ for (const surface of SURFACES) {
     expect(h.toasts).toHaveLength(0)
     await b.unmount()
   })
+  // The report describes claudish's Codex pool: only a session claudish launched on `cx@`/`codex@`
+  // spends it. A plain Claude Code session (unset) and any other route never ask and never draw.
+  for (const [activeModel, shown] of [[null, false], ['gpt-test', false], ['or@openai/gpt-test', false], ['cx@gpt-test', true], ['CODEX@gpt-test', true]] as const) {
+    test(`allowance row and its poll only on the Codex pool: CLAUDISH_ACTIVE_MODEL_NAME ${activeModel ?? 'unset'} → ${shown ? 'shown' : 'none'} [${surface}]`, async ($, on) => {
+      const h = harness(on, { allowance: 'warn', activeModel })
+      await start($, surface)
+      await h.clock.advance(60_000)
+      const b = await mountBand($, surface)
+      if (shown) expect(await row(b)).toBeDefined()
+      else expect(await row(b)).toBeUndefined()
+      expect(h.fake.calls.some(c => c.tool === 'allowance_status')).toBe(shown)
+      await b.unmount()
+    })
+  }
   test(`REQ-16 row takes exactly one run-band budget row; run band wins at maxRows 1 [${surface}]`, async ($, on) => {
     const h = harness(on, { allowance: 'warn' })
     await start($, surface)

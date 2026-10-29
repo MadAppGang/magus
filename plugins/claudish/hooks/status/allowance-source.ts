@@ -69,6 +69,20 @@ const PART_OF: Readonly<Record<string, ClaudishAllowancePart>> = {
 }
 
 /** One ask's arguments. */
+/** claudish's provider shortcuts for its OpenAI Codex pool, the one pool `allowance_status` reports. */
+const CODEX_PREFIXES = ['cx@', 'codex@']
+
+/**
+ * Whether this session runs on claudish's Codex pool, from `CLAUDISH_ACTIVE_MODEL_NAME`: claudish
+ * sets it to the model spec when it launches Claude Code, so it is unset in a plain Claude Code
+ * session. Only an explicit `cx@`/`codex@` spec counts (claudish reads the shortcut in any case):
+ * the report describes the Codex pool, which a session on any other route does not spend.
+ */
+export function isCodexSession(activeModel: string | null | undefined): boolean {
+  const spec = (activeModel ?? '').toLowerCase()
+  return CODEX_PREFIXES.some(p => spec.startsWith(p))
+}
+
 export function allowanceArgs(ask: AllowanceAsk): Record<string, unknown> {
   return ask === 'forecast'
     ? { sections: [...SECTIONS.forecast], horizon_hours: FORECAST_HORIZON_HOURS }

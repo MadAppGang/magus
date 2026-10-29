@@ -195,6 +195,10 @@ is doing, and `[ Show ]` opens a forecast panel. Everything comes from claudish'
 `allowance_status` report; the plugin computes no forecast of its own, and a part claudish does
 not send is simply not drawn.
 
+The band appears only in a session that claudish launched on its Codex pool, with a `cx@` or
+`codex@` model (for example `claudish --model cx@<model>`). A plain Claude Code session, or a
+claudish session on any other provider, shows no band and never asks for the report.
+
 ```
  1  wk▮▮▮▮ █▆▄▂▁▂▄▆█ 1.4M/h now━━1h━━6h━━━━1d━━━━━┈┈┈┈3d┈┈2−86%┈2━━6d [ Show ]
 ```

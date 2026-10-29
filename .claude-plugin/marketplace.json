@@ -75,7 +75,7 @@
       "name": "claudish",
       "source": "./plugins/claudish",
       "description": "MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting, manages async sessions, and shows the session's runs live above the prompt, with stop and live-screen tabs. Required by code-search, dev, multimodel and designer.",
-      "version": "2.13.0",
+      "version": "2.13.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -95,6 +95,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "2.13.1",
+          "date": "2026-10-29",
+          "kinds": [
+            "Fixed"
+          ],
+          "summary": "The allowance band now appears only in a session that claudish launched on its Codex pool, with\u2026"
+        },
         {
           "version": "2.13.0",
           "date": "2026-10-29",
@@ -122,11 +130,6 @@
           "version": "2.10.1",
           "date": "2026-10-22",
           "summary": "Claudish-usage's nested-child section points at dev's nested review route, so the two never\u2026"
-        },
-        {
-          "version": "2.10.0",
-          "date": "2026-10-21",
-          "summary": "The Show panel's tabs wrap onto more rows when they do not fit one. With about 8 or more\u2026"
         }
       ]
     },

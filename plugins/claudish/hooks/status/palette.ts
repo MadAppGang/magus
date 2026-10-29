@@ -226,7 +226,8 @@ export function tmuxClientAppearance(stdout: string): Appearance | null {
  * The palette by the Magus status line's order (setup's statusline.sh, "Appearance detection"),
  * first answer wins: inside tmux, the appearance of the client showing this pane (`tmux`, from
  * tmuxClientAppearance; null says nothing), since tmux follows the screen the session is shown on
- * now; then TERM_THEME, only `light` or `dark`, trimmed, any case (anything else says nothing);
+ * now; then TERM_THEME, only the exact lowercase `light` or `dark`, as magus and the statusline
+ * read it (anything else says nothing);
  * then dark. Claude Code's own `theme` setting is not read: it is shared by every session, so one
  * session's choice would repaint another's screen. COLORFGBG is not read either: it is frozen at
  * launch and is not a signal (the dotfiles' house rule).
@@ -234,6 +235,5 @@ export function tmuxClientAppearance(stdout: string): Appearance | null {
 export function paletteFor(tmux: Appearance | null, termTheme?: string): Palette {
   if (tmux === 'light') return LIGHT_PALETTE
   if (tmux === 'dark') return DARK_PALETTE
-  const stated = termTheme?.trim().toLowerCase()
-  return stated === 'light' ? LIGHT_PALETTE : DARK_PALETTE
+  return termTheme === 'light' ? LIGHT_PALETTE : DARK_PALETTE
 }
