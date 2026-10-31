@@ -4,6 +4,29 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [magus 7.11.5] - 2026-10-31
+
+### Fixed
+
+- **`d` removes a plugin that is no longer published, and it stays removed.** On the Plugins
+  screen, `d` on such a plugin failed with "was not removed" when other projects on this
+  machine still had it installed (MTL-332). Claude Code answers "installed in project scope,
+  not user" in that case, which also means there is nothing to remove here; magus now reads it
+  that way. `d` also drops the plugin from every profile that lists it, not only the one in
+  use, so it no longer reappears after the next profile switch.
+- **`magus update` removes those plugins too.** A plugin no longer published that only your
+  other profiles list was never checked: `magus update --check` said nothing was behind while
+  the Plugins screen showed it as deprecated. `magus update` now removes it and drops it from
+  every profile that lists it, and `--check` reports it until you do. A plugin that is still
+  published and only another profile lists is left alone.
+
+Settings changes you make while magus is open are kept when a plugin is removed.
+
+This edits your project's profiles for profiles you are not using. Commit
+`.claude/profiles.json` to share the change with your team.
+
+---
+
 ## [magus 7.11.4] - 2026-10-29
 
 ### Fixed
