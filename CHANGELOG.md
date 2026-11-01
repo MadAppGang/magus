@@ -4,6 +4,27 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [magus 7.11.6] - 2026-11-02
+
+### Fixed
+
+- **The MCP Registry screen installs servers that actually run (MTL-342).** Some registry
+  rows are packages, not web addresses, and magus wrote every one as a web address. The
+  entry could never connect, and the screen still said Installed. A `pypi:` row now installs
+  as `uvx <package>` and an `npm:` row as `npx -y <package>`. Web rows work as before. Rows
+  of any other kind (`oci:`, `mcpb:`) are not installed. A popup says why and nothing is
+  written. A package name that is empty or looks wrong is refused the same way. The detail
+  pane shows what a package row will run, and tells you it may need API keys or settings
+  that magus doesn't add. Checked against the live registry: `com.mcparmory/notion` and
+  `io.github.YawLabs/npmjs-mcp` install, and Claude Code lists both as connected.
+- **The MCP Registry screen installs the row you see (MTL-337).** Install, remove and the
+  Installed mark follow the highlighted row while you search. `d` removes a server you
+  installed. Before, Enter could install a row from the old list while a search was still
+  loading. When you search for a brand, its official server is listed first and carries an
+  `official` badge. An empty search badges nothing.
+
+---
+
 ## [dev 9.6.1] - 2026-11-01
 
 ### Fixed
