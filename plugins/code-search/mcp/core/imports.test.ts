@@ -43,6 +43,10 @@ const DETAIL_ALLOWED = new Set(["render.ts", "ports.ts"]);
 /** Files allowed to write to stdout at all: stdout IS the JSON-RPC channel. */
 const STDOUT_ALLOWED = new Set(["transport/jsonrpc.ts", "server.ts"]);
 
+/** Concrete engine names and index paths that generic worktree modules must never name (REQ-5). */
+const ENGINE_AGNOSTIC_FORBIDDEN =
+  /\b(?:mnemex|codegraph|graphify|serena)\b|\.mnemex|\.codegraph|graphify-out/u;
+
 interface Violation {
   file: string;
   line: number;
@@ -171,6 +175,27 @@ export function checkStdout(file: string, text: string): Violation[] {
   return found;
 }
 
+/**
+ * REQ-5: Generic worktree copy/refresh/descriptor modules must never name a concrete engine
+ * or its on-disk index path. Comments are stripped before scanning so prose examples in
+ * doc comments do not mask or trigger the code check.
+ */
+export function checkEngineAgnostic(file: string, text: string): Violation[] {
+  const found: Violation[] = [];
+  const withoutBlockComments = text.replace(/\/\*[\s\S]*?\*\//gu, (match) =>
+    match.replace(/[^\n]/gu, " "),
+  );
+  withoutBlockComments.split("\n").forEach((raw, index) => {
+    const line = index + 1;
+    const codeOnly = raw.replace(/\/\/.*$/u, "");
+    const m = ENGINE_AGNOSTIC_FORBIDDEN.exec(codeOnly);
+    if (m !== null) {
+      found.push({ file, line, rule: "no-engine-name-in-generic-worktree", detail: m[0] });
+    }
+  });
+  return found;
+}
+
 // ---------------------------------------------------------------------------
 // Corpus
 // ---------------------------------------------------------------------------
@@ -272,6 +297,22 @@ describe("the lint fires", () => {
     expect(checkStdout("transport/jsonrpc.ts", "process.stdout.write(x);")).toEqual([]);
     expect(rules(checkStdout("server.ts", "console.log(x);"))).toEqual(["no-console-log"]);
   });
+
+  test("REQ-5: rejects concrete engine names or index paths in generic worktree code", () => {
+    expect(rules(checkEngineAgnostic("worktree/inherit.ts", 'if (engine === "mnemex") return;'))).toEqual([
+      "no-engine-name-in-generic-worktree",
+    ]);
+    expect(rules(checkEngineAgnostic("worktree/snapshot.ts", 'const p = ".codegraph/codegraph.db";'))).toEqual([
+      "no-engine-name-in-generic-worktree",
+    ]);
+    expect(rules(checkEngineAgnostic("core/worktree.ts", 'const g = "graphify-out/graph.json";'))).toEqual([
+      "no-engine-name-in-generic-worktree",
+    ]);
+    expect(rules(checkEngineAgnostic("hooks/worktree-start.ts", 'const s = "serena";'))).toEqual([
+      "no-engine-name-in-generic-worktree",
+    ]);
+    expect(checkEngineAgnostic("worktree/inherit.ts", "const ok = descriptor.worktrees === 'copy';")).toEqual([]);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -284,16 +325,19 @@ describe("core/ obeys the hexagon", () => {
     expect(core).toEqual([
       "capabilities.ts",
       "health.ts",
+      "index-descriptor.ts",
       "ports.ts",
       "registry.ts",
       "render.ts",
       "route.ts",
       "settings.ts",
       "setup-state.ts",
+      "worktree.ts",
     ]);
 
     const mcp = shippedFiles(MCP_DIR);
     expect(mcp).toContain("core/route.ts");
+    expect(mcp).toContain("core/worktree.ts");
     expect(mcp.every((file) => !file.endsWith(".test.ts"))).toBe(true);
     expect(mcp.every((file) => !file.includes("__fixtures__/"))).toBe(true);
   });
@@ -313,6 +357,25 @@ describe("core/ obeys the hexagon", () => {
   test("nothing shipped under mcp/ writes to stdout except the JSON-RPC channel", async () => {
     const files = await load(MCP_DIR);
     const violations = files.flatMap(({ file, text }) => checkStdout(file, text));
+    expect(format(violations)).toBe("");
+  });
+
+  test("REQ-5: generic worktree and hook modules name no concrete engine", async () => {
+    const mcpFiles = await load(MCP_DIR);
+    const worktreeMcp = mcpFiles.filter(
+      ({ file }) =>
+        file === "core/index-descriptor.ts" ||
+        file === "core/worktree.ts" ||
+        file.startsWith("worktree/"),
+    );
+    expect(worktreeMcp.map((f) => f.file)).toContain("core/index-descriptor.ts");
+    expect(worktreeMcp.map((f) => f.file)).toContain("core/worktree.ts");
+    expect(worktreeMcp.some((f) => f.file.startsWith("worktree/"))).toBe(true);
+
+    const hookPath = `${MCP_DIR}/../hooks/worktree-start.ts`;
+    const hookText = await Bun.file(hookPath).text();
+    const corpus = [...worktreeMcp, { file: "hooks/worktree-start.ts", text: hookText }];
+    const violations = corpus.flatMap(({ file, text }) => checkEngineAgnostic(file, text));
     expect(format(violations)).toBe("");
   });
 });

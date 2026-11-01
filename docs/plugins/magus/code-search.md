@@ -7,7 +7,7 @@ Read-only code search and investigation behind one stable tool surface. Finds co
 
 | | |
 |---|---|
-| Version | `8.6.2` |
+| Version | `8.7.0` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 3 |
 | Subagents | 1 |

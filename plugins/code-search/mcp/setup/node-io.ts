@@ -44,6 +44,13 @@ export function makeNodeCheckIo(env: Readonly<Record<string, string | undefined>
         return "missing";
       }
     },
+    mtimeMs(path: string): number | undefined {
+      try {
+        return statSync(path).mtimeMs;
+      } catch {
+        return undefined;
+      }
+    },
     isExecutable(path: string): boolean {
       try {
         if (!statSync(path).isFile()) return false;

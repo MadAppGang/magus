@@ -21,6 +21,7 @@
  * All argv arrays run WITHOUT a shell. `shellQuote` exists only to print them for a human.
  */
 
+import type { IndexDescriptor, IndexSource, IndexState } from "../core/index-descriptor";
 import type { EngineSpec } from "../core/settings";
 
 /** The package manager an engine installs through. It is also the prerequisite. */
@@ -90,6 +91,13 @@ export interface CatalogEntry {
   versionProbe: VersionProbe;
   /** Absent when the engine needs nothing per project. */
   projectStep?: ProjectStep;
+  /**
+   * How a new linked worktree gets this engine's index. Absent means "today's flow": the
+   * normal setup question builds it from zero. Present ONLY for an engine whose copy recipe was
+   * measured on a real install (`test-support/measure-index.ts`); the declared values must
+   * equal that measurement field for field.
+   */
+  index?: IndexDescriptor;
   /** The MCP server start command as a person would type it: `settings.command` plus the
    *  leading `settings.args`. What remedies print. */
   start: readonly string[];
@@ -120,6 +128,9 @@ const mnemex = {
     marker: ".mnemex/index.db",
     cost: "Embeds every file through a paid embedding API (a credential is required) and writes an index into .mnemex/ that grows with the codebase.",
   },
+  // The ticket's declaration, not a measurement: mnemex finds the main project's index
+  // itself, so a new worktree copies nothing and gets no setup question while main has one.
+  index: { worktrees: "engine-managed", path: ".mnemex/index.db" },
   start: MNEMEX_START,
   settings: {
     command: MNEMEX_START[0],
@@ -187,6 +198,68 @@ const serena = {
 
 const CODEGRAPH_START = ["codegraph", "serve", "--mcp"] as const;
 
+// ---- codegraph's `index` descriptor: every value below was MEASURED (codegraph 1.6.2, macOS
+// arm64) by `bun test-support/measure-index.ts codegraph`, not read from a README ----
+const CODEGRAPH_DB = ".codegraph/codegraph.db";
+
+/**
+ * Measured: the index holds only project-relative paths (no occurrence of the original's
+ * absolute prefix in any byte or SQLite column of a copy), records the commit it was built at
+ * (`indexed_at_commit`) and the paths it indexed with uncommitted content
+ * (`indexed_dirty_paths`, JSON `{commit, paths}`), and flags a whole index with
+ * `index_state = 'complete'`. Any of the three missing or inconsistent is "doubt".
+ */
+function inspectCodegraph(source: IndexSource): IndexState {
+  const db = source.sqlite(CODEGRAPH_DB);
+  if (db === undefined) return { complete: false };
+  try {
+    const meta = new Map<string, string>();
+    for (const row of db.query("SELECT key, value FROM project_metadata")) meta.set(String(row[0]), String(row[1]));
+    const commit = meta.get("indexed_at_commit");
+    const dirtyRaw = meta.get("indexed_dirty_paths");
+    if (meta.get("index_state") !== "complete" || commit === undefined || commit === "" || dirtyRaw === undefined) return { complete: false };
+    const dirty = JSON.parse(dirtyRaw) as { commit?: unknown; paths?: unknown };
+    if (dirty.commit !== commit || !Array.isArray(dirty.paths) || !dirty.paths.every((p) => typeof p === "string")) return { complete: false };
+    return { complete: true, commit, dirtyPaths: dirty.paths as string[] };
+  } catch {
+    return { complete: false };
+  }
+}
+
+/**
+ * Measured on 1.6.2: indexed are .ts .tsx .js .mjs .py .go .rs .java .rb .c .cpp .cs .kt
+ * .swift .php .yaml (also .d.ts, .test.ts and .min.js); not indexed are .md .json .css .html
+ * .sh, lockfiles and binaries. A tracked file under dist/, build/, vendor/ or node_modules/ is
+ * skipped by directory name, and there is no size cap up to the 13 MB probed. The predicate
+ * errs toward "not indexable": it also drops every hidden directory and a few unmeasured
+ * build-output names, because claiming a path indexable that the engine skips would fail
+ * verification, while dropping one only skips a check.
+ */
+const CODEGRAPH_INDEXED_EXTENSIONS: ReadonlySet<string> = new Set([
+  ".ts", ".tsx", ".js", ".mjs", ".py", ".go", ".rs", ".java", ".rb", ".c", ".cpp", ".cs", ".kt", ".swift", ".php", ".yaml",
+]);
+const CODEGRAPH_SKIPPED_DIRS: ReadonlySet<string> = new Set([
+  "node_modules", "dist", "build", "vendor", "out", "target", "coverage", "__pycache__", "venv", "bower_components",
+]);
+
+function isCodegraphIndexable(rel: string): boolean {
+  const segments = rel.split("/");
+  const file = segments.pop() ?? "";
+  if (segments.some((s) => CODEGRAPH_SKIPPED_DIRS.has(s) || s.startsWith("."))) return false;
+  const dot = file.lastIndexOf(".");
+  return dot > 0 && CODEGRAPH_INDEXED_EXTENSIONS.has(file.slice(dot));
+}
+
+function codegraphIndexedFiles(source: IndexSource): ReadonlySet<string> | undefined {
+  const db = source.sqlite(CODEGRAPH_DB);
+  if (db === undefined) return undefined;
+  try {
+    return new Set(db.query("SELECT path FROM files").map((row) => String(row[0])));
+  } catch {
+    return undefined;
+  }
+}
+
 const codegraph = {
   packageManager: "npm",
   package: { registry: "npm", name: "@colbymchenry/codegraph" },
@@ -203,6 +276,30 @@ const codegraph = {
     unattended: ["-y"],
     marker: ".codegraph/codegraph.db",
     cost: "Parses the project locally into a SQLite database in .codegraph/; no network, no credential.",
+  },
+  index: {
+    worktrees: "copy",
+    path: CODEGRAPH_DB,
+    // The whole directory: besides the database the engine writes -wal/-shm, codegraph.lock,
+    // and (while an MCP server runs) daemon.log, daemon.pid and writer.pid. All measured inside it.
+    owned: [".codegraph"],
+    paths: "relative",
+    incremental: true,
+    copy: {
+      store: "sqlite",
+      // The directory's own .gitignore first (without it git lists the copied database as an
+      // untracked file), the marker last.
+      include: [".codegraph/.gitignore", CODEGRAPH_DB],
+      inspect: inspectCodegraph,
+      updateRefreshesModified: true,
+      isIndexable: (rel) => isCodegraphIndexable(rel),
+      indexedFiles: codegraphIndexedFiles,
+      // cwd = the project dir; `sync` with no path syncs it. Measured: exit 0 and "Already up
+      // to date" on an unchanged copy (touches zero files), re-indexes a changed file from the
+      // worktree's content, drops deleted files and a file replaced by a directory. Its own
+      // lock (codegraph.lock) makes a second concurrent run exit 1.
+      update: ["codegraph", "sync"],
+    },
   },
   start: CODEGRAPH_START,
   settings: {

@@ -15,7 +15,7 @@
  * are reports only; none of them is part of the setup state or its headline.
  */
 
-import { settingsLayerPaths } from "../../mcp/core/settings";
+import { inheritedLayerPaths, resolveWorktree } from "../../mcp/core/worktree";
 import { combineGateEnv, gateSettings, mergeGate } from "../../mcp/grep/gate";
 import { resolveOracleBin } from "../../mcp/grep/port";
 import { checkSetup, type SetupReport } from "../../mcp/setup/check";
@@ -56,7 +56,9 @@ export interface GrepRouteReport {
 }
 
 export function grepRouteReport(io: SetupIo, ctx: SetupContext, report: SetupReport): GrepRouteReport {
-  const s = gateSettings(settingsLayerPaths(ctx.home, ctx.projectDir).map((path) => io.readText(path)));
+  // The layers the server reads: five in a linked worktree (the main tree's setup is inherited).
+  const layerPaths = inheritedLayerPaths(ctx.home, ctx.projectDir, resolveWorktree(ctx.projectDir, io));
+  const s = gateSettings(layerPaths.map((path) => io.readText(path)));
   const closed = mergeGate({
     platform: process.platform,
     env: combineGateEnv(io.env, s.env),

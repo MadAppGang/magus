@@ -43,6 +43,18 @@ import {
   type SetupState,
   type SetupStateId,
 } from "../core/setup-state";
+import type { FileKind } from "../core/index-descriptor";
+import {
+  indexQuestionOwner,
+  parseWorktreeState,
+  resolveWorktree,
+  worktreeStatePath,
+  type WorktreeLayout,
+} from "../core/worktree";
+
+/** The sentence a linked worktree's index question gains when main has no index to copy. */
+export const INDEX_MAIN_FIRST_HINT =
+  "Tip: index the main project first, so future new worktrees start from a copy and do not need a full reindex.";
 
 // ---------------------------------------------------------------------------
 // IO
@@ -53,6 +65,14 @@ export interface RunOptions {
   timeoutMs: number;
   /** Merged over the parent's environment. */
   env?: Readonly<Record<string, string>>;
+  /** Characters of stdout to keep (the LAST ones); default 64 Ki. A caller that parses the whole of stdout raises it. */
+  maxStdoutBytes?: number;
+  /**
+   * Start the child as the leader of its own process group, and send the deadline's SIGTERM and
+   * SIGKILL to the whole group, so a launcher's worker dies with it. A child in its own group
+   * no longer receives the terminal's Ctrl-C, so interactive callers leave this off.
+   */
+  ownProcessGroup?: boolean;
 }
 
 export interface RunResult {
@@ -64,6 +84,8 @@ export interface RunResult {
   timedOut: boolean;
   /** Set when the process could not be started at all (ENOENT, EACCES). */
   spawnError?: string;
+  /** Present (true) only when a stream outgrew its limit and its FRONT was dropped: the text is not the whole output. */
+  truncated?: boolean;
 }
 
 export type PathKind = "missing" | "file" | "directory" | "other";
@@ -81,6 +103,9 @@ export interface CheckIo {
   isExecutable(path: string): boolean;
   /** undefined when it cannot be resolved. Never throws. */
   realpath(path: string): string | undefined;
+  /** Modification time in ms, undefined when it cannot be read. Never throws. A `CheckIo`
+   *  is a `ReadPort` (core/worktree.ts). */
+  mtimeMs(path: string): number | undefined;
   /** Deep only. The fast path must never call it. */
   run?(argv: readonly string[], opts: RunOptions): Promise<RunResult>;
   /** Updates only. Resolves undefined on any failure, including the timeout. */
@@ -188,7 +213,9 @@ export function evaluateSetup(input: CheckInput, io: CheckIo): SetupReport {
     findings.push(finding);
   };
 
-  const load = loadSettings({ home, projectDir, readFileText: (path) => io.readText(path) });
+  // Five layers in a linked worktree (the main tree's setup is inherited, read-through).
+  const layout = resolveWorktree(projectDir, io);
+  const load = loadSettings({ home, projectDir, readFileText: (path) => io.readText(path) }, layout);
 
   for (const layer of load.layers) {
     if (layer.status === "malformed" || layer.status === "wrong-shape" || layer.status === "unreadable") {
@@ -222,7 +249,7 @@ export function evaluateSetup(input: CheckInput, io: CheckIo): SetupReport {
       remedy: SETUP_COMMAND,
     });
   } else if (engine !== false) {
-    report.engineReport = evaluateEngine(engine, engines, input, io, add);
+    report.engineReport = evaluateEngine(engine, engines, input, io, add, layout, setup);
   }
 
   return finish(report, findings, input);
@@ -292,6 +319,8 @@ function evaluateEngine(
   input: CheckInput,
   io: CheckIo,
   add: (finding: SetupFinding) => void,
+  layout: WorktreeLayout,
+  setup: SetupPreference | undefined,
 ): EngineReport {
   const entry = catalogEntry(id);
   // Own properties only: an id like `constructor` names an Object.prototype member.
@@ -354,18 +383,88 @@ function evaluateEngine(
   if (step !== undefined) {
     report.indexMarker = step.marker;
     const markerPath = join(input.projectDir, step.marker);
-    report.indexed = io.kind(markerPath) !== "missing";
+    // In a linked worktree the marker counts only when it is real: a symlink (at the marker or any
+    // ancestor) that leads into main's index is not this worktree's index.
+    report.indexed =
+      layout.kind === "linked"
+        ? plainKind(io, layout.root, join(layout.relative, step.marker)) === "file"
+        : io.kind(markerPath) !== "missing";
     if (!report.indexed) {
-      add({
-        code: "index_missing",
-        level: "problem",
-        message: `${id} has not been set up for this project: ${step.marker} does not exist.`,
-        remedy: cli(["index", id]),
-        path: markerPath,
-      });
+      const worktree = worktreeIndexFacts(entry, id, layout, setup, input, io);
+      // The start hook (or the engine itself) owns the outcome: a question now would be
+      // followed by a successful copy, or asked about an index the engine serves.
+      if (worktree.owner === "evaluator") {
+        const base = `${id} has not been set up for this project: ${step.marker} does not exist.`;
+        add({
+          code: "index_missing",
+          level: "problem",
+          message: worktree.hint ? `${base} ${INDEX_MAIN_FIRST_HINT}` : base,
+          remedy: cli(["index", id]),
+          path: markerPath,
+        });
+      }
     }
   }
   return report;
+}
+
+/**
+ * Who raises `index_missing` in a linked worktree, and whether the question carries the
+ * "index the main project first" tip. Static facts plus the state record, so this and the
+ * start hook cannot both ask (or both stay silent). A main tree is always "evaluator" with
+ * no tip.
+ */
+function worktreeIndexFacts(
+  entry: CatalogEntry,
+  engineId: string,
+  layout: WorktreeLayout,
+  setup: SetupPreference | undefined,
+  input: CheckInput,
+  io: CheckIo,
+): { owner: "hook" | "engine" | "evaluator"; hint: boolean } {
+  if (layout.kind !== "linked") return { owner: "evaluator", hint: false };
+  const descriptor = entry.index;
+  const mainMarker: FileKind =
+    descriptor === undefined ? "missing" : plainKind(io, layout.mainRoot, join(layout.relative, descriptor.path));
+  const updateCommand = descriptor?.worktrees === "copy" ? descriptor.copy.update[0] : undefined;
+  const state = parseWorktreeState(
+    io.readText(worktreeStatePath(io.env, input.home, input.projectDir)),
+    layout.incarnation,
+  );
+  const owner = indexQuestionOwner({
+    claudishChild: io.env["CLAUDISH_PANE_CHILD"] === "1",
+    layout,
+    engineId,
+    setup: setup ?? "active",
+    descriptor,
+    commandOnPath: updateCommand !== undefined && whichOnPath(updateCommand, io.env["PATH"], io) !== undefined,
+    mainMarker,
+    worktreeMarker: descriptor === undefined ? "missing" : plainKind(io, layout.root, join(layout.relative, descriptor.path)),
+    ownedTracked: false,
+    state,
+  });
+  return { owner, hint: descriptor?.worktrees === "copy" && mainMarker !== "file" };
+}
+
+/**
+ * What is at `root/rel`, "file" only for a regular file reached without a symlink: every
+ * path from the root to the entry must resolve to itself. The fast path's counterpart of
+ * the start hook's `containedKind`, from the read-only `CheckIo` (which has no lstat).
+ */
+function plainKind(io: CheckIo, root: string, rel: string): FileKind {
+  const realRoot = io.realpath(root);
+  if (realRoot === undefined || isAbsolute(rel)) return "other";
+  const segments = rel.split("/").filter((s) => s !== "" && s !== ".");
+  if (segments.includes("..")) return "other";
+  for (let n = 1; n <= segments.length; n += 1) {
+    const lexical = join(root, ...segments.slice(0, n));
+    const kind = io.kind(lexical);
+    if (kind === "missing") return "missing";
+    if (io.realpath(lexical) !== join(realRoot, ...segments.slice(0, n))) return "other";
+    if (n < segments.length && kind !== "directory") return "other";
+  }
+  const kind = io.kind(join(root, ...segments));
+  return kind === "file" || kind === "directory" ? kind : "other";
 }
 
 /**

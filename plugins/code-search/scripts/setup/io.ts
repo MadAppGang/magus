@@ -11,7 +11,6 @@
  * pipes a download into an interpreter.
  */
 
-import { spawn } from "node:child_process";
 import {
   closeSync,
   fchmodSync,
@@ -33,6 +32,7 @@ import {
   type McpClientOptions,
   type McpClientSpec,
 } from "../../mcp/transport/mcp-stdio-client";
+import { runProcess } from "../../mcp/transport/run-process";
 
 export type EntryKind = "missing" | "file" | "directory" | "symlink" | "other";
 
@@ -87,11 +87,6 @@ export interface SetupIo extends CheckIo {
    *  points at the object they read. */
   lstatInfo(path: string): EntryInfo | undefined;
 }
-
-/** Bytes kept from each child stream. Enough for the last 20 stderr lines of an install. */
-const STREAM_KEEP = 64 * 1024;
-/** Grace between SIGTERM and SIGKILL once a deadline passes. */
-const KILL_GRACE_MS = 2_000;
 
 export function makeNodeSetupIo(env: Readonly<Record<string, string | undefined>> = process.env): SetupIo {
   const read = makeNodeCheckIo(env);
@@ -189,87 +184,4 @@ export function makeNodeSetupIo(env: Readonly<Record<string, string | undefined>
       }
     },
   };
-}
-
-function runProcess(
-  argv: readonly string[],
-  opts: RunOptions,
-  parentEnv: Readonly<Record<string, string | undefined>>,
-): Promise<RunResult> {
-  const [command, ...args] = argv;
-  if (command === undefined) {
-    return Promise.resolve({
-      exitCode: null,
-      signal: null,
-      stdout: "",
-      stderr: "",
-      timedOut: false,
-      spawnError: "empty argv",
-    });
-  }
-
-  return new Promise((resolvePromise) => {
-    let stdout = "";
-    let stderr = "";
-    let timedOut = false;
-    let settled = false;
-    const keep = (buffer: string, chunk: Buffer): string => {
-      const next = buffer + chunk.toString("utf8");
-      return next.length > STREAM_KEEP ? next.slice(next.length - STREAM_KEEP) : next;
-    };
-
-    const env: Record<string, string> = {};
-    for (const [key, value] of Object.entries({ ...parentEnv, ...(opts.env ?? {}) })) {
-      if (value !== undefined) env[key] = value;
-    }
-
-    let child;
-    try {
-      child = spawn(command, args, {
-        cwd: opts.cwd,
-        env,
-        // No stdin: an install that wants to prompt gets EOF instead of hanging the CLI.
-        stdio: ["ignore", "pipe", "pipe"],
-        shell: false,
-      });
-    } catch (error) {
-      resolvePromise({
-        exitCode: null,
-        signal: null,
-        stdout,
-        stderr,
-        timedOut,
-        spawnError: error instanceof Error ? error.message : String(error),
-      });
-      return;
-    }
-
-    const finish = (result: RunResult): void => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(deadline);
-      clearTimeout(killer);
-      resolvePromise(result);
-    };
-
-    let killer: ReturnType<typeof setTimeout> | undefined;
-    const deadline = setTimeout(() => {
-      timedOut = true;
-      child.kill("SIGTERM");
-      killer = setTimeout(() => child.kill("SIGKILL"), KILL_GRACE_MS);
-    }, opts.timeoutMs);
-
-    child.stdout?.on("data", (chunk: Buffer) => {
-      stdout = keep(stdout, chunk);
-    });
-    child.stderr?.on("data", (chunk: Buffer) => {
-      stderr = keep(stderr, chunk);
-    });
-    child.on("error", (error: Error) => {
-      finish({ exitCode: null, signal: null, stdout, stderr, timedOut, spawnError: error.message });
-    });
-    child.on("close", (code: number | null, signal: NodeJS.Signals | null) => {
-      finish({ exitCode: code, signal, stdout, stderr, timedOut });
-    });
-  });
 }

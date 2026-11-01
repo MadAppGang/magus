@@ -42,6 +42,34 @@
 
 ---
 
+## [code-search 8.7.0] - 2026-11-02
+
+### Added
+
+- **A new git worktree starts with code-search already set up.** A linked worktree now reads
+  the main project's code-search settings, so the engine you chose, an ignored or dismissed
+  setup and your engine entries carry over, and the setup question is not asked again in
+  every worktree (MTL-153). The main project's settings are only read, never written.
+- **A new worktree starts from a copy of the main project's index.** When the main project
+  has a healthy index for an engine that can be copied, the first session in a new worktree
+  copies it, then updates only the files that differ: the commits between the main project's
+  index and the worktree, plus uncommitted changes. If the main index is behind, it is
+  refreshed first by the engine's own incremental update; if that cannot run, the stale copy
+  is taken and caught up in the worktree. The copy is never a shared file, and a broken main
+  index is never copied. This is the one case where code-search writes to the main project.
+- **Status messages say what happened.** The session start reports "Started from the main
+  project's index" with the number of files updated, says when the main index was refreshed
+  first, and says when a start could not finish and the normal setup question follows. In a
+  worktree whose main project has no index, the setup flow is unchanged and adds a one-line
+  tip to index the main project first.
+- **Engines declare how their index behaves in a worktree.** Each engine in the catalog
+  states where its index lives, whether it can be copied and whether it updates
+  incrementally, so a new engine gets worktree support by declaring it. mnemex keeps its own
+  multi-level index and is left to manage worktrees itself; an engine whose index holds
+  absolute paths gets no copy and indexes from scratch as before.
+
+---
+
 ## [magus 7.11.5] - 2026-10-31
 
 ### Fixed

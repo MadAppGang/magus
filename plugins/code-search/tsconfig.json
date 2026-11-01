@@ -35,6 +35,7 @@
     "mcp/**/*.ts",
     "scripts/**/*.ts",
     "hooks/offer-setup*.ts",
+    "hooks/worktree-start*.ts",
     "hooks/grep-merge-env*.ts",
     "hooks/grep-tool-merge*.ts",
     "assets/**/*.ts",

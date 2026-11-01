@@ -306,17 +306,20 @@ async function run(): Promise<void> {
     process.exit(0);
   }
 
-  const [{ combineGateEnv, gateSettings, mergeGate }, { settingsLayerPaths }] = await Promise.all([
-    import("../mcp/grep/gate"),
-    import("../mcp/core/settings"),
-  ]);
+  const [{ combineGateEnv, gateSettings, mergeGate }, { inheritedLayerPaths, resolveWorktree }, { makeNodeCheckIo }] =
+    await Promise.all([
+      import("../mcp/grep/gate"),
+      import("../mcp/core/worktree"),
+      import("../mcp/setup/node-io"),
+    ]);
 
-  // The gate, from the same three layers the server reads (as at HEAD: under HOME's
-  // `.claude`, and the project's `.claude`).
+  // The gate, from the same layers the server reads: under HOME's `.claude`, the project's
+  // `.claude`, and in a linked worktree the main tree's `.claude` files beneath them.
   const home = env["HOME"] !== undefined && env["HOME"] !== "" ? env["HOME"] : homedir();
   const declared = env["CLAUDE_PROJECT_DIR"];
   const projectDir = declared !== undefined && declared !== "" ? declared : process.cwd();
-  const texts = settingsLayerPaths(home, projectDir).map((path) => {
+  const layerPaths = inheritedLayerPaths(home, projectDir, resolveWorktree(projectDir, makeNodeCheckIo(env)));
+  const texts = layerPaths.map((path) => {
     try {
       return readFileSync(path, "utf8");
     } catch {

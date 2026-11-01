@@ -14,6 +14,7 @@
 import { join } from "node:path";
 
 import { loadSettings } from "../../mcp/core/settings";
+import { resolveWorktree } from "../../mcp/core/worktree";
 import { MCP_CLIENT_DEFAULTS } from "../../mcp/transport/mcp-stdio-client";
 import type { SetupContext, SetupIo } from "./io";
 import { failed, tailLines, type Outcome } from "./report";
@@ -43,11 +44,14 @@ export async function verify(io: SetupIo, ctx: SetupContext, flags: VerifyFlags)
   const command = "verify";
   const query = flags.query ?? DEFAULT_VERIFY_QUERY;
   const serverPath = join(ctx.pluginRoot, "mcp", "server.ts");
-  const engine = loadSettings({
-    home: ctx.home,
-    projectDir: ctx.projectDir,
-    readFileText: (path) => io.readText(path),
-  }).settings.engine;
+  const engine = loadSettings(
+    {
+      home: ctx.home,
+      projectDir: ctx.projectDir,
+      readFileText: (path) => io.readText(path),
+    },
+    resolveWorktree(ctx.projectDir, io),
+  ).settings.engine;
 
   const log: string[] = [];
   const client = io.connect(

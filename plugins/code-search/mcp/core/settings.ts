@@ -6,6 +6,10 @@
  *   2. <projectDir>/.claude/settings.json
  *   3. <projectDir>/.claude/settings.local.json
  *
+ * In a linked git worktree the reader sees five: the main tree's file sits under the
+ * worktree's file in the same slot (`inheritedLayerPaths`, worktree.ts). Read-through
+ * only; `settingsLayerPaths` stays the three files a write may target.
+ *
  * Pure: the filesystem arrives as an injected `SettingsIo`, which is what makes the
  * whole merge testable with plain objects and no processes. No node: import here —
  * paths are joined as POSIX strings, because the only paths this module builds are
@@ -19,6 +23,7 @@
  */
 
 import type { BackendNote } from "./ports";
+import { inheritedLayerNames, inheritedLayerPaths, type WorktreeLayout } from "./worktree";
 
 export const SETTINGS_KEY = "code-search";
 
@@ -305,8 +310,14 @@ export interface SettingsIo {
   readFileText(path: string): string | undefined;
 }
 
-export function loadSettings(io: SettingsIo): SettingsLoad {
-  const paths = settingsLayerPaths(io.home, io.projectDir);
+/**
+ * `layout` is resolved once by the caller with its own IO (`resolveWorktree`) and defaults to
+ * the main tree, so a caller that never resolves one reads exactly the three layers.
+ */
+export function loadSettings(io: SettingsIo, layout: WorktreeLayout = { kind: "main" }): SettingsLoad {
+  const hasProject = io.projectDir !== undefined && io.projectDir !== "";
+  const paths = inheritedLayerPaths(io.home, hasProject ? (io.projectDir as string) : "", layout);
+  const names = inheritedLayerNames(layout, hasProject);
   const layers: LayerReport[] = [];
   const blocks: (unknown | undefined)[] = [];
 
@@ -321,17 +332,20 @@ export function loadSettings(io: SettingsIo): SettingsLoad {
   const { settings, dropped } = mergeSettingsLayers(blocks);
 
   const notes: BackendNote[] = [];
-  for (const layer of layers) {
+  layers.forEach((layer, index) => {
     if (layer.status === "read" || layer.status === "absent" || layer.status === "no-block") {
-      continue;
+      return;
     }
+    // A linked worktree reads five files, two of them the main tree's: name the layer so
+    // the note says which one to fix. The three-layer wording is unchanged.
+    const name = layout.kind === "linked" ? ` (${names[index] ?? "settings"} layer)` : "";
     notes.push({
       level: "degraded",
       code: "settings_ignored",
-      message: `${layer.path} was skipped (${layer.status}); its ${SETTINGS_KEY} settings are not in effect.`,
+      message: `${layer.path}${name} was skipped (${layer.status}); its ${SETTINGS_KEY} settings are not in effect.`,
       remedy: `Check that ${layer.path} is valid JSON with a "${SETTINGS_KEY}" object at the top level.`,
     });
-  }
+  });
   if (dropped.length > 0) {
     notes.push({
       level: "degraded",

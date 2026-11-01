@@ -20,6 +20,8 @@ import {
   settingsLayerPaths,
   type SettingsIo,
 } from "./settings";
+import { inheritedLayerPaths, type WorktreeLayout } from "./worktree";
+import { gateSettings } from "../grep/gate";
 
 const HOME = "/fixture/home";
 const PROJECT = "/fixture/project";
@@ -322,3 +324,132 @@ describe("post-merge validation", () => {
     expect(notes[0]?.message).toContain("passthrough.maxPerEngine");
   });
 });
+
+describe("REQ-1: worktree inheritedLayerPaths and 5-layer precedence (TEST-2, TEST-3)", () => {
+  const MAIN_PROJECT = "/fixture/main";
+  const LINKED_LAYOUT: WorktreeLayout = {
+    kind: "linked",
+    root: PROJECT,
+    mainRoot: MAIN_PROJECT,
+    relative: "",
+    mainProjectDir: MAIN_PROJECT,
+    incarnation: "inc-1",
+  };
+
+  function loadWithLayout(files: Files, layout: WorktreeLayout) {
+    return loadSettings(io(files), layout);
+  }
+
+  test("REQ-1: inheritedLayerPaths returns 5 layers for linked worktrees and 3 for main/unknown; writer view stays 3", () => {
+    expect(inheritedLayerPaths(HOME, PROJECT, { kind: "main" })).toEqual([
+      `${HOME}/.claude/settings.json`,
+      `${PROJECT}/.claude/settings.json`,
+      `${PROJECT}/.claude/settings.local.json`,
+    ]);
+    expect(inheritedLayerPaths(HOME, PROJECT, { kind: "unknown", reason: "not_git" })).toEqual([
+      `${HOME}/.claude/settings.json`,
+      `${PROJECT}/.claude/settings.json`,
+      `${PROJECT}/.claude/settings.local.json`,
+    ]);
+    expect(inheritedLayerPaths(HOME, PROJECT, LINKED_LAYOUT)).toEqual([
+      `${HOME}/.claude/settings.json`,
+      `${MAIN_PROJECT}/.claude/settings.json`,
+      `${PROJECT}/.claude/settings.json`,
+      `${MAIN_PROJECT}/.claude/settings.local.json`,
+      `${PROJECT}/.claude/settings.local.json`,
+    ]);
+    // Writer view (settingsLayerPaths) is unchanged at 3 paths.
+    expect(settingsLayerPaths(HOME, PROJECT)).toEqual([
+      `${HOME}/.claude/settings.json`,
+      `${PROJECT}/.claude/settings.json`,
+      `${PROJECT}/.claude/settings.local.json`,
+    ]);
+  });
+
+  test("REQ-1: main local beats worktree committed project file, and worktree wins within a slot", () => {
+    const paths = inheritedLayerPaths(HOME, PROJECT, LINKED_LAYOUT);
+    const [userPath, mainProj, wtProj, mainLocal, wtLocal] = paths as [
+      string,
+      string,
+      string,
+      string,
+      string,
+    ];
+
+    // Main local beats worktree committed project file:
+    const filesMainLocalWins: Files = {
+      [userPath]: block({ engine: "serena" }),
+      [mainProj]: block({ engine: "mnemex" }),
+      [wtProj]: block({ engine: "mnemex" }),
+      [mainLocal]: block({ engine: "codegraph", engines: { codegraph: { command: "codegraph" } } }),
+    };
+    const res1 = loadWithLayout(filesMainLocalWins, LINKED_LAYOUT);
+    expect(res1.settings.engine).toBe("codegraph");
+
+    // Worktree wins within the project slot (wtProj beats mainProj):
+    const filesWtProjWins: Files = {
+      [mainProj]: block({ engine: "mnemex" }),
+      [wtProj]: block({ engine: "graphify" }),
+    };
+    expect(loadWithLayout(filesWtProjWins, LINKED_LAYOUT).settings.engine).toBe("graphify");
+
+    // Worktree wins within the local slot (wtLocal beats mainLocal):
+    const filesWtLocalWins: Files = {
+      [mainLocal]: block({ engine: "codegraph" }),
+      [wtLocal]: block({ engine: "serena" }),
+    };
+    expect(loadWithLayout(filesWtLocalWins, LINKED_LAYOUT).settings.engine).toBe("serena");
+  });
+
+  test("REQ-1: engine:false and grep.route inherit from main layers, and malformed main layer does not block", () => {
+    const [userPath, mainProj, wtProj, mainLocal, wtLocal] = inheritedLayerPaths(
+      HOME,
+      PROJECT,
+      LINKED_LAYOUT,
+    ) as [string, string, string, string, string];
+
+    // engine: false in main local inherits into worktree:
+    const disabledRes = loadWithLayout(
+      { [mainLocal]: block({ engine: false, setup: "active" }) },
+      LINKED_LAYOUT,
+    );
+    expect(disabledRes.settings.engine).toBe(false);
+
+    // Malformed main layer is reported as malformed without throwing or blocking higher layers:
+    const malformedRes = loadWithLayout(
+      {
+        [userPath]: block({ engine: "serena" }),
+        [mainProj]: "{ broken json in main",
+        [mainLocal]: block({
+          engine: "codegraph",
+          engines: { codegraph: { command: "codegraph" } },
+          grep: { route: false },
+        }),
+      },
+      LINKED_LAYOUT,
+    );
+    expect(malformedRes.settings.engine).toBe("codegraph");
+    expect(malformedRes.layers.some((l) => l.path === mainProj && l.status === "malformed")).toBe(
+      true,
+    );
+
+    // grep.route inherits across the 5 layers via gateSettings:
+    const rawLayers = [userPath, mainProj, wtProj, mainLocal, wtLocal].map((p) =>
+      p === mainLocal
+        ? JSON.stringify({
+            "code-search": {
+              engine: "codegraph",
+              engines: { codegraph: { command: "codegraph" } },
+              grep: { route: false },
+            },
+          })
+        : undefined,
+    );
+    expect(gateSettings(rawLayers)).toEqual({
+      route: false,
+      env: {},
+      engineConfigured: true,
+    });
+  });
+});
+

@@ -65,6 +65,7 @@ import { basename, dirname, join } from "node:path";
 import { catalogEntry } from "../../mcp/adapters/catalog";
 import { enabledLayers, layerPath, LAYER_NAMES, whichOnPath, type LayerName } from "../../mcp/setup/check";
 import { loadSettings, SETTINGS_KEY } from "../../mcp/core/settings";
+import { inheritedLayerPaths, resolveWorktree } from "../../mcp/core/worktree";
 import type { SetupContext, SetupIo } from "./io";
 import {
   failed,
@@ -410,12 +411,18 @@ export function findShadow(
   const wrote = dryRun ? "would be written" : "was written";
   const effect = dryRun ? "the write would have no effect" : "the write has no effect";
   const readText = (path: string): string | undefined => (path === targetPath ? targetText : io.readText(path));
-  const merged = loadSettings({ home: ctx.home, projectDir: ctx.projectDir, readFileText: readText }).settings;
+  // The reader's view: in a linked worktree the main tree's files are consulted too, so a
+  // write that an inherited layer outranks is reported rather than silently ineffective.
+  // Writes still target only the three real layers.
+  const layout = resolveWorktree(ctx.projectDir, io);
+  const merged = loadSettings({ home: ctx.home, projectDir: ctx.projectDir, readFileText: readText }, layout).settings;
 
-  const layers = LAYER_NAMES.map((layer) => {
-    const path = layerPath(layer, ctx.home, ctx.projectDir);
-    return { layer, path, root: parseObject(readText(path)) };
-  });
+  const realPaths = LAYER_NAMES.map((layer) => ({ layer, path: layerPath(layer, ctx.home, ctx.projectDir) }));
+  const layers = inheritedLayerPaths(ctx.home, ctx.projectDir, layout).map((path) => ({
+    layer: realPaths.find((real) => real.path === path)?.layer,
+    path,
+    root: parseObject(readText(path)),
+  }));
 
   for (const key of written) {
     const effective = key.kind === "block" ? merged[key.key] : merged.engines[key.id];
@@ -428,6 +435,18 @@ export function findShadow(
         code: "layer_shadowed",
         message: `${label} ${wrote} to ${targetPath}, but the merged settings do not carry it.`,
         path: targetPath,
+      };
+    }
+    if (where.layer === undefined) {
+      // A main-tree file this worktree inherits. The worktree's own local settings are the
+      // one layer that outranks it.
+      return {
+        code: "layer_shadowed",
+        message:
+          `${label} ${wrote} to ${targetPath}, but the main project's ${where.path} sets it to ` +
+          `${JSON.stringify(effective)} and this worktree inherits it above that file, so ${effect}.`,
+        remedy: `Run the command again with --layer local: this worktree's local project settings win over the main project's.`,
+        path: where.path,
       };
     }
     return {

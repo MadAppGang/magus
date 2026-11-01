@@ -296,11 +296,37 @@ function readBlock(texts: readonly (string | undefined)[]): Record<string, unkno
  * that is unset, since a `cd` earlier in the session can leave cwd in a subdirectory.
  */
 function readLayers(projectDir: string): (string | undefined)[] {
-  return [
+  return readPaths([
     join(homedir(), ".claude", "settings.json"),
     join(projectDir, ".claude", "settings.json"),
     join(projectDir, ".claude", "settings.local.json"),
-  ].map((path) => {
+  ]);
+}
+
+/**
+ * The layers the SERVER reads for code-search settings: those of `readLayers`, and in a
+ * linked git worktree the main tree's two files beneath their worktree counterparts
+ * (`inheritedLayerPaths`), so an engine chosen in the main tree's `settings.local.json`
+ * is configured here too. Only the `code-search` block is inherited: Claude Code's own
+ * keys (`sandbox`) are judged on the worktree's own layers, which is what `readLayers` is
+ * still used for. A module that fails to load costs the inheritance and nothing else.
+ */
+async function readInheritedLayers(projectDir: string, own: (string | undefined)[]): Promise<(string | undefined)[]> {
+  try {
+    const [{ inheritedLayerPaths, resolveWorktree }, { makeNodeCheckIo }] = await Promise.all([
+      import("../mcp/core/worktree"),
+      import("../mcp/setup/node-io"),
+    ]);
+    const layout = resolveWorktree(projectDir, makeNodeCheckIo());
+    if (layout.kind !== "linked") return own;
+    return readPaths(inheritedLayerPaths(homedir(), projectDir, layout));
+  } catch {
+    return own;
+  }
+}
+
+function readPaths(paths: readonly string[]): (string | undefined)[] {
+  return paths.map((path) => {
     try {
       return existsSync(path) ? readFileSync(path, "utf8") : undefined;
     } catch {
@@ -612,7 +638,8 @@ async function main(): Promise<void> {
   // breadcrumb goes. A block that names a `traceFile` redirects everything after this line.
   const declared = process.env["CLAUDE_PROJECT_DIR"];
   const projectDir = declared !== undefined && declared !== "" ? declared : (input.cwd ?? process.cwd());
-  const texts = readLayers(projectDir);
+  const ownTexts = readLayers(projectDir);
+  const texts = await readInheritedLayers(projectDir, ownTexts);
   const block = readBlock(texts);
   const adoption = ((block?.["adoption"] ?? {}) as Adoption);
   if (typeof adoption.traceFile === "string" && adoption.traceFile !== "") {
@@ -646,7 +673,7 @@ async function main(): Promise<void> {
   if (!settings.engineConfigured) allow();
 
   // Only a grep command pays for the socket and sandbox checks.
-  if (GREP_BINARY.test(command) && (await grepMergeActive(command, gateModule, settings, texts, input.tool_input))) {
+  if (GREP_BINARY.test(command) && (await grepMergeActive(command, gateModule, settings, ownTexts, input.tool_input))) {
     trace("  -> allowed: grep merge active");
     allow();
   }

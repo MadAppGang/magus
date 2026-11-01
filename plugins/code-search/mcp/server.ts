@@ -76,11 +76,22 @@ import {
 } from "./core/route";
 import {
   loadSettings,
-  settingsLayerPaths,
   type CodeAnalysisSettings,
   type EngineSpec,
   type SettingsIo,
 } from "./core/settings";
+import {
+  indexReady,
+  inheritedLayerPaths,
+  parseWorktreeState,
+  resolveWorktree,
+  worktreeStatePath,
+  type ReadPort,
+  type WorktreeLayout,
+} from "./core/worktree";
+import { catalogEntry } from "./adapters/catalog";
+import { containedKind } from "./worktree/containment";
+import { makeNodeWorktreeIo } from "./worktree/node-io";
 import { SETUP_COMMAND, type SetupAdvice, type SetupStateId } from "./core/setup-state";
 import { evaluateSetup } from "./setup/check";
 import { makeNodeCheckIo } from "./setup/node-io";
@@ -155,6 +166,13 @@ const SETUP_DISMISSED_NOTE: BackendNote = {
   code: "setup_dismissed",
   message: "Code search is not set up in this project (setup dismissed); use Grep, Glob and Read.",
 };
+
+/** The facade's answer while a new worktree's index is being copied and caught up. */
+const INDEX_PREPARING_MESSAGE = "The search index for this worktree is still being prepared.";
+
+/** The facade's answer when a worktree's index path is a link, leaves the worktree or is not a regular file: it is never opened. */
+const INDEX_UNSAFE_MESSAGE =
+  "The search index of this worktree is a link, lies outside it or is not a regular file, so it is not used.";
 
 const METHOD_NOT_FOUND = -32601;
 const INVALID_PARAMS = -32602;
@@ -240,6 +258,19 @@ function homeOf(env: NodeJS.ProcessEnv): string {
   return env["HOME"] ?? env["USERPROFILE"] ?? "";
 }
 
+/** The worktree layout per project dir, resolved once per process: a server's project
+ *  dir never moves between trees while it runs, and the resolution reads five files. */
+const layoutMemo = new Map<string, WorktreeLayout>();
+
+function layoutOf(projectDir: string, io: ReadPort): WorktreeLayout {
+  let layout = layoutMemo.get(projectDir);
+  if (layout === undefined) {
+    layout = resolveWorktree(projectDir, io);
+    layoutMemo.set(projectDir, layout);
+  }
+  return layout;
+}
+
 /** `serverInfo.version`. Read from the manifest rather than restated here, because a
  *  restated version is a version that drifts silently. */
 function pluginVersion(): string {
@@ -284,7 +315,7 @@ function buildFacade(env: NodeJS.ProcessEnv, onToolsChanged: () => void): Facade
     },
   };
 
-  const load = loadSettings(io);
+  const load = loadSettings(io, layoutOf(projectDir, makeNodeCheckIo(env)));
   const clients: McpClient[] = [];
   // The context the registry's engine was built with. The Grep engine view reuses it
   // with only the client swapped, so both instances share one child process.
@@ -389,7 +420,8 @@ function makeSetupNotes(env: NodeJS.ProcessEnv, projectDir: string, now: () => n
   const home = homeOf(env);
   const pluginRoot = join(HERE, "..");
   const io = makeNodeCheckIo(env);
-  const layers = settingsLayerPaths(home, projectDir);
+  // Five files in a linked worktree (the main tree's setup is inherited), else three.
+  const layers = inheritedLayerPaths(home, projectDir, layoutOf(projectDir, io));
 
   let cached:
     | { at: number; stamp: string; headline: SetupStateId; advice: SetupAdvice | undefined }
@@ -553,6 +585,53 @@ export function createServer(env: NodeJS.ProcessEnv, write: (line: string) => vo
 
   function engineLabel(): string {
     return facade.registry.engineId() ?? "none";
+  }
+
+  /**
+   * The facade gate. Only in a linked worktree, for an engine whose index is copied (not
+   * engine-managed, not absent):
+   *   - "preparing": the start hook's record says `copying` (the index is half-copied or not
+   *     yet caught up), or
+   *   - "unsafe": the index path is a symlink, escapes the worktree or is a directory (anything
+   *     but a regular file), whatever the record says; the engine must never open it (it could be main's).
+   * Both come from `indexReady`, the single readiness test.
+   * The state file is read on every call (a cached answer would outlive the hook finishing).
+   * Never throws: a read that fails is "no hold".
+   */
+  function indexHold(engineId: string | undefined): "preparing" | "unsafe" | undefined {
+    if (engineId === undefined) return undefined;
+    try {
+      const descriptor = catalogEntry(engineId)?.index;
+      if (descriptor?.worktrees !== "copy") return undefined;
+      const projectDir = projectDirOf(env);
+      const checkIo = makeNodeCheckIo(env);
+      const layout = layoutOf(projectDir, checkIo);
+      if (layout.kind !== "linked") return undefined;
+      const state = parseWorktreeState(
+        checkIo.readText(worktreeStatePath(env, homeOf(env), projectDir)),
+        layout.incarnation,
+      );
+      const marker = containedKind(
+        makeNodeWorktreeIo(env),
+        layout.root,
+        layout.relative === "" ? descriptor.path : join(layout.relative, descriptor.path),
+      );
+      // The ONE readiness test (`indexReady`): a regular marker file and a record that is not `copying`.
+      if (indexReady(marker, state)) return undefined;
+      if (state?.phase === "copying") return "preparing";
+      // A missing marker is today's `index_missing` path; a link, an escape or a directory at the
+      // marker is never opened.
+      return marker === "missing" ? undefined : "unsafe";
+    } catch (error) {
+      log(`worktree index state could not be read: ${describe(error)}`);
+      return undefined;
+    }
+  }
+
+  function holdNote(hold: "preparing" | "unsafe"): BackendNote {
+    return hold === "preparing"
+      ? { level: "error", code: "index_missing", message: INDEX_PREPARING_MESSAGE }
+      : { level: "error", code: "index_missing", message: INDEX_UNSAFE_MESSAGE, remedy: `Remove it and run ${SETUP_COMMAND}.` };
   }
 
   function unavailable(served: Partial<ServedBy>, note: BackendNote): ToolResult {
@@ -786,6 +865,16 @@ export function createServer(env: NodeJS.ProcessEnv, write: (line: string) => vo
       return { kind: "unknown-tool" };
     }
 
+    // A new worktree's index is copied in place and then caught up by the engine. While the
+    // start hook's record says so, or while the index path is a link, the index is not ready:
+    // answer that, before ANY engine child is probed or called (routed, structural and
+    // passthrough alike), never a stale or half-updated hit. Every other not-ready case (no
+    // marker, a failed start) stays on today's path.
+    const hold = indexHold(facade.registry.engineId());
+    if (hold !== undefined) {
+      return { kind: "result", result: unavailable({ engine: engineLabel() }, holdNote(hold)) };
+    }
+
     // Lazy by design: `tools/list` never spawns, so the first call is what probes.
     const probe = await facade.registry.probeOnce();
 
@@ -1002,13 +1091,20 @@ export function createServer(env: NodeJS.ProcessEnv, write: (line: string) => vo
     const oracle = resolveOracleBin(env);
     if (oracle.bin === undefined) both(`oracle unavailable: ${oracle.tried.join(", ")}`);
 
-    const gate = makeGateReader({
-      paths: settingsLayerPaths(homeOf(env), projectDirOf(env)),
+    const settingsGate = makeGateReader({
+      paths: inheritedLayerPaths(homeOf(env), projectDirOf(env), layoutOf(projectDirOf(env), makeNodeCheckIo(env))),
       platform: process.platform,
       env,
       // Fixed at startup with the registry: this server never gains or loses its engine.
       engineConfigured: true,
     });
+    // While the worktree's index is being prepared (or its path is a link) the merge asks the
+    // engine nothing: it closes with the reason, no engine child is started or called, and it
+    // opens again by itself once the record says `complete`. Not a pause, not a latch.
+    const gate = async (): Promise<string | undefined> => {
+      const hold = indexHold(facade.registry.engineId());
+      return hold !== undefined ? `index-${hold}` : settingsGate();
+    };
 
     const client = facade.engineClient();
     const service = makeGrepService(makeGrepPort({ engineSearch, root: projectReal }), {
@@ -1063,7 +1159,7 @@ async function readSettingsText(path: string): Promise<string | undefined> {
  *
  * Built once at startup, CALLED once per request: `makeGateReader(…)` returns
  * `() => GateClosed | undefined`, and the closure holds the settings signature cache.
- * On every call it `stat`s the three settings files (`settingsLayerPaths`, as at HEAD)
+ * On every call it `stat`s the settings files (`inheritedLayerPaths`: three, or five in a linked worktree)
  * and re-reads them only when a file's (mtimeMs, size, ino) changed, or a file appeared
  * or vanished. `grep.route` and the layers' `env.CODE_SEARCH_MERGE` come from those
  * files; `CODE_SEARCH_MERGE` is also read from this process's own environment, and a `0`
