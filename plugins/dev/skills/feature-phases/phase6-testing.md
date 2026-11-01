@@ -47,7 +47,7 @@ STACK: {from context.repo.stacks: golang→go, bunjs→bun, react/vue→ui}
 STOP_AT: implement
 SESSION_PATH: <sandbox>
 LOADOUT: <sandbox>/loadout/*   (mandatory first: {context.agent_loadouts.qa-engineer.mandatory})
-Write the test plan and the tests. Do not read anything outside the paths above.
+Write the test plan and the tests. Do not read anything outside the paths above, other than the file this prompt was delivered in.
 ```
 Write the three-line record to `${SESSION_PATH}/qa/writer.txt` — `writer:` as `/dev:qa`
 reports it, then `analyst: not run` and `fixer: not run` (Step 6.6 fills them) — and say
@@ -56,9 +56,17 @@ the `writer:` line in the transcript.
 ### Step 6.5: Bring the tests home, run them, prove they can fail
 Copy `sandbox/tests/**` into the repo's test directory and
 `sandbox/qa/test-plan.md` (or `sandbox/tests/TEST-PLAN.md`) to
-`${SESSION_PATH}/tests/test-plan.md`. Check the writer's `Files Read` section: any path
-outside the sandbox is a blindness breach — record it in the report and mark the tests
-"suspect".
+`${SESSION_PATH}/tests/test-plan.md`. Check the writer's `Files Read` section: it must
+list only sandbox paths, plus at most the prompt-delivery file
+(`claudish-mux-*/launch-*/turn-<n>.md`), which is not a breach. Any other non-sandbox
+path is a blindness breach — record it in the report and mark the tests "suspect".
+For an external writer, also check its real reads as `/dev:qa` Phase 2 does (the jq
+command is there): take `transcriptPath` from `get_diagnostics(<the writer's
+session_id>)` and list its Read calls. Every Read must be inside the sandbox, except the
+first Read only, which may be exactly one `claudish-mux-*/launch-*/turn-<n>.md` (its own
+prompt). A second `launch-*` path, or any other path outside the sandbox, is a blindness
+breach: record it and mark the tests "suspect". The internal `Agent` writer has no
+transcript path; keep the `Files Read` check for it.
 
 Negative control (mandatory): mutate one expected value in one test, run that file,
 paste the failure into `${SESSION_PATH}/tests/negative-control.md`, restore the test.

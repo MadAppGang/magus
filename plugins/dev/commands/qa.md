@@ -123,8 +123,9 @@ allowed-tools: Agent, AskUserQuestion, Bash, Read, Write, Glob, Grep, mcp__plugi
        `work_dir` is the sandbox, so the child starts with nothing but the sandbox in view.
        The sandbox still lives inside the repository, though: a shell can climb out of it,
        and Claude Code loads the repo's ancestor `CLAUDE.md`. So blindness rests on the
-       agent's contract (Reads only under the given paths) and on the `Files Read` check
+       agent's contract (Reads only under the given paths, plus the prompt-delivery file) and on the `Files Read` check
        in phase 2, not on the file system alone.
+       Keep the writer's `session_id` (and each phase session's): phase 2 needs it.
        Then wait for the session to end (poll `list_sessions(include_completed=true)`
        about every 10 s; nothing is pushed). On
        `COMPLETED` call `get_output(session_id)`; on `FAILED` or `TIMEOUT` call
@@ -176,7 +177,7 @@ allowed-tools: Agent, AskUserQuestion, Bash, Read, Write, Glob, Grep, mcp__plugi
       `STOP_AT: analyse`, `RESULTS_PATH: <sandbox>/qa/test-results.md`, and its last
       line replaced by: `Analyse the failures in RESULTS_PATH, fix the TEST_ISSUE tests,
       and write failure-analysis.md. Do not re-plan or rewrite other tests. Do not read
-      anything outside the paths above.` Read the
+      anything outside the paths above, other than the file this prompt was delivered in.` Read the
       classification from the fresh `<sandbox>/qa/failure-analysis.md`. A call that ends
       without writing a fresh one is a failed analyst session. Copy `<sandbox>/tests/**`
       home again and re-check `Files Read` as in phase 2.
@@ -201,7 +202,7 @@ allowed-tools: Agent, AskUserQuestion, Bash, Read, Write, Glob, Grep, mcp__plugi
     SESSION_PATH: <sandbox>
     LOADOUT: <sandbox>/loadout/ — the stack guidance, each source under its own tree;
              read it for stack guidance and do not run your knowledge routing's discovery
-    Write the plan and the tests. Do not read anything outside the paths above.
+    Write the plan and the tests. Do not read anything outside the paths above, other than the file this prompt was delivered in.
     ```
   </phase>
 
@@ -209,8 +210,19 @@ allowed-tools: Agent, AskUserQuestion, Bash, Read, Write, Glob, Grep, mcp__plugi
     - Copy `<sandbox>/tests/**` into `TEST_DIR`, and `<sandbox>/qa/test-plan.md` (or
       `<sandbox>/tests/TEST-PLAN.md`) to `${SESSION_PATH}/qa/test-plan.md`.
     - Read the writer's completion message: its `Files Read` section must list only
-      sandbox paths. Any other path is a blindness breach — report it in red and keep
+      sandbox paths, plus at most the prompt-delivery file
+      (`claudish-mux-*/launch-*/turn-<n>.md`), which is not a breach. Any other
+      non-sandbox path is a blindness breach — report it in red and keep
       the tests marked "suspect".
+    - An external writer's `Files Read` is its own report, so also check its real reads
+      from claudish's record. Take `transcriptPath` from `get_diagnostics(<the writer's
+      session_id>)` and list the Read calls:
+      `jq -r 'select(.type=="assistant") | .message.content[]? | select(.type=="tool_use" and .name=="Read") | .input.file_path' <transcriptPath>`.
+      Every Read must be inside the sandbox, except the first Read only, which may be
+      exactly one `claudish-mux-*/launch-*/turn-<n>.md` (its own prompt). A second
+      `launch-*` path, or any other path outside the sandbox, is a blindness breach:
+      report it in red and keep the tests marked "suspect". The internal `Agent` writer has
+      no transcript path; keep the `Files Read` check for it.
   </phase>
 
   <phase number="3" name="Run and prove" optional="true">

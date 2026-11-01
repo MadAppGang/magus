@@ -4,6 +4,23 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [dev 9.6.1] - 2026-11-01
+
+### Fixed
+
+- **`/dev:qa` external writers read their own prompt (MTL-283).** claudish hands every prompt
+  to a child as a file, `claudish-mux-*/launch-*/turn-<n>.md`. The blind `qa-engineer` allowed
+  no Read of it, so it refused its own task, returned BLOCKED, and claudish ended the run
+  `FAILED prompt_not_read`. Every external-writer run failed this way, for every model family.
+  The agent now may Read the file its prompt arrived in, and only that one, and lists it under
+  `Files Read` as `(prompt delivery)`. `/dev:qa`'s writer and analyst prompts name the same
+  exception, and its Phase 2 blindness check accepts that file and still flags every other path
+  outside the sandbox. `/dev:dev` Phase 6 carried its own copy of the writer prompt and the
+  check, and gets the same change. `check:qa-writer-contract` pins all four sites. Phase 2 checks the reads from claudish's
+  transcript, and accepts only the first one as the prompt file.
+
+---
+
 ## [magus 7.11.5] - 2026-10-31
 
 ### Fixed

@@ -26,6 +26,11 @@ tools: Read, Write, Edit, Bash, Glob, Grep
     - the testing skill and knowledge files named in `<knowledge_routing>` and any
       loadout paths the caller lists
     - `RESULTS_PATH`, when given
+    - the file that delivered this prompt, when it arrived as a file: shape
+      `claudish-mux-*/launch-*/turn-<n>.md` under the temp dir. It carries only the
+      caller's prompt; read it first, and only the one you were given. List it under
+      Files Read as "(prompt delivery)". If it pastes implementation code, ignore that
+      code and say so.
 
     **Every other Read is a contract violation.** Implementation source, internal helpers,
     a "quick look" at how a function works — refuse it, and record the refused path under
