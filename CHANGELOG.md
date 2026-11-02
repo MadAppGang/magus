@@ -4,6 +4,22 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [magus 7.11.8] - 2026-11-03
+
+### Changed
+
+- **`magus update` pulls only the marketplaces your plugins come from, at most once an
+  hour (MTL-365).** Before, every run in every project pulled every marketplace
+  registered on your machine, including ones you install nothing from. Now a
+  marketplace is pulled only when one of your plugins comes from it, at any scope:
+  USER, PROJECT or LOCAL. A marketplace pulled less than an hour ago is not pulled
+  again, whichever project you run `magus update` in. A pull that failed is tried
+  again on the next run. Press `r` in magus to force a fresh pull. The marketplaces
+  row says how many were refreshed, how many were refreshed in the last hour, and how
+  many were skipped.
+
+---
+
 ## [magus 7.11.7] - 2026-11-02
 
 ### Fixed
