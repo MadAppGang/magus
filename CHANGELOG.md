@@ -4,6 +4,22 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [magus 7.11.7] - 2026-11-02
+
+### Fixed
+
+- **`magus update` no longer hangs on the marketplaces step (MTL-365).** A marketplace
+  clone whose `git pull` timed out could hold the step for minutes; one run reached 56
+  minutes on `5/6 … refreshed`. git was stopped at 30 seconds, but its `ssh` kept running,
+  and magus waited for ssh. Now each git call gives up at its own timeout whatever ssh
+  does, and each marketplace gets at most 65 seconds before magus stops its git, marks
+  the clone as failed and moves on. A failed clone is left exactly as it was, just not
+  refreshed. The same applies to the catalog step when it falls back to git. SSH
+  passphrase and security-key prompts still work. The progress row names the last
+  marketplace that finished, not the one still running.
+
+---
+
 ## [magus 7.11.6] - 2026-11-02
 
 ### Fixed
