@@ -18,6 +18,7 @@ Plugin IDs carry the marketplace, so these are `name@magus`.
 
 | Plugin | Version | What it does |
 |---|---|---|
+| [`aside`](./aside.md) | 1.0.0 | Hands browser tasks to Aside, the user's own AI browser with its own logged-in agent, through the aside CLI, in a split terminal pane when the terminal plugin is present. An alternative to browser-use for work in the user's accounts. Needs the aside CLI. |
 | [`browser-use`](./browser-use.md) | 1.10.0 | Full-platform browser automation: live-page JS eval, keyboard and focus primitives, file screenshots, preflight and a configurable agent LLM, on local or cloud browsers. Runs Playwright's own Chromium, never your real Chrome. Adds Magus tools and 6 skills to the upstream Browser Use MCP set. |
 | [`bunjs`](./bunjs.md) | 0.5.0 | Bun and TypeScript toolkit. A `/bunjs:bun` index routes any task to the right one of eight task-shaped skills — setup, HTTP, errors, testing, security, production, performance, TUI — each shipping copyable code verified against Bun. Only Bun is tested. |
 | [`claudish`](./claudish.md) | 2.13.2 | MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting, manages async sessions, and shows the session's runs live above the prompt, with stop and live-screen tabs. Required by code-search, dev, multimodel and designer. |

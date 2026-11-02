@@ -206,6 +206,18 @@ claudish --help
 
 ---
 
+#### Aside - Your Logged-In Browser
+
+**Plugin:** `aside` | **Category:** Development Tools | **Needs:** the `aside` CLI
+
+Hands browser tasks to Aside, your own AI browser, through the `aside` CLI. Aside's agent already has your logins, history and memory, so Claude writes it a real task brief and watches the run in a split pane when the terminal plugin is present.
+
+- The `aside` skill briefs Aside's agent, steers the run and reports the result. `/aside:doctor` checks the CLI, the sign-in and the hosts.
+- Use `aside` for work in your accounts (Gmail, Slack, cloud consoles). Use `browser-use` for scraping, tests and UI debugging in a fresh browser with no personal state.
+- Aside manages its own sign-ins. The plugin installs nothing and never puts a secret in a task.
+
+---
+
 ## 🚀 Installation & Setup
 
 ### Prerequisites
@@ -245,7 +257,7 @@ if you need them:
 
 | Marketplace | Contains |
 |---|---|
-| `MadAppGang/magus` | Core development plugins — dev, code-search, terminal, designer, browser-use, and more |
+| `MadAppGang/magus` | Core development plugins — dev, code-search, terminal, designer, browser-use, aside, and more |
 | `MadAppGang/magus-marketing` | AI image generation and editing, video editing |
 | `MadAppGang/magus-alpha` | Experimental plugins with evolving interfaces — none published yet |
 

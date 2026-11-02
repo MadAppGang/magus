@@ -70,6 +70,20 @@
 
 ---
 
+## [aside 1.0.0] - 2026-11-01
+
+### Added
+
+- **`aside`: hand browser tasks to Aside, your own AI browser.** The `aside` skill teaches Claude
+  to treat Aside as a subagent that already has your logins, history and memory: it writes a
+  real task brief, runs `aside exec` in a split terminal pane when the terminal plugin is
+  present, updates you while it runs, and steers or stops it. It names the local or remote
+  Aside that runs the task, and it asks you for help only when Aside is blocked.
+  `/aside:doctor` checks the CLI, the sign-in and the hosts. It is an alternative to
+  `browser-use` for work in your accounts (MTL-335). Needs the aside CLI.
+
+---
+
 ## [magus 7.11.5] - 2026-10-31
 
 ### Fixed

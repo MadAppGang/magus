@@ -569,6 +569,37 @@
       ]
     },
     {
+      "name": "aside",
+      "source": "./plugins/aside",
+      "description": "Hands browser tasks to Aside, the user's own AI browser with its own logged-in agent, through the aside CLI, in a split terminal pane when the terminal plugin is present. An alternative to browser-use for work in the user's accounts. Needs the aside CLI.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Jack Rudenko",
+        "email": "i@madappgang.com",
+        "company": "MadAppGang"
+      },
+      "category": "development",
+      "keywords": [
+        "aside",
+        "browser",
+        "browser-automation",
+        "logged-in",
+        "debugging",
+        "terminal-pane"
+      ],
+      "strict": true,
+      "releases": [
+        {
+          "version": "1.0.0",
+          "date": "2026-11-01",
+          "kinds": [
+            "Added"
+          ],
+          "summary": "aside: hand browser tasks to Aside, your own AI browser"
+        }
+      ]
+    },
+    {
       "name": "browser-use",
       "source": "./plugins/browser-use",
       "description": "Full-platform browser automation: live-page JS eval, keyboard and focus primitives, file screenshots, preflight and a configurable agent LLM, on local or cloud browsers. Runs Playwright's own Chromium, never your real Chrome. Adds Magus tools and 6 skills to the upstream Browser Use MCP set.",
