@@ -75,7 +75,7 @@
       "name": "claudish",
       "source": "./plugins/claudish",
       "description": "MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting, manages async sessions, and shows the session's runs live above the prompt, with stop and live-screen tabs. Required by code-search, dev, multimodel and designer.",
-      "version": "2.13.2",
+      "version": "2.14.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -95,6 +95,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "2.14.0",
+          "date": "2026-11-03",
+          "kinds": [
+            "Added"
+          ],
+          "summary": "The Show panel scrolls back through a session's earlier output (MTL-369). The wheel or the\u2026"
+        },
         {
           "version": "2.13.2",
           "date": "2026-10-29",
@@ -128,11 +136,6 @@
             "Changed"
           ],
           "summary": "The status band names the subagent each run batch runs as (MTL-191). The batch header shows the\u2026"
-        },
-        {
-          "version": "2.11.0",
-          "date": "2026-10-24",
-          "summary": "Claudish-usage teaches the model-name and effort checks of claudish 14.4.0 (MTL-230). team,\u2026"
         }
       ]
     },

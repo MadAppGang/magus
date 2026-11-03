@@ -86,6 +86,17 @@ export type ResizeResult =
   /** any other error (resize_unsupported included), a rejection, or an unparseable answer */
   | { kind: 'failed'; reason: string }
 
+/** One scroll of a child's transcript: rows (negative toward older output), or back to its live bottom. */
+export type ScrollMove = { by: number } | { to: 'end' }
+
+export type ScrollResult =
+  /** the keys reached the child; seq: the screen to capture since */
+  | { kind: 'scrolled'; seq: number }
+  /** the run, session or slot is no longer retained */
+  | { kind: 'gone' }
+  /** any other error (scroll_unavailable included: nothing was sent), a rejection, or an unparseable answer */
+  | { kind: 'failed'; reason: string }
+
 /** A watched run as poll() needs it: the mod's run id and its ref. */
 export type WatchedRun = { id: string; ref: ClaudishRunRef }
 
@@ -130,6 +141,9 @@ export type RunSource = {
   /** Sets the child's terminal size, so it draws to the Show panel's size. poll.ts calls it only
    *  where the feed's can.resize is true. */
   resize(ref: ClaudishRunRef, slot: string, cols: number, rows: number): Promise<ResizeResult>
+  /** Scrolls the child's own transcript, as the person's wheel would. scroll.ts calls it only where
+   *  the feed's can.scroll is true, with |by| at most SCROLL_MAX_ROWS. */
+  scroll(ref: ClaudishRunRef, slot: string, move: ScrollMove): Promise<ScrollResult>
   /** The wake text's line naming one run for the model: its label plus claudish's own address and id. */
   runLine(ref: ClaudishRunRef, label: string): string
   /** One sentence telling the model which call fetches these slots' results, or answers a waiting delegation. */

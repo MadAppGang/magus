@@ -25,7 +25,8 @@ export type ClaudishRunRef = {
 
 /** allowance: true when a list answer announces claudish's allowance report; absent when it does not
  *  (and on a feed recorded before this field). A trigger to re-probe only: allowance_status decides support. */
-export type ClaudishFeatures = { cancel: boolean; capture: boolean; spans: boolean; resize: boolean; allowance?: boolean }
+/** scroll: the feed takes scroll_session / team(mode:"scroll"); absent from a feed state stored before it existed. */
+export type ClaudishFeatures = { cancel: boolean; capture: boolean; spans: boolean; resize: boolean; scroll?: boolean; allowance?: boolean }
 
 export type ClaudishFeedSupport =
   | { kind: 'probing'; strikes: number }

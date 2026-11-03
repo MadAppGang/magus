@@ -17,6 +17,8 @@ import type {
   CallSeen,
   CaptureResult,
   ResizeResult,
+  ScrollMove,
+  ScrollResult,
   FeedAnswer,
   FetchSlot,
   PollBatch,
@@ -227,12 +229,13 @@ function classify(result: McpToolResult | Error, rowsKey: 'runs' | 'sessions'): 
   const rows = body[rowsKey]
   if (!Array.isArray(rows)) return { answer: { kind: 'garbled', reason: `answer has no ${rowsKey} array` }, rows: none }
   // 7. speaks. `allowance` is present only when announced: a trigger to re-probe, never support itself.
+  // `scroll` is present only when announced too, so a feed without it reads exactly as before it existed.
   const capture = has('capture') && has('capture_since_seq')
   return {
     answer: {
       kind: 'speaks',
       version: 1,
-      can: { cancel: has('cancel'), capture, spans: capture && has('capture_spans'), resize: capture && has('resize'), ...(has('allowance') ? { allowance: true } : {}) },
+      can: { cancel: has('cancel'), capture, spans: capture && has('capture_spans'), resize: capture && has('resize'), ...(capture && has('scroll') ? { scroll: true } : {}), ...(has('allowance') ? { allowance: true } : {}) },
     },
     rows: rows.filter(isObject),
   }
@@ -359,6 +362,24 @@ function resizeResult(result: McpToolResult | Error): ResizeResult {
   return typeof cols === 'number' && typeof rows === 'number'
     ? { kind: 'resized', cols, rows }
     : { kind: 'failed', reason: 'resize answer has no cols and rows' }
+}
+
+// ── scroll ────────────────────────────────────────────────────────────────────
+
+function scrollResult(result: McpToolResult | Error): ScrollResult {
+  if (result instanceof Error) return { kind: 'failed', reason: short(result) }
+  const text = firstText(result)
+  if (result.isError === true) {
+    const code = contractErrorCode(text)
+    if (code !== null && GONE_CODES.has(code)) return { kind: 'gone' }
+    return { kind: 'failed', reason: code ?? short(text ?? '') }
+  }
+  const body = parseObject(text)
+  if (!body) return { kind: 'failed', reason: 'scroll answer is not a JSON object' }
+  const { seq } = body
+  return typeof seq === 'number' && Number.isInteger(seq) && seq >= 0
+    ? { kind: 'scrolled', seq }
+    : { kind: 'failed', reason: 'scroll answer has no seq' }
 }
 
 // ── capture ───────────────────────────────────────────────────────────────────
@@ -551,6 +572,14 @@ export function makeClaudishSource(call: McpCall): RunFeeds {
         ? await settleCall(call(ref.server, 'team', { mode: 'resize', path: ref.address, slot, run_id: ref.token, cols, rows }))
         : await settleCall(call(ref.server, 'resize_session', { session_id: ref.token, cols, rows }))
       return resizeResult(answer)
+    },
+
+    async scroll(ref: ClaudishRunRef, slot: string, move: ScrollMove): Promise<ScrollResult> {
+      const how = 'to' in move ? { to: move.to } : { by: move.by }
+      const answer = ref.kind === 'panel'
+        ? await settleCall(call(ref.server, 'team', { mode: 'scroll', path: ref.address, slot, run_id: ref.token, ...how }))
+        : await settleCall(call(ref.server, 'scroll_session', { session_id: ref.token, ...how }))
+      return scrollResult(answer)
     },
 
     runLine,

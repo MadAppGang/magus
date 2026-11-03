@@ -13,6 +13,7 @@ import { capped, claimVia, rejected, toAccepted, type Host, type PressUi, type S
 import { CLIENT_SURFACES, FORECAST_PANE_ID, FORECAST_PANE_TITLE, SHOW_PANE_ID } from './domain'
 import { activeTab, bandModel, childSize, paneAgentRows, paneFit, paneModel, showTabs, wrapTabs } from './layout'
 import * as poll from './poll'
+import * as scroll from './scroll'
 import * as allowancePoll from './allowance-poll'
 import * as wake from './wake'
 import * as controls from './controls'
@@ -305,8 +306,8 @@ export const register: Register = (on, options) => {
     })
     const runsTree = model && bandTree(els, model, {
       stop: target => void controls.pressStop(press, bound, target),
-      show: target => void controls.pressShow(press, ui, bound, target).then(id => poll.captureOpened(bound, id), () => poll.ensureLoop(bound)),
-      hide: () => void controls.pressHide(ui).catch(err => bound.debug(`claudish Hide failed: ${err instanceof Error ? err.message : String(err)}`)),
+      show: target => void controls.pressShow(press, ui, bound, target).then(id => (void scroll.release(bound, id), poll.captureOpened(bound, id)), () => poll.ensureLoop(bound)),
+      hide: () => void controls.pressHide(ui).then(() => scroll.release(bound, null)).catch(err => bound.debug(`claudish Hide failed: ${err instanceof Error ? err.message : String(err)}`)),
     }, palette, look)
     if (!top) return runsTree!
     if (!runsTree) return top
@@ -334,8 +335,17 @@ export const register: Register = (on, options) => {
     const model = view ? paneModel(view, runs, tabRows, await $.clock.now(), feeds) : null
     const press = bindStore($)
     return panelTree($.ui.resolve(e), tabs, strip, active?.id ?? null, model, fit.columns, palette,
-      target => void controls.pressTab(press, target).then(id => poll.captureOpened(bound, id), () => poll.ensureLoop(bound)),
-      () => void controls.pressHide(bindPressUi($)).catch(err => bound.debug(`claudish Hide failed: ${err instanceof Error ? err.message : String(err)}`)))
+      target => void controls.pressTab(press, target).then(id => (void scroll.release(bound, id), poll.captureOpened(bound, id)), () => poll.ensureLoop(bound)),
+      () => void controls.pressHide(bindPressUi($)).then(() => scroll.release(bound, null)).catch(err => bound.debug(`claudish Hide failed: ${err instanceof Error ? err.message : String(err)}`)))
+  })
+
+  // The person's wheel or scroll keys over the Show panel scroll the shown child's own transcript:
+  // claudish keeps no history to draw here, only the child does. The panel's window stays put (the
+  // next capture shows the move); where the tab cannot scroll, the engine scrolls the panel as before.
+  on('ui.scroll', { requestId: SHOW_PANE_ID }, async ($, e, next) => {
+    const bound = host
+    if (!bound || e.origin.kind !== 'person') return next(e)
+    return (await scroll.forward(bound, e.by)) ? {} : next(e)
   })
 
   // The forecast panel: the allowance as it stands (read, so a new report redraws it), and Hide.

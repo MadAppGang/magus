@@ -4,6 +4,18 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [claudish 2.14.0] - 2026-11-03
+
+### Added
+
+- The Show panel scrolls back through a session's earlier output (MTL-369). The wheel or the
+  scroll keys over the panel scroll the shown session's own transcript, as they would in that
+  session, and the panel shows the move at once. The session goes back to its live output when
+  you scroll down past it, when you switch tabs, or when you press Hide. Needs claudish 14.12.0
+  or later; with an older claudish the panel shows the current screen only, as before.
+
+---
+
 ## [magus 7.11.8] - 2026-11-03
 
 ### Changed

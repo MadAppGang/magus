@@ -56,6 +56,14 @@ export type FakeOptions = {
   noResize?: boolean
   /** a resize answers this ContractError code without changing the requested size */
   resizeError?: string
+  /** opt in to scroll on list answers; absent by default for existing tests */
+  listScroll?: boolean
+  /** a scroll answers this ContractError code, without moving its screen */
+  scrollError?: string
+  /** reject a scroll at the MCP boundary */
+  denyScroll?: string
+  /** hold a scroll response; calls are recorded before this gate */
+  beforeScroll?: (call: Recorded) => Promise<void> | void
   /** the n-th (1-based) list call of a kind: answer this instead, or undefined to answer normally */
   listAnswer?: (n: number, kind: 'runs' | 'sessions') => ListOverride | undefined
   /** rewrite a slot row before it is listed (a defective entry) */
@@ -124,6 +132,7 @@ export type Fake = {
   listCalls(kind?: 'runs' | 'sessions'): Recorded[]
   captureCalls(): Recorded[]
   resizeCalls(): Recorded[]
+  scrollCalls(): Recorded[]
   cancelCalls(): Recorded[]
   /** every allowance_status call the mod made, on any server */
   allowanceCalls(): Recorded[]
@@ -185,8 +194,8 @@ function text(body: unknown, isError = false): McpToolResult {
 }
 
 function meta(o: FakeOptions): Json {
-  // Keep the historical golden examples unchanged; only this fake's live lists gain resize.
-  const caps = [...CAPABILITIES, 'resize', ...(o.listAllowance ? ['allowance'] : [])].filter(c =>
+  // Keep the historical golden examples unchanged; scroll is opt-in on this fake's live lists.
+  const caps = [...CAPABILITIES, 'resize', ...(o.listAllowance ? ['allowance'] : []), ...(o.listScroll ? ['scroll'] : [])].filter(c =>
     !(o.declines && c === 'list')
     && !(o.noCapture && (c === 'capture' || c === 'capture_since_seq' || c === 'capture_spans'))
     && !(o.noCancel && c === 'cancel')
@@ -209,6 +218,8 @@ export function fakeClaudish(on: On, clock: MockClock, options: FakeOptions = {}
   const listCount = { runs: 0, sessions: 0 }
   let allowanceCount = 0
   const sizes = new Map<string, { cols: number; rows: number }>()
+  // A scroll repaints even when mock time has not moved. No viewport/depth policy lives in the fake.
+  const scrollSeqs = new Map<string, number>()
   let starts = 0
   let gate: Promise<void> | null = null
 
@@ -259,9 +270,9 @@ export function fakeClaudish(on: On, clock: MockClock, options: FakeOptions = {}
     return { state: 'CANCELLED', changed: true }
   }
 
-  function capture(startedAt: number, model: string, slot: string, control: SlotControl, noPane: boolean, args: Json): McpToolResult {
+  function capture(key: string, startedAt: number, model: string, slot: string, control: SlotControl, noPane: boolean, args: Json): McpToolResult {
     if (noPane || options.noPane?.includes(slot)) return text(neverSpawned())
-    const seq = seqAt(startedAt, now(), control)
+    const seq = Math.max(seqAt(startedAt, now(), control), scrollSeqs.get(key) ?? 0)
     const final = !options.neverFinal && isTerminal(control.state) && now() - control.at >= REAP_MS
     if (args.since_seq === seq) return text({ unchanged: true, seq, final })
     return text((options.frame ?? frame)({ seq, model, slot, final, spans: args.spans === true }))
@@ -354,6 +365,33 @@ export function fakeClaudish(on: On, clock: MockClock, options: FakeOptions = {}
       if (!s) return { value: text(contractError('unknown_session', 'no such session'), true) }
       return { value: text({ session_id: s.id, ...resize(s.id, s.startedAt, s.control, args) }) }
     }
+    if ((e.tool === 'team' && args.mode === 'scroll') || e.tool === 'scroll_session') {
+      await options.beforeScroll?.({ server: e.server, tool: e.tool, args, at: now() })
+      if (options.precontract) return { value: text(e.tool === 'team' ? 'Error: Unknown mode: scroll' : precontractUnknownTool(e.tool), true) }
+      if (options.denyScroll !== undefined) return { deny: options.denyScroll }
+      if (options.scrollError) return { value: text(contractError(options.scrollError, 'scroll refused'), true) }
+      const by = Object.prototype.hasOwnProperty.call(args, 'by')
+      const to = Object.prototype.hasOwnProperty.call(args, 'to')
+      if (by === to || (by && (typeof args.by !== 'number' || !Number.isInteger(args.by) || args.by === 0 || Math.abs(args.by) > 200))
+        || (to && args.to !== 'end')) {
+        return { value: text(contractError('invalid_args', 'scroll requires by (nonzero integer, at most 200 rows) or to:end'), true) }
+      }
+      const run = e.tool === 'team' ? runs.find(r => r.runId === args.run_id && r.path === args.path) : undefined
+      if (e.tool === 'team' && !run) return { value: text(contractError('unknown_run', 'no such run'), true) }
+      const s = run ? run.slots.find(s => s.slot === args.slot) : sessions.find(s => s.id === args.session_id)
+      if (!s) return { value: text(contractError(run ? 'unknown_slot' : 'unknown_session', 'not retained'), true) }
+      if (s.noPane || options.noPane?.includes(run ? String(args.slot) : String(args.session_id))
+        || s.control.state === 'STARTING' || isTerminal(s.control.state)) {
+        return { value: text(contractError('scroll_unavailable', 'pane cannot scroll now'), true) }
+      }
+      const key = run ? `${run.runId}/${args.slot}` : String(args.session_id)
+      const startedAt = run ? run.startedAt : (s as FakeSession).startedAt
+      const seq = Math.max(seqAt(startedAt, now(), s.control), scrollSeqs.get(key) ?? 0)
+      scrollSeqs.set(key, seq + 1)
+      return { value: text(run
+        ? { run_id: run.runId, path: run.path, slot: args.slot, seq }
+        : { session_id: args.session_id, seq }) }
+    }
     if ((e.tool === 'team' && args.mode === 'capture') || e.tool === 'capture_session') {
       if (options.rejectCapture) return { deny: 'capture rejected' }
       if (options.captureGone) return { value: text(contractError(e.tool === 'team' ? 'unknown_run' : 'unknown_session', 'retention over'), true) }
@@ -363,12 +401,12 @@ export function fakeClaudish(on: On, clock: MockClock, options: FakeOptions = {}
       if (!run) return { value: text(contractError('unknown_run', 'no such run'), true) }
       const s = run.slots.find(x => x.slot === args.slot)
       if (!s) return { value: text(contractError('unknown_slot', 'no such slot'), true) }
-      return { value: capture(run.startedAt, s.model, s.slot, s.control, s.noPane, args) }
+      return { value: capture(`${run.runId}/${s.slot}`, run.startedAt, s.model, s.slot, s.control, s.noPane, args) }
     }
     if (e.tool === 'capture_session') {
       const s = sessions.find(x => x.id === args.session_id)
       if (!s) return { value: text(contractError('unknown_session', 'no such session'), true) }
-      return { value: capture(s.startedAt, s.model, s.id, s.control, s.noPane, args) }
+      return { value: capture(s.id, s.startedAt, s.model, s.id, s.control, s.noPane, args) }
     }
     return { value: text(contractError('invalid_args', `fake has no ${e.tool} ${String(args.mode ?? '')}`), true) }
   })
@@ -459,6 +497,7 @@ export function fakeClaudish(on: On, clock: MockClock, options: FakeOptions = {}
       runs.splice(0, runs.length)
       sessions.splice(0, sessions.length)
       sizes.clear()
+      scrollSeqs.clear()
     },
     listCalls(kind) {
       return calls.filter(c =>
@@ -471,6 +510,9 @@ export function fakeClaudish(on: On, clock: MockClock, options: FakeOptions = {}
     },
     resizeCalls() {
       return calls.filter(c => c.tool === 'resize_session' || (c.tool === 'team' && c.args.mode === 'resize'))
+    },
+    scrollCalls() {
+      return calls.filter(c => c.tool === 'scroll_session' || (c.tool === 'team' && c.args.mode === 'scroll'))
     },
     cancelCalls() {
       return calls.filter(c => c.tool === 'cancel_session' || (c.tool === 'team' && c.args.mode === 'cancel'))
