@@ -253,10 +253,9 @@ export function deleteOldSessions(
   retentionDays: number
 ): { deletedCount: number; affectedPairs: Array<{ date: string; project: string }> } {
   const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - retentionDays);
-  // Use local date components to match the local-time format stored in sessions.date
-  const pad = (n: number) => String(n).padStart(2, "0");
-  const cutoffDate = `${cutoff.getFullYear()}-${pad(cutoff.getMonth() + 1)}-${pad(cutoff.getDate())}`; // YYYY-MM-DD local
+  cutoff.setUTCDate(cutoff.getUTCDate() - retentionDays);
+  // Use UTC date to match session dates stored as toISOString().slice(0, 10)
+  const cutoffDate = cutoff.toISOString().slice(0, 10);
 
   // Get affected (date, project) pairs and session count before deletion
   const affectedPairs = db
