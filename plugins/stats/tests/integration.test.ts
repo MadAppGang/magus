@@ -70,7 +70,7 @@ function makeTempDir(): string {
 
 function today(offsetDays = 0): string {
   const d = new Date();
-  d.setDate(d.getDate() - offsetDays);
+  d.setUTCDate(d.getUTCDate() - offsetDays);
   return d.toISOString().slice(0, 10);
 }
 
