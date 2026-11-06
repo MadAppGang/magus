@@ -36,9 +36,9 @@ describe("db", () => {
   });
 
   function today(offsetDays = 0): string {
-    const d = new Date();
-    d.setUTCDate(d.getUTCDate() - offsetDays);
-    return d.toISOString().slice(0, 10);
+    return new Date(Date.now() - offsetDays * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .slice(0, 10);
   }
 
   function makeSession(id: string, project = "/test/project", date = today()): SessionMetrics {
