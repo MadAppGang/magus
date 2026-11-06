@@ -12,11 +12,12 @@
  * person leaves the tab (another tab, or Hide).
  */
 
-import type { ClaudishRun } from '../../types'
+import type { ClaudishRunRef } from '../../types'
 import { SHOW_PANE_ID, feedKey, isTerminal } from './domain'
 import type { Host } from './host'
 import { activeTab, showTabs } from './layout'
 import { captureOpened } from './poll'
+import { captureReplay, replayTarget } from './replay'
 import type { ScrollMove, ScrollResult } from './run-source'
 
 /** claudish's cap on rows per scroll call; a larger move is sent as several. */
@@ -37,10 +38,12 @@ type TabScroll = {
 /** pane id → its scroll state. A tab with none was never scrolled. */
 const tabs = new Map<string, TabScroll>()
 
-type Target = { run: ClaudishRun; slot: string }
+type Target = { ref: ClaudishRunRef; slot: string; replay: boolean }
 
-/** The tab's run and slot, while the run is live and its feed takes scroll; null otherwise. */
+/** Where the tab's wheel goes: its open replay, else its child while the run is live and its feed takes scroll; null otherwise. */
 async function targetOf(host: Host, id: string): Promise<Target | null> {
+  const replay = replayTarget(id)
+  if (replay) return { ref: replay, slot: replay.token, replay: true }
   const view = await host.store.panes.read(id)
   if (!view) return null
   const runs = await host.store.runs.read()
@@ -50,14 +53,14 @@ async function targetOf(host: Host, id: string): Promise<Target | null> {
   if (!slot || isTerminal(slot.state)) return null
   const support = (await host.store.feeds.read())[feedKey(run.ref)]
   if (support?.kind !== 'speaks' || support.can.scroll !== true) return null
-  return { run, slot: view.slot }
+  return { ref: run.ref, slot: view.slot, replay: false }
 }
 
 /** One scroll call, never rejecting and never longer than SCROLL_TIMEOUT_MS: either becomes a failed answer. */
 function scrollBounded(host: Host, t: Target, move: ScrollMove): Promise<ScrollResult> {
   return new Promise(resolve => {
     const timer = host.after(SCROLL_TIMEOUT_MS, () => resolve({ kind: 'failed', reason: 'no answer' }))
-    host.source.scroll(t.run.ref, t.slot, move).then(
+    host.source.scroll(t.ref, t.slot, move).then(
       r => { timer.cancel(); resolve(r) },
       (e: unknown) => { timer.cancel(); resolve({ kind: 'failed', reason: e instanceof Error ? e.message : String(e) }) },
     )
@@ -84,7 +87,7 @@ async function send(host: Host, id: string, st: TabScroll, t: Target, move: Scro
     st.above = Math.min(0, st.above + move.by)
     st.moved = true
   }
-  await captureOpened(host, id, false)
+  await (t.replay ? captureReplay(host, id) : captureOpened(host, id, false))
   // A downward scroll that left the screen as it was found the child's bottom: the reckoning was
   // off (the child went back on its own, at a prompt submit). Bring it back to live from there.
   if (before !== null && st.above < 0 && (await screenOf(host, id)) === before) {

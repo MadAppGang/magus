@@ -19,6 +19,10 @@ import type {
   ResizeResult,
   ScrollMove,
   ScrollResult,
+  TranscriptCursor,
+  ReplayOpenResult,
+  TranscriptLine,
+  TranscriptResult,
   FeedAnswer,
   FetchSlot,
   PollBatch,
@@ -235,7 +239,7 @@ function classify(result: McpToolResult | Error, rowsKey: 'runs' | 'sessions'): 
     answer: {
       kind: 'speaks',
       version: 1,
-      can: { cancel: has('cancel'), capture, spans: capture && has('capture_spans'), resize: capture && has('resize'), ...(capture && has('scroll') ? { scroll: true } : {}), ...(has('allowance') ? { allowance: true } : {}) },
+      can: { cancel: has('cancel'), capture, spans: capture && has('capture_spans'), resize: capture && has('resize'), ...(capture && has('scroll') ? { scroll: true } : {}), ...(has('transcript') ? { transcript: true } : {}), ...(capture && has('replay') ? { replay: true } : {}), ...(has('allowance') ? { allowance: true } : {}) },
     },
     rows: rows.filter(isObject),
   }
@@ -380,6 +384,53 @@ function scrollResult(result: McpToolResult | Error): ScrollResult {
   return typeof seq === 'number' && Number.isInteger(seq) && seq >= 0
     ? { kind: 'scrolled', seq }
     : { kind: 'failed', reason: 'scroll answer has no seq' }
+}
+
+// ── transcript ────────────────────────────────────────────────────────────────
+
+/** Control characters out (newlines kept: the panel wraps them); claudish strips them too. */
+const CONTROL = /[\u0000-\u0009\u000b-\u001f\u007f-\u009f]/g
+
+function transcriptResult(result: McpToolResult | Error): TranscriptResult {
+  if (result instanceof Error) return { kind: 'failed', reason: short(result) }
+  const text = firstText(result)
+  if (result.isError === true) {
+    const code = contractErrorCode(text)
+    if (code !== null && GONE_CODES.has(code)) return { kind: 'gone' }
+    return { kind: 'failed', reason: code ?? short(text ?? '') }
+  }
+  const body = parseObject(text)
+  if (!body) return { kind: 'failed', reason: 'transcript answer is not a JSON object' }
+  const { cursor, lines } = body
+  if ((typeof cursor !== 'string' && typeof cursor !== 'number') || !Array.isArray(lines)) {
+    return { kind: 'failed', reason: 'transcript answer has no cursor or lines' }
+  }
+  const kept: TranscriptLine[] = []
+  for (const l of lines) {
+    if (!isObject(l) || typeof l.kind !== 'string' || typeof l.text !== 'string') continue
+    kept.push({ kind: l.kind.replace(CONTROL, '').slice(0, 32), text: l.text.replace(/\t/g, '  ').replace(CONTROL, ''), cont: l.cont === true })
+  }
+  return { kind: 'lines', cursor: cursor as TranscriptCursor, lines: kept, more: body.more === true, final: body.final === true }
+}
+
+// ── replay ────────────────────────────────────────────────────────────────────
+
+function replayOpenResult(result: McpToolResult | Error): ReplayOpenResult {
+  if (result instanceof Error) return { kind: 'failed', reason: short(result) }
+  const text = firstText(result)
+  if (result.isError === true) {
+    const code = contractErrorCode(text)
+    if (code !== null && GONE_CODES.has(code)) return { kind: 'gone' }
+    const err = parseObject(text)?.error
+    if (code === 'replay_unavailable' && isObject(err) && err.reason === 'session_live') return { kind: 'notYet' }
+    return { kind: 'failed', reason: code ?? short(text ?? '') }
+  }
+  const body = parseObject(text)
+  if (!body) return { kind: 'failed', reason: 'replay answer is not a JSON object' }
+  const { replay_id: replayId, seq } = body
+  return typeof replayId === 'string' && replayId !== '' && typeof seq === 'number'
+    ? { kind: 'opened', replayId, seq }
+    : { kind: 'failed', reason: 'replay answer has no replay_id or seq' }
 }
 
 // ── capture ───────────────────────────────────────────────────────────────────
@@ -580,6 +631,26 @@ export function makeClaudishSource(call: McpCall): RunFeeds {
         ? await settleCall(call(ref.server, 'team', { mode: 'scroll', path: ref.address, slot, run_id: ref.token, ...how }))
         : await settleCall(call(ref.server, 'scroll_session', { session_id: ref.token, ...how }))
       return scrollResult(answer)
+    },
+
+    async transcript(ref: ClaudishRunRef, slot: string, since: TranscriptCursor | null): Promise<TranscriptResult> {
+      const from = since === null ? {} : { since }
+      const answer = ref.kind === 'panel'
+        ? await settleCall(call(ref.server, 'team', { mode: 'transcript', path: ref.address, slot, run_id: ref.token, ...from }))
+        : await settleCall(call(ref.server, 'transcript_session', { session_id: ref.token, ...from }))
+      return transcriptResult(answer)
+    },
+
+    async replayOpen(ref: ClaudishRunRef, slot: string, size: { cols: number; rows: number } | null): Promise<ReplayOpenResult> {
+      const fit = size ? { cols: size.cols, rows: size.rows } : {}
+      const answer = ref.kind === 'panel'
+        ? await settleCall(call(ref.server, 'team', { mode: 'replay', path: ref.address, slot, run_id: ref.token, ...fit }))
+        : await settleCall(call(ref.server, 'replay_session', { session_id: ref.token, ...fit }))
+      return replayOpenResult(answer)
+    },
+
+    async replayClose(server: string, replayId: string): Promise<void> {
+      await settleCall(call(server, 'close_replay', { replay_id: replayId }))
     },
 
     runLine,

@@ -58,6 +58,18 @@ export type FakeOptions = {
   resizeError?: string
   /** opt in to scroll on list answers; absent by default for existing tests */
   listScroll?: boolean
+  /** opt in to transcript on list answers; absent by default for existing tests */
+  listTranscript?: boolean
+  /** the n-th (1-based, per target) transcript answer; may hold, fail or reject at the MCP boundary */
+  transcriptAnswer?: (call: Recorded, n: number) => ListOverride | undefined | Promise<ListOverride | undefined>
+  /** Replay routes and list capability are opt-in; existing scenarios remain unchanged. */
+  listReplay?: boolean
+  /** Per original target, 1-based; undefined uses the normal successful open. May hold or reject. */
+  replayOpenAnswer?: (call: Recorded, n: number) => ListOverride | undefined | Promise<ListOverride | undefined>
+  /** Per replay, 1-based; undefined serves its current screen, unchanged after since_seq catches up. */
+  replayCaptureAnswer?: (call: Recorded, n: number) => ListOverride | undefined | Promise<ListOverride | undefined>
+  /** optional per-test delegation identity; existing tests keep the original generated ids */
+  sessionId?: (n: number) => string
   /** a scroll answers this ContractError code, without moving its screen */
   scrollError?: string
   /** reject a scroll at the MCP boundary */
@@ -118,11 +130,17 @@ export type FakeSlot = { slot: string; model: string; control: SlotControl; noPa
 export type FakeRun = { runId: string; path: string; startedAt: number; slots: FakeSlot[]; hidden: boolean }
 export type FakeSession = { id: string; model: string; startedAt: number; control: SlotControl; noPane: boolean }
 export type Recorded = { server: string; tool: string; args: Json; at: number }
+/** The external fake's allocated processes, including closed ones for leak assertions. */
+export type FakeReplay = {
+  id: string; server: string; model: string; slot: string
+  seq: number; cols: number; rows: number; closed: boolean
+}
 
 export type Fake = {
   readonly options: FakeOptions
   readonly runs: FakeRun[]
   readonly sessions: FakeSession[]
+  readonly replays: FakeReplay[]
   /** every call the mod made through mcp.call */
   readonly calls: Recorded[]
   /** set a slot's state (any word) from now */
@@ -133,6 +151,9 @@ export type Fake = {
   captureCalls(): Recorded[]
   resizeCalls(): Recorded[]
   scrollCalls(): Recorded[]
+  transcriptCalls(): Recorded[]
+  replayOpenCalls(): Recorded[]
+  replayCloseCalls(): Recorded[]
   cancelCalls(): Recorded[]
   /** every allowance_status call the mod made, on any server */
   allowanceCalls(): Recorded[]
@@ -194,8 +215,9 @@ function text(body: unknown, isError = false): McpToolResult {
 }
 
 function meta(o: FakeOptions): Json {
-  // Keep the historical golden examples unchanged; scroll is opt-in on this fake's live lists.
-  const caps = [...CAPABILITIES, 'resize', ...(o.listAllowance ? ['allowance'] : []), ...(o.listScroll ? ['scroll'] : [])].filter(c =>
+  // Keep the historical golden examples unchanged; scroll and transcript are opt-in on live lists.
+  const caps = [...CAPABILITIES, 'resize', ...(o.listAllowance ? ['allowance'] : []), ...(o.listScroll ? ['scroll'] : []),
+    ...(o.listTranscript ? ['transcript'] : []), ...(o.listReplay ? ['replay'] : [])].filter(c =>
     !(o.declines && c === 'list')
     && !(o.noCapture && (c === 'capture' || c === 'capture_since_seq' || c === 'capture_spans'))
     && !(o.noCancel && c === 'cancel')
@@ -220,6 +242,11 @@ export function fakeClaudish(on: On, clock: MockClock, options: FakeOptions = {}
   const sizes = new Map<string, { cols: number; rows: number }>()
   // A scroll repaints even when mock time has not moved. No viewport/depth policy lives in the fake.
   const scrollSeqs = new Map<string, number>()
+  const transcriptCounts = new Map<string, number>()
+  const replays: FakeReplay[] = []
+  const replayOpens = new Map<string, number>()
+  const replayCaptures = new Map<string, number>()
+  let replaySerial = 0
   let starts = 0
   let gate: Promise<void> | null = null
 
@@ -325,8 +352,97 @@ export function fakeClaudish(on: On, clock: MockClock, options: FakeOptions = {}
       if (options.precontract) return { value: text({ sessions: rows }) }
       return { value: text({ ...meta(options), sessions: rows }) }
     }
+    // Replay requests are a separate external namespace, never ordinary session rows.
+    if (options.listReplay && !options.precontract) {
+      const call: Recorded = { server: e.server, tool: e.tool, args, at: now() }
+      if (e.tool === 'replay_session' || (e.tool === 'team' && args.mode === 'replay')) {
+        const run = e.tool === 'team' ? runs.find(r => r.runId === args.run_id && r.path === args.path) : undefined
+        if (e.tool === 'team' && !run) return { value: text(contractError('unknown_run', 'no such run'), true) }
+        const target = run ? run.slots.find(s => s.slot === args.slot) : sessions.find(s => s.id === args.session_id)
+        if (!target) return { value: text(contractError(run ? 'unknown_slot' : 'unknown_session', 'not retained'), true) }
+        if (!isTerminal(target.control.state)) return { value: text(contractError('replay_unavailable', 'session is still live'), true) }
+        const key = JSON.stringify([e.server, run?.runId ?? args.session_id, run ? args.slot : null])
+        const n = (replayOpens.get(key) ?? 0) + 1
+        replayOpens.set(key, n)
+        const override = await options.replayOpenAnswer?.(call, n)
+        if (override && 'deny' in override) return { deny: override.deny }
+        const id = 'replay-' + (++replaySerial) + '-' + (run?.runId ?? String(args.session_id)) + '-' + String(args.slot ?? '')
+        const answer = override ?? { text: JSON.stringify({ replay_id: id, seq: 0 }) }
+        // Record resources only for an actual successful allocation, not error-shaped answers.
+        if (!answer.isError) {
+          let body: unknown
+          try { body = JSON.parse(answer.text) } catch { body = null }
+          if (body && typeof body === 'object' && 'replay_id' in body && typeof body.replay_id === 'string') {
+            replays.push({
+              id: body.replay_id, server: e.server, model: target.model,
+              slot: run ? String(args.slot) : String(args.session_id),
+              seq: 1, cols: Number(args.cols ?? 120), rows: Number(args.rows ?? 30), closed: false,
+            })
+          }
+        }
+        return { value: text(answer.text, answer.isError === true) }
+      }
+      if (e.tool === 'close_replay') {
+        const replay = replays.find(r => r.id === args.replay_id && r.server === e.server)
+        if (replay) replay.closed = true
+        return { value: text({ closed: true }) }
+      }
+      const replay = replays.find(r => r.id === args.session_id && r.server === e.server)
+      if (replay && ['capture_session', 'resize_session', 'scroll_session'].includes(e.tool)) {
+        if (replay.closed) return { value: text(contractError('unknown_session', 'replay is closed'), true) }
+        if (e.tool === 'capture_session') {
+          const n = (replayCaptures.get(replay.id) ?? 0) + 1
+          replayCaptures.set(replay.id, n)
+          const answer = await options.replayCaptureAnswer?.(call, n)
+          if (answer) return 'deny' in answer ? { deny: answer.deny } : { value: text(answer.text, answer.isError === true) }
+          if (args.since_seq === replay.seq) return { value: text({ unchanged: true, seq: replay.seq, final: false }) }
+          return { value: text({
+            seq: replay.seq, cols: replay.cols, rows: replay.rows, final: false, cursor: null,
+            lines: Array.from({ length: replay.rows }, (_, i) => i === 0 ? 'REPLAY ' + replay.model + ' seq ' + replay.seq : ''),
+          }) }
+        }
+        if (e.tool === 'resize_session') {
+          if (typeof args.cols !== 'number' || !Number.isFinite(args.cols) || args.cols <= 0
+            || typeof args.rows !== 'number' || !Number.isFinite(args.rows) || args.rows <= 0) {
+            return { value: text(contractError('invalid_args', 'resize requires positive numeric dimensions'), true) }
+          }
+          const changed = replay.cols !== args.cols || replay.rows !== args.rows
+          replay.cols = args.cols
+          replay.rows = args.rows
+          if (changed) replay.seq += 1
+          return { value: text({ cols: replay.cols, rows: replay.rows, changed, seq: replay.seq }) }
+        }
+        await options.beforeScroll?.(call)
+        if (options.denyScroll !== undefined) return { deny: options.denyScroll }
+        if (options.scrollError) return { value: text(contractError(options.scrollError, 'scroll refused'), true) }
+        const by = Object.prototype.hasOwnProperty.call(args, 'by')
+        const to = Object.prototype.hasOwnProperty.call(args, 'to')
+        if (by === to || (by && (typeof args.by !== 'number' || !Number.isInteger(args.by)
+          || args.by === 0 || Math.abs(args.by) > 200)) || (to && args.to !== 'end')) {
+          return { value: text(contractError('invalid_args', 'scroll requires bounded by or to:end'), true) }
+        }
+        const seq = replay.seq++
+        return { value: text({ session_id: replay.id, seq }) }
+      }
+    }
     if (options.precontract && (e.tool === 'capture_session' || (e.tool === 'team' && args.mode === 'capture'))) {
       return { value: text(e.tool === 'team' ? 'Error: Unknown mode: capture' : precontractUnknownTool(e.tool), true) }
+    }
+    if ((e.tool === 'team' && args.mode === 'transcript') || e.tool === 'transcript_session') {
+      if (options.precontract) return { value: text(e.tool === 'team' ? 'Error: Unknown mode: transcript' : precontractUnknownTool(e.tool), true) }
+      const run = e.tool === 'team' ? runs.find(r => r.runId === args.run_id && r.path === args.path) : undefined
+      if (e.tool === 'team' && !run) return { value: text(contractError('unknown_run', 'no such run'), true) }
+      const target = run ? run.slots.find(s => s.slot === args.slot) : sessions.find(s => s.id === args.session_id)
+      if (!target) return { value: text(contractError(run ? 'unknown_slot' : 'unknown_session', 'not retained'), true) }
+      const key = JSON.stringify([e.server, e.tool, run?.runId ?? args.session_id, run ? args.slot : null])
+      const n = (transcriptCounts.get(key) ?? 0) + 1
+      transcriptCounts.set(key, n)
+      const override = await options.transcriptAnswer?.({ server: e.server, tool: e.tool, args, at: now() }, n)
+      if (override) return 'deny' in override ? { deny: override.deny } : { value: text(override.text, override.isError === true) }
+      return { value: text({
+        ...(run ? { run_id: run.runId, path: run.path, slot: args.slot } : { session_id: args.session_id }),
+        cursor: 'empty', lines: [], more: false, final: isTerminal(target.control.state),
+      }) }
     }
     if ((e.tool === 'team' && args.mode === 'cancel') || e.tool === 'cancel_session') {
       if (gate) await gate
@@ -452,7 +568,7 @@ export function fakeClaudish(on: On, clock: MockClock, options: FakeOptions = {}
     }
     if (verb === 'create_session') {
       starts += 1
-      const id = `${(0xa1b2c3d4 + starts).toString(16)}-0000-4000-8000-${String(starts).padStart(12, '0')}`
+      const id = options.sessionId?.(starts) ?? `${(0xa1b2c3d4 + starts).toString(16)}-0000-4000-8000-${String(starts).padStart(12, '0')}`
       const startedAt = now()
       const prompt = typeof args.prompt === 'string' && args.prompt.length > 0
       sessions.push({
@@ -487,6 +603,7 @@ export function fakeClaudish(on: On, clock: MockClock, options: FakeOptions = {}
     options,
     runs,
     sessions,
+    replays,
     calls,
     set(key, slot, state, reason = null, extra = {}) {
       const target = findSlot(key, slot)
@@ -498,6 +615,10 @@ export function fakeClaudish(on: On, clock: MockClock, options: FakeOptions = {}
       sessions.splice(0, sessions.length)
       sizes.clear()
       scrollSeqs.clear()
+      transcriptCounts.clear()
+      replays.splice(0)
+      replayOpens.clear()
+      replayCaptures.clear()
     },
     listCalls(kind) {
       return calls.filter(c =>
@@ -513,6 +634,15 @@ export function fakeClaudish(on: On, clock: MockClock, options: FakeOptions = {}
     },
     scrollCalls() {
       return calls.filter(c => c.tool === 'scroll_session' || (c.tool === 'team' && c.args.mode === 'scroll'))
+    },
+    transcriptCalls() {
+      return calls.filter(c => c.tool === 'transcript_session' || (c.tool === 'team' && c.args.mode === 'transcript'))
+    },
+    replayOpenCalls() {
+      return calls.filter(c => c.tool === 'replay_session' || (c.tool === 'team' && c.args.mode === 'replay'))
+    },
+    replayCloseCalls() {
+      return calls.filter(c => c.tool === 'close_replay')
     },
     cancelCalls() {
       return calls.filter(c => c.tool === 'cancel_session' || (c.tool === 'team' && c.args.mode === 'cancel'))

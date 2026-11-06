@@ -25,8 +25,9 @@ export type ClaudishRunRef = {
 
 /** allowance: true when a list answer announces claudish's allowance report; absent when it does not
  *  (and on a feed recorded before this field). A trigger to re-probe only: allowance_status decides support. */
-/** scroll: the feed takes scroll_session / team(mode:"scroll"); absent from a feed state stored before it existed. */
-export type ClaudishFeatures = { cancel: boolean; capture: boolean; spans: boolean; resize: boolean; scroll?: boolean; allowance?: boolean }
+/** scroll: the feed takes scroll_session / team(mode:"scroll"); transcript: transcript_session / team(mode:"transcript").
+ *  Each is present only when announced, so a feed state stored before it existed reads the same. */
+export type ClaudishFeatures = { cancel: boolean; capture: boolean; spans: boolean; resize: boolean; scroll?: boolean; transcript?: boolean; replay?: boolean; allowance?: boolean }
 
 export type ClaudishFeedSupport =
   | { kind: 'probing'; strikes: number }
@@ -170,6 +171,16 @@ export type ClaudishLedger = { epoch: number; entries: Record<string, ClaudishWa
 export type ClaudishTurn = { isRunning: boolean; since: number }
 /** The Show panel's active tab: a slot's tab id (its view's member id); null before the first Show. */
 export type ClaudishShowTab = { active: string | null }
+/** What a Show tab draws: the child's live screen, or its transcript as scrollable text. */
+export type ClaudishShowMode = 'screen' | 'text'
+/**
+ * The Show panel's text view. rev: bumped whenever a tab's transcript lines change, so the panel
+ * redraws (the lines themselves live in the module, re-read after a reload). modes: per pane id, the
+ * mode the person picked; absent = the default (text once the slot has ended, screen while it runs).
+ */
+export type ClaudishTextView = { rev: number; modes: Record<string, ClaudishShowMode> }
+/** The replays open now, by pane id: enough to reach and close each one after a reload. */
+export type ClaudishReplays = Record<string, { server: string; replayId: string }>
 export type ClaudishEarlier = { runs: number; done: number; failed: number; stopped: number }
 
 // ── the allowance report (claudish's Codex account pool) ─────────────────────
@@ -327,6 +338,10 @@ declare module 'claude-code' {
       showTab: ClaudishShowTab
       /** claudish's allowance report, polled on its own cadence */
       allowance: ClaudishAllowance
+      /** the Show panel's text view: a redraw counter and the mode per tab */
+      textView: ClaudishTextView
+      /** the read-only replays open for the Show panel */
+      replays: ClaudishReplays
     }
   }
 }

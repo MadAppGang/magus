@@ -1,9 +1,10 @@
-// The Show panel: a pure tree builder over showTabs and paneModel. Its actions are picking a tab
-// and Hide: the child's screen stays read-only (no Input anywhere; the only Buttons are the tabs and
-// Hide).
+// The Show panel: a pure tree builder over showTabs and paneModel. Its actions are picking a tab,
+// the Screen / Text switch and Hide: the child's screen stays read-only (no Input anywhere; the only
+// Buttons are the tabs, the switch and Hide).
 // Every frame colour arrives already spelled from layout.ts; the header and notes use theme keys.
 
 import type { RenderElement } from 'claude-code'
+import type { ClaudishShowMode } from '../../types'
 import { badgeParts, button, segmentsText, type Els } from './band'
 import type { Palette } from './palette'
 import { CODE_CELLS, RUNTIME_CELLS, SHOW_CELLS, type PaneLine, type PaneModel, type ShowTab, type SlotTarget, type StripTab } from './layout'
@@ -84,24 +85,70 @@ export function panelTree(
   palette: Palette,
   select: (target: SlotTarget) => void,
   hide: () => void,
+  toggle: ModeSwitch | null = null,
 ): RenderElement {
   const { Box, Text } = els
   return (
     <Box flexDirection="column">
       {tabStrip(els, tabs, strip, active, columns, palette, select, hide)}
-      {model ? paneTree(els, model, palette) : <Text wrap="truncate-end" dimColor>No run to show.</Text>}
+      {model ? paneTree(els, model, palette, toggle) : <Text wrap="truncate-end" dimColor>No run to show.</Text>}
     </Box>
   ) as RenderElement
 }
 
-/** One tab's body: the slot's agent when it names one, a header row, then the child's screen, or why there is none. */
-export function paneTree(els: Els, model: PaneModel, palette: Palette): RenderElement {
+/** The Screen / Text switch on a tab's header row: the mode drawn now, and the press that picks the other. */
+export type ModeSwitch = { mode: ClaudishShowMode; press: (mode: ClaudishShowMode) => void }
+
+/** Each transcript kind's mark before its text; an unknown kind is plain. */
+const KIND_MARK: Readonly<Record<string, { mark: string; dim: boolean; color?: string }>> = {
+  user: { mark: '› ', dim: false, color: 'suggestion' },
+  assistant: { mark: '  ', dim: false },
+  tool: { mark: '⏺ ', dim: true },
+  task_file: { mark: '  ', dim: true },
+  system: { mark: '· ', dim: true },
+  error: { mark: '! ', dim: false, color: 'error' },
+}
+
+/** The transcript as text, wrapped to the panel: taller than the pane, so the engine scrolls it. */
+function textBody(els: Els, body: Extract<PaneModel['body'], { kind: 'text' }>): RenderElement {
+  const { Box, Text } = els
+  return (
+    <Box key="text" flexDirection="column">
+      {body.dropped > 0 && <Text key="dropped" wrap="truncate-end" dimColor>{`… ${body.dropped} earlier lines not kept`}</Text>}
+      {body.lines.map((l, i) => {
+        const k = KIND_MARK[l.kind] ?? { mark: '  ', dim: false }
+        return (
+          <Text key={`t:${i}`} wrap="wrap" {...(k.dim ? { dimColor: true } : {})} {...(k.color ? { color: k.color } : {})}>
+            {k.mark + l.text}
+          </Text>
+        )
+      })}
+      {body.lines.length === 0 && body.note === null && <Text key="empty" wrap="truncate-end" dimColor>Reading the transcript…</Text>}
+      {body.note !== null && <Text key="note" wrap="truncate-end" dimColor>{body.note}</Text>}
+    </Box>
+  ) as RenderElement
+}
+
+/** One tab's body: the slot's agent when it names one, a header row (with the Screen / Text switch
+ *  where claudish can give the transcript), then the child's screen or its transcript, or why there is none. */
+export function paneTree(els: Els, model: PaneModel, palette: Palette, toggle: ModeSwitch | null = null): RenderElement {
   const { Box, Text } = els
   const body = model.body
+  const header = segmentsText(els, model.header, model.badge ? badgeParts(els, palette, model.badge, ` ${model.badge.code.padEnd(CODE_CELLS - 2)} `, ` ${model.badge.runtime.padStart(RUNTIME_CELLS - 2)} `) : [])
   return (
     <Box flexDirection="column">
       {model.agent.length > 0 && segmentsText(els, model.agent)}
-      {segmentsText(els, model.header, model.badge ? badgeParts(els, palette, model.badge, ` ${model.badge.code.padEnd(CODE_CELLS - 2)} `, ` ${model.badge.runtime.padStart(RUNTIME_CELLS - 2)} `) : [])}
+      {toggle
+        ? (
+          <Box key="head" flexDirection="row">
+            <Box flexGrow={1} flexShrink={1}>{header}</Box>
+            <Box flexShrink={0}>
+              {button(els, 'mode', toggle.mode === 'screen' ? 'Text' : 'Screen', { color: 'suggestion' }, () => toggle.press(toggle.mode === 'screen' ? 'text' : 'screen'))}
+            </Box>
+          </Box>
+        )
+        : header}
+      {body.kind === 'text' && textBody(els, body)}
       {body.kind === 'waiting' && <Text wrap="truncate-end" dimColor>Waiting for the first screen…</Text>}
       {body.kind === 'unavailable' && <Text wrap="truncate-end" dimColor>{body.note}</Text>}
       {body.kind === 'unavailable' && body.numbers !== '' && <Text wrap="truncate-end" dimColor>{body.numbers}</Text>}

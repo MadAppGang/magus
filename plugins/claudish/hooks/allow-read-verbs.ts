@@ -15,13 +15,17 @@
  * installed through this plugin (`mcp__plugin_claudish_claudish__…`) or registered directly
  * (`mcp__claudish__…`). A suffix match is never enough, so the hook stays safe under any matcher.
  *
- * - `team` with mode list | status | capture | resize → allow (its run and cancel modes must ask).
- * - `list_sessions`, `capture_session`, `resize_session`, `allowance_status` → allow. The status
+ * - `team` with mode list | status | capture | resize | scroll | transcript | replay → allow (its
+ *   run and cancel modes must ask).
+ * - `list_sessions`, `capture_session`, `resize_session`, `scroll_session`, `transcript_session`,
+ *   `replay_session`, `close_replay`, `allowance_status` → allow. The status
  *   mod asks `allowance_status` every minute or five for the allowance row; it only reads
  *   claudish's account-pool report.
  *
  * Resize is not a read, but it changes only the size of a child's terminal, which the Show tab
  * sets so the child's screen fits it. Asking each time would put a dialog over the tab it serves.
+ * Scroll moves only the child's view of its own output. A replay is a read-only process that cannot
+ * start a turn: claudish refuses input to it and starts it with no credentials.
  * - anything else (a team run, a judge, a cancel, a session start or send, another server) →
  *   print nothing: the person's own rules decide.
  *
@@ -32,9 +36,18 @@
  */
 
 const SERVERS = ['mcp__plugin_claudish_claudish__', 'mcp__claudish__'] as const
-const READ_MODES: ReadonlySet<string> = new Set(['list', 'status', 'capture', 'resize'])
+const READ_MODES: ReadonlySet<string> = new Set(['list', 'status', 'capture', 'resize', 'scroll', 'transcript', 'replay'])
 const READ_TOOLS: ReadonlySet<string> = new Set(
-  SERVERS.flatMap(s => [`${s}list_sessions`, `${s}capture_session`, `${s}resize_session`, `${s}allowance_status`]),
+  SERVERS.flatMap(s => [
+    `${s}list_sessions`,
+    `${s}capture_session`,
+    `${s}resize_session`,
+    `${s}scroll_session`,
+    `${s}transcript_session`,
+    `${s}replay_session`,
+    `${s}close_replay`,
+    `${s}allowance_status`,
+  ]),
 )
 const TEAM_TOOLS: ReadonlySet<string> = new Set(SERVERS.map(s => `${s}team`))
 

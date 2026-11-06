@@ -27,6 +27,7 @@ import {
 import * as allowancePoll from './allowance-poll'
 import { serverOfTool } from './claudish-source'
 import type { Host } from './host'
+import { replayHolds } from './replay'
 import { activeTab, showTabs } from './layout'
 import type { FeedAnswer, PollBatch, ResizeResult } from './run-source'
 import * as wake from './wake'
@@ -137,6 +138,11 @@ async function fitLive(host: Host, runs: ClaudishRuns, feeds: Readonly<Record<st
  * shown tab now (resizing its child first), not at the loop's next tick, which can be a back-off
  * away. Hidden tabs take the new size at their own next capture.
  */
+/** The size the panel last asked its tabs to draw at; null before its first draw. */
+export function panelSizeNow(): Size | null {
+  return panelSize
+}
+
 export function notePanelSize(host: Host, size: Size, shownId: string | null): void {
   if (sameSize(panelSize, size)) return
   panelSize = size
@@ -525,6 +531,13 @@ async function captures(
     if (!view || (view.status === 'ended' && !retry)) {
       lastAttemptAt.delete(p.id)
       terminalSeenAt.delete(p.id)
+      continue
+    }
+    // A replay draws this tab now: a capture of the original would put its old screen back.
+    if (replayHolds(p.id)) {
+      lastAttemptAt.delete(p.id)
+      terminalSeenAt.delete(p.id)
+      if (view.status !== 'ended') await host.store.panes.update(p.id, v => (v ? { ...v, status: 'ended', note: null } : v))
       continue
     }
     const run = runs.list.find(r => r.id === view.runId)

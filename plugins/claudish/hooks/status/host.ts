@@ -7,10 +7,12 @@ import type { PromptSubmitResult, Timer, UiOpenResult, UiPane } from 'claude-cod
 import type {
   ClaudishAllowance,
   ClaudishShowTab,
+  ClaudishTextView,
   ClaudishEarlier,
   ClaudishFeedSupport,
   ClaudishLedger,
   ClaudishPaneView,
+  ClaudishReplays,
   ClaudishRuns,
   ClaudishStopRequest,
   ClaudishTurn,
@@ -41,6 +43,10 @@ export type Store = {
   turn: Cell<ClaudishTurn>
   earlier: Cell<ClaudishEarlier>
   showTab: Cell<ClaudishShowTab>
+  /** the Show panel's text view: redraw counter and per-tab mode */
+  textView: Cell<ClaudishTextView>
+  /** the read-only replays open for the Show panel */
+  replays: Cell<ClaudishReplays>
   panes: Member<ClaudishPaneView | null>
   /** claudish's allowance report, as allowance-poll.ts last decided it */
   allowance: Cell<ClaudishAllowance>
@@ -73,6 +79,8 @@ export type Host = {
   messages(): Promise<readonly TranscriptRow[]>
   /** the engine's session.id: this conversation's id, which changes on /clear */
   sessionId(): Promise<string>
+  /** the engine's ui.scroll to the end of one of this mod's panes; a refusal is ignored */
+  scrollEnd(id: string): Promise<void>
 }
 
 const MAX_PASSES = 8

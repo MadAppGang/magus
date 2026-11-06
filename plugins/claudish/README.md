@@ -137,6 +137,15 @@ drop first; a line never wraps.
     toast says why.
   - Tabs belong to the runs the band shows: once a newer run replaces an older one, the older
     run's tabs close.
+  - With claudish 14.13.0 or later, a tab has a `Text` / `Screen` switch on its header row. Text
+    draws the session's conversation as plain lines from its first turn, and you scroll them in
+    the panel. Your press is kept per tab.
+  - With claudish 14.15.0 or later, a finished session opens on its real screen, which scrolls:
+    claudish reopens it read only when you look at its tab. Nothing you type reaches it and it
+    starts no turn. Each tab you open stays open while the panel is open, and costs one Claude Code
+    process (about 400 MB). Closing the panel closes all of them. When the screen cannot be
+    reopened, the tab shows Text. With claudish 14.13.0 or 14.14.x, a finished session opens on
+    Text.
 - **Hide** puts the panel away and keeps its tabs. While a tab is open, its line reads
   `[ Hide ]`; the next Show on any line brings the panel back with every tab it had. Escape
   closes the tab you are in.

@@ -4,6 +4,26 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [claudish 2.15.0] - 2026-11-06
+
+### Added
+
+- A finished tab of the Show panel draws the session's real Claude Code screen again, and it
+  scrolls (MTL-373). claudish reopens the finished session read only, only for the tab you look
+  at; each tab you open stays open while the panel is open, and all of them close when the panel
+  closes. Nothing typed can reach it, and it starts no turn. Needs claudish 14.15.0 or later.
+- Each tab has a Screen / Text switch. Text draws the session's conversation as plain lines that
+  scroll in the panel, from the first turn. It is also what a finished tab shows when its screen
+  cannot be reopened, and with claudish 14.13.0 or 14.14.x. With an older claudish the panel shows
+  no switch and draws the screen, as before.
+
+### Fixed
+
+- The status mod's scroll and transcript reads no longer ask for permission in a session that
+  is not in bypass mode.
+
+---
+
 ## [terminal 5.6.0] - 2026-11-06
 
 ### Fixed

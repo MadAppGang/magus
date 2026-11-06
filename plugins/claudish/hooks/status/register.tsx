@@ -10,10 +10,12 @@ import type { EngineInterface, Register, RenderElement } from 'claude-code'
 import { CLAUDISH_TOOL, makeClaudishSource, type McpCall } from './claudish-source'
 import { isCodexSession, makeAllowanceSource } from './allowance-source'
 import { capped, claimVia, rejected, toAccepted, type Host, type PressUi, type Store } from './host'
-import { CLIENT_SURFACES, FORECAST_PANE_ID, FORECAST_PANE_TITLE, SHOW_PANE_ID } from './domain'
+import { CLIENT_SURFACES, FORECAST_PANE_ID, FORECAST_PANE_TITLE, SHOW_PANE_ID, feedKey, isTerminal } from './domain'
 import { activeTab, bandModel, childSize, paneAgentRows, paneFit, paneModel, showTabs, wrapTabs } from './layout'
 import * as poll from './poll'
 import * as scroll from './scroll'
+import * as replay from './replay'
+import * as transcript from './transcript'
 import * as allowancePoll from './allowance-poll'
 import * as wake from './wake'
 import * as controls from './controls'
@@ -22,9 +24,9 @@ import { allowanceRow } from './allowance-row'
 import { allowanceRowTree, forecastTree } from './allowance'
 import { panelLines } from './forecast'
 import { DARK_PALETTE, TMUX_THEME_FORMAT, paletteFor, tmuxClientAppearance, type Appearance, type Palette } from './palette'
-import { panelTree } from './pane'
+import { panelTree, type ModeSwitch } from './pane'
 
-// The nine atoms. plugin and key are literals HERE: the scan reads no reference from another file.
+// The ten atoms. plugin and key are literals HERE: the scan reads no reference from another file.
 const RUNS = atom({ plugin: 'claudish', key: 'runs' } as const, { epoch: 0, starts: {}, list: [] })
 const FEEDS = atom({ plugin: 'claudish', key: 'feeds' } as const, {})
 const STOP_REQUESTS = atom({ plugin: 'claudish', key: 'stopRequests' } as const, {})
@@ -34,6 +36,8 @@ const TURN = atom({ plugin: 'claudish', key: 'turn' } as const, { isRunning: fal
 const EARLIER = atom({ plugin: 'claudish', key: 'earlier' } as const, { runs: 0, done: 0, failed: 0, stopped: 0 })
 const SHOW_TAB = atom({ plugin: 'claudish', key: 'showTab' } as const, { active: null })
 const ALLOWANCE = atom({ plugin: 'claudish', key: 'allowance' } as const, { kind: 'probing' })
+const TEXT_VIEW = atom({ plugin: 'claudish', key: 'textView' } as const, { rev: 0, modes: {} })
+const REPLAYS = atom({ plugin: 'claudish', key: 'replays' } as const, {})
 
 // One closure set per atom, spelled per atom: a generic helper taking the atom as a parameter is refused.
 function bindStore($: EngineInterface): Store {
@@ -84,6 +88,16 @@ function bindStore($: EngineInterface): Store {
       update: fn => update($, ALLOWANCE, capped(fn)),
       claim: fn => claimVia(f => update($, ALLOWANCE, capped(f)), fn),
     },
+    replays: {
+      read: () => read($, REPLAYS),
+      update: fn => update($, REPLAYS, capped(fn)),
+      claim: fn => claimVia(f => update($, REPLAYS, capped(f)), fn),
+    },
+    textView: {
+      read: () => read($, TEXT_VIEW),
+      update: fn => update($, TEXT_VIEW, capped(fn)),
+      claim: fn => claimVia(f => update($, TEXT_VIEW, capped(f)), fn),
+    },
   }
 }
 
@@ -103,6 +117,7 @@ function bindHost($: EngineInterface): Host {
     close: id => $.ui.close({ id }),
     messages: () => $.session.messages(),
     sessionId: () => $.session.id(),
+    scrollEnd: id => $.ui.scroll({ in: id, to: 'end' }).then(() => undefined, () => undefined),
   }
 }
 
@@ -212,6 +227,7 @@ export const register: Register = (on, options) => {
     await wake.resetVolatile(bound) // stop requests and the turn flag: what a reload strands
     void wake.recover(bound).then(() => wake.flushDetached(bound), () => wake.flushDetached(bound)) // inflight → delivered | pending, then deliver what is due
     poll.ensureLoop(bound) // restarts only if state holds something to watch
+    void replay.adopt(bound).catch(err => bound.debug(`claudish Show replay adopt failed: ${err instanceof Error ? err.message : String(err)}`)) // what a reload left open: the watcher closes it if the panel is gone
     if (codex) allowancePoll.start(bound) // the allowance report's own loop; a no-op while one is live
     return next(e)
   })
@@ -221,6 +237,7 @@ export const register: Register = (on, options) => {
   // onSessionEnd). The run poll resets the old conversation's runs on the same two reasons.
   on('session.end', ($, e, next) => {
     allowancePoll.onSessionEnd(e.reason)
+    if (host && (e.reason === 'clear' || e.reason === 'resume')) void replay.closeAll(host).catch(() => undefined)
     return host ? poll.onSessionEnd(host, e, next) : next(e)
   })
 
@@ -332,11 +349,40 @@ export const register: Register = (on, options) => {
     // The agent line takes a row too, the same for every tab, so the child is that row shorter and a tab switch resizes nothing.
     const agentRows = paneAgentRows(runs, feeds)
     poll.notePanelSize(bound, childSize({ ...tabRows, rows: tabRows.rows - agentRows }), active?.id ?? null) // each tab's child is resized to it before its capture
-    const model = view ? paneModel(view, runs, tabRows, await $.clock.now(), feeds) : null
+    let model = view ? paneModel(view, runs, tabRows, await $.clock.now(), feeds) : null
+    // The Screen / Text switch: where claudish can give the tab's transcript. Text draws it as lines
+    // the engine scrolls; a tab not read yet is read now (the read redraws through textView.rev).
+    const textView = await read($, TEXT_VIEW)
+    transcript.prune(new Set(tabs.map(t => t.id)))
+    let toggle: ModeSwitch | null = null
+    if (active && view && model) {
+      const run = runs.list.find(r => r.id === view.runId)
+      const slot = run?.slots.find(x => x.slot === view.slot)
+      const support = run ? feeds[feedKey(run.ref)] : undefined
+      const canText = support?.kind === 'speaks' && support.can.transcript === true
+      const ended = view.status === 'ended' || (slot !== undefined && isTerminal(slot.state)) || (run?.settledAt ?? null) !== null
+      const canReplay = support?.kind === 'speaks' && support.can.replay === true
+      const mode = transcript.modeOf(textView, active.id, ended, canText, canReplay && !replay.replayFailed(active.id))
+      // A finished tab the visible panel draws on its screen: its real interface, opened only now.
+      // The slot's own state, not the view's: a pane that never spawned reads ended while its session runs.
+      const finished = (slot !== undefined && isTerminal(slot.state)) || (run?.settledAt ?? null) !== null
+      if (finished && canReplay && mode === 'screen' && run && support?.kind === 'speaks') replay.ensureReplay(bound, active.id, run.ref, view.slot, support.can.spans)
+      if (canText) {
+        const id = active.id
+        toggle = { mode, press: m => void (m === 'text' ? scroll.release(bound, null) : Promise.resolve()).then(() => transcript.setMode(bound, id, m)).catch(err => bound.debug(`claudish Show mode failed: ${err instanceof Error ? err.message : String(err)}`)) }
+      }
+      if (mode === 'screen' && view.frame === null && replay.replayOpening(active.id)) model = { ...model, body: { kind: 'note', note: replay.REPLAY_OPENING_NOTE } }
+      if (mode === 'text') {
+        transcript.keepReading(bound, active.id)
+        const text = transcript.textOf(active.id)
+        model = { ...model, body: { kind: 'text', lines: text?.lines ?? [], dropped: text?.dropped ?? 0, note: text?.note ?? null, final: text?.final ?? false } }
+      }
+    }
     const press = bindStore($)
     return panelTree($.ui.resolve(e), tabs, strip, active?.id ?? null, model, fit.columns, palette,
       target => void controls.pressTab(press, target).then(id => (void scroll.release(bound, id), poll.captureOpened(bound, id)), () => poll.ensureLoop(bound)),
-      () => void controls.pressHide(bindPressUi($)).then(() => scroll.release(bound, null)).catch(err => bound.debug(`claudish Hide failed: ${err instanceof Error ? err.message : String(err)}`)))
+      () => void controls.pressHide(bindPressUi($)).then(() => replay.closeAll(bound)).then(() => scroll.release(bound, null)).catch(err => bound.debug(`claudish Hide failed: ${err instanceof Error ? err.message : String(err)}`)),
+      toggle)
   })
 
   // The person's wheel or scroll keys over the Show panel scroll the shown child's own transcript:
@@ -345,6 +391,8 @@ export const register: Register = (on, options) => {
   on('ui.scroll', { requestId: SHOW_PANE_ID }, async ($, e, next) => {
     const bound = host
     if (!bound || e.origin.kind !== 'person') return next(e)
+    // A tab drawn as text is the engine's to scroll: its tree is taller than the pane.
+    if ((await transcript.shownTextTab(bound)) !== null) return next(e)
     return (await scroll.forward(bound, e.by)) ? {} : next(e)
   })
 

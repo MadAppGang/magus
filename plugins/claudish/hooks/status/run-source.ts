@@ -97,6 +97,30 @@ export type ScrollResult =
   /** any other error (scroll_unavailable included: nothing was sent), a rejection, or an unparseable answer */
   | { kind: 'failed'; reason: string }
 
+/** claudish's transcript cursor: opaque, passed back exactly as it came. */
+export type TranscriptCursor = string | number
+
+/** One transcript line as claudish sends it. cont: continues the previous line of the same kind (join with no separator). */
+export type TranscriptLine = { kind: string; text: string; cont: boolean }
+
+export type TranscriptResult =
+  /** lines after the cursor asked with; more: more lines wait after `cursor`; final: nothing more will come */
+  | { kind: 'lines'; cursor: TranscriptCursor; lines: TranscriptLine[]; more: boolean; final: boolean }
+  /** the run, session or slot is no longer retained */
+  | { kind: 'gone' }
+  /** any other error, a rejection, or an unparseable answer */
+  | { kind: 'failed'; reason: string }
+
+export type ReplayOpenResult =
+  /** the replay runs; it is addressed as a session, by this id */
+  | { kind: 'opened'; replayId: string; seq: number }
+  /** the session has not finished letting go of its record yet (a slot is replayable a moment after it ends) */
+  | { kind: 'notYet' }
+  /** the run, session or slot is no longer retained */
+  | { kind: 'gone' }
+  /** any other error (replay_unavailable included), a rejection, or an unparseable answer */
+  | { kind: 'failed'; reason: string }
+
 /** A watched run as poll() needs it: the mod's run id and its ref. */
 export type WatchedRun = { id: string; ref: ClaudishRunRef }
 
@@ -144,6 +168,14 @@ export type RunSource = {
   /** Scrolls the child's own transcript, as the person's wheel would. scroll.ts calls it only where
    *  the feed's can.scroll is true, with |by| at most SCROLL_MAX_ROWS. */
   scroll(ref: ClaudishRunRef, slot: string, move: ScrollMove): Promise<ScrollResult>
+  /** The child's conversation as text lines after `since` (null: from the start). transcript.ts calls it
+   *  only where the feed's can.transcript is true. Read only: nothing reaches the child. */
+  transcript(ref: ClaudishRunRef, slot: string, since: TranscriptCursor | null): Promise<TranscriptResult>
+  /** Resumes the finished child read only in a hidden pane. replay.ts calls it only where the feed's
+   *  can.replay is true. Capture, resize and scroll then address it by a ref carrying the replay id. */
+  replayOpen(ref: ClaudishRunRef, slot: string, size: { cols: number; rows: number } | null): Promise<ReplayOpenResult>
+  /** Closes a replay. Never rejects: a replay already gone is closed. */
+  replayClose(server: string, replayId: string): Promise<void>
   /** The wake text's line naming one run for the model: its label plus claudish's own address and id. */
   runLine(ref: ClaudishRunRef, label: string): string
   /** One sentence telling the model which call fetches these slots' results, or answers a waiting delegation. */

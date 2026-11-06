@@ -734,6 +734,8 @@ export type PaneBody =
   | { kind: 'unavailable'; note: string; numbers: string }
   | { kind: 'frame'; lines: PaneLine[] }
   | { kind: 'note'; note: string }
+  /** the transcript as text: whole lines (cont chains joined), lines dropped above them, why a read failed */
+  | { kind: 'text'; lines: { kind: string; text: string }[]; dropped: number; note: string | null; final: boolean }
 
 /** `agent`: the line above the header naming the slot's agent; [] when it names none. */
 export type PaneModel = { agent: Segment[]; badge: Badge | null; header: Segment[]; body: PaneBody }
