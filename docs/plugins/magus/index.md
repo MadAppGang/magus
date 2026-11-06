@@ -31,7 +31,7 @@ Plugin IDs carry the marketplace, so these are `name@magus`.
 | [`mnemex`](./mnemex.md) | 1.2.0 | MCP runtime for semantic code search and AST analysis, ranking symbols by PageRank. Optional engine behind the code-search facade, and usable directly for its full tool surface. |
 | [`multimodel`](./multimodel.md) | 5.9.1 | Multi-model collaboration and orchestration. Runs a task across several AI models in parallel and aggregates their blind APPROVE/REJECT votes, or delegates it to one model running a full Claude Code session. |
 | [`setup`](./setup.md) | 1.8.0 | Project setup jobs in one plugin. Investigates a repository and provisions it — plugins, tools, framework best-practice references, and a seeded knowledge base — then installs the adaptive statusline and indexes every skill reachable from the project into browsable markdown. |
-| [`terminal`](./terminal.md) | 5.5.0 | Slot-addressed terminal control over tmux. Runs interactive commands, dev servers, test watchers, REPLs and TUI apps in numbered helper panes — beside the user or isolated from view — that the server places and owns, so an agent never holds a pane id or targets the user's own session. |
+| [`terminal`](./terminal.md) | 5.6.0 | Slot-addressed terminal control over tmux or herdr. Runs interactive commands, dev servers, test watchers, REPLs and TUI apps in numbered helper panes — beside the user or isolated from view — that the server places and owns, so an agent never holds a pane id or targets the user's own session. |
 
 Turn any of them on from the Plugins tab. To give a team the same set, press `s` to save
 your selection as a profile and commit it — see [Teams and profiles](../../guides/teams.md).

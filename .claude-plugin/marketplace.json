@@ -721,8 +721,8 @@
     {
       "name": "terminal",
       "source": "./plugins/terminal",
-      "description": "Slot-addressed terminal control over tmux. Runs interactive commands, dev servers, test watchers, REPLs and TUI apps in numbered helper panes \u2014 beside the user or isolated from view \u2014 that the server places and owns, so an agent never holds a pane id or targets the user's own session.",
-      "version": "5.5.0",
+      "description": "Slot-addressed terminal control over tmux or herdr. Runs interactive commands, dev servers, test watchers, REPLs and TUI apps in numbered helper panes \u2014 beside the user or isolated from view \u2014 that the server places and owns, so an agent never holds a pane id or targets the user's own session.",
+      "version": "5.6.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -740,6 +740,15 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "5.6.0",
+          "date": "2026-11-06",
+          "kinds": [
+            "Fixed",
+            "Added"
+          ],
+          "summary": "The terminal plugin now uses tmux-mcp v2.1.1, which fixes three pane defects and adds herdr\u2026"
+        },
         {
           "version": "5.5.0",
           "date": "2026-10-20",
@@ -768,11 +777,6 @@
             "Added"
           ],
           "summary": "A missing dependency is named at session start"
-        },
-        {
-          "version": "5.2.3",
-          "date": "2026-09-27",
-          "summary": "The bun test --watch readiness pattern matches what Bun prints, and the psql prompt row names\u2026"
         }
       ]
     },

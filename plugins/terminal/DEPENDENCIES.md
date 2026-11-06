@@ -4,9 +4,11 @@ This plugin requires one MCP server to be installed and available on your system
 
 ---
 
-## Required: tmux-mcp v2.0.0
+## Required: tmux-mcp
 
-**What it does**: tmux MCP server (Go binary). Gives Claude numbered helper slots — panes beside you in your tmux window, or isolated panes on a private server nobody sees — and runs commands, REPLs and TUI apps in them, captures their output, and closes them. Claude addresses every slot by number and never holds a pane id. The plugin's `.mcp.json` declares:
+The release is pinned in `.claude-plugin/plugin.json` `requires`, with one sha256 per platform.
+
+**What it does**: terminal MCP server (Go binary). Gives Claude numbered helper slots — panes beside you in your tmux or herdr window, or isolated panes on a private tmux server nobody sees — and runs commands, REPLs and TUI apps in them, captures their output, and closes them. Claude addresses every slot by number and never holds a pane id. The plugin's `.mcp.json` declares:
 
 ```json
 {
@@ -19,6 +21,10 @@ This plugin requires one MCP server to be installed and available on your system
 
 **Source**: [github.com/MadAppGang/tmux-mcp](https://github.com/MadAppGang/tmux-mcp)
 **Platform**: macOS and Linux (requires tmux to be installed)
+
+**herdr**: optional. When Claude Code runs inside herdr, tmux-mcp detects it at startup and opens visible slots as herdr panes; the tools are the same. It needs herdr 0.9.1 or later, with `herdr` on PATH or `HERDR_BIN_PATH` set. Isolated slots still use tmux. `tmux-mcp --backend tmux|herdr` overrides the detection.
+
+**Shell**: `-shell-type zsh` in `.mcp.json` is a fallback only. tmux-mcp reads the shell each pane really runs, so bash, sh, dash and ksh panes work as well as zsh.
 
 ### Install
 
@@ -38,7 +44,7 @@ No magus-cli yet? `bun add -g magus-cli`, then `magus doctor --fix`. tmux-mcp la
 
 ```bash
 which tmux-mcp
-tmux-mcp --version   # v2.0.0
+tmux-mcp --version   # the tag pinned in requires
 ```
 
 ---

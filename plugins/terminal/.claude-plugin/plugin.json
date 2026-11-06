@@ -1,7 +1,7 @@
 {
   "name": "terminal",
-  "version": "5.5.0",
-  "description": "Slot-addressed terminal control over tmux. Runs interactive commands, dev servers, test watchers, REPLs and TUI apps in numbered helper panes — beside the user or isolated from view — that the server places and owns, so an agent never holds a pane id or targets the user's own session.",
+  "version": "5.6.0",
+  "description": "Slot-addressed terminal control over tmux or herdr. Runs interactive commands, dev servers, test watchers, REPLs and TUI apps in numbered helper panes — beside the user or isolated from view — that the server places and owns, so an agent never holds a pane id or targets the user's own session.",
   "author": {
     "name": "Jack Rudenko",
     "email": "i@madappgang.com",
@@ -107,14 +107,14 @@
           {
             "via": "release",
             "repo": "MadAppGang/tmux-mcp",
-            "tag": "v2.0.0",
+            "tag": "v2.1.1",
             "asset": "tmux-mcp_{os}_{arch}.tar.gz",
             "binary": "tmux-mcp",
             "sha256": {
-              "darwin_amd64": "6e03b4c4d8f3fe70f18ebc1117afa91a82d120612e28586a16c7b0b6921a4522",
-              "darwin_arm64": "0a6d93021e0df8cbc915da68c0e2cdfb82f85075ce67c161fa786bceb4b275cd",
-              "linux_amd64": "44e8f5749e98230b87585b60131d2116ae00d8e8ceb57348a84b6c8dfd93cd20",
-              "linux_arm64": "10ca7af43fa0c83ae0e4e892171bad260a7055caee43507aa5b56f1a1a7e997f"
+              "darwin_amd64": "5f15213dba6d2938aa2b0dd06136afe1724be828e63651943711de952a2a6619",
+              "darwin_arm64": "76a72df79cbade4b29fac6ca3b673b289c7966b418c8b17ed8c94f9970c433f9",
+              "linux_amd64": "bf8952d5835288f9496fa191d94cb9ff035d8b61d37ea09017286d48805dabef",
+              "linux_arm64": "fba7cd094e74cc2bd4004bf5ae0e570c86f05438fa3c22a06d531ec4571049aa"
             }
           }
         ]

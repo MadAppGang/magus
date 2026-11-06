@@ -104,10 +104,12 @@ All terminal operations run through `tmux-mcp` v2 (a Go binary from [github.com/
 
 | Scenario | How tmux-mcp handles it |
 |----------|-------------------------|
-| Work beside you | Slot 1 is opened in your current tmux window, or adopted from an idle shell you left open |
+| Work beside you | Slot 1 is opened beside the agent in your current tmux or herdr window; a pane you opened is never taken |
+| Running under herdr | Detected at startup; the agent sees the same tools as under tmux |
+| A brand-new pane | Nothing is typed until its shell is ready, and the call fails if the shell did not take the input |
 | Work out of view | `isolated: true` on slot 2+ opens a pane on a private tmux server with no window |
 | One-shot command | `execute-command` with `isolated: true` and no slot is ephemeral — no slot to close |
-| Not inside tmux | Only isolated slots are available; a visible call is an error that says so |
+| Not inside tmux or herdr | Only isolated slots are available; a visible call is an error that says so |
 | Read scrollback history | `capture-pane` with a `lines` count |
 | Multi-pane dashboard layouts | Slots 1, 2, 3 … placed by the server; layout commands via Bash |
 
@@ -147,7 +149,7 @@ Five skills teach Claude the full terminal interaction protocol.
 
 | Requirement | Install |
 |-------------|---------|
-| tmux, zsh, tmux-mcp v2.0.0 | declared in `.claude-plugin/plugin.json` `requires`; `magus doctor --fix` installs them — see [DEPENDENCIES.md](./DEPENDENCIES.md) |
+| tmux, zsh, tmux-mcp (the release `requires` pins); herdr 0.9.1 or later only if you work in herdr | declared in `.claude-plugin/plugin.json` `requires`; `magus doctor --fix` installs them — see [DEPENDENCIES.md](./DEPENDENCIES.md) |
 
 ---
 

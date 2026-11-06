@@ -66,7 +66,7 @@ When the user says "open on a side", "split terminal", "show alongside", "run be
 
 **CRITICAL RULES:**
 - NEVER look for your own pane. The server places every slot itself; a call can never target your own pane or the user's.
-- Pass NO placement. Slot 1 is beside the user, slot 2 stacks under it, slot 3 goes bottom-left.
+- Pass NO placement. Slot 1 is beside the user, slot 2 stacks under it, slot 3 goes under the agent.
 - Need a second pane? Ask for `slot: 2` (`open-pane({ slot: 2 })` → `{ "slot": 2, "created": true, "isolated": false }`).
 - CHECK `created` in the response. `created: true` on a slot you were already using means the user closed that pane and your process died with it.
 - After context compaction, call `list-slots` before choosing a number -- you may still hold slots.
@@ -123,7 +123,7 @@ result = mcp__plugin_terminal_mux__start-and-watch({
 
 1. **No credentials**: If a password prompt is detected (use `pane-state` to check `waitingForInput`, look for "password" in captured output), stop immediately and report. Never pass passwords through `send-keys`.
 2. **Never run an unconfirmed destructive operation**: Database drops, production deploys, migrations -- run one only when the prompt says the user approved it; otherwise close the slot and return Blocked, naming the operation and the authorization missing. You cannot ask the user.
-3. **Stay in your slots**: You cannot read a pane the user is using. Run the process in a slot, or `cat` its log file. `close-pane` interrupts and releases an adopted pane; it only kills panes the server created.
+3. **Stay in your slots**: You cannot read a pane the user is using. Run the process in a slot, or `cat` its log file. `close-pane` kills only panes the server created; a pane the user opened is interrupted and released, never killed.
 4. **Always close isolated slots**: Even on error. Use `close-pane({ slot })`, or `close-pane({ slot: "all" })` for bulk cleanup.
 5. **Use full scrollback**: `capture-pane` supports a `lines` parameter -- use `capture-pane({ slot, lines: 200 })` when you need more than the visible viewport.
 

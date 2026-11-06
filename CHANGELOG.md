@@ -4,6 +4,35 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [terminal 5.6.0] - 2026-11-06
+
+### Fixed
+
+- **The terminal plugin now uses tmux-mcp v2.1.1, which fixes three pane defects and
+  adds herdr (MTL-344).**
+  - **The first command into a new pane runs.** The server waits until the pane's shell
+    is ready before it types, and checks that the shell took the input. Before, a
+    command sent while zsh was still loading `.zshrc` sat in the input line and never
+    ran. `execute-command` never types a command twice: if the command did not start,
+    the call fails and says so.
+  - **Helper panes are reused, and your own panes are never taken.** The server reuses
+    only a pane that carries its own slot marker. Before, slot 1 could take over an idle
+    shell you had opened.
+  - **Panes land where the placement rule says:** slot 1 beside the agent, slot 2 under
+    slot 1, slot 3 under the agent.
+  - **`execute-command` works when your shell is not zsh.** It reads the exit code in the
+    shell the pane really runs. Before, a bash user's call hung forever, because the
+    plugin starts the server for zsh. Every wait now ends: if the exit code cannot be
+    read, the call returns `exitCode` -1 with a note saying why.
+
+### Added
+
+- **herdr works like tmux.** When Claude Code runs inside herdr, tmux-mcp detects it at
+  startup and opens visible slots as herdr panes. The agent uses the same tools in both.
+  herdr 0.9.1 or later is needed only if you work in herdr.
+
+---
+
 ## [magus 7.12.0] - 2026-11-06
 
 ### Added

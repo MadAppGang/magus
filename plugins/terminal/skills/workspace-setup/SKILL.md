@@ -59,8 +59,8 @@ Four archetypes derived from real developer sessions. Users can ask for one by n
 **Build dashboards with numbered slots.** Each slot is a distinct pane, created on first use
 and returned unchanged after that. You do not split, pass a direction, or order the calls
 defensively — slot 2 is never slot 1, by construction. Panes are titled `agent`, `agent:2` …
-automatically. Placement: 1 is beside you, 2 stacks under 1, 3 goes bottom-left, 4 and up
-subdivide the largest pane the server owns. For a specific arrangement beyond that, apply a
+automatically. Placement: 1 is beside you, 2 stacks under 1, 3 goes under you, 4 and up
+split the largest helper the server owns along its longer side. For a specific arrangement beyond that, apply a
 tmux layout preset afterwards (below) — the one part of this the MCP surface does not cover.
 
 For the TDD archetype's full state machine, see `terminal:tdd-workflow`.
@@ -176,7 +176,7 @@ mcp__plugin_terminal_mux__watch-pane({ slot: 1, triggers: "error,exit,idle:30", 
 mcp__plugin_terminal_mux__close-pane({ slot: "all" })
 ```
 
-Kills the panes the server created and merely interrupts any it adopted from the user.
+Kills the panes the server created. A pane the user opened is never killed: it is interrupted and released.
 
 ---
 

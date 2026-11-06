@@ -46,7 +46,9 @@ mcp__plugin_terminal_mux__send-keys({ keys: "npm run dev", enter: true })
 → { "slot": 1, "created": true }
 ```
 
-`created: true` on a slot you were already using means the user closed that pane and your process went with it. An agent that ignores the field keeps reporting a server that stopped ten minutes ago. It is also `true` when the server adopted an idle pane instead of making one — read it as "new to this slot", not "I made a pane".
+`created: true` on a slot you were already using means the user closed that pane and your process went with it. An agent that ignores the field keeps reporting a server that stopped ten minutes ago. It is also `true` when the server reclaimed one of its own idle helper panes that had lost its slot (§1d); a reclaimed pane is reset first, so nothing carries over. Read it as "new to this slot", not "I made a pane".
+
+**A new pane is not typed into until its shell is ready**, and text typed at a shell prompt is checked: the call fails if the shell did not take it. Do not send a warm-up command such as `echo ready` first. Key names (`literal: false`) are sent at once, so `C-c` reaches a busy pane.
 
 The four **reading** tools (`capture-pane`, `screenshot-pane`, `pane-state`, `watch-pane`) never return `created` and **error on a slot that was never opened** — they do not create one. Per spec: `slot 2 does not exist; open it with open-pane or by running something in it`. Open the slot with a creating tool first, or use `start-and-watch` to open and watch in one call.
 
@@ -58,18 +60,16 @@ The four **reading** tools (`capture-pane`, `screenshot-pane`, `pane-state`, `wa
 - **`execute-command` with `isolated: true` and no slot is ephemeral**: the pane is created, the command runs, the pane is destroyed, and the answer is `{ output, exitCode, timedOut }` with no slot to track.
 - **A slot's kind is fixed at creation.** Asking for a visible pane on a slot holding an isolated one is an error, observed as `slot 2 is an isolated pane; close it or use another slot`. Close it first, or pick another number.
 - **`close-pane` does not take `isolated`.** Observed: `isolated is not accepted here; close-pane closes whichever kind of pane the slot holds, and slot: "all" closes both kinds`.
-- **Outside tmux there is no window for a visible pane.** Per spec the call fails with `no window to place a pane in: this server is not running inside tmux — use isolated: true`. Do not invent a pane; use an isolated slot.
+- **Outside tmux and herdr there is no window for a visible pane.** The call fails and names `isolated: true`. Do not invent a pane; use an isolated slot.
+- **herdr and tmux look the same to you.** The server finds out at startup which multiplexer holds your session and drives that one; no tool takes a backend argument. Isolated slots always run on a private tmux server, also under herdr.
 
 ## 1d. What a slot guarantees, and what it does not
 
 **A slot is never your own pane.** The server enforces this, so no call can feed keystrokes into your own session.
 
-**A visible slot may be a pane the user was using.** When no helper exists, the server may *adopt* an idle pane the user left open — same user, shell in the foreground. `list-slots` reports it as `origin: "adopted"`. This is deliberate and cannot be turned off. Two consequences follow, and neither is hypothetical:
+**A slot is never a pane the user opened.** A visible slot is created beside you if it does not exist yet. The server reuses only a pane that carries its own slot marker; a pane without one belongs to the user and is never taken, however idle it looks. A marked helper that lost its slot (after a server restart, say) is reclaimed only when it is a live shell, owned by the same user, with its line editor reading input. It is then moved to the server's directory and cleared. A busy pane, a REPL or a TUI is never reclaimed; a new pane opens instead.
 
-- **Unsubmitted input concatenates with your command.** tmux cannot see the shell's line buffer. If the user typed `rm -rf /data/` and never pressed Enter, the pane looks perfectly idle, and your command joins onto the end of theirs. No slot number avoids this — adoption sits ahead of creation for every visible slot.
-- **The environment is the user's.** A shell inside a virtualenv, a container exec session, or one with `AWS_PROFILE=production` exported passes every check. Your commands then run in that context.
-
-If you need a pane with no inherited context, `isolated: true` is the only guarantee.
+`list-slots` still reports `origin: "adopted"` for a user shell that an earlier server version took over. Such a pane is released, never killed and never typed into.
 
 **You cannot read a pane the user is using.** No tool takes a pane id, so a pane that is not one of your slots is unreachable. Run the process in a slot instead, or read the log file it writes.
 
@@ -141,7 +141,8 @@ Both are **synchronous and blocking**. The call returns when a readiness pattern
 | `notify` | none | **message**, duration (default 3) | one-way; not a query |
 
 - **`exited` and `timedOut` are always present**, so test the value, never the presence.
-- **`close-pane`** kills panes the server created and only interrupts (`C-c`) panes it adopted from the user. Closing a slot that was never opened is not an error.
+- **`close-pane`** kills panes the server created. A pane the user opened is never killed: it is interrupted (`C-c`) and released. Closing a slot that was never opened is not an error.
+- **`execute-command` never types a command twice.** If the command was not confirmed to start, the call fails and says so; look at the pane before running it again. If the exit code could not be read, or the pane's shell exited, `exitCode` is `-1` (or the code it recovered) and a second text item says which. Treat `-1` as unknown, never as a failure of the command.
 - **`list-slots`** shows what *this agent* holds — not the user's panes, not another agent's.
 - **`notify`** tells you nothing about panes. To ask about the terminal, use `pane-state`, `list-slots` or `capture-pane`.
 - **`capture-pane`** — `lines: N` reaches into scrollback beyond the visible viewport.
@@ -180,7 +181,7 @@ mcp__plugin_terminal_mux__list-slots()
 ```
 
 - **After compaction, call `list-slots` before choosing a number.** Your memory of which slots are open is gone; the server's is not.
-- **The server decides placement.** Slot 2 stacks under slot 1, slot 3 goes bottom-left. You never pass a direction or a size. Panes are titled so the user can see whose they are.
+- **The server decides placement.** Slot 1 goes beside you, slot 2 under slot 1, slot 3 under you; 4 and up split the largest helper along its longer side. You never pass a direction or a size. Panes are titled so the user can see whose they are.
 - **Cleanup is a courtesy, not a required step.** Panes outlive the session otherwise; offer `close-pane({ slot: "all" })` at the end.
 
 ## 7. Capturing full output
@@ -301,9 +302,9 @@ mcp__plugin_terminal_mux__notify({ message: "Build complete" })
 
 1. **Never store credentials**: do not send passwords or API keys through `send-keys`. Use `pane-state` to detect password prompts and stop.
 2. **Never run an unconfirmed destructive operation**: database migrations, `DROP TABLE`, production deployments. On the main thread, confirm with the user. As a subagent there is nobody to ask: run it only when the dispatching prompt says the user already approved it; otherwise close the slot and return Blocked, naming the operation and the missing authorisation.
-3. **You cannot read a pane the user is using.** No tool takes a pane id. Run the process in a slot, or read its log file. Adopting an *idle* user shell into a slot is the one way user panes enter your reach, and the server does that, not you.
-4. **Close what you opened**: `close-pane({ slot })` or `close-pane({ slot: "all" })`. It only ever interrupts an adopted pane, never kills it.
-5. **Slots are the only address.** A slot can never be your own pane, and the server refuses any id you might pass. Check `pane-state.foregroundCmd` before sending into a slot you have not used this turn — after adoption or a user's intervention it may hold a REPL or an editor, and `send-keys` feeds whatever is in the foreground.
+3. **You cannot read a pane the user is using.** No tool takes a pane id. Run the process in a slot, or read its log file. The server never takes a user's pane into a slot.
+4. **Close what you opened**: `close-pane({ slot })` or `close-pane({ slot: "all" })`.
+5. **Slots are the only address.** A slot can never be your own pane or one the user opened, and the server refuses any id you might pass. Check `pane-state.foregroundCmd` before sending into a slot you have not used this turn — after a user's intervention it may hold a REPL or an editor, and `send-keys` feeds whatever is in the foreground.
 
 ## 11b. Approval gate for destructive commands
 
