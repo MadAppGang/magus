@@ -4,6 +4,28 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [magus 7.12.0] - 2026-11-06
+
+### Added
+
+- **The Alias tab sets a context window size and starts agent teams in split panes
+  (MTL-386).** Three new options:
+  - **`--autocompact`** (Context) sets the window size Claude Code compacts the
+    conversation at: `auto`, or 100k to 1M tokens (`200k`, `1m`, `200000`, or `200` as
+    shorthand for 200k). A value Claude Code would refuse, such as `50k`, is refused here
+    with Claude Code's own reason, and the old value stays.
+  - **Agent teams** (new Agent teams group) turns on Claude Code's agent teams. The alias
+    sets `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` before `claude`, because Claude Code has
+    no command-line flag for it. In fish the alias starts with `env`.
+  - **`--teammate-mode`** picks where teammates run: `tmux` opens each teammate in a split
+    pane when the session starts inside tmux, `iterm2` uses iTerm2 panes, `in-process`
+    keeps them in the same terminal, and `auto` picks for you. Choosing it turns agent
+    teams on too.
+
+  An alias that uses none of the new options is written exactly as before.
+
+---
+
 ## [claudish 2.14.0] - 2026-11-03
 
 ### Added
