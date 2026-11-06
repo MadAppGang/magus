@@ -252,10 +252,11 @@ export function deleteOldSessions(
   db: Database,
   retentionDays: number
 ): { deletedCount: number; affectedPairs: Array<{ date: string; project: string }> } {
-  const cutoff = new Date();
-  cutoff.setUTCDate(cutoff.getUTCDate() - retentionDays);
-  // Use UTC date to match session dates stored as toISOString().slice(0, 10)
-  const cutoffDate = cutoff.toISOString().slice(0, 10);
+  // Use millisecond arithmetic to avoid setUTCDate() with negative values,
+  // which can produce incorrect results in some JS engine versions.
+  const cutoffDate = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
 
   // Get affected (date, project) pairs and session count before deletion
   const affectedPairs = db
