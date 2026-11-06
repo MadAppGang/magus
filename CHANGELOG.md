@@ -53,6 +53,23 @@
 
 ---
 
+## [magus 7.12.1] - 2026-11-07
+
+### Fixed
+
+- **Text typed into a magus input dialog is visible on a light terminal theme
+  (MTL-391).** The dialog that edits an Alias tab value and names a new profile painted
+  its text white, which vanished on a light background. It now uses the terminal's own
+  text colour.
+- **Agent teams is one switch in the Alias tab (MTL-391).** It replaces the separate
+  Agent teams and Teammate panes rows, which did nothing apart. Turning it on picks where
+  teammates run (`tmux`, `iterm2`, `in-process` or `auto`) and writes both
+  `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` and `--teammate-mode` into the alias. An alias
+  written by 7.12.0 with agent teams on and no teammate mode reads back as `auto`, which
+  is what Claude Code used for it.
+
+---
+
 ## [magus 7.12.0] - 2026-11-06
 
 ### Added
