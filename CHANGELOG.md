@@ -4,6 +4,30 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [orchestrator 0.1.0] - 2026-11-07
+
+### Added
+
+- **`orchestrator`: parallel ticket work as three levels of Claude Code sessions.** A triage
+  session owns every ticket, the plan, the status and overlap checks, and writes no code
+  (`/orchestrator:triage`). Each ticket gets a manager session in its own tmux window and
+  worktree that starts `/dev:fix` or `/dev:dev` from the ticket's label and owns the work
+  through release (`/orchestrator:manager`). Parts in other repos go to child sessions in
+  panes beside their manager (`/orchestrator:child`). Messages run child to manager to
+  triage. Needs bun, tmux and git.
+- **`/orchestrator:start-ticket <ID>`** reads the ticket, picks the window colour from its
+  label, opens the window through the bundled launcher and sets the ticket In Progress.
+- **The launcher, `scripts/ticket-window.ts`,** runs `git pull --ff-only`, `magus update`
+  when magus is installed, and Claude Code in a new worktree, then types the first prompt once
+  Claude Code is up. One start at a time per checkout, enforced by a lock. Set
+  `ORCHESTRATOR_LAUNCH` or pass `--launch` to use your own launch command, and
+  `ORCHESTRATOR_STATE_DIR` to move its log and locks.
+- What the plugin needs about a product (tracker, status script, release steps) is read from
+  the product repo's `CLAUDE.md`. A missing answer is asked once, then stored: anything naming
+  a client in Claude Code memory, team procedure in `CLAUDE.md`.
+
+---
+
 ## [claudish 2.15.0] - 2026-11-06
 
 ### Added

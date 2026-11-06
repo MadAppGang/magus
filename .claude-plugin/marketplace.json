@@ -831,6 +831,37 @@
           "summary": "The madbench skills are synced to madbench 0.47.0, so /madbench:madbench and the operator see\u2026"
         }
       ]
+    },
+    {
+      "name": "orchestrator",
+      "source": "./plugins/orchestrator",
+      "description": "Runs parallel ticket work as three levels of Claude Code sessions: a triage session that owns the tracker and the plan, a manager per ticket over the dev workflows, and child sessions for other repos, each in its own tmux window and worktree. Needs bun, tmux and git.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Jack Rudenko",
+        "email": "i@madappgang.com",
+        "company": "MadAppGang"
+      },
+      "category": "development",
+      "keywords": [
+        "orchestration",
+        "tickets",
+        "triage",
+        "tmux",
+        "worktree",
+        "parallel-sessions"
+      ],
+      "strict": true,
+      "releases": [
+        {
+          "version": "0.1.0",
+          "date": "2026-11-07",
+          "kinds": [
+            "Added"
+          ],
+          "summary": "orchestrator: parallel ticket work as three levels of Claude Code sessions"
+        }
+      ]
     }
   ]
 }

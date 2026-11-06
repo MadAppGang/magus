@@ -218,6 +218,19 @@ Hands browser tasks to Aside, your own AI browser, through the `aside` CLI. Asid
 
 ---
 
+#### Orchestrator - Parallel Ticket Sessions
+
+**Plugin:** `orchestrator` | **Category:** Development Tools | **Needs:** bun, tmux, git and the `dev` plugin
+
+Runs parallel ticket work as three levels of Claude Code sessions, each in its own tmux window and git worktree.
+
+- **Triage** (`/orchestrator:triage`, at the product's main checkout) owns every ticket, the plan, the status and overlap checks, and writes no code.
+- **Manager**, one per ticket, started by `/orchestrator:start-ticket <ID>` in a new window and worktree. It runs `/dev:fix` or `/dev:dev` from the ticket's label and owns the work through release.
+- **Child**, a pane beside its manager, does one part in another repo and reports only to its manager.
+- What it needs about a product (tracker, status script, release steps) is read from the repo's `CLAUDE.md`, or asked once and then remembered.
+
+---
+
 ## 🚀 Installation & Setup
 
 ### Prerequisites
