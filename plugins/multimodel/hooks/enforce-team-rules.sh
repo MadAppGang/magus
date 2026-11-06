@@ -2,14 +2,15 @@
 set -u
 # ============================================================================
 # enforce-team-rules.sh
-# PreToolUse hook for /team workflow enforcement and claudish usage logging
+# PreToolUse hook for /team judge-run enforcement and claudish usage logging
 #
 # Intercepted tools: Agent, Bash
 # Protocol: reads JSON from stdin, writes the decision JSON to stdout
 #
-# Rules enforced:
-#   1. /team Agent calls must use a valid agent from whitelist (vote template detection)
-#   2. Session files must not use /tmp/ paths
+# Rules enforced, on Agent calls whose prompt carries the judge (vote) template only.
+# The other /team task types have no marker here, so their Agent calls pass untouched:
+#   1. The subagent_type must be in the whitelist below.
+#   2. The prompt must not name a /tmp/ path; session files belong in ai-docs/sessions/.
 #
 # Logging:
 #   - Every claudish invocation is logged to .claude/claudish-usage.log
@@ -56,11 +57,14 @@ if [ "${TOOL_NAME}" = "Agent" ]; then
   SUBAGENT=$(echo "${INPUT}" | jq -r '.tool_input.subagent_type // empty' 2>/dev/null || true)
   PROMPT=$(echo "${INPUT}" | jq -r '.tool_input.prompt // empty' 2>/dev/null || true)
 
-  # RULE 1: /team workflow enforcement (detect by vote block pattern in prompt)
-  # Whitelist of valid agents for /team (matches context_detection in team.md)
+  # A judge-run prompt is recognised by the vote template's heading, its verdict line or
+  # its format heading. Every other task type's template matches none of these.
+  JUDGE_MARKERS="Team Vote: Independent Review\|VERDICT:.*APPROVE\|Required Vote Format"
+
+  # RULE 1: a judge-run Agent call must name a whitelisted agent.
   VALID_AGENTS="dev:architect dev:debugger dev:developer dev:devops dev:docs dev:frontend-developer dev:researcher dev:reviewer dev:spec-writer dev:stack-detector dev:aggregator dev:qa-engineer"
 
-  if echo "${PROMPT}" | grep -q "Team Vote: Independent Review Request\|VERDICT:.*APPROVE\|Required Vote Format"; then
+  if echo "${PROMPT}" | grep -q "${JUDGE_MARKERS}"; then
     if [ -n "${SUBAGENT}" ]; then
       AGENT_VALID=false
       for valid in ${VALID_AGENTS}; do
@@ -75,11 +79,11 @@ if [ "${TOOL_NAME}" = "Agent" ]; then
     fi
   fi
 
-  # RULE 3: /team session files belong in ai-docs/sessions/, not /tmp/.
-  # SCOPED to vote-shaped prompts, exactly like RULE 1. Unscoped, this denies every
+  # RULE 2: a judge-run prompt keeps its session files in ai-docs/sessions/, not /tmp/.
+  # Scoped to judge-run prompts, exactly like RULE 1. Unscoped, this denies every
   # ordinary delegation that names the harness scratchpad (which lives under /private/tmp/),
   # i.e. it blocks normal subagent use rather than enforcing a /team convention.
-  if echo "${PROMPT}" | grep -q "Team Vote: Independent Review Request\|VERDICT:.*APPROVE\|Required Vote Format"; then
+  if echo "${PROMPT}" | grep -q "${JUDGE_MARKERS}"; then
     if echo "${PROMPT}" | grep -q "/tmp/"; then
       deny "BLOCKED: /team prompt contains a /tmp/ path. Use ai-docs/sessions/ for session files."
     fi

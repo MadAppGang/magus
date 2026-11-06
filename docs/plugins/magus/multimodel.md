@@ -3,11 +3,11 @@
 
 # multimodel
 
-Multi-model collaboration and orchestration. Runs a task across several AI models in parallel and aggregates their blind APPROVE/REJECT votes, or delegates it to one model running a full Claude Code session.
+Multi-model collaboration and orchestration. Runs one task across several AI models under a task type (judge, research, plan, debug, brainstorm, implement, test, collaborate), each with its own result, or delegates it to one model running a full Claude Code session.
 
 | | |
 |---|---|
-| Version | `5.9.1` |
+| Version | `6.0.0` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 2 |
 | Subagents | 1 |
@@ -57,7 +57,7 @@ Dispatched with the Agent tool, each in its own context window.
 | Skill | What it covers |
 |---|---|
 | `multimodel:error-recovery` | Handle errors, timeouts, and failures in multi-agent workflows. Use when dealing with external model timeouts, API failures, partial success, user cancellation, or graceful degradation. |
-| `multimodel:multi-model-validation` | Runs the same task across multiple AI models in parallel and aggregates verdicts. Use when the user wants a second opinion, multi-expert validation, or consensus from Grok, Gemini, GPT, or K… |
+| `multimodel:multi-model-validation` | Runs a review across several AI models in parallel and aggregates their verdicts, the judge shape of /multimodel:team. |
 
 ## Hooks
 

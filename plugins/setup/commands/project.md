@@ -229,7 +229,7 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion, Skill
     | React or any web UI | `designer@magus` | pixel-diff design validation |
     | browser automation or E2E | `browser-use@magus` | MCP tools that drive a real headless browser |
     | long-running processes, TDD, dev servers | `terminal@magus` | tmux-backed interactive terminal |
-    | multi-model review wanted | `multimodel@magus` + `claudish@magus` | team voting and delegation |
+    | multi-model review wanted | `multimodel@magus` + `claudish@magus` | task-typed team runs (votes, research, plans, implementations) and delegation |
 
     **Weigh the listing budget before recommending.** Every plugin whose skills
     are model-invocable eats the shared per-turn budget — one budget across

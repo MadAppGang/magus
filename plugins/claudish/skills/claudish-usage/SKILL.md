@@ -797,8 +797,10 @@ Decision:
 
 ## Team Mode Integration
 
-When used with the `/team` command for multi-model blind voting, every model — native and
-external — is started through the `team` MCP tool in a single call. Write the vote prompt
+When used with the `/team` command's `judge` type (multi-model blind voting), every model —
+native and external — is started through the `team` MCP tool in a single call. Its other
+read-only types use the same call with their own prompt and `require_pattern`; its writing
+types use one `create_session` per model instead. For a judge run, write the vote prompt
 to `input.md` first, then:
 
 ```

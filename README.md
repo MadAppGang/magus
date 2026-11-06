@@ -130,16 +130,16 @@ surface that does not change when the search engine does.
 
 ---
 
-#### 🎯 Multimodel - Orchestration & Multi-Model Voting
+#### 🎯 Multimodel - Multi-Model Orchestration
 
 **Version:** 3.2.0 | **Category:** Development | **Marketplace:** `magus`
 
-Multi-agent coordination and multi-model orchestration. Run the same task across several AI
-models in parallel and collect independent verdicts. Requires the
+Multi-agent coordination and multi-model orchestration. Run one task across several AI
+models under a task type, each with its own result. Requires the
 `claudish` runtime plugin (declared as a dependency).
 
 **Commands:**
-- `/multimodel:team` - Blind voting across models in parallel; aggregates APPROVE/REJECT verdicts
+- `/multimodel:team` - One task across several models under a task type: `judge` (blind APPROVE/REJECT vote), `research`, `plan`, `debug`, `brainstorm` (read-only), `implement`, `test` (one worktree or sandbox per model; you pick one diff or none), `collaborate` (models take turns in your folder)
 - `/multimodel:delegate` - Hand a task to one external model running a full Claude Code session
 
 **Skills** (2 under `plugins/multimodel/skills/`):

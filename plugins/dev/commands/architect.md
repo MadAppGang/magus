@@ -18,7 +18,7 @@ allowed-tools: Agent, AskUserQuestion, Bash, Read, Skill, Glob, Grep, EnterPlanM
     Assess complexity upfront and use the right level of process:
     - Simple problems get direct architecture design
     - Complex problems get plan mode reasoning + optional multi-model collaboration
-    - Retry attempts get multi-model brainstorming via /team to explore fresh angles
+    - Retry attempts get one alternative proposal per model via /team to explore fresh angles
   </mission>
 </role>
 
@@ -72,7 +72,7 @@ allowed-tools: Agent, AskUserQuestion, Bash, Read, Skill, Glob, Grep, EnterPlanM
     | Moderate | No | Plan mode reasoning first, then architecture design |
     | Moderate | Yes | Recommend /team — "This needs fresh perspectives" |
     | Complex | No | Plan mode reasoning + offer /team before architecture |
-    | Complex | Yes | Strongly recommend /team — "Multi-model brainstorming before redesign" |
+    | Complex | Yes | Strongly recommend /team — "Multi-model proposals before redesign" |
 
     **When /team is recommended, present the option:**
 
@@ -83,7 +83,7 @@ allowed-tools: Agent, AskUserQuestion, Bash, Read, Skill, Glob, Grep, EnterPlanM
           header: "Architecture Approach"
           multiSelect: false
           options:
-            - label: "Multi-model brainstorm (/team)"
+            - label: "Multi-model proposals (/team)"
               description: "Get diverse perspectives from multiple AI models before designing. Best for complex or retry scenarios."
             - label: "Plan mode reasoning"
               description: "Use Claude's extended reasoning to think through the design space, then proceed with single-model architecture."
@@ -91,13 +91,60 @@ allowed-tools: Agent, AskUserQuestion, Bash, Read, Skill, Glob, Grep, EnterPlanM
               description: "Skip to architecture design. Good when you already know the general direction."
     ```
 
-    **If user selects "Multi-model brainstorm":**
-    - multimodel is optional. If `/multimodel:team` is available, invoke it with the architecture topic.
-    - If it is not installed, say once that `claude plugin install multimodel@magus` adds it. Then run
-      the same prompt through the claudish `team` MCP tool when claudish is present
-      (`claudish:claudish-usage` resolves the models), or fall back to plan mode reasoning when it is not.
-    - Frame the /team prompt as: "Architect: {$ARGUMENTS}. Generate 2-3 alternative architecture approaches with trade-offs."
-    - After /team completes, feed the multi-model consensus into Phase 2 (Alternative Designs) as input
+    **If user selects "Multi-model proposals":**
+    - multimodel is optional. If `/multimodel:team` is available, invoke it as
+      `/multimodel:team --type plan Architect: {$ARGUMENTS}.` Each model proposes the ONE approach
+      it would build, so N models give N alternative proposals with their trade-offs. That is a set
+      of alternatives, not a consensus: the plan result claims no agreement and synthesises no best.
+    - If it is not installed, say once that `claude plugin install multimodel@magus` adds it. Then,
+      when claudish is present, make ONE claudish `team` call yourself in the same plan shape
+      (`claudish:claudish-usage` resolves the models; pass no `agent`):
+      - `mode`: `"run"`; `path`: a new directory under `$(pwd)/ai-docs/sessions/` (`team` refuses
+        a path outside its working directory, or one that already holds a session)
+      - `input`: the plan slot prompt below, with `{TASK}` = `Architect: {$ARGUMENTS}.`
+      - `require_pattern`: `## Proposal[\s\S]*## Trade-offs`
+      - `efforts`: from the `planning` column of `list_models` → **Recommended effort by task
+        type**: an external model with a level there gets it; a model with `-`, no row, or a
+        native name (`internal`, `default`, `opus`, `sonnet`, `haiku`, a bare Claude ID) gets no
+        entry; `{}` when nobody has one. Always pass it: without it claudish answers
+        `needs_effort` and nothing starts.
+      - `claude_flags`: `"--disallowedTools Edit,Write,NotebookEdit"`, as `/multimodel:team
+        --type plan` passes: slots run with permissions bypassed, and this keeps them out of the
+        checkout and puts the whole proposal in the reply.
+
+      ```
+      ## Team Plan: Independent Proposal
+
+      You are working independently. Do not assume any prior context.
+
+      ### Task
+      {TASK}
+
+      ### Rules
+      Propose the ONE approach you would build. Do not edit any file. Put your whole result in your final reply.
+
+      ### Required format
+      ## Proposal
+      - Approach: {one paragraph}
+      - What changes: {files, modules, interfaces}
+      - Effort: small|medium|large
+      - Risk: {what could go wrong}
+      - Reversibility: {how hard it is to undo}
+
+      ## Trade-offs
+      - Gains: {what this approach buys}
+      - Gives up: {what it costs}
+      - Rejected alternative: {one other approach, and why not}
+      ```
+
+      `run` returns at once, with no answers. Wait as `claudish:claudish-usage` → "Waiting for
+      a run to end" says, call `team(mode="status")` on the same `path`, then read each
+      `response-<slot>.md` there; the `slots` map in the `run` result names each slot's model.
+
+      When claudish is absent too, fall back to plan mode reasoning.
+    - After the run, feed each model's proposal into Phase 2 (Alternative Designs) as one
+      alternative, attributed to its model. Where proposals overlap, say so as an observation,
+      never as a consensus or a vote.
     - Continue with the architecture workflow from Phase 2 onward
   </complexity_triage>
 
@@ -354,11 +401,11 @@ allowed-tools: Agent, AskUserQuestion, Bash, Read, Skill, Glob, Grep, EnterPlanM
       <steps>
         <step>
           **If /team was used in triage:**
-          - Read the multi-model brainstorming results
-          - Use the consensus approaches as the basis for alternatives
+          - Read the multi-model plan results
+          - Use each model's proposal as one candidate alternative, attributed to its model
           - **Launch the architect agent** (`Agent`, `subagent_type: "dev:architect"`) to
-            formalize and expand on the /team output. Pass the /team consensus in the
-            prompt — the subagent cannot see those results otherwise.
+            formalize and expand on the /team output. Pass every proposal with its trade-offs in
+            the prompt — the subagent cannot see those results otherwise.
 
           **Otherwise:**
           **Launch the architect agent** — `Agent` tool, `subagent_type: "dev:architect"`,
@@ -565,19 +612,19 @@ allowed-tools: Agent, AskUserQuestion, Bash, Read, Skill, Glob, Grep, EnterPlanM
     <user_request>/dev:architect Design real-time collaboration engine for document editing</user_request>
     <execution>
       TRIAGE: Complex (novel domain, multiple systems, cross-cutting concerns)
-      Offer: /team brainstorming recommended
-      User selects: "Multi-model brainstorm (/team)"
+      Offer: /team proposals recommended
+      User selects: "Multi-model proposals (/team)"
 
-      /team: 3 models generate architecture approaches
+      /multimodel:team --type plan: 3 models each propose one approach
       - Model A: CRDT-based with WebSocket
       - Model B: OT-based with server authority
       - Model C: Hybrid CRDT + OT with conflict resolution
-      Consensus: CRDT-based approach (2/3 agreement)
+      Result: three alternatives side by side, no consensus claimed (two of them use CRDTs)
 
       PHASE 0: Detect stack, create session
       PHASE 1: Plan mode reasoning (decompose: sync engine, presence, conflict resolution)
       PHASE 2: Requirements refined from /team + plan mode output
-      PHASE 3: Alternatives based on /team consensus (CRDT variants)
+      PHASE 3: Alternatives from the three /team proposals (CRDT variants and the OT option)
       PHASE 4: Trade-offs -> recommend Model C's hybrid approach
       PHASE 5: Detailed CRDT design with WebSocket transport
       PHASE 6: external-model validation (ids from `list_models`) -> confirm approach
@@ -589,14 +636,14 @@ allowed-tools: Agent, AskUserQuestion, Bash, Read, Skill, Glob, Grep, EnterPlanM
     <user_request>/dev:architect Design auth system (the JWT approach didn't scale)</user_request>
     <execution>
       TRIAGE: Moderate complexity + retry detected (existing dev-arch-*auth* session)
-      Recommendation: "Previous attempt exists. Multi-model brainstorming recommended."
-      User selects: "Multi-model brainstorm (/team)"
+      Recommendation: "Previous attempt exists. Multi-model proposals recommended."
+      User selects: "Multi-model proposals (/team)"
 
-      /team: Models generate alternatives knowing JWT failed
+      /multimodel:team --type plan: each model proposes one approach, knowing JWT failed
       - Model A: Session-based with Redis
       - Model B: OAuth2 + OIDC delegation
       - Model C: Token rotation with short-lived JWTs + refresh
-      Consensus: Mixed (each has merit for different contexts)
+      Result: three alternatives, each with its own trade-offs; no consensus claimed
 
       PHASE 0: Initialize, detect stack
       PHASE 1: Plan mode reasoning (why JWT failed, what constraints changed)
@@ -690,7 +737,7 @@ Any question comes after this block, through AskUserQuestion where the step name
 **Project**: {architecture_name}
 **Stack**: {detected_stack}
 **Complexity**: {simple | moderate | complex}
-**Mode**: {direct | plan-mode | team-brainstorm}
+**Mode**: {direct | plan-mode | team-plan}
 **Approach**: {selected_approach}
 **Session**: ${SESSION_PATH}
 
@@ -710,7 +757,7 @@ Any question comes after this block, through AskUserQuestion where the step name
 {end}
 
 {if team_used}
-**Multi-Model Input**: /team provided {N} approaches, consensus on {approach}
+**Multi-Model Input**: /team (plan) provided {N} alternative proposals, one per model: {approach per model}
 {end}
 
 {if validation_performed}

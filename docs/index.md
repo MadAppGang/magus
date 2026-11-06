@@ -25,8 +25,8 @@ and CLI tools they depend on.
 - **[Understanding code](./guides/dev-investigate.md)** — `/dev:investigate`, read-only
 - **[Documentation](./guides/dev-doc.md)** — `/dev:doc` and its four modes
 - **[Isolated worktrees](./guides/dev-worktree.md)** — `/dev:worktree` with database branching
-- **[multimodel](./guides/multimodel.md)** — a blind vote across models, or handing a whole
-  task to one
+- **[multimodel](./guides/multimodel.md)** — one task across several models under a task
+  type (a blind vote, research, plans, implementations and more), or handing a whole task to one
 - **[code-search](./guides/code-search.md)** — asking questions about code you did not write
 - **[bunjs](./guides/bunjs.md)** — one command, and the eight skills behind it
 - **[Advanced Usage](./guides/advanced-usage.md)** — global and project-scoped installs, version

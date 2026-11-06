@@ -27,8 +27,8 @@ One guide per job. What you type, what it asks, which options change the outcome
 
 ## Bringing in other tools
 
-- **[multimodel](./multimodel.md)** — a blind vote across models, or handing a whole task
-  to one
+- **[multimodel](./multimodel.md)** — one task across several models under a task type
+  (a blind vote, research, plans, implementations and more), or handing a whole task to one
 - **[code-search](./code-search.md)** — asking questions about code you didn't write
 - **[bunjs](./bunjs.md)** — one command, and the eight skills behind it
 

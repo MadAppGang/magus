@@ -4,6 +4,75 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [multimodel 6.0.0] - 2026-11-07
+
+### Changed
+
+- **`/multimodel:team` runs each task as one of eight task types, each with its own result.**
+  The types are judge, research, plan, debug, brainstorm, implement, test and collaborate.
+- **A plain task that used to vote can now give a report, or ask.** `--type` sets the type.
+  Without it, the task's words select it. Only a task that starts with a review word (review,
+  audit, check, validate, verify) is a judge run with no flag. When the words match no type,
+  or more than one, the command asks. judge is the blind APPROVE/REJECT vote from before. To
+  get a vote as before, pass `--type judge` or `--threshold`.
+- **`--workspace isolated|shared`.** In an isolated run, no model sees the output of another
+  model. A shared run has two rounds: in round 2, each model reads all round-1 answers and
+  responds. research, plan and debug are isolated by default and can run shared. brainstorm is
+  shared by default. judge, implement and test run isolated only, and collaborate runs shared
+  only. The command refuses a bad type and workspace pair before anything starts.
+- **implement and test run each model in its own git worktree, then offer a pick.** All
+  worktrees start from the same commit. The result shows each diff with its test result, and
+  you apply one diff or none. Nothing is committed. test writes tests blind, from `--spec` and
+  `--contract` only. These types need claudish 14.13.0 or later.
+- **collaborate takes turns in your folder.** One model at a time edits your working tree, and
+  each turn sees the turns before it. The edits stay uncommitted, and the report prints how to
+  undo them.
+- **The preferences file is used as written.** `/team` does not check a saved model, agent or
+  timeout against what is installed, and does not replace a value that looks wrong. When a
+  preference makes slots fail, the report names it. Saved `defaultModels` serve judge only.
+  The other types use `contextPreferences` for their type, or compose a panel.
+- **Effort comes from the table for each type.** judge still runs every voter at one level.
+  The other types take each model's level from the `list_models` section "Recommended effort
+  by task type" and do not ask. `--effort` sets one level for all slots.
+- The `enforce-team-rules` hook checks judge prompts only. The `multi-model-validation` skill
+  describes the judge type and points to `/multimodel:team` for the other types.
+- Measured on madbench 0.57.1: TTY-1 passed 23 of 24 on the eight plain-task Scenarios across
+  three model families, and 11 of 12 on the test Scenarios. TEF-1 passed 21 of 21. CLA-4
+  passed 3 of 3: a plan run passes the agent saved in `agentPreferences`.
+
+---
+
+## [dev 9.6.2] - 2026-11-07
+
+### Changed
+
+- **`/dev:architect` gets its multi-model proposals from `/multimodel:team --type plan`.** Each
+  model proposes the one approach it would build, so N models give N alternatives with their
+  trade-offs. Phase 2 uses each proposal as one alternative, with the name of its model. The
+  command no longer reports a consensus or a vote. Without multimodel, it makes one claudish
+  `team` call in the same plan shape.
+
+---
+
+## [claudish 2.15.1] - 2026-11-07
+
+### Changed
+
+- **The `claudish-usage` skill's Team Mode Integration names the judge type of `/team`.**
+  It says that the other read-only types use the same `team` call with their own prompt and
+  `require_pattern`, and that the writing types use one `create_session` for each model.
+
+---
+
+## [setup 1.8.1] - 2026-11-07
+
+### Changed
+
+- **`/setup:project` describes multimodel as task-typed team runs.** The recommendation row
+  says votes, research, plans and implementations, and delegation, not team voting only.
+
+---
+
 ## [orchestrator 0.1.0] - 2026-11-07
 
 ### Added

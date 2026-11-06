@@ -91,7 +91,7 @@ interchangeable.
 |---|---|---|
 | A scoped review of specific code, routed to a specialist | `/dev:audit` | One reviewer, one scope, structured findings |
 | A whole-codebase health assessment | `code-search:deep-analysis` | Seven dimensions, centrality-driven, finds what you did not know to ask about |
-| Independent opinions on one question | `/multimodel:team` | Several models vote separately; disagreement is the signal |
+| Independent opinions on one question | `/multimodel:team` | Several models answer separately under a task type; a review runs as `judge`, a blind vote where disagreement is the signal |
 | Review of a pull request diff | the built-in `/code-review` | `/dev:audit` deliberately leaves PR diff review to the host |
 
 The short version: **`/dev:audit` when you know what to look at, `deep-analysis`
@@ -111,4 +111,4 @@ deeper one.**
 - [Fixing a bug](./dev-debug.md) — take audit findings and act on them
 - [Building a feature](./dev-build.md) — `/dev:dev` runs a code review as one of its phases
 - [Understanding code](./dev-investigate.md) — read-only tracing, not quality judgement
-- [multimodel: step by step](./multimodel.md) — a blind vote across models, when you want disagreement rather than one consolidated report
+- [multimodel: step by step](./multimodel.md) — one task across several models under a task type, such as a blind vote, when you want disagreement rather than one consolidated report

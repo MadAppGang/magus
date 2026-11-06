@@ -1,14 +1,18 @@
 ---
 name: multi-model-validation
-description: Runs the same task across multiple AI models in parallel and aggregates verdicts. Use when the user wants a second opinion, multi-expert validation, or consensus from Grok, Gemini, GPT, or Kimi.
+description: Runs a review across several AI models in parallel and aggregates their verdicts, the judge shape of /multimodel:team. Use when the user wants a second opinion, multi-expert validation, or consensus from Grok, Gemini, GPT, or Kimi.
 user-invocable: false
 ---
 
 # Multi-Model Validation
 
 **Version:** 3.3.0
-**Purpose:** Patterns for running multiple AI models in parallel via Claudish proxy with **context-aware preferences**, dynamic model discovery, session-based workspaces, and performance statistics
+**Purpose:** Patterns for multi-model review panels (the `judge` task type of `/multimodel:team`) run in parallel via claudish, with **context-aware preferences**, dynamic model discovery, session-based workspaces, and performance statistics
 **Status:** Production Ready
+
+**Scope:** review panels only: every model reviews the same task blind and votes, which is the `judge` shape.
+Other multi-model work is `/multimodel:team --type research|plan|debug|brainstorm|implement|test|collaborate`.
+Those types' slot formats, workspaces and results are defined in that command, not here.
 
 ## Overview
 

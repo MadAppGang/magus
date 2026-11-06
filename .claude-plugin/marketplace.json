@@ -75,7 +75,7 @@
       "name": "claudish",
       "source": "./plugins/claudish",
       "description": "MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting, manages async sessions, and shows the session's runs live above the prompt, with stop and live-screen tabs. Required by code-search, dev, multimodel and designer.",
-      "version": "2.15.0",
+      "version": "2.15.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -95,6 +95,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "2.15.1",
+          "date": "2026-11-07",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "The claudish-usage skill's Team Mode Integration names the judge type of /team"
+        },
         {
           "version": "2.15.0",
           "date": "2026-11-06",
@@ -127,15 +135,6 @@
             "Fixed"
           ],
           "summary": "The allowance band now appears only in a session that claudish launched on its Codex pool, with\u2026"
-        },
-        {
-          "version": "2.13.0",
-          "date": "2026-10-29",
-          "kinds": [
-            "Added",
-            "Changed"
-          ],
-          "summary": "An allowance band above the prompt for claudish's pooled Codex accounts (MTL-266): the account\u2026"
         }
       ]
     },
@@ -206,8 +205,8 @@
     {
       "name": "multimodel",
       "source": "./plugins/multimodel",
-      "description": "Multi-model collaboration and orchestration. Runs a task across several AI models in parallel and aggregates their blind APPROVE/REJECT votes, or delegates it to one model running a full Claude Code session.",
-      "version": "5.9.1",
+      "description": "Multi-model collaboration and orchestration. Runs one task across several AI models under a task type (judge, research, plan, debug, brainstorm, implement, test, collaborate), each with its own result, or delegates it to one model running a full Claude Code session.",
+      "version": "6.0.0",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -232,6 +231,14 @@
       "strict": true,
       "releases": [
         {
+          "version": "6.0.0",
+          "date": "2026-11-07",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "/multimodel:team runs each task as one of eight task types, each with its own result"
+        },
+        {
           "version": "5.9.1",
           "date": "2026-10-23",
           "summary": "Multi-model-validation picks the review route by cli-sessions.md \u00a71. Inside a claudish child it\u2026"
@@ -250,11 +257,6 @@
           "version": "5.8.0",
           "date": "2026-10-21",
           "summary": "/multimodel:team runs every voter at one effort, chosen from the task. A trivial check gets\u2026"
-        },
-        {
-          "version": "5.7.1",
-          "date": "2026-10-20",
-          "summary": "/multimodel:delegate, the multi-model-validation and error-recovery skills and /dev:qa no\u2026"
         }
       ]
     },
@@ -262,7 +264,7 @@
       "name": "dev",
       "source": "./plugins/dev",
       "description": "Universal development assistant. Detects the project stack and routes work to specialist agents for architecture, implementation, debugging, review and research, enforcing design-system guardrails on every UI change.",
-      "version": "9.6.1",
+      "version": "9.6.2",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -302,6 +304,14 @@
       "strict": true,
       "releases": [
         {
+          "version": "9.6.2",
+          "date": "2026-11-07",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "/dev:architect gets its multi-model proposals from /multimodel:team --type plan"
+        },
+        {
           "version": "9.6.1",
           "date": "2026-11-01",
           "kinds": [
@@ -326,11 +336,6 @@
           "version": "9.5.0",
           "date": "2026-10-22",
           "summary": "The internal code reviewer runs in its own session, never as a subagent of the session that\u2026"
-        },
-        {
-          "version": "9.4.0",
-          "date": "2026-10-21",
-          "summary": "A finished /dev:dev run reports first, then asks (MTL-71). Phase 8 prints the summary before\u2026"
         }
       ]
     },
@@ -517,7 +522,7 @@
       "name": "setup",
       "source": "./plugins/setup",
       "description": "Project setup jobs in one plugin. Investigates a repository and provisions it \u2014 plugins, tools, framework best-practice references, and a seeded knowledge base \u2014 then installs the adaptive statusline and indexes every skill reachable from the project into browsable markdown.",
-      "version": "1.8.0",
+      "version": "1.8.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -537,6 +542,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "1.8.1",
+          "date": "2026-11-07",
+          "kinds": [
+            "Changed"
+          ],
+          "summary": "/setup:project describes multimodel as task-typed team runs"
+        },
         {
           "version": "1.8.0",
           "date": "2026-10-29",
@@ -560,14 +573,6 @@
           "version": "1.7.0",
           "date": "2026-10-20",
           "summary": "/setup:project reports an outdated plugin dependency with its found version and floor, and\u2026"
-        },
-        {
-          "version": "1.6.1",
-          "date": "2026-10-16",
-          "kinds": [
-            "Fixed"
-          ],
-          "summary": "The worktree note no longer tells the model the session is fine"
         }
       ]
     },
