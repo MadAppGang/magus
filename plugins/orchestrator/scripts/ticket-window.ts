@@ -564,9 +564,10 @@ function herdrWorkspace(): string {
 }
 
 function tmuxOpenArgv(session: string, hasSession: boolean, name: string, dir: string): string[] {
-  // `=name` makes tmux match the session name exactly, never by prefix.
+  // `=name` makes tmux match the session name exactly, never by prefix. `-d` keeps the
+  // user's focus where it is: keys they type must not land in the line being typed here.
   return hasSession
-    ? ["tmux", "new-window", "-t", `=${session}:`, "-n", name, "-c", dir, "-P", "-F", "#{pane_id}"]
+    ? ["tmux", "new-window", "-d", "-t", `=${session}:`, "-n", name, "-c", dir, "-P", "-F", "#{pane_id}"]
     : ["tmux", "new-session", "-d", "-s", session, "-n", name, "-c", dir, "-P", "-F", "#{pane_id}"];
 }
 

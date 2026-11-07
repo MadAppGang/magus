@@ -30,6 +30,17 @@
 
 ---
 
+## [orchestrator 0.2.1] - 2026-11-08
+
+### Fixed
+
+- **A new ticket window no longer takes your focus under tmux.** The launcher opened it with
+  `tmux new-window` and no `-d`, so the window came to the front and keys you were typing
+  landed in its `git pull --ff-only && …` line and broke it. It now opens in the background,
+  as herdr tabs (`--no-focus`) and child slots already did.
+
+---
+
 ## [terminal 5.6.1] - 2026-11-07
 
 ### Changed

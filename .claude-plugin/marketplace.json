@@ -844,7 +844,7 @@
       "name": "orchestrator",
       "source": "./plugins/orchestrator",
       "description": "Runs parallel ticket work as three levels of Claude Code sessions: triage owns the tickets and the plan, a manager per ticket runs the dev workflow in its own tmux window or herdr tab and worktree, and children run in visible terminal slots beside it. Needs bun, git, and tmux or herdr.",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -861,6 +861,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "0.2.1",
+          "date": "2026-11-08",
+          "kinds": [
+            "Fixed"
+          ],
+          "summary": "A new ticket window no longer takes your focus under tmux"
+        },
         {
           "version": "0.2.0",
           "date": "2026-11-07",
