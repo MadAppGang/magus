@@ -1,6 +1,6 @@
 {
   "name": "terminal",
-  "version": "5.6.0",
+  "version": "5.6.1",
   "description": "Slot-addressed terminal control over tmux or herdr. Runs interactive commands, dev servers, test watchers, REPLs and TUI apps in numbered helper panes — beside the user or isolated from view — that the server places and owns, so an agent never holds a pane id or targets the user's own session.",
   "author": {
     "name": "Jack Rudenko",
@@ -107,14 +107,14 @@
           {
             "via": "release",
             "repo": "MadAppGang/tmux-mcp",
-            "tag": "v2.1.1",
+            "tag": "v2.2.0",
             "asset": "tmux-mcp_{os}_{arch}.tar.gz",
             "binary": "tmux-mcp",
             "sha256": {
-              "darwin_amd64": "5f15213dba6d2938aa2b0dd06136afe1724be828e63651943711de952a2a6619",
-              "darwin_arm64": "76a72df79cbade4b29fac6ca3b673b289c7966b418c8b17ed8c94f9970c433f9",
-              "linux_amd64": "bf8952d5835288f9496fa191d94cb9ff035d8b61d37ea09017286d48805dabef",
-              "linux_arm64": "fba7cd094e74cc2bd4004bf5ae0e570c86f05438fa3c22a06d531ec4571049aa"
+              "darwin_amd64": "c4738d01339c05f6663b6df70140b0ebd5508a0fa672bea559113f8ae485aca7",
+              "darwin_arm64": "9461c0afb09a77f773162b33b316f95372e5b1692bbc7fa741e22d81d12da8fb",
+              "linux_amd64": "bf1fdd12c969b47ee94357b00cb80a7a7e3564698f4d4c58fb85aea954c5cb3f",
+              "linux_arm64": "92c56c076bd7f32d9ea963b3d3122e435efa772cbed043c68ee933fe79ec1c71"
             }
           }
         ]

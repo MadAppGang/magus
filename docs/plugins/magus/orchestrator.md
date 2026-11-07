@@ -3,11 +3,11 @@
 
 # orchestrator
 
-Runs parallel ticket work as three levels of Claude Code sessions: a triage session that owns the tracker and the plan, a manager per ticket over the dev workflows, and child sessions for other repos, each in its own tmux window and worktree. Needs bun, tmux and git.
+Runs parallel ticket work as three levels of Claude Code sessions: triage owns the tickets and the plan, a manager per ticket runs the dev workflow in its own tmux window or herdr tab and worktree, and children run in visible terminal slots beside it. Needs bun, git, and tmux or herdr.
 
 | | |
 |---|---|
-| Version | `0.1.0` |
+| Version | `0.2.0` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 1 |
 | Subagents | 0 |
@@ -34,13 +34,13 @@ Prefer to do it by hand? [Installing Magus](../../guides/install.md) has the man
 
 | Command | What it does |
 |---|---|
-| `/orchestrator:start-ticket` | Opens a ticket in its own tmux window and worktree, with a manager session started on it, then sets the ticket In Progress. |
+| `/orchestrator:start-ticket` | Opens a ticket in its own tmux window or herdr tab and worktree, with a manager session started on it, then sets the ticket in progress. |
 
 ## Skills
 
 | Skill | What it covers |
 |---|---|
-| `orchestrator:child` | Runs this session as a child of a ticket's manager, the bottom of three levels. It does one named part, usually in another repo, asks and reports only to its manager, and closes cleanly. |
+| `orchestrator:child` | Runs this session as a child of a ticket's manager, the bottom of three levels. It does one named part, usually in another repo, asks and reports only to its manager, and leaves closing to i… |
 | `orchestrator:manager` | Runs this session as the manager of one ticket, the middle of three levels. It reads the ticket, starts the matching dev workflow, owns the work to release, and runs child sessions for other… |
 | `orchestrator:triage` | Runs this session as a product's triage, the top of three levels. It owns every ticket, the plan, status and overlap checks, starts ticket windows, and writes no code. |
 

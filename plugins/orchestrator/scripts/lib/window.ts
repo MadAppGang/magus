@@ -29,17 +29,26 @@ const VALUE_FLAGS = new Set([
   "prompt",
   "dir",
   "session",
-  "split",
   "model",
   "effort",
   "launch",
   "deliver-to",
   "lock",
+  "mux",
 ]);
-const BOOLEAN_FLAGS = new Set(["no-wait", "dry-run"]);
-const DELIVER_FLAGS = new Set(["deliver-to", "prompt", "lock"]);
+const BOOLEAN_FLAGS = new Set(["no-wait", "dry-run", "print-line"]);
+const DELIVER_FLAGS = new Set(["deliver-to", "prompt", "lock", "mux"]);
+/** Flags that only make sense when a window or tab is opened, so never with `--print-line`. */
+const NOT_WITH_PRINT_LINE = ["prompt", "session", "no-wait", "dry-run"] as const;
 
-/** Arguments for opening a window or pane (stage 1). */
+/** The two terminal multiplexers the launcher can open a ticket in. */
+export type Multiplexer = "tmux" | "herdr";
+
+function isMultiplexer(value: string): value is Multiplexer {
+  return value === "tmux" || value === "herdr";
+}
+
+/** Arguments for opening a window or tab (stage 1). */
 export interface StartArgs {
   mode: "start";
   name: string;
@@ -48,7 +57,6 @@ export interface StartArgs {
   prompt: string;
   dir?: string;
   session?: string;
-  split?: string;
   model?: string;
   effort?: string;
   /** Launch command from `--launch`, else from `ORCHESTRATOR_LAUNCH`; absent means the default launch. */
@@ -57,15 +65,28 @@ export interface StartArgs {
   dryRun: boolean;
 }
 
+/** Arguments for `--print-line`: run the checkout guards and print the line, open nothing. */
+export interface PrintLineArgs {
+  mode: "print-line";
+  name: string;
+  colour: Colour;
+  dir?: string;
+  model?: string;
+  effort?: string;
+  launch?: string;
+}
+
 /** Arguments for the detached second stage that types the prompt. */
 export interface DeliverArgs {
   mode: "deliver";
   pane: string;
   prompt: string;
+  /** The multiplexer the pane lives in. */
+  mux: Multiplexer;
   lock?: string;
 }
 
-export type ParseResult = { ok: true; args: StartArgs | DeliverArgs } | { ok: false; error: string };
+export type ParseResult = { ok: true; args: StartArgs | PrintLineArgs | DeliverArgs } | { ok: false; error: string };
 
 /**
  * Parses the command-line arguments that follow the script path.
@@ -84,10 +105,15 @@ export type ParseResult = { ok: true; args: StartArgs | DeliverArgs } | { ok: fa
  * a value flag with nothing after it, a missing or invalid `--name` or `--colour`,
  * an invalid `--model` (`^[a-z0-9][a-z0-9._-]*$`, any case) or `--effort`
  * (`^[a-z]+$`), an invalid launch command (from either source), an empty
- * `--dir`, `--session` or `--split`.
+ * `--dir` or `--session`.
  *
- * With `--deliver-to <pane>` the result is `DeliverArgs`; only `--prompt` and
- * `--lock` may accompany it. `--lock` without `--deliver-to` is an error.
+ * With `--deliver-to <pane>` the result is `DeliverArgs`; only `--prompt`,
+ * `--lock` and `--mux` may accompany it, and `--mux` is required with a value
+ * of exactly `tmux` or `herdr`. `--lock` or `--mux` without `--deliver-to` is
+ * an error.
+ *
+ * With `--print-line` the result is `PrintLineArgs`; `--prompt`, `--session`,
+ * `--no-wait`, `--dry-run` and `--deliver-to` may not accompany it.
  */
 export function parseArgs(argv: readonly string[], env: Readonly<Record<string, string | undefined>>): ParseResult {
   const values = new Map<string, string>();
@@ -118,10 +144,24 @@ export function parseArgs(argv: readonly string[], env: Readonly<Record<string, 
       if (!DELIVER_FLAGS.has(key)) return { ok: false, error: `--${key} cannot be combined with --deliver-to` };
     }
     if (pane === "") return { ok: false, error: "--deliver-to needs a pane" };
+    const mux = values.get("mux");
+    if (mux === undefined) return { ok: false, error: "--deliver-to needs --mux tmux or --mux herdr" };
+    if (!isMultiplexer(mux)) return { ok: false, error: `invalid --mux ${quote(mux)}; one of: tmux herdr` };
     const lock = values.get("lock");
-    return { ok: true, args: { mode: "deliver", pane, prompt: values.get("prompt") ?? "", ...(lock ? { lock } : {}) } };
+    return {
+      ok: true,
+      args: { mode: "deliver", pane, prompt: values.get("prompt") ?? "", mux, ...(lock ? { lock } : {}) },
+    };
   }
   if (values.has("lock")) return { ok: false, error: "--lock is internal and only valid with --deliver-to" };
+  if (values.has("mux")) return { ok: false, error: "--mux is internal and only valid with --deliver-to" };
+
+  const printLine = booleans.has("print-line");
+  if (printLine) {
+    for (const key of NOT_WITH_PRINT_LINE) {
+      if (values.has(key) || booleans.has(key)) return { ok: false, error: `--${key} cannot be combined with --print-line` };
+    }
+  }
 
   const name = values.get("name");
   const colour = values.get("colour");
@@ -140,7 +180,7 @@ export function parseArgs(argv: readonly string[], env: Readonly<Record<string, 
   const effort = values.get("effort");
   if (effort !== undefined && !EFFORT_RE.test(effort)) return { ok: false, error: `invalid effort ${quote(effort)}` };
 
-  for (const key of ["dir", "session", "split"]) {
+  for (const key of ["dir", "session"]) {
     if (values.get(key) === "") return { ok: false, error: `--${key} needs a value` };
   }
 
@@ -155,6 +195,16 @@ export function parseArgs(argv: readonly string[], env: Readonly<Record<string, 
     };
   }
 
+  const dir = values.get("dir");
+  if (printLine) {
+    const lineArgs: PrintLineArgs = { mode: "print-line", name, colour };
+    if (dir !== undefined) lineArgs.dir = dir;
+    if (model !== undefined) lineArgs.model = model;
+    if (effort !== undefined) lineArgs.effort = effort;
+    if (launch !== undefined) lineArgs.launch = launch;
+    return { ok: true, args: lineArgs };
+  }
+
   const args: StartArgs = {
     mode: "start",
     name,
@@ -163,12 +213,9 @@ export function parseArgs(argv: readonly string[], env: Readonly<Record<string, 
     noWait: booleans.has("no-wait"),
     dryRun: booleans.has("dry-run"),
   };
-  const dir = values.get("dir");
   const session = values.get("session");
-  const split = values.get("split");
   if (dir !== undefined) args.dir = dir;
   if (session !== undefined) args.session = session;
-  if (split !== undefined) args.split = split;
   if (model !== undefined) args.model = model;
   if (effort !== undefined) args.effort = effort;
   if (launch !== undefined) args.launch = launch;
@@ -206,7 +253,7 @@ export function mainCheckoutFromCommonDir(commonDir: string): string | null {
   return checkout === "" ? "/" : checkout;
 }
 
-/** What the shell line typed into the new pane needs. */
+/** What the launch command typed into a new pane needs. */
 export interface LaunchSpec {
   name: string;
   colour: Colour;
@@ -217,12 +264,7 @@ export interface LaunchSpec {
 }
 
 /**
- * Builds the shell line typed into the new pane:
- *
- *   git pull --ff-only && { ! command -v magus >/dev/null 2>&1 || magus update || echo "…"; } && <launch>
- *
- * `magus update` runs only where `magus` is installed, and its failure is
- * reported and does not stop the line. `<launch>` is, by default:
+ * Builds the `<launch>` part of the shell line alone. By default:
  *
  *   CLAUDE_WT_NAME=<name> CLAUDE_WT_COLOUR=<colour> claude -w <name> -n <name> [--model M] [--effort E] '/color <colour>'
  *
@@ -232,7 +274,7 @@ export interface LaunchSpec {
  * Throws an Error when any field fails the pattern `parseArgs` enforces, so a
  * value that could break the shell line never reaches it.
  */
-export function buildLaunchLine(spec: LaunchSpec): string {
+export function buildLaunch(spec: LaunchSpec): string {
   if (!NAME_RE.test(spec.name)) throw new Error(`invalid name ${quote(spec.name)}`);
   if (!isColour(spec.colour)) throw new Error(`invalid colour ${quote(String(spec.colour))}`);
   if (spec.model !== undefined && !MODEL_RE.test(spec.model)) throw new Error(`invalid model ${quote(spec.model)}`);
@@ -243,26 +285,222 @@ export function buildLaunchLine(spec: LaunchSpec): string {
   if (spec.model !== undefined) flags.push("--model", spec.model);
   if (spec.effort !== undefined) flags.push("--effort", spec.effort);
 
-  const launch =
-    spec.launch === undefined
-      ? [
-          `CLAUDE_WT_NAME=${spec.name}`,
-          `CLAUDE_WT_COLOUR=${spec.colour}`,
-          "claude",
-          "-w",
-          spec.name,
-          "-n",
-          spec.name,
-          ...flags,
-          `'/color ${spec.colour}'`,
-        ].join(" ")
-      : [spec.launch, spec.name, spec.colour, ...(flags.length > 0 ? ["--", ...flags] : [])].join(" ");
+  return spec.launch === undefined
+    ? [
+        `CLAUDE_WT_NAME=${spec.name}`,
+        `CLAUDE_WT_COLOUR=${spec.colour}`,
+        "claude",
+        "-w",
+        spec.name,
+        "-n",
+        spec.name,
+        ...flags,
+        `'/color ${spec.colour}'`,
+      ].join(" ")
+    : [spec.launch, spec.name, spec.colour, ...(flags.length > 0 ? ["--", ...flags] : [])].join(" ");
+}
 
+/**
+ * Builds the shell line typed into a new ticket window or tab:
+ *
+ *   git pull --ff-only && { ! command -v magus >/dev/null 2>&1 || magus update || echo "…"; } && <launch>
+ *
+ * `magus update` runs only where `magus` is installed, and its failure is
+ * reported and does not stop the line. `<launch>` is `buildLaunch(spec)`, and
+ * this throws exactly when that does.
+ */
+export function buildLaunchLine(spec: LaunchSpec): string {
   return (
     "git pull --ff-only && " +
     '{ ! command -v magus >/dev/null 2>&1 || magus update || echo "ticket-window: magus update failed; continuing without it"; } && ' +
-    launch
+    buildLaunch(spec)
   );
+}
+
+/** Wraps a value in single quotes for a POSIX shell, writing each `'` as `'\''`. */
+function shellQuote(value: string): string {
+  return `'${value.replaceAll("'", "'\\''")}'`;
+}
+
+/**
+ * Builds the shell line a manager types into a child's pane:
+ *
+ *   cd '<dir>' && git pull --ff-only && <launch>
+ *
+ * `<launch>` is `buildLaunch(spec)`; there is no `magus update` step. `dir` is
+ * single-quoted with every `'` written as `'\''`.
+ *
+ * Throws an Error when `dir` is not absolute or contains a newline or NUL, or
+ * when `buildLaunch` would throw.
+ */
+export function buildChildLine(spec: LaunchSpec & { dir: string }): string {
+  if (!spec.dir.startsWith("/")) throw new Error(`checkout path must be absolute: ${quote(spec.dir)}`);
+  if (/[\n\0]/.test(spec.dir)) throw new Error(`checkout path contains a newline or NUL: ${quote(spec.dir)}`);
+  const launch = buildLaunch(spec);
+  return `cd ${shellQuote(spec.dir)} && git pull --ff-only && ${launch}`;
+}
+
+/** Result of `detectMultiplexer`. */
+export type MultiplexerDetection = { ok: true; mux: Multiplexer } | { ok: false; error: string };
+
+/**
+ * Decides which multiplexer the caller runs in.
+ *
+ * A non-empty `ORCHESTRATOR_MULTIPLEXER` decides alone: `tmux` needs a
+ * non-empty `TMUX`, `herdr` a non-empty `HERDR_PANE_ID`, and any other value is
+ * an error; `probeHerdr` is not called. Otherwise a herdr claim
+ * (`HERDR_ENV === "1"` and a non-empty `HERDR_PANE_ID`) is confirmed by calling
+ * `probeHerdr` exactly once; `true` means herdr. herdr is checked before tmux
+ * because herdr inherits `TMUX` when it runs inside tmux. Failing that, a
+ * non-empty `TMUX` means tmux, and anything else is the error
+ * `not inside tmux or herdr`. An exception from `probeHerdr` counts as `false`.
+ * Never throws.
+ */
+export function detectMultiplexer(
+  env: Readonly<Record<string, string | undefined>>,
+  probeHerdr: () => boolean,
+): MultiplexerDetection {
+  const forced = env.ORCHESTRATOR_MULTIPLEXER;
+  if (forced) {
+    if (forced === "tmux") {
+      return env.TMUX ? { ok: true, mux: "tmux" } : { ok: false, error: "ORCHESTRATOR_MULTIPLEXER=tmux, but not inside tmux (TMUX is unset)" };
+    }
+    if (forced === "herdr") {
+      return env.HERDR_PANE_ID
+        ? { ok: true, mux: "herdr" }
+        : { ok: false, error: "ORCHESTRATOR_MULTIPLEXER=herdr, but not inside herdr (HERDR_PANE_ID is unset)" };
+    }
+    return { ok: false, error: `invalid ORCHESTRATOR_MULTIPLEXER ${quote(forced)}; one of: tmux herdr` };
+  }
+  if (env.HERDR_ENV === "1" && env.HERDR_PANE_ID) {
+    let confirmed = false;
+    try {
+      confirmed = probeHerdr();
+    } catch {
+      confirmed = false;
+    }
+    if (confirmed) return { ok: true, mux: "herdr" };
+  }
+  if (env.TMUX) return { ok: true, mux: "tmux" };
+  return { ok: false, error: "not inside tmux or herdr" };
+}
+
+/**
+ * The argv that opens a herdr tab at `dir`, labelled `name`, in workspace
+ * `workspace`, without moving the user's focus:
+ *
+ *   herdr tab create --workspace <workspace> --cwd <dir> --label <name> --no-focus
+ *
+ * Throws an Error when `workspace` is empty, `dir` is not absolute, or `name`
+ * fails the window name pattern.
+ */
+export function buildHerdrTabCreate(spec: { dir: string; name: string; workspace: string }): string[] {
+  if (spec.workspace === "") throw new Error("herdr workspace id is empty");
+  if (!spec.dir.startsWith("/")) throw new Error(`checkout path must be absolute: ${quote(spec.dir)}`);
+  if (!NAME_RE.test(spec.name)) throw new Error(`invalid name ${quote(spec.name)}`);
+  return ["herdr", "tab", "create", "--workspace", spec.workspace, "--cwd", spec.dir, "--label", spec.name, "--no-focus"];
+}
+
+/** Reads `obj[k1][k2]…` as a string (`""` included), or `null` when it is missing or not a string. */
+function stringAt(obj: unknown, ...keys: string[]): string | null {
+  let cur: unknown = obj;
+  for (const key of keys) {
+    if (typeof cur !== "object" || cur === null) return null;
+    cur = (cur as Record<string, unknown>)[key];
+  }
+  return typeof cur === "string" ? cur : null;
+}
+
+/** Reads `obj[k1][k2]…` as a non-empty string, or `null`. */
+function nonEmptyStringAt(obj: unknown, ...keys: string[]): string | null {
+  const value = stringAt(obj, ...keys);
+  return value === "" ? null : value;
+}
+
+function parseJson(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Parses the JSON `herdr tab create` prints. `tabId` is `result.tab.tab_id`;
+ * `paneId` is `result.root_pane.pane_id`, or `null` when that is missing (the
+ * caller then finds the tab's pane with `herdrPaneOfTab`). Returns `null` for
+ * output that is not JSON or carries no string `tab_id`. Never throws.
+ */
+export function parseHerdrTabCreate(stdout: string): { tabId: string; paneId: string | null } | null {
+  const data = parseJson(stdout);
+  const tabId = stringAt(data, "result", "tab", "tab_id");
+  if (tabId === null) return null;
+  return { tabId, paneId: stringAt(data, "result", "root_pane", "pane_id") };
+}
+
+/**
+ * Finds the first pane of tab `tabId` in the JSON `herdr pane list` prints
+ * (`result.panes[]`, each with `pane_id` and `tab_id`). `null` when none
+ * matches or the output is not that shape. Never throws.
+ */
+export function herdrPaneOfTab(stdout: string, tabId: string): string | null {
+  const panes = (parseJson(stdout) as { result?: { panes?: unknown } } | undefined)?.result?.panes;
+  if (!Array.isArray(panes)) return null;
+  for (const pane of panes) {
+    if (nonEmptyStringAt(pane, "tab_id") === tabId) {
+      const id = nonEmptyStringAt(pane, "pane_id");
+      if (id !== null) return id;
+    }
+  }
+  return null;
+}
+
+/** What the launcher reads about one herdr pane. */
+export interface HerdrPane {
+  paneId: string;
+  tabId: string | null;
+  workspaceId: string | null;
+  cwd: string | null;
+}
+
+/**
+ * Parses the JSON `herdr pane current` and `herdr pane get <pane>` print
+ * (`result.pane`). Returns `null` for output that is not JSON or has no string
+ * `result.pane.pane_id`; the other fields are `null` when missing. Never throws.
+ */
+export function parseHerdrPane(stdout: string): HerdrPane | null {
+  const data = parseJson(stdout);
+  const paneId = stringAt(data, "result", "pane", "pane_id");
+  if (paneId === null) return null;
+  return {
+    paneId,
+    tabId: stringAt(data, "result", "pane", "tab_id"),
+    workspaceId: stringAt(data, "result", "pane", "workspace_id"),
+    cwd: stringAt(data, "result", "pane", "cwd"),
+  };
+}
+
+/**
+ * The argv that types `line` into a herdr pane's interactive shell and presses
+ * Enter: `herdr pane run <pane> <line>`. Throws an Error when `pane` is empty
+ * or `line` contains a newline.
+ */
+export function buildHerdrRun(pane: string, line: string): string[] {
+  if (pane === "") throw new Error("herdr pane id is empty");
+  if (line.includes("\n")) throw new Error("the line to run contains a newline");
+  return ["herdr", "pane", "run", pane, line];
+}
+
+/** The text `claude -w` prints when it refuses to start in a folder that is not trusted yet. */
+const TRUST_ERROR = "Workspace trust not yet accepted";
+
+/**
+ * True exactly when `screen` contains `Workspace trust not yet accepted`
+ * (case-sensitive, on any line). The caller joins wrapped lines before
+ * passing the screen, so the phrase is never split across lines.
+ */
+export function screenShowsTrustError(screen: string): boolean {
+  return screen.includes(TRUST_ERROR);
 }
 
 /**

@@ -30,6 +30,48 @@
 
 ---
 
+## [terminal 5.6.1] - 2026-11-07
+
+### Changed
+
+- **tmux-mcp 2.2.0.** `open-pane` takes `layout: "agent-grid"`: the agent's pane stays full
+  height on the left and its visible slots fill a grid on the right, laid out again on every
+  open and close. Panes the server does not own are never moved. `capture-pane` returns the
+  screen text in its structured result too.
+
+---
+
+## [orchestrator 0.2.0] - 2026-11-07
+
+### Added
+
+- **Any tracker, with Linear and GitHub Issues built in.** The skills and
+  `/orchestrator:start-ticket` talk to a tracker through four actions: read a ticket, read its
+  labels, set it in progress, add a progress note. `ABC-123` and Linear URLs go to a Linear
+  MCP server; `#123`, `owner/repo#123` and issue URLs go to `gh`. Any other tracker is the
+  one the product repo's `CLAUDE.md` describes, else it is asked once and stored. The colour
+  comes from the labels, matched loosely: `bug` or `Bugfix` red, `feature` or `enhancement`
+  green, `improvement` blue.
+- **`scripts/ticket-ref.ts`** turns a ticket reference into its tracker, id, colour and
+  window name, so the command no longer builds them by hand.
+- **herdr.** Inside herdr the launcher opens a tab in the current workspace that does not
+  take focus; inside tmux, a window as before. `ORCHESTRATOR_MULTIPLEXER` picks one when
+  both are present.
+
+### Changed
+
+- **Children run in visible terminal slots in the manager's own window**, through the
+  `terminal` plugin's `mux` server: the manager opens the lowest free slot, types the child's
+  start line, answers its setup questions and menus, and on the child's report types
+  `/quit`, removes its worktree and closes the slot. Ten at most is the soft limit.
+  `ticket-window.ts --split` is removed; `--print-line` prints the start line for a slot.
+- **The launcher checks that the first prompt landed.** If the prompt is not on the screen,
+  it types it once more, then logs `SENT`, `SENT (unconfirmed)` or `NOT_SENT` (exit 8). A
+  folder Claude Code was never trusted in logs `UNTRUSTED` (exit 7) and frees the lock at
+  once.
+
+---
+
 ## [multimodel 6.0.0] - 2026-11-07
 
 ### Changed

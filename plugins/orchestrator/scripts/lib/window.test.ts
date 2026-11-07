@@ -1,10 +1,20 @@
 import { describe, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, parse } from "node:path";
 import {
   parseArgs,
   mainCheckoutFromCommonDir,
   buildLaunchLine,
+  buildLaunch,
+  buildChildLine,
+  detectMultiplexer,
+  buildHerdrTabCreate,
+  parseHerdrTabCreate,
+  herdrPaneOfTab,
+  parseHerdrPane,
+  buildHerdrRun,
+  screenShowsTrustError,
   lockPathFor,
   stateDir,
   isClaudeForeground,
@@ -134,7 +144,6 @@ describe("start and delivery arguments", () => {
       "--prompt", prompt,
       "--dir", dir,
       "--session", "development session",
-      "--split", "%7",
       "--model", "Model_9.2-X",
       "--effort", "unlisted",
       "--launch", "env MODE=quiet ./launch-session",
@@ -151,7 +160,6 @@ describe("start and delivery arguments", () => {
         prompt,
         dir,
         session: "development session",
-        split: "%7",
         model: "Model_9.2-X",
         effort: "unlisted",
         launch: "env MODE=quiet ./launch-session",
@@ -165,7 +173,6 @@ describe("start and delivery arguments", () => {
       { flag: "--prompt", value: "--dry-run", field: "prompt" },
       { flag: "--dir", value: "--session", field: "dir" },
       { flag: "--session", value: "--split", field: "session" },
-      { flag: "--split", value: "--model", field: "split" },
     ];
 
     for (const { flag, value, field } of literalValues) {
@@ -335,45 +342,48 @@ describe("start and delivery arguments", () => {
     }
   });
 
-  test("TEST-8 [REQ-5, REQ-9] returns delivery arguments only for the delivery flag set", () => {
+  test("TEST-8 [REQ-5, REQ-9, REQ-26] returns delivery arguments only for the mux-qualified delivery flag set", () => {
     const lock = join(tmpdir(), "orchestrator-window-testdata", "delivery-lock");
 
-    expect(parseArgs([
-      "--deliver-to", "%7", "--prompt", "--literal-prompt", "--lock", lock,
-    ], {})).toEqual({
-      ok: true,
-      args: { mode: "deliver", pane: "%7", prompt: "--literal-prompt", lock },
-    });
-    expect(parseArgs(["--prompt", "hello", "--deliver-to", "%7"], {})).toEqual({
-      ok: true,
-      args: { mode: "deliver", pane: "%7", prompt: "hello" },
-    });
+    for (const mux of ["tmux", "herdr"] as const) {
+      const pane = mux === "tmux" ? "%7" : "w5:p3";
 
-    const forbiddenExtras = [
-      ["--name", "review"],
-      ["--colour", "blue"],
-      ["--color", "blue"],
-      ["--dir", "checkout"],
-      ["--session", "development"],
-      ["--split", "%8"],
-      ["--model", "model-2"],
-      ["--effort", "high"],
-      ["--launch", "wt"],
-      ["--no-wait"],
-      ["--dry-run"],
-    ];
+      expect(parseArgs([
+        "--deliver-to", pane, "--prompt", "--literal-prompt", "--lock", lock,
+        "--mux", mux,
+      ], {})).toEqual({
+        ok: true,
+        args: { mode: "deliver", pane, prompt: "--literal-prompt", lock, mux },
+      });
+      expect(parseArgs(["--mux", mux, "--prompt", "hello", "--deliver-to", pane], {})).toEqual({
+        ok: true,
+        args: { mode: "deliver", pane, prompt: "hello", mux },
+      });
+      expect(parseArgs(["--deliver-to", pane, "--mux", mux, "--prompt", ""], {})).toEqual({
+        ok: true,
+        args: { mode: "deliver", pane, prompt: "", mux },
+      });
 
-    for (const extra of forbiddenExtras) {
-      expectParseError(["--deliver-to", "%7", "--prompt", "hello", ...extra]);
+      const base = ["--deliver-to", pane, "--mux", mux, "--prompt", "hello"];
+      const forbiddenExtras = [
+        ["--name", "review"], ["--colour", "blue"], ["--color", "blue"],
+        ["--dir", "checkout"], ["--session", "development"], ["--split", "%8"],
+        ["--model", "model-2"], ["--effort", "high"], ["--launch", "wt"],
+        ["--no-wait"], ["--dry-run"], ["--print-line"],
+      ];
+
+      for (const extra of forbiddenExtras) {
+        expectParseError([...base, ...extra]);
+      }
+      expectParseError(["--mux", mux, "--prompt", "hello", "--deliver-to"]);
+      expectParseError(["--deliver-to", pane, "--mux", mux, "--prompt"]);
+      expectParseError([...base, "--lock"]);
+      expectParseError([...base, "--deliver-to", "%8"]);
+      expectParseError([...base, "--prompt", "again"]);
+      expectParseError([...base, "--lock", lock, "--lock", lock]);
     }
 
     expectParseError(startArgv("--lock", lock));
-    expectParseError(["--prompt", "hello", "--deliver-to"]);
-    expectParseError(["--deliver-to", "%7", "--prompt"]);
-    expectParseError(["--deliver-to", "%7", "--prompt", "hello", "--lock"]);
-    expectParseError(["--deliver-to", "%7", "--prompt", "hello", "--deliver-to", "%8"]);
-    expectParseError(["--deliver-to", "%7", "--prompt", "hello", "--prompt", "again"]);
-    expectParseError(["--deliver-to", "%7", "--prompt", "hello", "--lock", lock, "--lock", lock]);
   });
 });
 
@@ -649,6 +659,625 @@ describe("pane foreground and unsubmitted-input predicates", () => {
     }
     expect(promptStillInInput("❯ ", "")).toBe(false);
     expect(promptStillInInput("❯ " + prompt, "")).toBe(false);
+  });
+});
+
+describe("print-line and delivery argument changes", () => {
+  test("TEST-26 [REQ-24] rejects the removed split flag with its specified diagnostic", () => {
+    for (const argv of [["--split", "%7"], startArgv("--split", "%7")]) {
+      expect(parseArgs(argv, {})).toEqual({
+        ok: false, error: 'unknown flag "--split"',
+      });
+    }
+  });
+
+  test("TEST-27 [REQ-25] returns print-line defaults without start-only fields", () => {
+    for (const flag of ["--colour", "--color"]) {
+      expect(parseArgs(["--print-line", "--name", "review", flag, "blue"], {})).toEqual({
+        ok: true,
+        args: { mode: "print-line", name: "review", colour: "blue" },
+      });
+    }
+  });
+
+  test("TEST-28 [REQ-25, REQ-7] preserves print-line options and applies the same launch-source precedence", () => {
+    const dir = join(tmpdir(), "orchestrator-window-testdata", "main checkout");
+    const required = startArgv("--print-line", "--dir", dir, "--model", "Model_9.2-X", "--effort", "high");
+
+    for (const source of ["flag", "env"] as const) {
+      const argv = source === "flag" ? [...required, "--launch", "env MODE=quiet ./launch-session"] : required;
+      const env = source === "env"
+        ? { ORCHESTRATOR_LAUNCH: "env MODE=quiet ./launch-session" }
+        : { ORCHESTRATOR_LAUNCH: "bad; unused" };
+
+      expect(parseArgs(argv, env)).toEqual({
+        ok: true,
+        args: {
+          mode: "print-line", name: "review", colour: "blue", dir,
+          model: "Model_9.2-X", effort: "high", launch: "env MODE=quiet ./launch-session",
+        },
+      });
+    }
+    for (const env of [{}, { ORCHESTRATOR_LAUNCH: "" }]) {
+      expect(parseArgs(startArgv("--print-line", "--dir", "--session"), env)).toEqual({
+        ok: true,
+        args: { mode: "print-line", name: "review", colour: "blue", dir: "--session" },
+      });
+    }
+  });
+
+  test("TEST-29 [REQ-25] rejects every print-line conflict regardless of flag order", () => {
+    const conflicts = [
+      ["--prompt", "hello"], ["--prompt", ""], ["--session", "development"],
+      ["--no-wait"], ["--dry-run"], ["--deliver-to", "%7", "--mux", "tmux"],
+    ];
+
+    for (const conflict of conflicts) {
+      expectParseError([...startArgv("--print-line"), ...conflict]);
+      expectParseError([...conflict, ...startArgv("--print-line")]);
+    }
+  });
+
+  test("TEST-30 [REQ-25, REQ-1, REQ-2, REQ-5, REQ-6, REQ-8] validates print-line values and rejects repeated or inapplicable flags", () => {
+    for (const argv of [
+      ["--print-line"], ["--print-line", "--name", "review"],
+      ["--print-line", "--colour", "blue"], startArgv("--print-line", "--print-line"),
+      startArgv("--print-line", "--name", "other"), startArgv("--print-line", "--color", "red"),
+      startArgv("--print-line", "--lock", "unused"), startArgv("--print-line", "--mux", "tmux"),
+      ["--print-line", "--name", "a".repeat(49), "--colour", "blue"],
+      ["--print-line", "--name", "Review", "--colour", "blue"],
+      ["--print-line", "--name", "review", "--colour", "Red"],
+      startArgv("--print-line", "--dir", ""),
+      startArgv("--print-line", "--model", "route/model"),
+      startArgv("--print-line", "--effort", "High"),
+      startArgv("--print-line", "--unexpected"),
+    ]) {
+      expectParseError(argv);
+    }
+    for (const [flag, value] of [
+      ["--dir", "checkout"], ["--model", "model-2"], ["--effort", "high"], ["--launch", "wt"],
+    ] as const) {
+      expectParseError(startArgv("--print-line", flag));
+      expectParseError(startArgv("--print-line", flag, value, flag, value));
+    }
+    for (const launch of invalidLaunchCommands()) {
+      expectParseError(startArgv("--print-line", "--launch", launch));
+      if (launch !== "") {
+        expectParseError(startArgv("--print-line"), { ORCHESTRATOR_LAUNCH: launch });
+      }
+    }
+  });
+
+  test("TEST-31 [REQ-26, REQ-9, REQ-5] requires exactly one lower-case mux value only in delivery mode", () => {
+    const deliver = ["--deliver-to", "%7", "--prompt", "hello"];
+
+    expectParseError(deliver);
+    expectParseError([...deliver, "--mux"]);
+    for (const mux of ["", "TMUX", "HERDR", "screen", " tmux", "tmux ", "--no-wait"]) {
+      expectParseError([...deliver, "--mux", mux]);
+    }
+    expectParseError([...deliver, "--mux", "tmux", "--mux", "tmux"]);
+    expectParseError([...deliver, "--mux", "tmux", "--mux", "herdr"]);
+    expectParseError(startArgv("--mux", "tmux"));
+    expectParseError(["--mux", "herdr"]);
+    expect(parseArgs(["--deliver-to", "--pane-literal", "--mux", "herdr", "--prompt", "--text", "--lock", "--lock-literal"], {})).toEqual({
+      ok: true,
+      args: { mode: "deliver", pane: "--pane-literal", mux: "herdr", prompt: "--text", lock: "--lock-literal" },
+    });
+  });
+
+  test("TEST-32 [REQ-27] keeps diagnostics on one line and JSON-quotes any echoed input value", () => {
+    const values = ["bad\nname", "bad\rname", "bad\tname", "bad\u0000name", 'bad"name', "bad\\name"];
+
+    for (const value of values) {
+      const invalidArguments = [
+        ["--name", value, "--colour", "blue"],
+        ["--name", "review", "--colour", value],
+        startArgv("--model", value),
+        startArgv("--effort", value),
+        ["--unknown-" + value],
+        [value],
+      ];
+
+      for (const argv of invalidArguments) {
+        const result = parseArgs(argv, {});
+
+        if (result.ok) {
+          throw new Error("Expected invalid argument rejection: " + JSON.stringify(argv));
+        }
+        expect(result.error.trim()).not.toBe("");
+        expect(result.error).not.toMatch(/[\u0000-\u001f]/);
+        const echoedValue = argv[0] === "--unknown-" + value ? argv[0] : value;
+        // An error need not echo the value, but an echoed value must be JSON-quoted.
+        if (result.error.includes(echoedValue) || result.error.includes(JSON.stringify(echoedValue).slice(1, -1))) {
+          expect(result.error).toContain(JSON.stringify(echoedValue));
+        }
+      }
+    }
+    expectParseError(["--unknown\nflag"]);
+    expectParseError(["unexpected\nargument"]);
+  });
+
+  test("TEST-33 [REQ-27, REQ-44] parses frozen arguments using only the supplied relevant environment", () => {
+    const environments = [
+      Object.freeze({ ORCHESTRATOR_LAUNCH: undefined }),
+      Object.freeze({ TMUX: "irrelevant", HERDR_ENV: "1", ORCHESTRATOR_MULTIPLEXER: "invalid" }),
+    ];
+    const argvs = [
+      Object.freeze(startArgv()),
+      Object.freeze(startArgv("--print-line")),
+      Object.freeze(["--deliver-to", "%7", "--prompt", "hello", "--mux", "tmux"]),
+    ];
+
+    for (const argv of argvs) {
+      const before = [...argv];
+      const baseline = parseArgs(argv, {});
+
+      expect(baseline.ok).toBe(true);
+      for (const env of environments) {
+        expect(parseArgs(argv, env)).toEqual(baseline);
+      }
+      expect(argv).toEqual(before);
+    }
+  });
+});
+
+function expectMultiplexerError(result: ReturnType<typeof detectMultiplexer>): string {
+  if (result.ok) {
+    throw new Error("Expected multiplexer detection to fail");
+  }
+  expect(result).toEqual({ ok: false, error: expect.any(String) });
+  expect(result.error.trim()).not.toBe("");
+  return result.error;
+}
+
+describe("multiplexer choice", () => {
+  test("TEST-34 [REQ-28] honors a forced backend without consulting the herdr probe", () => {
+    const cases = [
+      { env: { ORCHESTRATOR_MULTIPLEXER: "tmux", TMUX: "session", HERDR_ENV: "1", HERDR_PANE_ID: "w5:p3" }, mux: "tmux" },
+      { env: { ORCHESTRATOR_MULTIPLEXER: "herdr", HERDR_PANE_ID: "w5:p3", TMUX: "session" }, mux: "herdr" },
+      { env: { ORCHESTRATOR_MULTIPLEXER: "herdr", HERDR_ENV: "0", HERDR_PANE_ID: "w5:p3" }, mux: "herdr" },
+      { env: { ORCHESTRATOR_MULTIPLEXER: "tmux", TMUX: " " }, mux: "tmux" },
+      { env: { ORCHESTRATOR_MULTIPLEXER: "herdr", HERDR_PANE_ID: " " }, mux: "herdr" },
+    ] as const;
+
+    for (const { env, mux } of cases) {
+      let calls = 0;
+
+      const result = detectMultiplexer(Object.freeze(env), () => {
+        calls++;
+        throw new Error("A forced backend must not probe");
+      });
+
+      expect(result).toEqual({ ok: true, mux });
+      expect(calls).toBe(0);
+    }
+  });
+
+  test("TEST-35 [REQ-28] rejects a forced backend whose required environment is empty rather than falling back", () => {
+    const cases: Environment[] = [
+      { ORCHESTRATOR_MULTIPLEXER: "tmux", HERDR_ENV: "1", HERDR_PANE_ID: "w5:p3" },
+      { ORCHESTRATOR_MULTIPLEXER: "tmux", TMUX: "", HERDR_ENV: "1", HERDR_PANE_ID: "w5:p3" },
+      { ORCHESTRATOR_MULTIPLEXER: "herdr", TMUX: "session" },
+      { ORCHESTRATOR_MULTIPLEXER: "herdr", HERDR_PANE_ID: "", TMUX: "session" },
+    ];
+
+    for (const env of cases) {
+      let calls = 0;
+
+      const result = detectMultiplexer(env, () => { calls++; return true; });
+
+      expectMultiplexerError(result);
+      expect(calls).toBe(0);
+    }
+  });
+
+  test("TEST-36 [REQ-28] names both valid backends when a nonempty override is invalid", () => {
+    for (const override of ["screen", "TMUX", "HERDR", " tmux", "tmux ", " ", "0"]) {
+      let calls = 0;
+
+      const result = detectMultiplexer({
+        ORCHESTRATOR_MULTIPLEXER: override, TMUX: "session", HERDR_ENV: "1", HERDR_PANE_ID: "w5:p3",
+      }, () => { calls++; return true; });
+
+      const error = expectMultiplexerError(result);
+      expect(error).toContain("tmux");
+      expect(error).toContain("herdr");
+      expect(calls).toBe(0);
+    }
+  });
+
+  test("TEST-37 [REQ-29] confirms a complete herdr claim once and prefers it over inherited tmux", () => {
+    for (const override of [undefined, ""]) {
+      for (const tmux of [undefined, "", "inherited-session"]) {
+        let calls = 0;
+
+        const result = detectMultiplexer({
+          ORCHESTRATOR_MULTIPLEXER: override, HERDR_ENV: "1", HERDR_PANE_ID: "w5:p3", TMUX: tmux,
+        }, () => { calls++; return true; });
+
+        expect(result).toEqual({ ok: true, mux: "herdr" });
+        expect(calls).toBe(1);
+      }
+    }
+  });
+
+  test("TEST-38 [REQ-29] treats a failed or throwing herdr probe as false and then falls back to tmux", () => {
+    for (const throws of [false, true]) {
+      for (const tmux of [undefined, "", "session"]) {
+        let calls = 0;
+
+        const result = detectMultiplexer({ HERDR_ENV: "1", HERDR_PANE_ID: "w5:p3", TMUX: tmux }, () => {
+          calls++;
+          if (throws) throw new Error("herdr unavailable");
+          return false;
+        });
+
+        expect(result).toEqual(tmux
+          ? { ok: true, mux: "tmux" }
+          : { ok: false, error: "not inside tmux or herdr" });
+        expect(calls).toBe(1);
+      }
+    }
+  });
+
+  test("TEST-39 [REQ-29] never probes an incomplete claim and returns the exact no-multiplexer error", () => {
+    const claims: Environment[] = [
+      {}, { HERDR_ENV: "1" }, { HERDR_ENV: "1", HERDR_PANE_ID: "" },
+      { HERDR_PANE_ID: "w5:p3" }, { HERDR_ENV: "0", HERDR_PANE_ID: "w5:p3" },
+      { HERDR_ENV: "true", HERDR_PANE_ID: "w5:p3" },
+      { HERDR_ENV: "01", HERDR_PANE_ID: "w5:p3" },
+      { HERDR_ENV: "1 ", HERDR_PANE_ID: "w5:p3" },
+      { HERDR_WORKSPACE_ID: "w5" },
+    ];
+
+    for (const claim of claims) {
+      for (const tmux of [undefined, "", "session"]) {
+        let calls = 0;
+
+        const result = detectMultiplexer({ ...claim, TMUX: tmux }, () => { calls++; return true; });
+
+        expect(result).toEqual(tmux
+          ? { ok: true, mux: "tmux" }
+          : { ok: false, error: "not inside tmux or herdr" });
+        expect(calls).toBe(0);
+      }
+    }
+  });
+});
+
+describe("standalone and child launch lines", () => {
+  test("TEST-40 [REQ-30, REQ-12] builds only the default launch and includes exactly the flags supplied", () => {
+    for (const name of ["a", "0", "a".repeat(48), "repo.2_name-branch"]) {
+      for (const colour of ["red", "blue", "green", "yellow", "purple", "orange", "pink", "cyan", "default"] as const) {
+        expect(buildLaunch(Object.freeze({ name, colour }))).toMatch(new RegExp(
+          "^" + defaultLaunchPrefix(name, colour) + "\\s+" + shellWord("/color " + colour) + "\\s*$",
+        ));
+      }
+    }
+    const cases = [
+      { options: {}, expected: "" },
+      { options: { model: "Model_9.2-X" }, expected: "\\s+--model\\s+" + shellWord("Model_9.2-X") },
+      { options: { effort: "unlisted" }, expected: "\\s+--effort\\s+" + shellWord("unlisted") },
+      {
+        options: { model: "model-2", effort: "high" },
+        expected: "\\s+--model\\s+" + shellWord("model-2") + "\\s+--effort\\s+" + shellWord("high"),
+      },
+    ];
+
+    for (const { options, expected } of cases) {
+      const spec = { name: "review", colour: "cyan" as const, ...options };
+      const launch = buildLaunch(spec);
+
+      expect(launch).toMatch(new RegExp("^" + defaultLaunchPrefix("review", "cyan") +
+        expected + "\\s+" + shellWord("/color cyan") + "\\s*$"));
+      expectLaunchLine(buildLaunchLine(spec), defaultLaunchPrefix("review", "cyan") +
+        expected + "\\s+" + shellWord("/color cyan"));
+      expect(buildLaunchLine(spec).endsWith(" && " + launch)).toBe(true);
+    }
+  });
+
+  test("TEST-41 [REQ-30, REQ-13] builds only the custom launch with an option separator only when needed", () => {
+    const cases = [
+      { launch: "wt", options: {}, expected: "" },
+      { launch: "./launch-session", options: { model: "Model_9.2-X" }, expected: "\\s+--\\s+--model\\s+" + shellWord("Model_9.2-X") },
+      { launch: "env MODE=quiet ./launch-session", options: { effort: "high" }, expected: "\\s+--\\s+--effort\\s+" + shellWord("high") },
+      {
+        launch: "wt", options: { model: "model-2", effort: "high" },
+        expected: "\\s+--\\s+--model\\s+" + shellWord("model-2") + "\\s+--effort\\s+" + shellWord("high"),
+      },
+    ];
+
+    for (const { launch, options, expected } of cases) {
+      const spec = { name: "review", colour: "blue" as const, launch, ...options };
+      const command = buildLaunch(spec);
+      const expectedCommand = launch.split(" ").map(shellWord).join("\\s+") +
+        "\\s+" + shellWord("review") + "\\s+" + shellWord("blue") + expected;
+
+      expect(command).toMatch(new RegExp("^" + expectedCommand + "\\s*$"));
+      expectLaunchLine(buildLaunchLine(spec), expectedCommand);
+      expect(buildLaunchLine(spec).endsWith(" && " + command)).toBe(true);
+    }
+  });
+
+  test("TEST-42 [REQ-30, REQ-14, REQ-31] rejects the same unsafe launch fields in standalone, window and child lines", () => {
+    const invalidFields = [
+      { name: "" }, { name: "a".repeat(49) }, { name: ".repo" }, { name: "_repo" },
+      { name: "Review" }, { name: "repo/path" }, { name: "repo\nnext" }, { name: "repo;run" },
+      { colour: "" }, { colour: "Blue" }, { colour: "blue;run" }, { colour: "magenta" },
+      { model: "" }, { model: ".model" }, { model: "model/route" }, { model: "model;run" },
+      { effort: "" }, { effort: "High" }, { effort: "very-high" }, { effort: "h\nx" },
+      ...invalidLaunchCommands().map((launch) => ({ launch })),
+    ];
+    const dir = join(tmpdir(), "orchestrator-window-testdata", "child checkout");
+
+    for (const invalid of invalidFields) {
+      const spec = { name: "review", colour: "blue", ...invalid } as Parameters<typeof buildLaunch>[0];
+
+      expect(() => buildLaunch(spec)).toThrow(Error);
+      expect(() => buildLaunchLine(spec)).toThrow(Error);
+      expect(() => buildChildLine({ ...spec, dir })).toThrow(Error);
+    }
+  });
+
+  test("TEST-43 [REQ-31] prepends only cd and git pull to default and custom child launches", () => {
+    const dir = join(tmpdir(), "orchestrator-window-testdata", "child checkout");
+    const specs = [
+      { name: "child", colour: "green" as const },
+      { name: "child", colour: "blue" as const, model: "Model_9.2-X", effort: "high" },
+      { name: "child", colour: "red" as const, launch: "env MODE=quiet ./launch-session", effort: "medium" },
+    ];
+
+    for (const spec of specs) {
+      const line = buildChildLine({ ...spec, dir });
+
+      expect(line).toBe("cd '" + dir + "' && git pull --ff-only && " + buildLaunch(spec));
+      expect(line).not.toContain("magus");
+    }
+  });
+
+  test("TEST-44 [REQ-31] single-quotes the whole child directory and escapes every apostrophe", () => {
+    const root = parse(tmpdir()).root;
+    const cases = [
+      { suffix: "O'Brien", quoted: "O'\\''Brien" },
+      { suffix: "a'b'c", quoted: "a'\\''b'\\''c" },
+      { suffix: "repo with spaces;$(touch nope)&x", quoted: "repo with spaces;$(touch nope)&x" },
+      { suffix: "repo\\path", quoted: "repo\\path" },
+    ];
+    const spec = { name: "child", colour: "green" as const, launch: "wt" };
+
+    for (const { suffix, quoted } of cases) {
+      expect(buildChildLine({ ...spec, dir: root + suffix })).toBe(
+        "cd '" + root + quoted + "' && git pull --ff-only && " + buildLaunch(spec),
+      );
+    }
+  });
+
+  test("TEST-45 [REQ-31] throws for relative, newline-containing or NUL-containing child directories", () => {
+    const root = parse(tmpdir()).root;
+    const invalid = ["", ".", "repo", "../repo", "~/repo", root + "repo\nnext", root + "repo\u0000next"];
+
+    for (const dir of invalid) {
+      expect(() => buildChildLine({ name: "child", colour: "green", dir })).toThrow(Error);
+    }
+  });
+});
+
+describe("herdr argv and response contracts", () => {
+  test("TEST-46 [REQ-32] creates an explicitly scoped tab without focusing it and preserves argv values", () => {
+    const dir = join(tmpdir(), "orchestrator-window-testdata", "O'Brien repo");
+    const specs = [
+      { dir, name: "review", workspace: "w5" },
+      { dir, name: "a", workspace: "w5" },
+      { dir, name: "0", workspace: "w5" },
+      { dir, name: "a".repeat(48), workspace: "workspace with spaces" },
+      { dir: parse(tmpdir()).root, name: "repo.v2_name-7", workspace: "--literal-workspace" },
+    ];
+
+    for (const spec of specs) {
+      expect(buildHerdrTabCreate(Object.freeze(spec))).toEqual([
+        "herdr", "tab", "create", "--workspace", spec.workspace,
+        "--cwd", spec.dir, "--label", spec.name, "--no-focus",
+      ]);
+    }
+  });
+
+  test("TEST-47 [REQ-32] rejects an empty workspace, nonabsolute directory or invalid tab name", () => {
+    const dir = join(tmpdir(), "orchestrator-window-testdata", "checkout");
+    const base = { dir, name: "review", workspace: "w5" };
+    const invalid = [
+      { workspace: "" }, { dir: "" }, { dir: "relative" }, { dir: "~/repo" },
+      { name: "" }, { name: "a".repeat(49) }, { name: "Review" }, { name: ".repo" },
+      { name: "_repo" }, { name: "-repo" }, { name: "repo/path" }, { name: "repo;run" },
+      { name: "repo name" }, { name: "repo\nnext" },
+    ];
+
+    for (const change of invalid) {
+      expect(() => buildHerdrTabCreate({ ...base, ...change })).toThrow(Error);
+    }
+  });
+
+  test("TEST-48 [REQ-33] reads tab and root-pane ids from the captured herdr response", () => {
+    const stdout = readFileSync(new URL("./testdata/herdr-tab-create.json", import.meta.url), "utf8");
+
+    expect(parseHerdrTabCreate(stdout)).toEqual({ tabId: "w5:t2", paneId: "w5:p3" });
+  });
+
+  test("TEST-49 [REQ-33] reads only root_pane.pane_id and never the superseded pane or tab fallbacks", () => {
+    const cases = [
+      { result: { tab: { tab_id: "w5:t2" } } },
+      { result: { tab: { tab_id: "w5:t2", root_pane_id: "wrong" }, pane: { pane_id: "wrong" } } },
+      { result: { tab: { tab_id: "w5:t2" }, root_pane: null } },
+      { result: { tab: { tab_id: "w5:t2" }, root_pane: {} } },
+      { result: { tab: { tab_id: "w5:t2" }, root_pane: { pane_id: 3 } } },
+    ];
+
+    for (const answer of cases) {
+      expect(parseHerdrTabCreate(JSON.stringify(answer))).toEqual({ tabId: "w5:t2", paneId: null });
+    }
+    expect(parseHerdrTabCreate(JSON.stringify({
+      result: { tab: { tab_id: "w5:t2", root_pane_id: "wrong" }, pane: { pane_id: "wrong" }, root_pane: { pane_id: "right" } },
+    }))).toEqual({ tabId: "w5:t2", paneId: "right" });
+    expect(parseHerdrTabCreate('{"result":{"tab":{"tab_id":""},"root_pane":{"pane_id":""}}}')).toEqual({
+      tabId: "", paneId: "",
+    });
+  });
+
+  test("TEST-50 [REQ-33] returns null without throwing for non-JSON and responses without a string tab id", () => {
+    const invalid = [
+      "", "not JSON", "{", "null", "[]", "42", "true", '"text"', "{}",
+      '{"tab":{"tab_id":"wrong"}}', '{"result":null}', '{"result":[]}',
+      '{"result":{"tab":null}}', '{"result":{"tab":{}}}',
+      '{"result":{"tab":{"id":"w5:t2"}}}',
+      ...[null, 2, false, [], {}].map((tab_id) => JSON.stringify({
+        result: { tab: { tab_id }, root_pane: { pane_id: "w5:p3" } },
+      })),
+    ];
+
+    for (const stdout of invalid) {
+      expect(parseHerdrTabCreate(stdout)).toBeNull();
+    }
+  });
+
+  test("TEST-51 [REQ-34] selects the first exact tab match from a pane list rather than the first pane", () => {
+    const stdout = JSON.stringify({
+      result: { panes: [
+        { pane_id: "other", tab_id: "w5:t20" },
+        { pane_id: "first", tab_id: "w5:t2" },
+        { pane_id: "second", tab_id: "w5:t2" },
+      ] },
+    });
+
+    expect(herdrPaneOfTab(stdout, "w5:t2")).toBe("first");
+    expect(herdrPaneOfTab(stdout, "w5:t20")).toBe("other");
+    expect(herdrPaneOfTab(stdout, "W5:T2")).toBeNull();
+    expect(herdrPaneOfTab(stdout, "missing")).toBeNull();
+    expect(herdrPaneOfTab('{"result":{"panes":[]}}', "w5:t2")).toBeNull();
+  });
+
+  test("TEST-52 [REQ-34] returns null without throwing for malformed pane-list envelopes and entries", () => {
+    const invalid = [
+      "", "not JSON", "{", "null", "[]", "42", "false", '"text"', "{}",
+      '{"panes":[{"pane_id":"wrong","tab_id":"w5:t2"}]}', '{"result":null}',
+      '{"result":{}}', '{"result":{"panes":null}}', '{"result":{"panes":{}}}',
+      '{"result":{"panes":"not an array"}}',
+      ...[null, 3, "text", {}, { tab_id: "w5:t2" }, { pane_id: "p", tab_id: 2 },
+        { pane_id: 3, tab_id: "w5:t2" }].map((entry) => JSON.stringify({ result: { panes: [entry] } })),
+    ];
+
+    for (const stdout of invalid) {
+      expect(herdrPaneOfTab(stdout, "w5:t2")).toBeNull();
+    }
+  });
+
+  test("TEST-53 [REQ-35] maps one pane and fills absent or non-string optional fields with null", () => {
+    const pane = { pane_id: "w5:p3", tab_id: "w5:t2", workspace_id: "w5", cwd: join(tmpdir(), "repo with spaces") };
+
+    expect(parseHerdrPane(JSON.stringify({ result: { pane } }))).toEqual({
+      paneId: pane.pane_id, tabId: pane.tab_id, workspaceId: pane.workspace_id, cwd: pane.cwd,
+    });
+    expect(parseHerdrPane('{"result":{"pane":{"pane_id":"w5:p3"}}}')).toEqual({
+      paneId: "w5:p3", tabId: null, workspaceId: null, cwd: null,
+    });
+    for (const value of [null, 3, false, [], {}]) {
+      expect(parseHerdrPane(JSON.stringify({
+        result: { pane: { pane_id: "w5:p3", tab_id: value, workspace_id: value, cwd: value } },
+      }))).toEqual({ paneId: "w5:p3", tabId: null, workspaceId: null, cwd: null });
+    }
+    expect(parseHerdrPane('{"result":{"pane":{"pane_id":"","tab_id":"","workspace_id":"","cwd":""}}}')).toEqual({
+      paneId: "", tabId: "", workspaceId: "", cwd: "",
+    });
+  });
+
+  test("TEST-54 [REQ-35] returns null without throwing when a pane response lacks a string pane id", () => {
+    const invalid = [
+      "", "not JSON", "{", "null", "[]", "42", "true", '"text"', "{}",
+      '{"pane":{"pane_id":"wrong"}}', '{"result":null}', '{"result":{}}',
+      '{"result":{"root_pane":{"pane_id":"wrong"}}}', '{"result":{"pane":null}}',
+      '{"result":{"pane":{}}}',
+      ...[null, 3, false, [], {}].map((pane_id) => JSON.stringify({ result: { pane: { pane_id } } })),
+    ];
+
+    for (const stdout of invalid) {
+      expect(parseHerdrPane(stdout)).toBeNull();
+    }
+  });
+
+  test("TEST-55 [REQ-36] builds pane run argv without shell-quoting or splitting the launch line", () => {
+    const lines = ["", "git pull --ff-only && claude -w review", "cd 'O'\\''Brien repo' && printf '%s' \"$VALUE\""];
+
+    for (const line of lines) {
+      expect(buildHerdrRun("w5:p3", line)).toEqual(["herdr", "pane", "run", "w5:p3", line]);
+    }
+  });
+
+  test("TEST-56 [REQ-36] rejects an empty pane or a newline anywhere in a run line", () => {
+    expect(() => buildHerdrRun("", "true")).toThrow(Error);
+    for (const line of ["\n", "\ntrue", "true\n", "first\nsecond", "first\r\nsecond"]) {
+      expect(() => buildHerdrRun("w5:p3", line)).toThrow(Error);
+    }
+  });
+});
+
+describe("workspace trust-error recognition", () => {
+  test("TEST-57 [REQ-37] finds the exact case-sensitive phrase anywhere on any screen line", () => {
+    const phrase = "Workspace trust not yet accepted";
+    const screens = [
+      phrase, "Error creating worktree: " + phrase + ".",
+      "header\n" + phrase + "\nfooter", "prefix" + phrase + "suffix",
+      "  " + phrase + "\r\n",
+    ];
+
+    for (const screen of screens) {
+      expect(screenShowsTrustError(screen)).toBe(true);
+    }
+  });
+
+  test("TEST-58 [REQ-37] rejects empty screens, case variants and incomplete or split phrases", () => {
+    const screens = [
+      "", "Workspace trust accepted", "workspace trust not yet accepted",
+      "Workspace Trust not yet accepted", "Workspace trust not yet Accepted",
+      "Workspace trust not yet", "Workspace  trust not yet accepted",
+      "Workspace trust not\nyet accepted", "Yes, I trust this folder",
+    ];
+
+    for (const screen of screens) {
+      expect(screenShowsTrustError(screen)).toBe(false);
+    }
+  });
+});
+
+describe("lock-observation callback boundaries", () => {
+  test("TEST-59 [REQ-21, REQ-22, REQ-23] never consults a pid for absent, malformed or gone locks", () => {
+    const now = 9_000_000;
+    const cases = [
+      { infoText: null, lockMtimeMs: now, stale: false },
+      { infoText: null, lockMtimeMs: now - 5_001, stale: true },
+      { infoText: "{", lockMtimeMs: now, stale: true },
+      { infoText: '{"pid":0,"since":1}', lockMtimeMs: now, stale: true },
+      { infoText: '{"pid":17,"since":"1"}', lockMtimeMs: now, stale: true },
+      { infoText: '{"pid":17,"since":9000000}', lockMtimeMs: null, stale: true },
+      { infoText: null, lockMtimeMs: null, stale: true },
+    ];
+
+    for (const { infoText, lockMtimeMs, stale } of cases) {
+      let calls = 0;
+
+      const result = lockIsStale({
+        infoText, lockMtimeMs, now,
+        pidAlive: () => { calls++; return true; },
+      });
+
+      expect(result).toBe(stale);
+      expect(calls).toBe(0);
+    }
+  });
+
+  test("TEST-60 [REQ-21] uses the positive pid from well-formed info when deciding whether a fresh holder is alive", () => {
+    const observation = { infoText: '{"pid":73,"since":100}', lockMtimeMs: 100, now: 101 };
+
+    expect(lockIsStale({ ...observation, pidAlive: (pid) => pid === 73 })).toBe(false);
+    expect(lockIsStale({ ...observation, pidAlive: (pid) => pid !== 73 })).toBe(true);
   });
 });
 

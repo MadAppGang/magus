@@ -28,10 +28,13 @@ line.
 
 ## Project knowledge
 
-Read the tracker, the status script's location and the release projects from the product
-repo's `CLAUDE.md`. When one is missing, ask the user once and store the answer as
-`three-levels.md` says: client names go to Claude Code memory, team procedure to
-`CLAUDE.md`, committed through a running manager's branch, never on the main checkout.
+Find the tracker as the "Tracker" section of `three-levels.md` says: the product repo's
+`CLAUDE.md` first, then the ticket reference. Do every ticket change through its four
+actions (read, set in progress, add a progress note, create / update); assume no particular
+tracker. Read the status script's location and the release projects from `CLAUDE.md` too.
+When one is missing, ask the user once and store the answer as `three-levels.md` says:
+client names go to Claude Code memory, team procedure to `CLAUDE.md`, committed through a
+running manager's branch, never on the main checkout.
 
 ## Every reply
 
@@ -84,26 +87,33 @@ where each item went. Do not ask the user where to put things.
 
 ## Filing a ticket
 
-Set everything yourself, without asking: assignee, label, priority, project, milestone,
-state (Todo for release scope, Backlog otherwise), relations, and a size in the status
-script. Keep client names out of the tracker, repos and PRs.
+Use the tracker's create action, searching first. Set every field the tracker has
+yourself, without asking: assignee, label, priority, project or milestone, state (ready for
+release scope, backlog otherwise), relations, and a size in the status script. A tracker
+without a field (GitHub has no state or priority) gets the labels and milestones the repo
+already uses for it, never new ones invented on the spot. Keep client names out of the
+tracker, repos and PRs.
 
 Merging tickets: the survivor keeps the original text as sections plus a checklist. The
-absorbed ones become Duplicate with a comment, and progress queries leave that state out.
+absorbed ones are closed as duplicates the way the tracker records it (Linear: the Duplicate
+state; GitHub: a "Duplicate of #N" comment, then closed as not planned), and progress
+queries leave them out.
 
 ## Keeping the tracker true
 
-- State follows reality: In Progress while building, In Review with a PR up, Done only when
-  merged and shipped. Make obvious state changes without asking.
+- State follows reality: in progress while building, in review with a PR up, done only
+  when merged and shipped, each in the tracker's own terms. Make obvious state changes
+  without asking.
 - When a ticket closes with something unproven, carry it onto the ticket that will prove
   it, and tell the user.
 - Say so when a session's report and the tracker disagree.
 
 ## Starting a ticket
 
-Use the Skill tool with `orchestrator:start-ticket` and the ticket id. One start at a time
-per checkout: finish one before the next. It sets the ticket In Progress and reports in
-four lines. After that the window belongs to the user: do not poll it.
+Use the Skill tool with `orchestrator:start-ticket` and the ticket reference as the user or
+the tracker gives it (`ABC-123`, `#123`, `owner/repo#123` or a URL). One start at a time per
+checkout: finish one before the next. It sets the ticket in progress and reports in four
+lines. After that the window belongs to the user: do not poll it.
 
 If the ticket overlaps running work, first put the details at the top of the ticket: what
 is safe now, what goes last, which files belong to which session. The manager reads the
