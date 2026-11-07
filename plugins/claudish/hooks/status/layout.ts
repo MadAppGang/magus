@@ -523,6 +523,11 @@ function headerOf(rows: readonly BandRow[], input: BandInput, shown: readonly Cl
   const out: Segment[] = [{ text: '◆ claudish', color: 'claude', bold: true }]
   const only = shown.length === 1 ? shown[0] : undefined
   if (only && only.ref.kind === 'panel') out.push({ text: `  ${runLabel(only)}`, bold: true })
+  // The task type, when every shown run carries the same one (a writing /team run is one
+  // delegation per model, all from one folder): a badge, as short as a word.
+  const types = new Set(shown.map(r => r.taskType ?? null))
+  const type = types.size === 1 ? [...types][0] ?? null : null
+  if (type !== null) out.push({ text: ' ' }, { text: ` ${type} `, color: 'inverseText', backgroundColor: 'claude', bold: true })
   for (const g of GROUPS) {
     const n = counts.get(g) ?? 0
     if (n === 0) continue
@@ -532,7 +537,7 @@ function headerOf(rows: readonly BandRow[], input: BandInput, shown: readonly Cl
   }
   // After the counts, so a narrow band cuts the agent before what asks for the person; before the
   // notices and earlier runs, since it describes the shown batch, not those.
-  if (batch.kind === 'one') out.push({ text: ` · ${cut(batch.name, AGENT_HEADER_MAX)}` })
+  if (batch.kind === 'one') out.push({ text: ' · ' }, { text: ` ${cut(batch.name, AGENT_HEADER_MAX)} `, color: 'inverseText', backgroundColor: 'suggestion' })
   else if (batch.kind === 'mixed') out.push({ text: ' · mixed agents', dim: true })
   const parked = Object.values(input.ledger.entries).filter(e => e.kind === 'parked').length
   if (parked > 0) out.push({ text: ` · ${parked} ${parked === 1 ? 'notice' : 'notices'} not delivered`, color: 'error' })

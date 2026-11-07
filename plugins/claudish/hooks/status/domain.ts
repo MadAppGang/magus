@@ -260,6 +260,7 @@ export function newRun(args: {
   id: string
   ref: ClaudishRunRef
   label: string
+  taskType?: string | null
   epoch: number
   generation: number
   now: number
@@ -269,6 +270,7 @@ export function newRun(args: {
     epoch: args.epoch,
     ref: args.ref,
     label: args.label,
+    ...(args.taskType ? { taskType: args.taskType } : {}),
     generation: args.generation,
     slots: [],
     startedAt: args.now,

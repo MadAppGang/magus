@@ -77,12 +77,15 @@ is not child mode: report it as a failure.
 |---|---|---|---|---|---|---|---|
 | judge | read-only | review | review, audit, check, validate, verify, evaluate, vote, approve, go/no-go | flagships from 3+ providers | dev:researcher | none (one level) | `` ```vote `` |
 | research | read-only | research | research, investigate, analyze, explore | large-context + reasoning | none | research | `## Findings[\s\S]*([Ss]ources?\b\|## Not established)` |
-| plan | read-only | architecture | architecture, design, plan, refactor | most capable | none | planning | `## Proposal[\s\S]*## Trade-offs` |
+| plan | read-only | architecture | architecture, design, plan, refactor | flagships | none | planning | `## Proposal[\s\S]*## Trade-offs` |
 | debug | read-only | debug | debug, error, bug, trace | reasoning, mixed providers | none | debugging | `## Root cause hypothesis[\s\S]*## Evidence` |
 | brainstorm | read-only | brainstorm | brainstorm, ideate, ideas | mixed providers | none | planning | `## Ideas` |
 | implement | writing | coding | implement, build, create, develop, fix | fast, tools-capable | dev:developer | implementation | none |
 | test | writing | testing | test, coverage, unit test, integration, e2e, write tests, add tests, generate tests | fast, tools-capable | dev:qa-engineer | implementation | none |
 | collaborate | writing | coding | collaborate, work together, pair on, pair program | fast, tools-capable | dev:developer | implementation | none |
+
+"Flagships" and "top models" mean the Flagship section of `list_models`, never its Luxury
+section. Pick a Luxury model only when the user says "luxury" or names it.
 
 In the pattern column `\|` is a table escape: the regex itself has a plain `|`. Round 2 of a
 shared run uses `## Responses[\s\S]*` followed by the type's own pattern.
@@ -286,7 +289,9 @@ Announce the same "Effort:" line as above and write `effort.json` the same way.
 made their session directory and `task-type.json`; it writes `effort.json` and records the
 caller's start state.
 
-**Session directory** (the `team` tool's session path): `Bash: SESSION_DIR="$(pwd -P)/ai-docs/sessions/team-$(date +%Y%m%d-%H%M%S)-$RANDOM" && mkdir -p "$SESSION_DIR" && echo "$SESSION_DIR"`.
+**Session directory** (the `team` tool's session path): `Bash: SESSION_DIR="$(pwd -P)/ai-docs/sessions/team-TYPE-$(date +%Y%m%d-%H%M%S)-$RANDOM" && mkdir -p "$SESSION_DIR" && echo "$SESSION_DIR"`,
+with TYPE as the literal type name (`team-research-…`). The claudish status band reads the type
+from this folder name and shows it as a badge.
 The suffix keeps two runs started in the same second from sharing a directory; `team` refuses
 a path that already holds a session. `team` also refuses a path outside its own working
 directory, so keep it under `$(pwd -P)`: `team` compares against the resolved path, and
@@ -559,7 +564,8 @@ answered: no `effort.json`, no worktree.
    worktree's.
 2. Session directory, rooted at `<top>`: `date +%Y%m%d-%H%M%S` → STAMP, and pick four random
    digits. `mkdir -p <top>/ai-docs/sessions`, then
-   `mkdir <top>/ai-docs/sessions/team-<STAMP>-<digits>`; if it exists, pick other digits.
+   `mkdir <top>/ai-docs/sessions/team-<TYPE>-<STAMP>-<digits>`, TYPE the literal type name;
+   if it exists, pick other digits.
    That folder is SESSION_DIR. Write `task-type.json` there (Step 1's format) and announce
    "Session: {SESSION_DIR}". This file stays when a later step ends the run with `BLOCKED`.
    Step 1b's "write no file" covers its own refusals only, which come before any type.

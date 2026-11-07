@@ -97,6 +97,15 @@ above the prompt shows it, one line per model:
 The band shows the run started most recently, plus any older run that is still going.
 Older finished runs are counted in the header (`1 earlier run`), not listed.
 
+Two badges in the header name what the run is:
+
+- **The task type** of a `/multimodel:team` run (`research`, `plan`, `implement` …), on an
+  orange badge after the run's name. The band reads it from the run's session folder,
+  `team-<type>-<stamp>-<digits>`, and the run is then named by its start time
+  (`team 21:54:39`).
+- **The agent**, when every slot loaded the same one (`dev:researcher`), on a blue badge
+  after the counts.
+
 Each line starts with the status: a three-letter code on a coloured badge, then how long the
 slot has run, in the same colour.
 

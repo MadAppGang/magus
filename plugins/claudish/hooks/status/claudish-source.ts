@@ -135,6 +135,26 @@ function lastSegment(path: string): string {
   return (parts[parts.length - 1] ?? path).slice(0, 16)
 }
 
+/** The task types /multimodel:team names its session folders with. */
+const TASK_TYPES = ['judge', 'research', 'plan', 'debug', 'brainstorm', 'implement', 'test', 'collaborate'] as const
+
+/** `team-<type>-<YYYYMMDD>-<HHMMSS>-<digits>`: /multimodel:team's session folder. */
+const TEAM_FOLDER = new RegExp(`^team-(${TASK_TYPES.join('|')})-\\d{8}-(\\d{2})(\\d{2})(\\d{2})-\\d+$`)
+
+/**
+ * The /multimodel:team session folder a path runs in, or null. A team call's path is the folder
+ * itself or a round below it (`rounds/1`); a writing slot's work_dir is a worktree or sandbox
+ * below it. The deepest matching segment wins.
+ */
+export function teamFolder(path: string): { type: string; label: string } | null {
+  const parts = path.split('/').filter(p => p.length > 0)
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const m = TEAM_FOLDER.exec(parts[i]!)
+    if (m) return { type: m[1]!, label: `team ${m[2]}:${m[3]}:${m[4]}` }
+  }
+  return null
+}
+
 // ── recognizing a start ───────────────────────────────────────────────────────
 
 function recognizeCall(call: CallSeen): RecognizedCall {
@@ -161,7 +181,8 @@ function recognizeCall(call: CallSeen): RecognizedCall {
     }
     if (!isSafePath(path)) return { kind: 'unidentified', reason: 'team start answer has a run.path that is not display-safe' }
     const ref: ClaudishRunRef = { kind: 'panel', server, token: body.run_id, address: path }
-    return { kind: 'start', ref, label: lastSegment(path) }
+    const folder = teamFolder(path)
+    return { kind: 'start', ref, label: folder?.label ?? lastSegment(path), taskType: folder?.type ?? null }
   }
 
   if (verb === 'create_session') {
@@ -173,7 +194,9 @@ function recognizeCall(call: CallSeen): RecognizedCall {
     }
     if (!isSafeId(id)) return { kind: 'unidentified', reason: 'create_session answer has a session_id that is not display-safe' }
     const ref: ClaudishRunRef = { kind: 'delegation', server, token: id, address: id }
-    return { kind: 'start', ref, label: `#${id.slice(0, 6)}` }
+    const workDir = call.args.work_dir
+    const folder = typeof workDir === 'string' ? teamFolder(workDir) : null
+    return { kind: 'start', ref, label: `#${id.slice(0, 6)}`, taskType: folder?.type ?? null }
   }
 
   return { kind: 'other' }

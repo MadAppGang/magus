@@ -91,6 +91,9 @@ export type ClaudishRun = {
   epoch: number
   ref: ClaudishRunRef
   label: string
+  /** the /multimodel:team task type, read from a `team-<type>-<stamp>-<digits>` folder in the run's
+   *  path (team) or work_dir (create_session); absent when no such folder is named */
+  taskType?: string
   /** 1 + starts of this epoch already made at the same ref.address */
   generation: number
   slots: ClaudishSlot[]

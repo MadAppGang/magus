@@ -4,6 +4,32 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [claudish 2.16.0] - 2026-11-07
+
+### Added
+
+- **The status band shows a run's task type and its agent as badges.** A `/multimodel:team`
+  run gets an orange badge with its type (`research`, `plan`, `implement` …) after its name,
+  read from the run's session folder (`team-<type>-<stamp>-<digits>`). The run is then named
+  by its start time (`team 21:54:39`). The agent every slot loaded (`dev:researcher`) moves
+  from plain text to a blue badge.
+- **"Top models" means the Flagship tier.** The claudish-usage skill maps "top", "best" and
+  "strongest" to the Flagship section of `list_models`. A Luxury model is picked only when the
+  user says "luxury" or names the model. Measured by the new TM-1 bench.
+
+---
+
+## [multimodel 6.1.0] - 2026-11-07
+
+### Changed
+
+- **`/multimodel:team` names its session folder after the task type**
+  (`team-research-20261107-215439-7518`), so the claudish band can show the type.
+- **Flagship picks never take a Luxury model.** The plan type picks from the flagships, and
+  "flagships" and "top models" mean the Flagship section of `list_models`.
+
+---
+
 ## [multimodel 6.0.0] - 2026-11-07
 
 ### Changed

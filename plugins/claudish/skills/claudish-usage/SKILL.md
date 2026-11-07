@@ -261,8 +261,15 @@ a **requirement**. Resolve it against the catalog and use what you find.
 | "the cheap one" | `list_models` → Quick picks → Budget | Cost intent |
 | "something fast for coding" | `list_models` → Fast variants | Capability intent |
 | "biggest context" | `list_models` → Quick picks → Large context | Capability intent |
+| "top models" / "best models" / "strongest" / "flagships" | `list_models` → **Flagship** section | Never the Luxury section |
+| "luxury" / "most expensive" / a Luxury model by name | `list_models` → **Luxury** section | Only when the user asks for it |
 | "kimi3" | `search_models("kimi")`, require major v3 | Version is a constraint |
 | "LATEST_MINIMAX_MODEL" | Pass it through; the run tool's refusal is the catalog check | Already a full ID |
+
+**Top means Flagship, not Luxury.** `list_models` has a Luxury section, priced well
+above the Flagship models. Its own note says "most capable", but "top", "best" and
+"strongest" still mean the Flagship section: the current Opus-class and Sol-class
+models. Take a Luxury model only when the user says "luxury" or names that model.
 
 When uncertain, show the live candidates and ask the user to pick. Listing real
 options is always better than guessing one.

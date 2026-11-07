@@ -74,7 +74,7 @@ const cases: Case[] = [
   {
     id: '1 one agent per batch', req: 'REQ-3 REQ-6', rows: matching,
     batch: { kind: 'one', name: R },
-    header: '◆ claudish  plan-review · 2 running · 1 done · dev:reviewer',
+    header: '◆ claudish  plan-review · 2 running · 1 done ·  dev:reviewer ',
     rowText: ['', '', ''], lines: ['Agent: dev:reviewer', 'Agent: dev:reviewer', 'Agent: dev:reviewer'],
   },
   {
@@ -85,13 +85,13 @@ const cases: Case[] = [
   {
     id: '3 matching single delegation', req: 'REQ-3 REQ-6',
     rows: () => [slot('d', { state: 'COMPLETED', agentRequested: R, agent: R })], delegation: true,
-    batch: { kind: 'one', name: R }, header: '◆ claudish · 1 done · dev:reviewer',
+    batch: { kind: 'one', name: R }, header: '◆ claudish · 1 done ·  dev:reviewer ',
     rowText: [''], lines: ['Agent: dev:reviewer'],
   },
   {
     id: '4 rejected mismatch', req: 'REQ-5 REQ-6', rows: rejected,
     batch: { kind: 'one', name: R },
-    header: '◆ claudish  plan-review · 1 running · 1 failed · dev:reviewer',
+    header: '◆ claudish  plan-review · 1 running · 1 failed ·  dev:reviewer ',
     rowText: ['', 'requested dev:reviewer, loaded none'],
     lines: ['Agent: dev:reviewer', 'Agent: none (requested dev:reviewer) · agent_rejected: agent not found'], mismatch: 1,
   },
@@ -99,14 +99,14 @@ const cases: Case[] = [
     id: '4b different loaded agent', req: 'REQ-5 REQ-6',
     rows: () => [slot('01', { state: 'COMPLETED', agentRequested: R, agent: 'dev:other', reason: 'blocked', detail: 'unrelated detail' })],
     batch: { kind: 'one', name: 'dev:other' },
-    header: '◆ claudish  plan-review · 1 done · dev:other',
+    header: '◆ claudish  plan-review · 1 done ·  dev:other ',
     rowText: ['requested dev:reviewer, loaded dev:other'],
     lines: ['Agent: dev:other (requested dev:reviewer)'], mismatch: 0,
   },
   {
     id: '5 STARTING requested only', req: 'REQ-5 REQ-6',
     rows: () => [slot('01', { state: 'STARTING', agentRequested: R, agent: null })],
-    batch: { kind: 'one', name: R }, header: '◆ claudish  plan-review · 1 running · dev:reviewer',
+    batch: { kind: 'one', name: R }, header: '◆ claudish  plan-review · 1 running ·  dev:reviewer ',
     rowText: [''], lines: ['Agent: dev:reviewer (requested)'],
   },
   {
@@ -179,7 +179,7 @@ test('agent edge semantics: loaded-only, synthetic slots, mixed mismatch and def
   expect(paneAgentLine(plain, { kind: 'mixed' })).toEqual({ text: 'Agent: none', mismatch: false })
 })
 
-const countSegments = ['◆ claudish', '  plan-review', ' · 2 running', ' · 1 done', ' · dev:reviewer']
+const countSegments = ['◆ claudish', '  plan-review', ' · 2 running', ' · 1 done', ' · ', ' dev:reviewer ']
 test('agent case 8: header stays uncut at every width and agent follows counts [REQ-8]', () => {
   for (const bodyColumns of [120, 60, 45, 41]) {
     const m = bandModel(input([run('a', matching())], { bodyColumns }))!
@@ -196,10 +196,10 @@ test('agent case 9: shown live runs determine agent, before earlier run notices 
   const i = input([old, live, a])
   expect(bandAgent(i.runs, i.feeds)).toEqual({ kind: 'one', name: R })
   expect(paneAgentRows(i.runs, i.feeds)).toBe(1)
-  expect(header(bandModel(i)!)).toBe('◆ claudish · 3 running · 1 done · dev:reviewer · 1 earlier run')
+  expect(header(bandModel(i)!)).toBe('◆ claudish · 3 running · 1 done ·  dev:reviewer  · 1 earlier run')
   expect(bandModel(i)!.rows.map(r => r.agent)).toEqual(['', '', '', ''])
   expect(header(bandModel(input([a], { earlier: { runs: 2, done: 2, failed: 0, stopped: 0 } }))!))
-    .toBe('◆ claudish  plan-review · 2 running · 1 done · dev:reviewer · 2 earlier runs')
+    .toBe('◆ claudish  plan-review · 2 running · 1 done ·  dev:reviewer  · 2 earlier runs')
   const tableOld = run('o', [slot('01', { state: 'COMPLETED', agentRequested: R, agent: R })], { settledAt: 100 })
   expect(header(bandModel(input([tableOld, live, a]))!)).toBe(header(bandModel(i)!))
 })
@@ -219,13 +219,13 @@ test('agent widths: floor remains 41; rejected row retains badge and fits 60 [RE
 test('agent header: bounded name and parked notice after the agent [REQ-8 REQ-9]', () => {
   const name = 'a'.repeat(40)
   const long = bandModel(input([run('a', [slot('01', { agent: name })])]))!
-  expect(header(long)).toBe('◆ claudish  plan-review · 1 running · ' + 'a'.repeat(31) + '…')
+  expect(header(long)).toBe('◆ claudish  plan-review · 1 running ·  ' + 'a'.repeat(31) + '… ')
   const i = input([run('a', matching())], {
     ledger: { epoch: 0, entries: {
       'a/02': { kind: 'parked', state: 'COMPLETED', at: NOW, attempts: 1, reason: 'not delivered', retryAt: NOW + 1000 },
     } },
   })
-  expect(header(bandModel(i)!)).toBe('◆ claudish  plan-review · 2 running · 1 done · dev:reviewer · 1 notice not delivered')
+  expect(header(bandModel(i)!)).toBe('◆ claudish  plan-review · 2 running · 1 done ·  dev:reviewer  · 1 notice not delivered')
 })
 
 test('agent row reservation: every mixed tab has a line; frame holds 18 vs 19 lines [REQ-6 REQ-10]', () => {

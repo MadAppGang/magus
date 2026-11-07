@@ -228,7 +228,7 @@ export async function onClaudishCall(
         await host.store.runs.update(v => {
           if (v.epoch !== epoch || v.list.some(r => r.id === id)) return v
           const before = v.starts[seen.ref.address] ?? 0
-          const run = newRun({ id, ref: seen.ref, label: seen.label, epoch, generation: before + 1, now })
+          const run = newRun({ id, ref: seen.ref, label: seen.label, taskType: seen.taskType, epoch, generation: before + 1, now })
           return { ...v, starts: { ...v.starts, [seen.ref.address]: before + 1 }, list: [...v.list, run] }
         })
         ensureLoop(host)

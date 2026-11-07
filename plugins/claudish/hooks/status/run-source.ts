@@ -29,7 +29,7 @@ export type CallSeen = {
 
 /** Only run starts matter to the core. Reads, cancels, judges and already-settled answers are 'other'. */
 export type RecognizedCall =
-  | { kind: 'start'; ref: ClaudishRunRef; label: string }
+  | { kind: 'start'; ref: ClaudishRunRef; label: string; taskType: string | null }
   /** a start answer that decodes but carries no per-start id: the server predates the contract */
   | { kind: 'precontract'; server: string; runKind: ClaudishRunKind; reason: string }
   /** a start answer that does not decode, or lacks its address or per-start id: one debug line */

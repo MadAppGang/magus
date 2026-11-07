@@ -59,8 +59,8 @@ for (const state of ['RUNNING', 'AWAITING_INPUT', 'AWAITING_PERMISSION'] as cons
     expect(paneAgentRows(i.runs, i.feeds)).toBe(1)
     const m = bandModel(i)!
     expect(m).not.toBeNull()
-    expect(header(m).endsWith(' · dev:reviewer')).toBe(true)
-    if (state === 'RUNNING') expect(header(m)).toBe('◆ claudish  plan-review · 1 running · dev:reviewer')
+    expect(header(m).endsWith(' ·  dev:reviewer ')).toBe(true)
+    if (state === 'RUNNING') expect(header(m)).toBe('◆ claudish  plan-review · 1 running ·  dev:reviewer ')
     expect(m.rows.map(x => x.agent)).toEqual([''])
     expect(m.rows.map(x => x.agentMismatch)).toEqual([false])
     expect(rowAgentText(slotAgent(s), { kind: 'one', name: R })).toBe('')
@@ -80,7 +80,7 @@ test('agent pending case 5c RUNNING: different loaded agent is a mismatch with w
   expect(bandAgent(i.runs, i.feeds)).toEqual(batch)
   expect(paneAgentRows(i.runs, i.feeds)).toBe(1)
   const m = bandModel(i)!
-  expect(header(m)).toBe('◆ claudish  plan-review · 1 running · dev:other')
+  expect(header(m)).toBe('◆ claudish  plan-review · 1 running ·  dev:other ')
   expect(m.rows.map(x => x.agent)).toEqual(['requested dev:reviewer, loaded dev:other'])
   expect(m.rows.map(x => x.agentMismatch)).toEqual([true])
   expect(rowAgentText(slotAgent(s), batch)).toBe('requested dev:reviewer, loaded dev:other')
@@ -104,7 +104,7 @@ for (const c of settled) {
     expect(batchAgent([s])).toEqual(batch)
     expect(paneAgentRows(i.runs, i.feeds)).toBe(1)
     const m = bandModel(i)!
-    expect(header(m).endsWith(' · dev:reviewer')).toBe(true)
+    expect(header(m).endsWith(' ·  dev:reviewer ')).toBe(true)
     expect(m.rows.map(x => x.agent)).toEqual(['requested dev:reviewer, loaded none'])
     expect(m.rows.map(x => x.agentMismatch)).toEqual([true])
     expect(rowAgentText(slotAgent(s), batch)).toBe('requested dev:reviewer, loaded none')
@@ -125,7 +125,7 @@ test('agent pending team: one loaded and one pending slot form one batch with no
   expect(bandAgent(i.runs, i.feeds)).toEqual(batch)
   expect(paneAgentRows(i.runs, i.feeds)).toBe(1)
   const m = bandModel(i)!
-  expect(header(m)).toBe('◆ claudish  plan-review · 2 running · dev:reviewer')
+  expect(header(m)).toBe('◆ claudish  plan-review · 2 running ·  dev:reviewer ')
   expect(m.rows.map(x => x.agent)).toEqual(['', ''])
   expect(m.rows.map(x => x.agentMismatch)).toEqual([false, false])
   expect(m.plan!.agent).toBe(0)

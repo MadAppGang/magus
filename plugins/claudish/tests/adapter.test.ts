@@ -165,7 +165,7 @@ describe('adapter: recognizeCall', () => {
 
   test('team run with run_id and run.path → start keyed by run_id, addressed by run.path', () => {
     expect(source.recognizeCall(seen('mcp__plugin_claudish_claudish__team', { mode: 'run', path: 'r1/' }, startAnswer()))).toEqual({
-      kind: 'start', ref: { kind: 'panel', server: 'plugin:claudish:claudish', token: 'r1-abc-123456', address: '/w/r1' }, label: 'r1',
+      kind: 'start', ref: { kind: 'panel', server: 'plugin:claudish:claudish', token: 'r1-abc-123456', address: '/w/r1' }, label: 'r1', taskType: null,
     })
   })
   test('the same from mcp__claudish__team → server claudish', () => {
@@ -186,7 +186,7 @@ describe('adapter: recognizeCall', () => {
   })
   test('create_session with session_id → start; non-JSON → unidentified', () => {
     const r = source.recognizeCall(seen('mcp__plugin_claudish_claudish__create_session', {}, JSON.stringify({ session_id: 'a1b2c3d4-x', state: 'STARTING' })))
-    expect(r).toEqual({ kind: 'start', ref: { kind: 'delegation', server: SERVER, token: 'a1b2c3d4-x', address: 'a1b2c3d4-x' }, label: '#a1b2c3' })
+    expect(r).toEqual({ kind: 'start', ref: { kind: 'delegation', server: SERVER, token: 'a1b2c3d4-x', address: 'a1b2c3d4-x' }, label: '#a1b2c3', taskType: null })
     expect(source.recognizeCall(seen('mcp__plugin_claudish_claudish__create_session', {}, 'started!')).kind).toBe('unidentified')
   })
   test('judge, status, cancel, capture → other; another server → other; an errored start → other', () => {
