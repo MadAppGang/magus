@@ -75,7 +75,7 @@
       "name": "claudish",
       "source": "./plugins/claudish",
       "description": "MCP runtime for external AI models. Proxies OpenRouter, Ollama and LM Studio, runs blind team voting, manages async sessions, and shows the session's runs live above the prompt, with stop and live-screen tabs. Required by code-search, dev, multimodel and designer.",
-      "version": "2.16.0",
+      "version": "2.16.1",
       "author": {
         "name": "Jack Rudenko",
         "email": "i@madappgang.com",
@@ -95,6 +95,14 @@
       ],
       "strict": true,
       "releases": [
+        {
+          "version": "2.16.1",
+          "date": "2026-11-08",
+          "kinds": [
+            "Fixed"
+          ],
+          "summary": "A notice that was not delivered now shows before the agent badge in the band header"
+        },
         {
           "version": "2.16.0",
           "date": "2026-11-07",
@@ -127,14 +135,6 @@
             "Added"
           ],
           "summary": "The Show panel scrolls back through a session's earlier output (MTL-369). The wheel or the\u2026"
-        },
-        {
-          "version": "2.13.2",
-          "date": "2026-10-29",
-          "kinds": [
-            "Fixed"
-          ],
-          "summary": "A forecast panel left open in a session that is not on claudish's Codex pool now closes and\u2026"
         }
       ]
     },

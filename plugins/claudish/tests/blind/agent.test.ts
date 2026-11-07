@@ -225,7 +225,7 @@ test('agent header: bounded name and parked notice after the agent [REQ-8 REQ-9]
       'a/02': { kind: 'parked', state: 'COMPLETED', at: NOW, attempts: 1, reason: 'not delivered', retryAt: NOW + 1000 },
     } },
   })
-  expect(header(bandModel(i)!)).toBe('◆ claudish  plan-review · 2 running · 1 done ·  dev:reviewer  · 1 notice not delivered')
+  expect(header(bandModel(i)!)).toBe('◆ claudish  plan-review · 2 running · 1 done · 1 notice not delivered ·  dev:reviewer ')
 })
 
 test('agent row reservation: every mixed tab has a line; frame holds 18 vs 19 lines [REQ-6 REQ-10]', () => {

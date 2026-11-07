@@ -4,6 +4,18 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [claudish 2.16.1] - 2026-11-08
+
+### Fixed
+
+- **A notice that was not delivered now shows before the agent badge in the band header.** A
+  narrow band cuts the header from the right, and the agent badge can take up to 32 cells. With
+  the warning after the badge, a narrow band dropped "N notices not delivered" and kept the
+  agent's name. The warning now comes first, so the agent's name is the part a narrow band
+  drops.
+
+---
+
 ## [claudish 2.16.0] - 2026-11-07
 
 ### Added

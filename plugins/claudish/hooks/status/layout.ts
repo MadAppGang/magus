@@ -535,12 +535,14 @@ function headerOf(rows: readonly BandRow[], input: BandInput, shown: readonly Cl
       : g === 'wrong format' ? { text: ` · ${n} wrong format`, color: 'warning' }
       : { text: ` · ${n} ${g}`, dim: true })
   }
-  // After the counts, so a narrow band cuts the agent before what asks for the person; before the
-  // notices and earlier runs, since it describes the shown batch, not those.
-  if (batch.kind === 'one') out.push({ text: ' · ' }, { text: ` ${cut(batch.name, AGENT_HEADER_MAX)} `, color: 'inverseText', backgroundColor: 'suggestion' })
-  else if (batch.kind === 'mixed') out.push({ text: ' · mixed agents', dim: true })
+  // A notice that never reached the session asks for the person, as `needs you` does, so it
+  // sits before the agent: a narrow band is cut from the right and drops the agent first.
   const parked = Object.values(input.ledger.entries).filter(e => e.kind === 'parked').length
   if (parked > 0) out.push({ text: ` · ${parked} ${parked === 1 ? 'notice' : 'notices'} not delivered`, color: 'error' })
+  // After everything that asks for the person; before earlier runs, since it describes the
+  // shown batch, not those.
+  if (batch.kind === 'one') out.push({ text: ' · ' }, { text: ` ${cut(batch.name, AGENT_HEADER_MAX)} `, color: 'inverseText', backgroundColor: 'suggestion' })
+  else if (batch.kind === 'mixed') out.push({ text: ' · mixed agents', dim: true })
   const earlier = older + input.earlier.runs
   if (earlier > 0) out.push({ text: ` · ${earlier} earlier ${earlier === 1 ? 'run' : 'runs'}`, dim: true })
   return out
