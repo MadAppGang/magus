@@ -228,8 +228,8 @@ describe("db", () => {
   test("deleteOldSessions removes rows older than retention window", () => {
     const db = openDb(dbPath);
 
-    // Insert an old session (more than 90 days ago)
-    const oldDate = "2025-01-01"; // well outside 90 days
+    // Insert an old session well outside the 90-day retention window
+    const oldDate = "2025-01-01";
     const metrics = makeSession("old-session", "/test/project", oldDate);
     insertSession(db, metrics);
     insertToolCalls(db, metrics.tool_calls, "old-session");
