@@ -10,23 +10,37 @@
 //
 // --launch, or ORCHESTRATOR_LAUNCH, replaces it with `<launch> <name> <colour> [-- <claude flags>]`.
 //
+// Either launch is preceded by `ORCHESTRATOR_CLAIM='l-<id>'` (and
+// `ORCHESTRATOR_STATE_DIR='<dir>'` when that is set here). Before the line is
+// typed or printed, a claim is written to <state dir>/claims/l-<id>.json naming
+// the new session's role (manager for a window, child for --print-line), name,
+// ticket, parent (this session's own record, if it has one) and product. The
+// first Claude Code session that starts with that id binds itself to the claim;
+// a nested session that inherits the variable finds it taken and binds nothing.
+//
 // Usage:
 //   bun ticket-window.ts --name <slug> --colour <colour> [--prompt <text>]
-//       [--dir <main checkout>] [--session <tmux session>]
+//       [--dir <main checkout>] [--session <tmux session>] [--ticket <id>] [--ticket-url <url>]
 //       [--model <id>] [--effort <level>] [--launch <command>] [--no-wait] [--dry-run]
 //   bun ticket-window.ts --print-line --name <slug> --colour <colour>
-//       [--dir <main checkout>] [--model <id>] [--effort <level>] [--launch <command>]
+//       [--dir <main checkout>] [--ticket <id>] [--ticket-url <url>]
+//       [--model <id>] [--effort <level>] [--launch <command>]
 //
 //   --name        lower-case letters, digits, . _ -; starts with a letter or digit; at most 48 characters
 //   --colour      (or --color) red blue green yellow purple orange pink cyan default
+//   --ticket      the ticket the session works: '#229', '229', 'owner/repo#229', 'ABC-7' (quote it:
+//                 an unquoted # starts a shell comment); a bare number becomes owner/repo#N from
+//                 the checkout's origin
+//   --ticket-url  the ticket's https URL
 //   --prompt      typed into Claude Code once it is up, by a detached second stage
 //   --dir         a repo's main checkout; defaults to the main checkout of the current directory
 //   --session     tmux only: session for the new window; defaults to the current one; created when missing
 //   --no-wait     exit 6 at once when another start in the same checkout holds the lock
-//   --dry-run     print what would be done, with the commands; opens nothing and takes no lock
-//   --print-line  run the checkout checks and print, as JSON, the line that starts a child
-//                 session in another pane: cd '<dir>' && git pull --ff-only && <launch>.
-//                 Opens nothing, takes no lock, needs no multiplexer
+//   --dry-run     print what would be done, with the commands; opens nothing, takes no lock and
+//                 writes no claim (the line shows ORCHESTRATOR_CLAIM='l-dry-run')
+//   --print-line  run the checkout checks, write the child's claim and print, as JSON, the line
+//                 that starts a child session in another pane: cd '<dir>' && git pull --ff-only
+//                 && <launch>, with the claim id. Opens nothing, takes no lock, needs no multiplexer
 //
 // The multiplexer: ORCHESTRATOR_MULTIPLEXER=tmux|herdr decides when set. Else
 // herdr when HERDR_ENV=1 and HERDR_PANE_ID are set and `herdr pane current`
@@ -35,7 +49,8 @@
 //
 // Exit codes:
 //   0  opened (or, with --dry-run, would open; with --print-line, printed)
-//   1  bad input, not inside tmux or herdr, --session under herdr, or a tmux, herdr or git error
+//   1  bad input, not inside tmux or herdr, --session under herdr, a tmux, herdr or git error,
+//      or the claim could not be written (nothing is typed or printed then)
 //   2  the main checkout is not on its default branch (the worktree would start from it)
 //   3  the worktree already exists
 //   6  the checkout's lock is busy (--no-wait, or 16 minutes of waiting)
@@ -62,9 +77,13 @@
 // runs the second stage. Its exit codes: 0 sent or ready, 4 TIMEOUT, 5 GONE,
 // 7 UNTRUSTED, 8 NOT_SENT.
 
+import { randomUUID } from "node:crypto";
 import { appendFileSync, existsSync, mkdirSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
+import { type StoreContext, claudeConfigDirOf, ownedKey, readIdentity, writeClaim } from "./lib/record-store.ts";
+import { type OrchestratorClaim, isSessionId, launchKey, normaliseTicketId } from "./lib/state-core.ts";
+import { childTicket, repoFromRemoteUrl } from "./lib/ticket.ts";
 import {
   type DeliverArgs,
   type Multiplexer,
@@ -96,6 +115,9 @@ const EXIT_GONE = 5;
 const EXIT_LOCK_BUSY = 6;
 const EXIT_UNTRUSTED = 7;
 const EXIT_NOT_SENT = 8;
+
+/** The claim id a `--dry-run` line shows; no claim file carries it. */
+const DRY_RUN_CLAIM = "l-dry-run";
 
 /** How long a start waits for another start in the same checkout. */
 const LOCK_WAIT_MS = 16 * 60_000;
@@ -287,8 +309,9 @@ if (!parsed.ok) {
   fail(
     `${parsed.error}\n` +
       "usage: --name <slug> --colour <colour> [--prompt <text>] [--dir <main checkout>] [--session <name>]\n" +
-      "       [--model <id>] [--effort <level>] [--launch <command>] [--no-wait] [--dry-run]\n" +
-      "   or: --print-line --name <slug> --colour <colour> [--dir <main checkout>] [--model <id>] [--effort <level>] [--launch <command>]",
+      "       [--ticket <id>] [--ticket-url <url>] [--model <id>] [--effort <level>] [--launch <command>] [--no-wait] [--dry-run]\n" +
+      "   or: --print-line --name <slug> --colour <colour> [--dir <main checkout>] [--ticket <id>] [--ticket-url <url>]\n" +
+      "       [--model <id>] [--effort <level>] [--launch <command>]",
   );
 }
 
@@ -464,14 +487,68 @@ function checkCheckout(dir: string, name: string): string {
   return branch;
 }
 
-function launchSpec(args: StartArgs | PrintLineArgs) {
+/** The variables in front of the launch: the claim id, and the state dir when one is set here. */
+function launchEnv(claimId: string): Array<readonly [string, string]> {
+  const env: Array<readonly [string, string]> = [["ORCHESTRATOR_CLAIM", claimId]];
+  const state = process.env.ORCHESTRATOR_STATE_DIR;
+  if (state) env.push(["ORCHESTRATOR_STATE_DIR", state]);
+  return env;
+}
+
+function launchSpec(args: StartArgs | PrintLineArgs, claimId: string) {
   return {
     name: args.name,
     colour: args.colour,
     ...(args.model !== undefined ? { model: args.model } : {}),
     ...(args.effort !== undefined ? { effort: args.effort } : {}),
     ...(args.launch !== undefined ? { launch: args.launch } : {}),
+    env: launchEnv(claimId),
   };
+}
+
+function storeContext(): StoreContext {
+  return { stateDir: resolveStateDir(), claudeConfigDir: claudeConfigDirOf(process.env, process.env.HOME || homedir()) };
+}
+
+/** The main checkout of the directory this launcher runs in, or null. */
+function ownMainCheckout(): string | null {
+  const common = run(["git", "rev-parse", "--path-format=absolute", "--git-common-dir"]);
+  return common.ok ? mainCheckoutFromCommonDir(common.out) : null;
+}
+
+/**
+ * Writes the claim the launched session binds to and returns its id. The parent
+ * is this session's own record, if it owns one; the product is that record's,
+ * else this launcher's own main checkout. A child launched by a manager that
+ * owns a ticket carries that ticket (`childTicket`); a `--ticket` naming
+ * another one exits 1. Any other launch normalises its ticket id against the
+ * origin of `lineDir`, the checkout the line runs in. Exits 1 when the claim
+ * cannot be written, before anything is typed or printed.
+ */
+function writeLaunchClaim(args: StartArgs | PrintLineArgs, role: OrchestratorClaim["role"], lineDir: string): string {
+  const ctx = storeContext();
+  const key = launchKey(randomUUID());
+  const sessionId = process.env.CLAUDE_CODE_SESSION_ID?.trim() ?? "";
+  const parent = isSessionId(sessionId) ? ownedKey(ctx, sessionId) : null;
+  const parentIdentity = parent !== null ? readIdentity(ctx, parent) : null;
+  const product = parentIdentity?.product ?? ownMainCheckout() ?? lineDir;
+  let ticket: OrchestratorClaim["ticket"] = null;
+  if (role === "child" && parentIdentity?.role === "manager" && parentIdentity.ticket !== null) {
+    const inherited = childTicket(args.ticket ?? null, parentIdentity.ticket);
+    if (!inherited.ok) fail(inherited.error);
+    ticket = inherited.ticket;
+  } else if (args.ticket !== undefined) {
+    const origin = run(["git", "remote", "get-url", "origin"], lineDir);
+    const originRepo = origin.ok ? repoFromRemoteUrl(origin.out) : null;
+    ticket = { id: normaliseTicketId(args.ticket, originRepo), url: args.ticketUrl ?? null };
+  }
+  const claim: OrchestratorClaim = { schema: 1, key, role, name: args.name, ticket, parent, product, createdAt: Date.now() };
+  try {
+    writeClaim(ctx, claim);
+  } catch (err) {
+    fail(`could not write the launch claim: ${err instanceof Error ? err.message : String(err)}`);
+  }
+  return key;
 }
 
 // --- --print-line -------------------------------------------------------------------
@@ -479,13 +556,15 @@ function launchSpec(args: StartArgs | PrintLineArgs) {
 function printLine(args: PrintLineArgs): never {
   const dir = resolveCheckout(args.dir);
   const branch = checkCheckout(dir, args.name);
-  let line: string;
+  // Validate the line before a claim exists, so a bad value leaves nothing behind.
   try {
-    line = buildChildLine({ ...launchSpec(args), dir });
+    buildChildLine({ ...launchSpec(args, DRY_RUN_CLAIM), dir });
   } catch (err) {
     fail(err instanceof Error ? err.message : String(err));
   }
-  console.log(JSON.stringify({ dir, branch, name: args.name, colour: args.colour, line }, null, 2));
+  const claim = writeLaunchClaim(args, "child", dir);
+  const line = buildChildLine({ ...launchSpec(args, claim), dir });
+  console.log(JSON.stringify({ dir, branch, name: args.name, colour: args.colour, claim, line }, null, 2));
   process.exit(0);
 }
 
@@ -592,7 +671,12 @@ function start(args: StartArgs): never {
   const dir = resolveCheckout(args.dir);
   const branch = checkCheckout(dir, args.name);
 
-  const line = buildLaunchLine(launchSpec(args));
+  let line: string;
+  try {
+    line = buildLaunchLine(launchSpec(args, DRY_RUN_CLAIM));
+  } catch (err) {
+    fail(err instanceof Error ? err.message : String(err));
+  }
   const state = resolveStateDir();
   const lockPath = lockPathFor(state, dir);
   const logFile = join(state, "ticket-window.log");
@@ -619,6 +703,7 @@ function start(args: StartArgs): never {
           branch,
           name: args.name,
           colour: args.colour,
+          claim: DRY_RUN_CLAIM,
           line,
           prompt: args.prompt || null,
           lock: lockPath,
@@ -631,6 +716,10 @@ function start(args: StartArgs): never {
     );
     process.exit(0);
   }
+
+  // The claim exists before the line is typed; the line carries its id.
+  const claim = writeLaunchClaim(args, "manager", dir);
+  line = buildLaunchLine(launchSpec(args, claim));
 
   takeLock(lockPath, args.name, args.noWait);
 
@@ -689,6 +778,7 @@ function start(args: StartArgs): never {
         pane,
         dir,
         sessionCreated: !hasSession,
+        claim,
         typed: line,
         prompt: args.prompt || null,
         log: logFile,

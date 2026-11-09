@@ -12,5 +12,13 @@
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true
   },
-  "include": ["scripts/**/*.ts"]
+  "include": [
+    "scripts/**/*.ts",
+    "hooks/guard.ts",
+    "hooks/session-record.ts",
+    "hooks/status/domain.ts",
+    "hooks/status/model.ts",
+    "hooks/status/layout.ts",
+    "hooks/status/mux.ts"
+  ]
 }

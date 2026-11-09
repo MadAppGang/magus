@@ -4,6 +4,54 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [orchestrator 0.3.0] - 2026-11-09
+
+### Added
+
+- **A status band above the prompt lists the sessions of your ticket family.** One row per
+  session: its name, level, ticket, status (`working`, `idle`, `waiting`, `blocked`, `done`
+  or `gone`), tasks done over total, and what it waits on. Each row has Jump (focus its tmux
+  window or herdr tab), Show (its live screen, task list and dependencies in a panel), Open
+  (its ticket in the browser) and Msg (a message to it prefilled in your prompt). Triage sees
+  the whole family, a manager sees triage, itself and its children, and `More` opens the full
+  list when the rows do not fit. A session outside an orchestrated family draws no band.
+- **Triage is the only session that changes tickets, and a hook holds managers and children
+  to it.** A `PreToolUse` guard reads the session's role from its own record and refuses, for
+  a manager or child, starting ticket sessions, creating tickets, editing a title or
+  description, every label change and any write to another ticket, naming triage as the
+  route. A manager still sets its own ticket's state and assignee and comments on it; a child
+  writes to no ticket. A Bash command that names `gh` with a tracker word, or the launcher,
+  runs only as a plain command in an allowed form, so a loop, `$(…)`, an unquoted heredoc
+  that substitutes, `eval`, `sh -c` or a pipe into a shell around it is refused, and so is a
+  script written by a heredoc and run in the same command. Triage and
+  plain sessions pass, and the guard fails open.
+- **`scripts/orch-state.ts` keeps each session's status record.** The role skills call it to
+  register, replace the task list, record a dependency on a session, pull request or release,
+  mark the session blocked or done, and hold a shared environment. Records survive `/clear`,
+  a resume and a triage restart.
+- **The herdr sidebar shows each session's state.** Under herdr, a session publishes its role,
+  ticket and state to the sidebar after each `orch-state` write and when it starts, and clears
+  them when it ends.
+- **A product workbook.** Triage keeps the product's standing rules, release procedure, repos
+  for children, shared environments and decisions in a committed
+  `.claude/orchestrator/workbook.md`, asking you once for anything missing. The skills also
+  carry a packing rule (related work goes into one ticket) and shared rules for routed
+  findings, shared environments, leftover branches and the scope of a release.
+- **A missing `bun` is reported once at session start**, with the fix, by the shared deps
+  check.
+
+### Changed
+
+- **The launcher records who it starts.** It writes a one-shot launch claim (role, name,
+  ticket, parent) and passes only its id on the line it types, so the new session binds to
+  its role as it starts and a session nested inside it stays plain. `--ticket '<id>'` and
+  `--ticket-url '<url>'` name the ticket; a bare number or `#N` becomes `owner/repo#N` from
+  the checkout's origin.
+- **The plugin's bun test files are named `*.spec.ts`**, so `*.test.ts` is left to the
+  engine-kit tests that `claude plugin test` runs.
+
+---
+
 ## [claudish 2.16.1] - 2026-11-08
 
 ### Fixed

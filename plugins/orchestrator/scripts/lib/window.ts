@@ -16,6 +16,12 @@ const NAME_RE = /^[a-z0-9][a-z0-9._-]{0,47}$/;
 const LAUNCH_RE = /^[A-Za-z0-9_./~-]+( [A-Za-z0-9_./~=-]+)*$/;
 const MODEL_RE = /^[a-z0-9][a-z0-9._-]*$/i;
 const EFFORT_RE = /^[a-z]+$/;
+/** A ticket id: `#229`, `229`, `owner/repo#229`, `ABC-7`. */
+const TICKET_RE = /^[A-Za-z0-9#][A-Za-z0-9/#._-]{0,79}$/;
+/** A ticket URL: https, no whitespace, quotes or backslashes. */
+const TICKET_URL_RE = /^https:\/\/[^\s'"\\]{1,400}$/;
+/** A variable the launcher may put in front of the launch command. */
+const ENV_KEY_RE = /^ORCHESTRATOR_[A-Z_]+$/;
 
 /** A lock whose holder recorded a start longer ago than this is stale. */
 const LOCK_MAX_AGE_MS = 16 * 60_000;
@@ -35,6 +41,8 @@ const VALUE_FLAGS = new Set([
   "deliver-to",
   "lock",
   "mux",
+  "ticket",
+  "ticket-url",
 ]);
 const BOOLEAN_FLAGS = new Set(["no-wait", "dry-run", "print-line"]);
 const DELIVER_FLAGS = new Set(["deliver-to", "prompt", "lock", "mux"]);
@@ -61,6 +69,10 @@ export interface StartArgs {
   effort?: string;
   /** Launch command from `--launch`, else from `ORCHESTRATOR_LAUNCH`; absent means the default launch. */
   launch?: string;
+  /** The ticket the session works, as given to `--ticket`. */
+  ticket?: string;
+  /** The ticket's URL from `--ticket-url`. */
+  ticketUrl?: string;
   noWait: boolean;
   dryRun: boolean;
 }
@@ -74,6 +86,8 @@ export interface PrintLineArgs {
   model?: string;
   effort?: string;
   launch?: string;
+  ticket?: string;
+  ticketUrl?: string;
 }
 
 /** Arguments for the detached second stage that types the prompt. */
@@ -105,7 +119,11 @@ export type ParseResult = { ok: true; args: StartArgs | PrintLineArgs | DeliverA
  * a value flag with nothing after it, a missing or invalid `--name` or `--colour`,
  * an invalid `--model` (`^[a-z0-9][a-z0-9._-]*$`, any case) or `--effort`
  * (`^[a-z]+$`), an invalid launch command (from either source), an empty
- * `--dir` or `--session`.
+ * `--dir` or `--session`, an invalid `--ticket`
+ * (`^[A-Za-z0-9#][A-Za-z0-9/#._-]{0,79}$`: `#229`, `229`, `owner/repo#229`,
+ * `ABC-7`) or `--ticket-url` (`^https://` and up to 400 characters with no
+ * whitespace, quote or backslash). `--ticket` and `--ticket-url` are accepted
+ * both when starting a window and with `--print-line`.
  *
  * With `--deliver-to <pane>` the result is `DeliverArgs`; only `--prompt`,
  * `--lock` and `--mux` may accompany it, and `--mux` is required with a value
@@ -184,6 +202,13 @@ export function parseArgs(argv: readonly string[], env: Readonly<Record<string, 
     if (values.get(key) === "") return { ok: false, error: `--${key} needs a value` };
   }
 
+  const ticket = values.get("ticket");
+  if (ticket !== undefined && !TICKET_RE.test(ticket)) return { ok: false, error: `invalid ticket ${quote(ticket)}` };
+  const ticketUrl = values.get("ticket-url");
+  if (ticketUrl !== undefined && !TICKET_URL_RE.test(ticketUrl)) {
+    return { ok: false, error: `invalid ticket URL ${quote(ticketUrl)}: https://, no spaces, quotes or backslashes` };
+  }
+
   const launchFlag = values.get("launch");
   const launchEnv = env.ORCHESTRATOR_LAUNCH;
   const launch = launchFlag ?? (launchEnv ? launchEnv : undefined);
@@ -202,6 +227,8 @@ export function parseArgs(argv: readonly string[], env: Readonly<Record<string, 
     if (model !== undefined) lineArgs.model = model;
     if (effort !== undefined) lineArgs.effort = effort;
     if (launch !== undefined) lineArgs.launch = launch;
+    if (ticket !== undefined) lineArgs.ticket = ticket;
+    if (ticketUrl !== undefined) lineArgs.ticketUrl = ticketUrl;
     return { ok: true, args: lineArgs };
   }
 
@@ -219,6 +246,8 @@ export function parseArgs(argv: readonly string[], env: Readonly<Record<string, 
   if (model !== undefined) args.model = model;
   if (effort !== undefined) args.effort = effort;
   if (launch !== undefined) args.launch = launch;
+  if (ticket !== undefined) args.ticket = ticket;
+  if (ticketUrl !== undefined) args.ticketUrl = ticketUrl;
   return { ok: true, args };
 }
 
@@ -261,6 +290,32 @@ export interface LaunchSpec {
   effort?: string;
   /** A launch command; absent means the default `claude -w` launch. */
   launch?: string;
+  /**
+   * Variables put in front of the launch as prefix assignments, in order:
+   * `ORCHESTRATOR_CLAIM`, and `ORCHESTRATOR_STATE_DIR` when the launcher has one.
+   */
+  env?: ReadonlyArray<readonly [string, string]>;
+}
+
+/**
+ * The prefix assignments for `env`: `K='v' ` for each pair, in order, every
+ * value single-quoted with each `'` written as `'\''`; `""` when `env` is
+ * absent or empty.
+ *
+ * Throws an Error when a key does not match `^ORCHESTRATOR_[A-Z_]+$`, is
+ * `ORCHESTRATOR_LAUNCH` (that variable names the launch command, so the prefix
+ * may never set it), or a value contains a newline or NUL.
+ */
+export function envPrefix(env: ReadonlyArray<readonly [string, string]> | undefined): string {
+  if (env === undefined) return "";
+  let prefix = "";
+  for (const [key, value] of env) {
+    if (!ENV_KEY_RE.test(key)) throw new Error(`invalid launch variable ${quote(key)}`);
+    if (key === "ORCHESTRATOR_LAUNCH") throw new Error("ORCHESTRATOR_LAUNCH names the launch command and cannot be set in front of it");
+    if (/[\n\0]/.test(value)) throw new Error(`the value of ${key} contains a newline or NUL`);
+    prefix += `${key}=${shellQuote(value)} `;
+  }
+  return prefix;
 }
 
 /**
@@ -271,10 +326,20 @@ export interface LaunchSpec {
  * With `launch` set it is `<launch> <name> <colour>`, followed by
  * ` -- --model M --effort E` (only the flags given) when either is given.
  *
- * Throws an Error when any field fails the pattern `parseArgs` enforces, so a
- * value that could break the shell line never reaches it.
+ * Either form is preceded by `envPrefix(spec.env)`, e.g.
+ * `ORCHESTRATOR_CLAIM='l-…' wt <name> <colour>`. In bash and zsh a prefix
+ * assignment before a command or a shell function reaches its children for that
+ * call only. An absent or empty `env` gives exactly the line without it.
+ *
+ * Throws an Error when any field fails the pattern `parseArgs` enforces, or
+ * `envPrefix` would throw, so a value that could break the shell line never
+ * reaches it.
  */
 export function buildLaunch(spec: LaunchSpec): string {
+  return envPrefix(spec.env) + buildBareLaunch(spec);
+}
+
+function buildBareLaunch(spec: LaunchSpec): string {
   if (!NAME_RE.test(spec.name)) throw new Error(`invalid name ${quote(spec.name)}`);
   if (!isColour(spec.colour)) throw new Error(`invalid colour ${quote(String(spec.colour))}`);
   if (spec.model !== undefined && !MODEL_RE.test(spec.model)) throw new Error(`invalid model ${quote(spec.model)}`);

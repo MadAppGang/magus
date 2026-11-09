@@ -1,7 +1,7 @@
 {
   "name": "orchestrator",
-  "version": "0.2.1",
-  "description": "Runs parallel ticket work as three levels of Claude Code sessions: triage owns the tickets and the plan, a manager per ticket runs the dev workflow in its own tmux window or herdr tab and worktree, and children run in visible terminal slots beside it. Needs bun, git, and tmux or herdr.",
+  "version": "0.3.0",
+  "description": "Runs ticket work as three levels of Claude Code sessions: triage owns tickets and the plan, a manager per ticket works in its own tmux window or herdr tab and worktree, children in slots beside it. A status band lists them; a guard keeps ticket changes with triage. Needs bun, git, tmux or herdr.",
   "author": {
     "name": "MadAppGang",
     "email": "i@madappgang.com"
@@ -34,5 +34,24 @@
   ],
   "compatibility": {
     "claudeCode": ">=0.1.0"
+  },
+  "types": "./types/index.d.ts",
+  "requires": {
+    "schema": 2,
+    "bin": [
+      {
+        "name": "bun",
+        "check": [
+          "bun",
+          "--version"
+        ],
+        "install": [
+          {
+            "via": "bootstrap",
+            "tool": "bun"
+          }
+        ]
+      }
+    ]
   }
 }

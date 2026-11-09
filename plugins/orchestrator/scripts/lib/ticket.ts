@@ -92,7 +92,44 @@ export function parseTicketRef(ref: string, thisRepo: string | null): TicketRef 
   return null;
 }
 
-const COLOUR_KEYWORDS: ReadonlyArray<readonly [LabelColour, readonly string[]]> = [
+/** A ticket as a record or a launch claim stores it. */
+export type StoredTicket = { id: string; url: string | null };
+
+/**
+ * True when reference `given` names the ticket stored as `stored`. A `#N` or
+ * bare `N` in `given` is read in `stored`'s repo. Two GitHub references match
+ * on the number and, when both name one, the repo (case-insensitively); other
+ * references match on the normalised key. A reference that does not parse
+ * matches only the same text.
+ */
+function namesTicket(given: string, stored: string): boolean {
+  const home = parseTicketRef(stored, null)?.repo ?? null;
+  const a = parseTicketRef(/^[0-9]+$/.test(given.trim()) ? `#${given.trim()}` : given, home);
+  const b = parseTicketRef(stored, home);
+  if (a === null || b === null) return given.trim().toLowerCase() === stored.trim().toLowerCase();
+  if (a.tracker === "github" || b.tracker === "github") {
+    if (a.tracker !== b.tracker || a.number !== b.number) return false;
+    return a.repo === null || b.repo === null || a.repo.toLowerCase() === b.repo.toLowerCase();
+  }
+  return a.id === b.id;
+}
+
+export type ChildTicket = { ok: true; ticket: StoredTicket } | { ok: false; error: string };
+
+/**
+ * The ticket of a child launched by a manager: the manager's own ticket, id
+ * and URL as its record stores them, whatever checkout the child runs in. A
+ * `--ticket` given with the launch must name that ticket (`namesTicket`), or
+ * the launch is refused; it never replaces it. Never throws.
+ */
+export function childTicket(given: string | null, manager: StoredTicket): ChildTicket {
+  if (given !== null && !namesTicket(given, manager.id)) {
+    return { ok: false, error: `--ticket ${given} is not ${manager.id}, the ticket of the manager starting this child; a child works under its manager's ticket` };
+  }
+  return { ok: true, ticket: { id: manager.id, url: manager.url } };
+}
+
+const COLOUR_KEYWORDS:ReadonlyArray<readonly [LabelColour, readonly string[]]> = [
   ["red", ["bug", "bugfix", "fix", "defect"]],
   ["green", ["feature", "enhancement", "feat"]],
   ["blue", ["improvement", "chore", "refactor", "perf"]],

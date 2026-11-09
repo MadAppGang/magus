@@ -9,6 +9,9 @@ Start ticket **$ARGUMENTS** in a new tmux window or herdr tab. Do every step you
 never run `git pull`, a plugin update or a worktree command in your own Bash: the window runs
 them.
 
+**Only triage runs this.** Triage alone starts ticket sessions; in a manager or child session
+the hook refuses it and names triage as the route.
+
 **One ticket at a time.** The window's `git pull`, plugin update and worktree creation all
 work on one main checkout, so two starts together race. With several tickets, finish steps
 1 to 7 for the first before beginning the next. Never run two launcher calls in parallel,
@@ -21,8 +24,10 @@ The tracker, its four actions and the script below are specified in the "Tracker
 1. **Find the tracker.** Use the one the product repo's `CLAUDE.md` names. Otherwise run
 
    ```
-   bun "${CLAUDE_PLUGIN_ROOT}/scripts/ticket-ref.ts" "$ARGUMENTS" --dir <the repo's main checkout>
+   bun --env-file=/dev/null "${CLAUDE_PLUGIN_ROOT}/scripts/ticket-ref.ts" '<ticket-ref>' --dir <the repo's main checkout>
    ```
+
+   with the reference single-quoted: unquoted, `#123` starts a shell comment.
 
    and take the tracker from its `tracker` field as the Tracker section says. A bare key with
    no single Linear MCP server, or exit 1 (a reference it does not recognise): ask the user
@@ -35,7 +40,7 @@ The tracker, its four actions and the script below are specified in the "Tracker
    from the title that say what the ticket is:
 
    ```
-   bun "${CLAUDE_PLUGIN_ROOT}/scripts/ticket-ref.ts" "$ARGUMENTS" --dir <main checkout> \
+   bun --env-file=/dev/null "${CLAUDE_PLUGIN_ROOT}/scripts/ticket-ref.ts" '<ticket-ref>' --dir <main checkout> \
        --labels "<labels, comma-separated>" --words "<w1> <w2> <w3>"
    ```
 
@@ -51,9 +56,13 @@ The tracker, its four actions and the script below are specified in the "Tracker
 5. **Open the window** with one foreground Bash call and `timeout: 600000`:
 
    ```
-   bun "${CLAUDE_PLUGIN_ROOT}/scripts/ticket-window.ts" --name <name> --colour <colour> \
+   bun --env-file=/dev/null "${CLAUDE_PLUGIN_ROOT}/scripts/ticket-window.ts" --name <name> --colour <colour> \
+       --ticket '<id>' --ticket-url '<url>' \
        --prompt "/orchestrator:manager <id> <url> — <title>"
    ```
+
+   `--ticket` and `--ticket-url` go into the launch claim, so the new session starts as this
+   ticket's manager in your family and the status band lists it at once. Single-quote both.
 
    Inside tmux it opens a window in the current session; inside herdr, a tab in the current
    workspace that does not take focus. Either way it sits at the main checkout of the current
@@ -83,8 +92,11 @@ The tracker, its four actions and the script below are specified in the "Tracker
    lock is already free. Tell the user to run `claude` once there and accept the trust
    dialog, then start again; trusting a folder is their decision.
 
-6. **Set the ticket in progress** through the tracker's "set in progress" action. If it has
-   no estimate, say so in the report; do not invent one.
+6. **Set the ticket in progress** through the tracker's "set in progress" action, the start's
+   part of it in the Tracker section. On GitHub that is where the `in progress` label is
+   added, created first when the repo lacks it, because a manager changes no labels; the
+   manager assigns itself. If the ticket has no estimate, say so in the report; do not
+   invent one.
 
 7. **Report in four lines:** the multiplexer and the window or tab name, the colour and the
    label it came from, the prompt that will be typed, and the ticket's new state. The

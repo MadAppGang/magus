@@ -1,0 +1,51 @@
+{
+  "description": "SessionStart with matcher startup runs deps-check, carried by every plugin whose plugin.json declares requires (here: bun, which every hook and script of this plugin runs on) and gated by scripts/check-hook-copies.ts; it prints only when a required tool is missing, once per session however many plugins need it. SessionStart with matcher startup|resume|clear runs session-record, which binds a session the orchestrator launched to its state record (from its one-shot launch claim, by its id on resume, by its process after /clear), refreshes the record's process and herdr ids, and publishes its title and state labels to the herdr sidebar; a plain or nested session binds nothing. SessionEnd runs it again to clear that herdr title and those labels when the bound session ends. PreToolUse on Bash, Skill, SlashCommand and MCP tools runs guard, which reads the role only from the record the session owns and, for a manager or child, denies starting ticket sessions, tracker creates, scope and description edits and every label change, with a reason naming the route through triage; triage and unbound sessions pass. Every hook exits 0 and fails open. The module status/register.tsx draws the status band above the prompt and its Show panel for the sessions of this session's family; in a session that owns no record it draws nothing.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v bun >/dev/null 2>&1 && exec bun --env-file=/dev/null --config=/dev/null \"${CLAUDE_PLUGIN_ROOT}/hooks/deps-check.ts\" orchestrator || exec sh \"${CLAUDE_PLUGIN_ROOT}/hooks/bun-missing.sh\" orchestrator",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "startup|resume|clear",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v bun >/dev/null 2>&1 && exec bun --env-file=/dev/null --config=/dev/null \"${CLAUDE_PLUGIN_ROOT}/hooks/session-record.ts\" || true",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v bun >/dev/null 2>&1 && exec bun --env-file=/dev/null --config=/dev/null \"${CLAUDE_PLUGIN_ROOT}/hooks/session-record.ts\" || true",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "^(Bash|Skill|SlashCommand|mcp__.*)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v bun >/dev/null 2>&1 && exec bun --env-file=/dev/null --config=/dev/null \"${CLAUDE_PLUGIN_ROOT}/hooks/guard.ts\" || true",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  },
+  "modules": ["./status/register.tsx"]
+}

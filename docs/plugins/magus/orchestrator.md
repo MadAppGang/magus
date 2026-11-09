@@ -3,17 +3,17 @@
 
 # orchestrator
 
-Runs parallel ticket work as three levels of Claude Code sessions: triage owns the tickets and the plan, a manager per ticket runs the dev workflow in its own tmux window or herdr tab and worktree, and children run in visible terminal slots beside it. Needs bun, git, and tmux or herdr.
+Runs ticket work as three levels of Claude Code sessions: triage owns tickets and the plan, a manager per ticket works in its own tmux window or herdr tab and worktree, children in slots beside it. A status band lists them; a guard keeps ticket changes with triage. Needs bun, git, tmux or herdr.
 
 | | |
 |---|---|
-| Version | `0.2.1` |
+| Version | `0.3.0` |
 | Marketplace | [`magus`](./index.md) |
 | Commands | 1 |
 | Subagents | 0 |
 | Skills | 3 |
 | MCP server | no |
-| Hooks | no |
+| Hooks | yes |
 
 ## Install
 
@@ -42,7 +42,12 @@ Prefer to do it by hand? [Installing Magus](../../guides/install.md) has the man
 |---|---|
 | `orchestrator:child` | Runs this session as a child of a ticket's manager, the bottom of three levels. It does one named part, usually in another repo, asks and reports only to its manager, and leaves closing to i… |
 | `orchestrator:manager` | Runs this session as the manager of one ticket, the middle of three levels. It reads the ticket, starts the matching dev workflow, owns the work to release, and runs child sessions for other… |
-| `orchestrator:triage` | Runs this session as a product's triage, the top of three levels. It owns every ticket, the plan, status and overlap checks, starts ticket windows, and writes no code. |
+| `orchestrator:triage` | Runs this session as a product's triage, the top of three levels and the only session that starts, files or rescopes tickets. |
+
+## Hooks
+
+This plugin installs hooks. They run automatically and are the usual first place to look
+if its behaviour stops firing.
 
 ## Source
 

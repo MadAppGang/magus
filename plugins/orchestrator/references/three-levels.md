@@ -7,16 +7,24 @@ most in this setup is the user's attention, so each rule protects it.
 
 | Level | How many | Lives where | Owns | Talks to |
 |---|---|---|---|---|
-| **Triage** | One per product | Its own tmux window or herdr tab at the main checkout, on the default branch | Every ticket: filing, placing, state, links. The plan, the order of work, status, overlap analysis. Writes no product code | The user, every manager |
+| **Triage** | One per product | Its own tmux window or herdr tab at the main checkout, on the default branch | Every ticket and the backlog: starting ticket sessions, filing, scoping, placing, links. The plan, the order of work, status, overlap analysis, the product's workbook. Writes no product code | The user, every manager |
 | **Manager** | One per ticket (or two or three given together) | Its own tmux window or herdr tab, its own worktree, its own branch | One ticket from start to release, including its deploy steps and their approvals, and its children | The user, triage, its own children |
 | **Child** | As many as the ticket needs; more than 10 at once only on the user's word | A visible terminal slot in its manager's window or tab, in its repo's own worktree | One named part of the ticket, usually in another repo | Its manager only |
 
 The user drives triage and the managers directly. The user does not read child panes, so
 everything a child needs from the user goes through its manager.
 
-**Triage is the gatekeeper of all tickets.** Only triage files a ticket, extends one,
-merges two, or changes links between them. A manager sets its own ticket's state and links
-its PRs; everything else about tickets goes to triage.
+**Triage is the gatekeeper of tickets and the backlog.** Only triage starts a ticket
+session, files a ticket, or changes a ticket's scope: its title, its description, its
+labels, splitting it, merging it, or the links between tickets. Managers and children send
+findings and scope changes to triage instead.
+
+A hook enforces it: in a manager or child session, a ticket launch, a ticket create, a
+scope edit, any label change, or a title or description edit is refused with a message
+naming triage. On your own ticket, as a manager, you set state and assignee, attach links,
+and write progress as comments. When a product `CLAUDE.md` asks for progress in the ticket
+description, write it as a comment instead. A child writes nothing to the tracker and
+starts no sessions.
 
 ## Who sends what
 
@@ -26,10 +34,11 @@ The route is **child → manager → triage**, and back the same way.
   version or tag, what changed, what was checked, what is left.
 - **Manager to the user:** the progress table (in the manager's own session, never sent to
   triage), and anything only the user can decide.
-- **Manager to triage:** findings to place (its children's included), the user's decisions
-  to record, a release that other tickets wait on.
-- **Triage to manager:** where a finding went, and anything that changes its order or
-  overlaps its work.
+- **Manager to triage:** findings to place (its children's included), scope changes, the
+  kind of a ticket that has no kind label, the user's decisions to record, text for the
+  workbook, a release that other tickets wait on.
+- **Triage to manager:** `taken` with where each finding went, workbook text to commit on
+  its branch, and anything that changes its order or overlaps its work.
 - **Triage to the user:** status, what to start next, what overlaps, and decisions no
   session owns.
 
@@ -60,6 +69,19 @@ reported. A code reading is not a reproduction, and a pushed tag is not a shippe
 Before saying a run started, confirm the process exists. If you got something wrong, say so
 plainly and fix it.
 
+**A routed finding is open until triage takes it.** A finding or scope change sent to
+triage is placed only when triage replies `taken` with where it went. Until then it is
+open: keep it in your table or final report as open.
+
+**Say when you hold a shared environment.** A session that holds a shared environment (a
+test server, a staging database, a device) says so with `orch-state hold "<what>"` and frees
+it with `orch-state release "<what>"` when done. The workbook's "Shared environments" lists
+the ones that need it.
+
+**Tracker text names a pull request by its full URL.** Never a bare `PR #N`: a tracker
+links a bare number to whichever repo it guesses. Write
+`https://github.com/<owner>/<repo>/pull/<n>`.
+
 **Keep it simple.** A failure that happens about once in 1000 times gets the shortest code
 that handles it: an error and a retry, or a sign-out. No recovery machinery, idempotency or
 race handling for it.
@@ -82,6 +104,34 @@ or docs. Git history counts: deleting a file does not remove it from older commi
 **Plain words to the user.** Answer first, keep it short, and explain any term the user may
 not know.
 
+**Quote ticket ids in command lines.** Every ticket id and URL on a command line is
+single-quoted (`--ticket '#123'`, `ticket-ref.ts '<ticket-id>'`). Unquoted, `#123` starts a
+shell comment and the rest of the line is dropped.
+
+## Status record
+
+Each orchestrated session has a small record that the status band (and, under herdr, the
+herdr sidebar) reads. Claude Code already knows whether a session is working, idle or waiting
+on the user; the record adds what only the session knows: its role and ticket, its task
+table, what it waits on, whether it needs the user, and what shared environment it holds.
+**The band shows what you record. An unrecorded dependency is invisible to the user.**
+
+Every call is `bun --env-file=/dev/null "${CLAUDE_PLUGIN_ROOT}/scripts/orch-state.ts" <verb>`:
+
+| Verb | Who | When |
+|---|---|---|
+| `register --role <role>` | every role skill, as it loads (the manager adds `--ticket '<id>' --ticket-url '<url>'`) | once; a launched session is already bound, and the call confirms it |
+| `tasks` (the progress table on stdin) | the manager; a child optionally | in the same step that updates the progress table. It prints the table back; show the user that printout |
+| `dep add <kind>:<ref>` / `dep done` / `dep drop` | any level | when it starts waiting on a child (`session:<name>`), a pull request (`pr:<full URL>`) or a release (`release:"<artifact> <version>"`), and when that arrives or stops mattering |
+| `block "<reason>"` / `unblock` | any level | only when the session cannot go on without the user, and when it can again |
+| `hold "<what>"` / `release "<what>"` | any level | when it takes and frees a shared environment |
+| `done` | manager, child | after its final report |
+| `show [--table]` | any level | to read its own record |
+
+Run one `orch-state` call at a time, never in the background: each file has one writer, and
+two calls from one session must not overlap. Exit 3 means this session owns no record: run
+its role skill again, or `orch-state register --role <role>`.
+
 ## Tracker
 
 Every level talks to "the tracker" and does exactly four things to a ticket:
@@ -89,9 +139,9 @@ Every level talks to "the tracker" and does exactly four things to a ticket:
 | Action | What it gives or changes | Who |
 |---|---|---|
 | **read** | title, URL, state, labels | every level |
-| **set in progress** | the ticket shows it is being worked on, by you | the start, the manager |
-| **add a progress note** | a comment: SHA, PR, bench run, what is still open | the manager; triage when placing a finding |
-| **create / update** | file a ticket, change its text, labels, links or state | triage only |
+| **set in progress** | the ticket shows it is being worked on, by you | the start sets state and label; the manager assigns itself |
+| **add a progress note** | a comment: SHA, PR URL, bench run, what is still open | the manager, on its own ticket; triage when placing a finding |
+| **create / update** | file a ticket, change its title, description, labels, links or scope | triage only; a manager adds a progress note instead |
 
 ### Which tracker
 
@@ -102,7 +152,7 @@ Decide once per ticket, in this order:
 2. **Otherwise the reference decides.** Ask the script:
 
    ```
-   bun "${CLAUDE_PLUGIN_ROOT}/scripts/ticket-ref.ts" <ref> --dir <the repo's checkout>
+   bun --env-file=/dev/null "${CLAUDE_PLUGIN_ROOT}/scripts/ticket-ref.ts" '<ref>' --dir <the repo's checkout>
    ```
 
    It prints `{tracker, id, slug, repo, number, colour, name}` and exits 1 on a reference it
@@ -123,13 +173,17 @@ Decide once per ticket, in this order:
 | Action | Linear (its MCP server) | GitHub Issues (`gh`) |
 |---|---|---|
 | read | the get-issue tool | `gh issue view <n> -R <owner/repo> --json title,url,state,labels,assignees` |
-| set in progress | the save-issue tool: the team's "In Progress" state, assignee `me` | the convention `CLAUDE.md` names; else, when `gh label list -R <owner/repo>` lacks it, `gh label create "in progress" -R <owner/repo>`, then `gh issue edit <n> -R <owner/repo> --add-label "in progress" --add-assignee @me` |
-| add a progress note | the comment tool | `gh issue comment <n> -R <owner/repo> --body-file -`, the note on stdin |
-| create / update | the save-issue tool; search first | `gh issue create -R <owner/repo>` / `gh issue edit <n> -R <owner/repo>`; search first with `gh issue list --search` |
+| set in progress | the start: the save-issue tool with the team's "In Progress" state and assignee `me`. The manager: the same tool with only `state` and `assignee` | the start: the convention `CLAUDE.md` names; else, when `gh label list -R <owner/repo>` lacks it, `gh label create "in progress" -R <owner/repo>`, then `gh issue edit <n> -R <owner/repo> --add-label "in progress"`. The manager: `gh issue edit <n> -R <owner/repo> --add-assignee @me` |
+| add a progress note | the comment tool, on your own ticket | `gh issue comment <n> -R <owner/repo> --body-file -`, the note on stdin |
+| create / update | triage only: the save-issue tool; search first | triage only: `gh issue create -R <owner/repo>` / `gh issue edit <n> -R <owner/repo>`; search first with `gh issue list -R <owner/repo> --search` |
+
+**Every `gh issue` write a manager makes names the ticket's repo with `-R <owner/repo>`**
+and sets no `GH_REPO`. Without `-R`, `gh` picks the repo from the checkout or the
+environment, which the hook cannot see, so it refuses the write.
 
 GitHub has no In Progress state; the label plus your own assignment is the visible
-equivalent. When an action is refused (no write access, for example), report the error once
-and add a progress note instead. Never retry it in a loop.
+equivalent. When an action is refused (no write access, or the hook), report the reason once
+and add a progress note instead, or send the change to triage. Never retry it in a loop.
 
 **Stop** before starting work on a ticket that is Done or Canceled in Linear, or `CLOSED` on
 GitHub, and say so.
@@ -140,7 +194,7 @@ Never read colour or name off a table by eye. After reading the ticket, call the
 with its labels and 2 to 4 title words that say what the ticket is:
 
 ```
-bun "${CLAUDE_PLUGIN_ROOT}/scripts/ticket-ref.ts" <ref> --dir <checkout> \
+bun --env-file=/dev/null "${CLAUDE_PLUGIN_ROOT}/scripts/ticket-ref.ts" '<ref>' --dir <checkout> \
     --labels "<label 1>,<label 2>" --words "<w1> <w2> <w3>"
 ```
 
@@ -152,7 +206,7 @@ bun "${CLAUDE_PLUGIN_ROOT}/scripts/ticket-ref.ts" <ref> --dir <checkout> \
 |---|---|
 | `red` | `dev:fix` |
 | `green`, `blue` | `dev:dev` |
-| `null` | ask the user once which kind it is, then add a label of that kind through the tracker (one that already exists there when it has one), and call the script again |
+| `null` | At the start, triage asks the user once which kind it is, adds a label of that kind (one that already exists in the tracker when it has one), and calls the script again. A manager that meets it asks the user once, starts that workflow, and sends the kind to triage by SendMessage; triage sets the label |
 
 `name` is the slug (`abc-123`, `gh-123` for this repo's issue, `<repo>-123` for another
 repo's) and the words, lower-cased and joined, at most 48 characters. It names the window or
@@ -161,11 +215,17 @@ tab, the worktree and the branch. `name` is `null` until `--words` is given; the
 
 ## Ticket grouping
 
+**Packing rule: related work goes into one ticket, not a new ticket each time.** Sessions in
+the same area collide, and every ticket run costs setup, cleanup and a switch of the user's
+attention, the costliest of the three. A manager may run a list of related work across
+several repos and worktrees, through its children, so the user watches one place.
+
 1. Work inside the ticket's scope is done in the same session, not filed.
 2. A small blocker in another repo gets a child session, and the manager waits for it.
 3. A small finding, about 2 days or less, goes back to the session that found it.
-4. A follow-up ticket is only for work that is both large and not blocking.
-5. Tickets group by business work. Many tiny dependent tickets mean many sessions for the
+4. Related work in the same area extends an open ticket in that area, through triage.
+5. A new ticket is only for work that is large, not blocking, and in no open ticket's area.
+6. Tickets group by business work. Many tiny dependent tickets mean many sessions for the
    user to watch.
 
 A child never gets a ticket of its own; it works under its manager's ticket.
@@ -193,39 +253,45 @@ different project folder than its worktree suggests. Read the entries with
 `attachment.type == "queued_command"`. Read the assistant message just before the user's
 answer too, so you know what "A" or "yes" referred to.
 
-## Project knowledge: asked once, then remembered
+## Project knowledge: the workbook
 
-The plugin keeps no per-product file. What it needs about a product — the tracker, the
-status script, the release steps, the merge rule, which repos take a child — is read from
-the product repo's `CLAUDE.md`. When it is not there, ask the user once, then store the
-answer so no session asks again.
+What the sessions need about a product lives in two committed files in the product repo:
 
+| File | Holds | Owned by |
+|---|---|---|
+| `CLAUDE.md` | which tracker and how to do its four actions, and one pointer line to the workbook | the team |
+| `.claude/orchestrator/workbook.md` | the user's standing rules, the release branch and procedure, the merge rule, the status script, which repos take a child, the shared environments, which areas collide, and the decisions to keep | triage |
+
+Read the workbook through the pointer in `CLAUDE.md` before planning. When something is
+missing, the session asks the user once, then the answer is stored so no session asks again.
 Where an answer goes is decided by its content:
 
 | The answer | Goes to |
 |---|---|
 | Anything that names a client | Claude Code memory, never a repo |
-| Team procedure: release steps, merge rule, status script, tracker | The product repo's `CLAUDE.md` |
+| Which tracker, and how to do its four actions | The product repo's `CLAUDE.md` |
+| Any other procedure, rule or decision | The workbook, through triage |
 | A mixed answer | Split sentence by sentence, each to its own place |
 
-Triage never commits on the main checkout. It commits a remembered `CLAUDE.md` answer
-through a running manager's branch: it sends the text to that manager, which commits it
-with its own work. A rule in `CLAUDE.md` reaches only sessions started after the edit, so
-running managers also get it by message and pass it to their children.
-
-A project-memory skill may take over this storage later.
+Only triage writes the workbook. A manager or child sends triage what belongs in it.
+Triage never commits on the main checkout: it sends the text to a running manager, which
+commits it on its own branch with its work. A rule reaches only sessions started after the
+commit lands, so running managers also get it by message and pass it to their children.
 
 ## Known mechanics
 
 | What happens | What to do |
 |---|---|
 | A long `--prompt` arrives truncated | The child asks its manager to resend; the manager sends the full text by SendMessage |
+| Resuming a session that ran in another folder | `claude --resume` lists only the current folder's sessions. `cd` into that session's worktree first, then resume |
 | Reading a child's screen | `capture-pane` on its slot. `watch-pane` only waits for a pattern, with a short timeout; never use it to read, and never with `mode: "screen"`: on a Claude Code pane it returns every redraw of the spinner, hundreds of thousands of characters |
 | `capture-pane` returns only `{"slot": N}` and no text | The installed terminal plugin predates the tmux-mcp that returns the text. Tell the user to update the terminal plugin; do not fall back to raw `tmux` commands, which bypass the slot registry |
 | A child's own terminal slot lands in its manager's window | The child opens every slot it uses with `isolated: true` |
 | A new pane runs its first command several minutes late | Check before resending, or it runs twice |
+| A tracker call or launch is refused, naming triage | The hook judged it triage's. Send triage the change by SendMessage; never retry it another way |
+| `orch-state` exits 3 | This session owns no record. Run its role skill again, or `orch-state register --role <role>` |
 | The launcher logs `UNTRUSTED` | Claude Code has never been trusted in that checkout, and `claude -w` refused at once. The lock is already released. Trusting a folder is the user's decision: give them the log line's fix (run `claude` once there and accept the trust dialog), then start again |
-| The trust dialog: `❯ No, exit` / `Yes, I trust this folder` | `Down`, then `Enter` accepts. Only for a repo the product `CLAUDE.md` or the user named for children |
+| The trust dialog: `❯ No, exit` / `Yes, I trust this folder` | `Down`, then `Enter` accepts. Only for a repo the workbook or the user named for children |
 | `/quit` in a worktree session: `1. Keep worktree` / `2. Remove worktree` | `Enter` keeps it. `Down`, then `Enter` removes the worktree **and deletes its branch** (`Worktree removed.`), so choose Remove only once the work is proven merged. Menu text not as expected: `Escape`, keep the worktree, report |
 | The launcher logs `TIMEOUT` ("never became ready; not typed") | Read the log line, start again once. Never retry in a loop |
 | The launcher exits 2 | The main checkout is off its default branch. Report the branch; never switch it, it may hold uncommitted work. Ask the user |
