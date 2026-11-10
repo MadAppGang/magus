@@ -908,6 +908,37 @@
           "summary": "orchestrator: parallel ticket work as three levels of Claude Code sessions"
         }
       ]
+    },
+    {
+      "name": "meroku",
+      "source": "./plugins/meroku",
+      "description": "Skills for Claude Code sessions opened by meroku's Fix with AI: troubleshoot a failed meroku operation from its briefing, change an environment YAML safely, and understand how meroku turns that YAML into Terraform. Investigates read-only and asks before any write.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Jack Rudenko",
+        "email": "i@madappgang.com",
+        "company": "MadAppGang"
+      },
+      "category": "development",
+      "keywords": [
+        "meroku",
+        "terraform",
+        "aws",
+        "infrastructure",
+        "troubleshooting",
+        "yaml"
+      ],
+      "strict": true,
+      "releases": [
+        {
+          "version": "1.0.0",
+          "date": "2026-11-10",
+          "kinds": [
+            "Added"
+          ],
+          "summary": "meroku: skills for Claude Code sessions opened by meroku's Fix with AI"
+        }
+      ]
     }
   ]
 }

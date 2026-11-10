@@ -231,6 +231,18 @@ Runs parallel ticket work as three levels of Claude Code sessions, each in its o
 
 ---
 
+#### Meroku - Fix with AI for meroku Projects
+
+**Plugin:** `meroku` | **Category:** Development Tools | **Needs:** a meroku project
+
+Skills for the Claude Code session meroku's "Fix with AI" opens at a project root after a failed operation. Written against meroku 5.1 and env YAML schema v31.
+
+- `meroku:troubleshoot` reads the `.meroku/claude/` briefing for a failed apply, plan, destroy or AWS SSO setup, finds the cause read-only and fixes it where meroku can keep the fix.
+- `meroku:yaml` changes an env YAML safely and names any change that forces AWS to replace a resource. `meroku:meroku` explains how the YAML becomes Terraform.
+- Never writes to AWS directly, never edits the generated Terraform in `env/`, and asks before any write.
+
+---
+
 ## 🚀 Installation & Setup
 
 ### Prerequisites
@@ -270,7 +282,7 @@ if you need them:
 
 | Marketplace | Contains |
 |---|---|
-| `MadAppGang/magus` | Core development plugins — dev, code-search, terminal, designer, browser-use, aside, and more |
+| `MadAppGang/magus` | Core development plugins — dev, code-search, terminal, designer, browser-use, aside, meroku, and more |
 | `MadAppGang/magus-marketing` | AI image generation and editing, video editing |
 | `MadAppGang/magus-alpha` | Experimental plugins with evolving interfaces — none published yet |
 

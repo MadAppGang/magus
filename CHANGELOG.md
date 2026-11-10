@@ -4,6 +4,25 @@
 > The complete history across every plugin and channel lives in `CHANGELOG.md` at
 > [MadAppGang/magus-src](https://github.com/MadAppGang/magus-src).
 
+## [meroku 1.0.0] - 2026-11-10
+
+### Added
+
+- **`meroku`: skills for Claude Code sessions opened by meroku's Fix with AI.** Three skills
+  for a meroku project, written against meroku 5.1 and env YAML schema v31. Install with
+  `claude plugin install meroku@magus`.
+- `meroku:troubleshoot` reads the `.meroku/claude/` briefing for a failed apply, plan,
+  destroy or AWS SSO setup, investigates read-only, and fixes in the right place: a meroku
+  bug in the user's meroku checkout, an edge case with the user one agreed command at a
+  time, a configuration problem in the env YAML. It never writes to AWS directly, never
+  edits the generated Terraform in `env/`, and asks before any write.
+- `meroku:yaml` explains the env YAML schema, migrations and backups, and names any change
+  that forces AWS to replace a resource before it is made.
+- `meroku:meroku` explains how meroku turns the YAML into Terraform: the pipeline, the
+  commands, the project layout and resource naming.
+
+---
+
 ## [orchestrator 0.4.0] - 2026-11-10
 
 ### Added
