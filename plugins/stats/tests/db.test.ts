@@ -173,7 +173,7 @@ describe("db", () => {
     const db = openDb(dbPath);
 
     for (let i = 1; i <= 7; i++) {
-      const metrics = makeSession(`session-${i}`, "/test/project", `2026-03-${String(i).padStart(2, "0")}`);
+      const metrics = makeSession(`session-${i}`, "/test/project", today(i));
       insertSession(db, metrics);
     }
 

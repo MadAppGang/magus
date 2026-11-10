@@ -792,7 +792,7 @@ describe("Aggregator: staging file → SQLite integration", () => {
 
     // Write the parsed records to DB and verify counts
     const db = openDb(dbPath);
-    const metrics = makeSession("s-integ", "/test/project", "2026-03-26", {
+    const metrics = makeSession("s-integ", "/test/project", today(), {
       tool_calls: toolCallRecords,
     });
     insertSession(db, metrics);
